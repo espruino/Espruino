@@ -719,6 +719,19 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
  * allocate it. */
 JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr);
 
+/** Allocate a flat area of memory inside Espruino's Variable storage space.
+ * This may return 0 on failure.
+ *
+ * **Note:** Memory allocated this way MUST be freed before `jsvKill` is called
+ * (eg. when saving, loading, resetting). To do this, use a JSON wrapper for
+ * 'kill' (and one for 'init' if you need to allocate at startup)
+ */
+void *jsvMalloc(size_t size);
+
+/** Deallocate a flat area of memory allocated by jsvMalloc. See jsvMalloc
+ * for more information. */
+void jsvFree(void *ptr);
+
 /** Get the given JsVar as a character array. If it's a flat string, return a
  * pointer to it, or if it isn't allocate data on the stack and copy the data.
  *

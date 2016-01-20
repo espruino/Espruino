@@ -3316,3 +3316,26 @@ JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr) {
   jsvUnLock(backingString);
   return arr;
 }
+
+void *jsvMalloc(size_t size) {
+  /** Allocate flat string, return pointer to its first element.
+   * As we drop the pointer here, it's left locked. jsvGetFlatStringPointer
+   * is also safe if 0 is passed in.  */
+  JsVar *flatStr = jsvNewFlatStringOfLength(size);
+  if (!flatStr) {
+    jsErrorFlags |= JSERR_LOW_MEMORY;
+    // Not allocated - try and free any command history/etc
+    while (jsiFreeMoreMemory());
+    // Garbage collect
+    jsvGarbageCollect();
+    // Try again
+    flatStr = jsvNewFlatStringOfLength(size);
+  }
+
+  return (void*)jsvGetFlatStringPointer(flatStr);
+}
+
+void jsvFree(void *ptr) {
+  JsVar *flatStr = jsvGetFlatStringFromPointer((char *)ptr);
+  jsvUnLock(flatStr);
+}

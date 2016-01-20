@@ -34,6 +34,7 @@
 #if defined(USE_TLS)
   #include "mbedtls/ssl.h"
   #include "mbedtls/ctr_drbg.h"
+  #include "jswrap_crypto.h"
 #endif
 #include "network_js.h"
 
@@ -428,7 +429,9 @@ bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
 
   jsvUnLock(keyVar);
   if (ret != 0) {
-    jsError("HTTPS init failed! mbedtls_pk_parse_key returned -0x%x\n", -ret);
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_pk_parse_key: %v\n", e);
+    jsvUnLock(e);
     return false;
   }
 
@@ -465,7 +468,9 @@ bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
 
   jsvUnLock(certVar);
   if (ret != 0) {
-    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'cert' returned -0x%x\n", -ret);
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'cert': %v\n", e);
+    jsvUnLock(e);
     return false;
   }
   return true;
@@ -501,7 +506,9 @@ bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
 
   jsvUnLock(caVar);
   if (ret != 0) {
-    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'ca' returned -0x%x\n", -ret);
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'ca': %v\n", e);
+    jsvUnLock(e);
     return false;
   }
 
@@ -558,7 +565,9 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   if (( ret = mbedtls_ctr_drbg_seed( &sd->ctr_drbg, ssl_entropy, 0,
                              (const unsigned char *) pers,
                              strlen(pers))) != 0 ) {
-    jsError("HTTPS init failed! mbedtls_ctr_drbg_seed returned -0x%x\n", -ret );
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_ctr_drbg_seed: %v\n", e );
+    jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
   }
@@ -576,7 +585,9 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
                   MBEDTLS_SSL_IS_CLIENT, // or MBEDTLS_SSL_IS_SERVER
                   MBEDTLS_SSL_TRANSPORT_STREAM,
                   MBEDTLS_SSL_PRESET_DEFAULT )) != 0 ) {
-    jsError("HTTPS init failed! mbedtls_ssl_config_defaults returned -0x%x\n", -ret );
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_ssl_config_defaults returned: %v\n", e );
+    jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
   }
@@ -584,7 +595,9 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   if (sd->pkey.pk_info) {
     // this would get set if options.key was set
     if (( ret = mbedtls_ssl_conf_own_cert(&sd->conf, &sd->owncert, &sd->pkey)) != 0 ) {
-      jsError("HTTPS init failed! mbedtls_ssl_conf_own_cert returned -0x%x\n", -ret );
+      JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+      jsError("HTTPS init failed! mbedtls_ssl_conf_own_cert: %v\n", e );
+      jsvUnLock(e);
       ssl_freeSocketData(sckt);
       return false;
     }
@@ -596,13 +609,17 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   mbedtls_ssl_conf_dbg( &sd->conf, ssl_debug, 0 );
 
   if (( ret = mbedtls_ssl_setup( &sd->ssl, &sd->conf )) != 0) {
-    jsError("Failed! mbedtls_ssl_setup returned -0x%x\n", -ret );
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("Failed! mbedtls_ssl_setup: %v\n", e );
+    jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
   }
 
   if (( ret = mbedtls_ssl_set_hostname( &sd->ssl, "mbed TLS Server 1" )) != 0) {
-    jsError("HTTPS init failed! mbedtls_ssl_set_hostname returned -0x%x\n", -ret );
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_ssl_set_hostname: %v\n", e );
+    jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
   }
@@ -633,7 +650,9 @@ SSLSocketData *ssl_getSocketData(int sckt) {
 
     if ( ( ret = mbedtls_ssl_handshake( &sd->ssl ) ) != 0 ) {
       if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE ) {
-        jsError( "Failed! mbedtls_ssl_handshake returned -0x%x\n", -ret );
+        JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+        jsError( "Failed! mbedtls_ssl_handshake returned %v\n", e );
+        jsvUnLock(e);
         return 0; // this signals an error
       }
       // else we just continue - connecting=true so other things should wait

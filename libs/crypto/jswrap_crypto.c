@@ -22,6 +22,8 @@
 #include "mbedtls/include/mbedtls/sha256.h"
 #include "mbedtls/include/mbedtls/sha512.h"
 #include "mbedtls/include/mbedtls/pkcs5.h"
+#include "mbedtls/include/mbedtls/pk.h"
+#include "mbedtls/include/mbedtls/x509.h"
 
 
 /*JSON{
@@ -57,14 +59,27 @@ Class containing AES encryption/decryption
 Class containing AES encryption/decryption
 */
 
+const char *jswrap_crypto_error_to_str(int err) {
+  switch(err) {
+    case MBEDTLS_ERR_MD_ALLOC_FAILED:
+    case MBEDTLS_ERR_X509_ALLOC_FAILED:
+    case MBEDTLS_ERR_PK_ALLOC_FAILED: return "Not enough memory";
+    case MBEDTLS_ERR_MD_FEATURE_UNAVAILABLE: return "Feature unavailable";
+    case MBEDTLS_ERR_MD_BAD_INPUT_DATA: return "Bad input data";
+    case MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH: return "Invalid input length";
+    case MBEDTLS_ERR_PK_KEY_INVALID_FORMAT: return "Invalid format";
+  }
+  return 0;
+}
+
+JsVar *jswrap_crypto_error_to_jsvar(int err) {
+  const char *e = jswrap_crypto_error_to_str(err);
+  if (e) return jsvNewFromString(e);
+  return jsvVarPrintf("-0x%x", -err);
+}
 
 void jswrap_crypto_error(int err) {
-  const char *e = 0;
-  switch(err) {
-    case MBEDTLS_ERR_MD_FEATURE_UNAVAILABLE: e="Feature unavailable"; break;
-    case MBEDTLS_ERR_MD_BAD_INPUT_DATA: e="Bad Input Data"; break;
-    case MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH: e="Invalid input length"; break;
-  }
+  const char *e = jswrap_crypto_error_to_str(err);
   if (e) jsError(e);
   else jsError("Unknown error: -0x%x", -err);
 }
