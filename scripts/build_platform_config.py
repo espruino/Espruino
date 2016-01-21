@@ -93,8 +93,10 @@ if not LINUX:
     flash_page_size = 4*1024
   if board.chip["family"]=="EFM32GG":
     flash_page_size = 4*1024
+    flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be word-aligned and we have plenty of space, so we're rounding up
+  else:
+    flash_saved_code_pages = (flash_needed+flash_page_size-1)/flash_page_size
   # F4 has different page sizes in different places
-  flash_saved_code_pages = (flash_needed+flash_page_size-1)/flash_page_size
   total_flash = board.chip["flash"]*1024
 
   if "saved_code" in board.chip:
@@ -266,7 +268,7 @@ if LINUX:
   #codeOut("#define JSVAR_CACHE_SIZE                "+str(200)+" // Number of JavaScript variables in RAM")
 else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
-  codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(flash_available_for_code))
+  codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(int(flash_available_for_code)))
   if board.chip["class"]=="EFM32":
     codeOut("// FLASH_PAGE_SIZE defined in em_device.h");
   else:
@@ -275,6 +277,9 @@ else:
     codeOut("#define FLASH_START                     "+hex(0x0))
   elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
     codeOut("#define FLASH_START                     "+hex(0x0))
+  elif board.chip["class"]=="EFM32":
+    codeOut("// FLASH_BASE defined in em_device.h");
+    codeOut("#define FLASH_START                     FLASH_BASE")
   else:
     codeOut("#define FLASH_START                     "+hex(0x08000000))
   if has_bootloader:
@@ -282,7 +287,7 @@ else:
     codeOut("#define ESPRUINO_BINARY_ADDRESS         "+hex(common.get_espruino_binary_address(board)))
   codeOut("")
   codeOut("#define FLASH_SAVED_CODE_START            "+str(flash_saved_code_start))
-  codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(flash_page_size*flash_saved_code_pages))
+  codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(int(flash_page_size*flash_saved_code_pages)))
   codeOut("#define FLASH_MAGIC_LOCATION              (FLASH_SAVED_CODE_START + FLASH_SAVED_CODE_LENGTH - 4)")
   codeOut("#define FLASH_MAGIC 0xDEADBEEF")
 codeOut("");
