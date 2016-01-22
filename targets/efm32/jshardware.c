@@ -32,10 +32,14 @@
 #include "em_usart.h"
 #include "em_gpio.h"
 #include "rtcdriver.h"
+#include "nvm_hal.h"
 
 #define SYSCLK_FREQ 48000000 // Using standard HFXO freq
 
 static USART_TypeDef           * uart   = USART1;
+
+volatile uint32_t ticksSinceStart = 0;
+volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
 
 /**************************************************************************//**
  * @brief UART1 RX IRQ Handler
@@ -78,15 +82,25 @@ void USART1_TX_IRQHandler(void)
   }
 }
 
+void SysTick_Handler(void)
+{
+  jshDoSysTick();
+}
+
 void jshInit() {
   
-  CHIP_Init; //Init EFM32 device
+  CHIP_Init(); //Init EFM32 device
   jshInitDevices(); // Initialize jshSerialDevices in jsdevice.c
 
   /* Start HFXO and use it as main clock */
   CMU_OscillatorEnable( cmuOsc_HFXO, true, true);
   CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO );
   CMU_OscillatorEnable( cmuOsc_HFRCO, false, false );
+
+   /* System Clock */
+   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
+   // NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK); //EFM32 TODO: Prioritize this after SPI
+   NVIC_EnableIRQ(SysTick_IRQn);
 
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
@@ -114,25 +128,42 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
     {
     	return 0;
     }
-    /* EFM32 TODO this is not the serial number */
-    data[0] = 0x13;
-    data[1] = 0x37;
-    return 2;
+    data[0] = (unsigned char)((DEVINFO->UNIQUEL      ) & 0xFF);
+    data[1] = (unsigned char)((DEVINFO->UNIQUEL >>  8) & 0xFF);
+    data[2] = (unsigned char)((DEVINFO->UNIQUEL >> 16) & 0xFF);
+    data[3] = (unsigned char)((DEVINFO->UNIQUEL >> 24) & 0xFF);
+    data[4] = (unsigned char)((DEVINFO->UNIQUEH      ) & 0xFF);
+    data[5] = (unsigned char)((DEVINFO->UNIQUEH >>  8) & 0xFF);
+    data[6] = (unsigned char)((DEVINFO->UNIQUEH >> 16) & 0xFF);
+    data[7] = (unsigned char)((DEVINFO->UNIQUEH >> 24) & 0xFF);
+    return 8;
 }
 
 // is the serial device connected?
 bool jshIsUSBSERIALConnected() {
-  return true;
+	return false;
 }
 
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime() {
-  return (JsSysTime)RTC->CNT;
+	JsSysTime major1, major2, major3, major4;
+	unsigned int minor;
+	do {
+	    major1 = SysTickMajor;
+	    major2 = SysTickMajor;
+	    minor = SysTick->VAL;
+	    major3 = SysTickMajor;
+	    major4 = SysTickMajor;
+	} while (major1!=major2 || major2!=major3 || major3!=major4);
+	return major1 - (JsSysTime)minor;
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
-void jshSetSystemTime(JsSysTime time) {
-
+void jshSetSystemTime(JsSysTime newTime) {
+	jshInterruptOff();
+	SysTickMajor = newTime;
+	jshInterruptOn();
+	jshGetSystemTime(); // force update of the time
 }
 
 /// Convert a time in Milliseconds to one in ticks.
@@ -145,6 +176,24 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
   return (JsVarFloat) ((time * 1000) / SYSCLK_FREQ);
 }
 
+void jshDoSysTick() {
+  /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
+  if (execInfo.execute & EXEC_CTRL_C_WAIT)
+    execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_INTERRUPTED;
+  if (execInfo.execute & EXEC_CTRL_C)
+    execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C) | EXEC_CTRL_C_WAIT;
+
+  if (ticksSinceStart!=0xFFFFFFFF)
+    ticksSinceStart++;
+
+  SysTickMajor += SYSTICK_RANGE;
+
+  /* One second after start, call jsinteractive. This is used to swap
+   * to USB (if connected), or the Serial port. */
+  if (ticksSinceStart == 5) {
+    jsiOneSecondAfterStartup();
+  }
+}
 // software IO functions...
 void jshInterruptOff() {
   __disable_irq();
@@ -461,25 +510,25 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
 {
-  /* EFM32
-  pageSize = FLASH_PAGE_SIZE;
-  startAddr = (((uint32_t) startAddress) & ^(FLASH_PAGE_SIZE - 1));
-  */
+  if (addr<FLASH_START || addr>=FLASH_START+FLASH_TOTAL)
+    return false;
+  if (startAddr)
+    *startAddr = addr & (uint32_t)~(FLASH_PAGE_SIZE-1);
+  if (pageSize)
+    *pageSize = FLASH_PAGE_SIZE;
   return true;
 }
 
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr)
 {
-  /* EFM32 TODO
   uint32_t startAddr;
   uint32_t pageSize;
-  uint8_t pageNumber;
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
     return;
-  pageNumber = startAddr / pageSize;
-  NVMHAL_PageErase(&pageNumber);
-  */
+  NVMHAL_Init();
+  NVMHAL_PageErase((uint8_t*) startAddr);
+  NVMHAL_DeInit();
 }
 
 /**
@@ -487,9 +536,7 @@ void jshFlashErasePage(uint32_t addr)
  */
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len)
 {
-  /* EFM32 TODO address has to be word-aligned
-  NVMHAL_Read(&addr, buf, len);
-  */
+  memcpy(buf, (void*)addr, len);
 }
 
 /**
@@ -501,9 +548,9 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
   {
 	  return;
   }
-  /* EFM32 TODO
-  NVMHAL_Write(&addr, buf, len);
-  */
+  NVMHAL_Init();
+  NVMHAL_Write((uint8_t*)addr, buf, len);
+  NVMHAL_DeInit();
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success

@@ -1354,7 +1354,8 @@ ifeq ($(FAMILY), EFM32GG)
 	$(GECKO_SDK_PATH)/emlib/src/em_system.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_timer.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_usart.c \
-	$(GECKO_SDK_PATH)/emdrv/rtcdrv/src/rtcdriver.c
+	$(GECKO_SDK_PATH)/emdrv/rtcdrv/src/rtcdriver.c \
+	$(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c
 
 	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm.c \
 	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c \
