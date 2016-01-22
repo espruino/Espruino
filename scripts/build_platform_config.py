@@ -345,17 +345,24 @@ if "USB" in board.devices:
   if "pin_vsense" in board.devices["USB"]: codeOutDevicePin("USB", "pin_vsense", "USB_VSENSE_PIN")
 
 if "LCD" in board.devices:
-  for i in range(0,16):
-    codeOutDevicePin("LCD", "pin_d"+str(i), "LCD_FSMC_D"+str(i))
-  codeOutDevicePin("LCD", "pin_rd", "LCD_FSMC_RD")
-  codeOutDevicePin("LCD", "pin_wr", "LCD_FSMC_WR")
-  codeOutDevicePin("LCD", "pin_cs", "LCD_FSMC_CS")
-  if "pin_rs" in board.devices["LCD"]:
-    codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
-  if "pin_reset" in board.devices["LCD"]:
-    codeOutDevicePin("LCD", "pin_reset", "LCD_RESET")
-  if "pin_bl" in board.devices["LCD"]:
-    codeOutDevicePin("LCD", "pin_bl", "LCD_BL")
+  if board.devices["LCD"]["controller"]=="fsmc":
+    for i in range(0,16):
+      codeOutDevicePin("LCD", "pin_d"+str(i), "LCD_FSMC_D"+str(i))
+    codeOutDevicePin("LCD", "pin_rd", "LCD_FSMC_RD")
+    codeOutDevicePin("LCD", "pin_wr", "LCD_FSMC_WR")
+    codeOutDevicePin("LCD", "pin_cs", "LCD_FSMC_CS")
+    if "pin_rs" in board.devices["LCD"]:
+      codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
+    if "pin_reset" in board.devices["LCD"]:
+      codeOutDevicePin("LCD", "pin_reset", "LCD_RESET")
+    if "pin_bl" in board.devices["LCD"]:
+      codeOutDevicePin("LCD", "pin_bl", "LCD_BL")
+  if board.devices["LCD"]["controller"]=="ssd1306":
+    codeOutDevicePin("LCD", "pin_mosi", "LCD_SPI_MOSI")
+    codeOutDevicePin("LCD", "pin_sck", "LCD_SPI_SCK")
+    codeOutDevicePin("LCD", "pin_cs", "LCD_SPI_CS")
+    codeOutDevicePin("LCD", "pin_dc", "LCD_SPI_DC")
+    codeOutDevicePin("LCD", "pin_rst", "LCD_SPI_RST")
 
 if "SD" in board.devices:
   if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
