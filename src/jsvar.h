@@ -27,7 +27,7 @@ typedef JsVarRef JsVarRefCounter;
  * well as how many Locks it has. Everything is packed in as much as possible to allow us to
  * get down to within 2 bytes. */
 typedef enum {
-    JSV_UNUSED      = 0, ///< Variable not used for anything
+    JSV_UNUSED      = 0, ///< Variable not used for anything - THIS ENUM MUST BE ZERO
     JSV_ROOT        = JSV_UNUSED+1, ///< The root of everything - there is only one of these
     // UNDEFINED is now just stored using '0' as the variable Ref
     JSV_NULL        = JSV_ROOT+1, ///< it seems null is its own data type
@@ -295,6 +295,7 @@ JsVar *jsvFindOrCreateRoot(); ///< Find or create the ROOT variable item - used 
 unsigned int jsvGetMemoryUsage(); ///< Get number of memory records (JsVars) used
 unsigned int jsvGetMemoryTotal(); ///< Get total amount of memory records
 bool jsvIsMemoryFull(); ///< Get whether memory is full or not
+bool jsvMoreFreeVariablesThan(unsigned int vars); ///< Return whether there are more free variables than the parameter (faster than checking no of vars used)
 void jsvShowAllocated(); ///< Show what is still allocated, for debugging memory problems
 /// Try and allocate more memory - only works if RESIZABLE_JSVARS is defined
 void jsvSetMemoryTotal(unsigned int jsNewVarCount);
@@ -507,7 +508,7 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock an
 JsVar *jsvAsFlatString(JsVar *var); ///< Create a flat string from the given variable (or return it if it is already a flat string). NOTE: THIS CONVERTS VIA A STRING
 bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - faster than jsvGetStringLength(v)==0
 size_t jsvGetStringLength(const JsVar *v); ///< Get the length of this string, IF it is a string
-size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string
+size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string - EXCLUDING the first data block
 char *jsvGetFlatStringPointer(JsVar *v); ///< Get a pointer to the data in this flat string
 JsVar *jsvGetFlatStringFromPointer(char *v); ///< Given a pointer to the first element of a flat string, return the flat string itself (DANGEROUS!)
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
@@ -717,6 +718,19 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
  * to the contiguous memory area containing it. Returns 0 if it was unable to
  * allocate it. */
 JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr);
+
+/** Allocate a flat area of memory inside Espruino's Variable storage space.
+ * This may return 0 on failure.
+ *
+ * **Note:** Memory allocated this way MUST be freed before `jsvKill` is called
+ * (eg. when saving, loading, resetting). To do this, use a JSON wrapper for
+ * 'kill' (and one for 'init' if you need to allocate at startup)
+ */
+void *jsvMalloc(size_t size);
+
+/** Deallocate a flat area of memory allocated by jsvMalloc. See jsvMalloc
+ * for more information. */
+void jsvFree(void *ptr);
 
 /** Get the given JsVar as a character array. If it's a flat string, return a
  * pointer to it, or if it isn't allocate data on the stack and copy the data.

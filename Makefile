@@ -86,6 +86,9 @@ USE_MATH=1
 ifeq ($(shell uname),Darwin)
 MACOSX=1
 CFLAGS+=-D__MACOSX__
+STAT_FLAGS='-f ''%z'''
+else
+STAT_FLAGS='-c ''%s'''
 endif
 
 ifeq ($(OS),Windows_NT)
@@ -395,6 +398,16 @@ SAVE_ON_FLASH=1
 # Save on flash, but we still want the debugger and tab complete
 DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
 BOARD=MICROBIT
+OPTIMIZEFLAGS+=-Os
+USE_BLUETOOTH=1
+USE_GRAPHICS=1
+
+else ifdef DO003
+EMBEDDED=1
+SAVE_ON_FLASH=1
+# Save on flash, but we still want the debugger and tab complete
+DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
+BOARD=DO-003
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
 USE_GRAPHICS=1
@@ -1776,8 +1789,8 @@ $(USER1_BIN): $(USER1_ELF)
 	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER1_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 0 >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
-	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
-	@if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
+	@echo "** user1.bin uses $$( stat $(STAT_FLAGS) $@) bytes of" $(ESP_FLASH_MAX) "available"
+	@if [ $$( stat $(STAT_FLAGS) $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
 
 # generate binary image for user2, i.e. second OTA partition
 # we make this rule dependent on user1.bin in order to serialize the two rules because they use
@@ -1894,8 +1907,8 @@ else ifdef MICROBIT
 	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
 	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
 else ifdef NRF5X
-	if [ -d "/media/$(USER)/JLINK" ]; then cp $(PROJ_NAME).bin /media/$(USER)/JLINK;sync; fi
-	if [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).bin /media/JLINK;sync; fi
+	if [ -d "/media/$(USER)/JLINK" ]; then cp $(PROJ_NAME).hex /media/$(USER)/JLINK;sync; fi
+	if [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).hex /media/JLINK;sync; fi
 else
 	echo ST-LINK flash
 	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)

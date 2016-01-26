@@ -461,7 +461,9 @@ require("tls").connect(options, ... );
 
 If you have the certificates as `.pem` files, you need to load these files, take the information between the lines beginning with `----`, remove the newlines from it so you have raw base64, and then feed it into `atob` as above.
 
-You can also just specify the filename and it will be loaded and parsed if you have an SD card connected. For instance `options.key = "key.pem";`.
+You can also:
+* Just specify the filename (<=100 characters) and it will be loaded and parsed if you have an SD card connected. For instance `options.key = "key.pem";`
+* Specify a function, which will be called to retrieve the data.  For instance `options.key = function() { eeprom.load_my_info(); };
 
 For more information about generating and using certificates, see:
 
