@@ -56,46 +56,49 @@ extern int isfinite ( double );
 
 #if defined(ESP8266)
 
-// Place constant strings into flash when we can in order to save RAM space. Strings in flash
-// must be accessed with word reads on aligned boundaries, so we'll have to copy them before
-// regular use.
+/** Place constant strings into flash when we can in order to save RAM space. Strings in flash
+    must be accessed with word reads on aligned boundaries, so we'll have to copy them before
+    regular use. */
 #define FLASH_STR(name, x) static char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
 
-// Get the length of a string in flash
+/// Get the length of a string in flash
 size_t flash_strlen(const char *str);
 
-// Copy a string from flash to RAM
+/// Copy a string from flash to RAM
 char *flash_strncpy(char *dest, const char *source, size_t cap);
+
+/** Read a uint8_t from this pointer, which could be in RAM or Flash.
+    On ESP8266 you have to read flash in 32 bit chunks, so force a 32 bit read
+    and extract just the 8 bits we want */
+#define READ_FLASH_UINT8(ptr) ({ uint32_t __p = (uint32_t)(char*)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); ((uint8_t*)&__d)[__p & 3]; })
+
+#else
+
+/** Read a uint8_t from this pointer, which could be in RAM or Flash.
+    On ARM this is just a standard read, it's different on ESP8266 */
+#define READ_FLASH_UINT8(ptr) (*(uint8_t*)(ptr))
 
 #endif
 
+
 #if defined(ESP8266)
-// For the esp8266 we need to add CALLED_FROM_INTERRUPT to all functions that may execute at
-// interrupt time so they get loaded into static RAM instead of flash. We define
-// it as a no-op for everyone else. This is identical the ICACHE_RAM_ATTR used elsewhere.
+/** For the esp8266 we need to add CALLED_FROM_INTERRUPT to all functions that may execute at
+    interrupt time so they get loaded into static RAM instead of flash. We define
+    it as a no-op for everyone else. This is identical the ICACHE_RAM_ATTR used elsewhere. */
 #define CALLED_FROM_INTERRUPT __attribute__((section(".iram1.text")))
 #else
 #define CALLED_FROM_INTERRUPT
 #endif
 
-
-
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
 #undef TRUE
 //typedef enum {FALSE = 0, TRUE = !FALSE} bool;
-#define FALSE 0
-#define TRUE 1
+#define FALSE (0)
+#define TRUE (1)
 //typedef unsigned char bool;
-//#define TRUE (1)
-//#define FALSE (0)
 #endif
 
-// Not needed because including stdbool.h instead.
-/*#ifndef Arduino_h
-#define true (1)
-#define false (0)
-#endif*/
 
 #define DBL_MIN 2.2250738585072014e-308
 #define DBL_MAX 1.7976931348623157e+308
