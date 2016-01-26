@@ -214,16 +214,18 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
-  /* EFM32 TODO
-  nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
-  */
+  GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
+  pin = pin%16;
+  if(value)
+    GPIO_PinOutSet(port, pin);
+  else
+	GPIO_PinOutClear(port, pin);
 }
 
 bool jshPinGetValue(Pin pin) {
-  /* EFM32 TODO
-  return (bool)nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
-  */
-  return 0;
+  GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
+  pin = pin%16;
+  return GPIO_PinInGet(port,pin);
 }
 
 // Set the pin state
@@ -269,7 +271,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
     default : assert(0);
       break;
   }
-
+  //jsiConsolePrintf("\nPort: %d, Pin: %d, gpioMode: %d, out: %d", port, pin, gpioMode, out);
   GPIO_PinModeSet(port, pin, gpioMode, out);
 }
 
@@ -283,9 +285,9 @@ JshPinState jshPinGetState(Pin pin) {
   JshPinState state = JSHPINSTATE_UNDEFINED;
 
   if (pin < 8)
-    gpioMode = (GPIO_Mode_TypeDef) BUS_RegMaskedRead(&GPIO->P[port].MODEL, 0xF << (pin * 4));
+    gpioMode = (GPIO_Mode_TypeDef) (BUS_RegMaskedRead(&GPIO->P[port].MODEL, 0xF << (pin * 4)) >> (pin * 4));
   else
-    gpioMode = (GPIO_Mode_TypeDef) BUS_RegMaskedRead(&GPIO->P[port].MODEH, 0xF << ((pin - 8) * 4));
+    gpioMode = (GPIO_Mode_TypeDef) (BUS_RegMaskedRead(&GPIO->P[port].MODEH, 0xF << ((pin - 8) * 4)) >> ((pin - 8) * 4));
 
 
   switch (gpioMode) {
@@ -306,6 +308,7 @@ JshPinState jshPinGetState(Pin pin) {
         break;
     }
 
+  //jsiConsolePrintf("\nPort: %d, Pin: %d, gpioMode: %d, state: %d", port, pin, gpioMode, state);
   return state;
 }
 
