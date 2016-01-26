@@ -278,8 +278,7 @@ else:
   elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
     codeOut("#define FLASH_START                     "+hex(0x0))
   elif board.chip["class"]=="EFM32":
-    codeOut("// FLASH_BASE defined in em_device.h");
-    codeOut("#define FLASH_START                     FLASH_BASE")
+    codeOut("#define FLASH_START                     FLASH_BASE // FLASH_BASE defined in em_device.h")
   else:
     codeOut("#define FLASH_START                     "+hex(0x08000000))
   if has_bootloader:

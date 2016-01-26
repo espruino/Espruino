@@ -23,10 +23,12 @@ chip = {
 };
 
 devices = {
-
+  'BTN1' : { 'pin' : 'B9',  'pinstate' : 'IN' },
+  'BTN2' : { 'pin' : 'B10', 'pinstate' : 'IN' },
+  'LED1' : { 'pin' : 'E2' }, 
+  'LED2' : { 'pin' : 'E3' },
 }
 
 def get_pins():
-  pins = pinutils.scan_pin_file([], 'efm32ggstk.csv', 0, 1, 2)
-  pins = pinutils.scan_pin_af_file(pins, 'efm32ggstk_af.csv', 0, 1)
+  pins = pinutils.scan_pin_file([], 'efm32ggstk.csv', 1, 4, 5)
   return pinutils.fill_gaps_in_pin_list(pins)
