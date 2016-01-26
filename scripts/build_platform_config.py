@@ -93,9 +93,7 @@ if not LINUX:
     flash_page_size = 4*1024
   if board.chip["family"]=="EFM32GG":
     flash_page_size = 4*1024
-    flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be word-aligned and we have plenty of space, so we're rounding up
-  else:
-    flash_saved_code_pages = (flash_needed+flash_page_size-1)/flash_page_size
+  flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be a full page, so we're rounding up
   # F4 has different page sizes in different places
   total_flash = board.chip["flash"]*1024
 
