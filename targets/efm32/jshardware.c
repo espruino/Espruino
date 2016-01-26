@@ -214,44 +214,44 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
-  /* EFM32 TODO
-  nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
-  */
+  GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
+  pin = pin%16;
+  if(value)
+    GPIO_PinOutSet(port, pin);
+  else
+	GPIO_PinOutClear(port, pin);
 }
 
 bool jshPinGetValue(Pin pin) {
-  /* EFM32 TODO
-  return (bool)nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
-  */
-  return 0;
+  GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
+  pin = pin%16;
+  return GPIO_PinInGet(port,pin);
 }
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state) {
-  /* EFM32 TODO
-  uint32_t ipin = (uint32_t)pinInfo[pin].pin;
+  GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
+  pin = pin%16;
+  GPIO_Mode_TypeDef gpioMode = gpioModeDisabled; //This is also for analog pins
+  uint32_t out = GPIO_PinOutGet(port, pin);
+
   switch (state) {
-    case JSHPINSTATE_UNDEFINED :
-      nrf_gpio_cfg_default(ipin);
-      break;
     case JSHPINSTATE_GPIO_OUT :
-      nrf_gpio_cfg_output(ipin);
+      gpioMode = gpioModePushPull;
       break;
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN :
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
-                              | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
-                              | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
-                              | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
-                              | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
+      gpioMode = gpioModeWiredAnd;
       break;
     case JSHPINSTATE_GPIO_IN :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
+      gpioMode = gpioModeInput;
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLUP);
+      gpioMode = gpioModeInputPull;
+      out = 1;
       break;
     case JSHPINSTATE_GPIO_IN_PULLDOWN :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLDOWN);
+      gpioMode = gpioModeInputPull;
+      out = 0;
       break;
     case JSHPINSTATE_ADC_IN :
       break;
@@ -266,26 +266,50 @@ void jshPinSetState(Pin pin, JshPinState state) {
     case JSHPINSTATE_DAC_OUT :
       break;
     case JSHPINSTATE_I2C :
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
-                              | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
-                              | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
-                              | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
-                              | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
-      // may need to be set to GPIO_PIN_CNF_DIR_Output as well depending on I2C state?
+      // This depends on whether we're the slave or master and which pin (SDA/SCLK)
       break;
     default : assert(0);
       break;
   }
-  */
+  //jsiConsolePrintf("\nPort: %d, Pin: %d, gpioMode: %d, out: %d", port, pin, gpioMode, out);
+  GPIO_PinModeSet(port, pin, gpioMode, out);
 }
 
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
-  /* EFM32 TODO
-  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t)pinInfo[pin].pin);
-  */
-  return 0;
+  GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
+  pin = pin%16;
+
+  GPIO_Mode_TypeDef gpioMode = gpioModeDisabled; // Also for analog pins
+  JshPinState state = JSHPINSTATE_UNDEFINED;
+
+  if (pin < 8)
+    gpioMode = (GPIO_Mode_TypeDef) (BUS_RegMaskedRead(&GPIO->P[port].MODEL, 0xF << (pin * 4)) >> (pin * 4));
+  else
+    gpioMode = (GPIO_Mode_TypeDef) (BUS_RegMaskedRead(&GPIO->P[port].MODEH, 0xF << ((pin - 8) * 4)) >> ((pin - 8) * 4));
+
+
+  switch (gpioMode) {
+      case gpioModePushPull :
+        state = JSHPINSTATE_GPIO_OUT;
+        break;
+      case gpioModeWiredAnd :
+        state = JSHPINSTATE_GPIO_OUT_OPENDRAIN;
+        break;
+      case gpioModeInput :
+        state = JSHPINSTATE_GPIO_IN;
+        break;
+      case gpioModeInputPull :
+        if (GPIO_PinOutGet(port, pin)) state = JSHPINSTATE_GPIO_IN_PULLUP;
+        else state = JSHPINSTATE_GPIO_IN_PULLUP;
+        break;
+      default :
+        break;
+    }
+
+  //jsiConsolePrintf("\nPort: %d, Pin: %d, gpioMode: %d, state: %d", port, pin, gpioMode, state);
+  return state;
 }
 
 // Returns an analog value between 0 and 1
