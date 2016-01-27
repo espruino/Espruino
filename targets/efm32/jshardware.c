@@ -62,33 +62,22 @@ static JsSysTime jshGetTimeForSecond() {
   return SYSCLK_FREQ;
 #endif
 }
-/*
-static bool jshIsRTCAlreadySetup(bool andRunning) {
-  bool isRunning = false;
-  if (RTCDRV_IsRunning(timekeepTimerId, &isRunning) != ECODE_EMDRV_RTCDRV_OK)
-	  return false; // Illegal RTC timer - return false
 
-  if (!andRunning) return true;
-  // Check what we're running the RTC off and make sure that it's running!
-
-  return isRunning;
-}
-*/
+/**************************************************************************//**
+ * @brief SysTick IRQ Handler
+ *****************************************************************************/
 void SysTick_Handler(void)
 {
   jshDoSysTick();
 }
 
+
+
 //---------------------- UART for console ----------------------------/
 static USART_TypeDef           * uart   = USART1;
 
 /**************************************************************************//**
- * @brief UART1 RX IRQ Handler
- *
- * Set up the interrupt prior to use
- *
- * Note that this function handles overflows in a very simple way.
- *
+ * @brief UART1 RX IRQ Handler for console
  *****************************************************************************/
 void USART1_RX_IRQHandler(void)
 {
@@ -104,10 +93,7 @@ void USART1_RX_IRQHandler(void)
 }
 
 /**************************************************************************//**
- * @brief UART1 TX IRQ Handler
- *
- * Set up the interrupt prior to use
- *
+ * @brief UART1 TX IRQ Handler for console
  *****************************************************************************/
 void USART1_TX_IRQHandler(void)
 {
@@ -160,19 +146,19 @@ void jshIdle() {
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
-    if (maxChars <= 0)
-    {
-    	return 0;
-    }
-    data[0] = (unsigned char)((DEVINFO->UNIQUEL      ) & 0xFF);
-    data[1] = (unsigned char)((DEVINFO->UNIQUEL >>  8) & 0xFF);
-    data[2] = (unsigned char)((DEVINFO->UNIQUEL >> 16) & 0xFF);
-    data[3] = (unsigned char)((DEVINFO->UNIQUEL >> 24) & 0xFF);
-    data[4] = (unsigned char)((DEVINFO->UNIQUEH      ) & 0xFF);
-    data[5] = (unsigned char)((DEVINFO->UNIQUEH >>  8) & 0xFF);
-    data[6] = (unsigned char)((DEVINFO->UNIQUEH >> 16) & 0xFF);
-    data[7] = (unsigned char)((DEVINFO->UNIQUEH >> 24) & 0xFF);
-    return 8;
+  if (maxChars <= 0)
+  {
+    return 0;
+  }
+  data[0] = (unsigned char)((DEVINFO->UNIQUEL      ) & 0xFF);
+  data[1] = (unsigned char)((DEVINFO->UNIQUEL >>  8) & 0xFF);
+  data[2] = (unsigned char)((DEVINFO->UNIQUEL >> 16) & 0xFF);
+  data[3] = (unsigned char)((DEVINFO->UNIQUEL >> 24) & 0xFF);
+  data[4] = (unsigned char)((DEVINFO->UNIQUEH      ) & 0xFF);
+  data[5] = (unsigned char)((DEVINFO->UNIQUEH >>  8) & 0xFF);
+  data[6] = (unsigned char)((DEVINFO->UNIQUEH >> 16) & 0xFF);
+  data[7] = (unsigned char)((DEVINFO->UNIQUEH >> 24) & 0xFF);
+  return 8;
 }
 
 // is the serial device connected?
