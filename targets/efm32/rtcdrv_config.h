@@ -29,7 +29,7 @@
 #define EMDRV_RTCDRV_NUM_TIMERS     (1)
 
 /// @brief Define to include wallclock functionality.
-//#define EMDRV_RTCDRV_WALLCLOCK_CONFIG
+#define EMDRV_RTCDRV_WALLCLOCK_CONFIG
 
 /// @brief Define to enable integration with SLEEP driver.
 //#define EMDRV_RTCDRV_SLEEPDRV_INTEGRATION

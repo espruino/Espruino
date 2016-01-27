@@ -35,11 +35,52 @@
 #include "nvm_hal.h"
 
 #define SYSCLK_FREQ 48000000 // Using standard HFXO freq
+#define USE_RTC
 
-static USART_TypeDef           * uart   = USART1;
+//---------------------- RTC/clock ----------------------------/
+#define RTC_INITIALISE_TICKS 4 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
+#define JSSYSTIME_SECOND_SHIFT 20
+#define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
 
 volatile uint32_t ticksSinceStart = 0;
+#ifdef USE_RTC
+// Average time between SysTicks
+volatile uint32_t averageSysTickTime=0, smoothAverageSysTickTime=0;
+// last system time there was a systick
+volatile JsSysTime lastSysTickTime=0, smoothLastSysTickTime=0;
+// whether we have slept since the last SysTick
+bool hasSystemSlept = true;
+#else
 volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
+#endif
+
+JsSysTime jshGetRTCSystemTime();
+static JsSysTime jshGetTimeForSecond() {
+#ifdef USE_RTC
+  return (JsSysTime)JSSYSTIME_SECOND;
+#else
+  return SYSCLK_FREQ;
+#endif
+}
+/*
+static bool jshIsRTCAlreadySetup(bool andRunning) {
+  bool isRunning = false;
+  if (RTCDRV_IsRunning(timekeepTimerId, &isRunning) != ECODE_EMDRV_RTCDRV_OK)
+	  return false; // Illegal RTC timer - return false
+
+  if (!andRunning) return true;
+  // Check what we're running the RTC off and make sure that it's running!
+
+  return isRunning;
+}
+*/
+void SysTick_Handler(void)
+{
+  jshDoSysTick();
+}
+
+//---------------------- UART for console ----------------------------/
+static USART_TypeDef           * uart   = USART1;
 
 /**************************************************************************//**
  * @brief UART1 RX IRQ Handler
@@ -80,11 +121,6 @@ void USART1_TX_IRQHandler(void)
     } else
       USART_IntDisable(uart, UART_IEN_TXBL);
   }
-}
-
-void SysTick_Handler(void)
-{
-  jshDoSysTick();
 }
 
 void jshInit() {
@@ -144,8 +180,38 @@ bool jshIsUSBSERIALConnected() {
 	return false;
 }
 
-/// Get the system time (in ticks)
+JsSysTime jshGetRTCSystemTime() {
+  //EFM32 TODO: Increase accuracy
+  uint32_t secs = RTCDRV_GetWallClock();
+  JsSysTime time = (secs << JSSYSTIME_SECOND_SHIFT);
+  return time;
+}
+
+
 JsSysTime jshGetSystemTime() {
+#ifdef USE_RTC
+  if (ticksSinceStart<=RTC_INITIALISE_TICKS)
+    return jshGetRTCSystemTime(); // Clock hasn't stabilised yet, just use whatever RTC value we currently have
+  if (hasSystemSlept) {
+    // reset SysTick counter. This will hopefully cause it
+    // to fire off a SysTick IRQ, which will reset lastSysTickTime
+    SysTick->VAL = 0; // this doesn't itself fire an IRQ it seems
+    jshDoSysTick();
+  }
+  // Try and fix potential glitch caused by rollover of SysTick
+  JsSysTime last1, last2;
+  unsigned int avr1,avr2;
+  unsigned int sysTick;
+  do {
+    avr1 = smoothAverageSysTickTime;
+    last1 = smoothLastSysTickTime;
+    sysTick = SYSTICK_RANGE - SysTick->VAL;
+    last2 = smoothLastSysTickTime;
+    avr2 = smoothAverageSysTickTime;
+  } while (last1!=last2 || avr1!=avr2);
+  // Now work out time...
+  return last2 + (((JsSysTime)sysTick*(JsSysTime)avr2)/SYSTICK_RANGE);
+#else
 	JsSysTime major1, major2, major3, major4;
 	unsigned int minor;
 	do {
@@ -156,24 +222,29 @@ JsSysTime jshGetSystemTime() {
 	    major4 = SysTickMajor;
 	} while (major1!=major2 || major2!=major3 || major3!=major4);
 	return major1 - (JsSysTime)minor;
+#endif
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
 void jshSetSystemTime(JsSysTime newTime) {
 	jshInterruptOff();
+	// NOTE: Subseconds are not set here
+#ifdef USE_RTC
+	RTCDRV_SetWallClock((uint32_t)(newTime>>JSSYSTIME_SECOND_SHIFT));
+	hasSystemSlept = true;
+#else
 	SysTickMajor = newTime;
+#endif
+
 	jshInterruptOn();
 	jshGetSystemTime(); // force update of the time
 }
-
-/// Convert a time in Milliseconds to one in ticks.
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-  return (JsSysTime) ((ms * SYSCLK_FREQ) / 1000);
+  return (JsSysTime)((ms*(JsVarFloat)jshGetTimeForSecond())/1000);
 }
 
-/// Convert ticks to a time in Milliseconds.
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-  return (JsVarFloat) ((time * 1000) / SYSCLK_FREQ);
+  return ((JsVarFloat)time)*1000/(JsVarFloat)jshGetTimeForSecond();
 }
 
 void jshDoSysTick() {
@@ -186,7 +257,49 @@ void jshDoSysTick() {
   if (ticksSinceStart!=0xFFFFFFFF)
     ticksSinceStart++;
 
+#ifdef USE_RTC
+  if (ticksSinceStart==RTC_INITIALISE_TICKS) {
+    RTCDRV_Init();
+  }
+
+  JsSysTime time = jshGetRTCSystemTime();
+	if (!hasSystemSlept && ticksSinceStart>RTC_INITIALISE_TICKS) {
+	  /* Ok - slightly crazy stuff here. So the normal jshGetSystemTime is now
+	   * working off of the SysTick again to get the accuracy. But this means
+	   * that we can't just change lastSysTickTime to the current time, because
+	   * there will be an apparent glitch if SysTick happens when measuring the
+	   * length of a pulse.
+	   */
+	  smoothLastSysTickTime = smoothLastSysTickTime + smoothAverageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
+	  // work out the 'real' average sysTickTime
+	  JsSysTime diff = time - lastSysTickTime;
+	  // saturate...
+	  if (diff < 0) diff = 0;
+	  if (diff > 0xFFFFFFFF) diff = 0xFFFFFFFF;
+	  // and work out average without overflow (averageSysTickTime*3+diff)/4
+	  averageSysTickTime = (averageSysTickTime>>1) +
+						   (averageSysTickTime>>2) +
+						   ((unsigned int)diff>>2);
+	  // what do we expect the RTC time to be on the next SysTick?
+	  JsSysTime nextSysTickTime = time + (JsSysTime)averageSysTickTime;
+	  // Now the smooth average is the average of what we had, and what we need to get back in line with the actual time
+	  diff = nextSysTickTime - smoothLastSysTickTime;
+	  // saturate...
+	  if (diff < 0) diff = 0;
+	  if (diff > 0xFFFFFFFF) diff = 0xFFFFFFFF;
+	  smoothAverageSysTickTime = (smoothAverageSysTickTime>>1) +
+								 (smoothAverageSysTickTime>>2) +
+								 ((unsigned int)diff>>2);
+	} else {
+	  hasSystemSlept = false;
+	  smoothLastSysTickTime = time;
+	  smoothAverageSysTickTime = averageSysTickTime;
+	  // and don't touch the real average
+	}
+	lastSysTickTime = time;
+#else
   SysTickMajor += SYSTICK_RANGE;
+#endif
 
   /* One second after start, call jsinteractive. This is used to swap
    * to USB (if connected), or the Serial port. */
