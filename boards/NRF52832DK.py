@@ -23,7 +23,8 @@ info = {
  'default_console_tx' : "D6",
  'default_console_rx' : "D8",
  'default_console_baudrate' : "9600",
- 'variables' : 750, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ # Number of variables can be WAY higher on this board
+ 'variables' : 1020, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_nrf52832.bin',
  'build' : {
   'defines' : [
