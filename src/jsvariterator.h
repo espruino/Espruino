@@ -56,13 +56,13 @@ static ALWAYS_INLINE JsvStringIterator jsvStringIteratorClone(JsvStringIterator 
 /// Gets the current character (or 0)
 static ALWAYS_INLINE char jsvStringIteratorGetChar(JsvStringIterator *it) {
   if (!it->ptr) return 0;
-  return it->ptr[it->charIdx];
+  return (char)READ_FLASH_UINT8(&it->ptr[it->charIdx]);
 }
 
 /// Gets the current (>=0) character (or -1)
 static ALWAYS_INLINE int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it) {
   if (!it->ptr) return -1;
-  return (int)(unsigned char)it->ptr[it->charIdx];
+  return (int)(unsigned char)READ_FLASH_UINT8(&it->ptr[it->charIdx]);
 }
 
 /// Do we have a character, or are we at the end?
