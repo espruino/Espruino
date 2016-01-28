@@ -27,12 +27,16 @@
 
 #include "em_chip.h"
 #include "em_cmu.h"
+#include "em_emu.h"
+#include "em_int.h"
 #include "em_rtc.h"
 #include "em_timer.h"
 #include "em_usart.h"
 #include "em_gpio.h"
 #include "rtcdriver.h"
+#include "ustimer.h"
 #include "nvm_hal.h"
+#include "gpiointerrupt.h"
 
 #define SYSCLK_FREQ 48000000 // Using standard HFXO freq
 #define USE_RTC
@@ -40,7 +44,9 @@
 //---------------------- RTC/clock ----------------------------/
 #define RTC_INITIALISE_TICKS 4 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
 #define JSSYSTIME_SECOND_SHIFT 20
-#define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
+#define JSSYSTIME_SECOND  (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
+#define JSSYSTIME_MSECOND (1<<JSSYSTIME_SECOND_SHIFT)/1000
+#define JSSYSTIME_USECOND (1<<JSSYSTIME_SECOND_SHIFT)/1000000
 
 volatile uint32_t ticksSinceStart = 0;
 #ifdef USE_RTC
@@ -50,6 +56,7 @@ volatile uint32_t averageSysTickTime=0, smoothAverageSysTickTime=0;
 volatile JsSysTime lastSysTickTime=0, smoothLastSysTickTime=0;
 // whether we have slept since the last SysTick
 bool hasSystemSlept = true;
+RTCDRV_TimerID_t sleepTimer;
 #else
 volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
 #endif
@@ -73,8 +80,43 @@ void SysTick_Handler(void)
 
 
 
+//---------------------- timers ----------------------------/
+
+int64_t utilTicks = 0;
+int64_t delayTicks = 0;
+
+/**************************************************************************//**
+ * @brief TIMER0 interrupt handler for utility timer
+ *****************************************************************************/
+void TIMER0_IRQHandler(void) {
+  uint32_t flags = TIMER_IntGet(TIMER0);
+  if (flags & TIMER_IF_CC0) {
+    utilTicks -= (utilTicks & 0xFFFF);
+    if (utilTicks > 0) {
+      TIMER_CompareSet(TIMER0, 0, TIMER_CounterGet(TIMER0) + (utilTicks & 0xFFFF));
+    }
+    else {
+      jstUtilTimerInterruptHandler();
+    }
+    TIMER_IntClear(TIMER0, TIMER_IFC_CC0);
+  }
+  else if (flags & TIMER_IF_CC1) {
+    delayTicks -= (delayTicks & 0xFFFF);
+    if (delayTicks > 0) {
+      TIMER_CompareSet(TIMER0, 1, TIMER_CounterGet(TIMER0) + (utilTicks & 0xFFFF));
+    }
+    TIMER_IntClear(TIMER0, TIMER_IFC_CC1);
+  }
+}
+
+
+
 //---------------------- UART for console ----------------------------/
-static USART_TypeDef           * uart   = USART1;
+static USART_TypeDef           * usart0   = USART0;
+static USART_TypeDef           * usart1   = USART1;
+static USART_TypeDef           * usart2   = USART1;
+static USART_TypeDef           * uart0    = UART0;
+static USART_TypeDef           * uart1    = UART1;
 
 /**************************************************************************//**
  * @brief UART1 RX IRQ Handler for console
@@ -82,13 +124,13 @@ static USART_TypeDef           * uart   = USART1;
 void USART1_RX_IRQHandler(void)
 {
   /* Check for RX data valid interrupt */
-  if (uart->IF & UART_IF_RXDATAV)
+  if (usart1->IF & UART_IF_RXDATAV)
   {
     /* Clear the USART Receive interrupt */
-    USART_IntClear(uart, UART_IF_RXDATAV);
+    USART_IntClear(usart1, UART_IF_RXDATAV);
     
     /* Read one byte from the receive data register */
-    jshPushIOCharEvent(EV_SERIAL1, (char)USART_Rx(uart));
+    jshPushIOCharEvent(EV_SERIAL2, (char)USART_Rx(usart1));
   }
 }
 
@@ -98,35 +140,68 @@ void USART1_RX_IRQHandler(void)
 void USART1_TX_IRQHandler(void)
 {
   /* Check TX buffer level status */
-  if (uart->IF & UART_IF_TXBL)
+  if (usart1->IF & UART_IF_TXBL)
   {
     /* If we have other data to send, send it */
-    int c = jshGetCharToTransmit(EV_SERIAL1);
+    int c = jshGetCharToTransmit(EV_SERIAL2);
     if (c >= 0) {
-      USART_Tx(uart, (uint8_t)c);
+      USART_Tx(usart1, (uint8_t)c);
     } else
-      USART_IntDisable(uart, UART_IEN_TXBL);
+      USART_IntDisable(usart1, UART_IEN_TXBL);
   }
 }
 
 void jshInit() {
   
   CHIP_Init(); //Init EFM32 device
-  jshInitDevices(); // Initialize jshSerialDevices in jsdevice.c
 
-  /* Start HFXO and use it as main clock */
+
+  //---------------------- RTC/clock ----------------------------/
+  //Start HFXO and use it as main clock
   CMU_OscillatorEnable( cmuOsc_HFXO, true, true);
   CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO );
   CMU_OscillatorEnable( cmuOsc_HFRCO, false, false );
 
-   /* System Clock */
-   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
-   // NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK); //EFM32 TODO: Prioritize this after SPI
-   NVIC_EnableIRQ(SysTick_IRQn);
+  // System Clock
+  SysTick_Config(SYSTICK_RANGE-1); // 24 bit
+  // NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK); //EFM32 TODO: Prioritize this after SPI
+  NVIC_EnableIRQ(SysTick_IRQn);
 
-  JshUSARTInfo inf; // Just for show, not actually used...
-  jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
 
+  //---------------------- UART/console ----------------------------/
+  jshInitDevices(); // Initialize jshSerialDevices in jsdevice.c
+  JshUSARTInfo inf ;
+  inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
+  inf.pinRX    = DEFAULT_CONSOLE_RX_PIN;
+  inf.pinTX    = DEFAULT_CONSOLE_TX_PIN;
+  inf.pinCK    = PIN_UNDEFINED;
+  inf.bytesize = DEFAULT_BYTESIZE;
+  inf.parity   = DEFAULT_PARITY;
+  inf.stopbits = DEFAULT_STOPBITS;
+  inf.xOnXOff = false;
+  jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf); // Initialize UART for communication with Espruino/terminal.
+
+
+  //---------------------- GPIO ----------------------------/
+  GPIOINT_Init();
+
+
+  //---------------------- Utility TIMER ----------------------------/
+  TIMER_Init_TypeDef timerInit     = TIMER_INIT_DEFAULT;
+  TIMER_InitCC_TypeDef timerCCInit = TIMER_INITCC_DEFAULT;
+  uint32_t coreClockScale;
+
+  timerCCInit.mode = timerCCModeCompare;
+  CMU_ClockEnable( cmuClock_TIMER0, true );
+  TIMER_TopSet(TIMER0, 0xFFFF );
+  TIMER_InitCC(TIMER0, 0, &timerCCInit);
+
+  /* Run timer at slowest frequency that still gives less than 1 us per tick */
+  timerInit.prescale = (TIMER_Prescale_TypeDef)_TIMER_CTRL_PRESC_DIV32;
+  TIMER_Init(TIMER0, &timerInit );
+
+  NVIC_ClearPendingIRQ(TIMER0_IRQn);
+  NVIC_EnableIRQ(TIMER0_IRQn);
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
@@ -246,6 +321,7 @@ void jshDoSysTick() {
 #ifdef USE_RTC
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
     RTCDRV_Init();
+    RTCDRV_AllocateTimer(&sleepTimer); // This does not have to happen here, but seems to be as good place as any
   }
 
   JsSysTime time = jshGetRTCSystemTime();
@@ -295,26 +371,34 @@ void jshDoSysTick() {
 }
 // software IO functions...
 void jshInterruptOff() {
-  __disable_irq();
+  INT_Disable();
 }
 
 void jshInterruptOn() {
-  __enable_irq();
+  INT_Enable();
 }
 
 void jshDelayMicroseconds(int microsec) {
-  /* EFM32 TODO
   if (microsec <= 0) {
     return;
   }
-  
-  nrf_utils_delay_us((uint32_t) microsec);
-  */
+  utilTicks = microsec/(SYSCLK_FREQ*32);
+  if (utilTicks < 2) utilTicks=2;
+  if (utilTicks > 0xFFFFFFFF) utilTicks=0xFFFFFFFF;
+
+  TIMER_IntClear(TIMER0, TIMER_IFC_CC1);
+  TIMER_CompareSet(TIMER0, 1, TIMER_CounterGet(TIMER0) + (utilTicks & 0xFFFF));
+  TIMER_IntEnable(TIMER0, TIMER_IEN_CC1);
+
+  while(utilTicks > 0) {
+    EMU_EnterEM1();
+  }
+  TIMER_IntDisable(TIMER0, TIMER_IEN_CC1);
 }
 
 void jshPinSetValue(Pin pin, bool value) {
   GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
-  pin = pin%16;
+  pin = (pin & 0xF); //4 LSB is pin;
   if(value)
     GPIO_PinOutSet(port, pin);
   else
@@ -323,14 +407,14 @@ void jshPinSetValue(Pin pin, bool value) {
 
 bool jshPinGetValue(Pin pin) {
   GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
-  pin = pin%16;
+  pin = (pin & 0xF); //4 LSB is pin;
   return GPIO_PinInGet(port,pin);
 }
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state) {
   GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
-  pin = pin%16;
+  pin = (pin & 0xF); //4 LSB is pin;
   GPIO_Mode_TypeDef gpioMode = gpioModeDisabled; //This is also for analog pins
   uint32_t out = GPIO_PinOutGet(port, pin);
 
@@ -378,7 +462,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
   GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
-  pin = pin%16;
+  pin = (pin & 0xF); //4 LSB is pin;
 
   GPIO_Mode_TypeDef gpioMode = gpioModeDisabled; // Also for analog pins
   JshPinState state = JSHPINSTATE_UNDEFINED;
@@ -529,23 +613,64 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
 {
   // Initializes UART and registers a callback function defined above to read characters into the static variable character.
 
+  USART_TypeDef* uart; // Re-mapping from Espruino to EFM32
+  uint32_t rxIRQ;
+  uint32_t txIRQ;
+  uint32_t routeLoc = 0;
+
+  switch(device) {
+    case EV_SERIAL1:
+      uart = usart0;
+      rxIRQ = USART0_RX_IRQn;
+      txIRQ = USART0_TX_IRQn;
+      CMU_ClockEnable(cmuClock_USART0, true);
+      break;
+    case EV_SERIAL2:
+      uart = usart1;
+      rxIRQ = USART1_RX_IRQn;
+      txIRQ = USART1_TX_IRQn;
+      routeLoc = USART_ROUTE_LOCATION_LOC1;
+      CMU_ClockEnable(cmuClock_USART1, true);
+      break;
+    case EV_SERIAL3:
+      uart = usart2;
+      rxIRQ = USART2_RX_IRQn;
+      txIRQ = USART2_TX_IRQn;
+      CMU_ClockEnable(cmuClock_USART2, true);
+      break;
+    case EV_SERIAL4:
+      uart = uart0;
+      rxIRQ = UART0_RX_IRQn;
+      txIRQ = UART0_TX_IRQn;
+      CMU_ClockEnable(cmuClock_UART0, true);
+      break;
+    case EV_SERIAL5:
+      uart = uart1;
+      rxIRQ = UART1_RX_IRQn;
+      txIRQ = UART1_TX_IRQn;
+      CMU_ClockEnable(cmuClock_UART1, true);
+      break;
+    default: assert(0);
+  }
+  GPIO_Port_TypeDef rxPort = (GPIO_Port_TypeDef) (inf->pinRX >> 4); //16 pins in each Port
+  uint32_t rxPin = (inf->pinRX & 0xF);
+  GPIO_Port_TypeDef txPort = (GPIO_Port_TypeDef) (inf->pinTX >> 4); //16 pins in each Port
+  uint32_t txPin = (inf->pinTX & 0xF);
+
     /* Enable clock for HF peripherals */
   CMU_ClockEnable(cmuClock_HFPER, true);
-
-  /* Enable clock for USART module */
-  CMU_ClockEnable(cmuClock_USART1, true);
 
   /* Enable clock for GPIO module (required for pin configuration) */
   CMU_ClockEnable(cmuClock_GPIO, true);
   /* Configure GPIO pins */
-  GPIO_PinModeSet(gpioPortD, 0, gpioModePushPull, 1);
-  GPIO_PinModeSet(gpioPortD, 1, gpioModeInput, 0);
+  GPIO_PinModeSet(rxPort, rxPin, gpioModeInput, 0);
+  GPIO_PinModeSet(txPort, txPin, gpioModePushPull, 1);
 
   static USART_InitAsync_TypeDef uartInit = USART_INITASYNC_DEFAULT;
 
   /* Prepare struct for initializing UART in asynchronous mode*/
   uartInit.enable       = usartDisable;   /* Don't enable UART upon intialization */
-  uartInit.baudrate     = 9600;
+  uartInit.baudrate     = inf->baudRate;
 
   /* Initialize USART with uartInit struct */
   USART_InitAsync(uart, &uartInit);
@@ -553,27 +678,44 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
   /* Prepare UART Rx and Tx interrupts */
   USART_IntClear(uart, _USART_IFC_MASK);
   USART_IntEnable(uart, USART_IEN_RXDATAV);
-  NVIC_ClearPendingIRQ(USART1_RX_IRQn);
-  NVIC_ClearPendingIRQ(USART1_TX_IRQn);
-  NVIC_EnableIRQ(USART1_RX_IRQn);
-  NVIC_EnableIRQ(USART1_TX_IRQn);
+  NVIC_ClearPendingIRQ(rxIRQ);
+  NVIC_ClearPendingIRQ(txIRQ);
+  NVIC_EnableIRQ(rxIRQ);
+  NVIC_EnableIRQ(txIRQ);
 
   /* Enable I/O pins at UART1 location #1 */
-  uart->ROUTE = UART_ROUTE_RXPEN | UART_ROUTE_TXPEN | UART_ROUTE_LOCATION_LOC1;
+  uart->ROUTE = UART_ROUTE_RXPEN | UART_ROUTE_TXPEN | routeLoc;
 
   /* Enable UART */
   USART_Enable(uart, usartEnable);
+  GPIO_IntConfig(gpioPortD, 1, true, false, false);
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
   
-  if (device != EV_SERIAL1)
-  {
-	  return;
+  USART_TypeDef* uart; // Re-mapping from Espruino to EFM32
+
+  switch(device) {
+    case EV_SERIAL1:
+      uart = usart0;
+      break;
+    case EV_SERIAL2:
+      uart = usart1;
+      break;
+    case EV_SERIAL3:
+      uart = usart2;
+      break;
+    case EV_SERIAL4:
+      uart = uart0;
+      break;
+    case EV_SERIAL5:
+      uart = uart1;
+      break;
+    default: assert(0);
   }
 
-  int check_valid_char = jshGetCharToTransmit(EV_SERIAL1);
+  int check_valid_char = jshGetCharToTransmit(device);
   if (check_valid_char >= 0)
   {
     
@@ -678,38 +820,95 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
-  jstSetWakeUp(timeUntilWake);
-  /* EFM32 TODO
-  RTCDRV_a(); // Go to sleep, wait to be woken up
-  */
-  
-  return true;
+#ifdef USE_RTC
+  /* TODO:
+       Check jsiGetConsoleDevice to make sure we don't have to wake on USART (we can't do this fast enough)
+       Check that we're not using EXTI 11 for something else
+       Check we're not using PWM as this will stop
+       What about EXTI line 18 - USB Wakeup event
+       Check time until wake against where we are in the RTC counter - we can sleep for 0.1 sec if we're 90% of the way through the counter...
+   */
+  //jsiConsolePrintf("\ns: %d, t: %d, R: %d, T: %d", jsiStatus, timeUntilWake, jstUtilTimerIsRunning(), jshHasTransmitData());
+  if (
+      (jsiStatus & JSIS_ALLOW_DEEP_SLEEP) &&
+      (timeUntilWake > (jshGetTimeForSecond()/2)) &&  // if there's less time than this then we can't go to sleep because we can't be sure we'll wake in time
+      !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
+      !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
+      ticksSinceStart>RTC_INITIALISE_TICKS && // Don't sleep until RTC has initialised
+      true
+      ) {
+    jsiSetSleep(JSI_SLEEP_DEEP);
+    // deep sleep!
+    uint32_t ms = (uint32_t)((timeUntilWake*1000)/jshGetTimeForSecond()); // ensure we round down and leave a little time
+    if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
+
+      /* If we're going asleep for more than a few seconds,
+            * add one second to the sleep time so that when we
+            * wake up, we execute our timer immediately (even if it is a bit late)
+            * and don't waste power in shallow sleep. This is documented in setInterval */
+      if (ms>3) ms++; // sleep longer than we need
+
+      RTCDRV_StartTimer(sleepTimer, rtcdrvTimerTypeOneshot,
+                        ms, NULL, NULL);
+    }
+    // set flag in case there happens to be a SysTick
+    hasSystemSlept = true;
+    // -----------------------------------------------
+    //jsiConsolePrintf("\nR: %d, t: %d%d", ms, (uint32_t)(timeUntilWake>>32), (uint32_t)timeUntilWake);
+    GPIO_IntEnable(1<<1);  //Enable wake-up by console UART
+    EMU_EnterEM2(true);
+    GPIO_IntDisable(1<<1); //Disable wake-up by console UART
+    // -----------------------------------------------
+    jsiSetSleep(JSI_SLEEP_AWAKE);
+  } else
+#endif
+  {
+    JsSysTime sysTickTime;
+#ifdef USE_RTC
+    sysTickTime = averageSysTickTime*5/4;
+#else
+    sysTickTime = SYSTICK_RANGE*5/4;
+#endif
+    if (timeUntilWake < sysTickTime) {
+      jstSetWakeUp(timeUntilWake);
+    } else {
+      // we're going to wake on a System Tick timer anyway, so don't bother
+    }
+
+    jsiSetSleep(JSI_SLEEP_ASLEEP);
+    // -----------------------------------------------
+    EMU_EnterEM1();
+    // -----------------------------------------------
+    jsiSetSleep(JSI_SLEEP_AWAKE);
+
+    /* We may have woken up before the wakeup event. If so
+    then make sure we clear the event */
+    jstClearWakeUp();
+    return true;
+  }
+  return false;
 }
 
 /// Reschedule the timer (it should already be running) to interrupt after 'period'
 void jshUtilTimerReschedule(JsSysTime period) {
-  /* EFM32 TODO
-  period = period * 1000000 / SYSCLK_FREQ;
-  if (period < 2) period=2;
-  if (period > 0xFFFFFFFF) period=0xFFFFFFFF;
-  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
-  nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
-  */
+
+  utilTicks = period/(SYSCLK_FREQ*32);
+  if (utilTicks < 2) utilTicks=2;
+  if (utilTicks > 0xFFFFFFFF) utilTicks=0xFFFFFFFF;
+
+  TIMER_CompareSet(TIMER0, 0, TIMER_CounterGet(TIMER0) + (utilTicks & 0xFFFF));
 }
 
 /// Start the timer and get it to interrupt after 'period'
 void jshUtilTimerStart(JsSysTime period) {
-  /* EFM32 TODO
   jshUtilTimerReschedule(period);
-  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
-  */
+  TIMER_IntClear(TIMER0, TIMER_IFC_CC0);
+  TIMER_IntEnable(TIMER0, TIMER_IEN_CC0);
 }
 
 /// Stop the timer
 void jshUtilTimerDisable() {
-  /* EFM32 TODO
-  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
-  */
+  TIMER_IntDisable(TIMER0, TIMER_IEN_CC0);
 }
 
 // the temperature from the internal temperature sensor
