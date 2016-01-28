@@ -154,16 +154,18 @@ objectChecks = {} # class name -> the check for this class Type
 for jsondata in jsondatas:
 
   if not "type" in jsondata:
-    print "ERROR: no type for "+json.dumps(jsondata, sort_keys=True, indent=2)
+    print("ERROR: no type for "+json.dumps(jsondata, sort_keys=True, indent=2))
     exit(1)
 
   if jsondata["type"] in ["idle","kill","init","include"]: continue
 
   if not "name" in jsondata:
-    print "WARNING: no name for "+json.dumps(jsondata, sort_keys=True, indent=2)
+    print("WARNING: no name for "+json.dumps(jsondata, sort_keys=True, indent=2))
     jsondata["name"] = jsondata["class"]
     del jsondata["class"]
 
+  if jsondata["type"]=="object":
+    print("WARNING: "+jsondata["name"]+" is of type 'object' - converting to 'class'");
 
   jsondata["static"]=True
   if jsondata["type"]=="staticmethod":
@@ -186,6 +188,9 @@ for jsondata in jsondatas:
   if jsondata["type"]=="class":
     if "check" in jsondata:
       objectChecks[jsondata["name"]] = jsondata["check"]
+    if jsondata["name"] in classes:
+      print("ERROR: "+jsondata["name"]+" is defined twice");
+      exit(1);
     classes[jsondata["name"]] = jsondata
     # Also create a fake variable for the class prototype to make sure it'll exist
     jsondatas.append({ 
@@ -204,7 +209,7 @@ for jsondata in jsondatas:
     if not jsondata["name"] in constructors:
       constructors[jsondata["name"]] = jsondata
 
-  if jsondata["type"]=="class" or jsondata["type"]=="object":
+  if jsondata["type"]=="class":
     if "instanceof" in jsondata:
       jsondatas.append({ 
         "type":"variable", 
@@ -304,7 +309,10 @@ for className in classes:
         "return" : ["JsVar"],
         "filename" : classes[className]["filename"]
     })
-  if "memberOf" in classes[className]:
+    if "memberOf" in classes[className]:
+      print("ERROR: Class "+className+" CAN'T BE a member of anything because it's a prototype ("+classes[className]["filename"]+")");  
+      exit(1);
+  elif "memberOf" in classes[className]:
     jsondatas.append({ 
         "type":"variable", 
         "static":True,
@@ -314,7 +322,8 @@ for className in classes:
         "return" : ["JsVar"],
         "filename" : classes[className]["filename"]
     })
-
+  else:
+    print("WARNING: Class "+className+" is not a member of anything ("+classes[className]["filename"]+")");
 
 try:
   for j in jsondatas:

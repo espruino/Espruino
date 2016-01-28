@@ -20,6 +20,7 @@
 /*JSON{
   "type"  : "class",
   "class" : "Pin",
+  "memberOf" : "global",
   "check" : "jsvIsPin(var)"
 }
 This is the built-in class for Pins, such as D0,D1,LED1, or BTN

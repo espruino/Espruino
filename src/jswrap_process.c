@@ -21,7 +21,8 @@
 
 /*JSON{
   "type" : "class",
-  "class" : "process"
+  "class" : "process",
+  "memberOf" : "global"
 }
 This class contains information about Espruino itself
  */

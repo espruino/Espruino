@@ -19,7 +19,8 @@
 
 /*JSON{
   "type" : "class",
-  "class" : "OneWire"
+  "class" : "OneWire",
+  "memberOf" : "global"
 }
 This class provides a software-defined OneWire master. It is designed to be similar to Arduino's OneWire library.
  */

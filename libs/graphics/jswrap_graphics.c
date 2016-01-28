@@ -29,7 +29,8 @@
 
 /*JSON{
   "type" : "class",
-  "class" : "Graphics"
+  "class" : "Graphics",
+  "memberOf" : "global"
 }
 This class provides Graphics operations that can be applied to a surface.
 

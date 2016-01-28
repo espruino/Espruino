@@ -25,7 +25,8 @@
 
 /*JSON{
   "type" : "class",
-  "class" : "Modules"
+  "class" : "Modules",
+  "memberOf" : "global"
 }
 Built-in class that caches the modules used by the `require` command
  */

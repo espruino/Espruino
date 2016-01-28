@@ -18,6 +18,7 @@
 /*JSON{
   "type" : "class",
   "class" : "Number",
+  "memberOf" : "global",
   "check" : "jsvIsNumeric(var)"
 }
 This is the built-in JavaScript class for numbers.

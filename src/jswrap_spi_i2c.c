@@ -21,7 +21,8 @@
 
 /*JSON{
   "type" : "class",
-  "class" : "SPI"
+  "class" : "SPI",
+  "memberOf" : "global"
 }
 This class allows use of the built-in SPI ports. Currently it is SPI master only.
  */
@@ -29,6 +30,7 @@ This class allows use of the built-in SPI ports. Currently it is SPI master only
 /*JSON{
   "type" : "object",
   "name" : "SPI1",
+  "memberOf" : "global",
   "instanceof" : "SPI",
   "#if" : "SPI_COUNT>=1"
 }
@@ -37,6 +39,7 @@ The first SPI port
 /*JSON{
   "type" : "object",
   "name" : "SPI2",
+  "memberOf" : "global",
   "instanceof" : "SPI",
   "#if" : "SPI_COUNT>=2"
 }
@@ -45,6 +48,7 @@ The second SPI port
 /*JSON{
   "type" : "object",
   "name" : "SPI3",
+  "memberOf" : "global",
   "instanceof" : "SPI",
   "#if" : "SPI_COUNT>=3"
 }
@@ -456,7 +460,8 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
 
 /*JSON{
   "type" : "class",
-  "class" : "I2C"
+  "class" : "I2C",
+  "memberOf" : "global"
 }
 This class allows use of the built-in I2C ports. Currently it allows I2C Master mode only.
 
@@ -481,6 +486,7 @@ May return undefined if no device can be found.
 /*JSON{
   "type" : "object",
   "name" : "I2C1",
+  "memberOf" : "global",
   "instanceof" : "I2C",
   "#if" : "I2C_COUNT>=1"
 }
@@ -489,6 +495,7 @@ The first I2C port
 /*JSON{
   "type" : "object",
   "name" : "I2C2",
+  "memberOf" : "global",
   "instanceof" : "I2C",
   "#if" : "I2C_COUNT>=2"
 }
@@ -497,6 +504,7 @@ The second I2C port
 /*JSON{
   "type" : "object",
   "name" : "I2C3",
+  "memberOf" : "global",
   "instanceof" : "I2C",
   "#if" : "I2C_COUNT>=3"
 }

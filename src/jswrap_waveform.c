@@ -27,7 +27,8 @@
 /*JSON{
   "type" : "class",
   "ifndef" : "SAVE_ON_FLASH",
-  "class" : "Waveform"
+  "class" : "Waveform",
+  "memberOf" : "global"
 }
 This class handles waveforms. In Espruino, a Waveform is a set of data that you want to input or output.
  */

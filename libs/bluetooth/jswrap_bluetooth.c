@@ -404,11 +404,13 @@ static void advertising_init(void)
 
 /*JSON{
     "type": "class",
-    "class" : "NRF"
+    "class" : "NRF",
+    "memberOf" : "global"
 }*/
 /*JSON{
   "type" : "object",
   "name" : "Bluetooth",
+  "memberOf" : "global",
   "instanceof" : "Serial",
   "#ifdef" : "BLUETOOTH"
 }

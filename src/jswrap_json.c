@@ -28,7 +28,8 @@ const char *JSON_LIMIT_TEXT = " ... ";
 
 /*JSON{
   "type" : "class",
-  "class" : "JSON"
+  "class" : "JSON",
+  "memberOf" : "global"
 }
 An Object that handles conversion to and from the JSON data interchange format
  */

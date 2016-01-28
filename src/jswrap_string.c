@@ -19,6 +19,7 @@
 /*JSON{
   "type" : "class",
   "class" : "String",
+  "memberOf" : "global",
   "check" : "jsvIsString(var)"
 }
 This is the built-in class for Text Strings.

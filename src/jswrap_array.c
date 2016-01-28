@@ -23,6 +23,7 @@
 /*JSON{
   "type" : "class",
   "class" : "Array",
+  "memberOf" : "global",
   "check" : "jsvIsArray(var)"
 }
 This is the built-in JavaScript class for arrays.

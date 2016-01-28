@@ -137,7 +137,8 @@ static int getDay(const char *s) {
 
 /*JSON{
   "type" : "class",
-  "class" : "Date"
+  "class" : "Date",
+  "memberOf" : "global"
 }
 The built-in class for handling Dates
  */
