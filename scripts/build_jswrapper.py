@@ -130,6 +130,12 @@ def codeOutSymbolTable(name, tab):
   tab["symbolTableChars"] = "\""+listChars+"\"";
   tab["symbolTableCount"] = str(len(listSymbols));
   tab["symbolListName"] = "jswSymbols_"+codeName;
+  if name in constructors: 
+    tab["constructorPtr"]="(void (*)(void))"+constructors[name]["generate"]
+    tab["constructorSpec"]=getArgumentSpecifier(constructors[name])
+  else:
+    tab["constructorPtr"]="0"
+    tab["constructorSpec"]="0"
   codeOut("static const JswSymPtr "+tab["symbolListName"]+"[] = {\n  "+",\n  ".join(listSymbols)+"\n};");
 
 def codeOutBuiltins(indent, builtin):
@@ -208,6 +214,9 @@ for jsondata in jsondatas:
   if jsondata["type"]=="constructor":
     if not jsondata["name"] in constructors:
       constructors[jsondata["name"]] = jsondata
+    else:
+      print("ERROR: duplicate constructor "+jsondata["name"])
+      exit(1)
 
   if jsondata["type"]=="class":
     if "instanceof" in jsondata:
@@ -216,7 +225,7 @@ for jsondata in jsondatas:
         "static":True,
         "name":"__proto__", 
         "class":jsondata["name"],
-        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+jsondata["instanceof"].replace(".","_")+"_prototype)",
+        "generate_full" : "jswCreateFromSymbolTable(jswSymbolIndex_"+jsondata["instanceof"].replace(".","_")+"_prototype)",
         "return" : ["JsVar"],
         "filename" : jsondata["filename"]
       })
@@ -226,7 +235,7 @@ for jsondata in jsondatas:
         "static":True,
         "name":"__proto__",         
         "class":jsondata["name"]+".prototype",
-        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+jsondata["prototype"].replace(".","_")+"_prototype)",
+        "generate_full" : "jswCreateFromSymbolTable(jswSymbolIndex_"+jsondata["prototype"].replace(".","_")+"_prototype)",
         "return" : ["JsVar"],
         "filename" : jsondata["filename"]
       })
@@ -258,7 +267,7 @@ for className in classes:
     print("Added constructor for "+className);
     jsondata = {
         "type":"constructor", "class": className,  "name": className,
-        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className.replace(".","_")+")",
+        "generate_full" : "jswCreateFromSymbolTable(jswSymbolIndex_"+className.replace(".","_")+")",
         "return" : ["JsVar"],
         "filename" : "jswrapper.c",
         "static" : "True",
@@ -296,16 +305,7 @@ for className in classes:
         "static":True,
         "name":"prototype", 
         "class":className[:-10],
-        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className.replace(".","_")+")",
-        "return" : ["JsVar"],
-        "filename" : classes[className]["filename"]
-    })
-    jsondatas.append({ 
-        "type":"variable", 
-        "static":True,
-        "name":"constructor", 
-        "class":className,
-        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className[:-10].replace(".","_")+")",
+        "generate_full" : "jswCreateFromSymbolTable(jswSymbolIndex_"+className.replace(".","_")+")",
         "return" : ["JsVar"],
         "filename" : classes[className]["filename"]
     })
@@ -318,7 +318,7 @@ for className in classes:
         "static":True,
         "name":className, 
         "class":classes[className]["memberOf"],
-        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className+")",
+        "generate_full" : "jswCreateFromSymbolTable(jswSymbolIndex_"+className+")",
         "return" : ["JsVar"],
         "filename" : classes[className]["filename"]
     })
@@ -355,7 +355,7 @@ codeOut('// --------------------------------------------------------------------
 codeOut("""
 const JswSymList jswSymbolTables[]; // forward decl
 
-JsVar *jswFindFromSymbolTable(int tableIndex) {
+JsVar *jswCreateFromSymbolTable(int tableIndex) {
   // TODO: first see if one is actually defined
   JsVar *v = jsvNewWithFlags(JSV_OBJECT | JSV_NATIVE);
   if (v) v->varData.nativeObject = &jswSymbolTables[tableIndex];
@@ -452,7 +452,7 @@ codeOut('');
 codeOut('const JswSymList jswSymbolTables[] = {');
 for name in symbolTables:
   tab = symbolTables[name]
-  codeOut("  {"+", ".join([tab["symbolListName"], tab["symbolTableCount"], tab["symbolTableChars"]])+"}, // "+name);
+  codeOut("  {"+", ".join([tab["symbolListName"], tab["symbolTableCount"], tab["symbolTableChars"], tab["constructorPtr"], tab["constructorSpec"]])+"}, // "+name);
 codeOut('};');
 
 codeOut('')

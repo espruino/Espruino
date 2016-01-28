@@ -18,46 +18,6 @@
 #include "jsutils.h"
 #include "jsvar.h"
 
-/** This is the enum used to store how functions should be called
- * by jsnative.c.
- *
- * The first set of JSWAT_MASK bits is the return value, then following
- * is the first argument and so on:
- *
- * JSWAT_BOOL
- *   => bool()
- * JSWAT_BOOL | (JSWAT_INT<<(JSWAT_BITS)) | (JSWAT_JSVAR<<(JSWAT_BITS*2))
- *   => bool(int, JsVar*)
- *
- * JSWAT_THIS_ARG means the function also takes 'this' as its first argument:
- *
- * JSWAT_THIS_ARG | JSWAT_BOOL
- *   => bool(JsVar *parent);
- */
-typedef enum {
-  JSWAT_FINISH = 0, // no argument
-  JSWAT_VOID = 0, // Only for return values
-  JSWAT_JSVAR, // standard variable
-  JSWAT_ARGUMENT_ARRAY, // a JsVar array containing all subsequent arguments
-  JSWAT_BOOL, // boolean
-  JSWAT_INT32, // 32 bit int
-  JSWAT_PIN, // A pin
-  JSWAT_JSVARFLOAT, // 64 bit float
-  JSWAT__LAST = JSWAT_JSVARFLOAT,
-  JSWAT_MASK = NEXT_POWER_2(JSWAT__LAST)-1,
-
-  // should this just be executed right away and the value returned? Used to encode constants in the symbol table
-  // We encode this by setting all bits in the last argument, but leaving the second-last argument as zero
-  JSWAT_EXECUTE_IMMEDIATELY = 0x7000,  
-  JSWAT_EXECUTE_IMMEDIATELY_MASK = 0x7E00, 
-
-  JSWAT_THIS_ARG    = 0x8000, // whether a 'this' argument should be tacked onto the start
-  JSWAT_ARGUMENTS_MASK = ~(JSWAT_MASK | JSWAT_THIS_ARG)
-} JsnArgumentType;
-
-// number of bits needed for each argument bit
-#define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
-
 /// Do a binary search of the symbol table list
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name);
 

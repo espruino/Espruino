@@ -91,6 +91,7 @@ JsVar *jswrap_function_constructor(JsVar *args) {
 /*JSON{
   "type" : "function",
   "name" : "eval",
+  "memberOf" : "global",
   "generate" : "jswrap_eval",
   "params" : [
     ["code","JsVar",""]
@@ -110,6 +111,7 @@ JsVar *jswrap_eval(JsVar *v) {
 /*JSON{
   "type" : "function",
   "name" : "parseInt",
+  "memberOf" : "global",
   "generate" : "jswrap_parseInt",
   "params" : [
     ["string","JsVar",""],
@@ -144,6 +146,7 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
 /*JSON{
   "type" : "function",
   "name" : "parseFloat",
+  "memberOf" : "global",
   "generate" : "jswrap_parseFloat",
   "params" : [
     ["string","JsVar",""]
@@ -166,6 +169,7 @@ JsVarFloat jswrap_parseFloat(JsVar *v) {
 /*JSON{
   "type" : "function",
   "name" : "isNaN",
+  "memberOf" : "global",
   "generate" : "jswrap_isNaN",
   "params" : [
     ["x","JsVar",""]
@@ -220,6 +224,7 @@ NO_INLINE static int jswrap_atob_decode(int c) {
 /*JSON{
   "type" : "function",
   "name" : "btoa",
+  "memberOf" : "global",
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_btoa",
   "params" : [
@@ -276,6 +281,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
 /*JSON{
   "type" : "function",
   "name" : "atob",
+  "memberOf" : "global",
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_atob",
   "params" : [
@@ -329,6 +335,7 @@ JsVar *jswrap_atob(JsVar *base64Data) {
 /*JSON{
   "type" : "function",
   "name" : "encodeURIComponent",
+  "memberOf" : "global",
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_encodeURIComponent",
   "params" : [
@@ -378,6 +385,7 @@ JsVar *jswrap_encodeURIComponent(JsVar *arg) {
 /*JSON{
   "type" : "function",
   "name" : "decodeURIComponent",
+  "memberOf" : "global",
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_decodeURIComponent",
   "params" : [
