@@ -34,7 +34,6 @@
 #include "em_usart.h"
 #include "em_gpio.h"
 #include "rtcdriver.h"
-#include "ustimer.h"
 #include "nvm_hal.h"
 #include "gpiointerrupt.h"
 
