@@ -21,12 +21,12 @@
 typedef enum {
   UET_WAKEUP, ///< Does nothing except wake the device up!
   UET_SET, ///< Set a pin to a value
+  UET_EXECUTE, ///< Execute something
 #ifndef SAVE_ON_FLASH
   UET_WRITE_BYTE, ///< Write a byte to a DAC/Timer
   UET_READ_BYTE, ///< Read a byte from an analog input
   UET_WRITE_SHORT, ///< Write a short to a DAC/Timer
   UET_READ_SHORT, ///< Read a short from an analog input
-  UET_EXECUTE, ///< Execute something
 #endif
 } PACKED_FLAGS UtilTimerEventType;
 
@@ -107,6 +107,12 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 
 // Do software PWM on the given pin, using the timer IRQs
 bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin);
+
+/// Execute the given function repeatedly after the given time period
+bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime period);
+
+/// Stop executing the given function
+bool jstStopExecuteFn(void (*fn)(JsSysTime));
 
 /// Set the utility timer so we're woken up in whatever time period
 bool jstSetWakeUp(JsSysTime period);

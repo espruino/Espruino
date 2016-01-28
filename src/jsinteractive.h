@@ -42,15 +42,14 @@ bool jsiFreeMoreMemory();
 bool jsiHasTimers(); // are there timers still left to run?
 bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 
-
-void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event); ///< Called from idle loop
-
 /// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
 void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount);
 /// Return true if the object has callbacks...
 bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
 /// Queue up callbacks for other things (touchscreen? network?)
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
+/// Execute callbacks straight away (like jsiQueueObjectCallbacks, but without queueing)
+void jsiExecuteObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
 /// Execute the given function/string/array of functions and return true on success, false on failure (break during execution)
 bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr);
 /// Same as above, but with a JsVarArray (this calls jsiExecuteEventCallback, so use jsiExecuteEventCallback where possible)
@@ -66,10 +65,27 @@ void jsiSetConsoleDevice(IOEventFlags device);
 IOEventFlags jsiGetConsoleDevice();
 /// Transmit a byte
 void jsiConsolePrintChar(char data);
-/// Transmit a string
-void jsiConsolePrint(const char *str);
+/// Transmit a string (may be any string)
+void jsiConsolePrintString(const char *str);
+#ifndef FLASH_STR
+#define jsiConsolePrint jsiConsolePrintString
 /// Write the formatted string to the console (see vcbprintf)
 void jsiConsolePrintf(const char *fmt, ...);
+#else
+/// Write the formatted string to the console (see vcbprintf), but place the format string into
+// into flash
+#define jsiConsolePrintf(fmt, ...) do { \
+    FLASH_STR(flash_str, fmt); \
+    jsiConsolePrintf_int(flash_str, ##__VA_ARGS__); \
+  } while(0)
+void jsiConsolePrintf_int(const char *fmt, ...);
+/// Transmit a string (must be a literal string)
+#define jsiConsolePrint(str) do { \
+    FLASH_STR(flash_str, str); \
+    jsiConsolePrintString_int(flash_str); \
+} while(0)
+void jsiConsolePrintString_int(const char *str);
+#endif
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVar(JsVar *v);
 /// Transmit a position in the lexer (for reporting errors)
@@ -117,7 +133,7 @@ typedef enum {
 #endif
   JSIS_TODO_FLASH_SAVE = 64, // save to flash
   JSIS_TODO_FLASH_LOAD = 128, // load from flash
-  JSIS_TODO_RESET = JSIS_TODO_FLASH_SAVE|JSIS_TODO_FLASH_LOAD, // reset the board, don't load anything
+  JSIS_TODO_RESET = 256, // reset the board, don't load anything
   JSIS_TODO_MASK = JSIS_TODO_FLASH_SAVE|JSIS_TODO_FLASH_LOAD|JSIS_TODO_RESET,
 
 

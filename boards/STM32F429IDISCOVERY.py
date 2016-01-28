@@ -20,6 +20,12 @@ info = {
  'default_console' : "EV_SERIAL1",
  'variables' : 5450,
  'binary_name' : 'espruino_%v_stm32f429idiscovery.bin',
+ 'build' : {
+  'defines' : [
+     'USE_GRAPHICS',
+     'USE_NET',
+   ]
+ }
 };
 chip = {
   'part' : "STM32F429ZIT6",

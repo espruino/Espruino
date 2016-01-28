@@ -36,10 +36,11 @@ typedef struct JsvStringIterator {
   size_t charsInVar; ///< total characters in var
   size_t varIndex; ///< index in string of the start of this var
   JsVar *var; ///< current StringExt we're looking at
+  char  *ptr; ///< a pointer to string data
 } JsvStringIterator;
 
 // slight hack to enure we can use string iterator with const JsVars
-#define jsvStringIteratorNewConst(it,str,startIdx) jsvStringIteratorNew(it,(JsVar*)str,startIdx)
+#define jsvStringIteratorNewConst(it,str,startIdx) jsvStringIteratorNew(it, (JsVar*)str, startIdx)
 
 /// Create a new String iterator from a string, starting from a specific character. NOTE: This does not keep a lock to the first element, so make sure you do or the string will be freed!
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx);
@@ -54,14 +55,14 @@ static ALWAYS_INLINE JsvStringIterator jsvStringIteratorClone(JsvStringIterator 
 
 /// Gets the current character (or 0)
 static ALWAYS_INLINE char jsvStringIteratorGetChar(JsvStringIterator *it) {
-  if (!it->var) return 0;
-  return  it->var->varData.str[it->charIdx];
+  if (!it->ptr) return 0;
+  return (char)READ_FLASH_UINT8(&it->ptr[it->charIdx]);
 }
 
 /// Gets the current (>=0) character (or -1)
 static ALWAYS_INLINE int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it) {
-  if (!it->var) return -1;
-  return (int)(unsigned char)it->var->varData.str[it->charIdx];
+  if (!it->ptr) return -1;
+  return (int)(unsigned char)READ_FLASH_UINT8(&it->ptr[it->charIdx]);
 }
 
 /// Do we have a character, or are we at the end?
@@ -72,7 +73,7 @@ static ALWAYS_INLINE bool jsvStringIteratorHasChar(JsvStringIterator *it) {
 /// Sets a character (will not extend the string - just overwrites)
 static ALWAYS_INLINE void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
   if (jsvStringIteratorHasChar(it))
-    it->var->varData.str[it->charIdx] = c;
+    it->ptr[it->charIdx] = c;
 }
 
 /// Gets the current index in the string
@@ -92,11 +93,13 @@ static ALWAYS_INLINE void jsvStringIteratorNextInline(JsvStringIterator *it) {
       JsVar *next = jsvLock(jsvGetLastChild(it->var));
       jsvUnLock(it->var);
       it->var = next;
+      it->ptr = &next->varData.str[0];
       it->varIndex += it->charsInVar;
       it->charsInVar = jsvGetCharactersInVar(it->var);
     } else {
       jsvUnLock(it->var);
       it->var = 0;
+      it->ptr = 0;
       it->varIndex += it->charsInVar;
       it->charsInVar = 0;
     }

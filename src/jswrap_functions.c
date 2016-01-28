@@ -227,7 +227,7 @@ NO_INLINE static int jswrap_atob_decode(int c) {
   ],
   "return" : ["JsVar","A base64 encoded string"]
 }
-Convert the supplied string (or array) into a base64 string
+Encode the supplied string (or array) into a base64 string
  */
 JsVar *jswrap_btoa(JsVar *binaryData) {
   if (!jsvIsIterable(binaryData)) {
@@ -283,7 +283,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
   ],
   "return" : ["JsVar","A string containing the decoded data"]
 }
-Convert the supplied base64 string into a base64 string
+Decode the supplied base64 string into a normal string
  */
 JsVar *jswrap_atob(JsVar *base64Data) {
   if (!jsvIsString(base64Data)) {
@@ -365,6 +365,56 @@ JsVar *jswrap_encodeURIComponent(JsVar *arg) {
         jsvStringIteratorAppend(&dst, (char)((d>9)?('A'+d-10):('0'+d)));
         d = ((unsigned)ch)&15;
         jsvStringIteratorAppend(&dst, (char)((d>9)?('A'+d-10):('0'+d)));
+      }
+      jsvStringIteratorNext(&it);
+    }
+    jsvStringIteratorFree(&dst);
+    jsvStringIteratorFree(&it);
+  }
+  jsvUnLock(v);
+  return result;
+}
+
+/*JSON{
+  "type" : "function",
+  "name" : "decodeURIComponent",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_decodeURIComponent",
+  "params" : [
+    ["str","JsVar","A string to decode from a URI"]
+  ],
+  "return" : ["JsVar","A string containing the decoded data"]
+}
+Convert any groups of characters of the form '%ZZ', into characters with hex code '0xZZ'
+ */
+JsVar *jswrap_decodeURIComponent(JsVar *arg) {
+  JsVar *v = jsvAsString(arg, false);
+  if (!v) return 0;
+  JsVar *result = jsvNewFromEmptyString();
+  if (result) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, v, 0);
+    JsvStringIterator dst;
+    jsvStringIteratorNew(&dst, result, 0);
+    while (jsvStringIteratorHasChar(&it)) {
+      char ch = jsvStringIteratorGetChar(&it);
+      if (ch>>7) {
+        jsExceptionHere(JSET_ERROR, "ASCII only\n");
+        break;
+      }
+      if (ch!='%') {
+        jsvStringIteratorAppend(&dst, ch);
+      } else {
+        jsvStringIteratorNext(&it);
+        int hi = chtod(jsvStringIteratorGetChar(&it));
+        jsvStringIteratorNext(&it);
+        int lo = chtod(jsvStringIteratorGetChar(&it));
+        ch = (char)((hi<<4)|lo);
+        if (hi<0 || lo<0 || ch>>7) {
+          jsExceptionHere(JSET_ERROR, "Invalid URI\n");
+          break;
+        }
+        jsvStringIteratorAppend(&dst, ch);
       }
       jsvStringIteratorNext(&it);
     }

@@ -111,7 +111,7 @@ The HTTP server response
   "class" : "httpSRs",
   "name" : "drain"
 }
-An event that is fired when the buffer is empty and it can accept more data to send. 
+An event that is fired when the buffer is empty and it can accept more data to send.
 */
 /*JSON{
   "type" : "event",
@@ -126,14 +126,21 @@ Called when the connection closes.
   "library" : "http",
   "class" : "httpCRq"
 }
-The HTTP client request
+The HTTP client request, returned by `http.request()` and `http.get()`.
 */
 /*JSON{
   "type" : "event",
   "class" : "httpCRq",
   "name" : "drain"
 }
-An event that is fired when the buffer is empty and it can accept more data to send. 
+An event that is fired when the buffer is empty and it can accept more data to send.
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "httpCRq",
+  "name" : "error"
+}
+An event that is fired if there is an error making the request and the response callback has not been invoked. In this case the error event concludes the request attempt. The error event function receives an error object as parameter with a `code` field and a `message` field.
 */
 
 /*JSON{
@@ -141,7 +148,7 @@ An event that is fired when the buffer is empty and it can accept more data to s
   "library" : "http",
   "class" : "httpCRs"
 }
-The HTTP client response
+The HTTP client response, passed to the callback of `http.request()` an `http.get()`.
 */
 /*JSON{
   "type" : "event",
@@ -158,7 +165,14 @@ The 'data' event is called when data is received. If a handler is defined with `
   "class" : "httpCRs",
   "name" : "close"
 }
-Called when the connection closes.
+Called when the connection closes with one `hadError` boolean parameter, which indicates whether an error occurred.
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "httpCRs",
+  "name" : "error"
+}
+An event that is fired if there is an error receiving the response. The error event function receives an error object as parameter with a `code` field and a `message` field. After the error event the close even will also be triggered to conclude the HTTP request/response.
 */
 /*JSON{
   "type" : "method",
@@ -167,7 +181,7 @@ Called when the connection closes.
   "generate" : "jswrap_stream_available",
   "return" : ["int","How many bytes are available"]
 }
-Return how many bytes are available to read. If there is already a listener for data, this will always return 0.
+Return how many bytes are available to read. If there is a 'data' event handler, this will always return 0.
 */
 /*JSON{
   "type" : "method",
@@ -233,7 +247,7 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
   "name" : "request",
     "generate_full" : "jswrap_net_connect(options, callback, ST_HTTP)",
   "params" : [
-    ["options","JsVar","An object containing host,port,path,method,headers fields"],
+    ["options","JsVar","An object containing host,port,path,method,headers fields (and also ca,key,cert if HTTPS is enabled)"],
     ["callback","JsVar","A function(res) that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."]
   ],
   "return" : ["JsVar","Returns a new httpCRq object"],
@@ -260,6 +274,9 @@ require("http").request(options, function(res) {
 ```
 
 You can easily pre-populate `options` from a URL using `var options = url.parse("http://www.example.com/foo.html")`
+
+**Note:** if TLS/HTTPS is enabled, options can have `ca`, `key` and `cert` fields. See `tls.connect` for
+more information about these and how to use them.
 
 */
 

@@ -1,8 +1,13 @@
-var fsr = E.openFile('test.txt','r'); 
-var fsw = E.openFile('test_out.txt','w'); 
+var fr = 'tests/test_pipe.js';
+var fw = 'tests/test_pipe.tmp'
+
+var fsr = E.openFile(fr,'r'); 
+var fsw = E.openFile(fw,'w'); 
 fsr.pipe(fsw, { chunkSize:8, complete:function(pipe) {
     pipe.source.close();
     pipe.destination.close();
 
-    result = require('fs').readFileSync('test.txt') == require('fs').readFileSync('test_out.txt');
+    result = require('fs').readFileSync(fr) == require('fs').readFileSync(fw);
+    require('fs').unlink(fw); 
 }});
+

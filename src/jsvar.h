@@ -28,7 +28,7 @@ typedef JsVarRef JsVarRefCounter;
  * well as how many Locks it has. Everything is packed in as much as possible to allow us to
  * get down to within 2 bytes. */
 typedef enum {
-    JSV_UNUSED      = 0, ///< Variable not used for anything
+    JSV_UNUSED      = 0, ///< Variable not used for anything - THIS ENUM MUST BE ZERO
     JSV_ROOT        = JSV_UNUSED+1, ///< The root of everything - there is only one of these
     // UNDEFINED is now just stored using '0' as the variable Ref
     JSV_NULL        = JSV_ROOT+1, ///< it seems null is its own data type
@@ -37,7 +37,8 @@ typedef enum {
     JSV_ARRAYBUFFER  = JSV_ARRAY+1,
     JSV_OBJECT      = JSV_ARRAYBUFFER+1,
     JSV_FUNCTION    = JSV_OBJECT+1,
-    JSV_INTEGER     = JSV_FUNCTION+1, ///< integer number (note JSV_NUMERICMASK)
+    JSV_FUNCTION_RETURN    = JSV_FUNCTION+1, ///< A simple function that starts with `return` (which is implicit)
+    JSV_INTEGER     = JSV_FUNCTION_RETURN+1, ///< integer number (note JSV_NUMERICMASK)
   _JSV_NUMERIC_START = JSV_INTEGER, ///< --------- Start of numeric variable types
     JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
@@ -54,16 +55,17 @@ typedef enum {
   _JSV_NUMERIC_END  = JSV_NAME_INT_BOOL, ///< --------- End of numeric variable types
     JSV_NAME_STRING_INT_0    = JSV_NAME_INT_BOOL+1, // array/object index as string of length 0 WITH integer value
   _JSV_STRING_START =  JSV_NAME_STRING_INT_0,
-    JSV_NAME_STRING_INT_MAX  = JSV_NAME_STRING_INT_0+JSVAR_DATA_STRING_LEN,
+    JSV_NAME_STRING_INT_MAX  = JSV_NAME_STRING_INT_0+JSVAR_DATA_STRING_NAME_LEN,
   _JSV_NAME_WITH_VALUE_END = JSV_NAME_STRING_INT_MAX, ///< ---------- End of names that have literal values, NOT references, in firstChild
     JSV_NAME_STRING_0    = JSV_NAME_STRING_INT_MAX+1, // array/object index as string of length 0
-    JSV_NAME_STRING_MAX  = JSV_NAME_STRING_0+JSVAR_DATA_STRING_LEN,
+    JSV_NAME_STRING_MAX  = JSV_NAME_STRING_0+JSVAR_DATA_STRING_NAME_LEN,
   _JSV_NAME_END    = JSV_NAME_STRING_MAX, ///< ---------- End of NAMEs (names of variables, object fields/etc)
     JSV_STRING_0    = JSV_NAME_STRING_MAX+1, // simple string value of length 0
     JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
     JSV_FLAT_STRING = JSV_STRING_MAX+1, ///< Flat strings store the length (in chars) as an int, and then the subsequent JsVars (in memory) store data
-  _JSV_STRING_END = JSV_FLAT_STRING,
-    JSV_STRING_EXT_0 = JSV_FLAT_STRING+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
+    JSV_NATIVE_STRING = JSV_FLAT_STRING+1, ///< Native strings store an address and length, and reference the underlying data directly
+  _JSV_STRING_END = JSV_NATIVE_STRING,
+    JSV_STRING_EXT_0 = JSV_NATIVE_STRING+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
     JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
     _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
     // _JSV_VAR_END is:
@@ -79,7 +81,17 @@ typedef enum {
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
     JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
     JSV_LOCK_SHIFT  = GET_BIT_NUMBER(JSV_LOCK_ONE), ///< The amount of bits we must shift to get the number of locks - forced to be a constant
-    // 3 bits left over here on most systems
+#ifdef JSVARREF_PACKED_BITS
+    /* When using packed bits, we put Lastchild's here, because
+     * then, when we're using STRINGEXT, we can get one more character
+     * in by overwriting 'pack'
+     */
+    JSV_LASTCHILD_BIT8 = NEXT_POWER_2(JSV_LOCK_MASK),
+    JSV_LASTCHILD_BIT9 = JSV_LASTCHILD_BIT8<<1,
+    JSV_LASTCHILD_BIT_MASK = JSV_LASTCHILD_BIT8|JSV_LASTCHILD_BIT9,
+    JSV_LASTCHILD_BIT_SHIFT = GET_BIT_NUMBER(JSV_LASTCHILD_BIT8),
+#endif
+    // 3 bits left over here on most systems, 1 on JSVARREF_PACKED_BITS
     JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE, // if we're copying a variable, this is all the stuff we want to copy
 } PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
 
@@ -121,21 +133,25 @@ typedef struct {
   uint16_t argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
 
+/// Data for native strings
+typedef struct {
+  char (*ptr)(void);
+  uint16_t len;
+} PACKED_FLAGS JsVarDataNativeStr;
+
 /// References
 typedef struct {
   /* padding for data. Must be big enough for an int */
-  int8_t pad[JSVAR_DATA_STRING_LEN];
+  int8_t pad[JSVAR_DATA_STRING_NAME_LEN];
 
   /* For Variable NAMES (e.g. Object/Array keys) these store actual next/previous pointers for a linked list or 0.
    *   - if nextSibling==prevSibling==!0 then they point to the object that should contain this name if it ever gets set to anything that's not undefined
    * For STRING_EXT - extra characters
    * Not used for other stuff
    */
-#ifndef JSVARREF_PACKED_BITS
+#if JSVARREF_SIZE!=1
   JsVarRef nextSibling;
   JsVarRef prevSibling;
-
-  JsVarRefCounter refs; ///< The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters)
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the first child
@@ -146,6 +162,8 @@ typedef struct {
    */
   JsVarRef firstChild;
 
+  JsVarRefCounter refs; ///< The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters)
+
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the last child
    * For STRINGS/STRING_EXT/NAME+STRING - this is a link to more string data if it is needed
@@ -154,15 +172,14 @@ typedef struct {
    */
   JsVarRef lastChild;
 
-#else // JSVARREF_PACKED_BITS
+#else // JSVARREF_SIZE==1
   // see declaration of JSVARREF_PACKED_BITS in jsutils.h for more info
   uint8_t nextSibling;
   uint8_t prevSibling;
-  uint8_t refs;
   uint8_t firstChild;
+  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS - otherwise unused except when needed for data
+  uint8_t refs;
   uint8_t lastChild;
-
-  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS
 #endif
 } PACKED_FLAGS JsVarDataRef;
 
@@ -191,6 +208,7 @@ typedef union {
     JsVarDataArrayBufferView arraybuffer; ///< information for array buffer views.
     JsVarDataNative native; ///< A native function
     const JswSymList *nativeObject; ///< A native object
+    JsVarDataNativeStr nativeStr; ///< A native string
     JsVarDataRef ref; ///< References
 } PACKED_FLAGS JsVarData;
 
@@ -216,17 +234,34 @@ typedef struct {
  *
  * Both INT and STRING can also be names:
  *
- * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER | FLAT_STR | NATIVE_FUNC |
- * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|----------|-------------|
- * | 0 - 3 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        | size     | nativePtr   |
- * | 4 - 5 | next    | -      | data     |  next    | next     | -    | data   |                | format      | -        | argTypes    |
- * | 6 - 7 | prev    | -      | data     |  prev    | prev     | -    | data   |                | format      | -        | -           |
- * | 8 - 9 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        | refs     | refs        |
- * | 10-11 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   | -        | -           |
- * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  r?    | last           | -           | nextPtr  | -           |
- * | 14-15 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       | Flags    | Flags       |
- *
- * For DOUBLE on 12 byte JsVar systems, the ref count it stored in 'lastChild' instead.
+ 16 byte JsVars (JsVars for 32 bit refs are similar)
+
+ | Offset | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER |
+ |--------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|
+ | 0 - 3  | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
+ | 4 - 5  | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
+ | 6 - 7  | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
+ | 8 - 9  | first   | data   | data     |  child   | child    |  -   |  -      | first          | stringPtr   |
+ | 10-11  | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
+ | 12-13  | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
+ | 14-15  | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
+
+ 12 byte JsVars ( where < 1024 variables)
+
+ 10 bit addresses are used, with the extra bits being stored in a field called `pack` and the `flags` variable
+
+ | Offset | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
+ |--------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
+ | 0 - 3  | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        |
+ | 4      | next    | data   | data     |  next    | next     |  -   | data   | argTypes       | format      |
+ | 5      | prev    | data   | data     |  prev    | prev     |  -   | data   | argTypes       | format      |
+ | 6      | first   | data   | data     |  child   | child    |  -   | data   | first          | stringPtr   |
+ | 7      | pack    | pack   | data     |  pack    | pack     | pack | data   | pack           | pack        |
+ | 8      | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
+ | 9      | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |   -    | last           | -           |
+ | 10-11  | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
+
+
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
  * FLAT_STRING uses the variable blocks that follow it as flat storage for all the data
@@ -259,21 +294,8 @@ void jsvSetNextSibling(JsVar *v, JsVarRef r);
 void jsvSetPrevSibling(JsVar *v, JsVarRef r);
 #endif
 
-#if JSVARREF_SIZE==1
-// For 12 byte JsVars we have a problem as doubles will overwrite the ref count - so in this case we must use 'lastChild' instead
-static ALWAYS_INLINE JsVarRefCounter jsvGetRefs(JsVar *v) {
-  return (JsVarRefCounter)(((v->flags&JSV_VARTYPEMASK)==JSV_FLOAT)?v->varData.ref.lastChild:v->varData.ref.refs);
-}
-static ALWAYS_INLINE void jsvSetRefs(JsVar *v, JsVarRefCounter refs) {
-  if ((v->flags&JSV_VARTYPEMASK)==JSV_FLOAT)
-    v->varData.ref.lastChild = refs;
-  else
-    v->varData.ref.refs = refs;
-}
-#else
 static ALWAYS_INLINE JsVarRefCounter jsvGetRefs(JsVar *v) { return v->varData.ref.refs; }
 static ALWAYS_INLINE void jsvSetRefs(JsVar *v, JsVarRefCounter refs) { v->varData.ref.refs = refs; }
-#endif
 static ALWAYS_INLINE unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK_SHIFT) & JSV_LOCK_MAX); }
 
 // For debugging/testing ONLY - maximum # of vars we are allowed to use
@@ -288,6 +310,7 @@ JsVar *jsvFindOrCreateRoot(); ///< Find or create the ROOT variable item - used 
 unsigned int jsvGetMemoryUsage(); ///< Get number of memory records (JsVars) used
 unsigned int jsvGetMemoryTotal(); ///< Get total amount of memory records
 bool jsvIsMemoryFull(); ///< Get whether memory is full or not
+bool jsvMoreFreeVariablesThan(unsigned int vars); ///< Return whether there are more free variables than the parameter (faster than checking no of vars used)
 void jsvShowAllocated(); ///< Show what is still allocated, for debugging memory problems
 /// Try and allocate more memory - only works if RESIZABLE_JSVARS is defined
 void jsvSetMemoryTotal(unsigned int jsNewVarCount);
@@ -361,11 +384,14 @@ extern ALWAYS_INLINE bool jsvIsSimpleInt(const JsVar *v); ///< is just a very ba
 extern ALWAYS_INLINE bool jsvIsInt(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsFloat(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsBoolean(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsString(const JsVar *v);
+extern ALWAYS_INLINE bool jsvIsString(const JsVar *v); ///< String, or a NAME too
+extern ALWAYS_INLINE bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
 extern ALWAYS_INLINE bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
 extern ALWAYS_INLINE bool jsvIsFlatString(const JsVar *v);
+extern ALWAYS_INLINE bool jsvIsNativeString(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsNumeric(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsFunction(const JsVar *v);
+extern ALWAYS_INLINE bool jsvIsFunctionReturn(const JsVar *v); ///< Is this a function with an implicit 'return' at the start?
 extern ALWAYS_INLINE bool jsvIsFunctionParameter(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsObject(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsArray(const JsVar *v);
@@ -420,6 +446,7 @@ static ALWAYS_INLINE size_t jsvGetMaxCharactersInVar(const JsVar *v) {
   // see jsvCopy - we need to know about this in there too
   if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_MAX_LEN;
   assert(jsvHasCharacterData(v));
+  if (jsvIsName(v)) return JSVAR_DATA_STRING_NAME_LEN;
   return JSVAR_DATA_STRING_LEN;
 }
 
@@ -428,6 +455,8 @@ static ALWAYS_INLINE size_t jsvGetCharactersInVar(const JsVar *v) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
   if (f == JSV_FLAT_STRING)
     return (size_t)v->varData.integer;
+  if (f == JSV_NATIVE_STRING)
+    return (size_t)v->varData.nativeStr.len;
   assert(f >= JSV_NAME_STRING_INT_0);
   assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
          (JSV_NAME_STRING_0 < JSV_STRING_0) &&
@@ -447,7 +476,7 @@ static ALWAYS_INLINE size_t jsvGetCharactersInVar(const JsVar *v) {
 /// This is the number of characters a JsVar can contain, NOT string length
 static ALWAYS_INLINE void jsvSetCharactersInVar(JsVar *v, size_t chars) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
-  assert(!jsvIsFlatString(v));
+  assert(!(jsvIsFlatString(v) || jsvIsNativeString(v)));
 
   JsVarFlags m = (JsVarFlags)(v->flags&~JSV_VARTYPEMASK);
   assert(f >= JSV_NAME_STRING_INT_0);
@@ -455,18 +484,21 @@ static ALWAYS_INLINE void jsvSetCharactersInVar(JsVar *v, size_t chars) {
          (JSV_NAME_STRING_0 < JSV_STRING_0) &&
          (JSV_STRING_0 < JSV_STRING_EXT_0)); // this relies on ordering
   if (f<=JSV_NAME_STRING_MAX) {
-      if (f<=JSV_NAME_STRING_INT_MAX)
-        v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_INT_0+chars));
-      else
-        v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_0+chars));
+    assert(chars <= JSVAR_DATA_STRING_NAME_LEN);
+    if (f<=JSV_NAME_STRING_INT_MAX)
+      v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_INT_0+chars));
+    else
+      v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_0+chars));
+  } else {
+    if (f<=JSV_STRING_MAX) {
+      assert(chars <= JSVAR_DATA_STRING_LEN);
+      v->flags = (JsVarFlags)(m | (JSV_STRING_0+chars));
     } else {
-      if (f<=JSV_STRING_MAX) {
-        v->flags = (JsVarFlags)(m | (JSV_STRING_0+chars));
-      } else {
-        assert(f <= JSV_STRING_EXT_MAX);
-        v->flags = (JsVarFlags)(m | (JSV_STRING_EXT_0+chars));
-      }
+      assert(chars <= JSVAR_DATA_STRING_MAX_LEN);
+      assert(f <= JSV_STRING_EXT_MAX);
+      v->flags = (JsVarFlags)(m | (JSV_STRING_EXT_0+chars));
     }
+  }
 }
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
@@ -492,7 +524,7 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock an
 JsVar *jsvAsFlatString(JsVar *var); ///< Create a flat string from the given variable (or return it if it is already a flat string). NOTE: THIS CONVERTS VIA A STRING
 bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - faster than jsvGetStringLength(v)==0
 size_t jsvGetStringLength(const JsVar *v); ///< Get the length of this string, IF it is a string
-size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string
+size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string - EXCLUDING the first data block
 char *jsvGetFlatStringPointer(JsVar *v); ///< Get a pointer to the data in this flat string
 JsVar *jsvGetFlatStringFromPointer(char *v); ///< Given a pointer to the first element of a flat string, return the flat string itself (DANGEROUS!)
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
@@ -650,14 +682,14 @@ JsVarInt jsvSetArrayLength(JsVar *arr, JsVarInt length, bool truncate); ///< set
 JsVarInt jsvGetLength(JsVar *src); ///< General purpose length function. Does the 'right' thing
 size_t jsvCountJsVarsUsed(JsVar *v); ///< Count the amount of JsVars used. Mostly useful for debugging
 JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array (and lock it)
-void jsvGetArrayItems(const JsVar *arr, unsigned int itemCount, JsVar **itemPtr); ///< Get all elements from arr and put them in itemPtr (unless it'd overflow). Makes sure all of itemPtr either contains a JsVar or 0
+void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr); ///< Get all elements from arr and put them in itemPtr (unless it'd overflow). Makes sure all of itemPtr either contains a JsVar or 0
 JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array (matchExact==use pointer, not equality check)
 JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, and returns the new length
 JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, unlocks it, and returns the new length
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME. DOES NOT RENUMBER.
-void jsvArrayAddString(JsVar *arr, const char *text); ///< Adds a new String element to the end of an array (IF it was not already there)
+void jsvArrayAddUnique(JsVar *arr, JsVar *v); ///< Adds a new variable element to the end of an array (IF it was not already there). Return true if successful
 JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler); ///< Join all elements of an array together into a string
 void jsvArrayInsertBefore(JsVar *arr, JsVar *beforeIndex, JsVar *element); ///< Insert a new element before beforeIndex, DOES NOT UPDATE INDICES
 static ALWAYS_INLINE bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr)); return !jsvGetFirstChild(arr); } ///< Return true is array is empty
@@ -702,6 +734,19 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
  * to the contiguous memory area containing it. Returns 0 if it was unable to
  * allocate it. */
 JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr);
+
+/** Allocate a flat area of memory inside Espruino's Variable storage space.
+ * This may return 0 on failure.
+ *
+ * **Note:** Memory allocated this way MUST be freed before `jsvKill` is called
+ * (eg. when saving, loading, resetting). To do this, use a JSON wrapper for
+ * 'kill' (and one for 'init' if you need to allocate at startup)
+ */
+void *jsvMalloc(size_t size);
+
+/** Deallocate a flat area of memory allocated by jsvMalloc. See jsvMalloc
+ * for more information. */
+void jsvFree(void *ptr);
 
 /** Get the given JsVar as a character array. If it's a flat string, return a
  * pointer to it, or if it isn't allocate data on the stack and copy the data.

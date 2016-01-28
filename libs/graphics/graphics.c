@@ -356,6 +356,7 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
 
 // Splash screen
 void graphicsSplash(JsGraphics *gfx) {
+  graphicsClear(gfx);
   graphicsDrawString(gfx,0,0,"Espruino "JS_VERSION);
   graphicsDrawString(gfx,0,6,"  Embedded JavaScript");
   graphicsDrawString(gfx,0,12,"  www.espruino.com");

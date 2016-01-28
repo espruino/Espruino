@@ -232,11 +232,11 @@ enum EP_BUF_NUM
 #define _GetBTABLE() ((uint16_t) *BTABLE)
 
 /* SetENDPOINT */
-#define _SetENDPOINT(bEpNum,wRegValue)  (*(EP0REG + bEpNum)= \
+#define _SetENDPOINT(bEpNum,wRegValue)  (*(__IO uint16_t *)(EP0REG + bEpNum)= \
     (uint16_t)wRegValue)
 
 /* GetENDPOINT */
-#define _GetENDPOINT(bEpNum)        ((uint16_t)(*(EP0REG + bEpNum)))
+#define _GetENDPOINT(bEpNum)        ((uint16_t)(*(__IO uint16_t *)(EP0REG + bEpNum)))
 
 /*******************************************************************************
 * Macro Name     : SetEPType
@@ -448,10 +448,10 @@ enum EP_BUF_NUM
 *******************************************************************************/
 #define _GetEPAddress(bEpNum) ((uint8_t)(_GetENDPOINT(bEpNum) & EPADDR_FIELD))
 
-#define _pEPTxAddr(bEpNum) ((uint32_t *)((_GetBTABLE()+bEpNum*8  )*2 + PMAAddr))
-#define _pEPTxCount(bEpNum) ((uint32_t *)((_GetBTABLE()+bEpNum*8+2)*2 + PMAAddr))
-#define _pEPRxAddr(bEpNum) ((uint32_t *)((_GetBTABLE()+bEpNum*8+4)*2 + PMAAddr))
-#define _pEPRxCount(bEpNum) ((uint32_t *)((_GetBTABLE()+bEpNum*8+6)*2 + PMAAddr))
+#define _pEPTxAddr(bEpNum) ((__IO uint32_t *)((_GetBTABLE()+bEpNum*8  )*2 + PMAAddr))
+#define _pEPTxCount(bEpNum) ((__IO uint32_t *)((_GetBTABLE()+bEpNum*8+2)*2 + PMAAddr))
+#define _pEPRxAddr(bEpNum) ((__IO uint32_t *)((_GetBTABLE()+bEpNum*8+4)*2 + PMAAddr))
+#define _pEPRxCount(bEpNum) ((__IO uint32_t *)((_GetBTABLE()+bEpNum*8+6)*2 + PMAAddr))
 
 /*******************************************************************************
 * Macro Name     : SetEPTxAddr / SetEPRxAddr.

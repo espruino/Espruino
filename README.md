@@ -99,7 +99,7 @@ If you are a board manufacturer interested in getting your board officially supp
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
 * [ST NUCLEO-F401RE](http://www.espruino.com/ReferenceNUCLEOF401RE) - WORKING
 * ST NUCLEO-F411RE - WORKING
-* ESP8266 - Alpha - very early in development (GPIO, but not peripherals, no sleep or save)
+* ESP8266 - Beta - Reasonably stable, but expect to find issues
 * NRF51/52 - Alpha - very early in development (GPIO, but not peripherals, no sleep or save)
 * Arduino (AVR) - NOT POSSIBLE due to the Hardward architecture of AVRs, even though it would fit into an ATMEGA2560. If `avr-gcc` ever gains an easy way to emulate Von Neumann architecture then it might be portable, but for now it isn't.
 * Arduino (ARM) - very doable, but no work has been done on this.

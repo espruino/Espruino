@@ -20,6 +20,14 @@ info = {
  'variables' : 5376, # (96-12)*1024/16-1
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_mini_stm32_vg.bin',
+ 'build' : {
+   'defines' : [
+     'USE_GRAPHICS',
+     'USE_LCD_FSMC',
+     'USE_FILESYSTEM',
+     'USE_FILESYSTEM_SDIO'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103VG", #T6

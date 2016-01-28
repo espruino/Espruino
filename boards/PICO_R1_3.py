@@ -15,19 +15,31 @@
 
 import pinutils;
 info = {
- 'name' : "Espruino Pico rev 1.3",
+ 'name' : "Espruino Pico rev 1.3/1.4",
  'link' : [ "http://www.espruino.com/Pico" ],
  'espruino_page_link' : 'Pico',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "B6",
  'default_console_rx' : "B7",
- 'variables' : 4000, # FIXME - RAM was lowered for AES test
+ 'variables' : 5100,
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_pico_1r3.bin',
  'binaries' : [
   { 'filename' : 'espruino_%v_pico_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking"},
   { 'filename' : 'espruino_%v_pico_1r3_cc3000.bin', 'description' : "TI CC3000 WiFi Networking"},
- ]
+ ],
+ 'build' : {
+   'defines' : [
+     'USE_USB_HID',
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_TV',
+     'USE_HASHLIB',
+     'USE_FILESYSTEM',
+     'USE_CRYPTO',
+     'USE_TLS'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F401CDU6",
@@ -45,7 +57,7 @@ chip = {
     'address' : 0x08004000,
     'page_size' : 16384, # size of pages
     'pages' : 3, # number of pages we're using
-    'flash_available' : 384 # binary will have a hole in it, so we just want to test against full size
+    'flash_available' : 384-64 # Saved code is before binary, test against full size minus offset
   },
   'place_text_section' : 0x00010000, # note flash_available above
 };

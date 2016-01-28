@@ -46,7 +46,7 @@ const char *escapeCharacter(char ch) {
   if (ch=='\\') return "\\\\";
   if (ch=='"') return "\\\"";
   static char buf[5];
-  if (ch<32) {
+  if (ch<32 || ch>=127) {
     /** just encode as hex - it's more understandable
      * and doesn't have the issue of "\16"+"1" != "\161" */
     buf[0]='\\';
@@ -162,13 +162,27 @@ long long stringToInt(const char *s) {
   return stringToIntWithRadix(s,0,0);
 }
 
+#ifndef FLASH_STR
+
+// JsError, jsWarn, jsExceptionHere implementations that expect the format string to be in normal
+// RAM where is can be accessed normally.
 
 NO_INLINE void jsError(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("ERROR: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, fmt, argp);
+  va_end(argp);
+  jsiConsolePrint("\n");
+}
+
+NO_INLINE void jsWarn(const char *fmt, ...) {
+  jsiConsoleRemoveInputLine();
+  jsiConsolePrint("WARNING: ");
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, fmt, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
@@ -213,22 +227,90 @@ NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
   jsvUnLock(var);
 }
 
+#else
 
+// JsError, jsWarn, jsExceptionHere implementations that expect the format string to be in FLASH
+// and first copy it into RAM in order to prevent issues with byte access, this is necessary on
+// platforms, like the esp8266, where data flash can only be accessed using word-aligned reads.
 
-NO_INLINE void jsWarn(const char *fmt, ...) {
+NO_INLINE void jsError_flash(const char *fmt, ...) {
+  size_t len = flash_strlen(fmt);
+  char buff[len+1];
+  flash_strncpy(buff, fmt, len+1);
+
   jsiConsoleRemoveInputLine();
-  jsiConsolePrint("WARNING: ");
+  jsiConsolePrint("ERROR: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
 
+NO_INLINE void jsWarn_flash(const char *fmt, ...) {
+  size_t len = flash_strlen(fmt);
+  char buff[len+1];
+  flash_strncpy(buff, fmt, len+1);
+
+  jsiConsoleRemoveInputLine();
+  jsiConsolePrint("WARNING: ");
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
+  va_end(argp);
+  jsiConsolePrint("\n");
+}
+
+NO_INLINE void jsExceptionHere_flash(JsExceptionType type, const char *ffmt, ...) {
+  size_t len = flash_strlen(ffmt);
+  char fmt[len+1];
+  flash_strncpy(fmt, ffmt, len+1);
+
+  // If we already had an exception, forget this
+  if (jspHasError()) return;
+
+  jsiConsoleRemoveInputLine();
+
+  JsVar *var = jsvNewFromEmptyString();
+  if (!var) {
+    jspSetError(false);
+    return; // out of memory
+  }
+
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, var, 0);
+  jsvStringIteratorGotoEnd(&it);
+
+  vcbprintf_callback cb = (vcbprintf_callback)jsvStringIteratorPrintfCallback;
+
+  va_list argp;
+  va_start(argp, ffmt);
+  vcbprintf(cb,&it, fmt, argp);
+  va_end(argp);
+
+  jsvStringIteratorFree(&it);
+
+  if (type != JSET_STRING) {
+    JsVar *obj = 0;
+    if (type == JSET_ERROR) obj = jswrap_error_constructor(var);
+    else if (type == JSET_SYNTAXERROR) obj = jswrap_syntaxerror_constructor(var);
+    else if (type == JSET_TYPEERROR) obj = jswrap_typeerror_constructor(var);
+    else if (type == JSET_INTERNALERROR) obj = jswrap_internalerror_constructor(var);
+    else if (type == JSET_REFERENCEERROR) obj = jswrap_referenceerror_constructor(var);
+    jsvUnLock(var);
+    var = obj;
+  }
+
+  jspSetException(var);
+  jsvUnLock(var);
+}
+
+#endif
+
 NO_INLINE void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("WARNING: ");
-  jsiConsolePrint(message);
+  jsiConsolePrintString(message);
   if (lex) {
     jsiConsolePrint(" at ");
     jsiConsolePrintPosition(lex, tokenPos);
@@ -242,9 +324,20 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   inAssertFail = true;
   jsiConsoleRemoveInputLine();
   if (expr) {
+#ifndef FLASH_STR
     jsiConsolePrintf("ASSERT(%s) FAILED AT ", expr);
-  } else
+#else
+    jsiConsolePrintString("ASSERT(");
+    // string is in flash and requires word access, thus copy it onto the stack
+    size_t len = flash_strlen(expr);
+    char buff[len+1];
+    flash_strncpy(buff, expr, len+1);
+    jsiConsolePrintString(buff);
+    jsiConsolePrintString(") FAILED AT ");
+#endif
+  } else {
     jsiConsolePrint("ASSERT FAILED AT ");
+  }
   jsiConsolePrintf("%s:%d\n",file,line);
   if (!wasInAssertFail) {
     jsvTrace(jsvFindOrCreateRoot(), 2);
@@ -259,10 +352,69 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   while (1);
 #endif
 #else
+#ifdef ESP8266
+  jsiConsolePrint("REBOOTING!\n");
+  extern void jswrap_ESP8266_reboot(void);
+  jswrap_ESP8266_reboot();
+  while(1) ;
+#else
+  jsiConsolePrint("EXITING.\n");
   exit(1);
+#endif
 #endif
   inAssertFail = false;
 }
+
+#ifdef FLASH_STR
+// Helpers to deal with constant strings stored in flash that have to be accessed using word-aligned
+// and word-sized reads
+
+// Get the length of a string in flash
+size_t flash_strlen(const char *str) {
+  size_t len = 0;
+  uint32_t *s = (uint32_t *)str;
+
+  while (1) {
+    uint32_t w = *s++;
+    if ((w & 0xff) == 0) break;
+    len++; w >>= 8;
+    if ((w & 0xff) == 0) break;
+    len++; w >>= 8;
+    if ((w & 0xff) == 0) break;
+    len++; w >>= 8;
+    if ((w & 0xff) == 0) break;
+    len++;
+  }
+  return len;
+}
+
+// Copy a string from flash
+char *flash_strncpy(char *dst, const char *src, size_t c) {
+  char *d = dst;
+  uint32_t *s = (uint32_t *)src;
+  size_t slen = flash_strlen(src);
+  size_t len = slen > c ? c : slen;
+  // copy full words from source string
+  while (len >= 4) {
+    uint32_t w = *s++;
+    *d++ = w & 0xff; w >>= 8;
+    *d++ = w & 0xff; w >>= 8;
+    *d++ = w & 0xff; w >>= 8;
+    *d++ = w & 0xff;
+    len -= 4;
+  }
+  // copy any remaining bytes
+  if (len > 0) {
+    uint32_t w = *s++;
+    while (len-- > 0) {
+      *d++ = w & 0xff; w >>= 8;
+    }
+  }
+  // terminating null
+  if (slen < c) *d = 0;
+  return dst;
+}
+#endif
 
 #ifdef FAKE_STDLIB
 char * strncat(char *dst, const char *src, size_t c) {
@@ -466,7 +618,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
       val = -val;
     }
 
-    // what if we're really close to an integer? Just use that...      
+    // what if we're really close to an integer? Just use that...
     if (((JsVarInt)(val+stopAtError)) == (1+(JsVarInt)val))
       val = (JsVarFloat)(1+(JsVarInt)val);
 
@@ -620,6 +772,40 @@ void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt
   va_start(argp, fmt);
   vcbprintf(user_callback,user_data, fmt, argp);
   va_end(argp);
+}
+
+typedef struct {
+  char *outPtr;
+  size_t idx;
+  size_t len;
+} espruino_snprintf_data;
+
+void espruino_snprintf_cb(const char *str, void *userdata) {
+  espruino_snprintf_data *d = (espruino_snprintf_data*)userdata;
+
+  while (*str) {
+    if (d->idx < d->len) d->outPtr[d->idx] = *str;
+    d->idx++;
+    str++;
+  }
+}
+
+/// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
+int espruino_snprintf( char * s, size_t n, const char * fmt, ... ) {
+  espruino_snprintf_data d;
+  d.outPtr = s;
+  d.idx = 0;
+  d.len = n;
+
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf(espruino_snprintf_cb,&d, fmt, argp);
+  va_end(argp);
+
+  if (d.idx < d.len) d.outPtr[d.idx] = 0;
+  else d.outPtr[d.len-1] = 0;
+
+  return (int)d.idx;
 }
 
 #ifdef ARM

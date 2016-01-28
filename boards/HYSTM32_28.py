@@ -19,6 +19,12 @@ info = {
  'variables' : 700,
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_hystm32_28_rb.bin',
+ 'build' : {
+   'defines' : [
+     'USE_GRAPHICS',
+     'USE_LCD_FSMC'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103RB", #T6

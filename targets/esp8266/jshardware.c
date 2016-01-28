@@ -24,6 +24,8 @@
 #include <espmissingincludes.h>
 #include <uart.h>
 #include <i2c_master.h>
+#include <pwm.h>
+#include <spi.h> // Include the MetalPhreak/ESP8266_SPI_Library headers.
 
 //#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
@@ -34,15 +36,17 @@ typedef long long int64_t;
 #include "jstimer.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jspininfo.h"
+#include "jswrap_esp8266.h"
+#include <jswrap_esp8266_network.h>
 
 // The maximum time that we can safely delay/block without risking a watch dog
 // timer error or other undesirable WiFi interaction.  The time is measured in
 // microseconds.
 #define MAX_SLEEP_TIME_US  3000
 
-// Save-to-flash uses the 16KB of "user params" locates right after the first firmware
-// block, see https://github.com/espruino/Espruino/wiki/ESP8266-Design-Notes for memory
-// map details. The jshFlash functions use memory-mapped reads to access the first 1MB
+// Save-to-flash uses 12KB at 0x78000
+// The jshFlash functions use memory-mapped reads to access the first 1MB
 // of flash and refuse to go beyond that. Writing uses the SDK functions and is also
 // limited to the first MB.
 #define FLASH_MAX (1024*1024)
@@ -53,22 +57,19 @@ typedef long long int64_t;
 // Address in RTC RAM where we save the time
 #define RTC_TIME_ADDR (256/4) // start of "user data" in RTC RAM
 
-/**
- * Transmit all the characters in the transmit buffer.
- *
- */
-void esp8266_uartTransmitAll(IOEventFlags device) {
-  // Get the next character to transmit.  We will have reached the end when
-  // the value of the character to transmit is -1.
-  int c = jshGetCharToTransmit(device);
 
-  while (c >= 0) {
-    uart_tx_one_char(0, c);
-    c = jshGetCharToTransmit(device);
-  } // No more characters to transmit
-} // End of esp8266_transmitAll
+static bool g_spiInitialized = false;
+static int  g_lastSPIRead = -1;
 
-// ----------------------------------------------------------------------------
+struct PWMRecord {
+  bool enabled; //!< Has this PWM been enabled previously?
+};
+static uint32 g_pwmFreq;
+
+static struct PWMRecord g_PWMRecords[JSH_PIN_COUNT];
+
+static uint8 g_pinState[JSH_PIN_COUNT];
+
 
 /**
  * Convert a pin id to the corresponding Pin Event id.
@@ -113,6 +114,14 @@ void jshInit() {
   gpio_intr_handler_register(intrHandlerCB, NULL);
 
   ETS_GPIO_INTR_ENABLE();
+
+  // Initialize something for each of the possible pins.
+  for (int i=0; i<JSH_PIN_COUNT; i++) {
+    // For each of the PWM records, flag the PWM as having been not initialized.
+    g_PWMRecords[i].enabled = false;
+
+    g_pinState[i] = 0;
+  }
   os_printf("< jshInit\n");
 } // End of jshInit
 
@@ -121,7 +130,7 @@ void jshInit() {
  * We have arrived in this callback function because the state of a GPIO pin has changed
  * and it is time to record that change.
  */
-static void intrHandlerCB(
+static void CALLED_FROM_INTERRUPT intrHandlerCB(
     uint32 interruptMask, //!< A mask indicating which GPIOs have changed.
     void *arg             //!< Optional argument.
   ) {
@@ -131,36 +140,53 @@ static void intrHandlerCB(
   // Once we have handled the interrupt flags, we need to acknowledge the interrupts so
   // that the ESP8266 will once again cause future interrupts to be processed.
 
-  os_printf_plus(">> intrHandlerCB\n");
+  //os_printf_plus(">> intrHandlerCB\n");
   gpio_intr_ack(interruptMask);
   // We have a mask of interrupts that have happened.  Go through each bit in the mask
   // and, if it is on, then an interrupt has occurred on the corresponding pin.
   int pin;
-  for (pin=0; pin<16; pin++) {
+  for (pin=0; pin<JSH_PIN_COUNT; pin++) {
     if ((interruptMask & (1<<pin)) != 0) {
       // Pin has changed so push the event that says pin has changed.
       jshPushIOWatchEvent(pinToEV_EXTI(pin));
       gpio_pin_intr_state_set(GPIO_ID_PIN(pin), GPIO_PIN_INTR_ANYEDGE);
     }
   }
-  os_printf_plus("<< intrHandlerCB\n");
+  //os_printf_plus("<< intrHandlerCB\n");
 }
 
 /**
  * Reset the Espruino environment.
  */
 void jshReset() {
-  //system_restart();
   os_printf("> jshReset\n");
-  // Set all GPIO pins to be input.
-  /*
-  int i;
-  for (int i=0; i<16; i++) {
-    jshPinSetState(i, JSHPINSTATE_GPIO_IN);
-  }
-  */
+
+  // Set all GPIO pins to be input with pull-up
+  jshPinSetState(0, JSHPINSTATE_GPIO_IN_PULLUP);
+  //jshPinSetState(2, JSHPINSTATE_GPIO_IN_PULLUP); // used for debug output
+  jshPinSetState(4, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(5, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(12, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(13, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(14, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(15, JSHPINSTATE_GPIO_IN_PULLUP);
+  g_spiInitialized = false; // Flag the hardware SPI interface as un-initialized.
+  g_lastSPIRead = -1;
+
+  extern void user_uart_init(void); // in user_main.c
+  user_uart_init();
+
+  jswrap_ESP8266_wifi_reset(); // reset the wifi
+
   os_printf("< jshReset\n");
-} // End of jshReset
+}
+
+/**
+ * Re-init the esp8266 stuff after a soft-reset
+ */
+void jshSoftInit() {
+  jswrap_ESP8266_wifi_soft_init();
+}
 
 /**
  * Handle whatever needs to be done in the idle loop when there's nothing to do.
@@ -168,31 +194,19 @@ void jshReset() {
  * Nothing is needed on the esp8266. The watchdog timer is taken care of by the SDK.
  */
 void jshIdle() {
-} // End of jshIdle
+}
 
 // esp8266 chips don't have a serial number but they do have a MAC address
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
-  uint8_t mac_addr[6];
-  wifi_get_macaddr(0, mac_addr); // 0->MAC of STA interface
-  char buf[16];
-  int len = os_sprintf(buf, MACSTR, MAC2STR(mac_addr));
-  strncpy((char *)data, buf, maxChars);
-  return len > maxChars ? maxChars : len;
-} // End of jshSerialNumber
+  assert(maxChars >= 6); // it's 32
+  wifi_get_macaddr(0, data);
+  return 6;
+}
 
 //===== Interrupts and sleeping
 
-void jshInterruptOff() {
-  //os_printf("> jshInterruptOff\n");
-  ets_intr_lock();
-  //os_printf("< jshInterruptOff\n");
-} // End of jshInterruptOff
-
-void jshInterruptOn() {
-  //os_printf("> jshInterruptOn\n");
-  ets_intr_unlock();
-  //os_printf("< jshInterruptOn\n");
-} // End of jshInterruptOn
+void jshInterruptOff() { ets_intr_lock(); }
+void jshInterruptOn()  { ets_intr_unlock(); }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
@@ -211,39 +225,52 @@ bool jshSleep(JsSysTime timeUntilWake) {
 void jshDelayMicroseconds(int microsec) {
   // Keep things simple and make the user responsible if they sleep for too long...
   if (microsec > 0) {
-    os_printf("Delay %d us\n", microsec);
+    //os_printf("Delay %d us\n", microsec);
     os_delay_us(microsec);
   }
 } // End of jshDelayMicroseconds
 
 //===== PIN mux =====
 
-static uint8_t PERIPHS[] = {
-PERIPHS_IO_MUX_GPIO0_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_U0TXD_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_GPIO2_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_U0RXD_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_GPIO4_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_GPIO5_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_CLK_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA0_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA1_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA2_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA3_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_CMD_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTDI_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTCK_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTMS_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTDO_U - PERIPHS_IO_MUX };
+static uint32 g_PERIPHS[] = {
+  PERIPHS_IO_MUX_GPIO0_U,    // 00
+  PERIPHS_IO_MUX_U0TXD_U,    // 01
+  PERIPHS_IO_MUX_GPIO2_U,    // 02
+  PERIPHS_IO_MUX_U0RXD_U,    // 03
+  PERIPHS_IO_MUX_GPIO4_U,    // 04
+  PERIPHS_IO_MUX_GPIO5_U,    // 05
+  PERIPHS_IO_MUX_SD_CLK_U,   // 06
+  PERIPHS_IO_MUX_SD_DATA0_U, // 07
+  PERIPHS_IO_MUX_SD_DATA1_U, // 08
+  PERIPHS_IO_MUX_SD_DATA2_U, // 09
+  PERIPHS_IO_MUX_SD_DATA3_U, // 10
+  PERIPHS_IO_MUX_SD_CMD_U,   // 11
+  PERIPHS_IO_MUX_MTDI_U,     // 12
+  PERIPHS_IO_MUX_MTCK_U,     // 13
+  PERIPHS_IO_MUX_MTMS_U,     // 14
+  PERIPHS_IO_MUX_MTDO_U      // 15
+};
 
 /**
  * Return the function value to select GPIO for a pin
  */
-static uint8 pinGPIOFunc[] = {
-  FUNC_GPIO0, FUNC_GPIO1, FUNC_GPIO2, FUNC_GPIO3,
-  FUNC_GPIO4, FUNC_GPIO5, 3, 3,
-  3, FUNC_GPIO9, FUNC_GPIO10, 3,
-  FUNC_GPIO12, FUNC_GPIO13, FUNC_GPIO14, FUNC_GPIO15,
+static uint32 g_pinGPIOFunc[] = {
+  FUNC_GPIO0,  // 00
+  FUNC_GPIO1,  // 01
+  FUNC_GPIO2,  // 02
+  FUNC_GPIO3,  // 03
+  FUNC_GPIO4,  // 04
+  FUNC_GPIO5,  // 05
+  3,           // 06
+  3,           // 07
+  3,           // 08
+  FUNC_GPIO9,  // 09
+  FUNC_GPIO10, // 10
+  3,           // 11
+  FUNC_GPIO12, // 12
+  FUNC_GPIO13, // 13
+  FUNC_GPIO14, // 14
+  FUNC_GPIO15  // 15
 };
 
 /**
@@ -271,9 +298,6 @@ static char *pinStateToString(JshPinState state) {
   return states[state];
 }
 
-static uint8 pinState[16] = {
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // all JSHPINSTATE_UNDEFINED until we set them
-};
 
 static void jshDebugPin(Pin pin) {
   os_printf("PIN: %d out=%ld enable=%ld in=%ld\n",
@@ -314,16 +338,16 @@ void jshPinSetState(
     Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
-  os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
-      pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
+  //os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
+  //    pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
 
-  assert(pin < 16);
+  assert(pin < JSH_PIN_COUNT);
   if (pin >= 6 && pin <= 11) {
     jsError("Cannot change pins used for flash chip");
     return; // these pins are used for the flash chip
   }
 
-  int periph = PERIPHS_IO_MUX + PERIPHS[pin];
+  int periph = g_PERIPHS[pin];
 
   // set the pin mux function
   switch (state) {
@@ -332,7 +356,7 @@ void jshPinSetState(
   case JSHPINSTATE_GPIO_IN:
   case JSHPINSTATE_GPIO_IN_PULLUP:
   case JSHPINSTATE_I2C:
-    PIN_FUNC_SELECT(periph, pinGPIOFunc[pin]); // set the pin mux to GPIO
+    PIN_FUNC_SELECT(periph, g_pinGPIOFunc[pin]); // set the pin mux to GPIO
     break;
   case JSHPINSTATE_AF_OUT:
   case JSHPINSTATE_AF_OUT_OPENDRAIN:
@@ -369,7 +393,7 @@ void jshPinSetState(
 
   //jshDebugPin(pin);
 
-  pinState[pin] = state; // remember what we set this to...
+  g_pinState[pin] = state; // remember what we set this to...
 }
 
 
@@ -378,8 +402,8 @@ void jshPinSetState(
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
-  os_printf("> ESP8266: jshPinGetState %d\n", pin);
-  return pinState[pin];
+  //os_printf("> ESP8266: jshPinGetState %d\n", pin);
+  return g_pinState[pin];
 }
 
 //===== GPIO and PIN stuff =====
@@ -391,7 +415,7 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
-  os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
+  //os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
   GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, (value&1)<<pin);
   GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, (!value)<<pin);
   //jshDebugPin(pin);
@@ -402,10 +426,10 @@ void jshPinSetValue(
  * Get the value of the corresponding pin.
  * \return The current value of the pin.
  */
-bool jshPinGetValue(
+bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
-  os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
+  //os_printf("> ESP8266: jshPinGetValue pin=%d, value=%d\n", pin, GPIO_INPUT_GET(pin));
   return GPIO_INPUT_GET(pin);
 }
 
@@ -414,7 +438,7 @@ bool jshPinGetValue(
  *
  */
 JsVarFloat jshPinAnalog(Pin pin) {
-  os_printf("> ESP8266: jshPinAnalog: %d\n", pin);
+  //os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
   return (JsVarFloat) system_adc_read();
 }
 
@@ -423,17 +447,50 @@ JsVarFloat jshPinAnalog(Pin pin) {
  *
  */
 int jshPinAnalogFast(Pin pin) {
-  os_printf("> ESP8266: jshPinAnalogFast: %d\n", pin);
+  //os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
   return (JsVarFloat) system_adc_read();
 }
 
 
 /**
- *
+ * Set the output PWM value.
  */
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
-  os_printf("ESP8266: jshPinAnalogOutput: %d, %d, %d\n", pin, (int)value, (int)freq);
-  jsError("No DAC");
+  os_printf("> jshPinAnalogOutput - jshPinAnalogOutput: pin=%d, value(x100)=%d, freq=%d\n", pin, (int)(value*100), (int)freq);
+  // Check that the value is between 0.0 and 1.0
+  if (value < 0 || value > 1.0) {
+    return 0;
+  }
+
+  // If PWM for the pin has not previously been enabled, enable it now.
+  if (g_PWMRecords[pin].enabled == false) {
+    g_PWMRecords[pin].enabled = true;
+    g_pwmFreq = (uint32)freq;
+    // Set the default frequency to 1KHz if no supplied frequency.
+    if (g_pwmFreq == 0) {
+      g_pwmFreq = 1000;
+    }
+
+    // Initialize the PWM subsystem
+    uint32 duty = 0;
+    uint32 pinInfoList[3] = {g_PERIPHS[pin], g_pinGPIOFunc[pin], pin};
+    pwm_init(g_pwmFreq * 1000000, &duty, 1, &pinInfoList);
+
+    // Start the PWM subsystem
+    pwm_start();
+  }
+
+  // If the period/frequency has changed, update the period.
+  if ((uint32)freq != 0 && (uint32)freq != g_pwmFreq) {
+    g_pwmFreq = (uint32)freq;
+    pwm_set_period(g_pwmFreq * 1000000);
+  }
+
+  uint32 duty = value * 1000000 / 0.045 / g_pwmFreq;
+  os_printf(" - Duty: %d (units of 45 nsecs)\n", duty);
+  pwm_set_duty(duty, 0);
+
+  //jsError("No DAC");
   return 0;
 }
 
@@ -458,17 +515,18 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 /**
  * Get the state of the pin associated with the event flag.
  */
-bool jshGetWatchedPinState(IOEventFlags eventFlag) {
-  os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
+bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
+  //os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
 
   if (eventFlag > EV_EXTI_MAX || eventFlag < EV_EXTI0) {
     os_printf(" - Error ... eventFlag out of range\n");
-    os_printf("< jshGetWatchedPinState\n");
+    jsError("eventFlag out of range");
+    //os_printf("< jshGetWatchedPinState\n");
     return false;
   }
 
   bool currentPinValue = jshPinGetValue((Pin)(eventFlag-EV_EXTI0));
-  os_printf("< jshGetWatchedPinState = %d\n", currentPinValue);
+  //os_printf("< jshGetWatchedPinState = %d\n", currentPinValue);
   return currentPinValue;
 }
 
@@ -478,17 +536,45 @@ bool jshGetWatchedPinState(IOEventFlags eventFlag) {
  * a given period and set the pin value again to be the opposite.
  */
 void jshPinPulse(
-    Pin pin,        //!< The pin to be pulsed.
-    bool value,     //!< The value to be pulsed into the pin.
-    JsVarFloat time //!< The period in milliseconds to hold the pin.
-  ) {
-  if (jshIsPinValid(pin)) {
-    //jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-    jshDelayMicroseconds(jshGetTimeFromMilliseconds(time));
-    jshPinSetValue(pin, !value);
-  } else
-    jsError("Invalid pin!");
+    Pin pin,              //!< The pin to be pulsed.
+    bool pulsePolarity,   //!< The value to be pulsed into the pin.
+    JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
+) {
+#if 0
+  // Implementation using the utility timer. This doesn't work well on the esp8266, because the
+  // utility timer uses tasks and these are not pre-emptible. So the timer won't actually fire
+  // until the main espruino task becomes idle, which messes up timings. It also locks-up things
+  // when someone defines a pulse train that is longer than the timer queue, because then the
+  // main task busy-waits for the timer queue to drain a bit, which never happens.
+  if (!jshIsPinValid(pin)) {
+    jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    return;
+  }
+  if (pulseTime <= 0) {
+    // just wait for everything to complete [??? what does this mean ???]
+    jstUtilTimerWaitEmpty();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
+    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+  }
+#endif
+
+#if 1
+  // Implementation using busy-waiting. Ugly and if the pulse train exceeds 10ms one risks WDT
+  // resets, but it actually works...
+  //jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(pin, pulsePolarity);
+  jshDelayMicroseconds(jshGetTimeFromMilliseconds(pulseTime)-6);  // -6 adjustment is for overhead
+  jshPinSetValue(pin, !pulsePolarity);
+#endif
 }
 
 
@@ -500,7 +586,7 @@ bool jshCanWatch(
     Pin pin //!< The pin that we are asking whether or not we can watch it.
   ) {
   // As of right now, let us assume that all pins on an ESP8266 are watchable.
-  os_printf("> jshCanWatch: %d\n", pin);
+  os_printf("> jshCanWatch: pin=%d\n", pin);
   os_printf("< jshCanWatch = true\n");
   return true;
 }
@@ -514,7 +600,7 @@ IOEventFlags jshPinWatch(
     Pin pin,         //!< The pin to be watched.
     bool shouldWatch //!< True for watching and false for unwatching.
   ) {
-  os_printf("> jshPinWatch: pin=%d, shouldWatch=%d\n", pin, shouldWatch);
+  //os_printf("> jshPinWatch: pin=%d, shouldWatch=%d\n", pin, shouldWatch);
   if (jshIsPinValid(pin)) {
     ETS_GPIO_INTR_DISABLE();
     if (shouldWatch) {
@@ -531,11 +617,11 @@ IOEventFlags jshPinWatch(
     }
     ETS_GPIO_INTR_ENABLE();
   } else {
-    jsError("Invalid pin (ESP8266)");
-    os_printf("< jshPinWatch: Invalid pin\n");
+    jsError("Invalid pin");
+    //os_printf("< jshPinWatch: Invalid pin\n");
     return EV_NONE;
   }
-  os_printf("< jshPinWatch\n");
+  //os_printf("< jshPinWatch\n");
   return pinToEV_EXTI(pin);
 }
 
@@ -580,34 +666,76 @@ bool jshIsUSBSERIALConnected() {
  */
 void jshUSARTKick(
     IOEventFlags device //!< The device to be kicked.
-  ) {
-  esp8266_uartTransmitAll(device);
+) {
+  // transmit anything that is sitting in the uart output buffers
+  if (device == EV_SERIAL1 || device == EV_SERIAL2) {
+    // Get the next character to transmit.  We will have reached the end when
+    // the value of the character to transmit is -1.
+    int c = jshGetCharToTransmit(device);
+    uint8_t uart = device == EV_SERIAL1 ? 0 : 1;
+
+    while (c >= 0) {
+      uart_tx_one_char(uart, c);
+      c = jshGetCharToTransmit(device);
+    }
+  }
 }
 
 
 //===== SPI =====
 
 /**
- * Unknown
+ * Initialize the hardware SPI device.
+ * On the ESP8266, hardware SPI is implemented via a set of pins defined
+ * as follows:
  *
+ * | GPIO   | NodeMCU | Name  | Function |
+ * |--------|---------|-------|----------|
+ * | GPIO12 | D6      | HMISO | MISO     |
+ * | GPIO13 | D7      | HMOSI | MOSI     |
+ * | GPIO14 | D5      | HSCLK | CLK      |
+ * | GPIO15 | D8      | HCS   | CS       |
  *
  */
 void jshSPISetup(
-    IOEventFlags device, //!< Unknown
-    JshSPIInfo *inf      //!< Unknown
-  ) {
-  os_printf("ESP8266: jshSPISetup: device=%d, inf=0x%x\n", device, (int)inf);
+    IOEventFlags device, //!< The identity of the SPI device being initialized.
+    JshSPIInfo *inf      //!< Flags for the SPI device.
+) {
+  if (device != EV_SPI1) {
+    jsExceptionHere(JSET_ERROR, "Only SPI1 supported");
+    return;
+  }
+
+  //os_printf("jshSPISetup - jshSPISetup: device=%d\n", device);
+  spi_init(HSPI, inf->baudRate); // Initialize the hardware SPI components.
+  g_spiInitialized = true;
+  g_lastSPIRead = -1;
+
+  if (inf != NULL) {
+    os_printf("baudRate=%d, baudRateSpec=%d, pinSCK=%d, pinMISO=%d, pinMOSI=%d, spiMode=%d, spiMSB=%d\n",
+        inf->baudRate, inf->baudRateSpec, inf->pinSCK, inf->pinMISO, inf->pinMOSI, inf->spiMode, inf->spiMSB);
+  }
 }
 
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(
-    IOEventFlags device, //!< Unknown
-    int data             //!< Unknown
-  ) {
-  os_printf("ESP8266: jshSPISend\n");
-  return NAN;
+    IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
+    int data             //!< The data to be sent or an indication that no data is to be sent.
+) {
+  if (device != EV_SPI1) {
+    return -1;
+  }
+  //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
+  int retData = g_lastSPIRead;
+  if (data >=0) {
+    g_lastSPIRead = spi_transaction(HSPI, 8, (uint32)data);
+  } else {
+    g_lastSPIRead = -1;
+  }
+  //os_printf("< jshSPISend\n");
+  return retData;
 }
 
 
@@ -617,10 +745,16 @@ int jshSPISend(
 void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
-  ) {
-  os_printf("ESP8266: jshSPISend16\n");
-  jshSPISend(device, data >> 8);
-  jshSPISend(device, data & 255);
+) {
+  //os_printf("> jshSPISend16 - device=%d, data=%x\n", device, data);
+  //jshSPISend(device, data >> 8);
+  //jshSPISend(device, data & 255);
+  if (device != EV_SPI1) {
+    return;
+  }
+
+  spi_transaction(HSPI, 16, (uint32)data);
+  //os_printf("< jshSPISend16\n");
 }
 
 
@@ -630,8 +764,9 @@ void jshSPISend16(
 void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
-  ) {
-  os_printf("ESP8266: jshSPISet16\n");
+) {
+  //os_printf("> jshSPISet16 - device=%d, is16=%d\n", device, is16);
+  //os_printf("< jshSPISet16\n");
 }
 
 
@@ -640,12 +775,16 @@ void jshSPISet16(
  */
 void jshSPIWait(
     IOEventFlags device //!< Unknown
-  ) {
-  os_printf("ESP8266: jshSPIWait\n");
+) {
+  //os_printf("> jshSPIWait - device=%d\n", device);
+  while(spi_busy(HSPI)) ;
+  //os_printf("< jshSPIWait\n");
 }
 
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+  //os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
+  //os_printf("< jshSPISetReceive\n");
 }
 
 //===== I2C =====
@@ -653,13 +792,10 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 /** Set-up I2C master for ESP8266, default pins are SCL:14, SDA:2. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
-  os_printf("> jshI2CSetup: SCL=%d SDA=%d bitrate=%d\n",
-      info->pinSCL, info->pinSDA, info->bitrate);
+  //os_printf("> jshI2CSetup: SCL=%d SDA=%d bitrate=%d\n",
+  //    info->pinSCL, info->pinSDA, info->bitrate);
   if (device != EV_I2C1) {
-    jsError("Only I2C1 supported");
-    return;
-  }
-
+    jsError("Only I2C1 supported"); return; }
   Pin scl = info->pinSCL !=PIN_UNDEFINED ? info->pinSCL : 14;
   Pin sda = info->pinSDA !=PIN_UNDEFINED ? info->pinSDA : 2;
 
@@ -667,7 +803,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   jshPinSetState(sda, JSHPINSTATE_I2C);
 
   i2c_master_gpio_init(scl, sda, info->bitrate);
-  os_printf("< jshI2CSetup\n");
+  //os_printf("< jshI2CSetup\n");
 }
 
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
@@ -726,31 +862,31 @@ error:
  *
  * It seems pretty clear from the API and the calibration concepts that the RTC runs off an
  * internal RC oscillator or something similar and the SDK provides functions to calibrate
- * it WRT the crystal oscillator, i.e., to get the current clock ratio.
- *
- * The RTC timer is preserved when the chip goes into sleep mode, including deep sleep, as
- * well when it is reset (but not if reset using the ch_pd pin).
+ * it WRT the crystal oscillator, i.e., to get the current clock ratio. The only benefit of
+ * RTC timer is that it keeps running when in light sleep mode. (It also keeps running in
+ * deep sleep mode since it can be used to exit deep sleep but some brilliant engineer at
+ * espressif decided to reset the RTC timer when coming out of deep sleep so the time is
+ * actually lost!)
  *
  * It seems that the best course of action is to use the system timer for jshGetSystemTime()
- * and related functions and to use the rtc timer only at start-up to initialize the system
- * timer to the best guess available for the current date-time.
+ * and related functions and to use the rtc timer only to preserve time during light sleep.
  */
 
 /**
  * Given a time in milliseconds as float, get us the value in microsecond
  */
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-//  os_printf("jshGetTimeFromMilliseconds %d, %f\n", (JsSysTime)(ms * 1000.0), ms);
+  //  os_printf("jshGetTimeFromMilliseconds %d, %f\n", (JsSysTime)(ms * 1000.0), ms);
   return (JsSysTime) (ms * 1000.0 + 0.5);
-} // End of jshGetTimeFromMilliseconds
+}
 
 /**
  * Given a time in microseconds, get us the value in milliseconds (float)
  */
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-//  os_printf("jshGetMillisecondsFromTime %d, %f\n", time, (JsVarFloat)time / 1000.0);
+  //  os_printf("jshGetMillisecondsFromTime %d, %f\n", time, (JsVarFloat)time / 1000.0);
   return (JsVarFloat) time / 1000.0;
-} // End of jshGetMillisecondsFromTime
+}
 
 // Structure to hold a timestamp in us since the epoch, plus the system timer value at that time
 // stamp. The crc field is used when saving this to RTC RAM
@@ -785,9 +921,9 @@ static void saveTime() {
 /**
  * Return the current time in microseconds.
  */
-JsSysTime jshGetSystemTime() { // in us
+JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called at interrupt time
   return sysTimeStamp.timeStamp + (JsSysTime)(system_get_time() - sysTimeStamp.hwTimeStamp);
-} // End of jshGetSystemTime
+}
 
 
 /**
@@ -803,7 +939,7 @@ void jshSetSystemTime(JsSysTime newTime) {
   rtcTimeStamp.timeStamp = newTime;
   rtcTimeStamp.hwTimeStamp = rtcTime;
   saveTime(&rtcTimeStamp);
-} // End of jshSetSystemTime
+}
 
 /**
  * Periodic system timer to update the time structure and save it to RTC RAM so we don't loose
@@ -876,69 +1012,25 @@ static void systemTimeInit(void) {
 
 //===== Utility timer =====
 
-// There are two versions here. One uses the SDK timer in microsecond mode and the other uses the
-// hw_timer using the driver provided by Espressif. The hw_timer is not working and causes the
-// system to crash for unknown reasons. Thus using the SDK timer for now...
-// If we're happy with the SDK timer then the other code can be deleted as well as the ht_timer.[hc]
-// files...
+// The utility timer uses the SDK timer in microsecond mode.
 
-#ifndef USE_HW_TIMER
 os_timer_t utilTimer;
 
 static void utilTimerInit(void) {
-  os_printf("UStimer init\n");
+  //os_printf("UStimer init\n");
   os_timer_disarm(&utilTimer);
   os_timer_setfn(&utilTimer, jstUtilTimerInterruptHandler, NULL);
 }
 
 void jshUtilTimerDisable() {
-  os_printf("UStimer disarm\n");
+  //os_printf("UStimer disarm\n");
   os_timer_disarm(&utilTimer);
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-  os_printf("UStimer arm\n");
+  if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
   os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
 }
-
-#else
-os_event_t utilTimerQ[2];
-
-static void utilTimerTask(os_event_t *e) {
-  os_printf("HW timer task\n");
-  jstUtilTimerInterruptHandler();
-}
-
-static void ICACHE_RAM_ATTR utilTimerCb(void) {
-  os_printf_plus("HW timer CB\n");
-  system_os_post(2, NULL, 0);
-}
-
-static void utilTimerInit(void) {
-  system_os_task(utilTimerTask, 2, utilTimerQ, 2);
-  hw_timer_init(FRC1_SOURCE, 0); // 0->one-time
-  hw_timer_set_func(utilTimerCb);
-}
-
-void jshUtilTimerDisable() {
-  hw_timer_set_func(NULL);
-}
-
-void jshUtilTimerStart(JsSysTime period) {
-  os_printf("HW Timer: %ldus\n", (uint32_t)period);
-  if (period < 50) {
-    // the hardware timer can't do a delay of less than 100us
-    os_delay_us((uint32_t)period);
-    system_os_post(2, NULL, NULL);
-    return;
-  }
-  if (period > 0x7fffffLL) {
-    // the hardware timer can't do a delay of more than 0x7fffffus
-    period = 0x7fffffLL; // FIXME !!!
-  }
-  hw_timer_arm((uint32_t)period);
-}
-#endif
 
 void jshUtilTimerReschedule(JsSysTime period) {
   jshUtilTimerDisable();
@@ -948,8 +1040,16 @@ void jshUtilTimerReschedule(JsSysTime period) {
 //===== Miscellaneous =====
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  os_printf("ESP8266: jshIsDeviceInitialised %d\n", device);
-  return true;
+  bool retVal = true;
+  switch(device) {
+  case EV_SPI1:
+    retVal = g_spiInitialized;
+    break;
+  default:
+    break;
+  }
+  os_printf("jshIsDeviceInitialised: dev %d, ret %d\n", device, retVal);
+  return retVal;
 } // End of jshIsDeviceInitialised
 
 // the esp8266 doesn't have any temperature sensor
@@ -980,8 +1080,7 @@ void jshFlashRead(
     uint32_t addr, //!< Flash address to read from
     uint32_t len   //!< Length of data to read
   ) {
-  //os_printf("ESP8266: jshFlashRead: dest=%p for len=%ld from flash addr=0x%lx max=%ld\n",
-  //    buf, len, addr, FLASH_MAX);
+  //os_printf("jshFlashRead: dest=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
   if (addr >= FLASH_MAX) return;
@@ -992,8 +1091,8 @@ void jshFlashRead(
   uint8_t *dest = buf;
   uint32_t bytes = *(uint32_t*)(addr & ~3);
   while (len-- > 0) {
-    if (addr & 3 == 0) bytes = *(uint32_t*)addr;
-    *dest++ = ((uint8_t*)&bytes)[(uint32)addr++ & 3];
+    if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
+    *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
   }
 }
 
@@ -1009,8 +1108,7 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-  //os_printf("ESP8266: jshFlashWrite: src=%p for len=%ld into flash addr=0x%lx\n",
-  //    buf, len, addr);
+  //os_printf("jshFlashWrite: src=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
   if (addr >= FLASH_MAX) return;
@@ -1049,7 +1147,7 @@ bool jshFlashGetPage(
 void jshFlashErasePage(
     uint32_t addr //!<
   ) {
-  //os_printf("ESP8266: jshFlashErasePage: addr=0x%lx\n", addr);
+  //os_printf("jshFlashErasePage: addr=0x%lx\n", addr);
 
   SpiFlashOpResult res;
   res = spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);

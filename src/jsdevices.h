@@ -20,6 +20,12 @@
 
 void jshInitDevices(); // called from jshInit
 
+/** Flags used to describe events put in the txBuffer and ioBuffer queues.
+ *
+ * This should be 1 byte. Bottom 6 bits are the type of device, and the
+ * top 2 bits are extra info (number of characters, serial errors, whether
+ * device is high or similar).
+ */
 typedef enum {
   // device type
   EV_NONE,
@@ -48,6 +54,9 @@ typedef enum {
 #ifdef BLUETOOTH
   EV_BLUETOOTH,
 #endif
+#ifdef USE_TELNET
+  EV_TELNET,
+#endif
   EV_SERIAL1,
   EV_SERIAL2,
   EV_SERIAL3,
@@ -55,6 +64,13 @@ typedef enum {
   EV_SERIAL5,
   EV_SERIAL6,
   EV_SERIAL_MAX = EV_SERIAL6,
+  EV_SERIAL1_STATUS, // Used to store serial status info
+  EV_SERIAL2_STATUS,
+  EV_SERIAL3_STATUS,
+  EV_SERIAL4_STATUS,
+  EV_SERIAL5_STATUS,
+  EV_SERIAL6_STATUS,
+  EV_SERIAL_STATUS_MAX = EV_SERIAL6_STATUS,
   EV_SPI1,
   EV_SPI2,
   EV_SPI3,
@@ -63,27 +79,35 @@ typedef enum {
   EV_I2C2,
   EV_I2C3,
   EV_I2C_MAX = EV_I2C3,
-  EV_DEVICE_MAX = EV_I2C_MAX,
+
+  EV_DEVICE_MAX = EV_SERIAL_STATUS_MAX,
   // EV_DEVICE_MAX should not be >64 - see DEVICE_INITIALISED_FLAGS
-  // Also helps if we're under 32 so we can fit IOEventFlags into a byte
   EV_TYPE_MASK = NEXT_POWER_2(EV_DEVICE_MAX) - 1,
   // ----------------------------------------- CHARACTERS RECEIVED
   EV_CHARS_ONE = EV_TYPE_MASK+1,
   EV_CHARS_SHIFT = GET_BIT_NUMBER(EV_CHARS_ONE),
   EV_CHARS_MASK = 3 * EV_CHARS_ONE, // see IOEVENT_MAXCHARS
+  // ----------------------------------------- SERIAL STATUS
+  EV_SERIAL_STATUS_FRAMING_ERR = EV_TYPE_MASK+1,
+  EV_SERIAL_STATUS_PARITY_ERR = EV_SERIAL_STATUS_FRAMING_ERR<<1,
   // ----------------------------------------- WATCH EVENTS
   // if the pin we're watching is high, the handler sets this
   EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,
 } PACKED_FLAGS IOEventFlags;
 
 
+
 // Return true if the device is a USART
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))
+#define DEVICE_IS_USART_STATUS(X) (((X)>=EV_SERIAL1_STATUS) && ((X)<=EV_SERIAL_STATUS_MAX))
 
 // Return true if the device is an SPI.
 #define DEVICE_IS_SPI(X) (((X)>=EV_SPI1) && ((X)<=EV_SPI_MAX))
 #define DEVICE_IS_I2C(X) (((X)>=EV_I2C1) && ((X)<=EV_I2C_MAX))
 #define DEVICE_IS_EXTI(X) (((X)>=EV_EXTI0) && ((X)<=EV_EXTI_MAX))
+
+#define IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(X) ((X) + EV_SERIAL1_STATUS - EV_SERIAL1)
+#define IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(X) ((X) + EV_SERIAL1 - EV_SERIAL1_STATUS)
 
 #define IOEVENTFLAGS_GETTYPE(X) ((X)&EV_TYPE_MASK)
 #define IOEVENTFLAGS_GETCHARS(X) ((((X)&EV_CHARS_MASK)>>EV_CHARS_SHIFT)+1)

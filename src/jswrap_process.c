@@ -36,6 +36,7 @@ This class contains information about Espruino itself
 Returns the version of Espruino as a String
  */
 
+#ifndef SAVE_ON_FLASH
 // TODO: the jspeiFindInScopes export won't be needed soon
 const void *exportPtrs[] = {
     jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,
@@ -52,6 +53,7 @@ const char *exportNames =
     "jspeiFindInScopes\0jspReplaceWith\0jspeFunctionCall\0"
     "jspGetNamedVariable\0jspGetNamedField\0jspGetVarNamedField\0"
     "jsvNewWithFlags\0\0";
+#endif
 
 /*JSON{
   "type" : "staticproperty",
@@ -77,6 +79,7 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
   jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
+#ifndef SAVE_ON_FLASH
   JsVar *arr = jsvNewWithFlags(JSV_OBJECT);
   if (arr) {
     const char *s = exportNames;
@@ -89,6 +92,7 @@ JsVar *jswrap_process_env() {
     }
     jsvObjectSetChildAndUnLock(obj, "EXPORTS", arr);
   }  
+#endif
 
   return obj;
 }

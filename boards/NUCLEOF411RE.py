@@ -17,13 +17,19 @@
 
 import pinutils;
 info = {
-  'name' : "ST NUCLEO-F411RE",
-  'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1847/PF260320"],
-  'default_console' : "EV_SERIAL2", # USART2 by default, the Nucleo's USB is actually running on this too
-  'default_console_tx' : "A2", # USART2_TX on PA2,
-  'default_console_rx' : "A3", # USART2_RX on PA3
-  'variables' :  7423, # (128-12)*1024/16-1
-  'binary_name' : 'espruino_%v_nucleof411re.bin',
+ 'name' : "ST NUCLEO-F411RE",
+ 'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1847/PF260320"],
+ 'default_console' : "EV_SERIAL2", # USART2 by default, the Nucleo's USB is actually running on this too
+ 'default_console_tx' : "A2", # USART2_TX on PA2,
+ 'default_console_rx' : "A3", # USART2_RX on PA3
+ 'variables' :  7423, # (128-12)*1024/16-1
+ 'binary_name' : 'espruino_%v_nucleof411re.bin',
+ 'build' : {
+  'defines' : [
+     'USE_GRAPHICS',
+     'USE_NET',
+   ]
+ }
 };
 chip = {
   'part' : "STM32F411RET6",

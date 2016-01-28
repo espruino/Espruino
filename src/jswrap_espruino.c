@@ -50,7 +50,6 @@ something that was not possible with `onInit`.
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "getTemperature",
   "generate_full" : "jshReadTemperature()",
@@ -697,6 +696,39 @@ JsVar *jswrap_espruino_toUint8Array(JsVar *args) {
 
   return arr;
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "memoryArea",
+  "generate" : "jswrap_espruino_memoryArea",
+  "params" : [
+    ["addr","int","The address of the memory area"],
+    ["len","int","The length (in bytes) of the memory area"]
+  ],
+  "return" : ["JsVar","A Uint8Array"],
+  "return_object" : "String"
+}
+This creates and returns a special type of string, which actually references
+a specific memory address. It can be used in order to use sections of
+Flash memory directly in Espruino (for example to execute code straight
+from flash memory with `eval(E.memoryArea( ... ))`)
+
+**Note:** This is only tested on STM32-based platforms (Espruino Original
+and Espruino Pico) at the moment.
+*/
+JsVar *jswrap_espruino_memoryArea(int addr, int len) {
+  if (len<0) return 0;
+  JsVar *v = jsvNewWithFlags(JSV_NATIVE_STRING);
+  if (len>65535) {
+    jsExceptionHere(JSET_ERROR, "Memory area too long! Max is 65535 bytes\n");
+    return 0;
+  }
+  v->varData.nativeStr.ptr = (char*)addr;
+  v->varData.nativeStr.len = (uint16_t)len;
+  return v;
+}
+
 
 
 /*JSON{

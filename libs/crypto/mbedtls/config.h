@@ -30,22 +30,70 @@
 #ifndef MBEDTLS_CONFIG_H
 #define MBEDTLS_CONFIG_H
 
-/* System support */
-/*
-#define MBEDTLS_HAVE_ASM
-#define MBEDTLS_HAVE_TIME
-*/
+#define MBEDTLS_PLATFORM_SNPRINTF_MACRO espruino_snprintf
+
+// See aes.c. Do we want 10kB of data full of constants? no.
+#define MBEDTLS_AES_ROM_TABLES
+
+
+#ifdef USE_TLS
 
 /* mbed TLS feature support */
 #define MBEDTLS_CIPHER_MODE_CBC
 #define MBEDTLS_CIPHER_MODE_CFB
 #define MBEDTLS_CIPHER_MODE_CTR
 
-/*
 #define MBEDTLS_PKCS1_V15
 #define MBEDTLS_KEY_EXCHANGE_RSA_ENABLED
-#define MBEDTLS_SSL_PROTO_TLS1_1
-*/
+#define MBEDTLS_SSL_PROTO_TLS1_2
+
+/* mbed TLS modules */
+#define MBEDTLS_AES_C
+#define MBEDTLS_ASN1_PARSE_C
+#define MBEDTLS_BIGNUM_C
+#define MBEDTLS_CIPHER_C
+#define MBEDTLS_CTR_DRBG_C
+#define MBEDTLS_ECP_C
+#define MBEDTLS_ENTROPY_C
+#define MBEDTLS_MD_C
+#define MBEDTLS_MD5_C
+#define MBEDTLS_OID_C
+#define MBEDTLS_PKCS5_C
+#define MBEDTLS_PK_C
+#define MBEDTLS_PK_PARSE_C
+#define MBEDTLS_RSA_C
+#define MBEDTLS_SHA1_C
+#define MBEDTLS_SHA256_C
+#define MBEDTLS_SHA512_C
+#define MBEDTLS_SSL_CLI_C
+#define MBEDTLS_SSL_SRV_C
+#define MBEDTLS_SSL_TLS_C
+#define MBEDTLS_X509_CRT_PARSE_C
+#define MBEDTLS_X509_USE_C
+
+/**
+ * Enables specific curves within the Elliptic Curve module.
+ * By default all supported curves are enabled.
+ */
+#define MBEDTLS_ECP_DP_SECP192R1_ENABLED
+#define MBEDTLS_ECP_DP_SECP224R1_ENABLED
+#define MBEDTLS_ECP_DP_SECP256R1_ENABLED
+#define MBEDTLS_ECP_DP_SECP384R1_ENABLED
+#define MBEDTLS_ECP_DP_SECP521R1_ENABLED
+#define MBEDTLS_ECP_DP_SECP192K1_ENABLED
+#define MBEDTLS_ECP_DP_SECP224K1_ENABLED
+#define MBEDTLS_ECP_DP_SECP256K1_ENABLED
+#define MBEDTLS_ECP_DP_BP256R1_ENABLED
+#define MBEDTLS_ECP_DP_BP384R1_ENABLED
+#define MBEDTLS_ECP_DP_BP512R1_ENABLED
+#define MBEDTLS_ECP_DP_CURVE25519_ENABLED
+
+#else // !USE_TLS
+
+/* mbed TLS feature support */
+#define MBEDTLS_CIPHER_MODE_CBC
+#define MBEDTLS_CIPHER_MODE_CFB
+#define MBEDTLS_CIPHER_MODE_CTR
 
 /* mbed TLS modules */
 #define MBEDTLS_AES_C
@@ -55,51 +103,20 @@
 #define MBEDTLS_OID_C
 #define MBEDTLS_PKCS5_C
 #define MBEDTLS_SHA1_C
-
-/*
-#define MBEDTLS_ASN1_WRITE_C
-#define MBEDTLS_BIGNUM_C
-
-#define MBEDTLS_CTR_DRBG_C
-#define MBEDTLS_DES_C
-#define MBEDTLS_ENTROPY_C
-
-#define MBEDTLS_MD5_C
-#define MBEDTLS_NET_C
-
-#define MBEDTLS_PK_C
-#define MBEDTLS_PK_PARSE_C
-#define MBEDTLS_RSA_C
-
 #define MBEDTLS_SHA256_C
-#define MBEDTLS_SSL_CLI_C
-#define MBEDTLS_SSL_SRV_C
-#define MBEDTLS_SSL_TLS_C
-#define MBEDTLS_X509_CRT_PARSE_C
-#define MBEDTLS_X509_USE_C
-*/
+#define MBEDTLS_SHA512_C
 
-/* For test certificates */
-/*
-#define MBEDTLS_BASE64_C
-#define MBEDTLS_CERTS_C
-#define MBEDTLS_PEM_PARSE_C
-*/
-
-/* For testing with compat.sh */
-//#define MBEDTLS_FS_IO
+#endif
 
 #include "jsvar.h"
 
 #define MBEDTLS_PLATFORM_C
 #define MBEDTLS_PLATFORM_MEMORY
-/** Allocate flat string, return pointer to its first element.
- * As we drop the pointer here, it's left locked. jsvGetFlatStringPointer
- * is also safe if 0 is passed in.  */
-#define MBEDTLS_PLATFORM_CALLOC_MACRO(X,Y) jsvGetFlatStringPointer(jsvNewFlatStringOfLength((X)*(Y)))
 
-/** Find the original flat string, and unlock it - freeing the memory. */
-#define MBEDTLS_PLATFORM_FREE_MACRO(X) jsvUnLock(jsvGetFlatStringFromPointer(X))
+/** Memory allocation - note that any memory allocated this way must
+ * be freed before 'jsvKill' happens see jsvMalloc for more info */
+#define MBEDTLS_PLATFORM_CALLOC_MACRO(X,Y) jsvMalloc((X)*(Y))
+#define MBEDTLS_PLATFORM_FREE_MACRO(X) jsvFree(X)
 
 
 #include "mbedtls/check_config.h"

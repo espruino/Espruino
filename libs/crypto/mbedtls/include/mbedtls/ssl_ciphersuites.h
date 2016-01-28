@@ -246,7 +246,7 @@ typedef enum {
     MBEDTLS_KEY_EXCHANGE_ECDH_ECDSA,
 } mbedtls_key_exchange_type_t;
 
-#if defined(MBEDTLS_KEY_EXCHANGE_RSA_ENABLED)          || \
+#if \
     defined(MBEDTLS_KEY_EXCHANGE_DHE_RSA_ENABLED)      || \
     defined(MBEDTLS_KEY_EXCHANGE_ECDHE_RSA_ENABLED)    || \
     defined(MBEDTLS_KEY_EXCHANGE_ECDHE_ECDSA_ENABLED)  || \

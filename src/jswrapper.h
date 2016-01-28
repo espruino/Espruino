@@ -18,6 +18,22 @@
 #include "jsutils.h"
 #include "jsvar.h"
 
+/** This is the enum used to store how functions should be called
+ * by jsnative.c.
+ *
+ * The first set of JSWAT_MASK bits is the return value, then following
+ * is the first argument and so on:
+ *
+ * JSWAT_BOOL
+ *   => bool()
+ * JSWAT_BOOL | (JSWAT_INT<<(JSWAT_BITS)) | (JSWAT_JSVAR<<(JSWAT_BITS*2))
+ *   => bool(int, JsVar*)
+ *
+ * JSWAT_THIS_ARG means the function also takes 'this' as its first argument:
+ *
+ * JSWAT_THIS_ARG | JSWAT_BOOL
+ *   => bool(JsVar *parent);
+ */
 typedef enum {
   JSWAT_FINISH = 0, // no argument
   JSWAT_VOID = 0, // Only for return values
@@ -38,6 +54,7 @@ typedef enum {
   JSWAT_THIS_ARG    = 0x8000, // whether a 'this' argument should be tacked onto the start
   JSWAT_ARGUMENTS_MASK = ~(JSWAT_MASK | JSWAT_THIS_ARG)
 } JsnArgumentType;
+
 // number of bits needed for each argument bit
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
 

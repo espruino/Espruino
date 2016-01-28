@@ -18,6 +18,13 @@ info = {
  'name' : "DPT-Board",
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_dpt_board',
+ 'build' : {
+  'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_FILESYSTEM'
+   ]
+ }
 };
 chip = {
   'part' : "DPTBOARD",

@@ -69,7 +69,7 @@ static JsSysTime jshGetTimeForSecond();
 Pin watchedPins[16];
 
 // Whether a pin is being used for soft PWM or not
-BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT); // TODO: This should be set to all 0
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 
 // simple 4 byte buffers for SPI
 #define JSH_SPIBUF_MASK 3 // 4 bytes
@@ -322,15 +322,15 @@ static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
 }
 #endif
 
-static long long DEVICE_INITIALISED_FLAGS = 0L;
+static uint64_t DEVICE_INITIALISED_FLAGS = 0L;
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  long long mask = 1L << (int)device;
+  uint64_t mask = 1ULL << (int)device;
   return (DEVICE_INITIALISED_FLAGS & mask) != 0L;
 }
 
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
-  long long mask = 1L << (int)device;
+  uint64_t mask = 1ULL << (int)device;
   if (isInit) {
     DEVICE_INITIALISED_FLAGS |= mask;
   } else {
@@ -670,10 +670,10 @@ void jshSetupRTCPrescaler(bool isUsingLSI) {
 #ifdef STM32F1
     jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
 #else
-    jshRTCPrescaler = 32768; // 32kHz for LSI
+    jshRTCPrescaler = 32000; // 32kHz for LSI on F4
 #endif
   } else {
-    jshRTCPrescaler = 32768; // 32kHz for LSE
+    jshRTCPrescaler = 32768; // 32.768kHz for LSE
   }
   jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
 }
@@ -784,7 +784,7 @@ void jshDoSysTick() {
 
   /* One second after start, call jsinteractive. This is used to swap
    * to USB (if connected), or the Serial port. */
-  if (ticksSinceStart > 3) {
+  if (ticksSinceStart == 5) {
     jsiOneSecondAfterStartup();
   }
 }
@@ -984,6 +984,7 @@ void jshInit() {
   // reset some vars
   for (i=0;i<16;i++)
     watchedPins[i] = PIN_UNDEFINED;
+  BITFIELD_CLEAR(jshPinSoftPWM);
 
   // enable clocks
  #if defined(STM32F3)
@@ -1692,7 +1693,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 
     // Otherwise
     jshPrintCapablePins(pin, "PWM Output", JSH_TIMER1, JSH_TIMERMAX, 0,0, false);
-  #if defined(DACS) && DACS>0
+  #if defined(DAC_COUNT) && DAC_COUNT>0
     jsiConsolePrint("\nOr pins with DAC output are:\n");
     jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
     jsiConsolePrint("\n");
@@ -1703,7 +1704,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   }
 
   if (JSH_PINFUNCTION_IS_DAC(func)) {
-#if defined(DACS) && DACS>0
+#if defined(DAC_COUNT) && DAC_COUNT>0
     // Special case for DAC output
     uint16_t data = (uint16_t)(value*0xFFFF);
     if ((func & JSH_MASK_INFO)==JSH_DAC_CH1) {
@@ -2609,7 +2610,7 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 // Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value) {
   if (JSH_PINFUNCTION_IS_DAC(func)) {
-#if DACS>0
+#if DAC_COUNT>0
     uint16_t dacVal = (uint16_t)value;
     switch (func & JSH_MASK_INFO) {
     case JSH_DAC_CH1:  DAC_SetChannel1Data(DAC_Align_12b_L, dacVal); break;
@@ -2663,10 +2664,10 @@ void jshEnableWatchDog(JsVarFloat timeout) {
     IWDG_Enable();
 }
 
-uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
+volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
   if (!jshIsPinValid(pin)) return 0;
   GPIO_TypeDef *port = stmPort(pin);
-  uint32_t *regAddr;
+  volatile uint32_t *regAddr;
   if (flags == JSGPAF_INPUT)
     regAddr = &port->IDR;
   else
@@ -2680,14 +2681,16 @@ uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
 
 #if defined(STM32F2) || defined(STM32F4)
 int jshFlashGetSector(uint32_t addr) {
-  addr -= FLASH_START;
 #ifdef FLASH_END // supplied by stm32fXXX.h
-  if (FLASH_START+addr > FLASH_END) return -1;
+  if (addr > FLASH_END) return -1;
 #else
   // else use what's in BOARD.py - could be less than the
   // chip might be capable of (but not specced for ;)
-  if (addr >= FLASH_TOTAL) return -1;
+  if (addr >= FLASH_TOTAL+FLASH_START) return -1;
 #endif
+  if (addr < FLASH_START) return -1;
+  addr -= FLASH_START;
+
   if (addr<16*1024) return FLASH_Sector_0;
   else if (addr<32*1024) return FLASH_Sector_1;
   else if (addr<48*1024) return FLASH_Sector_2;

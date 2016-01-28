@@ -19,27 +19,36 @@
 
 #include "mbedtls/include/mbedtls/aes.h"
 #include "mbedtls/include/mbedtls/sha1.h"
+#include "mbedtls/include/mbedtls/sha256.h"
+#include "mbedtls/include/mbedtls/sha512.h"
 #include "mbedtls/include/mbedtls/pkcs5.h"
+#ifdef USE_TLS
+#include "mbedtls/include/mbedtls/pk.h"
+#include "mbedtls/include/mbedtls/x509.h"
+#include "mbedtls/include/mbedtls/ssl.h"
+#endif
 
 
 /*JSON{
   "type" : "library",
-  "class" : "crypto"
+  "class" : "crypto",
+  "ifdef" : "USE_TLS"
 }
 Cryptographic functions
 
-**Note:** This library is currently only included in builds for the Espruino Pico.
-For other boards you will have to make build your own firmware, and you may need
-to remove other features in order to make room.
+**Note:** This library is currently only included in builds for the Espruino Pico. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
 */
 
 
 /*JSON{
   "type" : "class",
   "library" : "crypto",
-  "class" : "AES"
+  "class" : "AES",
+  "ifdef" : "USE_TLS"
 }
 Class containing AES encryption/decryption
+
+**Note:** This library is currently only included in builds for the Espruino Pico. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
 */
 /*JSON{
   "type" : "staticproperty",
@@ -47,19 +56,38 @@ Class containing AES encryption/decryption
   "name" : "AES",
   "generate_full" : "jspNewBuiltin(\"AES\");",
   "return" : ["JsVar"],
-  "return_object" : "AES"
+  "return_object" : "AES",
+  "ifdef" : "USE_TLS"
 }
 Class containing AES encryption/decryption
 */
 
+const char *jswrap_crypto_error_to_str(int err) {
+  switch(err) {
+#ifdef USE_TLS
+    case MBEDTLS_ERR_X509_INVALID_FORMAT:
+    case MBEDTLS_ERR_PK_KEY_INVALID_FORMAT:
+      return "Invalid format";
+    case MBEDTLS_ERR_X509_ALLOC_FAILED:
+    case MBEDTLS_ERR_SSL_ALLOC_FAILED:
+    case MBEDTLS_ERR_PK_ALLOC_FAILED:
+#endif
+    case MBEDTLS_ERR_MD_ALLOC_FAILED: return "Not enough memory";
+    case MBEDTLS_ERR_MD_FEATURE_UNAVAILABLE: return "Feature unavailable";
+    case MBEDTLS_ERR_MD_BAD_INPUT_DATA: return "Bad input data";
+    case MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH: return "Invalid input length";
+  }
+  return 0;
+}
+
+JsVar *jswrap_crypto_error_to_jsvar(int err) {
+  const char *e = jswrap_crypto_error_to_str(err);
+  if (e) return jsvNewFromString(e);
+  return jsvVarPrintf("-0x%x", -err);
+}
 
 void jswrap_crypto_error(int err) {
-  const char *e = 0;
-  switch(err) {
-    case MBEDTLS_ERR_MD_FEATURE_UNAVAILABLE: e="Feature unavailable"; break;
-    case MBEDTLS_ERR_MD_BAD_INPUT_DATA: e="Bad Input Data"; break;
-    case MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH: e="Invalid input length"; break;
-  }
+  const char *e = jswrap_crypto_error_to_str(err);
   if (e) jsError(e);
   else jsError("Unknown error: -0x%x", -err);
 }
@@ -83,35 +111,114 @@ CryptoMode jswrap_crypto_getMode(JsVar *mode) {
   return CM_NONE;
 }
 
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "crypto",
-  "name" : "SHA1",
-  "generate" : "jswrap_crypto_SHA1",
-  "params" : [
-    ["message","JsVar","The message to apply the hash to"]
-  ],
-  "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+mbedtls_md_type_t jswrap_crypto_getHasher(JsVar *hasher) {
+  if (jsvIsStringEqual(hasher, "SHA1")) return MBEDTLS_MD_SHA1;
+  if (jsvIsStringEqual(hasher, "SHA224")) return MBEDTLS_MD_SHA224;
+  if (jsvIsStringEqual(hasher, "SHA256")) return MBEDTLS_MD_SHA256;
+  if (jsvIsStringEqual(hasher, "SHA384")) return MBEDTLS_MD_SHA384;
+  if (jsvIsStringEqual(hasher, "SHA512")) return MBEDTLS_MD_SHA512;
+  jsExceptionHere(JSET_ERROR, "Unknown Hasher %q", hasher);
+  return MBEDTLS_MD_NONE;
 }
 
-Performs a SHA1 hash and returns the result as a 20 byte ArrayBuffer
-*/
-JsVar *jswrap_crypto_SHA1(JsVar *message) {
-
+JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
   JSV_GET_AS_CHAR_ARRAY(msgPtr, msgLen, message);
   if (!msgPtr) return 0;
 
+  int bufferSize = 20;
+  if (shaNum>1) bufferSize = shaNum/8;
+
   char *outPtr = 0;
-  JsVar *outArr = jsvNewArrayBufferWithPtr(20, &outPtr);
+  JsVar *outArr = jsvNewArrayBufferWithPtr((unsigned int)bufferSize, &outPtr);
   if (!outPtr) {
     jsError("Not enough memory for result");
     return 0;
   }
 
-  mbedtls_sha1((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr);
+  if (shaNum==1) mbedtls_sha1((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr);
+  else if (shaNum==224) mbedtls_sha256((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, true/*224*/);
+  else if (shaNum==256) mbedtls_sha256((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, false/*256*/);
+  else if (shaNum==384) mbedtls_sha512((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, true/*384*/);
+  else if (shaNum==512) mbedtls_sha512((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, false/*512*/);
   return outArr;
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "crypto",
+  "name" : "SHA1",
+  "generate_full" : "jswrap_crypto_SHAx(message, 1)",
+  "params" : [
+    ["message","JsVar","The message to apply the hash to"]
+  ],
+  "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
+}
+
+Performs a SHA1 hash and returns the result as a 20 byte ArrayBuffer
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "crypto",
+  "name" : "SHA224",
+  "generate_full" : "jswrap_crypto_SHAx(message, 224)",
+  "params" : [
+    ["message","JsVar","The message to apply the hash to"]
+  ],
+  "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
+}
+
+Performs a SHA224 hash and returns the result as a 28 byte ArrayBuffer
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "crypto",
+  "name" : "SHA256",
+  "generate_full" : "jswrap_crypto_SHAx(message, 256)",
+  "params" : [
+    ["message","JsVar","The message to apply the hash to"]
+  ],
+  "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
+}
+
+Performs a SHA256 hash and returns the result as a 32 byte ArrayBuffer
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "crypto",
+  "name" : "SHA384",
+  "generate_full" : "jswrap_crypto_SHAx(message, 384)",
+  "params" : [
+    ["message","JsVar","The message to apply the hash to"]
+  ],
+  "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
+}
+
+Performs a SHA384 hash and returns the result as a 48 byte ArrayBuffer
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "crypto",
+  "name" : "SHA512",
+  "generate_full" : "jswrap_crypto_SHAx(message, 512)",
+  "params" : [
+    ["message","JsVar","The message to apply the hash to"]
+  ],
+  "return" : ["JsVar","Returns a 32 byte ArrayBuffer"],
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
+}
+
+Performs a SHA512 hash and returns the result as a 64 byte ArrayBuffer
+*/
+
 
 /*JSON{
   "type" : "staticmethod",
@@ -121,24 +228,37 @@ JsVar *jswrap_crypto_SHA1(JsVar *message) {
   "params" : [
     ["passphrase","JsVar","Passphrase"],
     ["salt","JsVar","Salt for turning passphrase into a key"],
-    ["options","JsVar","Object of Options, `{ keySize: 8, iterations: 10 }`"]
+    ["options","JsVar","Object of Options, `{ keySize: 8 (in 32 bit words), iterations: 10, hasher: 'SHA1'/'SHA224'/'SHA256'/'SHA384'/'SHA512' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 
-Password-Based Key Derivation Function 2 algorithm.
+Password-Based Key Derivation Function 2 algorithm, using SHA512
 */
 JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
   int iterations = 1;
   int keySize = 128/32;
+  mbedtls_md_type_t hasher = MBEDTLS_MD_SHA1;
+
+
   if (jsvIsObject(options)) {
     keySize = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "keySize", 0));
-    if (keySize<128/32) keySize=128/32;
+    if (keySize<=0) keySize=128/32;
     iterations = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "iterations", 0));
     if (iterations<1) iterations = 1;
+
+    JsVar *hashVar = jsvObjectGetChild(options, "hasher", 0);
+    if (!jsvIsUndefined(hashVar))
+      hasher = jswrap_crypto_getHasher(hashVar);
+    jsvUnLock(hashVar);
+
   } else if (!jsvIsUndefined(options))
     jsError("Options should be an object or undefined, got %t", options);
+
+  if (hasher == MBEDTLS_MD_NONE)
+    return 0; // already shown an error
 
   JSV_GET_AS_CHAR_ARRAY(passPtr, passLen, passphrase);
   if (!passPtr) return 0;
@@ -149,8 +269,8 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
   mbedtls_md_context_t ctx;
 
   mbedtls_md_init( &ctx );
-  err = mbedtls_md_setup( &ctx, mbedtls_md_info_from_type( MBEDTLS_MD_SHA1 ), 1 );
-  assert(err==0)
+  err = mbedtls_md_setup( &ctx, mbedtls_md_info_from_type( hasher ), 1 );
+  assert(err==0);
 
   char *keyPtr = 0;
   JsVar *keyArr = jsvNewArrayBufferWithPtr((unsigned)keySize*4, &keyPtr);
@@ -179,6 +299,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   int err;
 
   unsigned char iv[16]; // initialisation vector
+  memset(iv, 0, 16);
 
   CryptoMode mode = CM_CBC;
 
@@ -193,9 +314,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
       mode = jswrap_crypto_getMode(modeVar);
     jsvUnLock(modeVar);
     if (mode == CM_NONE) return 0;
-  } else if (jsvIsUndefined(options)) {
-    memset(iv, 0, 16);
-  } else {
+  } else if (!jsvIsUndefined(options)) {
     jsError("'options' must be undefined, or an Object");
     return 0;
   }
@@ -298,7 +417,8 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
     ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 */
 JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
@@ -316,7 +436,8 @@ JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
     ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 */
 JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options) {

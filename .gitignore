@@ -1,4 +1,5 @@
 *~
+*.tgz
 *.o
 *.elf
 *.hex
@@ -7,6 +8,7 @@
 *.bin
 *.pyc
 gen/*
+.vagrant/*
 boards/*.html
 boards/*.json
 zipcontents
@@ -21,3 +23,7 @@ diffs/*
 .settings
 MDN_URLS.txt
 node_modules
+/build/
+esp_iot_sdk_v1.5.0
+xtensa-lx106-elf
+*.c#

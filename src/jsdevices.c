@@ -22,8 +22,6 @@
 #include "trigger.h"
 #endif
 
-
-
 // ----------------------------------------------------------------------------
 //                                                              WATCH CALLBACKS
 JshEventCallbackCallback jshEventCallbacks[EV_EXTI_MAX+1-EV_EXTI0];
@@ -71,7 +69,7 @@ volatile unsigned char ioHead=0, ioTail=0;
  * Initialize all the devices.
  */
 void jshInitDevices() { // called from jshInit
-  int i;
+  unsigned int i;
   // setup flow control
   for (i=0;i<sizeof(jshSerialDeviceStates) / sizeof(JshSerialDeviceState);i++)
     jshSerialDeviceStates[i] = SDS_NONE;
@@ -94,6 +92,14 @@ void jshTransmit(
     jshPushIOCharEvent(device==EV_LOOPBACKB ? EV_LOOPBACKA : EV_LOOPBACKB, (char)data);
     return;
   }
+#ifdef USE_TELNET
+  if (device == EV_TELNET) {
+    // gross hack to avoid deadlocking on the network here
+    extern void telnetSendChar(char c);
+    telnetSendChar(data);
+    return;
+  }
+#endif
 #ifndef LINUX
 #ifdef USB
   if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected()) {
@@ -117,12 +123,22 @@ void jshTransmit(
   unsigned char txHeadNext = (unsigned char)((txHead+1)&TXBUFFERMASK);
   if (txHeadNext==txTail) {
     jsiSetBusy(BUSY_TRANSMIT, true);
+    bool wasConsoleLimbo = device==EV_LIMBO && jsiGetConsoleDevice()==EV_LIMBO;
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
 #ifdef USB
       // just in case USB was unplugged while we were waiting!
       if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);
 #endif
+    }
+    if (wasConsoleLimbo && jsiGetConsoleDevice()!=EV_LIMBO) {
+      /* It was 'Limbo', but now it's not - see jsiOneSecondAfterStartup.
+      Basically we must have printed a bunch of stuff to LIMBO and blocked
+      with our output buffer full. But then jsiOneSecondAfterStartup
+      switches to the right console device and swaps everything we wrote
+      over to that device too. Only we're now here, still writing to the
+      old device when really we should be writing to the new one. */
+      device = jsiGetConsoleDevice();
     }
     jsiSetBusy(BUSY_TRANSMIT, false);
   }
@@ -221,7 +237,7 @@ bool jshHasTransmitData() {
 /**
  * flag that the buffer has overflowed.
  */
-void jshIOEventOverflowed() {
+void CALLED_FROM_INTERRUPT jshIOEventOverflowed() {
   // Error here - just set flag so we don't dump a load of data out
   jsErrorFlags |= JSERR_RX_FIFO_FULL;
 }
@@ -259,22 +275,33 @@ void jshPushIOCharEvent(
   // Set flow control (as we're going to use more data)
   if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
     jshSetFlowControlXON(channel, false);
-  // Make new buffer
+
+  /* Make new buffer
+   *
+   * We're disabling IRQs for this bit because it's actually quite likely for
+   * USB and USART data to be coming in at the same time, and it can trip
+   * things up if one IRQ interrupts another. */
+  jshInterruptOff();
   unsigned char nextHead = (unsigned char)((ioHead+1) & IOBUFFERMASK);
   if (ioTail == nextHead) {
+    jshInterruptOn();
     jshIOEventOverflowed();
     return; // queue full - dump this event!
   }
-  ioBuffer[ioHead].flags = channel;
-  IOEVENTFLAGS_SETCHARS(ioBuffer[ioHead].flags, 1);
-  ioBuffer[ioHead].data.chars[0] = charData;
+  unsigned char oldHead = ioHead;
   ioHead = nextHead;
+  ioBuffer[oldHead].flags = channel;
+  // once channel is set we're safe - another IRQ won't touch this
+  jshInterruptOn();
+  IOEVENTFLAGS_SETCHARS(ioBuffer[oldHead].flags, 1);
+  ioBuffer[oldHead].data.chars[0] = charData;
 }
 
 /**
  * Signal an IO watch event as having happened.
  */
-void jshPushIOWatchEvent(
+// on the esp8266 we need this to be loaded into static RAM because it can run at interrupt time
+void CALLED_FROM_INTERRUPT jshPushIOWatchEvent(
     IOEventFlags channel //!< The channel on which the IO watch event has happened.
   ) {
   assert(channel >= EV_EXTI0 && channel <= EV_EXTI_MAX);
@@ -302,7 +329,7 @@ void jshPushIOWatchEvent(
 /**
  * Add this IO event to the IO event queue.
  */
-void jshPushIOEvent(
+void CALLED_FROM_INTERRUPT jshPushIOEvent(
     IOEventFlags channel, //!< The event to add to the queue.
     JsSysTime time        //!< The time that the event is thought to have happened.
   ) {
@@ -401,6 +428,9 @@ const char *jshGetDeviceString(
 #ifdef BLUETOOTH
   case EV_BLUETOOTH: return "Bluetooth";
 #endif
+#ifdef USE_TELNET
+  case EV_TELNET: return "Telnet";
+#endif
   case EV_SERIAL1: return "Serial1";
   case EV_SERIAL2: return "Serial2";
   case EV_SERIAL3: return "Serial3";
@@ -454,6 +484,11 @@ IOEventFlags jshFromDeviceString(
 #ifdef BLUETOOTH
   if (device[0]=='B') {
      if (strcmp(&device[1], "luetooth")==0) return EV_BLUETOOTH;
+  }
+#endif
+#ifdef USE_TELNET
+  if (device[0]=='T') {
+     if (strcmp(&device[1], "elnet")==0) return EV_TELNET;
   }
 #endif
   else if (device[0]=='S') {

@@ -143,16 +143,17 @@ unsigned int jsvIterateCallbackToBytes(JsVar *var, unsigned char *data, unsigned
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   assert(jsvHasCharacterData(str));
   it->var = jsvLockAgain(str);
+  it->varIndex = 0;
   it->charsInVar = jsvGetCharactersInVar(str);
+  it->charIdx = startIdx;
   if (jsvIsFlatString(str)) {
     /* Flat strings use the first var to store the size, and subsequent vars
-       to store the actual data, so we tweak charIdx to handle this */
-    it->varIndex = -sizeof(JsVar);
-    it->charsInVar += sizeof(JsVar);
-    it->charIdx = sizeof(JsVar)+startIdx;
-  } else {
-    it->varIndex = 0;
-    it->charIdx = startIdx;
+       to store the actual data, so we tweak ptr to handle this */
+    it->ptr = (char*)(it->var+1);
+  } else if (jsvIsNativeString(str)) {
+    it->ptr = it->var->varData.nativeStr.ptr;
+  } else{
+    it->ptr = &it->var->varData.str[0];
   }
   while (it->charIdx>0 && it->charIdx >= it->charsInVar) {
     it->charIdx -= it->charsInVar;
@@ -162,10 +163,12 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
         JsVar *next = jsvLock(jsvGetLastChild(it->var));
         jsvUnLock(it->var);
         it->var = next;
+        it->ptr = &next->varData.str[0];
         it->charsInVar = jsvGetCharactersInVar(it->var);
       } else {
         jsvUnLock(it->var);
         it->var = 0;
+        it->ptr = 0;
         it->charsInVar = 0;
         it->varIndex = startIdx - it->charIdx;
         return; // at end of string - get out of loop
@@ -187,6 +190,7 @@ void jsvStringIteratorGotoEnd(JsvStringIterator *it) {
     it->varIndex += it->charsInVar;
     it->charsInVar = jsvGetCharactersInVar(it->var);
   }
+  it->ptr = &it->var->varData.str[0];
   if (it->charsInVar) it->charIdx = it->charsInVar-1;
   else it->charIdx = 0;
 }
@@ -208,6 +212,7 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
     if (!next) {
       jsvUnLock(it->var);
       it->var = 0;
+      it->ptr = 0;
       it->charIdx = 0;
       return; // out of memory
     }
@@ -215,10 +220,11 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
     jsvSetLastChild(it->var, jsvGetRef(next));
     jsvUnLock(it->var);
     it->var = next;
+    it->ptr = &next->varData.str[0];
     it->varIndex += it->charIdx;
     it->charIdx = 0; // it's new, so empty
   }
-  it->var->varData.str[it->charIdx] = ch;
+  it->ptr[it->charIdx] = ch;
   it->charsInVar = it->charIdx+1;
   jsvSetCharactersInVar(it->var, it->charsInVar);
 }

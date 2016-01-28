@@ -23,8 +23,13 @@ info = {
  'default_console_tx' : "D9",
  'default_console_rx' : "D11",
  'default_console_baudrate' : "9600",
- 'variables' : 200, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 1020, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_nrf51822.bin',
+ 'build' : {
+  'defines' : [
+     'USE_BLUETOOTH'
+   ]
+ }
 };
 
 chip = {
@@ -39,6 +44,14 @@ chip = {
   'i2c' : 2,
   'adc' : 1,
   'dac' : 0,
+   # If using DFU bootloader, it sits at 0x3C000 - 0x40000 (0x40000 is end of flash)
+   # Might want to change 256 -> 240 in the code below
+  'saved_code' : {
+    'address' : ((256 - 3) * 1024),
+    'page_size' : 1024,
+    'pages' : 3,
+    'flash_available' : (256 - (96 + 3)) # softdevice + saved code
+  }
 };
 
 devices = {
@@ -80,5 +93,14 @@ def get_pins():
   pinutils.findpin(pins, "PD22", True)["functions"]["LED_2"]=0;
   pinutils.findpin(pins, "PD23", True)["functions"]["LED_3"]=0;
   pinutils.findpin(pins, "PD24", True)["functions"]["LED_4"]=0;
+
+  pinutils.findpin(pins, "PD0", True)["functions"]["ADC1_IN1"]=0;
+  pinutils.findpin(pins, "PD1", True)["functions"]["ADC1_IN2"]=0;
+  pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN3"]=0;
+  pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN4"]=0;
+  pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN5"]=0;
+  pinutils.findpin(pins, "PD5", True)["functions"]["ADC1_IN6"]=0;
+  pinutils.findpin(pins, "PD6", True)["functions"]["ADC1_IN7"]=0;
+
   #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
   return pins

@@ -1,0 +1,121 @@
+================ Revision history ============================================
+4.2.1:
+ - No changes.
+
+4.2.0:
+ - No changes.
+
+4.1.1:
+ - Extended USB bus reset duration.
+ - Extended USB bus reset recovery time in host stack to be more robust when
+   devices are attached.
+
+4.1.0:
+ - Fixed bug in host stack, USBH_SetAltInterfaceB() specified device instead
+   of interface.
+
+4.0.0:
+ - Added support for isochronous endpoint transfers.
+
+3.20.14:
+ - Added support for Happy Gecko USB Low Energy Modes (LEM).
+
+3.20.13:
+ - No changes.
+
+3.20.12:
+ - Replaced USB_EP0_SIZE and USB_MAX_EP_SIZE macros with new versions which
+   have correct values for low speed/full speed/endpoint types.
+
+3.20.10:
+ - Added support for Happy Gecko USB LEM (Low Energy Modes).
+ - Fixed bug in suspend powersave mode implementation.
+
+3.20.9:
+ - Added support for Happy Gecko USB peripheral.
+ - Improved USB cable plug/unplug robustness.
+
+3.20.7:
+ - Fixed bug in device stack when resuming from partial powerdown mode.
+ - Disable PHY pins and stop USB clocks in USBD_Stop() and USBH_Stop() functions.
+ - Fixed max FIFO size limit for device mode.
+ - Fixed possible deadlock in USBD_Init() and USBH_WaitForDeviceConnectionB().
+ - Added configurable VBUSEN pin usage to support hw without VBUS switch.
+
+3.20.6:
+ - No changes.
+
+3.20.5:
+ - Fixed bug which could cause malfunctioning when prescaling core clock.
+ - Updated license terms.
+ - Fixed potential EP sram partitioning problems.
+ - Allow 64 and 32 byte EP0 max packetsize.
+ - Fixed bug in USBTIMER_Start(), added check on timeout value of 0.
+ - Fixed setting USB device state on USB reset from suspend.
+ - Added support for composite devices in the device stack.
+ - Made special provisions for passing USB-IF "Powered Suspend" test.
+
+3.20.2:
+ - Increased robustness when plug/unplug-ing the USB cable rapidly.
+ - Changed implementation of usb string macro, wchar_t is no longer used.
+   GCC commandline options -fwide-exec-charset=UTF-16LE, -fshort-wchar and
+   -Wl,--no-wchar-size-warning are no longer needed.
+   Old version was used like this:
+     STATIC_CONST_STRING_DESC( iManufacturer, L"Energy Micro AS" );
+   New version is used like this:
+     STATIC_CONST_STRING_DESC( iManufacturer, 'E','n','e','r','g','y',' ', \
+                                              'M','i','c','r','o',' ','A','S' );
+
+3.20.0:
+ - Documentation changes only.
+
+3.0.3:
+ - Fixed compile time error when using USB stack energy saving on devices with
+   no endpoints in addition to EP0.
+ - Fixed bug when repeatedly unplugging/replugging a device USB cable and using
+   energy saving modes.
+
+3.0.2:
+ - Bugfix: USBD_Init() may now be called when USB peripheral is in partial
+   powerdown mode.
+ - New function USBD_EpIsBusy( int epAddr ) added to API.
+ - Changed USBD_AbortTransfer() from USBD_AbortTransfer( uint8_t ) to
+   USBD_AbortTransfer( int ).
+ - Added configuration of which hw TIMER the stack will use.
+
+3.0.1:
+ - USBD_Stop() now disables all USB related interrupts correctly.
+ - Minor documentation changes.
+ - Added more flexibility for taking advantage of energymodes in USB applications.
+ - Fixed bug in device stack partial powerdown procedure.
+
+3.0.0:
+ - Updated to CMSIS_V3, "efm32lib" is now called "emlib"
+ - This library has been renamed from "efm32usb" to "usb"
+ - Prefixes changed from efm32_ to em_, to reflect changes in emlib
+ - Updated software license, see top of every file for details
+
+2.4.1:
+ - Corrected USBC clock enable for header file updates
+
+2.4.0:
+ - Added raw transfer API in the host USB stack for internal testing purposes.
+ - Added USB energy-saving modes in device protocol stack.
+
+2.3.2:
+ - 19/12-2011: MSD updates
+
+2.3.0:
+ - 29/11-2011: Initial version of host stack.
+ - 11/11-2011: Added Doxygen doc for host stack.
+
+2.2.2:
+ - 18/10-2011: Fixed bug in USBDHAL_AbortEpOut() which in some scenarios would hang.
+ - 18/10-2011: Added function USBD_Stop(), which disables device stack operation.
+
+2.2.1:
+ - 23/03-2011: Initial version.
+ - 15/04-2011: Added host device stack.
+ - 24/05-2011: First release candidate.
+ - 06/06-2011: Host driver port plug/unplug code improvements
+ - 18/08-2011: Redesign of device abort transfer function.

@@ -19,7 +19,6 @@
 #include "nrf.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
-#include "nrf_temp.h"
 #include "app_uart.h"
 #include "nrf_error.h"
 #include "nrf_nvmc.h"
@@ -74,66 +73,6 @@ void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len)
   nrf_nvmc_write_bytes(addr, buf, len);
 }
 
-void nrf_utils_gpio_pin_set(uint32_t pin)
-{
-  nrf_gpio_pin_set(pin);
-}
-
-void nrf_utils_gpio_pin_clear(uint32_t pin)
-{
-  nrf_gpio_pin_clear(pin);
-}
-
-uint32_t nrf_utils_gpio_pin_read(uint32_t pin)
-{
-  return nrf_gpio_pin_read(pin);
-}
-
-void nrf_utils_gpio_pin_set_state(uint32_t pin, uint32_t state)
-{
-	switch (state)
-	{
-	  case 0 :
-	    nrf_gpio_cfg_default(pin);
-		break;
-	  case 1 :
-	    nrf_gpio_cfg_output(pin);
-	  	break;
-	  case 2 :
-        nrf_gpio_cfg_output(pin);
-		break;
-	  case 3 :
-		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_NOPULL);
-	  	break;
-	  case 4 :
-		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_PULLUP);
-		break;
-	  case 5 :
-		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_PULLDOWN);
-		break;
-	  case 6 :
-	    break;
-	  case 7 :
-	  	break;
-	  case 8 :
-		break;
-	  case 9 :
-	  	break;
-	  case 10 :
-	    break;
-	  case 11 :
-	  	break;
-	  case 12 :
-		break;
-	  case 13 ://wrong...
-	  	break;
-	  case 14 : //wrong...
-	    break;
-	  default :
-		break;
-	}
-}
-
 uint32_t nrf_utils_gpio_pin_get_state(uint32_t pin)
 {
 	/*uint32_t pin_register;
@@ -149,20 +88,15 @@ void nrf_utils_delay_us(uint32_t microsec)
 // Configure the low frequency clock to use the external 32.768 kHz crystal as a source. Start this clock.
 void nrf_utils_lfclk_config_and_start()
 {
-
   // Select the preferred clock source.
- // NRF_CLOCK->LFCLKSRC = (uint32_t) ((CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos) & CLOCK_LFCLKSRC_SRC_Msk);
- NRF_CLOCK->LFCLKSRC = (uint32_t) ((CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos) & CLOCK_LFCLKSRC_SRC_Msk);
-  
-  // Trigger the LFCLKSTART task.
-  NRF_CLOCK->TASKS_LFCLKSTART = (1UL);
+  // NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos;
+  NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos;
 
-  while (NRF_CLOCK->EVENTS_LFCLKSTARTED != (1UL)) {
-    // Wait for the LFCLK to start...
-  }
+  // Start the 32 kHz clock, and wait for the start up to complete
+  NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;
+  NRF_CLOCK->TASKS_LFCLKSTART = 1;
+  while(NRF_CLOCK->EVENTS_LFCLKSTARTED == 0);
 
-  // Clear the event.
-  NRF_CLOCK->EVENTS_LFCLKSTARTED = (0UL);
   /* 
   // wait until the clock is running - Xtal only? 
   while (((NRF_CLOCK->LFCLKSTAT & CLOCK_LFCLKSTAT_STATE_Msk) != ((CLOCK_LFCLKSTAT_STATE_Running << CLOCK_LFCLKSTAT_STATE_Pos) & CLOCK_LFCLKSTAT_STATE_Msk)))
@@ -191,18 +125,6 @@ int nrf_utils_get_device_id(uint8_t * device_id, int maxChars)
 	return i;
 }
 
-// Configure the RTC to default settings (ticks every 1/32768 seconds) and then start it.
-void nrf_utils_rtc1_config_and_start()
-{
-  NRF_RTC1->PRESCALER = (0UL);
-  NRF_RTC1->TASKS_START = (1UL);
-}
-
-uint32_t nrf_utils_get_system_time(void) 
-{
-  return (uint32_t) NRF_RTC1->COUNTER;
-}
-
 uint8_t nrf_utils_get_random_number()
 {
   
@@ -221,27 +143,6 @@ uint8_t nrf_utils_get_random_number()
   NRF_RNG -> TASKS_STOP = 1;
 
   return rand_num;
-
-}
-
-uint32_t nrf_utils_read_temperature(void) {
-  
-  nrf_temp_init();
-
-  int32_t volatile nrf_temp;
-
-  NRF_TEMP->TASKS_START = 1;
-  while (NRF_TEMP->EVENTS_DATARDY == 0)
-  {
-    // Do nothing...
-  }
-  NRF_TEMP->EVENTS_DATARDY = 0;
-
-  nrf_temp = (nrf_temp_read() / 4);
-
-  NRF_TEMP->TASKS_STOP = 1;
-
-  return (uint32_t) nrf_temp;
 
 }
 

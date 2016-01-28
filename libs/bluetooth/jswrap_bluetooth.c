@@ -10,7 +10,7 @@
  *
  */
 
-/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py, 
+ /* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py, 
 so we don't put this into espruino.com/Reference until this is out
 of beta.  */
 
@@ -24,6 +24,7 @@ of beta.  */
  * This file contains the source code for a sample application that uses the Nordic UART service.
  * This application uses the @ref srvlib_conn_params module.
  */
+
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
 #include "jsdevices.h"
@@ -39,22 +40,25 @@ of beta.  */
 #include "ble_conn_params.h"
 #include "softdevice_handler.h"
 #include "app_timer.h"
-#include "app_button.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
-//#include "bsp.h"
-
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
-#define DEVICE_NAME                     "Nordic_Espruino"                               /**< Name of device. Will be included in the advertising data. */
+#define CENTRAL_LINK_COUNT              0                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
+#define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
+// Working out the amount of RAM we need - see softdevice_handler.h
+#define IDEAL_RAM_START_ADDRESS_INTERN(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT) \
+  APP_RAM_BASE_CENTRAL_LINKS_##CENTRAL_LINK_COUNT##_PERIPH_LINKS_##PERIPHERAL_LINK_COUNT##_SEC_COUNT_0_MID_BW
+#define IDEAL_RAM_START_ADDRESS(C_LINK_CNT, P_LINK_CNT) IDEAL_RAM_START_ADDRESS_INTERN(C_LINK_CNT, P_LINK_CNT)
+
+#define DEVICE_NAME                     "Espruino "PC_BOARD_ID                      /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
-#define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
+#define APP_ADV_INTERVAL                1200                                        /**< The advertising interval (in units of 0.625 ms. This value corresponds to 750ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
-#define APP_TIMER_MAX_TIMERS            (2 + 2/*+ BSP_APP_TIMERS_NUMBER*/)                 /**< Maximum number of simultaneously created timers. */
 #define APP_TIMER_OP_QUEUE_SIZE         4                                           /**< Size of timer operation queues. */
 
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(20, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (20 ms), Connection interval uses 1.25 ms units. */
@@ -71,6 +75,18 @@ static ble_nus_t                        m_nus;                                  
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
+static bool                             ble_is_sending;
+
+/**@brief Error handlers.
+ *
+ * @details
+ */
+void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
+  jsiConsolePrintf("NRF ERROR 0x%x at %s:%d\n", error_code, p_file_name, line_num);
+  jsiConsolePrint("REBOOTING.\n");
+  jshTransmitFlush();
+  NVIC_SystemReset();
+}
 
 /**@brief Function for assert macro callback.
  *
@@ -85,7 +101,7 @@ static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, 
  */
 void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 {
-    app_error_handler(DEAD_BEEF, line_num, p_file_name);
+    ble_app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
 
@@ -118,6 +134,7 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+
 /**@brief Function for handling the data from the Nordic UART Service.
  *
  * @details This function will process the data received from the Nordic UART BLE Service and send
@@ -130,11 +147,34 @@ static void gap_params_init(void)
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
-	uint32_t i;
-    for (i = 0; i < length; i++)
-        jshPushIOCharEvent(EV_BLUETOOTH, (char) p_data[i]);
+    uint32_t i;
+    for (i = 0; i < length; i++) {
+      jshPushIOCharEvent(EV_BLUETOOTH, (char) p_data[i]);
+    }
+}
+
+bool jswrap_nrf_transmit_string() {
+  if (m_conn_handle == BLE_CONN_HANDLE_INVALID) {
+    // If no connection, drain the output buffer
+    while (jshGetCharToTransmit(EV_BLUETOOTH)>=0);
+  }
+  if (ble_is_sending) return false;
+  static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
+  int idx = 0;
+  int ch = jshGetCharToTransmit(EV_BLUETOOTH);
+  while (ch>=0) {
+    buf[idx++] = ch;
+    if (idx>=BLE_NUS_MAX_DATA_LEN) break;
+    ch = jshGetCharToTransmit(EV_BLUETOOTH);
+  }
+  if (idx>0) {
+    if (ble_nus_string_send(&m_nus, buf, idx) == NRF_SUCCESS)
+      ble_is_sending = true;
+  }
+  return idx>0;
 }
 /**@snippet [Handling the data received over BLE] */
+
 
 /**@brief Function for initializing services that will be used by the application.
  */
@@ -207,133 +247,121 @@ static void conn_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+void jswrap_nrf_bluetooth_startAdvertise(void) {
+  uint32_t err_code;
+  // Actually start advertising
+  ble_gap_adv_params_t adv_params;
+  memset(&adv_params, 0, sizeof(adv_params));
+  adv_params.type        = BLE_GAP_ADV_TYPE_ADV_IND;
+  adv_params.p_peer_addr = NULL;
+  adv_params.fp          = BLE_GAP_ADV_FP_ANY;
+  adv_params.p_whitelist = NULL;
+  adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
+  adv_params.interval = APP_ADV_INTERVAL;
 
-/**@brief Function for putting the chip into sleep mode.
- *
- * @note This function will not return.
- */
-static void sleep_mode_enter(void)
-{
-    uint32_t err_code;
-    // err_code = bsp_indication_set(BSP_INDICATE_IDLE); // GW
-    //APP_ERROR_CHECK(err_code);
+  sd_ble_gap_adv_start(&adv_params);
 
-    // Prepare wakeup buttons.
-    // err_code = bsp_btn_ble_sleep_mode_prepare(); // GW
-    //APP_ERROR_CHECK(err_code);
-
-    // Go to system-off mode (this function will not return; wakeup will cause a reset).
-    err_code = sd_power_system_off();
-    APP_ERROR_CHECK(err_code);
+  APP_ERROR_CHECK(err_code);
 }
 
 
-/**@brief Function for handling advertising events.
+/**@brief Function for the application's SoftDevice event handler.
  *
- * @details This function will be called for advertising events which are passed to the application.
- *
- * @param[in] ble_adv_evt  Advertising event.
- */
-static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
-{
-    uint32_t err_code;
-
-    switch (ble_adv_evt)
-    {
-        case BLE_ADV_EVT_FAST:
-            //err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING); // GW
-            //APP_ERROR_CHECK(err_code);
-            break;
-        case BLE_ADV_EVT_IDLE:
-            sleep_mode_enter();
-            break;
-        default:
-            break;
-    }
-}
-
-
-/**@brief Function for the Application's S110 SoftDevice event handler.
- *
- * @param[in] p_ble_evt S110 SoftDevice event.
+ * @param[in] p_ble_evt SoftDevice event.
  */
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t                         err_code;
     
-    switch (p_ble_evt->header.evt_id)
-    {
-        case BLE_GAP_EVT_CONNECTED:
-            //err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);// GW
-            //APP_ERROR_CHECK(err_code);
-            m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-            break;
-            
-        case BLE_GAP_EVT_DISCONNECTED:
-            //err_code = bsp_indication_set(BSP_INDICATE_IDLE); // GW
-            //APP_ERROR_CHECK(err_code);
+    switch (p_ble_evt->header.evt_id) {
+      case BLE_GAP_EVT_TIMEOUT:
+        // the timeout for sd_ble_gap_adv_start expired - kick it off again
+        jswrap_nrf_bluetooth_startAdvertise();
+        break;
 
-            m_conn_handle = BLE_CONN_HANDLE_INVALID;
-            break;
+      case BLE_GAP_EVT_CONNECTED:
+        m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+        ble_is_sending = false; // reset state - just in case
+        jsiSetConsoleDevice( EV_BLUETOOTH );
+        break;
 
-        case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
-            // Pairing not supported
-            err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, NULL, NULL);
-            APP_ERROR_CHECK(err_code);
-            break;
+      case BLE_GAP_EVT_DISCONNECTED:
+        m_conn_handle = BLE_CONN_HANDLE_INVALID;
+        jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
+        // restart advertising after disconnection
+        jswrap_nrf_bluetooth_startAdvertise();
+        break;
 
-        case BLE_GATTS_EVT_SYS_ATTR_MISSING:
-            // No system attributes have been stored.
-            err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
-            APP_ERROR_CHECK(err_code);
-            break;
+      case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
+        // Pairing not supported
+        err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, NULL, NULL);
+        APP_ERROR_CHECK(err_code);
+        break;
 
-        default:
-            // No implementation needed.
-            break;
+      case BLE_GATTS_EVT_SYS_ATTR_MISSING:
+        // No system attributes have been stored.
+        err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
+        APP_ERROR_CHECK(err_code);
+        break;
+
+      case BLE_EVT_TX_COMPLETE:
+        // UART Transmit finished - we can try and send more data
+        ble_is_sending = false;
+        jswrap_nrf_transmit_string();
+        break;
+
+      default:
+          // No implementation needed.
+          break;
     }
 }
 
 
-/**@brief Function for dispatching a S110 SoftDevice event to all modules with a S110 SoftDevice 
+/**@brief Function for dispatching a SoftDevice event to all modules with a SoftDevice 
  *        event handler.
  *
- * @details This function is called from the S110 SoftDevice event interrupt handler after a S110 
+ * @details This function is called from the SoftDevice event interrupt handler after a 
  *          SoftDevice event has been received.
  *
- * @param[in] p_ble_evt  S110 SoftDevice event.
+ * @param[in] p_ble_evt  SoftDevice event.
  */
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
     ble_conn_params_on_ble_evt(p_ble_evt);
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
     on_ble_evt(p_ble_evt);
-    ble_advertising_on_ble_evt(p_ble_evt);
-    // bsp_btn_ble_on_ble_evt(p_ble_evt); // GW
-    
 }
 
 
-/**@brief Function for the S110 SoftDevice initialization.
+/**@brief Function for the SoftDevice initialization.
  *
- * @details This function initializes the S110 SoftDevice and the BLE event interrupt.
+ * @details This function initializes the SoftDevice and the BLE event interrupt.
  */
 static void ble_stack_init(void)
 {
     uint32_t err_code;
     
     // Initialize SoftDevice.
-    //SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
+    // SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
     SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_8000MS_CALIBRATION, false);
+    
+    ble_enable_params_t ble_enable_params;
+    err_code = softdevice_enable_get_default_config(CENTRAL_LINK_COUNT,
+                                                    PERIPHERAL_LINK_COUNT,
+                                                    &ble_enable_params);
+    APP_ERROR_CHECK(err_code);
+        
+    //Check the ram settings against the used number of links
+    CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
+
+    extern void __data_start__;
+    if (IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT) != (uint32_t)&__data_start__) {
+      jsiConsolePrintf("WARNING: BLE RAM start address not correct - is 0x%x, should be 0x%x", (uint32_t)&__data_start__, IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT));
+      jshTransmitFlush();
+    }
 
     // Enable BLE stack.
-    ble_enable_params_t ble_enable_params;
-    memset(&ble_enable_params, 0, sizeof(ble_enable_params));
-#if (defined(S130) || defined(S132))
-    ble_enable_params.gatts_enable_params.attr_tab_size   = BLE_GATTS_ATTR_TAB_SIZE_DEFAULT;
-#endif
-    ble_enable_params.gatts_enable_params.service_changed = IS_SRVC_CHANGED_CHARACT_PRESENT;
-    err_code = sd_ble_enable(&ble_enable_params);
+    err_code = softdevice_enable(&ble_enable_params);
     APP_ERROR_CHECK(err_code);
     
     // Subscribe for BLE events.
@@ -341,40 +369,14 @@ static void ble_stack_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+// Build advertising data struct to pass into @ref ble_advertising_init.
+static void setup_advdata(ble_advdata_t *advdata) {
+  memset(advdata, 0, sizeof(*advdata));
+  advdata->name_type          = BLE_ADVDATA_FULL_NAME;
+  advdata->include_appearance = false;
+  advdata->flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+}
 
-/**@brief Function for handling events from the BSP module.
- *
- * @param[in]   event   Event generated by button press.
- */
-/*void bsp_event_handler(bsp_event_t event)
-{
-    uint32_t err_code;
-    switch (event)
-    {
-        case BSP_EVENT_SLEEP:
-            sleep_mode_enter();
-            break;
-
-        case BSP_EVENT_DISCONNECT:
-            err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-            if (err_code != NRF_ERROR_INVALID_STATE)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-            break;
-
-        case BSP_EVENT_WHITELIST_OFF:
-            err_code = ble_advertising_restart_without_whitelist();
-            if (err_code != NRF_ERROR_INVALID_STATE)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-            break;
-
-        default:
-            break;
-    }
-}*/
 
 /**@brief Function for initializing the Advertising functionality.
  */
@@ -385,10 +387,7 @@ static void advertising_init(void)
     ble_advdata_t scanrsp;
 
     // Build advertising data struct to pass into @ref ble_advertising_init.
-    memset(&advdata, 0, sizeof(advdata));
-    advdata.name_type          = BLE_ADVDATA_FULL_NAME;
-    advdata.include_appearance = false;
-    advdata.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+    setup_advdata(&advdata);
 
     memset(&scanrsp, 0, sizeof(scanrsp));
     scanrsp.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
@@ -399,36 +398,7 @@ static void advertising_init(void)
     options.ble_adv_fast_interval = APP_ADV_INTERVAL;
     options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
 
-    err_code = ble_advertising_init(&advdata, &scanrsp, &options, on_adv_evt, NULL);
-    APP_ERROR_CHECK(err_code);
-}
-
-
-/**@brief Function for initializing buttons and leds.
- *
- * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
- */
-static void buttons_leds_init(bool * p_erase_bonds)
-{
-  /*  bsp_event_t startup_event;
-
-    uint32_t err_code = bsp_init(BSP_INIT_LED | BSP_INIT_BUTTONS,
-                                 APP_TIMER_TICKS(100, APP_TIMER_PRESCALER), 
-                                 bsp_event_handler);
-    APP_ERROR_CHECK(err_code);*/
-
-   // err_code = bsp_btn_ble_init(NULL, &startup_event); // GW
-    //APP_ERROR_CHECK(err_code);
-
-//  /  *p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
-}
-
-
-/**@brief Function for placing the application in low power state while waiting for events.
- */
-static void power_manage(void)
-{
-    uint32_t err_code = sd_app_evt_wait();
+    err_code = ble_advertising_init(&advdata, &scanrsp, &options, NULL, NULL);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -440,39 +410,24 @@ static void power_manage(void)
   "type" : "object",
   "name" : "Bluetooth",
   "instanceof" : "Serial",
-  "#if" : "defined(BLUETOOTH)"
+  "#ifdef" : "BLUETOOTH"
 }
 The USB Serial port
  */
 
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "init", 
-    "generate" : "jswrap_nrf_bluetooth_init"
-}*/
-void jswrap_nrf_bluetooth_init(void)
-{
-    uint32_t err_code;
-    bool erase_bonds;
-    
-    // Initialize.
-    APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_OP_QUEUE_SIZE, false);
-    //buttons_leds_init(&erase_bonds);
-    ble_stack_init();
-    gap_params_init();
-    services_init();
-    advertising_init();
-    conn_params_init();
-    
-    err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
-    APP_ERROR_CHECK(err_code);
-    
-    // Enter main loop.
-    //for (;;)
-    //{
-        //power_manage();
-    //}
+void jswrap_nrf_bluetooth_init(void) {
+  uint32_t err_code;
+  bool erase_bonds;
+  
+  // Initialize.
+  APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
+  ble_stack_init();
+  gap_params_init();
+  services_init();
+  advertising_init();
+  conn_params_init();
+
+  jswrap_nrf_bluetooth_wake();
 }
 
 /*JSON{
@@ -481,19 +436,17 @@ void jswrap_nrf_bluetooth_init(void)
     "name" : "sleep",
     "generate" : "jswrap_nrf_bluetooth_sleep"
 }*/
-void jswrap_nrf_bluetooth_sleep(void)
-{
-    uint32_t err_code;
+void jswrap_nrf_bluetooth_sleep(void) {
+  uint32_t err_code;
 
-    // If connected, disconnect.
-    if (m_conn_handle != BLE_CONN_HANDLE_INVALID)
-    {
-        err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-    }
+  // If connected, disconnect.
+  if (m_conn_handle != BLE_CONN_HANDLE_INVALID) {
+      err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+  }
 
-    // Stop advertising
-    err_code = sd_ble_gap_adv_stop();
-    NRF_RADIO->TASKS_DISABLE = (1UL);
+  // Stop advertising
+  err_code = sd_ble_gap_adv_stop();
+  NRF_RADIO->TASKS_DISABLE = (1UL);
 }
 
 /*JSON{
@@ -502,38 +455,110 @@ void jswrap_nrf_bluetooth_sleep(void)
     "name" : "wake",
     "generate" : "jswrap_nrf_bluetooth_wake"
 }*/
-void jswrap_nrf_bluetooth_wake(void)
-{
-    uint32_t err_code;
-    NRF_RADIO->TASKS_DISABLE = (0UL);
-    err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
+void jswrap_nrf_bluetooth_wake(void) {
+  NRF_RADIO->TASKS_DISABLE = (0UL);
+  jswrap_nrf_bluetooth_startAdvertise();
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "getBattery",
+    "generate" : "jswrap_nrf_bluetooth_getBattery",
+    "return" : ["float", "Battery level in volts" ]
+}
+Get the battery level in volts
+*/
+JsVarFloat jswrap_nrf_bluetooth_getBattery(void) {
+  // Configure ADC
+  NRF_ADC->CONFIG     = (ADC_CONFIG_RES_8bit                        << ADC_CONFIG_RES_Pos)     |
+                        (ADC_CONFIG_INPSEL_SupplyOneThirdPrescaling << ADC_CONFIG_INPSEL_Pos)  |
+                        (ADC_CONFIG_REFSEL_VBG                      << ADC_CONFIG_REFSEL_Pos)  |
+                        (ADC_CONFIG_PSEL_Disabled                   << ADC_CONFIG_PSEL_Pos)    |
+                        (ADC_CONFIG_EXTREFSEL_None                  << ADC_CONFIG_EXTREFSEL_Pos);
+  NRF_ADC->EVENTS_END = 0;
+  NRF_ADC->ENABLE     = ADC_ENABLE_ENABLE_Enabled;
+
+  NRF_ADC->EVENTS_END  = 0;    // Stop any running conversions.
+  NRF_ADC->TASKS_START = 1;
+
+  while (!NRF_ADC->EVENTS_END);
+
+  uint16_t vbg_in_mv = 1200;
+  uint8_t adc_max = 255;
+  uint16_t vbat_current_in_mv = (NRF_ADC->RESULT * 3 * vbg_in_mv) / adc_max;
+
+  NRF_ADC->EVENTS_END     = 0;
+  NRF_ADC->TASKS_STOP     = 1;
+
+  return vbat_current_in_mv / 1000.0;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setAdvertising",
+    "generate" : "jswrap_nrf_bluetooth_setAdvertising",
+    "params" : [
+      ["data","JsVar","The data to advertise as an object - see below for more info"]
+    ]
+}
+
+Data is of the form `{ UUID : data_as_byte_array }`. For example to return battery level at 95%, do:
+
+```
+NRF.setAdvertising({
+  0x180F : [95]
+});
+```
+
+Or you could report the current temperature:
+
+```
+setInterval(function() {
+  NRF.setAdvertising({
+    0x1809 : [0|E.getTemperature()]
+  });
+}, 30000);
+```
+*/
+void jswrap_nrf_bluetooth_setAdvertising(JsVar *data) {
+  uint32_t err_code;
+  ble_advdata_t advdata;
+  setup_advdata(&advdata);
+
+  if (jsvIsObject(data)) {
+    ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
+    int n = 0;
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, data);
+    while (jsvObjectIteratorHasValue(&it)) {
+      service_data[n].service_uuid = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
+      JsVar *v = jsvObjectIteratorGetValue(&it);
+      JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, v);
+      jsvUnLock(v);
+      service_data[n].data.size    = dLen;
+      service_data[n].data.p_data  = dPtr;
+      jsvObjectIteratorNext(&it);
+      n++;
+    }
+    jsvObjectIteratorFree(&it);
+
+    advdata.service_data_count   = n;
+    advdata.p_service_data_array = service_data;
+  } else if (!jsvIsUndefined(data)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting object or undefined, got %t", data);
+  }
+
+  err_code = ble_advdata_set(&advdata, NULL);
+  if (err_code)
+    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+}
 
 /*JSON{
   "type" : "idle",
   "generate" : "jswrap_nrf_idle"
 }*/
 bool jswrap_nrf_idle() {
-
-  if (m_conn_handle == BLE_CONN_HANDLE_INVALID) {
-    if (jsiGetConsoleDevice() == EV_BLUETOOTH)
-      jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
-  } else {
-    if (jsiGetConsoleDevice() == DEFAULT_CONSOLE_DEVICE)
-      jsiSetConsoleDevice( EV_BLUETOOTH );
-  }
-
-  static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
-  int idx = 0;
-  int ch = jshGetCharToTransmit(EV_BLUETOOTH);
-  while (ch>=0 && idx<BLE_NUS_MAX_DATA_LEN) {
-    buf[idx++] = ch;
-    ch = jshGetCharToTransmit(EV_BLUETOOTH);
-  }
-  if (idx>0) ble_nus_string_send(&m_nus, buf, idx);
-  return idx>0;
+  jswrap_nrf_transmit_string();
 }
-
-
-

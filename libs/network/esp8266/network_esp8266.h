@@ -18,6 +18,14 @@
 #define LIBS_NETWORK_ESP8266_NETWORK_ESP8266_H_
 
 #include "network.h"
+
+/**
+ * The maximum number of concurrently open sockets we support.
+ * We should probably pair this with the ESP8266 concept of the maximum number of sockets
+ * that an ESP8266 instance can also support.
+ */
+#define MAX_SOCKETS (10)
+
 void netInit_esp8266_board();
 void netSetCallbacks_esp8266_board(JsNetwork *net);
 void esp8266_dumpSocket(int socketId);

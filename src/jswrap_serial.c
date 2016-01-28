@@ -33,8 +33,35 @@ Methods may be called on the USB, Serial1, Serial2, Serial3, Serial4, Serial5 an
     ["data","JsVar","A string containing one or more characters of received data"]
   ]
 }
-The 'data' event is called when data is received. If a handler is defined with `X.on('data', function(data) { ... })` then it will be called, otherwise data will be stored in an internal buffer, where it can be retrieved with `X.read()`
+The `data` event is called when data is received. If a handler is defined with `X.on('data', function(data) { ... })` then it will be called, otherwise data will be stored in an internal buffer, where it can be retrieved with `X.read()`
  */
+
+/*JSON{
+  "type" : "event",
+  "class" : "Serial",
+  "name" : "framing"
+}
+The `framing` event is called when there was activity on the input to the UART
+but the `STOP` bit wasn't in the correct place. This is either because there
+was noise on the line, or the line has been pulled to 0 for a long period
+of time.
+
+**Note:** Even though there was an error, the byte will still be received and
+passed to the `data` handler.
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Serial",
+  "name" : "parity"
+}
+The `parity` event is called when the UART was configured with a parity bit,
+and this doesn't match the bits that have actually been received.
+
+**Note:** Even though there was an error, the byte will still be received and
+passed to the `data` handler.
+ */
+// this is created in jsiIdle based on EV_SERIALx_STATUS ecents
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "Serial",
@@ -55,7 +82,7 @@ May return undefined if no device can be found.
   "type" : "object",
   "name" : "USB",
   "instanceof" : "Serial",
-  "#if" : "defined(USB)"
+  "#ifdef" : "USB"
 }
 The USB Serial port
  */

@@ -132,7 +132,7 @@ bool jswrap_onewire_reset(JsVar *parent) {
     ["rom","JsVar","The device to select (get this using `OneWire.search()`)"]
   ]
 }
-Select a ROM - reset needs to be done first
+Select a ROM - always performs a reset first
  */
 void jswrap_onewire_select(JsVar *parent, JsVar *rom) {
   Pin pin = onewire_getpin(parent);
@@ -141,6 +141,9 @@ void jswrap_onewire_select(JsVar *parent, JsVar *rom) {
     jsWarn("Invalid OneWire device address");
     return;
   }
+
+  // perform a reset
+  OneWireReset(pin);
 
   // decode the address
   unsigned long long romdata = 0;
@@ -200,9 +203,16 @@ void jswrap_onewire_write(JsVar *parent, JsVar *data, bool leavePowerOn) {
 
   jsvIterateCallback(data, (void (*)(int,  void *))_jswrap_onewire_write_cb, (void*)&pin);
 
-  if (!leavePowerOn) {
+  if (leavePowerOn) {
+    // We're asked to leave power on for parasitically powered devices, to do that properly we
+    // need to actively pull the line high. This is required, for example, for parasitically
+    // powered DS18B20 temperature sensors.
+    jshPinSetValue(pin, 1);
+    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  } else {
+    // We don't need to leave power on, so just tri-state the pin
     jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-    jshPinSetValue(pin, 0);
+    jshPinSetValue(pin, 1);
   }
 }
 

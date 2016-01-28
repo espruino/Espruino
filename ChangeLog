@@ -1,3 +1,49 @@
+     1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
+             - enables WebSocket Server support from JS
+            Fix issue where GC'd objects referencing non-GC'd data wouldn't unreference it
+            Add E.memoryArea to allow memory addresses to be treated as variables
+            Fix STM32F4 LSI clock frequency - should make the Pico's RTC a lot more accurate (fix #776)
+            Added HeatShrink compression to saved code (instead of RLE)
+            If saving fails, delete command history and try again.
+            Make sure `reset()` resets the sleep and busy indicator pins
+            Now escape characters >=127 as well (fix #780)
+            Add decodeURIComponent (fix #779)
+            Allow reset();save() on one line
+            Fix potential issue parsing HTTP headers when more data is sent after the header (fix #783)
+            Fix broken storage of floating point values when <255 variables
+            Fix regression where DACs didn't work on Original Espruino Board
+            Improve tab complete's memopry usage
+            Added Tab complete and Debug to low-end Nordic uCs
+            Limit the number of events processed each time around the idle loop to the number that were in it at the start
+             - helps to fix issues with out of memory when receiving big files over ESP8266 serial connection
+            Allow different types of network to have different buffer sizes - enlarge JS, Linux and WIZnet buffers
+            Fix bug where clearInterval() and setWatch with debounce could cause setWatch to momentarily stop working
+            Make HTTP server only close connection after Content-Length bytes received
+            Speed up jsvNewFlatStringOfLength by combining it with updating the free var list
+            Update the free var list when garbage collecting (makes allocation at the start of memory more likely)
+            Don't zero the contents of memory when freeing - speeds up deallocation
+            Removal of un-needed zero initialisations for variables
+            Only garbage collect on idle if we're low on memory (fix #767)
+            Improve malloc behaviour for crypto lib (try and free all command history is first alloc fails)
+            Improve HTTPS error messages
+            Add READ_FLASH_UINT8, allowing ESP8266 to read&exec strings stored in Flash with E.memoryArea
+
+     1v84 : Fix device initialisation flags not working when the device number is above 32 (fix #751, #748)
+             - this fixes broken SPI when not on standard pins
+
+     1v83 : Moved to size optimisation for Pico (needed to get HTTPS into 384kB)
+            Ensure Modules.addCached doesn't reset parse state (fix #723)
+            dump() in Espruino Pico now ignored the pull-down for the button (fix #731)
+            Warn when "compiled" functions gets into Espruiono (fix #707)
+            Fix lost character on Espruino Startup (fix #704)
+            Fix duplicated characters when USB+USART IRQs fire at the same time  (fix #635)
+            Fixed Serial.find(...)
+            Detect UART framing and parity errors and emit them as events on the Serial object
+            Fix [] instanceof Object (fix #737)
+            Fix regression in jsvCopyNameOnly (Object.getOwnPropertyNames when names are >8 characters long)
+            HTTP requests (and sockets) can now emit 'error' event (fix #706)
+            Add optional `ca`,`key`, and `cert` for server public key when using HTTPS or TLS (fix #736)
+
      1v82 : Fix debugger regression (where quit/reset/etc don't exit properly)
             Fix wakeup when setDeepSleep used at startup (fix #645)
             Add `shiftOut` function (fix #631)
@@ -16,6 +62,21 @@
             Fix issue where double-buffered waveforms would use the wrong buffer in the callback
             Fix memory leak in tab autocomplete on objects
             Added AES crypto library (Pico only)
+            Fix `typeof (new Uint8Array([1, 2, 3, 4]))`
+            Store `function(){return ...}` without the return (fix #700)
+            Increased simple string usage from 4 chars up to 8
+            Swap order of JsVar internals, string usage up to 10 chars
+            Add handling for uint32_t,uint64_t,uint32_t case for Raspberry Pi
+            Add startup sanity checks for jsnative.c (in non-release builds)
+            Added fix for returning floats on Raspberry Pi
+            When <1024 JsVars, `lastChild`'s top bits are stored in `flags`, and pack
+               is moved such that we get 1 extra character in StringExts
+            Allow events of >12 characters length
+            Fix regression in flash memory write (introduced via AES merge)
+            Fixed instability when resetting after using SD card on non-standard pins
+            HTTPS support on Pico (when compiled in)
+            Rename USE_HTTPS to USE_TLS, and enable by default for Pico + Linux
+            Add 'tls' module with 'connect' - for TLS Socket connections
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)

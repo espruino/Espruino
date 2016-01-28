@@ -88,8 +88,10 @@ Write 32 bits of memory at the given location - VERY DANGEROUS!
  */
 
 uint32_t _jswrap_io_peek(JsVarInt addr, int wordSize) {
-  if (wordSize==1) return (uint32_t)*(unsigned char*)(size_t)addr;
-  if (wordSize==2) return (uint32_t)*(unsigned short*)(size_t)addr;
+  if (wordSize==1) return READ_FLASH_UINT8((char*)(size_t)addr);
+  if (wordSize==2) {
+    return READ_FLASH_UINT8((char*)(size_t)addr) | (uint32_t)(READ_FLASH_UINT8((char*)(size_t)(addr+1)) << 8);
+  }
   if (wordSize==4) return (uint32_t)*(unsigned int*)(size_t)addr;
   return 0;
 }
@@ -419,38 +421,41 @@ typedef struct {
   Pin pins[jswrap_io_shiftOutDataMax];
   Pin clk;
 #ifdef STM32
-  uint32_t *addrs[jswrap_io_shiftOutDataMax];
-  uint32_t *clkAddr;
+  volatile uint32_t *addrs[jswrap_io_shiftOutDataMax];
+  volatile uint32_t *clkAddr;
 #endif
   bool clkPol; // clock polarity
 
   int cnt; // number of pins
+  int repeat; // iterations to perform per array item
 } jswrap_io_shiftOutData;
 
 void jswrap_io_shiftOutCallback(int val, void *data) {
   jswrap_io_shiftOutData *d = (jswrap_io_shiftOutData*)data;
-  int n;
-  for (n=d->cnt-1; n>=0; n--) {
+  int n, i;
+  for (i=0;i<d->repeat;i++) {
+    for (n=d->cnt-1; n>=0; n--) {
+  #ifdef STM32
+      if (d->addrs[n])
+        *d->addrs[n] = val&1;
+  #else
+      if (jshIsPinValid(d->pins[n]))
+          jshPinSetValue(d->pins[n], val&1);
+  #endif
+      val>>=1;
+    }
 #ifdef STM32
-    if (d->addrs[n])
-      *d->addrs[n] = val&1;
+    if (d->clkAddr) {
+        *d->clkAddr = d->clkPol;
+        *d->clkAddr = !d->clkPol;
+    }
 #else
-    if (jshIsPinValid(d->pins[n]))
-        jshPinSetValue(d->pins[n], val&1);
+    if (jshIsPinValid(d->clk)) {
+      jshPinSetValue(d->clk, d->clkPol);
+      jshPinSetValue(d->clk, !d->clkPol);
+    }
 #endif
-    val>>=1;
   }
-#ifdef STM32
-  if (d->clkAddr) {
-      *d->clkAddr = d->clkPol;
-      *d->clkAddr = !d->clkPol;
-  }
-#else
-  if (jshIsPinValid(d->clk)) {
-    jshPinSetValue(d->clk, d->clkPol);
-    jshPinSetValue(d->clk, !d->clkPol);
-  }
-#endif
 }
 
 /*JSON{
@@ -463,13 +468,17 @@ void jswrap_io_shiftOutCallback(int val, void *data) {
     ["data","JsVar","The data to shift out"]
   ]
 }
-Shift an array of data out using the pins supplied, for example:
+Shift an array of data out using the pins supplied *least significant bit first*,
+for example:
 
 ```
-// shift out to single clk+data (like software SPI)
-shiftOut(A0, { clk : A1 }, [1,2,3,4]);
+// shift out to single clk+data
+shiftOut(A0, { clk : A1 }, [1,0,1,0]);
 
-// shift out to multiple data pins
+// shift out a whole byte (like software SPI)
+shiftOut(A0, { clk : A1, repeat: 8 }, [1,2,3,4]);
+
+// shift out via 4 data pins
 shiftOut([A3,A2,A1,A0], { clk : A4 }, [1,2,3,4]);
 ```
 
@@ -479,18 +488,35 @@ shiftOut([A3,A2,A1,A0], { clk : A4 }, [1,2,3,4]);
 {
   clk : pin, // a pin to use as the clock (undefined = no pin)
   clkPol : bool, // clock polarity - default is 0 (so 1 normally, pulsing to 0 to clock data in)
+  repeat : int, // number of clocks per array item
 }
 ```
 
 Each item in the `data` array will be output to the pins, with the first
 pin in the array being the MSB and the last the LSB, then the clock will be
 pulsed in the polarity given.
+
+`repeat` is the amount of times shift data out for each array item. For instance
+we may want to shift 8 bits out through 2 pins - in which case we need to set
+repeat to 4.
  */
 void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
   jswrap_io_shiftOutData d;
   d.cnt = 0;
   d.clk = PIN_UNDEFINED;
   d.clkPol = 0;
+  d.repeat = 1;
+
+  jsvConfigObject configs[] = {
+      {"clk", JSV_PIN, &d.clk},
+      {"clkPol", JSV_BOOLEAN, &d.clkPol},
+      {"repeat", JSV_INTEGER, &d.repeat}
+  };
+  if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    return; // do nothing - error already displayed by jsvReadConfigObject
+  }
+  d.clkPol = d.clkPol?1:0;
+  if (d.repeat<1) d.repeat=1;
 
   if (jsvIsArray(pins)) {
     JsvObjectIterator it;
@@ -508,14 +534,6 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
     jsvObjectIteratorFree(&it);
   } else {
     d.pins[d.cnt++] = jshGetPinFromVar(pins);
-  }
-
-  if (jsvIsObject(options)) {
-    d.clk = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "clk", 0));
-    d.clkPol = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "clkPol", 0));
-  } else if (!jsvIsUndefined(options)) {
-    jsExceptionHere(JSET_ERROR, "Expecting options to be a object or undefined, got %t", options);
-    return;
   }
 
   // Set pins as outputs

@@ -40,7 +40,7 @@
 #include <wiringPi.h>
 
  #ifdef SYSFS_GPIO_DIR
-  #error USE_WIRINGPI and SYSFS_GPIO_DIR can't coexist
+  #error USE_WIRINGPI and SYSFS_GPIO_DIR can not coexist
  #endif
 #endif
 

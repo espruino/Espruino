@@ -17,12 +17,16 @@
 
 #include "jsutils.h"
 #include "jsvar.h"
-#include "../network.h"
+#include "network.h"
 
 typedef enum {
-  ST_NORMAL, // standard socket client/server
-  ST_HTTP, // HTTP client/server
+  ST_NORMAL = 0, // standard socket client/server
+  ST_HTTP   = 1, // HTTP client/server
   // WebSockets?
+  // UDP?
+
+  ST_TYPE_MASK = 3,
+  ST_TLS    = 4, // do the given connection with TLS
 } SocketType;
 
 
