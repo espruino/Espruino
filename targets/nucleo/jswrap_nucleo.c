@@ -18,7 +18,8 @@
 
 /*JSON{
   "type" : "class",
-  "class" : "Nucleo"
+  "class" : "Nucleo",
+  "memberOf" : "global"
 }
 This is the built-in class for the Arduino-style pin namings on ST Nucleo boards
 */

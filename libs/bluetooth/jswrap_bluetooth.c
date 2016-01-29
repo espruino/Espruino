@@ -412,7 +412,7 @@ static void advertising_init(void)
   "name" : "Bluetooth",
   "memberOf" : "global",
   "instanceof" : "Serial",
-  "#ifdef" : "BLUETOOTH"
+  "ifdef" : "BLUETOOTH"
 }
 The USB Serial port
  */

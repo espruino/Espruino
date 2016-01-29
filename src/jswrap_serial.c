@@ -84,7 +84,7 @@ May return undefined if no device can be found.
   "name" : "USB",
   "memberOf" : "global",
   "instanceof" : "Serial",
-  "#ifdef" : "USB"
+  "ifdef" : "USB"
 }
 The USB Serial port
  */

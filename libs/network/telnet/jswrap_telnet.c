@@ -106,7 +106,6 @@ void jswrap_telnet_setOptions(JsVar *jsOptions) {
 
 /*JSON{
   "type"     : "init",
-  "class"    : "Telnet",
   "generate" : "jswrap_telnet_init"
 }
 */
@@ -116,7 +115,6 @@ void jswrap_telnet_init(void) {
 
 /*JSON{
   "type"     : "kill",
-  "class"    : "Telnet",
   "generate" : "jswrap_telnet_kill"
 }
 */
@@ -126,7 +124,6 @@ void jswrap_telnet_kill(void) {
 
 /*JSON{
   "type"     : "idle",
-  "class"    : "Telnet",
   "generate" : "jswrap_telnet_idle"
 }
 */
