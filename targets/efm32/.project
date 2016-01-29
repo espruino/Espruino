@@ -464,12 +464,22 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>Gecko_SDK/emdrv/gpiointerrupt</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
 			<name>Gecko_SDK/emdrv/nvm</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
 			<name>Gecko_SDK/emdrv/rtcdrv</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/ustimer</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
@@ -589,6 +599,16 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>Gecko_SDK/emdrv/gpiointerrupt/inc</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/gpiointerrupt/src</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
 			<name>Gecko_SDK/emdrv/nvm/inc</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
@@ -605,6 +625,16 @@
 		</link>
 		<link>
 			<name>Gecko_SDK/emdrv/rtcdrv/src</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/ustimer/inc</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/ustimer/src</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
@@ -1084,6 +1114,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/common/inc/ecode.h</locationURI>
 		</link>
 		<link>
+			<name>Gecko_SDK/emdrv/gpiointerrupt/inc/gpiointerrupt.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/gpiointerrupt/inc/gpiointerrupt.h</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/gpiointerrupt/src/gpiointerrupt.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/gpiointerrupt/src/gpiointerrupt.c</locationURI>
+		</link>
+		<link>
 			<name>Gecko_SDK/emdrv/nvm/inc/nvm.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/nvm/inc/nvm.h</locationURI>
@@ -1112,6 +1152,16 @@
 			<name>Gecko_SDK/emdrv/rtcdrv/src/rtcdriver.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/rtcdrv/src/rtcdriver.c</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/ustimer/inc/ustimer.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/ustimer/inc/ustimer.h</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/ustimer/src/ustimer.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/ustimer/src/ustimer.c</locationURI>
 		</link>
 		<link>
 			<name>Gecko_SDK/Device/SiliconLabs/EFM32GG/Include/efm32gg230f1024.h</name>

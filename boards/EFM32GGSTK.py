@@ -7,6 +7,10 @@ info = {
   'link': [ "https://www.silabs.com/products/mcu/lowpower/Pages/efm32gg-stk3700.aspx" ],
   'variables': 1720,
   'binary_name': 'espruino_%v_efm32ggstk.bin',
+  'default_console' : "EV_SERIAL2",
+  'default_console_tx' : "D0",
+  'default_console_rx' : "D1",
+  'default_console_baudrate' : "9600",
 };
 chip = {
   'part': "EFM32GG990F1024",
