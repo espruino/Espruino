@@ -21,6 +21,9 @@
 /// Do a binary search of the symbol table list
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name);
 
+// For instances of builtins like Pin, String, etc, search in X.prototype
+JsVar *jswFindInObjectProto(JsVar *parent, const char *name);
+
 /** If 'name' is something that belongs to an internal function, execute it.  */
 JsVar *jswFindBuiltIn(JsVar *parent, const char *name);
 

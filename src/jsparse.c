@@ -169,63 +169,6 @@ JsVar *jspeiFindNameOnTop(JsVar *childName, bool createIfNotFound) {
 }
 
 
-
-/** Here we assume that we have already looked in the parent itself -
- * and are now going down looking at the stuff it inherited */
-JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
-  if (jsvIsObject(parent)) {
-    // If an object, look for an 'inherits' var
-    JsVar *inheritsFrom = jsvObjectGetChild(parent, JSPARSE_INHERITS_VAR, 0);
-
-    // if there's no inheritsFrom, just default to 'Object.prototype'
-    if (!inheritsFrom) {
-      JsVar *obj = jsvObjectGetChild(execInfo.root, "Object", 0);
-      if (obj) {
-        inheritsFrom = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
-        jsvUnLock(obj);
-      }
-    }
-
-    if (inheritsFrom && inheritsFrom!=parent) {
-      // we have what it inherits from (this is ACTUALLY the prototype var)
-      // https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/proto
-      JsVar *child = jsvFindChildFromString(inheritsFrom, name, false);
-      if (!child)
-        child = jspeiFindChildFromStringInParents(inheritsFrom, name);
-      jsvUnLock(inheritsFrom);
-      if (child) return child;
-    } else
-      jsvUnLock(inheritsFrom);
-  } else { // Not actually an object - but might be an array/string/etc
-    const char *objectName = jswGetBasicObjectName(parent);
-    while (objectName) {
-      JsVar *objName = jsvFindChildFromString(execInfo.root, objectName, false);
-      if (objName) {
-        JsVar *result = 0;
-        JsVar *obj = jsvSkipNameAndUnLock(objName);
-        // could be something the user has made - eg. 'Array=1'
-        if (jsvHasChildren(obj)) {
-          // We have found an object with this name - search for the prototype var
-          JsVar *proto = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
-          if (proto) {
-            result = jsvFindChildFromString(proto, name, false);
-            jsvUnLock(proto);
-          }
-        }
-        jsvUnLock(obj);
-        if (result) return result;
-      }
-      /* We haven't found anything in the actual object, we should check the 'Object' itself
-        eg, we tried 'String', so now we should try 'Object'. Built-in types don't have room for
-        a prototype field, so we hard-code it */
-      objectName = jswGetBasicObjectPrototypeName(objectName);
-    }
-  }
-
-  // no luck!
-  return 0;
-}
-
 JsVar *jspeiGetScopesAsVar() {
   if (execInfo.scopeCount==0)
     return 0;
@@ -862,56 +805,92 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
   } else return 0;
 }
 
-/// Used by jspGetNamedField / jspGetVarNamedField
-static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* name, bool returnName) {
-  JsVar *objectVar = jsvSkipName(object);
-  // Now look in prototypes
-  JsVar * child = jspeiFindChildFromStringInParents(objectVar, name);
+JsVar *jspGetNamedFieldInObject(JsVar *objectName, JsVar *object, const char *name, bool returnName) {
+  JsVar *child = 0;
+  // check for `name` in `object` -> return if exists
+  if (jsvHasChildren(object)) {
+    child = jsvFindChildFromString(object, name, false);
+    if (child) return returnName ? child : jsvSkipNameAndUnLock(child);
+  }
+  // check for `name` in the builtin version of `object` -> return if exists
+  child = jswFindBuiltIn(object, name);
+  // If we have something like a String, check String.prototype
+  if (!jsvIsObject(object)) {
+    // NOTE: don't want NativeObject here (if so, we'll have got it with jswFindBuiltIn if it was there)
+    // We also don't want 'Object' as we want to be sure to check the prototype chain FIRST, or
+    // you'd never be able to override something like `Object.toString`
 
-  /* Check for builtins via separate function
-   * This way we save on RAM for built-ins because everything comes out of program code */
-  if (!child) {
-    child = jswFindBuiltIn(objectVar, name);
+    // For speed, check built-in functions on objects first (not standards compliant)
+    child = jswFindInObjectProto(object, name);
+    // don't check returnName, because we don't want anyone trying to alter this
+    if (child) return child;
+
+    // Also check if someone is specifically asking for '__proto__
+    if (strcmp(name, JSPARSE_INHERITS_VAR)==0) {
+      const char *objName = jswGetBasicObjectName(object);
+      // looking for __proto__
+      if (objName) return jspGetNamedFieldInObject(execInfo.root, execInfo.root, objName, returnName);
+    }
   }
 
-  /* We didn't get here if we found a child in the object itself, so
-   * if we're here then we probably have the wrong name - so for example
-   * with `a.b = c;` could end up setting `a.prototype.b` (bug #360)
-   *
-   * Also we might have got a built-in, which wouldn't have a name on it
-   * anyway - so in both cases, strip the name if it is there, and create
-   * a new name.
-   */
-  if (child && returnName) {
-    // Get rid of existing name
-    child = jsvSkipNameAndUnLock(child);
+  if (child) {
+    if (!returnName) return child;
     // create a new name
     JsVar *nameVar = jsvNewFromString(name);
-    JsVar *newChild = jsvCreateNewChild(object, nameVar, child);
+    JsVar *newChild = jsvCreateNewChild(objectName, nameVar, child);
     jsvUnLock2(nameVar, child);
-    child = newChild;
+    return newChild;
   }
+  return 0;
+}
 
-  // If not found and is the prototype, create it
-  if (!child) {
-    if (jsvIsFunction(objectVar) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
-      // prototype is supposed to be an object
-      JsVar *proto = jsvNewWithFlags(JSV_OBJECT);
-      // make sure it has a 'constructor' variable that points to the object it was part of
-      jsvObjectSetChild(proto, JSPARSE_CONSTRUCTOR_VAR, objectVar);
-      child = jsvAddNamedChild(objectVar, proto, JSPARSE_PROTOTYPE_VAR);
-      jspEnsureIsPrototype(objectVar, child);
-      jsvUnLock(proto);
-    } else if (strcmp(name, JSPARSE_INHERITS_VAR)==0) {
+JsVar *jspGetNamedFieldInProtoChain(JsVar *objectName, JsVar *object, const char *name, bool returnName) {
+/* What we do here is:
+  *  * check for `name` in `object` -> return if exists
+  *  * check for `name` in the builtin version of `object` -> return if exists
+  *  * check for `"__proto__"` in the `object` -> recurse and return  if exists
+  *  * check for `"__proto__"` in the builtin version of `object` -> recurse and return  if exists
+  *
+  * If 'returnName', it's important that the whole chain of objects
+  * is returned as names - so something is assigned, the whole thing
+  * can be saved into memory.
+  */
+
+  JsVar *child = 0;
+  // check for `name` in `object` -> return if exists
+  // check for `name` in the builtin version of `object` -> return if exists
+  child = jspGetNamedFieldInObject(objectName, object, name, returnName);
+  if (child) return child;
+  // check for `"__proto__"` in the `object` -> recurse and return  if exists
+  // check for `"__proto__"` in the builtin version of `object` -> recurse and return  if exists
+  // TODO: shortcut if not function/object?
+  JsVar *protoName = jspGetNamedFieldInObject(objectName, object, JSPARSE_INHERITS_VAR, true);
+  if (!protoName && !jsvIsNativeObject(object)) {
+    // search for the built-in prototype,
+    const char *objName = jswGetBasicObjectName(object);
+    if (objName) {
+      JsVar *obj = jspGetNamedFieldInObject(execInfo.root, execInfo.root, objName, false);
+      if (obj) {
+        protoName = jspGetNamedFieldInObject(obj, obj, JSPARSE_PROTOTYPE_VAR, false);
+        jsvUnLock(obj);
+      }
+    }
+  }
+  if (protoName) {
+    JsVar *proto = jsvSkipName(protoName);
+    child = jspGetNamedFieldInProtoChain(protoName, proto, name, returnName);
+    jsvUnLock2(proto, protoName);
+    return child;
+  }
+  /*
+   * if (strcmp(name, JSPARSE_INHERITS_VAR)==0) {
       const char *objName = jswGetBasicObjectName(objectVar);
       if (objName) {
         child = jspNewPrototype(objName);
       }
     }
-  }
-  jsvUnLock(objectVar);
-
-  return child;
+   */
+  return 0;
 }
 
 /** Get the named function/variable on the object - whether it's built in, or predefined.
@@ -921,25 +900,21 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
  * NOTE: ArrayBuffer/Strings are not handled here. We assume that if we're
  * passing a char* rather than a JsVar it's because we're looking up via
  * a symbol rather than a variable. To handle these use jspGetVarNamedField  */
-JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName) {
-  JsVar *objectVar = jsvSkipName(object);
+JsVar *jspGetNamedField(JsVar *objectName, const char* name, bool returnName) {
+  JsVar *object = jsvSkipName(objectName);
+  JsVar *child = jspGetNamedFieldInProtoChain(objectName, object, name, returnName);
 
-  JsVar *child = 0;
-  // if we're an object (or pretending to be one)
-  if (jsvHasChildren(objectVar))
-    child = jsvFindChildFromString(objectVar, name, false);
-
-  if (!child) {
-    child = jspGetNamedFieldInParents(object, name, returnName);
-
-    // If not found and is the prototype, create it
-    if (!child && jsvIsFunction(objectVar) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
-      JsVar *value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
-      child = jsvAddNamedChild(objectVar, value, JSPARSE_PROTOTYPE_VAR);
-      jsvUnLock(value);
-    }
+  // If not found and is the prototype, create it
+  if (!child && jsvIsFunction(object) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
+    JsVar *proto = jsvNewWithFlags(JSV_OBJECT);
+    // make sure it has a 'constructor' variable that points to the object it was part of
+    jsvObjectSetChild(proto, JSPARSE_CONSTRUCTOR_VAR, object);
+    child = jsvAddNamedChild(object, proto, JSPARSE_PROTOTYPE_VAR);
+    jspEnsureIsPrototype(object, child);
+    jsvUnLock(proto);
   }
-  jsvUnLock(objectVar);
+  jsvUnLock(object);
+  // FIXME below
   if (returnName) return child;
   else return jsvSkipNameAndUnLock(child);
 }
@@ -978,6 +953,7 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
   if (jsvHasChildren(object))
     child = jsvFindChildFromVar(object, nameVar, false);
 
+
   if (!child) {
     if (jsvIsArrayBuffer(object) && jsvIsInt(nameVar)) {
       // for array buffers, we actually create a NAME, and hand that back - then when we assign (or use SkipName) we pull out the correct data
@@ -996,14 +972,8 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
       char name[JSLEX_MAX_TOKEN_LENGTH];
       jsvGetString(nameVar, name, JSLEX_MAX_TOKEN_LENGTH);
       // try and find it in parents
-      child = jspGetNamedFieldInParents(object, name, returnName);
-
-      // If not found and is the prototype, create it
-      if (!child && jsvIsFunction(object) && jsvIsStringEqual(nameVar, JSPARSE_PROTOTYPE_VAR)) {
-        JsVar *value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
-        child = jsvAddNamedChild(object, value, JSPARSE_PROTOTYPE_VAR);
-        jsvUnLock(value);
-      }
+      // TODO: jspGetNamedField will do a jsvFindChildFromVar again
+      child = jspGetNamedField(object, name, returnName);
     }
   }
 

@@ -352,42 +352,9 @@ for include in includes:
   codeOut('#include "'+include+'"');
 codeOut('');
 codeOut('// -----------------------------------------------------------------------------------------');
-codeOut("""
-const JswSymList jswSymbolTables[]; // forward decl
-
-JsVar *jswCreateFromSymbolTable(int tableIndex) {
-  // TODO: first see if one is actually defined
-  JsVar *v = jsvNewWithFlags(JSV_OBJECT | JSV_NATIVE);
-  if (v) v->varData.nativeObject = &jswSymbolTables[tableIndex];
-  return v;
-}
-
-
-JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
-  int searchMin = 0;
-  int searchMax = symbolsPtr->symbolCount-1;
-  while (searchMin <= searchMax) {
-    int idx = (searchMin+searchMax) >> 1;
-    const JswSymPtr *sym = &symbolsPtr->symbols[idx];
-    int cmp = strcmp(name, &symbolsPtr->symbolChars[sym->strOffset]);
-    if (cmp==0) {
-      if ((sym->functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
-        return jsnCallFunction(sym->functionPtr, sym->functionSpec, parent, 0, 0);
-      return jsvNewNativeFunction(sym->functionPtr, sym->functionSpec);
-    } else {
-      if (cmp<0) {
-        // searchMin is the same
-        searchMax = idx-1;
-      } else { 
-        searchMin = idx+1;
-        // searchMax is the same      
-      }
-    }
-  }
-  return 0;
-}
-""");
-
+codeOut('');
+codeOut('JsVar *jswCreateFromSymbolTable(int tableIndex);');
+codeOut('');
 codeOut('// -----------------------------------------------------------------------------------------');
 codeOut('// --------------------------------------------------------------- SYMBOL TABLE INDICES    ');
 codeOut('// -----------------------------------------------------------------------------------------');
@@ -396,6 +363,7 @@ codeOut('');
 idx = 0
 for name in symbolTables:
   symbolTables[name]["indexName"] = "jswSymbolIndex_"+name.replace(".","_");
+  symbolTables[name]["index"] = str(idx);
   codeOut("static const unsigned char "+symbolTables[name]["indexName"]+" = "+str(idx)+";");
   idx = idx + 1
 
@@ -452,8 +420,51 @@ codeOut('');
 codeOut('const JswSymList jswSymbolTables[] = {');
 for name in symbolTables:
   tab = symbolTables[name]
-  codeOut("  {"+", ".join([tab["symbolListName"], tab["symbolTableCount"], tab["symbolTableChars"], tab["constructorPtr"], tab["constructorSpec"]])+"}, // "+name);
+  codeOut("  {"+", ".join([tab["symbolListName"], tab["symbolTableCount"], tab["symbolTableChars"], tab["constructorPtr"], tab["constructorSpec"]])+"}, // "+tab["indexName"]+", "+name);
 codeOut('};');
+codeOut('');
+codeOut('// -----------------------------------------------------------------------------------------');
+codeOut('// ------------------------------------------------------------------ symbols for debugging ');
+codeOut('');
+for name in symbolTables:
+  tab = symbolTables[name]
+  codeOut("  const JswSymList *jswSymbolTable_"+name.replace(".","_")+" = &jswSymbolTables["+tab["index"]+"]; // "+tab["indexName"]);
+codeOut('');
+codeOut('// -----------------------------------------------------------------------------------------');
+codeOut('// -----------------------------------------------------------------------------------------');
+
+codeOut("""
+JsVar *jswCreateFromSymbolTable(int tableIndex) {
+  JsVar *v = jsvNewWithFlags(JSV_OBJECT | JSV_NATIVE);
+  if (v) v->varData.nativeObject = &jswSymbolTables[tableIndex];
+  return v;
+}
+
+
+JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
+  int searchMin = 0;
+  int searchMax = symbolsPtr->symbolCount-1;
+  while (searchMin <= searchMax) {
+    int idx = (searchMin+searchMax) >> 1;
+    const JswSymPtr *sym = &symbolsPtr->symbols[idx];
+    int cmp = strcmp(name, &symbolsPtr->symbolChars[sym->strOffset]);
+    if (cmp==0) {
+      if ((sym->functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
+        return jsnCallFunction(sym->functionPtr, sym->functionSpec, parent, 0, 0);
+      return jsvNewNativeFunction(sym->functionPtr, sym->functionSpec);
+    } else {
+      if (cmp<0) {
+        // searchMin is the same
+        searchMax = idx-1;
+      } else { 
+        searchMin = idx+1;
+        // searchMax is the same      
+      }
+    }
+  }
+  return 0;
+}
+""");
 
 codeOut('')
 codeOut('')
@@ -466,40 +477,54 @@ codeOut('  if (jsvIsNativeObject(var)) {');
 codeOut('    assert(var->varData.nativeObject);');
 codeOut('    return (int)(var->varData.nativeObject-jswSymbolTables);'); # fixme - why not store int??
 codeOut('  }');
-codeOut('  // Instantiated objects, so we should point to the prototypes');
+codeOut("  return -1;")
+codeOut('}')
+
+codeOut('int jswGetSymbolIndexForObjectProto(JsVar *var) {') 
+codeOut('  // Instantiated objects, so we should point to the prototypes of the object itself');
 for className in objectChecks.keys():
   if not className=="global": # we did 'global' above
     codeOut("  if ("+objectChecks[className]+") return jswSymbolIndex_"+className+"_prototype;")
 codeOut("  return -1;")
 codeOut('}')
 
-codeOut('');
-codeOut('');
-codeOut('const JswSymList *jswGetSymbolListForObject(JsVar *var) {') 
-codeOut('  int symIdx = jswGetSymbolIndexForObject(var);');
-codeOut('  return (symIdx>=0) ? &jswSymbolTables[symIdx] : 0;');
-codeOut('}');
-codeOut('');
-codeOut('');
+codeOut("""
+
+
+const JswSymList *jswGetSymbolListForObject(JsVar *var) {
+  int symIdx = jswGetSymbolIndexForObject(var);
+  return (symIdx>=0) ? &jswSymbolTables[symIdx] : 0;
+}
+
+
+const JswSymList *jswGetSymbolListForObjectProto(JsVar *var) {
+  int symIdx = jswGetSymbolIndexForObjectProto(var);
+  return (symIdx>=0) ? &jswSymbolTables[symIdx] : 0;
+}
+
+// For instances of builtins like Pin, String, etc, search in X.prototype
+JsVar *jswFindInObjectProto(JsVar *parent, const char *name) { 
+  int symIdx = jswGetSymbolIndexForObjectProto(parent);
+  if (symIdx>=0) return jswBinarySearch(&jswSymbolTables[symIdx], parent, name);
+  return 0;
+}
+
+JsVar *jswFindBuiltIn(JsVar *parent, const char *name) {
+  if (jsvIsRoot(parent)) {
+    Pin pin = jshGetPinFromString(name);
+    if (pin != PIN_UNDEFINED) {
+      return jsvNewFromPin(pin);
+    }
+  }
+  int symIdx = jswGetSymbolIndexForObject(parent);
+  if (symIdx>=0) return jswBinarySearch(&jswSymbolTables[symIdx], parent, name);
+  return 0;
+}
+
+""");
 
 
 
-codeOut('JsVar *jswFindBuiltIn(JsVar *parent, const char *name) {');
-codeOut('  if (jsvIsRoot(parent)) {');
-codeOut('    Pin pin = jshGetPinFromString(name);');
-codeOut('    if (pin != PIN_UNDEFINED) {');
-codeOut('      return jsvNewFromPin(pin);');
-codeOut('    }');
-codeOut('  }');
-codeOut('  int symIdx = jswGetSymbolIndexForObject(parent);');
-codeOut('  if (symIdx>=0) return jswBinarySearch(&jswSymbolTables[symIdx], parent, name);');
-codeOut('  return 0;')
-codeOut('}')
-
-
-
-codeOut('')
-codeOut('')
 
 builtinChecks = []
 for jsondata in jsondatas:
