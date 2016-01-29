@@ -1346,8 +1346,10 @@ ifeq ($(FAMILY), EFM32GG)
   targets/efm32/jshardware.c
 
   INCLUDE += -I$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Include
-  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/nvm/inc
+  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/gpiointerrupt/inc
+#  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/ustimer/inc
   INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/rtcdrv/inc
+  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/nvm/inc
   INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/common/inc
   INCLUDE += -I$(GECKO_SDK_PATH)/emlib/inc
 
@@ -1364,8 +1366,10 @@ ifeq ($(FAMILY), EFM32GG)
 	$(GECKO_SDK_PATH)/emlib/src/em_system.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_timer.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_usart.c \
+	$(GECKO_SDK_PATH)/emdrv/gpiointerrupt/src/gpiointerrupt.c \
 	$(GECKO_SDK_PATH)/emdrv/rtcdrv/src/rtcdriver.c \
 	$(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c
+#	$(GECKO_SDK_PATH)/emdrv/ustimer/src/ustimer.c
 
 	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm.c \
 	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c \
