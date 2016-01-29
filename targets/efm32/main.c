@@ -24,8 +24,11 @@ int main() {
   jshInit();
   
   jsvInit();
-  
-  jsiInit(true); // load from flash by default
+
+  bool buttonState = false;
+  buttonState = jshPinInput(BTN1_PININDEX) == BTN1_ONSTATE;
+
+  jsiInit(!buttonState); // holding down USER button skips autoload
   
   while (1) 
   {
