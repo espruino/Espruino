@@ -108,17 +108,52 @@ void TIMER0_IRQHandler(void) {
   }
 }
 
+//---------------------- GPIO----------------------------/
+// see jshPinWatch/jshGetWatchedPinState
+Pin watchedPins[16];
 
+IOEventFlags gpioEvents[] =  {
+  // device type
+  EV_NONE,
+  EV_EXTI0,  // External Interrupt 0
+  EV_EXTI1,  // External Interrupt 1
+  EV_EXTI2,  // External Interrupt 2
+  EV_EXTI3,  // External Interrupt 3
+  EV_EXTI4,  // External Interrupt 4
+  EV_EXTI5,  // External Interrupt 5
+  EV_EXTI6,  // External Interrupt 6
+  EV_EXTI7,  // External Interrupt 7
+  EV_EXTI8,  // External Interrupt 8
+  EV_EXTI9,  // External Interrupt 9
+  EV_EXTI10, // External Interrupt 10
+  EV_EXTI11, // External Interrupt 11
+  EV_EXTI12, // External Interrupt 12
+  EV_EXTI13, // External Interrupt 13
+  EV_EXTI14 // External Interrupt 14
+};
 
-//---------------------- UART for console ----------------------------/
-static USART_TypeDef           * usart0   = USART0;
-static USART_TypeDef           * usart1   = USART1;
-static USART_TypeDef           * usart2   = USART1;
-static USART_TypeDef           * uart0    = UART0;
-static USART_TypeDef           * uart1    = UART1;
+GPIO_Port_TypeDef efm32PortFromPin(uint32_t pin){
+  return (GPIO_Port_TypeDef) (pinInfo[pin].port - JSH_PORTA);
+}
+
+static ALWAYS_INLINE uint8_t efm32EventFromPin(Pin pin) {
+  pin = pinInfo[pin].pin;
+  return (uint8_t)(EV_EXTI0+(pin-JSH_PIN0));
+}
+
+ALWAYS_INLINE void efm32FireEvent(uint32_t gpioPin) {
+  jshPushIOWatchEvent((IOEventFlags) gpioPin + EV_EXTI0);
+}
+
+//---------------------- serial ports ----------------------------/
+static USART_TypeDef           * usart0   = USART0; //EV_SERIAL1
+static USART_TypeDef           * usart1   = USART1; //EV_SERIAL2
+static USART_TypeDef           * usart2   = USART1; //EV_SERIAL3
+static USART_TypeDef           * uart0    = UART0;  //EV_SERIAL4
+static USART_TypeDef           * uart1    = UART1;  //EV_SERIAL5
 
 /**************************************************************************//**
- * @brief UART1 RX IRQ Handler for console
+ * @brief USART1 RX IRQ Handler
  *****************************************************************************/
 void USART1_RX_IRQHandler(void)
 {
@@ -134,7 +169,7 @@ void USART1_RX_IRQHandler(void)
 }
 
 /**************************************************************************//**
- * @brief UART1 TX IRQ Handler for console
+ * @brief USART1 TX IRQ Handler
  *****************************************************************************/
 void USART1_TX_IRQHandler(void)
 {
@@ -149,6 +184,40 @@ void USART1_TX_IRQHandler(void)
       USART_IntDisable(usart1, UART_IEN_TXBL);
   }
 }
+
+/**************************************************************************//**
+ * @brief UART0 RX IRQ Handler for console
+ *****************************************************************************/
+void UART0_RX_IRQHandler(void)
+{
+  /* Check for RX data valid interrupt */
+  if (uart0->IF & UART_IF_RXDATAV)
+  {
+    /* Clear the USART Receive interrupt */
+    USART_IntClear(uart0, UART_IF_RXDATAV);
+
+    /* Read one byte from the receive data register */
+    jshPushIOCharEvent(EV_SERIAL4, (char)USART_Rx(uart0));
+  }
+}
+
+/**************************************************************************//**
+ * @brief UART0 TX IRQ Handler for console
+ *****************************************************************************/
+void UART0_TX_IRQHandler(void)
+{
+  /* Check TX buffer level status */
+  if (uart0->IF & UART_IF_TXBL)
+  {
+    /* If we have other data to send, send it */
+    int c = jshGetCharToTransmit(EV_SERIAL4);
+    if (c >= 0) {
+      USART_Tx(uart0, (uint8_t)c);
+    } else
+      USART_IntDisable(uart0, UART_IEN_TXBL);
+  }
+}
+
 
 void jshInit() {
   
@@ -179,23 +248,30 @@ void jshInit() {
   inf.stopbits = DEFAULT_STOPBITS;
   inf.xOnXOff = false;
   jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf); // Initialize UART for communication with Espruino/terminal.
-
+  GPIO_PinModeSet(gpioPortF, 7, gpioModePushPull, 1); //Enable output to board-controller
 
   //---------------------- GPIO ----------------------------/
+  uint8_t i;
+  for (i=0;i<16;i++)
+    watchedPins[i] = PIN_UNDEFINED;
+
+  // Initialize GPIO interrupt driver
   GPIOINT_Init();
 
+  // Initialise button
+  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
 
   //---------------------- Utility TIMER ----------------------------/
   TIMER_Init_TypeDef timerInit     = TIMER_INIT_DEFAULT;
   TIMER_InitCC_TypeDef timerCCInit = TIMER_INITCC_DEFAULT;
-  uint32_t coreClockScale;
 
   timerCCInit.mode = timerCCModeCompare;
   CMU_ClockEnable( cmuClock_TIMER0, true );
   TIMER_TopSet(TIMER0, 0xFFFF );
   TIMER_InitCC(TIMER0, 0, &timerCCInit);
 
-  /* Run timer at slowest frequency that still gives less than 1 us per tick */
+  // Run timer at slowest frequency that still gives less than 1 us per tick
   timerInit.prescale = (TIMER_Prescale_TypeDef)_TIMER_CTRL_PRESC_DIV32;
   TIMER_Init(TIMER0, &timerInit );
 
@@ -396,24 +472,25 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
-  GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
-  pin = (pin & 0xF); //4 LSB is pin;
-  if(value)
-    GPIO_PinOutSet(port, pin);
-  else
-	GPIO_PinOutClear(port, pin);
+  if(value) {
+    GPIO_PinOutSet(efm32PortFromPin(pin),
+                   pinInfo[pin].pin);
+  }
+  else {
+    GPIO_PinOutClear(efm32PortFromPin(pin),
+                     pinInfo[pin].pin);
+  }
 }
 
 bool jshPinGetValue(Pin pin) {
-  GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
-  pin = (pin & 0xF); //4 LSB is pin;
-  return GPIO_PinInGet(port,pin);
+  return GPIO_PinInGet(efm32PortFromPin(pin),
+                       pinInfo[pin].pin);
 }
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state) {
-  GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
-  pin = (pin & 0xF); //4 LSB is pin;
+  GPIO_Port_TypeDef port = efm32PortFromPin(pin);
+  pin = pinInfo[pin].pin;
   GPIO_Mode_TypeDef gpioMode = gpioModeDisabled; //This is also for analog pins
   uint32_t out = GPIO_PinOutGet(port, pin);
 
@@ -460,8 +537,8 @@ void jshPinSetState(Pin pin, JshPinState state) {
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
-  GPIO_Port_TypeDef port = (GPIO_Port_TypeDef) (pin >> 4); //16 pins in each Port
-  pin = (pin & 0xF); //4 LSB is pin;
+  GPIO_Port_TypeDef port = efm32PortFromPin(pin);
+  pin = pinInfo[pin].pin;
 
   GPIO_Mode_TypeDef gpioMode = gpioModeDisabled; // Also for analog pins
   JshPinState state = JSHPINSTATE_UNDEFINED;
@@ -540,7 +617,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 } // if freq<=0, the default is used
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
-  /* EFM32 TODO
   // ---- USE TIMER FOR PULSE
   if (!jshIsPinValid(pin)) {
        jsExceptionHere(JSET_ERROR, "Invalid pin!");
@@ -561,18 +637,48 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
     // Now set the end of the pulse to happen on a timer
     jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
   }
-  */
 }
 
-///< Can the given pin be watched? it may not be possible because of conflicts
+/// Can the given pin be watched? it may not be possible because of conflicts
 bool jshCanWatch(Pin pin) {
-  return false;
+  jsiConsolePrintf("\np: %d, w: %d", pin, watchedPins[pinInfo[pin].pin]);
+  if (jshIsPinValid(pin) && (pinInfo[pin].pin != 0)) { //Right now pin 0 cannot be watched because the callback IOEventFlags[0] = EV_NONE
+    return watchedPins[pinInfo[pin].pin]==PIN_UNDEFINED;
+  } else
+    return false;
 }
 
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
-  /* EFM32 TODO */
-  return JSH_NOTHING;
+  if (jshIsPinValid(pin)) {
+    if (shouldWatch && !jshGetPinStateIsManual(pin)) { //Note pin 0 does not work
+      // set as input
+      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+    }
+    watchedPins[pinInfo[pin].pin] = (Pin)(shouldWatch ? pin : PIN_UNDEFINED);
+
+    GPIOINT_CallbackRegister(pin, efm32FireEvent);
+    GPIO_IntConfig(efm32PortFromPin(pin), pinInfo[pin].pin,
+                   true, true, shouldWatch); // Set interrupt on rising/falling edge and (enable)
+
+    jsiConsolePrintf("p: %d, e: %d", pin, (EV_EXTI0+pinInfo[pin].pin));
+    return shouldWatch ? (EV_EXTI0+pinInfo[pin].pin-1)  : EV_NONE;
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  return EV_NONE;
 } // start watching pin - return the EXTI associated with it
+
+/** Check the pin associated with this EXTI - return true if it is a 1 */
+bool jshGetWatchedPinState(IOEventFlags device) {
+  uint32_t exti = IOEVENTFLAGS_GETTYPE(device) - EV_EXTI0;
+  Pin pin = watchedPins[exti];
+  if (jshIsPinValid(pin))
+    return GPIO_PinInGet(efm32PortFromPin(pin), pinInfo[pin].pin);
+  else
+    return false;
+}
+
+bool jshIsEventForPin(IOEvent *event, Pin pin) {
+  return IOEVENTFLAGS_GETTYPE(event->flags) == efm32EventFromPin(pin);
+}
 
 /// Given a Pin, return the current pin function associated with it
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
@@ -588,17 +694,6 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 /// Enable watchdog with a timeout in seconds
 void jshEnableWatchDog(JsVarFloat timeout) {
   /* EFM32 TODO */
-}
-
-/** Check the pin associated with this EXTI - return true if it is a 1 */
-bool jshGetWatchedPinState(IOEventFlags device) {
-  /* EFM32 TODO */
-  return false;
-}
-
-bool jshIsEventForPin(IOEvent *event, Pin pin) {
-  /* EFM32 TODO */
-  return false;
 }
 
 /** Is the given device initialised? */
@@ -641,6 +736,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
       uart = uart0;
       rxIRQ = UART0_RX_IRQn;
       txIRQ = UART0_TX_IRQn;
+      routeLoc = UART_ROUTE_LOCATION_LOC1;
       CMU_ClockEnable(cmuClock_UART0, true);
       break;
     case EV_SERIAL5:
@@ -651,10 +747,6 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
       break;
     default: assert(0);
   }
-  GPIO_Port_TypeDef rxPort = (GPIO_Port_TypeDef) (inf->pinRX >> 4); //16 pins in each Port
-  uint32_t rxPin = (inf->pinRX & 0xF);
-  GPIO_Port_TypeDef txPort = (GPIO_Port_TypeDef) (inf->pinTX >> 4); //16 pins in each Port
-  uint32_t txPin = (inf->pinTX & 0xF);
 
     /* Enable clock for HF peripherals */
   CMU_ClockEnable(cmuClock_HFPER, true);
@@ -662,8 +754,12 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
   /* Enable clock for GPIO module (required for pin configuration) */
   CMU_ClockEnable(cmuClock_GPIO, true);
   /* Configure GPIO pins */
-  GPIO_PinModeSet(rxPort, rxPin, gpioModeInput, 0);
-  GPIO_PinModeSet(txPort, txPin, gpioModePushPull, 1);
+  GPIO_PinModeSet(efm32PortFromPin(inf->pinRX),
+                  pinInfo[inf->pinRX].pin,
+                  gpioModeInput, 0);
+  GPIO_PinModeSet(efm32PortFromPin(inf->pinTX),
+                  pinInfo[inf->pinTX].pin,
+                  gpioModePushPull, 0);
 
   static USART_InitAsync_TypeDef uartInit = USART_INITASYNC_DEFAULT;
 
@@ -687,7 +783,6 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
 
   /* Enable UART */
   USART_Enable(uart, usartEnable);
-  GPIO_IntConfig(gpioPortD, 1, true, false, false);
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
@@ -840,23 +935,13 @@ bool jshSleep(JsSysTime timeUntilWake) {
     // deep sleep!
     uint32_t ms = (uint32_t)((timeUntilWake*1000)/jshGetTimeForSecond()); // ensure we round down and leave a little time
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
-
-      /* If we're going asleep for more than a few seconds,
-            * add one second to the sleep time so that when we
-            * wake up, we execute our timer immediately (even if it is a bit late)
-            * and don't waste power in shallow sleep. This is documented in setInterval */
-      if (ms>3) ms++; // sleep longer than we need
-
       RTCDRV_StartTimer(sleepTimer, rtcdrvTimerTypeOneshot,
                         ms, NULL, NULL);
     }
     // set flag in case there happens to be a SysTick
     hasSystemSlept = true;
     // -----------------------------------------------
-    //jsiConsolePrintf("\nR: %d, t: %d%d", ms, (uint32_t)(timeUntilWake>>32), (uint32_t)timeUntilWake);
-    GPIO_IntEnable(1<<1);  //Enable wake-up by console UART
     EMU_EnterEM2(true);
-    GPIO_IntDisable(1<<1); //Disable wake-up by console UART
     // -----------------------------------------------
     jsiSetSleep(JSI_SLEEP_AWAKE);
   } else

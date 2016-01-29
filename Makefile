@@ -1599,7 +1599,7 @@ ifdef NRF5X
  LDFLAGS += --specs=nano.specs -lc -lnosys
 else ifdef EFM32
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
- LDFLAGS += -Wl,--start-group -lgcc -lc -lnosys -Wl,--end-group
+ LDFLAGS += -Wl,--start-group -lgcc -lc -lnosys -Wl,--end-group -Xlinker -Map=$(PROJ_NAME).map
 else
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) 
 endif
@@ -1869,6 +1869,9 @@ else # embedded, so generate bin, etc ---------------------------
 $(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
 	@echo $($(quiet_)link)
 	@$(call link)
+ifdef EFM32
+	cp $(PROJ_NAME).elf $(PROJ_NAME).axf
+endif
 
 $(PROJ_NAME).lst : $(PROJ_NAME).elf
 	@echo $($(quiet_)obj_dump)
