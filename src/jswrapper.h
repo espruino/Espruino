@@ -38,9 +38,9 @@ const JswSymList *jswGetSymbolListForObjectProto(JsVar *parent);
 bool jswIsBuiltInObject(const char *name);
 
 /** If we get this in 'require', do we have the object for this
-  inside the interpreter already? If so, return the native function
-  pointer of the object's constructor */
-void *jswGetBuiltInLibrary(const char *name);
+  inside the interpreter already? If so, return a JsVar for the
+  native object representing it. */
+JsVar *jswGetBuiltInLibrary(const char *name);
 
 /** Given a variable, return the basic object name of it */
 const char *jswGetBasicObjectName(JsVar *var);
@@ -61,5 +61,19 @@ void jswInit();
 void jswKill();
 
 const JswSymList *jswSymbolTable_Object_prototype;
+
+
+
+/** Given the index of some item in the symbol table, create a 'Native Object'
+ * that represents it. This is a JS object that can contain fields, but
+ * it is also tagged so that it also contains all the items in the relevant
+ * symbol table of built-in items.
+ *
+ * Takes an argument of the form: jswSymbolIndex_XYZ
+ */
+JsVar *jswCreateFromSymbolTable(int symbolIndex);
+
+extern const unsigned char jswSymbolIndex_AES;
+extern const unsigned char jswSymbolIndex_HASH;
 
 #endif // JSWRAPPER_H

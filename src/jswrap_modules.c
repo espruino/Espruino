@@ -65,16 +65,13 @@ JsVar *jswrap_require(JsVar *moduleName) {
     return moduleExport;
   }
 
-  // Now check if it is built-in
+  /** Now check if it is built-in. If it is, we'll get a JsVar
+   * that's a Native Object (which references the symbol table) */
   char moduleNameBuf[32];
-  void *builtInLib = 0;
   if (jsvGetString(moduleName, moduleNameBuf, sizeof(moduleNameBuf))<sizeof(moduleNameBuf))
-    builtInLib = jswGetBuiltInLibrary(moduleNameBuf);
+    moduleExport = jswGetBuiltInLibrary(moduleNameBuf);
 
-  if (builtInLib) {
-    // create a 'fake' module that Espruino can use to map its built-in functions against
-    moduleExport = jsvNewNativeFunction(builtInLib, 0);
-  } else {
+  if (!moduleExport) {
     // Now try and load it
     JsVar *fileContents = 0;
     //if (jsvIsStringEqual(moduleName,"http")) {}

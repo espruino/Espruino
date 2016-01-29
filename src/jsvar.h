@@ -282,7 +282,7 @@ typedef struct {
  |--------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|
  | 0 - 3  | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
  | 4 - 5  | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
- | 6 - 7  | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
+ | 6 - 7  | prev    | data   | data     |  prev    | prev     |  -   | data    | -              | -           |
  | 8 - 9  | first   | data   | data     |  child   | child    |  -   |  -      | first          | stringPtr   |
  | 10-11  | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
  | 12-13  | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |

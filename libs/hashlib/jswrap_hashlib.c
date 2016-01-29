@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include <string.h>
+#include "jswrapper.h"
 #include "jswrap_hashlib.h"
 
 const JsHash256 ctx256;
@@ -67,7 +68,7 @@ For other boards you will have to make build your own firmware.
 JsVar *jswrap_hashlib_sha224(JsVar *message) {
   JsVar *hashobj = jswrap_hashlib_sha2(HASH_SHA224);
 
-  if (jsvIsString(message)) {
+  if (hashobj && jsvIsString(message)) {
     jswrap_hashlib_hash_update(hashobj, message);
   }
   return hashobj;
@@ -88,7 +89,7 @@ JsVar *jswrap_hashlib_sha224(JsVar *message) {
 JsVar *jswrap_hashlib_sha256(JsVar *message) {
   JsVar *hashobj = jswrap_hashlib_sha2(HASH_SHA256);
 
-  if (jsvIsString(message)) {
+  if (hashobj && jsvIsString(message)) {
     jswrap_hashlib_hash_update(hashobj, message);
   }
   return hashobj;
@@ -96,7 +97,7 @@ JsVar *jswrap_hashlib_sha256(JsVar *message) {
 
 
 JsVar *jswrap_hashlib_sha2(JsHashType hash_type) {
-  JsVar *hashobj = jspNewObject(0, "HASH");
+  JsVar *hashobj = jswCreateFromSymbolTable(jswSymbolIndex_HASH);
 
   if (!hashobj) {
     return 0; // out of memory

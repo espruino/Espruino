@@ -27,9 +27,6 @@ void jspSoftKill(); ///< used when recovering from or saving to flash
  * of the object with the given name. */
 bool jspIsConstructor(JsVar *constructor, const char *constructorName);
 
-/// Create a new built-in object that jswrapper can use to check for built-in functions
-JsVar *jspNewBuiltin(const char *name);
-
 /// Create a new Class of the given instance and return its prototype
 NO_INLINE JsVar *jspNewPrototype(const char *instanceOf);
 

@@ -2319,13 +2319,6 @@ NO_INLINE JsVar *jspeStatement() {
 }
 
 // -----------------------------------------------------------------------------
-/// Create a new built-in object that jswrapper can use to check for built-in functions
-JsVar *jspNewBuiltin(const char *instanceOf) {
-  JsVar *objFunc = jswFindBuiltIn(execInfo.root, execInfo.root, instanceOf);
-  if (!objFunc) return 0; // out of memory
-  return objFunc;
-}
-
 /// Create a new Class of the given instance and return its prototype
 NO_INLINE JsVar *jspNewPrototype(const char *instanceOf) {
   JsVar *objFuncName = jsvFindChildFromString(execInfo.root, instanceOf, true);
@@ -2334,7 +2327,7 @@ NO_INLINE JsVar *jspNewPrototype(const char *instanceOf) {
 
   JsVar *objFunc = jsvSkipName(objFuncName);
   if (!objFunc) {
-    objFunc = jspNewBuiltin(instanceOf);
+    objFunc = jswFindBuiltIn(execInfo.root, execInfo.root, instanceOf);
     if (!objFunc) { // out of memory
       jsvUnLock(objFuncName);
       return 0;

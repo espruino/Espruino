@@ -351,9 +351,8 @@ codeOut('#include "jsnative.h"');
 for include in includes:
   codeOut('#include "'+include+'"');
 codeOut('');
-codeOut('// -----------------------------------------------------------------------------------------');
-codeOut('');
-codeOut('JsVar *jswCreateFromSymbolTable(int tableIndex);');
+#codeOut('// -----------------------------------------------------------------------------------------');
+#codeOut('');
 codeOut('');
 codeOut('// -----------------------------------------------------------------------------------------');
 codeOut('// --------------------------------------------------------------- SYMBOL TABLE INDICES    ');
@@ -364,7 +363,7 @@ idx = 0
 for name in symbolTables:
   symbolTables[name]["indexName"] = "jswSymbolIndex_"+name.replace(".","_");
   symbolTables[name]["index"] = str(idx);
-  codeOut("static const unsigned char "+symbolTables[name]["indexName"]+" = "+str(idx)+";");
+  codeOut("const unsigned char "+symbolTables[name]["indexName"]+" = "+str(idx)+";");
   idx = idx + 1
 
 codeOut('');
@@ -543,9 +542,9 @@ codeOut('')
 codeOut('')
 
 
-codeOut('void *jswGetBuiltInLibrary(const char *name) {') 
+codeOut('JsVar *jswGetBuiltInLibrary(const char *name) {') 
 for lib in libraries:
-  codeOut('  if (strcmp(name, "'+lib+'")==0) return (void*)gen_jswrap_'+lib+'_'+lib+';');
+  codeOut('  if (strcmp(name, "'+lib+'")==0) return jswCreateFromSymbolTable(jswSymbolIndex_'+lib+');');
 codeOut('  return 0;')
 codeOut('}')
 

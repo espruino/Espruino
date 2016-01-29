@@ -54,7 +54,7 @@ Class containing AES encryption/decryption
   "type" : "staticproperty",
   "class" : "crypto",
   "name" : "AES",
-  "generate_full" : "jspNewBuiltin(\"AES\");",
+  "generate_full" : "jswCreateFromSymbolTable(jswSymbolIndex_AES)",
   "return" : ["JsVar"],
   "return_object" : "AES",
   "ifdef" : "USE_TLS"
