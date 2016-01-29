@@ -24,8 +24,9 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
 // For instances of builtins like Pin, String, etc, search in X.prototype
 JsVar *jswFindInObjectProto(JsVar *parent, const char *name);
 
-/** If 'name' is something that belongs to an internal function, execute it.  */
-JsVar *jswFindBuiltIn(JsVar *parent, const char *name);
+/** If 'name' is something that belongs to an internal function, execute it.
+ * parentInstance is the actual object ('this'), but parent may be a prototype of another object */
+JsVar *jswFindBuiltIn(JsVar *parentInstance, JsVar *parent, const char *name);
 
 /// Given an object, return the list of symbols for it
 const JswSymList *jswGetSymbolListForObject(JsVar *parent);
@@ -58,5 +59,7 @@ void jswInit();
 
 /** Tasks to run on Deinitialisation */
 void jswKill();
+
+const JswSymList *jswSymbolTable_Object_prototype;
 
 #endif // JSWRAPPER_H

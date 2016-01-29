@@ -509,7 +509,7 @@ JsVar *jswFindInObjectProto(JsVar *parent, const char *name) {
   return 0;
 }
 
-JsVar *jswFindBuiltIn(JsVar *parent, const char *name) {
+JsVar *jswFindBuiltIn(JsVar *parentInstance, JsVar *parent, const char *name) {
   if (jsvIsRoot(parent)) {
     Pin pin = jshGetPinFromString(name);
     if (pin != PIN_UNDEFINED) {
@@ -517,7 +517,7 @@ JsVar *jswFindBuiltIn(JsVar *parent, const char *name) {
     }
   }
   int symIdx = jswGetSymbolIndexForObject(parent);
-  if (symIdx>=0) return jswBinarySearch(&jswSymbolTables[symIdx], parent, name);
+  if (symIdx>=0) return jswBinarySearch(&jswSymbolTables[symIdx], parentInstance, name);
   return 0;
 }
 
