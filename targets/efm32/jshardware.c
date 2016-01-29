@@ -216,8 +216,12 @@ void jshInit() {
   GPIO_PinModeSet(gpioPortF, 7, gpioModePushPull, 1); //Enable output to board-controller
 
   //---------------------- GPIO ----------------------------/
+  // Initialize GPIO interrupt driver
   GPIOINT_Init();
 
+  // Initialise button
+  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
 
   //---------------------- Utility TIMER ----------------------------/
   TIMER_Init_TypeDef timerInit     = TIMER_INIT_DEFAULT;
