@@ -11,10 +11,6 @@ info = {
   'default_console_tx' : "E0",
   'default_console_rx' : "E1",
   'default_console_baudrate' : "115200",
-#  'default_console' : "EV_SERIAL4", 
-#  'default_console_tx' : "E0",
-#  'default_console_rx' : "E1",
-#  'default_console_baudrate' : "115200",
 };
 chip = {
   'part': "EFM32GG990F1024",
