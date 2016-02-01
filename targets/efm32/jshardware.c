@@ -112,27 +112,7 @@ void TIMER0_IRQHandler(void) {
 // see jshPinWatch/jshGetWatchedPinState
 Pin watchedPins[16];
 
-IOEventFlags gpioEvents[] =  {
-  // device type
-  EV_NONE,
-  EV_EXTI0,  // External Interrupt 0
-  EV_EXTI1,  // External Interrupt 1
-  EV_EXTI2,  // External Interrupt 2
-  EV_EXTI3,  // External Interrupt 3
-  EV_EXTI4,  // External Interrupt 4
-  EV_EXTI5,  // External Interrupt 5
-  EV_EXTI6,  // External Interrupt 6
-  EV_EXTI7,  // External Interrupt 7
-  EV_EXTI8,  // External Interrupt 8
-  EV_EXTI9,  // External Interrupt 9
-  EV_EXTI10, // External Interrupt 10
-  EV_EXTI11, // External Interrupt 11
-  EV_EXTI12, // External Interrupt 12
-  EV_EXTI13, // External Interrupt 13
-  EV_EXTI14 // External Interrupt 14
-};
-
-GPIO_Port_TypeDef efm32PortFromPin(uint32_t pin){
+static ALWAYS_INLINE GPIO_Port_TypeDef efm32PortFromPin(uint32_t pin){
   return (GPIO_Port_TypeDef) (pinInfo[pin].port - JSH_PORTA);
 }
 
@@ -141,7 +121,7 @@ static ALWAYS_INLINE uint8_t efm32EventFromPin(Pin pin) {
   return (uint8_t)(EV_EXTI0+(pin-JSH_PIN0));
 }
 
-ALWAYS_INLINE void efm32FireEvent(uint32_t gpioPin) {
+static void efm32FireEvent(uint32_t gpioPin) {
   jshPushIOWatchEvent((IOEventFlags) gpioPin + EV_EXTI0);
 }
 
@@ -641,8 +621,7 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
 
 /// Can the given pin be watched? it may not be possible because of conflicts
 bool jshCanWatch(Pin pin) {
-  jsiConsolePrintf("\np: %d, w: %d", pin, watchedPins[pinInfo[pin].pin]);
-  if (jshIsPinValid(pin) && (pinInfo[pin].pin != 0)) { //Right now pin 0 cannot be watched because the callback IOEventFlags[0] = EV_NONE
+  if (jshIsPinValid(pin)) {
     return watchedPins[pinInfo[pin].pin]==PIN_UNDEFINED;
   } else
     return false;
@@ -656,11 +635,10 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
     }
     watchedPins[pinInfo[pin].pin] = (Pin)(shouldWatch ? pin : PIN_UNDEFINED);
 
-    GPIOINT_CallbackRegister(pin, efm32FireEvent);
+    GPIOINT_CallbackRegister(pinInfo[pin].pin, efm32FireEvent);
     GPIO_IntConfig(efm32PortFromPin(pin), pinInfo[pin].pin,
                    true, true, shouldWatch); // Set interrupt on rising/falling edge and (enable)
 
-    jsiConsolePrintf("p: %d, e: %d", pin, (EV_EXTI0+pinInfo[pin].pin));
     return shouldWatch ? (EV_EXTI0+pinInfo[pin].pin-1)  : EV_NONE;
   } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
   return EV_NONE;
