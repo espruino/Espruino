@@ -1104,7 +1104,15 @@ void jshInit() {
 
 #ifdef SWD_ONLY_NO_JTAG
   // reclaim A13 and A14
+#ifdef STM32F1
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE); // Disable JTAG so pins are available for LEDs
+#else
+  // On F2/F4, JTAG is just AF0
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource15, GPIO_AF_SPI1);
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource14, GPIO_AF_SPI1);
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource13, GPIO_AF_SPI1);
+#endif
+
 #else
 #ifdef STM32F1
 #ifndef DEBUG
