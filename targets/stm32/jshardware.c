@@ -52,7 +52,7 @@
 unsigned short jshRTCPrescaler;
 unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
 #define RTC_PRESCALER_RECIPROCAL_SHIFT 10
-#define RTC_INITIALISE_TICKS 4 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
+#define RTC_INITIALISE_TICKS 8 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
 #define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
 #define JSSYSTIME_SECOND_SHIFT 20
 #define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
