@@ -24,7 +24,7 @@ info = {
  'default_console_tx' : "D18", # pin 24
  'default_console_rx' : "D17", # pin 25
  'default_console_baudrate' : "9600",
- 'variables' : 390,
+ 'variables' : 350,
  'binary_name' : 'espruino_%v_do.bin',
  'build' : {
   'defines' : [
