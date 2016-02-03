@@ -151,7 +151,7 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
        to store the actual data, so we tweak ptr to handle this */
     it->ptr = (char*)(it->var+1);
   } else if (jsvIsNativeString(str)) {
-    it->ptr = it->var->varData.nativeStr.ptr;
+    it->ptr = (char*)it->var->varData.nativeStr.ptr;
   } else{
     it->ptr = &it->var->varData.str[0];
   }

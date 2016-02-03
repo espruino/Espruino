@@ -134,7 +134,7 @@ typedef struct {
 
 /// Data for native strings
 typedef struct {
-  char (*ptr)(void);
+  char *ptr;
   uint16_t len;
 } PACKED_FLAGS JsVarDataNativeStr;
 
