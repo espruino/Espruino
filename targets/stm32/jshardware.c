@@ -652,13 +652,16 @@ bool hasSystemSlept;
 volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
 #endif
 
+static bool jshIsRTCUsingLSE() {
+  return (RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSE;
+}
 
 static bool jshIsRTCAlreadySetup(bool andRunning) {
   if ((RCC->BDCR & RCC_BDCR_RTCEN) == 0)
     return false; // RTC was off - return false
   if (!andRunning) return true;
   // Check what we're running the RTC off and make sure that it's running!
-  if ((RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSE)
+  if (jshIsRTCUsingLSE())
     return RCC_GetFlagStatus(RCC_FLAG_LSERDY) == SET;
   else
     return RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET;
@@ -677,6 +680,26 @@ void jshSetupRTCPrescaler(bool isUsingLSI) {
   }
   jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
 }
+
+void jshSetupRTC(bool isUsingLSI) {
+  RCC_RTCCLKConfig(isUsingLSI ? RCC_RTCCLKSource_LSI : RCC_RTCCLKSource_LSE); // set clock source to low speed internal
+  jshSetupRTCPrescaler(isUsingLSI);
+  RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
+  RTC_WaitForSynchro();
+#ifdef STM32F1
+  RTC_SetPrescaler(jshRTCPrescaler - 1U);
+  RTC_WaitForLastTask();
+#else
+  RTC_InitTypeDef RTC_InitStructure;
+  RTC_StructInit(&RTC_InitStructure);
+  //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
+  //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
+  RTC_InitStructure.RTC_AsynchPrediv = 0;
+  RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
+  RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
+  RTC_Init(&RTC_InitStructure);
+#endif
+}
 #endif
 
 void jshDoSysTick() {
@@ -690,56 +713,41 @@ void jshDoSysTick() {
     ticksSinceStart++;
  #ifdef USE_RTC
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
-    /* If RTC is already enabled, we've come back from a reset...
-     * we're going to want to keep everything as it was */
-    bool alreadySetup = jshIsRTCAlreadySetup(true);
-    /* LSEON, LSEBYP, RTCSEL and RTCEN are in backup domain so may not need
-     * changing */
+    // Use LSI if the LSE hasn't stabilised
+    bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
 
-    if (!alreadySetup) {
-      bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
+    // If the RTC is already doing the right thing, do nothing
+    if (isUsingLSI == jshIsRTCUsingLSE()) {
+      // We just set the RTC up, so we have to reset the
+      // backup domain again to change sources :(
+#ifdef STM32F1
+      uint32_t time = RTC_GetCounter();
+#else
+      RTC_TimeTypeDef time;
+      RTC_DateTypeDef date;
+      RTC_GetTime(RTC_Format_BIN, &time);
+      RTC_GetDate(RTC_Format_BIN, &date);
+#endif
+      RCC_BackupResetCmd(ENABLE);
+      RCC_BackupResetCmd(DISABLE);
+      RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+#ifdef STM32F1
+      RTC_SetCounter(time);
+#else
+      RTC_SetDate(RTC_Format_BIN, &date);
+      RTC_SetTime(RTC_Format_BIN, &time);
+#endif
+      jshSetupRTC(isUsingLSI);
+    }
 
-      if (RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) {
-        // Uh-oh - RTC *was* set up for something, but it's not
-        // the case any more. It needs totally resetting so we can change it
-        RCC_BackupResetCmd(ENABLE);
-        RCC_BackupResetCmd(DISABLE);
-	    RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
-      }
-
-      if (isUsingLSI) {
-        // LSE is not working - turn it off and use LSI
-        RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
-        RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
-      } else {
-        // LSE working! Yay! turn LSI off now
-        RCC_LSEConfig(RCC_LSE_ON);
-        RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
-        RCC_LSICmd(DISABLE); // disable low speed internal oscillator
-      }
-      jshSetupRTCPrescaler(isUsingLSI);
-      RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
-      RTC_WaitForSynchro();
-  #ifdef STM32F1
-      RTC_SetPrescaler(jshRTCPrescaler - 1U);
-      RTC_WaitForLastTask();
-  #else
-      RTC_InitTypeDef RTC_InitStructure;
-      RTC_StructInit(&RTC_InitStructure);
-      //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
-      //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
-      RTC_InitStructure.RTC_AsynchPrediv = 0;
-      RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
-      RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
-      RTC_Init(&RTC_InitStructure);
-  #endif
-    } else { // alreadySetup
-      // Already set up, so just turn off the relevant oscillator
-      if ((RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSE) {
-        RCC_LSICmd(DISABLE);
-      } else {
-        RCC_LSEConfig(RCC_LSE_OFF);
-      }
+    // Disable RTC clocks depending on what we decided...
+    if (isUsingLSI) {
+      // LSE is not working - turn it off and use LSI
+      RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
+    } else {
+      // LSE working! Yay! turn LSI off now
+      RCC_LSEConfig(RCC_LSE_ON);
+      RCC_LSICmd(DISABLE); // disable low speed internal oscillator
     }
   }
 
@@ -1066,9 +1074,11 @@ void jshInit() {
     RCC_BackupResetCmd(DISABLE);
     // Turn both LSI(above) and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
     RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
+    // Initially set the RTC up to use the internal oscillator
+    jshSetupRTC(true);
   }
-  // set yp the RTC prescaler for now, so at least we can get some sensible numbers as it starts
-  jshSetupRTCPrescaler((RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSI);
+  // set up the RTC prescaler for now, so at least we can get some sensible numbers as it starts
+  jshSetupRTCPrescaler(!jshIsRTCUsingLSE());
 #endif
 
   // initialise button
