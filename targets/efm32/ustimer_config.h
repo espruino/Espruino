@@ -1,7 +1,7 @@
 /***************************************************************************//**
- * @file rtcdrv_config.h
- * @brief RTCDRV configuration file.
- * @version 4.2.1
+ * @file ustimer_config.h
+ * @brief USTIMER configuration file.
+ * @version 4.1.0
  *******************************************************************************
  * @section License
  * <b>(C) Copyright 2015 Silicon Labs, http://www.silabs.com</b>
@@ -12,29 +12,23 @@
  * any purpose, you must agree to the terms of that agreement.
  *
  ******************************************************************************/
-#ifndef __SILICON_LABS_RTCDRV_CONFIG_H__
-#define __SILICON_LABS_RTCDRV_CONFIG_H__
+#ifndef __SILICON_LABS_USTIMER_CONFIG_H__
+#define __SILICON_LABS_USTIMER_CONFIG_H__
 
 /***************************************************************************//**
  * @addtogroup EM_Drivers
  * @{
  ******************************************************************************/
 
- /***************************************************************************//**
- * @addtogroup RTCDRV
+/***************************************************************************//**
+ * @addtogroup USTIMER
  * @{
  ******************************************************************************/
 
-/// @brief Define the number of timers the application needs.
-#define EMDRV_RTCDRV_NUM_TIMERS     (1)
+/// USTIMER configuration option. Use this define to select a TIMER resource.
+#define USTIMER_TIMER USTIMER_TIMER3
 
-/// @brief Define to include wallclock functionality.
-#define EMDRV_RTCDRV_WALLCLOCK_CONFIG
-
-/// @brief Define to enable integration with SLEEP driver.
-//#define EMDRV_RTCDRV_SLEEPDRV_INTEGRATION
-
-/** @} (end addtogroup RTCDRV) */
+/** @} (end addtogroup USTIMER) */
 /** @} (end addtogroup EM_Drivers) */
 
-#endif /* __SILICON_LABS_RTCDRV_CONFIG_H__ */
+#endif /* __SILICON_LABS_USTIMER_CONFIG_H__ */

@@ -582,7 +582,7 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
   JSV_GET_AS_CHAR_ARRAY( dataPtr, dataLen, args);
 
   if (dataPtr && dataLen)
-    jshI2CWrite(device, (unsigned char)address, dataLen, dataPtr, sendStop);
+    jshI2CWrite(device, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
 }
 
 /*JSON{

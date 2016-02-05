@@ -44,6 +44,11 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>libs</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
 			<name>src</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
@@ -97,6 +102,21 @@
 			<name>gen/platform_config.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/gen/platform_config.h</locationURI>
+		</link>
+		<link>
+			<name>libs/README.md</name>
+			<type>1</type>
+			<location>C:/Users/apsyvert/Documents/work/github/Espruino_SL/Espruino/libs/README.md</location>
+		</link>
+		<link>
+			<name>libs/compression</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>libs/math</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
 			<name>src/jsdevices.c</name>
@@ -464,12 +484,22 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>Gecko_SDK/emdrv/gpiointerrupt</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
 			<name>Gecko_SDK/emdrv/nvm</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
 			<name>Gecko_SDK/emdrv/rtcdrv</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/ustimer</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
@@ -512,6 +542,256 @@
 			<name>Gecko_SDK/usb/src</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>libs/compression/compress_heatshrink.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/compression/compress_heatshrink.c</locationURI>
+		</link>
+		<link>
+			<name>libs/compression/compress_heatshrink.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/compression/compress_heatshrink.h</locationURI>
+		</link>
+		<link>
+			<name>libs/compression/compress_rle.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/compression/compress_rle.c</locationURI>
+		</link>
+		<link>
+			<name>libs/compression/compress_rle.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/compression/compress_rle.h</locationURI>
+		</link>
+		<link>
+			<name>libs/compression/heatshrink</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>libs/math/acosh.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/acosh.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/asin.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/asin.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/asinh.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/asinh.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/atan.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/atan.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/atanh.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/atanh.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/cbrt.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/cbrt.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/chbevl.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/chbevl.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/clog.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/clog.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/cmplx.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/cmplx.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/const.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/const.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/cosh.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/cosh.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/drand.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/drand.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/dtestvec.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/dtestvec.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/exp.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/exp.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/exp10.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/exp10.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/exp2.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/exp2.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/fabs.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/fabs.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/floor.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/floor.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/isnan.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/isnan.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/jswrap_math.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/jswrap_math.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/jswrap_math.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/jswrap_math.h</locationURI>
+		</link>
+		<link>
+			<name>libs/math/log.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/log.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/log10.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/log10.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/log2.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/log2.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/mconf.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/mconf.h</locationURI>
+		</link>
+		<link>
+			<name>libs/math/mod2pi.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/mod2pi.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/mtherr.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/mtherr.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/mtst.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/mtst.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/polevl.asm</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/polevl.asm</locationURI>
+		</link>
+		<link>
+			<name>libs/math/polevl.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/polevl.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/pow.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/pow.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/powi.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/powi.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/protos.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/protos.h</locationURI>
+		</link>
+		<link>
+			<name>libs/math/round.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/round.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/setprbor.asm</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/setprbor.asm</locationURI>
+		</link>
+		<link>
+			<name>libs/math/setprec.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/setprec.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/sin.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/sin.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/sincos.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/sincos.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/sindg.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/sindg.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/sinh.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/sinh.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/sqrt.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/sqrt.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/tan.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/tan.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/tandg.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/tandg.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/tanh.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/tanh.c</locationURI>
+		</link>
+		<link>
+			<name>libs/math/unity.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/math/unity.c</locationURI>
 		</link>
 		<link>
 			<name>Gecko_SDK/Device/SiliconLabs/EFM32GG</name>
@@ -589,6 +869,16 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>Gecko_SDK/emdrv/gpiointerrupt/inc</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/gpiointerrupt/src</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
 			<name>Gecko_SDK/emdrv/nvm/inc</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
@@ -605,6 +895,16 @@
 		</link>
 		<link>
 			<name>Gecko_SDK/emdrv/rtcdrv/src</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/ustimer/inc</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/ustimer/src</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
@@ -1069,6 +1369,36 @@
 			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/usb/src/em_usbtimer.c</locationURI>
 		</link>
 		<link>
+			<name>libs/compression/heatshrink/heatshrink_common.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/compression/heatshrink/heatshrink_common.h</locationURI>
+		</link>
+		<link>
+			<name>libs/compression/heatshrink/heatshrink_config.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/compression/heatshrink/heatshrink_config.h</locationURI>
+		</link>
+		<link>
+			<name>libs/compression/heatshrink/heatshrink_decoder.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/compression/heatshrink/heatshrink_decoder.c</locationURI>
+		</link>
+		<link>
+			<name>libs/compression/heatshrink/heatshrink_decoder.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/compression/heatshrink/heatshrink_decoder.h</locationURI>
+		</link>
+		<link>
+			<name>libs/compression/heatshrink/heatshrink_encoder.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/compression/heatshrink/heatshrink_encoder.c</locationURI>
+		</link>
+		<link>
+			<name>libs/compression/heatshrink/heatshrink_encoder.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/libs/compression/heatshrink/heatshrink_encoder.h</locationURI>
+		</link>
+		<link>
 			<name>Gecko_SDK/Device/SiliconLabs/EFM32GG/Include</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
@@ -1082,6 +1412,16 @@
 			<name>Gecko_SDK/emdrv/common/inc/ecode.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/common/inc/ecode.h</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/gpiointerrupt/inc/gpiointerrupt.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/gpiointerrupt/inc/gpiointerrupt.h</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/gpiointerrupt/src/gpiointerrupt.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/gpiointerrupt/src/gpiointerrupt.c</locationURI>
 		</link>
 		<link>
 			<name>Gecko_SDK/emdrv/nvm/inc/nvm.h</name>
@@ -1112,6 +1452,16 @@
 			<name>Gecko_SDK/emdrv/rtcdrv/src/rtcdriver.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/rtcdrv/src/rtcdriver.c</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/ustimer/inc/ustimer.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/ustimer/inc/ustimer.h</locationURI>
+		</link>
+		<link>
+			<name>Gecko_SDK/emdrv/ustimer/src/ustimer.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/targetlibs/Gecko_SDK/emdrv/ustimer/src/ustimer.c</locationURI>
 		</link>
 		<link>
 			<name>Gecko_SDK/Device/SiliconLabs/EFM32GG/Include/efm32gg230f1024.h</name>

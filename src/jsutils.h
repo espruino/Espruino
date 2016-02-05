@@ -251,11 +251,12 @@ typedef int64_t JsSysTime;
 #define NO_INLINE __attribute__ ((noinline))
 
 /// Put before functions that we always want inlined
-#if defined(LINK_TIME_OPTIMISATION) && !defined(SAVE_ON_FLASH) && !defined(DEBUG)
-#define ALWAYS_INLINE inline __attribute__((always_inline))
-#elif defined(__GNUC__) && !defined(__clang__)
-// By inlining in GCC we avoid shedloads of warnings
-#define ALWAYS_INLINE inline
+#if defined(__GNUC__) && !defined(__clang__)
+ #if defined(LINK_TIME_OPTIMISATION) && !defined(SAVE_ON_FLASH) && !defined(DEBUG)
+  #define ALWAYS_INLINE __attribute__ ((gnu_inline)) __attribute__((always_inline)) inline
+ #else
+  #define ALWAYS_INLINE __attribute__ ((gnu_inline)) inline
+ #endif
 #else
 // clang seems to hate being asked to inline when the definition
 // isn't in the same file

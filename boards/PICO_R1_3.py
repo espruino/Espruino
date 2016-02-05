@@ -88,6 +88,17 @@ board = {
 
   'top2' : ['VBAT','3.3','GND'],
   'right' : ['A4', 'A3', 'A2', 'A1', 'A0', 'A10', 'B9', 'B8'],
+  '_notes' : {
+    'B6' : "Serial Console TX when USB disconnected, use `USB.setConsole()` to avoid",
+    'B7' : "Serial Console RX when USB disconnected, use `USB.setConsole()` to avoid",
+    'A9' : "Connected directly to USB 5V",
+    'A13' : "Accessible on row of gold SMD pads on underside",
+    'A14' : "Accessible on row of gold SMD pads on underside",
+    'A15' : "Accessible on row of gold SMD pads on underside",
+    'B0' : "Connected to FET when FET/B0 jumper shorted",
+    'C14' : "Connected to pads for optional 32kHz crystal",
+    'C15' : "Connected to pads for optional 32kHz crystal"
+  }
 };
 board["_css"] = """
 #board {

@@ -204,7 +204,7 @@ JsVar *jswrap_pin_getInfo(
   jsvObjectSetChildAndUnLock(obj, "port", jsvNewFromString(buf));
   jsvObjectSetChildAndUnLock(obj, "num", jsvNewFromInteger(inf->pin-JSH_PIN0));
 #ifdef STM32
-  uint32_t *addr;
+  volatile uint32_t *addr;
   addr = jshGetPinAddress(pin, JSGPAF_INPUT);
   if (addr) jsvObjectSetChildAndUnLock(obj, "in_addr", jsvNewFromInteger((JsVarInt)addr));
   addr = jshGetPinAddress(pin, JSGPAF_OUTPUT);

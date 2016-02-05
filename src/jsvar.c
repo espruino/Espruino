@@ -1100,7 +1100,7 @@ size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len
 }
 
 /// Set the Data in this string. This must JUST overwrite - not extend or shrink
-void jsvSetString(JsVar *v, char *str, size_t len) {
+void jsvSetString(JsVar *v, const char *str, size_t len) {
   assert(jsvHasCharacterData(v));
   assert(len == jsvGetStringLength(v));
 

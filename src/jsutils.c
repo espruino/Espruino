@@ -468,7 +468,7 @@ unsigned int rand_m_z = 0xCAFEBABE;    /* must not be zero */
 int rand() {
   rand_m_z = 36969 * (rand_m_z & 65535) + (rand_m_z >> 16);
   rand_m_w = 18000 * (rand_m_w & 65535) + (rand_m_w >> 16);
-  return RAND_MAX & (int)((rand_m_z << 16) + rand_m_w);  /* 32-bit result */
+  return (int)RAND_MAX & (int)((rand_m_z << 16) + rand_m_w);  /* 32-bit result */
 }
 
 void srand(unsigned int seed) {
@@ -668,10 +668,10 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
  *
  * The supported format specifiers are:
  * * `%d` = int
- * * `%0#d` = int padded to length # with 0s
+ * * `%0#d` or `%0#x` = int padded to length # with 0s
  * * `%x` = int as hex
  * * `%L` = JsVarInt
- * * `%Lx` = JsVarInt as hex
+ * * `%Lx`= JsVarInt as hex
  * * `%f` = JsVarFloat
  * * `%s` = string (char *)
  * * `%c` = char
@@ -697,9 +697,11 @@ void vcbprintf(
       switch (fmtChar) {
       case '0': {
         int digits = (*fmt++) - '0';
-        assert('d' == *fmt); // of the form '%02d'
+         // of the form '%02d'
+        int v = va_arg(argp, int);
+        if (*fmt=='x') itostr_extra(v, buf, false, 16);
+        else { assert('d' == *fmt); itostr(v, buf, 10); }
         fmt++; // skip over 'd'
-        itostr(va_arg(argp, int), buf, 10);
         int len = (int)strlen(buf);
         while (len < digits) {
           user_callback("0",user_data);
