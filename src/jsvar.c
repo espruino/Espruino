@@ -1253,6 +1253,33 @@ JsVar *jsvGetFlatStringFromPointer(char *v) {
   return flatStr;
 }
 
+/// If the variable points to a *flat* area of memory, return a pointer (and set length). Otherwise return 0.
+char *jsvGetDataPointer(JsVar *v, size_t *len) {
+  assert(len);
+  if (jsvIsArrayBuffer(v)) {
+    /* Arraybuffers generally use some kind of string to store their data.
+     * Find it, then call ourselves again to figure out if we can get a
+     * raw pointer to it.  */
+    JsVar *d = jsvGetArrayBufferBackingString(v);
+    char *r = jsvGetDataPointer(d, len);
+    jsvUnLock(d);
+    if (r) {
+      r += v->varData.arraybuffer.byteOffset;
+      *len = v->varData.arraybuffer.length;
+    }
+    return r;
+  }
+  if (jsvIsNativeString(v)) {
+    *len = v->varData.nativeStr.len;
+    return (char*)v->varData.nativeStr.ptr;
+  }
+  if (jsvIsFlatString(v)) {
+    *len = jsvGetStringLength(v);
+    return jsvGetFlatStringPointer(v);
+  }
+  return 0;
+}
+
 //  IN A STRING  get the number of lines in the string (min=1)
 size_t jsvGetLinesInString(JsVar *v) {
   size_t lines = 1;

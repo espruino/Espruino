@@ -511,6 +511,7 @@ size_t jsvGetStringLength(const JsVar *v); ///< Get the length of this string, I
 size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string - EXCLUDING the first data block
 char *jsvGetFlatStringPointer(JsVar *v); ///< Get a pointer to the data in this flat string
 JsVar *jsvGetFlatStringFromPointer(char *v); ///< Given a pointer to the first element of a flat string, return the flat string itself (DANGEROUS!)
+char *jsvGetDataPointer(JsVar *v, size_t *len); ///< If the variable points to a *flat* area of memory, return a pointer (and set length). Otherwise return 0.
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col); ///< IN A STRING, get the 1-based line and column of the given character. Both values must be non-null
@@ -739,17 +740,15 @@ void jsvFree(void *ptr);
  * the data will be lost when we return. */
 #define JSV_GET_AS_CHAR_ARRAY(TARGET_PTR, TARGET_LENGTH, DATA)                \
   size_t TARGET_LENGTH = 0;                                                   \
-  char *TARGET_PTR = 0;                                                       \
-  if (jsvIsFlatString(DATA)) {                                                \
-    TARGET_LENGTH = jsvGetStringLength(DATA);                                 \
-    TARGET_PTR = jsvGetFlatStringPointer(DATA);                               \
-  } else {                                                                    \
+  char *TARGET_PTR = jsvGetDataPointer(DATA, &TARGET_LENGTH);                 \
+  if (!TARGET_PTR) {                                                          \
    TARGET_LENGTH = (size_t)jsvIterateCallbackCount(DATA);                     \
     if (TARGET_LENGTH+256 > jsuGetFreeStack()) {                              \
       jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  \
     } else {                                                                  \
-      TARGET_PTR = (char *)alloca(TARGET_LENGTH);     \
-      jsvIterateCallbackToBytes(DATA, (unsigned char *)TARGET_PTR, (unsigned int)TARGET_LENGTH); \
+      TARGET_PTR = (char *)alloca(TARGET_LENGTH);                             \
+      jsvIterateCallbackToBytes(DATA, (unsigned char *)TARGET_PTR,            \
+                                      (unsigned int)TARGET_LENGTH);           \
     }                                                                         \
   }
 
