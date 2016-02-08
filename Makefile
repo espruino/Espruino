@@ -1446,6 +1446,8 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/device_manager
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/device_manager/config
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu
 
   SOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
@@ -1467,7 +1469,10 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-  $(NRF5X_SDK_PATH)/components/ble/device_manager/device_manager_peripheral.c
+  $(NRF5X_SDK_PATH)/components/ble/device_manager/device_manager_peripheral.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu/ble_dfu.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_app_handler.c
 
 
   # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
