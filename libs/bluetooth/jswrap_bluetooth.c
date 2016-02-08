@@ -43,6 +43,9 @@ of beta.  */
 #include "ble_nus.h"
 #include "app_util_platform.h"
 
+#include "device_manager.h"
+#include "pstorage.h"
+
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
 #define CENTRAL_LINK_COUNT              0                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
@@ -74,12 +77,22 @@ of beta.  */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 
+#define SEC_PARAM_BOND                   1                                          /**< Perform bonding. */
+#define SEC_PARAM_MITM                   0                                          /**< Man In The Middle protection not required. */
+#define SEC_PARAM_IO_CAPABILITIES        BLE_GAP_IO_CAPS_NONE                       /**< No I/O capabilities. */
+#define SEC_PARAM_OOB                    0                                          /**< Out Of Band data not available. */
+#define SEC_PARAM_MIN_KEY_SIZE           7                                          /**< Minimum encryption key size. */
+#define SEC_PARAM_MAX_KEY_SIZE           16                                         /**< Maximum encryption key size. */
+
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
+
+static dm_application_instance_t        m_app_handle;                              /**< Application identifier allocated by device manager */
+
 static bool                             ble_is_sending;
 
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
@@ -297,12 +310,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         jswrap_nrf_bluetooth_startAdvertise();
         break;
 
-      case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
-        // Pairing not supported
-        err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, NULL, NULL);
-        APP_ERROR_CHECK(err_code);
-        break;
-
       case BLE_GATTS_EVT_SYS_ATTR_MISSING:
         // No system attributes have been stored.
         err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
@@ -362,6 +369,22 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     ble_conn_params_on_ble_evt(p_ble_evt);
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
     on_ble_evt(p_ble_evt);
+
+    dm_ble_evt_handler(p_ble_evt); //Add this line
+}
+
+
+/**@brief Function for dispatching a system event to interested modules.
+ *
+ * @details This function is called from the System event interrupt handler after a system
+ *          event has been received.
+ *
+ * @param[in] sys_evt  System stack event.
+ */
+static void sys_evt_dispatch(uint32_t sys_evt)
+{
+    pstorage_sys_event_handler(sys_evt);
+    ble_advertising_on_sys_evt(sys_evt);
 }
 
 
@@ -399,6 +422,10 @@ static void ble_stack_init(void)
     // Subscribe for BLE events.
     err_code = softdevice_ble_evt_handler_set(ble_evt_dispatch);
     APP_ERROR_CHECK(err_code);
+
+    // Register with the SoftDevice handler module for BLE events.
+    err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
+    APP_ERROR_CHECK(err_code);
 }
 
 // Build advertising data struct to pass into @ref ble_advertising_init.
@@ -434,6 +461,55 @@ static void advertising_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+
+/**@brief Function for handling the Device Manager events.
+ *
+ * @param[in] p_evt  Data associated to the device manager event.
+ */
+static uint32_t device_manager_evt_handler(dm_handle_t const * p_handle,
+                                           dm_event_t const  * p_event,
+                                           ret_code_t        event_result)
+{
+    APP_ERROR_CHECK(event_result);
+
+    return NRF_SUCCESS;
+}
+
+
+/**@brief Function for the Device Manager initialization.
+ *
+ * @param[in] erase_bonds  Indicates whether bonding information should be cleared from
+ *                         persistent storage during initialization of the Device Manager.
+ */
+static void device_manager_init(bool erase_bonds)
+{
+    uint32_t               err_code;
+    dm_init_param_t        init_param = {.clear_persistent_data = erase_bonds};
+    dm_application_param_t register_param;
+
+    // Initialize persistent storage module.
+    err_code = pstorage_init();
+    APP_ERROR_CHECK(err_code);
+
+    err_code = dm_init(&init_param);
+    APP_ERROR_CHECK(err_code);
+
+    memset(&register_param.sec_param, 0, sizeof(ble_gap_sec_params_t));
+
+    register_param.sec_param.bond         = SEC_PARAM_BOND;
+    register_param.sec_param.mitm         = SEC_PARAM_MITM;
+    register_param.sec_param.io_caps      = SEC_PARAM_IO_CAPABILITIES;
+    register_param.sec_param.oob          = SEC_PARAM_OOB;
+    register_param.sec_param.min_key_size = SEC_PARAM_MIN_KEY_SIZE;
+    register_param.sec_param.max_key_size = SEC_PARAM_MAX_KEY_SIZE;
+    register_param.evt_handler            = device_manager_evt_handler;
+    register_param.service_type           = DM_PROTOCOL_CNTXT_GATT_SRVR_ID;
+
+    err_code = dm_register(&m_app_handle, &register_param);
+    APP_ERROR_CHECK(err_code);
+}
+
+
 /*JSON{
     "type": "class",
     "class" : "NRF"
@@ -451,6 +527,10 @@ void jswrap_nrf_bluetooth_init(void) {
   // Initialize.
   APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
   ble_stack_init();
+  
+  bool erase_bonds;
+  device_manager_init(erase_bonds);
+
   gap_params_init();
   services_init();
   advertising_init();
