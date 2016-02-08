@@ -134,7 +134,7 @@ typedef struct {
 
 /// Data for native strings
 typedef struct {
-  char (*ptr)(void);
+  char *ptr;
   uint16_t len;
 } PACKED_FLAGS JsVarDataNativeStr;
 
@@ -503,7 +503,7 @@ JsVar *jsvGetValueOf(JsVar *v); ///< Return the JsVar, or if it's an object and 
 If the buffer length is exceeded, the returned value will == len */
 size_t jsvGetString(const JsVar *v, char *str, size_t len);
 size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len); ///< Get len bytes of string data from this string. Does not error if string len is not equal to len
-void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
+void jsvSetString(JsVar *v, const char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 JsVar *jsvAsFlatString(JsVar *var); ///< Create a flat string from the given variable (or return it if it is already a flat string). NOTE: THIS CONVERTS VIA A STRING
 bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - faster than jsvGetStringLength(v)==0

@@ -587,7 +587,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
   JsVar *customBitmap = 0, *customWidth = 0;
-  int customHeight, customFirstChar;
+  int customHeight = 0, customFirstChar = 0;
   if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
     customBitmap = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, 0);
     customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
@@ -672,7 +672,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
   JsVar *customWidth = 0;
-  int customFirstChar;
+  int customFirstChar = 0;
   if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
     customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
