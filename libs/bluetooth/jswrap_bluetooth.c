@@ -49,7 +49,7 @@ of beta.  */
 #include "dfu_app_handler.h"
 #include "nrf_delay.h"
 
-#define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
+#define IS_SRVC_CHANGED_CHARACT_PRESENT 1                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
 #define CENTRAL_LINK_COUNT              0                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
@@ -87,6 +87,14 @@ of beta.  */
 #define SEC_PARAM_MIN_KEY_SIZE           7                                          /**< Minimum encryption key size. */
 #define SEC_PARAM_MAX_KEY_SIZE           16                                         /**< Maximum encryption key size. */
 
+#define DFU_REV_MAJOR                    0x00                                       /** DFU Major revision number to be exposed. */
+#define DFU_REV_MINOR                    0x01                                       /** DFU Minor revision number to be exposed. */
+#define DFU_REVISION                     ((DFU_REV_MAJOR << 8) | DFU_REV_MINOR)     /** DFU Revision number to be exposed. Combined of major and minor versions. */
+#define APP_SERVICE_HANDLE_START         0x000C                                     /**< Handle of first application specific service when when service changed characteristic is present. */
+#define BLE_HANDLE_MAX                   0xFFFF                                     /**< Max handle value in BLE. */
+
+STATIC_ASSERT(IS_SRVC_CHANGED_CHARACT_PRESENT);                                     /** When having DFU Service support in application the Service Changed Characteristic should always be present. */
+
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
@@ -94,6 +102,7 @@ static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 
+static ble_dfu_t                        m_dfus;                                    /**< Structure used to identify the DFU service. */
 static dm_application_instance_t        m_app_handle;                              /**< Application identifier allocated by device manager */
 
 static bool                             ble_is_sending;
@@ -306,6 +315,19 @@ static void services_init(void)
     err_code = ble_nus_init(&m_nus, &nus_init);
     APP_ERROR_CHECK(err_code);
 
+    ble_dfu_init_t   dfus_init;
+
+    // Initialize the Device Firmware Update Service.
+    memset(&dfus_init, 0, sizeof(dfus_init));
+
+    dfus_init.evt_handler   = dfu_app_on_dfu_evt;
+    dfus_init.error_handler = NULL;
+    dfus_init.evt_handler   = dfu_app_on_dfu_evt;
+    dfus_init.revision      = DFU_REVISION;
+
+    err_code = ble_dfu_init(&m_dfus, &dfus_init);
+    APP_ERROR_CHECK(err_code);
+
     dfu_app_reset_prepare_set(reset_prepare);
     dfu_app_dm_appl_instance_set(m_app_handle);
 }
@@ -467,6 +489,9 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
     ble_conn_params_on_ble_evt(p_ble_evt);
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
+
+    ble_dfu_on_ble_evt(&m_dfus, p_ble_evt);
+
     on_ble_evt(p_ble_evt);
 
     dm_ble_evt_handler(p_ble_evt); //Add this line
@@ -504,7 +529,10 @@ static void ble_stack_init(void)
                                                     PERIPHERAL_LINK_COUNT,
                                                     &ble_enable_params);
     APP_ERROR_CHECK(err_code);
-        
+    
+    ble_enable_params.common_enable_params.vs_uuid_count  = 2;
+    ble_enable_params.gatts_enable_params.service_changed = 1;
+
     //Check the ram settings against the used number of links
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
 
