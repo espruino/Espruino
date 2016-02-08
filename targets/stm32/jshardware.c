@@ -1246,6 +1246,7 @@ void jshInit() {
 }
 
 void jshReset() {
+  jshResetDevices();
   Pin i;
   for (i=0;i<JSH_PIN_COUNT;i++) {
 #ifdef DEFAULT_CONSOLE_TX_PIN

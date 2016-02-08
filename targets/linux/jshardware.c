@@ -343,6 +343,7 @@ void jshInit() {
 }
 
 void jshReset() {
+  jshResetDevices();
 }
 
 void jshKill() {

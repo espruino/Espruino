@@ -18,7 +18,13 @@
 #include "platform_config.h"
 #include "jsvar.h"
 
-void jshInitDevices(); // called from jshInit
+/** Initialize any device-specific structures, like flow control states.
+ * Called from jshInit */
+void jshInitDevices();
+
+/** Reset any devices that could have been set up differently by JS code.
+ * Called from jshReset */
+void jshResetDevices();
 
 /** Flags used to describe events put in the txBuffer and ioBuffer queues.
  *

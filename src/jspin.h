@@ -208,6 +208,8 @@ Pin jshGetPinFromVarAndUnLock(JsVar *pinv);
 bool jshGetPinStateIsManual(Pin pin);
 /// Set whether the pin state is manual (has the user asked us explicitly to change it?)
 void jshSetPinStateIsManual(Pin pin, bool manual);
+// Reset our list of which pins are set manually - called from jshResetDevices
+void jshResetPinStateIsManual();
 
 bool jshPinInput(Pin pin);
 void jshPinOutput(Pin pin, bool value);

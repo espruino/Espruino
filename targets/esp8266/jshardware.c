@@ -159,6 +159,7 @@ static void CALLED_FROM_INTERRUPT intrHandlerCB(
  * Reset the Espruino environment.
  */
 void jshReset() {
+  jshResetDevices();
   os_printf("> jshReset\n");
 
   // Set all GPIO pins to be input with pull-up

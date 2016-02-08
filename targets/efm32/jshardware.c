@@ -269,7 +269,8 @@ void jshInit() {
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
 void jshReset() {
-
+  jshResetDevices();
+  // TODO: Reset all pins to their power-on state (apart from default UART :)
 }
 
 void jshKill() {
