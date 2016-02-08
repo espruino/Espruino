@@ -1445,7 +1445,6 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/device_manager
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/device_manager/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu
 
