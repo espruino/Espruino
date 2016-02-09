@@ -89,7 +89,7 @@
  * @note If set to zero, its an indication that application context is not required to be managed
  *       by the module.
  */
-#define DEVICE_MANAGER_APP_CONTEXT_SIZE    0
+#define DEVICE_MANAGER_APP_CONTEXT_SIZE    16
 
 /* @} */
 /* @} */

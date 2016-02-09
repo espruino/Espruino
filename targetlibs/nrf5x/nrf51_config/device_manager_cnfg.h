@@ -75,7 +75,7 @@
  *          Maximum value : 254.
  *          Dependencies  : None.
  */
-#define DM_GATT_CCCD_COUNT               3
+#define DM_GATT_CCCD_COUNT               4
 
 
 /**
@@ -89,7 +89,7 @@
  * @note If set to zero, its an indication that application context is not required to be managed
  *       by the module.
  */
-#define DEVICE_MANAGER_APP_CONTEXT_SIZE    0
+#define DEVICE_MANAGER_APP_CONTEXT_SIZE    16
 
 /* @} */
 /* @} */
