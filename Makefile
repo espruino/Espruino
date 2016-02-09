@@ -1405,7 +1405,7 @@ endif #FAMILY == EFM32
 ifdef NRF5X
 
   # Just try and get rid of the compile warnings.
-  CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter
+  CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
   DEFINES += -DBLUETOOTH
 
   ARM = 1

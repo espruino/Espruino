@@ -93,8 +93,6 @@ of beta.  */
 #define APP_SERVICE_HANDLE_START         0x000C                                     /**< Handle of first application specific service when when service changed characteristic is present. */
 #define BLE_HANDLE_MAX                   0xFFFF                                     /**< Max handle value in BLE. */
 
-STATIC_ASSERT(IS_SRVC_CHANGED_CHARACT_PRESENT);                                     /** When having DFU Service support in application the Service Changed Characteristic should always be present. */
-
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
@@ -157,7 +155,7 @@ static void advertising_stop(void)
  * @param[in] p_handle The Device Manager handle that identifies the connection for which the context
  *                     should be loaded.
  */
-/*static void app_context_load(dm_handle_t const * p_handle)
+static void app_context_load(dm_handle_t const * p_handle)
 {
     uint32_t                 err_code;
     static uint32_t          context_data;
@@ -195,7 +193,7 @@ static void advertising_stop(void)
     {
         APP_ERROR_HANDLER(err_code);
     }
-}*/
+}
 
 
 /**@brief Function for preparing for system reset.
@@ -508,7 +506,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 static void sys_evt_dispatch(uint32_t sys_evt)
 {
     pstorage_sys_event_handler(sys_evt);
-    //ble_advertising_on_sys_evt(sys_evt);
+    ble_advertising_on_sys_evt(sys_evt);
 }
 
 
@@ -521,8 +519,8 @@ static void ble_stack_init(void)
     uint32_t err_code;
     
     // Initialize SoftDevice.
-    // SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
-    SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_8000MS_CALIBRATION, false);
+    SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
+    //SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_8000MS_CALIBRATION, false);
     
     ble_enable_params_t ble_enable_params;
     err_code = softdevice_enable_get_default_config(CENTRAL_LINK_COUNT,
@@ -598,7 +596,10 @@ static uint32_t device_manager_evt_handler(dm_handle_t const * p_handle,
                                            ret_code_t        event_result)
 {
     APP_ERROR_CHECK(event_result);
-
+    if (p_event->event_id == DM_EVT_LINK_SECURED)
+    {
+        app_context_load(p_handle);
+    }
     return NRF_SUCCESS;
 }
 

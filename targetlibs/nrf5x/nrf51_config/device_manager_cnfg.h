@@ -75,7 +75,7 @@
  *          Maximum value : 254.
  *          Dependencies  : None.
  */
-#define DM_GATT_CCCD_COUNT               10
+#define DM_GATT_CCCD_COUNT               3
 
 
 /**

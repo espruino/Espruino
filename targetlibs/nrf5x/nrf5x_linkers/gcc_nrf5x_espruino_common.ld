@@ -15,7 +15,6 @@
  * the new terms are clearly indicated on the first page of each file where
  * they apply.
  */
-
 OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
 
 /* Linker script to place sections and symbol values. Should be used together
@@ -44,7 +43,6 @@ OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
  *   __StackTop
  *   __stack
  */
-
 ENTRY(Reset_Handler)
 
 SECTIONS
@@ -93,13 +91,10 @@ SECTIONS
   __exidx_end = .;
 
   __etext = .;
-  _etext = .;
-  _sidata = .;
     
   .data : AT (__etext)
   {
     __data_start__ = .;
-    _sdata = .;
     *(vtable)
     *(.data*)
 
@@ -128,7 +123,6 @@ SECTIONS
     . = ALIGN(4);
     /* All data end */
     __data_end__ = .;
-    _edata = .;
 
   } > RAM
 
@@ -136,12 +130,10 @@ SECTIONS
   {
     . = ALIGN(4);
     __bss_start__ = .;
-    _sbss = .;
     *(.bss*)
     *(COMMON)
     . = ALIGN(4);
     __bss_end__ = .;
-    _ebss = .;
   } > RAM
   
   .heap (COPY):
@@ -151,8 +143,6 @@ SECTIONS
     *(.heap*)
     __HeapLimit = .;
   } > RAM
-
-  PROVIDE ( _end = end );
 
   /* .stack_dummy section doesn't contains any symbols. It is only
    * used for linker to calculate size of stack sections, and assign
@@ -165,7 +155,6 @@ SECTIONS
   /* Set stack top to end of RAM, and stack limit move down by
    * size of stack_dummy section */
   __StackTop = ORIGIN(RAM) + LENGTH(RAM);
-  _estack = __StackTop;
   __StackLimit = __StackTop - SIZEOF(.stack_dummy);
   PROVIDE(__stack = __StackTop);
   
