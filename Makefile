@@ -1938,15 +1938,6 @@ serialflash: all
 	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ew $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
 #	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ewv $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
 
-ifdef NRF5X # This requires nrfjprog to be working and in your system PATH.
-nordic_flash:
-	@echo Flashing: s132_nrf52_1.0.0-3.alpha_softdevice.hex
-	nrfjprog -f NRF52 --program $(ROOT)/targetlibs/nrf5x/s132_nrf52_1.0.0-3.alpha_softdevice.hex --chiperase --verify
-	@echo Flashing: $(ROOT)/$(PROJ_NAME).hex
-	nrfjprog -f NRF52 --program $(ROOT)/$(PROJ_NAME).hex --verify
-	nrfjprog -f NRF52 --reset
-endif
-
 gdb:
 	echo "target extended-remote :4242" > gdbinit
 	echo "file $(PROJ_NAME).elf" >> gdbinit
