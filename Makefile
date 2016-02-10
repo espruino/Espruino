@@ -1302,7 +1302,7 @@ ifeq ($(FAMILY), NRF51)
   
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0-7.alpha_softdevice.hex
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
-  NFR_BL_START_ADDR = 0x3F000
+  NFR_BL_START_ADDR = 0x3C000
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex
 
 endif # FAMILY == NRF51
