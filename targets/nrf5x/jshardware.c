@@ -256,6 +256,7 @@ JshPinState jshPinGetState(Pin pin) {
 
 // Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin) {
+#ifndef NRF52
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
 
   const nrf_adc_config_t nrf_adc_config =  {
@@ -269,10 +270,14 @@ JsVarFloat jshPinAnalog(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
   return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;
+#else
+  return 0.0;
+#endif
 }
 
 /// Returns a quickly-read analog value in the range 0-65535
 int jshPinAnalogFast(Pin pin) {
+#ifndef NRF52
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return 0;
 
   const nrf_adc_config_t nrf_adc_config =  {
@@ -286,9 +291,13 @@ int jshPinAnalogFast(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
   return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) << 8;
+#else
+  return 0;
+#endif
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+#ifndef NRF52
   /* we set the bit field here so that if the user changes the pin state
    * later on, we can get rid of the IRQs */
   if (!jshGetPinStateIsManual(pin)) {
@@ -299,6 +308,9 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   if (freq<=0) freq=50;
   jstPinPWM(freq, value, pin);
   return JSH_NOTHING;
+#else
+  return JSH_NOTHING;
+#endif
 } // if freq<=0, the default is used
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
@@ -627,12 +639,17 @@ JsVarFloat jshReadTemperature() {
 
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef() {
+#ifndef NRF52
   const nrf_adc_config_t nrf_adc_config =  {
        NRF_ADC_CONFIG_RES_10BIT,
        NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
        NRF_ADC_CONFIG_REF_VBG }; // internal reference
   nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
   return 1.2 / nrf_adc_convert_single(ADC_CONFIG_PSEL_AnalogInput0);
+#else
+  return 0.0;
+#endif
+
 }
 
 /**

@@ -1886,7 +1886,7 @@ $(PROJ_NAME).lst : $(PROJ_NAME).elf
 $(PROJ_NAME).hex: $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
 	@$(call obj_to_bin,ihex,hex)
-ifdef SOFTDEVICE_BL # Shouldn't do this when we want to be able to perform DFU OTA!
+ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
 	echo Merging SoftDevice
 	scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
