@@ -1303,6 +1303,7 @@ ifeq ($(FAMILY), NRF51)
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0-7.alpha_softdevice.hex
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
   NFR_BL_START_ADDR = 0x3F000
+  NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex
 
 endif # FAMILY == NRF51
 
@@ -1327,6 +1328,7 @@ ifeq ($(FAMILY), NRF52)
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0-7.alpha_softdevice.hex
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
   NFR_BL_START_ADDR = 0x7A000
+  NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex
 
 endif #FAMILY == NRF52
 
@@ -1892,7 +1894,7 @@ $(PROJ_NAME).hex: $(PROJ_NAME).elf
 	@$(call obj_to_bin,ihex,hex)
 ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
 	echo Merging SoftDevice and Bootloader
-	scripts/hexmerge.py $(SOFTDEVICE) $(NRF_BOOTLOADER):$(NFR_BL_START_ADDR): $(PROJ_NAME).hex -o tmp.hex
+	scripts/hexmerge.py $(SOFTDEVICE) $(NRF_BOOTLOADER):$(NFR_BL_START_ADDR): $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
 endif
 
