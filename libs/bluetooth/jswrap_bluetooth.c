@@ -155,7 +155,7 @@ static void advertising_stop(void)
  * @param[in] p_handle The Device Manager handle that identifies the connection for which the context
  *                     should be loaded.
  */
-static void app_context_load(dm_handle_t const * p_handle)
+/*static void app_context_load(dm_handle_t const * p_handle)
 {
     uint32_t                 err_code;
     static uint32_t          context_data;
@@ -193,7 +193,7 @@ static void app_context_load(dm_handle_t const * p_handle)
     {
         APP_ERROR_HANDLER(err_code);
     }
-}
+}*/
 
 
 /**@brief Function for preparing for system reset.
@@ -598,7 +598,7 @@ static uint32_t device_manager_evt_handler(dm_handle_t const * p_handle,
     APP_ERROR_CHECK(event_result);
     if (p_event->event_id == DM_EVT_LINK_SECURED)
     {
-        app_context_load(p_handle);
+        //app_context_load(p_handle);
     }
     return NRF_SUCCESS;
 }
