@@ -425,7 +425,7 @@ else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
 # Save on flash, but we still want the debugger and tab complete
-DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
+#DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
 BOARD=NRF51822DK
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
@@ -1886,7 +1886,7 @@ $(PROJ_NAME).lst : $(PROJ_NAME).elf
 $(PROJ_NAME).hex: $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
 	@$(call obj_to_bin,ihex,hex)
-ifdef SOFTDEVICE
+ifdef SOFTDEVICE_BL # Shouldn't do this when we want to be able to perform DFU OTA!
 	echo Merging SoftDevice
 	scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex

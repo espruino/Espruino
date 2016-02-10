@@ -5,7 +5,7 @@ GROUP(-lgcc -lc -lnosys)
 
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0x1B000, LENGTH = 0x25000
+  FLASH (rx) : ORIGIN = 0x1B000, LENGTH = 0x21000 /* 0x25000, but now this has bootloader at end of flash*/
   RAM (rwx) :  ORIGIN = 0x20001F00, LENGTH = 0x6100 /* 32kB - 0x1E000 */
 }
 
