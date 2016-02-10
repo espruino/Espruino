@@ -1300,7 +1300,9 @@ ifeq ($(FAMILY), NRF51)
 
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   
-  SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0-7.alpha_softdevice.hex
+  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0-7.alpha_softdevice.hex
+  NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
+  NFR_BL_START_ADDR = 0x3F000
 
 endif # FAMILY == NRF51
 
@@ -1322,7 +1324,9 @@ ifeq ($(FAMILY), NRF52)
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
 
-  SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0-7.alpha_softdevice.hex
+  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0-7.alpha_softdevice.hex
+  NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
+  NFR_BL_START_ADDR = 0x7A000
 
 endif #FAMILY == NRF52
 
@@ -1887,8 +1891,8 @@ $(PROJ_NAME).hex: $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
 	@$(call obj_to_bin,ihex,hex)
 ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
-	echo Merging SoftDevice
-	scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
+	echo Merging SoftDevice and Bootloader
+	scripts/hexmerge.py $(SOFTDEVICE) $(NRF_BOOTLOADER):$(NFR_BL_START_ADDR): $(PROJ_NAME).hex -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
 endif
 
