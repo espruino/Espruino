@@ -60,6 +60,7 @@ env:
     - NUCLEOF411RE=1
     - LCTECH_STM32F103RBT6=1
     - LINUX_BUILD=1
+    - EFM32GGSTK=1
 script: make
 
 notifications:
