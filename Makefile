@@ -396,13 +396,13 @@ else ifdef MICROBIT
 EMBEDDED=1
 SAVE_ON_FLASH=1
 # Save on flash, but we still want the debugger and tab complete
-DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
+#DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
 BOARD=MICROBIT
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
-USE_GRAPHICS=1
+#USE_GRAPHICS=1
 
-DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
+# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
 
 else ifdef DO003
 EMBEDDED=1
@@ -423,7 +423,7 @@ BOARD=NRF51TAG
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
 
-DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
+# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
 
 else ifdef NRF51822DK
 EMBEDDED=1
@@ -435,7 +435,7 @@ OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
 DEFINES += -DBOARD_PCA10028
 
-DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
+# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
 
 else ifdef NRF52832DK
 EMBEDDED=1
@@ -444,7 +444,7 @@ OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
 DEFINES += -DBOARD_PCA10040
 
-DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
+# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
 
 else ifdef LPC1768
 EMBEDDED=1

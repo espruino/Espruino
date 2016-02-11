@@ -48,8 +48,8 @@ chip = {
   'saved_code' : {
     'address' : ((256 - 3) * 1024),
     'page_size' : 1024,
-    'pages' : 3,
-    'flash_available' : (256 - (96 + 3)) # softdevice + saved code
+    'pages' : 0,
+    'flash_available' : (256 - 108 - 10) # total flash pages - softdevice - bootloader
   }
 };
 

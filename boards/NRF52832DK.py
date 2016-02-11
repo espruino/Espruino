@@ -48,8 +48,8 @@ chip = {
   'saved_code' : {
     'address' : ((128 - 3) * 4096),
     'page_size' : 4096,
-    'pages' : 3,
-    'flash_available' : (512 - 124 - 12) # Softdevice uses 31 plages of flash. Each page is 4 kb.
+    'pages' : 0,
+    'flash_available' : (512 - 108 - 24) # Total flash - softdevice - bootloader (this one is code signed unlike nrF51).
   },
 };
 
