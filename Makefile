@@ -402,6 +402,8 @@ OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
 USE_GRAPHICS=1
 
+DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
+
 else ifdef DO003
 EMBEDDED=1
 SAVE_ON_FLASH=1
@@ -421,6 +423,8 @@ BOARD=NRF51TAG
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
 
+DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
+
 else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
@@ -431,12 +435,16 @@ OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
 DEFINES += -DBOARD_PCA10028
 
+DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
+
 else ifdef NRF52832DK
 EMBEDDED=1
 BOARD=NRF52832DK
 OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
 DEFINES += -DBOARD_PCA10040
+
+DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
 
 else ifdef LPC1768
 EMBEDDED=1
@@ -1892,9 +1900,13 @@ $(PROJ_NAME).hex: $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
 	@$(call obj_to_bin,ihex,hex)
 ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
+ifdef DFU_UPDATE_BUILD
+	echo Not merging softdevice or bootloader with application
+else
 	echo Merging SoftDevice and Bootloader
 	scripts/hexmerge.py $(SOFTDEVICE) $(NRF_BOOTLOADER):$(NFR_BL_START_ADDR): $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
+endif
 endif
 
 $(PROJ_NAME).srec : $(PROJ_NAME).elf
