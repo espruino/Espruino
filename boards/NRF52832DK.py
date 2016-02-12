@@ -37,7 +37,7 @@ chip = {
   'part' : "NRF52832",
   'family' : "NRF52",
   'package' : "QFN48",
-  'ram' : 32, # Currently there is a bug with NRF52 preview DK's RAM but this will be fixed next revision.
+  'ram' : 64, # Currently there is a bug with NRF52 preview DK's RAM but this will be fixed next revision.
   'flash' : 512,
   'speed' : 64,
   'usart' : 1, 

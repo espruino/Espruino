@@ -6,7 +6,7 @@ GROUP(-lgcc -lc -lnosys)
 MEMORY
 {
   FLASH (rx) : ORIGIN = 0x1B000, LENGTH = 0x5F000
-  RAM (rwx) :  ORIGIN = 0x20001E00, LENGTH = 0xE200 /* 64kB - This is PCA_10040 not the preview dev kit! */
+  RAM (rwx) :  ORIGIN = 0x20001F00, LENGTH = 0xE100 /* 64kB - This is PCA_10040 not the preview dev kit! */
 }
 
 SECTIONS

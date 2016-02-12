@@ -22,7 +22,7 @@ info = {
  'default_console_tx' : "D15",
  'default_console_rx' : "D17",
  'default_console_baudrate' : "9600",
- 'variables' : 350,
+ 'variables' : 310,
  'binary_name' : 'espruino_%v_nrf51tag.bin',
  'build' : {
   'defines' : [
