@@ -71,7 +71,7 @@ LOCAL void uart0_rx_intr_handler(void *para);
  * Parameters   : uart_no, use UART0 or UART1 defined ahead
  * Returns      : NONE
 *******************************************************************************/
-LOCAL void ICACHE_FLASH_ATTR
+void ICACHE_FLASH_ATTR
 uart_config(uint8 uart_no)
 {
     if (uart_no == UART1){
@@ -339,7 +339,7 @@ uart_recvTask(os_event_t *events)
    //already move uart buffer output to uart empty interrupt
         //tx_start_uart_buffer(UART0);
     #else
-
+    // TODO: is this UART1 RX, or TX?
     #endif
     }
 }

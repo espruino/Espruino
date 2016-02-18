@@ -192,7 +192,7 @@ static void eventHandler(
       char pBuffer[100];
       int size = getRXBuffer(pBuffer, sizeof(pBuffer));
       if (size > 0) {
-        jshPushIOCharEvents(jsiGetConsoleDevice(), pBuffer, size);
+        jshPushIOCharEvents(EV_SERIAL1, pBuffer, size);
       }
     }
     break;

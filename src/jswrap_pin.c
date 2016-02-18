@@ -42,6 +42,10 @@ Creates a pin from the given argument (or returns undefined if no argument)
 JsVar *jswrap_pin_constructor(JsVar *val) {
   Pin pin = jshGetPinFromVar(val);
   if (!jshIsPinValid(pin)) return 0;
+#ifdef ESP8266
+  if (jsvIsInt(val) && !jsvIsPin(val))
+    jsWarn("The Pin() constructor is deprecated. Please use `D%d`, or NodeMCU.Dx instead", pin);
+#endif
   return jsvNewFromPin(pin);
 }
 
