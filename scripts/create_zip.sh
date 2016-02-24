@@ -15,7 +15,8 @@
 cd `dirname $0`
 cd ..
 
-VERSION=`sed -ne "s/^.*JS_VERSION.*\"\(.*\)\"/\1/p" src/jsutils.h`
+VERSION=`sed -ne "s/^.*JS_VERSION.*\"\(.*\)\"/\1/p" src/jsutils.h | head -1`
+echo "VERSION $VERSION"
 DIR=`pwd`
 ZIPDIR=$DIR/zipcontents
 ZIPFILE=$DIR/archives/espruino_${VERSION}.zip
@@ -78,15 +79,21 @@ do
   fi
   # copy...
   if [ "$BOARDNAME" == "ESP8266_BOARD" ]; then
-    cp espruino_esp8266*.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    cp ${BINARY_NAME}.tgz $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    # Do some more ESP8266 build stuff
+    bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make combined" || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    cp ${BINARY_NAME}_combined_512.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    cp ${BINARY_NAME}_combined_4M.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
   else
     cp $BINARY_NAME $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of $BOARDNAME failed" ; exit 1; }
   fi
 done
 
+
+
 cd $DIR
 
-sed 's/$/\r/' dist_readme.txt > $ZIPDIR/readme.txt
+sed 's/$/\r/' dist_readme.txt | sed "s/#v##/$VERSION/" > $ZIPDIR/readme.txt
 bash scripts/extract_changelog.sh | sed 's/$/\r/' > $ZIPDIR/changelog.txt
 #bash scripts/extract_todo.sh  >  $ZIPDIR/todo.txt
 python scripts/build_docs.py  || { echo 'Build failed' ; exit 1; } 
@@ -95,4 +102,5 @@ cp $DIR/dist_licences.txt $ZIPDIR/licences.txt
 
 rm -f $ZIPFILE
 cd zipcontents
+echo zip $ZIPFILE *
 zip $ZIPFILE *
