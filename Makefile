@@ -1827,8 +1827,11 @@ $(ESP_COMBINED4M): $(USER1_BIN) $(USER2_BIN)
 	dd if=/dev/zero ibs=1k count=4096 | tr "\000" "\377" > $@
 	dd bs=1 if=$(BOOTLOADER) of=$@ conv=notrunc
 	dd bs=1 seek=4096 if=$(USER1_BIN) of=$@ conv=notrunc
+	dd bs=1 seek=507904 if=$(INIT_DATA) of=$@ conv=notrunc # 512k params
 	dd bs=1 seek=528384 if=$(USER2_BIN) of=$@ conv=notrunc
-	dd bs=1 seek=4177920 if=$(INIT_DATA) of=$@ conv=notrunc
+	dd bs=1 seek=1032192 if=$(INIT_DATA) of=$@ conv=notrunc # 1M
+	dd bs=1 seek=2080768 if=$(INIT_DATA) of=$@ conv=notrunc # 2M
+	dd bs=1 seek=4177920 if=$(INIT_DATA) of=$@ conv=notrunc # 4M
 
 # Analyze all the .o files and rank them by the amount of static string area used, useful to figure
 # out where to optimize and move strings to flash
