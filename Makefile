@@ -377,7 +377,7 @@ USE_GRAPHICS=1
 BOARD=STM32F3DISCOVERY
 STLIB=STM32F3XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 
 else ifdef STM32VLDISCOVERY
 EMBEDDED=1
@@ -1746,6 +1746,8 @@ else ifdef ESP8266
 # user setting area that sits between the two 256KB partitions, so we can merrily use it for
 # code.
 ESP_ZIP     = $(PROJ_NAME).tgz
+ESP_COMBINED512 = $(PROJ_NAME)_combined_512.bin
+ESP_COMBINED4M = $(PROJ_NAME)_combined_4M.bin
 USER1_BIN   = espruino_esp8266_user1.bin
 USER2_BIN   = espruino_esp8266_user2.bin
 USER1_ELF   = espruino_esp8266_user1.elf
@@ -1754,11 +1756,12 @@ PARTIAL     = espruino_esp8266_partial.o
 LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
 APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
-BOOTLOADER  = $(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin
+BOOTLOADER  = "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin"
 BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
 INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
 
 proj: $(USER1_BIN) $(USER2_BIN) $(ESP_ZIP)
+combined: $(ESP_COMBINED512) $(ESP_COMBINED4M)
 
 # generate partially linked .o with all Esprunio source files linked
 $(PARTIAL): $(OBJS) $(LINKER_FILE)
@@ -1807,11 +1810,25 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
-	$(Q)cp $(USER1_BIN) $(USER2_BIN) $(USER1_ELF) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
-	  $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin \
-	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" targets/esp8266/README_flash.txt \
+	$(Q)cp $(USER1_BIN) $(USER2_BIN) $(USER1_ELF) scripts/wiflash $(BLANK) \
+	  $(INIT_DATA) $(BOOTLOADER) targets/esp8266/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
+
+# Combined 512k binary that includes everything that's needed and can be
+# flashed to 0 in 512k parts
+$(ESP_COMBINED512): $(USER1_BIN) $(USER2_BIN)
+	dd if=/dev/zero ibs=1k count=512 | tr "\000" "\377" > $@
+	dd bs=1 if=$(BOOTLOADER) of=$@ conv=notrunc
+	dd bs=1 seek=4096 if=$(USER1_BIN) of=$@ conv=notrunc
+	dd bs=1 seek=507904 if=$(INIT_DATA) of=$@ conv=notrunc
+
+$(ESP_COMBINED4M): $(USER1_BIN) $(USER2_BIN)
+	dd if=/dev/zero ibs=1k count=4096 | tr "\000" "\377" > $@
+	dd bs=1 if=$(BOOTLOADER) of=$@ conv=notrunc
+	dd bs=1 seek=4096 if=$(USER1_BIN) of=$@ conv=notrunc
+	dd bs=1 seek=528384 if=$(USER2_BIN) of=$@ conv=notrunc
+	dd bs=1 seek=4177920 if=$(INIT_DATA) of=$@ conv=notrunc
 
 # Analyze all the .o files and rank them by the amount of static string area used, useful to figure
 # out where to optimize and move strings to flash
@@ -1834,7 +1851,7 @@ flash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT
 	$(error "In order to flash, we need to have the COMPORT variable defined")
 endif
-	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
+	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 $(BOOTLOADER) 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
 
 # just flash user1 and don't mess with bootloader or wifi settings
 quickflash: all $(USER1_BIN) $(USER2_BIN)
