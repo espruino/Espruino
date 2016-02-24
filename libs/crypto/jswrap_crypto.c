@@ -88,7 +88,7 @@ JsVar *jswrap_crypto_error_to_jsvar(int err) {
 
 void jswrap_crypto_error(int err) {
   const char *e = jswrap_crypto_error_to_str(err);
-  if (e) jsError(e);
+  if (e) jsError("%s", e);
   else jsError("Unknown error: -0x%x", -err);
 }
 
