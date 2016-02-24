@@ -12,12 +12,7 @@
 # -----------------------------------------------------------------------------
 # Set ONE of the following environment variables to compile for that board:
 #
-# ESPRUINO_1V0=1          # Espruino board rev 1.0
-# ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
 # ESPRUINO_1V3=1          # Espruino board rev 1.3 and rev 1v4
-# PICO_1V0=1              # Espruino Pico board rev 1.0
-# PICO_1V1=1              # Espruino Pico board rev 1.1
-# PICO_1V2=1              # Espruino Pico board rev 1.2
 # PICO_1V3=1              # Espruino Pico board rev 1.3
 # OLIMEXINO_STM32=1       # Olimexino STM32
 # MAPLERET6_STM32=1       # Limited production Leaflabs Maple r5 with a STM32F103RET6
