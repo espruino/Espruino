@@ -1747,7 +1747,6 @@ else ifdef ESP8266
 # code.
 ESP_ZIP     = $(PROJ_NAME).tgz
 ESP_COMBINED512 = $(PROJ_NAME)_combined_512.bin
-ESP_COMBINED4M = $(PROJ_NAME)_combined_4M.bin
 USER1_BIN   = espruino_esp8266_user1.bin
 USER2_BIN   = espruino_esp8266_user2.bin
 USER1_ELF   = espruino_esp8266_user1.elf
@@ -1761,7 +1760,7 @@ BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
 INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
 
 proj: $(USER1_BIN) $(USER2_BIN) $(ESP_ZIP)
-combined: $(ESP_COMBINED512) $(ESP_COMBINED4M)
+combined: $(ESP_COMBINED512)
 
 # generate partially linked .o with all Esprunio source files linked
 $(PARTIAL): $(OBJS) $(LINKER_FILE)
@@ -1822,16 +1821,6 @@ $(ESP_COMBINED512): $(USER1_BIN) $(USER2_BIN)
 	dd bs=1 if=$(BOOTLOADER) of=$@ conv=notrunc
 	dd bs=1 seek=4096 if=$(USER1_BIN) of=$@ conv=notrunc
 	dd bs=1 seek=507904 if=$(INIT_DATA) of=$@ conv=notrunc
-
-$(ESP_COMBINED4M): $(USER1_BIN) $(USER2_BIN)
-	dd if=/dev/zero ibs=1k count=4096 | tr "\000" "\377" > $@
-	dd bs=1 if=$(BOOTLOADER) of=$@ conv=notrunc
-	dd bs=1 seek=4096 if=$(USER1_BIN) of=$@ conv=notrunc
-	dd bs=1 seek=507904 if=$(INIT_DATA) of=$@ conv=notrunc # 512k params
-	dd bs=1 seek=528384 if=$(USER2_BIN) of=$@ conv=notrunc
-	dd bs=1 seek=1032192 if=$(INIT_DATA) of=$@ conv=notrunc # 1M
-	dd bs=1 seek=2080768 if=$(INIT_DATA) of=$@ conv=notrunc # 2M
-	dd bs=1 seek=4177920 if=$(INIT_DATA) of=$@ conv=notrunc # 4M
 
 # Analyze all the .o files and rank them by the amount of static string area used, useful to figure
 # out where to optimize and move strings to flash

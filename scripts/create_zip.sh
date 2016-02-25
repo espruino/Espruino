@@ -83,7 +83,6 @@ do
     # Do some more ESP8266 build stuff
     bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make combined" || { echo "Build of $BOARDNAME failed" ; exit 1; }
     cp ${BINARY_NAME}_combined_512.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
-    cp ${BINARY_NAME}_combined_4M.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
   else
     cp $BINARY_NAME $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of $BOARDNAME failed" ; exit 1; }
   fi

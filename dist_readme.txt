@@ -80,10 +80,6 @@ espruino_#v##_esp8266_combined_512.bin
    - ESP8266 'combined' port for 512k devices like ESP01
        Flash with: esptool.py write_flash 0 espruino_#v##_esp8266_combined_512.bin
 
-espruino_#v##_esp8266_combined_4M.bin
-   - ESP8266 'combined' port for 4M devices like ESP12
-       Flash with: esptool.py write_flash 0 espruino_#v##_esp8266_combined_4M.bin
-
 espruino_#v##_esp8266.tgz
    - ESP8266 port as separate files
 
