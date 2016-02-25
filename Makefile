@@ -1669,6 +1669,17 @@ else
   export SILENT=1
 endif
 
+boardjson: scripts/build_board_json.py $(WRAPPERSOURCES)
+	@echo Generating Board JSON
+	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
+	$(Q)echo DEFINES =  $(DEFINES)
+ifdef USE_NET
+        # hack to ensure that Pico/etc have all possible firmware configs listed
+	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -DUSE_WIZNET=1 -DUSE_CC3000=1 -B$(BOARD)
+else
+	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD) 
+endif
+
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers

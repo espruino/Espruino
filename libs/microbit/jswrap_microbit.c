@@ -142,6 +142,8 @@ void jswrap_microbit_kill() {
      ["image","JsVar","The image to show"]
   ]
 }
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+
 Show an image on the in-built 5x5 LED screen.
 
 Image can be:
@@ -184,7 +186,9 @@ void jswrap_microbit_show(JsVar *image) {
   "generate" : "jswrap_microbit_acceleration",
   "return" : ["JsVar", "An object with x, y, and z fields in it"]
 }
-Get the current acceleration of the micro:bit
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+
+Get the current acceleration of the micro:bit from the on-board accelerometer
 */
 JsVar *jswrap_microbit_acceleration() {
   unsigned char d[6];
@@ -212,7 +216,9 @@ JsVar *jswrap_microbit_acceleration() {
   "generate" : "jswrap_microbit_compass",
   "return" : ["JsVar", "An object with x, y, and z fields in it"]
 }
-Get the current compass position for the micro:bit
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+
+Get the current compass position for the micro:bit from the on-board magnetometer
 */
 JsVar *jswrap_microbit_compass() {
   unsigned char d[7];
