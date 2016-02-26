@@ -475,9 +475,9 @@ static void doClose(
     if (rc != 0) {
       setSocketInError(pSocketData, rc);
     }
-    // FIXME: do we get a disconnected callback or is this it? If we don't get a callback we can
-    // go straight to SOCKET_STATE_CLOSED
-    pSocketData->state = SOCKET_STATE_DISCONNECTING;
+    // we do not get a disconnected callback so we go straight to SOCKET_STATE_UNUSED
+    pSocketData->state = SOCKET_STATE_UNUSED;
+    pSocketData->creationType = SOCKET_CREATED_NONE;
 
   } else {
     int rc = espconn_disconnect(pSocketData->pEspconn);
@@ -485,7 +485,8 @@ static void doClose(
       pSocketData->state = SOCKET_STATE_DISCONNECTING;
     } else {
       setSocketInError(pSocketData, rc);
-      pSocketData->state = SOCKET_STATE_CLOSED; // don't expect a callback
+      pSocketData->state = SOCKET_STATE_UNUSED; // don't expect a callback
+      pSocketData->creationType = SOCKET_CREATED_NONE;
     }
   }
 }
