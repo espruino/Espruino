@@ -1,3 +1,5 @@
+     1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
+
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
             Fix issue where GC'd objects referencing non-GC'd data wouldn't unreference it

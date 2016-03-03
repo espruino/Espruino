@@ -32,6 +32,7 @@ extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf
 
 #ifdef LINUX
 #define PORT 2323 // avoid needing root permissions
+bool telnetEnabled = false; // whether telnet should be enabled or not. Set in main.c
 #else
 #define PORT 23
 #endif
@@ -67,8 +68,10 @@ static uint8_t      tnSrvMode;    // current mode for the telnet server
   "class" : "Telnet"
 }
 This library implements a telnet console for the Espruino interpreter. It requires a network
-connection, e.g. Wifi, and **current only functions on the ESP8266 and on Linux **. It uses
+connection, e.g. Wifi, and **currently only functions on the ESP8266 and on Linux **. It uses
 port 23 on the ESP8266 and port 2323 on Linux.
+
+**Note:** To enable on Linux, run `./espruino --telnet`
 */
 
 /*JSON{
@@ -111,7 +114,11 @@ void jswrap_telnet_setOptions(JsVar *jsOptions) {
 }
 */
 void jswrap_telnet_init(void) {
+#ifdef LINUX
+  tnSrvMode = telnetEnabled ? MODE_ON : MODE_OFF;
+#else
   tnSrvMode = MODE_ON; // hardcoded for now
+#endif
 }
 
 /*JSON{

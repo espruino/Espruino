@@ -607,7 +607,7 @@ USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
-#USE_TELNET=1  # enable telnet to have it listen on port 2323 as JS console
+USE_TELNET=1 
 #USE_LCD_SDL=1
 
 ifdef MACOSX
