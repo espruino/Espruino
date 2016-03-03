@@ -147,6 +147,7 @@ bool jswrap_telnet_idle(void) {
     if (tnSrv.sock > 0) {
       telnetStop(&net);
     }
+    networkFree(&net);
     return false;
   }
 
@@ -154,7 +155,10 @@ bool jswrap_telnet_idle(void) {
   if (tnSrv.sock == 0) {
     memset(&tnSrv, 0, sizeof(TelnetServer));
     telnetStart(&net);
-    if (tnSrv.sock == 0) return false; // seems like there's a problem...
+    if (tnSrv.sock == 0) {
+      networkFree(&net);
+      return false; // seems like there's a problem...
+    }
   }
 
   // looks like we are listening, now deal with actual connected sockets

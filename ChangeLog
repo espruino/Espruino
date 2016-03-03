@@ -1,4 +1,5 @@
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
+            Fix lock 'leak' in Telnet when Telnet is turned off
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
