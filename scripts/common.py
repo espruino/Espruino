@@ -19,6 +19,7 @@ import json;
 import sys;
 import os;
 import importlib;
+import traceback;
 
 silent = os.getenv("SILENT");
 if silent:
@@ -49,16 +50,16 @@ if "check_output" not in dir( subprocess ):
 # 
 # Comments look like:
 #
-#/*JSON{ "type":"staticmethod|staticproperty|constructor|method|property|function|variable|class|library|idle|init|kill",
-#                      // class = built-in class that does not require instantiation
+#/*JSON{ "type":"constructor|function|variable|library|idle|init|kill",
+#                      // include - force a #include for what's in the 'include' field        
 #                      // library = built-in class that needs require('classname')
 #                      // idle = function to run on idle regardless
 #                      // init = function to run on initialisation            
 #                      // kill = function to run on deinitialisation                            
-#         "class" : "Double", "name" : "doubleToIntBits",
+#         "memberOf" : "Double", 
+#         "name" : "nameOfThisItem",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
 #         "generate_full|generate|wrap" : "*(JsVarInt*)&x",
-#         "description" : " Convert the floating point value given into an integer representing the bits contained in it",
 #         "params" : [ [ "x" , "float|int|int32|bool|pin|JsVar|JsVarName|JsVarArray", "A floating point number"] ],
 #                               // float - parses into a JsVarFloat which is passed to the function
 #                               // int - parses into a JsVarInt which is passed to the function
@@ -67,15 +68,13 @@ if "check_output" not in dir( subprocess ):
 #                               // pin - parses into a pin
 #                               // JsVar - passes a JsVar* to the function (after skipping names)
 #                               // JsVarArray - parses this AND ANY SUBSEQUENT ARGUMENTS into a JsVar of type JSV_ARRAY. THIS IS ALWAYS DEFINED, EVEN IF ZERO LENGTH. Currently it must be the only parameter
+#         "thisParam" : true/false, // Is the first argument to the native function the 'this' variable? "params" then goes on the end
 #         "return" : ["int|float|JsVar", "The integer representation of x"],
 #         "return_object" : "ObjectName", // optional - used for tern's code analysis - so for example we can do hints for openFile(...).yyy
 #         "no_create_links":1                // optional - if this is set then hyperlinks are not created when this name is mentioned (good example = bit() )
-#         "not_real_object" : "anything",    // optional - for classes, this means we shouldn't treat this as a built-in object, as internally it isn't stored in a JSV_OBJECT
-#         "prototype" : "Object",    // optional - for classes, this is what their prototype is. It's particlarly helpful if not_real_object, because there is no prototype var in that case
+#         "not_real_object" : 1    // optional - for classes, this means we shouldn't treat this as a built-in object, as internally it isn't stored in a JSV_OBJECT
 #         "check" : "jsvIsFoo(var)", // for classes - this is code that returns true if 'var' is of the given type
-#         "ifndef" : "SAVE_ON_FLASH", // if the given preprocessor macro is defined, don't implement this
-#         "ifdef" : "USE_LCD_FOO", // if the given preprocessor macro isn't defined, don't implement this
-#         "#if" : "A>2", // add a #if statement in the generated C file (ONLY if type==object)
+#         "if" : "A>2 && defined(BOB)", // include or not depending on the given expression
 #}*/
 #
 # description can be an array of strings as well as a simple string (in which case each element is separated by a newline),
@@ -154,34 +153,34 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
               elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
               drop = False
               if not is_for_document:
-                if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
-                  print(dropped_prefix+" because of #ifndef "+jsondata["ifndef"])
-                  drop = True
-                if ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
-                  print(dropped_prefix+" because of #ifdef "+jsondata["ifdef"])
-                  drop = True
-                if ("#if" in jsondata):
-                  expr = jsondata["#if"]
+                if ("if" in jsondata):
+                  expr = jsondata["if"]
+
                   for defn in defines:
                     if defn.find('=')!=-1:
                       dname = defn[:defn.find('=')]
-                      dkey = defn[defn.find('=')+1:]                      
+                      dkey = defn[defn.find('=')+1:]      
+                      expr = expr.replace("defined("+dname+")", "True");                
                       expr = expr.replace(dname, dkey);
+                  expr = re.sub("defined(.*)",  "False", expr)
                   try: 
                     r = eval(expr)
                   except:
-                    print("WARNING: error evaluating '"+expr+"' - from '"+jsondata["#if"]+"'")
+                    print("ERROR evaluating '"+expr+"' - from '"+jsondata["if"]+"'")
+                    exit(1)
                     r = True
                   if not r:
-                    print(dropped_prefix+" because of #if "+jsondata["#if"]+ " -> "+expr)
+                    print(dropped_prefix+" because of 'if' "+jsondata["if"]+ " -> "+expr)
                     drop = True
               if not drop:
                 jsondatas.append(jsondata)
             except ValueError as e:
               sys.stderr.write( "JSON PARSE FAILED for " +  jsonstring + " - "+ str(e) + "\n")
+              traceback.print_exc()
               exit(1)
-            except:
+            except:          
               sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
+              traceback.print_exc()
               exit(1)
         print("Scanning finished.")
         return jsondatas

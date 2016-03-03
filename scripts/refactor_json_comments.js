@@ -76,7 +76,7 @@ function refactorJSON(json) {
         checkField(json, "include");
         copyFields.push("include");
         newJSON = {
-          type : json["include"]
+          type : "include",
         };
         break;
     case "library":
@@ -256,7 +256,7 @@ function refactorFile(filename) {
     // nasty:
     contents = contents.replace(jsonBlock, newBlock);
   });
-  //fs.writeFileSync(filename, contents);
+  fs.writeFileSync(filename, contents);
 }
 
 
