@@ -127,6 +127,7 @@ def codeOutSymbolTable(name, tab):
       strLen = strLen + len(symName) + 1
     else: 
       print (codeName + "." + symName+" not included in Symbol Table because no 'generate'")
+      print(json.dumps(sym, sort_keys=True, indent=2))
   tab["symbolTableChars"] = "\""+listChars+"\"";
   tab["symbolTableCount"] = str(len(listSymbols));
   tab["symbolListName"] = "jswSymbols_"+codeName;
@@ -199,7 +200,10 @@ for jsondata in jsondatas:
         "generate_full" : "jswCreateFromSymbolTable(jswSymbolIndex_"+jsondata["instanceOf"].replace(".","_")+"_prototype)",
         "return" : ["JsVar"],
         "filename" : jsondata["filename"]
-      })
+      });
+    if not "generate" in jsondata and not "generate_full" in jsondata:
+      jsondata["thisParam"] = False
+      jsondata["generate_full"] = "jswCreateFromSymbolTable(jswSymbolIndex_"+jsondata["name"].replace(".","_")+")"
     
 # Add basic classes if we have prototypes for classes, but not the class itself
 for className in classes:  
@@ -267,10 +271,11 @@ for className in classes:
 
 try:
   for j in jsondatas:
-    if j["type"]=="function" or j["type"]=="variable":
+    if "memberOf" in j:
       if not j["memberOf"] in symbolTables:
         symbolTables[j["memberOf"]] = { "type" : "object", "name" : j["memberOf"], "functions" : [] }
       symbolTables[j["memberOf"]]["functions"].append(j);
+    else: print("no member: "+json.dumps(j, sort_keys=True, indent=2))
 except:
   print("Unexpected error:", sys.exc_info())
   print(json.dumps(j, sort_keys=True, indent=2))

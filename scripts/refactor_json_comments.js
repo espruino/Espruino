@@ -229,7 +229,7 @@ function refactorJSON(json) {
   }
   if (json["ifndef"]) {
     if (newJSON["if"]) error(json, "IF already defined");
-    newJSON["if"] = "defined("+json["ifndef"]+")";
+    newJSON["if"] = "!defined("+json["ifndef"]+")";
   }
    
   if (!newJSON) error(json, "No new JSON");     

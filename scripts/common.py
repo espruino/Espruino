@@ -163,6 +163,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
                       expr = expr.replace("defined("+dname+")", "True");                
                       expr = expr.replace(dname, dkey);
                   expr = re.sub("defined(.*)",  "False", expr)
+                  expr = expr.replace("!",  "not ")
                   try: 
                     r = eval(expr)
                   except:
