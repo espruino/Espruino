@@ -24,6 +24,7 @@ typedef enum LEX_TYPES {
     LEX_INT,
     LEX_FLOAT,
     LEX_STR,
+    LEX_UNFINISHED_STR,
     LEX_UNFINISHED_COMMENT,
 
     LEX_EQUAL,

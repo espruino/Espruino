@@ -420,8 +420,8 @@ void jslGetNextToken(JsLex *lex) {
           }
         }
         jsvStringIteratorFree(&it);
+        lex->tk = lex->currCh==delim ? LEX_STR : LEX_UNFINISHED_STR;
         jslGetNextCh(lex);
-        lex->tk = LEX_STR;
       } break;
       case JSLJT_EXCLAMATION: jslSingleChar(lex);
       if (lex->currCh=='=') { // !=
@@ -610,6 +610,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
   case LEX_INT : strncpy(str, "INT", len); return;
   case LEX_FLOAT : strncpy(str, "FLOAT", len); return;
   case LEX_STR : strncpy(str, "STRING", len); return;
+  case LEX_UNFINISHED_STR : strncpy(str, "UNFINISHED STRING", len); return;
   }
   if (token>=LEX_EQUAL && token<LEX_R_LIST_END) {
     const char tokenNames[] =
@@ -727,8 +728,8 @@ bool jslIsIDOrReservedWord(JsLex *lex) {
 /// Match, and return true on success, false on failure
 bool jslMatch(JsLex *lex, int expected_tk) {
   if (lex->tk != expected_tk) {
-    char gotStr[16];
-    char expStr[16];
+    char gotStr[20];
+    char expStr[20];
     jslGetTokenString(lex, gotStr, sizeof(gotStr));
     jslTokenAsString(expected_tk, expStr, sizeof(expStr));
 

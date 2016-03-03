@@ -1371,8 +1371,8 @@ NO_INLINE JsVar *jspeFactor() {
     jsvUnLock(jspeFactor());
     return 0;
   }
-  // Nothing we can do here... just hope it's the end...
   JSP_MATCH(LEX_EOF);
+  jsExceptionHere(JSET_SYNTAXERROR, "Unexpected end of Input\n");
   return 0;
 }
 
