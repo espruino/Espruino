@@ -20,7 +20,6 @@
 #include <uart.h>
 #include <espmissingincludes.h>
 
-//#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
 typedef long long int64_t;
 

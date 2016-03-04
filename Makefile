@@ -67,7 +67,7 @@ MAKEFLAGS=-j5 # multicore
 endif
 
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
-LIBS=
+LIBS=-lm # Maths
 DEFINES=
 CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
 LDFLAGS=-Winline
@@ -829,48 +829,6 @@ ifdef USE_MATH
 DEFINES += -DUSE_MATH
 INCLUDE += -I$(ROOT)/libs/math
 WRAPPERSOURCES += libs/math/jswrap_math.c
-ifndef LINUX
-SOURCES += \
-libs/math/acosh.c \
-libs/math/asin.c \
-libs/math/asinh.c \
-libs/math/atan.c \
-libs/math/atanh.c \
-libs/math/cbrt.c \
-libs/math/chbevl.c \
-libs/math/clog.c \
-libs/math/cmplx.c \
-libs/math/const.c \
-libs/math/cosh.c \
-libs/math/drand.c \
-libs/math/exp10.c \
-libs/math/exp2.c \
-libs/math/exp.c \
-libs/math/fabs.c \
-libs/math/floor.c \
-libs/math/isnan.c \
-libs/math/log10.c \
-libs/math/log2.c \
-libs/math/log.c \
-libs/math/mtherr.c \
-libs/math/polevl.c \
-libs/math/pow.c \
-libs/math/powi.c \
-libs/math/round.c \
-libs/math/setprec.c \
-libs/math/sin.c \
-libs/math/sincos.c \
-libs/math/sindg.c \
-libs/math/sinh.c \
-libs/math/sqrt.c \
-libs/math/tan.c \
-libs/math/tandg.c \
-libs/math/tanh.c \
-libs/math/unity.c
-#libs/math/mod2pi.c
-#libs/math/mtst.c
-#libs/math/dtestvec.c
-endif
 endif
 
 ifdef USE_GRAPHICS
@@ -1548,8 +1506,6 @@ endif
 
 ifdef STM32
 DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
-DEFINES += -DFAKE_STDLIB
-# FAKE_STDLIB is for Espruino - it uses its own standard library so we don't have to link in the normal one + get bloated
 INCLUDE += -I$(ROOT)/targets/stm32
 ifndef BOOTLOADER
 SOURCES +=                              \
@@ -1565,7 +1521,6 @@ INCLUDE += -I$(ROOT)/targets/linux
 SOURCES +=                              \
 targets/linux/main.c                    \
 targets/linux/jshardware.c
-LIBS += -lm # maths lib
 LIBS += -lpthread # thread lib for input processing
 ifdef OPENWRT_UCLIBC
 LIBS += -lc

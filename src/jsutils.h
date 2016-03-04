@@ -17,26 +17,13 @@
 #include "platform_config.h"
 
 #include <stddef.h>
-#ifndef FAKE_STDLIB
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
-#endif
 #include <stdarg.h> // for va_args
 #include <stdint.h>
 #include <stdbool.h>
 
-#if defined(LINUX) || defined(ARDUINO_AVR)
 #include <math.h>
-#else
-// these are in maths, but are used all over the place
-extern int isnan ( double );
-extern int isfinite ( double );
-#define NAN (((JsVarFloat)0)/(JsVarFloat)0)
-#define INFINITY (((JsVarFloat)1)/(JsVarFloat)0)
-#endif
-
-
 
 #ifndef BUILDNUMBER
 #define JS_VERSION "1v85"
@@ -292,10 +279,18 @@ typedef int64_t JsSysTime;
    ((X)==32768)?15:10000/*error*/)
 
 // To handle variable size bit fields
-#define BITFIELD_DECL(BITFIELD, N) uint32_t BITFIELD[(N+31)/32]
+#define BITFIELD_DECL(BITFIELD, N) uint32_t BITFIELD[((N)+31)/32]
 #define BITFIELD_GET(BITFIELD, N) ((BITFIELD[(N)>>5] >> ((N)&31))&1)
 #define BITFIELD_SET(BITFIELD, N, VALUE) (BITFIELD[(N)>>5] = (BITFIELD[(N)>>5]& (uint32_t)~(1 << ((N)&31))) | (uint32_t)((VALUE)?(1 << ((N)&31)):0)  )
 #define BITFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
+
+// Array of 4 bit values - returns unsigned
+/*// UNTESTED
+#define NIBBLEFIELD_DECL(BITFIELD, N) uint16_t BITFIELD[((N)+1)/2]
+#define NIBBLEFIELD_GET(BITFIELD, N) ((BITFIELD[(N)>>1] >> (((N)&1)*4)) & 15)
+#define NIBBLEFIELD_SET(BITFIELD, N, VALUE) (BITFIELD[(N)>>1] = (BITFIELD[(N)>>1]& (uint32_t)~(15 << (((N)&1)*4))) | (uint32_t)(((VALUE)&15) << (((N)&1)*4))  )
+#define NIBBLEFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
+*/
 
 
 static inline bool isWhitespace(char ch) {
@@ -388,19 +383,6 @@ typedef enum {
 /** Error flags for things that we don't really want to report on the console,
  * but which are good to know about */
 extern JsErrorFlags jsErrorFlags;
-
-
-#ifdef FAKE_STDLIB
-char *strncat(char *dst, const char *src, size_t c);
-char *strncpy(char *dst, const char *src, size_t c);
-size_t strlen(const char *s);
-int strcmp(const char *a, const char *b);
-void *memcpy(void *dst, const void *src, size_t size);
-void *memset(void *dst, int c, size_t size);
-#define RAND_MAX (0x7FFFFFFFU) // needs to be unsigned!
-int rand();
-void srand(unsigned int seed);
-#endif
 
 JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix);
 JsVarFloat stringToFloat(const char *str);

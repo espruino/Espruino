@@ -16,6 +16,7 @@
 #include "jsinteractive.h"
 
 #ifdef LINUX
+#include <stdio.h>
 #include <signal.h>
 #endif//LINUX
 #ifdef USE_TRIGGER

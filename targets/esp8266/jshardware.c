@@ -27,7 +27,6 @@
 #include <pwm.h>
 #include <spi.h> // Include the MetalPhreak/ESP8266_SPI_Library headers.
 
-//#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
 typedef long long int64_t;
 
