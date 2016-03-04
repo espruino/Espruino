@@ -717,7 +717,6 @@ JsVarFloat jshReadVRef() {
   nrf_saadc_channel_init(0, &config);
 
   return 6.0 * (nrf_analog_read() * 0.6 / 8192.0);
-#else
   const nrf_adc_config_t nrf_adc_config =  {
        NRF_ADC_CONFIG_RES_10BIT,
        NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
