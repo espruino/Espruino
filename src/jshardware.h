@@ -163,10 +163,13 @@ void jshPinSetState(Pin pin, JshPinState state);
  * (like JSHPINSTATE_PIN_IS_ON if pin was set to output) */
 JshPinState jshPinGetState(Pin pin);
 
-/// Returns an analog value between 0 and 1
+/** Returns an analog value between 0 and 1. 0 is expected to be 0v, and
+ * 1 means jshReadVRef() volts. On most devices jshReadVRef() would return
+ * around 3.3, so a reading of 1 represents 3.3v. */
 JsVarFloat jshPinAnalog(Pin pin);
 
 /** Returns a quickly-read analog value in the range 0-65535.
+ * This is basically `jshPinAnalog()*65535`
  * For use from an IRQ where high speed is needed */
 int jshPinAnalogFast(Pin pin);
 
@@ -385,8 +388,10 @@ volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags);
 
 /// the temperature from the internal temperature sensor, in degrees C
 JsVarFloat jshReadTemperature();
+
 /// The voltage that a reading of 1 from `analogRead` actually represents, in volts
 JsVarFloat jshReadVRef();
+
 /** Get a random number - either using special purpose hardware or by
  * reading noise from an analog input. If unimplemented, this should
  * default to `rand()` */
