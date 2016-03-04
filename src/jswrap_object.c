@@ -509,9 +509,9 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     jsWarn("Second argument to EventEmitter.on(..) must be a function or a String (containing code)");
     return;
   }
-  JsVar *eventName = jsvNewFromString(JS_EVENT_PREFIX);
+
+  JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
   if (!eventName) return; // no memory
-  jsvAppendStringVarComplete(eventName, event);
 
   JsVar *eventList = jsvFindChildFromVar(parent, eventName, true);
   jsvUnLock(eventName);
@@ -566,9 +566,8 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
     jsWarn("First argument to EventEmitter.emit(..) must be a string");
     return;
   }
-  JsVar *eventName = jsvNewFromString(JS_EVENT_PREFIX);
+  JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
   if (!eventName) return; // no memory
-  jsvAppendStringVarComplete(eventName, event);
 
   // extract data
   const unsigned int MAX_ARGS = 4;
@@ -599,6 +598,59 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
 /*JSON{
   "type" : "method",
   "class" : "Object",
+  "name" : "removeListener",
+  "generate" : "jswrap_object_removeListener",
+  "params" : [
+    ["event","JsVar","The name of the event, for instance 'data'"],
+    ["listener","JsVar","The listener to remove"]
+  ]
+}
+Removes the specified event listener.
+
+```
+function foo(d) {
+  console.log(d);
+}
+Serial1.on("data", foo);
+Serial1.removeListener("data", foo);
+```
+ */
+void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) {
+  if (!jsvHasChildren(parent)) {
+    jsWarn("Parent must be an object - not a String, Integer, etc.");
+    return;
+  }
+  if (jsvIsString(event)) {
+    // remove the whole child containing listeners
+    JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
+    if (!eventName) return; // no memory
+    JsVar *eventListName = jsvFindChildFromVar(parent, eventName, true);
+    jsvUnLock(eventName);
+    JsVar *eventList = jsvSkipName(eventListName);
+    if (eventList) {
+      if (eventList == callback) {
+        // there's no array, it was a single item
+        jsvRemoveChild(parent, eventListName);
+      } else if (jsvIsArray(eventList)) {
+        // it's an array, search for the index
+        JsVar *idx = jsvGetArrayIndexOf(eventList, callback, true);
+        if (idx) {
+          jsvRemoveChild(eventList, idx);
+          jsvUnLock(idx);
+        }
+      }
+      jsvUnLock(eventList);
+    }
+    jsvUnLock(eventListName);
+  } else {
+    jsWarn("First argument to EventEmitter.removeListener(..) must be a string");
+    return;
+  }
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Object",
   "name" : "removeAllListeners",
   "generate" : "jswrap_object_removeAllListeners",
   "params" : [
@@ -614,9 +666,8 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   }
   if (jsvIsString(event)) {
     // remove the whole child containing listeners
-    JsVar *eventName = jsvNewFromString(JS_EVENT_PREFIX);
+    JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
     if (!eventName) return; // no memory
-    jsvAppendStringVarComplete(eventName, event);
 
     JsVar *eventList = jsvFindChildFromVar(parent, eventName, true);
     jsvUnLock(eventName);
