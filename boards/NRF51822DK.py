@@ -23,7 +23,7 @@ info = {
  'default_console_tx' : "D9",
  'default_console_rx' : "D11",
  'default_console_baudrate' : "9600",
- 'variables' : 1020, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 1050, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_nrf51822.bin',
  'build' : {
   'defines' : [
@@ -49,8 +49,8 @@ chip = {
   'saved_code' : {
     'address' : ((256 - 3) * 1024),
     'page_size' : 1024,
-    'pages' : 3,
-    'flash_available' : (256 - (96 + 3)) # softdevice + saved code
+    'pages' : 0,
+    'flash_available' : (256 - 108 - 16) # total flash pages - softdevice - bootloader
   }
 };
 
