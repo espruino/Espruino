@@ -502,6 +502,9 @@ Get the battery level in volts
 */
 JsVarFloat jswrap_nrf_bluetooth_getBattery(void) {
   // Configure ADC
+#ifdef NRF52
+  return jshReadVRef();
+#else
   NRF_ADC->CONFIG     = (ADC_CONFIG_RES_8bit                        << ADC_CONFIG_RES_Pos)     |
                         (ADC_CONFIG_INPSEL_SupplyOneThirdPrescaling << ADC_CONFIG_INPSEL_Pos)  |
                         (ADC_CONFIG_REFSEL_VBG                      << ADC_CONFIG_REFSEL_Pos)  |
@@ -523,6 +526,7 @@ JsVarFloat jswrap_nrf_bluetooth_getBattery(void) {
   NRF_ADC->TASKS_STOP     = 1;
 
   return vbat_current_in_mv / 1000.0;
+#endif
 }
 
 /*JSON{
