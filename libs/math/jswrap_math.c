@@ -139,7 +139,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "acos",
-  "generate_full" : "jswrap_math_atan(sqrt(1-x*x) / x)",
+  "generate_full" : "jswrap_math_atan(jswrap_math_sqrt(1-x*x) / x)",
   "params" : [
     ["x","float","The value to get the arc cosine of"]
   ],
@@ -149,7 +149,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "asin",
-  "generate_full" : "jswrap_math_atan(x / sqrt(1-x*x))",
+  "generate_full" : "jswrap_math_atan(x / jswrap_math_sqrt(1-x*x))",
   "params" : [
     ["x","float","The value to get the arc sine of"]
   ],
@@ -362,7 +362,7 @@ JsVar *jswrap_math_round(double x) {
 }*/
 
 double jswrap_math_sqrt(double x) {
-  return (x>=0) ? exp(log(x) / 2) : NAN;
+  return (x>=0) ? exp(log(x) * 0.5) : NAN;
 }
 
 /*JSON{
