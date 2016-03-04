@@ -927,7 +927,7 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   JsVar *obj = 0;
   if (gfx.data.modMinX <= gfx.data.modMaxX) { // do we have a rect?
-    obj = jsvNewWithFlags(JSV_OBJECT);
+    obj = jsvNewObject();
     if (obj) {
       jsvObjectSetChildAndUnLock(obj, "x1", jsvNewFromInteger(gfx.data.modMinX));
       jsvObjectSetChildAndUnLock(obj, "y1", jsvNewFromInteger(gfx.data.modMinY));

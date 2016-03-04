@@ -432,7 +432,7 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 // 'claim' anything we are using
 void jsiSoftInit() {
   jsErrorFlags = 0;
-  events = jsvNewWithFlags(JSV_ARRAY);
+  events = jsvNewEmptyArray();
   inputLine = jsvNewFromEmptyString();
   inputCursorPos = 0;
   jsiLineNumberOffset = 0;
@@ -1444,7 +1444,7 @@ void jsiHandleChar(char ch) {
 void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount) { // an array of functions, a string, or a single function
   assert(argCount<10);
 
-  JsVar *event = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *event = jsvNewObject();
   if (event) { // Could be out of memory error!
     jsvUnLock(jsvAddNamedChild(event, callback, "func"));
 
@@ -1727,7 +1727,7 @@ void jsiIdle() {
                 pinIsHigh = oldWatchState;
               }
             } else { // else create a new timeout
-              timeout = jsvNewWithFlags(JSV_OBJECT);
+              timeout = jsvNewObject();
               if (timeout) {
                 jsvObjectSetChild(timeout, "watch", watchPtr); // no unlock
                 jsvObjectSetChildAndUnLock(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce));
@@ -1749,7 +1749,7 @@ void jsiIdle() {
             if (jsiShouldExecuteWatch(watchPtr, pinIsHigh)) { // edge triggering
               JsVar *watchCallback = jsvObjectGetChild(watchPtr, "callback", 0);
               bool watchRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(watchPtr,  "recur", 0));
-              JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+              JsVar *data = jsvNewObject();
               if (data) {
                 jsvObjectSetChildAndUnLock(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
                 // set both data.time, and watch.lastTime in one go
@@ -1823,7 +1823,7 @@ void jsiIdle() {
       bool exec = true;
       JsVar *data = 0;
       if (watchPtr) {
-        data = jsvNewWithFlags(JSV_OBJECT);
+        data = jsvNewObject();
         // if we were from a watch then we were delayed by the debounce time...
         if (data) {
           JsVarInt delay = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));

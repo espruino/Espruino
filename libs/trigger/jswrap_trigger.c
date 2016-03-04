@@ -204,14 +204,14 @@ JsVar *jswrap_trig_getTrigger(JsVarInt num) {
   position = wrapAround((position * 360 / trig->teethTotal) + trig->keyPosition, 360);
 
 
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (!obj) return 0;
   JsVar *v;
   v = jsvNewFromFloat(position);
   jsvUnLock2(jsvAddNamedChild(obj, v, "pos"), v);
   v = jsvNewFromFloat(jshGetMillisecondsFromTime(tp->pulseLength));
   jsvUnLock2(jsvAddNamedChild(obj, v, "pulseLength"), v);
-  v = jsvNewWithFlags(JSV_ARRAY);
+  v = jsvNewEmptyArray();
   int i;
   if (v) {
     for (i=0;i<TRIGGERPOINT_TRIGGERS_COUNT;i++)
@@ -269,7 +269,7 @@ JsVar* jswrap_trig_getErrorArray() {
   TriggerError errors = trig->errors;
   trig->errors = 0;
 
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (arr) {
     int i;
     for (i=1;i<=errors;i<<=1) {

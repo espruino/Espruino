@@ -194,7 +194,7 @@ JsVar *jswrap_microbit_acceleration() {
   unsigned char d[6];
   d[0] = 1;
   jshI2CRead(EV_I2C1, MMA8652_ADDR, 7, d, true);
-  JsVar *xyz = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *xyz = jsvNewObject();
   if (xyz) {
     int x = (d[1]<<8) | d[2];
     if (x>>15) x-=65536;
@@ -224,7 +224,7 @@ JsVar *jswrap_microbit_compass() {
   unsigned char d[7];
   d[0] = 1;
   jshI2CRead(EV_I2C1, MAG3110_ADDR, 6, d, true);
-  JsVar *xyz = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *xyz = jsvNewObject();
   if (xyz) {
     int x = (d[1]<<8) | d[2];
     if (x>>15) x-=65536;

@@ -65,7 +65,7 @@ const char *exportNames =
 Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION
  */
 JsVar *jswrap_process_env() {
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   jsvObjectSetChildAndUnLock(obj, "VERSION", jsvNewFromString(JS_VERSION));
   jsvObjectSetChildAndUnLock(obj, "BUILD_DATE", jsvNewFromString(__DATE__));
   jsvObjectSetChildAndUnLock(obj, "BUILD_TIME", jsvNewFromString(__TIME__));
@@ -80,7 +80,7 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
   jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
 #ifndef SAVE_ON_FLASH
-  JsVar *arr = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *arr = jsvNewObject();
   if (arr) {
     const char *s = exportNames;
     void **p = (void**)exportPtrs;
@@ -125,7 +125,7 @@ extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
 #endif
 JsVar *jswrap_process_memory() {
   jsvGarbageCollect();
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (obj) {
     unsigned int history = 0;
     JsVar *historyVar = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);

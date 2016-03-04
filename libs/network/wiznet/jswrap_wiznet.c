@@ -176,7 +176,7 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
 
   /* If byte 1 is 0 we don't have a valid address */
-  JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *data = jsvNewObject();
   networkPutAddressAsString(data, "ip", &gWIZNETINFO.ip[0], 4, 10, '.');
   networkPutAddressAsString(data, "subnet", &gWIZNETINFO.sn[0], 4, 10, '.');
   networkPutAddressAsString(data, "gateway", &gWIZNETINFO.gw[0], 4, 10, '.');

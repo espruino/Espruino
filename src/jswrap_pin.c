@@ -198,7 +198,7 @@ JsVar *jswrap_pin_getInfo(
   Pin pin = jshGetPinFromVar(parent);
   if (!jshIsPinValid(pin)) return 0;
   const JshPinInfo *inf = &pinInfo[pin];
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (!obj) return 0;
 
   char buf[2];
@@ -215,9 +215,9 @@ JsVar *jswrap_pin_getInfo(
 #endif
   // ADC
   if (inf->analog) {
-    JsVar *an = jsvNewWithFlags(JSV_OBJECT);
+    JsVar *an = jsvNewObject();
     if (an) {
-      JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+      JsVar *arr = jsvNewEmptyArray();
       if (arr) {
         int i;
         for (i=0;i<ADC_COUNT;i++)
@@ -228,12 +228,12 @@ JsVar *jswrap_pin_getInfo(
       jsvObjectSetChildAndUnLock(obj, "channel", jsvNewFromInteger(inf->analog & JSH_MASK_ANALOG_CH));
     }
   }
-  JsVar *funcs = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *funcs = jsvNewObject();
   if (funcs) {
     int i;
     for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
       if (inf->functions[i]) {
-        JsVar *func = jsvNewWithFlags(JSV_OBJECT);
+        JsVar *func = jsvNewObject();
         if (func) {
           char buf[16];
           jshPinFunctionToString(inf->functions[i], JSPFTS_TYPE, buf, sizeof(buf));

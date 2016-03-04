@@ -319,7 +319,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         // Advertising data received
         const ble_gap_evt_adv_report_t *p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
 
-        JsVar *evt = jsvNewWithFlags(JSV_OBJECT);
+        JsVar *evt = jsvNewObject();
         if (evt) {
           jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
           jsvObjectSetChildAndUnLock(evt, "addr", jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",

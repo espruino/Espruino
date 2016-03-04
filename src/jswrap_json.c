@@ -83,7 +83,7 @@ JsVar *jswrap_json_parse_internal(JsLex *lex) {
     return a;
   }
   case '[': {
-    JsVar *arr = jsvNewWithFlags(JSV_ARRAY); if (!arr) return 0;
+    JsVar *arr = jsvNewEmptyArray(); if (!arr) return 0;
     jslGetNextToken(lex); // [
     while (lex->tk != ']') {
       JsVar *value = jswrap_json_parse_internal(lex);
@@ -102,7 +102,7 @@ JsVar *jswrap_json_parse_internal(JsLex *lex) {
     return arr;
   }
   case '{': {
-    JsVar *obj = jsvNewWithFlags(JSV_OBJECT); if (!obj) return 0;
+    JsVar *obj = jsvNewObject(); if (!obj) return 0;
     jslGetNextToken(lex); // {
     while (lex->tk == LEX_STR) {
       JsVar *key = jsvAsArrayIndexAndUnLock(jslGetTokenValueAsVar(lex));

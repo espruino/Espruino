@@ -887,9 +887,17 @@ JsVar *jsvNewFromPin(int pin) {
   return v;
 }
 
+JsVar *jsvNewObject() {
+  return jsvNewWithFlags(JSV_OBJECT);
+}
+
+JsVar *jsvNewEmptyArray() {
+  return jsvNewWithFlags(JSV_ARRAY);
+}
+
 /// Create an array containing the given elements
 JsVar *jsvNewArray(JsVar **elements, int elementCount) {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
   int i;
   for (i=0;i<elementCount;i++)
@@ -1706,7 +1714,7 @@ JsVar *jsvArrayBufferGetFromName(JsVar *name) {
 
 
 JsVar *jsvGetFunctionArgumentLength(JsVar *functionScope) {
-  JsVar *args = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *args = jsvNewEmptyArray();
   if (!args) return 0; // out of memory
 
   JsvObjectIterator it;

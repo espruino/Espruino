@@ -440,7 +440,7 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
     jsExceptionHere(JSET_ERROR, "Function or String not supplied!");
   } else {
     // Create a new timer
-    JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
+    JsVar *timerPtr = jsvNewObject();
     if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
     JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
     jsvObjectSetChildAndUnLock(timerPtr, "time", jsvNewFromLongInteger((jshGetSystemTime() - jsiLastIdleTime) + intervalInt));

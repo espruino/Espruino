@@ -55,7 +55,7 @@ JsVar *jswrap_object_constructor(JsVar *value) {
     return jsvLockAgain(value);
   const char *objName = jswGetBasicObjectName(value);
   JsVar *funcName = objName ? jspGetNamedVariable(objName) : 0;
-  if (!funcName) return jsvNewWithFlags(JSV_OBJECT);
+  if (!funcName) return jsvNewObject();
   JsVar *func = jsvSkipName(funcName);
   JsVar *result = jspeFunctionCall(func, funcName, 0, false, 1, &value);
   jsvUnLock2(funcName, func);
@@ -248,7 +248,7 @@ JsVar *jswrap_object_keys_or_property_names(
     bool includeNonEnumerable,  ///< include 'hidden' items
     bool includePrototype ///< include items for the prototype too (for autocomplete)
     ) {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
 
   jswrap_object_keys_or_property_names_cb(obj, includeNonEnumerable, includePrototype, (void (*)(void *, JsVar *))jsvArrayAddUnique, arr);
@@ -276,7 +276,7 @@ JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject) {
   if (jsvIsObject(propertiesObject)) {
     jsWarn("propertiesObject is not supported yet");
   }
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (!obj) return 0;
   if (jsvIsObject(proto))
     jsvObjectSetChild(obj, JSPARSE_INHERITS_VAR, proto);
@@ -308,7 +308,7 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
   assert(varName); // we had it! (apparently)
   if (!varName) return 0;
 
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (!obj) {
     jsvUnLock(varName);
     return 0;
@@ -525,7 +525,7 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
       jsvArrayPush(eventListeners, listener);
     } else {
       // not an array - we need to make it an array
-      JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+      JsVar *arr = jsvNewEmptyArray();
       jsvArrayPush(arr, eventListeners);
       jsvArrayPush(arr, listener);
       jsvSetValueOfName(eventList, arr);

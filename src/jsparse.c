@@ -228,7 +228,7 @@ JsVar *jspeiGetScopesAsVar() {
   if (execInfo.scopeCount==1)
     return jsvLockAgain(execInfo.scopes[0]);
 
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   int i;
   for (i=0;i<execInfo.scopeCount;i++) {
     JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(i), execInfo.scopes[i]);
@@ -919,7 +919,7 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
   if (!child) {
     if (jsvIsFunction(object) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
       // prototype is supposed to be an object
-      JsVar *proto = jsvNewWithFlags(JSV_OBJECT);
+      JsVar *proto = jsvNewObject();
       // make sure it has a 'constructor' variable that points to the object it was part of
       jsvObjectSetChild(proto, JSPARSE_CONSTRUCTOR_VAR, object);
       child = jsvAddNamedChild(object, proto, JSPARSE_PROTOTYPE_VAR);
@@ -955,7 +955,7 @@ JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName) {
 
     // If not found and is the prototype, create it
     if (!child && jsvIsFunction(object) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
-      JsVar *value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
+      JsVar *value = jsvNewObject(); // prototype is supposed to be an object
       child = jsvAddNamedChild(object, value, JSPARSE_PROTOTYPE_VAR);
       jsvUnLock(value);
     }
@@ -995,7 +995,7 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
 
       // If not found and is the prototype, create it
       if (!child && jsvIsFunction(object) && jsvIsStringEqual(nameVar, JSPARSE_PROTOTYPE_VAR)) {
-        JsVar *value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
+        JsVar *value = jsvNewObject(); // prototype is supposed to be an object
         child = jsvAddNamedChild(object, value, JSPARSE_PROTOTYPE_VAR);
         jsvUnLock(value);
       }
@@ -1098,7 +1098,7 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
     return 0;
   }
 
-  JsVar *thisObj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *thisObj = jsvNewObject();
   if (!thisObj) return 0; // out of memory
   // Make sure the function has a 'prototype' var
   JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
@@ -1160,7 +1160,7 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
 
 NO_INLINE JsVar *jspeFactorObject() {
   if (JSP_SHOULD_EXECUTE) {
-    JsVar *contents = jsvNewWithFlags(JSV_OBJECT);
+    JsVar *contents = jsvNewObject();
     if (!contents) { // out of memory
       jspSetError(false);
       return 0;
@@ -1212,7 +1212,7 @@ NO_INLINE JsVar *jspeFactorArray() {
   int idx = 0;
   JsVar *contents = 0;
   if (JSP_SHOULD_EXECUTE) {
-    contents = jsvNewWithFlags(JSV_ARRAY);
+    contents = jsvNewEmptyArray();
     if (!contents) { // out of memory
       jspSetError(false);
       return 0;
@@ -1252,7 +1252,7 @@ NO_INLINE void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName) {
     if (!jsvIsUndefined(prototypeVar))
       jsWarn("Prototype is not an Object, so setting it to {}");
     jsvUnLock(prototypeVar);
-    prototypeVar = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
+    prototypeVar = jsvNewObject(); // prototype is supposed to be an object
     JsVar *lastName = jsvSkipToLastName(prototypeName);
     jsvSetValueOfName(lastName, prototypeVar);
     jsvUnLock(lastName);
@@ -2392,7 +2392,7 @@ NO_INLINE JsVar *jspNewPrototype(const char *instanceOf) {
 NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
   JsVar *prototypeName = jspNewPrototype(instanceOf);
 
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (!obj) { // out of memory
     jsvUnLock(prototypeName);
     return 0;
@@ -2532,9 +2532,9 @@ JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **arg
 /// Evaluate a JavaScript module and return its exports
 JsVar *jspEvaluateModule(JsVar *moduleContents) {
   assert(jsvIsString(moduleContents));
-  JsVar *scope = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *scope = jsvNewObject();
   if (!scope) return 0; // out of mem
-  JsVar *scopeExports = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *scopeExports = jsvNewObject();
   if (!scopeExports) { jsvUnLock(scope); return 0; } // out of mem
   JsVar *exportsName = jsvAddNamedChild(scope, scopeExports, "exports");
   jsvUnLock2(scopeExports, jsvAddNamedChild(scope, scope, "module"));

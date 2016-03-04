@@ -319,6 +319,8 @@ JsVar *jsvNewFromLongInteger(long long value);
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
 void jsvMakeFunctionParameter(JsVar *v);
 JsVar *jsvNewFromPin(int pin);
+JsVar *jsvNewObject(); ///< Create a new object
+JsVar *jsvNewEmptyArray(); ///< Create a new array
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes); ///< Create an array containing the given elements
 JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out

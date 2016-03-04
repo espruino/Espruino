@@ -601,7 +601,7 @@ Get and reset the error flags. Returns an array that can contain:
 `'MEMORY'`: Espruino ran out of memory and was unable to allocate some data that it needed.
  */
 JsVar *jswrap_espruino_getErrorFlags() {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
   if (jsErrorFlags&JSERR_RX_FIFO_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("FIFO_FULL"));
   if (jsErrorFlags&JSERR_BUFFER_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("BUFFER_FULL"));
@@ -814,14 +814,14 @@ See http://www.espruino.com/Internals for more information
  */
 JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
   if (depth>0 && jsvHasChildren(v)) {
-    JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+    JsVar *arr = jsvNewEmptyArray();
     if (!arr) return 0;
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, v);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *key = jsvObjectIteratorGetKey(&it);
       JsVar *val = jsvSkipName(key);
-      JsVar *item = jsvNewWithFlags(JSV_OBJECT);
+      JsVar *item = jsvNewObject();
       if (item) {
         jsvObjectSetChildAndUnLock(item, "name", jsvAsString(key, false));
         jsvObjectSetChildAndUnLock(item, "size", jswrap_espruino_getSizeOf(key, 0));
