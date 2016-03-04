@@ -4,6 +4,7 @@
             Remove Espruino's built-in strcpy/etc
             Remove Espruino's built-in maths
             Add basic Taylor series sin and atan for when we're trying to save memory  
+            Refactoring to use global var for lexer - save some memory and increase parse speed
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS

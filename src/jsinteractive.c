@@ -378,7 +378,7 @@ void jsiConsoleReturnInputLine() {
   }
 }
 void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos) {
-  jslPrintPosition((vcbprintf_callback)jsiConsolePrintString, 0, lex, tokenPos);
+  jslPrintPosition((vcbprintf_callback)jsiConsolePrintString, 0, tokenPos);
 }
 
 /**
@@ -828,7 +828,8 @@ int jsiCountBracketsInInput() {
   int brackets = 0;
 
   JsLex lex;
-  jslInit(&lex, inputLine);
+  JsLex *oldLex = jslSetLex(&lex);
+  jslInit(inputLine);
   while (lex.tk!=LEX_EOF && lex.tk!=LEX_UNFINISHED_COMMENT) {
     if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
     if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
@@ -837,7 +838,8 @@ int jsiCountBracketsInInput() {
   }
   if (lex.tk==LEX_UNFINISHED_COMMENT)
     brackets=1000; // if there's an unfinished comment, we're in the middle of something
-  jslKill(&lex);
+  jslKill();
+  jslSetLex(oldLex);
 
   return brackets;
 }
@@ -1151,7 +1153,8 @@ void jsiTabComplete() {
   size_t partialStart = 0;
 
   JsLex lex;
-  jslInit(&lex, inputLine);
+  JsLex *oldLex = jslSetLex(&lex);
+  jslInit(inputLine);
   while (lex.tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex.tokenStart.it)<=inputCursorPos) {
     if (lex.tk=='.') {
       jsvUnLock(object);
@@ -1169,7 +1172,8 @@ void jsiTabComplete() {
     }
     jslGetNextToken(&lex);
   }
-  jslKill(&lex);
+  jslKill();
+  jslSetLex(oldLex);
   if (!data.partial) {
     jsvUnLock(object);
     return;
@@ -2150,12 +2154,12 @@ void jsiDebuggerLoop() {
   jsiConsoleRemoveInputLine();
   jsiStatus = (jsiStatus & ~JSIS_ECHO_OFF_MASK) | JSIS_IN_DEBUGGER;
 
-  if (execInfo.lex) {
+  if (lex) {
     char lineStr[9];
     // Get a string fo the form '1234    ' for the line number
     // ... but only if the line number was set, otherwise use spaces
-    if (execInfo.lex->lineNumberOffset) {
-      itostr((JsVarInt)jslGetLineNumber(execInfo.lex) + (JsVarInt)execInfo.lex->lineNumberOffset - 1, lineStr, 10);
+    if (lex->lineNumberOffset) {
+      itostr((JsVarInt)jslGetLineNumber(lex) + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
     } else {
       lineStr[0]=0;
     }
@@ -2163,7 +2167,7 @@ void jsiDebuggerLoop() {
     while (lineLen < sizeof(lineStr)-1) lineStr[lineLen++]=' ';
     lineStr[lineLen] = 0;
     // print the line of code, prefixed by the line number, and with a pointer to the exact character in question
-    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrintString, 0, execInfo.lex, execInfo.lex->tokenLastStart, lineStr);
+    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrintString, 0, lex->tokenLastStart, lineStr);
   }
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&
@@ -2235,7 +2239,8 @@ void jsiDebuggerPrintScope(JsVar *scope) {
 void jsiDebuggerLine(JsVar *line) {
   assert(jsvIsString(line));
   JsLex lex;
-  jslInit(&lex, line);
+  JsLex *oldLex = jslSetLex(&lex);
+  jslInit(line);
   bool handled = false;
   if (lex.tk == LEX_ID || lex.tk == LEX_R_CONTINUE) {
     // continue is a reserved word!
@@ -2274,7 +2279,6 @@ void jsiDebuggerLine(JsVar *line) {
     } else if (!strcmp(id,"print") || !strcmp(id,"p")) {
       jslGetNextToken(&lex);
       JsExecInfo oldExecInfo = execInfo;
-      execInfo.lex = &lex; // execute with the remainder of the line
       execInfo.execute = EXEC_YES;
       JsVar *v = jsvSkipNameAndUnLock(jspParse());
       execInfo = oldExecInfo;
@@ -2313,6 +2317,7 @@ void jsiDebuggerLine(JsVar *line) {
     jsiConsolePrint("In debug mode: Expected a simple ID, type 'help' for more info.\n");
   }
 
-  jslKill(&lex);
+  jslKill();
+  jslSetLex(oldLex);
 }
 #endif // USE_DEBUGGER

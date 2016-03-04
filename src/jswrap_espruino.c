@@ -80,9 +80,9 @@ While this is implemented on Espruino boards, it may not be implemented on other
  */
 
 
-int nativeCallGetCType(JsLex *lex) {
+int nativeCallGetCType() {
   if (lex->tk == LEX_R_VOID) {
-    jslMatch(lex, LEX_R_VOID);
+    jslMatch(LEX_R_VOID);
     return JSWAT_VOID;
   }
   if (lex->tk == LEX_ID) {
@@ -93,7 +93,7 @@ int nativeCallGetCType(JsLex *lex) {
     if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
     if (strcmp(name,"Pin")==0) t=JSWAT_PIN;
     if (strcmp(name,"JsVar")==0) t=JSWAT_JSVAR;
-    jslMatch(lex, LEX_ID);
+    jslMatch(LEX_ID);
     return t;
   }
   return -1; // unknown
@@ -128,23 +128,25 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data) 
     // Nothing to do
   } else if (jsvIsString(signature)) {
     JsLex lex;
-    jslInit(&lex, signature);
+    JsLex *oldLex = jslSetLex(&lex);
+    jslInit(signature);
     int argType;
     bool ok = true;
     int argNumber = 0;
-    argType = nativeCallGetCType(&lex);
+    argType = nativeCallGetCType();
     if (argType>=0) argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
     else ok = false;
-    if (ok) ok = jslMatch(&lex, '(');
+    if (ok) ok = jslMatch('(');
     while (ok && lex.tk!=LEX_EOF && lex.tk!=')') {
-      argType = nativeCallGetCType(&lex);
+      argType = nativeCallGetCType();
       if (argType>=0) {
         argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
-        if (lex.tk!=')') ok = jslMatch(&lex, ',');
+        if (lex.tk!=')') ok = jslMatch(',');
       } else ok = false;
     }
-    if (ok) ok = jslMatch(&lex, ')');
-    jslKill(&lex);
+    if (ok) ok = jslMatch(')');
+    jslKill();
+    jslSetLex(oldLex);
     if (argTypes & (unsigned int)~0xFFFF)
       ok = false;
     if (!ok) {
