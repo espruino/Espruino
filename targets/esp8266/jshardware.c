@@ -27,7 +27,6 @@
 #include <pwm.h>
 #include <spi.h> // Include the MetalPhreak/ESP8266_SPI_Library headers.
 
-//#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
 typedef long long int64_t;
 
@@ -61,14 +60,21 @@ typedef long long int64_t;
 static bool g_spiInitialized = false;
 static int  g_lastSPIRead = -1;
 
+// Hardware PWM is broken
+#ifdef HARDWARE_PWM
 struct PWMRecord {
   bool enabled; //!< Has this PWM been enabled previously?
 };
 static uint32 g_pwmFreq;
-
 static struct PWMRecord g_PWMRecords[JSH_PIN_COUNT];
+#else
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+#endif
 
 static uint8 g_pinState[JSH_PIN_COUNT];
+
+
 
 
 /**
@@ -115,13 +121,19 @@ void jshInit() {
 
   ETS_GPIO_INTR_ENABLE();
 
+#ifndef HARDWARE_PWM
+  BITFIELD_CLEAR(jshPinSoftPWM);
+#endif
+
   // Initialize something for each of the possible pins.
   for (int i=0; i<JSH_PIN_COUNT; i++) {
+#ifdef HARDWARE_PWM
     // For each of the PWM records, flag the PWM as having been not initialized.
     g_PWMRecords[i].enabled = false;
-
+#endif
     g_pinState[i] = 0;
   }
+
   os_printf("< jshInit\n");
 } // End of jshInit
 
@@ -159,6 +171,7 @@ static void CALLED_FROM_INTERRUPT intrHandlerCB(
  * Reset the Espruino environment.
  */
 void jshReset() {
+  jshResetDevices();
   os_printf("> jshReset\n");
 
   // Set all GPIO pins to be input with pull-up
@@ -338,6 +351,13 @@ void jshPinSetState(
     Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
+
   //os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
   //    pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
 
@@ -434,21 +454,14 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
 }
 
 
-/**
- *
- */
 JsVarFloat jshPinAnalog(Pin pin) {
   //os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
-  return (JsVarFloat) system_adc_read();
+  return (JsVarFloat)system_adc_read() / 1023.0;
 }
 
-
-/**
- *
- */
 int jshPinAnalogFast(Pin pin) {
   //os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
-  return (JsVarFloat) system_adc_read();
+  return (int)system_adc_read() << 6; // left-align to 16 bits
 }
 
 
@@ -456,6 +469,11 @@ int jshPinAnalogFast(Pin pin) {
  * Set the output PWM value.
  */
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
+  if (value<0) value=0;
+  if (value>1) value=1;
+  if (!isfinite(freq)) freq=0;
+
+#ifdef HARDWARE_PWM
   os_printf("> jshPinAnalogOutput - jshPinAnalogOutput: pin=%d, value(x100)=%d, freq=%d\n", pin, (int)(value*100), (int)freq);
   // Check that the value is between 0.0 and 1.0
   if (value < 0 || value > 1.0) {
@@ -490,8 +508,27 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   os_printf(" - Duty: %d (units of 45 nsecs)\n", duty);
   pwm_set_duty(duty, 0);
 
-  //jsError("No DAC");
+#else
+  // Software PWM
+
+  if (jshIsPinValid(pin)/* && (flags&(JSAOF_ALLOW_SOFTWARE|JSAOF_FORCE_SOFTWARE))*/) {
+    /* we set the bit field here so that if the user changes the pin state
+     * later on, we can get rid of the IRQs */
+    if (!jshGetPinStateIsManual(pin)) {
+      BITFIELD_SET(jshPinSoftPWM, pin, 0);
+      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+    }
+    BITFIELD_SET(jshPinSoftPWM, pin, 1);
+    if (freq<=0) freq=50;
+    jstPinPWM(freq, value, pin);
+    return 0;
+  }
+
+  // Otherwise
+  //if (jshIsPinValid(pin))
+//    jsiConsolePrint("You need to use analogWrite(pin, val, {soft:true}) for Software PWM on this pin\n");
   return 0;
+#endif
 }
 
 
@@ -499,8 +536,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
  *
  */
 void jshSetOutputValue(JshPinFunction func, int value) {
-  os_printf("ESP8266: jshSetOutputValue %d %d\n", func, value);
-  jsError("No DAC");
+  os_printf("ESP8266: jshSetOutputValue %d %d - unimplemented\n", func, value);
 }
 
 
@@ -570,8 +606,7 @@ void jshPinPulse(
 #if 1
   // Implementation using busy-waiting. Ugly and if the pulse train exceeds 10ms one risks WDT
   // resets, but it actually works...
-  //jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(pin, pulsePolarity);
+  jshPinOutput(pin, pulsePolarity);
   jshDelayMicroseconds(jshGetTimeFromMilliseconds(pulseTime)-6);  // -6 adjustment is for overhead
   jshPinSetValue(pin, !pulsePolarity);
 #endif
@@ -647,10 +682,48 @@ bool jshIsEventForPin(
 
 //===== USART and Serial =====
 
-/**
- *
- */
+
+
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  uint8 uart_no;
+  if (device == EV_SERIAL1) uart_no = UART0;
+  else if (device == EV_SERIAL2) uart_no = UART1;
+  else {
+    jsError("jshUSARTSetup Unknown device %d\n", device);
+    return;
+  }
+
+  extern void uart_config(uint8 uart_no);
+  extern UartDevice    UartDev;
+
+  UartDev.baut_rate = inf->baudRate;
+  if (inf->bytesize == 5)
+    UartDev.data_bits = FIVE_BITS;
+  else if (inf->bytesize == 6)
+    UartDev.data_bits = SIX_BITS;
+  else if (inf->bytesize == 7)
+    UartDev.data_bits = SEVEN_BITS;
+  else if (inf->bytesize == 8)
+    UartDev.data_bits = EIGHT_BITS;
+  else assert(0);
+  if (inf->parity == 1) {
+    UartDev.exist_parity = STICK_PARITY_EN;
+    UartDev.parity = EVEN_BITS;
+  } else  if (inf->parity == 2) {
+    UartDev.exist_parity = STICK_PARITY_EN;
+    UartDev.parity = ODD_BITS;
+  } else {
+    UartDev.exist_parity = STICK_PARITY_DIS;
+    UartDev.parity = NONE_BITS;
+  }
+  if (inf->stopbits == 1)
+    UartDev.stop_bits = ONE_STOP_BIT;
+  else if (inf->stopbits == 2)
+    UartDev.stop_bits = TWO_STOP_BIT;
+  else assert(0);
+  UartDev.flow_ctrl = NONE_CTRL;
+
+  uart_config(uart_no);
 }
 
 bool jshIsUSBSERIALConnected() {
@@ -1028,7 +1101,8 @@ void jshUtilTimerDisable() {
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-  if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
+  //if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
+  if (period<1) period=1;
   os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
 }
 

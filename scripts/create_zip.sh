@@ -15,7 +15,8 @@
 cd `dirname $0`
 cd ..
 
-VERSION=`sed -ne "s/^.*JS_VERSION.*\"\(.*\)\"/\1/p" src/jsutils.h`
+VERSION=`sed -ne "s/^.*JS_VERSION.*\"\(.*\)\"/\1/p" src/jsutils.h | head -1`
+echo "VERSION $VERSION"
 DIR=`pwd`
 ZIPDIR=$DIR/zipcontents
 ZIPFILE=$DIR/archives/espruino_${VERSION}.zip
@@ -56,12 +57,14 @@ do
   if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then
     BOARDNAMEX=ESPRUINOBOARD
   fi
-  if [ "$BOARDNAME" == "MICROBIT" ]; then
-    BINARY_NAME=`basename $BINARYNAME bin`.hex
-  fi
   # actually build
-  BINARY_NAME=`python scripts/get_board_info.py $BOARDNAMEX "common.get_board_binary_name(board)"`
-  rm $BINARY_NAME
+  ESP_BINARY_NAME=`python scripts/get_board_info.py $BOARDNAMEX "common.get_board_binary_name(board)"`
+  if [ "$BOARDNAME" == "MICROBIT" ]; then
+    ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .bin`.hex
+  fi
+  echo "Building $ESP_BINARY_NAME"
+  echo
+  rm -f $BINARY_NAME
   if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then      
     bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   elif [ "$BOARDNAME" == "PICO_R1_3" ]; then      
@@ -72,21 +75,27 @@ do
   fi
   # rename binary if needed
   if [ -n "$EXTRANAME" ]; then 
-    NEW_BINARY_NAME=`basename $BINARY_NAME .bin`$EXTRANAME.bin
+    NEW_BINARY_NAME=`basename ${ESP_BINARY_NAME} .bin`$EXTRANAME.bin
   else
-    NEW_BINARY_NAME=$BINARY_NAME
+    NEW_BINARY_NAME=${ESP_BINARY_NAME}
   fi
   # copy...
   if [ "$BOARDNAME" == "ESP8266_BOARD" ]; then
-    cp espruino_esp8266*.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    cp ${ESP_BINARY_NAME}.tgz $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    # Do some more ESP8266 build stuff
+    bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make combined" || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    cp ${ESP_BINARY_NAME}_combined_512.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
   else
-    cp $BINARY_NAME $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    echo Copying ${ESP_BINARY_NAME} to $ZIPDIR/$NEW_BINARY_NAME 
+    cp ${ESP_BINARY_NAME} $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of $BOARDNAME failed" ; exit 1; }
   fi
 done
 
+
+
 cd $DIR
 
-sed 's/$/\r/' dist_readme.txt > $ZIPDIR/readme.txt
+sed 's/$/\r/' dist_readme.txt | sed "s/#v##/$VERSION/" > $ZIPDIR/readme.txt
 bash scripts/extract_changelog.sh | sed 's/$/\r/' > $ZIPDIR/changelog.txt
 #bash scripts/extract_todo.sh  >  $ZIPDIR/todo.txt
 python scripts/build_docs.py  || { echo 'Build failed' ; exit 1; } 
@@ -95,4 +104,5 @@ cp $DIR/dist_licences.txt $ZIPDIR/licences.txt
 
 rm -f $ZIPFILE
 cd zipcontents
+echo zip $ZIPFILE *
 zip $ZIPFILE *

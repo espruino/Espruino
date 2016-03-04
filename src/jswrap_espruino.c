@@ -81,9 +81,9 @@ While this is implemented on Espruino boards, it may not be implemented on other
  */
 
 
-int nativeCallGetCType(JsLex *lex) {
+int nativeCallGetCType() {
   if (lex->tk == LEX_R_VOID) {
-    jslMatch(lex, LEX_R_VOID);
+    jslMatch(LEX_R_VOID);
     return JSWAT_VOID;
   }
   if (lex->tk == LEX_ID) {
@@ -94,7 +94,7 @@ int nativeCallGetCType(JsLex *lex) {
     if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
     if (strcmp(name,"Pin")==0) t=JSWAT_PIN;
     if (strcmp(name,"JsVar")==0) t=JSWAT_JSVAR;
-    jslMatch(lex, LEX_ID);
+    jslMatch(LEX_ID);
     return t;
   }
   return -1; // unknown
@@ -129,23 +129,25 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data) 
     // Nothing to do
   } else if (jsvIsString(signature)) {
     JsLex lex;
-    jslInit(&lex, signature);
+    JsLex *oldLex = jslSetLex(&lex);
+    jslInit(signature);
     int argType;
     bool ok = true;
     int argNumber = 0;
-    argType = nativeCallGetCType(&lex);
+    argType = nativeCallGetCType();
     if (argType>=0) argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
     else ok = false;
-    if (ok) ok = jslMatch(&lex, '(');
+    if (ok) ok = jslMatch('(');
     while (ok && lex.tk!=LEX_EOF && lex.tk!=')') {
-      argType = nativeCallGetCType(&lex);
+      argType = nativeCallGetCType();
       if (argType>=0) {
         argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
-        if (lex.tk!=')') ok = jslMatch(&lex, ',');
+        if (lex.tk!=')') ok = jslMatch(',');
       } else ok = false;
     }
-    if (ok) ok = jslMatch(&lex, ')');
-    jslKill(&lex);
+    if (ok) ok = jslMatch(')');
+    jslKill();
+    jslSetLex(oldLex);
     if (argTypes & (unsigned int)~0xFFFF)
       ok = false;
     if (!ok) {
@@ -602,7 +604,7 @@ Get and reset the error flags. Returns an array that can contain:
 `'MEMORY'`: Espruino ran out of memory and was unable to allocate some data that it needed.
  */
 JsVar *jswrap_espruino_getErrorFlags() {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
   if (jsErrorFlags&JSERR_RX_FIFO_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("FIFO_FULL"));
   if (jsErrorFlags&JSERR_BUFFER_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("BUFFER_FULL"));
@@ -815,14 +817,14 @@ See http://www.espruino.com/Internals for more information
  */
 JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
   if (depth>0 && jsvHasChildren(v)) {
-    JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+    JsVar *arr = jsvNewEmptyArray();
     if (!arr) return 0;
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, v);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *key = jsvObjectIteratorGetKey(&it);
       JsVar *val = jsvSkipName(key);
-      JsVar *item = jsvNewWithFlags(JSV_OBJECT);
+      JsVar *item = jsvNewObject();
       if (item) {
         jsvObjectSetChildAndUnLock(item, "name", jsvAsString(key, false));
         jsvObjectSetChildAndUnLock(item, "size", jswrap_espruino_getSizeOf(key, 0));

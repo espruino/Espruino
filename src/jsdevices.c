@@ -16,6 +16,7 @@
 #include "jsinteractive.h"
 
 #ifdef LINUX
+#include <stdio.h>
 #include <signal.h>
 #endif//LINUX
 #ifdef USE_TRIGGER
@@ -65,11 +66,18 @@ volatile unsigned char ioHead=0, ioTail=0;
 // ----------------------------------------------------------------------------
 
 
-/**
- * Initialize all the devices.
- */
-void jshInitDevices() { // called from jshInit
+/** Initialize any device-specific structures, like flow control states.
+ * Called from jshInit */
+void jshInitDevices() {
+  jshResetDevices();
+}
+
+/** Reset any devices that could have been set up differently by JS code.
+ * Called from jshReset */
+void jshResetDevices() {
   unsigned int i;
+  // Reset list of pins that were set manually
+  jshResetPinStateIsManual();
   // setup flow control
   for (i=0;i<sizeof(jshSerialDeviceStates) / sizeof(JshSerialDeviceState);i++)
     jshSerialDeviceStates[i] = SDS_NONE;
@@ -77,6 +85,7 @@ void jshInitDevices() { // called from jshInit
   // set up callbacks for events
   for (i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
     jshEventCallbacks[i-EV_EXTI0] = 0;
+
 }
 
 // ----------------------------------------------------------------------------

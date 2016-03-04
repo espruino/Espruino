@@ -13,6 +13,7 @@
  * JavaScript methods and functions in the global namespace
  * ----------------------------------------------------------------------------
  */
+#include <math.h>
 #include "jswrap_functions.h"
 #include "jslex.h"
 #include "jsparse.h"

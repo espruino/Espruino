@@ -31,9 +31,14 @@
 #include "nrf_drv_twi.h"
 #include "nrf_drv_gpiote.h"
 #include "nrf_temp.h"
-#include "nrf_adc.h"
 #include "nrf_timer.h"
 #include "app_uart.h"
+
+#ifdef NRF52
+#include "nrf_saadc.h"
+#else
+#include "nrf_adc.h"
+#endif
 
 #include "nrf5x_utils.h"
 
@@ -115,7 +120,8 @@ void jshInit() {
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
 void jshReset() {
-
+  jshResetDevices();
+  // TODO: Reset all pins to their power-on state (apart from default UART :)
 }
 
 void jshKill() {
@@ -254,10 +260,57 @@ JshPinState jshPinGetState(Pin pin) {
   return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t)pinInfo[pin].pin);
 }
 
+#ifdef NRF52
+nrf_saadc_value_t nrf_analog_read() {
+  nrf_saadc_value_t result;
+  nrf_saadc_buffer_init(&result,1);
+
+  nrf_saadc_task_trigger(NRF_SAADC_TASK_START);
+
+  while(!nrf_saadc_event_check(NRF_SAADC_EVENT_STARTED));
+  nrf_saadc_event_clear(NRF_SAADC_EVENT_STARTED);
+
+  nrf_saadc_task_trigger(NRF_SAADC_TASK_SAMPLE);
+
+
+  while(!nrf_saadc_event_check(NRF_SAADC_EVENT_END));
+  nrf_saadc_event_clear(NRF_SAADC_EVENT_END);
+
+  nrf_saadc_task_trigger(NRF_SAADC_TASK_STOP);
+  while(!nrf_saadc_event_check(NRF_SAADC_EVENT_STOPPED));
+  nrf_saadc_event_clear(NRF_SAADC_EVENT_STOPPED);
+
+  return result;
+}
+#endif
+
 // Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin) {
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
+#ifdef NRF52
+  // sanity checks for channel
+  assert(NRF_SAADC_INPUT_AIN0 == 1);
+  assert(NRF_SAADC_INPUT_AIN1 == 2);
+  assert(NRF_SAADC_INPUT_AIN2 == 3);
+  nrf_saadc_input_t ain = 1 + (pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
 
+  nrf_saadc_channel_config_t config;
+  config.acq_time = NRF_SAADC_ACQTIME_3US;
+  config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
+  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
+  config.pin_p = ain;
+  config.pin_n = ain;
+  config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
+  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
+  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+
+  // make reading
+  nrf_saadc_enable();
+  nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
+  nrf_saadc_channel_init(0, &config);
+
+  return nrf_analog_read() / 8192.0;
+#else
   const nrf_adc_config_t nrf_adc_config =  {
       NRF_ADC_CONFIG_RES_10BIT,
       NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
@@ -269,12 +322,37 @@ JsVarFloat jshPinAnalog(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
   return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;
+#endif
 }
 
 /// Returns a quickly-read analog value in the range 0-65535
 int jshPinAnalogFast(Pin pin) {
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return 0;
 
+#ifdef NRF52
+  // sanity checks for channel
+  assert(NRF_SAADC_INPUT_AIN0 == 1);
+  assert(NRF_SAADC_INPUT_AIN1 == 2);
+  assert(NRF_SAADC_INPUT_AIN2 == 3);
+  nrf_saadc_input_t ain = 1 + (pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
+
+  nrf_saadc_channel_config_t config;
+  config.acq_time = NRF_SAADC_ACQTIME_3US;
+  config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
+  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
+  config.pin_p = ain;
+  config.pin_n = ain;
+  config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
+  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
+  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+
+  // make reading
+  nrf_saadc_enable();
+  nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_8BIT);
+  nrf_saadc_channel_init(0, &config);
+
+  return nrf_analog_read() << 8;
+#else
   const nrf_adc_config_t nrf_adc_config =  {
         NRF_ADC_CONFIG_RES_8BIT, // 8 bit for speed (hopefully!)
         NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
@@ -286,6 +364,7 @@ int jshPinAnalogFast(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
   return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) << 8;
+#endif
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
@@ -616,23 +695,36 @@ void jshUtilTimerDisable() {
 JsVarFloat jshReadTemperature() {
   nrf_temp_init();
 
-  NRF_TEMP->TASKS_START = 1;
-  while (NRF_TEMP->EVENTS_DATARDY == 0) ;// Do nothing...
-  NRF_TEMP->EVENTS_DATARDY = 0;
-  int32_t nrf_temp = nrf_temp_read();
-  NRF_TEMP->TASKS_STOP = 1;
-
-  return nrf_temp / 4.0;
+  return nrf_temp_read() / 4.0;
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef() {
+#ifdef NRF52
+  nrf_saadc_channel_config_t config;
+  config.acq_time = NRF_SAADC_ACQTIME_3US;
+  config.gain = NRF_SAADC_GAIN1_6; // 1/6 of input volts
+  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
+  config.pin_p = NRF_SAADC_INPUT_VDD;
+  config.pin_n = NRF_SAADC_INPUT_VDD;
+  config.reference = NRF_SAADC_REFERENCE_INTERNAL; // 0.6v reference.
+  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
+  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+
+  // make reading
+  nrf_saadc_enable();
+  nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
+  nrf_saadc_channel_init(0, &config);
+
+  return 6.0 * (nrf_analog_read() * 0.6 / 8192.0);
+#else
   const nrf_adc_config_t nrf_adc_config =  {
        NRF_ADC_CONFIG_RES_10BIT,
        NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
        NRF_ADC_CONFIG_REF_VBG }; // internal reference
   nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
   return 1.2 / nrf_adc_convert_single(ADC_CONFIG_PSEL_AnalogInput0);
+#endif
 }
 
 /**

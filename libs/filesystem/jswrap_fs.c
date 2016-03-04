@@ -119,7 +119,7 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
     DIR *dir = opendir(pathStr);
     if(dir) {
 #endif
-      arr = jsvNewWithFlags(JSV_ARRAY);
+      arr = jsvNewEmptyArray();
       if (arr) { // could be out of memory
 #ifndef LINUX
         while (((res=f_readdir(&dirs, &Finfo)) == FR_OK) && Finfo.fname[0]) {
@@ -332,7 +332,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
     FILINFO info;
     res = f_stat(pathStr, &info);
     if (res==0 /*ok*/) {
-      JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+      JsVar *obj = jsvNewObject();
       if (!obj) return 0;
       jsvObjectSetChildAndUnLock(obj, "size", jsvNewFromInteger((JsVarInt)info.fsize));
       jsvObjectSetChildAndUnLock(obj, "dir", jsvNewFromBool(info.fattrib & AM_DIR));
@@ -355,7 +355,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
 #else
   struct stat info;
   if (stat(pathStr, &info)==0 /*ok*/) {
-    JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+    JsVar *obj = jsvNewObject();
     if (!obj) return 0;
     jsvObjectSetChildAndUnLock(obj, "size", jsvNewFromInteger((JsVarInt)info.st_size));
     jsvObjectSetChildAndUnLock(obj, "dir", jsvNewFromBool(S_ISDIR(info.st_mode)));

@@ -70,7 +70,7 @@ JsVar *jswrap_flash_getPage(int addr) {
   uint32_t pageStart, pageLength;
   if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength))
     return 0;
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (!obj) return 0;
   jsvObjectSetChildAndUnLock(obj, "addr", jsvNewFromInteger((JsVarInt)pageStart));
   jsvObjectSetChildAndUnLock(obj, "length", jsvNewFromInteger((JsVarInt)pageLength));

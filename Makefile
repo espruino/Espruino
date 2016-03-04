@@ -12,12 +12,7 @@
 # -----------------------------------------------------------------------------
 # Set ONE of the following environment variables to compile for that board:
 #
-# ESPRUINO_1V0=1          # Espruino board rev 1.0
-# ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
 # ESPRUINO_1V3=1          # Espruino board rev 1.3 and rev 1v4
-# PICO_1V0=1              # Espruino Pico board rev 1.0
-# PICO_1V1=1              # Espruino Pico board rev 1.1
-# PICO_1V2=1              # Espruino Pico board rev 1.2
 # PICO_1V3=1              # Espruino Pico board rev 1.3
 # OLIMEXINO_STM32=1       # Olimexino STM32
 # MAPLERET6_STM32=1       # Limited production Leaflabs Maple r5 with a STM32F103RET6
@@ -72,7 +67,7 @@ MAKEFLAGS=-j5 # multicore
 endif
 
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
-LIBS=
+LIBS=-lm # Maths
 DEFINES=
 CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
 LDFLAGS=-Winline
@@ -382,7 +377,7 @@ USE_GRAPHICS=1
 BOARD=STM32F3DISCOVERY
 STLIB=STM32F3XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 
 else ifdef STM32VLDISCOVERY
 EMBEDDED=1
@@ -612,7 +607,7 @@ USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
-#USE_TELNET=1  # enable telnet to have it listen on port 2323 as JS console
+USE_TELNET=1 
 #USE_LCD_SDL=1
 
 ifdef MACOSX
@@ -834,48 +829,6 @@ ifdef USE_MATH
 DEFINES += -DUSE_MATH
 INCLUDE += -I$(ROOT)/libs/math
 WRAPPERSOURCES += libs/math/jswrap_math.c
-ifndef LINUX
-SOURCES += \
-libs/math/acosh.c \
-libs/math/asin.c \
-libs/math/asinh.c \
-libs/math/atan.c \
-libs/math/atanh.c \
-libs/math/cbrt.c \
-libs/math/chbevl.c \
-libs/math/clog.c \
-libs/math/cmplx.c \
-libs/math/const.c \
-libs/math/cosh.c \
-libs/math/drand.c \
-libs/math/exp10.c \
-libs/math/exp2.c \
-libs/math/exp.c \
-libs/math/fabs.c \
-libs/math/floor.c \
-libs/math/isnan.c \
-libs/math/log10.c \
-libs/math/log2.c \
-libs/math/log.c \
-libs/math/mtherr.c \
-libs/math/polevl.c \
-libs/math/pow.c \
-libs/math/powi.c \
-libs/math/round.c \
-libs/math/setprec.c \
-libs/math/sin.c \
-libs/math/sincos.c \
-libs/math/sindg.c \
-libs/math/sinh.c \
-libs/math/sqrt.c \
-libs/math/tan.c \
-libs/math/tandg.c \
-libs/math/tanh.c \
-libs/math/unity.c
-#libs/math/mod2pi.c
-#libs/math/mtst.c
-#libs/math/dtestvec.c
-endif
 endif
 
 ifdef USE_GRAPHICS
@@ -983,7 +936,8 @@ ifdef USE_NET
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
  WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266_network.c \
-   targets/esp8266/jswrap_esp8266.c
+   targets/esp8266/jswrap_esp8266.c \
+   targets/esp8266/jswrap_nodemcu.c
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\
@@ -1316,7 +1270,8 @@ ifeq ($(FAMILY), NRF52)
   INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf52_config
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
-  SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
+  SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
+                      $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
@@ -1551,8 +1506,6 @@ endif
 
 ifdef STM32
 DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
-DEFINES += -DFAKE_STDLIB
-# FAKE_STDLIB is for Espruino - it uses its own standard library so we don't have to link in the normal one + get bloated
 INCLUDE += -I$(ROOT)/targets/stm32
 ifndef BOOTLOADER
 SOURCES +=                              \
@@ -1568,7 +1521,6 @@ INCLUDE += -I$(ROOT)/targets/linux
 SOURCES +=                              \
 targets/linux/main.c                    \
 targets/linux/jshardware.c
-LIBS += -lm # maths lib
 LIBS += -lpthread # thread lib for input processing
 ifdef OPENWRT_UCLIBC
 LIBS += -lc
@@ -1673,6 +1625,17 @@ else
   export SILENT=1
 endif
 
+boardjson: scripts/build_board_json.py $(WRAPPERSOURCES)
+	@echo Generating Board JSON
+	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
+	$(Q)echo DEFINES =  $(DEFINES)
+ifdef USE_NET
+        # hack to ensure that Pico/etc have all possible firmware configs listed
+	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -DUSE_WIZNET=1 -DUSE_CC3000=1 -B$(BOARD)
+else
+	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD) 
+endif
+
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
@@ -1750,6 +1713,7 @@ else ifdef ESP8266
 # user setting area that sits between the two 256KB partitions, so we can merrily use it for
 # code.
 ESP_ZIP     = $(PROJ_NAME).tgz
+ESP_COMBINED512 = $(PROJ_NAME)_combined_512.bin
 USER1_BIN   = espruino_esp8266_user1.bin
 USER2_BIN   = espruino_esp8266_user2.bin
 USER1_ELF   = espruino_esp8266_user1.elf
@@ -1758,11 +1722,12 @@ PARTIAL     = espruino_esp8266_partial.o
 LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
 APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
-BOOTLOADER  = $(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin
+BOOTLOADER  = "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin"
 BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
 INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
 
 proj: $(USER1_BIN) $(USER2_BIN) $(ESP_ZIP)
+combined: $(ESP_COMBINED512)
 
 # generate partially linked .o with all Esprunio source files linked
 $(PARTIAL): $(OBJS) $(LINKER_FILE)
@@ -1811,11 +1776,18 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
-	$(Q)cp $(USER1_BIN) $(USER2_BIN) $(USER1_ELF) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
-	  $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin \
-	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" targets/esp8266/README_flash.txt \
+	$(Q)cp $(USER1_BIN) $(USER2_BIN) $(USER1_ELF) scripts/wiflash $(BLANK) \
+	  $(INIT_DATA) $(BOOTLOADER) targets/esp8266/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
+
+# Combined 512k binary that includes everything that's needed and can be
+# flashed to 0 in 512k parts
+$(ESP_COMBINED512): $(USER1_BIN) $(USER2_BIN)
+	dd if=/dev/zero ibs=1k count=512 | tr "\000" "\377" > $@
+	dd bs=1 if=$(BOOTLOADER) of=$@ conv=notrunc
+	dd bs=1 seek=4096 if=$(USER1_BIN) of=$@ conv=notrunc
+	dd bs=1 seek=507904 if=$(INIT_DATA) of=$@ conv=notrunc
 
 # Analyze all the .o files and rank them by the amount of static string area used, useful to figure
 # out where to optimize and move strings to flash
@@ -1838,7 +1810,7 @@ flash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT
 	$(error "In order to flash, we need to have the COMPORT variable defined")
 endif
-	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
+	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 $(BOOTLOADER) 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
 
 # just flash user1 and don't mess with bootloader or wifi settings
 quickflash: all $(USER1_BIN) $(USER2_BIN)

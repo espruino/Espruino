@@ -638,7 +638,7 @@ JsVar *jswrap_interface_setWatch(
     // o debounce - ?
     // o edge     - ?
     // o callback - The function to be invoked when the IO changes
-    JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
+    JsVar *watchPtr = jsvNewObject();
     if (watchPtr) {
       jsvObjectSetChildAndUnLock(watchPtr, "pin", jsvNewFromPin(pin));
       if (repeat) jsvObjectSetChildAndUnLock(watchPtr, "recur", jsvNewFromBool(repeat));

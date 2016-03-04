@@ -230,7 +230,7 @@ JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
   networkFree(&net);
   /* If byte 1 is 0 we don't have a valid address */
   if (ipconfig.aucIP[3] == 0) return 0;
-  JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *data = jsvNewObject();
   networkPutAddressAsString(data, "ip", &ipconfig.aucIP[0], -4, 10, '.');
   networkPutAddressAsString(data, "subnet", &ipconfig.aucSubnetMask[0], -4, 10, '.');
   networkPutAddressAsString(data, "gateway", &ipconfig.aucDefaultGateway[0], -4, 10, '.');

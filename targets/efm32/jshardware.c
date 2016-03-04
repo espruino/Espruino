@@ -11,12 +11,14 @@
  * Platform Specific part of Hardware interface Layer
  * ----------------------------------------------------------------------------
  */
+// Standard includes
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 
+//Espruino includes
 #include "jshardware.h"
 #include "jstimer.h"
 #include "jsutils.h"
@@ -25,6 +27,7 @@
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 
+//EFM32 HAL includes
 #include "em_chip.h"
 #include "em_cmu.h"
 #include "em_emu.h"
@@ -33,6 +36,8 @@
 #include "em_timer.h"
 #include "em_usart.h"
 #include "em_gpio.h"
+
+//EFM32 drivers includes
 #include "rtcdriver.h"
 #include "nvm_hal.h"
 #include "gpiointerrupt.h"
@@ -60,7 +65,6 @@ RTCDRV_TimerID_t sleepTimer;
 volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
 #endif
 
-JsSysTime jshGetRTCSystemTime();
 static JsSysTime jshGetTimeForSecond() {
 #ifdef USE_RTC
   return (JsSysTime)JSSYSTIME_SECOND;
@@ -68,6 +72,10 @@ static JsSysTime jshGetTimeForSecond() {
   return SYSCLK_FREQ;
 #endif
 }
+
+
+//This should be implemented with RTCDRV_GetWallClockMs() in the Gecko SDK from Silicon Labs in the future
+uint32_t RtcTime = 0;
 
 /**************************************************************************//**
  * @brief SysTick IRQ Handler
@@ -261,7 +269,8 @@ void jshInit() {
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
 void jshReset() {
-
+  jshResetDevices();
+  // TODO: Reset all pins to their power-on state (apart from default UART :)
 }
 
 void jshKill() {
@@ -297,10 +306,8 @@ bool jshIsUSBSERIALConnected() {
 }
 
 JsSysTime jshGetRTCSystemTime() {
-  //EFM32 TODO: Increase accuracy
-  uint32_t secs = RTCDRV_GetWallClock();
-  JsSysTime time = (secs << JSSYSTIME_SECOND_SHIFT);
-  return time;
+  JsSysTime time = RtcTime + RTCDRV_TicksToMsec(RTCDRV_GetWallClockTicks32()); // Milliseconds
+  return time*JSSYSTIME_MSECOND; // Seconds Espruino way;
 }
 
 
@@ -346,7 +353,8 @@ void jshSetSystemTime(JsSysTime newTime) {
 	jshInterruptOff();
 	// NOTE: Subseconds are not set here
 #ifdef USE_RTC
-	RTCDRV_SetWallClock((uint32_t)(newTime>>JSSYSTIME_SECOND_SHIFT));
+	RtcTime = (uint32_t)(newTime/JSSYSTIME_MSECOND)
+	           - RTCDRV_TicksToMsec(RTCDRV_GetWallClockTicks32()); //Storing it as milliseconds to speed up GetRTCtime
 	hasSystemSlept = true;
 #else
 	SysTickMajor = newTime;

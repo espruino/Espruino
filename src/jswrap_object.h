@@ -39,6 +39,7 @@ JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props);
 
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener);
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray);
+void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback);
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event);
 // For internal use - like jswrap_object_removeAllListeners but takes a C string
 void jswrap_object_removeAllListeners_cstr(JsVar *parent, const char *event);

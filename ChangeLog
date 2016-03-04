@@ -1,3 +1,13 @@
+     1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
+            Fix lock 'leak' in Telnet when Telnet is turned off
+            Create errors for unterminated expressions (fix #814)
+            Remove Espruino's built-in strcpy/etc
+            Remove Espruino's built-in maths
+            Add basic Taylor series sin and atan for when we're trying to save memory  
+            Refactoring to use global var for lexer - save some memory and increase parse speed
+            Add .removeListener (fix #30)
+            Added better micro:bit `show()` that works well with Graphics
+
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
             Fix issue where GC'd objects referencing non-GC'd data wouldn't unreference it
@@ -28,6 +38,8 @@
             Improve HTTPS error messages
             Add READ_FLASH_UINT8, allowing ESP8266 to read&exec strings stored in Flash with E.memoryArea
             Start the RTC up running off LSI, and switch after a few seconds if the LSE has started correctly
+            Allow JSV_GET_AS_CHAR_ARRAY to get a pointer to memory in ArrayBuffers or memoryAreas
+            Reset PinStateIsManual in reset (fix #765)
 
      1v84 : Fix device initialisation flags not working when the device number is above 32 (fix #751, #748)
              - this fixes broken SPI when not on standard pins

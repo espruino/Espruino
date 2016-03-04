@@ -97,7 +97,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   // skip if we have no header
   if (headerEnd<0) return false;
   // Now parse the header
-  JsVar *vHeaders = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *vHeaders = jsvNewObject();
   if (!vHeaders) return true;
   jsvUnLock(jsvAddNamedChild(objectForData, vHeaders, "headers"));
   strIdx = 0;
@@ -280,7 +280,7 @@ static bool fireErrorEvent(int error, JsVar *obj1, JsVar *obj2) {
   bool hadError = error < 0 && error != SOCKET_ERR_CLOSED;
   JsVar *params[1];
   if (hadError) {
-    params[0] = jsvNewWithFlags(JSV_OBJECT);
+    params[0] = jsvNewObject();
     jsvObjectSetChildAndUnLock(params[0], "code", jsvNewFromInteger(error));
     jsvObjectSetChildAndUnLock(params[0], "message",
         jsvNewFromString(socketErrorString(error)));

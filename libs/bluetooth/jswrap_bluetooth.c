@@ -64,7 +64,7 @@ of beta.  */
 // but it seems to work fine like this.
 
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
-#define APP_TIMER_OP_QUEUE_SIZE         4                                           /**< Size of timer operation queues. */
+#define APP_TIMER_OP_QUEUE_SIZE         1                                           /**< Size of timer operation queues. */
 
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(20, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (20 ms), Connection interval uses 1.25 ms units. */
 #define MAX_CONN_INTERVAL               MSEC_TO_UNITS(75, UNIT_1_25_MS)             /**< Maximum acceptable connection interval (75 ms), Connection interval uses 1.25 ms units. */
@@ -319,7 +319,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         // Advertising data received
         const ble_gap_evt_adv_report_t *p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
 
-        JsVar *evt = jsvNewWithFlags(JSV_OBJECT);
+        JsVar *evt = jsvNewObject();
         if (evt) {
           jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
           jsvObjectSetChildAndUnLock(evt, "addr", jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
@@ -504,6 +504,9 @@ Get the battery level in volts
 */
 JsVarFloat jswrap_nrf_bluetooth_getBattery(void) {
   // Configure ADC
+#ifdef NRF52
+  return jshReadVRef();
+#else
   NRF_ADC->CONFIG     = (ADC_CONFIG_RES_8bit                        << ADC_CONFIG_RES_Pos)     |
                         (ADC_CONFIG_INPSEL_SupplyOneThirdPrescaling << ADC_CONFIG_INPSEL_Pos)  |
                         (ADC_CONFIG_REFSEL_VBG                      << ADC_CONFIG_REFSEL_Pos)  |
@@ -525,6 +528,7 @@ JsVarFloat jswrap_nrf_bluetooth_getBattery(void) {
   NRF_ADC->TASKS_STOP     = 1;
 
   return vbat_current_in_mv / 1000.0;
+#endif
 }
 
 /*JSON{

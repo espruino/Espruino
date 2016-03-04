@@ -147,9 +147,7 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   it->charsInVar = jsvGetCharactersInVar(str);
   it->charIdx = startIdx;
   if (jsvIsFlatString(str)) {
-    /* Flat strings use the first var to store the size, and subsequent vars
-       to store the actual data, so we tweak ptr to handle this */
-    it->ptr = (char*)(it->var+1);
+    it->ptr = jsvGetFlatStringPointer(it->var);
   } else if (jsvIsNativeString(str)) {
     it->ptr = (char*)it->var->varData.nativeStr.ptr;
   } else{

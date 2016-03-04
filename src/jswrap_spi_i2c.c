@@ -66,7 +66,7 @@ Create a software SPI port. This has limited functionality (no baud rate), but i
 Use `SPI.setup` to configure this port.
  */
 JsVar *jswrap_spi_constructor() {
-  return jsvNewWithFlags(JSV_OBJECT);
+  return jsvNewObject();
 }
 
 /*JSON{

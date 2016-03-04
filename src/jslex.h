@@ -24,6 +24,7 @@ typedef enum LEX_TYPES {
     LEX_INT,
     LEX_FLOAT,
     LEX_STR,
+    LEX_UNFINISHED_STR,
     LEX_UNFINISHED_COMMENT,
 
     LEX_EQUAL,
@@ -119,34 +120,39 @@ typedef struct JsLex
   JsvStringIterator it; // Iterator for the string
 } JsLex;
 
-void jslInit(JsLex *lex, JsVar *var);
-void jslKill(JsLex *lex);
-void jslReset(JsLex *lex);
-void jslSeekTo(JsLex *lex, size_t seekToChar);
-void jslSeekToP(JsLex *lex, JslCharPos *seekToChar);
+// The lexer
+extern JsLex *lex;
+/// Set the lexer - return the old one
+JsLex *jslSetLex(JsLex *l);
 
-bool jslMatch(JsLex *lex, int expected_tk); ///< Match, and return true on success, false on failure
+void jslInit(JsVar *var);
+void jslKill();
+void jslReset();
+void jslSeekTo(size_t seekToChar);
+void jslSeekToP(JslCharPos *seekToChar);
+
+bool jslMatch(int expected_tk); ///< Match, and return true on success, false on failure
 void jslTokenAsString(int token, char *str, size_t len); ///< output the given token as a string - for debugging
-void jslGetTokenString(JsLex *lex, char *str, size_t len);
-char *jslGetTokenValueAsString(JsLex *lex);
-int jslGetTokenLength(JsLex *lex);
-JsVar *jslGetTokenValueAsVar(JsLex *lex);
-bool jslIsIDOrReservedWord(JsLex *lex);
+void jslGetTokenString(char *str, size_t len);
+char *jslGetTokenValueAsString();
+int jslGetTokenLength();
+JsVar *jslGetTokenValueAsVar();
+bool jslIsIDOrReservedWord();
 
 // Only for more 'internal' use
-void jslSeek(JsLex *lex, JslCharPos seekToChar); // like jslSeekTo, but doesn't pre-fill characters
-void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
+void jslSeek(JslCharPos seekToChar); // like jslSeekTo, but doesn't pre-fill characters
+void jslGetNextToken(); ///< Get the text token from our text string
 
 JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo); // Create a new STRING from part of the lexer
 
 /// Return the line number at the current character position (this isn't fast as it searches the string)
-unsigned int jslGetLineNumber(struct JsLex *lex);
+unsigned int jslGetLineNumber();
 
 /// Print position in the form 'line X col Y'
-void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos);
+void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos);
 
 /** Print the line of source code at `tokenPos`, prefixed with the string 'prefix' (0=no string).
  * Then, underneath it, print a '^' marker at the column tokenPos was at  */
-void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos, char *prefix);
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, size_t tokenPos, char *prefix);
 
 #endif /* JSLEX_H_ */

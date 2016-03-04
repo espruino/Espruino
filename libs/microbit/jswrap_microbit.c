@@ -17,6 +17,7 @@
 #include "jswrap_microbit.h"
 #include "jswrapper.h"
 #include "jstimer.h"
+#include "jsvariterator.h"
 
 #include "nrf_gpio.h" // just go direct
 
@@ -142,19 +143,65 @@ void jswrap_microbit_kill() {
      ["image","JsVar","The image to show"]
   ]
 }
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+
 Show an image on the in-built 5x5 LED screen.
 
 Image can be:
 
-* A number where each bit represents a pixel (so 25 bits)
+* A number where each bit represents a pixel (so 25 bits). eg. `5` or `0x1FFFFFF`
+* A string, eg: `show("10001")`. Newlines are ignored, and anything that is not
+a space or `0` is treated as a 1.
+* An array of 4 bytes (more will be ignored), eg `show([1,2,3,0])`
+
+For instance the following works for images:
+
+```
+show("#   #"+
+     "  #  "+
+     "  #  "+
+     "#   #"+
+     " ### ")
+```
+
+This means you can also use Espruino's graphics library:
+
+```
+var g = Graphics.createArrayBuffer(5,5,1)
+g.drawString("E",0,0)
+show(g.buffer)
+```
 
 */
 void jswrap_microbit_show(JsVar *image) {
-  if (!jsvIsInt(image)) {
+  uint32_t newState = 0;
+  if (jsvIsIterable(image)) {
+    bool str = jsvIsString(image);
+    JsvIterator it;
+    jsvIteratorNew(&it, image);
+    int n = 0;
+    while (jsvIteratorHasElement(&it)) {
+      int ch = jsvIteratorGetIntegerValue(&it);
+      if (str) {
+        if (ch!="\n" && ch!="\r") {
+          if (ch!=' ' && ch!='0')
+            newState |= 1<<n;
+          n++;
+        }
+      } else {
+        newState |= (unsigned int)ch << n;
+        n+=8;
+      }
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  } else if (jsvIsInt(image)) {
+    newState = jsvGetInteger(image);
+  } else {
     jsError("Expecting a number, got %t\n", image);
     return;
   }
-  uint32_t newState = jsvGetInteger(image);
+
 
   if ((newState!=0) && (microbitLEDState==0)) {
     // we want to display something but we don't have an interval
@@ -184,13 +231,15 @@ void jswrap_microbit_show(JsVar *image) {
   "generate" : "jswrap_microbit_acceleration",
   "return" : ["JsVar", "An object with x, y, and z fields in it"]
 }
-Get the current acceleration of the micro:bit
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+
+Get the current acceleration of the micro:bit from the on-board accelerometer
 */
 JsVar *jswrap_microbit_acceleration() {
   unsigned char d[6];
   d[0] = 1;
   jshI2CRead(EV_I2C1, MMA8652_ADDR, 7, d, true);
-  JsVar *xyz = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *xyz = jsvNewObject();
   if (xyz) {
     int x = (d[1]<<8) | d[2];
     if (x>>15) x-=65536;
@@ -212,13 +261,15 @@ JsVar *jswrap_microbit_acceleration() {
   "generate" : "jswrap_microbit_compass",
   "return" : ["JsVar", "An object with x, y, and z fields in it"]
 }
-Get the current compass position for the micro:bit
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+
+Get the current compass position for the micro:bit from the on-board magnetometer
 */
 JsVar *jswrap_microbit_compass() {
   unsigned char d[7];
   d[0] = 1;
   jshI2CRead(EV_I2C1, MAG3110_ADDR, 6, d, true);
-  JsVar *xyz = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *xyz = jsvNewObject();
   if (xyz) {
     int x = (d[1]<<8) | d[2];
     if (x>>15) x-=65536;
