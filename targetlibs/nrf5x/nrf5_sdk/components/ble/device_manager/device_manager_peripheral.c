@@ -1449,7 +1449,8 @@ static void dm_pstorage_cb_handler(pstorage_handle_t * p_handle,
     context_data.p_data = p_data;
     context_data.len    = data_len;
 
-    for (uint32_t index = 0; index < DEVICE_MANAGER_MAX_BONDS; index++)
+    uint32_t index;
+    for (index = 0; index < DEVICE_MANAGER_MAX_BONDS; index++)
     {
         err_code = pstorage_block_identifier_get(&m_storage_handle, index, &block_handle);
         if ((err_code == NRF_SUCCESS) &&
@@ -1884,11 +1885,13 @@ ret_code_t dm_whitelist_create(dm_application_instance_t const * p_handle,
     uint32_t irk_count  = 0;
     bool     connected  = false;
 
-    for (uint32_t index = 0; index < DEVICE_MANAGER_MAX_BONDS; index++)
+    uint32_t index;
+    for (index = 0; index < DEVICE_MANAGER_MAX_BONDS; index++)
     {
         connected = false;
 
-        for (uint32_t c_index = 0; c_index < DEVICE_MANAGER_MAX_CONNECTIONS; c_index++)
+        uint32_t c_index;
+        for (c_index = 0; c_index < DEVICE_MANAGER_MAX_CONNECTIONS; c_index++)
         {
             if ((index == m_connection_table[c_index].bonded_dev_id) &&
                 ((m_connection_table[c_index].state & STATE_CONNECTED) == STATE_CONNECTED))
@@ -1972,7 +1975,8 @@ ret_code_t dm_device_delete_all(dm_application_instance_t const * p_handle)
 
     DM_TRC("[DM]: >> dm_device_delete_all\r\n");
 
-    for (uint32_t index = 0; index < DEVICE_MANAGER_MAX_BONDS; index++)
+    uint32_t index;
+    for (index = 0; index < DEVICE_MANAGER_MAX_BONDS; index++)
     {
         if (m_peer_table[index].id_bitmap != UNASSIGNED)
         {
