@@ -84,7 +84,7 @@ At boot time the esp8266's firmware captures the cause of the reset/reboot.  Thi
 */
 JsVar *jswrap_ESP8266_getResetInfo() {
   struct rst_info* info = system_get_rst_info();
-  JsVar *restartInfo = jspNewObject(NULL, "RstInfo");
+  JsVar *restartInfo = jsvNewObject();
   extern char *rst_codes[]; // in user_main.c
 
   jsvObjectSetChildAndUnLock(restartInfo, "reason",   jsvNewFromString(rst_codes[info->reason]));
@@ -232,7 +232,7 @@ Returns an object that contains details about the state of the ESP8266 with the 
 JsVar *jswrap_ESP8266_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
   // wish to return.
-  JsVar *esp8266State = jspNewObject(NULL, "ESP8266State");
+  JsVar *esp8266State = jsvNewObject();
   jsvObjectSetChildAndUnLock(esp8266State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
   jsvObjectSetChildAndUnLock(esp8266State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
   jsvObjectSetChildAndUnLock(esp8266State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size()));
@@ -254,7 +254,7 @@ JsVar *jswrap_ESP8266_getState() {
 }
 
 static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
-  JsVar *jsArea = jspNewObject(NULL, "FreeFlash");
+  JsVar *jsArea = jsvNewObject();
   jsvObjectSetChildAndUnLock(jsArea, "area", jsvNewFromInteger(addr));
   jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger(length));
   jsvArrayPush(jsFreeFlash, jsArea);
