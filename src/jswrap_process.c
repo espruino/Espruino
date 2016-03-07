@@ -118,11 +118,9 @@ Run a Garbage Collection pass, and return an object containing information on me
 * `flash_length` : (on ARM) the amount of flash memory this firmware was built for (in bytes). **Note:** Some STM32 chips actually have more memory than is advertised.
 
 Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). See http://www.espruino.com/Performance for more information.
+
+**Note:** To find free areas of flash memory, see `require('Flash').getFree()`
  */
-#ifdef ARM
-extern int LINKER_END_VAR; // end of ram used (variables)
-extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
-#endif
 JsVar *jswrap_process_memory() {
   jsvGarbageCollect();
   JsVar *obj = jsvNewObject();
@@ -141,6 +139,8 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
 
 #ifdef ARM
+    extern void LINKER_END_VAR; // end of ram used (variables)
+    extern void LINKER_ETEXT_VAR; // end of flash text (binary) section
     jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));
     jsvObjectSetChildAndUnLock(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START));
     jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_ETEXT_VAR));

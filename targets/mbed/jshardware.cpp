@@ -257,6 +257,11 @@ bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
   return false;
 }
 
+JsVar *jshFlashGetFree() {
+  // not implemented, or no free pages.
+  return 0;
+}
+
 void jshFlashErasePage(uint32_t addr) {
 }
 

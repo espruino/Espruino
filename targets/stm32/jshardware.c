@@ -2749,6 +2749,36 @@ bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
 #endif
 }
 
+static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
+}
+
+JsVar *jshFlashGetFree() {
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+  // Try and find the page after the end of firmware
+  extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
+  uint32_t firmwareEnd = FLASH_START | (uint32_t)&LINKER_ETEXT_VAR;
+  uint32_t pAddr, pSize;
+  jshFlashGetPage(firmwareEnd, &pAddr, &pSize);
+  firmwareEnd = pAddr+pSize;
+  if (firmwareEnd < FLASH_SAVED_CODE_START)
+    addFlashArea(jsFreeFlash, firmwareEnd, FLASH_SAVED_CODE_START-firmwareEnd);
+  // Otherwise add undocumented memory
+#if defined(PICO)
+  // The Pico chips aren't meant to have this, but they do
+  addFlashArea(jsFreeFlash, FLASH_START|(384*1024), 128*1024);
+#elif defined(ESPRUINOBOARD)
+  // The Original espruino boards aren't meant to have this, but they do
+  addFlashArea(jsFreeFlash, FLASH_START|(256*1024), 128*1024);
+#endif
+  return jsFreeFlash;
+}
+
 void jshFlashErasePage(uint32_t addr) {
 #if defined(STM32F2) || defined(STM32F4)
   int sector = jshFlashGetSector(addr);

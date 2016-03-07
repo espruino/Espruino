@@ -253,14 +253,6 @@ JsVar *jswrap_ESP8266_getState() {
   return esp8266State;
 }
 
-static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
-  JsVar *jsArea = jsvNewObject();
-  jsvObjectSetChildAndUnLock(jsArea, "area", jsvNewFromInteger(addr));
-  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger(length));
-  jsvArrayPush(jsFreeFlash, jsArea);
-  jsvUnLock(jsArea);
-}
-
 //===== ESP8266.getFreeFlash
 
 /*JSON{
@@ -270,24 +262,10 @@ static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
 }
+**Note:** This is deprecated. Use `require("flash").getFreee()`
 */
 JsVar *jswrap_ESP8266_getFreeFlash() {
-  JsVar *jsFreeFlash = jsvNewArray(NULL, 0);
-  // Area reserved for EEPROM
-  addFlashArea(jsFreeFlash, 0x77000, 0x1000);
-
-  // need 1MB of flash to have more space...
-  extern uint16_t espFlashKB; // in user_main,c
-  if (espFlashKB > 512) {
-    addFlashArea(jsFreeFlash, 0x80000, 0x1000);
-    if (espFlashKB > 1024) {
-      addFlashArea(jsFreeFlash, 0xf7000, 0x9000);
-    } else {
-      addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
-    }
-  }
-
-  return jsFreeFlash;
+  return jshFlashGetFree();
 }
 
 //===== ESP8266.crc32

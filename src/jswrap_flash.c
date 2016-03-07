@@ -78,6 +78,27 @@ JsVar *jswrap_flash_getPage(int addr) {
 }
 
 /*JSON{
+  "type"     : "staticmethod",
+    "ifndef" : "SAVE_ON_FLASH",
+  "class"    : "Flash",
+  "name"     : "getFree",
+  "generate" : "jswrap_flash_getFree",
+  "return"   : ["JsVar", "Array of objects with `addr` and `length` properties"]
+}
+This method returns an array of objects of the form `{addr : #, length : #}`, representing
+contiguous areas of flash memory in the chip that are not used for anything.
+
+The memory areas returned are on page boundaries. This means that you can
+safely erase the page containing any address here, and you won't risk
+deleting part of the Espruino firmware.
+*/
+JsVar *jswrap_flash_getFree() {
+  JsVar *arr = jshFlashGetFree();
+  if (!arr) arr=jsvNewEmptyArray();
+  return arr;
+}
+
+/*JSON{
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Flash",

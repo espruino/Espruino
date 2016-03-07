@@ -339,6 +339,10 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 /** Return start address and size of the flash page the given address resides in. Returns false if
   * the page is outside of the flash address range */
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize);
+/** Return a JsVar array containing objects of the form `{addr, length}` for each contiguous block of free
+ * memory available. These should be one complete pages, so that erasing the page containing any address in
+ * this block won't erase anything useful! */
+JsVar *jshFlashGetFree();
 /// Erase the flash page containing the address
 void jshFlashErasePage(uint32_t addr);
 /** Read data from flash memory into the buffer, the flash address has no alignment restrictions
