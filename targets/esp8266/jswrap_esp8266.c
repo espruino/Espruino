@@ -84,7 +84,7 @@ At boot time the esp8266's firmware captures the cause of the reset/reboot.  Thi
 */
 JsVar *jswrap_ESP8266_getResetInfo() {
   struct rst_info* info = system_get_rst_info();
-  JsVar *restartInfo = jspNewObject(NULL, "RstInfo");
+  JsVar *restartInfo = jsvNewObject();
   extern char *rst_codes[]; // in user_main.c
 
   jsvObjectSetChildAndUnLock(restartInfo, "reason",   jsvNewFromString(rst_codes[info->reason]));
@@ -232,7 +232,7 @@ Returns an object that contains details about the state of the ESP8266 with the 
 JsVar *jswrap_ESP8266_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
   // wish to return.
-  JsVar *esp8266State = jspNewObject(NULL, "ESP8266State");
+  JsVar *esp8266State = jsvNewObject();
   jsvObjectSetChildAndUnLock(esp8266State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
   jsvObjectSetChildAndUnLock(esp8266State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
   jsvObjectSetChildAndUnLock(esp8266State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size()));
@@ -253,14 +253,6 @@ JsVar *jswrap_ESP8266_getState() {
   return esp8266State;
 }
 
-static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
-  JsVar *jsArea = jspNewObject(NULL, "FreeFlash");
-  jsvObjectSetChildAndUnLock(jsArea, "area", jsvNewFromInteger(addr));
-  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger(length));
-  jsvArrayPush(jsFreeFlash, jsArea);
-  jsvUnLock(jsArea);
-}
-
 //===== ESP8266.getFreeFlash
 
 /*JSON{
@@ -270,24 +262,10 @@ static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
 }
+**Note:** This is deprecated. Use `require("flash").getFreee()`
 */
 JsVar *jswrap_ESP8266_getFreeFlash() {
-  JsVar *jsFreeFlash = jsvNewArray(NULL, 0);
-  // Area reserved for EEPROM
-  addFlashArea(jsFreeFlash, 0x77000, 0x1000);
-
-  // need 1MB of flash to have more space...
-  extern uint16_t espFlashKB; // in user_main,c
-  if (espFlashKB > 512) {
-    addFlashArea(jsFreeFlash, 0x80000, 0x1000);
-    if (espFlashKB > 1024) {
-      addFlashArea(jsFreeFlash, 0xf7000, 0x9000);
-    } else {
-      addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
-    }
-  }
-
-  return jsFreeFlash;
+  return jshFlashGetFree();
 }
 
 //===== ESP8266.crc32

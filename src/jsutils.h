@@ -37,7 +37,7 @@
   OPT - potential for speed optimisation
 */
 
-#if defined(ARM) || defined(AVR)
+#ifndef alloca
 #define alloca(x) __builtin_alloca(x)
 #endif
 
