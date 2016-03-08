@@ -801,7 +801,7 @@ JsVar *jspGetNamedFieldInObject(JsVar *objectInstance, JsVar *objectName, JsVar 
   // check for `name` in the builtin version of `object` -> return if exists
   child = jswFindBuiltIn(objectInstance, object, name);
   // If we have something like a String, check String.prototype
-  if (!jsvIsObject(object)) {
+  if (!child && !jsvIsObject(object)) {
     // NOTE: don't want NativeObject here (if so, we'll have got it with jswFindBuiltIn if it was there)
     // We also don't want 'Object' as we want to be sure to check the prototype chain FIRST, or
     // you'd never be able to override something like `Object.toString`
