@@ -33,6 +33,7 @@
 /*JSON{
   "type" : "object",
   "name" : "Pipe",
+  "memberOf" : "global",
   "if" : "!defined(SAVE_ON_FLASH)"
 }
 This is the Pipe container for async related IO.

@@ -24,6 +24,10 @@
 #include "network_wiznet.h"
 #include "DHCP/dhcp.h"
 
+
+// Objects that need to be instantiated
+extern const unsigned char jswSymbolIndex_Ethernet;
+
 // -------------------- defaults...
 #define ETH_SPI          EV_SPI3
 #define ETH_CS_PIN       (Pin)(JSH_PORTB_OFFSET + 2) // active low
@@ -109,7 +113,7 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
   net.data.pinCS = cs;
   networkSet(&net);
 
-  JsVar *ethObj = jspNewObject(0, "Ethernet");
+  JsVar *ethObj = jspNewHiddenObject(jswSymbolIndex_Ethernet);
 
   // CS Configuration
   jshSetPinStateIsManual(net.data.pinCS, false);

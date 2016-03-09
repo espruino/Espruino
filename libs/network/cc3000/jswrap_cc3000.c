@@ -25,6 +25,9 @@
 #include "cc3000/hci.h"
 
 
+// Objects that need to be instantiated
+extern const unsigned char jswSymbolIndex_WLAN;
+
 // ------------------------------ defaults
 #define WLAN_SPI          EV_SPI3
 #define WLAN_CLK_PIN      (Pin)(JSH_PORTB_OFFSET + 3)
@@ -94,7 +97,7 @@ JsVar *jswrap_cc3000_connect(JsVar *spi, Pin cs, Pin en, Pin irq) {
   net.data.pinIRQ = irq;
   networkSet(&net);
 
-  JsVar *wlanObj = jspNewObject(0, "WLAN");
+  JsVar *wlanObj = jspNewHiddenObject(jswSymbolIndex_WLAN);
   cc3000_initialise(wlanObj);
 
   networkFree(&net);

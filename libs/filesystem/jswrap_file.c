@@ -34,6 +34,9 @@ void sdSPISetup(JsVar *spi, Pin csPin);
 bool isSdSPISetup();
 #endif
 
+// Objects that need to be instantiated
+extern const unsigned char jswSymbolIndex_File;
+
 // 'path' must be of JS_DIR_BUF_SIZE
 bool jsfsGetPathString(char *pathStr, JsVar *path) {
   if (jsvGetString(path, pathStr, JS_DIR_BUF_SIZE)==JS_DIR_BUF_SIZE) {
@@ -231,7 +234,7 @@ void jswrap_E_unmountSD() {
 }
 
 static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
-  JsVar *parent = jspNewObject(0, "File");
+  JsVar *parent = jspNewHiddenObject(jswSymbolIndex_File);
   if (!parent) return false; // low memory
   file->fileVar = parent;
   file->data.mode = mode;
