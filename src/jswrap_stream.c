@@ -24,7 +24,9 @@
 /*JSON{
   "type" : "include",
   "include" : "jswrap_stream.c"
-}*/
+}
+
+*/
 
 // Return how many bytes are available to read
 JsVarInt jswrap_stream_available(JsVar *parent) {

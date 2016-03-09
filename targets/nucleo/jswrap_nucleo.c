@@ -17,55 +17,231 @@
 #include "jswrap_nucleo.h"
 
 /*JSON{
-  "type" : "class",
-  "class" : "Nucleo",
+  "type" : "object",
+  "name" : "Nucleo",
   "memberOf" : "global"
 }
 This is the built-in class for the Arduino-style pin namings on ST Nucleo boards
 */
 
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "A0",  "generate_full" : "NUCLEO_A0",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "A1",  "generate_full" : "NUCLEO_A1",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "A2",  "generate_full" : "NUCLEO_A2",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "A3",  "generate_full" : "NUCLEO_A3",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "A4",  "generate_full" : "NUCLEO_A4",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "A5",  "generate_full" : "NUCLEO_A5",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D0",  "generate_full" : "NUCLEO_D0",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D1",  "generate_full" : "NUCLEO_D1",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D2",  "generate_full" : "NUCLEO_D2",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D3",  "generate_full" : "NUCLEO_D3",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D4",  "generate_full" : "NUCLEO_D4",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D5",  "generate_full" : "NUCLEO_D5",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D6",  "generate_full" : "NUCLEO_D6",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D7",  "generate_full" : "NUCLEO_D7",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D8",  "generate_full" : "NUCLEO_D8",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D9",  "generate_full" : "NUCLEO_D9",  "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D10", "generate_full" : "NUCLEO_D10", "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D11", "generate_full" : "NUCLEO_D11", "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D12", "generate_full" : "NUCLEO_D12", "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D13", "generate_full" : "NUCLEO_D13", "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D14", "generate_full" : "NUCLEO_D14", "return" : ["pin","A Pin"]
-}*/
-/*JSON{"type" : "staticproperty","class" : "Nucleo","name" : "D15", "generate_full" : "NUCLEO_D15", "return" : ["pin","A Pin"]
-}*/
+/*JSON{
+  "type" : "variable",
+  "name" : "A0",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_A0",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "A1",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_A1",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "A2",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_A2",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "A3",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_A3",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "A4",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_A4",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "A5",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_A5",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D0",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D0",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D1",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D1",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D2",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D2",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D3",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D3",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D4",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D4",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D5",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D5",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D6",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D6",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D7",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D7",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D8",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D8",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D9",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D9",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D10",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D10",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D11",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D11",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D12",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D12",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D13",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D13",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D14",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D14",
+  "return" : ["pin","A Pin"]
+}
+
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "D15",
+  "memberOf" : "Nucleo",
+  "thisParam" : false,
+  "generate_full" : "NUCLEO_D15",
+  "return" : ["pin","A Pin"]
+}
+
+*/
 

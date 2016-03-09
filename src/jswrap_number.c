@@ -16,17 +16,16 @@
 #include "jswrap_number.h"
 
 /*JSON{
-  "type" : "class",
-  "class" : "Number",
+  "type" : "object",
+  "name" : "Number",
   "memberOf" : "global",
   "check" : "jsvIsNumeric(var)"
 }
 This is the built-in JavaScript class for numbers.
- */
+*/
 
 /*JSON{
   "type" : "constructor",
-  "class" : "Number",
   "name" : "Number",
   "generate" : "jswrap_number_constructor",
   "params" : [
@@ -35,7 +34,7 @@ This is the built-in JavaScript class for numbers.
   "return" : ["JsVar","A Number object"]
 }
 Creates a number
- */
+*/
 JsVar *jswrap_number_constructor(JsVar *args) {
   if (jsvGetArrayLength(args)==0) return jsvNewFromInteger(0);
   JsVar *val = jsvGetArrayItem(args, 0);
@@ -67,61 +66,85 @@ JsVar *jswrap_number_constructor(JsVar *args) {
 /*JSON{
   "type" : "variable",
   "name" : "NaN",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate_full" : "NAN",
   "return" : ["float","Not a  Number"]
-}*/
+}
+
+*/
 
 /*JSON{
   "type" : "variable",
   "name" : "Infinity",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate_full" : "INFINITY",
   "return" : ["float","Positive Infinity (1/0)"]
-}*/
+}
+
+*/
 
 /*JSON{
-  "type" : "staticproperty",
-  "class" : "Number",
+  "type" : "variable",
   "name" : "NaN",
+  "memberOf" : "Number",
+  "thisParam" : false,
   "generate_full" : "NAN",
   "return" : ["float","Not a  Number"]
-}*/
+}
+
+*/
 
 /*JSON{
-  "type" : "staticproperty",
-  "class" : "Number",
+  "type" : "variable",
   "name" : "MAX_VALUE",
+  "memberOf" : "Number",
+  "thisParam" : false,
   "generate_full" : "DBL_MAX",
   "return" : ["float","Maximum representable value"]
-}*/
+}
+
+*/
 
 /*JSON{
-  "type" : "staticproperty",
-  "class" : "Number",
+  "type" : "variable",
   "name" : "MIN_VALUE",
+  "memberOf" : "Number",
+  "thisParam" : false,
   "generate_full" : "DBL_MIN",
   "return" : ["float","Smallest representable value"]
-}*/
+}
+
+*/
 
 /*JSON{
-  "type" : "staticproperty",
-  "class" : "Number",
+  "type" : "variable",
   "name" : "NEGATIVE_INFINITY",
+  "memberOf" : "Number",
+  "thisParam" : false,
   "generate_full" : "-INFINITY",
   "return" : ["float","Negative Infinity (-1/0)"]
-}*/
+}
+
+*/
 
 /*JSON{
-  "type" : "staticproperty",
-  "class" : "Number",
+  "type" : "variable",
   "name" : "POSITIVE_INFINITY",
+  "memberOf" : "Number",
+  "thisParam" : false,
   "generate_full" : "INFINITY",
   "return" : ["float","Positive Infinity (1/0)"]
-}*/
+}
+
+*/
 
 /*JSON{
-  "type" : "method",
-  "class" : "Number",
+  "type" : "function",
   "name" : "toFixed",
+  "memberOf" : "Number.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_number_toFixed",
   "params" : [
     ["decimalPlaces","int32","A number between 0 and 20 specifying the number of decimal digits after the decimal point"]
@@ -129,7 +152,7 @@ JsVar *jswrap_number_constructor(JsVar *args) {
   "return" : ["JsVar","A string"]
 }
 Format the number as a fixed point number
- */
+*/
 JsVar *jswrap_number_toFixed(JsVar *parent, int decimals) {
   if (decimals<0) decimals=0;
   if (decimals>20) decimals=20;
@@ -141,13 +164,21 @@ JsVar *jswrap_number_toFixed(JsVar *parent, int decimals) {
 /*JSON{
   "type" : "variable",
   "name" : "HIGH",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate_full" : "1",
   "return" : ["int32","Logic 1 for Arduino compatibility - this is the same as just typing `1`"]
-}*/
+}
+
+*/
 
 /*JSON{
   "type" : "variable",
   "name" : "LOW",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate_full" : "0",
   "return" : ["int32","Logic 0 for Arduino compatibility - this is the same as just typing `0`"]
-}*/
+}
+
+*/

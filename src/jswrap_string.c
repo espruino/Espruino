@@ -17,19 +17,18 @@
 #include "jsvariterator.h"
 
 /*JSON{
-  "type" : "class",
-  "class" : "String",
+  "type" : "object",
+  "name" : "String",
   "memberOf" : "global",
   "check" : "jsvIsString(var)"
 }
 This is the built-in class for Text Strings.
 
 Text Strings in Espruino are not zero-terminated, so you can store zeros in them.
- */
+*/
 
 /*JSON{
   "type" : "constructor",
-  "class" : "String",
   "name" : "String",
   "generate" : "jswrap_string_constructor",
   "params" : [
@@ -38,7 +37,7 @@ Text Strings in Espruino are not zero-terminated, so you can store zeros in them
   "return" : ["JsVar","A String"]
 }
 Create a new String
- */
+*/
 JsVar *jswrap_string_constructor(JsVar *args) {
   if (jsvGetArrayLength(args)==0)
     return jsvNewFromEmptyString(); // no argument - return an empty string
@@ -46,19 +45,21 @@ JsVar *jswrap_string_constructor(JsVar *args) {
 }
 
 /*JSON{
-  "type" : "property",
-  "class" : "String",
+  "type" : "variable",
   "name" : "length",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_object_length",
   "return" : ["JsVar","The value of the string"]
 }
 Find the length of the string
- */
+*/
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "String",
+  "type" : "function",
   "name" : "fromCharCode",
+  "memberOf" : "String",
+  "thisParam" : false,
   "generate" : "jswrap_string_fromCharCode",
   "params" : [
     ["code","JsVarArray","One or more character codes to create a string from (range 0-255)."]
@@ -66,7 +67,7 @@ Find the length of the string
   "return" : ["JsVar","The character"]
 }
 Return the character(s) represented by the given character code(s).
- */
+*/
 JsVar *jswrap_string_fromCharCode(JsVar *arr) {
   assert(jsvIsArray(arr));
 
@@ -86,9 +87,10 @@ JsVar *jswrap_string_fromCharCode(JsVar *arr) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "charAt",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_string_charAt",
   "params" : [
     ["pos","int","The character number in the string. Negative values return characters from end of string (-1 = last char)"]
@@ -96,7 +98,7 @@ JsVar *jswrap_string_fromCharCode(JsVar *arr) {
   "return" : ["JsVar","The character in the string"]
 }
 Return a single character at the given position in the String.
- */
+*/
 JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
   // We do this so we can handle '/0' in a string
   JsVar *r = jsvNewFromEmptyString();
@@ -113,9 +115,10 @@ JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "charCodeAt",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_string_charCodeAt",
   "params" : [
     ["pos","int","The character number in the string. Negative values return characters from end of string (-1 = last char)"]
@@ -125,16 +128,17 @@ JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
 Return the integer value of a single character at the given position in the String.
 
 Note that this returns 0 not 'NaN' for out of bounds characters
- */
+*/
 int jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
   return (unsigned char)jsvGetCharInString(parent, (size_t)idx);
 }
 
 
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "indexOf",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, false)",
   "params" : [
     ["substring","JsVar","The string to search for"],
@@ -143,11 +147,12 @@ int jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
   "return" : ["int32","The index of the string, or -1 if not found"]
 }
 Return the index of substring in this string, or -1 if not found
- */
+*/
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "lastIndexOf",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, true)",
   "params" : [
     ["substring","JsVar","The string to search for"],
@@ -156,7 +161,7 @@ Return the index of substring in this string, or -1 if not found
   "return" : ["int32","The index of the string, or -1 if not found"]
 }
 Return the last index of substring in this string, or -1 if not found
- */
+*/
 int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, bool lastIndexOf) {
   if (!jsvIsString(parent)) return 0;
   // slow, but simple!
@@ -201,9 +206,10 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "replace",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_string_replace",
   "params" : [
     ["subStr","JsVar","The string to search for"],
@@ -212,7 +218,7 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
   "return" : ["JsVar","This string with `subStr` replaced"]
 }
 Search and replace ONE occurrance of `subStr` with `newSubStr` and return the result. This doesn't alter the original string. Regular expressions not supported.
- */
+*/
 JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
   JsVar *str = jsvAsString(parent, false);
   subStr = jsvAsString(subStr, false);
@@ -233,16 +239,19 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
 
 
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "substring",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_string_substring",
   "params" : [
     ["start","int","The start character index"],
     ["end","JsVar","The end character index"]
   ],
   "return" : ["JsVar","The part of this string between start and end"]
-}*/
+}
+
+*/
 JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   JsVar *res;
   JsVarInt pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
@@ -260,16 +269,19 @@ JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "substr",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_string_substr",
   "params" : [
     ["start","int","The start character index"],
     ["len","JsVar","The number of characters"]
   ],
   "return" : ["JsVar","Part of this string from start for len characters"]
-}*/
+}
+
+*/
 JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
   JsVar *res;
   JsVarInt pLen = jsvIsUndefined(vLen) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vLen);
@@ -283,16 +295,19 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "slice",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_string_slice",
   "params" : [
     ["start","int","The start character index, if negative it is from the end of the string"],
     ["end","JsVar","The end character index, if negative it is from the end of the string, and if omitted it is the end of the string"]
   ],
   "return" : ["JsVar","Part of this string from start for len characters"]
-}*/
+}
+
+*/
 JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   JsVar *res;
   JsVarInt pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
@@ -309,9 +324,10 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
 
 
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "split",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_string_split",
   "params" : [
     ["separator","JsVar","The start character index"]
@@ -319,7 +335,7 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   "return" : ["JsVar","Part of this string from start for len characters"]
 }
 Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==[1,2,3]```
- */
+*/
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   JsVar *array = jsvNewEmptyArray();
   if (!array) return 0; // out of memory
@@ -355,25 +371,31 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "toLowerCase",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate_full" : "jswrap_string_toUpperLowerCase(parent, false)",
   "params" : [
-
+    
   ],
   "return" : ["JsVar","The lowercase version of this string"]
-}*/
+}
+
+*/
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "toUpperCase",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate_full" : "jswrap_string_toUpperLowerCase(parent, true)",
   "params" : [
-
+    
   ],
   "return" : ["JsVar","The uppercase version of this string"]
-}*/
+}
+
+*/
 JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
   JsVar *res = jsvNewFromEmptyString();
   if (!res) return 0; // out of memory
@@ -400,16 +422,17 @@ JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "String",
+  "type" : "function",
   "name" : "trim",
+  "memberOf" : "String.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_string_trim",
   "return" : ["JsVar","A String with Whitespace removed from the beginning and end"],
   "return_object" : "String"
 }
 Return a new string with any whitespace (tabs, space, form feed, newline,
 carriage return, etc) removed from the beginning and end.
- */
+*/
 JsVar *jswrap_string_trim(JsVar *parent) {
   JsVar *s = jsvAsString(parent, false);
   if (!s) return s;

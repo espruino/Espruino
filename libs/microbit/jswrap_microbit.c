@@ -106,7 +106,9 @@ void jswrap_microbit_stopDisplay() {
 /*JSON{
   "type" : "init",
   "generate" : "jswrap_microbit_init"
-}*/
+}
+
+*/
 void jswrap_microbit_init() {
   // enable I2C (for accelerometers, etc)
   JshI2CInfo inf;
@@ -127,9 +129,11 @@ void jswrap_microbit_init() {
 }
 
 /*JSON{
-  "type"     : "kill",
+  "type" : "kill",
   "generate" : "jswrap_microbit_kill"
-}*/
+}
+
+*/
 void jswrap_microbit_kill() {
   jswrap_microbit_stopDisplay();
 }
@@ -138,9 +142,11 @@ void jswrap_microbit_kill() {
 /*JSON{
   "type" : "function",
   "name" : "show",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_microbit_show",
   "params" : [
-     ["image","JsVar","The image to show"]
+    ["image","JsVar","The image to show"]
   ]
 }
 **Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
@@ -171,7 +177,6 @@ var g = Graphics.createArrayBuffer(5,5,1)
 g.drawString("E",0,0)
 show(g.buffer)
 ```
-
 */
 void jswrap_microbit_show(JsVar *image) {
   uint32_t newState = 0;
@@ -228,8 +233,10 @@ void jswrap_microbit_show(JsVar *image) {
 /*JSON{
   "type" : "function",
   "name" : "acceleration",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_microbit_acceleration",
-  "return" : ["JsVar", "An object with x, y, and z fields in it"]
+  "return" : ["JsVar","An object with x, y, and z fields in it"]
 }
 **Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
 
@@ -258,8 +265,10 @@ JsVar *jswrap_microbit_acceleration() {
 /*JSON{
   "type" : "function",
   "name" : "compass",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_microbit_compass",
-  "return" : ["JsVar", "An object with x, y, and z fields in it"]
+  "return" : ["JsVar","An object with x, y, and z fields in it"]
 }
 **Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
 

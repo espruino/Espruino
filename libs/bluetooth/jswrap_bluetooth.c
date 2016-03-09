@@ -435,19 +435,21 @@ static void advertising_init(void)
 }
 
 /*JSON{
-    "type": "class",
-    "class" : "NRF",
-    "memberOf" : "global"
-}*/
+  "type" : "object",
+  "name" : "NRF",
+  "memberOf" : "global"
+}
+
+*/
 /*JSON{
   "type" : "object",
   "name" : "Bluetooth",
+  "instanceOf" : "Serial",
   "memberOf" : "global",
-  "instanceof" : "Serial",
-  "ifdef" : "BLUETOOTH"
+  "if" : "defined(BLUETOOTH)"
 }
 The USB Serial port
- */
+*/
 
 void jswrap_nrf_bluetooth_init(void) {
   // Initialize.
@@ -462,11 +464,14 @@ void jswrap_nrf_bluetooth_init(void) {
 }
 
 /*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "sleep",
-    "generate" : "jswrap_nrf_bluetooth_sleep"
-}*/
+  "type" : "function",
+  "name" : "sleep",
+  "memberOf" : "NRF",
+  "thisParam" : false,
+  "generate" : "jswrap_nrf_bluetooth_sleep"
+}
+
+*/
 void jswrap_nrf_bluetooth_sleep(void) {
   uint32_t err_code;
 
@@ -483,22 +488,26 @@ void jswrap_nrf_bluetooth_sleep(void) {
 }
 
 /*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "wake",
-    "generate" : "jswrap_nrf_bluetooth_wake"
-}*/
+  "type" : "function",
+  "name" : "wake",
+  "memberOf" : "NRF",
+  "thisParam" : false,
+  "generate" : "jswrap_nrf_bluetooth_wake"
+}
+
+*/
 void jswrap_nrf_bluetooth_wake(void) {
   NRF_RADIO->TASKS_DISABLE = (0UL);
   jswrap_nrf_bluetooth_startAdvertise();
 }
 
 /*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "getBattery",
-    "generate" : "jswrap_nrf_bluetooth_getBattery",
-    "return" : ["float", "Battery level in volts" ]
+  "type" : "function",
+  "name" : "getBattery",
+  "memberOf" : "NRF",
+  "thisParam" : false,
+  "generate" : "jswrap_nrf_bluetooth_getBattery",
+  "return" : ["float","Battery level in volts"]
 }
 Get the battery level in volts
 */
@@ -532,15 +541,15 @@ JsVarFloat jswrap_nrf_bluetooth_getBattery(void) {
 }
 
 /*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "setAdvertising",
-    "generate" : "jswrap_nrf_bluetooth_setAdvertising",
-    "params" : [
-      ["data","JsVar","The data to advertise as an object - see below for more info"]
-    ]
+  "type" : "function",
+  "name" : "setAdvertising",
+  "memberOf" : "NRF",
+  "thisParam" : false,
+  "generate" : "jswrap_nrf_bluetooth_setAdvertising",
+  "params" : [
+    ["data","JsVar","The data to advertise as an object - see below for more info"]
+  ]
 }
-
 Data is of the form `{ UUID : data_as_byte_array }`. For example to return battery level at 95%, do:
 
 ```
@@ -593,15 +602,15 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data) {
 }
 
 /*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "setScan",
-    "generate" : "jswrap_nrf_bluetooth_setScan",
-    "params" : [
-      ["callback","JsVar","The callback to call with information about received, or undefined to stop"]
-    ]
+  "type" : "function",
+  "name" : "setScan",
+  "memberOf" : "NRF",
+  "thisParam" : false,
+  "generate" : "jswrap_nrf_bluetooth_setScan",
+  "params" : [
+    ["callback","JsVar","The callback to call with information about received, or undefined to stop"]
+  ]
 }
-
 Start/stop listening for BLE advertising packets within range...
 
 ```
@@ -642,7 +651,9 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
 /*JSON{
   "type" : "idle",
   "generate" : "jswrap_nrf_idle"
-}*/
+}
+
+*/
 bool jswrap_nrf_idle() {
   return jswrap_nrf_transmit_string()>0; // return true if we sent anything
 }

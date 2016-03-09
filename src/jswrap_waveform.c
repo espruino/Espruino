@@ -25,13 +25,13 @@
 #ifndef SAVE_ON_FLASH
 
 /*JSON{
-  "type" : "class",
-  "ifndef" : "SAVE_ON_FLASH",
-  "class" : "Waveform",
-  "memberOf" : "global"
+  "type" : "object",
+  "name" : "Waveform",
+  "memberOf" : "global",
+  "if" : "!defined(SAVE_ON_FLASH)"
 }
 This class handles waveforms. In Espruino, a Waveform is a set of data that you want to input or output.
- */
+*/
 
 static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool *is16Bit) {
   JsVar *buffer = jsvObjectGetChild(waveform, (bufferNumber==0)?"buffer":"buffer2", 0);
@@ -51,8 +51,10 @@ static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool 
 /*JSON{
   "type" : "idle",
   "generate" : "jswrap_waveform_idle",
-  "ifndef" : "SAVE_ON_FLASH"
-}*/
+  "if" : "!defined(SAVE_ON_FLASH)"
+}
+
+*/
 bool jswrap_waveform_idle() {
   JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, 0);
   if (waveforms) {
@@ -107,8 +109,10 @@ bool jswrap_waveform_idle() {
 /*JSON{
   "type" : "kill",
   "generate" : "jswrap_waveform_kill",
-  "ifndef" : "SAVE_ON_FLASH"
-}*/
+  "if" : "!defined(SAVE_ON_FLASH)"
+}
+
+*/
 void jswrap_waveform_kill() { // be sure to remove all waveforms...
   JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, 0);
   if (waveforms) {
@@ -136,20 +140,19 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
 
 /*JSON{
   "type" : "constructor",
-  "class" : "Waveform",
   "name" : "Waveform",
-  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_waveform_constructor",
   "params" : [
     ["samples","int32","The number of samples"],
     ["options","JsVar","Optional options struct `{doubleBuffer:bool, bits : 8/16}` where: `doubleBuffer` is whether to allocate two buffers or not (default false), and bits is the amount of bits to use (default 8)."]
   ],
-  "return" : ["JsVar","An Waveform object"]
+  "return" : ["JsVar","An Waveform object"],
+  "if" : "!defined(SAVE_ON_FLASH)"
 }
 Create a waveform class. This allows high speed input and output of waveforms. It has an internal variable called `buffer` (as well as `buffer2` when double-buffered - see `options` below) which contains the data to input/output.
 
 When double-buffered, a 'buffer' event will be emitted each time a buffer is finished with (the argument is that buffer). When the recording stops, a 'finish' event will be emitted (with the first argument as the buffer).
- */
+*/
 JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
   if (samples<=0) {
     jsExceptionHere(JSET_ERROR, "Samples must be greater than 0");
@@ -243,37 +246,39 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "Waveform",
+  "type" : "function",
   "name" : "startOutput",
-  "ifndef" : "SAVE_ON_FLASH",
+  "memberOf" : "Waveform.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_waveform_startOutput",
   "params" : [
     ["output","pin","The pin to output on"],
     ["freq","float","The frequency to output each sample at"],
     ["options","JsVar","Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"]
-  ]
+  ],
+  "if" : "!defined(SAVE_ON_FLASH)"
 }
 Will start outputting the waveform on the given pin - the pin must have previously been initialised with analogWrite. If not repeating, it'll emit a `finish` event when it is done.
- */
+*/
 void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options) {
   jswrap_waveform_start(waveform, pin, freq, options, true/*write*/);
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "Waveform",
+  "type" : "function",
   "name" : "startInput",
-  "ifndef" : "SAVE_ON_FLASH",
+  "memberOf" : "Waveform.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_waveform_startInput",
   "params" : [
     ["output","pin","The pin to output on"],
     ["freq","float","The frequency to output each sample at"],
     ["options","JsVar","Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"]
-  ]
+  ],
+  "if" : "!defined(SAVE_ON_FLASH)"
 }
 Will start inputting the waveform on the given pin that supports analog. If not repeating, it'll emit a `finish` event when it is done.
- */
+*/
 void jswrap_waveform_startInput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options) {
   // Setup analog, and also bail out on failure
   if (jshPinAnalog(pin)<0) return;
@@ -282,14 +287,15 @@ void jswrap_waveform_startInput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "Waveform",
+  "type" : "function",
   "name" : "stop",
-  "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_waveform_stop"
+  "memberOf" : "Waveform.prototype",
+  "thisParam" : true,
+  "generate" : "jswrap_waveform_stop",
+  "if" : "!defined(SAVE_ON_FLASH)"
 }
 Stop a waveform that is currently outputting
- */
+*/
 void jswrap_waveform_stop(JsVar *waveform) {
   bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
   if (!running) {

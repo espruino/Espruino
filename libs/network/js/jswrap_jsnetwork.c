@@ -23,15 +23,16 @@
 
 /*JSON{
   "type" : "library",
-  "class" : "NetworkJS"
+  "name" : "NetworkJS"
 }
 Library that initialises a network device that calls into JavaScript
 */
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "NetworkJS",
+  "type" : "function",
   "name" : "create",
+  "memberOf" : "NetworkJS",
+  "thisParam" : false,
   "generate" : "jswrap_networkjs_create",
   "params" : [
     ["obj","JsVar","An object containing functions to access the network device"]

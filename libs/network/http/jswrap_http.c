@@ -22,7 +22,7 @@
 
 /*JSON{
   "type" : "library",
-  "class" : "http"
+  "name" : "http"
 }
 This library allows you to create http servers and make http requests
 
@@ -32,25 +32,25 @@ This is designed to be a cut-down version of the [node.js library](http://nodejs
 */
 
 /*JSON{
-  "type" : "class",
-  "library" : "http",
-  "class" : "httpSrv"
+  "type" : "object",
+  "name" : "httpSrv",
+  "memberOf" : "http"
 }
 The HTTP server created by `require('http').createServer`
 */
 // there is a 'connect' event on httpSrv, but it's used by createServer and isn't node-compliant
 
 /*JSON{
-  "type" : "class",
-  "library" : "http",
-  "class" : "httpSRq"
+  "type" : "object",
+  "name" : "httpSRq",
+  "memberOf" : "http"
 }
 The HTTP server request
 */
 /*JSON{
   "type" : "event",
-  "class" : "httpSRq",
   "name" : "data",
+  "memberOf" : "httpSRq",
   "params" : [
     ["data","JsVar","A string containing one or more characters of received data"]
   ]
@@ -59,24 +59,26 @@ The 'data' event is called when data is received. If a handler is defined with `
 */
 /*JSON{
   "type" : "event",
-  "class" : "httpSRq",
-  "name" : "close"
+  "name" : "close",
+  "memberOf" : "httpSRq"
 }
 Called when the connection closes.
 */
 /*JSON{
-  "type" : "method",
-  "class" : "httpSRq",
+  "type" : "function",
   "name" : "available",
+  "memberOf" : "httpSRq.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_stream_available",
   "return" : ["int","How many bytes are available"]
 }
 Return how many bytes are available to read. If there is already a listener for data, this will always return 0.
 */
 /*JSON{
-  "type" : "method",
-  "class" : "httpSRq",
+  "type" : "function",
   "name" : "read",
+  "memberOf" : "httpSRq.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_stream_read",
   "params" : [
     ["chars","int","The number of characters to read, or undefined/0 for all available"]
@@ -86,74 +88,75 @@ Return how many bytes are available to read. If there is already a listener for 
 Return a string containing characters that have been received
 */
 /*JSON{
-  "type" : "method",
-  "class" : "httpSRq",
+  "type" : "function",
   "name" : "pipe",
-  "ifndef" : "SAVE_ON_FLASH",
+  "memberOf" : "httpSRq.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_pipe",
   "params" : [
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
     ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ]
+  ],
+  "if" : "!defined(SAVE_ON_FLASH)"
 }
 Pipe this to a stream (an object with a 'write' method)
 */
 
 /*JSON{
-  "type" : "class",
-  "library" : "http",
-  "class" : "httpSRs"
+  "type" : "object",
+  "name" : "httpSRs",
+  "memberOf" : "http"
 }
 The HTTP server response
 */
 /*JSON{
   "type" : "event",
-  "class" : "httpSRs",
-  "name" : "drain"
+  "name" : "drain",
+  "memberOf" : "httpSRs"
 }
 An event that is fired when the buffer is empty and it can accept more data to send.
 */
 /*JSON{
   "type" : "event",
-  "class" : "httpSRs",
-  "name" : "close"
+  "name" : "close",
+  "memberOf" : "httpSRs"
 }
 Called when the connection closes.
 */
 
 /*JSON{
-  "type" : "class",
-  "library" : "http",
-  "class" : "httpCRq"
+  "type" : "object",
+  "name" : "httpCRq",
+  "memberOf" : "http"
 }
 The HTTP client request, returned by `http.request()` and `http.get()`.
 */
 /*JSON{
   "type" : "event",
-  "class" : "httpCRq",
-  "name" : "drain"
+  "name" : "drain",
+  "memberOf" : "httpCRq"
 }
 An event that is fired when the buffer is empty and it can accept more data to send.
 */
 /*JSON{
   "type" : "event",
-  "class" : "httpCRq",
-  "name" : "error"
+  "name" : "error",
+  "memberOf" : "httpCRq"
 }
 An event that is fired if there is an error making the request and the response callback has not been invoked. In this case the error event concludes the request attempt. The error event function receives an error object as parameter with a `code` field and a `message` field.
 */
 
 /*JSON{
-  "type" : "class",
-  "library" : "http",
-  "class" : "httpCRs"
+  "type" : "object",
+  "name" : "httpCRs",
+  "memberOf" : "http"
 }
 The HTTP client response, passed to the callback of `http.request()` an `http.get()`.
 */
 /*JSON{
   "type" : "event",
-  "class" : "httpCRs",
   "name" : "data",
+  "memberOf" : "httpCRs",
   "params" : [
     ["data","JsVar","A string containing one or more characters of received data"]
   ]
@@ -162,31 +165,33 @@ The 'data' event is called when data is received. If a handler is defined with `
 */
 /*JSON{
   "type" : "event",
-  "class" : "httpCRs",
-  "name" : "close"
+  "name" : "close",
+  "memberOf" : "httpCRs"
 }
 Called when the connection closes with one `hadError` boolean parameter, which indicates whether an error occurred.
 */
 /*JSON{
   "type" : "event",
-  "class" : "httpCRs",
-  "name" : "error"
+  "name" : "error",
+  "memberOf" : "httpCRs"
 }
 An event that is fired if there is an error receiving the response. The error event function receives an error object as parameter with a `code` field and a `message` field. After the error event the close even will also be triggered to conclude the HTTP request/response.
 */
 /*JSON{
-  "type" : "method",
-  "class" : "httpCRs",
+  "type" : "function",
   "name" : "available",
+  "memberOf" : "httpCRs.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_stream_available",
   "return" : ["int","How many bytes are available"]
 }
 Return how many bytes are available to read. If there is a 'data' event handler, this will always return 0.
 */
 /*JSON{
-  "type" : "method",
-  "class" : "httpCRs",
+  "type" : "function",
   "name" : "read",
+  "memberOf" : "httpCRs.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_stream_read",
   "params" : [
     ["chars","int","The number of characters to read, or undefined/0 for all available"]
@@ -196,15 +201,16 @@ Return how many bytes are available to read. If there is a 'data' event handler,
 Return a string containing characters that have been received
 */
 /*JSON{
-  "type" : "method",
-  "class" : "httpCRs",
+  "type" : "function",
   "name" : "pipe",
-  "ifndef" : "SAVE_ON_FLASH",
+  "memberOf" : "httpCRs.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_pipe",
   "params" : [
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
     ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ]
+  ],
+  "if" : "!defined(SAVE_ON_FLASH)"
 }
 Pipe this to a stream (an object with a 'write' method)
 */
@@ -215,9 +221,10 @@ Pipe this to a stream (an object with a 'write' method)
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "http",
+  "type" : "function",
   "name" : "createServer",
+  "memberOf" : "http",
+  "thisParam" : false,
   "generate" : "jswrap_http_createServer",
   "params" : [
     ["callback","JsVar","A function(request,response) that will be called when a connection is made"]
@@ -242,10 +249,11 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
 }
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "http",
+  "type" : "function",
   "name" : "request",
-    "generate_full" : "jswrap_net_connect(options, callback, ST_HTTP)",
+  "memberOf" : "http",
+  "thisParam" : false,
+  "generate_full" : "jswrap_net_connect(options, callback, ST_HTTP)",
   "params" : [
     ["options","JsVar","An object containing host,port,path,method,headers fields (and also ca,key,cert if HTTPS is enabled)"],
     ["callback","JsVar","A function(res) that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."]
@@ -277,13 +285,13 @@ You can easily pre-populate `options` from a URL using `var options = url.parse(
 
 **Note:** if TLS/HTTPS is enabled, options can have `ca`, `key` and `cert` fields. See `tls.connect` for
 more information about these and how to use them.
-
 */
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "http",
+  "type" : "function",
   "name" : "get",
+  "memberOf" : "http",
+  "thisParam" : false,
   "generate" : "jswrap_http_get",
   "params" : [
     ["options","JsVar","A simple URL, or an object containing host,port,path,method fields"],
@@ -334,9 +342,10 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
 /*JSON{
-  "type" : "method",
-  "class" : "httpSrv",
+  "type" : "function",
   "name" : "listen",
+  "memberOf" : "httpSrv.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_net_server_listen",
   "params" : [
     ["port","int32","The port to listen on"]
@@ -347,9 +356,10 @@ Start listening for new HTTP connections on the given port
 // Re-use existing
 
 /*JSON{
-  "type" : "method",
-  "class" : "httpSrv",
+  "type" : "function",
   "name" : "close",
+  "memberOf" : "httpSrv.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_net_server_close"
 }
 Stop listening for new HTTP connections
@@ -362,29 +372,35 @@ Stop listening for new HTTP connections
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
 /*JSON{
-  "type" : "method",
-  "class" : "httpSRs",
+  "type" : "function",
   "name" : "write",
+  "memberOf" : "httpSRs.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_httpSRs_write",
   "params" : [
     ["data","JsVar","A string containing data to send"]
   ],
   "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
-}*/
+}
+
+*/
 bool jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
   serverResponseWrite(parent, data);
   return false;
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "httpSRs",
+  "type" : "function",
   "name" : "end",
+  "memberOf" : "httpSRs.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_httpSRs_end",
   "params" : [
     ["data","JsVar","A string containing data to send"]
   ]
-}*/
+}
+
+*/
 void jswrap_httpSRs_end(JsVar *parent, JsVar *data) {
   if (!jsvIsUndefined(data)) jswrap_httpSRs_write(parent, data);
   serverResponseEnd(parent);
@@ -392,15 +408,18 @@ void jswrap_httpSRs_end(JsVar *parent, JsVar *data) {
 
 
 /*JSON{
-  "type" : "method",
-  "class" : "httpSRs",
+  "type" : "function",
   "name" : "writeHead",
+  "memberOf" : "httpSRs.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_httpSRs_writeHead",
   "params" : [
     ["statusCode","int32","The HTTP status code"],
     ["headers","JsVar","An object containing the headers"]
   ]
-}*/
+}
+
+*/
 void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
   serverResponseWriteHead(parent, statusCode, headers);
 }
@@ -410,21 +429,25 @@ void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
 /*JSON{
-  "type" : "method",
-  "class" : "httpCRq",
+  "type" : "function",
   "name" : "write",
+  "memberOf" : "httpCRq.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_net_socket_write",
   "params" : [
     ["data","JsVar","A string containing data to send"]
   ],
   "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
-}*/
+}
+
+*/
 // Re-use existing
 
 /*JSON{
-  "type" : "method",
-  "class" : "httpCRq",
+  "type" : "function",
   "name" : "end",
+  "memberOf" : "httpCRq.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_net_socket_end",
   "params" : [
     ["data","JsVar","A string containing data to send"]

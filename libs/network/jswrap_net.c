@@ -21,7 +21,9 @@
 /*JSON{
   "type" : "idle",
   "generate" : "jswrap_net_idle"
-}*/
+}
+
+*/
 bool jswrap_net_idle() {
   JsNetwork net;
   if (!networkGetFromVar(&net)) return false;
@@ -34,15 +36,19 @@ bool jswrap_net_idle() {
 /*JSON{
   "type" : "init",
   "generate" : "jswrap_net_init"
-}*/
+}
+
+*/
 void jswrap_net_init() {
   socketInit();
 }
 
 /*JSON{
-  "type"     : "kill",
+  "type" : "kill",
   "generate" : "jswrap_net_kill"
-}*/
+}
+
+*/
 void jswrap_net_kill() {
   JsNetwork net;
   if (networkWasCreated()) {
@@ -59,17 +65,18 @@ void jswrap_net_kill() {
 // ---------------------------------------------------------------------------------
 
 /*JSON{
-  "type" : "class",
-  "class" : "url"
+  "type" : "object",
+  "name" : "url"
 }
 This class helps to convert URLs into Objects of information ready for http.request/get
 */
 
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "url",
+  "type" : "function",
   "name" : "parse",
+  "memberOf" : "url",
+  "thisParam" : false,
   "generate" : "jswrap_url_parse",
   "params" : [
     ["urlStr","JsVar","A URL to be parsed"],
@@ -215,7 +222,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
 
 /*JSON{
   "type" : "library",
-  "class" : "net"
+  "name" : "net"
 }
 This library allows you to create TCPIP servers and clients
 
@@ -225,23 +232,23 @@ This is designed to be a cut-down version of the [node.js library](http://nodejs
 */
 
 /*JSON{
-  "type" : "class",
-  "library" : "net",
-  "class" : "Server"
+  "type" : "object",
+  "name" : "Server",
+  "memberOf" : "net"
 }
 The socket server created by `require('net').createServer`
 */
 /*JSON{
-  "type" : "class",
-  "library" : "net",
-  "class" : "Socket"
+  "type" : "object",
+  "name" : "Socket",
+  "memberOf" : "net"
 }
 An actual socket connection - allowing transmit/receive of TCP data
 */
 /*JSON{
   "type" : "event",
-  "class" : "Socket",
   "name" : "data",
+  "memberOf" : "Socket",
   "params" : [
     ["data","JsVar","A string containing one or more characters of received data"]
   ]
@@ -250,8 +257,8 @@ The 'data' event is called when data is received. If a handler is defined with `
 */
 /*JSON{
   "type" : "event",
-  "class" : "Socket",
   "name" : "close",
+  "memberOf" : "Socket",
   "params" : [
     ["had_error","JsVar","A boolean indicating whether the connection had an error (use an error event handler to get error details)."]
   ]
@@ -260,8 +267,8 @@ Called when the connection closes.
 */
 /*JSON{
   "type" : "event",
-  "class" : "Socket",
   "name" : "error",
+  "memberOf" : "Socket",
   "params" : [
     ["details","JsVar","An error object with an error code (a negative integer) and a message."]
   ]
@@ -283,21 +290,22 @@ The error codes are:
 * -12: bad argument
 * -13: SSL handshake failed
 * -14: invalid SSL data
-
 */
 /*JSON{
-  "type" : "method",
-  "class" : "Socket",
+  "type" : "function",
   "name" : "available",
+  "memberOf" : "Socket.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_stream_available",
   "return" : ["int","How many bytes are available"]
 }
 Return how many bytes are available to read. If there is already a listener for data, this will always return 0.
 */
 /*JSON{
-  "type" : "method",
-  "class" : "Socket",
+  "type" : "function",
   "name" : "read",
+  "memberOf" : "Socket.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_stream_read",
   "params" : [
     ["chars","int","The number of characters to read, or undefined/0 for all available"]
@@ -307,22 +315,23 @@ Return how many bytes are available to read. If there is already a listener for 
 Return a string containing characters that have been received
 */
 /*JSON{
-  "type" : "method",
-  "class" : "Socket",
+  "type" : "function",
   "name" : "pipe",
-  "ifndef" : "SAVE_ON_FLASH",
+  "memberOf" : "Socket.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_pipe",
   "params" : [
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
     ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ]
+  ],
+  "if" : "!defined(SAVE_ON_FLASH)"
 }
 Pipe this to a stream (an object with a 'write' method)
 */
 /*JSON{
   "type" : "event",
-  "class" : "Socket",
-  "name" : "drain"
+  "name" : "drain",
+  "memberOf" : "Socket"
 }
 An event that is fired when the buffer is empty and it can accept more data to send.
 */
@@ -334,9 +343,10 @@ An event that is fired when the buffer is empty and it can accept more data to s
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "net",
+  "type" : "function",
   "name" : "createServer",
+  "memberOf" : "net",
+  "thisParam" : false,
   "generate" : "jswrap_net_createServer",
   "params" : [
     ["callback","JsVar","A `function(connection)` that will be called when a connection is made"]
@@ -363,9 +373,10 @@ JsVar *jswrap_net_createServer(JsVar *callback) {
 
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "net",
+  "type" : "function",
   "name" : "connect",
+  "memberOf" : "net",
+  "thisParam" : false,
   "generate_full" : "jswrap_net_connect(options, callback, ST_NORMAL)",
   "params" : [
     ["options","JsVar","An object containing host,port fields"],
@@ -424,8 +435,8 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
 
 /*JSON{
   "type" : "library",
-  "class" : "tls",
-  "ifdef" : "USE_TLS"
+  "name" : "tls",
+  "if" : "defined(USE_TLS)"
 }
 This library allows you to create TCPIP servers and clients using TLS encryption
 
@@ -435,9 +446,10 @@ This is designed to be a cut-down version of the [node.js library](http://nodejs
 */
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "tls",
+  "type" : "function",
   "name" : "connect",
+  "memberOf" : "tls",
+  "thisParam" : false,
   "generate_full" : "jswrap_net_connect(options, callback, ST_NORMAL | ST_TLS)",
   "params" : [
     ["options","JsVar","An object containing host,port fields"],
@@ -445,7 +457,7 @@ This is designed to be a cut-down version of the [node.js library](http://nodejs
   ],
   "return" : ["JsVar","Returns a new net.Socket object"],
   "return_object" : "Socket",
-  "ifdef" : "USE_TLS"
+  "if" : "defined(USE_TLS)"
 }
 Create a socket connection using TLS
 
@@ -476,9 +488,10 @@ https://engineering.circle.com/https-authorized-certs-with-node-js/
 // ---------------------------------------------------------------------------------
 
 /*JSON{
-  "type" : "method",
-  "class" : "Server",
+  "type" : "function",
   "name" : "listen",
+  "memberOf" : "Server.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_net_server_listen",
   "params" : [
     ["port","int32","The port to listen on"]
@@ -496,9 +509,10 @@ void jswrap_net_server_listen(JsVar *parent, int port) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "Server",
+  "type" : "function",
   "name" : "close",
+  "memberOf" : "Server.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_net_server_close"
 }
 Stop listening for new connections
@@ -517,15 +531,18 @@ void jswrap_net_server_close(JsVar *parent) {
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
 /*JSON{
-  "type" : "method",
-  "class" : "Socket",
+  "type" : "function",
   "name" : "write",
+  "memberOf" : "Socket.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_net_socket_write",
   "params" : [
     ["data","JsVar","A string containing data to send"]
   ],
   "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
-}*/
+}
+
+*/
 bool jswrap_net_socket_write(JsVar *parent, JsVar *data) {
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return false;
@@ -535,9 +552,10 @@ bool jswrap_net_socket_write(JsVar *parent, JsVar *data) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "Socket",
+  "type" : "function",
   "name" : "end",
+  "memberOf" : "Socket.prototype",
+  "thisParam" : true,
   "generate" : "jswrap_net_socket_end",
   "params" : [
     ["data","JsVar","A string containing data to send"]

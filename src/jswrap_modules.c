@@ -24,12 +24,12 @@
 #endif
 
 /*JSON{
-  "type" : "class",
-  "class" : "Modules",
+  "type" : "object",
+  "name" : "Modules",
   "memberOf" : "global"
 }
 Built-in class that caches the modules used by the `require` command
- */
+*/
 
 static JsVar *jswrap_modules_getModuleList() {
   return jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_MODULE_CACHE_NAME, JSV_OBJECT);
@@ -38,6 +38,8 @@ static JsVar *jswrap_modules_getModuleList() {
 /*JSON{
   "type" : "function",
   "name" : "require",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_require",
   "params" : [
     ["moduleName","JsVar","A String containing the name of the given module"]
@@ -45,7 +47,7 @@ static JsVar *jswrap_modules_getModuleList() {
   "return" : ["JsVar","The result of evaluating the string"]
 }
 Load the given module, and return the exported functions
- */
+*/
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {
     jsWarn("Expecting a module name as a string, but got %t", moduleName);
@@ -100,14 +102,15 @@ JsVar *jswrap_require(JsVar *moduleName) {
 }
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "Modules",
+  "type" : "function",
   "name" : "getCached",
+  "memberOf" : "Modules",
+  "thisParam" : false,
   "generate" : "jswrap_modules_getCached",
   "return" : ["JsVar","An array of module names"]
 }
 Return an array of module names that have been cached
- */
+*/
 JsVar *jswrap_modules_getCached() {
   JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0; // out of memory
@@ -130,16 +133,17 @@ JsVar *jswrap_modules_getCached() {
 }
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "Modules",
+  "type" : "function",
   "name" : "removeCached",
+  "memberOf" : "Modules",
+  "thisParam" : false,
   "generate" : "jswrap_modules_removeCached",
   "params" : [
     ["id","JsVar","The module name to remove"]
   ]
 }
 Remove the given module from the list of cached modules
- */
+*/
 void jswrap_modules_removeCached(JsVar *id) {
   if (!jsvIsString(id)) {
     jsExceptionHere(JSET_ERROR, "The argument to removeCached must be a string");
@@ -160,13 +164,14 @@ void jswrap_modules_removeCached(JsVar *id) {
 }
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "Modules",
+  "type" : "function",
   "name" : "removeAllCached",
+  "memberOf" : "Modules",
+  "thisParam" : false,
   "generate" : "jswrap_modules_removeAllCached"
 }
 Remove all cached modules
- */
+*/
 void jswrap_modules_removeAllCached() {
   JsVar *moduleList = jswrap_modules_getModuleList();
   if (!moduleList) return; // out of memory
@@ -175,9 +180,10 @@ void jswrap_modules_removeAllCached() {
 }
 
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "Modules",
+  "type" : "function",
   "name" : "addCached",
+  "memberOf" : "Modules",
+  "thisParam" : false,
   "generate" : "jswrap_modules_addCached",
   "params" : [
     ["id","JsVar","The module name to add"],
@@ -185,7 +191,7 @@ void jswrap_modules_removeAllCached() {
   ]
 }
 Add the given module to the cache
- */
+*/
 void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode) {
   if (!jsvIsString(id) || !jsvIsString(sourceCode)) {
     jsExceptionHere(JSET_ERROR, "Both arguments to addCached must be strings");

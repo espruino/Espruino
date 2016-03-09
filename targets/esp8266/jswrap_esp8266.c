@@ -46,9 +46,10 @@ static inline uint32_t _getCycleCount(void) {
 // ESP8266.reboot
 
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "reboot",
+  "type" : "function",
+  "name" : "reboot",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
   "generate" : "jswrap_ESP8266_reboot"
 }
 Perform a hardware reset/reboot of the esp8266.
@@ -66,11 +67,12 @@ void jswrap_ESP8266_reboot() {
  * The result will be a JS object containing the details.
  */
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "getResetInfo",
+  "type" : "function",
+  "name" : "getResetInfo",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
   "generate" : "jswrap_ESP8266_getResetInfo",
-  "return"   : ["JsVar","An object with the reset cause information"],
+  "return" : ["JsVar","An object with the reset cause information"],
   "return_object" : "RstInfo"
 }
 At boot time the esp8266's firmware captures the cause of the reset/reboot.  This function returns this information in an object with the following fields:
@@ -80,7 +82,6 @@ At boot time the esp8266's firmware captures the cause of the reset/reboot.  Thi
 * `epc1`, `epc2`, `epc3`: instruction pointers
 * `excvaddr`: address being accessed
 * `depc`: (?)
-
 */
 JsVar *jswrap_ESP8266_getResetInfo() {
   struct rst_info* info = system_get_rst_info();
@@ -100,16 +101,17 @@ JsVar *jswrap_ESP8266_getResetInfo() {
 //===== ESP8266.logDebug
 
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "logDebug",
+  "type" : "function",
+  "name" : "logDebug",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
   "generate" : "jswrap_ESP8266_logDebug",
-  "params"   : [
-    ["enable", "JsVar", "Enable or disable the debug logging."]
+  "params" : [
+    ["enable","JsVar","Enable or disable the debug logging."]
   ]
 }
 Enable or disable the logging of debug information.  A value of `true` enables debug logging while a value of `false` disables debug logging.  Debug output is sent to UART1 (gpio2).
- */
+*/
 void jswrap_ESP8266_logDebug(
     JsVar *jsDebug
   ) {
@@ -119,16 +121,17 @@ void jswrap_ESP8266_logDebug(
 }
 
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "setLog",
+  "type" : "function",
+  "name" : "setLog",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
   "generate" : "jswrap_ESP8266_setLog",
-  "params"   : [
-    ["mode", "JsVar", "Debug log mode: 0=off, 1=in-memory only, 2=in-mem and uart0, 3=in-mem and uart1."]
+  "params" : [
+    ["mode","JsVar","Debug log mode: 0=off, 1=in-memory only, 2=in-mem and uart0, 3=in-mem and uart1."]
   ]
 }
 Set the debug logging mode. It can be disabled (which frees ~1.2KB of heap), enabled in-memory only, or in-memory and output to a UART.
- */
+*/
 void jswrap_ESP8266_setLog(
     JsVar *jsMode
 ) {
@@ -138,13 +141,14 @@ void jswrap_ESP8266_setLog(
 }
 
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "printLog",
+  "type" : "function",
+  "name" : "printLog",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
   "generate" : "jswrap_ESP8266_printLog"
 }
 Prints the contents of the debug log to the console.
- */
+*/
 void jswrap_ESP8266_printLog(
 ) {
   JsVar *line = esp8266_logGetLine();
@@ -155,25 +159,27 @@ void jswrap_ESP8266_printLog(
 }
 
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "readLog",
+  "type" : "function",
+  "name" : "readLog",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
   "generate" : "esp8266_logGetLine",
-  "return"  : ["JsVar", "String with one line from the log, up to 128 characters long"]
+  "return" : ["JsVar","String with one line from the log, up to 128 characters long"]
 }
 Returns one line from the log or up to 128 characters.
- */
+*/
 
 //===== ESP8266.dumpSocketInfo
 
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "dumpSocketInfo",
+  "type" : "function",
+  "name" : "dumpSocketInfo",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
   "generate" : "jswrap_ESP8266_dumpSocketInfo"
 }
 Dumps info about all sockets to the log. This is for troubleshooting the socket implementation.
- */
+*/
 void jswrap_ESP8266_dumpSocketInfo(void) {
   esp8266_dumpAllSocketData();
 }
@@ -181,18 +187,18 @@ void jswrap_ESP8266_dumpSocketInfo(void) {
 //===== ESP8266.setCPUFreq
 
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "setCPUFreq",
+  "type" : "function",
+  "name" : "setCPUFreq",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
   "generate" : "jswrap_ESP8266_setCPUFreq",
-  "params"   : [
-    ["freq", "JsVar", "Desired frequency - either 80 or 160."]
+  "params" : [
+    ["freq","JsVar","Desired frequency - either 80 or 160."]
   ]
 }
 Set the operating frequency of the ESP8266 processor. The default is 160Mhz.
 
 **Warning**: changing the cpu frequency affects the timing of some I/O operations, notably of software SPI and I2C, so things may be a bit slower at 80Mhz.
-
 */
 void jswrap_ESP8266_setCPUFreq(
     JsVar *jsFreq //!< Operating frequency of the processor.  Either 80 or 160.
@@ -212,11 +218,12 @@ void jswrap_ESP8266_setCPUFreq(
 //===== ESP8266.getState
 
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "getState",
+  "type" : "function",
+  "name" : "getState",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
   "generate" : "jswrap_ESP8266_getState",
-  "return"   : ["JsVar", "The state of the ESP8266"]
+  "return" : ["JsVar","The state of the ESP8266"]
 }
 Returns an object that contains details about the state of the ESP8266 with the following fields:
 
@@ -227,7 +234,6 @@ Returns an object that contains details about the state of the ESP8266 with the 
 * `flashMap`     - Configured flash size&map: '512KB:256/256' .. '4MB:512/512'
 * `flashKB`      - Configured flash size in KB as integer
 * `flashChip`    - Type of flash chip as string with manufacturer & chip, ex: '0xEF 0x4016`
-
 */
 JsVar *jswrap_ESP8266_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
@@ -256,11 +262,12 @@ JsVar *jswrap_ESP8266_getState() {
 //===== ESP8266.getFreeFlash
 
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "getFreeFlash",
+  "type" : "function",
+  "name" : "getFreeFlash",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
   "generate" : "jswrap_ESP8266_getFreeFlash",
-  "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
+  "return" : ["JsVar","Array of objects with `addr` and `length` properties describing the free flash areas available"]
 }
 **Note:** This is deprecated. Use `require("flash").getFreee()`
 */
@@ -291,15 +298,18 @@ uint32_t crc32(uint8_t *buf, uint32_t len) {
 }
 
 /*JSON{
- "type"     : "staticmethod",
- "class"    : "ESP8266",
- "name"     : "crc32",
- "generate" : "jswrap_ESP8266_crc32",
- "return"   : ["JsVar", "32-bit CRC"],
- "params"   : [
-   ["arrayOfData", "JsVar", "Array of data to CRC"]
- ]
-}*/
+  "type" : "function",
+  "name" : "crc32",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
+  "generate" : "jswrap_ESP8266_crc32",
+  "return" : ["JsVar","32-bit CRC"],
+  "params" : [
+    ["arrayOfData","JsVar","Array of data to CRC"]
+  ]
+}
+
+*/
 JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
   if (!jsvIsArray(jsData)) {
     jsExceptionHere(JSET_ERROR, "Data must be an array.");
@@ -320,15 +330,18 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
 // latch: low min 6us
 
 /*JSON{
- "type"     : "staticmethod",
- "class"    : "ESP8266",
- "name"     : "neopixelWrite",
- "generate" : "jswrap_ESP8266_neopixelWrite",
- "params"   : [
-   ["pin", "pin", "Pin for output signal."],
-   ["arrayOfData", "JsVar", "Array of LED data."]
- ]
-}*/
+  "type" : "function",
+  "name" : "neopixelWrite",
+  "memberOf" : "ESP8266",
+  "thisParam" : false,
+  "generate" : "jswrap_ESP8266_neopixelWrite",
+  "params" : [
+    ["pin","pin","Pin for output signal."],
+    ["arrayOfData","JsVar","Array of LED data."]
+  ]
+}
+
+*/
 void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Pin is not valid.");

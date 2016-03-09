@@ -19,23 +19,25 @@
 #include "jsinteractive.h"
 
 /*JSON{
-  "type" : "class",
-  "class" : "console",
+  "type" : "object",
+  "name" : "console",
   "memberOf" : "global"
 }
 An Object that contains functions for writing to the interactive console
- */
+*/
 
 /*JSON{
   "type" : "function",
   "name" : "setBusyIndicator",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_setBusyIndicator",
   "params" : [
     ["pin","JsVar",""]
   ]
 }
 When Espruino is busy, set the pin specified here high. Set this to undefined to disable the feature.
- */
+*/
 void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
   Pin oldPin = pinBusyIndicator;
   pinBusyIndicator = jshGetPinFromVar(pinVar);
@@ -49,6 +51,8 @@ void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
 /*JSON{
   "type" : "function",
   "name" : "setSleepIndicator",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_setSleepIndicator",
   "params" : [
     ["pin","JsVar",""]
@@ -57,7 +61,7 @@ void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
 When Espruino is asleep, set the pin specified here low (when it's awake, set it high). Set this to undefined to disable the feature.
 
 Please see http://www.espruino.com/Power+Consumption for more details on this.
- */
+*/
 void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
   Pin oldPin = pinSleepIndicator;
   pinSleepIndicator = jshGetPinFromVar(pinVar);
@@ -71,6 +75,8 @@ void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
 /*JSON{
   "type" : "function",
   "name" : "setDeepSleep",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_setDeepSleep",
   "params" : [
     ["sleep","bool",""]
@@ -79,7 +85,7 @@ void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
 Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on the Espruino Board.
 
 Please see http://www.espruino.com/Power+Consumption for more details on this.
- */
+*/
 void jswrap_interface_setDeepSleep(bool sleep) {
   if (sleep)
     jsiStatus |= JSIS_ALLOW_DEEP_SLEEP;
@@ -91,14 +97,16 @@ void jswrap_interface_setDeepSleep(bool sleep) {
 /*JSON{
   "type" : "function",
   "name" : "trace",
-  "ifndef" : "SAVE_ON_FLASH",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_trace",
   "params" : [
     ["root","JsVar","The symbol to output (optional). If nothing is specified, everything will be output"]
-  ]
+  ],
+  "if" : "!defined(SAVE_ON_FLASH)"
 }
 Output debugging information
- */
+*/
 void jswrap_interface_trace(JsVar *root) {
   if (jsvIsUndefined(root)) {
     jsvTrace(execInfo.root, 0);
@@ -114,15 +122,19 @@ void jswrap_interface_trace(JsVar *root) {
 /*JSON{
   "type" : "function",
   "name" : "dump",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate_full" : "jsiDumpState((vcbprintf_callback)jsiConsolePrintString, 0)"
 }
 Output current interpreter state in a text form such that it can be copied to a new device
 
 Note: 'Internal' functions are currently not handled correctly. You will need to recreate these in the `onInit` function.
- */
+*/
 /*JSON{
   "type" : "function",
   "name" : "load",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_LOAD;"
 }
 Load program memory out of flash
@@ -136,10 +148,12 @@ If you want code to be executed right after loading (for instance to initialise
 devices connected to Espruino), add an `init` event handler to `E` with
 `E.on('init', function() { ... your_code ... });`. This will then be automatically
 executed by Espruino every time it starts.
- */
+*/
 /*JSON{
   "type" : "function",
   "name" : "save",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;"
 }
 Save program memory into flash. It will then be loaded automatically every time
@@ -158,10 +172,12 @@ In order to stop the program saved with this command being loaded automatically,
 hold down Button 1 while also pressing reset. On some boards, Button 1 enters
 bootloader mode, so you will need to press Reset with Button 1 raised, and then
 hold Button 1 down a fraction of a second later.
- */
+*/
 /*JSON{
   "type" : "function",
   "name" : "reset",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate_full" : "jsiStatus|=JSIS_TODO_RESET;"
 }
 Reset the interpreter - clear program memory, and do not load a saved program from flash. This does NOT reset the underlying hardware (which allows you to reset the device without it disconnecting from USB).
@@ -169,10 +185,12 @@ Reset the interpreter - clear program memory, and do not load a saved program fr
 This command only executes when the Interpreter returns to the Idle state - for instance ```a=1;reset();a=2;``` will still leave 'a' as undefined.
 
 The safest way to do a full reset is to hit the reset button.
- */
+*/
 /*JSON{
   "type" : "function",
   "name" : "print",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_print",
   "params" : [
     ["text","JsVarArray",""]
@@ -181,11 +199,12 @@ The safest way to do a full reset is to hit the reset button.
 Print the supplied string(s) to the console
 
  **Note:** If you're connected to a computer (not a wall adaptor) via USB but **you are not running a terminal app** then when you print data Espruino may pause execution and wait until the computer requests the data it is trying to print.
- */
+*/
 /*JSON{
-  "type" : "staticmethod",
-  "class" : "console",
+  "type" : "function",
   "name" : "log",
+  "memberOf" : "console",
+  "thisParam" : false,
   "generate" : "jswrap_interface_print",
   "params" : [
     ["text","JsVarArray","One or more arguments to print"]
@@ -194,7 +213,7 @@ Print the supplied string(s) to the console
 Print the supplied string(s) to the console
 
  **Note:** If you're connected to a computer (not a wall adaptor) via USB but **you are not running a terminal app** then when you print data Espruino may pause execution and wait until the computer requests the data it is trying to print.
- */
+*/
 void jswrap_interface_print(JsVar *v) {
   assert(jsvIsArray(v));
 
@@ -219,6 +238,8 @@ void jswrap_interface_print(JsVar *v) {
 /*JSON{
   "type" : "function",
   "name" : "edit",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_edit",
   "params" : [
     ["funcName","JsVar","The name of the function to edit (either a string or just the unquoted name)"]
@@ -227,7 +248,7 @@ void jswrap_interface_print(JsVar *v) {
 Fill the console with the contents of the given function, so you can edit it.
 
 NOTE: This is a convenience function - it will not edit 'inner functions'. For that, you must edit the 'outer function' and re-execute it.
- */
+*/
 void jswrap_interface_edit(JsVar *funcName) {
   JsVar *func = 0;
   if (jsvIsString(funcName)) {
@@ -285,13 +306,15 @@ void jswrap_interface_edit(JsVar *funcName) {
 /*JSON{
   "type" : "function",
   "name" : "echo",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_echo",
   "params" : [
     ["echoOn","bool",""]
   ]
 }
 Should TinyJS echo what you type back to you? true = yes (Default), false = no. When echo is off, the result of executing a command is not returned. Instead, you must use 'print' to send output.
- */
+*/
 void jswrap_interface_echo(bool echoOn) {
   if (echoOn)
     jsiStatus &= ~JSIS_ECHO_OFF;
@@ -302,22 +325,26 @@ void jswrap_interface_echo(bool echoOn) {
 /*JSON{
   "type" : "function",
   "name" : "getTime",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate_full" : "(JsVarFloat)jshGetSystemTime() / (JsVarFloat)jshGetTimeFromMilliseconds(1000)",
   "return" : ["float",""]
 }
 Return the current system time in Seconds (as a floating point number)
- */
+*/
 
 /*JSON{
   "type" : "function",
   "name" : "setTime",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interactive_setTime",
   "params" : [
     ["time","float",""]
   ]
 }
 Set the current system time in seconds (to the nearest second)
- */
+*/
 void jswrap_interactive_setTime(JsVarFloat time) {
   JsSysTime stime = jshGetTimeFromMilliseconds(time*1000);
   jsiLastIdleTime = stime;
@@ -328,11 +355,13 @@ void jswrap_interactive_setTime(JsVarFloat time) {
 /*JSON{
   "type" : "function",
   "name" : "getSerial",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_getSerial",
   "return" : ["JsVar","The board's serial number"]
 }
 Get the serial number of this board
- */
+*/
 JsVar *jswrap_interface_getSerial() {
   char buf[8];
   unsigned char serial[32];
@@ -352,6 +381,8 @@ JsVar *jswrap_interface_getSerial() {
 /*JSON{
   "type" : "function",
   "name" : "setInterval",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_setInterval",
   "params" : [
     ["function","JsVar","A Function or String to be executed"],
@@ -386,10 +417,12 @@ If you want to stop your function from being called, pass the number that
 was returned by `setInterval` into the `clearInterval` function.
 
  **Note:** If `setDeepSleep(true)` has been called and the interval is greater than 5 seconds, Espruino may execute the interval up to 1 second late. This is because Espruino can only wake from deep sleep every second - and waking early would cause Espruino to waste power while it waited for the correct time.
- */
+*/
 /*JSON{
   "type" : "function",
   "name" : "setTimeout",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_setTimeout",
   "params" : [
     ["function","JsVar","A Function or String to be executed"],
@@ -424,7 +457,7 @@ If you want to stop the function from being called, pass the number that
 was returned by `setTimeout` into the `clearInterval` function.
 
  **Note:** If `setDeepSleep(true)` has been called and the interval is greater than 5 seconds, Espruino may execute the interval up to 1 second late. This is because Espruino can only wake from deep sleep every second - and waking early would cause Espruino to waste power while it waited for the correct time.
- */
+*/
 JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, JsVar *args, bool isTimeout) {
   // NOTE: The 5 sec delay mentioned in the description is handled by jshSleep
   JsVar *itemIndex = 0;
@@ -460,6 +493,8 @@ JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout, JsVar *args)
 /*JSON{
   "type" : "function",
   "name" : "clearInterval",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_clearInterval",
   "params" : [
     ["id","JsVar","The id returned by a previous call to setInterval"]
@@ -472,10 +507,12 @@ Clear the Interval that was created with setInterval, for example:
 ```clearInterval(id);```
 
 If no argument is supplied, all timers and intervals are stopped
- */
+*/
 /*JSON{
   "type" : "function",
   "name" : "clearTimeout",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_clearTimeout",
   "params" : [
     ["id","JsVar","The id returned by a previous call to setTimeout"]
@@ -488,7 +525,7 @@ Clear the Timeout that was created with setTimeout, for example:
 ```clearTimeout(id);```
 
 If no argument is supplied, all timers and intervals are stopped
- */
+*/
 void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
   JsVar *timerArrayPtr = jsvLock(timerArray);
   if (jsvIsUndefined(idVar)) {
@@ -532,6 +569,8 @@ void jswrap_interface_clearTimeout(JsVar *idVar) {
 /*JSON{
   "type" : "function",
   "name" : "changeInterval",
+  "memberOf" : "global",
+  "thisParam" : false,
   "generate" : "jswrap_interface_changeInterval",
   "params" : [
     ["id","JsVar","The id returned by a previous call to setInterval"],
@@ -547,7 +586,7 @@ Change the Interval on a callback created with setInterval, for example:
 This takes effect immediately and resets the timeout, so in the example above,
 regardless of when you call `changeInterval`, the next interval will occur 1500ms
 after it.
- */
+*/
 void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   JsVar *timerArrayPtr = jsvLock(timerArray);
   if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
