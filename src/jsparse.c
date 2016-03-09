@@ -844,13 +844,15 @@ JsVar *jspGetNamedFieldInProtoChain(JsVar *objectInstance, JsVar *objectName, Js
   // check for `"__proto__"` in the builtin version of `object` -> recurse and return  if exists
   JsVar *protoName = jspGetNamedFieldInObject(objectInstance, objectName, object, JSPARSE_INHERITS_VAR, true);
   if (!protoName && !(jsvIsNativeObject(object) && object->varData.nativeObject==jswSymbolTable_Object_prototype)) {
-    // search for the built-in prototype,
+    // search for the built-in prototype
     const char *objName = jswGetBasicObjectName(object);
     if (objName) {
       JsVar *obj = jspGetNamedFieldInObject(execInfo.root, execInfo.root, execInfo.root, objName, false);
       if (obj) {
         protoName = jspGetNamedFieldInObject(objectInstance, obj, obj, JSPARSE_PROTOTYPE_VAR, false);
         jsvUnLock(obj);
+        // no prototype - just return an empty object
+        if (!protoName) protoName = jsvNewObject();
       }
     }
   }
@@ -889,8 +891,10 @@ JsVar *jspGetNamedField(JsVar *objectName, const char* name, bool returnName) {
   JsVar *object = jsvSkipName(objectName);
   JsVar *child = jspGetNamedFieldInProtoChain(object, objectName, object, name, returnName);
 
-  // If not found and is the prototype, create it
-  if (!child && jsvIsFunction(object) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
+  // If not found and is the prototype (on a function), create it
+  if (!child &&
+      (jsvIsFunction(object) || (jsvIsNativeObject(object) && object->varData.nativeObject->functionPtr)) &&
+      strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
     JsVar *proto = jsvNewWithFlags(JSV_OBJECT);
     // make sure it has a 'constructor' variable that points to the object it was part of
     jsvObjectSetChild(proto, JSPARSE_CONSTRUCTOR_VAR, object);
