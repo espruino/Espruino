@@ -816,7 +816,7 @@ JsVar *jspGetNamedFieldInObject(JsVar *objectInstance, JsVar *objectName, JsVar 
     if (!returnName) return child;
     // create a new name
     JsVar *nameVar = jsvNewFromString(name);
-    JsVar *newChild = jsvCreateNewChild(objectInstance, nameVar, child);
+    JsVar *newChild = jsvCreateNewChild(objectName, nameVar, child);
     jsvUnLock2(nameVar, child);
     return newChild;
   }
@@ -856,7 +856,7 @@ JsVar *jspGetNamedFieldInProtoChain(JsVar *objectInstance, JsVar *objectName, Js
   }
   if (protoName) {
     JsVar *proto = jsvSkipName(protoName);
-    child = jspGetNamedFieldInProtoChain(objectInstance, protoName, proto, name, returnName);
+    child = jspGetNamedFieldInProtoChain(objectInstance, objectName, proto, name, returnName);
     jsvUnLock2(proto, protoName);
     return child;
   }
@@ -900,7 +900,7 @@ JsVar *jspGetNamedVariable(const char *tokenName) {
   // Variable exists - we just need to give it a
   if (a) {
     // Get rid of existing name
-    a = jsvSkipNameAndUnLock(a);
+    a = jsvSkipNameAndUnLock(a); // FIXME is this ever a name?
     // create a 'New Child' name, so we can add it to global
     // scope if we assign to it
     JsVar *nameVar = jsvNewFromString(tokenName);

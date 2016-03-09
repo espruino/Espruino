@@ -442,6 +442,9 @@ for className in objectChecks.keys():
 codeOut("  return -1;")
 codeOut('}')
 
+codeOut('')
+codeOut('')
+
 codeOut('int jswGetSymbolIndexForObjectProto(JsVar *var) {') 
 codeOut('  // Instantiated objects, so we should point to the prototypes of the object itself');
 codeOut(' //FIXME - see build_jswrapper.py')
