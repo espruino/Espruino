@@ -816,7 +816,7 @@ JsVar *jspGetNamedFieldInObject(JsVar *objectInstance, JsVar *objectName, JsVar 
     if (!returnName) return child;
     // create a new name
     JsVar *nameVar = jsvNewFromString(name);
-    JsVar *newChild = jsvCreateNewChild(objectName, nameVar, child);
+    JsVar *newChild = jsvCreateNewChild(objectInstance, nameVar, child);
     jsvUnLock2(nameVar, child);
     return newChild;
   }
@@ -2340,7 +2340,8 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
   func = jsvSkipNameAndUnLock(func);
   JsVar *obj =  jspeCreateObjectFromFunction(func);
   jsvUnLock(func);
-
+  /* Create a name pointing to the object we instantiated, so
+  new requests for 'name' yield exactly the same object */
   if (name)
     jsvObjectSetChild(execInfo.root, name, obj);
 
