@@ -856,9 +856,24 @@ JsVar *jspGetNamedFieldInProtoChain(JsVar *objectInstance, JsVar *objectName, Js
   }
   if (protoName) {
     JsVar *proto = jsvSkipName(protoName);
-    child = jspGetNamedFieldInProtoChain(objectInstance, objectName, proto, name, returnName);
+    child = jspGetNamedFieldInProtoChain(objectInstance, objectName, proto, name, false);
     jsvUnLock2(proto, protoName);
-    return child;
+    if (!child) return 0;
+    if (!returnName) return child;
+    /* If we want to return a name, don't return the name of the child in the prototype.
+     * Instead, we must return the name of the child in the object itself, or things like:
+     *
+     * function A() {}
+     * A.prototype.x=1;
+     * a=new A();
+     * a.x=2;
+     *
+     * Will cause 'x' in the prototype to get overwritten!
+     */
+    JsVar *nameVar = jsvNewFromString(name);
+    JsVar *newChild = jsvCreateNewChild(objectName, nameVar, child);
+    jsvUnLock2(nameVar, child);
+    return newChild;
   }
   return 0;
 }
