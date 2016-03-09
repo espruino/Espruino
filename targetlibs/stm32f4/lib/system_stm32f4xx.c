@@ -267,11 +267,17 @@
 #define PLL_P      2
 #endif /* STM32F427_437x || STM32F429_439xx */
 
-#if defined (STM32F401xx)
+#if defined (STM32F401xx) // 84Mhz
 #define PLL_N      336
 /* SYSCLK = PLL_VCO / PLL_P */
 #define PLL_P      4
 #endif /* STM32F401xx */
+
+#if defined (STM32F411xx) // 100Mhz
+#define PLL_N      400
+/* SYSCLK = PLL_VCO / PLL_P */
+#define PLL_P      4
+#endif /* STM32F411xx */
 
 #if defined(EMW3165)
 // EMW3165 uses a 26Mhz crystal
@@ -312,6 +318,11 @@
 #if defined (STM32F401xx)
   uint32_t SystemCoreClock = 84000000;
 #endif /* STM32F401xx */
+
+#if defined (STM32F411xx)
+  uint32_t SystemCoreClock = 100000000;
+#endif /* STM32F411xx */
+
 
 #if defined(EMW3165)
   uint32_t SystemCoreClock = 100000000;
