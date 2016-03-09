@@ -34,6 +34,8 @@ NO_INLINE JsVar *jspNewPrototype(const char *instanceOf);
  * If name!=0, added to root with name, and the name is returned
  * If name==0, not added to root and Object itself returned */
 JsVar *jspNewObject(const char *name, const char *instanceOf);
+/** Create a new object of the given instance. Should be one of jswSymbolIndex_XYZ  */
+NO_INLINE JsVar *jspNewHiddenObject(int tableIndex);
 
 /// if interrupting execution, this is set
 bool jspIsInterrupted();

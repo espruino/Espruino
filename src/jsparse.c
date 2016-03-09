@@ -2363,6 +2363,20 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
   return obj;
 }
 
+/** Create a new object of the given instance. Should be one of jswSymbolIndex_XYZ  */
+NO_INLINE JsVar *jspNewHiddenObject(int tableIndex) {
+  /* FIXME: We should try and make sure there aren't duplicates, so if
+   * the users adds a function to a prototype on a hidden object, it
+   * is available to any instance. But how can this be done? */
+  JsVar *func = jswCreateFromSymbolTable(tableIndex);
+  if (!func) return 0;
+  func = jsvSkipNameAndUnLock(func);
+  JsVar *obj = jspeCreateObjectFromFunction(func);
+  jsvUnLock(func);
+
+  return obj;
+}
+
 /** Returns true if the constructor function given is the same as that
  * of the object with the given name. */
 bool jspIsConstructor(JsVar *constructor, const char *constructorName) {
