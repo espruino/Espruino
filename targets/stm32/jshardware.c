@@ -638,6 +638,10 @@ static unsigned int jshGetSPIFreq(SPI_TypeDef *SPIx) {
   return APB2 ? clocks.PCLK2_Frequency : clocks.PCLK1_Frequency;
 }
 
+static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
+  return SystemCoreClock;
+}
+
 // ----------------------------------------------------------------------------
 volatile unsigned int ticksSinceStart = 0;
 #ifdef USE_RTC
@@ -699,6 +703,12 @@ void jshSetupRTC(bool isUsingLSI) {
   RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
   RTC_Init(&RTC_InitStructure);
 #endif
+}
+
+void jshResetRTCTimer() {
+  // work out initial values for RTC
+  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
+  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
 }
 #endif
 
@@ -964,10 +974,6 @@ ALWAYS_INLINE bool jshPinGetValue(Pin pin) {
   return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
 }
 
-static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
-  return SystemCoreClock;
-}
-
 // ----------------------------------------------------------------------------
 static void jshResetSerial() {
   if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
@@ -1105,9 +1111,7 @@ void jshInit() {
   NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK);
 
 #ifdef USE_RTC
-  // work out initial values for RTC
-  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
-  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
+  jshResetRTCTimer();
 #endif
 
   jshResetSerial();
@@ -2851,4 +2855,61 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 #endif
 }
 
+/** Change the processor speed - the number is given in Hz.
+ * This returns the *actual* clock speed set - so if unimplemented
+ * just return what we actually have. */
+unsigned int jshSetSystemClockFreq(unsigned int freq) {
+  // see system_stm32f4xx.c
+  unsigned int m = 8; // divisor (usually crystal in Mhz) <= 63
+  unsigned int n = 336; // (freq+4000000) / (m*1000000); //  192-432
+  unsigned int p = 2; // CPU divisor 2,4,6,8
+  unsigned int q = 7; // USB divisor (must be 48Mhz) 4-15
+  int diff = -1;
+  unsigned int im,in,ip;
+  // Exhaustively search for best clock combo
+  for (im=1;im<=63;im++) {
+    unsigned int mfreq = 8000000 / im;
+    for (in=192;in<=432;in++) {
+      unsigned int nfreq = mfreq * in;
+      unsigned int iq = nfreq / 48000000;
+      if (iq<4) iq=4;
+      if (iq>15) iq=15;
+      unsigned int qfreq = nfreq / iq;
+
+      for (ip=2;ip<=8;ip+=2) {
+        unsigned int pfreq = nfreq / ip;
+        int d = (int)pfreq - (int)freq;
+        if (d<0) d=-d;
+        if (qfreq!=48000000) d += 1000000000; // discourage choosing bad USB clocks!
+        if (diff<0 || d<=diff) {
+          m = im;
+          n = in;
+          p = ip;
+          q = iq;
+          diff = d;
+        }
+      }
+    }
+  }
+
+  jsiConsolePrintf("CLK M=%d N=%d P=%d Q=%d\n",m,n,p,q);
+  jshTransmitFlush();
+  int i;for (i=0;i<100;i++) jshDelayMicroseconds(1000);
+
+
+  if (freq>84000000) FLASH_SetLatency(FLASH_Latency_6);
+  else FLASH_SetLatency(FLASH_Latency_2);
+
+  RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
+  RCC_PLLCmd(DISABLE);
+  RCC_PLLConfig(RCC_PLLSource_HSE, m, n, p, q);
+  RCC_PLLCmd(ENABLE);
+  while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET) {}
+  RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+  SystemCoreClockUpdate();
+  // force recalculate of the timer speeds
+  jshResetRTCTimer();
+  hasSystemSlept = true;
+  return SystemCoreClock;
+}
 

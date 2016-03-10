@@ -731,7 +731,29 @@ JsVar *jswrap_espruino_memoryArea(int addr, int len) {
   return v;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "setFreq",
+  "generate" : "jswrap_espruino_setFreq",
+  "params" : [
+    ["freq","int","The frequency in hz to set Espruino to run at"]
+  ],
+  "return" : ["int","The actual frequency set to"]
+}
+This sets the clock frequency of Espruino. It is only available on some boards.
 
+**Note:**
+
+* On STM32F1 boards (eg Espruino Original, USB will stop working if you
+change the clock speed).
+* On pretty much all boards, UART, PWM, etc will change
+speed and will need setting up again in order to work.
+* STM32 will attempt to match
+*/
+int jswrap_espruino_setFreq(int freq) {
+  return jshSetSystemClockFreq(freq);
+}
 
 /*JSON{
   "type" : "staticmethod",

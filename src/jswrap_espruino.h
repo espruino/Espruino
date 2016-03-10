@@ -31,6 +31,7 @@ JsVar *jswrap_espruino_toArrayBuffer(JsVar *str);
 JsVar *jswrap_espruino_toUint8Array(JsVar *args);
 JsVar *jswrap_espruino_toString(JsVar *args);
 JsVar *jswrap_espruino_memoryArea(int addr, int len);
+int jswrap_espruino_setFreq(int freq);
 
 int jswrap_espruino_reverseByte(int v);
 void jswrap_espruino_dumpTimers();

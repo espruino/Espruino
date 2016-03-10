@@ -401,6 +401,11 @@ JsVarFloat jshReadVRef();
  * default to `rand()` */
 unsigned int jshGetRandomNumber();
 
+/** Change the processor speed - the number is given in Hz.
+ * This returns the *actual* clock speed set - so if unimplemented
+ * just return what we actually have. */
+unsigned int jshSetSystemClockFreq(unsigned int freq);
+
 /** Hacky definition of wait cycles used for WAIT_UNTIL.
  * TODO: make this depend on known system clock speed? */
 #if defined(STM32F401xx) || defined(STM32F411xx)
