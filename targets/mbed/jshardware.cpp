@@ -271,5 +271,9 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 }
 
+unsigned int jshSetSystemClock(JsVar *options) {
+  return 0;
+}
+
 // ----------------------------------------------------------------------------
 } // extern C

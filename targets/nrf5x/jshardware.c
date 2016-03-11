@@ -740,3 +740,7 @@ JsVarFloat jshReadVRef() {
 unsigned int jshGetRandomNumber() {
   return (unsigned int) nrf_utils_get_random_number();
 }
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  return 0;
+}

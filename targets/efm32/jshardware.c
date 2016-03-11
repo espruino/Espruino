@@ -1024,3 +1024,7 @@ unsigned int jshGetRandomNumber() {
   /* EFM32 TODO This is not random */
   return 1337;
 }
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  return 0;
+}

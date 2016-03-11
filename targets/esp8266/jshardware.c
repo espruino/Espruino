@@ -1258,6 +1258,16 @@ void jshFlashErasePage(
       res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
 }
 
+unsigned int jshSetSystemClock(JsVar *options) {
+  int newFreq = jsvGetInteger(options);
+  if (newFreq != 80 && newFreq != 160) {
+    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 160.");
+    return 0;
+  }
+  system_update_cpu_freq(newFreq);
+  return system_get_cpu_freq()*1000000;
+}
+
 
 /**
  * Callback for end of runtime.  This should never be called and has been

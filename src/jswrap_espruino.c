@@ -733,26 +733,51 @@ JsVar *jswrap_espruino_memoryArea(int addr, int len) {
 
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
-  "name" : "setFreq",
-  "generate" : "jswrap_espruino_setFreq",
+  "name" : "setClock",
+  "generate" : "jswrap_espruino_setClock",
   "params" : [
-    ["freq","int","The frequency in hz to set Espruino to run at"]
+    ["options","JsVar","Platform-specific options for setting clock speed"]
   ],
-  "return" : ["int","The actual frequency set to"]
+  "return" : ["int","The actual frequency the clock has been set to"]
 }
-This sets the clock frequency of Espruino. It is only available on some boards.
+This sets the clock frequency of Espruino's processor. It will return `0` if
+it is unimplemented or the clock speed cannot be changed.
 
-**Note:**
+**Note:** On pretty much all boards, UART, SPI, I2C, PWM, etc will change
+frequency and will need setting up again in order to work.
 
-* On STM32F1 boards (eg Espruino Original, USB will stop working if you
-change the clock speed).
-* On pretty much all boards, UART, PWM, etc will change
-speed and will need setting up again in order to work.
-* STM32 will attempt to match
+### STM32F4
+
+Options is of the form `{ M: int, N: int, P: int, Q: int }` - see the 'Clocks'
+section of the microcontroller's reference manual for what these mean.
+
+* System clock = 8Mhz * N / ( M * P )
+* USB clock (should be 48Mhz) = 8Mhz * N / ( M * Q )
+
+Optional arguments are:
+
+* `latency` - flash latency from 0..15
+* `PCLK1` - Peripheral clock 1 divisor (default: 2)
+* `PCLK2` - Peripheral clock 2 divisor (default: 4)
+
+The Pico's default is `{M:8, N:336, P:4, Q:7, PCLK1:2, PCLK2:4}`, use
+`{M:8, N:336, P:8, Q:7, PCLK:1, PCLK2:2}` to halve the system clock speed
+while keeping the peripherals running at the same speed (omitting PCLK1/2
+will lead to the peripherals changing speed too).
+
+On STM32F4 boards (eg. Espruino Pico), the USB clock needs to be kept at 48Mhz
+or USB will fail to work. You'll also experience USB instability if the processor
+clock falls much below 48Mhz.
+
+### ESP8266
+
+Just specify an integer value, either 80 or 160 (for 80 or 160Mhz)
+
 */
-int jswrap_espruino_setFreq(int freq) {
-  return jshSetSystemClockFreq(freq);
+int jswrap_espruino_setClock(JsVar *options) {
+  return jshSetSystemClock(options);
 }
 
 /*JSON{

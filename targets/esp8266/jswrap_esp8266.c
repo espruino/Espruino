@@ -189,6 +189,8 @@ void jswrap_ESP8266_dumpSocketInfo(void) {
     ["freq", "JsVar", "Desired frequency - either 80 or 160."]
   ]
 }
+**Note:** This is deprecated. Use `E.setClock(80/160)`
+**Note:**
 Set the operating frequency of the ESP8266 processor. The default is 160Mhz.
 
 **Warning**: changing the cpu frequency affects the timing of some I/O operations, notably of software SPI and I2C, so things may be a bit slower at 80Mhz.
@@ -197,16 +199,7 @@ Set the operating frequency of the ESP8266 processor. The default is 160Mhz.
 void jswrap_ESP8266_setCPUFreq(
     JsVar *jsFreq //!< Operating frequency of the processor.  Either 80 or 160.
   ) {
-  if (!jsvIsInt(jsFreq)) {
-    jsExceptionHere(JSET_ERROR, "Invalid frequency.");
-    return;
-  }
-  int newFreq = jsvGetInteger(jsFreq);
-  if (newFreq != 80 && newFreq != 160) {
-    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 160.");
-    return;
-  }
-  system_update_cpu_freq(newFreq);
+  jshSetSystemClock(jsFreq);
 }
 
 //===== ESP8266.getState
@@ -262,7 +255,7 @@ JsVar *jswrap_ESP8266_getState() {
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
 }
-**Note:** This is deprecated. Use `require("flash").getFreee()`
+**Note:** This is deprecated. Use `require("flash").getFree()`
 */
 JsVar *jswrap_ESP8266_getFreeFlash() {
   return jshFlashGetFree();
@@ -435,3 +428,5 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
 
 #endif
 }
+
+

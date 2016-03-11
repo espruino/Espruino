@@ -804,3 +804,7 @@ JsVar *jshFlashGetFree() {
 void jshFlashErasePage(uint32_t addr) { }
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) { memset(buf, 0, len); }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) { }
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  return 0;
+}

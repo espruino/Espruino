@@ -2855,61 +2855,79 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 #endif
 }
 
-/** Change the processor speed - the number is given in Hz.
- * This returns the *actual* clock speed set - so if unimplemented
- * just return what we actually have. */
-unsigned int jshSetSystemClockFreq(unsigned int freq) {
-  // see system_stm32f4xx.c
-  unsigned int m = 8; // divisor (usually crystal in Mhz) <= 63
-  unsigned int n = 336; // (freq+4000000) / (m*1000000); //  192-432
-  unsigned int p = 2; // CPU divisor 2,4,6,8
-  unsigned int q = 7; // USB divisor (must be 48Mhz) 4-15
-  int diff = -1;
-  unsigned int im,in,ip;
-  // Exhaustively search for best clock combo
-  for (im=1;im<=63;im++) {
-    unsigned int mfreq = 8000000 / im;
-    for (in=192;in<=432;in++) {
-      unsigned int nfreq = mfreq * in;
-      unsigned int iq = nfreq / 48000000;
-      if (iq<4) iq=4;
-      if (iq>15) iq=15;
-      unsigned int qfreq = nfreq / iq;
+int jshSetSystemClockPClk(JsVar *options, const char *clkName) {
+  JsVar *v = jsvObjectGetChild(options, clkName, 0);
+  JsVarInt i = jsvGetIntegerAndUnLock(v);
+  if (i==1) return RCC_HCLK_Div1;
+  if (i==2) return RCC_HCLK_Div2;
+  if (i==4) return RCC_HCLK_Div4;
+  if (i==8) return RCC_HCLK_Div8;
+  if (i==16) return RCC_HCLK_Div16;
+  if (v) {
+    jsExceptionHere(JSET_ERROR, "Invalid %s value %d", clkName, i);
+    return -2;
+  }
+  return -1;
+}
 
-      for (ip=2;ip<=8;ip+=2) {
-        unsigned int pfreq = nfreq / ip;
-        int d = (int)pfreq - (int)freq;
-        if (d<0) d=-d;
-        if (qfreq!=48000000) d += 1000000000; // discourage choosing bad USB clocks!
-        if (diff<0 || d<=diff) {
-          m = im;
-          n = in;
-          p = ip;
-          q = iq;
-          diff = d;
-        }
-      }
+unsigned int jshSetSystemClock(JsVar *options) {
+  // see system_stm32f4xx.c for clock configurations
+#ifdef STM32F4
+  unsigned int m = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "M", 0));
+  unsigned int n = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "N", 0));
+  unsigned int p = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "P", 0));
+  unsigned int q = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "Q", 0));
+  if (!IS_RCC_PLLM_VALUE(m)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL M value %d", m);
+    return 0;
+  }
+  if (!IS_RCC_PLLN_VALUE(n)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL N value %d", n);
+    return 0;
+  }
+  if (!IS_RCC_PLLP_VALUE(p)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL P value %d", p);
+    return 0;
+  }
+  if (!IS_RCC_PLLQ_VALUE(q)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL Q value %d", q);
+    return 0;
+  }
+  uint8_t latency = 255;
+  JsVar *v = jsvObjectGetChild(options, "latency", 0);
+  if (v) {
+    latency = (uint8_t)jsvGetIntegerAndUnLock(v);
+    if (!IS_FLASH_LATENCY(latency)) {
+      jsExceptionHere(JSET_ERROR, "Invalid flash latency %d", latency);
+      return 0;
     }
   }
+  int pclk1 = jshSetSystemClockPClk(options, "PCLK1");
+  if (pclk1<-1) return 0;
+  int pclk2 = jshSetSystemClockPClk(options, "PCLK2");
+  if (pclk2<-1) return 0;
 
-  jsiConsolePrintf("CLK M=%d N=%d P=%d Q=%d\n",m,n,p,q);
-  jshTransmitFlush();
-  int i;for (i=0;i<100;i++) jshDelayMicroseconds(1000);
-
-
-  if (freq>84000000) FLASH_SetLatency(FLASH_Latency_6);
-  else FLASH_SetLatency(FLASH_Latency_2);
-
+  // Run off external clock - 8Mhz - while we configure everything
   RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
+  // set latency
+  if (latency!=255) FLASH_SetLatency(latency);
+  if (pclk1>=0) RCC_PCLK1Config(pclk1);
+  if (pclk2>=0) RCC_PCLK2Config(pclk2);
+  // update PLL
   RCC_PLLCmd(DISABLE);
   RCC_PLLConfig(RCC_PLLSource_HSE, m, n, p, q);
   RCC_PLLCmd(ENABLE);
   while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET) {}
   RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
-  SystemCoreClockUpdate();
   // force recalculate of the timer speeds
+  SystemCoreClockUpdate();
+#ifdef USE_RTC
   jshResetRTCTimer();
   hasSystemSlept = true;
+#endif
   return SystemCoreClock;
+#else
+  return 0;
+#endif
 }
 
