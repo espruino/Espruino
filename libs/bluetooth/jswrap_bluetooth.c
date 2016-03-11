@@ -80,7 +80,14 @@ static ble_nus_t                        m_nus;                                  
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
-static bool                             ble_is_sending;
+
+typedef enum  {
+  BLE_NONE = 0,
+  BLE_IS_SENDING = 1,
+  BLE_IS_SCANNING = 2,
+} BLEStatus;
+
+static volatile BLEStatus bleStatus;
 
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 
@@ -165,7 +172,7 @@ bool jswrap_nrf_transmit_string() {
     // If no connection, drain the output buffer
     while (jshGetCharToTransmit(EV_BLUETOOTH)>=0);
   }
-  if (ble_is_sending) return false;
+  if (bleStatus & BLE_IS_SENDING) return false;
   static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
   int idx = 0;
   int ch = jshGetCharToTransmit(EV_BLUETOOTH);
@@ -176,7 +183,7 @@ bool jswrap_nrf_transmit_string() {
   }
   if (idx>0) {
     if (ble_nus_string_send(&m_nus, buf, idx) == NRF_SUCCESS)
-      ble_is_sending = true;
+      bleStatus |= BLE_IS_SENDING;
   }
   return idx>0;
 }
@@ -286,7 +293,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
       case BLE_GAP_EVT_CONNECTED:
         m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-        ble_is_sending = false; // reset state - just in case
+        bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
         jsiSetConsoleDevice( EV_BLUETOOTH );
         break;
 
@@ -311,7 +318,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
       case BLE_EVT_TX_COMPLETE:
         // UART Transmit finished - we can try and send more data
-        ble_is_sending = false;
+        bleStatus &= ~BLE_IS_SENDING;
         jswrap_nrf_transmit_string();
         break;
 
@@ -638,9 +645,40 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
 }
 
 /*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setTxPower",
+    "generate" : "jswrap_nrf_bluetooth_setTxPower",
+    "params" : [
+      ["power","int","Transmit power. Accepted values are -40, -30, -20, -16, -12, -8, -4, 0, and 4 dBm. Others will give an error code."]
+    ]
+}
+Set the BLE radio transmit power. The default TX power is 0 dBm.
+*/
+void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
+  uint32_t              err_code;
+  err_code = sd_ble_gap_tx_power_set(pwr);
+  if (err_code)
+    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+}
+
+/*JSON{
   "type" : "idle",
   "generate" : "jswrap_nrf_idle"
 }*/
 bool jswrap_nrf_idle() {
   return jswrap_nrf_transmit_string()>0; // return true if we sent anything
 }
+
+/*JSON{
+  "type" : "kill",
+  "generate" : "jswrap_nrf_kill"
+}*/
+void jswrap_nrf_kill() {
+  // if we were scanning, make sure we stop at reset!
+  if (bleStatus & BLE_IS_SCANNING) {
+    sd_ble_gap_scan_stop();
+    bleStatus &= ~BLE_IS_SCANNING;
+  }
+}
+

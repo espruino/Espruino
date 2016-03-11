@@ -9,5 +9,7 @@ void jswrap_nrf_bluetooth_wake(void);
 JsVarFloat jswrap_nrf_bluetooth_getBattery(void);
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data);
 void jswrap_nrf_bluetooth_setScan(JsVar *callback);
+void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr);
 
 bool jswrap_nrf_idle();
+void jswrap_nrf_kill();
