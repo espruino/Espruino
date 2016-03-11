@@ -631,6 +631,11 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
   return true;
 }
 
+JsVar *jshFlashGetFree() {
+  // not implemented, or no free pages.
+  return 0;
+}
+
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr)
 {
@@ -733,4 +738,8 @@ JsVarFloat jshReadVRef() {
  */
 unsigned int jshGetRandomNumber() {
   return (unsigned int) nrf_utils_get_random_number();
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  return 0;
 }

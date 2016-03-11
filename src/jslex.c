@@ -544,7 +544,7 @@ void jslGetNextToken() {
 static ALWAYS_INLINE void jslPreload() {
   // set up..
   jslGetNextCh();
-  jslGetNextToken(lex);
+  jslGetNextToken();
 }
 
 void jslInit(JsVar *var) {
@@ -560,7 +560,7 @@ void jslInit(JsVar *var) {
   // set up iterator
   jsvStringIteratorNew(&lex->it, lex->sourceVar, 0);
   jsvUnLock(lex->it.var); // see jslGetNextCh
-  jslPreload(lex);
+  jslPreload();
 }
 
 void jslKill() {
@@ -583,7 +583,7 @@ void jslSeekTo(size_t seekToChar) {
   jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->tokenStart.it.var = 0;
   lex->tokenStart.currCh = 0;
-  jslPreload(lex);
+  jslPreload();
 }
 
 void jslSeekToP(JslCharPos *seekToChar) {
@@ -594,7 +594,7 @@ void jslSeekToP(JslCharPos *seekToChar) {
   lex->currCh = seekToChar->currCh;
   lex->tokenStart.it.var = 0;
   lex->tokenStart.currCh = 0;
-  jslGetNextToken(lex);
+  jslGetNextToken();
 }
 
 void jslReset() {
@@ -699,10 +699,10 @@ void jslTokenAsString(int token, char *str, size_t len) {
 void jslGetTokenString(char *str, size_t len) {
   if (lex->tk == LEX_ID) {
     strncpy(str, "ID:", len);
-    strncat(str, jslGetTokenValueAsString(lex), len);
+    strncat(str, jslGetTokenValueAsString(), len);
   } else if (lex->tk == LEX_STR) {
     strncpy(str, "String:'", len);
-    strncat(str, jslGetTokenValueAsString(lex), len);
+    strncat(str, jslGetTokenValueAsString(), len);
     strncat(str, "'", len);
   } else
     jslTokenAsString(lex->tk, str, len);
@@ -746,10 +746,10 @@ bool jslMatch(int expected_tk) {
     jsExceptionHere(JSET_SYNTAXERROR, "Got %s expected %s", gotStr, expStr);
     lex->tokenLastStart = oldPos;
     // Sod it, skip this token anyway - stops us looping
-    jslGetNextToken(lex);
+    jslGetNextToken();
     return false;
   }
-  jslGetNextToken(lex);
+  jslGetNextToken();
   return true;
 }
 

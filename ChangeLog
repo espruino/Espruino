@@ -7,6 +7,8 @@
             Refactoring to use global var for lexer - save some memory and increase parse speed
             Add .removeListener (fix #30)
             Added better micro:bit `show()` that works well with Graphics
+            Add `require("Flash").getFree()` as multiplatform way to find free flash pages (fix #815)
+            Add the ability to set clock frequencies on STM32F4 chips (like Pico) with E.setClock (fix #52)
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS

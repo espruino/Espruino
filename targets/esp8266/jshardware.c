@@ -1214,6 +1214,34 @@ bool jshFlashGetPage(
   return true;
 }
 
+static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
+}
+
+JsVar *jshFlashGetFree() {
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+  // Area reserved for EEPROM
+  addFlashArea(jsFreeFlash, 0x77000, 0x1000);
+
+  // need 1MB of flash to have more space...
+  extern uint16_t espFlashKB; // in user_main,c
+  if (espFlashKB > 512) {
+    addFlashArea(jsFreeFlash, 0x80000, 0x1000);
+    if (espFlashKB > 1024) {
+      addFlashArea(jsFreeFlash, 0xf7000, 0x9000);
+    } else {
+      addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
+    }
+  }
+
+  return jsFreeFlash;
+}
+
 
 /**
  * Erase the flash page containing the address.
@@ -1228,6 +1256,16 @@ void jshFlashErasePage(
   if (res != SPI_FLASH_RESULT_OK)
     os_printf("ESP8266: jshFlashErase%s\n",
       res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  int newFreq = jsvGetInteger(options);
+  if (newFreq != 80 && newFreq != 160) {
+    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 160.");
+    return 0;
+  }
+  system_update_cpu_freq(newFreq);
+  return system_get_cpu_freq()*1000000;
 }
 
 

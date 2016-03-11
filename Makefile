@@ -67,7 +67,7 @@ MAKEFLAGS=-j5 # multicore
 endif
 
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
-LIBS=-lm # Maths
+LIBS=
 DEFINES=
 CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
 LDFLAGS=-Winline
@@ -837,6 +837,14 @@ ifdef USE_MATH
 DEFINES += -DUSE_MATH
 INCLUDE += -I$(ROOT)/libs/math
 WRAPPERSOURCES += libs/math/jswrap_math.c
+ifeq ($(FAMILY),ESP8266)
+# special ESP8266 maths lib that doesn't go into RAM
+LIBS += -lmirom 
+LDFLAGS += -L$(ROOT)/targets/esp8266
+else
+# everything else uses normal maths lib
+LIBS += -lm 
+endif
 endif
 
 ifdef USE_GRAPHICS
