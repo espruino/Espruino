@@ -323,12 +323,12 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (evt) {
           jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
           jsvObjectSetChildAndUnLock(evt, "addr", jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
-              p_adv->peer_addr.addr[0],
-              p_adv->peer_addr.addr[1],
-              p_adv->peer_addr.addr[2],
-              p_adv->peer_addr.addr[3],
+              p_adv->peer_addr.addr[5],
               p_adv->peer_addr.addr[4],
-              p_adv->peer_addr.addr[5]));
+              p_adv->peer_addr.addr[3],
+              p_adv->peer_addr.addr[2],
+              p_adv->peer_addr.addr[1],
+              p_adv->peer_addr.addr[0]));
           JsVar *data = jsvNewStringOfLength(p_adv->dlen);
           if (data) {
             jsvSetString(data, p_adv->data, p_adv->dlen);
