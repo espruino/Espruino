@@ -679,7 +679,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
 /// Reschedule the timer (it should already be running) to interrupt after 'period'
 void jshUtilTimerReschedule(JsSysTime period) {
   period = period * 1000000 / SYSCLK_FREQ;
-  if (period < 2) period=2;
+  if (period < 5) period=5;
   if (period > 0xFFFFFFFF) period=0xFFFFFFFF;
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
