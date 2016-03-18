@@ -374,7 +374,12 @@ void jsfLoadFromFlash() {
   uint32_t cbData[2];
   jshFlashRead(&cbData[0], FLASH_SAVED_CODE_START, 4); // end address
   cbData[1] = FLASH_SAVED_CODE_START+4; // start address
-  jsiConsolePrintf("Loading %d bytes from flash...\n", cbData[0]-FLASH_SAVED_CODE_START);
+  uint32_t len = cbData[0]-FLASH_SAVED_CODE_START;
+  if (len>1000000) {
+    jsiConsolePrintf("Invalid saved code in flash!\n");
+    return;
+  }
+  jsiConsolePrintf("Loading %d bytes from flash...\n", len);
   DECOMPRESS(jsfLoadFromFlash_readcb, cbData, (unsigned char*)basePtr);
 #endif
 }
