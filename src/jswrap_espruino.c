@@ -610,6 +610,7 @@ JsVar *jswrap_espruino_getErrorFlags() {
   if (jsErrorFlags&JSERR_CALLBACK) jsvArrayPushAndUnLock(arr, jsvNewFromString("CALLBACK"));
   if (jsErrorFlags&JSERR_LOW_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("LOW_MEMORY"));
   if (jsErrorFlags&JSERR_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY"));
+  if (jsErrorFlags&JSERR_MEMORY_BUSY) jsvArrayPushAndUnLock(arr, jsvNewFromString("JSERR_MEMORY_BUSY"));
   jsErrorFlags = JSERR_NONE;
   return arr;
 }

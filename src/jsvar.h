@@ -202,7 +202,7 @@ typedef struct {
   JsVarData varData;
 
   /** the flags determine the type of the variable - int/double/string/etc. */
-  JsVarFlags flags;
+  volatile JsVarFlags flags;
 } PACKED_FLAGS __attribute__((aligned(4))) JsVar;
 
 /* We have a few different types:

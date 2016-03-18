@@ -371,6 +371,7 @@ void jsWarn_flash(const char *fmt, ...);
 #endif
 
 // ------------
+/// Error flags for internal errors - update jswrap_espruino_getErrorFlags if you add to this
 typedef enum {
   JSERR_NONE = 0,
   JSERR_RX_FIFO_FULL = 1, ///< The IO buffer (ioBuffer in jsdevices.c) is full and data was lost. Happens for character data and watch events
@@ -378,6 +379,7 @@ typedef enum {
   JSERR_CALLBACK = 4, ///< A callback (on data/watch/timer) caused an error and was removed
   JSERR_LOW_MEMORY = 8, ///< Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history
   JSERR_MEMORY = 16, ///< Espruino ran out of memory and was unable to allocate some data that it needed.
+  JSERR_MEMORY_BUSY = 32, ///< Espruino was busy doing something with memory (eg. garbage collection) so an IRQ couldn't allocate memory
 } PACKED_FLAGS JsErrorFlags;
 
 /** Error flags for things that we don't really want to report on the console,
