@@ -77,6 +77,14 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
 #define CALLED_FROM_INTERRUPT
 #endif
 
+#if defined(ESP8266)
+// For the esp8266 we need the posibility to store arrays in flash, because mem is so small
+#define IN_FLASH_MEMORY   __attribute__ ((section(".irom.literal"))) //__attribute__((aligned(4))) 
+#else
+#define IN_FLASH_MEMORY 
+#endif
+#define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )  
+
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
 #undef TRUE
