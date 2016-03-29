@@ -43,10 +43,13 @@
 
 #if defined(ESP8266)
 
+// For the esp8266 we need the posibility to store arrays in flash, because mem is so small
+#define IN_FLASH_MEMORY   __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) 
+
 /** Place constant strings into flash when we can in order to save RAM space. Strings in flash
     must be accessed with word reads on aligned boundaries, so we'll have to copy them before
     regular use. */
-#define FLASH_STR(name, x) static char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
+#define FLASH_STR(name, x) static char name[] IN_FLASH_MEMORY = x
 
 /// Get the length of a string in flash
 size_t flash_strlen(const char *str);
@@ -58,12 +61,20 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
     On ESP8266 you have to read flash in 32 bit chunks, so force a 32 bit read
     and extract just the 8 bits we want */
 #define READ_FLASH_UINT8(ptr) ({ uint32_t __p = (uint32_t)(char*)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); ((uint8_t*)&__d)[__p & 3]; })
+/** Read a uint16_t from this pointer, which could be in RAM or Flash. */
+#define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )  
 
 #else
+
+// On non-ESP8266, const stuff goes in flash memory anyway
+#define IN_FLASH_MEMORY 
 
 /** Read a uint8_t from this pointer, which could be in RAM or Flash.
     On ARM this is just a standard read, it's different on ESP8266 */
 #define READ_FLASH_UINT8(ptr) (*(uint8_t*)(ptr))
+/** Read a uint16_t from this pointer, which could be in RAM or Flash.
+    On ARM this is just a standard read, it's different on ESP8266 */
+#define READ_FLASH_UINT16(ptr) (*(uint16_t*)(ptr))
 
 #endif
 
@@ -77,13 +88,7 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
 #define CALLED_FROM_INTERRUPT
 #endif
 
-#if defined(ESP8266)
-// For the esp8266 we need the posibility to store arrays in flash, because mem is so small
-#define IN_FLASH_MEMORY   __attribute__ ((section(".irom.literal"))) //__attribute__((aligned(4))) 
-#else
-#define IN_FLASH_MEMORY 
-#endif
-#define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )  
+
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
