@@ -229,7 +229,7 @@ void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 
-void jsfSaveToFlash() {
+void jsfSaveToFlash(bool saveState, JsVar *bootCode) {
 #ifdef LINUX
   FILE *f = fopen("espruino.state","wb");
   if (f) {
@@ -262,7 +262,7 @@ void jsfSaveToFlash() {
     jsiConsolePrint("Done!\n>");
 #endif
   } else {
-    jsiConsolePrint("\nFile Open Failed... \n>");
+    jsiConsolePrint("\nFile open failed... \n>");
   }
 #else // !LINUX
   unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
@@ -273,7 +273,6 @@ void jsfSaveToFlash() {
   uint32_t writtenBytes;
   uint32_t endOfData;
   uint32_t cbData[3];
-  uint32_t rleStart;
 
   while (tryAgain) {
     tryAgain = false;
@@ -289,18 +288,35 @@ void jsfSaveToFlash() {
 
       }
     }
-    rleStart = FLASH_SAVED_CODE_START+4;
+    // Now start writing
     cbData[0] = FLASH_MAGIC_LOCATION; // end of available flash
-    cbData[1] = rleStart;
+    cbData[1] = FLASH_SAVED_CODE_START+8;
     cbData[2] = 0; // word data (can only save a word ata a time)
     jsiConsolePrint("\nWriting...");
-    COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
+    // boot code....
+    if (jsvIsString(bootCode)) {
+      uint32_t bootCodeLen = (uint32_t)jsvGetStringLength(bootCode)+1;
+      jshFlashWrite(&bootCodeLen, FLASH_SAVED_CODE_START, 4); // write size of boot code to flash
+      
+      JsvStringIterator it;
+      jsvStringIteratorNew(&it, bootCode, 0);
+      while (jsvStringIteratorHasChar(&it)) {
+        jsfSaveToFlash_writecb(jsvStringIteratorGetChar(&it), cbData);
+        jsvStringIteratorNext(&it);
+      }
+      // terminate with a 0!
+      jsfSaveToFlash_writecb(0, cbData);
+    }
+    // state....
+    if (saveState) {
+      COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
+    }
     endOfData = cbData[1];
-    writtenBytes = endOfData - FLASH_SAVED_CODE_START;
     // make sure we write everything in buffer
     jsfSaveToFlash_writecb(0,cbData);
     jsfSaveToFlash_writecb(0,cbData);
     jsfSaveToFlash_writecb(0,cbData);
+    writtenBytes = endOfData - FLASH_SAVED_CODE_START;
 
     if (cbData[1]>=cbData[0]) {
       jsiConsolePrintf("\nERROR: Too big to save to flash (%d vs %d bytes)\n", writtenBytes, FLASH_MAGIC_LOCATION-FLASH_SAVED_CODE_START);
@@ -320,15 +336,22 @@ void jsfSaveToFlash() {
 
   if (success) {
     jsiConsolePrintf("\nCompressed %d bytes to %d", dataSize, writtenBytes);
-    jshFlashWrite(&endOfData, FLASH_SAVED_CODE_START, 4); // write position of end of data, at start of address space
+    jshFlashWrite(&endOfData, FLASH_SAVED_CODE_START+4, 4); // write position of end of data, at start of address space
 
     uint32_t magic = FLASH_MAGIC;
     jshFlashWrite(&magic, FLASH_MAGIC_LOCATION, 4);
 
+
     jsiConsolePrint("\nChecking...");
-    cbData[0] = rleStart;
+    cbData[0] = FLASH_SAVED_CODE_START+8;
+    if (jsvIsString(bootCode)) {
+      uint32_t bootCodeLen = (uint32_t)jsvGetStringLength(bootCode)+1;
+      cbData[0] += bootCodeLen;
+    }
     cbData[1] = 0; // increment if fails
-    COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_checkcb, cbData);
+    // TODO: check boot code written ok
+    if (saveState)
+      COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_checkcb, cbData);
     uint32_t errors = cbData[1];
 
     if (!jsfFlashContainsCode()) {
@@ -344,7 +367,9 @@ void jsfSaveToFlash() {
 #endif
 }
 
-void jsfLoadFromFlash() {
+
+/// Load the RAM image from flash (this is the actual interpreter state)
+void jsfLoadStateFromFlash() {
 #ifdef LINUX
   FILE *f = fopen("espruino.state","rb");
   if (f) {
@@ -360,7 +385,7 @@ void jsfLoadFromFlash() {
     DECOMPRESS(jsfLoadFromFlash_readcb, (uint32_t*)f, (unsigned char*)_jsvGetAddressOf(1));
     fclose(f);
   } else {
-    jsiConsolePrint("\nFile Open Failed... \n");
+    jsiConsolePrint("\nFile open of espruino.state failed... \n");
   }
 #else // !LINUX
   if (!jsfFlashContainsCode()) {
@@ -372,8 +397,11 @@ void jsfLoadFromFlash() {
   uint32_t *basePtr = (uint32_t *)_jsvGetAddressOf(1);
 
   uint32_t cbData[2];
-  jshFlashRead(&cbData[0], FLASH_SAVED_CODE_START, 4); // end address
-  cbData[1] = FLASH_SAVED_CODE_START+4; // start address
+  int32_t bootCodeLen;
+  jshFlashRead(&bootCodeLen, FLASH_SAVED_CODE_START, 4); // length of boot code
+  jshFlashRead(&cbData[0], FLASH_SAVED_CODE_START+4, 4); // end address
+  cbData[1] = FLASH_SAVED_CODE_START+8; // start address
+  if (bootCodeLen>0) cbData[1] += bootCodeLen;
   uint32_t len = cbData[0]-FLASH_SAVED_CODE_START;
   if (len>1000000) {
     jsiConsolePrintf("Invalid saved code in flash!\n");
@@ -382,6 +410,34 @@ void jsfLoadFromFlash() {
   jsiConsolePrintf("Loading %d bytes from flash...\n", len);
   DECOMPRESS(jsfLoadFromFlash_readcb, cbData, (unsigned char*)basePtr);
 #endif
+}
+
+/// Load bootup code from flash (this is textual JS code). return true if it exists
+bool jsfLoadBootCodeFromFlash() {
+  const char *code = 0;
+#ifdef LINUX
+  FILE *f = fopen("espruino.boot","rb");
+  if (!f) return false;
+
+  fseek(f, 0, SEEK_END);
+  long len = ftell(f);
+  fseek(f, 0, SEEK_SET);
+
+  code = malloc(len+1); // null
+  fread(code, len, 1, f);
+  code[len] = 0;
+  fclose(f);
+#else // !LINUX
+  if (!jsfFlashContainsCode()) return false;
+
+  int32_t bootCodeLen;
+  jshFlashRead(&bootCodeLen, FLASH_SAVED_CODE_START, 4); // length of boot code
+  if (bootCodeLen<=0) return false;
+
+  code = (const char *)(FLASH_SAVED_CODE_START+8);
+#endif
+  jsvUnLock(jspEvaluate(code));
+  return true;
 }
 
 bool jsfFlashContainsCode() {

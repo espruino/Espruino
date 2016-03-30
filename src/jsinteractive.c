@@ -452,8 +452,11 @@ void jsiSoftInit() {
   jsiLastIdleTime = jshGetSystemTime();
   jsiTimeSinceCtrlC = 0xFFFFFFFF;
 
-  // Runw wrapper initialisation stuff
+  // Run wrapper initialisation stuff
   jswInit();
+
+  // Run 'boot code' - textual JS in flash
+  jsfLoadBootCodeFromFlash();
 
   // Now run initialisation code
   JsVar *initCode = jsvObjectGetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, 0);
@@ -731,7 +734,7 @@ void jsiSemiInit(bool autoLoad) {
   if (loadFlash) {
     jspSoftKill();
     jsvSoftKill();
-    jsfLoadFromFlash();
+    jsfLoadStateFromFlash();
     jsvSoftInit();
     jspSoftInit();
   }
@@ -1955,7 +1958,7 @@ void jsiIdle() {
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
-      jsfSaveToFlash();
+      jsfSaveToFlash(true, 0);
       jshReset();
       jsvSoftInit();
       jspSoftInit();
@@ -1968,7 +1971,7 @@ void jsiIdle() {
       jspSoftKill();
       jsvSoftKill();
       jshReset();
-      jsfLoadFromFlash();
+      jsfLoadStateFromFlash();
       jsvSoftInit();
       jspSoftInit();
       jsiSoftInit();

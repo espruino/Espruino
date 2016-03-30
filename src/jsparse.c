@@ -18,6 +18,7 @@
 #include "jswrap_object.h" // for function_replacewith
 #include "jswrap_functions.h" // insane check for eval in jspeFunctionCall
 #include "jswrap_json.h" // for jsfPrintJSON
+#include "jswrap_espruino.h" // for jswrap_espruino_memoryArea
 
 /* Info about execution when Parsing - this saves passing it on the stack
  * for each call */
@@ -2491,9 +2492,11 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
 }
 
 JsVar *jspEvaluate(const char *str) {
-  JsVar *v = 0;
+  JsVar *evCode = jswrap_espruino_memoryArea((int)(size_t)str, (int)strlen(str));
+  if (!evCode) return 0;
+  // could always use jsvNewFromString, but not as efficient
 
-  JsVar *evCode = jsvNewFromString(str);
+  JsVar *v = 0;
   if (!jsvIsMemoryFull())
     v = jspEvaluateVar(evCode, 0, 0);
   jsvUnLock(evCode);

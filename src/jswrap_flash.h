@@ -19,9 +19,11 @@ void jswrap_flash_erasePage(JsVar *addr);
 void jswrap_flash_write(JsVar *data, int addr);
 JsVar *jswrap_flash_read(int length, int addr);
 
-/// Save contents of JsVars into Flash
-void jsfSaveToFlash();
-/// Load contents of JsVars from Flash
-void jsfLoadFromFlash();
+/// Save contents of JsVars into Flash. If bootCode is specified, save bootup code too.
+void jsfSaveToFlash(bool saveState, JsVar *bootCode);
+/// Load the RAM image from flash (this is the actual interpreter state)
+void jsfLoadStateFromFlash();
+/// Load bootup code from flash (this is textual JS code). return true if it exists
+bool jsfLoadBootCodeFromFlash();
 /// Returns true if flash contains something useful
 bool jsfFlashContainsCode();
