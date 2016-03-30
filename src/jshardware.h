@@ -401,6 +401,12 @@ JsVarFloat jshReadVRef();
  * default to `rand()` */
 unsigned int jshGetRandomNumber();
 
+/** Change the processor clock info. What's in options is platform
+ * specific - you should update the docs for jswrap_espruino_setClock
+ * to match what gets implemented here. The return value is the clock
+ * speed in Hz though. */
+unsigned int jshSetSystemClock(JsVar *options);
+
 /** Hacky definition of wait cycles used for WAIT_UNTIL.
  * TODO: make this depend on known system clock speed? */
 #if defined(STM32F401xx) || defined(STM32F411xx)

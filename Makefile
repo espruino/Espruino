@@ -67,7 +67,7 @@ MAKEFLAGS=-j5 # multicore
 endif
 
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
-LIBS=-lm # Maths
+LIBS=
 DEFINES=
 CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
 LDFLAGS=-Winline
@@ -517,7 +517,8 @@ else ifdef ESP8266_BOARD
 EMBEDDED=1
 USE_NET=1
 USE_TELNET=1
-#USE_GRAPHICS=1
+USE_GRAPHICS=1
+USE_CRYPTO=1
 BOARD=ESP8266_BOARD
 # Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
 # too large a firmware (-Os is -O2 without optimizations that increase code size)
@@ -847,6 +848,14 @@ ifdef USE_MATH
 DEFINES += -DUSE_MATH
 INCLUDE += -I$(ROOT)/libs/math
 WRAPPERSOURCES += libs/math/jswrap_math.c
+ifeq ($(FAMILY),ESP8266)
+# special ESP8266 maths lib that doesn't go into RAM
+LIBS += -lmirom 
+LDFLAGS += -L$(ROOT)/targets/esp8266
+else
+# everything else uses normal maths lib
+LIBS += -lm 
+endif
 endif
 
 ifdef USE_GRAPHICS
@@ -1011,44 +1020,41 @@ ifeq ($(BOARD),MICROBIT)
 endif
 
 ifdef USE_CRYPTO
+  DEFINES += -DUSE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
+  SOURCES += \
+libs/crypto/mbedtls/library/sha1.c \
+libs/crypto/mbedtls/library/sha256.c \
+libs/crypto/mbedtls/library/sha512.c
 
 ifdef USE_TLS
-  DEFINES += -DUSE_TLS
+  USE_AES=1
+  DEFINES += -DUSE_TLS=1 -DUSE_AES=1
   SOURCES += \
-libs/crypto/mbedtls/library/aes.c \
-libs/crypto/mbedtls/library/asn1parse.c \
 libs/crypto/mbedtls/library/bignum.c \
-libs/crypto/mbedtls/library/cipher.c \
-libs/crypto/mbedtls/library/cipher_wrap.c \
 libs/crypto/mbedtls/library/ctr_drbg.c \
 libs/crypto/mbedtls/library/debug.c \
 libs/crypto/mbedtls/library/ecp.c \
 libs/crypto/mbedtls/library/ecp_curves.c \
 libs/crypto/mbedtls/library/entropy.c \
 libs/crypto/mbedtls/library/entropy_poll.c \
-libs/crypto/mbedtls/library/md.c \
 libs/crypto/mbedtls/library/md5.c \
-libs/crypto/mbedtls/library/md_wrap.c \
-libs/crypto/mbedtls/library/oid.c \
 libs/crypto/mbedtls/library/pk.c \
-libs/crypto/mbedtls/library/pkcs5.c \
 libs/crypto/mbedtls/library/pkparse.c \
 libs/crypto/mbedtls/library/pk_wrap.c \
 libs/crypto/mbedtls/library/rsa.c \
-libs/crypto/mbedtls/library/sha1.c \
-libs/crypto/mbedtls/library/sha256.c \
-libs/crypto/mbedtls/library/sha512.c \
 libs/crypto/mbedtls/library/ssl_ciphersuites.c \
 libs/crypto/mbedtls/library/ssl_cli.c \
 libs/crypto/mbedtls/library/ssl_tls.c \
 libs/crypto/mbedtls/library/ssl_srv.c \
 libs/crypto/mbedtls/library/x509.c \
 libs/crypto/mbedtls/library/x509_crt.c
-else
+endif
+ifdef USE_AES
+  DEFINES += -DUSE_AES
   SOURCES += \
 libs/crypto/mbedtls/library/aes.c \
 libs/crypto/mbedtls/library/asn1parse.c \
@@ -1057,10 +1063,7 @@ libs/crypto/mbedtls/library/cipher_wrap.c \
 libs/crypto/mbedtls/library/md.c \
 libs/crypto/mbedtls/library/md_wrap.c \
 libs/crypto/mbedtls/library/oid.c \
-libs/crypto/mbedtls/library/pkcs5.c \
-libs/crypto/mbedtls/library/sha1.c \
-libs/crypto/mbedtls/library/sha256.c \
-libs/crypto/mbedtls/library/sha512.c
+libs/crypto/mbedtls/library/pkcs5.c 
 endif
 endif
 

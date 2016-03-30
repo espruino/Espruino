@@ -676,23 +676,29 @@ bool jshSleep(JsSysTime timeUntilWake) {
   return true;
 }
 
+bool utilTimerActive = false;
+
 /// Reschedule the timer (it should already be running) to interrupt after 'period'
 void jshUtilTimerReschedule(JsSysTime period) {
   period = period * 1000000 / SYSCLK_FREQ;
-  if (period < 2) period=2;
+  if (period < 1) period=1;
   if (period > 0xFFFFFFFF) period=0xFFFFFFFF;
+  if (utilTimerActive) nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
+  if (utilTimerActive) nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
 }
 
 /// Start the timer and get it to interrupt after 'period'
 void jshUtilTimerStart(JsSysTime period) {
   jshUtilTimerReschedule(period);
+  utilTimerActive = true;
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
 }
 
 /// Stop the timer
 void jshUtilTimerDisable() {
+  utilTimerActive = false;
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
 }
 
@@ -739,4 +745,8 @@ JsVarFloat jshReadVRef() {
  */
 unsigned int jshGetRandomNumber() {
   return (unsigned int) nrf_utils_get_random_number();
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  return 0;
 }

@@ -189,6 +189,8 @@ void jswrap_ESP8266_dumpSocketInfo(void) {
     ["freq", "JsVar", "Desired frequency - either 80 or 160."]
   ]
 }
+**Note:** This is deprecated. Use `E.setClock(80/160)`
+**Note:**
 Set the operating frequency of the ESP8266 processor. The default is 160Mhz.
 
 **Warning**: changing the cpu frequency affects the timing of some I/O operations, notably of software SPI and I2C, so things may be a bit slower at 80Mhz.
@@ -197,16 +199,7 @@ Set the operating frequency of the ESP8266 processor. The default is 160Mhz.
 void jswrap_ESP8266_setCPUFreq(
     JsVar *jsFreq //!< Operating frequency of the processor.  Either 80 or 160.
   ) {
-  if (!jsvIsInt(jsFreq)) {
-    jsExceptionHere(JSET_ERROR, "Invalid frequency.");
-    return;
-  }
-  int newFreq = jsvGetInteger(jsFreq);
-  if (newFreq != 80 && newFreq != 160) {
-    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 160.");
-    return;
-  }
-  system_update_cpu_freq(newFreq);
+  jshSetSystemClock(jsFreq);
 }
 
 //===== ESP8266.getState
@@ -262,7 +255,7 @@ JsVar *jswrap_ESP8266_getState() {
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
 }
-**Note:** This is deprecated. Use `require("flash").getFreee()`
+**Note:** This is deprecated. Use `require("flash").getFree()`
 */
 JsVar *jswrap_ESP8266_getFreeFlash() {
   return jshFlashGetFree();
@@ -435,3 +428,45 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
 
 #endif
 }
+
+//===== ESP8266.deepSleep
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "deepSleep",
+  "generate" : "jswrap_ESP8266_deepSleep",
+  "params"   : [
+    ["micros", "JsVar", "Number of microseconds to sleep."]
+  ]
+}
+Put the ESP8266 into 'deep sleep' for the given number of microseconds,
+reducing power consumption drastically.
+
+**Note:** unlike normal Espruino boards' 'deep sleep' mode, ESP8266
+deep sleep actually turns off the processor. After the given number of
+microseconds have elapsed, the ESP8266 will restart as if power had been
+turned off and then back on. *All contents of RAM will be lost*.
+*/
+void   jswrap_ESP8266_deepSleep(JsVar *jsMicros) {
+  if (!jsvIsInt(jsMicros)) {
+    jsExceptionHere(JSET_ERROR, "Invalid microseconds.");
+    return;
+  }
+  int sleepTime = jsvGetInteger(jsMicros);
+  system_deep_sleep(sleepTime);
+}
+
+//===== ESP8266.modemSleep
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "modemSleep",
+  "generate" : "jswrap_ESP8266_modemSleep"
+}
+Enable esp8266 'modem sleep' mode, which allows the WiFi
+modem to be turned off.
+*/
+void   jswrap_ESP8266_modemSleep() {
+  wifi_set_sleep_type(MODEM_SLEEP_T);
+}
+

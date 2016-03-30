@@ -68,6 +68,7 @@ def htmlify(d):
   d = re.sub(r'`([^`]+)`', r'<code>\1</code>', d) # code tags
   d = re.sub(r'\[([^\]]*)\]\(([^\)]*)\)', r'<a href="\2">\1</a>', d) # links tags
   d = re.sub(r'([^">])(http://[^ ]+)', r'\1<a href="\2">\2</a>', d) # links tags
+  d = re.sub(r'\n###([^\n]*)', r'<B>\1</B>', d) # Heading
 
   lines = d.split("\n");
   lines.append("");
@@ -77,7 +78,7 @@ def htmlify(d):
     if line[0:2]=="* " and starStart==False: 
       starStart=idx
     if line[0:2]!="* ":
-      if starStart!=False and starStart+2<idx:
+      if starStart!=False and starStart+2<=idx:
         l = lines[starStart:idx]
         for i in range(0,len(l)):
           l[i] = "<li>"+l[i][1:]+"</li>"

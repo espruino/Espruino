@@ -642,6 +642,10 @@ static unsigned int jshGetSPIFreq(SPI_TypeDef *SPIx) {
   return APB2 ? clocks.PCLK2_Frequency : clocks.PCLK1_Frequency;
 }
 
+static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
+  return SystemCoreClock;
+}
+
 // ----------------------------------------------------------------------------
 volatile unsigned int ticksSinceStart = 0;
 #ifdef USE_RTC
@@ -703,6 +707,12 @@ void jshSetupRTC(bool isUsingLSI) {
   RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
   RTC_Init(&RTC_InitStructure);
 #endif
+}
+
+void jshResetRTCTimer() {
+  // work out initial values for RTC
+  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
+  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
 }
 #endif
 
@@ -968,10 +978,6 @@ ALWAYS_INLINE bool jshPinGetValue(Pin pin) {
   return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
 }
 
-static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
-  return SystemCoreClock;
-}
-
 // ----------------------------------------------------------------------------
 static void jshResetSerial() {
   if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
@@ -1109,9 +1115,7 @@ void jshInit() {
   NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK);
 
 #ifdef USE_RTC
-  // work out initial values for RTC
-  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
-  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
+  jshResetRTCTimer();
 #endif
 
   jshResetSerial();
@@ -2859,4 +2863,79 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 #endif
 }
 
+int jshSetSystemClockPClk(JsVar *options, const char *clkName) {
+  JsVar *v = jsvObjectGetChild(options, clkName, 0);
+  JsVarInt i = jsvGetIntegerAndUnLock(v);
+  if (i==1) return RCC_HCLK_Div1;
+  if (i==2) return RCC_HCLK_Div2;
+  if (i==4) return RCC_HCLK_Div4;
+  if (i==8) return RCC_HCLK_Div8;
+  if (i==16) return RCC_HCLK_Div16;
+  if (v) {
+    jsExceptionHere(JSET_ERROR, "Invalid %s value %d", clkName, i);
+    return -2;
+  }
+  return -1;
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  // see system_stm32f4xx.c for clock configurations
+#ifdef STM32F4
+  unsigned int m = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "M", 0));
+  unsigned int n = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "N", 0));
+  unsigned int p = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "P", 0));
+  unsigned int q = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "Q", 0));
+  if (!IS_RCC_PLLM_VALUE(m)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL M value %d", m);
+    return 0;
+  }
+  if (!IS_RCC_PLLN_VALUE(n)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL N value %d", n);
+    return 0;
+  }
+  if (!IS_RCC_PLLP_VALUE(p)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL P value %d", p);
+    return 0;
+  }
+  if (!IS_RCC_PLLQ_VALUE(q)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL Q value %d", q);
+    return 0;
+  }
+  uint8_t latency = 255;
+  JsVar *v = jsvObjectGetChild(options, "latency", 0);
+  if (v) {
+    latency = (uint8_t)jsvGetIntegerAndUnLock(v);
+    if (!IS_FLASH_LATENCY(latency)) {
+      jsExceptionHere(JSET_ERROR, "Invalid flash latency %d", latency);
+      return 0;
+    }
+  }
+  int pclk1 = jshSetSystemClockPClk(options, "PCLK1");
+  if (pclk1<-1) return 0;
+  int pclk2 = jshSetSystemClockPClk(options, "PCLK2");
+  if (pclk2<-1) return 0;
+
+  // Run off external clock - 8Mhz - while we configure everything
+  RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
+  // set latency
+  if (latency!=255) FLASH_SetLatency(latency);
+  if (pclk1>=0) RCC_PCLK1Config(pclk1);
+  if (pclk2>=0) RCC_PCLK2Config(pclk2);
+  // update PLL
+  RCC_PLLCmd(DISABLE);
+  RCC_PLLConfig(RCC_PLLSource_HSE, m, n, p, q);
+  RCC_PLLCmd(ENABLE);
+  while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET) {}
+  RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+  // force recalculate of the timer speeds
+  SystemCoreClockUpdate();
+#ifdef USE_RTC
+  jshResetRTCTimer();
+  hasSystemSlept = true;
+#endif
+  return SystemCoreClock;
+#else
+  return 0;
+#endif
+}
 

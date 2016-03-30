@@ -43,10 +43,13 @@
 
 #if defined(ESP8266)
 
+// For the esp8266 we need the posibility to store arrays in flash, because mem is so small
+#define IN_FLASH_MEMORY   __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) 
+
 /** Place constant strings into flash when we can in order to save RAM space. Strings in flash
     must be accessed with word reads on aligned boundaries, so we'll have to copy them before
     regular use. */
-#define FLASH_STR(name, x) static char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
+#define FLASH_STR(name, x) static char name[] IN_FLASH_MEMORY = x
 
 /// Get the length of a string in flash
 size_t flash_strlen(const char *str);
@@ -58,12 +61,20 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
     On ESP8266 you have to read flash in 32 bit chunks, so force a 32 bit read
     and extract just the 8 bits we want */
 #define READ_FLASH_UINT8(ptr) ({ uint32_t __p = (uint32_t)(char*)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); ((uint8_t*)&__d)[__p & 3]; })
+/** Read a uint16_t from this pointer, which could be in RAM or Flash. */
+#define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )  
 
 #else
+
+// On non-ESP8266, const stuff goes in flash memory anyway
+#define IN_FLASH_MEMORY 
 
 /** Read a uint8_t from this pointer, which could be in RAM or Flash.
     On ARM this is just a standard read, it's different on ESP8266 */
 #define READ_FLASH_UINT8(ptr) (*(uint8_t*)(ptr))
+/** Read a uint16_t from this pointer, which could be in RAM or Flash.
+    On ARM this is just a standard read, it's different on ESP8266 */
+#define READ_FLASH_UINT16(ptr) (*(uint16_t*)(ptr))
 
 #endif
 
@@ -76,6 +87,8 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
 #else
 #define CALLED_FROM_INTERRUPT
 #endif
+
+
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
@@ -371,6 +384,7 @@ void jsWarn_flash(const char *fmt, ...);
 #endif
 
 // ------------
+/// Error flags for internal errors - update jswrap_espruino_getErrorFlags if you add to this
 typedef enum {
   JSERR_NONE = 0,
   JSERR_RX_FIFO_FULL = 1, ///< The IO buffer (ioBuffer in jsdevices.c) is full and data was lost. Happens for character data and watch events
@@ -378,6 +392,7 @@ typedef enum {
   JSERR_CALLBACK = 4, ///< A callback (on data/watch/timer) caused an error and was removed
   JSERR_LOW_MEMORY = 8, ///< Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history
   JSERR_MEMORY = 16, ///< Espruino ran out of memory and was unable to allocate some data that it needed.
+  JSERR_MEMORY_BUSY = 32, ///< Espruino was busy doing something with memory (eg. garbage collection) so an IRQ couldn't allocate memory
 } PACKED_FLAGS JsErrorFlags;
 
 /** Error flags for things that we don't really want to report on the console,
