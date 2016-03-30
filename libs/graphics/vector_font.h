@@ -15,7 +15,7 @@
 #define VECTOR_FONT_IS_EDGE 128 // applied to X coord if this point and the next are on an edge
 #define VECTOR_FONT_POLY_SEPARATOR 128 // applied to Y coord if the end of a poly
 #define VECTOR_FONT_POLY_SIZE 96 // the actual size of the font
-static const unsigned char vectorFontPolys[] IN_FLASH_MEMORY = {
+unsigned char vectorFontPolys[] IN_FLASH_MEMORY = {
 // Character code 32
 // Character code 33
 	24,8,
