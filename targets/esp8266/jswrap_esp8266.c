@@ -428,5 +428,35 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
 
 #endif
 }
+//===== ESP8266.deepSleep
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "deepSleep",
+  "generate" : "jswrap_ESP8266_deepSleep",
+  "params"   : [
+    ["micros", "JsVar", "Number of microseconds to sleep."]
+  ]
 
+}*/
+void   jswrap_ESP8266_deepSleep(JsVar *jsMicros) {
+    if (!jsvIsInt(jsMicros)) {
+    jsExceptionHere(JSET_ERROR, "Invalid microseconds.");
+         return;
+    }
+    int sleepTime = jsvGetInteger(jsMicros);
+    system_deep_sleep(sleepTime);
 
+}
+
+//===== ESP8266.modemSleep
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "modemSleep",
+  "generate" : "jswrap_ESP8266_modemSleep"
+}*/
+
+void   jswrap_ESP8266_modemSleep() {
+    wifi_set_sleep_type(MODEM_SLEEP_T);
+}
