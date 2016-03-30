@@ -2693,7 +2693,7 @@ typedef struct VectorFontChar {
 } VectorFontChar;
 static const int vectorFontOffset = 32;
 static const int vectorFontCount = 95;
-static const VectorFontChar vectorFonts[] = {
+static const VectorFontChar vectorFonts[] IN_FLASH_MEMORY = {
   {69, 0}, // char 32
   {63, 18}, // char 33
   {87, 16}, // char 34
