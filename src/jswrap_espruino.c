@@ -740,14 +740,27 @@ JsVar *jswrap_espruino_memoryArea(int addr, int len) {
   "name" : "setBootCode",
   "generate" : "jswrap_espruino_setBootCode",
   "params" : [
-    ["code","JsVar","The address of the memory area"]
+    ["code","JsVar","The code to execute (as a string)"],
+    ["alwaysExec","bool","Whether to always execute the code (even after a reset)"]
   ]
 }
-This writes JavaScript code to Espruino, which will *always be executed
-after a reset*.
+This writes JavaScript code into Espruino's flash memory, to be executed on
+startup. It differs from `save()` in that `save()` saves the whole state of
+the interpreter, whereas this just saves JS code that is executed at boot.
+
+Code will be executed before `onInit()` and `E.on('init', ...)`.
+
+If `alwaysExec` is `true`, the code will be executed even after a call to
+`reset()`. This is useful if you're making something that you want to
+program, but you want some code that is always built in (for instance
+setting up a display or keyboard).
+
+**Note:** this removes any code that was previously saved with `save()`
 */
-void jswrap_espruino_setBootCode(JsVar *code) {
-  jsfSaveToFlash(false, code);
+void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec) {
+  JsvSaveFlashFlags flags = 0;
+  if (alwaysExec) flags |= SFF_BOOT_CODE_ALWAYS;
+  jsfSaveToFlash(flags, code);
 }
 
 
