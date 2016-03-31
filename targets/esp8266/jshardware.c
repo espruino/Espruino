@@ -1180,11 +1180,11 @@ void jshFlashRead(
 		*dest++ = ((uint8_t*)&bytes)[addr++ & 3];
 	  }
    } else { // Above 1Mb read...
-	os_printf("jshFlashRead: above 1mb!");
+	//os_printf("jshFlashRead: above 1mb!");
 	SpiFlashOpResult res;
 	res = spi_flash_read(addr, buf, len);
     if (res != SPI_FLASH_RESULT_OK)
-      os_printf("ESP8266: jshFlashWrite %s\n",
+      os_printf("ESP8266: jshFlashRead %s\n",
     res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
    }
 }
@@ -1250,13 +1250,18 @@ JsVar *jshFlashGetFree() {
 
   // need 1MB of flash to have more space...
   extern uint16_t espFlashKB; // in user_main,c
-  // TO DO add free flash areas here... 
   if (espFlashKB > 512) {
     addFlashArea(jsFreeFlash, 0x80000, 0x1000);
     if (espFlashKB > 1024) {
       addFlashArea(jsFreeFlash, 0xf7000, 0x9000);
-    } else {
-      addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
+	} else {
+	  addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
+    }
+	if (espFlashKB = 2048) {
+	  addFlashArea(jsFreeFlash, 0x100000, 0x100000-0x4000);
+    }
+	if (espFlashKB = 4096) {
+	  addFlashArea(jsFreeFlash, 0x100000, 0x300000-0x4000);
     }
   }
 
