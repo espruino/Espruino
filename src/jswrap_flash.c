@@ -497,7 +497,7 @@ void jsfLoadStateFromFlash() {
  * isReset should be set if we're loading after a reset (eg, does the user expect this to be run or not)
  */
 bool jsfLoadBootCodeFromFlash(bool isReset) {
-  const char *code = 0;
+  char *code = 0;
 #ifdef LINUX
   FILE *f = fopen("espruino.boot","rb");
   if (!f) return false;
