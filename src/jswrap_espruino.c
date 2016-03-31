@@ -755,6 +755,8 @@ If `alwaysExec` is `true`, the code will be executed even after a call to
 program, but you want some code that is always built in (for instance
 setting up a display or keyboard).
 
+To remove boot code that has been saved previously, use `E.setBootCode("")`
+
 **Note:** this removes any code that was previously saved with `save()`
 */
 void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec) {
