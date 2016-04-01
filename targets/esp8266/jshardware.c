@@ -1163,7 +1163,7 @@ void jshFlashRead(
     uint32_t addr, //!< Flash address to read from
     uint32_t len   //!< Length of data to read
   ) {
-  os_printf("jshFlashRead: dest=%p, len=%ld flash=0x%lx\n", buf, len, addr);
+  //os_printf("jshFlashRead: dest=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
   uint32_t flash_max=jshFlashMax();
@@ -1257,10 +1257,10 @@ JsVar *jshFlashGetFree() {
 	} else {
 	  addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
     }
-	if (espFlashKB = 2048) {
+	if (espFlashKB == 2048) {
 	  addFlashArea(jsFreeFlash, 0x100000, 0x100000-0x4000);
     }
-	if (espFlashKB = 4096) {
+	if (espFlashKB == 4096) {
 	  addFlashArea(jsFreeFlash, 0x100000, 0x300000-0x4000);
     }
   }
