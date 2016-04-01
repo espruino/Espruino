@@ -10,10 +10,6 @@
  *
  */
 
- /* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py, 
-so we don't put this into espruino.com/Reference until this is out
-of beta.  */
-
 /** @file
  *
  * @defgroup ble_sdk_uart_over_ble_main main.c
