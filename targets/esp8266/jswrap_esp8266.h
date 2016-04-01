@@ -44,4 +44,7 @@ uint32_t crc32(uint8_t *buf, uint32_t len);
 void   jswrap_ESP8266_deepSleep(JsVar *jsMicros);
 void   jswrap_ESP8266_modemSleep();
 
+void   jswrap_ESP8266_tone(Pin pin, JsVar *freq);
+void   jswrap_ESP8266_noTone();
+
 #endif /* TARGETS_ESP8266_JSWRAP_ESP8266_H_ */

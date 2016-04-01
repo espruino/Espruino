@@ -470,3 +470,99 @@ void   jswrap_ESP8266_modemSleep() {
   wifi_set_sleep_type(MODEM_SLEEP_T);
 }
 
+// Helper functions and definitions for for tone()
+LOCAL uint32_t tonePinBitmask = 0;
+LOCAL uint8_t toneState = 0;
+
+LOCAL void CALLED_FROM_INTERRUPT toneIsr() {
+  if (toneState) {
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, tonePinBitmask);
+  } else {
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, tonePinBitmask);
+  }
+  toneState = !toneState;
+}
+
+// Constants taken from https://github.com/esp8266/Arduino/blob/master/cores/esp8266/esp8266_peri.h
+#define ESP8266_REG(addr) *((volatile uint32_t *)(0x60000000+(addr)))
+#define ESP8266_DREG(addr) *((volatile uint32_t *)(0x3FF00000+(addr)))
+//Timer 1 Registers (23bit CountDown Timer)
+#define T1L  ESP8266_REG(0x600) //Load Value (Starting Value of Counter) 23bit (0-8388607)
+#define T1V  ESP8266_REG(0x604) //(RO) Current Value
+#define T1C  ESP8266_REG(0x608) //Control Register
+#define T1I  ESP8266_REG(0x60C) //Interrupt Status Register (1bit) write to clear
+//edge interrupt enable register
+#define TEIE 	ESP8266_DREG(0x04)
+#define TEIE1	0x02 //bit for timer 1
+//Timer Control Bits
+#define TCIS  8 //Interrupt Status
+#define TCTE  7 //Timer Enable
+#define TCAR  6 //AutoReload (restart timer when condition is reached)
+#define TCPD  2 //Prescale Devider (2bit) 0:1(12.5ns/tick), 1:16(0.2us/tick), 2/3:256(3.2us/tick)
+#define TCIT  0 //Interrupt Type 0:edge, 1:level
+//timer dividers
+#define TIM_DIV1 	0 //80MHz (80 ticks/us - 104857.588 us max)
+#define TIM_DIV16	1 //5MHz (5 ticks/us - 1677721.4 us max)
+#define TIM_DIV265	3 //312.5Khz (1 tick = 3.2us - 26843542.4 us max)
+//timer int_types
+#define TIM_EDGE	0
+#define TIM_LEVEL	1
+//timer reload values
+#define TIM_SINGLE	0 //on interrupt routine you need to write a new value to start the timer again
+#define TIM_LOOP	1 //on interrupt the counter will start with the same value again
+
+//===== ESP8266.tone
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "tone",
+  "generate" : "jswrap_ESP8266_tone",
+  "params"   : [
+    ["pin", "pin", "Pin for output signal."],
+    ["freq", "JsVar", "Frequency of the tone to generate."]
+  ]
+}
+Plays a tone with the given frequency.
+*/
+void   jswrap_ESP8266_tone(Pin pin, JsVar *freq) {
+  if (!jshIsPinValid(pin)) {
+    jsExceptionHere(JSET_ERROR, "Pin is not valid.");
+    return;
+  }
+  if (!jsvIsInt(freq)) {
+    jsExceptionHere(JSET_ERROR, "Invalid frequency.");
+    return;
+  }
+
+  uint32_t frequency = jsvGetInteger(freq);
+  if (frequency < 10) {
+    jsExceptionHere(JSET_ERROR, "Invalid frequency.");
+    return;
+  }
+
+  if (!jshGetPinStateIsManual(pin))
+    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+
+  uint32_t ticks = (system_get_cpu_freq() * 250000) / frequency;
+  tonePinBitmask = _BV(pin);
+
+  ets_isr_attach(ETS_FRC_TIMER1_INUM, toneIsr, NULL);
+  ETS_FRC1_INTR_ENABLE();
+  T1C = (1 << TCTE) | ((TIM_DIV1 & 3) << TCPD) | ((TIM_EDGE & 1) << TCIT) | ((TIM_LOOP & 1) << TCAR);
+  T1I = 0;
+  T1L = ((ticks)& 0x7FFFFF);
+  if ((T1C & (1 << TCIT)) == 0) TEIE |= TEIE1;
+}
+
+//===== ESP8266.noTone
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "noTone",
+  "generate" : "jswrap_ESP8266_noTone"
+}
+Stops playing tone played by the tone() method.
+*/
+void   jswrap_ESP8266_noTone() {
+  ETS_FRC1_INTR_DISABLE();
+}
