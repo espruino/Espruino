@@ -456,17 +456,3 @@ void   jswrap_ESP8266_deepSleep(JsVar *jsMicros) {
   system_deep_sleep(sleepTime);
 }
 
-//===== ESP8266.modemSleep
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "modemSleep",
-  "generate" : "jswrap_ESP8266_modemSleep"
-}
-Enable esp8266 'modem sleep' mode, which allows the WiFi
-modem to be turned off.
-*/
-void   jswrap_ESP8266_modemSleep() {
-  wifi_set_sleep_type(MODEM_SLEEP_T);
-}
-
