@@ -178,6 +178,8 @@ codeOut("""
   /* Remove stuff we don't want */
   /DISCARD/ :
   {
+    *(.init) /* we don't call init and fini anyway. GCC 5.x starting added them but then optimising them out */
+    *(.fini)
     libc.a ( * )
     libm.a ( * )
     libgcc.a ( * )
