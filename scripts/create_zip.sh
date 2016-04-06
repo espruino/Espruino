@@ -81,7 +81,7 @@ do
   fi
   # copy...
   if [ "$BOARDNAME" == "ESP8266_BOARD" ]; then
-    cp ${ESP_BINARY_NAME}.tgz $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    tar -C $ZIPDIR -xzf ${ESP_BINARY_NAME}.tgz || { echo "Build of $BOARDNAME failed" ; exit 1; }
     # Do some more ESP8266 build stuff
     bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make combined" || { echo "Build of $BOARDNAME failed" ; exit 1; }
     cp ${ESP_BINARY_NAME}_combined_512.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }

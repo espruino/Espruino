@@ -10,10 +10,6 @@
  *
  */
 
- /* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py, 
-so we don't put this into espruino.com/Reference until this is out
-of beta.  */
-
 /** @file
  *
  * @defgroup ble_sdk_uart_over_ble_main main.c
@@ -444,14 +440,18 @@ static void advertising_init(void)
 /*JSON{
     "type": "class",
     "class" : "NRF"
-}*/
+}
+The NRF class is for controlling functionality of the Nordic nRF51/nRF52 chips. Currently these are only used in the [BBC micro:bit](/MicroBit).
+
+The main part of this is control of Bluetooth Smart - both searching for devices, and changing advertising data.
+*/
 /*JSON{
   "type" : "object",
   "name" : "Bluetooth",
   "instanceof" : "Serial",
   "#ifdef" : "BLUETOOTH"
 }
-The USB Serial port
+The Bluetooth Serial port - used when data is sent or received over Bluetooth Smart on nRF51/nRF52 chips.
  */
 
 void jswrap_nrf_bluetooth_init(void) {
@@ -471,7 +471,9 @@ void jswrap_nrf_bluetooth_init(void) {
     "class" : "NRF",
     "name" : "sleep",
     "generate" : "jswrap_nrf_bluetooth_sleep"
-}*/
+}
+Disable Bluetooth communications
+*/
 void jswrap_nrf_bluetooth_sleep(void) {
   uint32_t err_code;
 
@@ -492,7 +494,9 @@ void jswrap_nrf_bluetooth_sleep(void) {
     "class" : "NRF",
     "name" : "wake",
     "generate" : "jswrap_nrf_bluetooth_wake"
-}*/
+}
+Enable Bluetooth communications (they are enabled by default)
+*/
 void jswrap_nrf_bluetooth_wake(void) {
   NRF_RADIO->TASKS_DISABLE = (0UL);
   jswrap_nrf_bluetooth_startAdvertise();
@@ -545,8 +549,11 @@ JsVarFloat jswrap_nrf_bluetooth_getBattery(void) {
       ["data","JsVar","The data to advertise as an object - see below for more info"]
     ]
 }
+Change the data that Espruino advertises.
 
-Data is of the form `{ UUID : data_as_byte_array }`. For example to return battery level at 95%, do:
+Data is of the form `{ UUID : data_as_byte_array }`. The UUID should be a [Bluetooth Service ID](https://developer.bluetooth.org/gatt/services/Pages/ServicesHome.aspx).
+
+For example to return battery level at 95%, do:
 
 ```
 NRF.setAdvertising({
@@ -559,7 +566,7 @@ Or you could report the current temperature:
 ```
 setInterval(function() {
   NRF.setAdvertising({
-    0x1809 : [0|E.getTemperature()]
+    0x1809 : [Math,round(E.getTemperature())]
   });
 }, 30000);
 ```
@@ -607,7 +614,7 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data) {
     ]
 }
 
-Start/stop listening for BLE advertising packets within range...
+Start/stop listening for BLE advertising packets within range.
 
 ```
 // Start scanning

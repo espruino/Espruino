@@ -16,6 +16,7 @@
 #include "jswrap_espruino.h"
 #include "jswrap_math.h"
 #include "jswrap_arraybuffer.h"
+#include "jswrap_flash.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
 #include "jstimer.h"
@@ -722,15 +723,48 @@ and Espruino Pico) at the moment.
 */
 JsVar *jswrap_espruino_memoryArea(int addr, int len) {
   if (len<0) return 0;
-  JsVar *v = jsvNewWithFlags(JSV_NATIVE_STRING);
   if (len>65535) {
     jsExceptionHere(JSET_ERROR, "Memory area too long! Max is 65535 bytes\n");
     return 0;
   }
+  JsVar *v = jsvNewWithFlags(JSV_NATIVE_STRING);
+  if (!v) return 0;
   v->varData.nativeStr.ptr = (char*)addr;
   v->varData.nativeStr.len = (uint16_t)len;
   return v;
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "setBootCode",
+  "generate" : "jswrap_espruino_setBootCode",
+  "params" : [
+    ["code","JsVar","The code to execute (as a string)"],
+    ["alwaysExec","bool","Whether to always execute the code (even after a reset)"]
+  ]
+}
+This writes JavaScript code into Espruino's flash memory, to be executed on
+startup. It differs from `save()` in that `save()` saves the whole state of
+the interpreter, whereas this just saves JS code that is executed at boot.
+
+Code will be executed before `onInit()` and `E.on('init', ...)`.
+
+If `alwaysExec` is `true`, the code will be executed even after a call to
+`reset()`. This is useful if you're making something that you want to
+program, but you want some code that is always built in (for instance
+setting up a display or keyboard).
+
+To remove boot code that has been saved previously, use `E.setBootCode("")`
+
+**Note:** this removes any code that was previously saved with `save()`
+*/
+void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec) {
+  JsvSaveFlashFlags flags = 0;
+  if (alwaysExec) flags |= SFF_BOOT_CODE_ALWAYS;
+  jsfSaveToFlash(flags, code);
+}
+
 
 /*JSON{
   "type" : "staticmethod",
@@ -1117,4 +1151,5 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 
   return USBD_HID_SendReport(data, l) == USBD_OK;
 }
+
 #endif

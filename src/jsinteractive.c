@@ -430,7 +430,7 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 
 // Used when recovering after being flashed
 // 'claim' anything we are using
-void jsiSoftInit() {
+void jsiSoftInit(bool hasBeenReset) {
   jsErrorFlags = 0;
   events = jsvNewEmptyArray();
   inputLine = jsvNewFromEmptyString();
@@ -452,8 +452,11 @@ void jsiSoftInit() {
   jsiLastIdleTime = jshGetSystemTime();
   jsiTimeSinceCtrlC = 0xFFFFFFFF;
 
-  // Runw wrapper initialisation stuff
+  // Run wrapper initialisation stuff
   jswInit();
+
+  // Run 'boot code' - textual JS in flash
+  jsfLoadBootCodeFromFlash(hasBeenReset);
 
   // Now run initialisation code
   JsVar *initCode = jsvObjectGetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, 0);
@@ -731,13 +734,13 @@ void jsiSemiInit(bool autoLoad) {
   if (loadFlash) {
     jspSoftKill();
     jsvSoftKill();
-    jsfLoadFromFlash();
+    jsfLoadStateFromFlash();
     jsvSoftInit();
     jspSoftInit();
   }
 
   // Softinit may run initialisation code that will overwrite defaults
-  jsiSoftInit();
+  jsiSoftInit(!autoLoad);
 
 #ifdef ESP8266
   jshSoftInit();
@@ -1955,11 +1958,11 @@ void jsiIdle() {
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
-      jsfSaveToFlash();
+      jsfSaveToFlash(SFF_SAVE_STATE, 0);
       jshReset();
       jsvSoftInit();
       jspSoftInit();
-      jsiSoftInit();
+      jsiSoftInit(false /* not been reset */);
     }
     if ((s&JSIS_TODO_FLASH_LOAD) == JSIS_TODO_FLASH_LOAD) {
       jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_LOAD;
@@ -1968,10 +1971,10 @@ void jsiIdle() {
       jspSoftKill();
       jsvSoftKill();
       jshReset();
-      jsfLoadFromFlash();
+      jsfLoadStateFromFlash();
       jsvSoftInit();
       jspSoftInit();
-      jsiSoftInit();
+      jsiSoftInit(false /* not been reset */);
     }
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }

@@ -49,7 +49,7 @@
 /** Place constant strings into flash when we can in order to save RAM space. Strings in flash
     must be accessed with word reads on aligned boundaries, so we'll have to copy them before
     regular use. */
-#define FLASH_STR(name, x) static char name[] IN_FLASH_MEMORY = x
+#define FLASH_STR(name, x) static const char name[] IN_FLASH_MEMORY = x
 
 /// Get the length of a string in flash
 size_t flash_strlen(const char *str);

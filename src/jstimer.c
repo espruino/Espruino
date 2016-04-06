@@ -389,10 +389,10 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
 }
 
 /// Execute the given function repeatedly after the given time period
-bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime period) {
+bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime period, bool repeat) {
   UtilTimerTask task;
   task.time = jshGetSystemTime() + period;
-  task.repeatInterval = (uint32_t)period;
+  task.repeatInterval = repeat ? (uint32_t)period : 0;
   task.type = UET_EXECUTE;
   task.data.execute = fn;
 

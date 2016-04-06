@@ -109,7 +109,7 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin);
 
 /// Execute the given function repeatedly after the given time period
-bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime period);
+bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime period, bool repeat);
 
 /// Stop executing the given function
 bool jstStopExecuteFn(void (*fn)(JsSysTime));

@@ -26,7 +26,7 @@
  // 48
 
 #define LCD_FONT_4X6_CHARS 95
-unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 127
+const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 127
     PACK_5_TO_16( _X_ , X_X , X_X , _X_ , X_X ),
     PACK_5_TO_16( _X_ , X_X , XXX , XXX , __X ),
     PACK_5_TO_16( _X_ , ___ , X_X , XX_ , _X_ ),
