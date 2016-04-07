@@ -15,6 +15,7 @@
 #include "jsinteractive.h"
 #include "jshardware.h"
 #include "jstimer.h"
+#include "jspin.h"
 #include "jswrapper.h"
 #include "jswrap_json.h"
 #include "jswrap_io.h"
@@ -643,11 +644,11 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
     if (IS_PIN_USED_INTERNALLY(pin)) continue;
     JshPinState state = jshPinGetState(pin);
     JshPinState statem = state&JSHPINSTATE_MASK;
-    if (statem == JSHPINSTATE_GPIO_OUT || statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN) {
+    if (statem == JSHPINSTATE_GPIO_OUT && !jshGetPinStateIsManual(pin)) {
       bool isOn = (state&JSHPINSTATE_PIN_IS_ON)!=0;
       if (!isOn && IS_PIN_A_LED(pin)) continue;
-      cbprintf(user_callback, user_data, "digitalWrite(%p,%d);\n",pin,isOn?1:0);
-    } else if (/*statem == JSHPINSTATE_GPIO_IN ||*/statem == JSHPINSTATE_GPIO_IN_PULLUP || statem == JSHPINSTATE_GPIO_IN_PULLDOWN) {
+      cbprintf(user_callback, user_data, "digitalWrite(%p, %d);\n",pin,isOn?1:0);
+    } else {
 #ifdef DEFAULT_CONSOLE_RX_PIN
       // the console input pin is always a pullup now - which is expected
       if (pin == DEFAULT_CONSOLE_RX_PIN &&
@@ -658,14 +659,15 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
           statem == BTN1_PINSTATE) continue;
 #endif
       // don't bother with normal inputs, as they come up in this state (ish) anyway
-      const char *s = "";
-      if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="_pullup";
-      if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="_pulldown";
-      cbprintf(user_callback, user_data, "pinMode(%p,\"input%s\");\n",pin,s);
+      const char *s = 0;
+      // JSHPINSTATE_GPIO_IN is the default - don't do anything for it
+      if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="input_pullup";
+      else if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="input_pulldown";
+      else if (statem == JSHPINSTATE_GPIO_OUT) s="output";
+      else if (statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN) s="opendrain";
+      if (s) cbprintf(user_callback, user_data, "pinMode(%p, \"%s\");\n",pin,s);
     }
 
-    if (statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN)
-      cbprintf(user_callback, user_data, "pinMode(%p,\"opendrain\");\n",pin);
   }
 }
 

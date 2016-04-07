@@ -13,6 +13,7 @@
             Add `E.setBootCode` to allow JS scripts to be run without being in RAM (fix #740)
             'Expecting a number or something iterable, got X' changed to exception rather than warning (gives stack trace)
             Drop '.init' and '.fini' symbols, allowing GCC 5.x compilation on STM32
+            Ensure that pinMode/digitalWrite is re-constituted properly by dump() and save() (fix #833) 
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
