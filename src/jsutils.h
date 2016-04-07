@@ -354,7 +354,6 @@ typedef enum {
   JSET_REFERENCEERROR
 } JsExceptionType;
 
-void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsAssertFail(const char *file, int line, const char *expr);
 
 #ifndef FLASH_STR

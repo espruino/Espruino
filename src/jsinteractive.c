@@ -378,9 +378,6 @@ void jsiConsoleReturnInputLine() {
     }
   }
 }
-void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos) {
-  jslPrintPosition((vcbprintf_callback)jsiConsolePrintString, 0, tokenPos);
-}
 
 /**
  * Clear the input line of data.

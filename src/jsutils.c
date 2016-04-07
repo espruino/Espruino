@@ -307,17 +307,6 @@ NO_INLINE void jsExceptionHere_flash(JsExceptionType type, const char *ffmt, ...
 
 #endif
 
-NO_INLINE void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos) {
-  jsiConsoleRemoveInputLine();
-  jsiConsolePrint("WARNING: ");
-  jsiConsolePrintString(message);
-  if (lex) {
-    jsiConsolePrint(" at ");
-    jsiConsolePrintPosition(lex, tokenPos);
-  } else
-    jsiConsolePrint("\n");
-}
-
 NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   static bool inAssertFail = false;
   bool wasInAssertFail = inAssertFail;
