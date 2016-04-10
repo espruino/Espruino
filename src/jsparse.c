@@ -412,7 +412,7 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     }
     // if we had a function name, add it to the end
     if (functionInternalName)
-      jsvObjectSetChildAndUnLock(funcVar, JSPARSE_FUNCTION_NAME_NAME, functionInternalName);
+      jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(funcVar, JSPARSE_FUNCTION_NAME_NAME, functionInternalName);
   }
 
   jslCharPosFree(&funcBegin);

@@ -182,7 +182,7 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
     return 0;
   }
   jsvObjectSetChildAndUnLock(waveform, "buffer", arrayBuffer);
-  if (arrayBuffer2) jsvObjectSetChildAndUnLock(waveform, "buffer2", arrayBuffer2);
+  if (arrayBuffer2) jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(waveform, "buffer2", arrayBuffer2);
 
   return waveform;
 }

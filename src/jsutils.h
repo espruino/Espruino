@@ -59,11 +59,20 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
     and extract just the 8 bits we want */
 #define READ_FLASH_UINT8(ptr) ({ uint32_t __p = (uint32_t)(char*)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); ((uint8_t*)&__d)[__p & 3]; })
 
+#define __concat(o,l) __##o##l
+#define jsvObjectSetChildAndUnLock(obj,name,child) jsvObjectSetChildAndUnLock_FLASH_CTR(obj,__COUNTER__,name,child)
+#define jsvObjectSetChildAndUnLock_FLASH_CTR(obj,lbl,name,child) FLASH_STR(__concat(obj,lbl),name);\
+jsvObjectSetChildAndUnLock_flash(obj,__concat(obj,lbl), child )
+
+#define NOT_FLASH_LITERAL /* no flash literal */
+
 #else
 
 /** Read a uint8_t from this pointer, which could be in RAM or Flash.
     On ARM this is just a standard read, it's different on ESP8266 */
 #define READ_FLASH_UINT8(ptr) (*(uint8_t*)(ptr))
+
+#define NOT_FLASH_LITERAL
 
 #endif
 

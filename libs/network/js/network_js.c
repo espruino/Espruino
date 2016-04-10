@@ -47,7 +47,7 @@ void net_js_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr
   NOT_USED(net);
   // hacky - save the last checked name so we can put it straight into the request
   *out_ip_addr = 0xFFFFFFFF;
-  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JSNET_DNS_NAME, jsvNewFromString(hostName));
+  jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(execInfo.hiddenRoot, JSNET_DNS_NAME, jsvNewFromString(hostName));
 }
 
 /// Called on idle. Do any checks required for this device

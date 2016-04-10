@@ -136,7 +136,7 @@ JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int bas
  * networkPutAddressAsString(myObject, "mac", mac, 6, 16, ':')
  */
 void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
-  jsvObjectSetChildAndUnLock(object, name, networkGetAddressAsString(ip, nBytes, base, separator));
+  jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(object, name, networkGetAddressAsString(ip, nBytes, base, separator));
 }
 
 /** Some devices (CC3000) store the IP address with the first element last, so we must flip it */
@@ -179,8 +179,6 @@ void networkGetHostByName(
   }
 }
 
-
-
 void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData));
   if (!net->networkVar) return;
@@ -189,7 +187,7 @@ void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->data.pinCS = PIN_UNDEFINED;
   net->data.pinIRQ = PIN_UNDEFINED;
   net->data.pinEN = PIN_UNDEFINED;
-  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, NETWORK_VAR_NAME, net->networkVar);
+  jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(execInfo.hiddenRoot, NETWORK_VAR_NAME, net->networkVar);
   networkSet(net);
   networkGetFromVar(net);
 }

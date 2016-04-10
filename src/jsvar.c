@@ -2390,9 +2390,19 @@ JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
   return child;
 }
 
-void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
+#if defined(ESP8266)
+void jsvObjectSetChildAndUnLock_flash(JsVar *obj, const char *name, JsVar *child) {
+	size_t len = flash_strlen(name);
+    //char buff[len+1];
+	static char buff[60]; // FIX or check size..
+    flash_strncpy(buff, name, len+1);
+	jsvUnLock(jsvObjectSetChild(obj, buff, child));
+}
+#endif
+void jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(JsVar *obj, const char *name, JsVar *child) {
   jsvUnLock(jsvObjectSetChild(obj, name, child));
 }
+
 
 int jsvGetChildren(JsVar *v) {
   //OPT: could length be stored as the value of the array?

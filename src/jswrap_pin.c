@@ -241,7 +241,7 @@ JsVar *jswrap_pin_getInfo(
           jsvObjectSetChildAndUnLock(func, "af", jsvNewFromInteger(inf->functions[i] & JSH_MASK_AF));
 
           jshPinFunctionToString(inf->functions[i], JSPFTS_DEVICE|JSPFTS_DEVICE_NUMBER, buf, sizeof(buf));
-          jsvObjectSetChildAndUnLock(funcs, buf, func);
+          jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(funcs, buf, func);
         }
       }
     }

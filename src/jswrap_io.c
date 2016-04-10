@@ -641,9 +641,9 @@ JsVar *jswrap_interface_setWatch(
     JsVar *watchPtr = jsvNewObject();
     if (watchPtr) {
       jsvObjectSetChildAndUnLock(watchPtr, "pin", jsvNewFromPin(pin));
-      if (repeat) jsvObjectSetChildAndUnLock(watchPtr, "recur", jsvNewFromBool(repeat));
-      if (debounce>0) jsvObjectSetChildAndUnLock(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce)));
-      if (edge) jsvObjectSetChildAndUnLock(watchPtr, "edge", jsvNewFromInteger(edge));
+      if (repeat) jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(watchPtr, "recur", jsvNewFromBool(repeat));
+      if (debounce>0) jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce)));
+      if (edge) jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(watchPtr, "edge", jsvNewFromInteger(edge));
       jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
     }
 

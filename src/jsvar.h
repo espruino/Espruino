@@ -658,7 +658,12 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
 /// Set the named child of an object, and unlock the child
+#if defined(ESP8266)
+void jsvObjectSetChildAndUnLock_flash(JsVar *obj, const char *name, JsVar *child);
+void jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(JsVar *obj, const char *name, JsVar *child);
+#else
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child);
+#endif
 
 int jsvGetChildren(JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
 JsVar *jsvGetFirstName(JsVar *v); ///< Get the first child's name from an object,array or function
