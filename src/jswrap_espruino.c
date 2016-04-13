@@ -876,7 +876,7 @@ JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
         jsvObjectSetChildAndUnLock(item, "name", jsvAsString(key, false));
         jsvObjectSetChildAndUnLock(item, "size", jswrap_espruino_getSizeOf(key, 0));
         if (depth>1 && jsvHasChildren(val))
-          jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(item, "more", jswrap_espruino_getSizeOf(val, depth-1));
+          jsvObjectSetChildAndUnLock(item, "more", jswrap_espruino_getSizeOf(val, depth-1));
         jsvArrayPushAndUnLock(arr, item);
       }
       jsvUnLock2(val, key);
@@ -1095,7 +1095,7 @@ void jswrap_espruino_setUSBHID(JsVar *arr) {
   JsVar *s = jswrap_espruino_toString(report);
   jsvUnLock(report);
   // Enable HID
-  jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME, s);
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME, s);
 }
 
 /*JSON{

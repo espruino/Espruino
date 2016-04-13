@@ -134,7 +134,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
   int addrEnd = (portStart>=0) ? portStart : pathStart;
   // pull out details
   if (addrStart>0)
-    jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(obj, "protocol", jsvNewFromStringVar(url, 0, (size_t)addrStart-1));
+    jsvObjectSetChildAndUnLock(obj, "protocol", jsvNewFromStringVar(url, 0, (size_t)addrStart-1));
   jsvObjectSetChildAndUnLock(obj, "method", jsvNewFromString("GET"));
   jsvObjectSetChildAndUnLock(obj, "host", jsvNewFromStringVar(url, (size_t)(addrStart+1), (size_t)(addrEnd-(addrStart+1))));
 

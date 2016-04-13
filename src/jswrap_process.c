@@ -85,7 +85,11 @@ JsVar *jswrap_process_env() {
     const char *s = exportNames;
     void **p = (void**)exportPtrs;
     while (*s) {
-      jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(arr, s, jsvNewFromInteger((JsVarInt)(size_t)*p));
+	  #if defined(ESP8266)
+         jsvObjectSetChildAndUnLockVar(arr, s, jsvNewFromInteger((JsVarInt)(size_t)*p));
+      #else
+        jsvObjectSetChildAndUnLock(arr, s, jsvNewFromInteger((JsVarInt)(size_t)*p));
+	  #endif
       p++;
       while (*s) s++; // skip until 0
       s++; // skip over 0

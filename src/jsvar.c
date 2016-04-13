@@ -2398,11 +2398,11 @@ void jsvObjectSetChildAndUnLock_flash(JsVar *obj, const char *name, JsVar *child
     flash_strncpy(buff, name, len+1);
 	jsvUnLock(jsvObjectSetChild(obj, buff, child));
 }
-#endif
-void jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(JsVar *obj, const char *name, JsVar *child) {
+#else
+void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
   jsvUnLock(jsvObjectSetChild(obj, name, child));
 }
-
+#endif
 
 int jsvGetChildren(JsVar *v) {
   //OPT: could length be stored as the value of the array?

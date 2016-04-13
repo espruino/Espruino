@@ -281,8 +281,8 @@ static bool fireErrorEvent(int error, JsVar *obj1, JsVar *obj2) {
   JsVar *params[1];
   if (hadError) {
     params[0] = jsvNewObject();
-    jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(params[0], "code", jsvNewFromInteger(error));
-    jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(params[0], "message",
+    jsvObjectSetChildAndUnLock(params[0], "code", jsvNewFromInteger(error));
+    jsvObjectSetChildAndUnLock(params[0], "message",
         jsvNewFromString(socketErrorString(error)));
     if (obj1 != NULL)
       jsiQueueObjectCallbacks(obj1, HTTP_NAME_ON_ERROR, params, 1);
@@ -825,7 +825,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
   if(!host_addr) {
     jsError("Unable to locate host\n");
     // As this is already in the list of connections, an error will be thrown on idle anyway
-    jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
+    jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
     jsvUnLock(options);
     netCheckError(net);
     return;
@@ -845,9 +845,9 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
   if (sckt<0) {
     jsError("Unable to create socket\n");
     // As this is already in the list of connections, an error will be thrown on idle anyway
-    jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
+    jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
   } else {
-    jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(httpClientReqVar, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1));
+    jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1));
   }
 
   jsvUnLock(options);
@@ -870,11 +870,11 @@ void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
     jsvUnLock(finalData);
   } else {
     // on normal sockets, we actually request close after all data sent
-    jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(httpClientReqVar, HTTP_NAME_CLOSE, jsvNewFromBool(true));
+    jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSE, jsvNewFromBool(true));
     // if we never sent any data, make sure we close 'now'
     JsVar *sendData = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, 0);
     if (!sendData || jsvIsEmptyString(sendData))
-      jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
+      jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
     jsvUnLock(sendData);
   }
 }
@@ -898,7 +898,7 @@ void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar
   if (headers) httpAppendHeaders(sendData, headers);
   // finally add ending newline
   jsvAppendString(sendData, "\r\n");
-  jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(httpServerResponseVar, HTTP_NAME_SEND_DATA, sendData);
+  jsvObjectSetChildAndUnLock(httpServerResponseVar, HTTP_NAME_SEND_DATA, sendData);
 }
 
 

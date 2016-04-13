@@ -660,7 +660,6 @@ JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
 /// Set the named child of an object, and unlock the child
 #if defined(ESP8266)
 void jsvObjectSetChildAndUnLock_flash(JsVar *obj, const char *name, JsVar *child);
-void jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(JsVar *obj, const char *name, JsVar *child);
 #else
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child);
 #endif

@@ -254,7 +254,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   jsvObjectSetChildAndUnLock(parent, USART_BAUDRATE_NAME, jsvNewFromInteger(inf.baudRate));
   // Do the same for options
   if (options)
-    jsvObjectSetChildAndUnLock NOT_FLASH_LITERAL(parent, DEVICE_OPTIONS_NAME, options);
+    jsvObjectSetChildAndUnLock(parent, DEVICE_OPTIONS_NAME, options);
   else
     jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
 }
