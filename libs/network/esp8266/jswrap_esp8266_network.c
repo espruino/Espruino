@@ -1726,8 +1726,8 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
   if (g_jsPingCallback != NULL) {
     JsVar *jsPingResponse = jsvNewObject();
 	   
-	jsvObjectSetChildAndUnLock(jsPingResponse,"totalCount",  jsvNewFromInteger(pingResp->total_count));
-	jsvObjectSetChildAndUnLock(jsPingResponse,"totalBytes",   jsvNewFromInteger(pingResp->total_bytes));
+    jsvObjectSetChildAndUnLock(jsPingResponse,"totalCount",  jsvNewFromInteger(pingResp->total_count));
+    jsvObjectSetChildAndUnLock(jsPingResponse,"totalBytes",   jsvNewFromInteger(pingResp->total_bytes));
     jsvObjectSetChildAndUnLock(jsPingResponse, "totalTime",    jsvNewFromInteger(pingResp->total_time));
     jsvObjectSetChildAndUnLock(jsPingResponse, "respTime",     jsvNewFromInteger(pingResp->resp_time));
     jsvObjectSetChildAndUnLock(jsPingResponse, "seqNo",        jsvNewFromInteger(pingResp->seqno));

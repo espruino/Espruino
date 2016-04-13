@@ -241,11 +241,11 @@ JsVar *jswrap_pin_getInfo(
           jsvObjectSetChildAndUnLock(func, "af", jsvNewFromInteger(inf->functions[i] & JSH_MASK_AF));
 
           jshPinFunctionToString(inf->functions[i], JSPFTS_DEVICE|JSPFTS_DEVICE_NUMBER, buf, sizeof(buf));
-		  #if defined(ESP8266)
+          #if defined(ESP8266)
             jsvObjectSetChildAndUnLockVar(funcs, buf, func);
           #else
             jsvObjectSetChildAndUnLock(funcs, buf, func);
-		  #endif
+          #endif
         }
       }
     }
