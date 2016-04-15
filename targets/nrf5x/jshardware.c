@@ -649,10 +649,8 @@ void jshFlashErasePage(uint32_t addr)
 /**
  * Reads a byte from memory. Addr doesn't need to be word aligned and len doesn't need to be a multiple of 4.
  */
-void jshFlashRead(void * buf, uint32_t addr, uint32_t len)
-{
-  uint8_t * read_buf = buf;
-  nrf_utils_read_flash_bytes(read_buf, addr, len);
+void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
+  memcpy(buf, (void*)addr, len);
 }
 
 /**
