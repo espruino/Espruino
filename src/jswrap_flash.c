@@ -331,12 +331,14 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
         flags |= SFF_BOOT_CODE_ALWAYS;
       else
         flags &= ~SFF_BOOT_CODE_ALWAYS;
-      originalBootCode = (char *)alloca(bootCodeLen);
+      if (bootCodeLen+64 < jsuGetFreeStack())
+        originalBootCode = (char *)alloca(bootCodeLen);
       if (originalBootCode) {
         jshFlashRead(originalBootCode, FLASH_DATA_LOCATION, bootCodeLen);
       } else {
         // There may not be room on the stack, in which case we'll warn
         jsWarn("Unable to keep Boot Code - not enough room on the stack\n");
+        bootCodeLen = 0;
       }
     }
   }
@@ -352,7 +354,6 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
         addr = pageStart+pageLength; // next page
         if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) break;
         jshFlashErasePage(pageStart);
-
       }
     }
     // Now start writing
@@ -363,11 +364,11 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
     // boot code....
     if (jsvIsString(bootCode)) {
       bootCodeLen = (uint32_t)jsvGetStringLength(bootCode);
-      uint32_t bootCodeFlags = 0;
       if (bootCodeLen) {
         // Only write code if we actually have any
-        bootCodeFlags = bootCodeLen;
-        if (flags & SFF_BOOT_CODE_ALWAYS) bootCodeFlags |= BOOT_CODE_RUN_ALWAYS;
+        originalBootCodeInfo = bootCodeLen;
+        if (flags & SFF_BOOT_CODE_ALWAYS)
+          originalBootCodeInfo |= BOOT_CODE_RUN_ALWAYS;
         JsvStringIterator it;
         jsvStringIteratorNew(&it, bootCode, 0);
         while (jsvStringIteratorHasChar(&it)) {
@@ -378,16 +379,16 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
         jsfSaveToFlash_writecb(0, cbData);
         bootCodeLen++;
       }
-      // write size of boot code to flash
-      jshFlashWrite(&bootCodeFlags, FLASH_BOOT_CODE_INFO_LOCATION, 4);
+
     } else if (originalBootCode) {
       // previously saved boot code that we want to keep
       assert(originalBootCode && bootCodeLen);
-      jshFlashWrite(&originalBootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 4); // write size of boot code to flash
       size_t i;
       for (i=0;i<bootCodeLen;i++)
         jsfSaveToFlash_writecb(originalBootCode[i], cbData);
     }
+    // write size of boot code to flash
+    jshFlashWrite(&originalBootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 4);
     // state....
     if (flags & SFF_SAVE_STATE) {
       COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
@@ -436,6 +437,7 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
 
     if (!jsfFlashContainsCode()) {
       jsiConsolePrint("\nFlash Magic Byte is wrong");
+
       errors++;
     }
 
