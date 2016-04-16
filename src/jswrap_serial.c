@@ -149,6 +149,15 @@ A loopback serial device. Data sent to LoopbackA comes out of LoopbackB and vice
 }
 A loopback serial device. Data sent to LoopbackA comes out of LoopbackB and vice versa
  */
+/*JSON{
+  "type" : "object",
+  "name" : "Telnet",
+  "instanceof" : "Serial",
+  "#if" : "defined(USE_TELNET)"
+}
+A telnet serial device that mapps to the built-in telnet console server (devices that have
+built-in wifi only).
+ */
 
 
 
