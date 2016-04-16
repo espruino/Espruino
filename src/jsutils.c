@@ -394,6 +394,7 @@ char *flash_strncpy(char *dst, const char *src, size_t c) {
   uint32_t *s = (uint32_t *)src;
   size_t slen = flash_strlen(src);
   size_t len = slen > c ? c : slen;
+
   // copy full words from source string
   while (len >= 4) {
     uint32_t w = *s++;
@@ -414,6 +415,19 @@ char *flash_strncpy(char *dst, const char *src, size_t c) {
   if (slen < c) *d = 0;
   return dst;
 }
+
+// Compare a string in memory with a string in flash
+int flash_strcmp(const char *mem, const char *flash) {
+  while (1) {
+    char m = *mem++;
+    char c = READ_FLASH_UINT8(flash++);
+    if (m == 0) return c != 0 ? -1 : 0;
+    if (c == 0) return 1;
+    if (c > m) return -1;
+    if (m > c) return 1;
+  }
+}
+
 #endif
 
 #ifdef FAKE_STDLIB

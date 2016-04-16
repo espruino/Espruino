@@ -141,14 +141,14 @@ def codeOutSymbolTable(builtin):
     if builtin["name"]=="global" and symName in libraries:
       continue # don't include libraries on global namespace
     if "generate" in sym:
-      listSymbols.append("{"+", ".join([str(strLen), "(void (*)(void))"+sym["generate"], getArgumentSpecifier(sym)])+"}")
+      listSymbols.append("{"+", ".join([str(strLen), getArgumentSpecifier(sym), "(void (*)(void))"+sym["generate"]])+"}")
       listChars = listChars + symName + "\\0";
       strLen = strLen + len(symName) + 1
-    else: 
+    else:
       print (codeName + "." + symName+" not included in Symbol Table because no 'generate'")
   builtin["symbolTableChars"] = "\""+listChars+"\"";
   builtin["symbolTableCount"] = str(len(listSymbols));
-  codeOut("static const JswSymPtr jswSymbols_"+codeName+"[] = {\n  "+",\n  ".join(listSymbols)+"\n};");
+  codeOut("static const JswSymPtr jswSymbols_"+codeName+"[] FLASH_SECT = {\n  "+",\n  ".join(listSymbols)+"\n};");
 
 def codeOutBuiltins(indent, builtin):
   codeOut(indent+"jswBinarySearch(&jswSymbolTables["+builtin["indexName"]+"], parent, name);");
@@ -239,6 +239,7 @@ codeOut('// --------------------------------------------------------------------
 codeOut('');
 
 codeOut("""
+#ifndef ESP8266
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
   int searchMin = 0;
   int searchMax = symbolsPtr->symbolCount-1;
@@ -254,14 +255,51 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
       if (cmp<0) {
         // searchMin is the same
         searchMax = idx-1;
-      } else { 
+      } else {
         searchMin = idx+1;
-        // searchMax is the same      
+        // searchMax is the same
       }
     }
   }
   return 0;
 }
+#else
+
+extern int os_printf_plus();
+
+JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
+  //os_printf_plus("bs%p\\n", symbolsPtr);
+  int searchMin = 0;
+  int searchMax = symbolsPtr->symbolCount -1;
+  while (searchMin <= searchMax) {
+    int idx = (searchMin+searchMax) >> 1;
+    const JswSymPtr *sym = &symbolsPtr->symbols[idx];
+    unsigned short strOffset = READ_FLASH_UINT16(&sym->strOffset);
+    //os_printf_plus("min=%d max=%d idx=%d sym=%p off=%d=%x\\n", searchMin, searchMax, idx, sym, strOffset, strOffset);
+    int cmp = flash_strcmp(name, &symbolsPtr->symbolChars[strOffset]);
+    //char buf[256], c, *b=buf; const char *s=&symbolsPtr->symbolChars[strOffset];
+    //do { c = READ_FLASH_UINT8(s++); *b++ = c; } while(c!=0);
+    //os_printf_plus("CMP %s %s = %d\\n", name, buf, cmp);
+    if (cmp==0) {
+      unsigned short functionSpec = READ_FLASH_UINT16(&sym->functionSpec);
+      os_printf_plus("%s found %p: %p %x\\n", name, sym, sym->functionPtr, functionSpec);
+      if ((functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
+        return jsnCallFunction(sym->functionPtr, functionSpec, parent, 0, 0);
+      return jsvNewNativeFunction(sym->functionPtr, functionSpec);
+    } else {
+      if (cmp<0) {
+        // searchMin is the same
+        searchMax = idx-1;
+      } else {
+        searchMin = idx+1;
+        // searchMax is the same
+      }
+    }
+  }
+  os_printf_plus("%s not found\\n", name);
+  return 0;
+}
+#endif
 """);
 
 codeOut('// -----------------------------------------------------------------------------------------');
@@ -301,6 +339,9 @@ for jsondata in jsondatas:
       builtins[testCode] = { "name" : builtinName, "className" : className, "isProto" : isProto, "functions" : [] }
     builtins[testCode]["functions"].append(jsondata);
 
+# For the ESP8266 we want to put the structures into flash
+codeOut("#ifdef ESP8266\n#define FLASH_SECT __attribute__((section(\".irom.literal2\"))) __attribute__((aligned(4)))");
+codeOut("#else\n#define FLASH_SECT\n#endif\n");
 
 print("Outputting Symbol Tables")
 idx = 0
@@ -313,10 +354,14 @@ for b in builtins:
 codeOut('');
 codeOut('');
 
-codeOut('const JswSymList jswSymbolTables[] = {');
 for b in builtins:
   builtin = builtins[b]
-  codeOut("  {"+", ".join(["jswSymbols_"+builtin["name"], builtin["symbolTableCount"], builtin["symbolTableChars"]])+"},");
+  codeOut("FLASH_STR(jswSymbols_"+builtin["name"]+"_str, " + builtin["symbolTableChars"] +");");
+codeOut('');
+codeOut('const JswSymList jswSymbolTables[] FLASH_SECT = {');
+for b in builtins:
+  builtin = builtins[b]
+  codeOut("  {"+", ".join(["jswSymbols_"+builtin["name"], "jswSymbols_"+builtin["name"]+"_str", builtin["symbolTableCount"]])+"},");
 codeOut('};');
 
 codeOut('');

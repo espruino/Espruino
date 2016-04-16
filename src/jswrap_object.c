@@ -222,8 +222,14 @@ void jswrap_object_keys_or_property_names_cb(
 
     while (symbols) {
       unsigned int i;
-      for (i=0;i<symbols->symbolCount;i++) {
-        JsVar *name = jsvNewFromString(&symbols->symbolChars[symbols->symbols[i].strOffset]);
+      unsigned short symbolCount = READ_FLASH_UINT16(&symbols->symbolCount);
+      unsigned short strOffset = READ_FLASH_UINT16(&symbols->symbols[i].strOffset);
+      for (i=0;i<symbolCount;i++) {
+        char buf[256], *b, c;
+        const char *s = &symbols->symbolChars[strOffset];
+        do { c = READ_FLASH_UINT8(s++); *b++ = c; } while(c);
+        JsVar *name = jsvNewFromString(buf);
+        //os_printf_plus("OBJ cb %s\n", buf);
         callback(data, name);
         jsvUnLock(name);
       }

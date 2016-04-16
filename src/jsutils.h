@@ -67,16 +67,23 @@ size_t flash_strlen(const char *str);
 /// Copy a string from flash to RAM
 char *flash_strncpy(char *dest, const char *source, size_t cap);
 
+/// Compare a string in memory with a string in flash
+int flash_strcmp(const char *mem, const char *flash);
+
 /** Read a uint8_t from this pointer, which could be in RAM or Flash.
     On ESP8266 you have to read flash in 32 bit chunks, so force a 32 bit read
     and extract just the 8 bits we want */
 #define READ_FLASH_UINT8(ptr) ({ uint32_t __p = (uint32_t)(char*)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); ((uint8_t*)&__d)[__p & 3]; })
+
+/** Read a uint16_t from this pointer, assumes that the target is 16-bit aligned. */
+#define READ_FLASH_UINT16(ptr) ({ uint32_t __p = (uint32_t)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); (uint16_t)(__p&2 ? __d>>16 : __d); })
 
 #else
 
 /** Read a uint8_t from this pointer, which could be in RAM or Flash.
     On ARM this is just a standard read, it's different on ESP8266 */
 #define READ_FLASH_UINT8(ptr) (*(uint8_t*)(ptr))
+#define READ_FLASH_UINT16(ptr) (*(uint16_t*)(ptr))
 
 #endif
 
