@@ -148,7 +148,7 @@ def codeOutSymbolTable(builtin):
       print (codeName + "." + symName+" not included in Symbol Table because no 'generate'")
   builtin["symbolTableChars"] = "\""+listChars+"\"";
   builtin["symbolTableCount"] = str(len(listSymbols));
-  codeOut("static const JswSymPtr jswSymbols_"+codeName+"[] = {\n  "+",\n  ".join(listSymbols)+"\n};");
+  codeOut("static const JswSymPtr jswSymbols_"+codeName+"[] IROM_CONST = {\n  "+",\n  ".join(listSymbols)+"\n};");
 
 def codeOutBuiltins(indent, builtin):
   codeOut(indent+"jswBinarySearch(&jswSymbolTables["+builtin["indexName"]+"], parent, name);");

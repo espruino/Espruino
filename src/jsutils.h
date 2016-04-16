@@ -68,11 +68,18 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
    
 #define jsvObjectSetChildAndUnLockVar(obj,name,child) jsvObjectSetChildAndUnLock_flash(obj,name,child)
 
+/** 
+    ESP8266 store constants in flash */
+#define IROM_CONST __attribute__((section(".irom.const"))) __attribute__((aligned(4)))
 #else
 
 /** Read a uint8_t from this pointer, which could be in RAM or Flash.
     On ARM this is just a standard read, it's different on ESP8266 */
 #define READ_FLASH_UINT8(ptr) (*(uint8_t*)(ptr))
+
+/** 
+   store constants in ram */
+#define IROM_CONST
 
 #endif
 
