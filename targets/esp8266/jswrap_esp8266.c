@@ -84,7 +84,7 @@ At boot time the esp8266's firmware captures the cause of the reset/reboot.  Thi
 */
 JsVar *jswrap_ESP8266_getResetInfo() {
   struct rst_info* info = system_get_rst_info();
-  JsVar *restartInfo = jspNewObject(NULL, "RstInfo");
+  JsVar *restartInfo = jsvNewObject();
   extern char *rst_codes[]; // in user_main.c
 
   jsvObjectSetChildAndUnLock(restartInfo, "reason",   jsvNewFromString(rst_codes[info->reason]));
@@ -189,6 +189,8 @@ void jswrap_ESP8266_dumpSocketInfo(void) {
     ["freq", "JsVar", "Desired frequency - either 80 or 160."]
   ]
 }
+**Note:** This is deprecated. Use `E.setClock(80/160)`
+**Note:**
 Set the operating frequency of the ESP8266 processor. The default is 160Mhz.
 
 **Warning**: changing the cpu frequency affects the timing of some I/O operations, notably of software SPI and I2C, so things may be a bit slower at 80Mhz.
@@ -197,16 +199,7 @@ Set the operating frequency of the ESP8266 processor. The default is 160Mhz.
 void jswrap_ESP8266_setCPUFreq(
     JsVar *jsFreq //!< Operating frequency of the processor.  Either 80 or 160.
   ) {
-  if (!jsvIsInt(jsFreq)) {
-    jsExceptionHere(JSET_ERROR, "Invalid frequency.");
-    return;
-  }
-  int newFreq = jsvGetInteger(jsFreq);
-  if (newFreq != 80 && newFreq != 160) {
-    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 160.");
-    return;
-  }
-  system_update_cpu_freq(newFreq);
+  jshSetSystemClock(jsFreq);
 }
 
 //===== ESP8266.getState
@@ -232,7 +225,7 @@ Returns an object that contains details about the state of the ESP8266 with the 
 JsVar *jswrap_ESP8266_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
   // wish to return.
-  JsVar *esp8266State = jspNewObject(NULL, "ESP8266State");
+  JsVar *esp8266State = jsvNewObject();
   jsvObjectSetChildAndUnLock(esp8266State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
   jsvObjectSetChildAndUnLock(esp8266State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
   jsvObjectSetChildAndUnLock(esp8266State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size()));
@@ -253,14 +246,6 @@ JsVar *jswrap_ESP8266_getState() {
   return esp8266State;
 }
 
-static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
-  JsVar *jsArea = jspNewObject(NULL, "FreeFlash");
-  jsvObjectSetChildAndUnLock(jsArea, "area", jsvNewFromInteger(addr));
-  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger(length));
-  jsvArrayPush(jsFreeFlash, jsArea);
-  jsvUnLock(jsArea);
-}
-
 //===== ESP8266.getFreeFlash
 
 /*JSON{
@@ -270,24 +255,10 @@ static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
 }
+**Note:** This is deprecated. Use `require("flash").getFree()`
 */
 JsVar *jswrap_ESP8266_getFreeFlash() {
-  JsVar *jsFreeFlash = jsvNewArray(NULL, 0);
-  // Area reserved for EEPROM
-  addFlashArea(jsFreeFlash, 0x77000, 0x1000);
-
-  // need 1MB of flash to have more space...
-  extern uint16_t espFlashKB; // in user_main,c
-  if (espFlashKB > 512) {
-    addFlashArea(jsFreeFlash, 0x80000, 0x1000);
-    if (espFlashKB > 1024) {
-      addFlashArea(jsFreeFlash, 0xf7000, 0x9000);
-    } else {
-      addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
-    }
-  }
-
-  return jsFreeFlash;
+  return jshFlashGetFree();
 }
 
 //===== ESP8266.crc32
@@ -457,3 +428,31 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
 
 #endif
 }
+
+//===== ESP8266.deepSleep
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "deepSleep",
+  "generate" : "jswrap_ESP8266_deepSleep",
+  "params"   : [
+    ["micros", "JsVar", "Number of microseconds to sleep."]
+  ]
+}
+Put the ESP8266 into 'deep sleep' for the given number of microseconds,
+reducing power consumption drastically.
+
+**Note:** unlike normal Espruino boards' 'deep sleep' mode, ESP8266
+deep sleep actually turns off the processor. After the given number of
+microseconds have elapsed, the ESP8266 will restart as if power had been
+turned off and then back on. *All contents of RAM will be lost*.
+*/
+void   jswrap_ESP8266_deepSleep(JsVar *jsMicros) {
+  if (!jsvIsInt(jsMicros)) {
+    jsExceptionHere(JSET_ERROR, "Invalid microseconds.");
+    return;
+  }
+  int sleepTime = jsvGetInteger(jsMicros);
+  system_deep_sleep(sleepTime);
+}
+

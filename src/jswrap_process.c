@@ -65,7 +65,7 @@ const char *exportNames =
 Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION
  */
 JsVar *jswrap_process_env() {
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   jsvObjectSetChildAndUnLock(obj, "VERSION", jsvNewFromString(JS_VERSION));
   jsvObjectSetChildAndUnLock(obj, "BUILD_DATE", jsvNewFromString(__DATE__));
   jsvObjectSetChildAndUnLock(obj, "BUILD_TIME", jsvNewFromString(__TIME__));
@@ -80,7 +80,7 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
   jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
 #ifndef SAVE_ON_FLASH
-  JsVar *arr = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *arr = jsvNewObject();
   if (arr) {
     const char *s = exportNames;
     void **p = (void**)exportPtrs;
@@ -118,14 +118,12 @@ Run a Garbage Collection pass, and return an object containing information on me
 * `flash_length` : (on ARM) the amount of flash memory this firmware was built for (in bytes). **Note:** Some STM32 chips actually have more memory than is advertised.
 
 Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). See http://www.espruino.com/Performance for more information.
+
+**Note:** To find free areas of flash memory, see `require('Flash').getFree()`
  */
-#ifdef ARM
-extern int LINKER_END_VAR; // end of ram used (variables)
-extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
-#endif
 JsVar *jswrap_process_memory() {
   jsvGarbageCollect();
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (obj) {
     unsigned int history = 0;
     JsVar *historyVar = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
@@ -141,6 +139,8 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
 
 #ifdef ARM
+    extern void LINKER_END_VAR; // end of ram used (variables)
+    extern void LINKER_ETEXT_VAR; // end of flash text (binary) section
     jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));
     jsvObjectSetChildAndUnLock(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START));
     jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_ETEXT_VAR));

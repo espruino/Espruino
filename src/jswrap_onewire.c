@@ -273,7 +273,7 @@ JsVar *jswrap_onewire_search(JsVar *parent, int command) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return 0;
 
-  JsVar *array = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *array = jsvNewEmptyArray();
   if (!array) return 0;
 
   if (command<=0 || command>255)

@@ -499,7 +499,8 @@ else ifdef ESP8266_BOARD
 EMBEDDED=1
 USE_NET=1
 USE_TELNET=1
-#USE_GRAPHICS=1
+USE_GRAPHICS=1
+USE_CRYPTO=1
 BOARD=ESP8266_BOARD
 # Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
 # too large a firmware (-Os is -O2 without optimizations that increase code size)
@@ -607,7 +608,7 @@ USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
-#USE_TELNET=1  # enable telnet to have it listen on port 2323 as JS console
+USE_TELNET=1 
 #USE_LCD_SDL=1
 
 ifdef MACOSX
@@ -829,47 +830,13 @@ ifdef USE_MATH
 DEFINES += -DUSE_MATH
 INCLUDE += -I$(ROOT)/libs/math
 WRAPPERSOURCES += libs/math/jswrap_math.c
-ifndef LINUX
-SOURCES += \
-libs/math/acosh.c \
-libs/math/asin.c \
-libs/math/asinh.c \
-libs/math/atan.c \
-libs/math/atanh.c \
-libs/math/cbrt.c \
-libs/math/chbevl.c \
-libs/math/clog.c \
-libs/math/cmplx.c \
-libs/math/const.c \
-libs/math/cosh.c \
-libs/math/drand.c \
-libs/math/exp10.c \
-libs/math/exp2.c \
-libs/math/exp.c \
-libs/math/fabs.c \
-libs/math/floor.c \
-libs/math/isnan.c \
-libs/math/log10.c \
-libs/math/log2.c \
-libs/math/log.c \
-libs/math/mtherr.c \
-libs/math/polevl.c \
-libs/math/pow.c \
-libs/math/powi.c \
-libs/math/round.c \
-libs/math/setprec.c \
-libs/math/sin.c \
-libs/math/sincos.c \
-libs/math/sindg.c \
-libs/math/sinh.c \
-libs/math/sqrt.c \
-libs/math/tan.c \
-libs/math/tandg.c \
-libs/math/tanh.c \
-libs/math/unity.c
-#libs/math/mod2pi.c
-#libs/math/mtst.c
-#libs/math/dtestvec.c
+ifeq ($(FAMILY),ESP8266)
+# special ESP8266 maths lib that doesn't go into RAM
+LIBS += -lmirom 
+LDFLAGS += -L$(ROOT)/targets/esp8266
+else
+# everything else uses normal maths lib
+LIBS += -lm 
 endif
 endif
 
@@ -1035,44 +1002,41 @@ ifeq ($(BOARD),MICROBIT)
 endif
 
 ifdef USE_CRYPTO
+  DEFINES += -DUSE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
+  SOURCES += \
+libs/crypto/mbedtls/library/sha1.c \
+libs/crypto/mbedtls/library/sha256.c \
+libs/crypto/mbedtls/library/sha512.c
 
 ifdef USE_TLS
-  DEFINES += -DUSE_TLS
+  USE_AES=1
+  DEFINES += -DUSE_TLS=1 -DUSE_AES=1
   SOURCES += \
-libs/crypto/mbedtls/library/aes.c \
-libs/crypto/mbedtls/library/asn1parse.c \
 libs/crypto/mbedtls/library/bignum.c \
-libs/crypto/mbedtls/library/cipher.c \
-libs/crypto/mbedtls/library/cipher_wrap.c \
 libs/crypto/mbedtls/library/ctr_drbg.c \
 libs/crypto/mbedtls/library/debug.c \
 libs/crypto/mbedtls/library/ecp.c \
 libs/crypto/mbedtls/library/ecp_curves.c \
 libs/crypto/mbedtls/library/entropy.c \
 libs/crypto/mbedtls/library/entropy_poll.c \
-libs/crypto/mbedtls/library/md.c \
 libs/crypto/mbedtls/library/md5.c \
-libs/crypto/mbedtls/library/md_wrap.c \
-libs/crypto/mbedtls/library/oid.c \
 libs/crypto/mbedtls/library/pk.c \
-libs/crypto/mbedtls/library/pkcs5.c \
 libs/crypto/mbedtls/library/pkparse.c \
 libs/crypto/mbedtls/library/pk_wrap.c \
 libs/crypto/mbedtls/library/rsa.c \
-libs/crypto/mbedtls/library/sha1.c \
-libs/crypto/mbedtls/library/sha256.c \
-libs/crypto/mbedtls/library/sha512.c \
 libs/crypto/mbedtls/library/ssl_ciphersuites.c \
 libs/crypto/mbedtls/library/ssl_cli.c \
 libs/crypto/mbedtls/library/ssl_tls.c \
 libs/crypto/mbedtls/library/ssl_srv.c \
 libs/crypto/mbedtls/library/x509.c \
 libs/crypto/mbedtls/library/x509_crt.c
-else
+endif
+ifdef USE_AES
+  DEFINES += -DUSE_AES
   SOURCES += \
 libs/crypto/mbedtls/library/aes.c \
 libs/crypto/mbedtls/library/asn1parse.c \
@@ -1081,10 +1045,7 @@ libs/crypto/mbedtls/library/cipher_wrap.c \
 libs/crypto/mbedtls/library/md.c \
 libs/crypto/mbedtls/library/md_wrap.c \
 libs/crypto/mbedtls/library/oid.c \
-libs/crypto/mbedtls/library/pkcs5.c \
-libs/crypto/mbedtls/library/sha1.c \
-libs/crypto/mbedtls/library/sha256.c \
-libs/crypto/mbedtls/library/sha512.c
+libs/crypto/mbedtls/library/pkcs5.c 
 endif
 endif
 
@@ -1312,7 +1273,8 @@ ifeq ($(FAMILY), NRF52)
   INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf52_config
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
-  SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
+  SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
+                      $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
@@ -1547,8 +1509,6 @@ endif
 
 ifdef STM32
 DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
-DEFINES += -DFAKE_STDLIB
-# FAKE_STDLIB is for Espruino - it uses its own standard library so we don't have to link in the normal one + get bloated
 INCLUDE += -I$(ROOT)/targets/stm32
 ifndef BOOTLOADER
 SOURCES +=                              \
@@ -1564,7 +1524,6 @@ INCLUDE += -I$(ROOT)/targets/linux
 SOURCES +=                              \
 targets/linux/main.c                    \
 targets/linux/jshardware.c
-LIBS += -lm # maths lib
 LIBS += -lpthread # thread lib for input processing
 ifdef OPENWRT_UCLIBC
 LIBS += -lc
@@ -1820,7 +1779,7 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
-	$(Q)cp $(USER1_BIN) $(USER2_BIN) $(USER1_ELF) scripts/wiflash $(BLANK) \
+	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash.sh $(BLANK) \
 	  $(INIT_DATA) $(BOOTLOADER) targets/esp8266/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))

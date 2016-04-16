@@ -27,7 +27,6 @@
 #include <pwm.h>
 #include <spi.h> // Include the MetalPhreak/ESP8266_SPI_Library headers.
 
-//#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
 typedef long long int64_t;
 
@@ -1144,6 +1143,15 @@ unsigned int jshGetRandomNumber() {
 //===== Read-write flash =====
 
 /**
+ * Determine available flash depending on EEprom size
+ *
+ */  
+uint32_t jshFlashMax() {
+  extern uint16_t espFlashKB; 
+  return 1024*espFlashKB;
+}
+  
+/**
  * Read data from flash memory into the buffer.
  *
  * This reads from flash using memory-mapped reads. Only works for the first 1MB and
@@ -1158,17 +1166,27 @@ void jshFlashRead(
   //os_printf("jshFlashRead: dest=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
-  if (addr >= FLASH_MAX) return;
-  if (addr + len > FLASH_MAX) len = FLASH_MAX - addr;
-  addr += FLASH_MMAP;
+  uint32_t flash_max=jshFlashMax();
+  if (addr >= flash_max) return;
+  if (addr + len > flash_max) len = flash_max - addr;
 
-  // copy the bytes reading a word from flash at a time
-  uint8_t *dest = buf;
-  uint32_t bytes = *(uint32_t*)(addr & ~3);
-  while (len-- > 0) {
-    if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
-    *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
-  }
+  if (addr < FLASH_MAX) {
+	  addr += FLASH_MMAP; // Direct fast read if < 1Mb
+	  // copy the bytes reading a word from flash at a time
+	  uint8_t *dest = buf;
+	  uint32_t bytes = *(uint32_t*)(addr & ~3);
+	  while (len-- > 0) {
+		if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
+		*dest++ = ((uint8_t*)&bytes)[addr++ & 3];
+	  }
+   } else { // Above 1Mb read...
+	//os_printf("jshFlashRead: above 1mb!");
+	SpiFlashOpResult res;
+	res = spi_flash_read(addr, buf, len);
+    if (res != SPI_FLASH_RESULT_OK)
+      os_printf("ESP8266: jshFlashRead %s\n",
+    res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
+   }
 }
 
 
@@ -1186,8 +1204,9 @@ void jshFlashWrite(
   //os_printf("jshFlashWrite: src=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
-  if (addr >= FLASH_MAX) return;
-  if (addr + len > FLASH_MAX) len = FLASH_MAX - addr;
+  uint32_t flash_max=jshFlashMax();
+  if (addr >= flash_max) return;
+  if (addr + len > flash_max) len = flash_max - addr;
 
   // since things are guaranteed to be aligned we can just call the SDK :-)
   SpiFlashOpResult res;
@@ -1209,10 +1228,44 @@ bool jshFlashGetPage(
   ) {
   //os_printf("ESP8266: jshFlashGetPage: addr=0x%lx, startAddr=%p, pageSize=%p\n", addr, startAddr, pageSize);
 
-  if (addr >= FLASH_MAX) return false;
+  if (addr >= jshFlashMax()) return false;
   *startAddr = addr & ~(FLASH_PAGE-1);
   *pageSize = FLASH_PAGE;
   return true;
+}
+
+static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
+}
+
+JsVar *jshFlashGetFree() {
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+  // Area reserved for EEPROM
+  addFlashArea(jsFreeFlash, 0x77000, 0x1000);
+
+  // need 1MB of flash to have more space...
+  extern uint16_t espFlashKB; // in user_main,c
+  if (espFlashKB > 512) {
+    addFlashArea(jsFreeFlash, 0x80000, 0x1000);
+    if (espFlashKB > 1024) {
+      addFlashArea(jsFreeFlash, 0xf7000, 0x9000);
+	} else {
+	  addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
+    }
+	if (espFlashKB == 2048) {
+	  addFlashArea(jsFreeFlash, 0x100000, 0x100000-0x4000);
+    }
+	if (espFlashKB == 4096) {
+	  addFlashArea(jsFreeFlash, 0x100000, 0x300000-0x4000);
+    }
+  }
+
+  return jsFreeFlash;
 }
 
 
@@ -1229,6 +1282,16 @@ void jshFlashErasePage(
   if (res != SPI_FLASH_RESULT_OK)
     os_printf("ESP8266: jshFlashErase%s\n",
       res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  int newFreq = jsvGetInteger(options);
+  if (newFreq != 80 && newFreq != 160) {
+    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 160.");
+    return 0;
+  }
+  system_update_cpu_freq(newFreq);
+  return system_get_cpu_freq()*1000000;
 }
 
 

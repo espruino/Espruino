@@ -86,7 +86,7 @@ bool jsvIterateCallback(
     }
     jsvIteratorFree(&it);
   } else {
-    jsWarn("Expecting a number or something iterable, got %t", data);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting a number or something iterable, got %t", data);
     ok = false;
   }
   return ok;

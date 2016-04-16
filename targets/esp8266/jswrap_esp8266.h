@@ -41,4 +41,6 @@ void   jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData);
 
 uint32_t crc32(uint8_t *buf, uint32_t len);
 
+void   jswrap_ESP8266_deepSleep(JsVar *jsMicros);
+
 #endif /* TARGETS_ESP8266_JSWRAP_ESP8266_H_ */

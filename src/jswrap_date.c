@@ -397,37 +397,37 @@ JsVar *jswrap_date_toUTCString(JsVar *parent) {
   return jsvVarPrintf("%s, %d %s %d %02d:%02d:%02d GMT", &DAYNAMES[date.dow*4], date.day, &MONTHNAMES[date.month*4], date.year, time.hour, time.min, time.sec);
 }
 
-static JsVarInt _parse_int(JsLex *lex) {
-  return (int)stringToIntWithRadix(jslGetTokenValueAsString(lex), 10, 0);
+static JsVarInt _parse_int() {
+  return (int)stringToIntWithRadix(jslGetTokenValueAsString(), 10, 0);
 }
 
-static bool _parse_time(JsLex *lex, TimeInDay *time, int initialChars) {
-  time->hour = (int)stringToIntWithRadix(&jslGetTokenValueAsString(lex)[initialChars], 10, 0);
-  jslGetNextToken(lex);
+static bool _parse_time(TimeInDay *time, int initialChars) {
+  time->hour = (int)stringToIntWithRadix(&jslGetTokenValueAsString()[initialChars], 10, 0);
+  jslGetNextToken();
   if (lex->tk==':') {
-    jslGetNextToken(lex);
+    jslGetNextToken();
     if (lex->tk == LEX_INT) {
-      time->min = _parse_int(lex);
-      jslGetNextToken(lex);
+      time->min = _parse_int();
+      jslGetNextToken();
       if (lex->tk==':') {
-        jslGetNextToken(lex);
+        jslGetNextToken();
         if (lex->tk == LEX_INT || lex->tk == LEX_FLOAT) {
-          JsVarFloat f = stringToFloat(jslGetTokenValueAsString(lex));
+          JsVarFloat f = stringToFloat(jslGetTokenValueAsString());
           time->sec = (int)f;
           time->ms = (int)(f*1000) % 1000;
-          jslGetNextToken(lex);
-          if (lex->tk == LEX_ID && strcmp(jslGetTokenValueAsString(lex),"GMT")==0) {
-            jslGetNextToken(lex);
+          jslGetNextToken();
+          if (lex->tk == LEX_ID && strcmp(jslGetTokenValueAsString(),"GMT")==0) {
+            jslGetNextToken();
           }
           if (lex->tk == '+' || lex->tk == '-') {
             int sign = lex->tk == '+' ? 1 : -1;
-            jslGetNextToken(lex);
+            jslGetNextToken();
             if (lex->tk == LEX_INT) {
-              int i = _parse_int(lex);
+              int i = _parse_int();
               // correct the fact that it's HHMM and turn it into just minutes
               i = (i%100) + ((i/100)*60);
               time->zone = i*sign;
-              jslGetNextToken(lex);
+              jslGetNextToken();
             }
           }
 
@@ -463,44 +463,45 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
   CalendarDate date = getCalendarDate(0);
 
   JsLex lex;
-  jslInit(&lex, str);
+  JsLex *oldLex = jslSetLex(&lex);
+  jslInit(str);
 
   if (lex.tk == LEX_ID) {
-    date.month = getMonth(jslGetTokenValueAsString(&lex));
-    date.dow = getDay(jslGetTokenValueAsString(&lex));
+    date.month = getMonth(jslGetTokenValueAsString());
+    date.dow = getDay(jslGetTokenValueAsString());
     if (date.month>=0) {
       // Aug 9, 1995
-      jslGetNextToken(&lex);
+      jslGetNextToken();
       if (lex.tk == LEX_INT) {
-        date.day = _parse_int(&lex);
-        jslGetNextToken(&lex);
+        date.day = _parse_int();
+        jslGetNextToken();
         if (lex.tk==',') {
-          jslGetNextToken(&lex);
+          jslGetNextToken();
           if (lex.tk == LEX_INT) {
-            date.year = _parse_int(&lex);
-            jslGetNextToken(&lex);
+            date.year = _parse_int();
+            jslGetNextToken();
             if (lex.tk == LEX_INT) {
-              _parse_time(&lex, &time, 0);
+              _parse_time(&time, 0);
             }
           }
         }
       }
     } else if (date.dow>=0) {
       date.month = 0;
-      jslGetNextToken(&lex);
+      jslGetNextToken();
       if (lex.tk==',') {
-        jslGetNextToken(&lex);
+        jslGetNextToken();
         if (lex.tk == LEX_INT) {
-          date.day = _parse_int(&lex);
-          jslGetNextToken(&lex);
-          if (lex.tk == LEX_ID && getMonth(jslGetTokenValueAsString(&lex))>=0) {
-            date.month = getMonth(jslGetTokenValueAsString(&lex));
-            jslGetNextToken(&lex);
+          date.day = _parse_int();
+          jslGetNextToken();
+          if (lex.tk == LEX_ID && getMonth(jslGetTokenValueAsString())>=0) {
+            date.month = getMonth(jslGetTokenValueAsString());
+            jslGetNextToken();
             if (lex.tk == LEX_INT) {
-              date.year = _parse_int(&lex);
-              jslGetNextToken(&lex);
+              date.year = _parse_int();
+              jslGetNextToken();
               if (lex.tk == LEX_INT) {
-                _parse_time(&lex, &time, 0);
+                _parse_time(&time, 0);
               }
             }
           }
@@ -512,20 +513,20 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
     }
   } else if (lex.tk == LEX_INT) {
     // assume 2011-10-10T14:48:00 format
-    date.year = _parse_int(&lex);
-    jslGetNextToken(&lex);
+    date.year = _parse_int();
+    jslGetNextToken();
     if (lex.tk=='-') {
-      jslGetNextToken(&lex);
+      jslGetNextToken();
       if (lex.tk == LEX_INT) {
-        date.month = _parse_int(&lex) - 1;
-        jslGetNextToken(&lex);
+        date.month = _parse_int() - 1;
+        jslGetNextToken();
         if (lex.tk=='-') {
-          jslGetNextToken(&lex);
+          jslGetNextToken();
           if (lex.tk == LEX_INT) {
-            date.day = _parse_int(&lex);
-            jslGetNextToken(&lex);
-            if (lex.tk == LEX_ID && jslGetTokenValueAsString(&lex)[0]=='T') {
-              _parse_time(&lex, &time, 1);
+            date.day = _parse_int();
+            jslGetNextToken();
+            if (lex.tk == LEX_ID && jslGetTokenValueAsString()[0]=='T') {
+              _parse_time(&time, 1);
             }
           }
         }
@@ -533,7 +534,8 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
     }
   }
 
-  jslKill(&lex);
+  jslKill();
+  jslSetLex(oldLex);
   time.daysSinceEpoch = fromCalenderDate(&date);
   return fromTimeInDay(&time);
 }

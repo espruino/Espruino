@@ -16,6 +16,7 @@
 #include "jswrap_espruino.h"
 #include "jswrap_math.h"
 #include "jswrap_arraybuffer.h"
+#include "jswrap_flash.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
 #include "jstimer.h"
@@ -80,9 +81,9 @@ While this is implemented on Espruino boards, it may not be implemented on other
  */
 
 
-int nativeCallGetCType(JsLex *lex) {
+int nativeCallGetCType() {
   if (lex->tk == LEX_R_VOID) {
-    jslMatch(lex, LEX_R_VOID);
+    jslMatch(LEX_R_VOID);
     return JSWAT_VOID;
   }
   if (lex->tk == LEX_ID) {
@@ -93,7 +94,7 @@ int nativeCallGetCType(JsLex *lex) {
     if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
     if (strcmp(name,"Pin")==0) t=JSWAT_PIN;
     if (strcmp(name,"JsVar")==0) t=JSWAT_JSVAR;
-    jslMatch(lex, LEX_ID);
+    jslMatch(LEX_ID);
     return t;
   }
   return -1; // unknown
@@ -128,23 +129,25 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data) 
     // Nothing to do
   } else if (jsvIsString(signature)) {
     JsLex lex;
-    jslInit(&lex, signature);
+    JsLex *oldLex = jslSetLex(&lex);
+    jslInit(signature);
     int argType;
     bool ok = true;
     int argNumber = 0;
-    argType = nativeCallGetCType(&lex);
+    argType = nativeCallGetCType();
     if (argType>=0) argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
     else ok = false;
-    if (ok) ok = jslMatch(&lex, '(');
+    if (ok) ok = jslMatch('(');
     while (ok && lex.tk!=LEX_EOF && lex.tk!=')') {
-      argType = nativeCallGetCType(&lex);
+      argType = nativeCallGetCType();
       if (argType>=0) {
         argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
-        if (lex.tk!=')') ok = jslMatch(&lex, ',');
+        if (lex.tk!=')') ok = jslMatch(',');
       } else ok = false;
     }
-    if (ok) ok = jslMatch(&lex, ')');
-    jslKill(&lex);
+    if (ok) ok = jslMatch(')');
+    jslKill();
+    jslSetLex(oldLex);
     if (argTypes & (unsigned int)~0xFFFF)
       ok = false;
     if (!ok) {
@@ -601,13 +604,14 @@ Get and reset the error flags. Returns an array that can contain:
 `'MEMORY'`: Espruino ran out of memory and was unable to allocate some data that it needed.
  */
 JsVar *jswrap_espruino_getErrorFlags() {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
   if (jsErrorFlags&JSERR_RX_FIFO_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("FIFO_FULL"));
   if (jsErrorFlags&JSERR_BUFFER_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("BUFFER_FULL"));
   if (jsErrorFlags&JSERR_CALLBACK) jsvArrayPushAndUnLock(arr, jsvNewFromString("CALLBACK"));
   if (jsErrorFlags&JSERR_LOW_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("LOW_MEMORY"));
   if (jsErrorFlags&JSERR_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY"));
+  if (jsErrorFlags&JSERR_MEMORY_BUSY) jsvArrayPushAndUnLock(arr, jsvNewFromString("JSERR_MEMORY_BUSY"));
   jsErrorFlags = JSERR_NONE;
   return arr;
 }
@@ -719,17 +723,97 @@ and Espruino Pico) at the moment.
 */
 JsVar *jswrap_espruino_memoryArea(int addr, int len) {
   if (len<0) return 0;
-  JsVar *v = jsvNewWithFlags(JSV_NATIVE_STRING);
   if (len>65535) {
     jsExceptionHere(JSET_ERROR, "Memory area too long! Max is 65535 bytes\n");
     return 0;
   }
+  JsVar *v = jsvNewWithFlags(JSV_NATIVE_STRING);
+  if (!v) return 0;
   v->varData.nativeStr.ptr = (char*)addr;
   v->varData.nativeStr.len = (uint16_t)len;
   return v;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "setBootCode",
+  "generate" : "jswrap_espruino_setBootCode",
+  "params" : [
+    ["code","JsVar","The code to execute (as a string)"],
+    ["alwaysExec","bool","Whether to always execute the code (even after a reset)"]
+  ]
+}
+This writes JavaScript code into Espruino's flash memory, to be executed on
+startup. It differs from `save()` in that `save()` saves the whole state of
+the interpreter, whereas this just saves JS code that is executed at boot.
 
+Code will be executed before `onInit()` and `E.on('init', ...)`.
+
+If `alwaysExec` is `true`, the code will be executed even after a call to
+`reset()`. This is useful if you're making something that you want to
+program, but you want some code that is always built in (for instance
+setting up a display or keyboard).
+
+To remove boot code that has been saved previously, use `E.setBootCode("")`
+
+**Note:** this removes any code that was previously saved with `save()`
+*/
+void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec) {
+  JsvSaveFlashFlags flags = 0;
+  if (alwaysExec) flags |= SFF_BOOT_CODE_ALWAYS;
+  jsfSaveToFlash(flags, code);
+}
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "setClock",
+  "generate" : "jswrap_espruino_setClock",
+  "params" : [
+    ["options","JsVar","Platform-specific options for setting clock speed"]
+  ],
+  "return" : ["int","The actual frequency the clock has been set to"]
+}
+This sets the clock frequency of Espruino's processor. It will return `0` if
+it is unimplemented or the clock speed cannot be changed.
+
+**Note:** On pretty much all boards, UART, SPI, I2C, PWM, etc will change
+frequency and will need setting up again in order to work.
+
+### STM32F4
+
+Options is of the form `{ M: int, N: int, P: int, Q: int }` - see the 'Clocks'
+section of the microcontroller's reference manual for what these mean.
+
+* System clock = 8Mhz * N / ( M * P )
+* USB clock (should be 48Mhz) = 8Mhz * N / ( M * Q )
+
+Optional arguments are:
+
+* `latency` - flash latency from 0..15
+* `PCLK1` - Peripheral clock 1 divisor (default: 2)
+* `PCLK2` - Peripheral clock 2 divisor (default: 4)
+
+The Pico's default is `{M:8, N:336, P:4, Q:7, PCLK1:2, PCLK2:4}`, use
+`{M:8, N:336, P:8, Q:7, PCLK:1, PCLK2:2}` to halve the system clock speed
+while keeping the peripherals running at the same speed (omitting PCLK1/2
+will lead to the peripherals changing speed too).
+
+On STM32F4 boards (eg. Espruino Pico), the USB clock needs to be kept at 48Mhz
+or USB will fail to work. You'll also experience USB instability if the processor
+clock falls much below 48Mhz.
+
+### ESP8266
+
+Just specify an integer value, either 80 or 160 (for 80 or 160Mhz)
+
+*/
+int jswrap_espruino_setClock(JsVar *options) {
+  return jshSetSystemClock(options);
+}
 
 /*JSON{
   "type" : "staticmethod",
@@ -814,14 +898,14 @@ See http://www.espruino.com/Internals for more information
  */
 JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
   if (depth>0 && jsvHasChildren(v)) {
-    JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+    JsVar *arr = jsvNewEmptyArray();
     if (!arr) return 0;
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, v);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *key = jsvObjectIteratorGetKey(&it);
       JsVar *val = jsvSkipName(key);
-      JsVar *item = jsvNewWithFlags(JSV_OBJECT);
+      JsVar *item = jsvNewObject();
       if (item) {
         jsvObjectSetChildAndUnLock(item, "name", jsvAsString(key, false));
         jsvObjectSetChildAndUnLock(item, "size", jswrap_espruino_getSizeOf(key, 0));
@@ -1067,4 +1151,5 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 
   return USBD_HID_SendReport(data, l) == USBD_OK;
 }
+
 #endif

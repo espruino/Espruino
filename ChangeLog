@@ -1,3 +1,20 @@
+     1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
+            Fix lock 'leak' in Telnet when Telnet is turned off
+            Create errors for unterminated expressions (fix #814)
+            Remove Espruino's built-in strcpy/etc
+            Remove Espruino's built-in maths
+            Add basic Taylor series sin and atan for when we're trying to save memory  
+            Refactoring to use global var for lexer - save some memory and increase parse speed
+            Add .removeListener (fix #30)
+            Added better micro:bit `show()` that works well with Graphics
+            Add `require("Flash").getFree()` as multiplatform way to find free flash pages (fix #815)
+            Add the ability to set clock frequencies on STM32F4 chips (like Pico) with E.setClock (fix #52)
+            `jsvEvaluate` now uses memory area for execution of JS strings (fix #817)
+            Add `E.setBootCode` to allow JS scripts to be run without being in RAM (fix #740)
+            'Expecting a number or something iterable, got X' changed to exception rather than warning (gives stack trace)
+            Drop '.init' and '.fini' symbols, allowing GCC 5.x compilation on STM32
+            Ensure that pinMode/digitalWrite is re-constituted properly by dump() and save() (fix #833) 
+
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
             Fix issue where GC'd objects referencing non-GC'd data wouldn't unreference it

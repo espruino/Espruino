@@ -45,7 +45,8 @@ JsVar jsVars[JSVAR_CACHE_SIZE];
 unsigned int jsVarsSize = JSVAR_CACHE_SIZE;
 #endif
 
-JsVarRef jsVarFirstEmpty; ///< reference of first unused variable (variables are in a linked list)
+volatile JsVarRef jsVarFirstEmpty; ///< reference of first unused variable (variables are in a linked list)
+volatile bool isMemoryBusy; ///< Are we doing garbage collection or similar, so can't access memory?
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
@@ -161,6 +162,8 @@ void jsvSetMaxVarsUsed(unsigned int size) {
 
 // maps the empty variables in...
 void jsvCreateEmptyVarList() {
+  assert(!isMemoryBusy);
+  isMemoryBusy = true;
   jsVarFirstEmpty = 0;
   JsVar firstVar; // temporary var to simplify code in the loop below
   jsvSetNextSibling(&firstVar, 0);
@@ -179,12 +182,15 @@ void jsvCreateEmptyVarList() {
   }
   jsvSetNextSibling(lastEmpty, 0);
   jsVarFirstEmpty = jsvGetNextSibling(&firstVar);
+  isMemoryBusy = false;
 }
 
 /* Removes the empty variable counter, cleaving clear runs of 0s
  where no data resides. This helps if compressing the variables
  for storage. */
 void jsvClearEmptyVarList() {
+  assert(!isMemoryBusy);
+  isMemoryBusy = true;
   jsVarFirstEmpty = 0;
   JsVarRef i;
   for (i=1;i<=jsVarsSize;i++) {
@@ -197,6 +203,7 @@ void jsvClearEmptyVarList() {
       i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
     }
   }
+  isMemoryBusy = false;
 }
 
 void jsvSoftInit() {
@@ -281,6 +288,8 @@ unsigned int jsvGetMemoryTotal() {
 /// Try and allocate more memory - only works if RESIZABLE_JSVARS is defined
 void jsvSetMemoryTotal(unsigned int jsNewVarCount) {
 #ifdef RESIZABLE_JSVARS
+  assert(!isMemoryBusy);
+  isMemoryBusy = true;
   if (jsNewVarCount <= jsVarsSize) return; // never allow us to have less!
   // When resizing, we just allocate a bunch more
   unsigned int oldSize = jsVarsSize;
@@ -298,6 +307,7 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount) {
   assert(!jsVarFirstEmpty);
   jsVarFirstEmpty = jsvInitJsVars(oldSize+1, jsVarsSize-oldSize);
   // jsiConsolePrintf("Resized memory from %d blocks to %d\n", oldBlockCount, newBlockCount);
+  isMemoryBusy = false;
 #else
   NOT_USED(jsNewVarCount);
   assert(0);
@@ -367,24 +377,40 @@ void jsvResetVariable(JsVar *v, JsVarFlags flags) {
 }
 
 JsVar *jsvNewWithFlags(JsVarFlags flags) {
+  if (isMemoryBusy) {
+    jsErrorFlags |= JSERR_MEMORY_BUSY;
+    return 0;
+  }
   if (jsVarFirstEmpty!=0) {
-    assert(jsvGetAddressOf(jsVarFirstEmpty)->flags == JSV_UNUSED);
     jshInterruptOff(); // to allow this to be used from an IRQ
     JsVar *v = jsvGetAddressOf(jsVarFirstEmpty); // jsvResetVariable will lock
-    jsVarFirstEmpty = jsvGetNextSibling(v); // move our reference to the next in the free list
+    jsVarFirstEmpty = jsvGetNextSibling(v); // move our reference to the next in the fr
     jshInterruptOn();
+    assert(v->flags == JSV_UNUSED);
+    // Cope with IRQs/multi-threading when getting a new free variable
+ /*   JsVarRef empty;
+    JsVarRef next;
+    JsVar *v;
+    do {
+      empty = jsVarFirstEmpty;
+      v = jsvGetAddressOf(empty); // jsvResetVariable will lock
+      next = jsvGetNextSibling(v); // move our reference to the next in the free list
+    } while (!__sync_bool_compare_and_swap(&jsVarFirstEmpty, empty, next));
+    assert(v->flags == JSV_UNUSED);*/
     jsvResetVariable(v, flags); // setup variable, and add one lock
     // return pointer
     return v;
   }
   jsErrorFlags |= JSERR_LOW_MEMORY;
   /* we don't have memory - second last hope - run garbage collector */
-  if (jsvGarbageCollect())
+  if (jsvGarbageCollect()) {
     return jsvNewWithFlags(flags); // if it freed something, continue
+  }
   /* we don't have memory - last hope - ask jsInteractive to try and free some it
    may have kicking around */
-  if (jsiFreeMoreMemory())
+  if (jsiFreeMoreMemory()) {
     return jsvNewWithFlags(flags);
+  }
   /* We couldn't claim any more memory by Garbage collecting... */
 #ifdef RESIZABLE_JSVARS
   jsvSetMemoryTotal(jsVarsSize*2);
@@ -628,6 +654,11 @@ JsVarRef jsvUnRefRef(JsVarRef ref) {
 }
 
 JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
+  if (isMemoryBusy) {
+    jsErrorFlags |= JSERR_MEMORY_BUSY;
+    return 0;
+  }
+  isMemoryBusy = true;
   // Work out how many blocks we need. One for the header, plus some for the characters
   size_t blocks = 1 + ((byteLength+sizeof(JsVar)-1) / sizeof(JsVar));
   // Now try and find them
@@ -695,7 +726,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
   }
   jsvSetNextSibling(lastEmpty, 0);
   jsVarFirstEmpty = jsvGetNextSibling(&firstVar);
-
+  isMemoryBusy = false;
   // Return whatever we had (0 if we couldn't manage it)
   return flatString;
 }
@@ -703,10 +734,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
 JsVar *jsvNewFromString(const char *str) {
   // Create a var
   JsVar *first = jsvNewWithFlags(JSV_STRING_0);
-  if (!first) {
-    jsWarn("Unable to create string as not enough memory");
-    return 0;
-  }
+  if (!first) return 0; // out of memory
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
   JsVar *var = jsvLockAgain(first);
@@ -725,7 +753,7 @@ JsVar *jsvNewFromString(const char *str) {
     if (*str) {
       JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
       if (!next) {
-        jsWarn("Truncating string as not enough memory");
+        // Truncating string as not enough memory
         jsvUnLock(var);
         return first;
       }
@@ -887,9 +915,17 @@ JsVar *jsvNewFromPin(int pin) {
   return v;
 }
 
+JsVar *jsvNewObject() {
+  return jsvNewWithFlags(JSV_OBJECT);
+}
+
+JsVar *jsvNewEmptyArray() {
+  return jsvNewWithFlags(JSV_ARRAY);
+}
+
 /// Create an array containing the given elements
 JsVar *jsvNewArray(JsVar **elements, int elementCount) {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
   int i;
   for (i=0;i<elementCount;i++)
@@ -1706,7 +1742,7 @@ JsVar *jsvArrayBufferGetFromName(JsVar *name) {
 
 
 JsVar *jsvGetFunctionArgumentLength(JsVar *functionScope) {
-  JsVar *args = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *args = jsvNewEmptyArray();
   if (!args) return 0; // out of memory
 
   JsvObjectIterator it;
@@ -3115,6 +3151,8 @@ static void jsvGarbageCollectMarkUsed(JsVar *var) {
 
 /** Run a garbage collection sweep - return true if things have been freed */
 bool jsvGarbageCollect() {
+  if (isMemoryBusy) return false;
+  isMemoryBusy = true;
   JsVarRef i;
   // clear garbage collect flags
   for (i=1;i<=jsVarsSize;i++)  {
@@ -3216,7 +3254,7 @@ bool jsvGarbageCollect() {
    * our fake 'firstVar' variable */
   jsvSetNextSibling(lastEmpty, 0);
   jsVarFirstEmpty = jsvGetNextSibling(&firstVar);
-
+  isMemoryBusy = false;
   return freedSomething;
 }
 

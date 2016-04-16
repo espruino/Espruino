@@ -55,7 +55,7 @@ JsVar *jswrap_object_constructor(JsVar *value) {
     return jsvLockAgain(value);
   const char *objName = jswGetBasicObjectName(value);
   JsVar *funcName = objName ? jspGetNamedVariable(objName) : 0;
-  if (!funcName) return jsvNewWithFlags(JSV_OBJECT);
+  if (!funcName) return jsvNewObject();
   JsVar *func = jsvSkipName(funcName);
   JsVar *result = jspeFunctionCall(func, funcName, 0, false, 1, &value);
   jsvUnLock2(funcName, func);
@@ -254,7 +254,7 @@ JsVar *jswrap_object_keys_or_property_names(
     bool includeNonEnumerable,  ///< include 'hidden' items
     bool includePrototype ///< include items for the prototype too (for autocomplete)
     ) {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
 
   jswrap_object_keys_or_property_names_cb(obj, includeNonEnumerable, includePrototype, (void (*)(void *, JsVar *))jsvArrayAddUnique, arr);
@@ -282,7 +282,7 @@ JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject) {
   if (jsvIsObject(propertiesObject)) {
     jsWarn("propertiesObject is not supported yet");
   }
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (!obj) return 0;
   if (jsvIsObject(proto))
     jsvObjectSetChild(obj, JSPARSE_INHERITS_VAR, proto);
@@ -314,7 +314,7 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
   assert(varName); // we had it! (apparently)
   if (!varName) return 0;
 
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (!obj) {
     jsvUnLock(varName);
     return 0;
@@ -515,9 +515,9 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     jsWarn("Second argument to EventEmitter.on(..) must be a function or a String (containing code)");
     return;
   }
-  JsVar *eventName = jsvNewFromString(JS_EVENT_PREFIX);
+
+  JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
   if (!eventName) return; // no memory
-  jsvAppendStringVarComplete(eventName, event);
 
   JsVar *eventList = jsvFindChildFromVar(parent, eventName, true);
   jsvUnLock(eventName);
@@ -531,7 +531,7 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
       jsvArrayPush(eventListeners, listener);
     } else {
       // not an array - we need to make it an array
-      JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+      JsVar *arr = jsvNewEmptyArray();
       jsvArrayPush(arr, eventListeners);
       jsvArrayPush(arr, listener);
       jsvSetValueOfName(eventList, arr);
@@ -572,9 +572,8 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
     jsWarn("First argument to EventEmitter.emit(..) must be a string");
     return;
   }
-  JsVar *eventName = jsvNewFromString(JS_EVENT_PREFIX);
+  JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
   if (!eventName) return; // no memory
-  jsvAppendStringVarComplete(eventName, event);
 
   // extract data
   const unsigned int MAX_ARGS = 4;
@@ -605,6 +604,59 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
 /*JSON{
   "type" : "method",
   "class" : "Object",
+  "name" : "removeListener",
+  "generate" : "jswrap_object_removeListener",
+  "params" : [
+    ["event","JsVar","The name of the event, for instance 'data'"],
+    ["listener","JsVar","The listener to remove"]
+  ]
+}
+Removes the specified event listener.
+
+```
+function foo(d) {
+  console.log(d);
+}
+Serial1.on("data", foo);
+Serial1.removeListener("data", foo);
+```
+ */
+void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) {
+  if (!jsvHasChildren(parent)) {
+    jsWarn("Parent must be an object - not a String, Integer, etc.");
+    return;
+  }
+  if (jsvIsString(event)) {
+    // remove the whole child containing listeners
+    JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
+    if (!eventName) return; // no memory
+    JsVar *eventListName = jsvFindChildFromVar(parent, eventName, true);
+    jsvUnLock(eventName);
+    JsVar *eventList = jsvSkipName(eventListName);
+    if (eventList) {
+      if (eventList == callback) {
+        // there's no array, it was a single item
+        jsvRemoveChild(parent, eventListName);
+      } else if (jsvIsArray(eventList)) {
+        // it's an array, search for the index
+        JsVar *idx = jsvGetArrayIndexOf(eventList, callback, true);
+        if (idx) {
+          jsvRemoveChild(eventList, idx);
+          jsvUnLock(idx);
+        }
+      }
+      jsvUnLock(eventList);
+    }
+    jsvUnLock(eventListName);
+  } else {
+    jsWarn("First argument to EventEmitter.removeListener(..) must be a string");
+    return;
+  }
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Object",
   "name" : "removeAllListeners",
   "generate" : "jswrap_object_removeAllListeners",
   "params" : [
@@ -620,9 +672,8 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   }
   if (jsvIsString(event)) {
     // remove the whole child containing listeners
-    JsVar *eventName = jsvNewFromString(JS_EVENT_PREFIX);
+    JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
     if (!eventName) return; // no memory
-    jsvAppendStringVarComplete(eventName, event);
 
     JsVar *eventList = jsvFindChildFromVar(parent, eventName, true);
     jsvUnLock(eventName);

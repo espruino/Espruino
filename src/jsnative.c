@@ -89,7 +89,7 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
       break;
     }
     case JSWAT_ARGUMENT_ARRAY: { // a JsVar array containing all subsequent arguments
-      argsArray = jsvNewWithFlags(JSV_ARRAY);
+      argsArray = jsvNewEmptyArray();
       if (argsArray) {
         // push everything into the array
         while (paramNumber<=paramCount) {

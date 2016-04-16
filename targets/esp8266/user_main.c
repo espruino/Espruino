@@ -20,7 +20,6 @@
 #include <uart.h>
 #include <espmissingincludes.h>
 
-//#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
 typedef long long int64_t;
 
@@ -123,7 +122,6 @@ void jshPrintBanner() {
   os_printf("Espruino "JS_VERSION"\nFlash map %s, manuf 0x%lx chip 0x%lx\n",
       flash_maps[map], fid & 0xff, chip);
   jsiConsolePrintf(
-    "WARNING: the esp8266 port is in beta!\n"
     "Flash map %s, manuf 0x%x chip 0x%x\n",
     flash_maps[map], fid & 0xff, chip);
   if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4)) {

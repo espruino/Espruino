@@ -88,8 +88,6 @@ void jsiConsolePrintString_int(const char *str);
 #endif
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVar(JsVar *v);
-/// Transmit a position in the lexer (for reporting errors)
-void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos);
 /// If the input line was shown in the console, remove it
 void jsiConsoleRemoveInputLine();
 /// Change what is in the inputline into something else (and update the console)

@@ -17,26 +17,13 @@
 #include "platform_config.h"
 
 #include <stddef.h>
-#ifndef FAKE_STDLIB
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
-#endif
 #include <stdarg.h> // for va_args
 #include <stdint.h>
 #include <stdbool.h>
 
-#if defined(LINUX) || defined(ARDUINO_AVR)
 #include <math.h>
-#else
-// these are in maths, but are used all over the place
-extern int isnan ( double );
-extern int isfinite ( double );
-#define NAN (((JsVarFloat)0)/(JsVarFloat)0)
-#define INFINITY (((JsVarFloat)1)/(JsVarFloat)0)
-#endif
-
-
 
 #ifndef BUILDNUMBER
 #define JS_VERSION "1v85"
@@ -50,16 +37,19 @@ extern int isfinite ( double );
   OPT - potential for speed optimisation
 */
 
-#if defined(ARM) || defined(AVR)
+#ifndef alloca
 #define alloca(x) __builtin_alloca(x)
 #endif
 
 #if defined(ESP8266)
 
+// For the esp8266 we need the posibility to store arrays in flash, because mem is so small
+#define IN_FLASH_MEMORY   __attribute__((section(".irom.literal"))) __attribute__((aligned(4)))
+
 /** Place constant strings into flash when we can in order to save RAM space. Strings in flash
     must be accessed with word reads on aligned boundaries, so we'll have to copy them before
     regular use. */
-#define FLASH_STR(name, x) static char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
+#define FLASH_STR(name, x) static const char name[] IN_FLASH_MEMORY = x
 
 /// Get the length of a string in flash
 size_t flash_strlen(const char *str);
@@ -74,15 +64,23 @@ int flash_strcmp(const char *mem, const char *flash);
     On ESP8266 you have to read flash in 32 bit chunks, so force a 32 bit read
     and extract just the 8 bits we want */
 #define READ_FLASH_UINT8(ptr) ({ uint32_t __p = (uint32_t)(char*)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); ((uint8_t*)&__d)[__p & 3]; })
+/** Read a uint16_t from this pointer, which could be in RAM or Flash. */
+#define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )
 
 /** Read a uint16_t from this pointer, assumes that the target is 16-bit aligned. */
 #define READ_FLASH_UINT16(ptr) ({ uint32_t __p = (uint32_t)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); (uint16_t)(__p&2 ? __d>>16 : __d); })
 
 #else
 
+// On non-ESP8266, const stuff goes in flash memory anyway
+#define IN_FLASH_MEMORY
+
 /** Read a uint8_t from this pointer, which could be in RAM or Flash.
     On ARM this is just a standard read, it's different on ESP8266 */
 #define READ_FLASH_UINT8(ptr) (*(uint8_t*)(ptr))
+
+/** Read a uint16_t from this pointer, which could be in RAM or Flash.
+    On ARM this is just a standard read, it's different on ESP8266 */
 #define READ_FLASH_UINT16(ptr) (*(uint16_t*)(ptr))
 
 #endif
@@ -96,6 +94,8 @@ int flash_strcmp(const char *mem, const char *flash);
 #else
 #define CALLED_FROM_INTERRUPT
 #endif
+
+
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
@@ -299,10 +299,18 @@ typedef int64_t JsSysTime;
    ((X)==32768)?15:10000/*error*/)
 
 // To handle variable size bit fields
-#define BITFIELD_DECL(BITFIELD, N) uint32_t BITFIELD[(N+31)/32]
+#define BITFIELD_DECL(BITFIELD, N) uint32_t BITFIELD[((N)+31)/32]
 #define BITFIELD_GET(BITFIELD, N) ((BITFIELD[(N)>>5] >> ((N)&31))&1)
 #define BITFIELD_SET(BITFIELD, N, VALUE) (BITFIELD[(N)>>5] = (BITFIELD[(N)>>5]& (uint32_t)~(1 << ((N)&31))) | (uint32_t)((VALUE)?(1 << ((N)&31)):0)  )
 #define BITFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
+
+// Array of 4 bit values - returns unsigned
+/*// UNTESTED
+#define NIBBLEFIELD_DECL(BITFIELD, N) uint16_t BITFIELD[((N)+1)/2]
+#define NIBBLEFIELD_GET(BITFIELD, N) ((BITFIELD[(N)>>1] >> (((N)&1)*4)) & 15)
+#define NIBBLEFIELD_SET(BITFIELD, N, VALUE) (BITFIELD[(N)>>1] = (BITFIELD[(N)>>1]& (uint32_t)~(15 << (((N)&1)*4))) | (uint32_t)(((VALUE)&15) << (((N)&1)*4))  )
+#define NIBBLEFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
+*/
 
 
 static inline bool isWhitespace(char ch) {
@@ -353,7 +361,6 @@ typedef enum {
   JSET_REFERENCEERROR
 } JsExceptionType;
 
-void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsAssertFail(const char *file, int line, const char *expr);
 
 #ifndef FLASH_STR
@@ -383,6 +390,7 @@ void jsWarn_flash(const char *fmt, ...);
 #endif
 
 // ------------
+/// Error flags for internal errors - update jswrap_espruino_getErrorFlags if you add to this
 typedef enum {
   JSERR_NONE = 0,
   JSERR_RX_FIFO_FULL = 1, ///< The IO buffer (ioBuffer in jsdevices.c) is full and data was lost. Happens for character data and watch events
@@ -390,24 +398,12 @@ typedef enum {
   JSERR_CALLBACK = 4, ///< A callback (on data/watch/timer) caused an error and was removed
   JSERR_LOW_MEMORY = 8, ///< Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history
   JSERR_MEMORY = 16, ///< Espruino ran out of memory and was unable to allocate some data that it needed.
+  JSERR_MEMORY_BUSY = 32, ///< Espruino was busy doing something with memory (eg. garbage collection) so an IRQ couldn't allocate memory
 } PACKED_FLAGS JsErrorFlags;
 
 /** Error flags for things that we don't really want to report on the console,
  * but which are good to know about */
 extern JsErrorFlags jsErrorFlags;
-
-
-#ifdef FAKE_STDLIB
-char *strncat(char *dst, const char *src, size_t c);
-char *strncpy(char *dst, const char *src, size_t c);
-size_t strlen(const char *s);
-int strcmp(const char *a, const char *b);
-void *memcpy(void *dst, const void *src, size_t size);
-void *memset(void *dst, int c, size_t size);
-#define RAND_MAX (0x7FFFFFFFU) // needs to be unsigned!
-int rand();
-void srand(unsigned int seed);
-#endif
 
 JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix);
 JsVarFloat stringToFloat(const char *str);
