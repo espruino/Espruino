@@ -82,7 +82,7 @@ static void printReason() {
   }
   os_printf("\n");
   //print_stack(reg->pc, sp, 0x3fffffb0);
-  print_stack(reg->pc, getaregval(1), 0x3fffffb0);
+  print_stack(getaregval(1), 0x3fffffb0);
 }
 
 extern void ets_wdt_disable();
