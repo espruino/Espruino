@@ -65,7 +65,7 @@ int os_printf_plus(const char *format, ...)  __attribute__ ((format (printf, 1, 
 static void printReason() {
   //register uint32_t sp asm("a1");
   struct XTensa_exception_frame_s *reg = &gdbstub_savedRegs;
-  os_printf("Fatal exception %ld\n", reg->reason);
+  os_printf("\n\n***** Fatal exception %ld\n", reg->reason);
   os_printf("pc=0x%08lx sp=0x%08lx excvaddr=0x%08lx\n", reg->pc, reg->a1, reg->excvaddr);
   os_printf("ps=0x%08lx sar=0x%08lx vpri=0x%08lx\n", reg->ps, reg->sar, reg->vpri);
   for (int i=0; i<16; i++) {
