@@ -269,8 +269,9 @@ extern int os_printf_plus();
 
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
   //os_printf_plus("bs%p %s\\n", symbolsPtr, name);
+  uint8_t symbolCount = READ_FLASH_UINT8(&symbolsPtr->symbolCount);
   int searchMin = 0;
-  int searchMax = symbolsPtr->symbolCount -1;
+  int searchMax = symbolCount - 1;
   while (searchMin <= searchMax) {
     int idx = (searchMin+searchMax) >> 1;
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];

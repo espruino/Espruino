@@ -58,19 +58,27 @@ typedef enum {
 // number of bits needed for each argument bit
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
 
+#ifndef ESP8266
+#define PACKED_JSW_SYM PACKED_FLAGS
+#else
+// On the esp8266 we put the JswSym* structures into flash and thus must make word-sized aligned
+// reads. Telling the compiler to pack the structs defeats that, so we have to take it out.
+#define PACKED_JSW_SYM
+#endif
+
 /// Structure for each symbol in the list of built-in symbols
 typedef struct {
   unsigned short strOffset;
   unsigned short functionSpec; // JsnArgumentType
   void (*functionPtr)(void);
-} JswSymPtr;//PACKED_FLAGS
+} PACKED_JSW_SYM JswSymPtr;
 
 /// Information for each list of built-in symbols
 typedef struct {
   const JswSymPtr *symbols;
   const char *symbolChars;
-  uint32_t symbolCount;
-} JswSymList;//PACKED_FLAGS
+  unsigned char symbolCount;
+} PACKED_JSW_SYM JswSymList;
 
 /// Do a binary search of the symbol table list
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name);
