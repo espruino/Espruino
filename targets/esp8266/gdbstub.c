@@ -7,17 +7,12 @@
  * License: ESPRESSIF MIT License
  *******************************************************************************/
 
-#include "gdbstub.h"
 #include <stddef.h>
 #include "ets_sys.h"
 #include "eagle_soc.h"
 #include "c_types.h"
 #include "gpio.h"
 #include "xtensa/corebits.h"
-
-#include "gdbstub.h"
-#include "gdbstub-entry.h"
-#include "gdbstub-cfg.h"
 
 #include "osapi.h"
 #include "user_interface.h"
@@ -31,7 +26,7 @@ struct XTensa_exception_frame_s {
   uint32_t vpri;
   uint32_t a0;
   uint32_t a[14]; //a2..a15
-  //These are added manually by the exception code; the HAL doesn't set these on an exception.
+  // The following are added manually by the exception code; the HAL doesn't set these on an exception.
   uint32_t litbase;
   uint32_t sr176;
   uint32_t sr208;
@@ -44,7 +39,7 @@ struct XTensa_exception_frame_s {
 struct XTensa_exception_frame_s gdbstub_savedRegs;
 
 //Get the value of one of the A registers
-static unsigned int ATTR_GDBFN getaregval(int reg) {
+static unsigned int getaregval(int reg) {
   if (reg==0) return gdbstub_savedRegs.a0;
   if (reg==1) return gdbstub_savedRegs.a1;
   return gdbstub_savedRegs.a[reg-2];
@@ -66,8 +61,6 @@ static void print_stack(uint32_t start, uint32_t end) {
 void _xtos_set_exception_handler(int cause, void (exhandler)(struct XTensa_exception_frame_s *frame));
 int os_printf_plus(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
 
-#define EXCEPTION_GDB_SP_OFFSET 0x100
-
 // Print exception info to console
 static void printReason() {
   //register uint32_t sp asm("a1");
@@ -88,15 +81,10 @@ static void printReason() {
 extern void ets_wdt_disable();
 extern void ets_wdt_enable();
 
-
-//We just caught a debug exception and need to handle it. This is called from an assembly
-//routine in gdbstub-entry.S
-void ATTR_GDBFN gdbstub_handle_debug_exception() {
-}
-
-//Non-OS exception handler. Gets called by the Xtensa HAL.
-static void ATTR_GDBFN gdb_exception_handler(struct XTensa_exception_frame_s *frame) {
+// Non-OS exception handler. Gets called by the Xtensa HAL.
+static void gdb_exception_handler(struct XTensa_exception_frame_s *frame) {
   //Save the extra registers the Xtensa HAL doesn't save
+  extern void gdbstub_save_extra_sfrs_for_exception();
   gdbstub_save_extra_sfrs_for_exception();
   //Copy registers the Xtensa HAL did save to gdbstub_savedRegs
   os_memcpy(&gdbstub_savedRegs, frame, 19*4);
@@ -105,10 +93,7 @@ static void ATTR_GDBFN gdb_exception_handler(struct XTensa_exception_frame_s *fr
   //gdbstub_savedRegs.a1=(uint32_t)frame+EXCEPTION_GDB_SP_OFFSET;
   gdbstub_savedRegs.a1=(uint32_t)frame;
 
-  //gdbstub_savedRegs.reason|=0x80; //mark as an exception reason
-
   ets_wdt_disable();
-  os_printf("Oooops, exception!\n");
   printReason();
   ets_wdt_enable();
   while(1) ;
@@ -116,7 +101,7 @@ static void ATTR_GDBFN gdb_exception_handler(struct XTensa_exception_frame_s *fr
 
 //The OS-less SDK uses the Xtensa HAL to handle exceptions. We can use those functions to catch any
 //fatal exceptions and invoke the debugger when this happens.
-static void ATTR_GDBINIT install_exceptions() {
+void gdbstub_init() {
   unsigned int i;
   int exno[]={EXCCAUSE_ILLEGAL, EXCCAUSE_SYSCALL, EXCCAUSE_INSTR_ERROR, EXCCAUSE_LOAD_STORE_ERROR,
       EXCCAUSE_DIVIDE_BY_ZERO, EXCCAUSE_UNALIGNED, EXCCAUSE_INSTR_DATA_ERROR, EXCCAUSE_LOAD_STORE_DATA_ERROR,
@@ -127,9 +112,4 @@ static void ATTR_GDBINIT install_exceptions() {
   }
 }
 
-//gdbstub initialization routine.
-void ATTR_GDBINIT gdbstub_init() {
-  install_exceptions();
-}
-
-extern void gdb_init() __attribute__((weak, alias("gdbstub_init")));
+//extern void gdb_init() __attribute__((weak, alias("gdbstub_init")));

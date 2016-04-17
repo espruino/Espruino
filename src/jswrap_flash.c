@@ -522,7 +522,7 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
   // Don't execute code if we've reset and code shouldn't always be run
   if (isReset && !(bootCodeInfo & BOOT_CODE_RUN_ALWAYS)) return false;
 
-  code = (const char *)(FLASH_DATA_LOCATION);
+  code = (char *)(FLASH_DATA_LOCATION);
 #endif
   jsvUnLock(jspEvaluate(code));
   return true;

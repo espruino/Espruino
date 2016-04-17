@@ -173,7 +173,7 @@ FLASH_STR(__ev4, "#ondhcp_timeout");
 FLASH_STR(__ev5, "#onsta_joined");
 FLASH_STR(__ev6, "#onsta_left");
 FLASH_STR(__ev7, "#onprobe_recv");
-static char *wifi_events[] = { __ev0, __ev1, __ev2, __ev3, __ev4, __ev5, __ev6, __ev7 };
+static const char *wifi_events[] = { __ev0, __ev1, __ev2, __ev3, __ev4, __ev5, __ev6, __ev7 };
 static char wifiEventBuff[sizeof("#ondisconnected")+1]; // length of longest string
 static char *wifiGetEvent(uint32 event) {
   flash_strncpy(wifiEventBuff, wifi_events[event], sizeof(wifiEventBuff));

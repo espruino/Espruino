@@ -155,7 +155,7 @@ A loopback serial device. Data sent to LoopbackA comes out of LoopbackB and vice
   "instanceof" : "Serial",
   "#if" : "defined(USE_TELNET)"
 }
-A telnet serial device that mapps to the built-in telnet console server (devices that have
+A telnet serial device that maps to the built-in telnet console server (devices that have
 built-in wifi only).
  */
 

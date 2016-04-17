@@ -68,9 +68,6 @@ int flash_strcmp(const char *mem, const char *flash);
 /** Read a uint16_t from this pointer, which could be in RAM or Flash. */
 #define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )
 
-/** Read a uint16_t from this pointer, assumes that the target is 16-bit aligned. */
-//#define READ_FLASH_UINT16(ptr) ({ uint32_t __p = (uint32_t)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); (uint16_t)(__p&2 ? __d>>16 : __d); })
-
 #else
 
 // On non-ESP8266, const stuff goes in flash memory anyway

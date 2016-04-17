@@ -265,10 +265,10 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
 }
 #else
 
-extern int os_printf_plus();
-
+// Binary search for ESP8266 that can handle JswSyms being in flash and requiring word access
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
-  //os_printf_plus("bs%p %s\\n", symbolsPtr, name);
+  //extern int os_printf_plus();
+  //os_printf_plus("BinSrch %p %s\\n", symbolsPtr, name);
   uint8_t symbolCount = READ_FLASH_UINT8(&symbolsPtr->symbolCount);
   int searchMin = 0;
   int searchMax = symbolCount - 1;
@@ -278,9 +278,6 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
     unsigned short strOffset = READ_FLASH_UINT16(&sym->strOffset);
     //os_printf_plus("min=%d max=%d idx=%d sym=%p off=%d=%x\\n", searchMin, searchMax, idx, sym, strOffset, strOffset);
     int cmp = flash_strcmp(name, &symbolsPtr->symbolChars[strOffset]);
-    //char buf[256], c, *b=buf; const char *s=&symbolsPtr->symbolChars[strOffset];
-    //do { c = READ_FLASH_UINT8(s++); *b++ = c; } while(c!=0);
-    //os_printf_plus("CMP %s %s = %d\\n", name, buf, cmp);
     if (cmp==0) {
       unsigned short functionSpec = READ_FLASH_UINT16(&sym->functionSpec);
       //os_printf_plus("%s found %p: %p %x\\n", name, sym, sym->functionPtr, functionSpec);
@@ -327,20 +324,21 @@ for jsondata in jsondatas:
     className = "global"
     isProto = False
     if not jsondata["type"]=="constructor":
-      if "class" in jsondata: 
-        testCode = getTestFor(jsondata["class"], jsondata["static"])        
+      if "class" in jsondata:
+        testCode = getTestFor(jsondata["class"], jsondata["static"])
         className = jsondata["class"]
         builtinName = className
-        if not jsondata["static"]: 
+        if not jsondata["static"]:
           isProto = True
           builtinName = builtinName+"_proto";
 
-    if not testCode in builtins: 
+    if not testCode in builtins:
       print("Adding "+testCode+" to builtins")
       builtins[testCode] = { "name" : builtinName, "className" : className, "isProto" : isProto, "functions" : [] }
     builtins[testCode]["functions"].append(jsondata);
 
-# For the ESP8266 we want to put the structures into flash
+# For the ESP8266 we want to put the structures into flash, we need a fresh section 'cause the
+# .irom.literal section used elsewhere has different readability attributes, sigh
 codeOut("#ifdef ESP8266\n#define FLASH_SECT __attribute__((section(\".irom.literal2\"))) __attribute__((aligned(4)))");
 codeOut("#else\n#define FLASH_SECT\n#endif\n");
 
@@ -355,10 +353,12 @@ for b in builtins:
 codeOut('');
 codeOut('');
 
+# output the strings, possibly with __attribute__ to put them into flash
 for b in builtins:
   builtin = builtins[b]
   codeOut("FLASH_STR(jswSymbols_"+builtin["name"]+"_str, " + builtin["symbolTableChars"] +");");
 codeOut('');
+# output the symbol table array referencing the above strings
 codeOut('const JswSymList jswSymbolTables[] FLASH_SECT = {');
 for b in builtins:
   builtin = builtins[b]
