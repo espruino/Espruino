@@ -675,7 +675,7 @@ endif
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
  ifeq ($(FAMILY),ESP8266)
-  OPTIMIZEFLAGS=-g -Os
+  OPTIMIZEFLAGS=-g -Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
  else
   OPTIMIZEFLAGS=-g
  endif
@@ -1597,6 +1597,8 @@ SOURCES += targets/esp8266/uart.c \
 	targets/esp8266/jshardware.c \
 	targets/esp8266/i2c_master.c \
 	targets/esp8266/esp8266_board_utils.c \
+	targets/esp8266/gdbstub.c \
+	targets/esp8266/gdbstub-entry.S \
 	libs/network/esp8266/network_esp8266.c
 
 # The tool used for building the firmware and flashing
