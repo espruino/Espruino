@@ -268,7 +268,7 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
 extern int os_printf_plus();
 
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
-  //os_printf_plus("bs%p\\n", symbolsPtr);
+  //os_printf_plus("bs%p %s\\n", symbolsPtr, name);
   int searchMin = 0;
   int searchMax = symbolsPtr->symbolCount -1;
   while (searchMin <= searchMax) {
@@ -282,7 +282,7 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
     //os_printf_plus("CMP %s %s = %d\\n", name, buf, cmp);
     if (cmp==0) {
       unsigned short functionSpec = READ_FLASH_UINT16(&sym->functionSpec);
-      os_printf_plus("%s found %p: %p %x\\n", name, sym, sym->functionPtr, functionSpec);
+      //os_printf_plus("%s found %p: %p %x\\n", name, sym, sym->functionPtr, functionSpec);
       if ((functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
         return jsnCallFunction(sym->functionPtr, functionSpec, parent, 0, 0);
       return jsvNewNativeFunction(sym->functionPtr, functionSpec);
@@ -296,7 +296,7 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
       }
     }
   }
-  os_printf_plus("%s not found\\n", name);
+  //os_printf_plus("%s not found\\n", name);
   return 0;
 }
 #endif

@@ -64,11 +64,12 @@ int flash_strcmp(const char *mem, const char *flash);
     On ESP8266 you have to read flash in 32 bit chunks, so force a 32 bit read
     and extract just the 8 bits we want */
 #define READ_FLASH_UINT8(ptr) ({ uint32_t __p = (uint32_t)(char*)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); ((uint8_t*)&__d)[__p & 3]; })
+
 /** Read a uint16_t from this pointer, which could be in RAM or Flash. */
 #define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )
 
 /** Read a uint16_t from this pointer, assumes that the target is 16-bit aligned. */
-#define READ_FLASH_UINT16(ptr) ({ uint32_t __p = (uint32_t)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); (uint16_t)(__p&2 ? __d>>16 : __d); })
+//#define READ_FLASH_UINT16(ptr) ({ uint32_t __p = (uint32_t)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); (uint16_t)(__p&2 ? __d>>16 : __d); })
 
 #else
 
