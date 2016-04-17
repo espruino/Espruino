@@ -67,7 +67,7 @@ IOEventFlags jsiGetConsoleDevice();
 void jsiConsolePrintChar(char data);
 /// Transmit a string (may be any string)
 void jsiConsolePrintString(const char *str);
-#ifndef FLASH_STR
+#ifndef USE_FLASH_MEMORY
 #define jsiConsolePrint jsiConsolePrintString
 /// Write the formatted string to the console (see vcbprintf)
 void jsiConsolePrintf(const char *fmt, ...);

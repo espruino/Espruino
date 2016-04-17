@@ -43,6 +43,9 @@
 
 #if defined(ESP8266)
 
+// Use this in #ifdef to select flash/non-flash code
+#define USE_FLASH_MEMORY
+
 // For the esp8266 we need the posibility to store arrays in flash, because mem is so small
 #define IN_FLASH_MEMORY   __attribute__((section(".irom.literal"))) __attribute__((aligned(4)))
 
@@ -70,8 +73,12 @@ int flash_strcmp(const char *mem, const char *flash);
 
 #else
 
+#undef USE_FLASH_MEMORY
+
 // On non-ESP8266, const stuff goes in flash memory anyway
 #define IN_FLASH_MEMORY
+
+#define FLASH_STR(name, x) static const char name[] = x
 
 /** Read a uint8_t from this pointer, which could be in RAM or Flash.
     On ARM this is just a standard read, it's different on ESP8266 */
@@ -232,7 +239,7 @@ typedef int64_t JsSysTime;
 #define JSPARSE_MODULE_CACHE_NAME "modules"
 
 #if !defined(NO_ASSERT)
- #ifdef FLASH_STR
+ #ifdef USE_FLASH_MEMORY
    // Place assert strings into flash to save RAM
    #define assert(X) do { \
      FLASH_STR(flash_X, __STRING(X)); \
@@ -361,7 +368,7 @@ typedef enum {
 
 void jsAssertFail(const char *file, int line, const char *expr);
 
-#ifndef FLASH_STR
+#ifndef USE_FLASH_MEMORY
 // Normal functions thet place format string in ram
 void jsExceptionHere(JsExceptionType type, const char *fmt, ...);
 void jsError(const char *fmt, ...);

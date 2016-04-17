@@ -1841,7 +1841,7 @@ wiflash: all $(USER1_BIN) $(USER2_BIN)
 ifndef ESPHOSTNAME
 	$(error "In order to flash over wifi, we need to have the ESPHOSTNAME variable defined")
 endif
-	./scripts/wiflash $(ESPHOSTNAME) $(USER1_BIN) $(USER2_BIN)
+	./scripts/wiflash.sh $(ESPHOSTNAME) $(USER1_BIN) $(USER2_BIN)
 
 #else ifdef WICED
 #
