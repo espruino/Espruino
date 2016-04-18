@@ -1810,6 +1810,7 @@ topstrings: $(PARTIAL)
 	$(Q)head -20 topstrings
 	$(Q)echo "To get details: $(OBJDUMP) -j .rodata.str1.1 -j .rodata.str1.4 -s src/FILENAME.o"
 
+# Same as topstrings but consider all read-only data
 topreadonly: $(PARTIAL)
 	$(Q)for f in `find . -name \*.o`; do \
 	  str=$$($(OBJDUMP) -j .rodata -h $$f 2>/dev/null | \

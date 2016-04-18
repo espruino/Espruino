@@ -48,8 +48,8 @@ typedef enum {
 
   // should this just be executed right away and the value returned? Used to encode constants in the symbol table
   // We encode this by setting all bits in the last argument, but leaving the second-last argument as zero
-  JSWAT_EXECUTE_IMMEDIATELY = 0x7000,  
-  JSWAT_EXECUTE_IMMEDIATELY_MASK = 0x7E00, 
+  JSWAT_EXECUTE_IMMEDIATELY = 0x7000,
+  JSWAT_EXECUTE_IMMEDIATELY_MASK = 0x7E00,
 
   JSWAT_THIS_ARG    = 0x8000, // whether a 'this' argument should be tacked onto the start
   JSWAT_ARGUMENTS_MASK = ~(JSWAT_MASK | JSWAT_THIS_ARG)
@@ -58,7 +58,7 @@ typedef enum {
 // number of bits needed for each argument bit
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
 
-#ifndef ESP8266
+#ifndef USE_FLASH_MEMORY
 #define PACKED_JSW_SYM PACKED_FLAGS
 #else
 // On the esp8266 we put the JswSym* structures into flash and thus must make word-sized aligned

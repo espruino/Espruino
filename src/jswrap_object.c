@@ -225,12 +225,14 @@ void jswrap_object_keys_or_property_names_cb(
       unsigned char symbolCount = READ_FLASH_UINT8(&symbols->symbolCount);
       unsigned short strOffset = READ_FLASH_UINT16(&symbols->symbols[i].strOffset);
       for (i=0;i<symbolCount;i++) {
-#ifndef ESP8266
+#ifndef USE_FLASH_MEMORY
         JsVar *name = jsvNewFromString(&symbols->symbolChars[strOffset]);
 #else
         // On the esp8266 the string is in flash, so we have to copy it to RAM first
-        char buf[64];
-        flash_strncpy(buf, &symbols->symbolChars[strOffset], 64);
+        // We can't use flash_strncpy here because it assumes that strings start on a word
+        // boundary and that's not the case here.
+        char buf[64], *b = buf, c; const char *s = &symbols->symbolChars[strOffset];
+        do { c = READ_FLASH_UINT8(s++); *b++ = c; } while (c && b != buf+64);
         JsVar *name = jsvNewFromString(buf);
 #endif
         //os_printf_plus("OBJ cb %s\n", buf);
