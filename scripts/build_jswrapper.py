@@ -239,36 +239,9 @@ codeOut('// --------------------------------------------------------------------
 codeOut('');
 
 codeOut("""
-#ifndef ESP8266
+// Binary search coded to allow for JswSyms to be in flash on the esp8266 where they require
+// word accesses
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
-  int searchMin = 0;
-  int searchMax = symbolsPtr->symbolCount-1;
-  while (searchMin <= searchMax) {
-    int idx = (searchMin+searchMax) >> 1;
-    const JswSymPtr *sym = &symbolsPtr->symbols[idx];
-    int cmp = strcmp(name, &symbolsPtr->symbolChars[sym->strOffset]);
-    if (cmp==0) {
-      if ((sym->functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
-        return jsnCallFunction(sym->functionPtr, sym->functionSpec, parent, 0, 0);
-      return jsvNewNativeFunction(sym->functionPtr, sym->functionSpec);
-    } else {
-      if (cmp<0) {
-        // searchMin is the same
-        searchMax = idx-1;
-      } else {
-        searchMin = idx+1;
-        // searchMax is the same
-      }
-    }
-  }
-  return 0;
-}
-#else
-
-// Binary search for ESP8266 that can handle JswSyms being in flash and requiring word access
-JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
-  //extern int os_printf_plus();
-  //os_printf_plus("BinSrch %p %s\\n", symbolsPtr, name);
   uint8_t symbolCount = READ_FLASH_UINT8(&symbolsPtr->symbolCount);
   int searchMin = 0;
   int searchMax = symbolCount - 1;
@@ -276,11 +249,9 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
     int idx = (searchMin+searchMax) >> 1;
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];
     unsigned short strOffset = READ_FLASH_UINT16(&sym->strOffset);
-    //os_printf_plus("min=%d max=%d idx=%d sym=%p off=%d=%x\\n", searchMin, searchMax, idx, sym, strOffset, strOffset);
     int cmp = flash_strcmp(name, &symbolsPtr->symbolChars[strOffset]);
     if (cmp==0) {
       unsigned short functionSpec = READ_FLASH_UINT16(&sym->functionSpec);
-      //os_printf_plus("%s found %p: %p %x\\n", name, sym, sym->functionPtr, functionSpec);
       if ((functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
         return jsnCallFunction(sym->functionPtr, functionSpec, parent, 0, 0);
       return jsvNewNativeFunction(sym->functionPtr, functionSpec);
@@ -294,10 +265,9 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
       }
     }
   }
-  //os_printf_plus("%s not found\\n", name);
   return 0;
 }
-#endif
+
 """);
 
 codeOut('// -----------------------------------------------------------------------------------------');

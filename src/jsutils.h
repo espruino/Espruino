@@ -54,6 +54,9 @@
     regular use. */
 #define FLASH_STR(name, x) static const char name[] IN_FLASH_MEMORY = x
 
+/** FLASH_STRCMP compares a string in RAM with a string in FLASH (2nd arg) */
+#define FLASH_STRCMP flash_strcmp
+
 /// Get the length of a string in flash
 size_t flash_strlen(const char *str);
 
@@ -87,6 +90,9 @@ int flash_strcmp(const char *mem, const char *flash);
 /** Read a uint16_t from this pointer, which could be in RAM or Flash.
     On ARM this is just a standard read, it's different on ESP8266 */
 #define READ_FLASH_UINT16(ptr) (*(uint16_t*)(ptr))
+
+/** FLASH_STRCMP is simply strcmp, it's only special on ESP8266 */
+#define FLASH_STRCMP strcmp
 
 #endif
 
