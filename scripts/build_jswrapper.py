@@ -249,7 +249,7 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
     int idx = (searchMin+searchMax) >> 1;
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];
     unsigned short strOffset = READ_FLASH_UINT16(&sym->strOffset);
-    int cmp = flash_strcmp(name, &symbolsPtr->symbolChars[strOffset]);
+    int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[strOffset]);
     if (cmp==0) {
       unsigned short functionSpec = READ_FLASH_UINT16(&sym->functionSpec);
       if ((functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
