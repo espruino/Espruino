@@ -11,8 +11,6 @@ Espruino is easy to build under Linux, and it is possible to build under MacOS w
   
 The (previously suggested) CodeSourcery GCC compiler is no longer available. We'd suggest you use [gcc-arm-none-eabi](https://launchpad.net/gcc-arm-embedded/+download).
 
-**YOU'LL NEED GCC 4.8** - On the 4.9 releases from launchpad above, the Original Espruino board's binary will build but USB will not work (this is believed to be due to an out of order register write in ST's USB code caused by an optimisation pass in GCC).
-
 Download the compiler, set up your path so you have access to it, and run:
 
 ```YOUR_BOARD_NAME=1 RELEASE=1 make```

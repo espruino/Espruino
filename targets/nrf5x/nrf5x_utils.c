@@ -23,31 +23,6 @@
 #include "nrf_error.h"
 #include "nrf_nvmc.h"
 
-#define NRF_UTILS_FLASH_PAGE_SIZE NRF_FICR -> CODEPAGESIZE
-#define NRF_UTILS_NUMBER_OF_PAGES NRF_FICR -> CODESIZE
-#define NRF_UTILS_FLASH_SIZE (NRF_UTILS_FLASH_PAGE_SIZE * NRF_UTILS_NUMBER_OF_PAGES)
-
-bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size)
-{
-  if (addr > (NRF_UTILS_FLASH_SIZE))
-  {
-	  return false;
-  }
-  *page_address = (uint32_t) (floor(addr / NRF_UTILS_FLASH_PAGE_SIZE) * NRF_UTILS_FLASH_PAGE_SIZE);
-  *page_size = NRF_UTILS_FLASH_PAGE_SIZE;
-  return true;
-}
-
-void nrf_utils_erase_flash_page(uint32_t addr)
-{
-  nrf_nvmc_page_erase(addr);
-}
-
-void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len)
-{
-  nrf_nvmc_write_bytes(addr, buf, len);
-}
-
 uint32_t nrf_utils_gpio_pin_get_state(uint32_t pin)
 {
 	/*uint32_t pin_register;

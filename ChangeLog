@@ -17,6 +17,7 @@
             Ensure that pinMode/digitalWrite is re-constituted properly by dump() and save() (fix #833) 
             ESP8266: add stack dump on fatal exception, ./targets/esp8266/printstack can extract a backtrace
             ESP8266: move JswSymPtr and JswSymList to flash to free up gobs of RAM, bump jsvars to 1600
+            Fix write to flash when BLE connected on nRF51/2
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
