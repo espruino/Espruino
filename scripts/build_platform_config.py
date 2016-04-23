@@ -286,7 +286,7 @@ else:
   codeOut("#define FLASH_SAVED_CODE_START            "+str(flash_saved_code_start))
   codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(int(flash_page_size*flash_saved_code_pages)))
   codeOut("#define FLASH_MAGIC_LOCATION              (FLASH_SAVED_CODE_START + FLASH_SAVED_CODE_LENGTH - 4)")
-  codeOut("#define FLASH_MAGIC 0xBADBEEF8")
+  codeOut("#define FLASH_MAGIC 0xDEADBEEF")
 codeOut("");
 codeOut("#define USART_COUNT                          "+str(board.chip["usart"]))
 codeOut("#define SPI_COUNT                            "+str(board.chip["spi"]))
