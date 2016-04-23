@@ -28,14 +28,31 @@ typedef struct OtaConn {
   OtaHandler     *handler;      // handler to process this request
 } OtaConn;
 
+#define FLASH_STR(name, x) static char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
+#define READ_FLASH_UINT8(ptr) ({ uint32_t __p = (uint32_t)(char*)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); ((uint8_t*)&__d)[__p & 3]; })
+extern char *flash_strncpy(char *dest, const char *source, size_t cap);
+  
+int flash_strcmp(const char *mem, const char *flash) {
+  while (1) {
+    char m = *mem++;
+    char c = READ_FLASH_UINT8(flash++);
+    if (m == 0) return c != 0 ? -1 : 0;
+    if (c == 0) return 1;
+    if (c > m) return -1;
+    if (m > c) return 1;
+  }
+}
+// 
 // Format for the response we send
-static char *responseFmt =
+//static const char *responseFmt __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) =
+//static char *responseFmt =
+FLASH_STR(responseFmt,
       "HTTP/1.1 %d %s\r\n"
       "Content-Type: text/plain\r\n"
       "Content-Length: %d\r\n"
       "Connection: close\r\n"
       "Cache-Control: no-store, no-cache, must-revalidate\r\n"
-      "\r\n%s";
+      "\r\n%s");
 
 /*
  * \brief: releaseConn deallocates everything held by a connection.
@@ -70,9 +87,12 @@ static void sendResponse(OtaConn *oc, uint16_t code, char *text) {
   // allocate buffer to print the response into
   uint16_t len = os_strlen(responseFmt)+os_strlen(status)+os_strlen(text);
   char buf[len];
-
+  char fmt[sizeof(responseFmt)+1];
+  
+  flash_strncpy(fmt,responseFmt,sizeof(responseFmt)+1);
+   
   // print the response and send it
-  len = os_sprintf(buf, responseFmt, code, status, os_strlen(text), text);
+  len = os_sprintf(buf, fmt, code, status, os_strlen(text), text);
   if (code < 400) os_printf("OTA: %d %s\n", code, status);
   else os_printf("OTA: %d %s <<%s>>\n", code, status, text);
   int8_t err;
@@ -220,22 +240,29 @@ static int16_t otaHandleReboot(OtaConn *oc) {
 }
 
 // Mapping from URLs to request handler functions
+
+FLASH_STR(_get,"GET");
+FLASH_STR(_post,"POST");
+FLASH_STR(_next,"/flash/next");
+FLASH_STR(_upload,"/flash/upload");
+FLASH_STR(_reboot,"/flash/reboot");
+
 #define NUM_HANDLERS 3
 static struct {
   char *verb;
   char *path;
   OtaHandler *handler;
 } otaHandlers[NUM_HANDLERS] = {
-  {"GET", "/flash/next", otaHandleNext },
-  {"POST", "/flash/upload", otaHandleUpload },
-  {"POST", "/flash/reboot", otaHandleReboot },
+  {_get, _next, otaHandleNext },
+  {_post, _upload, otaHandleUpload },
+  {_post, _reboot, otaHandleReboot },
 };
 
 static OtaHandler *findHandler(char *verb, char *path) {
   uint16_t i=0;
   for (i=0; i<NUM_HANDLERS; i++) {
-    if (os_strcmp(verb, otaHandlers[i].verb) == 0 &&
-        os_strcmp(path, otaHandlers[i].path) == 0) {
+    if (flash_strcmp(verb, otaHandlers[i].verb) == 0 &&
+        flash_strcmp(path, otaHandlers[i].path) == 0) {
       return otaHandlers[i].handler;
     }
   }

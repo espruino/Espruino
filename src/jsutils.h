@@ -64,6 +64,18 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
 /** Read a uint16_t from this pointer, which could be in RAM or Flash. */
 #define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )  
 
+#define __concat(o,l) __to_rom##l
+#define jsvObjectSetChildAndUnLock(obj,name,child) jsvObjectSetChildAndUnLock_FLASH_CTR(obj,__COUNTER__,name,child)
+#define jsvObjectSetChildAndUnLock_FLASH_CTR(obj,lbl,name,child) do { \
+    FLASH_STR(__concat(obj,lbl),name);\
+    jsvObjectSetChildAndUnLock_flash(obj,__concat(obj,lbl), child ); \
+   } while(0)
+   
+#define jsvObjectSetChildAndUnLockVar(obj,name,child) jsvObjectSetChildAndUnLock_flash(obj,name,child)
+
+/** 
+    ESP8266 store constants in flash */
+#define IROM_CONST __attribute__((section(".irom.const"))) __attribute__((aligned(4)))
 #else
 
 // On non-ESP8266, const stuff goes in flash memory anyway
@@ -75,6 +87,10 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
 /** Read a uint16_t from this pointer, which could be in RAM or Flash.
     On ARM this is just a standard read, it's different on ESP8266 */
 #define READ_FLASH_UINT16(ptr) (*(uint16_t*)(ptr))
+
+/** 
+   store constants in ram */
+#define IROM_CONST
 
 #endif
 

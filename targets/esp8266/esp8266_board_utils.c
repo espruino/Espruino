@@ -33,34 +33,48 @@ typedef long long int64_t;
  * of the meaning of that code.
  * \return A string representation of an error code.
  */
+ 
+FLASH_STR(__ESPCONN_ABRT, "ESPCONN_ABRT");
+FLASH_STR(__ESPCONN_ARG, "ESPCONN_ARG");
+FLASH_STR(__ESPCONN_CLSD, "ESPCONN_CLSD");
+FLASH_STR(__ESPCONN_CONN, "ESPCONN_CONN");
+FLASH_STR(__ESPCONN_HANDSHAKE, "ESPCONN_HANDSHAKE");
+FLASH_STR(__ESPCONN_INPROGRESS, "ESPCONN_INPROGRESS");
+FLASH_STR(__ESPCONN_ISCONN, "ESPCONN_ISCONN");
+FLASH_STR(__ESPCONN_MEM, "ESPCONN_MEM");
+FLASH_STR(__ESPCONN_RST, "ESPCONN_RST");
+FLASH_STR(__ESPCONN_RTE, "ESPCONN_RTE");
+FLASH_STR(__ESPCONN_TIMEOUT, "ESPCONN_TIMEOUT");
+FLASH_STR(__unknown_error, "Unknown error");
+
 const char *esp8266_errorToString(
     sint8 err //!< The error code to be transformed to a string.
   ) {
   switch(err) {
   case ESPCONN_MEM:
-    return "ESPCONN_MEM";
+    return __ESPCONN_MEM;
   case ESPCONN_TIMEOUT:
-    return "ESPCONN_TIMEOUT";
+    return __ESPCONN_TIMEOUT;
   case ESPCONN_RTE:
-    return "ESPCONN_RTE";
+    return __ESPCONN_RTE;
   case ESPCONN_INPROGRESS:
-    return "ESPCONN_INPROGRESS";
+    return __ESPCONN_INPROGRESS;
   case ESPCONN_ABRT:
-    return "ESPCONN_ABRT";
+    return __ESPCONN_ABRT;
   case ESPCONN_RST:
-    return "ESPCONN_RST";
+    return __ESPCONN_RST;
   case ESPCONN_CLSD:
-    return "ESPCONN_CLSD";
+    return __ESPCONN_CLSD;
   case ESPCONN_CONN:
-    return "ESPCONN_CONN";
+    return __ESPCONN_CONN;
   case ESPCONN_ARG:
-    return "ESPCONN_ARG";
+    return __ESPCONN_ARG;
   case ESPCONN_ISCONN:
-    return "ESPCONN_ISCONN";
+    return __ESPCONN_ISCONN;
   case ESPCONN_HANDSHAKE:
-    return "ESPCONN_HANDSHAKE";
+    return __ESPCONN_HANDSHAKE;
   default:
-    return "Unknown error";
+    return __unknown_error;
   }
 }
 
