@@ -43,10 +43,19 @@
 
 #if defined(ESP8266)
 
+// Use this in #ifdef to select flash/non-flash code
+#define USE_FLASH_MEMORY
+
+// For the esp8266 we need the posibility to store arrays in flash, because mem is so small
+#define IN_FLASH_MEMORY   __attribute__((section(".irom.literal"))) __attribute__((aligned(4)))
+
 /** Place constant strings into flash when we can in order to save RAM space. Strings in flash
     must be accessed with word reads on aligned boundaries, so we'll have to copy them before
     regular use. */
-#define FLASH_STR(name, x) static char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
+#define FLASH_STR(name, x) static const char name[] IN_FLASH_MEMORY = x
+
+/** FLASH_STRCMP compares a string in RAM with a string in FLASH (2nd arg) */
+#define FLASH_STRCMP flash_strcmp
 
 /// Get the length of a string in flash
 size_t flash_strlen(const char *str);
@@ -54,32 +63,36 @@ size_t flash_strlen(const char *str);
 /// Copy a string from flash to RAM
 char *flash_strncpy(char *dest, const char *source, size_t cap);
 
+/// Compare a string in memory with a string in flash
+int flash_strcmp(const char *mem, const char *flash);
+
 /** Read a uint8_t from this pointer, which could be in RAM or Flash.
     On ESP8266 you have to read flash in 32 bit chunks, so force a 32 bit read
     and extract just the 8 bits we want */
 #define READ_FLASH_UINT8(ptr) ({ uint32_t __p = (uint32_t)(char*)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); ((uint8_t*)&__d)[__p & 3]; })
 
-#define __concat(o,l) __to_rom##l
-#define jsvObjectSetChildAndUnLock(obj,name,child) jsvObjectSetChildAndUnLock_FLASH_CTR(obj,__COUNTER__,name,child)
-#define jsvObjectSetChildAndUnLock_FLASH_CTR(obj,lbl,name,child) do { \
-    FLASH_STR(__concat(obj,lbl),name);\
-    jsvObjectSetChildAndUnLock_flash(obj,__concat(obj,lbl), child ); \
-   } while(0)
-   
-#define jsvObjectSetChildAndUnLockVar(obj,name,child) jsvObjectSetChildAndUnLock_flash(obj,name,child)
+/** Read a uint16_t from this pointer, which could be in RAM or Flash. */
+#define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )
 
-/** 
-    ESP8266 store constants in flash */
-#define IROM_CONST __attribute__((section(".irom.const"))) __attribute__((aligned(4)))
 #else
+
+#undef USE_FLASH_MEMORY
+
+// On non-ESP8266, const stuff goes in flash memory anyway
+#define IN_FLASH_MEMORY
+
+#define FLASH_STR(name, x) static const char name[] = x
 
 /** Read a uint8_t from this pointer, which could be in RAM or Flash.
     On ARM this is just a standard read, it's different on ESP8266 */
 #define READ_FLASH_UINT8(ptr) (*(uint8_t*)(ptr))
 
-/** 
-   store constants in ram */
-#define IROM_CONST
+/** Read a uint16_t from this pointer, which could be in RAM or Flash.
+    On ARM this is just a standard read, it's different on ESP8266 */
+#define READ_FLASH_UINT16(ptr) (*(uint16_t*)(ptr))
+
+/** FLASH_STRCMP is simply strcmp, it's only special on ESP8266 */
+#define FLASH_STRCMP strcmp
 
 #endif
 
@@ -92,6 +105,8 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
 #else
 #define CALLED_FROM_INTERRUPT
 #endif
+
+
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
@@ -230,7 +245,7 @@ typedef int64_t JsSysTime;
 #define JSPARSE_MODULE_CACHE_NAME "modules"
 
 #if !defined(NO_ASSERT)
- #ifdef FLASH_STR
+ #ifdef USE_FLASH_MEMORY
    // Place assert strings into flash to save RAM
    #define assert(X) do { \
      FLASH_STR(flash_X, __STRING(X)); \
@@ -357,10 +372,9 @@ typedef enum {
   JSET_REFERENCEERROR
 } JsExceptionType;
 
-void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsAssertFail(const char *file, int line, const char *expr);
 
-#ifndef FLASH_STR
+#ifndef USE_FLASH_MEMORY
 // Normal functions thet place format string in ram
 void jsExceptionHere(JsExceptionType type, const char *fmt, ...);
 void jsError(const char *fmt, ...);
