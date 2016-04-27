@@ -137,6 +137,8 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
             continue
 
           for comment in re.findall(r"/\*JSON.*?\*/", code, re.VERBOSE | re.MULTILINE | re.DOTALL):
+            charnumber = code.find(comment)
+            linenumber = 1+code.count("\n", 0, charnumber)
             # Strip off /*JSON .. */ bit
             comment = comment[6:-2]
 
@@ -149,6 +151,8 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
               if len(description): jsondata["description"] = description;
               jsondata["filename"] = jswrap
               jsondata["include"] = jswrap[:-2]+".h"
+              jsondata["githublink"] = "https://github.com/espruino/Espruino/blob/master/"+jswrap+"#L"+str(linenumber)
+
               dropped_prefix = "Dropped "
               if "name" in jsondata: dropped_prefix += jsondata["name"]+" "
               elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "

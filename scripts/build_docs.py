@@ -195,6 +195,7 @@ html("   ul { list-style-position: inside; }")
 html("   .class { page-break-before: always; width:95%; border-top: 1px solid black; border-bottom: 1px solid black; padding-top: 20px; padding-bottom: 20px; margin-top: 50px; }")
 html("   .instance { font-weight: bold; }");
 html("   .detail { width:90%; border-bottom: 1px solid black; margin-top: 50px; }")
+html("   .githublink { text-decoration:none; color:#CCC; }")
 html("   .top { float:right; }")
 html("   .call { padding-left: 50px; }")
 html("   .description { padding-left: 50px; }")
@@ -318,7 +319,11 @@ for jsondata in detail:
         html("    <li><a href=\"#"+get_link(j)+"\">"+get_surround(j)+"</a></li>")
     html("  </ul>")
   link = get_link(jsondata)
-  html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a></h3>")
+  html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a>")
+  html("<!-- "+json.dumps(jsondata, sort_keys=True, indent=2)+"-->");
+  if "githublink" in jsondata:
+    html('<a class="githublink" title="Link to source code on GitHub" href="'+jsondata["githublink"]+'">&rArr;</a>');
+  html("</h3>")
   insert_mdn_link(jsondata);      
   html("  <p class=\"top\"><a href=\"javascript:toppos();\">(top)</a></p>")
   html("  <h4>Call type:</h4>")
