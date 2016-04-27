@@ -1,0 +1,40 @@
+#! /bin/bash
+# This little script allows you to get an approximate stack backtrace when Espruino crashes
+# and prints the crash info to the debug console. It looks something like this:
+# 37608> Stack:
+# 37609> 3ffff9d0:  3ffff9f0 00000000 00000001 40201837
+# 37614> 3ffff9e0:  000783b7 00000000 3fff2a48 40212e62
+# 37619> 3ffff9f0:  3ffece2c 00000000 00000000 4020193e
+# 37624> 3ffffa00:  3fff29c8 3fff1714 3fff29a8 3fff1714
+# ...
+# 38072> 3fffff90:  00001000 00000002 00000000 00000000
+# 38077> 3fffffa0:  000002a1 00000000 00074f20 40100000
+# In such a case, run the script (possibly after editing the path below) and at the prompt paste
+# the entire stack dump. You will see something like:
+# 0x40221f5c: jsfLoadBootCodeFromFlash at /home/src/esp8266/Espruino/src/jswrap_flash.c:527
+# 0x40216034: jswInit at /home/src/esp8266/Espruino/gen/jswrapper.c:1740
+# 0x402104d5: jsiSoftInit at /home/src/esp8266/Espruino/src/jsinteractive.c:460
+# 0x4021060a: jsiSemiInit at /home/src/esp8266/Espruino/src/jsinteractive.c:745
+# 0x40210655: jsiInit at /home/src/esp8266/Espruino/src/jsinteractive.c:794
+# 0x4022cfc7: initDone at /home/src/esp8266/Espruino/targets/esp8266/user_main.c:256
+# 0x40242a59: user_uart_wait_tx_fifo_empty at ??:?
+# 0x40242a65: user_uart_wait_tx_fifo_empty at ??:?
+# You need to set DEBUG=1 when building in order to see the files and line numbers, if you don't
+# you'll just get the function names, which is often sufficient...
+
+# WARNING: this script doesn't parse the stack dump, it simply extracts all memory words that
+# contain an address that lies in program memory and prints those. Thus there may be a few extra
+# lines if a pointer to code happens to be on the stack. You need to apply a tad of judgement...
+
+export PATH=$PATH:$(pwd)/../esp-open-sdk/xtensa-lx106-elf/bin/
+
+echo "Please paste the stack and hit ctrl-D:"
+code=$(sed -e 's/^.*: *//' -e 's/  */\n/g' | egrep '^40[02][0-9a-f]{5}|4010[01234567][0-9a-f]{3}')
+re='402[01234567][0-9a-f]{4}'
+if [[ "$code" =~ $re ]]; then
+	elf=espruino_esp8266_user1.elf
+else
+	elf=espruino_esp8266_user2.elf
+fi
+set -x
+xtensa-lx106-elf-addr2line -aipfC -e $elf $code

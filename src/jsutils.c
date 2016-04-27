@@ -162,7 +162,7 @@ long long stringToInt(const char *s) {
   return stringToIntWithRadix(s,0,0);
 }
 
-#ifndef FLASH_STR
+#ifndef USE_FLASH_MEMORY
 
 // JsError, jsWarn, jsExceptionHere implementations that expect the format string to be in normal
 // RAM where is can be accessed normally.
@@ -313,7 +313,7 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   inAssertFail = true;
   jsiConsoleRemoveInputLine();
   if (expr) {
-#ifndef FLASH_STR
+#ifndef USE_FLASH_MEMORY
     jsiConsolePrintf("ASSERT(%s) FAILED AT ", expr);
 #else
     jsiConsolePrintString("ASSERT(");
@@ -350,7 +350,7 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   inAssertFail = false;
 }
 
-#ifdef FLASH_STR
+#ifdef USE_FLASH_MEMORY
 // Helpers to deal with constant strings stored in flash that have to be accessed using word-aligned
 // and word-sized reads
 
@@ -379,6 +379,7 @@ char *flash_strncpy(char *dst, const char *src, size_t c) {
   uint32_t *s = (uint32_t *)src;
   size_t slen = flash_strlen(src);
   size_t len = slen > c ? c : slen;
+
   // copy full words from source string
   while (len >= 4) {
     uint32_t w = *s++;
@@ -399,6 +400,19 @@ char *flash_strncpy(char *dst, const char *src, size_t c) {
   if (slen < c) *d = 0;
   return dst;
 }
+
+// Compare a string in memory with a string in flash
+int flash_strcmp(const char *mem, const char *flash) {
+  while (1) {
+    char m = *mem++;
+    char c = READ_FLASH_UINT8(flash++);
+    if (m == 0) return c != 0 ? -1 : 0;
+    if (c == 0) return 1;
+    if (c > m) return -1;
+    if (m > c) return 1;
+  }
+}
+
 #endif
 
 
