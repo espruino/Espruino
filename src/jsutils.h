@@ -74,6 +74,14 @@ int flash_strcmp(const char *mem, const char *flash);
 /** Read a uint16_t from this pointer, which could be in RAM or Flash. */
 #define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )
 
+#define __concat(o,l) __to_rom##l
+#define jsvObjectSetChildAndUnLock(obj,name,child) jsvObjectSetChildAndUnLock_FLASH_CTR(obj,__COUNTER__,name,child)
+#define jsvObjectSetChildAndUnLock_FLASH_CTR(obj,lbl,name,child) do { \
+    FLASH_STR(__concat(obj,lbl),name);\
+    jsvObjectSetChildAndUnLock_flash(obj,__concat(obj,lbl), child ); \
+    } while(0)
+
+#define jsvObjectSetChildAndUnLockVar(obj,name,child) jsvObjectSetChildAndUnLock_flash(obj,name,child)
 #else
 
 #undef USE_FLASH_MEMORY

@@ -147,7 +147,7 @@ FLASH_STR(__wr23, "802_1x_auth_failed");       // 23 - REASON_802_1X_AUTH_FAILED
 FLASH_STR(__wr24, "cipher_suite_rejected");    // 24 - REASON_CIPHER_SUITE_REJECTED
 FLASH_STR(__wr200, "beacon_timeout");          // 200 - REASON_BEACON_TIMEOUT
 FLASH_STR(__wr201, "no_ap_found");             // 201 - REASON_NO_AP_FOUND
-static char *wifiReasons[] = {
+static const char *wifiReasons[] = {
   __wr0, __wr1, __wr2, __wr3, __wr4, __wr5, __wr6, __wr7, __wr8, __wr9, __wr10,
   __wr11, __wr12, __wr13, __wr14, __wr15, __wr16, __wr17, __wr18, __wr19, __wr20,
   __wr21, __wr22, __wr23, __wr24, __wr200, __wr201
@@ -155,7 +155,7 @@ static char *wifiReasons[] = {
 
 static char wifiReasonBuff[sizeof("group_key_update_timeout")+1]; // length of longest string
 static char *wifiGetReason(uint8 wifiReason) {
-  char *reason;
+  const char *reason;
   if (wifiReason <= 24) reason = wifiReasons[wifiReason];
   else if (wifiReason >= 200 && wifiReason <= 201) reason = wifiReasons[wifiReason-200+24];
   else reason = wifiReasons[1];
@@ -173,7 +173,7 @@ FLASH_STR(__ev4, "#ondhcp_timeout");
 FLASH_STR(__ev5, "#onsta_joined");
 FLASH_STR(__ev6, "#onsta_left");
 FLASH_STR(__ev7, "#onprobe_recv");
-static char *wifi_events[] = { __ev0, __ev1, __ev2, __ev3, __ev4, __ev5, __ev6, __ev7 };
+static const char *wifi_events[] = { __ev0, __ev1, __ev2, __ev3, __ev4, __ev5, __ev6, __ev7 };
 static char wifiEventBuff[sizeof("#ondisconnected")+1]; // length of longest string
 static char *wifiGetEvent(uint32 event) {
   flash_strncpy(wifiEventBuff, wifi_events[event], sizeof(wifiEventBuff));
