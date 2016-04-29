@@ -63,6 +63,9 @@ size_t flash_strlen(const char *str);
 /// Copy a string from flash to RAM
 char *flash_strncpy(char *dest, const char *source, size_t cap);
 
+/// memcopy a byte from flash to RAM
+unsigned char *flash_memcpy(unsigned char *dest, const unsigned char *source, size_t cap);
+
 /// Compare a string in memory with a string in flash
 int flash_strcmp(const char *mem, const char *flash);
 

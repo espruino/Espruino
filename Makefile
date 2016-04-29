@@ -505,7 +505,7 @@ BOARD=ESP8266_BOARD
 # Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
 # too large a firmware (-Os is -O2 without optimizations that increase code size)
 ifndef DISABLE_LTO
-OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -fno-fat-lto-objects -Wl,--allow-multiple-definition
 #OPTIMIZEFLAGS+=-DLINK_TIME_OPTIMISATION # this actually slows things down!
 else
 # DISABLE_LTO is necessary in order to analyze static string sizes (see: topstring makefile target)
@@ -1737,6 +1737,11 @@ combined: $(ESP_COMBINED512)
 # generate partially linked .o with all Esprunio source files linked
 $(PARTIAL): $(OBJS) $(LINKER_FILE)
 	@echo LD $@
+ifdef USE_CRYPTO
+	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text libs/crypto/mbedtls/library/sha1.o
+	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text libs/crypto/mbedtls/library/sha256.o
+	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text libs/crypto/mbedtls/library/sha512.o
+endif	
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
 	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal $@
 
