@@ -2014,7 +2014,10 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
   }
   // Copy LINK of what it points to
   if (linkChildren && jsvGetFirstChild(src)) {
-    jsvSetFirstChild(dst, jsvRefRef(jsvGetFirstChild(src)));
+    if (jsvIsNameWithValue(src))
+      jsvSetFirstChild(dst, jsvGetFirstChild(src));
+    else
+      jsvSetFirstChild(dst, jsvRefRef(jsvGetFirstChild(src)));
   }
   return dst;
 }
