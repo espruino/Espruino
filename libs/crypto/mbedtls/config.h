@@ -120,7 +120,7 @@
 
 /* use flash safe version of memcpy so that rodata can be moved to irom */
 #ifdef ESP8266
-#define memcpy(d,s,n) flash_strncpy((char*)d,(const char *)s,n)
+#define memcpy(d,s,n) flash_memcpy(d,s,n)
 #endif
 
 
