@@ -498,7 +498,7 @@ JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
   "name" : "setFontBitmap",
   "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)"
 }
-Set Graphics to draw with a Bitmapped Font
+Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmapped Font
 */
 /*JSON{
   "type" : "method",
@@ -507,10 +507,10 @@ Set Graphics to draw with a Bitmapped Font
   "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
   "params" : [
-    ["size","int32","The size as an integer"]
+    ["size","int32","The height of the font, as an integer"]
   ]
 }
-Set Graphics to draw with a Vector Font of the given size
+Make subsequent calls to `drawString` use a Vector Font of the given height 
 */
 void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
@@ -540,7 +540,8 @@ void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
     ["height","int32","The height as an integer"]
   ]
 }
-Set Graphics to draw with a Custom Font
+Make subsequent calls to `drawString` use a Custom Font of the given height. See the [Fonts page](http://www.espruino.com/Fonts) for more
+information about custom fonts and how to create them.
 */
 void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
@@ -577,8 +578,8 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
   "generate" : "jswrap_graphics_drawString",
   "params" : [
     ["str","JsVar","The string"],
-    ["x","int32","The left"],
-    ["y","int32","The top"]
+    ["x","int32","The X position of the leftmost pixel"],
+    ["y","int32","The Y position of the topmost pixel"]
   ]
 }
 Draw a string of text in the current font

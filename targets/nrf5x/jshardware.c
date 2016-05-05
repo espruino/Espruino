@@ -41,6 +41,7 @@
 #endif
 
 #include "nrf5x_utils.h"
+#include "softdevice_handler.h"
 
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
 
@@ -57,11 +58,20 @@
 static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+/// For flash - whether it is busy or not...
+volatile bool flashIsBusy = false;
+
 
 void TIMER1_IRQHandler(void) {
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_event_clear(NRF_TIMER1, NRF_TIMER_EVENT_COMPARE0);
   jstUtilTimerInterruptHandler();
+}
+
+void sys_evt_handler(uint32_t sys_evt) {
+  if (sys_evt == NRF_EVT_FLASH_OPERATION_SUCCESS){
+    flashIsBusy = false;
+  }
 }
 
 
@@ -116,6 +126,9 @@ void jshInit() {
   // Pin change
   nrf_drv_gpiote_init();
   jswrap_nrf_bluetooth_init();
+  
+  // Softdevice is initialised now
+  softdevice_sys_evt_handler_set(sys_evt_handler);
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
@@ -621,13 +634,14 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
     jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
 }
 
+
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
 {
-  if (!nrf_utils_get_page(addr, startAddr, pageSize))
-  {
-	  return false;
-  }
+  if (addr > (NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE))
+    return false;
+  *startAddr = (uint32_t) (floor(addr / NRF_FICR->CODEPAGESIZE) * NRF_FICR->CODEPAGESIZE);
+  *pageSize = NRF_FICR->CODEPAGESIZE;
   return true;
 }
 
@@ -637,35 +651,41 @@ JsVar *jshFlashGetFree() {
 }
 
 /// Erase the flash page containing the address.
-void jshFlashErasePage(uint32_t addr)
-{
+void jshFlashErasePage(uint32_t addr) {
   uint32_t startAddr;
   uint32_t pageSize;
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
     return;
-  nrf_utils_erase_flash_page(startAddr);
+  uint32_t err;
+  flashIsBusy = true;
+  while ((err = sd_flash_page_erase(startAddr / NRF_FICR->CODEPAGESIZE)) == NRF_ERROR_BUSY);
+  if (err!=NRF_SUCCESS) flashIsBusy = false;
+  WAIT_UNTIL(!flashIsBusy, "jshFlashErasePage");
+  /*if (err!=NRF_SUCCESS)
+    jsiConsolePrintf("jshFlashErasePage got err %d at 0x%x\n", err, addr);*/
+  //nrf_nvmc_page_erase(addr);
 }
 
 /**
  * Reads a byte from memory. Addr doesn't need to be word aligned and len doesn't need to be a multiple of 4.
  */
-void jshFlashRead(void * buf, uint32_t addr, uint32_t len)
-{
-  uint8_t * read_buf = buf;
-  nrf_utils_read_flash_bytes(read_buf, addr, len);
+void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
+  memcpy(buf, (void*)addr, len);
 }
 
 /**
  * Writes an array of bytes to memory. Addr must be word aligned and len must be a multiple of 4.
  */
-void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
-{
-  uint8_t * write_buf = buf;
-  if ((addr & (3UL)) != 0 || (len % 4) != 0)
-  {
-	  return;
-  }
-  nrf_utils_write_flash_bytes(addr, write_buf, len);
+void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
+  //jsiConsolePrintf("\njshFlashWrite 0x%x addr 0x%x -> 0x%x, len %d\n", *(uint32_t*)buf, (uint32_t)buf, addr, len);
+  uint32_t err;
+  flashIsBusy = true;
+  while ((err = sd_flash_write(addr, (uint8_t *)buf, len>>2)) == NRF_ERROR_BUSY);
+  if (err!=NRF_SUCCESS) flashIsBusy = false;
+  WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
+  /*if (err!=NRF_SUCCESS)
+    jsiConsolePrintf("jshFlashWrite got err %d (addr 0x%x -> 0x%x, len %d)\n", err, (uint32_t)buf, addr, len);*/
+  //nrf_nvmc_write_bytes(addr, buf, len);
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success

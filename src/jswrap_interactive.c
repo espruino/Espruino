@@ -133,7 +133,9 @@ Note: 'Internal' functions are currently not handled correctly. You will need to
   "name" : "load",
   "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_LOAD;"
 }
-Load program memory out of flash
+Restart and load the program out of flash - this has an effect similar to
+completely rebooting Espruino (power off/power on), but without actually
+performing a full reset of the hardware.
 
 This command only executes when the Interpreter returns to the Idle state - for
 instance ```a=1;load();a=2;``` will still leave 'a' as undefined (or what it was

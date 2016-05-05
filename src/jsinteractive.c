@@ -185,7 +185,7 @@ NO_INLINE void jsiConsolePrintString(const char *str) {
   }
 }
 
-#ifdef FLASH_STR
+#ifdef USE_FLASH_MEMORY
 // internal version that copies str from flash to an internal buffer
 NO_INLINE void jsiConsolePrintString_int(const char *str) {
   size_t len = flash_strlen(str);
@@ -199,7 +199,7 @@ NO_INLINE void jsiConsolePrintString_int(const char *str) {
  * Perform a printf to the console.
  * Execute a printf command to the current JS console.
  */
-#ifndef FLASH_STR
+#ifndef USE_FLASH_MEMORY
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
