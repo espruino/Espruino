@@ -29,8 +29,8 @@ void   jswrap_ESP8266_setCPUFreq(JsVar *jsFreq);
 JsVar *jswrap_ESP8266_crc32(JsVar *jsData);
 JsVar *jswrap_ESP8266_getFreeFlash();
 
-void   jswrap_ESP8266_logDebug(JsVar *jsDebug);
-void   jswrap_ESP8266_setLog(JsVar *jsMode);
+void   jswrap_ESP8266_logDebug(bool Debug);
+void   jswrap_ESP8266_setLog(int mode);
 void   jswrap_ESP8266_printLog();
 
 void   jswrap_ESP8266_wifi_pre_init();

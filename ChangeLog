@@ -19,6 +19,7 @@
             ESP8266: move JswSymPtr and JswSymList to flash to free up gobs of RAM, bump jsvars to 1600
             Fix write to flash when BLE connected on nRF51/2
             Fix potential variable corruption issue when copying objects/arrays containing packed ints
+            Fix ESP8266 printLog memory leak (fix #852)
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
