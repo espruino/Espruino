@@ -397,7 +397,20 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
   // Then create var and set (if there was any code!)
   if (actuallyCreateFunction && lastTokenEnd>0) {
     // code var
-    JsVar *funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
+    JsVar *funcCodeVar;
+    if (jsvIsNativeString(lex->sourceVar)) {
+      /* If we're parsing from a Native String (eg. E.memoryArea, E.setBootCode) then
+      use another Native String to load function code straight from flash */
+      funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
+      funcCodeVar = jsvNewWithFlags(JSV_NATIVE_STRING);
+      if (funcCodeVar) {
+        size_t s = jsvStringIteratorGetIndex(&funcBegin) - 1;
+        funcCodeVar->varData.nativeStr.ptr = lex->sourceVar->varData.nativeStr.ptr + s;
+        funcCodeVar->varData.nativeStr.len = lastTokenEnd - s;
+      }
+    } else {
+      funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
+    }
     jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME), funcCodeVar);
     // scope var
     JsVar *funcScopeVar = jspeiGetScopesAsVar();
