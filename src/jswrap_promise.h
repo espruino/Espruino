@@ -15,5 +15,7 @@
 
 JsVar *jswrap_promise_constructor(JsVar *executor);
 JsVar *jswrap_promise_all(JsVar *arr);
+JsVar *jswrap_promise_reject(JsVar *data);
+JsVar *jswrap_promise_resolve(JsVar *data);
 JsVar *jswrap_promise_then(JsVar *parent, JsVar *callback);
 JsVar *jswrap_promise_catch(JsVar *parent, JsVar *callback);

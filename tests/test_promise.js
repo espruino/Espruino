@@ -6,18 +6,21 @@ var p = new Promise(function(res,rej) {
   if (r=="Hello") passes.push("SimpleResolve");
 });
 
-
 // Check that promises work even if the function is called immediately
 var p = new Promise(function(res,rej) {
   rej("Hello");
 }).catch(function(r) {  
   if (r=="Hello") passes.push("SimpleReject");
+}).then(function(r) {  
+  passes.push("FAIL");
 });
 
 var p = new Promise(function(res,rej) {
   res("Hello"); 
 }).then(function(r) {  
   if (r=="Hello") passes.push("InstantResolve");
+}).catch(function(r) {  
+  passes.push("FAIL");
 });
 
 var p = new Promise(function(res,rej) {
@@ -27,6 +30,20 @@ var p = new Promise(function(res,rej) {
 }).then(function(r) {  
   if (r=="Hello") passes.push("Resolve2");
 });
+
+
+var p = Promise.resolve("Hello").then(function(r) {  
+  if (r=="Hello") passes.push("PreResolved");
+}).catch(function(r) {  
+  passes.push("FAIL");
+});
+
+var p = Promise.reject("Hello").catch(function(r) {  
+  if (r=="Hello") passes.push("PreRejected");
+}).then(function(r) {  
+  passes.push("FAIL");
+});
+
 
 var p = Promise.all([new Promise(function(res,rej) {
   setTimeout(res, 10, "A"); 
@@ -47,5 +64,6 @@ var p = Promise.all([new Promise(function(res,rej) {
 });
 
 setTimeout(function() {
-  result = passes == "SimpleReject,InstantResolve,SimpleResolve,Resolve1,Resolve2,ResolveAll,RejectAll";
+  result = passes == "SimpleReject,InstantResolve,PreResolved,PreRejected,SimpleResolve,Resolve1,Resolve2,ResolveAll,RejectAll";
+  if (!result) console.log(""+passes);
 },30);

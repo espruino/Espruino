@@ -31,26 +31,26 @@
 This is the built-in class for ES6 Promises
 */
 
-void jswrap_promise_resolve(JsVar *promise, JsVar *data) {
+void _jswrap_promise_resolve(JsVar *promise, JsVar *data) {
   JsVar *fn = jsvObjectGetChild(promise, JS_PROMISE_THEN_NAME, 0);
   jsiExecuteEventCallback(promise, fn, 1, &data);
   jsvUnLock(fn);
 }
-void jswrap_promise_queueresolve(JsVar *promise, JsVar *data) {
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_promise_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+void _jswrap_promise_queueresolve(JsVar *promise, JsVar *data) {
+  JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
   if (!fn) return;
   jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, promise);
   jsiQueueEvents(promise, fn, &data, 1);
   jsvUnLock(fn);
 }
 
-void jswrap_promise_reject(JsVar *promise, JsVar *data) {
+void _jswrap_promise_reject(JsVar *promise, JsVar *data) {
   JsVar *fn = jsvObjectGetChild(promise, JS_PROMISE_CATCH_NAME, 0);
   jsiExecuteEventCallback(promise, fn, 1, &data);
   jsvUnLock(fn);
 }
-void jswrap_promise_queuereject(JsVar *promise, JsVar *data) {
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_promise_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+void _jswrap_promise_queuereject(JsVar *promise, JsVar *data) {
+  JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
   if (!fn) return;
   jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, promise);
   jsiQueueEvents(promise, fn, &data, 1);
@@ -61,8 +61,9 @@ void jswrap_promise_all_resolve(JsVar *promise, JsVar *data) {
   JsVarInt i = jsvGetIntegerAndUnLock(jsvObjectGetChild(promise, JS_PROMISE_COUNT_NAME, 0));
   JsVar *arr = jsvObjectGetChild(promise, JS_PROMISE_RESULT_NAME, 0);
   if (arr) {
+    // we may have already rejected...
     if (jsvArrayPush(arr, data) == i) {
-      jswrap_promise_queueresolve(promise, arr);
+      _jswrap_promise_queueresolve(promise, arr);
     }
     jsvUnLock(arr);
   }
@@ -70,9 +71,10 @@ void jswrap_promise_all_resolve(JsVar *promise, JsVar *data) {
 void jswrap_promise_all_reject(JsVar *promise, JsVar *data) {
   JsVar *arr = jsvObjectGetChild(promise, JS_PROMISE_RESULT_NAME, 0);
   if (arr) {
+    // if not rejected before
     jsvUnLock(arr);
     jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, 0);
-    jswrap_promise_queuereject(promise, data);
+    _jswrap_promise_queuereject(promise, data);
   }
 }
 
@@ -94,8 +96,8 @@ JsVar *jswrap_promise_constructor(JsVar *executor) {
   if (obj) {
     // create resolve and reject
     JsVar *args[2] = {
-        jsvNewNativeFunction((void (*)(void))jswrap_promise_queueresolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS)),
-        jsvNewNativeFunction((void (*)(void))jswrap_promise_queuereject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS))
+        jsvNewNativeFunction((void (*)(void))_jswrap_promise_queueresolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS)),
+        jsvNewNativeFunction((void (*)(void))_jswrap_promise_queuereject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS))
     };
     // bind 'this' to functions
     if (args[0]) jsvObjectSetChild(args[0], JSPARSE_FUNCTION_THIS_NAME, obj);
@@ -149,6 +151,47 @@ JsVar *jswrap_promise_all(JsVar *arr) {
     jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, jsvNewEmptyArray());
   }
   jsvUnLock2(resolve, reject);
+  return promise;
+}
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Promise",
+  "name" : "resolve",
+  "generate" : "jswrap_promise_resolve",
+  "params" : [
+    ["promises","JsVar","Data to pass to the `.then` handler"]
+  ],
+  "return" : ["JsVar","A new Promise"]
+}
+Return a new promise that is already resolved (at idle it'll
+call `.then`)
+*/
+JsVar *jswrap_promise_resolve(JsVar *data) {
+  JsVar *promise = jspNewObject(0, "Promise");
+  if (!promise) return 0;
+  _jswrap_promise_queueresolve(promise, data);
+  return promise;
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Promise",
+  "name" : "reject",
+  "generate" : "jswrap_promise_reject",
+  "params" : [
+    ["promises","JsVar","Data to pass to the `.catch` handler"]
+  ],
+  "return" : ["JsVar","A new Promise"]
+}
+Return a new promise that is already rejected (at idle it'll
+call `.catch`)
+*/
+JsVar *jswrap_promise_reject(JsVar *data) {
+  JsVar *promise = jspNewObject(0, "Promise");
+  if (!promise) return 0;
+  _jswrap_promise_queuereject(promise, data);
   return promise;
 }
 
