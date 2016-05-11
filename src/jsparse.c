@@ -401,7 +401,6 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     if (jsvIsNativeString(lex->sourceVar)) {
       /* If we're parsing from a Native String (eg. E.memoryArea, E.setBootCode) then
       use another Native String to load function code straight from flash */
-      funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
       funcCodeVar = jsvNewWithFlags(JSV_NATIVE_STRING);
       if (funcCodeVar) {
         size_t s = jsvStringIteratorGetIndex(&funcBegin) - 1;
