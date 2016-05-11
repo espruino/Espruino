@@ -30,7 +30,7 @@ This is the built-in class for ES6 Promises
 
 void jswrap_promise_resolve(JsVar *promise, JsVar *data) {
   JsVar *fn = jsvObjectGetChild(promise, JS_PROMISE_THEN_NAME, 0);
-  jsvUnLock(jspeFunctionCall(fn, 0, promise, false, 1, &data));
+  jsiExecuteEventCallback(promise, fn, 1, &data);
   jsvUnLock(fn);
 }
 void jswrap_promise_queueresolve(JsVar *promise, JsVar *data) {
@@ -43,7 +43,7 @@ void jswrap_promise_queueresolve(JsVar *promise, JsVar *data) {
 
 void jswrap_promise_reject(JsVar *promise, JsVar *data) {
   JsVar *fn = jsvObjectGetChild(promise, JS_PROMISE_CATCH_NAME, 0);
-  jsvUnLock(jspeFunctionCall(fn, 0, promise, false, 1, &data));
+  jsiExecuteEventCallback(promise, fn, 1, &data);
   jsvUnLock(fn);
 }
 void jswrap_promise_queuereject(JsVar *promise, JsVar *data) {
@@ -103,6 +103,26 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   return 0;
 }
 
+void _jswrap_promise_add(JsVar *parent, JsVar *callback, const char *name) {
+  if (!jsvIsFunction(callback)) {
+    jsExceptionHere(JSET_TYPEERROR, "Callback must be a function, got %t", callback);
+    return;
+  }
+  JsVar *c = jsvObjectGetChild(parent, name, 0);
+  if (!c) jsvObjectSetChild(parent, name, callback);
+  else {
+    if (jsvIsArray(c)) {
+      jsvArrayPush(c, callback);
+    } else {
+      JsVar *fns[2] = {c,callback};
+      JsVar *arr = jsvNewArray(fns, 2);
+      jsvObjectSetChild(parent, name, arr);
+      jsvUnLock(arr);
+    }
+    jsvUnLock(c);
+  }
+}
+
 /*JSON{
   "type" : "method",
   "class" : "Promise",
@@ -110,15 +130,13 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   "generate" : "jswrap_promise_then",
   "params" : [
     ["callback","JsVar","A callback that is called when this promise is resolved"]
-  ]
+  ],
+  "return" : ["JsVar","The original Promise"]
 }
  */
-void jswrap_promise_then(JsVar *parent, JsVar *callback) {
-  if (!jsvIsFunction(callback)) {
-    jsExceptionHere(JSET_TYPEERROR, "Callback must be a function, got %t", callback);
-    return;
-  }
-  jsvObjectSetChild(parent, JS_PROMISE_THEN_NAME, callback);
+JsVar *jswrap_promise_then(JsVar *parent, JsVar *callback) {
+  _jswrap_promise_add(parent, callback, JS_PROMISE_THEN_NAME);
+  return jsvLockAgain(parent);
 }
 
 /*JSON{
@@ -128,13 +146,11 @@ void jswrap_promise_then(JsVar *parent, JsVar *callback) {
   "generate" : "jswrap_promise_catch",
   "params" : [
     ["callback","JsVar","A callback that is called when this promise is rejected"]
-  ]
+  ],
+  "return" : ["JsVar","The original Promise"]
 }
  */
-void jswrap_promise_catch(JsVar *parent, JsVar *callback) {
-  if (!jsvIsFunction(callback)) {
-    jsExceptionHere(JSET_TYPEERROR, "Callback must be a function, got %t", callback);
-    return;
-  }
-  jsvObjectSetChild(parent, JS_PROMISE_CATCH_NAME, callback);
+JsVar *jswrap_promise_catch(JsVar *parent, JsVar *callback) {
+  _jswrap_promise_add(parent, callback, JS_PROMISE_CATCH_NAME);
+  return jsvLockAgain(parent);
 }

@@ -1,5 +1,5 @@
 var p = new Promise(function(res,rej) {
-  setTimeout(res, 1000, "Hello"); 
+  setTimeout(res, 10, "Hello"); 
 }).then(function(r) {  
   console.log("resolve ",r); 
 });
@@ -12,3 +12,18 @@ var p = new Promise(function(res,rej) {
   console.log("reject", r); 
 });
 
+var p = new Promise(function(res,rej) {
+  setTimeout(res, 10, "Hello"); 
+}).then(function(r) {  
+  console.log("resolve ",r); 
+});
+
+var p = new Promise(function(res,rej) {
+  setTimeout(res, 10, "Hello"); 
+}).then(function(r) {  
+  console.log("resolve 1",r); 
+}).then(function(r) {  
+  console.log("resolve 2",r); 
+});
+
+trace(p);
