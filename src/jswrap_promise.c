@@ -18,8 +18,11 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 
-#define JS_PROMISE_THEN_NAME JS_HIDDEN_CHAR_STR"then"
-#define JS_PROMISE_CATCH_NAME JS_HIDDEN_CHAR_STR"catch"
+#define JS_PROMISE_THEN_NAME JS_HIDDEN_CHAR_STR"thn"
+#define JS_PROMISE_CATCH_NAME JS_HIDDEN_CHAR_STR"cat"
+#define JS_PROMISE_COUNT_NAME JS_HIDDEN_CHAR_STR"cnt"
+#define JS_PROMISE_RESULT_NAME JS_HIDDEN_CHAR_STR"res"
+
 
 /*JSON{
   "type" : "class",
@@ -52,6 +55,25 @@ void jswrap_promise_queuereject(JsVar *promise, JsVar *data) {
   jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, promise);
   jsiQueueEvents(promise, fn, &data, 1);
   jsvUnLock(fn);
+}
+
+void jswrap_promise_all_resolve(JsVar *promise, JsVar *data) {
+  JsVarInt i = jsvGetIntegerAndUnLock(jsvObjectGetChild(promise, JS_PROMISE_COUNT_NAME, 0));
+  JsVar *arr = jsvObjectGetChild(promise, JS_PROMISE_RESULT_NAME, 0);
+  if (arr) {
+    if (jsvArrayPush(arr, data) == i) {
+      jswrap_promise_queueresolve(promise, arr);
+    }
+    jsvUnLock(arr);
+  }
+}
+void jswrap_promise_all_reject(JsVar *promise, JsVar *data) {
+  JsVar *arr = jsvObjectGetChild(promise, JS_PROMISE_RESULT_NAME, 0);
+  if (arr) {
+    jsvUnLock(arr);
+    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, 0);
+    jswrap_promise_queuereject(promise, data);
+  }
 }
 
 /*JSON{
@@ -99,8 +121,35 @@ Return a new promise that is resolved when all promises in the supplied
 array are resolved.
 */
 JsVar *jswrap_promise_all(JsVar *arr) {
-  jsError("Unimplemented\n");
-  return 0;
+  if (!jsvIsIterable(arr)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting something iterable, got %t", arr);
+    return 0;
+  }
+  JsVar *promise = jspNewObject(0, "Promise");
+  if (!promise) return 0;
+  JsVar *resolve = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+  JsVar *reject = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+  if (resolve && reject) {
+    jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promise);
+    jsvObjectSetChild(reject, JSPARSE_FUNCTION_THIS_NAME, promise);
+    int promises = 0;
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, arr);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *p = jsvObjectIteratorGetValue(&it);
+      jsvUnLock(jswrap_promise_then(p, resolve));
+      jsvUnLock(jswrap_promise_catch(p, reject));
+      jsvUnLock(p);
+      promises++;
+      jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+
+    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_COUNT_NAME, jsvNewFromInteger(promises));
+    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, jsvNewEmptyArray());
+  }
+  jsvUnLock2(resolve, reject);
+  return promise;
 }
 
 void _jswrap_promise_add(JsVar *parent, JsVar *callback, const char *name) {
@@ -109,8 +158,9 @@ void _jswrap_promise_add(JsVar *parent, JsVar *callback, const char *name) {
     return;
   }
   JsVar *c = jsvObjectGetChild(parent, name, 0);
-  if (!c) jsvObjectSetChild(parent, name, callback);
-  else {
+  if (!c) {
+    jsvObjectSetChild(parent, name, callback);
+  } else {
     if (jsvIsArray(c)) {
       jsvArrayPush(c, callback);
     } else {
