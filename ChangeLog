@@ -24,6 +24,7 @@
             Added built-in Promise implementation
             Fix broken Object.keys/getOwnPropertyNames caused by ESP8266 RAM saving tweaks
             Add Object.g/setPrototypeOf (fix #856)
+            'new' now ignores return value if it's not an object (fix #848)
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS

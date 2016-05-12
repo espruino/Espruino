@@ -1107,7 +1107,7 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
 
   JsVar *a = jspeFunctionCall(func, funcName, thisObj, hasArgs, 0, 0);
 
-  if (a) {
+  if (jsvIsObject(a) || jsvIsFunction(a)) {
     jsvUnLock(thisObj);
     thisObj = a;
   } else {
