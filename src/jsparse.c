@@ -1106,7 +1106,15 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
 
   JsVar *a = jspeFunctionCall(func, funcName, thisObj, hasArgs, 0, 0);
 
-  if (jsvIsObject(a) || jsvIsFunction(a)) {
+  /* FIXME: we should ignore return values that aren't objects (bug #848), but then we need
+   * to be aware of `new String()` and `new Uint8Array()`. Ideally we'd let through
+   * arrays/etc, and then String/etc should return 'boxed' values.
+   *
+   * But they don't return boxed values at the moment, so let's just
+   * pass the return value through. If you try and return a string from
+   * a function it's broken JS code anyway.
+   */
+  if (a) {
     jsvUnLock(thisObj);
     thisObj = a;
   } else {
