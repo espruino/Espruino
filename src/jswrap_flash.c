@@ -524,7 +524,7 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
 
   code = (char *)(FLASH_DATA_LOCATION);
 #endif
-  jsvUnLock(jspEvaluate(code));
+  jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
   return true;
 }
 

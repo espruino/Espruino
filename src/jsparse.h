@@ -56,8 +56,11 @@ JsVar *jspGetStackTrace();
 /** Execute code form a variable and return the result. If lineNumberOffset
  * is nonzero it's added to the line numbers that get reported for errors/debug */
 JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset);
-/** Execute code form a string and return the result. */
-JsVar *jspEvaluate(const char *str);
+/** Execute code form a string and return the result.
+ * You should only set stringIsStatic if the string will hang around for
+ * the life of the interpreter, as then the interpreter will use a pointer
+ * to this data, which could hang around inside the code. */
+JsVar *jspEvaluate(const char *str, bool stringIsStatic);
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports

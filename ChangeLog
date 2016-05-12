@@ -21,6 +21,7 @@
             Fix potential variable corruption issue when copying objects/arrays containing packed ints
             Fix ESP8266 printLog memory leak (fix #852)
             When parsing from a Native String (E.memoryArea), use Native String for function code too.
+            Added built-in Promise implementation
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS

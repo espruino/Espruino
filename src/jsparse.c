@@ -401,12 +401,11 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     if (jsvIsNativeString(lex->sourceVar)) {
       /* If we're parsing from a Native String (eg. E.memoryArea, E.setBootCode) then
       use another Native String to load function code straight from flash */
-      funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
       funcCodeVar = jsvNewWithFlags(JSV_NATIVE_STRING);
       if (funcCodeVar) {
-        size_t s = jsvStringIteratorGetIndex(&funcBegin) - 1;
+        int s = (int)jsvStringIteratorGetIndex(&funcBegin.it) - 1;
         funcCodeVar->varData.nativeStr.ptr = lex->sourceVar->varData.nativeStr.ptr + s;
-        funcCodeVar->varData.nativeStr.len = lastTokenEnd - s;
+        funcCodeVar->varData.nativeStr.len = (uint16_t)(lastTokenEnd - s);
       }
     } else {
       funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
@@ -2504,10 +2503,19 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   return 0;
 }
 
-JsVar *jspEvaluate(const char *str) {
-  JsVar *evCode = jswrap_espruino_memoryArea((int)(size_t)str, (int)strlen(str));
+JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
+
+  /* using a memory area is more efficient, but the interpreter
+   * may use substrings from it for function code. This means that
+   * if the string goes away, everything gets corrupted - hence
+   * the option here.
+   */
+  JsVar *evCode;
+  if (stringIsStatic)
+    evCode = jswrap_espruino_memoryArea((int)(size_t)str, (int)strlen(str));
+  else
+    evCode = jsvNewFromString(str);
   if (!evCode) return 0;
-  // could always use jsvNewFromString, but not as efficient
 
   JsVar *v = 0;
   if (!jsvIsMemoryFull())
