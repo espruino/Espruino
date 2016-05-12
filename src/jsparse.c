@@ -471,11 +471,11 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
   if (JSP_SHOULD_EXECUTE && function) {
     JsVar *returnVar = 0;
 
-    JsVar *thisVar = thisArg;
     if (!jsvIsFunction(function)) {
       jsExceptionHere(JSET_ERROR, "Expecting a function to call, got %t", function);
       return 0;
     }
+    JsVar *thisVar = jsvLockAgainSafe(thisArg);
     if (isParsing) JSP_MATCH('(');
 
     /* Ok, so we have 4 options here.
@@ -519,6 +519,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       // check if 'this' was defined
       while (param) {
         if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) {
+          jsvUnLock(thisVar);
           thisVar = jsvSkipName(param);
           break;
         }
@@ -542,7 +543,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             argPtrSize = newArgPtrSize;
           }
           argPtr[argCount++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
-          if (lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',jsvUnLockMany((unsigned)argCount, argPtr);, 0);
+          if (lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',jsvUnLockMany((unsigned)argCount, argPtr);jsvUnLock(thisVar);, 0);
         }
 
         JSP_MATCH(')');
@@ -592,6 +593,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       JsVar *functionRoot = jsvNewWithFlags(JSV_FUNCTION);
       if (!functionRoot) { // out of memory
         jspSetError(false);
+        jsvUnLock(thisVar);
         return 0;
       }
 
@@ -843,10 +845,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       jsvUnLock(functionRoot);
     }
 
-    // If we grabbed a new 'this' from a bound function
-    // we unlock it here
-    if (thisVar != thisArg)
-      jsvUnLock(thisVar);
+    jsvUnLock(thisVar);
 
     return returnVar;
   } else if (isParsing) { // ---------------------------------- function, but not executing - just parse args and be done
