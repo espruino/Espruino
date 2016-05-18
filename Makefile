@@ -737,6 +737,7 @@ src/jswrap_object.c \
 src/jswrap_onewire.c \
 src/jswrap_pipe.c \
 src/jswrap_process.c \
+src/jswrap_promise.c \
 src/jswrap_serial.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_stream.c \
@@ -1039,7 +1040,7 @@ libs/crypto/mbedtls/library/sha512.c
 
 ifdef USE_TLS
   USE_AES=1
-  DEFINES += -DUSE_TLS=1 -DUSE_AES=1
+  DEFINES += -DUSE_TLS
   SOURCES += \
 libs/crypto/mbedtls/library/bignum.c \
 libs/crypto/mbedtls/library/ctr_drbg.c \

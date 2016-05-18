@@ -21,6 +21,11 @@
             Fix potential variable corruption issue when copying objects/arrays containing packed ints
             Fix ESP8266 printLog memory leak (fix #852)
             When parsing from a Native String (E.memoryArea), use Native String for function code too.
+            Added built-in Promise implementation
+            Fix broken Object.keys/getOwnPropertyNames caused by ESP8266 RAM saving tweaks
+            Add Object.g/setPrototypeOf (fix #856)
+            Fix memory leak when executing bound function with 'this'
+            Fix missing PBKDF2 & AES libs on Pico + Linux caused by an untested ESP8266 commit
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
