@@ -199,7 +199,7 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     else if (jsvIsString(arg))
       time = jswrap_date_parse(arg);
     else
-      jsWarn("Variables of type %t are not supported in date constructor", arg);
+      jsExceptionHere(JSET_TYPEERROR, "Variables of type %t are not supported in date constructor", arg);
     jsvUnLock(arg);
   } else {
     CalendarDate date;

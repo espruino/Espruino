@@ -27,6 +27,7 @@
             Fix memory leak when executing bound function with 'this'
             Fix missing PBKDF2 & AES libs on Pico + Linux caused by an untested ESP8266 commit
             Fix negative Date to string code (fix #854)
+            Convert type warnings to exceptions (to provide stack traces for problems)
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS

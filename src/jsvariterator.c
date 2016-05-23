@@ -41,7 +41,7 @@ bool jsvIterateCallback(
         ok = jsvIterateCallback(dataVar, callback, callbackData);
       }
     } else {
-      jsWarn("If specifying an object, it must be of the form {data : ..., count : N}");
+      jsExceptionHere(JSET_TYPEERROR, "If specifying an object, it must be of the form {data : ..., count : N} - got %j", data);
     }
     jsvUnLock2(countVar, dataVar);
   }

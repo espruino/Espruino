@@ -27,6 +27,16 @@ This class contains information about Espruino itself
  */
 
 /*JSON{
+  "type" : "event",
+  "class" : "process",
+  "name" : "uncaughtException"
+}
+This event is called when an exception gets thrown and isn't caught (eg. it gets all the way back to the event loop).
+
+You can use this for logging potential problems that might occur during execution.
+*/
+
+/*JSON{
   "type" : "staticproperty",
   "class" : "process",
   "name" : "version",

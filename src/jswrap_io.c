@@ -615,14 +615,20 @@ JsVar *jswrap_interface_setWatch(
     debounce = jsvGetFloatAndUnLock(jsvObjectGetChild(repeatOrObject, "debounce", 0));
     if (isnan(debounce) || debounce<0) debounce=0;
     v = jsvObjectGetChild(repeatOrObject, "edge", 0);
-    if (jsvIsString(v)) {
+    edge = -1;
+    if (jsvIsUndefined(v)) {
+      edge = 0;
+    } else if (jsvIsString(v)) {
       if (jsvIsStringEqual(v, "rising")) edge=1;
       else if (jsvIsStringEqual(v, "falling")) edge=-1;
       else if (jsvIsStringEqual(v, "both")) edge=0;
-      else jsWarn("'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
-    } else if (!jsvIsUndefined(v))
-      jsWarn("'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
+      else jsExceptionHere(JSET_TYPEERROR, "'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
+    }
     jsvUnLock(v);
+    if (edge < 0) {
+      jsExceptionHere(JSET_TYPEERROR, "'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
+      return;
+    }
     isIRQ = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "irq", 0));
   } else
     repeat = jsvGetBool(repeatOrObject);
