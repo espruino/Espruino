@@ -26,6 +26,7 @@
             Add Object.g/setPrototypeOf (fix #856)
             Fix memory leak when executing bound function with 'this'
             Fix missing PBKDF2 & AES libs on Pico + Linux caused by an untested ESP8266 commit
+            Fix negative Date to string code (fix #854)
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
