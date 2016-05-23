@@ -1256,7 +1256,7 @@ NO_INLINE void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName) {
   JsVar *prototypeVar = jsvSkipName(prototypeName);
   if (!jsvIsObject(prototypeVar)) {
     if (!jsvIsUndefined(prototypeVar))
-      jsWarn("Prototype is not an Object, so setting it to {}");
+      jsExceptionHere(JSET_TYPEERROR, "Prototype should be an object, got %t", prototypeVar);
     jsvUnLock(prototypeVar);
     prototypeVar = jsvNewObject(); // prototype is supposed to be an object
     JsVar *lastName = jsvSkipToLastName(prototypeName);
