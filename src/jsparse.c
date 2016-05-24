@@ -2499,7 +2499,8 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   jslSetLex(oldLex);
 
   // restore state and execInfo
-  oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
+  JsExecFlags mask = EXEC_FOR_INIT|EXEC_IN_LOOP|EXEC_IN_SWITCH;
+  oldExecInfo.execute = (oldExecInfo.execute & mask) | (execInfo.execute & ~mask); 
   execInfo = oldExecInfo;
 
   // It may have returned a reference, but we just want the value...

@@ -29,6 +29,7 @@
             Fix negative Date to string code (fix #854)
             Convert type warnings to exceptions (to provide stack traces for problems)
             Add uncaughtException event (fix #846)
+            Stop eval in a switch statement from confusing parsing (Fix #845)
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS

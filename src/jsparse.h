@@ -77,8 +77,8 @@ JsVar *jspGetPrototypeOwner(JsVar *proto);
 typedef enum  {
   EXEC_NO = 0,
   EXEC_YES = 1,
-  EXEC_BREAK = 2,
-  EXEC_CONTINUE = 4,
+  EXEC_BREAK = 2,     // Have we had a 'break' keyword (so should skip to end of loop and exit)
+  EXEC_CONTINUE = 4,  // Have we had a 'continue' keywrord (so should skip to end of loop and restart)
 
   EXEC_INTERRUPTED = 8, // true if execution has been interrupted
   EXEC_EXCEPTION = 16, // we had an exception, so don't execute until we hit a try/catch block
