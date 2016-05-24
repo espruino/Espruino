@@ -1057,6 +1057,18 @@ bool jsiAtEndOfInputLine() {
 void jsiCheckErrors() {
   JsVar *exception = jspGetException();
   if (exception) {
+    JsVar *process = jsvObjectGetChild(execInfo.root, "process", 0);
+    if (process) {
+      JsVar *callback = jsvObjectGetChild(process, JS_EVENT_PREFIX"uncaughtException", 0);
+      if (callback) {
+        jsiExecuteEventCallback(0, callback, 1, &exception);
+        jsvUnLock2(callback, exception);
+        exception = 0;
+      }
+      jsvUnLock(process);
+    }
+  }
+  if (exception) {
     jsiConsolePrintf("Uncaught %v\n", exception);
     jsvUnLock(exception);
   }

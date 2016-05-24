@@ -35,7 +35,12 @@ const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in) {
   TimeInDay t;
   t.daysSinceEpoch = (int)(ms_in / MSDAY);
+  
   int ms = (int)(ms_in - ((JsVarFloat)t.daysSinceEpoch * MSDAY));
+  if (ms<0) {
+    ms += MSDAY;
+    t.daysSinceEpoch--;
+  }
   int s = ms / 1000;
   t.ms = ms % 1000;
   t.hour = s / 3600;
@@ -61,7 +66,11 @@ CalendarDate getCalendarDate(int d) {
   date.daysSinceEpoch = d;
 
   y=d / FDAY;
-  d=d % FDAY;
+  d=d - (y * FDAY);
+  if (d<0) {
+    d += FDAY;
+    y--;
+  }
   y=y*4 + 1970;
 
   if (d>=YDAY) {
@@ -190,7 +199,7 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     else if (jsvIsString(arg))
       time = jswrap_date_parse(arg);
     else
-      jsWarn("Variables of type %t are not supported in date constructor", arg);
+      jsExceptionHere(JSET_TYPEERROR, "Variables of type %t are not supported in date constructor", arg);
     jsvUnLock(arg);
   } else {
     CalendarDate date;
