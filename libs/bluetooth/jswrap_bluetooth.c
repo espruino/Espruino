@@ -81,6 +81,9 @@
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
+#if CENTRAL_LINK_COUNT>0
+static uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
+#endif
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 
@@ -297,6 +300,7 @@ void ble_handle_to_write_event_name(char *eventName, uint16_t handle) {
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t                         err_code;
+    //jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
     
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
@@ -305,12 +309,27 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         break;
 
       case BLE_GAP_EVT_CONNECTED:
-        m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-        bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
-        jsiSetConsoleDevice( EV_BLUETOOTH );
+        if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
+          m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+          bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
+          jsiSetConsoleDevice( EV_BLUETOOTH );
+        }
+#if CENTRAL_LINK_COUNT>0
+        if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
+          m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+          // TODO: fire connect event on 'NRF'
+        }
+#endif
         break;
 
       case BLE_GAP_EVT_DISCONNECTED:
+#if CENTRAL_LINK_COUNT>0
+        if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
+          m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
+          // TODO: fire disconnect event on 'NRF'
+          break;
+        }
+#endif
         m_conn_handle = BLE_CONN_HANDLE_INVALID;
         jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
         // restart advertising after disconnection
@@ -342,6 +361,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         JsVar *evt = jsvNewObject();
         if (evt) {
           jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
+          //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(p_adv->peer_addr.addr_type));
           jsvObjectSetChildAndUnLock(evt, "addr", jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
               p_adv->peer_addr.addr[5],
               p_adv->peer_addr.addr[4],
@@ -932,7 +952,7 @@ void jswrap_nrf_bluetooth_connect(JsVar *mac) {
     return;
   }
   ble_gap_addr_t peer_addr;
-  peer_addr.addr_type = BLE_GAP_ADDR_TYPE_PUBLIC;
+  peer_addr.addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC; // not sure why this isn't public?
   int i;
   for (i=0;i<6;i++)
     peer_addr.addr[5-i] = (chtod(jsvGetCharInString(mac, i*3))<<4) | chtod(jsvGetCharInString(mac, (i*3)+1));
@@ -972,9 +992,17 @@ Connect to a BLE device by MAC address
 void jswrap_nrf_bluetooth_disconnect() {
 #if CENTRAL_LINK_COUNT>0
   uint32_t              err_code;
-  err_code = sd_ble_gap_connect_cancel();
-  if (err_code)
+
+  if (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) {
+    // we have a connection, disconnect
+    err_code = sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+  } else {
+    // no connection - try and cancel the connect attempt (assume we have one)
+    err_code = sd_ble_gap_connect_cancel();
+  }
+  if (err_code) {
     jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+  }
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif
