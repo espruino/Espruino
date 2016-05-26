@@ -300,7 +300,7 @@ void ble_handle_to_write_event_name(char *eventName, uint16_t handle) {
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t                         err_code;
-    //jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
+    jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
     
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
@@ -401,6 +401,23 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
         break;
       }
+
+#if CENTRAL_LINK_COUNT>0
+      // For discovery....
+      case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP:
+        if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_ATTERR_ATTRIBUTE_NOT_FOUND) {
+          // we're done.
+        } else {
+          uint16_t last = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count-1;
+          uint16_t start_handle = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[last].handle_range.end_handle+1;
+          sd_ble_gattc_primary_services_discover(p_ble_evt->evt.gap_evt.conn_handle, start_handle, NULL);
+        }
+        break;
+      case BLE_GATTC_EVT_CHAR_DISC_RSP:
+          break;
+      case BLE_GATTC_EVT_DESC_DISC_RSP:
+          break;
+#endif
 
       default:
           // No implementation needed.
@@ -1003,6 +1020,29 @@ void jswrap_nrf_bluetooth_disconnect() {
   if (err_code) {
     jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
   }
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "discoverAllServicesAndCharacteristics",
+    "generate" : "jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics"
+}
+Connect to a BLE device by MAC address
+
+**Note:** This is only available on some devices
+*/
+void jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics() {
+#if CENTRAL_LINK_COUNT>0
+  // doing direct - or maybe see ble_app_blinky_c?
+  if (m_central_conn_handle == BLE_CONN_HANDLE_INVALID) {
+    jsExceptionHere(JSET_ERROR, "Not Connected");
+  }
+
+  sd_ble_gattc_primary_services_discover(m_central_conn_handle, 1 /* start handle */, NULL);
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif

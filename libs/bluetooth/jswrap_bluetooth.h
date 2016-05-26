@@ -28,6 +28,7 @@ void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr);
 
 void jswrap_nrf_bluetooth_connect(JsVar *mac);
 void jswrap_nrf_bluetooth_disconnect();
+void jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics();
 
 bool jswrap_nrf_idle();
 void jswrap_nrf_kill();
