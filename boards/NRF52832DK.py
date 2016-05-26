@@ -24,7 +24,7 @@ info = {
  'default_console_rx' : "D8",
  'default_console_baudrate' : "9600",
  # Number of variables can be WAY higher on this board
- 'variables' : 1020, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2040, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_nrf52832.bin',
  'build' : {
   'defines' : [
@@ -37,7 +37,7 @@ chip = {
   'part' : "NRF52832",
   'family' : "NRF52",
   'package' : "QFN48",
-  'ram' : 32, # Currently there is a bug with NRF52 preview DK's RAM but this will be fixed next revision.
+  'ram' : 64, # Currently there is a bug with NRF52 preview DK's RAM but this will be fixed next revision.
   'flash' : 512,
   'speed' : 64,
   'usart' : 1, 
@@ -48,8 +48,8 @@ chip = {
   'saved_code' : {
     'address' : ((128 - 3) * 4096),
     'page_size' : 4096,
-    'pages' : 3,
-    'flash_available' : (512 - 124 - 12) # Softdevice uses 31 plages of flash. Each page is 4 kb.
+    'pages' : 0,
+    'flash_available' : (512 - 108 - 24) # Total flash - softdevice - bootloader (this one is code signed unlike nrF51).
   },
 };
 
