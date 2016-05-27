@@ -31,6 +31,7 @@
             Add uncaughtException event (fix #846)
             Stop eval in a switch statement from confusing parsing (Fix #845)
             Fix regression in 'mode' argument of SPI.setup (allows custom CC3000 pins to work)
+            Fix '.on' with long event names
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
