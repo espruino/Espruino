@@ -118,6 +118,10 @@ void jswrap_nrf_kill() {
     sd_ble_gap_scan_stop();
     bleStatus &= ~BLE_IS_SCANNING;
   }
+  // if we were connected to something, disconnect
+  if (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) {
+     sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+  }
 }
 
 
@@ -305,7 +309,7 @@ JsVar *bleAddrToStr(ble_gap_addr_t addr) {
       addr.addr[0]);
 }
 
-void ble_queue_event(const char *name, JsVar *data) {
+void bleQueueEventAndUnLock(const char *name, JsVar *data) {
   //jsiConsolePrintf("[%s] %j\n", name, data);
   JsVar *nrf = jsvObjectGetChild(execInfo.root, "NRF", 0);
   if (jsvHasChildren(nrf)) {
@@ -360,7 +364,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-          ble_queue_event(JS_EVENT_PREFIX"connect", 0);
+          bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", 0);
         }
 #endif
         break;
@@ -369,7 +373,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
-          ble_queue_event(JS_EVENT_PREFIX"disconnect", 0);
+          bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", 0);
           break;
         }
 #endif
@@ -447,7 +451,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           ble_gattc_service_t      *p_srv_being_discovered;
           p_srv_being_discovered = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[0];
 
-          JsVar *srvcs = jsvNewEmptyArray();
+          JsVar *srvcs = jsvObjectGetChild(execInfo.hiddenRoot, "bleSvcs", JSV_ARRAY);
           if (srvcs) {
             int i;
             // Should actually return 'BLEService' object here
@@ -461,11 +465,19 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
               }
             }
           }
-          ble_queue_event(JS_EVENT_PREFIX"servicesDiscover", srvcs);
 
           uint32_t err_code;
-          err_code = sd_ble_gattc_characteristics_discover(m_central_conn_handle,
-                                                       &p_srv_being_discovered->handle_range);
+          if (p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[0].handle_range.end_handle < 0xFFFF) {
+            jsvUnLock(srvcs);
+            // Now try again
+            uint16_t last = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count-1;
+            uint16_t start_handle = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[last].handle_range.end_handle+1;
+            sd_ble_gattc_primary_services_discover(p_ble_evt->evt.gap_evt.conn_handle, start_handle, NULL);
+          } else {
+            // When done, sent the result to the handler
+            bleQueueEventAndUnLock(JS_EVENT_PREFIX"servicesDiscover", srvcs);
+            jsvObjectSetChild(execInfo.hiddenRoot, "bleSvcs", 0);
+          }
         } // else error
         break;
       }
@@ -484,7 +496,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             }
           }
         }
-        ble_queue_event(JS_EVENT_PREFIX"characteristicsDiscover", chars);
+        bleQueueEventAndUnLock(JS_EVENT_PREFIX"characteristicsDiscover", chars);
         break;
       }
       case BLE_GATTC_EVT_DESC_DISC_RSP:
@@ -1103,12 +1115,12 @@ void jswrap_nrf_bluetooth_disconnect() {
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
-    "name" : "discoverAllServicesAndCharacteristics",
-    "generate" : "jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics"
+    "name" : "discoverServices",
+    "generate" : "jswrap_nrf_bluetooth_discoverServices"
 }
 **Note:** This is only available on some devices
 */
-void jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics() {
+void jswrap_nrf_bluetooth_discoverServices() {
 #if CENTRAL_LINK_COUNT>0
   if (m_central_conn_handle == BLE_CONN_HANDLE_INVALID)
     return jsExceptionHere(JSET_ERROR, "Not Connected");
@@ -1129,6 +1141,34 @@ void jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics() {
 }
 **Note:** This is only available on some devices
 */
+
+/*JSON{
+    "type" : "method",
+    "class" : "BLEService",
+    "name" : "discoverCharacteristics",
+    "generate" : "jswrap_nrf_bleservice_discoverCharacteristics"
+}
+**Note:** This is only available on some devices
+*/
+void jswrap_nrf_bleservice_discoverCharacteristics(JsVar *service) {
+#if CENTRAL_LINK_COUNT>0
+  if (m_central_conn_handle == BLE_CONN_HANDLE_INVALID)
+    return jsExceptionHere(JSET_ERROR, "Not Connected");
+
+  ble_gattc_handle_range_t range;
+  range.start_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "start_handle", 0));
+  range.end_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "end_handle", 0));
+
+  uint32_t              err_code;
+  err_code = sd_ble_gattc_characteristics_discover(m_central_conn_handle, &range);
+  if (err_code)
+    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+#endif
+}
+
+
 
 /*JSON{
     "type": "class",
@@ -1174,5 +1214,56 @@ void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data) {
 #endif
 }
 
+
+/* ---------------------------------------------------------------------
+ *                                                               TESTING
+ * ---------------------------------------------------------------------
+
+ // Scanning, getting a service, characteristic, and then writing it
+
+NRF.setScan(function(d) {
+  console.log(JSON.stringify(d,null,2));
+});
+
+NRF.setScan(false);
+
+NRF.on('connect', function() { print("CONNECTED"); });
+NRF.connect("f0:de:1d:13:9f:48")
+
+
+NRF.on('servicesDiscover', function(services) {
+  print("services: "+JSON.stringify(services,null,2));
+
+  NRF.on('characteristicsDiscover', function(c) {
+    print("characteristics: "+JSON.stringify(c,null,2));
+    chars = c;
+    chars[0].write(255)
+  });
+  services[services.length-1].discoverCharacteristics();
+});
+NRF.discoverServices();
+
+chars[0].write(0)
+
+
+// ------------------------------ on BLE server (microbit) - allow display of data
+NRF.setServices({
+  0xBCDE : {
+    0xABCD : {
+      value : "0", // optional
+      maxLen : 1, // optional (otherwise is length of initial value)
+      broadcast : false, // optional, default is false
+      readable : true,   // optional, default is false
+      writable : true,   // optional, default is false
+      onWrite : function(evt) { // optional
+        show(evt.data);
+      }
+    }
+    // more characteristics allowed
+  }
+  // more services allowed
+});
+
+ */
 
 
