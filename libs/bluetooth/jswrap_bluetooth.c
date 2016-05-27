@@ -98,6 +98,29 @@ static volatile BLEStatus bleStatus;
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 #define BLE_WRITE_EVENT                 JS_EVENT_PREFIX"blew"
 
+bool jswrap_nrf_transmit_string();
+
+/*JSON{
+  "type" : "idle",
+  "generate" : "jswrap_nrf_idle"
+}*/
+bool jswrap_nrf_idle() {
+  return jswrap_nrf_transmit_string()>0; // return true if we sent anything
+}
+
+/*JSON{
+  "type" : "kill",
+  "generate" : "jswrap_nrf_kill"
+}*/
+void jswrap_nrf_kill() {
+  // if we were scanning, make sure we stop at reset!
+  if (bleStatus & BLE_IS_SCANNING) {
+    sd_ble_gap_scan_stop();
+    bleStatus &= ~BLE_IS_SCANNING;
+  }
+}
+
+
 /**@brief Error handlers.
  *
  * @details
@@ -285,7 +308,7 @@ JsVar *bleAddrToStr(ble_gap_addr_t addr) {
 void ble_queue_event(const char *name, JsVar *data) {
   //jsiConsolePrintf("[%s] %j\n", name, data);
   JsVar *nrf = jsvObjectGetChild(execInfo.root, "NRF", 0);
-  if (jsvIsObject(nrf)) {
+  if (jsvHasChildren(nrf)) {
     jsiQueueObjectCallbacks(nrf, name, &data, data?1:0);
   }
   jsvUnLock2(nrf, data);
@@ -320,7 +343,7 @@ void ble_handle_to_write_event_name(char *eventName, uint16_t handle) {
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t                         err_code;
-    jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
+    //jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
     
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
@@ -337,7 +360,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-          ble_queue_event("connect", 0);
+          ble_queue_event(JS_EVENT_PREFIX"connect", 0);
         }
 #endif
         break;
@@ -346,7 +369,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
-          ble_queue_event("disconnect", 0);
+          ble_queue_event(JS_EVENT_PREFIX"disconnect", 0);
           break;
         }
 #endif
@@ -428,11 +451,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           if (srvcs) {
             int i;
             // Should actually return 'BLEService' object here
-            for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++)
-              jsvArrayPush(srvcs,
-                  bleUUIDToStr(p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].uuid));
+            for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++) {
+              JsVar *o = jspNewObject(0, "BLEService");
+              if (o) {
+                jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].uuid));
+                jsvObjectSetChildAndUnLock(o,"start_handle", jsvNewFromInteger(p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].handle_range.start_handle));
+                jsvObjectSetChildAndUnLock(o,"end_handle", jsvNewFromInteger(p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].handle_range.end_handle));
+                jsvArrayPushAndUnLock(srvcs, o);
+              }
+            }
           }
-          ble_queue_event("servicesDiscover", srvcs);
+          ble_queue_event(JS_EVENT_PREFIX"servicesDiscover", srvcs);
 
           uint32_t err_code;
           err_code = sd_ble_gattc_characteristics_discover(m_central_conn_handle,
@@ -444,12 +473,18 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         JsVar *chars = jsvNewEmptyArray();
         if (chars) {
           int i;
-          // Should actually return 'BLECharacteristic' object here
-          for (i=0;i<p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count;i++)
-            jsvArrayPush(chars,
-                bleUUIDToStr(p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[i].uuid));
+          for (i=0;i<p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count;i++) {
+            JsVar *o = jspNewObject(0, "BLECharacteristic");
+            if (o) {
+              jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[i].uuid));
+              jsvObjectSetChildAndUnLock(o,"handle_value", jsvNewFromInteger(p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[i].handle_value));
+              jsvObjectSetChildAndUnLock(o,"handle_decl", jsvNewFromInteger(p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[i].handle_decl));
+              // char_props?
+              jsvArrayPushAndUnLock(chars, o);
+            }
+          }
         }
-        ble_queue_event("characteristicsDiscover", chars);
+        ble_queue_event(JS_EVENT_PREFIX"characteristicsDiscover", chars);
         break;
       }
       case BLE_GATTC_EVT_DESC_DISC_RSP:
@@ -501,7 +536,7 @@ static void ble_stack_init(void)
     //Check the ram settings against the used number of links
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
 
-    extern int __data_start__; // should be void, but this avoids errors
+    extern int __data_start__; // should be 'void', but 'int' avoids warnings
     if (IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT) != (uint32_t)&__data_start__) {
       jsiConsolePrintf("WARNING: BLE RAM start address not correct - is 0x%x, should be 0x%x\n\n", (uint32_t)&__data_start__, IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT));
       jshTransmitFlush();
@@ -1040,7 +1075,9 @@ void jswrap_nrf_bluetooth_connect(JsVar *mac) {
     "name" : "disconnect",
     "generate" : "jswrap_nrf_bluetooth_disconnect"
 }
-Connect to a BLE device by MAC address
+Disconnect from a previously connected BLE device connected with
+`NRF.connect` - this does not disconnect from something that has
+connected to the Espruino.
 
 **Note:** This is only available on some devices
 */
@@ -1069,16 +1106,12 @@ void jswrap_nrf_bluetooth_disconnect() {
     "name" : "discoverAllServicesAndCharacteristics",
     "generate" : "jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics"
 }
-Connect to a BLE device by MAC address
-
 **Note:** This is only available on some devices
 */
 void jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics() {
 #if CENTRAL_LINK_COUNT>0
-  // doing direct - or maybe see ble_app_blinky_c?
-  if (m_central_conn_handle == BLE_CONN_HANDLE_INVALID) {
-    jsExceptionHere(JSET_ERROR, "Not Connected");
-  }
+  if (m_central_conn_handle == BLE_CONN_HANDLE_INVALID)
+    return jsExceptionHere(JSET_ERROR, "Not Connected");
 
   uint32_t              err_code;
   err_code = sd_ble_gattc_primary_services_discover(m_central_conn_handle, 1 /* start handle */, NULL);
@@ -1091,23 +1124,55 @@ void jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics() {
 }
 
 /*JSON{
-  "type" : "idle",
-  "generate" : "jswrap_nrf_idle"
-}*/
-bool jswrap_nrf_idle() {
-  return jswrap_nrf_transmit_string()>0; // return true if we sent anything
+    "type": "class",
+    "class" : "BLEService"
 }
+**Note:** This is only available on some devices
+*/
 
 /*JSON{
-  "type" : "kill",
-  "generate" : "jswrap_nrf_kill"
-}*/
-void jswrap_nrf_kill() {
-  // if we were scanning, make sure we stop at reset!
-  if (bleStatus & BLE_IS_SCANNING) {
-    sd_ble_gap_scan_stop();
-    bleStatus &= ~BLE_IS_SCANNING;
-  }
+    "type": "class",
+    "class" : "BLECharacteristic"
 }
+**Note:** This is only available on some devices
+*/
+
+/*JSON{
+    "type" : "method",
+    "class" : "BLECharacteristic",
+    "name" : "write",
+    "generate" : "jswrap_nrf_blecharacteristic_write",
+    "params" : [
+      ["data","JsVar","The data to write"]
+    ]
+}
+**Note:** This is only available on some devices
+*/
+void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data) {
+#if CENTRAL_LINK_COUNT>0
+  if (m_central_conn_handle == BLE_CONN_HANDLE_INVALID)
+    return jsExceptionHere(JSET_ERROR, "Not Connected");
+
+  JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, data);
+  if (!dataPtr) return;
+
+  const ble_gattc_write_params_t write_params = {
+      .write_op = BLE_GATT_OP_WRITE_CMD,
+      .flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE,
+      .handle   = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0)),
+      .offset   = 0,
+      .len      = dataLen,
+      .p_value  = dataPtr
+  };
+
+  uint32_t              err_code;
+  err_code = sd_ble_gattc_write(m_central_conn_handle, &write_params);
+  if (err_code)
+    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+#endif
+}
+
 
 
