@@ -149,8 +149,8 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
 
 #ifdef ARM
-    extern void LINKER_END_VAR; // end of ram used (variables)
-    extern void LINKER_ETEXT_VAR; // end of flash text (binary) section
+    extern int LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings
+    extern int LINKER_ETEXT_VAR; // end of flash text (binary) section - should be 'void', but 'int' avoids warnings
     jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));
     jsvObjectSetChildAndUnLock(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START));
     jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_ETEXT_VAR));
