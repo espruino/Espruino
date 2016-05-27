@@ -16,6 +16,7 @@
 // public static methods.
 void jswrap_nrf_bluetooth_init(void);
 
+void jswrap_nrf_bluetooth_setName(JsVar *name);
 void jswrap_nrf_bluetooth_sleep(void); // maybe these should return err_code?
 void jswrap_nrf_bluetooth_wake(void);
 
@@ -24,6 +25,10 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data);
 void jswrap_nrf_bluetooth_setServices(JsVar *data);
 void jswrap_nrf_bluetooth_setScan(JsVar *callback);
 void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr);
+
+void jswrap_nrf_bluetooth_connect(JsVar *mac);
+void jswrap_nrf_bluetooth_disconnect();
+void jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics();
 
 bool jswrap_nrf_idle();
 void jswrap_nrf_kill();
