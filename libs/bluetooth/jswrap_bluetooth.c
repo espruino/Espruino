@@ -268,8 +268,28 @@ static void conn_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+JsVar *bleUUIDToStr(ble_uuid_t uuid) {
+  return jsvVarPrintf("%04x", uuid.uuid);
+}
 
+JsVar *bleAddrToStr(ble_gap_addr_t addr) {
+  return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
+      addr.addr[5],
+      addr.addr[4],
+      addr.addr[3],
+      addr.addr[2],
+      addr.addr[1],
+      addr.addr[0]);
+}
 
+void ble_queue_event(const char *name, JsVar *data) {
+  //jsiConsolePrintf("[%s] %j\n", name, data);
+  JsVar *nrf = jsvObjectGetChild(execInfo.root, "NRF", 0);
+  if (jsvIsObject(nrf)) {
+    jsiQueueObjectCallbacks(nrf, name, &data, data?1:0);
+  }
+  jsvUnLock2(nrf, data);
+}
 
 void jswrap_nrf_bluetooth_startAdvertise(void) {
   uint32_t err_code = 0;
@@ -317,7 +337,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-          // TODO: fire connect event on 'NRF'
+          ble_queue_event("connect", 0);
         }
 #endif
         break;
@@ -326,7 +346,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
-          // TODO: fire disconnect event on 'NRF'
+          ble_queue_event("disconnect", 0);
           break;
         }
 #endif
@@ -362,13 +382,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (evt) {
           jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
           //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(p_adv->peer_addr.addr_type));
-          jsvObjectSetChildAndUnLock(evt, "addr", jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
-              p_adv->peer_addr.addr[5],
-              p_adv->peer_addr.addr[4],
-              p_adv->peer_addr.addr[3],
-              p_adv->peer_addr.addr[2],
-              p_adv->peer_addr.addr[1],
-              p_adv->peer_addr.addr[0]));
+          jsvObjectSetChildAndUnLock(evt, "addr", bleAddrToStr(p_adv->peer_addr));
           JsVar *data = jsvNewStringOfLength(p_adv->dlen);
           if (data) {
             jsvSetString(data, (char*)p_adv->data, p_adv->dlen);
@@ -404,19 +418,43 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
 #if CENTRAL_LINK_COUNT>0
       // For discovery....
-      case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP:
-        if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_ATTERR_ATTRIBUTE_NOT_FOUND) {
-          // we're done.
-        } else {
-          uint16_t last = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count-1;
-          uint16_t start_handle = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[last].handle_range.end_handle+1;
-          sd_ble_gattc_primary_services_discover(p_ble_evt->evt.gap_evt.conn_handle, start_handle, NULL);
-        }
+      case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: {
+        if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
+          if (p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count ==0) return;
+          ble_gattc_service_t      *p_srv_being_discovered;
+          p_srv_being_discovered = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[0];
+
+          JsVar *srvcs = jsvNewEmptyArray();
+          if (srvcs) {
+            int i;
+            // Should actually return 'BLEService' object here
+            for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++)
+              jsvArrayPush(srvcs,
+                  bleUUIDToStr(p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].uuid));
+          }
+          ble_queue_event("servicesDiscover", srvcs);
+
+          uint32_t err_code;
+          err_code = sd_ble_gattc_characteristics_discover(m_central_conn_handle,
+                                                       &p_srv_being_discovered->handle_range);
+        } // else error
         break;
-      case BLE_GATTC_EVT_CHAR_DISC_RSP:
-          break;
+      }
+      case BLE_GATTC_EVT_CHAR_DISC_RSP: {
+        JsVar *chars = jsvNewEmptyArray();
+        if (chars) {
+          int i;
+          // Should actually return 'BLECharacteristic' object here
+          for (i=0;i<p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count;i++)
+            jsvArrayPush(chars,
+                bleUUIDToStr(p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[i].uuid));
+        }
+        ble_queue_event("characteristicsDiscover", chars);
+        break;
+      }
       case BLE_GATTC_EVT_DESC_DISC_RSP:
-          break;
+        jsiConsolePrintf("DESC\n");
+        break;
 #endif
 
       default:
@@ -463,7 +501,7 @@ static void ble_stack_init(void)
     //Check the ram settings against the used number of links
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
 
-    extern void __data_start__;
+    extern int __data_start__; // should be void, but this avoids errors
     if (IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT) != (uint32_t)&__data_start__) {
       jsiConsolePrintf("WARNING: BLE RAM start address not correct - is 0x%x, should be 0x%x\n\n", (uint32_t)&__data_start__, IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT));
       jshTransmitFlush();
@@ -1042,7 +1080,11 @@ void jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics() {
     jsExceptionHere(JSET_ERROR, "Not Connected");
   }
 
-  sd_ble_gattc_primary_services_discover(m_central_conn_handle, 1 /* start handle */, NULL);
+  uint32_t              err_code;
+  err_code = sd_ble_gattc_primary_services_discover(m_central_conn_handle, 1 /* start handle */, NULL);
+  if (err_code)
+    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif
