@@ -83,6 +83,10 @@ static ble_nus_t                        m_nus;                                  
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
 static uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
+
+#include "ble_db_discovery.h"
+static ble_db_discovery_t               m_ble_db_discovery;             /**< Instance of database discovery module. Must be passed to all db_discovert API calls */
+static void db_disc_handler(ble_db_discovery_evt_t * p_evt);
 #endif
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
@@ -194,8 +198,6 @@ bool jswrap_nrf_transmit_string() {
   }
   return idx>0;
 }
-/**@snippet [Handling the data received over BLE] */
-
 
 /**@brief Function for initializing services that will be used by the application.
  */
@@ -401,24 +403,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
         break;
       }
-
-#if CENTRAL_LINK_COUNT>0
-      // For discovery....
-      case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP:
-        if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_ATTERR_ATTRIBUTE_NOT_FOUND) {
-          // we're done.
-        } else {
-          uint16_t last = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count-1;
-          uint16_t start_handle = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[last].handle_range.end_handle+1;
-          sd_ble_gattc_primary_services_discover(p_ble_evt->evt.gap_evt.conn_handle, start_handle, NULL);
-        }
-        break;
-      case BLE_GATTC_EVT_CHAR_DISC_RSP:
-          break;
-      case BLE_GATTC_EVT_DESC_DISC_RSP:
-          break;
-#endif
-
       default:
           // No implementation needed.
           break;
@@ -438,6 +422,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
     ble_conn_params_on_ble_evt(p_ble_evt);
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
+    ble_db_discovery_on_ble_evt(&m_ble_db_discovery, p_ble_evt);
     on_ble_evt(p_ble_evt);
 }
 
@@ -535,6 +520,7 @@ void jswrap_nrf_bluetooth_init(void) {
   services_init();
   advertising_init();
   conn_params_init();
+  // ble_db_discovery_init(db_disc_handler); // FIXME
 
   jswrap_nrf_bluetooth_wake();
 }
@@ -1025,6 +1011,24 @@ void jswrap_nrf_bluetooth_disconnect() {
 #endif
 }
 
+
+#if CENTRAL_LINK_COUNT>0
+/**@brief Function for handling database discovery events.
+ *
+ * @details This function is callback function to handle events from the database discovery module.
+ *          Depending on the UUIDs that are discovered, this function should forward the events
+ *          to their respective services.
+ *
+ * @param[in] p_event  Pointer to the database discovery event.
+ */
+static void db_disc_handler(ble_db_discovery_evt_t * p_evt) {
+  if (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE) {
+    ble_gatt_db_srv_t *srv = &p_evt->params.discovered_db;
+    jsiConsolePrintf("UUID 0x%04x cnt %d\n", srv->srv_uuid, srv->char_count);
+  }
+}
+#endif
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
@@ -1042,7 +1046,10 @@ void jswrap_nrf_bluetooth_discoverAllServicesAndCharacteristics() {
     jsExceptionHere(JSET_ERROR, "Not Connected");
   }
 
-  sd_ble_gattc_primary_services_discover(m_central_conn_handle, 1 /* start handle */, NULL);
+  uint32_t              err_code;
+  err_code = ble_db_discovery_start(&m_ble_db_discovery, m_central_conn_handle);
+  if (err_code)
+    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif
