@@ -10,18 +10,6 @@
  *
  */
 
-/*
- TODO:
-
-Handle full UUIDs.
-
-Use sd_ble_uuid_decode to turn a UUID string into ble_uuid_t, with
-sd_ble_uuid_vs_add if it returns NRF_ERROR_NOT_FOUND.
-
-sd_ble_uuid_encode will decode UUIDs
-
-*/
-
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
 #include "jsdevices.h"
@@ -296,10 +284,28 @@ static void conn_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+// BLE UUID to string
 JsVar *bleUUIDToStr(ble_uuid_t uuid) {
-  return jsvVarPrintf("%04x", uuid.uuid);
+  if (uuid.type == BLE_UUID_TYPE_UNKNOWN) {
+    return jsvVarPrintf("0x%04x[vendor]", uuid.uuid);
+    /* TODO: We actually need a sd_ble_gattc_read when we got this UUID, so
+     * we can find out what the full UUID actually was  */
+    // see https://devzone.nordicsemi.com/question/15930/s130-custom-uuid-service-discovery/
+  }
+  if (uuid.type == BLE_UUID_TYPE_BLE)
+    return jsvVarPrintf("0x%04x", uuid.uuid);
+  uint8_t data[16];
+  uint8_t dataLen;
+  uint32_t err_code = sd_ble_uuid_encode(&uuid, &dataLen, data);
+  if (err_code)
+    return jsvVarPrintf("[sd_ble_uuid_encode error %d]", err_code);
+  // check error code?
+  assert(dataLen==16); // it should always be 16 as we checked above
+  uint16_t *wdata = (uint16_t*)&data[0];
+  return jsvVarPrintf("%04x%04x-%04x-%04x-%04x-%04x%04x%04x", wdata[7],wdata[6],wdata[5],wdata[4],wdata[3],wdata[2],wdata[1],wdata[0]);
 }
 
+// BLE MAC address to string
 JsVar *bleAddrToStr(ble_gap_addr_t addr) {
   return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
       addr.addr[5],
@@ -308,6 +314,69 @@ JsVar *bleAddrToStr(ble_gap_addr_t addr) {
       addr.addr[2],
       addr.addr[1],
       addr.addr[0]);
+}
+
+/* Convert a JsVar to a UUID - true if handled
+ * Converts:
+ *   Integers -> 16 bit BLE UUID
+ *   "0xABCD"   -> 16 bit BLE UUID
+ *   "ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD" -> vendor specific BLE UUID
+ */
+bool bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
+  if (jsvIsInt(v)) {
+    JsVarInt i = jsvGetInteger(v);
+    if (i<0 || i>0xFFFF) return false;
+    BLE_UUID_BLE_ASSIGN((*uuid), i);
+    return true;
+  }
+  if (!jsvIsString(v)) return false;
+  unsigned int expectedLength = 16;
+  unsigned int startIdx = 0;
+  if (jsvIsStringEqualOrStartsWith(v,"0x",true)) {
+    // deal with 0xABCD vs ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD
+    expectedLength = 2;
+    startIdx = 2;
+  }
+  uint8_t data[16];
+  unsigned int dataLen = 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, startIdx);
+  while (jsvStringIteratorHasChar(&it) && dataLen<expectedLength) {
+    // skip dashes if there were any
+    if (expectedLength==16 && jsvStringIteratorGetChar(&it)=='-')
+      jsvStringIteratorNext(&it);
+    // Read a byte
+    int hi = chtod(jsvStringIteratorGetChar(&it));
+    jsvStringIteratorNext(&it);
+    int lo = chtod(jsvStringIteratorGetChar(&it));
+    jsvStringIteratorNext(&it);
+    if (hi<0 || lo<0) {
+      jsvStringIteratorFree(&it);
+      return false; // not hex chars
+    }
+    data[expectedLength - (dataLen+1)] = (unsigned)((hi<<4) | lo);
+    dataLen++;
+  }
+  if (jsvStringIteratorHasChar(&it)) dataLen++; // make sure we fail is string too long
+  jsvStringIteratorFree(&it);
+  if (dataLen!=expectedLength) return false;
+  // now try and decode the UUID
+  uint32_t err_code;
+  err_code = sd_ble_uuid_decode(dataLen, data, uuid);
+  // Not found - add it
+  if (err_code == NRF_ERROR_NOT_FOUND) {
+    uuid->uuid = ((data[12]<<8) | data[13]);
+    data[12] = 0; // these 2 not needed, but let's zero them anyway
+    data[13] = 0;
+    err_code = sd_ble_uuid_vs_add((ble_uuid128_t*)data, &uuid->type);
+  }
+  return !err_code;
+}
+
+bool bleVarToUUIDAndUnLock(ble_uuid_t *uuid, JsVar *v) {
+  bool r = bleVarToUUID(uuid, v);
+  jsvUnLock(v);
+  return r;
 }
 
 void bleQueueEventAndUnLock(const char *name, JsVar *data) {
@@ -449,25 +518,23 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: {
         if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
           if (p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count ==0) return;
-          ble_gattc_service_t      *p_srv_being_discovered;
-          p_srv_being_discovered = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[0];
 
           JsVar *srvcs = jsvObjectGetChild(execInfo.hiddenRoot, "bleSvcs", JSV_ARRAY);
           if (srvcs) {
             int i;
             // Should actually return 'BLEService' object here
             for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++) {
+              ble_gattc_service_t *p_srv = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i];
               JsVar *o = jspNewObject(0, "BLEService");
               if (o) {
-                jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].uuid));
-                jsvObjectSetChildAndUnLock(o,"start_handle", jsvNewFromInteger(p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].handle_range.start_handle));
-                jsvObjectSetChildAndUnLock(o,"end_handle", jsvNewFromInteger(p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i].handle_range.end_handle));
+                jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_srv->uuid));
+                jsvObjectSetChildAndUnLock(o,"start_handle", jsvNewFromInteger(p_srv->handle_range.start_handle));
+                jsvObjectSetChildAndUnLock(o,"end_handle", jsvNewFromInteger(p_srv->handle_range.end_handle));
                 jsvArrayPushAndUnLock(srvcs, o);
               }
             }
           }
 
-          uint32_t err_code;
           if (p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[0].handle_range.end_handle < 0xFFFF) {
             jsvUnLock(srvcs);
             // Now try again
@@ -763,6 +830,9 @@ setInterval(function() {
   });
 }, 30000);
 ```
+
+**Note:** Currently only standardised bluetooth UUIDs are allowed (see the
+list above).
 */
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data) {
   uint32_t err_code;
@@ -829,6 +899,9 @@ NRF.setServices({
   // more services allowed
 });
 ```
+
+**Note:** UUIDs can be integers between `0` and `0xFFFF`, strings of
+the form `"0xABCD"`, or strings of the form `""ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD""`
 */
 void jswrap_nrf_bluetooth_setServices(JsVar *data) {
   uint32_t err_code;
@@ -843,7 +916,11 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
       uint16_t service_handle;
 
       // Add the service
-      BLE_UUID_BLE_ASSIGN(ble_uuid, jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it)));
+
+      if (!bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetKey(&it))) {
+        jsExceptionHere(JSET_ERROR, "Invalid Service UUID");
+        break;
+      }
       err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
                                               &ble_uuid,
                                               &service_handle);
@@ -864,7 +941,10 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
         ble_gatts_attr_md_t attr_md;
         ble_gatts_char_handles_t  characteristic_handles;
 
-        BLE_UUID_BLE_ASSIGN(char_uuid, jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&serviceit)));
+        if (!bleVarToUUIDAndUnLock(&char_uuid, jsvObjectIteratorGetKey(&serviceit))) {
+          jsExceptionHere(JSET_ERROR, "Invalid Characteristic UUID");
+          break;
+        }
         JsVar *charVar = jsvObjectIteratorGetValue(&serviceit);
 
         memset(&char_md, 0, sizeof(char_md));
@@ -1203,7 +1283,7 @@ void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data) {
       .handle   = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0)),
       .offset   = 0,
       .len      = dataLen,
-      .p_value  = dataPtr
+      .p_value  = (uint8_t*)dataPtr
   };
 
   uint32_t              err_code;
