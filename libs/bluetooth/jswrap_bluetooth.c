@@ -10,16 +10,17 @@
  *
  */
 
-/** @file
- *
- * @defgroup ble_sdk_uart_over_ble_main main.c
- * @{
- * @ingroup  ble_sdk_app_nus_eval
- * @brief    UART over BLE application main file.
- *
- * This file contains the source code for a sample application that uses the Nordic UART service.
- * This application uses the @ref srvlib_conn_params module.
- */
+/*
+ TODO:
+
+Handle full UUIDs.
+
+Use sd_ble_uuid_decode to turn a UUID string into ble_uuid_t, with
+sd_ble_uuid_vs_add if it returns NRF_ERROR_NOT_FOUND.
+
+sd_ble_uuid_encode will decode UUIDs
+
+*/
 
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
@@ -1213,7 +1214,6 @@ void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data) {
   jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif
 }
-
 
 /* ---------------------------------------------------------------------
  *                                                               TESTING
