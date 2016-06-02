@@ -130,14 +130,12 @@ static NO_INLINE void jsiAppendToInputLine(const char *str) {
   }
 }
 
-/**
- * Change the console to a new location.
- */
-void jsiSetConsoleDevice(
-    IOEventFlags device //!< The device to use as a console.
-  ) {
-  // The `consoleDevice` is the global used to indicate which device we are using as the
-  // the console.
+void jsiSetConsoleDevice(IOEventFlags device, bool force) {
+  if (force)
+    jsiStatus |= JSIS_CONSOLE_FORCED;
+  else
+    jsiStatus &= ~JSIS_CONSOLE_FORCED;
+
   if (device == consoleDevice) return;
 
   if (!jshIsDeviceInitialised(device)) {
@@ -159,13 +157,14 @@ void jsiSetConsoleDevice(
   }
 }
 
-/**
- * Retrieve the device being used as the console.
- */
 IOEventFlags jsiGetConsoleDevice() {
   // The `consoleDevice` is the global used to hold the current console.  This function
   // encapsulates access.
   return consoleDevice;
+}
+
+bool jsiIsConsoleDeviceForced() {
+  return (jsiStatus & JSIS_CONSOLE_FORCED)!=0;
 }
 
 /**

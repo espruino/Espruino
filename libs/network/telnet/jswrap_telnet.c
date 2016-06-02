@@ -212,7 +212,7 @@ bool telnetAccept(JsNetwork *net) {
   IOEventFlags console = jsiGetConsoleDevice();
   if (console != EV_TELNET) {
     tnSrv.oldConsole = console;
-    jsiSetConsoleDevice(EV_TELNET);
+    if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(EV_TELNET, false);
   }
 
   tnSrv.cliSock = sock;
@@ -226,7 +226,7 @@ void telnetRelease(JsNetwork *net) {
   printf("tnSrv: released console from sock %d\n", tnSrv.cliSock);
   netCloseSocket(net, tnSrv.cliSock);
   tnSrv.cliSock = 0;
-  jsiSetConsoleDevice(tnSrv.oldConsole);
+  if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(tnSrv.oldConsole, false);
 }
 
 // Attempt to send buffer on an established client connection, returns true if it sent something

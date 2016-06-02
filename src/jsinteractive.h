@@ -59,10 +59,14 @@ bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device);
 
-/// Change the console to a new location
-void jsiSetConsoleDevice(IOEventFlags device);
+/** Change the console to a new location - if force is set, this console
+ * device will be 'sticky' - it will not change when the device changes
+ * connection state */
+void jsiSetConsoleDevice(IOEventFlags device, bool force);
 /// Get the device that the console is currently on
 IOEventFlags jsiGetConsoleDevice();
+/// is the console forced into a given place (See jsiSetConsoleDevice)
+bool jsiIsConsoleDeviceForced();
 /// Transmit a byte
 void jsiConsolePrintChar(char data);
 /// Transmit a string (may be any string)
@@ -133,7 +137,7 @@ typedef enum {
   JSIS_TODO_FLASH_LOAD = 128, // load from flash
   JSIS_TODO_RESET = 256, // reset the board, don't load anything
   JSIS_TODO_MASK = JSIS_TODO_FLASH_SAVE|JSIS_TODO_FLASH_LOAD|JSIS_TODO_RESET,
-
+  JSIS_CONSOLE_FORCED = 512, // see jsiSetConsoleDevice
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE
 } PACKED_FLAGS JsiStatus;

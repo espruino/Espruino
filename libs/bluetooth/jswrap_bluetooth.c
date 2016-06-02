@@ -429,7 +429,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
-          jsiSetConsoleDevice( EV_BLUETOOTH );
+          if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(EV_BLUETOOTH, false);
         }
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
@@ -448,7 +448,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
 #endif
         m_conn_handle = BLE_CONN_HANDLE_INVALID;
-        jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
+        if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, 0);
         // restart advertising after disconnection
         jswrap_nrf_bluetooth_startAdvertise();
         break;
