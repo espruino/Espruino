@@ -16,7 +16,7 @@
 import pinutils;
 
 info = {
- 'name' : "MakerBean",
+ 'name' : "PuckJS",
  'link' :  [ "" ],
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D28",
@@ -24,7 +24,7 @@ info = {
  'default_console_baudrate' : "9600",
  # Number of variables can be WAY higher on this board
  'variables' : 1020, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
- 'binary_name' : 'espruino_%v_makerbean.bin',
+ 'binary_name' : 'espruino_%v_puckjs.bin',
  'build' : {
   'defines' : [
      'USE_BLUETOOTH'

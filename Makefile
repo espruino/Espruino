@@ -458,9 +458,9 @@ USE_BLUETOOTH=1
 DEFINES += -DBOARD_PCA10040
 # DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
 
-else ifdef MAKERBEAN
+else ifdef PUCKJS
 EMBEDDED=1
-BOARD=MAKERBEAN
+BOARD=PUCKJS
 OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
 DEFINES += -DBOARD_PCA10040 # remove
