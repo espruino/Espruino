@@ -1310,8 +1310,6 @@ ifeq ($(FAMILY), NRF52)
   INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf52_config
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_db_discovery
-  SOURCES          += $(NRF5X_SDK_PATH)/components/ble/ble_db_discovery/ble_db_discovery.c
   SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
                       $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o

@@ -565,7 +565,7 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     return;
   }
 
-  JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
+  JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%v",event);
   if (!eventName) return; // no memory
 
   JsVar *eventList = jsvFindChildFromVar(parent, eventName, true);
