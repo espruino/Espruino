@@ -73,6 +73,14 @@ def get_pins():
   pinutils.findpin(pins, "PD1", True)["functions"]["XL2"]=0;
   pinutils.findpin(pins, "PD9", True)["functions"]["NFC1"]=0;
   pinutils.findpin(pins, "PD10", True)["functions"]["NFC2"]=0;
+  pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN0"]=0;
+  pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN1"]=0;
+  pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN2"]=0;
+  pinutils.findpin(pins, "PD5", True)["functions"]["ADC1_IN3"]=0;
+  pinutils.findpin(pins, "PD28", True)["functions"]["ADC1_IN4"]=0;
+  pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN5"]=0;
+  pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
+  pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
 
   #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
   return pins
