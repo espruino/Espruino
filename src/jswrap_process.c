@@ -89,7 +89,8 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
   jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
-#ifndef SAVE_ON_FLASH
+#if !defined(SAVE_ON_FLASH) && !defined(BLUETOOTH)
+  // It takes too long to send this information over BLE...
   JsVar *arr = jsvNewObject();
   if (arr) {
     const char *s = exportNames;
