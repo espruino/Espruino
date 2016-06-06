@@ -747,7 +747,7 @@ JsVarFloat jshReadVRef() {
   nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
   nrf_saadc_channel_init(0, &config);
 
-  return 6.0 * (nrf_analog_read() * 0.6 / 8192.0);
+  return 6.0 * (nrf_analog_read() * 0.6 / 16384.0);
 #else
   const nrf_adc_config_t nrf_adc_config =  {
        NRF_ADC_CONFIG_RES_10BIT,
