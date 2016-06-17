@@ -35,11 +35,11 @@ import pinutils;
 # Now scan AF file
 print("Script location "+scriptdir)
 
-if len(sys.argv)!=2:
-  print("ERROR, USAGE: build_platform_config.py BOARD_NAME")
+if len(sys.argv)!=3:
+  print("ERROR, USAGE: build_platform_config.py BOARD_NAME HEADERFILENAME")
   exit(1)
 boardname = sys.argv[1]
-headerFilename = "gen/platform_config.h"
+headerFilename = sys.argv[2]
 print("HEADER_FILENAME "+headerFilename)
 print("BOARD "+boardname)
 # import the board def
@@ -74,7 +74,10 @@ if not LINUX:
   #  variables = variables_8bit
   # But in some cases we may not have enough flash memory!
   variables=board.info["variables"]
-
+# variables from board-file can bw overwritten. Be careful with this option.
+# usually the definition in board file are already the maximum, and adding some more will corrupt firmware
+  if 'VARIABLES' in os.environ:
+    variables=int(os.environ['VARIABLES'])
 
   var_size = 12 if variables<1023 else 16
   # the 'packed bits mean anything under 1023 vars gets into 12 byte JsVars
