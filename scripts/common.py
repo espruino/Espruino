@@ -111,7 +111,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
                 if "USB" in board.devices: defines.append("defined(USB)=True"); 
                 else: defines.append("defined(USB)=False");
               elif arg[1]=="F":
-                # -Fxxx.yy in args is filename xxx.yy, which is mandatory for build_jswrapper.py
+                "" # -Fxxx.yy in args is filename xxx.yy, which is mandatory for build_jswrapper.py
               else:
                 print("Unknown command-line option")
                 exit(1)
