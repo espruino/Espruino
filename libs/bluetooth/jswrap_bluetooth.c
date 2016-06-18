@@ -719,7 +719,6 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     ble_conn_params_on_ble_evt(p_ble_evt);
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
     ble_dfu_on_ble_evt(&m_dfus, p_ble_evt);
-    ble_db_discovery_on_ble_evt(&m_ble_db_discovery, p_ble_evt);
     on_ble_evt(p_ble_evt);
 
     dm_ble_evt_handler(p_ble_evt); //Add this line
