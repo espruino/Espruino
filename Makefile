@@ -62,11 +62,28 @@
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
 # USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
+# GENDIR=MyGenDir		  # sets directory for files generated during make
+#					      # GENDIR=/home/mydir/mygendir
+# SETDEFINES=FileDefines  # settings which are called after definitions for board are done
+#                         # SETDEFINES=/home/mydir/myDefines
+# UNSUPPORTEDMAKE=FileUnsu# Adds additional files from unsupported sources(means not supported by Gordon) to actual make 
+#                         # UNSUPPORTEDMAKE=/home/mydir/unsupportedCommands
+# PROJECTNAME=myBigProject# Sets projectname
+# BLACKLIST=fileBlacklist # Removes javascript commands given in a file from compilation and therefore from project defined firmware
+#                         # is used in build_jswrapper.py
+#                         # BLACKLIST=/home/mydir/myBlackList
+# VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
+#                         # used in build_platform_config.py
+
+ifndef GENDIR
+GENDIR=$(shell pwd)/gen
+endif
+
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
 endif
 
-INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
+INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS=
 DEFINES=
 CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
@@ -129,7 +146,9 @@ endif
 CWD = $(CURDIR)
 ROOT = $(CWD)
 PRECOMPILED_OBJS=
-PLATFORM_CONFIG_FILE=gen/platform_config.h
+PLATFORM_CONFIG_FILE=$(GENDIR)/platform_config.h
+WRAPPERFILE=$(GENDIR)/jswrapper.c
+HEADERFILENAME=$(GENDIR)/platform_config.h
 BASEADDRESS=0x08000000
 
 # ---------------------------------------------------------------------------------
@@ -662,6 +681,11 @@ endif
 endif
 endif
 
+#set or reset defines like USE_GRAPHIC from an external file to customize firmware 
+ifdef SETDEFINES
+include $(SETDEFINES)
+endif
+
 # ----------------------------- end of board defines ------------------------------
 # ---------------------------------------------------------------------------------
 
@@ -732,7 +756,6 @@ endif
 # exported to JS. The order here actually determines the order
 # objects will be matched in. So for example Pins must come
 # above ints, since a Pin is also matched as an int.
-WRAPPERFILE=gen/jswrapper.c
 WRAPPERSOURCES = \
 src/jswrap_array.c \
 src/jswrap_arraybuffer.c \
@@ -1508,7 +1531,7 @@ endif
 ifdef ARM
 
   ifndef LINKER_FILE # nRF5x targets define their own linker file.
-    LINKER_FILE = gen/linker.ld
+    LINKER_FILE = $(GENDIR)/linker.ld
   endif
   DEFINES += -DARM
   ifndef ARM_HAS_OWN_CMSIS # nRF5x targets do not use the shared CMSIS files.
@@ -1531,7 +1554,7 @@ ifdef ARM
 
 endif # ARM
 
-PININFOFILE=$(ROOT)/gen/jspininfo
+PININFOFILE=$(GENDIR)/jspininfo
 ifdef PININFOFILE
 SOURCES += $(PININFOFILE).c
 endif
@@ -1662,6 +1685,15 @@ ESPTOOL    ?= $(ESP8266_SDK_ROOT)/esptool/esptool.py
 INCLUDE += -I$(ESP8266_SDK_ROOT)/include -I$(ROOT)/targets/esp8266
 endif # ESP8266
 
+# Adds additional files from unsupported sources(means not supported by Gordon) to actual make 
+ifdef UNSUPPORTEDMAKE
+include $(UNSUPPORTEDMAKE)
+endif
+# sets projectname for actual make
+ifdef PROJECTNAME
+  PROJ_NAME=$(PROJECTNAME)
+endif
+
 export CC=$(CCPREFIX)gcc
 export LD=$(CCPREFIX)gcc
 export AR=$(CCPREFIX)ar
@@ -1700,7 +1732,7 @@ $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
-	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
+	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
 
 ifdef PININFOFILE
 $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
@@ -1718,7 +1750,11 @@ endif # NRF5X
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
-	$(Q)python scripts/build_platform_config.py $(BOARD)
+	$(Q)python scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
+
+# skips compiling and linking, if NO_COMPILE is defined
+# Generation of temporary files and setting of wrappersources is already done this moment	
+ifndef NO_COMPILE
 
 compile=$(CC) $(CFLAGS) $< -o $@
 
@@ -1805,6 +1841,7 @@ $(USER1_ELF): $(PARTIAL) $(LINKER_FILE)
 	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT1) -o $@ $(PARTIAL) -Wl,--start-group $(LIBS) -Wl,--end-group
 	$(Q)$(OBJDUMP) --headers -j .irom0.text -j .text $@ | tail -n +4
 	@echo To disassemble: $(OBJDUMP) -d -l -x $@
+	$(OBJDUMP) -d -l -x $@ >espruino_esp8266_user1.lst
 
 # generate fully linked 'user2' .elf using linker script for second OTA partition
 $(USER2_ELF): $(PARTIAL) $(LINKER_FILE)
@@ -1986,6 +2023,12 @@ gdb:
 	$(GDB) -x gdbinit
 	rm gdbinit
 endif	    # ---------------------------------------------------
+
+# end of skipping compiling and linking
+else
+# log WRAPPERSOURCES to help Firmware creation tool
+$(info WRAPPERSOURCES=$(WRAPPERSOURCES));
+endif
 
 clean:
 	@echo Cleaning targets
