@@ -229,7 +229,7 @@ typedef struct {
 } PACKED_FLAGS JshUSARTInfo;
 
 /// Initialise a JshUSARTInfo struct to default settings
-static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
+static void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->baudRate = DEFAULT_BAUD_RATE;
   inf->pinRX    = PIN_UNDEFINED;
   inf->pinTX    = PIN_UNDEFINED;
@@ -287,7 +287,7 @@ typedef struct {
 
 
 /// Initialise a JshSPIInfo struct to default settings
-static inline void jshSPIInitInfo(JshSPIInfo *inf) {
+static void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->baudRate     = 100000;
   inf->baudRateSpec = SPIB_DEFAULT;
   inf->pinSCK       = PIN_UNDEFINED;
@@ -322,7 +322,7 @@ typedef struct {
 } PACKED_FLAGS JshI2CInfo;
 
 /// Initialise a JshI2CInfo struct to default settings
-static inline void jshI2CInitInfo(JshI2CInfo *inf) {
+static void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->pinSCL = PIN_UNDEFINED;
   inf->pinSDA = PIN_UNDEFINED;
   inf->bitrate = 50000; // Is what we used - shouldn't it be 100k?
