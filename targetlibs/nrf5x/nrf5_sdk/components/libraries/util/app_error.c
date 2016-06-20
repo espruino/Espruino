@@ -27,6 +27,10 @@
 #include "nrf_log.h"
 
 #ifdef DEBUG
+#undef DEBUG // This was set for Espruino build, not Nordic :)
+#endif
+
+#ifdef DEBUG
 #include "bsp.h"
 #endif
 

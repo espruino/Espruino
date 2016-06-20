@@ -107,10 +107,12 @@ void jswrap_nrf_kill() {
     sd_ble_gap_scan_stop();
     bleStatus &= ~BLE_IS_SCANNING;
   }
+#if CENTRAL_LINK_COUNT>0
   // if we were connected to something, disconnect
   if (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) {
      sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
   }
+#endif
 }
 
 
