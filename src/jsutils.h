@@ -327,28 +327,10 @@ typedef int64_t JsSysTime;
 */
 
 
-static inline bool isWhitespace(char ch) {
-    return (ch==0x09) || // \t - tab
-           (ch==0x0B) || // vertical tab
-           (ch==0x0C) || // form feed
-           (ch==0x20) || // space
-           (((unsigned char)ch)==0xA0) || // no break space
-           (ch=='\n') ||
-           (ch=='\r');
-}
-
-static inline bool isNumeric(char ch) {
-    return (ch>='0') && (ch<='9');
-}
-
-static inline bool isHexadecimal(char ch) {
-    return ((ch>='0') && (ch<='9')) ||
-           ((ch>='a') && (ch<='f')) ||
-           ((ch>='A') && (ch<='F'));
-}
-static inline bool isAlpha(char ch) {
-    return ((ch>='a') && (ch<='z')) || ((ch>='A') && (ch<='Z')) || ch=='_';
-}
+bool isWhitespace(char ch);
+bool isNumeric(char ch);
+bool isHexadecimal(char ch);
+bool isAlpha(char ch);
 
 
 bool isIDString(const char *s);

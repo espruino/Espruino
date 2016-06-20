@@ -796,6 +796,7 @@ src/jsinteractive.c \
 src/jsdevices.c \
 src/jstimer.c \
 src/jsspi.c \
+src/jshardware_common.c \
 $(WRAPPERFILE)
 CPPSOURCES =
 
@@ -1546,9 +1547,6 @@ ifdef ARM
 	OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 	DEFINES += -DLINK_TIME_OPTIMISATION
   endif
-
-  # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
-  OPTIMIZEFLAGS += --param inline-unit-growth=6
 
   export CCPREFIX?=arm-none-eabi-
 

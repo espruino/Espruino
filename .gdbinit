@@ -5,7 +5,7 @@ define jsvTrace
   print jsvTrace(execInfo.root, 0)
 end   
 define whereami
-  print jslPrintTokenLineMarker(jsiConsolePrintString, 0, execInfo.lex, execInfo.lex->tokenStart, 0)
+  print jslPrintTokenLineMarker(jsiConsolePrintString, 0, lex, lex->tokenStart, 0)
 end
 define typeof
   if (($arg0)->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_0 && (($arg0)->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_MAX

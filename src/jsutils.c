@@ -23,6 +23,31 @@
  * but which are good to know about */
 JsErrorFlags jsErrorFlags;
 
+
+bool isWhitespace(char ch) {
+    return (ch==0x09) || // \t - tab
+           (ch==0x0B) || // vertical tab
+           (ch==0x0C) || // form feed
+           (ch==0x20) || // space
+           (((unsigned char)ch)==0xA0) || // no break space
+           (ch=='\n') ||
+           (ch=='\r');
+}
+
+bool isNumeric(char ch) {
+    return (ch>='0') && (ch<='9');
+}
+
+bool isHexadecimal(char ch) {
+    return ((ch>='0') && (ch<='9')) ||
+           ((ch>='a') && (ch<='f')) ||
+           ((ch>='A') && (ch<='F'));
+}
+bool isAlpha(char ch) {
+    return ((ch>='a') && (ch<='z')) || ((ch>='A') && (ch<='Z')) || ch=='_';
+}
+
+
 bool isIDString(const char *s) {
   if (!isAlpha(*s))
     return false;
