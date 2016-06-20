@@ -35,6 +35,7 @@
             Enable F4Discovery button pull-down. Newer boards don't seem to have one fitted
             Add 'force' to 'Serial.setConsole' - you can force the console to stay in one place
             Fix micro:bit compass problems (fix #864)
+            Ensure that Pico can properly enter deep sleep even if USB is never used
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
