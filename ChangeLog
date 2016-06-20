@@ -37,6 +37,7 @@
             Fix micro:bit compass problems (fix #864)
             Ensure that Pico can properly enter deep sleep even if USB is never used
             Only inline the very basic variable iterator functions (save enough space to allow Espruino board build again)
+            Don't include Promises on devices where flash memory of Scarce (fix Olimexino compile)
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS

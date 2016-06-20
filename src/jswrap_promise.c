@@ -26,7 +26,8 @@
 
 /*JSON{
   "type" : "class",
-  "class" : "Promise"
+  "class" : "Promise",
+  "ifndef" : "SAVE_ON_FLASH"
 }
 This is the built-in class for ES6 Promises
 */
@@ -82,6 +83,7 @@ void jswrap_promise_all_reject(JsVar *promise, JsVar *data) {
   "type" : "constructor",
   "class" : "Promise",
   "name" : "Promise",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_promise_constructor",
   "params" : [
     ["executor","JsVar","A function of the form `function (resolve, reject)`"]
@@ -113,6 +115,7 @@ JsVar *jswrap_promise_constructor(JsVar *executor) {
   "type" : "staticmethod",
   "class" : "Promise",
   "name" : "all",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_promise_all",
   "params" : [
     ["promises","JsVar","An array of promises"]
@@ -159,6 +162,7 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   "type" : "staticmethod",
   "class" : "Promise",
   "name" : "resolve",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_promise_resolve",
   "params" : [
     ["promises","JsVar","Data to pass to the `.then` handler"]
@@ -179,6 +183,7 @@ JsVar *jswrap_promise_resolve(JsVar *data) {
   "type" : "staticmethod",
   "class" : "Promise",
   "name" : "reject",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_promise_reject",
   "params" : [
     ["promises","JsVar","Data to pass to the `.catch` handler"]
@@ -220,6 +225,7 @@ void _jswrap_promise_add(JsVar *parent, JsVar *callback, const char *name) {
   "type" : "method",
   "class" : "Promise",
   "name" : "then",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_promise_then",
   "params" : [
     ["callback","JsVar","A callback that is called when this promise is resolved"]
@@ -236,6 +242,7 @@ JsVar *jswrap_promise_then(JsVar *parent, JsVar *callback) {
   "type" : "method",
   "class" : "Promise",
   "name" : "catch",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_promise_catch",
   "params" : [
     ["callback","JsVar","A callback that is called when this promise is rejected"]
