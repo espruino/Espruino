@@ -775,6 +775,7 @@ src/jsinteractive.c \
 src/jsdevices.c \
 src/jstimer.c \
 src/jsspi.c \
+src/jshardware_common.c \
 $(WRAPPERFILE)
 CPPSOURCES =
 
