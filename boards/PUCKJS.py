@@ -36,7 +36,7 @@ chip = {
   'part' : "NRF52832",
   'family' : "NRF52",
   'package' : "QFN48",
-  'ram' : 32, # Currently there is a bug with NRF52 preview DK's RAM but this will be fixed next revision.
+  'ram' : 64,
   'flash' : 512,
   'speed' : 64,
   'usart' : 1, 
@@ -53,9 +53,9 @@ chip = {
 };
 
 devices = {
-  'LED1' : { 'pin' : 'D3' },
-  'LED2' : { 'pin' : 'D2' },
-  'LED3' : { 'pin' : 'D1' },
+  'LED1' : { 'pin' : 'D5' },
+  'LED2' : { 'pin' : 'D4' },
+  'LED3' : { 'pin' : 'D3' },
   'LED4' : { 'pin' : 'D25', 'pin2' : 'D26' },
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' }
 # CAPSENSE D8

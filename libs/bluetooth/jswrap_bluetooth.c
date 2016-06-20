@@ -28,6 +28,7 @@
 #include "ble_nus.h"
 #include "app_util_platform.h"
 
+#ifdef USE_BOOTLOADER
 #include "device_manager.h"
 #include "pstorage.h"
 #include "ble_dfu.h"
@@ -35,6 +36,11 @@
 #include "nrf_delay.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 1                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
+#else
+#define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
+#endif
+
+
 
 #ifdef NRF52
 // nRF52 gets the ability to connect to other
@@ -53,7 +59,7 @@
 #define DEVICE_NAME                     "Espruino "PC_BOARD_ID                      /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
-#define APP_ADV_INTERVAL                600                                        /**< The advertising interval (in units of 0.625 ms. This value corresponds to 750ms). */
+#define APP_ADV_INTERVAL                600                                        /**< The advertising interval (in units of 0.625 ms. This value corresponds to 375ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 
 #define SCAN_INTERVAL                   0x00A0                                      /**< Scan interval in units of 0.625 millisecond. 100ms */
@@ -72,6 +78,7 @@
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 
+#ifdef USE_BOOTLOADER
 #define SEC_PARAM_BOND                   1                                          /**< Perform bonding. */
 #define SEC_PARAM_MITM                   0                                          /**< Man In The Middle protection not required. */
 #define SEC_PARAM_IO_CAPABILITIES        BLE_GAP_IO_CAPS_NONE                       /**< No I/O capabilities. */
@@ -83,6 +90,7 @@
 #define DFU_REV_MINOR                    0x01                                       /** DFU Minor revision number to be exposed. */
 #define DFU_REVISION                     ((DFU_REV_MAJOR << 8) | DFU_REV_MINOR)     /** DFU Revision number to be exposed. Combined of major and minor versions. */
 #define APP_SERVICE_HANDLE_START         0x000C                                     /**< Handle of first application specific service when when service changed characteristic is present. */
+#endif
 #define BLE_HANDLE_MAX                   0xFFFF                                     /**< Max handle value in BLE. */
 
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
@@ -95,8 +103,11 @@ static uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 
+#ifdef USE_BOOTLOADER
 static ble_dfu_t                        m_dfus;                                    /**< Structure used to identify the DFU service. */
 static dm_application_instance_t        m_app_handle;                              /**< Application identifier allocated by device manager */
+#endif
+
 
 typedef enum  {
   BLE_NONE = 0,
@@ -165,7 +176,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     ble_app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
-
+#ifdef USE_BOOTLOADER
 /**@brief Function for stopping advertising.
  */
 static void advertising_stop(void)
@@ -233,6 +244,7 @@ static void advertising_stop(void)
  *          @ref dfu_app_handler.c before entering the bootloader/DFU.
  *          This allows the current running application to shut down gracefully.
  */
+
 static void reset_prepare(void)
 {
     uint32_t err_code;
@@ -257,7 +269,7 @@ static void reset_prepare(void)
     jshReset();
     nrf_delay_ms(100);
 }
-
+#endif
 
 /**@brief Function for the GAP initialization.
  *
@@ -344,6 +356,7 @@ static void services_init(void)
     err_code = ble_nus_init(&m_nus, &nus_init);
     APP_ERROR_CHECK(err_code);
 
+#ifdef USE_BOOTLOADER
     ble_dfu_init_t   dfus_init;
 
     // Initialize the Device Firmware Update Service.
@@ -359,6 +372,7 @@ static void services_init(void)
 
     dfu_app_reset_prepare_set(reset_prepare);
     dfu_app_dm_appl_instance_set(m_app_handle);
+#endif
 }
 
 
@@ -718,10 +732,13 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
     ble_conn_params_on_ble_evt(p_ble_evt);
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
+#ifdef USE_BOOTLOADER
     ble_dfu_on_ble_evt(&m_dfus, p_ble_evt);
+#endif
     on_ble_evt(p_ble_evt);
-
-    dm_ble_evt_handler(p_ble_evt); //Add this line
+#ifdef USE_BOOTLOADER
+    dm_ble_evt_handler(p_ble_evt);
+#endif
 }
 
 
@@ -734,10 +751,11 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
  */
 static void sys_evt_dispatch(uint32_t sys_evt)
 {
+#ifdef USE_BOOTLOADER
     pstorage_sys_event_handler(sys_evt);
+#endif
     ble_advertising_on_sys_evt(sys_evt);
 }
-
 
 /**@brief Function for the SoftDevice initialization.
  *
@@ -757,8 +775,10 @@ static void ble_stack_init(void)
                                                     &ble_enable_params);
     APP_ERROR_CHECK(err_code);
     
+#ifdef USE_BOOTLOADER
     ble_enable_params.common_enable_params.vs_uuid_count  = 2;
     ble_enable_params.gatts_enable_params.service_changed = 1;
+#endif
 
     //Check the ram settings against the used number of links
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
@@ -815,7 +835,7 @@ static void advertising_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
+#ifdef USE_BOOTLOADER
 /**@brief Function for handling the Device Manager events.
  *
  * @param[in] p_evt  Data associated to the device manager event.
@@ -865,7 +885,7 @@ static void device_manager_init(bool erase_bonds)
     err_code = dm_register(&m_app_handle, &register_param);
     APP_ERROR_CHECK(err_code);
 }
-
+#endif
 
 /*JSON{
     "type": "class",
@@ -888,8 +908,10 @@ void jswrap_nrf_bluetooth_init(void) {
   APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
   ble_stack_init();
   
-  bool erase_bonds;
+#ifdef USE_BOOTLOADER
+  bool erase_bonds = false;
   device_manager_init(erase_bonds);
+#endif
 
   gap_params_init();
   services_init();

@@ -428,13 +428,11 @@ else ifdef MICROBIT
 EMBEDDED=1
 SAVE_ON_FLASH=1
 # Save on flash, but we still want the debugger and tab complete
-#DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
+DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
 BOARD=MICROBIT
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
-#USE_GRAPHICS=1
-
-# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
+USE_GRAPHICS=1
 
 else ifdef DO003
 EMBEDDED=1
@@ -455,13 +453,11 @@ BOARD=NRF51TAG
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
 
-# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
-
 else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
 # Save on flash, but we still want the debugger and tab complete
-#DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
+DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
 BOARD=NRF51822DK
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
@@ -489,7 +485,6 @@ USE_FILESYSTEM=1
 USE_CRYPTO=1
 #USE_TLS=1
 DEFINES += -DBOARD_PCA10040 # remove
-# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
 
 else ifdef LPC1768
 EMBEDDED=1
@@ -705,6 +700,7 @@ endif
 ifeq ($(shell python scripts/get_board_info.py $(BOARD) "'bootloader' in board.info and board.info['bootloader']==1"),True)
 USE_BOOTLOADER:=1
 BOOTLOADER_PROJ_NAME:=bootloader_$(PROJ_NAME)
+DEFINES+=-DUSE_BOOTLOADER
 endif
 
 ifeq ($(shell python scripts/get_board_info.py $(BOARD) "'USB' in board.devices"),True)
@@ -807,7 +803,7 @@ ifdef CPPFILE
 CPPSOURCES += $(CPPFILE)
 endif
 
-
+ifdef STM32
 ifdef BOOTLOADER
 ifndef USE_BOOTLOADER
 $(error Using bootloader on device that is not expecting one)
@@ -832,8 +828,9 @@ else # !BOOTLOADER but using a bootloader
     STM32LOADER_FLAGS+=-k -p /dev/ttyACM0
   endif
   BASEADDRESS=$(shell python scripts/get_board_info.py $(BOARD) "hex(0x08000000+common.get_espruino_binary_address(board))")
- endif
-endif
+ endif # USE_BOOTLOADER
+endif # BOOTLOADER
+endif # STM32
 
 ifdef USB_PRODUCT_ID
 DEFINES+=-DUSB_PRODUCT_ID=$(USB_PRODUCT_ID)
@@ -1316,15 +1313,18 @@ ifeq ($(FAMILY), NRF51)
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
-
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
 
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-  
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0-7.alpha_softdevice.hex
+
+  ifdef USE_BOOTLOADER
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM)_bootloader.ld
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
   NFR_BL_START_ADDR = 0x3C000
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex # This file writes 0x3FC00 with 0x01 so we can flash the application with the bootloader.
+  else
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+  endif
 
 endif # FAMILY == NRF51
 
@@ -1345,13 +1345,17 @@ ifeq ($(FAMILY), NRF52)
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0-7.alpha_softdevice.hex
+
+  ifdef USE_BOOTLOADER
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
   NFR_BL_START_ADDR = 0x7A000
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
-
+  else
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
+  endif
 endif #FAMILY == NRF52
 
 ifeq ($(FAMILY), EFM32GG)
@@ -1472,9 +1476,6 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/trace
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/device_manager
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu
 
   SOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
@@ -1495,13 +1496,19 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-  $(NRF5X_SDK_PATH)/components/ble/device_manager/device_manager_peripheral.c \
-  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu/ble_dfu.c \
-  $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c \
-  $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_app_handler.c
-
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c 
   # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
+
+  ifdef USE_BOOTLOADER
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/device_manager
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu
+  SOURCES += \
+   $(NRF5X_SDK_PATH)/components/ble/device_manager/device_manager_peripheral.c \
+   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu/ble_dfu.c \
+   $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c \
+   $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_app_handler.c
+  endif
 
 endif #NRF5X
 
@@ -1963,14 +1970,20 @@ $(PROJ_NAME).hex: $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
 	@$(call obj_to_bin,ihex,hex)
 ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
-ifdef DFU_UPDATE_BUILD
+ ifdef USE_BOOTLOADER
+  ifdef DFU_UPDATE_BUILD
 	echo Not merging softdevice or bootloader with application
-else
+  else
 	echo Merging SoftDevice and Bootloader
 	scripts/hexmerge.py $(SOFTDEVICE) $(NRF_BOOTLOADER):$(NFR_BL_START_ADDR): $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
-endif
-endif
+  endif
+ else 
+	echo Merging SoftDevice
+	scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
+	mv tmp.hex $(PROJ_NAME).hex
+ endif # USE_BOOTLOADER
+endif # SOFTDEVICE
 
 $(PROJ_NAME).srec : $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,srec,srec)

@@ -5,18 +5,8 @@ GROUP(-lgcc -lc -lnosys)
 
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0x1B000, LENGTH = 0x21000
-  RAM (rwx) :  ORIGIN = 0x20001F00, LENGTH = 0x2100 /* 16kB  */
-}
-
-SECTIONS
-{
-  .fs_data_out ALIGN(4):
-  {
-    PROVIDE( __start_fs_data = .);
-    KEEP(*(fs_data))
-    PROVIDE( __stop_fs_data = .);
-  } = 0
+  FLASH (rx) : ORIGIN = 0x1B000, LENGTH = 0x25000
+  RAM (rwx) :  ORIGIN = 0x20001E00, LENGTH = 0x2200  /* 16kB - 0x1E000 */
 }
 
 INCLUDE "gcc_nrf5x_espruino_common.ld"
