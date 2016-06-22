@@ -15,7 +15,7 @@ language: c
 before_install:
  - sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
  - sudo apt-get update
- - sudo apt-get install libsdl1.2-dev gcc-arm-none-eabi
+ - sudo apt-get install libsdl1.2-dev gcc-arm-embedded
  - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
  - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v1.5.4.tgx | tar Jxf -
 
