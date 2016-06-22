@@ -748,6 +748,9 @@ ifdef PROFILE
 OPTIMIZEFLAGS+=-pg
 endif
 
+# These are files for platform-specific libraries
+TARGETSOURCES =
+
 # Files that contains objects/functions/methods that will be
 # exported to JS. The order here actually determines the order
 # objects will be matched in. So for example Pins must come
@@ -779,7 +782,6 @@ src/jswrap_waveform.c
 
 # it is important that _pin comes before stuff which uses
 # integers (as the check for int *includes* the chek for pin)
-
 SOURCES = \
 src/jslex.c \
 src/jsvar.c \
@@ -802,35 +804,6 @@ endif
 ifdef CPPFILE
 CPPSOURCES += $(CPPFILE)
 endif
-
-ifdef STM32
-ifdef BOOTLOADER
-ifndef USE_BOOTLOADER
-$(error Using bootloader on device that is not expecting one)
-endif
-DEFINES+=-DSAVE_ON_FLASH # hack, as without link time optimisation the always_inlines will fail (even though they are not used)
-BUILD_LINKER_FLAGS+=--bootloader
-PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
-WRAPPERSOURCES =
-SOURCES = \
-targets/stm32_boot/main.c \
-targets/stm32_boot/utils.c
- ifndef DEBUG
-  OPTIMIZEFLAGS=-Os
- endif
-else # !BOOTLOADER but using a bootloader
- ifdef USE_BOOTLOADER
-  BUILD_LINKER_FLAGS+=--using_bootloader
-  # -k applies bootloader hack for Espruino 1v3 boards
-  ifdef MACOSX
-    STM32LOADER_FLAGS+=-k -p /dev/tty.usbmodem*
-  else
-    STM32LOADER_FLAGS+=-k -p /dev/ttyACM0
-  endif
-  BASEADDRESS=$(shell python scripts/get_board_info.py $(BOARD) "hex(0x08000000+common.get_espruino_binary_address(board))")
- endif # USE_BOOTLOADER
-endif # BOOTLOADER
-endif # STM32
 
 ifdef USB_PRODUCT_ID
 DEFINES+=-DUSB_PRODUCT_ID=$(USB_PRODUCT_ID)
@@ -1123,7 +1096,7 @@ ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f1 -I$(ROOT)/targetlibs/stm32f1/lib
 DEFINES += -DSTM32F1
-SOURCES +=                              \
+TARGETSOURCES +=                              \
 targetlibs/stm32f1/lib/misc.c              \
 targetlibs/stm32f1/lib/stm32f10x_adc.c     \
 targetlibs/stm32f1/lib/stm32f10x_bkp.c     \
@@ -1161,7 +1134,7 @@ ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f3 -I$(ROOT)/targetlibs/stm32f3/lib
 DEFINES += -DSTM32F3
-SOURCES +=                                 \
+TARGETSOURCES +=                                 \
 targetlibs/stm32f3/lib/stm32f30x_adc.c        \
 targetlibs/stm32f3/lib/stm32f30x_can.c        \
 targetlibs/stm32f3/lib/stm32f30x_comp.c       \
@@ -1210,7 +1183,7 @@ ifdef WICED_XXX
 endif
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4 -I$(ROOT)/targetlibs/stm32f4/lib
-SOURCES +=                                 \
+TARGETSOURCES +=                                 \
 targetlibs/stm32f4/lib/misc.c                 \
 targetlibs/stm32f4/lib/stm32f4xx_adc.c        \
 targetlibs/stm32f4/lib/stm32f4xx_crc.c        \
@@ -1255,13 +1228,13 @@ endif #STM32F4
 # New STM32 Cube based USB
 # This could be global for all STM32 once we figure out why it's so flaky on F1
 ifdef STM32_USB
-SOURCES +=                                 \
+TARGETSOURCES +=                                 \
 targetlibs/stm32usb/Src/stm32f4xx_ll_usb.c \
 targetlibs/stm32usb/Src/stm32f4xx_hal_pcd.c \
 targetlibs/stm32usb/Src/stm32f4xx_hal_pcd_ex.c
 
 INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
-SOURCES +=                                 \
+TARGETSOURCES +=                                 \
 targetlibs/stm32usb/usbd_conf.c \
 targetlibs/stm32usb/usb_device.c \
 targetlibs/stm32usb/usbd_cdc_hid.c \
@@ -1277,7 +1250,7 @@ endif #USB
 ifdef STM32_LEGACY_USB
 DEFINES += -DLEGACY_USB
 INCLUDE += -I$(ROOT)/targetlibs/stm32legacyusb/lib -I$(ROOT)/targetlibs/stm32legacyusb
-SOURCES +=                              \
+TARGETSOURCES +=                              \
 targetlibs/stm32legacyusb/lib/otgd_fs_cal.c       \
 targetlibs/stm32legacyusb/lib/otgd_fs_dev.c       \
 targetlibs/stm32legacyusb/lib/otgd_fs_int.c       \
@@ -1309,7 +1282,7 @@ ifeq ($(FAMILY), NRF51)
   INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf51_config
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers/nrf51
-  SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
@@ -1340,7 +1313,7 @@ ifeq ($(FAMILY), NRF52)
   INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf52_config
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
-  SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
                       $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
@@ -1385,7 +1358,7 @@ ifeq ($(FAMILY), EFM32GG)
   INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/common/inc
   INCLUDE += -I$(GECKO_SDK_PATH)/emlib/inc
 
-  SOURCES += \
+  TARGETSOURCES += \
 	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/startup_efm32gg.c \
 	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/system_efm32gg.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_gpio.c \
@@ -1477,7 +1450,7 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
 
-  SOURCES += \
+  TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
   $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
   $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
@@ -1503,7 +1476,7 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/device_manager
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu
-  SOURCES += \
+  TARGETSOURCES += \
    $(NRF5X_SDK_PATH)/components/ble/device_manager/device_manager_peripheral.c \
    $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu/ble_dfu.c \
    $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c \
@@ -1559,11 +1532,6 @@ ifdef ARM
 
 endif # ARM
 
-PININFOFILE=$(GENDIR)/jspininfo
-ifdef PININFOFILE
-SOURCES += $(PININFOFILE).c
-endif
-
 ifdef CARAMBOLA
 TOOLCHAIN_DIR=$(shell cd ~/workspace/carambola/staging_dir/toolchain-*/bin;pwd)
 export STAGING_DIR=$(TOOLCHAIN_DIR)
@@ -1593,12 +1561,34 @@ ifdef STM32
 DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
 INCLUDE += -I$(ROOT)/targets/stm32
 ifndef BOOTLOADER
-SOURCES +=                              \
-targets/stm32/main.c                    \
-targets/stm32/jshardware.c              \
-targets/stm32/stm32_it.c
-endif
-endif
+ SOURCES +=                              \
+ targets/stm32/main.c                    \
+ targets/stm32/jshardware.c              \
+ targets/stm32/stm32_it.c
+ ifdef USE_BOOTLOADER
+  BUILD_LINKER_FLAGS+=--using_bootloader
+  # -k applies bootloader hack for Espruino 1v3 boards
+  ifdef MACOSX
+    STM32LOADER_FLAGS+=-k -p /dev/tty.usbmodem*
+  else
+    STM32LOADER_FLAGS+=-k -p /dev/ttyACM0
+  endif
+  BASEADDRESS=$(shell python scripts/get_board_info.py $(BOARD) "hex(0x08000000+common.get_espruino_binary_address(board))")
+ endif # USE_BOOTLOADER
+else # !BOOTLOADER
+ ifndef USE_BOOTLOADER
+ $(error Using bootloader on device that is not expecting one)
+ endif
+ DEFINES+=-DSAVE_ON_FLASH # hack, as without link time optimisation the always_inlines will fail (even though they are not used)
+ BUILD_LINKER_FLAGS+=--bootloader
+ PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
+ WRAPPERSOURCES =
+ SOURCES = \
+ targets/stm32_boot/main.c \
+ targets/stm32_boot/utils.c
+endif # BOOTLOADER
+
+endif # STM32
 
 ifdef LINUX
 DEFINES += -DLINUX
@@ -1618,7 +1608,10 @@ ifdef NUCLEO
 WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
 endif
 
-SOURCES += $(WRAPPERSOURCES)
+PININFOFILE=$(GENDIR)/jspininfo
+SOURCES += $(PININFOFILE).c
+
+SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
 SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o)
 OBJS = $(SOURCEOBJS) $(PRECOMPILED_OBJS)
 
