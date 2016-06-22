@@ -18,6 +18,26 @@
             ESP8266: add stack dump on fatal exception, ./targets/esp8266/printstack can extract a backtrace
             ESP8266: move JswSymPtr and JswSymList to flash to free up gobs of RAM, bump jsvars to 1600
             Fix write to flash when BLE connected on nRF51/2
+            Fix potential variable corruption issue when copying objects/arrays containing packed ints
+            Fix ESP8266 printLog memory leak (fix #852)
+            When parsing from a Native String (E.memoryArea), use Native String for function code too.
+            Added built-in Promise implementation
+            Fix broken Object.keys/getOwnPropertyNames caused by ESP8266 RAM saving tweaks
+            Add Object.g/setPrototypeOf (fix #856)
+            Fix memory leak when executing bound function with 'this'
+            Fix missing PBKDF2 & AES libs on Pico + Linux caused by an untested ESP8266 commit
+            Fix negative Date to string code (fix #854)
+            Convert type warnings to exceptions (to provide stack traces for problems)
+            Add uncaughtException event (fix #846)
+            Stop eval in a switch statement from confusing parsing (Fix #845)
+            Fix regression in 'mode' argument of SPI.setup (allows custom CC3000 pins to work)
+            Fix '.on' with long event names
+            Enable F4Discovery button pull-down. Newer boards don't seem to have one fitted
+            Add 'force' to 'Serial.setConsole' - you can force the console to stay in one place
+            Fix micro:bit compass problems (fix #864)
+            Ensure that Pico can properly enter deep sleep even if USB is never used
+            Only inline the very basic variable iterator functions (save enough space to allow Espruino board build again)
+            Don't include Promises on devices where flash memory of Scarce (fix Olimexino compile)
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS

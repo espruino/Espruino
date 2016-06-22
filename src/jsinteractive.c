@@ -130,14 +130,12 @@ static NO_INLINE void jsiAppendToInputLine(const char *str) {
   }
 }
 
-/**
- * Change the console to a new location.
- */
-void jsiSetConsoleDevice(
-    IOEventFlags device //!< The device to use as a console.
-  ) {
-  // The `consoleDevice` is the global used to indicate which device we are using as the
-  // the console.
+void jsiSetConsoleDevice(IOEventFlags device, bool force) {
+  if (force)
+    jsiStatus |= JSIS_CONSOLE_FORCED;
+  else
+    jsiStatus &= ~JSIS_CONSOLE_FORCED;
+
   if (device == consoleDevice) return;
 
   if (!jshIsDeviceInitialised(device)) {
@@ -159,13 +157,14 @@ void jsiSetConsoleDevice(
   }
 }
 
-/**
- * Retrieve the device being used as the console.
- */
 IOEventFlags jsiGetConsoleDevice() {
   // The `consoleDevice` is the global used to hold the current console.  This function
   // encapsulates access.
   return consoleDevice;
+}
+
+bool jsiIsConsoleDeviceForced() {
+  return (jsiStatus & JSIS_CONSOLE_FORCED)!=0;
 }
 
 /**
@@ -762,7 +761,7 @@ void jsiSemiInit(bool autoLoad) {
           " "JS_VERSION" Copyright 2016 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
-#if !defined(PICO) && !defined(ESPRUINOBOARD)
+#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI)
           "\n"
           "Espruino is Open Source. Our work is supported\n"
           "only by sales of official boards and donations:\n"
@@ -1056,6 +1055,18 @@ bool jsiAtEndOfInputLine() {
 
 void jsiCheckErrors() {
   JsVar *exception = jspGetException();
+  if (exception) {
+    JsVar *process = jsvObjectGetChild(execInfo.root, "process", 0);
+    if (process) {
+      JsVar *callback = jsvObjectGetChild(process, JS_EVENT_PREFIX"uncaughtException", 0);
+      if (callback) {
+        jsiExecuteEventCallback(0, callback, 1, &exception);
+        jsvUnLock2(callback, exception);
+        exception = 0;
+      }
+      jsvUnLock(process);
+    }
+  }
   if (exception) {
     jsiConsolePrintf("Uncaught %v\n", exception);
     jsvUnLock(exception);

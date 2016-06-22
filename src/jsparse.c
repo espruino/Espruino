@@ -397,7 +397,19 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
   // Then create var and set (if there was any code!)
   if (actuallyCreateFunction && lastTokenEnd>0) {
     // code var
-    JsVar *funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
+    JsVar *funcCodeVar;
+    if (jsvIsNativeString(lex->sourceVar)) {
+      /* If we're parsing from a Native String (eg. E.memoryArea, E.setBootCode) then
+      use another Native String to load function code straight from flash */
+      funcCodeVar = jsvNewWithFlags(JSV_NATIVE_STRING);
+      if (funcCodeVar) {
+        int s = (int)jsvStringIteratorGetIndex(&funcBegin.it) - 1;
+        funcCodeVar->varData.nativeStr.ptr = lex->sourceVar->varData.nativeStr.ptr + s;
+        funcCodeVar->varData.nativeStr.len = (uint16_t)(lastTokenEnd - s);
+      }
+    } else {
+      funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
+    }
     jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME), funcCodeVar);
     // scope var
     JsVar *funcScopeVar = jspeiGetScopesAsVar();
@@ -459,11 +471,11 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
   if (JSP_SHOULD_EXECUTE && function) {
     JsVar *returnVar = 0;
 
-    JsVar *thisVar = thisArg;
     if (!jsvIsFunction(function)) {
       jsExceptionHere(JSET_ERROR, "Expecting a function to call, got %t", function);
       return 0;
     }
+    JsVar *thisVar = jsvLockAgainSafe(thisArg);
     if (isParsing) JSP_MATCH('(');
 
     /* Ok, so we have 4 options here.
@@ -507,6 +519,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       // check if 'this' was defined
       while (param) {
         if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) {
+          jsvUnLock(thisVar);
           thisVar = jsvSkipName(param);
           break;
         }
@@ -530,7 +543,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             argPtrSize = newArgPtrSize;
           }
           argPtr[argCount++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
-          if (lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',jsvUnLockMany((unsigned)argCount, argPtr);, 0);
+          if (lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',jsvUnLockMany((unsigned)argCount, argPtr);jsvUnLock(thisVar);, 0);
         }
 
         JSP_MATCH(')');
@@ -580,6 +593,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       JsVar *functionRoot = jsvNewWithFlags(JSV_FUNCTION);
       if (!functionRoot) { // out of memory
         jspSetError(false);
+        jsvUnLock(thisVar);
         return 0;
       }
 
@@ -831,10 +845,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       jsvUnLock(functionRoot);
     }
 
-    // If we grabbed a new 'this' from a bound function
-    // we unlock it here
-    if (thisVar != thisArg)
-      jsvUnLock(thisVar);
+    jsvUnLock(thisVar);
 
     return returnVar;
   } else if (isParsing) { // ---------------------------------- function, but not executing - just parse args and be done
@@ -1095,6 +1106,14 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
 
   JsVar *a = jspeFunctionCall(func, funcName, thisObj, hasArgs, 0, 0);
 
+  /* FIXME: we should ignore return values that aren't objects (bug #848), but then we need
+   * to be aware of `new String()` and `new Uint8Array()`. Ideally we'd let through
+   * arrays/etc, and then String/etc should return 'boxed' values.
+   *
+   * But they don't return boxed values at the moment, so let's just
+   * pass the return value through. If you try and return a string from
+   * a function it's broken JS code anyway.
+   */
   if (a) {
     jsvUnLock(thisObj);
     thisObj = a;
@@ -1237,7 +1256,7 @@ NO_INLINE void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName) {
   JsVar *prototypeVar = jsvSkipName(prototypeName);
   if (!jsvIsObject(prototypeVar)) {
     if (!jsvIsUndefined(prototypeVar))
-      jsWarn("Prototype is not an Object, so setting it to {}");
+      jsExceptionHere(JSET_TYPEERROR, "Prototype should be an object, got %t", prototypeVar);
     jsvUnLock(prototypeVar);
     prototypeVar = jsvNewObject(); // prototype is supposed to be an object
     JsVar *lastName = jsvSkipToLastName(prototypeName);
@@ -2480,7 +2499,8 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   jslSetLex(oldLex);
 
   // restore state and execInfo
-  oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
+  JsExecFlags mask = EXEC_FOR_INIT|EXEC_IN_LOOP|EXEC_IN_SWITCH;
+  oldExecInfo.execute = (oldExecInfo.execute & mask) | (execInfo.execute & ~mask); 
   execInfo = oldExecInfo;
 
   // It may have returned a reference, but we just want the value...
@@ -2491,10 +2511,19 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   return 0;
 }
 
-JsVar *jspEvaluate(const char *str) {
-  JsVar *evCode = jswrap_espruino_memoryArea((int)(size_t)str, (int)strlen(str));
+JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
+
+  /* using a memory area is more efficient, but the interpreter
+   * may use substrings from it for function code. This means that
+   * if the string goes away, everything gets corrupted - hence
+   * the option here.
+   */
+  JsVar *evCode;
+  if (stringIsStatic)
+    evCode = jswrap_espruino_memoryArea((int)(size_t)str, (int)strlen(str));
+  else
+    evCode = jsvNewFromString(str);
   if (!evCode) return 0;
-  // could always use jsvNewFromString, but not as efficient
 
   JsVar *v = 0;
   if (!jsvIsMemoryFull())

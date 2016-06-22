@@ -20,7 +20,7 @@
 // jshGetDeviceObjectFor
 #include "jswrapper.h"
 
-#if defined(PICO) || defined(NUCLEOF401RE) || defined(NUCLEOF411RE)
+#if defined(PICO) || defined(ESPRUINOWIFI) || defined(NUCLEOF401RE) || defined(NUCLEOF411RE)
 #define PIN_NAMES_DIRECT // work out pin names directly from port + pin in pinInfo
 #endif
 

@@ -41,7 +41,7 @@ bool jsvIterateCallback(
         ok = jsvIterateCallback(dataVar, callback, callbackData);
       }
     } else {
-      jsWarn("If specifying an object, it must be of the form {data : ..., count : N}");
+      jsExceptionHere(JSET_TYPEERROR, "If specifying an object, it must be of the form {data : ..., count : N} - got %j", data);
     }
     jsvUnLock2(countVar, dataVar);
   }
@@ -175,6 +175,17 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   }
 }
 
+JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
+  JsvStringIterator i = *it;
+  if (i.var) jsvLockAgain(i.var);
+  return i;
+}
+
+void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
+  if (jsvStringIteratorHasChar(it))
+    it->ptr[it->charIdx] = c;
+}
+
 void jsvStringIteratorNext(JsvStringIterator *it) {
   jsvStringIteratorNextInline(it);
 }
@@ -227,6 +238,42 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
   jsvSetCharactersInVar(it->var, it->charsInVar);
 }
 
+// --------------------------------------------------------------------------------------------
+
+void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
+  assert(jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj));
+  it->var = jsvGetFirstChild(obj) ? jsvLock(jsvGetFirstChild(obj)) : 0;
+}
+
+/// Clone the iterator
+JsvObjectIterator jsvObjectIteratorClone(JsvObjectIterator *it) {
+  JsvObjectIterator i = *it;
+  if (i.var) jsvLockAgain(i.var);
+  return i;
+}
+
+/// Move to next item
+void jsvObjectIteratorNext(JsvObjectIterator *it) {
+  if (it->var) {
+    JsVarRef next = jsvGetNextSibling(it->var);
+    jsvUnLock(it->var);
+    it->var = next ? jsvLock(next) : 0;
+  }
+}
+
+void jsvObjectIteratorSetValue(JsvObjectIterator *it, JsVar *value) {
+  if (!it->var) return; // end of object
+  jsvSetValueOfName(it->var, value);
+}
+
+void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsVar *parent) {
+  if (it->var) {
+    JsVarRef next = jsvGetNextSibling(it->var);
+    jsvRemoveChild(parent, it->var);
+    jsvUnLock(it->var);
+    it->var = next ? jsvLock(next) : 0;
+  }
+}
 
 // --------------------------------------------------------------------------------------------
 void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer, size_t index) {
@@ -247,6 +294,13 @@ void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer,
   jsvStringIteratorNew(&it->it, arrayBufferData, (size_t)it->byteOffset);
   jsvUnLock(arrayBufferData);
   it->hasAccessedElement = false;
+}
+
+/// Clone the iterator
+ALWAYS_INLINE JsvArrayBufferIterator jsvArrayBufferIteratorClone(JsvArrayBufferIterator *it) {
+  JsvArrayBufferIterator i = *it;
+  i.it = jsvStringIteratorClone(&it->it);
+  return i;
 }
 
 static void jsvArrayBufferIteratorGetValueData(JsvArrayBufferIterator *it, char *data) {

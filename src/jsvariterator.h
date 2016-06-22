@@ -46,12 +46,7 @@ typedef struct JsvStringIterator {
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx);
 
 /// Clone the string iterator
-static ALWAYS_INLINE JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
-  JsvStringIterator i = *it;
-  if (i.var) jsvLockAgain(i.var);
-  return i;
-}
-
+JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it);
 
 /// Gets the current character (or 0)
 static ALWAYS_INLINE char jsvStringIteratorGetChar(JsvStringIterator *it) {
@@ -71,10 +66,7 @@ static ALWAYS_INLINE bool jsvStringIteratorHasChar(JsvStringIterator *it) {
 }
 
 /// Sets a character (will not extend the string - just overwrites)
-static ALWAYS_INLINE void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
-  if (jsvStringIteratorHasChar(it))
-    it->ptr[it->charIdx] = c;
-}
+void jsvStringIteratorSetChar(JsvStringIterator *it, char c);
 
 /// Gets the current index in the string
 static ALWAYS_INLINE size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
@@ -125,17 +117,10 @@ typedef struct JsvObjectIterator {
   JsVar *var;
 } JsvObjectIterator;
 
-static ALWAYS_INLINE void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
-  assert(jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj));
-  it->var = jsvGetFirstChild(obj) ? jsvLock(jsvGetFirstChild(obj)) : 0;
-}
+void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj);
 
 /// Clone the iterator
-static ALWAYS_INLINE JsvObjectIterator jsvObjectIteratorClone(JsvObjectIterator *it) {
-  JsvObjectIterator i = *it;
-  if (i.var) jsvLockAgain(i.var);
-  return i;
-}
+JsvObjectIterator jsvObjectIteratorClone(JsvObjectIterator *it);
 
 /// Gets the current object element key (or 0)
 static ALWAYS_INLINE JsVar *jsvObjectIteratorGetKey(JsvObjectIterator *it) {
@@ -149,36 +134,19 @@ static ALWAYS_INLINE JsVar *jsvObjectIteratorGetValue(JsvObjectIterator *it) {
   return jsvSkipName(it->var); // might even be undefined
 }
 
-/// Set the current array element
-static ALWAYS_INLINE void jsvObjectIteratorSetValue(JsvObjectIterator *it, JsVar *value) {
-  if (!it->var) return; // end of object
-  jsvSetValueOfName(it->var, value);
-}
-
-
 /// Do we have a key, or are we at the end?
 static ALWAYS_INLINE bool jsvObjectIteratorHasValue(JsvObjectIterator *it) {
   return it->var != 0;
 }
 
-/// Move to next character
-static ALWAYS_INLINE void jsvObjectIteratorNext(JsvObjectIterator *it) {
-  if (it->var) {
-    JsVarRef next = jsvGetNextSibling(it->var);
-    jsvUnLock(it->var);
-    it->var = next ? jsvLock(next) : 0;
-  }
-}
+/// Set the current array element
+void jsvObjectIteratorSetValue(JsvObjectIterator *it, JsVar *value);
+
+/// Move to next item
+void jsvObjectIteratorNext(JsvObjectIterator *it);
 
 /// Remove the current element and move to next element. Needs the parent supplied (the JsVar passed to jsvObjectIteratorNew) as we don't store it
-static ALWAYS_INLINE void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsVar *parent) {
-  if (it->var) {
-    JsVarRef next = jsvGetNextSibling(it->var);
-    jsvRemoveChild(parent, it->var);
-    jsvUnLock(it->var);
-    it->var = next ? jsvLock(next) : 0;
-  }
-}
+void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsVar *parent);
 
 static ALWAYS_INLINE void jsvObjectIteratorFree(JsvObjectIterator *it) {
   jsvUnLock(it->var);
@@ -200,17 +168,11 @@ typedef struct JsvArrayBufferIterator {
 void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer, size_t index);
 
 /// Clone the iterator
-static ALWAYS_INLINE JsvArrayBufferIterator jsvArrayBufferIteratorClone(JsvArrayBufferIterator *it) {
-  JsvArrayBufferIterator i = *it;
-  i.it = jsvStringIteratorClone(&it->it);
-  return i;
-}
+JsvArrayBufferIterator jsvArrayBufferIteratorClone(JsvArrayBufferIterator *it);
 
 /** ArrayBuffers have the slightly odd side-effect that you can't write an element
  * once you have read it. That's why we have jsvArrayBufferIteratorGetValueAndRewind
  * which allows this, but is slower. */
-
-
 JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it);
 JsVar *jsvArrayBufferIteratorGetValueAndRewind(JsvArrayBufferIterator *it);
 JsVarInt jsvArrayBufferIteratorGetIntegerValue(JsvArrayBufferIterator *it); 

@@ -27,6 +27,16 @@ This class contains information about Espruino itself
  */
 
 /*JSON{
+  "type" : "event",
+  "class" : "process",
+  "name" : "uncaughtException"
+}
+This event is called when an exception gets thrown and isn't caught (eg. it gets all the way back to the event loop).
+
+You can use this for logging potential problems that might occur during execution.
+*/
+
+/*JSON{
   "type" : "staticproperty",
   "class" : "process",
   "name" : "version",
@@ -79,7 +89,8 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
   jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
-#ifndef SAVE_ON_FLASH
+#if !defined(SAVE_ON_FLASH) && !defined(BLUETOOTH)
+  // It takes too long to send this information over BLE...
   JsVar *arr = jsvNewObject();
   if (arr) {
     const char *s = exportNames;
@@ -139,8 +150,8 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
 
 #ifdef ARM
-    extern void LINKER_END_VAR; // end of ram used (variables)
-    extern void LINKER_ETEXT_VAR; // end of flash text (binary) section
+    extern int LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings
+    extern int LINKER_ETEXT_VAR; // end of flash text (binary) section - should be 'void', but 'int' avoids warnings
     jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));
     jsvObjectSetChildAndUnLock(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START));
     jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_ETEXT_VAR));

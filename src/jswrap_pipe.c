@@ -272,11 +272,11 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
             if (jsvIsNumeric(c) && jsvGetInteger(c)>0)
               chunkSize = jsvGetInteger(c);
             else
-              jsWarn("chunkSize must be an integer > 0");
+              jsExceptionHere(JSET_TYPEERROR, "chunkSize must be an integer > 0");
             jsvUnLock(c);
           }
         } else if (!jsvIsUndefined(options)) {
-          jsWarn("'options' must be an object, or undefined");
+          jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
         }
         // set up our event listeners
         jswrap_object_addEventListener(source, "close", jswrap_pipe_src_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));

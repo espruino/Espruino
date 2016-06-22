@@ -23,6 +23,31 @@
  * but which are good to know about */
 JsErrorFlags jsErrorFlags;
 
+
+bool isWhitespace(char ch) {
+    return (ch==0x09) || // \t - tab
+           (ch==0x0B) || // vertical tab
+           (ch==0x0C) || // form feed
+           (ch==0x20) || // space
+           (((unsigned char)ch)==0xA0) || // no break space
+           (ch=='\n') ||
+           (ch=='\r');
+}
+
+bool isNumeric(char ch) {
+    return (ch>='0') && (ch<='9');
+}
+
+bool isHexadecimal(char ch) {
+    return ((ch>='0') && (ch<='9')) ||
+           ((ch>='a') && (ch<='f')) ||
+           ((ch>='A') && (ch<='F'));
+}
+bool isAlpha(char ch) {
+    return ((ch>='a') && (ch<='z')) || ((ch>='A') && (ch<='Z')) || ch=='_';
+}
+
+
 bool isIDString(const char *s) {
   if (!isAlpha(*s))
     return false;
@@ -413,6 +438,31 @@ int flash_strcmp(const char *mem, const char *flash) {
   }
 }
 
+// memcopy a string from flash
+unsigned char *flash_memcpy(unsigned char *dst, const unsigned char *src, size_t c) {
+  unsigned char *d = dst;
+  uint32_t *s = (uint32_t *)src;
+  size_t len = c;
+
+  // copy full words from source string
+  while (len >= 4) {
+    uint32_t w = *s++;
+    *d++ = w & 0xff; w >>= 8;
+    *d++ = w & 0xff; w >>= 8;
+    *d++ = w & 0xff; w >>= 8;
+    *d++ = w & 0xff;
+    len -= 4;
+  }
+  // copy any remaining bytes
+  if (len > 0) {
+    uint32_t w = *s++;
+    while (len-- > 0) {
+      *d++ = w & 0xff; w >>= 8;
+    }
+  }
+  return dst;
+}
+
 #endif
 
 
@@ -749,7 +799,7 @@ int espruino_snprintf( char * s, size_t n, const char * fmt, ... ) {
 }
 
 #ifdef ARM
-extern int LINKER_END_VAR;
+extern int LINKER_END_VAR; // should be 'void', but 'int' avoids warnings
 #endif
 
 /** get the amount of free stack we have, in bytes */

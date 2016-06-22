@@ -38,6 +38,10 @@
 #define USE_RTC
 #endif
 
+#ifdef ESPRUINOWIFI
+#define USE_RTC
+#endif
+
 #define IRQ_PRIOR_SPI 1 // we want to be very sure of not losing SPI (this is handled quickly too)
 #define IRQ_PRIOR_SYSTICK 2
 #define IRQ_PRIOR_USART 6 // a little higher so we don't get lockups of something tries to print
@@ -1277,11 +1281,12 @@ void jshIdle() {
   bool USBConnected = jshIsUSBSERIALConnected();
   if (wasUSBConnected != USBConnected) {
     wasUSBConnected = USBConnected;
-    if (USBConnected && jsiGetConsoleDevice() != EV_LIMBO)
-      jsiSetConsoleDevice(EV_USBSERIAL);
-    else {
-      if (jsiGetConsoleDevice() == EV_USBSERIAL)
-        jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE);
+    if (USBConnected && jsiGetConsoleDevice()!=EV_LIMBO) {
+      if (!jsiIsConsoleDeviceForced())
+        jsiSetConsoleDevice(EV_USBSERIAL, false);
+    } else {
+      if (!jsiIsConsoleDeviceForced() && jsiGetConsoleDevice()==EV_USBSERIAL)
+        jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, false);
       jshTransmitClearDevice(EV_USBSERIAL); // clear the transmit queue
     }
   }
@@ -2764,6 +2769,10 @@ static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
 JsVar *jshFlashGetFree() {
   JsVar *jsFreeFlash = jsvNewEmptyArray();
   if (!jsFreeFlash) return 0;
+#if defined(ESPRUINOWIFI)
+  // 3x 16kB pages of flash left free right after bootloader
+  addFlashArea(jsFreeFlash, FLASH_START|(16*1024), 3*16*1024);
+#endif
   // Try and find the page after the end of firmware
   extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
   uint32_t firmwareEnd = FLASH_START | (uint32_t)&LINKER_ETEXT_VAR;

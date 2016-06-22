@@ -250,28 +250,35 @@
 /******************************************************************************/
 
 /************************* PLL Parameters *************************************/
-/* PLL_VCO = (HSE_VALUE or HSI_VALUE / PLL_M) * PLL_N */
+
+// PLL_VCO = (HSE_VALUE or HSI_VALUE / PLL_M) * PLL_N 
+// USB OTG FS, SDIO and RNG Clock =  PLL_VCO / PLLQ   <-- should be 48Mhz 
+// SYSCLK = PLL_VCO / PLL_P 
+
 #define PLL_M      8
-/* USB OTG FS, SDIO and RNG Clock =  PLL_VCO / PLLQ */
 #define PLL_Q      7
 
 #if defined (STM32F40_41xxx)
 #define PLL_N      336
-/* SYSCLK = PLL_VCO / PLL_P */
 #define PLL_P      2
 #endif /* STM32F40_41xxx */
 
 #if defined (STM32F427_437xx) || defined (STM32F429_439xx)
 #define PLL_N      360
-/* SYSCLK = PLL_VCO / PLL_P */
 #define PLL_P      2
 #endif /* STM32F427_437x || STM32F429_439xx */
 
-#if defined (STM32F401xx)
+#if defined (STM32F401xx) // 84Mhz
 #define PLL_N      336
-/* SYSCLK = PLL_VCO / PLL_P */
 #define PLL_P      4
 #endif /* STM32F401xx */
+
+#if defined (STM32F411xx) // 96Mhz 
+#undef PLL_Q
+#define PLL_N      384
+#define PLL_P      4
+#define PLL_Q      8
+#endif /* STM32F411xx */
 
 #if defined(EMW3165)
 // EMW3165 uses a 26Mhz crystal
@@ -312,6 +319,11 @@
 #if defined (STM32F401xx)
   uint32_t SystemCoreClock = 84000000;
 #endif /* STM32F401xx */
+
+#if defined (STM32F411xx)
+  uint32_t SystemCoreClock = 100000000;
+#endif /* STM32F411xx */
+
 
 #if defined(EMW3165)
   uint32_t SystemCoreClock = 100000000;

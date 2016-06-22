@@ -269,7 +269,7 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
       }
       fclose(f);
     } else {
-      jsiConsolePrint("\nFile open of espruino.boot failed... \n>");
+      jsiConsolePrint("\nFile open of espruino.boot failed... \n");
     }
   }
 
@@ -302,10 +302,10 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
         if (decomp[j]!=comp[j])
           jsiConsolePrintf("Error at %d: original %d, decompressed %d\n", j, comp[j], decomp[j]);
       free(decomp);
-      jsiConsolePrint("Done!\n>");
+      jsiConsolePrint("Done!\n");
   #endif
     } else {
-      jsiConsolePrint("\nFile open of espruino.state failed... \n>");
+      jsiConsolePrint("\nFile open of espruino.state failed... \n");
     }
   }
 #else // !LINUX
@@ -442,7 +442,7 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
     }
 
     if (errors)
-      jsiConsolePrintf("\nThere were %d errors!\n>", errors);
+      jsiConsolePrintf("\nThere were %d errors!\n", errors);
     else
       jsiConsolePrint("\nDone!\n");
   }
@@ -524,7 +524,7 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
 
   code = (char *)(FLASH_DATA_LOCATION);
 #endif
-  jsvUnLock(jspEvaluate(code));
+  jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
   return true;
 }
 

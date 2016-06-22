@@ -50,7 +50,7 @@ devices = {
   'LED2' : { 'pin' : 'D12' },
   'LED3' : { 'pin' : 'D14' },
   'LED4' : { 'pin' : 'D15' },
-  'BTN1' : { 'pin' : 'A0' },
+  'BTN1' : { 'pin' : 'A0', 'pinstate' : 'IN_PULLDOWN' },
   'USB' : { 'pin_otg_pwr' : 'C0',
             'pin_dm' : 'A11',
             'pin_dp' : 'A12',

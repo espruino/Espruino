@@ -45,12 +45,13 @@
 
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
 
-/*  file:///home/gw/Downloads/S110_SoftDevice_Specification_2.0.pdf
+/*  S110_SoftDevice_Specification_2.0.pdf
 
   RTC0 not usable
   RTC1 used by app_timer.c
-  TIMER1 used by jshardware util timer
-  TIMER2 free
+  TIMER0 (32 bit) not usable (softdevice)
+  TIMER1 (16 bit on nRF51, 32 bit on nRF52) used by jshardware util timer
+  TIMER2 (16 bit) free
   SPI0/1 free
 
  */
@@ -114,8 +115,18 @@ void jshInit() {
 
   // Enable and sort out the timer
   nrf_timer_mode_set(NRF_TIMER1,NRF_TIMER_MODE_TIMER);
+#ifdef NRF52
   nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
-  nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz); // hmm = only a few options here
+  nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz);
+  #define NRF_TIMER_FREQ 1000000
+  #define NRF_TIMER_MAX 0xFFFFFFFF
+#else
+  nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_16);
+  nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_250kHz);
+  #define NRF_TIMER_FREQ 250000 // only 16 bit, so just run slower
+  #define NRF_TIMER_MAX 0xFFFF
+  // TODO: we could dynamically change the frequency...
+#endif
 
   // Irq setup
   NVIC_SetPriority(TIMER1_IRQn, 3); // low - don't mess with BLE :)
@@ -322,7 +333,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
   nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
   nrf_saadc_channel_init(0, &config);
 
-  return nrf_analog_read() / 8192.0;
+  return nrf_analog_read() / 16384.0;
 #else
   const nrf_adc_config_t nrf_adc_config =  {
       NRF_ADC_CONFIG_RES_10BIT,
@@ -690,9 +701,13 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
-  jstSetWakeUp(timeUntilWake);
+  /* Wake ourselves up if we're supposed to, otherwise if we're not waiting for
+   any particular time, just sleep. */
+  if (timeUntilWake < JSSYSTIME_MAX)
+    jstSetWakeUp(timeUntilWake);
+  jsiSetSleep(JSI_SLEEP_ASLEEP);
   sd_app_evt_wait(); // Go to sleep, wait to be woken up
-
+  jsiSetSleep(JSI_SLEEP_AWAKE);
   return true;
 }
 
@@ -700,9 +715,16 @@ bool utilTimerActive = false;
 
 /// Reschedule the timer (it should already be running) to interrupt after 'period'
 void jshUtilTimerReschedule(JsSysTime period) {
-  period = period * 1000000 / SYSCLK_FREQ;
-  if (period < 1) period=1;
-  if (period > 0xFFFFFFFF) period=0xFFFFFFFF;
+  JsSysTime t = period;
+  if (period < JSSYSTIME_MAX / NRF_TIMER_FREQ) {
+    period = period * NRF_TIMER_FREQ / (long long)SYSCLK_FREQ;
+    if (period < 1) period=1;
+    if (period > NRF_TIMER_MAX) period=NRF_TIMER_MAX;
+  } else {
+    // it's too big to do maths on... let's just use the maximum period
+    period = NRF_TIMER_MAX;
+  }
+  //jsiConsolePrintf("Sleep for %d %d -> %d\n", (uint32_t)(t>>32), (uint32_t)(t), (uint32_t)(period));
   if (utilTimerActive) nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
@@ -712,8 +734,10 @@ void jshUtilTimerReschedule(JsSysTime period) {
 /// Start the timer and get it to interrupt after 'period'
 void jshUtilTimerStart(JsSysTime period) {
   jshUtilTimerReschedule(period);
-  utilTimerActive = true;
-  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
+  if (!utilTimerActive) {
+    utilTimerActive = true;
+    nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
+  }
 }
 
 /// Stop the timer
@@ -747,7 +771,7 @@ JsVarFloat jshReadVRef() {
   nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
   nrf_saadc_channel_init(0, &config);
 
-  return 6.0 * (nrf_analog_read() * 0.6 / 8192.0);
+  return 6.0 * (nrf_analog_read() * 0.6 / 16384.0);
 #else
   const nrf_adc_config_t nrf_adc_config =  {
        NRF_ADC_CONFIG_RES_10BIT,

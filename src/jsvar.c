@@ -2014,7 +2014,10 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
   }
   // Copy LINK of what it points to
   if (linkChildren && jsvGetFirstChild(src)) {
-    jsvSetFirstChild(dst, jsvRefRef(jsvGetFirstChild(src)));
+    if (jsvIsNameWithValue(src))
+      jsvSetFirstChild(dst, jsvGetFirstChild(src));
+    else
+      jsvSetFirstChild(dst, jsvRefRef(jsvGetFirstChild(src)));
   }
   return dst;
 }
@@ -2027,8 +2030,8 @@ JsVar *jsvCopy(JsVar *src) {
   JsVar *dst = jsvNewWithFlags(src->flags & JSV_VARIABLEINFOMASK);
   if (!dst) return 0; // out of memory
   if (!jsvIsStringExt(src)) {
-      memcpy(&dst->varData, &src->varData, jsvIsBasicString(src) ? JSVAR_DATA_STRING_LEN : JSVAR_DATA_STRING_NAME_LEN);
-      if (!jsvIsBasicString(src)) {
+      memcpy(&dst->varData, &src->varData, (jsvIsBasicString(src)||jsvIsNativeString(src)) ? JSVAR_DATA_STRING_LEN : JSVAR_DATA_STRING_NAME_LEN);
+      if (!(jsvIsBasicString(src)||jsvIsNativeString(src))) {
         assert(jsvGetPrevSibling(dst) == 0);
         assert(jsvGetNextSibling(dst) == 0);
         assert(jsvGetFirstChild(dst) == 0);
@@ -3070,7 +3073,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
     if (jsvIsFlatString(var)) {
       blocks += jsvGetFlatStringBlocks(var);
     }
-    jsiConsolePrintf("%sString [%d blocks] %q", jsvIsFlatString(var)?"Flat":"", blocks, var);
+    jsiConsolePrintf("%sString [%d blocks] %q", jsvIsFlatString(var)?"Flat":(jsvIsNativeString(var)?"Native":""), blocks, var);
   } else {
     jsiConsolePrintf("Unknown %d", var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
   }

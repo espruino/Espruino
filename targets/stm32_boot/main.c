@@ -116,11 +116,16 @@ int main(void) {
             case CMD_GET_ID: // get chip ID
               _putc(ACK);
               _putc(1); // 2 bytes
+              // AN2606 - STM32 microcontroller system memory boot mode
+              // http://www.st.com/st-web-ui/static/active/jp/resource/technical/document/application_note/CD00167594.pdf
               // 0x430 F1 XL density
               // 0x414 F1 high density
               // 0x6433 F401 CD
-#ifdef STM32F401
+              // 0x6431 F411
+#if defined(STM32F401)
               _putc(0x64); _putc(0x33);
+#elif defined(STM32F411)
+              _putc(0x64); _putc(0x31);
 #else
               _putc(0x04); _putc(0x14);
 #endif
