@@ -436,8 +436,8 @@ void jshPinSetValue(
     bool value //!< The new value of the pin.
   ) {
   //os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
-  GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, (value&1)<<pin);
-  GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, (!value)<<pin);
+  if (value & 1) GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, 1<<pin);
+  else           GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, 1<<pin);
   //jshDebugPin(pin);
 }
 
@@ -1145,12 +1145,12 @@ unsigned int jshGetRandomNumber() {
 /**
  * Determine available flash depending on EEprom size
  *
- */  
+ */
 uint32_t jshFlashMax() {
-  extern uint16_t espFlashKB; 
+  extern uint16_t espFlashKB;
   return 1024*espFlashKB;
 }
-  
+
 /**
  * Read data from flash memory into the buffer.
  *
