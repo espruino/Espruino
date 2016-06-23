@@ -900,7 +900,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
   return;
 error:
   i2c_master_stop();
-  jsError("No ACK");
+  jsExceptionHere(JSET_INTERNALERROR, "I2CWrite: No ACK %d\n", ack);
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
@@ -922,7 +922,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
   return;
 error:
   i2c_master_stop();
-  jsError("No ACK");
+  jsExceptionHere(JSET_INTERNALERROR, "I2CRead: No ACK %d\n", ack);
 }
 
 //===== System time stuff =====
