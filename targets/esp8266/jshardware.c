@@ -204,7 +204,7 @@ void jshSoftInit() {
 /**
  * Handle whatever needs to be done in the idle loop when there's nothing to do.
  *
- * Nothing is needed on the esp8266. The watchdog timer is taken care of by the SDK.
+ * Nothing is needed on the esp8266.
  */
 void jshIdle() {
 }
@@ -545,6 +545,11 @@ void jshSetOutputValue(JshPinFunction func, int value) {
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
   os_printf("ESP8266: jshEnableWatchDog %0.3f\n", timeout);
+}
+
+// Kick the watchdog
+void jshKickWatchDog() {
+  os_printf("ESP8266: jshKickWatchDog\n");
 }
 
 

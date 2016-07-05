@@ -249,6 +249,12 @@ void jshUtilTimerReschedule(JsSysTime period) {
 void jshUtilTimerStart(JsSysTime period) {
 }
 
+void jshEnableWatchDog(JsVarFloat timeout) {
+}
+
+void jshKickWatchDog() {
+}
+
 JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
 unsigned int jshGetRandomNumber() { return rand(); }

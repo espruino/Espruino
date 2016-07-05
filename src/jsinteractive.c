@@ -2000,6 +2000,10 @@ void jsiIdle() {
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
 
+  // Kick the WatchDog if needed
+  if (jsiStatus & JSIS_WATCHDOG_AUTO)
+    jshKickWatchDog();
+
   // Go to sleep!
   if (loopsIdling>1 && // once around the idle loop without having done any work already (just in case)
 #ifdef USB

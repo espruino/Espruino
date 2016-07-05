@@ -1291,8 +1291,6 @@ void jshIdle() {
     }
   }
 #endif
-  // Kick the watchdog (this only happens from the idle loop)
-  IWDG_ReloadCounter();
 }
 
 // ----------------------------------------------------------------------------
@@ -2662,7 +2660,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   }
 }
 
-// Enable watchdog with a timeout in seconds
+/// Enable watchdog with a timeout in seconds, it'll reset the chip if jshKickWatchDog isn't called within the timeout
 void jshEnableWatchDog(JsVarFloat timeout) {
     // Enable LSI
     RCC_LSICmd(ENABLE);
@@ -2690,6 +2688,11 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
     /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
     IWDG_Enable();
+}
+
+// Kick the watchdog
+void jshKickWatchDog() {
+  IWDG_ReloadCounter();
 }
 
 volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
@@ -2920,8 +2923,8 @@ unsigned int jshSetSystemClock(JsVar *options) {
   RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
   // set latency
   if (latency!=255) FLASH_SetLatency(latency);
-  if (pclk1>=0) RCC_PCLK1Config(pclk1);
-  if (pclk2>=0) RCC_PCLK2Config(pclk2);
+  if (pclk1>=0) RCC_PCLK1Config((uint32_t)pclk1);
+  if (pclk2>=0) RCC_PCLK2Config((uint32_t)pclk2);
   // update PLL
   RCC_PLLCmd(DISABLE);
   RCC_PLLConfig(RCC_PLLSource_HSE, m, n, p, q);
