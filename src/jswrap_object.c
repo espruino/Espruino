@@ -477,8 +477,8 @@ JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props) {
   ],
   "return" : ["JsVar","The prototype"]
 }
-Get the prototype of the give object - this is like writing `object.__proto__`
-but is the expected ES6
+Get the prototype of the given object - this is like writing `object.__proto__`
+but is the 'proper' ES6 way of doing it
  */
 JsVar *jswrap_object_getPrototypeOf(JsVar *object) {
   return jspGetNamedField(object, "__proto__", false);
@@ -495,7 +495,8 @@ JsVar *jswrap_object_getPrototypeOf(JsVar *object) {
   ],
   "return" : ["JsVar","The object passed in"]
 }
-Creates a new object with the specified prototype object and properties. properties are currently unsupported.
+Set the prototype of the given object - this is like writing
+`object.__proto__ = prototype` but is the 'proper' ES6 way of doing it
  */
 JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
   JsVar *v = jspGetNamedField(object, "__proto__", true);

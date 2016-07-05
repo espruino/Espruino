@@ -379,7 +379,7 @@ if "SD" in board.devices:
       codeOut("#define SD_SPI EV_SPI"+str(spiNum))
 
 
-for device in ["USB","SD","LCD","JTAG"]:
+for device in ["USB","SD","LCD","JTAG","ESP8266"]:
   if device in board.devices:
     for entry in board.devices[device]:
       if entry[:3]=="pin": usedPinChecks.append("(PIN)==" + toPinDef(board.devices[device][entry])+"/* "+device+" */")
@@ -391,6 +391,11 @@ if "NUCLEO_A" in board.devices:
 if "NUCLEO_D" in board.devices:
   for n,pin in enumerate(board.devices["NUCLEO_D"]):
       codeOut("#define NUCLEO_D"+str(n)+" "+toPinDef(pin))
+
+if "ESP8266" in board.devices:
+  for entry in board.devices["ESP8266"]:
+    if entry[0:4]=="pin_":
+      codeOut("#define ESP8266_"+str(entry[4:].upper())+" "+toPinDef(board.devices["ESP8266"][entry]))
 
 codeOut("")
 

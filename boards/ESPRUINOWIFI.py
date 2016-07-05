@@ -23,9 +23,9 @@ info = {
  'default_console_rx' : "B7",
  'variables' : 5100,
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_pico_1r3.bin',
+ 'binary_name' : 'espruino_%v_wifi.bin',
  'binaries' : [
-  { 'filename' : 'espruino_%v_pico_1r3.bin', 'description' : "Normal Espruino WiFi build"},
+  { 'filename' : 'espruino_%v_wifi.bin', 'description' : "Normal Espruino WiFi build"},
  ],
  'build' : {
    'defines' : [
@@ -76,7 +76,13 @@ devices = {
         'pin_MS' : 'A13',
         'pin_CK' : 'A14', 
 #        'pin_DI' : 'A15' 
-          }
+          },
+  'ESP8266' : { 'pin_rx' :  'A2',
+                'pin_tx' : 'A3',  
+                'pin_cts' : 'A15',
+                'pin_ch_pd' : 'A14',
+                'pin_gpio0' : 'A13',
+   },
 };
 
 # left-right, or top-bottom order
@@ -91,7 +97,6 @@ board = {
     'A15' : 'ESP8266 CTS', # ESP8266 Clear to send (when enabled with AT+UART_DEF)
     'A14' : 'ESP8266 CH_PD', # ESP8266 Power Down, also ARM SWCLK (pull down by default)
     'A13' : 'ESP8266 GPIO0', # ESP8266 bootloader mode, also ARM SWDIO (pull up by default)
-
   }
 };
 board["_css"] = """
