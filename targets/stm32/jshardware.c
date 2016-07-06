@@ -979,7 +979,21 @@ ALWAYS_INLINE bool jshPinGetValue(Pin pin) {
 }
 
 // ----------------------------------------------------------------------------
-static void jshResetSerial() {
+static void jshResetPeripherals() {
+  // Set pin state to analog input - saves some power
+  Pin i;
+  for (i=0;i<JSH_PIN_COUNT;i++) {
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    if (i==DEFAULT_CONSOLE_TX_PIN) continue;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    if (i==DEFAULT_CONSOLE_RX_PIN) continue;
+#endif
+    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i)) {
+      jshPinSetState(i, JSHPINSTATE_ADC_IN);
+    }
+  }
+  // Initialise UART if we have a default console device on it
   if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
@@ -994,6 +1008,15 @@ static void jshResetSerial() {
 #endif
     jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
   }
+  // initialise button state
+#ifdef BTN1_PININDEX
+#ifdef BTN1_PINSTATE
+  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
+#else
+  jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
+#endif
 }
 
 void jshInit() {
@@ -1091,16 +1114,6 @@ void jshInit() {
   jshSetupRTCPrescaler(!jshIsRTCUsingLSE());
 #endif
 
-  // initialise button
-#ifdef BTN1_PININDEX
-#ifdef BTN1_PINSTATE
-  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
-  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
-#else
-  jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
-#endif
-#endif
-
   // PREEMPTION
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   // Slow the IO clocks down - we don't need them going so fast!
@@ -1118,7 +1131,11 @@ void jshInit() {
   jshResetRTCTimer();
 #endif
 
-  jshResetSerial();
+  jshResetPeripherals();
+#ifdef LED1_PININDEX
+  // turn led back on (status) as it would have just been turned off
+  jshPinOutput(LED1_PININDEX, 1);
+#endif
 
 #ifdef SWD_ONLY_NO_JTAG
   // reclaim A13 and A14
@@ -1255,21 +1272,7 @@ void jshInit() {
 
 void jshReset() {
   jshResetDevices();
-  Pin i;
-  for (i=0;i<JSH_PIN_COUNT;i++) {
-#ifdef DEFAULT_CONSOLE_TX_PIN
-    if (i==DEFAULT_CONSOLE_TX_PIN) continue;
-#endif
-#ifdef DEFAULT_CONSOLE_RX_PIN
-    if (i==DEFAULT_CONSOLE_RX_PIN) continue;
-#endif
-    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i)) {
-      jshPinSetState(i, JSHPINSTATE_ADC_IN);
-    }
-  }
-
-  // re-initialise serial port (like was done on jshInit)
-  jshResetSerial();
+  jshResetPeripherals();
 }
 
 void jshKill() {
