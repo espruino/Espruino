@@ -479,6 +479,9 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 void jshEnableWatchDog(JsVarFloat timeout) {
 }
 
+void jshKickWatchDog() {
+}
+
 /** Check the pin associated with this EXTI - return true if it is a 1 */
 bool jshGetWatchedPinState(IOEventFlags device) {
   return lastHandledPinState;

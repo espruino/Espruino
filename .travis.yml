@@ -8,9 +8,9 @@ language: c
 #addon:
 #  apt:
 #    sources:
-#      - ppa:terry.guo/gcc-arm-embedded
+#      - ppa:team-gcc-arm-embedded/ppa
 #    packages:
-#      - libsdl1.2-dev gcc-arm-none-eabi
+#      - libsdl1.2-dev gcc-arm-embedded
 
 before_install:
  - sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa

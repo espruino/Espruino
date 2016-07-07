@@ -318,7 +318,9 @@ def get_ifdef_description(d):
   if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico only)"
   if d=="RELEASE": return "release builds"
   if d=="LINUX": return "Linux-based builds"
-  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Espruino Pico)"
+  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico)"
+  if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino Wifi or Linux)"
+  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino Wifi, Linux or ESP8266)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 

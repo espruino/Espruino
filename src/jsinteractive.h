@@ -138,6 +138,7 @@ typedef enum {
   JSIS_TODO_RESET = 256, // reset the board, don't load anything
   JSIS_TODO_MASK = JSIS_TODO_FLASH_SAVE|JSIS_TODO_FLASH_LOAD|JSIS_TODO_RESET,
   JSIS_CONSOLE_FORCED = 512, // see jsiSetConsoleDevice
+  JSIS_WATCHDOG_AUTO = 1024, // Automatically kick the watchdog timer on idle
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE
 } PACKED_FLAGS JsiStatus;

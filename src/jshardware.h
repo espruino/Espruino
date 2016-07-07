@@ -198,8 +198,11 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin);
  * (used mainly for fast DAC and PWM handling from Utility Timer) */
 void jshSetOutputValue(JshPinFunction func, int value);
 
-/// Enable watchdog with a timeout in seconds, it should be reset from `jshIdle`
+/// Enable watchdog with a timeout in seconds, it'll reset the chip if jshKickWatchDog isn't called within the timeout
 void jshEnableWatchDog(JsVarFloat timeout);
+
+// Kick the watchdog
+void jshKickWatchDog();
 
 /// Check the pin associated with this EXTI - return true if the pin's input is a logic 1
 bool jshGetWatchedPinState(IOEventFlags device);
