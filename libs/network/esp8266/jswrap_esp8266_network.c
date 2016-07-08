@@ -1657,7 +1657,8 @@ Perform a network ping request. The parameter can be either a String or a numeri
 void jswrap_ESP8266_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
-  ) {
+) {
+  memset(&pingOpt, 0, sizeof(pingOpt));
   // If the parameter is a string, get the IP address from the string
   // representation.
   if (jsvIsString(ipAddr)) {
@@ -1699,7 +1700,6 @@ void jswrap_ESP8266_ping(
   }
 
   // We now have an IP address to ping ... so ping.
-  memset(&pingOpt, 0, sizeof(pingOpt));
   pingOpt.count = 5;
   pingOpt.recv_function = pingRecvCB;
   ping_start(&pingOpt);
