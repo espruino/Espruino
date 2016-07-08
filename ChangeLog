@@ -41,7 +41,8 @@
             Fix glitches in PWM output when updating Software PWM quickly (fix #865)
             Added `E.kickWatchdog()` to allow you to keep your JavaScript running - not just the interpreter (fix #859)
             Ensure all pins set to AIN on startup
-            Fix regression where setWatch would remove pulldown from button if called after reser()
+            Fix regression where setWatch would remove pulldown from button if called after reset()
+            Reduce amount of flash available for saved code on Original Espruino (until we can get code size down)
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
