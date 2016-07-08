@@ -1699,7 +1699,7 @@ void jswrap_ESP8266_ping(
   }
 
   // We now have an IP address to ping ... so ping.
-  memset(&pingOpt, 0, sizeof(pingOpt));
+
   pingOpt.count = 5;
   pingOpt.recv_function = pingRecvCB;
   ping_start(&pingOpt);
