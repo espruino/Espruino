@@ -765,9 +765,20 @@ static void ble_stack_init(void)
 {
     uint32_t err_code;
     
+    // TODO: enable if we're on a device with 32kHz xtal
+    /*nrf_clock_lf_cfg_t clock_lf_cfg = {
+        .source        = NRF_CLOCK_LF_SRC_XTAL,
+        .rc_ctiv       = 0,
+        .rc_temp_ctiv  = 0,
+        .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM};*/
+    nrf_clock_lf_cfg_t clock_lf_cfg = {
+            .source        = NRF_CLOCK_LF_SRC_RC,
+            .rc_ctiv       = 16, // recommended for nRF52
+            .rc_temp_ctiv  = 2,  // recommended for nRF52
+            .xtal_accuracy = 0};
+
     // Initialize SoftDevice.
-    // SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL); // Maybe we should use this if external crystal available.
-    SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LF_SRC_RC, false);
+    SOFTDEVICE_HANDLER_INIT(&clock_lf_cfg, false);
     
     ble_enable_params_t ble_enable_params;
     err_code = softdevice_enable_get_default_config(CENTRAL_LINK_COUNT,
