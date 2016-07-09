@@ -13,6 +13,7 @@
 #include "nrf_drv_pdm.h"
 #include "nrf_assert.h"
 #include "nrf_drv_common.h"
+#include "nrf_gpio.h"
 
 
 /** @brief PDM interface status. */
@@ -106,6 +107,10 @@ ret_code_t nrf_drv_pdm_init(nrf_drv_pdm_config_t const * p_config,
     nrf_pdm_clock_set(p_config->clock_freq);
     nrf_pdm_mode_set(p_config->mode, p_config->edge);
     nrf_pdm_gain_set(p_config->gain_l, p_config->gain_r);
+
+    nrf_gpio_cfg_output(p_config->pin_clk);
+    nrf_gpio_pin_clear(p_config->pin_clk);
+    nrf_gpio_cfg_input(p_config->pin_din, NRF_GPIO_PIN_NOPULL);
     nrf_pdm_psel_connect(p_config->pin_clk, p_config->pin_din);
     
     m_cb.drv_state = NRF_DRV_STATE_INITIALIZED;
@@ -128,9 +133,7 @@ void nrf_drv_pdm_uninit(void)
 
 ret_code_t nrf_drv_pdm_start(void)
 {
-    ASSERT(m_cb.drv_state == NRF_DRV_STATE_INITIALIZED);
-    m_cb.drv_state = NRF_DRV_STATE_POWERED_ON;
-    nrf_pdm_enable();
+    ASSERT(m_cb.drv_state != NRF_DRV_STATE_UNINITIALIZED);
     if (m_cb.status != NRF_PDM_STATE_IDLE)
     {
         if (m_cb.status == NRF_PDM_STATE_RUNNING)
@@ -140,6 +143,8 @@ ret_code_t nrf_drv_pdm_start(void)
         return NRF_ERROR_BUSY;
     }
     m_cb.status = NRF_PDM_STATE_TRANSITION;
+    m_cb.drv_state = NRF_DRV_STATE_POWERED_ON;
+    nrf_pdm_enable();
     nrf_pdm_event_clear(NRF_PDM_EVENT_STARTED);
     nrf_pdm_task_trigger(NRF_PDM_TASK_START);
     return NRF_SUCCESS;
@@ -148,6 +153,7 @@ ret_code_t nrf_drv_pdm_start(void)
 
 ret_code_t nrf_drv_pdm_stop(void)
 {
+    ASSERT(m_cb.drv_state != NRF_DRV_STATE_UNINITIALIZED);
     if (m_cb.status != NRF_PDM_STATE_RUNNING)
     {
         if (m_cb.status == NRF_PDM_STATE_IDLE)
@@ -158,7 +164,7 @@ ret_code_t nrf_drv_pdm_stop(void)
         return NRF_ERROR_BUSY;
     }
     m_cb.status = NRF_PDM_STATE_TRANSITION;
-    ASSERT(m_cb.state == NRF_DRV_STATE_POWERED_ON);
+    m_cb.drv_state = NRF_DRV_STATE_INITIALIZED;
     nrf_pdm_task_trigger(NRF_PDM_TASK_STOP);
     return NRF_SUCCESS;
 }

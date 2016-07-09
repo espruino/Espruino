@@ -42,6 +42,9 @@
 
 #ifndef BLE_HCI_H__
 #define BLE_HCI_H__ 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** @defgroup BLE_HCI_STATUS_CODES Bluetooth status codes
  * @{ */
@@ -120,6 +123,9 @@
 /** @} */
 
 
+#ifdef __cplusplus
+}
+#endif
 #endif // BLE_HCI_H__
 
 /** @} */

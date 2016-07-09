@@ -272,6 +272,16 @@ uint32_t app_timer_cnt_diff_compute(uint32_t   ticks_to,
                                     uint32_t   ticks_from,
                                     uint32_t * p_ticks_diff);
 
+#ifdef APP_TIMER_WITH_PROFILER
+/**@brief Function for getting the maximum observed operation queue utilization.
+ *
+ * Function for tuning the module and determining OP_QUEUE_SIZE value and thus module RAM usage.
+ *
+ * @return Maximum number of events in queue observed so far.
+ */
+uint16_t app_timer_op_queue_utilization_get(void);
+#endif
+
 #endif // APP_TIMER_H__
 
 /** @} */

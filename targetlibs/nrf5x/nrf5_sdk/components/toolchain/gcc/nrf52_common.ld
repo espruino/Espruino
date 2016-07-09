@@ -1,4 +1,4 @@
-/* Linker script for Nordic Semiconductor nRF5 devices
+/* Linker script for Nordic Semiconductor nRF52 devices
  *
  * Version: Sourcery G++ 4.5-1
  * Support: https://support.codesourcery.com/GNUToolchain/
@@ -49,7 +49,7 @@ SECTIONS
 {
     .text :
     {
-        KEEP(*(.Vectors))
+        KEEP(*(.isr_vector))
         *(.text*)
 
         KEEP(*(.init))
@@ -71,22 +71,18 @@ SECTIONS
 
         *(.rodata*)
 
-        *(.eh_frame*)
-        . = ALIGN(4);
+        KEEP(*(.eh_frame*))
     } > FLASH
     
-
     .ARM.extab : 
     {
         *(.ARM.extab* .gnu.linkonce.armextab.*)
-        . = ALIGN(4);
     } > FLASH
 
     __exidx_start = .;
     .ARM.exidx :
     {
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-        . = ALIGN(4);
     } > FLASH
     __exidx_end = .;
 
@@ -119,7 +115,7 @@ SECTIONS
         KEEP(*(.fini_array))
         PROVIDE_HIDDEN (__fini_array_end = .);
 
-        *(.jcr)
+        KEEP(*(.jcr*))
         . = ALIGN(4);
         /* All data end */
         __data_end__ = .;
@@ -139,7 +135,7 @@ SECTIONS
     .heap (COPY):
     {
         __end__ = .;
-        end = __end__;
+        PROVIDE(end = .);
         *(.heap*)
         __HeapLimit = .;
     } > RAM

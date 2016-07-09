@@ -50,7 +50,7 @@ typedef struct
  */
 typedef struct
 {
-    uint16_t           acquired_flags;                              /**< Bitmap for keeping track of which user flags have been acquired. */
+    uint32_t           acquired_flags;                              /**< Bitmap for keeping track of which user flags have been acquired. */
     uint16_t           valid_conn_handles[SDK_MAPPED_FLAGS_N_KEYS]; /**< List of connection handles used as keys for the sdk_mapped_flags module. */
     union
     {
@@ -149,7 +149,7 @@ static void record_purge_disconnected()
                                    m_bcs.valid_conn_handles,
                                  (~m_bcs.flags.connected_flags) & (m_bcs.flags.valid_flags));
 
-    for (int i = 0; i < disconnected_list.len; i++)
+    for (uint32_t i = 0; i < disconnected_list.len; i++)
     {
         record_invalidate(disconnected_list.flag_keys[i]);
     }
@@ -198,16 +198,9 @@ void ble_conn_state_on_ble_evt(ble_evt_t * p_ble_evt)
             }
             else
             {
-#if   defined(S110)
-                bool is_central = false;
-#elif defined(S120)
-                bool is_central = true;
-#elif defined(S130) || defined(S132) || defined(S332)
                 bool is_central =
                         (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL);
-#else
-                /* BLE SoftDevice missing. */
-#endif
+
                 sdk_mapped_flags_update_by_key(m_bcs.valid_conn_handles,
                                               &m_bcs.flags.central_flags,
                                                p_ble_evt->evt.gap_evt.conn_handle,

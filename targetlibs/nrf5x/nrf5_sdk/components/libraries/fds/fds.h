@@ -17,12 +17,13 @@
  * @defgroup flash_data_storage Flash Data Storage
  * @ingroup app_common
  * @{
+ *
  * @brief   Flash Data Storage (FDS).
  *
- * @details Flash Data Storage (FDS) is a minimalistic filesystem for the on-chip flash.
- *          It can be used to manipulate @e records, which consist of a piece of data, made up
- *          of one or more chunks, and an associated key pair which can be used to look up the
- *          record.
+ * @details Flash Data Storage is a minimalistic, record-oriented file system for the on-chip
+ *          flash. Files are stored as a collection of  records of variable length. FDS supports
+ *          synchronous read operations and asynchronous write operations (write, update,
+ *          and delete). FDS can be used from multiple threads.
  */
 
 #include <stdint.h>
@@ -30,161 +31,171 @@
 #include "sdk_errors.h"
 
 
-/**@brief   Reserved type key. May not be used as a record key by the application. */
-#define FDS_TYPE_ID_INVALID         (0x0000)
+/**@brief   Invalid file ID.
+ *
+ * This value must not be used as a file ID by the application.
+ */
+#define FDS_FILE_ID_INVALID     (0xFFFF)
 
-/**@brief   Reserved instance key. May not be used as a record key by the application. */
-#define FDS_INSTANCE_ID_INVALID     (0xFFFF)
 
-/**@brief   FDS return codes. */
+/**@brief   Record key for deleted records.
+ *
+ * This key is used to flag a record as "dirty", which means that it should be removed during
+ * the next garbage collection. This value must not be used as a record key by the application.
+ */
+#define FDS_RECORD_KEY_DIRTY    (0x0000)
+
+
+/**@brief   FDS return values.
+ */
 enum
 {
-    FDS_SUCCESS                 = NRF_SUCCESS,
-    FDS_ERR_OPERATION_TIMEOUT,  /**< Error. The operation has timed out. */
-    FDS_ERR_BUSY,               /**< Error. The underlying flash subsystem was busy. */
-    FDS_ERR_NOT_INITIALIZED,    /**< Error. The module is not initialized. */
-    FDS_ERR_INITIALIZING,       /**< Error. The module is already initializing. */
-    FDS_ERR_INVALID_KEYS,       /**< Error. Invalid key value(s). */
-    FDS_ERR_UNALIGNED_ADDR,     /**< Error. Data has unaligned address. */
-    FDS_ERR_INVALID_PARAM,      /**< Error. Parameter contains invalid data. */
-    FDS_ERR_INVALID_DESC,       /**< Error. Invalid record descriptor. */
-    FDS_ERR_NULL_PARAM,         /**< Error. NULL parameter. */
-    FDS_ERR_NO_RECORDS_OPEN,    /**< Error. Attempted to close a record when there were none open. */
-    FDS_ERR_NO_SPACE_IN_FLASH,  /**< Error. No space in flash memory. */
-    FDS_ERR_NO_SPACE_IN_QUEUES, /**< Error. No space in the internal queues. */
-    FDS_ERR_RECORD_TOO_LARGE,   /**< Error. The record exceeds the maximum allowed size. */
-    FDS_ERR_NOT_FOUND,          /**< Error. Record was not found. */
-    FDS_ERR_NO_PAGES,           /**< Error. No flash pages available. */
-    FDS_ERR_USER_LIMIT_REACHED, /**< Error. Maximum number of users reached. */
-    FDS_ERR_CRC_CHECK_FAILED,   /**< Error. A CRC check failed. */
-    FDS_ERR_INTERNAL,           /**< Error. Internal error. */
+    FDS_SUCCESS = NRF_SUCCESS,  //!< The operation completed successfully.
+    FDS_ERR_OPERATION_TIMEOUT,  //!< Error. The operation timed out.
+    FDS_ERR_NOT_INITIALIZED,    //!< Error. The module has not been initialized.
+    FDS_ERR_UNALIGNED_ADDR,     //!< Error. The input data is not aligned to a word boundary.
+    FDS_ERR_INVALID_ARG,        //!< Error. The parameter contains invalid data.
+    FDS_ERR_NULL_ARG,           //!< Error. The parameter is NULL.
+    FDS_ERR_NO_OPEN_RECORDS,    //!< Error. The record is not open, so it cannot be closed.
+    FDS_ERR_NO_SPACE_IN_FLASH,  //!< Error. There is no space in flash memory.
+    FDS_ERR_NO_SPACE_IN_QUEUES, //!< Error. There is no space in the internal queues.
+    FDS_ERR_RECORD_TOO_LARGE,   //!< Error. The record exceeds the maximum allowed size.
+    FDS_ERR_NOT_FOUND,          //!< Error. The record was not found.
+    FDS_ERR_NO_PAGES,           //!< Error. No flash pages are available.
+    FDS_ERR_USER_LIMIT_REACHED, //!< Error. The maximum number of users has been reached.
+    FDS_ERR_CRC_CHECK_FAILED,   //!< Error. The CRC check failed.
+    FDS_ERR_BUSY,               //!< Error. The underlying flash subsystem was busy.
+    FDS_ERR_INTERNAL,           //!< Error. An internal error occurred.
 };
 
 
-typedef uint32_t fds_record_id_t;
-
-
-/**@brief   A piece of record metadata; holds one of the record's keys (type)
- *          and the record's lenght, expressed in 4 byte words.
+/**@brief   Part of the record metadata.
+ *
+ * Contains the record key and the length of the record data.
  */
-typedef struct 
+typedef struct
 {
-    uint16_t type;          /**< The record 'type' key. */
-    uint16_t length_words;  /**< Length of the record data, in 4 byte words. */
+    uint16_t record_key;    //!< The record key (must be in the range 0x0001 - 0xBFFF).
+    uint16_t length_words;  //!< The length of the record data (in 4-byte words).
 } fds_tl_t;
 
 
-/**@brief   A piece of record metadata; holds one of the record's keys (instance)
-*           and the record's CRC16 check value.
-*/
+/**@brief   Part of the record metadata.
+ *
+ * Contains the ID of the file that the record belongs to and the CRC16 check value of the record.
+ */
 typedef struct
 {
-    uint16_t instance;  /**< The record 'instance' key. */
+    uint16_t file_id;   //!< The ID of the file that the record belongs to.
 
-    /** CRC16 check value, calculated over the entire record as stored in flash, including its
-     *  metadata, but excluding the CRC field itself. */
+    /**@brief   CRC16 check value.
+     *
+     * The CRC is calculated over the entire record as stored in flash (including the record
+     * metadata except the CRC field itself). The CRC standard employed is CRC-16-CCITT.
+     */
     uint16_t crc16;
 } fds_ic_t;
 
 
-/**@brief   The record metadata, as stored in flash. */
+/**@brief   The record metadata as stored in flash.
+ */
 typedef struct
 {
-    fds_tl_t        tl;     /**< See @ref fds_tl_t. */
-    fds_ic_t        ic;     /**< See @ref fds_ic_t. */
-    fds_record_id_t id;     /**< The unique record ID (32 bits). */
+    fds_tl_t tl;        //!< See @ref fds_tl_t.
+    fds_ic_t ic;        //!< See @ref fds_ic_t.
+    uint32_t record_id; //!< The unique record ID (32 bits).
 } fds_header_t;
 
 
-typedef fds_header_t fds_record_header_t;
-
-/**@brief   The record descriptor structure, used to manipulate records.
+/**@brief   The record descriptor structure that is used to manipulate records.
  *
- * @note    This structure is meant to be opaque to the user.
+ * This structure is used by the FDS module. You must provide the descriptor to the module when
+ * you manipulate existing records. However, you should never modify it or use any of its fields.
  *
- * @warning Do not reuse the same descriptor for different records.
- *          If you do, be sure to set its fields to zero.
+ * @note Never reuse the same descriptor for different records.
  */
 typedef struct
 {
-    uint32_t         record_id;     /**< The unique record ID. */
-    uint32_t const * p_rec;         /**< The last known location of the record in flash. */
-    uint16_t         page;          /**< The virtual page ID in which the record is stored. */
-    uint16_t         gc_magic;      /**< Number of times the GC algorithm has been run. */
-    uint16_t         ptr_magic;     /**< Used to verify the validity of p_rec. */
+    uint32_t         record_id;         //!< The unique record ID.
+    uint32_t const * p_record;          //!< The last known location of the record in flash.
+    uint16_t         gc_run_count;      //!< Number of times garbage collection has been run.
+    bool             record_is_open;    //!< Whether the record is currently open.
 } fds_record_desc_t;
 
 
-/**@brief   The record key, used to look up records.
+/**@brief   Structure that can be used to read the contents of a record stored in flash.
  *
- * @note    The uniqueness of either field is not enforced by FDS.
+ * This structure does not reflect the physical layout of a record in flash, but it points 
+ * to the locations where the record header (metadata) and the record data are stored.
  */
 typedef struct
 {
-    uint16_t type;
-    uint16_t instance;
-} fds_record_key_t;
+    fds_header_t const * p_header;  //!< Location of the record header in flash.
+    void         const * p_data;    //!< Location of the record data in flash.
+} fds_flash_record_t;
 
 
-/**@brief   Structure used for reading a record back from flash memory.
-*/
-typedef struct
-{
-    fds_record_header_t const * p_header;  /**< The record header (metadata), as stored in flash. */
-    uint32_t            const * p_data;    /**< The record data, as stored in flash. */
-} fds_record_t;
-
-
-/**@brief   A record chunk, containing a piece of data to be stored in a record.
+/**@brief   A chunk of record data to be written to flash.
  *
- * @note    p_data must be aligned on a (4 bytes) word boundary. Additionally, it must be kept
- *          alive in memory until the write operation has completed.
+ * @p p_data must be aligned to a word boundary. Make sure to keep it in 
+ * memory until the operation has completed, which is indicated by the respective FDS event.
  */
 typedef struct
 {
-    void     const * p_data;        /**< Pointer to the data to store. Must be word aligned. */
-    uint16_t         length_words;  /**< Length of data pointed to by p_data, in 4 byte words. */
+    void     const * p_data;        //!< Pointer to the data to store. Must be word-aligned.
+    uint16_t         length_words;  //!< Length of data pointed to by @p p_data (in 4-byte words).
 } fds_record_chunk_t;
 
 
-/**@brief   A token to a reserved space in flash, created by @ref fds_reserve.
- *          Use @ref fds_write_reserved to write the record in the reserved space,
- *          or @ref fds_reserve_cancel to cancel the reservation.
+/**@brief   A record to be written to flash.
  */
 typedef struct
 {
-    uint16_t page;           /**< The logical ID of the page where space was reserved. */
-    uint16_t length_words;   /**< The amount of space reserved, in 4 byte words. */
-} fds_write_token_t;
+    uint16_t file_id;                           //!< The ID of the file that the record belongs to.
+    uint16_t key;                               //!< The record key.
+    struct
+    {
+        fds_record_chunk_t const * p_chunks;    //!< The chunks that make up the record data.
+        uint16_t                   num_chunks;  //!< The number of chunks that make up the data.
+    } data;
+} fds_record_t;
 
 
-/**@brief   A token to keep information about the progress of @ref fds_find, @ref fds_find_by_type
- *          and @ref fds_find_by_instance operations.
+/**@brief   A token to a reserved space in flash, created by @ref fds_reserve.
  *
- * @note    The token must be zero-initialized before use.
+ * This token can be used to write the record in the reserved space (@ref fds_record_write_reserved)
+ * or to cancel the reservation (@ref fds_reserve_cancel).
+ */
+typedef struct
+{
+    uint16_t page;           //!< The logical ID of the page where space was reserved.
+    uint16_t length_words;   //!< The amount of space reserved (in 4-byte words).
+} fds_reserve_token_t;
+
+
+/**@brief   A token to keep information about the progress of @ref fds_record_find,
+ *          @ref fds_record_find_by_key, and @ref fds_record_find_in_file.
  *
- * @note    This structure is meant to be opaque to the user.
- *
- * @warning Do not reuse the same token to search for different records.
- *          If you do, be sure to set its fields to zero.
+ * @note    Always zero-initialize the token before using it for the first time.
+ * @note    Never reuse the same token to search for different records.
  */
 typedef struct
 {
     uint32_t const * p_addr;
-    uint32_t         magic;
     uint16_t         page;
 } fds_find_token_t;
 
 
-/**@brief   FDS events. */
+/**@brief   FDS event IDs.
+ */
 typedef enum
 {
-    FDS_EVT_INIT,       /**< Event for @ref fds_init. */
-    FDS_EVT_WRITE,      /**< Event for @ref fds_write and @ref fds_write_reserved. */
-    FDS_EVT_UPDATE,     /**< Event for @ref fds_update. */
-    FDS_EVT_CLEAR,      /**< Event for @ref fds_clear. */
-    FDS_EVT_CLEAR_MANY, /**< Event for @ref fds_clear_by_instance. */
-    FDS_EVT_GC          /**< Event for @ref fds_gc. */
+    FDS_EVT_INIT,       //!< Event for @ref fds_init.
+    FDS_EVT_WRITE,      //!< Event for @ref fds_record_write and @ref fds_record_write_reserved.
+    FDS_EVT_UPDATE,     //!< Event for @ref fds_record_update.
+    FDS_EVT_DEL_RECORD, //!< Event for @ref fds_record_delete.
+    FDS_EVT_DEL_FILE,   //!< Event for @ref fds_file_delete.
+    FDS_EVT_GC          //!< Event for @ref fds_gc.
 } fds_evt_id_t;
 
 
@@ -195,45 +206,43 @@ typedef enum
     #pragma language=extended
 #elif defined(__GNUC__)
     /* anonymous unions are enabled by default */
-#endif 
+#endif
 
+/**@brief   An FDS event.
+ */
 typedef struct
 {
-    fds_evt_id_t id;        /**< The event ID. See @ref fds_evt_id_t. */
-    ret_code_t   result;    /**< The event result. */
+    fds_evt_id_t id;        //!< The event ID. See @ref fds_evt_id_t.
+    ret_code_t   result;    //!< The result of the operation related to this event.
     union
     {
         struct
         {
-            // Unused.
+            /* Currently not used. */
             uint16_t pages_not_mounted;
-        } mount;
+        } init;
         struct
         {
-            fds_record_id_t  record_id;
-            fds_record_key_t record_key;
-            bool             record_updated;
-            //fds_record_id_t  record_cleared;
-        } write; /*write, write_res and update*/
+            uint32_t record_id;
+            uint16_t file_id;
+            uint16_t record_key;
+            bool     is_record_updated;
+        } write; //!< Information for @ref FDS_EVT_WRITE and @ref FDS_EVT_UPDATE events.
         struct
         {
-            fds_record_id_t  record_id;
-            fds_record_key_t record_key;
-        } clear;
+            uint32_t record_id;
+            uint16_t file_id;
+            uint16_t record_key;
+            uint16_t records_deleted_count;
+        } del; //!< Information for @ref FDS_EVT_DEL_RECORD and @ref FDS_EVT_DEL_FILE events.
         struct
         {
-            fds_record_key_t record_key;
-            uint16_t         records_cleared; // Unused.
-        } clear_many;
-        struct
-        {
-            // Unused.
+            /* Currently not used. */
             uint16_t pages_skipped;
             uint16_t space_reclaimed;
         } gc;
     };
 } fds_evt_t;
-
 
 #if defined(__CC_ARM)
     #pragma pop
@@ -244,406 +253,481 @@ typedef struct
 #endif
 
 
-/**@brief   Flash data storage callback function.
+/**@brief   File system statistics. */
+typedef struct
+{
+    uint16_t open_records;      //!< The number of open records.
+    uint16_t valid_records;     //!< The number of valid records.
+    uint16_t dirty_records;     //!< The number of deleted ("dirty") records.
+    uint16_t words_reserved;    //!< The number of words reserved by @ref fds_reserve().
+
+    /**@brief The number of words written to flash, including those reserved for future writes.
+     */
+    uint16_t words_used;
+
+    /**@brief The largest number of free contiguous words in the file system.
+     *
+     * This number determines the largest record that can be stored by FDS.
+     * It takes into account all reservations for future writes.
+     */
+    uint16_t largest_contig;
+
+    /**@brief The largest number of words that can be reclaimed by garbage collection.
+     *
+     * The actual amount of space freed by garbage collection might be less than this value if
+     * records are open while garbage collection is run.
+     */
+    uint16_t freeable_words;
+} fds_stat_t;
+
+
+/**@brief   FDS event handler function prototype.
  *
- * @param   p_evt   The event associated with the callback.
+ * @param   p_evt   The event.
  */
 typedef void (*fds_cb_t)(fds_evt_t const * const p_evt);
 
 
-/**@brief   Function to register a callback for events.
+/**@brief   Function for registering an FDS event handler.
  *
- * @details The maximum amount of callback which can be registered can be configured by
- *          changing the FDS_MAX_USERS macro in fds_config.h.
+ * The maximum amount of handlers that can be registered can be configured by changing the value
+ * of @ref FDS_MAX_USERS in fds_config.h.
  * 
- * @param[in]   cb The callback function.
+ * @param[in]   cb  The event handler function.
  *
- * @retval  FDS_SUCCESS                 Success.
- * @retval  FDS_ERR_USER_LIMIT_REACHED  Error. Maximum number of registered callbacks reached.
+ * @retval  FDS_SUCCESS                 If the event handler was registered successfully.
+ * @retval  FDS_ERR_USER_LIMIT_REACHED  If the maximum number of registered callbacks is reached.
  */
 ret_code_t fds_register(fds_cb_t cb);
 
 
-/**@brief   Function to initialize the module.
+/**@brief   Function for initializing the module.
  *
- * @details This function initializes the module and installs the filesystem, if it is not
- *          installed yet.
+ * This function initializes the module and installs the file system (unless it is installed
+ * already).
  *
- * @note    This function is asynchronous. Completion is reported with a callback through the
- *          registered event handler. To be able to receive such callback, be sure to call
- *          @ref fds_register before calling @ref fds_init.
+ * This function is asynchronous. Completion is reported through an event. Make sure to call
+ * @ref fds_register before calling @ref fds_init so that you receive the completion event.
  *
- * @retval  FDS_SUCCESS                 Success. The command was accepted.
- * @retval  FDS_ERR_INITIALIZING        Error. The module is already initializing.
- * @retval  FDS_ERR_OPERATION_TIMEOUT   Error. The operation timed out.
- * @retval  FDS_ERR_BUSY                Error. The underlying flash subsystem was busy.
- * @retval  FDS_ERR_NO_SPACE_IN_FLASH   Error. No space available in flash memory for installation.
+ * @retval  FDS_SUCCESS         If the operation was queued successfully.
+ * @retval  FDS_ERR_NO_PAGES    If there is no space available in flash memory to install the
+ *                              file system.
  */
 ret_code_t fds_init(void);
 
 
-/**@brief   Function to queue writing a record in flash memory.
+/**@brief   Function for writing a record to flash.
  *
- * @details If the module is idle, i.e., not processing other commands, then the command
- *          will be processed immediately.
+ * There are no restrictions on the file ID and the record key, except that the record key must be
+ * different from @ref FDS_RECORD_KEY_DIRTY and the file ID must be different from
+ * @ref FDS_FILE_ID_INVALID. In particular, no restrictions are made regarding the uniqueness of
+ * the file ID or the record key. All records with the same file ID are grouped into one file.
+ * If no file with the specified ID exists, it is created. There can be multiple records with the
+ * same record key in a file.
  *
- *          A record 'type' key must be different from FDS_TYPE_ID_INVALID; the 'instance' key
- *          must be different from FDS_INSTANCE_IC_INVALID.
- *          A record data consists of multiple chunks and is supplied to the function as an
- *          array of fds_record_chunk_t structures. The data must be aligned on a 4 byte boundary,
- *          and because it is not buffered internally, it must be kept in memory by the
- *          application until the callback for the command has been received. The lenght of the
- *          data may not exceed FDS_VIRTUAL_PAGE_SIZE words minus 14 bytes.
+ * Record data can consist of multiple chunks. The data must be aligned to a 4 byte boundary, and
+ * because it is not buffered internally, it must be kept in memory until the callback for the
+ * operation has been received. The length of the data must not exceed @ref FDS_VIRTUAL_PAGE_SIZE
+ * words minus 14 bytes.
  *
- * @note This function is asynchronous.
- *       Completion is reported with a callback through the registered event handler.
+ * This function is asynchronous. Completion is reported through an event that is sent to
+ * the registered event handler function.
  *
- * @param[out]  p_desc      The record descriptor. It may be NULL.
- * @param[in]   key         The record key pair.
- * @param[in]   num_chunks  The number of elements in the chunks array.
- * @param[in]   chunks      An array of record chunks making up the record data.
+ * @param[out]  p_desc      The descriptor of the record that was written. Pass NULL if you do not
+ *                          need the descriptor.
+ * @param[in]   p_record    The record to be written to flash.
  *
- * @retval  FDS_SUCCESS                  Success. The command was accepted.
- * @retval  FDS_ERR_NOT_INITIALIZED      Error. The module is not initialized.
- * @retval  FDS_ERR_INVALID_KEYS         Error. One or both keys are invalid.
- * @retval  FDS_ERR_UNALIGNED_ADDR       Error. The record data is not aligned on a 4 byte boundary.
- * @retval  FDS_ERR_RECORD_TOO_LARGE     Error. The record data exceeds the maximum lenght.
- * @retval  FDS_ERR_NO_SPACE_IN_QUEUES   Error. Insufficient internal resources to queue the command.
- * @retval  FDS_ERR_NO_SPACE_IN_FLASH    Error. Insufficient space in flash memory to store the record.
- * @retval  FDS_ERR_BUSY                 Error. The underlying flash subsystem was busy.
+ * @retval  FDS_SUCCESS                 If the operation was queued successfully.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_NULL_ARG            If @p p_record is NULL.
+ * @retval  FDS_ERR_INVALID_ARG         If the file ID or the record key is invalid.
+ * @retval  FDS_ERR_UNALIGNED_ADDR      If the record data is not aligned to a 4 byte boundary.
+ * @retval  FDS_ERR_RECORD_TOO_LARGE    If the record data exceeds the maximum length.
+ * @retval  FDS_ERR_NO_SPACE_IN_QUEUES  If the operation queue is full or there are more record
+ *                                      chunks than can be buffered.
+ * @retval  FDS_ERR_NO_SPACE_IN_FLASH   If there is not enough free space in flash to store the
+ *                                      record.
  */
-ret_code_t fds_write(fds_record_desc_t * const p_desc,
-                     fds_record_key_t          key,
-                     uint8_t                   num_chunks,
-                     fds_record_chunk_t        chunks[]);
+ret_code_t fds_record_write(fds_record_desc_t       * const p_desc,
+                            fds_record_t      const * const p_record);
 
 
-/**@brief   Function to reserve space for a record in flash memory.
+/**@brief   Function for reserving space in flash.
  *
- * @details This function can be used to reserve space for a record in flash memory.
- *          To write a record into the reserved space, use @ref fds_write_reserved.
- *          It is possible to cancel a reservation by using @ref fds_reserve_cancel.
+ * This function can be used to reserve space in flash memory. To write a record into the reserved
+ * space, use @ref fds_record_write_reserved. Alternatively, use @ref fds_reserve_cancel to cancel
+ * a reservation.
  *
- * @param[out]  p_tok           A token which can be used to write a record in the reserved space
- *                              using @ref fds_write_reserved.
- * @param[in]   length_words    The lenght of the record data, in 4 byte words.
+ * Note that this function does not write any data to flash.
  *
- * @retval  FDS_SUCCESS                 Success. Flash space successfully reserved.
- * @retval  FDS_ERR_NULL_PARAM          Error. p_tok is NULL.
- * @retval  FDS_ERR_NOT_INITIALIZED     Error. The module is not initialized.
- * @retval  FDS_ERR_RECORD_TOO_LARGE    Error. The record data exceeds the maximum lenght.
- * @retval  FDS_ERR_NO_SPACE_IN_FLASH   Error. Insufficient space in flash memory.
+ * @param[out]  p_token         A token that can be used to write a record in the reserved space or
+ *                              cancel the reservation.
+ * @param[in]   length_words    The length of the record data (in 4-byte words).
+ *
+ * @retval  FDS_SUCCESS                 If the flash space was reserved successfully.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_NULL_ARG            If @p p_token is NULL instead of a valid token address.
+ * @retval  FDS_ERR_RECORD_TOO_LARGE    If the record length exceeds the maximum length.
+ * @retval  FDS_ERR_NO_SPACE_IN_FLASH   If there is not enough free space in flash to store the
+ *                                      record.
  */
-ret_code_t fds_reserve(fds_write_token_t * const p_tok, uint16_t length_words);
+ret_code_t fds_reserve(fds_reserve_token_t * const p_token, uint16_t length_words);
 
 
-/**@brief   Function to cancel a space reservation.
+/**@brief   Function for canceling an @ref fds_reserve operation.
  *
- * @param[in]   p_tok   The token produced by @ref fds_reserve, identifying the reservation to cancel.
+ * @param[in]   p_token     The token that identifies the reservation, produced by @ref fds_reserve.
  *
- * @retval  FDS_SUCCESS             Success. Reservation canceled.
- * @retval  FDS_ERR_NOT_INITIALIZED Error. The module is not initialized.
- * @retval  FDS_ERR_NULL_PARAM      Error. p_tok is NULL.
- * @retval  FDS_ERR_INVALID_PARAM   Error. p_tok contains invalid data.
+ * @retval  FDS_SUCCESS             If the reservation was canceled.
+ * @retval  FDS_ERR_NOT_INITIALIZED If the module is not initialized.
+ * @retval  FDS_ERR_NULL_ARG        If @p p_token is NULL instead of a valid token address.
+ * @retval  FDS_ERR_INVALID_ARG     If @p p_token contains invalid data.
  */
-ret_code_t fds_reserve_cancel(fds_write_token_t * const p_tok);
+ret_code_t fds_reserve_cancel(fds_reserve_token_t * const p_token);
 
 
-/**@brief   Function to queue writing a record for which the space in flash memory has been
- *          previously reserved using @ref fds_reserve.
+/**@brief   Function for writing a record to a space in flash that was reserved using
+ *          @ref fds_reserve.
  *
- * @details This function behaves similarly to @ref fds_write, with the exception that it never
- *          fails with FDS_ERR_NO_SPACE_IN_FLASH. If the module is idle, i.e., not processing
- *          other commands, then the command will be processed immediately.
+ * There are no restrictions on the file ID and the record key, except that the record key must be
+ * different from @ref FDS_RECORD_KEY_DIRTY and the file ID must be different from
+ * @ref FDS_FILE_ID_INVALID. In particular, no restrictions are made regarding the uniqueness of
+ * the file ID or the record key. All records with the same file ID are grouped into one file.
+ * If no file with the specified ID exists, it is created. There can be multiple records with the
+ * same record key in a file.
  *
- *          A record 'type' key must be different from FDS_TYPE_ID_INVALID; the 'instance' key
- *          must be different from FDS_INSTANCE_IC_INVALID.
- *          A record data consists of multiple chunks and is supplied to the function as an
- *          array of fds_record_chunk_t structures. The data must be aligned on a 4 byte boundary,
- *          and because it is not buffered internally, it must be kept in memory by the
- *          application until the callback for the command has been received. The lenght of the
- *          data may not exceed FDS_VIRTUAL_PAGE_SIZE words minus 14 bytes.
+ * Record data can consist of multiple chunks. The data must be aligned to a 4 byte boundary, and
+ * because it is not buffered internally, it must be kept in memory until the callback for the
+ * operation has been received. The length of the data must not exceed @ref FDS_VIRTUAL_PAGE_SIZE
+ * words minus 14 bytes.
  *
- * @note    This function is asynchronous.
- *          Completion is reported with a callback through the registered event handler.
+ * This function is asynchronous. Completion is reported through an event that is sent to the
+ * registered event handler function.
  *
- * @param[in]   p_tok       The token return by @ref fds_reserve.
- * @param[out]  p_desc      The record descriptor. It may be NULL.
- * @param[in]   key         The record key pair.
- * @param[in]   num_chunks  The number of elements in the chunks array.
- * @param[in]   chunks      An array of chunks making up the record data.
+ * @note
+ * This function behaves similarly to @ref fds_record_write, with the exception that it never
+ * fails with the error @ref FDS_ERR_NO_SPACE_IN_FLASH.
  *
- * @retval  FDS_SUCCESS                 Success. The command was accepted.
- * @retval  FDS_ERR_NOT_INITIALIZED     Error. The module is not initialized.
- * @retval  FDS_ERR_NULL_PARAM          Error. p_tok is NULL.
- * @retval  FDS_ERR_INVALID_KEYS        Error. One or both keys are invalid.
- * @retval  FDS_ERR_UNALIGNED_ADDR      Error. The record data is not aligned on a 4 byte boundary.
- * @retval  FDS_ERR_RECORD_TOO_LARGE    Error. The record data exceeds the maximum lenght.
- * @retval  FDS_ERR_NO_SPACE_IN_QUEUES  Error. Insufficient internal resources to queue the command.
- * @retval  FDS_ERR_BUSY                Error. The underlying flash subsystem was busy.
+ * @param[out]  p_desc      The descriptor of the record that was written. Pass NULL if you do not
+ *                          need the descriptor.
+ * @param[in]   p_record    The record to be written to flash.
+ * @param[in]   p_token     The token that identifies the space reserved in flash.
+ *
+ * @retval  FDS_SUCCESS                 If the operation was queued successfully.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_NULL_ARG            If @p p_token is NULL instead of a valid token address.
+ * @retval  FDS_ERR_INVALID_ARG         If the file ID or the record key is invalid.
+ * @retval  FDS_ERR_UNALIGNED_ADDR      If the record data is not aligned to a 4 byte boundary.
+ * @retval  FDS_ERR_RECORD_TOO_LARGE    If the record data exceeds the maximum length.
+ * @retval  FDS_ERR_NO_SPACE_IN_QUEUES  If the operation queue is full or there are more record
+ *                                      chunks than can be buffered.
  */
-ret_code_t fds_write_reserved(fds_write_token_t  const * const p_tok,
-                              fds_record_desc_t        * const p_desc,
-                              fds_record_key_t                 key,
-                              uint8_t                          num_chunks,
-                              fds_record_chunk_t               chunks[]);
+ret_code_t fds_record_write_reserved(fds_record_desc_t         * const p_desc,
+                                     fds_record_t        const * const p_record,
+                                     fds_reserve_token_t const * const p_token);
 
 
-/**@brief   Function to queue clearing a record.
+/**@brief   Function for deleting a record.
  *
- * @details Clearing a record has the effect of preventing the system from retrieving its
- *          descriptor using the @ref fds_find, @ref fds_find_by_type and @ref fds_find_by_instance
- *          functions. Additionally, @ref fds_open calls shall fail when supplied a descritpor for
- *          a record which has been cleared.
+ * Deleted records cannot be located using @ref fds_record_find, @ref fds_record_find_by_key, or
+ * @ref fds_record_find_in_file. Additionally, they can no longer be opened using
+ * @ref fds_record_open.
  *
- * @note    Clearing a record does not free the space it occupies in flash memory.
- *          The reclaim flash space used by cleared records, use @ref fds_gc.
+ * Note that deleting a record does not free the space it occupies in flash memory.
+ * To reclaim flash space used by deleted records, call @ref fds_gc to run garbage collection.
  *
- * @note    This function is asynchronous, therefore, completion is reported with a callback
- *          through the registered event handler.
+ * This function is asynchronous. Completion is reported through an event that is sent to the
+ * registered event handler function.
  *
- * @param[in]   p_desc  The descriptor of the record to be cleared.
+ * @param[in]   p_desc      The descriptor of the record that should be deleted.
  *
- * @retval  FDS_SUCCESS                 Success. The command was accepted.
- * @retval  FDS_ERR_NOT_INITIALIZED     Error. The module is not initialized.
- * @retval  FDS_ERR_NULL_PARAM          Error. p_desc is NULL.
- * @retval  FDS_ERR_NO_SPACE_IN_QUEUES  Error. Insufficient internal resources to queue the command.
+ * @retval  FDS_SUCCESS                 If the operation was queued successfully.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_NULL_ARG            If the specified record descriptor @p p_desc is NULL.
+ * @retval  FDS_ERR_NO_SPACE_IN_QUEUES  If the operation queue is full.
  */
-ret_code_t fds_clear(fds_record_desc_t * const p_desc);
+ret_code_t fds_record_delete(fds_record_desc_t * const p_desc);
 
 
-/**@brief   Function to queue clearing all records with a given instance.
+/**@brief   Function for deleting all records in a file.
  *
- * @details Clearing a record has the effect of preventing the system from retrieving its
- *          descriptor using the @ref fds_find, @ref fds_find_by_type and @ref fds_find_by_instance
- *          functions. Additionally, @ref fds_open calls shall fail when supplied a descritpor for
- *          a record which has been cleared.
+ * This function deletes a file, including all its records. Deleted records cannot be located
+ * using @ref fds_record_find, @ref fds_record_find_by_key, or @ref fds_record_find_in_file.
+ * Additionally, they can no longer be opened using @ref fds_record_open.
  *
- * @note    Clearing a record does not free the space it occupies in flash memory.
- *          The reclaim flash space used by cleared records, use @ref fds_gc.
+ * Note that deleting records does not free the space they occupy in flash memory.
+ * To reclaim flash space used by deleted records, call @ref fds_gc to run garbage collection.
  *
- * @note    This function is asynchronous.
- *          Completion is reported with a callback through the registered event handler.
+ * This function is asynchronous. Completion is reported through an event that is sent to the
+ * registered event handler function.
  *
- * @param[in]   instance    The 'instance' key of the records to be clearead.
+ * @param[in]   file_id     The ID of the file to be deleted.
  *
- * @retval  FDS_SUCCESS                 Success. The command was queued.
- * @retval  FDS_ERR_NOT_INITIALIZED     Error. The module is not initialized.
- * @retval  FDS_ERR_NULL_PARAM          Error. p_desc is NULL.
- * @retval  FDS_ERR_NO_SPACE_IN_QUEUES  Error. Insufficient internal resources to queue the command.
+ * @retval  FDS_SUCCESS                 If the operation was queued successfully.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_INVALID_ARG         If the specified @p file_id is invalid.
+ * @retval  FDS_ERR_NO_SPACE_IN_QUEUES  If the operation queue is full.
  */
-ret_code_t fds_clear_by_instance(uint16_t instance);
+ret_code_t fds_file_delete(uint16_t file_id);
 
 
-/**@brief   Function to queque updating a record.
+/**@brief   Function for updating a record.
  *
- * @details Updating a record writes a new record with the given keys and data in flash, and then
- *          clears the old record. If the module is idle, i.e., not processing other commands,
- *          then the command will be processed immediately.
+ * Updating a record first writes a new record (@p p_record) to flash and then deletes the
+ * old record (identified by @p p_desc).
  *
- *          A record 'type' key must be different from FDS_TYPE_ID_INVALID; the 'instance' key
- *          must be different from FDS_INSTANCE_IC_INVALID.
- *          A record data consists of multiple chunks and is supplied to the function as an
- *          array of fds_record_chunk_t structures. The data must be aligned on a 4 byte boundary,
- *          and because it is not buffered internally, it must be kept in memory by the
- *          application until the callback for the command has been received. The lenght of the
- *          data may not exceed FDS_VIRTUAL_PAGE_SIZE words minus 14 bytes.
+ * There are no restrictions on the file ID and the record key, except that the record key must be
+ * different from @ref FDS_RECORD_KEY_DIRTY and the file ID must be different from
+ * @ref FDS_FILE_ID_INVALID. In particular, no restrictions are made regarding the uniqueness of
+ * the file ID or the record key. All records with the same file ID are grouped into one file.
+ * If no file with the specified ID exists, it is created. There can be multiple records with the
+ * same record key in a file.
  *
- * @note    This function is asynchronous, therefore, completion is reported with a callback
- *          through the registered event handler.
+ * Record data can consist of multiple chunks. The data must be aligned to a 4 byte boundary, and
+ * because it is not buffered internally, it must be kept in memory until the callback for the
+ * operation has been received. The length of the data must not exceed @ref FDS_VIRTUAL_PAGE_SIZE
+ * words minus 14 bytes.
+ *
+ * This function is asynchronous. Completion is reported through an event that is sent to the
+ * registered event handler function.
  * 
- * @param[in, out]  p_desc  The descriptor of the record to update. When the function has returned
- *                          with FDS_SUCCESS, this parameter will contain a descriptor for the new
- *                          record.
- * @param[in]   key         The record new key pair.
- * @param[in]   num_chunks  The number of elements in the chunks array.
- * @param[in]   chunks      An array of chunks making up the record new data.
+ * @param[in, out]  p_desc      The descriptor of the record to update. When the function 
+ *                              returns with FDS_SUCCESS, this parameter contains the
+ *                              descriptor of the newly written record.
+ * @param[in]       p_record    The updated record to be written to flash.
  *
- * @retval  FDS_SUCCESS                 Success. The command was queued.
- * @retval  FDS_ERR_NOT_INITIALIZED     Error. The module is not initialized.
- * @retval  FDS_ERR_INVALID_KEYS        Error. One or both keys are invalid.
- * @retval  FDS_ERR_UNALIGNED_ADDR      Error. The record data is not aligned on a 4 byte boundary.
- * @retval  FDS_ERR_RECORD_TOO_LARGE    Error. The record data exceeds the maximum lenght.
- * @retval  FDS_ERR_NO_SPACE_IN_QUEUES  Error. Insufficient internal resources to queue the command.
- * @retval  FDS_ERR_NO_SPACE_IN_FLASH   Error. Insufficient space in flash memory to store the record.
- * @retval  FDS_ERR_BUSY                Error. The underlying flash subsystem was busy.
+ * @retval  FDS_SUCCESS                 If the operation was queued successfully.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_INVALID_ARG         If the file ID or the record key is invalid.
+ * @retval  FDS_ERR_UNALIGNED_ADDR      If the record data is not aligned to a 4 byte boundary.
+ * @retval  FDS_ERR_RECORD_TOO_LARGE    If the record data exceeds the maximum length.
+ * @retval  FDS_ERR_NO_SPACE_IN_QUEUES  If the operation queue is full or there are more record
+ *                                      chunks than can be buffered.
+ * @retval  FDS_ERR_NO_SPACE_IN_FLASH   If there is not enough free space in flash to store the
+ *                                      updated record.
  */
-ret_code_t fds_update(fds_record_desc_t  * const p_desc,
-                      fds_record_key_t           key,
-                      uint8_t                    num_chunks,
-                      fds_record_chunk_t         chunks[]);
+ret_code_t fds_record_update(fds_record_desc_t       * const p_desc,
+                             fds_record_t      const * const p_record);
 
 
-/**@brief   Function to search for records with a given key pair.
+/**@brief   Function for iterating through all records in flash.
  *
- * @details Because a key pair is not unique, to search for the next record with the given keys call
- *          the function again and supply the same fds_find_token_t structure to resume searching
- *          from the last record found.
+ * To search for the next record, call the function again and supply the same @ref fds_find_token_t
+ * structure to resume searching from the last record that was found.
  *
- * @param[in]   type        The record 'type' key.
- * @param[in]   instance    The record 'instance' key.
- * @param[out]  p_desc      The descriptor of the record found.
+ * Note that the order with which records are iterated is not defined.
+ *
+ * @param[out]  p_desc      The descriptor of the record that was found.
  * @param[out]  p_token     A token containing information about the progress of the operation.
  *
- * @retval  FDS_SUCCESS                 Success. Record found.
- * @retval  FDS_ERR_NOT_INITIALIZED     Error. The module is not initialized.
- * @retval  FDS_ERR_NULL_PARAM          Error. Either p_desc or p_token are NULL.
- * @retval  FDS_ERR_NOT_FOUND           Error. No record with the given key pair was found.
+ * @retval  FDS_SUCCESS                 If a record was found.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_NULL_ARG            If @p p_desc or @p p_token is NULL.
+ * @retval  FDS_ERR_NOT_FOUND           If no matching record was found.
  */
-ret_code_t fds_find(uint16_t                  type, 
-                    uint16_t                  instance, 
-                    fds_record_desc_t * const p_desc,
-                    fds_find_token_t  * const p_token);
+ret_code_t fds_record_iterate(fds_record_desc_t * const p_desc,
+                              fds_find_token_t  * const p_token);
 
 
-/**@brief   Function to search for records with a given 'type' key.
+/**@brief   Function for searching for records with a given record key in a file.
  *
- * @details Because keys are not unique, to search for the next record with the given key call
- *          the function again and supply the same fds_find_token_t structure to resume searching
- *          from the last record found.
+ * This function finds the first record in a file that has the given record key. To search for the
+ * next record with the same key in the file, call the function again and supply the same
+ * @ref fds_find_token_t structure to resume searching from the last record that was found.
  *
- * @param[in]   type        The record 'type' key.
- * @param[out]  p_desc      The descriptor of the record found.
+ * @param[in]   file_id     The file ID.
+ * @param[in]   record_key  The record key.
+ * @param[out]  p_desc      The descriptor of the record that was found.
  * @param[out]  p_token     A token containing information about the progress of the operation.
  *
- * @retval  FDS_SUCCESS                 Success. Record found.
- * @retval  FDS_ERR_NOT_INITIALIZED     Error. The module is not initialized.
- * @retval  FDS_ERR_NULL_PARAM          Error. Either p_desc or p_token are NULL.
- * @retval  FDS_ERR_NOT_FOUND           Error. No record with the given key was found.
+ * @retval  FDS_SUCCESS                 If a record was found.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_NULL_ARG            If @p p_desc or @p p_token is NULL.
+ * @retval  FDS_ERR_NOT_FOUND           If no matching record was found.
  */
- ret_code_t fds_find_by_type(uint16_t                  type,
-                             fds_record_desc_t * const p_desc,
-                             fds_find_token_t  * const p_token);
+ret_code_t fds_record_find(uint16_t                  file_id,
+                           uint16_t                  record_key,
+                           fds_record_desc_t * const p_desc,
+                           fds_find_token_t  * const p_token);
 
 
-/**@brief   Function to search for records with a given 'instance' key.
+/**@brief   Function for searching for records with a given record key.
  *
- * @details Because keys are not unique, to search for the next record with the given key call
- *          the function again and supply the same fds_find_token_t structure to resume searching
- *          from the last record found.
+ * This function finds the first record with a given record key, independent of the file it
+ * belongs to. To search for the next record with the same key, call the function again and supply
+ * the same @ref fds_find_token_t structure to resume searching from the last record that was found.
  *
- * @param[in]   instance    The record 'instance' key.
- * @param[out]  p_desc      The descriptor of the record found.
+ * @param[in]   record_key  The record key.
+ * @param[out]  p_desc      The descriptor of the record that was found.
  * @param[out]  p_token     A token containing information about the progress of the operation.
  *
- * @retval  FDS_SUCCESS                 Success. Record found.
- * @retval  FDS_ERR_NOT_INITIALIZED     Error. The module is not initialized.
- * @retval  FDS_ERR_NULL_PARAM          Error. Either p_desc or p_token are NULL.
- * @retval  FDS_ERR_NOT_FOUND           Error. No record with the given key was found.
+ * @retval  FDS_SUCCESS                 If a record was found.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_NULL_ARG            If @p p_desc or @p p_token is NULL.
+ * @retval  FDS_ERR_NOT_FOUND           If no record with the given key was found.
  */
-ret_code_t fds_find_by_instance(uint16_t                  instance,
-                                fds_record_desc_t * const p_desc,
-                                fds_find_token_t  * const p_token);
+ret_code_t fds_record_find_by_key(uint16_t                  record_key,
+                                  fds_record_desc_t * const p_desc,
+                                  fds_find_token_t  * const p_token);
 
 
-/**@brief   Function to open a record for reading.
+/**@brief   Function for searching for any record in a file.
  *
- * @details Function to read a record which has been written to flash. This function initializes
- *          a fds_record_t structure which can be used to access the record data as well as
- *          its associated metadata. The pointers provided in the fds_record_t structure are
- *          pointers to flash memory. Opening a record with @ref fds_open prevents the garbage
- *          collection to run on the flash page in which record is stored, therefore the contents
- *          of the memory pointed by the fds_record_t fields are guaranteed to remain unmodified,
- *          as long as the record is kept open.
+ * This function finds the first record in a file, independent of its record key.
+ * To search for the next record in the same file, call the function again and supply the same
+ * @ref fds_find_token_t structure to resume searching from the last record that was found.
  *
- * @note    When done reading a record, close it using @ref fds_close so that garbage collection
- *          can reclaim space on the page where the record is stored, if necessary.
+ * @param[in]   file_id     The file ID.
+ * @param[out]  p_desc      The descriptor of the record that was found.
+ * @param[out]  p_token     A token containing information about the progress of the operation.
  *
- * @param[in]   p_desc      The descriptor of the record to open.
- * @param[out]  p_record    The record, as stored in flash.
- *
- * @retval  FDS_SUCCESS             Success. The record was opened.
- * @retval  FDS_ERR_NOT_FOUND       Error. The record was not found. It may have been cleared, or it
- *                                  may have not been written yet.
- * @retval  FDS_ERR_INVALID_PARAM   Error. The descriptor contains invalid data.
- * @retval  FDS_ERR_NULL_PARAM      Error. Either p_desc or p_record are NULL.
+ * @retval  FDS_SUCCESS                 If a record was found.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_NULL_ARG            If @p p_desc or @p p_token is NULL.
+ * @retval  FDS_ERR_NOT_FOUND           If no matching record was found.
  */
-ret_code_t fds_open(fds_record_desc_t * const p_desc,
-                    fds_record_t      * const p_record);
+ret_code_t fds_record_find_in_file(uint16_t                  file_id,
+                                   fds_record_desc_t * const p_desc,
+                                   fds_find_token_t  * const p_token);
 
 
-/**@brief   Function to close a record after its contents have been read.
+/**@brief   Function for opening a record for reading.
  *
- * @details Closing a record allows garbage collection to be run on the page in which the
- *          record being closed is stored (if no other records remain open on that page).
+ * This function opens a record that is stored in flash, so that it can be read. The function
+ * initializes an @ref fds_flash_record_t structure, which can be used to access the record data as
+ * well as its associated metadata. The pointers provided in the @ref fds_flash_record_t structure
+ * are pointers to flash memory.
  *
- * @note    Closing a record, does @e not invalidate its descriptor, which can be safely supplied to
- *          all functions which accept a descriptor as a parameter.
+ * Opening a record with @ref fds_record_open prevents garbage collection to run on the virtual
+ * flash page in which record is stored, so that the contents of the memory pointed by fields in
+ * @ref fds_flash_record_t are guaranteed to remain unmodified as long as the record is kept open.
  *
- * @param[in]   p_desc The descriptor of the record to close.
+ * When you are done reading a record, call @ref fds_record_close to close it. Garbage collection
+ * can then reclaim space on the virtual page where the record is stored. Note that you must
+ * provide the same descriptor for @ref fds_record_close as you did for this function.
  *
- * @retval  FDS_SUCCESS             Success. The record was closed.
- * @retval  FDS_ERR_INVALID_PARAM   Error. The descriptor contains invalid data.
- * @retval  FDS_ERR_NULL_PARAM      Error. p_desc is NULL.
+ * @param[in]   p_desc          The descriptor of the record to open.
+ * @param[out]  p_flash_record  The record, as stored in flash.
+ *
+ * @retval  FDS_SUCCESS                 If the record was opened successfully.
+ * @retval  FDS_ERR_NULL_ARG            If @p p_desc or @p p_flash_record is NULL.
+ * @retval  FDS_ERR_NOT_FOUND           If the record was not found. It might have been deleted, or
+ *                                      it might not have been written yet.
+ * @retval  FDS_ERR_CRC_CHECK_FAILED    If the CRC check for the record failed.
  */
-ret_code_t fds_close(fds_record_desc_t const * const p_desc);
+ret_code_t fds_record_open(fds_record_desc_t  * const p_desc,
+                           fds_flash_record_t * const p_flash_record);
 
 
-/**@brief   Function to queue garbage collection.
+/**@brief   Function for closing a record.
  *
- * @details Garbage collection reclaims the flash space occupied by records which have been cleared
- *          using @ref fds_clear.
+ * Closing a record allows garbage collection to run on the virtual page in which the record is
+ * stored (if no other records remain open on that page). The descriptor passed as an argument
+ * must be the same as the one used to open the record using @ref fds_record_open.
  *
- * @note    This function is asynchronous.
- *          Completion is reported with a callback through the registered event handler.
+ * Note that closing a record does not invalidate its descriptor. You can still supply the
+ * descriptor to all functions that accept a record descriptor as a parameter.
+ *
+ * @param[in]   p_desc  The descriptor of the record to close.
+ *
+ * @retval  FDS_SUCCESS             If the record was closed successfully.
+ * @retval  FDS_ERR_NULL_ARG        If @p p_desc is NULL.
+ * @retval  FDS_ERR_NO_OPEN_RECORDS If the record is not open.
+ * @retval  FDS_ERR_NOT_FOUND       If the record could not be found.
+ */
+ret_code_t fds_record_close(fds_record_desc_t * const p_desc);
+
+
+/**@brief   Function for running garbage collection.
+ *
+ * Garbage collection reclaims the flash space that is occupied by records that have been deleted,
+ * or that failed to be completely written due to, for example, a power loss.
+ *
+ * This function is asynchronous. Completion is reported through an event that is sent to the
+ * registered event handler function.
+ *
+ * @retval  FDS_SUCCESS                 If the operation was queued successfully.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_NO_SPACE_IN_QUEUES  If the operation queue is full.
  */
 ret_code_t fds_gc(void);
 
 
-/**@brief   Function to obtain a descriptor from a record ID.
+/**@brief   Function for obtaining a descriptor from a record ID.
  *
- * @details This function can be used to reconstruct a descriptor from a record ID, such as the
- *          one passed to the callback function.
+ * This function can be used to reconstruct a descriptor from a record ID, like the one that is
+ * passed to the callback function.
  *
- * @warning This function does not check if a record with the given record ID exists or not. If a
- *          non-existing record ID is supplied, the resulting descriptor will cause other functions
- *          to fail when used as parameter.
+ * @note
+ * This function does not check whether a record with the given record ID exists.
+ * If a non-existing record ID is supplied, the resulting descriptor is invalid and will cause
+ * other functions to fail when it is supplied as parameter.
  *
- * @param[out]  p_desc       The descriptor of the record with given record ID.
- * @param[in]   record_id    The record ID for which to provide a descriptor.
+ * @param[out]  p_desc      The descriptor of the record with the given record ID.
+ * @param[in]   record_id   The record ID for which a descriptor should be returned.
  *
- * @retval FDS_SUCCESS          Success.
- * @retval FDS_ERR_NULL_PARAM   Error. p_desc is NULL.
+ * @retval  FDS_SUCCESS         If a descriptor was returned.
+ * @retval  FDS_ERR_NULL_ARG    If @p p_desc is NULL.
  */
 ret_code_t fds_descriptor_from_rec_id(fds_record_desc_t * const p_desc,
-                                      fds_record_id_t           record_id);
+                                      uint32_t                  record_id);
 
 
-/**@brief Function to obtain a record ID from a record descriptor.
+/**@brief   Function for obtaining a record ID from a record descriptor.
  *
- * @details This function can be used to extract a record ID from a descriptor. It may be used
- *          in the callback function to determine which record the callback is associated to, if
- *          you have its descriptor.
+ * This function can be used to extract a record ID from a descriptor. For example, you could use
+ * it in the callback function to compare the record ID of an event to the record IDs of the
+ * records for which you have a descriptor.
  *
- * @warning This function does not check the record descriptor sanity. If the descriptor is
- *          uninitialized, or has been tampered with, the resulting record ID may be invalid.
+ * @warning
+ * This function does not check whether the record descriptor is valid. If the descriptor is not
+ * initialized or has been tampered with, the resulting record ID might be invalid.
  *
- * @param[in]   p_desc          The descriptor from which to extract the record ID.
- * @param[out]  p_record_id     The record ID contained in the given descriptor.
+ * @param[in]   p_desc          The descriptor from which the record ID should be extracted.
+ * @param[out]  p_record_id     The record ID that is contained in the given descriptor.
  *
- * @retval FDS_SUCCESS          Success.
- * @retval FDS_ERR_NULL_PARAM   Error. Either p_desc or p_record_id are NULL.
+ * @retval  FDS_SUCCESS         If a record ID was returned.
+ * @retval  FDS_ERR_NULL_ARG    If @p p_desc or @p p_record_id is NULL.
  */
 ret_code_t fds_record_id_from_desc(fds_record_desc_t const * const p_desc,
-                                   fds_record_id_t         * const p_record_id);
+                                   uint32_t                * const p_record_id);
+
+
+/**@brief   Function for retrieving file system statistics.
+ *
+ * This function retrieves file system statistics, such as the number of open records, the space
+ * that can be reclaimed by garbage collection, and others.
+ *
+ * @param[out]  p_stat      File system statistics.
+ *
+ * @retval  FDS_SUCCESS                 If the statistics were returned successfully.
+ * @retval  FDS_ERR_NOT_INITIALIZED     If the module is not initialized.
+ * @retval  FDS_ERR_NULL_ARG            If @p p_stat is NULL.
+ */
+ret_code_t fds_stat(fds_stat_t * const p_stat);
 
 
 #if defined(FDS_CRC_ENABLED)
 
-/**@brief   Function to enable/disable verification upon write operations (@ref fds_write,
- *          @ref fds_write_reserved and @ref fds_update).
+/**@brief   Function for enabling and disabling CRC verification for write operations.
  *
- * @details This function can be used to verify that data which was queued for writing
- *          did not change before the write actually happened.
+ * CRC verification ensures that data that is queued for writing does not change before the write
+ * actually happens. Use this function to enable or disable CRC verification. If verification is
+ * enabled, the error @ref FDS_ERR_CRC_CHECK_FAILED is returned in the event for
+ * @ref fds_record_write, @ref fds_record_write_reserved, or @ref fds_record_update if
+ * verification fails.
  *
- * @param[in]   enabled Enables or disables CRC verification.
+ * @note
+ * CRC verification is enabled or disabled globally, thus for all users of the FDS module.
  *
- * @retval  FDS_SUCCESS     Success.
+ * @param[in]   enabled     1 to enable CRC verification. 0 to disable CRC verification.
+ *
+ * @retval  FDS_SUCCESS     If CRC verification was enabled or disabled successfully.
  */
 ret_code_t fds_verify_crc_on_writes(bool enabled);
 
 #endif
 
 /** @} */
-                                         
+
 #endif // FDS_H__

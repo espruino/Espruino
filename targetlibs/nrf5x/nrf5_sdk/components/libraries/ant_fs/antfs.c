@@ -13,6 +13,7 @@ All rights reserved.
 #include "ant_error.h"
 #include "ant_parameters.h"
 #include "ant_interface.h"
+#include "ant_key_manager.h"
 #include "crc.h"
 #include "app_util.h"
 
@@ -21,7 +22,6 @@ All rights reserved.
 #endif // LEDDRIVER_ACTIVE
 
 #define BURST_PACKET_SIZE                  8u                            /**< The burst packet size. */
-#define ANTFS_NETWORK_KEY                  {0,0,0,0,0,0,0,0}             /**< The used ANT-FS network key. */
 
 #define ANTFS_CONNECTION_TYPE_OFFSET       0x00u                         /**< The connection type offset within ANT-FS message. */
 #define ANTFS_COMMAND_OFFSET               0x01u                         /**< The command offset within ANT-FS message. */
@@ -2216,12 +2216,10 @@ void antfs_message_process(uint8_t * p_message)
 
 void antfs_channel_setup(void)
 {
-    const uint8_t network_key[] = ANTFS_NETWORK_KEY;
-
     // Start channel configuration.
-    uint32_t err_code = sd_ant_network_address_set(ANTFS_NETWORK_NUMBER, (uint8_t*)network_key);
+    uint32_t err_code = ant_fs_key_set(ANTFS_NETWORK_NUMBER);
     APP_ERROR_CHECK(err_code);
-
+    
     err_code = sd_ant_channel_assign(ANTFS_CHANNEL, ANTFS_CHANNEL_TYPE, ANTFS_NETWORK_NUMBER, 0);
     APP_ERROR_CHECK(err_code);
 

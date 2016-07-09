@@ -248,8 +248,8 @@ static void process_dfu_packet(void * p_event_data, uint16_t event_size)
 void rpc_transport_event_handler(hci_transport_evt_t event)
 {
     uint32_t  retval;
-    uint16_t  rpc_cmd_length_read;
-    uint8_t * p_rpc_cmd_buffer;
+    uint16_t  rpc_cmd_length_read = 0;
+    uint8_t * p_rpc_cmd_buffer = NULL;
     uint8_t   element_index;
 
     retval = hci_transport_rx_pkt_extract(&p_rpc_cmd_buffer, &rpc_cmd_length_read);
@@ -266,7 +266,7 @@ void rpc_transport_event_handler(hci_transport_evt_t event)
         }
     }
     
-    if (NRF_SUCCESS != retval)
+    if (p_rpc_cmd_buffer != NULL && NRF_SUCCESS != retval)
     {
         // Free the packet that could not be processed.
         retval = hci_transport_rx_pkt_consume(p_rpc_cmd_buffer);

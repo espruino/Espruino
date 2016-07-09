@@ -36,7 +36,7 @@ typedef void (*ble_radio_notification_evt_handler_t) (bool radio_active);
  *
  * @return     NRF_SUCCESS on successful initialization, otherwise an error code.
  */
-uint32_t ble_radio_notification_init(nrf_app_irq_priority_t               irq_priority,
+uint32_t ble_radio_notification_init(uint32_t                             irq_priority,
                                      nrf_radio_notification_distance_t    distance,
                                      ble_radio_notification_evt_handler_t evt_handler);
 

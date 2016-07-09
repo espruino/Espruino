@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include "nrf_sdm.h"
+#include "nrf_mbr.h"
 #include "nrf.h"
 #include "app_util.h"
 
@@ -38,6 +39,9 @@
 #define SOFTDEVICE_REGION_START             MBR_SIZE                    /**< This field should correspond to start address of the bootloader, found in UICR.RESERVED, 0x10001014, register. This value is used for sanity check, so the bootloader will fail immediately if this value differs from runtime value. The value is used to determine max application size for updating. */
 
 #ifdef NRF51        
+
+#define CODE_PAGE_SIZE                      0x0400                      /**< Size of a flash codepage. Used for size of the reserved flash space in the bootloader region. Will be runtime checked against NRF_UICR->CODEPAGESIZE to ensure the region is correct. */
+
 #ifdef SIGNING      
 
 #define BOOTLOADER_REGION_START             0x00039C00                  /**< This field should correspond to start address of the bootloader, found in UICR.RESERVED, 0x10001014, register. This value is used for sanity check, so the bootloader will fail immediately if this value differs from runtime value. The value is used to determine max application size for updating. */
@@ -50,7 +54,7 @@
 
 #endif      
 
-#define CODE_PAGE_SIZE                      0x0400                      /**< Size of a flash codepage. Used for size of the reserved flash space in the bootloader region. Will be runtime checked against NRF_UICR->CODEPAGESIZE to ensure the region is correct. */
+
         
 #elif NRF52     
         
@@ -68,12 +72,14 @@
 
 #define DFU_REGION_TOTAL_SIZE           (BOOTLOADER_REGION_START - CODE_REGION_1_START)                 /**< Total size of the region between SD and Bootloader. */
 
-#define DFU_APP_DATA_RESERVED           0x0000                                                          /**< Size of Application Data that must be preserved between application updates. This value must be a multiple of page size. Page size is 0x400 (1024d) bytes, thus this value must be 0x0000, 0x0400, 0x0800, 0x0C00, 0x1000, etc. */
-#define DFU_BANK_PADDING                (DFU_APP_DATA_RESERVED % (2 * CODE_PAGE_SIZE))                  /**< Padding to ensure that image size banked is always page sized. */
+#ifndef DFU_APP_DATA_RESERVED
+#define DFU_APP_DATA_RESERVED           CODE_PAGE_SIZE * 0                                              /**< Size of Application Data that must be preserved between application updates. This value must be a multiple of page size. Page size is 0x400 (1024d) bytes, thus this value must be 0x0000, 0x0400, 0x0800, 0x0C00, 0x1000, etc. */
+#endif
+
 #define DFU_IMAGE_MAX_SIZE_FULL         (DFU_REGION_TOTAL_SIZE - DFU_APP_DATA_RESERVED)                 /**< Maximum size of an application, excluding save data from the application. */
-#define DFU_IMAGE_MAX_SIZE_BANKED       ((DFU_REGION_TOTAL_SIZE - \
-                                          DFU_APP_DATA_RESERVED - \
-                                          DFU_BANK_PADDING) / 2)                                        /**< Maximum size of an application, excluding save data from the application. */
+                                          
+#define DFU_IMAGE_MAX_SIZE_BANKED       (((DFU_IMAGE_MAX_SIZE_FULL) - \
+                                        (DFU_IMAGE_MAX_SIZE_FULL % (2 * CODE_PAGE_SIZE)))/2)            /**< Maximum size of an application, excluding save data from the application. */
 
 #define DFU_BL_IMAGE_MAX_SIZE           (BOOTLOADER_SETTINGS_ADDRESS - BOOTLOADER_REGION_START)         /**< Maximum size of a bootloader, excluding save data from the current bootloader. */
 

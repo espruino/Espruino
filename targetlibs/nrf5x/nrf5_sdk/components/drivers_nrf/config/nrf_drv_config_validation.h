@@ -30,22 +30,31 @@
 #error "Peripherals overlap. SPI2, SPIS2 - only one of these can be enabled."
 #endif
 
-#else // NRF51
+#if (!PERIPHERAL_RESOURCE_SHARING_ENABLED) && \
+    ((COMP_ENABLED + LPCOMP_ENABLED) > 1)
+#error "COMP and LPCOMP cannot be enabled together. Peripherals overlap."
+#endif
+
+#else //NRF51
 
 #if (TWIS0_ENABLED + TWIS1_ENABLED) > 0
-#error "TWIS not present in NRF51."
+#error "TWIS not present in nRF51."
 #endif
 
 #if SPIS0_ENABLED > 0
-#error "SPIS0 instance not present in NRF51."
+#error "SPIS0 instance not present in nRF51."
 #endif 
 
 #if (SPI2_ENABLED + SPIS2_ENABLED) > 0
-#error "SPI2/SPIS2 instance not present in NRF51."
+#error "SPI2/SPIS2 instance not present in nRF51."
 #endif 
 
+#if RTC2_ENABLED
+#error "RTC2 not present in NRF51."
+#endif
+
 #if (TIMER3_ENABLED + TIMER4_ENABLED) > 0
-#error "TIMER3 and TIMER4 not present in NRF51."
+#error "TIMER3 and TIMER4 not present in nRF51."
 #endif
 
 #if (!PERIPHERAL_RESOURCE_SHARING_ENABLED) && \
@@ -59,11 +68,14 @@
 #endif
 
 #if SAADC_ENABLED > 0
-#error "SAADC not present in NRF51."
+#error "SAADC not present in nRF51."
 #endif
 
 #if I2S_ENABLED > 0
-#error "I2S not present in NRF51."
+#error "I2S not present in nRF51."
+#endif
+#if COMP_ENABLED > 0
+#error "COMP not present in nRF51."
 #endif
 
 #endif //NRF51

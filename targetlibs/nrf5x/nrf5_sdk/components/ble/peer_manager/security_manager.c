@@ -1,6 +1,7 @@
-/* Copyright (C) 2015 Nordic Semiconductor. All Rights Reserved.
+/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
  *
  * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
  * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
  *
  * Licensees are granted free, non-transferable use of the information. NO
@@ -16,6 +17,7 @@
 #include "peer_database.h"
 #include "ble_conn_state.h"
 #include "sdk_common.h"
+#include "id_manager.h"
 
 #define MAX_REGISTRANTS 3                           /**< The number of user that can register with the module. */
 
@@ -29,9 +31,11 @@ typedef struct
     ble_conn_state_user_flag_id_t flag_id_link_secure_null_params;
     ble_conn_state_user_flag_id_t flag_id_params_reply_pending_busy;
     ble_conn_state_user_flag_id_t flag_id_params_reply_pending_flash_full;
+    ble_conn_state_user_flag_id_t flag_id_reject_pairing;
     bool                          pdb_evt_handler_registered;
     bool                          sec_params_valid;
     ble_gap_sec_params_t          sec_params;
+    ble_gap_lesc_p256_pk_t      * p_public_key;
 } sm_t;
 
 static sm_t m_sm = {.flag_id_link_secure_pending_busy        = BLE_CONN_STATE_USER_FLAG_INVALID,
@@ -39,14 +43,15 @@ static sm_t m_sm = {.flag_id_link_secure_pending_busy        = BLE_CONN_STATE_US
                     .flag_id_link_secure_force_repairing     = BLE_CONN_STATE_USER_FLAG_INVALID,
                     .flag_id_link_secure_null_params         = BLE_CONN_STATE_USER_FLAG_INVALID,
                     .flag_id_params_reply_pending_busy       = BLE_CONN_STATE_USER_FLAG_INVALID,
-                    .flag_id_params_reply_pending_flash_full = BLE_CONN_STATE_USER_FLAG_INVALID};
+                    .flag_id_params_reply_pending_flash_full = BLE_CONN_STATE_USER_FLAG_INVALID,
+                    .flag_id_reject_pairing                  = BLE_CONN_STATE_USER_FLAG_INVALID};
 
 #define MODULE_INITIALIZED (m_sm.n_registrants > 0) /**< Expression which is true when the module is initialized. */
 #include "sdk_macros.h"
 
 static void evt_send(sm_evt_t * p_event)
 {
-    for (int i = 0; i < m_sm.n_registrants; i++)
+    for (uint32_t i = 0; i < m_sm.n_registrants; i++)
     {
         m_sm.evt_handlers[i](p_event);
     }
@@ -64,8 +69,8 @@ static void flags_set_from_err_code(uint16_t conn_handle, ret_code_t err_code, b
     {
         if ((err_code == NRF_ERROR_NO_MEM))
         {
-            flag_value_flash_full = true;
             flag_value_busy       = false;
+            flag_value_flash_full = true;
         }
         else if (err_code == NRF_ERROR_BUSY)
         {
@@ -185,17 +190,42 @@ static ret_code_t link_secure(uint16_t conn_handle, bool null_params, bool force
 }
 
 
+static void send_config_req(uint16_t conn_handle)
+{
+    sm_evt_t sm_evt;
+    memset(&sm_evt, 0, sizeof(sm_evt));
+
+    sm_evt.evt_id      = SM_EVT_CONN_SEC_CONFIG_REQ;
+    sm_evt.conn_handle = conn_handle;
+
+    evt_send(&sm_evt);
+}
+
+
 static void smd_params_reply_perform(uint16_t conn_handle)
 {
     ret_code_t err_code;
 
-    if (m_sm.sec_params_valid)
+    if (  (ble_conn_state_role(conn_handle) == BLE_GAP_ROLE_PERIPH)
+        && im_peer_id_get_by_conn_handle(conn_handle) != PM_PEER_ID_INVALID)
     {
-        err_code = smd_params_reply(conn_handle, &m_sm.sec_params);
+        // Bond already exists. Reject the pairing request if the user doesn't intervene.
+        ble_conn_state_user_flag_set(conn_handle, m_sm.flag_id_reject_pairing, true);
+        send_config_req(conn_handle);
     }
     else
     {
-        err_code = smd_params_reply(conn_handle, NULL);
+        ble_conn_state_user_flag_set(conn_handle, m_sm.flag_id_reject_pairing, false);
+    }
+
+    if (   m_sm.sec_params_valid
+        && !ble_conn_state_user_flag_get(conn_handle, m_sm.flag_id_reject_pairing))
+    {
+        err_code = smd_params_reply(conn_handle, &m_sm.sec_params, m_sm.p_public_key);
+    }
+    else
+    {
+        err_code = smd_params_reply(conn_handle, NULL, NULL);
     }
 
     flags_set_from_err_code(conn_handle, err_code, true);
@@ -225,8 +255,11 @@ static void smd_evt_handler(smd_evt_t const * p_event)
             {
                 null_params = true;
             }
-            link_secure(p_event->conn_handle, null_params, false, true);
+            ret_code_t err_code = link_secure(p_event->conn_handle, null_params, false, true);
+            UNUSED_VARIABLE(err_code); // It is acceptable to ignore the return code because it is
+                                       // acceptable to ignore a security request.
         }
+        /* fallthrough */
         case SMD_EVT_PAIRING_SUCCESS:
         case SMD_EVT_PAIRING_FAIL:
         case SMD_EVT_LINK_ENCRYPTION_UPDATE:
@@ -236,12 +269,11 @@ static void smd_evt_handler(smd_evt_t const * p_event)
         case SMD_EVT_ERROR_UNEXPECTED:
         case SMD_EVT_SEC_PROCEDURE_START:
         {
-            sm_evt_t evt =
-            {
-                .evt_id = (sm_evt_id_t)p_event->evt_id,
-                .conn_handle = p_event->conn_handle,
-                .params = p_event->params,
-            };
+            sm_evt_t evt;
+            evt.evt_id = (sm_evt_id_t)p_event->evt_id;
+            evt.conn_handle = p_event->conn_handle;
+            evt.params = p_event->params;
+
             evt_send(&evt);
         }
             break;
@@ -256,7 +288,7 @@ static void link_secure_pending_process(ble_conn_state_user_flag_id_t flag_id)
     {
         sdk_mapped_flags_key_list_t conn_handle_list = ble_conn_state_conn_handles();
 
-        for (int i = 0; i < conn_handle_list.len; i++)
+        for (uint32_t i = 0; i < conn_handle_list.len; i++)
         {
             bool pending = ble_conn_state_user_flag_get(conn_handle_list.flag_keys[i], flag_id);
             if (pending)
@@ -264,7 +296,8 @@ static void link_secure_pending_process(ble_conn_state_user_flag_id_t flag_id)
                 bool force_repairing = ble_conn_state_user_flag_get(conn_handle_list.flag_keys[i], m_sm.flag_id_link_secure_force_repairing);
                 bool null_params     = ble_conn_state_user_flag_get(conn_handle_list.flag_keys[i], m_sm.flag_id_link_secure_null_params);
 
-                link_secure(conn_handle_list.flag_keys[i], null_params, force_repairing, true);
+                ret_code_t err_code = link_secure(conn_handle_list.flag_keys[i], null_params, force_repairing, true); // If this fails, it will be automatically retried.
+                UNUSED_VARIABLE(err_code);
             }
         }
     }
@@ -278,7 +311,7 @@ static void params_reply_pending_process(ble_conn_state_user_flag_id_t flag_id)
     {
         sdk_mapped_flags_key_list_t conn_handle_list = ble_conn_state_conn_handles();
 
-        for (int i = 0; i < conn_handle_list.len; i++)
+        for (uint32_t i = 0; i < conn_handle_list.len; i++)
         {
             bool pending = ble_conn_state_user_flag_get(conn_handle_list.flag_keys[i], flag_id);
             if (pending)
@@ -304,6 +337,8 @@ static void pdb_evt_handler(pdb_evt_t const * p_event)
         case PDB_EVT_RAW_STORE_FAILED:
         case PDB_EVT_CLEARED:
         case PDB_EVT_CLEAR_FAILED:
+        case PDB_EVT_PEER_FREED:
+        case PDB_EVT_PEER_FREE_FAILED:
             params_reply_pending_process(m_sm.flag_id_params_reply_pending_busy);
             link_secure_pending_process(m_sm.flag_id_link_secure_pending_busy);
             break;
@@ -341,8 +376,9 @@ ret_code_t sm_register(sm_evt_handler_t evt_handler)
         flag_id_init(&m_sm.flag_id_link_secure_null_params);
         flag_id_init(&m_sm.flag_id_params_reply_pending_busy);
         flag_id_init(&m_sm.flag_id_params_reply_pending_flash_full);
+        flag_id_init(&m_sm.flag_id_reject_pairing);
 
-        if (m_sm.flag_id_params_reply_pending_flash_full == BLE_CONN_STATE_USER_FLAG_INVALID)
+        if (m_sm.flag_id_reject_pairing == BLE_CONN_STATE_USER_FLAG_INVALID)
         {
             return NRF_ERROR_INTERNAL;
         }
@@ -431,26 +467,32 @@ static bool sec_params_verify(ble_gap_sec_params_t * p_sec_params)
     }
 
     // Signing is not supported.
-    if (p_sec_params->kdist_periph.sign || p_sec_params->kdist_central.sign)
+    if (p_sec_params->kdist_own.sign || p_sec_params->kdist_peer.sign)
+    {
+        return false;
+    }
+
+    // link bit must be 0.
+    if (p_sec_params->kdist_own.link || p_sec_params->kdist_peer.link)
     {
         return false;
     }
 
     // If bonding is not enabled, no keys can be distributed.
-    if (!p_sec_params->bond && (   p_sec_params->kdist_periph.enc
-                                || p_sec_params->kdist_periph.id
-                                || p_sec_params->kdist_central.enc
-                                || p_sec_params->kdist_central.id))
+    if (!p_sec_params->bond && (   p_sec_params->kdist_own.enc
+                                || p_sec_params->kdist_own.id
+                                || p_sec_params->kdist_peer.enc
+                                || p_sec_params->kdist_peer.id))
     {
         return false;
     }
 
     // If bonding is enabled, one or more keys must be distributed.
     if (    p_sec_params->bond
-        && !p_sec_params->kdist_periph.enc
-        && !p_sec_params->kdist_periph.id
-        && !p_sec_params->kdist_central.enc
-        && !p_sec_params->kdist_central.id)
+        && !p_sec_params->kdist_own.enc
+        && !p_sec_params->kdist_own.id
+        && !p_sec_params->kdist_peer.enc
+        && !p_sec_params->kdist_peer.id)
     {
         return false;
     }
@@ -478,6 +520,20 @@ ret_code_t sm_sec_params_set(ble_gap_sec_params_t * p_sec_params)
     {
         return NRF_ERROR_INVALID_PARAM;
     }
+}
+
+
+void sm_conn_sec_config_reply(uint16_t conn_handle, pm_conn_sec_config_t * p_conn_sec_config)
+{
+    ble_conn_state_user_flag_set(conn_handle, m_sm.flag_id_reject_pairing, !p_conn_sec_config->allow_repairing);
+}
+
+
+ret_code_t sm_lesc_public_key_set(ble_gap_lesc_p256_pk_t * p_public_key)
+{
+    VERIFY_MODULE_INITIALIZED();
+    m_sm.p_public_key = p_public_key;
+    return NRF_SUCCESS;
 }
 
 

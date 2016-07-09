@@ -1,0 +1,9 @@
+s130_nrf51_2.0.0
+
+This release consists of the following:
+- This readme file
+- The s130_nrf51_2.0.0 API (SoftDevice header files)
+- The s130_nrf51_2.0.0 license agreement
+- The s130_nrf51_2.0.0 release notes
+- The s130_nrf51_2.0.0 SoftDevice (binary hex file)
+- The s13x_nrf5x_2.0.0 migration document

@@ -75,9 +75,26 @@ typedef struct {
     }
 #endif // (SPI2_ENABLED || SPIS2_ENABLED)
 
+// COMP, LPCOMP
+#if (COMP_ENABLED || LPCOMP_ENABLED)
+	#define COMP_LPCOMP_IN_USE
+
+	#ifndef IS_COMP_LPCOMP
+		#define IS_COMP_LPCOMP(p_per_base)  ((p_per_base) == NRF_LPCOMP)
+	#endif
+
+    static shared_resource_t m_comp_lpcomp = { .acquired = false };
+    void LPCOMP_IRQHandler(void)
+    {
+    	ASSERT(m_comp_lpcomp.handler);
+    	m_comp_lpcomp.handler();
+    }
+#endif	// (COMP_ENABLED || LPCOMP_ENABLED)
+
 #if defined(SERIAL_BOX_0_IN_USE) || \
     defined(SERIAL_BOX_1_IN_USE) || \
-    defined(SERIAL_BOX_2_IN_USE)
+    defined(SERIAL_BOX_2_IN_USE) || \
+	defined(COMP_LPCOMP_IN_USE)
 static ret_code_t acquire_shared_resource(shared_resource_t * p_resource,
                                           nrf_drv_irq_handler_t handler)
 {
@@ -128,6 +145,13 @@ ret_code_t nrf_drv_common_per_res_acquire(void const * p_per_base,
     }
 #endif
 
+#ifdef COMP_LPCOMP_IN_USE
+    if (IS_COMP_LPCOMP(p_per_base))
+    {
+    	return acquire_shared_resource(&m_comp_lpcomp, handler);
+    }
+#endif
+
     return NRF_ERROR_INVALID_PARAM;
 }
 
@@ -157,6 +181,14 @@ void nrf_drv_common_per_res_release(void const * p_per_base)
     else
 #endif
 
+#ifdef COMP_LPCOMP_IN_USE
+	if (IS_COMP_LPCOMP(p_per_base))
+    {
+        m_comp_lpcomp.acquired = false;
+    }
+	else
+#endif
+
     {}
 }
 
@@ -167,7 +199,7 @@ void nrf_drv_common_irq_enable(IRQn_Type IRQn, uint8_t priority)
 {
 
 #ifdef SOFTDEVICE_PRESENT
-    ASSERT((priority == NRF_APP_PRIORITY_LOW) || (priority == NRF_APP_PRIORITY_HIGH));
+    ASSERT((priority == APP_IRQ_PRIORITY_LOW) || (priority == APP_IRQ_PRIORITY_HIGH));
 #endif
 
     NVIC_SetPriority(IRQn, priority);

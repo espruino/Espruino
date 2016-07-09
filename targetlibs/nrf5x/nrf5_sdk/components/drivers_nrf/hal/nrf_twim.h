@@ -288,6 +288,34 @@ __STATIC_INLINE uint32_t nrf_twim_txd_amount_get(NRF_TWIM_Type * p_twim);
 __STATIC_INLINE uint32_t nrf_twim_rxd_amount_get(NRF_TWIM_Type * p_twim);
 
 /**
+ * @brief Function for enabling the TX list feature.
+ *
+ * @param[in] p_twim TWIM instance.
+ */
+__STATIC_INLINE void nrf_twim_tx_list_enable(NRF_TWIM_Type * p_twim);
+
+/**
+ * @brief Function for disabling the TX list feature.
+ *
+ * @param[in] p_twim TWIM instance.
+ */
+__STATIC_INLINE void nrf_twim_tx_list_disable(NRF_TWIM_Type * p_twim);
+
+/**
+ * @brief Function for enabling the RX list feature.
+ *
+ * @param[in] p_twim TWIM instance.
+ */
+__STATIC_INLINE void nrf_twim_rx_list_enable(NRF_TWIM_Type * p_twim);
+
+/**
+ * @brief Function for disabling the RX list feature.
+ *
+ * @param[in] p_twim TWIM instance.
+ */
+__STATIC_INLINE void nrf_twim_rx_list_disable(NRF_TWIM_Type * p_twim);
+
+/**
  * @}
  */
 
@@ -426,6 +454,25 @@ __STATIC_INLINE uint32_t nrf_twim_rxd_amount_get(NRF_TWIM_Type * p_twim)
     return p_twim->RXD.AMOUNT;
 }
 
+__STATIC_INLINE void nrf_twim_tx_list_enable(NRF_TWIM_Type * p_twim)
+{
+    p_twim->TXD.LIST = 1;
+}
+
+__STATIC_INLINE void nrf_twim_tx_list_disable(NRF_TWIM_Type * p_twim)
+{
+    p_twim->TXD.LIST = 0;
+}
+
+__STATIC_INLINE void nrf_twim_rx_list_enable(NRF_TWIM_Type * p_twim)
+{
+    p_twim->RXD.LIST = 1;
+}
+
+__STATIC_INLINE void nrf_twim_rx_list_disable(NRF_TWIM_Type * p_twim)
+{
+    p_twim->RXD.LIST = 0;
+}
 #endif // SUPPRESS_INLINE_IMPLEMENTATION
 
 #endif // NRF_TWIM_H__

@@ -34,11 +34,11 @@
 /**
  * @brief Value that should be set as high limit to disable limit detection.
  */
-#define NRF_DRV_SAADC_LIMITH_DISABLED (1023)
+#define NRF_DRV_SAADC_LIMITH_DISABLED (2047)
 /**
  * @brief Value that should be set as low limit to disable limit detection.
  */
-#define NRF_DRV_SAADC_LIMITL_DISABLED (-512)
+#define NRF_DRV_SAADC_LIMITL_DISABLED (-2048)
 
 /**
  * @brief Macro for setting @ref nrf_drv_saadc_config_t to default settings.
@@ -83,8 +83,8 @@
     .reference  = NRF_SAADC_REFERENCE_INTERNAL,                         \
     .acq_time   = NRF_SAADC_ACQTIME_10US,                               \
     .mode       = NRF_SAADC_MODE_DIFFERENTIAL,                          \
-    .pin_p      = (PIN_P),                                              \
-    .pin_n      = (PIN_N)                                               \
+    .pin_p      = (nrf_saadc_input_t)(PIN_P),                           \
+    .pin_n      = (nrf_saadc_input_t)(PIN_N)                            \
 }
 
 /**
@@ -167,15 +167,13 @@ ret_code_t nrf_drv_saadc_init(nrf_drv_saadc_config_t const * p_config,
 void nrf_drv_saadc_uninit(void);
 
 /**
- * @brief Function for getting the address of a specific SAADC task.
- *
- * @param[in]  task Task.
+ * @brief Function for getting the address of a SAMPLE SAADC task.
  *
  * @return     Task address.
  */
-__STATIC_INLINE uint32_t nrf_drv_saadc_task_address_get(nrf_saadc_task_t task)
+__STATIC_INLINE uint32_t nrf_drv_saadc_sample_task_get(void)
 {
-    return nrf_saadc_task_address_get(task);
+    return nrf_saadc_task_address_get(NRF_SAADC_TASK_SAMPLE);
 }
 
 
@@ -249,28 +247,36 @@ ret_code_t nrf_drv_saadc_buffer_convert(nrf_saadc_value_t * buffer, uint16_t siz
  * @retval true  If the ADC is busy.
  * @retval false If the ADC is ready.
  */
-bool nrf_drv_saadc_busy_check(void);
+bool nrf_drv_saadc_is_busy(void);
+
+/**
+ * @brief Function for aborting ongoing and buffered conversions.
+ * @note @ref NRF_DRV_SAADC_EVT_DONE event will be generated if there is a conversion in progress.
+ *       Event will contain number of words in the sample buffer.
+ */
+void nrf_drv_saadc_abort(void);
 
 /**
  * @brief Function for setting the SAADC channel limits.
  *        When limits are enabled and the result exceeds the defined bounds, the limit handler function is called.
  *
  * @param[in] channel SAADC channel number.
- * @param[in] limit_low Lower limit (valid values from -32768 to 32767).
- *            Conversion results below this value will trigger the handler function.
- *            Set to NRF_DRV_SAADC_LIMIT_DISABLED to disable this limit.
- * @param[in] limit_high Upper limit (valid values from -32768 to 32767).
- *            Conversion results above this value will trigger the handler function.
- *            Set to NRF_DRV_SAADC_LIMIT_DISABLED to disable this limit.
+ * @param[in] limit_low Lower limit (valid values from @ref NRF_DRV_SAADC_LIMITL_DISABLED to
+ *            @ref NRF_DRV_SAADC_LIMITH_DISABLED). Conversion results below this value will trigger
+ *            the handler function. Set to @ref NRF_DRV_SAADC_LIMITL_DISABLED to disable this limit.
+ * @param[in] limit_high Upper limit (valid values from @ref NRF_DRV_SAADC_LIMITL_DISABLED to
+ *            @ref NRF_DRV_SAADC_LIMITH_DISABLED). Conversion results above this value will trigger
+ *            the handler function. Set to @ref NRF_DRV_SAADC_LIMITH_DISABLED to disable this limit.
  */
-void nrf_drv_saadc_limit_set(uint8_t channel, int16_t limit_low, int16_t limit_high);
+void nrf_drv_saadc_limits_set(uint8_t channel, int16_t limit_low, int16_t limit_high);
 
 /**
- * @brief Function for converting a GPIO pin number to an analog input pin number.
+ * @brief Function for converting a GPIO pin number to an analog input pin number used in the channel
+ *        configuration.
  *
  * @param[in]  pin GPIO pin.
  *
- * @return     Analog input pin. The function returns @ref NRF_SAADC_INPUT_DISABLED
+ * @return     Value representing an analog input pin. The function returns @ref NRF_SAADC_INPUT_DISABLED
  *             if the specified pin is not an analog input.
  */
 __STATIC_INLINE nrf_saadc_input_t nrf_drv_saadc_gpio_to_ain(uint32_t pin)
@@ -278,7 +284,7 @@ __STATIC_INLINE nrf_saadc_input_t nrf_drv_saadc_gpio_to_ain(uint32_t pin)
     // AIN0 - AIN3
     if (pin >= 2 && pin <= 5)
     {
-        // [0 means "not connected" for PSELP and PSELN, hence this "+ 1"]
+        //0 means "not connected", hence this "+ 1"
         return (nrf_saadc_input_t)(pin - 2 + 1);
     }
     // AIN4 - AIN7

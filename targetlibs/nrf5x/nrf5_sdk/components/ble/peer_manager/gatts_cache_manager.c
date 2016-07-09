@@ -1,3 +1,15 @@
+/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
+ *
+ * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
+ * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+ *
+ * Licensees are granted free, non-transferable use of the information. NO
+ * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
+ * the file.
+ *
+ */
+
 
 #include "gatts_cache_manager.h"
 
@@ -5,6 +17,7 @@
 #include "ble_gap.h"
 #include "ble_conn_state.h"
 #include "peer_manager_types.h"
+#include "peer_manager_internal.h"
 #include "peer_database.h"
 #include "id_manager.h"
 #include "sdk_common.h"
@@ -18,10 +31,14 @@
  */
 typedef struct
 {
-    gscm_evt_handler_t            evt_handler; /**< The event handler to use for outbound GSCM events. */
+    gscm_evt_handler_t evt_handler; /**< The event handler to use for outbound GSCM events. */
+    pm_peer_id_t       current_sc_store_peer_id;
 } gscm_t;
 
-static gscm_t m_gscm;  /**< Instantiation of module variable(s). */
+static gscm_t m_gscm =
+{
+    .current_sc_store_peer_id = PM_PEER_ID_INVALID,
+};  /**< Instantiation of module variable(s). */
 
 #define MODULE_INITIALIZED  (m_gscm.evt_handler != NULL)
 #include "sdk_macros.h"
@@ -29,12 +46,44 @@ static gscm_t m_gscm;  /**< Instantiation of module variable(s). */
 
 /**@brief Function for resetting the module variable(s) of the GSCM module.
  *
- * @param[out]  The instance to reset.
+ * @param[out]  p_gscm  The instance to reset.
  */
-static void internal_state_reset(gscm_t * gscm)
+static void internal_state_reset(gscm_t * p_gscm)
 {
-    memset(gscm, 0, sizeof(gscm_t));
+    memset(p_gscm, 0, sizeof(gscm_t));
+    p_gscm->current_sc_store_peer_id = PM_PEER_ID_INVALID;
 }
+
+
+//lint -save -e550
+/**@brief Function for storing service_changed_pending = true to flash for all peers, in sequence.
+ *
+ * This function aborts if it gets @ref NRF_ERROR_BUSY when trying to store. A subsequent call will
+ * continue where the last call was aborted.
+ */
+static void service_changed_pending_set(void)
+{
+    VERIFY_MODULE_INITIALIZED_VOID();
+    static const bool service_changed_pending = true;
+    ret_code_t err_code;
+
+    //lint -save -e65 -e64
+    pm_peer_data_const_t peer_data =
+    {
+        .data_id                   = PM_PEER_DATA_ID_SERVICE_CHANGED_PENDING,
+        .length_words              = PM_SC_STATE_N_WORDS(),
+        .p_service_changed_pending = &service_changed_pending,
+    };
+    //lint -restore
+
+    err_code = pdb_raw_store(m_gscm.current_sc_store_peer_id, &peer_data, NULL);
+    while((m_gscm.current_sc_store_peer_id != PM_PEER_ID_INVALID) && (err_code != NRF_ERROR_BUSY))
+    {
+        m_gscm.current_sc_store_peer_id = pdb_next_peer_id_get(m_gscm.current_sc_store_peer_id);
+        err_code = pdb_raw_store(m_gscm.current_sc_store_peer_id, &peer_data, NULL);
+    }
+}
+//lint -restore
 
 
 
@@ -58,11 +107,16 @@ static void pdb_evt_handler(pdb_evt_t const * p_event)
                 gscm_evt_t gscm_evt;
                 gscm_evt.evt_id = GSCM_EVT_SC_STATE_STORED;
                 gscm_evt.peer_id = p_event->peer_id;
-                gscm_evt.params.sc_state_stored.state = *peer_data.data.p_service_changed_pending;
+                gscm_evt.params.sc_state_stored.state = &peer_data.p_service_changed_pending;
 
                 m_gscm.evt_handler(&gscm_evt);
             }
         }
+    }
+
+    if (m_gscm.current_sc_store_peer_id != PM_PEER_ID_INVALID)
+    {
+        service_changed_pending_set();
     }
 }
 
@@ -111,11 +165,11 @@ ret_code_t gscm_local_db_cache_update(uint16_t conn_handle)
             err_code = pdb_write_buf_get(peer_id, PM_PEER_DATA_ID_GATT_LOCAL, n_bufs++, &peer_data);
             if (err_code == NRF_SUCCESS)
             {
-                pm_peer_data_local_gatt_db_t * p_local_gatt_db = peer_data.data.p_local_gatt_db;
+                pm_peer_data_local_gatt_db_t * p_local_gatt_db = peer_data.p_local_gatt_db;
 
                 p_local_gatt_db->flags = SYS_ATTR_BOTH;
 
-                err_code = sd_ble_gatts_sys_attr_get(conn_handle, &p_local_gatt_db->p_data[0], &p_local_gatt_db->len, p_local_gatt_db->flags);
+                err_code = sd_ble_gatts_sys_attr_get(conn_handle, &p_local_gatt_db->data[0], &p_local_gatt_db->len, p_local_gatt_db->flags);
 
                 if (err_code == NRF_SUCCESS)
                 {
@@ -131,11 +185,14 @@ ret_code_t gscm_local_db_cache_update(uint16_t conn_handle)
                     else if (err_code == NRF_ERROR_NOT_FOUND)
                     {
                         // There are no sys attributes in the GATT db, so nothing needs to be stored.
-                        pdb_clear(peer_id, PM_PEER_DATA_ID_GATT_LOCAL);
                         err_code = NRF_SUCCESS;
                     }
 
-                    pdb_write_buf_release(peer_id, PM_PEER_DATA_ID_GATT_LOCAL);
+                    ret_code_t err_code_release = pdb_write_buf_release(peer_id, PM_PEER_DATA_ID_GATT_LOCAL);
+                    if (err_code_release != NRF_SUCCESS)
+                    {
+                        err_code = NRF_ERROR_INTERNAL;
+                    }
                 }
             }
             else if (err_code == NRF_ERROR_INVALID_PARAM)
@@ -167,10 +224,12 @@ ret_code_t gscm_local_db_cache_apply(uint16_t conn_handle)
         err_code = pdb_read_buf_get(peer_id, PM_PEER_DATA_ID_GATT_LOCAL, &peer_data, NULL);
         if (err_code == NRF_SUCCESS)
         {
-            pm_peer_data_local_gatt_db_flash_t const * p_local_gatt_db = peer_data.data.p_local_gatt_db;
-            p_sys_attr_data                                            = p_local_gatt_db->p_data;
-            sys_attr_len                                               = p_local_gatt_db->len;
-            sys_attr_flags                                             = p_local_gatt_db->flags;
+            pm_peer_data_local_gatt_db_t const * p_local_gatt_db;
+
+            p_local_gatt_db = peer_data.p_local_gatt_db;
+            p_sys_attr_data = p_local_gatt_db->data;
+            sys_attr_len    = p_local_gatt_db->len;
+            sys_attr_flags  = p_local_gatt_db->flags;
         }
     }
 
@@ -225,8 +284,8 @@ ret_code_t gscm_local_db_cache_set(pm_peer_id_t peer_id, pm_peer_data_local_gatt
     pm_peer_data_const_t peer_data;
 
     memset(&peer_data, 0, sizeof(pm_peer_data_const_t));
-    peer_data.data_type = PM_PEER_DATA_ID_GATT_LOCAL;
-    peer_data.data.p_local_gatt_db = p_local_db;
+    peer_data.data_id = PM_PEER_DATA_ID_GATT_LOCAL;
+    peer_data.p_local_gatt_db = p_local_db;
 
     return pdb_raw_store(peer_id, &peer_data, NULL);
 }
@@ -238,7 +297,7 @@ ret_code_t gscm_local_db_cache_get(pm_peer_id_t peer_id, pm_peer_data_local_gatt
 
     pm_peer_data_t peer_data;
     memset(&peer_data, 0, sizeof(pm_peer_data_t));
-    peer_data.data.p_local_gatt_db = p_local_db;
+    peer_data.p_local_gatt_db = p_local_db;
 
     return pdb_raw_read(peer_id, PM_PEER_DATA_ID_GATT_LOCAL, &peer_data);
 }
@@ -247,24 +306,8 @@ ret_code_t gscm_local_db_cache_get(pm_peer_id_t peer_id, pm_peer_data_local_gatt
 void gscm_local_database_has_changed(void)
 {
     VERIFY_MODULE_INITIALIZED_VOID();
-
-    static const bool    service_changed_pending = true;
-    pm_peer_id_t         current_peer_id = PM_PEER_ID_INVALID;
-    pm_peer_data_const_t peer_data =
-    {
-        .data_type = PM_PEER_DATA_ID_SERVICE_CHANGED_PENDING,
-        .length_words = PM_SC_STATE_N_WORDS(),
-        .data =
-        {
-            .p_service_changed_pending = &service_changed_pending
-        }
-    };
-
-    do
-    {
-        current_peer_id = pdb_next_peer_id_get(current_peer_id);
-        pdb_raw_store(current_peer_id, &peer_data, NULL);
-    } while(current_peer_id != PM_PEER_ID_INVALID);
+    m_gscm.current_sc_store_peer_id = pdb_next_peer_id_get(PM_PEER_ID_INVALID);
+    service_changed_pending_set();
 }
 
 
@@ -281,7 +324,7 @@ bool gscm_service_changed_ind_needed(uint16_t conn_handle)
         return false;
     }
 
-    return *peer_data.data.p_service_changed_pending;
+    return &peer_data.p_service_changed_pending;
 }
 
 
@@ -294,11 +337,7 @@ ret_code_t gscm_service_changed_ind_send(uint16_t conn_handle)
     do
     {
         err_code = sd_ble_gatts_service_changed(conn_handle, start_handle, end_handle);
-        if (err_code == NRF_ERROR_INVALID_STATE)
-        {
-            err_code = NRF_SUCCESS;
-        }
-        else if (err_code == BLE_ERROR_INVALID_ATTR_HANDLE)
+        if (err_code == BLE_ERROR_INVALID_ATTR_HANDLE)
         {
             start_handle += 1;
         }
@@ -308,22 +347,23 @@ ret_code_t gscm_service_changed_ind_send(uint16_t conn_handle)
 }
 
 
-void gscm_peer_was_notified_of_db_change(pm_peer_id_t peer_id)
+void gscm_db_change_notification_done(pm_peer_id_t peer_id)
 {
     VERIFY_MODULE_INITIALIZED_VOID();
 
     static const bool service_changed_pending = false;
 
+    //lint -save -e65 -e64
     pm_peer_data_const_t peer_data =
     {
-        .data_type = PM_PEER_DATA_ID_SERVICE_CHANGED_PENDING,
-        .length_words = PM_SC_STATE_N_WORDS(),
-        .data =
-        {
-            .p_service_changed_pending = &service_changed_pending
-        }
+        .data_id                   = PM_PEER_DATA_ID_SERVICE_CHANGED_PENDING,
+        .length_words              = PM_SC_STATE_N_WORDS(),
+        .p_service_changed_pending = &service_changed_pending,
     };
+    //lint -restore
 
     // Don't need to check return code, because all error conditions can be ignored.
-    pdb_raw_store(peer_id, &peer_data, NULL);
+    //lint -save -e550
+    (void) pdb_raw_store(peer_id, &peer_data, NULL);
+    //lint -restore
 }

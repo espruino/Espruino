@@ -1,14 +1,15 @@
 /* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
-*
-* The information contained herein is property of Nordic Semiconductor ASA.
-* Terms and conditions of usage are described in detail in NORDIC
-* SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
-*
-* Licensees are granted free, non-transferable use of the information. NO
-* WARRANTY of ANY KIND is provided. This heading must NOT be removed from
-* the file.
-*
-*/
+ *
+ * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
+ * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+ *
+ * Licensees are granted free, non-transferable use of the information. NO
+ * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
+ * the file.
+ *
+ */
+
 
 #ifndef SECURITY_MANAGER_H__
 #define SECURITY_MANAGER_H__
@@ -22,6 +23,7 @@
 
 
 /**
+ * @cond NO_DOXYGEN
  * @defgroup security_manager Security Manager
  * @ingroup peer_manager
  * @{
@@ -35,7 +37,7 @@
 typedef enum
 {
     // SM_EVT_PARAMS_REQ             = SMD_EVT_PARAMS_REQ,             /**< Parameters are required for a pairing procedure on the specified connection. The user must provide them using @ref sm_sec_params_set or @ref sm_sec_params_reply (only this procedure, currently unimplemented). */
-    SM_EVT_SLAVE_SECURITY_REQ     = SMD_EVT_SLAVE_SECURITY_REQ,     /**< The peer (slave) has requested link encryption, which has been enabled. */
+    SM_EVT_SLAVE_SECURITY_REQ     = SMD_EVT_SLAVE_SECURITY_REQ,     /**< The peer (peripheral) has requested link encryption, which has been enabled. */
     SM_EVT_SEC_PROCEDURE_START    = SMD_EVT_SEC_PROCEDURE_START,    /**< A security procedure has started. */
     SM_EVT_PAIRING_SUCCESS        = SMD_EVT_PAIRING_SUCCESS,        /**< A pairing procedure (and bonding if applicable) has completed with success. */
     SM_EVT_PAIRING_FAIL           = SMD_EVT_PAIRING_FAIL,           /**< A pairing procedure has failed which means no encryption and no bond could be established. */
@@ -46,6 +48,7 @@ typedef enum
     SM_EVT_ERROR_UNEXPECTED       = SMD_EVT_ERROR_UNEXPECTED,       /**< An operation failed with an unexpected error. The error is provided. This is possibly a fatal error. */
     SM_EVT_ERROR_NO_MEM           /*= SMD_EVT_ERROR_NO_MEM*/,       /**< An operation failed because there was no available storage room in persistent storage. Please free up room and the operation will automatically continue after the next compression. */
     SM_EVT_ERROR_SMP_TIMEOUT,                                       /**< An operation failed because there has been an SMP timeout on the link, which entails that no more security operations can be performed on it. */
+    SM_EVT_CONN_SEC_CONFIG_REQ,                                     /**< The peer (central) has requested pairing, but a bond already exists with that peer. Reply by calling @ref sm_conn_sec_config_reply before the event handler returns. If no reply is sent, a default is used. */
 } sm_evt_id_t;
 
 
@@ -102,6 +105,35 @@ void sm_ble_evt_handler(ble_evt_t * ble_evt);
 ret_code_t sm_sec_params_set(ble_gap_sec_params_t * p_sec_params);
 
 
+/**@brief Function for providing security configuration for a link.
+ *
+ * @details This function is optional, and must be called in reply to a @ref
+ *          SM_EVT_CONN_SEC_CONFIG_REQ event, before the Peer Manager event handler returns. If it
+ *          is not called in time, a default configuration is used. See @ref pm_conn_sec_config_t
+ *          for the value of the default.
+ *
+ * @param[in]  conn_handle        The connection to set the configuration for.
+ * @param[in]  p_conn_sec_config  The configuration.
+ */
+void sm_conn_sec_config_reply(uint16_t conn_handle, pm_conn_sec_config_t * p_conn_sec_config);
+
+
+/**@brief Experimental function for specifying the public key to use for LESC operations.
+ *
+ * @details This function can be called multiple times. The specified public key will be used for
+ *          all subsequent LESC (LE Secure Connections) operations until the next time this function
+ *          is called.
+ *
+ * @note The key must continue to reside in application memory as it is not copied by Peer Manager.
+ *
+ * @param[in]  p_public_key  The public key to use for all subsequent LESC operations.
+ *
+ * @retval NRF_SUCCESS                    Pairing initiated successfully.
+ * @retval NRF_ERROR_INVALID_STATE        Peer Manager is not initialized.
+ */
+ret_code_t sm_lesc_public_key_set(ble_gap_lesc_p256_pk_t * p_public_key);
+
+
 /**@brief Function for providing pairing and bonding parameters to use for the current pairing
  *        procedure on a connection.
  *
@@ -153,6 +185,8 @@ ret_code_t sm_sec_params_reply(uint16_t conn_handle, ble_gap_sec_params_t * p_se
  */
 ret_code_t sm_link_secure(uint16_t conn_handle, bool force_repairing);
 
-/** @} */
+/** @}
+ * @endcond
+ */
 
 #endif /* SECURITY_MANAGER_H__ */

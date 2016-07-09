@@ -143,9 +143,9 @@ typedef struct
     ble_advdata_service_data_t * p_service_data_array;                /**< Array of Service data structures. */
     uint8_t                      service_data_count;                  /**< Number of Service data structures. */
     bool                         include_ble_device_addr;             /**< Determines if LE Bluetooth Device Address shall be included. */
-    ble_advdata_le_role_t        le_role;                             /**< LE Role field. Included when different from @ref BLE_ADVDATA_ROLE_NOT_PRESENT.*/
-    ble_advdata_tk_value_t *     p_tk_value;                          /**< Security Manager TK value field. Included when different from NULL.*/
-    uint8_t *                    p_sec_mgr_oob_flags;                 /**< Security Manager Out Of Band Flags field. Included when different from NULL.*/
+    ble_advdata_le_role_t        le_role;                             /**< LE Role field. Included when different from @ref BLE_ADVDATA_ROLE_NOT_PRESENT. @warning This field can be used only for NFC. For BLE advertising, set it to NULL. */
+    ble_advdata_tk_value_t *     p_tk_value;                          /**< Security Manager TK value field. Included when different from NULL. @warning This field can be used only for NFC. For BLE advertising, set it to NULL.*/
+    uint8_t *                    p_sec_mgr_oob_flags;                 /**< Security Manager Out Of Band Flags field. Included when different from NULL. @warning This field can be used only for NFC. For BLE advertising, set it to NULL.*/
 } ble_advdata_t;
 
 /**@brief Function for encoding data in the Advertising and Scan Response data format

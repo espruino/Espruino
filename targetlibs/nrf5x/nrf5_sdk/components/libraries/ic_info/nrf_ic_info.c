@@ -29,7 +29,7 @@ void nrf_ic_info_get(nrf_ic_info_t * p_ic_info)
             p_ic_info->ram_size   = (uint16_t) NRF_FICR->NUMRAMBLOCK;
             p_ic_info->ram_size   *= (uint16_t) (NRF_FICR->SIZERAMBLOCKS / 1024);
             p_ic_info->flash_size = (uint16_t) NRF_FICR->CODESIZE;
-            
+
             switch (ic_data)
             {
                 /** IC revision 1 */
@@ -57,35 +57,11 @@ void nrf_ic_info_get(nrf_ic_info_t * p_ic_info)
             }
             break;
         }
-#elif defined(NRF52)
-        case PART_NO_NRF52:
-        {
-            p_ic_info->ram_size   = (uint16_t) NRF_FICR->INFO.RAM;
-            p_ic_info->flash_size = (uint16_t) NRF_FICR->INFO.FLASH;
-    
-            switch (ic_data)
-            {
-                /** IC Engineering A */
-                case 3:
-                    p_ic_info->ic_revision = IC_REVISION_NRF52_ENG_A;
-                    p_ic_info->flash_size = 512u;
-                    p_ic_info->ram_size = 64u;
-                    break;
-                
-                /** IC Engineering B */
-                case 4:
-                    p_ic_info->ic_revision = IC_REVISION_NRF52_ENG_B;
-                    break;
-                    
-                default:
-                    p_ic_info->ic_revision = IC_REVISION_NRF52_UNKNOWN;
-                    break;
-            }
-            break;
-        }
 #endif
         default:
             p_ic_info->ic_revision = IC_PART_UNKNOWN;
+            p_ic_info->flash_size  = 0;
+            p_ic_info->ram_size    = 0;
             break;
     }
 }

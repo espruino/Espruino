@@ -7,8 +7,6 @@
 #include <stdarg.h>
 #include <app_util.h>
 
-#define NUM_VA_ARGS(...) (sizeof((const char*[]){ 0, ##__VA_ARGS__ })/sizeof(const char*)-1)
-
 #ifndef NRF_LOG_USES_RTT
 #define NRF_LOG_USES_RTT 0
 #endif
@@ -19,6 +17,32 @@
 
 #ifndef NRF_LOG_USES_RAW_UART
 #define NRF_LOG_USES_RAW_UART 0
+#endif
+
+#ifndef NRF_LOG_USES_COLORS
+    #define NRF_LOG_USES_COLORS 1
+#endif
+
+#if NRF_LOG_USES_COLORS == 1
+    #define NRF_LOG_COLOR_DEFAULT  "\x1B[0m"
+    #define NRF_LOG_COLOR_BLACK    "\x1B[1;30m"
+    #define NRF_LOG_COLOR_RED      "\x1B[1;31m"
+    #define NRF_LOG_COLOR_GREEN    "\x1B[1;32m"
+    #define NRF_LOG_COLOR_YELLOW   "\x1B[1;33m"
+    #define NRF_LOG_COLOR_BLUE     "\x1B[1;34m"
+    #define NRF_LOG_COLOR_MAGENTA  "\x1B[1;35m"
+    #define NRF_LOG_COLOR_CYAN     "\x1B[1;36m"
+    #define NRF_LOG_COLOR_WHITE    "\x1B[1;37m"
+#else
+    #define NRF_LOG_COLOR_DEFAULT
+    #define NRF_LOG_COLOR_BLACK
+    #define NRF_LOG_COLOR_RED
+    #define NRF_LOG_COLOR_GREEN
+    #define NRF_LOG_COLOR_YELLOW
+    #define NRF_LOG_COLOR_BLUE
+    #define NRF_LOG_COLOR_MAGENTA
+    #define NRF_LOG_COLOR_CYAN
+    #define NRF_LOG_COLOR_WHITE
 #endif
 
 #if defined(NRF_LOG_USES_RTT) && NRF_LOG_USES_RTT == 1
@@ -336,6 +360,9 @@ uint32_t log_uart_read_input(char* p_char);
 #undef NRF_LOG_DEBUG
 #define NRF_LOG_DEBUG(...)
 
+#undef NRF_LOG_PRINTF_DEBUG
+#define NRF_LOG_PRINTF_DEBUG(...)
+
 #undef NRF_LOG_STR_DEBUG
 #define NRF_LOG_STR_DEBUG(...)
 
@@ -531,13 +558,7 @@ uint32_t log_raw_uart_read_input(char* p_char);
 
 // Empty definitions
 
-__INLINE int dummy_func(void* ignore)
-{
-    UNUSED_PARAMETER(ignore);
-    return NRF_SUCCESS;
-}
-
-#define NRF_LOG_INIT()                 dummy_func(0)
+#define NRF_LOG_INIT()                 NRF_SUCCESS
 #define NRF_LOG(...)
 #define NRF_LOG_DEBUG(...)
 #define NRF_LOG_ERROR(...)
@@ -555,7 +576,7 @@ __INLINE int dummy_func(void* ignore)
 #define NRF_LOG_HEX_CHAR_ERROR(val)
 
 #define NRF_LOG_HAS_INPUT()              0
-#define NRF_LOG_READ_INPUT(ignore)       dummy_func(ignore)
+#define NRF_LOG_READ_INPUT(ignore)       NRF_SUCCESS
 
 #endif
 
@@ -589,12 +610,12 @@ const char* log_hex_char(const char value);
  * @brief Library to output logging information over SEGGER's Real Time Transfer
  *       (RTT), UART, or raw UART.
  *
- * This library provides macros that call the respective functions depending on 
- * which protocol is used. Define LOG_USES_RTT=1 to enable logging over RTT, 
- * NRF_LOG_USES_UART=1 to enable logging over UART, or NRF_LOG_USES_RAW_UART=1 
- * to enable logging over raw UART. One of these defines must be set for any of 
- * the macros to have effect. If you choose to not output information, all 
- * logging macros can be left in the code without any cost; they will just be 
+ * This library provides macros that call the respective functions depending on
+ * which protocol is used. Define LOG_USES_RTT=1 to enable logging over RTT,
+ * NRF_LOG_USES_UART=1 to enable logging over UART, or NRF_LOG_USES_RAW_UART=1
+ * to enable logging over raw UART. One of these defines must be set for any of
+ * the macros to have effect. If you choose to not output information, all
+ * logging macros can be left in the code without any cost; they will just be
  * ignored.
  */
 
@@ -623,7 +644,7 @@ void NRF_LOG(const char* msg);
  * but need it to interfere as little as possible with the execution, should
  * avoid using printf.
  *
- * @note When NRF_LOG_USES_UART is set to 1, this macro is non-blocking. 
+ * @note When NRF_LOG_USES_UART is set to 1, this macro is non-blocking.
  *       If too much data is sent, some characters might be skipped.
  *
  * @param  format_msg      Printf format string.
@@ -636,7 +657,7 @@ void NRF_LOG_PRINTF(const char * format_msg, ...);
  * @details The output data is formatted as, for example, 0x89ABCDEF.
  * This function is more efficient than printf.
  *
- * @note When NRF_LOG_USES_UART is set to 1, this macro is non-blocking. 
+ * @note When NRF_LOG_USES_UART is set to 1, this macro is non-blocking.
  *       If too much data is sent, some characters might be skipped.
  *
  * @param   value   Integer value to be printed as HEX.
@@ -647,7 +668,7 @@ void NRF_LOG_HEX(uint32_t value);
  *
  * @details The output string is formatted as, for example, AA.
  *
- * @note When NRF_LOG_USES_UART is set to 1, this macro is non-blocking. 
+ * @note When NRF_LOG_USES_UART is set to 1, this macro is non-blocking.
  *       If too much data is sent, some characters might be skipped.
  *
  * @param c Character.
@@ -656,7 +677,7 @@ void NRF_LOG_HEX_CHAR(uint8_t c);
 
 /**@brief Macro for checking if data is available in the input buffer.
  *
- * @note When NRF_LOG_USES_UART is set to 1, this macro is non-blocking. 
+ * @note When NRF_LOG_USES_UART is set to 1, this macro is non-blocking.
  *       If too much data is sent, some characters might be skipped.
  *
  * @retval      1 If characters are available to read.

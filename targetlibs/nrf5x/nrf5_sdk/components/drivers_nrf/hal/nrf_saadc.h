@@ -202,6 +202,7 @@ typedef enum
     NRF_SAADC_INT_CH6LIMITL = SAADC_INTENSET_CH6LIMITL_Msk, ///< Interrupt on EVENTS_CH[6].LIMITL event.
     NRF_SAADC_INT_CH7LIMITH = SAADC_INTENSET_CH7LIMITH_Msk, ///< Interrupt on EVENTS_CH[7].LIMITH event.
     NRF_SAADC_INT_CH7LIMITL = SAADC_INTENSET_CH7LIMITL_Msk, ///< Interrupt on EVENTS_CH[7].LIMITL event.
+    NRF_SAADC_INT_ALL       = 0x7FFFFFFFUL                  ///< Mask of all interrupts.
 } nrf_saadc_int_mask_t;
 
 
@@ -494,6 +495,16 @@ __STATIC_INLINE void nrf_saadc_buffer_init(nrf_saadc_value_t * buffer, uint32_t 
 {
     NRF_SAADC->RESULT.PTR = (uint32_t)buffer;
     NRF_SAADC->RESULT.MAXCNT = num;
+}
+
+/**
+ * @brief Function for getting the number of buffer words transferred since last START operation.
+ *
+ * @returns Number of words transferred.
+ */
+__STATIC_INLINE uint16_t nrf_saadc_amount_get(void)
+{
+    return NRF_SAADC->RESULT.AMOUNT;
 }
 
 

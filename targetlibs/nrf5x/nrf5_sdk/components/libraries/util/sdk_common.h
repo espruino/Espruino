@@ -106,6 +106,68 @@ do                                          \
 #define VERIFY_SUCCESS_VOID()
 #endif /* DISABLE_PARAM_CHECK */
 
+
+/**@brief Macro for verifying statement to be true. Will return err_code if not.
+*
+* @param[in]   statement   Statement to test.
+* @param[in]   err_code     Error value to return if test was invalid.
+*
+* @retval      err_code if test fails.
+*/
+#define VERIFY_TRUE(statement, err_code)    \
+do                                          \
+{                                           \
+    if (!(statement))                       \
+    {                                       \
+        return err_code;                    \
+    }                                       \
+} while(0)
+
+
+/**@brief Macro for verifying statement to be true. Will return if not.
+*
+* @param[in]   statement   Statement to test.
+*/
+#define VERIFY_TRUE_VOID(statement)         \
+do                                          \
+{                                           \
+    if (!(statement))                       \
+    {                                       \
+        return;                             \
+    }                                       \
+} while(0)
+
+
+/**@brief Macro for verifying statement to be false. Will return err_code if not.
+*
+* @param[in]   statement   Statement to test.
+* @param[in]   err_code     Error value to return if test was invalid.
+*
+* @retval      err_code if test fails.
+*/
+#define VERIFY_FALSE(statement, err_code)   \
+do                                          \
+{                                           \
+    if ((statement))                        \
+    {                                       \
+        return err_code;                    \
+    }                                       \
+} while(0)
+
+
+/**@brief Macro for verifying statement to be false. Will return if not.
+*
+* @param[in]   statement    Statement to test.
+*/
+#define VERIFY_FALSE_VOID(statement)        \
+do                                          \
+{                                           \
+    if ((statement))                        \
+    {                                       \
+        return;                             \
+    }                                       \
+} while(0)
+
 /** @} */
 /** @endcond */
 #endif // SDK_COMMON_H__

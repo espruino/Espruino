@@ -50,6 +50,10 @@
 #include "ble_gatt.h"
 #include "nrf_svc.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @addtogroup BLE_GATTS_ENUMERATIONS Enumerations
  * @{ */
 
@@ -212,18 +216,6 @@ typedef struct
 } ble_gatts_value_t;
 
 
-/**@brief GATT Attribute Context. */
-typedef struct
-{
-  ble_uuid_t           srvc_uuid;       /**< Service UUID. */
-  ble_uuid_t           char_uuid;       /**< Characteristic UUID if applicable (BLE_UUID_TYPE_UNKNOWN otherwise). */
-  ble_uuid_t           desc_uuid;       /**< Descriptor UUID if applicable (BLE_UUID_TYPE_UNKNOWN otherwise). */
-  uint16_t             srvc_handle;     /**< Service Handle. */
-  uint16_t             value_handle;    /**< Characteristic Value Handle if applicable (BLE_GATT_HANDLE_INVALID otherwise). */
-  uint8_t              type;            /**< Attribute Type, see @ref BLE_GATTS_ATTR_TYPES. */
-} ble_gatts_attr_context_t;
-
-
 /**@brief GATT Characteristic Presentation Format. */
 typedef struct
 {
@@ -298,19 +290,20 @@ typedef struct
 typedef struct
 {
   uint16_t                    handle;             /**< Attribute Handle. */
+  ble_uuid_t                  uuid;               /**< Attribute UUID. */
   uint8_t                     op;                 /**< Type of write operation, see @ref BLE_GATTS_OPS. */
   uint8_t                     auth_required;      /**< Writing operation deferred due to authorization requirement. Application may use @ref sd_ble_gatts_value_set to finalise the writing operation. */
-  ble_gatts_attr_context_t    context;            /**< Attribute Context. */
   uint16_t                    offset;             /**< Offset for the write operation. */
   uint16_t                    len;                /**< Length of the received data. */
-  uint8_t                     data[];             /**< Received data, variable length. */
+  uint8_t                     data[1];            /**< Received data. @note This is a variable length array. The size of 1 indicated is only a placeholder for compilation.
+                                                       See @ref sd_ble_evt_get for more information on how to use event structures with variable length array members. */
 } ble_gatts_evt_write_t;
 
 /**@brief Event substructure for authorized read requests, see @ref ble_gatts_evt_rw_authorize_request_t. */
 typedef struct
 {
   uint16_t                    handle;             /**< Attribute Handle. */
-  ble_gatts_attr_context_t    context;            /**< Attribute Context. */
+  ble_uuid_t                  uuid;               /**< Attribute UUID. */
   uint16_t                    offset;             /**< Offset for the read operation. */
 } ble_gatts_evt_read_t;
 
@@ -581,6 +574,7 @@ SVCALL(SD_BLE_GATTS_HVX, uint32_t, sd_ble_gatts_hvx(uint16_t conn_handle, ble_ga
  *
  * @retval ::NRF_SUCCESS Successfully queued the Service Changed indication for transmission.
  * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid Connection Handle.
+ * @retval ::NRF_ERROR_NOT_SUPPORTED Service Changed not enabled at initialization. See @ref sd_ble_enable and @ref ble_gatts_enable_params_t.
  * @retval ::NRF_ERROR_INVALID_STATE Invalid Connection State or notifications and/or indications not enabled in the CCCD.
  * @retval ::NRF_ERROR_INVALID_PARAM Invalid parameter(s) supplied.
  * @retval ::BLE_ERROR_INVALID_ATTR_HANDLE Invalid attribute handle(s) supplied, handles must be in the range populated by the application.
@@ -718,6 +712,9 @@ SVCALL(SD_BLE_GATTS_ATTR_GET, uint32_t, sd_ble_gatts_attr_get(uint16_t handle, b
 
 /** @} */
 
+#ifdef __cplusplus
+}
+#endif
 #endif // BLE_GATTS_H__
 
 /**

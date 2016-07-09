@@ -46,6 +46,9 @@
 #include "ble_types.h"
 #include "ble_ranges.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** @addtogroup BLE_GATT_DEFINES Defines
  * @{ */
@@ -196,6 +199,9 @@ typedef struct
   uint8_t wr_aux          :1; /**< Writing the Characteristic User Description descriptor permitted. */
 } ble_gatt_char_ext_props_t;
 
+#ifdef __cplusplus
+}
+#endif
 #endif // BLE_GATT_H__
 
 /** @} */

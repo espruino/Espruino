@@ -124,14 +124,17 @@ typedef struct
 {
     uint8_t sck_pin;      ///< SCK pin number.
     uint8_t mosi_pin;     ///< MOSI pin number (optional).
-                          /**< Set @ref NRF_DRV_SPI_PIN_NOT_USED
+                          /**< Set to @ref NRF_DRV_SPI_PIN_NOT_USED
                            *   if this signal is not needed. */
     uint8_t miso_pin;     ///< MISO pin number (optional).
-                          /**< Set @ref NRF_DRV_SPI_PIN_NOT_USED
+                          /**< Set to @ref NRF_DRV_SPI_PIN_NOT_USED
                            *   if this signal is not needed. */
     uint8_t ss_pin;       ///< Slave Select pin number (optional).
-                          /**< Set @ref NRF_DRV_SPI_PIN_NOT_USED
-                           *   if this signal is not needed. */
+                          /**< Set to @ref NRF_DRV_SPI_PIN_NOT_USED
+                           *   if this signal is not needed. The driver 
+                           *   supports only active low for this signal. 
+                           *   If the signal should be active high,
+                           *   it must be controlled externally. */
     uint8_t irq_priority; ///< Interrupt priority.
     uint8_t orc;          ///< Over-run character.
                           /**< This character is used when all bytes from the TX buffer are sent,

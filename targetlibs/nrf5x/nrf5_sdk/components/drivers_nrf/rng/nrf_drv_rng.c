@@ -199,6 +199,37 @@ ret_code_t nrf_drv_rng_rand(uint8_t * p_buff, uint8_t length)
     return result;
 }
 
+ret_code_t nrf_drv_rng_block_rand(uint8_t * p_buff, uint32_t length)
+{
+    uint32_t count = 0, poolsz = 0;
+    ret_code_t result;
+    ASSERT(m_rng_cb.state == NRF_DRV_STATE_INITIALIZED);
+
+    result = nrf_drv_rng_pool_capacity((uint8_t *) &poolsz);
+    if(result != NRF_SUCCESS)
+    {
+        return result;
+    }
+
+    while(length)
+    {
+        uint32_t len = length >= poolsz ? poolsz : length;
+        while((result = nrf_drv_rng_rand(&p_buff[count], len)) != NRF_SUCCESS)
+        {
+#ifndef SOFTDEVICE_PRESENT
+            ASSERT(result == NRF_ERROR_NO_MEM);
+#else
+            ASSERT(result == NRF_ERROR_SOC_RAND_NOT_ENOUGH_VALUES);
+#endif
+        }
+
+        length -= len;
+        count += len;
+    }
+
+    return result;
+}
+
 
 #ifndef SOFTDEVICE_PRESENT
 void RNG_IRQHandler(void)

@@ -22,7 +22,7 @@
  *           Your main application can react to changes in advertising modes
  *           if an event handler is provided.
  *
- * @note     The Advertising Module supports only applications with a single slave link.
+ * @note     The Advertising Module supports only applications with a single peripheral link.
  *
  * The application must propagate BLE stack events to this module by calling
  * @ref ble_advertising_on_ble_evt() and system events by calling

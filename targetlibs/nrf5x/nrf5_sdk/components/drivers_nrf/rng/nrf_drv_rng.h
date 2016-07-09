@@ -70,7 +70,6 @@ void nrf_drv_rng_uninit(void);
  * @param[out] p_bytes_available                    The number of bytes currently available in the pool.
  *
  * @retval     NRF_SUCCESS                          If the number of available random bytes was written to p_bytes_available.
- * @retval     NRF_ERROR_INVALID_STATE              If the driver was not initialized.
  */
 ret_code_t nrf_drv_rng_bytes_available(uint8_t * p_bytes_available);
 
@@ -80,24 +79,36 @@ ret_code_t nrf_drv_rng_bytes_available(uint8_t * p_bytes_available);
  * @param[out] p_pool_capacity                      The capacity of the pool.
  *
  * @retval     NRF_SUCCESS                          If the capacity of the pool was written to p_pool_capacity.
- * @retval     NRF_ERROR_INVALID_STATE              If the driver was not initialized.
  */
 ret_code_t nrf_drv_rng_pool_capacity(uint8_t * p_pool_capacity);
 
 /**
  * @brief Function for getting the vector of random numbers.
  *
- * @param[out] p_buff                               Pointer to unit8_t buffer for storing the bytes.
+ * @param[out] p_buff                               Pointer to uint8_t buffer for storing the bytes.
  * @param[in]  length                               Number of bytes to take from the pool and place in p_buff.
  *
  * @retval     NRF_SUCCESS                          If the requested bytes were written to p_buff.
- * @retval     NRF_ERROR_INVALID_STATE              If the driver was not initialized.
  * @retval     NRF_ERROR_NO_MEM                     If no bytes were written to the buffer
  *                                                  because there were not enough bytes available in p_buff.
  * @retval     NRF_ERROR_SOC_RAND_NOT_ENOUGH_VALUES If no bytes were written to the buffer
  *                                                  because there were not enough bytes available in the pool.
  */
 ret_code_t nrf_drv_rng_rand(uint8_t * p_buff, uint8_t length);
+
+/**
+ * @brief Blocking function for getting an arbitrary array of random numbers.
+ *
+ * @note This function may execute for a substantial amount of time depending on the length of the buffer
+ *       required and on the state of the current internal pool of random numbers.
+ *
+ * @param[out] p_buff                               Pointer to uint8_t buffer for storing the bytes.
+ * @param[in]  length                               Number of bytes place in p_buff.
+ *
+ * @retval     NRF_SUCCESS                          If the requested bytes were written to p_buff.
+ */
+ret_code_t nrf_drv_rng_block_rand(uint8_t * p_buff, uint32_t length);
+
 /**
  *@}
  **/

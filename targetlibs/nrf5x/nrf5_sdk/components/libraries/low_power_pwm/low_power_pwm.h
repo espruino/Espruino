@@ -18,10 +18,11 @@
  *
  * @brief Module for generating a low-power pulse-width modulated output signal.
  *
- * This module provides a low-power PWM implementation using timers and GPIO.
+ * This module provides a low-power PWM implementation using app_timers and GPIO.
  *
- * Each low-power PWM instance utilizes one timer. There can be any 
- * number of output channels per instance.
+ * Each low-power PWM instance utilizes one app_timer. This means it runs on RTC 
+ * and does not require HFCLK to be running. There can be any number of output 
+ * channels per instance.
  */
 
 #ifndef LOW_POWER_PWM_H__
@@ -52,7 +53,7 @@ typedef struct
 {
     bool                    active_high;        /**< Activate negative polarity. */
     uint8_t                 period;             /**< Width of the low_power_pwm period. */
-    uint32_t                bit_mask;           /**< Pins to be toggled. */
+    uint32_t                bit_mask;           /**< Pins to be initialized. */
     app_timer_id_t const *  p_timer_id;         /**< Pointer to the timer ID of low_power_pwm. */
 } low_power_pwm_config_t;
 
@@ -98,7 +99,8 @@ typedef struct
         uint8_t                     period;             /**< Width of the low_power_pwm period. */
         uint8_t                     duty_cycle;         /**< Width of high pulse. */
         nrf_drv_state_t             pwm_state;          /**< Indicates the current state of the PWM instance. */
-        uint32_t                    bit_mask;           /**< Pins to be toggled. */
+        uint32_t                    bit_mask;           /**< Pins to be initialized. */
+        uint32_t                    bit_mask_toggle;    /**< Pins to be toggled. */
         uint32_t                    timeout_ticks;      /**< Value to start the next app_timer. */
         low_power_pwm_evt_type_t    evt_type;           /**< Slope that triggered time-out. */
         app_timer_timeout_handler_t handler;            /**< User handler to be called in the time-out handler. */

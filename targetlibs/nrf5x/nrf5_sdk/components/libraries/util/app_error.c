@@ -27,10 +27,6 @@
 #include "nrf_log.h"
 
 #ifdef DEBUG
-#undef DEBUG // This was set for Espruino build, not Nordic :)
-#endif
-
-#ifdef DEBUG
 #include "bsp.h"
 #endif
 
@@ -44,9 +40,6 @@
  * @param[in] error_code  Error code supplied to the handler.
  * @param[in] line_num    Line number where the handler is called.
  * @param[in] p_file_name Pointer to the file name.
- *
- * Function is implemented as weak so that it can be overwritten by custom application error handler
- * when needed.
  */
 
 /*lint -save -e14 */
@@ -77,32 +70,6 @@ void app_error_handler_bare(ret_code_t error_code)
     UNUSED_VARIABLE(error_info);
 }
 
-
-__WEAK void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
-{
-    // On assert, the system can only recover with a reset.
-#ifndef DEBUG
-    NVIC_SystemReset();
-#else
-
-#ifdef BSP_DEFINES_ONLY
-    LEDS_ON(LEDS_MASK);
-#else
-    UNUSED_VARIABLE(bsp_indication_set(BSP_INDICATE_FATAL_ERROR));
-    // This call can be used for debug purposes during application development.
-    // @note CAUTION: Activating this code will write the stack to flash on an error.
-    //                This function should NOT be used in a final product.
-    //                It is intended STRICTLY for development/debugging purposes.
-    //                The flash write will happen EVEN if the radio is active, thus interrupting
-    //                any communication.
-    //                Use with care. Uncomment the line below to use.
-    //ble_debug_assert_handler(error_code, line_num, p_file_name);
-#endif // BSP_DEFINES_ONLY
-
-    app_error_save_and_stop(id, pc, info);
-
-#endif // DEBUG
-}
 
 void app_error_save_and_stop(uint32_t id, uint32_t pc, uint32_t info)
 {
@@ -153,6 +120,5 @@ void app_error_save_and_stop(uint32_t id, uint32_t pc, uint32_t info)
 
     __enable_irq();
 }
-
 
 /*lint -restore */

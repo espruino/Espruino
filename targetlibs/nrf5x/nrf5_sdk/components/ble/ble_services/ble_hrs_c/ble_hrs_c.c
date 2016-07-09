@@ -18,8 +18,9 @@
 #include "ble_gattc.h"
 #include "app_trace.h"
 #include "sdk_common.h"
+#include "nrf_log.h"
 
-#define LOG                    app_trace_log         /**< Debug logger macro that will be used in this file to do logging of important information over UART. */
+#define LOG                    NRF_LOG_PRINTF_DEBUG  /**< Debug logger macro that will be used in this file to do logging of important information over UART. */
 
 #define HRM_FLAG_MASK_HR_16BIT (0x01 << 0)           /**< Bit mask used to extract the type of heart rate value. This is used to find if the received heart rate is a 16 bit value or an 8 bit value. */
 
@@ -57,7 +58,6 @@ typedef struct
 } tx_message_t;
 
 
-static ble_hrs_c_t * mp_ble_hrs_c;                 /**< Pointer to the current instance of the HRS Client module. The memory for this provided by the application.*/
 static tx_message_t  m_tx_buffer[TX_BUFFER_SIZE];  /**< Transmit buffer for messages to be transmitted to the central. */
 static uint32_t      m_tx_insert_index = 0;        /**< Current index in the transmit buffer where the next message should be inserted. */
 static uint32_t      m_tx_index = 0;               /**< Current index in the transmit buffer from where the next message to be transmitted resides. */
@@ -104,6 +104,11 @@ static void tx_buffer_process(void)
  */
 static void on_write_rsp(ble_hrs_c_t * p_ble_hrs_c, const ble_evt_t * p_ble_evt)
 {
+    // Check if the event if on the link for this instance
+    if (p_ble_hrs_c->conn_handle != p_ble_evt->evt.gattc_evt.conn_handle)
+    {
+        return;
+    }
     // Check if there is any message to be sent across to the peer and send it.
     tx_buffer_process();
 }
@@ -121,13 +126,24 @@ static void on_write_rsp(ble_hrs_c_t * p_ble_hrs_c, const ble_evt_t * p_ble_evt)
  */
 static void on_hvx(ble_hrs_c_t * p_ble_hrs_c, const ble_evt_t * p_ble_evt)
 {
+    // Check if the event is on the link for this instance
+    if (p_ble_hrs_c->conn_handle != p_ble_evt->evt.gattc_evt.conn_handle)
+    {
+        LOG("[HRS_C]: received HVX on link 0x%x, not associated to this instance, ignore\r\n",
+            p_ble_evt->evt.gattc_evt.conn_handle);
+        return;
+    }
+    LOG("[HRS_C]: received HVX on handle 0x%x, hrm_handle 0x%x\r\n",
+        p_ble_evt->evt.gattc_evt.params.hvx.handle,
+        p_ble_hrs_c->peer_hrs_db.hrm_handle);
     // Check if this is a heart rate notification.
-    if (p_ble_evt->evt.gattc_evt.params.hvx.handle == p_ble_hrs_c->hrm_handle)
+    if (p_ble_evt->evt.gattc_evt.params.hvx.handle == p_ble_hrs_c->peer_hrs_db.hrm_handle)
     {
         ble_hrs_c_evt_t ble_hrs_c_evt;
         uint32_t        index = 0;
 
-        ble_hrs_c_evt.evt_type = BLE_HRS_C_EVT_HRM_NOTIFICATION;
+        ble_hrs_c_evt.evt_type    = BLE_HRS_C_EVT_HRM_NOTIFICATION;
+        ble_hrs_c_evt.conn_handle = p_ble_hrs_c->conn_handle;
 
         if (!(p_ble_evt->evt.gattc_evt.params.hvx.data[index++] & HRM_FLAG_MASK_HR_16BIT))
         {
@@ -146,28 +162,40 @@ static void on_hvx(ble_hrs_c_t * p_ble_hrs_c, const ble_evt_t * p_ble_evt)
 }
 
 
-/**@brief     Function for handling events from the database discovery module.
+/**@brief     Function for handling Disconnected event received from the SoftDevice.
  *
- * @details   This function will handle an event from the database discovery module, and determine
- *            if it relates to the discovery of heart rate service at the peer. If so, it will
- *            call the application's event handler indicating that the heart rate service has been
- *            discovered at the peer. It also populates the event with the service related
- *            information before providing it to the application.
+ * @details   This function check if the disconnect event is happening on the link
+ *            associated with the current instance of the module, if so it will set its
+ *            conn_handle to invalid.
  *
- * @param[in] p_evt Pointer to the event received from the database discovery module.
- *
+ * @param[in] p_ble_hrs_c Pointer to the Heart Rate Client structure.
+ * @param[in] p_ble_evt   Pointer to the BLE event received.
  */
-static void db_discover_evt_handler(ble_db_discovery_evt_t * p_evt)
+static void on_disconnected(ble_hrs_c_t * p_ble_hrs_c, const ble_evt_t * p_ble_evt)
+{
+    if (p_ble_hrs_c->conn_handle == p_ble_evt->evt.gap_evt.conn_handle)
+    {
+        p_ble_hrs_c->conn_handle                 = BLE_CONN_HANDLE_INVALID;
+        p_ble_hrs_c->peer_hrs_db.hrm_cccd_handle = BLE_GATT_HANDLE_INVALID;
+        p_ble_hrs_c->peer_hrs_db.hrm_handle      = BLE_GATT_HANDLE_INVALID;
+    }
+}
+
+
+void ble_hrs_on_db_disc_evt(ble_hrs_c_t * p_ble_hrs_c, const ble_db_discovery_evt_t * p_evt)
 {
     // Check if the Heart Rate Service was discovered.
     if (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE &&
         p_evt->params.discovered_db.srv_uuid.uuid == BLE_UUID_HEART_RATE_SERVICE &&
         p_evt->params.discovered_db.srv_uuid.type == BLE_UUID_TYPE_BLE)
     {
-        mp_ble_hrs_c->conn_handle = p_evt->conn_handle;
-
         // Find the CCCD Handle of the Heart Rate Measurement characteristic.
         uint32_t i;
+
+        ble_hrs_c_evt_t evt;
+
+        evt.evt_type    = BLE_HRS_C_EVT_DISCOVERY_COMPLETE;
+        evt.conn_handle = p_evt->conn_handle;
 
         for (i = 0; i < p_evt->params.discovered_db.char_count; i++)
         {
@@ -175,21 +203,27 @@ static void db_discover_evt_handler(ble_db_discovery_evt_t * p_evt)
                 BLE_UUID_HEART_RATE_MEASUREMENT_CHAR)
             {
                 // Found Heart Rate characteristic. Store CCCD handle and break.
-                mp_ble_hrs_c->hrm_cccd_handle =
+                evt.params.peer_db.hrm_cccd_handle =
                     p_evt->params.discovered_db.charateristics[i].cccd_handle;
-                mp_ble_hrs_c->hrm_handle      =
+                evt.params.peer_db.hrm_handle =
                     p_evt->params.discovered_db.charateristics[i].characteristic.handle_value;
                 break;
             }
         }
 
         LOG("[HRS_C]: Heart Rate Service discovered at peer.\r\n");
+        //If the instance has been assigned prior to db_discovery, assign the db_handles
+        if(p_ble_hrs_c->conn_handle != BLE_CONN_HANDLE_INVALID)
+        {
+            if ((p_ble_hrs_c->peer_hrs_db.hrm_cccd_handle == BLE_GATT_HANDLE_INVALID)&&
+                (p_ble_hrs_c->peer_hrs_db.hrm_handle == BLE_GATT_HANDLE_INVALID))
+            {
+                p_ble_hrs_c->peer_hrs_db = evt.params.peer_db;
+            }
+        }
 
-        ble_hrs_c_evt_t evt;
 
-        evt.evt_type = BLE_HRS_C_EVT_DISCOVERY_COMPLETE;
-
-        mp_ble_hrs_c->evt_handler(mp_ble_hrs_c, &evt);
+        p_ble_hrs_c->evt_handler(p_ble_hrs_c, &evt);
     }
 }
 
@@ -204,14 +238,13 @@ uint32_t ble_hrs_c_init(ble_hrs_c_t * p_ble_hrs_c, ble_hrs_c_init_t * p_ble_hrs_
     hrs_uuid.type = BLE_UUID_TYPE_BLE;
     hrs_uuid.uuid = BLE_UUID_HEART_RATE_SERVICE;
 
-    mp_ble_hrs_c = p_ble_hrs_c;
 
-    mp_ble_hrs_c->evt_handler     = p_ble_hrs_c_init->evt_handler;
-    mp_ble_hrs_c->conn_handle     = BLE_CONN_HANDLE_INVALID;
-    mp_ble_hrs_c->hrm_cccd_handle = BLE_GATT_HANDLE_INVALID;
+    p_ble_hrs_c->evt_handler                 = p_ble_hrs_c_init->evt_handler;
+    p_ble_hrs_c->conn_handle                 = BLE_CONN_HANDLE_INVALID;
+    p_ble_hrs_c->peer_hrs_db.hrm_cccd_handle = BLE_GATT_HANDLE_INVALID;
+    p_ble_hrs_c->peer_hrs_db.hrm_handle      = BLE_GATT_HANDLE_INVALID;
 
-    return ble_db_discovery_evt_register(&hrs_uuid,
-                                         db_discover_evt_handler);
+    return ble_db_discovery_evt_register(&hrs_uuid);
 }
 
 
@@ -224,16 +257,16 @@ void ble_hrs_c_on_ble_evt(ble_hrs_c_t * p_ble_hrs_c, const ble_evt_t * p_ble_evt
 
     switch (p_ble_evt->header.evt_id)
     {
-        case BLE_GAP_EVT_CONNECTED:
-            p_ble_hrs_c->conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-            break;
-
         case BLE_GATTC_EVT_HVX:
             on_hvx(p_ble_hrs_c, p_ble_evt);
             break;
 
         case BLE_GATTC_EVT_WRITE_RSP:
             on_write_rsp(p_ble_hrs_c, p_ble_evt);
+            break;
+
+        case BLE_GAP_EVT_DISCONNECTED:
+            on_disconnected(p_ble_hrs_c, p_ble_evt);
             break;
 
         default:
@@ -274,9 +307,25 @@ uint32_t ble_hrs_c_hrm_notif_enable(ble_hrs_c_t * p_ble_hrs_c)
 {
     VERIFY_PARAM_NOT_NULL(p_ble_hrs_c);
 
-    return cccd_configure(p_ble_hrs_c->conn_handle, p_ble_hrs_c->hrm_cccd_handle, true);
+    return cccd_configure(p_ble_hrs_c->conn_handle,
+                          p_ble_hrs_c->peer_hrs_db.hrm_cccd_handle,
+                          true);
 }
 
+
+uint32_t ble_hrs_c_handles_assign(ble_hrs_c_t * p_ble_hrs_c,
+                                  uint16_t conn_handle,
+                                  const hrs_db_t * p_peer_hrs_handles)
+{
+    VERIFY_PARAM_NOT_NULL(p_ble_hrs_c);
+
+    p_ble_hrs_c->conn_handle = conn_handle;
+    if (p_peer_hrs_handles != NULL)
+    {
+        p_ble_hrs_c->peer_hrs_db = *p_peer_hrs_handles;
+    }
+    return NRF_SUCCESS;
+}
 /** @}
  *  @endcond
  */

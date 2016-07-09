@@ -28,6 +28,8 @@
 #include "nrf.h"
 #include "sdk_errors.h"
 #include "nordic_common.h"
+#include "nrf_log.h"
+#include "app_error_weak.h"
 
 #define NRF_FAULT_ID_SDK_RANGE_START 0x00004000 /**< The start of the range of error IDs defined in the SDK. */
 
@@ -68,22 +70,6 @@ void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p
  */
 void app_error_handler_bare(ret_code_t error_code);
 
-/**@brief       Callback function for asserts in the SoftDevice.
- *
- * @details     A pointer to this function will be passed to the SoftDevice. This function will be
- *              called by the SoftDevice if certain unrecoverable errors occur within the
- *              application or SoftDevice.
- *
- *              See @ref nrf_fault_handler_t for more details.
- *
- * @param[in] id    Fault identifier. See @ref NRF_FAULT_IDS.
- * @param[in] pc    The program counter of the instruction that triggered the fault, or 0 if
- *                  unavailable.
- * @param[in] info  Optional additional information regarding the fault. Refer to each fault
- *                  identifier for details.
- */
-void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info);
-
 /**@brief       Function for saving the parameters and entering an eternal loop, for debug purposes.
  *
  * @param[in] id    Fault identifier. See @ref NRF_FAULT_IDS.
@@ -93,6 +79,43 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info);
  *                  identifier for details.
  */
 void app_error_save_and_stop(uint32_t id, uint32_t pc, uint32_t info);
+
+/**@brief       Function for printing all error info (using nrf_log).
+ *
+ * @details     Nrf_log library must be initialized using NRF_LOG_INIT macro before calling
+ *              this function.
+ *
+ * @param[in] id    Fault identifier. See @ref NRF_FAULT_IDS.
+ * @param[in] pc    The program counter of the instruction that triggered the fault, or 0 if
+ *                  unavailable.
+ * @param[in] info  Optional additional information regarding the fault. Refer to each fault
+ *                  identifier for details.
+ */
+static __INLINE void app_error_log(uint32_t id, uint32_t pc, uint32_t info)
+{
+    switch (id)
+    {
+        case NRF_FAULT_ID_SDK_ASSERT:
+            NRF_LOG(NRF_LOG_COLOR_RED "\n*** ASSERTION FAILED ***\n");
+            if (((assert_info_t *)(info))->p_file_name)
+            {
+                NRF_LOG_PRINTF(NRF_LOG_COLOR_WHITE "Line Number: %u\n", (unsigned int) ((assert_info_t *)(info))->line_num);
+                NRF_LOG_PRINTF("File Name:   %s\n", ((assert_info_t *)(info))->p_file_name);
+            }
+            NRF_LOG_PRINTF(NRF_LOG_COLOR_DEFAULT "\n");
+            break;
+
+        case NRF_FAULT_ID_SDK_ERROR:
+            NRF_LOG(NRF_LOG_COLOR_RED "\n*** APPLICATION ERROR *** \n" NRF_LOG_COLOR_WHITE);
+            if (((error_info_t *)(info))->p_file_name)
+            {
+                NRF_LOG_PRINTF("Line Number: %u\n", (unsigned int) ((error_info_t *)(info))->line_num);
+                NRF_LOG_PRINTF("File Name:   %s\n", ((error_info_t *)(info))->p_file_name);
+            }
+            NRF_LOG_PRINTF("Error Code:  0x%X\n" NRF_LOG_COLOR_DEFAULT "\n", (unsigned int) ((error_info_t *)(info))->err_code);
+            break;
+    }
+}
 
 /**@brief       Function for printing all error info (using printf).
  *

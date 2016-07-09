@@ -48,6 +48,13 @@
 #include "nrf_svc.h"
 #include <stdint.h>
 
+#ifndef NRF51
+#error "This header file shall only be included for nRF51 projects"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** @addtogroup NRF_MBR_DEFINES Defines
  * @{ */
@@ -58,6 +65,10 @@
 /**@brief Page size in words. */
 #define PAGE_SIZE_IN_WORDS 256
 /** @} */
+
+/** @brief The size that must be reserved for the MBR when a softdevice is written to flash.
+This is the offset where the first byte of the softdevice hex file is written.*/
+#define MBR_SIZE                (0x1000)
 
 /** @addtogroup NRF_MBR_ENUMS Enumerations
  * @{ */
@@ -178,6 +189,9 @@ typedef struct
 SVCALL(SD_MBR_COMMAND, uint32_t, sd_mbr_command(sd_mbr_command_t* param));
 
 /** @} */
+#ifdef __cplusplus
+}
+#endif
 #endif // NRF_MBR_H__
 
 /**

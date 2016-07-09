@@ -54,7 +54,7 @@ typedef enum
     BLE_CONN_STATUS_CONNECTED,     /**< The connection handle refers to an active connection. */
 } ble_conn_state_status_t;
 
-#define BLE_CONN_STATE_N_USER_FLAGS 16  /**< The number of available user flags. */
+#define BLE_CONN_STATE_N_USER_FLAGS 24  /**< The number of available user flags. */
 
 
 /**@brief One ID for each user flag collection.
@@ -79,6 +79,14 @@ typedef enum
     BLE_CONN_STATE_USER_FLAG13,
     BLE_CONN_STATE_USER_FLAG14,
     BLE_CONN_STATE_USER_FLAG15,
+    BLE_CONN_STATE_USER_FLAG16,
+    BLE_CONN_STATE_USER_FLAG17,
+    BLE_CONN_STATE_USER_FLAG18,
+    BLE_CONN_STATE_USER_FLAG19,
+    BLE_CONN_STATE_USER_FLAG20,
+    BLE_CONN_STATE_USER_FLAG21,
+    BLE_CONN_STATE_USER_FLAG22,
+    BLE_CONN_STATE_USER_FLAG23,
     BLE_CONN_STATE_USER_FLAG_INVALID,
 } ble_conn_state_user_flag_id_t;
 

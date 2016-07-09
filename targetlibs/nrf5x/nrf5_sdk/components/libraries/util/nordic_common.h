@@ -18,9 +18,9 @@
 
 /** The upper 8 bits of a 32 bit value */
 //lint -emacro(572,MSB) // Suppress warning 572 "Excessive shift value"
-#define MSB(a) (((a) & 0xFF000000) >> 24)
+#define MSB_32(a) (((a) & 0xFF000000) >> 24)
 /** The lower 8 bits (of a 32 bit value) */
-#define LSB(a) ((a) & 0x000000FF)
+#define LSB_32(a) ((a) & 0x000000FF)
 
 /** The upper 8 bits of a 16 bit value */
 //lint -emacro(572,MSB_16) // Suppress warning 572 "Excessive shift value"
@@ -103,5 +103,6 @@
 
 #define UNUSED_VARIABLE(X)  ((void)(X))
 #define UNUSED_PARAMETER(X) UNUSED_VARIABLE(X)
+#define UNUSED_RETURN_VALUE(X) UNUSED_VARIABLE(X)
 
 #endif // NORDIC_COMMON_H__
