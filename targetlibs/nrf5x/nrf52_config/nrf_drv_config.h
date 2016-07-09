@@ -31,7 +31,7 @@
 
 #if (CLOCK_ENABLED == 1)
 #define CLOCK_CONFIG_XTAL_FREQ          NRF_CLOCK_XTALFREQ_Default
-#define CLOCK_CONFIG_LF_SRC             NRF_CLOCK_LF_SRC_Xtal
+#define CLOCK_CONFIG_LF_SRC             NRF_CLOCK_LF_SRC_RC /* TODO: This should be external crystal if available on board. */
 #define CLOCK_CONFIG_IRQ_PRIORITY       APP_IRQ_PRIORITY_LOW
 #endif
 

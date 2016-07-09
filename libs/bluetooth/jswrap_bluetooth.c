@@ -767,7 +767,7 @@ static void ble_stack_init(void)
     
     // Initialize SoftDevice.
     // SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL); // Maybe we should use this if external crystal available.
-    SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_8000MS_CALIBRATION, false);
+    SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LF_SRC_RC, false);
     
     ble_enable_params_t ble_enable_params;
     err_code = softdevice_enable_get_default_config(CENTRAL_LINK_COUNT,
