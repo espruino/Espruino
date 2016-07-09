@@ -292,6 +292,24 @@ void user_rf_pre_init() {
 }
 
 /**
+ * user_rf_cal_sector_set is a required function that is called by the SDK to get a flash
+ * sector number where it can store RF calibration data. This was introduced with SDK 1.5.4.1
+ * and is necessary because Espressif ran out of pre-reserved flash sectors. Ooops...
+ */
+uint32
+user_rf_cal_sector_set(void) {
+  uint32_t sect = 0;
+  switch (system_get_flash_size_map()) {
+  case FLASH_SIZE_4M_MAP_256_256: // 512KB
+    sect = 128 - 10; // 0x76000
+  default:
+    sect = 128; // 0x80000
+  }
+  os_printf("RF cal sect %ld=0x%lx\n", sect, sect<<12);
+  return sect;
+}
+
+/**
  * The main entry point in an ESP8266 application.
  * It is where the logic of ESP8266 starts.
  */
@@ -309,6 +327,7 @@ void user_init() {
   os_printf("Variables: %d @%dea = %dbytes\n", JSVAR_CACHE_SIZE, sizeof(JsVar),
       JSVAR_CACHE_SIZE * sizeof(JsVar));
   os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
+  user_rf_cal_sector_set(); // to get its printout
 
   espFlashKB = flash_kb[system_get_flash_size_map()];
 

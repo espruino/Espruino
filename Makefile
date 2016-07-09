@@ -564,7 +564,7 @@ else
 # DISABLE_LTO is necessary in order to analyze static string sizes (see: topstring makefile target)
 OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 endif
-ESP_FLASH_MAX       ?= 491520   # max bin file: 480KB
+ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 
 ifdef FLASH_4MB
 ESP_FLASH_SIZE      ?= 4        # 4->4MB (512KB+512KB)
@@ -1490,7 +1490,7 @@ ifeq ($(FAMILY),ESP8266)
 DEFINES += -DUSE_OPTIMIZE_PRINTF
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_US_TIMER
 ESP8266=1
-LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain -lpwm -lcrypto
+LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain -lpwm -lcrypto
 CFLAGS+= -fno-builtin \
 -Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
 -Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
