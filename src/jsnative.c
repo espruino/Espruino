@@ -239,18 +239,18 @@ int32_t sanity_int_flt_int(int32_t a, JsVarFloat b, int32_t c) {
 void jsnSanityTest() {
   JsVar *args[4];
   if (jsvGetFloatAndUnLock(jsnCallFunction(sanity_pi, JSWAT_JSVARFLOAT, 0, 0, 0)) != 3.141592)
-    jsiConsolePrint("WARNING: jsnative.c sanity check failed (returning double values)");
+    jsiConsolePrint("WARNING: jsnative.c sanity check failed (returning double values)\n");
 
   args[0] = jsvNewFromInteger(1234);
   if (jsvGetIntegerAndUnLock(jsnCallFunction(sanity_int_pass, JSWAT_INT32|(JSWAT_INT32<<JSWAT_BITS), 0, args, 1)) != 12345)
-      jsiConsolePrint("WARNING: jsnative.c sanity check failed (simple integer passing)");
+      jsiConsolePrint("WARNING: jsnative.c sanity check failed (simple integer passing)\n");
   jsvUnLock(args[0]);
 
   args[0] = jsvNewFromInteger(56);
   args[1] = jsvNewFromFloat(34);
   args[2] = jsvNewFromInteger(12);
   if (jsvGetIntegerAndUnLock(jsnCallFunction(sanity_int_flt_int, JSWAT_INT32|(JSWAT_INT32<<(JSWAT_BITS*1))|(JSWAT_JSVARFLOAT<<(JSWAT_BITS*2))|(JSWAT_INT32<<(JSWAT_BITS*3)), 0, args, 3)) != 123456)
-      jsiConsolePrint("WARNING: jsnative.c sanity check failed (int-float-int passing)");
+      jsiConsolePrint("WARNING: jsnative.c sanity check failed (int-float-int passing)\n");
   jsvUnLockMany(3, args);
 }
 

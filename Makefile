@@ -1309,7 +1309,10 @@ ifeq ($(FAMILY), NRF52)
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
-  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16 # Use nRF52 makefiles provided in SDK as reference.
+  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mlittle-endian -mfpu=fpv4-sp-d16 # compile flags as used for Pico
+  # Below are the flags used by nRF52 makefiles. This breaks the argument packing done by jsnative.c on newer GCC versions
+  # Compile with 'DEBUG=1 NRF52832DK=1 make', and check whether you get warnings at startup 
+  #ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
  
   # nRF52 specific.
   INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf52_config
