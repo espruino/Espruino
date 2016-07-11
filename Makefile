@@ -471,7 +471,9 @@ BOARD=NRF52832DK
 OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
 DEFINES += -DBOARD_PCA10040
-# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
+
+# Uncomment to build Espruino to be transferred over DFU instead of flashed to the device.
+#DFU_UPDATE_BUILD=1
 
 else ifdef PUCKJS
 EMBEDDED=1
@@ -625,10 +627,10 @@ ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
 USE_WIRINGPI=1
 else
 DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
-$(info *************************************************************)
-$(info *  WIRINGPI NOT FOUND, and you probably want it             *)
-$(info *  see  http://wiringpi.com/download-and-install/           *)
-$(info *************************************************************)
+#$(info *************************************************************)
+#$(info *  WIRINGPI NOT FOUND, and you probably want it             *)
+#$(info *  see  http://wiringpi.com/download-and-install/           *)
+#$(info *************************************************************)
 endif
 
 else ifdef BEAGLEBONE
@@ -1321,13 +1323,12 @@ ifeq ($(FAMILY), NRF52)
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0_softdevice.hex
 
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld # TODO: Should have separate linkers like is done in nrf_bootloader branch.
+
   ifdef USE_BOOTLOADER
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
   NFR_BL_START_ADDR = 0x7A000
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
-  else
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
   endif
 endif #FAMILY == NRF52
 
