@@ -1293,7 +1293,7 @@ ifeq ($(FAMILY), NRF51)
   ifdef USE_BOOTLOADER
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
-  NFR_BL_START_ADDR = 0x3C000
+  NFR_BL_START_ADDR = 0x3C000# see dfu_gcc_nrf51.ld
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex # This file writes 0x3FC00 with 0x01 so we can flash the application with the bootloader.
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
@@ -1323,7 +1323,7 @@ ifeq ($(FAMILY), NRF52)
 
   ifdef USE_BOOTLOADER  
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
-  NFR_BL_START_ADDR = 0x7A000
+  NFR_BL_START_ADDR = 0x7A000# see dfu_gcc_nrf52.ld
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
@@ -1513,6 +1513,7 @@ ifdef NRF5X
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/experimental/dfu_init_template_signing.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
   endif 
   endif
@@ -2001,9 +2002,13 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
   ifdef DFU_UPDATE_BUILD
 	echo Not merging softdevice or bootloader with application
   else
+  ifdef BOOTLOADER
+	echo Raw bootloader - not merging
+  else
 	echo Merging SoftDevice and Bootloader
 	scripts/hexmerge.py $(SOFTDEVICE) $(NRF_BOOTLOADER):$(NFR_BL_START_ADDR): $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
+  endif
   endif
  else
 	echo Merging SoftDevice
@@ -2023,7 +2028,11 @@ ifndef TRAVIS
 	bash scripts/check_size.sh $(PROJ_NAME).bin
 endif
 
+ifdef NRF5X
+proj: $(PROJ_NAME).lst $(PROJ_NAME).hex
+else
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
+endif
 
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
