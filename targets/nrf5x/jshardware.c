@@ -66,7 +66,8 @@ BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 /// For flash - whether it is busy or not...
 volatile bool flashIsBusy = false;
 volatile bool hadEvent = false; // set if we've had an event we need to deal with
-
+bool uartIsSending = false;
+bool uartInitialised = false;
 
 /// Called when we have had an event that means we should execute JS
 void jshHadEvent() {
@@ -124,12 +125,16 @@ void jshInit() {
 
   BITFIELD_CLEAR(jshPinSoftPWM);
 
-  JshUSARTInfo inf;
-  jshUSARTInitInfo(&inf);
-  inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
-  inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
-  inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
-  jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
+  // Only init UART if something is connected and RX is pulled up on boot...
+  jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+  if (jshPinGetValue(DEFAULT_CONSOLE_RX_PIN)) {
+    JshUSARTInfo inf;
+    jshUSARTInitInfo(&inf);
+    inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
+    inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
+    inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
+    jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
+  }
 
   init = 1;
 
@@ -523,9 +528,6 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   return false;
 }
 
-bool uartIsSending = false;
-bool uartInitialised = false;
-
 void uart0_event_handle(app_uart_evt_t * p_event) {
   jshHadEvent();
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
@@ -571,6 +573,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
                 APP_IRQ_PRIORITY_HIGH,
                 err_code);
   APP_ERROR_CHECK(err_code);
+  uartInitialised = true;
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
@@ -584,15 +587,22 @@ void jshUSARTKick(IOEventFlags device) {
     jswrap_nrf_transmit_string();
   }
   
-  if (device == EV_SERIAL1 && !uartIsSending) {
-    jshInterruptOff();
-    int ch = jshGetCharToTransmit(EV_SERIAL1);
-    if (ch >= 0) {
-      // put data - this will kick off the USART
-      while (app_uart_put((uint8_t)ch) != NRF_SUCCESS);
-      uartIsSending = true;
+  if (device == EV_SERIAL1) {
+    if (uartInitialised) {
+      if (!uartIsSending) {
+        jshInterruptOff();
+        int ch = jshGetCharToTransmit(EV_SERIAL1);
+        if (ch >= 0) {
+          // put data - this will kick off the USART
+          while (app_uart_put((uint8_t)ch) != NRF_SUCCESS);
+          uartIsSending = true;
+        }
+        jshInterruptOn();
+      }
+    } else {
+      // UART not initialised yet - just drain
+      while (jshGetCharToTransmit(EV_SERIAL1)>=0);
     }
-    jshInterruptOn();
   }
 }
 
@@ -721,7 +731,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   //jsiConsolePrintf("\njshFlashWrite 0x%x addr 0x%x -> 0x%x, len %d\n", *(uint32_t*)buf, (uint32_t)buf, addr, len);
   uint32_t err;
   flashIsBusy = true;
-  while ((err = sd_flash_write(addr, (uint8_t *)buf, len>>2)) == NRF_ERROR_BUSY);
+  while ((err = sd_flash_write((uint32_t*)addr, (uint32_t *)buf, len>>2)) == NRF_ERROR_BUSY);
   if (err!=NRF_SUCCESS) flashIsBusy = false;
   WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
   /*if (err!=NRF_SUCCESS)
@@ -760,7 +770,6 @@ bool utilTimerActive = false;
 
 /// Reschedule the timer (it should already be running) to interrupt after 'period'
 void jshUtilTimerReschedule(JsSysTime period) {
-  JsSysTime t = period;
   if (period < JSSYSTIME_MAX / NRF_TIMER_FREQ) {
     period = period * NRF_TIMER_FREQ / (long long)SYSCLK_FREQ;
     if (period < 1) period=1;
