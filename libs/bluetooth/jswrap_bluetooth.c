@@ -998,7 +998,7 @@ void jswrap_nrf_bluetooth_sleep(void) {
 Enable Bluetooth communications (they are enabled by default)
 */
 void jswrap_nrf_bluetooth_wake(void) {
-  NRF_RADIO->TASKS_DISABLE = (0UL);
+  // NRF_RADIO->TASKS_DISABLE = (0UL); // BUG: This was causing a hardfault.
   jswrap_nrf_bluetooth_startAdvertise();
 }
 
