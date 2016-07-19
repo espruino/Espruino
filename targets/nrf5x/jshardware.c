@@ -24,7 +24,10 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
+#ifdef BLUETOOTH
 #include "jswrap_bluetooth.h"
+#include "app_timer.h"
+#endif
 
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
@@ -33,6 +36,7 @@
 #include "nrf_temp.h"
 #include "nrf_timer.h"
 #include "app_uart.h"
+#include "nrf_drv_uart.h"
 
 #ifdef NRF52
 #include "nrf_saadc.h"
@@ -61,11 +65,13 @@ static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 /// For flash - whether it is busy or not...
 volatile bool flashIsBusy = false;
+volatile bool hadEvent = false; // set if we've had an event we need to deal with
 
 
 void TIMER1_IRQHandler(void) {
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_event_clear(NRF_TIMER1, NRF_TIMER_EVENT_COMPARE0);
+  hadEvent = true;
   jstUtilTimerInterruptHandler();
 }
 
@@ -98,23 +104,32 @@ unsigned int getNRFBaud(int baud) {
   }
 }
 
+#ifdef BLUETOOTH
+APP_TIMER_DEF(m_wakeup_timer_id);
+
+void wakeup_handler() {
+  // don't do anything - just waking is enough for us
+  hadEvent = true;
+}
+#endif
 
 void jshInit() {
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
 
   BITFIELD_CLEAR(jshPinSoftPWM);
-    
+
   JshUSARTInfo inf;
   jshUSARTInitInfo(&inf);
   inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
   inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
   inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
+
   init = 1;
 
   // Enable and sort out the timer
-  nrf_timer_mode_set(NRF_TIMER1,NRF_TIMER_MODE_TIMER);
+  nrf_timer_mode_set(NRF_TIMER1, NRF_TIMER_MODE_TIMER);
 #ifdef NRF52
   nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
   nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz);
@@ -136,7 +151,14 @@ void jshInit() {
 
   // Pin change
   nrf_drv_gpiote_init();
+#ifdef BLUETOOTH
   jswrap_nrf_bluetooth_init();
+
+  uint32_t err_code = app_timer_create(&m_wakeup_timer_id,
+                      APP_TIMER_MODE_SINGLE_SHOT,
+                      wakeup_handler);
+  if (err_code) jsiConsolePrintf("app_timer_create error %d\n", err_code);
+#endif
   
   // Softdevice is initialised now
   softdevice_sys_evt_handler_set(sys_evt_handler);
@@ -500,6 +522,7 @@ bool uartIsSending = false;
 bool uartInitialised = false;
 
 void uart0_event_handle(app_uart_evt_t * p_event) {
+  hadEvent = true;
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
     jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
   } else if (p_event->evt_type == APP_UART_TX_EMPTY) {
@@ -650,8 +673,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
-bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
-{
+bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
   if (addr > (NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE))
     return false;
   *startAddr = (uint32_t) (floor(addr / NRF_FICR->CODEPAGESIZE) * NRF_FICR->CODEPAGESIZE);
@@ -706,11 +728,26 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 bool jshSleep(JsSysTime timeUntilWake) {
   /* Wake ourselves up if we're supposed to, otherwise if we're not waiting for
    any particular time, just sleep. */
-  if (timeUntilWake < JSSYSTIME_MAX)
+  if (timeUntilWake < JSSYSTIME_MAX) {
+#ifdef BLUETOOTH
+    uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake), APP_TIMER_PRESCALER);
+    if (ticks<1) return false;
+    uint32_t err_code = app_timer_start(m_wakeup_timer_id, ticks, NULL);
+    if (err_code) jsiConsolePrintf("app_timer_start error %d\n", err_code);
+#else
     jstSetWakeUp(timeUntilWake);
-  jsiSetSleep(JSI_SLEEP_ASLEEP);
-  sd_app_evt_wait(); // Go to sleep, wait to be woken up
-  jsiSetSleep(JSI_SLEEP_AWAKE);
+#endif
+  }
+  hadEvent = false;
+  while (!hadEvent) {
+    jsiSetSleep(JSI_SLEEP_ASLEEP);
+    sd_app_evt_wait(); // Go to sleep, wait to be woken up
+    jsiSetSleep(JSI_SLEEP_AWAKE);
+  }
+#ifdef BLUETOOTH
+  // we don't care about the return codes...
+  app_timer_stop(m_wakeup_timer_id);
+#endif
   return true;
 }
 

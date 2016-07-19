@@ -67,7 +67,6 @@
 // We want to listen as much of the time as possible. Not sure if 100/100 is feasible (50/100 is what's used in examples),
 // but it seems to work fine like this.
 
-#define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 #define APP_TIMER_OP_QUEUE_SIZE         1                                           /**< Size of timer operation queues. */
 
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(7.5, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (7.5 ms), Connection interval uses 1.25 ms units. */

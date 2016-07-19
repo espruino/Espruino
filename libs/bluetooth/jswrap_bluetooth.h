@@ -13,6 +13,10 @@
  */
 #include "jspin.h"
 
+
+#define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
+
+
 // public static methods.
 void jswrap_nrf_bluetooth_init(void);
 
