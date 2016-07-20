@@ -68,10 +68,15 @@ volatile bool flashIsBusy = false;
 volatile bool hadEvent = false; // set if we've had an event we need to deal with
 
 
+/// Called when we have had an event that means we should execute JS
+void jshHadEvent() {
+  hadEvent = true;
+}
+
 void TIMER1_IRQHandler(void) {
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_event_clear(NRF_TIMER1, NRF_TIMER_EVENT_COMPARE0);
-  hadEvent = true;
+  jshHadEvent();
   jstUtilTimerInterruptHandler();
 }
 
@@ -109,7 +114,7 @@ APP_TIMER_DEF(m_wakeup_timer_id);
 
 void wakeup_handler() {
   // don't do anything - just waking is enough for us
-  hadEvent = true;
+  jshHadEvent();
 }
 #endif
 
@@ -522,7 +527,7 @@ bool uartIsSending = false;
 bool uartInitialised = false;
 
 void uart0_event_handle(app_uart_evt_t * p_event) {
-  hadEvent = true;
+  jshHadEvent();
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
     jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
   } else if (p_event->evt_type == APP_UART_TX_EMPTY) {

@@ -41,7 +41,6 @@
 #endif
 
 
-
 #ifdef NRF52
 // nRF52 gets the ability to connect to other
 #define CENTRAL_LINK_COUNT              1                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
@@ -118,6 +117,11 @@ static volatile BLEStatus bleStatus;
 
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 #define BLE_WRITE_EVENT                 JS_EVENT_PREFIX"blew"
+
+
+/// Called when we have had an event that means we should execute JS
+extern void jshHadEvent();
+
 
 bool jswrap_nrf_transmit_string();
 
@@ -310,12 +314,10 @@ static void gap_params_init(void)
  * @param[in] length   Length of the data.
  */
 /**@snippet [Handling the data received over BLE] */
-static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
-{
+static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length) {
     uint32_t i;
-    for (i = 0; i < length; i++) {
-      jshPushIOCharEvent(EV_BLUETOOTH, (char) p_data[i]);
-    }
+    jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_data, length);
+    jshHadEvent();
 }
 
 bool jswrap_nrf_transmit_string() {
@@ -386,12 +388,10 @@ static void services_init(void)
  *
  * @param[in] p_evt  Event received from the Connection Parameters Module.
  */
-static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
-{
+static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
     uint32_t err_code;
     
-    if(p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)
-    {
+    if(p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED) {
         err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
         APP_ERROR_CHECK(err_code);
     }
@@ -402,16 +402,14 @@ static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
  *
  * @param[in] nrf_error  Error code containing information about what went wrong.
  */
-static void conn_params_error_handler(uint32_t nrf_error)
-{
+static void conn_params_error_handler(uint32_t nrf_error) {
     APP_ERROR_HANDLER(nrf_error);
 }
 
 
 /**@brief Function for initializing the Connection Parameters module.
  */
-static void conn_params_init(void)
-{
+static void conn_params_init(void) {
     uint32_t               err_code;
     ble_conn_params_init_t cp_init;
     
@@ -576,11 +574,13 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
           if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(EV_BLUETOOTH, false);
+          jshHadEvent();
         }
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", 0);
+          jshHadEvent();
         }
 #endif
         break;
@@ -590,6 +590,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", 0);
+          jshHadEvent();
           break;
         }
 #endif
@@ -597,6 +598,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, 0);
         // restart advertising after disconnection
         jswrap_nrf_bluetooth_startAdvertise();
+        jshHadEvent();
         break;
 
       case BLE_GATTS_EVT_SYS_ATTR_MISSING:
@@ -629,6 +631,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           }
           jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
           jsvUnLock(evt);
+          jshHadEvent();
         }
         break;
         }
@@ -649,6 +652,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           ble_handle_to_write_event_name(eventName, p_evt_write->handle);
           jsiQueueObjectCallbacks(execInfo.root, eventName, &evt, 1);
           jsvUnLock(evt);
+          jshHadEvent();
         }
         break;
       }
@@ -685,6 +689,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             // When done, sent the result to the handler
             bleQueueEventAndUnLock(JS_EVENT_PREFIX"servicesDiscover", srvcs);
             jsvObjectSetChild(execInfo.hiddenRoot, "bleSvcs", 0);
+            jshHadEvent();
           }
         } // else error
         break;
@@ -705,6 +710,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           }
         }
         bleQueueEventAndUnLock(JS_EVENT_PREFIX"characteristicsDiscover", chars);
+        jshHadEvent();
         break;
       }
       case BLE_GATTC_EVT_DESC_DISC_RSP:
