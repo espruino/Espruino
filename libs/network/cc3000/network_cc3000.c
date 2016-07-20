@@ -32,7 +32,7 @@ typedef int SOCKET;
  #define MSG_NOSIGNAL 0x4000 /* don't raise SIGPIPE */ // IGNORED ANYWAY!
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void net_cc3000_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
+void net_cc3000_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   gethostbyname(hostName, strlen(hostName), out_ip_addr);
   *out_ip_addr = networkFlipIPAddress(*out_ip_addr);
 }
@@ -74,7 +74,7 @@ bool net_cc3000_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_cc3000_createsocket(JsNetwork *net, unsigned long host, unsigned short port) {
+int net_cc3000_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
 
@@ -222,4 +222,8 @@ void netSetCallbacks_cc3000(JsNetwork *net) {
   net->gethostbyname = net_cc3000_gethostbyname;
   net->recv = net_cc3000_recv;
   net->send = net_cc3000_send;
+  /* we're limited by CC3k buffer sizes - see CC3000_RX_BUFFER_SIZE/CC3000_TX_BUFFER_SIZE
+   * We could however allocate RAM on the stack (since we now don't use IRQs)
+   * and could then alloc more, increasing this. */
+  net->chunkSize = 64;
 }

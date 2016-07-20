@@ -121,6 +121,10 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, short *x, short *y) {
 
 static void graphicsSetPixelDevice(JsGraphics *gfx, short x, short y, unsigned int col) {
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
+  if (x < gfx->data.modMinX) gfx->data.modMinX=x;
+  if (x > gfx->data.modMaxX) gfx->data.modMaxX=x;
+  if (y < gfx->data.modMinY) gfx->data.modMinY=y;
+  if (y > gfx->data.modMaxY) gfx->data.modMaxY=y;
   gfx->setPixel(gfx,x,y,col & (unsigned int)((1L<<gfx->data.bpp)-1));
 }
 
@@ -145,6 +149,11 @@ static void graphicsFillRectDevice(JsGraphics *gfx, short x1, short y1, short x2
   if (x2>=gfx->data.width) x2 = (short)(gfx->data.width - 1);
   if (y2>=gfx->data.height) y2 = (short)(gfx->data.height - 1);
   if (x2<x1 || y2<y1) return; // nope
+
+  if (x1 < gfx->data.modMinX) gfx->data.modMinX=x1;
+  if (x2 > gfx->data.modMaxX) gfx->data.modMaxX=x2;
+  if (y1 < gfx->data.modMinY) gfx->data.modMinY=y1;
+  if (y2 > gfx->data.modMaxY) gfx->data.modMaxY=y2;
 
   if (x1==x2 && y1==y2) {
     graphicsSetPixelDevice(gfx,x1,y1,gfx->data.fgColor);
@@ -317,15 +326,17 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short s
    * a 200 byte array) */
   int fontOffset = ch-vectorFontOffset;
   for (i=0;i<fontOffset;i++)
-    vertOffset += vectorFonts[i].vertCount;
-  VectorFontChar vector = vectorFonts[fontOffset];
+    vertOffset += READ_FLASH_UINT8(&vectorFonts[i].vertCount);
+  VectorFontChar vector;
+  vector.vertCount = READ_FLASH_UINT8(&vectorFonts[fontOffset].vertCount);
+  vector.width = READ_FLASH_UINT8(&vectorFonts[fontOffset].width);
   short verts[VECTOR_FONT_MAX_POLY_SIZE*2];
   int idx=0;
   for (i=0;i<vector.vertCount;i+=2) {
-    verts[idx+0] = (short)(x1+(((vectorFontPolys[vertOffset+i+0]&0x7F)*size+(VECTOR_FONT_POLY_SIZE/2))/VECTOR_FONT_POLY_SIZE));
-    verts[idx+1] = (short)(y1+(((vectorFontPolys[vertOffset+i+1]&0x7F)*size+(VECTOR_FONT_POLY_SIZE/2))/VECTOR_FONT_POLY_SIZE));
+    verts[idx+0] = (short)(x1 + (((READ_FLASH_UINT8(&vectorFontPolys[vertOffset+i+0])&0x7F)*size + (VECTOR_FONT_POLY_SIZE/2)) / VECTOR_FONT_POLY_SIZE));
+    verts[idx+1] = (short)(y1 + (((READ_FLASH_UINT8(&vectorFontPolys[vertOffset+i+1])&0x7F)*size + (VECTOR_FONT_POLY_SIZE/2)) / VECTOR_FONT_POLY_SIZE));
     idx+=2;
-    if (vectorFontPolys[vertOffset+i+1] & VECTOR_FONT_POLY_SEPARATOR) {
+    if (READ_FLASH_UINT8(&vectorFontPolys[vertOffset+i+1]) & VECTOR_FONT_POLY_SEPARATOR) {
       graphicsFillPoly(gfx,idx/2, verts);
 
       if (jspIsInterrupted()) break;
@@ -340,13 +351,14 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
   NOT_USED(gfx);
   if (size<0) return 0;
   if (ch<vectorFontOffset || ch-vectorFontOffset>=vectorFontCount) return 0;
-  VectorFontChar vector = vectorFonts[ch-vectorFontOffset];
-  return (vector.width * (unsigned int)size)/(VECTOR_FONT_POLY_SIZE*2);
+  unsigned char width = READ_FLASH_UINT8(&vectorFonts[ch-vectorFontOffset].width);
+  return (width * (unsigned int)size)/(VECTOR_FONT_POLY_SIZE*2);
 }
 #endif
 
 // Splash screen
 void graphicsSplash(JsGraphics *gfx) {
+  graphicsClear(gfx);
   graphicsDrawString(gfx,0,0,"Espruino "JS_VERSION);
   graphicsDrawString(gfx,0,6,"  Embedded JavaScript");
   graphicsDrawString(gfx,0,12,"  www.espruino.com");

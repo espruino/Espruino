@@ -31,6 +31,7 @@ for i in range(1, 3):
 for i in range(1, 7):
   ALLOWED_FUNCTIONS["USART"+str(i)+"_TX"] = "JSH_USART"+str(i)+"|JSH_USART_TX";
   ALLOWED_FUNCTIONS["USART"+str(i)+"_RX"] = "JSH_USART"+str(i)+"|JSH_USART_RX";
+  ALLOWED_FUNCTIONS["USART"+str(i)+"_CK"] = "JSH_USART"+str(i)+"|JSH_USART_CK";
   ALLOWED_FUNCTIONS["UART"+str(i)+"_TX"] = "JSH_USART"+str(i)+"|JSH_USART_TX";
   ALLOWED_FUNCTIONS["UART"+str(i)+"_RX"] = "JSH_USART"+str(i)+"|JSH_USART_RX";
 for i in range(1, 5):
@@ -95,7 +96,7 @@ for D in DEVICES:
 URLS = {
  "PWM":"/PWM",
  "SPI":"/SPI",
- "I2C":"/I2S",
+ "I2C":"/I2C",
  "USART":"/USART",
  "DAC":"/DAC",
  "ADC":"/ADC",
@@ -104,6 +105,7 @@ URLS = {
  "LED2":"/Flashing+Lights",
  "LED3":"/Flashing+Lights",
  "BLUETOOTH":"/Bluetooth",
+ "JTAG":"/AdvancedDebug"
 };
 
 # is a pin name valid
@@ -130,7 +132,7 @@ def findpin(pins, pinname, force):
     if pin["name"]==pinname: 
       return pin
   if force:
-    print "ERROR: pin "+pinname+" not found"
+    print("ERROR: pin "+pinname+" not found")
     exit(1);
   pin = {}
   pin["name"] = pinname
@@ -155,8 +157,11 @@ def scan_pin_af_file(pins, filename, nameoffset, afoffset):
     pin = findpin(pins, pinname, False)    
     #print(json.dumps(pin, sort_keys=True, indent=2))  
     for af in range(0, len(pindata)-afoffset):
-      fname = pindata[af+afoffset].strip()
-      pin["functions"][fname] = af
+      fnames = pindata[af+afoffset].split("/")
+      for fname in fnames:
+        fname = fname.strip()
+#        if  fname!="-": print(fname)
+        pin["functions"][fname] = af
       #print pinname+" --- "+fname+" : "+str(af)
   return pins
 
@@ -214,7 +219,7 @@ def fill_gaps_in_pin_list(pins):
           newpin["sortingname"] = pin["port"]+newpin["num"].rjust(2,'0')
           newpin["functions"] = {}
           newpins.append(newpin)
-          print "Added fake pin "+newpin["name"]
+          print("Added fake pin "+newpin["name"])
     newpins.append(pin)
     prevpin = pin
   return newpins

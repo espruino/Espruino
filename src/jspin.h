@@ -17,6 +17,7 @@
 
 #include "jsutils.h"
 #include "jsvar.h"
+#include "jsdevices.h"
 
 typedef unsigned char Pin; ///< for specifying pins for hardware
 #define PIN_UNDEFINED ((Pin)0xFF)
@@ -155,6 +156,7 @@ typedef enum {
 
   JSH_USART_RX = 0x0000,
   JSH_USART_TX = 0x1000,
+  JSH_USART_CK = 0x2000,
 
   JSH_SPI_MISO = 0x0000,
   JSH_SPI_MOSI = 0x1000,
@@ -170,6 +172,8 @@ typedef enum {
   JSH_MASK_AF = 0x000F,
   JSH_MASK_TYPE = 0x0FF0,
   JSH_MASK_INFO = 0xF000,
+  JSH_SHIFT_TYPE = 4, // amount type is shifted left
+  JSH_SHIFT_INFO = 12, // amount info is shifted left
 } PACKED_FLAGS JshPinFunction;
 
 #define JSH_PINFUNCTION_IS_TIMER(F) ( \
@@ -198,5 +202,51 @@ void jshGetPinString(char *result, Pin pin);
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist). safe for undefined!
 Pin jshGetPinFromVar(JsVar *pinv);
 Pin jshGetPinFromVarAndUnLock(JsVar *pinv);
+
+
+/// Is the pin state manual (has the user asked us explicitly to change it?)
+bool jshGetPinStateIsManual(Pin pin);
+/// Set whether the pin state is manual (has the user asked us explicitly to change it?)
+void jshSetPinStateIsManual(Pin pin, bool manual);
+// Reset our list of which pins are set manually - called from jshResetDevices
+void jshResetPinStateIsManual();
+
+bool jshPinInput(Pin pin);
+void jshPinOutput(Pin pin, bool value);
+
+
+// Convert an event type flag into a jshPinFunction for an actual hardware device
+JshPinFunction jshGetPinFunctionFromDevice(IOEventFlags device);
+
+/** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
+JshPinFunction NO_INLINE jshGetPinFunctionForPin(Pin pin, JshPinFunction functionType);
+
+/** Try and find the best pin suitable for the given function. Can return -1. */
+Pin NO_INLINE jshFindPinForFunction(JshPinFunction functionType, JshPinFunction functionInfo);
+/// Flags for jshPinFunctionToString
+typedef enum {
+  JSPFTS_DEVICE        = 1, ///< The device itself
+  JSPFTS_DEVICE_NUMBER = 2, ///< The device's number
+  JSPFTS_SPACE         = 4, ///< A space between device and pin type
+  JSPFTS_TYPE          = 8,  ///< The pin type (RX/TX/etc)
+  JSPFTS_JS_NAMES      = 16 //< Use JS names - eg. Serial, not USART
+} JshPinFunctionToStringFlags;
+
+/// Given a full pin function, return a string describing it depending of what's in the flags enum
+void jshPinFunctionToString(JshPinFunction pinFunc, JshPinFunctionToStringFlags flags, char *buf, size_t bufSize);
+
+/** Prints a list of capable pins, eg:
+ jshPrintCapablePins(..., "PWM", JSH_TIMER1, JSH_TIMERMAX, 0,0, false)
+ jshPrintCapablePins(..., "SPI", JSH_SPI1, JSH_SPIMAX, JSH_MASK_INFO,JSH_SPI_SCK, false)
+ jshPrintCapablePins(..., "Analog Input", 0,0,0,0, true) - for analogs */
+void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionName, JshPinFunction typeMin, JshPinFunction typeMax, JshPinFunction pMask, JshPinFunction pData, bool printAnalogs);
+
+/** Find a device of the given type that works on the given pin. For instance:
+ * `jshGetDeviceFor(JSH_SPI1, JSH_SPIMAX, pin);
+ */
+JshPinFunction jshGetDeviceFor(JshPinFunction deviceMin, JshPinFunction deviceMax, Pin pin);
+
+/** Like jshGetDeviceFor, but returns an actual Object (eg. SPI) if one can be found. */
+JsVar *jshGetDeviceObjectFor(JshPinFunction deviceMin, JshPinFunction deviceMax, Pin pin);
 
 #endif //JSPIN_H

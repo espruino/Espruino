@@ -25,6 +25,7 @@
  #include <winsock.h>
 #else
  #include <sys/socket.h>
+ #include <sys/select.h>
  #include <arpa/inet.h>
  #include <netdb.h>
  #include <netinet/in.h>
@@ -40,11 +41,11 @@
 
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void net_linux_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
+void net_linux_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   NOT_USED(net);
   struct hostent * host_addr_p = gethostbyname(hostName);
   if (host_addr_p)
-    *out_ip_addr = *(unsigned long*)*host_addr_p->h_addr_list;
+    *out_ip_addr = *(uint32_t*)*host_addr_p->h_addr_list;
 }
 
 /// Called on idle. Do any checks required for this device
@@ -60,7 +61,7 @@ bool net_linux_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_linux_createsocket(JsNetwork *net, unsigned long host, unsigned short port) {
+int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
   NOT_USED(net);
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
@@ -224,4 +225,5 @@ void netSetCallbacks_linux(JsNetwork *net) {
   net->gethostbyname = net_linux_gethostbyname;
   net->recv = net_linux_recv;
   net->send = net_linux_send;
+  net->chunkSize = 536;
 }

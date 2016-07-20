@@ -17,28 +17,29 @@
 #include "jsvariterator.h"
 
 // returns the BIT index, so the bottom 3 bits specify the bit in the byte
-size_t lcdGetPixelIndex_ArrayBuffer(JsGraphics *gfx, int x, int y, int pixelCount) {
+unsigned int lcdGetPixelIndex_ArrayBuffer(JsGraphics *gfx, int x, int y, int pixelCount) {
   if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG) {
     if (y&1) x = gfx->data.width - (x+pixelCount);
   }
   if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE)
-    return (size_t)(((x + (y>>3)*gfx->data.width)<<3) | (y&7));
+    return (unsigned int)(((x + (y>>3)*gfx->data.width)<<3) | (y&7));
   else
-    return (size_t)((x + y*gfx->data.width)*gfx->data.bpp);
+    return (unsigned int)((x + y*gfx->data.width)*gfx->data.bpp);
 }
 
 unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
   unsigned int col = 0;
   JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
   if (buf && jsvIsArrayBuffer(buf)) {
-    size_t idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,1);
+    unsigned int idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,1);
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, buf, idx>>3 );
     if (gfx->data.bpp&7/*not a multiple of one byte*/) {
       idx = idx & 7;
       unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
       unsigned int existing = (unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it);
-      col = ((existing>>idx)&mask);
+      unsigned int bitIdx = (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) ? 8-(idx+gfx->data.bpp) : idx;
+      col = ((existing>>bitIdx)&mask);
     } else {
       int i;
       for (i=0;i<gfx->data.bpp;i+=8) {
@@ -56,16 +57,34 @@ unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
 void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCount, unsigned int col) {
   JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
   if (buf && jsvIsArrayBuffer(buf)) {
-    size_t idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,pixelCount);
+    unsigned int idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,pixelCount);
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, buf, idx>>3 );
-    short p;
-    for (p=0;p<pixelCount;p++) { // writing individual bits
+
+    unsigned int whiteMask = (1U<<gfx->data.bpp)-1;
+    bool shortCut = (col==0 || (col&whiteMask)==whiteMask) && (!(gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE)); // simple black or white fill
+
+    while (pixelCount--) { // writing individual bits
       if (gfx->data.bpp&7/*not a multiple of one byte*/) {
         idx = idx & 7;
+        if (shortCut && idx==0) {
+          // Basically, if we're aligned and we're filling all 0 or all 1
+          // then we can go really quickly and can just fill
+          int wholeBytes = (gfx->data.bpp*(pixelCount+1)) >> 3;
+          if (wholeBytes) {
+            char c = (char)(col?0xFF:0);
+            pixelCount = (short)(pixelCount+1 - (wholeBytes*8/gfx->data.bpp));
+            while (wholeBytes--) {
+              jsvArrayBufferIteratorSetByteValue(&it,  c);
+              jsvArrayBufferIteratorNext(&it);
+            }
+            continue;
+          }
+        }
         unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
         unsigned int existing = (unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it);
-        jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)((existing&~(mask<<idx)) | ((col&mask)<<idx)));
+        unsigned int bitIdx = (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) ? 8-(idx+gfx->data.bpp) : idx;
+        jsvArrayBufferIteratorSetByteValue(&it, (char)((existing&~(mask<<bitIdx)) | ((col&mask)<<bitIdx)));
         if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
           jsvArrayBufferIteratorNext(&it);
         } else {
@@ -75,14 +94,14 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
       } else { // we're writing whole bytes
         int i;
         for (i=0;i<gfx->data.bpp;i+=8) {
-          jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)(col >> i));
+          jsvArrayBufferIteratorSetByteValue(&it, (char)(col >> i));
           jsvArrayBufferIteratorNext(&it);
         }
       }
     }
     jsvArrayBufferIteratorFree(&it);
-    jsvUnLock(buf);
   }
+  jsvUnLock(buf);
 }
 
 
@@ -99,8 +118,7 @@ void  lcdFillRect_ArrayBuffer(struct JsGraphics *gfx, short x1, short y1, short 
 void lcdInit_ArrayBuffer(JsGraphics *gfx) {
   // create buffer
   JsVar *buf = jswrap_arraybuffer_constructor((gfx->data.width * gfx->data.height * gfx->data.bpp + 7) >> 3);
-  jsvUnLock(jsvAddNamedChild(gfx->graphicsVar, buf, "buffer"));
-  jsvUnLock(buf);
+  jsvUnLock2(jsvAddNamedChild(gfx->graphicsVar, buf, "buffer"), buf);
 }
 
 void lcdSetCallbacks_ArrayBuffer(JsGraphics *gfx) {

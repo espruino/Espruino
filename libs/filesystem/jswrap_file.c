@@ -14,16 +14,34 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_file.h"
+#include "jsparse.h"
 
-#define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSdata" // the data in each file
-#define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSOpenFiles" // the list of open files
+#define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSd" // the data in each file
+#define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSo" // the list of open files
+
+#if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO)
+#define SD_CARD_ANYWHERE
+#endif
 
 
 #ifndef LINUX
 FATFS jsfsFAT;
+bool fat_initialised = false;
 #endif
 
-bool fat_initialised = false;
+#ifdef SD_CARD_ANYWHERE
+void sdSPISetup(JsVar *spi, Pin csPin);
+bool isSdSPISetup();
+#endif
+
+// 'path' must be of JS_DIR_BUF_SIZE
+bool jsfsGetPathString(char *pathStr, JsVar *path) {
+  if (jsvGetString(path, pathStr, JS_DIR_BUF_SIZE)==JS_DIR_BUF_SIZE) {
+    jsExceptionHere(JSET_ERROR, "File path too long\n");
+    return false;
+  }
+  return true;
+}
 
 void jsfsReportError(const char *msg, FRESULT res) {
   const char *errStr = "UNKNOWN";
@@ -51,6 +69,26 @@ void jsfsReportError(const char *msg, FRESULT res) {
 bool jsfsInit() {
 #ifndef LINUX
   if (!fat_initialised) {
+#ifdef SD_CARD_ANYWHERE
+    if (!isSdSPISetup()) {
+#ifdef SD_SPI
+      const char *deviceStr = jshGetDeviceString(SD_SPI);
+      JsVar *spi = jsvSkipNameAndUnLock(jspGetNamedVariable(deviceStr));
+      JshSPIInfo inf;
+      jshSPIInitInfo(&inf);
+      inf.pinMISO = SD_DO_PIN;
+      inf.pinMOSI = SD_DI_PIN;
+      inf.pinSCK = SD_CLK_PIN;
+      jshSPISetup(SD_SPI, &inf);
+      sdSPISetup(spi, SD_CS_PIN);
+      jsvUnLock(spi);
+#else
+      jsError("SD card must be setup with E.connectSDCard first");
+      return false;
+#endif
+    }
+#endif
+
     FRESULT res;
     if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
       jsfsReportError("Unable to mount SD card", res);
@@ -62,9 +100,44 @@ bool jsfsInit() {
   return true;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "connectSDCard",
+  "generate" : "jswrap_E_connectSDCard",
+  "ifndef" : "SAVE_ON_FLASH",
+  "params" : [
+    ["spi","JsVar","The SPI object to use for communication"],
+    ["csPin","pin","The pin to use for Chip Select"]
+  ]
+}
+Setup the filesystem so that subsequent calls to `E.openFile` and `require('fs').*` will use an SD card on the supplied SPI device and pin.
 
+It can even work using software SPI - for instance:
 
-
+```
+var spi = new SPI();
+spi.setup({mosi:C7,miso:C8,sck:C9});
+E.connectSDCard(spi,C6);
+console.log(require("fs").readdirSync());
+```
+*/
+void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
+#ifdef SD_CARD_ANYWHERE
+  if (!jsvIsObject(spi)) {
+    jsExceptionHere(JSET_ERROR, "First argument is a %t, not an SPI object\n", spi);
+    return;
+  }
+  if (!jshIsPinValid(csPin)) {
+    jsExceptionHere(JSET_ERROR, "Second argument is not a valid pin");
+    return;
+  }
+  jswrap_E_unmountSD();
+  sdSPISetup(spi, csPin);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented on Linux");
+#endif
+}
 
 /* TODO: maybe this should be in the 'E' library. However we don't currently
  * have a way of doing that in build_jswrapper.py  */
@@ -136,6 +209,9 @@ void jswrap_file_kill() {
     f_mount(0, 0, 0);
   }
 #endif
+#ifdef SD_CARD_ANYWHERE
+  sdSPISetup(0, PIN_UNDEFINED);
+#endif
 }
 
 /*JSON{
@@ -186,7 +262,11 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
     char pathStr[JS_DIR_BUF_SIZE] = "";
     char modeStr[3] = "r";
     if (!jsvIsUndefined(path)) {
-      jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+      if (!jsfsGetPathString(pathStr, path)) {
+        jsvUnLock(arr);
+        return 0;
+      }
+
       if (!jsvIsUndefined(mode))
         jsvGetString(mode, modeStr, 3);
 

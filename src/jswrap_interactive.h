@@ -24,8 +24,8 @@ void jswrap_interface_echo(bool echoOn);
 void jswrap_interactive_setTime(JsVarFloat time);
 JsVar *jswrap_interface_getSerial();
 
-JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout);
-JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout);
+JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout, JsVar *args);
+JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout, JsVar *args);
 void jswrap_interface_clearInterval(JsVar *idVar);
 void jswrap_interface_clearTimeout(JsVar *idVar);
 void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval);

@@ -33,15 +33,15 @@ import pinutils;
 # -----------------------------------------------------------------------------------------
 
 # Now scan AF file
-print "Script location "+scriptdir
+print("Script location "+scriptdir)
 
-if len(sys.argv)!=2:
-  print "ERROR, USAGE: build_platform_config.py BOARD_NAME"
+if len(sys.argv)!=3:
+  print("ERROR, USAGE: build_platform_config.py BOARD_NAME HEADERFILENAME")
   exit(1)
 boardname = sys.argv[1]
-headerFilename = "gen/platform_config.h"
-print "HEADER_FILENAME "+headerFilename
-print "BOARD "+boardname
+headerFilename = sys.argv[2]
+print("HEADER_FILENAME "+headerFilename)
+print("BOARD "+boardname)
 # import the board def
 board = importlib.import_module(boardname)
 pins = board.get_pins()
@@ -74,42 +74,49 @@ if not LINUX:
   #  variables = variables_8bit
   # But in some cases we may not have enough flash memory!
   variables=board.info["variables"]
+# variables from board-file can bw overwritten. Be careful with this option.
+# usually the definition in board file are already the maximum, and adding some more will corrupt firmware
+  if 'VARIABLES' in os.environ:
+    variables=int(os.environ['VARIABLES'])
 
-  var_size = 12 if variables<255 else 16
+  var_size = 12 if variables<1023 else 16
+  # the 'packed bits mean anything under 1023 vars gets into 12 byte JsVars
   var_cache_size = var_size*variables
   flash_needed = var_cache_size + 4 # for magic number
   flash_page_size = 1024 # just a guess
-  flash_saved_code_sector = ""
   if board.chip["family"]=="STM32F1": flash_page_size = 1024 if "subfamily" in board.chip and board.chip["subfamily"]=="MD" else 2048
   if board.chip["family"]=="STM32F2":
     flash_page_size = 128*1024
-    flash_saved_code_sector = 11
   if board.chip["family"]=="STM32F3": flash_page_size = 2*1024
   if board.chip["family"]=="STM32F4":
     flash_page_size = 128*1024
-    flash_saved_code_sector = 11
+  if board.chip["family"]=="NRF51":
+    flash_page_size = 1024
+  if board.chip["family"]=="NRF52":
+    flash_page_size = 4*1024
+  if board.chip["family"]=="EFM32GG":
+    flash_page_size = 4*1024
+  flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be a full page, so we're rounding up
   # F4 has different page sizes in different places
-  flash_saved_code_pages = (flash_needed+flash_page_size-1)/flash_page_size
   total_flash = board.chip["flash"]*1024
 
   if "saved_code" in board.chip:
     flash_saved_code_start = board.chip["saved_code"]["address"]
     flash_page_size = board.chip["saved_code"]["page_size"]
-    flash_saved_code_sector = board.chip["saved_code"]["page_number"]
     flash_saved_code_pages = board.chip["saved_code"]["pages"]
     flash_available_for_code = board.chip["saved_code"]["flash_available"]*1024
   else:
     flash_saved_code_start = "(FLASH_START + FLASH_TOTAL - FLASH_SAVED_CODE_LENGTH)"
     flash_available_for_code = total_flash - (flash_saved_code_pages*flash_page_size)
-    if has_bootloader: flash_available_for_code -= common.get_bootloader_size()
+    if has_bootloader: flash_available_for_code -= common.get_bootloader_size(board)
 
-  print "Variables = "+str(variables)
-  print "JsVar size = "+str(var_size)
-  print "VarCache size = "+str(var_cache_size)
-  print "Flash page size = "+str(flash_page_size)
-  print "Flash pages = "+str(flash_saved_code_pages)
-  print "Total flash = "+str(total_flash)
-  print "Flash available for code = "+str(flash_available_for_code)
+  print("Variables = "+str(variables))
+  print("JsVar size = "+str(var_size))
+  print("VarCache size = "+str(var_cache_size))
+  print("Flash page size = "+str(flash_page_size))
+  print("Flash pages = "+str(flash_saved_code_pages))
+  print("Total flash = "+str(total_flash))
+  print("Flash available for code = "+str(flash_available_for_code))
 
 
 # -----------------------------------------------------------------------------------------
@@ -133,6 +140,8 @@ def codeOutDevice(device):
       codeOut("#define "+device+"_ONSTATE "+("0" if "inverted" in board.devices[device] else "1"))
       if "pinstate" in board.devices[device]:
         codeOut("#define "+device+"_PINSTATE JSHPINSTATE_GPIO_"+board.devices[device]["pinstate"]);
+    if device[0:3]=="LED":
+      codeOut("#define "+device+"_ONSTATE "+("0" if "inverted" in board.devices[device] else "1"))
 
 def codeOutDevicePin(device, pin, definition_name):
   if device in board.devices:
@@ -155,6 +164,9 @@ codeOut("#define PC_BOARD_CHIP_FAMILY \""+board.chip["family"]+"\"")
 
 codeOut("")
 
+linker_end_var = "_end";
+linker_etext_var = "_etext";
+
 if board.chip["family"]=="LINUX":
   board.chip["class"]="LINUX"
 elif board.chip["family"]=="STM32F1":
@@ -172,13 +184,29 @@ elif board.chip["family"]=="STM32F3":
 elif board.chip["family"]=="STM32F4":
   board.chip["class"]="STM32"
   codeOut('#include "stm32f4xx.h"')
+  codeOut('#include "stm32f4xx_conf.h"')
   codeOut("#define STM32API2 // hint to jshardware that the API is a lot different")
+elif board.chip["family"]=="NRF51":
+  board.chip["class"]="NRF51"
+  codeOut('#include "nrf.h"')
+elif board.chip["family"]=="NRF52":
+  board.chip["class"]="NRF52"
+  codeOut('#include "nrf.h"') # TRY THIS BUT NOT SURE~!
+elif board.chip["family"]=="EFM32GG":
+  linker_etext_var = "__etext";
+  board.chip["class"]="EFM32"
+  codeOut('#include "em_device.h"')
 elif board.chip["family"]=="LPC1768":
   board.chip["class"]="MBED"
 elif board.chip["family"]=="AVR":
   board.chip["class"]="AVR"
+elif board.chip["family"]=="ESP8266":
+  board.chip["class"]="ESP8266"
 else:
   die('Unknown chip family '+board.chip["family"])
+
+codeOut("#define LINKER_END_VAR "+linker_end_var);
+codeOut("#define LINKER_ETEXT_VAR "+linker_etext_var);
 
 if board.chip["class"]=="MBED":
   codeOut("""
@@ -240,25 +268,36 @@ codeOut("#define FLASH_TOTAL ("+str(board.chip['flash'])+"*1024)")
 codeOut("");
 if LINUX:
   codeOut('#define RESIZABLE_JSVARS // Allocate variables in blocks using malloc')
+  #codeOut("#define JSVAR_CACHE_SIZE                "+str(200)+" // Number of JavaScript variables in RAM")
 else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
-  codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(flash_available_for_code))
-  codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
-  codeOut("#define FLASH_SAVED_CODE_PAGES          "+str(flash_saved_code_pages))
-  codeOut("#define FLASH_START                     "+hex(0x08000000))
-  if flash_saved_code_sector!="": codeOut("#define FLASH_SAVED_CODE_SECTOR                 "+str(flash_saved_code_sector))
-  if has_bootloader: codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size()))
+  codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(int(flash_available_for_code)))
+  if board.chip["class"]=="EFM32":
+    codeOut("// FLASH_PAGE_SIZE defined in em_device.h");
+  else:
+    codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
+  if board.chip["family"]=="ESP8266":
+    codeOut("#define FLASH_START                     "+hex(0x0))
+  elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
+    codeOut("#define FLASH_START                     "+hex(0x0))
+  elif board.chip["class"]=="EFM32":
+    codeOut("#define FLASH_START                     FLASH_BASE // FLASH_BASE defined in em_device.h")
+  else:
+    codeOut("#define FLASH_START                     "+hex(0x08000000))
+  if has_bootloader:
+    codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size(board)))
+    codeOut("#define ESPRUINO_BINARY_ADDRESS         "+hex(common.get_espruino_binary_address(board)))
   codeOut("")
-  codeOut("#define FLASH_SAVED_CODE_LENGTH (FLASH_PAGE_SIZE*FLASH_SAVED_CODE_PAGES)")
-  codeOut("#define FLASH_SAVED_CODE_START "+str(flash_saved_code_start))
-  codeOut("#define FLASH_MAGIC_LOCATION (FLASH_SAVED_CODE_START + FLASH_SAVED_CODE_LENGTH - 4)")
+  codeOut("#define FLASH_SAVED_CODE_START            "+str(flash_saved_code_start))
+  codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(int(flash_page_size*flash_saved_code_pages)))
+  codeOut("#define FLASH_MAGIC_LOCATION              (FLASH_SAVED_CODE_START + FLASH_SAVED_CODE_LENGTH - 4)")
   codeOut("#define FLASH_MAGIC 0xDEADBEEF")
 codeOut("");
-codeOut("#define USARTS                          "+str(board.chip["usart"]))
-codeOut("#define SPIS                            "+str(board.chip["spi"]))
-codeOut("#define I2CS                            "+str(board.chip["i2c"]))
-codeOut("#define ADCS                            "+str(board.chip["adc"]))
-codeOut("#define DACS                            "+str(board.chip["dac"]))
+codeOut("#define USART_COUNT                          "+str(board.chip["usart"]))
+codeOut("#define SPI_COUNT                            "+str(board.chip["spi"]))
+codeOut("#define I2C_COUNT                            "+str(board.chip["i2c"]))
+codeOut("#define ADC_COUNT                            "+str(board.chip["adc"]))
+codeOut("#define DAC_COUNT                            "+str(board.chip["dac"]))
 codeOut("");
 codeOut("#define DEFAULT_CONSOLE_DEVICE              "+board.info["default_console"]);
 if "default_console_tx" in board.info:
@@ -305,15 +344,27 @@ for device in simpleDevices:
 
 if "USB" in board.devices:
   if "pin_disc" in board.devices["USB"]: codeOutDevicePin("USB", "pin_disc", "USB_DISCONNECT_PIN")
+  if "pin_vsense" in board.devices["USB"]: codeOutDevicePin("USB", "pin_vsense", "USB_VSENSE_PIN")
 
 if "LCD" in board.devices:
-  for i in range(0,16):
-    codeOutDevicePin("LCD", "pin_d"+str(i), "LCD_FSMC_D"+str(i))
-  codeOutDevicePin("LCD", "pin_rd", "LCD_FSMC_RD")
-  codeOutDevicePin("LCD", "pin_wr", "LCD_FSMC_WR")
-  codeOutDevicePin("LCD", "pin_cs", "LCD_FSMC_CS")
-  if "pin_rs" in board.devices["LCD"]:
-    codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
+  if board.devices["LCD"]["controller"]=="fsmc":
+    for i in range(0,16):
+      codeOutDevicePin("LCD", "pin_d"+str(i), "LCD_FSMC_D"+str(i))
+    codeOutDevicePin("LCD", "pin_rd", "LCD_FSMC_RD")
+    codeOutDevicePin("LCD", "pin_wr", "LCD_FSMC_WR")
+    codeOutDevicePin("LCD", "pin_cs", "LCD_FSMC_CS")
+    if "pin_rs" in board.devices["LCD"]:
+      codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
+    if "pin_reset" in board.devices["LCD"]:
+      codeOutDevicePin("LCD", "pin_reset", "LCD_RESET")
+    if "pin_bl" in board.devices["LCD"]:
+      codeOutDevicePin("LCD", "pin_bl", "LCD_BL")
+  if board.devices["LCD"]["controller"]=="ssd1306":
+    codeOutDevicePin("LCD", "pin_mosi", "LCD_SPI_MOSI")
+    codeOutDevicePin("LCD", "pin_sck", "LCD_SPI_SCK")
+    codeOutDevicePin("LCD", "pin_cs", "LCD_SPI_CS")
+    codeOutDevicePin("LCD", "pin_dc", "LCD_SPI_DC")
+    codeOutDevicePin("LCD", "pin_rst", "LCD_SPI_RST")
 
 if "SD" in board.devices:
   if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
@@ -330,7 +381,7 @@ if "SD" in board.devices:
       codeOut("#define SD_SPI EV_SPI"+str(spiNum))
 
 
-for device in ["USB","SD","LCD","JTAG"]:
+for device in ["USB","SD","LCD","JTAG","ESP8266"]:
   if device in board.devices:
     for entry in board.devices[device]:
       if entry[:3]=="pin": usedPinChecks.append("(PIN)==" + toPinDef(board.devices[device][entry])+"/* "+device+" */")
@@ -342,6 +393,11 @@ if "NUCLEO_A" in board.devices:
 if "NUCLEO_D" in board.devices:
   for n,pin in enumerate(board.devices["NUCLEO_D"]):
       codeOut("#define NUCLEO_D"+str(n)+" "+toPinDef(pin))
+
+if "ESP8266" in board.devices:
+  for entry in board.devices["ESP8266"]:
+    if entry[0:4]=="pin_":
+      codeOut("#define ESP8266_"+str(entry[4:].upper())+" "+toPinDef(board.devices["ESP8266"][entry]))
 
 codeOut("")
 

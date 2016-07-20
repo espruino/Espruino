@@ -18,6 +18,7 @@ import re;
 import json;
 import sys;
 import os;
+import importlib;
 
 silent = os.getenv("SILENT");
 if silent:
@@ -26,6 +27,23 @@ if silent:
         pass # do nothing
   # now discard everything coming out of stdout
   sys.stdout = Discarder()
+
+# http://stackoverflow.com/questions/4814970/subprocess-check-output-doesnt-seem-to-exist-python-2-6-5
+if "check_output" not in dir( subprocess ): 
+    def f(*popenargs, **kwargs):
+        if 'stdout' in kwargs:
+            raise ValueError('stdout argument not allowed, it will be overridden.')
+        process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+        output, unused_err = process.communicate()
+        retcode = process.poll()
+        if retcode:
+            cmd = kwargs.get("args")
+            if cmd is None:
+                cmd = popenargs[0]
+            raise subprocess.CalledProcessError(retcode, cmd)
+        return output
+    subprocess.check_output = f
+
 
 # Scans files for comments of the form /*JSON......*/ 
 # 
@@ -65,33 +83,47 @@ if silent:
 #
 
 
-def get_jsondata(is_for_document, parseArgs = True):
+def get_jsondata(is_for_document, parseArgs = True, board = False):
         scriptdir = os.path.dirname	(os.path.realpath(__file__))
-        print "Script location "+scriptdir
+        print("Script location "+scriptdir)
         os.chdir(scriptdir+"/..")
 
         jswraps = []
         defines = []
 
+        if board and ("build" in board.info)  and ("defines" in board.info["build"]):
+          for i in board.info["build"]["defines"]:
+            print("Got define from board: " + i);
+            defines.append(i)
+
         if parseArgs and len(sys.argv)>1:
-          print "Using files from command line"
+          print("Using files from command line")
           for i in range(1,len(sys.argv)):
             arg = sys.argv[i]
             if arg[0]=="-":
               if arg[1]=="D": 
                 defines.append(arg[2:])
+              elif arg[1]=="B": 
+                board = importlib.import_module(arg[2:])
+                if "usart" in board.chip: defines.append("USART_COUNT="+str(board.chip["usart"]));
+                if "spi" in board.chip: defines.append("SPI_COUNT="+str(board.chip["spi"]));
+                if "i2c" in board.chip: defines.append("I2C_COUNT="+str(board.chip["i2c"]));
+                if "USB" in board.devices: defines.append("defined(USB)=True"); 
+                else: defines.append("defined(USB)=False");
+              elif arg[1]=="F":
+                "" # -Fxxx.yy in args is filename xxx.yy, which is mandatory for build_jswrapper.py
               else:
-                print "Unknown command-line option"
+                print("Unknown command-line option")
                 exit(1)
             else:
               jswraps.append(arg)
         else:
-          print "Scanning for jswrap.c files"
+          print("Scanning for jswrap.c files")
           jswraps = subprocess.check_output(["find", ".", "-name", "jswrap*.c"]).strip().split("\n")
 
         if len(defines)>1:
-          print "Got #DEFINES:"
-          for d in defines: print d
+          print("Got #DEFINES:")
+          for d in defines: print("   "+d)
 
         jsondatas = []
         for jswrap in jswraps:
@@ -99,39 +131,65 @@ def get_jsondata(is_for_document, parseArgs = True):
           if jswrap.startswith("./archives/"): continue
 
           # now scan
-          print "Scanning "+jswrap
+          print("Scanning "+jswrap)
           code = open(jswrap, "r").read()
 
           if is_for_document and "DO_NOT_INCLUDE_IN_DOCS" in code: 
-            print "FOUND 'DO_NOT_INCLUDE_IN_DOCS' IN FILE "+jswrap
+            print("FOUND 'DO_NOT_INCLUDE_IN_DOCS' IN FILE "+jswrap)
             continue
 
           for comment in re.findall(r"/\*JSON.*?\*/", code, re.VERBOSE | re.MULTILINE | re.DOTALL):
+            charnumber = code.find(comment)
+            linenumber = 1+code.count("\n", 0, charnumber)
             # Strip off /*JSON .. */ bit
             comment = comment[6:-2]
 
             endOfJson = comment.find("\n}")+2;
             jsonstring = comment[0:endOfJson];
             description =  comment[endOfJson:].strip();
-#            print "Parsing "+jsonstring
+#            print("Parsing "+jsonstring)
             try:
               jsondata = json.loads(jsonstring)
               if len(description): jsondata["description"] = description;
               jsondata["filename"] = jswrap
               jsondata["include"] = jswrap[:-2]+".h"
-              if (not is_for_document) and("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
-                print "Dropped because of #ifndef "+jsondata["ifndef"]
-              elif (not is_for_document) and ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
-                print "Dropped because of #ifdef "+jsondata["ifdef"]
-              else:
+              jsondata["githublink"] = "https://github.com/espruino/Espruino/blob/master/"+jswrap+"#L"+str(linenumber)
+
+              dropped_prefix = "Dropped "
+              if "name" in jsondata: dropped_prefix += jsondata["name"]+" "
+              elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
+              drop = False
+              if not is_for_document:
+                if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
+                  print(dropped_prefix+" because of #ifndef "+jsondata["ifndef"])
+                  drop = True
+                if ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
+                  print(dropped_prefix+" because of #ifdef "+jsondata["ifdef"])
+                  drop = True
+                if ("#if" in jsondata):
+                  expr = jsondata["#if"]
+                  for defn in defines:
+                    if defn.find('=')!=-1:
+                      dname = defn[:defn.find('=')]
+                      dkey = defn[defn.find('=')+1:]                      
+                      expr = expr.replace(dname, dkey);
+                  try: 
+                    r = eval(expr)
+                  except:
+                    print("WARNING: error evaluating '"+expr+"' - from '"+jsondata["#if"]+"'")
+                    r = True
+                  if not r:
+                    print(dropped_prefix+" because of #if "+jsondata["#if"]+ " -> "+expr)
+                    drop = True
+              if not drop:
                 jsondatas.append(jsondata)
             except ValueError as e:
               sys.stderr.write( "JSON PARSE FAILED for " +  jsonstring + " - "+ str(e) + "\n")
               exit(1)
             except:
-              sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+sys.exc_info()[0] + "\n" )
+              sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
               exit(1)
-        print "Scanning finished."
+        print("Scanning finished.")
         return jsondatas
 
 # Takes the data from get_jsondata and restructures it in prepartion for output as JS
@@ -200,7 +258,6 @@ def get_struct_from_jsondata(jsondata):
 
   def addLib(details):
     context["modules"][details["class"]] = {"desc": details.get("description", "")}
-
   def addVar(details):
     return
 
@@ -258,28 +315,60 @@ def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH": return "devices with low flash memory"
   if d=="STM32F1": return "STM32F1 devices (including Espruino Board)"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
+  if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico only)"
   if d=="RELEASE": return "release builds"
-  print "WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description"
+  if d=="LINUX": return "Linux-based builds"
+  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico)"
+  if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino Wifi or Linux)"
+  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino Wifi, Linux or ESP8266)"
+  print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 
 def get_script_dir():
         return os.path.dirname(os.path.realpath(__file__))
+
 def get_version():
+        # Warning: the same release label derivation is also in the Makefile
         scriptdir = get_script_dir()
         jsutils = scriptdir+"/../src/jsutils.h"
         version = re.compile("^.*JS_VERSION.*\"(.*)\"");
+        alt_release = os.getenv("ALT_RELEASE")
+        if alt_release == None:
+          # Default release labeling based on commits since last release tag
+          latest_release = subprocess.check_output('git tag | grep RELEASE_ | sort | tail -1', shell=True).strip()
+          commits_since_release = subprocess.check_output('git log --oneline '+latest_release.decode("utf-8")+'..HEAD | wc -l', shell=True).decode("utf-8").strip()
+        else:
+          # Alternate release labeling with fork name (in ALT_RELEASE env var) plus branch
+          # name plus commit SHA
+          sha = subprocess.check_output('git rev-parse --short HEAD', shell=True).strip()
+          branch = subprocess.check_output('git name-rev --name-only HEAD', shell=True).strip()
+          commits_since_release = alt_release + '_' + branch + '_' + sha
         for line in open(jsutils):
             match = version.search(line);
             if (match != None):
-                return match.group(1);
+                v = match.group(1);
+                if commits_since_release=="0": return v
+                else: return v+"."+commits_since_release
+        return "UNKNOWN"
                
 
 def get_name_or_space(jsondata):
         if "name" in jsondata: return jsondata["name"]
         return ""
 
-def get_bootloader_size():
+def get_bootloader_size(board):
+        if board.chip["family"]=="STM32F4": return 16*1024; # 16kb Pages, so we have no choice
         return 10*1024;
+
+# On normal chips this is 0x00000000
+# On boards with bootloaders it's generally + 10240
+# On F401, because of the setup of pages we put the bootloader in the first 16k, then in the 16+16+16 we put the saved code, and then finally we but the binary somewhere else
+def get_espruino_binary_address(board):
+        if "place_text_section" in board.chip:
+          return board.chip["place_text_section"]
+        if "bootloader" in board.info and board.info["bootloader"]==1:
+          return get_bootloader_size(board);
+        return 0;
 
 def get_board_binary_name(board):
         return board.info["binary_name"].replace("%v", get_version());

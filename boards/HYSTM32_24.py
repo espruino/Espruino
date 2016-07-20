@@ -19,6 +19,14 @@ info = {
  'variables' : 2800,
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_hystm32_24_ve.bin',
+ 'build' : {
+   'defines' : [
+     'USE_GRAPHICS',
+     'USE_LCD_FSMC',
+     'USE_FILESYSTEM',
+     'USE_FILESYSTEM_SDIO'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103VE", #T6
@@ -33,16 +41,7 @@ chip = {
   'adc' : 3,
   'dac' : 2,
 };
-# left-right, or top-bottom order
-board = {
-  'top' : [ 'GND','3V3','A2','A12','A9','C8','D13','B14','B12','C11','D2','B5','B1','E2','E4','E6','C3','A1','E0','3V3','','','3V3','B4','A15','A13','A14','JRTCK','B3','NRST','DBGGRQ','DBGACK' ],
-  'top2' : [ 'GND','3V3','A3','A11','A10','C9','C7','B15','B13','C10','C12','D3','B2','B0','E3','E5','C2','A0','A4','3V3','','','3V3','GND','GND','GND','GND','GND','GND','GND','GND','GND' ],
-  'bottom2' : [ 'A6','A5','A7','D6','C4','C5','E10','E9','E8','E7','D1','D0','D15','D14','B6','A6','C6','A7','B7','A5', ],
-  'bottom' : [ 'GND','3V3','B11','E1','B10','D7','D10','D9','D8','E15','E14','E13','E12','E11','D4','D5','D11','C13','3V3','GND' ],
-  'left' : [ 'B8','B9','D12','A8','C0','C1','GND' ],
-};
-board["top"].reverse()
-board["top2"].reverse()
+
 devices = {
   'OSC' : { 'pin_1' : 'D0',
             'pin_2' : 'D1' },
@@ -104,8 +103,17 @@ devices = {
           }
 };
 
-
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'top' : [ 'GND','3V3','A2','A12','A9','C8','D13','B14','B12','C11','D2','B5','B1','E2','E4','E6','C3','A1','E0','3V3','','','3V3','B4','A15','A13','A14','JRTCK','B3','NRST','DBGGRQ','DBGACK' ],
+  'top2' : [ 'GND','3V3','A3','A11','A10','C9','C7','B15','B13','C10','C12','D3','B2','B0','E3','E5','C2','A0','A4','3V3','','','3V3','GND','GND','GND','GND','GND','GND','GND','GND','GND' ],
+  'bottom2' : [ 'A6','A5','A7','D6','C4','C5','E10','E9','E8','E7','D1','D0','D15','D14','B6','A6','C6','A7','B7','A5', ],
+  'bottom' : [ 'GND','3V3','B11','E1','B10','D7','D10','D9','D8','E15','E14','E13','E12','E11','D4','D5','D11','C13','3V3','GND' ],
+  'left' : [ 'B8','B9','D12','A8','C0','C1','GND' ],
+};
+board["top"].reverse()
+board["top2"].reverse()
+board["_css"] = """
 #board {
   width: 1170px;
   height: 834px;

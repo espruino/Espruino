@@ -36,6 +36,7 @@
 #include "platform_config.h"
 #include "jsutils.h"
 #include "jshardware.h"
+#include "jsspi.h"
 #include "diskio.h"
 
 /* Card type flags (CardType) */
@@ -66,13 +67,8 @@
 #define CMD58	(0x40+58)	/* READ_OCR */
 
 /* Card-Select Controls  (Platform dependent) */
-#define SELECT()        jshPinOutput(SD_CS_PIN, 0)    /* MMC CS = L */
-#define DESELECT()      jshPinOutput(SD_CS_PIN, 1)      /* MMC CS = H */
-
-/* Manley EK-STM32F board does not offer socket contacts -> dummy values: */
-#define SOCKPORT	1			/* Socket contact port */
-#define SOCKWP		0			/* Write protect switch (PB5) */
-#define SOCKINS		0			/* Card detect switch (PB4) */
+#define SELECT()        jshPinOutput(sdCSPin, 0)    /* MMC CS = L */
+#define DESELECT()      jshPinOutput(sdCSPin, 1)      /* MMC CS = H */
 
 /*--------------------------------------------------------------------------
 
@@ -80,46 +76,52 @@
 
 ---------------------------------------------------------------------------*/
 
-typedef DWORD socket_state_t;
+static volatile DSTATUS Stat = STA_NOINIT;	/* Disk status */
+static BYTE CardType;			/* Card type flags */
 
-static volatile
-DSTATUS Stat = STA_NOINIT;	/* Disk status */
-
-static
-BYTE CardType;			/* Card type flags */
-
-enum speed_setting { INTERFACE_SLOW, INTERFACE_FAST };
+static Pin sdCSPin = PIN_UNDEFINED; // SD_CS_PIN
+static JsVar *sdSPI = 0;
 
 static inline bool chk_power() { return 1; }
 
+
 /*-----------------------------------------------------------------------*/
-/* Transmit/Receive a byte to MMC via SPI  (Platform dependent)          */
+/* Setup                                                                 */
 /*-----------------------------------------------------------------------*/
-static BYTE stm32_spi_rw( BYTE out )
-{
-    int b = jshSPISend(SD_SPI, (unsigned char)out);
-    if (b<0) b = jshSPISend(SD_SPI, -1);
-    return (BYTE)b;
+
+bool isSdSPISetup() {
+  return sdSPI && jshIsPinValid(sdCSPin);
 }
 
-/*-----------------------------------------------------------------------*/
-/* Transmit a byte to MMC via SPI  (Platform dependent)                  */
-/*-----------------------------------------------------------------------*/
 
-#define xmit_spi(dat)  stm32_spi_rw(dat)
-
-/*-----------------------------------------------------------------------*/
-/* Receive a byte from MMC via SPI  (Platform dependent)                 */
-/*-----------------------------------------------------------------------*/
-
-static
-BYTE rcvr_spi (void)
-{
-	return stm32_spi_rw(0xff);
+void sdSPISetup(JsVar *spi, Pin csPin) {
+  jsvUnLock(sdSPI);
+  sdSPI = jsvLockAgainSafe(spi);
+  sdCSPin = csPin;
+  if (isSdSPISetup()) DESELECT();
 }
 
-/* Alternative macro to receive data fast */
-#define rcvr_spi_m(dst)  *(dst)=stm32_spi_rw(0xff)
+
+/* Transmit bytes from MMC via SPI - leave array alone */
+static void write_spi_buf (BYTE *data, UINT len)
+{
+  jsspiSend(sdSPI, JSSPI_NO_RECEIVE, (char*)data, len);
+}
+
+/* Transmit bytes from MMC via SPI - writes result back into array */
+static void xfer_spi_buf (BYTE *data, UINT len)
+{
+  jsspiSend(sdSPI, 0, (char*)data, len);
+}
+
+
+/* Receive a byte from MMC via SPI                                       */
+static BYTE read_spi_byte (void)
+{
+  char data = 0xFF;
+  jsspiSend(sdSPI, 0, &data, 1);
+  return (BYTE)data;
+}
 
 
 
@@ -134,9 +136,10 @@ BYTE wait_ready (void)
 
 
 	JsSysTime endTime = jshGetSystemTime()+jshGetTimeFromMilliseconds(500);	/* Wait for ready in timeout of 500ms */
-	rcvr_spi();
+
+	read_spi_byte();
 	do
-		res = rcvr_spi();
+		res = read_spi_byte();
 	while ((res != 0xFF) && (jshGetSystemTime() < endTime));
 
 	return res;
@@ -152,7 +155,7 @@ static
 void release_spi (void)
 {
 	DESELECT();
-	rcvr_spi();
+	read_spi_byte();
 }
 
 /*-----------------------------------------------------------------------*/
@@ -166,15 +169,6 @@ void power_on (void)
 {
 	/* Deselect the Card: Chip Select high */
 	DESELECT();
-
-	/* Configure SPI pins */
-	JshSPIInfo inf;
-	jshSPIInitInfo(&inf);
-	inf.pinMISO = SD_DO_PIN;
-	inf.pinMOSI = SD_DI_PIN;
-	inf.pinSCK = SD_CLK_PIN;
-	inf.baudRate = 1000000;
-	jshSPISetup(SD_SPI, &inf);
 }
 
 static
@@ -189,9 +183,9 @@ void power_off (void)
 	// TODO: we should have a way of disabling SPI in the hardware API...
 
 	/* All SPI-Pins to input */
-	jshPinInput(SD_DO_PIN);
+/*	jshPinInput(SD_DO_PIN);
 	jshPinInput(SD_DI_PIN);
-	jshPinInput(SD_CLK_PIN);
+	jshPinInput(SD_CLK_PIN);*/
 	
 	Stat |= STA_NOINIT;		/* Set STA_NOINIT */
 }
@@ -209,22 +203,19 @@ bool rcvr_datablock (
 {
 	BYTE token;
 
-
 	JsSysTime endTime = jshGetSystemTime()+jshGetTimeFromMilliseconds(100); /* Wait for data packet in timeout of 100ms */
 	do {
-		token = rcvr_spi();
+		token = read_spi_byte();
 	} while ((token == 0xFF) && (jshGetSystemTime() < endTime));
 	if(token != 0xFE) return FALSE;	/* If not valid data token, return with error */
 
-	do {							/* Receive the data block into buffer */
-		rcvr_spi_m(buff++);
-		rcvr_spi_m(buff++);
-		rcvr_spi_m(buff++);
-		rcvr_spi_m(buff++);
-	} while (btr -= 4);
+	UINT i;
+	for (i=0;i<btr;i++)
+	  buff[i] = 0xFF; // make sure we send 0xFF
+	xfer_spi_buf(buff, btr);
 
-	rcvr_spi();						/* Discard CRC */
-	rcvr_spi();
+    BYTE crc[2] = {0xFF,0xFF};
+    write_spi_buf(crc, 2); // discard 2 byte CRC
 
 	return TRUE;					/* Return with success */
 }
@@ -242,24 +233,15 @@ bool xmit_datablock (
 	BYTE token			/* Data/Stop token */
 )
 {
-	BYTE resp;
-	BYTE wc;
-
 	if (wait_ready() != 0xFF) return FALSE;
 
-	xmit_spi(token);					/* Xmit data token */
+	write_spi_buf(&token, 1);	/* Xmit data token */
 	if (token != 0xFD) {	/* Is data token */
+	    write_spi_buf((BYTE *)buff, 512); /* Xmit the 512 byte data block to MMC */
 
-		wc = 0;
-		do {							/* Xmit the 512 byte data block to MMC */
-			xmit_spi(*buff++);
-			xmit_spi(*buff++);
-		} while (--wc);
-
-		xmit_spi(0xFF);					/* CRC (Dummy) */
-		xmit_spi(0xFF);
-		resp = rcvr_spi();				/* Receive data response */
-		if ((resp & 0x1F) != 0x05)		/* If not accepted, return with error */
+		BYTE resp[3] = {0xFF,0xFF,0xFF};
+		xfer_spi_buf(resp, 3); // discard 2 byte CRC and get 1 byte response
+		if ((resp[2] & 0x1F) != 0x05)		/* If not accepted, return with error */
 			return FALSE;
 	}
 
@@ -295,23 +277,26 @@ BYTE send_cmd (
 		return 0xFF;
 	}
 
+    n = 0x01;                           /* Dummy CRC + Stop */
+    if (cmd == CMD0) n = 0x95;          /* Valid CRC for CMD0(0) */
+    if (cmd == CMD8) n = 0x87;          /* Valid CRC for CMD8(0x1AA) */
+
 	/* Send command packet */
-	xmit_spi(cmd);						/* Start + Command index */
-	xmit_spi((BYTE)(arg >> 24));		/* Argument[31..24] */
-	xmit_spi((BYTE)(arg >> 16));		/* Argument[23..16] */
-	xmit_spi((BYTE)(arg >> 8));			/* Argument[15..8] */
-	xmit_spi((BYTE)arg);				/* Argument[7..0] */
-	n = 0x01;							/* Dummy CRC + Stop */
-	if (cmd == CMD0) n = 0x95;			/* Valid CRC for CMD0(0) */
-	if (cmd == CMD8) n = 0x87;			/* Valid CRC for CMD8(0x1AA) */
-	xmit_spi(n);
+    /* Start + Command index */
+    /* Argument[31..24] */
+    /* Argument[23..16] */
+    /* Argument[15..8] */
+    /* Argument[7..0] */
+    /* CRC */
+    BYTE packet[6] = {cmd, (BYTE)(arg >> 24), (BYTE)(arg >> 16), (BYTE)(arg >> 8), (BYTE)(arg), n};
+    xfer_spi_buf(packet, 6); // discard 2 byte CRC and get 1 byte response
 
 	/* Receive command response */
-	if (cmd == CMD12) rcvr_spi();		/* Skip a stuff byte when stop reading */
+	if (cmd == CMD12) read_spi_byte();		/* Skip a stuff byte when stop reading */
 	
 	n = 10;								/* Wait for a valid response in timeout of 10 attempts */
 	do
-		res = rcvr_spi();
+		res = read_spi_byte();
 	while ((res & 0x80) && --n);
 	
 	return res;			/* Return with the response value */
@@ -341,17 +326,17 @@ DSTATUS disk_initialize (
 	if (Stat & STA_NODISK) return Stat;	/* No card in the socket */
 
 	power_on();							/* Force socket power on */
-	for (n = 10; n; n--) rcvr_spi();	/* 80 dummy clocks */
+	for (n = 10; n; n--) read_spi_byte();	/* 80 dummy clocks */
 
 	ty = 0;
 	if (send_cmd(CMD0, 0) == 1) {			/* Enter Idle state */
 	    JsSysTime endTime = jshGetSystemTime()+jshGetTimeFromMilliseconds(1000); /* Initialization timeout of 1000 msec */
 		if (send_cmd(CMD8, 0x1AA) == 1) {	/* SDHC */
-			for (n = 0; n < 4; n++) ocr[n] = rcvr_spi();		/* Get trailing return value of R7 resp */
+			for (n = 0; n < 4; n++) ocr[n] = read_spi_byte();		/* Get trailing return value of R7 resp */
 			if (ocr[2] == 0x01 && ocr[3] == 0xAA) {			/* The card can work at vdd range of 2.7-3.6V */
 				while ((jshGetSystemTime()<endTime) && send_cmd(ACMD41, 1UL << 30));	/* Wait for leaving idle state (ACMD41 with HCS bit) */
 				if ((jshGetSystemTime()<endTime) && send_cmd(CMD58, 0) == 0) {		/* Check CCS bit in the OCR */
-					for (n = 0; n < 4; n++) ocr[n] = rcvr_spi();
+					for (n = 0; n < 4; n++) ocr[n] = read_spi_byte();
 					ty = (ocr[0] & 0x40) ? CT_SD2 | CT_BLOCK : CT_SD2;
 				}
 			}
@@ -550,9 +535,9 @@ DRESULT disk_ioctl (
 		case GET_BLOCK_SIZE :	/* Get erase block size in unit of sector (DWORD) */
 			if (CardType & CT_SD2) {	/* SDC ver 2.00 */
 				if (send_cmd(ACMD13, 0) == 0) {	/* Read SD status */
-					rcvr_spi();
+					read_spi_byte();
 					if (rcvr_datablock(csd, 16)) {				/* Read partial block */
-						for (n = 64 - 16; n; n--) rcvr_spi();	/* Purge trailing data */
+						for (n = 64 - 16; n; n--) read_spi_byte();	/* Purge trailing data */
 						*(DWORD*)buff = 16UL << (csd[10] >> 4);
 						res = RES_OK;
 					}
@@ -588,14 +573,14 @@ DRESULT disk_ioctl (
 
 		case MMC_GET_OCR :		/* Receive OCR as an R3 resp (4 bytes) */
 			if (send_cmd(CMD58, 0) == 0) {	/* READ_OCR */
-				for (n = 4; n; n--) *ptr++ = rcvr_spi();
+				for (n = 4; n; n--) *ptr++ = read_spi_byte();
 				res = RES_OK;
 			}
 			break;
 
 		case MMC_GET_SDSTAT :	/* Receive SD status as a data block (64 bytes) */
 			if (send_cmd(ACMD13, 0) == 0) {	/* SD_STATUS */
-				rcvr_spi();
+				read_spi_byte();
 				if (rcvr_datablock(ptr, 64))
 					res = RES_OK;
 			}

@@ -15,18 +15,24 @@
 cd `dirname $0`
 cd ..
 
-VERSION=`sed -ne "s/^.*JS_VERSION.*\"\(.*\)\"/\1/p" src/jsutils.h`
+VERSION=`sed -ne "s/^.*JS_VERSION.*\"\(.*\)\"/\1/p" src/jsutils.h | head -1`
+echo "VERSION $VERSION"
 DIR=`pwd`
 ZIPDIR=$DIR/zipcontents
 ZIPFILE=$DIR/archives/espruino_${VERSION}.zip
 rm -rf $ZIPDIR
 mkdir $ZIPDIR
 
+
+# ESP8266
+export ESP8266_SDK_ROOT=$DIR/esp_iot_sdk_v1.5.0
+export PATH=$PATH:$DIR/xtensa-lx106-elf/bin/
+
 echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 
-for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINO_1V1 NUCLEOF401RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI
+for BOARDNAME in PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINO_1V3 ESPRUINO_1V3_WIZ NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI MICROBIT ESP8266_BOARD
 do
   echo ------------------------------
   echo                  $BOARDNAME
@@ -38,37 +44,58 @@ do
     EXTRADEFS=WIZNET=1
     EXTRANAME=_wiznet
   fi
+  if [ "$BOARDNAME" == "PICO_1V3_CC3000" ]; then
+    BOARDNAME=PICO_R1_3
+    EXTRANAME=_cc3000
+  fi
+  if [ "$BOARDNAME" == "PICO_1V3_WIZ" ]; then
+    BOARDNAME=PICO_R1_3
+    EXTRADEFS=WIZNET=1
+    EXTRANAME=_wiznet
+  fi
   BOARDNAMEX=$BOARDNAME
   if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then
     BOARDNAMEX=ESPRUINOBOARD
   fi
-  if [ "$BOARDNAME" == "ESPRUINO_1V1" ]; then
-    BOARDNAMEX=ESPRUINOBOARD_R1_1
-  fi
   # actually build
-  BINARY_NAME=`python scripts/get_board_info.py $BOARDNAMEX "common.get_board_binary_name(board)"`
-  rm $BINARY_NAME
+  ESP_BINARY_NAME=`python scripts/get_board_info.py $BOARDNAMEX "common.get_board_binary_name(board)"`
+  if [ "$BOARDNAME" == "MICROBIT" ]; then
+    ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .bin`.hex
+  fi
+  echo "Building $ESP_BINARY_NAME"
+  echo
+  rm -f $BINARY_NAME
   if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then      
-    bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo 'Build failed' ; exit 1; }
-  elif [ "$BOARDNAME" == "ESPRUINO_1V1" ]; then      
-    bash -c "$EXTRADEFS scripts/create_espruino_image_1v1.sh" || { echo 'Build failed' ; exit 1; }
+    bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
+  elif [ "$BOARDNAME" == "PICO_R1_3" ]; then      
+    bash -c "$EXTRADEFS scripts/create_pico_image_1v3.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   else 
     bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make clean"
-    bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make" || { echo 'Build failed' ; exit 1; }
+    bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   fi
   # rename binary if needed
   if [ -n "$EXTRANAME" ]; then 
-    NEW_BINARY_NAME=`basename $BINARY_NAME .bin`$EXTRANAME.bin
+    NEW_BINARY_NAME=`basename ${ESP_BINARY_NAME} .bin`$EXTRANAME.bin
   else
-    NEW_BINARY_NAME=$BINARY_NAME
+    NEW_BINARY_NAME=${ESP_BINARY_NAME}
   fi
   # copy...
-  cp $BINARY_NAME $ZIPDIR/$NEW_BINARY_NAME || { echo 'Build failed' ; exit 1; }
+  if [ "$BOARDNAME" == "ESP8266_BOARD" ]; then
+    tar -C $ZIPDIR -xzf ${ESP_BINARY_NAME}.tgz || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    # Do some more ESP8266 build stuff
+    bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make combined" || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    cp ${ESP_BINARY_NAME}_combined_512.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+  else
+    echo Copying ${ESP_BINARY_NAME} to $ZIPDIR/$NEW_BINARY_NAME 
+    cp ${ESP_BINARY_NAME} $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of $BOARDNAME failed" ; exit 1; }
+  fi
 done
+
+
 
 cd $DIR
 
-sed 's/$/\r/' dist_readme.txt > $ZIPDIR/readme.txt
+sed 's/$/\r/' dist_readme.txt | sed "s/#v##/$VERSION/" > $ZIPDIR/readme.txt
 bash scripts/extract_changelog.sh | sed 's/$/\r/' > $ZIPDIR/changelog.txt
 #bash scripts/extract_todo.sh  >  $ZIPDIR/todo.txt
 python scripts/build_docs.py  || { echo 'Build failed' ; exit 1; } 
@@ -77,4 +104,5 @@ cp $DIR/dist_licences.txt $ZIPDIR/licences.txt
 
 rm -f $ZIPFILE
 cd zipcontents
+echo zip $ZIPFILE *
 zip $ZIPFILE *

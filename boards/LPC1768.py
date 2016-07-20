@@ -20,28 +20,28 @@ info = {
  'link' : [ "http://www.espruino.com/kick" ],
  'variables' : 2000, #?
  'binary_name' : 'espruino_%v_lpc1768.bin',
+ 'build' : {
+  'defines' : [
+   ]
+ }
 };
 chip = {
   'part' : "LPC1768",
   'family' : "LPC1768",
 #  'package' : "LQFP64",
-#  'ram' : ,
-#  'flash' : ,
-#  'speed' : ,
-#  'usart' : ,
-#  'spi' : ,
-#  'i2c' : ,
-#  'adc'
-#  'dac'
+  'ram' : 32,
+  'flash' : 512,
+  'speed' : 96,
+  'usart' : 3,
+  'spi' : 2,
+  'i2c' : 2,
+  'adc' : 6,
+  'dac' : 0
 };
-# left-right, or top-bottom order
-board = {
-};
+
 devices = {
 };
 
-board_css = """
-""";
 
 def get_pins():
   return []

@@ -20,7 +20,7 @@
 bool isRunning = true;
 
 void addNativeFunction(const char *name, void (*callbackPtr)(void)) {
-  jsvUnLock(jsvObjectSetChild(execInfo.root, name, jsvNewNativeFunction(callbackPtr, JSWAT_VOID)));
+  jsvObjectSetChildAndUnLock(execInfo.root, name, jsvNewNativeFunction(callbackPtr, JSWAT_VOID));
 }
 
 
@@ -66,7 +66,7 @@ bool run_test(const char *filename) {
   addNativeFunction("quit", nativeQuit);
   addNativeFunction("interrupt", nativeInterrupt);
 
-  jsvUnLock(jspEvaluate(buffer, true));
+  jsvUnLock(jspEvaluate(buffer, false));
 
   isRunning = true;
   bool isBusy = true;
@@ -213,6 +213,9 @@ void show_help() {
     printf("Options:\n");
     printf("   -h, --help              Print this help screen\n");
     printf("   -e, --eval script       Evaluate the JavaScript supplied on the command-line\n");
+#ifdef USE_TELNET
+    printf("   --telnet                Enable internal telnet server on port 2323\n");
+#endif
     printf("   --test-all              Run all tests (in 'tests' directory)\n");
     printf("   --test test.js          Run the supplied test\n");
     printf("   --test-mem-all          Run all Exhaustive Memory crash tests\n");
@@ -225,8 +228,27 @@ void die(const char *txt) {
   exit(1);
 }
 
+int handleErrors() {
+  int e = 0;
+  JsVar *exception = jspGetException();
+  if (exception) {
+    jsiConsolePrintf("Uncaught %v\n", exception);
+    jsvUnLock(exception);
+    e = 1;
+  }
+
+  if (jspIsInterrupted()) {
+    jsiConsoleRemoveInputLine();
+    jsiConsolePrint("Execution Interrupted.\n");
+    jspSetInterrupted(false);
+    e = 1;
+  }
+  return e;
+}
+
 int main(int argc, char **argv) {
-  int i;
+  int i, args = 0;
+  const char *singleArg = 0;
   for (i=1;i<argc;i++) {
     if (argv[i][0]=='-') {
       // option
@@ -241,14 +263,20 @@ int main(int argc, char **argv) {
         jsiInit(true);
         addNativeFunction("quit", nativeQuit);
         jsvUnLock(jspEvaluate(argv[i+1], false));
-        isRunning = true;
+        int errCode = handleErrors();
+        isRunning = !errCode;
         bool isBusy = true;
         while (isRunning && (jsiHasTimers() || isBusy))
           isBusy = jsiLoop();
         jsiKill();
         jsvKill();
         jshKill();
-        exit(0);
+        exit(errCode);
+#ifdef USE_TELNET
+      } else if (!strcmp(a,"--telnet")) {
+        extern bool telnetEnabled;
+        telnetEnabled = true;
+#endif
       } else if (!strcmp(a,"--test")) {
         if (i+1>=argc) die("Expecting an extra argument\n");
         bool ok = run_test(argv[i+1]);
@@ -272,14 +300,17 @@ int main(int argc, char **argv) {
         show_help();
         exit(1);
       }
+    } else {
+      args++;
+      singleArg = argv[i];
     }
   }
 
-  if (argc==1) {
+  if (args==0) {
     printf("Interactive mode.\n");
-  } else if (argc==2) {
+  } else if (args==1) {
     // single file - just run it
-    char *buffer = read_file(argv[1]);
+    char *buffer = read_file(singleArg);
     if (!buffer) exit(1);
     // check for '#' as the first char, and if so, skip the first line
     char *cmd = buffer;
@@ -291,16 +322,17 @@ int main(int argc, char **argv) {
     jsvInit();
     jsiInit(false /* do not autoload!!! */);
     addNativeFunction("quit", nativeQuit);
-    jsvUnLock(jspEvaluate(cmd, true));
+    jsvUnLock(jspEvaluate(cmd, false));
+    int errCode = handleErrors();
     free(buffer);
-    isRunning = true;
+    isRunning = !errCode;
     bool isBusy = true;
     while (isRunning && (jsiHasTimers() || isBusy))
       isBusy = jsiLoop();
     jsiKill();
     jsvKill();
     jshKill();
-    exit(0);
+    exit(errCode);
   } else {
     printf("Unknown arguments!\n");
     show_help();
@@ -341,7 +373,7 @@ int main(int argc, char **argv) {
   }
   jsiConsolePrint("\n");
   jsiKill();
-
+  jsvGarbageCollect();
   jsvShowAllocated();
   jsvKill();
   jshKill();

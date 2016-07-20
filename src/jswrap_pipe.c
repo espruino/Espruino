@@ -28,14 +28,7 @@
 
 #include "jswrap_pipe.h"
 #include "jswrap_object.h"
-
-/*JSON{
-  "type" : "library",
-  "ifndef" : "SAVE_ON_FLASH",
-  "class" : "Pipe"
-}
-This is the Pipe container for async related IO.
-*/
+#include "jswrap_stream.h"
 
 static JsVar* pipeGetArray(bool create) {
   return jsvObjectGetChild(execInfo.hiddenRoot, "pipes", create ? JSV_ARRAY : 0);
@@ -43,35 +36,62 @@ static JsVar* pipeGetArray(bool create) {
 
 
 static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
-  jsiQueueObjectCallbacks(pipe, "#oncomplete", &pipe, 1);
+  jsiQueueObjectCallbacks(pipe, JS_EVENT_PREFIX"complete", &pipe, 1);
+  // Check the source to see if there was more data... It may not be a stream,
+  // but if it is and it has data it should have a a STREAM_BUFFER_NAME field
+  JsVar *source = jsvObjectGetChild(pipe,"source",0);
+  JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
+  if (source && destination) {
+    JsVar *buffer = jsvObjectGetChild(source, STREAM_BUFFER_NAME, 0);
+    if (buffer && jsvGetStringLength(buffer)) {
+      jsvObjectSetChild(source, STREAM_BUFFER_NAME, 0); // remove outstanding data
+      /* call write fn - we ignore drain/etc here because the source has
+      just closed and we want to get this sorted quickly */
+      JsVar *writeFunc = jspGetNamedField(destination, "write", false);
+      if (jsvIsFunction(writeFunc)) { // do the objects have the necessary methods on them?
+        jsvUnLock(jspExecuteFunction(writeFunc, destination, 1, &buffer));
+      }
+      jsvUnLock(writeFunc);
+      // update position
+      JsVar *position = jsvObjectGetChild(pipe,"position",0);
+      jsvSetInteger(position, jsvGetInteger(position) + (JsVarInt)jsvGetStringLength(buffer));
+      jsvUnLock(position);
+    }
+    jsvUnLock(buffer);
+  }
   // also call 'end' if 'end' was passed as an initialisation option
   if (jsvGetBoolAndUnLock(jsvObjectGetChild(pipe,"end",0))) {
     // call destination.end if available
-    JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
     if (destination) {
       // remove our drain and close listeners.
-      // This removes ALL listeners. Maybe we should just remove ours?
+      // TODO: This removes ALL listeners. Maybe we should just remove ours?
       jswrap_object_removeAllListeners_cstr(destination, "drain");
       jswrap_object_removeAllListeners_cstr(destination, "close");
       // execute the 'end' function
       JsVar *endFunc = jspGetNamedField(destination, "end", false);
       if (endFunc) {
-        jsvUnLock(jspExecuteFunction(endFunc, destination, 0, 0));
-        jsvUnLock(endFunc);
+        jsvUnLock2(jspExecuteFunction(endFunc, destination, 0, 0), endFunc);
       }
-      jsvUnLock(destination);
+      // execute the 'close' function
+      JsVar *closeFunc = jspGetNamedField(destination, "close", false);
+      if (closeFunc) {
+        jsvUnLock2(jspExecuteFunction(closeFunc, destination, 0, 0), closeFunc);
+      }
     }
     /* call source.close if available - probably not what node does
     but seems very sensible in this case. If you don't want it,
     set end:false */
-    JsVar *source = jsvObjectGetChild(pipe,"source",0);
-    JsVar *closeFunc = jspGetNamedField(source, "close", false);
-    if (closeFunc) {
-      jsvUnLock(jspExecuteFunction(closeFunc, source, 0, 0));
-      jsvUnLock(closeFunc);
+    if (source) {
+      // TODO: This removes ALL listeners. Maybe we should just remove ours?
+      jswrap_object_removeAllListeners_cstr(source, "close");
+      // execute the 'close' function
+      JsVar *closeFunc = jspGetNamedField(source, "close", false);
+      if (closeFunc) {
+        jsvUnLock2(jspExecuteFunction(closeFunc, source, 0, 0), closeFunc);
+      }
     }
-    jsvUnLock(source);
   }
+  jsvUnLock2(source, destination);
   JsVar *idx = jsvObjectIteratorGetKey(it);
   jsvRemoveChild(arr,idx);
   jsvUnLock(idx);
@@ -98,7 +118,7 @@ static bool handlePipe(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
           JsVar *response = jspExecuteFunction(writeFunc, destination, 1, &buffer);
           if (jsvIsBoolean(response) && jsvGetBool(response)==false) {
             // If boolean false was returned, wait for drain event (http://nodejs.org/api/stream.html#stream_writable_write_chunk_encoding_callback)
-            jsvUnLock(jsvObjectSetChild(pipe,"drainWait",jsvNewFromBool(true)));
+            jsvObjectSetChildAndUnLock(pipe,"drainWait",jsvNewFromBool(true));
           }
           jsvUnLock(response);
           jsvSetInteger(position, jsvGetInteger(position) + bufferSize);
@@ -112,16 +132,13 @@ static bool handlePipe(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
       if(!jsvIsFunction(writeFunc))
         jsExceptionHere(JSET_ERROR, "Destination Stream does not implement the required write(buffer) method.");
     }
-    jsvUnLock(readFunc);
-    jsvUnLock(writeFunc);
+    jsvUnLock2(readFunc, writeFunc);
   }
 
   if(!dataTransferred) { // when no more chunks are possible, execute the callback
     handlePipeClose(arr, it, pipe);
   }
-  jsvUnLock(source);
-  jsvUnLock(destination);
-  jsvUnLock(chunkSize);
+  jsvUnLock3(source, destination, chunkSize);
   jsvUnLock(position);
   return dataTransferred;
 }
@@ -176,10 +193,9 @@ static void jswrap_pipe_drain_listener(JsVar *destination) {
       JsVar *dst = jsvObjectGetChild(pipe,"destination",0);
       if (dst == destination) {
         // found it! said wait to false
-        jsvUnLock(jsvObjectSetChild(pipe,"drainWait",jsvNewFromBool(false)));
+        jsvObjectSetChildAndUnLock(pipe,"drainWait",jsvNewFromBool(false));
       }
-      jsvUnLock(dst);
-      jsvUnLock(pipe);
+      jsvUnLock2(dst, pipe);
       jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
@@ -188,7 +204,7 @@ static void jswrap_pipe_drain_listener(JsVar *destination) {
 }
 
 /** This gets called when the destination closes and we need to clean up */
-static void jswrap_pipe_close_listener(JsVar *destination) {
+static void jswrap_pipe_close_listener(JsVar *destination, const char *name) {
   if (!jsvIsObject(destination)) return;
   // try and find it...
   JsVar *arr = pipeGetArray(false);
@@ -197,18 +213,24 @@ static void jswrap_pipe_close_listener(JsVar *destination) {
     jsvObjectIteratorNew(&it, arr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *pipe = jsvObjectIteratorGetValue(&it);
-      JsVar *dst = jsvObjectGetChild(pipe,"destination",0);
+      JsVar *dst = jsvObjectGetChild(pipe,name,0);
       if (dst == destination) {
         // found it! said wait to false
         handlePipeClose(arr, &it, pipe);
       }
-      jsvUnLock(dst);
-      jsvUnLock(pipe);
+      jsvUnLock2(dst, pipe);
       jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
     jsvUnLock(arr);
   }
+}
+
+static void jswrap_pipe_src_close_listener(JsVar *source) {
+  jswrap_pipe_close_listener(source, "source");
+}
+static void jswrap_pipe_dst_close_listener(JsVar *destination) {
+  jswrap_pipe_close_listener(destination, "destination");
 }
 
 /*JSON{
@@ -240,7 +262,7 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
           JsVar *c;
           c = jsvObjectGetChild(options, "complete", false);
           if (c) {
-            jsvObjectSetChild(pipe, "#oncomplete", c);
+            jsvObjectSetChild(pipe, JS_EVENT_PREFIX"complete", c);
             jsvUnLock(c);
           }
           c = jsvObjectGetChild(options, "end", false);
@@ -250,21 +272,22 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
             if (jsvIsNumeric(c) && jsvGetInteger(c)>0)
               chunkSize = jsvGetInteger(c);
             else
-              jsWarn("chunkSize must be an integer > 0");
+              jsExceptionHere(JSET_TYPEERROR, "chunkSize must be an integer > 0");
             jsvUnLock(c);
           }
         } else if (!jsvIsUndefined(options)) {
-          jsWarn("'options' must be an object, or undefined");
+          jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
         }
-        // set up our drain and close event listeners
+        // set up our event listeners
+        jswrap_object_addEventListener(source, "close", jswrap_pipe_src_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
         jswrap_object_addEventListener(dest, "drain", jswrap_pipe_drain_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
-        jswrap_object_addEventListener(dest, "close", jswrap_pipe_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
+        jswrap_object_addEventListener(dest, "close", jswrap_pipe_dst_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
         // set up the rest of the pipe
-        jsvUnLock(jsvObjectSetChild(pipe, "chunkSize", jsvNewFromInteger(chunkSize)));
-        jsvUnLock(jsvObjectSetChild(pipe, "end", jsvNewFromBool(callEnd)));
-        jsvUnLock(jsvAddNamedChild(pipe, position, "position"));
-        jsvUnLock(jsvAddNamedChild(pipe, source, "source"));
-        jsvUnLock(jsvAddNamedChild(pipe, dest, "destination"));
+        jsvObjectSetChildAndUnLock(pipe, "chunkSize", jsvNewFromInteger(chunkSize));
+        jsvObjectSetChildAndUnLock(pipe, "end", jsvNewFromBool(callEnd));
+        jsvUnLock3(jsvAddNamedChild(pipe, position, "position"), 
+                   jsvAddNamedChild(pipe, source, "source"), 
+                   jsvAddNamedChild(pipe, dest, "destination"));
         // add the pipe to our list
         jsvArrayPush(arr, pipe);
       } else {
@@ -273,11 +296,8 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
     } else {
       jsExceptionHere(JSET_ERROR, "Source object does not implement the required read(buffer, length, position) method.");
     }
-    jsvUnLock(readFunc);
-    jsvUnLock(writeFunc);
+    jsvUnLock2(readFunc, writeFunc);
   }
-  jsvUnLock(arr);
-  jsvUnLock(pipe);
-  jsvUnLock(position);
+  jsvUnLock3(arr, pipe, position);
 }
 

@@ -23,3 +23,5 @@ bool jswrap_isNaN(JsVar *v);
 
 JsVar *jswrap_btoa(JsVar *binaryData);
 JsVar *jswrap_atob(JsVar *base64Data);
+JsVar *jswrap_encodeURIComponent(JsVar *arg);
+JsVar *jswrap_decodeURIComponent(JsVar *arg);

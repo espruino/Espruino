@@ -35,7 +35,8 @@ typedef enum {
   JSNETWORKTYPE_SOCKET,  ///< Standard linux socket API
   JSNETWORKTYPE_CC3000,  ///< TI CC3000 support
   JSNETWORKTYPE_W5500,  ///< WIZnet W5500 support
-  JSNETWORKTYPE_ESP8266,  ///< ExpressIF ESP8266 support
+  JSNETWORKTYPE_JS,  ///< JavaScript network type
+  JSNETWORKTYPE_ESP8266_BOARD, ///< Espressif ESP8266 board support
 } JsNetworkType;
 
 typedef struct {
@@ -52,19 +53,21 @@ typedef struct JsNetwork {
   JsNetworkData data;
   unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero  
 
+  int chunkSize; ///< Amount of memory to allocate for chunks of data when using send/recv
+
   /// Called on idle. Do any checks required for this device
   void (*idle)(struct JsNetwork *net);
   /// Call just before returning to idle loop. This checks for errors and tries to recover. Returns true if no errors.
   bool (*checkError)(struct JsNetwork *net);
 
   /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-  int (*createsocket)(struct JsNetwork *net, unsigned long host, unsigned short port);
+  int (*createsocket)(struct JsNetwork *net, uint32_t host, unsigned short port);
   /// destroys the given socket
   void (*closesocket)(struct JsNetwork *net, int sckt);
   /// If the given server socket can accept a connection, return it (or return < 0)
   int (*accept)(struct JsNetwork *net, int sckt);
   /// Get an IP address from a name
-  void (*gethostbyname)(struct JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
+  void (*gethostbyname)(struct JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
   /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
   int (*recv)(struct JsNetwork *net, int sckt, void *buf, size_t len);
   /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
@@ -84,14 +87,38 @@ JsNetwork *networkGetCurrent(); ///< Get the currently active network structure.
 // ---------------------------------------------------------
 
 /// Use this for getting the hostname, as it parses the name to see if it is an IP address first
-void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
-/// Parse the given IP address - return 0 on failure
-unsigned long networkParseIPAddress(const char *ip);
+void networkGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
+uint32_t networkParseIPAddress(const char *ip);
+/* given 6 pairs of 8 bit hex numbers separated by ':', parse them into a
+ * 6 byte array. returns false on failure */
+bool networkParseMACAddress(unsigned char *addr, const char *ip);
 /// if nBytes<0, addresses are printed out backwards
 JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int base, char separator);
 /// Given an address (pointed to by ip) put it in a string named 'name', in the given object. if nBytes<0, addresses are printed out backwards
 void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator);
 /** Some devices (CC3000) store the IP address with the first element last, so we must flip it */
 unsigned long networkFlipIPAddress(unsigned long addr);
+
+typedef enum {
+  NCF_NORMAL = 0,
+  NCF_TLS = 1
+} NetCreateFlags;
+
+/// Check for any errors and try and recover (CC3000 only really)
+bool netCheckError(JsNetwork *net);
+
+/// Create a socket (server (host==0) or client)
+int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags, JsVar *options);
+
+/// Ask this socket to close - it may not close immediately
+void netCloseSocket(JsNetwork *net, int sckt);
+
+/** If this is a server socket and we have an incoming connection then
+ * accept and return the socket number - else return <0 */
+int netAccept(JsNetwork *net, int sckt);
+
+void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
+int netRecv(JsNetwork *net, int sckt, void *buf, size_t len);
+int netSend(JsNetwork *net, int sckt, const void *buf, size_t len);
 
 #endif // _NETWORK_H

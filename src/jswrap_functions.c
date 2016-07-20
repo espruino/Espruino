@@ -13,6 +13,7 @@
  * JavaScript methods and functions in the global namespace
  * ----------------------------------------------------------------------------
  */
+#include <math.h>
 #include "jswrap_functions.h"
 #include "jslex.h"
 #include "jsparse.h"
@@ -26,7 +27,7 @@
   "return" : ["JsVar","An array containing all the arguments given to the function"]
 }
 A variable containing the arguments given to the function
-*/
+ */
 extern JsExecInfo execInfo;
 JsVar *jswrap_arguments() {
   JsVar *scope = 0;
@@ -37,24 +38,9 @@ JsVar *jswrap_arguments() {
     return 0;
   }
 
-  JsVar *args = jsvNewWithFlags(JSV_ARRAY);
-  if (!args) return 0; // out of memory
-
-  JsvObjectIterator it;
-  jsvObjectIteratorNew(&it, scope);
-  while (jsvObjectIteratorHasValue(&it)) {
-    JsVar *idx = jsvObjectIteratorGetKey(&it);
-    if (jsvIsFunctionParameter(idx)) {
-      JsVar *val = jsvSkipOneName(idx);
-      jsvArrayPushAndUnLock(args, val);
-    }
-    jsvUnLock(idx);
-    jsvObjectIteratorNext(&it);
-  }
-  jsvObjectIteratorFree(&it);
-
-  return args;
+  return jsvGetFunctionArgumentLength(scope);
 }
+
 
 
 /*JSON{
@@ -63,18 +49,43 @@ JsVar *jswrap_arguments() {
   "name" : "Function",
   "generate" : "jswrap_function_constructor",
   "params" : [
-    ["code","JsVar","A string representing the code to run"]
+    ["args","JsVarArray","Zero or more arguments (as strings), followed by a string representing the code to run"]
   ],
   "return" : ["JsVar","A Number object"]
 }
 Creates a function
-*/
-JsVar *jswrap_function_constructor(JsVar *code) {
+ */
+JsVar *jswrap_function_constructor(JsVar *args) {
   JsVar *fn = jsvNewWithFlags(JSV_FUNCTION);
   if (!fn) return 0;
 
-  JsVar *codeStr = jsvVarPrintf("{\n%v\n}", code);
-  jsvUnLock(jsvObjectSetChild(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr));
+  /* Slightly odd form because we want to iterate
+   * over all items, but leave the final one as
+   * that will be for code. */
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, args);
+  JsVar *v = jsvObjectIteratorGetValue(&it);
+  jsvObjectIteratorNext(&it);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *s = jsvAsString(v, false);
+    if (s) {
+      // copy the string - if a string was supplied already we want to make
+      // sure we have a new (unreferenced) string
+      JsVar *paramName = jsvNewFromStringVar(s, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+      jsvUnLock(s);
+      if (paramName) {
+        jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+        jsvAddName(fn, paramName);
+        jsvUnLock(paramName);
+      }
+    }
+
+    jsvUnLock(v);
+    v = jsvObjectIteratorGetValue(&it);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  jsvObjectSetChildAndUnLock(fn, JSPARSE_FUNCTION_CODE_NAME, v);
   return fn;
 }
 
@@ -88,11 +99,11 @@ JsVar *jswrap_function_constructor(JsVar *code) {
   "return" : ["JsVar","The result of evaluating the string"]
 }
 Evaluate a string containing JavaScript code
-*/
+ */
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v, false); // get as a string
-  JsVar *result = jspEvaluateVar(s, 0, false);
+  JsVar *result = jspEvaluateVar(s, execInfo.thisVar, 0);
   jsvUnLock(s);
   return result;
 }
@@ -108,7 +119,7 @@ JsVar *jswrap_eval(JsVar *v) {
   "return" : ["JsVar","The integer value of the string (or NaN)"]
 }
 Convert a string representing a number into an integer
-*/
+ */
 JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   int radix = 0/*don't force radix*/;
   if (jsvIsNumeric(radixVar))
@@ -119,8 +130,13 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
 
   // otherwise convert to string
   char buffer[JS_NUMBER_BUFFER_SIZE];
-  jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
+  if (jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE)==JS_NUMBER_BUFFER_SIZE) {
+    jsExceptionHere(JSET_ERROR, "String too big to convert to integer\n");
+    return jsvNewFromFloat(NAN);
+  }
   bool hasError = false;
+  if (!radix && buffer[0]=='0' && isNumeric(buffer[1]))
+    radix = 10; // DON'T assume a number is octal if it starts with 0
   long long i = stringToIntWithRadix(buffer, radix, &hasError);
   if (hasError) return jsvNewFromFloat(NAN);
   return jsvNewFromLongInteger(i);
@@ -136,10 +152,15 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   "return" : ["float","The value of the string"]
 }
 Convert a string representing a number into an float
-*/
+ */
 JsVarFloat jswrap_parseFloat(JsVar *v) {
   char buffer[JS_NUMBER_BUFFER_SIZE];
-  jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
+  if (jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE)==JS_NUMBER_BUFFER_SIZE) {
+    jsExceptionHere(JSET_ERROR, "String too big to convert to float\n");
+    return NAN;
+  }
+  if (!strcmp(buffer, "Infinity")) return INFINITY;
+  if (!strcmp(buffer, "-Infinity")) return -INFINITY;
   return stringToFloat(buffer);
 }
 
@@ -153,11 +174,11 @@ JsVarFloat jswrap_parseFloat(JsVar *v) {
   "return" : ["bool","True is the value is NaN, false if not."]
 }
 Whether the x is NaN (Not a Number) or not
-*/
+ */
 bool jswrap_isNaN(JsVar *v) {
   if (jsvIsUndefined(v) ||
       jsvIsObject(v) ||
-      (jsvIsFloat(v) && isnan(jsvGetFloat(v)))) return true;
+      ((jsvIsFloat(v)||jsvIsArray(v)) && isnan(jsvGetFloat(v)))) return true;
   if (jsvIsString(v)) {
     // this is where is can get a bit crazy
     bool allWhiteSpace = true;
@@ -207,8 +228,8 @@ NO_INLINE static int jswrap_atob_decode(int c) {
   ],
   "return" : ["JsVar","A base64 encoded string"]
 }
-Convert the supplied string (or array) into a base64 string
-*/
+Encode the supplied string (or array) into a base64 string
+ */
 JsVar *jswrap_btoa(JsVar *binaryData) {
   if (!jsvIsIterable(binaryData)) {
     jsExceptionHere(JSET_ERROR, "Expecting a string or array, got %t", binaryData);
@@ -253,7 +274,6 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
   return base64Data;
 }
 
-
 /*JSON{
   "type" : "function",
   "name" : "atob",
@@ -264,8 +284,8 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
   ],
   "return" : ["JsVar","A string containing the decoded data"]
 }
-Convert the supplied base64 string into a base64 string
-*/
+Decode the supplied base64 string into a normal string
+ */
 JsVar *jswrap_atob(JsVar *base64Data) {
   if (!jsvIsString(base64Data)) {
     jsExceptionHere(JSET_ERROR, "Expecting a string, got %t", base64Data);
@@ -279,7 +299,7 @@ JsVar *jswrap_atob(JsVar *base64Data) {
   jsvStringIteratorNew(&itdst, binaryData, 0);
   // skip whitespace
   while (jsvStringIteratorHasChar(&itsrc) &&
-        isWhitespace(jsvStringIteratorGetChar(&itsrc)))
+      isWhitespace(jsvStringIteratorGetChar(&itsrc)))
     jsvStringIteratorNext(&itsrc);
 
   while (jsvStringIteratorHasChar(&itsrc) && !jspIsInterrupted()) {
@@ -305,4 +325,103 @@ JsVar *jswrap_atob(JsVar *base64Data) {
   jsvStringIteratorFree(&itdst);
 
   return binaryData;
+}
+
+/*JSON{
+  "type" : "function",
+  "name" : "encodeURIComponent",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_encodeURIComponent",
+  "params" : [
+    ["str","JsVar","A string to encode as a URI"]
+  ],
+  "return" : ["JsVar","A string containing the encoded data"]
+}
+Convert a string with any character not alphanumeric or `- _ . ! ~ * ' ( )` converted to the form `%XY` where `XY` is its hexadecimal representation
+ */
+JsVar *jswrap_encodeURIComponent(JsVar *arg) {
+  JsVar *v = jsvAsString(arg, false);
+  if (!v) return 0;
+  JsVar *result = jsvNewFromEmptyString();
+  if (result) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, v, 0);
+    JsvStringIterator dst;
+    jsvStringIteratorNew(&dst, result, 0);
+    while (jsvStringIteratorHasChar(&it)) {
+      char ch = jsvStringIteratorGetChar(&it);
+      if (isAlpha(ch) || isNumeric(ch) ||
+          ch=='-' || // _ in isAlpha
+          ch=='.' ||
+          ch=='!' ||
+          ch=='~' ||
+          ch=='*' ||
+          ch=='\'' ||
+          ch=='(' ||
+          ch==')') {
+        jsvStringIteratorAppend(&dst, ch);
+      } else {
+        jsvStringIteratorAppend(&dst, '%');
+        unsigned int d = ((unsigned)ch)>>4;
+        jsvStringIteratorAppend(&dst, (char)((d>9)?('A'+d-10):('0'+d)));
+        d = ((unsigned)ch)&15;
+        jsvStringIteratorAppend(&dst, (char)((d>9)?('A'+d-10):('0'+d)));
+      }
+      jsvStringIteratorNext(&it);
+    }
+    jsvStringIteratorFree(&dst);
+    jsvStringIteratorFree(&it);
+  }
+  jsvUnLock(v);
+  return result;
+}
+
+/*JSON{
+  "type" : "function",
+  "name" : "decodeURIComponent",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_decodeURIComponent",
+  "params" : [
+    ["str","JsVar","A string to decode from a URI"]
+  ],
+  "return" : ["JsVar","A string containing the decoded data"]
+}
+Convert any groups of characters of the form '%ZZ', into characters with hex code '0xZZ'
+ */
+JsVar *jswrap_decodeURIComponent(JsVar *arg) {
+  JsVar *v = jsvAsString(arg, false);
+  if (!v) return 0;
+  JsVar *result = jsvNewFromEmptyString();
+  if (result) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, v, 0);
+    JsvStringIterator dst;
+    jsvStringIteratorNew(&dst, result, 0);
+    while (jsvStringIteratorHasChar(&it)) {
+      char ch = jsvStringIteratorGetChar(&it);
+      if (ch>>7) {
+        jsExceptionHere(JSET_ERROR, "ASCII only\n");
+        break;
+      }
+      if (ch!='%') {
+        jsvStringIteratorAppend(&dst, ch);
+      } else {
+        jsvStringIteratorNext(&it);
+        int hi = chtod(jsvStringIteratorGetChar(&it));
+        jsvStringIteratorNext(&it);
+        int lo = chtod(jsvStringIteratorGetChar(&it));
+        ch = (char)((hi<<4)|lo);
+        if (hi<0 || lo<0 || ch>>7) {
+          jsExceptionHere(JSET_ERROR, "Invalid URI\n");
+          break;
+        }
+        jsvStringIteratorAppend(&dst, ch);
+      }
+      jsvStringIteratorNext(&it);
+    }
+    jsvStringIteratorFree(&dst);
+    jsvStringIteratorFree(&it);
+  }
+  jsvUnLock(v);
+  return result;
 }

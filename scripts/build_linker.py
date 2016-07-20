@@ -34,12 +34,12 @@ def die(err):
 # -----------------------------------------------------------------------------------------
 
 # Now scan AF file
-print "Script location "+scriptdir
+print("Script location "+scriptdir)
 
 if len(sys.argv)<3:
-  print "ERROR, USAGE: build_linker.py BOARD_NAME LINKER_FILE [--bootloader_leave_space] [--bootloader]"
-  print "                              --using_bootloader       -> step forwards in flash to leave room for bootloader"
-  print "                              --bootloader             -> is a bootloader - place it in the correct position"
+  print("ERROR, USAGE: build_linker.py BOARD_NAME LINKER_FILE [--bootloader_leave_space] [--bootloader]")
+  print("                              --using_bootloader       -> step forwards in flash to leave room for bootloader")
+  print("                              --bootloader             -> is a bootloader - place it in the correct position")
   exit(1)
 boardname = sys.argv[1]
 linkerFilename = sys.argv[2]
@@ -53,10 +53,10 @@ for i in range(3,len(sys.argv)):
   else: die("Unknown option '"+arg+"'");
 
 
-print "LINKER_FILENAME "+linkerFilename
-print "BOARD "+boardname
-print "IS_BOOTLOADER "+str(IS_BOOTLOADER)
-print "IS_USING_BOOTLOADER "+str(IS_USING_BOOTLOADER)
+print("LINKER_FILENAME "+linkerFilename)
+print("BOARD "+boardname)
+print("IS_BOOTLOADER "+str(IS_BOOTLOADER))
+print("IS_USING_BOOTLOADER "+str(IS_USING_BOOTLOADER))
 # import the board def
 board = importlib.import_module(boardname)
 
@@ -69,9 +69,9 @@ if BOARD_BOOTLOADER != (IS_BOOTLOADER or IS_USING_BOOTLOADER):
 linkerFile = open(linkerFilename, 'w')
 def codeOut(s): linkerFile.write(s+"\n");
 # -----------------------------------------------------------------------------------------
-BOOTLOADER_SIZE = common.get_bootloader_size();
+BOOTLOADER_SIZE = common.get_bootloader_size(board);
 RAM_BASE = 0x20000000;
-FLASH_BASE = 0x00000000;
+FLASH_BASE = 0x08000000;
 RAM_SIZE = board.chip["ram"]*1024;
 FLASH_SIZE = board.chip["flash"]*1024;
 
@@ -83,11 +83,10 @@ if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1204:
 if IS_BOOTLOADER:
   FLASH_SIZE = BOOTLOADER_SIZE
 elif IS_USING_BOOTLOADER:
-  FLASH_BASE += BOOTLOADER_SIZE
+  FLASH_BASE = common.get_espruino_binary_address(board)
   FLASH_SIZE -= BOOTLOADER_SIZE
 
 STACK_START = RAM_BASE + RAM_SIZE
-
 
 codeOut("""
 /* Automatically generated linker file for """+boardname+"""
@@ -100,8 +99,8 @@ _estack = """+hex(STACK_START)+""";
 
 MEMORY
 {
-  FLASH (rx)      : ORIGIN = """+hex(FLASH_BASE)+""", LENGTH = """+str(FLASH_SIZE/1024)+"""K
-  RAM (xrw)       : ORIGIN = """+hex(RAM_BASE)+""", LENGTH = """+str(RAM_SIZE/1024)+"""K
+  FLASH (rx)      : ORIGIN = """+hex(FLASH_BASE)+""", LENGTH = """+str(int(FLASH_SIZE/1024))+"""K
+  RAM (xrw)       : ORIGIN = """+hex(RAM_BASE)+""", LENGTH = """+str(int(RAM_SIZE/1024))+"""K
 }
 
 SECTIONS
@@ -128,7 +127,7 @@ SECTIONS
   {
 """)
 
-if "place_text_section" in board.chip:
+if not IS_USING_BOOTLOADER and not IS_BOOTLOADER and "place_text_section" in board.chip:
   codeOut("""    /* In the .py file we were told to place text here (to skip out what was before) */
     . = ALIGN("""+hex(board.chip["place_text_section"] & 0x00FFFFFF)+"""); /* hacky! really want it absolute */
 """);
@@ -179,6 +178,8 @@ codeOut("""
   /* Remove stuff we don't want */
   /DISCARD/ :
   {
+    *(.init) /* we don't call init and fini anyway. GCC 5.x starting added them but then optimising them out */
+    *(.fini)
     libc.a ( * )
     libm.a ( * )
     libgcc.a ( * )

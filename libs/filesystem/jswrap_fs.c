@@ -62,6 +62,7 @@ To use this, you must type ```var fs = require('fs')``` to get access to the lib
 #endif
 
 // from jswrap_file
+bool jsfsGetPathString(char *pathStr, JsVar *path);
 extern bool jsfsInit();
 extern void jsfsReportError(const char *msg, FRESULT res);
 
@@ -98,7 +99,7 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsvIsUndefined(path))
-    jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+    if (!jsfsGetPathString(pathStr, path)) return 0;
 #ifdef LINUX
   if (!pathStr[0]) strcpy(pathStr, "."); // deal with empty readdir
 #endif
@@ -118,7 +119,7 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
     DIR *dir = opendir(pathStr);
     if(dir) {
 #endif
-      arr = jsvNewWithFlags(JSV_ARRAY);
+      arr = jsvNewEmptyArray();
       if (arr) { // could be out of memory
 #ifndef LINUX
         while (((res=f_readdir(&dirs, &Finfo)) == FR_OK) && Finfo.fname[0]) {
@@ -284,7 +285,7 @@ Delete the given file
 bool jswrap_fs_unlink(JsVar *path) {
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsvIsUndefined(path))
-    jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+    if (!jsfsGetPathString(pathStr, path)) return 0;
 
 #ifndef LINUX
   FRESULT res = 0;
@@ -323,7 +324,7 @@ mtime: A Date structure specifying the time the file was last modified
 JsVar *jswrap_fs_stat(JsVar *path) {
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsvIsUndefined(path))
-    jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+    if (!jsfsGetPathString(pathStr, path)) return 0;
 
 #ifndef LINUX
   FRESULT res = 0;
@@ -331,10 +332,10 @@ JsVar *jswrap_fs_stat(JsVar *path) {
     FILINFO info;
     res = f_stat(pathStr, &info);
     if (res==0 /*ok*/) {
-      JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+      JsVar *obj = jsvNewObject();
       if (!obj) return 0;
-      jsvUnLock(jsvObjectSetChild(obj, "size", jsvNewFromInteger((JsVarInt)info.fsize)));
-      jsvUnLock(jsvObjectSetChild(obj, "dir", jsvNewFromBool(info.fattrib & AM_DIR)));
+      jsvObjectSetChildAndUnLock(obj, "size", jsvNewFromInteger((JsVarInt)info.fsize));
+      jsvObjectSetChildAndUnLock(obj, "dir", jsvNewFromBool(info.fattrib & AM_DIR));
 
       CalendarDate date;
       date.year = 1980+(int)((info.fdate>>9)&127);
@@ -347,18 +348,18 @@ JsVar *jswrap_fs_stat(JsVar *path) {
       td.sec = (int)((info.ftime)&63);
       td.ms = 0;
       td.zone = 0;
-      jsvUnLock(jsvObjectSetChild(obj, "mtime", jswrap_date_from_milliseconds(fromTimeInDay(&td))));
+      jsvObjectSetChildAndUnLock(obj, "mtime", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
       return obj;
     }
   }
 #else
   struct stat info;
   if (stat(pathStr, &info)==0 /*ok*/) {
-    JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+    JsVar *obj = jsvNewObject();
     if (!obj) return 0;
-    jsvUnLock(jsvObjectSetChild(obj, "size", jsvNewFromInteger((JsVarInt)info.st_size)));
-    jsvUnLock(jsvObjectSetChild(obj, "dir", jsvNewFromBool(S_ISDIR(info.st_mode))));
-    jsvUnLock(jsvObjectSetChild(obj, "mtime", jswrap_date_from_milliseconds((JsVarFloat)info.st_mtime*1000.0)));
+    jsvObjectSetChildAndUnLock(obj, "size", jsvNewFromInteger((JsVarInt)info.st_size));
+    jsvObjectSetChildAndUnLock(obj, "dir", jsvNewFromBool(S_ISDIR(info.st_mode)));
+    jsvObjectSetChildAndUnLock(obj, "mtime", jswrap_date_from_milliseconds((JsVarFloat)info.st_mtime*1000.0));
     return obj;
   }
 #endif

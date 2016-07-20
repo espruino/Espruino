@@ -11,20 +11,17 @@
  * Platform Specific part of Hardware interface Layer
  * ----------------------------------------------------------------------------
  */
+
+
+
 #ifdef USB
- #ifdef STM32F1
-  #include "usb_utils.h"
-  #include "usb_lib.h"
-  #include "usb_conf.h"
-  #include "usb_pwr.h"
- #endif
- #ifdef STM32F4
-  #include "usb_regs.h"
-  #include "usb_defines.h"
-  #include "usbd_conf.h"
+ #ifdef LEGACY_USB
+  #include "legacy_usb.h"
+ #else
+  #include "usbd_cdc_hid.h"
  #endif
 #endif
-
+#include "stm32_compat.h"
 #include "jshardware.h"
 #include "jstimer.h"
 #include "jsutils.h"
@@ -36,12 +33,16 @@
 // STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
-#ifdef ESPRUINI
+
+#ifdef PICO
 #define USE_RTC
 #endif
 
-#define IRQ_PRIOR_MASSIVE 0
-#define IRQ_PRIOR_SPI 0 // we want to be very sure of not losing SPI (this is handled quickly too)
+#ifdef ESPRUINOWIFI
+#define USE_RTC
+#endif
+
+#define IRQ_PRIOR_SPI 1 // we want to be very sure of not losing SPI (this is handled quickly too)
 #define IRQ_PRIOR_SYSTICK 2
 #define IRQ_PRIOR_USART 6 // a little higher so we don't get lockups of something tries to print
 #define IRQ_PRIOR_MED 7
@@ -55,7 +56,7 @@
 unsigned short jshRTCPrescaler;
 unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
 #define RTC_PRESCALER_RECIPROCAL_SHIFT 10
-#define RTC_INITIALISE_TICKS 4 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
+#define RTC_INITIALISE_TICKS 8 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
 #define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
 #define JSSYSTIME_SECOND_SHIFT 20
 #define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
@@ -71,51 +72,22 @@ static JsSysTime jshGetTimeForSecond();
 // see jshPinWatch/jshGetWatchedPinState
 Pin watchedPins[16];
 
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+
 // simple 4 byte buffers for SPI
 #define JSH_SPIBUF_MASK 3 // 4 bytes
-volatile unsigned char jshSPIBufHead[SPIS];
-volatile unsigned char jshSPIBufTail[SPIS];
-volatile unsigned char jshSPIBuf[SPIS][4]; // 4 bytes packed into an int
-
-BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
+volatile unsigned char jshSPIBufHead[SPI_COUNT];
+volatile unsigned char jshSPIBufTail[SPI_COUNT];
+volatile unsigned char jshSPIBuf[SPI_COUNT][4]; // 4 bytes packed into an int
 
 #ifdef USB
 JsSysTime jshLastWokenByUSB = 0;
 #endif
 
-// Values from datasheets
-#if defined(STM32F1)
-#define V_REFINT 1.20
-#define V_TEMP_25 1.43
-#define V_TEMP_SLOPE 0.0043
-#else // defined(STM32F4)
-#define V_REFINT 1.21
-#define V_TEMP_25 0.76
-#define V_TEMP_SLOPE -0.0025
-#endif
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
-#if defined(STM32F3)
-// stupid renamed stuff
-#define EXTI2_IRQn EXTI2_TS_IRQn
-#define GPIO_Mode_AIN GPIO_Mode_AN
-// see _gpio.h
-#define GPIO_AF_USART1 GPIO_AF_7
-#define GPIO_AF_USART2 GPIO_AF_7
-#define GPIO_AF_USART3 GPIO_AF_7
-#define GPIO_AF_UART4 GPIO_AF_5
-#define GPIO_AF_UART5 GPIO_AF_5
-#define GPIO_AF_USART6 GPIO_AF_0 // FIXME is this right?
-#define GPIO_AF_SPI1 GPIO_AF_5
-#define GPIO_AF_SPI2 GPIO_AF_5
-#endif
-
-#if defined(STM32F401xx)
-#define NO_USART3
-#endif
-
-
 
 static ALWAYS_INLINE uint8_t pinToEVEXTI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
@@ -164,7 +136,11 @@ static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
 }
 static ALWAYS_INLINE uint32_t stmExtI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
+#ifdef STM32F3
+  return (uint32_t)(pin-JSH_PIN0); // STM32F3 is different - thanks @Frida!
+#else
   return (uint32_t)(1 << (pin-JSH_PIN0));
+#endif
 /*  if (pin==JSH_PIN0 ) return EXTI_Line0;
   if (pin==JSH_PIN1 ) return EXTI_Line1;
   if (pin==JSH_PIN2 ) return EXTI_Line2;
@@ -256,9 +232,13 @@ static ALWAYS_INLINE uint8_t stmPortSource(Pin pin) {
 
 static ALWAYS_INLINE ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
   if (analog & JSH_ANALOG1) return ADC1;
+#ifdef ADC2
   if (analog & JSH_ANALOG2) return ADC2;
+#endif
+#ifdef ADC3
   if (analog & JSH_ANALOG3) return ADC3;
-#if ADCS>3
+#endif
+#ifdef ADC4
   if (analog & JSH_ANALOG4) return ADC4;
 #endif
   jsExceptionHere(JSET_INTERNALERROR, "stmADC");
@@ -293,7 +273,10 @@ static ALWAYS_INLINE uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
 
 #ifdef STM32API2
 static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
-#if defined(STM32F4) || defined(STM32F2)
+#if defined(STM32F401xx) || defined(STM32F411xx)
+  assert(JSH_AF0==0 && JSH_AF15==15); // check mapping is right
+  return  func & JSH_MASK_AF;
+#elif defined(STM32F4) || defined(STM32F2)
   switch (func & JSH_MASK_TYPE) {
   case JSH_SPI1    : return GPIO_AF_SPI1;
   case JSH_SPI2    : return GPIO_AF_SPI2;
@@ -343,15 +326,15 @@ static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
 }
 #endif
 
-static long long DEVICE_INITIALISED_FLAGS = 0L;
+static uint64_t DEVICE_INITIALISED_FLAGS = 0L;
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  long long mask = 1L << (int)device;
+  uint64_t mask = 1ULL << (int)device;
   return (DEVICE_INITIALISED_FLAGS & mask) != 0L;
 }
 
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
-  long long mask = 1L << (int)device;
+  uint64_t mask = 1ULL << (int)device;
   if (isInit) {
     DEVICE_INITIALISED_FLAGS |= mask;
   } else {
@@ -368,42 +351,42 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   } else if (device == JSH_USART2) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, cmd);
     ptr = USART2;
-#if USARTS>= 3
+#if defined(USART3) && USART_COUNT>=3
   } else if (device == JSH_USART3) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, cmd);
     ptr = USART3;
 #endif
-#if USARTS>= 4
+#if defined(UART4) && USART_COUNT>=4
   } else if (device == JSH_USART4) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, cmd);
     ptr = UART4;
 #endif
-#if USARTS>= 5
+#if defined(UART5) && USART_COUNT>=5
   } else if (device == JSH_USART5) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, cmd);
     ptr = UART5;
 #endif
-#if USARTS>= 6
+#if defined(USART6) && USART_COUNT>=6
   } else if (device == JSH_USART6) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, cmd);
     ptr = USART6;
 #endif
-#if SPIS>= 1
+#if SPI_COUNT >= 1
   } else if (device==JSH_SPI1) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, cmd);
     ptr = SPI1;
 #endif
-#if SPIS>= 2
+#if SPI_COUNT >= 2
   } else if (device==JSH_SPI2) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, cmd);
     ptr = SPI2;
 #endif
-#if SPIS>= 3
+#if SPI_COUNT >= 3
   } else if (device==JSH_SPI3) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, cmd);
     ptr = SPI3;
 #endif
-#if I2CS>= 1
+#if I2C_COUNT >= 1
   } else if (device==JSH_I2C1) {
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, cmd);
       /* Seems some F103 parts require this reset step - some hardware problem */
@@ -411,7 +394,7 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
       RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1, DISABLE);
       ptr = I2C1;
 #endif
-#if I2CS>= 2
+#if I2C_COUNT >= 2
   } else if (device==JSH_I2C2) {
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, cmd);
       /* Seems some F103 parts require this reset step - some hardware problem */
@@ -419,7 +402,7 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
       RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C2, DISABLE);
       ptr = I2C2;
 #endif
-#if I2CS>= 3
+#if I2C_COUNT >= 3
   } else if (device==JSH_I2C3) {
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C3, cmd);
       /* Seems some F103 parts require this reset step - some hardware problem */
@@ -439,46 +422,67 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   } else if (device==JSH_TIMER4)  {
     ptr = TIM4;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, cmd);
-#ifndef STM32F3
+#ifdef TIM5
   } else if (device==JSH_TIMER5) {
     ptr = TIM5;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, cmd);
 #endif
-/*    } else if (device==JSH_TIMER6)  { // Not used for outputs
+#ifdef TIM6
+  } else if (device==JSH_TIMER6)  { // Not used for outputs
     ptr = TIM6;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, cmd);
+#endif
+#ifdef TIM7
   } else if (device==JSH_TIMER7)  { // Not used for outputs
     ptr = TIM7;
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, cmd); */
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, cmd);
+#endif
+#ifdef TIM8
   } else if (device==JSH_TIMER8) {
     ptr = TIM8;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, cmd);
-#ifndef STM32F3
+#endif
+#ifdef TIM9
   } else if (device==JSH_TIMER9)  {
     ptr = TIM9;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, cmd);
+#endif
+#ifdef TIM10
   } else if (device==JSH_TIMER10)  {
     ptr = TIM10;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM10, cmd);
+#endif
+#ifdef TIM11
   } else if (device==JSH_TIMER11)  {
     ptr = TIM11;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM11, cmd);
+#endif
+#ifdef TIM12
   } else if (device==JSH_TIMER12)  {
     ptr = TIM12;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM12, cmd);
+#endif
+#ifdef TIM13
   } else if (device==JSH_TIMER13)  {
     ptr = TIM13;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM13, cmd);
+#endif
+#ifdef TIM14
   } else if (device==JSH_TIMER14)  {
     ptr = TIM14;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, cmd);
-#else
+#endif
+#ifdef TIM15
   } else if (device==JSH_TIMER15)  {
     ptr = TIM15;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM15, cmd);
+#endif
+#ifdef TIM16
   } else if (device==JSH_TIMER16)  {
     ptr = TIM16;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM16, cmd);
+#endif
+#ifdef TIM17
   } else if (device==JSH_TIMER17)  {
     ptr = TIM17;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM17, cmd);
@@ -503,30 +507,51 @@ TIM_TypeDef* getTimerFromPinFunction(JshPinFunction device) {
     case JSH_TIMER5:
       return TIM5;
 #endif
-/*        case JSH_TIMER6: // Not used for outputs
+#ifdef TIM6
+    case JSH_TIMER6: // Not used for outputs
       return TIM6;
-    case JSH_TIMER7: // Not used for outputs
-      return TIM7; */
+#endif
+#ifdef TIM7
+    case JSH_TIMER7:
+      return TIM7;
+#endif
+#ifdef TIM8
     case JSH_TIMER8:
       return TIM8;
-#ifndef STM32F3
+#endif
+#ifdef TIM9
     case JSH_TIMER9:
       return TIM9;
+#endif
+#ifdef TIM10
     case JSH_TIMER10:
       return TIM10;
+#endif
+#ifdef TIM11
     case JSH_TIMER11:
       return TIM11;
+#endif
+#ifdef TIM12
     case JSH_TIMER12:
       return TIM12;
+#endif
+#ifdef TIM13
     case JSH_TIMER13:
       return TIM13;
+#endif
+#ifdef TIM14
     case JSH_TIMER14:
       return TIM14;
-#else
+#endif
+#ifdef TIM15
     case JSH_TIMER15:
       return TIM15;
+#endif
+#ifdef TIM16
     case JSH_TIMER16:
       return TIM16;
+#endif
+#ifdef TIM17
     case JSH_TIMER17:
       return TIM17;
 #endif
@@ -539,14 +564,16 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SERIAL1 : return USART1;
    case EV_SERIAL2 : return USART2;
+#ifdef USART3
    case EV_SERIAL3 : return USART3;
-#if USARTS>=4
+#endif
+#ifdef UART4
    case EV_SERIAL4 : return UART4;
 #endif
-#if USARTS>=5
+#ifdef UART5
    case EV_SERIAL5 : return UART5;
 #endif
-#if USARTS>=6
+#ifdef USART6
    case EV_SERIAL6 : return USART6;
 #endif
    default: return 0;
@@ -566,34 +593,14 @@ I2C_TypeDef* getI2CFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_I2C1 : return I2C1;
    case EV_I2C2 : return I2C2;
-#if I2CS>=3
+#ifdef I2C3
    case EV_I2C3 : return I2C3;
 #endif
    default: return 0;
  }
 }
 
-JshPinFunction getPinFunctionFromDevice(IOEventFlags device) {
- switch (device) {
-   case EV_SERIAL1 : return JSH_USART1;
-   case EV_SERIAL2 : return JSH_USART2;
-   case EV_SERIAL3 : return JSH_USART3;
-   case EV_SERIAL4 : return JSH_USART4;
-   case EV_SERIAL5 : return JSH_USART5;
-   case EV_SERIAL6 : return JSH_USART6;
-
-   case EV_SPI1    : return JSH_SPI1;
-   case EV_SPI2    : return JSH_SPI2;
-   case EV_SPI3    : return JSH_SPI3;
-
-   case EV_I2C1    : return JSH_I2C1;
-   case EV_I2C2    : return JSH_I2C2;
-   case EV_I2C3    : return JSH_I2C3;
-   default: return 0;
- }
-}
-
-static unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
+unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
   // TIM2-7, 12-14  on APB1, everything else is on APB2
   RCC_ClocksTypeDef clocks;
   RCC_GetClocksFreq(&clocks);
@@ -603,9 +610,20 @@ static unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
 #ifndef STM32F3
               TIMx==TIM5 ||
 #endif
-              TIMx==TIM6 || TIMx==TIM7 ||
-#ifndef STM32F3
-              TIMx==TIM12 || TIMx==TIM13 || TIMx==TIM14 ||
+#ifdef TIM6
+              TIMx==TIM6 ||
+#endif
+#ifdef TIM7
+              TIMx==TIM7 ||
+#endif
+#ifdef TIM12
+              TIMx==TIM12 ||
+#endif
+#ifdef TIM13
+              TIMx==TIM13 ||
+#endif
+#ifdef TIM14
+              TIMx==TIM14 ||
 #endif
               false;
 
@@ -624,50 +642,13 @@ static unsigned int jshGetSPIFreq(SPI_TypeDef *SPIx) {
   return APB2 ? clocks.PCLK2_Frequency : clocks.PCLK1_Frequency;
 }
 
-// Prints a list of capable pins, eg:
-// jshPrintCapablePins(..., "PWM", JSH_TIMER1, JSH_TIMERMAX, 0,0, false)
-// jshPrintCapablePins(..., "SPI", JSH_SPI1, JSH_SPIMAX, JSH_MASK_INFO,JSH_SPI_SCK, false)
-// jshPrintCapablePins(..., "Analog Input", 0,0,0,0, true) - for analogs
-static void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionName, JshPinFunction typeMin, JshPinFunction typeMax, JshPinFunction pMask, JshPinFunction pData, bool printAnalogs) {
-  if (functionName) {
-    jsError("Pin %p is not capable of %s\nSuitable pins are:", existingPin, functionName);
-  }
-
-  Pin pin;
-  int i,n=0;
-  for (pin=0;pin<JSH_PIN_COUNT;pin++) {
-    bool has = false;
-#ifdef STM32F1
-    int af = 0;
-#endif
-    if (printAnalogs) {
-      has = pinInfo[pin].analog!=JSH_ANALOG_NONE;
-    } else {
-      for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
-        JshPinFunction type = pinInfo[pin].functions[i] & JSH_MASK_TYPE;
-        if (type>=typeMin && type<=typeMax && ((pinInfo[pin].functions[i]&pMask)==pData)) {
-          has = true;
-#ifdef STM32F1
-          af = pinInfo[pin].functions[i] & JSH_MASK_AF;
-#endif
-        }
-      }
-    }
-    if (has) {
-      jsiConsolePrintf("%p",pin);
-#ifdef STM32F1
-      if (af!=JSH_AF0) jsiConsolePrint("(AF)");
-#endif
-      jsiConsolePrint(" ");
-      if (n++==8) { n=0; jsiConsolePrint("\n"); }
-    }
-  }
-  jsiConsolePrint("\n");
+static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
+  return SystemCoreClock;
 }
 
 // ----------------------------------------------------------------------------
-#ifdef USE_RTC
 volatile unsigned int ticksSinceStart = 0;
+#ifdef USE_RTC
 // Average time between SysTicks
 volatile unsigned int averageSysTickTime=0, smoothAverageSysTickTime=0;
 // last system time there was a systick
@@ -679,24 +660,61 @@ bool hasSystemSlept;
 volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
 #endif
 
-#ifdef USB
-unsigned int SysTickUSBWatchdog = 0;
-void jshKickUSBWatchdog() {
-  SysTickUSBWatchdog = 0;
+static bool jshIsRTCUsingLSE() {
+  return (RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSE;
 }
-#endif //USB
 
 static bool jshIsRTCAlreadySetup(bool andRunning) {
   if ((RCC->BDCR & RCC_BDCR_RTCEN) == 0)
     return false; // RTC was off - return false
   if (!andRunning) return true;
   // Check what we're running the RTC off and make sure that it's running!
-  if ((RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSE)
+  if (jshIsRTCUsingLSE())
     return RCC_GetFlagStatus(RCC_FLAG_LSERDY) == SET;
   else
     return RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET;
 }
 
+#ifdef USE_RTC
+void jshSetupRTCPrescaler(bool isUsingLSI) {
+  if (isUsingLSI) {
+#ifdef STM32F1
+    jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
+#else
+    jshRTCPrescaler = 32000; // 32kHz for LSI on F4
+#endif
+  } else {
+    jshRTCPrescaler = 32768; // 32.768kHz for LSE
+  }
+  jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
+}
+
+void jshSetupRTC(bool isUsingLSI) {
+  RCC_RTCCLKConfig(isUsingLSI ? RCC_RTCCLKSource_LSI : RCC_RTCCLKSource_LSE); // set clock source to low speed internal
+  jshSetupRTCPrescaler(isUsingLSI);
+  RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
+  RTC_WaitForSynchro();
+#ifdef STM32F1
+  RTC_SetPrescaler(jshRTCPrescaler - 1U);
+  RTC_WaitForLastTask();
+#else
+  RTC_InitTypeDef RTC_InitStructure;
+  RTC_StructInit(&RTC_InitStructure);
+  //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
+  //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
+  RTC_InitStructure.RTC_AsynchPrediv = 0;
+  RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
+  RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
+  RTC_Init(&RTC_InitStructure);
+#endif
+}
+
+void jshResetRTCTimer() {
+  // work out initial values for RTC
+  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
+  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
+}
+#endif
 
 void jshDoSysTick() {
   /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
@@ -705,68 +723,46 @@ void jshDoSysTick() {
   if (execInfo.execute & EXEC_CTRL_C)
     execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C) | EXEC_CTRL_C_WAIT;
 
-#ifdef USE_RTC
   if (ticksSinceStart!=0xFFFFFFFF)
     ticksSinceStart++;
+ #ifdef USE_RTC
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
-    /* If RTC is already enabled, we've come back from a reset...
-     * we're going to want to keep everything as it was */
-    bool alreadySetup = jshIsRTCAlreadySetup(true);
-    /* LSEON, LSEBYP, RTCSEL and RTCEN are in backup domain so may not need
-     * changing */
-     
-    if (!alreadySetup) {
-      bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
-      
-      if (RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) {
-        // Uh-oh - RTC *was* set up for something, but it's not
-        // the case any more. It needs totally resetting so we can change it
-        RCC_BackupResetCmd(ENABLE);
-        RCC_BackupResetCmd(DISABLE);
-	    RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
-      }
-      
-      if (isUsingLSI) {
-        // LSE is not working - turn it off and use LSI
+    // Use LSI if the LSE hasn't stabilised
+    bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
+
+    // If the RTC is already doing the right thing, do nothing
+    if (isUsingLSI == jshIsRTCUsingLSE()) {
+      // We just set the RTC up, so we have to reset the
+      // backup domain again to change sources :(
 #ifdef STM32F1
-        jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
+      uint32_t time = RTC_GetCounter();
 #else
-        jshRTCPrescaler = 32768; // 32kHz for LSI
+      RTC_TimeTypeDef time;
+      RTC_DateTypeDef date;
+      RTC_GetTime(RTC_Format_BIN, &time);
+      RTC_GetDate(RTC_Format_BIN, &date);
 #endif
-        RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
-        RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
-      } else {
-        // LSE working! Yay! turn LSI off now
-        jshRTCPrescaler = 32768; // 32kHz for LSE
-        RCC_LSEConfig(RCC_LSE_ON);
-        RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
-        RCC_LSICmd(DISABLE); // disable low speed internal oscillator
-      }
-      RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
-      RTC_WaitForSynchro();
-  #ifdef STM32F1
-      RTC_SetPrescaler(jshRTCPrescaler - 1U);
-      RTC_WaitForLastTask();
-  #else
-      RTC_InitTypeDef RTC_InitStructure;
-      RTC_StructInit(&RTC_InitStructure);
-      //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
-      //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
-      RTC_InitStructure.RTC_AsynchPrediv = 0;
-      RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
-      RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
-      RTC_Init(&RTC_InitStructure);
-  #endif
-    } else { // alreadySetup
-      // Already set up, so just turn off the relevant oscillator
-      if ((RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSE) {
-        RCC_LSICmd(DISABLE);
-      } else {
-        RCC_LSEConfig(RCC_LSE_OFF);
-      }
+      RCC_BackupResetCmd(ENABLE);
+      RCC_BackupResetCmd(DISABLE);
+      RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+#ifdef STM32F1
+      RTC_SetCounter(time);
+#else
+      RTC_SetDate(RTC_Format_BIN, &date);
+      RTC_SetTime(RTC_Format_BIN, &time);
+#endif
+      jshSetupRTC(isUsingLSI);
     }
 
-    jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
+    // Disable RTC clocks depending on what we decided...
+    if (isUsingLSI) {
+      // LSE is not working - turn it off and use LSI
+      RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
+    } else {
+      // LSE working! Yay! turn LSI off now
+      RCC_LSEConfig(RCC_LSE_ON);
+      RCC_LSICmd(DISABLE); // disable low speed internal oscillator
+    }
   }
 
   JsSysTime time = jshGetRTCSystemTime();
@@ -808,11 +804,11 @@ void jshDoSysTick() {
   SysTickMajor += SYSTICK_RANGE;
 #endif
 
-#ifdef USB
-  if (SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT) {
-    SysTickUSBWatchdog++;
+  /* One second after start, call jsinteractive. This is used to swap
+   * to USB (if connected), or the Serial port. */
+  if (ticksSinceStart == 5) {
+    jsiOneSecondAfterStartup();
   }
-#endif //USB
 }
 
 // ----------------------------------------------------------------------------
@@ -837,24 +833,19 @@ void jshDelayMicroseconds(int microsec) {
   while (iter--) __NOP();
 }
 
-bool jshGetPinStateIsManual(Pin pin) {
-  return BITFIELD_GET(jshPinStateIsManual, pin);
-}
-
-void jshSetPinStateIsManual(Pin pin, bool manual) {
-  BITFIELD_SET(jshPinStateIsManual, pin, manual);
-}
-
 ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
+
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
-  bool af = state==JSHPINSTATE_AF_OUT ||
-            state==JSHPINSTATE_AF_OUT_OPENDRAIN ||
-            state==JSHPINSTATE_USART_IN ||
-            state==JSHPINSTATE_USART_OUT ||
-            state==JSHPINSTATE_I2C;
-  bool pullup = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_GPIO_IN_PULLUP || state==JSHPINSTATE_USART_IN;
-  bool pulldown = state==JSHPINSTATE_GPIO_IN_PULLDOWN;
+  bool af = JSHPINSTATE_IS_AF(state);
+  bool pullup = JSHPINSTATE_IS_PULLUP(state);
+  bool pulldown = JSHPINSTATE_IS_PULLDOWN(state);
   bool opendrain = JSHPINSTATE_IS_OPENDRAIN(state);
 
   if (out) {
@@ -872,10 +863,10 @@ ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
   #ifdef STM32API2
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
     if (af) GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-    if (state==JSHPINSTATE_ADC_IN) GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
   #else
     GPIO_InitStructure.GPIO_Mode = pulldown ? GPIO_Mode_IPD : (pullup ? GPIO_Mode_IPU : GPIO_Mode_IN_FLOATING);
   #endif
+    if (state==JSHPINSTATE_ADC_IN) GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
   }
 #ifdef STM32API2
   GPIO_InitStructure.GPIO_PuPd = pulldown ? GPIO_PuPd_DOWN : (pullup ? GPIO_PuPd_UP : GPIO_PuPd_NOPULL);
@@ -960,8 +951,11 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
   else if ((func&JSH_MASK_TYPE)==JSH_SPI3) GPIO_PinRemapConfig( GPIO_Remap_SPI3, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_USART1) GPIO_PinRemapConfig( GPIO_Remap_USART1, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_USART2) GPIO_PinRemapConfig( GPIO_Remap_USART2, remap );
-  else if ((func&JSH_MASK_TYPE)==JSH_USART3) GPIO_PinRemapConfig( GPIO_FullRemap_USART3, remap );
-  else if (remap) jsError("(internal) Remap needed, but unknown device.");
+  else if ((func&JSH_MASK_TYPE)==JSH_USART3) {
+    // nasty hack because USART3 actuall has 2 different remap states
+    bool fullRemap = (JSH_PORTD_COUNT>9) && (pin==jshGetPinFromString("D8") || pin==jshGetPinFromString("D9"));
+    GPIO_PinRemapConfig( fullRemap ? GPIO_FullRemap_USART3 : GPIO_PartialRemap_USART3, remap );
+  } else if (remap) jsError("(internal) Remap needed, but unknown device %d", func&JSH_MASK_TYPE);
 
 #endif
 }
@@ -984,12 +978,22 @@ ALWAYS_INLINE bool jshPinGetValue(Pin pin) {
   return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
 }
 
-static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
-  return SystemCoreClock;
-}
-
 // ----------------------------------------------------------------------------
-static void jshResetSerial() {
+static void jshResetPeripherals() {
+  // Set pin state to analog input - saves some power
+  Pin i;
+  for (i=0;i<JSH_PIN_COUNT;i++) {
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    if (i==DEFAULT_CONSOLE_TX_PIN) continue;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    if (i==DEFAULT_CONSOLE_RX_PIN) continue;
+#endif
+    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i)) {
+      jshPinSetState(i, JSHPINSTATE_ADC_IN);
+    }
+  }
+  // Initialise UART if we have a default console device on it
   if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
@@ -1004,6 +1008,15 @@ static void jshResetSerial() {
 #endif
     jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
   }
+  // initialise button state
+#ifdef BTN1_PININDEX
+#ifdef BTN1_PINSTATE
+  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
+#else
+  jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
+#endif
 }
 
 void jshInit() {
@@ -1012,6 +1025,7 @@ void jshInit() {
   // reset some vars
   for (i=0;i<16;i++)
     watchedPins[i] = PIN_UNDEFINED;
+  BITFIELD_CLEAR(jshPinSoftPWM);
 
   // enable clocks
  #if defined(STM32F3)
@@ -1093,41 +1107,48 @@ void jshInit() {
     RCC_BackupResetCmd(DISABLE);
     // Turn both LSI(above) and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
     RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
+    // Initially set the RTC up to use the internal oscillator
+    jshSetupRTC(true);
   }
-#endif
-
-  // initialise button
-#ifdef BTN1_PININDEX
-#ifdef BTN1_PINSTATE
-  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
-#else
-  jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
-#endif
+  // set up the RTC prescaler for now, so at least we can get some sensible numbers as it starts
+  jshSetupRTCPrescaler(!jshIsRTCUsingLSE());
 #endif
 
   // PREEMPTION
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   // Slow the IO clocks down - we don't need them going so fast!
-#ifdef STM32VLDISCOVERY
-  RCC_PCLK1Config(RCC_HCLK_Div2);
-  RCC_PCLK2Config(RCC_HCLK_Div4);
-#else
   RCC_PCLK1Config(RCC_HCLK_Div2); // PCLK1 must be >13 Mhz for USB to work (see STM32F103 C/D/E errata)
   RCC_PCLK2Config(RCC_HCLK_Div4);
-#endif
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
+#ifdef USE_RTC
+  ticksSinceStart = 0;
+#endif
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK);
 
 #ifdef USE_RTC
-  // work out initial values for RTC
-  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
-  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
+  jshResetRTCTimer();
 #endif
 
-  jshResetSerial();
+  jshResetPeripherals();
+#ifdef LED1_PININDEX
+  // turn led back on (status) as it would have just been turned off
+  jshPinOutput(LED1_PININDEX, 1);
+#endif
 
+#ifdef SWD_ONLY_NO_JTAG
+  // reclaim A13 and A14
+#ifdef STM32F1
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE); // Disable JTAG so pins are available for LEDs
+#else
+  // On F2/F4, JTAG is just AF0
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource15, GPIO_AF_SPI1);
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource14, GPIO_AF_SPI1);
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource13, GPIO_AF_SPI1);
+#endif
+
+#else
 #ifdef STM32F1
 #ifndef DEBUG
   // reclaim B3, B4, A13 and A14
@@ -1137,6 +1158,7 @@ void jshInit() {
   // see http://www.espruino.com/AdvancedDebug
 
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available for LEDs
+#endif
 #endif
 #endif
 
@@ -1182,18 +1204,10 @@ void jshInit() {
   EXTI_Init(&EXTI_InitStructure);
 #endif // USE_RTC
 
-#ifdef STM32F4
-  ADC_CommonInitTypeDef ADC_CommonInitStructure;
-  ADC_CommonStructInit(&ADC_CommonInitStructure);
-  ADC_CommonInitStructure.ADC_Mode              = ADC_Mode_Independent;
-  ADC_CommonInitStructure.ADC_Prescaler         = ADC_Prescaler_Div2;
-  ADC_CommonInitStructure.ADC_DMAAccessMode     = ADC_DMAAccessMode_Disabled;
-  ADC_CommonInitStructure.ADC_TwoSamplingDelay  = ADC_TwoSamplingDelay_5Cycles;
-  ADC_CommonInit(&ADC_CommonInitStructure);
+#ifndef SAVE_ON_FLASH
+  // Get a random seed to put into rand's random number generator
+  srand(jshGetRandomNumber());
 #endif
-
-  /*jsiConsolePrint("\r\n\r\n");
-  jsiConsolePrintInt(SystemCoreClock/1000000);jsiConsolePrint(" Mhz\r\n\r\n");*/
 
   /* Work out microsecond delay for jshDelayMicroseconds...
 
@@ -1236,68 +1250,6 @@ void jshInit() {
 //  JSH_DELAY_OVERHEAD = (int)(tOverhead * JSH_DELAY_MULTIPLIER / tIter);
   jshInterruptOn();
 
-
-
-/*  jsiConsolePrint("\r\nstart = ");jsiConsolePrintInt(tStart);
-  jsiConsolePrint("\r\nend1 = ");jsiConsolePrintInt(tEnd1);
-  jsiConsolePrint("\r\nend2 = ");jsiConsolePrintInt(tEnd2);
-  jsiConsolePrint("\r\nend3 = ");jsiConsolePrintInt(tEnd3);
-  jsiConsolePrint("\r\nend4 = ");jsiConsolePrintInt(tEnd4);
-  jsiConsolePrint("\r\nend5 = ");jsiConsolePrintInt(tEnd4);
-  jsiConsolePrint("\r\nend6 = ");jsiConsolePrintInt(tEnd4);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER = ");jsiConsolePrintInt(tEnd1-tStart);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER = ");jsiConsolePrintInt(tEnd2-tEnd1);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER = ");jsiConsolePrintInt(tEnd3-tEnd2);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER*2 = ");jsiConsolePrintInt(tEnd4-tEnd3);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER*2 = ");jsiConsolePrintInt(tEnd5-tEnd4);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER*2 = ");jsiConsolePrintInt(tEnd6-tEnd5);
-  jsiConsolePrint("\r\ncalculated t for JSH_DELAY_MULTIPLIER = ");jsiConsolePrintInt(tIter);*/
-
-//  jsiConsolePrint("\r\ncalculated overhead = ");jsiConsolePrintInt(tOverhead);
-//  jsiConsolePrint("\r\nticks per ms =");jsiConsolePrintInt(jshGetTimeFromMilliseconds(1));
-//  jsiConsolePrint("\r\niterations per ms*1000 = ");jsiConsolePrintInt(JSH_DELAY_MULTIPLIER);
-//  jsiConsolePrint("\r\niterations overhead = ");jsiConsolePrintInt(JSH_DELAY_OVERHEAD);
-//  jsiConsolePrint("\r\n");
-//  jshTransmitFlush();
-
-/*  Pin pin = 1;
-  jshPinOutput(pin, 1);
-  jshInterruptOff();
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(200);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(200);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(1000);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(1000);
-  jshPinSetValue(pin, 0);
-  jshInterruptOn();*/
-
   /* Enable Utility Timer Update interrupt. We'll enable the
    * utility timer when we need it. */
   NVIC_InitStructure.NVIC_IRQChannel = UTIL_TIMER_IRQn;
@@ -1307,7 +1259,7 @@ void jshInit() {
   NVIC_Init(&NVIC_InitStructure);
 
   // reset SPI buffers
-  for (i=0;i<SPIS;i++) {
+  for (i=0;i<SPI_COUNT;i++) {
     jshSPIBufHead[i] = 0;
     jshSPIBufTail[i] = 0;
   }
@@ -1319,21 +1271,8 @@ void jshInit() {
 }
 
 void jshReset() {
-  Pin i;
-  for (i=0;i<JSH_PIN_COUNT;i++) {
-#ifdef DEFAULT_CONSOLE_TX_PIN
-    if (i==DEFAULT_CONSOLE_TX_PIN) continue;
-#endif
-#ifdef DEFAULT_CONSOLE_RX_PIN
-    if (i==DEFAULT_CONSOLE_RX_PIN) continue;
-#endif
-    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i)) {
-      jshPinSetState(i, JSHPINSTATE_ADC_IN);
-    }
-  }
-
-  // re-initialise serial port (like was done on jshInit)
-  jshResetSerial();
+  jshResetDevices();
+  jshResetPeripherals();
 }
 
 void jshKill() {
@@ -1345,17 +1284,16 @@ void jshIdle() {
   bool USBConnected = jshIsUSBSERIALConnected();
   if (wasUSBConnected != USBConnected) {
     wasUSBConnected = USBConnected;
-    if (USBConnected)
-      jsiSetConsoleDevice(EV_USBSERIAL);
-    else {
-      if (jsiGetConsoleDevice() == EV_USBSERIAL)
-        jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE);
+    if (USBConnected && jsiGetConsoleDevice()!=EV_LIMBO) {
+      if (!jsiIsConsoleDeviceForced())
+        jsiSetConsoleDevice(EV_USBSERIAL, false);
+    } else {
+      if (!jsiIsConsoleDeviceForced() && jsiGetConsoleDevice()==EV_USBSERIAL)
+        jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, false);
       jshTransmitClearDevice(EV_USBSERIAL); // clear the transmit queue
     }
   }
 #endif
-  // Kick the watchdog (this only happens from the idle loop)
-  IWDG_ReloadCounter();
 }
 
 // ----------------------------------------------------------------------------
@@ -1390,8 +1328,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 
 bool jshIsUSBSERIALConnected() {
 #ifdef USB
-  return SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT;
-  // not a check for connected - we just want to have some idea...
+  return USB_IsConnected();
 #else
   return false;
 #endif
@@ -1414,6 +1351,11 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 }
 
 #ifdef USE_RTC
+#ifdef STM32F1
+unsigned short rtcHighBits = 0;
+unsigned int rtcLastCall = 0;
+#endif
+
 JsSysTime jshGetRTCSystemTime() {
 #ifdef STM32F1
   volatile uint16_t dl,ch,cl,cl1;
@@ -1424,7 +1366,13 @@ JsSysTime jshGetRTCSystemTime() {
     cl = RTC->CNTL;
   } while(cl1!=cl);
 
-  unsigned int c = (((unsigned int)ch)<<16) | (unsigned int)cl;
+  unsigned int chl = (((unsigned int)ch)<<16) | (unsigned int)cl;
+  if (chl < rtcLastCall) {
+    rtcLastCall = chl;
+    rtcHighBits++;
+  }
+  JsSysTime c = chl | (((JsSysTime)rtcHighBits)<<32);
+
 #else
   RTC_TimeTypeDef time;
   RTC_DateTypeDef date;
@@ -1454,7 +1402,7 @@ JsSysTime jshGetRTCSystemTime() {
 JsSysTime jshGetSystemTime() {
 #ifdef USE_RTC
   if (ticksSinceStart<=RTC_INITIALISE_TICKS)
-    return 0; // Clock hasn't stabilised yet
+    return jshGetRTCSystemTime(); // Clock hasn't stabilised yet, just use whatever RTC value we currently have
   if (hasSystemSlept) {
     // reset SysTick counter. This will hopefully cause it
     // to fire off a SysTick IRQ, which will reset lastSysTickTime
@@ -1484,6 +1432,7 @@ JsSysTime jshGetSystemTime() {
     major3 = SysTickMajor;
     major4 = SysTickMajor;
   } while (major1!=major2 || major2!=major3 || major3!=major4);
+  return major1 - (JsSysTime)minor;
 #endif
 }
 
@@ -1493,7 +1442,10 @@ void jshSetSystemTime(JsSysTime newTime) {
 #ifdef USE_RTC
 
 #ifdef STM32F1
-  RTC_SetCounter((uint32_t)(newTime>>JSSYSTIME_SECOND_SHIFT));
+  rtcLastCall = (unsigned int)(newTime>>JSSYSTIME_SECOND_SHIFT);
+  rtcHighBits = (unsigned short)(newTime>>(JSSYSTIME_SECOND_SHIFT+32));
+  RTC_SetCounter(rtcLastCall);
+
   RTC_WaitForLastTask();
 #else // !STM32F1
   RTC_TimeTypeDef time;
@@ -1529,17 +1481,6 @@ void jshSetSystemTime(JsSysTime newTime) {
 
 // ----------------------------------------------------------------------------
 
-bool jshPinInput(Pin pin) {
-  bool value = false;
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-
-    value = jshPinGetValue(pin);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-  return value;
-}
-
 static unsigned char jshADCInitialised = 0;
 
 static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion) {
@@ -1558,9 +1499,10 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
           RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
         #endif
       }
+#ifdef ADC2
     } else if (ADCx == ADC2) {
-      if (!(jshADCInitialised&1)) {
-        jshADCInitialised |= 1;
+      if (!(jshADCInitialised&2)) {
+        jshADCInitialised |= 2;
         needs_init = true;
         #if defined(STM32F3)
           RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12, ENABLE);
@@ -1570,6 +1512,8 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
           RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2, ENABLE);
         #endif
       }
+#endif
+#ifdef ADC3
     } else if (ADCx == ADC3) {
       if (!(jshADCInitialised&4)) {
         jshADCInitialised |= 4;
@@ -1582,7 +1526,8 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
           RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC3, ENABLE);
         #endif
       }
-  #if ADCS>3
+#endif
+#ifdef ADC4
     } else if (ADCx == ADC4) {
       if (!(jshADCInitialised&8)) {
         jshADCInitialised |= 8;
@@ -1602,15 +1547,16 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
     }
 
     if (needs_init) {
-  #ifdef STM32F3
+#ifndef STM32F1
       ADC_CommonInitTypeDef ADC_CommonInitStructure;
       ADC_CommonStructInit(&ADC_CommonInitStructure);
-      ADC_CommonInitStructure.ADC_Mode          = ADC_Mode_Independent;
-      ADC_CommonInitStructure.ADC_Clock         = ADC_Clock_SynClkModeDiv2;
-      ADC_CommonInitStructure.ADC_DMAAccessMode     = ADC_DMAAccessMode_Disabled;
-      ADC_CommonInitStructure.ADC_TwoSamplingDelay          = ADC_SampleTime_1Cycles5;
+      // use defaults
+#ifdef STM32F3
       ADC_CommonInit(ADCx, &ADC_CommonInitStructure);
-  #endif
+#else
+      ADC_CommonInit(&ADC_CommonInitStructure);
+#endif
+#endif
 
       // ADC Structure Initialization
       ADC_InitTypeDef ADC_InitStructure;
@@ -1678,8 +1624,8 @@ JsVarFloat jshPinAnalog(Pin pin) {
     jshPrintCapablePins(pin, "Analog Input", 0,0,0,0, true);
     return 0;
   }
-  jshSetPinStateIsManual(pin, false);
-  jshPinSetState(pin, JSHPINSTATE_ADC_IN);
+  if (!jshGetPinStateIsManual(pin))
+    jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 
   return jshAnalogRead(pinInfo[pin].analog, false) / (JsVarFloat)65535;
 }
@@ -1723,21 +1669,31 @@ JsVarFloat jshReadVRef() {
 #endif
 }
 
-
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+unsigned int jshGetRandomNumber() {
+#if defined(STM32F1) || defined(STM32F4)
+  /* Repeatedly read the voltage reference and XOR
+   * it into a rotated number to get a random-ish result */
+  ADC_TempSensorVrefintCmd(ENABLE);
+  // don't wait here. We want to be reading as the voltage reference
+  // tries to start up, so make things as random as we can!
+  int s;
+  unsigned int v = 0;
+  for (s = 0; s < 32; s++)
+    v = (v<<3) ^ (v>>29) ^ (unsigned int)jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17, false);
+  // disable sensor
+  ADC_TempSensorVrefintCmd(DISABLE);
+  return v;
+#else
+  return rand();
+#endif
 }
 
-
-void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
   if (value<0) value=0;
   if (value>1) value=1;
+  if (!isfinite(freq)) freq=0;
   JshPinFunction func = 0;
-  if (jshIsPinValid(pin)) {
+  if (jshIsPinValid(pin) && !(flags&JSAOF_FORCE_SOFTWARE)) {
     int i;
     for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
       if (freq<=0 && JSH_PINFUNCTION_IS_DAC(pinInfo[pin].functions[i])) {
@@ -1751,17 +1707,33 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   }
 
   if (!func) {
+    if (jshIsPinValid(pin) && (flags&(JSAOF_ALLOW_SOFTWARE|JSAOF_FORCE_SOFTWARE))) {
+      /* we set the bit field here so that if the user changes the pin state
+       * later on, we can get rid of the IRQs */
+      if (!jshGetPinStateIsManual(pin)) {
+        BITFIELD_SET(jshPinSoftPWM, pin, 0);
+        jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+      }
+      BITFIELD_SET(jshPinSoftPWM, pin, 1);
+      if (freq<=0) freq=50;
+      jstPinPWM(freq, value, pin);
+      return 0;
+    }
+
+    // Otherwise
     jshPrintCapablePins(pin, "PWM Output", JSH_TIMER1, JSH_TIMERMAX, 0,0, false);
-#if defined(DACS) && DACS>0
+  #if defined(DAC_COUNT) && DAC_COUNT>0
     jsiConsolePrint("\nOr pins with DAC output are:\n");
     jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
     jsiConsolePrint("\n");
-#endif
-    return;
+  #endif
+    if (jshIsPinValid(pin))
+      jsiConsolePrint("You can also use analogWrite(pin, val, {soft:true}) for Software PWM on this pin\n");
+    return 0;
   }
 
   if (JSH_PINFUNCTION_IS_DAC(func)) {
-#if defined(DACS) && DACS>0
+#if defined(DAC_COUNT) && DAC_COUNT>0
     // Special case for DAC output
     uint16_t data = (uint16_t)(value*0xFFFF);
     if ((func & JSH_MASK_INFO)==JSH_DAC_CH1) {
@@ -1793,11 +1765,11 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
     } else
 #endif
       jsExceptionHere(JSET_INTERNALERROR, "Unknown DAC");
-    return;
+    return func;
   }
 
   TIM_TypeDef* TIMx = (TIM_TypeDef*)setDeviceClockCmd(func, ENABLE);
-  if (!TIMx) return;
+  if (!TIMx) return 0;
 
   /* Time base configuration */
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
@@ -1809,9 +1781,6 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
     unsigned int prescale = clockTicks >> 16; // ensure that maxTime isn't greater than the timer can count to
     TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)prescale;
     TIM_TimeBaseStructure.TIM_Period = (uint16_t)(clockTicks/(prescale+1));
-    /*jsiConsolePrintInt(SystemCoreClock);jsiConsolePrint(",");
-    jsiConsolePrintInt(TIM_TimeBaseStructure.TIM_Period);jsiConsolePrint(",");
-    jsiConsolePrintInt(prescale);jsiConsolePrint("\n");*/
   }
 
 //  PrescalerValue = (uint16_t) ((SystemCoreClock /2) / 28000000) - 1;
@@ -1855,6 +1824,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   TIM_CtrlPWMOutputs(TIMx, ENABLE);
   // Set the pin to output this special function
   jshPinSetFunction(pin, func);
+  return func;
 }
 
 bool jshCanWatch(Pin pin) {
@@ -1911,59 +1881,6 @@ bool jshIsEventForPin(IOEvent *event, Pin pin) {
   return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(pin);
 }
 
-/** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
-JshPinFunction NO_INLINE getPinFunctionForPin(Pin pin, JshPinFunction functionType) {
-  if (!jshIsPinValid(pin)) return 0;
-  int i;
-  for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
-    if ((pinInfo[pin].functions[i]&JSH_MASK_TYPE) == functionType)
-      return pinInfo[pin].functions[i];
-  }
-  return 0;
-}
-
-/** Try and find the best pin suitable for the given function. Can return -1. */
-Pin NO_INLINE findPinForFunction(JshPinFunction functionType, JshPinFunction functionInfo) {
-#ifdef OLIMEXINO_STM32
-  /** Hack, as you can't mix AFs on the STM32F1, and Olimexino reordered the pins
-   * such that D4(AF1) is before D11(AF0) - and there are no SCK/MISO for AF1! */
-  if (functionType == JSH_SPI1 && functionInfo==JSH_SPI_MOSI) return JSH_PORTD_OFFSET+11;
-#endif
-  Pin i;
-  int j;
-  // first, try and find the pin with an AF of 0 - this is usually the 'default'
-  for (i=0;i<JSH_PIN_COUNT;i++)
-    for (j=0;j<JSH_PININFO_FUNCTIONS;j++)
-      if ((pinInfo[i].functions[j]&JSH_MASK_AF) == JSH_AF0 &&
-          (pinInfo[i].functions[j]&JSH_MASK_TYPE) == functionType &&
-          (pinInfo[i].functions[j]&JSH_MASK_INFO) == functionInfo)
-        return i;
-  // otherwise just try and find anything
-  for (i=0;i<JSH_PIN_COUNT;i++)
-    for (j=0;j<JSH_PININFO_FUNCTIONS;j++)
-      if ((pinInfo[i].functions[j]&JSH_MASK_TYPE) == functionType &&
-          (pinInfo[i].functions[j]&JSH_MASK_INFO) == functionInfo)
-        return i;
-  return PIN_UNDEFINED;
-}
-
-const char *jshPinFunctionInfoToString(JshPinFunction device, JshPinFunction info) {
-  if (JSH_PINFUNCTION_IS_USART(device)) {
-    if (info==JSH_USART_RX) return "USART RX";
-    if (info==JSH_USART_TX) return "USART TX";
-  }
-  if (JSH_PINFUNCTION_IS_SPI(device)) {
-    if (info==JSH_SPI_MISO) return "SPI MISO";
-    if (info==JSH_SPI_MOSI) return "SPI MOSI";
-    if (info==JSH_SPI_SCK) return "SPI SCK";
-  }
-  if (JSH_PINFUNCTION_IS_I2C(device)) {
-    if (info==JSH_I2C_SCL) return "I2C SCL";
-    if (info==JSH_I2C_SDA) return "I2C SDA";
-  }
-  return 0;
-}
-
 /** Usage:
  *  checkPinsForDevice(EV_SERIAL1, 2, [inf->pinRX, inf->pinTX], [JSH_USART_RX,JSH_USART_TX]);
  *
@@ -1983,16 +1900,20 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
   // now try and find missing pins
   if (findAllPins)
     for (i=0;i<count;i++)
-      if (!jshIsPinValid(pins[i]))
-        pins[i] = findPinForFunction(device, functions[i]);
+      if (!jshIsPinValid(pins[i]) && functions[i]!=JSH_USART_CK) {
+        // We don't automatically find a pin for USART CK (just RX and TX)
+        pins[i] = jshFindPinForFunction(device, functions[i]);
+      }
   // now find pin functions
   for (i=0;i<count;i++)
     if (jshIsPinValid(pins[i])) {
       // try and find correct pin
-      JshPinFunction fType = getPinFunctionForPin(pins[i], device);
+      JshPinFunction fType = jshGetPinFunctionForPin(pins[i], device);
       // print info about what pins are supported
       if (!fType || (fType&JSH_MASK_INFO)!=functions[i]) {
-        jshPrintCapablePins(pins[i], jshPinFunctionInfoToString(device, functions[i]), device, device,  JSH_MASK_INFO, functions[i], false);
+        char buf[12];
+        jshPinFunctionToString(device|functions[i], JSPFTS_DEVICE|JSPFTS_DEVICE_NUMBER|JSPFTS_SPACE|JSPFTS_TYPE, buf, sizeof(buf));
+        jshPrintCapablePins(pins[i], buf, device, device,  JSH_MASK_INFO, functions[i], false);
         return 0;
       }
       functions[i] = fType;
@@ -2010,20 +1931,18 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
 }
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  assert(DEVICE_IS_USART(device));
+
   jshSetDeviceInitialised(device, true);
 
   jshSetFlowControlEnabled(device, inf->xOnXOff);
 
-  if (device == EV_USBSERIAL) {
-    return; // eep!
-  }
+  JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
+  if (funcType==0) return; // not a proper serial port, ignore it
 
-  JshPinFunction funcType = getPinFunctionFromDevice(device);
-
-  enum {pinRX, pinTX};
-  Pin pins[2] = { inf->pinRX, inf->pinTX };
-  JshPinFunction functions[2] = { JSH_USART_RX, JSH_USART_TX };
-  USART_TypeDef *USARTx = (USART_TypeDef *)checkPinsForDevice(funcType, 2, pins, functions);
+  Pin pins[3] = { inf->pinRX, inf->pinTX, inf->pinCK };
+  JshPinFunction functions[3] = { JSH_USART_RX, JSH_USART_TX, JSH_USART_CK };
+  USART_TypeDef *USARTx = (USART_TypeDef *)checkPinsForDevice(funcType, 3, pins, functions);
   if (!USARTx) return;
 
   IRQn_Type usartIRQ;
@@ -2031,19 +1950,19 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     usartIRQ = USART1_IRQn;
   } else if (device == EV_SERIAL2) {
     usartIRQ = USART2_IRQn;
-#if USARTS>= 3 && !defined(NO_USART3)
+#if defined(USART3) && USART_COUNT>=3
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
-#if USARTS>= 4
+#if defined(UART4) && USART_COUNT>=4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
 #endif
-#if USARTS>= 5
+#if defined(UART5) && USART_COUNT>=5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
 #endif
-#if USARTS>= 6
+#if defined(USART6) && USART_COUNT>=6
   } else if (device == EV_SERIAL6) {
     usartIRQ = USART6_IRQn;
 #endif
@@ -2055,6 +1974,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   USART_ClockInitTypeDef USART_ClockInitStructure;
 
   USART_ClockStructInit(&USART_ClockInitStructure);
+  if (jshIsPinValid(pins[2]))
+    USART_ClockInitStructure.USART_Clock = USART_Clock_Enable;
   USART_ClockInit(USARTx, &USART_ClockInitStructure);
 
   USART_InitTypeDef USART_InitStructure;
@@ -2125,6 +2046,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   USART_Cmd(USARTx, ENABLE);
 }
 
+
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
@@ -2141,7 +2063,7 @@ void jshUSARTKick(IOEventFlags device) {
 /** Set up SPI, if pins are -1 they will be guessed */
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   jshSetDeviceInitialised(device, true);
-  JshPinFunction funcType = getPinFunctionFromDevice(device);
+  JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
 
   enum {pinSCK, pinMISO, pinMOSI};
   Pin pins[3] = { inf->pinSCK, inf->pinMISO, inf->pinMOSI };
@@ -2166,27 +2088,27 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
       SPI_BaudRatePrescaler_64,SPI_BaudRatePrescaler_128,SPI_BaudRatePrescaler_256 };
   int bestDifference = 0x7FFFFFFF;
   unsigned int i;
-  //jsiConsolePrint("BaudRate ");jsiConsolePrintInt(inf->baudRate);jsiConsolePrint("\n");
   for (i=0;i<sizeof(baudRatesDivisors)/sizeof(unsigned int);i++) {
-    //jsiConsolePrint("Divisor ");jsiConsolePrintInt(baudRatesDivisors[i]);
     unsigned int rate = spiFreq / baudRatesDivisors[i];
-    //jsiConsolePrint(" rate "); jsiConsolePrintInt(rate);
+
     int rateDiff = inf->baudRate - (int)rate;
     if (rateDiff<0) rateDiff *= -1;
-    //jsiConsolePrint(" diff "); jsiConsolePrintInt(rateDiff);
+
+    // if this is outside what we want, make sure it's considered a bad choice
+    if (inf->baudRateSpec==SPIB_MAXIMUM && rate > (unsigned int)inf->baudRate) rateDiff += 0x10000000;
+    if (inf->baudRateSpec==SPIB_MINIMUM && rate < (unsigned int)inf->baudRate) rateDiff += 0x10000000;
+
     if (rateDiff < bestDifference) {
-      //jsiConsolePrint(" chosen");
       bestDifference = rateDiff;
       SPI_InitStructure.SPI_BaudRatePrescaler = baudRatesIds[i];
     }
-    //jsiConsolePrint("\n");
   }
 
   uint8_t spiIRQ;
   switch (device) {
     case EV_SPI1: spiIRQ = SPI1_IRQn; break;
     case EV_SPI2: spiIRQ = SPI2_IRQn; break;
-#if SPIS>=3
+#if SPI_COUNT>=3
     case EV_SPI3: spiIRQ = SPI3_IRQn; break;
 #endif
     default: assert(0); break;
@@ -2248,17 +2170,13 @@ int jshSPISend(IOEventFlags device, int data)
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data)
 {
-  int n = device-EV_SPI1;
-  SPI_TypeDef *SPI = getSPIFromDevice(device);
+   SPI_TypeDef *SPI = getSPIFromDevice(device);
 
   /* Loop while DR register in not empty */
   WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_TXE) != RESET, "SPI TX");
 
   /* Send a Byte through the SPI peripheral */
   SPI_I2S_SendData(SPI, (uint16_t)data);
-
-  // Throw away any bytes we got
-  jshSPIBufTail[n] = jshSPIBufHead[n];
 }
 
 /** Set whether to send 16 bits or 8 over SPI */
@@ -2270,6 +2188,15 @@ void jshSPISet16(IOEventFlags device, bool is16) {
   SPI_DataSizeConfig(SPI, is16 ? SPI_DataSize_16b : SPI_DataSize_8b);
 }
 
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+  SPI_TypeDef *SPI = getSPIFromDevice(device);
+  /* Loop until not sending */
+  WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_BSY) != SET, "SPI BSY");
+  /* Set receive state */
+  SPI_I2S_ITConfig(SPI, SPI_I2S_IT_RXNE, isReceive ? ENABLE : DISABLE);
+}
+
 /** Wait until SPI send is finished, */
 void jshSPIWait(IOEventFlags device) {
   int n = device-EV_SPI1;
@@ -2278,12 +2205,14 @@ void jshSPIWait(IOEventFlags device) {
   WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_BSY) != SET, "SPI BSY");
   /* Clear SPI receive buffer */
   jshSPIBufTail[n] = jshSPIBufHead[n];
+  /* Just in case we didn't have IRQs, and the register was full... */
+  SPI_I2S_ReceiveData(SPI);
 }
 
 /** Set up I2S, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   jshSetDeviceInitialised(device, true);
-  JshPinFunction funcType = getPinFunctionFromDevice(device);
+  JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
 
   enum {pinSCL, pinSDA };
   Pin pins[2] = { inf->pinSCL, inf->pinSDA };
@@ -2301,10 +2230,10 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 #if defined(STM32F3)
   I2C_InitStructure.I2C_AnalogFilter = I2C_AnalogFilter_Enable;
   I2C_InitStructure.I2C_DigitalFilter = 0x00;
-  I2C_InitStructure.I2C_Timing = 0x00902025;
+  I2C_InitStructure.I2C_Timing = 0x00902025; // FIXME - no user-specced timing for F0 or F3 parts
 #else
   I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2;
-  I2C_InitStructure.I2C_ClockSpeed = 50000; // 50 kHz I2C speed
+  I2C_InitStructure.I2C_ClockSpeed = (uint32_t)inf->bitrate; // 50 kHz I2C speed
 #endif
 
   I2C_Init(I2Cx, &I2C_InitStructure);
@@ -2348,6 +2277,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
   //WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_MODE_SELECT), "I2C Write Transmit Mode 1");
   I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Transmitter);
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED), "I2C Write Transmit Mode 2");
+
   int i;
   for (i=0;i<nBytes;i++) {
     I2C_SendData(I2C, data[i]);
@@ -2355,6 +2285,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
     while (!(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) && !jspIsInterrupted() && (timeout--)>0);
     if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_ERROR, "I2C device not responding"); }
   }
+
   if (sendStop) I2C_GenerateSTOP(I2C, ENABLE); // Send STOP Condition
 #endif
 }
@@ -2377,7 +2308,6 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
     jsWarn("I2C got NACK");
   }
 #else
-  WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_BUSY), "I2C Read BUSY");
   I2C_GenerateSTART(I2C, ENABLE);
   if (!jshI2CWaitStartBit(I2C)) {
     for (i=0;i<nBytes;i++) data[i]=0;
@@ -2400,158 +2330,18 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
     WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_STOPF), "I2C Read STOP");
     I2C_AcknowledgeConfig(I2C, ENABLE); /* re-enable ACK */
   }
+
 #endif
-}
-
-
-void jshSaveToFlash() {
-#ifdef STM32API2
-  FLASH_Unlock();
-#else
-  #ifndef FLASH_BANK_2
-    FLASH_UnlockBank1();
-  #else
-    FLASH_UnlockBank2();
-  #endif
-#endif
-
-  unsigned int i;
-  /* Clear All pending flags */
-#if defined(STM32F2) || defined(STM32F4)
-  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
-                  FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
-#elif defined(STM32F3)
-  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
-#else
-  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
-#endif
-
-  jsiConsolePrint("Erasing Flash...");
-#if defined(STM32F2) || defined(STM32F4)
-  for (i=0;i<FLASH_SAVED_CODE_PAGES;i++) {
-    FLASH_EraseSector(FLASH_Sector_0 + (FLASH_Sector_1-FLASH_Sector_0)*(FLASH_SAVED_CODE_SECTOR+i), VoltageRange_3); // a FLASH_Sector_## constant
-    jsiConsolePrint(".");
-  }
-#else
-  /* Erase the FLASH pages */
-  for(i=0;i<FLASH_SAVED_CODE_PAGES;i++) {
-    FLASH_ErasePage((uint32_t)(FLASH_SAVED_CODE_START + (FLASH_PAGE_SIZE * i)));
-    jsiConsolePrint(".");
-  }
-#endif
-  unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
-  jsiConsolePrintf("\nProgramming %d Bytes...", dataSize);
-
-  JsVar *firstData = jsvLock(1);
-  uint32_t *basePtr = (uint32_t *)firstData;
-  jsvUnLock(firstData);
-#if defined(STM32F2) || defined(STM32F4)
-  for (i=0;i<dataSize;i+=4) {
-      while (FLASH_ProgramWord((uint32_t)(FLASH_SAVED_CODE_START+i), basePtr[i>>2]) != FLASH_COMPLETE);
-      if ((i&1023)==0) jsiConsolePrint(".");
-  }
-  while (FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC) != FLASH_COMPLETE);
-#else
-  /* Program Flash Bank */
-  for (i=0;i<dataSize;i+=4) {
-      FLASH_ProgramWord((uint32_t)(FLASH_SAVED_CODE_START+i), basePtr[i>>2]);
-      if ((i&1023)==0) jsiConsolePrint(".");
-  }
-  FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
-  FLASH_WaitForLastOperation(0x2000);
-#endif
-#ifdef STM32API2
-  FLASH_Lock();
-#else
-  #ifndef FLASH_BANK_2
-    FLASH_LockBank1();
-  #else
-    FLASH_LockBank2();
-  #endif
-#endif
-  jsiConsolePrint("\nChecking...");
-
-  int errors = 0;
-  for (i=0;i<dataSize;i+=4)
-    if ((*(uint32_t*)(FLASH_SAVED_CODE_START+i)) != basePtr[i>>2])
-      errors++;
-
-  if (FLASH_MAGIC != *(unsigned int*)FLASH_MAGIC_LOCATION) {
-    jsiConsolePrint("\nFlash Magic Byte is wrong");
-    errors++;
-  }
-
-  if (errors) {
-      jsiConsolePrintf("\nThere were %d errors!\n>", errors);
-  } else
-      jsiConsolePrint("\nDone!\n");
-
-//  This is nicer, but also broken!
-//  FLASH_UnlockBank1();
-//  /* Clear All pending flags */
-//  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
-//
-//  size_t varDataSize = jsvGetVarDataSize();
-//  int *basePtr = jsvGetVarDataPointer();
-//
-//  int page;
-//  for(page=0;page<FLASH_SAVED_CODE_PAGES;page++) {
-//    jsPrint("Flashing Page ");jsPrintInt(page);jsPrint("...\n");
-//    size_t pageOffset = (FLASH_PAGE_SIZE * page);
-//    size_t pagePtr = FLASH_SAVED_CODE_START + pageOffset;
-//    size_t pageSize = varDataSize-pageOffset;
-//    if (pageSize>FLASH_PAGE_SIZE) pageSize = FLASH_PAGE_SIZE;
-//    jsPrint("Offset ");jsPrintInt(pageOffset);jsPrint(", Size ");jsPrintInt(pageSize);jsPrint(" bytes\n");
-//    bool first = true;
-//    int errors = 0;
-//    int i;
-//    for (i=pageOffset;i<pageOffset+pageSize;i+=4)
-//      if ((*(int*)(FLASH_SAVED_CODE_START+i)) != basePtr[i>>2])
-//        errors++;
-//    while (errors && !jspIsInterrupted()) {
-//      if (!first) { jsPrintInt(errors);jsPrint(" errors - retrying...\n"); }
-//      first = false;
-//      /* Erase the FLASH page */
-//      FLASH_ErasePage(pagePtr);
-//      /* Program Flash Bank1 */
-//      for (i=pageOffset;i<pageOffset+pageSize;i+=4)
-//          FLASH_ProgramWord(FLASH_SAVED_CODE_START+i, basePtr[i>>2]);
-//      FLASH_WaitForLastOperation(0x20000);
-//    }
-//  }
-//  // finally flash magic byte
-//  FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
-//  FLASH_WaitForLastOperation(0x20000);
-//  FLASH_LockBank1();
-//  if (*(int*)FLASH_MAGIC_LOCATION != FLASH_MAGIC)
-//    jsPrint("Flash magic word not flashed correctly!\n");
-//  jsPrint("Flashing Complete\n");
-
-}
-
-void jshLoadFromFlash() {
-  unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
-  jsiConsolePrintf("Loading from flash...\n");
-
-  JsVar *firstData = jsvLock(1);
-  uint32_t *basePtr = (uint32_t *)firstData;
-  jsvUnLock(firstData);
-
-  memcpy(basePtr, (int*)FLASH_SAVED_CODE_START, dataSize);
-}
-
-bool jshFlashContainsCode() {
-  /*jsPrint("Magic contains ");
-  jsPrintInt(*(int*)FLASH_MAGIC_LOCATION);
-  jsPrint("we want");
-  jsPrintInt(FLASH_MAGIC);
-  jsPrint("\n");*/
-  return (*(int*)FLASH_MAGIC_LOCATION) == (int)FLASH_MAGIC;
 }
 
 #ifdef USB
+
+#ifndef LEGACY_USB
+extern USBD_HandleTypeDef hUsbDeviceFS;
+#endif
+
 void jshSetUSBPower(bool isOn) {
-#ifdef STM32F1
+#ifdef LEGACY_USB
   if (isOn) {
     _SetCNTR(_GetCNTR() & (unsigned)~CNTR_PDWN);
     USB_Cable_Config(ENABLE);
@@ -2559,17 +2349,15 @@ void jshSetUSBPower(bool isOn) {
     USB_Cable_Config(DISABLE);
     _SetCNTR(_GetCNTR() | CNTR_PDWN);
   }
-#endif // STM32F1
-#ifdef STM32F4
-  /*if (isOn) {
-    USB_OTG_CoreInit(&USB_OTG_dev);
+#else
+  if (isOn) {
+    USB_OTG_FS->GCCFG |= USB_OTG_GCCFG_VBUSBSEN;
+    USBD_Start(&hUsbDeviceFS);
   } else {
-    USB_OTG_GCCFG_TypeDef    gccfg;
-    gccfg.d32 = USB_OTG_READ_REG32(USB_OTG_dev.regs.GREGS->GCCFG);
-    gccfg.b.pwdn = 0; // 0 = usb off, 1 = usb on
-    USB_OTG_WRITE_REG32 (USB_OTG_dev.regs.GREGS->GCCFG, gccfg.d32);
-  }*/
-#endif // STM32F4
+    USBD_Stop(&hUsbDeviceFS);
+    USB_OTG_FS->GCCFG &= ~(USB_OTG_GCCFG_VBUSBSEN);
+  }
+#endif
 }
 #endif
 
@@ -2592,17 +2380,23 @@ bool jshSleep(JsSysTime timeUntilWake) {
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
 #ifdef USB
+      !jshIsUSBSERIALConnected() &&
       jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
 #endif
+      ticksSinceStart>RTC_INITIALISE_TICKS && // Don't sleep until RTC has initialised
       true
       ) {
     jsiSetSleep(JSI_SLEEP_DEEP);
     // deep sleep!
     jshADCInitialised = 0;
     ADC_Cmd(ADC1, DISABLE); // ADC off
+#ifdef ADC2
     ADC_Cmd(ADC2, DISABLE); // ADC off
+#endif
+#ifdef ADC3
     ADC_Cmd(ADC3, DISABLE); // ADC off
-#if ADCS>3
+#endif
+#ifdef ADC4
     ADC_Cmd(ADC4, DISABLE); // ADC off
 #endif
 #ifdef USB
@@ -2619,6 +2413,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN_PULLUP);
     Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
     jshPinWatch(usbPin, true);
+#endif
+#ifdef USB_VSENSE_PIN
+    // USB_VSENSE_PIN is connected to USB 5v (and pulled down by a 100k resistor)
+    // ... so wake up if it goes high
+    Pin oldWatch = watchedPins[pinInfo[USB_VSENSE_PIN].pin];
+    jshPinWatch(USB_VSENSE_PIN, true);
 #endif
 #endif // USB
 
@@ -2671,12 +2471,21 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
     }
 #ifdef USB
+    bool wokenByUSB = false;
 #ifdef STM32F1
-    bool wokenByUSB = jshPinGetValue(usbPin)==0;
+    wokenByUSB = jshPinGetValue(usbPin)==0;
     // remove watches on pins
     jshPinWatch(usbPin, false);
     if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
     jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN);
+#endif
+#ifdef USB_VSENSE_PIN
+    // remove watch and restore old watch if there was one
+    // setting that we've woken lets the board stay awake
+    // until a USB connection can be established
+    if (jshPinGetValue(USB_VSENSE_PIN)) wokenByUSB=true;
+    jshPinWatch(USB_VSENSE_PIN, false);
+    if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
 #endif
 #endif
     // recover oscillator
@@ -2690,10 +2499,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
     RTC_WaitForSynchro(); // make sure any RTC reads will be done
 #ifdef USB
     jshSetUSBPower(true);
-#ifdef STM32F1
     if (wokenByUSB)
       jshLastWokenByUSB = jshGetRTCSystemTime();
-#endif
 #endif
     jsiSetSleep(JSI_SLEEP_AWAKE);
   } else
@@ -2832,11 +2639,13 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 // Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value) {
   if (JSH_PINFUNCTION_IS_DAC(func)) {
+#if DAC_COUNT>0
     uint16_t dacVal = (uint16_t)value;
     switch (func & JSH_MASK_INFO) {
     case JSH_DAC_CH1:  DAC_SetChannel1Data(DAC_Align_12b_L, dacVal); break;
     case JSH_DAC_CH2:  DAC_SetChannel2Data(DAC_Align_12b_L, dacVal); break;
     }
+#endif
   } else if (JSH_PINFUNCTION_IS_TIMER(func)) {
     TIM_TypeDef* TIMx = getTimerFromPinFunction(func);
     if (TIMx) {
@@ -2854,7 +2663,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   }
 }
 
-// Enable watchdog with a timeout in seconds
+/// Enable watchdog with a timeout in seconds, it'll reset the chip if jshKickWatchDog isn't called within the timeout
 void jshEnableWatchDog(JsVarFloat timeout) {
     // Enable LSI
     RCC_LSICmd(ENABLE);
@@ -2883,3 +2692,257 @@ void jshEnableWatchDog(JsVarFloat timeout) {
     /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
     IWDG_Enable();
 }
+
+// Kick the watchdog
+void jshKickWatchDog() {
+  IWDG_ReloadCounter();
+}
+
+volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
+  if (!jshIsPinValid(pin)) return 0;
+  GPIO_TypeDef *port = stmPort(pin);
+  volatile uint32_t *regAddr;
+  if (flags == JSGPAF_INPUT)
+    regAddr = &port->IDR;
+  else
+    regAddr = &port->ODR;
+
+  uint32_t addr =  0x42000000 + ((((uint32_t)regAddr)-PERIPH_BASE)<<5) + (((uint32_t)(pinInfo[pin].pin - JSH_PIN0)<<2));
+
+  return (uint32_t*)addr;
+}
+
+
+#if defined(STM32F2) || defined(STM32F4)
+int jshFlashGetSector(uint32_t addr) {
+#ifdef FLASH_END // supplied by stm32fXXX.h
+  if (addr > FLASH_END) return -1;
+#else
+  // else use what's in BOARD.py - could be less than the
+  // chip might be capable of (but not specced for ;)
+  if (addr >= FLASH_TOTAL+FLASH_START) return -1;
+#endif
+  if (addr < FLASH_START) return -1;
+  addr -= FLASH_START;
+
+  if (addr<16*1024) return FLASH_Sector_0;
+  else if (addr<32*1024) return FLASH_Sector_1;
+  else if (addr<48*1024) return FLASH_Sector_2;
+  else if (addr<64*1024) return FLASH_Sector_3;
+  else if (addr<128*1024) return FLASH_Sector_4;
+  else if (addr<256*1024) return FLASH_Sector_5;
+  else if (addr<384*1024) return FLASH_Sector_6;
+  else if (addr<512*1024) return FLASH_Sector_7;
+  else if (addr<640*1024) return FLASH_Sector_8;
+  else if (addr<768*1024) return FLASH_Sector_9;
+  else if (addr<896*1024) return FLASH_Sector_10;
+  else if (addr<1024*1024) return FLASH_Sector_11;
+  assert(0);
+  return -1;
+}
+uint32_t jshFlashGetSectorAddr(int sector) {
+  sector /= FLASH_Sector_1; // make an actual int
+  if (sector <= 4) return FLASH_START + 16*1024*(uint32_t)sector;
+  return FLASH_START + 128*1024*(uint32_t)(sector-4);
+}
+#endif
+
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
+#if defined(STM32F2) || defined(STM32F4)
+  int sector = jshFlashGetSector(addr);
+  if (sector<0) return false;
+  if (startAddr) *startAddr = jshFlashGetSectorAddr(sector);
+  if (pageSize) *pageSize = jshFlashGetSectorAddr(sector+FLASH_Sector_1)-jshFlashGetSectorAddr(sector);
+  return true;
+#else
+  if (addr<FLASH_START ||
+      addr>=FLASH_START+FLASH_TOTAL)
+    return false;
+  if (startAddr) *startAddr = addr & (uint32_t)~(FLASH_PAGE_SIZE-1);
+  if (pageSize) *pageSize = FLASH_PAGE_SIZE;
+  return true;
+#endif
+}
+
+static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
+}
+
+JsVar *jshFlashGetFree() {
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+#if defined(ESPRUINOWIFI)
+  // 3x 16kB pages of flash left free right after bootloader
+  addFlashArea(jsFreeFlash, FLASH_START|(16*1024), 3*16*1024);
+#endif
+  // Try and find the page after the end of firmware
+  extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
+  uint32_t firmwareEnd = FLASH_START | (uint32_t)&LINKER_ETEXT_VAR;
+  uint32_t pAddr, pSize;
+  jshFlashGetPage(firmwareEnd, &pAddr, &pSize);
+  firmwareEnd = pAddr+pSize;
+  if (firmwareEnd < FLASH_SAVED_CODE_START)
+    addFlashArea(jsFreeFlash, firmwareEnd, FLASH_SAVED_CODE_START-firmwareEnd);
+  // Otherwise add undocumented memory
+#if defined(PICO)
+  // The Pico chips aren't meant to have this, but they do
+  addFlashArea(jsFreeFlash, FLASH_START|(384*1024), 128*1024);
+#elif defined(ESPRUINOBOARD)
+  // The Original espruino boards aren't meant to have this, but they do
+  addFlashArea(jsFreeFlash, FLASH_START|(256*1024), 128*1024);
+#endif
+  return jsFreeFlash;
+}
+
+void jshFlashErasePage(uint32_t addr) {
+#if defined(STM32F2) || defined(STM32F4)
+  int sector = jshFlashGetSector(addr);
+  assert(sector>=0);
+  FLASH_Unlock();
+  // Clear All pending flags
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
+                  FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
+  // Erase
+  FLASH_EraseSector((uint32_t)sector, VoltageRange_3);
+
+  FLASH_Lock();
+#else
+  bool bank1 = addr<0x08080000;
+  if (bank1) FLASH_UnlockBank1();
+#ifdef STM32F10X_XL
+  else FLASH_UnlockBank2();
+#endif
+  // Clear All pending flags
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+  // Erase
+  FLASH_ErasePage(addr & (uint32_t)~(FLASH_PAGE_SIZE-1));
+  FLASH_WaitForLastOperation(0x2000);
+
+  if (bank1) FLASH_LockBank1();
+#ifdef STM32F10X_XL
+  else FLASH_LockBank2();
+#endif
+#endif
+}
+
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+  memcpy(buf, (void*)addr, len);
+}
+
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+#ifdef STM32API2
+  FLASH_Unlock();
+#else
+  bool bank1 = addr<0x08080000;
+  if (bank1) FLASH_UnlockBank1();
+#ifdef STM32F10X_XL
+  else FLASH_UnlockBank2();
+#endif
+#endif
+
+  unsigned int i;
+
+#if defined(STM32F2) || defined(STM32F4)
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
+                  FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
+  for (i=0;i<len;i+=4) {
+    while (FLASH_ProgramWord((uint32_t)(addr+i), ((uint32_t*)buf)[i>>2]) != FLASH_COMPLETE);
+  }
+#else
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+  for (i=0;i<len;i+=4)
+    FLASH_ProgramWord(addr+i, ((uint32_t*)buf)[i>>2]);
+  FLASH_WaitForLastOperation(0x2000);
+#endif
+
+#ifdef STM32API2
+  FLASH_Lock();
+#else
+  if (bank1) FLASH_LockBank1();
+#ifdef STM32F10X_XL
+  else FLASH_LockBank2();
+#endif
+#endif
+}
+
+int jshSetSystemClockPClk(JsVar *options, const char *clkName) {
+  JsVar *v = jsvObjectGetChild(options, clkName, 0);
+  JsVarInt i = jsvGetIntegerAndUnLock(v);
+  if (i==1) return RCC_HCLK_Div1;
+  if (i==2) return RCC_HCLK_Div2;
+  if (i==4) return RCC_HCLK_Div4;
+  if (i==8) return RCC_HCLK_Div8;
+  if (i==16) return RCC_HCLK_Div16;
+  if (v) {
+    jsExceptionHere(JSET_ERROR, "Invalid %s value %d", clkName, i);
+    return -2;
+  }
+  return -1;
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  // see system_stm32f4xx.c for clock configurations
+#ifdef STM32F4
+  unsigned int m = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "M", 0));
+  unsigned int n = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "N", 0));
+  unsigned int p = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "P", 0));
+  unsigned int q = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "Q", 0));
+  if (!IS_RCC_PLLM_VALUE(m)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL M value %d", m);
+    return 0;
+  }
+  if (!IS_RCC_PLLN_VALUE(n)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL N value %d", n);
+    return 0;
+  }
+  if (!IS_RCC_PLLP_VALUE(p)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL P value %d", p);
+    return 0;
+  }
+  if (!IS_RCC_PLLQ_VALUE(q)) {
+    jsExceptionHere(JSET_ERROR, "Invalid PLL Q value %d", q);
+    return 0;
+  }
+  uint8_t latency = 255;
+  JsVar *v = jsvObjectGetChild(options, "latency", 0);
+  if (v) {
+    latency = (uint8_t)jsvGetIntegerAndUnLock(v);
+    if (!IS_FLASH_LATENCY(latency)) {
+      jsExceptionHere(JSET_ERROR, "Invalid flash latency %d", latency);
+      return 0;
+    }
+  }
+  int pclk1 = jshSetSystemClockPClk(options, "PCLK1");
+  if (pclk1<-1) return 0;
+  int pclk2 = jshSetSystemClockPClk(options, "PCLK2");
+  if (pclk2<-1) return 0;
+
+  // Run off external clock - 8Mhz - while we configure everything
+  RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
+  // set latency
+  if (latency!=255) FLASH_SetLatency(latency);
+  if (pclk1>=0) RCC_PCLK1Config((uint32_t)pclk1);
+  if (pclk2>=0) RCC_PCLK2Config((uint32_t)pclk2);
+  // update PLL
+  RCC_PLLCmd(DISABLE);
+  RCC_PLLConfig(RCC_PLLSource_HSE, m, n, p, q);
+  RCC_PLLCmd(ENABLE);
+  while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET) {}
+  RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+  // force recalculate of the timer speeds
+  SystemCoreClockUpdate();
+#ifdef USE_RTC
+  jshResetRTCTimer();
+  hasSystemSlept = true;
+#endif
+  return SystemCoreClock;
+#else
+  return 0;
+#endif
+}
+

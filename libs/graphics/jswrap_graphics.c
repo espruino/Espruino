@@ -27,17 +27,15 @@
 #endif
 #include "bitmap_font_4x6.h"
 
-#include <string.h>
-
 /*JSON{
   "type" : "class",
   "class" : "Graphics"
 }
 This class provides Graphics operations that can be applied to a surface.
 
-Use Graphics.createXXX to create a graphics object that renders in the way you want.
+Use Graphics.createXXX to create a graphics object that renders in the way you want. See [the Graphics page](/Graphics) for more information.
 
-NOTE: On boards that contain an LCD, there is a built-in 'LCD' object of type Graphics. For instance to draw a line you'd type: ```LCD.drawLine(0,0,100,100)```
+**Note:** On boards that contain an LCD, there is a built-in 'LCD' object of type Graphics. For instance to draw a line you'd type: ```LCD.drawLine(0,0,100,100)```
 */
 
 /*JSON{
@@ -69,8 +67,7 @@ void jswrap_graphics_init() {
     lcdSetCallbacks_FSMC(&gfx);
     graphicsSplash(&gfx);
     graphicsSetVar(&gfx);
-    jsvUnLock(parentObj);
-    jsvUnLock(parent);
+    jsvUnLock2(parentObj, parent);
   }
 #endif
 }
@@ -89,7 +86,13 @@ static bool isValidBPP(int bpp) {
     ["width","int32","Pixels wide"],
     ["height","int32","Pixels high"],
     ["bpp","int32","Number of bits per pixel"],
-    ["options","JsVar",["An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default) }```","zigzag = whether to alternate the direction of scanlines for rows","vertical_byte = whether to align bits in a byte vertically or not"]]
+    ["options","JsVar",[
+      "An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default), msb : true/false(default), color_order: 'rgb'(default),'bgr',etc }```",
+      "zigzag = whether to alternate the direction of scanlines for rows",
+      "vertical_byte = whether to align bits in a byte vertically or not",
+      "msb = when bits<8, store pixels msb first",
+      "color_order = re-orders the colour values that are supplied via setColor"
+    ]]
   ],
   "return" : ["JsVar","The new Graphics object"],
   "return_object" : "Graphics"
@@ -121,37 +124,30 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   if (jsvIsObject(options)) {
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "zigzag", 0)))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG);
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "msb", 0)))
+      gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_MSB);
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "vertical_byte", 0))) {
       if (gfx.data.bpp==1)
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);
       else
         jsWarn("vertical_byte only works for 1bpp ArrayBuffers\n");
     }
-    JsVar *colorv;
-    char color_order[4];
-    size_t len;
-    if ((colorv = jsvObjectGetChild(options, "color_order", 0)) != NULL) {
-      len = jsvGetString(colorv, color_order, 4);
-      jsvUnLock(colorv);
-
-      if (len != 3)
-	jsExceptionHere(JSET_ERROR, "color_order must be 3 characters");
-      if (!strcasecmp(color_order, "rgb"))
-	; // The default
-      else if (!strcasecmp(color_order, "brg"))
+    JsVar *colorv = jsvObjectGetChild(options, "color_order", 0);
+    if (colorv) {
+      if (jsvIsStringEqual(colorv, "rgb")) ; // The default
+      else if (!jsvIsStringEqual(colorv, "brg"))
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_BRG);
-      else if (!strcasecmp(color_order, "bgr"))
+      else if (!jsvIsStringEqual(colorv, "bgr"))
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_BGR);
-      else if (!strcasecmp(color_order, "gbr"))
+      else if (!jsvIsStringEqual(colorv, "gbr"))
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_GBR);
-      else if (!strcasecmp(color_order, "grb"))
+      else if (!jsvIsStringEqual(colorv, "grb"))
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_GRB);
-      else if (!strcasecmp(color_order, "RBG"))
+      else if (!jsvIsStringEqual(colorv, "rbg"))
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_RBG);
-      else {
-	jsExceptionHere(JSET_ERROR, "color_order must be 3 characters");
-	return 0; // XXX: free parent?
-      }
+      else
+        jsWarn("color_order must be 3 characters");
+      jsvUnLock(colorv);
     }
   }
 
@@ -195,12 +191,12 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
     callbackSetPixel = jsvLockAgain(callback);
   if (!jsvIsFunction(callbackSetPixel)) {
     jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackSetPixel);
-    jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
+    jsvUnLock2(callbackSetPixel, callbackFillRect);
     return 0;
   }
   if (!jsvIsUndefined(callbackFillRect) && !jsvIsFunction(callbackFillRect)) {
     jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackFillRect);
-    jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
+    jsvUnLock2(callbackSetPixel, callbackFillRect);
     return 0;
   }
 
@@ -216,7 +212,7 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   gfx.data.bpp = (unsigned char)bpp;
   lcdInit_JS(&gfx, callbackSetPixel, callbackFillRect);
   graphicsSetVar(&gfx);
-  jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
+  jsvUnLock2(callbackSetPixel, callbackFillRect);
   return parent;
 }
 
@@ -293,6 +289,7 @@ Clear the LCD with the Background Color
 void jswrap_graphics_clear(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsClear(&gfx);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -312,6 +309,7 @@ Fill a rectangular area in the Foreground Color
 void jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsFillRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -331,6 +329,7 @@ Draw an unfilled rectangle 1px wide in the Foreground Color
 void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsDrawRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -372,62 +371,14 @@ void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   graphicsSetPixel(&gfx, (short)x, (short)y, col);
   gfx.data.cursorX = (short)x;
   gfx.data.cursorY = (short)y;
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
-
-// Convert HSV to RGB
-// From http://www.cs.rit.edu/~ncs/color/t_convert.html
-static void HSVtoRGB(JsVarFloat h, JsVarFloat s, JsVarFloat v, JsVarFloat *r, JsVarFloat *g, JsVarFloat *b) {
-  int i;
-  JsVarFloat f, p, q, t;
-  if (s == 0)
-    // achromatic (grey)
-    *r = *g = *b = v;
-
-  h = h / 60;			// sector 0 to 5
-  i = (int)h;
-  f = h - i;			// fractional part of h
-  p = v * (1 - s);
-  q = v * (1 - s * f);
-  t = v * (1 - s * (1 - f));
-  switch(i) {
-  case 0:
-    *r = v;
-    *g = t;
-    *b = p;
-    break;
-  case 1:
-    *r = q;
-    *g = v;
-    *b = p;
-    break;
-  case 2:
-    *r = p;
-    *g = v;
-    *b = t;
-    break;
-  case 3:
-    *r = p;
-    *g = q;
-    *b = v;
-    break;
-  case 4:
-    *r = t;
-    *g = p;
-    *b = v;
-    break;
-  default:
-    *r = v;
-    *g = p;
-    *b = q;
-    break;
-  }
-};
 
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
   "name" : "setColor",
-  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true, false)",
+  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
   "params" : [
     ["r","JsVar","Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order"],
     ["g","JsVar","Green (between 0 and 1)"],
@@ -440,7 +391,7 @@ Set the color to use for subsequent drawing operations
   "type" : "method",
   "class" : "Graphics",
   "name" : "setBgColor",
-  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false, false)",
+  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false)",
   "params" : [
     ["r","JsVar","Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order"],
     ["g","JsVar","Green (between 0 and 1)"],
@@ -449,51 +400,13 @@ Set the color to use for subsequent drawing operations
 }
 Set the background color to use for subsequent drawing operations
 */
-
-/*JSON{
-  "type" : "method",
-  "class" : "Graphics",
-  "name" : "setColorHSV",
-  "generate_full" : "jswrap_graphics_setColorX(parent, h,s,v, true, true)",
-  "params" : [
-    ["h","JsVar","Hue (between 0 and 1)"],
-    ["s","JsVar","Saturation (between 0 and 1)"],
-    ["v","JsVar","Value (between 0 and 1)"]
-  ]
-}
-Set the HSV color to use for subsequent drawing operations
-*/
-/*JSON{
-  "type" : "method",
-  "class" : "Graphics",
-  "name" : "setBgColorHSV",
-  "generate_full" : "jswrap_graphics_setColorX(parent, h,s,v, false, true)",
-  "params" : [
-    ["h","JsVar","Hue (between 0 and 1)"],
-    ["s","JsVar","Saturation (between 0 and 1)"],
-    ["v","JsVar","Value (between 0 and 1)"]
-  ]
-}
-Set the background HSV color to use for subsequent drawing operations
-*/
-void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground, bool isHSV) {
+void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   unsigned int color = 0;
   JsVarFloat rf, gf, bf;
-  if (isHSV) {
-    if (jsvIsUndefined(r) || jsvIsUndefined(g) || jsvIsUndefined(b)) {
-      jsExceptionHere(JSET_ERROR, "h, s and v must be defined");
-      return;
-    }
-    JsVarFloat hf = jsvGetFloat(r);
-    JsVarFloat sf = jsvGetFloat(g);
-    JsVarFloat vf = jsvGetFloat(b);
-    HSVtoRGB(hf, sf, vf, &rf, &gf, &bf);
-  } else {
-    rf = jsvGetFloat(r);
-    gf = jsvGetFloat(g);
-    bf = jsvGetFloat(b);
-  }
+  rf = jsvGetFloat(r);
+  gf = jsvGetFloat(g);
+  bf = jsvGetFloat(b);
   if (!jsvIsUndefined(g) && !jsvIsUndefined(b)) {
     int ri = (int)(rf*256);
     int gi = (int)(gf*256);
@@ -505,28 +418,36 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
     if (gi<0) gi=0;
     if (bi<0) bi=0;
     // Check if we need to twiddle colors
-    if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_MASK) {
+    int colorMask = gfx.data.flags & JSGRAPHICSFLAGS_COLOR_MASK;
+    if (colorMask) {
       int tmpr, tmpg, tmpb;
       tmpr = ri;
       tmpg = gi;
       tmpb = bi;
-      if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_BRG) {
-	ri = tmpb;
-	gi = tmpr;
-	bi = tmpg;
-      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_BGR) {
-	ri = tmpb;
-	bi = tmpr;
-      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_GBR) {
-	ri = tmpg;
-	gi = tmpb;
-	bi = tmpr;
-      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_GRB) {
-	ri = tmpg;
-	gi = tmpr;
-      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_RBG) {
-	gi = tmpb;
-	bi = tmpg;
+      switch (colorMask) {
+        case JSGRAPHICSFLAGS_COLOR_BRG:
+          ri = tmpb;
+          gi = tmpr;
+          bi = tmpg;
+          break;
+        case JSGRAPHICSFLAGS_COLOR_BGR:
+          ri = tmpb;
+          bi = tmpr;
+          break;
+        case JSGRAPHICSFLAGS_COLOR_GBR:
+          ri = tmpg;
+          gi = tmpb;
+          bi = tmpr;
+          break;
+        case JSGRAPHICSFLAGS_COLOR_GRB:
+          ri = tmpg;
+          gi = tmpr;
+          break;
+        case JSGRAPHICSFLAGS_COLOR_RBG:
+          gi = tmpb;
+          bi = tmpg;
+          break;
+        default: break;
       }
     }
     if (gfx.data.bpp==16) {
@@ -577,7 +498,7 @@ JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
   "name" : "setFontBitmap",
   "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)"
 }
-Set Graphics to draw with a Bitmapped Font
+Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmapped Font
 */
 /*JSON{
   "type" : "method",
@@ -586,10 +507,10 @@ Set Graphics to draw with a Bitmapped Font
   "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
   "params" : [
-    ["size","int32","The size as an integer"]
+    ["size","int32","The height of the font, as an integer"]
   ]
 }
-Set Graphics to draw with a Vector Font of the given size
+Make subsequent calls to `drawString` use a Vector Font of the given height 
 */
 void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
@@ -619,7 +540,8 @@ void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
     ["height","int32","The height as an integer"]
   ]
 }
-Set Graphics to draw with a Custom Font
+Make subsequent calls to `drawString` use a Custom Font of the given height. See the [Fonts page](http://www.espruino.com/Fonts) for more
+information about custom fonts and how to create them.
 */
 void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
@@ -642,8 +564,8 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
  }
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, bitmap);
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, width);
-  jsvUnLock(jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height)));
-  jsvUnLock(jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar)));
+  jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height));
+  jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar));
   gfx.data.fontSize = JSGRAPHICS_FONTSIZE_CUSTOM;
   graphicsSetVar(&gfx);
 }
@@ -656,8 +578,8 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
   "generate" : "jswrap_graphics_drawString",
   "params" : [
     ["str","JsVar","The string"],
-    ["x","int32","The left"],
-    ["y","int32","The top"]
+    ["x","int32","The X position of the leftmost pixel"],
+    ["y","int32","The Y position of the topmost pixel"]
   ]
 }
 Draw a string of text in the current font
@@ -666,7 +588,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
   JsVar *customBitmap = 0, *customWidth = 0;
-  int customHeight, customFirstChar;
+  int customHeight = 0, customFirstChar = 0;
   if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
     customBitmap = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, 0);
     customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
@@ -731,10 +653,8 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
-  jsvUnLock(str);
-
-  jsvUnLock(customBitmap);
-  jsvUnLock(customWidth);
+  jsvUnLock3(str, customBitmap, customWidth);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -753,7 +673,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
   JsVar *customWidth = 0;
-  int customFirstChar;
+  int customFirstChar = 0;
   if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
     customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
@@ -781,9 +701,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
-  jsvUnLock(str);
-
-  jsvUnLock(customWidth);
+  jsvUnLock2(str, customWidth);
   return width;
 }
 
@@ -804,6 +722,7 @@ Draw a line between x1,y1 and x2,y2 in the current foreground color
 void jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsDrawLine(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -873,6 +792,7 @@ void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
     jsWarn("Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   }
   graphicsFillPoly(&gfx, idx/2, verts);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -986,4 +906,42 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(imageBufferString);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getModified",
+  "generate" : "jswrap_graphics_getModified",
+  "params" : [
+    ["reset","bool","Whether to reset the modified area or not"]
+  ],
+  "return" : ["JsVar","An object {x1,y1,x2,y2} containing the modified area, or undefined if not modified"]
+}
+Return the area of the Graphics canvas that has been modified, and optionally clear
+the modified area to 0.
+
+For instance if `g.setPixel(10,20)` was called, this would return `{x1:10, y1:20, x2:10, y2:20}`
+*/
+JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  JsVar *obj = 0;
+  if (gfx.data.modMinX <= gfx.data.modMaxX) { // do we have a rect?
+    obj = jsvNewObject();
+    if (obj) {
+      jsvObjectSetChildAndUnLock(obj, "x1", jsvNewFromInteger(gfx.data.modMinX));
+      jsvObjectSetChildAndUnLock(obj, "y1", jsvNewFromInteger(gfx.data.modMinY));
+      jsvObjectSetChildAndUnLock(obj, "x2", jsvNewFromInteger(gfx.data.modMaxX));
+      jsvObjectSetChildAndUnLock(obj, "y2", jsvNewFromInteger(gfx.data.modMaxY));
+    }
+  }
+  if (reset) {
+    gfx.data.modMaxX = -32768;
+    gfx.data.modMaxY = -32768;
+    gfx.data.modMinX = 32767;
+    gfx.data.modMinY = 32767;
+    graphicsSetVar(&gfx);
+  }
+  return obj;
 }

@@ -66,6 +66,7 @@ typedef struct JsFile {
 // Called when stopping, to make sure all files are closed
 void jswrap_file_kill();
 
+void jswrap_E_connectSDCard(JsVar *spi, Pin csPin);
 JsVar* jswrap_E_openFile(JsVar* path, JsVar* mode);
 void jswrap_E_unmountSD();
 

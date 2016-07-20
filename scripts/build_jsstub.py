@@ -20,16 +20,16 @@ import json;
 import common;
 
 # encapsulate output in a comment
-print "/*";
+print("/*");
 schemas = common.get_jsondata(True, False)
-print "*/";
+print("*/");
 
 # get structured data for further parsing
 context = common.get_struct_from_jsondata(schemas)
 #print(json.dumps(context, sort_keys=True, indent=2))
 
 def println(line):
-  print "\n" + line
+  print ("\n" + line)
 
 def getDescComment(obj):
   if not "desc" in obj or len(obj["desc"]) == 0:
@@ -54,7 +54,7 @@ def looper(obj, objName, key, isProto = False, isProp = False):
       details = obj[key][name]
       # handle description comment
       desc = getDescComment(details)
-      if len(desc) != 0: print desc
+      if len(desc) != 0: print(desc)
       # assign without clobbering existing members
       proto = ".prototype" if isProto else ""
       print("if (!('" + name + "' in " + objName + proto + "))")
@@ -63,7 +63,7 @@ def looper(obj, objName, key, isProto = False, isProp = False):
 def buildJsStubs(forNode = False):
   def export(name):
     if forNode:
-      print "module.exports." + name + ' = ' + name + ';'
+      print("module.exports." + name + ' = ' + name + ';')
   ns = "global" if forNode else "window"
   instances = dict()
   for objName in context.keys():
@@ -74,7 +74,7 @@ def buildJsStubs(forNode = False):
       print("if (!('" + objName + "' in " + ns + ")) {")
       if len(obj["methods"]) or len(obj["props"]):
         if "constructor" in obj:
-          print getDescComment(obj["constructor"])
+          print(getDescComment(obj["constructor"]))
         print("  " + ns + "." + objName + " = function (){};")
         print("  " + ns + "." + objName + ".prototype = {};")
       else:

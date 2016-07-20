@@ -19,7 +19,15 @@ info = {
  'link' : [ "http://www.hotmcu.com/hyministm32v-dev-board-32-tft-lcd-module-p-5.html" ],
  'variables' : 2000,
  'serial_bootloader' : True,
-  'binary_name' : 'espruino_%v_hystm32_32_vc.bin',
+ 'binary_name' : 'espruino_%v_hystm32_32_vc.bin',
+ 'build' : {
+   'defines' : [
+     'USE_GRAPHICS',
+     'USE_LCD_FSMC',
+     'USE_FILESYSTEM',
+     'USE_FILESYSTEM_SDIO'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103VC",
@@ -34,15 +42,7 @@ chip = {
   'adc' : 3,
   'dac' : 2,
 };
-# left-right, or top-bottom order
-board = {
-  'bottom' : [ 'GND', 'E0','E2','E4','E6','C13','C15','C1','C3','GND','VDDA','A1','A3','A5','A7','C5','B1','E7','E9','E11','E13','E15','B11', 'GND' ],
-  'bottom2' : [ '5V','E1','E3','E5','VBAT','C14','C0','C2','GND','VREF+','A0','A2','A4','A6','C4','B0','B2','E8','E10','E12','E14','B10','GND','3V3' ],
-  'top' : [ 'GND', 'B12','B14','D8','D10','D12','D14','C6','C8','A8','A10','A12','A14','GND','C10','C12','D1','D3','D5','D7','B4','B6','B8','GND' ],
-  'top2' : [ '5V', 'B13','B15','D9','D11','D13','D15','C7','C9','A9','A11','A13','A15','3V3','C11','D0','D2','D4','D6','B3','B5','B7','B9','3V3' ],
-};
-board["top"].reverse()
-board["top2"].reverse()
+
 devices = {
   'OSC' : { 'pin_1' : 'D0',
             'pin_2' : 'D1' },
@@ -99,8 +99,16 @@ devices = {
           }
 };
 
-
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'bottom' : [ 'GND', 'E0','E2','E4','E6','C13','C15','C1','C3','GND','VDDA','A1','A3','A5','A7','C5','B1','E7','E9','E11','E13','E15','B11', 'GND' ],
+  'bottom2' : [ '5V','E1','E3','E5','VBAT','C14','C0','C2','GND','VREF+','A0','A2','A4','A6','C4','B0','B2','E8','E10','E12','E14','B10','GND','3V3' ],
+  'top' : [ 'GND', 'B12','B14','D8','D10','D12','D14','C6','C8','A8','A10','A12','A14','GND','C10','C12','D1','D3','D5','D7','B4','B6','B8','GND' ],
+  'top2' : [ '5V', 'B13','B15','D9','D11','D13','D15','C7','C9','A9','A11','A13','A15','3V3','C11','D0','D2','D4','D6','B3','B5','B7','B9','3V3' ],
+};
+board["top"].reverse()
+board["top2"].reverse()
+board["_css"] = """
 #board {
   width: 1025px;
   height: 837px;

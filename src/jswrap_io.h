@@ -14,12 +14,16 @@
 #include "jsvar.h"
 #include "jsinteractive.h"
 
+JsVar *jswrap_io_peek(JsVarInt addr, JsVarInt count, int wordSize);
+void jswrap_io_poke(JsVarInt addr, JsVar *data, int wordSize);
+
 void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options);
 void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times);
 void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value);
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar);
 void jswrap_io_pinMode(Pin pin, JsVar *mode);
 JsVar *jswrap_io_getPinMode(Pin pin);
+void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data);
 
 JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject);
 void jswrap_interface_clearWatch(JsVar *idVar);

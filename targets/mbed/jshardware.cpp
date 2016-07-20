@@ -32,7 +32,7 @@ Timer systemTime;
 unsigned int systemTimeHigh;
 bool systemTimeWasHigh;
 
-serial_t mbedSerial[USARTS];
+serial_t mbedSerial[USART_COUNT];
 gpio_t mbedPins[MBED_PINS];
 extern "C" {
 
@@ -66,7 +66,7 @@ void jshInit() {
   for (i=0;i<MBED_PINS;i++) {
      gpio_init(&mbedPins[i], (PinName)(P0_0+i), PIN_INPUT);
   }
-  for (i=0;i<USARTS;i++) {
+  for (i=0;i<USART_COUNT;i++) {
     serial_init(&mbedSerial[i], USBTX, USBRX); // FIXME Pin
     serial_irq_handler(&mbedSerial[i], &mbedSerialIRQ, i);
     // serial_irq_set(&mbedSerial[i], RxIrq, 1); // FIXME Rx IRQ just crashes when called
@@ -77,6 +77,13 @@ void jshKill() {
 }
 
 void jshIdle() {
+  // hack in order to get console device set correctly
+  static bool inited = false;
+  if (!inited) {
+    inited = true;
+    jsiOneSecondAfterStartup();
+  }
+
   /*static bool foo = false;
   foo = !foo;
   jshPinSetValue(LED1_PININDEX, foo);*/
@@ -157,24 +164,13 @@ void jshSetSystemTime(JsSysTime time) {
 
 // ----------------------------------------------------------------------------
 
-bool jshPinInput(Pin pin) {
-  if (jshIsPinValid(pin))
-    return jshPinGetValue(pin);
-  return false;
-}
-
 JsVarFloat jshPinAnalog(Pin pin) {
   JsVarFloat value = 0;
   return value;
 }
 
-
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin))
-    jshPinSetValue(pin, value);
-}
-
-void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
+  return JSH_NOTHING;
 }
 
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
@@ -215,6 +211,20 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 int jshSPISend(IOEventFlags device, int data) {
 }
 
+/** Send 16 bit data through the given SPI device. */
+void jshSPISend16(IOEventFlags device, int data) {
+  jshSPISend(device, data>>8);
+  jshSPISend(device, data&255);
+}
+
+/** Set whether to send 16 bits or 8 over SPI */
+void jshSPISet16(IOEventFlags device, bool is16) {
+}
+
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+}
+
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
@@ -222,19 +232,6 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
-}
-
-
-void jshSaveToFlash() {
-  
-}
-
-void jshLoadFromFlash() {
-  
-}
-
-bool jshFlashContainsCode() {
-
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
@@ -252,8 +249,37 @@ void jshUtilTimerReschedule(JsSysTime period) {
 void jshUtilTimerStart(JsSysTime period) {
 }
 
+void jshEnableWatchDog(JsVarFloat timeout) {
+}
+
+void jshKickWatchDog() {
+}
+
 JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
+unsigned int jshGetRandomNumber() { return rand(); }
+
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
+  return false;
+}
+
+JsVar *jshFlashGetFree() {
+  // not implemented, or no free pages.
+  return 0;
+}
+
+void jshFlashErasePage(uint32_t addr) {
+}
+
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+}
+
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  return 0;
+}
 
 // ----------------------------------------------------------------------------
 } // extern C

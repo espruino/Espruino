@@ -159,7 +159,7 @@ An instantiation of an Ethernet network adaptor
   "generate" : "jswrap_ethernet_getIP",
   "return" : ["JsVar",""]
 }
-Get the current IP address
+Get the current IP address, subnet, gateway and mac address.
 */
 JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   NOT_USED(wlanObj);
@@ -176,12 +176,12 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
 
   /* If byte 1 is 0 we don't have a valid address */
-  JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *data = jsvNewObject();
   networkPutAddressAsString(data, "ip", &gWIZNETINFO.ip[0], 4, 10, '.');
   networkPutAddressAsString(data, "subnet", &gWIZNETINFO.sn[0], 4, 10, '.');
   networkPutAddressAsString(data, "gateway", &gWIZNETINFO.gw[0], 4, 10, '.');
   networkPutAddressAsString(data, "dns", &gWIZNETINFO.dns[0], 4, 10, '.');
-  networkPutAddressAsString(data, "mac", &gWIZNETINFO.mac[0], 6, 16, 0);
+  networkPutAddressAsString(data, "mac", &gWIZNETINFO.mac[0], 6, 16, ':');
 
   networkFree(&net);
 
@@ -205,11 +205,13 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
   "name" : "setIP",
   "generate" : "jswrap_ethernet_setIP",
   "params" : [
-    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."]
+    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns, mac  }`, or do not supply an object in order to force DHCP."]
   ],
   "return" : ["bool","True on success"]
 }
-Set the current IP address for get an IP from DHCP (if no options object is specified)
+Set the current IP address or get an IP from DHCP (if no options object is specified)
+
+If 'mac' is specified as an option, it must be a string of the form `"00:01:02:03:04:05"`
 */
 bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
   NOT_USED(wlanObj);
@@ -226,12 +228,34 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
   wiz_NetInfo gWIZNETINFO;
 
   ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
+  if (!gWIZNETINFO.mac[0] && !gWIZNETINFO.mac[1] &&
+      !gWIZNETINFO.mac[2] && !gWIZNETINFO.mac[3] &&
+      !gWIZNETINFO.mac[4] && !gWIZNETINFO.mac[5]) {
+    // wow - no mac address - WIZ550BoB? Set up a simple one
+    // in WIZnet's range of addresses
+    gWIZNETINFO.mac[0]=0x00;
+    gWIZNETINFO.mac[1]=0x08;
+    gWIZNETINFO.mac[2]=0xDC;
+    gWIZNETINFO.mac[3]=0x01;
+    gWIZNETINFO.mac[4]=0x02;
+    gWIZNETINFO.mac[5]=0x03;
+  }
 
   if (jsvIsObject(options)) {
     _eth_getIP_set_address(options, "ip", &gWIZNETINFO.ip[0]);
     _eth_getIP_set_address(options, "subnet", &gWIZNETINFO.sn[0]);
     _eth_getIP_set_address(options, "gateway", &gWIZNETINFO.gw[0]);
     _eth_getIP_set_address(options, "dns", &gWIZNETINFO.dns[0]);
+
+    JsVar *info = jsvObjectGetChild(options, "mac", 0);
+    if (info) {
+      char buf[64];
+      jsvGetString(info, buf, sizeof(buf));
+      networkParseMACAddress(&gWIZNETINFO.mac[0], buf);
+      // TODO: check failure?
+      jsvUnLock(info);
+    }
+
     gWIZNETINFO.dhcp = NETINFO_STATIC;
     success = true;
   } else {

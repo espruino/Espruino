@@ -154,39 +154,48 @@ void GPIO_DeInit(GPIO_TypeDef* GPIOx)
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOE, ENABLE);
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOE, DISABLE);
   }
+#ifdef GPIOF
   else if (GPIOx == GPIOF)
   {
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOF, ENABLE);
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOF, DISABLE);
   }
+#endif
+#ifdef GPIOG
   else if (GPIOx == GPIOG)
   {
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOG, ENABLE);
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOG, DISABLE);
   }
+#endif
   else if (GPIOx == GPIOH)
   {
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOH, ENABLE);
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOH, DISABLE);
   }
-
+#ifdef GPIOI
   else if (GPIOx == GPIOI)
   {
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOI, ENABLE);
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOI, DISABLE);
   }
+#endif
+#ifdef GPIOJ
   else if (GPIOx == GPIOJ)
   {
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOJ, ENABLE);
     RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOJ, DISABLE);
   }
+#endif
   else
   {
+#ifdef GPIOK
     if (GPIOx == GPIOK)
     {
       RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOK, ENABLE);
       RCC_AHB1PeriphResetCmd(RCC_AHB1Periph_GPIOK, DISABLE);
     }
+#endif
   }
 }
 
@@ -415,7 +424,7 @@ void GPIO_SetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
   assert_param(IS_GPIO_ALL_PERIPH(GPIOx));
   assert_param(IS_GPIO_PIN(GPIO_Pin));
 
-  GPIOx->BSRRL = GPIO_Pin;
+  GPIOx->BSRR = GPIO_Pin;
 }
 
 /**
@@ -436,7 +445,7 @@ void GPIO_ResetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
   assert_param(IS_GPIO_ALL_PERIPH(GPIOx));
   assert_param(IS_GPIO_PIN(GPIO_Pin));
 
-  GPIOx->BSRRH = GPIO_Pin;
+  GPIOx->BSRR = GPIO_Pin<<16;
 }
 
 /**
@@ -461,11 +470,11 @@ void GPIO_WriteBit(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, BitAction BitVal)
 
   if (BitVal != Bit_RESET)
   {
-    GPIOx->BSRRL = GPIO_Pin;
+    GPIOx->BSRR = GPIO_Pin;
   }
   else
   {
-    GPIOx->BSRRH = GPIO_Pin ;
+    GPIOx->BSRR = GPIO_Pin<<16 ;
   }
 }
 

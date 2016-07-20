@@ -28,23 +28,10 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "stm32_compat.h"
 #include "platform_config.h"
-#include "stm32_it.h"
-#ifdef USB
-#if defined(STM32F1) || defined(STM32F3)
- #include "usb_utils.h"
- #include "usb_lib.h"
- #include "usb_istr.h"
- #include "usb_pwr.h"
-#endif
-#ifdef STM32F4
- #include "usb_core.h"
- #include "usbd_core.h"
- #include "usbd_cdc_core.h"
- #include "usb_dcd_int.h"
-#endif
-#endif
 #include "jshardware.h"
+
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -294,25 +281,35 @@ void RTC_WKUP_IRQHandler(void)
 #endif
 
 static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
+  if (USART_GetFlagStatus(USART, USART_FLAG_FE) != RESET) {
+    // If we have a framing error, push status info onto the event queue
+    jshPushIOEvent(
+        IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
+  }
+  if (USART_GetFlagStatus(USART, USART_FLAG_PE) != RESET) {
+    // If we have a parity error, push status info onto the event queue
+    jshPushIOEvent(
+        IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_PARITY_ERR, 0);
+  }
   if(USART_GetITStatus(USART, USART_IT_RXNE) != RESET) {
-     /* Clear the USART Receive interrupt */
-     USART_ClearITPendingBit(USART, USART_IT_RXNE);
-     /* Read one byte from the receive data register */
-     jshPushIOCharEvent(device, (char)USART_ReceiveData(USART));
-   }
-   /* If overrun condition occurs, clear the ORE flag and recover communication */
-   if (USART_GetFlagStatus(USART, USART_FLAG_ORE) != RESET)
-   {
-     (void)USART_ReceiveData(USART);
-   }
-   if(USART_GetITStatus(USART, USART_IT_TXE) != RESET) {
-     /* If we have other data to send, send it */
-     int c = jshGetCharToTransmit(device);
-     if (c >= 0) {
-       USART_SendData(USART, (uint16_t)c);
-     } else
-       USART_ITConfig(USART, USART_IT_TXE, DISABLE);
-   }
+    /* Clear the USART Receive interrupt */
+    USART_ClearITPendingBit(USART, USART_IT_RXNE);
+    /* Read one byte from the receive data register */
+    jshPushIOCharEvent(device, (char)USART_ReceiveData(USART));
+  }
+  /* If overrun condition occurs, clear the ORE flag and recover communication */
+  if (USART_GetFlagStatus(USART, USART_FLAG_ORE) != RESET)
+  {
+    (void)USART_ReceiveData(USART);
+  }
+  if(USART_GetITStatus(USART, USART_IT_TXE) != RESET) {
+    /* If we have other data to send, send it */
+    int c = jshGetCharToTransmit(device);
+    if (c >= 0) {
+      USART_SendData(USART, (uint16_t)c);
+    } else
+      USART_ITConfig(USART, USART_IT_TXE, DISABLE);
+  }
 }
 
 void USART1_IRQHandler(void) {
@@ -323,19 +320,25 @@ void USART2_IRQHandler(void) {
   USART_IRQHandler(USART2, EV_SERIAL2);
 }
 
+#if defined(USART3) && USART_COUNT>=3
 void USART3_IRQHandler(void) {
   USART_IRQHandler(USART3, EV_SERIAL3);
 }
+#endif
 
+#if defined(UART4) && USART_COUNT>=4
 void UART4_IRQHandler(void) {
   USART_IRQHandler(UART4, EV_SERIAL4);
 }
+#endif
 
+#if defined(UART5) && USART_COUNT>=5
 void UART5_IRQHandler(void) {
   USART_IRQHandler(UART5, EV_SERIAL5);
 }
+#endif
 
-#ifdef STM32F4
+#if defined(USART6) && USART_COUNT>=6
 void USART6_IRQHandler(void) {
   USART_IRQHandler(USART6, EV_SERIAL6);
 }
@@ -349,19 +352,19 @@ static void SPI_IRQHandler(SPI_TypeDef *SPIx, IOEventFlags device) {
     }
 }
 
-#if SPIS>=1
+#if SPI_COUNT>=1
 void SPI1_IRQHandler(void) {
   SPI_IRQHandler(SPI1, EV_SPI1);
 }
 #endif
 
-#if SPIS>=2
+#if SPI_COUNT>=2
 void SPI2_IRQHandler(void) {
   SPI_IRQHandler(SPI2, EV_SPI2);
 }
 #endif
 
-#if SPIS>=3
+#if SPI_COUNT>=3
 void SPI3_IRQHandler(void) {
   SPI_IRQHandler(SPI3, EV_SPI3);
 }
@@ -371,148 +374,6 @@ void SPI3_IRQHandler(void) {
 /** The 'utility' timer - used for pulse generation and shifting data */
 // void UTIL_TIMER_IRQHandler(void)
 // Defined in jshardware.c
-
-#ifdef USB
-
-#ifdef STM32F1
-/*******************************************************************************
-* Function Name  : USB_IRQHandler
-* Description    : This function handles USB Low Priority interrupts
-*                  requests.
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
-void USB_LP_CAN1_RX0_IRQHandler(void)
-{
-  USB_Istr();
-}
-
-void USBWakeUp_IRQHandler(void)
-{
-  EXTI_ClearITPendingBit(EXTI_Line18);
-}
-#endif // STM32F1
-
-#ifdef STM32F3
-#if defined (USB_INT_DEFAULT)
-void USB_LP_CAN1_RX0_IRQHandler(void)
-#elif defined (USB_INT_REMAP)
-void USB_LP_IRQHandler(void)
-#endif
-{
-   USB_Istr();
-}
-
-#if defined (USB_INT_DEFAULT)
-void USBWakeUp_IRQHandler(void)
-#elif defined (USB_INT_REMAP)
-void USBWakeUp_RMP_IRQHandler(void)
-#endif
-{
-  /* Initiate external resume sequence (1 step) */
-  Resume(RESUME_EXTERNAL);
-  EXTI_ClearITPendingBit(EXTI_Line18);
-}
-#endif // STM32F3
-
-#ifdef STM32F4
-/******************************************************************************/
-/*                 STM32 Peripherals Interrupt Handlers                   */
-/*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
-/*  available peripheral interrupt handler's name please refer to the startup */
-/*  file (startup_stm32xxx.s).                                            */
-/******************************************************************************/
-
-/*******************************************************************************
-* Function Name  : PPP_IRQHandler
-* Description    : This function handles PPP interrupt request.
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
-/*void PPP_IRQHandler(void)
-{
-}*/
-
-/**
-  * @brief  This function handles EXTI15_10_IRQ Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_FS
-void OTG_FS_WKUP_IRQHandler(void)
-{
-  if(USB_OTG_dev.cfg.low_power)
-  {
-    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
-    SystemInit();
-    USB_OTG_UngateClock(&USB_OTG_dev);
-  }
-  EXTI_ClearITPendingBit(EXTI_Line18);
-}
-#endif
-
-/**
-  * @brief  This function handles EXTI15_10_IRQ Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_HS
-void OTG_HS_WKUP_IRQHandler(void)
-{
-  if(USB_OTG_dev.cfg.low_power)
-  {
-    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
-    SystemInit();
-    USB_OTG_UngateClock(&USB_OTG_dev);
-  }
-  EXTI_ClearITPendingBit(EXTI_Line20);
-}
-#endif
-
-/**
-  * @brief  This function handles OTG_HS Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_HS
-void OTG_HS_IRQHandler(void)
-#else
-void OTG_FS_IRQHandler(void)
-#endif
-{
-  USBD_OTG_ISR_Handler (&USB_OTG_dev);
-}
-
-#ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
-
-extern uint32_t USBD_OTG_EP1IN_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
-extern uint32_t USBD_OTG_EP1OUT_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
-
-/**
-  * @brief  This function handles EP1_IN Handler.
-  * @param  None
-  * @retval None
-  */
-void OTG_HS_EP1_IN_IRQHandler(void)
-{
-  USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
-}
-
-/**
-  * @brief  This function handles EP1_OUT Handler.
-  * @param  None
-  * @retval None
-  */
-void OTG_HS_EP1_OUT_IRQHandler(void)
-{
-  USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
-}
-#endif
-
-#endif // STM32F4
-#endif // USB
 
 #ifdef USE_FILESYSTEM_SDIO
 #include "sdio_sdcard.h"

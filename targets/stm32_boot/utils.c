@@ -12,11 +12,15 @@
  * ----------------------------------------------------------------------------
  */
 #include "platform_config.h"
-#include "usb_utils.h"
-#include "usb_lib.h"
-#include "usb_desc.h"
-#include "usb_pwr.h"
-#include "usb_istr.h"
+#ifdef USB
+ #ifdef LEGACY_USB
+  #include "legacy_usb.h"
+ #else
+  #include "usb_device.h"
+  #include "usbd_cdc_hid.h"
+ #endif
+#endif
+
 #include "jshardware.h"
 
 #define BUFFERMASK 8191
@@ -25,37 +29,17 @@ int rxHead=0, rxTail=0;
 char txBuffer[BUFFERMASK+1];
 int txHead=0, txTail=0;
 
-uint16_t stmPin(Pin ipin) {
-  JsvPinInfoPin pin = JSH_PIN0;
-  if (JSH_PORTF_OFFSET >= 0 && ipin > JSH_PORTF_OFFSET) pin = ipin-JSH_PORTF_OFFSET;
-  else if (JSH_PORTE_OFFSET >= 0 && ipin > JSH_PORTE_OFFSET) pin = ipin-JSH_PORTE_OFFSET;
-  else if (JSH_PORTD_OFFSET >= 0 && ipin > JSH_PORTD_OFFSET) pin = ipin-JSH_PORTD_OFFSET;
-  else if (JSH_PORTC_OFFSET >= 0 && ipin > JSH_PORTC_OFFSET) pin = ipin-JSH_PORTC_OFFSET;
-  else if (JSH_PORTB_OFFSET >= 0 && ipin > JSH_PORTB_OFFSET) pin = ipin-JSH_PORTB_OFFSET;
-  else if (JSH_PORTA_OFFSET >= 0 && ipin > JSH_PORTA_OFFSET) pin = ipin-JSH_PORTA_OFFSET;
-  return 1 << pin;
+static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
+  JsvPinInfoPin pin = pinInfo[ipin].pin;
+  return (uint16_t)(1 << (pin-JSH_PIN0));
 }
 
-GPIO_TypeDef *stmPort(Pin ipin) {
-  if (JSH_PORTF_OFFSET >= 0 && ipin > JSH_PORTF_OFFSET) return GPIOF;
-  else if (JSH_PORTE_OFFSET >= 0 && ipin > JSH_PORTE_OFFSET) return GPIOE;
-  else if (JSH_PORTD_OFFSET >= 0 && ipin > JSH_PORTD_OFFSET) return GPIOD;
-  else if (JSH_PORTC_OFFSET >= 0 && ipin > JSH_PORTC_OFFSET) return GPIOC;
-  else if (JSH_PORTB_OFFSET >= 0 && ipin > JSH_PORTB_OFFSET) return GPIOB;
-  //else if (ipin > JSH_PORTA_OFFSET) return GPIOA;
-  return GPIOA;
+static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
+  JsvPinInfoPort port = pinInfo[pin].port;
+  return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
 }
 
 bool jshPinGetValue(Pin pin) {
-  GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Pin = stmPin(pin);
-#ifdef STM32API2
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-#else
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-#endif
-  GPIO_Init(stmPort(pin), &GPIO_InitStructure);
   return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
 }
 
@@ -85,30 +69,22 @@ void jshPinOutput(Pin pin, bool value) {
 #endif
 }
 
-void USB_LP_CAN1_RX0_IRQHandler(void)
-{
-  USB_Istr();
+#ifdef STM32F4
+
+void WWDG_IRQHandler() {
+  // why do we need this on the F401?
 }
 
-void USBWakeUp_IRQHandler(void)
-{
-  EXTI_ClearITPendingBit(EXTI_Line18);
-}
+#endif 
 
-unsigned int SysTickUSBWatchdog = SYSTICKS_BEFORE_USB_DISCONNECT;
 
-void jshKickUSBWatchdog() {
-  SysTickUSBWatchdog = 0;
-}
+
 
 void SysTick_Handler(void) {
-  if (SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT) {
-    SysTickUSBWatchdog++;
-  }
 }
 
 bool jshIsUSBSERIALConnected() {
-  return SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT;
+  return USB_IsConnected();
 }
 
 int jshGetCharToTransmit(IOEventFlags device) {
@@ -128,36 +104,60 @@ bool jshHasEventSpaceForChars(int n) {
   return true;
 }
 
-int getc() {
+int jshGetEventsUsed() {
+  return 0;
+}
+
+
+void jshDelayMicroseconds(int c) {
+  while (c--) {
+    int i;
+    for (i=0;i<80;i++);
+  }
+}
+
+int _getc() {
   if (rxHead == rxTail) return -1;
   unsigned char d = (unsigned char)rxBuffer[rxTail];
   rxTail = (rxTail+1) & BUFFERMASK;
   return d;
 }
 
-unsigned char getc_blocking() {
-  int c = getc();
-  while (c<0) c=getc();
+unsigned char _getc_blocking() {
+  int c = _getc();
+  while (c<0) c=_getc();
   return c;
 }
 
-void putc(char charData) {
+void _putc(char charData) {
   txBuffer[txHead] = charData;
   txHead = (txHead+1) & BUFFERMASK;
+}
+
+bool isButtonPressed() {
+  return jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
+}
+
+bool jumpToEspruinoBinary() {
+  unsigned int *ResetHandler = (unsigned int *)(0x08000000 + ESPRUINO_BINARY_ADDRESS + 4);
+  if (ResetHandler==0 || ResetHandler==0xFFFFFFFF)
+    return false;
+  void (*startPtr)() = *ResetHandler;
+  startPtr();
+  return true; // should never get here
 }
 
 void initHardware() {
 #if defined(STM32F3)
  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
- RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12 |
-                        RCC_AHBPeriph_GPIOA |
+ RCC_AHBPeriphClockCmd( RCC_AHBPeriph_GPIOA |
                         RCC_AHBPeriph_GPIOB |
                         RCC_AHBPeriph_GPIOC |
                         RCC_AHBPeriph_GPIOD |
                         RCC_AHBPeriph_GPIOE |
                         RCC_AHBPeriph_GPIOF, ENABLE);
 #elif defined(STM32F2) || defined(STM32F4)
- RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+ RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
                         RCC_AHB1Periph_GPIOB |
                         RCC_AHB1Periph_GPIOC |
@@ -180,11 +180,32 @@ void initHardware() {
        RCC_APB2Periph_AFIO, ENABLE);
 #endif
 
-  // if button is not set, jump to this address
-  if (jshPinGetValue(BTN1_PININDEX) != BTN1_ONSTATE) {
-    unsigned int *ResetHandler = (unsigned int *)(0x08000000 + BOOTLOADER_SIZE + 4);
-    void (*startPtr)() = *ResetHandler;
-    startPtr();
+#ifdef BTN1_PININDEX
+ GPIO_InitTypeDef GPIO_InitStructure;
+#ifdef STM32API2
+ GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+ GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+#else
+ GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+#endif
+
+ #if defined(BTN1_PINSTATE) 
+  #if BTN1_PINSTATE==JSHPINSTATE_GPIO_IN_PULLDOWN
+ GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN; 
+  #else
+   #error Unknown pin state for BTN1
+  #endif
+ #endif
+#endif
+ GPIO_InitStructure.GPIO_Pin = stmPin(BTN1_PININDEX);
+ GPIO_Init(stmPort(BTN1_PININDEX), &GPIO_InitStructure);
+
+ jshPinOutput(LED1_PININDEX, 1);
+
+  // if button is not set, jump to the address of the binary
+  if (!isButtonPressed()) {
+    jumpToEspruinoBinary();
+    // we could return here - binary might be very obviously corrupted
   }
 
   // PREEMPTION
@@ -206,22 +227,5 @@ void initHardware() {
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   NVIC_SetPriority(SysTick_IRQn, 0); // Super high priority
 
-
-#ifdef USB
-#if defined(STM32F1) || defined(STM32F3)
-  USB_Init_Hardware();
-  USB_Init();
-#endif
-#ifdef STM32F4
-  USBD_Init(&USB_OTG_dev,
-#ifdef USE_USB_OTG_HS
-            USB_OTG_HS_CORE_ID,
-#else
-            USB_OTG_FS_CORE_ID,
-#endif
-            &USR_desc,
-            &USBD_CDC_cb,
-            &USR_cb);
-#endif
-#endif
+  MX_USB_DEVICE_Init();
 }

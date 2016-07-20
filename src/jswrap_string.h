@@ -24,3 +24,4 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen);
 JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd);
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split);
 JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper);
+JsVar *jswrap_string_trim(JsVar *parent);

@@ -21,7 +21,7 @@
 
 #include <stdint.h> // uint32_t
 
-#if __WORDSIZE == 64
+#if defined(__WORDSIZE) && __WORDSIZE == 64
  #define JSWAT_IS_64BIT(N) (\
   (N)==JSWAT_JSVAR || \
   (N)==JSWAT_ARGUMENT_ARRAY || \
@@ -38,5 +38,7 @@
  */
 JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) ;
 
+/** Perform sanity tests to ensure that  jsnCallFunction is working as expected */
+void jsnSanityTest();
 
 #endif //JSNATIVE_H

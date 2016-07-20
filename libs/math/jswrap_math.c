@@ -21,6 +21,41 @@ static bool isNegativeZero(double x) {
   return *((long long*)&x) == *((long long*)&NEGATIVE_ZERO);
 }
 
+double jswrap_math_sin(double x) {
+#ifdef SAVE_ON_FLASH
+  /* To save on flash, do our own sin function that's slower/nastier
+   * but is smaller! If we pull in gcc's it adds:
+   * __kernel_rem_pio2    2054 bytes
+   * __ieee754_rem_pio2   1060 bytes
+   * __kernel_cos         584 bytes
+   * __kernel_sin         364 bytes
+   *
+   * So about 3k, just for sin.
+   * */
+  // exploit symmetry - we're only accurate when x is small
+  int xi = (int)(x/PI);
+  x -= xi*PI;
+  if (x>PI/2) x=PI-x;
+  // Taylor series expansion of 'sin'
+  double r = x; // running total
+  double x2 = x*x; // precalculate x^2
+  double xpow = x; // running power
+  unsigned int factorial = 1; // running factorial
+  unsigned int i;
+  for (i=1;i<10;i++) {
+    xpow = xpow*x2;
+    factorial *= (i*2)*((i*2)+1);
+    double term = xpow / factorial;
+    if (i&1) r-=term; else r+=term;
+  }
+  // symmetry
+  if (xi&1) r=-r;
+  return r;
+#else
+  return sin(x);
+#endif
+}
+
 /*JSON{
   "type" : "class",
   "class" : "Math"
@@ -104,7 +139,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "acos",
-  "generate" : "acos",
+  "generate_full" : "jswrap_math_atan(jswrap_math_sqrt(1-x*x) / x)",
   "params" : [
     ["x","float","The value to get the arc cosine of"]
   ],
@@ -114,7 +149,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "asin",
-  "generate" : "asin",
+  "generate_full" : "jswrap_math_atan(x / jswrap_math_sqrt(1-x*x))",
   "params" : [
     ["x","float","The value to get the arc sine of"]
   ],
@@ -124,12 +159,48 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "atan",
-  "generate" : "atan",
+  "generate" : "jswrap_math_atan",
   "params" : [
     ["x","float","The value to get the arc tangent  of"]
   ],
   "return" : ["float","The arc tangent of x, between -PI/2 and PI/2"]
 }*/
+double jswrap_math_atan(double x) {
+#ifdef SAVE_ON_FLASH
+  /* To save on flash, do our own atan function that's slower/nastier
+   * but is smaller! */
+  // exploit symmetry - we're only accurate when x is small
+  double ox = x;
+  bool negate = false;
+  bool offset = false;
+  if (x<0) {
+    x = -x;
+    negate = true;
+  }
+  if (x>1) {
+    x = 1/x;
+    offset = true;
+  }
+
+  // Taylor series expansion of 'atan'
+  double r = x; // running total
+  double x2 = x*x; // precalculate x^2
+  double xpow = x; // running power
+  unsigned int i;
+  for (i=1;i<20;i++) {
+    xpow = xpow*x2;
+    double term = xpow / ((i*2)+1);
+    if (i&1) r-=term; else r+=term;
+  }
+  // symmetry
+  if (offset) r=(PI/2)-r;
+  if (negate) r=-r;
+  return r;
+#else
+  return atan(x);
+#endif
+}
+
 /*JSON{
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
@@ -148,7 +219,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "cos",
-  "generate_full" : "sin(theta + (PI/2))",
+  "generate_full" : "jswrap_math_sin(theta + (PI/2))",
   "params" : [
     ["theta","float","The angle to get the cosine of"]
   ],
@@ -261,7 +332,7 @@ JsVar *jswrap_math_round(double x) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "sin",
-  "generate" : "sin",
+  "generate" : "jswrap_math_sin",
   "params" : [
     ["theta","float","The angle to get the sine of"]
   ],
@@ -271,7 +342,7 @@ JsVar *jswrap_math_round(double x) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "tan",
-  "generate_full" : "sin(theta) / sin(theta+(PI/2))",
+  "generate_full" : "jswrap_math_sin(theta) / jswrap_math_sin(theta+(PI/2))",
   "params" : [
     ["theta","float","The angle to get the tangent of"]
   ],
@@ -291,7 +362,7 @@ JsVar *jswrap_math_round(double x) {
 }*/
 
 double jswrap_math_sqrt(double x) {
-  return (x>=0) ? exp(log(x) / 2) : NAN;
+  return (x>=0) ? exp(log(x) * 0.5) : NAN;
 }
 
 /*JSON{

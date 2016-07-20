@@ -20,3 +20,6 @@ void jswrap_pin_set(JsVar *parent);
 void jswrap_pin_reset(JsVar *parent);
 void jswrap_pin_write(JsVar *parent, bool value);
 void jswrap_pin_writeAtTime(JsVar *parent, bool value, JsVarFloat time);
+JsVar *jswrap_pin_getMode(JsVar *parent);
+void jswrap_pin_mode(JsVar *parent, JsVar *mode);
+JsVar *jswrap_pin_getInfo(JsVar *parent);

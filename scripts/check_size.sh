@@ -20,12 +20,7 @@ FILE=$1
 # just a random check...
 MAXSIZE=`grep FLASH_AVAILABLE_FOR_CODE gen/platform_config.h | sed "s/[^0-9]*\([0-9][0-9]*\).*/\1/"`
 
-
-if [ "$(uname)" == "Darwin" ]; then
-  ACTUALSIZE=$(/opt/local/bin/gdu -b "$FILE" | cut -f 1)
-else
-  ACTUALSIZE=$(du -b "$FILE" | cut -f 1)
-fi
+ACTUALSIZE=$(wc -c < "$FILE")
 
 if [ $ACTUALSIZE -gt $MAXSIZE ]; then
     echo FAIL - size of $ACTUALSIZE is over $MAXSIZE bytes

@@ -26,9 +26,9 @@
  // 48
 
 #define LCD_FONT_3X5_CHARS 95
-const unsigned short LCD_FONT_3X5[LCD_FONT_3X5_CHARS*5] = { // from 33 up to 127
+const unsigned short LCD_FONT_3X5[] = { // from 33 up to 127
     PACK_5_TO_16( _X_ , X_X , _X_ , _X_ , X_X ), // !"#$%
-    PACK_5_TO_16( _X_ , ___ , XXX_ , XX__ , __X ),
+    PACK_5_TO_16( _X_ , ___ , XXX , XX_ , __X ),
     PACK_5_TO_16( _X_ , ___ , _X_ , XXX , _X_ ),
     PACK_5_TO_16( ___ , ___ , XXX , _XX , X__ ),
     PACK_5_TO_16( _X_ , ___ , _X_ , _X_ , X_X ),
@@ -61,9 +61,9 @@ const unsigned short LCD_FONT_3X5[LCD_FONT_3X5_CHARS*5] = { // from 33 up to 127
     PACK_5_TO_16( _X_ , _X_ , _X_ , XXX , _X_ ),
     PACK_5_TO_16( ___ , ___ , X__ , ___ , __X ),
     PACK_5_TO_16( _X_ , _X_ , _X_ , XXX , _X_ ),
-    PACK_5_TO_16( ___ , X__ , __X , ___ , X__ )
+    PACK_5_TO_16( ___ , X__ , __X , ___ , X__ ),
 
-    PACK_5_TO_16( _X_ , _X_ ,  _X , XX_ , _XX ), // ?@ABC
+    PACK_5_TO_16( _X_ , _X_ , _X_ , XX_ , _XX ), // ?@ABC
     PACK_5_TO_16( X_X , X_X , X_X , X_X , X__ ),
     PACK_5_TO_16( __X , XXX , XXX , XX_ , X__ ),
     PACK_5_TO_16( ___ , X_X , X_X , X_X , X__ ),

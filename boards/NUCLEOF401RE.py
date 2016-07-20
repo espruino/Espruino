@@ -17,13 +17,19 @@
 
 import pinutils;
 info = {
-  'name' : "ST NUCLEO-F401RE",
-  'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1847/PF260000"],
-  'default_console' : "EV_SERIAL2", # USART2 by default, the Nucleo's USB is actually running on this too
-  'default_console_tx' : "A2", # USART2_TX on PA2,
-  'default_console_rx' : "A3", # USART2_RX on PA3
-  'variables' : 5376, # (96-12)*1024/16-1
-  'binary_name' : 'espruino_%v_nucleof401re.bin',
+ 'name' : "ST NUCLEO-F401RE",
+ 'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1847/PF260000"],
+ 'default_console' : "EV_SERIAL2", # USART2 by default, the Nucleo's USB is actually running on this too
+ 'default_console_tx' : "A2", # USART2_TX on PA2,
+ 'default_console_rx' : "A3", # USART2_RX on PA3
+ 'variables' : 5376, # (96-12)*1024/16-1
+ 'binary_name' : 'espruino_%v_nucleof401re.bin',
+ 'build' : {
+  'defines' : [
+     'USE_GRAPHICS',
+     'USE_NET',
+   ]
+ }
 };
 chip = {
   'part' : "STM32F401RET6",
@@ -44,19 +50,12 @@ chip = {
     # we have enough flash space in this single flash page to save all of the ram
     'page_size' :  131072, # size of pages : on STM32F401, last 2 pages are 128 Kbytes
     # we use the last flash page only, furthermore it persists after a firmware flash of the board
-    'page_number' : 7, # number of the flash page we save at (0 based, must be coherent with address)
     'pages' : 1, # count of pages we're using to save RAM to Flash,
     'flash_available' : 512 # binary will have a hole in it, so we just want to test against full size
   },
   #'place_text_section' : 0x08010000, # note flash_available above # TODO USELESS
 };
-# left-right, or top-bottom order
-board = {
-  'left' :   [ 'C10', 'C12', 'VDD', 'BOOT0', 'NC', 'NC', 'A13', 'A14', 'A15', 'GND', 'B7', 'C13', 'C14', 'C15', 'H0', 'H1', 'VBAT', 'C2', 'C3'],
-  'left2' :  [ 'C11', 'D2', 'E5V', 'GND', 'NC', 'IOREF', 'RESET', '3V3', '5V', 'GND', 'GND', 'VIN', 'NC', 'A0', 'A1', 'A4', 'B0', 'C1', 'C0'],
-  'right2' : [ 'C9', 'B8', 'B9', 'AVDD', 'GND', 'A5', 'A6', 'A7', 'B6','C7','A9','A8','B10','B4','B5','B3','A10','A2','A3'],
-  'right' :  [ 'C8', 'C6', 'C5', 'U5V', 'NC', 'A12', 'A11', 'B12', 'NC', 'GND', 'B2', 'B1', 'B15', 'B14', 'B13', 'AGND', 'C4', 'NC', 'NC'],
-};
+
 devices = {
   'OSC' : { 'pin_1' : 'H0', # MCO from ST-LINK fixed at 8 Mhz, boards rev MB1136 C-02
             'pin_2' : 'H1' },
@@ -67,6 +66,11 @@ devices = {
              'inverted' : True, # 1 when unpressed, 0 when pressed! (Espruino board is 1 when pressed)
              'pinstate': 'IN_PULLUP', # to specify INPUT, OUPUT PULL_UP PULL_DOWN..
            },
+  'JTAG' : {
+        'pin_MS' : 'A13',
+        'pin_CK' : 'A14', 
+        'pin_DI' : 'A15' 
+          },
 #  'USB' : { 'pin_otg_pwr' : 'C0',
 #            'pin_dm' : 'A11',
 #            'pin_dp' : 'A12',
@@ -76,8 +80,14 @@ devices = {
   'NUCLEO_D' : [ 'A3','A2','A10','B3','B5','B4','B10','A8','A9','C7','B6','A7','A6','A5','B9','B8' ],
 };
 
-
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'left' :   [ 'C10', 'C12', 'VDD', 'BOOT0', 'NC', 'NC', 'A13', 'A14', 'A15', 'GND', 'B7', 'C13', 'C14', 'C15', 'H0', 'H1', 'VBAT', 'C2', 'C3'],
+  'left2' :  [ 'C11', 'D2', 'E5V', 'GND', 'NC', 'IOREF', 'RESET', '3V3', '5V', 'GND', 'GND', 'VIN', 'NC', 'A0', 'A1', 'A4', 'B0', 'C1', 'C0'],
+  'right2' : [ 'C9', 'B8', 'B9', 'AVDD', 'GND', 'A5', 'A6', 'A7', 'B6','C7','A9','A8','B10','B4','B5','B3','A10','A2','A3'],
+  'right' :  [ 'C8', 'C6', 'C5', 'U5V', 'NC', 'A12', 'A11', 'B12', 'NC', 'GND', 'B2', 'B1', 'B15', 'B14', 'B13', 'AGND', 'C4', 'NC', 'NC'],
+};
+board["_css"] = """
 #board {
   width: 713px;
   height: 800px;
@@ -108,4 +118,5 @@ board_css = """
 
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f401.csv', 5, 8, 9)
+  pins = pinutils.scan_pin_af_file(pins, 'stm32f401_af.csv', 0, 1)
   return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])

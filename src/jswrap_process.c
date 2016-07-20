@@ -14,20 +14,26 @@
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
+#include "jsparse.h"
 #include "jswrap_process.h"
 #include "jswrap_interactive.h"
 #include "jsinteractive.h"
-
-#ifdef LINUX
-#include <unistd.h>
-extern char **environ;
-#endif
 
 /*JSON{
   "type" : "class",
   "class" : "process"
 }
 This class contains information about Espruino itself
+ */
+
+/*JSON{
+  "type" : "event",
+  "class" : "process",
+  "name" : "uncaughtException"
+}
+This event is called when an exception gets thrown and isn't caught (eg. it gets all the way back to the event loop).
+
+You can use this for logging potential problems that might occur during execution.
 */
 
 /*JSON{
@@ -38,7 +44,26 @@ This class contains information about Espruino itself
   "return" : ["JsVar","The version of Espruino"]
 }
 Returns the version of Espruino as a String
-*/
+ */
+
+#ifndef SAVE_ON_FLASH
+// TODO: the jspeiFindInScopes export won't be needed soon
+const void *exportPtrs[] = {
+    jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,
+    jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,
+    jsvGetFloat,jsvGetInteger,jsvGetBool,
+    jspeiFindInScopes,jspReplaceWith,jspeFunctionCall,
+    jspGetNamedVariable,jspGetNamedField,jspGetVarNamedField,
+    jsvNewWithFlags,
+};
+const char *exportNames = 
+    "jsvLock\0jsvLockAgainSafe\0jsvUnLock\0jsvSkipName\0jsvMathsOp\0jsvMathsOpSkipNames\0"
+    "jsvNewFromFloat\0jsvNewFromInteger\0jsvNewFromString\0jsvNewFromBool\0"
+    "jsvGetFloat\0jsvGetInteger\0jsvGetBool\0"
+    "jspeiFindInScopes\0jspReplaceWith\0jspeFunctionCall\0"
+    "jspGetNamedVariable\0jspGetNamedField\0jspGetVarNamedField\0"
+    "jsvNewWithFlags\0\0";
+#endif
 
 /*JSON{
   "type" : "staticproperty",
@@ -48,35 +73,38 @@ Returns the version of Espruino as a String
   "return" : ["JsVar","An object"]
 }
 Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION
-*/
+ */
 JsVar *jswrap_process_env() {
-#ifdef LINUX
-  int i = 0;
-  char *p;
-#endif
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
-  jsvUnLock(jsvObjectSetChild(obj, "VERSION", jsvNewFromString(JS_VERSION)));
-  jsvUnLock(jsvObjectSetChild(obj, "BUILD_DATE", jsvNewFromString(__DATE__)));
-  jsvUnLock(jsvObjectSetChild(obj, "BUILD_TIME", jsvNewFromString(__TIME__)));
+  JsVar *obj = jsvNewObject();
+  jsvObjectSetChildAndUnLock(obj, "VERSION", jsvNewFromString(JS_VERSION));
+  jsvObjectSetChildAndUnLock(obj, "BUILD_DATE", jsvNewFromString(__DATE__));
+  jsvObjectSetChildAndUnLock(obj, "BUILD_TIME", jsvNewFromString(__TIME__));
 #ifdef GIT_COMMIT
-  jsvUnLock(jsvObjectSetChild(obj, "GIT_COMMIT", jsvNewFromString(STRINGIFY(GIT_COMMIT))));
+  jsvObjectSetChildAndUnLock(obj, "GIT_COMMIT", jsvNewFromString(STRINGIFY(GIT_COMMIT)));
 #endif
-  jsvUnLock(jsvObjectSetChild(obj, "BOARD", jsvNewFromString(PC_BOARD_ID)));
-  jsvUnLock(jsvObjectSetChild(obj, "CHIP", jsvNewFromString(PC_BOARD_CHIP)));
-  jsvUnLock(jsvObjectSetChild(obj, "CHIP_FAMILY", jsvNewFromString(PC_BOARD_CHIP_FAMILY)));
-  jsvUnLock(jsvObjectSetChild(obj, "FLASH", jsvNewFromInteger(FLASH_TOTAL)));
-  jsvUnLock(jsvObjectSetChild(obj, "RAM", jsvNewFromInteger(RAM_TOTAL)));
-  jsvUnLock(jsvObjectSetChild(obj, "SERIAL", jswrap_interface_getSerial()));
-  jsvUnLock(jsvObjectSetChild(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice()))));
-#ifdef LINUX
-  while(environ[i] != NULL) {
-    p = strchr(environ[i], '=');
-    *p = '\0';
-    jsvUnLock(jsvObjectSetChild(obj, environ[i], jsvNewFromString(p+1)));
-    *p = '=';
-    i++;
-  }
+  jsvObjectSetChildAndUnLock(obj, "BOARD", jsvNewFromString(PC_BOARD_ID));
+  jsvObjectSetChildAndUnLock(obj, "CHIP", jsvNewFromString(PC_BOARD_CHIP));
+  jsvObjectSetChildAndUnLock(obj, "CHIP_FAMILY", jsvNewFromString(PC_BOARD_CHIP_FAMILY));
+  jsvObjectSetChildAndUnLock(obj, "FLASH", jsvNewFromInteger(FLASH_TOTAL));
+  jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
+  jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
+  jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
+#if !defined(SAVE_ON_FLASH) && !defined(BLUETOOTH)
+  // It takes too long to send this information over BLE...
+  JsVar *arr = jsvNewObject();
+  if (arr) {
+    const char *s = exportNames;
+    void **p = (void**)exportPtrs;
+    while (*s) {
+      jsvObjectSetChildAndUnLock(arr, s, jsvNewFromInteger((JsVarInt)(size_t)*p));
+      p++;
+      while (*s) s++; // skip until 0
+      s++; // skip over 0
+    }
+    jsvObjectSetChildAndUnLock(obj, "EXPORTS", arr);
+  }  
 #endif
+
   return obj;
 }
 
@@ -90,25 +118,23 @@ JsVar *jswrap_process_env() {
 }
 Run a Garbage Collection pass, and return an object containing information on memory usage.
 
-free : Memory that is available to be used
-
-usage : Memory that has been used
-
-total : Total memory
-
-history : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'
-
-stackEndAddress : (on ARM) the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion the bytes above this can be used.
+* `free` : Memory that is available to be used (in blocks)
+* `usage` : Memory that has been used (in blocks)
+* `total` : Total memory (in blocks)
+* `history` : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'
+* `stackEndAddress` : (on ARM) the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion the bytes above this can be used.
+* `flash_start` : (on ARM) the address of the start of flash memory (usually `0x8000000`)
+* `flash_binary_end` : (on ARM) the address in flash memory of the end of Espruino's firmware.
+* `flash_code_start` : (on ARM) the address in flash memory of pages that store any code that you save with `save()`.
+* `flash_length` : (on ARM) the amount of flash memory this firmware was built for (in bytes). **Note:** Some STM32 chips actually have more memory than is advertised.
 
 Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). See http://www.espruino.com/Performance for more information.
-*/
-#ifdef ARM
-extern int _end; // end of ram used (variables)
-extern int _etext; // end of flash text (binary) section
-#endif
+
+**Note:** To find free areas of flash memory, see `require('Flash').getFree()`
+ */
 JsVar *jswrap_process_memory() {
   jsvGarbageCollect();
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (obj) {
     unsigned int history = 0;
     JsVar *historyVar = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
@@ -118,17 +144,19 @@ JsVar *jswrap_process_memory() {
     }
     unsigned int usage = jsvGetMemoryUsage() - history;
     unsigned int total = jsvGetMemoryTotal();
-    jsvUnLock(jsvObjectSetChild(obj, "free", jsvNewFromInteger((JsVarInt)(total-usage))));
-    jsvUnLock(jsvObjectSetChild(obj, "usage", jsvNewFromInteger((JsVarInt)usage)));
-    jsvUnLock(jsvObjectSetChild(obj, "total", jsvNewFromInteger((JsVarInt)total)));
-    jsvUnLock(jsvObjectSetChild(obj, "history", jsvNewFromInteger((JsVarInt)history)));
+    jsvObjectSetChildAndUnLock(obj, "free", jsvNewFromInteger((JsVarInt)(total-usage)));
+    jsvObjectSetChildAndUnLock(obj, "usage", jsvNewFromInteger((JsVarInt)usage));
+    jsvObjectSetChildAndUnLock(obj, "total", jsvNewFromInteger((JsVarInt)total));
+    jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
 
 #ifdef ARM
-    jsvUnLock(jsvObjectSetChild(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&_end)));
-    jsvUnLock(jsvObjectSetChild(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START)));
-    jsvUnLock(jsvObjectSetChild(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&_etext)));
-    jsvUnLock(jsvObjectSetChild(obj, "flash_code_start", jsvNewFromInteger((JsVarInt)FLASH_SAVED_CODE_START)));
-    jsvUnLock(jsvObjectSetChild(obj, "flash_length", jsvNewFromInteger((JsVarInt)FLASH_TOTAL)));
+    extern int LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings
+    extern int LINKER_ETEXT_VAR; // end of flash text (binary) section - should be 'void', but 'int' avoids warnings
+    jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));
+    jsvObjectSetChildAndUnLock(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START));
+    jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_ETEXT_VAR));
+    jsvObjectSetChildAndUnLock(obj, "flash_code_start", jsvNewFromInteger((JsVarInt)FLASH_SAVED_CODE_START));
+    jsvObjectSetChildAndUnLock(obj, "flash_length", jsvNewFromInteger((JsVarInt)FLASH_TOTAL));
 #endif
   }
   return obj;

@@ -13,6 +13,8 @@
  * Contains JavaScript interface for trigger wheel functionality
  * ----------------------------------------------------------------------------
  */
+
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
 #include "trigger.h"
 #include "jswrap_trigger.h"
 
@@ -202,16 +204,14 @@ JsVar *jswrap_trig_getTrigger(JsVarInt num) {
   position = wrapAround((position * 360 / trig->teethTotal) + trig->keyPosition, 360);
 
 
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *obj = jsvNewObject();
   if (!obj) return 0;
   JsVar *v;
   v = jsvNewFromFloat(position);
-  jsvUnLock(jsvAddNamedChild(obj, v, "pos"));
-  jsvUnLock(v);
+  jsvUnLock2(jsvAddNamedChild(obj, v, "pos"), v);
   v = jsvNewFromFloat(jshGetMillisecondsFromTime(tp->pulseLength));
-  jsvUnLock(jsvAddNamedChild(obj, v, "pulseLength"));
-  jsvUnLock(v);
-  v = jsvNewWithFlags(JSV_ARRAY);
+  jsvUnLock2(jsvAddNamedChild(obj, v, "pulseLength"), v);
+  v = jsvNewEmptyArray();
   int i;
   if (v) {
     for (i=0;i<TRIGGERPOINT_TRIGGERS_COUNT;i++)
@@ -219,8 +219,7 @@ JsVar *jswrap_trig_getTrigger(JsVarInt num) {
         jsvArrayPushAndUnLock(v, jsvNewFromPin(tp->pins[i]));
       }
   }
-  jsvUnLock(jsvAddNamedChild(obj, v, "pins"));
-  jsvUnLock(v);
+  jsvUnLock2(jsvAddNamedChild(obj, v, "pins"), v);
   return obj;
 }
 
@@ -270,7 +269,7 @@ JsVar* jswrap_trig_getErrorArray() {
   TriggerError errors = trig->errors;
   trig->errors = 0;
 
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (arr) {
     int i;
     for (i=1;i<=errors;i<<=1) {

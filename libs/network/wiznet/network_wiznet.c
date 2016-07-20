@@ -50,7 +50,7 @@ uint8_t net_wiznet_getFreeSocket() {
 
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void net_wiznet_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
+void net_wiznet_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   NOT_USED(net);
   if (dns_query(0, net_wiznet_getFreeSocket(), (uint8_t*)hostName) == 1) {
     *out_ip_addr = *(unsigned long*)&Server_IP_Addr[0];
@@ -70,7 +70,7 @@ bool net_wiznet_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_wiznet_createsocket(JsNetwork *net, unsigned long host, unsigned short port) {
+int net_wiznet_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
 
@@ -181,5 +181,6 @@ void netSetCallbacks_wiznet(JsNetwork *net) {
   net->gethostbyname = net_wiznet_gethostbyname;
   net->recv = net_wiznet_recv;
   net->send = net_wiznet_send;
+  net->chunkSize = 536;
 }
 

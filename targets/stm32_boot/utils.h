@@ -14,10 +14,11 @@
 
 #include "jshardware.h"
 
-int getc();
-unsigned char getc_blocking();
-void putc(char charData);
+int _getc();
+unsigned char _getc_blocking();
+void _putc(char charData);
 
 
-
+bool isButtonPressed();
+bool jumpToEspruinoBinary();
 void initHardware();

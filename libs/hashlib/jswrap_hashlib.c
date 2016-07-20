@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains built-in functions for SD card access
+ * Contains built-in functions for SHA hashes
  * ----------------------------------------------------------------------------
  */
 #include <string.h>
@@ -34,6 +34,8 @@ JsHashLib hashFunctions[4] = {
   "type" : "library",
   "class" : "hashlib"
 }
+**Note:** This library is currently only included in builds for the original Espruino boards.
+For other boards you will have to make build your own firmware.
 */
 
 // ---------------------------------------------------------------------------------
@@ -46,6 +48,8 @@ JsHashLib hashFunctions[4] = {
   "library" : "hashlib",
   "class" : "HASH"
 }
+**Note:** This class is currently only included in builds for the original Espruino boards.
+For other boards you will have to make build your own firmware.
 */
 
 /*JSON{
@@ -108,11 +112,11 @@ JsVar *jswrap_hashlib_sha2(JsHashType hash_type) {
 
   jsvSetString(jsCtx, hashFunctions[hash_type].data, hashFunctions[hash_type].ctx_size);
 
-  jsvUnLock(jsvObjectSetChild(hashobj, "block_size",  jsvNewFromInteger(hashFunctions[hash_type].block_size)));
-  jsvUnLock(jsvObjectSetChild(hashobj, "context",     jsCtx));
-  jsvUnLock(jsvObjectSetChild(hashobj, "digest_size", jsvNewFromInteger(hashFunctions[hash_type].digest_size)));
-  jsvUnLock(jsvObjectSetChild(hashobj, "hash_type",   jsvNewFromInteger(hash_type)));
-  jsvUnLock(jsvObjectSetChild(hashobj, "name",        jsvNewFromString(hashFunctions[hash_type].name)));
+  jsvObjectSetChildAndUnLock(hashobj, "block_size",  jsvNewFromInteger((JsVarInt)hashFunctions[hash_type].block_size));
+  jsvObjectSetChildAndUnLock(hashobj, "context",     jsCtx);
+  jsvObjectSetChildAndUnLock(hashobj, "digest_size", jsvNewFromInteger((JsVarInt)hashFunctions[hash_type].digest_size));
+  jsvObjectSetChildAndUnLock(hashobj, "hash_type",   jsvNewFromInteger(hash_type));
+  jsvObjectSetChildAndUnLock(hashobj, "name",        jsvNewFromString(hashFunctions[hash_type].name));
 
   return hashobj;
 }
@@ -129,7 +133,6 @@ JsVar *jswrap_hashlib_sha2(JsHashType hash_type) {
 }
 */
 void jswrap_hashlib_hash_update(JsVar *parent, JsVar *message) {
-  int i;
   int type;
   char buff[SHA256_DIGEST_SIZE];
 
@@ -142,8 +145,10 @@ void jswrap_hashlib_hash_update(JsVar *parent, JsVar *message) {
   jsvGetString(jsCtx, hashFunctions[type].data, hashFunctions[type].ctx_size + 1);  // trailing zero
 
   if (jsvIsString(message)) {
-    for(i = 0; i < jsvGetStringLength(message); i += sizeof(buff)) {
-      int read = jsvGetStringChars(message, i, &buff, sizeof(buff));
+    size_t i;
+    size_t len = jsvGetStringLength(message);
+    for(i = 0; i < len; i += sizeof(buff)) {
+      int read = (int)jsvGetStringChars(message, i, buff, sizeof(buff));
       hashFunctions[type].update(hashFunctions[type].data, buff, read);
     }
     jsvSetString(jsCtx, hashFunctions[type].data, hashFunctions[type].ctx_size);
@@ -163,7 +168,7 @@ void jswrap_hashlib_hash_update(JsVar *parent, JsVar *message) {
   "return" : ["JsVar","Hash digest"]
 }
 */
-JsVar *jswrap_hashlib_hash_digest(const JsVar *parent) {
+JsVar *jswrap_hashlib_hash_digest(JsVar *parent) {
   int type;
   char buff[SHA256_DIGEST_SIZE];
   JsVar *jsCtx = NULL;
@@ -182,7 +187,7 @@ JsVar *jswrap_hashlib_hash_digest(const JsVar *parent) {
   jsvUnLock(jsCtx);
 
   hashFunctions[type].final(hashFunctions[type].data, buff);
-  jsvSetString(digest, (char *)&buff, hashFunctions[type].digest_size);
+  jsvSetString(digest, buff, hashFunctions[type].digest_size);
 
   return digest;
 }
@@ -198,8 +203,7 @@ JsVar *jswrap_hashlib_hash_digest(const JsVar *parent) {
   "return" : ["JsVar","Hash hexdigest"]
 }
 */
-JsVar *jswrap_hashlib_hash_hexdigest(const JsVar *parent) {
-  int i;
+JsVar *jswrap_hashlib_hash_hexdigest(JsVar *parent) {
   int type;
   char buff[SHA256_DIGEST_SIZE];
   char a[] = "0123456789abcdef";
@@ -220,6 +224,7 @@ JsVar *jswrap_hashlib_hash_hexdigest(const JsVar *parent) {
 
   hashFunctions[type].final(hashFunctions[type].data, buff);
 
+  unsigned int i;
   for(i = 0; i < hashFunctions[type].digest_size; i++) {
     char c[2];
     c[0] = a[ (unsigned char)(buff[i]) >> 4 ];

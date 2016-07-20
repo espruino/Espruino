@@ -3,7 +3,7 @@
 |   __|_ -| . |  _| | | |   | . |                                               
 |_____|___|  _|_| |___|_|_|_|___|                                               
           |_|                                                               
-   Copyright 2013 Gordon Williams
+   Copyright 2015 Gordon Williams
                                                
 http://www.espruino.com
 
@@ -12,16 +12,20 @@ http://www.espruino.com
 There are a few different binaries in this ZIP file, for different
 types of Microcontroller:
 
+
+espruino_#v##_pico_1r3_cc3000.bin  
+espruino_#v##_pico_1r3_wiznet.bin  
+   - The firmware image for the latest Espruino Pico Boards.
+     We'd strongly suggest that you use the Web IDE to flash this.
+     Each image is for a different type of networking device.
+     If you don't want a network device, it doesn't matter which you choose.
+
 espruino_#v##_espruino_1r3.bin  
-   - The firmware image for the latest Espruino Boards.
-     We'd strongly suggest that you use the Web IDE to flash this.
-
 espruino_#v##_espruino_1r3_wiznet.bin  
-   - The firmware image for the latest Espruino Boards, that works with WIZnet W5500 ethernet
+   - The firmware image for the latest Espruino Boards (rev 1v3 and 1v4)
      We'd strongly suggest that you use the Web IDE to flash this.
-
-espruino_#v##_espruino_1r1.bin  
-   - The firmware image for older, rev 1v1 and 1v2 boards
+     Each image is for a different type of networking device.
+     If you don't want a network device, it doesn't matter which you choose.
 
 espruino_#v##_hystm32_24_ve.bin 
    - 'HY'STM32F103VET6 ARM with 2.4" LCD display
@@ -51,8 +55,10 @@ espruino_#v##_stm32f4discovery.bin
    - STM32F4DISCOVERY board
 
 espruino_#v##_nucleof401re.bin
-   - NUCLEO-F401RE board
+   - ST NUCLEO-F401RE board
 
+espruino_#v##_nucleof411re.bin
+   - ST NUCLEO-F411RE board
 
 espruino_#v##_raspberrypi
    - Raspberry Pi executable (just copy it to the device and run it)
@@ -60,7 +66,27 @@ espruino_#v##_raspberrypi
    however there is no Serial, SPI, OneWire or I2C support at the moment so
    you're pretty limited!
 
-For information on devices, and on how to flash these binary files on to 
+espruino_#v##_microbit.hex
+   - Espruino for the BBC micro:bit - just copy this file onto the
+   flash drive that appears when you plug the micro:bit in.
+
+
+ESP8266
+-------
+
+See http://www.espruino.com/EspruinoESP8266 for more info
+
+espruino_#v##_esp8266_combined_512.bin
+   - ESP8266 'combined' port for 512k devices like ESP01
+       Flash with: esptool.py write_flash 0 espruino_#v##_esp8266_combined_512.bin
+
+espruino_#v##_esp8266
+   - ESP8266 port as separate files - see README in directory for more information
+
+
+
+
+For more information on devices, and on how to flash these binary files on to 
 each device, please see our website, http://www.espruino.com
 
 NOTES:

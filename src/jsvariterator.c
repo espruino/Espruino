@@ -13,17 +13,26 @@
  */
 #include "jsvariterator.h"
 
-/** Iterate over the contents of var, calling callback for each. Contents may be:
- *   * numeric -> output
- *   * a string -> output each character
- *   * array/arraybuffer -> call itself on each element
- *   * object -> call itself object.count times, on object.data
+/**
+ * Iterate over the contents of the content of a variable, calling callback for each.
+ * Contents may be:
+ * * numeric -> output
+ * * a string -> output each character
+ * * array/arraybuffer -> call itself on each element
+ * object -> call itself object.count times, on object.data
  */
-bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackData), void *callbackData) {
+bool jsvIterateCallback(
+    JsVar *data,                                    // The data to iterate over.
+	void (*callback)(int item, void *callbackData), // The callback function invoke.
+	void *callbackData                              // Data to be passed to the callback function
+  ) {
   bool ok = true;
+  // Handle the data being a single numeric.
   if (jsvIsNumeric(data)) {
     callback((int)jsvGetInteger(data), callbackData);
-  } else if (jsvIsObject(data)) {
+  }
+  // Handle the data being an object.
+  else if (jsvIsObject(data)) {
     JsVar *countVar = jsvObjectGetChild(data, "count", 0);
     JsVar *dataVar = jsvObjectGetChild(data, "data", 0);
     if (countVar && dataVar && jsvIsNumeric(countVar)) {
@@ -32,11 +41,12 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
         ok = jsvIterateCallback(dataVar, callback, callbackData);
       }
     } else {
-      jsWarn("If specifying an object, it must be of the form {data : ..., count : N}");
+      jsExceptionHere(JSET_TYPEERROR, "If specifying an object, it must be of the form {data : ..., count : N} - got %j", data);
     }
-    jsvUnLock(countVar);
-    jsvUnLock(dataVar);
-  } else if (jsvIsString(data)) {
+    jsvUnLock2(countVar, dataVar);
+  }
+  // Handle the data being a string
+  else if (jsvIsString(data)) {
     JsvStringIterator it;
     jsvStringIteratorNew(&it, data, 0);
     while (jsvStringIteratorHasChar(&it) && ok) {
@@ -45,7 +55,27 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
       jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&it);
-  } else if (jsvIsIterable(data)) {
+  }
+  // Handle the data being an array buffer
+  else if (jsvIsArrayBuffer(data)) {
+    JsvArrayBufferIterator it;
+    jsvArrayBufferIteratorNew(&it, data, 0);
+    if (JSV_ARRAYBUFFER_GET_SIZE(it.type) == 1 && !JSV_ARRAYBUFFER_IS_SIGNED(it.type)) {
+      // faster for single byte arrays.
+      while (jsvArrayBufferIteratorHasElement(&it)) {
+        callback((int)(unsigned char)jsvStringIteratorGetChar(&it.it), callbackData);
+        jsvArrayBufferIteratorNext(&it);
+      }
+    } else {
+      while (jsvArrayBufferIteratorHasElement(&it)) {
+        callback((int)jsvArrayBufferIteratorGetIntegerValue(&it), callbackData);
+        jsvArrayBufferIteratorNext(&it);
+      }
+    }
+    jsvArrayBufferIteratorFree(&it);
+  }
+  // Handle the data being iterable
+  else if (jsvIsIterable(data)) {
     JsvIterator it;
     jsvIteratorNew(&it, data);
     while (jsvIteratorHasElement(&it) && ok) {
@@ -56,22 +86,56 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
     }
     jsvIteratorFree(&it);
   } else {
-    jsWarn("Expecting a number or something iterable, got %t", data);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting a number or something iterable, got %t", data);
     ok = false;
   }
   return ok;
 }
 
-/** If jsvIterateCallback is called, how many times will it call the callback function? */
-static void jsvIterateCallbackCountCb(int n, void *data) {
+
+/**
+ * An iterable callback that counts how many times it was called.
+ * This is a function that can be supplied to `jsvIterateCallback`.
+ */
+static void jsvIterateCallbackCountCb(
+    int n,     //!< The current item being iterated.  Not used.
+	void *data //!< A pointer to an int that counts how many times we were called.
+  ) {
   NOT_USED(n);
   int *count = (int*)data;
   (*count)++;
 }
+
+
+/**
+ * Determine how many items are in this variable that will be iterated over.
+ * \return The number of iterations we will call for this variable.
+ */
 int jsvIterateCallbackCount(JsVar *var) {
+  // Actually iterate over the variable where the callback function merely increments a counter
+  // that is initially zero.  The result will be the number of times the callback for iteration
+  // was invoked and hence the iteration count of the variable.
   int count = 0;
   jsvIterateCallback(var, jsvIterateCallbackCountCb, (void *)&count);
   return count;
+}
+
+
+typedef struct { unsigned char *buf; unsigned int idx, length; } JsvIterateCallbackToBytesData;
+static void jsvIterateCallbackToBytesCb(int data, void *userData) {
+  JsvIterateCallbackToBytesData *cbData = (JsvIterateCallbackToBytesData*)userData;
+  if (cbData->idx < cbData->length)
+    cbData->buf[cbData->idx] = (unsigned char)data;
+  cbData->idx++;
+}
+/** Write all data in array to the data pointer (of size dataSize bytes) */
+unsigned int jsvIterateCallbackToBytes(JsVar *var, unsigned char *data, unsigned int dataSize) {
+  JsvIterateCallbackToBytesData cbData;
+  cbData.buf = (unsigned char *)data;
+  cbData.idx = 0;
+  cbData.length = dataSize;
+  jsvIterateCallback(var, jsvIterateCallbackToBytesCb, (void*)&cbData);
+  return cbData.idx;
 }
 
 // --------------------------------------------------------------------------------------------
@@ -79,9 +143,16 @@ int jsvIterateCallbackCount(JsVar *var) {
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   assert(jsvHasCharacterData(str));
   it->var = jsvLockAgain(str);
+  it->varIndex = 0;
   it->charsInVar = jsvGetCharactersInVar(str);
   it->charIdx = startIdx;
-  it->varIndex = 0;
+  if (jsvIsFlatString(str)) {
+    it->ptr = jsvGetFlatStringPointer(it->var);
+  } else if (jsvIsNativeString(str)) {
+    it->ptr = (char*)it->var->varData.nativeStr.ptr;
+  } else{
+    it->ptr = &it->var->varData.str[0];
+  }
   while (it->charIdx>0 && it->charIdx >= it->charsInVar) {
     it->charIdx -= it->charsInVar;
     it->varIndex += it->charsInVar;
@@ -90,17 +161,29 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
         JsVar *next = jsvLock(jsvGetLastChild(it->var));
         jsvUnLock(it->var);
         it->var = next;
+        it->ptr = &next->varData.str[0];
         it->charsInVar = jsvGetCharactersInVar(it->var);
       } else {
         jsvUnLock(it->var);
         it->var = 0;
+        it->ptr = 0;
         it->charsInVar = 0;
         it->varIndex = startIdx - it->charIdx;
         return; // at end of string - get out of loop
       }
     }
   }
-  it->varIndex = startIdx - it->charIdx;
+}
+
+JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
+  JsvStringIterator i = *it;
+  if (i.var) jsvLockAgain(i.var);
+  return i;
+}
+
+void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
+  if (jsvStringIteratorHasChar(it))
+    it->ptr[it->charIdx] = c;
 }
 
 void jsvStringIteratorNext(JsvStringIterator *it) {
@@ -110,12 +193,13 @@ void jsvStringIteratorNext(JsvStringIterator *it) {
 void jsvStringIteratorGotoEnd(JsvStringIterator *it) {
   assert(it->var);
   while (jsvGetLastChild(it->var)) {
-     JsVar *next = jsvLock(jsvGetLastChild(it->var));
-     jsvUnLock(it->var);
-     it->var = next;
-     it->varIndex += it->charsInVar;
-     it->charsInVar = jsvGetCharactersInVar(it->var);
-   }
+    JsVar *next = jsvLock(jsvGetLastChild(it->var));
+    jsvUnLock(it->var);
+    it->var = next;
+    it->varIndex += it->charsInVar;
+    it->charsInVar = jsvGetCharactersInVar(it->var);
+  }
+  it->ptr = &it->var->varData.str[0];
   if (it->charsInVar) it->charIdx = it->charsInVar-1;
   else it->charIdx = 0;
 }
@@ -127,12 +211,17 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
     it->charIdx++;
   } else
     assert(it->charIdx == 0);
+  /* Note: jsvGetMaxCharactersInVar will return the wrong length when
+   * applied to flat strings, but we don't care because the length will
+   * be smaller than charIdx, which will force a new string to be
+   * appended onto the end  */
   if (it->charIdx >= jsvGetMaxCharactersInVar(it->var)) {
     assert(!jsvGetLastChild(it->var));
     JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
     if (!next) {
       jsvUnLock(it->var);
       it->var = 0;
+      it->ptr = 0;
       it->charIdx = 0;
       return; // out of memory
     }
@@ -140,14 +229,51 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
     jsvSetLastChild(it->var, jsvGetRef(next));
     jsvUnLock(it->var);
     it->var = next;
+    it->ptr = &next->varData.str[0];
     it->varIndex += it->charIdx;
     it->charIdx = 0; // it's new, so empty
   }
-  it->var->varData.str[it->charIdx] = ch;
+  it->ptr[it->charIdx] = ch;
   it->charsInVar = it->charIdx+1;
   jsvSetCharactersInVar(it->var, it->charsInVar);
 }
 
+// --------------------------------------------------------------------------------------------
+
+void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
+  assert(jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj));
+  it->var = jsvGetFirstChild(obj) ? jsvLock(jsvGetFirstChild(obj)) : 0;
+}
+
+/// Clone the iterator
+JsvObjectIterator jsvObjectIteratorClone(JsvObjectIterator *it) {
+  JsvObjectIterator i = *it;
+  if (i.var) jsvLockAgain(i.var);
+  return i;
+}
+
+/// Move to next item
+void jsvObjectIteratorNext(JsvObjectIterator *it) {
+  if (it->var) {
+    JsVarRef next = jsvGetNextSibling(it->var);
+    jsvUnLock(it->var);
+    it->var = next ? jsvLock(next) : 0;
+  }
+}
+
+void jsvObjectIteratorSetValue(JsvObjectIterator *it, JsVar *value) {
+  if (!it->var) return; // end of object
+  jsvSetValueOfName(it->var, value);
+}
+
+void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsVar *parent) {
+  if (it->var) {
+    JsVarRef next = jsvGetNextSibling(it->var);
+    jsvRemoveChild(parent, it->var);
+    jsvUnLock(it->var);
+    it->var = next ? jsvLock(next) : 0;
+  }
+}
 
 // --------------------------------------------------------------------------------------------
 void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer, size_t index) {
@@ -168,6 +294,13 @@ void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer,
   jsvStringIteratorNew(&it->it, arrayBufferData, (size_t)it->byteOffset);
   jsvUnLock(arrayBufferData);
   it->hasAccessedElement = false;
+}
+
+/// Clone the iterator
+ALWAYS_INLINE JsvArrayBufferIterator jsvArrayBufferIteratorClone(JsvArrayBufferIterator *it) {
+  JsvArrayBufferIterator i = *it;
+  i.it = jsvStringIteratorClone(&it->it);
+  return i;
 }
 
 static void jsvArrayBufferIteratorGetValueData(JsvArrayBufferIterator *it, char *data) {
@@ -209,7 +342,10 @@ JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it) {
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
     return jsvNewFromFloat(jsvArrayBufferIteratorDataToFloat(it, data));
   } else {
-    return jsvNewFromInteger(jsvArrayBufferIteratorDataToInt(it, data));
+    JsVarInt i = jsvArrayBufferIteratorDataToInt(it, data);
+    if (it->type == ARRAYBUFFERVIEW_UINT32)
+      return jsvNewFromLongInteger((long long)(uint32_t)i);
+    return jsvNewFromInteger(i);
   }
 }
 
@@ -244,25 +380,37 @@ JsVarFloat jsvArrayBufferIteratorGetFloatValue(JsvArrayBufferIterator *it) {
   }
 }
 
-void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) {
+static void jsvArrayBufferIteratorIntToData(char *data, unsigned int dataLen, int type, JsVarInt v) {
+  if (JSV_ARRAYBUFFER_IS_CLAMPED(type)) {
+    assert(dataLen==1 && !JSV_ARRAYBUFFER_IS_SIGNED(type)); // all we support right now
+    if (v<0) v=0;
+    if (v>255) v=255;
+  }
+  // we don't care about sign when writing - as it gets truncated
+  if (dataLen==1) { data[0] = (char)v; }
+  else if (dataLen==2) { *(short*)data = (short)v; }
+  else if (dataLen==4) { *(int*)data = (int)v; }
+  else if (dataLen==8) { *(long long*)data = (long long)v; }
+  else assert(0);
+}
+
+static void jsvArrayBufferIteratorFloatToData(char *data,  unsigned int dataLen, int type, JsVarFloat v) {
+  NOT_USED(type);
+  if (dataLen==4) { *(float*)data = (float)v; }
+  else if (dataLen==8) { *(double*)data = (double)v; }
+  else assert(0);
+}
+
+void jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt v) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   assert(!it->hasAccessedElement); // we just haven't implemented this case yet
   char data[8];
   unsigned int i,dataLen = JSV_ARRAYBUFFER_GET_SIZE(it->type);
 
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
-    JsVarFloat v = jsvGetFloat(value);       ;
-    if (dataLen==4) { float f = (float)v; memcpy(data,&f,dataLen); }
-    else if (dataLen==8) { double f = (double)v; memcpy(data,&f,dataLen); }
-    else assert(0);
+    jsvArrayBufferIteratorFloatToData(data, dataLen, it->type, (JsVarFloat)v);
   } else {
-    JsVarInt v = jsvGetInteger(value);
-    // we don't care about sign when writing - as it gets truncated
-    if (dataLen==1) { char c = (char)v; memcpy(data,&c,dataLen); }
-    else if (dataLen==2) { short c = (short)v; memcpy(data,&c,dataLen); }
-    else if (dataLen==4) { int c = (int)v; memcpy(data,&c,dataLen); }
-    else if (dataLen==8) { long long c = (long long)v; memcpy(data,&c,dataLen); }
-    else assert(0);
+    jsvArrayBufferIteratorIntToData(data, dataLen, it->type, v);
   }
 
   for (i=0;i<dataLen;i++) {
@@ -270,6 +418,33 @@ void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) 
     if (dataLen!=1) jsvStringIteratorNext(&it->it);
   }
   if (dataLen!=1) it->hasAccessedElement = true;
+}
+
+void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) {
+  if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
+  assert(!it->hasAccessedElement); // we just haven't implemented this case yet
+  char data[8];
+  unsigned int i,dataLen = JSV_ARRAYBUFFER_GET_SIZE(it->type);
+
+  if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
+    jsvArrayBufferIteratorFloatToData(data, dataLen, it->type, jsvGetFloat(value));
+  } else {
+    jsvArrayBufferIteratorIntToData(data, dataLen, it->type, jsvGetInteger(value));
+  }
+
+  for (i=0;i<dataLen;i++) {
+    jsvStringIteratorSetChar(&it->it, data[i]);
+    if (dataLen!=1) jsvStringIteratorNext(&it->it);
+  }
+  if (dataLen!=1) it->hasAccessedElement = true;
+}
+
+void jsvArrayBufferIteratorSetByteValue(JsvArrayBufferIterator *it, char c) {
+  if (JSV_ARRAYBUFFER_GET_SIZE(it->type)!=1) {
+    assert(0);
+    return;
+  }
+  jsvStringIteratorSetChar(&it->it, c);
 }
 
 void jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *value) {
@@ -280,12 +455,6 @@ void jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *
   it->hasAccessedElement = false;
 }
 
-void   jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt value) {
-  // FIXME: Do this without the allocation!
-  JsVar *val = jsvNewFromInteger(value);
-  jsvArrayBufferIteratorSetValue(it, val);
-  jsvUnLock(val);
-}
 
 JsVar* jsvArrayBufferIteratorGetIndex(JsvArrayBufferIterator *it) {
   return jsvNewFromInteger((JsVarInt)it->index);
@@ -348,7 +517,11 @@ JsVar *jsvIteratorGetValue(JsvIterator *it) {
 
 JsVarInt jsvIteratorGetIntegerValue(JsvIterator *it) {
   switch (it->type) {
-  case JSVI_OBJECT : return jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it->it.obj));
+  case JSVI_OBJECT : {
+    // fast path for arrays of ints
+    if (jsvIsNameInt(it->it.obj.var)) return (JsVarInt)jsvGetFirstChildSigned(it->it.obj.var);
+    return jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it->it.obj));
+  }
   case JSVI_STRING : return (JsVarInt)jsvStringIteratorGetChar(&it->it.str);
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetIntegerValue(&it->it.buf);
   default: assert(0); return 0;
