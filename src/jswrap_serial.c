@@ -204,7 +204,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
 
   JsVar *parity = 0;
   JsVar *flow = 0;
-  JsVar *path;
+  JsVar *path = 0;
   jsvConfigObject configs[] = {
       {"rx", JSV_PIN, &inf.pinRX},
       {"tx", JSV_PIN, &inf.pinTX},
@@ -255,7 +255,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
     }
 
 #ifdef LINUX
-    if (ok && jsvIsObject(options))
+    if (ok && jsvIsString(path))
       jsvObjectSetChildAndUnLock(parent, "path", path);
 #endif
   }
