@@ -27,6 +27,11 @@
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
+#ifdef USE_NFC
+#include "nfc_t2t_lib.h"
+#include "nfc_uri_msg.h"
+bool nfcEnabled = false;
+#endif
 
 #ifdef USE_BOOTLOADER
 #include "device_manager.h"
@@ -150,6 +155,59 @@ void jswrap_nrf_kill() {
   }
 #endif
 }
+
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "connect",
+  "#ifdef" : "NRF52"
+}
+Called when Espruino *connects to another device* - not when a a device
+connects to Espruino.
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "disconnect",
+  "#ifdef" : "NRF52"
+}
+Called when Espruino *disconnects from another device* - not when a a device
+disconnects from Espruino.
+ */
+
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "servicesDiscover",
+  "#ifdef" : "NRF52"
+}
+Called with discovered services when discovery is finished
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "characteristicsDiscover",
+  "#ifdef" : "NRF52"
+}
+Called with discovered characteristics when discovery is finished
+ */
+
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "NFCon",
+  "#ifdef" : "NRF52"
+}
+Called when an NFC field is detected
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "NFCoff",
+  "#ifdef" : "NRF52"
+}
+Called when an NFC field is no longer detected
+ */
 
 
 /**@brief Error handlers.
@@ -315,7 +373,6 @@ static void gap_params_init(void)
  */
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length) {
-    uint32_t i;
     jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_data, length);
     jshHadEvent();
 }
@@ -761,6 +818,33 @@ static void sys_evt_dispatch(uint32_t sys_evt)
 #endif
     ble_advertising_on_sys_evt(sys_evt);
 }
+
+#ifdef USE_NFC
+/// Sigh - NFC has lots of these, so we need to define it to build
+void log_uart_printf(const char * format_msg, ...) {
+}
+
+/**
+ * @brief Callback function for handling NFC events.
+ */
+void nfc_callback(void *context, NfcEvent event, const char *data, size_t dataLength)
+{
+    (void)context;
+
+    switch (event)
+    {
+        case NFC_EVENT_FIELD_ON:
+          bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCon", 0);
+          break;
+        case NFC_EVENT_FIELD_OFF:
+          bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCoff", 0);
+          break;
+        default:
+          break;
+    }
+}
+#endif
+
 
 /**@brief Function for the SoftDevice initialization.
  *
@@ -1539,6 +1623,92 @@ void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data) {
   jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif
 }
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "nfcURL",
+    "#ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_nfcURL",
+    "params" : [
+      ["url","JsVar","The URL string to expose on NFC, or `undefined` to disable NFC"]
+    ]
+}
+Enables NFC and starts advertising the given URL. For example:
+
+```
+NRF.nrfURL("http://espruino.com");
+```
+
+**Note:** This is only available on nRF52-based devices
+*/
+void jswrap_nrf_nfcURL(JsVar *url) {
+#ifdef USE_NFC
+  // Check for disabling NFC
+  if (jsvIsUndefined(url)) {
+    if (!nfcEnabled) return;
+    nfcEnabled = false;
+    jsvObjectSetChild(execInfo.hiddenRoot, "NFC", 0);
+    nfcStopEmulation();
+    nfcDone();
+    return;
+  }
+
+  if (!jsvIsString(url)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting a String, got %t", url);
+    return;
+  }
+
+  uint32_t ret_val;
+  uint32_t err_code;
+  /* Set up NFC */
+  if (nfcEnabled) {
+    nfcStopEmulation();
+  } else {
+    ret_val = nfcSetup(nfc_callback, NULL);
+    if (ret_val != NFC_RETVAL_OK)
+      return jsExceptionHere(JSET_ERROR, "nfcSetup: Got NFC error code %d", ret_val);
+    nfcEnabled = true;
+  }
+
+  JSV_GET_AS_CHAR_ARRAY(urlPtr, urlLen, url);
+  if (!urlPtr || !urlLen)
+    return jsExceptionHere(JSET_ERROR, "Unable to get URL data");
+
+
+  uint8_t msg_buf[256];
+  uint32_t len = sizeof(msg_buf);
+  /* Encode URI message into buffer */
+  err_code = nfc_uri_msg_encode( NFC_URI_NONE, // TODO: could auto-prepend http/etc.
+                                 (uint8_t *)urlPtr,
+                                 urlLen,
+                                 msg_buf,
+                                 &len);
+  if (err_code != NRF_SUCCESS)
+    return jsExceptionHere(JSET_ERROR, "nfc_uri_msg_encode: NFC error code %d", err_code);
+
+  /* Create a flat string - we need this to store the URI data so it hangs around.
+   * Avoid having a static var so we have RAM available if not using NFC */
+  JsVar *flatStr = jsvNewFlatStringOfLength(len);
+  if (!flatStr)
+    return jsExceptionHere(JSET_ERROR, "Unable to create string with URI data in");
+  jsvObjectSetChild(execInfo.hiddenRoot, "NFC", flatStr);
+  uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
+  jsvUnLock(flatStr);
+  memcpy(flatStrPtr, msg_buf, len);
+
+  /* Set created message as the NFC payload */
+  ret_val = nfcSetPayload( (char*)flatStrPtr, len);
+  if (ret_val != NFC_RETVAL_OK)
+    return jsExceptionHere(JSET_ERROR, "nfcSetPayload: NFC error code %d", ret_val);
+
+  /* Start sensing NFC field */
+  ret_val = nfcStartEmulation();
+  if (ret_val != NFC_RETVAL_OK)
+    return jsExceptionHere(JSET_ERROR, "nfcStartEmulation: NFC error code %d", ret_val);
+#endif
+}
+
 
 /* ---------------------------------------------------------------------
  *                                                               TESTING

@@ -36,6 +36,8 @@ void jswrap_nrf_bluetooth_discoverServices();
 void jswrap_nrf_bleservice_discoverCharacteristics(JsVar *service);
 void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data);
 
+void jswrap_nrf_nfcURL(JsVar *url);
+
 
 bool jswrap_nrf_idle();
 void jswrap_nrf_kill();

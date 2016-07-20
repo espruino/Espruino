@@ -1335,6 +1335,28 @@ ifeq ($(FAMILY), NRF52)
   endif
 endif #FAMILY == NRF52
 
+
+ifdef NFC
+  # FIXME TODO SUPER NASTY - For some reason, NFC is a binary blob, and it's compiled with VFP argument passing
+  # This breaks passing of floats in Espruino, but we have to do it anyway just to build :(
+  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
+  # --------------------------
+  DEFINES += -DUSE_NFC
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/t2t_lib
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/uri
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_msg.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message/nfc_ndef_msg.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record/nfc_ndef_record.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+  PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/nfc_t2t_lib_gcc.a
+endif
+
 ifeq ($(FAMILY), EFM32GG)
 
   EFM32=1
