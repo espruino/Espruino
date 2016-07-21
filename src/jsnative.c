@@ -48,6 +48,25 @@
 
 /** Call a function with the given argument specifiers */
 JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {
+#ifndef SAVE_ON_FLASH
+  // Handle common call types quickly:
+  // ------- void(void)
+  if (argumentSpecifier==JSWAT_VOID) {
+    ((void (*)())function)();
+    return 0;
+  }
+  // ------- JsVar*(void)
+  if (argumentSpecifier==JSWAT_JSVAR) {
+    return ((JsVar *(*)())function)();
+  }
+  // ------- void('this')
+  if (argumentSpecifier==(JSWAT_VOID | JSWAT_THIS_ARG)) {
+    ((void (*)(JsVar *))function)(thisParam);
+    return 0;
+  }
+#endif
+  // Now do it the hard way...
+
   JsnArgumentType returnType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
   JsVar *argsArray = 0; // if JSWAT_ARGUMENT_ARRAY is ever used (note it'll only ever be used once)
   int paramNumber = 0; // how many parameters we have
