@@ -1179,6 +1179,10 @@ endif #STM32F3
 
 ifeq ($(FAMILY), STM32F4)
 ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+# The archflags below use the STM32F4's FPU for 32 bit floats, and pass doubles as 64 bit
+# Thing is, we don't use 'float', and only use doubles so this is basically useless to us (and increases code size)
+# ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
+
 ARM=1
 DEFINES += -DSTM32F4
 ifdef WICED_XXX
@@ -1320,10 +1324,7 @@ ifeq ($(FAMILY), NRF52)
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
-  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mlittle-endian -mfpu=fpv4-sp-d16 # compile flags as used for Pico
-  # Below are the flags used by nRF52 makefiles. This breaks the argument packing done by jsnative.c on newer GCC versions
-  # Compile with 'DEBUG=1 NRF52832DK=1 make', and check whether you get warnings at startup 
-  #ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
+  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
  
   # nRF52 specific.
   INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf52_config
@@ -1348,10 +1349,6 @@ endif #FAMILY == NRF52
 
 
 ifdef NFC
-  # FIXME TODO SUPER NASTY - For some reason, NFC is a binary blob, and it's compiled with VFP argument passing
-  # This breaks passing of floats in Espruino, but we have to do it anyway just to build :(
-  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
-  # --------------------------
   DEFINES += -DUSE_NFC
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/t2t_lib
