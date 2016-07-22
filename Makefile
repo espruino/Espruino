@@ -497,7 +497,6 @@ USE_GRAPHICS=1
 USE_FILESYSTEM=1
 USE_CRYPTO=1
 #USE_TLS=1
-DEFINES += -DBOARD_PCA10040 # remove
 
 else ifdef LPC1768
 EMBEDDED=1
@@ -1445,7 +1444,7 @@ ifdef NRF5X
 
   # Just try and get rid of the compile warnings.
   CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
-  DEFINES += -DBLUETOOTH
+  DEFINES += -DBLUETOOTH -D$(BOARD) 
 
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
