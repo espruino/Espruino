@@ -288,6 +288,14 @@ void user_uart_init() {
  */
 void user_rf_pre_init() {
   system_update_cpu_freq(160);
+// RF calibration: 0=do what byte 114 of esp_init_data_default says, 1=calibrate VDD33 and TX
+  // power (18ms); 2=calibrate VDD33 only (2ms); 3=full calibration (200ms). The default value of
+  // byte 114 is 0, which has the same effect as option 2 here. We're using option 3 'cause it's
+  // unlikely anyone will notice the 200ms or the extra power consumption given that Espruino
+  // doesn't really support low power sleep modes.
+  // See the appending of the 2A-ESP8266_IOT_SDK_User_Manual.pdf
+  system_phy_set_powerup_option(3); // 3: full RF calibration on reset (200ms)
+  system_phy_set_max_tpw(82);       // 82: max TX power
   //os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
 }
 
@@ -305,7 +313,6 @@ user_rf_cal_sector_set(void) {
   default:
     sect = 128; // 0x80000
   }
-  os_printf("RF cal sect %ld=0x%lx\n", sect, sect<<12);
   return sect;
 }
 
@@ -327,7 +334,6 @@ void user_init() {
   os_printf("Variables: %d @%dea = %dbytes\n", JSVAR_CACHE_SIZE, sizeof(JsVar),
       JSVAR_CACHE_SIZE * sizeof(JsVar));
   os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
-  user_rf_cal_sector_set(); // to get its printout
 
   espFlashKB = flash_kb[system_get_flash_size_map()];
 
