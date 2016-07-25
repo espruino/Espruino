@@ -684,8 +684,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           if (jsvIsStringEqual(param, JSPARSE_FUNCTION_SCOPE_NAME)) functionScope = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_CODE_NAME)) functionCode = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_NAME_NAME)) functionInternalName = jsvSkipName(param);
-          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) thisVar = jsvSkipName(param);
-          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
+          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) {
+            jsvUnLock(thisVar);
+            thisVar = jsvSkipName(param);
+          } else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
           else if (jsvIsFunctionParameter(param)) {
             JsVar *paramName = jsvCopy(param);
             // paramName is already a name (it's a function parameter)
