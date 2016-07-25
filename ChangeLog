@@ -1,5 +1,6 @@
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
+            Fix BBC micro:bit save() regression from 1v86
 
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
             Fix lock 'leak' in Telnet when Telnet is turned off
