@@ -11,553 +11,484 @@
  */
 
 #include "fstorage.h"
+#include "fstorage_config.h"
+#include "fstorage_internal_defs.h"
 
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
-#include "fstorage_config.h"
 #include "nrf_error.h"
 #include "nrf_soc.h"
 
 
-#define FS_FLAG_INIT                (1 << 0)    /**< fstorage has been initialized. */
-#define FS_FLAG_PROCESSING          (1 << 1)    /**< fstorage is executing queued flash operations. */
-#define FS_FLAG_FLASH_REQ_PENDING   (1 << 2)    /**< fstorage is waiting for a flash operation initiated by another module to complete. */
+static uint8_t       m_flags;       // fstorage status flags.
+static fs_op_queue_t m_queue;       // Queue of requested operations.
+static uint8_t       m_retry_count; // Number of times the last flash operation was retried.
 
 
-/**@brief   Macro to register the section 'fs_data'.
- *
- * @details Required for compilation.
- */
-
-/*lint -e19*/
-NRF_SECTION_VARS_REGISTER_SECTION(fs_data);
-/*lint +e19*/
-
-/**@brief   Macro to declare symbols used to find the beginning and end of the section fs_data.
- *
- * @details Required for compilation.
- */
-NRF_SECTION_VARS_REGISTER_SYMBOLS(fs_config_t, fs_data);
-
-
-/**@defgroup    Helper macros for section variables.
- *
- * @details Macros used to manipulate registered section variables.
- */
-
- /**@brief  Get section variable with fstorage configuration by index. */
-#define FS_SECTION_VARS_GET(i)          NRF_SECTION_VARS_GET(i, fs_config_t, fs_data)
- /**@brief  Get the number of registered section variables. */
-#define FS_SECTION_VARS_COUNT           NRF_SECTION_VARS_COUNT(fs_config_t, fs_data)
- /**@brief  Get the start address of the registered section variables. */
-#define FS_SECTION_VARS_START_ADDR      NRF_SECTION_VARS_START_ADDR(fs_data)
- /**@brief  Get the end address of the registered section variables. */
-#define FS_SECTION_VARS_END_ADDR        NRF_SECTION_VARS_END_ADDR(fs_data)
-
-/** @} */
-
-
-#if defined(__CC_ARM)
-  #pragma push
-  #pragma anon_unions
-#elif defined(__ICCARM__)
-  #pragma language=extended
-#elif defined(__GNUC__)
-  /* anonymous unions are enabled by default */
-#endif
-
-/**@brief The command queue element.
- *
- * @details Encapsulate details of a command requested to this module.
- */
-typedef struct
+// Sends events to the application.
+static void send_event(fs_op_t const * const p_op, fs_ret_t result)
 {
-    fs_config_t  const * p_config;   /**< The configuration of the user who requested the operation. */
-    fs_op_code_t         op_code;    /**< Operation code. */
-    union
+    fs_evt_t evt;
+    memset(&evt, 0x00, sizeof(fs_evt_t));
+
+    switch (p_op->op_code)
     {
-        struct
-        {
-            uint32_t const * p_src;          /**< Pointer to the data to be written to flash. The data must be kept in memory until the operation has finished. */
-            uint32_t const * p_dest;         /**< Destination of the data in flash. */
-            uint16_t         length_words;   /**< Length of the data to store, in words. */
-            uint16_t         offset;         /**< Data offset, if written in chunks. */
-        } store;
-        struct
-        {
-            uint16_t page;
-            uint16_t pages_erased;
-            uint16_t pages_to_erase;
-        } erase;
-    };
-} fs_cmd_t;
+        case FS_OP_STORE:
+            evt.id                 = FS_EVT_STORE;
+            evt.store.p_data       = p_op->store.p_dest;
+            evt.store.length_words = p_op->store.length_words;
+            break;
 
-#if defined(__CC_ARM)
-  #pragma pop
-#elif defined(__ICCARM__)
-  /* leave anonymous unions enabled */
-#elif defined(__GNUC__)
-  /* anonymous unions are enabled by default */
-#endif
+        case FS_OP_ERASE:
+            evt.id               = FS_EVT_ERASE;
+            evt.erase.first_page = p_op->erase.page - p_op->erase.pages_erased;
+            evt.erase.last_page  = p_op->erase.page;
+            break;
 
-/**@brief Structure that defines the command queue
- *
- * @details This queue holds flash operations requested to the module. 
- *          The data to be written must be kept in memory until the write operation is completed,
- *          i.e., a callback indicating completion is received by the application.
- */
-typedef struct
-{
-    uint8_t  rp;                        /**< The current element being processed. */
-    uint8_t  count;                     /**< Number of elements in the queue. */
-    fs_cmd_t cmd[FS_CMD_QUEUE_SIZE];    /**< Array to maintain flash access operation details. */
-} fs_cmd_queue_t;
-
-
-static uint8_t          m_flags;        /**< FStorage status flags. */
-static uint16_t         m_retry_count;  /**< Number of times a single flash operation was retried. */
-static fs_cmd_queue_t   m_cmd_queue;    /**< Flash operation request queue. */
-
-
-/**@brief Function to check that the configuration is non-NULL and within
-*         valid section variable memory bounds.
- *
- * @param[in]   config    Configuration to check.
- */
-static bool check_config(fs_config_t const * const config)
-{
-    if (config == NULL)
-    {
-        return false;
+        default:
+            // Should not happen.
+            break;
     }
 
-    if ((FS_SECTION_VARS_START_ADDR <= (uint32_t)config) &&
-        ((uint32_t)config < FS_SECTION_VARS_END_ADDR))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    p_op->p_config->callback(&evt, result);
 }
 
 
-/**@brief Function to store data to flash.
- *
- * @param[in]   p_cmd   The queue element associated with the operation.
- *
- * @retval NRF_SUCCESS  Success. The request was sent to the SoftDevice.
- * @retval Any error returned by the SoftDevice flash API.
- */
-static ret_code_t store_execute(fs_cmd_t * const p_cmd)
+// Checks that a configuration is non-NULL and within section variable bounds.
+static bool check_config(fs_config_t const * const config)
 {
-    ret_code_t ret;
-    uint16_t   chunk_len;
-
-    if (p_cmd->store.length_words - p_cmd->store.offset < FS_MAX_WRITE_SIZE_WORDS)
+    if ((config != NULL) &&
+        (FS_SECTION_VARS_START_ADDR <= (uint32_t)config) &&
+        (FS_SECTION_VARS_END_ADDR   >  (uint32_t)config))
     {
-        chunk_len = p_cmd->store.length_words - p_cmd->store.offset;
+        return true;
+    }
+   
+    return false;
+}
+
+
+// Executes a store operation.
+static uint32_t store_execute(fs_op_t const * const p_op)
+{
+    uint16_t chunk_len;
+
+    if ((p_op->store.length_words - p_op->store.offset) < FS_MAX_WRITE_SIZE_WORDS)
+    {
+        chunk_len = p_op->store.length_words - p_op->store.offset;
     }
     else
     {
         chunk_len = FS_MAX_WRITE_SIZE_WORDS;
     }
-    
-    ret =  sd_flash_write((uint32_t*)&p_cmd->store.p_dest[p_cmd->store.offset],
-                          (uint32_t*)&p_cmd->store.p_src[p_cmd->store.offset],
+
+    return sd_flash_write((uint32_t*)p_op->store.p_dest + p_op->store.offset,
+                          (uint32_t*)p_op->store.p_src  + p_op->store.offset,
                           chunk_len);
-
-    p_cmd->store.offset += chunk_len;
-
-    return ret;
 }
 
 
-/**@brief Function to erase a page.
- *
- * @param[in]   p_cmd   The queue element associated with the operation.
- *
- * @retval NRF_SUCCESS  Success. The request was sent to the SoftDevice.
- * @retval Any error returned by the SoftDevice flash API.
- */
-static ret_code_t erase_execute(fs_cmd_t * const p_cmd)
+// Executes an erase operation.
+static uint32_t erase_execute(fs_op_t const * const p_op)
 {
-    ret_code_t ret = sd_flash_page_erase(p_cmd->erase.page++);
-
-    p_cmd->erase.pages_erased++;
-
-    return ret;
+    return sd_flash_page_erase(p_op->erase.page);
 }
 
 
-/**@brief Function to notify users.
- *
- * @param[in]   result      Result of the flash operation.
- * @param[in]   p_cmd       The command associated with the callback.
- */
-static void app_notify(fs_cmd_t const * const p_cmd, uint32_t result)
+// Advances the queue, wrapping around if necessary.
+// If no elements are left in the queue, clears the FS_FLAG_PROCESSING flag.
+static void queue_advance(void)
 {
-    fs_evt_t evt;
-
-    switch (p_cmd->op_code)
+    if (--m_queue.count == 0)
     {
-        case FS_OP_STORE:
-            evt.id           = FS_EVT_STORE;
-            evt.store.p_data = p_cmd->store.p_dest;
-            break;
-
-        case FS_OP_ERASE:
-            evt.id               = FS_EVT_ERASE;
-            evt.erase.first_page = p_cmd->erase.page - p_cmd->erase.pages_erased;
-            evt.erase.last_page  = p_cmd->erase.page;
-            break;
-
-        default:
-            break;
-    }
-    
-    p_cmd->p_config->cb(evt, result);
-}
-
-
-/**@brief Function to consume queue item and notify the return value of the operation.
- *
- * @details This function will report the result and remove the command from the queue after
- *          notification.
- */
-static void queue_advance()
-{
-    
-    if (--m_cmd_queue.count == 0)
-    {
-        // There are no elements left. Stop processing the queue.
         m_flags &= ~FS_FLAG_PROCESSING;
     }
 
-    if (++m_cmd_queue.rp == FS_CMD_QUEUE_SIZE)
+    if (++m_queue.rp == FS_QUEUE_SIZE)
     {
-        m_cmd_queue.rp = 0;
+        m_queue.rp = 0;
     }
 }
 
 
-/**@brief Function to process the current element in the queue and return the result.
- *
- * @retval NRF_SUCCESS          Success.
- * @retval NRF_ERROR_FORBIDDEN  Error. Undefined command.
- * @retval Any error returned by the SoftDevice flash API.
- */
-static ret_code_t queue_process(void)
+// Processes the current element in the queue. If the queue is empty, does nothing.
+static void queue_process(void)
 {
-    ret_code_t       ret;
-    fs_cmd_t * const p_cmd = &m_cmd_queue.cmd[m_cmd_queue.rp];
-    
-    if (m_cmd_queue.count > 0)
+    uint32_t         ret;
+    fs_op_t  * const p_op = &m_queue.op[m_queue.rp];
+
+    if (m_queue.count > 0)
     {
-        switch (p_cmd->op_code)
+        switch (p_op->op_code)
         {
             case FS_OP_STORE:
-                ret = store_execute(p_cmd);
+                ret = store_execute(p_op);
                 break;
 
             case FS_OP_ERASE:
-                ret = erase_execute(p_cmd);
+                ret = erase_execute(p_op);
                 break;
 
-            default:
-                ret = NRF_ERROR_INTERNAL;
+             default:
+                ret = FS_ERR_INTERNAL;
                 break;
         }
-    }
-    else
-    {
-        ret = NRF_SUCCESS;
-    }
 
-    /** There is ongoing flash-operation which was not
-    *  initiated by fstorage. */
-    if (ret == NRF_ERROR_BUSY)
-    {
-        // Wait for a system callback.
-        m_flags |= FS_FLAG_FLASH_REQ_PENDING;
-
-        // Stop processing the queue.
-        m_flags &= ~FS_FLAG_PROCESSING;
-
-        ret = NRF_SUCCESS;
+        // There is a pending flash operation which was not initiated by this module.
+        // Stop processing the queue and wait for a system event.
+        if (ret == NRF_ERROR_BUSY)
+        {
+            m_flags &= ~FS_FLAG_PROCESSING;
+            m_flags |= FS_FLAG_FLASH_REQ_PENDING;
+        }
+        else if (ret != NRF_SUCCESS)
+        {
+            // An error has occurred.
+            send_event(p_op, FS_ERR_INTERNAL);
+        }
+        else
+        {
+            // Operation is executing.
+        }
     }
-    else if (ret != NRF_SUCCESS)
-    {
-        // Another error has occurred.
-        app_notify(p_cmd, ret);
-    }
-
-    return ret;
 }
 
 
-/**@brief Starts processing the queue if there are no pending flash operations
- *        for which we are awaiting a callback.
- */
-static ret_code_t queue_process_start(void)
+// Starts processing the queue if there are no pending flash operations, both inside and
+// outside this module. Returns immediately otherwise.
+static void queue_start(void)
 {
-    ret_code_t ret = NRF_SUCCESS;
-
-    /** If the queue is not being processed and there are no events pending,
-     *  then start processing. */
     if (!(m_flags & FS_FLAG_PROCESSING) &&
         !(m_flags & FS_FLAG_FLASH_REQ_PENDING))
     {
         m_flags |= FS_FLAG_PROCESSING;
-
-        ret = queue_process();        
+        queue_process();
     }
-
-    // If already processing the queue, return immediately.
-    return ret;
 }
 
 
-
-/**@brief Flash operation success callback handler.
- *
- * @details     This function updates read/write pointers.
- *              This function resets retry count.
- */
-static void on_operation_success(fs_cmd_t const * const p_cmd)
+// Flash operation success callback handler. Keeps track of the progress of an operation.
+// If it has finished, advances the queue and notifies the application.
+static void on_operation_success(fs_op_t * const p_op)
 {
     m_retry_count = 0;
 
-    switch (p_cmd->op_code)
+    switch (p_op->op_code)
     {
         case FS_OP_STORE:
-            // If offset is equal to or larger than length, then the operation has finished.
-            if (p_cmd->store.offset >= p_cmd->store.length_words)
+        {
+            uint16_t chunk_len;
+
+            if ((p_op->store.length_words - p_op->store.offset) < FS_MAX_WRITE_SIZE_WORDS)
             {
-                app_notify(p_cmd, NRF_SUCCESS);
+                chunk_len = p_op->store.length_words - p_op->store.offset;
+            }
+            else
+            {
+                chunk_len = FS_MAX_WRITE_SIZE_WORDS;
+            }
+
+            p_op->store.offset += chunk_len;
+
+            if (p_op->store.offset == p_op->store.length_words)
+            {
+                // The operation has finished.
+                send_event(p_op, FS_SUCCESS);
                 queue_advance();
             }
-            break;
+        }
+        break;
 
         case FS_OP_ERASE:
-            if (p_cmd->erase.pages_erased == p_cmd->erase.pages_to_erase)
+        {
+            p_op->erase.page++;
+            p_op->erase.pages_erased++;
+
+            if (p_op->erase.pages_erased == p_op->erase.pages_to_erase)
             {
-                app_notify(p_cmd, NRF_SUCCESS);
+                send_event(p_op, FS_SUCCESS);
                 queue_advance();
             }
-            break;
+        }
+        break;
 
         default:
+            // Should not happen.
             break;
     }
 }
 
 
-/**@brief Flash operation failure callback handler.
- *
- * @details Function to keep track of retries and notify failures.
- */
-static void on_operation_failure(fs_cmd_t const * const p_cmd)
+// Flash operation failure callback handler. If the maximum number of retries has
+// been reached, notifies the application and advances the queue.
+static void on_operation_failure(fs_op_t const * const p_op)
 {
-    if (++m_retry_count > FS_CMD_MAX_RETRIES)
+    if (++m_retry_count > FS_OP_MAX_RETRIES)
     {
-        app_notify(p_cmd, NRF_ERROR_TIMEOUT);
+        m_retry_count = 0;
+
+        send_event(p_op, FS_ERR_OPERATION_TIMEOUT);
         queue_advance();
     }
 }
 
 
-/**@brief Function to enqueue flash access command
- *
- * @param[in]   config      Registered configuration.
- * @param[in]   op_code     Operation code.
- * @param[in]   address     Destination of the data.
- * @param[in]   p_src       Source of data or NULL if n/a.
- * @param[in]   length      Length of the data, in 4 byte words.
- *
- * @retval NRF_SUCCESS      Success. Command enqueued.
- * @retval NRF_ERROR_NO_MEM Error. Queue is full.
- * @retval Any error returned by the SoftDevice flash API.
- */
-static ret_code_t cmd_enqueue(fs_cmd_t * p_cmd)
+// Retrieves a pointer to the next free element in the queue.
+// Additionally, increases the number of elements stored in the queue.
+static bool queue_get_next_free(fs_op_t ** p_op)
 {
-    uint8_t idx;
+    uint32_t idx;
 
-    if (m_cmd_queue.count == FS_CMD_QUEUE_SIZE - 1)
+    if (m_queue.count == FS_QUEUE_SIZE)
     {
-        return NRF_ERROR_NO_MEM;
+        return false;
     }
- 
-    idx = (m_cmd_queue.rp + m_cmd_queue.count) % FS_CMD_QUEUE_SIZE;
-    
-    m_cmd_queue.count++;
 
-    memset(&m_cmd_queue.cmd[idx], 0x00, sizeof(fs_cmd_t));
-    memcpy((void*)&m_cmd_queue.cmd[idx], (const void*)p_cmd, sizeof(fs_cmd_t));
+    idx = ((m_queue.rp + m_queue.count) < FS_QUEUE_SIZE) ?
+           (m_queue.rp + m_queue.count) : 0;
 
-    return queue_process_start();
+    m_queue.count++;
+
+    // Zero the element so that unassigned fields will be zero.
+    memset(&m_queue.op[idx], 0x00, sizeof(fs_op_t));
+
+    *p_op = &m_queue.op[idx];
+
+    return true;
 }
 
 
-ret_code_t fs_init(void)
+fs_ret_t fs_init(void)
 {
-    uint16_t   lowest_index = 0;
-    uint16_t   lowest_order = 0xFFFF;
-    uint32_t * current_end  = (uint32_t*)FS_PAGE_END_ADDR;
-    uint32_t   num_left     = FS_SECTION_VARS_COUNT;
+    uint32_t const   users         = FS_SECTION_VARS_COUNT;
+    uint32_t const * p_current_end = FS_PAGE_END_ADDR;
+    uint32_t         index_max     = 0x00;
+    uint32_t         index_last    = 0xFFFFFFFF;
 
-    /** Assign pages to registered users, beginning with the ones with the lowest
-     *  order, which will be assigned pages with the lowest memory address. */
-    do
+    if (m_flags & FS_FLAG_INITIALIZED)
     {
-        fs_config_t * p_config;
-        for (uint16_t i = 0; i < FS_SECTION_VARS_COUNT; i++)
+        return FS_SUCCESS;
+    }
+
+    #if 0
+    // Check for configurations with duplicate priority.
+    for (uint32_t i = 0; i < users; i++)
+    {
+        for (uint32_t j = i + 1; j < users; j++)
         {
-            p_config = FS_SECTION_VARS_GET(i);
+            fs_config_t const * const p_config_i = FS_SECTION_VARS_GET(i);
+            fs_config_t const * const p_config_j = FS_SECTION_VARS_GET(j);
 
-            // Skip the ones which have the end-address already set.
-            if (p_config->p_end_addr != NULL)
-                continue;
-
-            if (p_config->page_order < lowest_order)
+            if (p_config_i->page_order == p_config_j->page_order)
             {
-                lowest_order = p_config->page_order;
-                lowest_index = i;
+                // Error.
+                return FS_ERR_INVALID_CFG;
+            }
+        }
+    }
+    #endif
+
+    // Assign pages to registered users, beginning with the ones with the highest
+    // priority, which will be assigned pages with the highest memory address.
+
+    for (uint32_t i = 0; i < users; i++)
+    {
+        uint8_t max_priority  = 0x00;
+
+        for (uint32_t j = 0; j < users; j++)
+        {
+            fs_config_t * const p_config = FS_SECTION_VARS_GET(j);
+
+            // Skip the one assigned during last iteration.
+            if (j == index_last)
+            {
+                continue;
+            }
+
+            if (p_config->priority >= max_priority)
+            {
+                max_priority = p_config->priority;
+                index_max    = j;
             }
         }
 
-        p_config = FS_SECTION_VARS_GET(lowest_index);
+        fs_config_t * const p_config = FS_SECTION_VARS_GET(index_max);
 
-        p_config->p_end_addr   = current_end;
-        p_config->p_start_addr = p_config->p_end_addr - (p_config->num_pages * FS_PAGE_SIZE_WORDS);
+        p_config->p_end_addr   = p_current_end;
+        p_config->p_start_addr = p_current_end - (p_config->num_pages * FS_PAGE_SIZE_WORDS);
 
-        current_end  = p_config->p_start_addr;
-        lowest_order = 0xFFFF;
+        p_current_end = p_config->p_start_addr;
 
-    } while ( --num_left > 0 );
+        index_last = index_max;
+    }
 
-    m_flags |= FS_FLAG_INIT;
+    m_flags |= FS_FLAG_INITIALIZED;
 
-    return NRF_SUCCESS;
+    return FS_SUCCESS;
 }
 
 
-ret_code_t fs_store(fs_config_t const * const p_config,
-                    uint32_t    const * const p_dest,
-                    uint32_t    const * const p_src,
-                    uint16_t                  length_words)
+fs_ret_t fs_store(fs_config_t const * const p_config,
+                  uint32_t    const * const p_dest,
+                  uint32_t    const * const p_src,
+                  uint16_t    const         length_words)
 {
-    fs_cmd_t cmd;
+    fs_op_t * p_op;
 
-    if ((m_flags & FS_FLAG_INIT) == 0)
+    if (!(m_flags & FS_FLAG_INITIALIZED))
     {
-        return NRF_ERROR_INVALID_STATE;
+        return FS_ERR_NOT_INITIALIZED;
     }
 
     if (!check_config(p_config))
     {
-        return NRF_ERROR_FORBIDDEN;
+        return FS_ERR_INVALID_CFG;
     }
 
-    if (((uint32_t)p_src  & 0x3) ||
-        ((uint32_t)p_dest & 0x3))
+    if ((p_src == NULL) || (p_dest == NULL))
     {
-        return NRF_ERROR_INVALID_ADDR;
+        return FS_ERR_NULL_ARG;
     }
 
-    if ((p_dest < p_config->p_start_addr) || ((p_dest + length_words) > p_config->p_end_addr))
+    // Check that both pointers are word aligned.
+    if (((uint32_t)p_src  & 0x03) ||
+        ((uint32_t)p_dest & 0x03))
     {
-        return NRF_ERROR_INVALID_ADDR;
+        return FS_ERR_UNALIGNED_ADDR;
     }
 
-    cmd.p_config           = p_config;
-    cmd.op_code            = FS_OP_STORE;
-    cmd.store.p_src        = p_src;
-    cmd.store.p_dest       = p_dest;
-    cmd.store.length_words = length_words;
-    cmd.store.offset       = 0;
+    // Check that the operation doesn't go outside the client's memory boundaries.
+    if ((p_config->p_start_addr > p_dest) ||
+        (p_config->p_end_addr   < (p_dest + length_words)))
+    {
+        return FS_ERR_INVALID_ADDR;
+    }
 
-    return cmd_enqueue(&cmd);
+    if (length_words == 0)
+    {
+        return FS_ERR_INVALID_ARG;
+    }
+
+    if (!queue_get_next_free(&p_op))
+    {
+        return FS_ERR_QUEUE_FULL;
+    }
+
+    // Initialize the operation.
+    p_op->p_config           = p_config;
+    p_op->op_code            = FS_OP_STORE;
+    p_op->store.p_src        = p_src;
+    p_op->store.p_dest       = p_dest;
+    p_op->store.length_words = length_words;
+
+    queue_start();
+
+    return FS_SUCCESS;
 }
 
 
-ret_code_t fs_erase(fs_config_t const * const p_config,
-                    uint32_t    const * const p_page_addr,
-                    uint16_t                  num_pages)
+fs_ret_t fs_erase(fs_config_t const * const p_config,
+                  uint32_t    const * const p_page_addr,
+                  uint16_t    const         num_pages)
 {
+    fs_op_t * p_op;
 
-    fs_cmd_t cmd;
-
-    if ((m_flags & FS_FLAG_INIT) == 0)
+    if (!(m_flags & FS_FLAG_INITIALIZED))
     {
-        return NRF_ERROR_INVALID_STATE;
+        return FS_ERR_NOT_INITIALIZED;
     }
 
     if (!check_config(p_config))
     {
-        return NRF_ERROR_FORBIDDEN;
+        return FS_ERR_INVALID_CFG;
     }
 
+    if (p_page_addr == NULL)
+    {
+        return FS_ERR_NULL_ARG;
+    }
+
+    // Check that the page is aligned to a page boundary.
     if (((uint32_t)p_page_addr % FS_PAGE_SIZE) != 0)
     {
-        return NRF_ERROR_INVALID_ADDR;
+        return FS_ERR_UNALIGNED_ADDR;
     }
 
+    // Check that the operation doesn't go outside the client's memory boundaries.
     if ((p_page_addr < p_config->p_start_addr) ||
         (p_page_addr + (FS_PAGE_SIZE_WORDS * num_pages) > p_config->p_end_addr))
     {
-        return NRF_ERROR_INVALID_DATA;
+        return FS_ERR_INVALID_ADDR;
     }
 
-    cmd.p_config             = p_config;
-    cmd.op_code              = FS_OP_ERASE;
-    cmd.erase.page           = ((uint32_t)p_page_addr / FS_PAGE_SIZE);
-    cmd.erase.pages_erased   = 0;
-    cmd.erase.pages_to_erase = num_pages;
+    if (num_pages == 0)
+    {
+        return FS_ERR_INVALID_ARG;
+    }
 
-    return cmd_enqueue(&cmd);
+    if (!queue_get_next_free(&p_op))
+    {
+        return FS_ERR_QUEUE_FULL;
+    }
+
+    // Initialize the operation.
+    p_op->p_config             = p_config;
+    p_op->op_code              = FS_OP_ERASE;
+    p_op->erase.page           = ((uint32_t)p_page_addr / FS_PAGE_SIZE);
+    p_op->erase.pages_to_erase = num_pages;
+
+    queue_start();
+
+    return FS_SUCCESS;
 }
 
 
-/**@brief Function to handle system events from the SoftDevice.
- *
- * @details     This function should be dispatched system events if any of the modules used by
- *              the application rely on FStorage. Examples include @ref Peer Manager and
- *              @ref Flash Data Storage.
- *
- * @param[in]   sys_evt     System Event received.
- */
+fs_ret_t fs_queued_op_count_get(uint32_t * const p_op_count)
+{
+    if (p_op_count == NULL)
+    {
+        return FS_ERR_NULL_ARG;
+    }
+
+    *p_op_count = m_queue.count;
+
+    return FS_SUCCESS;
+}
+
+
 void fs_sys_event_handler(uint32_t sys_evt)
 {
-    fs_cmd_t const * const p_cmd = &m_cmd_queue.cmd[m_cmd_queue.rp];
+    fs_op_t * const p_op = &m_queue.op[m_queue.rp];
     
     if (m_flags & FS_FLAG_PROCESSING)
     {
-        /** A flash operation was initiated by this module.
-         *  Handle its result. */
+        // A flash operation was initiated by this module. Handle the result.
         switch (sys_evt)
         {
             case NRF_EVT_FLASH_OPERATION_SUCCESS:
-                on_operation_success(p_cmd);
+                on_operation_success(p_op);
                 break;
 
             case NRF_EVT_FLASH_OPERATION_ERROR:
-                on_operation_failure(p_cmd);
+                on_operation_failure(p_op);
                 break;
         }
     }
     else if ((m_flags & FS_FLAG_FLASH_REQ_PENDING))
     {
-        /** A flash operation was initiated outside this module.
-         *  We have now receveid a callback which indicates it has
-         *  finished. Clear the FS_FLAG_FLASH_REQ_PENDING flag. */
-         m_flags &= ~FS_FLAG_FLASH_REQ_PENDING;
+        // A flash operation was initiated outside this module.
+        // A callback which indicates that it has finished was received.
+        m_flags &= ~FS_FLAG_FLASH_REQ_PENDING;
+
+        // If there are any elements left in the queue, set FS_FLAG_PROCESSING.
+        if (m_queue.count > 0)
+        {
+           m_flags |= FS_FLAG_PROCESSING;
+        }
     }
 
     // Resume processing the queue, if necessary.
     queue_process();
 }
-
 

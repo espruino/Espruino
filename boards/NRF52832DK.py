@@ -55,14 +55,14 @@ chip = {
 };
 
 devices = {
-  'LED1' : { 'pin' : 'D17' },
-  'LED2' : { 'pin' : 'D18' },
-  'LED3' : { 'pin' : 'D19' },
-  'LED4' : { 'pin' : 'D20' },
-  'BTN1' : { 'pin' : 'D13'},
-  'BTN2' : { 'pin' : 'D14'},
-  'BTN3' : { 'pin' : 'D15'},
-  'BTN4' : { 'pin' : 'D16'},
+  'LED1' : { 'pin' : 'D17', 'inverted' : True },
+  'LED2' : { 'pin' : 'D18', 'inverted' : True },
+  'LED3' : { 'pin' : 'D19', 'inverted' : True },
+  'LED4' : { 'pin' : 'D20', 'inverted' : True },
+  'BTN1' : { 'pin' : 'D13', 'inverted' : True },
+  'BTN2' : { 'pin' : 'D14', 'inverted' : True },
+  'BTN3' : { 'pin' : 'D15', 'inverted' : True },
+  'BTN4' : { 'pin' : 'D16', 'inverted' : True },
   'RX_PIN_NUMBER' : { 'pin' : 'D8'},
   'TX_PIN_NUMBER' : { 'pin' : 'D6'},
   'CTS_PIN_NUMBER' : { 'pin' : 'D7'},

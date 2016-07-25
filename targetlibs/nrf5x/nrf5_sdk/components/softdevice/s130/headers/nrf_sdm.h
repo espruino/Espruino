@@ -50,12 +50,17 @@
 #include "nrf_soc.h"
 #include "nrf_error_sdm.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @addtogroup NRF_SDM_DEFINES Defines
  * @{ */
-
-/** @brief Defines the usual size reserverd for the MBR when a softdevice is written to flash.
-This is the offset where the first byte of the softdevice hex file is written.*/
-#define MBR_SIZE (0x1000)
+#ifdef NRFSOC_DOXYGEN
+//Stuff defined elsewere, to satisfy doxygen
+#define MBR_SIZE 0
+#warning test
+#endif
 
 /** @brief SoftDevice Manager SVC Base number. */
 #define SDM_SVC_BASE 0x10
@@ -108,39 +113,69 @@ enum NRF_SD_SVCS
   SVC_SDM_LAST                         /**< Placeholder for last SDM SVC */
 };
 
-/**@brief Possible lfclk oscillator sources. */
-enum NRF_CLOCK_LFCLKSRCS
-{
-  NRF_CLOCK_LFCLKSRC_SYNTH_250_PPM,                       /**< LFCLK Synthesized from HFCLK.                    */
-  NRF_CLOCK_LFCLKSRC_XTAL_500_PPM,                        /**< LFCLK crystal oscillator 500 PPM accuracy.       */
-  NRF_CLOCK_LFCLKSRC_XTAL_250_PPM,                        /**< LFCLK crystal oscillator 250 PPM accuracy.       */
-  NRF_CLOCK_LFCLKSRC_XTAL_150_PPM,                        /**< LFCLK crystal oscillator 150 PPM accuracy.       */
-  NRF_CLOCK_LFCLKSRC_XTAL_100_PPM,                        /**< LFCLK crystal oscillator 100 PPM accuracy.       */
-  NRF_CLOCK_LFCLKSRC_XTAL_75_PPM,                         /**< LFCLK crystal oscillator 75 PPM accuracy.        */
-  NRF_CLOCK_LFCLKSRC_XTAL_50_PPM,                         /**< LFCLK crystal oscillator 50 PPM accuracy.        */
-  NRF_CLOCK_LFCLKSRC_XTAL_30_PPM,                         /**< LFCLK crystal oscillator 30 PPM accuracy.        */
-  NRF_CLOCK_LFCLKSRC_XTAL_20_PPM,                         /**< LFCLK crystal oscillator 20 PPM accuracy.        */
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_250MS_CALIBRATION,        /**< LFCLK RC oscillator, 250ms  calibration interval.*/
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_500MS_CALIBRATION,        /**< LFCLK RC oscillator, 500ms  calibration interval.*/
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_1000MS_CALIBRATION,       /**< LFCLK RC oscillator, 1000ms calibration interval.*/
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_2000MS_CALIBRATION,       /**< LFCLK RC oscillator, 2000ms calibration interval.*/
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_4000MS_CALIBRATION,       /**< LFCLK RC oscillator, 4000ms calibration interval.*/
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_8000MS_CALIBRATION,       /**< LFCLK RC oscillator, 8000ms calibration interval.*/
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_1000MS_CALIBRATION,  /**< LFCLK RC oscillator. Temperature checked every 1000ms, if changed above a threshold, a calibration is done.*/
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_2000MS_CALIBRATION,  /**< LFCLK RC oscillator. Temperature checked every 2000ms, if changed above a threshold, a calibration is done.*/
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_4000MS_CALIBRATION,  /**< LFCLK RC oscillator. Temperature checked every 4000ms, if changed above a threshold, a calibration is done.*/
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_8000MS_CALIBRATION,  /**< LFCLK RC oscillator. Temperature checked every 8000ms, if changed above a threshold, a calibration is done.*/
-  NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_16000MS_CALIBRATION, /**< LFCLK RC oscillator. Temperature checked every 16000ms, if changed above a threshold, a calibration is done.*/
-};
+/** @} */
 
+/** @addtogroup NRF_SDM_DEFINES Defines
+ * @{ */
+
+/**@defgroup NRF_CLOCK_LF_XTAL_ACCURACY Clock accuracy * @{ */
+
+#define NRF_CLOCK_LF_XTAL_ACCURACY_250_PPM (0) /* Default */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_500_PPM (1)
+#define NRF_CLOCK_LF_XTAL_ACCURACY_150_PPM (2)
+#define NRF_CLOCK_LF_XTAL_ACCURACY_100_PPM (3)
+#define NRF_CLOCK_LF_XTAL_ACCURACY_75_PPM  (4)
+#define NRF_CLOCK_LF_XTAL_ACCURACY_50_PPM  (5)
+#define NRF_CLOCK_LF_XTAL_ACCURACY_30_PPM  (6)
+#define NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM  (7)
+
+/** @} */
+
+/**@defgroup NRF_CLOCK_LF_SRC Possible lfclk oscillator sources * @{ */
+
+#define NRF_CLOCK_LF_SRC_RC      (0)                        /**< LFCLK RC oscillator. */
+#define NRF_CLOCK_LF_SRC_XTAL    (1)                        /**< LFCLK crystal oscillator. */
+#define NRF_CLOCK_LF_SRC_SYNTH   (2)                        /**< LFCLK Synthesized from HFCLK. */
+
+/** @} */
 /** @} */
 
 /** @addtogroup NRF_SDM_TYPES Types
  * @{ */
 
 /**@brief Type representing lfclk oscillator source. */
-typedef uint32_t nrf_clock_lfclksrc_t;
+typedef struct
+{
+  uint8_t source;        /**< LF oscillator clock source, see @ref NRF_CLOCK_LF_SRC. */
+  uint8_t rc_ctiv;      /**< Only for NRF_CLOCK_LF_SRC_RC: Calibration timer interval in 1/4 second
+                              units (nRF51: 1-64, nRF52: 1-32).
+                              @note To avoid excessive clock drift, 0.5 degrees Celsius is the
+                                    maximum temperature change allowed in one calibration timer
+                                    interval. The interval should be selected to ensure this.
 
+                              @note Must be 0 if source is not NRF_CLOCK_LF_SRC_RC.  */
+  uint8_t rc_temp_ctiv; /**<  Only for NRF_CLOCK_LF_SRC_RC: How often (in number of calibration
+                              intervals) the RC oscillator shall be calibrated if the temperature
+                              hasn't changed.
+                                  0: Always calibrate even if the temperature hasn't changed.
+                                  1: Only calibrate if the temperature has changed (nRF51 only).
+                                  2-33: Check the temperature and only calibrate if it has changed,
+                                        however calibration will take place every rc_temp_ctiv
+                                        intervals in any case.
+
+                              @note Must be 0 if source is not NRF_CLOCK_LF_SRC_RC.
+
+                              @note For nRF52, the application must ensure calibration at least once
+                                    every 8 seconds to ensure +/-250ppm clock stability. The
+                                    recommended configuration for NRF_CLOCK_LF_SRC_RC on nRF52 is
+                                    rc_ctiv=16 and rc_temp_ctiv=2. This will ensure calibration at
+                                    least once every 8 seconds and for temperature changes of 0.5
+                                    degrees Celsius every 4 seconds. See the Product Specification
+                                    for the nRF52 device being used for more information.*/
+  uint8_t xtal_accuracy; /**< External crystal clock accuracy used in the LL to compute timing windows.
+
+                              @note For the NRF_CLOCK_LF_SRC_RC clock source this parameter is ignored. */
+} nrf_clock_lf_cfg_t;
 
 /**@brief Fault Handler type.
  *
@@ -163,8 +198,6 @@ typedef void (*nrf_fault_handler_t)(uint32_t id, uint32_t pc, uint32_t info);
 
 /**@brief Enables the SoftDevice and by extension the protocol stack.
  *
- * Idempotent function to enable the SoftDevice.
- *
  * @note Some care must be taken if a low frequency clock source is already running when calling this function:
  *       If the LF clock has a different source then the one currently running, it will be stopped. Then, the new
  *       clock source will be started.
@@ -176,19 +209,22 @@ typedef void (*nrf_fault_handler_t)(uint32_t id, uint32_t pc, uint32_t info);
  *       - A portion of RAM will be unavailable (see relevant SDS documentation).
  *       - Some peripherals will be unavailable or available only through the SoC API (see relevant SDS documentation).
  *       - Interrupts will not arrive from protected peripherals or interrupts.
- *       - nrf_nvic_ functions must be used instead of CMSIS NVIC_ functions for reliable usage of the softdevice.
+ *       - nrf_nvic_ functions must be used instead of CMSIS NVIC_ functions for reliable usage of the SoftDevice.
  *       - Interrupt latency may be affected by the SoftDevice  (see relevant SDS documentation).
  *       - Chosen low frequency clock source will be running.
  *
- * @param clock_source Low frequency clock source and accuracy. (Note: In the case of XTAL source, the PPM accuracy of the chosen clock source must be greater than or equal to the actual characteristics of your XTAL clock).
+ * @param p_clock_lf_cfg Low frequency clock source and accuracy.
+                         If NULL the clock will be configured as an rc source with rc_ctiv = 16 and .rc_temp_ctiv = 2
+                         In the case of XTAL source, the PPM accuracy of the chosen clock source must be greater than or equal to the actual characteristics of your XTAL clock.
  * @param fault_handler Callback to be invoked in case of fault.
  *
  * @retval ::NRF_SUCCESS
  * @retval ::NRF_ERROR_INVALID_STATE SoftDevice is already enabled, and the clock source and fault handler cannot be updated.
- * @retval ::NRF_ERROR_SDM_INCORRECT_INTERRUPT_CONFIGURATION SoftDeviceinterrupt is already enabled, or an enabled interrupt has an illegal priority level.
+ * @retval ::NRF_ERROR_SDM_INCORRECT_INTERRUPT_CONFIGURATION SoftDevice interrupt is already enabled, or an enabled interrupt has an illegal priority level.
  * @retval ::NRF_ERROR_SDM_LFCLK_SOURCE_UNKNOWN Unknown low frequency clock source selected.
  */
-SVCALL(SD_SOFTDEVICE_ENABLE, uint32_t, sd_softdevice_enable(nrf_clock_lfclksrc_t clock_source, nrf_fault_handler_t fault_handler));
+SVCALL(SD_SOFTDEVICE_ENABLE, uint32_t, sd_softdevice_enable(nrf_clock_lf_cfg_t const * p_clock_lf_cfg, nrf_fault_handler_t fault_handler));
+
 
 /**@brief Disables the SoftDevice and by extension the protocol stack.
  *
@@ -225,6 +261,9 @@ SVCALL(SD_SOFTDEVICE_VECTOR_TABLE_BASE_SET, uint32_t, sd_softdevice_vector_table
 
 /** @} */
 
+#ifdef __cplusplus
+}
+#endif
 #endif // NRF_SDM_H__
 
 /**

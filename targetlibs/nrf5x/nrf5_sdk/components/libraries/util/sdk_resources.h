@@ -2,12 +2,12 @@
  *
  * The information contained herein is property of Nordic Semiconductor ASA.
  * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT. 
+ * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
  *
  * Licensees are granted free, non-transferable use of the information. NO
  * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
  * the file.
- */ 
+ */
 
 /** @file
  * @brief Definition file for resource usage by SoftDevice, ESB and Gazell.
@@ -41,7 +41,6 @@
 	#define ESB_TIMERS_USED          0uL /**< Timers used by ESB. */
 	#define ESB_SWI_USED             0uL /**< Software interrupts used by ESB */
 #endif
-
 
 #define NRF_PPI_CHANNELS_USED (SD_PPI_CHANNELS_USED | GZLL_PPI_CHANNELS_USED | ESB_PPI_CHANNELS_USED)
 #define NRF_PPI_GROUPS_USED   (SD_PPI_GROUPS_USED)

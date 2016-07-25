@@ -15,7 +15,7 @@
 
 #include <stdint.h>
 
-#define SD_PPI_CHANNELS_USED       		0xFFF0C000uL /**< PPI channels utilized by SotfDevice (not available to the application). */
+#define SD_PPI_CHANNELS_USED            0xFFF0C000uL /**< PPI channels utilized by SotfDevice (not available to the application). */
 #define SD_PPI_GROUPS_USED              0x0000000CuL /**< PPI groups utilized by SoftDevice (not available to the application). */
 #define SD_TIMERS_USED                  0x00000001uL /**< Timers used by SoftDevice. */
 #define SD_SWI_USED                     0x0000003CuL /**< Software interrupts used by SoftDevice */

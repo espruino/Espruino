@@ -155,18 +155,18 @@ void nrf_drv_uart_uninit(void);
 /**
  * @brief Function for getting the address of a specific UART task.
  *
- * @param[in]  task Task.
+ * @param[in] task Task.
  *
- * @retval     Task address.
+ * @return    Task address.
  */
 __STATIC_INLINE uint32_t nrf_drv_uart_task_address_get(nrf_uart_task_t task);
 
 /**
  * @brief Function for getting the address of a specific UART event.
  *
- * @param[in]  event Event.
+ * @param[in] event Event.
  *
- * @retval     Event address.
+ * @return    Event address.
  */
 __STATIC_INLINE uint32_t nrf_drv_uart_event_address_get(nrf_uart_event_t event);
 
@@ -193,6 +193,14 @@ __STATIC_INLINE uint32_t nrf_drv_uart_event_address_get(nrf_uart_event_t event);
  * @retval    NRF_ERROR_INVALID_ADDR If p_data does not point to RAM buffer (UARTE only).
  */
 ret_code_t nrf_drv_uart_tx(uint8_t const * const p_data, uint8_t length);
+
+/**
+ * @brief Function for checking if UART is currently transmitting.
+ *
+ * @retval true  If UART is transmitting.
+ * @retval false If UART is not transmitting.
+ */
+bool nrf_drv_uart_tx_in_progress(void);
 
 /**
  * @brief Function for aborting any ongoing transmission.

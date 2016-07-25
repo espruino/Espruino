@@ -1,3 +1,14 @@
+/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
+ *
+ * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
+ * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+ *
+ * Licensees are granted free, non-transferable use of the information. NO
+ * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
+ * the file.
+ *
+ */
 
 
 #ifndef GATTS_CACHE_MANAGER_H__
@@ -12,6 +23,7 @@
 
 
 /**
+ * @cond NO_DOXYGEN
  * @defgroup gatts_cache_manager GATT Server Cache Manager
  * @ingroup peer_manager
  * @{
@@ -34,8 +46,8 @@ typedef enum
  */
 typedef struct
 {
-    gscm_evt_id_t  evt_id;         /**< The type of event this is. */
-    pm_peer_id_t peer_id;      /**< The peer ID this event pertains to. */
+    gscm_evt_id_t evt_id;          /**< The type of event this is. */
+    pm_peer_id_t  peer_id;         /**< The peer ID this event pertains to. */
     union
     {
         struct
@@ -165,6 +177,9 @@ bool gscm_service_changed_ind_needed(uint16_t conn_handle);
  * @retval NRF_ERROR_BUSY                    Unable to send indication at this time. Reattempt later.
  * @retval BLE_ERROR_GATTS_SYS_ATTR_MISSING  Information missing. Apply local cache, then reattempt.
  * @retval NRF_ERROR_INVALID_PARAM           From @ref sd_ble_gatts_service_changed. Unexpected.
+ * @retval NRF_ERROR_NOT_SUPPORTED           Service changed characteristic is not present.
+ * @retval NRF_ERROR_INVALID_STATE           Service changed cannot be indicated to this peer
+ *                                           because the peer has not subscribed to it.
  */
 ret_code_t gscm_service_changed_ind_send(uint16_t conn_handle);
 
@@ -177,8 +192,10 @@ ret_code_t gscm_service_changed_ind_send(uint16_t conn_handle);
  *
  * @param[in]  peer_id  The connection to send the indication on.
  */
-void gscm_peer_was_notified_of_db_change(pm_peer_id_t peer_id);
+void gscm_db_change_notification_done(pm_peer_id_t peer_id);
 
-/** @} */
+/** @} 
+ * @endcond
+*/
 
 #endif /* GATTS_CACHE_MANAGER_H__ */

@@ -52,6 +52,9 @@
 #error "This header file shall only be included for nRF52 projects"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** @addtogroup NRF_MBR_DEFINES Defines
  * @{ */
@@ -184,16 +187,29 @@ typedef struct
  *
  * Commands used when updating a SoftDevice and bootloader.
  *
+ * The SD_MBR_COMMAND_COPY_BL and SD_MBR_COMMAND_VECTOR_TABLE_BASE_SET requires parameters to be
+ * retained by the MBR when resetting the IC. This is done in a separate flash page
+ * provided by the application. The uicr register UICR.NRFFW[1] must be set
+ * to an address corresponding to a page in the application flash space. This page will be cleared
+ * by the MBR and used to store the command before reset. When the UICR.NRFFW[1] field is set
+ * the page it refers to must not be used by the application. If the UICR.NRFFW[1] is set to
+ * 0xFFFFFFFF (the default) MBR commands which use flash will be unavailable and return
+ * NRF_ERROR_NO_MEM.
+ *
  * @param[in]  param Pointer to a struct describing the command.
  *
  * @note for retvals see ::sd_mbr_command_copy_sd_t ::sd_mbr_command_copy_bl_t ::sd_mbr_command_compare_t ::sd_mbr_command_vector_table_base_set_t
  *
- * @retval NRF_ERROR_NO_MEM if UICR.MBR_PARAM_ADDR is not set (i.e. is 0xFFFFFFFF). See the MBR chapter in the SDS for more info.
+ * @retval NRF_ERROR_NO_MEM if UICR.NRFFW[1] is not set (i.e. is 0xFFFFFFFF).
  * @retval NRF_ERROR_INVALID_PARAM if an invalid command is given.
 */
 SVCALL(SD_MBR_COMMAND, uint32_t, sd_mbr_command(sd_mbr_command_t* param));
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 #endif // NRF_MBR_H__
 
 /**

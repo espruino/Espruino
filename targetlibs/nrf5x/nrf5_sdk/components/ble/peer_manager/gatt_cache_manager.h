@@ -1,3 +1,14 @@
+/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
+ *
+ * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
+ * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+ *
+ * Licensees are granted free, non-transferable use of the information. NO
+ * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
+ * the file.
+ *
+ */
 
 
 #ifndef GATT_CACHE_MANAGER_H__
@@ -12,6 +23,7 @@
 
 
 /**
+ * @cond NO_DOXYGEN
  * @defgroup gatt_cache_manager GATT Cache Manager
  * @ingroup peer_manager
  * @{
@@ -29,7 +41,8 @@ typedef enum
     GCM_EVT_LOCAL_DB_CACHE_APPLIED,          /**< The SoftDevice has been given local database values from the persistent cache, for one peer. */
     GCM_EVT_ERROR_LOCAL_DB_CACHE_APPLY,      /**< The stored local database values for a peer were rejected by the SoftDevice, which means the database has changed. */
     GCM_EVT_REMOTE_DB_CACHE_UPDATED,         /**< The persistent cache for the remote database has been updated with provided values, for one peer. */
-    GCM_EVT_SERVICE_CHANGED_INDICATION_SENT, /**< A service changed indication has been sent to and confirmed by a peer. */
+    GCM_EVT_SERVICE_CHANGED_IND_SENT,        /**< A service changed indication has been sent to a peer. */
+    GCM_EVT_SERVICE_CHANGED_IND_CONFIRMED,   /**< A sent service changed indication has been confirmed by a peer. */
     GCM_EVT_ERROR_DATA_SIZE,                 /**< An operation failed because the write buffer of the Peer Database module was not large enough. This is a fatal error. */
     GCM_EVT_ERROR_STORAGE_FULL,              /**< An operation failed because there was no available storage room in persistent storage. Please free up room, and the operation will automatically continue. */
     GCM_EVT_ERROR_UNEXPECTED,                /**< An operation failed with an unexpected error. The error is provided. This is possibly a fatal error. */
@@ -48,14 +61,15 @@ typedef struct
  */
 typedef struct
 {
-    gcm_evt_id_t   evt_id;    /**< The type of event this is. */
+    gcm_evt_id_t   evt_id;  /**< The type of event this is. */
     pm_peer_id_t   peer_id; /**< The peer ID this event pertains to. */
     union
     {
         gcm_evt_param_conn_handle_t local_db_cache_updated;
         gcm_evt_param_conn_handle_t local_db_cache_applied;
         gcm_evt_param_conn_handle_t error_local_db_cache_apply;
-        gcm_evt_param_conn_handle_t service_changed_indication_sent;
+        gcm_evt_param_conn_handle_t service_changed_ind_sent;
+        gcm_evt_param_conn_handle_t service_changed_ind_confirmed;
         gcm_evt_param_conn_handle_t error_data_size;
         gcm_evt_param_conn_handle_t error_no_mem;
         struct
@@ -96,26 +110,35 @@ void gcm_ble_evt_handler(ble_evt_t * p_ble_evt);
 /**@brief Function for storing a discovered remote database persistently.
  *
  * @param[in]  peer_id      Peer to store the database for.
- * @param[in]  p_remote_db  Database values to store. If NULL, values are cleared instead.
+ * @param[in]  p_remote_db  Database values to store as an array. Can be NULL if n_services is 0.
+ * @param[in]  n_services   Number of services in p_remote_db array. If 0, values are cleared.
  *
  * @retval NRF_SUCCESS              Store procedure successfully started.
  * @retval NRF_ERROR_NOT_FOUND      The peer id is invalid or unallocated.
  * @retval NRF_ERROR_INVALID_STATE  Module is not initialized.
  */
-ret_code_t gcm_remote_db_store(pm_peer_id_t peer_id, pm_peer_data_remote_gatt_db_t * p_remote_db);
+ret_code_t gcm_remote_db_store(pm_peer_id_t        peer_id,
+                               ble_gatt_db_srv_t * p_remote_db,
+                               uint32_t            n_services);
 
 
 /**@brief Function for retrieving a persistently stored remote database.
  *
- * @param[in]    peer_id       Peer to retrieve data for.
- * @param[inout] p_remote_db   Copied database values.
+ * @param[in]    peer_id      Peer to retrieve data for.
+ * @param[out]   p_remote_db  If p_n_services was large enough: Copied database values.
+ * @param[inout] p_n_services In: Size of provided p_remote_db array. Out: Size of data in flash.
+ *
+ * @note p_n_services is always updated with the size of the data to be retrieved. The data is only
+ *       copied if p_remote_db is large enough (p_n_services is large enough initially).
  *
  * @retval NRF_SUCCESS              Data retrieved successfully.
  * @retval NRF_ERROR_NOT_FOUND      The peer ID is invalid or unallocated.
  * @retval NRF_ERROR_NULL           p_remote_db is NULL.
  * @retval NRF_ERROR_INVALID_STATE  Module is not initialized.
  */
-ret_code_t gcm_remote_db_retrieve(pm_peer_id_t peer_id, pm_peer_data_remote_gatt_db_t * p_remote_db);
+ret_code_t gcm_remote_db_retrieve(pm_peer_id_t        peer_id,
+                                  ble_gatt_db_srv_t * p_remote_db,
+                                  uint32_t          * p_n_services);
 
 
 /**@brief Function for triggering local GATT database data to be stored persistently. Values are
@@ -179,6 +202,8 @@ ret_code_t gcm_local_db_cache_get(pm_peer_id_t peer_id, pm_peer_data_local_gatt_
  */
 void gcm_local_database_has_changed(void);
 
- /* @} */
+/** @} 
+  * @endcond
+ */
 
 #endif /* GATT_CACHE_MANAGER_H__ */

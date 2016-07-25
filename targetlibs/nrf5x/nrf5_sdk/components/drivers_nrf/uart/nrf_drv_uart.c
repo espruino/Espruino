@@ -77,8 +77,8 @@ static const nrf_drv_uart_config_t m_default_config = NRF_DRV_UART_DEFAULT_CONFI
 
 __STATIC_INLINE void apply_config(nrf_drv_uart_config_t const * p_config)
 {
-    nrf_gpio_cfg_output(p_config->pseltxd);
     nrf_gpio_pin_set(p_config->pseltxd);
+    nrf_gpio_cfg_output(p_config->pseltxd);
     nrf_gpio_cfg_input(p_config->pselrxd, NRF_GPIO_PIN_NOPULL);
 
     CODE_FOR_UARTE
@@ -90,8 +90,8 @@ __STATIC_INLINE void apply_config(nrf_drv_uart_config_t const * p_config)
         if (p_config->hwfc == NRF_UART_HWFC_ENABLED)
         {
             nrf_gpio_cfg_input(p_config->pselcts, NRF_GPIO_PIN_NOPULL);
-            nrf_gpio_cfg_output(p_config->pselrts);
             nrf_gpio_pin_set(p_config->pselrts);
+            nrf_gpio_cfg_output(p_config->pselrts);
             nrf_uarte_hwfc_pins_set(NRF_UARTE0, p_config->pselrts, p_config->pselcts);
         }
     )
@@ -103,8 +103,8 @@ __STATIC_INLINE void apply_config(nrf_drv_uart_config_t const * p_config)
         if (p_config->hwfc == NRF_UART_HWFC_ENABLED)
         {
             nrf_gpio_cfg_input(p_config->pselcts, NRF_GPIO_PIN_NOPULL);
-            nrf_gpio_cfg_output(p_config->pselrts);
             nrf_gpio_pin_set(p_config->pselrts);
+            nrf_gpio_cfg_output(p_config->pselrts);
             nrf_uart_hwfc_pins_set(NRF_UART0, p_config->pselrts, p_config->pselcts);
         }
     )
@@ -352,8 +352,8 @@ ret_code_t nrf_drv_uart_tx(uint8_t const * const p_data, uint8_t length)
             return NRF_ERROR_INVALID_ADDR;
         }
     )
-    
-    if (m_cb.tx_buffer_length != 0)
+
+    if (nrf_drv_uart_tx_in_progress())
     {
         return NRF_ERROR_BUSY;
     }
@@ -369,6 +369,11 @@ ret_code_t nrf_drv_uart_tx(uint8_t const * const p_data, uint8_t length)
     (
         return nrf_drv_uart_tx_for_uart();
     )
+}
+
+bool nrf_drv_uart_tx_in_progress(void)
+{
+    return (m_cb.tx_buffer_length != 0);
 }
 
 #if defined(UART_IN_USE)

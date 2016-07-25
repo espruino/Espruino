@@ -67,6 +67,8 @@
 #define SEC_PARAM_TIMEOUT                    30                                                      /**< Timeout for Pairing Request or Security Request (in seconds). */
 #define SEC_PARAM_BOND                       0                                                       /**< Perform bonding. */
 #define SEC_PARAM_MITM                       0                                                       /**< Man In The Middle protection not required. */
+#define SEC_PARAM_LESC                       0                                                       /**< LE Secure Connections not enabled. */
+#define SEC_PARAM_KEYPRESS                   0                                                       /**< Keypress notifications not enabled. */
 #define SEC_PARAM_IO_CAPABILITIES            BLE_GAP_IO_CAPS_NONE                                    /**< No I/O capabilities. */
 #define SEC_PARAM_OOB                        0                                                       /**< Out Of Band data not available. */
 #define SEC_PARAM_MIN_KEY_SIZE               7                                                       /**< Minimum encryption key size. */
@@ -814,8 +816,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
                 id_key.id_info      = m_ble_peer_data.irk;
                 enc_key             = m_ble_peer_data.enc_key;
 
-                keys.keys_central.p_id_key  = &id_key;
-                keys.keys_central.p_enc_key = &enc_key;
+                keys.keys_peer.p_id_key  = &id_key;
+                keys.keys_peer.p_enc_key = &enc_key;
 
                 err_code = sd_ble_gap_sec_params_reply(m_conn_handle,
                                                        BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP,
@@ -1018,6 +1020,8 @@ static void sec_params_init(void)
 {
     m_sec_params.bond         = SEC_PARAM_BOND;
     m_sec_params.mitm         = SEC_PARAM_MITM;
+    m_sec_params.lesc         = SEC_PARAM_LESC;
+    m_sec_params.keypress     = SEC_PARAM_KEYPRESS;
     m_sec_params.io_caps      = SEC_PARAM_IO_CAPABILITIES;
     m_sec_params.oob          = SEC_PARAM_OOB;
     m_sec_params.min_key_size = SEC_PARAM_MIN_KEY_SIZE;

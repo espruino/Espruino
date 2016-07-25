@@ -35,6 +35,10 @@ static volatile uint8_t m_queue_end_index;      /**< Index of queue entry at the
 static uint16_t         m_queue_event_size;     /**< Maximum event size in queue. */
 static uint16_t         m_queue_size;           /**< Number of queue entries. */
 
+#ifdef APP_SCHEDULER_WITH_PROFILER
+static uint16_t m_max_queue_utilization;    /**< Maximum observed queue utilization. */
+#endif
+
 /**@brief Function for incrementing a queue index, and handle wrap-around.
  *
  * @param[in]   index   Old index.
@@ -85,8 +89,33 @@ uint32_t app_sched_init(uint16_t event_size, uint16_t queue_size, void * p_event
     m_queue_event_size    = event_size;
     m_queue_size          = queue_size;
 
+#ifdef APP_SCHEDULER_WITH_PROFILER
+    m_max_queue_utilization = 0;
+#endif
+
     return NRF_SUCCESS;
 }
+
+
+#ifdef APP_SCHEDULER_WITH_PROFILER
+static void queue_utilization_check(void)
+{
+    uint16_t start = m_queue_start_index;
+    uint16_t end   = m_queue_end_index;
+    uint16_t queue_utilization = (end >= start) ? (end - start) :
+        (m_queue_size + 1 - start + end);
+
+    if (queue_utilization > m_max_queue_utilization)
+    {
+        m_max_queue_utilization = queue_utilization;
+    }
+}
+
+uint16_t app_sched_queue_utilization_get(void)
+{
+    return m_max_queue_utilization;
+}
+#endif
 
 
 uint32_t app_sched_event_put(void                    * p_event_data,
@@ -105,6 +134,12 @@ uint32_t app_sched_event_put(void                    * p_event_data,
         {
             event_index       = m_queue_end_index;
             m_queue_end_index = next_index(m_queue_end_index);
+
+        #ifdef APP_SCHEDULER_WITH_PROFILER
+            // This function call must be protected with critical region because
+            // it modifies 'm_max_queue_utilization'.
+            queue_utilization_check();
+        #endif
         }
 
         CRITICAL_REGION_EXIT();

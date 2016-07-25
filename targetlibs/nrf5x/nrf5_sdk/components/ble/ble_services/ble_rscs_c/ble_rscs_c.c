@@ -18,8 +18,9 @@
 #include "ble_gattc.h"
 #include "app_trace.h"
 #include "sdk_common.h"
+#include "nrf_log.h"
 
-#define LOG                    app_trace_log         /**< Debug logger macro that will be used in this file to do logging of important information over UART. */
+#define LOG                    NRF_LOG_PRINTF         /**< Debug logger macro that will be used in this file to do logging of important information over UART or RTT. */
 
 #define TX_BUFFER_MASK         0x07                  /**< TX Buffer mask, must be a mask of continuous zeroes, followed by continuous sequence of ones: 000...111. */
 #define TX_BUFFER_SIZE         (TX_BUFFER_MASK + 1)  /**< Size of send buffer, which is 1 higher than the mask. */
@@ -54,7 +55,6 @@ typedef struct
 } tx_message_t;
 
 
-static ble_rscs_c_t * mp_ble_rscs_c;                 /**< Pointer to the current instance of the HRS Client module. The memory for this provided by the application.*/
 static tx_message_t   m_tx_buffer[TX_BUFFER_SIZE];  /**< Transmit buffer for messages to be transmitted to the central. */
 static uint32_t       m_tx_insert_index = 0;        /**< Current index in the transmit buffer where the next message should be inserted. */
 static uint32_t       m_tx_index = 0;               /**< Current index in the transmit buffer from where the next message to be transmitted resides. */
@@ -101,6 +101,11 @@ static void tx_buffer_process(void)
  */
 static void on_write_rsp(ble_rscs_c_t * p_ble_rscs_c, const ble_evt_t * p_ble_evt)
 {
+    // Check if the event if on the link for this instance
+    if (p_ble_rscs_c->conn_handle != p_ble_evt->evt.gattc_evt.conn_handle)
+    {
+        return;
+    }
     // Check if there is any message to be sent across to the peer and send it.
     tx_buffer_process();
 }
@@ -120,12 +125,19 @@ static void on_hvx(ble_rscs_c_t * p_ble_rscs_c, const ble_evt_t * p_ble_evt)
 {
     const ble_gattc_evt_hvx_t * p_notif = &p_ble_evt->evt.gattc_evt.params.hvx;
 
+    // Check if the event if on the link for this instance
+    if (p_ble_rscs_c->conn_handle != p_ble_evt->evt.gattc_evt.conn_handle)
+    {
+        return;
+    }
+    
     // Check if this is a Running Speed and Cadence notification.
-    if (p_ble_evt->evt.gattc_evt.params.hvx.handle == p_ble_rscs_c->rsc_handle)
+    if (p_ble_evt->evt.gattc_evt.params.hvx.handle == p_ble_rscs_c->peer_db.rsc_handle)
     {
         uint32_t         index = 0;
         ble_rscs_c_evt_t ble_rscs_c_evt;
-        ble_rscs_c_evt.evt_type = BLE_RSCS_C_EVT_RSC_NOTIFICATION;
+        ble_rscs_c_evt.evt_type    = BLE_RSCS_C_EVT_RSC_NOTIFICATION;
+        ble_rscs_c_evt.conn_handle = p_ble_evt->evt.gattc_evt.conn_handle;
 
         //lint -save -e415 -e416 -e662 "Access of out of bounds pointer" "Creation of out of bounds pointer"
         
@@ -175,14 +187,16 @@ static void on_hvx(ble_rscs_c_t * p_ble_rscs_c, const ble_evt_t * p_ble_evt)
  * @param[in] p_evt Pointer to the event received from the database discovery module.
  *
  */
-static void db_discover_evt_handler(ble_db_discovery_evt_t * p_evt)
+void ble_rscs_on_db_disc_evt(ble_rscs_c_t * p_ble_rscs_c, const ble_db_discovery_evt_t * p_evt)
 {
     // Check if the Heart Rate Service was discovered.
     if (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE &&
         p_evt->params.discovered_db.srv_uuid.uuid == BLE_UUID_RUNNING_SPEED_AND_CADENCE &&
         p_evt->params.discovered_db.srv_uuid.type == BLE_UUID_TYPE_BLE)
     {
-        mp_ble_rscs_c->conn_handle = p_evt->conn_handle;
+
+        ble_rscs_c_evt_t evt;
+        evt.conn_handle = p_evt->conn_handle;
 
         // Find the CCCD Handle of the Running Speed and Cadence characteristic.
         uint32_t i;
@@ -193,9 +207,9 @@ static void db_discover_evt_handler(ble_db_discovery_evt_t * p_evt)
                 BLE_UUID_RSC_MEASUREMENT_CHAR)
             {
                 // Found Running Speed and Cadence characteristic. Store CCCD handle and break.
-                mp_ble_rscs_c->rsc_cccd_handle =
+                evt.params.rscs_db.rsc_cccd_handle =
                     p_evt->params.discovered_db.charateristics[i].cccd_handle;
-                mp_ble_rscs_c->rsc_handle      =
+                evt.params.rscs_db.rsc_handle      =
                     p_evt->params.discovered_db.charateristics[i].characteristic.handle_value;
                 break;
             }
@@ -203,11 +217,19 @@ static void db_discover_evt_handler(ble_db_discovery_evt_t * p_evt)
 
         LOG("[rscs_c]: Running Speed and Cadence Service discovered at peer.\r\n");
 
-        ble_rscs_c_evt_t evt;
+        //If the instance has been assigned prior to db_discovery, assign the db_handles
+        if(p_ble_rscs_c->conn_handle != BLE_CONN_HANDLE_INVALID)
+        {
+            if ((p_ble_rscs_c->peer_db.rsc_cccd_handle == BLE_GATT_HANDLE_INVALID)&&
+                (p_ble_rscs_c->peer_db.rsc_handle == BLE_GATT_HANDLE_INVALID))
+            {
+                p_ble_rscs_c->peer_db = evt.params.rscs_db;
+            }
+        }
 
         evt.evt_type = BLE_RSCS_C_EVT_DISCOVERY_COMPLETE;
 
-        mp_ble_rscs_c->evt_handler(mp_ble_rscs_c, &evt);
+        p_ble_rscs_c->evt_handler(p_ble_rscs_c, &evt);
     }
 }
 
@@ -222,14 +244,47 @@ uint32_t ble_rscs_c_init(ble_rscs_c_t * p_ble_rscs_c, ble_rscs_c_init_t * p_ble_
     rscs_uuid.type = BLE_UUID_TYPE_BLE;
     rscs_uuid.uuid = BLE_UUID_RUNNING_SPEED_AND_CADENCE;
 
-    mp_ble_rscs_c = p_ble_rscs_c;
+    p_ble_rscs_c->evt_handler             = p_ble_rscs_c_init->evt_handler;
+    p_ble_rscs_c->conn_handle             = BLE_CONN_HANDLE_INVALID;
+    p_ble_rscs_c->peer_db.rsc_cccd_handle = BLE_GATT_HANDLE_INVALID;
+    p_ble_rscs_c->peer_db.rsc_handle      = BLE_GATT_HANDLE_INVALID;
 
-    mp_ble_rscs_c->evt_handler     = p_ble_rscs_c_init->evt_handler;
-    mp_ble_rscs_c->conn_handle     = BLE_CONN_HANDLE_INVALID;
-    mp_ble_rscs_c->rsc_cccd_handle = BLE_GATT_HANDLE_INVALID;
+    return ble_db_discovery_evt_register(&rscs_uuid);
+}
 
-    return ble_db_discovery_evt_register(&rscs_uuid,
-                                         db_discover_evt_handler);
+
+uint32_t ble_rscs_c_handles_assign(ble_rscs_c_t *    p_ble_rscs_c,
+                                   uint16_t         conn_handle,
+                                   ble_rscs_c_db_t * p_peer_handles)
+{
+    VERIFY_PARAM_NOT_NULL(p_ble_rscs_c);
+    p_ble_rscs_c->conn_handle = conn_handle;
+    if (p_peer_handles != NULL)
+    {
+        p_ble_rscs_c->peer_db = *p_peer_handles;
+    }
+    
+    return NRF_SUCCESS;
+}
+
+
+/**@brief     Function for handling Disconnected event received from the SoftDevice.
+ *
+ * @details   This function check if the disconnect event is happening on the link
+ *            associated with the current instance of the module, if so it will set its
+ *            conn_handle to invalid.
+ *
+ * @param[in] p_ble_rscs_c Pointer to the RSC Client structure.
+ * @param[in] p_ble_evt   Pointer to the BLE event received.
+ */
+static void on_disconnected(ble_rscs_c_t * p_ble_rscs_c, const ble_evt_t * p_ble_evt)
+{
+    if (p_ble_rscs_c->conn_handle == p_ble_evt->evt.gap_evt.conn_handle)
+    {
+        p_ble_rscs_c->conn_handle             = BLE_CONN_HANDLE_INVALID;
+        p_ble_rscs_c->peer_db.rsc_cccd_handle = BLE_GATT_HANDLE_INVALID;
+        p_ble_rscs_c->peer_db.rsc_handle      = BLE_GATT_HANDLE_INVALID;
+    }
 }
 
 
@@ -242,16 +297,16 @@ void ble_rscs_c_on_ble_evt(ble_rscs_c_t * p_ble_rscs_c, const ble_evt_t * p_ble_
 
     switch (p_ble_evt->header.evt_id)
     {
-        case BLE_GAP_EVT_CONNECTED:
-            p_ble_rscs_c->conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-            break;
-
         case BLE_GATTC_EVT_HVX:
             on_hvx(p_ble_rscs_c, p_ble_evt);
             break;
 
         case BLE_GATTC_EVT_WRITE_RSP:
             on_write_rsp(p_ble_rscs_c, p_ble_evt);
+            break;
+
+        case BLE_GAP_EVT_DISCONNECTED:
+            on_disconnected(p_ble_rscs_c, p_ble_evt);
             break;
 
         default:
@@ -292,7 +347,12 @@ uint32_t ble_rscs_c_rsc_notif_enable(ble_rscs_c_t * p_ble_rscs_c)
 {
     VERIFY_PARAM_NOT_NULL(p_ble_rscs_c);
 
-    return cccd_configure(p_ble_rscs_c->conn_handle, p_ble_rscs_c->rsc_cccd_handle, true);
+    if (p_ble_rscs_c->conn_handle == BLE_CONN_HANDLE_INVALID)
+    {
+        return NRF_ERROR_INVALID_STATE;
+    }
+
+    return cccd_configure(p_ble_rscs_c->conn_handle, p_ble_rscs_c->peer_db.rsc_cccd_handle, true);
 }
 
 /** @}

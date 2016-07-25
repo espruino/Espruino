@@ -51,12 +51,15 @@
 #define BLE_UUID_SCAN_PARAMETERS_SERVICE                         0x1813     /**< Scan Parameters service UUID. */
 #define BLE_UUID_TX_POWER_SERVICE                                0x1804     /**< TX Power service UUID. */
 #define BLE_UUID_IPSP_SERVICE                                    0x1820     /**< Internet Protocol Support service UUID. */
+#define BLE_UUID_BMS_SERVICE                                     0x181E     /**< BOND MANAGEMENT service UUID*/
+#define BLE_UUID_CGM_SERVICE                                     0x181F     /**< Contiunous Glucose Monitoring service UUID*/
+#define BLE_UUID_PLX_SERVICE                                     0x1822     /**< Pulse Oximeter Service UUID*/
+
+
 /** @} */
 
 /** @defgroup UUID_CHARACTERISTICS Characteristic UUID definitions
  * @{ */
-#define BLE_UUID_BATTERY_LEVEL_STATE_CHAR                        0x2A1B     /**< Battery Level State characteristic UUID. */
-#define BLE_UUID_BATTERY_POWER_STATE_CHAR                        0x2A1A     /**< Battery Power State characteristic UUID. */
 #define BLE_UUID_REMOVABLE_CHAR                                  0x2A3A     /**< Removable characteristic UUID. */
 #define BLE_UUID_SERVICE_REQUIRED_CHAR                           0x2A3B     /**< Service Required characteristic UUID. */
 #define BLE_UUID_ALERT_CATEGORY_ID_CHAR                          0x2A43     /**< Alert Category Id characteristic UUID. */
@@ -132,6 +135,22 @@
 #define BLE_UUID_LN_LOCATION_AND_SPEED_CHAR                      0x2A67     /**< Location Navigation Service, Location and Speed characteristic UUID. */
 #define BLE_UUID_LN_NAVIGATION_CHAR                              0x2A68     /**< Location Navigation Service, Navigation characteristic UUID. */
 #define BLE_UUID_LN_CONTROL_POINT_CHAR                           0x2A6B     /**< Location Navigation Service, Control point characteristic UUID. */
+#define BLE_UUID_BMS_CTRLPT                                      0x2AA4     /**< BMS Control Point characteristic UUID. */
+#define BLE_UUID_BMS_FEATURE                                     0x2AA5     /**< BMS Feature characteristic UUID. */
+#define BLE_UUID_CGM_MEASUREMENT                                 0x2AA7     /**< CGM Service, Measurement characteristic UUID*/
+#define BLE_UUID_CGM_FEATURE                                     0x2AA8     /**< CGM Service, Feature characteristic UUID*/
+#define BLE_UUID_CGM_STATUS                                      0x2AA9     /**< CGM Service, Status characteristic UUID*/
+#define BLE_UUID_CGM_SESSION_START_TIME                          0x2AAA     /**< CGM Service, session start time characteristic UUID*/
+#define BLE_UUID_CGM_SESSION_RUN_TIME                            0x2AAB     /**< CGM Service, session run time characteristic UUID*/
+#define BLE_UUID_CGM_SPECIFIC_OPS_CTRLPT                         0x2AAC     /**< CGM Service, specific ops ctrlpt characteristic UUID*/
+#define BLE_UUID_PLX_SPOT_CHECK_MEAS                             0x2A5E     /**< PLX Service, spot check measurement characteristic UUID*/
+#define BLE_UUID_PLX_CONTINUOUS_MEAS                             0x2A5F     /**< PLX Service, continuous measurement characteristic UUID*/
+#define BLE_UUID_PLX_FEATURES                                    0x2A60     /**< PLX Service, feature characteristic UUID*/
+
+
+
+
+
 /** @} */
 
 /** @defgroup ALERT_LEVEL_VALUES Definitions for the Alert Level characteristic values

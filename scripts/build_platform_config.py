@@ -140,6 +140,8 @@ def codeOutDevice(device):
       codeOut("#define "+device+"_ONSTATE "+("0" if "inverted" in board.devices[device] else "1"))
       if "pinstate" in board.devices[device]:
         codeOut("#define "+device+"_PINSTATE JSHPINSTATE_GPIO_"+board.devices[device]["pinstate"]);
+    if device[0:3]=="LED":
+      codeOut("#define "+device+"_ONSTATE "+("0" if "inverted" in board.devices[device] else "1"))
 
 def codeOutDevicePin(device, pin, definition_name):
   if device in board.devices:

@@ -134,6 +134,10 @@ static app_timer_evt_schedule_func_t m_evt_schedule_func;                       
 static bool                          m_rtc1_running;                            /**< Boolean indicating if RTC1 is running. */
 static bool                          m_rtc1_reset;                              /**< Boolean indicating if RTC1 counter has been reset due to last timer removed from timer list during the timer list handling. */
 
+#ifdef APP_TIMER_WITH_PROFILER
+static uint8_t                      m_max_user_op_queue_utilization;                  /**< Maximum observed timer user operations queue utilization. */
+#endif
+
 #define MODULE_INITIALIZED (mp_users != NULL)
 #include "sdk_macros.h"
 
@@ -729,6 +733,26 @@ static void timer_list_handler(void)
     bool           compare_update;
     timer_node_t * p_timer_id_head_old;
     
+#ifdef APP_TIMER_WITH_PROFILER
+    {
+        unsigned int i;
+
+        for (i = 0; i < APP_TIMER_INT_LEVELS; i++)
+        {
+            timer_user_t *p_user = &mp_users[i];
+            uint8_t size = p_user->user_op_queue_size;
+            uint8_t first = p_user->first;
+            uint8_t last = p_user->last;
+            uint8_t utilization = (first <= last) ? (last - first) : (size + 1 - first + last);
+
+            if (utilization > m_max_user_op_queue_utilization)
+            {
+                m_max_user_op_queue_utilization = utilization;
+            }
+        }
+    }
+#endif
+
     // Back up the previous known tick and previous list head
     ticks_previous    = m_ticks_latest;
     p_timer_id_head_old = mp_timer_id_head;
@@ -974,6 +998,10 @@ uint32_t app_timer_init(uint32_t                      prescaler,
     m_ticks_elapsed_q_read_ind  = 0;
     m_ticks_elapsed_q_write_ind = 0;
 
+#ifdef APP_TIMER_WITH_PROFILER
+    m_max_user_op_queue_utilization   = 0;
+#endif
+
     NVIC_ClearPendingIRQ(SWI_IRQn);
     NVIC_SetPriority(SWI_IRQn, SWI_IRQ_PRI);
     NVIC_EnableIRQ(SWI_IRQn);
@@ -1116,3 +1144,9 @@ uint32_t app_timer_cnt_diff_compute(uint32_t   ticks_to,
     return NRF_SUCCESS;
 }
 
+#ifdef APP_TIMER_WITH_PROFILER
+uint8_t app_timer_op_queue_utilization_get(void)
+{
+    return m_max_user_op_queue_utilization;
+}
+#endif

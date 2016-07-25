@@ -12,11 +12,11 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_lbs LED Button Service
+ * @defgroup ble_sdk_srv_lbs LED Button Service Server
  * @{
  * @ingroup ble_sdk_srv
  *
- * @brief LED Button Service module.
+ * @brief LED Button Service Server module.
  *
  * @details This module implements a custom LED Button Service with an LED and Button Characteristics.
  *          During initialization, the module adds the LED Button Service and Characteristics
@@ -44,8 +44,8 @@
 #define LBS_UUID_BASE        {0x23, 0xD1, 0xBC, 0xEA, 0x5F, 0x78, 0x23, 0x15, \
                               0xDE, 0xEF, 0x12, 0x12, 0x00, 0x00, 0x00, 0x00}
 #define LBS_UUID_SERVICE     0x1523
-#define LBS_UUID_LED_CHAR    0x1525
 #define LBS_UUID_BUTTON_CHAR 0x1524
+#define LBS_UUID_LED_CHAR    0x1525
 
 // Forward declaration of the ble_lbs_t type. 
 typedef struct ble_lbs_s ble_lbs_t;

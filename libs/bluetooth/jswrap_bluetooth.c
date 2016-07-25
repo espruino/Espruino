@@ -27,6 +27,11 @@
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
+#ifdef USE_NFC
+#include "nfc_t2t_lib.h"
+#include "nfc_uri_msg.h"
+bool nfcEnabled = false;
+#endif
 
 #ifdef USE_BOOTLOADER
 #include "device_manager.h"
@@ -39,7 +44,6 @@
 #else
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 #endif
-
 
 
 #ifdef NRF52
@@ -67,7 +71,6 @@
 // We want to listen as much of the time as possible. Not sure if 100/100 is feasible (50/100 is what's used in examples),
 // but it seems to work fine like this.
 
-#define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 #define APP_TIMER_OP_QUEUE_SIZE         1                                           /**< Size of timer operation queues. */
 
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(7.5, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (7.5 ms), Connection interval uses 1.25 ms units. */
@@ -120,6 +123,11 @@ static volatile BLEStatus bleStatus;
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 #define BLE_WRITE_EVENT                 JS_EVENT_PREFIX"blew"
 
+
+/// Called when we have had an event that means we should execute JS
+extern void jshHadEvent();
+
+
 bool jswrap_nrf_transmit_string();
 
 /*JSON{
@@ -147,6 +155,59 @@ void jswrap_nrf_kill() {
   }
 #endif
 }
+
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "connect",
+  "#ifdef" : "NRF52"
+}
+Called when Espruino *connects to another device* - not when a a device
+connects to Espruino.
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "disconnect",
+  "#ifdef" : "NRF52"
+}
+Called when Espruino *disconnects from another device* - not when a a device
+disconnects from Espruino.
+ */
+
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "servicesDiscover",
+  "#ifdef" : "NRF52"
+}
+Called with discovered services when discovery is finished
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "characteristicsDiscover",
+  "#ifdef" : "NRF52"
+}
+Called with discovered characteristics when discovery is finished
+ */
+
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "NFCon",
+  "#ifdef" : "NRF52"
+}
+Called when an NFC field is detected
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "NFCoff",
+  "#ifdef" : "NRF52"
+}
+Called when an NFC field is no longer detected
+ */
 
 
 /**@brief Error handlers.
@@ -311,12 +372,9 @@ static void gap_params_init(void)
  * @param[in] length   Length of the data.
  */
 /**@snippet [Handling the data received over BLE] */
-static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
-{
-    uint32_t i;
-    for (i = 0; i < length; i++) {
-      jshPushIOCharEvent(EV_BLUETOOTH, (char) p_data[i]);
-    }
+static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length) {
+    jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_data, length);
+    jshHadEvent();
 }
 
 bool jswrap_nrf_transmit_string() {
@@ -387,12 +445,10 @@ static void services_init(void)
  *
  * @param[in] p_evt  Event received from the Connection Parameters Module.
  */
-static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
-{
+static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
     uint32_t err_code;
     
-    if(p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)
-    {
+    if(p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED) {
         err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
         APP_ERROR_CHECK(err_code);
     }
@@ -403,16 +459,14 @@ static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
  *
  * @param[in] nrf_error  Error code containing information about what went wrong.
  */
-static void conn_params_error_handler(uint32_t nrf_error)
-{
+static void conn_params_error_handler(uint32_t nrf_error) {
     APP_ERROR_HANDLER(nrf_error);
 }
 
 
 /**@brief Function for initializing the Connection Parameters module.
  */
-static void conn_params_init(void)
-{
+static void conn_params_init(void) {
     uint32_t               err_code;
     ble_conn_params_init_t cp_init;
     
@@ -577,11 +631,13 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
           if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(EV_BLUETOOTH, false);
+          jshHadEvent();
         }
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", 0);
+          jshHadEvent();
         }
 #endif
         break;
@@ -591,6 +647,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", 0);
+          jshHadEvent();
           break;
         }
 #endif
@@ -598,6 +655,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, 0);
         // restart advertising after disconnection
         jswrap_nrf_bluetooth_startAdvertise();
+        jshHadEvent();
         break;
 
       case BLE_GATTS_EVT_SYS_ATTR_MISSING:
@@ -630,6 +688,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           }
           jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
           jsvUnLock(evt);
+          jshHadEvent();
         }
         break;
         }
@@ -650,6 +709,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           ble_handle_to_write_event_name(eventName, p_evt_write->handle);
           jsiQueueObjectCallbacks(execInfo.root, eventName, &evt, 1);
           jsvUnLock(evt);
+          jshHadEvent();
         }
         break;
       }
@@ -686,6 +746,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             // When done, sent the result to the handler
             bleQueueEventAndUnLock(JS_EVENT_PREFIX"servicesDiscover", srvcs);
             jsvObjectSetChild(execInfo.hiddenRoot, "bleSvcs", 0);
+            jshHadEvent();
           }
         } // else error
         break;
@@ -706,6 +767,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           }
         }
         bleQueueEventAndUnLock(JS_EVENT_PREFIX"characteristicsDiscover", chars);
+        jshHadEvent();
         break;
       }
       case BLE_GATTC_EVT_DESC_DISC_RSP:
@@ -757,6 +819,33 @@ static void sys_evt_dispatch(uint32_t sys_evt)
     ble_advertising_on_sys_evt(sys_evt);
 }
 
+#ifdef USE_NFC
+/// Sigh - NFC has lots of these, so we need to define it to build
+void log_uart_printf(const char * format_msg, ...) {
+}
+
+/**
+ * @brief Callback function for handling NFC events.
+ */
+void nfc_callback(void *context, NfcEvent event, const char *data, size_t dataLength)
+{
+    (void)context;
+
+    switch (event)
+    {
+        case NFC_EVENT_FIELD_ON:
+          bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCon", 0);
+          break;
+        case NFC_EVENT_FIELD_OFF:
+          bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCoff", 0);
+          break;
+        default:
+          break;
+    }
+}
+#endif
+
+
 /**@brief Function for the SoftDevice initialization.
  *
  * @details This function initializes the SoftDevice and the BLE event interrupt.
@@ -765,9 +854,20 @@ static void ble_stack_init(void)
 {
     uint32_t err_code;
     
+    // TODO: enable if we're on a device with 32kHz xtal
+    /*nrf_clock_lf_cfg_t clock_lf_cfg = {
+        .source        = NRF_CLOCK_LF_SRC_XTAL,
+        .rc_ctiv       = 0,
+        .rc_temp_ctiv  = 0,
+        .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM};*/
+    nrf_clock_lf_cfg_t clock_lf_cfg = {
+            .source        = NRF_CLOCK_LF_SRC_RC,
+            .rc_ctiv       = 16, // recommended for nRF52
+            .rc_temp_ctiv  = 2,  // recommended for nRF52
+            .xtal_accuracy = 0};
+
     // Initialize SoftDevice.
-    // SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL); // Maybe we should use this if external crystal available.
-    SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_8000MS_CALIBRATION, false);
+    SOFTDEVICE_HANDLER_INIT(&clock_lf_cfg, false);
     
     ble_enable_params_t ble_enable_params;
     err_code = softdevice_enable_get_default_config(CENTRAL_LINK_COUNT,
@@ -987,7 +1087,7 @@ void jswrap_nrf_bluetooth_sleep(void) {
 Enable Bluetooth communications (they are enabled by default)
 */
 void jswrap_nrf_bluetooth_wake(void) {
-  NRF_RADIO->TASKS_DISABLE = (0UL);
+  // NRF_RADIO->TASKS_DISABLE = (0UL); // BUG: This was causing a hardfault.
   jswrap_nrf_bluetooth_startAdvertise();
 }
 
@@ -1523,6 +1623,92 @@ void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data) {
   jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif
 }
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "nfcURL",
+    "#ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_nfcURL",
+    "params" : [
+      ["url","JsVar","The URL string to expose on NFC, or `undefined` to disable NFC"]
+    ]
+}
+Enables NFC and starts advertising the given URL. For example:
+
+```
+NRF.nrfURL("http://espruino.com");
+```
+
+**Note:** This is only available on nRF52-based devices
+*/
+void jswrap_nrf_nfcURL(JsVar *url) {
+#ifdef USE_NFC
+  // Check for disabling NFC
+  if (jsvIsUndefined(url)) {
+    if (!nfcEnabled) return;
+    nfcEnabled = false;
+    jsvObjectSetChild(execInfo.hiddenRoot, "NFC", 0);
+    nfcStopEmulation();
+    nfcDone();
+    return;
+  }
+
+  if (!jsvIsString(url)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting a String, got %t", url);
+    return;
+  }
+
+  uint32_t ret_val;
+  uint32_t err_code;
+  /* Set up NFC */
+  if (nfcEnabled) {
+    nfcStopEmulation();
+  } else {
+    ret_val = nfcSetup(nfc_callback, NULL);
+    if (ret_val != NFC_RETVAL_OK)
+      return jsExceptionHere(JSET_ERROR, "nfcSetup: Got NFC error code %d", ret_val);
+    nfcEnabled = true;
+  }
+
+  JSV_GET_AS_CHAR_ARRAY(urlPtr, urlLen, url);
+  if (!urlPtr || !urlLen)
+    return jsExceptionHere(JSET_ERROR, "Unable to get URL data");
+
+
+  uint8_t msg_buf[256];
+  uint32_t len = sizeof(msg_buf);
+  /* Encode URI message into buffer */
+  err_code = nfc_uri_msg_encode( NFC_URI_NONE, // TODO: could auto-prepend http/etc.
+                                 (uint8_t *)urlPtr,
+                                 urlLen,
+                                 msg_buf,
+                                 &len);
+  if (err_code != NRF_SUCCESS)
+    return jsExceptionHere(JSET_ERROR, "nfc_uri_msg_encode: NFC error code %d", err_code);
+
+  /* Create a flat string - we need this to store the URI data so it hangs around.
+   * Avoid having a static var so we have RAM available if not using NFC */
+  JsVar *flatStr = jsvNewFlatStringOfLength(len);
+  if (!flatStr)
+    return jsExceptionHere(JSET_ERROR, "Unable to create string with URI data in");
+  jsvObjectSetChild(execInfo.hiddenRoot, "NFC", flatStr);
+  uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
+  jsvUnLock(flatStr);
+  memcpy(flatStrPtr, msg_buf, len);
+
+  /* Set created message as the NFC payload */
+  ret_val = nfcSetPayload( (char*)flatStrPtr, len);
+  if (ret_val != NFC_RETVAL_OK)
+    return jsExceptionHere(JSET_ERROR, "nfcSetPayload: NFC error code %d", ret_val);
+
+  /* Start sensing NFC field */
+  ret_val = nfcStartEmulation();
+  if (ret_val != NFC_RETVAL_OK)
+    return jsExceptionHere(JSET_ERROR, "nfcStartEmulation: NFC error code %d", ret_val);
+#endif
+}
+
 
 /* ---------------------------------------------------------------------
  *                                                               TESTING

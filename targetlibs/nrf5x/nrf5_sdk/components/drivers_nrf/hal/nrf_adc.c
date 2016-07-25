@@ -22,10 +22,10 @@
 /**
  * @brief Function for configuring ADC.
  *
- * This function power on ADC and configure it. ADC is in DISABLE state after configuration,
+ * This function powers on ADC and configures it. ADC is in DISABLE state after configuration,
  * so it should be enabled before using it.
  *
- * @param[in] config is requested configuration
+ * @param[in] config  Requested configuration.
  */
 void nrf_adc_configure(nrf_adc_config_t * config)
 {
@@ -51,14 +51,14 @@ void nrf_adc_configure(nrf_adc_config_t * config)
 /**
  * @brief Blocking function for executing single ADC conversion.
  *
- * This function selects desired input, starts single conversion,
- * waits for its finish  and returns result.
- * ADC is left in STOP state, given input is selected.
+ * This function selects the desired input, starts a single conversion,
+ * waits for it to finish, and returns the result.
+ * ADC is left in STOP state, the given input is selected.
  * This function does not check if ADC is initialized and powered.
  *
- * @param[in] input is requested input to be selected
+ * @param[in] input Requested input to be selected.
  *
- * @return conversion result
+ * @return Conversion result
  */
 int32_t nrf_adc_convert_single(nrf_adc_config_input_t input)
 {

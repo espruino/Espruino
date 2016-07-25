@@ -22,8 +22,8 @@
  * @note The application must propagate BLE stack events to the Alert Notification Client module
  *       by calling ble_ans_c_on_ble_evt() from the @ref softdevice_handler callback.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
  */
 #ifndef BLE_ANS_C_H__
@@ -32,15 +32,10 @@
 #include "ble.h"
 #include "ble_gatts.h"
 #include "ble_types.h"
+#include "sdk_common.h"
 #include "ble_srv_common.h"
-#include "device_manager.h"
+#include "ble_db_discovery.h"
 
-#define ANS_NB_OF_CHARACTERISTICS                   5                                     /**< Number of characteristics as defined by Alert Notification Service specification. */
-#define ANS_NB_OF_SERVICES                          1                                     /**< Number of services supported in one central. */
-#define INVALID_SERVICE_HANDLE_BASE                 0xF0                                  /**< Base for indicating invalid service handle. */
-#define INVALID_SERVICE_HANDLE                      (INVALID_SERVICE_HANDLE_BASE + 0x0F)  /**< Indication that the current service handle is invalid. */
-#define INVALID_SERVICE_HANDLE_DISC                 (INVALID_SERVICE_HANDLE_BASE + 0x0E)  /**< Indication that the current service handle is invalid but the service has been discovered. */
-#define BLE_ANS_INVALID_HANDLE                      0xFF                                  /**< Indication that the current service handle is invalid. */
 
 // Forward declaration of the ble_ans_c_t type.
 typedef struct ble_ans_c_s ble_ans_c_t;
@@ -48,17 +43,17 @@ typedef struct ble_ans_c_s ble_ans_c_t;
 /** Alerts types as defined in the alert category id; UUID: 0x2A43. */
 typedef enum
 {
-    ANS_TYPE_SIMPLE_ALERT                           = 0,                                  /**< General text alert or non-text alert.*/
-    ANS_TYPE_EMAIL                                  = 1,                                  /**< Alert when email messages arrives.*/
-    ANS_TYPE_NEWS                                   = 2,                                  /**< News feeds such as RSS, Atom.*/
-    ANS_TYPE_NOTIFICATION_CALL                      = 3,                                  /**< Incoming call.*/
-    ANS_TYPE_MISSED_CALL                            = 4,                                  /**< Missed call.*/
-    ANS_TYPE_SMS_MMS                                = 5,                                  /**< SMS/MMS message arrives.*/
-    ANS_TYPE_VOICE_MAIL                             = 6,                                  /**< Voice mail.*/
-    ANS_TYPE_SCHEDULE                               = 7,                                  /**< Alert occurred on calendar, planner.*/
-    ANS_TYPE_HIGH_PRIORITIZED_ALERT                 = 8,                                  /**< Alert that should be handled as high priority.*/
-    ANS_TYPE_INSTANT_MESSAGE                        = 9,                                  /**< Alert for incoming instant messages.*/
-    ANS_TYPE_ALL_ALERTS                             = 0xFF                                /**< Identifies All Alerts. */
+    ANS_TYPE_SIMPLE_ALERT           = 0,                   /**< General text alert or non-text alert.*/
+    ANS_TYPE_EMAIL                  = 1,                   /**< Alert when email messages arrives.*/
+    ANS_TYPE_NEWS                   = 2,                   /**< News feeds such as RSS, Atom.*/
+    ANS_TYPE_NOTIFICATION_CALL      = 3,                   /**< Incoming call.*/
+    ANS_TYPE_MISSED_CALL            = 4,                   /**< Missed call.*/
+    ANS_TYPE_SMS_MMS                = 5,                   /**< SMS/MMS message arrives.*/
+    ANS_TYPE_VOICE_MAIL             = 6,                   /**< Voice mail.*/
+    ANS_TYPE_SCHEDULE               = 7,                   /**< Alert occurred on calendar, planner.*/
+    ANS_TYPE_HIGH_PRIORITIZED_ALERT = 8,                   /**< Alert that should be handled as high priority.*/
+    ANS_TYPE_INSTANT_MESSAGE        = 9,                   /**< Alert for incoming instant messages.*/
+    ANS_TYPE_ALL_ALERTS             = 0xFF                 /**< Identifies All Alerts. */
 } ble_ans_category_id_t;
 
 /** Alerts notification control point commands as defined in the Alert Notification Specification;
@@ -66,31 +61,30 @@ typedef enum
  */
 typedef enum
 {
-    ANS_ENABLE_NEW_INCOMING_ALERT_NOTIFICATION      = 0,                                  /**< Enable New Incoming Alert Notification.*/
-    ANS_ENABLE_UNREAD_CATEGORY_STATUS_NOTIFICATION  = 1,                                  /**< Enable Unread Category Status Notification.*/
-    ANS_DISABLE_NEW_INCOMING_ALERT_NOTIFICATION     = 2,                                  /**< Disable New Incoming Alert Notification.*/
-    ANS_DISABLE_UNREAD_CATEGORY_STATUS_NOTIFICATION = 3,                                  /**< Disable Unread Category Status Notification.*/
-    ANS_NOTIFY_NEW_INCOMING_ALERT_IMMEDIATELY       = 4,                                  /**< Notify New Incoming Alert immediately.*/
-    ANS_NOTIFY_UNREAD_CATEGORY_STATUS_IMMEDIATELY   = 5,                                  /**< Notify Unread Category Status immediately.*/
+    ANS_ENABLE_NEW_INCOMING_ALERT_NOTIFICATION      = 0,      /**< Enable New Incoming Alert Notification.*/
+    ANS_ENABLE_UNREAD_CATEGORY_STATUS_NOTIFICATION  = 1,      /**< Enable Unread Category Status Notification.*/
+    ANS_DISABLE_NEW_INCOMING_ALERT_NOTIFICATION     = 2,      /**< Disable New Incoming Alert Notification.*/
+    ANS_DISABLE_UNREAD_CATEGORY_STATUS_NOTIFICATION = 3,      /**< Disable Unread Category Status Notification.*/
+    ANS_NOTIFY_NEW_INCOMING_ALERT_IMMEDIATELY       = 4,      /**< Notify New Incoming Alert immediately.*/
+    ANS_NOTIFY_UNREAD_CATEGORY_STATUS_IMMEDIATELY   = 5,      /**< Notify Unread Category Status immediately.*/
 } ble_ans_command_id_t;
 
 /**@brief Alert Notification Event types that are passed from client to application on an event. */
 typedef enum
 {
-    BLE_ANS_C_EVT_DISCOVER_COMPLETE,                                                      /**< A successful connection has been established and the characteristics of the server has been fetched. */
-    BLE_ANS_C_EVT_DISCOVER_FAILED,                                                        /**< It was not possible to discover service or characteristics of the connected peer. */
-    BLE_ANS_C_EVT_RECONNECT,                                                              /**< A re-connection to a known and previously discovered central has occurred. */
-    BLE_ANS_C_EVT_DISCONN_COMPLETE,                                                       /**< The connection has been taken down. */
-    BLE_ANS_C_EVT_NOTIFICATION,                                                           /**< A valid Alert Notification has been received from the server.*/
-    BLE_ANS_C_EVT_READ_RESP,                                                              /**< A read response has been received from the server.*/
-    BLE_ANS_C_EVT_WRITE_RESP                                                              /**< A write response has been received from the server.*/
+    BLE_ANS_C_EVT_DISCOVERY_COMPLETE,                         /**< A successful connection has been established and the characteristics of the server has been fetched. */
+    BLE_ANS_C_EVT_DISCOVERY_FAILED,                           /**< It was not possible to discover service or characteristics of the connected peer. */
+    BLE_ANS_C_EVT_DISCONN_COMPLETE,                           /**< The connection has been taken down. */
+    BLE_ANS_C_EVT_NOTIFICATION,                               /**< A valid Alert Notification has been received from the server.*/
+    BLE_ANS_C_EVT_READ_RESP,                                  /**< A read response has been received from the server.*/
+    BLE_ANS_C_EVT_WRITE_RESP                                  /**< A write response has been received from the server.*/
 } ble_ans_c_evt_type_t;
 
 /**@brief Alert Notification Control Point structure. */
 typedef struct
 {
-    ble_ans_command_id_t                command;                                          /**< The command to be written to the control point, see @ref ble_ans_command_id_t. */
-    ble_ans_category_id_t               category;                                         /**< The category for the control point for which the command applies, see @ref ble_ans_category_id_t. */
+    ble_ans_command_id_t  command;                            /**< The command to be written to the control point, see @ref ble_ans_command_id_t. */
+    ble_ans_category_id_t category;                           /**< The category for the control point for which the command applies, see @ref ble_ans_category_id_t. */
 } ble_ans_control_point_t;
 
 /**@brief Alert Notification Setting structure containing the supported alerts in the service.
@@ -102,28 +96,44 @@ typedef struct
   */
 typedef struct
 {
-    uint8_t                             ans_simple_alert_support           : 1;           /**< Support for General text alert or non-text alert.*/
-    uint8_t                             ans_email_support                  : 1;           /**< Support for Alert when email messages arrives.*/
-    uint8_t                             ans_news_support                   : 1;           /**< Support for News feeds such as RSS, Atom.*/
-    uint8_t                             ans_notification_call_support      : 1;           /**< Support for Incoming call.*/
-    uint8_t                             ans_missed_call_support            : 1;           /**< Support for Missed call.*/
-    uint8_t                             ans_sms_mms_support                : 1;           /**< Support for SMS/MMS message arrives.*/
-    uint8_t                             ans_voice_mail_support             : 1;           /**< Support for Voice mail.*/
-    uint8_t                             ans_schedule_support               : 1;           /**< Support for Alert occurred on calendar, planner.*/
-    uint8_t                             ans_high_prioritized_alert_support : 1;           /**< Support for Alert that should be handled as high priority.*/
-    uint8_t                             ans_instant_message_support        : 1;           /**< Support for Alert for incoming instant messages.*/
-    uint8_t                             reserved                           : 6;           /**< Reserved for future use. */
+    uint8_t ans_simple_alert_support           : 1;           /**< Support for General text alert or non-text alert.*/
+    uint8_t ans_email_support                  : 1;           /**< Support for Alert when email messages arrives.*/
+    uint8_t ans_news_support                   : 1;           /**< Support for News feeds such as RSS, Atom.*/
+    uint8_t ans_notification_call_support      : 1;           /**< Support for Incoming call.*/
+    uint8_t ans_missed_call_support            : 1;           /**< Support for Missed call.*/
+    uint8_t ans_sms_mms_support                : 1;           /**< Support for SMS/MMS message arrives.*/
+    uint8_t ans_voice_mail_support             : 1;           /**< Support for Voice mail.*/
+    uint8_t ans_schedule_support               : 1;           /**< Support for Alert occurred on calendar, planner.*/
+    uint8_t ans_high_prioritized_alert_support : 1;           /**< Support for Alert that should be handled as high priority.*/
+    uint8_t ans_instant_message_support        : 1;           /**< Support for Alert for incoming instant messages.*/
+    uint8_t reserved                           : 6;           /**< Reserved for future use. */
 } ble_ans_alert_settings_t;
 
 /**@brief Alert Notification structure
  */
 typedef struct
 {
-    uint8_t                             alert_category;                                   /**< Alert category to which this alert belongs.*/
-    uint8_t                             alert_category_count;                             /**< Number of alerts in the category. */
-    uint32_t                            alert_msg_length;                                 /**< Length of optional text message send by the server. */
-    uint8_t *                           p_alert_msg_buf;                                  /**< Pointer to buffer containing the optional text message. */
+    uint8_t   alert_category;                                 /**< Alert category to which this alert belongs.*/
+    uint8_t   alert_category_count;                           /**< Number of alerts in the category. */
+    uint32_t  alert_msg_length;                               /**< Length of optional text message send by the server. */
+    uint8_t * p_alert_msg_buf;                                /**< Pointer to buffer containing the optional text message. */
 } ble_ans_alert_notification_t;
+
+
+/**@brief Struct to hold information on the Alert Notification Service if found on the server.
+*/
+typedef struct
+{
+    ble_gattc_service_t service;                              /**< The GATT service holding the discovered Alert Notification Service. */
+    ble_gattc_char_t    alert_notif_ctrl_point;               /**< Characteristic for the Alert Notification Control Point. @ref BLE_UUID_ALERT_NOTIFICATION_CONTROL_POINT_CHAR */
+    ble_gattc_char_t    suported_new_alert_cat;               /**< Characteristic for the Supported New Alert category. @ref BLE_UUID_SUPPORTED_NEW_ALERT_CATEGORY_CHAR */
+    ble_gattc_char_t    suported_unread_alert_cat;            /**< Characteristic for the Unread Alert category. @ref BLE_UUID_SUPPORTED_UNREAD_ALERT_CATEGORY_CHAR */
+    ble_gattc_char_t    new_alert;                            /**< Characteristic for the New Alert Notification.  @ref BLE_UUID_NEW_ALERT_CHAR */
+    ble_gattc_desc_t    new_alert_cccd;                       /**< Characteristic Descriptor for New Alert Category. Enables or Disables GATT notifications */
+    ble_gattc_char_t    unread_alert_status;                  /**< Characteristic for the Unread Alert Notification. @ref BLE_UUID_UNREAD_ALERT_CHAR */
+    ble_gattc_desc_t    unread_alert_cccd;                    /**< Characteristic Descriptor for Unread Alert Category. Enables or Disables GATT notifications */
+} ble_ans_c_service_t;
+
 
 /**@brief Alert Notification Event structure
  *
@@ -132,40 +142,60 @@ typedef struct
  */
 typedef struct
 {
-    ble_ans_c_evt_type_t                evt_type;                                         /**< Type of event. */
-    ble_uuid_t                          uuid;                                             /**< UUID of the event in case of an alert or notification. */
+    ble_ans_c_evt_type_t                evt_type;             /**< Type of event. */
+    uint16_t                            conn_handle;          /**< Connection handle on which the ANS service was discovered on the peer device. This will be filled if the evt_type is @ref BLE_ANS_C_EVT_DISCOVERY_COMPLETE.*/
+    ble_uuid_t                          uuid;                 /**< UUID of the event in case of an alert or notification. */
     union
     {
-        ble_ans_alert_settings_t        settings;                                         /**< Setting returned from server on read request. */
-        ble_ans_alert_notification_t    alert;                                            /**< Alert Notification data sent by the server. */
-        uint32_t                        error_code;                                       /**< Additional status/error code if the event was caused by a stack error or gatt status, e.g. during service discovery. */
+        ble_ans_alert_settings_t        settings;             /**< Setting returned from server on read request. */
+        ble_ans_alert_notification_t    alert;                /**< Alert Notification data sent by the server. */
+        uint32_t                        error_code;           /**< Additional status/error code if the event was caused by a stack error or gatt status, e.g. during service discovery. */
+        ble_ans_c_service_t             service;              /**< Info on the discovered Alert Notification Service discovered. This will be filled if the evt_type is @ref BLE_ANS_C_EVT_DISCOVERY_COMPLETE.*/
     } data;
 } ble_ans_c_evt_t;
 
 /**@brief Alert Notification event handler type. */
 typedef void (*ble_ans_c_evt_handler_t) (ble_ans_c_evt_t * p_evt);
 
+
 /**@brief Alert Notification structure. This contains various status information for the client. */
 struct ble_ans_c_s
 {
-    ble_ans_c_evt_handler_t             evt_handler;                                      /**< Event handler to be called for handling events in the Alert Notification Client Application. */
-    ble_srv_error_handler_t             error_handler;                                    /**< Function to be called in case of an error. */
-    uint16_t                            conn_handle;                                      /**< Handle of the current connection (as provided by the BLE stack, is BLE_CONN_HANDLE_INVALID if not in a connection). */
-    uint8_t                             central_handle;                                   /**< Handle for the currently connected central if peer is bonded. */
-    uint8_t                             service_handle;                                   /**< Handle to the service in the database to use for this instance. */
-    uint32_t                            message_buffer_size;                              /**< Size of message buffer to hold the additional text messages received on notifications. */
-    uint8_t *                           p_message_buffer;                                 /**< Pointer to the buffer to be used for additional text message handling. */
+    ble_ans_c_evt_handler_t             evt_handler;          /**< Event handler to be called for handling events in the Alert Notification Client Application. */
+    ble_srv_error_handler_t             error_handler;        /**< Function to be called in case of an error. */
+    uint16_t                            conn_handle;          /**< Handle of the current connection (as provided by the BLE stack, is BLE_CONN_HANDLE_INVALID if not in a connection). */
+    uint8_t                             central_handle;       /**< Handle for the currently connected central if peer is bonded. */
+    uint8_t                             service_handle;       /**< Handle to the service in the database to use for this instance. */
+    uint32_t                            message_buffer_size;  /**< Size of message buffer to hold the additional text messages received on notifications. */
+    uint8_t *                           p_message_buffer;     /**< Pointer to the buffer to be used for additional text message handling. */
+    ble_ans_c_service_t                 service;              /**< Struct to store the different handles and UUIDs related to the service. */
 };
 
 /**@brief Alert Notification init structure. This contains all options and data needed for
  *        initialization of the client.*/
 typedef struct
 {
-    ble_ans_c_evt_handler_t             evt_handler;                                      /**< Event handler to be called for handling events in the Battery Service. */
-    ble_srv_error_handler_t             error_handler;                                    /**< Function to be called in case of an error. */
-    uint32_t                            message_buffer_size;                              /**< Size of buffer to handle messages. */
-    uint8_t *                           p_message_buffer;                                 /**< Pointer to buffer for passing messages. */
+    ble_ans_c_evt_handler_t             evt_handler;          /**< Event handler to be called for handling events in the Battery Service. */
+    ble_srv_error_handler_t             error_handler;        /**< Function to be called in case of an error. */
+    uint32_t                            message_buffer_size;  /**< Size of buffer to handle messages. */
+    uint8_t *                           p_message_buffer;     /**< Pointer to buffer for passing messages. */
 } ble_ans_c_init_t;
+
+
+/**@brief     Function for handling events from the database discovery module.
+ *
+ * @details   Call this function when getting a callback event from the DB discovery modue.
+ *            This function will handle an event from the database discovery module, and determine
+ *            if it relates to the discovery of heart rate service at the peer. If so, it will
+ *            call the application's event handler indicating that the heart rate service has been
+ *            discovered at the peer. It also populates the event with the service related
+ *            information before providing it to the application.
+ *
+ * @param[in] p_ans   Pointer to the Alert Notification client structure instance that will handle
+ *                    the discovery.
+ * @param[in] p_evt   Pointer to the event received from the database discovery module.
+ */
+void ble_ans_c_on_db_disc_evt(ble_ans_c_t * p_ans, const ble_db_discovery_evt_t * p_evt);
 
 
 /**@brief Function for handling the Application's BLE Stack events.
@@ -176,22 +206,6 @@ typedef struct
  * @param[in]   p_ble_evt  Event received from the BLE stack.
  */
 void ble_ans_c_on_ble_evt(ble_ans_c_t * p_ans, const ble_evt_t * p_ble_evt);
-
-
-/**@brief Function for handling the Alert Notification Client - Device Manager Event.
- *
- * @details Handles all events from the Bond Manager of interest to the Alert Notification Client.
- *          The Alert Notification Client will use the events of re-connection to existing central
- *          and creation of new bonds for handling of service discovery and writing of the Alert
- *          Notification Control Point for re-send of New Alert and Unread Alert notifications.
- *
- * @param[in]   p_ans            Alert Notification Client structure.
- * @param[in]   p_handle         Handle.
- * @param[in]   p_dm_evt  Event received from the Bond Manager.
- */
-void ble_ans_c_on_device_manager_evt(ble_ans_c_t       * p_ans,
-                                     dm_handle_t const * p_handle,
-                                     dm_event_t const  * p_dm_evt);
 
 
 /**@brief Function for initializing the Alert Notification Client.
@@ -258,7 +272,7 @@ uint32_t ble_ans_c_disable_notif_unread_alert(const ble_ans_c_t * p_ans);
  *
  * @return     NRF_SUCCESS     on successful writing of the Control Point, otherwise an error code.
  */
-uint32_t ble_ans_c_control_point_write(const ble_ans_c_t * p_ans,
+uint32_t ble_ans_c_control_point_write(const ble_ans_c_t             * p_ans,
                                        const ble_ans_control_point_t * p_control_point);
 
 
@@ -306,45 +320,27 @@ uint32_t ble_ans_c_new_alert_notify(const ble_ans_c_t * p_ans, ble_ans_category_
 uint32_t ble_ans_c_unread_alert_notify(const ble_ans_c_t * p_ans, ble_ans_category_id_t category);
 
 
-/**@brief  Function for loading previous discovered service and characteristic handles for bonded centrals from
- *          flash into RAM.
+/**@brief     Function for assigning a handles to a an instance of ans_c.
  *
- * @details Read the database of all discovered service and characteristic handles from flash.
- *          If the flash does not contain any valid data, the array of discovered service handles in
- *          RAM will be empty.
+ * @details   Call this function when a link has been established with a peer to
+ *            associate this link to an instance of the module. This makes it
+ *            possible to handle several link and associate each link to a particular
+ *            instance of the ans_c module. The connection handle and attribute handles will be
+ *            provided from the discovery event @ref BLE_ANS_C_EVT_DISCOVERY_COMPLETE.
  *
- * @param[in] p_ans  Alert Notification structure. This structure will have to be supplied by the
- *                   application. It identifies the particular client instance to use.
+ * @param[in] p_ans              Pointer to the Alert Notification client structure instance to
+ *                               associate with the handles.
+ * @param[in] conn_handle        Connection handle to associated with the given Alert Notification Client
+ *                               Instance.
+ * @param[in] p_peer_handles     Attribute handles on the ANS server that you want this ANS client to
+ *                               interact with.
  *
- * @note    Currently the Alert Notification Client uses only one page in flash.
- *
- * @return  NRF_SUCCESS if all operations went successfully, an error_code otherwise.
  */
-uint32_t ble_ans_c_service_load(const ble_ans_c_t * p_ans);
+uint32_t ble_ans_c_handles_assign(ble_ans_c_t               * p_ans,
+                                  const uint16_t              conn_handle,
+                                  const ble_ans_c_service_t * p_peer_handles);
+                                  
 
-
-/**@brief Function for storing discovered service and characteristic handles for bonded centrals into flash memory.
- *
- * @details This function will erase the flash page (if the data to store
- *          are diferent than the one already stored) and then write into flash. Those
- *          operations could prevent the radio to run.
- *
- * @note    Do not call this function while in a connection or when advertising. If you do, the
- *          behavior is undefined.
- *
- * @return  NRF_SUCCESS if all operations went successfully, an error_code otherwise.
- */
-uint32_t ble_ans_c_service_store(void);
-
-
-/**@brief Function for deleting the Alert Notification Client database from flash.
- *
- * @details After calling this function you should call ble_ans_c_init(...) to re-initialize
- *          the RAM database.
- *
- * @return  NRF_SUCCESS if all operations went successfully.
- */
-uint32_t ble_ans_c_service_delete(void);
 
 #endif // BLE_ANS_C_H__
 

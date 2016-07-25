@@ -48,6 +48,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @addtogroup BLE_TYPES_DEFINES Defines
  * @{ */
 
@@ -189,6 +193,9 @@ typedef struct
 } ble_uuid_t;
 
 /** @} */
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BLE_TYPES_H__ */
 

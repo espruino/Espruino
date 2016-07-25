@@ -225,6 +225,10 @@ uint32_t nrf_drv_gpiote_out_task_addr_get(nrf_drv_gpiote_pin_t pin);
  * If high-accuracy mode is used, the driver attempts to allocate one 
  * of the available GPIOTE channels. If no channel is 
  * available, an error is returned.
+ * In low accuracy mode SENSE feature is used. In this case only one active pin
+ * can be detected at a time. It can be worked around by setting all of the used
+ * low accuracy pins to toggle mode.
+ * For more information about SENSE functionality, refer to Product Specification.
  *
  * @param[in] pin       Pin. 
  * @param[in] p_config    Initial configuration. 

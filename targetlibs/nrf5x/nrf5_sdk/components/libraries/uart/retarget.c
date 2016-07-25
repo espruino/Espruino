@@ -11,6 +11,7 @@
  */
 
 #if !defined(NRF_LOG_USES_RTT) || NRF_LOG_USES_RTT != 1
+#if !defined(HAS_SIMPLE_UART_RETARGET)
 
 #include <stdio.h>
 #include <stdint.h>
@@ -96,5 +97,5 @@ __ATTRIBUTES size_t __write(int file, const unsigned char * p_char, size_t len)
 }
 
 #endif
-
+#endif // !defined(HAS_SIMPLE_UART_RETARGET)
 #endif // NRF_LOG_USES_RTT != 1

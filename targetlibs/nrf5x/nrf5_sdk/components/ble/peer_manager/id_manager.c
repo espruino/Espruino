@@ -1,6 +1,7 @@
-/* Copyright (C) 2015 Nordic Semiconductor. All Rights Reserved.
+/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
  *
  * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
  * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
  *
  * Licensees are granted free, non-transferable use of the information. NO
@@ -8,6 +9,7 @@
  * the file.
  *
  */
+
 
 #include "id_manager.h"
 
@@ -40,10 +42,10 @@ typedef struct
     im_evt_handler_t              evt_handlers[MAX_REGISTRANTS];
     uint8_t                       n_registrants;
     im_connection_t               connections[8];
-    pm_peer_id_t                  whitelist_peer_ids[BLE_GAP_WHITELIST_IRK_MAX_COUNT];
+    pm_peer_id_t                  irk_whitelist_peer_ids[BLE_GAP_WHITELIST_IRK_MAX_COUNT];
     ble_gap_irk_t                 whitelist_irks[BLE_GAP_WHITELIST_IRK_MAX_COUNT];
     ble_gap_addr_t                whitelist_addrs[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];
-    uint8_t                       n_whitelist_peer_ids;
+    uint8_t                       n_irk_whitelist_peer_ids;
     ble_conn_state_user_flag_id_t conn_state_user_flag_id;
 } im_t;
 
@@ -56,7 +58,7 @@ static void internal_state_reset()
 {
     memset(&m_im, 0, sizeof(im_t));
     m_im.n_registrants = 0;
-    m_im.n_whitelist_peer_ids = 0;
+    m_im.n_irk_whitelist_peer_ids = 0;
     m_im.conn_state_user_flag_id = BLE_CONN_STATE_USER_FLAG_INVALID;
     for (uint32_t i = 0; i < IM_MAX_CONN_HANDLES; i++)
     {
@@ -221,7 +223,7 @@ void im_ble_evt_handler(ble_evt_t * ble_evt)
             {
                 // The peer was matched using a whitelist.
                 bonded_matching_peer_id
-                        = m_im.whitelist_peer_ids[ble_evt->evt.gap_evt.params.connected.irk_match_idx];
+                        = m_im.irk_whitelist_peer_ids[ble_evt->evt.gap_evt.params.connected.irk_match_idx];
             }
             else if (   ble_evt->evt.gap_evt.params.connected.peer_addr.addr_type
                      != BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE)
@@ -247,7 +249,7 @@ void im_ble_evt_handler(ble_evt_t * ble_evt)
                                                         NULL);
                             if ((err_code == NRF_SUCCESS) &&
                                 addr_compare(&ble_evt->evt.gap_evt.params.connected.peer_addr,
-                                             &compared_data.data.p_bonding_data->peer_id.id_addr_info)
+                                             &compared_data.p_bonding_data->peer_id.id_addr_info)
                             )
                             {
                                 bonded_matching_peer_id = compared_peer_id;
@@ -261,7 +263,7 @@ void im_ble_evt_handler(ble_evt_t * ble_evt)
                                                         NULL);
                             if (err_code == NRF_SUCCESS &&
                                 im_address_resolve(&ble_evt->evt.gap_evt.params.connected.peer_addr,
-                                                   &compared_data.data.p_bonding_data->peer_id.id_info)
+                                                   &compared_data.p_bonding_data->peer_id.id_info)
                             )
                             {
                                 bonded_matching_peer_id = compared_peer_id;
@@ -278,7 +280,8 @@ void im_ble_evt_handler(ble_evt_t * ble_evt)
                     compared_peer_id = pdb_next_peer_id_get(compared_peer_id);
                 }
             }
-            new_connection(ble_evt->evt.gap_evt.conn_handle, &ble_evt->evt.gap_evt.params.connected.peer_addr);
+            uint8_t new_index = new_connection(ble_evt->evt.gap_evt.conn_handle, &ble_evt->evt.gap_evt.params.connected.peer_addr);
+            UNUSED_VARIABLE(new_index);
 
             if (bonded_matching_peer_id != PM_PEER_ID_INVALID)
             {
@@ -346,8 +349,8 @@ static void pdb_evt_handler(pdb_evt_t const * p_event)
                                                 NULL);
                     if ( err_code == NRF_SUCCESS &&
                         p_event->peer_id != compared_peer_id &&
-                        is_duplicate_bonding_data(written_data.data.p_bonding_data,
-                                                  compared_data.data.p_bonding_data)
+                        is_duplicate_bonding_data(written_data.p_bonding_data,
+                                                  compared_data.p_bonding_data)
                     )
                     {
                         im_evt_t im_evt;
@@ -427,16 +430,8 @@ ret_code_t im_ble_addr_get(uint16_t conn_handle, ble_gap_addr_t * p_ble_addr)
 }
 
 
-/**@brief Function for comparing two master ids
- * @note  Two invalid master IDs will not match.
- *
- * @param[in]  p_master_id1 First master id for comparison
- * @param[in]  p_master_id2 Second master id for comparison
- *
- * @return     True if the input matches, false if it does not.
- */
-bool master_id_compare(ble_gap_master_id_t const * p_master_id1,
-                       ble_gap_master_id_t const * p_master_id2)
+bool im_master_ids_compare(ble_gap_master_id_t const * p_master_id1,
+                           ble_gap_master_id_t const * p_master_id2)
 {
     if(!im_master_id_is_valid(p_master_id1))
     {
@@ -463,12 +458,14 @@ pm_peer_id_t im_peer_id_get_by_master_id(ble_gap_master_id_t * p_master_id)
         err_code = pdb_read_buf_get(compared_peer_id, PM_PEER_DATA_ID_BONDING, &compared_data, NULL);
         if (err_code == NRF_SUCCESS)
         {
-            p_compared_master_id = &compared_data.data.p_bonding_data->own_ltk.master_id;
-            if (compared_data.data.p_bonding_data->own_role == BLE_GAP_ROLE_CENTRAL)
+            p_compared_master_id = &compared_data.p_bonding_data->own_ltk.master_id;
+            if (im_master_ids_compare(p_master_id, p_compared_master_id))
             {
-                p_compared_master_id = &compared_data.data.p_bonding_data->peer_ltk.master_id;
+                // If a matching master_id is found return the peer_id
+                return compared_peer_id;
             }
-            if (master_id_compare(p_master_id, p_compared_master_id))
+            p_compared_master_id = &compared_data.p_bonding_data->peer_ltk.master_id;
+            if (im_master_ids_compare(p_master_id, p_compared_master_id))
             {
                 // If a matching master_id is found return the peer_id
                 return compared_peer_id;
@@ -484,10 +481,10 @@ pm_peer_id_t im_peer_id_get_by_master_id(ble_gap_master_id_t * p_master_id)
 pm_peer_id_t im_peer_id_get_by_irk_match_idx(uint8_t irk_match_idx)
 {
     // Verify that the requested idx is within the list
-    if (irk_match_idx < m_im.n_whitelist_peer_ids)
+    if (irk_match_idx < m_im.n_irk_whitelist_peer_ids)
     {
         // Return the peer_id from the white list
-        return m_im.whitelist_peer_ids[irk_match_idx];
+        return m_im.irk_whitelist_peer_ids[irk_match_idx];
     }
     else
     {
@@ -512,7 +509,6 @@ uint16_t im_conn_handle_get(pm_peer_id_t peer_id)
 
 bool im_master_id_is_valid(ble_gap_master_id_t const * p_master_id)
 {
-
     if (p_master_id->ediv != 0)
     {
         return true;
@@ -528,7 +524,12 @@ bool im_master_id_is_valid(ble_gap_master_id_t const * p_master_id)
 }
 
 
-void im_new_peer_id(uint16_t conn_handle, pm_peer_id_t peer_id)
+/**@brief Function to set the peer ID associated with a connection handle.
+ *
+ * @param[in]  conn_handle  The connection handle.
+ * @param[in]  peer_id      The peer ID to associate with @c conn_handle.
+ */
+static void peer_id_set(uint16_t conn_handle, pm_peer_id_t peer_id)
 {
     uint8_t conn_index = get_connection_by_conn_handle(conn_handle);
     if (conn_index != IM_NO_INVALID_CONN_HANDLES)
@@ -538,30 +539,40 @@ void im_new_peer_id(uint16_t conn_handle, pm_peer_id_t peer_id)
 }
 
 
-ret_code_t im_wlist_create(pm_peer_id_t *        p_peer_ids,
-                           uint8_t               n_peer_ids,
-                           ble_gap_whitelist_t * p_whitelist)
+void im_new_peer_id(uint16_t conn_handle, pm_peer_id_t peer_id)
+{
+    peer_id_set(conn_handle, peer_id);
+}
+
+
+ret_code_t im_peer_free(pm_peer_id_t peer_id)
+{
+    VERIFY_MODULE_INITIALIZED();
+
+    uint16_t   conn_handle = im_conn_handle_get(peer_id);
+    ret_code_t err_code    = pdb_peer_free(peer_id);
+    if ((conn_handle != BLE_CONN_HANDLE_INVALID) && (err_code == NRF_SUCCESS))
+    {
+        peer_id_set(conn_handle, PM_PEER_ID_INVALID);
+    }
+    return err_code;
+}
+
+
+ret_code_t im_whitelist_create(pm_peer_id_t *        p_peer_ids,
+                               uint8_t               n_peer_ids,
+                               ble_gap_whitelist_t * p_whitelist)
 {
     VERIFY_MODULE_INITIALIZED();
     VERIFY_PARAM_NOT_NULL(p_whitelist);
     ret_code_t err_code;
     p_whitelist->addr_count = 0;
     p_whitelist->irk_count = 0;
-    m_im.n_whitelist_peer_ids = 0;
+    m_im.n_irk_whitelist_peer_ids = 0;
     for (uint32_t peer_index = 0; peer_index < n_peer_ids; peer_index++)
     {
-        bool peer_connected = false;
-        for (uint32_t conn_index = 0; conn_index < IM_MAX_CONN_HANDLES; conn_index++)
-        {
-            if (p_peer_ids[peer_index] == m_im.connections[conn_index].peer_id &&
-                ble_conn_state_user_flag_get(m_im.connections[conn_index].conn_handle, m_im.conn_state_user_flag_id)
-            )
-            {
-                peer_connected = true;
-                break;
-            }
-        }
-        if (!peer_connected)
+        uint16_t conn_handle = im_conn_handle_get(p_peer_ids[peer_index]);
+        if (ble_conn_state_status(conn_handle) != BLE_CONN_STATUS_CONNECTED)
         {
             pm_peer_data_flash_t peer_data;
             err_code = pdb_read_buf_get(p_peer_ids[peer_index], PM_PEER_DATA_ID_BONDING, &peer_data, NULL);
@@ -570,33 +581,33 @@ ret_code_t im_wlist_create(pm_peer_id_t *        p_peer_ids,
                 return NRF_ERROR_INVALID_PARAM;
             }
             if (p_whitelist->pp_addrs != NULL &&
-                peer_data.data.p_bonding_data->peer_id.id_addr_info.addr_type
+                peer_data.p_bonding_data->peer_id.id_addr_info.addr_type
                         != BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE &&
-                peer_data.data.p_bonding_data->peer_id.id_addr_info.addr_type
+                peer_data.p_bonding_data->peer_id.id_addr_info.addr_type
                         != BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE
             )
             {
                 memcpy(m_im.whitelist_addrs[peer_index].addr,
-                    peer_data.data.p_bonding_data->peer_id.id_addr_info.addr,
+                    peer_data.p_bonding_data->peer_id.id_addr_info.addr,
                     BLE_GAP_ADDR_LEN
                 );
                 m_im.whitelist_addrs[peer_index].addr_type =
-                    peer_data.data.p_bonding_data->peer_id.id_addr_info.addr_type;
+                    peer_data.p_bonding_data->peer_id.id_addr_info.addr_type;
                 p_whitelist->pp_addrs[peer_index] = &m_im.whitelist_addrs[peer_index];
                 p_whitelist->addr_count++;
             }
             if (p_whitelist->pp_irks != NULL &&
-                is_valid_irk(&(peer_data.data.p_bonding_data->peer_id.id_info))
+                is_valid_irk(&(peer_data.p_bonding_data->peer_id.id_info))
             )
             {
                 memcpy(m_im.whitelist_irks[peer_index].irk,
-                    peer_data.data.p_bonding_data->peer_id.id_info.irk,
+                    peer_data.p_bonding_data->peer_id.id_info.irk,
                     BLE_GAP_SEC_KEY_LEN
                 );
                 p_whitelist->pp_irks[peer_index] = &m_im.whitelist_irks[peer_index];
                 p_whitelist->irk_count++;
-                m_im.whitelist_peer_ids[peer_index] = p_peer_ids[peer_index];
-                m_im.n_whitelist_peer_ids++;
+                m_im.irk_whitelist_peer_ids[peer_index] = p_peer_ids[peer_index];
+                m_im.n_irk_whitelist_peer_ids++;
             }
         }
     }
@@ -604,47 +615,52 @@ ret_code_t im_wlist_create(pm_peer_id_t *        p_peer_ids,
 }
 
 
-ret_code_t im_wlist_set(ble_gap_whitelist_t * p_whitelist)
+ret_code_t im_whitelist_custom(ble_gap_whitelist_t const * p_whitelist)
 {
-    pm_peer_id_t new_whitelist_peer_ids[BLE_GAP_WHITELIST_IRK_MAX_COUNT];
-    uint32_t n_new_whitelist_peer_ids = 0;
+    ret_code_t err_code;
+
+    pm_peer_id_t new_irk_whitelist_peer_ids[BLE_GAP_WHITELIST_IRK_MAX_COUNT];
+    uint32_t n_new_irk_whitelist_peer_ids = 0;
     VERIFY_PARAM_NOT_NULL(p_whitelist);
     for (uint32_t i = 0; i < BLE_GAP_WHITELIST_IRK_MAX_COUNT; i++)
     {
-        new_whitelist_peer_ids[i] = PM_PEER_ID_INVALID;
+        new_irk_whitelist_peer_ids[i] = PM_PEER_ID_INVALID;
     }
     pm_peer_id_t compared_peer_id = pdb_next_peer_id_get(PM_PEER_ID_INVALID);
     while (compared_peer_id != PM_PEER_ID_INVALID)
     {
         pm_peer_data_flash_t compared_data;
-        pdb_read_buf_get(compared_peer_id, PM_PEER_DATA_ID_BONDING, &compared_data, NULL);
-        for (uint32_t i = 0; i < p_whitelist->irk_count; i++)
+        err_code = pdb_read_buf_get(compared_peer_id, PM_PEER_DATA_ID_BONDING, &compared_data, NULL);
+        if (err_code == NRF_SUCCESS)
         {
-            bool valid_irk = is_valid_irk(&compared_data.data.p_bonding_data->peer_id.id_info);
-            bool duplicate_irk = valid_irk &&
-                (memcmp(p_whitelist->pp_irks[i]->irk,
-                compared_data.data.p_bonding_data->peer_id.id_info.irk,
-                BLE_GAP_SEC_KEY_LEN) == 0
-            );
-            if (duplicate_irk)
+            for (uint32_t i = 0; i < p_whitelist->irk_count; i++)
             {
-                new_whitelist_peer_ids[i] = compared_peer_id;
-                n_new_whitelist_peer_ids++;
+                bool valid_irk = is_valid_irk(&compared_data.p_bonding_data->peer_id.id_info);
+                bool duplicate_irk = valid_irk &&
+                    (memcmp(p_whitelist->pp_irks[i]->irk,
+                    compared_data.p_bonding_data->peer_id.id_info.irk,
+                    BLE_GAP_SEC_KEY_LEN) == 0
+                );
+                if (duplicate_irk)
+                {
+                    new_irk_whitelist_peer_ids[i] = compared_peer_id;
+                    n_new_irk_whitelist_peer_ids++;
+                }
             }
         }
         compared_peer_id = pdb_next_peer_id_get(compared_peer_id);
     }
-    if (n_new_whitelist_peer_ids != p_whitelist->irk_count)
+    if (n_new_irk_whitelist_peer_ids != p_whitelist->irk_count)
     {
         return NRF_ERROR_NOT_FOUND;
     }
     else
     {
-        for (uint32_t i = 0; i < n_new_whitelist_peer_ids; i++)
+        for (uint32_t i = 0; i < n_new_irk_whitelist_peer_ids; i++)
         {
-            m_im.whitelist_peer_ids[i] = new_whitelist_peer_ids[i];
+            m_im.irk_whitelist_peer_ids[i] = new_irk_whitelist_peer_ids[i];
         }
-        m_im.n_whitelist_peer_ids = n_new_whitelist_peer_ids;
+        m_im.n_irk_whitelist_peer_ids = n_new_irk_whitelist_peer_ids;
         return NRF_SUCCESS;
     }
 }
@@ -675,6 +691,7 @@ ret_code_t im_wlist_set(ble_gap_whitelist_t * p_whitelist)
  */
 void ah(uint8_t const * p_k, uint8_t const * p_r, uint8_t * p_local_hash)
 {
+    ret_code_t err_code;
     nrf_ecb_hal_data_t ecb_hal_data;
     for (uint32_t i = 0; i < SOC_ECB_KEY_LENGTH; i++)
     {
@@ -687,7 +704,8 @@ void ah(uint8_t const * p_k, uint8_t const * p_r, uint8_t * p_local_hash)
         ecb_hal_data.cleartext[SOC_ECB_KEY_LENGTH - 1 - i] = p_r[i];
     }
 
-    sd_ecb_block_encrypt(&ecb_hal_data);
+    err_code = sd_ecb_block_encrypt(&ecb_hal_data); // Can only return NRF_SUCCESS.
+    UNUSED_VARIABLE(err_code);
 
     for (uint32_t i = 0; i < IM_ADDR_CIPHERTEXT_LENGTH; i++)
     {

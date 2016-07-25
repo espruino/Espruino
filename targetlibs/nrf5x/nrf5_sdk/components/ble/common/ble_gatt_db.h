@@ -1,4 +1,21 @@
-
+/* Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
+ *
+ * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
+ * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+ *
+ * Licensees are granted free, non-transferable use of the information. NO
+ * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
+ * the file.
+ */
+ 
+ /**@file
+ *
+ * @defgroup ble_sdk_lib_gatt_db GATT Database Service Structure
+ * @{
+ * @ingroup  app_common
+ */
+ 
 #ifndef BLE_GATT_DB_H__
 #define BLE_GATT_DB_H__
 
@@ -6,7 +23,7 @@
 #include "ble.h"
 #include "ble_gattc.h"
 
-#define BLE_GATT_DB_MAX_CHARS                                 4          /**< The maximum number of characteristics present in a service record. */
+#define BLE_GATT_DB_MAX_CHARS 5       /**< The maximum number of characteristics present in a service record. */
 
 /**@brief Structure for holding the characteristic and the handle of its CCCD present on a server.
  */
@@ -28,3 +45,5 @@ typedef struct
 } ble_gatt_db_srv_t;
 
 #endif /* BLE_GATT_DB_H__ */
+
+/** @} */

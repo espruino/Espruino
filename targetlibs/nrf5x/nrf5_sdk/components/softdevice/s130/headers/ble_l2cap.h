@@ -48,6 +48,10 @@
 #include "ble_err.h"
 #include "nrf_svc.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@addtogroup BLE_L2CAP_ENUMERATIONS Enumerations
  * @{ */
 
@@ -104,7 +108,8 @@ typedef struct
 typedef struct
 {
   ble_l2cap_header_t header;                      /**< L2CAP packet header. */
-  uint8_t    data[];                              /**< Packet data, variable length. */
+  uint8_t    data[1];                             /**< Packet data. @note This is a variable length array. The size of 1 indicated is only a placeholder for compilation.
+                                                       See @ref sd_ble_evt_get for more information on how to use event structures with variable length array members. */
 } ble_l2cap_evt_rx_t;
 
 
@@ -187,6 +192,9 @@ SVCALL(SD_BLE_L2CAP_TX, uint32_t, sd_ble_l2cap_tx(uint16_t conn_handle, ble_l2ca
 
 /** @} */
 
+#ifdef __cplusplus
+}
+#endif
 #endif // BLE_L2CAP_H__
 
 /**

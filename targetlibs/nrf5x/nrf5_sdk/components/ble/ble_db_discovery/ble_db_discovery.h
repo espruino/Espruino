@@ -21,12 +21,10 @@
  *           and types can be used by the application to perform discovery of a service and its
  *           characteristics at the peer server. This module can also be used to discover the 
  *           desired services in multiple remote devices.
- *           A typical use of this library is described in the figure below.
- *           @image html db_discovery.jpg
  *
  * @warning  The maximum number of characteristics per service that can be discovered by this module
  *           is determined by the number of characteristics in the service structure defined in
- *           ble_gatt_db.h. If the peer has more than the supported number of characteristics, then
+ *           db_disc_config.h. If the peer has more than the supported number of characteristics, then
  *           the first found will be discovered and any further characteristics will be ignored. No
  *           descriptors other than Client Characteristic Configuration Descriptors will be searched
  *           for at the peer.
@@ -50,19 +48,9 @@
 #include "ble_srv_common.h"
 #include "ble_gatt_db.h"
 
-/**
- * @defgroup db_disc_defines Defines
- * @{
- */
 
-#define BLE_DB_DISCOVERY_MAX_SRV          2  /**< Maximum number of services supported by this module. This also indicates the maximum number of users allowed to be registered to this module. (one user per service). */
+#define BLE_DB_DISCOVERY_MAX_SRV          6  /**< Maximum number of services supported by this module. This also indicates the maximum number of users allowed to be registered to this module. (one user per service). */
 
-/** @} */
-
-/**
- * @defgroup db_disc_enums Enumerations
- * @{
- */
 
 /**@brief   Type of the DB Discovery event.
  */
@@ -70,15 +58,10 @@ typedef enum
 {
     BLE_DB_DISCOVERY_COMPLETE,      /**< Event indicating that the GATT Database discovery is complete. */
     BLE_DB_DISCOVERY_ERROR,         /**< Event indicating that an internal error has occurred in the DB Discovery module. This could typically be because of the SoftDevice API returning an error code during the DB discover.*/
-    BLE_DB_DISCOVERY_SRV_NOT_FOUND  /**< Event indicating that the service was not found at the peer.*/
+    BLE_DB_DISCOVERY_SRV_NOT_FOUND, /**< Event indicating that the service was not found at the peer.*/
+    BLE_DB_DISCOVERY_AVAILABLE      /**< Event indicating that the DB discovery module is available.*/
 } ble_db_discovery_evt_type_t;
 
-/** @} */
-
-/**
- * @defgroup db_disc_structs Structures
- * @{
- */
 
 
 /**@brief   Structure for holding the information related to the GATT database at the server.
@@ -91,12 +74,12 @@ typedef enum
 typedef struct
 {
     ble_gatt_db_srv_t   services[BLE_DB_DISCOVERY_MAX_SRV];  /**< Information related to the current service being discovered. This is intended for internal use during service discovery.*/
-    uint16_t            conn_handle;                         /**< Connection handle as provided by the SoftDevice. */
     uint8_t             srv_count;                           /**< Number of services at the peers GATT database.*/
     uint8_t             curr_char_ind;                       /**< Index of the current characteristic being discovered. This is intended for internal use during service discovery.*/
     uint8_t             curr_srv_ind;                        /**< Index of the current service being discovered. This is intended for internal use during service discovery.*/
     bool                discovery_in_progress;               /**< Variable to indicate if there is a service discovery in progress. */
     uint8_t             discoveries_count;                   /**< Number of service discoveries made, both successful and unsuccessful. */
+    uint16_t            conn_handle;                         /**< Connection handle on which the discovery is started*/
 } ble_db_discovery_t;
 
 
@@ -113,35 +96,20 @@ typedef struct
     } params;
 } ble_db_discovery_evt_t;
 
-/** @} */
-
-/**
- * @defgroup db_disc_types Types
- * @{
- */
 
 /**@brief   DB Discovery event handler type. */
 typedef void (* ble_db_discovery_evt_handler_t)(ble_db_discovery_evt_t * p_evt);
 
-/** @} */
-
-/**
- * @addtogroup db_disc_structs
- * @{
- */
-
-/** @} */
-
-/**
- * @defgroup db_disc_functions Functions
- * @{
- */
 
 /**@brief     Function for initializing the DB Discovery module.
  *
- * @retval    NRF_SUCCESS on successful initialization.
+ * @param[in] evt_handler        Event handler to be called by the DB discovery module when any event 
+ *                               related to discovery of the registered service occurs.
+ *
+ * @retval  NRF_SUCCESS    On successful initialization.
+ * @retval  NRF_ERROR_NULL If the handler was NULL.
  */
-uint32_t ble_db_discovery_init(void);
+uint32_t ble_db_discovery_init(ble_db_discovery_evt_handler_t evt_handler);
 
 
 /**@brief Function for closing the DB Discovery module.
@@ -150,7 +118,7 @@ uint32_t ble_db_discovery_init(void);
  *          module. To re-use the module after calling this function, the function @ref
  *          ble_db_discovery_init must be called again.
  *
- * @retval  NRF_SUCCESS                 Operation success.
+ * @retval  NRF_SUCCESS    Operation success.
  */
 uint32_t ble_db_discovery_close(void);
 
@@ -161,8 +129,6 @@ uint32_t ble_db_discovery_close(void);
  *            discovering at the server.
  *
  * @param[in] p_uuid             Pointer to the UUID of the service to be discovered at the server.
- * @param[in] evt_handler        Event handler to be called by the DB discovery module when any event 
- *                               related to discovery of the registered service occurs.
  *
  * @note      The total number of services that can be discovered by this module is @ref 
  *            BLE_DB_DISCOVERY_MAX_SRV. This effectively means that the maximum number of 
@@ -172,11 +138,10 @@ uint32_t ble_db_discovery_close(void);
  * @retval    NRF_ERROR_NULL            When a NULL pointer is passed as input.
  * @retval    NRF_ERROR_INVALID_STATE   If this function is called without calling the 
  *                                      @ref ble_db_discovery_init.
- * @retval    NRF_ERROR_NOT_SUPPORTED   The maximum number of registrations allowed by this module 
+ * @retval    NRF_ERROR_NO_MEM          The maximum number of registrations allowed by this module
  *                                      has been reached.
  */
-uint32_t ble_db_discovery_evt_register(const ble_uuid_t * const             p_uuid,
-                                       const ble_db_discovery_evt_handler_t evt_handler);
+uint32_t ble_db_discovery_evt_register(const ble_uuid_t * const             p_uuid);
 
                                        
 /**@brief Function for starting the discovery of the GATT database at the server.
@@ -209,8 +174,6 @@ uint32_t ble_db_discovery_start(ble_db_discovery_t * const p_db_discovery,
  */
 void ble_db_discovery_on_ble_evt(ble_db_discovery_t * const p_db_discovery,
                                  const ble_evt_t * const    p_ble_evt);
-
-/** @} */
 
 #endif // BLE_DB_DISCOVERY_H__
 

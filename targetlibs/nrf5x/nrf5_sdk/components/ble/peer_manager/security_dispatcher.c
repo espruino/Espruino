@@ -1,6 +1,7 @@
-/* Copyright (C) 2015 Nordic Semiconductor. All Rights Reserved.
+/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
  *
  * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
  * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
  *
  * Licensees are granted free, non-transferable use of the information. NO
@@ -32,6 +33,7 @@ typedef struct
     ble_conn_state_user_flag_id_t flag_id_sec_proc;
     ble_conn_state_user_flag_id_t flag_id_sec_proc_pairing;
     ble_conn_state_user_flag_id_t flag_id_sec_proc_new_peer;
+    ble_gap_lesc_p256_pk_t        peer_pk;
 } smd_t;
 
 
@@ -56,7 +58,7 @@ static void evt_send(smd_evt_t * p_event)
 }
 
 
-static void sec_start_send(uint16_t conn_handle, pm_sec_procedure_t procedure)
+static void sec_start_send(uint16_t conn_handle, pm_conn_sec_procedure_t procedure)
 {
     smd_evt_t evt =
     {
@@ -106,7 +108,7 @@ static void sec_params_request_process(ble_gap_evt_t * p_gap_evt)
 }
 
 
-/**@brief Function for administrative actions to be taken when a security process was attempted.
+/**@brief Function for administrative actions to be taken when a security process has been attempted.
  *
  * @param[in]  conn_handle       The connection the security process was attempted on.
  * @param[in]  peer_id           The peer ID given to the connected peer.
@@ -136,7 +138,8 @@ static void sec_proc_start(uint16_t     conn_handle,
     {
         if(new_peer_created)
         {
-            pdb_peer_free(peer_id);
+            ret_code_t err_code = im_peer_free(peer_id); // Attempt to free allocated peer.
+            UNUSED_VARIABLE(err_code);
         }
     }
 }
@@ -157,6 +160,11 @@ static void sec_info_request_process(ble_gap_evt_t * p_gap_evt)
 
     evt.conn_handle = p_gap_evt->conn_handle;
 
+    if (peer_id == PM_PEER_ID_INVALID)
+    {
+        peer_id = im_peer_id_get_by_conn_handle(p_gap_evt->conn_handle);
+    }
+
     if (peer_id != PM_PEER_ID_INVALID)
     {
         err_code = pdb_read_buf_get(peer_id, PM_PEER_DATA_ID_BONDING, &peer_data, NULL);
@@ -164,15 +172,11 @@ static void sec_info_request_process(ble_gap_evt_t * p_gap_evt)
         if (err_code == NRF_SUCCESS)
         {
             // There is stored bonding data for this peer.
-            ble_gap_enc_key_t const * p_existing_key = &peer_data.data.p_bonding_data->own_ltk;
+            ble_gap_enc_key_t const * p_existing_key = &peer_data.p_bonding_data->own_ltk;
 
-            if (peer_data.data.p_bonding_data->own_role == BLE_GAP_ROLE_CENTRAL)
-            {
-                // Role has changed since bonding.
-                p_existing_key = &peer_data.data.p_bonding_data->peer_ltk;
-            }
-
-            if (im_master_id_is_valid(&p_existing_key->master_id))
+            if (   p_existing_key->enc_info.lesc
+                || (im_master_ids_compare(&p_existing_key->master_id,
+                                          &p_gap_evt->params.sec_info_request.master_id)))
             {
                 p_enc_info = &p_existing_key->enc_info;
             }
@@ -192,7 +196,7 @@ static void sec_info_request_process(ble_gap_evt_t * p_gap_evt)
     else if (p_enc_info == NULL)
     {
         evt.evt_id                                  = SMD_EVT_LINK_ENCRYPTION_FAILED;
-        evt.params.link_encryption_failed.error     = PM_SEC_ERROR_PIN_OR_KEY_MISSING;
+        evt.params.link_encryption_failed.error     = PM_CONN_SEC_ERROR_PIN_OR_KEY_MISSING;
         evt.params.link_encryption_failed.error_src = BLE_GAP_SEC_STATUS_SOURCE_LOCAL;
 
         evt_send(&evt);
@@ -242,13 +246,11 @@ static void sec_request_process(ble_gap_evt_t * p_gap_evt)
  */
 static void auth_status_success_process(ble_gap_evt_t * p_gap_evt)
 {
-    ret_code_t           err_code      = NRF_SUCCESS;
-    uint8_t              role          = ble_conn_state_role(p_gap_evt->conn_handle);
-    pm_peer_id_t         peer_id       = im_peer_id_get_by_conn_handle(p_gap_evt->conn_handle);
-    ble_gap_sec_kdist_t  kdist_periph  = p_gap_evt->params.auth_status.kdist_periph;
-    ble_gap_sec_kdist_t  kdist_central = p_gap_evt->params.auth_status.kdist_central;
-    ble_gap_sec_kdist_t  kdist_own     = (role == BLE_GAP_ROLE_CENTRAL) ?  kdist_central : kdist_periph;
-    ble_gap_sec_kdist_t  kdist_peer    = (role == BLE_GAP_ROLE_CENTRAL) ?  kdist_periph  : kdist_central;
+    ret_code_t           err_code   = NRF_SUCCESS;
+    uint8_t              role       = ble_conn_state_role(p_gap_evt->conn_handle);
+    pm_peer_id_t         peer_id    = im_peer_id_get_by_conn_handle(p_gap_evt->conn_handle);
+    ble_gap_sec_kdist_t  kdist_own  = p_gap_evt->params.auth_status.kdist_own;
+    ble_gap_sec_kdist_t  kdist_peer = p_gap_evt->params.auth_status.kdist_peer;
 
     ble_conn_state_user_flag_set(p_gap_evt->conn_handle, m_smd.flag_id_sec_proc, false);
 
@@ -258,41 +260,39 @@ static void auth_status_success_process(ble_gap_evt_t * p_gap_evt)
         return;
     }
 
-    err_code = pdb_write_buf_store(peer_id, PM_PEER_DATA_ID_BONDING);
-    if (err_code != NRF_SUCCESS)
+    if (p_gap_evt->params.auth_status.bonded)
     {
-        /* Unexpected */
-        smd_evt_t error_evt =
+
+        err_code = pdb_write_buf_store(peer_id, PM_PEER_DATA_ID_BONDING);
+        if (err_code != NRF_SUCCESS)
         {
-            .evt_id      = SMD_EVT_ERROR_BONDING_INFO,
-            .conn_handle = p_gap_evt->conn_handle,
-            .params      =
-            {
-                .error_bonding_info =
-                {
-                    .peer_id        = peer_id,
-                    .error          = err_code,
-                }
-            }
-        };
-        evt_send(&error_evt);
+            /* Unexpected */
+            smd_evt_t error_evt;
+
+            error_evt.evt_id                            = SMD_EVT_ERROR_BONDING_INFO;
+            error_evt.conn_handle                       = p_gap_evt->conn_handle;
+            error_evt.params.error_bonding_info.peer_id = peer_id;
+            error_evt.params.error_bonding_info.error   = err_code;
+
+            evt_send(&error_evt);
+        }
+
+    }
+    else if (ble_conn_state_user_flag_get(p_gap_evt->conn_handle, m_smd.flag_id_sec_proc_new_peer))
+    {
+        ret_code_t err_code_free = im_peer_free(peer_id);
+        UNUSED_VARIABLE(err_code_free); // Errors can be safely ignored.
     }
 
-    smd_evt_t pairing_success_evt =
-    {
-        .evt_id      = SMD_EVT_PAIRING_SUCCESS,
-        .conn_handle = p_gap_evt->conn_handle,
-        .params      =
-        {
-            .pairing_success =
-            {
-                .bonded        = p_gap_evt->params.auth_status.bonded,
-                .mitm          = p_gap_evt->params.auth_status.sm1_levels.lv3,
-                .kdist_own     = kdist_own,
-                .kdist_peer    = kdist_peer,
-            }
-        }
-    };
+    smd_evt_t pairing_success_evt;
+
+    pairing_success_evt.evt_id                            = SMD_EVT_PAIRING_SUCCESS;
+    pairing_success_evt.conn_handle                       = p_gap_evt->conn_handle;
+    pairing_success_evt.params.pairing_success.bonded     = p_gap_evt->params.auth_status.bonded;
+    pairing_success_evt.params.pairing_success.mitm       = p_gap_evt->params.auth_status.sm1_levels.lv3;
+    pairing_success_evt.params.pairing_success.kdist_own  = kdist_own;
+    pairing_success_evt.params.pairing_success.kdist_peer = kdist_peer;
+
     evt_send(&pairing_success_evt);
     return;
 }
@@ -310,6 +310,8 @@ static void pairing_failure(uint16_t            conn_handle,
                             pm_sec_error_code_t error,
                             uint8_t             error_src)
 {
+    ret_code_t err_code = NRF_SUCCESS;
+
     smd_evt_t evt =
     {
         .evt_id = SMD_EVT_PAIRING_FAIL,
@@ -328,11 +330,20 @@ static void pairing_failure(uint16_t            conn_handle,
     {
         // The peer_id was created during the procedure, and should be freed, because no data is
         // stored under it.
-        pdb_peer_free(peer_id);
+        err_code = im_peer_free(peer_id);  // Attempt to free allocated peer.
+        UNUSED_VARIABLE(err_code);
     }
     else
     {
-        pdb_write_buf_release(peer_id, PM_PEER_DATA_ID_BONDING);
+        err_code = pdb_write_buf_release(peer_id, PM_PEER_DATA_ID_BONDING);
+        if ((err_code != NRF_SUCCESS) && (err_code == NRF_ERROR_NOT_FOUND /* No buffer was allocated */))
+        {
+            smd_evt_t error_evt;
+            error_evt.evt_id = SMD_EVT_ERROR_UNEXPECTED;
+            error_evt.conn_handle = conn_handle;
+            error_evt.params.error_unexpected.error = err_code;
+            evt_send(&error_evt);
+        }
     }
 
     ble_conn_state_user_flag_set(conn_handle, m_smd.flag_id_sec_proc, false);
@@ -373,32 +384,48 @@ static void encryption_failure(uint16_t            conn_handle,
 }
 
 
+/**@brief Function for possibly cleaning up after a failed pairing or encryption procedure.
+ *
+ * @param[in]  conn_handle  The handle of the connection the pairing procedure happens on.
+ * @param[in]  peer_id      The peer id used in the pairing procedure.
+ * @param[in]  error        The error the procedure failed with.
+ * @param[in]  error_src    The party that raised the error. See @ref BLE_GAP_SEC_STATUS_SOURCES.
+ */
+static void link_secure_failure(uint16_t            conn_handle,
+                                pm_sec_error_code_t error,
+                                uint8_t             error_src)
+{
+    if (ble_conn_state_user_flag_get(conn_handle, m_smd.flag_id_sec_proc))
+    {
+        pm_peer_id_t  peer_id = im_peer_id_get_by_conn_handle(conn_handle);
+
+        if (peer_id != PM_PEER_ID_INVALID)
+        {
+            if (ble_conn_state_user_flag_get(conn_handle, m_smd.flag_id_sec_proc_pairing))
+            {
+                pairing_failure(conn_handle, peer_id, error, error_src);
+            }
+            else
+            {
+                encryption_failure(conn_handle, error, error_src);
+            }
+        }
+    }
+}
+
+
 /**@brief Function for processing the @ref BLE_GAP_EVT_DISCONNECT event from the SoftDevice.
  *
  * @param[in]  p_gap_evt  The event from the SoftDevice.
  */
 static void disconnect_process(ble_gap_evt_t * p_gap_evt)
 {
-    pm_peer_id_t  peer_id = im_peer_id_get_by_conn_handle(p_gap_evt->conn_handle);
+    pm_sec_error_code_t error = (p_gap_evt->params.disconnected.reason
+                                        == BLE_HCI_CONN_TERMINATED_DUE_TO_MIC_FAILURE)
+                                ? PM_CONN_SEC_ERROR_MIC_FAILURE : PM_CONN_SEC_ERROR_DISCONNECT;
 
-    if (  (peer_id != PM_PEER_ID_INVALID)
-        && ble_conn_state_user_flag_get(p_gap_evt->conn_handle, m_smd.flag_id_sec_proc))
-    {
-        pm_sec_error_code_t error = (p_gap_evt->params.disconnected.reason
-                                            == BLE_HCI_CONN_TERMINATED_DUE_TO_MIC_FAILURE)
-                                    ? PM_SEC_ERROR_MIC_FAILURE : PM_SEC_ERROR_DISCONNECT;
-
-        if (ble_conn_state_user_flag_get(p_gap_evt->conn_handle, m_smd.flag_id_sec_proc_pairing))
-        {
-            pairing_failure(p_gap_evt->conn_handle, peer_id, error, BLE_GAP_SEC_STATUS_SOURCE_LOCAL);
-        }
-        else
-        {
-            encryption_failure(p_gap_evt->conn_handle, error, BLE_GAP_SEC_STATUS_SOURCE_LOCAL);
-        }
-    }
+    link_secure_failure(p_gap_evt->conn_handle, error, BLE_GAP_SEC_STATUS_SOURCE_LOCAL);
 }
-
 
 
 /**@brief Function for processing the @ref BLE_GAP_EVT_AUTH_STATUS event from the SoftDevice, when
@@ -408,10 +435,9 @@ static void disconnect_process(ble_gap_evt_t * p_gap_evt)
  */
 static void auth_status_failure_process(ble_gap_evt_t * p_gap_evt)
 {
-    pairing_failure(p_gap_evt->conn_handle,
-                    im_peer_id_get_by_conn_handle(p_gap_evt->conn_handle),
-                    p_gap_evt->params.auth_status.auth_status,
-                    p_gap_evt->params.auth_status.error_src);
+    link_secure_failure(p_gap_evt->conn_handle,
+                        p_gap_evt->params.auth_status.auth_status,
+                        p_gap_evt->params.auth_status.error_src);
 }
 
 
@@ -421,14 +447,10 @@ static void auth_status_failure_process(ble_gap_evt_t * p_gap_evt)
  */
 static void auth_status_process(ble_gap_evt_t * p_gap_evt)
 {
-    switch(p_gap_evt->params.auth_status.auth_status)
+    switch (p_gap_evt->params.auth_status.auth_status)
     {
         case BLE_GAP_SEC_STATUS_SUCCESS:
             auth_status_success_process(p_gap_evt);
-            break;
-
-        case BLE_GAP_SEC_STATUS_PDU_INVALID:
-            /* Ignore, because they don't have anything to do with an ongoing procedure. */
             break;
 
         default:
@@ -462,7 +484,7 @@ static void conn_sec_update_process(ble_gap_evt_t * p_gap_evt)
     else
     {
         encryption_failure(p_gap_evt->conn_handle,
-                           PM_SEC_ERROR_PIN_OR_KEY_MISSING,
+                           PM_CONN_SEC_ERROR_PIN_OR_KEY_MISSING,
                            BLE_GAP_SEC_STATUS_SOURCE_REMOTE);
     }
 }
@@ -521,7 +543,9 @@ ret_code_t smd_register(smd_evt_handler_t evt_handler)
 }
 
 
-ret_code_t smd_params_reply(uint16_t conn_handle, ble_gap_sec_params_t * p_sec_params)
+ret_code_t smd_params_reply(uint16_t                 conn_handle,
+                            ble_gap_sec_params_t   * p_sec_params,
+                            ble_gap_lesc_p256_pk_t * p_public_key)
 {
     VERIFY_MODULE_INITIALIZED();
 
@@ -567,26 +591,22 @@ ret_code_t smd_params_reply(uint16_t conn_handle, ble_gap_sec_params_t * p_sec_p
 
         if (err_code == NRF_SUCCESS)
         {
-            // Peer ID is OK, retrieve memory buffer to receive data.
+            // Peer ID is ready, acquire a memory buffer to receive bonding data into.
             err_code = pdb_write_buf_get(peer_id, PM_PEER_DATA_ID_BONDING, 1, &peer_data);
             if (err_code == NRF_SUCCESS)
             {
-                peer_data.data.p_bonding_data->own_role = role;
+                memset(peer_data.p_bonding_data, 0, sizeof(pm_peer_data_bonding_t));
 
-                if (role == BLE_GAP_ROLE_CENTRAL)
-                {
-                    sec_keyset.keys_central.p_enc_key = &peer_data.data.p_bonding_data->own_ltk;
-                    sec_keyset.keys_periph.p_enc_key  = &peer_data.data.p_bonding_data->peer_ltk;
-                    sec_keyset.keys_periph.p_id_key   = &peer_data.data.p_bonding_data->peer_id;
-                    im_ble_addr_get(conn_handle, &peer_data.data.p_bonding_data->peer_id.id_addr_info); // Will be overwritten if ID is shared.
-                }
-                else
-                {
-                    sec_keyset.keys_periph.p_enc_key  = &peer_data.data.p_bonding_data->own_ltk;
-                    sec_keyset.keys_central.p_enc_key = &peer_data.data.p_bonding_data->peer_ltk;
-                    sec_keyset.keys_central.p_id_key  = &peer_data.data.p_bonding_data->peer_id;
-                    im_ble_addr_get(conn_handle, &peer_data.data.p_bonding_data->peer_id.id_addr_info); // Will be overwritten if ID is shared.
-                }
+                peer_data.p_bonding_data->own_role = role;
+
+                sec_keyset.keys_own.p_enc_key  = &peer_data.p_bonding_data->own_ltk;
+                sec_keyset.keys_own.p_pk       = p_public_key;
+                sec_keyset.keys_peer.p_enc_key = &peer_data.p_bonding_data->peer_ltk;
+                sec_keyset.keys_peer.p_id_key  = &peer_data.p_bonding_data->peer_id;
+                sec_keyset.keys_peer.p_pk      = &m_smd.peer_pk;
+
+                ret_code_t err_code_addr = im_ble_addr_get(conn_handle, &peer_data.p_bonding_data->peer_id.id_addr_info); // Retrieve the address the peer used during connection establishment. This address will be overwritten if ID is shared. Should not fail.
+                UNUSED_VARIABLE(err_code_addr);
 
                 // Buffer is OK, reserve room in flash for the data.
                 err_code = pdb_write_buf_store_prepare(peer_id, PM_PEER_DATA_ID_BONDING);
@@ -612,7 +632,7 @@ ret_code_t smd_params_reply(uint16_t conn_handle, ble_gap_sec_params_t * p_sec_p
 
             if ((p_sec_params != NULL) && (err_code == NRF_SUCCESS))
             {
-                pm_sec_procedure_t procedure = p_sec_params->bond
+                pm_conn_sec_procedure_t procedure = p_sec_params->bond
                                                ? PM_LINK_SECURED_PROCEDURE_BONDING
                                                : PM_LINK_SECURED_PROCEDURE_PAIRING;
                 sec_start_send(conn_handle, procedure);
@@ -630,35 +650,39 @@ ret_code_t smd_params_reply(uint16_t conn_handle, ble_gap_sec_params_t * p_sec_p
 }
 
 
-static ret_code_t link_secure_central_existing_peer(uint16_t               conn_handle,
-                                                    ble_gap_sec_params_t * p_sec_params,
-                                                    bool                   force_repairing,
-                                                    pm_peer_id_t           peer_id,
-                                                    pm_sec_procedure_t   * procedure)
+static ret_code_t link_secure_central_existing_peer(uint16_t                  conn_handle,
+                                                    ble_gap_sec_params_t    * p_sec_params,
+                                                    bool                      force_repairing,
+                                                    pm_peer_id_t              peer_id,
+                                                    pm_conn_sec_procedure_t * procedure)
 {
     pm_peer_data_flash_t      peer_data;
     pm_peer_data_t            dummy_peer_data;
     ret_code_t                err_code;
     ble_gap_enc_key_t const * p_existing_key = NULL;
-
+    bool                      lesc = false;
 
     err_code = pdb_read_buf_get(peer_id, PM_PEER_DATA_ID_BONDING, &peer_data, NULL);
 
     if (err_code == NRF_SUCCESS)
     {
-        p_existing_key = &(peer_data.data.p_bonding_data->peer_ltk);
-        if (peer_data.data.p_bonding_data->own_role == BLE_GAP_ROLE_PERIPH)
+        // Use peer's key since they are peripheral.
+        p_existing_key = &(peer_data.p_bonding_data->peer_ltk);
+
+        lesc = peer_data.p_bonding_data->own_ltk.enc_info.lesc;
+        if  (lesc) // LESC was used during bonding.
         {
-            // Role has changed since bonding.
-            p_existing_key = &(peer_data.data.p_bonding_data->own_ltk);
+            // For LESC, always use own key.
+            p_existing_key = &(peer_data.p_bonding_data->own_ltk);
         }
     }
 
     if     (!force_repairing
          && (err_code == NRF_SUCCESS)
          && (p_existing_key != NULL)
-         && (im_master_id_is_valid(&(p_existing_key->master_id))) /* There is an existing LTK stored. */
-         && (p_existing_key->enc_info.auth >= p_sec_params->mitm)) /* The requested security is at or below the existing level. */
+         && (lesc || im_master_id_is_valid(&(p_existing_key->master_id)))) /* There is a valid LTK stored. */
+         //&& (p_existing_key->enc_info.auth >= p_sec_params->mitm)          /* The requested MITM security is at or below the existing level. */
+         //&& (!p_sec_params->mitm || (lesc >= p_sec_params->lesc)))         /* The requested LESC security is at or below the existing level. We only care about LESC if MITM is required. */
     {
         err_code = sd_ble_gap_encrypt(conn_handle, &(p_existing_key->master_id), &(p_existing_key->enc_info));
 
@@ -726,8 +750,8 @@ static ret_code_t link_secure_central_new_peer(uint16_t               conn_handl
 
         if (err_code != NRF_SUCCESS)
         {
-            ret_code_t err_code_release = pdb_write_buf_release(peer_id, PM_PEER_DATA_ID_BONDING);
-            if ((err_code_release != NRF_SUCCESS) && (err_code_release != NRF_ERROR_NOT_FOUND))
+            ret_code_t err_code_free = pdb_write_buf_release(peer_id, PM_PEER_DATA_ID_BONDING);
+            if ((err_code_free != NRF_SUCCESS) && (err_code_free != NRF_ERROR_NOT_FOUND))
             {
                 err_code = NRF_ERROR_INTERNAL;
             }
@@ -760,8 +784,8 @@ static ret_code_t link_secure_central(uint16_t               conn_handle,
         return sd_ble_gap_authenticate(conn_handle, NULL);
     }
 
-    pm_sec_procedure_t procedure = p_sec_params->bond ? PM_LINK_SECURED_PROCEDURE_BONDING
-                                                      : PM_LINK_SECURED_PROCEDURE_PAIRING;
+    pm_conn_sec_procedure_t procedure = p_sec_params->bond ? PM_LINK_SECURED_PROCEDURE_BONDING
+                                                           : PM_LINK_SECURED_PROCEDURE_PAIRING;
 
     peer_id = im_peer_id_get_by_conn_handle(conn_handle);
 

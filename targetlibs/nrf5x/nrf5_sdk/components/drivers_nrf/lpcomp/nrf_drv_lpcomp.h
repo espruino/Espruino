@@ -17,6 +17,7 @@
 #include "sdk_errors.h"
 #include "nrf_drv_common.h"
 #include "nrf_drv_config.h"
+
 /**
  * @addtogroup nrf_lpcomp LPCOMP HAL and driver
  * @ingroup nrf_drivers
@@ -41,10 +42,10 @@ typedef struct
 {
     nrf_lpcomp_config_t    hal;                /**< LPCOMP HAL configuration. */
     nrf_lpcomp_input_t     input;              /**< Input to be monitored. */
-    uint8_t                interrupt_priority; /**< LPCOMP interrupt priority */
+    uint8_t                interrupt_priority; /**< LPCOMP interrupt priority. */
 } nrf_drv_lpcomp_config_t;
 
-/** LPCOMP driver default configuration, including the LPCOMP HAL configuration. */
+/** @brief LPCOMP driver default configuration including the LPCOMP HAL configuration. */
 #define NRF_DRV_LPCONF_DEFAULT_CONFIG                                              \
     {                                                                              \
         .hal                = {LPCOMP_CONFIG_REFERENCE , LPCOMP_CONFIG_DETECTION}, \
@@ -53,15 +54,15 @@ typedef struct
     }
 
 /**
- * @brief Function for initializing the LCOMP driver.
+ * @brief Function for initializing the LPCOMP driver.
  * 
- * This function initializes the LPCOMP driver, but does not enable the peripheral nor any interrupts. 
- * To start the driver, the function nrf_drv_lpcomp_enable() should be executed after initialization.
+ * This function initializes the LPCOMP driver, but does not enable the peripheral or any interrupts. 
+ * To start the driver, call the function nrf_drv_lpcomp_enable() after initialization.
  *
- * @note Driver will be initialized to default settings if configuration struct is not provided.
+ * If no configuration structure is provided, the driver is initialized with the default settings.
  *
- * @param[in] p_config              Initial configuration. Default configuration used if NULL.
- * @param[in] events_handler        Handler function
+ * @param[in] p_config              Initial configuration. If NULL, the default configuration is used.
+ * @param[in] events_handler        Handler function.
  * @retval NRF_ERROR_INVALID_PARAM If the configuration is invalid.
  * @retval NRF_ERROR_INVALID_STATE If the driver has already been initialized.
  */
@@ -72,8 +73,8 @@ ret_code_t nrf_drv_lpcomp_init(const nrf_drv_lpcomp_config_t * p_config,
 /**
  *  @brief Function for uninitializing the LCOMP driver.
  *
- *  This function uninitializes the LCOMP driver. The LPCOMP peripheral and 
- *  its interrupts are disabled and local variables are cleaned. After this call, you must
+ *  This function uninitializes the LPCOMP driver. The LPCOMP peripheral and 
+ *  its interrupts are disabled, and local variables are cleaned. After this call, you must
  *  initialize the driver again by calling nrf_drv_lpcomp_init() if you want to use it.
  *
  *  @sa nrf_drv_lpcomp_disable()

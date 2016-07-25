@@ -35,6 +35,10 @@ static volatile uint8_t m_queue_end_index;     /**< Index of queue entry at the 
 static uint16_t         m_queue_event_size;    /**< Maximum event size in queue. */
 static uint16_t         m_queue_size;          /**< Number of queue entries. */
 
+#ifdef APP_SCHEDULER_WITH_PROFILER
+static uint16_t m_max_queue_utilization;    /**< Maximum observed queue utilization. */
+#endif
+
 static uint32_t m_scheduler_paused_counter = 0; /**< Counter storing the difference between pausing
                                                      and resuming the scheduler. */
 
@@ -86,8 +90,33 @@ uint32_t app_sched_init(uint16_t event_size, uint16_t queue_size, void * p_event
     m_queue_event_size    = event_size;
     m_queue_size          = queue_size;
 
+#ifdef APP_SCHEDULER_WITH_PROFILER
+    m_max_queue_utilization = 0;
+#endif
+
     return NRF_SUCCESS;
 }
+
+
+#ifdef APP_SCHEDULER_WITH_PROFILER
+static void check_queue_utilization(void)
+{
+    uint16_t start = m_queue_start_index;
+    uint16_t end   = m_queue_end_index;
+    uint16_t queue_utilization = (end >= start) ? (end - start) :
+        (m_queue_size + 1 - start + end);
+
+    if (queue_utilization > m_max_queue_utilization)
+    {
+        m_max_queue_utilization = queue_utilization;
+    }
+}
+
+uint16_t app_sched_queue_utilization_get(void)
+{
+    return m_max_queue_utilization;
+}
+#endif
 
 
 uint32_t app_sched_event_put(void *                    p_event_data,
@@ -127,6 +156,10 @@ uint32_t app_sched_event_put(void *                    p_event_data,
             {
                 m_queue_event_headers[event_index].event_data_size = 0;
             }
+
+        #ifdef APP_SCHEDULER_WITH_PROFILER
+            check_queue_utilization();
+        #endif
 
             err_code = NRF_SUCCESS;
         }

@@ -139,8 +139,11 @@ uint32_t log_rtt_read_input(char * c)
 #include "bsp.h"
 
 #define MAX_TEST_DATA_BYTES     (15U)                /**< max number of test bytes to be used for tx and rx. */
-#define UART_TX_BUF_SIZE 256                         /**< UART TX buffer size. */
+#define UART_TX_BUF_SIZE 512                         /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE 1                           /**< UART RX buffer size. */
+
+static uint8_t m_uart_data;
+static bool m_uart_has_input;
 
 void uart_error_cb(app_uart_evt_t * p_event)
 {
@@ -171,7 +174,7 @@ uint32_t log_uart_init()
         CTS_PIN_NUMBER,
         APP_UART_FLOW_CONTROL_ENABLED,
         false,
-        UART_BAUDRATE_BAUDRATE_Baud38400
+        UART_BAUDRATE_BAUDRATE_Baud115200
     };
 
     APP_UART_FIFO_INIT(&comm_params,
@@ -246,11 +249,27 @@ void log_uart_write_hex_char(uint8_t c)
 
 __INLINE int log_uart_has_input()
 {
+    if (m_uart_has_input) return 1;
+    if (app_uart_get(&m_uart_data) == NRF_SUCCESS)
+    {
+        m_uart_has_input = true;
+        return 1;
+    }
     return 0;
 }
 
 uint32_t log_uart_read_input(char * c)
 {
+    if (m_uart_has_input)
+    {
+        *c = (char)m_uart_data;
+        m_uart_has_input = false;
+        return NRF_SUCCESS;
+    }
+    if (app_uart_get((uint8_t *)c) == NRF_SUCCESS)
+    {
+        return NRF_SUCCESS;
+    }
     return NRF_ERROR_NULL;
 }
 
@@ -270,9 +289,9 @@ uint32_t log_raw_uart_init()
     nrf_gpio_cfg_output( TX_PIN_NUMBER );
     nrf_gpio_cfg_input(RX_PIN_NUMBER, NRF_GPIO_PIN_NOPULL);
 
-    // Set a default baud rate of 38400
+    // Set a default baud rate of UART0_CONFIG_BAUDRATE
     NRF_UART0->PSELTXD  = TX_PIN_NUMBER;
-    NRF_UART0->BAUDRATE = UART_BAUDRATE_BAUDRATE_Baud38400;
+    NRF_UART0->BAUDRATE = UART0_CONFIG_BAUDRATE;
 
     NRF_UART0->PSELRTS  = 0xFFFFFFFF;
     NRF_UART0->PSELCTS  = 0xFFFFFFFF;

@@ -1,15 +1,14 @@
 /* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
-*
-* The information contained herein is property of Nordic Semiconductor ASA.
-* Terms and conditions of usage are described in detail in NORDIC
-* SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
-*
-* Licensees are granted free, non-transferable use of the information. NO
-* WARRANTY of ANY KIND is provided. This heading must NOT be removed from
-* the file.
-*
-*/
-
+ *
+ * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
+ * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+ *
+ * Licensees are granted free, non-transferable use of the information. NO
+ * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
+ * the file.
+ *
+ */
 
 
 #ifndef MUTEX_H__
@@ -20,6 +19,7 @@
 #include <stdbool.h>
 
 /**
+ * @cond NO_DOXYGEN
  * @defgroup pm_mutex Mutex
  * @ingroup peer_manager
  * @{
@@ -85,4 +85,6 @@ bool pm_mutex_lock_status_get(uint8_t * p_mutex, uint16_t mutex_bit_id);
 
 #endif // MUTEX_H__
 
-/** @} */
+/** @} 
+ * @endcond  
+ */

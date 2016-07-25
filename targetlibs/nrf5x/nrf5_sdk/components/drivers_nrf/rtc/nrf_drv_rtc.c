@@ -28,11 +28,14 @@ static nrf_drv_rtc_handler_t m_handlers[RTC_COUNT];
 static nrf_drv_rtc_cb_t      m_cb[RTC_COUNT];
 
 static const nrf_drv_rtc_config_t m_default_config[] = {
-#if (RTC0_ENABLED == 1)
+#if RTC0_ENABLED
     NRF_DRV_RTC_DEFAULT_CONFIG(0),
 #endif
-#if (RTC1_ENABLED == 1)
-    NRF_DRV_RTC_DEFAULT_CONFIG(1)
+#if RTC1_ENABLED
+    NRF_DRV_RTC_DEFAULT_CONFIG(1),
+#endif
+#if RTC2_ENABLED
+    NRF_DRV_RTC_DEFAULT_CONFIG(2)
 #endif
 };
 
@@ -106,7 +109,7 @@ void nrf_drv_rtc_disable(nrf_drv_rtc_t const * const p_instance)
 ret_code_t nrf_drv_rtc_cc_disable(nrf_drv_rtc_t const * const p_instance, uint32_t channel)
 {
     ASSERT(m_cb[p_instance->instance_id].state != NRF_DRV_STATE_UNINITIALIZED);
-    ASSERT(channel<RTC_CHANNEL_NUM);
+    ASSERT(channel<p_instance->cc_channel_count);
 
     uint32_t int_mask = RTC_CHANNEL_INT_MASK(channel);
     nrf_rtc_event_t event    = RTC_CHANNEL_EVENT_ADDR(channel);
@@ -130,7 +133,7 @@ ret_code_t nrf_drv_rtc_cc_set(nrf_drv_rtc_t const * const p_instance,
                               bool enable_irq)
 {
     ASSERT(m_cb[p_instance->instance_id].state != NRF_DRV_STATE_UNINITIALIZED);
-    ASSERT(channel<RTC_CHANNEL_NUM);
+    ASSERT(channel<p_instance->cc_channel_count);
 
     uint32_t int_mask = RTC_CHANNEL_INT_MASK(channel);
     nrf_rtc_event_t event    = RTC_CHANNEL_EVENT_ADDR(channel);
@@ -228,13 +231,15 @@ uint32_t nrf_drv_rtc_max_ticks_get(nrf_drv_rtc_t const * const p_instance)
  * @param[in]  p_reg         Pointer to instance register structure.
  * @param[in]  instance_id   Index of instance.
  */
-__STATIC_INLINE void nrf_drv_rtc_int_handler(NRF_RTC_Type * p_reg, uint32_t instance_id)
+__STATIC_INLINE void nrf_drv_rtc_int_handler(NRF_RTC_Type * p_reg,
+                                             uint32_t instance_id,
+                                             uint32_t channel_count)
 {
     uint32_t i;
     uint32_t int_mask = (uint32_t)NRF_RTC_INT_COMPARE0_MASK;
     nrf_rtc_event_t event = NRF_RTC_EVENT_COMPARE_0;
 
-    for (i = 0; i < RTC_CHANNEL_NUM; i++)
+    for (i = 0; i < channel_count; i++)
     {
         if (nrf_rtc_int_is_enabled(p_reg,int_mask) && nrf_rtc_event_pending(p_reg,event))
         {
@@ -263,16 +268,23 @@ __STATIC_INLINE void nrf_drv_rtc_int_handler(NRF_RTC_Type * p_reg, uint32_t inst
     }
 }
 
-#if (RTC0_ENABLED == 1)
+#if RTC0_ENABLED
 void RTC0_IRQHandler(void)
 {
-    nrf_drv_rtc_int_handler(NRF_RTC0,RTC0_INSTANCE_INDEX);
+    nrf_drv_rtc_int_handler(NRF_RTC0,RTC0_INSTANCE_INDEX, NRF_RTC_CC_CHANNEL_COUNT(0));
 }
 #endif
 
-#if (RTC1_ENABLED == 1)
+#if RTC1_ENABLED
 void RTC1_IRQHandler(void)
 {
-    nrf_drv_rtc_int_handler(NRF_RTC1,RTC1_INSTANCE_INDEX);
+    nrf_drv_rtc_int_handler(NRF_RTC1,RTC1_INSTANCE_INDEX, NRF_RTC_CC_CHANNEL_COUNT(1));
+}
+#endif
+
+#if RTC2_ENABLED
+void RTC2_IRQHandler(void)
+{
+    nrf_drv_rtc_int_handler(NRF_RTC2,RTC2_INSTANCE_INDEX, NRF_RTC_CC_CHANNEL_COUNT(2));
 }
 #endif

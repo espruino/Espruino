@@ -122,8 +122,7 @@ static void twi_clear_bus(nrf_drv_twi_t const * const p_instance,
 
     nrf_delay_us(4);
 
-    int i;
-    for(i = 0; i < 9; i++)
+    for(int i = 0; i < 9; i++)
     {
         if (nrf_gpio_pin_read(p_config->sda))
         {
@@ -558,6 +557,28 @@ __STATIC_INLINE ret_code_t twi_xfer(twi_control_block_t           * p_cb,
 #endif
 
 #ifdef TWIM_IN_USE
+__STATIC_INLINE void twim_list_enable_handle(NRF_TWIM_Type * p_twim, uint32_t flags)
+{
+    if (NRF_DRV_TWI_FLAG_TX_POSTINC & flags)
+    {
+        nrf_twim_tx_list_enable(p_twim);
+    }
+    else
+    {
+        nrf_twim_tx_list_disable(p_twim);
+    }
+
+    if (NRF_DRV_TWI_FLAG_RX_POSTINC & flags)
+    {
+        nrf_twim_rx_list_enable(p_twim);
+    }
+    else
+    {
+        nrf_twim_rx_list_disable(p_twim);
+    }
+#ifndef NRF52_PAN_46
+#endif
+}
 __STATIC_INLINE ret_code_t twim_xfer(twi_control_block_t           * p_cb,
                                      NRF_TWIM_Type                 * p_twim,
                                      nrf_drv_twi_xfer_desc_t const * p_xfer_desc,
@@ -591,6 +612,8 @@ __STATIC_INLINE ret_code_t twim_xfer(twi_control_block_t           * p_cb,
 
     nrf_twim_event_clear(p_twim, NRF_TWIM_EVENT_STOPPED);
     nrf_twim_event_clear(p_twim, NRF_TWIM_EVENT_ERROR);
+
+    twim_list_enable_handle(p_twim, flags);
     switch (p_xfer_desc->type)
     {
     case NRF_DRV_TWI_XFER_TXTX:
@@ -693,17 +716,6 @@ ret_code_t nrf_drv_twi_xfer(nrf_drv_twi_t           const * p_instance,
                             uint32_t                        flags)
 {
     ret_code_t ret = NRF_SUCCESS;
-
-    if (NRF_DRV_TWI_FLAG_TX_POSTINC & flags)
-    {
-        return NRF_ERROR_NOT_SUPPORTED;
-    }
-
-    if (NRF_DRV_TWI_FLAG_RX_POSTINC & flags)
-    {
-        return NRF_ERROR_NOT_SUPPORTED;
-    }
-
     twi_control_block_t * p_cb = &m_cb[p_instance->drv_inst_idx];
 
     // TXRX and TXTX transfers are support only in non-blocking mode.
@@ -716,6 +728,10 @@ ret_code_t nrf_drv_twi_xfer(nrf_drv_twi_t           const * p_instance,
     )
     CODE_FOR_TWI
     (
+        if ( (NRF_DRV_TWI_FLAG_TX_POSTINC | NRF_DRV_TWI_FLAG_RX_POSTINC) & flags)
+        {
+            return NRF_ERROR_NOT_SUPPORTED;
+        }
         ret = twi_xfer(p_cb, (NRF_TWI_Type  *)p_instance->reg.p_twi, p_xfer_desc, flags);
     )
     return ret;
