@@ -124,6 +124,7 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
   case JSH_TIMER1: NRF_PWM0->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
   case JSH_TIMER2: NRF_PWM1->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
   case JSH_TIMER3: NRF_PWM2->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
+  // FIXME: if no pins are active on the given PWM now, turn it off
 #endif
   case JSH_USART1: if (fInfo==JSH_USART_RX) NRF_UART0->PSELRXD = pin;
                    else NRF_UART0->PSELTXD = pin; break;
