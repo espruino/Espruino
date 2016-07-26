@@ -40,6 +40,7 @@
 
 #ifdef NRF52
 #include "nrf_saadc.h"
+#include "nrf_pwm.h"
 #else
 #include "nrf_adc.h"
 #endif
@@ -426,14 +427,45 @@ int jshPinAnalogFast(Pin pin) {
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
   /* we set the bit field here so that if the user changes the pin state
    * later on, we can get rid of the IRQs */
-  if (!jshGetPinStateIsManual(pin)) {
+ /* if (!jshGetPinStateIsManual(pin)) {
     BITFIELD_SET(jshPinSoftPWM, pin, 0);
     jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
   }
   BITFIELD_SET(jshPinSoftPWM, pin, 1);
   if (freq<=0) freq=50;
   jstPinPWM(freq, value, pin);
-  return JSH_NOTHING;
+  return JSH_NOTHING;*/
+
+  NRF_PWM_Type *pwm = NRF_PWM0;
+  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  uint32_t out_pins[NRF_PWM_CHANNEL_COUNT] = { pin, NRF_PWM_PIN_NOT_CONNECTED, NRF_PWM_PIN_NOT_CONNECTED, NRF_PWM_PIN_NOT_CONNECTED };
+  nrf_pwm_pins_set(pwm, out_pins);
+  nrf_pwm_enable(pwm);
+  nrf_pwm_configure(pwm,
+      NRF_PWM_CLK_1MHz, NRF_PWM_MODE_UP, 32767 /* top value - 15 bits, not 16! */);
+  nrf_pwm_decoder_set(pwm,
+      NRF_PWM_LOAD_INDIVIDUAL, // allow all 4 channels to be used
+      NRF_PWM_STEP_TRIGGERED); // Only step on NEXTSTEP task
+
+  nrf_pwm_shorts_set(pwm, 0);
+  nrf_pwm_int_set(pwm, 0);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_LOOPSDONE);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND0);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND1);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_STOPPED);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_STOPPED);
+
+  static uint16_t pwmValues[4];
+  pwmValues[0] = 32767 - (uint16_t)(value*32767);
+  nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
+  nrf_pwm_seq_ptr_set(      pwm, 0, pwmValues);
+  nrf_pwm_seq_cnt_set(      pwm, 0, 4);
+  nrf_pwm_seq_refresh_set(  pwm, 0, 0);
+  nrf_pwm_seq_end_delay_set(pwm, 0, 0);
+
+  nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
+  // nrf_pwm_disable(pwm);
+
 } // if freq<=0, the default is used
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
