@@ -96,8 +96,6 @@ bool nfcEnabled = false;
 #endif
 #define BLE_HANDLE_MAX                   0xFFFF                                     /**< Max handle value in BLE. */
 
-#define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
-
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
@@ -215,9 +213,19 @@ Called when an NFC field is no longer detected
  * @details
  */
 void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
-  jsiConsolePrintf("NRF ERROR 0x%x at %s:%d\n", error_code, p_file_name, line_num);
+#ifdef LED1_PININDEX
+  jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
+#endif
+#ifdef LED2_PININDEX
+  jshPinOutput(LED2_PININDEX, LED2_ONSTATE);
+#endif
+#ifdef LED3_PININDEX
+  jshPinOutput(LED3_PININDEX, LED3_ONSTATE);
+#endif
+  jsiConsolePrintf("NRF ERROR 0x%x at %s:%d\n", error_code, p_file_name?p_file_name:"?", line_num);
   jsiConsolePrint("REBOOTING.\n");
   jshTransmitFlush();
+  jshDelayMicroseconds(1000000);
   NVIC_SystemReset();
 }
 
@@ -232,10 +240,14 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
  * @param[in] line_num    Line number of the failing ASSERT call.
  * @param[in] p_file_name File name of the failing ASSERT call.
  */
-void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
-{
-    ble_app_error_handler(DEAD_BEEF, line_num, p_file_name);
+void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name) {
+  ble_app_error_handler(0xDEADBEEF, line_num, p_file_name);
 }
+
+void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
+  ble_app_error_handler(id, pc, 0);
+}
+
 
 #ifdef USE_BOOTLOADER
 /**@brief Function for stopping advertising.
