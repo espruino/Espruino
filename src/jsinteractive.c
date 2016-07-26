@@ -1187,22 +1187,26 @@ void jsiTabComplete() {
   }
   jslKill();
   jslSetLex(oldLex);
-  if (!data.partial) {
-    jsvUnLock(object);
+  if (!object && !data.partial) {
     return;
   }
-  data.partialLen = jsvGetStringLength(data.partial);
-  size_t actualPartialLen = inputCursorPos + 1 - partialStart;
-  if (actualPartialLen > data.partialLen) {
-    // we had a token but were past the end of it when asked
-    // to autocomplete ---> no token
-    jsvUnLock(data.partial);
-    return;
-  } else if (actualPartialLen < data.partialLen) {
-    JsVar *v = jsvNewFromStringVar(data.partial, 0, actualPartialLen);
-    jsvUnLock(data.partial);
-    data.partial = v;
-    data.partialLen = actualPartialLen;
+  if (data.partial) {
+    data.partialLen = jsvGetStringLength(data.partial);
+    size_t actualPartialLen = inputCursorPos + 1 - partialStart;
+    if (actualPartialLen > data.partialLen) {
+      // we had a token but were past the end of it when asked
+      // to autocomplete ---> no token
+      jsvUnLock(data.partial);
+      return;
+    } else if (actualPartialLen < data.partialLen) {
+      JsVar *v = jsvNewFromStringVar(data.partial, 0, actualPartialLen);
+      jsvUnLock(data.partial);
+      data.partial = v;
+      data.partialLen = actualPartialLen;
+    }
+  } else {
+    data.partial = jsvNewFromEmptyString();
+    data.partialLen = 0;
   }
 
   // If we had the name of an object here, try and look it up

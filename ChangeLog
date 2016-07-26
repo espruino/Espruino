@@ -2,6 +2,8 @@
             Add shortcut for quick execution of common call types
             Fix BBC micro:bit save() regression from 1v86
             Fix 'lock overflow' when calling methods with 'this' bound (fix #870, fix #885)
+            Fix jsvStringIteratorGetCharOrMinusOne for zero-length strings
+            Allow tab-completion straight after '.'
 
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
             Fix lock 'leak' in Telnet when Telnet is turned off
