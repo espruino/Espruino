@@ -533,7 +533,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       // Now, if we're parsing add the rest of the arguments
       int allocatedArgCount = boundArgs;
       if (isParsing) {
-        while (!JSP_SHOULDNT_PARSE && lex->tk!=')' && lex->tk!=LEX_EOF) {
+        while (!JSP_HAS_ERROR && lex->tk!=')' && lex->tk!=LEX_EOF) {
           if ((unsigned)argCount>=argPtrSize) {
             // allocate more space on stack
             unsigned int newArgPtrSize = argPtrSize?argPtrSize*4:16;
@@ -572,10 +572,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
 
 
-      if (nativePtr) {
+      if (nativePtr && !JSP_HAS_ERROR) {
         returnVar = jsnCallFunction(nativePtr, function->varData.native.argTypes, thisVar, argPtr, argCount);
       } else {
-        assert(0); // in case something went horribly wrong
         returnVar = 0;
       }
 
