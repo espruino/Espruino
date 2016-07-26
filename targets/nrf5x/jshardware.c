@@ -37,6 +37,7 @@
 #include "nrf_timer.h"
 #include "app_uart.h"
 #include "nrf_drv_uart.h"
+#include "nrf_delay.h"
 
 #ifdef NRF52
 #include "nrf_saadc.h"
@@ -89,29 +90,6 @@ void TIMER1_IRQHandler(void) {
 void sys_evt_handler(uint32_t sys_evt) {
   if (sys_evt == NRF_EVT_FLASH_OPERATION_SUCCESS){
     flashIsBusy = false;
-  }
-}
-
-
-unsigned int getNRFBaud(int baud) {
-  switch (baud) {
-    case 1200: return UART_BAUDRATE_BAUDRATE_Baud1200;
-    case 2400: return UART_BAUDRATE_BAUDRATE_Baud2400;
-    case 4800: return UART_BAUDRATE_BAUDRATE_Baud4800;
-    case 9600: return UART_BAUDRATE_BAUDRATE_Baud9600;
-    case 14400: return UART_BAUDRATE_BAUDRATE_Baud14400;
-    case 19200: return UART_BAUDRATE_BAUDRATE_Baud19200;
-    case 28800: return UART_BAUDRATE_BAUDRATE_Baud28800;
-    case 38400: return UART_BAUDRATE_BAUDRATE_Baud38400;
-    case 57600: return UART_BAUDRATE_BAUDRATE_Baud57600;
-    case 76800: return UART_BAUDRATE_BAUDRATE_Baud76800;
-    case 115200: return UART_BAUDRATE_BAUDRATE_Baud115200;
-    case 230400: return UART_BAUDRATE_BAUDRATE_Baud230400;
-    case 250000: return UART_BAUDRATE_BAUDRATE_Baud250000;
-    case 460800: return UART_BAUDRATE_BAUDRATE_Baud460800;
-    case 921600: return UART_BAUDRATE_BAUDRATE_Baud921600;
-    case 1000000: return UART_BAUDRATE_BAUDRATE_Baud1M;
-    default: return 0; // error
   }
 }
 
@@ -272,8 +250,7 @@ void jshDelayMicroseconds(int microsec) {
   if (microsec <= 0) {
     return;
   }
-
-  nrf_utils_delay_us((uint32_t) microsec);
+  nrf_delay_us((uint32_t)microsec);
 }
 
 void jshPinSetValue(Pin pin, bool value) {
@@ -347,7 +324,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
-  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t)pinInfo[pin].pin);
+  return 0; // FIXME need to get able to get pin state!
 }
 
 #ifdef NRF52
@@ -660,7 +637,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (device != EV_SERIAL1)
     return;
 
-  int baud = getNRFBaud(inf->baudRate);
+  int baud = nrf_utils_get_baud_enum(inf->baudRate);
   if (baud==0)
     return jsError("Invalid baud rate %d", inf->baudRate);
   if (!jshIsPinValid(inf->pinRX) || !jshIsPinValid(inf->pinTX))

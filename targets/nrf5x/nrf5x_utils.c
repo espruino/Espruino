@@ -18,21 +18,30 @@
 
 #include "nrf.h"
 #include "nrf_gpio.h"
-#include "nrf_delay.h"
 #include "app_uart.h"
 #include "nrf_error.h"
 #include "nrf_nvmc.h"
 
-uint32_t nrf_utils_gpio_pin_get_state(uint32_t pin)
-{
-	/*uint32_t pin_register;
-	pin_register = NRF_GPIO->PIN_CNF[pin];*/
-    return (uint32_t) 0;
-}
-
-void nrf_utils_delay_us(uint32_t microsec) 
-{
-  nrf_delay_us(microsec);
+unsigned int nrf_utils_get_baud_enum(int baud) {
+  switch (baud) {
+    case 1200: return UART_BAUDRATE_BAUDRATE_Baud1200;
+    case 2400: return UART_BAUDRATE_BAUDRATE_Baud2400;
+    case 4800: return UART_BAUDRATE_BAUDRATE_Baud4800;
+    case 9600: return UART_BAUDRATE_BAUDRATE_Baud9600;
+    case 14400: return UART_BAUDRATE_BAUDRATE_Baud14400;
+    case 19200: return UART_BAUDRATE_BAUDRATE_Baud19200;
+    case 28800: return UART_BAUDRATE_BAUDRATE_Baud28800;
+    case 38400: return UART_BAUDRATE_BAUDRATE_Baud38400;
+    case 57600: return UART_BAUDRATE_BAUDRATE_Baud57600;
+    case 76800: return UART_BAUDRATE_BAUDRATE_Baud76800;
+    case 115200: return UART_BAUDRATE_BAUDRATE_Baud115200;
+    case 230400: return UART_BAUDRATE_BAUDRATE_Baud230400;
+    case 250000: return UART_BAUDRATE_BAUDRATE_Baud250000;
+    case 460800: return UART_BAUDRATE_BAUDRATE_Baud460800;
+    case 921600: return UART_BAUDRATE_BAUDRATE_Baud921600;
+    case 1000000: return UART_BAUDRATE_BAUDRATE_Baud1M;
+    default: return 0; // error
+  }
 }
 
 // Configure the low frequency clock to use the external 32.768 kHz crystal as a source. Start this clock.
@@ -94,17 +103,4 @@ uint8_t nrf_utils_get_random_number()
 
   return rand_num;
 
-}
-
-void nrf_utils_app_uart_put(uint8_t character) {
-	while (app_uart_put(character) != NRF_SUCCESS);
-}
-
-void print_string_to_terminal(uint8_t * debug_string, uint32_t len)
-{
-  int i;
-  for (i = 0; i < len; i++)
-  {
-	  nrf_utils_app_uart_put((char) debug_string[i]);
-  }
 }
