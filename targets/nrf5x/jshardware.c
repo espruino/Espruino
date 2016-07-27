@@ -31,20 +31,22 @@
 
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
-#include "nrf_drv_twi.h"
-#include "nrf_drv_gpiote.h"
 #include "nrf_temp.h"
 #include "nrf_timer.h"
-#include "app_uart.h"
-#include "nrf_drv_uart.h"
 #include "nrf_delay.h"
-
 #ifdef NRF52
 #include "nrf_saadc.h"
 #include "nrf_pwm.h"
 #else
 #include "nrf_adc.h"
 #endif
+
+#include "nrf_drv_uart.h"
+#include "nrf_drv_twi.h"
+#include "nrf_drv_gpiote.h"
+#include "nrf_drv_ppi.h"
+
+#include "app_uart.h"
 
 #include "nrf5x_utils.h"
 #include "softdevice_handler.h"
@@ -182,6 +184,9 @@ void jshInit() {
   
   // Softdevice is initialised now
   softdevice_sys_evt_handler_set(sys_evt_handler);
+  // Enable PPI driver
+  err_code = nrf_drv_ppi_init();
+  APP_ERROR_CHECK(err_code);
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
@@ -574,7 +579,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   if (!jshIsPinValid(pin)) return EV_NONE;
   uint32_t p = (uint32_t)pinInfo[pin].pin;
   if (shouldWatch) {
-    nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true);
+    nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true); // FIXME: Maybe we want low accuracy? Otherwise this will
     nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler);
     nrf_drv_gpiote_in_event_enable(p, true);
     return jshGetEventFlagsForWatchedPin(p);

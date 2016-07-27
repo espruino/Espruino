@@ -13,6 +13,7 @@
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
 #include "jsdevices.h"
+#include "nrf5x_utils.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -1722,6 +1723,23 @@ void jswrap_nrf_nfcURL(JsVar *url) {
 #endif
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "cap",
+    "#ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_cap",
+    "params" : [
+      ["tx","pin",""],
+      ["rx","pin",""]
+    ],
+    "return" : ["int", "Capacitive sense counter" ]
+}
+Capacitive sense. TX must be connected to RX pin and sense plate via 1MOhm resistor
+*/
+int jswrap_nrf_cap(Pin tx, Pin rx) {
+  return (int)nrf_utils_cap_sense(tx, rx);
+}
 
 /* ---------------------------------------------------------------------
  *                                                               TESTING
