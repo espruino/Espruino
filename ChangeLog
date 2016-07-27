@@ -6,6 +6,7 @@
             Allow tab-completion straight after '.'
             Make sure execution stops for native functions if there's an error when parsing arguments
             NRF5x: remove setName and add functionality to setAdvertising, along with advertising interval
+            NRF5x: allow raw advertising data in setAdvertising
 
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
             Fix lock 'leak' in Telnet when Telnet is turned off

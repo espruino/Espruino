@@ -1119,7 +1119,7 @@ JsVarFloat jswrap_nrf_bluetooth_getBattery(void) {
 }
 Change the data that Espruino advertises.
 
-Data if of the form `{ UUID : data_as_byte_array }`. The UUID should be a [Bluetooth Service ID](https://developer.bluetooth.org/gatt/services/Pages/ServicesHome.aspx).
+Data can be of the form `{ UUID : data_as_byte_array }`. The UUID should be a [Bluetooth Service ID](https://developer.bluetooth.org/gatt/services/Pages/ServicesHome.aspx).
 
 For example to return battery level at 95%, do:
 
@@ -1142,34 +1142,20 @@ setInterval(function() {
 **Note:** Currently only standardised bluetooth UUIDs are allowed (see the
 list above).
 
-You can also advertise as an Eddystone beacon:
+You can also supply the raw advertising data in an array. For example to advertise as an Eddystone beacon:
 
 ```
-NRF.setAdvertising({
-  0xFEAA : [
-  0x00, // frame_type (UID)
-  0xEE, // the RSSI dBm we've measured for this beacon 1 meter away
-  0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6
-  ]
-});
-NRF.setAdvertising({
-  0xFEAA : [
-  0x10, // frame_type (URL)
-  0xEE, // the RSSI dBm we've measured for this beacon 1 meter away
-  0x02, // 2 = http://
-  112, 117, 99, 107, 45, 106, 115, 0 // puck-js.com (0 = .com)
-  ]
-});
-NRF.setAdvertising({
-  0xFEAA : [
-  0x20, // frame_type (TLM)
-  0,   // version
-  0,0, // battery voltage - LSB first
-  E.getTemperature(),0, // temp - LSB first
-  0,0,0,0, // pdu count - LSB first
-  0,0,0,0, // time since power on (seconds) - LSB first
-  ]
-});
+NRF.setAdvertising([0x03,  // Length of Service List
+  0x03,  // Param: Service List
+  0xAA, 0xFE,  // Eddystone ID
+  0x13,  // Length of Service Data
+  0x16,  // Service Data
+  0xAA, 0xFE, // Eddystone ID
+  0x10,  // Frame type: URL
+  0xF8, // Power
+  0x03, // https://
+  'g','o','o','.','g','l','/','B','3','J','0','O','c'],
+    {interval:100});
 ```
 
 `options` is an object, which can contain:
@@ -1192,10 +1178,14 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   if (jsvIsObject(options)) {
     JsVar *v;
     v = jsvObjectGetChild(options, "showName", 0);
-    if (v) advdata.name_type = jsvGetBoolAndUnLock(v)?BLE_ADVDATA_FULL_NAME:BLE_ADVDATA_NO_NAME;
+    if (v) advdata.name_type = jsvGetBoolAndUnLock(v) ?
+        BLE_ADVDATA_FULL_NAME :
+        BLE_ADVDATA_NO_NAME;
 
     v = jsvObjectGetChild(options, "discoverable", 0);
-    if (v) advdata.flags = jsvGetBoolAndUnLock(v)?BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE:BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+    if (v) advdata.flags = jsvGetBoolAndUnLock(v) ?
+        BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE :
+        BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
 
     v = jsvObjectGetChild(options, "interval", 0);
     if (v) {
@@ -1228,7 +1218,23 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     return;
   }
 
-  if (jsvIsObject(data)) {
+  if (jsvIsArray(data)) {
+    // raw data...
+    JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
+    if (!dPtr) {
+      jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
+      return;
+    }
+
+    if (bleChanged)
+      advertising_stop();
+    err_code = sd_ble_gap_adv_data_set(dPtr, dLen, NULL, 0);
+    if (err_code)
+       jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+     if (bleChanged)
+       advertising_start();
+     return; // we're done here now
+  } else if (jsvIsObject(data)) {
     ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
     int n = 0;
     JsvObjectIterator it;
