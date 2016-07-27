@@ -1047,6 +1047,11 @@ ifeq ($(BOARD),MICROBIT)
   WRAPPERSOURCES += libs/microbit/jswrap_microbit.c
 endif
 
+ifeq ($(BOARD),PUCKJS)
+  INCLUDE += -I$(ROOT)/libs/puckjs
+  WRAPPERSOURCES += libs/puckjs/jswrap_puck.c
+endif
+
 ifdef USE_CRYPTO
   DEFINES += -DUSE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto
