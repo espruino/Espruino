@@ -13,6 +13,5 @@
  */
 #include "jspin.h"
 
-void jswrap_puck_mag();
-
+JsVar *jswrap_puck_mag();
 void jswrap_puck_kill();
