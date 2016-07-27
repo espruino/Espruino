@@ -60,7 +60,6 @@ bool nfcEnabled = false;
   APP_RAM_BASE_CENTRAL_LINKS_##CENTRAL_LINK_COUNT##_PERIPH_LINKS_##PERIPHERAL_LINK_COUNT##_SEC_COUNT_##CENTRAL_LINK_COUNT##_MID_BW
 #define IDEAL_RAM_START_ADDRESS(C_LINK_CNT, P_LINK_CNT) IDEAL_RAM_START_ADDRESS_INTERN(C_LINK_CNT, P_LINK_CNT)
 
-#define DEVICE_NAME                     "Espruino "PC_BOARD_ID                      /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_DEFAULT_ADV_INTERVAL        MSEC_TO_UNITS(375, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
@@ -369,11 +368,28 @@ static void gap_params_init(void)
     ble_gap_conn_params_t   gap_conn_params;
     ble_gap_conn_sec_mode_t sec_mode;
 
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
-    
+    char deviceName[BLE_GAP_DEVNAME_MAX_LEN];
+#ifdef PUCKJS
+    strcpy(deviceName,"Puck.js");
+#else
+    strcpy(deviceName,"Espruino "PC_BOARD_ID);
+#endif
+
+    size_t len = strlen(deviceName);
+#ifdef PUCKJS
+    // append last 2 bytes of MAC address to name
+    uint32_t addr =  NRF_FICR->DEVICEADDR[0];
+    deviceName[len++] = ' ';
+    deviceName[len++] = itoch((addr>>12)&15);
+    deviceName[len++] = itoch((addr>>8)&15);
+    deviceName[len++] = itoch((addr>>4)&15);
+    deviceName[len++] = itoch((addr)&15);
+    // not null terminated
+#endif
+
     err_code = sd_ble_gap_device_name_set(&sec_mode,
-                                          (const uint8_t *) DEVICE_NAME,
-                                          strlen(DEVICE_NAME));
+                                          (const uint8_t *)deviceName,
+                                          len);
     APP_ERROR_CHECK(err_code);
 
     memset(&gap_conn_params, 0, sizeof(gap_conn_params));
