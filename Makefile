@@ -75,6 +75,7 @@
 #                         # BLACKLIST=/home/mydir/myBlackList
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
+# NO_COMPILE=1            # skips compiling and linking part, used to echo WRAPPERSOURCES only
 
 ifndef GENDIR
 GENDIR=$(shell pwd)/gen
@@ -2082,3 +2083,8 @@ clean:
 	$(Q)rm -f $(PROJ_NAME).bin
 	$(Q)rm -f $(PROJ_NAME).srec
 	$(Q)rm -f $(PROJ_NAME).lst
+
+# start make like this "make varsonly" to get all variables created and used during make process without compiling
+# this helps to better understand linking, or to find oddities
+varsonly:
+	$(foreach v, $(.VARIABLES), $(info $(v) = $($(v))))
