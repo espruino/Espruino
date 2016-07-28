@@ -761,7 +761,7 @@ void jsiSemiInit(bool autoLoad) {
           " "JS_VERSION" Copyright 2016 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
-#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI)
+#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS)
           "\n"
           "Espruino is Open Source. Our work is supported\n"
           "only by sales of official boards and donations:\n"
@@ -1187,22 +1187,26 @@ void jsiTabComplete() {
   }
   jslKill();
   jslSetLex(oldLex);
-  if (!data.partial) {
-    jsvUnLock(object);
+  if (!object && !data.partial) {
     return;
   }
-  data.partialLen = jsvGetStringLength(data.partial);
-  size_t actualPartialLen = inputCursorPos + 1 - partialStart;
-  if (actualPartialLen > data.partialLen) {
-    // we had a token but were past the end of it when asked
-    // to autocomplete ---> no token
-    jsvUnLock(data.partial);
-    return;
-  } else if (actualPartialLen < data.partialLen) {
-    JsVar *v = jsvNewFromStringVar(data.partial, 0, actualPartialLen);
-    jsvUnLock(data.partial);
-    data.partial = v;
-    data.partialLen = actualPartialLen;
+  if (data.partial) {
+    data.partialLen = jsvGetStringLength(data.partial);
+    size_t actualPartialLen = inputCursorPos + 1 - partialStart;
+    if (actualPartialLen > data.partialLen) {
+      // we had a token but were past the end of it when asked
+      // to autocomplete ---> no token
+      jsvUnLock(data.partial);
+      return;
+    } else if (actualPartialLen < data.partialLen) {
+      JsVar *v = jsvNewFromStringVar(data.partial, 0, actualPartialLen);
+      jsvUnLock(data.partial);
+      data.partial = v;
+      data.partialLen = actualPartialLen;
+    }
+  } else {
+    data.partial = jsvNewFromEmptyString();
+    data.partialLen = 0;
   }
 
   // If we had the name of an object here, try and look it up

@@ -28,6 +28,9 @@
 
 /* CLOCK */
 #define CLOCK_ENABLED 0
+// CLOCK_ENABLED is for enabling the clock driver in the SDK
+// Seems not to be needed is using SoftDevice?
+// http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk5.v11.0.0%2Fhardware_driver_clock.html&cp=4_0_0_2_1 
 
 #if (CLOCK_ENABLED == 1)
 #define CLOCK_CONFIG_XTAL_FREQ          NRF_CLOCK_XTALFREQ_Default

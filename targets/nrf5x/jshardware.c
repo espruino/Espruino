@@ -37,9 +37,11 @@
 #include "nrf_timer.h"
 #include "app_uart.h"
 #include "nrf_drv_uart.h"
+#include "nrf_delay.h"
 
 #ifdef NRF52
 #include "nrf_saadc.h"
+#include "nrf_pwm.h"
 #else
 #include "nrf_adc.h"
 #endif
@@ -69,6 +71,10 @@ volatile bool hadEvent = false; // set if we've had an event we need to deal wit
 bool uartIsSending = false;
 bool uartInitialised = false;
 
+JshPinFunction pinStates[JSH_PIN_COUNT];
+
+
+
 /// Called when we have had an event that means we should execute JS
 void jshHadEvent() {
   hadEvent = true;
@@ -87,27 +93,31 @@ void sys_evt_handler(uint32_t sys_evt) {
   }
 }
 
-
-unsigned int getNRFBaud(int baud) {
-  switch (baud) {
-    case 1200: return UART_BAUDRATE_BAUDRATE_Baud1200;
-    case 2400: return UART_BAUDRATE_BAUDRATE_Baud2400;
-    case 4800: return UART_BAUDRATE_BAUDRATE_Baud4800;
-    case 9600: return UART_BAUDRATE_BAUDRATE_Baud9600;
-    case 14400: return UART_BAUDRATE_BAUDRATE_Baud14400;
-    case 19200: return UART_BAUDRATE_BAUDRATE_Baud19200;
-    case 28800: return UART_BAUDRATE_BAUDRATE_Baud28800;
-    case 38400: return UART_BAUDRATE_BAUDRATE_Baud38400;
-    case 57600: return UART_BAUDRATE_BAUDRATE_Baud57600;
-    case 76800: return UART_BAUDRATE_BAUDRATE_Baud76800;
-    case 115200: return UART_BAUDRATE_BAUDRATE_Baud115200;
-    case 230400: return UART_BAUDRATE_BAUDRATE_Baud230400;
-    case 250000: return UART_BAUDRATE_BAUDRATE_Baud250000;
-    case 460800: return UART_BAUDRATE_BAUDRATE_Baud460800;
-    case 921600: return UART_BAUDRATE_BAUDRATE_Baud921600;
-    case 1000000: return UART_BAUDRATE_BAUDRATE_Baud1M;
-    default: return 0; // error
+static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
+  JshPinFunction fType = func&JSH_MASK_TYPE;
+  JshPinFunction fInfo = func&JSH_MASK_INFO;
+  switch (fType) {
+  case JSH_NOTHING: break;
+#ifdef NRF52
+  case JSH_TIMER1: NRF_PWM0->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
+  case JSH_TIMER2: NRF_PWM1->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
+  case JSH_TIMER3: NRF_PWM2->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
+  // FIXME: if no pins are active on the given PWM now, turn it off
+#endif
+  case JSH_USART1: if (fInfo==JSH_USART_RX) NRF_UART0->PSELRXD = pin;
+                   else NRF_UART0->PSELTXD = pin; break;
+  default: assert(0);
   }
+}
+
+static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
+  if (pinStates[pin]==func) return;
+  // disconnect existing peripheral (if there was one)
+  if (pinStates[pin])
+    jshPinSetFunction_int(pinStates[pin], 0xFFFFFFFF);
+  // connect new peripheral
+  pinStates[pin] = func;
+  jshPinSetFunction_int(pinStates[pin], pinInfo[pin].pin);
 }
 
 #ifdef BLUETOOTH
@@ -240,8 +250,7 @@ void jshDelayMicroseconds(int microsec) {
   if (microsec <= 0) {
     return;
   }
-
-  nrf_utils_delay_us((uint32_t) microsec);
+  nrf_delay_us((uint32_t)microsec);
 }
 
 void jshPinSetValue(Pin pin, bool value) {
@@ -254,6 +263,8 @@ bool jshPinGetValue(Pin pin) {
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state) {
+  // If this was set to be some kind of AF (USART, etc), reset it.
+  jshPinSetFunction(pin, JSH_NOTHING);
   /* Make sure we kill software PWM if we set the pin state
    * after we've started it */
   if (BITFIELD_GET(jshPinSoftPWM, pin)) {
@@ -313,7 +324,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
-  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t)pinInfo[pin].pin);
+  return 0; // FIXME need to get able to get pin state!
 }
 
 #ifdef NRF52
@@ -426,14 +437,89 @@ int jshPinAnalogFast(Pin pin) {
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
   /* we set the bit field here so that if the user changes the pin state
    * later on, we can get rid of the IRQs */
-  if (!jshGetPinStateIsManual(pin)) {
-    BITFIELD_SET(jshPinSoftPWM, pin, 0);
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+#ifdef NRF52
+  if (flags & JSAOF_FORCE_SOFTWARE) {
+#endif
+    if (!jshGetPinStateIsManual(pin)) {
+      BITFIELD_SET(jshPinSoftPWM, pin, 0);
+      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+    }
+    BITFIELD_SET(jshPinSoftPWM, pin, 1);
+    if (freq<=0) freq=50;
+    jstPinPWM(freq, value, pin);
+    return JSH_NOTHING;
+#ifdef NRF52
   }
-  BITFIELD_SET(jshPinSoftPWM, pin, 1);
-  if (freq<=0) freq=50;
-  jstPinPWM(freq, value, pin);
-  return JSH_NOTHING;
+  JshPinFunction func = JSH_TIMER1 | JSH_TIMER_CH1;
+  // FIXME: Search for free timers to use (based on freq as well)
+
+  NRF_PWM_Type *pwm;
+  if ((func&JSH_MASK_TYPE) == JSH_TIMER1) pwm = NRF_PWM0;
+  else if ((func&JSH_MASK_TYPE) == JSH_TIMER2) pwm = NRF_PWM1;
+  else if ((func&JSH_MASK_TYPE) == JSH_TIMER3) pwm = NRF_PWM2;
+  else { assert(0); return 0; };
+  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  jshPinSetFunction(pin, func);
+  nrf_pwm_enable(pwm);
+
+  nrf_pwm_clk_t clk;
+  if (freq<=0) freq = 1000;
+  int counter = (int)(16000000.0 / freq);
+
+  if (counter<32768) {
+    clk = NRF_PWM_CLK_16MHz;
+    if (counter<1) counter=1;
+  } else if (counter < (32768<<1)) {
+    clk = NRF_PWM_CLK_8MHz;
+    counter >>= 1;
+  } else if (counter < (32768<<2)) {
+    clk = NRF_PWM_CLK_4MHz;
+    counter >>= 2;
+  } else if (counter < (32768<<3)) {
+    clk = NRF_PWM_CLK_2MHz;
+    counter >>= 3;
+  } else if (counter < (32768<<4)) {
+    clk = NRF_PWM_CLK_1MHz;
+    counter >>= 4;
+  } else if (counter < (32768<<5)) {
+    clk = NRF_PWM_CLK_500kHz;
+    counter >>= 5;
+  } else if (counter < (32768<<6)) {
+    clk = NRF_PWM_CLK_250kHz;
+    counter >>= 6;
+  } else {
+    clk = NRF_PWM_CLK_125kHz;
+    counter >>= 7;
+    if (counter>32767) counter = 32767;
+    // Warn that we're out of range?
+  }
+
+  nrf_pwm_configure(pwm,
+      clk, NRF_PWM_MODE_UP, counter /* top value - 15 bits, not 16! */);
+  nrf_pwm_decoder_set(pwm,
+      NRF_PWM_LOAD_INDIVIDUAL, // allow all 4 channels to be used
+      NRF_PWM_STEP_TRIGGERED); // Only step on NEXTSTEP task
+
+  /*nrf_pwm_shorts_set(pwm, 0);
+  nrf_pwm_int_set(pwm, 0);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_LOOPSDONE);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND0);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND1);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_STOPPED);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_STOPPED);*/
+
+  static uint16_t pwmValues[4];
+  pwmValues[func >> JSH_SHIFT_INFO] = counter - (uint16_t)(value*counter);
+  nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
+  nrf_pwm_seq_ptr_set(      pwm, 0, pwmValues);
+  nrf_pwm_seq_cnt_set(      pwm, 0, 4);
+  nrf_pwm_seq_refresh_set(  pwm, 0, 0);
+  nrf_pwm_seq_end_delay_set(pwm, 0, 0);
+
+  nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
+  // nrf_pwm_disable(pwm);
+  return func;
+#endif
 } // if freq<=0, the default is used
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
@@ -551,7 +637,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (device != EV_SERIAL1)
     return;
 
-  int baud = getNRFBaud(inf->baudRate);
+  int baud = nrf_utils_get_baud_enum(inf->baudRate);
   if (baud==0)
     return jsError("Invalid baud rate %d", inf->baudRate);
   if (!jshIsPinValid(inf->pinRX) || !jshIsPinValid(inf->pinTX))
@@ -567,6 +653,9 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
       inf->parity!=0, // TODO: ODD or EVEN parity?
       baud
   };
+  // APP_UART_INIT will set pins, but this ensures we know so can reset state later
+  jshPinSetFunction(inf->pinRX, JSH_USART1|JSH_USART_RX);
+  jshPinSetFunction(inf->pinTX, JSH_USART1|JSH_USART_TX);
 
   APP_UART_INIT(&comm_params,
                 uart0_event_handle,
