@@ -104,5 +104,5 @@ cp $DIR/dist_licences.txt $ZIPDIR/licences.txt
 
 rm -f $ZIPFILE
 cd zipcontents
-echo zip $ZIPFILE *
-zip $ZIPFILE *
+echo zip -r $ZIPFILE *
+zip -r $ZIPFILE *
