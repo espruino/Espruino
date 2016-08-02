@@ -562,6 +562,7 @@ static void jsvPinWatchHandler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
   lastHandledPinState = (bool)nrf_gpio_pin_read(pin);
   IOEventFlags evt = jshGetEventFlagsForWatchedPin(pin);
   jshPushIOWatchEvent(evt);
+  jshHadEvent();
 }
 
 
