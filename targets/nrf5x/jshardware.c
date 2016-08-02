@@ -24,7 +24,10 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
+#ifdef BLUETOOTH
 #include "jswrap_bluetooth.h"
+#include "app_timer.h"
+#endif
 
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
@@ -33,9 +36,12 @@
 #include "nrf_temp.h"
 #include "nrf_timer.h"
 #include "app_uart.h"
+#include "nrf_drv_uart.h"
+#include "nrf_delay.h"
 
 #ifdef NRF52
 #include "nrf_saadc.h"
+#include "nrf_pwm.h"
 #else
 #include "nrf_adc.h"
 #endif
@@ -61,11 +67,23 @@ static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 /// For flash - whether it is busy or not...
 volatile bool flashIsBusy = false;
+volatile bool hadEvent = false; // set if we've had an event we need to deal with
+bool uartIsSending = false;
+bool uartInitialised = false;
 
+JshPinFunction pinStates[JSH_PIN_COUNT];
+
+
+
+/// Called when we have had an event that means we should execute JS
+void jshHadEvent() {
+  hadEvent = true;
+}
 
 void TIMER1_IRQHandler(void) {
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_event_clear(NRF_TIMER1, NRF_TIMER_EVENT_COMPARE0);
+  jshHadEvent();
   jstUtilTimerInterruptHandler();
 }
 
@@ -75,46 +93,63 @@ void sys_evt_handler(uint32_t sys_evt) {
   }
 }
 
-
-unsigned int getNRFBaud(int baud) {
-  switch (baud) {
-    case 1200: return UART_BAUDRATE_BAUDRATE_Baud1200;
-    case 2400: return UART_BAUDRATE_BAUDRATE_Baud2400;
-    case 4800: return UART_BAUDRATE_BAUDRATE_Baud4800;
-    case 9600: return UART_BAUDRATE_BAUDRATE_Baud9600;
-    case 14400: return UART_BAUDRATE_BAUDRATE_Baud14400;
-    case 19200: return UART_BAUDRATE_BAUDRATE_Baud19200;
-    case 28800: return UART_BAUDRATE_BAUDRATE_Baud28800;
-    case 38400: return UART_BAUDRATE_BAUDRATE_Baud38400;
-    case 57600: return UART_BAUDRATE_BAUDRATE_Baud57600;
-    case 76800: return UART_BAUDRATE_BAUDRATE_Baud76800;
-    case 115200: return UART_BAUDRATE_BAUDRATE_Baud115200;
-    case 230400: return UART_BAUDRATE_BAUDRATE_Baud230400;
-    case 250000: return UART_BAUDRATE_BAUDRATE_Baud250000;
-    case 460800: return UART_BAUDRATE_BAUDRATE_Baud460800;
-    case 921600: return UART_BAUDRATE_BAUDRATE_Baud921600;
-    case 1000000: return UART_BAUDRATE_BAUDRATE_Baud1M;
-    default: return 0; // error
+static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
+  JshPinFunction fType = func&JSH_MASK_TYPE;
+  JshPinFunction fInfo = func&JSH_MASK_INFO;
+  switch (fType) {
+  case JSH_NOTHING: break;
+#ifdef NRF52
+  case JSH_TIMER1: NRF_PWM0->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
+  case JSH_TIMER2: NRF_PWM1->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
+  case JSH_TIMER3: NRF_PWM2->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
+  // FIXME: if no pins are active on the given PWM now, turn it off
+#endif
+  case JSH_USART1: if (fInfo==JSH_USART_RX) NRF_UART0->PSELRXD = pin;
+                   else NRF_UART0->PSELTXD = pin; break;
+  default: assert(0);
   }
 }
 
+static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
+  if (pinStates[pin]==func) return;
+  // disconnect existing peripheral (if there was one)
+  if (pinStates[pin])
+    jshPinSetFunction_int(pinStates[pin], 0xFFFFFFFF);
+  // connect new peripheral
+  pinStates[pin] = func;
+  jshPinSetFunction_int(pinStates[pin], pinInfo[pin].pin);
+}
+
+#ifdef BLUETOOTH
+APP_TIMER_DEF(m_wakeup_timer_id);
+
+void wakeup_handler() {
+  // don't do anything - just waking is enough for us
+  jshHadEvent();
+}
+#endif
 
 void jshInit() {
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
 
   BITFIELD_CLEAR(jshPinSoftPWM);
-    
-  JshUSARTInfo inf;
-  jshUSARTInitInfo(&inf);
-  inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
-  inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
-  inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
-  jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
+
+  // Only init UART if something is connected and RX is pulled up on boot...
+  jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+  if (jshPinGetValue(DEFAULT_CONSOLE_RX_PIN)) {
+    JshUSARTInfo inf;
+    jshUSARTInitInfo(&inf);
+    inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
+    inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
+    inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
+    jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
+  }
+
   init = 1;
 
   // Enable and sort out the timer
-  nrf_timer_mode_set(NRF_TIMER1,NRF_TIMER_MODE_TIMER);
+  nrf_timer_mode_set(NRF_TIMER1, NRF_TIMER_MODE_TIMER);
 #ifdef NRF52
   nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
   nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz);
@@ -136,7 +171,14 @@ void jshInit() {
 
   // Pin change
   nrf_drv_gpiote_init();
+#ifdef BLUETOOTH
   jswrap_nrf_bluetooth_init();
+
+  uint32_t err_code = app_timer_create(&m_wakeup_timer_id,
+                      APP_TIMER_MODE_SINGLE_SHOT,
+                      wakeup_handler);
+  if (err_code) jsiConsolePrintf("app_timer_create error %d\n", err_code);
+#endif
   
   // Softdevice is initialised now
   softdevice_sys_evt_handler_set(sys_evt_handler);
@@ -208,8 +250,7 @@ void jshDelayMicroseconds(int microsec) {
   if (microsec <= 0) {
     return;
   }
-
-  nrf_utils_delay_us((uint32_t) microsec);
+  nrf_delay_us((uint32_t)microsec);
 }
 
 void jshPinSetValue(Pin pin, bool value) {
@@ -222,6 +263,8 @@ bool jshPinGetValue(Pin pin) {
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state) {
+  // If this was set to be some kind of AF (USART, etc), reset it.
+  jshPinSetFunction(pin, JSH_NOTHING);
   /* Make sure we kill software PWM if we set the pin state
    * after we've started it */
   if (BITFIELD_GET(jshPinSoftPWM, pin)) {
@@ -281,7 +324,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
-  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t)pinInfo[pin].pin);
+  return 0; // FIXME need to get able to get pin state!
 }
 
 #ifdef NRF52
@@ -394,14 +437,89 @@ int jshPinAnalogFast(Pin pin) {
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
   /* we set the bit field here so that if the user changes the pin state
    * later on, we can get rid of the IRQs */
-  if (!jshGetPinStateIsManual(pin)) {
-    BITFIELD_SET(jshPinSoftPWM, pin, 0);
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+#ifdef NRF52
+  if (flags & JSAOF_FORCE_SOFTWARE) {
+#endif
+    if (!jshGetPinStateIsManual(pin)) {
+      BITFIELD_SET(jshPinSoftPWM, pin, 0);
+      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+    }
+    BITFIELD_SET(jshPinSoftPWM, pin, 1);
+    if (freq<=0) freq=50;
+    jstPinPWM(freq, value, pin);
+    return JSH_NOTHING;
+#ifdef NRF52
   }
-  BITFIELD_SET(jshPinSoftPWM, pin, 1);
-  if (freq<=0) freq=50;
-  jstPinPWM(freq, value, pin);
-  return JSH_NOTHING;
+  JshPinFunction func = JSH_TIMER1 | JSH_TIMER_CH1;
+  // FIXME: Search for free timers to use (based on freq as well)
+
+  NRF_PWM_Type *pwm;
+  if ((func&JSH_MASK_TYPE) == JSH_TIMER1) pwm = NRF_PWM0;
+  else if ((func&JSH_MASK_TYPE) == JSH_TIMER2) pwm = NRF_PWM1;
+  else if ((func&JSH_MASK_TYPE) == JSH_TIMER3) pwm = NRF_PWM2;
+  else { assert(0); return 0; };
+  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  jshPinSetFunction(pin, func);
+  nrf_pwm_enable(pwm);
+
+  nrf_pwm_clk_t clk;
+  if (freq<=0) freq = 1000;
+  int counter = (int)(16000000.0 / freq);
+
+  if (counter<32768) {
+    clk = NRF_PWM_CLK_16MHz;
+    if (counter<1) counter=1;
+  } else if (counter < (32768<<1)) {
+    clk = NRF_PWM_CLK_8MHz;
+    counter >>= 1;
+  } else if (counter < (32768<<2)) {
+    clk = NRF_PWM_CLK_4MHz;
+    counter >>= 2;
+  } else if (counter < (32768<<3)) {
+    clk = NRF_PWM_CLK_2MHz;
+    counter >>= 3;
+  } else if (counter < (32768<<4)) {
+    clk = NRF_PWM_CLK_1MHz;
+    counter >>= 4;
+  } else if (counter < (32768<<5)) {
+    clk = NRF_PWM_CLK_500kHz;
+    counter >>= 5;
+  } else if (counter < (32768<<6)) {
+    clk = NRF_PWM_CLK_250kHz;
+    counter >>= 6;
+  } else {
+    clk = NRF_PWM_CLK_125kHz;
+    counter >>= 7;
+    if (counter>32767) counter = 32767;
+    // Warn that we're out of range?
+  }
+
+  nrf_pwm_configure(pwm,
+      clk, NRF_PWM_MODE_UP, counter /* top value - 15 bits, not 16! */);
+  nrf_pwm_decoder_set(pwm,
+      NRF_PWM_LOAD_INDIVIDUAL, // allow all 4 channels to be used
+      NRF_PWM_STEP_TRIGGERED); // Only step on NEXTSTEP task
+
+  /*nrf_pwm_shorts_set(pwm, 0);
+  nrf_pwm_int_set(pwm, 0);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_LOOPSDONE);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND0);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND1);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_STOPPED);
+  nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_STOPPED);*/
+
+  static uint16_t pwmValues[4];
+  pwmValues[func >> JSH_SHIFT_INFO] = counter - (uint16_t)(value*counter);
+  nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
+  nrf_pwm_seq_ptr_set(      pwm, 0, pwmValues);
+  nrf_pwm_seq_cnt_set(      pwm, 0, 4);
+  nrf_pwm_seq_refresh_set(  pwm, 0, 0);
+  nrf_pwm_seq_end_delay_set(pwm, 0, 0);
+
+  nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
+  // nrf_pwm_disable(pwm);
+  return func;
+#endif
 } // if freq<=0, the default is used
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
@@ -444,6 +562,7 @@ static void jsvPinWatchHandler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
   lastHandledPinState = (bool)nrf_gpio_pin_read(pin);
   IOEventFlags evt = jshGetEventFlagsForWatchedPin(pin);
   jshPushIOWatchEvent(evt);
+  jshHadEvent();
 }
 
 
@@ -496,10 +615,8 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   return false;
 }
 
-bool uartIsSending = false;
-bool uartInitialised = false;
-
 void uart0_event_handle(app_uart_evt_t * p_event) {
+  jshHadEvent();
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
     jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
   } else if (p_event->evt_type == APP_UART_TX_EMPTY) {
@@ -521,7 +638,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (device != EV_SERIAL1)
     return;
 
-  int baud = getNRFBaud(inf->baudRate);
+  int baud = nrf_utils_get_baud_enum(inf->baudRate);
   if (baud==0)
     return jsError("Invalid baud rate %d", inf->baudRate);
   if (!jshIsPinValid(inf->pinRX) || !jshIsPinValid(inf->pinTX))
@@ -537,12 +654,16 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
       inf->parity!=0, // TODO: ODD or EVEN parity?
       baud
   };
+  // APP_UART_INIT will set pins, but this ensures we know so can reset state later
+  jshPinSetFunction(inf->pinRX, JSH_USART1|JSH_USART_RX);
+  jshPinSetFunction(inf->pinTX, JSH_USART1|JSH_USART_TX);
 
   APP_UART_INIT(&comm_params,
                 uart0_event_handle,
                 APP_IRQ_PRIORITY_HIGH,
                 err_code);
   APP_ERROR_CHECK(err_code);
+  uartInitialised = true;
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
@@ -556,15 +677,22 @@ void jshUSARTKick(IOEventFlags device) {
     jswrap_nrf_transmit_string();
   }
   
-  if (device == EV_SERIAL1 && !uartIsSending) {
-    jshInterruptOff();
-    int ch = jshGetCharToTransmit(EV_SERIAL1);
-    if (ch >= 0) {
-      // put data - this will kick off the USART
-      while (app_uart_put((uint8_t)ch) != NRF_SUCCESS);
-      uartIsSending = true;
+  if (device == EV_SERIAL1) {
+    if (uartInitialised) {
+      if (!uartIsSending) {
+        jshInterruptOff();
+        int ch = jshGetCharToTransmit(EV_SERIAL1);
+        if (ch >= 0) {
+          // put data - this will kick off the USART
+          while (app_uart_put((uint8_t)ch) != NRF_SUCCESS);
+          uartIsSending = true;
+        }
+        jshInterruptOn();
+      }
+    } else {
+      // UART not initialised yet - just drain
+      while (jshGetCharToTransmit(EV_SERIAL1)>=0);
     }
-    jshInterruptOn();
   }
 }
 
@@ -650,8 +778,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
-bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
-{
+bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
   if (addr > (NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE))
     return false;
   *startAddr = (uint32_t) (floor(addr / NRF_FICR->CODEPAGESIZE) * NRF_FICR->CODEPAGESIZE);
@@ -694,7 +821,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   //jsiConsolePrintf("\njshFlashWrite 0x%x addr 0x%x -> 0x%x, len %d\n", *(uint32_t*)buf, (uint32_t)buf, addr, len);
   uint32_t err;
   flashIsBusy = true;
-  while ((err = sd_flash_write(addr, (uint8_t *)buf, len>>2)) == NRF_ERROR_BUSY);
+  while ((err = sd_flash_write((uint32_t*)addr, (uint32_t *)buf, len>>2)) == NRF_ERROR_BUSY);
   if (err!=NRF_SUCCESS) flashIsBusy = false;
   WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
   /*if (err!=NRF_SUCCESS)
@@ -706,11 +833,26 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 bool jshSleep(JsSysTime timeUntilWake) {
   /* Wake ourselves up if we're supposed to, otherwise if we're not waiting for
    any particular time, just sleep. */
-  if (timeUntilWake < JSSYSTIME_MAX)
+  if (timeUntilWake < JSSYSTIME_MAX) {
+#ifdef BLUETOOTH
+    uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake), APP_TIMER_PRESCALER);
+    if (ticks<1) return false;
+    uint32_t err_code = app_timer_start(m_wakeup_timer_id, ticks, NULL);
+    if (err_code) jsiConsolePrintf("app_timer_start error %d\n", err_code);
+#else
     jstSetWakeUp(timeUntilWake);
-  jsiSetSleep(JSI_SLEEP_ASLEEP);
-  sd_app_evt_wait(); // Go to sleep, wait to be woken up
-  jsiSetSleep(JSI_SLEEP_AWAKE);
+#endif
+  }
+  hadEvent = false;
+  while (!hadEvent) {
+    jsiSetSleep(JSI_SLEEP_ASLEEP);
+    sd_app_evt_wait(); // Go to sleep, wait to be woken up
+    jsiSetSleep(JSI_SLEEP_AWAKE);
+  }
+#ifdef BLUETOOTH
+  // we don't care about the return codes...
+  app_timer_stop(m_wakeup_timer_id);
+#endif
   return true;
 }
 
@@ -718,7 +860,6 @@ bool utilTimerActive = false;
 
 /// Reschedule the timer (it should already be running) to interrupt after 'period'
 void jshUtilTimerReschedule(JsSysTime period) {
-  JsSysTime t = period;
   if (period < JSSYSTIME_MAX / NRF_TIMER_FREQ) {
     period = period * NRF_TIMER_FREQ / (long long)SYSCLK_FREQ;
     if (period < 1) period=1;

@@ -56,9 +56,11 @@ devices = {
   'LED1' : { 'pin' : 'D5' },
   'LED2' : { 'pin' : 'D4' },
   'LED3' : { 'pin' : 'D3' },
-  'LED4' : { 'pin' : 'D25', 'pin2' : 'D26' },
+  'IR'   : { 'pin_anode' : 'D26', 'pin_cathode' : 'D25' },
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' }
 # CAPSENSE D8
+# NFC D9/D10
+
 };
 
 # left-right, or top-bottom order

@@ -27,7 +27,8 @@
 #include "nrf_log.h"
 
 #ifdef DEBUG
-#include "bsp.h"
+#undef DEBUG // hack because Espruino uses the 'DEBUG' flag too
+//#include "bsp.h"
 #endif
 
 

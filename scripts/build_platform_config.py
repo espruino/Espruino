@@ -380,8 +380,11 @@ if "SD" in board.devices:
       if spiNum==0: die("No SPI peripheral found for SD card's CLK pin")
       codeOut("#define SD_SPI EV_SPI"+str(spiNum))
 
+if "IR" in board.devices:
+  codeOutDevicePin("IR", "pin_anode", "IR_ANODE_PIN")
+  codeOutDevicePin("IR", "pin_cathode", "IR_CATHODE_PIN")
 
-for device in ["USB","SD","LCD","JTAG","ESP8266"]:
+for device in ["USB","SD","LCD","JTAG","ESP8266","IR"]:
   if device in board.devices:
     for entry in board.devices[device]:
       if entry[:3]=="pin": usedPinChecks.append("(PIN)==" + toPinDef(board.devices[device][entry])+"/* "+device+" */")

@@ -533,7 +533,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       // Now, if we're parsing add the rest of the arguments
       int allocatedArgCount = boundArgs;
       if (isParsing) {
-        while (!JSP_SHOULDNT_PARSE && lex->tk!=')' && lex->tk!=LEX_EOF) {
+        while (!JSP_HAS_ERROR && lex->tk!=')' && lex->tk!=LEX_EOF) {
           if ((unsigned)argCount>=argPtrSize) {
             // allocate more space on stack
             unsigned int newArgPtrSize = argPtrSize?argPtrSize*4:16;
@@ -572,10 +572,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
 
 
-      if (nativePtr) {
+      if (nativePtr && !JSP_HAS_ERROR) {
         returnVar = jsnCallFunction(nativePtr, function->varData.native.argTypes, thisVar, argPtr, argCount);
       } else {
-        assert(0); // in case something went horribly wrong
         returnVar = 0;
       }
 
@@ -684,8 +683,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           if (jsvIsStringEqual(param, JSPARSE_FUNCTION_SCOPE_NAME)) functionScope = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_CODE_NAME)) functionCode = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_NAME_NAME)) functionInternalName = jsvSkipName(param);
-          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) thisVar = jsvSkipName(param);
-          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
+          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) {
+            jsvUnLock(thisVar);
+            thisVar = jsvSkipName(param);
+          } else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
           else if (jsvIsFunctionParameter(param)) {
             JsVar *paramName = jsvCopy(param);
             // paramName is already a name (it's a function parameter)
