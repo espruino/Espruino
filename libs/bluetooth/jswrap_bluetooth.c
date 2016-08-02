@@ -33,6 +33,7 @@
 bool nfcEnabled = false;
 #endif
 
+#undef USE_BOOTLOADER
 #ifdef USE_BOOTLOADER
 #include "device_manager.h"
 #include "pstorage.h"

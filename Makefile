@@ -1343,7 +1343,7 @@ ifeq ($(FAMILY), NRF52)
 
   ifdef USE_BOOTLOADER  
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
-  NFR_BL_START_ADDR = 0x7A000# see dfu_gcc_nrf52.ld
+  NFR_BL_START_ADDR = 0x78000 # see dfu_gcc_nrf52.ld
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
@@ -1504,7 +1504,7 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/trace
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
-	INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
 
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
@@ -1539,21 +1539,37 @@ ifdef NRF5X
    $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c \
    $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_app_handler.c
   ifdef BOOTLOADER
+    DEFINES += -DBOOTLOADER
     INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crc16
     INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/scheduler
     INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/hci
     INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/ble_transport
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crc16/crc16.c
+
+    TARGETSOURCES = # Make sure we don't include existing files (thanks to pstorage)
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/scheduler/app_scheduler.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_settings.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_single_bank.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crc16/crc16.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_dual_bank.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_init_template.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_transport_ble.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/experimental/dfu_init_template_signing.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage_raw.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu/ble_dfu.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c       
   endif 
   endif
 
@@ -2042,10 +2058,12 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
 	echo Not merging softdevice or bootloader with application
   else
   ifdef BOOTLOADER
-	echo Raw bootloader - not merging
+	echo Not merging anything with bootloader
+	echo Copy $(PROJ_NAME).hex to $(NRF_BOOTLOADER) to update
   else
 	echo Merging SoftDevice and Bootloader
-	scripts/hexmerge.py $(SOFTDEVICE) $(NRF_BOOTLOADER):$(NFR_BL_START_ADDR): $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
+	echo FIXME - had to set --overlap=replace
+	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
   endif
   endif
