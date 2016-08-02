@@ -19,6 +19,7 @@
 #include "jsinteractive.h"
 #include "jsdevices.h"
 #include "jshardware.h"
+#include "jstimer.h"
 
 #include "nrf_gpio.h"
 
@@ -182,6 +183,7 @@ void mag_off() {
   "generate" : "jswrap_puck_mag",
   "return" : ["JsVar", "An Object `{x,y,z}` of magnetometer readings" ]
 }
+Turn on the magnetometer, take a single reading, and then turn it off again.
 */
 JsVar *jswrap_puck_mag() {
   mag_on();
@@ -195,6 +197,57 @@ JsVar *jswrap_puck_mag() {
     jsvObjectSetChildAndUnLock(obj,"z",jsvNewFromInteger(d[2]));
   }
   return obj;
+}
+
+// Called when we're done with the IR transmission
+void _jswrap_puck_IR_done(JsSysTime t) {
+  // set as input - so no signal
+  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN);
+  // this one also stops the PWM
+  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN);
+}
+
+/*JSON{
+  "type" : "function",
+  "name" : "IR",
+  "generate" : "jswrap_puck_IR",
+  "params" : [
+      ["data","JsVar","An array of pulse lengths, in milliseconds"]
+  ]
+}
+Transmit the given set of IR pulses - data should be an array of pulse times
+in milliseconds (as `[on, off, on, off, on, etc]`).
+*/
+void jswrap_puck_IR(JsVar *data) {
+  if (!jsvIsIterable(data)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting an array, got %t", data);
+    return;
+  }
+
+  jshPinSetValue(IR_ANODE_PIN, 1);
+  Pin pin = IR_ANODE_PIN;
+  jshPinAnalogOutput(IR_CATHODE_PIN, 0.5, 38000, 0);
+
+  JsSysTime time = jshGetSystemTime();
+  bool hasPulses = false;
+  bool pulsePolarity = true;
+
+  JsvIterator it;
+  jsvIteratorNew(&it, data);
+  while (jsvIteratorHasElement(&it)) {
+    JsVarInt pulseTime = jsvIteratorGetIntegerValue(&it);
+    if (hasPulses) jstPinOutputAtTime(time, &pin, 1, pulsePolarity);
+    else jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
+    hasPulses = true;
+    time += jshGetTimeFromMilliseconds(pulseTime);
+    pulsePolarity = !pulsePolarity;
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+
+  if (hasPulses) {
+    jstExecuteFn(_jswrap_puck_IR_done, time, 0);
+  }
 }
 
 

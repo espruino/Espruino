@@ -14,4 +14,6 @@
 #include "jspin.h"
 
 JsVar *jswrap_puck_mag();
+void jswrap_puck_IR(JsVar *data);
+
 void jswrap_puck_kill();
