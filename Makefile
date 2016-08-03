@@ -482,7 +482,7 @@ EMBEDDED=1
 BOARD=NRF52832DK
 OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
-DEFINES += -DBOARD_PCA10040
+DEFINES += -DBOARD_PCA10040 -DPCA10040
 
 # Uncomment to build Espruino to be transferred over DFU instead of flashed to the device.
 #DFU_UPDATE_BUILD=1
