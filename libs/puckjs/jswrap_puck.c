@@ -303,18 +303,19 @@ void jswrap_puck_IR(JsVar *data) {
     return;
   }
 
-  jshPinSetValue(IR_ANODE_PIN, 1);
+
   Pin pin = IR_ANODE_PIN;
   jshPinAnalogOutput(IR_CATHODE_PIN, 0.5, 38000, 0);
 
   JsSysTime time = jshGetSystemTime();
   bool hasPulses = false;
-  bool pulsePolarity = true;
+  bool pulsePolarity = false;
+  jshPinSetValue(IR_ANODE_PIN, pulsePolarity);
 
   JsvIterator it;
   jsvIteratorNew(&it, data);
   while (jsvIteratorHasElement(&it)) {
-    JsVarInt pulseTime = jsvIteratorGetIntegerValue(&it);
+    JsVarFloat pulseTime = jsvIteratorGetFloatValue(&it);
     if (hasPulses) jstPinOutputAtTime(time, &pin, 1, pulsePolarity);
     else jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
     hasPulses = true;

@@ -436,6 +436,7 @@ bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime startTime, uint32_t period) {
   task.type = UET_EXECUTE;
   task.data.execute = fn;
 
+  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
   return utilTimerInsertTask(&task);
 }
 
