@@ -1492,7 +1492,7 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/trace
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
-	INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
 
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
@@ -1514,8 +1514,7 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c
-  # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c 
 
   ifdef USE_BOOTLOADER
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/device_manager
