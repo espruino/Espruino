@@ -134,7 +134,7 @@ bool jswrap_nrf_transmit_string();
   "generate" : "jswrap_nrf_idle"
 }*/
 bool jswrap_nrf_idle() {
-  return jswrap_nrf_transmit_string()>0; // return true if we sent anything
+  return false;
 }
 
 /*JSON{
@@ -439,7 +439,36 @@ bool jswrap_nrf_transmit_string() {
   }
   return idx>0;
 }
-/**@snippet [Handling the data received over BLE] */
+
+uint32_t radio_notification_init(uint32_t irq_priority, uint8_t notification_type, uint8_t notification_distance)
+{
+    uint32_t err_code;
+
+    err_code = sd_nvic_ClearPendingIRQ(SWI1_IRQn);
+    if (err_code != NRF_SUCCESS)
+    {
+        return err_code;
+    }
+
+    err_code = sd_nvic_SetPriority(SWI1_IRQn, irq_priority);
+    if (err_code != NRF_SUCCESS)
+    {
+        return err_code;
+    }
+
+    err_code = sd_nvic_EnableIRQ(SWI1_IRQn);
+    if (err_code != NRF_SUCCESS)
+    {
+        return err_code;
+    }
+
+    // Configure the event
+    return sd_radio_notification_cfg_set(notification_type, notification_distance);
+}
+
+void SWI1_IRQHandler(bool radio_evt) {
+  jswrap_nrf_transmit_string();
+}
 
 
 /**@brief Function for initializing services that will be used by the application.
@@ -693,7 +722,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_EVT_TX_COMPLETE:
         // UART Transmit finished - we can try and send more data
         bleStatus &= ~BLE_IS_SENDING;
-        jswrap_nrf_transmit_string();
         break;
 
       case BLE_GAP_EVT_ADV_REPORT: {
@@ -1047,6 +1075,10 @@ void jswrap_nrf_bluetooth_init(void) {
   conn_params_init();
 
   jswrap_nrf_bluetooth_wake();
+
+  radio_notification_init(3,
+                          NRF_RADIO_NOTIFICATION_TYPE_INT_ON_INACTIVE,
+                          NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
 }
 
 /*JSON{
