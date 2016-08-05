@@ -54,6 +54,7 @@
 #define BOOTLOADER_BUTTON_ONSTATE       BTN1_ONSTATE                                            /**< Button used to enter SW update mode. */
 #define UPDATE_IN_PROGRESS_LED          LED3_PININDEX                                            /**< Led used to indicate that DFU is active. */
 #define UPDATE_IN_PROGRESS_LED_ONSTATE  LED3_ONSTATE                                            /**< Led used to indicate that DFU is active. */
+// Other LED is set in targetlibs/nrf5x/nrf5_sdk/components/libraries/bootloader_dfu/dfu_transport_ble.c (currently LED1)
 
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 1                                                       /**< Include the service_changed characteristic. For DFU this should normally be the case. */
