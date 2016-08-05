@@ -33,6 +33,11 @@
 bool nfcEnabled = false;
 #endif
 
+#undef USE_BOOTLOADER // FIXME - this now errors with 0x4001 - not sure why
+//... but then IMO we don't want to be able to enable DFU directly from BLE
+//... much better to
+
+
 #ifdef USE_BOOTLOADER
 #include "device_manager.h"
 #include "pstorage.h"

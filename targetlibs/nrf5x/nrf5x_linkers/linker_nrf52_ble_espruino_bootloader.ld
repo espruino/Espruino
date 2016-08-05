@@ -15,12 +15,12 @@ MEMORY
 
 SECTIONS
 {
-  .fs_data :
+  .fs_data_out ALIGN(4):
   {
-    PROVIDE(__start_fs_data = .);
-    KEEP(*(.fs_data))
-    PROVIDE(__stop_fs_data = .);
-  } > RAM
-} INSERT AFTER .data;
+    PROVIDE( __start_fs_data = .);
+    KEEP(*(fs_data))
+    PROVIDE( __stop_fs_data = .);
+  } = 0
+}
 
 INCLUDE "gcc_nrf5x_espruino_common.ld"

@@ -484,8 +484,7 @@ OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
 DEFINES += -DBOARD_PCA10040 -DPCA10040
 
-# Uncomment to build Espruino to be transferred over DFU instead of flashed to the device.
-#DFU_UPDATE_BUILD=1
+# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
 
 else ifdef PUCKJS
 EMBEDDED=1
@@ -638,10 +637,10 @@ ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
 USE_WIRINGPI=1
 else
 DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
-#$(info *************************************************************)
-#$(info *  WIRINGPI NOT FOUND, and you probably want it             *)
-#$(info *  see  http://wiringpi.com/download-and-install/           *)
-#$(info *************************************************************)
+$(info *************************************************************)
+$(info *  WIRINGPI NOT FOUND, and you probably want it             *)
+$(info *  see  http://wiringpi.com/download-and-install/           *)
+$(info *************************************************************)
 endif
 
 else ifdef BEAGLEBONE
@@ -1312,13 +1311,13 @@ ifeq ($(FAMILY), NRF51)
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0_softdevice.hex
 
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-
   ifdef USE_BOOTLOADER
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
-  NFR_BL_START_ADDR = 0x3C000
+  NFR_BL_START_ADDR = 0x3C000# see dfu_gcc_nrf51.ld
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex # This file writes 0x3FC00 with 0x01 so we can flash the application with the bootloader.
-
+  else
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   endif
 
 endif # FAMILY == NRF51
@@ -1343,12 +1342,18 @@ ifeq ($(FAMILY), NRF52)
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0_softdevice.hex
 
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld # TODO: Should have separate linkers like is done in nrf_bootloader branch.
-
-  ifdef USE_BOOTLOADER
+  ifdef USE_BOOTLOADER  
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
-  NFR_BL_START_ADDR = 0x7A000
+  NFR_BL_START_ADDR = 0x78000 # see dfu_gcc_nrf52.ld
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
+  ifdef BOOTLOADER
+    # we're trying to compile the bootloader itself
+    LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/dfu_gcc_nrf52.ld
+  else
+    LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
+  endif
+  else
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
   endif
 endif #FAMILY == NRF52
 
@@ -1447,7 +1452,6 @@ ifeq ($(FAMILY), EFM32GG)
 endif #FAMILY == EFM32
 
 ifdef NRF5X
-
   # Just try and get rid of the compile warnings.
   CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
   DEFINES += -DBLUETOOTH -D$(BOARD)
@@ -1461,10 +1465,19 @@ ifdef NRF5X
 
   # These files are the Espruino HAL implementation.
   INCLUDE += -I$(ROOT)/targets/nrf5x
-  SOURCES +=                              \
-  targets/nrf5x/main.c                    \
-  targets/nrf5x/jshardware.c              \
-  targets/nrf5x/nrf5x_utils.c
+  ifdef BOOTLOADER
+    BUILD_LINKER_FLAGS+=--bootloader
+    PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
+    WRAPPERSOURCES =
+    SOURCES = \
+      targets/nrf5x_dfu/main.c \
+      targets/nrf5x_dfu/dfu_ble_svc.c
+  else
+    SOURCES +=                              \
+      targets/nrf5x/main.c                    \
+      targets/nrf5x/jshardware.c              \
+      targets/nrf5x/nrf5x_utils.c
+  endif
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components
@@ -1525,6 +1538,39 @@ ifdef NRF5X
    $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu/ble_dfu.c \
    $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c \
    $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_app_handler.c
+  ifdef BOOTLOADER
+    DEFINES += -DBOOTLOADER
+    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crc16
+    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/scheduler
+    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/hci
+    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/ble_transport
+
+    TARGETSOURCES = # Make sure we don't include existing files (thanks to pstorage)
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/scheduler/app_scheduler.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_settings.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crc16/crc16.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_dual_bank.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_init_template.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_transport_ble.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage_raw.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu/ble_dfu.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c       
+  endif 
   endif
 
 endif #NRF5X
@@ -2011,9 +2057,15 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
   ifdef DFU_UPDATE_BUILD
 	echo Not merging softdevice or bootloader with application
   else
+  ifdef BOOTLOADER
+	echo Not merging anything with bootloader
+	echo Copy $(PROJ_NAME).hex to $(NRF_BOOTLOADER) to update
+  else
 	echo Merging SoftDevice and Bootloader
-	scripts/hexmerge.py $(SOFTDEVICE) $(NRF_BOOTLOADER):$(NFR_BL_START_ADDR): $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
+	echo FIXME - had to set --overlap=replace
+	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
+  endif
   endif
  else
 	echo Merging SoftDevice
@@ -2033,7 +2085,11 @@ ifndef TRAVIS
 	bash scripts/check_size.sh $(PROJ_NAME).bin
 endif
 
+ifdef NRF5X
+proj: $(PROJ_NAME).lst $(PROJ_NAME).hex
+else
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
+endif
 
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
