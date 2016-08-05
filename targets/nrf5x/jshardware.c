@@ -93,12 +93,14 @@ void sys_evt_handler(uint32_t sys_evt) {
   }
 }
 
+#ifdef NRF52
 NRF_PWM_Type *nrf_get_pwm(JshPinFunction func) {
   if ((func&JSH_MASK_TYPE) == JSH_TIMER1) return NRF_PWM0;
   else if ((func&JSH_MASK_TYPE) == JSH_TIMER2) return NRF_PWM1;
   else if ((func&JSH_MASK_TYPE) == JSH_TIMER3) return NRF_PWM2;
   return 0;
 }
+#endif
 
 static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
   JshPinFunction fType = func&JSH_MASK_TYPE;

@@ -205,7 +205,7 @@ void jswrap_microbit_show(JsVar *image) {
 
   if ((newState!=0) && (microbitLEDState==0)) {
     // we want to display something but we don't have an interval
-    JshSysTime period = jshGetTimeFromMilliseconds(5);
+    JsSysTime period = jshGetTimeFromMilliseconds(5);
     jstExecuteFn(jswrap_microbit_display_callback, jshGetSystemTime()+period, (uint32_t)period);
     // and also set pins to outputs
     nrf_gpio_cfg_output(MB_LED_COL1);
