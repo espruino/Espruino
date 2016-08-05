@@ -1076,7 +1076,12 @@ void jswrap_nrf_bluetooth_init(void) {
 
   jswrap_nrf_bluetooth_wake();
 
-  radio_notification_init(3,
+  radio_notification_init(
+#ifdef NRF52
+                          6, /* IRQ Priority -  Must be 6 on nRF52. 7 doesn't work */
+#else
+                          3, /* IRQ Priority -  nRF51 has different IRQ structure */
+#endif
                           NRF_RADIO_NOTIFICATION_TYPE_INT_ON_INACTIVE,
                           NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
 }
