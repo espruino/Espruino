@@ -523,6 +523,9 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
   if (isReset && !(bootCodeInfo & BOOT_CODE_RUN_ALWAYS)) return false;
 
   code = (char *)(FLASH_DATA_LOCATION);
+#ifdef ESP8266
+  code += 0x40200000;
+#endif
 #endif
   jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
   return true;
