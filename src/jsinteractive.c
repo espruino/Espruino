@@ -101,8 +101,12 @@ NO_INLINE bool jsiEcho() {
   return ((jsiStatus&JSIS_ECHO_OFF_MASK)==0);
 }
 
+NO_INLINE bool jsiPasswordProtected() {
+  return ((jsiStatus&JSIS_PASSWORD_PROTECTED)!=0);
+}
+
 static bool jsiShowInputLine() {
-  return jsiEcho() && !inputLineRemoved;
+  return jsiEcho() && !inputLineRemoved && !jsiPasswordProtected();
 }
 
 /** Called when the input line/cursor is modified *and its iterator should be reset
@@ -371,6 +375,8 @@ void jsiConsoleReturnInputLine() {
       if (jsiStatus & JSIS_IN_DEBUGGER)
         jsiConsolePrint("debug");
 #endif
+      if (jsiPasswordProtected())
+        jsiConsolePrint("password");
       jsiConsolePrintChar('>'); // show the prompt
       jsiConsolePrintStringVarWithNewLineChar(inputLine, 0, ':');
       jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos);
@@ -379,10 +385,13 @@ void jsiConsoleReturnInputLine() {
 }
 
 /**
- * Clear the input line of data.
+ * Clear the input line of data. If updateConsole is set, it
+ * sends VT100 characters to physically remove the line from
+ * the user's terminal.
  */
-void jsiClearInputLine() {
-  jsiConsoleRemoveInputLine();
+void jsiClearInputLine(bool updateConsole) {
+  if (updateConsole)
+    jsiConsoleRemoveInputLine();
   // clear input line
   jsiInputLineCursorMoved();
   jsvUnLock(inputLine);
@@ -723,7 +732,7 @@ void jsiSemiInit(bool autoLoad) {
   // Set state
   interruptedDuringEvent = false;
   // Set defaults
-  jsiStatus = JSIS_NONE;
+  jsiStatus &= ~JSIS_SOFTINIT_MASK;
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 
   /* If flash contains any code, then we should
@@ -736,6 +745,12 @@ void jsiSemiInit(bool autoLoad) {
     jsvSoftInit();
     jspSoftInit();
   }
+
+  // If a password was set, apply the lock
+  JsVar *pwd = jsvObjectGetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, 0);
+  if (pwd)
+    jsiStatus |= JSIS_PASSWORD_PROTECTED;
+  jsvUnLock(pwd);
 
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit(!autoLoad);
@@ -779,6 +794,8 @@ void jsiSemiInit(bool autoLoad) {
 
 // The 'proper' init function - this should be called only once at bootup
 void jsiInit(bool autoLoad) {
+  jsiStatus = JSIS_NONE;
+
 #if defined(LINUX) || !defined(USB)
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
 #else
@@ -1273,10 +1290,7 @@ void jsiHandleNewLine(bool execute) {
 
       // Get line to execute, and reset inputLine
       JsVar *lineToExecute = jsvStringTrimRight(inputLine);
-      jsiInputLineCursorMoved();
-      jsvUnLock(inputLine);
-      inputLine = jsvNewFromEmptyString();
-      inputCursorPos = 0;
+      jsiClearInputLine(false);
 #ifdef USE_DEBUGGER
       if (jsiStatus & JSIS_IN_DEBUGGER) {
         jsiDebuggerLine(lineToExecute);
@@ -1357,6 +1371,30 @@ void jsiHandleChar(char ch) {
   // 27 then 79 then 72 - end
   // 27 then 10 - alt enter
 
+  if (jsiPasswordProtected()) {
+    if (ch=='\r' || ch==10) {
+      JsVar *pwd = jsvObjectGetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, 0);
+      // check password
+      if (pwd && jsvCompareString(inputLine, pwd, 0, 0, false)==0)
+        jsiStatus &= ~JSIS_PASSWORD_PROTECTED;
+      jsvUnLock(pwd);
+      jsiClearInputLine(false);
+      if (jsiPasswordProtected()) {
+        jsiConsolePrint("\n  Invalid password\npassword>");
+      } else {
+        jsiConsolePrint("\n  Logged in.\n");
+        inputLineRemoved = true;
+        jsiConsoleReturnInputLine();
+      }
+    } else {
+      char str[2];
+      str[0] = ch;
+      str[1] = 0;
+      if (jsvGetStringLength(inputLine)<20)
+        jsiAppendToInputLine(str);
+    }
+    return;
+  }
 
   if (ch == 0) {
     inputState = IS_NONE; // ignore 0 - it's scary
@@ -1367,7 +1405,7 @@ void jsiHandleChar(char ch) {
   } else if (ch == 5) { // Ctrl-e
     jsiHandleEnd();
   } else if (ch == 21 || ch == 23) { // Ctrl-u or Ctrl-w
-    jsiClearInputLine();
+    jsiClearInputLine(true);
   } else if (ch == 27) {
     inputState = IS_HAD_27;
   } else if (inputState==IS_HAD_27) {
@@ -1425,7 +1463,7 @@ void jsiHandleChar(char ch) {
     } else {
       if (ch=='d') jsiLineNumberOffset = inputStateNumber;
       else if (ch=='H' /* 75 */) {
-        if (inputStateNumber==2) jsiClearInputLine(); // Erase current line
+        if (inputStateNumber==2) jsiClearInputLine(true); // Erase current line
       } else if (ch==126) {
         if (inputStateNumber==1) jsiHandleHome(); // Numpad Home
         else if (inputStateNumber==3) jsiHandleDelete(false/*not backspace*/); // Numpad (forwards) Delete
@@ -1605,6 +1643,14 @@ bool jsiIsWatchingPin(Pin pin) {
   jsvObjectIteratorFree(&it);
   jsvUnLock(watchArrayPtr);
   return isWatched;
+}
+
+void jsiCtrlC() {
+  // If password protected, don't let Ctrl-C break out of running code!
+  if (jsiPasswordProtected())
+    return;
+  // Force a break...
+  execInfo.execute |= EXEC_CTRL_C;
 }
 
 /** Take an event for a UART and handle the chareacters we're getting, potentially
@@ -2040,7 +2086,7 @@ bool jsiLoop() {
 #endif
       jsiTimeSinceCtrlC = 0;
     }
-    jsiClearInputLine();
+    jsiClearInputLine(true);
   }
 
   // return console (if it was gone!)
@@ -2171,7 +2217,7 @@ void jsiDebuggerLoop() {
       EXEC_DEBUGGER_NEXT_LINE |
       EXEC_DEBUGGER_STEP_INTO |
       EXEC_DEBUGGER_FINISH_FUNCTION);
-  jsiClearInputLine();
+  jsiClearInputLine(true);
   jsiConsoleRemoveInputLine();
   jsiStatus = (jsiStatus & ~JSIS_ECHO_OFF_MASK) | JSIS_IN_DEBUGGER;
 
