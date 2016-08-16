@@ -314,7 +314,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   if (jsvIsObject(options)) {
     // if options is a string - it will be parsed, and GET will be set automatically
     JsVar *method = jsvNewFromString("GET");
-    jsvUnLock2(jsvAddNamedChild(options, method, "method"), method);
+    jsvUnLock2(jsvSetNamedChild(options, method, "method"), method);
   }
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsUndefined(skippedCallback) && !jsvIsFunction(skippedCallback)) {
