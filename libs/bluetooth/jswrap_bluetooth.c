@@ -881,7 +881,7 @@ static void sys_evt_dispatch(uint32_t sys_evt)
 #ifdef USE_NFC
 /// Sigh - NFC has lots of these, so we need to define it to build
 void log_uart_printf(const char * format_msg, ...) {
-  jsiConsolePrintf("NFC: %s\n", format_msg);
+ // jsiConsolePrintf("NFC: %s\n", format_msg);
 }
 
 /**

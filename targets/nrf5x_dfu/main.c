@@ -17,9 +17,9 @@
  * @ingroup dfu_bootloader_api
  * @brief Bootloader project main file.
  *
- * -# Receive start data packet. 
- * -# Based on start packet, prepare NVM area to store received data. 
- * -# Receive data packet. 
+ * -# Receive start data packet.
+ * -# Based on start packet, prepare NVM area to store received data.
+ * -# Receive data packet.
  * -# Validate data packet.
  * -# Write Data packet to NVM.
  * -# If not finished - Wait for next packet.
@@ -72,7 +72,7 @@
  *
  * @details This function will be called in case of an assert in the SoftDevice.
  *
- * @warning This handler is an example only and does not fit a final product. You need to analyze 
+ * @warning This handler is an example only and does not fit a final product. You need to analyze
  *          how your product is supposed to react in case of Assert.
  * @warning On assert from the SoftDevice, the system can only recover on reset.
  *
@@ -90,7 +90,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 static void leds_init(void)
 {
     nrf_gpio_cfg_output(UPDATE_IN_PROGRESS_LED);
-    nrf_gpio_pin_write(UPDATE_IN_PROGRESS_LED, UPDATE_IN_PROGRESS_LED_ONSTATE);
+    nrf_gpio_pin_write(UPDATE_IN_PROGRESS_LED, !UPDATE_IN_PROGRESS_LED_ONSTATE);
 }
 
 
@@ -131,8 +131,8 @@ static void sys_evt_dispatch(uint32_t event)
  *
  * @details Initializes the SoftDevice and the BLE event interrupt.
  *
- * @param[in] init_softdevice  true if SoftDevice should be initialized. The SoftDevice must only 
- *                             be initialized if a chip reset has occured. Soft reset from 
+ * @param[in] init_softdevice  true if SoftDevice should be initialized. The SoftDevice must only
+ *                             be initialized if a chip reset has occured. Soft reset from
  *                             application must not reinitialize the SoftDevice.
  */
 static void ble_stack_init(bool init_softdevice)
@@ -145,10 +145,10 @@ static void ble_stack_init(bool init_softdevice)
         err_code = sd_mbr_command(&com);
         APP_ERROR_CHECK(err_code);
     }
-    
+
     err_code = sd_softdevice_vector_table_base_set(BOOTLOADER_REGION_START);
     APP_ERROR_CHECK(err_code);
-   
+
     // TODO: enable if we're on a device with 32kHz xtal
     /*nrf_clock_lf_cfg_t clock_lf_cfg = {
         .source        = NRF_CLOCK_LF_SRC_XTAL,
@@ -172,7 +172,7 @@ static void ble_stack_init(bool init_softdevice)
     ble_enable_params.gatts_enable_params.service_changed = IS_SRVC_CHANGED_CHARACT_PRESENT;
     err_code = softdevice_enable(&ble_enable_params);
     APP_ERROR_CHECK(err_code);
-    
+
     err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
     APP_ERROR_CHECK(err_code);
 }
@@ -198,7 +198,7 @@ int main(void)
     {
         NRF_POWER->GPREGRET = 0;
     }
-    
+
     leds_init();
 
     // This check ensures that the defined fields in the bootloader corresponds with actual
@@ -236,9 +236,9 @@ int main(void)
 
     dfu_start  = app_reset;
     dfu_start |= ((nrf_gpio_pin_read(BOOTLOADER_BUTTON) == BOOTLOADER_BUTTON_ONSTATE) ? true: false);
-    
-    
-    
+
+
+
     if (dfu_start || (!bootloader_app_is_valid(DFU_BANK_0_REGION_START)))
     {
         nrf_gpio_pin_write(UPDATE_IN_PROGRESS_LED, UPDATE_IN_PROGRESS_LED_ONSTATE);
@@ -256,6 +256,6 @@ int main(void)
         // @note: Only applications running from DFU_BANK_0_REGION_START is supported.
         bootloader_app_start(DFU_BANK_0_REGION_START);
     }
-    
+
     NVIC_SystemReset();
 }

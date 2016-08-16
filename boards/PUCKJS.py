@@ -23,7 +23,8 @@ info = {
  'default_console_rx' : "D29",
  'default_console_baudrate' : "9600",
  # Number of variables can be WAY higher on this board
- 'variables' : 1020, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'bootloader' : 1,
  'binary_name' : 'espruino_%v_puckjs.bin',
  'build' : {
   'defines' : [
@@ -39,7 +40,7 @@ chip = {
   'ram' : 64,
   'flash' : 512,
   'speed' : 64,
-  'usart' : 1, 
+  'usart' : 1,
   'spi' : 3,
   'i2c' : 2,
   'adc' : 1,

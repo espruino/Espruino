@@ -497,6 +497,7 @@ USE_GRAPHICS=1
 USE_FILESYSTEM=1
 USE_CRYPTO=1
 #USE_TLS=1
+USE_NFC=1
 
 else ifdef LPC1768
 EMBEDDED=1
@@ -1342,7 +1343,7 @@ ifeq ($(FAMILY), NRF52)
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0_softdevice.hex
 
-  ifdef USE_BOOTLOADER  
+  ifdef USE_BOOTLOADER
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
   NFR_BL_START_ADDR = 0x78000 # see dfu_gcc_nrf52.ld
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
@@ -1358,15 +1359,13 @@ ifeq ($(FAMILY), NRF52)
 endif #FAMILY == NRF52
 
 
-ifdef NFC
+ifdef USE_NFC
   DEFINES += -DUSE_NFC
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/t2t_lib
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/uri
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
-  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_msg.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_rec.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message/nfc_ndef_msg.c
@@ -1506,6 +1505,7 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
 
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
@@ -1527,7 +1527,8 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c 
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
+	$(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
 
   ifdef USE_BOOTLOADER
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/device_manager
@@ -1569,8 +1570,9 @@ ifdef NRF5X
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c       
-  endif 
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
+  endif
   endif
 
 endif #NRF5X
