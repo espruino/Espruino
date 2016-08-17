@@ -1556,7 +1556,7 @@ ifdef NRF5X
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_settings.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crc16/crc16.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_dual_bank.c
+    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_single_bank.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_init_template.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_transport_ble.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
