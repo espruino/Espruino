@@ -67,7 +67,7 @@ devices = {
 # left-right, or top-bottom order
 board = {
   'left' : [ 'PD28', 'PD29', 'PD30', 'PD31'],
-  'right' : [ 'GND', '3V', 'D4', 'D5' ],
+  'right' : [ 'GND', '3V', 'D2', 'D1' ],
 };
 
 def get_pins():
