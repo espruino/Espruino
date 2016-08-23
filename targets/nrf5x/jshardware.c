@@ -658,6 +658,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (!jshIsPinValid(inf->pinRX) || !jshIsPinValid(inf->pinTX))
     return jsError("Invalid RX or TX pins");
 
+  if (uartInitialised) {
+    uartInitialised = false;
+    app_uart_close();
+  }
+
   uint32_t err_code;
   const app_uart_comm_params_t comm_params = {
       pinInfo[inf->pinRX].pin,
@@ -676,7 +681,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
                 uart0_event_handle,
                 APP_IRQ_PRIORITY_HIGH,
                 err_code);
-  APP_ERROR_CHECK(err_code);
+  if (err_code)
+    jsExceptionHere(JSET_INTERNALERROR, "app_uart_init failed, error %d", err_code);
   uartInitialised = true;
 }
 
