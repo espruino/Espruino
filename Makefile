@@ -679,6 +679,9 @@ USE_TLS=1
 USE_TELNET=1
 #USE_LCD_SDL=1
 
+LIBS += -lSDL
+INCLUDE += -I/usr/include/SDL
+
 ifdef MACOSX
 USE_NET=1
 else ifdef MINGW

@@ -577,6 +577,48 @@ ALWAYS_INLINE JsVar *jsvLockAgainSafe(JsVar *var) {
   return var ? jsvLockAgain(var) : 0;
 }
 
+#include <SDL/SDL.h>
+static void jsvPlotMemory() {
+  static SDL_Surface *screen = 0;
+  static int width, height;
+  const int sz = 8;
+  if (!screen) {
+    int bits = sizeof(jsVars)*8;
+    width = (int)sqrt(bits);
+    height = (bits+(width-1))/width;
+     
+    if (SDL_Init(SDL_INIT_VIDEO) < 0 ) {
+      printf("SDL_Init failed\n");
+      exit(1);
+    }
+    if (!(screen = SDL_SetVideoMode(width*sz, height*sz, 32, SDL_SWSURFACE))) {
+      printf("SDL_SetVideoMode %d %d failed\n", width, height);
+      SDL_Quit();
+      exit(1);
+    }
+  }    
+  SDL_LockSurface(screen);
+  unsigned char *inp = (unsigned char*)jsVars;
+  unsigned int *p = (unsigned int*)screen->pixels;
+  int x,y,sx,sy,inl = 0;
+  for (y=0;y<height;y++) {
+    for (x=0;x<width;x++) {
+      if ((inp[inl>>3]>>(inl&7))&1)
+        for (sx=0;sx<sz;sx++) *(p++)=0xFFFFFFFF;
+      else 
+        for (sx=0;sx<sz;sx++) *(p++)=0xFF000000;
+      inl++;
+    }
+    p -= width*sz;
+    for (sy=1;sy<sz;sy++) {
+      memcpy(p+width*sz*sy, p, width*sz*4);
+    }       
+    p += width*sz*sz;
+  }
+  SDL_UnlockSurface(screen);
+  SDL_Flip(screen);
+}
+
 // CALL ONLY FROM jsvUnlock
 // jsvGetLocks(var) must == 0
 static NO_INLINE void jsvUnLockFreeIfNeeded(JsVar *var) {
@@ -598,6 +640,7 @@ ALWAYS_INLINE void jsvUnLock(JsVar *var) {
   // Now see if we can properly free the data
   // Note: we check locks first as they are already in a register
   if ((var->flags & JSV_LOCK_MASK) == 0) jsvUnLockFreeIfNeeded(var);
+  jsvPlotMemory();
 }
 
 /// Unlock 2 variables in one go
