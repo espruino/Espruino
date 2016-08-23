@@ -396,6 +396,7 @@ void jsiClearInputLine(bool updateConsole) {
   jsiInputLineCursorMoved();
   jsvUnLock(inputLine);
   inputLine = jsvNewFromEmptyString();
+  inputCursorPos = 0;
 }
 
 /**
