@@ -482,6 +482,8 @@ EMBEDDED=1
 BOARD=NRF52832DK
 OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
+USE_NET=1
+USE_GRAPHICS=1
 DEFINES += -DBOARD_PCA10040 -DPCA10040
 
 # DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
@@ -2058,6 +2060,7 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
  ifdef USE_BOOTLOADER
   ifdef DFU_UPDATE_BUILD
 	echo Not merging softdevice or bootloader with application
+	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
   else
   ifdef BOOTLOADER
 	echo Not merging anything with bootloader
