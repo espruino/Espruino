@@ -1347,11 +1347,12 @@ ifeq ($(FAMILY), NRF52)
 
   ifdef USE_BOOTLOADER
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
-  NFR_BL_START_ADDR = 0x78000 # see dfu_gcc_nrf52.ld
+  NFR_BL_START_ADDR = 0x7A000 # see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
     LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/dfu_gcc_nrf52.ld
+    OPTIMIZEFLAGS=-Os # try to reduce bootloader size
   else
     LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
   endif

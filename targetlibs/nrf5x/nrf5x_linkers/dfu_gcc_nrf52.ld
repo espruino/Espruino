@@ -10,8 +10,10 @@ MEMORY
    *  BOOTLOADER_REGION_START found in dfu_types.h. The system is prevented from starting up if 
    *  those values do not match. The check is performed in main.c, see
    *  APP_ERROR_CHECK_BOOL(*((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) == BOOTLOADER_REGION_START);
+
+   *  see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h       
    */
-  FLASH (rx) : ORIGIN = 0x78000, LENGTH = 0x6000 
+  FLASH (rx) : ORIGIN = 0x7A000, LENGTH = 0x4000 
 
   /** RAM Region for bootloader. This setting is suitable when used with s132. */
   RAM (rwx) :  ORIGIN = 0x20002C00, LENGTH = 0x5380
