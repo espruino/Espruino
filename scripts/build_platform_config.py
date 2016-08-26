@@ -384,6 +384,10 @@ if "IR" in board.devices:
   codeOutDevicePin("IR", "pin_anode", "IR_ANODE_PIN")
   codeOutDevicePin("IR", "pin_cathode", "IR_CATHODE_PIN")
 
+if "CAPSENSE" in board.devices:
+  codeOutDevicePin("CAPSENSE", "pin_rx", "CAPSENSE_RX_PIN")
+  codeOutDevicePin("CAPSENSE", "pin_tx", "CAPSENSE_TX_PIN")
+
 for device in ["USB","SD","LCD","JTAG","ESP8266","IR"]:
   if device in board.devices:
     for entry in board.devices[device]:

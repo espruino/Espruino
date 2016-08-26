@@ -19,9 +19,11 @@
 #include "jsinteractive.h"
 #include "jsdevices.h"
 #include "jshardware.h"
+#include "jsdevices.h"
+#include "jspin.h"
 #include "jstimer.h"
-
 #include "nrf_gpio.h"
+#include "nrf5x_utils.h"
 
 #define MAG_PWR 18
 #define MAG_INT 17
@@ -332,6 +334,29 @@ void jswrap_puck_IR(JsVar *data) {
 
 
 /*JSON{
+    "type" : "staticmethod",
+    "class" : "Puck",
+    "name" : "capSense",
+    "#ifdef" : "NRF52",
+    "generate" : "jswrap_puck_capSense",
+    "params" : [
+      ["tx","pin",""],
+      ["rx","pin",""]
+    ],
+    "return" : ["int", "Capacitive sense counter" ]
+}
+Capacitive sense. TX must be connected to RX pin and sense plate via 1MOhm resistor.
+
+If no pins are supplied, the NFC ring is used for capacitive sense.
+*/
+int jswrap_puck_capSense(Pin tx, Pin rx) {
+  if (jshIsPinValid(tx) && jshIsPinValid(rx)) {
+    return (int)nrf_utils_cap_sense(tx, rx);
+  }
+  return (int)nrf_utils_cap_sense(CAPSENSE_TX_PIN, CAPSENSE_RX_PIN);
+}
+
+/*JSON{
   "type" : "kill",
   "generate" : "jswrap_puck_kill"
 }*/
@@ -340,7 +365,6 @@ void jswrap_puck_kill() {
     mag_off();
     mag_enabled = false;
   }
-
 }
 
 /*JSON{

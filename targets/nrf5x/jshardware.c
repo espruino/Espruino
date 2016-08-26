@@ -72,6 +72,7 @@ volatile bool flashIsBusy = false;
 volatile bool hadEvent = false; // set if we've had an event we need to deal with
 bool uartIsSending = false;
 bool uartInitialised = false;
+unsigned int ticksSinceStart = 0;
 
 JshPinFunction pinStates[JSH_PIN_COUNT];
 
@@ -94,6 +95,24 @@ void sys_evt_handler(uint32_t sys_evt) {
     flashIsBusy = false;
   }
 }
+
+#ifdef NRF52
+/* SysTick interrupt Handler. */
+void SysTick_Handler(void)  {
+  /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
+  if (execInfo.execute & EXEC_CTRL_C_WAIT)
+    execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_INTERRUPTED;
+  if (execInfo.execute & EXEC_CTRL_C)
+    execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C) | EXEC_CTRL_C_WAIT;
+
+  ticksSinceStart++;
+  /* One second after start, call jsinteractive. This is used to swap
+   * to USB (if connected), or the Serial port. */
+  if (ticksSinceStart == 5) {
+    jsiOneSecondAfterStartup();
+  }
+}
+#endif
 
 #ifdef NRF52
 NRF_PWM_Type *nrf_get_pwm(JshPinFunction func) {
@@ -195,12 +214,16 @@ void jshInit() {
                       wakeup_handler);
   if (err_code) jsiConsolePrintf("app_timer_create error %d\n", err_code);
 #endif
-  
+
   // Softdevice is initialised now
   softdevice_sys_evt_handler_set(sys_evt_handler);
   // Enable PPI driver
   err_code = nrf_drv_ppi_init();
   APP_ERROR_CHECK(err_code);
+#ifdef NRF52  
+  // Turn on SYSTICK - used for handling Ctrl-C behaviour
+  SysTick_Config(0xFFFFFF);
+#endif
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
@@ -215,10 +238,12 @@ void jshKill() {
 
 // stuff to do on idle
 void jshIdle() {
+#ifndef NRF52
   if (init == 1) {
     jsiOneSecondAfterStartup(); // Do this the first time we enter jshIdle() after we have called jshInit() and never again.
     init = 0;
   }
+#endif
 }
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars

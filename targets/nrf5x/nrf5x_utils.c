@@ -27,6 +27,8 @@
 #include "nrf_drv_gpiote.h"
 #include "nrf_drv_ppi.h"
 
+#include "jsparse.h"
+
 unsigned int nrf_utils_get_baud_enum(int baud) {
   switch (baud) {
     case 1200: return UART_BAUDRATE_BAUDRATE_Baud1200;
@@ -61,8 +63,8 @@ void nrf_utils_lfclk_config_and_start()
   NRF_CLOCK->TASKS_LFCLKSTART = 1;
   while(NRF_CLOCK->EVENTS_LFCLKSTARTED == 0);
 
-  /* 
-  // wait until the clock is running - Xtal only? 
+  /*
+  // wait until the clock is running - Xtal only?
   while (((NRF_CLOCK->LFCLKSTAT & CLOCK_LFCLKSTAT_STATE_Msk) != ((CLOCK_LFCLKSTAT_STATE_Running << CLOCK_LFCLKSTAT_STATE_Pos) & CLOCK_LFCLKSTAT_STATE_Msk)))
   {
     // Do nothing...
@@ -91,7 +93,7 @@ int nrf_utils_get_device_id(uint8_t * device_id, int maxChars)
 
 uint8_t nrf_utils_get_random_number()
 {
-  
+
   NRF_RNG->CONFIG = 0x00000001; // Use the bias generator.
   NRF_RNG->TASKS_START = 1;
 
@@ -177,9 +179,11 @@ unsigned int nrf_utils_cap_sense(int capSenseTxPin, int capSenseRxPin) {
   NRF_TIMER2->EVENTS_COMPARE[1] = 0;
   int i;
   for (i=0;i<50;i++) {
-    while (!NRF_TIMER2->EVENTS_COMPARE[1]);
+    unsigned int timeout = 100000;
+    while (!NRF_TIMER2->EVENTS_COMPARE[1] && --timeout);
     NRF_TIMER2->EVENTS_COMPARE[1] = 0;
     sum += NRF_TIMER2->CC[2];
+    if (jspIsInterrupted()) break;
   }
 
   nrf_gpio_cfg_input(capSenseTxPin, NRF_GPIO_PIN_NOPULL);
@@ -208,10 +212,15 @@ unsigned int nrf_utils_cap_sense(int capSenseTxPin, int capSenseRxPin) {
   nrf_gpio_cfg_output(capSenseTxPin);
 
   for (i=0;i<100;i++) {
+    const unsigned int CTR_MAX = 100000;
+    unsigned int ctr = CTR_MAX;
     nrf_gpio_pin_set(capSenseTxPin);
-    while (!(NRF_GPIO->IN & mask)) sum++;
+    while (!(NRF_GPIO->IN & mask) && ctr--);
+    sum += CTR_MAX-ctr;
     nrf_gpio_pin_clear(capSenseTxPin);
-    while (NRF_GPIO->IN & mask) sum++;
+    while (NRF_GPIO->IN & mask && ctr--);
+    sum += CTR_MAX-ctr;
+    if (jspIsInterrupted()) break;
   }
   nrf_gpio_cfg_input(capSenseTxPin, NRF_GPIO_PIN_NOPULL);
 

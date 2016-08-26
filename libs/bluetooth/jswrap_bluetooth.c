@@ -240,7 +240,7 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
  *
  * @details This function will be called in case of an assert in the SoftDevice.
  *
- * @warning This handler is an example only and does not fit a final product. You need to analyse 
+ * @warning This handler is an example only and does not fit a final product. You need to analyse
  *          how your product is supposed to react in case of Assert.
  * @warning On assert from the SoftDevice, the system can only recover on reset.
  *
@@ -365,7 +365,7 @@ static void reset_prepare(void)
 
 /**@brief Function for the GAP initialization.
  *
- * @details This function will set up all the necessary GAP (Generic Access Profile) parameters of 
+ * @details This function will set up all the necessary GAP (Generic Access Profile) parameters of
  *          the device. It also sets the permissions and appearance.
  */
 static void gap_params_init(void)
@@ -483,11 +483,11 @@ static void services_init(void)
 {
     uint32_t       err_code;
     ble_nus_init_t nus_init;
-    
+
     memset(&nus_init, 0, sizeof(nus_init));
 
     nus_init.data_handler = nus_data_handler;
-    
+
     err_code = ble_nus_init(&m_nus, &nus_init);
     APP_ERROR_CHECK(err_code);
 
@@ -524,7 +524,7 @@ static void services_init(void)
  */
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
     uint32_t err_code;
-    
+
     if(p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED) {
         err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
         APP_ERROR_CHECK(err_code);
@@ -546,7 +546,7 @@ static void conn_params_error_handler(uint32_t nrf_error) {
 static void conn_params_init(void) {
     uint32_t               err_code;
     ble_conn_params_init_t cp_init;
-    
+
     memset(&cp_init, 0, sizeof(cp_init));
 
     cp_init.p_conn_params                  = NULL;
@@ -557,7 +557,7 @@ static void conn_params_init(void) {
     cp_init.disconnect_on_fail             = false;
     cp_init.evt_handler                    = on_conn_params_evt;
     cp_init.error_handler                  = conn_params_error_handler;
-    
+
     err_code = ble_conn_params_init(&cp_init);
     APP_ERROR_CHECK(err_code);
 }
@@ -680,7 +680,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t                         err_code;
     //jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
-    
+
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
         // the timeout for sd_ble_gap_adv_start expired - kick it off again
@@ -842,10 +842,10 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 }
 
 
-/**@brief Function for dispatching a SoftDevice event to all modules with a SoftDevice 
+/**@brief Function for dispatching a SoftDevice event to all modules with a SoftDevice
  *        event handler.
  *
- * @details This function is called from the SoftDevice event interrupt handler after a 
+ * @details This function is called from the SoftDevice event interrupt handler after a
  *          SoftDevice event has been received.
  *
  * @param[in] p_ble_evt  SoftDevice event.
@@ -914,7 +914,7 @@ void nfc_callback(void *context, NfcEvent event, const char *data, size_t dataLe
 static void ble_stack_init(void)
 {
     uint32_t err_code;
-    
+
     // TODO: enable if we're on a device with 32kHz xtal
     /*nrf_clock_lf_cfg_t clock_lf_cfg = {
         .source        = NRF_CLOCK_LF_SRC_XTAL,
@@ -929,13 +929,13 @@ static void ble_stack_init(void)
 
     // Initialize SoftDevice.
     SOFTDEVICE_HANDLER_INIT(&clock_lf_cfg, false);
-    
+
     ble_enable_params_t ble_enable_params;
     err_code = softdevice_enable_get_default_config(CENTRAL_LINK_COUNT,
                                                     PERIPHERAL_LINK_COUNT,
                                                     &ble_enable_params);
     APP_ERROR_CHECK(err_code);
-    
+
 #ifdef USE_BOOTLOADER
     ble_enable_params.common_enable_params.vs_uuid_count  = 2;
     ble_enable_params.gatts_enable_params.service_changed = 1;
@@ -953,7 +953,7 @@ static void ble_stack_init(void)
     // Enable BLE stack.
     err_code = softdevice_enable(&ble_enable_params);
     APP_ERROR_CHECK(err_code);
-    
+
     // Subscribe for BLE events.
     err_code = softdevice_ble_evt_handler_set(ble_evt_dispatch);
     APP_ERROR_CHECK(err_code);
@@ -1069,7 +1069,7 @@ void jswrap_nrf_bluetooth_init(void) {
   // Initialize.
   APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
   ble_stack_init();
-  
+
 #ifdef USE_BOOTLOADER
   bool erase_bonds = false;
   device_manager_init(erase_bonds);
@@ -1839,24 +1839,6 @@ void jswrap_nrf_nfcURL(JsVar *url) {
 #endif
 }
 
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "cap",
-    "#ifdef" : "NRF52",
-    "generate" : "jswrap_nrf_cap",
-    "params" : [
-      ["tx","pin",""],
-      ["rx","pin",""]
-    ],
-    "return" : ["int", "Capacitive sense counter" ]
-}
-Capacitive sense. TX must be connected to RX pin and sense plate via 1MOhm resistor
-*/
-int jswrap_nrf_cap(Pin tx, Pin rx) {
-  return (int)nrf_utils_cap_sense(tx, rx);
-}
-
 /* ---------------------------------------------------------------------
  *                                                               TESTING
  * ---------------------------------------------------------------------
@@ -1907,5 +1889,3 @@ NRF.setServices({
 });
 
  */
-
-

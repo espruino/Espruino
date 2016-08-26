@@ -17,6 +17,7 @@ void jswrap_puck_magOn();
 void jswrap_puck_magOff();
 JsVar *jswrap_puck_mag();
 void jswrap_puck_IR(JsVar *data);
+int jswrap_puck_capSense(Pin tx, Pin rx);
 
 void jswrap_puck_kill();
 bool jswrap_puck_idle();

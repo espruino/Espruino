@@ -36,8 +36,6 @@ void jswrap_nrf_bleservice_discoverCharacteristics(JsVar *service);
 void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data);
 
 void jswrap_nrf_nfcURL(JsVar *url);
-int jswrap_nrf_cap(Pin tx, Pin rx);
-
 
 bool jswrap_nrf_idle();
 void jswrap_nrf_kill();

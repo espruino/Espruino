@@ -58,8 +58,8 @@ devices = {
   'LED2' : { 'pin' : 'D4' },
   'LED3' : { 'pin' : 'D3' },
   'IR'   : { 'pin_anode' : 'D26', 'pin_cathode' : 'D25' },
-  'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' }
-# CAPSENSE D8
+  'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
+  'CAPSENSE' : { 'pin_rx' : 'D11', 'pin_tx' : 'D12' }
 # NFC D9/D10
 
 };
