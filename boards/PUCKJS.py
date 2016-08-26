@@ -23,7 +23,8 @@ info = {
  'default_console_rx' : "D29",
  'default_console_baudrate' : "9600",
  # Number of variables can be WAY higher on this board
- 'variables' : 1020, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'bootloader' : 1,
  'binary_name' : 'espruino_%v_puckjs.bin',
  'build' : {
   'defines' : [
@@ -39,7 +40,7 @@ chip = {
   'ram' : 64,
   'flash' : 512,
   'speed' : 64,
-  'usart' : 1, 
+  'usart' : 1,
   'spi' : 3,
   'i2c' : 2,
   'adc' : 1,
@@ -56,15 +57,17 @@ devices = {
   'LED1' : { 'pin' : 'D5' },
   'LED2' : { 'pin' : 'D4' },
   'LED3' : { 'pin' : 'D3' },
-  'LED4' : { 'pin' : 'D25', 'pin2' : 'D26' },
+  'IR'   : { 'pin_anode' : 'D26', 'pin_cathode' : 'D25' },
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' }
 # CAPSENSE D8
+# NFC D9/D10
+
 };
 
 # left-right, or top-bottom order
 board = {
   'left' : [ 'PD28', 'PD29', 'PD30', 'PD31'],
-  'right' : [ 'GND', '3V', 'D4', 'D5' ],
+  'right' : [ 'GND', '3V', 'D2', 'D1' ],
 };
 
 def get_pins():

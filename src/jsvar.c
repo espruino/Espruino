@@ -289,8 +289,8 @@ unsigned int jsvGetMemoryTotal() {
 void jsvSetMemoryTotal(unsigned int jsNewVarCount) {
 #ifdef RESIZABLE_JSVARS
   assert(!isMemoryBusy);
-  isMemoryBusy = true;
   if (jsNewVarCount <= jsVarsSize) return; // never allow us to have less!
+  isMemoryBusy = true;
   // When resizing, we just allocate a bunch more
   unsigned int oldSize = jsVarsSize;
   unsigned int oldBlockCount = jsVarsSize >> JSVAR_BLOCK_SHIFT;

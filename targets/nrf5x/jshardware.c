@@ -95,16 +95,30 @@ void sys_evt_handler(uint32_t sys_evt) {
   }
 }
 
+#ifdef NRF52
+NRF_PWM_Type *nrf_get_pwm(JshPinFunction func) {
+  if ((func&JSH_MASK_TYPE) == JSH_TIMER1) return NRF_PWM0;
+  else if ((func&JSH_MASK_TYPE) == JSH_TIMER2) return NRF_PWM1;
+  else if ((func&JSH_MASK_TYPE) == JSH_TIMER3) return NRF_PWM2;
+  return 0;
+}
+#endif
+
 static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
   JshPinFunction fType = func&JSH_MASK_TYPE;
   JshPinFunction fInfo = func&JSH_MASK_INFO;
   switch (fType) {
   case JSH_NOTHING: break;
 #ifdef NRF52
-  case JSH_TIMER1: NRF_PWM0->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
-  case JSH_TIMER2: NRF_PWM1->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
-  case JSH_TIMER3: NRF_PWM2->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin; break;
-  // FIXME: if no pins are active on the given PWM now, turn it off
+  case JSH_TIMER1:
+  case JSH_TIMER2:
+  case JSH_TIMER3: {
+      NRF_PWM_Type *pwm = nrf_get_pwm(fType);
+      pwm->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin;
+      // FIXME: Only disable if nothing else is using it!
+      if (pin==0xFFFFFFFF) nrf_pwm_disable(pwm);
+      break;
+    }
 #endif
   case JSH_USART1: if (fInfo==JSH_USART_RX) NRF_UART0->PSELRXD = pin;
                    else NRF_UART0->PSELTXD = pin; break;
@@ -293,6 +307,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN :
+    case JSHPINSTATE_ADC_IN :
       nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP :
@@ -301,9 +316,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
     case JSHPINSTATE_GPIO_IN_PULLDOWN :
       nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLDOWN);
       break;
-    /*case JSHPINSTATE_ADC_IN :
-      break;
-    case JSHPINSTATE_AF_OUT :
+    /*case JSHPINSTATE_AF_OUT :
       break;
     case JSHPINSTATE_AF_OUT_OPENDRAIN :
       break;
@@ -359,6 +372,7 @@ nrf_saadc_value_t nrf_analog_read() {
 // Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin) {
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
+  jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 #ifdef NRF52
   // sanity checks for channel
   assert(NRF_SAADC_INPUT_AIN0 == 1);
@@ -381,7 +395,10 @@ JsVarFloat jshPinAnalog(Pin pin) {
   nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
   nrf_saadc_channel_init(0, &config);
 
-  return nrf_analog_read() / 16384.0;
+  JsVarFloat f = nrf_analog_read() / 16384.0;
+  nrf_saadc_channel_input_set(0, NRF_SAADC_INPUT_DISABLED, NRF_SAADC_INPUT_DISABLED); // give us back our pin!
+  nrf_saadc_disable();
+  return f;
 #else
   const nrf_adc_config_t nrf_adc_config =  {
       NRF_ADC_CONFIG_RES_10BIT,
@@ -458,11 +475,8 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   JshPinFunction func = JSH_TIMER1 | JSH_TIMER_CH1;
   // FIXME: Search for free timers to use (based on freq as well)
 
-  NRF_PWM_Type *pwm;
-  if ((func&JSH_MASK_TYPE) == JSH_TIMER1) pwm = NRF_PWM0;
-  else if ((func&JSH_MASK_TYPE) == JSH_TIMER2) pwm = NRF_PWM1;
-  else if ((func&JSH_MASK_TYPE) == JSH_TIMER3) pwm = NRF_PWM2;
-  else { assert(0); return 0; };
+  NRF_PWM_Type *pwm = nrf_get_pwm(func);
+  if (!pwm) { assert(0); return 0; };
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
   jshPinSetFunction(pin, func);
   nrf_pwm_enable(pwm);
@@ -567,6 +581,7 @@ static void jsvPinWatchHandler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
   lastHandledPinState = (bool)nrf_gpio_pin_read(pin);
   IOEventFlags evt = jshGetEventFlagsForWatchedPin(pin);
   jshPushIOWatchEvent(evt);
+  jshHadEvent();
 }
 
 
@@ -648,6 +663,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (!jshIsPinValid(inf->pinRX) || !jshIsPinValid(inf->pinTX))
     return jsError("Invalid RX or TX pins");
 
+  if (uartInitialised) {
+    uartInitialised = false;
+    app_uart_close();
+  }
+
   uint32_t err_code;
   const app_uart_comm_params_t comm_params = {
       pinInfo[inf->pinRX].pin,
@@ -666,21 +686,13 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
                 uart0_event_handle,
                 APP_IRQ_PRIORITY_HIGH,
                 err_code);
-  APP_ERROR_CHECK(err_code);
+  if (err_code)
+    jsExceptionHere(JSET_INTERNALERROR, "app_uart_init failed, error %d", err_code);
   uartInitialised = true;
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
-
-  if (device == EV_BLUETOOTH) {
-    /* For bluetooth, start transmit after one character.
-      The BLE_EVT_TX_COMPLETE event will get triggered and
-      will auto-reload whatever needs sending. */
-    bool jswrap_nrf_transmit_string();
-    jswrap_nrf_transmit_string();
-  }
-  
   if (device == EV_SERIAL1) {
     if (uartInitialised) {
       if (!uartIsSending) {
