@@ -62,7 +62,7 @@ Create a software SPI port. This has limited functionality (no baud rate), but i
 Use `SPI.setup` to configure this port.
  */
 JsVar *jswrap_spi_constructor() {
-  return jsvNewWithFlags(JSV_OBJECT);
+  return jsvNewObject();
 }
 
 /*JSON{
@@ -163,7 +163,7 @@ typedef struct {
 
 
 /**
- * Send a single byte to the SPI device, used ad callback.
+ * Send a single byte to the SPI device, used as callback.
  */
 void jswrap_spi_send_cb(
     int c,                     //!< The byte to send through SPI.
@@ -296,7 +296,7 @@ void jswrap_spi_write(
   if (len > 0) {
     JsVar *last = jsvGetArrayItem(args, len-1); // look at the last value
     if (jsvIsPin(last)) {
-      nss_pin = jshGetPinFromVar(last);    
+      nss_pin = jshGetPinFromVar(last);
       jsvUnLock(jsvArrayPop(args));
     }
     jsvUnLock(last);
@@ -574,7 +574,7 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
   JSV_GET_AS_CHAR_ARRAY( dataPtr, dataLen, args);
 
   if (dataPtr && dataLen)
-    jshI2CWrite(device, (unsigned char)address, dataLen, dataPtr, sendStop);
+    jshI2CWrite(device, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
 }
 
 /*JSON{

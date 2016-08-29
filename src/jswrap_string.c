@@ -320,7 +320,7 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
 Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==[1,2,3]```
  */
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
-  JsVar *array = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *array = jsvNewEmptyArray();
   if (!array) return 0; // out of memory
 
   if (jsvIsUndefined(split)) {

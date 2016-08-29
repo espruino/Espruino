@@ -1,7 +1,93 @@
+     1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
+            Add shortcut for quick execution of common call types
+            Fix BBC micro:bit save() regression from 1v86
+            Fix 'lock overflow' when calling methods with 'this' bound (fix #870, fix #885)
+            Fix jsvStringIteratorGetCharOrMinusOne for zero-length strings
+            Allow tab-completion straight after '.'
+            Make sure execution stops for native functions if there's an error when parsing arguments
+            NRF5x: remove setName and add functionality to setAdvertising, along with advertising interval
+            NRF5x: allow raw advertising data in setAdvertising
+            Add E.setPassword - allows Espruino console to be locked
+            Fix pin header numbering for BBC micro:bit (it changed for the production version) (fix #896)
+
+     1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
+            Fix lock 'leak' in Telnet when Telnet is turned off
+            Add Telnet serial device to allow redirection
+            Create errors for unterminated expressions (fix #814)
+            Remove Espruino's built-in strcpy/etc
+            Remove Espruino's built-in maths
+            Add basic Taylor series sin and atan for when we're trying to save memory  
+            Refactoring to use global var for lexer - save some memory and increase parse speed
+            Add .removeListener (fix #30)
+            Added better micro:bit `show()` that works well with Graphics
+            Add `require("Flash").getFree()` as multiplatform way to find free flash pages (fix #815)
+            Add the ability to set clock frequencies on STM32F4 chips (like Pico) with E.setClock (fix #52)
+            `jsvEvaluate` now uses memory area for execution of JS strings (fix #817)
+            Add `E.setBootCode` to allow JS scripts to be run without being in RAM (fix #740)
+            'Expecting a number or something iterable, got X' changed to exception rather than warning (gives stack trace)
+            Drop '.init' and '.fini' symbols, allowing GCC 5.x compilation on STM32
+            Ensure that pinMode/digitalWrite is re-constituted properly by dump() and save() (fix #833) 
+            ESP8266: add stack dump on fatal exception, ./targets/esp8266/printstack can extract a backtrace
+            ESP8266: move JswSymPtr and JswSymList to flash to free up gobs of RAM, bump jsvars to 1600
+            Fix write to flash when BLE connected on nRF51/2
+            Fix potential variable corruption issue when copying objects/arrays containing packed ints
+            Fix ESP8266 printLog memory leak (fix #852)
+            When parsing from a Native String (E.memoryArea), use Native String for function code too.
+            Added built-in Promise implementation
+            Fix broken Object.keys/getOwnPropertyNames caused by ESP8266 RAM saving tweaks
+            Add Object.g/setPrototypeOf (fix #856)
+            Fix memory leak when executing bound function with 'this'
+            Fix missing PBKDF2 & AES libs on Pico + Linux caused by an untested ESP8266 commit
+            Fix negative Date to string code (fix #854)
+            Convert type warnings to exceptions (to provide stack traces for problems)
+            Add uncaughtException event (fix #846)
+            Stop eval in a switch statement from confusing parsing (Fix #845)
+            Fix regression in 'mode' argument of SPI.setup (allows custom CC3000 pins to work)
+            Fix '.on' with long event names
+            Enable F4Discovery button pull-down. Newer boards don't seem to have one fitted
+            Add 'force' to 'Serial.setConsole' - you can force the console to stay in one place
+            Fix micro:bit compass problems (fix #864)
+            Ensure that Pico can properly enter deep sleep even if USB is never used
+            Only inline the very basic variable iterator functions (save enough space to allow Espruino board build again)
+            Don't include Promises on devices where flash memory of Scarce (fix Olimexino compile)
+            Fix glitches in PWM output when updating Software PWM quickly (fix #865)
+            Added `E.kickWatchdog()` to allow you to keep your JavaScript running - not just the interpreter (fix #859)
+            Ensure all pins set to AIN on startup
+            Fix regression where setWatch would remove pulldown from button if called after reset()
+            Reduce amount of flash available for saved code on Original Espruino (until we can get code size down)
+
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS
             Fix issue where GC'd objects referencing non-GC'd data wouldn't unreference it
             Add E.memoryArea to allow memory addresses to be treated as variables
+            Fix STM32F4 LSI clock frequency - should make the Pico's RTC a lot more accurate (fix #776)
+            Added HeatShrink compression to saved code (instead of RLE)
+            If saving fails, delete command history and try again.
+            Make sure `reset()` resets the sleep and busy indicator pins
+            Now escape characters >=127 as well (fix #780)
+            Add decodeURIComponent (fix #779)
+            Allow reset();save() on one line
+            Fix potential issue parsing HTTP headers when more data is sent after the header (fix #783)
+            Fix broken storage of floating point values when <255 variables
+            Fix regression where DACs didn't work on Original Espruino Board
+            Improve tab complete's memopry usage
+            Added Tab complete and Debug to low-end Nordic uCs
+            Limit the number of events processed each time around the idle loop to the number that were in it at the start
+             - helps to fix issues with out of memory when receiving big files over ESP8266 serial connection
+            Allow different types of network to have different buffer sizes - enlarge JS, Linux and WIZnet buffers
+            Fix bug where clearInterval() and setWatch with debounce could cause setWatch to momentarily stop working
+            Make HTTP server only close connection after Content-Length bytes received
+            Speed up jsvNewFlatStringOfLength by combining it with updating the free var list
+            Update the free var list when garbage collecting (makes allocation at the start of memory more likely)
+            Don't zero the contents of memory when freeing - speeds up deallocation
+            Removal of un-needed zero initialisations for variables
+            Only garbage collect on idle if we're low on memory (fix #767)
+            Improve malloc behaviour for crypto lib (try and free all command history is first alloc fails)
+            Improve HTTPS error messages
+            Add READ_FLASH_UINT8, allowing ESP8266 to read&exec strings stored in Flash with E.memoryArea
+            Start the RTC up running off LSI, and switch after a few seconds if the LSE has started correctly
+            Allow JSV_GET_AS_CHAR_ARRAY to get a pointer to memory in ArrayBuffers or memoryAreas
+            Reset PinStateIsManual in reset (fix #765)
 
      1v84 : Fix device initialisation flags not working when the device number is above 32 (fix #751, #748)
              - this fixes broken SPI when not on standard pins

@@ -14,12 +14,7 @@
 #include "jsutils.h"
 #include "jsvar.h"
 
-#ifdef ARM
-#include "mconf.h"
-#include "protos.h"
-#else
 #include <math.h>
-#endif
 
 #define PI (3.141592653589793)
 
@@ -30,5 +25,7 @@ double jswrap_math_mod(double x, double y);
 double jswrap_math_pow(double x, double y);
 JsVar *jswrap_math_round(double x);
 double jswrap_math_sqrt(double x);
+double jswrap_math_sin(double x);
+double jswrap_math_atan(double x);
 JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max);
 JsVarFloat jswrap_math_minmax(JsVar *args, bool isMax);

@@ -19,6 +19,14 @@ JsVar *jswrap_object_length(JsVar *parent);
 JsVar *jswrap_object_valueOf(JsVar *parent);
 JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0);
 JsVar *jswrap_object_clone(JsVar *parent);
+/** This is for Object.keys and Object. However it uses a callback so doesn't allocate anything */
+void jswrap_object_keys_or_property_names_cb(
+    JsVar *obj,
+    bool includeNonEnumerable,  ///< include 'hidden' items
+    bool includePrototype, ///< include items for the prototype too (for autocomplete)
+    void (*callback)(void *data, JsVar *name),
+    void *data
+);
 JsVar *jswrap_object_keys_or_property_names(
     JsVar *obj,
     bool includeNonEnumerable,
@@ -28,9 +36,12 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name);
 bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name);
 JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc);
 JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props);
+JsVar *jswrap_object_getPrototypeOf(JsVar *object);
+JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto);
 
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener);
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray);
+void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback);
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event);
 // For internal use - like jswrap_object_removeAllListeners but takes a C string
 void jswrap_object_removeAllListeners_cstr(JsVar *parent, const char *event);

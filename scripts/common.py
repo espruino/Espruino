@@ -110,6 +110,8 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
                 if "i2c" in board.chip: defines.append("I2C_COUNT="+str(board.chip["i2c"]));
                 if "USB" in board.devices: defines.append("defined(USB)=True"); 
                 else: defines.append("defined(USB)=False");
+              elif arg[1]=="F":
+                "" # -Fxxx.yy in args is filename xxx.yy, which is mandatory for build_jswrapper.py
               else:
                 print("Unknown command-line option")
                 exit(1)
@@ -137,6 +139,8 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
             continue
 
           for comment in re.findall(r"/\*JSON.*?\*/", code, re.VERBOSE | re.MULTILINE | re.DOTALL):
+            charnumber = code.find(comment)
+            linenumber = 1+code.count("\n", 0, charnumber)
             # Strip off /*JSON .. */ bit
             comment = comment[6:-2]
 
@@ -149,6 +153,8 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
               if len(description): jsondata["description"] = description;
               jsondata["filename"] = jswrap
               jsondata["include"] = jswrap[:-2]+".h"
+              jsondata["githublink"] = "https://github.com/espruino/Espruino/blob/master/"+jswrap+"#L"+str(linenumber)
+
               dropped_prefix = "Dropped "
               if "name" in jsondata: dropped_prefix += jsondata["name"]+" "
               elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
@@ -312,7 +318,9 @@ def get_ifdef_description(d):
   if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico only)"
   if d=="RELEASE": return "release builds"
   if d=="LINUX": return "Linux-based builds"
-  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Espruino Pico)"
+  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico)"
+  if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino Wifi or Linux)"
+  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino Wifi, Linux or ESP8266)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 

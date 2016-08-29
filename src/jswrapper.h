@@ -48,8 +48,8 @@ typedef enum {
 
   // should this just be executed right away and the value returned? Used to encode constants in the symbol table
   // We encode this by setting all bits in the last argument, but leaving the second-last argument as zero
-  JSWAT_EXECUTE_IMMEDIATELY = 0x7000,  
-  JSWAT_EXECUTE_IMMEDIATELY_MASK = 0x7E00, 
+  JSWAT_EXECUTE_IMMEDIATELY = 0x7000,
+  JSWAT_EXECUTE_IMMEDIATELY_MASK = 0x7E00,
 
   JSWAT_THIS_ARG    = 0x8000, // whether a 'this' argument should be tacked onto the start
   JSWAT_ARGUMENTS_MASK = ~(JSWAT_MASK | JSWAT_THIS_ARG)
@@ -58,19 +58,27 @@ typedef enum {
 // number of bits needed for each argument bit
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
 
+#ifndef USE_FLASH_MEMORY
+#define PACKED_JSW_SYM PACKED_FLAGS
+#else
+// On the esp8266 we put the JswSym* structures into flash and thus must make word-sized aligned
+// reads. Telling the compiler to pack the structs defeats that, so we have to take it out.
+#define PACKED_JSW_SYM
+#endif
+
 /// Structure for each symbol in the list of built-in symbols
 typedef struct {
   unsigned short strOffset;
-  void (*functionPtr)(void);
   unsigned short functionSpec; // JsnArgumentType
-} PACKED_FLAGS JswSymPtr;
+  void (*functionPtr)(void);
+} PACKED_JSW_SYM JswSymPtr;
 
 /// Information for each list of built-in symbols
 typedef struct {
   const JswSymPtr *symbols;
-  unsigned char symbolCount;
   const char *symbolChars;
-} PACKED_FLAGS JswSymList;
+  unsigned char symbolCount;
+} PACKED_JSW_SYM JswSymList;
 
 /// Do a binary search of the symbol table list
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name);

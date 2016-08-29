@@ -53,6 +53,8 @@ typedef struct JsNetwork {
   JsNetworkData data;
   unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero  
 
+  int chunkSize; ///< Amount of memory to allocate for chunks of data when using send/recv
+
   /// Called on idle. Do any checks required for this device
   void (*idle)(struct JsNetwork *net);
   /// Call just before returning to idle loop. This checks for errors and tries to recover. Returns true if no errors.

@@ -343,6 +343,7 @@ void jshInit() {
 }
 
 void jshReset() {
+  jshResetDevices();
 }
 
 void jshKill() {
@@ -661,6 +662,9 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
         cfsetispeed(&settings, baud); // set baud rates
         cfsetospeed(&settings, baud);
 
+        // raw mode
+        cfmakeraw(&settings);
+
         settings.c_cflag &= ~(PARENB|PARODD); // none
         
         if (inf->parity == 1) settings.c_cflag |= PARENB|PARODD; // odd
@@ -678,9 +682,6 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
           case 8 : settings.c_cflag |= CS8; break;
         }
 
-        // raw mode
-        cfmakeraw(&settings);
-
         // finally set current settings
         tcsetattr(ioDevices[device], TCSANOW, &settings);
       } else {
@@ -695,7 +696,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
-  assert(DEVICE_IS_USART(device));
+  assert(DEVICE_IS_USART(device) || DEVICE_IS_SPI(device));
   // all done by the idle loop
 }
 
@@ -791,11 +792,22 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 void jshEnableWatchDog(JsVarFloat timeout) {
 }
 
+void jshKickWatchDog() {
+}
+
 JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
 unsigned int jshGetRandomNumber() { return rand(); }
 
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) { return false; }
+JsVar *jshFlashGetFree() {
+  // not implemented, or no free pages.
+  return 0;
+}
 void jshFlashErasePage(uint32_t addr) { }
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) { memset(buf, 0, len); }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) { }
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  return 0;
+}

@@ -16,6 +16,7 @@
 #include "jswrap_espruino.h"
 #include "jswrap_math.h"
 #include "jswrap_arraybuffer.h"
+#include "jswrap_flash.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
 #include "jstimer.h"
@@ -80,9 +81,9 @@ While this is implemented on Espruino boards, it may not be implemented on other
  */
 
 
-int nativeCallGetCType(JsLex *lex) {
+int nativeCallGetCType() {
   if (lex->tk == LEX_R_VOID) {
-    jslMatch(lex, LEX_R_VOID);
+    jslMatch(LEX_R_VOID);
     return JSWAT_VOID;
   }
   if (lex->tk == LEX_ID) {
@@ -93,7 +94,7 @@ int nativeCallGetCType(JsLex *lex) {
     if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
     if (strcmp(name,"Pin")==0) t=JSWAT_PIN;
     if (strcmp(name,"JsVar")==0) t=JSWAT_JSVAR;
-    jslMatch(lex, LEX_ID);
+    jslMatch(LEX_ID);
     return t;
   }
   return -1; // unknown
@@ -128,23 +129,25 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data) 
     // Nothing to do
   } else if (jsvIsString(signature)) {
     JsLex lex;
-    jslInit(&lex, signature);
+    JsLex *oldLex = jslSetLex(&lex);
+    jslInit(signature);
     int argType;
     bool ok = true;
     int argNumber = 0;
-    argType = nativeCallGetCType(&lex);
+    argType = nativeCallGetCType();
     if (argType>=0) argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
     else ok = false;
-    if (ok) ok = jslMatch(&lex, '(');
+    if (ok) ok = jslMatch('(');
     while (ok && lex.tk!=LEX_EOF && lex.tk!=')') {
-      argType = nativeCallGetCType(&lex);
+      argType = nativeCallGetCType();
       if (argType>=0) {
         argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
-        if (lex.tk!=')') ok = jslMatch(&lex, ',');
+        if (lex.tk!=')') ok = jslMatch(',');
       } else ok = false;
     }
-    if (ok) ok = jslMatch(&lex, ')');
-    jslKill(&lex);
+    if (ok) ok = jslMatch(')');
+    jslKill();
+    jslSetLex(oldLex);
     if (argTypes & (unsigned int)~0xFFFF)
       ok = false;
     if (!ok) {
@@ -570,14 +573,41 @@ JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, 
   "name" : "enableWatchdog",
   "generate" : "jswrap_espruino_enableWatchdog",
   "params" : [
-    ["timeout","float","The timeout in seconds before a watchdog reset"]
+    ["timeout","float","The timeout in seconds before a watchdog reset"],
+    ["isAuto","JsVar","If undefined or true, the watchdog is kicked automatically. If not, you must call `E.kickWatchdog()` yourself"]
   ]
 }
-Enable the watchdog timer. This will reset Espruino if it isn't able to return to the idle loop within the timeout. NOTE: This will not work with `setDeepSleep` unless you explicitly wake Espruino up with an interval of less than the timeout.
+Enable the watchdog timer. This will reset Espruino if it isn't able to return to the idle loop within the timeout.
+
+If `isAuto` is false, you must call `E.kickWatchdog()` yourself every so often or the chip will reset.
+
+**NOTE:** This will not work with `setDeepSleep` unless you explicitly wake Espruino up with an interval of less than the timeout.
+
+**NOTE:** This is only implemented on STM32 devices.
  */
-void jswrap_espruino_enableWatchdog(JsVarFloat time) {
+void jswrap_espruino_enableWatchdog(JsVarFloat time, JsVar *isAuto) {
   if (time<0 || isnan(time)) time=1;
+  if (jsvIsUndefined(isAuto) || jsvGetBool(isAuto))
+    jsiStatus |= JSIS_WATCHDOG_AUTO;
+  else
+    jsiStatus &= ~JSIS_WATCHDOG_AUTO;
   jshEnableWatchDog(time);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "kickWatchdog",
+  "generate" : "jswrap_espruino_kickWatchdog"
+}
+Kicks a Watchdog timer set up with `E.enableWatchdog(..., false)`. See
+`E.enableWatchdog` for more information.
+
+**NOTE:** This is only implemented on STM32 devices.
+ */
+void jswrap_espruino_kickWatchdog() {
+  jshKickWatchDog();
 }
 
 /*JSON{
@@ -601,13 +631,14 @@ Get and reset the error flags. Returns an array that can contain:
 `'MEMORY'`: Espruino ran out of memory and was unable to allocate some data that it needed.
  */
 JsVar *jswrap_espruino_getErrorFlags() {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
   if (jsErrorFlags&JSERR_RX_FIFO_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("FIFO_FULL"));
   if (jsErrorFlags&JSERR_BUFFER_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("BUFFER_FULL"));
   if (jsErrorFlags&JSERR_CALLBACK) jsvArrayPushAndUnLock(arr, jsvNewFromString("CALLBACK"));
   if (jsErrorFlags&JSERR_LOW_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("LOW_MEMORY"));
   if (jsErrorFlags&JSERR_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY"));
+  if (jsErrorFlags&JSERR_MEMORY_BUSY) jsvArrayPushAndUnLock(arr, jsvNewFromString("JSERR_MEMORY_BUSY"));
   jsErrorFlags = JSERR_NONE;
   return arr;
 }
@@ -719,17 +750,97 @@ and Espruino Pico) at the moment.
 */
 JsVar *jswrap_espruino_memoryArea(int addr, int len) {
   if (len<0) return 0;
-  JsVar *v = jsvNewWithFlags(JSV_NATIVE_STRING);
   if (len>65535) {
     jsExceptionHere(JSET_ERROR, "Memory area too long! Max is 65535 bytes\n");
     return 0;
   }
+  JsVar *v = jsvNewWithFlags(JSV_NATIVE_STRING);
+  if (!v) return 0;
   v->varData.nativeStr.ptr = (char*)addr;
   v->varData.nativeStr.len = (uint16_t)len;
   return v;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "setBootCode",
+  "generate" : "jswrap_espruino_setBootCode",
+  "params" : [
+    ["code","JsVar","The code to execute (as a string)"],
+    ["alwaysExec","bool","Whether to always execute the code (even after a reset)"]
+  ]
+}
+This writes JavaScript code into Espruino's flash memory, to be executed on
+startup. It differs from `save()` in that `save()` saves the whole state of
+the interpreter, whereas this just saves JS code that is executed at boot.
 
+Code will be executed before `onInit()` and `E.on('init', ...)`.
+
+If `alwaysExec` is `true`, the code will be executed even after a call to
+`reset()`. This is useful if you're making something that you want to
+program, but you want some code that is always built in (for instance
+setting up a display or keyboard).
+
+To remove boot code that has been saved previously, use `E.setBootCode("")`
+
+**Note:** this removes any code that was previously saved with `save()`
+*/
+void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec) {
+  JsvSaveFlashFlags flags = 0;
+  if (alwaysExec) flags |= SFF_BOOT_CODE_ALWAYS;
+  jsfSaveToFlash(flags, code);
+}
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "setClock",
+  "generate" : "jswrap_espruino_setClock",
+  "params" : [
+    ["options","JsVar","Platform-specific options for setting clock speed"]
+  ],
+  "return" : ["int","The actual frequency the clock has been set to"]
+}
+This sets the clock frequency of Espruino's processor. It will return `0` if
+it is unimplemented or the clock speed cannot be changed.
+
+**Note:** On pretty much all boards, UART, SPI, I2C, PWM, etc will change
+frequency and will need setting up again in order to work.
+
+### STM32F4
+
+Options is of the form `{ M: int, N: int, P: int, Q: int }` - see the 'Clocks'
+section of the microcontroller's reference manual for what these mean.
+
+* System clock = 8Mhz * N / ( M * P )
+* USB clock (should be 48Mhz) = 8Mhz * N / ( M * Q )
+
+Optional arguments are:
+
+* `latency` - flash latency from 0..15
+* `PCLK1` - Peripheral clock 1 divisor (default: 2)
+* `PCLK2` - Peripheral clock 2 divisor (default: 4)
+
+The Pico's default is `{M:8, N:336, P:4, Q:7, PCLK1:2, PCLK2:4}`, use
+`{M:8, N:336, P:8, Q:7, PCLK:1, PCLK2:2}` to halve the system clock speed
+while keeping the peripherals running at the same speed (omitting PCLK1/2
+will lead to the peripherals changing speed too).
+
+On STM32F4 boards (eg. Espruino Pico), the USB clock needs to be kept at 48Mhz
+or USB will fail to work. You'll also experience USB instability if the processor
+clock falls much below 48Mhz.
+
+### ESP8266
+
+Just specify an integer value, either 80 or 160 (for 80 or 160Mhz)
+
+*/
+int jswrap_espruino_setClock(JsVar *options) {
+  return (int)jshSetSystemClock(options);
+}
 
 /*JSON{
   "type" : "staticmethod",
@@ -814,14 +925,14 @@ See http://www.espruino.com/Internals for more information
  */
 JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
   if (depth>0 && jsvHasChildren(v)) {
-    JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+    JsVar *arr = jsvNewEmptyArray();
     if (!arr) return 0;
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, v);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *key = jsvObjectIteratorGetKey(&it);
       JsVar *val = jsvSkipName(key);
-      JsVar *item = jsvNewWithFlags(JSV_OBJECT);
+      JsVar *item = jsvNewObject();
       if (item) {
         jsvObjectSetChildAndUnLock(item, "name", jsvAsString(key, false));
         jsvObjectSetChildAndUnLock(item, "size", jswrap_espruino_getSizeOf(key, 0));
@@ -1006,6 +1117,34 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
   }
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "setPassword",
+  "generate" : "jswrap_espruino_setPassword",
+  "params" : [
+    ["opts","JsVar","The password - max 20 chars"]
+  ]
+}
+Set a password on the console (REPL). When powered on, Espruino will
+then demand a password before the console can be used.
+
+To remove the password, call this function with no arguments.
+
+**Note:** There is no protection against multiple password attempts, so someone
+could conceivably try every password in a dictionary.
+
+**Note:** This password is stored in memory in plain text. If someone is able
+to execute arbitrary JavaScript code on the device (eg, you use `eval` on input
+from unknown sources) or read the device's firmware then they may be able to
+obtain it.
+ */
+void jswrap_espruino_setPassword(JsVar *pwd) {
+  if (pwd)
+    pwd = jsvAsString(pwd, false);
+  jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, pwd));
+}
+
 // ----------------------------------------- USB Specific Stuff
 
 #ifdef USE_USB_HID
@@ -1067,4 +1206,5 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 
   return USBD_HID_SendReport(data, l) == USBD_OK;
 }
+
 #endif

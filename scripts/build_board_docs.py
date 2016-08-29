@@ -91,7 +91,8 @@ def dump_pin(brd, pin, pinstrip):
          not_five_volt = True
 
       writeHTML('    <DIV class="'+pinstrip+'pin pin">');
-      pinHTML = '     <SPAN class="pinname">'+pin+"</SPAN>";
+      pinHTML = ''
+      if pin!="": pinHTML = '     <SPAN class="pinname">'+pin+"</SPAN>";
       pinHTML2 = '';
 
       if not_five_volt:

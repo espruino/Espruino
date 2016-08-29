@@ -26,3 +26,4 @@ node_modules
 /build/
 esp_iot_sdk_v1.5.0
 xtensa-lx106-elf
+*.c#

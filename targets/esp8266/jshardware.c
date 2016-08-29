@@ -27,7 +27,6 @@
 #include <pwm.h>
 #include <spi.h> // Include the MetalPhreak/ESP8266_SPI_Library headers.
 
-//#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
 typedef long long int64_t;
 
@@ -61,32 +60,22 @@ typedef long long int64_t;
 static bool g_spiInitialized = false;
 static int  g_lastSPIRead = -1;
 
+// Hardware PWM is broken
+#ifdef HARDWARE_PWM
 struct PWMRecord {
   bool enabled; //!< Has this PWM been enabled previously?
 };
 static uint32 g_pwmFreq;
-
 static struct PWMRecord g_PWMRecords[JSH_PIN_COUNT];
+#else
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+#endif
 
 static uint8 g_pinState[JSH_PIN_COUNT];
 
 
-/**
- * Transmit all the characters in the transmit buffer.
- *
- */
-void esp8266_uartTransmitAll(IOEventFlags device) {
-  // Get the next character to transmit.  We will have reached the end when
-  // the value of the character to transmit is -1.
-  int c = jshGetCharToTransmit(device);
 
-  while (c >= 0) {
-    uart_tx_one_char(0, c);
-    c = jshGetCharToTransmit(device);
-  } // No more characters to transmit
-} // End of esp8266_transmitAll
-
-// ----------------------------------------------------------------------------
 
 /**
  * Convert a pin id to the corresponding Pin Event id.
@@ -132,13 +121,19 @@ void jshInit() {
 
   ETS_GPIO_INTR_ENABLE();
 
+#ifndef HARDWARE_PWM
+  BITFIELD_CLEAR(jshPinSoftPWM);
+#endif
+
   // Initialize something for each of the possible pins.
   for (int i=0; i<JSH_PIN_COUNT; i++) {
+#ifdef HARDWARE_PWM
     // For each of the PWM records, flag the PWM as having been not initialized.
     g_PWMRecords[i].enabled = false;
-
+#endif
     g_pinState[i] = 0;
   }
+
   os_printf("< jshInit\n");
 } // End of jshInit
 
@@ -176,6 +171,7 @@ static void CALLED_FROM_INTERRUPT intrHandlerCB(
  * Reset the Espruino environment.
  */
 void jshReset() {
+  jshResetDevices();
   os_printf("> jshReset\n");
 
   // Set all GPIO pins to be input with pull-up
@@ -208,7 +204,7 @@ void jshSoftInit() {
 /**
  * Handle whatever needs to be done in the idle loop when there's nothing to do.
  *
- * Nothing is needed on the esp8266. The watchdog timer is taken care of by the SDK.
+ * Nothing is needed on the esp8266.
  */
 void jshIdle() {
 }
@@ -222,17 +218,8 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 
 //===== Interrupts and sleeping
 
-void jshInterruptOff() {
-  //os_printf("> jshInterruptOff\n");
-  ets_intr_lock();
-  //os_printf("< jshInterruptOff\n");
-} // End of jshInterruptOff
-
-void jshInterruptOn() {
-  //os_printf("> jshInterruptOn\n");
-  ets_intr_unlock();
-  //os_printf("< jshInterruptOn\n");
-} // End of jshInterruptOn
+void jshInterruptOff() { ets_intr_lock(); }
+void jshInterruptOn()  { ets_intr_unlock(); }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
@@ -364,6 +351,13 @@ void jshPinSetState(
     Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
+
   //os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
   //    pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
 
@@ -460,21 +454,14 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
 }
 
 
-/**
- *
- */
 JsVarFloat jshPinAnalog(Pin pin) {
   //os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
-  return (JsVarFloat) system_adc_read();
+  return (JsVarFloat)system_adc_read() / 1023.0;
 }
 
-
-/**
- *
- */
 int jshPinAnalogFast(Pin pin) {
   //os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
-  return (JsVarFloat) system_adc_read();
+  return (int)system_adc_read() << 6; // left-align to 16 bits
 }
 
 
@@ -482,6 +469,11 @@ int jshPinAnalogFast(Pin pin) {
  * Set the output PWM value.
  */
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
+  if (value<0) value=0;
+  if (value>1) value=1;
+  if (!isfinite(freq)) freq=0;
+
+#ifdef HARDWARE_PWM
   os_printf("> jshPinAnalogOutput - jshPinAnalogOutput: pin=%d, value(x100)=%d, freq=%d\n", pin, (int)(value*100), (int)freq);
   // Check that the value is between 0.0 and 1.0
   if (value < 0 || value > 1.0) {
@@ -516,8 +508,27 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   os_printf(" - Duty: %d (units of 45 nsecs)\n", duty);
   pwm_set_duty(duty, 0);
 
-  //jsError("No DAC");
+#else
+  // Software PWM
+
+  if (jshIsPinValid(pin)/* && (flags&(JSAOF_ALLOW_SOFTWARE|JSAOF_FORCE_SOFTWARE))*/) {
+    /* we set the bit field here so that if the user changes the pin state
+     * later on, we can get rid of the IRQs */
+    if (!jshGetPinStateIsManual(pin)) {
+      BITFIELD_SET(jshPinSoftPWM, pin, 0);
+      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+    }
+    BITFIELD_SET(jshPinSoftPWM, pin, 1);
+    if (freq<=0) freq=50;
+    jstPinPWM(freq, value, pin);
+    return 0;
+  }
+
+  // Otherwise
+  //if (jshIsPinValid(pin))
+//    jsiConsolePrint("You need to use analogWrite(pin, val, {soft:true}) for Software PWM on this pin\n");
   return 0;
+#endif
 }
 
 
@@ -525,8 +536,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
  *
  */
 void jshSetOutputValue(JshPinFunction func, int value) {
-  os_printf("ESP8266: jshSetOutputValue %d %d\n", func, value);
-  jsError("No DAC");
+  os_printf("ESP8266: jshSetOutputValue %d %d - unimplemented\n", func, value);
 }
 
 
@@ -535,6 +545,11 @@ void jshSetOutputValue(JshPinFunction func, int value) {
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
   os_printf("ESP8266: jshEnableWatchDog %0.3f\n", timeout);
+}
+
+// Kick the watchdog
+void jshKickWatchDog() {
+  os_printf("ESP8266: jshKickWatchDog\n");
 }
 
 
@@ -596,8 +611,7 @@ void jshPinPulse(
 #if 1
   // Implementation using busy-waiting. Ugly and if the pulse train exceeds 10ms one risks WDT
   // resets, but it actually works...
-  //jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(pin, pulsePolarity);
+  jshPinOutput(pin, pulsePolarity);
   jshDelayMicroseconds(jshGetTimeFromMilliseconds(pulseTime)-6);  // -6 adjustment is for overhead
   jshPinSetValue(pin, !pulsePolarity);
 #endif
@@ -673,10 +687,48 @@ bool jshIsEventForPin(
 
 //===== USART and Serial =====
 
-/**
- *
- */
+
+
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  uint8 uart_no;
+  if (device == EV_SERIAL1) uart_no = UART0;
+  else if (device == EV_SERIAL2) uart_no = UART1;
+  else {
+    jsError("jshUSARTSetup Unknown device %d\n", device);
+    return;
+  }
+
+  extern void uart_config(uint8 uart_no);
+  extern UartDevice    UartDev;
+
+  UartDev.baut_rate = inf->baudRate;
+  if (inf->bytesize == 5)
+    UartDev.data_bits = FIVE_BITS;
+  else if (inf->bytesize == 6)
+    UartDev.data_bits = SIX_BITS;
+  else if (inf->bytesize == 7)
+    UartDev.data_bits = SEVEN_BITS;
+  else if (inf->bytesize == 8)
+    UartDev.data_bits = EIGHT_BITS;
+  else assert(0);
+  if (inf->parity == 1) {
+    UartDev.exist_parity = STICK_PARITY_EN;
+    UartDev.parity = EVEN_BITS;
+  } else  if (inf->parity == 2) {
+    UartDev.exist_parity = STICK_PARITY_EN;
+    UartDev.parity = ODD_BITS;
+  } else {
+    UartDev.exist_parity = STICK_PARITY_DIS;
+    UartDev.parity = NONE_BITS;
+  }
+  if (inf->stopbits == 1)
+    UartDev.stop_bits = ONE_STOP_BIT;
+  else if (inf->stopbits == 2)
+    UartDev.stop_bits = TWO_STOP_BIT;
+  else assert(0);
+  UartDev.flow_ctrl = NONE_CTRL;
+
+  uart_config(uart_no);
 }
 
 bool jshIsUSBSERIALConnected() {
@@ -692,8 +744,19 @@ bool jshIsUSBSERIALConnected() {
  */
 void jshUSARTKick(
     IOEventFlags device //!< The device to be kicked.
-  ) {
-  esp8266_uartTransmitAll(device);
+) {
+  // transmit anything that is sitting in the uart output buffers
+  if (device == EV_SERIAL1 || device == EV_SERIAL2) {
+    // Get the next character to transmit.  We will have reached the end when
+    // the value of the character to transmit is -1.
+    int c = jshGetCharToTransmit(device);
+    uint8_t uart = device == EV_SERIAL1 ? 0 : 1;
+
+    while (c >= 0) {
+      uart_tx_one_char(uart, c);
+      c = jshGetCharToTransmit(device);
+    }
+  }
 }
 
 
@@ -715,33 +778,21 @@ void jshUSARTKick(
 void jshSPISetup(
     IOEventFlags device, //!< The identity of the SPI device being initialized.
     JshSPIInfo *inf      //!< Flags for the SPI device.
-  ) {
-  // The device should be one of EV_SPI1, EV_SPI2 or EV_SPI3.
-  os_printf("> jshSPISetup - jshSPISetup: device=%d\n", device);
-  switch(device) {
-  case EV_SPI1:
-    os_printf(" - Device is SPI1\n");
-    // EV_SPI1 is the ESP8266 hardware SPI ...
-    spi_init(HSPI); // Initialize the hardware SPI components.
-    spi_clock(HSPI, CPU_CLK_FREQ / (inf->baudRate * 2), 2);
-    g_spiInitialized = true;
-    g_lastSPIRead = -1;
-    break;
-  case EV_SPI2:
-    os_printf(" - Device is SPI2\n");
-    break;
-  case EV_SPI3:
-    os_printf(" - Device is SPI3\n");
-    break;
-  default:
-    os_printf(" - Device is Unknown!!\n");
-    break;
+) {
+  if (device != EV_SPI1) {
+    jsExceptionHere(JSET_ERROR, "Only SPI1 supported");
+    return;
   }
+
+  //os_printf("jshSPISetup - jshSPISetup: device=%d\n", device);
+  spi_init(HSPI, inf->baudRate); // Initialize the hardware SPI components.
+  g_spiInitialized = true;
+  g_lastSPIRead = -1;
+
   if (inf != NULL) {
     os_printf("baudRate=%d, baudRateSpec=%d, pinSCK=%d, pinMISO=%d, pinMOSI=%d, spiMode=%d, spiMSB=%d\n",
         inf->baudRate, inf->baudRateSpec, inf->pinSCK, inf->pinMISO, inf->pinMOSI, inf->spiMode, inf->spiMSB);
   }
-  os_printf("< jshSPISetup\n");
 }
 
 /** Send data through the given SPI device (if data>=0), and return the result
@@ -750,14 +801,14 @@ void jshSPISetup(
 int jshSPISend(
     IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
     int data             //!< The data to be sent or an indication that no data is to be sent.
-  ) {
+) {
   if (device != EV_SPI1) {
     return -1;
   }
   //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
   int retData = g_lastSPIRead;
   if (data >=0) {
-    g_lastSPIRead = spi_tx8(HSPI, data);
+    g_lastSPIRead = spi_transaction(HSPI, 8, (uint32)data);
   } else {
     g_lastSPIRead = -1;
   }
@@ -772,7 +823,7 @@ int jshSPISend(
 void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
-  ) {
+) {
   //os_printf("> jshSPISend16 - device=%d, data=%x\n", device, data);
   //jshSPISend(device, data >> 8);
   //jshSPISend(device, data & 255);
@@ -780,7 +831,7 @@ void jshSPISend16(
     return;
   }
 
-  spi_tx16(HSPI, data);
+  spi_transaction(HSPI, 16, (uint32)data);
   //os_printf("< jshSPISend16\n");
 }
 
@@ -791,7 +842,7 @@ void jshSPISend16(
 void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
-  ) {
+) {
   //os_printf("> jshSPISet16 - device=%d, is16=%d\n", device, is16);
   //os_printf("< jshSPISet16\n");
 }
@@ -802,7 +853,7 @@ void jshSPISet16(
  */
 void jshSPIWait(
     IOEventFlags device //!< Unknown
-  ) {
+) {
   //os_printf("> jshSPIWait - device=%d\n", device);
   while(spi_busy(HSPI)) ;
   //os_printf("< jshSPIWait\n");
@@ -810,8 +861,8 @@ void jshSPIWait(
 
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive) {
-  os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
-  os_printf("< jshSPISetReceive\n");
+  //os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
+  //os_printf("< jshSPISetReceive\n");
 }
 
 //===== I2C =====
@@ -822,10 +873,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   //os_printf("> jshI2CSetup: SCL=%d SDA=%d bitrate=%d\n",
   //    info->pinSCL, info->pinSDA, info->bitrate);
   if (device != EV_I2C1) {
-    jsError("Only I2C1 supported");
-    return;
-  }
-
+    jsError("Only I2C1 supported"); return; }
   Pin scl = info->pinSCL !=PIN_UNDEFINED ? info->pinSCL : 14;
   Pin sda = info->pinSDA !=PIN_UNDEFINED ? info->pinSDA : 2;
 
@@ -857,7 +905,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
   return;
 error:
   i2c_master_stop();
-  jsError("No ACK");
+  jsExceptionHere(JSET_INTERNALERROR, "I2CWrite: No ACK %d\n", ack);
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
@@ -879,7 +927,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
   return;
 error:
   i2c_master_stop();
-  jsError("No ACK");
+  jsExceptionHere(JSET_INTERNALERROR, "I2CRead: No ACK %d\n", ack);
 }
 
 //===== System time stuff =====
@@ -892,31 +940,31 @@ error:
  *
  * It seems pretty clear from the API and the calibration concepts that the RTC runs off an
  * internal RC oscillator or something similar and the SDK provides functions to calibrate
- * it WRT the crystal oscillator, i.e., to get the current clock ratio.
- *
- * The RTC timer is preserved when the chip goes into sleep mode, including deep sleep, as
- * well when it is reset (but not if reset using the ch_pd pin).
+ * it WRT the crystal oscillator, i.e., to get the current clock ratio. The only benefit of
+ * RTC timer is that it keeps running when in light sleep mode. (It also keeps running in
+ * deep sleep mode since it can be used to exit deep sleep but some brilliant engineer at
+ * espressif decided to reset the RTC timer when coming out of deep sleep so the time is
+ * actually lost!)
  *
  * It seems that the best course of action is to use the system timer for jshGetSystemTime()
- * and related functions and to use the rtc timer only at start-up to initialize the system
- * timer to the best guess available for the current date-time.
+ * and related functions and to use the rtc timer only to preserve time during light sleep.
  */
 
 /**
  * Given a time in milliseconds as float, get us the value in microsecond
  */
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-//  os_printf("jshGetTimeFromMilliseconds %d, %f\n", (JsSysTime)(ms * 1000.0), ms);
+  //  os_printf("jshGetTimeFromMilliseconds %d, %f\n", (JsSysTime)(ms * 1000.0), ms);
   return (JsSysTime) (ms * 1000.0 + 0.5);
-} // End of jshGetTimeFromMilliseconds
+}
 
 /**
  * Given a time in microseconds, get us the value in milliseconds (float)
  */
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-//  os_printf("jshGetMillisecondsFromTime %d, %f\n", time, (JsVarFloat)time / 1000.0);
+  //  os_printf("jshGetMillisecondsFromTime %d, %f\n", time, (JsVarFloat)time / 1000.0);
   return (JsVarFloat) time / 1000.0;
-} // End of jshGetMillisecondsFromTime
+}
 
 // Structure to hold a timestamp in us since the epoch, plus the system timer value at that time
 // stamp. The crc field is used when saving this to RTC RAM
@@ -953,7 +1001,7 @@ static void saveTime() {
  */
 JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called at interrupt time
   return sysTimeStamp.timeStamp + (JsSysTime)(system_get_time() - sysTimeStamp.hwTimeStamp);
-} // End of jshGetSystemTime
+}
 
 
 /**
@@ -969,7 +1017,7 @@ void jshSetSystemTime(JsSysTime newTime) {
   rtcTimeStamp.timeStamp = newTime;
   rtcTimeStamp.hwTimeStamp = rtcTime;
   saveTime(&rtcTimeStamp);
-} // End of jshSetSystemTime
+}
 
 /**
  * Periodic system timer to update the time structure and save it to RTC RAM so we don't loose
@@ -1058,7 +1106,8 @@ void jshUtilTimerDisable() {
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-  if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
+  //if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
+  if (period<1) period=1;
   os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
 }
 
@@ -1070,7 +1119,6 @@ void jshUtilTimerReschedule(JsSysTime period) {
 //===== Miscellaneous =====
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  os_printf("> jshIsDeviceInitialised - %d\n", device);
   bool retVal = true;
   switch(device) {
   case EV_SPI1:
@@ -1079,7 +1127,7 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   default:
     break;
   }
-  os_printf("< jshIsDeviceInitialised - %d\n", retVal);
+  os_printf("jshIsDeviceInitialised: dev %d, ret %d\n", device, retVal);
   return retVal;
 } // End of jshIsDeviceInitialised
 
@@ -1100,6 +1148,15 @@ unsigned int jshGetRandomNumber() {
 //===== Read-write flash =====
 
 /**
+ * Determine available flash depending on EEprom size
+ *
+ */  
+uint32_t jshFlashMax() {
+  extern uint16_t espFlashKB; 
+  return 1024*espFlashKB;
+}
+  
+/**
  * Read data from flash memory into the buffer.
  *
  * This reads from flash using memory-mapped reads. Only works for the first 1MB and
@@ -1114,17 +1171,27 @@ void jshFlashRead(
   //os_printf("jshFlashRead: dest=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
-  if (addr >= FLASH_MAX) return;
-  if (addr + len > FLASH_MAX) len = FLASH_MAX - addr;
-  addr += FLASH_MMAP;
+  uint32_t flash_max=jshFlashMax();
+  if (addr >= flash_max) return;
+  if (addr + len > flash_max) len = flash_max - addr;
 
-  // copy the bytes reading a word from flash at a time
-  uint8_t *dest = buf;
-  uint32_t bytes = *(uint32_t*)(addr & ~3);
-  while (len-- > 0) {
-    if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
-    *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
-  }
+  if (addr < FLASH_MAX) {
+	  addr += FLASH_MMAP; // Direct fast read if < 1Mb
+	  // copy the bytes reading a word from flash at a time
+	  uint8_t *dest = buf;
+	  uint32_t bytes = *(uint32_t*)(addr & ~3);
+	  while (len-- > 0) {
+		if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
+		*dest++ = ((uint8_t*)&bytes)[addr++ & 3];
+	  }
+   } else { // Above 1Mb read...
+	//os_printf("jshFlashRead: above 1mb!");
+	SpiFlashOpResult res;
+	res = spi_flash_read(addr, buf, len);
+    if (res != SPI_FLASH_RESULT_OK)
+      os_printf("ESP8266: jshFlashRead %s\n",
+    res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
+   }
 }
 
 
@@ -1142,8 +1209,9 @@ void jshFlashWrite(
   //os_printf("jshFlashWrite: src=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
-  if (addr >= FLASH_MAX) return;
-  if (addr + len > FLASH_MAX) len = FLASH_MAX - addr;
+  uint32_t flash_max=jshFlashMax();
+  if (addr >= flash_max) return;
+  if (addr + len > flash_max) len = flash_max - addr;
 
   // since things are guaranteed to be aligned we can just call the SDK :-)
   SpiFlashOpResult res;
@@ -1165,10 +1233,44 @@ bool jshFlashGetPage(
   ) {
   //os_printf("ESP8266: jshFlashGetPage: addr=0x%lx, startAddr=%p, pageSize=%p\n", addr, startAddr, pageSize);
 
-  if (addr >= FLASH_MAX) return false;
+  if (addr >= jshFlashMax()) return false;
   *startAddr = addr & ~(FLASH_PAGE-1);
   *pageSize = FLASH_PAGE;
   return true;
+}
+
+static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
+}
+
+JsVar *jshFlashGetFree() {
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+  // Area reserved for EEPROM
+  addFlashArea(jsFreeFlash, 0x77000, 0x1000);
+
+  // need 1MB of flash to have more space...
+  extern uint16_t espFlashKB; // in user_main,c
+  if (espFlashKB > 512) {
+    addFlashArea(jsFreeFlash, 0x80000, 0x1000);
+    if (espFlashKB > 1024) {
+      addFlashArea(jsFreeFlash, 0xf7000, 0x9000);
+	} else {
+	  addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
+    }
+	if (espFlashKB == 2048) {
+	  addFlashArea(jsFreeFlash, 0x100000, 0x100000-0x4000);
+    }
+	if (espFlashKB == 4096) {
+	  addFlashArea(jsFreeFlash, 0x100000, 0x300000-0x4000);
+    }
+  }
+
+  return jsFreeFlash;
 }
 
 
@@ -1185,6 +1287,16 @@ void jshFlashErasePage(
   if (res != SPI_FLASH_RESULT_OK)
     os_printf("ESP8266: jshFlashErase%s\n",
       res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  int newFreq = jsvGetInteger(options);
+  if (newFreq != 80 && newFreq != 160) {
+    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 160.");
+    return 0;
+  }
+  system_update_cpu_freq(newFreq);
+  return system_get_cpu_freq()*1000000;
 }
 
 

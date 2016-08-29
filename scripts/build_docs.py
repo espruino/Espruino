@@ -68,6 +68,7 @@ def htmlify(d):
   d = re.sub(r'`([^`]+)`', r'<code>\1</code>', d) # code tags
   d = re.sub(r'\[([^\]]*)\]\(([^\)]*)\)', r'<a href="\2">\1</a>', d) # links tags
   d = re.sub(r'([^">])(http://[^ ]+)', r'\1<a href="\2">\2</a>', d) # links tags
+  d = re.sub(r'\n###([^\n]*)', r'<B>\1</B>', d) # Heading
 
   lines = d.split("\n");
   lines.append("");
@@ -77,7 +78,7 @@ def htmlify(d):
     if line[0:2]=="* " and starStart==False: 
       starStart=idx
     if line[0:2]!="* ":
-      if starStart!=False and starStart+2<idx:
+      if starStart!=False and starStart+2<=idx:
         l = lines[starStart:idx]
         for i in range(0,len(l)):
           l[i] = "<li>"+l[i][1:]+"</li>"
@@ -194,6 +195,7 @@ html("   ul { list-style-position: inside; }")
 html("   .class { page-break-before: always; width:95%; border-top: 1px solid black; border-bottom: 1px solid black; padding-top: 20px; padding-bottom: 20px; margin-top: 50px; }")
 html("   .instance { font-weight: bold; }");
 html("   .detail { width:90%; border-bottom: 1px solid black; margin-top: 50px; }")
+html("   .githublink { text-decoration:none; color:#CCC; }")
 html("   .top { float:right; }")
 html("   .call { padding-left: 50px; }")
 html("   .description { padding-left: 50px; }")
@@ -317,7 +319,11 @@ for jsondata in detail:
         html("    <li><a href=\"#"+get_link(j)+"\">"+get_surround(j)+"</a></li>")
     html("  </ul>")
   link = get_link(jsondata)
-  html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a></h3>")
+  html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a>")
+  html("<!-- "+json.dumps(jsondata, sort_keys=True, indent=2)+"-->");
+  if "githublink" in jsondata:
+    html('<a class="githublink" title="Link to source code on GitHub" href="'+jsondata["githublink"]+'">&rArr;</a>');
+  html("</h3>")
   insert_mdn_link(jsondata);      
   html("  <p class=\"top\"><a href=\"javascript:toppos();\">(top)</a></p>")
   html("  <h4>Call type:</h4>")

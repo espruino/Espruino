@@ -132,7 +132,7 @@ bool jswrap_onewire_reset(JsVar *parent) {
     ["rom","JsVar","The device to select (get this using `OneWire.search()`)"]
   ]
 }
-Select a ROM - reset needs to be done first
+Select a ROM - always performs a reset first
  */
 void jswrap_onewire_select(JsVar *parent, JsVar *rom) {
   Pin pin = onewire_getpin(parent);
@@ -141,6 +141,9 @@ void jswrap_onewire_select(JsVar *parent, JsVar *rom) {
     jsWarn("Invalid OneWire device address");
     return;
   }
+
+  // perform a reset
+  OneWireReset(pin);
 
   // decode the address
   unsigned long long romdata = 0;
@@ -270,7 +273,7 @@ JsVar *jswrap_onewire_search(JsVar *parent, int command) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return 0;
 
-  JsVar *array = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *array = jsvNewEmptyArray();
   if (!array) return 0;
 
   if (command<=0 || command>255)

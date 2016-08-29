@@ -56,8 +56,11 @@ JsVar *jspGetStackTrace();
 /** Execute code form a variable and return the result. If lineNumberOffset
  * is nonzero it's added to the line numbers that get reported for errors/debug */
 JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset);
-/** Execute code form a string and return the result. */
-JsVar *jspEvaluate(const char *str);
+/** Execute code form a string and return the result.
+ * You should only set stringIsStatic if the string will hang around for
+ * the life of the interpreter, as then the interpreter will use a pointer
+ * to this data, which could hang around inside the code. */
+JsVar *jspEvaluate(const char *str, bool stringIsStatic);
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports
@@ -74,8 +77,8 @@ JsVar *jspGetPrototypeOwner(JsVar *proto);
 typedef enum  {
   EXEC_NO = 0,
   EXEC_YES = 1,
-  EXEC_BREAK = 2,
-  EXEC_CONTINUE = 4,
+  EXEC_BREAK = 2,     // Have we had a 'break' keyword (so should skip to end of loop and exit)
+  EXEC_CONTINUE = 4,  // Have we had a 'continue' keywrord (so should skip to end of loop and restart)
 
   EXEC_INTERRUPTED = 8, // true if execution has been interrupted
   EXEC_EXCEPTION = 16, // we had an exception, so don't execute until we hit a try/catch block
@@ -117,7 +120,6 @@ typedef enum  {
 typedef struct {
   JsVar  *root;       //!< root of symbol table
   JsVar  *hiddenRoot; //!< root of the symbol table that's hidden
-  JsLex *lex;
 
   // TODO: could store scopes as JsVar array for speed
   JsVar *scopes[JSPARSE_MAX_SCOPES];

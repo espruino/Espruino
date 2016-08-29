@@ -1,0 +1,23 @@
+FROM ubuntu:14.04
+
+RUN apt-get update && apt-get install -y software-properties-common && apt-get update \
+ && add-apt-repository ppa:terry.guo/gcc-arm-embedded \
+ && apt-get update \
+ && apt-get install -y git gcc-arm-none-eabi build-essential python curl
+
+RUN git clone https://github.com/espruino/Espruino espruino
+
+RUN curl -Ls http://s3.voneicken.com/xtensa-lx106-elf.tgx | tar Jxf -
+RUN curl -Ls http://s3.voneicken.com/esp_iot_sdk_v1.5.0.tgx | tar Jxf -
+
+WORKDIR /espruino
+
+ENV ESP8266_BOARD=1
+ENV ESP8266_SDK_ROOT=/esp_iot_sdk_v1.5.0
+ENV RELEASE=1
+
+#ENV PICO_1V3 1
+
+ENV PATH "/xtensa-lx106-elf/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
+
+CMD ["make"]

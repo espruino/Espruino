@@ -11,8 +11,6 @@ Espruino is easy to build under Linux, and it is possible to build under MacOS w
   
 The (previously suggested) CodeSourcery GCC compiler is no longer available. We'd suggest you use [gcc-arm-none-eabi](https://launchpad.net/gcc-arm-embedded/+download).
 
-**YOU'LL NEED GCC 4.8** - On the 4.9 releases from launchpad above, the Original Espruino board's binary will build but USB will not work (this is believed to be due to an out of order register write in ST's USB code caused by an optimisation pass in GCC).
-
 Download the compiler, set up your path so you have access to it, and run:
 
 ```YOUR_BOARD_NAME=1 RELEASE=1 make```
@@ -33,31 +31,25 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 
 ----
 
-### for Nordic Semiconductor's NRF52832 Preview Development Kit.
+### for Nordic Semiconductor's nRF51/nRF52 series devices
 
 The (previously suggested) CodeSourcery GCC compiler is no longer available. We'd suggest you use [gcc-arm-none-eabi](https://launchpad.net/gcc-arm-embedded/+download).
 
 Download the compiler, set up your path so you have access to it, and run:
 
-```NRF52832DK=1 BLE_INTERFACE=1 RELEASE=1 make```
+```NRF52832DK=1 RELEASE=1 make```
 
-Note: If you want to communicate with espruino through wired USB connection remove 'BLE_INTERFACE=1'. This will run Espruino so that you can program it from the chrome IDE as you normally would instead of over BLE.
+**Note:** This is for the nRF52 devkit, use `NRF51822DK=1` instead for the nRF51 devkit, `MICROBIT=1` for the BBC micro:bit, or check the first 50-ish lines of the `Makefile` for more board options.
 
-To program the nRF52 Development Kit with Espruino:
+To program the nRF52 Development Kit with Espruino, type `NRF52832DK=1 RELEASE=1 make flash` on Linux. This will copy the generated `espruino_xx.xx_nrf52832.hex` file to the nRF devkit's USB flash drive - you can however do that manually if you want to.
 
-1.) You will need nRFgo Studio to program the nRF52 with .hex files. Download this here: https://www.nordicsemi.com/chi/node_176/2.4GHz-RF/nRFgo-Studio. This will also install all necessary software to program your nRF52 device, as well as nRF5x tools (which is a more advanced way to program the nRF52 with more functionality if you would like).
+Now Espruino is ready to use - you can either use [the Web IDE](http://www.espruino.com/Quick+Start) to connect, or you can use any serial terminal application as long as you connect at 9600 baud (no parity, 1 stop bit).
 
-2.) If you want to use BLE, first you need to download the SoftDevice provided by Nordic to enable BLE. The softdevice can be downloaded here: https://www.nordicsemi.com/eng/Products/Bluetooth-Smart-Bluetooth-low-energy/nRF52-Preview-DK and is in the Downloads tab as S132-SD "S132 nRF52 SoftDevice."
+You can also connect via Bluetooth Low energy - the board will appear as `Espruino XYZ` where `XYZ` is the board name:
 
-3.) Now open nRFgo Studio. Connect the nRF52 DK to your computer. A device should pop up in nRFgo studio under nRF52 development boards as "Segger XXXXXXX." Select this device. Click erase all (this will erase the device). After this succesfully completes click the Program SoftDevice tab in the upper right part of the screen. Browse for the SoftDevice you downloaded in the File to program field. Once this is selected hit the Program button.
+* Use the Nordic UART Android app - install it, connect to the device, and then issue commands. Note that you will have to explicitly send a Carriage Return at the end of any command in order or it to execute (eg. `1+2 [newline]` then click send)
 
-4.) Now that the SoftDevice is programmed, you can program Espruino! (The order, SoftDevice then Espruino is very important!). Click the Program Application tab now and Browse for espruino_1vxx.xx_nrf52832.hex. Select this file and click program.
-
-5.) Now that Espruino is running on the board LED1 should be blinking. This means that Espruino is advertising. Download the nRF toolbox app here: https://www.nordicsemi.com/eng/Products/nRFready-Demo-Apps/nRF-Toolbox-App. Open this on your smart phone, open the UART module, and then click connect. Select Nordic_Espruino. Now you are connected!
-
-6.) Now you can send javascript commands from your smartphone to Espruino! Go to the log in the nRF UART app and try typing 25*4 "ENTER". Note that you need to hit the new line button for espruino to work! Espruino should return >100. Now try digitalWrite(18, 0);"ENTER" This will turn LED2 (pin18 on the nRF52 DK) on! (Note 0 turns led on, 1 turns led off). You can program the device the same way you do in the Espruino IDE, just make sure you send an enter after each command. Experiment with the app and how you can assign a custom script to each button!
-
--- Note that limited functionality is implemented on the nRF52. Feel free to help! Currently working on NFC touch to pair so you can tap the device with your smartphone to connect without opening the app and then scanning. Also thinking of ways to edit scripts (typing long programs on smartphone is tedious).
+* Use Web Bluetooth - see [The BBC micro:bit page](http://www.espruino.com/MicroBit) for more information about this.
 
 ----
 

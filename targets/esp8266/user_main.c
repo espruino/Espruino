@@ -16,10 +16,10 @@
 
 #include <user_interface.h>
 #include <osapi.h>
+#include <sntp.h>
 #include <uart.h>
 #include <espmissingincludes.h>
 
-//#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
 typedef long long int64_t;
 
@@ -28,6 +28,7 @@ typedef long long int64_t;
 #include <jswrap_esp8266_network.h>
 #include <jswrap_esp8266.h>
 #include <ota.h>
+#include <log.h>
 #include "ESP8266_board.h"
 
 // --- Constants
@@ -67,7 +68,7 @@ static void telnetLineCB(char *line) {
   // Pass the line to the interactive module ...
 
   jshPushIOCharEvents(jsiGetConsoleDevice(), line, strlen(line));
-  //jspEvaluate(line);
+  //jspEvaluate(line, false);
   //jsiDumpState();
   telnet_send("JS> ");
 } // End of lineCB
@@ -121,7 +122,6 @@ void jshPrintBanner() {
   os_printf("Espruino "JS_VERSION"\nFlash map %s, manuf 0x%lx chip 0x%lx\n",
       flash_maps[map], fid & 0xff, chip);
   jsiConsolePrintf(
-    "WARNING: the esp8266 port is in beta!\n"
     "Flash map %s, manuf 0x%x chip 0x%x\n",
     flash_maps[map], fid & 0xff, chip);
   if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4)) {
@@ -190,7 +190,7 @@ static void eventHandler(
       char pBuffer[100];
       int size = getRXBuffer(pBuffer, sizeof(pBuffer));
       if (size > 0) {
-        jshPushIOCharEvents(jsiGetConsoleDevice(), pBuffer, size);
+        jshPushIOCharEvents(EV_SERIAL1, pBuffer, size);
       }
     }
     break;
@@ -216,10 +216,13 @@ static void mainLoop() {
   jsiLoop();
 
 #ifdef EPS8266_BOARD_HEARTBEAT
-  if (system_get_time() - lastTime > 1000 * 1000 * 5) {
+  if (system_get_time() - lastTime > 1000 * 1000 * 60) {
     lastTime = system_get_time();
-    os_printf("tick: %ums, heap: %u\n",
-      (uint32)(jshGetSystemTime())/1000, system_get_free_heap_size());
+    // system_get_free_heap_size adds a newline !?
+    char *t = sntp_get_real_time((uint32)(jshGetSystemTime()/1000000));
+    int l = strlen(t);
+    if (l > 2) t[l-1] = 0;
+    os_printf("%s, heap: %u\n", t, system_get_free_heap_size());
   }
 #endif
 
@@ -237,6 +240,9 @@ static void mainLoop() {
 static void initDone() {
   os_printf("> initDone\n");
   otaInit(88);
+
+  extern void gdbstub_init();
+  gdbstub_init();
 
   // Discard any junk data in the input as this is a boot.
   //uart_rx_discard();
@@ -271,8 +277,8 @@ void user_uart_init() {
   uart_init(defaultBaudRate, 115200); // keep debug uart at fixed baud rate
 
   os_delay_us(1000); // make sure there's a gap on uart output
-  UART_SetPrintPort(1);
-  system_set_os_print(1);
+  //UART_SetPrintPort(1);
+  esp8266_logInit(LOG_MODE_ON1);
 }
 
 /**
@@ -281,6 +287,7 @@ void user_uart_init() {
  * before user_init() is called.
  */
 void user_rf_pre_init() {
+  system_update_cpu_freq(160);
   //os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
 }
 

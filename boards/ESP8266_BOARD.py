@@ -19,11 +19,14 @@ info = {
  'espruino_page_link' : 'EspruinoESP8266',
  'default_console' : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
- 'variables'       : 1023,
+ 'variables'       : 1700,
  'binary_name'     : 'espruino_%v_esp8266',
  'build' : {
    'defines' : [
-     'USE_NET'
+     'USE_NET',
+     'USE_TELNET',
+     'USE_GRAPHICS',
+     'USE_CRYPTO',
    ]
  }
 };
@@ -34,7 +37,7 @@ chip = {
   'ram'     : 80,
   'flash'   : 0,
   'speed'   : 80,
-  'usart'   : 1,
+  'usart'   : 2,
   'spi'     : 1,
   'i2c'     : 1,
   'adc'     : 1,

@@ -14,8 +14,12 @@
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
-
+JsVar *jswrap_crypto_error_to_jsvar(int err);
 JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum);
+#ifdef USE_TLS
 JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options);
+#endif
+#ifdef USE_AES
 JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options);
 JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options);
+#endif

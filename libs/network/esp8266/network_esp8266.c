@@ -316,9 +316,7 @@ static void dumpEspConn(
  * \return A new socketId that is assured to be unique.
  */
 static int getNextGlobalSocketId() {
-  int ret = g_nextSocketId;
-  g_nextSocketId++;
-  return ret;
+  return ++g_nextSocketId;
 }
 
 
@@ -393,7 +391,7 @@ static void releaseSocket(
     struct socketData *pSocketData //!< The socket to release
   ) {
   assert(pSocketData != NULL);
-  DBG("%s: freeing socket %d\n", DBG_LIB, pSocketData->socketId);
+  //DBG("%s: freeing socket %d\n", DBG_LIB, pSocketData->socketId);
   assert(pSocketData->state != SOCKET_STATE_UNUSED);
   assert(pSocketData->pEspconn == NULL);
 
@@ -419,8 +417,8 @@ static void releaseEspconn(
   if (pSocketData->pEspconn == NULL) return;
   // if the socket is an inbound connection then espconn will free the struct, else we do it now
   if (pSocketData->creationType != SOCKET_CREATED_INBOUND) {
-    DBG("%s: freeing espconn %p/%p for socket %d\n", DBG_LIB,
-        pSocketData->pEspconn, pSocketData->pEspconn->proto.tcp, pSocketData->socketId);
+    //DBG("%s: freeing espconn %p/%p for socket %d\n", DBG_LIB,
+    //    pSocketData->pEspconn, pSocketData->pEspconn->proto.tcp, pSocketData->socketId);
     os_free(pSocketData->pEspconn->proto.tcp);
     pSocketData->pEspconn->proto.tcp = NULL;
     os_free(pSocketData->pEspconn);
@@ -477,9 +475,9 @@ static void doClose(
     if (rc != 0) {
       setSocketInError(pSocketData, rc);
     }
-    // FIXME: do we get a disconnected callback or is this it? If we don't get a callback we can
-    // go straight to SOCKET_STATE_CLOSED
-    pSocketData->state = SOCKET_STATE_DISCONNECTING;
+    // we do not get a disconnected callback so we go straight to SOCKET_STATE_UNUSED
+    pSocketData->state = SOCKET_STATE_UNUSED;
+    pSocketData->creationType = SOCKET_CREATED_NONE;
 
   } else {
     int rc = espconn_disconnect(pSocketData->pEspconn);
@@ -487,7 +485,8 @@ static void doClose(
       pSocketData->state = SOCKET_STATE_DISCONNECTING;
     } else {
       setSocketInError(pSocketData, rc);
-      pSocketData->state = SOCKET_STATE_CLOSED; // don't expect a callback
+      pSocketData->state = SOCKET_STATE_UNUSED; // don't expect a callback
+      pSocketData->creationType = SOCKET_CREATED_NONE;
     }
   }
 }
@@ -584,7 +583,7 @@ static void esp8266_callback_disconnectCB(
   struct espconn *pEspconn = (struct espconn *)arg;
   struct socketData *pSocketData = (struct socketData *)pEspconn->reverse;
   if (pSocketData == NULL) return;
-  if (pEspconn != pSocketData->pEspconn) DBG("%s: pEspconn changed in disconnectCB ***\n", DBG_LIB);
+  //if (pEspconn != pSocketData->pEspconn) DBG("%s: pEspconn changed in disconnectCB ***\n", DBG_LIB);
   assert(pSocketData->state != SOCKET_STATE_UNUSED);
   DBG("%s: socket %d disconnected\n", DBG_LIB, pSocketData->socketId);
 
@@ -620,7 +619,7 @@ static void esp8266_callback_reconnectCB(
   struct espconn *pEspconn = (struct espconn *)arg;
   struct socketData *pSocketData = (struct socketData *)pEspconn->reverse;
   if (pSocketData == NULL) return; // we already closed this.
-  if (pEspconn != pSocketData->pEspconn) DBG("%s: pEspconn changed in reconnectCB ***\n", DBG_LIB);
+  //if (pEspconn != pSocketData->pEspconn) DBG("%s: pEspconn changed in reconnectCB ***\n", DBG_LIB);
   DBG("%s: socket %d connection reset: Err %d - %s\n", DBG_LIB,
       pSocketData->socketId, err, esp8266_errorToString(err));
   // Do the same as for a disconnect
@@ -643,10 +642,10 @@ static void esp8266_callback_sentCB(
   struct espconn *pEspconn = (struct espconn *)arg;
   struct socketData *pSocketData = (struct socketData *)pEspconn->reverse;
   if (pSocketData == NULL) return; // we already closed this.
-  if (pEspconn != pSocketData->pEspconn) DBG("%s: pEspconn changed in sentCB ***\n", DBG_LIB);
+  //if (pEspconn != pSocketData->pEspconn) DBG("%s: pEspconn changed in sentCB ***\n", DBG_LIB);
   assert(pSocketData->state != SOCKET_STATE_UNUSED);
 
-  DBG("%s: socket %d send completed\n", DBG_LIB, pSocketData->socketId);
+  //DBG("%s: socket %d send completed\n", DBG_LIB, pSocketData->socketId);
 
   // We have transmitted the data ... which means that the data that was in the transmission
   // buffer can be released.
@@ -673,10 +672,10 @@ static void esp8266_callback_recvCB(
   struct espconn *pEspconn = (struct espconn *)arg;
   struct socketData *pSocketData = (struct socketData *)pEspconn->reverse;
   if (pSocketData == NULL) return; // we closed this socket
-  if (pEspconn != pSocketData->pEspconn) DBG("%s: pEspconn changed in recvCB ***\n", DBG_LIB);
+  //if (pEspconn != pSocketData->pEspconn) DBG("%s: pEspconn changed in recvCB ***\n", DBG_LIB);
   assert(pSocketData->state != SOCKET_STATE_UNUSED);
 
-  DBG("%s: socket %d recv %d\n", DBG_LIB, pSocketData->socketId, len);
+  //DBG("%s: socket %d recv %d\n", DBG_LIB, pSocketData->socketId, len);
   //DBG("%s: recv data: %p\n", DBG_LIB, pData);
 
   // if this is a dead connection then just ignore the callback
@@ -728,6 +727,8 @@ void netSetCallbacks_esp8266_board(
     net->gethostbyname = net_ESP8266_BOARD_gethostbyname;
     net->recv          = net_ESP8266_BOARD_recv;
     net->send          = net_ESP8266_BOARD_send;
+    // The TCP MSS is 536, we use half that 'cause otherwise we easily run out of JSvars memory
+    net->chunkSize     = 536/2;
 }
 
 /**
@@ -810,7 +811,7 @@ int net_ESP8266_BOARD_recv(
     // if we now have exactly one buffer enqueued we need to re-enable the flood
     if (pSocketData->rxBufQ != NULL && pSocketData->rxBufQ->next == NULL)
       espconn_recv_unhold(pSocketData->pEspconn);
-    DBG("%s: socket %d JS recv %d\n", DBG_LIB, sckt, retLen);
+    //DBG("%s: socket %d JS recv %d\n", DBG_LIB, sckt, retLen);
     return retLen;
   }
 
@@ -825,7 +826,7 @@ int net_ESP8266_BOARD_recv(
   uint16_t newLen = rxBuf->filled - len;
   os_memmove(rxBuf->data, rxBuf->data + len, newLen);
   rxBuf->filled = newLen;
-  DBG("%s: socket %d JS recv %d\n", DBG_LIB, sckt, len);
+  //DBG("%s: socket %d JS recv %d\n", DBG_LIB, sckt, len);
   return len;
 }
 
@@ -894,7 +895,7 @@ int net_ESP8266_BOARD_send(
   }
 
   pSocketData->state = SOCKET_STATE_TRANSMITTING;
-  DBG("%s: socket %d JS send %d\n", DBG_LIB, sckt, len);
+  //DBG("%s: socket %d JS send %d\n", DBG_LIB, sckt, len);
   return len;
 }
 
@@ -1088,6 +1089,7 @@ static int connectSocket(
       releaseSocket(pSocketData);
       return rc;
     }
+    espconn_regist_time(pEspconn, 600, 0);
     DBG("%s: listening socket %d on port %d\n", DBG_LIB,
         pSocketData->socketId, pEspconn->proto.tcp->local_port);
   }
@@ -1112,7 +1114,7 @@ void net_ESP8266_BOARD_closeSocket(
   if (pSocketData->state == SOCKET_STATE_CLOSED) {
     // In these states we have already freed the espconn structures, so all that's left is to
     // free the socket structure
-    DBG("%s: socket %d close acknowledged\n", DBG_LIB, pSocketData->socketId);
+    //DBG("%s: socket %d close acknowledged\n", DBG_LIB, pSocketData->socketId);
     releaseSocket(pSocketData);
   } else {
     // Looks like this is the user telling us to close a connection, let's do it.

@@ -351,17 +351,57 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) 
 
 // Do software PWM on the given pin, using the timer IRQs
 bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
-  /// Remove any tasks using the given pin
-  while (utilTimerRemoveTask(jstPinTaskChecker, (void*)&pin));
   // if anything is wrong, exit now
   if (dutyCycle<=0 || dutyCycle>=1 || freq<=0) {
     jshPinSetValue(pin, dutyCycle >= 0.5);
+    // remove any timer tasks and exit
+    while (utilTimerRemoveTask(jstPinTaskChecker, (void*)&pin));
     return false;
   }
+  // do calculations...
+  JsSysTime pulseLength = jshGetTimeFromMilliseconds(dutyCycle * 1000.0 / freq);
   JsSysTime period = jshGetTimeFromMilliseconds(1000.0 / freq);
   if (period > 0xFFFFFFFF) {
     jsWarn("Frequency of %f Hz is too slow", freq);
     period = 0xFFFFFFFF;
+  }
+
+  // First, search for existing PWM tasks
+  UtilTimerTask *ptaskon=0, *ptaskoff=0;
+  jshInterruptOff();
+  unsigned char ptr = utilTimerTasksHead;
+  if (ptr != utilTimerTasksTail) {
+    ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+    // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
+    while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
+      if (jstPinTaskChecker(&utilTimerTasks[ptr], (void*)&pin)) {
+        if (utilTimerTasks[ptr].data.set.value)
+          ptaskon = &utilTimerTasks[ptr];
+        else
+          ptaskoff = &utilTimerTasks[ptr];
+      }
+      ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+    }
+  }
+  if (ptaskon && ptaskoff) {
+    // Great! We have PWM... Just update it
+    if (ptaskoff->time > ptaskon->time)
+      ptaskoff->time = ptaskon->time + pulseLength;
+    else
+      ptaskoff->time = ptaskon->time + pulseLength - (unsigned int)period;
+    ptaskon->repeatInterval = (unsigned int)period;
+    ptaskoff->repeatInterval = (unsigned int)period;
+    /* don't bother rescheduling - everything will work out next time
+     * the timer fires anyway. */
+    // All done - just return!
+    jshInterruptOn();
+    return true;
+  }
+  jshInterruptOn();
+
+  /// Remove any tasks using the given pin (if they existed)
+  if (ptaskon || ptaskoff) {
+    while (utilTimerRemoveTask(jstPinTaskChecker, (void*)&pin));
   }
   JsSysTime time = jshGetSystemTime();
 
@@ -369,7 +409,7 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
   taskon.data.set.value = 1;
   taskoff.data.set.value = 0;
   taskon.time = time;
-  taskoff.time = time + jshGetTimeFromMilliseconds(dutyCycle * 1000.0 / freq);
+  taskoff.time = time + pulseLength;
   taskon.repeatInterval = (unsigned int)period;
   taskoff.repeatInterval = (unsigned int)period;
   taskon.type = UET_SET;
@@ -389,13 +429,14 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
 }
 
 /// Execute the given function repeatedly after the given time period
-bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime period) {
+bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime startTime, uint32_t period) {
   UtilTimerTask task;
-  task.time = jshGetSystemTime() + period;
-  task.repeatInterval = (uint32_t)period;
+  task.time = startTime;
+  task.repeatInterval = period;
   task.type = UET_EXECUTE;
   task.data.execute = fn;
 
+  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
   return utilTimerInsertTask(&task);
 }
 

@@ -25,12 +25,15 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse);
 JsVarFloat jswrap_espruino_interpolate(JsVar *array, JsVarFloat findex);
 JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, JsVarFloat y);
 
-void jswrap_espruino_enableWatchdog(JsVarFloat time);
+void jswrap_espruino_enableWatchdog(JsVarFloat time, JsVar *isAuto);
+void jswrap_espruino_kickWatchdog();
 JsVar *jswrap_espruino_getErrorFlags();
 JsVar *jswrap_espruino_toArrayBuffer(JsVar *str);
 JsVar *jswrap_espruino_toUint8Array(JsVar *args);
 JsVar *jswrap_espruino_toString(JsVar *args);
 JsVar *jswrap_espruino_memoryArea(int addr, int len);
+void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec);
+int jswrap_espruino_setClock(JsVar *options);
 
 int jswrap_espruino_reverseByte(int v);
 void jswrap_espruino_dumpTimers();
@@ -38,6 +41,9 @@ JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth);
 void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bits);
 JsVar *jswrap_e_dumpStr();
 JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri);
+void jswrap_espruino_setPassword(JsVar *pwd);
 
 void jswrap_espruino_setUSBHID(JsVar *arr);
 bool jswrap_espruino_sendUSBHID(JsVar *arr);
+
+

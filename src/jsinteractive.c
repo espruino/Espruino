@@ -15,6 +15,7 @@
 #include "jsinteractive.h"
 #include "jshardware.h"
 #include "jstimer.h"
+#include "jspin.h"
 #include "jswrapper.h"
 #include "jswrap_json.h"
 #include "jswrap_io.h"
@@ -100,8 +101,12 @@ NO_INLINE bool jsiEcho() {
   return ((jsiStatus&JSIS_ECHO_OFF_MASK)==0);
 }
 
+NO_INLINE bool jsiPasswordProtected() {
+  return ((jsiStatus&JSIS_PASSWORD_PROTECTED)!=0);
+}
+
 static bool jsiShowInputLine() {
-  return jsiEcho() && !inputLineRemoved;
+  return jsiEcho() && !inputLineRemoved && !jsiPasswordProtected();
 }
 
 /** Called when the input line/cursor is modified *and its iterator should be reset
@@ -129,14 +134,12 @@ static NO_INLINE void jsiAppendToInputLine(const char *str) {
   }
 }
 
-/**
- * Change the console to a new location.
- */
-void jsiSetConsoleDevice(
-    IOEventFlags device //!< The device to use as a console.
-  ) {
-  // The `consoleDevice` is the global used to indicate which device we are using as the
-  // the console.
+void jsiSetConsoleDevice(IOEventFlags device, bool force) {
+  if (force)
+    jsiStatus |= JSIS_CONSOLE_FORCED;
+  else
+    jsiStatus &= ~JSIS_CONSOLE_FORCED;
+
   if (device == consoleDevice) return;
 
   if (!jshIsDeviceInitialised(device)) {
@@ -158,13 +161,14 @@ void jsiSetConsoleDevice(
   }
 }
 
-/**
- * Retrieve the device being used as the console.
- */
 IOEventFlags jsiGetConsoleDevice() {
   // The `consoleDevice` is the global used to hold the current console.  This function
   // encapsulates access.
   return consoleDevice;
+}
+
+bool jsiIsConsoleDeviceForced() {
+  return (jsiStatus & JSIS_CONSOLE_FORCED)!=0;
 }
 
 /**
@@ -184,7 +188,7 @@ NO_INLINE void jsiConsolePrintString(const char *str) {
   }
 }
 
-#ifdef FLASH_STR
+#ifdef USE_FLASH_MEMORY
 // internal version that copies str from flash to an internal buffer
 NO_INLINE void jsiConsolePrintString_int(const char *str) {
   size_t len = flash_strlen(str);
@@ -198,7 +202,7 @@ NO_INLINE void jsiConsolePrintString_int(const char *str) {
  * Perform a printf to the console.
  * Execute a printf command to the current JS console.
  */
-#ifndef FLASH_STR
+#ifndef USE_FLASH_MEMORY
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
@@ -371,25 +375,28 @@ void jsiConsoleReturnInputLine() {
       if (jsiStatus & JSIS_IN_DEBUGGER)
         jsiConsolePrint("debug");
 #endif
+      if (jsiPasswordProtected())
+        jsiConsolePrint("password");
       jsiConsolePrintChar('>'); // show the prompt
       jsiConsolePrintStringVarWithNewLineChar(inputLine, 0, ':');
       jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos);
     }
   }
 }
-void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos) {
-  jslPrintPosition((vcbprintf_callback)jsiConsolePrintString, 0, lex, tokenPos);
-}
 
 /**
- * Clear the input line of data.
+ * Clear the input line of data. If updateConsole is set, it
+ * sends VT100 characters to physically remove the line from
+ * the user's terminal.
  */
-void jsiClearInputLine() {
-  jsiConsoleRemoveInputLine();
+void jsiClearInputLine(bool updateConsole) {
+  if (updateConsole)
+    jsiConsoleRemoveInputLine();
   // clear input line
   jsiInputLineCursorMoved();
   jsvUnLock(inputLine);
   inputLine = jsvNewFromEmptyString();
+  inputCursorPos = 0;
 }
 
 /**
@@ -430,9 +437,9 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 
 // Used when recovering after being flashed
 // 'claim' anything we are using
-void jsiSoftInit() {
+void jsiSoftInit(bool hasBeenReset) {
   jsErrorFlags = 0;
-  events = jsvNewWithFlags(JSV_ARRAY);
+  events = jsvNewEmptyArray();
   inputLine = jsvNewFromEmptyString();
   inputCursorPos = 0;
   jsiLineNumberOffset = 0;
@@ -440,6 +447,8 @@ void jsiSoftInit() {
   inputLineIterator.var = 0;
 
   jsiStatus &= ~JSIS_ALLOW_DEEP_SLEEP;
+  pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
+  pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
 
   // Load timer/watch arrays
   timerArray = _jsiInitNamedArray(JSI_TIMERS_NAME);
@@ -450,8 +459,11 @@ void jsiSoftInit() {
   jsiLastIdleTime = jshGetSystemTime();
   jsiTimeSinceCtrlC = 0xFFFFFFFF;
 
-  // Runw wrapper initialisation stuff
+  // Run wrapper initialisation stuff
   jswInit();
+
+  // Run 'boot code' - textual JS in flash
+  jsfLoadBootCodeFromFlash(hasBeenReset);
 
   // Now run initialisation code
   JsVar *initCode = jsvObjectGetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, 0);
@@ -638,11 +650,11 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
     if (IS_PIN_USED_INTERNALLY(pin)) continue;
     JshPinState state = jshPinGetState(pin);
     JshPinState statem = state&JSHPINSTATE_MASK;
-    if (statem == JSHPINSTATE_GPIO_OUT || statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN) {
+    if (statem == JSHPINSTATE_GPIO_OUT && !jshGetPinStateIsManual(pin)) {
       bool isOn = (state&JSHPINSTATE_PIN_IS_ON)!=0;
       if (!isOn && IS_PIN_A_LED(pin)) continue;
-      cbprintf(user_callback, user_data, "digitalWrite(%p,%d);\n",pin,isOn?1:0);
-    } else if (/*statem == JSHPINSTATE_GPIO_IN ||*/statem == JSHPINSTATE_GPIO_IN_PULLUP || statem == JSHPINSTATE_GPIO_IN_PULLDOWN) {
+      cbprintf(user_callback, user_data, "digitalWrite(%p, %d);\n",pin,isOn?1:0);
+    } else {
 #ifdef DEFAULT_CONSOLE_RX_PIN
       // the console input pin is always a pullup now - which is expected
       if (pin == DEFAULT_CONSOLE_RX_PIN &&
@@ -653,14 +665,15 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
           statem == BTN1_PINSTATE) continue;
 #endif
       // don't bother with normal inputs, as they come up in this state (ish) anyway
-      const char *s = "";
-      if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="_pullup";
-      if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="_pulldown";
-      cbprintf(user_callback, user_data, "pinMode(%p,\"input%s\");\n",pin,s);
+      const char *s = 0;
+      // JSHPINSTATE_GPIO_IN is the default - don't do anything for it
+      if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="input_pullup";
+      else if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="input_pulldown";
+      else if (statem == JSHPINSTATE_GPIO_OUT) s="output";
+      else if (statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN) s="opendrain";
+      if (s) cbprintf(user_callback, user_data, "pinMode(%p, \"%s\");\n",pin,s);
     }
 
-    if (statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN)
-      cbprintf(user_callback, user_data, "pinMode(%p,\"opendrain\");\n",pin);
   }
 }
 
@@ -720,7 +733,7 @@ void jsiSemiInit(bool autoLoad) {
   // Set state
   interruptedDuringEvent = false;
   // Set defaults
-  jsiStatus = JSIS_NONE;
+  jsiStatus &= ~JSIS_SOFTINIT_MASK;
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 
   /* If flash contains any code, then we should
@@ -729,13 +742,19 @@ void jsiSemiInit(bool autoLoad) {
   if (loadFlash) {
     jspSoftKill();
     jsvSoftKill();
-    jsfLoadFromFlash();
+    jsfLoadStateFromFlash();
     jsvSoftInit();
     jspSoftInit();
   }
 
+  // If a password was set, apply the lock
+  JsVar *pwd = jsvObjectGetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, 0);
+  if (pwd)
+    jsiStatus |= JSIS_PASSWORD_PROTECTED;
+  jsvUnLock(pwd);
+
   // Softinit may run initialisation code that will overwrite defaults
-  jsiSoftInit();
+  jsiSoftInit(!autoLoad);
 
 #ifdef ESP8266
   jshSoftInit();
@@ -755,9 +774,18 @@ void jsiSemiInit(bool autoLoad) {
           "|   __|_ -| . |  _| | | |   | . |\n"
           "|_____|___|  _|_| |___|_|_|_|___|\n"
           "          |_| http://espruino.com\n"
-          " "JS_VERSION" Copyright 2015 G.Williams\n");
+          " "JS_VERSION" Copyright 2016 G.Williams\n"
+        // Point out about donations - but don't bug people
+        // who bought boards that helped Espruino
+#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS)
+          "\n"
+          "Espruino is Open Source. Our work is supported\n"
+          "only by sales of official boards and donations:\n"
+          "http://espruino.com/Donate\n"
+#endif
+        );
 #ifdef ESP8266
-	  jshPrintBanner();
+      jshPrintBanner();
 #endif
     }
     jsiConsolePrint("\n"); // output new line
@@ -767,6 +795,8 @@ void jsiSemiInit(bool autoLoad) {
 
 // The 'proper' init function - this should be called only once at bootup
 void jsiInit(bool autoLoad) {
+  jsiStatus = JSIS_NONE;
+
 #if defined(LINUX) || !defined(USB)
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
 #else
@@ -817,7 +847,8 @@ int jsiCountBracketsInInput() {
   int brackets = 0;
 
   JsLex lex;
-  jslInit(&lex, inputLine);
+  JsLex *oldLex = jslSetLex(&lex);
+  jslInit(inputLine);
   while (lex.tk!=LEX_EOF && lex.tk!=LEX_UNFINISHED_COMMENT) {
     if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
     if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
@@ -826,7 +857,8 @@ int jsiCountBracketsInInput() {
   }
   if (lex.tk==LEX_UNFINISHED_COMMENT)
     brackets=1000; // if there's an unfinished comment, we're in the middle of something
-  jslKill(&lex);
+  jslKill();
+  jslSetLex(oldLex);
 
   return brackets;
 }
@@ -1042,6 +1074,18 @@ bool jsiAtEndOfInputLine() {
 void jsiCheckErrors() {
   JsVar *exception = jspGetException();
   if (exception) {
+    JsVar *process = jsvObjectGetChild(execInfo.root, "process", 0);
+    if (process) {
+      JsVar *callback = jsvObjectGetChild(process, JS_EVENT_PREFIX"uncaughtException", 0);
+      if (callback) {
+        jsiExecuteEventCallback(0, callback, 1, &exception);
+        jsvUnLock2(callback, exception);
+        exception = 0;
+      }
+      jsvUnLock(process);
+    }
+  }
+  if (exception) {
     jsiConsolePrintf("Uncaught %v\n", exception);
     jsvUnLock(exception);
   }
@@ -1090,49 +1134,97 @@ void jsiAppendStringToInputLine(const char *strToAppend) {
   }
 }
 
-#ifndef SAVE_ON_FLASH
+#ifdef USE_TAB_COMPLETE
+
+typedef struct {
+  size_t partialLen;
+  JsVar *partial;
+  JsVar *possible;
+  int matches;
+  size_t lineLength;
+} JsiTabCompleteData;
+
+void jsiTabComplete_findCommon(void *cbdata, JsVar *key) {
+  JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
+  if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, true)==0) {
+    data->matches++;
+    if (data->possible) {
+      JsVar *v = jsvGetCommonCharacters(data->possible, key);
+      jsvUnLock(data->possible);
+      data->possible = v;
+    } else {
+      data->possible = jsvLockAgain(key);
+    }
+  }
+}
+
+void jsiTabComplete_printCommon(void *cbdata, JsVar *key) {
+  JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
+  if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, true)==0) {
+    // Print, but do as 2 columns
+    if (data->lineLength==0 || data->lineLength>18) {
+      jsiConsolePrintf("%v",key);
+      data->lineLength = jsvGetStringLength(key);
+    } else {
+      while (data->lineLength<20) {
+        jsiConsolePrintChar(' ');
+        data->lineLength++;
+      }
+      jsiConsolePrintf("%v\n",key);
+      data->lineLength = 0;
+    }
+  }
+}
+
 void jsiTabComplete() {
   if (!jsvIsString(inputLine)) return;
   JsVar *object = 0;
-  JsVar *partial = 0;
+  JsiTabCompleteData data;
+  data.partial = 0;
   size_t partialStart = 0;
 
   JsLex lex;
-  jslInit(&lex, inputLine);
+  JsLex *oldLex = jslSetLex(&lex);
+  jslInit(inputLine);
   while (lex.tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex.tokenStart.it)<=inputCursorPos) {
     if (lex.tk=='.') {
       jsvUnLock(object);
-      object = partial;
-      partial = 0;
+      object = data.partial;
+      data.partial = 0;
     } else if (lex.tk==LEX_ID) {
-      jsvUnLock(partial);
-      partial = jslGetTokenValueAsVar(&lex);
+      jsvUnLock(data.partial);
+      data.partial = jslGetTokenValueAsVar(&lex);
       partialStart = jsvStringIteratorGetIndex(&lex.tokenStart.it);
     } else {
       jsvUnLock(object);
       object = 0;
-      jsvUnLock(partial);
-      partial = 0;
+      jsvUnLock(data.partial);
+      data.partial = 0;
     }
     jslGetNextToken(&lex);
   }
-  jslKill(&lex);
-  if (!partial) {
-    jsvUnLock(object);
+  jslKill();
+  jslSetLex(oldLex);
+  if (!object && !data.partial) {
     return;
   }
-  size_t partialLen = jsvGetStringLength(partial);
-  size_t actualPartialLen = inputCursorPos + 1 - partialStart;
-  if (actualPartialLen > partialLen) {
-    // we had a token but were past the end of it when asked
-    // to autocomplete ---> no token
-    jsvUnLock(partial);
-    return;
-  } else if (actualPartialLen < partialLen) {
-    JsVar *v = jsvNewFromStringVar(partial, 0, actualPartialLen);
-    jsvUnLock(partial);
-    partial = v;
-    partialLen = actualPartialLen;
+  if (data.partial) {
+    data.partialLen = jsvGetStringLength(data.partial);
+    size_t actualPartialLen = inputCursorPos + 1 - partialStart;
+    if (actualPartialLen > data.partialLen) {
+      // we had a token but were past the end of it when asked
+      // to autocomplete ---> no token
+      jsvUnLock(data.partial);
+      return;
+    } else if (actualPartialLen < data.partialLen) {
+      JsVar *v = jsvNewFromStringVar(data.partial, 0, actualPartialLen);
+      jsvUnLock(data.partial);
+      data.partial = v;
+      data.partialLen = actualPartialLen;
+    }
+  } else {
+    data.partial = jsvNewFromEmptyString();
+    data.partialLen = 0;
   }
 
   // If we had the name of an object here, try and look it up
@@ -1150,7 +1242,7 @@ void jsiTabComplete() {
     object = v;
     // If we couldn't look it up, don't offer any suggestions
     if (!v) {
-      jsvUnLock(partial);
+      jsvUnLock(data.partial);
       return;
     }
   }
@@ -1159,77 +1251,34 @@ void jsiTabComplete() {
     object = jsvLockAgain(execInfo.root);
   }
   // Now try and autocomplete
-  JsVar *possible = 0;
-  JsVar *keys = jswrap_object_keys_or_property_names(object, true, true);
-  //jsiConsolePrintf("\n%v\n", keys);
-  jsvUnLock(object);
-  if (!keys) return;
-  int matches = 0;
-  JsvObjectIterator it;
-  jsvObjectIteratorNew(&it, keys);
-  while (jsvObjectIteratorHasValue(&it)) {
-    JsVar *key = jsvObjectIteratorGetValue(&it);
-    if (jsvGetStringLength(key)>partialLen && jsvCompareString(partial, key, 0, 0, true)==0) {
-      matches++;
-      if (possible) {
-        JsVar *v = jsvGetCommonCharacters(possible, key);
-        jsvUnLock(possible);
-        possible = v;
-      } else {
-        possible = jsvLockAgain(key);
-      }
-    }
-    jsvUnLock(key);
-    jsvObjectIteratorNext(&it);
-  }
-  jsvObjectIteratorFree(&it);
+  data.possible = 0;
+  data.matches = 0;
+  jswrap_object_keys_or_property_names_cb(object, true, true, jsiTabComplete_findCommon, &data);
   // If we've got >1 match and are at the end of a line, print hints
-  if (matches>1) {
+  if (data.matches>1) {
     // Remove the current line and add a newline
     jsiMoveCursorChar(inputLine, inputCursorPos, (size_t)inputLineLength);
     inputLineRemoved = true;
     jsiConsolePrint("\n\n");
-    size_t lineLength = 0;
+    data.lineLength = 0;
     // Output hints
-    JsvObjectIterator it;
-      jsvObjectIteratorNew(&it, keys);
-      while (jsvObjectIteratorHasValue(&it)) {
-        JsVar *key = jsvObjectIteratorGetValue(&it);
-        if (jsvGetStringLength(key)>partialLen && jsvCompareString(partial, key, 0, 0, true)==0) {
-          // Print, but do as 2 columns
-          if (lineLength==0 || lineLength>18) {
-            jsiConsolePrintf("%v",key);
-            lineLength = jsvGetStringLength(key);
-          } else {
-            while (lineLength<20) {
-              jsiConsolePrintChar(' ');
-              lineLength++;
-            }
-            jsiConsolePrintf("%v\n",key);
-            lineLength = 0;
-          }
-        }
-        jsvUnLock(key);
-        jsvObjectIteratorNext(&it);
-      }
-      jsvObjectIteratorFree(&it);
-      if (lineLength) jsiConsolePrint("\n");
-      jsiConsolePrint("\n");
+    jswrap_object_keys_or_property_names_cb(object, true, true, jsiTabComplete_printCommon, &data);
+    if (data.lineLength) jsiConsolePrint("\n");
+    jsiConsolePrint("\n");
     // Return the input line
     jsiConsoleReturnInputLine();
   }
-
-  jsvUnLock(keys);
+  jsvUnLock(object);
   // apply the completion
-  if (possible) {
+  if (data.possible) {
     char buf[JSLEX_MAX_TOKEN_LENGTH];
-    jsvGetString(possible, buf, sizeof(buf));
-    if (partialLen < strlen(buf))
-      jsiAppendStringToInputLine(&buf[partialLen]);
-    jsvUnLock(possible);
+    jsvGetString(data.possible, buf, sizeof(buf));
+    if (data.partialLen < strlen(buf))
+      jsiAppendStringToInputLine(&buf[data.partialLen]);
+    jsvUnLock(data.possible);
   }
 }
-#endif
+#endif // USE_TAB_COMPLETE
 
 void jsiHandleNewLine(bool execute) {
   if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
@@ -1242,10 +1291,7 @@ void jsiHandleNewLine(bool execute) {
 
       // Get line to execute, and reset inputLine
       JsVar *lineToExecute = jsvStringTrimRight(inputLine);
-      jsiInputLineCursorMoved();
-      jsvUnLock(inputLine);
-      inputLine = jsvNewFromEmptyString();
-      inputCursorPos = 0;
+      jsiClearInputLine(false);
 #ifdef USE_DEBUGGER
       if (jsiStatus & JSIS_IN_DEBUGGER) {
         jsiDebuggerLine(lineToExecute);
@@ -1326,6 +1372,30 @@ void jsiHandleChar(char ch) {
   // 27 then 79 then 72 - end
   // 27 then 10 - alt enter
 
+  if (jsiPasswordProtected()) {
+    if (ch=='\r' || ch==10) {
+      JsVar *pwd = jsvObjectGetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, 0);
+      // check password
+      if (pwd && jsvCompareString(inputLine, pwd, 0, 0, false)==0)
+        jsiStatus &= ~JSIS_PASSWORD_PROTECTED;
+      jsvUnLock(pwd);
+      jsiClearInputLine(false);
+      if (jsiPasswordProtected()) {
+        jsiConsolePrint("\n  Invalid password\npassword>");
+      } else {
+        jsiConsolePrint("\n  Logged in.\n");
+        inputLineRemoved = true;
+        jsiConsoleReturnInputLine();
+      }
+    } else {
+      char str[2];
+      str[0] = ch;
+      str[1] = 0;
+      if (jsvGetStringLength(inputLine)<20)
+        jsiAppendToInputLine(str);
+    }
+    return;
+  }
 
   if (ch == 0) {
     inputState = IS_NONE; // ignore 0 - it's scary
@@ -1336,7 +1406,7 @@ void jsiHandleChar(char ch) {
   } else if (ch == 5) { // Ctrl-e
     jsiHandleEnd();
   } else if (ch == 21 || ch == 23) { // Ctrl-u or Ctrl-w
-    jsiClearInputLine();
+    jsiClearInputLine(true);
   } else if (ch == 27) {
     inputState = IS_HAD_27;
   } else if (inputState==IS_HAD_27) {
@@ -1394,7 +1464,7 @@ void jsiHandleChar(char ch) {
     } else {
       if (ch=='d') jsiLineNumberOffset = inputStateNumber;
       else if (ch=='H' /* 75 */) {
-        if (inputStateNumber==2) jsiClearInputLine(); // Erase current line
+        if (inputStateNumber==2) jsiClearInputLine(true); // Erase current line
       } else if (ch==126) {
         if (inputStateNumber==1) jsiHandleHome(); // Numpad Home
         else if (inputStateNumber==3) jsiHandleDelete(false/*not backspace*/); // Numpad (forwards) Delete
@@ -1418,7 +1488,7 @@ void jsiHandleChar(char ch) {
     } else if (ch == '\r' || ch == '\n') {
       if (ch == '\r') inputState = IS_HAD_R;
       jsiHandleNewLine(true);
-#ifndef SAVE_ON_FLASH
+#ifdef USE_TAB_COMPLETE
     } else if (ch=='\t' && jsiEcho()) {
       jsiTabComplete();
 #endif
@@ -1434,7 +1504,7 @@ void jsiHandleChar(char ch) {
 void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount) { // an array of functions, a string, or a single function
   assert(argCount<10);
 
-  JsVar *event = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *event = jsvNewObject();
   if (event) { // Could be out of memory error!
     jsvUnLock(jsvAddNamedChild(event, callback, "func"));
 
@@ -1576,7 +1646,19 @@ bool jsiIsWatchingPin(Pin pin) {
   return isWatched;
 }
 
-void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
+void jsiCtrlC() {
+  // If password protected, don't let Ctrl-C break out of running code!
+  if (jsiPasswordProtected())
+    return;
+  // Force a break...
+  execInfo.execute |= EXEC_CTRL_C;
+}
+
+/** Take an event for a UART and handle the chareacters we're getting, potentially
+ * grabbing more characters as well if it's easy. If more character events are
+ * grabbed, the number of extra events (not characters) is returned */
+int jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
+  int eventsHandled = 0;
   /* work out byteSize. On STM32 we fake 7 bit, and it's easier to
    * check the options and work out the masking here than it is to
    * do it in the IRQ */
@@ -1602,6 +1684,7 @@ void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
       // look down the stack and see if there is more data
       if (jshIsTopEvent(IOEVENTFLAGS_GETTYPE(event->flags))) {
         jshPopIOEvent(event);
+        eventsHandled++;
         chars = IOEVENTFLAGS_GETCHARS(event->flags);
       } else
         chars = 0;
@@ -1612,6 +1695,7 @@ void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
     jswrap_stream_pushData(usartClass, stringData, true);
     jsvUnLock(stringData);
   }
+  return eventsHandled;
 }
 
 void jsiHandleIOEventForConsole(IOEvent *event) {
@@ -1629,8 +1713,11 @@ void jsiIdle() {
   // Handle hardware-related idle stuff (like checking for pin events)
   bool wasBusy = false;
   IOEvent event;
-  int maxEvents = IOBUFFERMASK+1; // ensure we can't get totally swamped by having more events than we can process
-  while (maxEvents-- && jshPopIOEvent(&event)) {
+  // ensure we can't get totally swamped by having more events than we can process.
+  // Just process what was in the event queue at the start
+  int maxEvents = jshGetEventsUsed();
+
+  while ((maxEvents--)>0 && jshPopIOEvent(&event)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     wasBusy = true;
 
@@ -1645,7 +1732,7 @@ void jsiIdle() {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
       if (jsvIsObject(usartClass)) {
-        jsiHandleIOEventForUSART(usartClass, &event);
+        maxEvents -= jsiHandleIOEventForUSART(usartClass, &event);
       }
       jsvUnLock(usartClass);
     } else if (DEVICE_IS_USART_STATUS(eventType)) {
@@ -1708,7 +1795,7 @@ void jsiIdle() {
                 pinIsHigh = oldWatchState;
               }
             } else { // else create a new timeout
-              timeout = jsvNewWithFlags(JSV_OBJECT);
+              timeout = jsvNewObject();
               if (timeout) {
                 jsvObjectSetChild(timeout, "watch", watchPtr); // no unlock
                 jsvObjectSetChildAndUnLock(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce));
@@ -1730,7 +1817,7 @@ void jsiIdle() {
             if (jsiShouldExecuteWatch(watchPtr, pinIsHigh)) { // edge triggering
               JsVar *watchCallback = jsvObjectGetChild(watchPtr, "callback", 0);
               bool watchRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(watchPtr,  "recur", 0));
-              JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+              JsVar *data = jsvNewObject();
               if (data) {
                 jsvObjectSetChildAndUnLock(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
                 // set both data.time, and watch.lastTime in one go
@@ -1804,7 +1891,7 @@ void jsiIdle() {
       bool exec = true;
       JsVar *data = 0;
       if (watchPtr) {
-        data = jsvNewWithFlags(JSV_OBJECT);
+        data = jsvNewObject();
         // if we were from a watch then we were delayed by the debounce time...
         if (data) {
           JsVarInt delay = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
@@ -1915,8 +2002,9 @@ void jsiIdle() {
   // check for TODOs
   if (jsiStatus&JSIS_TODO_MASK) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
-    if ((jsiStatus&JSIS_TODO_MASK) == JSIS_TODO_RESET) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_MASK;
+    JsiStatus s = jsiStatus;
+    if ((s&JSIS_TODO_RESET) == JSIS_TODO_RESET) {
+      jsiStatus &= (JsiStatus)~JSIS_TODO_RESET;
       // shut down everything and start up again
       jsiKill();
       jsvKill();
@@ -1924,43 +2012,48 @@ void jsiIdle() {
       jsvInit();
       jsiSemiInit(false); // don't autoload
     }
-    if ((jsiStatus&JSIS_TODO_MASK) == JSIS_TODO_FLASH_SAVE) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_MASK;
+    if ((s&JSIS_TODO_FLASH_SAVE) == JSIS_TODO_FLASH_SAVE) {
+      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_SAVE;
 
       jsvGarbageCollect(); // nice to have everything all tidy!
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
-      jsfSaveToFlash();
+      jsfSaveToFlash(SFF_SAVE_STATE, 0);
       jshReset();
       jsvSoftInit();
       jspSoftInit();
-      jsiSoftInit();
+      jsiSoftInit(false /* not been reset */);
     }
-    if ((jsiStatus&JSIS_TODO_MASK) == JSIS_TODO_FLASH_LOAD) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_MASK;
+    if ((s&JSIS_TODO_FLASH_LOAD) == JSIS_TODO_FLASH_LOAD) {
+      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_LOAD;
 
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
       jshReset();
-      jsfLoadFromFlash();
+      jsfLoadStateFromFlash();
       jsvSoftInit();
       jspSoftInit();
-      jsiSoftInit();
+      jsiSoftInit(false /* not been reset */);
     }
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
 
   /* if we've been around this loop, there is nothing to do, and
    * we have a spare 10ms then let's do some Garbage Collection
-   * just in case. */
+   * if we think we need to */
   if (loopsIdling==1 &&
-      minTimeUntilNext > jshGetTimeFromMilliseconds(10)) {
+      minTimeUntilNext > jshGetTimeFromMilliseconds(10) &&
+      !jsvMoreFreeVariablesThan(JS_VARS_BEFORE_IDLE_GC)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     jsvGarbageCollect();
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
+
+  // Kick the WatchDog if needed
+  if (jsiStatus & JSIS_WATCHDOG_AUTO)
+    jshKickWatchDog();
 
   // Go to sleep!
   if (loopsIdling>1 && // once around the idle loop without having done any work already (just in case)
@@ -1994,7 +2087,7 @@ bool jsiLoop() {
 #endif
       jsiTimeSinceCtrlC = 0;
     }
-    jsiClearInputLine();
+    jsiClearInputLine(true);
   }
 
   // return console (if it was gone!)
@@ -2125,16 +2218,16 @@ void jsiDebuggerLoop() {
       EXEC_DEBUGGER_NEXT_LINE |
       EXEC_DEBUGGER_STEP_INTO |
       EXEC_DEBUGGER_FINISH_FUNCTION);
-  jsiClearInputLine();
+  jsiClearInputLine(true);
   jsiConsoleRemoveInputLine();
   jsiStatus = (jsiStatus & ~JSIS_ECHO_OFF_MASK) | JSIS_IN_DEBUGGER;
 
-  if (execInfo.lex) {
+  if (lex) {
     char lineStr[9];
     // Get a string fo the form '1234    ' for the line number
     // ... but only if the line number was set, otherwise use spaces
-    if (execInfo.lex->lineNumberOffset) {
-      itostr((JsVarInt)jslGetLineNumber(execInfo.lex) + (JsVarInt)execInfo.lex->lineNumberOffset - 1, lineStr, 10);
+    if (lex->lineNumberOffset) {
+      itostr((JsVarInt)jslGetLineNumber(lex) + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
     } else {
       lineStr[0]=0;
     }
@@ -2142,7 +2235,7 @@ void jsiDebuggerLoop() {
     while (lineLen < sizeof(lineStr)-1) lineStr[lineLen++]=' ';
     lineStr[lineLen] = 0;
     // print the line of code, prefixed by the line number, and with a pointer to the exact character in question
-    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrintString, 0, execInfo.lex, execInfo.lex->tokenLastStart, lineStr);
+    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrintString, 0, lex->tokenLastStart, lineStr);
   }
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&
@@ -2214,7 +2307,8 @@ void jsiDebuggerPrintScope(JsVar *scope) {
 void jsiDebuggerLine(JsVar *line) {
   assert(jsvIsString(line));
   JsLex lex;
-  jslInit(&lex, line);
+  JsLex *oldLex = jslSetLex(&lex);
+  jslInit(line);
   bool handled = false;
   if (lex.tk == LEX_ID || lex.tk == LEX_R_CONTINUE) {
     // continue is a reserved word!
@@ -2253,7 +2347,6 @@ void jsiDebuggerLine(JsVar *line) {
     } else if (!strcmp(id,"print") || !strcmp(id,"p")) {
       jslGetNextToken(&lex);
       JsExecInfo oldExecInfo = execInfo;
-      execInfo.lex = &lex; // execute with the remainder of the line
       execInfo.execute = EXEC_YES;
       JsVar *v = jsvSkipNameAndUnLock(jspParse());
       execInfo = oldExecInfo;
@@ -2292,6 +2385,7 @@ void jsiDebuggerLine(JsVar *line) {
     jsiConsolePrint("In debug mode: Expected a simple ID, type 'help' for more info.\n");
   }
 
-  jslKill(&lex);
+  jslKill();
+  jslSetLex(oldLex);
 }
 #endif // USE_DEBUGGER

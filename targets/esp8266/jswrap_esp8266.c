@@ -14,10 +14,6 @@
  * ----------------------------------------------------------------------------
  */
 
-/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py,
- so we don't put this into espruino.com/Reference until this is out
- of beta.  */
-
 // Because the ESP8266 JS wrapper is assured to be running on an ESP8266 we
 // can assume that inclusion of ESP8266 headers will be acceptable.
 #include <c_types.h>
@@ -35,6 +31,7 @@ typedef long long int64_t;
 #include <jswrap_esp8266.h>
 #include <network_esp8266.h>
 #include "jsinteractive.h" // Pull in the jsiConsolePrint function
+#include <log.h>
 
 #define _BV(bit) (1 << (bit))
 
@@ -87,10 +84,11 @@ At boot time the esp8266's firmware captures the cause of the reset/reboot.  Thi
 */
 JsVar *jswrap_ESP8266_getResetInfo() {
   struct rst_info* info = system_get_rst_info();
-  JsVar *restartInfo = jspNewObject(NULL, "RstInfo");
+  JsVar *restartInfo = jsvNewObject();
   extern char *rst_codes[]; // in user_main.c
 
-  jsvObjectSetChildAndUnLock(restartInfo, "exccause", jsvNewFromString(rst_codes[info->exccause]));
+  jsvObjectSetChildAndUnLock(restartInfo, "reason",   jsvNewFromString(rst_codes[info->reason]));
+  jsvObjectSetChildAndUnLock(restartInfo, "exccause", jsvNewFromInteger(info->exccause));
   jsvObjectSetChildAndUnLock(restartInfo, "epc1",     jsvNewFromInteger(info->epc1));
   jsvObjectSetChildAndUnLock(restartInfo, "epc2",     jsvNewFromInteger(info->epc2));
   jsvObjectSetChildAndUnLock(restartInfo, "epc3",     jsvNewFromInteger(info->epc3));
@@ -107,18 +105,59 @@ JsVar *jswrap_ESP8266_getResetInfo() {
   "name"     : "logDebug",
   "generate" : "jswrap_ESP8266_logDebug",
   "params"   : [
-    ["enable", "JsVar", "Enable or disable the debug logging."]
+    ["enable", "bool", "Enable or disable the debug logging."]
   ]
 }
 Enable or disable the logging of debug information.  A value of `true` enables debug logging while a value of `false` disables debug logging.  Debug output is sent to UART1 (gpio2).
  */
-void jswrap_ESP8266_logDebug(
-    JsVar *jsDebug
-  ) {
-  uint8 enable = (uint8)jsvGetBool(jsDebug);
-  os_printf("ESP8255.logDebug, enable=%d\n", enable);
-  system_set_os_print((uint8)jsvGetBool(jsDebug));
+void jswrap_ESP8266_logDebug(bool enable) {
+  os_printf("ESP8266.logDebug, enable=%d\n", enable);
+  esp8266_logInit(enable ? LOG_MODE_ON1 : LOG_MODE_OFF);
 }
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "setLog",
+  "generate" : "jswrap_ESP8266_setLog",
+  "params"   : [
+    ["mode", "int", "Debug log mode: 0=off, 1=in-memory only, 2=in-mem and uart0, 3=in-mem and uart1."]
+  ]
+}
+Set the debug logging mode. It can be disabled (which frees ~1.2KB of heap), enabled in-memory only, or in-memory and output to a UART.
+ */
+void jswrap_ESP8266_setLog(int mode) {
+  os_printf("ESP8266 setLog, mode=%d\n", mode);
+  esp8266_logInit(mode);
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "printLog",
+  "generate" : "jswrap_ESP8266_printLog"
+}
+Prints the contents of the debug log to the console.
+ */
+void jswrap_ESP8266_printLog() {
+  JsVar *line = esp8266_logGetLine();
+  while (jsvGetStringLength(line) > 0) {
+    jsiConsolePrintStringVar(line);
+    jsvUnLock(line);
+    line = esp8266_logGetLine();
+  }
+  jsvUnLock(line);
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "readLog",
+  "generate" : "esp8266_logGetLine",
+  "returns"  : "String with one line from the log, up to 128 characters long"
+}
+Returns one line from the log or up to 128 characters.
+ */
 
 //===== ESP8266.dumpSocketInfo
 
@@ -145,21 +184,17 @@ void jswrap_ESP8266_dumpSocketInfo(void) {
     ["freq", "JsVar", "Desired frequency - either 80 or 160."]
   ]
 }
-Set the operating frequency of the ESP8266 processor.
+**Note:** This is deprecated. Use `E.setClock(80/160)`
+**Note:**
+Set the operating frequency of the ESP8266 processor. The default is 160Mhz.
+
+**Warning**: changing the cpu frequency affects the timing of some I/O operations, notably of software SPI and I2C, so things may be a bit slower at 80Mhz.
+
 */
 void jswrap_ESP8266_setCPUFreq(
     JsVar *jsFreq //!< Operating frequency of the processor.  Either 80 or 160.
   ) {
-  if (!jsvIsInt(jsFreq)) {
-    jsExceptionHere(JSET_ERROR, "Invalid frequency.");
-    return;
-  }
-  int newFreq = jsvGetInteger(jsFreq);
-  if (newFreq != 80 && newFreq != 160) {
-    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 160.");
-    return;
-  }
-  system_update_cpu_freq(newFreq);
+  jshSetSystemClock(jsFreq);
 }
 
 //===== ESP8266.getState
@@ -185,7 +220,7 @@ Returns an object that contains details about the state of the ESP8266 with the 
 JsVar *jswrap_ESP8266_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
   // wish to return.
-  JsVar *esp8266State = jspNewObject(NULL, "ESP8266State");
+  JsVar *esp8266State = jsvNewObject();
   jsvObjectSetChildAndUnLock(esp8266State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
   jsvObjectSetChildAndUnLock(esp8266State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
   jsvObjectSetChildAndUnLock(esp8266State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size()));
@@ -206,14 +241,6 @@ JsVar *jswrap_ESP8266_getState() {
   return esp8266State;
 }
 
-static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
-  JsVar *jsArea = jspNewObject(NULL, "FreeFlash");
-  jsvObjectSetChildAndUnLock(jsArea, "area", jsvNewFromInteger(addr));
-  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger(length));
-  jsvArrayPush(jsFreeFlash, jsArea);
-  jsvUnLock(jsArea);
-}
-
 //===== ESP8266.getFreeFlash
 
 /*JSON{
@@ -223,24 +250,10 @@ static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
 }
+**Note:** This is deprecated. Use `require("flash").getFree()`
 */
 JsVar *jswrap_ESP8266_getFreeFlash() {
-  JsVar *jsFreeFlash = jsvNewArray(NULL, 0);
-  // Area reserved for EEPROM
-  addFlashArea(jsFreeFlash, 0x77000, 0x1000);
-
-  // need 1MB of flash to have more space...
-  extern uint16_t espFlashKB; // in user_main,c
-  if (espFlashKB > 512) {
-    addFlashArea(jsFreeFlash, 0x80000, 0x1000);
-    if (espFlashKB > 1024) {
-      addFlashArea(jsFreeFlash, 0xf7000, 0x9000);
-    } else {
-      addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
-    }
-  }
-
-  return jsFreeFlash;
+  return jshFlashGetFree();
 }
 
 //===== ESP8266.crc32
@@ -328,6 +341,62 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
     return;
   }
 
+  if (!jshGetPinStateIsManual(pin))
+    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+
+  // values for 160Mhz clock
+  uint8_t tOne =  90;  // one bit, high typ 800ns
+  uint8_t tZero = 40;  // zero bit, high typ 300ns
+  uint8_t tLow = 170;  // total cycle, typ 1.2us
+  if (system_get_cpu_freq() < 100) {
+    tOne = 56;  // 56 cyc = 700ns
+    tZero = 14; // 14 cycl = 175ns
+    tLow = 100;
+  }
+
+#if 1
+
+  // the loop over the RGB pixel bits below is loaded into the instruction cache from flash
+  // with the result that dependeing on the cache line alignment the first loop iteration
+  // takes too long and thereby messes up the first LED.
+  // The fix is to make it so the first loop iteration does nothing, i.e. just outputs the
+  // same "low" for the full loop as we had before entering this function. This way no LED
+  // gets set to the wrong value and we load the cache line so the second iteration, i.e.,
+  // first real LED bit, runs at full speed.
+  uint32_t pinMask = _BV(pin);    // bit mask for GPIO pin to write to reg
+  uint8_t *p = (uint8_t *)pixels; // pointer to walk through pixel array
+  uint8_t *end = p + dataLength;  // pointer to end of array
+  uint8_t pix = *p++;             // current byte being shifted out
+  uint8_t mask = 0x80;            // mask for current bit
+  uint32_t start;                 // start time of bit
+  // adjust things for the pre-roll
+  p--;                            // next byte we fetch will be the first byte again
+  mask = 0x01;                    // fetch the next byte at the end of the first loop iteration
+  pinMask = 0;                    // zero mask means we set or clear no I/O pin
+  // iterate through all bits
+  ets_intr_lock();                // disable most interrupts
+  while(1) {
+    uint32_t t;
+    if (pix & mask) t = tOne;
+    else            t = tZero;
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);  // Set high
+    start = _getCycleCount();                        // get start time of this bit
+    while (_getCycleCount()-start < t) ;             // busy-wait
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pinMask);  // Set low
+    if (!(mask >>= 1)) {                             // Next bit/byte?
+      if (p >= end) break;                           // at end, we're done
+      pix = *p++;
+      mask = 0x80;
+      pinMask = _BV(pin);
+    }
+    while (_getCycleCount()-start < tLow) ;          // busy-wait
+  }
+  while (_getCycleCount()-start < tLow) ;            // wait for last bit
+  ets_intr_unlock();
+
+#else
+
+  // this is the code without preloading the first bit
   uint32_t pinMask = _BV(pin);    // bit mask for GPIO pin to write to reg
   uint8_t *p = (uint8_t *)pixels; // pointer to walk through pixel array
   uint8_t *end = p + dataLength;  // pointer to end of array
@@ -352,9 +421,33 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   }
   while (_getCycleCount()-start < 100) ;             // Wait for last bit
 
-  // at some point the fact that the code above needs to be loaded from flash to cache caused the
-  // first bit's timing to be off. If this recurs, a suggestion is to run a loop iteration
-  // outputting low-low and only start with the actual first bit in the second loop iteration.
-  // This could be achieved by starting with pinMask=0 and setting the real pin mask at the end
-  // of the loop, initializing p=pixels-1, and mask=1
+#endif
 }
+
+//===== ESP8266.deepSleep
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "deepSleep",
+  "generate" : "jswrap_ESP8266_deepSleep",
+  "params"   : [
+    ["micros", "JsVar", "Number of microseconds to sleep."]
+  ]
+}
+Put the ESP8266 into 'deep sleep' for the given number of microseconds,
+reducing power consumption drastically.
+
+**Note:** unlike normal Espruino boards' 'deep sleep' mode, ESP8266
+deep sleep actually turns off the processor. After the given number of
+microseconds have elapsed, the ESP8266 will restart as if power had been
+turned off and then back on. *All contents of RAM will be lost*.
+*/
+void   jswrap_ESP8266_deepSleep(JsVar *jsMicros) {
+  if (!jsvIsInt(jsMicros)) {
+    jsExceptionHere(JSET_ERROR, "Invalid microseconds.");
+    return;
+  }
+  int sleepTime = jsvGetInteger(jsMicros);
+  system_deep_sleep(sleepTime);
+}
+

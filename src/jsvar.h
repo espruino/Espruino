@@ -27,7 +27,7 @@ typedef JsVarRef JsVarRefCounter;
  * well as how many Locks it has. Everything is packed in as much as possible to allow us to
  * get down to within 2 bytes. */
 typedef enum {
-    JSV_UNUSED      = 0, ///< Variable not used for anything
+    JSV_UNUSED      = 0, ///< Variable not used for anything - THIS ENUM MUST BE ZERO
     JSV_ROOT        = JSV_UNUSED+1, ///< The root of everything - there is only one of these
     // UNDEFINED is now just stored using '0' as the variable Ref
     JSV_NULL        = JSV_ROOT+1, ///< it seems null is its own data type
@@ -134,7 +134,7 @@ typedef struct {
 
 /// Data for native strings
 typedef struct {
-  char (*ptr)(void);
+  char *ptr;
   uint16_t len;
 } PACKED_FLAGS JsVarDataNativeStr;
 
@@ -148,7 +148,7 @@ typedef struct {
    * For STRING_EXT - extra characters
    * Not used for other stuff
    */
-#ifndef JSVARREF_PACKED_BITS
+#if JSVARREF_SIZE!=1
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 
@@ -171,12 +171,12 @@ typedef struct {
    */
   JsVarRef lastChild;
 
-#else // JSVARREF_PACKED_BITS
+#else // JSVARREF_SIZE==1
   // see declaration of JSVARREF_PACKED_BITS in jsutils.h for more info
   uint8_t nextSibling;
   uint8_t prevSibling;
   uint8_t firstChild;
-  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS
+  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS - otherwise unused except when needed for data
   uint8_t refs;
   uint8_t lastChild;
 #endif
@@ -202,7 +202,7 @@ typedef struct {
   JsVarData varData;
 
   /** the flags determine the type of the variable - int/double/string/etc. */
-  JsVarFlags flags;
+  volatile JsVarFlags flags;
 } PACKED_FLAGS __attribute__((aligned(4))) JsVar;
 
 /* We have a few different types:
@@ -295,6 +295,7 @@ JsVar *jsvFindOrCreateRoot(); ///< Find or create the ROOT variable item - used 
 unsigned int jsvGetMemoryUsage(); ///< Get number of memory records (JsVars) used
 unsigned int jsvGetMemoryTotal(); ///< Get total amount of memory records
 bool jsvIsMemoryFull(); ///< Get whether memory is full or not
+bool jsvMoreFreeVariablesThan(unsigned int vars); ///< Return whether there are more free variables than the parameter (faster than checking no of vars used)
 void jsvShowAllocated(); ///< Show what is still allocated, for debugging memory problems
 /// Try and allocate more memory - only works if RESIZABLE_JSVARS is defined
 void jsvSetMemoryTotal(unsigned int jsNewVarCount);
@@ -318,6 +319,8 @@ JsVar *jsvNewFromLongInteger(long long value);
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
 void jsvMakeFunctionParameter(JsVar *v);
 JsVar *jsvNewFromPin(int pin);
+JsVar *jsvNewObject(); ///< Create a new object
+JsVar *jsvNewEmptyArray(); ///< Create a new array
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes); ///< Create an array containing the given elements
 JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
@@ -502,14 +505,15 @@ JsVar *jsvGetValueOf(JsVar *v); ///< Return the JsVar, or if it's an object and 
 If the buffer length is exceeded, the returned value will == len */
 size_t jsvGetString(const JsVar *v, char *str, size_t len);
 size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len); ///< Get len bytes of string data from this string. Does not error if string len is not equal to len
-void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
+void jsvSetString(JsVar *v, const char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 JsVar *jsvAsFlatString(JsVar *var); ///< Create a flat string from the given variable (or return it if it is already a flat string). NOTE: THIS CONVERTS VIA A STRING
 bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - faster than jsvGetStringLength(v)==0
 size_t jsvGetStringLength(const JsVar *v); ///< Get the length of this string, IF it is a string
-size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string
+size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string - EXCLUDING the first data block
 char *jsvGetFlatStringPointer(JsVar *v); ///< Get a pointer to the data in this flat string
 JsVar *jsvGetFlatStringFromPointer(char *v); ///< Given a pointer to the first element of a flat string, return the flat string itself (DANGEROUS!)
+char *jsvGetDataPointer(JsVar *v, size_t *len); ///< If the variable points to a *flat* area of memory, return a pointer (and set length). Otherwise return 0.
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col); ///< IN A STRING, get the 1-based line and column of the given character. Both values must be non-null
@@ -672,7 +676,7 @@ JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds a new element to the 
 JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, unlocks it, and returns the new length
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME. DOES NOT RENUMBER.
-void jsvArrayAddString(JsVar *arr, const char *text); ///< Adds a new String element to the end of an array (IF it was not already there)
+void jsvArrayAddUnique(JsVar *arr, JsVar *v); ///< Adds a new variable element to the end of an array (IF it was not already there). Return true if successful
 JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler); ///< Join all elements of an array together into a string
 void jsvArrayInsertBefore(JsVar *arr, JsVar *beforeIndex, JsVar *element); ///< Insert a new element before beforeIndex, DOES NOT UPDATE INDICES
 static ALWAYS_INLINE bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr)); return !jsvGetFirstChild(arr); } ///< Return true is array is empty
@@ -718,6 +722,19 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
  * allocate it. */
 JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr);
 
+/** Allocate a flat area of memory inside Espruino's Variable storage space.
+ * This may return 0 on failure.
+ *
+ * **Note:** Memory allocated this way MUST be freed before `jsvKill` is called
+ * (eg. when saving, loading, resetting). To do this, use a JSON wrapper for
+ * 'kill' (and one for 'init' if you need to allocate at startup)
+ */
+void *jsvMalloc(size_t size);
+
+/** Deallocate a flat area of memory allocated by jsvMalloc. See jsvMalloc
+ * for more information. */
+void jsvFree(void *ptr);
+
 /** Get the given JsVar as a character array. If it's a flat string, return a
  * pointer to it, or if it isn't allocate data on the stack and copy the data.
  *
@@ -725,17 +742,15 @@ JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr);
  * the data will be lost when we return. */
 #define JSV_GET_AS_CHAR_ARRAY(TARGET_PTR, TARGET_LENGTH, DATA)                \
   size_t TARGET_LENGTH = 0;                                                   \
-  char *TARGET_PTR = 0;                                                       \
-  if (jsvIsFlatString(DATA)) {                                                \
-    TARGET_LENGTH = jsvGetStringLength(DATA);                                 \
-    TARGET_PTR = jsvGetFlatStringPointer(DATA);                               \
-  } else {                                                                    \
+  char *TARGET_PTR = jsvGetDataPointer(DATA, &TARGET_LENGTH);                 \
+  if (!TARGET_PTR) {                                                          \
    TARGET_LENGTH = (size_t)jsvIterateCallbackCount(DATA);                     \
     if (TARGET_LENGTH+256 > jsuGetFreeStack()) {                              \
       jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  \
     } else {                                                                  \
-      TARGET_PTR = (char *)alloca(TARGET_LENGTH);     \
-      jsvIterateCallbackToBytes(DATA, (unsigned char *)TARGET_PTR, (unsigned int)TARGET_LENGTH); \
+      TARGET_PTR = (char *)alloca(TARGET_LENGTH);                             \
+      jsvIterateCallbackToBytes(DATA, (unsigned char *)TARGET_PTR,            \
+                                      (unsigned int)TARGET_LENGTH);           \
     }                                                                         \
   }
 

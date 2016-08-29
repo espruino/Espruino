@@ -111,7 +111,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
 Return an array of module names that have been cached
  */
 JsVar *jswrap_modules_getCached() {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0; // out of memory
 
   JsVar *moduleList = jswrap_modules_getModuleList();

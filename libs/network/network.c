@@ -34,6 +34,7 @@
 #if defined(USE_TLS)
   #include "mbedtls/ssl.h"
   #include "mbedtls/ctr_drbg.h"
+  #include "jswrap_crypto.h"
 #endif
 #include "network_js.h"
 
@@ -397,38 +398,47 @@ JsVar *load_cert_file(JsVar *cert) {
 }
 #endif /* USE_FILESYSTEM */
 
+
+/** Given a variable:
+ *
+ * if it's a string <=100 chars long use it as a filename (if filesystem is enabled)
+ * if it's a function, run it and return the result
+ */
+JsVar *decode_certificate_var(JsVar *var) {
+  JsVar *decoded = 0;
+  if (jsvIsFunction(var)) {
+    decoded = jspExecuteFunction(var, 0, 0, 0);
+  }
+#ifdef USE_FILESYSTEM
+  if (jsvIsString(var) && jsvGetStringLength(var) <= 100) {
+    /* too short for cert data, so assume a file path*/
+    decoded = load_cert_file(var);
+  }
+#endif /* USE_FILESYSTEM */
+  if (!decoded) decoded = jsvLockAgain(var);
+  return decoded;
+}
+
 bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
   JsVar *keyVar = jsvObjectGetChild(options, "key", 0);
   if (!keyVar) {
     return false;
   }
-  int ret;
+  int ret = -1;
   jsiConsolePrintf("Loading the Client Key...\n");
 
-#ifdef USE_FILESYSTEM
-  if (jsvGetStringLength(keyVar) <= 100) {
-    /* too short for cert data, so assume a file path*/
-    JsVar *buffer = load_cert_file(keyVar);
-    if (buffer){
-      JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, buffer);
-      jsvUnLock(buffer);
-      if (keyLen && keyPtr) {
-        ret = mbedtls_pk_parse_key(&sd->pkey, (const unsigned char *)keyPtr, keyLen, NULL, 0 /*no password*/);
-      }
-    }
+  JsVar *buffer = decode_certificate_var(keyVar);
+  JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, buffer);
+  if (keyLen && keyPtr) {
+    ret = mbedtls_pk_parse_key(&sd->pkey, (const unsigned char *)keyPtr, keyLen, NULL, 0 /*no password*/);
   }
-#endif /* USE_FILESYSTEM */
-  /* parse from memory */
-  if (jsvGetStringLength(keyVar) > 100) {
-    JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, keyVar);
-    if (keyLen && keyPtr) {
-      ret = mbedtls_pk_parse_key(&sd->pkey, (const unsigned char *)keyPtr, keyLen, NULL, 0 /*no password*/);
-    }
-  }
+  jsvUnLock(buffer);
 
   jsvUnLock(keyVar);
   if (ret != 0) {
-    jsError("HTTPS init failed! mbedtls_pk_parse_key returned -0x%x\n", -ret);
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_pk_parse_key: %v\n", e);
+    jsvUnLock(e);
     return false;
   }
 
@@ -439,33 +449,21 @@ bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
   if (!certVar) {
     return false;
   }
-  int ret;
+  int ret = -1;
   jsiConsolePrintf("Loading the Client certificate...\n");
 
-#ifdef USE_FILESYSTEM
-  if (jsvGetStringLength(certVar) <= 100) {
-    /* too short for cert data, so assume a file path*/
-    JsVar *buffer = load_cert_file(certVar);
-    if (buffer){
-      JSV_GET_AS_CHAR_ARRAY(certPtr, certLen, buffer);
-      jsvUnLock(buffer);
-      if (certLen && certPtr) {
-        ret = mbedtls_x509_crt_parse(&sd->owncert, (const unsigned char *)certPtr, certLen);
-      }
-    }
+  JsVar *buffer = decode_certificate_var(certVar);
+  JSV_GET_AS_CHAR_ARRAY(certPtr, certLen, buffer);
+  if (certLen && certPtr) {
+    ret = mbedtls_x509_crt_parse(&sd->owncert, (const unsigned char *)certPtr, certLen);
   }
-#endif /* USE_FILESYSTEM */
-  /* parse from memory */
-  if (jsvGetStringLength(certVar) > 100) {
-    JSV_GET_AS_CHAR_ARRAY(certPtr, certLen, certVar);
-    if (certLen && certPtr) {
-      ret = mbedtls_x509_crt_parse(&sd->owncert, (const unsigned char *)certPtr, certLen);
-    }
-  }
+  jsvUnLock(buffer);
 
   jsvUnLock(certVar);
   if (ret != 0) {
-    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'cert' returned -0x%x\n", -ret);
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'cert': %v\n", e);
+    jsvUnLock(e);
     return false;
   }
   return true;
@@ -475,33 +473,21 @@ bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
   if (!caVar) {
     return false;
   }
-  int ret;
+  int ret = -1;
   jsiConsolePrintf("Loading the CA root certificate...\n");
 
-#ifdef USE_FILESYSTEM
-  if (jsvGetStringLength(caVar) <= 100) {
-    /* too short for cert data, so assume a file path*/
-    JsVar *buffer = load_cert_file(caVar);
-    if (buffer){
-      JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, buffer);
-      jsvUnLock(buffer);
-      if (caLen && caPtr) {
-        ret = mbedtls_x509_crt_parse(&sd->cacert, (const unsigned char *)caPtr, caLen);
-      }
-    }
+  JsVar *buffer = decode_certificate_var(caVar);
+  JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, buffer);
+  if (caLen && caPtr) {
+    ret = mbedtls_x509_crt_parse(&sd->cacert, (const unsigned char *)caPtr, caLen);
   }
-#endif /* USE_FILESYSTEM */
-  /* parse from memory*/
-  if (jsvGetStringLength(caVar) > 100) {
-    JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, caVar);
-    if (caLen && caPtr) {
-      ret = mbedtls_x509_crt_parse(&sd->cacert, (const unsigned char *)caPtr, caLen);
-    }
-  }
+  jsvUnLock(buffer);
 
   jsvUnLock(caVar);
   if (ret != 0) {
-    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'ca' returned -0x%x\n", -ret);
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'ca': %v\n", e);
+    jsvUnLock(e);
     return false;
   }
 
@@ -558,7 +544,9 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   if (( ret = mbedtls_ctr_drbg_seed( &sd->ctr_drbg, ssl_entropy, 0,
                              (const unsigned char *) pers,
                              strlen(pers))) != 0 ) {
-    jsError("HTTPS init failed! mbedtls_ctr_drbg_seed returned -0x%x\n", -ret );
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_ctr_drbg_seed: %v\n", e );
+    jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
   }
@@ -576,7 +564,9 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
                   MBEDTLS_SSL_IS_CLIENT, // or MBEDTLS_SSL_IS_SERVER
                   MBEDTLS_SSL_TRANSPORT_STREAM,
                   MBEDTLS_SSL_PRESET_DEFAULT )) != 0 ) {
-    jsError("HTTPS init failed! mbedtls_ssl_config_defaults returned -0x%x\n", -ret );
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_ssl_config_defaults returned: %v\n", e );
+    jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
   }
@@ -584,7 +574,9 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   if (sd->pkey.pk_info) {
     // this would get set if options.key was set
     if (( ret = mbedtls_ssl_conf_own_cert(&sd->conf, &sd->owncert, &sd->pkey)) != 0 ) {
-      jsError("HTTPS init failed! mbedtls_ssl_conf_own_cert returned -0x%x\n", -ret );
+      JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+      jsError("HTTPS init failed! mbedtls_ssl_conf_own_cert: %v\n", e );
+      jsvUnLock(e);
       ssl_freeSocketData(sckt);
       return false;
     }
@@ -596,13 +588,17 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   mbedtls_ssl_conf_dbg( &sd->conf, ssl_debug, 0 );
 
   if (( ret = mbedtls_ssl_setup( &sd->ssl, &sd->conf )) != 0) {
-    jsError("Failed! mbedtls_ssl_setup returned -0x%x\n", -ret );
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("Failed! mbedtls_ssl_setup: %v\n", e );
+    jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
   }
 
   if (( ret = mbedtls_ssl_set_hostname( &sd->ssl, "mbed TLS Server 1" )) != 0) {
-    jsError("HTTPS init failed! mbedtls_ssl_set_hostname returned -0x%x\n", -ret );
+    JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+    jsError("HTTPS init failed! mbedtls_ssl_set_hostname: %v\n", e );
+    jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
   }
@@ -633,7 +629,9 @@ SSLSocketData *ssl_getSocketData(int sckt) {
 
     if ( ( ret = mbedtls_ssl_handshake( &sd->ssl ) ) != 0 ) {
       if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE ) {
-        jsError( "Failed! mbedtls_ssl_handshake returned -0x%x\n", -ret );
+        JsVar *e = jswrap_crypto_error_to_jsvar(ret);
+        jsError( "Failed! mbedtls_ssl_handshake returned %v\n", e );
+        jsvUnLock(e);
         return 0; // this signals an error
       }
       // else we just continue - connecting=true so other things should wait

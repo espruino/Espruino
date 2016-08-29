@@ -1,4 +1,7 @@
 # To go in /etc/udev/rules.d/
 # Makes Espruino's serial port accessible to non-SU users, and stops the Modem Manager trying to enumerate it
 ATTRS{idProduct}=="5740", ATTRS{idVendor}=="0483", ENV{ID_MM_DEVICE_IGNORE}="1", MODE="0666", GROUP="plugdev"
-
+# Nordic kits
+ATTRS{idProduct}=="1015", ATTRS{idVendor}=="1366", ENV{ID_MM_DEVICE_IGNORE}="1"
+# Microbit
+ATTRS{idProduct}=="0204", ATTRS{idVendor}=="0d28", ENV{ID_MM_DEVICE_IGNORE}="1"

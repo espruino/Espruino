@@ -26,7 +26,7 @@
  // 48
 
 #define LCD_FONT_4X6_CHARS 95
-const unsigned short LCD_FONT_4X6[LCD_FONT_4X6_CHARS*6] = { // from 33 up to 127
+const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 127
     PACK_5_TO_16( _X_ , X_X , X_X , _X_ , X_X ),
     PACK_5_TO_16( _X_ , X_X , XXX , XXX , __X ),
     PACK_5_TO_16( _X_ , ___ , X_X , XX_ , _X_ ),
@@ -168,7 +168,7 @@ void graphicsDrawChar4x6(JsGraphics *gfx, short x1, short y1, char ch) {
   idx = (idx/5)*6;
   int y;
   for (y=0;y<6;y++) {
-    int line = LCD_FONT_4X6[idx + y] >> (cidx*3);
+    unsigned int line = READ_FLASH_UINT16(&LCD_FONT_4X6[idx + y]) >> (cidx*3);
     if (line&4) graphicsSetPixel(gfx, (short)(x1+0), (short)(y+y1), gfx->data.fgColor);
     if (line&2) graphicsSetPixel(gfx, (short)(x1+1), (short)(y+y1), gfx->data.fgColor);
     if (line&1) graphicsSetPixel(gfx, (short)(x1+2), (short)(y+y1), gfx->data.fgColor);

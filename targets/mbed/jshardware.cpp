@@ -249,12 +249,23 @@ void jshUtilTimerReschedule(JsSysTime period) {
 void jshUtilTimerStart(JsSysTime period) {
 }
 
+void jshEnableWatchDog(JsVarFloat timeout) {
+}
+
+void jshKickWatchDog() {
+}
+
 JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
 unsigned int jshGetRandomNumber() { return rand(); }
 
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
   return false;
+}
+
+JsVar *jshFlashGetFree() {
+  // not implemented, or no free pages.
+  return 0;
 }
 
 void jshFlashErasePage(uint32_t addr) {
@@ -264,6 +275,10 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
 }
 
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  return 0;
 }
 
 // ----------------------------------------------------------------------------

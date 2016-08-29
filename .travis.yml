@@ -8,15 +8,15 @@ language: c
 #addon:
 #  apt:
 #    sources:
-#      - ppa:terry.guo/gcc-arm-embedded
+#      - ppa:team-gcc-arm-embedded/ppa
 #    packages:
-#      - libsdl1.2-dev gcc-arm-none-eabi
+#      - libsdl1.2-dev gcc-arm-embedded
 
 before_install:
- - sudo add-apt-repository -y ppa:terry.guo/gcc-arm-embedded
+ - sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
  - sudo apt-get update
- - sudo apt-get install libsdl1.2-dev gcc-arm-none-eabi
- - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf.tgx | tar Jxf -
+ - sudo apt-get install libsdl1.2-dev gcc-arm-embedded
+ - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
  - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v1.5.0.tgx | tar Jxf -
 
 before_script:
@@ -31,6 +31,7 @@ after_script:
       curl -Ls https://github.com/rlmcpherson/s3gof3r/releases/download/v0.5.0/gof3r_0.5.0_linux_amd64.tar.gz | tar zxf - gof3r_0.5.0_linux_amd64/gof3r;
       mv gof3r*/gof3r .;
       ls *.tgz | xargs -I {} ./gof3r put -b $S3_BUCKET -k espruino/{} --acl public-read -p {};
+      ls *.tgz | xargs -I {} echo \"URL: http://$S3_BUCKET/espruino/{}\";
       fi"
 
 compiler:
@@ -60,6 +61,7 @@ env:
     - NUCLEOF411RE=1
     - LCTECH_STM32F103RBT6=1
     - LINUX_BUILD=1
+    - EFM32GGSTK=1
 script: make
 
 notifications:

@@ -88,8 +88,10 @@ Write 32 bits of memory at the given location - VERY DANGEROUS!
  */
 
 uint32_t _jswrap_io_peek(JsVarInt addr, int wordSize) {
-  if (wordSize==1) return (uint32_t)*(unsigned char*)(size_t)addr;
-  if (wordSize==2) return (uint32_t)*(unsigned short*)(size_t)addr;
+  if (wordSize==1) return READ_FLASH_UINT8((char*)(size_t)addr);
+  if (wordSize==2) {
+    return READ_FLASH_UINT8((char*)(size_t)addr) | (uint32_t)(READ_FLASH_UINT8((char*)(size_t)(addr+1)) << 8);
+  }
   if (wordSize==4) return (uint32_t)*(unsigned int*)(size_t)addr;
   return 0;
 }
@@ -613,14 +615,19 @@ JsVar *jswrap_interface_setWatch(
     debounce = jsvGetFloatAndUnLock(jsvObjectGetChild(repeatOrObject, "debounce", 0));
     if (isnan(debounce) || debounce<0) debounce=0;
     v = jsvObjectGetChild(repeatOrObject, "edge", 0);
-    if (jsvIsString(v)) {
+    edge = -1000;
+    if (jsvIsUndefined(v)) {
+      edge = 0;
+    } else if (jsvIsString(v)) {
       if (jsvIsStringEqual(v, "rising")) edge=1;
       else if (jsvIsStringEqual(v, "falling")) edge=-1;
       else if (jsvIsStringEqual(v, "both")) edge=0;
-      else jsWarn("'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
-    } else if (!jsvIsUndefined(v))
-      jsWarn("'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
+    }
     jsvUnLock(v);
+    if (edge < -1 || edge > 1) {
+      jsExceptionHere(JSET_TYPEERROR, "'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
+      return 0;
+    }
     isIRQ = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "irq", 0));
   } else
     repeat = jsvGetBool(repeatOrObject);
@@ -636,7 +643,7 @@ JsVar *jswrap_interface_setWatch(
     // o debounce - ?
     // o edge     - ?
     // o callback - The function to be invoked when the IO changes
-    JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
+    JsVar *watchPtr = jsvNewObject();
     if (watchPtr) {
       jsvObjectSetChildAndUnLock(watchPtr, "pin", jsvNewFromPin(pin));
       if (repeat) jsvObjectSetChildAndUnLock(watchPtr, "recur", jsvNewFromBool(repeat));

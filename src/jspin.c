@@ -20,9 +20,17 @@
 // jshGetDeviceObjectFor
 #include "jswrapper.h"
 
-#if defined(PICO) || defined(NUCLEOF401RE) || defined(NUCLEOF411RE)
+#if defined(PICO) || defined(ESPRUINOWIFI) || defined(NUCLEOF401RE) || defined(NUCLEOF411RE)
 #define PIN_NAMES_DIRECT // work out pin names directly from port + pin in pinInfo
 #endif
+
+// ----------------------------------------------------------------------------
+
+// Whether a pin's state has been set manually or not
+BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
+
+// ----------------------------------------------------------------------------
+
 
 /**
  * Validate that the pin is a good pin.
@@ -209,9 +217,6 @@ Pin jshGetPinFromVarAndUnLock(JsVar *pinv) {
 
   // ----------------------------------------------------------------------------
 
-  // Whether a pin's state has been set manually or not
-BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT); // TODO: This should be set to all 0
-
 bool jshGetPinStateIsManual(Pin pin) {
   return BITFIELD_GET(jshPinStateIsManual, pin);
 }
@@ -219,6 +224,12 @@ bool jshGetPinStateIsManual(Pin pin) {
 void jshSetPinStateIsManual(Pin pin, bool manual) {
   BITFIELD_SET(jshPinStateIsManual, pin, manual);
 }
+
+// Reset our list of which pins are set manually - called from jshResetDevices
+void jshResetPinStateIsManual() {
+  BITFIELD_CLEAR(jshPinStateIsManual);
+}
+
 
   // ----------------------------------------------------------------------------
 

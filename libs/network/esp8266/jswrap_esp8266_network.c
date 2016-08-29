@@ -40,6 +40,7 @@
 #include <osapi.h>
 #include <ping.h>
 #include <espconn.h>
+#include <sntp.h>
 #include <espmissingincludes.h>
 #include <uart.h>
 
@@ -59,17 +60,19 @@ typedef long long int64_t;
 //#define jsvUnLock(v) do { os_printf("Unlock %s @%d\n", __STRING(v), __LINE__); jsvUnLock(v); } while(0)
 
 // Forward declaration of functions.
-static void   scanCB(void *arg, STATUS status);
-static void   wifiEventHandler(System_Event_t *event);
-static void   pingRecvCB();
+static void scanCB(void *arg, STATUS status);
+static void wifiEventHandler(System_Event_t *event);
+static void pingRecvCB();
+static void startMDNS(char *hostname);
+static void stopMDNS();
 
 // Some common error handling
 
-static char *expect_cb = "Expecting callback function but got %v";
-#define EXPECT_CB_EXCEPTION(jsCB) jsExceptionHere(JSET_ERROR, expect_cb, jsCB)
+FLASH_STR(expect_cb, "Expecting callback function but got %v");
+#define EXPECT_CB_EXCEPTION(jsCB) jsExceptionHere_flash(JSET_ERROR, expect_cb, jsCB)
 
-static char *expect_opt = "Expecting options object but got %t";
-#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, expect_opt, jsOPT)
+FLASH_STR(expect_opt, "Expecting options object but got %t");
+#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere_flash(JSET_ERROR, expect_opt, jsOPT)
 
 // #NOTE: For callback functions, be sure and unlock them in the `kill` handler.
 
@@ -144,7 +147,7 @@ FLASH_STR(__wr23, "802_1x_auth_failed");       // 23 - REASON_802_1X_AUTH_FAILED
 FLASH_STR(__wr24, "cipher_suite_rejected");    // 24 - REASON_CIPHER_SUITE_REJECTED
 FLASH_STR(__wr200, "beacon_timeout");          // 200 - REASON_BEACON_TIMEOUT
 FLASH_STR(__wr201, "no_ap_found");             // 201 - REASON_NO_AP_FOUND
-static char *wifiReasons[] = {
+static const char *wifiReasons[] = {
   __wr0, __wr1, __wr2, __wr3, __wr4, __wr5, __wr6, __wr7, __wr8, __wr9, __wr10,
   __wr11, __wr12, __wr13, __wr14, __wr15, __wr16, __wr17, __wr18, __wr19, __wr20,
   __wr21, __wr22, __wr23, __wr24, __wr200, __wr201
@@ -152,7 +155,7 @@ static char *wifiReasons[] = {
 
 static char wifiReasonBuff[sizeof("group_key_update_timeout")+1]; // length of longest string
 static char *wifiGetReason(uint8 wifiReason) {
-  char *reason;
+  const char *reason;
   if (wifiReason <= 24) reason = wifiReasons[wifiReason];
   else if (wifiReason >= 200 && wifiReason <= 201) reason = wifiReasons[wifiReason-200+24];
   else reason = wifiReasons[1];
@@ -170,7 +173,7 @@ FLASH_STR(__ev4, "#ondhcp_timeout");
 FLASH_STR(__ev5, "#onsta_joined");
 FLASH_STR(__ev6, "#onsta_left");
 FLASH_STR(__ev7, "#onprobe_recv");
-static char *wifi_events[] = { __ev0, __ev1, __ev2, __ev3, __ev4, __ev5, __ev6, __ev7 };
+static const char *wifi_events[] = { __ev0, __ev1, __ev2, __ev3, __ev4, __ev5, __ev6, __ev7 };
 static char wifiEventBuff[sizeof("#ondisconnected")+1]; // length of longest string
 static char *wifiGetEvent(uint32 event) {
   flash_strncpy(wifiEventBuff, wifi_events[event], sizeof(wifiEventBuff));
@@ -222,13 +225,6 @@ static JsVar *getWifiModule() {
   jsvUnLock(moduleName);
   return m;
 }
-
-/*JSON{
-   "type": "library",
-   "class": "ESP8266WiFi"
-}
-The ESP8266WiFi library is to be removed.
-*/
 
 //===== wifi library events
 
@@ -814,7 +810,11 @@ void jswrap_ESP8266_wifi_startAP(
     // Set the return error as a function of the return code returned from the call to
     // the ESP8266 API to create the AP
     JsVar *params[1];
-    params[0] = ok ? jsvNewNull() : jsvNewFromString("Error from wifi_softap_set_config");
+    FLASH_STR(_fstr, "Error from wifi_softap_set_config");
+    size_t len = flash_strlen(_fstr);
+    char buff[len+1];
+    flash_strncpy(buff, _fstr, len+1);
+    params[0] = ok ? jsvNewNull() : jsvNewFromString(buff);
     jsiQueueEvents(NULL, jsCallback, params, 1);
     jsvUnLock(params[0]);
   }
@@ -861,7 +861,7 @@ JsVar *jswrap_ESP8266_wifi_getStatus(JsVar *jsCallback) {
   int8 conn = wifi_station_get_connect_status();
   if (conn < 0) conn = 0;
 
-  JsVar *jsWiFiStatus = jspNewObject(NULL, "WiFiStatus");
+  JsVar *jsWiFiStatus = jsvNewObject();
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode",
     jsvNewFromString(wifiMode[opMode]));
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "station",
@@ -983,7 +983,7 @@ JsVar *jswrap_ESP8266_wifi_getDetails(JsVar *jsCallback) {{
 
   uint8 opMode = wifi_get_opmode();
 
-  JsVar *jsDetails = jspNewObject(NULL, "WiFiDetails");
+  JsVar *jsDetails = jsvNewObject();
 
   int8 conn = wifi_station_get_connect_status();
   if (conn < 0) conn = 0;
@@ -1058,7 +1058,7 @@ JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback) {
 
   uint8 opMode = wifi_get_opmode();
 
-  JsVar *jsDetails = jspNewObject(NULL, "WiFiAPDetails");
+  JsVar *jsDetails = jsvNewObject();
 
   jsvObjectSetChildAndUnLock(jsDetails, "status",
     jsvNewFromString(opMode & SOFTAP_MODE ? "enabled" : "disabled"));
@@ -1084,7 +1084,7 @@ JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback) {
     JsVar *jsArray = jsvNewArray(NULL, 0);
     struct station_info *station = wifi_softap_get_station_info();
     while(station) {
-      JsVar *jsSta = jspNewObject(NULL, "WifiStation");
+      JsVar *jsSta = jsvNewObject();
       jsvObjectSetChildAndUnLock(jsSta, "ip",
         networkGetAddressAsString((uint8_t *)&station->ip.addr, 4, 10, '.'));
       char macAddrString[6*3 + 1];
@@ -1200,6 +1200,8 @@ void jswrap_ESP8266_wifi_restore(void) {
   conf->crc = 0;
   uint32_t crcCalc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
 
+  wifi_set_opmode(0);
+
   // check that we have a good flash config
   if (conf->length != 1024 || conf->version != 24 || crcRd != crcCalc ||
       conf->phyMode > PHY_MODE_11N || conf->sleepType > MODEM_SLEEP_T ||
@@ -1228,18 +1230,21 @@ void jswrap_ESP8266_wifi_restore(void) {
     ap_config.channel = 1;
     ap_config.max_connection = 4;
     ap_config.beacon_interval = 100;
-    wifi_softap_set_config(&ap_config);
+    wifi_softap_set_config_current(&ap_config);
     DBG("Wifi.restore: AP=%s\n", ap_config.ssid);
   }
 
   if (conf->mode & STATION_MODE) {
-    wifi_station_set_hostname(conf->dhcpHostname);
+    if (conf->dhcpHostname[0] != 0 && os_strlen(conf->dhcpHostname) < 64) {
+      DBG("Wifi.restore: hostname=%s\n", conf->dhcpHostname);
+      wifi_station_set_hostname(conf->dhcpHostname);
+    }
 
     struct station_config sta_config;
     os_memset(&sta_config, 0, sizeof(sta_config));
     os_strncpy((char *)sta_config.ssid, conf->staSsid, 32);
     os_strncpy((char *)sta_config.password, conf->staPass, 64);
-    wifi_station_set_config(&sta_config);
+    wifi_station_set_config_current(&sta_config);
     DBG("Wifi.restore: STA=%s\n", sta_config.ssid);
     wifi_station_connect(); // we're not supposed to call this from user_init but it doesn't harm
                             // and we need it when invoked from JS
@@ -1262,7 +1267,7 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
   // first get IP address info, this may fail if we're not connected
   struct ip_info info;
   bool ok = wifi_get_ip_info(interface, &info);
-  JsVar *jsIpInfo = jspNewObject(NULL, "IPInfo");
+  JsVar *jsIpInfo = jsvNewObject();
   if (ok) {
     jsvObjectSetChildAndUnLock(jsIpInfo, "ip",
       networkGetAddressAsString((uint8_t *)&info.ip.addr, 4, 10, '.'));
@@ -1345,34 +1350,6 @@ JsVar *jswrap_ESP8266_wifi_getAPIP(JsVar *jsCallback) {
   return jsIP;
 }
 
-#if 0
-// This needs more testing, so far mDNS hasn't been reliable... -TvE
-/*XXXJSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
-  "name"     : "mdnsInit",
-  "generate" : "jswrap_ESP8266WiFi_mdnsInit"
-}
- * Initial testing for mDNS support
- */
-void jswrap_ESP8266_wifi_mdnsInit() {
-  os_printf("> jswrap_ESP8266WiFi_mdnsInit\n");
-  struct mdns_info mdnsInfo;
-  os_memset(&mdnsInfo, 0, sizeof(struct mdns_info));
-  // Populate the mdns structure
-
-  struct ip_info ipInfo;
-  wifi_get_ip_info(0, &ipInfo);
-
-  mdnsInfo.host_name   = "myhostname";
-  mdnsInfo.ipAddr      = ipInfo.ip.addr;
-  mdnsInfo.server_name = "myservername";
-  mdnsInfo.server_port = 80;
-  //espconn_mdns_init(&mdnsInfo);
-  os_printf("< jswrap_ESP8266WiFi_mdnsInit\n");
-}
-#endif
-
 /**
  * Handle a response from espconn_gethostbyname.
  * Invoke the callback function to inform the caller that a hostname has been converted to
@@ -1454,15 +1431,27 @@ void jswrap_ESP8266_wifi_getHostByName(
   "type"     : "staticmethod",
   "class"    : "Wifi",
   "name"     : "getDHCPHostname",
-  "generate" : "jswrap_ESP8266_wifi_getDHCPHostname",
+  "generate" : "jswrap_ESP8266_wifi_getHostname",
   "return"   : ["JsVar", "The currently configured DHCP hostname, if available immediately."],
   "params"   : [
     ["callback", "JsVar", "An optional function to be called back with the hostname, i.e. the same string as returned directly. The callback function is more portable than the direct return value."]
   ]
 }
-Returns the hostname announced to the DHCP server when connecting to an access point.
+Deprecated, please use getHostname.
 */
-JsVar *jswrap_ESP8266_wifi_getDHCPHostname(JsVar *jsCallback) {
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "Wifi",
+  "name"     : "getHostname",
+  "generate" : "jswrap_ESP8266_wifi_getHostname",
+  "return"   : ["JsVar", "The currently configured hostname, if available immediately."],
+  "params"   : [
+    ["callback", "JsVar", "An optional function to be called back with the hostname, i.e. the same string as returned directly. The callback function is more portable than the direct return value."]
+  ]
+}
+Returns the hostname announced to the DHCP server and broadcast via mDNS when connecting to an access point.
+*/
+JsVar *jswrap_ESP8266_wifi_getHostname(JsVar *jsCallback) {
   char *hostname = wifi_station_get_hostname();
   if (hostname == NULL) {
     hostname = "";
@@ -1474,26 +1463,126 @@ JsVar *jswrap_ESP8266_wifi_getDHCPHostname(JsVar *jsCallback) {
   "type"     : "staticmethod",
   "class"    : "Wifi",
   "name"     : "setDHCPHostname",
-  "generate" : "jswrap_ESP8266_wifi_setDHCPHostname",
+  "generate" : "jswrap_ESP8266_wifi_setHostname",
   "params"   : [
     ["hostname", "JsVar", "The new DHCP hostname."]
   ]
 }
-Set the hostname sent with every DHCP request, this may be visible in the access point and may be forwarded into DNS as hostname.local.
-If a DHCP lease currently exists changing the hostname will cause a disconnect and reconnect in order to transmit the change to the DHCP server.
+Deprecated, please use setHostname instead.
 */
-void jswrap_ESP8266_wifi_setDHCPHostname(
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "Wifi",
+  "name"     : "setHostname",
+  "generate" : "jswrap_ESP8266_wifi_setHostname",
+  "params"   : [
+    ["hostname", "JsVar", "The new hostname."]
+  ]
+}
+Set the hostname. Depending on implemenation, the hostname is sent with every DHCP request and is broadcast via mDNS. The DHCP hostname may be visible in the access point and may be forwarded into DNS as hostname.local.
+If a DHCP lease currently exists changing the hostname will cause a disconnect and reconnect in order to transmit the change to the DHCP server.
+The mDNS announcement also includes an announcement for the "espruino" service.
+*/
+void jswrap_ESP8266_wifi_setHostname(
     JsVar *jsHostname //!< The hostname to set for device.
 ) {
   char hostname[256];
   jsvGetString(jsHostname, hostname, sizeof(hostname));
-  DBG("Wifi.setDHCPHostname: %s\n", hostname);
+  DBG("Wifi.setHostname: %s\n", hostname);
   wifi_station_set_hostname(hostname);
 
   // now start/restart DHCP for this to take effect
   if (wifi_station_dhcpc_status() == DHCP_STARTED)
     wifi_station_dhcpc_stop();
   wifi_station_dhcpc_start();
+
+  // now update mDNS
+  startMDNS(hostname);
+}
+
+//===== mDNS
+
+static bool mdns_started;
+
+void startMDNS(char *hostname) {
+  if (mdns_started) stopMDNS();
+
+  // find our IP address
+  struct ip_info info;
+  bool ok = wifi_get_ip_info(0, &info);
+  if (!ok || info.ip.addr == 0) return; // no IP address
+
+  // start mDNS
+  struct mdns_info *mdns_info = (struct mdns_info *)os_zalloc(sizeof(struct mdns_info));
+  mdns_info->host_name = hostname;
+  mdns_info->server_name = "espruino";
+  mdns_info->server_port = 23;
+  mdns_info->ipAddr = info.ip.addr;
+  espconn_mdns_init(mdns_info);
+  mdns_started = true;
+}
+
+void stopMDNS() {
+  espconn_mdns_server_unregister();
+  espconn_mdns_close();
+  mdns_started = false;
+}
+
+//===== SNTP
+
+static os_timer_t sntpTimer;
+
+static void sntpSync(void *arg) {
+  uint32_t sysTime = (uint32_t)((jshGetSystemTime() + 500000) / 1000000);
+  uint32_t ntpTime = sntp_get_current_timestamp();
+  if (ntpTime-sysTime != 0) {
+    DBG("NTP time: %ld delta=%ld %s\n", ntpTime, ntpTime-sysTime, sntp_get_real_time(ntpTime));
+  }
+  jshSetSystemTime((int64_t)ntpTime * 1000000);
+  os_timer_disarm(&sntpTimer);
+  os_timer_arm(&sntpTimer, 30*1000, 0);
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "Wifi",
+  "name"     : "setSNTP",
+  "generate" : "jswrap_ESP8266_wifi_setSNTP",
+  "params"   : [
+    ["server", "JsVar", "The NTP server to query, for example, `us.pool.ntp.org`"],
+    ["tz_offset", "JsVar", "Local time zone offset in the range -11..13."]
+  ]
+}
+Starts the SNTP (Simple Network Time Protocol) service to keep the clock synchronized with the specified server. Note that the time zone is really just an offset to UTC and doesn't handle daylight savings time.
+The interval determines how often the time server is queried and Espruino's time is synchronized. The initial synchronization occurs asynchronously after setSNTP returns.
+*/
+void jswrap_ESP8266_wifi_setSNTP(JsVar *jsServer, JsVar *jsZone) {
+  if (!jsvIsNumeric(jsZone)) {
+    jsExceptionHere(JSET_ERROR, "Zone is not a number");
+    return;
+  }
+  int zone = jsvGetInteger(jsZone);
+  if (zone < -11 || zone > 13) {
+    jsExceptionHere(JSET_ERROR, "Zone must be in range -11..13");
+    return;
+  }
+
+  if (!jsvIsString(jsServer)) {
+    jsExceptionHere(JSET_ERROR, "Server is not a string");
+    return;
+  }
+  char server[64];
+  jsvGetString(jsServer, server, 64);
+
+  sntp_stop();
+  if (sntp_set_timezone(zone)) {
+    sntp_setservername(0, server);
+    sntp_init();
+    os_timer_disarm(&sntpTimer);
+    os_timer_setfn(&sntpTimer, sntpSync, 0);
+    os_timer_arm(&sntpTimer, 100, 0); // 100ms
+  }
+  DBG("SNTP: %s %s%d\n", server, zone>=0?"+":"", zone);
 }
 
 //===== Reset wifi
@@ -1569,6 +1658,7 @@ void jswrap_ESP8266_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
   ) {
+  memset(&pingOpt, 0, sizeof(pingOpt));
   // If the parameter is a string, get the IP address from the string
   // representation.
   if (jsvIsString(ipAddr)) {
@@ -1610,7 +1700,6 @@ void jswrap_ESP8266_ping(
   }
 
   // We now have an IP address to ping ... so ping.
-  memset(&pingOpt, 0, sizeof(pingOpt));
   pingOpt.count = 5;
   pingOpt.recv_function = pingRecvCB;
   ping_start(&pingOpt);
@@ -1634,7 +1723,7 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
   struct ping_resp *pingResp = (struct ping_resp *)pingResponse;
   os_printf("Received a ping response!\n");
   if (g_jsPingCallback != NULL) {
-    JsVar *jsPingResponse = jspNewObject(NULL, "PingResponse");
+    JsVar *jsPingResponse = jsvNewObject();
     jsvObjectSetChildAndUnLock(jsPingResponse, "totalCount",   jsvNewFromInteger(pingResp->total_count));
     jsvObjectSetChildAndUnLock(jsPingResponse, "totalBytes",   jsvNewFromInteger(pingResp->total_bytes));
     jsvObjectSetChildAndUnLock(jsPingResponse, "totalTime",    jsvNewFromInteger(pingResp->total_time));
@@ -1682,7 +1771,7 @@ static void scanCB(void *arg, STATUS status) {
     // Add a new object to the JS array that will be passed as a parameter to
     // the callback.
     // Create, populate and add a child ...
-    JsVar *jsCurrentAccessPoint = jspNewObject(NULL, "AccessPoint");
+    JsVar *jsCurrentAccessPoint = jsvNewObject();
     if (bssInfo->rssi > 0) bssInfo->rssi = 0;
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));
@@ -1772,7 +1861,7 @@ static void wifiEventHandler(System_Event_t *evt) {
   uint8_t *mac;
   char *reason;
 
-  JsVar *jsDetails = jsvNewWithFlags(JSV_OBJECT);
+  JsVar *jsDetails = jsvNewObject();
 
   switch(evt->event) {
   // We have connected to an access point.
@@ -1857,6 +1946,12 @@ static void wifiEventHandler(System_Event_t *evt) {
     DBG("Wifi event: got ip:" IPSTR ", mask:" IPSTR ", gw:" IPSTR "\n",
       IP2STR(&evt->event_info.got_ip.ip), IP2STR(&evt->event_info.got_ip.mask),
       IP2STR(&evt->event_info.got_ip.gw));
+
+    // start mDNS
+    char *hostname = wifi_station_get_hostname();
+    if (hostname && hostname[0] != 0) {
+      startMDNS(hostname);
+    }
 
     // Make Wifi.connected() callback
     if (jsvIsFunction(g_jsGotIpCallback)) {

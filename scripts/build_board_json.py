@@ -30,13 +30,21 @@ import common;
 import pinutils;
 
 # -----------------------------------------------------------------------------------------
+boardname = ""
+for i in range(1,len(sys.argv)):
+  arg = sys.argv[i]
+  if arg[0]=="-" and arg[1]=="B": 
+    boardname = arg[2:]
 
 # Now scan AF file
-print("Script location "+scriptdir)
-if len(sys.argv)!=2:
-  print("ERROR, USAGE: build_board_json.py BOARD_NAME")
+if boardname=="":
+  print("ERROR, USAGE: build_board_json.py -Ddefine=1 -BBOARD_NAME")
+  print("")
+  print("It's much easier to run this from the Makefile with:")
+  print("   BOARDNAME=1 make boardjson")
   exit(1)
-boardname = sys.argv[1]
+
+print("Script location "+scriptdir)
 jsonFilename = "boards/"+boardname+".json"
 print("JSON_FILENAME "+jsonFilename)
 print("BOARD "+boardname)
@@ -47,7 +55,7 @@ pins = board.get_pins()
 pins = pinutils.append_devices_to_pin_list(pins, board)
 # -----------------------------------------------------------------------------------------
 # Documentation/functions
-jsondatas = common.get_jsondata(False, False, board)
+jsondatas = common.get_jsondata(False) # use command-line args
 # -----------------------------------------------------------------------------------------
 board.info["image_url"] = "http://www.espruino.com/img/"+boardname+".jpg"
 board.info["thumb_url"] = "http://www.espruino.com/img/"+boardname+"_thumb.jpg"
@@ -60,6 +68,7 @@ builtinModules = []
 for jsondata in jsondatas:
   if jsondata["type"]=="library":
     builtinModules.append(jsondata["class"])
+#    print (json.dumps(jsondata, indent=1));
 
 board.info["builtin_modules"] = builtinModules
 # -----------------------------------------------------------------------------------------
@@ -105,3 +114,4 @@ boarddata = {
 jsonFile = open(jsonFilename, 'w')
 jsonFile.write(json.dumps(boarddata, indent=1));
 jsonFile.close();
+print("JSON written to "+jsonFilename);
