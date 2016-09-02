@@ -227,6 +227,9 @@ void telnetRelease(JsNetwork *net) {
   netCloseSocket(net, tnSrv.cliSock);
   tnSrv.cliSock = 0;
   IOEventFlags console = jsiGetConsoleDevice();
+  // only switch away from telnet if the current console is TELNET, this allows the current
+  // console to be set to something else while connected via telnet and then not have it
+  // switched again when disconnecting from telnet
   if (console == EV_TELNET && !jsiIsConsoleDeviceForced())
     jsiSetConsoleDevice(tnSrv.oldConsole, false);
 }
