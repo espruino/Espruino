@@ -36,7 +36,7 @@ chip = {
   'package' : "",
   'ram'     : 80,
   'flash'   : 0,
-  'speed'   : 80,
+  'speed'   : 160,
   'usart'   : 2,
   'spi'     : 1,
   'i2c'     : 1,
