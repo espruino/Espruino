@@ -26,6 +26,8 @@ void jspSoftKill(); ///< used when recovering from or saving to flash
 /** Returns true if the constructor function given is the same as that
  * of the object with the given name. */
 bool jspIsConstructor(JsVar *constructor, const char *constructorName);
+/** Get the constructor of the given object, or return 0 if ot found, or not a function */
+JsVar *jspGetConstructor(JsVar *object);
 
 /// Create a new built-in object that jswrapper can use to check for built-in functions
 JsVar *jspNewBuiltin(const char *name);

@@ -2442,6 +2442,22 @@ bool jspIsConstructor(JsVar *constructor, const char *constructorName) {
   return isConstructor;
 }
 
+/** Get the constructor of the given object, or return 0 if ot found, or not a function */
+JsVar *jspGetConstructor(JsVar *object) {
+  if (!jsvIsObject(object)) return 0;
+  JsVar *proto = jsvObjectGetChild(object, JSPARSE_INHERITS_VAR, 0);
+  if (jsvIsObject(proto)) {
+    JsVar *constr = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
+    if (jsvIsFunction(constr)) {
+      jsvUnLock(proto);
+      return constr;
+    }
+    jsvUnLock(constr);
+  }
+  jsvUnLock(proto);
+  return 0;
+}
+
 // -----------------------------------------------------------------------------
 
 void jspSoftInit() {
