@@ -121,9 +121,10 @@ typedef enum  {
   BLE_NONE = 0,
   BLE_IS_SENDING = 1,
   BLE_IS_SCANNING = 2,
+  BLE_IS_ADVERTISING = 4,
 } BLEStatus;
 
-static volatile BLEStatus bleStatus;
+static volatile BLEStatus bleStatus = 0;
 
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 #define BLE_WRITE_EVENT                 JS_EVENT_PREFIX"blew"
@@ -269,13 +270,15 @@ void advertising_start(void) {
 
   err_code = sd_ble_gap_adv_start(&adv_params);
   APP_ERROR_CHECK(err_code);
+  bleStatus |= BLE_IS_ADVERTISING;
 }
 
 static void advertising_stop(void) {
-    uint32_t err_code;
+  uint32_t err_code;
 
-    err_code = sd_ble_gap_adv_stop();
-    APP_ERROR_CHECK(err_code);
+  err_code = sd_ble_gap_adv_stop();
+  APP_ERROR_CHECK(err_code);
+  bleStatus &= ~BLE_IS_ADVERTISING;
 }
 
 #ifdef USE_BOOTLOADER
@@ -1111,7 +1114,8 @@ void jswrap_nrf_bluetooth_sleep(void) {
   }
 
   // Stop advertising
-  err_code = sd_ble_gap_adv_stop();
+  if (bleStatus & BLE_IS_ADVERTISING)
+    advertising_stop();
   NRF_RADIO->TASKS_DISABLE = (1UL);
 }
 
@@ -1125,7 +1129,8 @@ Enable Bluetooth communications (they are enabled by default)
 */
 void jswrap_nrf_bluetooth_wake(void) {
   // NRF_RADIO->TASKS_DISABLE = (0UL); // BUG: This was causing a hardfault.
-  advertising_start();
+  if (!(bleStatus & BLE_IS_ADVERTISING))
+    advertising_start();
 }
 
 /*JSON{
@@ -1232,7 +1237,8 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   uint32_t err_code;
   ble_advdata_t advdata;
   setup_advdata(&advdata);
-  bool bleChanged;
+  bool bleChanged = false;
+  bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
 
   if (jsvIsObject(options)) {
     JsVar *v;
@@ -1285,12 +1291,12 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
       return;
     }
 
-    if (bleChanged)
+    if (bleChanged && isAdvertising)
       advertising_stop();
     err_code = sd_ble_gap_adv_data_set(dPtr, dLen, NULL, 0);
     if (err_code)
        jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
-     if (bleChanged)
+     if (bleChanged && isAdvertising)
        advertising_start();
      return; // we're done here now
   } else if (jsvIsObject(data)) {
@@ -1317,12 +1323,12 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     return;
   }
 
-  if (bleChanged)
+  if (bleChanged && isAdvertising)
     advertising_stop();
   err_code = ble_advdata_set(&advdata, NULL);
   if (err_code)
     jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
-  if (bleChanged)
+  if (bleChanged && isAdvertising)
     advertising_start();
 }
 
