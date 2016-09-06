@@ -9,6 +9,7 @@
             NRF5x: allow raw advertising data in setAdvertising
             Add E.setPassword - allows Espruino console to be locked
             Fix pin header numbering for BBC micro:bit (it changed for the production version) (fix #896)
+            Allow Magnetometer speed to be specified for Puck.js
 
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
             Fix lock 'leak' in Telnet when Telnet is turned off

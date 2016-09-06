@@ -140,7 +140,21 @@ uint8_t i2c_rd(bool nack) {
 
 
 // Turn magnetometer on and configure
-void mag_on() {
+bool mag_on(int milliHz) {
+  int reg1 = 0;
+  if (milliHz == 80000) reg1 = (0x00)<<3; // 900uA
+  else if (milliHz == 40000) reg1 = (0x04)<<3; // 550uA
+  else if (milliHz == 20000) reg1 = (0x08)<<3; // 275uA
+  else if (milliHz == 10000) reg1 = (0x0C)<<3; // 137uA
+  else if (milliHz == 5000) reg1 = (0x10)<<3; // 69uA
+  else if (milliHz == 2500) reg1 = (0x14)<<3; // 34uA
+  else if (milliHz == 1250) reg1 = (0x18)<<3; // 17uA
+  else if (milliHz == 630) reg1 = (0x1C)<<3; // 8uA
+  else if (milliHz == 310) reg1 = (0x1D)<<3; // 8uA
+  else if (milliHz == 160) reg1 = (0x1E)<<3; // 8uA
+  else if (milliHz == 80) reg1 = (0x1F)<<3; // 8uA
+  else return false;
+
   nrf_gpio_pin_set(MAG_PWR);
   nrf_gpio_cfg_output(MAG_PWR);
   nrf_gpio_cfg_input(MAG_INT, NRF_GPIO_PIN_NOPULL);
@@ -149,14 +163,16 @@ void mag_on() {
   jshDelayMicroseconds(2000); // 1.7ms from power on to ok
   i2c_start();
   i2c_wr(MAG3110_ADDR<<1); // CTRL_REG2, AUTO_MRST_EN
-  if (!i2c_wr(0x11));
-  if (!i2c_wr(0x80));
+  i2c_wr(0x11);
+  i2c_wr(0x80/*AUTO_MRST_EN*/ + 0x20/*RAW*/);
   i2c_stop();
   i2c_start();
-  i2c_wr(MAG3110_ADDR<<1); // CTRL_REG1, active mode 80 Hz ODR with OSR = 1
+  i2c_wr(MAG3110_ADDR<<1); // CTRL_REG1, active mode 80 Hz ODR with OSR = 0
   i2c_wr(0x10);
-  i2c_wr(0x01);
+  reg1 |= 1; // Active bit
+  i2c_wr(reg1);
   i2c_stop();
+return true;
 }
 
 // Wait for magnetometer IRQ line to be set
@@ -215,7 +231,7 @@ Class containing [Puck.js's](http://www.puck-js.com) utility functions.
 Turn on the magnetometer, take a single reading, and then turn it off again.
 */
 JsVar *jswrap_puck_mag() {
-  if (!mag_enabled) mag_on();
+  if (!mag_enabled) mag_on(80000);
   mag_wait();
   int16_t d[3];
   mag_read(d);
@@ -241,7 +257,10 @@ void _jswrap_mag_irq() {
   "type" : "staticmethod",
   "class" : "Puck",
   "name" : "magOn",
-  "generate" : "jswrap_puck_magOn"
+  "generate" : "jswrap_puck_magOn",
+  "params" : [
+      ["samplerate","float","The Samplerate in Hz, or undefined"]
+  ]
 }
 Turn the magnetometer on and configure it. Samples will then cause
 a 'mag' event on 'Puck':
@@ -253,10 +272,31 @@ Puck.on('mag', function(xyz) {
 });
 // Turn events off with Puck.magOff();
 ```
+
+This call will be ignored if the magnetometer is already on.
+
+If given an argument, the sample rate is set (if not, it's at 0.63Hz). The sample rate should be one of the following:
+
+* 80 Hz -  900uA
+* 40 Hz -  550uA
+* 20 Hz -  275uA
+* 10 Hz -  137uA
+* 5 Hz -  69uA
+* 2.5 Hz -  34uA
+* 1.25 Hz -  17uA
+* 0.63 Hz -  8uA
+* 0.31 Hz -  8uA
+* 0.16 Hz -  8uA
+* 0.08 Hz - 8uA
+
 */
-void jswrap_puck_magOn() {
+void jswrap_puck_magOn(JsVarFloat hz) {
   if (!mag_enabled) {
-    mag_on();
+    int milliHz = (int)((hz*1000)+0.5);
+    if (milliHz==0) milliHz=630;
+    if (!mag_on(milliHz)) {
+      jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - see docs for valid rates", hz);
+    }      
     jshPinWatch(MAG_INT, true);
   }
   mag_enabled = true;
