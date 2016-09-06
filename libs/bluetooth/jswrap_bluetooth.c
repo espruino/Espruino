@@ -1193,7 +1193,7 @@ Or you could report the current temperature:
 ```
 setInterval(function() {
   NRF.setAdvertising({
-    0x1809 : [Math,round(E.getTemperature())]
+    0x1809 : [Math.round(E.getTemperature())]
   });
 }, 30000);
 ```
