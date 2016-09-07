@@ -10,6 +10,7 @@
             Add E.setPassword - allows Espruino console to be locked
             Fix pin header numbering for BBC micro:bit (it changed for the production version) (fix #896)
             Allow Magnetometer speed to be specified for Puck.js
+            Fix out of memory when appending a string to itself
 
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
             Fix lock 'leak' in Telnet when Telnet is turned off
