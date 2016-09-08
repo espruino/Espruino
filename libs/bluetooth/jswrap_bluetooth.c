@@ -1355,6 +1355,7 @@ NRF.setServices({
       broadcast : false, // optional, default is false
       readable : true,   // optional, default is false
       writable : true,   // optional, default is false
+      notify : true,   // optional, default is false
       onWrite : function(evt) { // optional
         console.log("Got ", evt.data);
       }
@@ -1415,6 +1416,8 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
         memset(&char_md, 0, sizeof(char_md));
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "broadcast", 0)))
           char_md.char_props.broadcast = 1;
+        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0)))
+          char_md.char_props.notify = 1;
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "readable", 0)))
           char_md.char_props.read = 1;
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "writable", 0))) {
