@@ -707,6 +707,7 @@ void jshSetupRTC(bool isUsingLSI) {
   RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
   RTC_Init(&RTC_InitStructure);
 #endif
+  RTC_WaitForSynchro();
 }
 
 void jshResetRTCTimer() {
@@ -729,9 +730,10 @@ void jshDoSysTick() {
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
     // Use LSI if the LSE hasn't stabilised
     bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
+    bool wasUsingLSI = !jshIsRTCUsingLSE();
 
     // If the RTC is already doing the right thing, do nothing
-    if (isUsingLSI == jshIsRTCUsingLSE()) {
+    if (isUsingLSI != wasUsingLSI) {
       // We just set the RTC up, so we have to reset the
       // backup domain again to change sources :(
 #ifdef STM32F1
@@ -744,14 +746,14 @@ void jshDoSysTick() {
 #endif
       RCC_BackupResetCmd(ENABLE);
       RCC_BackupResetCmd(DISABLE);
-      RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+      if (!isUsingLSI) RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+      jshSetupRTC(isUsingLSI);
 #ifdef STM32F1
       RTC_SetCounter(time);
 #else
       RTC_SetDate(RTC_Format_BIN, &date);
       RTC_SetTime(RTC_Format_BIN, &time);
 #endif
-      jshSetupRTC(isUsingLSI);
     }
 
     // Disable RTC clocks depending on what we decided...
@@ -760,7 +762,6 @@ void jshDoSysTick() {
       RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
     } else {
       // LSE working! Yay! turn LSI off now
-      RCC_LSEConfig(RCC_LSE_ON);
       RCC_LSICmd(DISABLE); // disable low speed internal oscillator
     }
   }
@@ -1096,6 +1097,16 @@ void jshInit() {
   jshPinOutput(LED1_PININDEX, 1);
 #endif
 #ifdef USE_RTC
+  /* RTC setup works like this:
+
+   * Turn LSI on (it always defaults to off)
+   * If RTC is set up already, awesome. Job done.
+   * If not, set up the RTC with the LSI, but turn the LSE on
+   * Around 1 sec later, in jshDoSysTick, check if the LSE is working
+   * If it isn't, turn it off
+   * If it is, switch over to it and disable LSI
+
+   */
   // allow access to backup domain
   PWR_BackupAccessCmd(ENABLE);
   // enable low speed internal oscillator (reset always kills this, and we might need it)
