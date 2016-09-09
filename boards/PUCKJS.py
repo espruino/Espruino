@@ -46,7 +46,7 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((128 - 3) * 4096),
+    'address' : ((122 - 3) * 4096), # Bootloader takes pages 122-127
     'page_size' : 4096,
     'pages' : 3,
     'flash_available' : (512 - 124 - 12) # Softdevice uses 31 plages of flash. Each page is 4 kb.
