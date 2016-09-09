@@ -753,6 +753,7 @@ void jshDoSysTick() {
 #else
       RTC_SetDate(RTC_Format_BIN, &date);
       RTC_SetTime(RTC_Format_BIN, &time);
+      RTC_WaitForSynchro();
 #endif
     }
 
