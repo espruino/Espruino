@@ -1388,7 +1388,8 @@ the form `"0xABCD"`, or strings of the form `""ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDA
 void jswrap_nrf_bluetooth_setServices(JsVar *data) {
   uint32_t err_code;
 
-  // TODO: Reset services
+  // TODO: Reset services (esp. removing Nordic UART if not needed)
+  // TODO: Reset services on kill
 
   if (jsvIsObject(data)) {
     JsvObjectIterator it;
