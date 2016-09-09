@@ -3,10 +3,10 @@
  the values of the bits in each register. Can be used for quickly building
  ways to access the underlying hardware from JS */
 
-var INPUTFILE = "targetlibs/stm32f1/lib/stm32f10x.h";
-var definitions =  {"STM32F10X_XL":true};
-//var INPUTFILE = "targetlibs/stm32f4/lib/stm32f4xx.h";
-//var definitions =  {"STM32F401xx":true};
+//var INPUTFILE = "targetlibs/stm32f1/lib/stm32f10x.h";
+//var definitions =  {"STM32F10X_XL":true};
+var INPUTFILE = "targetlibs/stm32f4/lib/stm32f411xe.h";
+var definitions =  {"STM32F401xx":true};
 var fs = require('fs');
 
 var structContents = undefined;
@@ -110,7 +110,7 @@ for (var def in definitions) {
   }
 }
 
-var peripherals = ["RCC","DMA"];
+var peripherals = ["RCC","RTC","PWR"];
 
 
 function out(s) {
