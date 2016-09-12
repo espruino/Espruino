@@ -1803,7 +1803,7 @@ NO_INLINE JsVar *jspeStatementVar() {
 
 NO_INLINE JsVar *jspeStatementIf() {
   bool cond;
-  JsVar *var;
+  JsVar *var, *result;
   JSP_ASSERT_MATCH(LEX_R_IF);
   JSP_MATCH('(');
   var = jspeExpression();
@@ -1814,16 +1814,26 @@ NO_INLINE JsVar *jspeStatementIf() {
 
   JSP_SAVE_EXECUTE();
   if (!cond) jspSetNoExecute();
-  jsvUnLock(jspeBlockOrStatement());
-  if (!cond) JSP_RESTORE_EXECUTE();
+  JsVar *a = jspeBlockOrStatement();
+  if (!cond) {
+    jsvUnLock(a);
+    JSP_RESTORE_EXECUTE();
+  } else {
+    result = a;
+  }
   if (lex->tk==LEX_R_ELSE) {
     JSP_ASSERT_MATCH(LEX_R_ELSE);
     JSP_SAVE_EXECUTE();
     if (cond) jspSetNoExecute();
-    jsvUnLock(jspeBlockOrStatement());
-    if (cond) JSP_RESTORE_EXECUTE();
+    JsVar *a = jspeBlockOrStatement();
+    if (cond) {
+      jsvUnLock(a);
+      JSP_RESTORE_EXECUTE();
+    } else {
+      result = a;
+    }
   }
-  return 0;
+  return result;
 }
 
 NO_INLINE JsVar *jspeStatementSwitch() {
