@@ -13,6 +13,7 @@
             Fix out of memory when appending a string to itself
             Allow members of the same name as function arguments to be added to a function (fix #913)
             Fix STM32F4 RTC stopping if reset during first 1 sec of boot, also fix Espruino WiFi board clock startup
+            Fix issue where native functions couldn't be replaced by non-native fns (fix #879)
 
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
             Fix lock 'leak' in Telnet when Telnet is turned off
