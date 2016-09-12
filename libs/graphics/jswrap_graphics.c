@@ -333,18 +333,18 @@ void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 }
 
 /*JSON{
-    "type" : "method",
-    "class" : "Graphics",
- +  "name" : "fillCircle",
- +  "generate" : "jswrap_graphics_fillCircle",
- +  "params" : [
- +    ["x","int32","The X axis"],
- +    ["y","int32","The Y axis"],
- +    ["rad","int32","The circle radius"]
- +  ]
- +}
- +Draw a filled circle in the Foreground Color
- +*/
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "fillCircle",
+  "generate" : "jswrap_graphics_fillCircle",
+  "params" : [
+    ["x","int32","The X axis"],
+    ["y","int32","The Y axis"],
+    ["rad","int32","The circle radius"]
+  ]
+}
+Draw a filled circle in the Foreground Color
+*/
  void jswrap_graphics_fillCircle(JsVar *parent, int x, int y, int rad) {
    JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
    graphicsFillCircle(&gfx, (short)x,(short)y,(short)rad);

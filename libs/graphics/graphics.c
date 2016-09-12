@@ -235,8 +235,8 @@ void graphicsDrawCircle(JsGraphics *gfx, short posX, short posY, short rad) {
 void graphicsFillCircle(JsGraphics *gfx, short x, short y, short rad) {
   graphicsToDeviceCoordinates(gfx, &x, &y);
 
-  var radY = 0;
-  var decisionOver2 = 1 - rad;
+  int radY = 0;
+  int decisionOver2 = 1 - rad;
 
   while (rad >= radY) {
     graphicsFillRectDevice(gfx, rad + x, radY + y, -rad + x, -radY + y);
