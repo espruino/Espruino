@@ -201,6 +201,29 @@ void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
   graphicsFillRectDevice(gfx,x1,y2,x1,y1);
 }
 
+void graphicsDrawCircle(JsGraphics *gfx, short x, short y, short rad) {
+  graphicsToDeviceCoordinates(gfx, &x, &y);
+
+  var radY = 0;
+  var decisionOver2 = 1 - rad;
+
+  while (rad >= radY) {
+    g.fillRect(rad + x, radY + y, -rad + x, -radY + y);
+    g.fillRect(radY + x, rad + y, -radY + x, -rad + y);
+    g.fillRect(-rad + x, radY + y, rad + x, -radY + y);
+    g.fillRect(-radY + x, rad + y, radY + x, -rad + y);
+    radY++;
+    if (decisionOver2 <= 0){
+      // Change in decision criterion for radY -> radY+1
+      decisionOver2 += 2 * radY + 1;
+    }else{
+      rad--;
+      // Change for radY -> radY+1, rad -> rad-1
+      decisionOver2 += 2 * (radY - rad) + 1;
+    }
+  }
+}
+
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str) {
   // no need to modify coordinates as setPixel does that
   while (*str) {
