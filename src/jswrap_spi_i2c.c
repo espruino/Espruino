@@ -214,7 +214,9 @@ JsVar *jswrap_spi_send(
 
   // Handle the data being a single byte value
   if (jsvIsNumeric(srcdata)) {
-    int r = data.spiSend((unsigned char)jsvGetInteger(srcdata), &data.spiSendData);
+    int d = jsvGetInteger(srcdata);
+    if (d<0) d = 0; // protect against -1 as we use this in the jshardware SPI implementation
+    int r = data.spiSend(d, &data.spiSendData);
     if (r<0) r = data.spiSend(-1, &data.spiSendData);
     dst = jsvNewFromInteger(r); // retrieve the byte (no send!)
   }
@@ -242,9 +244,8 @@ JsVar *jswrap_spi_send(
       unsigned char out = (unsigned char)data.spiSend(-1, &data.spiSendData);
       jsvAppendStringBuf(dst, (char*)&out, 1);
     }
-  }
-  // Handle the data being an iterable.
-  else {
+  } else {
+    // Handle the data being an iterable.
     int nBytes = jsvIterateCallbackCount(srcdata);
     dst = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, nBytes);
     if (dst) {

@@ -15,6 +15,7 @@
             Fix STM32F4 RTC stopping if reset during first 1 sec of boot, also fix Espruino WiFi board clock startup
             Fix issue where native functions couldn't be replaced by non-native fns (fix #879)
             If statements now return values (fix #909)
+            Fix >8 bit SPI when sending single elements with SPI.send (fix #897)
 
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
             Fix lock 'leak' in Telnet when Telnet is turned off
