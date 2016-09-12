@@ -1840,10 +1840,13 @@ NO_INLINE JsVar *jspeStatementSwitch() {
   JSP_ASSERT_MATCH(LEX_R_SWITCH);
   JSP_MATCH('(');
   JsVar *switchOn = jspeExpression();
-  JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(switchOn), 0);
-  JSP_MATCH_WITH_CLEANUP_AND_RETURN('{', jsvUnLock(switchOn), 0);
   JSP_SAVE_EXECUTE();
   bool execute = JSP_SHOULD_EXECUTE;
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(switchOn), 0);
+  // shortcut if not executing...
+  if (!execute) { jsvUnLock(switchOn); jspeBlock(); return 0; }
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN('{', jsvUnLock(switchOn), 0);
+
   bool hasExecuted = false;
   if (execute) execInfo.execute=EXEC_NO|EXEC_IN_SWITCH;
   while (lex->tk==LEX_R_CASE) {
@@ -1862,6 +1865,8 @@ NO_INLINE JsVar *jspeStatementSwitch() {
       execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
     while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!=LEX_R_CASE && lex->tk!=LEX_R_DEFAULT && lex->tk!='}')
       jsvUnLock(jspeBlockOrStatement());
+    if (execInfo.execute & EXEC_RETURN)
+      oldExecute |= EXEC_RETURN;
   }
   jsvUnLock(switchOn);
   if (execute && (execInfo.execute&EXEC_RUN_MASK)==EXEC_BREAK)
@@ -1876,6 +1881,8 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     else execInfo.execute |= EXEC_IN_SWITCH;
     while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!='}')
       jsvUnLock(jspeBlockOrStatement());
+    if (execInfo.execute & EXEC_RETURN)
+      oldExecute |= EXEC_RETURN;
     if (execute && !hasExecuted)
       execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_BREAK;
     JSP_RESTORE_EXECUTE();
@@ -2235,7 +2242,7 @@ NO_INLINE JsVar *jspeStatementReturn() {
     if (resultVar) {
       jspReplaceWith(resultVar, result);
       jsvUnLock(resultVar);
-      jspSetNoExecute(); // Stop anything else in this function executing
+      execInfo.execute |= EXEC_RETURN; // Stop anything else in this function executing
     } else {
       jsExceptionHere(JSET_SYNTAXERROR, "RETURN statement, but not in a function.\n");
     }
