@@ -427,6 +427,7 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
 
 ALWAYS_INLINE void jsvFreePtrInternal(JsVar *var) {
   assert(jsvGetLocks(var)==0);
+  memset(var, 0, sizeof(JsVar));
   var->flags = JSV_UNUSED;
   // add this to our free list
   jshInterruptOff(); // to allow this to be used from an IRQ
@@ -581,10 +582,10 @@ ALWAYS_INLINE JsVar *jsvLockAgainSafe(JsVar *var) {
 static void jsvPlotMemory() {
   static SDL_Surface *screen = 0;
   static int width, height;
-  const int sz = 8;
+  const int sz = 6;
   if (!screen) {
     int bits = sizeof(jsVars)*8;
-    width = (int)sqrt(bits);
+    width = 8*sizeof(JsVar);
     height = (bits+(width-1))/width;
      
     if (SDL_Init(SDL_INIT_VIDEO) < 0 ) {
@@ -603,10 +604,19 @@ static void jsvPlotMemory() {
   int x,y,sx,sy,inl = 0;
   for (y=0;y<height;y++) {
     for (x=0;x<width;x++) {
-      if ((inp[inl>>3]>>(inl&7))&1)
-        for (sx=0;sx<sz;sx++) *(p++)=0xFFFFFFFF;
+      unsigned int col1,col0;
+      int var = (inl>>3)/sizeof(JsVar);
+      if (jsVars[var].flags) {
+        col1 = 0xFFFFFFFF;
+        col0 = (var&1)?0xFF600000:0xFFA00000;
+      } else {
+        col1 = 0xFF000080;
+        col0 = 0xFF000000;
+      }
+      if ((inp[inl>>3]<<(inl&7))&128)
+        for (sx=0;sx<sz;sx++) *(p++)=col1;
       else 
-        for (sx=0;sx<sz;sx++) *(p++)=0xFF000000;
+        for (sx=0;sx<sz;sx++) *(p++)=col0;
       inl++;
     }
     p -= width*sz;

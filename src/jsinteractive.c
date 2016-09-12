@@ -396,6 +396,7 @@ void jsiClearInputLine(bool updateConsole) {
   jsiInputLineCursorMoved();
   jsvUnLock(inputLine);
   inputLine = jsvNewFromEmptyString();
+  inputCursorPos = 0;
 }
 
 /**
@@ -877,6 +878,7 @@ bool jsiFreeMoreMemory() {
 
 // Add a new line to the command history
 void jsiHistoryAddLine(JsVar *newLine) {
+  return;
   if (!newLine || jsvGetStringLength(newLine)==0) return;
   JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, JSV_ARRAY);
   if (!history) return; // out of memory

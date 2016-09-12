@@ -365,9 +365,6 @@ int main(int argc, char **argv) {
   jsvInit();
   jsiInit(true);
 
-  addNativeFunction("quit", nativeQuit);
-  addNativeFunction("interrupt", nativeInterrupt);
-
   while (isRunning) {
     jsiLoop();
   }

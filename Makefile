@@ -671,26 +671,18 @@ USE_TLS=1
 else
 BOARD=LINUX
 LINUX=1
+OPTIMIZEFLAGS=-m32
 USE_FILESYSTEM=1
 USE_HASHLIB=1
 USE_GRAPHICS=1
-USE_CRYPTO=1
-USE_TLS=1
-USE_TELNET=1
+#USE_CRYPTO=1
+#USE_TLS=1
+#USE_TELNET=1
 #USE_LCD_SDL=1
 
 LIBS += -lSDL
 INCLUDE += -I/usr/include/SDL
 
-ifdef MACOSX
-USE_NET=1
-else ifdef MINGW
-#USE_NET=1 # http libs need some tweaks before net can compile
-#LIBS += -lwsock32
-DEFINES += -DHAS_STDLIB=1
-else  # Linux
-USE_NET=1
-endif
 endif
 endif
 
@@ -754,7 +746,7 @@ ifdef DEBUG
  ifeq ($(FAMILY),ESP8266)
   OPTIMIZEFLAGS=-g -Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
  else
-  OPTIMIZEFLAGS=-g
+  OPTIMIZEFLAGS=-g 
  endif
  ifdef EFM32
   DEFINES += -DDEBUG_EFM=1 -DDEBUG=1
