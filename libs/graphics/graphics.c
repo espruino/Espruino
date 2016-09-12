@@ -201,7 +201,7 @@ void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
   graphicsFillRectDevice(gfx,x1,y2,x1,y1);
 }
 
-void graphicsDrawCircle(JsGraphics *gfx, short x, short y, short rad) {
+void graphicsFillCircle(JsGraphics *gfx, short x, short y, short rad) {
   graphicsToDeviceCoordinates(gfx, &x, &y);
 
   var radY = 0;

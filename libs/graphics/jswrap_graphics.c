@@ -345,7 +345,7 @@ void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
  +}
  +Draw a filled circle in the Foreground Color
  +*/
- void jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad) {
+ void jswrap_graphics_fillCircle(JsVar *parent, int x, int y, int rad) {
    JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
    graphicsFillCircle(&gfx, (short)x,(short)y,(short)rad);
    graphicsSetVar(&gfx); // gfx data changed because modified area
