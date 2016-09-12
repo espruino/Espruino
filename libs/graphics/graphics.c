@@ -208,10 +208,10 @@ void graphicsFillCircle(JsGraphics *gfx, short x, short y, short rad) {
   var decisionOver2 = 1 - rad;
 
   while (rad >= radY) {
-    g.fillRect(rad + x, radY + y, -rad + x, -radY + y);
-    g.fillRect(radY + x, rad + y, -radY + x, -rad + y);
-    g.fillRect(-rad + x, radY + y, rad + x, -radY + y);
-    g.fillRect(-radY + x, rad + y, radY + x, -rad + y);
+    graphicsFillRectDevice(gfx, rad + x, radY + y, -rad + x, -radY + y);
+    graphicsFillRectDevice(gfx, radY + x, rad + y, -radY + x, -rad + y);
+    graphicsFillRectDevice(gfx, -rad + x, radY + y, rad + x, -radY + y);
+    graphicsFillRectDevice(gfx, -radY + x, rad + y, radY + x, -rad + y);
     radY++;
     if (decisionOver2 <= 0){
       // Change in decision criterion for radY -> radY+1
