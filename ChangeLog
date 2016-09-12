@@ -16,6 +16,7 @@
             Fix issue where native functions couldn't be replaced by non-native fns (fix #879)
             If statements now return values (fix #909)
             Fix >8 bit SPI when sending single elements with SPI.send (fix #897)
+            Sockets now fire 'end' events (fix #886)
 
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
             Fix lock 'leak' in Telnet when Telnet is turned off
