@@ -99,6 +99,7 @@ void         graphicsClear(JsGraphics *gfx);
 void         graphicsFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2); // Simple fillrect - doesn't call device-specific FR
 void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
+void graphicsDrawCircle(JsGraphics *gfx, short posX, short posY, short rad);
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str);
 void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); // may overwrite vertices...
