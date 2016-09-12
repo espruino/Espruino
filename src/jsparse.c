@@ -1803,7 +1803,7 @@ NO_INLINE JsVar *jspeStatementVar() {
 
 NO_INLINE JsVar *jspeStatementIf() {
   bool cond;
-  JsVar *var, *result;
+  JsVar *var, *result = 0;
   JSP_ASSERT_MATCH(LEX_R_IF);
   JSP_MATCH('(');
   var = jspeExpression();
