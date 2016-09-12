@@ -201,6 +201,37 @@ void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
   graphicsFillRectDevice(gfx,x1,y2,x1,y1);
 }
 
+void graphicsDrawCircle(JsGraphics *gfx, short posX, short posY, short rad) {
+  graphicsToDeviceCoordinates(gfx, &posX, &posY);
+
+  int radY = 0,
+      radX = rad;
+  // Decision criterion divided by 2 evaluated at radX=radX, radY=0
+  int decisionOver2 = 1 - radX;
+
+  while (radX >= radY) {
+    graphicsSetPixelDevice(gfx, radX + posX,  radY + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, radY + posX,  radX + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, -radX + posX,  radY + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, -radY + posX,  radX + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, -radX + posX, -radY + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, -radY + posX, -radX + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, radX + posX, -radY + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, radY + posX, -radX + posY, gfx->data.fgColor);
+    radY++;
+
+    if (decisionOver2 <= 0) {
+      // Change in decision criterion for radY -> radY+1
+      decisionOver2 += 2 * radY + 1;
+    }
+    else {
+      radX--;
+      // Change for radY -> radY+1, radX -> radX-1
+      decisionOver2 += 2 * (radY - radX) + 1;
+    }
+  }
+}
+
 void graphicsFillCircle(JsGraphics *gfx, short x, short y, short rad) {
   graphicsToDeviceCoordinates(gfx, &x, &y);
 

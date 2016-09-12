@@ -261,8 +261,7 @@ void jshPushIOCharEvent(
   ) {
   // Check for a CTRL+C
   if (charData==3 && channel==jsiGetConsoleDevice()) {
-    // Ctrl-C - force interrupt
-    execInfo.execute |= EXEC_CTRL_C;
+    jsiCtrlC(); // Ctrl-C - force interrupt of execution
     return;
   }
   // Check for existing buffer (we must have at least 2 in the queue to avoid dropping chars though!)

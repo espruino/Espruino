@@ -778,6 +778,14 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
     jsWarn("First argument of replaceWith should be a function - ignoring");
     return;
   }
+  // If old was native or vice versa...
+  if (jsvIsNativeFunction(oldFunc) != jsvIsNativeFunction(newFunc)) {
+    if (jsvIsNativeFunction(newFunc))
+      oldFunc->flags |= JSV_NATIVE;
+    else
+      oldFunc->flags &= ~JSV_NATIVE;
+  }
+
   // Grab scope - the one thing we want to keep
   JsVar *scope = jsvFindChildFromString(oldFunc, JSPARSE_FUNCTION_SCOPE_NAME, false);
   // so now remove all existing entries

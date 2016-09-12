@@ -13,6 +13,7 @@
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
 #include "jsdevices.h"
+#include "nrf5x_utils.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -32,6 +33,11 @@
 #include "nfc_uri_msg.h"
 bool nfcEnabled = false;
 #endif
+
+#undef USE_BOOTLOADER // FIXME - this now errors with 0x4001 - not sure why
+//... but then IMO we don't want to be able to enable DFU directly from BLE
+//... much better to
+
 
 #ifdef USE_BOOTLOADER
 #include "device_manager.h"
@@ -115,9 +121,10 @@ typedef enum  {
   BLE_NONE = 0,
   BLE_IS_SENDING = 1,
   BLE_IS_SCANNING = 2,
+  BLE_IS_ADVERTISING = 4,
 } BLEStatus;
 
-static volatile BLEStatus bleStatus;
+static volatile BLEStatus bleStatus = 0;
 
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 #define BLE_WRITE_EVENT                 JS_EVENT_PREFIX"blew"
@@ -134,7 +141,7 @@ bool jswrap_nrf_transmit_string();
   "generate" : "jswrap_nrf_idle"
 }*/
 bool jswrap_nrf_idle() {
-  return jswrap_nrf_transmit_string()>0; // return true if we sent anything
+  return false;
 }
 
 /*JSON{
@@ -234,7 +241,7 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
  *
  * @details This function will be called in case of an assert in the SoftDevice.
  *
- * @warning This handler is an example only and does not fit a final product. You need to analyse 
+ * @warning This handler is an example only and does not fit a final product. You need to analyse
  *          how your product is supposed to react in case of Assert.
  * @warning On assert from the SoftDevice, the system can only recover on reset.
  *
@@ -246,11 +253,17 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name) {
 }
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
-  ble_app_error_handler(id, pc, 0);
+  if (id == NRF_FAULT_ID_SDK_ERROR) {
+    error_info_t *error_info = (error_info_t *)info;
+    ble_app_error_handler(error_info->err_code, error_info->line_num, error_info->p_file_name);
+  } else
+    ble_app_error_handler(id, pc, 0);
 }
 
 void advertising_start(void) {
   uint32_t err_code = 0;
+
+  if (bleStatus & BLE_IS_ADVERTISING) return;
   // Actually start advertising
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
@@ -262,14 +275,17 @@ void advertising_start(void) {
   adv_params.interval = advertising_interval;
 
   err_code = sd_ble_gap_adv_start(&adv_params);
-  APP_ERROR_CHECK(err_code);
+  // APP_ERROR_CHECK(err_code); // don't bother checking
+  bleStatus |= BLE_IS_ADVERTISING;
 }
 
 static void advertising_stop(void) {
-    uint32_t err_code;
+  uint32_t err_code;
 
-    err_code = sd_ble_gap_adv_stop();
-    APP_ERROR_CHECK(err_code);
+  if (!(bleStatus & BLE_IS_ADVERTISING)) return;
+  err_code = sd_ble_gap_adv_stop();
+  APP_ERROR_CHECK(err_code);
+  bleStatus &= ~BLE_IS_ADVERTISING;
 }
 
 #ifdef USE_BOOTLOADER
@@ -359,7 +375,7 @@ static void reset_prepare(void)
 
 /**@brief Function for the GAP initialization.
  *
- * @details This function will set up all the necessary GAP (Generic Access Profile) parameters of 
+ * @details This function will set up all the necessary GAP (Generic Access Profile) parameters of
  *          the device. It also sets the permissions and appearance.
  */
 static void gap_params_init(void)
@@ -439,7 +455,36 @@ bool jswrap_nrf_transmit_string() {
   }
   return idx>0;
 }
-/**@snippet [Handling the data received over BLE] */
+
+uint32_t radio_notification_init(uint32_t irq_priority, uint8_t notification_type, uint8_t notification_distance)
+{
+    uint32_t err_code;
+
+    err_code = sd_nvic_ClearPendingIRQ(SWI1_IRQn);
+    if (err_code != NRF_SUCCESS)
+    {
+        return err_code;
+    }
+
+    err_code = sd_nvic_SetPriority(SWI1_IRQn, irq_priority);
+    if (err_code != NRF_SUCCESS)
+    {
+        return err_code;
+    }
+
+    err_code = sd_nvic_EnableIRQ(SWI1_IRQn);
+    if (err_code != NRF_SUCCESS)
+    {
+        return err_code;
+    }
+
+    // Configure the event
+    return sd_radio_notification_cfg_set(notification_type, notification_distance);
+}
+
+void SWI1_IRQHandler(bool radio_evt) {
+  jswrap_nrf_transmit_string();
+}
 
 
 /**@brief Function for initializing services that will be used by the application.
@@ -448,11 +493,11 @@ static void services_init(void)
 {
     uint32_t       err_code;
     ble_nus_init_t nus_init;
-    
+
     memset(&nus_init, 0, sizeof(nus_init));
 
     nus_init.data_handler = nus_data_handler;
-    
+
     err_code = ble_nus_init(&m_nus, &nus_init);
     APP_ERROR_CHECK(err_code);
 
@@ -489,7 +534,7 @@ static void services_init(void)
  */
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
     uint32_t err_code;
-    
+
     if(p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED) {
         err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
         APP_ERROR_CHECK(err_code);
@@ -511,7 +556,7 @@ static void conn_params_error_handler(uint32_t nrf_error) {
 static void conn_params_init(void) {
     uint32_t               err_code;
     ble_conn_params_init_t cp_init;
-    
+
     memset(&cp_init, 0, sizeof(cp_init));
 
     cp_init.p_conn_params                  = NULL;
@@ -522,7 +567,7 @@ static void conn_params_init(void) {
     cp_init.disconnect_on_fail             = false;
     cp_init.evt_handler                    = on_conn_params_evt;
     cp_init.error_handler                  = conn_params_error_handler;
-    
+
     err_code = ble_conn_params_init(&cp_init);
     APP_ERROR_CHECK(err_code);
 }
@@ -559,20 +604,20 @@ JsVar *bleAddrToStr(ble_gap_addr_t addr) {
       addr.addr[0]);
 }
 
-/* Convert a JsVar to a UUID - true if handled
+/* Convert a JsVar to a UUID - 0 if handled, a string showing the error if not
  * Converts:
  *   Integers -> 16 bit BLE UUID
  *   "0xABCD"   -> 16 bit BLE UUID
  *   "ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD" -> vendor specific BLE UUID
  */
-bool bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
+const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
   if (jsvIsInt(v)) {
     JsVarInt i = jsvGetInteger(v);
-    if (i<0 || i>0xFFFF) return false;
+    if (i<0 || i>0xFFFF) return "Integer out of range";
     BLE_UUID_BLE_ASSIGN((*uuid), i);
-    return true;
+    return 0;
   }
-  if (!jsvIsString(v)) return false;
+  if (!jsvIsString(v)) return "Not a String or Integer";
   unsigned int expectedLength = 16;
   unsigned int startIdx = 0;
   if (jsvIsStringEqualOrStartsWith(v,"0x",true)) {
@@ -595,29 +640,33 @@ bool bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
     jsvStringIteratorNext(&it);
     if (hi<0 || lo<0) {
       jsvStringIteratorFree(&it);
-      return false; // not hex chars
+      return "String should only contain hex characters and dashes";
     }
     data[expectedLength - (dataLen+1)] = (unsigned)((hi<<4) | lo);
     dataLen++;
   }
   if (jsvStringIteratorHasChar(&it)) dataLen++; // make sure we fail is string too long
   jsvStringIteratorFree(&it);
-  if (dataLen!=expectedLength) return false;
+  if (dataLen!=expectedLength) {
+    return "Not the right length (16)";
+  }
   // now try and decode the UUID
   uint32_t err_code;
   err_code = sd_ble_uuid_decode(dataLen, data, uuid);
   // Not found - add it
   if (err_code == NRF_ERROR_NOT_FOUND) {
-    uuid->uuid = ((data[12]<<8) | data[13]);
+    uuid->uuid = ((data[13]<<8) | data[12]);
     data[12] = 0; // these 2 not needed, but let's zero them anyway
     data[13] = 0;
     err_code = sd_ble_uuid_vs_add((ble_uuid128_t*)data, &uuid->type);
+    if (err_code == NRF_ERROR_NO_MEM)
+      return "Too many custom UUIDs already";
   }
-  return !err_code;
+  return err_code ? "BLE device error" : 0;
 }
 
-bool bleVarToUUIDAndUnLock(ble_uuid_t *uuid, JsVar *v) {
-  bool r = bleVarToUUID(uuid, v);
+const char *bleVarToUUIDAndUnLock(ble_uuid_t *uuid, JsVar *v) {
+  const char *r = bleVarToUUID(uuid, v);
   jsvUnLock(v);
   return r;
 }
@@ -645,7 +694,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t                         err_code;
     //jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
-    
+
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
         // the timeout for sd_ble_gap_adv_start expired - kick it off again
@@ -656,6 +705,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
+          bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
           if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(EV_BLUETOOTH, false);
           jshHadEvent();
         }
@@ -693,7 +743,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_EVT_TX_COMPLETE:
         // UART Transmit finished - we can try and send more data
         bleStatus &= ~BLE_IS_SENDING;
-        jswrap_nrf_transmit_string();
         break;
 
       case BLE_GAP_EVT_ADV_REPORT: {
@@ -808,10 +857,10 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 }
 
 
-/**@brief Function for dispatching a SoftDevice event to all modules with a SoftDevice 
+/**@brief Function for dispatching a SoftDevice event to all modules with a SoftDevice
  *        event handler.
  *
- * @details This function is called from the SoftDevice event interrupt handler after a 
+ * @details This function is called from the SoftDevice event interrupt handler after a
  *          SoftDevice event has been received.
  *
  * @param[in] p_ble_evt  SoftDevice event.
@@ -848,7 +897,7 @@ static void sys_evt_dispatch(uint32_t sys_evt)
 #ifdef USE_NFC
 /// Sigh - NFC has lots of these, so we need to define it to build
 void log_uart_printf(const char * format_msg, ...) {
-  jsiConsolePrintf("NFC: %s\n", format_msg);
+ // jsiConsolePrintf("NFC: %s\n", format_msg);
 }
 
 /**
@@ -880,7 +929,7 @@ void nfc_callback(void *context, NfcEvent event, const char *data, size_t dataLe
 static void ble_stack_init(void)
 {
     uint32_t err_code;
-    
+
     // TODO: enable if we're on a device with 32kHz xtal
     /*nrf_clock_lf_cfg_t clock_lf_cfg = {
         .source        = NRF_CLOCK_LF_SRC_XTAL,
@@ -895,15 +944,20 @@ static void ble_stack_init(void)
 
     // Initialize SoftDevice.
     SOFTDEVICE_HANDLER_INIT(&clock_lf_cfg, false);
-    
+
     ble_enable_params_t ble_enable_params;
     err_code = softdevice_enable_get_default_config(CENTRAL_LINK_COUNT,
                                                     PERIPHERAL_LINK_COUNT,
                                                     &ble_enable_params);
     APP_ERROR_CHECK(err_code);
-    
+
+    int softdevice_extra_ram_hack = 0;
+
+    ble_enable_params.common_enable_params.vs_uuid_count  = 3;
+    softdevice_extra_ram_hack += 256; // now we have more UUIDs, SD needs more RAM
+
+
 #ifdef USE_BOOTLOADER
-    ble_enable_params.common_enable_params.vs_uuid_count  = 2;
     ble_enable_params.gatts_enable_params.service_changed = 1;
 #endif
 
@@ -911,15 +965,15 @@ static void ble_stack_init(void)
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
 
     extern int __data_start__; // should be 'void', but 'int' avoids warnings
-    if (IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT) != (uint32_t)&__data_start__) {
-      jsiConsolePrintf("WARNING: BLE RAM start address not correct - is 0x%x, should be 0x%x\n\n", (uint32_t)&__data_start__, IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT));
+    if (IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT)+softdevice_extra_ram_hack != (uint32_t)&__data_start__) {
+      jsiConsolePrintf("WARNING: BLE RAM start address not correct - is 0x%x, should be 0x%x\n\n", (uint32_t)&__data_start__, IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT)+softdevice_extra_ram_hack);
       jshTransmitFlush();
     }
 
     // Enable BLE stack.
     err_code = softdevice_enable(&ble_enable_params);
     APP_ERROR_CHECK(err_code);
-    
+
     // Subscribe for BLE events.
     err_code = softdevice_ble_evt_handler_set(ble_evt_dispatch);
     APP_ERROR_CHECK(err_code);
@@ -1035,7 +1089,7 @@ void jswrap_nrf_bluetooth_init(void) {
   // Initialize.
   APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
   ble_stack_init();
-  
+
 #ifdef USE_BOOTLOADER
   bool erase_bonds = false;
   device_manager_init(erase_bonds);
@@ -1047,6 +1101,15 @@ void jswrap_nrf_bluetooth_init(void) {
   conn_params_init();
 
   jswrap_nrf_bluetooth_wake();
+
+  radio_notification_init(
+#ifdef NRF52
+                          6, /* IRQ Priority -  Must be 6 on nRF52. 7 doesn't work */
+#else
+                          3, /* IRQ Priority -  nRF51 has different IRQ structure */
+#endif
+                          NRF_RADIO_NOTIFICATION_TYPE_INT_ON_INACTIVE,
+                          NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
 }
 
 /*JSON{
@@ -1068,7 +1131,8 @@ void jswrap_nrf_bluetooth_sleep(void) {
   }
 
   // Stop advertising
-  err_code = sd_ble_gap_adv_stop();
+  if (bleStatus & BLE_IS_ADVERTISING)
+    advertising_stop();
   NRF_RADIO->TASKS_DISABLE = (1UL);
 }
 
@@ -1150,7 +1214,7 @@ Or you could report the current temperature:
 ```
 setInterval(function() {
   NRF.setAdvertising({
-    0x1809 : [Math,round(E.getTemperature())]
+    0x1809 : [Math.round(E.getTemperature())]
   });
 }, 30000);
 ```
@@ -1189,7 +1253,8 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   uint32_t err_code;
   ble_advdata_t advdata;
   setup_advdata(&advdata);
-  bool bleChanged;
+  bool bleChanged = false;
+  bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
 
   if (jsvIsObject(options)) {
     JsVar *v;
@@ -1242,12 +1307,12 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
       return;
     }
 
-    if (bleChanged)
+    if (bleChanged && isAdvertising)
       advertising_stop();
     err_code = sd_ble_gap_adv_data_set(dPtr, dLen, NULL, 0);
     if (err_code)
        jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
-     if (bleChanged)
+     if (bleChanged && isAdvertising)
        advertising_start();
      return; // we're done here now
   } else if (jsvIsObject(data)) {
@@ -1274,12 +1339,12 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     return;
   }
 
-  if (bleChanged)
+  if (bleChanged && isAdvertising)
     advertising_stop();
   err_code = ble_advdata_set(&advdata, NULL);
   if (err_code)
     jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
-  if (bleChanged)
+  if (bleChanged && isAdvertising)
     advertising_start();
 }
 
@@ -1306,6 +1371,7 @@ NRF.setServices({
       broadcast : false, // optional, default is false
       readable : true,   // optional, default is false
       writable : true,   // optional, default is false
+      notify : true,   // optional, default is false
       onWrite : function(evt) { // optional
         console.log("Got ", evt.data);
       }
@@ -1322,7 +1388,8 @@ the form `"0xABCD"`, or strings of the form `""ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDA
 void jswrap_nrf_bluetooth_setServices(JsVar *data) {
   uint32_t err_code;
 
-  // TODO: Reset services
+  // TODO: Reset services (esp. removing Nordic UART if not needed)
+  // TODO: Reset services on kill
 
   if (jsvIsObject(data)) {
     JsvObjectIterator it;
@@ -1333,8 +1400,9 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
 
       // Add the service
 
-      if (!bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetKey(&it))) {
-        jsExceptionHere(JSET_ERROR, "Invalid Service UUID");
+      const char *errorStr;
+      if ((errorStr=bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetKey(&it)))) {
+        jsExceptionHere(JSET_ERROR, "Invalid Service UUID: %s", errorStr);
         break;
       }
       err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
@@ -1357,8 +1425,8 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
         ble_gatts_attr_md_t attr_md;
         ble_gatts_char_handles_t  characteristic_handles;
 
-        if (!bleVarToUUIDAndUnLock(&char_uuid, jsvObjectIteratorGetKey(&serviceit))) {
-          jsExceptionHere(JSET_ERROR, "Invalid Characteristic UUID");
+        if ((errorStr=bleVarToUUIDAndUnLock(&char_uuid, jsvObjectIteratorGetKey(&serviceit)))) {
+          jsExceptionHere(JSET_ERROR, "Invalid Characteristic UUID: %s", errorStr);
           break;
         }
         JsVar *charVar = jsvObjectIteratorGetValue(&serviceit);
@@ -1366,6 +1434,8 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
         memset(&char_md, 0, sizeof(char_md));
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "broadcast", 0)))
           char_md.char_props.broadcast = 1;
+        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0)))
+          char_md.char_props.notify = 1;
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "readable", 0)))
           char_md.char_props.read = 1;
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "writable", 0))) {
@@ -1796,7 +1866,6 @@ void jswrap_nrf_nfcURL(JsVar *url) {
 #endif
 }
 
-
 /* ---------------------------------------------------------------------
  *                                                               TESTING
  * ---------------------------------------------------------------------
@@ -1847,5 +1916,3 @@ NRF.setServices({
 });
 
  */
-
-

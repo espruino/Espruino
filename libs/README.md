@@ -46,7 +46,14 @@ You can add more files here if you need. It's up to you!
 
 ## Modify the `Makefile`
 
-Go to line [606](https://github.com/espruino/Espruino/blob/master/Makefile#L606) and append
+Find the text
+``` 
+# ---------------------------------------------------------------------------------
+# When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
+# TODO: Load more of this out of the BOARDNAME.py files if at all possible (see next section)
+# --------------------------------------------------------------------------------- 
+```
+and add those two lines just before it
 
 ```make
 INCLUDE += -I$(ROOT)/libs/hello

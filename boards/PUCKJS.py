@@ -23,7 +23,8 @@ info = {
  'default_console_rx' : "D29",
  'default_console_baudrate' : "9600",
  # Number of variables can be WAY higher on this board
- 'variables' : 1020, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'bootloader' : 1,
  'binary_name' : 'espruino_%v_puckjs.bin',
  'build' : {
   'defines' : [
@@ -39,16 +40,16 @@ chip = {
   'ram' : 64,
   'flash' : 512,
   'speed' : 64,
-  'usart' : 1, 
+  'usart' : 1,
   'spi' : 3,
   'i2c' : 2,
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((128 - 3) * 4096),
+    'address' : ((121 - 3) * 4096), # Bootloader takes pages 121-127
     'page_size' : 4096,
     'pages' : 3,
-    'flash_available' : (512 - 124 - 12) # Softdevice uses 31 plages of flash. Each page is 4 kb.
+    'flash_available' : 512 - ((31 + 7 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 7, code 3. Each page is 4 kb. 
   },
 };
 
@@ -56,15 +57,17 @@ devices = {
   'LED1' : { 'pin' : 'D5' },
   'LED2' : { 'pin' : 'D4' },
   'LED3' : { 'pin' : 'D3' },
-  'LED4' : { 'pin' : 'D25', 'pin2' : 'D26' },
-  'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' }
-# CAPSENSE D8
+  'IR'   : { 'pin_anode' : 'D26', 'pin_cathode' : 'D25' },
+  'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
+  'CAPSENSE' : { 'pin_rx' : 'D11', 'pin_tx' : 'D12' }
+# NFC D9/D10
+
 };
 
 # left-right, or top-bottom order
 board = {
   'left' : [ 'PD28', 'PD29', 'PD30', 'PD31'],
-  'right' : [ 'GND', '3V', 'D4', 'D5' ],
+  'right' : [ 'GND', '3V', 'D2', 'D1' ],
 };
 
 def get_pins():

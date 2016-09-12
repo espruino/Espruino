@@ -37,6 +37,5 @@ void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data);
 
 void jswrap_nrf_nfcURL(JsVar *url);
 
-
 bool jswrap_nrf_idle();
 void jswrap_nrf_kill();

@@ -325,7 +325,10 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
   JSP_MATCH('(');
   while (lex->tk!=')') {
     if (funcVar) {
-      JsVar *param = jsvAddNamedChild(funcVar, 0, jslGetTokenValueAsString(lex));
+      char buf[JSLEX_MAX_TOKEN_LENGTH+1];
+      buf[0] = '\xFF';
+      strcpy(&buf[1], jslGetTokenValueAsString(lex));
+      JsVar *param = jsvAddNamedChild(funcVar, 0, buf);
       if (!param) { // out of memory
         jspSetError(false);
         return false;
@@ -614,7 +617,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       JsVar *param = jsvObjectIteratorGetKey(&it);
       JsVar *value = jsvObjectIteratorGetValue(&it);
       while (jsvIsFunctionParameter(param) && value) {
-        JsVar *paramName = jsvCopy(param);
+        JsVar *paramName = jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH);
         if (paramName) { // could be out of memory
           jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
           jsvSetValueOfName(paramName, value);
@@ -643,7 +646,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
               value = jspeAssignmentExpression();
             // and if execute, copy it over
             value = jsvSkipNameAndUnLock(value);
-            JsVar *paramName = paramDefined ? jsvCopyNameOnly(param,false,true) : jsvNewFromEmptyString();
+            JsVar *paramName = paramDefined ? jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH) : jsvNewFromEmptyString();
             if (paramName) { // could be out of memory
               jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
               jsvSetValueOfName(paramName, value);
@@ -663,7 +666,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         while (args<argCount) {
           JsVar *param = jsvObjectIteratorGetKey(&it);
           bool paramDefined = jsvIsFunctionParameter(param);
-          JsVar *paramName = paramDefined ? jsvCopyNameOnly(param,false,true) : jsvNewFromEmptyString();
+          JsVar *paramName = paramDefined ? jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH) : jsvNewFromEmptyString();
           if (paramName) {
             jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
             jsvSetValueOfName(paramName, argPtr[args]);
@@ -688,9 +691,12 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             thisVar = jsvSkipName(param);
           } else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
           else if (jsvIsFunctionParameter(param)) {
-            JsVar *paramName = jsvCopy(param);
+            JsVar *paramName = jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH);
             // paramName is already a name (it's a function parameter)
             if (paramName) {// could be out of memory - or maybe just not supplied!
+              jsvMakeFunctionParameter(paramName);
+              JsVar *defaultVal = jsvSkipName(param);
+              if (defaultVal) jsvUnLock(jsvSetValueOfName(paramName, defaultVal));
               jsvAddName(functionRoot, paramName);
               jsvUnLock(paramName);
             }
@@ -1649,9 +1655,10 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
         else if (op==LEX_RSHIFTUNSIGNEDEQUAL) op=LEX_RSHIFTUNSIGNED;
         if (op=='+' && jsvIsName(lhs)) {
           JsVar *currentValue = jsvSkipName(lhs);
-          if (jsvIsString(currentValue) && !jsvIsFlatString(currentValue) && jsvGetRefs(currentValue)==1) {
-            /* A special case for string += where this is the only use of the string,
-             * as we may be able to do a simple append (rather than clone + append)*/
+          if (jsvIsString(currentValue) && !jsvIsFlatString(currentValue) && jsvGetRefs(currentValue)==1 && rhs!=currentValue) {
+            /* A special case for string += where this is the only use of the string
+             * and we're not appending to ourselves. In this case we can do a
+             * simple append (rather than clone + append)*/
             JsVar *str = jsvAsString(rhs, false);
             jsvAppendStringVarComplete(currentValue, str);
             jsvUnLock(str);
@@ -1796,7 +1803,7 @@ NO_INLINE JsVar *jspeStatementVar() {
 
 NO_INLINE JsVar *jspeStatementIf() {
   bool cond;
-  JsVar *var;
+  JsVar *var, *result;
   JSP_ASSERT_MATCH(LEX_R_IF);
   JSP_MATCH('(');
   var = jspeExpression();
@@ -1807,16 +1814,26 @@ NO_INLINE JsVar *jspeStatementIf() {
 
   JSP_SAVE_EXECUTE();
   if (!cond) jspSetNoExecute();
-  jsvUnLock(jspeBlockOrStatement());
-  if (!cond) JSP_RESTORE_EXECUTE();
+  JsVar *a = jspeBlockOrStatement();
+  if (!cond) {
+    jsvUnLock(a);
+    JSP_RESTORE_EXECUTE();
+  } else {
+    result = a;
+  }
   if (lex->tk==LEX_R_ELSE) {
     JSP_ASSERT_MATCH(LEX_R_ELSE);
     JSP_SAVE_EXECUTE();
     if (cond) jspSetNoExecute();
-    jsvUnLock(jspeBlockOrStatement());
-    if (cond) JSP_RESTORE_EXECUTE();
+    JsVar *a = jspeBlockOrStatement();
+    if (cond) {
+      jsvUnLock(a);
+      JSP_RESTORE_EXECUTE();
+    } else {
+      result = a;
+    }
   }
-  return 0;
+  return result;
 }
 
 NO_INLINE JsVar *jspeStatementSwitch() {
