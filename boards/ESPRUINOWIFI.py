@@ -21,7 +21,7 @@ info = {
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "B6",
  'default_console_rx' : "B7",
- 'variables' : 5100,
+ 'variables' : 7148,
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_wifi.bin',
  'binaries' : [
@@ -44,7 +44,7 @@ chip = {
   'part' : "STM32F411CEU6",
   'family' : "STM32F4",
   'package' : "UQFN48",
-  'ram' : 96,
+  'ram' : 128,
   'flash' : 512,
   'speed' : 100,
   'usart' : 6,
