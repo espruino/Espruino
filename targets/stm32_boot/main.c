@@ -140,8 +140,12 @@ int main(void) {
               addr |= _getc_blocking()  << 16;
               addr |= _getc_blocking()  << 8;
               addr |= _getc_blocking();
+              chksumc = ((addr)&0xFF)^((addr>>8)&0xFF)^((addr>>16)&0xFF)^((addr>>24)&0xFF);
               chksum = _getc_blocking();
-              // TODO: check checksum
+              if (chksumc != chksum) {
+                _putc(NACK);
+                break;
+              }
               _putc(ACK);
               setLEDs(7); // jumping...
               unsigned int *ResetHandler = (unsigned int *)(addr + 4);
