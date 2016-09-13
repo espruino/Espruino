@@ -953,8 +953,8 @@ static void ble_stack_init(void)
 
     int softdevice_extra_ram_hack = 0;
 
-    ble_enable_params.common_enable_params.vs_uuid_count  = 3;
-    softdevice_extra_ram_hack += 256; // now we have more UUIDs, SD needs more RAM
+    ble_enable_params.common_enable_params.vs_uuid_count = 3;
+    softdevice_extra_ram_hack += 32; // now we have more UUIDs, SD needs more RAM
 
 
 #ifdef USE_BOOTLOADER
