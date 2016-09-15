@@ -166,6 +166,9 @@ void wakeup_handler() {
 
 void jshInit() {
   jshInitDevices();
+
+  jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
+
   nrf_utils_lfclk_config_and_start();
 
   BITFIELD_CLEAR(jshPinSoftPWM);
@@ -224,6 +227,8 @@ void jshInit() {
   // Turn on SYSTICK - used for handling Ctrl-C behaviour
   SysTick_Config(0xFFFFFF);
 #endif
+
+  jshPinOutput(LED1_PININDEX, !LED1_ONSTATE);
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state

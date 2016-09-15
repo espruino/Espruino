@@ -981,6 +981,10 @@ static void ble_stack_init(void)
     // Register with the SoftDevice handler module for BLE events.
     err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
     APP_ERROR_CHECK(err_code);
+
+    // can only be enabled if we're sure we have a DC-DC
+    /*err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
+    APP_ERROR_CHECK(err_code);*/
 }
 
 // Build advertising data struct to pass into @ref ble_advertising_init.
