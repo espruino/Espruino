@@ -71,13 +71,14 @@ JsVar *jswrap_function_constructor(JsVar *args) {
     if (s) {
       // copy the string - if a string was supplied already we want to make
       // sure we have a new (unreferenced) string
-      JsVar *paramName = jsvNewFromStringVar(s, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
-      jsvUnLock(s);
+      JsVar *paramName = jsvNewFromString("\xFF");
       if (paramName) {
+        jsvAppendStringVarComplete(paramName, s);
         jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
         jsvAddName(fn, paramName);
         jsvUnLock(paramName);
       }
+      jsvUnLock(s);
     }
 
     jsvUnLock(v);

@@ -32,10 +32,7 @@ typedef enum
     IC_REVISION_NRF51_REV1,     /**< IC Revision 1. */
     IC_REVISION_NRF51_REV2,     /**< IC Revision 2. */
     IC_REVISION_NRF51_REV3,     /**< IC Revision 3. */
-    IC_REVISION_NRF51_UNKNOWN,  /**< IC Revision unknown. */
-    IC_REVISION_NRF52_ENG_A,    /**< nRF52 IC Engineering A. */
-    IC_REVISION_NRF52_ENG_B,    /**< nRF52 IC Engineering B. */
-    IC_REVISION_NRF52_UNKNOWN,  /**< IC Revision unknown. */
+    IC_REVISION_NRF51_UNKNOWN   /**< IC Revision unknown. */
 } nrf_ic_revision_t;
 
  /**@brief IC information struct containing the IC revision, RAM size, and FLASH size. */

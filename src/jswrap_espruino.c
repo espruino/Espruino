@@ -573,14 +573,41 @@ JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, 
   "name" : "enableWatchdog",
   "generate" : "jswrap_espruino_enableWatchdog",
   "params" : [
-    ["timeout","float","The timeout in seconds before a watchdog reset"]
+    ["timeout","float","The timeout in seconds before a watchdog reset"],
+    ["isAuto","JsVar","If undefined or true, the watchdog is kicked automatically. If not, you must call `E.kickWatchdog()` yourself"]
   ]
 }
-Enable the watchdog timer. This will reset Espruino if it isn't able to return to the idle loop within the timeout. NOTE: This will not work with `setDeepSleep` unless you explicitly wake Espruino up with an interval of less than the timeout.
+Enable the watchdog timer. This will reset Espruino if it isn't able to return to the idle loop within the timeout.
+
+If `isAuto` is false, you must call `E.kickWatchdog()` yourself every so often or the chip will reset.
+
+**NOTE:** This will not work with `setDeepSleep` unless you explicitly wake Espruino up with an interval of less than the timeout.
+
+**NOTE:** This is only implemented on STM32 devices.
  */
-void jswrap_espruino_enableWatchdog(JsVarFloat time) {
+void jswrap_espruino_enableWatchdog(JsVarFloat time, JsVar *isAuto) {
   if (time<0 || isnan(time)) time=1;
+  if (jsvIsUndefined(isAuto) || jsvGetBool(isAuto))
+    jsiStatus |= JSIS_WATCHDOG_AUTO;
+  else
+    jsiStatus &= ~JSIS_WATCHDOG_AUTO;
   jshEnableWatchDog(time);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "kickWatchdog",
+  "generate" : "jswrap_espruino_kickWatchdog"
+}
+Kicks a Watchdog timer set up with `E.enableWatchdog(..., false)`. See
+`E.enableWatchdog` for more information.
+
+**NOTE:** This is only implemented on STM32 devices.
+ */
+void jswrap_espruino_kickWatchdog() {
+  jshKickWatchDog();
 }
 
 /*JSON{
@@ -812,7 +839,7 @@ Just specify an integer value, either 80 or 160 (for 80 or 160Mhz)
 
 */
 int jswrap_espruino_setClock(JsVar *options) {
-  return jshSetSystemClock(options);
+  return (int)jshSetSystemClock(options);
 }
 
 /*JSON{
@@ -1088,6 +1115,34 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
 
     return (b<<16) | (g<<8) | r;
   }
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "setPassword",
+  "generate" : "jswrap_espruino_setPassword",
+  "params" : [
+    ["opts","JsVar","The password - max 20 chars"]
+  ]
+}
+Set a password on the console (REPL). When powered on, Espruino will
+then demand a password before the console can be used.
+
+To remove the password, call this function with no arguments.
+
+**Note:** There is no protection against multiple password attempts, so someone
+could conceivably try every password in a dictionary.
+
+**Note:** This password is stored in memory in plain text. If someone is able
+to execute arbitrary JavaScript code on the device (eg, you use `eval` on input
+from unknown sources) or read the device's firmware then they may be able to
+obtain it.
+ */
+void jswrap_espruino_setPassword(JsVar *pwd) {
+  if (pwd)
+    pwd = jsvAsString(pwd, false);
+  jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, pwd));
 }
 
 // ----------------------------------------- USB Specific Stuff

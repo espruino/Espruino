@@ -6,7 +6,7 @@
  *           nrf52 from Nordic Semiconductor.
  *
  * @version  V1
- * @date     13. November 2015
+ * @date     23. February 2016
  *
  * @note     Generated with SVDConv V2.81d 
  *           from CMSIS SVD File 'nrf52.svd' Version 1,
@@ -112,7 +112,8 @@ typedef enum {
   PWM2_IRQn                     =  34,              /*!<  34  PWM2                                                             */
   SPIM2_SPIS2_SPI2_IRQn         =  35,              /*!<  35  SPIM2_SPIS2_SPI2                                                 */
   RTC2_IRQn                     =  36,              /*!<  36  RTC2                                                             */
-  I2S_IRQn                      =  37               /*!<  37  I2S                                                              */
+  I2S_IRQn                      =  37,              /*!<  37  I2S                                                              */
+  FPU_IRQn                      =  38               /*!<  38  FPU                                                              */
 } IRQn_Type;
 
 
@@ -166,7 +167,7 @@ typedef enum {
 
 typedef struct {
   __I  uint32_t  PART;                              /*!< Part code                                                             */
-  __I  uint32_t  VARIANT;                           /*!< Part variant                                                          */
+  __I  uint32_t  VARIANT;                           /*!< Part Variant, Hardware version and Production configuration           */
   __I  uint32_t  PACKAGE;                           /*!< Package option                                                        */
   __I  uint32_t  RAM;                               /*!< RAM variant                                                           */
   __I  uint32_t  FLASH;                             /*!< Flash variant                                                         */
@@ -210,6 +211,25 @@ typedef struct {
   __O  uint32_t  POWERCLR;                          /*!< Description cluster[0]: RAM0 power control clear register             */
   __I  uint32_t  RESERVED0;
 } POWER_RAM_Type;
+
+typedef struct {
+  __IO uint32_t  CPU0;                              /*!< AHB bus master priority register for CPU0                             */
+  __IO uint32_t  SPIS1;                             /*!< AHB bus master priority register for SPIM1, SPIS1, TWIM1 and
+                                                         TWIS1                                                                 */
+  __IO uint32_t  RADIO;                             /*!< AHB bus master priority register for RADIO                            */
+  __IO uint32_t  ECB;                               /*!< AHB bus master priority register for ECB                              */
+  __IO uint32_t  CCM;                               /*!< AHB bus master priority register for CCM                              */
+  __IO uint32_t  AAR;                               /*!< AHB bus master priority register for AAR                              */
+  __IO uint32_t  SAADC;                             /*!< AHB bus master priority register for SAADC                            */
+  __IO uint32_t  UARTE;                             /*!< AHB bus master priority register for UARTE                            */
+  __IO uint32_t  SERIAL0;                           /*!< AHB bus master priority register for SPIM0, SPIS0, TWIM0 and
+                                                         TWIS0                                                                 */
+  __IO uint32_t  SERIAL2;                           /*!< AHB bus master priority register for SPIM2 and SPIS2                  */
+  __IO uint32_t  NFCT;                              /*!< AHB bus master priority register for NFCT                             */
+  __IO uint32_t  I2S;                               /*!< AHB bus master priority register for I2S                              */
+  __IO uint32_t  PDM;                               /*!< AHB bus master priority register for PDM                              */
+  __IO uint32_t  PWM;                               /*!< AHB bus master priority register for PWM0, PWM1 and PWM2              */
+} AMLI_RAMPRI_Type;
 
 typedef struct {
   __IO uint32_t  RTS;                               /*!< Pin select for RTS signal                                             */
@@ -470,8 +490,7 @@ typedef struct {                                    /*!< FICR Structure         
   __I  uint32_t  RESERVED0[4];
   __I  uint32_t  CODEPAGESIZE;                      /*!< Code memory page size                                                 */
   __I  uint32_t  CODESIZE;                          /*!< Code memory size                                                      */
-  __I  uint32_t  RESERVED1[17];
-  __I  uint32_t  CONFIGID;                          /*!< Configuration identifier                                              */
+  __I  uint32_t  RESERVED1[18];
   __I  uint32_t  DEVICEID[2];                       /*!< Description collection[0]: Device identifier                          */
   __I  uint32_t  RESERVED2[6];
   __I  uint32_t  ER[4];                             /*!< Description collection[0]: Encryption Root, word 0                    */
@@ -508,7 +527,7 @@ typedef struct {                                    /*!< UICR Structure         
   __I  uint32_t  RESERVED1[64];
   __IO uint32_t  PSELRESET[2];                      /*!< Description collection[0]: Mapping of the nRESET function (see
                                                          POWER chapter for details)                                            */
-  __IO uint32_t  APPROTECT;                         /*!< Access port protection                                                */
+  __IO uint32_t  APPROTECT;                         /*!< Access Port protection                                                */
   __IO uint32_t  NFCPINS;                           /*!< Setting of pins dedicated to NFC functionality: NFC antenna
                                                          or GPIO                                                               */
 } NRF_UICR_Type;
@@ -527,7 +546,7 @@ typedef struct {                                    /*!< BPROT Structure        
   __I  uint32_t  RESERVED0[384];
   __IO uint32_t  CONFIG0;                           /*!< Block protect configuration register 0                                */
   __IO uint32_t  CONFIG1;                           /*!< Block protect configuration register 1                                */
-  __IO uint32_t  DISABLEINDEBUG;                    /*!< Disable protection mechanism in debug mode                            */
+  __IO uint32_t  DISABLEINDEBUG;                    /*!< Disable protection mechanism in debug interface mode                  */
   __IO uint32_t  UNUSED0;                           /*!< Unspecified                                                           */
   __IO uint32_t  CONFIG2;                           /*!< Block protect configuration register 2                                */
   __IO uint32_t  CONFIG3;                           /*!< Block protect configuration register 3                                */
@@ -592,7 +611,7 @@ typedef struct {                                    /*!< CLOCK Structure        
   __O  uint32_t  TASKS_HFCLKSTOP;                   /*!< Stop HFCLK crystal oscillator                                         */
   __O  uint32_t  TASKS_LFCLKSTART;                  /*!< Start LFCLK source                                                    */
   __O  uint32_t  TASKS_LFCLKSTOP;                   /*!< Stop LFCLK source                                                     */
-  __O  uint32_t  TASKS_CAL;                         /*!< Start calibration of LFRC or LFULP oscillator                         */
+  __O  uint32_t  TASKS_CAL;                         /*!< Start calibration of LFRC oscillator                                  */
   __O  uint32_t  TASKS_CTSTART;                     /*!< Start calibration timer                                               */
   __O  uint32_t  TASKS_CTSTOP;                      /*!< Stop calibration timer                                                */
   __I  uint32_t  RESERVED0[57];
@@ -619,6 +638,21 @@ typedef struct {                                    /*!< CLOCK Structure        
   __I  uint32_t  RESERVED7[8];
   __IO uint32_t  TRACECONFIG;                       /*!< Clocking options for the Trace Port debug interface                   */
 } NRF_CLOCK_Type;
+
+
+/* ================================================================================ */
+/* ================                      AMLI                      ================ */
+/* ================================================================================ */
+
+
+/**
+  * @brief AHB Multi-Layer Interface (AMLI)
+  */
+
+typedef struct {                                    /*!< AMLI Structure                                                        */
+  __I  uint32_t  RESERVED0[896];
+  AMLI_RAMPRI_Type RAMPRI;                          /*!< RAM configurable priority configuration structure                     */
+} NRF_AMLI_Type;
 
 
 /* ================================================================================ */
@@ -911,7 +945,8 @@ typedef struct {                                    /*!< TWIM Structure         
   __I  uint32_t  RESERVED0;
   __O  uint32_t  TASKS_STARTTX;                     /*!< Start TWI transmit sequence                                           */
   __I  uint32_t  RESERVED1[2];
-  __O  uint32_t  TASKS_STOP;                        /*!< Stop TWI transaction                                                  */
+  __O  uint32_t  TASKS_STOP;                        /*!< Stop TWI transaction. Must be issued while the TWI master is
+                                                         not suspended.                                                        */
   __I  uint32_t  RESERVED2;
   __O  uint32_t  TASKS_SUSPEND;                     /*!< Suspend TWI transaction                                               */
   __O  uint32_t  TASKS_RESUME;                      /*!< Resume TWI transaction                                                */
@@ -1253,7 +1288,7 @@ typedef struct {                                    /*!< TIMER Structure        
   __O  uint32_t  TASKS_STOP;                        /*!< Stop Timer                                                            */
   __O  uint32_t  TASKS_COUNT;                       /*!< Increment Timer (Counter mode only)                                   */
   __O  uint32_t  TASKS_CLEAR;                       /*!< Clear time                                                            */
-  __O  uint32_t  TASKS_SHUTDOWN;                    /*!< Shut down timer                                                       */
+  __O  uint32_t  TASKS_SHUTDOWN;                    /*!< Deprecated register - Shut down timer                                 */
   __I  uint32_t  RESERVED0[11];
   __O  uint32_t  TASKS_CAPTURE[6];                  /*!< Description collection[0]: Capture Timer value to CC[0] register      */
   __I  uint32_t  RESERVED1[58];
@@ -1876,6 +1911,20 @@ typedef struct {                                    /*!< I2S Structure          
 
 
 /* ================================================================================ */
+/* ================                       FPU                      ================ */
+/* ================================================================================ */
+
+
+/**
+  * @brief FPU (FPU)
+  */
+
+typedef struct {                                    /*!< FPU Structure                                                         */
+  __I  uint32_t  UNUSED;                            /*!< Unused.                                                               */
+} NRF_FPU_Type;
+
+
+/* ================================================================================ */
 /* ================                      GPIO                      ================ */
 /* ================================================================================ */
 
@@ -1893,8 +1942,8 @@ typedef struct {                                    /*!< GPIO Structure         
   __IO uint32_t  DIR;                               /*!< Direction of GPIO pins                                                */
   __IO uint32_t  DIRSET;                            /*!< DIR set register                                                      */
   __IO uint32_t  DIRCLR;                            /*!< DIR clear register                                                    */
-  __IO uint32_t  LATCH;                             /*!< Latch indicating which GPIO pins have met the criteria set in
-                                                         PIN_CNF[n].SENSE register                                             */
+  __IO uint32_t  LATCH;                             /*!< Latch register indicating what GPIO pins that have met the criteria
+                                                         set in the PIN_CNF[n].SENSE registers                                 */
   __IO uint32_t  DETECTMODE;                        /*!< Select between default DETECT signal behaviour and LDETECT mode       */
   __I  uint32_t  RESERVED1[118];
   __IO uint32_t  PIN_CNF[32];                       /*!< Description collection[0]: Configuration of GPIO pins                 */
@@ -1928,6 +1977,7 @@ typedef struct {                                    /*!< GPIO Structure         
 #define NRF_BPROT_BASE                  0x40000000UL
 #define NRF_POWER_BASE                  0x40000000UL
 #define NRF_CLOCK_BASE                  0x40000000UL
+#define NRF_AMLI_BASE                   0x40000000UL
 #define NRF_RADIO_BASE                  0x40001000UL
 #define NRF_UARTE0_BASE                 0x40002000UL
 #define NRF_UART0_BASE                  0x40002000UL
@@ -1986,6 +2036,7 @@ typedef struct {                                    /*!< GPIO Structure         
 #define NRF_SPI2_BASE                   0x40023000UL
 #define NRF_RTC2_BASE                   0x40024000UL
 #define NRF_I2S_BASE                    0x40025000UL
+#define NRF_FPU_BASE                    0x40026000UL
 #define NRF_P0_BASE                     0x50000000UL
 
 
@@ -1998,6 +2049,7 @@ typedef struct {                                    /*!< GPIO Structure         
 #define NRF_BPROT                       ((NRF_BPROT_Type          *) NRF_BPROT_BASE)
 #define NRF_POWER                       ((NRF_POWER_Type          *) NRF_POWER_BASE)
 #define NRF_CLOCK                       ((NRF_CLOCK_Type          *) NRF_CLOCK_BASE)
+#define NRF_AMLI                        ((NRF_AMLI_Type           *) NRF_AMLI_BASE)
 #define NRF_RADIO                       ((NRF_RADIO_Type          *) NRF_RADIO_BASE)
 #define NRF_UARTE0                      ((NRF_UARTE_Type          *) NRF_UARTE0_BASE)
 #define NRF_UART0                       ((NRF_UART_Type           *) NRF_UART0_BASE)
@@ -2056,6 +2108,7 @@ typedef struct {                                    /*!< GPIO Structure         
 #define NRF_SPI2                        ((NRF_SPI_Type            *) NRF_SPI2_BASE)
 #define NRF_RTC2                        ((NRF_RTC_Type            *) NRF_RTC2_BASE)
 #define NRF_I2S                         ((NRF_I2S_Type            *) NRF_I2S_BASE)
+#define NRF_FPU                         ((NRF_FPU_Type            *) NRF_FPU_BASE)
 #define NRF_P0                          ((NRF_GPIO_Type           *) NRF_P0_BASE)
 
 

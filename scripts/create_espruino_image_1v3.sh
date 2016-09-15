@@ -56,6 +56,7 @@ dd bs=1 seek=$BOOTLOADERSIZE if=$ESPRUINOFILE of=$IMGFILE conv=notrunc || { echo
 cp $IMGFILE $ESPRUINOFILE || { echo 'Build failed' ; exit 1; }
 echo ---------------------
 echo Finished! Written to $IMGFILE and copied to $ESPRUINOFILE
+echo python scripts/stm32loader.py -p /dev/ttyUSB0 -b 460800 -ewv $ESPRUINOFILE
 echo ---------------------
 
 #echo python scripts/stm32loader.py -b 460800 -ewv $IMGFILE

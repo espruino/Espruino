@@ -68,7 +68,7 @@ static void telnetLineCB(char *line) {
   // Pass the line to the interactive module ...
 
   jshPushIOCharEvents(jsiGetConsoleDevice(), line, strlen(line));
-  //jspEvaluate(line);
+  //jspEvaluate(line, false);
   //jsiDumpState();
   telnet_send("JS> ");
 } // End of lineCB

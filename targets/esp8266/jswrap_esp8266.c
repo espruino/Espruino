@@ -105,17 +105,14 @@ JsVar *jswrap_ESP8266_getResetInfo() {
   "name"     : "logDebug",
   "generate" : "jswrap_ESP8266_logDebug",
   "params"   : [
-    ["enable", "JsVar", "Enable or disable the debug logging."]
+    ["enable", "bool", "Enable or disable the debug logging."]
   ]
 }
 Enable or disable the logging of debug information.  A value of `true` enables debug logging while a value of `false` disables debug logging.  Debug output is sent to UART1 (gpio2).
  */
-void jswrap_ESP8266_logDebug(
-    JsVar *jsDebug
-  ) {
-  uint8 enable = (uint8)jsvGetBool(jsDebug);
+void jswrap_ESP8266_logDebug(bool enable) {
   os_printf("ESP8266.logDebug, enable=%d\n", enable);
-  esp8266_logInit(jsvGetBool(jsDebug) ? LOG_MODE_ON1 : LOG_MODE_OFF);
+  esp8266_logInit(enable ? LOG_MODE_ON1 : LOG_MODE_OFF);
 }
 
 /*JSON{
@@ -124,15 +121,12 @@ void jswrap_ESP8266_logDebug(
   "name"     : "setLog",
   "generate" : "jswrap_ESP8266_setLog",
   "params"   : [
-    ["mode", "JsVar", "Debug log mode: 0=off, 1=in-memory only, 2=in-mem and uart0, 3=in-mem and uart1."]
+    ["mode", "int", "Debug log mode: 0=off, 1=in-memory only, 2=in-mem and uart0, 3=in-mem and uart1."]
   ]
 }
 Set the debug logging mode. It can be disabled (which frees ~1.2KB of heap), enabled in-memory only, or in-memory and output to a UART.
  */
-void jswrap_ESP8266_setLog(
-    JsVar *jsMode
-) {
-  uint8 mode = (uint8)jsvGetInteger(jsMode);
+void jswrap_ESP8266_setLog(int mode) {
   os_printf("ESP8266 setLog, mode=%d\n", mode);
   esp8266_logInit(mode);
 }
@@ -145,13 +139,14 @@ void jswrap_ESP8266_setLog(
 }
 Prints the contents of the debug log to the console.
  */
-void jswrap_ESP8266_printLog(
-) {
+void jswrap_ESP8266_printLog() {
   JsVar *line = esp8266_logGetLine();
   while (jsvGetStringLength(line) > 0) {
     jsiConsolePrintStringVar(line);
+    jsvUnLock(line);
     line = esp8266_logGetLine();
   }
+  jsvUnLock(line);
 }
 
 /*JSON{

@@ -74,8 +74,8 @@ typedef enum
  */
 typedef enum
 {
-    NRF_I2S_MODE_MASTER = I2S_CONFIG_MODE_MODE_MASTER, ///< Master mode.
-    NRF_I2S_MODE_SLAVE  = I2S_CONFIG_MODE_MODE_SLAVE   ///< Slave mode.
+    NRF_I2S_MODE_MASTER = I2S_CONFIG_MODE_MODE_Master, ///< Master mode.
+    NRF_I2S_MODE_SLAVE  = I2S_CONFIG_MODE_MODE_Slave   ///< Slave mode.
 } nrf_i2s_mode_t;
 
 /**
@@ -125,9 +125,9 @@ typedef enum
  */
 typedef enum
 {
-    NRF_I2S_SWIDTH_8BIT  = I2S_CONFIG_SWIDTH_SWIDTH_8BIT,  ///< 8 bit.
-    NRF_I2S_SWIDTH_16BIT = I2S_CONFIG_SWIDTH_SWIDTH_16BIT, ///< 16 bit.
-    NRF_I2S_SWIDTH_24BIT = I2S_CONFIG_SWIDTH_SWIDTH_24BIT  ///< 24 bit.
+    NRF_I2S_SWIDTH_8BIT  = I2S_CONFIG_SWIDTH_SWIDTH_8Bit,  ///< 8 bit.
+    NRF_I2S_SWIDTH_16BIT = I2S_CONFIG_SWIDTH_SWIDTH_16Bit, ///< 16 bit.
+    NRF_I2S_SWIDTH_24BIT = I2S_CONFIG_SWIDTH_SWIDTH_24Bit  ///< 24 bit.
 } nrf_i2s_swidth_t;
 
 /**
@@ -135,8 +135,8 @@ typedef enum
  */
 typedef enum
 {
-    NRF_I2S_ALIGN_LEFT  = I2S_CONFIG_ALIGN_ALIGN_LEFT, ///< Left-aligned.
-    NRF_I2S_ALIGN_RIGHT = I2S_CONFIG_ALIGN_ALIGN_RIGHT ///< Right-aligned.
+    NRF_I2S_ALIGN_LEFT  = I2S_CONFIG_ALIGN_ALIGN_Left, ///< Left-aligned.
+    NRF_I2S_ALIGN_RIGHT = I2S_CONFIG_ALIGN_ALIGN_Right ///< Right-aligned.
 } nrf_i2s_align_t;
 
 /**
@@ -145,7 +145,7 @@ typedef enum
 typedef enum
 {
     NRF_I2S_FORMAT_I2S     = I2S_CONFIG_FORMAT_FORMAT_I2S,    ///< Original I2S format.
-    NRF_I2S_FORMAT_ALIGNED = I2S_CONFIG_FORMAT_FORMAT_ALIGNED ///< Alternate (left- or right-aligned) format.
+    NRF_I2S_FORMAT_ALIGNED = I2S_CONFIG_FORMAT_FORMAT_Aligned ///< Alternate (left- or right-aligned) format.
 } nrf_i2s_format_t;
 
 /**
@@ -153,9 +153,9 @@ typedef enum
  */
 typedef enum
 {
-    NRF_I2S_CHANNELS_STEREO = I2S_CONFIG_CHANNELS_CHANNELS_STEREO, ///< Stereo.
-    NRF_I2S_CHANNELS_LEFT   = I2S_CONFIG_CHANNELS_CHANNELS_LEFT,   ///< Left only.
-    NRF_I2S_CHANNELS_RIGHT  = I2S_CONFIG_CHANNELS_CHANNELS_RIGHT   ///< Right only.
+    NRF_I2S_CHANNELS_STEREO = I2S_CONFIG_CHANNELS_CHANNELS_Stereo, ///< Stereo.
+    NRF_I2S_CHANNELS_LEFT   = I2S_CONFIG_CHANNELS_CHANNELS_Left,   ///< Left only.
+    NRF_I2S_CHANNELS_RIGHT  = I2S_CONFIG_CHANNELS_CHANNELS_Right   ///< Right only.
 } nrf_i2s_channels_t;
 
 
@@ -410,12 +410,12 @@ __STATIC_INLINE bool nrf_i2s_int_enable_check(NRF_I2S_Type const * p_i2s,
 
 __STATIC_INLINE void nrf_i2s_enable(NRF_I2S_Type * p_i2s)
 {
-    p_i2s->ENABLE = (I2S_ENABLE_ENABLE_ENABLE << I2S_ENABLE_ENABLE_Pos);
+    p_i2s->ENABLE = (I2S_ENABLE_ENABLE_Enabled << I2S_ENABLE_ENABLE_Pos);
 }
 
 __STATIC_INLINE void nrf_i2s_disable(NRF_I2S_Type * p_i2s)
 {
-    p_i2s->ENABLE = (I2S_ENABLE_ENABLE_DISABLE << I2S_ENABLE_ENABLE_Pos);
+    p_i2s->ENABLE = (I2S_ENABLE_ENABLE_Disabled << I2S_ENABLE_ENABLE_Pos);
 }
 
 __STATIC_INLINE void nrf_i2s_pins_set(NRF_I2S_Type * p_i2s,
@@ -468,13 +468,13 @@ __STATIC_INLINE bool nrf_i2s_configure(NRF_I2S_Type * p_i2s,
     if (mck_setup == NRF_I2S_MCK_DISABLED)
     {
         p_i2s->CONFIG.MCKEN =
-            (I2S_CONFIG_MCKEN_MCKEN_DISABLE << I2S_CONFIG_MCKEN_MCKEN_Pos);
+            (I2S_CONFIG_MCKEN_MCKEN_Disabled << I2S_CONFIG_MCKEN_MCKEN_Pos);
     }
     else
     {
         p_i2s->CONFIG.MCKFREQ = mck_setup;
         p_i2s->CONFIG.MCKEN =
-            (I2S_CONFIG_MCKEN_MCKEN_ENABLE << I2S_CONFIG_MCKEN_MCKEN_Pos);
+            (I2S_CONFIG_MCKEN_MCKEN_Enabled << I2S_CONFIG_MCKEN_MCKEN_Pos);
     }
 
     return true;

@@ -16,19 +16,17 @@
 #include "ble_gattc.h"
 #include "ble_cts_c.h"
 #include "ble_date_time.h"
-#include "device_manager.h"
 #include "ble_db_discovery.h"
-#include "app_trace.h"
+#include "nrf_log.h"
+#include "nrf_log.h"
+#include "sdk_common.h"
 
-#define LOG          app_trace_log            /**< Debug logger macro that will be used in this file to do logging of important information over UART. */
+#define CTS_LOG      NRF_LOG_PRINTF_DEBUG     /**< Debug logger macro that will be used in this file to do logging of important information over UART. */
 #define CTS_YEAR_MIN 1582                     /**< The lowest valid Current Time year is the year when the western calendar was introduced. */
 #define CTS_YEAR_MAX 9999                     /**< The highest possible Current Time. */
 
 #define CTS_C_CURRENT_TIME_EXPECTED_LENGTH 10 /**< |     Year        |Month   |Day     |Hours   |Minutes |Seconds |Weekday |Fraction|Reason  |
                                                    |     2 bytes     |1 byte  |1 byte  |1 byte  |1 byte  |1 byte  |1 byte  |1 byte  |1 byte  | = 10 bytes. */
-
-static ble_cts_c_t * mp_ble_cts;              /**< Pointer to the current instance of the CTS Client module. The memory for this provided by the application.*/
-
 
 
 /**@brief Function for handling events from the database discovery module.
@@ -42,18 +40,21 @@ static ble_cts_c_t * mp_ble_cts;              /**< Pointer to the current instan
  * @param[in] p_evt Pointer to the event received from the database discovery module.
  *
  */
-static void db_discover_evt_handler(ble_db_discovery_evt_t * p_evt)
+void ble_cts_c_on_db_disc_evt(ble_cts_c_t * p_cts, ble_db_discovery_evt_t * p_evt)
 {
-    LOG("[CTS]: Database Discovery handler called with event 0x%x\r\n", p_evt->evt_type);
+    CTS_LOG("[CTS]: Database Discovery handler called with event 0x%x\r\n", p_evt->evt_type);
 
     ble_cts_c_evt_t evt;
-
+    const ble_gatt_db_char_t * p_chars = p_evt->params.discovered_db.charateristics;
+    
+    evt.evt_type    = BLE_CTS_C_EVT_DISCOVERY_FAILED;
+    evt.conn_handle = p_evt->conn_handle;
+    
     // Check if the Current Time Service was discovered.
     if (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE &&
         p_evt->params.discovered_db.srv_uuid.uuid == BLE_UUID_CURRENT_TIME_SERVICE &&
         p_evt->params.discovered_db.srv_uuid.type == BLE_UUID_TYPE_BLE)
     {
-        mp_ble_cts->conn_handle = p_evt->conn_handle;
 
         // Find the handles of the Current Time characteristic.
         uint32_t i;
@@ -64,47 +65,39 @@ static void db_discover_evt_handler(ble_db_discovery_evt_t * p_evt)
                 BLE_UUID_CURRENT_TIME_CHAR)
             {
                 // Found Current Time characteristic. Store CCCD and value handle and break.
-                mp_ble_cts->cts_cccd_handle =
-                    p_evt->params.discovered_db.charateristics[i].cccd_handle;
-                mp_ble_cts->current_time_handle =
-                    p_evt->params.discovered_db.charateristics[i].characteristic.handle_value;
+                evt.params.char_handles.cts_handle      = p_chars->characteristic.handle_value;
+                evt.params.char_handles.cts_cccd_handle = p_chars->cccd_handle;
                 break;
             }
         }
 
-        LOG("[CTS]: Current Time Service discovered at peer.\r\n");
+        CTS_LOG("[CTS]: Current Time Service discovered at peer.\r\n");
 
-        evt.evt_type = BLE_CTS_C_EVT_DISCOVERY_COMPLETE;
-
-        mp_ble_cts->evt_handler(mp_ble_cts, &evt);
+        evt.evt_type    = BLE_CTS_C_EVT_DISCOVERY_COMPLETE;
     }
-    else
-    {
-        evt.evt_type = BLE_CTS_C_EVT_SERVICE_NOT_FOUND;
-        mp_ble_cts->evt_handler(mp_ble_cts, &evt);
-    }
+    p_cts->evt_handler(p_cts, &evt);
 }
 
 
 uint32_t ble_cts_c_init(ble_cts_c_t * p_cts, ble_cts_c_init_t const * p_cts_init)
 {
+    //Verify that the parameters needed for to initialize this instance of CTS are not NULL.
     VERIFY_PARAM_NOT_NULL(p_cts);
     VERIFY_PARAM_NOT_NULL(p_cts_init);
     VERIFY_PARAM_NOT_NULL(p_cts_init->error_handler);
     VERIFY_PARAM_NOT_NULL(p_cts_init->evt_handler);
 
-    ble_uuid_t cts_uuid;
-
-    mp_ble_cts = p_cts;
+    static ble_uuid_t cts_uuid;
 
     BLE_UUID_BLE_ASSIGN(cts_uuid, BLE_UUID_CURRENT_TIME_SERVICE);
 
-    p_cts->evt_handler         = p_cts_init->evt_handler;
-    p_cts->error_handler       = p_cts_init->error_handler;
-    p_cts->conn_handle         = BLE_CONN_HANDLE_INVALID;
-    p_cts->current_time_handle = BLE_GATT_HANDLE_INVALID;
+    p_cts->evt_handler                  = p_cts_init->evt_handler;
+    p_cts->error_handler                = p_cts_init->error_handler;
+    p_cts->conn_handle                  = BLE_CONN_HANDLE_INVALID;
+    p_cts->char_handles.cts_handle      = BLE_GATT_HANDLE_INVALID;
+    p_cts->char_handles.cts_cccd_handle = BLE_GATT_HANDLE_INVALID;
 
-    return ble_db_discovery_evt_register(&cts_uuid, db_discover_evt_handler);
+    return ble_db_discovery_evt_register(&cts_uuid);
 }
 
 
@@ -129,7 +122,7 @@ static uint32_t current_time_decode(current_time_char_t * p_time,
         return NRF_ERROR_DATA_SIZE;
     }
 
-    LOG("Current Time read response data: %02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X \r\n",
+    CTS_LOG("Current Time read response data: %02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X \r\n",
         p_data[0],
         p_data[1],
         p_data[2],
@@ -233,6 +226,12 @@ static void current_time_read(ble_cts_c_t * p_cts, const ble_evt_t * p_ble_evt)
     ble_cts_c_evt_t evt;
     uint32_t        err_code = NRF_SUCCESS;
 
+    // Check if the event is on the same connection as this cts instance
+    if (p_cts->conn_handle != p_ble_evt->evt.gattc_evt.conn_handle)
+    {
+        return;
+    }
+
     if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS)
     {
         err_code = current_time_decode(&evt.params.current_time,
@@ -243,7 +242,6 @@ static void current_time_read(ble_cts_c_t * p_cts, const ble_evt_t * p_ble_evt)
         {
             // The data length was invalid, decoding was not completed.
             evt.evt_type = BLE_CTS_C_EVT_INVALID_TIME;
-            p_cts->evt_handler(p_cts, &evt);
         }
         else
         {
@@ -254,15 +252,14 @@ static void current_time_read(ble_cts_c_t * p_cts, const ble_evt_t * p_ble_evt)
             {
                 // Invalid time received.
                 evt.evt_type = BLE_CTS_C_EVT_INVALID_TIME;
-                p_cts->evt_handler(p_cts, &evt);
             }
             else
             {
                 // Valid time reveiced.
                 evt.evt_type = BLE_CTS_C_EVT_CURRENT_TIME;
-                p_cts->evt_handler(p_cts, &evt);
             }
         }
+        p_cts->evt_handler(p_cts, &evt);
     }
 }
 
@@ -274,8 +271,10 @@ static void current_time_read(ble_cts_c_t * p_cts, const ble_evt_t * p_ble_evt)
  */
 static void on_disconnect(ble_cts_c_t * p_cts, ble_evt_t const * p_ble_evt)
 {
-    // The connection handle is now invalid. It will be re-initialized upon connection.
-    p_cts->conn_handle = BLE_CONN_HANDLE_INVALID;
+    if (p_cts->conn_handle == p_ble_evt->evt.gap_evt.conn_handle)
+    {
+        p_cts->conn_handle = BLE_CONN_HANDLE_INVALID;
+    }
 
     if (ble_cts_c_is_cts_discovered(p_cts))
     {
@@ -286,21 +285,18 @@ static void on_disconnect(ble_cts_c_t * p_cts, ble_evt_t const * p_ble_evt)
         evt.evt_type = BLE_CTS_C_EVT_DISCONN_COMPLETE;
 
         p_cts->evt_handler(p_cts, &evt);
-        p_cts->current_time_handle = BLE_GATT_HANDLE_INVALID;
+        p_cts->char_handles.cts_handle      = BLE_GATT_HANDLE_INVALID;
+        p_cts->char_handles.cts_cccd_handle = BLE_GATT_HANDLE_INVALID;
     }
 }
 
 
 void ble_cts_c_on_ble_evt(ble_cts_c_t * p_cts, ble_evt_t const * p_ble_evt)
 {
-    LOG("[CTS]: BLE event handler called with event 0x%x\r\n", p_ble_evt->header.evt_id);
+    CTS_LOG("[CTS]: BLE event handler called with event 0x%x\r\n", p_ble_evt->header.evt_id);
 
     switch (p_ble_evt->header.evt_id)
     {
-        case BLE_GAP_EVT_CONNECTED:
-            p_cts->conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-            break;
-
         case BLE_GATTC_EVT_READ_RSP:
             current_time_read(p_cts, p_ble_evt);
             break;
@@ -323,7 +319,22 @@ uint32_t ble_cts_c_current_time_read(ble_cts_c_t const * p_cts)
         return NRF_ERROR_NOT_FOUND;
     }
 
-    return sd_ble_gattc_read(p_cts->conn_handle, p_cts->current_time_handle, 0);
+    return sd_ble_gattc_read(p_cts->conn_handle, p_cts->char_handles.cts_handle, 0);
 }
 
 
+uint32_t ble_cts_c_handles_assign(ble_cts_c_t               * p_cts,
+                                  const uint16_t              conn_handle,
+                                  const ble_cts_c_handles_t * p_peer_handles)
+{
+    VERIFY_PARAM_NOT_NULL(p_cts);
+
+    p_cts->conn_handle = conn_handle;
+    if (p_peer_handles != NULL)
+    {
+        p_cts->char_handles.cts_cccd_handle = p_peer_handles->cts_cccd_handle;
+        p_cts->char_handles.cts_handle = p_peer_handles->cts_handle;
+    }
+
+    return NRF_SUCCESS;
+}

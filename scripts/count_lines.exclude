@@ -1,6 +1,5 @@
 ^\./archives
-^\./targets/stm32f
-^\./targets/stm32l
+^\./targetlibs
 ^\./targets/libmbed
 ^\./libs/fat_sd
 ^\./libs/math

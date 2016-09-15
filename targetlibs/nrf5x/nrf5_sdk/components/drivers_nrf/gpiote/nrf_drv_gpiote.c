@@ -462,7 +462,6 @@ void GPIOTE_IRQHandler(void)
     uint32_t status = 0;
     uint32_t input = 0;
 
-
     /* collect status of all GPIOTE pin events. Processing is done once all are collected and cleared.*/
     uint32_t i;
     nrf_gpiote_events_t event = NRF_GPIOTE_EVENTS_IN_0;
@@ -509,33 +508,73 @@ void GPIOTE_IRQHandler(void)
     if (status & (uint32_t)NRF_GPIOTE_INT_PORT_MASK)
     {
         /* Process port event. */
-        for (i = 0; i < GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS; i++)
+        uint8_t repeat = 0;
+        uint32_t toggle_mask = 0;
+        uint32_t pins_to_check = 0xFFFFFFFFuL;
+
+        do
         {
-            if (m_cb.port_handlers_pins[i] != PIN_NOT_USED)
+            repeat = 0;
+            for (i = 0; i < GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS; i++)
             {
                 uint8_t pin_and_sense = m_cb.port_handlers_pins[i];
                 nrf_drv_gpiote_pin_t pin = (pin_and_sense & ~SENSE_FIELD_MASK);
-                nrf_drv_gpiote_evt_handler_t handler = channel_handler_get(channel_port_get(pin));
-                if (handler)
+
+                if ((m_cb.port_handlers_pins[i] != PIN_NOT_USED)
+                    && ((1UL << pin) & pins_to_check))
                 {
                     nrf_gpiote_polarity_t polarity =
-                            (nrf_gpiote_polarity_t)((pin_and_sense & SENSE_FIELD_MASK) >> SENSE_FIELD_POS);
-                    mask = 1 << pin;
-                    nrf_gpio_pin_sense_t sense = nrf_gpio_pin_sense_get(pin);
-                    if (((mask & input) && (sense==NRF_GPIO_PIN_SENSE_HIGH)) ||
-                       (!(mask & input) && (sense==NRF_GPIO_PIN_SENSE_LOW))  )
+                                (nrf_gpiote_polarity_t)((pin_and_sense & SENSE_FIELD_MASK) >> SENSE_FIELD_POS);
+                    nrf_drv_gpiote_evt_handler_t handler = channel_handler_get(channel_port_get(pin));
+                    if (handler || polarity == NRF_GPIOTE_POLARITY_TOGGLE)
                     {
+                        mask = 1 << pin;
                         if (polarity == NRF_GPIOTE_POLARITY_TOGGLE)
                         {
-                            nrf_gpio_pin_sense_t next_sense = (sense == NRF_GPIO_PIN_SENSE_HIGH) ?
-                                    NRF_GPIO_PIN_SENSE_LOW : NRF_GPIO_PIN_SENSE_HIGH;
-                            nrf_gpio_cfg_sense_set(pin, next_sense);
+                            toggle_mask |= mask;
                         }
-                        handler(pin, polarity);
+                        nrf_gpio_pin_sense_t sense = nrf_gpio_pin_sense_get(pin);
+
+                        if (((mask & input) && (sense==NRF_GPIO_PIN_SENSE_HIGH)) ||
+                           (!(mask & input) && (sense==NRF_GPIO_PIN_SENSE_LOW))  )
+                        {
+                            if (polarity == NRF_GPIOTE_POLARITY_TOGGLE)
+                            {
+                                nrf_gpio_pin_sense_t next_sense = (sense == NRF_GPIO_PIN_SENSE_HIGH) ?
+                                        NRF_GPIO_PIN_SENSE_LOW : NRF_GPIO_PIN_SENSE_HIGH;
+                                nrf_gpio_cfg_sense_set(pin, next_sense);
+                                ++repeat;
+                            }
+                            if (handler)
+                            {
+                                handler(pin, polarity);
+                            }
+                        }
                     }
                 }
             }
+
+            if (repeat)
+            {
+                // When one of the pins in low-accuracy and toggle mode becomes active,
+                // it's sense mode is inverted to clear the internal SENSE signal.
+                // State of any other enabled low-accuracy input in toggle mode must be checked
+                // explicitly, because it does not trigger the interrput when SENSE signal is active.
+                // For more information about SENSE functionality, refer to Product Specification.
+                uint32_t new_input = nrf_gpio_pins_read();
+                if (new_input == input)
+                {
+                    //No change.
+                    repeat = 0;
+                }
+                else
+                {
+                    input = new_input;
+                    pins_to_check = toggle_mask;
+                }
+            }
         }
+        while (repeat);
     }
 }
 //lint -restore

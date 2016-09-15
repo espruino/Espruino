@@ -35,6 +35,17 @@ int main(void){
   jshInit();
 #ifdef USB
   MX_USB_DEVICE_Init();
+#if !defined(LEGACY_USB) && defined(USB_VSENSE_PIN)
+  // If there is no power on the USB VSENSE pin at the moment,
+  // make sure we suspend the USB device (or when powering a board
+  // without USB, when it enters deep sleep it'll still be drawing
+  // almost a milliamp)
+  if (!jshPinGetValue(USB_VSENSE_PIN)) {
+    extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
+    extern void HAL_PCD_SuspendCallback(PCD_HandleTypeDef *hpcd);
+    HAL_PCD_SuspendCallback(&hpcd_USB_OTG_FS);
+  }
+#endif
 #endif
 
   bool buttonState = false;

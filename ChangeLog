@@ -1,3 +1,24 @@
+     1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
+            Add shortcut for quick execution of common call types
+            Fix BBC micro:bit save() regression from 1v86
+            Fix 'lock overflow' when calling methods with 'this' bound (fix #870, fix #885)
+            Fix jsvStringIteratorGetCharOrMinusOne for zero-length strings
+            Allow tab-completion straight after '.'
+            Make sure execution stops for native functions if there's an error when parsing arguments
+            NRF5x: remove setName and add functionality to setAdvertising, along with advertising interval
+            NRF5x: allow raw advertising data in setAdvertising
+            Add E.setPassword - allows Espruino console to be locked
+            Fix pin header numbering for BBC micro:bit (it changed for the production version) (fix #896)
+            Allow Magnetometer speed to be specified for Puck.js
+            Fix out of memory when appending a string to itself
+            Allow members of the same name as function arguments to be added to a function (fix #913)
+            Fix STM32F4 RTC stopping if reset during first 1 sec of boot, also fix Espruino WiFi board clock startup
+            Fix issue where native functions couldn't be replaced by non-native fns (fix #879)
+            If statements now return values (fix #909)
+            Fix >8 bit SPI when sending single elements with SPI.send (fix #897)
+            Sockets now fire 'end' events (fix #886)
+            Added Graphics.draw/fillCircle (fix #920)
+
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
             Fix lock 'leak' in Telnet when Telnet is turned off
             Add Telnet serial device to allow redirection
@@ -18,6 +39,31 @@
             ESP8266: add stack dump on fatal exception, ./targets/esp8266/printstack can extract a backtrace
             ESP8266: move JswSymPtr and JswSymList to flash to free up gobs of RAM, bump jsvars to 1600
             Fix write to flash when BLE connected on nRF51/2
+            Fix potential variable corruption issue when copying objects/arrays containing packed ints
+            Fix ESP8266 printLog memory leak (fix #852)
+            When parsing from a Native String (E.memoryArea), use Native String for function code too.
+            Added built-in Promise implementation
+            Fix broken Object.keys/getOwnPropertyNames caused by ESP8266 RAM saving tweaks
+            Add Object.g/setPrototypeOf (fix #856)
+            Fix memory leak when executing bound function with 'this'
+            Fix missing PBKDF2 & AES libs on Pico + Linux caused by an untested ESP8266 commit
+            Fix negative Date to string code (fix #854)
+            Convert type warnings to exceptions (to provide stack traces for problems)
+            Add uncaughtException event (fix #846)
+            Stop eval in a switch statement from confusing parsing (Fix #845)
+            Fix regression in 'mode' argument of SPI.setup (allows custom CC3000 pins to work)
+            Fix '.on' with long event names
+            Enable F4Discovery button pull-down. Newer boards don't seem to have one fitted
+            Add 'force' to 'Serial.setConsole' - you can force the console to stay in one place
+            Fix micro:bit compass problems (fix #864)
+            Ensure that Pico can properly enter deep sleep even if USB is never used
+            Only inline the very basic variable iterator functions (save enough space to allow Espruino board build again)
+            Don't include Promises on devices where flash memory of Scarce (fix Olimexino compile)
+            Fix glitches in PWM output when updating Software PWM quickly (fix #865)
+            Added `E.kickWatchdog()` to allow you to keep your JavaScript running - not just the interpreter (fix #859)
+            Ensure all pins set to AIN on startup
+            Fix regression where setWatch would remove pulldown from button if called after reset()
+            Reduce amount of flash available for saved code on Original Espruino (until we can get code size down)
 
      1v85 : Ensure HttpServerResponse.writeHead actually sends the header right away
              - enables WebSocket Server support from JS

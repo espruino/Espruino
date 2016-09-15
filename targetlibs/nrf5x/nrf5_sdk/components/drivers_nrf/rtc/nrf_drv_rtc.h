@@ -53,17 +53,19 @@ typedef enum
 /**@brief RTC driver instance  structure. */
 typedef struct
 {
-    NRF_RTC_Type  * p_reg;       /**< Pointer to instance register set. */
-    IRQn_Type       irq;         /**< Instance IRQ ID. */
-    uint8_t         instance_id; /**< Instance index. */
+    NRF_RTC_Type  * p_reg;            /**< Pointer to instance register set. */
+    IRQn_Type       irq;              /**< Instance IRQ ID. */
+    uint8_t         instance_id;      /**< Instance index. */
+    uint8_t         cc_channel_count; /**< Number of capture/compare channels. */
 } nrf_drv_rtc_t;
 
 /**@brief Macro for creating RTC driver instance.*/
-#define NRF_DRV_RTC_INSTANCE(id)                       \
-{                                                      \
-    .p_reg        = CONCAT_2(NRF_RTC, id),             \
-    .irq          = CONCAT_3(RTC, id, _IRQn),          \
-    .instance_id =  CONCAT_3(RTC, id, _INSTANCE_INDEX) \
+#define NRF_DRV_RTC_INSTANCE(id)                           \
+{                                                          \
+    .p_reg            = CONCAT_2(NRF_RTC, id),             \
+    .irq              = CONCAT_3(RTC, id, _IRQn),          \
+    .instance_id      = CONCAT_3(RTC, id, _INSTANCE_INDEX),\
+    .cc_channel_count = NRF_RTC_CC_CHANNEL_COUNT(id),      \
 }
 
 /**@brief RTC driver instance configuration structure. */

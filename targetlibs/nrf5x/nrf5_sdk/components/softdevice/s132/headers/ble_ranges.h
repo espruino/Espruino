@@ -57,6 +57,10 @@
 #ifndef BLE_RANGES_H__
 #define BLE_RANGES_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define BLE_SVC_BASE           0x60       /**< Common BLE SVC base. */
 #define BLE_SVC_LAST           0x6B       /**< Total: 12. */
 
@@ -111,6 +115,9 @@
 #define BLE_L2CAP_OPT_BASE     0x80       /**< L2CAP BLE Option base. */
 #define BLE_L2CAP_OPT_LAST     0x9F       /**< Total: 32.  */
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* BLE_RANGES_H__ */
 
 /**

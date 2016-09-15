@@ -95,7 +95,7 @@ enum
 *
 * @note If the EXPR isn't resolvable, then the error message won't be shown.
 *
-* @note The output of STATIC_ASSERT_MSG will be different across different compilers.
+* @note The output of STATIC_ASSERT will be different across different compilers.
 *
 * @param[in] EXPR Constant expression to be verified.
 */
@@ -112,11 +112,36 @@ enum
 #endif
 
 
+/**@brief Implementation details for NUM_VAR_ARGS */
+#define NUM_VA_ARGS_IMPL(                              \
+    _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10,       \
+    _11, _12, _13, _14, _15, _16, _17, _18, _19, _20,  \
+    _21, _22, _23, _24, _25, _26, _27, _28, _29, _30,  \
+    _31, _32, _33, _34, _35, _36, _37, _38, _39, _40,  \
+    _41, _42, _43, _44, _45, _46, _47, _48, _49, _50,  \
+    _51, _52, _53, _54, _55, _56, _57, _58, _59, _60,  \
+    _61, _62, N, ...) N
+
+
+/**@brief Macro to get the number of arguments in a call variadic macro call
+ *
+ * param[in]    ...     List of arguments
+ *
+ * @retval  Number of variadic arguments in the argument list
+ */
+#define NUM_VA_ARGS(...) NUM_VA_ARGS_IMPL(__VA_ARGS__, 63, 62, 61,  \
+    60, 59, 58, 57, 56, 55, 54, 53, 52, 51,                         \
+    50, 49, 48, 47, 46, 45, 44, 43, 42, 41,                         \
+    40, 39, 38, 37, 36, 35, 34, 33, 32, 31,                         \
+    30, 29, 28, 27, 26, 25, 24, 23, 22, 21,                         \
+    20, 19, 18, 17, 16, 15, 14, 13, 12, 11,                         \
+    10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+
 
 /**@brief type for holding an encoded (i.e. little endian) 16 bit unsigned integer. */
 typedef uint8_t uint16_le_t[2];
 
-/**@brief type for holding an encoded (i.e. little endian) 32 bit unsigned integer. */
+/**@brief Type for holding an encoded (i.e. little endian) 32 bit unsigned integer. */
 typedef uint8_t uint32_le_t[4];
 
 /**@brief Byte array type. */
@@ -125,8 +150,9 @@ typedef struct
     uint16_t  size;                 /**< Number of array entries. */
     uint8_t * p_data;               /**< Pointer to array entries. */
 } uint8_array_t;
-    
-/**@brief Perform rounded integer division (as opposed to truncating the result).
+
+
+/**@brief Macro for performing rounded integer division (as opposed to truncating the result).
  *
  * @param[in]   A   Numerator.
  * @param[in]   B   Denominator.
@@ -135,7 +161,8 @@ typedef struct
  */
 #define ROUNDED_DIV(A, B) (((A) + ((B) / 2)) / (B))
 
-/**@brief Check if the integer provided is a power of two.
+
+/**@brief Macro for checking if an integer is a power of two.
  *
  * @param[in]   A   Number to be tested.
  *
@@ -144,13 +171,16 @@ typedef struct
  */
 #define IS_POWER_OF_TWO(A) ( ((A) != 0) && ((((A) - 1) & (A)) == 0) )
 
-/**@brief To convert milliseconds to ticks.
+
+/**@brief Macro for converting milliseconds to ticks.
+ *
  * @param[in] TIME          Number of milliseconds to convert.
  * @param[in] RESOLUTION    Unit to be converted to in [us/ticks].
  */
 #define MSEC_TO_UNITS(TIME, RESOLUTION) (((TIME) * 1000) / (RESOLUTION))
 
-/**@brief Perform integer division, making sure the result is rounded up.
+
+/**@brief Macro for performing integer division, making sure the result is rounded up.
  *
  * @details One typical use for this is to compute the number of objects with size B is needed to
  *          hold A number of bytes.
@@ -163,12 +193,40 @@ typedef struct
 #define CEIL_DIV(A, B)      \
     (((A) + (B) - 1) / (B))
 
-/**@brief Function for creating a buffer aligned to 4 bytes.
+
+/**@brief Macro for creating a buffer aligned to 4 bytes.
  *
  * @param[in]   NAME        Name of the buffor.
  * @param[in]   MIN_SIZE    Size of this buffor (it will be rounded up to multiples of 4 bytes).
  */
 #define WORD_ALIGNED_MEM_BUFF(NAME, MIN_SIZE) static uint32_t NAME[CEIL_DIV(MIN_SIZE, sizeof(uint32_t))]
+
+
+/**@brief Macro for calculating the number of words that are needed to hold a number of bytes.
+ *
+ * @details Adds 3 and divides by 4.
+ *
+ * @param[in]  n_bytes  The number of bytes.
+ *
+ * @return The number of words that @p n_bytes take up (rounded up).
+ */
+#define BYTES_TO_WORDS(n_bytes) (((n_bytes) + 3) >> 2)
+
+
+/**@brief The number of bytes in a word.
+ */
+#define BYTES_PER_WORD (4)
+
+
+/**@brief Macro for increasing a number to the nearest (larger) multiple of another number.
+ *
+ * @param[in]  alignment  The number to align to.
+ * @param[in]  number     The number to align (increase).
+ *
+ * @return The aligned (increased) @p number.
+ */
+#define ALIGN_NUM(alignment, number) ((number - 1) + alignment - ((number - 1) % alignment))
+
 
 /**@brief Function for changing the value unit.
  *
@@ -254,7 +312,7 @@ static __INLINE uint8_t uint48_encode(uint64_t value, uint8_t * p_encoded_data)
  */
 static __INLINE uint16_t uint16_decode(const uint8_t * p_encoded_data)
 {
-        return ( (((uint16_t)((uint8_t *)p_encoded_data)[0])) | 
+        return ( (((uint16_t)((uint8_t *)p_encoded_data)[0])) |
                  (((uint16_t)((uint8_t *)p_encoded_data)[1]) << 8 ));
 }
 
@@ -327,7 +385,7 @@ static __INLINE uint8_t uint32_big_encode(uint32_t value, uint8_t * p_encoded_da
     p_encoded_data[3] = (uint8_t) ((value & 0x000000FF) >> 0);
 #elif NRF52
     *(uint32_t *)p_encoded_data = __REV(value);
-#endif    
+#endif
     return sizeof(uint32_t);
 }
 

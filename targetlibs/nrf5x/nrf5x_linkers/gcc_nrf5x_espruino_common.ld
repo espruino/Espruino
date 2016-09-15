@@ -1,4 +1,4 @@
-/* Linker script for Nordic Semiconductor nRF5 devices
+/* Linker script for Nordic Semiconductor nRF51 devices
  *
  * Version: Sourcery G++ 4.5-1
  * Support: https://support.codesourcery.com/GNUToolchain/
@@ -15,7 +15,6 @@
  * the new terms are clearly indicated on the first page of each file where
  * they apply.
  */
-
 OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
 
 /* Linker script to place sections and symbol values. Should be used together
@@ -44,14 +43,13 @@ OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
  *   __StackTop
  *   __stack
  */
-
 ENTRY(Reset_Handler)
 
 SECTIONS
 {
   .text :
   {
-    KEEP(*(.Vectors))
+    KEEP(*(.isr_vector))
     *(.text*)
 
     KEEP(*(.init))
@@ -73,22 +71,19 @@ SECTIONS
 
     *(.rodata*)
 
-    *(.eh_frame*)
-    . = ALIGN(4);
+    KEEP(*(.eh_frame*))
   } > FLASH
     
 
   .ARM.extab : 
   {
     *(.ARM.extab* .gnu.linkonce.armextab.*)
-    . = ALIGN(4);
   } > FLASH
 
   __exidx_start = .;
   .ARM.exidx :
   {
     *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-    . = ALIGN(4);
   } > FLASH
   __exidx_end = .;
 
@@ -106,25 +101,25 @@ SECTIONS
     . = ALIGN(4);
     /* preinit data */
     PROVIDE_HIDDEN (__preinit_array_start = .);
-    *(.preinit_array)
+    KEEP(*(.preinit_array))
     PROVIDE_HIDDEN (__preinit_array_end = .);
 
     . = ALIGN(4);
     /* init data */
     PROVIDE_HIDDEN (__init_array_start = .);
-    *(SORT(.init_array.*))
-    *(.init_array)
+    KEEP(*(SORT(.init_array.*)))
+    KEEP(*(.init_array))
     PROVIDE_HIDDEN (__init_array_end = .);
 
 
     . = ALIGN(4);
     /* finit data */
     PROVIDE_HIDDEN (__fini_array_start = .);
-    *(SORT(.fini_array.*))
-    *(.fini_array)
+    KEEP(*(SORT(.fini_array.*)))
+    KEEP(*(.fini_array))
     PROVIDE_HIDDEN (__fini_array_end = .);
 
-    *(.jcr)
+    KEEP(*(.jcr*))
     . = ALIGN(4);
     /* All data end */
     __data_end__ = .;
@@ -147,7 +142,7 @@ SECTIONS
   .heap (COPY):
   {
     __end__ = .;
-    end = __end__;
+    PROVIDE(end = .);
     *(.heap*)
     __HeapLimit = .;
   } > RAM

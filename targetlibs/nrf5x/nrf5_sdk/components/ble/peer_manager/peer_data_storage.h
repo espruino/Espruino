@@ -1,14 +1,14 @@
 /* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
-*
-* The information contained herein is property of Nordic Semiconductor ASA.
-* Terms and conditions of usage are described in detail in NORDIC
-* SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
-*
-* Licensees are granted free, non-transferable use of the information. NO
-* WARRANTY of ANY KIND is provided. This heading must NOT be removed from
-* the file.
-*
-*/
+ *
+ * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
+ * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+ *
+ * Licensees are granted free, non-transferable use of the information. NO
+ * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
+ * the file.
+ *
+ */
 
 
 #ifndef PEER_DATA_STORAGE_H__
@@ -19,10 +19,11 @@
 #include "sdk_errors.h"
 #include "ble_gap.h"
 #include "peer_manager_types.h"
-#include "fds.h"
+#include "peer_manager_internal.h"
 
 
 /**
+ * @cond NO_DOXYGEN
  * @defgroup peer_data_storage Peer Data Storage
  * @ingroup peer_manager
  * @{
@@ -30,17 +31,15 @@
  *        to the persistent storage.
  */
 
-#define PDS_PREPARE_TOKEN_INVALID 0
-#define PDS_STORE_TOKEN_INVALID   0
+#define PDS_PREPARE_TOKEN_INVALID   0  /**< Invalid value for prepare token. */
 
-
-typedef enum
+enum
 {
-    peer_id_to_instance_id  = 16384,
-    instance_id_to_peer_id  = -peer_id_to_instance_id,
-    peer_data_id_to_type_id = 32768,
-    type_id_to_peer_data_id = -peer_data_id_to_type_id,
-} pds_convert_t;
+    PEER_ID_TO_FILE_ID         = 0xC000,
+    FILE_ID_TO_PEER_ID         = -PEER_ID_TO_FILE_ID,
+    PEER_DATA_ID_TO_RECORD_KEY = 0xC000,
+    RECORD_KEY_TO_PEER_DATA_ID = -PEER_DATA_ID_TO_RECORD_KEY,
+};
 
 
 /**@brief The types of events that can come from the peer_data_storage module.
@@ -50,12 +49,13 @@ typedef enum
     PDS_EVT_STORED,                 /**< The specified data has been successfully stored. */
     PDS_EVT_UPDATED,                /**< The specified data has been successfully updated. */
     PDS_EVT_CLEARED,                /**< The specified data has been successfully cleared. */
-    PDS_EVT_PEER_ID_CLEAR,          /**< The peer id has been successfully cleared. */
     PDS_EVT_ERROR_STORE,            /**< The specified data could not be stored. */
     PDS_EVT_ERROR_UPDATE,           /**< The specified data could not be updated. */
     PDS_EVT_ERROR_CLEAR,            /**< The specified data could not be cleared. */
+    PDS_EVT_PEER_ID_CLEAR,          /**< The peer id has been successfully cleared. */
     PDS_EVT_ERROR_PEER_ID_CLEAR,    /**< The peer id has been successfully cleared. */
     PDS_EVT_COMPRESSED,             /**< A compress procedure has finished successfully. */
+    PDS_EVT_ERROR_UNEXPECTED,       /**< An unexpected, possibly fatal error occurred. The unexpected error is included in the event structure. */
 } pds_evt_id_t;
 
 
@@ -63,10 +63,11 @@ typedef enum
  */
 typedef struct
 {
-    pds_evt_id_t      evt_id;       /**< The type of event. */
-    pm_peer_id_t      peer_id;      /**< The peer the event pertains to. */
-    pm_peer_data_id_t data_id;      /**< The data the event pertains to. */
-    pm_store_token_t  store_token;
+    pds_evt_id_t      evt_id;      /**< The type of event. */
+    pm_peer_id_t      peer_id;     /**< The peer the event pertains to. */
+    pm_peer_data_id_t data_id;     /**< The data the event pertains to. */
+    pm_store_token_t  store_token; /**< A unique identifier for the operation. Can be compare to the token received when starting the operation. */
+    ret_code_t        result;      /**< The result of the operation, or the unexpected error. */
 } pds_evt_t;
 
 
@@ -88,25 +89,11 @@ typedef void (*pds_evt_handler_t)(pds_evt_t const * p_event);
  * @retval NRF_SUCCESS              Registration successful.
  * @retval NRF_ERROR_NO_MEM         No more event handlers can be registered.
  * @retval NRF_ERROR_NULL           evt_handler was NULL.
- * @retval NRF_ERROR_INVALID_STATE  FDS has not been initalized.
+ * @retval NRF_ERROR_INTERNAL       An unexpected error happened.
  * @retval NRF_ERROR_INTERNAL       Unexpected error.
  */
 ret_code_t pds_register(pds_evt_handler_t evt_handler);
 
-
-#if 0
-/**@brief Function for initializing Peer Data storage and registering a
- * callback for its events.
- *
- * @param[in] evt_handler  Event handler to register.
- *
- * @retval NRF_SUCCESS              Registration successful.
- * @retval NRF_ERROR_NO_MEM         No more event handlers can be registered.
- * @retval NRF_ERROR_NULL           evt_handler was NULL.
- * @retval NRF_ERROR_INVALID_STATE  FDS has not completed initialization.
- */
-ret_code_t pds_init(pds_evt_handler_t evt_handler);
-#endif
 
 /**@brief Function for retrieving a direct pointer to peer data in persistent storage.
  *
@@ -117,7 +104,6 @@ ret_code_t pds_init(pds_evt_handler_t evt_handler);
  *
  * @retval NRF_SUCCESS              The pointer was successfully retrieved.
  * @retval NRF_ERROR_INVALID_PARAM  Invalid data_id.
- * @retval NRF_ERROR_NULL           p_data was NULL.
  * @retval NRF_ERROR_NOT_FOUND      The requested data was not found in persistent storage.
  * @retval NRF_ERROR_INVALID_STATE  Module is not initialized.
  */
@@ -126,10 +112,14 @@ ret_code_t pds_peer_data_read_ptr_get(pm_peer_id_t            peer_id,
                                       pm_peer_data_flash_t  * p_data,
                                       pm_store_token_t      * p_token);
 
+
+#if 0
+// @TODO: Finish documentation
 /**@brief Function to lock the flash data (to defer compression from invalidating data)
  *
  * @param[in]   store_token     The token representing the item to lock
  *
+ * @retval NRF_SUCCESS  Successfully locked
  */
 ret_code_t pds_peer_data_lock(pm_store_token_t store_token);
 
@@ -144,9 +134,10 @@ ret_code_t pds_peer_data_lock(pm_store_token_t store_token);
  * @retval NRF_ERROR_INVALID_STATE  Module is not initialized.
  */
 ret_code_t  pds_peer_data_verify(pm_store_token_t store_token);
+#endif
 
 
-/**@brief Function for retrieving peer data from persistent storage by making a copy
+/**@brief Function for retrieving peer data from persistent storage by making a copy.
  *
  * @param[in]       peer_id     The id of the peer whose data to read.
  * @param[in]       data_id     Which piece of data to read.
@@ -156,10 +147,11 @@ ret_code_t  pds_peer_data_verify(pm_store_token_t store_token);
  *                              length will be reflected in p_len_words after the call returns.
  *
  * @retval NRF_SUCCESS              The read was successful.
- * @retval NRF_ERROR_INVALID_PARAM  Invalid data_id.
- * @retval NRF_ERROR_NULL           data contained a NULL pointer.
+ * @retval NRF_ERROR_INVALID_PARAM  Invalid data_id or peer_id.
+ * @retval NRF_ERROR_NULL           Either \c p_data or \c p_len_words were \c NULL, or \c p_data
+ *                                  contained a NULL pointer.
  * @retval NRF_ERROR_NOT_FOUND      The requested data was not found in persistent storage.
- * @retval NRF_ERROR_NO_MEM         The length of stored data too large to copy out
+ * @retval NRF_ERROR_NO_MEM         The length of stored data too large to copy out.
  * @retval NRF_ERROR_INVALID_STATE  Module is not initialized.
  */
 ret_code_t pds_peer_data_read(pm_peer_id_t          peer_id,
@@ -180,10 +172,12 @@ ret_code_t pds_peer_data_read(pm_peer_id_t          peer_id,
  * @param[out] p_prepare_token  A token identifying the prepared memory area.
  *
  * @retval NRF_SUCCESS               The call was successful.
+ * @retval NRF_ERROR_NULL            Either \c p_peer_data or \c p_prepare code were \c NULL.
  * @retval NRF_ERROR_INVALID_PARAM   Invalid data ID.
- * @retval NRF_ERROR_INVALID_LENGTH  Data length above the maximum allowed.
+ * @retval NRF_ERROR_INVALID_LENGTH  Data length exceeds the maximum length allowed.
  * @retval NRF_ERROR_NO_MEM          No space available in persistent storage.
  * @retval NRF_ERROR_INVALID_STATE   Module is not initialized.
+ * @retval NRF_ERROR_INTERNAL        Internal error.
  */
 ret_code_t pds_peer_data_write_prepare(pm_peer_data_const_t const * p_peer_data,
                                        pm_prepare_token_t         * p_prepare_token);
@@ -194,8 +188,9 @@ ret_code_t pds_peer_data_write_prepare(pm_peer_data_const_t const * p_peer_data,
  * @param[in]  prepare_token  A token identifying the prepared memory area to cancel.
  *
  * @retval NRF_SUCCESS               The call was successful.
- * @retval NRF_ERROR_NOT_FOUND       Invalid peer ID and/or prepare token.
+ * @retval NRF_ERROR_NULL            Invalid value for \c prepare_token.
  * @retval NRF_ERROR_INVALID_STATE   Module is not initialized.
+ * @retval NRF_ERROR_INTERNAL        Internal error.
  */
 ret_code_t pds_peer_data_write_prepare_cancel(pm_prepare_token_t prepare_token);
 
@@ -214,14 +209,15 @@ ret_code_t pds_peer_data_write_prepare_cancel(pm_prepare_token_t prepare_token);
  *                            used to identify events pertaining to this operation.
  *
  * @retval NRF_SUCCESS               The write was initiated successfully.
- * @retval NRF_ERROR_INVALID_PARAM   Invalid data ID or store_flags.
- * @retval NRF_ERROR_INVALID_LENGTH  Length of data longer than in prepare call.
- * @retval NRF_ERROR_NULL            data contained a NULL pointer.
+ * @retval NRF_ERROR_INVALID_PARAM   Invalid peer ID or data ID.
+ * @retval NRF_ERROR_NULL            \c p_peer_data was \c NULL or contained a \c NULL pointer or
+ *                                   \c prepare_token was zero.
  * @retval NRF_ERROR_NO_MEM          No space available in persistent storage. This can only happen
- *                                   if p_prepare_token is NULL.
+ *                                   if \c p_prepare_token is \c NULL.
  * @retval NRF_ERROR_BUSY            FDS or underlying modules are busy and can't take any
- *                                   more requests
+ *                                   more requests.
  * @retval NRF_ERROR_INVALID_STATE   Module is not initialized.
+ * @retval NRF_ERROR_INTERNAL        Internal error.
  */
 ret_code_t pds_peer_data_write_prepared(pm_peer_id_t                    peer_id,
                                         pm_peer_data_const_t    const * p_peer_data,
@@ -240,13 +236,13 @@ ret_code_t pds_peer_data_write_prepared(pm_peer_id_t                    peer_id,
  *                            used to identify events pertaining to this operation.
  *
  * @retval NRF_SUCCESS               The write was initiated successfully.
- * @retval NRF_ERROR_INVALID_PARAM   Invalid data ID or store_flags.
- * @retval NRF_ERROR_NULL            Data contained a NULL pointer.
- * @retval NRF_ERROR_NO_MEM          No space available in persistent storage. This can only happen
- *                                   if p_prepare_token is NULL.
+ * @retval NRF_ERROR_INVALID_PARAM   Invalid data ID or peer ID.
+ * @retval NRF_ERROR_NULL            \c p_peer_data was \c NULL or data contained a \c NULL pointer.
+ * @retval NRF_ERROR_NO_MEM          No space available in persistent storage.
  * @retval NRF_ERROR_BUSY            FDS or underlying modules are busy and can't take any
- *                                   more requests
+ *                                   more requests.
  * @retval NRF_ERROR_INVALID_STATE   Module is not initialized.
+ * @retval NRF_ERROR_INTERNAL        Internal error.
  */
 ret_code_t pds_peer_data_write(pm_peer_id_t                 peer_id,
                                pm_peer_data_const_t const * p_peer_data,
@@ -260,20 +256,20 @@ ret_code_t pds_peer_data_write(pm_peer_id_t                 peer_id,
  *          and a @ref PDS_EVT_ERROR_CLEAR or @ref PDS_EVT_ERROR_CLEAR for the old token
  *
  * @param[in]   peer_id             The peer which the data is associated to.
- * @param[in]   peer_data           New data.
+ * @param[in]   p_peer_data         New data.
  * @param[in]   old_token           Store token for the old data.
  * @param[out]  p_store_token       Store token for the new data.
  *
  * @retval NRF_SUCESS               The update was initiated successfully
- * @retval NRF_ERROR_NOT_FOUND      The old store token was invalid.
- * @retval NRF_ERROR_NULL           Data contained a NULL pointer.
+ * @retval NRF_ERROR_NULL           \c p_peer_data was \c NULL or data contained a \c NULL pointer.
  * @retval NRF_ERROR_NO_MEM         No space available in persistent storage.
  * @retval NRF_ERROR_BUSY           FDS or underlying modules are busy and can't take any
- *                                  more requests
+ *                                  more requests at this moment.
  * @retval NRF_ERROR_INVALID_STATE  Module is not initialized.
+ * @retval NRF_ERROR_INTERNAL       Internal error.
  */
 ret_code_t pds_peer_data_update(pm_peer_id_t                 peer_id,
-                                pm_peer_data_const_t const * peer_data,
+                                pm_peer_data_const_t const * p_peer_data,
                                 pm_store_token_t             old_token,
                                 pm_store_token_t           * p_store_token);
 
@@ -287,9 +283,12 @@ ret_code_t pds_peer_data_update(pm_peer_id_t                 peer_id,
  * @param[in]  data_id  Which data to clear.
  *
  * @retval NRF_SUCCESS              The clear was initiated successfully.
- * @retval NRF_ERROR_INVALID_PARAM  Data ID or was invalid.
+ * @retval NRF_ERROR_INVALID_PARAM  Data ID or peer ID was invalid.
  * @retval NRF_ERROR_NOT_FOUND      Nothing to clear for this peer ID.
+ * @retval NRF_ERROR_BUSY           FDS or underlying modules are busy and can't take any
+ *                                  more requests at this moment.
  * @retval NRF_ERROR_INVALID_STATE  Module is not initialized.
+ * @retval NRF_ERROR_INTERNAL       Internal error.
  */
 ret_code_t pds_peer_data_clear(pm_peer_id_t peer_id, pm_peer_data_id_t data_id);
 
@@ -307,8 +306,9 @@ pm_peer_id_t pds_peer_id_allocate(void);
  *
  * @param[in]  peer_id  Peer ID to free.
  *
- * @retval NRF_SUCCESS          The clear was initiated successfully
- * @retval NRF_ERROR_BUSY       Another peer_id clear was already requested or fds queue full
+ * @retval NRF_SUCCESS             The clear was initiated successfully.
+ * @retval NRF_ERROR_INVALID_STATE Module not initialized.
+ * @retval NRF_ERROR_INVALID_PARAM Invalid peer ID.
  */
 ret_code_t pds_peer_id_free(pm_peer_id_t peer_id);
 
@@ -347,6 +347,8 @@ pm_peer_id_t pds_next_peer_id_get(pm_peer_id_t prev_peer_id);
 uint32_t pds_n_peers(void);
 
 
-/** @} */
+/** @}
+ * @endcond
+ */
 
 #endif /* PEER_DATA_STORAGE_H__ */

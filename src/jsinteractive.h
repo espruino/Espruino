@@ -42,6 +42,8 @@ bool jsiFreeMoreMemory();
 bool jsiHasTimers(); // are there timers still left to run?
 bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 
+void jsiCtrlC(); // Ctrl-C - force interrupt of execution
+
 /// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
 void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount);
 /// Return true if the object has callbacks...
@@ -59,10 +61,14 @@ bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device);
 
-/// Change the console to a new location
-void jsiSetConsoleDevice(IOEventFlags device);
+/** Change the console to a new location - if force is set, this console
+ * device will be 'sticky' - it will not change when the device changes
+ * connection state */
+void jsiSetConsoleDevice(IOEventFlags device, bool force);
 /// Get the device that the console is currently on
 IOEventFlags jsiGetConsoleDevice();
+/// is the console forced into a given place (See jsiSetConsoleDevice)
+bool jsiIsConsoleDeviceForced();
 /// Transmit a byte
 void jsiConsolePrintChar(char data);
 /// Transmit a string (may be any string)
@@ -118,6 +124,7 @@ void jsiSetSleep(JsiSleepType isSleep);
 #define USART_BAUDRATE_NAME "_baudrate"
 #define DEVICE_OPTIONS_NAME "_options"
 #define INIT_CALLBACK_NAME JS_EVENT_PREFIX"init" ///< Callback for `E.on('init'`
+#define PASSWORD_VARIABLE_NAME "pwd"
 
 typedef enum {
   JSIS_NONE,
@@ -133,9 +140,12 @@ typedef enum {
   JSIS_TODO_FLASH_LOAD = 128, // load from flash
   JSIS_TODO_RESET = 256, // reset the board, don't load anything
   JSIS_TODO_MASK = JSIS_TODO_FLASH_SAVE|JSIS_TODO_FLASH_LOAD|JSIS_TODO_RESET,
+  JSIS_CONSOLE_FORCED = 512, // see jsiSetConsoleDevice
+  JSIS_WATCHDOG_AUTO = 1024, // Automatically kick the watchdog timer on idle
+  JSIS_PASSWORD_PROTECTED = 2048, // Password protected
 
-
-  JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE
+  JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE,
+  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED // stuff that DOESN'T get reset on softinit
 } PACKED_FLAGS JsiStatus;
 
 extern JsiStatus jsiStatus;

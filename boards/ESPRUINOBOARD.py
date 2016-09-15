@@ -52,10 +52,10 @@ chip = {
   'adc' : 3,
   'dac' : 2,
   'saved_code' : {
-    'address' : 0x08000000 + ((256-30)*1024),
+    'address' : 0x08000000 + ((256-20)*1024),
     'page_size' : 2048, # size of pages
-    'pages' : 15, # number of pages we're using
-    'flash_available' : 256-30 # 30 used for code
+    'pages' : 10, # number of pages we're using
+    'flash_available' : 256-(20+10) # 20 used for code, 10 for bootloader
   },
  'build' : {
    'defines' : [

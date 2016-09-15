@@ -21,10 +21,22 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define LPCOMP_IRQ			LPCOMP_IRQn
+#define LPCOMP_IRQ_HANDLER 	LPCOMP_IRQHandler
+
 static lpcomp_events_handler_t m_lpcomp_events_handler = NULL;
 static nrf_drv_state_t         m_state = NRF_DRV_STATE_UNINITIALIZED;
 
 static const nrf_drv_lpcomp_config_t m_default_config = NRF_DRV_LPCONF_DEFAULT_CONFIG;
+
+#if PERIPHERAL_RESOURCE_SHARING_ENABLED
+    #define IRQ_HANDLER_NAME    irq_handler_for_lpcomp
+    #define IRQ_HANDLER      	static void IRQ_HANDLER_NAME(void)
+
+	IRQ_HANDLER;
+#else
+    #define IRQ_HANDLER void LPCOMP_IRQ_HANDLER(void)
+#endif // PERIPHERAL_RESOURCE_SHARING_ENABLED
 
 static void lpcomp_execute_handler(nrf_lpcomp_event_t event, uint32_t event_mask)
 {
@@ -37,7 +49,7 @@ static void lpcomp_execute_handler(nrf_lpcomp_event_t event, uint32_t event_mask
 }
 
 
-void LPCOMP_IRQHandler(void)
+IRQ_HANDLER
 {
     lpcomp_execute_handler(NRF_LPCOMP_EVENT_READY, LPCOMP_INTENSET_READY_Msk);
     lpcomp_execute_handler(NRF_LPCOMP_EVENT_DOWN, LPCOMP_INTENSET_DOWN_Msk);
@@ -58,6 +70,13 @@ ret_code_t nrf_drv_lpcomp_init(const nrf_drv_lpcomp_config_t * p_config,
     {
         p_config = &m_default_config;
     }
+
+#if PERIPHERAL_RESOURCE_SHARING_ENABLED
+    if (nrf_drv_common_per_res_acquire(NRF_LPCOMP, IRQ_HANDLER_NAME) != NRF_SUCCESS)
+    {
+        return NRF_ERROR_BUSY;
+    }
+#endif
 
     nrf_lpcomp_configure(&(p_config->hal) );
 

@@ -35,11 +35,11 @@ import pinutils;
 # Now scan AF file
 print("Script location "+scriptdir)
 
-if len(sys.argv)!=2:
-  print("ERROR, USAGE: build_platform_config.py BOARD_NAME")
+if len(sys.argv)!=3:
+  print("ERROR, USAGE: build_platform_config.py BOARD_NAME HEADERFILENAME")
   exit(1)
 boardname = sys.argv[1]
-headerFilename = "gen/platform_config.h"
+headerFilename = sys.argv[2]
 print("HEADER_FILENAME "+headerFilename)
 print("BOARD "+boardname)
 # import the board def
@@ -74,7 +74,10 @@ if not LINUX:
   #  variables = variables_8bit
   # But in some cases we may not have enough flash memory!
   variables=board.info["variables"]
-
+# variables from board-file can bw overwritten. Be careful with this option.
+# usually the definition in board file are already the maximum, and adding some more will corrupt firmware
+  if 'VARIABLES' in os.environ:
+    variables=int(os.environ['VARIABLES'])
 
   var_size = 12 if variables<1023 else 16
   # the 'packed bits mean anything under 1023 vars gets into 12 byte JsVars
@@ -137,6 +140,8 @@ def codeOutDevice(device):
       codeOut("#define "+device+"_ONSTATE "+("0" if "inverted" in board.devices[device] else "1"))
       if "pinstate" in board.devices[device]:
         codeOut("#define "+device+"_PINSTATE JSHPINSTATE_GPIO_"+board.devices[device]["pinstate"]);
+    if device[0:3]=="LED":
+      codeOut("#define "+device+"_ONSTATE "+("0" if "inverted" in board.devices[device] else "1"))
 
 def codeOutDevicePin(device, pin, definition_name):
   if device in board.devices:
@@ -375,8 +380,15 @@ if "SD" in board.devices:
       if spiNum==0: die("No SPI peripheral found for SD card's CLK pin")
       codeOut("#define SD_SPI EV_SPI"+str(spiNum))
 
+if "IR" in board.devices:
+  codeOutDevicePin("IR", "pin_anode", "IR_ANODE_PIN")
+  codeOutDevicePin("IR", "pin_cathode", "IR_CATHODE_PIN")
 
-for device in ["USB","SD","LCD","JTAG"]:
+if "CAPSENSE" in board.devices:
+  codeOutDevicePin("CAPSENSE", "pin_rx", "CAPSENSE_RX_PIN")
+  codeOutDevicePin("CAPSENSE", "pin_tx", "CAPSENSE_TX_PIN")
+
+for device in ["USB","SD","LCD","JTAG","ESP8266","IR"]:
   if device in board.devices:
     for entry in board.devices[device]:
       if entry[:3]=="pin": usedPinChecks.append("(PIN)==" + toPinDef(board.devices[device][entry])+"/* "+device+" */")
@@ -388,6 +400,11 @@ if "NUCLEO_A" in board.devices:
 if "NUCLEO_D" in board.devices:
   for n,pin in enumerate(board.devices["NUCLEO_D"]):
       codeOut("#define NUCLEO_D"+str(n)+" "+toPinDef(pin))
+
+if "ESP8266" in board.devices:
+  for entry in board.devices["ESP8266"]:
+    if entry[0:4]=="pin_":
+      codeOut("#define ESP8266_"+str(entry[4:].upper())+" "+toPinDef(board.devices["ESP8266"][entry]))
 
 codeOut("")
 

@@ -160,7 +160,7 @@ void jswrap_flash_write(JsVar *data, int addr) {
   "generate" : "jswrap_flash_read",
   "params" : [
     ["length","int","The amount of data to read (in bytes)"],
-    ["addr","int","The address to start writing from"]
+    ["addr","int","The address to start reading from"]
   ],
   "return" : ["JsVar","A Uint8Array of data"]
 }
@@ -524,7 +524,7 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
 
   code = (char *)(FLASH_DATA_LOCATION);
 #endif
-  jsvUnLock(jspEvaluate(code));
+  jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
   return true;
 }
 

@@ -78,6 +78,10 @@ require("./common.js").readAllWrapperFiles(function(json) {
     }
   });
 
+ // FIXME: not sure why (because Telnet has children when it shouldn't?) but this breaks tern's parsing :(
+ delete tern["Telnet"]["!type"];
+ 
+
  console.log(JSON.stringify(tern,null,2));
   
 });

@@ -121,17 +121,18 @@ bool jsspiPopulateSPIInfo(
   jshSPIInitInfo(inf);
 
   JsVar *order = 0;
+  int spiMode = inf->spiMode;
   jsvConfigObject configs[] = {
       {"sck", JSV_PIN, &inf->pinSCK},
       {"miso", JSV_PIN, &inf->pinMISO},
       {"mosi", JSV_PIN, &inf->pinMOSI},
       {"baud", JSV_INTEGER, &inf->baudRate},
-      {"mode", JSV_INTEGER, &inf->spiMode},
+      {"mode", JSV_INTEGER, &spiMode}, // don't reference direct as this is just a char, not unsigned integer
       {"order", JSV_OBJECT /* a variable */, &order},
   };
   bool ok = true;
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
-    inf->spiMode = inf->spiMode&3;
+    inf->spiMode = spiMode&3;
 
     if (jsvIsString(order) && jsvIsStringEqual(order, "msb")) {
       inf->spiMSB = true;

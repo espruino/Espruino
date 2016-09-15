@@ -27,7 +27,6 @@ static __INLINE uint32_t fifo_length(app_fifo_t * const fifo)
 
 static app_uart_event_handler_t   m_event_handler;            /**< Event handler function. */
 static uint8_t tx_buffer[1];
-static uint8_t tx_tmp;
 static uint8_t rx_buffer[1];
 
 static app_fifo_t                  m_rx_fifo;                               /**< RX FIFO buffer for storing data received on the UART until the application fetches them using app_uart_get(). */
@@ -59,14 +58,14 @@ static void uart_event_handler(nrf_drv_uart_event_t * p_event, void* p_context)
         }
         if (FIFO_LENGTH(m_rx_fifo) <= m_rx_fifo.buf_size_mask)
         {
-            (void)nrf_drv_uart_rx(rx_buffer,1);
+            (void)nrf_drv_uart_rx(rx_buffer, 1);
         }
     }
     else if (p_event->type == NRF_DRV_UART_EVT_ERROR)
     {
         app_uart_event.evt_type                 = APP_UART_COMMUNICATION_ERROR;
         app_uart_event.data.error_communication = p_event->data.error.error_mask;
-        (void)nrf_drv_uart_rx(rx_buffer,1);
+        (void)nrf_drv_uart_rx(rx_buffer, 1);
         m_event_handler(&app_uart_event);
     }
     else if (p_event->type == NRF_DRV_UART_EVT_TX_DONE)
@@ -74,12 +73,11 @@ static void uart_event_handler(nrf_drv_uart_event_t * p_event, void* p_context)
         // Get next byte from FIFO.
         if (app_fifo_get(&m_tx_fifo, tx_buffer) == NRF_SUCCESS)
         {
-            (void)nrf_drv_uart_tx(tx_buffer,1);
+            (void)nrf_drv_uart_tx(tx_buffer, 1);
         }
         if (FIFO_LENGTH(m_tx_fifo) == 0)
         {
             // Last byte from FIFO transmitted, notify the application.
-            // Notify that new data is available if this was first byte put in the buffer.
             app_uart_event.evt_type = APP_UART_TX_EMPTY;
             m_event_handler(&app_uart_event);
         }
@@ -163,12 +161,24 @@ uint32_t app_uart_put(uint8_t byte)
 {
     uint32_t err_code;
 
-    tx_tmp = byte;
-    err_code = nrf_drv_uart_tx(&tx_tmp, 1);
-
-    if (err_code == NRF_ERROR_BUSY)
+    err_code = app_fifo_put(&m_tx_fifo, byte);
+    if (err_code == NRF_SUCCESS)
     {
-        err_code = app_fifo_put(&m_tx_fifo, byte);
+        // The new byte has been added to FIFO. It will be picked up from there
+        // (in 'uart_event_handler') when all preceding bytes are transmitted.
+        // But if UART is not transmitting anything at the moment, we must start
+        // a new transmission here.
+        if (!nrf_drv_uart_tx_in_progress())
+        {
+            // This operation should be almost always successful, since we've
+            // just added a byte to FIFO, but if some bigger delay occurred
+            // (some heavy interrupt handler routine has been executed) since
+            // that time, FIFO might be empty already.
+            if (app_fifo_get(&m_tx_fifo, tx_buffer) == NRF_SUCCESS)
+            {
+                err_code = nrf_drv_uart_tx(tx_buffer, 1);
+            }
+        }
     }
 
     return err_code;

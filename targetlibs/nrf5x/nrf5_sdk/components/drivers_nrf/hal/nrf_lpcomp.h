@@ -259,7 +259,7 @@ __STATIC_INLINE void nrf_lpcomp_int_disable(uint32_t lpcomp_int_mask)
 
 
 /**
- * @brief Function for getting the enabled interrupts of LCOMP.
+ * @brief Function for getting the enabled interrupts of LPCOMP.
  *
  * @param[in] lpcomp_int_mask Mask of interrupts to be checked.
  *

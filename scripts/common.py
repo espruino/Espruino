@@ -110,6 +110,8 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
                 if "i2c" in board.chip: defines.append("I2C_COUNT="+str(board.chip["i2c"]));
                 if "USB" in board.devices: defines.append("defined(USB)=True"); 
                 else: defines.append("defined(USB)=False");
+              elif arg[1]=="F":
+                "" # -Fxxx.yy in args is filename xxx.yy, which is mandatory for build_jswrapper.py
               else:
                 print("Unknown command-line option")
                 exit(1)
@@ -316,7 +318,9 @@ def get_ifdef_description(d):
   if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico only)"
   if d=="RELEASE": return "release builds"
   if d=="LINUX": return "Linux-based builds"
-  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Espruino Pico)"
+  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico)"
+  if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino Wifi or Linux)"
+  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino Wifi, Linux or ESP8266)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 

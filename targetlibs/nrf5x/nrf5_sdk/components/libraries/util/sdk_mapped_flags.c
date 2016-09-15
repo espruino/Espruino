@@ -87,11 +87,11 @@ void sdk_mapped_flags_bulk_update_by_key(uint16_t           * p_keys,
 {
     if ((p_keys != NULL) && (p_flags != NULL) && (n_flag_collections > 0))
     {
-        for (int i = 0; i < SDK_MAPPED_FLAGS_N_KEYS; i++)
+        for (uint32_t i = 0; i < SDK_MAPPED_FLAGS_N_KEYS; i++)
         {
             if (p_keys[i] == key)
             {
-                for (int j = 0; j < n_flag_collections; j++)
+                for (uint32_t j = 0; j < n_flag_collections; j++)
                 {
                     if (value)
                     {
@@ -113,7 +113,7 @@ bool sdk_mapped_flags_get_by_key(uint16_t * p_keys, sdk_mapped_flags_t flags, ui
 {
     if (p_keys != NULL)
     {
-        for (int i = 0; i < SDK_MAPPED_FLAGS_N_KEYS; i++)
+        for (uint32_t i = 0; i < SDK_MAPPED_FLAGS_N_KEYS; i++)
         {
             if (p_keys[i] == key)
             {
@@ -133,7 +133,7 @@ sdk_mapped_flags_key_list_t sdk_mapped_flags_key_list_get(uint16_t           * p
 
     if (p_keys != NULL)
     {
-        for (int i = 0; i < SDK_MAPPED_FLAGS_N_KEYS; i++)
+        for (uint32_t i = 0; i < SDK_MAPPED_FLAGS_N_KEYS; i++)
         {
             if (sdk_mapped_flags_get_by_index(flags, i))
             {
@@ -150,7 +150,7 @@ uint32_t sdk_mapped_flags_n_flags_set(sdk_mapped_flags_t flags)
 {
     uint32_t n_flags_set = 0;
 
-    for (int i = 0; i < SDK_MAPPED_FLAGS_N_KEYS; i++)
+    for (uint32_t i = 0; i < SDK_MAPPED_FLAGS_N_KEYS; i++)
     {
         if (sdk_mapped_flags_get_by_index(flags, i))
         {

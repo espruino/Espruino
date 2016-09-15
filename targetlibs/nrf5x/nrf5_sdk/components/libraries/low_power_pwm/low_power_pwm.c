@@ -26,11 +26,11 @@ __STATIC_INLINE void led_on(low_power_pwm_t * p_pwm_instance)
 {
     if (p_pwm_instance->active_high)
     {
-        nrf_gpio_pins_set(p_pwm_instance->bit_mask);
+        nrf_gpio_pins_set(p_pwm_instance->bit_mask_toggle);
     }
     else
     {
-        nrf_gpio_pins_clear(p_pwm_instance->bit_mask);
+        nrf_gpio_pins_clear(p_pwm_instance->bit_mask_toggle);
     }
     p_pwm_instance->led_is_on = true;
 }
@@ -47,11 +47,11 @@ __STATIC_INLINE void led_off(low_power_pwm_t * p_pwm_instance)
 {
     if (p_pwm_instance->active_high)
     {
-        nrf_gpio_pins_clear(p_pwm_instance->bit_mask);
+        nrf_gpio_pins_clear(p_pwm_instance->bit_mask_toggle);
     }
     else
     {
-        nrf_gpio_pins_set(p_pwm_instance->bit_mask);
+        nrf_gpio_pins_set(p_pwm_instance->bit_mask_toggle);
     }
     p_pwm_instance->led_is_on = false;
 }
@@ -133,6 +133,7 @@ ret_code_t low_power_pwm_init(low_power_pwm_t * p_pwm_instance, low_power_pwm_co
     
     p_pwm_instance->active_high = p_pwm_config->active_high;
     p_pwm_instance->bit_mask = p_pwm_config->bit_mask;
+    p_pwm_instance->bit_mask_toggle = p_pwm_config->bit_mask;
     p_pwm_instance->period = p_pwm_config->period;
     p_pwm_instance->p_timer_id = p_pwm_config->p_timer_id;
     
@@ -155,7 +156,6 @@ ret_code_t low_power_pwm_init(low_power_pwm_t * p_pwm_instance, low_power_pwm_co
     }
     
     led_off(p_pwm_instance);
-    
     p_pwm_instance->pwm_state = NRF_DRV_STATE_INITIALIZED;
 
     return NRF_SUCCESS;
@@ -166,12 +166,17 @@ ret_code_t low_power_pwm_start(low_power_pwm_t * p_pwm_instance,
                              uint32_t          leds_pin_bit_mask)
 {
     ASSERT(p_pwm_instance->pwm_state == NRF_DRV_STATE_INITIALIZED);
-
-    p_pwm_instance->evt_type = LOW_POWER_PWM_EVENT_PERIOD;
-    pwm_timeout_handler(p_pwm_instance);
+    ASSERT(((~p_pwm_instance->bit_mask) & leds_pin_bit_mask) == false);
 
     p_pwm_instance->pwm_state = NRF_DRV_STATE_POWERED_ON;
-
+    p_pwm_instance->bit_mask_toggle = leds_pin_bit_mask;
+    
+    led_off(p_pwm_instance);
+    
+    p_pwm_instance->bit_mask = leds_pin_bit_mask;
+    p_pwm_instance->evt_type = LOW_POWER_PWM_EVENT_PERIOD;
+    pwm_timeout_handler(p_pwm_instance);
+    
     return NRF_SUCCESS;
 }
 
@@ -182,9 +187,9 @@ ret_code_t low_power_pwm_stop(low_power_pwm_t * p_pwm_instance)
 
     ret_code_t err_code;    
     
-    led_off(p_pwm_instance);
-
     err_code = app_timer_stop(*p_pwm_instance->p_timer_id);
+    
+    led_off(p_pwm_instance);
 
     if (err_code != NRF_SUCCESS)
     {

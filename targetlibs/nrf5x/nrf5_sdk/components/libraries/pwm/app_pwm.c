@@ -20,9 +20,6 @@
 #include "app_util.h"
 #include "app_util_platform.h"
 #include "nrf_assert.h"
-#ifdef NRF52
-    #include "nrf_ic_info.h"
-#endif
 
 #define APP_PWM_CHANNEL_INITIALIZED                1
 #define APP_PWM_CHANNEL_UNINITIALIZED              0
@@ -706,15 +703,13 @@ ret_code_t app_pwm_init(app_pwm_t const * const p_instance, app_pwm_config_t con
     }
 
 #ifdef NRF52
-    nrf_ic_info_t ic_info;
-    nrf_ic_info_get(&ic_info);
-    if (ic_info.ic_revision >= IC_REVISION_NRF52_ENG_B)
+    if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x30)
     {
-        m_use_ppi_delay_workaround = true;
+        m_use_ppi_delay_workaround = false;
     }
     else
     {
-        m_use_ppi_delay_workaround = false;
+        m_use_ppi_delay_workaround = true;
     }
 #endif
     

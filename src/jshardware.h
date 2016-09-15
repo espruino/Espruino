@@ -9,8 +9,9 @@
  *
  * ----------------------------------------------------------------------------
  * Hardware interface Layer
- * NOTE: The definitions of these functions are inside:
+ * NOTE: Most definitions of these functions are inside:
  *                                         targets/{target}/jshardware.c
+ *       But common functions are inside:  src/jshardware_common.c
  * ----------------------------------------------------------------------------
  */
 
@@ -197,8 +198,11 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin);
  * (used mainly for fast DAC and PWM handling from Utility Timer) */
 void jshSetOutputValue(JshPinFunction func, int value);
 
-/// Enable watchdog with a timeout in seconds, it should be reset from `jshIdle`
+/// Enable watchdog with a timeout in seconds, it'll reset the chip if jshKickWatchDog isn't called within the timeout
 void jshEnableWatchDog(JsVarFloat timeout);
+
+// Kick the watchdog
+void jshKickWatchDog();
 
 /// Check the pin associated with this EXTI - return true if the pin's input is a logic 1
 bool jshGetWatchedPinState(IOEventFlags device);
@@ -229,16 +233,7 @@ typedef struct {
 } PACKED_FLAGS JshUSARTInfo;
 
 /// Initialise a JshUSARTInfo struct to default settings
-static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
-  inf->baudRate = DEFAULT_BAUD_RATE;
-  inf->pinRX    = PIN_UNDEFINED;
-  inf->pinTX    = PIN_UNDEFINED;
-  inf->pinCK    = PIN_UNDEFINED;
-  inf->bytesize = DEFAULT_BYTESIZE;
-  inf->parity   = DEFAULT_PARITY; // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2 FIXME: enum?
-  inf->stopbits = DEFAULT_STOPBITS;
-  inf->xOnXOff = false;
-}
+void jshUSARTInitInfo(JshUSARTInfo *inf); // jshardware_common.c
 
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf);
@@ -287,16 +282,7 @@ typedef struct {
 
 
 /// Initialise a JshSPIInfo struct to default settings
-static inline void jshSPIInitInfo(JshSPIInfo *inf) {
-  inf->baudRate     = 100000;
-  inf->baudRateSpec = SPIB_DEFAULT;
-  inf->pinSCK       = PIN_UNDEFINED;
-  inf->pinMISO      = PIN_UNDEFINED;
-  inf->pinMOSI      = PIN_UNDEFINED;
-  inf->spiMode      = SPIF_SPI_MODE_0;
-  inf->spiMSB       = true; // MSB first is default
-}
-
+void jshSPIInitInfo(JshSPIInfo *inf); // jshardware_common.c
 
 /** Set up SPI, if pins are -1 they will be guessed */
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf);
@@ -322,11 +308,8 @@ typedef struct {
 } PACKED_FLAGS JshI2CInfo;
 
 /// Initialise a JshI2CInfo struct to default settings
-static inline void jshI2CInitInfo(JshI2CInfo *inf) {
-  inf->pinSCL = PIN_UNDEFINED;
-  inf->pinSDA = PIN_UNDEFINED;
-  inf->bitrate = 50000; // Is what we used - shouldn't it be 100k?
-}
+void jshI2CInitInfo(JshI2CInfo *inf); // jshardware_common.c
+
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf);
 

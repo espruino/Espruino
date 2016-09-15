@@ -170,7 +170,9 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
         firstParm=false;
       else
         cbprintf(user_callback, user_data, ",");
-      cbprintf(user_callback, user_data, "%v", child);
+      JsVar *name = jsvNewFromStringVar(child, 1, JSVAPPENDSTRINGVAR_MAXLENGTH);
+      cbprintf(user_callback, user_data, "%v", name);
+      jsvUnLock(name);
     } else if (jsvIsString(child) && jsvIsStringEqual(child, JSPARSE_FUNCTION_CODE_NAME)) {
       codeVar = jsvObjectIteratorGetValue(&it);
     }

@@ -54,6 +54,10 @@
 
 #include "nrf_error.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* @defgroup BLE_ERRORS Error Codes
  * @{ */
 #define BLE_ERROR_NOT_ENABLED            (NRF_ERROR_STK_BASE_NUM+0x001) /**< @ref sd_ble_enable has not been called. */
@@ -74,6 +78,9 @@
 #define NRF_GATTS_ERR_BASE             (NRF_ERROR_STK_BASE_NUM+0x400) /**< GATT server specific errors. */
 /** @} */
 
+#ifdef __cplusplus
+}
+#endif
 #endif
 
 

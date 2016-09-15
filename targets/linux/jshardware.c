@@ -662,6 +662,9 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
         cfsetispeed(&settings, baud); // set baud rates
         cfsetospeed(&settings, baud);
 
+        // raw mode
+        cfmakeraw(&settings);
+
         settings.c_cflag &= ~(PARENB|PARODD); // none
         
         if (inf->parity == 1) settings.c_cflag |= PARENB|PARODD; // odd
@@ -679,9 +682,6 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
           case 8 : settings.c_cflag |= CS8; break;
         }
 
-        // raw mode
-        cfmakeraw(&settings);
-
         // finally set current settings
         tcsetattr(ioDevices[device], TCSANOW, &settings);
       } else {
@@ -696,7 +696,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
-  assert(DEVICE_IS_USART(device));
+  assert(DEVICE_IS_USART(device) || DEVICE_IS_SPI(device));
   // all done by the idle loop
 }
 
@@ -790,6 +790,9 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 }
 
 void jshEnableWatchDog(JsVarFloat timeout) {
+}
+
+void jshKickWatchDog() {
 }
 
 JsVarFloat jshReadTemperature() { return NAN; };

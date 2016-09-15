@@ -1521,11 +1521,10 @@ static void dm_pstorage_cb_handler(pstorage_handle_t * p_handle,
                     dm_handle.connection_id               = index_count;
 
                     ble_gap_sec_keyset_t keys_exchanged;
-                    keys_exchanged.keys_central.p_enc_key = NULL;
-                    keys_exchanged.keys_central.p_id_key  = &m_local_id_info;
-                    keys_exchanged.keys_periph.p_enc_key  = &m_bond_table[index_count].peer_enc_key;
-                    keys_exchanged.keys_periph.p_id_key   =
-                        &m_peer_table[dm_handle.device_id].peer_id;
+                    keys_exchanged.keys_peer.p_enc_key = NULL;
+                    keys_exchanged.keys_peer.p_id_key  = &m_local_id_info;
+                    keys_exchanged.keys_own.p_enc_key  = &m_bond_table[index_count].peer_enc_key;
+                    keys_exchanged.keys_own.p_id_key   = &m_peer_table[dm_handle.device_id].peer_id;
 
                     //Context information updated to provide the keys.
                     context_data.p_data = (uint8_t *)&keys_exchanged;
@@ -1781,12 +1780,12 @@ ret_code_t dm_register(dm_application_instance_t    * p_appl_instance,
         m_application_table[0].sec_param = p_appl_param->sec_param;
         m_application_table[0].service   = p_appl_param->service_type;
 
-        m_application_table[0].sec_param.kdist_central.enc  = 0;
-        m_application_table[0].sec_param.kdist_central.id   = 1;
-        m_application_table[0].sec_param.kdist_central.sign = 0;
-        m_application_table[0].sec_param.kdist_periph.enc   = 1;
-        m_application_table[0].sec_param.kdist_periph.id    = 1;
-        m_application_table[0].sec_param.kdist_periph.sign  = 0;
+        m_application_table[0].sec_param.kdist_peer.enc  = 0;
+        m_application_table[0].sec_param.kdist_peer.id   = 1;
+        m_application_table[0].sec_param.kdist_peer.sign = 0;
+        m_application_table[0].sec_param.kdist_own.enc   = 1;
+        m_application_table[0].sec_param.kdist_own.id    = 1;
+        m_application_table[0].sec_param.kdist_own.sign  = 0;
         //Populate application's instance variable with the assigned allocation instance.
         *p_appl_instance = 0;
         err_code         = NRF_SUCCESS;
@@ -2052,14 +2051,10 @@ ret_code_t dm_service_context_get(dm_handle_t const    * p_handle,
 
     DM_TRC("[DM]: >> dm_service_context_get\r\n");
 
-    if ((p_context->context_data.p_data == NULL) &&
-        (p_context->context_data.len < DM_GATT_SERVER_ATTR_MAX_SIZE))
+    if (p_context->service_type == DM_PROTOCOL_CNTXT_GATT_SRVR_ID)
     {
-        if (p_context->service_type == DM_PROTOCOL_CNTXT_GATT_SRVR_ID)
-        {
-            p_context->context_data.p_data = m_gatts_table[p_handle->connection_id].attributes;
-            p_context->context_data.len    = m_gatts_table[p_handle->connection_id].size;
-        }
+        p_context->context_data.p_data = m_gatts_table[p_handle->connection_id].attributes;
+        p_context->context_data.len    = m_gatts_table[p_handle->connection_id].size;
     }
 
     pstorage_handle_t block_handle;
@@ -2068,6 +2063,12 @@ ret_code_t dm_service_context_get(dm_handle_t const    * p_handle,
                                                                &block_handle);
 
     err_code = m_service_context_load[p_context->service_type](&block_handle, p_handle);
+
+    if (p_context->service_type == DM_PROTOCOL_CNTXT_GATT_SRVR_ID)
+    {
+        p_context->context_data.p_data = m_gatts_table[p_handle->connection_id].attributes;
+        p_context->context_data.len    = m_gatts_table[p_handle->connection_id].size;
+    }
 
     DM_TRC("[DM]: << dm_service_context_get\r\n");
 
@@ -2705,42 +2706,57 @@ void dm_ble_evt_handler(ble_evt_t * p_ble_evt)
                     event_result = err_code;
                     notify_app   = true;
                 }
+
+                ble_gap_sec_keyset_t keys_exchanged;
+
+                DM_LOG("[DM]: 0x%02X, 0x%02X, 0x%02X, 0x%02X\r\n",
+                       p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params.kdist_peer.enc,
+                       p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params.kdist_own.id,
+                       p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params.kdist_peer.sign,
+                       p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params.bond);
+
+                keys_exchanged.keys_peer.p_enc_key  = NULL;
+                keys_exchanged.keys_peer.p_id_key   = &m_peer_table[m_connection_table[index].bonded_dev_id].peer_id; 
+                keys_exchanged.keys_peer.p_sign_key = NULL;
+                keys_exchanged.keys_peer.p_pk       = NULL;
+                keys_exchanged.keys_own.p_enc_key   = &m_bond_table[index].peer_enc_key;
+                keys_exchanged.keys_own.p_id_key    = NULL;
+                keys_exchanged.keys_own.p_sign_key  = NULL;
+                keys_exchanged.keys_own.p_pk        = NULL;
+
+                err_code = sd_ble_gap_sec_params_reply(p_ble_evt->evt.gap_evt.conn_handle,
+                                                       BLE_GAP_SEC_STATUS_SUCCESS,
+                                                       &m_application_table[0].sec_param, 
+                                                       &keys_exchanged);
+
+                if (err_code != NRF_SUCCESS)
+                {
+                    DM_LOG("[DM]: Security parameter reply request failed, reason 0x%08X.\r\n", err_code);
+                    event_result = err_code;
+                    notify_app   = false;
+                }
+                
             }
             else
             {
-                //Bond/key refresh.
-                event.event_id = DM_EVT_SECURITY_SETUP_REFRESH;
-                memset(m_gatts_table[index].attributes, 0, DM_GATT_SERVER_ATTR_MAX_SIZE);
-
+                //Bond/key refresh. 
+                DM_LOG("[DM]: !!! Bond/key refresh !!!\r\n");
                 //Set the update flag for bond data.
                 m_connection_table[index].state |= STATE_BOND_INFO_UPDATE;
-            }
+                event.event_id                   = DM_EVT_SECURITY_SETUP_REFRESH;
+                
+                err_code = sd_ble_gap_sec_params_reply(p_ble_evt->evt.gap_evt.conn_handle,
+                                                       BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP,
+                                                       NULL, 
+                                                       NULL);
 
-            ble_gap_sec_keyset_t keys_exchanged;
-
-            DM_LOG("[DM]: 0x%02X, 0x%02X, 0x%02X, 0x%02X\r\n",
-                   p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params.kdist_periph.enc,
-                   p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params.kdist_central.id,
-                   p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params.kdist_periph.sign,
-                   p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params.bond);
-
-            keys_exchanged.keys_central.p_enc_key  = NULL;
-            keys_exchanged.keys_central.p_id_key   = &m_peer_table[m_connection_table[index].bonded_dev_id].peer_id; 
-            keys_exchanged.keys_central.p_sign_key = NULL;
-            keys_exchanged.keys_periph.p_enc_key   = &m_bond_table[index].peer_enc_key;
-            keys_exchanged.keys_periph.p_id_key    = NULL;
-            keys_exchanged.keys_periph.p_sign_key  = NULL;
-
-            err_code = sd_ble_gap_sec_params_reply(p_ble_evt->evt.gap_evt.conn_handle,
-                                                   BLE_GAP_SEC_STATUS_SUCCESS,
-                                                   &m_application_table[0].sec_param, 
-                                                   &keys_exchanged);
-
-            if (err_code != NRF_SUCCESS)
-            {
-                DM_LOG("[DM]: Security parameter reply request failed, reason 0x%08X.\r\n", err_code);
-                event_result = err_code;
-                notify_app   = false;
+                if (err_code != NRF_SUCCESS)
+                {
+                    DM_LOG("[DM]: Security parameter reply request failed, reason 0x%08X.\r\n", err_code);
+                    event_result = err_code;
+                    notify_app   = false;
+                }
+                
             }
             break;
 
@@ -2756,10 +2772,15 @@ void dm_ble_evt_handler(ble_evt_t * p_ble_evt)
 
             if (p_ble_evt->evt.gap_evt.params.auth_status.auth_status != BLE_GAP_SEC_STATUS_SUCCESS)
             {
-                // Free the allocation as bonding failed.
-                ret_code_t result = device_instance_free(m_connection_table[index].bonded_dev_id);
-                (void) result;
-                event_result = p_ble_evt->evt.gap_evt.params.auth_status.auth_status;
+                // In case of key refresh attempt, since this behavior is now rejected, we don't do anything here
+                if ((m_connection_table[index].state & STATE_BOND_INFO_UPDATE)
+                    != STATE_BOND_INFO_UPDATE)
+                {
+                    // Free the allocation as bonding failed.
+                    ret_code_t result = device_instance_free(m_connection_table[index].bonded_dev_id);
+                    (void) result;
+                    event_result = p_ble_evt->evt.gap_evt.params.auth_status.auth_status;
+                }
             }
             else
             {
@@ -2774,7 +2795,7 @@ void dm_ble_evt_handler(ble_evt_t * p_ble_evt)
                         m_connection_table[index].state |= STATE_BONDED;
 
                         //IRK and/or public address is shared, update it.
-                        if (p_ble_evt->evt.gap_evt.params.auth_status.kdist_central.id == 1)
+                        if (p_ble_evt->evt.gap_evt.params.auth_status.kdist_peer.id == 1)
                         {
                             m_peer_table[handle.device_id].id_bitmap &= (~IRK_ENTRY);
                         }

@@ -31,7 +31,15 @@
 #include "nrf.h"
 #include "nrf_assert.h"
 
-#define RTC_CHANNEL_NUM 4  /**< Number of compare channels in the RTC instance. */
+/**
+ * @brief Macro for getting the number of compare channels available
+ *        in a given RTC instance.
+ */
+#ifdef NRF51
+    #define NRF_RTC_CC_CHANNEL_COUNT(id)  4
+#else
+    #define NRF_RTC_CC_CHANNEL_COUNT(id)  ((id) == 0 ? 3 : 4)
+#endif
 
 #define RTC_INPUT_FREQ 32768 /**< Input frequency of the RTC instance. */
 
@@ -211,13 +219,11 @@ __STATIC_INLINE void nrf_rtc_event_disable(NRF_RTC_Type * p_rtc, uint32_t event)
 
 __STATIC_INLINE  void nrf_rtc_cc_set(NRF_RTC_Type * p_rtc, uint32_t ch, uint32_t cc_val)
 {
-    ASSERT(ch<RTC_CHANNEL_NUM);
     p_rtc->CC[ch] = cc_val;
 }
 
 __STATIC_INLINE  uint32_t nrf_rtc_cc_get(NRF_RTC_Type * p_rtc, uint32_t ch)
 {
-    ASSERT(ch<RTC_CHANNEL_NUM);
     return p_rtc->CC[ch];
 }
 

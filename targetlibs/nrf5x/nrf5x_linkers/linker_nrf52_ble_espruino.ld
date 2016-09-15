@@ -5,8 +5,22 @@ GROUP(-lgcc -lc -lnosys)
 
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0x1B000, LENGTH = 0x65000 /*0x61000 Set asside some pages for espruino to save to*/
-  RAM (rwx) :  ORIGIN = 0x20001E00, LENGTH = 0xE200 /* 64kB - 0x1E000 */
+  FLASH (rx) : ORIGIN = 0x1c000, LENGTH = 0x64000 
+  RAM (rwx) :  ORIGIN = 0x20002600, LENGTH = 0xda00
+  /* FIXME - we seem to have to start with 256 bytes less RAM than the figures below */
+  /* length is just 65536 - origin */
+  /* PERIPH 1 CENTRAL 0 - RAM (rwx) :  ORIGIN = 0x20001E00, LENGTH = 0xE200 */
+  /* PERIPH 1 CENTRAL 1 - RAM (rwx) :  ORIGIN = 0x200023C8, LENGTH = 0xDC38 */ 
 }
+
+SECTIONS
+{
+  .fs_data :
+  {
+    PROVIDE(__start_fs_data = .);
+    KEEP(*(.fs_data))
+    PROVIDE(__stop_fs_data = .);
+  } > RAM
+} INSERT AFTER .data;
 
 INCLUDE "gcc_nrf5x_espruino_common.ld"

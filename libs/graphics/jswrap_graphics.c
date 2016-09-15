@@ -335,6 +335,44 @@ void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "fillCircle",
+  "generate" : "jswrap_graphics_fillCircle",
+  "params" : [
+    ["x","int32","The X axis"],
+    ["y","int32","The Y axis"],
+    ["rad","int32","The circle radius"]
+  ]
+}
+Draw a filled circle in the Foreground Color
+*/
+ void jswrap_graphics_fillCircle(JsVar *parent, int x, int y, int rad) {
+   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+   graphicsFillCircle(&gfx, (short)x,(short)y,(short)rad);
+   graphicsSetVar(&gfx); // gfx data changed because modified area
+ }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "drawCircle",
+  "generate" : "jswrap_graphics_drawCircle",
+  "params" : [
+    ["x","int32","The X axis"],
+    ["y","int32","The Y axis"],
+    ["rad","int32","The circle radius"]
+  ]
+}
+Draw an unfilled circle 1px wide in the Foreground Color
+*/
+void jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+  graphicsDrawCircle(&gfx, (short)x,(short)y,(short)rad);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "getPixel",
   "generate" : "jswrap_graphics_getPixel",
   "params" : [
@@ -366,7 +404,7 @@ Set a pixel's color
 void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   unsigned int col = gfx.data.fgColor;
-  if (!jsvIsUndefined(color)) 
+  if (!jsvIsUndefined(color))
     col = (unsigned int)jsvGetInteger(color);
   graphicsSetPixel(&gfx, (short)x, (short)y, col);
   gfx.data.cursorX = (short)x;
@@ -510,7 +548,7 @@ Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmapped Font
     ["size","int32","The height of the font, as an integer"]
   ]
 }
-Make subsequent calls to `drawString` use a Vector Font of the given height 
+Make subsequent calls to `drawString` use a Vector Font of the given height
 */
 void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;

@@ -682,6 +682,11 @@ void jshEnableWatchDog(JsVarFloat timeout) {
   /* EFM32 TODO */
 }
 
+// Kick the watchdog
+void jshKickWatchDog() {
+  /* EFM32 TODO */
+}
+
 /** Is the given device initialised? */
 bool jshIsDeviceInitialised(IOEventFlags device) {
   /* EFM32 TODO */

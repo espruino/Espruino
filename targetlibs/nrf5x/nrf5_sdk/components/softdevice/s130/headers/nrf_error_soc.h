@@ -48,6 +48,9 @@
 #define NRF_ERROR_SOC_H__
 
 #include "nrf_error.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Mutex Errors */
 #define NRF_ERROR_SOC_MUTEX_ALREADY_TAKEN                 (NRF_ERROR_SOC_BASE_NUM + 0)  ///< Mutex already taken
@@ -69,6 +72,9 @@
 #define NRF_ERROR_SOC_PPI_INVALID_CHANNEL                 (NRF_ERROR_SOC_BASE_NUM + 8)  ///< Invalid PPI Channel
 #define NRF_ERROR_SOC_PPI_INVALID_GROUP                   (NRF_ERROR_SOC_BASE_NUM + 9)  ///< Invalid PPI Group
 
+#ifdef __cplusplus
+}
+#endif
 #endif // NRF_ERROR_SOC_H__
 /**
   @}

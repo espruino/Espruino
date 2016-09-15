@@ -132,6 +132,16 @@ uint32_t app_sched_event_put(void *                    p_event_data,
                              uint16_t                  event_size,
                              app_sched_event_handler_t handler);
 
+#ifdef APP_SCHEDULER_WITH_PROFILER
+/**@brief Function for getting the maximum observed queue utilization.
+ *
+ * Function for tuning the module and determining QUEUE_SIZE value and thus module RAM usage.
+ *
+ * @return Maximum number of events in queue observed so far.
+ */
+uint16_t app_sched_queue_utilization_get(void);
+#endif
+
 #ifdef APP_SCHEDULER_WITH_PAUSE
 /**@brief A function to pause the scheduler.
  *

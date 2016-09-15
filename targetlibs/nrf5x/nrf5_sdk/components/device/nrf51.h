@@ -6,7 +6,7 @@
  *           nrf51 from Nordic Semiconductor.
  *
  * @version  V522
- * @date     13. November 2015
+ * @date     23. February 2016
  *
  * @note     Generated with SVDConv V2.81d 
  *           from CMSIS SVD File 'nrf51.svd' Version 522,
@@ -865,8 +865,8 @@ typedef struct {                                    /*!< AAR Structure          
   __IO uint32_t  IRKPTR;                            /*!< Pointer to the IRK data structure.                                    */
   __I  uint32_t  RESERVED5;
   __IO uint32_t  ADDRPTR;                           /*!< Pointer to the resolvable address (6 bytes).                          */
-  __IO uint32_t  SCRATCHPTR;                        /*!< Pointer to a "scratch" data area used for temporary storage
-                                                         during resolution. A minimum of 3 bytes must be reserved.             */
+  __IO uint32_t  SCRATCHPTR;                        /*!< Pointer to a scratch data area used for temporary storage during
+                                                         resolution. A minimum of 3 bytes must be reserved.                    */
   __I  uint32_t  RESERVED6[697];
   __IO uint32_t  POWER;                             /*!< Peripheral power control.                                             */
 } NRF_AAR_Type;
@@ -904,8 +904,8 @@ typedef struct {                                    /*!< CCM Structure          
   __IO uint32_t  CNFPTR;                            /*!< Pointer to a data structure holding AES key and NONCE vector.         */
   __IO uint32_t  INPTR;                             /*!< Pointer to the input packet.                                          */
   __IO uint32_t  OUTPTR;                            /*!< Pointer to the output packet.                                         */
-  __IO uint32_t  SCRATCHPTR;                        /*!< Pointer to a "scratch" data area used for temporary storage
-                                                         during resolution. A minimum of 43 bytes must be reserved.            */
+  __IO uint32_t  SCRATCHPTR;                        /*!< Pointer to a scratch data area used for temporary storage during
+                                                         resolution. A minimum of 43 bytes must be reserved.                   */
   __I  uint32_t  RESERVED5[697];
   __IO uint32_t  POWER;                             /*!< Peripheral power control.                                             */
 } NRF_CCM_Type;

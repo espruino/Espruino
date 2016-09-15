@@ -79,7 +79,7 @@ typedef void (*sys_evt_handler_t) (uint32_t evt_id);
  *            events from the stack, making sure the buffer is correctly aligned. It will also
  *            connect the stack event handler to the scheduler/RTOS (if specified).
  *
- * @param[in] CLOCK_SOURCE     Low frequency clock source and accuracy (type nrf_clock_lfclksrc_t,
+ * @param[in] CLOCK_SOURCE     Low frequency clock source and accuracy (type nrf_clock_lf_cfg_t_t,
  *                             see sd_softdevice_enable() for details).
  * @param[in] EVT_HANDLER      scheduler/RTOS event handler function.
  *
@@ -119,7 +119,7 @@ bool softdevice_handler_isEnabled(void);
  * @note       Normally initialization should be done using the SOFTDEVICE_HANDLER_INIT() macro,
  *             as that will both allocate the event buffer, and also align the buffer correctly.
  *
- * @param[in]  clock_source        Low frequency clock source to be used by the SoftDevice.
+ * @param[in]  p_clock_lf_cfg      Low frequency clock source to be used by the SoftDevice.
  * @param[in]  p_ble_evt_buffer    Buffer for holding one BLE stack event. Since heap is not being
  *                                 used, this buffer must be provided by the application. The
  *                                 buffer must be large enough to hold the biggest stack event the
@@ -137,7 +137,7 @@ bool softdevice_handler_isEnabled(void);
  * @retval     NRF_ERROR_INVALID_PARAM   Invalid parameter (buffer not aligned to a 4 byte
  *                                       boundary) or NULL.
  */
-uint32_t softdevice_handler_init(nrf_clock_lfclksrc_t              clock_source,
+uint32_t softdevice_handler_init(nrf_clock_lf_cfg_t *              p_clock_lf_cfg,
                                  void *                            p_ble_evt_buffer,
                                  uint16_t                          ble_evt_buffer_size,
                                  softdevice_evt_schedule_func_t    evt_schedule_func);

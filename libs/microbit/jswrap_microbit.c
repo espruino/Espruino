@@ -183,7 +183,7 @@ void jswrap_microbit_show(JsVar *image) {
     while (jsvIteratorHasElement(&it)) {
       int ch = jsvIteratorGetIntegerValue(&it);
       if (str) {
-        if (ch!="\n" && ch!="\r") {
+        if (ch!='\n' && ch!='\r') {
           if (ch!=' ' && ch!='0')
             newState |= 1<<n;
           n++;
@@ -205,7 +205,8 @@ void jswrap_microbit_show(JsVar *image) {
 
   if ((newState!=0) && (microbitLEDState==0)) {
     // we want to display something but we don't have an interval
-    jstExecuteFn(jswrap_microbit_display_callback, jshGetTimeFromMilliseconds(5), true /* repeat */);
+    JsSysTime period = jshGetTimeFromMilliseconds(5);
+    jstExecuteFn(jswrap_microbit_display_callback, jshGetSystemTime()+period, (uint32_t)period);
     // and also set pins to outputs
     nrf_gpio_cfg_output(MB_LED_COL1);
     nrf_gpio_cfg_output(MB_LED_COL2);
@@ -238,6 +239,7 @@ Get the current acceleration of the micro:bit from the on-board accelerometer
 JsVar *jswrap_microbit_acceleration() {
   unsigned char d[6];
   d[0] = 1;
+  jshI2CWrite(EV_I2C1, MMA8652_ADDR, 1, d, true);
   jshI2CRead(EV_I2C1, MMA8652_ADDR, 7, d, true);
   JsVar *xyz = jsvNewObject();
   if (xyz) {
@@ -266,16 +268,17 @@ JsVar *jswrap_microbit_acceleration() {
 Get the current compass position for the micro:bit from the on-board magnetometer
 */
 JsVar *jswrap_microbit_compass() {
-  unsigned char d[7];
+  unsigned char d[6];
   d[0] = 1;
+  jshI2CWrite(EV_I2C1, MAG3110_ADDR, 1, d, true);
   jshI2CRead(EV_I2C1, MAG3110_ADDR, 6, d, true);
   JsVar *xyz = jsvNewObject();
   if (xyz) {
-    int x = (d[1]<<8) | d[2];
+    int x = (d[0]<<8) | d[1];
     if (x>>15) x-=65536;
-    int y = (d[3]<<8) | d[4];
+    int y = (d[2]<<8) | d[3];
     if (y>>15) y-=65536;
-    int z = (d[5]<<8) | d[6];
+    int z = (d[4]<<8) | d[5];
     if (z>>15) z-=65536;
     jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromInteger(x));
     jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromInteger(y));

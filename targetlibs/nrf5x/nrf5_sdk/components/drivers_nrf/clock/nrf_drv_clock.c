@@ -23,14 +23,14 @@
 #endif // SOFTDEVICE_PRESENT
 
 /*lint -save -e652 */
-#define NRF_CLOCK_LF_SRC_RC    CLOCK_LFCLKSRC_SRC_RC
-#define NRF_CLOCK_LF_SRC_Xtal  CLOCK_LFCLKSRC_SRC_Xtal
-#define NRF_CLOCK_LF_SRC_Synth CLOCK_LFCLKSRC_SRC_Synth
+#define NRF_CLOCK_LFCLK_RC    CLOCK_LFCLKSRC_SRC_RC
+#define NRF_CLOCK_LFCLK_Xtal  CLOCK_LFCLKSRC_SRC_Xtal
+#define NRF_CLOCK_LFCLK_Synth CLOCK_LFCLKSRC_SRC_Synth
 /*lint -restore */
 
 #define INT_MAX 0xFFFFFFFF
 
-#if (CLOCK_CONFIG_LF_SRC == NRF_CLOCK_LF_SRC_RC) && !defined(SOFTDEVICE_PRESENT)
+#if (CLOCK_CONFIG_LF_SRC == NRF_CLOCK_LFCLK_RC) && !defined(SOFTDEVICE_PRESENT)
 #define CALIBRATION_SUPPORT 1
 #else
 #define CALIBRATION_SUPPORT 0
@@ -85,8 +85,7 @@ static void lfclk_stop(void)
 
     nrf_clock_task_trigger(NRF_CLOCK_TASK_LFCLKSTOP);
     while (nrf_clock_lf_is_running())
-    {
-    }
+    {}
 }
 #endif
 static void hfclk_start(void)
@@ -104,7 +103,8 @@ static void hfclk_stop(void)
 {
 #ifndef SOFTDEVICE_PRESENT
     nrf_clock_task_trigger(NRF_CLOCK_TASK_HFCLKSTOP);
-	while (nrf_clock_hf_is_running(NRF_CLOCK_HF_SRC_HIGH_ACCURACY));
+    while (nrf_clock_hf_is_running(NRF_CLOCK_HFCLK_HIGH_ACCURACY))
+    {}
 #else
     UNUSED_VARIABLE(sd_clock_hfclk_release());
 #endif
@@ -125,7 +125,7 @@ ret_code_t nrf_drv_clock_init(void)
     m_clock_cb.p_lf_head      = NULL;
     m_clock_cb.lfclk_requests = 0;
     nrf_clock_xtalfreq_set(CLOCK_CONFIG_XTAL_FREQ);
-    nrf_clock_lf_src_set((nrf_clock_lf_src_t)CLOCK_CONFIG_LF_SRC);
+    nrf_clock_lf_src_set((nrf_clock_lfclk_t)CLOCK_CONFIG_LF_SRC);
     nrf_drv_common_irq_enable(POWER_CLOCK_IRQn, CLOCK_CONFIG_IRQ_PRIORITY);
 #if CALIBRATION_SUPPORT
     m_clock_cb.cal_state = CAL_STATE_IDLE;
@@ -298,7 +298,7 @@ bool nrf_drv_clock_hfclk_is_running(void)
     bool result;
     ASSERT(m_clock_cb.module_initialized);
 #ifndef SOFTDEVICE_PRESENT
-    result = nrf_clock_hf_is_running(NRF_CLOCK_HF_SRC_HIGH_ACCURACY);
+    result = nrf_clock_hf_is_running(NRF_CLOCK_HFCLK_HIGH_ACCURACY);
 #else
     uint32_t is_running;
     UNUSED_VARIABLE(sd_clock_hfclk_is_running(&is_running));
@@ -474,6 +474,6 @@ void nrf_drv_clock_on_soc_event(uint32_t evt_id)
 }
 #endif // SOFTDEVICE_PRESENT
 
-#undef NRF_CLOCK_LF_SRC_RC
-#undef NRF_CLOCK_LF_SRC_Xtal
-#undef NRF_CLOCK_LF_SRC_Synth
+#undef NRF_CLOCK_LFCLK_RC
+#undef NRF_CLOCK_LFCLK_Xtal
+#undef NRF_CLOCK_LFCLK_Synth

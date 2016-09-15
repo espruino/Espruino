@@ -413,6 +413,8 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       bool hadError = fireErrorEvent(error, connection, socket);
 
       // fire the close listeners
+      jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_END, NULL, 0);
+      jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, NULL, 0);
       JsVar *params[1] = { jsvNewFromBool(hadError) };
       jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CLOSE, params, 1);
       jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, params, 1);
@@ -576,6 +578,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         bool hadError = fireErrorEvent(error, connection, NULL);
 
         // close callback must happen after error callback
+        jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, NULL, 0);
         JsVar *params[1] = { jsvNewFromBool(hadError) };
         jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, params, 1);
         jsvUnLock(params[0]);

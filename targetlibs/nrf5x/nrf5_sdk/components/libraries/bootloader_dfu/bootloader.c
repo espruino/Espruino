@@ -19,6 +19,7 @@
 #include "nrf.h"
 #include "app_error.h"
 #include "nrf_sdm.h"
+#include "nrf_mbr.h"
 #include "nordic_common.h"
 #include "crc16.h"
 #include "pstorage.h"

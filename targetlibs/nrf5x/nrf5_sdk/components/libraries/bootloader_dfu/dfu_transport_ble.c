@@ -14,7 +14,6 @@
 #include "dfu.h"
 #include <dfu_types.h>
 #include <stddef.h>
-#include "boards.h"
 #include "nrf.h"
 #include "nrf_sdm.h"
 #include "nrf_gpio.h"
@@ -36,11 +35,17 @@
 #include "nrf_delay.h"
 #include "sdk_common.h"
 
+#include "platform_config.h"
+
+#define ADVERTISING_LED_PIN_NO               LED1_PININDEX                                            /**< Is on when device is advertising. */
+#define ADVERTISING_LED_PIN_ON               LED1_ONSTATE
+#define CONNECTED_LED_PIN_NO                 LED2_PININDEX                                            /**< Is on when device has connected. */
+#define CONNECTED_LED_PIN_ON                 LED2_ONSTATE
+
+
 #define DFU_REV_MAJOR                        0x00                                                    /** DFU Major revision number to be exposed. */
 #define DFU_REV_MINOR                        0x08                                                    /** DFU Minor revision number to be exposed. */
 #define DFU_REVISION                         ((DFU_REV_MAJOR << 8) | DFU_REV_MINOR)                  /** DFU Revision number to be exposed. Combined of major and minor versions. */
-#define ADVERTISING_LED_PIN_NO               BSP_LED_0                                               /**< Is on when device is advertising. */
-#define CONNECTED_LED_PIN_NO                 BSP_LED_1                                               /**< Is on when device has connected. */
 #define DFU_SERVICE_HANDLE                   0x000C                                                  /**< Handle of DFU service when DFU service is first service initialized. */
 #define BLE_HANDLE_MAX                       0xFFFF                                                  /**< Max handle value is BLE. */
 
@@ -67,6 +72,8 @@
 #define SEC_PARAM_TIMEOUT                    30                                                      /**< Timeout for Pairing Request or Security Request (in seconds). */
 #define SEC_PARAM_BOND                       0                                                       /**< Perform bonding. */
 #define SEC_PARAM_MITM                       0                                                       /**< Man In The Middle protection not required. */
+#define SEC_PARAM_LESC                       0                                                       /**< LE Secure Connections not enabled. */
+#define SEC_PARAM_KEYPRESS                   0                                                       /**< Keypress notifications not enabled. */
 #define SEC_PARAM_IO_CAPABILITIES            BLE_GAP_IO_CAPS_NONE                                    /**< No I/O capabilities. */
 #define SEC_PARAM_OOB                        0                                                       /**< Out Of Band data not available. */
 #define SEC_PARAM_MIN_KEY_SIZE               7                                                       /**< Minimum encryption key size. */
@@ -732,7 +739,7 @@ static void advertising_start(void)
         err_code = sd_ble_gap_adv_start(&m_adv_params);
         APP_ERROR_CHECK(err_code);
 
-        nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
+        nrf_gpio_pin_write(ADVERTISING_LED_PIN_NO, ADVERTISING_LED_PIN_ON);
 
         m_is_advertising = true;
     }
@@ -750,7 +757,7 @@ static void advertising_stop(void)
         err_code = sd_ble_gap_adv_stop();
         APP_ERROR_CHECK(err_code);
 
-        nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
+        nrf_gpio_pin_write(ADVERTISING_LED_PIN_NO, !ADVERTISING_LED_PIN_ON);
 
         m_is_advertising = false;
     }
@@ -769,8 +776,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
-            nrf_gpio_pin_clear(CONNECTED_LED_PIN_NO);
-            nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
+            nrf_gpio_pin_write(CONNECTED_LED_PIN_NO, CONNECTED_LED_PIN_ON);
+            nrf_gpio_pin_write(ADVERTISING_LED_PIN_NO, !ADVERTISING_LED_PIN_ON);
 
             m_conn_handle    = p_ble_evt->evt.gap_evt.conn_handle;
             m_is_advertising = false;
@@ -782,7 +789,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
                 uint16_t sys_attr_len = 128;
             
                 m_direct_adv_cnt = APP_DIRECTED_ADV_TIMEOUT;
-                nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
+                nrf_gpio_pin_write(CONNECTED_LED_PIN_NO, !CONNECTED_LED_PIN_ON);
         
                 err_code = sd_ble_gatts_sys_attr_get(m_conn_handle, 
                                                      sys_attr, 
@@ -814,8 +821,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
                 id_key.id_info      = m_ble_peer_data.irk;
                 enc_key             = m_ble_peer_data.enc_key;
 
-                keys.keys_central.p_id_key  = &id_key;
-                keys.keys_central.p_enc_key = &enc_key;
+                keys.keys_peer.p_id_key  = &id_key;
+                keys.keys_peer.p_enc_key = &enc_key;
 
                 err_code = sd_ble_gap_sec_params_reply(m_conn_handle,
                                                        BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP,
@@ -944,8 +951,8 @@ static void leds_init(void)
 {
     nrf_gpio_cfg_output(ADVERTISING_LED_PIN_NO);
     nrf_gpio_cfg_output(CONNECTED_LED_PIN_NO);
-    nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
-    nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
+    nrf_gpio_pin_write(ADVERTISING_LED_PIN_NO, !ADVERTISING_LED_PIN_ON);
+    nrf_gpio_pin_write(CONNECTED_LED_PIN_NO, !CONNECTED_LED_PIN_ON);
 }
 
 
@@ -1018,6 +1025,8 @@ static void sec_params_init(void)
 {
     m_sec_params.bond         = SEC_PARAM_BOND;
     m_sec_params.mitm         = SEC_PARAM_MITM;
+    m_sec_params.lesc         = SEC_PARAM_LESC;
+    m_sec_params.keypress     = SEC_PARAM_KEYPRESS;
     m_sec_params.io_caps      = SEC_PARAM_IO_CAPABILITIES;
     m_sec_params.oob          = SEC_PARAM_OOB;
     m_sec_params.min_key_size = SEC_PARAM_MIN_KEY_SIZE;

@@ -1,14 +1,14 @@
 /* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
-*
-* The information contained herein is property of Nordic Semiconductor ASA.
-* Terms and conditions of usage are described in detail in NORDIC
-* SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
-*
-* Licensees are granted free, non-transferable use of the information. NO
-* WARRANTY of ANY KIND is provided. This heading must NOT be removed from
-* the file.
-*
-*/
+ *
+ * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
+ * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+ *
+ * Licensees are granted free, non-transferable use of the information. NO
+ * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
+ * the file.
+ *
+ */
 
 
 #ifndef PEER_DATA_H__
@@ -16,10 +16,12 @@
 
 #include <stdint.h>
 #include "peer_manager_types.h"
+#include "peer_manager_internal.h"
 #include "fds.h"
 
 
 /**
+ * @cond NO_DOXYGEN
  * @defgroup peer_data Peer Data
  * @ingroup peer_manager
  * @{
@@ -48,6 +50,8 @@ void peer_data_parts_get(pm_peer_data_const_t const * p_peer_data, fds_record_ch
  */
 ret_code_t peer_data_deserialize(pm_peer_data_flash_t const * p_in_data, pm_peer_data_t * p_out_data);
 
-/** @} */
+/** @} 
+ * @endcond
+ */
 
 #endif /* PEER_DATA_H__ */

@@ -1,6 +1,7 @@
-/* Copyright (C) 2015 Nordic Semiconductor. All Rights Reserved.
+/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
  *
  * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
  * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
  *
  * Licensees are granted free, non-transferable use of the information. NO
@@ -8,6 +9,7 @@
  * the file.
  *
  */
+
 
 #ifndef PEER_ID_MANAGER_H__
 #define PEER_ID_MANAGER_H__
@@ -20,6 +22,7 @@
 
 
 /**
+ * @cond NO_DOXYGEN
  * @defgroup id_manager ID Manager
  * @ingroup peer_manager
  * @{
@@ -116,6 +119,18 @@ pm_peer_id_t im_peer_id_get_by_irk_match_idx(uint8_t irk_match_idx);
 uint16_t im_conn_handle_get(pm_peer_id_t peer_id);
 
 
+/**@brief Function for comparing two master ids
+ * @note  Two invalid master IDs will not match.
+ *
+ * @param[in]  p_master_id1 First master id for comparison
+ * @param[in]  p_master_id2 Second master id for comparison
+ *
+ * @return     True if the input matches, false if it does not.
+ */
+bool im_master_ids_compare(ble_gap_master_id_t const * p_master_id1,
+                           ble_gap_master_id_t const * p_master_id2);
+
+
 /**@brief Function for getting the BLE address used by the peer when connecting.
  *
  * @param[in]  conn_handle  The connection handle.
@@ -148,17 +163,29 @@ bool im_master_id_is_valid(ble_gap_master_id_t const * p_master_id);
 void im_new_peer_id(uint16_t conn_handle, pm_peer_id_t peer_id);
 
 
-/**
- * @brief Function for informing this module of what whitelist will be used.
+/**@brief Function for deleting all of a peer's data from flash and disassociating it from any
+ *        connection handles it is associated with.
+ *
+ * @param[in]  peer_id  The peer to free.
+ *
+ * @return Any error code returned by @ref pdb_peer_free.
+ */
+ret_code_t im_peer_free(pm_peer_id_t peer_id);
+
+
+/**@brief Function for informing this module of what whitelist will be used.
  *
  * @details This function is meant to be used when the app wants to use a custom whitelist.
  *          When using peer manager, this function must be used if a custom whitelist is used.
+ *          Only whitelisted IRKs are of any importance for this function.
  *
  * @note When using a whitelist, always use the whitelist created/set by the most recent
- *       call to @ref im_wlist_create or to this function, whichever happened most recently.
+ *       call to @ref im_whitelist_create or to this function, whichever happened most recently.
  * @note Do not call this function while scanning with another whitelist.
  * @note Do not add any irks to the whitelist that are not present in the bonding data of a peer in
  *       the peer database.
+ * @note The whitelist is not altered in any way by calling this function. Only the internal state
+ *       of the module is changed.
  *
  * @param[in] p_whitelist  The whitelist.
  *
@@ -166,14 +193,14 @@ void im_new_peer_id(uint16_t conn_handle, pm_peer_id_t peer_id);
  * @retval NRF_ERROR_NULL      p_whitelist was NULL.
  * @retval NRF_ERROR_NOT_FOUND One or more of the whitelists irks was not found in the peer_database.
  */
-ret_code_t im_wlist_set(ble_gap_whitelist_t * p_whitelist);
+ret_code_t im_whitelist_custom(ble_gap_whitelist_t const * p_whitelist);
 
 
 /**
  * @brief Function for constructing a whitelist for use when advertising.
  *
  * @note When advertising with whitelist, always use the whitelist created/set by the most recent
- *       call to this function or to @ref im_wlist_set, whichever happened most recently.
+ *       call to this function or to @ref im_whitelist_custom, whichever happened most recently.
  * @note Do not call this function while advertising with another whitelist.
  *
  * @param[in]     p_peer_ids   The ids of the peers to be added to the whitelist.
@@ -187,9 +214,9 @@ ret_code_t im_wlist_set(ble_gap_whitelist_t * p_whitelist);
  * @retval NRF_SUCCESS     Whitelist successfully created.
  * @retval NRF_ERROR_NULL  p_whitelist was NULL.
  */
-ret_code_t im_wlist_create(pm_peer_id_t        * p_peer_ids,
-                           uint8_t               n_peer_ids,
-                           ble_gap_whitelist_t * p_whitelist);
+ret_code_t im_whitelist_create(pm_peer_id_t        * p_peer_ids,
+                               uint8_t               n_peer_ids,
+                               ble_gap_whitelist_t * p_whitelist);
 
 /**
  * @brief Function for resolving a resolvable address with an identity resolution key (IRK).
@@ -208,6 +235,8 @@ ret_code_t im_wlist_create(pm_peer_id_t        * p_peer_ids,
  */
 bool im_address_resolve(ble_gap_addr_t const * p_addr, ble_gap_irk_t const * p_irk);
 
-/** @} */
+/** @}
+ * @endcond
+ */
 
 #endif /* PEER_ID_MANAGER_H__ */
