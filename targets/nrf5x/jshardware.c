@@ -24,11 +24,13 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
+
 #ifdef BLUETOOTH
 #include "jswrap_bluetooth.h"
 #include "app_timer.h"
 #endif
 
+#include "nrf_peripherals.h"
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
 #include "nrf_temp.h"
@@ -600,7 +602,7 @@ static IOEventFlags jshGetEventFlagsForWatchedPin(nrf_drv_gpiote_pin_t pin) {
 
   // sigh. all because the right stuff isn't exported. All we wanted was channel_port_get
   int i;
-  for (i=0;i<NUMBER_OF_GPIO_TE;i++)
+  for (i=0;i<GPIOTE_CH_NUM;i++)
     if (addr == nrf_gpiote_event_addr_get((nrf_gpiote_events_t)((uint32_t)NRF_GPIOTE_EVENTS_IN_0+(sizeof(uint32_t)*i))))
       return EV_EXTI0+i;
   return EV_NONE;

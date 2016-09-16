@@ -61,11 +61,6 @@ bool nfcEnabled = false;
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
 #endif
 
-// Working out the amount of RAM we need - see softdevice_handler.h
-#define IDEAL_RAM_START_ADDRESS_INTERN(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT) \
-  APP_RAM_BASE_CENTRAL_LINKS_##CENTRAL_LINK_COUNT##_PERIPH_LINKS_##PERIPHERAL_LINK_COUNT##_SEC_COUNT_##CENTRAL_LINK_COUNT##_MID_BW
-#define IDEAL_RAM_START_ADDRESS(C_LINK_CNT, P_LINK_CNT) IDEAL_RAM_START_ADDRESS_INTERN(C_LINK_CNT, P_LINK_CNT)
-
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_DEFAULT_ADV_INTERVAL        MSEC_TO_UNITS(375, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
@@ -270,7 +265,6 @@ void advertising_start(void) {
   adv_params.type        = BLE_GAP_ADV_TYPE_ADV_IND;
   adv_params.p_peer_addr = NULL;
   adv_params.fp          = BLE_GAP_ADV_FP_ANY;
-  adv_params.p_whitelist = NULL;
   adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
   adv_params.interval = advertising_interval;
 
@@ -403,6 +397,7 @@ static void gap_params_init(void)
     // not null terminated
 #endif
 
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
     err_code = sd_ble_gap_device_name_set(&sec_mode,
                                           (const uint8_t *)deviceName,
                                           len);
@@ -964,12 +959,6 @@ static void ble_stack_init(void)
     //Check the ram settings against the used number of links
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
 
-    extern int __data_start__; // should be 'void', but 'int' avoids warnings
-    if (IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT)+softdevice_extra_ram_hack != (uint32_t)&__data_start__) {
-      jsiConsolePrintf("WARNING: BLE RAM start address not correct - is 0x%x, should be 0x%x\n\n", (uint32_t)&__data_start__, IDEAL_RAM_START_ADDRESS(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT)+softdevice_extra_ram_hack);
-      jshTransmitFlush();
-    }
-
     // Enable BLE stack.
     err_code = softdevice_enable(&ble_enable_params);
     APP_ERROR_CHECK(err_code);
@@ -1012,7 +1001,7 @@ static void advertising_init(void)
     scanrsp.uuids_complete.p_uuids  = m_adv_uuids;
 
     ble_adv_modes_config_t options = {0};
-    options.ble_adv_fast_enabled  = BLE_ADV_FAST_ENABLED;
+    options.ble_adv_fast_enabled  = true;
     options.ble_adv_fast_interval = advertising_interval;
     options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
 
@@ -1565,10 +1554,8 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
     ble_gap_scan_params_t     m_scan_param;
     // non-selective scan
     m_scan_param.active       = 0;            // Active scanning set.
-    m_scan_param.selective    = 0;            // Selective scanning not set.
     m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
     m_scan_param.window       = SCAN_WINDOW;  // Scan window.
-    m_scan_param.p_whitelist  = NULL;         // No whitelist provided.
     m_scan_param.timeout      = 0x0000;       // No timeout.
 
     err_code = sd_ble_gap_scan_start(&m_scan_param);
@@ -1632,10 +1619,8 @@ void jswrap_nrf_bluetooth_connect(JsVar *mac) {
   uint32_t              err_code;
   ble_gap_scan_params_t     m_scan_param;
   m_scan_param.active       = 0;            // Active scanning set.
-  m_scan_param.selective    = 0;            // Selective scanning not set.
   m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
   m_scan_param.window       = SCAN_WINDOW;  // Scan window.
-  m_scan_param.p_whitelist  = NULL;         // No whitelist provided.
   m_scan_param.timeout      = 0x0000;       // No timeout.
 
   ble_gap_conn_params_t   gap_conn_params;

@@ -1313,7 +1313,7 @@ ifeq ($(FAMILY), NRF51)
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
 
-  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0_softdevice.hex
+  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_3.0.0_softdevice.hex
 
   ifdef USE_BOOTLOADER
   ifdef USE_CUSTOM_BOOTLOADER
@@ -1348,7 +1348,7 @@ ifeq ($(FAMILY), NRF52)
 
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
 
-  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0_softdevice.hex
+  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_3.0.0_softdevice.hex
 
   ifdef USE_BOOTLOADER
   ifdef USE_CUSTOM_BOOTLOADER
@@ -1464,7 +1464,7 @@ endif #FAMILY == EFM32
 ifdef NRF5X
   # Just try and get rid of the compile warnings.
   CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
-  DEFINES += -DBLUETOOTH -D$(BOARD)
+  DEFINES += -DBLUETOOTH -D$(BOARD) -D$(CHIP) -DNRF_SD_BLE_API_VERSION=3
 
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
@@ -1491,13 +1491,17 @@ ifdef NRF5X
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/cmsis/include
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/gcc
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fstorage/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
@@ -1506,13 +1510,9 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/CMSIS/Include
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/gcc
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/common
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_advertising
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/trace
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/ppi
@@ -1523,14 +1523,11 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
   $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
   $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c \
-  $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
   $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
@@ -1580,7 +1577,6 @@ ifdef NRF5X
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage_raw.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
     TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu/ble_dfu.c
