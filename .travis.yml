@@ -42,7 +42,7 @@ env:
     - RELEASE=1
     - TRAVIS=1
     - V=0
-    - ESP8266_SDK_ROOT=$TRAVIS_BUILD_DIR/esp_iot_sdk_v1.5.0
+    - ESP8266_SDK_ROOT=$TRAVIS_BUILD_DIR/esp_iot_sdk_v1.5.4
     - PATH=$PATH:$TRAVIS_BUILD_DIR/xtensa-lx106-elf/bin/
   matrix:
     - ESP8266_BOARD=1
