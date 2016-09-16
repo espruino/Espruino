@@ -1924,7 +1924,7 @@ PARTIAL     = espruino_esp8266_partial.o
 LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
 APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
-BOOTLOADER  = "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin"
+BOOTLOADER  = "$(ESP8266_SDK_ROOT)/bin/boot_v1.5.bin"
 BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
 INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
 
