@@ -990,3 +990,4 @@ unsigned int jshGetRandomNumber() {
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
 }
+

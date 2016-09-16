@@ -898,16 +898,16 @@ void log_uart_printf(const char * format_msg, ...) {
 /**
  * @brief Callback function for handling NFC events.
  */
-void nfc_callback(void *context, NfcEvent event, const char *data, size_t dataLength)
+static void nfc_callback(void * p_context, nfc_t2t_event_t event, const uint8_t * p_data, size_t data_length)
 {
-    (void)context;
+    (void)p_context;
 
     switch (event)
     {
-        case NFC_EVENT_FIELD_ON:
+        case NFC_T2T_EVENT_FIELD_ON:
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCon", 0);
           break;
-        case NFC_EVENT_FIELD_OFF:
+        case NFC_T2T_EVENT_FIELD_OFF:
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCoff", 0);
           break;
         default:
@@ -1795,8 +1795,8 @@ void jswrap_nrf_nfcURL(JsVar *url) {
     if (!nfcEnabled) return;
     nfcEnabled = false;
     jsvObjectSetChild(execInfo.hiddenRoot, "NFC", 0);
-    nfcStopEmulation();
-    nfcDone();
+    nfc_t2t_emulation_stop();
+    nfc_t2t_done();
     return;
   }
 
@@ -1809,10 +1809,11 @@ void jswrap_nrf_nfcURL(JsVar *url) {
   uint32_t err_code;
   /* Set up NFC */
   if (nfcEnabled) {
-    nfcStopEmulation();
+    nfc_t2t_emulation_stop();
+    nfc_t2t_done();
   } else {
-    ret_val = nfcSetup(nfc_callback, NULL);
-    if (ret_val != NFC_RETVAL_OK)
+    ret_val = nfc_t2t_setup(nfc_callback, NULL);
+    if (ret_val)
       return jsExceptionHere(JSET_ERROR, "nfcSetup: Got NFC error code %d", ret_val);
     nfcEnabled = true;
   }
@@ -1830,7 +1831,7 @@ void jswrap_nrf_nfcURL(JsVar *url) {
                                  urlLen,
                                  msg_buf,
                                  &len);
-  if (err_code != NRF_SUCCESS)
+  if (err_code)
     return jsExceptionHere(JSET_ERROR, "nfc_uri_msg_encode: NFC error code %d", err_code);
 
   /* Create a flat string - we need this to store the URI data so it hangs around.
@@ -1844,13 +1845,13 @@ void jswrap_nrf_nfcURL(JsVar *url) {
   memcpy(flatStrPtr, msg_buf, len);
 
   /* Set created message as the NFC payload */
-  ret_val = nfcSetPayload( (char*)flatStrPtr, len);
-  if (ret_val != NFC_RETVAL_OK)
+  ret_val = nfc_t2t_payload_set( (char*)flatStrPtr, len);
+  if (ret_val)
     return jsExceptionHere(JSET_ERROR, "nfcSetPayload: NFC error code %d", ret_val);
 
   /* Start sensing NFC field */
-  ret_val = nfcStartEmulation();
-  if (ret_val != NFC_RETVAL_OK)
+  ret_val = nfc_t2t_emulation_start();
+  if (ret_val)
     return jsExceptionHere(JSET_ERROR, "nfcStartEmulation: NFC error code %d", ret_val);
 #endif
 }

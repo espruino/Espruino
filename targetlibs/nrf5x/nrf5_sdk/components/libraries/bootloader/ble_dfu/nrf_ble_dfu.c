@@ -28,8 +28,7 @@
 #include "nrf_log.h"
 #include "nrf_delay.h"
 
-#define ADVERTISING_LED_PIN_NO               BSP_LED_0                                              /**< Is on when device is advertising. */
-#define CONNECTED_LED_PIN_NO                 BSP_LED_1                                              /**< Is on when device has connected. */
+#include "platform_config.h"
 
 #define DEVICE_NAME                          "DfuTarg"                                              /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME                    "NordicSemiconductor"                                  /**< Manufacturer. Will be passed to Device Information Service. */
@@ -85,6 +84,22 @@ DFU_TRANSPORT_REGISTER(nrf_dfu_transport_t const dfu_trans) =
 };
 //lint -restore
 
+#include "platform_config.h"
+static void leds_init(void)
+{
+    nrf_gpio_cfg_output(LED1_PININDEX);
+    nrf_gpio_cfg_output(LED3_PININDEX);
+    nrf_gpio_pin_write(LED1_PININDEX, !LED1_ONSTATE);
+    nrf_gpio_pin_write(LED3_PININDEX, !LED3_ONSTATE);
+}
+static void leds_set_advertising(bool on)
+{
+    nrf_gpio_pin_write(LED1_PININDEX, on ? LED1_ONSTATE : !LED1_ONSTATE);
+}
+static void leds_set_connected(bool on)
+{
+    nrf_gpio_pin_write(LED3_PININDEX, on ? LED3_ONSTATE : !LED3_ONSTATE);
+}
 
 /**@brief     Function for handling a Connection Parameters error.
  *
@@ -165,8 +180,8 @@ static uint32_t advertising_start(void)
     err_code = sd_ble_gap_adv_start(&adv_params);
     VERIFY_SUCCESS(err_code);
 
-    nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
-    nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
+    leds_set_advertising(true);
+    leds_set_connected(false);
 
     m_flags |= DFU_BLE_FLAG_IS_ADVERTISING;
     return NRF_SUCCESS;
@@ -187,7 +202,7 @@ static uint32_t advertising_stop(void)
     err_code = sd_ble_gap_adv_stop();
     VERIFY_SUCCESS(err_code);
 
-    nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
+    leds_set_advertising(false);
 
     m_flags |= DFU_BLE_FLAG_IS_ADVERTISING;
     return NRF_SUCCESS;
@@ -472,7 +487,7 @@ static bool on_rw_authorize_req(ble_dfu_t * p_dfu, ble_evt_t * p_ble_evt)
     ble_gatts_rw_authorize_reply_params_t   auth_reply = {0};
     ble_gatts_evt_rw_authorize_request_t  * p_authorize_request;
     ble_gatts_evt_write_t                 * p_ble_write_evt;
-    
+
     p_authorize_request = &(p_ble_evt->evt.gatts_evt.params.authorize_request);
     p_ble_write_evt = &(p_ble_evt->evt.gatts_evt.params.authorize_request.request.write);
 
@@ -492,7 +507,7 @@ static bool on_rw_authorize_req(ble_dfu_t * p_dfu, ble_evt_t * p_ble_evt)
         {
             // Send an error response to the peer indicating that the CCCD is improperly configured.
             auth_reply.params.write.gatt_status = BLE_GATT_STATUS_ATTERR_CPS_CCCD_CONFIG_ERROR;
- 
+
             // Ignore response of auth reply
             (void)sd_ble_gatts_rw_authorize_reply(m_conn_handle, &auth_reply);
             return false;
@@ -561,8 +576,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
-            nrf_gpio_pin_clear(CONNECTED_LED_PIN_NO);
-            nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
+            leds_set_connected(true);
+            leds_set_advertising(false);
 
             m_conn_handle    = p_ble_evt->evt.gap_evt.conn_handle;
             m_flags &= ~DFU_BLE_FLAG_IS_ADVERTISING;
@@ -607,9 +622,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             {
                 if (on_rw_authorize_req(&m_dfu, p_ble_evt))
                 {
-                    err_code = on_ctrl_pt_write(&m_dfu, 
+                    err_code = on_ctrl_pt_write(&m_dfu,
                            &(p_ble_evt->evt.gatts_evt.params.authorize_request.request.write));
-#ifdef NRF_DFU_DEBUG_VERSION  
+#ifdef NRF_DFU_DEBUG_VERSION
                     if (err_code != NRF_SUCCESS)
                     {
                         NRF_LOG_ERROR("Could not handle on_ctrl_pt_write. err_code: 0x%04x\r\n", err_code);
@@ -631,19 +646,19 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             err_code = sd_ble_gatts_sys_attr_set(p_ble_evt->evt.gap_evt.conn_handle, NULL, 0, 0);
             APP_ERROR_CHECK(err_code);
             break;
-        
+
         case BLE_GATTS_EVT_WRITE:
             on_write(&m_dfu, p_ble_evt);
             break;
 
 #if (NRF_SD_BLE_API_VERSION == 3)
         case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST:
-            err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle, 
+            err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                        NRF_BLE_MAX_MTU_SIZE);
             APP_ERROR_CHECK(err_code);
             break; // BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST
 #endif
-        
+
         default:
             // No implementation needed.
             break;
@@ -663,20 +678,6 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     ble_conn_params_on_ble_evt(p_ble_evt);
     on_ble_evt(p_ble_evt);
 }
-
-
-/**@brief       Function for the LEDs initialization.
- *
- * @details     Initializes all LEDs used by this application.
- */
-static void leds_init(void)
-{
-    nrf_gpio_cfg_output(ADVERTISING_LED_PIN_NO);
-    nrf_gpio_cfg_output(CONNECTED_LED_PIN_NO);
-    nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
-    nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
-}
-
 
 static uint32_t gap_address_change(void)
 {
@@ -745,7 +746,11 @@ static uint32_t gap_params_init(void)
 static uint32_t ble_stack_init(bool init_softdevice)
 {
     uint32_t         err_code;
-    nrf_clock_lf_cfg_t clock_lf_cfg = NRF_CLOCK_LFCLKSRC;
+    nrf_clock_lf_cfg_t clock_lf_cfg = {
+            .source        = NRF_CLOCK_LF_SRC_RC,
+            .rc_ctiv       = 16, // recommended for nRF52
+            .rc_temp_ctiv  = 2,  // recommended for nRF52
+            .xtal_accuracy = 0};
 
     if (init_softdevice)
     {
@@ -766,8 +771,8 @@ static uint32_t ble_stack_init(bool init_softdevice)
 
 #if (NRF_SD_BLE_API_VERSION == 3)
     ble_enable_params.gatt_enable_params.att_mtu = NRF_BLE_MAX_MTU_SIZE;
-#endif    
-    
+#endif
+
     // Enable BLE stack.
     err_code = softdevice_enable(&ble_enable_params);
     return err_code;

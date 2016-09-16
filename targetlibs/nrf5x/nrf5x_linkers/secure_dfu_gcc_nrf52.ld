@@ -10,13 +10,11 @@ MEMORY
    *  BOOTLOADER_REGION_START found in dfu_types.h. The system is prevented from starting up if
    *  those values do not match. The check is performed in main.c, see
    *  APP_ERROR_CHECK_BOOL(*((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) == BOOTLOADER_REGION_START);
-
-   *  see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h
    */
-  FLASH (rx) : ORIGIN = 0x79000, LENGTH = 0x5000
+  FLASH (rx) : ORIGIN = 0x78000, LENGTH = 0x6000
 
   /** RAM Region for bootloader. This setting is suitable when used with s132. */
-  RAM (rwx) :  ORIGIN = 0x20002c40, LENGTH = 0xd3c0
+  RAM (rwx) :  ORIGIN = 0x20002C00, LENGTH = 0x5380
 
   /** Location of non initialized RAM. Non initialized RAM is used for exchanging bond information
    *  from application to bootloader when using buttonluss DFU OTA.
@@ -38,13 +36,6 @@ MEMORY
 
 SECTIONS
 {
-  .fs_data_out ALIGN(4):
-  {
-    PROVIDE( __start_fs_data = .);
-    KEEP(*(fs_data))
-    PROVIDE( __stop_fs_data = .);
-  } = 0
-
   /* Place the bootloader settings page in flash. */
   .bootloaderSettings(NOLOAD) :
   {
@@ -77,4 +68,32 @@ SECTIONS
   /* other placements follow here... */
 }
 
-INCLUDE "gcc_nrf5x_espruino_common.ld"
+SECTIONS
+{
+  . = ALIGN(4);
+  .fs_data :
+  {
+    PROVIDE(__start_fs_data = .);
+    KEEP(*(.fs_data))
+    PROVIDE(__stop_fs_data = .);
+  } > RAM
+
+  . = ALIGN(4);
+  .svc_data :
+  {
+    PROVIDE(__start_svc_data = .);
+    KEEP(*(.svc_data))
+    PROVIDE(__stop_svc_data = .);
+  } > RAM
+
+  . = ALIGN(4);
+  .dfu_trans :
+  {
+    PROVIDE(__start_dfu_trans = .);
+    KEEP(*(.dfu_trans))
+    PROVIDE(__stop_dfu_trans = .);
+  } > RAM
+
+} INSERT AFTER .data
+
+INCLUDE "../nrf5_sdk/components/toolchain/gcc/nrf52_common.ld"
