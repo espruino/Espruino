@@ -11,21 +11,21 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_bps Blood Pressure Service
+ * @defgroup ble_bps Blood Pressure Service
  * @{
  * @ingroup ble_sdk_srv
  * @brief Blood Pressure Service module.
  *
  * @details This module implements the Blood Pressure Service.
  *
- *          If an event handler is supplied by the application, the Blood Pressure 
+ *          If an event handler is supplied by the application, the Blood Pressure
  *          Service will generate Blood Pressure Service events to the application.
  *
  * @note The application must propagate BLE stack events to the Blood Pressure Service
  *       module by calling ble_bps_on_ble_evt() from the @ref softdevice_handler function.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
  */
 
@@ -37,6 +37,10 @@
 #include "ble.h"
 #include "ble_srv_common.h"
 #include "ble_date_time.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Blood Pressure Feature bits
 #define BLE_BPS_FEATURE_BODY_MOVEMENT_BIT               (0x01 << 0)         /**< Body Movement Detection Support bit. */
@@ -60,7 +64,7 @@ typedef struct
     ble_bps_evt_type_t evt_type;                                            /**< Type of event. */
 } ble_bps_evt_t;
 
-// Forward declaration of the ble_bps_t type. 
+// Forward declaration of the ble_bps_t type.
 typedef struct ble_bps_s ble_bps_t;
 
 /**@brief Blood Pressure Service event handler type. */
@@ -155,6 +159,11 @@ uint32_t ble_bps_measurement_send(ble_bps_t * p_bps, ble_bps_meas_t * p_bps_meas
  * @return      NRF_SUCCESS on success, otherwise an error code.
  */
 uint32_t ble_bps_is_indication_enabled(ble_bps_t * p_bps, bool * p_indication_enabled);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_BPS_H__
 

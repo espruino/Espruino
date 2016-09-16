@@ -20,6 +20,10 @@
 #include "ble_gap.h"
 #include "peer_manager_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /**
  * @cond NO_DOXYGEN
@@ -125,8 +129,13 @@ pm_peer_id_t peer_id_get_next_deleted(pm_peer_id_t prev_peer_id);
  */
 uint32_t peer_id_n_ids(void);
 
-/** @} 
+/** @}
  * @endcond
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PEER_ID_H__ */

@@ -85,15 +85,12 @@ ret_code_t ble_ln_db_record_add(ble_lns_route_t * p_rec)
     {
         if (!m_database[i].in_use_flag)
         {
-            m_database[i].in_use_flag 				 = true;
-            m_database[i].record      				 = *p_rec;
-					
-						m_database[i].record.route_id 		 = i;
-						m_database_crossref[m_num_records] = i;
-         		p_rec->route_id = i;
-					
-						m_num_records++;
-					
+            m_database[i].in_use_flag                  = true;
+            m_database[i].record                       = *p_rec;
+            m_database[i].record.route_id          = i;
+            m_database_crossref[m_num_records] = i;
+            p_rec->route_id = i;
+            m_num_records++;
             return NRF_SUCCESS;
         }
     }

@@ -18,8 +18,8 @@
  *
  * @details This module implements at database of stored glucose measurement values.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, These APIs must not be modified. However, the corresponding
  *  functions' implementations can be modified.
  */
@@ -30,13 +30,17 @@
 #include <stdint.h>
 #include "ble_gls.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define BLE_GLS_DB_MAX_RECORDS      20
 
 /**@brief Function for initializing the glucose record database.
  *
  * @details This call initializes the database holding glucose records.
  *
- * @return      NRF_SUCCESS on success. 
+ * @return      NRF_SUCCESS on success.
  */
 uint32_t ble_gls_db_init(void);
 
@@ -54,7 +58,7 @@ uint16_t ble_gls_db_num_records_get(void);
  *
  * @param[in]   record_num    Index of the record to retrieve.
  * @param[out]  p_rec         Pointer to record structure where retrieved record is copied to.
- * 
+ *
  * @return      NRF_SUCCESS on success.
  */
 uint32_t ble_gls_db_record_get(uint8_t record_num, ble_gls_rec_t * p_rec);
@@ -64,7 +68,7 @@ uint32_t ble_gls_db_record_get(uint8_t record_num, ble_gls_rec_t * p_rec);
  * @details This call adds a record as the last record in the database.
  *
  * @param[in]   p_rec   Pointer to record to add to database.
- * 
+ *
  * @return      NRF_SUCCESS on success.
  */
 uint32_t ble_gls_db_record_add(ble_gls_rec_t * p_rec);
@@ -74,10 +78,15 @@ uint32_t ble_gls_db_record_add(ble_gls_rec_t * p_rec);
  * @details This call deletes an record from the database.
  *
  * @param[in]   record_num   Index of record to delete.
- * 
+ *
  * @return      NRF_SUCCESS on success.
  */
 uint32_t ble_gls_db_record_delete(uint8_t record_num);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_GLS_DB_H__
 

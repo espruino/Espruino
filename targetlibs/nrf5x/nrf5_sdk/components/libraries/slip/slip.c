@@ -9,7 +9,8 @@
  * the file.
  *
  */
- 
+#include "sdk_config.h"
+#if SLIP_ENABLED
 #include "slip.h"
 #include "nrf_error.h"
 
@@ -23,7 +24,7 @@ uint32_t slip_encode(uint8_t * p_output,  uint8_t * p_input, uint32_t input_leng
 {
     uint32_t input_index;
     uint32_t output_index;
-    
+
     for (input_index = 0, output_index = 0; input_index < input_length && output_index < output_buffer_length; input_index++)
     {
         switch (p_input[input_index])
@@ -32,25 +33,25 @@ uint32_t slip_encode(uint8_t * p_output,  uint8_t * p_input, uint32_t input_leng
                 p_output[output_index++] = SLIP_END;
                 p_output[output_index++] = SLIP_ESC_END;
                 break;
-            
+
             case SLIP_ESC:
                 p_output[output_index++] = SLIP_ESC;
                 p_output[output_index++] = SLIP_ESC_ESC;
                 break;
-                
+
             default:
                 p_output[output_index++] = p_input[input_index];
         }
     }
     p_output[output_index++] = (uint8_t)SLIP_END;
     p_output[output_index++] = (uint8_t)SLIP_END; // clarify that the packet has ended.
-    
+
     return output_index;
 }
 
 
 uint32_t slip_decoding_add_char(uint8_t c, buffer_t * p_buf, slip_state_t * current_state)
-{   
+{
     switch (*current_state)
     {
         case SLIP_DECODING:
@@ -62,19 +63,19 @@ uint32_t slip_decoding_add_char(uint8_t c, buffer_t * p_buf, slip_state_t * curr
             {
                 *current_state = SLIP_END_RECEIVED;
             }
-            else 
+            else
             {
                 p_buf->p_buffer[p_buf->current_index++] = c;
                 p_buf->current_length++;
             }
             break;
-        
+
         case SLIP_ESC_RECEIVED:
             if (c == SLIP_ESC_ESC)
             {
-                p_buf->p_buffer[p_buf->current_index++] = SLIP_ESC; 
-                p_buf->current_length++;  
-                *current_state = SLIP_DECODING;                
+                p_buf->p_buffer[p_buf->current_index++] = SLIP_ESC;
+                p_buf->current_length++;
+                *current_state = SLIP_DECODING;
             }
             else
             {
@@ -83,7 +84,7 @@ uint32_t slip_decoding_add_char(uint8_t c, buffer_t * p_buf, slip_state_t * curr
                 return NRF_ERROR_INVALID_DATA;
             }
             break;
-            
+
         case SLIP_END_RECEIVED:
             if (c == SLIP_ESC_END)
             {
@@ -91,22 +92,23 @@ uint32_t slip_decoding_add_char(uint8_t c, buffer_t * p_buf, slip_state_t * curr
                 p_buf->current_length++;
                 *current_state = SLIP_DECODING;
             }
-            else 
+            else
             {
                 // packet is finished
-                *current_state = SLIP_DECODING;                 
+                *current_state = SLIP_DECODING;
                 return NRF_SUCCESS;
             }
-            break;       
-        
+            break;
+
         case SLIP_CLEARING_INVALID_PACKET:
             if (c == SLIP_END)
             {
-                *current_state = SLIP_DECODING;        
+                *current_state = SLIP_DECODING;
                 p_buf->current_index = 0;
                 p_buf->current_length = 0;
             }
             break;
-    } 
+    }
     return NRF_ERROR_BUSY;
 }
+#endif //SLIP_ENABLED

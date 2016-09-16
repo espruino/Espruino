@@ -10,17 +10,17 @@
 /**@cond To Make Doxygen skip documentation generation for this file.
  * @{
  */
-
+#include "sdk_config.h"
+#if BLE_RSCS_C_ENABLED
 #include "ble_rscs_c.h"
 #include "ble_db_discovery.h"
 #include "ble_types.h"
 #include "ble_srv_common.h"
 #include "ble_gattc.h"
-#include "app_trace.h"
 #include "sdk_common.h"
-#include "nrf_log.h"
 
-#define LOG                    NRF_LOG_PRINTF         /**< Debug logger macro that will be used in this file to do logging of important information over UART or RTT. */
+#define NRF_LOG_MODULE_NAME "BLE_RSCS_C"
+#include "nrf_log.h"
 
 #define TX_BUFFER_MASK         0x07                  /**< TX Buffer mask, must be a mask of continuous zeroes, followed by continuous sequence of ones: 000...111. */
 #define TX_BUFFER_SIZE         (TX_BUFFER_MASK + 1)  /**< Size of send buffer, which is 1 higher than the mask. */
@@ -81,13 +81,13 @@ static void tx_buffer_process(void)
         }
         if (err_code == NRF_SUCCESS)
         {
-            LOG("[RSCS_C]: SD Read/Write API returns Success.\r\n");
+            NRF_LOG_INFO("SD Read/Write API returns Success.\r\n");
             m_tx_index++;
             m_tx_index &= TX_BUFFER_MASK;
         }
         else
         {
-            LOG("[RSCS_C]: SD Read/Write API returns error. This message sending will be "
+            NRF_LOG_INFO("SD Read/Write API returns error. This message sending will be "
                 "attempted again..\r\n");
         }
     }
@@ -130,7 +130,7 @@ static void on_hvx(ble_rscs_c_t * p_ble_rscs_c, const ble_evt_t * p_ble_evt)
     {
         return;
     }
-    
+
     // Check if this is a Running Speed and Cadence notification.
     if (p_ble_evt->evt.gattc_evt.params.hvx.handle == p_ble_rscs_c->peer_db.rsc_handle)
     {
@@ -140,7 +140,7 @@ static void on_hvx(ble_rscs_c_t * p_ble_rscs_c, const ble_evt_t * p_ble_evt)
         ble_rscs_c_evt.conn_handle = p_ble_evt->evt.gattc_evt.conn_handle;
 
         //lint -save -e415 -e416 -e662 "Access of out of bounds pointer" "Creation of out of bounds pointer"
-        
+
         // Flags field
         ble_rscs_c_evt.params.rsc.is_inst_stride_len_present = p_notif->data[index] >> BLE_RSCS_INSTANT_STRIDE_LEN_PRESENT    & 0x01;
         ble_rscs_c_evt.params.rsc.is_total_distance_present  = p_notif->data[index] >> BLE_RSCS_TOTAL_DISTANCE_PRESENT        & 0x01;
@@ -215,10 +215,10 @@ void ble_rscs_on_db_disc_evt(ble_rscs_c_t * p_ble_rscs_c, const ble_db_discovery
             }
         }
 
-        LOG("[rscs_c]: Running Speed and Cadence Service discovered at peer.\r\n");
+        NRF_LOG_INFO("Running Speed and Cadence Service discovered at peer.\r\n");
 
         //If the instance has been assigned prior to db_discovery, assign the db_handles
-        if(p_ble_rscs_c->conn_handle != BLE_CONN_HANDLE_INVALID)
+        if (p_ble_rscs_c->conn_handle != BLE_CONN_HANDLE_INVALID)
         {
             if ((p_ble_rscs_c->peer_db.rsc_cccd_handle == BLE_GATT_HANDLE_INVALID)&&
                 (p_ble_rscs_c->peer_db.rsc_handle == BLE_GATT_HANDLE_INVALID))
@@ -263,7 +263,7 @@ uint32_t ble_rscs_c_handles_assign(ble_rscs_c_t *    p_ble_rscs_c,
     {
         p_ble_rscs_c->peer_db = *p_peer_handles;
     }
-    
+
     return NRF_SUCCESS;
 }
 
@@ -319,7 +319,7 @@ void ble_rscs_c_on_ble_evt(ble_rscs_c_t * p_ble_rscs_c, const ble_evt_t * p_ble_
  */
 static uint32_t cccd_configure(uint16_t conn_handle, uint16_t handle_cccd, bool enable)
 {
-    LOG("[rscs_c]: Configuring CCCD. CCCD Handle = %d, Connection Handle = %d\r\n",
+    NRF_LOG_INFO("Configuring CCCD. CCCD Handle = %d, Connection Handle = %d\r\n",
         handle_cccd, conn_handle);
 
     tx_message_t * p_msg;
@@ -358,3 +358,4 @@ uint32_t ble_rscs_c_rsc_notif_enable(ble_rscs_c_t * p_ble_rscs_c)
 /** @}
  *  @endcond
  */
+#endif //BLE_RSCS_C_ENABLED

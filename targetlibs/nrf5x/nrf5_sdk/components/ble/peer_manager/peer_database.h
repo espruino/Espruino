@@ -19,6 +19,10 @@
 #include "peer_manager_internal.h"
 #include "sdk_errors.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @cond NO_DOXYGEN
  * @defgroup peer_database Peer Database
@@ -91,18 +95,12 @@ typedef struct
 typedef void (*pdb_evt_handler_t)(pdb_evt_t const * p_event);
 
 
-/**@brief Function for registering for events from the peer database.
+/**@brief Function for initializing the module.
  *
- * @note This function will initialize the module if it is not already initialized.
- *
- * @param[in]  evt_handler  Event handler to register.
- *
- * @retval NRF_SUCCESS              Registration successful.
- * @retval NRF_ERROR_NO_MEM         No more event handlers can be registered.
- * @retval NRF_ERROR_NULL           evt_handler was NULL.
- * @retval NRF_ERROR_INTERNAL       An unexpected error happened.
+ * @retval NRF_SUCCESS          If initialization was successful.
+ * @retval NRF_ERROR_INTERNAL   An unexpected error happened.
  */
-ret_code_t pdb_register(pdb_evt_handler_t evt_handler);
+ret_code_t pdb_init(void);
 
 
 /**@brief Function for allocating persistent bond storage for a peer.
@@ -126,30 +124,23 @@ pm_peer_id_t pdb_peer_allocate(void);
 ret_code_t pdb_peer_free(pm_peer_id_t peer_id);
 
 
-/**@brief Function for retrieving pointers to read-only peer data.
+/**@brief Function for retrieving a pointer to peer data in flash (read-only).
  *
- * @note  Reading this pointer is not safe in the strictest sense. If a safe read is required:
- *          - Disable interrupts
- *          - Call this function. If the return code is @ref NRF_SUCCESS, the following read is safe.
- *          - Read memory.
- *          - Enable interrupts.
- * @note  This buffer does not need to be released. It is a pointer directly to flash.
+ * @note  Dereferencing this pointer is not the safest thing to do if interrupts are enabled,
+ *        because Flash Data Storage garbage collection might move the data around. Either disable
+ *        interrupts while using the data, or use @ref pdb_peer_data_load.
  *
- * @param[in]  peer_id      ID of peer to retrieve data for.
- * @param[in]  data_id      Which piece of data to get.
- * @param[out] p_peer_data  Pointer to immutable peer data.
- * @param[out] p_token      Token that can be used to lock data in flash and check data validity.
+ * @param[in]  peer_id      The peer the data belongs to.
+ * @param[in]  data_id      The data to read.
+ * @param[out] p_peer_data  The peer data, read-only.
  *
- * @retval NRF_SUCCESS              Data retrieved successfully.
- * @retval NRF_ERROR_INVALID_PARAM  Data ID or Peer ID was invalid or unallocated.
- * @retval NRF_ERROR_NULL           p_peer_data was NULL.
- * @retval NRF_ERROR_NOT_FOUND      This data was not found for this peer ID.
- * @retval NRF_ERROR_INVALID_STATE  Module is not initialized.
+ * @retval NRF_SUCCESS              If the pointer to the data was retrieved successfully.
+ * @retval NRF_ERROR_INVALID_PARAM  If either @p peer_id or @p data_id are invalid.
+ * @retval NRF_ERROR_NOT_FOUND      If data was not found in flash.
  */
-ret_code_t pdb_read_buf_get(pm_peer_id_t           peer_id,
-                            pm_peer_data_id_t      data_id,
-                            pm_peer_data_flash_t * p_peer_data,
-                            pm_store_token_t     * p_token);
+ret_code_t pdb_peer_data_ptr_get(pm_peer_id_t                 peer_id,
+                                 pm_peer_data_id_t            data_id,
+                                 pm_peer_data_flash_t * const p_peer_data);
 
 
 /**@brief Function for retrieving pointers to a write buffer for peer data.
@@ -286,6 +277,21 @@ uint32_t pdb_n_peers(void);
 pm_peer_id_t pdb_next_peer_id_get(pm_peer_id_t prev_peer_id);
 
 
+/**@brief Function for getting the next peer ID in the sequence of all peer IDs pending deletion.
+ *        Can be used to loop through all used peer IDs.
+ *
+ * @note @ref PM_PEER_ID_INVALID is considered to be before the first and after the last ordinary
+ *       peer ID.
+ *
+ * @param[in]  prev_peer_id  The previous peer ID.
+ *
+ * @return  The next peer ID pending deletion.
+ * @return  The first ordinary peer ID  if prev_peer_id was @ref PM_PEER_ID_INVALID.
+ * @retval  PM_PEER_ID_INVALID          if prev_peer_id was the last ordinary peer ID.
+ */
+pm_peer_id_t pdb_next_deleted_peer_id_get(pm_peer_id_t prev_peer_id);
+
+
 /**@brief Function for updating currently stored peer data to a new version
  *
  * @details Updating happens asynchronously.
@@ -309,25 +315,24 @@ ret_code_t pdb_peer_data_update(pm_peer_data_const_t        peer_data,
                                 pm_store_token_t          * p_store_token);
 
 
-/**@brief Function for reading data directly from persistent storage to external memory.
+/**@brief Function for copy peer data from flash into a provided buffer.
  *
- * @param[in]    peer_id      ID of peer to read data for.
- * @param[in]    data_id      Which piece of data to read.
- * @param[inout] p_peer_data  Where to store the data. If the data to be read has variable length,
- *                            the appropriate length field needs to reflect the available buffer
- *                            space. On a successful read, the length field is updated to match the
- *                            length of the read data.
+ * @param[in]    peer_id      The peer the data belongs to.
+ * @param[in]    data_id      The data to read.
+ * @param[inout] p_peer_data  The buffer where to copy data into. The field @c length_words in this
+ *                            parameter must represent the buffer length in words.
  *
- * @retval NRF_SUCCESS              Data successfully read.
- * @retval NRF_ERROR_INVALID_PARAM  Data ID or Peer ID was invalid or unallocated.
- * @retval NRF_ERROR_NULL           p_peer_data contained a NULL pointer.
- * @retval NRF_ERROR_NOT_FOUND      This data was not found for this peer ID.
- * @retval NRF_ERROR_DATA_SIZE      The provided buffer was not large enough.
- * @retval NRF_ERROR_INVALID_STATE  Module is not initialized.
+ * @note Actually, it represents the buffer length in bytes upon entering the function,
+ * and upon exit it represents the length of the data in words.. not good. Fix this.
+ *
+ * @retval NRF_SUCCESS              If the operation was successful.
+ * @retval NRF_ERROR_INVALID_PARAM  If @p peer_id or @p data_id are invalid.
+ * @retval NRF_ERROR_NOT_FOUND      If the data was not found in flash.
+ * @retval NRF_ERROR_NO_MEM         If the provided buffer is too small.
  */
-ret_code_t pdb_raw_read(pm_peer_id_t      peer_id,
-                        pm_peer_data_id_t data_id,
-                        pm_peer_data_t  * p_peer_data);
+ret_code_t pdb_peer_data_load(pm_peer_id_t              peer_id,
+                              pm_peer_data_id_t         data_id,
+                              pm_peer_data_t    * const p_peer_data);
 
 
 /**@brief Function for writing data directly to persistent storage from external memory.
@@ -342,7 +347,6 @@ ret_code_t pdb_raw_read(pm_peer_id_t      peer_id,
  * @retval NRF_ERROR_NULL            p_peer_data contained a NULL pointer.
  * @retval NRF_ERROR_NO_MEM          No space available in persistent storage.
  * @retval NRF_ERROR_INVALID_LENGTH  Data length above the maximum allowed.
- * @retval NRF_ERROR_INVALID_STATE   Module is not initialized.
  * @retval NRF_ERROR_BUSY            Unable to perform operation at this time.
  */
 ret_code_t pdb_raw_store(pm_peer_id_t           peer_id,
@@ -352,6 +356,11 @@ ret_code_t pdb_raw_store(pm_peer_id_t           peer_id,
 /** @}
  * @endcond
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PEER_DATABASE_H__ */
 

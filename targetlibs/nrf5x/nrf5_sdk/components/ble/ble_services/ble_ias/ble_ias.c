@@ -10,11 +10,12 @@
  *
  */
 
-/* Attention! 
-*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile 
+/* Attention!
+*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile
 *  qualification listings, this section of source code must not be modified.
 */
-
+#include "sdk_config.h"
+#if BLE_IAS_ENABLED
 #include "ble_ias.h"
 #include <string.h>
 #include "ble_srv_common.h"
@@ -171,3 +172,4 @@ uint32_t ble_ias_alert_level_get(ble_ias_t * p_ias, uint8_t * p_alert_level)
                                   p_ias->alert_level_handles.value_handle,
                                   &gatts_value);
 }
+#endif //BLE_IAS_ENABLED

@@ -12,7 +12,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_csc Cycling Speed and Cadence Service
+ * @defgroup ble_cscs Cycling Speed and Cadence Service
  * @{
  * @ingroup ble_sdk_srv
  * @brief Cycling Speed and Cadence Service module.
@@ -22,23 +22,23 @@
  *          calls ble_cscs_measurement_send().
  *
  *          To use this service, you need to provide the the supported features (@ref BLE_CSCS_FEATURES).
- *          If you choose to support Wheel revolution data (feature bit @ref BLE_CSCS_FEATURE_WHEEL_REV_BIT), 
- *          you then need to support the 'setting of cumulative value' operation by the supporting the 
+ *          If you choose to support Wheel revolution data (feature bit @ref BLE_CSCS_FEATURE_WHEEL_REV_BIT),
+ *          you then need to support the 'setting of cumulative value' operation by the supporting the
  *          Speed and Cadence Control Point (@ref ble_sdk_srv_sc_ctrlpt) by setting the @ref BLE_SRV_SC_CTRLPT_CUM_VAL_OP_SUPPORTED
  *          bit of the ctrplt_supported_functions in the @ref ble_cscs_init_t structure.
  *          If you want to support the 'start autocalibration' control point feature, you need, after the @ref BLE_SC_CTRLPT_EVT_START_CALIBRATION
  *          has been received and the auto calibration is finished, to call the @ref ble_sc_ctrlpt_rsp_send to indicate that the operation is finished
  *          and thus be able to receive new control point operations.
- *          If you want to support the 'sensor location' related operation, you need to provide a list of supported location in the 
+ *          If you want to support the 'sensor location' related operation, you need to provide a list of supported location in the
  *          @ref ble_cscs_init_t structure.
- *          
  *
- * @note The application or the service using this module must propagate BLE stack events to the 
- *       Cycling Speead and Candence Service module by calling ble_cscs_on_ble_evt() from the 
+ *
+ * @note The application or the service using this module must propagate BLE stack events to the
+ *       Cycling Speead and Candence Service module by calling ble_cscs_on_ble_evt() from the
  *       from the @ref softdevice_handler function. This service will forward the event to the @ref ble_sdk_srv_sc_ctrlpt module.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
  */
 
@@ -51,6 +51,10 @@
 #include "ble_srv_common.h"
 #include "ble_sc_ctrlpt.h"
 #include "ble_sensor_location.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** @defgroup BLE_CSCS_FEATURES Cycling Speed and Cadence Service feature bits
  * @{ */
@@ -72,7 +76,7 @@ typedef struct
     ble_cscs_evt_type_t evt_type;                                       /**< Type of event. */
 } ble_cscs_evt_t;
 
-// Forward declaration of the ble_csc_t type. 
+// Forward declaration of the ble_csc_t type.
 typedef struct ble_cscs_s ble_cscs_t;
 
 /**@brief Cycling Speed and Cadence Service event handler type. */
@@ -155,6 +159,11 @@ void ble_cscs_on_ble_evt(ble_cscs_t * p_cscs, ble_evt_t * p_ble_evt);
  * @return      NRF_SUCCESS on success, otherwise an error code.
  */
 uint32_t ble_cscs_measurement_send(ble_cscs_t * p_cscs, ble_cscs_meas_t * p_measurement);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_CSCS_H__
 

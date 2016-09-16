@@ -10,9 +10,10 @@
  *
  */
 
+#include "sdk_config.h"
+#if RNG_ENABLED
 #include <stdint.h>
 #include <stddef.h>
-
 #include "nrf_drv_rng.h"
 #include "nrf_assert.h"
 #include "nrf_drv_common.h"
@@ -25,6 +26,9 @@
 #else
 #include "app_fifo.h"
 #include "app_util_platform.h"
+
+/* Validate configuration */
+INTERRUPT_PRIORITY_VALIDATION(RNG_CONFIG_IRQ_PRIORITY);
 
 static __INLINE uint32_t fifo_length(app_fifo_t * p_fifo)
 {
@@ -206,15 +210,15 @@ ret_code_t nrf_drv_rng_block_rand(uint8_t * p_buff, uint32_t length)
     ASSERT(m_rng_cb.state == NRF_DRV_STATE_INITIALIZED);
 
     result = nrf_drv_rng_pool_capacity((uint8_t *) &poolsz);
-    if(result != NRF_SUCCESS)
+    if (result != NRF_SUCCESS)
     {
         return result;
     }
 
-    while(length)
+    while (length)
     {
         uint32_t len = length >= poolsz ? poolsz : length;
-        while((result = nrf_drv_rng_rand(&p_buff[count], len)) != NRF_SUCCESS)
+        while ((result = nrf_drv_rng_rand(&p_buff[count], len)) != NRF_SUCCESS)
         {
 #ifndef SOFTDEVICE_PRESENT
             ASSERT(result == NRF_ERROR_NO_MEM);
@@ -248,3 +252,4 @@ void RNG_IRQHandler(void)
 }
 
 #endif // SOFTDEVICE_PRESENT
+#endif //RNG_ENABLED

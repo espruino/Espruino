@@ -8,7 +8,8 @@
  * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
  * the file.
  */
-
+#include "sdk_config.h"
+#if BLE_GLS_ENABLED
 #include "ble_gls_db.h"
 
 
@@ -110,3 +111,4 @@ uint32_t ble_gls_db_record_delete(uint8_t rec_ndx)
 
     return NRF_SUCCESS;
 }
+#endif //BLE_GLS_ENABLED

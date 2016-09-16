@@ -18,13 +18,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
 * @brief MPU6050 gyro/accelerometer driver.
 *
 *
 * @defgroup nrf_drivers_mpu6050 MPU6050 gyro/accelerometer driver
 * @{
-* @ingroup nrf_drivers
+* @ingroup ext_drivers
 * @brief MPU6050 gyro/accelerometer driver.
 */
 
@@ -70,5 +74,10 @@ bool mpu6050_verify_product_id(void);
  **/
 
 /*lint --flb "Leave library region" */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* MPU6050_H */

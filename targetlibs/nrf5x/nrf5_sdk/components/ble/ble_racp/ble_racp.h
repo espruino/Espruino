@@ -11,7 +11,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_lib_racp Record Access Control Point
+ * @defgroup ble_racp Record Access Control Point
  * @{
  * @ingroup ble_sdk_lib
  * @brief Record Access Control Point library.
@@ -24,7 +24,10 @@
 #include <stdbool.h>
 #include "ble.h"
 #include "ble_types.h"
-#include "ble.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**@brief Record Access Control Point opcodes. */
 #define RACP_OPCODE_RESERVED                0       /**< Record Access Control Point opcode - Reserved for future use. */
@@ -89,6 +92,11 @@ void ble_racp_decode(uint8_t data_len, uint8_t * p_data, ble_racp_value_t * p_ra
  * @return      Length of encoded data.
  */
 uint8_t ble_racp_encode(const ble_racp_value_t * p_racp_val, uint8_t * p_data);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_RACP_H__
 

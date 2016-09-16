@@ -16,7 +16,7 @@
 static void app_timer_evt_get(void * p_event_data, uint16_t event_size)
 {
     app_timer_event_t * p_timer_event = (app_timer_event_t *)p_event_data;
-    
+
     APP_ERROR_CHECK_BOOL(event_size == sizeof(app_timer_event_t));
     p_timer_event->timeout_handler(p_timer_event->p_context);
 }
@@ -28,7 +28,7 @@ uint32_t app_timer_evt_schedule(app_timer_timeout_handler_t timeout_handler,
 
     timer_event.timeout_handler = timeout_handler;
     timer_event.p_context       = p_context;
-    
+
     return app_sched_event_put(&timer_event, sizeof(timer_event), app_timer_evt_get);
 }
 

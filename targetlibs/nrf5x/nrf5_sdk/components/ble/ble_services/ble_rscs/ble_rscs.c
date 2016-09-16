@@ -10,11 +10,12 @@
  *
  */
 
-/* Attention! 
-*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile 
+/* Attention!
+*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile
 *  qualification listings, this section of source code must not be modified.
 */
-
+#include "sdk_config.h"
+#if BLE_RSCS_ENABLED
 #include "ble_rscs.h"
 #include <string.h>
 #include "nordic_common.h"
@@ -106,7 +107,7 @@ void ble_rscs_on_ble_evt(ble_rscs_t * p_rscs, ble_evt_t * p_ble_evt)
     {
         return;
     }
-        
+
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
@@ -303,7 +304,7 @@ uint32_t ble_rscs_init(ble_rscs_t * p_rscs, const ble_rscs_init_t * p_rscs_init)
     {
         return NRF_ERROR_NULL;
     }
-    
+
     uint32_t   err_code;
     ble_uuid_t ble_uuid;
 
@@ -348,7 +349,7 @@ uint32_t ble_rscs_measurement_send(ble_rscs_t * p_rscs, ble_rscs_meas_t * p_meas
     {
         return NRF_ERROR_NULL;
     }
-    
+
     uint32_t err_code;
 
     // Send value if connected and notifying
@@ -383,3 +384,4 @@ uint32_t ble_rscs_measurement_send(ble_rscs_t * p_rscs, ble_rscs_meas_t * p_meas
 
     return err_code;
 }
+#endif //BLE_RSCS_ENABLED

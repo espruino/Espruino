@@ -32,6 +32,10 @@
 #include <stdint.h>
 #include "nfc_ndef_msg_parser_local.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Macro for calculating the memory size required for holding the
  * description of a message that consists of a certain number of NDEF records.
@@ -81,6 +85,11 @@ void ndef_msg_printout(nfc_ndef_msg_desc_t * const p_msg_desc);
  * @}
  * @}
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NFC_NDEF_MSG_PARSER_H__
 

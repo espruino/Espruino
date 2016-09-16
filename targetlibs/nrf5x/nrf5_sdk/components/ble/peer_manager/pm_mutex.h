@@ -18,6 +18,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @cond NO_DOXYGEN
  * @defgroup pm_mutex Mutex
@@ -83,8 +87,13 @@ void pm_mutex_unlock(uint8_t * p_mutex, uint16_t mutex_bit_id);
 bool pm_mutex_lock_status_get(uint8_t * p_mutex, uint16_t mutex_bit_id);
 
 
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // MUTEX_H__
 
-/** @} 
- * @endcond  
+/** @}
+ * @endcond
  */

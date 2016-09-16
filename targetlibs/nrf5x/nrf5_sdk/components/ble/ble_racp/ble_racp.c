@@ -8,7 +8,8 @@
  * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
  * the file.
  */
- 
+#include "sdk_config.h"
+#if BLE_RACP_ENABLED
 #include "ble_racp.h"
 #include <stdlib.h>
 
@@ -19,7 +20,7 @@ void ble_racp_decode(uint8_t data_len, uint8_t * p_data, ble_racp_value_t * p_ra
     p_racp_val->operator    = 0xFF;
     p_racp_val->operand_len = 0;
     p_racp_val->p_operand   = NULL;
-    
+
     if (data_len > 0)
     {
         p_racp_val->opcode = p_data[0];
@@ -54,3 +55,4 @@ uint8_t ble_racp_encode(const ble_racp_value_t * p_racp_val, uint8_t * p_data)
 
     return len;
 }
+#endif //BLE_RACP_ENABLED

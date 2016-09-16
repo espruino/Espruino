@@ -9,7 +9,8 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if BLE_CTS_C_ENABLED
 #include <string.h>
 #include "ble.h"
 #include "ble_srv_common.h"
@@ -17,11 +18,10 @@
 #include "ble_cts_c.h"
 #include "ble_date_time.h"
 #include "ble_db_discovery.h"
-#include "nrf_log.h"
-#include "nrf_log.h"
 #include "sdk_common.h"
+#define NRF_LOG_MODULE_NAME "BLE_CTS_C"
+#include "nrf_log.h"
 
-#define CTS_LOG      NRF_LOG_PRINTF_DEBUG     /**< Debug logger macro that will be used in this file to do logging of important information over UART. */
 #define CTS_YEAR_MIN 1582                     /**< The lowest valid Current Time year is the year when the western calendar was introduced. */
 #define CTS_YEAR_MAX 9999                     /**< The highest possible Current Time. */
 
@@ -42,14 +42,14 @@
  */
 void ble_cts_c_on_db_disc_evt(ble_cts_c_t * p_cts, ble_db_discovery_evt_t * p_evt)
 {
-    CTS_LOG("[CTS]: Database Discovery handler called with event 0x%x\r\n", p_evt->evt_type);
+    NRF_LOG_DEBUG("Database Discovery handler called with event 0x%x\r\n", p_evt->evt_type);
 
     ble_cts_c_evt_t evt;
     const ble_gatt_db_char_t * p_chars = p_evt->params.discovered_db.charateristics;
-    
+
     evt.evt_type    = BLE_CTS_C_EVT_DISCOVERY_FAILED;
     evt.conn_handle = p_evt->conn_handle;
-    
+
     // Check if the Current Time Service was discovered.
     if (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE &&
         p_evt->params.discovered_db.srv_uuid.uuid == BLE_UUID_CURRENT_TIME_SERVICE &&
@@ -71,7 +71,7 @@ void ble_cts_c_on_db_disc_evt(ble_cts_c_t * p_cts, ble_db_discovery_evt_t * p_ev
             }
         }
 
-        CTS_LOG("[CTS]: Current Time Service discovered at peer.\r\n");
+        NRF_LOG_INFO("Current Time Service discovered at peer.\r\n");
 
         evt.evt_type    = BLE_CTS_C_EVT_DISCOVERY_COMPLETE;
     }
@@ -122,17 +122,8 @@ static uint32_t current_time_decode(current_time_char_t * p_time,
         return NRF_ERROR_DATA_SIZE;
     }
 
-    CTS_LOG("Current Time read response data: %02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X \r\n",
-        p_data[0],
-        p_data[1],
-        p_data[2],
-        p_data[3],
-        p_data[4],
-        p_data[5],
-        p_data[6],
-        p_data[7],
-        p_data[8],
-        p_data[9]);
+    NRF_LOG_DEBUG("Current Time read response data:\r\n");
+    NRF_LOG_HEXDUMP_DEBUG(p_data, 10);
 
     uint32_t index = 0;
 
@@ -293,7 +284,7 @@ static void on_disconnect(ble_cts_c_t * p_cts, ble_evt_t const * p_ble_evt)
 
 void ble_cts_c_on_ble_evt(ble_cts_c_t * p_cts, ble_evt_t const * p_ble_evt)
 {
-    CTS_LOG("[CTS]: BLE event handler called with event 0x%x\r\n", p_ble_evt->header.evt_id);
+    NRF_LOG_DEBUG("BLE event handler called with event 0x%x\r\n", p_ble_evt->header.evt_id);
 
     switch (p_ble_evt->header.evt_id)
     {
@@ -338,3 +329,4 @@ uint32_t ble_cts_c_handles_assign(ble_cts_c_t               * p_cts,
 
     return NRF_SUCCESS;
 }
+#endif//BLE_CTS_C_ENABLED

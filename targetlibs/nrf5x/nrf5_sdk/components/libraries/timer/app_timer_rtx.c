@@ -1,3 +1,17 @@
+/* Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
+ *
+ * The information contained herein is property of Nordic Semiconductor ASA.
+ * Terms and conditions of usage are described in detail in NORDIC
+ * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+ *
+ * Licensees are granted free, non-transferable use of the information. NO
+ * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
+ * the file.
+ *
+ */
+
+#include "sdk_config.h"
+#if APP_TIMER_ENABLED
 #include "app_timer.h"
 #include <stdlib.h>
 #include "nrf.h"
@@ -221,10 +235,9 @@ uint32_t app_timer_stop_all(void)
 
 
 extern uint32_t os_tick_val(void);
-uint32_t app_timer_cnt_get(uint32_t * p_ticks)
+uint32_t app_timer_cnt_get(void)
 {
-    *p_ticks = os_tick_val();
-    return NRF_SUCCESS;
+    return os_tick_val();
 }
 
 
@@ -235,5 +248,4 @@ uint32_t app_timer_cnt_diff_compute(uint32_t   ticks_to,
     *p_ticks_diff = ((ticks_to - ticks_from) & MAX_RTC_COUNTER_VAL);
     return NRF_SUCCESS;
 }
-
-
+#endif //APP_TIMER_ENABLED

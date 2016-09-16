@@ -12,7 +12,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_bas Battery Service
+ * @defgroup ble_bas Battery Service
  * @{
  * @ingroup ble_sdk_srv
  * @brief Battery Service module.
@@ -31,8 +31,8 @@
  * @note The application must propagate BLE stack events to the Battery Service module by calling
  *       ble_bas_on_ble_evt() from the @ref softdevice_handler callback.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
  */
 
@@ -43,6 +43,10 @@
 #include <stdbool.h>
 #include "ble.h"
 #include "ble_srv_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**@brief Battery Service event type. */
 typedef enum
@@ -57,7 +61,7 @@ typedef struct
     ble_bas_evt_type_t evt_type;                                  /**< Type of event. */
 } ble_bas_evt_t;
 
-// Forward declaration of the ble_bas_t type. 
+// Forward declaration of the ble_bas_t type.
 typedef struct ble_bas_s ble_bas_t;
 
 /**@brief Battery Service event handler type. */
@@ -127,6 +131,11 @@ void ble_bas_on_ble_evt(ble_bas_t * p_bas, ble_evt_t * p_ble_evt);
  * @return      NRF_SUCCESS on success, otherwise an error code.
  */
 uint32_t ble_bas_battery_level_update(ble_bas_t * p_bas, uint8_t battery_level);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_BAS_H__
 

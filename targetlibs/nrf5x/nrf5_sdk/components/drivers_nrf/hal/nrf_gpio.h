@@ -15,6 +15,10 @@
 #include "nrf.h"
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @defgroup nrf_gpio GPIO abstraction
  * @{
@@ -103,6 +107,8 @@ typedef enum
     NRF_GPIO_PIN_SENSE_HIGH = GPIO_PIN_CNF_SENSE_High,                  ///<  Pin sense high level.
 } nrf_gpio_pin_sense_t;
 
+
+#if (__LINT__ != 1)
 
 /**
  * @brief Function for configuring the GPIO pin range as outputs with normal drive strength.
@@ -423,7 +429,10 @@ __STATIC_INLINE void nrf_gpio_port_set(nrf_gpio_port_select_t port, uint8_t set_
  */
 __STATIC_INLINE void nrf_gpio_port_clear(nrf_gpio_port_select_t port, uint8_t clr_mask);
 
+#endif // #ifndef (__LINT__ != 1)
+
 #ifndef SUPPRESS_INLINE_IMPLEMENTATION
+
 __STATIC_INLINE void nrf_gpio_range_cfg_output(uint32_t pin_range_start, uint32_t pin_range_end)
 {
     /*lint -e{845} // A zero has been given as right argument to operator '|'" */
@@ -525,7 +534,7 @@ __STATIC_INLINE void nrf_gpio_cfg_sense_set(uint32_t pin_number, nrf_gpio_pin_se
 
 __STATIC_INLINE void nrf_gpio_pin_dir_set(uint32_t pin_number, nrf_gpio_pin_dir_t direction)
 {
-    if(direction == NRF_GPIO_PIN_DIR_INPUT)
+    if (direction == NRF_GPIO_PIN_DIR_INPUT)
     {
         nrf_gpio_cfg(
                 pin_number,
@@ -641,7 +650,14 @@ __STATIC_INLINE void nrf_gpio_port_clear(nrf_gpio_port_select_t port, uint8_t cl
 {
     nrf_gpio_word_byte_write(&NRF_GPIO->OUTCLR, port, clr_mask);
 }
+
 #endif //SUPPRESS_INLINE_IMPLEMENTATION
+
 /** @} */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

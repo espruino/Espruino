@@ -18,12 +18,12 @@
  * @brief Speed and Cadence Control Point module.
  *
  * @details This module implements the Speed and Cadence control point behavior. It is used
- *          by the @ref ble_sdk_srv_csc module and the ble_sdk_srv_rsc module for control point
+ *          by the @ref ble_cscs module and the ble_sdk_srv_rsc module for control point
  *          mechanisms like setting a cumulative value, Start an automatic calibration,
  *          Update the sensor location or request the supported locations.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
  */
 
@@ -35,6 +35,10 @@
 #include "ble.h"
 #include "ble_srv_common.h"
 #include "ble_sensor_location.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define BLE_SC_CTRLPT_MAX_LEN                                      19                     /**< maximum lenght for Speed and cadence control point characteristic value. */
 #define BLE_SC_CTRLPT_MIN_LEN                                      1                      /**< minimum length for Speed and cadence control point characteristic value. */
@@ -205,6 +209,11 @@ uint32_t ble_sc_ctrlpt_rsp_send(ble_sc_ctrlpt_t * p_sc_ctrlpt, ble_scpt_response
  */
 void ble_sc_ctrlpt_on_ble_evt(ble_sc_ctrlpt_t * p_sc_ctrlpt, ble_evt_t * p_ble_evt);
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_SC_CTRLPT_H__
 

@@ -25,6 +25,10 @@
 #include "ble.h"
 #include "ble_srv_common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@brief Connection Parameters Module event type. */
 typedef enum
 {
@@ -58,7 +62,7 @@ typedef struct
 
 /**@brief Function for initializing the Connection Parameters module.
  *
- * @note If the negotiation procedure should be triggered when notification/indication of 
+ * @note If the negotiation procedure should be triggered when notification/indication of
  *       any characteristic is enabled by the peer, then this function must be called after
  *       having initialized the services.
  *
@@ -83,7 +87,7 @@ uint32_t ble_conn_params_stop(void);
 
 /**@brief Function for changing the current connection parameters to a new set.
  *
- *  @details Use this function to change the connection parameters to a new set of parameter 
+ *  @details Use this function to change the connection parameters to a new set of parameter
  *       (ie different from the ones given at init of the module).
  *       This function is usefull for scenario where most of the time the application
  *       needs a relatively big connection interval, and just sometimes, for a temporary
@@ -105,6 +109,11 @@ uint32_t ble_conn_params_change_conn_params(ble_gap_conn_params_t *new_params);
  * @param[in]   p_ble_evt  The event received from the BLE stack.
  */
 void ble_conn_params_on_ble_evt(ble_evt_t * p_ble_evt);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_CONN_PARAMS_H__
 

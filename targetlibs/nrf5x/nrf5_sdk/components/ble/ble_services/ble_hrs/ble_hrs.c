@@ -10,11 +10,12 @@
  *
  */
 
-/* Attention! 
-*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile 
+/* Attention!
+*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile
 *  qualification listings, this section of source code must not be modified.
 */
-
+#include "sdk_config.h"
+#if BLE_HRS_ENABLED
 #include "ble_hrs.h"
 #include <string.h>
 #include "nordic_common.h"
@@ -438,3 +439,4 @@ uint32_t ble_hrs_body_sensor_location_set(ble_hrs_t * p_hrs, uint8_t body_sensor
 
     return sd_ble_gatts_value_set(p_hrs->conn_handle, p_hrs->bsl_handles.value_handle, &gatts_value);
 }
+#endif//BLE_HRS_ENABLED

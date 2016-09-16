@@ -9,7 +9,8 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if BLE_NUS_ENABLED
 #include "ble_nus.h"
 #include "ble_srv_common.h"
 #include "sdk_common.h"
@@ -292,4 +293,4 @@ uint32_t ble_nus_string_send(ble_nus_t * p_nus, uint8_t * p_string, uint16_t len
     return sd_ble_gatts_hvx(p_nus->conn_handle, &hvx_params);
 }
 
-
+#endif //BLE_NUS_ENABLED

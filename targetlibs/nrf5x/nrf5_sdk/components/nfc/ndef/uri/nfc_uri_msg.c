@@ -38,12 +38,12 @@ static ret_code_t nfc_uri_msg_declare( nfc_uri_id_t           uri_id_code,
 
     /* Create NFC NDEF message description, capacity - 1 record */
     NFC_NDEF_MSG_DEF(nfc_uri_msg, 1);
-    
+
     /* The message description is static, therefore */
     /* you must clear the message (needed for supporting multiple calls) */
     nfc_ndef_msg_clear(&NFC_NDEF_MSG(nfc_uri_msg));
 
-    if(p_uri_data != NULL)
+    if (p_uri_data != NULL)
     {
         /* Create NFC NDEF URI Record description */
         p_uri_rec = nfc_uri_rec_declare(uri_id_code,
@@ -83,7 +83,7 @@ ret_code_t nfc_uri_msg_encode( nfc_uri_id_t           uri_id_code,
                                     uri_data_len,
                                     &p_uri_msg_desc);
 
-    if(err_code != NRF_SUCCESS)
+    if (err_code != NRF_SUCCESS)
     {
         return err_code;
     }

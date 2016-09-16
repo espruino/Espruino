@@ -31,7 +31,8 @@ typedef struct
  * compatible with @ref p_payload_constructor_t.
  *
  * @param[in] p_input           Pointer to the description of the payload.
- * @param[out] p_buff           Pointer to payload destination.
+ * @param[out] p_buff           Pointer to payload destination. If NULL, function will
+ *                              calculate the expected size of the URI record payload.
  *
  * @param[in,out] p_len         Size of available memory to write as input. Size of generated
  *                              payload as output.
@@ -43,17 +44,21 @@ static ret_code_t nfc_uri_payload_constructor( uri_payload_desc_t * p_input,
                                                uint8_t * p_buff,
                                                uint32_t * p_len)
 {
-    /* Verify if there is enough available memory */
-    if(p_input->uri_data_len >= *p_len)
+    if (p_buff != NULL)
     {
-        return NRF_ERROR_NO_MEM;
+        /* Verify if there is enough available memory */
+        if (p_input->uri_data_len >= *p_len)
+        {
+            return NRF_ERROR_NO_MEM;
+        }
+
+        /* Copy descriptor content into the buffer */
+        *(p_buff++) = p_input->uri_id_code;
+        memcpy(p_buff, p_input->p_uri_data, p_input->uri_data_len );
     }
 
-    /* Copy descriptor content into the buffer */
     *p_len      = p_input->uri_data_len + 1;
-    *(p_buff++) = p_input->uri_id_code;
-    memcpy(p_buff, p_input->p_uri_data, p_input->uri_data_len );
-    
+
     return NRF_SUCCESS;
 }
 
@@ -63,7 +68,7 @@ nfc_ndef_record_desc_t * nfc_uri_rec_declare( nfc_uri_id_t           uri_id_code
 {
     static uri_payload_desc_t uri_payload_desc;
     static const uint8_t static_uri_type = 'U';
-    
+
     NFC_NDEF_GENERIC_RECORD_DESC_DEF( uri_rec,
                                       TNF_WELL_KNOWN, // tnf <- well-known
                                       NULL,
@@ -72,11 +77,11 @@ nfc_ndef_record_desc_t * nfc_uri_rec_declare( nfc_uri_id_t           uri_id_code
                                       1, // type size 1B
                                       nfc_uri_payload_constructor,
                                       &uri_payload_desc);
-   
+
    uri_payload_desc.uri_id_code  = uri_id_code;
    uri_payload_desc.p_uri_data   = p_uri_data;
    uri_payload_desc.uri_data_len = uri_data_len;
-   
+
    return &NFC_NDEF_GENERIC_RECORD_DESC( uri_rec);
 }
 

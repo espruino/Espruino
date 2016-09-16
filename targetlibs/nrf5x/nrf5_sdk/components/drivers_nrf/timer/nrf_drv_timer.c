@@ -10,14 +10,13 @@
  *
  */
 
+#include "sdk_config.h"
+#if TIMER_ENABLED
+#define ENABLED_TIMER_COUNT (TIMER0_ENABLED+TIMER1_ENABLED+TIMER2_ENABLED+TIMER3_ENABLED+TIMER4_ENABLED)
+#if ENABLED_TIMER_COUNT
 #include "nrf_drv_timer.h"
 #include "nrf_drv_common.h"
 #include "app_util_platform.h"
-
-#if (TIMER_COUNT == 0)
-    #error "No TIMER instances enabled in the driver configuration file."
-#endif
-
 
 /**@brief Timer control block. */
 typedef struct
@@ -27,37 +26,17 @@ typedef struct
     nrf_drv_state_t           state;
 } timer_control_block_t;
 
-static timer_control_block_t m_cb[TIMER_COUNT];
-
-static const nrf_drv_timer_config_t m_default_config[TIMER_COUNT] = {
-#if TIMER0_ENABLED
-    NRF_DRV_TIMER_DEFAULT_CONFIG(0),
-#endif
-#if TIMER1_ENABLED
-    NRF_DRV_TIMER_DEFAULT_CONFIG(1),
-#endif
-#if TIMER2_ENABLED
-    NRF_DRV_TIMER_DEFAULT_CONFIG(2),
-#endif
-#if TIMER3_ENABLED
-    NRF_DRV_TIMER_DEFAULT_CONFIG(3),
-#endif
-#if TIMER4_ENABLED
-    NRF_DRV_TIMER_DEFAULT_CONFIG(4),
-#endif
-};
-
+static timer_control_block_t m_cb[ENABLED_TIMER_COUNT];
 
 ret_code_t nrf_drv_timer_init(nrf_drv_timer_t const * const p_instance,
                               nrf_drv_timer_config_t const * p_config,
                               nrf_timer_event_handler_t timer_event_handler)
 {
     timer_control_block_t * p_cb = &m_cb[p_instance->instance_id];
-
 #ifdef SOFTDEVICE_PRESENT
     ASSERT(p_instance->p_reg != NRF_TIMER0);
+    ASSERT(p_config);
 #endif
-    ASSERT(NRF_TIMER_IS_BIT_WIDTH_VALID(p_instance->p_reg, p_config->bit_width));
 
     if (p_cb->state != NRF_DRV_STATE_UNINITIALIZED)
     {
@@ -69,10 +48,16 @@ ret_code_t nrf_drv_timer_init(nrf_drv_timer_t const * const p_instance,
         return NRF_ERROR_INVALID_PARAM;
     }
 
-    if (p_config == NULL)
-    {
-        p_config = &m_default_config[p_instance->instance_id];
-    }
+    /* Warning 685: Relational operator '<=' always evaluates to 'true'"
+     * Warning in NRF_TIMER_IS_BIT_WIDTH_VALID macro. Macro validate timers resolution.
+     * Not necessary in nRF52 based systems. Obligatory in nRF51 based systems.
+     */
+
+    /*lint -save -e685 */
+
+    ASSERT(NRF_TIMER_IS_BIT_WIDTH_VALID(p_instance->p_reg, p_config->bit_width));
+
+    //lint -restore
 
     p_cb->handler = timer_event_handler;
     p_cb->context = p_config->p_context;
@@ -105,7 +90,10 @@ void nrf_drv_timer_uninit(nrf_drv_timer_t const * const p_instance)
     nrf_timer_int_disable(p_instance->p_reg, DISABLE_ALL);
     #undef DISABLE_ALL
 
-    nrf_drv_timer_disable(p_instance);
+    if (m_cb[p_instance->instance_id].state == NRF_DRV_STATE_POWERED_ON)
+    {
+        nrf_drv_timer_disable(p_instance);
+    }
 
     m_cb[p_instance->instance_id].state = NRF_DRV_STATE_UNINITIALIZED;
 }
@@ -278,3 +266,5 @@ void TIMER4_IRQHandler(void)
         NRF_TIMER_CC_CHANNEL_COUNT(4));
 }
 #endif
+#endif // ENABLED_TIMER_COUNT
+#endif // TIMER_ENABLED

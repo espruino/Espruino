@@ -1,3 +1,5 @@
+#include "sdk_config.h"
+#if BLE_NUS_C_ENABLED
 #include <stdlib.h> // definition of NULL
 
 #include "ble.h"
@@ -40,7 +42,7 @@ void ble_nus_c_on_db_disc_evt(ble_nus_c_t * p_ble_nus_c, ble_db_discovery_evt_t 
                     break;
             }
         }
-        if (p_ble_nus_c->evt_handler != NULL) 
+        if (p_ble_nus_c->evt_handler != NULL)
         {
             nus_c_evt.conn_handle = p_evt->conn_handle;
             nus_c_evt.evt_type    = BLE_NUS_C_EVT_DISCOVERY_COMPLETE;
@@ -82,21 +84,21 @@ uint32_t ble_nus_c_init(ble_nus_c_t * p_ble_nus_c, ble_nus_c_init_t * p_ble_nus_
     uint32_t      err_code;
     ble_uuid_t    uart_uuid;
     ble_uuid128_t nus_base_uuid = NUS_BASE_UUID;
-        
+
     VERIFY_PARAM_NOT_NULL(p_ble_nus_c);
     VERIFY_PARAM_NOT_NULL(p_ble_nus_c_init);
-    
+
     err_code = sd_ble_uuid_vs_add(&nus_base_uuid, &p_ble_nus_c->uuid_type);
     VERIFY_SUCCESS(err_code);
-    
+
     uart_uuid.type = p_ble_nus_c->uuid_type;
     uart_uuid.uuid = BLE_UUID_NUS_SERVICE;
-    
+
     p_ble_nus_c->conn_handle           = BLE_CONN_HANDLE_INVALID;
     p_ble_nus_c->evt_handler           = p_ble_nus_c_init->evt_handler;
     p_ble_nus_c->handles.nus_rx_handle = BLE_GATT_HANDLE_INVALID;
     p_ble_nus_c->handles.nus_tx_handle = BLE_GATT_HANDLE_INVALID;
-    
+
     return ble_db_discovery_evt_register(&uart_uuid);
 }
 
@@ -107,7 +109,7 @@ void ble_nus_c_on_ble_evt(ble_nus_c_t * p_ble_nus_c, const ble_evt_t * p_ble_evt
         return;
     }
 
-    if ( (p_ble_nus_c->conn_handle != BLE_CONN_HANDLE_INVALID) 
+    if ( (p_ble_nus_c->conn_handle != BLE_CONN_HANDLE_INVALID)
        &&(p_ble_nus_c->conn_handle != p_ble_evt->evt.gap_evt.conn_handle)
        )
     {
@@ -119,15 +121,15 @@ void ble_nus_c_on_ble_evt(ble_nus_c_t * p_ble_nus_c, const ble_evt_t * p_ble_evt
         case BLE_GATTC_EVT_HVX:
             on_hvx(p_ble_nus_c, p_ble_evt);
             break;
-                
+
         case BLE_GAP_EVT_DISCONNECTED:
             if (p_ble_evt->evt.gap_evt.conn_handle == p_ble_nus_c->conn_handle
                     && p_ble_nus_c->evt_handler != NULL)
             {
                 ble_nus_c_evt_t nus_c_evt;
-                
+
                 nus_c_evt.evt_type = BLE_NUS_C_EVT_DISCONNECTED;
-                
+
                 p_ble_nus_c->conn_handle = BLE_CONN_HANDLE_INVALID;
                 p_ble_nus_c->evt_handler(p_ble_nus_c, &nus_c_evt);
             }
@@ -140,10 +142,10 @@ void ble_nus_c_on_ble_evt(ble_nus_c_t * p_ble_nus_c, const ble_evt_t * p_ble_evt
 static uint32_t cccd_configure(uint16_t conn_handle, uint16_t cccd_handle, bool enable)
 {
     uint8_t buf[BLE_CCCD_VALUE_LEN];
-    
+
     buf[0] = enable ? BLE_GATT_HVX_NOTIFICATION : 0;
     buf[1] = 0;
-    
+
     const ble_gattc_write_params_t write_params = {
         .write_op = BLE_GATT_OP_WRITE_REQ,
         .flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE,
@@ -172,7 +174,7 @@ uint32_t ble_nus_c_rx_notif_enable(ble_nus_c_t * p_ble_nus_c)
 uint32_t ble_nus_c_string_send(ble_nus_c_t * p_ble_nus_c, uint8_t * p_string, uint16_t length)
 {
     VERIFY_PARAM_NOT_NULL(p_ble_nus_c);
-    
+
     if (length > BLE_NUS_MAX_DATA_LEN)
     {
         return NRF_ERROR_INVALID_PARAM;
@@ -181,7 +183,7 @@ uint32_t ble_nus_c_string_send(ble_nus_c_t * p_ble_nus_c, uint8_t * p_string, ui
     {
         return NRF_ERROR_INVALID_STATE;
     }
-    
+
     const ble_gattc_write_params_t write_params = {
         .write_op = BLE_GATT_OP_WRITE_CMD,
         .flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE,
@@ -206,7 +208,8 @@ uint32_t ble_nus_c_handles_assign(ble_nus_c_t * p_ble_nus,
     {
         p_ble_nus->handles.nus_rx_cccd_handle = p_peer_handles->nus_rx_cccd_handle;
         p_ble_nus->handles.nus_rx_handle      = p_peer_handles->nus_rx_handle;
-        p_ble_nus->handles.nus_tx_handle      = p_peer_handles->nus_tx_handle;    
+        p_ble_nus->handles.nus_tx_handle      = p_peer_handles->nus_tx_handle;
     }
     return NRF_SUCCESS;
 }
+#endif //BLE_NUS_C_ENABLED

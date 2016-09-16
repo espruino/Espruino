@@ -8,20 +8,24 @@
  * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
  * the file.
  */
- 
+
  /**@file
  *
  * @defgroup ble_sdk_lib_gatt_db GATT Database Service Structure
  * @{
  * @ingroup  app_common
  */
- 
+
 #ifndef BLE_GATT_DB_H__
 #define BLE_GATT_DB_H__
 
 #include <stdint.h>
 #include "ble.h"
 #include "ble_gattc.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define BLE_GATT_DB_MAX_CHARS 5       /**< The maximum number of characteristics present in a service record. */
 
@@ -38,11 +42,16 @@ typedef struct
  */
 typedef struct
 {
-    ble_uuid_t               srv_uuid;                                  /**< UUID of the service. */    
+    ble_uuid_t               srv_uuid;                                  /**< UUID of the service. */
     uint8_t                  char_count;                                /**< Number of characteristics present in the service. */
     ble_gattc_handle_range_t handle_range;                              /**< Service Handle Range. */
     ble_gatt_db_char_t       charateristics[BLE_GATT_DB_MAX_CHARS];     /**< Array of information related to the characteristics present in the service. This list can extend further than one. */
 } ble_gatt_db_srv_t;
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BLE_GATT_DB_H__ */
 

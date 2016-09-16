@@ -82,7 +82,7 @@ bool touchpad_read_register(uint8_t register_address, uint8_t *value)
 {
     bool transfer_succeeded = true;
     transfer_succeeded &= twi_master_transfer(m_device_address, &register_address, 1, TWI_DONT_ISSUE_STOP);
-    if (transfer_succeeded) 
+    if (transfer_succeeded)
     {
         transfer_succeeded &= twi_master_transfer(m_device_address | TWI_READ_BIT, value, 1, TWI_ISSUE_STOP);
     }
@@ -105,7 +105,7 @@ bool touchpad_product_id_read(uint8_t * product_id, uint8_t product_id_bytes)
 
     w2_data[0] = TOUCHPAD_PRODUCT_ID;
     transfer_succeeded &= twi_master_transfer(m_device_address, w2_data, 1, TWI_DONT_ISSUE_STOP);
-    if (transfer_succeeded) 
+    if (transfer_succeeded)
     {
         transfer_succeeded &= twi_master_transfer(m_device_address | TWI_READ_BIT, product_id, product_id_bytes, TWI_ISSUE_STOP);
     }

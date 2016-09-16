@@ -9,10 +9,10 @@
  * the file.
  *
  */
- 
+
 /**@file
  *
- * @defgroup lib_driver_simple_timer Simple Timer
+ * @defgroup app_simple_timer Simple Timer
  * @{
  * @ingroup  app_common
  *
@@ -29,6 +29,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@brief Timer time-out handler type. */
 typedef void (*app_simple_timer_timeout_handler_t)(void * p_context);
 
@@ -39,11 +43,9 @@ typedef enum
     APP_SIMPLE_TIMER_MODE_REPEATED       /**< The timer will restart each time it expires. */
 } app_simple_timer_mode_t;
 
-/**@brief Function for configuring and setting up the timer hardware. 
+/**@brief Function for configuring and setting up the timer hardware.
  *
- * @note  Configuration parameters should be set in nrf_drv_config.h file.
- *        The TIMER1_CONFIG_MODE has to be set to NRF_TIMER_MODE_TIMER value.
- *        The TIMER1_CONFIG_BIT_WIDTH has to be set to NRF_TIMER_BIT_WIDTH_16 value.
+ * @note  Timer frequency is configured statically.
  *
  * @retval NRF_SUCCESS             If the operation is successful.
  * @retval NRF_ERROR_INVALID_STATE If the operation fails because the timer is already initialized.
@@ -54,23 +56,23 @@ uint32_t app_simple_timer_init(void);
 
 /**@brief Function for starting a timer.
  *
- * @note  If this function is called for a timer that is already running, the currently running 
+ * @note  If this function is called for a timer that is already running, the currently running
  *        timer is stopped before starting the new one.
  *
  * @param[in] mode                 Timer mode (see @ref app_simple_timer_mode_t).
- * @param[in] timeout_handler      Function to be executed when the timer expires 
+ * @param[in] timeout_handler      Function to be executed when the timer expires
  *                                 (see @ref app_simple_timer_timeout_handler_t).
  * @param[in] timeout_ticks        Number of timer ticks to time-out event.
- * @param[in] p_context            General purpose pointer. Will be passed to the time-out handler 
+ * @param[in] p_context            General purpose pointer. Will be passed to the time-out handler
  *                                 when the timer expires.
- * 
+ *
  * @retval NRF_SUCCESS             If the operation is successful.
  * @retval NRF_ERROR_INVALID_STATE If the operation fails because @ref app_simple_timer_init has not
  *                                 been called and the operation is not allowed in this state.
  * @retval NRF_ERROR_NULL          If the operation fails because timeout_handler is NULL.
  * @retval NRF_ERROR_INVALID_PARAM If the operation fails because "mode" parameter is not valid.
  */
- 
+
 uint32_t app_simple_timer_start(app_simple_timer_mode_t            mode,
                                 app_simple_timer_timeout_handler_t timeout_handler,
                                 uint16_t                           timeout_ticks,
@@ -92,6 +94,11 @@ uint32_t app_simple_timer_stop(void);
  * @retval NRF_SUCCESS             If the operation is successful.
  */
 uint32_t app_simple_timer_uninit(void);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // TIMER_H__
 

@@ -10,11 +10,12 @@
  *
  */
 
-/* Attention! 
-*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile 
+/* Attention!
+*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile
 *  qualification listings, this section of source code must not be modified.
 */
-
+#include "sdk_config.h"
+#if BLE_HTS_ENABLED
 #include "ble_hts.h"
 #include <string.h>
 #include "nordic_common.h"
@@ -424,5 +425,11 @@ uint32_t ble_hts_is_indication_enabled(ble_hts_t * p_hts, bool * p_indication_en
     {
         *p_indication_enabled = ble_srv_is_indication_enabled(cccd_value_buf);
     }
+    if (err_code == BLE_ERROR_GATTS_SYS_ATTR_MISSING)
+    {
+        *p_indication_enabled = false;
+        return NRF_SUCCESS;
+    }
     return err_code;
 }
+#endif //BLE_HTS_ENABLED

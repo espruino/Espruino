@@ -25,14 +25,7 @@
 #include "nordic_common.h"
 #include "sdk_errors.h"
 #include "nrf_log.h"
-
-#ifdef DEBUG
-#undef DEBUG // hack because Espruino uses the 'DEBUG' flag too
-//#include "bsp.h"
-#endif
-
-
-
+#include "nrf_log_ctrl.h"
 /**@brief Function for error handling, which is called when an error has occurred.
  *
  * @warning This handler is an example only and does not fit a final product. You need to analyze
@@ -66,6 +59,7 @@ void app_error_handler_bare(ret_code_t error_code)
         .p_file_name = NULL,
         .err_code    = error_code,
     };
+
     app_error_fault_handler(NRF_FAULT_ID_SDK_ERROR, 0, (uint32_t)(&error_info));
 
     UNUSED_VARIABLE(error_info);
@@ -116,8 +110,7 @@ void app_error_save_and_stop(uint32_t id, uint32_t pc, uint32_t info)
 
     // If printing is disrupted, remove the irq calls, or set the loop variable to 0 in the debugger.
     __disable_irq();
-
-    while(loop);
+    while (loop);
 
     __enable_irq();
 }

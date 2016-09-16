@@ -36,6 +36,10 @@
 
 #include "sdk_common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /**@brief Initializes Memory Manager.
  *
@@ -134,6 +138,11 @@ void * nrf_realloc(void *p_buffer, uint32_t size);
 void nrf_mem_diagnose(void);
 
 #endif // MEM_MANAGER_ENABLE_DIAGNOSTICS
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // MEM_MANAGER_H__
 /** @} */

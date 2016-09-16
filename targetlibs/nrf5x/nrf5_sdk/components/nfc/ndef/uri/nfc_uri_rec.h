@@ -25,6 +25,10 @@
 
 #include "nfc_ndef_record.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @enum nfc_uri_id_t
  * @brief URI identifier codes according to "URI Record Type Definition"
@@ -76,9 +80,9 @@ typedef enum
  * This function declares and initializes a static instance of an NFC NDEF record description
  * of a URI record.
  *
- * @note The record payload data (@p uri_id_code, @p p_uri_data, and @p 
- *       uri_data_len) should be declared as static. If it is declared as 
- *       automatic, the NDEF message encoding (see @ref nfc_uri_msg_encode) 
+ * @note The record payload data (@p uri_id_code, @p p_uri_data, and @p
+ *       uri_data_len) should be declared as static. If it is declared as
+ *       automatic, the NDEF message encoding (see @ref nfc_uri_msg_encode)
  *       must be done in the same variable scope.
  *
  * @param[in]  uri_id_code          URI identifier code that defines the protocol field of the URI.
@@ -93,4 +97,9 @@ nfc_ndef_record_desc_t * nfc_uri_rec_declare( nfc_uri_id_t           uri_id_code
                                               uint8_t const *  const p_uri_data,
                                               uint8_t                uri_data_len);
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // NFC_URI_REC_H__

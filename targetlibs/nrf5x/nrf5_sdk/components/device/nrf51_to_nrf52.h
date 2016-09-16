@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, Nordic Semiconductor ASA
+/* Copyright (c) 2016, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-
+ 
 #ifndef NRF51_TO_NRF52_H
 #define NRF51_TO_NRF52_H
 
@@ -80,6 +80,13 @@
 /* GPIO port was renamed to P0. */
 #define NRF_GPIO        NRF_P0
 #define NRF_GPIO_BASE   NRF_P0_BASE
+
+
+/* QDEC */
+/* The registers PSELA, PSELB and PSELLED were restructured into a struct. */
+#define PSELLED     PSEL.LED
+#define PSELA       PSEL.A
+#define PSELB       PSEL.B
 
 
 /* SPIS */
@@ -522,6 +529,16 @@
 /* COMP module was eliminated. Adapted to nrf52 headers. */
 #define LPCOMP_COMP_IRQHandler  COMP_LPCOMP_IRQHandler
 #define LPCOMP_COMP_IRQn        COMP_LPCOMP_IRQn
+
+
+/* REFSEL register redefined enumerated values and added some more. */
+#define LPCOMP_REFSEL_REFSEL_SupplyOneEighthPrescaling          LPCOMP_REFSEL_REFSEL_Ref1_8Vdd
+#define LPCOMP_REFSEL_REFSEL_SupplyTwoEighthsPrescaling         LPCOMP_REFSEL_REFSEL_Ref2_8Vdd
+#define LPCOMP_REFSEL_REFSEL_SupplyThreeEighthsPrescaling       LPCOMP_REFSEL_REFSEL_Ref3_8Vdd
+#define LPCOMP_REFSEL_REFSEL_SupplyFourEighthsPrescaling        LPCOMP_REFSEL_REFSEL_Ref4_8Vdd
+#define LPCOMP_REFSEL_REFSEL_SupplyFiveEighthsPrescaling        LPCOMP_REFSEL_REFSEL_Ref5_8Vdd
+#define LPCOMP_REFSEL_REFSEL_SupplySixEighthsPrescaling         LPCOMP_REFSEL_REFSEL_Ref6_8Vdd
+#define LPCOMP_REFSEL_REFSEL_SupplySevenEighthsPrescaling       LPCOMP_REFSEL_REFSEL_Ref7_8Vdd
 
 
 /* RADIO */

@@ -3,7 +3,8 @@
  * Use of this source code is governed by a BSD-style license that can be
  * found in the license.txt file.
  */
-
+#include "sdk_config.h"
+#if BLE_LBS_ENABLED
 #include "ble_lbs.h"
 #include "ble_srv_common.h"
 #include "sdk_common.h"
@@ -61,7 +62,7 @@ void ble_lbs_on_ble_evt(ble_lbs_t * p_lbs, ble_evt_t * p_ble_evt)
         case BLE_GAP_EVT_DISCONNECTED:
             on_disconnect(p_lbs, p_ble_evt);
             break;
-            
+
         case BLE_GATTS_EVT_WRITE:
             on_write(p_lbs, p_ble_evt);
             break;
@@ -99,7 +100,7 @@ static uint32_t led_char_add(ble_lbs_t * p_lbs, const ble_lbs_init_t * p_lbs_ini
 
     ble_uuid.type = p_lbs->uuid_type;
     ble_uuid.uuid = LBS_UUID_LED_CHAR;
-    
+
     memset(&attr_md, 0, sizeof(attr_md));
 
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
@@ -108,7 +109,7 @@ static uint32_t led_char_add(ble_lbs_t * p_lbs, const ble_lbs_init_t * p_lbs_ini
     attr_md.rd_auth    = 0;
     attr_md.wr_auth    = 0;
     attr_md.vlen       = 0;
-    
+
     memset(&attr_char_value, 0, sizeof(attr_char_value));
 
     attr_char_value.p_uuid       = &ble_uuid;
@@ -145,9 +146,9 @@ static uint32_t button_char_add(ble_lbs_t * p_lbs, const ble_lbs_init_t * p_lbs_
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
-    
+
     memset(&char_md, 0, sizeof(char_md));
-    
+
     char_md.char_props.read   = 1;
     char_md.char_props.notify = 1;
     char_md.p_char_user_desc  = NULL;
@@ -217,12 +218,13 @@ uint32_t ble_lbs_on_button_change(ble_lbs_t * p_lbs, uint8_t button_state)
 {
     ble_gatts_hvx_params_t params;
     uint16_t len = sizeof(button_state);
-    
+
     memset(&params, 0, sizeof(params));
     params.type = BLE_GATT_HVX_NOTIFICATION;
     params.handle = p_lbs->button_char_handles.value_handle;
     params.p_data = &button_state;
     params.p_len = &len;
-    
+
     return sd_ble_gatts_hvx(p_lbs->conn_handle, &params);
 }
+#endif //BLE_LBS_ENABLED

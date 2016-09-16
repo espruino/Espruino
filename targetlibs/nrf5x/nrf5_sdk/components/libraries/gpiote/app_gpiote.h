@@ -46,6 +46,10 @@
 #include "app_error.h"
 #include "app_util.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define GPIOTE_USER_NODE_SIZE   24          /**< Size of app_gpiote.gpiote_user_t (only for use inside APP_GPIOTE_BUF_SIZE()). */
 #define NO_OF_PINS              32          /**< Number of GPIO pins on the \nRFXX chip. */
 
@@ -93,7 +97,7 @@ typedef void (*app_gpiote_input_event_handler_t)(void);
  * @param[in]   max_users               Maximum number of GPIOTE users.
  * @param[in]   p_buffer                Pointer to memory buffer for internal use in the app_gpiote
  *                                      module. The size of the buffer can be computed using the
- *                                      APP_GPIOTE_BUF_SIZE() macro. The buffer must be aligned to 
+ *                                      APP_GPIOTE_BUF_SIZE() macro. The buffer must be aligned to
  *                                      a 4 byte boundary.
  *
  * @retval      NRF_SUCCESS             Successful initialization.
@@ -105,7 +109,7 @@ uint32_t app_gpiote_init(uint8_t max_users, void * p_buffer);
 /**@brief Function for registering a GPIOTE user.
  *
  * @param[out]  p_user_id               Id for the new GPIOTE user.
- * @param[in]   pins_low_to_high_mask   Mask defining which pins will generate events to this user 
+ * @param[in]   pins_low_to_high_mask   Mask defining which pins will generate events to this user
  *                                      when state is changed from low->high.
  * @param[in]   pins_high_to_low_mask   Mask defining which pins will generate events to this user
  *                                      when state is changed from high->low.
@@ -213,6 +217,11 @@ uint32_t app_gpiote_enable_interrupts(void);
  */
 uint32_t app_gpiote_disable_interrupts(void);
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // APP_GPIOTE_H__
 

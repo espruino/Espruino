@@ -22,7 +22,12 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "section_vars.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 /**@brief   fstorage return values. */
@@ -38,6 +43,7 @@ typedef enum
     FS_ERR_QUEUE_FULL,          //!< Error. Queue is full.
     FS_ERR_OPERATION_TIMEOUT,   //!< Error. The operation has timed out.
     FS_ERR_INTERNAL,            //!< Error. Internal error.
+    FS_ERR_FAILURE_SINCE_LAST   //!< Error. Uncleared error since last call
 } fs_ret_t;
 
 
@@ -62,6 +68,7 @@ typedef enum
 typedef struct
 {
     fs_evt_id_t id;                         //!< The event ID.
+    void *      p_context;                  //!< User-defined context passed to the interrupt handler.
     union
     {
         struct
@@ -108,12 +115,12 @@ typedef void (*fs_cb_t)(fs_evt_t const * const evt, fs_ret_t result);
 typedef struct
 {
     /**@brief   The beginning of the flash space assigned to the application which registered this
-     *          configuration. This field is set by @ref fs_init.
+     *          configuration. This field is set by @ref fs_init. It can also be set manually.
      */
     uint32_t const * p_start_addr;
 
     /**@brief   The end of the flash space assigned to the application which registered this
-     *          configuration. This field is set by @ref fs_init.
+     *          configuration. This field is set by @ref fs_init. It can also be set manually.
      */
     uint32_t const * p_end_addr;
 
@@ -129,7 +136,7 @@ typedef struct
 } fs_config_t;
 
 
-/**@brief   Macro for registering with an fstorage configuration.
+/**@brief   Macro for registering an fstorage configuration variable.
  *          Applications which use fstorage must register with the module using this macro.
  *          Registering involves defining a variable which holds the configuration of fstorage
  *          specific to the application which invokes the macro.
@@ -139,7 +146,7 @@ typedef struct
  *
  * @param[in]   cfg_var     A @e definition of a @ref fs_config_t variable.
  */
-#define FS_REGISTER_CFG(cfg_var) NRF_SECTION_VARS_ADD(fs_data, cfg_var)
+#define FS_REGISTER_CFG(cfg_var) NRF_SECTION_VARS_REGISTER_VAR(fs_data, cfg_var)
 
 
 /**@brief   Function for initializing the module.
@@ -150,6 +157,10 @@ typedef struct
  */
 fs_ret_t fs_init(void);
 
+
+fs_ret_t fs_fake_init(void);
+
+bool fs_check_addr(uint32_t const * const p_dest, uint32_t const * const p_src);
 
 /**@brief   Function for storing data in flash.
  *
@@ -167,6 +178,7 @@ fs_ret_t fs_init(void);
  * @param[in]   p_dest          The address in flash memory where to store the data.
  * @param[in]   p_src           Pointer to the data to store in flash.
  * @param[in]   length_words    Length of the data to store, in words.
+ * @param[in]   p_context       User-defined context passed to the interrupt handler.
  *
  * @retval  FS_SUCCESS              If the operation was queued successfully.
  * @retval  FS_ERR_NOT_INITIALIZED  If the module is not initialized.
@@ -181,7 +193,8 @@ fs_ret_t fs_init(void);
 fs_ret_t fs_store(fs_config_t const * const p_config,
                   uint32_t    const * const p_dest,
                   uint32_t    const * const p_src,
-                  uint16_t                  length_words);
+                  uint16_t                  length_words,
+                  void *                    p_context);
 
 
 /**@brief   Function for erasing flash pages.
@@ -194,6 +207,7 @@ fs_ret_t fs_store(fs_config_t const * const p_config,
  * @param[in]   p_config        fstorage configuration registered by the application.
  * @param[in]   p_page_addr     Address of the page to erase. Must be aligned to a page boundary.
  * @param[in]   num_pages       Number of pages to erase. May not be zero.
+ * @param[in]   p_context       User-defined context passed to the interrupt handler.
  *
  * @retval  FS_SUCCESS              If the operation was queued successfully.
  * @retval  FS_ERR_NOT_INITIALIZED  If the module is not initialized.
@@ -207,7 +221,8 @@ fs_ret_t fs_store(fs_config_t const * const p_config,
  */
 fs_ret_t fs_erase(fs_config_t const * const p_config,
                   uint32_t    const * const p_page_addr,
-                  uint16_t                  num_pages);
+                  uint16_t                  num_pages,
+                  void *                    p_context);
 
 
 /**@brief Function for retrieving the number of queued flash operations.
@@ -231,5 +246,10 @@ void fs_sys_event_handler(uint32_t sys_evt);
 
 
 /** @} */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // FSTORAGE_H__

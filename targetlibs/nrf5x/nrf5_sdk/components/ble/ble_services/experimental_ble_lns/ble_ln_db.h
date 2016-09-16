@@ -23,6 +23,10 @@
 
 #include "ble_lns.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@brief Function for initializing the route database.
  *
  * @details This call initializes the database holding route records.
@@ -80,6 +84,11 @@ ret_code_t ble_ln_db_record_add(ble_lns_route_t * p_rec);
  * @return      NRF_SUCCESS on success.
  */
 ret_code_t ble_ln_db_record_delete(uint8_t record_num);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_LN_DB_H__
 

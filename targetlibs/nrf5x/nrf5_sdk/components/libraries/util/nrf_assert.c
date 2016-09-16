@@ -13,8 +13,7 @@
 #include "app_error.h"
 #include "nordic_common.h"
 
-#if defined(DEBUG_NRF)
-void assert_nrf_callback(uint16_t line_num, const uint8_t * file_name)
+__WEAK void assert_nrf_callback(uint16_t line_num, const uint8_t * file_name)
 {
     assert_info_t assert_info =
     {
@@ -25,4 +24,3 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * file_name)
 
     UNUSED_VARIABLE(assert_info);
 }
-#endif /* DEBUG_NRF */

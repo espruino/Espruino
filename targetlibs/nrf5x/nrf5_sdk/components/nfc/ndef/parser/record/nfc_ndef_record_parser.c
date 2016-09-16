@@ -10,17 +10,27 @@
  *
  */
 
+#include "sdk_config.h"
+#if NFC_NDEF_RECORD_PARSER_ENABLED
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "nfc_ndef_record_parser.h"
-#include "nfc_ndef_parser_logger.h"
 #include "app_util.h"
 #include "nordic_common.h"
 #include "nrf_delay.h"
 
+#define NRF_LOG_MODULE_NAME "NFC_NDEF_PARSER"
+#if NFC_NDEF_RECORD_PARSER_LOG_ENABLED
+#define NRF_LOG_LEVEL       NFC_NDEF_RECORD_PARSER_LOG_LEVEL
+#define NRF_LOG_INFO_COLOR  NFC_NDEF_RECORD_PARSER_INFO_COLOR
+#else // NFC_NDEF_RECORD_PARSER_LOG_ENABLED
+#define NRF_LOG_LEVEL       0
+#endif // NFC_NDEF_RECORD_PARSER_LOG_ENABLED
+#include "nrf_log.h"
 
 /* Sum of sizes of fields: TNF-flags, Type Length, Payload Length in short NDEF record. */
-#define NDEF_RECORD_BASE_LONG_SHORT 2 + NDEF_RECORD_PAYLOAD_LEN_SHORT_SIZE
+#define NDEF_RECORD_BASE_LONG_SHORT (2 + NDEF_RECORD_PAYLOAD_LEN_SHORT_SIZE)
 
 
 ret_code_t ndef_record_parser(nfc_ndef_bin_payload_desc_t * p_bin_pay_desc,
@@ -132,7 +142,6 @@ ret_code_t ndef_record_parser(nfc_ndef_bin_payload_desc_t * p_bin_pay_desc,
     return NRF_SUCCESS;
 }
 
-
 char const * const tnf_strings[] =
 {
     "Empty\r\n",
@@ -145,88 +154,21 @@ char const * const tnf_strings[] =
     "Reserved\r\n"
 };
 
-
-#define MAX_NDEF_PASER_HEX_STRING_LEN 8
-
-static void ndef_hexdata_printout(uint32_t num, uint8_t const * p_data, uint16_t indent)
-{
-    uint32_t i;
-    uint32_t j;
-    uint8_t  tempbuf[MAX_NDEF_PASER_HEX_STRING_LEN + 1] = {[MAX_NDEF_PASER_HEX_STRING_LEN] = 0};
-
-    if (num > 0)
-    {
-        for (j = 0; j < indent; j++)
-        {
-            NDEF_PARSER_TRACE(" ");
-        }
-
-        for (i = 0; i < num; i++)
-        {
-            if (i && ((i % MAX_NDEF_PASER_HEX_STRING_LEN) == 0))
-            {
-                NDEF_PARSER_TRACE("    %s\r\n", tempbuf);
-
-                for (j = 0; j < indent; j++)
-                {
-                    NDEF_PARSER_TRACE(" ");
-                }
-
-                nrf_delay_ms(10);
-            }
-            NDEF_PARSER_TRACE("%02X ", *p_data);
-
-
-            if (*p_data > ' ' && *p_data <= '~')
-            {
-                tempbuf[i % MAX_NDEF_PASER_HEX_STRING_LEN] = *p_data;
-            }
-            else
-            {
-                tempbuf[i % MAX_NDEF_PASER_HEX_STRING_LEN] = '.';
-            }
-
-            p_data++;
-        }
-
-        i = i % MAX_NDEF_PASER_HEX_STRING_LEN;
-        if (i == 0)
-            i = MAX_NDEF_PASER_HEX_STRING_LEN;
-
-        if (i > 0)
-        {
-            for (j = i; j < MAX_NDEF_PASER_HEX_STRING_LEN; j++)
-            {
-                NDEF_PARSER_TRACE("   ");
-            }
-
-            tempbuf[i] = 0;
-            NDEF_PARSER_TRACE("    %s", tempbuf);
-        }
-    }
-
-    NDEF_PARSER_TRACE("\r\n");
-
-    UNUSED_VARIABLE(tempbuf);
-}
-
-
 void ndef_record_printout(uint32_t num, nfc_ndef_record_desc_t * const p_rec_desc)
 {
-    NDEF_PARSER_TRACE("NDEF record %d content:\r\n", num);
-    NDEF_PARSER_TRACE("TNF: ");
-    NDEF_PARSER_TRACE((char *)tnf_strings[(uint32_t) p_rec_desc->tnf]);
+    NRF_LOG_INFO("NDEF record %d content:\r\n", num);
+    NRF_LOG_INFO("TNF: %s",(uint32_t)tnf_strings[p_rec_desc->tnf]);
 
     if (p_rec_desc->p_id != NULL)
     {
-        NDEF_PARSER_TRACE("ID:\r\n");
-        ndef_hexdata_printout(p_rec_desc->id_length, p_rec_desc->p_id, 2);
+        NRF_LOG_INFO("ID:\r\n");
+        NRF_LOG_HEXDUMP_INFO((uint8_t *)p_rec_desc->p_id, p_rec_desc->id_length);
     }
 
     if (p_rec_desc->p_type != NULL)
     {
-        NDEF_PARSER_TRACE("type:\r\n");
-        ndef_hexdata_printout(p_rec_desc->type_length, p_rec_desc->p_type, 2);
+        NRF_LOG_INFO("type:\r\n");
+        NRF_LOG_HEXDUMP_INFO((uint8_t *)p_rec_desc->p_type, p_rec_desc->type_length);
     }
 
     if (p_rec_desc->payload_constructor == (p_payload_constructor_t) nfc_ndef_bin_payload_memcopy)
@@ -235,15 +177,15 @@ void ndef_record_printout(uint32_t num, nfc_ndef_record_desc_t * const p_rec_des
 
         if (p_bin_pay_desc->p_payload != NULL)
         {
-            NDEF_PARSER_TRACE("Payload data (%d bytes):\r\n", p_bin_pay_desc->payload_length);
-            ndef_hexdata_printout(p_bin_pay_desc->payload_length, p_bin_pay_desc->p_payload, 2);
+            NRF_LOG_INFO("Payload data (%d bytes):\r\n", p_bin_pay_desc->payload_length);
+            NRF_LOG_HEXDUMP_INFO((uint8_t *)p_bin_pay_desc->p_payload, p_bin_pay_desc->payload_length);
         }
         else
         {
-            NDEF_PARSER_TRACE("No payload\r\n");
+            NRF_LOG_INFO("No payload\r\n");
         }
     }
-    NDEF_PARSER_TRACE("\r\n");
+    NRF_LOG_INFO("\r\n\r\n");
 }
 
-
+#endif // NFC_NDEF_RECORD_PARSER_ENABLED

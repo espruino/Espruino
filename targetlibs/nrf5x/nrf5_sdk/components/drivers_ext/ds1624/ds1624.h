@@ -18,13 +18,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
 * @brief DS1624 digital temperature sensor driver.
 *
 *
 * @defgroup nrf_drivers_ds1624 DS1624 digital temperature sensor driver
 * @{
-* @ingroup nrf_drivers
+* @ingroup ext_drivers
 * @brief DS1624 digital temperature sensor driver.
 */
 
@@ -52,7 +56,7 @@ bool ds1624_init(uint8_t device_address);
 bool ds1624_temp_read(int8_t *temperature_in_celcius, int8_t *temperature_fraction);
 
 /**
- * @brief Function for starting temperature conversion. Valid data will be available 400-1000 milliseconds after exiting this function.
+ * @brief Function for starting temperature conversion. Valid data will be available 400 - 1000 milliseconds after exiting this function.
  *
  * @return
  * @retval true Temperature conversion started.
@@ -73,5 +77,10 @@ bool ds1624_is_temp_conversion_done(void);
  *@}
  **/
 
-/*lint --flb "Leave library region" */ 
+/*lint --flb "Leave library region" */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

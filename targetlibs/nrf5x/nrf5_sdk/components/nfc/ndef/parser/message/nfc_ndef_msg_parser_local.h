@@ -28,6 +28,10 @@
 #include "nfc_ndef_msg.h"
 #include "nfc_ndef_record_parser.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Type for holding descriptors that are used by the NDEF parser.
  */
@@ -127,5 +131,10 @@ ret_code_t internal_ndef_msg_parser(nfc_ndef_parser_memo_desc_t * const p_parser
 /**
  * @}
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NFC_NDEF_MSG_PARSER_LOCAL_H__

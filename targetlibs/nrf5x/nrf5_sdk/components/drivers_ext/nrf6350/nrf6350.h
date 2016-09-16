@@ -16,6 +16,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LCD_LLEN 16                //!< LCD Line length
 
 #define JS_BUTTON_NONE      0x00   //!< Joystick not touched
@@ -39,7 +43,7 @@
  */
 bool nrf6350_lcd_init(void);
 
-/** 
+/**
  * @brief Function for writing a text string on the LCD-display.
  *
  * @param p_text A pointer to the text string to be written
@@ -52,7 +56,7 @@ bool nrf6350_lcd_init(void);
  */
 bool nrf6350_lcd_write_string(const char *p_text, uint8_t size, uint8_t line, uint8_t pos);
 
-/** 
+/**
  * @brief Function for clearing the contents of the LCD-display.
  *
  * @return
@@ -72,7 +76,7 @@ bool nrf6350_lcd_clear(void);
  */
 bool nrf6350_lcd_set_contrast(uint8_t contrast);
 
-/** 
+/**
  * @brief Function for turning ON the LCD-display.
  *
  * @return
@@ -81,7 +85,7 @@ bool nrf6350_lcd_set_contrast(uint8_t contrast);
  */
 bool nrf6350_lcd_on(void);
 
-/** 
+/**
  * @brief Function for turning OFF the LCD-display.
  *
  * @return
@@ -90,7 +94,7 @@ bool nrf6350_lcd_on(void);
  */
 bool nrf6350_lcd_off(void);
 
-/** 
+/**
  * @brief Function for getting the position of the joystick.
  *
  * @param val pointer to a 2 byte array where the X,Y position is stored
@@ -100,7 +104,7 @@ bool nrf6350_lcd_off(void);
  */
 bool nrf6350_js_get_value(int8_t *val);
 
-/** 
+/**
  * @brief Function for getting the status of the joystick.
  *
  * @param js_state pointer to a uint8_t that receives the status of the joystick
@@ -113,6 +117,11 @@ bool nrf6350_js_get_status(uint8_t *js_state);
 /** @brief  Function for transferring data over TWI bus. Used the first time you want to communicate nRF6350 to bypass a fail.
  */
 bool nrf6350_lcd_wake_up(void);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NRF6350_H_
 /** @} */

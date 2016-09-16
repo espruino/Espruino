@@ -13,10 +13,6 @@
 #ifndef NRF_EGU_H__
 #define NRF_EGU_H__
 
-#ifndef NRF52
-    #error EGU is not supported on your chip.
-#endif
-
 /**
 * @defgroup nrf_egu EGU (Event Generator Unit) abstraction
 * @{
@@ -31,8 +27,9 @@
 #include "nrf_assert.h"
 #include "nrf.h"
 
-#define NRF_EGU_COUNT           6   /**< Number of EGU instances. */
-#define NRF_EGU_CHANNEL_COUNT   16  /**< Number of channels per EGU instance. */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @enum  nrf_egu_task_t
@@ -113,6 +110,34 @@ typedef enum
     NRF_EGU_INT_ALL         = 0xFFFFuL
 } nrf_egu_int_mask_t;
 
+/**@brief Function for getting max channel number of given EGU.
+ *
+ * @param NRF_EGUx EGU instance.
+ *
+ * @returns number of available channels.
+ */
+__STATIC_INLINE uint32_t nrf_egu_channel_count(NRF_EGU_Type * NRF_EGUx)
+{
+    if (NRF_EGUx == NRF_EGU0){
+        return EGU0_CH_NUM;
+    }
+    if (NRF_EGUx ==  NRF_EGU1){
+        return EGU1_CH_NUM;
+    }
+    if (NRF_EGUx ==  NRF_EGU2){
+        return EGU2_CH_NUM;
+    }
+    if (NRF_EGUx ==  NRF_EGU3){
+        return EGU3_CH_NUM;
+    }
+    if (NRF_EGUx ==  NRF_EGU4){
+        return EGU4_CH_NUM;
+    }
+    if (NRF_EGUx ==  NRF_EGU5){
+        return EGU5_CH_NUM;
+    }
+    return 0;
+}
 
 /**
  * @brief Function for triggering a specific EGU task.
@@ -148,7 +173,7 @@ __STATIC_INLINE uint32_t * nrf_egu_task_address_get(NRF_EGU_Type * NRF_EGUx,
 __STATIC_INLINE uint32_t * nrf_egu_task_trigger_addres_get(NRF_EGU_Type * NRF_EGUx,
                                                            uint8_t channel)
 {
-    ASSERT(channel < NRF_EGU_CHANNEL_COUNT);
+    ASSERT(channel < nrf_egu_channel_count(NRF_EGUx));
     return (uint32_t*)&NRF_EGUx->TASKS_TRIGGER[channel];
 }
 
@@ -156,11 +181,12 @@ __STATIC_INLINE uint32_t * nrf_egu_task_trigger_addres_get(NRF_EGU_Type * NRF_EG
 /**
  * @brief Function for returning the specific EGU TRIGGER task.
  *
+ * @param NRF_EGUx EGU instance.
  * @param channel  Channel number.
  */
-__STATIC_INLINE nrf_egu_task_t nrf_egu_task_trigger_get(uint8_t channel)
+__STATIC_INLINE nrf_egu_task_t nrf_egu_task_trigger_get(NRF_EGU_Type * NRF_EGUx, uint8_t channel)
 {
-    ASSERT(channel <= NRF_EGU_CHANNEL_COUNT);
+    ASSERT(channel < nrf_egu_channel_count(NRF_EGUx));
     return (nrf_egu_task_t)((uint32_t) NRF_EGU_TASK_TRIGGER0 + (channel * sizeof(uint32_t)));
 }
 
@@ -188,6 +214,10 @@ __STATIC_INLINE void nrf_egu_event_clear(NRF_EGU_Type * NRF_EGUx,
                                          nrf_egu_event_t egu_event)
 {
     *((volatile uint32_t *)((uint8_t *)NRF_EGUx + (uint32_t)egu_event)) = 0x0UL;
+#if __CORTEX_M == 0x04
+    volatile uint32_t dummy = *((volatile uint32_t *)((uint8_t *)NRF_EGUx + (uint32_t)egu_event));
+    (void)dummy;
+#endif
 }
 
 
@@ -213,7 +243,7 @@ __STATIC_INLINE uint32_t * nrf_egu_event_address_get(NRF_EGU_Type * NRF_EGUx,
 __STATIC_INLINE uint32_t * nrf_egu_event_triggered_addres_get(NRF_EGU_Type * NRF_EGUx,
                                                               uint8_t channel)
 {
-    ASSERT(channel < NRF_EGU_CHANNEL_COUNT);
+    ASSERT(channel < nrf_egu_channel_count(NRF_EGUx));
     return (uint32_t*)&NRF_EGUx->EVENTS_TRIGGERED[channel];
 }
 
@@ -221,11 +251,13 @@ __STATIC_INLINE uint32_t * nrf_egu_event_triggered_addres_get(NRF_EGU_Type * NRF
 /**
  * @brief Function for returning the specific EGU TRIGGERED event.
  *
+ * @param NRF_EGUx EGU instance.
  * @param channel  Channel number.
  */
-__STATIC_INLINE nrf_egu_event_t nrf_egu_event_triggered_get(uint8_t channel)
+__STATIC_INLINE nrf_egu_event_t nrf_egu_event_triggered_get(NRF_EGU_Type * NRF_EGUx,
+                                                            uint8_t channel)
 {
-    ASSERT(channel < NRF_EGU_CHANNEL_COUNT);
+    ASSERT(channel < nrf_egu_channel_count(NRF_EGUx));
     return (nrf_egu_event_t)((uint32_t) NRF_EGU_EVENT_TRIGGERED0 + (channel * sizeof(uint32_t)));
 }
 
@@ -271,16 +303,22 @@ __STATIC_INLINE void nrf_egu_int_disable(NRF_EGU_Type * NRF_EGUx, uint32_t egu_i
 /**
  * @brief Function for retrieving one or more specific EGU interrupts.
  *
+ * @param NRF_EGUx EGU instance.
  * @param channel Channel number.
  *
  * @returns EGU interrupt mask.
  */
-__STATIC_INLINE nrf_egu_int_mask_t nrf_egu_int_get(uint8_t channel)
+__STATIC_INLINE nrf_egu_int_mask_t nrf_egu_int_get(NRF_EGU_Type * NRF_EGUx, uint8_t channel)
 {
-    ASSERT(channel < NRF_EGU_CHANNEL_COUNT);
+    ASSERT(channel < nrf_egu_channel_count(NRF_EGUx));
     return (nrf_egu_int_mask_t)((uint32_t) (EGU_INTENSET_TRIGGERED0_Msk << channel));
 }
 
 /** @} */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

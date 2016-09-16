@@ -12,7 +12,7 @@
 
 /**@file
  *
- * @defgroup ble_sdk_srv_nus Nordic UART Service
+ * @defgroup ble_nus Nordic UART Service
  * @{
  * @ingroup  ble_sdk_srv
  * @brief    Nordic UART Service implementation.
@@ -36,6 +36,10 @@
 #include "ble_srv_common.h"
 #include <stdint.h>
 #include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define BLE_UUID_NUS_SERVICE 0x0001                      /**< The UUID of the Nordic UART Service. */
 #define BLE_NUS_MAX_DATA_LEN (GATT_MTU_SIZE_DEFAULT - 3) /**< Maximum length of data (in bytes) that can be transmitted to the peer by the Nordic UART service module. */
@@ -108,6 +112,11 @@ void ble_nus_on_ble_evt(ble_nus_t * p_nus, ble_evt_t * p_ble_evt);
  * @retval NRF_SUCCESS If the string was sent successfully. Otherwise, an error code is returned.
  */
 uint32_t ble_nus_string_send(ble_nus_t * p_nus, uint8_t * p_string, uint16_t length);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_NUS_H__
 

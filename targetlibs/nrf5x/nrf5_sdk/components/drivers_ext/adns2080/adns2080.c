@@ -328,4 +328,4 @@ void adns2080_force_mode_set(adns2080_mode_t mode)
     sdio_write_byte(REG_PERFORMANCE, (uint8_t)((uint8_t)mode << 4));
 }
 
-/*lint --flb "Leave library region" */ 
+/*lint --flb "Leave library region" */

@@ -10,8 +10,8 @@
  *
  */
 
-/* Attention! 
-*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile 
+/* Attention!
+*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile
 *  qualification listings, this section of source code must not be modified.
 */
 
@@ -200,7 +200,7 @@ static uint32_t csc_measurement_char_add(ble_cscs_t * p_cscs, const ble_cscs_ini
     char_md.p_sccd_md         = NULL;
 
     BLE_UUID_BLE_ASSIGN(ble_uuid, BLE_UUID_CSC_MEASUREMENT_CHAR);
-    
+
     memset(&attr_md, 0, sizeof(attr_md));
 
     BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attr_md.read_perm );
@@ -253,7 +253,7 @@ static uint32_t csc_feature_char_add(ble_cscs_t * p_cscs, const ble_cscs_init_t 
     char_md.p_sccd_md        = NULL;
 
     BLE_UUID_BLE_ASSIGN(ble_uuid, BLE_UUID_CSC_FEATURE_CHAR);
-    
+
     memset(&attr_md, 0, sizeof(attr_md));
 
     attr_md.read_perm  = p_cscs_init->csc_feature_attr_md.read_perm;
@@ -263,9 +263,9 @@ static uint32_t csc_feature_char_add(ble_cscs_t * p_cscs, const ble_cscs_init_t 
     attr_md.rd_auth    = 0;
     attr_md.wr_auth    = 0;
     attr_md.vlen       = 0;
-    
+
     memset(&attr_char_value, 0, sizeof(attr_char_value));
-    
+
     init_value_len = uint16_encode(p_cscs_init->feature, &init_value_encoded[0]);
 
     attr_char_value.p_uuid    = &ble_uuid;

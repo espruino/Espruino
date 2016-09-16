@@ -11,21 +11,21 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_hts Health Thermometer Service
+ * @defgroup ble_hts Health Thermometer Service
  * @{
  * @ingroup ble_sdk_srv
  * @brief Health Thermometer Service module.
  *
  * @details This module implements the Health Thermometer Service.
  *
- *          If an event handler is supplied by the application, the Health Thermometer 
+ *          If an event handler is supplied by the application, the Health Thermometer
  *          Service will generate Health Thermometer Service events to the application.
  *
  * @note The application must propagate BLE stack events to the Health Thermometer Service
  *       module by calling ble_hts_on_ble_evt() from the @ref softdevice_handler function.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
  */
 
@@ -37,6 +37,10 @@
 #include "ble.h"
 #include "ble_srv_common.h"
 #include "ble_date_time.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Temperature Type measurement locations
 #define BLE_HTS_TEMP_TYPE_ARMPIT      1
@@ -63,7 +67,7 @@ typedef struct
     ble_hts_evt_type_t evt_type;                                            /**< Type of event. */
 } ble_hts_evt_t;
 
-// Forward declaration of the ble_hts_t type. 
+// Forward declaration of the ble_hts_t type.
 typedef struct ble_hts_s ble_hts_t;
 
 /**@brief Health Thermometer Service event handler type. */
@@ -154,6 +158,11 @@ uint32_t ble_hts_measurement_send(ble_hts_t * p_hts, ble_hts_meas_t * p_hts_meas
  * @return      NRF_SUCCESS on success, otherwise an error code.
  */
 uint32_t ble_hts_is_indication_enabled(ble_hts_t * p_hts, bool * p_indication_enabled);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_HTS_H__
 

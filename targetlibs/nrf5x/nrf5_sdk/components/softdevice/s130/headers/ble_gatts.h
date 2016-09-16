@@ -396,6 +396,7 @@ SVCALL(SD_BLE_GATTS_SERVICE_ADD, uint32_t, sd_ble_gatts_service_add(uint8_t type
  * @retval ::NRF_ERROR_INVALID_ADDR Invalid pointer supplied.
  * @retval ::NRF_ERROR_INVALID_PARAM Invalid parameter(s) supplied, handle values need to match previously added services.
  * @retval ::NRF_ERROR_INVALID_STATE Invalid state to perform operation.
+ * @retval ::NRF_ERROR_NOT_SUPPORTED Feature is not supported, service_handle must be that of the last added service.
  * @retval ::NRF_ERROR_FORBIDDEN Forbidden value supplied, self inclusions are not allowed.
  * @retval ::NRF_ERROR_NO_MEM Not enough memory to complete operation.
  * @retval ::NRF_ERROR_NOT_FOUND Attribute not found.
@@ -499,6 +500,7 @@ SVCALL(SD_BLE_GATTS_VALUE_SET, uint32_t, sd_ble_gatts_value_set(uint16_t conn_ha
  * @retval ::NRF_ERROR_INVALID_PARAM Invalid attribute offset supplied.
  * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid connection handle supplied.
  * @retval ::BLE_ERROR_GATTS_INVALID_ATTR_TYPE @ref BLE_CONN_HANDLE_INVALID supplied on a system attribute.
+ * @retval ::BLE_ERROR_GATTS_SYS_ATTR_MISSING System attributes missing, use @ref sd_ble_gatts_sys_attr_set to set them to a known value.
  */
 SVCALL(SD_BLE_GATTS_VALUE_GET, uint32_t, sd_ble_gatts_value_get(uint16_t conn_handle, uint16_t handle, ble_gatts_value_t *p_value));
 
@@ -649,6 +651,7 @@ SVCALL(SD_BLE_GATTS_RW_AUTHORIZE_REPLY, uint32_t, sd_ble_gatts_rw_authorize_repl
  * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid Connection Handle.
  * @retval ::NRF_ERROR_INVALID_ADDR Invalid pointer supplied.
  * @retval ::NRF_ERROR_INVALID_STATE Invalid Connection State.
+ * @retval ::NRF_ERROR_INVALID_PARAM Invalid flags supplied.
  * @retval ::NRF_ERROR_INVALID_DATA Invalid data supplied, the data should be exactly the same as retrieved with @ref sd_ble_gatts_sys_attr_get.
  * @retval ::NRF_ERROR_NO_MEM Not enough memory to complete operation.
  * @retval ::NRF_ERROR_BUSY The stack is busy. Retry at later time.
@@ -682,6 +685,7 @@ SVCALL(SD_BLE_GATTS_SYS_ATTR_SET, uint32_t, sd_ble_gatts_sys_attr_set(uint16_t c
  * @retval ::NRF_SUCCESS Successfully retrieved the system attribute information.
  * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid Connection Handle.
  * @retval ::NRF_ERROR_INVALID_ADDR Invalid pointer supplied.
+ * @retval ::NRF_ERROR_INVALID_PARAM Invalid flags supplied.
  * @retval ::NRF_ERROR_DATA_SIZE The system attribute information did not fit into the provided buffer.
  * @retval ::NRF_ERROR_NOT_FOUND No system attributes found.
  */

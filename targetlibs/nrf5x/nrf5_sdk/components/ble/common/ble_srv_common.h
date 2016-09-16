@@ -29,6 +29,10 @@
 #include "ble_gap.h"
 #include "ble_gatt.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @defgroup UUID_SERVICES Service UUID definitions
  * @{ */
 #define BLE_UUID_ALERT_NOTIFICATION_SERVICE                      0x1811     /**< Alert Notification service UUID. */
@@ -169,7 +173,7 @@ typedef void (*ble_srv_error_handler_t) (uint32_t nrf_error);
 
 
 
-/**@brief Value of a Report Reference descriptor. 
+/**@brief Value of a Report Reference descriptor.
  *
  * @details This is mapping information that maps the parent characteristic to the Report ID(s) and
  *          Report Type(s) defined within a Report Map characteristic.
@@ -220,12 +224,9 @@ typedef struct
  * @retval      TRUE If notification is enabled.
  * @retval      FALSE Otherwise.
  */
-static __INLINE bool ble_srv_is_notification_enabled(uint8_t const * p_encoded_data)
-{
-    uint16_t cccd_value = uint16_decode(p_encoded_data);
-    return ((cccd_value & BLE_GATT_HVX_NOTIFICATION) != 0);
-}
-    
+bool ble_srv_is_notification_enabled(uint8_t const * p_encoded_data);
+
+
 /**@brief Function for decoding a CCCD value, and then testing if indication is
  *        enabled.
  *
@@ -234,11 +235,8 @@ static __INLINE bool ble_srv_is_notification_enabled(uint8_t const * p_encoded_d
  * @retval      TRUE If indication is enabled.
  * @retval      FALSE Otherwise.
  */
-static __INLINE bool ble_srv_is_indication_enabled(uint8_t const * p_encoded_data)
-{
-    uint16_t cccd_value = uint16_decode(p_encoded_data);
-    return ((cccd_value & BLE_GATT_HVX_INDICATION) != 0);
-}
+bool ble_srv_is_indication_enabled(uint8_t const * p_encoded_data);
+
 
 /**@brief Function for encoding a Report Reference Descriptor.
  *
@@ -302,6 +300,7 @@ typedef struct
     uint8_t *                   p_init_value;             /**< Initial encoded value of the characteristic.*/
     bool                        is_var_len;               /**< Indicates if the characteristic value has variable length.*/
     ble_gatt_char_props_t       char_props;               /**< Characteristic properties.*/
+    ble_gatt_char_ext_props_t   char_ext_props;           /**< Characteristic extended properties.*/
     bool                        is_defered_read;          /**< Indicate if deferred read operations are supported.*/
     bool                        is_defered_write;         /**< Indicate if deferred write operations are supported.*/
     security_req_t              read_access;              /**< Security requirement for reading the characteristic value.*/
@@ -333,7 +332,7 @@ typedef struct
 } ble_add_descr_params_t;
 
 
-/**@brief Function for adding a characteristic to a given service. 
+/**@brief Function for adding a characteristic to a given service.
  *
  * If no pointer is given for the initial value,
  * the initial length parameter will be ignored and the initial length will be 0.
@@ -361,6 +360,11 @@ uint32_t descriptor_add(uint16_t                   char_handle,
                         ble_add_descr_params_t *   p_descr_props,
                         uint16_t *                 p_descr_handle);
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_SRV_COMMON_H__
 

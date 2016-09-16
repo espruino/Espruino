@@ -10,7 +10,8 @@
  *
  */
 
-
+#include "sdk_config.h"
+#if PEER_MANAGER_ENABLED
 #include "peer_data.h"
 
 #include "peer_manager_types.h"
@@ -61,5 +62,4 @@ ret_code_t peer_data_deserialize(pm_peer_data_flash_t const * p_in_data, pm_peer
     }
     return err_code;
 }
-
-
+#endif //PEER_MANAGER_ENABLED

@@ -19,7 +19,7 @@
  * @brief Application timer functionality.
  *
  * @details This module enables the application to create multiple timer instances based on the RTC1
- *          peripheral. Checking for time-outs and invokation of user time-out handlers is performed
+ *          peripheral. Checking for time-outs and invocation of user time-out handlers is performed
  *          in the RTC1 interrupt handler. List handling is done using a software interrupt (SWI0).
  *          Both interrupt handlers are running in APP_LOW priority level.
  *
@@ -32,52 +32,52 @@
  *          the scheduler.
  *
  * @details Use the USE_SCHEDULER parameter of the APP_TIMER_INIT() macro to select if the
- *          @ref app_scheduler should be used or not. Even if the scheduler is 
+ *          @ref app_scheduler should be used or not. Even if the scheduler is
  *          not used, app_timer.h will include app_scheduler.h, so when
  *          compiling, app_scheduler.h must be available in one of the compiler include paths.
  */
 
 #ifndef APP_TIMER_H__
 #define APP_TIMER_H__
-
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdio.h>
+#include "sdk_config.h"
 #include "app_error.h"
 #include "app_util.h"
 #include "compiler_abstraction.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define APP_TIMER_CLOCK_FREQ         32768                      /**< Clock frequency of the RTC timer used to implement the app timer module. */
 #define APP_TIMER_MIN_TIMEOUT_TICKS  5                          /**< Minimum value of the timeout_ticks parameter of app_timer_start(). */
 
 #define APP_TIMER_NODE_SIZE          32                         /**< Size of app_timer.timer_node_t (used to allocate data). */
 #define APP_TIMER_USER_OP_SIZE       24                         /**< Size of app_timer.timer_user_op_t (only for use inside APP_TIMER_BUF_SIZE()). */
-#define APP_TIMER_USER_SIZE          8                          /**< Size of app_timer.timer_user_t (only for use inside APP_TIMER_BUF_SIZE()). */
-#define APP_TIMER_INT_LEVELS         3                          /**< Number of interrupt levels from where timer operations may be initiated (only for use inside APP_TIMER_BUF_SIZE()). */
 
 /**@brief Compute number of bytes required to hold the application timer data structures.
  *
- * @param[in]  OP_QUEUE_SIZE   Size of queues holding timer operations that are pending execution.
+ * @param[in]  OP_QUEUE_SIZE   Size of the queue holding timer operations that are pending execution.
  *                             Note that due to the queue implementation, this size must be one more
  *                             than the size that is actually needed.
  *
  * @return     Required application timer buffer size (in bytes).
  */
-#define APP_TIMER_BUF_SIZE(OP_QUEUE_SIZE)                                              \
-    (                                                                                              \
-        (                                                                                          \
-            APP_TIMER_INT_LEVELS                                                                   \
-            *                                                                                      \
-            (APP_TIMER_USER_SIZE + ((OP_QUEUE_SIZE) + 1) * APP_TIMER_USER_OP_SIZE)                 \
-        )                                                                                          \
+#define APP_TIMER_BUF_SIZE(OP_QUEUE_SIZE)                                  \
+    (                                                                      \
+        (                                                                  \
+            (((OP_QUEUE_SIZE) + 1) * APP_TIMER_USER_OP_SIZE)               \
+        )                                                                  \
     )
 
 /**@brief Convert milliseconds to timer ticks.
  *
  * This macro uses 64-bit integer arithmetic, but as long as the macro parameters are
  *       constants (i.e. defines), the computation will be done by the preprocessor.
- * 
- * When using this macro, ensure that the 
+ *
+ * When using this macro, ensure that the
  *         values provided as input result in an output value that is supported by the
  *         @ref app_timer_start function. For example, when the ticks for 1 ms is needed, the
  *         maximum possible value of PRESCALER must be 6, when @ref APP_TIMER_CLOCK_FREQ is 32768.
@@ -86,7 +86,7 @@
  *
  * @param[in]  MS          Milliseconds.
  * @param[in]  PRESCALER   Value of the RTC1 PRESCALER register (must be the same value that was
- *                         passed to APP_TIMER_INIT()). 
+ *                         passed to APP_TIMER_INIT()).
  *
  * @return     Number of timer ticks.
  */
@@ -129,32 +129,32 @@ typedef enum
  *          making sure that the buffer is correctly aligned. It will also connect the timer module
  *          to the scheduler (if specified).
  *
- * @note    This module assumes that the LFCLK is already running. If it is not, the module will 
- *          be non-functional, since the RTC will not run. If you do not use a SoftDevice, you 
- *          must start the LFCLK manually. See the rtc_example's lfclk_config() function 
- *          for an example of how to do this. If you use a SoftDevice, the LFCLK is started on 
- *          SoftDevice init. 
+ * @note    This module assumes that the LFCLK is already running. If it is not, the module will
+ *          be non-functional, since the RTC will not run. If you do not use a SoftDevice, you
+ *          must start the LFCLK manually. See the rtc_example's lfclk_config() function
+ *          for an example of how to do this. If you use a SoftDevice, the LFCLK is started on
+ *          SoftDevice init.
  *
  *
  * @param[in]  PRESCALER        Value of the RTC1 PRESCALER register. This will decide the
  *                              timer tick rate. Set to 0 for no prescaling.
- * @param[in]  OP_QUEUES_SIZE   Size of queues holding timer operations that are pending execution.
+ * @param[in]  OP_QUEUE_SIZE    Size of the queue holding timer operations that are pending execution.
  * @param[in]  SCHEDULER_FUNC   Pointer to scheduler event handler
  *
  * @note Since this macro allocates a buffer, it must only be called once (it is OK to call it
  *       several times as long as it is from the same location, for example, to do a re-initialization).
  */
 /*lint -emacro(506, APP_TIMER_INIT) */ /* Suppress "Constant value Boolean */
-#define APP_TIMER_INIT(PRESCALER, OP_QUEUES_SIZE, SCHEDULER_FUNC)                                  \
-    do                                                                                             \
-    {                                                                                              \
-        static uint32_t APP_TIMER_BUF[CEIL_DIV(APP_TIMER_BUF_SIZE((OP_QUEUES_SIZE) + 1),           \
-                                               sizeof(uint32_t))];                                 \
-        uint32_t ERR_CODE = app_timer_init((PRESCALER),                                            \
-                                           (OP_QUEUES_SIZE) + 1,                                   \
-                                           APP_TIMER_BUF,                                          \
-                                           SCHEDULER_FUNC);                                        \
-        APP_ERROR_CHECK(ERR_CODE);                                                                 \
+#define APP_TIMER_INIT(PRESCALER, OP_QUEUE_SIZE, SCHEDULER_FUNC)                  \
+    do                                                                            \
+    {                                                                             \
+        static uint32_t APP_TIMER_BUF[CEIL_DIV(APP_TIMER_BUF_SIZE(OP_QUEUE_SIZE), \
+                                               sizeof(uint32_t))];                \
+        uint32_t ERR_CODE = app_timer_init((PRESCALER),                           \
+                                           (OP_QUEUE_SIZE) + 1,                   \
+                                           APP_TIMER_BUF,                         \
+                                           SCHEDULER_FUNC);                       \
+        APP_ERROR_CHECK(ERR_CODE);                                                \
     } while (0)
 
 
@@ -166,7 +166,7 @@ typedef enum
  *       and take care of connecting the timer module to the scheduler (if specified).
  *
  * @param[in]  prescaler           Value of the RTC1 PRESCALER register. Set to 0 for no prescaling.
- * @param[in]  op_queues_size      Size of queues holding timer operations that are pending
+ * @param[in]  op_queue_size       Size of the queue holding timer operations that are pending
  *                                 execution. Note that due to the queue implementation, this size must
  *                                 be one more than the size that is actually needed.
  * @param[in]  p_buffer            Pointer to memory buffer for internal use in the app_timer
@@ -182,8 +182,8 @@ typedef enum
  * @retval     NRF_ERROR_INVALID_PARAM   If a parameter was invalid (buffer not aligned to a 4 byte
  *                                       boundary or NULL).
  */
-uint32_t app_timer_init(uint32_t                      prescaler, 
-                        uint8_t                       op_queues_size,
+uint32_t app_timer_init(uint32_t                      prescaler,
+                        uint8_t                       op_queue_size,
                         void *                        p_buffer,
                         app_timer_evt_schedule_func_t evt_schedule_func);
 
@@ -254,11 +254,9 @@ uint32_t app_timer_stop_all(void);
 
 /**@brief Function for returning the current value of the RTC1 counter.
  *
- * @param[out] p_ticks   Current value of the RTC1 counter.
- *
- * @retval     NRF_SUCCESS   If the counter was successfully read.
+ * @return    Current value of the RTC1 counter.
  */
-uint32_t app_timer_cnt_get(uint32_t * p_ticks);
+uint32_t app_timer_cnt_get(void);
 
 /**@brief Function for computing the difference between two RTC1 counter values.
  *
@@ -272,14 +270,20 @@ uint32_t app_timer_cnt_diff_compute(uint32_t   ticks_to,
                                     uint32_t   ticks_from,
                                     uint32_t * p_ticks_diff);
 
-#ifdef APP_TIMER_WITH_PROFILER
+
 /**@brief Function for getting the maximum observed operation queue utilization.
  *
  * Function for tuning the module and determining OP_QUEUE_SIZE value and thus module RAM usage.
  *
+ * @note APP_TIMER_WITH_PROFILER must be enabled to use this functionality.
+ *
  * @return Maximum number of events in queue observed so far.
  */
-uint16_t app_timer_op_queue_utilization_get(void);
+uint8_t app_timer_op_queue_utilization_get(void);
+
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif // APP_TIMER_H__

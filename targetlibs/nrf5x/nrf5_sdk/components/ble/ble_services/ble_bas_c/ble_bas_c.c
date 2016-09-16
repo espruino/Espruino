@@ -6,16 +6,17 @@
  * agreement with Nordic Semiconductor.
  *
  */
-
+#include "sdk_config.h"
+#if BLE_BAS_C_ENABLED
 #include "ble_bas_c.h"
 #include "ble_db_discovery.h"
 #include "ble_types.h"
 #include "ble_srv_common.h"
 #include "ble_gattc.h"
-#include "app_trace.h"
 #include "sdk_common.h"
+#define NRF_LOG_MODULE_NAME "BLE_BAS_C"
+#include "nrf_log.h"
 
-#define LOG                  app_trace_log         /**< Debug logger macro that will be used in this file to do logging of important information over UART. */
 #define TX_BUFFER_MASK       0x07                  /**< TX Buffer mask, must be a mask of contiguous zeroes, followed by contiguous sequence of ones: 000...111. */
 #define TX_BUFFER_SIZE       (TX_BUFFER_MASK + 1)  /**< Size of the send buffer, which is 1 higher than the mask. */
 #define WRITE_MESSAGE_LENGTH BLE_CCCD_VALUE_LEN    /**< Length of the write message for CCCD. */
@@ -73,13 +74,13 @@ static void tx_buffer_process(void)
         }
         if (err_code == NRF_SUCCESS)
         {
-            LOG("[BAS_C]: SD Read/Write API returns Success..\r\n");
+            NRF_LOG_INFO("SD Read/Write API returns Success..\r\n");
             m_tx_index++;
             m_tx_index &= TX_BUFFER_MASK;
         }
         else
         {
-            LOG("[BAS_C]: SD Read/Write API returns error. This message sending will be "
+            NRF_LOG_INFO("SD Read/Write API returns error. This message sending will be "
                 "attempted again..\r\n");
         }
     }
@@ -202,10 +203,10 @@ void ble_bas_on_db_disc_evt(ble_bas_c_t * p_ble_bas_c, const ble_db_discovery_ev
             }
         }
 
-        LOG("[BAS_C]: Battery Service discovered at peer.\r\n");
+        NRF_LOG_INFO("Battery Service discovered at peer.\r\n");
 
         //If the instance has been assigned prior to db_discovery, assign the db_handles
-        if(p_ble_bas_c->conn_handle != BLE_CONN_HANDLE_INVALID)
+        if (p_ble_bas_c->conn_handle != BLE_CONN_HANDLE_INVALID)
         {
             if ((p_ble_bas_c->peer_bas_db.bl_cccd_handle == BLE_GATT_HANDLE_INVALID)&&
                 (p_ble_bas_c->peer_bas_db.bl_handle      == BLE_GATT_HANDLE_INVALID))
@@ -217,7 +218,7 @@ void ble_bas_on_db_disc_evt(ble_bas_c_t * p_ble_bas_c, const ble_db_discovery_ev
     }
     else
     {
-        LOG("[BAS_C]: Battery Service discovery failure at peer. \r\n");
+        NRF_LOG_INFO("Battery Service discovery failure at peer. \r\n");
     }
 }
 
@@ -226,7 +227,7 @@ void ble_bas_on_db_disc_evt(ble_bas_c_t * p_ble_bas_c, const ble_db_discovery_ev
  */
 static uint32_t cccd_configure(uint16_t conn_handle, uint16_t handle_cccd, bool notification_enable)
 {
-    LOG("[BAS_C]: Configuring CCCD. CCCD Handle = %d, Connection Handle = %d\r\n",
+    NRF_LOG_INFO("Configuring CCCD. CCCD Handle = %d, Connection Handle = %d\r\n",
                                                             handle_cccd,conn_handle);
 
     tx_message_t * p_msg;
@@ -368,3 +369,4 @@ uint32_t ble_bas_c_handles_assign(ble_bas_c_t *    p_ble_bas_c,
     }
     return NRF_SUCCESS;
 }
+#endif //BLE_BAS_C_ENABLED

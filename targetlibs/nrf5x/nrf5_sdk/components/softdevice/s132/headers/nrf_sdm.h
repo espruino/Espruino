@@ -41,7 +41,6 @@
 
 */
 
-/* Header guard */
 #ifndef NRF_SDM_H__
 #define NRF_SDM_H__
 
@@ -57,34 +56,87 @@ extern "C" {
 /** @addtogroup NRF_SDM_DEFINES Defines
  * @{ */
 #ifdef NRFSOC_DOXYGEN
-//Stuff defined elsewere, to satisfy doxygen
+/// Declared in nrf_mbr.h
 #define MBR_SIZE 0
 #warning test
 #endif
 
+/** @brief The major version for the SoftDevice binary distributed with this header file. */
+#define SD_MAJOR_VERSION  (3)
+
+/** @brief The minor version for the SoftDevice binary distributed with this header file. */
+#define SD_MINOR_VERSION  (0)
+
+/** @brief The bugfix version for the SoftDevice binary distributed with this header file. */
+#define SD_BUGFIX_VERSION (0)
+
+/** @brief The full version number for the SoftDevice binary this header file was distributed
+ *         with, as a decimal number in the form Mmmmbbb, where:
+ *           - M is major version (one or more digits)
+ *           - mmm is minor version (three digits)
+ *           - bbb is bugfix version (three digits). */
+#define SD_VERSION (SD_MAJOR_VERSION * 1000000 + SD_MINOR_VERSION * 1000 + SD_BUGFIX_VERSION)
+
 /** @brief SoftDevice Manager SVC Base number. */
 #define SDM_SVC_BASE 0x10
+
+/** @brief Invalid info field. Returned when an info field does not exist. */
+#define SDM_INFO_FIELD_INVALID (0)
 
 /** @brief Defines the SoftDevice Information Structure location (address) as an offset from
 the start of the softdevice (without MBR)*/
 #define SOFTDEVICE_INFO_STRUCT_OFFSET (0x2000)
 
-/** @brief Defines the absolute Softdevice information structure location (address)*/
+/** @brief Defines the absolute SoftDevice Information Structure location (address) when the
+ *         SoftDevice is installed just above the MBR (the usual case). */
 #define SOFTDEVICE_INFO_STRUCT_ADDRESS (SOFTDEVICE_INFO_STRUCT_OFFSET + MBR_SIZE)
 
-/** @brief Defines the offset for Softdevice size value relative to Softdevice base address*/
+/** @brief Defines the offset for the SoftDevice Information Structure size value relative to the
+ *         SoftDevice base address. The size value is of type uint8_t. */
+#define SD_INFO_STRUCT_SIZE_OFFSET (SOFTDEVICE_INFO_STRUCT_OFFSET)
+
+/** @brief Defines the offset for the SoftDevice size value relative to the SoftDevice base address.
+ *         The size value is of type uint32_t. */
 #define SD_SIZE_OFFSET (SOFTDEVICE_INFO_STRUCT_OFFSET + 0x08)
 
-/** @brief Defines the offset for FWID value relative to Softdevice base address*/
+/** @brief Defines the offset for FWID value relative to the SoftDevice base address. The FWID value
+ *         is of type uint16_t.  */
 #define SD_FWID_OFFSET (SOFTDEVICE_INFO_STRUCT_OFFSET + 0x0C)
 
-/** @brief Defines a macro for retreiving the actual Softdevice size value from a given base address
-           use @ref MBR_SIZE when Softdevice is installed just above the MBR (the usual case)*/
+/** @brief Defines the offset for the SoftDevice ID relative to the SoftDevice base address. The ID
+ *         is of type uint32_t. */
+#define SD_ID_OFFSET (SOFTDEVICE_INFO_STRUCT_OFFSET + 0x10)
+
+/** @brief Defines the offset for the SoftDevice version relative to the SoftDevice base address in
+ *         the same format as @ref SD_VERSION, stored as an uint32_t. */
+#define SD_VERSION_OFFSET (SOFTDEVICE_INFO_STRUCT_OFFSET + 0x14)
+
+/** @brief Defines a macro for retreiving the actual SoftDevice Information Structure size value
+ *         from a given base address. Use @ref MBR_SIZE as the argument when the SoftDevice is
+ *         installed just above the MBR (the usual case). */
+#define SD_INFO_STRUCT_SIZE_GET(baseaddr) (*((uint8_t *) ((baseaddr) + SD_INFO_STRUCT_SIZE_OFFSET)))
+
+/** @brief Defines a macro for retreiving the actual SoftDevice size value from a given base
+ *         address. Use @ref MBR_SIZE as the argument when the SoftDevice is installed just above
+ *         the MBR (the usual case). */
 #define SD_SIZE_GET(baseaddr) (*((uint32_t *) ((baseaddr) + SD_SIZE_OFFSET)))
 
-/** @brief Defines a macro for retreiving the actual FWID value from a given base address
-           use @ref MBR_SIZE when Softdevice is installed just above the MBR (the usual case)*/
-#define SD_FWID_GET(baseaddr) ((*((uint32_t *) ((baseaddr) + SD_FWID_OFFSET))) & 0xFFFF)
+/** @brief Defines a macro for retreiving the actual FWID value from a given base address. Use @ref
+ *         MBR_SIZE as the argument when the SoftDevice is installed just above the MBR (the usual
+ *         case). */
+#define SD_FWID_GET(baseaddr) (*((uint16_t *) ((baseaddr) + SD_FWID_OFFSET)))
+
+/** @brief Defines a macro for retreiving the actual SoftDevice ID from a given base address. Use
+ *         @ref MBR_SIZE as the argument when the SoftDevice is installed just above the MBR (the
+ *         usual case). */
+#define SD_ID_GET(baseaddr) ((SD_INFO_STRUCT_SIZE_GET(baseaddr) > (SD_ID_OFFSET - SOFTDEVICE_INFO_STRUCT_OFFSET)) \
+        ? (*((uint32_t *) ((baseaddr) + SD_ID_OFFSET))) : SDM_INFO_FIELD_INVALID)
+
+/** @brief Defines a macro for retreiving the actual FWID value from a given base address. Use @ref
+ *         MBR_SIZE as the argument when the SoftDevice is installed just above the MBR (the usual
+ *         case). */
+#define SD_VERSION_GET(baseaddr) ((SD_INFO_STRUCT_SIZE_GET(baseaddr) > (SD_VERSION_OFFSET - SOFTDEVICE_INFO_STRUCT_OFFSET)) \
+        ? (*((uint32_t *) ((baseaddr) + SD_VERSION_OFFSET))) : SDM_INFO_FIELD_INVALID)
 
 /**@defgroup NRF_FAULT_ID_RANGES Fault ID ranges
  * @{ */
@@ -95,7 +147,9 @@ the start of the softdevice (without MBR)*/
 /**@defgroup NRF_FAULT_IDS Fault ID types
  * @{ */
 #define NRF_FAULT_ID_SD_ASSERT    (NRF_FAULT_ID_SD_RANGE_START + 1)           /**< SoftDevice assertion. The info parameter will be set to 0x00000000. */
-#define NRF_FAULT_ID_APP_MEMACC   (NRF_FAULT_ID_APP_RANGE_START + 1)          /**< Application invalid memory access. The info parameter will contain the address in memory that was accessed. */
+#define NRF_FAULT_ID_APP_MEMACC   (NRF_FAULT_ID_APP_RANGE_START + 1)          /**< Application invalid memory access (nRF52 only). The info parameter will contain 0x00000000, in case of SoftDevice RAM
+                                                                              access violation. In case of SoftDevice peripheral register violation the info parameter will contain the sub-region number of PREGION[0], on whose address range the unallowed
+                                                                              write access caused the memory access fault. */
 /**@} */
 
 /** @} */
@@ -118,26 +172,29 @@ enum NRF_SD_SVCS
 /** @addtogroup NRF_SDM_DEFINES Defines
  * @{ */
 
-/**@defgroup NRF_CLOCK_LF_XTAL_ACCURACY Clock accuracy * @{ */
+/**@defgroup NRF_CLOCK_LF_XTAL_ACCURACY Clock accuracy
+ * @{ */
 
-#define NRF_CLOCK_LF_XTAL_ACCURACY_250_PPM (0) /* Default */
-#define NRF_CLOCK_LF_XTAL_ACCURACY_500_PPM (1)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_150_PPM (2)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_100_PPM (3)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_75_PPM  (4)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_50_PPM  (5)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_30_PPM  (6)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM  (7)
+#define NRF_CLOCK_LF_XTAL_ACCURACY_250_PPM (0) /**< Default: 250 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_500_PPM (1) /**< 500 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_150_PPM (2) /**< 150 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_100_PPM (3) /**< 100 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_75_PPM  (4) /**< 75 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_50_PPM  (5) /**< 50 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_30_PPM  (6) /**< 30 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM  (7) /**< 20 ppm */
 
 /** @} */
 
-/**@defgroup NRF_CLOCK_LF_SRC Possible lfclk oscillator sources * @{ */
+/**@defgroup NRF_CLOCK_LF_SRC Possible lfclk oscillator sources
+ * @{ */
 
 #define NRF_CLOCK_LF_SRC_RC      (0)                        /**< LFCLK RC oscillator. */
 #define NRF_CLOCK_LF_SRC_XTAL    (1)                        /**< LFCLK crystal oscillator. */
 #define NRF_CLOCK_LF_SRC_SYNTH   (2)                        /**< LFCLK Synthesized from HFCLK. */
 
 /** @} */
+
 /** @} */
 
 /** @addtogroup NRF_SDM_TYPES Types
@@ -188,6 +245,9 @@ typedef struct
  * @param[in] id Fault identifier. See @ref NRF_FAULT_IDS.
  * @param[in] pc The program counter of the instruction that triggered the fault.
  * @param[in] info Optional additional information regarding the fault. Refer to each Fault identifier for details.
+ *
+ * @note When id is set to NRF_FAULT_ID_APP_MEMACC, pc will contain the address of the instruction being executed at the time when
+ * the fault is detected by the CPU. The CPU program counter may have advanced up to 2 instructions (no branching) after the one that triggered the fault.
  */
 typedef void (*nrf_fault_handler_t)(uint32_t id, uint32_t pc, uint32_t info);
 

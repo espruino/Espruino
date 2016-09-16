@@ -27,12 +27,74 @@
 #define NRF_DRV_UART_H
 
 #include "nrf_uart.h"
-#ifdef NRF52
+#ifdef UARTE_PRESENT
 #include "nrf_uarte.h"
 #endif
 
 #include "sdk_errors.h"
-#include "nrf_drv_config.h"
+#include "sdk_config.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define UART0_INSTANCE_INDEX 0
+#define UART_COUNT 1
+#if defined(UARTE_PRESENT)
+    #define NRF_DRV_UART_PERIPHERAL(id)           \
+        (CONCAT_3(UART, id, _CONFIG_USE_EASY_DMA) == 1 ? \
+            (void *)CONCAT_2(NRF_UARTE, id)       \
+          : (void *)CONCAT_2(NRF_UART, id))
+#else
+    #define NRF_DRV_UART_PERIPHERAL(id)  (void *)CONCAT_2(NRF_UART, id)
+#endif
+
+// This set of macros makes it possible to exclude parts of code, when one type
+// of supported peripherals is not used.
+
+#if defined(UARTE_PRESENT)
+
+#if (UART_EASY_DMA_SUPPORT == 1)
+#define UARTE_IN_USE
+#endif
+
+#if (UART_LEGACY_SUPPORT == 1)
+#define UART_IN_USE
+#endif
+
+#if (UART_ENABLED == 1) && ((!defined(UARTE_IN_USE) && !defined(UART_IN_USE)) || ((UART_EASY_DMA_SUPPORT == 0) && (UART_LEGACY_SUPPORT == 0)))
+#error "Illegal settings in uart module!"
+#endif
+
+#elif defined(UART_PRESENT)
+#define UART_IN_USE
+#endif
+
+/**
+ * @brief Structure for the UART driver instance.
+ */
+typedef struct
+{
+    union
+    {
+#if (defined(UARTE_IN_USE))
+    NRF_UARTE_Type * p_uarte; ///< Pointer to a structure with UARTE registers.
+#endif
+#if (defined(UART_IN_USE) || (UART_ENABLED == 0))
+    NRF_UART_Type * p_uart;   ///< Pointer to a structure with UART registers.
+#endif
+    } reg;
+    uint8_t drv_inst_idx;     ///< Driver instance index.
+} nrf_drv_uart_t;
+
+/**
+ * @brief Macro for creating an UART driver instance.
+ */
+#define NRF_DRV_UART_INSTANCE(id)                            \
+{                                                            \
+    .reg          = {NRF_DRV_UART_PERIPHERAL(id)},           \
+    .drv_inst_idx = CONCAT_3(UART, id, _INSTANCE_INDEX),\
+}
 
 /**
  * @brief Types of UART driver events.
@@ -56,45 +118,45 @@ typedef struct
     nrf_uart_parity_t   parity;             ///< Parity configuration.
     nrf_uart_baudrate_t baudrate;           ///< Baudrate.
     uint8_t             interrupt_priority; ///< Interrupt priority.
-#ifdef NRF52
+#ifdef UARTE_PRESENT
     bool                use_easy_dma;
 #endif
 } nrf_drv_uart_config_t;
 
 /**@brief UART default configuration. */
-#ifdef NRF52
+#ifdef UARTE_PRESENT
 #if !UART_LEGACY_SUPPORT
 #define DEFAULT_CONFIG_USE_EASY_DMA true
 #elif !UART_EASY_DMA_SUPPORT
 #define DEFAULT_CONFIG_USE_EASY_DMA false
 #else
-#define DEFAULT_CONFIG_USE_EASY_DMA UART0_CONFIG_USE_EASY_DMA
+#define DEFAULT_CONFIG_USE_EASY_DMA UART0_USE_EASY_DMA
 #endif
 #define NRF_DRV_UART_DEFAULT_CONFIG                                                   \
     {                                                                                 \
-        .pseltxd            = UART0_CONFIG_PSEL_TXD,                                  \
-        .pselrxd            = UART0_CONFIG_PSEL_RXD,                                  \
-        .pselcts            = UART0_CONFIG_PSEL_CTS,                                  \
-        .pselrts            = UART0_CONFIG_PSEL_RTS,                                  \
+        .pseltxd            = NRF_UART_PSEL_DISCONNECTED,                             \
+        .pselrxd            = NRF_UART_PSEL_DISCONNECTED,                             \
+        .pselcts            = NRF_UART_PSEL_DISCONNECTED,                             \
+        .pselrts            = NRF_UART_PSEL_DISCONNECTED,                             \
         .p_context          = NULL,                                                   \
-        .hwfc               = UART0_CONFIG_HWFC,                                      \
-        .parity             = UART0_CONFIG_PARITY,                                    \
-        .baudrate           = UART0_CONFIG_BAUDRATE,                                  \
-        .interrupt_priority = UART0_CONFIG_IRQ_PRIORITY,                              \
-        .use_easy_dma       = DEFAULT_CONFIG_USE_EASY_DMA                             \
+        .hwfc               = (nrf_uart_hwfc_t)UART_DEFAULT_CONFIG_HWFC,              \
+        .parity             = (nrf_uart_parity_t)UART_DEFAULT_CONFIG_PARITY,          \
+        .baudrate           = (nrf_uart_baudrate_t)UART_DEFAULT_CONFIG_BAUDRATE,      \
+        .interrupt_priority = UART_DEFAULT_CONFIG_IRQ_PRIORITY,                       \
+        .use_easy_dma       = true                                                    \
     }
 #else
 #define NRF_DRV_UART_DEFAULT_CONFIG                                                   \
     {                                                                                 \
-        .pseltxd            = UART0_CONFIG_PSEL_TXD,                                  \
-        .pselrxd            = UART0_CONFIG_PSEL_RXD,                                  \
-        .pselcts            = UART0_CONFIG_PSEL_CTS,                                  \
-        .pselrts            = UART0_CONFIG_PSEL_RTS,                                  \
+        .pseltxd            = NRF_UART_PSEL_DISCONNECTED,                             \
+        .pselrxd            = NRF_UART_PSEL_DISCONNECTED,                             \
+        .pselcts            = NRF_UART_PSEL_DISCONNECTED,                             \
+        .pselrts            = NRF_UART_PSEL_DISCONNECTED,                             \
         .p_context          = NULL,                                                   \
-        .hwfc               = UART0_CONFIG_HWFC,                                      \
-        .parity             = UART0_CONFIG_PARITY,                                    \
-        .baudrate           = UART0_CONFIG_BAUDRATE,                                  \
-        .interrupt_priority = UART0_CONFIG_IRQ_PRIORITY                               \
+        .hwfc               = (nrf_uart_hwfc_t)UART_DEFAULT_CONFIG_HWFC,              \
+        .parity             = (nrf_uart_parity_t)UART_DEFAULT_CONFIG_PARITY,          \
+        .baudrate           = (nrf_uart_baudrate_t)UART_DEFAULT_CONFIG_BAUDRATE,      \
+        .interrupt_priority = UART_DEFAULT_CONFIG_IRQ_PRIORITY,                       \
     }
 #endif
 
@@ -126,9 +188,9 @@ typedef struct
 /**
  * @brief UART interrupt event handler.
  *
- * @param[in] p_event     Pointer to event structure. Event is allocated on the stack so it is available
- *                        only within the context of the event handler.
- * @param[in] p_context   Context passed to interrupt handler, set on initialization.
+ * @param[in] p_event    Pointer to event structure. Event is allocated on the stack so it is available
+ *                       only within the context of the event handler.
+ * @param[in] p_context  Context passed to interrupt handler, set on initialization.
  */
 typedef void (*nrf_uart_event_handler_t)(nrf_drv_uart_event_t * p_event, void * p_context);
 
@@ -137,38 +199,45 @@ typedef void (*nrf_uart_event_handler_t)(nrf_drv_uart_event_t * p_event, void * 
  *
  * This function configures and enables UART. After this function GPIO pins are controlled by UART.
  *
- * @param[in] p_config       Initial configuration. Default configuration used if NULL.
- * @param[in] event_handler  Event handler provided by the user. If not provided driver works in
- *                           blocking mode.
+ * @param[in] p_instance    Pointer to the driver instance structure.
+ * @param[in] p_config      Initial configuration. Default configuration used if NULL.
+ * @param[in] event_handler Event handler provided by the user. If not provided driver works in
+ *                          blocking mode.
  *
  * @retval    NRF_SUCCESS             If initialization was successful.
  * @retval    NRF_ERROR_INVALID_STATE If driver is already initialized.
  */
-ret_code_t nrf_drv_uart_init(nrf_drv_uart_config_t const * p_config,
+ret_code_t nrf_drv_uart_init(nrf_drv_uart_t const *        p_instance,
+                             nrf_drv_uart_config_t const * p_config,
                              nrf_uart_event_handler_t      event_handler);
 
 /**
  * @brief Function for uninitializing  the UART driver.
+ * @param[in] p_instance Pointer to the driver instance structure.
  */
-void nrf_drv_uart_uninit(void);
+void nrf_drv_uart_uninit(nrf_drv_uart_t const * p_instance);
 
 /**
  * @brief Function for getting the address of a specific UART task.
  *
- * @param[in] task Task.
+ * @param[in] p_instance Pointer to the driver instance structure.
+ * @param[in] task       Task.
  *
  * @return    Task address.
  */
-__STATIC_INLINE uint32_t nrf_drv_uart_task_address_get(nrf_uart_task_t task);
+__STATIC_INLINE uint32_t nrf_drv_uart_task_address_get(nrf_drv_uart_t const * p_instance,
+                                                       nrf_uart_task_t task);
 
 /**
  * @brief Function for getting the address of a specific UART event.
  *
- * @param[in] event Event.
+ * @param[in] p_instance Pointer to the driver instance structure.
+ * @param[in] event      Event.
  *
  * @return    Event address.
  */
-__STATIC_INLINE uint32_t nrf_drv_uart_event_address_get(nrf_uart_event_t event);
+__STATIC_INLINE uint32_t nrf_drv_uart_event_address_get(nrf_drv_uart_t const * p_instance,
+                                                        nrf_uart_event_t event);
 
 /**
  * @brief Function for sending data over UART.
@@ -183,8 +252,9 @@ __STATIC_INLINE uint32_t nrf_drv_uart_event_address_get(nrf_uart_event_t event);
  *       are placed in the Data RAM region. If they are not and UARTE instance is
  *       used, this function will fail with error code NRF_ERROR_INVALID_ADDR.
  *
- * @param[in] p_data Pointer to data.
- * @param[in] length Number of bytes to send.
+ * @param[in] p_instance Pointer to the driver instance structure.
+ * @param[in] p_data     Pointer to data.
+ * @param[in] length     Number of bytes to send.
  *
  * @retval    NRF_SUCCESS            If initialization was successful.
  * @retval    NRF_ERROR_BUSY         If driver is already transferring.
@@ -192,15 +262,18 @@ __STATIC_INLINE uint32_t nrf_drv_uart_event_address_get(nrf_uart_event_t event);
  *                                   (blocking mode only, also see @ref nrf_drv_uart_rx_disable).
  * @retval    NRF_ERROR_INVALID_ADDR If p_data does not point to RAM buffer (UARTE only).
  */
-ret_code_t nrf_drv_uart_tx(uint8_t const * const p_data, uint8_t length);
+ret_code_t nrf_drv_uart_tx(nrf_drv_uart_t const * p_instance,
+                           uint8_t const * const p_data, uint8_t length);
 
 /**
  * @brief Function for checking if UART is currently transmitting.
  *
+ * @param[in] p_instance Pointer to the driver instance structure.
+ *
  * @retval true  If UART is transmitting.
  * @retval false If UART is not transmitting.
  */
-bool nrf_drv_uart_tx_in_progress(void);
+bool nrf_drv_uart_tx_in_progress(nrf_drv_uart_t const * p_instance);
 
 /**
  * @brief Function for aborting any ongoing transmission.
@@ -208,8 +281,10 @@ bool nrf_drv_uart_tx_in_progress(void);
  *       contain number of bytes sent until abort was called. If Easy DMA is not used event will be
  *       called from the function context. If Easy DMA is used it will be called from UART interrupt
  *       context.
+ *
+ * @param[in] p_instance Pointer to the driver instance structure.
  */
-void nrf_drv_uart_tx_abort(void);
+void nrf_drv_uart_tx_abort(nrf_drv_uart_t const * p_instance);
 
 /**
  * @brief Function for receiving data over UART.
@@ -221,14 +296,16 @@ void nrf_drv_uart_tx_abort(void);
  * there is no context switching inside the function.
  * The receive buffer pointer is double buffered in non-blocking mode. The secondary
  * buffer can be set immediately after starting the transfer and will be filled
- * when the primary buffer is full. The double buffering feature allows 
+ * when the primary buffer is full. The double buffering feature allows
  * receiving data continuously.
  *
  * @note Peripherals using EasyDMA (i.e. UARTE) require that the transfer buffers
- *       are placed in the Data RAM region. If they are not and UARTE instance is
- *       used, this function will fail with error code NRF_ERROR_INVALID_ADDR.
- * @param[in] p_data Pointer to data.
- * @param[in] length Number of bytes to receive.
+ *       are placed in the Data RAM region. If they are not and UARTE driver instance
+ *       is used, this function will fail with error code NRF_ERROR_INVALID_ADDR.
+ *
+ * @param[in] p_instance Pointer to the driver instance structure.
+ * @param[in] p_data     Pointer to data.
+ * @param[in] length     Number of bytes to receive.
  *
  * @retval    NRF_SUCCESS If initialization was successful.
  * @retval    NRF_ERROR_BUSY If the driver is already receiving
@@ -239,7 +316,8 @@ void nrf_drv_uart_tx_abort(void);
  * @retval    NRF_ERROR_INTERNAL If UART peripheral reported an error.
  * @retval    NRF_ERROR_INVALID_ADDR If p_data does not point to RAM buffer (UARTE only).
  */
-ret_code_t nrf_drv_uart_rx(uint8_t * p_data, uint8_t length);
+ret_code_t nrf_drv_uart_rx(nrf_drv_uart_t const * p_instance,
+                           uint8_t * p_data, uint8_t length);
 
 /**
  * @brief Function for enabling receiver.
@@ -248,8 +326,10 @@ ret_code_t nrf_drv_uart_rx(uint8_t * p_data, uint8_t length);
  * UART receive function before FIFO is filled, overrun error will encounter. Enabling receiver
  * without specifying RX buffer is supported only in UART mode (without Easy DMA). Receiver must be
  * explicitly closed by the user @sa nrf_drv_uart_rx_disable. Function asserts if mode is wrong.
+ *
+ * @param[in] p_instance Pointer to the driver instance structure.
  */
-void nrf_drv_uart_rx_enable(void);
+void nrf_drv_uart_rx_enable(nrf_drv_uart_t const * p_instance);
 
 /**
  * @brief Function for disabling receiver.
@@ -257,37 +337,49 @@ void nrf_drv_uart_rx_enable(void);
  * Function must be called to close the receiver after it has been explicitly enabled by
  * @sa nrf_drv_uart_rx_enable. Feature is supported only in UART mode (without Easy DMA). Function
  * asserts if mode is wrong.
+ *
+ * @param[in] p_instance Pointer to the driver instance structure.
  */
-void nrf_drv_uart_rx_disable(void);
+void nrf_drv_uart_rx_disable(nrf_drv_uart_t const * p_instance);
 
 /**
  * @brief Function for aborting any ongoing reception.
- * @note @ref NRF_DRV_UART_EVT_RX_DONE event will be generated in non-blocking mode. Event will
- *       contain number of bytes received until abort was called. If Easy DMA is not used event will be
- *       called from the function context. If Easy DMA is used it will be called from UART interrupt
+ * @note @ref NRF_DRV_UART_EVT_RX_DONE event will be generated in non-blocking mode. The event will
+ *       contain the number of bytes received until abort was called. The event is called from UART interrupt
  *       context.
+ *
+ * @param[in] p_instance Pointer to the driver instance structure.
  */
-void nrf_drv_uart_rx_abort(void);
+void nrf_drv_uart_rx_abort(nrf_drv_uart_t const * p_instance);
 
 /**
  * @brief Function for reading error source mask. Mask contains values from @ref nrf_uart_error_mask_t.
  * @note Function should be used in blocking mode only. In case of non-blocking mode error event is
  *       generated. Function clears error sources after reading.
  *
+ * @param[in] p_instance Pointer to the driver instance structure.
+ *
  * @retval    Mask of reported errors.
  */
-uint32_t nrf_drv_uart_errorsrc_get(void);
+uint32_t nrf_drv_uart_errorsrc_get(nrf_drv_uart_t const * p_instance);
 
 #ifndef SUPPRESS_INLINE_IMPLEMENTATION
-__STATIC_INLINE uint32_t nrf_drv_uart_task_address_get(nrf_uart_task_t task)
+__STATIC_INLINE uint32_t nrf_drv_uart_task_address_get(nrf_drv_uart_t const * p_instance,
+                                                       nrf_uart_task_t task)
 {
-    return nrf_uart_task_address_get(NRF_UART0, task);
+    return nrf_uart_task_address_get(p_instance->reg.p_uart, task);
 }
 
-__STATIC_INLINE uint32_t nrf_drv_uart_event_address_get(nrf_uart_event_t event)
+__STATIC_INLINE uint32_t nrf_drv_uart_event_address_get(nrf_drv_uart_t const * p_instance,
+                                                        nrf_uart_event_t event)
 {
-    return nrf_uart_event_address_get(NRF_UART0, event);
+    return nrf_uart_event_address_get(p_instance->reg.p_uart, event);
 }
 #endif //SUPPRESS_INLINE_IMPLEMENTATION
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif //NRF_DRV_UART_H
 /** @} */

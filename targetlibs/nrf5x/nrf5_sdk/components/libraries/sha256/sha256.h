@@ -37,6 +37,10 @@
 #include <stdint.h>
 #include "sdk_errors.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /**@brief Current state of a hash operation.
  */
@@ -59,7 +63,7 @@ ret_code_t sha256_init(sha256_context_t *ctx);
 
 /**@brief Function for calculating the hash of an array of uint8_t data.
  *
- * @details This function can be called multiple times in sequence. This is equivalent to calling 
+ * @details This function can be called multiple times in sequence. This is equivalent to calling
  *          the function once on a concatenation of the data from the different calls.
  *
  * @param[in,out] ctx   Hash instance.
@@ -80,11 +84,17 @@ ret_code_t sha256_update(sha256_context_t *ctx, const uint8_t * data, const size
  *
  * @param[in,out] ctx   Hash instance.
  * @param[out]    hash  Array to hold the extracted hash value (assumed to be 32 bytes long).
+ * @param[in]     le   Store the hash in little-endian.
  *
  * @retval NRF_SUCCESS     If the has value was successfully extracted.
  * @retval NRF_ERROR_NULL  If a parameter was NULL.
  */
-ret_code_t sha256_final(sha256_context_t *ctx, uint8_t * hash);
+ret_code_t sha256_final(sha256_context_t *ctx, uint8_t * hash, uint8_t le);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif   // SHA256_H
 

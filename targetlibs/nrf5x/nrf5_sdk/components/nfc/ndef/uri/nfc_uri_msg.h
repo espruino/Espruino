@@ -27,6 +27,10 @@
 #include "nfc_uri_rec.h"
 #include "nrf_error.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @brief Function for encoding an NFC NDEF URI message.
  *
  * This function encodes an NFC NDEF message into a buffer.
@@ -56,4 +60,9 @@ ret_code_t nfc_uri_msg_encode( nfc_uri_id_t           uri_id_code,
 /**
  * @}
  */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // NFC_URI_MSG_H__

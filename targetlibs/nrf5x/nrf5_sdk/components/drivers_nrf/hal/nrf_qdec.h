@@ -16,6 +16,10 @@
 #include "nrf_error.h"
 #include "nrf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*lint ++flb "Enter library region" */
 
 /**
@@ -228,15 +232,10 @@ __STATIC_INLINE uint32_t nrf_qdec_dbfen_get(void)
  */
 __STATIC_INLINE void nrf_qdec_pio_assign( uint32_t psela, uint32_t pselb, uint32_t pselled)
 {
-#ifdef NRF51
     NRF_QDEC->PSELA = psela;
     NRF_QDEC->PSELB = pselb;
     NRF_QDEC->PSELLED = pselled;
-#elif defined NRF52
-    NRF_QDEC->PSEL.A = psela;
-    NRF_QDEC->PSEL.B = pselb;
-    NRF_QDEC->PSEL.LED = pselled;
-#endif
+
 }
 
 /**
@@ -266,6 +265,10 @@ __STATIC_INLINE uint32_t * nrf_qdec_task_address_get(nrf_qdec_task_t qdec_task)
 __STATIC_INLINE void nrf_qdec_event_clear(nrf_qdec_event_t qdec_event)
 {
     *( (volatile uint32_t *)( (uint8_t *)NRF_QDEC + qdec_event) ) = 0;
+#if __CORTEX_M == 0x04
+    volatile uint32_t dummy = *((volatile uint32_t *)((uint8_t *)NRF_QDEC + qdec_event));
+    (void)dummy;
+#endif
 }
 
 
@@ -326,7 +329,7 @@ __STATIC_INLINE int32_t nrf_qdec_sampleper_reg_get(void)
  */
 __STATIC_INLINE uint32_t nrf_qdec_sampleper_to_value(uint32_t sampleper)
 {
-    return (1 << (7+sampleper));
+    return (1 << (7 + sampleper));
 }
 
 /**
@@ -436,7 +439,7 @@ __STATIC_INLINE uint32_t nrf_qdec_reportper_reg_get(void)
  */
 __STATIC_INLINE uint32_t nrf_qdec_reportper_to_value(uint32_t reportper)
 {
-    return (reportper == NRF_QDEC_REPORTPER_10) ? 10 : reportper*40;
+    return (reportper == NRF_QDEC_REPORTPER_10) ? 10 : reportper * 40;
 }
 
 
@@ -465,4 +468,9 @@ __STATIC_INLINE uint32_t nrf_qdec_ledpol_get(void)
  **/
 
 /*lint --flb "Leave library region" */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

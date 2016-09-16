@@ -26,6 +26,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@brief Triangular waveform sensor simulator configuration. */
 typedef struct
 {
@@ -47,7 +51,7 @@ typedef struct
  * @param[out]  p_state  Current state of simulator.
  * @param[in]   p_cfg    Simulator configuration.
  */
-void sensorsim_init(sensorsim_state_t *     p_state, 
+void sensorsim_init(sensorsim_state_t *     p_state,
                         const sensorsim_cfg_t * p_cfg);
 
 /**@brief Function for generating a simulated sensor measurement using a triangular waveform generator.
@@ -79,6 +83,11 @@ void sensorsim_increment(sensorsim_state_t *     p_state,
  */
 void sensorsim_decrement(sensorsim_state_t *     p_state,
                          const sensorsim_cfg_t * p_cfg);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // SENSORSIM_H__
 

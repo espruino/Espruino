@@ -13,7 +13,8 @@
 *  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile
 *  qualification listings, this section of source code must not be modified.
 */
-
+#include "sdk_config.h"
+#if BLE_ANS_C_ENABLED
 #include "ble_ans_c.h"
 #include <string.h>
 #include <stdbool.h>
@@ -22,7 +23,8 @@
 #include "nordic_common.h"
 #include "nrf_assert.h"
 #include "ble_db_discovery.h"
-
+#define NRF_LOG_MODULE_NAME "BLE_ANS_C"
+#include "nrf_log.h"
 
 #define NOTIFICATION_DATA_LENGTH 2                              /**< The mandatory length of notification data. After the mandatory data, the optional message is located. */
 #define READ_DATA_LENGTH_MIN     1                              /**< Minimum data length in a valid Alert Notification Read Response message. */
@@ -45,7 +47,7 @@ typedef struct
 {
     uint8_t                  gattc_value[WRITE_MESSAGE_LENGTH]; /**< The message to write. */
     ble_gattc_write_params_t gattc_params;                      /**< GATTC parameters for this message. */
-} write_params_t;
+} ans_write_params_t;
 
 /**@brief Structure for holding data to be transmitted to the connected central.
  */
@@ -56,11 +58,11 @@ typedef struct
     union
     {
         uint16_t       read_handle;                             /**< Read request message. */
-        write_params_t write_req;                               /**< Write request message. */
+        ans_write_params_t write_req;                           /**< Write request message. */
     } req;
-} tx_message_t;
+} ans_tx_message_t;
 
-static tx_message_t m_tx_buffer[TX_BUFFER_SIZE];                /**< Transmit buffer for messages to be transmitted to the central. */
+static ans_tx_message_t m_tx_buffer[TX_BUFFER_SIZE];            /**< Transmit buffer for messages to be transmitted to the central. */
 static uint32_t     m_tx_insert_index = 0;                      /**< Current index in the transmit buffer where next message should be inserted. */
 static uint32_t     m_tx_index = 0;                             /**< Current index in the transmit buffer from where the next message to be transmitted resides. */
 
@@ -132,7 +134,7 @@ void ble_ans_c_on_db_disc_evt(ble_ans_c_t * p_ans, const ble_db_discovery_evt_t 
     memset(&evt, 0, sizeof(ble_ans_c_evt_t));
     evt.conn_handle = p_evt->conn_handle;
     evt.evt_type = BLE_ANS_C_EVT_DISCOVERY_FAILED;
-    
+
     // Check if the Alert Notification Service was discovered.
     if (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE
         &&
@@ -148,31 +150,31 @@ void ble_ans_c_on_db_disc_evt(ble_ans_c_t * p_ans, const ble_db_discovery_evt_t 
             switch (p_char->characteristic.uuid.uuid)
             {
                 case BLE_UUID_ALERT_NOTIFICATION_CONTROL_POINT_CHAR:
-                    NRF_LOG_PRINTF("[ANS] Found Ctrlpt \n\r");
+                    NRF_LOG_INFO("Found Ctrlpt \r\n\r");
                     char_set(&evt.data.service.alert_notif_ctrl_point, &p_char->characteristic);
                     break;
 
                 case BLE_UUID_UNREAD_ALERT_CHAR:
-                    NRF_LOG_PRINTF("[ANS] Found Unread Alert \n\r");
+                    NRF_LOG_INFO("Found Unread Alert \r\n\r");
                     char_set(&evt.data.service.unread_alert_status, &p_char->characteristic);
                     char_cccd_set(&evt.data.service.unread_alert_cccd,
                                   p_char->cccd_handle);
                     break;
 
                 case BLE_UUID_NEW_ALERT_CHAR:
-                    NRF_LOG_PRINTF("[ANS] Found New Alert \n\r");
+                    NRF_LOG_INFO("Found New Alert \r\n\r");
                     char_set(&evt.data.service.new_alert, &p_char->characteristic);
                     char_cccd_set(&evt.data.service.new_alert_cccd,
                                   p_char->cccd_handle);
                     break;
 
                 case BLE_UUID_SUPPORTED_UNREAD_ALERT_CATEGORY_CHAR:
-                    NRF_LOG_PRINTF("[ANS] Found supported unread alert category \n\r");
+                    NRF_LOG_INFO("Found supported unread alert category \r\n\r");
                     char_set(&evt.data.service.suported_unread_alert_cat, &p_char->characteristic);
                     break;
 
                 case BLE_UUID_SUPPORTED_NEW_ALERT_CATEGORY_CHAR:
-                    NRF_LOG_PRINTF("[ANS] Found supported new alert category \n\r");
+                    NRF_LOG_INFO("Found supported new alert category \r\n\r");
                     char_set(&evt.data.service.suported_new_alert_cat, &p_char->characteristic);
                     break;
 
@@ -375,7 +377,7 @@ uint32_t ble_ans_c_init(ble_ans_c_t * p_ans, const ble_ans_c_init_t * p_ans_init
  */
 static uint32_t cccd_configure(uint16_t conn_handle, uint16_t handle_cccd, bool enable)
 {
-    tx_message_t * p_msg;
+    ans_tx_message_t * p_msg;
     uint16_t       cccd_val = enable ? BLE_GATT_HVX_NOTIFICATION : 0;
 
     p_msg              = &m_tx_buffer[m_tx_insert_index++];
@@ -442,7 +444,7 @@ uint32_t ble_ans_c_disable_notif_unread_alert(const ble_ans_c_t * p_ans)
 uint32_t ble_ans_c_control_point_write(const ble_ans_c_t             * p_ans,
                                        const ble_ans_control_point_t * p_control_point)
 {
-    tx_message_t * p_msg;
+    ans_tx_message_t * p_msg;
 
     p_msg              = &m_tx_buffer[m_tx_insert_index++];
     m_tx_insert_index &= TX_BUFFER_MASK;
@@ -464,7 +466,7 @@ uint32_t ble_ans_c_control_point_write(const ble_ans_c_t             * p_ans,
 
 uint32_t ble_ans_c_new_alert_read(const ble_ans_c_t * p_ans)
 {
-    tx_message_t * msg;
+    ans_tx_message_t * msg;
 
     msg                = &m_tx_buffer[m_tx_insert_index++];
     m_tx_insert_index &= TX_BUFFER_MASK;
@@ -480,7 +482,7 @@ uint32_t ble_ans_c_new_alert_read(const ble_ans_c_t * p_ans)
 
 uint32_t ble_ans_c_unread_alert_read(const ble_ans_c_t * p_ans)
 {
-    tx_message_t * msg;
+    ans_tx_message_t * msg;
 
     msg                = &m_tx_buffer[m_tx_insert_index++];
     m_tx_insert_index &= TX_BUFFER_MASK;
@@ -542,3 +544,4 @@ uint32_t ble_ans_c_handles_assign(ble_ans_c_t               * p_ans,
 
     return NRF_SUCCESS;
 }
+#endif //BLE_ANS_C_ENABLED

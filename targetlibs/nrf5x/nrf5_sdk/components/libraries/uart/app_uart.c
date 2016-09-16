@@ -9,7 +9,8 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if APP_UART_ENABLED
 #include "app_uart.h"
 #include "nrf_drv_uart.h"
 #include "nrf_assert.h"
@@ -19,15 +20,16 @@ static uint8_t tx_buffer[1];
 static uint8_t rx_buffer[1];
 static volatile bool rx_done;
 static app_uart_event_handler_t   m_event_handler;            /**< Event handler function. */
+static nrf_drv_uart_t app_uart_inst = NRF_DRV_UART_INSTANCE(APP_UART_DRIVER_INSTANCE);
 
-void uart_event_handler(nrf_drv_uart_event_t * p_event, void* p_context)
+static void uart_event_handler(nrf_drv_uart_event_t * p_event, void* p_context)
 {
     if (p_event->type == NRF_DRV_UART_EVT_RX_DONE)
     {
         app_uart_evt_t app_uart_event;
         app_uart_event.evt_type   = APP_UART_DATA;
         app_uart_event.data.value = p_event->data.rxtx.p_data[0];
-        (void)nrf_drv_uart_rx(rx_buffer,1);
+        (void)nrf_drv_uart_rx(&app_uart_inst, rx_buffer, 1);
         rx_done = true;
         m_event_handler(&app_uart_event);
     }
@@ -36,7 +38,7 @@ void uart_event_handler(nrf_drv_uart_event_t * p_event, void* p_context)
         app_uart_evt_t app_uart_event;
         app_uart_event.evt_type                 = APP_UART_COMMUNICATION_ERROR;
         app_uart_event.data.error_communication = p_event->data.error.error_mask;
-        (void)nrf_drv_uart_rx(rx_buffer,1);
+        (void)nrf_drv_uart_rx(&app_uart_inst, rx_buffer, 1);
         m_event_handler(&app_uart_event);
     }
     else if (p_event->type == NRF_DRV_UART_EVT_TX_DONE)
@@ -69,21 +71,25 @@ uint32_t app_uart_init(const app_uart_comm_params_t * p_comm_params,
 
     rx_done = false;
 
-    if (p_comm_params->flow_control == APP_UART_FLOW_CONTROL_LOW_POWER)
-    {
-        return NRF_ERROR_NOT_SUPPORTED;
-    }
-
-    uint32_t err_code = nrf_drv_uart_init(&config, uart_event_handler);
+    uint32_t err_code = nrf_drv_uart_init(&app_uart_inst, &config, uart_event_handler);
     VERIFY_SUCCESS(err_code);
 
-#ifdef NRF52
-    if (!config.use_easy_dma)
-#endif
+    // Turn on receiver if RX pin is connected
+    if (p_comm_params->rx_pin_no != UART_PIN_DISCONNECTED)
     {
-        nrf_drv_uart_rx_enable();
+#ifdef UARTE_PRESENT
+        if (!config.use_easy_dma)
+#endif
+        {
+            nrf_drv_uart_rx_enable(&app_uart_inst);
+        }
+
+        return nrf_drv_uart_rx(&app_uart_inst, rx_buffer,1);
     }
-    return nrf_drv_uart_rx(rx_buffer,1);
+    else
+    {
+        return NRF_SUCCESS;
+    }
 }
 
 
@@ -94,6 +100,7 @@ uint32_t app_uart_get(uint8_t * p_byte)
     if (rx_done)
     {
         *p_byte = rx_buffer[0];
+        rx_done = false;
     }
     else
     {
@@ -105,7 +112,7 @@ uint32_t app_uart_get(uint8_t * p_byte)
 uint32_t app_uart_put(uint8_t byte)
 {
     tx_buffer[0] = byte;
-    ret_code_t ret =  nrf_drv_uart_tx(tx_buffer,1);
+    ret_code_t ret =  nrf_drv_uart_tx(&app_uart_inst, tx_buffer, 1);
     if (NRF_ERROR_BUSY == ret)
     {
         return NRF_ERROR_NO_MEM;
@@ -127,6 +134,7 @@ uint32_t app_uart_flush(void)
 
 uint32_t app_uart_close(void)
 {
-    nrf_drv_uart_uninit();
+    nrf_drv_uart_uninit(&app_uart_inst);
     return NRF_SUCCESS;
 }
+#endif //APP_UART_ENABLED

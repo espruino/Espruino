@@ -37,7 +37,7 @@ void ble_debug_assert_handler(uint32_t error_code, uint32_t line_num, const uint
     UNUSED_VARIABLE(s_error_code);
 
     // WARNING: The PRIMASK register is set to disable ALL interrups during writing the error log.
-    // 
+    //
     // Do not use __disable_irq() in normal operation.
     __disable_irq();
 

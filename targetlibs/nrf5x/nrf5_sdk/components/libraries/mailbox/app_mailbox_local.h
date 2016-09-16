@@ -24,18 +24,31 @@
  * However, any functions and variables defined here may change at any time
  * without a warning, so you should not access them directly.
  */
-     /**
-     * @brief Mailbox handle used for managing a mailbox queue.
-     */
-    typedef struct
-    {
-        uint8_t                      r_idx;    /**< Read index for the mailbox queue. */
-        uint8_t                      w_idx;    /**< Write index for the mailbox queue. */
-        uint8_t                      len;      /**< Number of elements currently in the mailbox queue. */
-        app_mailbox_overflow_mode_t  mode;     /**< Mode of overflow handling. */
-    } app_mailbox_cb_t;
 
+#ifndef APP_MAILBOX_LOCAL_H__
+#define APP_MAILBOX_LOCAL_H__
 
-/** @} 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+ /**
+ * @brief Mailbox handle used for managing a mailbox queue.
+ */
+typedef struct
+{
+    uint8_t                      r_idx;    /**< Read index for the mailbox queue. */
+    uint8_t                      w_idx;    /**< Write index for the mailbox queue. */
+    uint8_t                      len;      /**< Number of elements currently in the mailbox queue. */
+    app_mailbox_overflow_mode_t  mode;     /**< Mode of overflow handling. */
+} app_mailbox_cb_t;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // APP_MAILBOX_LOCAL_H__
+
+/** @}
  * @endcond
  */

@@ -15,7 +15,7 @@
  * @ingroup    nrf_drivers
  * @brief      @tagAPI52 Pulse density modulation (PDM) interface APIs.
  *
- * The PDM HAL provides basic APIs for accessing the registers of the PDM interface peripheral. 
+ * The PDM HAL provides basic APIs for accessing the registers of the PDM interface peripheral.
  * The PDM driver provides APIs on a higher level.
  *
  * @defgroup nrf_drv_pdm PDM driver
@@ -29,9 +29,13 @@
 #ifndef NRF_DRV_PDM_H__
 #define NRF_DRV_PDM_H__
 
-#include "nrf_drv_config.h"
+#include "sdk_config.h"
 #include "nrf_pdm.h"
 #include "sdk_errors.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 #define NRF_PDM_MAX_BUFFER_SIZE 32768
@@ -68,11 +72,11 @@ typedef struct
  */
 #define NRF_DRV_PDM_DEFAULT_CONFIG(PIN_CLK, PIN_DIN, BUFF_A, BUFF_B, BUFF_LEN) \
 {                                                                              \
-    .mode               = PDM_CONFIG_MODE,                                     \
-    .edge               = PDM_CONFIG_EDGE,                                     \
+    .mode               = (nrf_pdm_mode_t)PDM_CONFIG_MODE,                     \
+    .edge               = (nrf_pdm_edge_t)PDM_CONFIG_EDGE,                     \
     .pin_clk            = PIN_CLK,                                             \
     .pin_din            = PIN_DIN,                                             \
-    .clock_freq         = PDM_CONFIG_CLOCK_FREQ,                               \
+    .clock_freq         = (nrf_pdm_freq_t)PDM_CONFIG_CLOCK_FREQ,               \
     .gain_l             = NRF_PDM_GAIN_DEFAULT,                                \
     .gain_r             = NRF_PDM_GAIN_DEFAULT,                                \
     .interrupt_priority = PDM_CONFIG_IRQ_PRIORITY,                             \
@@ -152,7 +156,7 @@ ret_code_t nrf_drv_pdm_start(void);
 /**
  * @brief   Function for stopping PDM sampling.
  *
- * When this function is called, the PDM interface is stopped after finishing 
+ * When this function is called, the PDM interface is stopped after finishing
  * the current frame.
  * The event handler function might be called once more after calling this function.
  *
@@ -161,6 +165,11 @@ ret_code_t nrf_drv_pdm_start(void);
  */
 ret_code_t nrf_drv_pdm_stop(void);
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NRF_DRV_PDM_H__
 

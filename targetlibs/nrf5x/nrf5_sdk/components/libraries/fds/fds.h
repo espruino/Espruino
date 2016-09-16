@@ -14,7 +14,7 @@
 #define FDS_H__
 
 /**
- * @defgroup flash_data_storage Flash Data Storage
+ * @defgroup fds Flash Data Storage
  * @ingroup app_common
  * @{
  *
@@ -29,6 +29,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "sdk_errors.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 /**@brief   Invalid file ID.
@@ -125,7 +129,7 @@ typedef struct
 
 /**@brief   Structure that can be used to read the contents of a record stored in flash.
  *
- * This structure does not reflect the physical layout of a record in flash, but it points 
+ * This structure does not reflect the physical layout of a record in flash, but it points
  * to the locations where the record header (metadata) and the record data are stored.
  */
 typedef struct
@@ -137,7 +141,7 @@ typedef struct
 
 /**@brief   A chunk of record data to be written to flash.
  *
- * @p p_data must be aligned to a word boundary. Make sure to keep it in 
+ * @p p_data must be aligned to a word boundary. Make sure to keep it in
  * memory until the operation has completed, which is indicated by the respective FDS event.
  */
 typedef struct
@@ -292,7 +296,7 @@ typedef void (*fds_cb_t)(fds_evt_t const * const p_evt);
  *
  * The maximum amount of handlers that can be registered can be configured by changing the value
  * of @ref FDS_MAX_USERS in fds_config.h.
- * 
+ *
  * @param[in]   cb  The event handler function.
  *
  * @retval  FDS_SUCCESS                 If the event handler was registered successfully.
@@ -490,8 +494,8 @@ ret_code_t fds_file_delete(uint16_t file_id);
  *
  * This function is asynchronous. Completion is reported through an event that is sent to the
  * registered event handler function.
- * 
- * @param[in, out]  p_desc      The descriptor of the record to update. When the function 
+ *
+ * @param[in, out]  p_desc      The descriptor of the record to update. When the function
  *                              returns with FDS_SUCCESS, this parameter contains the
  *                              descriptor of the newly written record.
  * @param[in]       p_record    The updated record to be written to flash.
@@ -729,5 +733,10 @@ ret_code_t fds_verify_crc_on_writes(bool enabled);
 #endif
 
 /** @} */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // FDS_H__

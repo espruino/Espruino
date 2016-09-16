@@ -12,7 +12,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_ias_c Immediate Alert Service Client
+ * @defgroup ble_ias_c Immediate Alert Service Client
  * @{
  * @ingroup ble_sdk_srv
  * @brief Immediate Alert Service Client module
@@ -36,6 +36,10 @@
 #include "ble_gattc.h"
 #include "ble.h"
 #include "ble_db_discovery.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Forward declaration of the ble_ias_c_t type.
 typedef struct ble_ias_c_s ble_ias_c_t;
@@ -162,6 +166,11 @@ uint32_t ble_ias_c_handles_assign(ble_ias_c_t * p_ias_c,
                                   uint16_t      conn_handle,
                                   uint16_t      alert_level_handle);
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_IAS_C_H__
 

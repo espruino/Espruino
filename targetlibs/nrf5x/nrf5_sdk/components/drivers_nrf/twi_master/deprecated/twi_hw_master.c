@@ -46,10 +46,10 @@ static bool twi_master_write(uint8_t * data, uint8_t data_length, bool issue_sto
         if (timeout == 0 || NRF_TWI1->EVENTS_ERROR != 0)
         {
             // Recover the peripheral as indicated by PAN 56: "TWI: TWI module lock-up." found at
-            // Product Anomaly Notification document found at 
+            // Product Anomaly Notification document found at
             // https://www.nordicsemi.com/eng/Products/Bluetooth-R-low-energy/nRF51822/#Downloads
             NRF_TWI1->EVENTS_ERROR = 0;
-            NRF_TWI1->ENABLE       = TWI_ENABLE_ENABLE_Disabled << TWI_ENABLE_ENABLE_Pos; 
+            NRF_TWI1->ENABLE       = TWI_ENABLE_ENABLE_Disabled << TWI_ENABLE_ENABLE_Pos;
             NRF_TWI1->POWER        = 0;
             nrf_delay_us(5);
             NRF_TWI1->POWER        = 1;
@@ -73,8 +73,8 @@ static bool twi_master_write(uint8_t * data, uint8_t data_length, bool issue_sto
     {
         NRF_TWI1->EVENTS_STOPPED = 0;
         NRF_TWI1->TASKS_STOP     = 1;
-        /* Wait until stop sequence is sent */ 
-        while(NRF_TWI1->EVENTS_STOPPED == 0) 
+        /* Wait until stop sequence is sent */
+        while (NRF_TWI1->EVENTS_STOPPED == 0)
         {
             // Do nothing.
         }
@@ -83,7 +83,7 @@ static bool twi_master_write(uint8_t * data, uint8_t data_length, bool issue_sto
 }
 
 
-/** @brief Function for read by twi_master. 
+/** @brief Function for read by twi_master.
  */
 static bool twi_master_read(uint8_t * data, uint8_t data_length, bool issue_stop_condition)
 {
@@ -155,7 +155,7 @@ static bool twi_master_read(uint8_t * data, uint8_t data_length, bool issue_stop
     /** @snippet [TWI HW master read] */
 
     /* Wait until stop sequence is sent */
-    while(NRF_TWI1->EVENTS_STOPPED == 0)
+    while (NRF_TWI1->EVENTS_STOPPED == 0)
     {
         // Do nothing.
     }

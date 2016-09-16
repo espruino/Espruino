@@ -10,11 +10,12 @@
  *
  */
 
-/* Attention! 
-*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile 
+/* Attention!
+*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile
 *  qualification listings, this section of source code must not be modified.
 */
-
+#include "sdk_config.h"
+#if BLE_HIDS_ENABLED
 #include "ble_hids.h"
 #include <string.h>
 #include "app_error.h"
@@ -79,14 +80,14 @@ static void on_connect(ble_hids_t * p_hids, ble_evt_t * p_ble_evt)
     {
         // Set Protocol Mode characteristic value to default value
         default_protocol_mode = DEFAULT_PROTOCOL_MODE;
-    
+
         // Initialize value struct.
         memset(&gatts_value, 0, sizeof(gatts_value));
-    
+
         gatts_value.len     = sizeof(uint8_t);
         gatts_value.offset  = 0;
         gatts_value.p_value = &default_protocol_mode;
-    
+
         err_code = sd_ble_gatts_value_set(p_hids->conn_handle,
                                           p_hids->protocol_mode_handles.value_handle,
                                           &gatts_value);
@@ -450,7 +451,7 @@ static uint32_t protocol_mode_char_add(ble_hids_t                    * p_hids,
     char_md.p_sccd_md                = NULL;
 
     BLE_UUID_BLE_ASSIGN(ble_uuid, BLE_UUID_PROTOCOL_MODE_CHAR);
-    
+
     memset(&attr_md, 0, sizeof(attr_md));
 
     attr_md.read_perm  = p_sec_mode->read_perm;
@@ -459,18 +460,18 @@ static uint32_t protocol_mode_char_add(ble_hids_t                    * p_hids,
     attr_md.rd_auth    = 0;
     attr_md.wr_auth    = 0;
     attr_md.vlen       = 0;
-    
+
     memset(&attr_char_value, 0, sizeof(attr_char_value));
-    
+
     initial_protocol_mode = DEFAULT_PROTOCOL_MODE;
-    
+
     attr_char_value.p_uuid       = &ble_uuid;
     attr_char_value.p_attr_md    = &attr_md;
     attr_char_value.init_len     = sizeof(uint8_t);
     attr_char_value.init_offs    = 0;
     attr_char_value.max_len      = sizeof(uint8_t);
     attr_char_value.p_value      = &initial_protocol_mode;
-    
+
     return sd_ble_gatts_characteristic_add(p_hids->service_handle,
                                            &char_md,
                                            &attr_char_value,
@@ -505,7 +506,7 @@ static uint32_t rep_char_add(ble_hids_t *                   p_hids,
     ble_uuid_t          ble_uuid;
     ble_gatts_attr_md_t attr_md;
     uint8_t             encoded_rep_ref[BLE_SRV_ENCODED_REPORT_REF_LEN];
-    
+
     // Add Report characteristic
     if (p_properties->notify)
     {
@@ -514,18 +515,18 @@ static uint32_t rep_char_add(ble_hids_t *                   p_hids,
         cccd_md.write_perm = p_rep_ref_attr_md->cccd_write_perm;
         cccd_md.vloc = BLE_GATTS_VLOC_STACK;
     }
-    
+
     memset(&char_md, 0, sizeof(char_md));
-    
+
     char_md.char_props       = *p_properties;
     char_md.p_char_user_desc = NULL;
     char_md.p_char_pf        = NULL;
     char_md.p_user_desc_md   = NULL;
     char_md.p_cccd_md        = (p_properties->notify) ? &cccd_md : NULL;
     char_md.p_sccd_md        = NULL;
-    
+
     BLE_UUID_BLE_ASSIGN(ble_uuid, BLE_UUID_REPORT_CHAR);
-    
+
     memset(&attr_md, 0, sizeof(attr_md));
 
     attr_md.read_perm  = p_rep_ref_attr_md->read_perm;
@@ -534,16 +535,16 @@ static uint32_t rep_char_add(ble_hids_t *                   p_hids,
     attr_md.rd_auth    = is_read_resp ? 1 : 0;
     attr_md.wr_auth    = 0;
     attr_md.vlen       = 1;
-    
+
     memset(&attr_char_value, 0, sizeof(attr_char_value));
-    
+
     attr_char_value.p_uuid    = &ble_uuid;
     attr_char_value.p_attr_md = &attr_md;
     attr_char_value.init_len  = 0;
     attr_char_value.init_offs = 0;
     attr_char_value.max_len   = max_len;
     attr_char_value.p_value   = NULL;
-    
+
     err_code = sd_ble_gatts_characteristic_add(p_hids->service_handle,
                                                &char_md,
                                                &attr_char_value,
@@ -555,7 +556,7 @@ static uint32_t rep_char_add(ble_hids_t *                   p_hids,
 
     // Add Report Reference descriptor
     BLE_UUID_BLE_ASSIGN(ble_uuid, BLE_UUID_REPORT_REF_DESCR);
-    
+
     memset(&attr_md, 0, sizeof(attr_md));
 
     attr_md.read_perm  = p_rep_ref_attr_md->read_perm;
@@ -564,16 +565,16 @@ static uint32_t rep_char_add(ble_hids_t *                   p_hids,
     attr_md.rd_auth    = 0;
     attr_md.wr_auth    = 0;
     attr_md.vlen       = 0;
-    
+
     memset(&attr_char_value, 0, sizeof(attr_char_value));
-    
+
     attr_char_value.p_uuid    = &ble_uuid;
     attr_char_value.p_attr_md = &attr_md;
     attr_char_value.init_len  = ble_srv_report_ref_encode(encoded_rep_ref, p_rep_ref);
     attr_char_value.init_offs = 0;
     attr_char_value.max_len   = attr_char_value.init_len;
     attr_char_value.p_value   = encoded_rep_ref;
-    
+
     return sd_ble_gatts_descriptor_add(p_rep_char->char_handles.value_handle,
                                        &attr_char_value,
                                        &p_rep_char->ref_handle);
@@ -923,8 +924,8 @@ static uint32_t hid_control_point_char_add(ble_hids_t                    * p_hid
     attr_char_value.max_len   = sizeof(uint8_t);
     attr_char_value.p_value   = &initial_hid_control_point;
 
-    return sd_ble_gatts_characteristic_add(p_hids->service_handle, &char_md, 
-                                           &attr_char_value, 
+    return sd_ble_gatts_characteristic_add(p_hids->service_handle, &char_md,
+                                           &attr_char_value,
                                            &p_hids->hid_control_point_handles);
 }
 
@@ -1001,7 +1002,7 @@ static uint32_t outp_rep_characteristics_add(ble_hids_t            * p_hids,
 
             err_code = rep_char_add(p_hids,
                                     &properties,
-                                    p_rep_init->max_len, 
+                                    p_rep_init->max_len,
                                     &p_rep_init->rep_ref,
                                     &p_rep_init->security_mode,
                                     p_rep_init->read_resp,
@@ -1378,3 +1379,4 @@ uint32_t ble_hids_outp_rep_get(ble_hids_t * p_hids,
 /**
   @}
 */
+#endif //BLE_HIDS_ENABLED

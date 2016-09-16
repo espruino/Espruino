@@ -10,7 +10,8 @@
  *
  */
 
-
+#include "sdk_config.h"
+#if PEER_MANAGER_ENABLED
 #include "security_dispatcher.h"
 
 #include <string.h>
@@ -20,40 +21,38 @@
 #include "peer_manager_types.h"
 #include "peer_database.h"
 #include "id_manager.h"
-#include "sdk_common.h"
 
 
-#define MAX_REGISTRANTS 3                               /**< The number of user that can register with the module. */
+// The number of registered event handlers.
+#define SMD_EVENT_HANDLERS_CNT      (sizeof(m_evt_handlers) / sizeof(m_evt_handlers[0]))
 
 
-typedef struct
+// Security Dispacher event handlers in Security Manager and GATT Cache Manager.
+extern void sm_smd_evt_handler(smd_evt_t const * p_event);
+extern void gcm_smd_evt_handler(smd_evt_t const * p_event);
+
+// Security Dispatcher events' handlers.
+// The number of elements in this array is SMD_EVENT_HANDLERS_CNT.
+static smd_evt_handler_t const m_evt_handlers[] =
 {
-    smd_evt_handler_t             evt_handlers[MAX_REGISTRANTS];
-    uint8_t                       n_registrants;
-    ble_conn_state_user_flag_id_t flag_id_sec_proc;
-    ble_conn_state_user_flag_id_t flag_id_sec_proc_pairing;
-    ble_conn_state_user_flag_id_t flag_id_sec_proc_new_peer;
-    ble_gap_lesc_p256_pk_t        peer_pk;
-} smd_t;
-
-
-static smd_t m_smd =
-{
-    .flag_id_sec_proc          = BLE_CONN_STATE_USER_FLAG_INVALID,
-    .flag_id_sec_proc_pairing  = BLE_CONN_STATE_USER_FLAG_INVALID,
-    .flag_id_sec_proc_new_peer = BLE_CONN_STATE_USER_FLAG_INVALID,
+    sm_smd_evt_handler,
+    gcm_smd_evt_handler
 };
 
+static bool                          m_module_initialized;
 
-#define MODULE_INITIALIZED (m_smd.n_registrants > 0)    /**< Expression which is true when the module is initialized. */
-#include "sdk_macros.h"
+static ble_conn_state_user_flag_id_t m_flag_sec_proc          = BLE_CONN_STATE_USER_FLAG_INVALID;
+static ble_conn_state_user_flag_id_t m_flag_sec_proc_pairing  = BLE_CONN_STATE_USER_FLAG_INVALID;
+static ble_conn_state_user_flag_id_t m_flag_sec_proc_new_peer = BLE_CONN_STATE_USER_FLAG_INVALID;
+
+static ble_gap_lesc_p256_pk_t        m_peer_pk;
 
 
 static void evt_send(smd_evt_t * p_event)
 {
-    for (int i = 0; i < m_smd.n_registrants; i++)
+    for (uint32_t i = 0; i < SMD_EVENT_HANDLERS_CNT; i++)
     {
-        m_smd.evt_handlers[i](p_event);
+        m_evt_handlers[i](p_event);
     }
 }
 
@@ -62,30 +61,28 @@ static void sec_start_send(uint16_t conn_handle, pm_conn_sec_procedure_t procedu
 {
     smd_evt_t evt =
     {
-        .evt_id = SMD_EVT_SEC_PROCEDURE_START,
+        .evt_id      = SMD_EVT_SEC_PROCEDURE_START,
         .conn_handle = conn_handle,
-        .params = {.sec_procedure_start = {.procedure = procedure}}
+        .params      = {.sec_procedure_start = {.procedure = procedure}}
     };
     evt_send(&evt);
 }
 
 
-/**@brief Event handler for events from the peer_database module.
+/**@brief Event handler for events from the Peer Database module.
+ *        This handler is extern in Peer Database.
  *
  * @param[in]  p_event   The event that has happened.
  */
-static void pdb_evt_handler(pdb_evt_t const * p_event)
+void smd_pdb_evt_handler(pdb_evt_t const * p_event)
 {
     if ((p_event->evt_id == PDB_EVT_WRITE_BUF_STORED) && (p_event->data_id == PM_PEER_DATA_ID_BONDING))
     {
         smd_evt_t evt =
         {
-            .evt_id = SMD_EVT_BONDING_INFO_STORED,
+            .evt_id      = SMD_EVT_BONDING_INFO_STORED,
             .conn_handle = im_conn_handle_get(p_event->peer_id),
-            .params = {.bonding_info_stored =
-            {
-                .peer_id = p_event->peer_id,
-            }}
+            .params      = {.bonding_info_stored = {.peer_id = p_event->peer_id}}
         };
         evt_send(&evt);
     }
@@ -100,7 +97,7 @@ static void sec_params_request_process(ble_gap_evt_t * p_gap_evt)
 {
     smd_evt_t evt =
     {
-        .evt_id = SMD_EVT_PARAMS_REQ,
+        .evt_id      = SMD_EVT_PARAMS_REQ,
         .conn_handle = p_gap_evt->conn_handle
     };
     evt_send(&evt);
@@ -122,21 +119,21 @@ static void sec_proc_start(uint16_t     conn_handle,
                            bool         pairing,
                            bool         new_peer_created)
 {
-    ble_conn_state_user_flag_set(conn_handle, m_smd.flag_id_sec_proc, success);
+    ble_conn_state_user_flag_set(conn_handle, m_flag_sec_proc, success);
 
     if (success)
     {
-        ble_conn_state_user_flag_set(conn_handle, m_smd.flag_id_sec_proc_pairing, pairing);
-        ble_conn_state_user_flag_set(conn_handle, m_smd.flag_id_sec_proc_new_peer, new_peer_created);
+        ble_conn_state_user_flag_set(conn_handle, m_flag_sec_proc_pairing, pairing);
+        ble_conn_state_user_flag_set(conn_handle, m_flag_sec_proc_new_peer, new_peer_created);
 
-        if(new_peer_created)
+        if (new_peer_created)
         {
             im_new_peer_id(conn_handle, peer_id);
         }
     }
     else
     {
-        if(new_peer_created)
+        if (new_peer_created)
         {
             ret_code_t err_code = im_peer_free(peer_id); // Attempt to free allocated peer.
             UNUSED_VARIABLE(err_code);
@@ -167,7 +164,7 @@ static void sec_info_request_process(ble_gap_evt_t * p_gap_evt)
 
     if (peer_id != PM_PEER_ID_INVALID)
     {
-        err_code = pdb_read_buf_get(peer_id, PM_PEER_DATA_ID_BONDING, &peer_data, NULL);
+        err_code = pdb_peer_data_ptr_get(peer_id, PM_PEER_DATA_ID_BONDING, &peer_data);
 
         if (err_code == NRF_SUCCESS)
         {
@@ -252,7 +249,7 @@ static void auth_status_success_process(ble_gap_evt_t * p_gap_evt)
     ble_gap_sec_kdist_t  kdist_own  = p_gap_evt->params.auth_status.kdist_own;
     ble_gap_sec_kdist_t  kdist_peer = p_gap_evt->params.auth_status.kdist_peer;
 
-    ble_conn_state_user_flag_set(p_gap_evt->conn_handle, m_smd.flag_id_sec_proc, false);
+    ble_conn_state_user_flag_set(p_gap_evt->conn_handle, m_flag_sec_proc, false);
 
     if (role == BLE_GAP_ROLE_INVALID)
     {
@@ -278,7 +275,7 @@ static void auth_status_success_process(ble_gap_evt_t * p_gap_evt)
         }
 
     }
-    else if (ble_conn_state_user_flag_get(p_gap_evt->conn_handle, m_smd.flag_id_sec_proc_new_peer))
+    else if (ble_conn_state_user_flag_get(p_gap_evt->conn_handle, m_flag_sec_proc_new_peer))
     {
         ret_code_t err_code_free = im_peer_free(peer_id);
         UNUSED_VARIABLE(err_code_free); // Errors can be safely ignored.
@@ -314,7 +311,7 @@ static void pairing_failure(uint16_t            conn_handle,
 
     smd_evt_t evt =
     {
-        .evt_id = SMD_EVT_PAIRING_FAIL,
+        .evt_id      = SMD_EVT_PAIRING_FAIL,
         .conn_handle = conn_handle,
         .params =
         {
@@ -326,7 +323,7 @@ static void pairing_failure(uint16_t            conn_handle,
         }
     };
 
-    if(ble_conn_state_user_flag_get(conn_handle, m_smd.flag_id_sec_proc_new_peer))
+    if (ble_conn_state_user_flag_get(conn_handle, m_flag_sec_proc_new_peer))
     {
         // The peer_id was created during the procedure, and should be freed, because no data is
         // stored under it.
@@ -346,7 +343,7 @@ static void pairing_failure(uint16_t            conn_handle,
         }
     }
 
-    ble_conn_state_user_flag_set(conn_handle, m_smd.flag_id_sec_proc, false);
+    ble_conn_state_user_flag_set(conn_handle, m_flag_sec_proc, false);
 
     evt_send(&evt);
     return;
@@ -377,7 +374,7 @@ static void encryption_failure(uint16_t            conn_handle,
         }
     };
 
-    ble_conn_state_user_flag_set(conn_handle, m_smd.flag_id_sec_proc, false);
+    ble_conn_state_user_flag_set(conn_handle, m_flag_sec_proc, false);
 
     evt_send(&evt);
     return;
@@ -395,13 +392,13 @@ static void link_secure_failure(uint16_t            conn_handle,
                                 pm_sec_error_code_t error,
                                 uint8_t             error_src)
 {
-    if (ble_conn_state_user_flag_get(conn_handle, m_smd.flag_id_sec_proc))
+    if (ble_conn_state_user_flag_get(conn_handle, m_flag_sec_proc))
     {
         pm_peer_id_t  peer_id = im_peer_id_get_by_conn_handle(conn_handle);
 
         if (peer_id != PM_PEER_ID_INVALID)
         {
-            if (ble_conn_state_user_flag_get(conn_handle, m_smd.flag_id_sec_proc_pairing))
+            if (ble_conn_state_user_flag_get(conn_handle, m_flag_sec_proc_pairing))
             {
                 pairing_failure(conn_handle, peer_id, error, error_src);
             }
@@ -468,9 +465,9 @@ static void conn_sec_update_process(ble_gap_evt_t * p_gap_evt)
 {
     if (ble_conn_state_encrypted(p_gap_evt->conn_handle))
     {
-        if (!ble_conn_state_user_flag_get(p_gap_evt->conn_handle, m_smd.flag_id_sec_proc_pairing))
+        if (!ble_conn_state_user_flag_get(p_gap_evt->conn_handle, m_flag_sec_proc_pairing))
         {
-            ble_conn_state_user_flag_set(p_gap_evt->conn_handle, m_smd.flag_id_sec_proc, false);
+            ble_conn_state_user_flag_set(p_gap_evt->conn_handle, m_flag_sec_proc, false);
         }
 
         smd_evt_t evt;
@@ -503,43 +500,24 @@ static void flag_id_init(ble_conn_state_user_flag_id_t * p_flag_id)
 }
 
 
-ret_code_t smd_register(smd_evt_handler_t evt_handler)
+ret_code_t smd_init(void)
 {
-    ret_code_t err_code = NRF_SUCCESS;
-    if (evt_handler == NULL)
-    {
-        err_code = NRF_ERROR_NULL;
-    }
-    else
-    {
-        if (!MODULE_INITIALIZED)
-        {
-            flag_id_init(&m_smd.flag_id_sec_proc);
-            flag_id_init(&m_smd.flag_id_sec_proc_pairing);
-            flag_id_init(&m_smd.flag_id_sec_proc_new_peer);
+    NRF_PM_DEBUG_CHECK(!m_module_initialized);
 
-            if (m_smd.flag_id_sec_proc_new_peer == BLE_CONN_STATE_USER_FLAG_INVALID)
-            {
-                err_code = NRF_ERROR_INTERNAL;
-            }
-            else
-            {
-                err_code = pdb_register(pdb_evt_handler);
-            }
-        }
-        if ((err_code == NRF_SUCCESS))
-        {
-            if ((m_smd.n_registrants < MAX_REGISTRANTS))
-            {
-                m_smd.evt_handlers[m_smd.n_registrants++] = evt_handler;
-            }
-            else
-            {
-                err_code = NRF_ERROR_NO_MEM;
-            }
-        }
+    flag_id_init(&m_flag_sec_proc);
+    flag_id_init(&m_flag_sec_proc_pairing);
+    flag_id_init(&m_flag_sec_proc_new_peer);
+
+    if ((m_flag_sec_proc          == BLE_CONN_STATE_USER_FLAG_INVALID) ||
+        (m_flag_sec_proc_pairing  == BLE_CONN_STATE_USER_FLAG_INVALID) ||
+        (m_flag_sec_proc_new_peer == BLE_CONN_STATE_USER_FLAG_INVALID))
+    {
+        return NRF_ERROR_INTERNAL;
     }
-    return err_code;
+
+    m_module_initialized = true;
+
+    return NRF_SUCCESS;
 }
 
 
@@ -547,7 +525,7 @@ ret_code_t smd_params_reply(uint16_t                 conn_handle,
                             ble_gap_sec_params_t   * p_sec_params,
                             ble_gap_lesc_p256_pk_t * p_public_key)
 {
-    VERIFY_MODULE_INITIALIZED();
+    NRF_PM_DEBUG_CHECK(m_module_initialized);
 
     uint8_t              role = ble_conn_state_role(conn_handle);
     pm_peer_id_t         peer_id = PM_PEER_ID_INVALID;
@@ -603,9 +581,12 @@ ret_code_t smd_params_reply(uint16_t                 conn_handle,
                 sec_keyset.keys_own.p_pk       = p_public_key;
                 sec_keyset.keys_peer.p_enc_key = &peer_data.p_bonding_data->peer_ltk;
                 sec_keyset.keys_peer.p_id_key  = &peer_data.p_bonding_data->peer_id;
-                sec_keyset.keys_peer.p_pk      = &m_smd.peer_pk;
+                sec_keyset.keys_peer.p_pk      = &m_peer_pk;
 
-                ret_code_t err_code_addr = im_ble_addr_get(conn_handle, &peer_data.p_bonding_data->peer_id.id_addr_info); // Retrieve the address the peer used during connection establishment. This address will be overwritten if ID is shared. Should not fail.
+                // Retrieve the address the peer used during connection establishment.
+                // This address will be overwritten if ID is shared. Should not fail.
+                ret_code_t err_code_addr = im_ble_addr_get(conn_handle,
+                    &peer_data.p_bonding_data->peer_id.id_addr_info);
                 UNUSED_VARIABLE(err_code_addr);
 
                 // Buffer is OK, reserve room in flash for the data.
@@ -662,7 +643,7 @@ static ret_code_t link_secure_central_existing_peer(uint16_t                  co
     ble_gap_enc_key_t const * p_existing_key = NULL;
     bool                      lesc = false;
 
-    err_code = pdb_read_buf_get(peer_id, PM_PEER_DATA_ID_BONDING, &peer_data, NULL);
+    err_code = pdb_peer_data_ptr_get(peer_id, PM_PEER_DATA_ID_BONDING, &peer_data);
 
     if (err_code == NRF_SUCCESS)
     {
@@ -822,7 +803,10 @@ static ret_code_t link_secure_central(uint16_t               conn_handle,
 
 static ret_code_t link_secure_peripheral(uint16_t conn_handle, ble_gap_sec_params_t * p_sec_params)
 {
-    VERIFY_PARAM_NOT_NULL(p_sec_params);
+    // This should never happen for a peripheral.
+    NRF_PM_DEBUG_CHECK(p_sec_params != NULL);
+
+    // VERIFY_PARAM_NOT_NULL(p_sec_params);
 
     ret_code_t err_code = sd_ble_gap_authenticate(conn_handle, p_sec_params);
 
@@ -834,7 +818,7 @@ ret_code_t smd_link_secure(uint16_t               conn_handle,
                            ble_gap_sec_params_t * p_sec_params,
                            bool                   force_repairing)
 {
-    VERIFY_MODULE_INITIALIZED();
+    NRF_PM_DEBUG_CHECK(m_module_initialized);
 
     uint8_t role = ble_conn_state_role(conn_handle);
 
@@ -881,4 +865,4 @@ void smd_ble_evt_handler(ble_evt_t * p_ble_evt)
             break;
     };
 }
-
+#endif //PEER_MANAGER_ENABLED

@@ -32,7 +32,11 @@
 #include "nrf_assert.h"
 #include "app_error.h"
 
-#if defined(NRF51)
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if __CORTEX_M == (0x00U)
 #define _PRIO_SD_HIGH       0
 #define _PRIO_APP_HIGH      1
 #define _PRIO_APP_MID       1
@@ -40,7 +44,7 @@
 #define _PRIO_APP_LOW       3
 #define _PRIO_APP_LOWEST    3
 #define _PRIO_THREAD        4
-#elif defined(NRF52)
+#elif __CORTEX_M == (0x04U)
 #define _PRIO_SD_HIGH       0
 #define _PRIO_SD_MID        1
 #define _PRIO_APP_HIGH      2
@@ -54,10 +58,12 @@
     #error "No platform defined"
 #endif
 
+
+//lint -save -e113 -e452
 /**@brief The interrupt priorities available to the application while the SoftDevice is active. */
 typedef enum
 {
-#ifdef SOFTDEVICE_PRESENT
+#ifndef SOFTDEVICE_PRESENT
     APP_IRQ_PRIORITY_HIGHEST = _PRIO_SD_HIGH,
 #else
     APP_IRQ_PRIORITY_HIGHEST = _PRIO_APP_HIGH,
@@ -72,6 +78,8 @@ typedef enum
     APP_IRQ_PRIORITY_LOWEST  = _PRIO_APP_LOWEST,
     APP_IRQ_PRIORITY_THREAD  = _PRIO_THREAD     /**< "Interrupt level" when running in Thread Mode. */
 } app_irq_priority_t;
+//lint -restore
+
 
 /*@brief The privilege levels available to applications in Thread Mode */
 typedef enum
@@ -83,6 +91,14 @@ typedef enum
 /**@cond NO_DOXYGEN */
 #define EXTERNAL_INT_VECTOR_OFFSET 16
 /**@endcond */
+
+/**@brief Macro for setting a breakpoint.
+ */
+#if defined(__GNUC__)
+#define NRF_BREAKPOINT __builtin_trap()
+#else
+#define NRF_BREAKPOINT __BKPT(0)
+#endif
 
 #define PACKED(TYPE) __packed TYPE
 
@@ -116,13 +132,13 @@ void app_util_critical_region_exit (uint8_t nested);
     }
 #else
 #define CRITICAL_REGION_EXIT() app_util_critical_region_exit(0)
-#endif 
+#endif
 
 /* Workaround for Keil 4 */
 #ifndef IPSR_ISR_Msk
 #define IPSR_ISR_Msk                       (0x1FFUL /*<< IPSR_ISR_Pos*/)                  /*!< IPSR: ISR Mask */
 #endif
-       
+
 
 
 /**@brief Macro to enable anonymous unions from a certain point in the code.
@@ -187,10 +203,10 @@ static __INLINE uint8_t current_int_priority_get(void)
  */
 static __INLINE uint8_t privilege_level_get(void)
 {
-#if defined(NRF51)
+#if __CORTEX_M == (0x00U) || defined(_WIN32) || defined(__unix) || defined(__APPLE__)
     /* the Cortex-M0 has no concept of privilege */
     return APP_LEVEL_PRIVILEGED;
-#elif defined(NRF52)
+#elif __CORTEX_M == (0x04U)
     uint32_t isr_vector_num = __get_IPSR() & IPSR_ISR_Msk ;
     if (0 == isr_vector_num)
     {
@@ -205,6 +221,11 @@ static __INLINE uint8_t privilege_level_get(void)
     }
 #endif
 }
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // APP_UTIL_PLATFORM_H__
 

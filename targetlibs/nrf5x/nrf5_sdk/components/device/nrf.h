@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, Nordic Semiconductor ASA
+/* Copyright (c) 2016, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,14 +27,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-
+ 
 #ifndef NRF_H
 #define NRF_H
 
 /* MDK version */
 #define MDK_MAJOR_VERSION   8
-#define MDK_MINOR_VERSION   5
-#define MDK_MICRO_VERSION   0
+#define MDK_MINOR_VERSION   7
+#define MDK_MICRO_VERSION   1
 
 #if defined(_WIN32)
     /* Do not include nrf51 specific files when building for PC host */

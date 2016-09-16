@@ -11,9 +11,20 @@
  *
  */
 
+#include "sdk_config.h"
+#if NFC_NDEF_MSG_PARSER_ENABLED
+
 #include "nfc_ndef_msg_parser.h"
-#include "nfc_ndef_parser_logger.h"
 #include "nrf_delay.h"
+
+#define NRF_LOG_MODULE_NAME "NFC_NDEF_MSG_PARSER"
+#if NFC_NDEF_MSG_PARSER_LOG_ENABLED
+#define NRF_LOG_LEVEL       NFC_NDEF_MSG_PARSER_LOG_LEVEL
+#define NRF_LOG_INFO_COLOR  NFC_NDEF_MSG_PARSER_INFO_COLOR
+#else // NFC_NDEF_MSG_PARSER_LOG_ENABLED
+#define NRF_LOG_LEVEL       0
+#endif // NFC_NDEF_MSG_PARSER_LOG_ENABLED
+#include "nrf_log.h"
 
 ret_code_t ndef_msg_parser(uint8_t  * const p_result_buf,
                            uint32_t * const p_result_buf_len,
@@ -45,12 +56,7 @@ void ndef_msg_printout(nfc_ndef_msg_desc_t * const p_msg_desc)
     uint32_t i;
 
     nrf_delay_ms(100);
-    NDEF_PARSER_TRACE("NDEF message contains %d record(s)", p_msg_desc->record_count);
-    if (p_msg_desc->record_count > 1)
-    {
-        NDEF_PARSER_TRACE("s");
-    }
-    NDEF_PARSER_TRACE("\r\n\r\n");
+    NRF_LOG_INFO("NDEF message contains %d record(s)\r\n\r\n", p_msg_desc->record_count);
 
     for (i = 0; i < p_msg_desc->record_count; i++)
     {
@@ -58,4 +64,4 @@ void ndef_msg_printout(nfc_ndef_msg_desc_t * const p_msg_desc)
     }
 }
 
-
+#endif // NFC_NDEF_MSG_PARSER_ENABLED

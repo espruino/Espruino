@@ -77,24 +77,24 @@ typedef struct {
 
 // COMP, LPCOMP
 #if (COMP_ENABLED || LPCOMP_ENABLED)
-	#define COMP_LPCOMP_IN_USE
+    #define COMP_LPCOMP_IN_USE
 
-	#ifndef IS_COMP_LPCOMP
-		#define IS_COMP_LPCOMP(p_per_base)  ((p_per_base) == NRF_LPCOMP)
-	#endif
+    #ifndef IS_COMP_LPCOMP
+        #define IS_COMP_LPCOMP(p_per_base)  ((p_per_base) == NRF_LPCOMP)
+    #endif
 
     static shared_resource_t m_comp_lpcomp = { .acquired = false };
     void LPCOMP_IRQHandler(void)
     {
-    	ASSERT(m_comp_lpcomp.handler);
-    	m_comp_lpcomp.handler();
+        ASSERT(m_comp_lpcomp.handler);
+        m_comp_lpcomp.handler();
     }
-#endif	// (COMP_ENABLED || LPCOMP_ENABLED)
+#endif    // (COMP_ENABLED || LPCOMP_ENABLED)
 
 #if defined(SERIAL_BOX_0_IN_USE) || \
     defined(SERIAL_BOX_1_IN_USE) || \
     defined(SERIAL_BOX_2_IN_USE) || \
-	defined(COMP_LPCOMP_IN_USE)
+    defined(COMP_LPCOMP_IN_USE)
 static ret_code_t acquire_shared_resource(shared_resource_t * p_resource,
                                           nrf_drv_irq_handler_t handler)
 {
@@ -148,7 +148,7 @@ ret_code_t nrf_drv_common_per_res_acquire(void const * p_per_base,
 #ifdef COMP_LPCOMP_IN_USE
     if (IS_COMP_LPCOMP(p_per_base))
     {
-    	return acquire_shared_resource(&m_comp_lpcomp, handler);
+        return acquire_shared_resource(&m_comp_lpcomp, handler);
     }
 #endif
 
@@ -182,11 +182,11 @@ void nrf_drv_common_per_res_release(void const * p_per_base)
 #endif
 
 #ifdef COMP_LPCOMP_IN_USE
-	if (IS_COMP_LPCOMP(p_per_base))
+    if (IS_COMP_LPCOMP(p_per_base))
     {
         m_comp_lpcomp.acquired = false;
     }
-	else
+    else
 #endif
 
     {}

@@ -59,8 +59,8 @@ extern "C" {
  * @{ */
 
 /**@brief The number of the lowest SVC number reserved for the SoC library. */
-#define SOC_SVC_BASE               (0x20)
-#define SOC_SVC_BASE_NOT_AVAILABLE (0x2B)
+#define SOC_SVC_BASE               (0x20)                   /**< Base value for SVCs that are available when the SoftDevice is disabled. */
+#define SOC_SVC_BASE_NOT_AVAILABLE (0x2B)                   /**< Base value for SVCs that are not available when the SoftDevice is disabled. */
 
 /**@brief Guranteed time for application to process radio inactive notification. */
 #define NRF_RADIO_NOTIFICATION_INACTIVE_GUARANTEED_TIME_US  (62)
@@ -313,7 +313,7 @@ typedef struct
   {
     nrf_radio_request_earliest_t  earliest;         /**< Parameters for requesting a radio timeslot as early as possible. */
     nrf_radio_request_normal_t    normal;           /**< Parameters for requesting a normal radio timeslot. */
-  } params;
+  } params;                                         /**< Parameter union. */
 } nrf_radio_request_t;
 
 /**@brief Return parameters of the radio timeslot signal callback. */
@@ -330,7 +330,7 @@ typedef struct
     {
       uint32_t              length_us;              /**< Requested extension of the radio timeslot duration (microseconds) (for minimum time see @ref NRF_RADIO_MINIMUM_TIMESLOT_LENGTH_EXTENSION_TIME_US). */
     } extend;                                       /**< Additional parameters for return_code @ref NRF_RADIO_SIGNAL_CALLBACK_ACTION_EXTEND. */
-  } params;
+  } params;                                         /**< Parameter union. */
 } nrf_radio_signal_callback_return_param_t;
 
 /**@brief The radio timeslot signal callback type.
@@ -348,9 +348,9 @@ typedef struct
 typedef nrf_radio_signal_callback_return_param_t * (*nrf_radio_signal_callback_t) (uint8_t signal_type);
 
 /**@brief AES ECB parameter typedefs */
-typedef uint8_t soc_ecb_key_t[SOC_ECB_KEY_LENGTH];
-typedef uint8_t soc_ecb_cleartext_t[SOC_ECB_CLEARTEXT_LENGTH];
-typedef uint8_t soc_ecb_ciphertext_t[SOC_ECB_CIPHERTEXT_LENGTH];
+typedef uint8_t soc_ecb_key_t[SOC_ECB_KEY_LENGTH];                /**< Encryption key type. */
+typedef uint8_t soc_ecb_cleartext_t[SOC_ECB_CLEARTEXT_LENGTH];    /**< Cleartext data type. */
+typedef uint8_t soc_ecb_ciphertext_t[SOC_ECB_CIPHERTEXT_LENGTH];  /**< Ciphertext data type. */
 
 /**@brief AES ECB data structure */
 typedef struct

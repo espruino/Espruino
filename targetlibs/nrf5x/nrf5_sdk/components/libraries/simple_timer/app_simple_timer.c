@@ -9,7 +9,8 @@
  * the file.
  *
  */
- 
+#include "sdk_config.h"
+#if SIMPLE_TIMER_ENABLED
 #include "app_simple_timer.h"
 #include "nrf.h"
 #include "app_util_platform.h"
@@ -33,42 +34,14 @@ static app_simple_timer_timeout_handler_t m_timeout_handler          = NULL;    
 static void *                             mp_timeout_handler_context = NULL;                    /**< Registered time-out handler context. */
 static simple_timer_states_t              m_simple_timer_state       = SIMPLE_TIMER_STATE_IDLE; /**< State machine state. */
 
-#define APP_SIMPLE_TIMER_INSTANCE 1
-
-#if (APP_SIMPLE_TIMER_INSTANCE == 0)
-    #if (TIMER_CONFIG_MODE(0) != TIMER_MODE_MODE_Timer)
-        #error "Unsupported timer mode."
-    #endif
-    #if (TIMER_CONFIG_BIT_WIDTH(0) != TIMER_BITMODE_BITMODE_16Bit)
-        #error "Unsupported timer bit width."
-    #endif
-    const nrf_drv_timer_t SIMPLE_TIMER = NRF_DRV_TIMER_INSTANCE(0);
-#elif (APP_SIMPLE_TIMER_INSTANCE == 1)
-    #if (TIMER_CONFIG_MODE(1) != TIMER_MODE_MODE_Timer)
-        #error "Unsupported timer mode."
-    #endif
-    #if (TIMER_CONFIG_BIT_WIDTH(1) != TIMER_BITMODE_BITMODE_16Bit)
-        #error "Unsupported timer bit width."
-    #endif
-    const nrf_drv_timer_t SIMPLE_TIMER = NRF_DRV_TIMER_INSTANCE(1);
-#elif (APP_SIMPLE_TIMER_INSTANCE == 2)
-    #if (TIMER_CONFIG_MODE(2) != TIMER_MODE_MODE_Timer)
-        #error "Unsupported timer mode."
-    #endif
-    #if (TIMER_CONFIG_BIT_WIDTH(2) != TIMER_BITMODE_BITMODE_16Bit)
-        #error "Unsupported timer bit width."
-    #endif
-    const nrf_drv_timer_t SIMPLE_TIMER = NRF_DRV_TIMER_INSTANCE(2);
-#else
-    #error "Wrong timer instance id."
-#endif
+const nrf_drv_timer_t SIMPLE_TIMER = NRF_DRV_TIMER_INSTANCE(SIMPLE_TIMER_CONFIG_INSTANCE);
 
 /**
  * @brief Handler for timer events.
  */
 static void app_simple_timer_event_handler(nrf_timer_event_t event_type, void * p_context)
 {
-    switch(event_type)
+    switch (event_type)
     {
         case NRF_TIMER_EVENT_COMPARE0:
             if (m_mode == APP_SIMPLE_TIMER_MODE_SINGLE_SHOT)
@@ -89,10 +62,13 @@ static void app_simple_timer_event_handler(nrf_timer_event_t event_type, void * 
 uint32_t app_simple_timer_init(void)
 {
     uint32_t err_code = NRF_SUCCESS;
+    nrf_drv_timer_config_t t_cfg = NRF_DRV_TIMER_DEFAULT_CONFIG;
+    t_cfg.mode = NRF_TIMER_MODE_TIMER;
+    t_cfg.bit_width = NRF_TIMER_BIT_WIDTH_16;
+    t_cfg.frequency = (nrf_timer_frequency_t)SIMPLE_TIMER_CONFIG_FREQUENCY;
+    err_code = nrf_drv_timer_init(&SIMPLE_TIMER, &t_cfg, app_simple_timer_event_handler);
 
-    err_code = nrf_drv_timer_init(&SIMPLE_TIMER, NULL, app_simple_timer_event_handler);
-
-    if(NRF_SUCCESS == err_code)
+    if (NRF_SUCCESS == err_code)
     {
         m_simple_timer_state = SIMPLE_TIMER_STATE_INITIALIZED;
     }
@@ -100,7 +76,7 @@ uint32_t app_simple_timer_init(void)
     return err_code;
 }
 
-uint32_t app_simple_timer_start(app_simple_timer_mode_t            mode, 
+uint32_t app_simple_timer_start(app_simple_timer_mode_t            mode,
                                 app_simple_timer_timeout_handler_t timeout_handler,
                                 uint16_t                           timeout_ticks,
                                 void *                             p_context)
@@ -114,7 +90,7 @@ uint32_t app_simple_timer_start(app_simple_timer_mode_t            mode,
     {
         timer_short = NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK;
     }
-    else if(APP_SIMPLE_TIMER_MODE_SINGLE_SHOT == mode)
+    else if (APP_SIMPLE_TIMER_MODE_SINGLE_SHOT == mode)
     {
         timer_short = NRF_TIMER_SHORT_COMPARE0_STOP_MASK;
     }
@@ -123,18 +99,18 @@ uint32_t app_simple_timer_start(app_simple_timer_mode_t            mode,
         return NRF_ERROR_INVALID_PARAM;
     }
 
-    if(SIMPLE_TIMER_STATE_IDLE == m_simple_timer_state)
+    if (SIMPLE_TIMER_STATE_IDLE == m_simple_timer_state)
     {
         return NRF_ERROR_INVALID_STATE;
     }
 
-    if(SIMPLE_TIMER_STATE_STARTED == m_simple_timer_state)
+    if (SIMPLE_TIMER_STATE_STARTED == m_simple_timer_state)
     {
         err_code = app_simple_timer_stop();
         APP_ERROR_CHECK(err_code);
     }
 
-    if(SIMPLE_TIMER_STATE_STOPPED == m_simple_timer_state)
+    if (SIMPLE_TIMER_STATE_STOPPED == m_simple_timer_state)
     {
         nrf_drv_timer_clear(&SIMPLE_TIMER);
     }
@@ -163,7 +139,7 @@ uint32_t app_simple_timer_start(app_simple_timer_mode_t            mode,
 
 uint32_t app_simple_timer_stop(void)
 {
-    if(SIMPLE_TIMER_STATE_STARTED == m_simple_timer_state)
+    if (SIMPLE_TIMER_STATE_STARTED == m_simple_timer_state)
     {
         nrf_drv_timer_pause(&SIMPLE_TIMER);
 
@@ -177,7 +153,7 @@ uint32_t app_simple_timer_uninit(void)
 {
     uint32_t err_code = NRF_SUCCESS;
 
-    if(SIMPLE_TIMER_STATE_IDLE != m_simple_timer_state)
+    if (SIMPLE_TIMER_STATE_IDLE != m_simple_timer_state)
     {
         nrf_drv_timer_uninit(&SIMPLE_TIMER);
         m_simple_timer_state = SIMPLE_TIMER_STATE_IDLE;
@@ -185,3 +161,4 @@ uint32_t app_simple_timer_uninit(void)
 
     return err_code;
 }
+#endif //SIMPLE_TIMER_ENABLED

@@ -15,6 +15,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@file
  *
  * @defgroup nfc_type_2_tag_tlv_block Type 2 Tag TLV blocks
@@ -62,5 +66,10 @@ typedef struct
 /**
  * @}
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NFC_TLV_BLOCK_H__ */

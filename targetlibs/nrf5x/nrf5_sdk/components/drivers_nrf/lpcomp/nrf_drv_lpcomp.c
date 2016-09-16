@@ -9,9 +9,9 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if LPCOMP_ENABLED
 #include "nrf_drv_lpcomp.h"
-
 #include "nrf_assert.h"
 #include "nrf_error.h"
 #include "nrf_soc.h"
@@ -21,19 +21,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define LPCOMP_IRQ			LPCOMP_IRQn
-#define LPCOMP_IRQ_HANDLER 	LPCOMP_IRQHandler
+#define LPCOMP_IRQ             LPCOMP_IRQn
+#define LPCOMP_IRQ_HANDLER     LPCOMP_IRQHandler
 
 static lpcomp_events_handler_t m_lpcomp_events_handler = NULL;
 static nrf_drv_state_t         m_state = NRF_DRV_STATE_UNINITIALIZED;
 
-static const nrf_drv_lpcomp_config_t m_default_config = NRF_DRV_LPCONF_DEFAULT_CONFIG;
-
 #if PERIPHERAL_RESOURCE_SHARING_ENABLED
-    #define IRQ_HANDLER_NAME    irq_handler_for_lpcomp
-    #define IRQ_HANDLER      	static void IRQ_HANDLER_NAME(void)
+    #define IRQ_HANDLER_NAME     irq_handler_for_lpcomp
+    #define IRQ_HANDLER          static void IRQ_HANDLER_NAME(void)
 
-	IRQ_HANDLER;
+    IRQ_HANDLER;
 #else
     #define IRQ_HANDLER void LPCOMP_IRQ_HANDLER(void)
 #endif // PERIPHERAL_RESOURCE_SHARING_ENABLED
@@ -61,14 +59,10 @@ IRQ_HANDLER
 ret_code_t nrf_drv_lpcomp_init(const nrf_drv_lpcomp_config_t * p_config,
                                lpcomp_events_handler_t   events_handler)
 {
+    ASSERT(p_config);
     if (m_state != NRF_DRV_STATE_UNINITIALIZED)
     { // LPCOMP driver is already initialized
         return NRF_ERROR_INVALID_STATE;
-    }
-
-    if (p_config == NULL)
-    {
-        p_config = &m_default_config;
     }
 
 #if PERIPHERAL_RESOURCE_SHARING_ENABLED
@@ -148,4 +142,4 @@ void nrf_drv_lpcomp_event_handler_register(lpcomp_events_handler_t lpcomp_events
     m_lpcomp_events_handler = lpcomp_events_handler;
 }
 
-
+#endif //LPCOMP_ENABLED

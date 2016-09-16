@@ -26,9 +26,13 @@
 #define NRF_DRV_PWM_H__
 
 #include "nordic_common.h"
-#include "nrf_drv_config.h"
+#include "sdk_config.h"
 #include "nrf_pwm.h"
 #include "sdk_errors.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 /**
@@ -39,6 +43,10 @@ typedef struct
     NRF_PWM_Type * p_registers;  ///< Pointer to the structure with PWM peripheral instance registers.
     uint8_t        drv_inst_idx; ///< Driver instance index.
 } nrf_drv_pwm_t;
+
+#define PWM0_INSTANCE_INDEX 0
+#define PWM1_INSTANCE_INDEX PWM0_INSTANCE_INDEX+PWM0_ENABLED
+#define PWM2_INSTANCE_INDEX PWM1_INSTANCE_INDEX+PWM1_ENABLED
 
 /**
  * @brief Macro for creating a PWM driver instance.
@@ -58,7 +66,7 @@ typedef struct
 #define NRF_DRV_PWM_PIN_NOT_USED    0xFF
 
 /**
- * @brief This value can be added to a pin number to inverse its polarity 
+ * @brief This value can be added to a pin number to inverse its polarity
  *        (set idle state = 1).
  */
 #define NRF_DRV_PWM_PIN_INVERTED    0x80
@@ -68,7 +76,7 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t output_pins[NRF_PWM_CHANNEL_COUNT]; ///< Pin numbers for individual output channels (optional). 
+    uint8_t output_pins[NRF_PWM_CHANNEL_COUNT]; ///< Pin numbers for individual output channels (optional).
                                                 /**< Use @ref NRF_DRV_PWM_PIN_NOT_USED
                                                  *   if a given output channel is not needed. */
     uint8_t            irq_priority; ///< Interrupt priority.
@@ -82,18 +90,18 @@ typedef struct
 /**
  * @brief PWM driver default configuration.
  */
-#define NRF_DRV_PWM_DEFAULT_CONFIG(id)                       \
-{                                                            \
-    .output_pins  = { CONCAT_3(PWM, id, _CONFIG_OUT0_PIN),   \
-                      CONCAT_3(PWM, id, _CONFIG_OUT1_PIN),   \
-                      CONCAT_3(PWM, id, _CONFIG_OUT2_PIN),   \
-                      CONCAT_3(PWM, id, _CONFIG_OUT3_PIN) }, \
-    .irq_priority = CONCAT_3(PWM, id, _CONFIG_IRQ_PRIORITY), \
-    .base_clock   = CONCAT_3(PWM, id, _CONFIG_BASE_CLOCK),   \
-    .count_mode   = CONCAT_3(PWM, id, _CONFIG_COUNT_MODE),   \
-    .top_value    = CONCAT_3(PWM, id, _CONFIG_TOP_VALUE),    \
-    .load_mode    = CONCAT_3(PWM, id, _CONFIG_LOAD_MODE),    \
-    .step_mode    = CONCAT_3(PWM, id, _CONFIG_STEP_MODE),    \
+#define NRF_DRV_PWM_DEFAULT_CONFIG                                            \
+{                                                                             \
+    .output_pins  = {PWM_DEFAULT_CONFIG_OUT0_PIN,                             \
+                     PWM_DEFAULT_CONFIG_OUT1_PIN,                             \
+                     PWM_DEFAULT_CONFIG_OUT2_PIN,                             \
+                     PWM_DEFAULT_CONFIG_OUT3_PIN },                           \
+    .irq_priority = PWM_DEFAULT_CONFIG_IRQ_PRIORITY,                          \
+    .base_clock   = (nrf_pwm_clk_t)PWM_DEFAULT_CONFIG_BASE_CLOCK,             \
+    .count_mode   = (nrf_pwm_mode_t)PWM_DEFAULT_CONFIG_COUNT_MODE,            \
+    .top_value    = PWM_DEFAULT_CONFIG_TOP_VALUE,                             \
+    .load_mode    = (nrf_pwm_dec_load_t)PWM_DEFAULT_CONFIG_LOAD_MODE,         \
+    .step_mode    = (nrf_pwm_dec_step_t)PWM_DEFAULT_CONFIG_STEP_MODE,         \
 }
 
 
@@ -420,6 +428,11 @@ __STATIC_INLINE uint32_t nrf_drv_pwm_event_address_get(
 }
 
 #endif // SUPPRESS_INLINE_IMPLEMENTATION
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NRF_DRV_PWM_H__
 

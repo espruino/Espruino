@@ -9,6 +9,8 @@
  * the file.
  *
  */
+#include "sdk_config.h"
+#if LED_SOFTBLINK_ENABLED
 #include <string.h>
 #include "led_softblink.h"
 #include "nrf_gpio.h"
@@ -47,8 +49,8 @@ static void led_softblink_on_timeout(void * p_context)
     static int32_t pause_ticks;
     ASSERT(m_led_sb.led_sb_state != NRF_DRV_STATE_UNINITIALIZED);
     ret_code_t err_code;
-    
-    if(pause_ticks <= 0)
+
+    if (pause_ticks <= 0)
     {
         if (m_led_sb.is_counting_up)
         {
@@ -77,15 +79,15 @@ static void led_softblink_on_timeout(void * p_context)
             {
                 m_led_sb.duty_cycle -= m_led_sb.params.duty_cycle_step;
             }
-        } 
+        }
     }
     else
     {
         pause_ticks -= PWM_PERIOD;
     }
-    
+
     err_code = low_power_pwm_duty_set(&m_led_sb.pwm_instance, m_led_sb.duty_cycle);
-    
+
     APP_ERROR_CHECK(err_code);
 }
 
@@ -93,11 +95,10 @@ static void led_softblink_on_timeout(void * p_context)
 ret_code_t led_softblink_init(led_sb_init_params_t * p_init_params)
 {
     ret_code_t err_code;
-    
-    ASSERT(m_led_sb.led_sb_state == NRF_DRV_STATE_UNINITIALIZED);
 
+    ASSERT(m_led_sb.led_sb_state == NRF_DRV_STATE_UNINITIALIZED);
     ASSERT(p_init_params);
-    
+
     if ( (p_init_params->duty_cycle_max == 0)                               ||
          (p_init_params->duty_cycle_max <= p_init_params->duty_cycle_min)   ||
          (p_init_params->duty_cycle_step == 0)                              ||
@@ -105,26 +106,26 @@ ret_code_t led_softblink_init(led_sb_init_params_t * p_init_params)
     {
         return NRF_ERROR_INVALID_PARAM;
     }
- 
-    
-    
+
+
+
     memset(&m_led_sb, 0, sizeof(led_sb_context_t));
     memcpy(&m_led_sb.params, p_init_params, sizeof(led_sb_init_params_t));
-    
+
     m_led_sb.is_counting_up = true;
     m_led_sb.duty_cycle     = p_init_params->duty_cycle_min + p_init_params->duty_cycle_step;
     m_led_sb.leds_is_on     = false;
     m_led_sb.bit_mask       = p_init_params->leds_pin_bm;
-    
+
     APP_TIMER_DEF(led_softblink_timer);
-    
+
     m_led_sb.pwm_config.active_high         = m_led_sb.params.active_high;
     m_led_sb.pwm_config.bit_mask            = p_init_params->leds_pin_bm;
     m_led_sb.pwm_config.period              = PWM_PERIOD;
     m_led_sb.pwm_config.p_timer_id          = &led_softblink_timer;
-    
+
     err_code = low_power_pwm_init( &m_led_sb.pwm_instance, &m_led_sb.pwm_config, led_softblink_on_timeout);
-    
+
     if (err_code == NRF_SUCCESS)
     {
         m_led_sb.led_sb_state = NRF_DRV_STATE_INITIALIZED;
@@ -133,7 +134,7 @@ ret_code_t led_softblink_init(led_sb_init_params_t * p_init_params)
     {
         return err_code;
     }
-    
+
     err_code = low_power_pwm_duty_set( &m_led_sb.pwm_instance, p_init_params->duty_cycle_min + p_init_params->duty_cycle_step);
 
     return err_code;
@@ -143,11 +144,11 @@ ret_code_t led_softblink_init(led_sb_init_params_t * p_init_params)
 ret_code_t led_softblink_start(uint32_t leds_pin_bit_mask)
 {
     ret_code_t err_code;
-    
+
     ASSERT(m_led_sb.led_sb_state == NRF_DRV_STATE_INITIALIZED);
-    
+
     err_code = low_power_pwm_start(&m_led_sb.pwm_instance, leds_pin_bit_mask);
-    
+
     return err_code;
 }
 
@@ -155,9 +156,9 @@ ret_code_t led_softblink_start(uint32_t leds_pin_bit_mask)
 ret_code_t led_softblink_stop(void)
 {
     ret_code_t err_code;
-    
+
     err_code = low_power_pwm_stop(&m_led_sb.pwm_instance);
-    
+
     return err_code;
 }
 
@@ -183,9 +184,9 @@ ret_code_t led_softblink_uninit(void)
     ASSERT(m_led_sb.led_sb_state != NRF_DRV_STATE_UNINITIALIZED);
 
     ret_code_t err_code;
-    
+
     err_code = led_softblink_stop();
-   
+
     if (err_code == NRF_SUCCESS)
     {
         m_led_sb.led_sb_state = NRF_DRV_STATE_UNINITIALIZED;
@@ -194,8 +195,9 @@ ret_code_t led_softblink_uninit(void)
     {
         return err_code;
     }
-    
+
     memset(&m_led_sb, 0, sizeof(m_led_sb));
 
     return NRF_SUCCESS;
 }
+#endif //LED_SOFTBLINK_ENABLED

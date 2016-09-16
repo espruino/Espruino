@@ -27,6 +27,10 @@
 #include "nfc_ndef_record.h"
 #include "nfc_ndef_msg.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Handover Select record payload descriptor.
  */
@@ -41,7 +45,7 @@ typedef struct
 /**
  * @brief Constructor for an NFC NDEF Handover Select record payload.
  *
- * This function encodes the payload of a Handover Select record as specified in the Connection 
+ * This function encodes the payload of a Handover Select record as specified in the Connection
  * Handover standard. It implements an API compatible with @ref p_payload_constructor_t.
  */
 
@@ -64,7 +68,7 @@ extern const uint8_t nfc_hs_rec_type_field[];
 /**
  * @brief Macro for creating and initializing an NFC NDEF record descriptor for a Handover Select record.
  *
- * This macro creates and initializes a static instance of type @ref nfc_ndef_record_desc_t and 
+ * This macro creates and initializes a static instance of type @ref nfc_ndef_record_desc_t and
  * a static instance of type @ref nfc_hs_rec_payload_desc_t, which together constitute an instance of a Handover Select record.
  *
  * Use the macro @ref NFC_NDEF_HS_RECORD_DESC to access the NDEF Handover Select record descriptor instance.
@@ -122,4 +126,9 @@ ret_code_t nfc_hs_rec_local_record_add(nfc_ndef_record_desc_t * p_hs_rec,
                                        nfc_ndef_record_desc_t * p_local_rec);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // NFC_HS_REC_H__

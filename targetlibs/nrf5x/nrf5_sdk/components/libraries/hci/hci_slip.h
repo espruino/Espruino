@@ -9,7 +9,7 @@
  * the file.
  *
  */
- 
+
 /** @file
  *
  * @defgroup hci_slip SLIP module
@@ -32,6 +32,10 @@
 #define HCI_SLIP_H__
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**@brief Event types from the SLIP Layer. */
 typedef enum
@@ -59,7 +63,7 @@ typedef void (*hci_slip_event_handler_t)(hci_slip_evt_t event);
 /**@brief Function for registering the event handler provided as parameter and this event handler
  *        will be used by SLIP layer to send events described in \ref hci_slip_evt_type_t.
  *
- * @note Multiple registration requests will overwrite any existing registration. 
+ * @note Multiple registration requests will overwrite any existing registration.
  *
  * @param[in] event_handler         This function is called by the SLIP layer upon an event.
  *
@@ -70,8 +74,8 @@ uint32_t hci_slip_evt_handler_register(hci_slip_event_handler_t event_handler);
 /**@brief Function for opening the SLIP layer. This function must be called before
  *        \ref hci_slip_write and before any data can be received.
  *
- * @note Can be called multiple times. 
- * 
+ * @note Can be called multiple times.
+ *
  * @retval NRF_SUCCESS              Operation success.
  *
  * The SLIP layer module will propagate errors from underlying sub-modules.
@@ -84,8 +88,8 @@ uint32_t hci_slip_open(void);
  *        transmitted or received in this layer.
  *
  * @note This function can be called multiple times and also for an unopened channel.
- * 
- * @retval NRF_SUCCESS              Operation success.  
+ *
+ * @retval NRF_SUCCESS              Operation success.
  */
 uint32_t hci_slip_close(void);
 
@@ -95,8 +99,8 @@ uint32_t hci_slip_close(void);
  * @param[in] p_buffer              Pointer to the packet to transmit.
  * @param[in] length                Packet length, in bytes.
  *
- * @retval NRF_SUCCESS              Operation success. Packet was encoded and added to the 
- *                                  transmission queue and an event will be sent upon transmission 
+ * @retval NRF_SUCCESS              Operation success. Packet was encoded and added to the
+ *                                  transmission queue and an event will be sent upon transmission
  *                                  completion.
  * @retval NRF_ERROR_NO_MEM         Operation failure. Transmission queue is full and packet was not
  *                                  added to the transmission queue. Application shall wait for
@@ -120,10 +124,15 @@ uint32_t hci_slip_write(const uint8_t * p_buffer, uint32_t length);
  *                                  will be placed in this buffer.
  * @param[in]  length               Buffer length, in bytes.
  *
- * @retval NRF_SUCCESS              Operation success. 
+ * @retval NRF_SUCCESS              Operation success.
  */
 uint32_t hci_slip_rx_buffer_register(uint8_t * p_buffer, uint32_t length);
- 
+
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // HCI_SLIP_H__
- 
+
 /** @} */

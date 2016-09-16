@@ -9,7 +9,7 @@
 
 /**@file
  *
- * @defgroup ble_sdk_srv_hrs_c   Heart Rate Service Client
+ * @defgroup ble_hrs_c Heart Rate Service Client
  * @{
  * @ingroup  ble_sdk_srv
  * @brief    Heart Rate Service Client module.
@@ -37,6 +37,10 @@
 #include <stdint.h>
 #include "ble.h"
 #include "ble_db_discovery.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @defgroup hrs_c_enums Enumerations
@@ -169,7 +173,7 @@ void ble_hrs_c_on_ble_evt(ble_hrs_c_t * p_ble_hrs_c, const ble_evt_t * p_ble_evt
  * @param   p_ble_hrs_c Pointer to the heart rate client structure.
  *
  * @retval  NRF_SUCCESS If the SoftDevice has been requested to write to the CCCD of the peer.
- *                      Otherwise, an error code. This function propagates the error code returned 
+ *                      Otherwise, an error code. This function propagates the error code returned
  *                      by the SoftDevice API @ref sd_ble_gattc_write.
  */
 uint32_t ble_hrs_c_hrm_notif_enable(ble_hrs_c_t * p_ble_hrs_c);
@@ -209,6 +213,11 @@ uint32_t ble_hrs_c_handles_assign(ble_hrs_c_t *    p_ble_hrs_c,
                                   const hrs_db_t * p_peer_hrs_handles);
 
 /** @} */ // End tag for Function group.
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_HRS_C_H__
 

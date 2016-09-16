@@ -9,7 +9,8 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if APP_TIMER_ENABLED
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
@@ -83,7 +84,7 @@ static void app_timer_callback(TimerHandle_t xTimer)
     ASSERT(pinfo->osHandle == xTimer);
     ASSERT(pinfo->func != NULL);
 
-    if(pinfo->active)
+    if (pinfo->active)
         pinfo->func(pinfo->argument);
 }
 
@@ -111,21 +112,21 @@ uint32_t app_timer_create(app_timer_id_t const *      p_timer_id,
     uint32_t      err_code = NRF_SUCCESS;
     unsigned long timer_mode;
 
-    if((timeout_handler == NULL) || (p_timer_id == NULL))
+    if ((timeout_handler == NULL) || (p_timer_id == NULL))
     {
         return NRF_ERROR_INVALID_PARAM;
     }
-    if(pinfo->active)
+    if (pinfo->active)
     {
         return NRF_ERROR_INVALID_STATE;
     }
 
-    if(pinfo->osHandle == NULL)
+    if (pinfo->osHandle == NULL)
     {
         /* New timer is created */
         memset(pinfo, 0, sizeof(pinfo));
 
-        if(mode == APP_TIMER_MODE_SINGLE_SHOT)
+        if (mode == APP_TIMER_MODE_SINGLE_SHOT)
             timer_mode = pdFALSE;
         else
             timer_mode = pdTRUE;
@@ -133,7 +134,7 @@ uint32_t app_timer_create(app_timer_id_t const *      p_timer_id,
         pinfo->func = timeout_handler;
         pinfo->osHandle = xTimerCreate(" ", 1000, timer_mode, pinfo, app_timer_callback);
 
-        if(pinfo->osHandle == NULL)
+        if (pinfo->osHandle == NULL)
             err_code = NRF_ERROR_NULL;
     }
     else
@@ -152,13 +153,13 @@ uint32_t app_timer_start(app_timer_id_t timer_id, uint32_t timeout_ticks, void *
     TimerHandle_t hTimer = pinfo->osHandle;
     uint32_t rtc_prescaler = portNRF_RTC_REG->PRESCALER  + 1;
     /* Get back the microseconds to wait */
-    uint32_t timeout_corrected = ROUNDED_DIV(timeout_ticks*m_prescaler, rtc_prescaler);
+    uint32_t timeout_corrected = ROUNDED_DIV(timeout_ticks * m_prescaler, rtc_prescaler);
 
-    if(hTimer == NULL)
+    if (hTimer == NULL)
     {
         return NRF_ERROR_INVALID_STATE;
     }
-    if(pinfo->active && (xTimerIsTimerActive(hTimer) != pdFALSE))
+    if (pinfo->active && (xTimerIsTimerActive(hTimer) != pdFALSE))
     {
         // Timer already running - exit silently
         return NRF_SUCCESS;
@@ -166,15 +167,15 @@ uint32_t app_timer_start(app_timer_id_t timer_id, uint32_t timeout_ticks, void *
 
     pinfo->argument = p_context;
 
-    if(__get_IPSR() != 0)
+    if (__get_IPSR() != 0)
     {
         BaseType_t yieldReq = pdFALSE;
-        if(xTimerChangePeriodFromISR(hTimer, timeout_corrected, &yieldReq) != pdPASS)
+        if (xTimerChangePeriodFromISR(hTimer, timeout_corrected, &yieldReq) != pdPASS)
         {
             return NRF_ERROR_NO_MEM;
         }
 
-        if( xTimerStartFromISR(hTimer, &yieldReq) != pdPASS )
+        if ( xTimerStartFromISR(hTimer, &yieldReq) != pdPASS )
         {
             return NRF_ERROR_NO_MEM;
         }
@@ -183,12 +184,12 @@ uint32_t app_timer_start(app_timer_id_t timer_id, uint32_t timeout_ticks, void *
     }
     else
     {
-        if(xTimerChangePeriod(hTimer, timeout_corrected, APP_TIMER_WAIT_FOR_QUEUE) != pdPASS)
+        if (xTimerChangePeriod(hTimer, timeout_corrected, APP_TIMER_WAIT_FOR_QUEUE) != pdPASS)
         {
             return NRF_ERROR_NO_MEM;
         }
 
-        if(xTimerStart(hTimer, APP_TIMER_WAIT_FOR_QUEUE) != pdPASS)
+        if (xTimerStart(hTimer, APP_TIMER_WAIT_FOR_QUEUE) != pdPASS)
         {
             return NRF_ERROR_NO_MEM;
         }
@@ -203,15 +204,15 @@ uint32_t app_timer_stop(app_timer_id_t timer_id)
 {
     app_timer_info_t * pinfo = (app_timer_info_t*)(timer_id);
     TimerHandle_t hTimer = pinfo->osHandle;
-    if(hTimer == NULL)
+    if (hTimer == NULL)
     {
         return NRF_ERROR_INVALID_STATE;
     }
 
-    if(__get_IPSR() != 0)
+    if (__get_IPSR() != 0)
     {
         BaseType_t yieldReq = pdFALSE;
-        if(xTimerStopFromISR(timer_id, &yieldReq) != pdPASS)
+        if (xTimerStopFromISR(timer_id, &yieldReq) != pdPASS)
         {
             return NRF_ERROR_NO_MEM;
         }
@@ -219,7 +220,7 @@ uint32_t app_timer_stop(app_timer_id_t timer_id)
     }
     else
     {
-        if(xTimerStop(timer_id, APP_TIMER_WAIT_FOR_QUEUE) != pdPASS)
+        if (xTimerStop(timer_id, APP_TIMER_WAIT_FOR_QUEUE) != pdPASS)
         {
             return NRF_ERROR_NO_MEM;
         }
@@ -228,3 +229,4 @@ uint32_t app_timer_stop(app_timer_id_t timer_id)
     pinfo->active = false;
     return NRF_SUCCESS;
 }
+#endif //APP_TIMER_ENABLED

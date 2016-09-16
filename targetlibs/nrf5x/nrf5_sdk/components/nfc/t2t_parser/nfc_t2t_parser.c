@@ -10,22 +10,23 @@
  *
  */
 
+#include "sdk_config.h"
+#if NFC_T2T_PARSER_ENABLED
+
 #include <string.h>
 #include <stdbool.h>
-#include "app_trace.h"
 #include "nrf_delay.h"
 #include "app_util.h"
 #include "nfc_t2t_parser.h"
 
-#ifdef T2T_PARSER_ENABLE
-
-#define T2T_PARSER_TRACE app_trace_log
-
-#else
-
-#define T2T_PARSER_TRACE(...)
-
-#endif
+#define NRF_LOG_MODULE_NAME "NFC_T2T_PARSER"
+#if NFC_T2T_PARSER_LOG_ENABLED
+#define NRF_LOG_LEVEL       NFC_T2T_PARSER_LOG_LEVEL
+#define NRF_LOG_INFO_COLOR  NFC_T2T_PARSER_INFO_COLOR
+#else // NFC_T2T_PARSER_LOG_ENABLED
+#define NRF_LOG_LEVEL       0
+#endif // NFC_T2T_PARSER_LOG_ENABLED
+#include "nrf_log.h"
 
 /// Gets least significant nibble (a 4-bit value) from a byte.
 #define LSN_GET(val) (val & 0x0F)
@@ -77,7 +78,7 @@ static ret_code_t type_2_tag_tlv_block_insert(type_2_tag_t * p_type_2_tag,
  */
 static bool tlv_block_is_data_length_correct(tlv_block_t * p_block_to_check)
 {
-    switch(p_block_to_check->tag)
+    switch (p_block_to_check->tag)
     {
         case TLV_NULL:
         case TLV_TERMINATOR:
@@ -340,7 +341,7 @@ static ret_code_t type_2_tag_tlv_block_extract(type_2_tag_t * p_type_2_tag,
     }
 
     // Further processing depends on tag field value.
-    switch(p_tlv_buf->tag)
+    switch (p_tlv_buf->tag)
     {
         case TLV_NULL:
             // Simply ignore NULL blocks, leave the incremented offset.
@@ -433,7 +434,7 @@ static ret_code_t type_2_tag_internal_parse(type_2_tag_t * p_type_2_tag, uint8_t
 
     if (!type_2_tag_is_bcc_correct(&p_type_2_tag->sn))
     {
-        T2T_PARSER_TRACE("Warning! BCC of the serial number is not correct!\r\n");
+        NRF_LOG_WARNING("Warning! BCC of the serial number is not correct!\r\n");
     }
 
     return NRF_SUCCESS;
@@ -523,7 +524,7 @@ static ret_code_t type_2_tag_tlv_parse(type_2_tag_t * p_type_2_tag,
             err_code = type_2_tag_tlv_block_insert(p_type_2_tag, &new_block);
             if (err_code != NRF_SUCCESS)
             {
-                T2T_PARSER_TRACE("Warning! Not enough memory  to insert all of the blocks!\r\n");
+                NRF_LOG_WARNING("Warning! Not enough memory  to insert all of the blocks!\r\n");
                 return err_code;
             }
             break;
@@ -566,12 +567,12 @@ ret_code_t type_2_tag_parse(type_2_tag_t * p_type_2_tag, uint8_t * p_raw_data)
 
     uint16_t offset = T2T_FIRST_DATA_BLOCK_OFFSET;
 
-    while(offset > 0)
+    while (offset > 0)
     {
         // Check if end of tag is reached (no terminator block was present).
         if (type_2_tag_is_end_reached(p_type_2_tag, offset))
         {
-            T2T_PARSER_TRACE("Warning! No terminator block was found in the tag!\r\n");
+            NRF_LOG_DEBUG("No terminator block was found in the tag!\r\n");
             break;
         }
 
@@ -588,73 +589,64 @@ ret_code_t type_2_tag_parse(type_2_tag_t * p_type_2_tag, uint8_t * p_raw_data)
 
 void type_2_tag_printout(type_2_tag_t * p_type_2_tag)
 {
-    uint32_t i, j;
-    T2T_PARSER_TRACE("Type 2 Tag contents:\r\n");
-    T2T_PARSER_TRACE("\r\n  Number of TLV blocks: %d\r\n", p_type_2_tag->tlv_count);
+    uint32_t i;
+    NRF_LOG_INFO("Type 2 Tag contents:\r\n\r\n");
+    NRF_LOG_INFO("Number of TLV blocks: %d\r\n\r\n", p_type_2_tag->tlv_count);
 
-    T2T_PARSER_TRACE("\r\n  Internal data:\r\n");
-    T2T_PARSER_TRACE("    Manufacturer ID:      0x%02x\r\n",  p_type_2_tag->sn.manufacturer_id);
-    T2T_PARSER_TRACE("    Serial number part 1: 0x%04x\r\n",  p_type_2_tag->sn.serial_number_part_1);
-    T2T_PARSER_TRACE("    Check byte 0:         0x%02x\r\n",  p_type_2_tag->sn.check_byte_0);
-    T2T_PARSER_TRACE("    Serial number part 2: 0x%08lx\r\n", p_type_2_tag->sn.serial_number_part_2);
-    T2T_PARSER_TRACE("    Check byte 1:         0x%02x\r\n",  p_type_2_tag->sn.check_byte_1);
-    T2T_PARSER_TRACE("    Internal byte:        0x%02x\r\n",  p_type_2_tag->sn.internal);
-    T2T_PARSER_TRACE("    Lock bytes:           0x%04x\r\n",  p_type_2_tag->lock_bytes);
+    NRF_LOG_INFO("Internal data:\r\n");
+    NRF_LOG_INFO("    Manufacturer ID:      0x%02x\r\n",  p_type_2_tag->sn.manufacturer_id);
+    NRF_LOG_INFO("    Serial number part 1: 0x%04x\r\n",  p_type_2_tag->sn.serial_number_part_1);
+    NRF_LOG_INFO("    Check byte 0:         0x%02x\r\n",  p_type_2_tag->sn.check_byte_0);
+    NRF_LOG_INFO("    Serial number part 2: 0x%08lx\r\n", p_type_2_tag->sn.serial_number_part_2);
+    NRF_LOG_INFO("    Check byte 1:         0x%02x\r\n",  p_type_2_tag->sn.check_byte_1);
+    NRF_LOG_INFO("    Internal byte:        0x%02x\r\n",  p_type_2_tag->sn.internal);
+    NRF_LOG_INFO("    Lock bytes:           0x%04x\r\n\r\n",  p_type_2_tag->lock_bytes);
 
-    T2T_PARSER_TRACE("\r\n  Capability Container data:\r\n");
-    T2T_PARSER_TRACE("    Major version number: %d\r\n", p_type_2_tag->cc.major_version);
-    T2T_PARSER_TRACE("    Minor version number: %d\r\n", p_type_2_tag->cc.minor_version);
-    T2T_PARSER_TRACE("    Data area size:       %d\r\n", p_type_2_tag->cc.data_area_size);
-    T2T_PARSER_TRACE("    Read access:          0x%02X\r\n", p_type_2_tag->cc.read_access);
-    T2T_PARSER_TRACE("    Write access:         0x%02X\r\n", p_type_2_tag->cc.write_access);
+    NRF_LOG_INFO("Capability Container data:\r\n");
+    NRF_LOG_INFO("    Major version number: %d\r\n", p_type_2_tag->cc.major_version);
+    NRF_LOG_INFO("    Minor version number: %d\r\n", p_type_2_tag->cc.minor_version);
+    NRF_LOG_INFO("    Data area size:       %d\r\n", p_type_2_tag->cc.data_area_size);
+    NRF_LOG_INFO("    Read access:          0x%02X\r\n", p_type_2_tag->cc.read_access);
+    NRF_LOG_INFO("    Write access:         0x%02X\r\n\r\n", p_type_2_tag->cc.write_access);
 
-    nrf_delay_ms(100);
-
-    for(i = 0; i < p_type_2_tag->tlv_count; i++)
+    for (i = 0; i < p_type_2_tag->tlv_count; i++)
     {
-        T2T_PARSER_TRACE("\r\n  TLV block 0x%02X: ", p_type_2_tag->p_tlv_block_array[i].tag);
-        switch(p_type_2_tag->p_tlv_block_array[i].tag)
+        NRF_LOG_INFO("TLV block 0x%02X: \r\n", p_type_2_tag->p_tlv_block_array[i].tag);
+        switch (p_type_2_tag->p_tlv_block_array[i].tag)
         {
             case TLV_LOCK_CONTROL:
-                T2T_PARSER_TRACE("Lock Control\r\n");
+                NRF_LOG_INFO("Lock Control\r\n\r\n");
                break;
             case TLV_MEMORY_CONTROL:
-                T2T_PARSER_TRACE("Memory Control\r\n");
+                NRF_LOG_INFO("Memory Control\r\n\r\n");
                break;
             case TLV_NDEF_MESSAGE:
-                T2T_PARSER_TRACE("NDEF Message\r\n");
+                NRF_LOG_INFO("NDEF Message\r\n\r\n");
                break;
             case TLV_PROPRIETARY:
-                T2T_PARSER_TRACE("Proprietary\r\n");
+                NRF_LOG_INFO("Proprietary\r\n\r\n");
                break;
             case TLV_NULL:
-                T2T_PARSER_TRACE("Null\r\n");
+                NRF_LOG_INFO("Null\r\n\r\n");
                break;
             case TLV_TERMINATOR:
-                T2T_PARSER_TRACE("Terminator\r\n");
+                NRF_LOG_INFO("Terminator\r\n\r\n");
                break;
             default:
-                T2T_PARSER_TRACE("Unknown\r\n");
+                NRF_LOG_INFO("Unknown\r\n\r\n");
                break;
         }
 
-        T2T_PARSER_TRACE("    Length: %d\r\n", p_type_2_tag->p_tlv_block_array[i].length);
+        NRF_LOG_INFO("    Length: %d\r\n", p_type_2_tag->p_tlv_block_array[i].length);
 
         if (p_type_2_tag->p_tlv_block_array[i].length > 0)
         {
-            T2T_PARSER_TRACE("    Data:   ");
-
-           for (j = 0; j < p_type_2_tag->p_tlv_block_array[i].length; j++)
-           {
-               T2T_PARSER_TRACE("%02X ", p_type_2_tag->p_tlv_block_array[i].p_value[j]);
-               if ( ((j + 1) % 16 == 0) && (j != p_type_2_tag->p_tlv_block_array[i].length - 1) )
-               {
-                   T2T_PARSER_TRACE("\r\n            ");
-                   nrf_delay_ms(10);
-               }
-           }
-
-           T2T_PARSER_TRACE("\r\n");
+            NRF_LOG_INFO("    Data:\r\n");
+            NRF_LOG_HEXDUMP_INFO(p_type_2_tag->p_tlv_block_array[i].p_value,
+                                 p_type_2_tag->p_tlv_block_array[i].length);
         }
+        NRF_LOG_INFO("\r\n\r\n");
     }
 }
+
+#endif // NFC_T2T_PARSER_ENABLED

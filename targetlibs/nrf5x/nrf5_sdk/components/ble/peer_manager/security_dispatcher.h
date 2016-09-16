@@ -20,6 +20,10 @@
 #include "ble_gap.h"
 #include "peer_manager_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /**
  * @cond NO_DOXYGEN
@@ -168,6 +172,7 @@ typedef struct
 typedef void (*smd_evt_handler_t)(smd_evt_t const * p_event);
 
 
+#if 0
 /**@brief Function for registering with the Security Dispatcher module. This function also
  *        initializes the module if uninitialized.
  *
@@ -178,6 +183,10 @@ typedef void (*smd_evt_handler_t)(smd_evt_t const * p_event);
  * @retval NRF_ERROR_NULL    evt_handler was NULL.
  */
 ret_code_t smd_register(smd_evt_handler_t evt_handler);
+#endif
+
+
+ret_code_t smd_init(void);
 
 
 /**@brief Function for dispatching SoftDevice events to the Security Dispatcher module.
@@ -247,8 +256,13 @@ ret_code_t smd_link_secure(uint16_t               conn_handle,
                            ble_gap_sec_params_t * p_sec_params,
                            bool                   force_repairing);
 
-/** @} 
+/** @}
  * @endcond
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SECURITY_DISPATCHER_H__ */

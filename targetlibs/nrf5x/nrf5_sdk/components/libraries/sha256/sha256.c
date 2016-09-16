@@ -18,8 +18,8 @@
 #include "sdk_common.h"
 
 
-#define ROTLEFT(a,b) (((a) << (b)) | ((a) >> (32-(b))))
-#define ROTRIGHT(a,b) (((a) >> (b)) | ((a) << (32-(b))))
+#define ROTLEFT(a,b) (((a) << (b)) | ((a) >> (32 - (b))))
+#define ROTRIGHT(a,b) (((a) >> (b)) | ((a) << (32 - (b))))
 
 #define CH(x,y,z) (((x) & (y)) ^ (~(x) & (z)))
 #define MAJ(x,y,z) (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))
@@ -131,12 +131,12 @@ ret_code_t sha256_update(sha256_context_t *ctx, const uint8_t * data, size_t len
 }
 
 
-ret_code_t sha256_final(sha256_context_t *ctx, uint8_t * hash)
+ret_code_t sha256_final(sha256_context_t *ctx, uint8_t * hash, uint8_t le)
 {
+    uint32_t i;
+
     VERIFY_PARAM_NOT_NULL(ctx);
     VERIFY_PARAM_NOT_NULL(hash);
-
-    uint32_t i;
 
     i = ctx->datalen;
 
@@ -166,17 +166,34 @@ ret_code_t sha256_final(sha256_context_t *ctx, uint8_t * hash)
     ctx->data[56] = ctx->bitlen >> 56;
     sha256_transform(ctx, ctx->data);
 
-    // Since this implementation uses little endian uint8_t ordering and SHA uses big endian,
-    // reverse all the uint8_ts when copying the final state to the output hash.
-    for (i = 0; i < 4; ++i) {
-        hash[i]      = (ctx->state[0] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 4]  = (ctx->state[1] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 8]  = (ctx->state[2] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 12] = (ctx->state[3] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 16] = (ctx->state[4] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 20] = (ctx->state[5] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 24] = (ctx->state[6] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 28] = (ctx->state[7] >> (24 - i * 8)) & 0x000000ff;
+    if(le)
+    {
+        for (i = 0; i < 4; ++i) {
+            hash[i]      = (ctx->state[7] >> (i * 8)) & 0x000000ff;
+            hash[i + 4]  = (ctx->state[6] >> (i * 8)) & 0x000000ff;
+            hash[i + 8]  = (ctx->state[5] >> (i * 8)) & 0x000000ff;
+            hash[i + 12] = (ctx->state[4] >> (i * 8)) & 0x000000ff;
+            hash[i + 16] = (ctx->state[3] >> (i * 8)) & 0x000000ff;
+            hash[i + 20] = (ctx->state[2] >> (i * 8)) & 0x000000ff;
+            hash[i + 24] = (ctx->state[1] >> (i * 8)) & 0x000000ff;
+            hash[i + 28] = (ctx->state[0] >> (i * 8)) & 0x000000ff;
+        }
+    }
+    else
+    {
+
+        // Since this implementation uses little endian uint8_t ordering and SHA uses big endian,
+        // reverse all the uint8_ts when copying the final state to the output hash.
+        for (i = 0; i < 4; ++i) {
+            hash[i]      = (ctx->state[0] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 4]  = (ctx->state[1] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 8]  = (ctx->state[2] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 12] = (ctx->state[3] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 16] = (ctx->state[4] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 20] = (ctx->state[5] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 24] = (ctx->state[6] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 28] = (ctx->state[7] >> (24 - i * 8)) & 0x000000ff;
+        }
     }
 
     return NRF_SUCCESS;

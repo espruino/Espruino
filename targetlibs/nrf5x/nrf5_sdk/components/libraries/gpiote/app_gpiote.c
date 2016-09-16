@@ -9,11 +9,13 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if APP_GPIOTE_ENABLED
 #include "app_gpiote.h"
 #include "nrf_drv_gpiote.h"
 #include "sdk_common.h"
 
+#define MODULE_INITIALIZED (mp_users != NULL) /**< Macro designating whether the module has been initialized properly. */
 
 /**@brief GPIOTE user type. */
 typedef struct
@@ -35,8 +37,6 @@ static gpiote_user_t * mp_users = NULL;               /**< Array of GPIOTE users
 static uint32_t        m_pins;                        /**< Mask of initialized pins. */
 static uint32_t        m_last_pins_state;             /**< Most recent state of pins. */
 
-#define MODULE_INITIALIZED (mp_users != NULL)
-#include "sdk_macros.h"
 
 void gpiote_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
@@ -258,3 +258,4 @@ uint32_t app_gpiote_pins_state_get(app_gpiote_user_id_t user_id, uint32_t * p_pi
     }
     return ret_code;
 }
+#endif //APP_GPIOTE_ENABLED

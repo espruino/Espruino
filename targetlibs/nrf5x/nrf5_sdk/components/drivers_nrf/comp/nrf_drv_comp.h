@@ -13,33 +13,37 @@
 #ifndef NRF_DRV_COMP_H__
 #define NRF_DRV_COMP_H__
 
+#include "sdk_config.h"
 #include "nrf_comp.h"
 #include "sdk_errors.h"
 #include "nrf_drv_common.h"
-#include "nrf_drv_config.h"
 #include "app_util_platform.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @addtogroup nrf_comp COMP HAL and driver
  * @ingroup nrf_drivers
  * @brief @tagAPI52 Comparator (COMP) APIs.
- * @details The COMP HAL provides basic APIs for accessing the registers of Comparator. 
+ * @details The COMP HAL provides basic APIs for accessing the registers of Comparator.
  * The COMP driver provides APIs on a higher level.
  *
- * @defgroup nrf_drivers_comp COMP driver
+ * @defgroup nrf_drv_comp COMP driver
  * @{
  * @ingroup nrf_comp
- * @brief @tagAPI52 Comparator (COMP) driver. 
+ * @brief @tagAPI52 Comparator (COMP) driver.
  */
 
 /**
  * @brief Macro to convert the threshold voltage to an integer value (needed by the COMP_TH register).
  *
- * @param[in] vol 			Voltage to be changed to COMP_TH register value. This value must not be smaller than
- * 							reference voltage divided by 64.
- * @param[in] ref 			Reference voltage.
+ * @param[in] vol             Voltage to be changed to COMP_TH register value. This value must not be smaller than
+ *                            reference voltage divided by 64.
+ * @param[in] ref             Reference voltage.
  */
-#define VOLTAGE_THRESHOLD_TO_INT(vol, ref) (uint8_t)(((vol) > ((ref)/64)) ? (ROUNDED_DIV((vol)*64,(ref))-1) : 0)
+#define VOLTAGE_THRESHOLD_TO_INT(vol, ref) (uint8_t)(((vol) > ((ref) / 64)) ? (ROUNDED_DIV((vol) * 64,(ref)) - 1) : 0)
 
 /**@brief COMP event handler function type.
  * @param[in] event  COMP event.
@@ -52,9 +56,9 @@ typedef void (* comp_events_handler_t)(nrf_comp_event_t event);
  */
 typedef enum
 {
-	NRF_DRV_COMP_SHORT_STOP_AFTER_CROSS_EVT = COMP_SHORTS_CROSS_STOP_Msk, 		/*!< Shortcut between the CROSS event and the STOP task. */
-	NRF_DRV_COMP_SHORT_STOP_AFTER_UP_EVT = COMP_SHORTS_UP_STOP_Msk, 			/*!< Shortcut between the UP event and the STOP task. */
-	NRF_DRV_COMP_SHORT_STOP_AFTER_DOWN_EVT = COMP_SHORTS_DOWN_STOP_Msk   		/*!< Shortcut between the DOWN event and the STOP task. */
+    NRF_DRV_COMP_SHORT_STOP_AFTER_CROSS_EVT = COMP_SHORTS_CROSS_STOP_Msk,        /*!< Shortcut between the CROSS event and the STOP task. */
+    NRF_DRV_COMP_SHORT_STOP_AFTER_UP_EVT = COMP_SHORTS_UP_STOP_Msk,              /*!< Shortcut between the UP event and the STOP task. */
+    NRF_DRV_COMP_SHORT_STOP_AFTER_DOWN_EVT = COMP_SHORTS_DOWN_STOP_Msk           /*!< Shortcut between the DOWN event and the STOP task. */
 }nrf_drv_comp_short_mask_t;
 
 /**
@@ -63,51 +67,51 @@ typedef enum
  */
 typedef enum
 {
-	NRF_DRV_COMP_EVT_EN_CROSS_MASK = COMP_INTENSET_CROSS_Msk,				/*!< CROSS event (generated after VIN+ == VIN-). */
-	NRF_DRV_COMP_EVT_EN_UP_MASK = COMP_INTENSET_UP_Msk,						/*!< UP event (generated when VIN+ crosses VIN- while increasing). */
-	NRF_DRV_COMP_EVT_EN_DOWN_MASK = COMP_INTENSET_DOWN_Msk,					/*!< DOWN event (generated when VIN+ crosses VIN- while decreasing). */
-	NRF_DRV_COMP_EVT_EN_READY_MASK = COMP_INTENSET_READY_Msk				/*!< READY event (generated when the module is ready). */
+    NRF_DRV_COMP_EVT_EN_CROSS_MASK = COMP_INTENSET_CROSS_Msk,                /*!< CROSS event (generated after VIN+ == VIN-). */
+    NRF_DRV_COMP_EVT_EN_UP_MASK = COMP_INTENSET_UP_Msk,                      /*!< UP event (generated when VIN+ crosses VIN- while increasing). */
+    NRF_DRV_COMP_EVT_EN_DOWN_MASK = COMP_INTENSET_DOWN_Msk,                  /*!< DOWN event (generated when VIN+ crosses VIN- while decreasing). */
+    NRF_DRV_COMP_EVT_EN_READY_MASK = COMP_INTENSET_READY_Msk                 /*!< READY event (generated when the module is ready). */
 }nrf_drv_comp_evt_en_mask_t;
 
 /**@brief COMP configuration.
  */
 typedef struct
 {
-	nrf_comp_ref_t		    reference;	        /**< Reference selection. */
-	nrf_comp_ext_ref_t      ext_ref;            /**< External analog reference selection. */
-	nrf_comp_main_mode_t	main_mode;			/**< Main operation mode. */
-	nrf_comp_th_t			threshold;			/**< Structure holding THDOWN and THUP values needed by the COMP_TH register. */
-	nrf_comp_sp_mode_t		speed_mode;			/**< Speed and power mode. */
-	nrf_comp_hyst_t			hyst;				/**< Comparator hysteresis.*/
-	nrf_isource_t			isource;			/**< Current source selected on analog input. */
-    nrf_comp_input_t     	input;              /**< Input to be monitored. */
-    uint8_t              	interrupt_priority; /**< Interrupt priority. */
+    nrf_comp_ref_t           reference;          /**< Reference selection. */
+    nrf_comp_ext_ref_t       ext_ref;            /**< External analog reference selection. */
+    nrf_comp_main_mode_t     main_mode;          /**< Main operation mode. */
+    nrf_comp_th_t            threshold;          /**< Structure holding THDOWN and THUP values needed by the COMP_TH register. */
+    nrf_comp_sp_mode_t       speed_mode;         /**< Speed and power mode. */
+    nrf_comp_hyst_t          hyst;               /**< Comparator hysteresis.*/
+    nrf_isource_t            isource;            /**< Current source selected on analog input. */
+    nrf_comp_input_t         input;              /**< Input to be monitored. */
+    uint8_t                  interrupt_priority; /**< Interrupt priority. */
 } nrf_drv_comp_config_t;
 
 /** @brief COMP threshold default configuration. */
-#define COMP_CONFIG_TH	                            \
-{							                        \
-	.th_down = VOLTAGE_THRESHOLD_TO_INT(0.5, 1.8), 	    \
-	.th_up = VOLTAGE_THRESHOLD_TO_INT(1.5, 1.8) 		\
+#define COMP_CONFIG_TH                               \
+{                                                    \
+    .th_down = VOLTAGE_THRESHOLD_TO_INT(0.5, 1.8),     \
+    .th_up = VOLTAGE_THRESHOLD_TO_INT(1.5, 1.8)     \
 }
 
 /** @brief COMP driver default configuration including the COMP HAL configuration. */
-#define NRF_DRV_COMP_CONF_DEFAULT_CONFIG(INPUT)       							\
-    {                                                                              	\
-        .reference          = COMP_CONFIG_REF,                                      \
-        .main_mode          = COMP_CONFIG_MAIN_MODE,                                \
-        .threshold          = COMP_CONFIG_TH,                                       \
-        .speed_mode         = COMP_CONFIG_SPEED_MODE,                               \
-        .hyst               = COMP_CONFIG_HYST,                                     \
-        .isource            = COMP_CONFIG_ISOURCE,                                  \
-        .input              = INPUT,                            	    			\
-        .interrupt_priority = COMP_CONFIG_IRQ_PRIORITY                           	\
-    }
+#define NRF_DRV_COMP_CONF_DEFAULT_CONFIG(INPUT)                                        \
+{                                                                               \
+        .reference          = (nrf_comp_ref_t)COMP_CONFIG_REF,                      \
+        .main_mode          = (nrf_comp_main_mode_t)COMP_CONFIG_MAIN_MODE,          \
+    .threshold          = COMP_CONFIG_TH,                                       \
+        .speed_mode         = (nrf_comp_sp_mode_t)COMP_CONFIG_SPEED_MODE,           \
+        .hyst               = (nrf_comp_hyst_t)COMP_CONFIG_HYST,                    \
+        .isource            = (nrf_isource_t)COMP_CONFIG_ISOURCE,                   \
+        .input              = (nrf_comp_input_t)INPUT,                                \
+    .interrupt_priority = COMP_CONFIG_IRQ_PRIORITY                              \
+}
 
 /**
  * @brief Function for initializing the COMP driver.
- * 
- * This function initializes the COMP driver, but does not enable the peripheral or any interrupts. 
+ *
+ * This function initializes the COMP driver, but does not enable the peripheral or any interrupts.
  * To start the driver, call the function @ref nrf_drv_comp_start() after initialization.
  *
  * If no configuration structure is provided, the driver is initialized with the default settings.
@@ -115,18 +119,18 @@ typedef struct
  * @param[in] p_config              Initial configuration. If NULL, the default configuration is used.
  * @param[in] event_handler         Handler function.
  *
- * @retval NRF_ERROR_INVALID_PARAM 	If the configuration is invalid.
- * @retval NRF_ERROR_INVALID_STATE 	If the driver has already been initialized.
- * @retval NRF_ERROR_BUSY 			If the LPCOMP driver is initialized.
+ * @retval NRF_ERROR_INVALID_PARAM     If the configuration is invalid.
+ * @retval NRF_ERROR_INVALID_STATE     If the driver has already been initialized.
+ * @retval NRF_ERROR_BUSY              If the LPCOMP driver is initialized.
  */
 ret_code_t nrf_drv_comp_init(const nrf_drv_comp_config_t * p_config,
-                               comp_events_handler_t   event_handler);
+                             comp_events_handler_t   event_handler);
 
 
 /**
  *  @brief Function for uninitializing the COMP driver.
  *
- *  This function uninitializes the COMP driver. The COMP peripheral and 
+ *  This function uninitializes the COMP driver. The COMP peripheral and
  *  its interrupts are disabled, and local variables are cleaned. After this call, you must
  *  initialize the driver again by calling nrf_drv_comp_init() if you want to use it.
  *
@@ -140,17 +144,17 @@ void     nrf_drv_comp_uninit(void);
  * @param[in] psel              COMP analog pin selection.
  */
 void nrf_drv_comp_pin_select(nrf_comp_input_t psel);
-    
+
 /**
  * @brief Function for starting the COMP peripheral and interrupts.
  *
  * Before calling this function, the driver must be initialized. This function
  * enables the COMP peripheral and its interrupts.
  *
- * @param[in] comp_evt_en_mask			Mask of events to be enabled. This parameter should be built as
- * 										'or' of elements from @ref nrf_drv_comp_evt_en_mask_t.
- * @param[in] comp_shorts_mask			Mask of shorts to be enabled. This parameter should be built as
- * 										'or' of elements from @ref nrf_drv_comp_short_mask_t.
+ * @param[in] comp_evt_en_mask            Mask of events to be enabled. This parameter should be built as
+ *                                        'or' of elements from @ref nrf_drv_comp_evt_en_mask_t.
+ * @param[in] comp_shorts_mask            Mask of shorts to be enabled. This parameter should be built as
+ *                                        'or' of elements from @ref nrf_drv_comp_short_mask_t.
  *
  * @sa nrf_drv_comp_init()
  *
@@ -170,7 +174,7 @@ void nrf_drv_comp_stop(void);
 /**
  * @brief Function for copying the current state of the comparator result to the RESULT register.
  *
- * @retval 0 If the input voltage is below the threshold (VIN+ < VIN-). 
+ * @retval 0 If the input voltage is below the threshold (VIN+ < VIN-).
  * @retval 1 If the input voltage is above the threshold (VIN+ > VIN-).
  */
 uint32_t nrf_drv_comp_sample(void);
@@ -180,7 +184,7 @@ uint32_t nrf_drv_comp_sample(void);
  *
  * Before calling this function, the driver must be enabled.
  *
- * @param[in] comp_task					COMP task.
+ * @param[in] comp_task                    COMP task.
  *
  * @return Address of the given COMP task.
  */
@@ -192,7 +196,7 @@ __STATIC_INLINE uint32_t nrf_drv_comp_task_address_get(nrf_comp_task_t comp_task
 /**
  * @brief Function for getting the event address.
  *
- * @param[in] comp_event				COMP event.
+ * @param[in] comp_event                COMP event.
  *
  * @return Address of the given COMP event.
  */
@@ -204,7 +208,7 @@ __STATIC_INLINE uint32_t nrf_drv_comp_event_address_get(nrf_comp_event_t comp_ev
 /**
  * @brief Function for converting a GPIO pin number to an analog COMP channel.
  *
- * @param[in]  pin						GPIO pin number.
+ * @param[in]  pin                        GPIO pin number.
  *
  * @return     COMP channel. The function returns UINT8_MAX
  *             if the specified pin is not an analog input.
@@ -214,7 +218,7 @@ __STATIC_INLINE nrf_comp_input_t nrf_drv_comp_gpio_to_ain(uint8_t pin);
 /**
  * @brief Function for converting a COMP channel to a GPIO pin number.
  *
- * @param[in]  ain						COMP channel.
+ * @param[in]  ain                        COMP channel.
  *
  * @return     GPIO pin number. The function returns UINT8_MAX
  *             if the specified channel is not a GPIO pin.
@@ -228,7 +232,7 @@ __STATIC_INLINE nrf_comp_input_t nrf_drv_comp_gpio_to_ain(uint8_t pin)
     // AIN0 - AIN3
     if ((pin >= 2) && (pin <= 5))
     {
-        return (nrf_comp_input_t)(pin-2);
+        return (nrf_comp_input_t)(pin - 2);
     }
     // AIN4 - AIN7
     else if ((pin >= 28) && (pin <= 31))
@@ -249,7 +253,7 @@ __STATIC_INLINE uint8_t nrf_drv_comp_ain_to_gpio(nrf_comp_input_t ain)
         return (uint8_t)(ain + 2);
     }
     // AIN4 - AIN7
-    else if ((ain >= 4) && (ain <= 7))
+    else if ((ain >= 4) && ((uint8_t)ain <= 7))
     {
         return (uint8_t)(ain + 24);
     }
@@ -265,4 +269,8 @@ __STATIC_INLINE uint8_t nrf_drv_comp_ain_to_gpio(nrf_comp_input_t ain)
  *@}
  **/
 
- #endif /* NRF_DRV_COMP_H__ */
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* NRF_DRV_COMP_H__ */

@@ -26,6 +26,10 @@
 #include <stdint.h>
 #include "nfc_ndef_msg.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /** @brief Function for encoding an NFC NDEF launch app message.
  *
@@ -59,6 +63,11 @@ ret_code_t nfc_launchapp_msg_encode(uint8_t const * p_android_package_name,
 /**
  * @}
  */
+
+#ifdef __cplusplus
+}
+#endif
+
  #endif // NFC_LAUNCHAPP_MSG_H__
 
 

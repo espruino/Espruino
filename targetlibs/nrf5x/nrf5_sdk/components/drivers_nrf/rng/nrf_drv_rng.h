@@ -18,13 +18,17 @@
 
 #include "nrf_rng.h"
 #include "sdk_errors.h"
-#include "nrf_drv_config.h"
+#include "sdk_config.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @addtogroup nrf_rng RNG HAL and driver
  * @ingroup nrf_drivers
  * @brief Random number generator (RNG) APIs.
- * @details The RNG HAL provides basic APIs for accessing the registers of the random number generator. 
+ * @details The RNG HAL provides basic APIs for accessing the registers of the random number generator.
  * The RNG driver provides APIs on a higher level.
  *
  * @defgroup nrf_drv_rng RNG driver
@@ -112,4 +116,9 @@ ret_code_t nrf_drv_rng_block_rand(uint8_t * p_buff, uint32_t length);
 /**
  *@}
  **/
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // NRF_DRV_RNG_H__

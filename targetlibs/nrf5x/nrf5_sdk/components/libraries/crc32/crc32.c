@@ -9,7 +9,8 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if CRC32_ENABLED
 #include "crc32.h"
 
 #include <stdlib.h>
@@ -24,8 +25,9 @@ uint32_t crc32_compute(uint8_t const * p_data, uint32_t size, uint32_t const * p
         crc = crc ^ p_data[i];
         for (uint32_t j = 8; j > 0; j--)
         {
-            crc = (crc >> 1) ^ (0xEDB88320 & -(crc & 1));
+            crc = (crc >> 1) ^ (0xEDB88320U & ((crc & 1) ? 0xFFFFFFFF : 0));
         }
     }
     return ~crc;
 }
+#endif //CRC32_ENABLED

@@ -23,11 +23,15 @@
 #ifndef BLE_LNS_COMMON_H__
 #define BLE_LNS_COMMON_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define BLE_LNS_INVALID_ROUTE                                       0xFFFF
 #define BLE_LNS_NO_FIX                                              0xFF
 
 #define BLE_LNS_MAX_NUM_ROUTES                                      10                      /**< The maximum number of routes. This affects memory usage only. */
-#define BLE_LNS_MAX_ROUTE_NAME_LEN                                  (BLE_L2CAP_MTU_DEF-5)   /**< The maximum length of length of a route name. */
+#define BLE_LNS_MAX_ROUTE_NAME_LEN                                  (BLE_L2CAP_MTU_DEF - 5)   /**< The maximum length of length of a route name. */
 #define MAX_CTRL_POINT_RESP_PARAM_LEN   BLE_LNS_MAX_ROUTE_NAME_LEN + 3                      /**< Maximum length of a control point response. */
 
 // Location and Navigation Service feature bits
@@ -52,6 +56,11 @@
 #define BLE_LNS_FEATURE_FIX_RATE_SETTING_SUPPORTED                  (0x01 << 18)            /**< Fix Rate Setting Supported bit. */
 #define BLE_LNS_FEATURE_ELEVATION_SETTING_SUPPORTED                 (0x01 << 19)            /**< Elevation Setting Supported bit. */
 #define BLE_LNS_FEATURE_POSITION_STATUS_SUPPORTED                   (0x01 << 20)            /**< Position Status Supported bit. */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BLE_LNS_COMMON_H__ */
 

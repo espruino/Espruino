@@ -27,6 +27,10 @@
 
 #include "nrf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /**
  * @brief This value can be provided as a parameter for the @ref nrf_i2s_pins_set
@@ -378,6 +382,10 @@ __STATIC_INLINE void nrf_i2s_event_clear(NRF_I2S_Type * p_i2s,
                                          nrf_i2s_event_t event)
 {
     *((volatile uint32_t *)((uint8_t *)p_i2s + (uint32_t)event)) = 0x0UL;
+#if __CORTEX_M == 0x04
+    volatile uint32_t dummy = *((volatile uint32_t *)((uint8_t *)p_i2s + (uint32_t)event));
+    (void)dummy;
+#endif
 }
 
 __STATIC_INLINE bool nrf_i2s_event_check(NRF_I2S_Type const * p_i2s,
@@ -517,6 +525,11 @@ __STATIC_INLINE uint32_t * nrf_i2s_tx_buffer_get(NRF_I2S_Type const * p_i2s)
 }
 
 #endif // SUPPRESS_INLINE_IMPLEMENTATION
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NRF_I2S_H__
 

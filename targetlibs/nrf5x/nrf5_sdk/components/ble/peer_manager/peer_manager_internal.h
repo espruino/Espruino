@@ -20,6 +20,10 @@
 #include "ble_gap.h"
 #include "peer_manager_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /**
  * @cond NO_DOXYGEN
@@ -143,5 +147,26 @@ typedef pm_peer_data_const_t pm_peer_data_flash_t;
 /** @}
  * @endcond
  */
+
+
+#ifdef NRF_PM_DEBUG
+
+    #define NRF_PM_DEBUG_CHECK(condition)   \
+        if (!(condition))                   \
+        {                                   \
+            __asm("bkpt #0");               \
+        }
+
+#else
+
+    // Prevent "variable set but never used" compiler warnings.
+    #define NRF_PM_DEBUG_CHECK(condition)   (void)(condition)
+
+#endif
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PEER_MANAGER_INTERNAL_H__ */

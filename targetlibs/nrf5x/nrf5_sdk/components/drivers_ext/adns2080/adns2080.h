@@ -18,12 +18,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
 * @brief ADNS2080 mouse sensor driver
 *
 * @defgroup nrf_drivers_adns2080 ADNS2080 driver
 * @{
-* @ingroup nrf_drivers
+* @ingroup ext_drivers
 * @brief ADNS2080 mouse sensor driver.
 */
 
@@ -98,8 +102,8 @@ typedef enum
  *
  * Valid mouse sensor information will be available 50 milliseconds after this
  * function finishes.
- * 
- * @return 
+ *
+ * @return
  * @retval ADNS2080_OK Mouse sensor was initialized succesfully.
  * @retval ADNS2080_SERIAL_COMM_FAILURE Serial communications failure.
  * @retval ADNS2080_CHIP_NOT_DETECTED Could not find revision 0 ADNS2080 chip.
@@ -112,7 +116,7 @@ adns2080_status_t adns2080_init(void);
  * Valid mouse sensor information will be available 50 milliseconds after this
  * function finishes.
  * All register settings will be lost and need to be reloaded.
- * 
+ *
  */
 void adns2080_reset(void);
 
@@ -148,22 +152,22 @@ void adns2080_powerdown(void);
 /**
  * @brief Function for waking up the mouse sensor.
  *
- * After wakeup, all mouse sensor settings must be reloaded. Valid mouse sensor 
- * information will be available 55 milliseconds after this function finishes. 
+ * After wakeup, all mouse sensor settings must be reloaded. Valid mouse sensor
+ * information will be available 55 milliseconds after this function finishes.
  */
 void adns2080_wakeup(void);
 
 /**
  * @brief Function for configuring the MOTION interrupt output pin.
  *
- * When motion is detected by the mouse sensor, the chip has a MOTION pin 
- * indicating there is motion data in DELTA_X and DELTA_Y registers. This 
+ * When motion is detected by the mouse sensor, the chip has a MOTION pin
+ * indicating there is motion data in DELTA_X and DELTA_Y registers. This
  * function configures the polarity and sensitivity of that pin.
  *
  * Chip is expected to be initialized before calling this function.
  *
  * @param polarity MOTION output pin is either active LOW (default) or active HIGH
- * @param sensitivity Level or Edge (default) sensitive 
+ * @param sensitivity Level or Edge (default) sensitive
  * @return
  * @retval ADNS2080_OK Operation succeeded.
  * @retval ADNS2080_INVALID_PARAMETER One of the parameters was not within valid range.
@@ -176,7 +180,7 @@ adns2080_status_t adns2080_motion_interrupt_set(motion_output_polarity_t polarit
  * Chip is expected to be initialized before calling this function.
  *
  * @param resolution Desired resolution.
- * @return 
+ * @return
  * @retval ADNS2080_OK Operation succeeded.
  * @retval ADNS2080_INVALID_PARAMETER One of the parameters was not within valid range.
  */
@@ -188,7 +192,7 @@ adns2080_status_t adns2080_resolution_set(adns2080_resolution_t resolution);
  * Chip is expected to be initialized before calling this function.
  *
  * @param motion_bits Desired number of bits.
- * @return 
+ * @return
  * @retval ADNS2080_OK Operation succeeded.
  * @retval ADNS2080_INVALID_PARAMETER One of the parameters was not within valid range.
  */
@@ -206,7 +210,7 @@ adns2080_motion_bits_t adns2080_motion_bits_read(void);
 /**
  * @brief Function for reading X- and Y-axis movement (in counts) since last report.
  *
- * Absolute value is determined by resolution. 
+ * Absolute value is determined by resolution.
  * Chip is expected to be initialized before calling this function.
  *
  * @param p_delta_x Location to store X-axis movement
@@ -227,7 +231,7 @@ bool adns2080_is_motion_detected(void);
 
 /**
  * @brief Function for setting mouse sensor Rest1, Rest2 and Rest3 mode motion detection time period.
- * 
+ *
  * Allowed range for the periods is 0x01 to 0xFD.
  * Resulting period is derived from the following equation :
  * Period = (Rest period + 1) * 10 milliseconds
@@ -241,11 +245,11 @@ void adns2080_rest_periods_set(uint8_t rest1_period, uint8_t rest2_period, uint8
 
 /**
  * @brief Function for setting mouse sensor mode downshift time periods.
- * 
+ *
  * Allowed range for run_to_rest1_mode_time period is 0x00 to 0xFF.
- * Allowed range for rest1_to_rest2_mode_time period is 0x01 to 0xFF. 
- * Allowed range for rest2_to_rest3_mode_time period is 0x01 to 0xFF. 
- * 
+ * Allowed range for rest1_to_rest2_mode_time period is 0x01 to 0xFF.
+ * Allowed range for rest2_to_rest3_mode_time period is 0x01 to 0xFF.
+ *
  * Chip is expected to be initialized before calling this function.
  *
  * @param run_to_rest1_mode_time Run mode to Rest1 mode downshift time period (Time = run_to_rest1_mode_time * 8 * 4)
@@ -256,7 +260,7 @@ void adns2080_downshift_times_set(uint8_t run_to_rest1_mode_time, uint8_t rest1_
 
 /**
  * @brief Function for forcing mouse sensor to a certain operating mode.
- * 
+ *
  * Chip is expected to be initialized before calling this function.
  * Normal operation will not continue until this function is called with ADNS2080_MODE_NORMAL parameter.
  *
@@ -266,7 +270,7 @@ void adns2080_force_mode_set(adns2080_mode_t mode);
 
 /**
  * @brief Function for reading the current forced operating mode.
- * 
+ *
  * Chip is expected to be initialized before calling this function.
  *
  * @return Mode the sensor is forced to.
@@ -277,5 +281,10 @@ adns2080_mode_t adns2080_force_mode_read(void);
  *@}
  **/
 
-/*lint --flb "Leave library region" */ 
+/*lint --flb "Leave library region" */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

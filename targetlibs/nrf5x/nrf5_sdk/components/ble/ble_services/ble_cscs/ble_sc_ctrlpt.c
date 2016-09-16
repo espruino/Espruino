@@ -360,7 +360,7 @@ static void on_ctrlpt_write(ble_sc_ctrlpt_t       * p_sc_ctrlpt,
         switch (rcvd_ctrlpt.opcode)
         {
             case BLE_SCPT_REQUEST_SUPPORTED_SENSOR_LOCATIONS:
-                if ((p_sc_ctrlpt->supported_functions & 
+                if ((p_sc_ctrlpt->supported_functions &
                      BLE_SRV_SC_CTRLPT_SENSOR_LOCATIONS_OP_SUPPORTED) ==
                      BLE_SRV_SC_CTRLPT_SENSOR_LOCATIONS_OP_SUPPORTED)
                 {
@@ -373,7 +373,7 @@ static void on_ctrlpt_write(ble_sc_ctrlpt_t       * p_sc_ctrlpt,
                 break;
 
             case BLE_SCPT_UPDATE_SENSOR_LOCATION:
-                if ((p_sc_ctrlpt->supported_functions & 
+                if ((p_sc_ctrlpt->supported_functions &
                      BLE_SRV_SC_CTRLPT_SENSOR_LOCATIONS_OP_SUPPORTED) ==
                      BLE_SRV_SC_CTRLPT_SENSOR_LOCATIONS_OP_SUPPORTED)
                 {

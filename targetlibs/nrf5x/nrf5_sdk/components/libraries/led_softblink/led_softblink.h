@@ -9,7 +9,7 @@
  * the file.
  *
  */
- 
+
  /** @file
  *
  * @defgroup led_softblink LED softblink
@@ -20,7 +20,7 @@
  *
  * @details This module provides an LED softblink implementation using timers and GPIO.
  *
- * LED softblink needs one timer. It can use any number of output channels that are available. 
+ * LED softblink needs one timer. It can use any number of output channels that are available.
  *
  * Only one instance of LED softblink can run at a time.
  */
@@ -32,6 +32,10 @@
 #include <stdint.h>
 #include "sdk_errors.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Structure holding the initialization parameters.
  */
@@ -40,9 +44,9 @@ typedef struct
     bool     active_high;      /**< Activate negative polarity. */
     uint8_t  duty_cycle_max;   /**< Maximum impulse width. */
     uint8_t  duty_cycle_min;   /**< Minimum impulse width. */
-    uint8_t  duty_cycle_step;  /**< Cycle step. */ 
+    uint8_t  duty_cycle_step;  /**< Cycle step. */
     uint32_t off_time_ticks;   /**< Ticks to stay in low impulse state. */
-    uint32_t on_time_ticks;    /**< Ticks to stay in high impulse state. */ 
+    uint32_t on_time_ticks;    /**< Ticks to stay in high impulse state. */
     uint32_t leds_pin_bm;      /**< Mask of used LEDs. */
 }led_sb_init_params_t;
 
@@ -87,7 +91,7 @@ ret_code_t led_softblink_init(led_sb_init_params_t * p_init_params);
  * @brief Function for starting to blink LEDs.
  *
  * @param[in] leds_pin_bit_mask        Bit mask containing the pins for the LEDs to be blinked.
- *   
+ *
  * @return Values returned by @ref app_timer_start.
  */
 ret_code_t led_softblink_start(uint32_t leds_pin_bit_mask);
@@ -125,6 +129,11 @@ void led_softblink_on_time_set(uint32_t on_time_ticks);
  * @retval NRF_SUCCESS          If LED softblink was uninitialized successfully.
  */
 ret_code_t led_softblink_uninit(void);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // LED_SOFTBLINK_H__
 
 /** @} */

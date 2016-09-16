@@ -10,6 +10,8 @@
  *
  */
 
+#include "sdk_config.h"
+#if I2S_ENABLED
 #include "nrf_drv_i2s.h"
 #include "nrf_drv_common.h"
 #include "nrf_gpio.h"
@@ -17,9 +19,8 @@
 #include "app_util_platform.h"
 #include "sdk_common.h"
 
-#if (I2S_ENABLED == 0)
-    #error "I2S not enabled in driver configuration file."
-#endif
+
+#define MODULE_INITIALIZED (m_cb.state == NRF_DRV_STATE_INITIALIZED) /**< Macro designating whether the module has been initialized properly. */
 
 // Control block - driver instance local data.
 typedef struct
@@ -37,8 +38,6 @@ typedef struct
 } i2s_control_block_t;
 static i2s_control_block_t m_cb;
 
-#define MODULE_INITIALIZED (m_cb.state == NRF_DRV_STATE_INITIALIZED)
-#include "sdk_macros.h"
 
 static nrf_drv_i2s_config_t const m_default_config = NRF_DRV_I2S_DEFAULT_CONFIG;
 
@@ -353,3 +352,4 @@ void I2S_IRQHandler(void)
         }
     }
 }
+#endif //I2S_ENABLED

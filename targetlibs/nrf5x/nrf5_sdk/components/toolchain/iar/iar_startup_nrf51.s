@@ -42,11 +42,26 @@
 
         MODULE  ?cstartup
 
+#if defined(__STARTUP_CONFIG)
+
+        #include "startup_config.h"
+
+        SECTION CSTACK:DATA:NOROOT(3)
+        DS8 __STARTUP_CONFIG_STACK_SIZE
+
+        SECTION HEAP:DATA:NOROOT(3)
+        DS8 __STARTUP_CONFIG_HEAP_SIZE
+
+#else
+
         ;; Stack size default : Defined in *.icf (linker file). Can be modified inside EW.
         ;; Heap size default : Defined in *.icf (linker file). Can be modified inside EW.
 
         ;; Forward declaration of sections.
         SECTION CSTACK:DATA:NOROOT(3)
+
+#endif
+
 
         SECTION .intvec:CODE:NOROOT(2)
 
@@ -123,7 +138,7 @@ NRF_POWER_RAMONx_RAMxON_ONMODE_Msk   EQU   0x3         ; All RAM blocks on in on
         THUMB
 
         PUBWEAK Reset_Handler
-        SECTION .text:CODE:REORDER(2)
+        SECTION .text:CODE:REORDER:NOROOT(2)
 Reset_Handler
         MOVS    R1, #NRF_POWER_RAMONx_RAMxON_ONMODE_Msk
         
@@ -143,30 +158,30 @@ Reset_Handler
         BX      R0
 
         ; Dummy exception handlers
-        
+
 
         PUBWEAK NMI_Handler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 NMI_Handler
         B .
 
         PUBWEAK HardFault_Handler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 HardFault_Handler
         B .
 
         PUBWEAK SVC_Handler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 SVC_Handler
         B .
 
         PUBWEAK PendSV_Handler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 PendSV_Handler
         B .
 
         PUBWEAK SysTick_Handler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 SysTick_Handler
         B .
 
@@ -174,127 +189,127 @@ SysTick_Handler
        ; Dummy interrupt handlers
 
         PUBWEAK  POWER_CLOCK_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 POWER_CLOCK_IRQHandler
         B .
 
         PUBWEAK  RADIO_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 RADIO_IRQHandler
         B .
 
         PUBWEAK  UART0_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 UART0_IRQHandler
         B .
 
         PUBWEAK  SPI0_TWI0_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 SPI0_TWI0_IRQHandler
         B .
 
         PUBWEAK  SPI1_TWI1_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 SPI1_TWI1_IRQHandler
         B .
 
         PUBWEAK  GPIOTE_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 GPIOTE_IRQHandler
         B .
 
         PUBWEAK  ADC_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 ADC_IRQHandler
         B .
 
         PUBWEAK  TIMER0_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 TIMER0_IRQHandler
         B .
 
         PUBWEAK  TIMER1_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 TIMER1_IRQHandler
         B .
 
         PUBWEAK  TIMER2_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 TIMER2_IRQHandler
         B .
 
         PUBWEAK  RTC0_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 RTC0_IRQHandler
         B .
 
         PUBWEAK  TEMP_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 TEMP_IRQHandler
         B .
 
         PUBWEAK  RNG_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 RNG_IRQHandler
         B .
 
         PUBWEAK  ECB_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 ECB_IRQHandler
         B .
 
         PUBWEAK  CCM_AAR_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 CCM_AAR_IRQHandler
         B .
 
         PUBWEAK  WDT_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 WDT_IRQHandler
         B .
 
         PUBWEAK  RTC1_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 RTC1_IRQHandler
         B .
 
         PUBWEAK  QDEC_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 QDEC_IRQHandler
         B .
 
         PUBWEAK  LPCOMP_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 LPCOMP_IRQHandler
         B .
 
         PUBWEAK  SWI0_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 SWI0_IRQHandler
         B .
 
         PUBWEAK  SWI1_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 SWI1_IRQHandler
         B .
 
         PUBWEAK  SWI2_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 SWI2_IRQHandler
         B .
 
         PUBWEAK  SWI3_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 SWI3_IRQHandler
         B .
 
         PUBWEAK  SWI4_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 SWI4_IRQHandler
         B .
 
         PUBWEAK  SWI5_IRQHandler
-        SECTION .text:CODE:REORDER(1)
+        SECTION .text:CODE:REORDER:NOROOT(1)
 SWI5_IRQHandler
         B .
 

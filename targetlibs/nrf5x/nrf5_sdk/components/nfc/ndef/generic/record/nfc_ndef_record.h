@@ -19,6 +19,10 @@
 #include "sdk_errors.h"
 #include "nrf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@file
  *
  * @defgroup nfc_ndef_record Custom NDEF records
@@ -45,7 +49,8 @@
  * record.
  *
  * @param[in] p_payload_descriptor  Pointer to the input data for the constructor.
- * @param[out] p_buffer             Pointer to the payload destination.
+ * @param[out] p_buffer             Pointer to the payload destination. If NULL, function will
+ *                                  calculate the expected size of the record payload.
  *
  * @param[in,out] p_len             Size of the available memory to write as input. Size of the generated
  *                                  record payload as output. The implementation must check if the payload
@@ -211,12 +216,12 @@ typedef struct
 
 /** @brief Macro for accessing the NFC NDEF record descriptor instance
  *  that you created with @ref NFC_NDEF_RECORD_BIN_DATA_DEF.
- */    
+ */
 #define NFC_NDEF_RECORD_BIN_DATA(NAME) (NAME##_nfc_ndef_bin_record_desc)
 
 /** @brief Macro for accessing the binary data descriptor that contains
  * the payload of the record that you created with @ref NFC_NDEF_RECORD_BIN_DATA_DEF.
- */ 
+ */
 #define NFC_NDEF_BIN_PAYLOAD_DESC(NAME) (NAME##_nfc_ndef_bin_payload_desc)
 
 /**
@@ -226,7 +231,8 @@ typedef struct
  *
  * @param[in] p_ndef_record_desc  Pointer to the record descriptor.
  * @param[in] record_location     Location of the record within the NDEF message.
- * @param[out] p_record_buffer    Pointer to the record destination.
+ * @param[out] p_record_buffer    Pointer to the record destination. If NULL, function will
+ *                                calculate the expected size of the record.
  * @param[in,out] p_record_len    Size of the available memory for the record as input. Size of the generated
  *                                record as output.
  *
@@ -247,7 +253,8 @@ ret_code_t nfc_ndef_record_encode(nfc_ndef_record_desc_t const * p_ndef_record_d
  *
  * @param[in] p_payload_descriptor   Pointer to the descriptor of the binary data location and size.
  *
- * @param[out] p_buffer              Pointer to the payload destination.
+ * @param[out] p_buffer              Pointer to the payload destination. If NULL, function will
+ *                                   calculate the expected size of the record payload.
  * @param[in,out] p_len              Size of the available memory for the payload as input. Size of the copied payload
  *                                   as output.
  *
@@ -261,6 +268,11 @@ ret_code_t nfc_ndef_bin_payload_memcopy(nfc_ndef_bin_payload_desc_t * p_payload_
 /**
  * @}
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NFC_NDEF_RECORD_H__
 

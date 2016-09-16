@@ -10,6 +10,8 @@
  *
  */
 
+#include "sdk_config.h"
+#if QDEC_ENABLED
 #include <stdint.h>
 #include <stddef.h>
 
@@ -142,8 +144,8 @@ void nrf_drv_qdec_enable(void)
 void nrf_drv_qdec_disable(void)
 {
     ASSERT(m_state == NRF_DRV_STATE_POWERED_ON);
-    nrf_qdec_disable();
     nrf_qdec_task_trigger(NRF_QDEC_TASK_STOP);
+    nrf_qdec_disable();
     m_state = NRF_DRV_STATE_INITIALIZED;
 }
 
@@ -166,3 +168,4 @@ void nrf_drv_qdec_event_address_get(nrf_qdec_event_t event, uint32_t * p_event)
     *p_event = (uint32_t)nrf_qdec_event_address_get(event);
 }
 
+#endif //QDEC_ENABLED

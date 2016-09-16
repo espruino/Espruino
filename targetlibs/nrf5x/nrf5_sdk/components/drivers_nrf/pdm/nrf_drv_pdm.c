@@ -10,11 +10,12 @@
  *
  */
 
+#include "sdk_config.h"
+#if PDM_ENABLED
 #include "nrf_drv_pdm.h"
 #include "nrf_assert.h"
 #include "nrf_drv_common.h"
 #include "nrf_gpio.h"
-
 
 /** @brief PDM interface status. */
 typedef enum
@@ -43,7 +44,7 @@ void PDM_IRQHandler(void)
     if (nrf_pdm_event_check(NRF_PDM_EVENT_END))
     {
         nrf_pdm_event_clear(NRF_PDM_EVENT_END);
-        
+
         //Buffer is ready to process.
         if (nrf_pdm_buffer_get() == m_cb.buffers[0])
         {
@@ -58,7 +59,7 @@ void PDM_IRQHandler(void)
     {
         nrf_pdm_event_clear(NRF_PDM_EVENT_STARTED);
         m_cb.status = NRF_PDM_STATE_RUNNING;
-        
+
         //Swap buffer.
         if (nrf_pdm_buffer_get() == m_cb.buffers[0])
         {
@@ -96,13 +97,13 @@ ret_code_t nrf_drv_pdm_init(nrf_drv_pdm_config_t const * p_config,
     {
         return NRF_ERROR_INVALID_PARAM;
     }
-    
+
     m_cb.buffers[0] = (uint32_t*)p_config->buffer_a;
     m_cb.buffers[1] = (uint32_t*)p_config->buffer_b;
     m_cb.buffer_length = p_config->buffer_length;
     m_cb.event_handler = event_handler;
     m_cb.status = NRF_PDM_STATE_IDLE;
-    
+
     nrf_pdm_buffer_set(m_cb.buffers[0],m_cb.buffer_length);
     nrf_pdm_clock_set(p_config->clock_freq);
     nrf_pdm_mode_set(p_config->mode, p_config->edge);
@@ -112,11 +113,11 @@ ret_code_t nrf_drv_pdm_init(nrf_drv_pdm_config_t const * p_config,
     nrf_gpio_pin_clear(p_config->pin_clk);
     nrf_gpio_cfg_input(p_config->pin_din, NRF_GPIO_PIN_NOPULL);
     nrf_pdm_psel_connect(p_config->pin_clk, p_config->pin_din);
-    
+
     m_cb.drv_state = NRF_DRV_STATE_INITIALIZED;
     nrf_pdm_int_enable(NRF_PDM_INT_STARTED | NRF_PDM_INT_END | NRF_PDM_INT_STOPPED);
     nrf_drv_common_irq_enable(PDM_IRQn, p_config->interrupt_priority);
-    
+
     return NRF_SUCCESS;
 }
 
@@ -168,3 +169,4 @@ ret_code_t nrf_drv_pdm_stop(void)
     nrf_pdm_task_trigger(NRF_PDM_TASK_STOP);
     return NRF_SUCCESS;
 }
+#endif //PDM_ENABLED

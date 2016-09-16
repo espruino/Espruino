@@ -26,9 +26,13 @@
 #define NRF_DRV_I2S_H__
 
 #include "nordic_common.h"
-#include "nrf_drv_config.h"
+#include "sdk_config.h"
 #include "nrf_i2s.h"
 #include "sdk_errors.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 /**
@@ -88,13 +92,13 @@ typedef struct
     .sdout_pin    = I2S_CONFIG_SDOUT_PIN,    \
     .sdin_pin     = I2S_CONFIG_SDIN_PIN,     \
     .irq_priority = I2S_CONFIG_IRQ_PRIORITY, \
-    .mode         = I2S_CONFIG_MASTER,       \
-    .format       = I2S_CONFIG_FORMAT,       \
-    .alignment    = I2S_CONFIG_ALIGN,        \
-    .sample_width = I2S_CONFIG_SWIDTH,       \
-    .channels     = I2S_CONFIG_CHANNELS,     \
-    .mck_setup    = I2S_CONFIG_MCK_SETUP,    \
-    .ratio        = I2S_CONFIG_RATIO,        \
+    .mode         = (nrf_i2s_mode_t)I2S_CONFIG_MASTER,       \
+    .format       = (nrf_i2s_format_t)I2S_CONFIG_FORMAT,       \
+    .alignment    = (nrf_i2s_align_t)I2S_CONFIG_ALIGN,        \
+    .sample_width = (nrf_i2s_swidth_t)I2S_CONFIG_SWIDTH,       \
+    .channels     = (nrf_i2s_channels_t)I2S_CONFIG_CHANNELS,     \
+    .mck_setup    = (nrf_i2s_mck_t)I2S_CONFIG_MCK_SETUP,    \
+    .ratio        = (nrf_i2s_ratio_t)I2S_CONFIG_RATIO,        \
 }
 
 /**
@@ -104,8 +108,8 @@ typedef struct
  * of the driver. The driver will call this function when a new portion of data
  * is received or a new portion of data should be prepared for transmission.
  * The first case is indicated by a non-NULL value in the @p p_data_received
- * parameter (which points to the memory containing the received data). 
- * Similarly, the second case is indicated by a non-NULL value in the 
+ * parameter (which points to the memory containing the received data).
+ * Similarly, the second case is indicated by a non-NULL value in the
  * @p p_data_to_send parameter (which points to where the data to be transmitted
  * should be placed).
  *
@@ -213,6 +217,11 @@ ret_code_t nrf_drv_i2s_start(uint32_t * p_rx_buffer,
  * @brief Function for stopping the I2S transfer.
  */
 void       nrf_drv_i2s_stop(void);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NRF_DRV_I2S_H__
 

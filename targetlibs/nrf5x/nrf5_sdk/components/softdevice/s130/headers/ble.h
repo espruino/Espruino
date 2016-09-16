@@ -90,14 +90,14 @@ enum BLE_COMMON_EVTS
 };
 
 /**@brief BLE connection bandwidth types.
- * Bandwidth types supported by the SoftDevice in packets per connection interval.
+ * Bandwidth types supported by the SoftDevice. The bandwidth type dictates the maximum number of full length packets per connection interval.
  */
 enum BLE_CONN_BWS
 {
-  BLE_CONN_BW_NONE = 0,
-  BLE_CONN_BW_LOW,
-  BLE_CONN_BW_MID,
-  BLE_CONN_BW_HIGH
+  BLE_CONN_BW_NONE = 0,                 /**< Invalid connection bandwidth. */
+  BLE_CONN_BW_LOW,                      /**< Low connection bandwidth. */
+  BLE_CONN_BW_MID,                      /**< Medium connection bandwidth. */
+  BLE_CONN_BW_HIGH                      /**< High connection bandwidth. */
 };
 
 /**@brief Common Option IDs.
@@ -168,13 +168,13 @@ typedef struct
 /**@brief Event structure for events not associated with a specific function module. */
 typedef struct
 {
-  uint16_t conn_handle;                 /**< Connection Handle on which this event occurred. */
+  uint16_t conn_handle;                                 /**< Connection Handle on which this event occurred. */
   union
   {
     ble_evt_tx_complete_t           tx_complete;        /**< Transmission Complete. */
     ble_evt_user_mem_request_t      user_mem_request;   /**< User Memory Request Event Parameters. */
     ble_evt_user_mem_release_t      user_mem_release;   /**< User Memory Release Event Parameters. */
-  } params;
+  } params;                                             /**< Event parameter union. */
 } ble_common_evt_t;
 
 /**@brief BLE Event header. */
@@ -195,7 +195,7 @@ typedef struct
     ble_l2cap_evt_t   l2cap_evt;  /**< L2CAP originated event, evt_id in BLE_L2CAP_EVT* series. */
     ble_gattc_evt_t   gattc_evt;  /**< GATT client originated event, evt_id in BLE_GATTC_EVT* series. */
     ble_gatts_evt_t   gatts_evt;  /**< GATT server originated event, evt_id in BLE_GATTS_EVT* series. */
-  } evt;
+  } evt;                          /**< Event union. */
 } ble_evt_t;
 
 
@@ -209,7 +209,9 @@ typedef struct
   uint16_t  subversion_number; /**< Link Layer Sub Version number, corresponds to the SoftDevice Config ID or Firmware ID (FWID). */
 } ble_version_t;
 
-/* @brief: Configuration parameters for the PA and LNA. */
+/**
+ * @brief Configuration parameters for the PA and LNA.
+ */
 typedef struct
 {
      uint8_t enable :1;      /**< Enable toggling for this amplifier */
@@ -217,7 +219,7 @@ typedef struct
      uint8_t gpio_pin :6;    /**< The GPIO pin to toggle for this amplifier */
 } ble_pa_lna_cfg_t;
 
-/*
+/**
  * @brief PA & LNA GPIO toggle configuration
  *
  * This option configures the SoftDevice to toggle pins when the radio is active for use with a power amplifier and/or
@@ -230,7 +232,6 @@ typedef struct
  * @note  This feature is only supported for nRF52, on nRF51 @ref NRF_ERROR_NOT_SUPPORTED will always be returned.
  * @note  Setting this option while the radio is in use (i.e. any of the roles are active) may have undefined consequences
  * and must be avoided by the application.
- *
  */
 typedef struct
 {

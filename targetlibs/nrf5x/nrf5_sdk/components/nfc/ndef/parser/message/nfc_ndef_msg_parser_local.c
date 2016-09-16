@@ -10,8 +10,10 @@
  *
  */
 
-#include "nfc_ndef_msg_parser_local.h"
+#include "sdk_config.h"
+#if NFC_NDEF_MSG_PARSER_ENABLED
 
+#include "nfc_ndef_msg_parser_local.h"
 
 ret_code_t internal_ndef_msg_parser(nfc_ndef_parser_memo_desc_t * const p_parser_memo_desc,
                                     uint8_t                     const * p_nfc_data,
@@ -131,4 +133,4 @@ ret_code_t ndef_parser_memo_resolve(uint8_t                     * const p_result
     return NRF_SUCCESS;
 }
 
-
+#endif // NFC_NDEF_MSG_PARSER_ENABLED

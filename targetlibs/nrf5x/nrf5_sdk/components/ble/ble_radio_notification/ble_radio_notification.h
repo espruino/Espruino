@@ -24,6 +24,10 @@
 #include <stdbool.h>
 #include "nrf_soc.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@brief Application radio notification event handler type. */
 typedef void (*ble_radio_notification_evt_handler_t) (bool radio_active);
 
@@ -37,8 +41,13 @@ typedef void (*ble_radio_notification_evt_handler_t) (bool radio_active);
  * @return     NRF_SUCCESS on successful initialization, otherwise an error code.
  */
 uint32_t ble_radio_notification_init(uint32_t                             irq_priority,
-                                     nrf_radio_notification_distance_t    distance,
+                                     uint8_t                              distance,
                                      ble_radio_notification_evt_handler_t evt_handler);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_RADIO_NOTIFICATION_H__
 

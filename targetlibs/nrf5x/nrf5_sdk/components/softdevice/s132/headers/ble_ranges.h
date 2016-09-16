@@ -62,58 +62,70 @@ extern "C" {
 #endif
 
 #define BLE_SVC_BASE           0x60       /**< Common BLE SVC base. */
-#define BLE_SVC_LAST           0x6B       /**< Total: 12. */
+#define BLE_SVC_LAST           0x6B       /**< Common BLE SVC last. */
 
-#define BLE_RESERVED_SVC_BASE  0x6C       /**< Reserved BLE SVC base. */
-#define BLE_RESERVED_SVC_LAST  0x6F       /**< Total: 4. */
 
-#define BLE_GAP_SVC_BASE       0x70       /**< GAP BLE SVC base. */
-#define BLE_GAP_SVC_LAST       0x8F       /**< Total: 32. */
+#define BLE_GAP_SVC_BASE       0x6C       /**< GAP BLE SVC base. */
+#define BLE_GAP_SVC_LAST       0x93       /**< GAP BLE SVC last. */
 
-#define BLE_GATTC_SVC_BASE     0x90       /**< GATTC BLE SVC base. */
-#define BLE_GATTC_SVC_LAST     0x9F       /**< Total: 32. */
+
+#define BLE_GATTC_SVC_BASE     0x94       /**< GATTC BLE SVC base. */
+#define BLE_GATTC_SVC_LAST     0x9F       /**< GATTC BLE SVC last. */
+
 
 #define BLE_GATTS_SVC_BASE     0xA0       /**< GATTS BLE SVC base. */
-#define BLE_GATTS_SVC_LAST     0xAF       /**< Total: 16. */
+#define BLE_GATTS_SVC_LAST     0xAF       /**< GATTS BLE SVC last. */
+
 
 #define BLE_L2CAP_SVC_BASE     0xB0       /**< L2CAP BLE SVC base. */
-#define BLE_L2CAP_SVC_LAST     0xBF       /**< Total: 16. */
+#define BLE_L2CAP_SVC_LAST     0xBF       /**< L2CAP BLE SVC last. */
 
 
 #define BLE_EVT_INVALID        0x00       /**< Invalid BLE Event. */
 
+
 #define BLE_EVT_BASE           0x01       /**< Common BLE Event base. */
-#define BLE_EVT_LAST           0x0F       /**< Total: 15. */
+#define BLE_EVT_LAST           0x0F       /**< Common BLE Event last. */
+
 
 #define BLE_GAP_EVT_BASE       0x10       /**< GAP BLE Event base. */
-#define BLE_GAP_EVT_LAST       0x2F       /**< Total: 32. */
+#define BLE_GAP_EVT_LAST       0x2F       /**< GAP BLE Event last. */
+
 
 #define BLE_GATTC_EVT_BASE     0x30       /**< GATTC BLE Event base. */
-#define BLE_GATTC_EVT_LAST     0x4F       /**< Total: 32. */
+#define BLE_GATTC_EVT_LAST     0x4F       /**< GATTC BLE Event last. */
+
 
 #define BLE_GATTS_EVT_BASE     0x50       /**< GATTS BLE Event base. */
-#define BLE_GATTS_EVT_LAST     0x6F       /**< Total: 32. */
+#define BLE_GATTS_EVT_LAST     0x6F       /**< GATTS BLE Event last. */
+
 
 #define BLE_L2CAP_EVT_BASE     0x70       /**< L2CAP BLE Event base. */
-#define BLE_L2CAP_EVT_LAST     0x8F       /**< Total: 32.  */
+#define BLE_L2CAP_EVT_LAST     0x8F       /**< L2CAP BLE Event last. */
 
 
 #define BLE_OPT_INVALID        0x00       /**< Invalid BLE Option. */
 
+
 #define BLE_OPT_BASE           0x01       /**< Common BLE Option base. */
-#define BLE_OPT_LAST           0x1F       /**< Total: 31. */
+#define BLE_OPT_LAST           0x1F       /**< Common BLE Option last. */
+
 
 #define BLE_GAP_OPT_BASE       0x20       /**< GAP BLE Option base. */
-#define BLE_GAP_OPT_LAST       0x3F       /**< Total: 32. */
+#define BLE_GAP_OPT_LAST       0x3F       /**< GAP BLE Option last. */
+
 
 #define BLE_GATTC_OPT_BASE     0x40       /**< GATTC BLE Option base. */
-#define BLE_GATTC_OPT_LAST     0x5F       /**< Total: 32. */
+#define BLE_GATTC_OPT_LAST     0x5F       /**< GATTC BLE Option last. */
+
 
 #define BLE_GATTS_OPT_BASE     0x60       /**< GATTS BLE Option base. */
-#define BLE_GATTS_OPT_LAST     0x7F       /**< Total: 32. */
+#define BLE_GATTS_OPT_LAST     0x7F       /**< GATTS BLE Option last. */
+
 
 #define BLE_L2CAP_OPT_BASE     0x80       /**< L2CAP BLE Option base. */
-#define BLE_L2CAP_OPT_LAST     0x9F       /**< Total: 32.  */
+#define BLE_L2CAP_OPT_LAST     0x9F       /**< L2CAP BLE Option last. */
+
 
 #ifdef __cplusplus
 }

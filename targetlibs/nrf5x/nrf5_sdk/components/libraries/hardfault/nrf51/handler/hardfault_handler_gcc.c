@@ -9,13 +9,16 @@
  * the file.
  *
  */
+#include "sdk_config.h"
+#if HARDFAULT_HANDLER_ENABLED
 #include <stdint.h>
+#include "compiler_abstraction.h"
 
 void HardFault_Handler(void) __attribute__(( naked ));
 
 void HardFault_Handler(void)
 {
-    __asm volatile(
+    __ASM volatile(
     "   .syntax unified                        \n"
 
     "   ldr   r0, =0xFFFFFFFD                  \n"
@@ -33,7 +36,7 @@ void HardFault_Handler(void)
     "   ldr   r1, =__StackTop                  \n"
     "   ldr   r2, =__StackLimit                \n"
 
-    /* MSP is in the range of <__StackTop, __StackLimit) */
+    /* MSP is in the range of the stack area */
     "   cmp   r0, r1                           \n"
     "   bhi   HardFault_MoveSP                 \n"
     "   cmp   r0, r2                           \n"
@@ -50,3 +53,4 @@ void HardFault_Handler(void)
     "   .align                                 \n"
     );
 }
+#endif //HARDFAULT_HANDLER_ENABLED

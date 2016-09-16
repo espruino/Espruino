@@ -17,6 +17,10 @@
 #include "nrf_drv_twi.h"
 #include "sdk_errors.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @defgroup app_twi TWI transaction manager
  * @{
@@ -32,7 +36,7 @@
  * Use this flag when a stop condition is undesirable between two transfers,
  * for example, when the first transfer is a write that sets an address in the slave
  * device and the second one is a read that fetches certain data using this
- * address. In this case, the second transfer should follow directly after the 
+ * address. In this case, the second transfer should follow directly after the
  * first transfer, with a repeated start condition instead of a stop and then
  * a new start condition.
  */
@@ -200,7 +204,7 @@ typedef struct {
  * @anchor app_twi_init_note
  * @note The queue size is the maximum number of pending transactions
  *       not counting the one that is currently realized. This means that
- *       for an empty queue with size of, for example, 4 elements, it is 
+ *       for an empty queue with size of, for example, 4 elements, it is
  *       possible to schedule up to 5 transactions.
  *
  * @param[in] p_app_twi      Pointer to the instance to be initialized.
@@ -248,7 +252,7 @@ ret_code_t app_twi_schedule(app_twi_t *                   p_app_twi,
 /**
  * @brief Function for scheduling a transaction and waiting until it is finished.
  *
- * This function schedules a transaction that consists of one or more transfers 
+ * This function schedules a transaction that consists of one or more transfers
  * and waits until it is finished.
  *
  * @param[in] p_app_twi           Pointer to the TWI transaction manager instance.
@@ -286,5 +290,10 @@ __STATIC_INLINE bool app_twi_is_idle(app_twi_t * p_app_twi)
 /**
  *@}
  **/
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // APP_TWI_H__

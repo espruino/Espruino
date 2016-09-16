@@ -10,6 +10,8 @@
  *
  */
 
+#include "sdk_config.h"
+#if COMP_ENABLED
 #include "nrf_drv_comp.h"
 
 #include "nrf_assert.h"
@@ -21,11 +23,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define COMP_IRQ			COMP_LPCOMP_IRQn
-#define COMP_IRQ_HANDLER 	COMP_LPCOMP_IRQHandler
+#define COMP_IRQ             COMP_LPCOMP_IRQn
+#define COMP_IRQ_HANDLER     COMP_LPCOMP_IRQHandler
 
-static comp_events_handler_t 	m_comp_events_handler = NULL;
-static nrf_drv_state_t        	m_state = NRF_DRV_STATE_UNINITIALIZED;
+static comp_events_handler_t     m_comp_events_handler = NULL;
+static nrf_drv_state_t           m_state = NRF_DRV_STATE_UNINITIALIZED;
 
 static const nrf_drv_comp_config_t m_default_config = NRF_DRV_COMP_CONF_DEFAULT_CONFIG(NRF_COMP_INPUT_0);
 
@@ -34,16 +36,16 @@ static void comp_execute_handler(nrf_comp_event_t event, uint32_t event_mask)
     if ( nrf_comp_event_check(event) && nrf_comp_int_enable_check(event_mask) )
     {
         nrf_comp_event_clear(event);
-        
+
         m_comp_events_handler(event);
     }
 }
 
 #if PERIPHERAL_RESOURCE_SHARING_ENABLED
-    #define IRQ_HANDLER_NAME    irq_handler_for_comp
-    #define IRQ_HANDLER      	static void IRQ_HANDLER_NAME(void)
+    #define IRQ_HANDLER_NAME   irq_handler_for_comp
+    #define IRQ_HANDLER        static void IRQ_HANDLER_NAME(void)
 
-	IRQ_HANDLER;
+    IRQ_HANDLER;
 #else
     #define IRQ_HANDLER void COMP_IRQ_HANDLER(void)
 #endif // PERIPHERAL_RESOURCE_SHARING_ENABLED
@@ -58,7 +60,7 @@ IRQ_HANDLER
 
 
 ret_code_t nrf_drv_comp_init(const nrf_drv_comp_config_t * p_config,
-                               comp_events_handler_t   event_handler)
+                             comp_events_handler_t   event_handler)
 {
     if (m_state != NRF_DRV_STATE_UNINITIALIZED)
     { // COMP driver is already initialized
@@ -79,30 +81,30 @@ ret_code_t nrf_drv_comp_init(const nrf_drv_comp_config_t * p_config,
 
     nrf_comp_task_trigger(NRF_COMP_TASK_STOP);
     nrf_comp_enable();
-    
+
     // Clear events to be sure there are no leftovers.
     nrf_comp_event_clear(NRF_COMP_EVENT_READY);
     nrf_comp_event_clear(NRF_COMP_EVENT_DOWN);
     nrf_comp_event_clear(NRF_COMP_EVENT_UP);
     nrf_comp_event_clear(NRF_COMP_EVENT_CROSS);
-    
+
     nrf_comp_ref_set(p_config->reference);
-    
+
     //If external source is chosen, write to appropriate register.
     if (p_config->reference == COMP_REFSEL_REFSEL_ARef)
     {
         nrf_comp_ext_ref_set(p_config->ext_ref);
     }
-    
+
     nrf_comp_th_set(p_config->threshold);
     nrf_comp_main_mode_set(p_config->main_mode);
     nrf_comp_speed_mode_set(p_config->speed_mode);
     nrf_comp_hysteresis_set(p_config->hyst);
     nrf_comp_isource_set(p_config->isource);
     nrf_comp_shorts_disable(NRF_DRV_COMP_SHORT_STOP_AFTER_CROSS_EVT | NRF_DRV_COMP_SHORT_STOP_AFTER_UP_EVT |
-    						NRF_DRV_COMP_SHORT_STOP_AFTER_DOWN_EVT);
+                            NRF_DRV_COMP_SHORT_STOP_AFTER_DOWN_EVT);
     nrf_comp_int_disable(COMP_INTENCLR_CROSS_Msk | COMP_INTENCLR_UP_Msk |
-                           COMP_INTENCLR_DOWN_Msk | COMP_INTENCLR_READY_Msk);
+                         COMP_INTENCLR_DOWN_Msk | COMP_INTENCLR_READY_Msk);
 
     if (event_handler)
     {
@@ -136,15 +138,15 @@ void nrf_drv_comp_pin_select(nrf_comp_input_t psel)
 {
     bool comp_enable_state = nrf_comp_enable_check();
     nrf_comp_task_trigger(NRF_COMP_TASK_STOP);
-    if(m_state == NRF_DRV_STATE_POWERED_ON)
+    if (m_state == NRF_DRV_STATE_POWERED_ON)
     {
-    	m_state = NRF_DRV_STATE_INITIALIZED;
+        m_state = NRF_DRV_STATE_INITIALIZED;
     }
     nrf_comp_disable();
     nrf_comp_input_select(psel);
-    if(comp_enable_state == true)
+    if (comp_enable_state == true)
     {
-    	nrf_comp_enable();
+        nrf_comp_enable();
     }
 }
 
@@ -172,3 +174,4 @@ uint32_t nrf_drv_comp_sample()
     nrf_comp_task_trigger(NRF_COMP_TASK_SAMPLE);
     return nrf_comp_result_get();
 }
+#endif //COMP_ENABLED

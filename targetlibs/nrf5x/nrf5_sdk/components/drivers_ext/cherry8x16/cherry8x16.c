@@ -232,8 +232,8 @@ static void cherry8x16_remap_fn_keys(uint8_t * keys, uint8_t number_of_keys)
 
 #define MODIFIER_LEFT_CONTROL_HID 0xE0
 #define MODIFER_RIGHT_CONTROL_HID 0xE4
-    // Check if Fn key is pressed along with any other modifier key (only usage now is Fn+Left_Ctrl = Right Ctrl)
-    // So we modify the modifier byte if Fn+Left_Ctrl is pressed, HID for left_Ctrl = 0xE0
+    // Check if Fn key is pressed along with any other modifier key (only usage now is Fn + Left_Ctrl = Right Ctrl)
+    // So we modify the modifier byte if Fn + Left_Ctrl is pressed, HID for left_Ctrl = 0xE0
     if ( keys[0] & (1UL << (MODIFIER_LEFT_CONTROL_HID - MODIFIER_HID_START)) )
     {
         keys[0] &= ~(1UL << (MODIFIER_LEFT_CONTROL_HID - MODIFIER_HID_START));

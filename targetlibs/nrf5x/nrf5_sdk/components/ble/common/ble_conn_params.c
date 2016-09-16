@@ -35,7 +35,7 @@ static bool is_conn_params_ok(ble_gap_conn_params_t * p_conn_params)
     //       the client's connection interval.
     if (
         (p_conn_params->max_conn_interval >= m_preferred_conn_params.min_conn_interval)
-        && 
+        &&
         (p_conn_params->max_conn_interval <= m_preferred_conn_params.max_conn_interval)
        )
     {

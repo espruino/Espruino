@@ -6,8 +6,12 @@
 #include "ble.h"
 #include "ble_db_discovery.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
- * @defgroup ble_sdk_srv_rscs_c Running Speed and Cadence Service Client
+ * @defgroup ble_rscs_c Running Speed and Cadence Service Client
  * @{
  * @ingroup ble_sdk_srv
  *
@@ -143,6 +147,11 @@ void ble_rscs_on_db_disc_evt(ble_rscs_c_t * p_ble_rscs_c, const ble_db_discovery
 uint32_t ble_rscs_c_handles_assign(ble_rscs_c_t *    p_ble_rscs_c,
                                    uint16_t         conn_handle,
                                    ble_rscs_c_db_t * p_peer_handles);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_RSCS_C_H__
 

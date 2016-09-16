@@ -25,8 +25,14 @@
 ;   POSSIBILITY OF SUCH DAMAGE.
 ;   ---------------------------------------------------------------------------*/
 
-                IF :DEF: __STACK_SIZE
-Stack_Size      EQU     __STACK_SIZE
+                IF :DEF: __STARTUP_CONFIG
+#include "startup_config.h"
+                ENDIF
+
+                IF :DEF: __STARTUP_CONFIG
+Stack_Size      EQU __STARTUP_CONFIG_STACK_SIZE
+                ELIF :DEF: __STACK_SIZE
+Stack_Size      EQU __STACK_SIZE
                 ELSE
 Stack_Size      EQU     8192
                 ENDIF
@@ -35,8 +41,10 @@ Stack_Size      EQU     8192
 Stack_Mem       SPACE   Stack_Size
 __initial_sp
 
-                IF :DEF: __HEAP_SIZE
-Heap_Size       EQU     __HEAP_SIZE
+                IF :DEF: __STARTUP_CONFIG
+Heap_Size       EQU __STARTUP_CONFIG_HEAP_SIZE
+                ELIF :DEF: __HEAP_SIZE
+Heap_Size       EQU __HEAP_SIZE
                 ELSE
 Heap_Size       EQU     8192
                 ENDIF
@@ -68,7 +76,7 @@ __Vectors       DCD     __initial_sp              ; Top of Stack
                 DCD     0                         ; Reserved
                 DCD     0                         ; Reserved
                 DCD     SVC_Handler
-                DCD     DebugMonitor_Handler
+                DCD     DebugMon_Handler
                 DCD     0                         ; Reserved
                 DCD     PendSV_Handler
                 DCD     SysTick_Handler
@@ -328,8 +336,8 @@ Reset_Handler   PROC
                 EXPORT  Reset_Handler             [WEAK]
                 IMPORT  SystemInit
                 IMPORT  __main
-                
-                
+
+
                 LDR     R0, =SystemInit
                 BLX     R0
                 LDR     R0, =__main
@@ -366,9 +374,9 @@ SVC_Handler     PROC
                 EXPORT  SVC_Handler               [WEAK]
                 B       .
                 ENDP
-DebugMonitor_Handler\
+DebugMon_Handler\
                 PROC
-                EXPORT  DebugMonitor_Handler      [WEAK]
+                EXPORT  DebugMon_Handler          [WEAK]
                 B       .
                 ENDP
 PendSV_Handler  PROC
@@ -463,7 +471,7 @@ FPU_IRQHandler
 ; User Initial Stack & Heap
 
                 IF      :DEF:__MICROLIB
-                
+
                 EXPORT  __initial_sp
                 EXPORT  __heap_base
                 EXPORT  __heap_limit

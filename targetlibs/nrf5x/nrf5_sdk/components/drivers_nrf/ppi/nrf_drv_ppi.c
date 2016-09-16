@@ -9,7 +9,8 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if PPI_ENABLED
 #include <stdlib.h>
 
 #include "nrf.h"
@@ -182,7 +183,7 @@ uint32_t nrf_drv_ppi_uninit(void)
     {
         return NRF_ERROR_INVALID_STATE;
     }
-    
+
     m_drv_state = NRF_DRV_STATE_UNINITIALIZED;
 
     // Disable all channels and groups
@@ -190,7 +191,7 @@ uint32_t nrf_drv_ppi_uninit(void)
 
     for (group = NRF_PPI_CHANNEL_GROUP0; mask != 0; mask &= ~group_to_mask(group), group++)
     {
-        if(mask & group_to_mask(group))
+        if (mask & group_to_mask(group))
         {
             nrf_ppi_channel_group_clear(group);
         }
@@ -258,16 +259,14 @@ uint32_t nrf_drv_ppi_channel_assign(nrf_ppi_channel_t channel, uint32_t eep, uin
     {
         return NRF_ERROR_INVALID_STATE;
     }
-    
+
     nrf_ppi_channel_endpoint_setup(channel, eep, tep);
     return NRF_SUCCESS;
 }
 
 uint32_t nrf_drv_ppi_channel_fork_assign(nrf_ppi_channel_t channel, uint32_t fork_tep)
 {
-#ifdef NRF51
-    return NRF_ERROR_NOT_SUPPORTED;
-#else
+#ifdef PPI_FEATURE_FORKS_PRESENT
     if (!is_programmable_app_channel(channel))
     {
         return NRF_ERROR_INVALID_PARAM;
@@ -278,6 +277,8 @@ uint32_t nrf_drv_ppi_channel_fork_assign(nrf_ppi_channel_t channel, uint32_t for
     }
     nrf_ppi_fork_endpoint_setup(channel, fork_tep);
     return NRF_SUCCESS;
+#else
+    return NRF_ERROR_NOT_SUPPORTED;
 #endif
 }
 
@@ -425,3 +426,4 @@ uint32_t nrf_drv_ppi_channels_include_in_group(uint32_t channel_mask,
     CRITICAL_REGION_EXIT();
     return NRF_SUCCESS;
 }
+#endif //PPI_ENABLED

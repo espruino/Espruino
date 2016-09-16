@@ -96,7 +96,7 @@ the start of the softdevice (without MBR)*/
  * @{ */
 #define NRF_FAULT_ID_SD_ASSERT    (NRF_FAULT_ID_SD_RANGE_START + 1)           /**< SoftDevice assertion. The info parameter will be set to 0x00000000. */
 #define NRF_FAULT_ID_APP_MEMACC   (NRF_FAULT_ID_APP_RANGE_START + 1)          /**< Application invalid memory access. The info parameter will contain the address in memory that was accessed. */
-/**@} */
+/** @} */
 
 /** @} */
 
@@ -118,26 +118,29 @@ enum NRF_SD_SVCS
 /** @addtogroup NRF_SDM_DEFINES Defines
  * @{ */
 
-/**@defgroup NRF_CLOCK_LF_XTAL_ACCURACY Clock accuracy * @{ */
+/**@defgroup NRF_CLOCK_LF_XTAL_ACCURACY Clock accuracy
+ * @{ */
 
-#define NRF_CLOCK_LF_XTAL_ACCURACY_250_PPM (0) /* Default */
-#define NRF_CLOCK_LF_XTAL_ACCURACY_500_PPM (1)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_150_PPM (2)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_100_PPM (3)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_75_PPM  (4)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_50_PPM  (5)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_30_PPM  (6)
-#define NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM  (7)
+#define NRF_CLOCK_LF_XTAL_ACCURACY_250_PPM (0) /**< Default: 250 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_500_PPM (1) /**< 500 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_150_PPM (2) /**< 150 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_100_PPM (3) /**< 100 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_75_PPM  (4) /**< 75 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_50_PPM  (5) /**< 50 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_30_PPM  (6) /**< 30 ppm */
+#define NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM  (7) /**< 20 ppm */
 
 /** @} */
 
-/**@defgroup NRF_CLOCK_LF_SRC Possible lfclk oscillator sources * @{ */
+/**@defgroup NRF_CLOCK_LF_SRC Possible lfclk oscillator sources
+ * @{ */
 
 #define NRF_CLOCK_LF_SRC_RC      (0)                        /**< LFCLK RC oscillator. */
 #define NRF_CLOCK_LF_SRC_XTAL    (1)                        /**< LFCLK crystal oscillator. */
 #define NRF_CLOCK_LF_SRC_SYNTH   (2)                        /**< LFCLK Synthesized from HFCLK. */
 
 /** @} */
+
 /** @} */
 
 /** @addtogroup NRF_SDM_TYPES Types

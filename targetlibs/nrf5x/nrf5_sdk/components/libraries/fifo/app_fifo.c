@@ -9,7 +9,8 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if APP_FIFO_ENABLED
 #include "app_fifo.h"
 #include "sdk_common.h"
 #include "nordic_common.h"
@@ -21,7 +22,7 @@ static __INLINE uint32_t fifo_length(app_fifo_t * p_fifo)
 }
 
 
-#define FIFO_LENGTH fifo_length(p_fifo)  /**< Macro for calculating the FIFO length. */
+#define FIFO_LENGTH() fifo_length(p_fifo)  /**< Macro for calculating the FIFO length. */
 
 
 /**@brief Put one byte to the FIFO. */
@@ -72,7 +73,7 @@ uint32_t app_fifo_init(app_fifo_t * p_fifo, uint8_t * p_buf, uint16_t buf_size)
 
 uint32_t app_fifo_put(app_fifo_t * p_fifo, uint8_t byte)
 {
-    if (FIFO_LENGTH <= p_fifo->buf_size_mask)
+    if (FIFO_LENGTH() <= p_fifo->buf_size_mask)
     {
         fifo_put(p_fifo, byte);
         return NRF_SUCCESS;
@@ -84,7 +85,7 @@ uint32_t app_fifo_put(app_fifo_t * p_fifo, uint8_t byte)
 
 uint32_t app_fifo_get(app_fifo_t * p_fifo, uint8_t * p_byte)
 {
-    if (FIFO_LENGTH != 0)
+    if (FIFO_LENGTH() != 0)
     {
         fifo_get(p_fifo, p_byte);
         return NRF_SUCCESS;
@@ -97,7 +98,7 @@ uint32_t app_fifo_get(app_fifo_t * p_fifo, uint8_t * p_byte)
 
 uint32_t app_fifo_peek(app_fifo_t * p_fifo, uint16_t index, uint8_t * p_byte)
 {
-    if (FIFO_LENGTH > index)
+    if (FIFO_LENGTH() > index)
     {
         fifo_peek(p_fifo, index, p_byte);
         return NRF_SUCCESS;
@@ -184,3 +185,4 @@ uint32_t app_fifo_write(app_fifo_t * p_fifo, uint8_t const * p_byte_array, uint3
 
     return NRF_SUCCESS;
 }
+#endif //APP_FIFO_ENABLED

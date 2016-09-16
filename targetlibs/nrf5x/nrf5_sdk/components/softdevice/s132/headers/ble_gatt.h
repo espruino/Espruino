@@ -53,12 +53,8 @@ extern "C" {
 /** @addtogroup BLE_GATT_DEFINES Defines
  * @{ */
 
-/** @brief Default MTU size. */
+/** @brief Default MTU size, in bytes. */
 #define GATT_MTU_SIZE_DEFAULT 23
-
-/** @brief Only the default MTU size of 23 is currently supported. */
-#define GATT_RX_MTU 23
-
 
 /**@brief Invalid Attribute Handle. */
 #define BLE_GATT_HANDLE_INVALID            0x0000
@@ -71,7 +67,7 @@ extern "C" {
 
 /** @defgroup BLE_GATT_TIMEOUT_SOURCES GATT Timeout sources
  * @{ */
-#define BLE_GATT_TIMEOUT_SRC_PROTOCOL                  0x00 /**< ATT Protocol timeout. */
+#define BLE_GATT_TIMEOUT_SRC_PROTOCOL      0x00  /**< ATT Protocol timeout. */
 /** @} */
 
 /** @defgroup BLE_GATT_WRITE_OPS GATT Write operations
@@ -86,8 +82,8 @@ extern "C" {
 
 /** @defgroup BLE_GATT_EXEC_WRITE_FLAGS GATT Execute Write flags
  * @{ */
-#define BLE_GATT_EXEC_WRITE_FLAG_PREPARED_CANCEL 0x00
-#define BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE  0x01
+#define BLE_GATT_EXEC_WRITE_FLAG_PREPARED_CANCEL 0x00   /**< Cancel prepared write. */
+#define BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE  0x01   /**< Execute prepared write. */
 /** @} */
 
 /** @defgroup BLE_GATT_HVX_TYPES GATT Handle Value operations
@@ -178,6 +174,21 @@ extern "C" {
 /** @addtogroup BLE_GATT_STRUCTURES Structures
  * @{ */
 
+/**
+ * @brief BLE GATT initialization parameters.
+ */
+typedef struct
+{
+  uint16_t  att_mtu;          /**< Maximum size of ATT packet the SoftDevice can send or receive.
+                                   If it is 0 then @ref GATT_MTU_SIZE_DEFAULT will be used.
+                                   Otherwise @ref GATT_MTU_SIZE_DEFAULT is the minimum value.
+                                   @mscs
+                                   @mmsc{@ref BLE_GATTC_MTU_EXCHANGE}
+                                   @mmsc{@ref BLE_GATTS_MTU_EXCHANGE}
+                                   @endmscs
+                              */
+} ble_gatt_enable_params_t;
+
 /**@brief GATT Characteristic Properties. */
 typedef struct
 {
@@ -199,14 +210,11 @@ typedef struct
   uint8_t wr_aux          :1; /**< Writing the Characteristic User Description descriptor permitted. */
 } ble_gatt_char_ext_props_t;
 
+/** @} */
+
 #ifdef __cplusplus
 }
 #endif
 #endif // BLE_GATT_H__
 
 /** @} */
-
-/**
-  @}
-  @}
-*/

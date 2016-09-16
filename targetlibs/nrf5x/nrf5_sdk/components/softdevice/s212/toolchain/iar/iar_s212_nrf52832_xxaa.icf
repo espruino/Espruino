@@ -31,3 +31,4 @@ place in ROM_region   { readonly };
 place in RAM_region   { readwrite,
                         block CSTACK,
                         block HEAP };
+

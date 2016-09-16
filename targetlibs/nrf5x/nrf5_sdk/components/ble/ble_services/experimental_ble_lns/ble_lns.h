@@ -12,7 +12,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_lns Location and Navigation Service
+ * @defgroup ble_lns Location and Navigation Service
  * @{
  * @ingroup ble_sdk_srv
  * @brief Location and Navigation Service module.
@@ -35,6 +35,10 @@
 #include "ble_ln_common.h"
 #include "ble_ln_cp.h"
 #include "sdk_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** @brief Location and Navigation event type. This list defines the possible events types from the Location and Navigation Service. */
 typedef enum {
@@ -322,6 +326,11 @@ ret_code_t ble_lns_add_route(ble_lns_t * p_lns, ble_lns_route_t * p_route);
  * @retval        NRF_INVALID_PARAM       If the route ID does not exist.
  */
 ret_code_t ble_lns_remove_route(ble_lns_t * p_lns, uint16_t route_id);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_LNS_H__
 

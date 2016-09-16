@@ -10,17 +10,17 @@
 /**@cond To Make Doxygen skip documentation generation for this file.
  * @{
  */
-
+#include "sdk_config.h"
+#if BLE_HRS_C_ENABLED
 #include "ble_hrs_c.h"
 #include "ble_db_discovery.h"
 #include "ble_types.h"
 #include "ble_srv_common.h"
 #include "ble_gattc.h"
-#include "app_trace.h"
 #include "sdk_common.h"
-#include "nrf_log.h"
 
-#define LOG                    NRF_LOG_PRINTF_DEBUG  /**< Debug logger macro that will be used in this file to do logging of important information over UART. */
+#define NRF_LOG_MODULE_NAME "BLE_HRS_C"
+#include "nrf_log.h"
 
 #define HRM_FLAG_MASK_HR_16BIT (0x01 << 0)           /**< Bit mask used to extract the type of heart rate value. This is used to find if the received heart rate is a 16 bit value or an 8 bit value. */
 
@@ -84,13 +84,13 @@ static void tx_buffer_process(void)
         }
         if (err_code == NRF_SUCCESS)
         {
-            LOG("[HRS_C]: SD Read/Write API returns Success..\r\n");
+            NRF_LOG_INFO("SD Read/Write API returns Success..\r\n");
             m_tx_index++;
             m_tx_index &= TX_BUFFER_MASK;
         }
         else
         {
-            LOG("[HRS_C]: SD Read/Write API returns error. This message sending will be "
+            NRF_LOG_INFO("SD Read/Write API returns error. This message sending will be "
                 "attempted again..\r\n");
         }
     }
@@ -129,11 +129,11 @@ static void on_hvx(ble_hrs_c_t * p_ble_hrs_c, const ble_evt_t * p_ble_evt)
     // Check if the event is on the link for this instance
     if (p_ble_hrs_c->conn_handle != p_ble_evt->evt.gattc_evt.conn_handle)
     {
-        LOG("[HRS_C]: received HVX on link 0x%x, not associated to this instance, ignore\r\n",
+        NRF_LOG_INFO("received HVX on link 0x%x, not associated to this instance, ignore\r\n",
             p_ble_evt->evt.gattc_evt.conn_handle);
         return;
     }
-    LOG("[HRS_C]: received HVX on handle 0x%x, hrm_handle 0x%x\r\n",
+    NRF_LOG_INFO("received HVX on handle 0x%x, hrm_handle 0x%x\r\n",
         p_ble_evt->evt.gattc_evt.params.hvx.handle,
         p_ble_hrs_c->peer_hrs_db.hrm_handle);
     // Check if this is a heart rate notification.
@@ -211,9 +211,9 @@ void ble_hrs_on_db_disc_evt(ble_hrs_c_t * p_ble_hrs_c, const ble_db_discovery_ev
             }
         }
 
-        LOG("[HRS_C]: Heart Rate Service discovered at peer.\r\n");
+        NRF_LOG_INFO("Heart Rate Service discovered at peer.\r\n");
         //If the instance has been assigned prior to db_discovery, assign the db_handles
-        if(p_ble_hrs_c->conn_handle != BLE_CONN_HANDLE_INVALID)
+        if (p_ble_hrs_c->conn_handle != BLE_CONN_HANDLE_INVALID)
         {
             if ((p_ble_hrs_c->peer_hrs_db.hrm_cccd_handle == BLE_GATT_HANDLE_INVALID)&&
                 (p_ble_hrs_c->peer_hrs_db.hrm_handle == BLE_GATT_HANDLE_INVALID))
@@ -279,7 +279,7 @@ void ble_hrs_c_on_ble_evt(ble_hrs_c_t * p_ble_hrs_c, const ble_evt_t * p_ble_evt
  */
 static uint32_t cccd_configure(uint16_t conn_handle, uint16_t handle_cccd, bool enable)
 {
-    LOG("[HRS_C]: Configuring CCCD. CCCD Handle = %d, Connection Handle = %d\r\n",
+    NRF_LOG_INFO("Configuring CCCD. CCCD Handle = %d, Connection Handle = %d\r\n",
         handle_cccd,conn_handle);
 
     tx_message_t * p_msg;
@@ -329,3 +329,4 @@ uint32_t ble_hrs_c_handles_assign(ble_hrs_c_t * p_ble_hrs_c,
 /** @}
  *  @endcond
  */
+#endif //BLE_HRS_C_ENABLED

@@ -10,11 +10,12 @@
  *
  */
 
-/* Attention! 
-*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile 
+/* Attention!
+*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile
 *  qualification listings, this section of source code must not be modified.
 */
-
+#include "sdk_config.h"
+#if BLE_TPS_ENABLED
 #include "ble_tps.h"
 #include <string.h>
 #include "ble_srv_common.h"
@@ -137,3 +138,4 @@ uint32_t ble_tps_tx_power_level_set(ble_tps_t * p_tps, int8_t tx_power_level)
                                   p_tps->tx_power_level_handles.value_handle,
                                   &gatts_value);
 }
+#endif //BLE_TPS_ENABLED

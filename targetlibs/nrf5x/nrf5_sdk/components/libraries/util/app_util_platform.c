@@ -12,17 +12,22 @@
 
 #include "app_util_platform.h"
 
+#ifdef SOFTDEVICE_PRESENT
+/* Global nvic state instance, required by nrf_nvic.h */
+nrf_nvic_state_t nrf_nvic_state;
+#endif
+
 static uint32_t m_in_critical_region = 0;
 
 void app_util_disable_irq(void)
 {
-    __disable_irq();    
-    m_in_critical_region++;    
+    __disable_irq();
+    m_in_critical_region++;
 }
 
 void app_util_enable_irq(void)
 {
-    m_in_critical_region--;    
+    m_in_critical_region--;
     if (m_in_critical_region == 0)
     {
         __enable_irq();
@@ -31,7 +36,7 @@ void app_util_enable_irq(void)
 
 void app_util_critical_region_enter(uint8_t *p_nested)
 {
-#ifdef NRF52
+#if __CORTEX_M == (0x04U)
     ASSERT(APP_LEVEL_PRIVILEGED == privilege_level_get())
 #endif
 
@@ -45,7 +50,7 @@ void app_util_critical_region_enter(uint8_t *p_nested)
 
 void app_util_critical_region_exit(uint8_t nested)
 {
-#ifdef NRF52
+#if __CORTEX_M == (0x04U)
     ASSERT(APP_LEVEL_PRIVILEGED == privilege_level_get())
 #endif
 

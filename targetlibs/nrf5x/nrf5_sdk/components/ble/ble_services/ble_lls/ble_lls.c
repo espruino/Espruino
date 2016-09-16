@@ -10,11 +10,12 @@
  *
  */
 
-/* Attention! 
-*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile 
+/* Attention!
+*  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile
 *  qualification listings, this section of source code must not be modified.
 */
-
+#include "sdk_config.h"
+#if BLE_LLS_ENABLED
 #include "ble_lls.h"
 #include <string.h>
 #include "ble_hci.h"
@@ -212,3 +213,4 @@ uint32_t ble_lls_alert_level_get(ble_lls_t * p_lls, uint8_t * p_alert_level)
                                   p_lls->alert_level_handles.value_handle,
                                   &gatts_value);
 }
+#endif //BLE_LLS_ENABLED

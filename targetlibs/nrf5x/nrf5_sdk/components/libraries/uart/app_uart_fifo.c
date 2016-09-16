@@ -9,12 +9,15 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if APP_UART_ENABLED
 #include "app_uart.h"
 #include "app_fifo.h"
 #include "nrf_drv_uart.h"
 #include "nrf_assert.h"
 #include "sdk_common.h"
+
+static nrf_drv_uart_t app_uart_inst = NRF_DRV_UART_INSTANCE(APP_UART_DRIVER_INSTANCE);
 
 static __INLINE uint32_t fifo_length(app_fifo_t * const fifo)
 {
@@ -28,6 +31,7 @@ static __INLINE uint32_t fifo_length(app_fifo_t * const fifo)
 static app_uart_event_handler_t   m_event_handler;            /**< Event handler function. */
 static uint8_t tx_buffer[1];
 static uint8_t rx_buffer[1];
+static bool m_rx_ovf;
 
 static app_fifo_t                  m_rx_fifo;                               /**< RX FIFO buffer for storing data received on the UART until the application fetches them using app_uart_get(). */
 static app_fifo_t                  m_tx_fifo;                               /**< TX FIFO buffer for storing data to be transmitted on the UART when TXD is ready. Data is put to the buffer on using app_uart_put(). */
@@ -35,54 +39,65 @@ static app_fifo_t                  m_tx_fifo;                               /**<
 static void uart_event_handler(nrf_drv_uart_event_t * p_event, void* p_context)
 {
     app_uart_evt_t app_uart_event;
+    uint32_t err_code;
 
-    if (p_event->type == NRF_DRV_UART_EVT_RX_DONE)
+    switch (p_event->type)
     {
-        // Write received byte to FIFO
-        uint32_t err_code = app_fifo_put(&m_rx_fifo, p_event->data.rxtx.p_data[0]);
-        if (err_code != NRF_SUCCESS)
-        {
-            app_uart_event.evt_type          = APP_UART_FIFO_ERROR;
-            app_uart_event.data.error_code   = err_code;
+        case NRF_DRV_UART_EVT_RX_DONE:
+            // Write received byte to FIFO.
+            err_code = app_fifo_put(&m_rx_fifo, p_event->data.rxtx.p_data[0]);
+            if (err_code != NRF_SUCCESS)
+            {
+                app_uart_event.evt_type          = APP_UART_FIFO_ERROR;
+                app_uart_event.data.error_code   = err_code;
+                m_event_handler(&app_uart_event);
+            }
+            // Notify that there are data available.
+            else if (FIFO_LENGTH(m_rx_fifo) != 0)
+            {
+                app_uart_event.evt_type = APP_UART_DATA_READY;
+                m_event_handler(&app_uart_event);
+            }
+
+            // Start new RX if size in buffer.
+            if (FIFO_LENGTH(m_rx_fifo) <= m_rx_fifo.buf_size_mask)
+            {
+                (void)nrf_drv_uart_rx(&app_uart_inst, rx_buffer, 1);
+            }
+            else
+            {
+                // Overflow in RX FIFO.
+                m_rx_ovf = true;
+            }
+
+            break;
+
+        case NRF_DRV_UART_EVT_ERROR:
+            app_uart_event.evt_type                 = APP_UART_COMMUNICATION_ERROR;
+            app_uart_event.data.error_communication = p_event->data.error.error_mask;
+            (void)nrf_drv_uart_rx(&app_uart_inst, rx_buffer, 1);
             m_event_handler(&app_uart_event);
-        }
-        // Notify that new data is available if this was first byte put in the buffer.
-        else if (FIFO_LENGTH(m_rx_fifo) == 1)
-        {
-            app_uart_event.evt_type = APP_UART_DATA_READY;
-            m_event_handler(&app_uart_event);
-        }
-        else
-        {
-            // Do nothing, only send event if first byte was added or overflow in FIFO occurred.
-        }
-        if (FIFO_LENGTH(m_rx_fifo) <= m_rx_fifo.buf_size_mask)
-        {
-            (void)nrf_drv_uart_rx(rx_buffer, 1);
-        }
-    }
-    else if (p_event->type == NRF_DRV_UART_EVT_ERROR)
-    {
-        app_uart_event.evt_type                 = APP_UART_COMMUNICATION_ERROR;
-        app_uart_event.data.error_communication = p_event->data.error.error_mask;
-        (void)nrf_drv_uart_rx(rx_buffer, 1);
-        m_event_handler(&app_uart_event);
-    }
-    else if (p_event->type == NRF_DRV_UART_EVT_TX_DONE)
-    {
-        // Get next byte from FIFO.
-        if (app_fifo_get(&m_tx_fifo, tx_buffer) == NRF_SUCCESS)
-        {
-            (void)nrf_drv_uart_tx(tx_buffer, 1);
-        }
-        if (FIFO_LENGTH(m_tx_fifo) == 0)
-        {
-            // Last byte from FIFO transmitted, notify the application.
-            app_uart_event.evt_type = APP_UART_TX_EMPTY;
-            m_event_handler(&app_uart_event);
-        }
+            break;
+
+        case NRF_DRV_UART_EVT_TX_DONE:
+            // Get next byte from FIFO.
+            if (app_fifo_get(&m_tx_fifo, tx_buffer) == NRF_SUCCESS)
+            {
+                (void)nrf_drv_uart_tx(&app_uart_inst, tx_buffer, 1);
+            }
+            if (FIFO_LENGTH(m_tx_fifo) == 0)
+            {
+                // Last byte from FIFO transmitted, notify the application.
+                app_uart_event.evt_type = APP_UART_TX_EMPTY;
+                m_event_handler(&app_uart_event);
+            }
+            break;
+
+        default:
+            break;
     }
 }
+
 
 uint32_t app_uart_init(const app_uart_comm_params_t * p_comm_params,
                              app_uart_buffers_t *     p_buffers,
@@ -117,17 +132,28 @@ uint32_t app_uart_init(const app_uart_comm_params_t * p_comm_params,
     config.pselrxd = p_comm_params->rx_pin_no;
     config.pseltxd = p_comm_params->tx_pin_no;
 
-    err_code = nrf_drv_uart_init(&config, uart_event_handler);
+    err_code = nrf_drv_uart_init(&app_uart_inst, &config, uart_event_handler);
     VERIFY_SUCCESS(err_code);
+    m_rx_ovf = false;
 
-#ifdef NRF52
-    if (!config.use_easy_dma)
-#endif
+    // Turn on receiver if RX pin is connected
+    if (p_comm_params->rx_pin_no != UART_PIN_DISCONNECTED)
     {
-        nrf_drv_uart_rx_enable();
+#ifdef UARTE_PRESENT
+        if (!config.use_easy_dma)
+#endif
+        {
+            nrf_drv_uart_rx_enable(&app_uart_inst);
+        }
+
+        return nrf_drv_uart_rx(&app_uart_inst, rx_buffer,1);
     }
-    return nrf_drv_uart_rx(rx_buffer,1);
+    else
+    {
+        return NRF_SUCCESS;
+    }
 }
+
 
 uint32_t app_uart_flush(void)
 {
@@ -142,25 +168,31 @@ uint32_t app_uart_flush(void)
     return NRF_SUCCESS;
 }
 
+
 uint32_t app_uart_get(uint8_t * p_byte)
 {
     ASSERT(p_byte);
+    bool rx_ovf = m_rx_ovf;
+
+    ret_code_t err_code =  app_fifo_get(&m_rx_fifo, p_byte);
+
     // If FIFO was full new request to receive one byte was not scheduled. Must be done here.
-    if (FIFO_LENGTH(m_rx_fifo) == m_rx_fifo.buf_size_mask)
+    if(rx_ovf)
     {
-        uint32_t err_code = nrf_drv_uart_rx(rx_buffer,1);
-        if (err_code != NRF_SUCCESS)
-        {
-            return NRF_ERROR_NOT_FOUND;
-        }
+        m_rx_ovf = false;
+        uint32_t uart_err_code = nrf_drv_uart_rx(&app_uart_inst, rx_buffer, 1);
+
+        // RX resume should never fail.
+        APP_ERROR_CHECK(uart_err_code);
     }
-    return app_fifo_get(&m_rx_fifo, p_byte);
+
+    return err_code;
 }
+
 
 uint32_t app_uart_put(uint8_t byte)
 {
     uint32_t err_code;
-
     err_code = app_fifo_put(&m_tx_fifo, byte);
     if (err_code == NRF_SUCCESS)
     {
@@ -168,7 +200,7 @@ uint32_t app_uart_put(uint8_t byte)
         // (in 'uart_event_handler') when all preceding bytes are transmitted.
         // But if UART is not transmitting anything at the moment, we must start
         // a new transmission here.
-        if (!nrf_drv_uart_tx_in_progress())
+        if (!nrf_drv_uart_tx_in_progress(&app_uart_inst))
         {
             // This operation should be almost always successful, since we've
             // just added a byte to FIFO, but if some bigger delay occurred
@@ -176,16 +208,17 @@ uint32_t app_uart_put(uint8_t byte)
             // that time, FIFO might be empty already.
             if (app_fifo_get(&m_tx_fifo, tx_buffer) == NRF_SUCCESS)
             {
-                err_code = nrf_drv_uart_tx(tx_buffer, 1);
+                err_code = nrf_drv_uart_tx(&app_uart_inst, tx_buffer, 1);
             }
         }
     }
-
     return err_code;
 }
 
+
 uint32_t app_uart_close(void)
 {
-    nrf_drv_uart_uninit();
+    nrf_drv_uart_uninit(&app_uart_inst);
     return NRF_SUCCESS;
 }
+#endif //APP_UART_ENABLED

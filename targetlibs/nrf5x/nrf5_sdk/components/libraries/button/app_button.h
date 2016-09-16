@@ -42,6 +42,10 @@
 #include "app_error.h"
 #include "nrf_gpio.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define APP_BUTTON_PUSH        1                               /**< Indicates that a button is pushed. */
 #define APP_BUTTON_RELEASE     0                               /**< Indicates that a button is released. */
 #define APP_BUTTON_ACTIVE_HIGH 1                               /**< Indicates that a button is active high. */
@@ -65,7 +69,7 @@ typedef struct
     uint32_t high_to_low;   /**Pin went from high to low */
     uint32_t low_to_high;   /**Pin went from low to high */
 } pin_transition_t;
-    
+
 /**@brief Function for initializing the Buttons.
  *
  * @details This function will initialize the specified pins as buttons, and configure the Button
@@ -73,7 +77,7 @@ typedef struct
  *
  * @note Normally initialization should be done using the APP_BUTTON_INIT() macro
  *
- * @note app_button_enable() function must be called in order to enable the button detection.    
+ * @note app_button_enable() function must be called in order to enable the button detection.
  *
  * @param[in]  p_buttons           Array of buttons to be used (NOTE: Must be static!).
  * @param[in]  button_count        Number of buttons.
@@ -81,7 +85,7 @@ typedef struct
  *
  * @return   NRF_SUCCESS on success, otherwise an error code.
  */
-uint32_t app_button_init(app_button_cfg_t *             p_buttons,
+uint32_t app_button_init(app_button_cfg_t const *       p_buttons,
                          uint8_t                        button_count,
                          uint32_t                       detection_delay);
 
@@ -106,6 +110,11 @@ uint32_t app_button_disable(void);
  * @retval     NRF_ERROR_INVALID_PARAM   Invalid button index.
  */
 uint32_t app_button_is_pushed(uint8_t button_id, bool * p_is_pushed);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // APP_BUTTON_H__
 

@@ -27,6 +27,10 @@
 #include "compiler_abstraction.h"
 #include "nrf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //lint -save -e27 -e10 -e19
 #if defined ( __CC_ARM )
 extern char STACK$$Base;
@@ -102,15 +106,14 @@ enum
 #if defined ( __COUNTER__ )
 
 #define STATIC_ASSERT(EXPR) \
-    ;enum { STRING_CONCATENATE(static_assert_, __COUNTER__) = 1/(!!(EXPR)) }
+    ;enum { STRING_CONCATENATE(static_assert_, __COUNTER__) = 1 / (!!(EXPR)) }
 
 #else
 
 #define STATIC_ASSERT(EXPR) \
-    ;enum { STRING_CONCATENATE(assert_line_, __LINE__) = 1/(!!(EXPR)) }
+    ;enum { STRING_CONCATENATE(assert_line_, __LINE__) = 1 / (!!(EXPR)) }
 
 #endif
-
 
 /**@brief Implementation details for NUM_VAR_ARGS */
 #define NUM_VA_ARGS_IMPL(                              \
@@ -136,6 +139,32 @@ enum
     30, 29, 28, 27, 26, 25, 24, 23, 22, 21,                         \
     20, 19, 18, 17, 16, 15, 14, 13, 12, 11,                         \
     10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+
+/**@brief Implementation details for NUM_VAR_ARGS */
+#define NUM_VA_ARGS_LESS_1_IMPL(                       \
+    _ignored,                                          \
+    _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10,       \
+    _11, _12, _13, _14, _15, _16, _17, _18, _19, _20,  \
+    _21, _22, _23, _24, _25, _26, _27, _28, _29, _30,  \
+    _31, _32, _33, _34, _35, _36, _37, _38, _39, _40,  \
+    _41, _42, _43, _44, _45, _46, _47, _48, _49, _50,  \
+    _51, _52, _53, _54, _55, _56, _57, _58, _59, _60,  \
+    _61, _62, N, ...) N
+
+/**@brief Macro to get the number of arguments in a call variadic macro call.
+ * First argument is not counted.
+ *
+ * param[in]    ...     List of arguments
+ *
+ * @retval  Number of variadic arguments in the argument list
+ */
+#define NUM_VA_ARGS_LESS_1(...) NUM_VA_ARGS_LESS_1_IMPL(__VA_ARGS__, 63, 62, 61,  \
+    60, 59, 58, 57, 56, 55, 54, 53, 52, 51,                         \
+    50, 49, 48, 47, 46, 45, 44, 43, 42, 41,                         \
+    40, 39, 38, 37, 36, 35, 34, 33, 32, 31,                         \
+    30, 29, 28, 27, 26, 25, 24, 23, 22, 21,                         \
+    20, 19, 18, 17, 16, 15, 14, 13, 12, 11,                         \
+    10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, ~)
 
 
 /**@brief type for holding an encoded (i.e. little endian) 16 bit unsigned integer. */
@@ -226,6 +255,20 @@ typedef struct
  * @return The aligned (increased) @p number.
  */
 #define ALIGN_NUM(alignment, number) ((number - 1) + alignment - ((number - 1) % alignment))
+
+/**@brief Macro for getting first of 2 parameters.
+ *
+ * @param[in] a1    First parameter.
+ * @param[in] a2    Second parameter.
+ */
+#define GET_ARG_1(a1, a2) a1
+
+/**@brief Macro for getting second of 2 parameters.
+ *
+ * @param[in] a1    First parameter.
+ * @param[in] a2    Second parameter.
+ */
+#define GET_ARG_2(a1, a2) a2
 
 
 /**@brief Function for changing the value unit.
@@ -378,14 +421,7 @@ static __INLINE uint32_t uint32_big_decode(const uint8_t * p_encoded_data)
  */
 static __INLINE uint8_t uint32_big_encode(uint32_t value, uint8_t * p_encoded_data)
 {
-#ifdef NRF51
-    p_encoded_data[0] = (uint8_t) ((value & 0xFF000000) >> 24);
-    p_encoded_data[1] = (uint8_t) ((value & 0x00FF0000) >> 16);
-    p_encoded_data[2] = (uint8_t) ((value & 0x0000FF00) >> 8);
-    p_encoded_data[3] = (uint8_t) ((value & 0x000000FF) >> 0);
-#elif NRF52
     *(uint32_t *)p_encoded_data = __REV(value);
-#endif
     return sizeof(uint32_t);
 }
 
@@ -487,6 +523,11 @@ static __INLINE bool is_address_from_stack(void * ptr)
         return false;
     }
 }
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // APP_UTIL_H__
 

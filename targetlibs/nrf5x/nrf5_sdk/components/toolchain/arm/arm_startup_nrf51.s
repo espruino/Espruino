@@ -25,8 +25,14 @@
 ;   POSSIBILITY OF SUCH DAMAGE.
 ;   ---------------------------------------------------------------------------*/
 
-                IF :DEF: __STACK_SIZE
-Stack_Size      EQU     __STACK_SIZE
+                IF :DEF: __STARTUP_CONFIG
+#include "startup_config.h"
+                ENDIF
+
+                IF :DEF: __STARTUP_CONFIG
+Stack_Size      EQU __STARTUP_CONFIG_STACK_SIZE
+                ELIF :DEF: __STACK_SIZE
+Stack_Size      EQU __STACK_SIZE
                 ELSE
 Stack_Size      EQU     2048
                 ENDIF
@@ -35,8 +41,10 @@ Stack_Size      EQU     2048
 Stack_Mem       SPACE   Stack_Size
 __initial_sp
 
-                IF :DEF: __HEAP_SIZE
-Heap_Size       EQU     __HEAP_SIZE
+                IF :DEF: __STARTUP_CONFIG
+Heap_Size       EQU __STARTUP_CONFIG_HEAP_SIZE
+                ELIF :DEF: __HEAP_SIZE
+Heap_Size       EQU __HEAP_SIZE
                 ELSE
 Heap_Size       EQU     2048
                 ENDIF
@@ -123,7 +131,7 @@ Reset_Handler   PROC
                 EXPORT  Reset_Handler             [WEAK]
                 IMPORT  SystemInit
                 IMPORT  __main
-                
+
                 MOVS    R1, #NRF_POWER_RAMONx_RAMxON_ONMODE_Msk
                 
                 LDR     R0, =NRF_POWER_RAMON_ADDRESS
@@ -135,7 +143,7 @@ Reset_Handler   PROC
                 LDR     R2, [R0]
                 ORRS    R2, R2, R1
                 STR     R2, [R0]
-                
+
                 LDR     R0, =SystemInit
                 BLX     R0
                 LDR     R0, =__main
@@ -225,7 +233,7 @@ SWI5_IRQHandler
 ; User Initial Stack & Heap
 
                 IF      :DEF:__MICROLIB
-                
+
                 EXPORT  __initial_sp
                 EXPORT  __heap_base
                 EXPORT  __heap_limit

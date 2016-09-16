@@ -28,7 +28,7 @@ void SWI1_IRQHandler(void)
 
 
 uint32_t ble_radio_notification_init(uint32_t                             irq_priority,
-                                     nrf_radio_notification_distance_t    distance,
+                                     uint8_t                              distance,
                                      ble_radio_notification_evt_handler_t evt_handler)
 {
     uint32_t err_code;

@@ -17,6 +17,10 @@
 #include "sdk_errors.h"
 #include "nfc_ndef_record.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@file
  *
  * @defgroup nfc_ndef_record_parser Parser for NDEF records
@@ -60,5 +64,10 @@ void ndef_record_printout(uint32_t num, nfc_ndef_record_desc_t * const p_rec_des
 /**
  * @}
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NFC_NDEF_RECORD_PARSER_H__

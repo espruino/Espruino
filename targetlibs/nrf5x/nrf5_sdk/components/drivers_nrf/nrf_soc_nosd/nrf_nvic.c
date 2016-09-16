@@ -63,7 +63,7 @@ uint32_t sd_nvic_GetPriority(IRQn_Type IRQn, uint32_t * p_priority)
         *p_priority = NVIC_GetPriority(IRQn);
         return NRF_SUCCESS;
     }
-    
+
     return NRF_ERROR_NULL;
 }
 
@@ -76,17 +76,17 @@ uint32_t sd_nvic_SystemReset(void)
 uint32_t sd_nvic_critical_region_enter(uint8_t * p_is_nested_critical_region)
 {
     __disable_irq();
-    
+
     *p_is_nested_critical_region = (m_in_critical_region != 0);
     m_in_critical_region++;
-    
+
     return NRF_SUCCESS;
 }
 
 uint32_t sd_nvic_critical_region_exit(uint8_t is_nested_critical_region)
 {
     m_in_critical_region--;
-    
+
     if (is_nested_critical_region == 0)
     {
         m_in_critical_region = 0;

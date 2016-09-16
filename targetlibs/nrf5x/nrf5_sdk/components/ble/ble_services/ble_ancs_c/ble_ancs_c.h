@@ -11,7 +11,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_ancs_c Apple Notification Service client
+ * @defgroup ble_ancs_c Apple Notification Service client
  * @{
  * @ingroup ble_sdk_srv
  *
@@ -23,15 +23,15 @@
  *          implementation to stop working.
  *
  * This module implements the Apple Notification Center Service (ANCS) client.
- * This client can be used as a Notification Consumer (NC) that receives data 
- * notifications from a Notification Provider (NP). The NP is typically an iOS 
- * device acting as a server. For terminology and up-to-date specs, see 
+ * This client can be used as a Notification Consumer (NC) that receives data
+ * notifications from a Notification Provider (NP). The NP is typically an iOS
+ * device acting as a server. For terminology and up-to-date specs, see
  * http://developer.apple.com.
  *
  * The term "notification" is used in two different meanings:
  * - An <i>iOS notification</i> is the data received from the Notification Provider.
  * - A <i>GATTC notification</i> is a way to transfer data with <i>Bluetooth</i> Smart.
- * In this module, we receive iOS notifications using GATTC notifications. 
+ * In this module, we receive iOS notifications using GATTC notifications.
  * We use the full term (iOS notification or GATTC notification) where required to avoid confusion.
  *
  * Upon initializing the module, you must add the different iOS notification attributes you
@@ -44,7 +44,7 @@
  * information about service discovery, see the ble_discovery module documentation
  * @ref lib_ble_db_discovery.
  *
- * The application can now subscribe to iOS notifications using 
+ * The application can now subscribe to iOS notifications using
  * @ref ble_ancs_c_notif_source_notif_enable. They arrive in the @ref BLE_ANCS_C_EVT_NOTIF event.
  * @ref ble_ancs_c_request_attrs can be used to request attributes for the notifications. They
  * arrive in the @ref BLE_ANCS_C_EVT_NOTIF_ATTRIBUTE event.
@@ -81,8 +81,11 @@
 
 #include "ble_types.h"
 #include "ble_srv_common.h"
-#include "device_manager.h"
 #include "ble_db_discovery.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 #define BLE_ANCS_ATTR_DATA_MAX              32  /**< Maximum data length of an iOS notification attribute. */
@@ -95,7 +98,7 @@
  * @details 8 bytes:
  * Event ID |Event flags |Category ID |Category count|Notification UID
  * ---------|------------|------------|--------------|----------------
- * 1 byte   | 1 byte     | 1 byte     | 1 byte       | 4 bytes        
+ * 1 byte   | 1 byte     | 1 byte     | 1 byte       | 4 bytes
  */
 #define BLE_ANCS_NOTIFICATION_DATA_LENGTH   8
 
@@ -372,7 +375,7 @@ uint32_t ble_ancs_c_data_source_notif_disable(const ble_ancs_c_t * p_ancs);
  * @param[in] id     ID of the attribute that will be added.
  * @param[in] p_data Pointer to a buffer where the data of the attribute can be stored.
  * @param[in] len    Length of the buffer where the data of the attribute can be stored.
-  
+
  * @retval NRF_SUCCESS If all operations were successful. Otherwise, an error code is returned.
  */
 uint32_t ble_ancs_c_attr_add(ble_ancs_c_t                          * p_ancs,
@@ -397,7 +400,7 @@ uint32_t ble_ancs_c_request_attrs(ble_ancs_c_t                 * p_ancs,
 /**@brief Function for assigning handle to a this instance of ancs_c.
  *
  * @details Call this function when a link has been established with a peer to
- *          associate this link to this instance of the module. This makes it 
+ *          associate this link to this instance of the module. This makes it
  *          possible to handle several link and associate each link to a particular
  *          instance of this module. The connection handle and attribute handles will be
  *          provided from the discovery event @ref BLE_ANCS_C_EVT_DISCOVERY_COMPLETE.
@@ -412,6 +415,11 @@ uint32_t ble_ancs_c_request_attrs(ble_ancs_c_t                 * p_ancs,
  * @retval    NRF_ERROR_NULL If a p_ancs was a NULL pointer.
  */
 uint32_t ble_ancs_c_handles_assign(ble_ancs_c_t * p_ancs, const uint16_t conn_handle, const ble_ancs_c_service_t * p_service);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_ANCS_C_H__
 

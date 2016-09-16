@@ -9,7 +9,7 @@
  * the file.
  *
  */
- 
+
  /** @file
  *
  * @defgroup low_power_pwm Low-power PWM
@@ -20,8 +20,8 @@
  *
  * This module provides a low-power PWM implementation using app_timers and GPIO.
  *
- * Each low-power PWM instance utilizes one app_timer. This means it runs on RTC 
- * and does not require HFCLK to be running. There can be any number of output 
+ * Each low-power PWM instance utilizes one app_timer. This means it runs on RTC
+ * and does not require HFCLK to be running. There can be any number of output
  * channels per instance.
  */
 
@@ -34,12 +34,16 @@
 #include "nrf_drv_common.h"
 #include "sdk_errors.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Event types.
  */
 typedef enum
 {
-    LOW_POWER_PWM_EVENT_PERIOD = 0, 
+    LOW_POWER_PWM_EVENT_PERIOD = 0,
     LOW_POWER_PWM_EVENT_DUTY_CYCLE
 }low_power_pwm_evt_type_t;
 
@@ -79,11 +83,11 @@ typedef struct
     .period         = LOW_POWER_PWM_CONFIG_PERIOD   ,       \
     .bit_mask       = LOW_POWER_PWM_CONFIG_BIT_MASK(mask)   \
 }
-/** 
+/**
  * @cond (NODOX)
  * @defgroup low_power_pwm_internal Auxiliary internal types declarations
  * @brief Module for internal usage inside the library only.
- * @details These definitions are available to the user, but they should not 
+ * @details These definitions are available to the user, but they should not
  * be accessed directly. Use @ref low_power_pwm_duty_set instead.
  * @{
  *
@@ -107,7 +111,7 @@ typedef struct
         app_timer_id_t const *      p_timer_id;         /**< Pointer to the timer ID of low_power_pwm. */
     };
 
-/** @} 
+/** @}
  * @endcond
  */
 
@@ -116,7 +120,7 @@ typedef struct
  */
 typedef struct low_power_pwm_s low_power_pwm_t;
 
-    
+
 /**
  * @brief   Function for initializing a low-power PWM instance.
  *
@@ -127,8 +131,8 @@ typedef struct low_power_pwm_s low_power_pwm_t;
  * @return Values returned by @ref app_timer_create.
  */
 ret_code_t low_power_pwm_init(low_power_pwm_t * p_pwm_instance, low_power_pwm_config_t const * p_pwm_config, app_timer_timeout_handler_t handler);
-    
-    
+
+
 /**
  * @brief   Function for starting a low-power PWM instance.
  *
@@ -162,6 +166,11 @@ ret_code_t low_power_pwm_stop(low_power_pwm_t * p_pwm_instance);
  * @retval NRF_ERROR_INVALID_PARAM      If the function returned an error because of invalid parameters.
  */
 ret_code_t low_power_pwm_duty_set(low_power_pwm_t * p_pwm_instance, uint8_t duty_cycle);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // LOW_POWER_PWM_H__
 

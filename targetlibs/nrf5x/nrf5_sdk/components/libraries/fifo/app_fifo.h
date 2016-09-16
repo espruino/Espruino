@@ -25,6 +25,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@brief   A FIFO instance structure.
  * @details Keeps track of which bytes to read and write next.
  *          Also, it keeps the information about which memory is allocated for the buffer
@@ -139,6 +143,11 @@ uint32_t app_fifo_read(app_fifo_t * p_fifo, uint8_t * p_byte_array, uint32_t * p
  *
  */
 uint32_t app_fifo_write(app_fifo_t * p_fifo, uint8_t const * p_byte_array, uint32_t * p_size);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // APP_FIFO_H__
 

@@ -12,14 +12,17 @@
 
 #ifndef FDS_INTERNAL_DEFS_H__
 #define FDS_INTERNAL_DEFS_H__
-
+#include "sdk_config.h"
 #include <stdint.h>
 #include <stdbool.h>
-#include "fds_config.h"
 
 #if defined (FDS_THREADS)
     #include "nrf_soc.h"
     #include "app_util_platform.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #define FDS_PAGE_TAG_SIZE       (2) // Page tag size, in 4-byte words.
@@ -301,5 +304,10 @@ typedef struct
 
 #endif
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // FDS_INTERNAL_DEFS_H__

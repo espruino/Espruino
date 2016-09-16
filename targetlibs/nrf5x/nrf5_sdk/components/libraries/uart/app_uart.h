@@ -26,6 +26,10 @@
 #include <stdbool.h>
 #include "app_util_platform.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define  UART_PIN_DISCONNECTED 0xFFFFFFFF /**< Value indicating that no pin is connected to this UART register. */
 
 /**@brief UART Flow Control modes for the peripheral.
@@ -34,17 +38,16 @@ typedef enum
 {
     APP_UART_FLOW_CONTROL_DISABLED, /**< UART Hw Flow Control is disabled. */
     APP_UART_FLOW_CONTROL_ENABLED,  /**< Standard UART Hw Flow Control is enabled. */
-    APP_UART_FLOW_CONTROL_LOW_POWER /**< Specialized UART Hw Flow Control is used. The Low Power setting allows the \nRFXX to Power Off the UART module when CTS is in-active, and re-enabling the UART when the CTS signal becomes active. This allows the \nRFXX to safe power by only using the UART module when it is needed by the remote site. */
 } app_uart_flow_control_t;
 
 /**@brief UART communication structure holding configuration settings for the peripheral.
  */
 typedef struct
 {
-    uint8_t                 rx_pin_no;    /**< RX pin number. */
-    uint8_t                 tx_pin_no;    /**< TX pin number. */
-    uint8_t                 rts_pin_no;   /**< RTS pin number, only used if flow control is enabled. */
-    uint8_t                 cts_pin_no;   /**< CTS pin number, only used if flow control is enabled. */
+    uint32_t                rx_pin_no;    /**< RX pin number. */
+    uint32_t                tx_pin_no;    /**< TX pin number. */
+    uint32_t                rts_pin_no;   /**< RTS pin number, only used if flow control is enabled. */
+    uint32_t                cts_pin_no;   /**< CTS pin number, only used if flow control is enabled. */
     app_uart_flow_control_t flow_control; /**< Flow control setting, if flow control is used, the system will use low power UART mode, based on CTS signal. */
     bool                    use_parity;   /**< Even parity if TRUE, no parity if FALSE. */
     uint32_t                baud_rate;    /**< Baud rate configuration. */
@@ -221,6 +224,11 @@ uint32_t app_uart_flush(void);
  */
 uint32_t app_uart_close(void);
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //APP_UART_H__
 

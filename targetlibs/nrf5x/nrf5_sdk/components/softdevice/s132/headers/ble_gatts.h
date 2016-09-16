@@ -74,7 +74,8 @@ enum BLE_GATTS_SVCS
   SD_BLE_GATTS_SYS_ATTR_SET,                     /**< Set the persistent system attributes for a connection. */
   SD_BLE_GATTS_SYS_ATTR_GET,                     /**< Retrieve the persistent system attributes. */
   SD_BLE_GATTS_INITIAL_USER_HANDLE_GET,          /**< Retrieve the first valid user handle. */
-  SD_BLE_GATTS_ATTR_GET                          /**< Retrieve the UUID and/or metadata of an attribute. */
+  SD_BLE_GATTS_ATTR_GET,                         /**< Retrieve the UUID and/or metadata of an attribute. */
+  SD_BLE_GATTS_EXCHANGE_MTU_REPLY                /**< Reply to Exchange MTU Request. */
 };
 
 /**
@@ -87,6 +88,7 @@ enum BLE_GATTS_EVTS
   BLE_GATTS_EVT_SYS_ATTR_MISSING,                 /**< A persistent system attribute access is pending.                     \n Respond with @ref sd_ble_gatts_sys_attr_set.     \n See @ref ble_gatts_evt_sys_attr_missing_t.     */
   BLE_GATTS_EVT_HVC,                              /**< Handle Value Confirmation.                                           \n See @ref ble_gatts_evt_hvc_t.                   */
   BLE_GATTS_EVT_SC_CONFIRM,                       /**< Service Changed Confirmation. No additional event structure applies.                                                    */
+  BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST,             /**< Exchange MTU Request.                                                \n Reply with @ref sd_ble_gatts_exchange_mtu_reply. \n See @ref ble_gatts_evt_exchange_mtu_request_t. */
   BLE_GATTS_EVT_TIMEOUT                           /**< Peer failed to resonpond to an ATT request in time.                  \n See @ref ble_gatts_evt_timeout_t.               */
 };
 /** @} */
@@ -162,7 +164,7 @@ enum BLE_GATTS_EVTS
 /** @defgroup BLE_GATTS_ATTR_TAB_SIZE Attribute Table size
  * @{
  */
-#define BLE_GATTS_ATTR_TAB_SIZE_MIN         216    /**< Minimum Attribute Table size */
+#define BLE_GATTS_ATTR_TAB_SIZE_MIN         248    /**< Minimum Attribute Table size */
 #define BLE_GATTS_ATTR_TAB_SIZE_DEFAULT     0x0000 /**< Default Attribute Table size (0x580 bytes for this version of the SoftDevice). */
 /** @} */
 
@@ -176,8 +178,8 @@ enum BLE_GATTS_EVTS
  */
 typedef struct
 {
-  uint8_t   service_changed:1;             /**< Include the Service Changed characteristic in the Attribute Table. */
-  uint32_t  attr_tab_size;                 /**< Attribute Table size in bytes. The size must be a multiple of 4. @ref BLE_GATTS_ATTR_TAB_SIZE_DEFAULT is used to set the default size. */
+  uint8_t                  service_changed:1; /**< Include the Service Changed characteristic in the Attribute Table. */
+  uint32_t                 attr_tab_size;     /**< Attribute Table size in bytes. The size must be a multiple of 4. @ref BLE_GATTS_ATTR_TAB_SIZE_DEFAULT is used to set the default size. */
 } ble_gatts_enable_params_t;
 
 /**@brief Attribute metadata. */
@@ -267,7 +269,7 @@ typedef struct
 {
   uint16_t          gatt_status;        /**< GATT status code for the operation, see @ref BLE_GATT_STATUS_CODES. */
   uint8_t           update : 1;         /**< If set, data supplied in p_data will be used to update the attribute value.
-                                             Please note that for @ref BLE_GATTS_OP_WRITE_REQ operations this bit must always be set,
+                                             Please note that for @ref BLE_GATTS_AUTHORIZE_TYPE_WRITE operations this bit must always be set,
                                              as the data to be written needs to be stored and later provided by the application. */
   uint16_t          offset;             /**< Offset of the attribute value being updated. */
   uint16_t          len;                /**< Length in bytes of the value in p_data pointer, see @ref BLE_GATTS_ATTR_LENS_MAX. */
@@ -330,6 +332,12 @@ typedef struct
   uint16_t          handle;                       /**< Attribute Handle. */
 } ble_gatts_evt_hvc_t;
 
+/**@brief Event structure for @ref BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST. */
+typedef struct
+{
+  uint16_t          client_rx_mtu;              /**< Client RX MTU size. */
+} ble_gatts_evt_exchange_mtu_request_t;
+
 /**@brief Event structure for @ref BLE_GATTS_EVT_TIMEOUT. */
 typedef struct
 {
@@ -337,18 +345,19 @@ typedef struct
 } ble_gatts_evt_timeout_t;
 
 
-/**@brief GATT Server event callback event structure. */
+/**@brief GATTS event structure. */
 typedef struct
 {
   uint16_t conn_handle;                                       /**< Connection Handle on which the event occurred. */
   union
   {
-    ble_gatts_evt_write_t                 write;              /**< Write Event Parameters. */
-    ble_gatts_evt_rw_authorize_request_t  authorize_request;  /**< Read or Write Authorize Request Parameters. */
-    ble_gatts_evt_sys_attr_missing_t      sys_attr_missing;   /**< System attributes missing. */
-    ble_gatts_evt_hvc_t                   hvc;                /**< Handle Value Confirmation Event Parameters. */
-    ble_gatts_evt_timeout_t               timeout;            /**< Timeout Event. */
-  } params;                                                   /**< Event Parameters. */
+    ble_gatts_evt_write_t                 write;                 /**< Write Event Parameters. */
+    ble_gatts_evt_rw_authorize_request_t  authorize_request;     /**< Read or Write Authorize Request Parameters. */
+    ble_gatts_evt_sys_attr_missing_t      sys_attr_missing;      /**< System attributes missing. */
+    ble_gatts_evt_hvc_t                   hvc;                   /**< Handle Value Confirmation Event Parameters. */
+    ble_gatts_evt_exchange_mtu_request_t  exchange_mtu_request;  /**< Exchange MTU Request Event Parameters. */
+    ble_gatts_evt_timeout_t               timeout;               /**< Timeout Event. */
+  } params;                                                      /**< Event Parameters. */
 } ble_gatts_evt_t;
 
 /** @} */
@@ -396,6 +405,7 @@ SVCALL(SD_BLE_GATTS_SERVICE_ADD, uint32_t, sd_ble_gatts_service_add(uint8_t type
  * @retval ::NRF_ERROR_INVALID_ADDR Invalid pointer supplied.
  * @retval ::NRF_ERROR_INVALID_PARAM Invalid parameter(s) supplied, handle values need to match previously added services.
  * @retval ::NRF_ERROR_INVALID_STATE Invalid state to perform operation.
+ * @retval ::NRF_ERROR_NOT_SUPPORTED Feature is not supported, service_handle must be that of the last added service.
  * @retval ::NRF_ERROR_FORBIDDEN Forbidden value supplied, self inclusions are not allowed.
  * @retval ::NRF_ERROR_NO_MEM Not enough memory to complete operation.
  * @retval ::NRF_ERROR_NOT_FOUND Attribute not found.
@@ -499,6 +509,7 @@ SVCALL(SD_BLE_GATTS_VALUE_SET, uint32_t, sd_ble_gatts_value_set(uint16_t conn_ha
  * @retval ::NRF_ERROR_INVALID_PARAM Invalid attribute offset supplied.
  * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid connection handle supplied.
  * @retval ::BLE_ERROR_GATTS_INVALID_ATTR_TYPE @ref BLE_CONN_HANDLE_INVALID supplied on a system attribute.
+ * @retval ::BLE_ERROR_GATTS_SYS_ATTR_MISSING System attributes missing, use @ref sd_ble_gatts_sys_attr_set to set them to a known value.
  */
 SVCALL(SD_BLE_GATTS_VALUE_GET, uint32_t, sd_ble_gatts_value_get(uint16_t conn_handle, uint16_t handle, ble_gatts_value_t *p_value));
 
@@ -511,8 +522,8 @@ SVCALL(SD_BLE_GATTS_VALUE_GET, uint32_t, sd_ble_gatts_value_get(uint16_t conn_ha
  *          the peer.
  *
  * @note    The local attribute value may be updated even if an outgoing packet is not sent to the peer due to an error during execution.
- *          When receiveing the error codes @ref NRF_ERROR_INVALID_STATE, @ref NRF_ERROR_BUSY, @ref BLE_ERROR_GATTS_SYS_ATTR_MISSING and
- *          @ref BLE_ERROR_NO_TX_PACKETS the Attribute Table has been updated.
+ *          The Attribute Table has been updated if one of the following error codes is returned: @ref NRF_ERROR_INVALID_STATE, @ref NRF_ERROR_BUSY,
+ *          @ref NRF_ERROR_FORBIDDEN, @ref BLE_ERROR_GATTS_SYS_ATTR_MISSING and @ref BLE_ERROR_NO_TX_PACKETS.
  *          The caller can check whether the value has been updated by looking at the contents of *(p_hvx_params->p_len).
  *
  * @note    It is important to note that a notification will <b>consume an application buffer</b>, and will therefore
@@ -539,12 +550,16 @@ SVCALL(SD_BLE_GATTS_VALUE_GET, uint32_t, sd_ble_gatts_value_get(uint16_t conn_ha
  *
  * @retval ::NRF_SUCCESS Successfully queued a notification or indication for transmission, and optionally updated the attribute value.
  * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid Connection Handle.
- * @retval ::NRF_ERROR_INVALID_STATE Invalid Connection State or notifications and/or indications not enabled in the CCCD.
+ * @retval ::NRF_ERROR_INVALID_STATE One or more of the following is true:
+ *                                   - Invalid Connection State
+ *                                   - Notifications and/or indications not enabled in the CCCD
+ *                                   - An ATT_MTU exchange is ongoing
  * @retval ::NRF_ERROR_INVALID_ADDR Invalid pointer supplied.
  * @retval ::NRF_ERROR_INVALID_PARAM Invalid parameter(s) supplied.
  * @retval ::BLE_ERROR_INVALID_ATTR_HANDLE Invalid attribute handle(s) supplied. Only attributes added directly by the application are available to notify and indicate.
  * @retval ::BLE_ERROR_GATTS_INVALID_ATTR_TYPE Invalid attribute type(s) supplied, only characteristic values may be notified and indicated.
  * @retval ::NRF_ERROR_NOT_FOUND Attribute not found.
+ * @retval ::NRF_ERROR_FORBIDDEN The connection's current security level is lower than the one required by the write permissions of the CCCD associated with this characteristic.
  * @retval ::NRF_ERROR_DATA_SIZE Invalid data size(s) supplied.
  * @retval ::NRF_ERROR_BUSY Procedure already in progress.
  * @retval ::BLE_ERROR_GATTS_SYS_ATTR_MISSING System attributes missing, use @ref sd_ble_gatts_sys_attr_set to set them to a known value.
@@ -575,7 +590,10 @@ SVCALL(SD_BLE_GATTS_HVX, uint32_t, sd_ble_gatts_hvx(uint16_t conn_handle, ble_ga
  * @retval ::NRF_SUCCESS Successfully queued the Service Changed indication for transmission.
  * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid Connection Handle.
  * @retval ::NRF_ERROR_NOT_SUPPORTED Service Changed not enabled at initialization. See @ref sd_ble_enable and @ref ble_gatts_enable_params_t.
- * @retval ::NRF_ERROR_INVALID_STATE Invalid Connection State or notifications and/or indications not enabled in the CCCD.
+ * @retval ::NRF_ERROR_INVALID_STATE One or more of the following is true:
+ *                                   - Invalid Connection State
+ *                                   - Notifications and/or indications not enabled in the CCCD
+ *                                   - An ATT_MTU exchange is ongoing
  * @retval ::NRF_ERROR_INVALID_PARAM Invalid parameter(s) supplied.
  * @retval ::BLE_ERROR_INVALID_ATTR_HANDLE Invalid attribute handle(s) supplied, handles must be in the range populated by the application.
  * @retval ::NRF_ERROR_BUSY Procedure already in progress.
@@ -599,6 +617,10 @@ SVCALL(SD_BLE_GATTS_SERVICE_CHANGED, uint32_t, sd_ble_gatts_service_changed(uint
  *
  * @param[in] conn_handle                 Connection handle.
  * @param[in] p_rw_authorize_reply_params Pointer to a structure with the attribute provided by the application.
+ *
+ * @note @ref ble_gatts_authorize_params_t::p_data is ignored when this function is used to respond
+ *       to a @ref BLE_GATTS_AUTHORIZE_TYPE_READ event if @ref ble_gatts_authorize_params_t::update
+ *       is set to 0.
  *
  * @retval ::NRF_SUCCESS               Successfully queued a response to the peer, and in the case of a write operation, Attribute Table updated.
  * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid Connection Handle.
@@ -649,6 +671,7 @@ SVCALL(SD_BLE_GATTS_RW_AUTHORIZE_REPLY, uint32_t, sd_ble_gatts_rw_authorize_repl
  * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid Connection Handle.
  * @retval ::NRF_ERROR_INVALID_ADDR Invalid pointer supplied.
  * @retval ::NRF_ERROR_INVALID_STATE Invalid Connection State.
+ * @retval ::NRF_ERROR_INVALID_PARAM Invalid flags supplied.
  * @retval ::NRF_ERROR_INVALID_DATA Invalid data supplied, the data should be exactly the same as retrieved with @ref sd_ble_gatts_sys_attr_get.
  * @retval ::NRF_ERROR_NO_MEM Not enough memory to complete operation.
  * @retval ::NRF_ERROR_BUSY The stack is busy. Retry at later time.
@@ -682,6 +705,7 @@ SVCALL(SD_BLE_GATTS_SYS_ATTR_SET, uint32_t, sd_ble_gatts_sys_attr_set(uint16_t c
  * @retval ::NRF_SUCCESS Successfully retrieved the system attribute information.
  * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid Connection Handle.
  * @retval ::NRF_ERROR_INVALID_ADDR Invalid pointer supplied.
+ * @retval ::NRF_ERROR_INVALID_PARAM Invalid flags supplied.
  * @retval ::NRF_ERROR_DATA_SIZE The system attribute information did not fit into the provided buffer.
  * @retval ::NRF_ERROR_NOT_FOUND No system attributes found.
  */
@@ -710,6 +734,38 @@ SVCALL(SD_BLE_GATTS_INITIAL_USER_HANDLE_GET, uint32_t, sd_ble_gatts_initial_user
  */
 SVCALL(SD_BLE_GATTS_ATTR_GET, uint32_t, sd_ble_gatts_attr_get(uint16_t handle, ble_uuid_t * p_uuid, ble_gatts_attr_md_t * p_md));
 
+/**@brief Reply to an ATT_MTU exchange request by sending an Exchange MTU Response to the client.
+ *
+ * @details This function is only used to reply to a @ref BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event.
+ *
+ * @details The SoftDevice sets ATT_MTU to the minimum of:
+ *          - The Client RX MTU value from @ref BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST, and
+ *          - The Server RX MTU value.
+ *
+ *          However, the SoftDevice never sets ATT_MTU lower than @ref GATT_MTU_SIZE_DEFAULT.
+ *
+ * @events
+ * @event{@ref BLE_EVT_DATA_LENGTH_CHANGED, Generated if a data length update procedure is performed after the ATT_MTU exchange.}
+ * @endevents
+ *
+ * @mscs
+ * @mmsc{@ref BLE_GATTS_MTU_EXCHANGE}
+ * @endmscs
+ *
+ * @param[in] conn_handle    The connection handle identifying the connection to perform this procedure on.
+ * @param[in] server_rx_mtu  Server RX MTU size.
+ *                           - The minimum value is @ref GATT_MTU_SIZE_DEFAULT.
+ *                           - The maximum value is @ref ble_gatt_enable_params_t::att_mtu.
+ *                           - The value must be equal to Client RX MTU size given in @ref sd_ble_gattc_exchange_mtu_request
+ *                             if an ATT_MTU exchange has already been performed in the other direction.
+ *
+ * @retval ::NRF_SUCCESS Successfully sent response to the client.
+ * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid Connection Handle.
+ * @retval ::NRF_ERROR_INVALID_STATE Invalid Connection State or no ATT_MTU exchange request pending.
+ * @retval ::NRF_ERROR_INVALID_PARAM Invalid Server RX MTU size supplied.
+ * @retval ::NRF_ERROR_BUSY The stack is busy. Retry at later time.
+ */
+SVCALL(SD_BLE_GATTS_EXCHANGE_MTU_REPLY, uint32_t, sd_ble_gatts_exchange_mtu_reply(uint16_t conn_handle, uint16_t server_rx_mtu));
 /** @} */
 
 #ifdef __cplusplus

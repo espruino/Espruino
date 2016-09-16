@@ -9,13 +9,17 @@
  * the file.
  *
  */
- 
+
 #ifndef APP_SPI_MASTER_H
 #define APP_SPI_MASTER_H
 
 #include <stdint.h>
 #include <stdlib.h>
 #include "boards.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define _SPI_5W_
 
@@ -42,7 +46,7 @@ typedef enum
     SPI_MASTER_EVT_FIRST_BYTE_RECEIVED,   /**< An event indicating end of one byte transfer  */
     SPI_MASTER_EVT_TYPE_MAX              /**< Enumeration upper bound. */
 } spi_master_evt_type_t;
- 
+
 /**@brief Struct containing parameters of the SPI MASTER event */
  typedef struct
  {
@@ -65,14 +69,14 @@ typedef enum
      #ifdef SPI_MASTER_0_ENABLE
         SPI_MASTER_0,   /**< A instance of SPI master 0. */
      #endif
-     
+
      #ifdef SPI_MASTER_1_ENABLE
         SPI_MASTER_1,   /**< A instance of SPI master 1. */
-     #endif 
-     
+     #endif
+
      SPI_MASTER_HW_ENABLED_COUNT    /**< A number of enabled instances of SPI master. */
  } spi_master_hw_instance_t;
- 
+
 /**@brief Type of generic callback function handler to be used by all SPI MASTER driver events.
  *
  * @param[in] spi_master_evt    SPI MASTER driver event.
@@ -88,19 +92,19 @@ typedef void (*spi_master_event_handler_t) (spi_master_evt_t spi_master_evt);
  *          called before spi_master_open can be called again.
  *
  * @param[in] spi_master_hw_instance    Instance of SPI master module.
- * @param[in] p_spi_master_config       Pointer to configuration structure which will be used 
+ * @param[in] p_spi_master_config       Pointer to configuration structure which will be used
  *                                      to initialize SPI MASTER hardware.
  *
  * @retval NRF_SUCCESS                Operation success.
  * @retval NRF_ERROR_INVALID_STATE    Operation failure. The function has been already called.
- *                                    To call it again the function @ref spi_master_close 
+ *                                    To call it again the function @ref spi_master_close
  *                                    has to be called previously.
  * @retval NRF_ERROR_NULL             Operation failure. NULL pointer supplied.
  */
 uint32_t spi_master_open(const spi_master_hw_instance_t spi_master_hw_instance,
                          spi_master_config_t const * const p_spi_master_config);
 
- 
+
 /**@brief Function for closing a SPI MASTER driver.
  *
  * @note  Function disable hardware, reset internal module states and unregister events callback
@@ -110,7 +114,7 @@ uint32_t spi_master_open(const spi_master_hw_instance_t spi_master_hw_instance,
  */
 void spi_master_close(const spi_master_hw_instance_t spi_master_hw_instance);
 
- 
+
 /**@brief Function for transferring data between SPI master and SPI slave
  *
  * @note  Function registers buffers pointed by p_tx_buf and p_rx_buf parameters, after that starts transmission.
@@ -138,7 +142,7 @@ void spi_master_close(const spi_master_hw_instance_t spi_master_hw_instance);
 *        @ref SPI_MASTER_EVT_TRANSFER_STARTED and @ref SPI_MASTER_EVT_TRANSFER_COMPLETED.
 *
 * @param[in] spi_master_hw_instance    Instance of SPI master module.
-* @param[in] event_handler             Generic callback function handler to be used 
+* @param[in] event_handler             Generic callback function handler to be used
 *                                      by all SPI master driver events.
 */
 void spi_master_evt_handler_reg(const spi_master_hw_instance_t spi_master_hw_instance,
@@ -148,12 +152,12 @@ void spi_master_evt_handler_reg(const spi_master_hw_instance_t spi_master_hw_ins
 /**@brief Function for getting current state of the SPI master driver.
  *
  * @note  Function gets current state of the SPI master driver.
- * 
+ *
  * @param[in] spi_master_hw_instance   Instance of SPI master module.
  *
  * @retval SPI_MASTER_STATE_DISABLED   SPI MASTER is disabled.
- * @retval SPI_MASTER_STATE_BUSY       SPI_MASTER is sending now. 
- * @retval SPI_MASTER_STATE_IDLE       SPI_MASTER is idle now. 
+ * @retval SPI_MASTER_STATE_BUSY       SPI_MASTER is sending now.
+ * @retval SPI_MASTER_STATE_IDLE       SPI_MASTER is idle now.
  */
 spi_master_state_t spi_master_get_state(const spi_master_hw_instance_t spi_master_hw_instance);
 
@@ -165,6 +169,11 @@ uint32_t spi_master_restart(const spi_master_hw_instance_t spi_master_hw_instanc
 
 void spi_5W_master_evt_handler_reg(const spi_master_hw_instance_t spi_master_hw_instance,
                                          spi_master_event_handler_t event_handler);
+#endif
+
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

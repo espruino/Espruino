@@ -9,23 +9,20 @@
  * the file.
  *
  */
+#include "sdk_config.h"
+#if HARDFAULT_HANDLER_ENABLED
 #include <stdint.h>
+#include "compiler_abstraction.h"
 
-//lint -save -e27 -e10 -e19 -e40
-extern char STACK$$Base;
 
-/* This variable should be static but then it cannot be used in assembly code below.
- * The problem here is that the address of the section can be archived by $$ operator
- * that is not allowed in assembly code. */
-char const * HardFault_Handler_stack_bottom = &STACK$$Base;
-//lint -restore
+//lint -save -e27
 
-__asm void HardFault_Handler(void)
+__ASM void HardFault_Handler(void)
 {
     PRESERVE8
     EXTERN HardFault_c_handler
-    EXTERN __initial_sp
-    EXTERN HardFault_Handler_stack_bottom
+    EXTERN |STACK$$Base|
+    EXTERN |STACK$$Limit|
 
     ldr   r0, =0xFFFFFFFD
     cmp   r0, lr
@@ -39,11 +36,10 @@ HardFault_Handler_ChooseMSP
     /* -----------------------------------------------------------------
      * If we have selected MSP, check if we may use stack safely.
      * If not - reset the stack to the initial value. */
-    ldr   r1, =__initial_sp
-    ldr   r2, =HardFault_Handler_stack_bottom
-    ldr   r2, [r2]
+    ldr   r1, =|STACK$$Limit|
+    ldr   r2, =|STACK$$Base|
 
-    /* MSP is in the range of <__StackTop, __StackLimit) */
+    /* MSP is in the range of the stack area */
     cmp   r0, r1
     bhi   HardFault_MoveSP
     cmp   r0, r2
@@ -59,3 +55,6 @@ HardFault_Handler_Continue
 
     ALIGN
 }
+
+//lint -restore
+#endif //HARDFAULT_HANDLER_ENABLED

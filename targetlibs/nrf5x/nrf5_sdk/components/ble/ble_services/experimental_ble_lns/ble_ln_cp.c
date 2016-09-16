@@ -15,21 +15,8 @@
 #include "ble_ln_common.h"
 #include "sdk_common.h"
 
-#if 0
-/**
- * @defgroup lncp_log Module's log macros
- *
- * @note LNCP_LOG will only log if DEBUG is set.
- */
-#ifndef LNCP_DISABLE_LOGS
-#define LNCP_LOG(format, ...)   NRF_LOG_PRINTF_DEBUG("[LNCP] " format, ##__VA_ARGS__)  /**< Debug logger macro */
-#define LNCP_ERR(format, ...)   NRF_LOG_PRINTF_ERROR("[LNCP] " format, ##__VA_ARGS__)  /**< Error logger macro */
-#else
-#define LNCP_LOG(...)
-#define LNCP_ERR(...)
-#endif // LNCP_DISABLE_LOGS
-#endif
-#define LNCP_LOG(...)
+#define NRF_LOG_MODULE_NAME "BLE_LN_CP"
+#include "nrf_log.h"
 
 // Feature Mask bits
 #define FEATURE_MASK_INSTANTANEOUS_SPEED                 (0x01 << 0)         /**< Instantaneous Speed mask bit. */
@@ -247,7 +234,7 @@ static void on_mask_loc_speed_content(ble_lncp_t * p_lncp, ble_gatts_evt_write_t
 
     uint16_t rcvd_mask = uint16_decode(&p_evt_write->data[1]);
 
-    if(rcvd_mask > 0x7F)
+    if (rcvd_mask > 0x7F)
     {
         p_lncp->pending_rsp.rsp_code = LNCP_RSP_INVALID_PARAMETER;
         return;
@@ -279,7 +266,7 @@ static void on_nav_control(ble_lncp_t * p_lncp, ble_gatts_evt_write_t const * p_
         return;
     }
 
-    if(p_evt_write->len != LNCP_NAV_CMD_LEN)
+    if (p_evt_write->len != LNCP_NAV_CMD_LEN)
     {
         p_lncp->pending_rsp.rsp_code = LNCP_RSP_INVALID_PARAMETER;
         return;
@@ -358,7 +345,7 @@ static void on_req_name_of_route(ble_lncp_t * p_lncp, ble_gatts_evt_write_t cons
         return;
     }
 
-    if(p_evt_write->len != OPCODE_LENGTH + INT16_LEN)
+    if (p_evt_write->len != OPCODE_LENGTH + INT16_LEN)
     {
         p_lncp->pending_rsp.rsp_code = LNCP_RSP_INVALID_PARAMETER;
         return;
@@ -393,7 +380,7 @@ static void on_select_route(ble_lncp_t * p_lncp, ble_gatts_evt_write_t const * p
         return;
     }
 
-    if(p_evt_write->len != OPCODE_LENGTH + INT16_LEN)
+    if (p_evt_write->len != OPCODE_LENGTH + INT16_LEN)
     {
         p_lncp->pending_rsp.rsp_code = LNCP_RSP_INVALID_PARAMETER;
         return;
@@ -507,7 +494,7 @@ static void on_ctrlpt_write(ble_lncp_t * p_lncp, ble_gatts_evt_write_t const * p
 
     ble_gatts_rw_authorize_reply_params_t write_authorize_reply;
     memset(&write_authorize_reply, 0, sizeof(write_authorize_reply));
-    
+
     write_authorize_reply.type   = BLE_GATTS_AUTHORIZE_TYPE_WRITE;
 
     if (p_lncp->is_ctrlpt_indication_enabled)
@@ -798,7 +785,7 @@ ret_code_t ble_lncp_init(ble_lncp_t * p_lncp, ble_lncp_init_t const * p_lncp_ini
     add_char_params.write_access         = p_lncp_init->write_perm;
     add_char_params.cccd_write_access    = p_lncp_init->cccd_write_perm;
 
-    LNCP_LOG("Initialized\n");
+    NRF_LOG_DEBUG("Initialized\r\n");
 
     return characteristic_add(p_lncp->service_handle,
                               &add_char_params,

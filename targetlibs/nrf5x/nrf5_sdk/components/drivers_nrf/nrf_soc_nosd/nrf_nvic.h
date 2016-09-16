@@ -16,6 +16,10 @@
 #include <stdint.h>
 #include "nrf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@brief Enable External Interrupt.
  * @note Corresponds to NVIC_EnableIRQ in CMSIS.
  *
@@ -119,12 +123,17 @@ uint32_t sd_nvic_critical_region_enter(uint8_t * p_is_nested_critical_region);
 /**@brief Exit critical region.
  *
  * @pre Application has entered a critical region using ::sd_nvic_critical_region_enter.
- * @post If not in a nested critical region, the application interrupts will restored to the state before ::sd_nvic_critical_region_enter was called. 
+ * @post If not in a nested critical region, the application interrupts will restored to the state before ::sd_nvic_critical_region_enter was called.
  *
  * @param[in] is_nested_critical_region If this is set to 1, the critical region won't be exited. @sa sd_nvic_critical_region_enter.
  *
  * @retval ::NRF_SUCCESS
  */
 uint32_t sd_nvic_critical_region_exit(uint8_t is_nested_critical_region);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NRF_SOC_H__ */

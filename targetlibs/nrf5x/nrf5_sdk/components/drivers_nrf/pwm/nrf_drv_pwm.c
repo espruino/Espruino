@@ -10,15 +10,15 @@
  *
  */
 
+#include "sdk_config.h"
+#if PWM_ENABLED
+#define ENABLED_PWM_COUNT (PWM0_ENABLED+PWM1_ENABLED+PWM2_ENABLED)
+#if ENABLED_PWM_COUNT
 #include <string.h>
 #include "nrf_drv_pwm.h"
 #include "nrf_drv_common.h"
 #include "nrf_gpio.h"
 #include "app_util_platform.h"
-
-#if (PWM_COUNT == 0)
-    #error "No PWM instances enabled in the driver configuration file."
-#endif
 
 
 // Control block - driver instance local data.
@@ -27,20 +27,7 @@ typedef struct
     nrf_drv_pwm_handler_t    handler;
     nrf_drv_state_t volatile state;
 } pwm_control_block_t;
-static pwm_control_block_t m_cb[PWM_COUNT];
-
-static nrf_drv_pwm_config_t const m_default_config[PWM_COUNT] = {
-#if PWM0_ENABLED
-    NRF_DRV_PWM_DEFAULT_CONFIG(0),
-#endif
-#if PWM1_ENABLED
-    NRF_DRV_PWM_DEFAULT_CONFIG(1),
-#endif
-#if PWM2_ENABLED
-    NRF_DRV_PWM_DEFAULT_CONFIG(2),
-#endif
-};
-
+static pwm_control_block_t m_cb[ENABLED_PWM_COUNT];
 
 static void configure_pins(nrf_drv_pwm_t const * const p_instance,
                            nrf_drv_pwm_config_t const * p_config)
@@ -81,16 +68,12 @@ ret_code_t nrf_drv_pwm_init(nrf_drv_pwm_t const * const p_instance,
                             nrf_drv_pwm_config_t const * p_config,
                             nrf_drv_pwm_handler_t        handler)
 {
+    ASSERT(p_config)
     pwm_control_block_t * p_cb  = &m_cb[p_instance->drv_inst_idx];
 
     if (p_cb->state != NRF_DRV_STATE_UNINITIALIZED)
     {
         return NRF_ERROR_INVALID_STATE;
-    }
-
-    if (p_config == NULL)
-    {
-        p_config = &m_default_config[p_instance->drv_inst_idx];
     }
 
     p_cb->handler = handler;
@@ -187,7 +170,7 @@ void nrf_drv_pwm_simple_playback(nrf_drv_pwm_t const * const p_instance,
     nrf_pwm_sequence_set(p_instance->p_registers, 0, p_sequence);
     nrf_pwm_sequence_set(p_instance->p_registers, 1, p_sequence);
     bool odd = (playback_count & 1);
-    nrf_pwm_loop_set(p_instance->p_registers, playback_count/2 + (odd ? 1 : 0));
+    nrf_pwm_loop_set(p_instance->p_registers, playback_count / 2 + (odd ? 1 : 0));
 
     uint32_t shorts_mask;
     if (flags & NRF_DRV_PWM_FLAG_STOP)
@@ -348,3 +331,5 @@ void PWM2_IRQHandler(void)
     irq_handler(NRF_PWM2, &m_cb[PWM2_INSTANCE_INDEX]);
 }
 #endif
+#endif //ENABLED_PWM_COUNT
+#endif //PWM_ENABLED

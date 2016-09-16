@@ -9,7 +9,7 @@
 
 /**@file
  *
- * @defgroup ble_sdk_srv_lbs_c LED Button Service Client
+ * @defgroup ble_lbs_c LED Button Service Client
  * @{
  * @ingroup  ble_sdk_srv
  * @brief    The LED Button Service client can be used to set a LED, and read a button state on a
@@ -30,6 +30,10 @@
 #include <stdint.h>
 #include "ble.h"
 #include "ble_db_discovery.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define LBS_UUID_BASE        {0x23, 0xD1, 0xBC, 0xEA, 0x5F, 0x78, 0x23, 0x15, \
                               0xDE, 0xEF, 0x12, 0x12, 0x00, 0x00, 0x00, 0x00}
@@ -138,7 +142,7 @@ void ble_lbs_c_on_ble_evt(ble_lbs_c_t * p_ble_lbs_c, const ble_evt_t * p_ble_evt
  * @param[in] p_ble_lbs_c Pointer to the LED Button Client structure.
  *
  * @retval  NRF_SUCCESS If the SoftDevice has been requested to write to the CCCD of the peer.
- *                      Otherwise, an error code. This function propagates the error code returned 
+ *                      Otherwise, an error code. This function propagates the error code returned
  *                      by the SoftDevice API @ref sd_ble_gattc_write.
  *          NRF_ERROR_INVALID_STATE if no connection handle has been assigned (@ref ble_lbs_c_handles_assign)
  *          NRF_ERROR_NULL if the given parameter is NULL
@@ -185,6 +189,11 @@ uint32_t ble_lbs_c_handles_assign(ble_lbs_c_t *    p_ble_lbs_c,
  * @retval NRF_SUCCESS If the staus was sent successfully. Otherwise, an error code is returned.
  */
 uint32_t ble_lbs_led_status_send(ble_lbs_c_t * p_ble_lbs_c, uint8_t status);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_LBS_C_H__
 

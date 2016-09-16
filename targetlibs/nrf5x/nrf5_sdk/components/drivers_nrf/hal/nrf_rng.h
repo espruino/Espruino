@@ -29,6 +29,10 @@
 #include <stdbool.h>
 #include "nrf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define NRF_RNG_TASK_SET    (1UL)
 #define NRF_RNG_EVENT_CLEAR (0UL)
 /**
@@ -102,7 +106,7 @@ __STATIC_INLINE bool nrf_rng_int_get(nrf_rng_int_mask_t rng_int_mask)
 }
 
 /**
- * @brief Function for getting the address of a specific task. 
+ * @brief Function for getting the address of a specific task.
  *
  * This function can be used by the PPI module.
  *
@@ -124,7 +128,7 @@ __STATIC_INLINE void nrf_rng_task_trigger(nrf_rng_task_t rng_task)
 }
 
 /**
- * @brief Function for getting address of a specific event. 
+ * @brief Function for getting address of a specific event.
  *
  * This function can be used by the PPI module.
  *
@@ -143,6 +147,10 @@ __STATIC_INLINE uint32_t * nrf_rng_event_address_get(nrf_rng_event_t rng_event)
 __STATIC_INLINE void nrf_rng_event_clear(nrf_rng_event_t rng_event)
 {
     *((volatile uint32_t *)((uint8_t *)NRF_RNG + rng_event)) = NRF_RNG_EVENT_CLEAR;
+#if __CORTEX_M == 0x04
+    volatile uint32_t dummy = *((volatile uint32_t *)((uint8_t *)NRF_RNG + rng_event));
+    (void)dummy;
+#endif
 }
 
 /**
@@ -155,7 +163,7 @@ __STATIC_INLINE void nrf_rng_event_clear(nrf_rng_event_t rng_event)
  */
 __STATIC_INLINE bool nrf_rng_event_get(nrf_rng_event_t rng_event)
 {
-    return (bool)*((volatile uint32_t *)((uint8_t *)NRF_RNG + rng_event));
+    return (bool) * ((volatile uint32_t *)((uint8_t *)NRF_RNG + rng_event));
 }
 
 /**
@@ -208,4 +216,9 @@ __STATIC_INLINE void nrf_rng_error_correction_disable(void)
 /**
  *@}
  **/
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* NRF_RNG_H__ */

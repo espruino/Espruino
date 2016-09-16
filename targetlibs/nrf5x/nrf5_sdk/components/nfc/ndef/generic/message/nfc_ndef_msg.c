@@ -14,7 +14,7 @@
 #include "nrf.h"
 
 /**
- * @brief Resolve the value of record location flags of the NFC NDEF record within a NFC NDEF message.
+ * @brief Resolve the value of record location flags of the NFC NDEF record within an NFC NDEF message.
  */
 __STATIC_INLINE nfc_ndef_record_location_t record_location_get(uint32_t index,
                                                                uint32_t record_count)
@@ -56,7 +56,17 @@ ret_code_t nfc_ndef_msg_encode(nfc_ndef_msg_desc_t const * p_ndef_msg_desc,
 
     uint32_t sum_of_len = 0;
 
+    if ((p_ndef_msg_desc == NULL) || p_msg_len == NULL)
+    {
+        return NRF_ERROR_NULL;
+    }
+
     nfc_ndef_record_desc_t * * pp_record_rec_desc = p_ndef_msg_desc->pp_record;
+
+    if (p_ndef_msg_desc->pp_record == NULL)
+    {
+        return NRF_ERROR_NULL;
+    }
 
     for (i = 0; i < p_ndef_msg_desc->record_count; i++)
     {
@@ -75,7 +85,10 @@ ret_code_t nfc_ndef_msg_encode(nfc_ndef_msg_desc_t const * p_ndef_msg_desc,
         }
 
         sum_of_len   += temp_len;
-        p_msg_buffer += temp_len;
+        if (p_msg_buffer != NULL)
+        {
+            p_msg_buffer += temp_len;
+        }
 
         /* next record */
         pp_record_rec_desc++;
@@ -100,7 +113,7 @@ ret_code_t nfc_ndef_msg_record_add(nfc_ndef_msg_desc_t * const    p_msg,
     {
         return NRF_ERROR_NO_MEM;
     }
-    
+
     p_msg->pp_record[p_msg->record_count] = p_record;
     p_msg->record_count++;
 

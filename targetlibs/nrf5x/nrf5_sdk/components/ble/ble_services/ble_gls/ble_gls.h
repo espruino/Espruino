@@ -11,7 +11,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_gls Glucose Service
+ * @defgroup ble_gls Glucose Service
  * @{
  * @ingroup ble_sdk_srv
  * @brief Glucose Service module.
@@ -21,8 +21,8 @@
  * @note The application must propagate BLE stack events to the Glucose Service module by calling
  *       ble_gls_on_ble_evt() from the @ref softdevice_handler callback.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
  */
 
@@ -34,6 +34,10 @@
 #include "ble.h"
 #include "ble_srv_common.h"
 #include "ble_date_time.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**@brief Glucose feature */
 #define BLE_GLS_FEATURE_LOW_BATT                       0x0001  /**< Low Battery Detection During Measurement Supported */
@@ -157,7 +161,7 @@ typedef struct
     ble_gls_evt_type_t evt_type;                               /**< Type of event. */
 } ble_gls_evt_t;
 
-// Forward declaration of the ble_gls_t type. 
+// Forward declaration of the ble_gls_t type.
 typedef struct ble_gls_s ble_gls_t;
 
 /**@brief Glucose Service event handler type. */
@@ -257,6 +261,11 @@ void ble_gls_on_ble_evt(ble_gls_t * p_gls, ble_evt_t * p_ble_evt);
  * @return      NRF_SUCCESS on success, otherwise an error code.
  */
 uint32_t ble_gls_glucose_new_meas(ble_gls_t * p_gls, ble_gls_rec_t * p_rec);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_GLS_H__
 

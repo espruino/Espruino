@@ -29,7 +29,7 @@ static uint32_t nfc_ac_rec_payload_size_get(nfc_ac_rec_payload_desc_t const * p_
     int32_t i = 0;
     // Initialize with size of byte with CPS.
     uint32_t payload_size = AC_REC_CPS_BYTE_SIZE;
-    
+
     // Add Carrier Data Reference size.
     payload_size +=  p_ac_rec_payload_desc->carrier_data_ref.length + AC_REC_DATA_REF_LEN_SIZE;
 
@@ -41,7 +41,7 @@ static uint32_t nfc_ac_rec_payload_size_get(nfc_ac_rec_payload_desc_t const * p_
         // Add Auxiliary Data Reference size.
         payload_size += p_ac_rec_payload_desc->p_aux_data_ref[i].length + AC_REC_DATA_REF_LEN_SIZE;
     }
-   
+
     return payload_size;
 }
 
@@ -53,49 +53,52 @@ ret_code_t nfc_ac_rec_payload_constructor(nfc_ac_rec_payload_desc_t * p_nfc_rec_
     int32_t  i = 0;
     uint32_t payload_size = nfc_ac_rec_payload_size_get(p_nfc_rec_ac_payload_desc);
 
-    // Not enough space in the buffer, return an error.
-    if (payload_size > *p_len)
+    if (p_buff != NULL)
     {
-        return NRF_ERROR_NO_MEM;
-    }
+        // Not enough space in the buffer, return an error.
+        if (payload_size > *p_len)
+        {
+            return NRF_ERROR_NO_MEM;
+        }
 
-    // Invalid CPS value.
-    if ( p_nfc_rec_ac_payload_desc->cps & ~NFC_AC_CPS_MASK )
-    {
-        return NRF_ERROR_INVALID_PARAM;
-    }
+        // Invalid CPS value.
+        if ( p_nfc_rec_ac_payload_desc->cps & ~NFC_AC_CPS_MASK )
+        {
+            return NRF_ERROR_INVALID_PARAM;
+        }
 
-    // Copy CPS.
-    *p_buff = p_nfc_rec_ac_payload_desc->cps;
-    p_buff += AC_REC_CPS_BYTE_SIZE;
+        // Copy CPS.
+        *p_buff = p_nfc_rec_ac_payload_desc->cps;
+        p_buff += AC_REC_CPS_BYTE_SIZE;
 
-    // Copy Carrier Data Reference.
-    *p_buff = p_nfc_rec_ac_payload_desc->carrier_data_ref.length;
-    p_buff += AC_REC_DATA_REF_LEN_SIZE;
-
-    memcpy( p_buff,
-            p_nfc_rec_ac_payload_desc->carrier_data_ref.p_data,
-            p_nfc_rec_ac_payload_desc->carrier_data_ref.length );
-    p_buff += p_nfc_rec_ac_payload_desc->carrier_data_ref.length;
-
-    // Copy Auxiliary Data Reference.
-    *p_buff = p_nfc_rec_ac_payload_desc->aux_data_ref_count;
-    p_buff += AC_REC_AUX_DATA_REF_COUNT_SIZE;
-
-    for (i = 0; i < p_nfc_rec_ac_payload_desc->aux_data_ref_count; i++)
-    {
-        *p_buff = p_nfc_rec_ac_payload_desc->p_aux_data_ref[i].length;
+        // Copy Carrier Data Reference.
+        *p_buff = p_nfc_rec_ac_payload_desc->carrier_data_ref.length;
         p_buff += AC_REC_DATA_REF_LEN_SIZE;
 
         memcpy( p_buff,
-                p_nfc_rec_ac_payload_desc->p_aux_data_ref[i].p_data,
-                p_nfc_rec_ac_payload_desc->p_aux_data_ref[i].length );
-        p_buff += p_nfc_rec_ac_payload_desc->p_aux_data_ref[i].length;
+                p_nfc_rec_ac_payload_desc->carrier_data_ref.p_data,
+                p_nfc_rec_ac_payload_desc->carrier_data_ref.length );
+        p_buff += p_nfc_rec_ac_payload_desc->carrier_data_ref.length;
+
+        // Copy Auxiliary Data Reference.
+        *p_buff = p_nfc_rec_ac_payload_desc->aux_data_ref_count;
+        p_buff += AC_REC_AUX_DATA_REF_COUNT_SIZE;
+
+        for (i = 0; i < p_nfc_rec_ac_payload_desc->aux_data_ref_count; i++)
+        {
+            *p_buff = p_nfc_rec_ac_payload_desc->p_aux_data_ref[i].length;
+            p_buff += AC_REC_DATA_REF_LEN_SIZE;
+
+            memcpy( p_buff,
+                    p_nfc_rec_ac_payload_desc->p_aux_data_ref[i].p_data,
+                    p_nfc_rec_ac_payload_desc->p_aux_data_ref[i].length );
+            p_buff += p_nfc_rec_ac_payload_desc->p_aux_data_ref[i].length;
+        }
     }
 
     // Assign payload size to the return buffer.
     *p_len = payload_size;
-    
+
     return NRF_SUCCESS;
 }
 
@@ -120,7 +123,7 @@ ret_code_t nfc_ac_rec_auxiliary_data_ref_add(nfc_ndef_record_desc_t * p_ac_rec,
     {
         return NRF_ERROR_NO_MEM;
     }
-    
+
     p_ac_rec_payload->p_aux_data_ref[p_ac_rec_payload->aux_data_ref_count].p_data = p_aux_data;
     p_ac_rec_payload->p_aux_data_ref[p_ac_rec_payload->aux_data_ref_count].length = aux_length;
     p_ac_rec_payload->aux_data_ref_count++;

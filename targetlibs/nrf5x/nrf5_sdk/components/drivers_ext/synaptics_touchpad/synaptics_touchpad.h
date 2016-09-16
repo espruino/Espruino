@@ -18,18 +18,22 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
 * @brief Synaptics Touchpad driver
 *
 *
-* @defgroup nrf_drivers_synaptics_touchpad Synaptics Touchpad driver.
+* @defgroup nrf_drivers_synaptics_touchpad Synaptics Touchpad driver
 * @{
-* @ingroup nrf_drivers
+* @ingroup ext_drivers
 * @brief Synaptics Touchpad driver.
 */
 
 /**
-  Touchpad register addresses. 
+  Touchpad register addresses.
 */
 #define TOUCHPAD_INT_STATUS    0x14    //!< Interrupt status register
 #define TOUCHPAD_BUTTON_STATUS 0x41    //!< Button status register
@@ -46,8 +50,8 @@
 /**
   Operational states
 */
-typedef enum                     
-{  
+typedef enum
+{
   SleepmodeNormal        = 0x00,  //!< Normal operation
   SleepmodeSensorSleep   = 0x01  //!< Low power operation
 } TouchpadSleepMode_t;
@@ -85,7 +89,7 @@ bool touchpad_interrupt_status_read(uint8_t *interrupt_status);
 bool touchpad_set_sleep_mode(TouchpadSleepMode_t mode);
 
 /**
-  @brief Function for reading a touchpad register contents over TWI.  
+  @brief Function for reading a touchpad register contents over TWI.
   @param[in] register_address Register address
   @param[out] value Pointer to a data buffer where read data will be stored
   @retval true Register read succeeded
@@ -124,5 +128,10 @@ bool touchpad_product_id_verify(void);
  **/
 
 /*lint --flb "Leave library region" */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __TOUCHPAD_H__ */

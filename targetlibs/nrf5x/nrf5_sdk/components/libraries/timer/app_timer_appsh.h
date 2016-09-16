@@ -15,6 +15,10 @@
 
 #include "app_timer.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define APP_TIMER_SCHED_EVT_SIZE     sizeof(app_timer_event_t)  /**< Size of button events being passed through the scheduler (is to be used for computing the maximum size of scheduler events). */
 
 /**@brief Macro for initializing the application timer module to use with app_scheduler.
@@ -40,5 +44,10 @@ typedef struct
 
 uint32_t app_timer_evt_schedule(app_timer_timeout_handler_t timeout_handler,
                                 void *                      p_context);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // APP_TIMER_APPSH_H
- 
+

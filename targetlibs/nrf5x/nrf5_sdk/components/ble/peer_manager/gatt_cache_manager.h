@@ -20,6 +20,10 @@
 #include "ble_gap.h"
 #include "peer_manager_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 
 /**
@@ -91,12 +95,10 @@ typedef void (*gcm_evt_handler_t)(gcm_evt_t const * p_event);
 
 /**@brief Function for initializing the GATT Cache Manager module.
  *
- * @param[in]  evt_handler  Callback for events from the GATT Cache Manager module.
- *
- * @retval NRF_SUCCESS     Initialization was successful.
- * @retval NRF_ERROR_NULL  evt_handler was NULL.
+ * @retval NRF_SUCCESS         Initialization was successful.
+ * @retval NRF_ERROR_INTERNAL  If an internal error occurred.
  */
-ret_code_t gcm_init(gcm_evt_handler_t evt_handler);
+ret_code_t gcm_init(void);
 
 
 /**@brief Function for dispatching SoftDevice events to the GATT Cache Manager module.
@@ -202,8 +204,13 @@ ret_code_t gcm_local_db_cache_get(pm_peer_id_t peer_id, pm_peer_data_local_gatt_
  */
 void gcm_local_database_has_changed(void);
 
-/** @} 
+/** @}
   * @endcond
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* GATT_CACHE_MANAGER_H__ */

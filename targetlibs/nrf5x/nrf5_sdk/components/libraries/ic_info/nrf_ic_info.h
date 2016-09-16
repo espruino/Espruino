@@ -25,6 +25,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@brief Enum identifying the IC revision as described in the Compatibility Matrix. */
 typedef enum
 {
@@ -51,6 +55,11 @@ typedef struct
  */
 void nrf_ic_info_get(nrf_ic_info_t*  p_ic_info);
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NRF51_IC_INFO_H__
 

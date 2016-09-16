@@ -28,17 +28,15 @@
 #include "ble.h"
 #include "app_util.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 #define ADV_LENGTH_FIELD_SIZE              1UL                                 /**< Advertising Data and Scan Response format contains 1 octet for the length. */
 #define ADV_AD_TYPE_FIELD_SIZE             1UL                                 /**< Advertising Data and Scan Response format contains 1 octet for the AD type. */
 #define ADV_AD_DATA_OFFSET                 (ADV_LENGTH_FIELD_SIZE + \
                                             ADV_AD_TYPE_FIELD_SIZE)            /**< Offset for the AD data field of the Advertising Data and Scan Response format. */
-#define AD_TYPE_TK_VALUE_DATA_SIZE         (sizeof(ble_advdata_tk_value_t))    /**< Data size (in octets) of the Security Manager TK value AD type. */
-#define AD_TYPE_TK_VALUE_SIZE              (ADV_AD_DATA_OFFSET + \
-                                            AD_TYPE_TK_VALUE_DATA_SIZE)        /**< Size (in octets) of the Security Manager TK value AD type. */
-#define AD_TYPE_LE_ROLE_DATA_SIZE          1UL                                 /**< Data size (in octets) of the LE Bluetooth Device Address AD type. */
-#define AD_TYPE_LE_ROLE_SIZE               (ADV_AD_DATA_OFFSET + \
-                                            AD_TYPE_LE_ROLE_DATA_SIZE)         /**< Size (in octets) of the LE Bluetooth Device Address AD type. */
 #define AD_TYPE_BLE_DEVICE_ADDR_TYPE_SIZE  1UL                                 /**< Data size (in octets) of the Address type of the LE Bluetooth Device Address AD type. */
 #define AD_TYPE_BLE_DEVICE_ADDR_DATA_SIZE  (BLE_GAP_ADDR_LEN + \
                                             AD_TYPE_BLE_DEVICE_ADDR_TYPE_SIZE) /**< Data size (in octets) of the LE Bluetooth Device Address AD type. */
@@ -58,19 +56,6 @@
                                             AD_TYPE_CONN_INT_DATA_SIZE)        /**< Data size (in octets) of the Slave Connection Interval Range AD type. */
 #define AD_TYPE_MANUF_SPEC_DATA_ID_SIZE    2UL                                 /**< Size (in octets) of the Company Identifier Code, which is a part of the Manufacturer Specific Data AD type. */
 #define AD_TYPE_SERV_DATA_16BIT_UUID_SIZE  2UL                                 /**< Size (in octets) of the 16-bit UUID, which is a part of the Service Data AD type. */
-#define AD_TYPE_OOB_FLAGS_DATA_SIZE        1UL                                 /**< Data size (in octets) of the Security Manager OOB Flags AD type. */
-#define AD_TYPE_OOB_FLAGS_SIZE             (ADV_AD_DATA_OFFSET + \
-                                            AD_TYPE_OOB_FLAGS_DATA_SIZE)       /**< Size (in octets) of the Security Manager OOB Flags AD type. */
-
-#define AD_TYPE_SEC_MGR_OOB_FLAG_SET                   1U                      /**< Security Manager OOB Flag set. Flag selection is done using _POS defines */
-#define AD_TYPE_SEC_MGR_OOB_FLAG_CLEAR                 0U                      /**< Security Manager OOB Flag clear. Flag selection is done using _POS defines */
-#define AD_TYPE_SEC_MGR_OOB_FLAG_OOB_DATA_PRESENT_POS  0UL                     /**< Security Manager OOB Data Present Flag position. */
-#define AD_TYPE_SEC_MGR_OOB_FLAG_OOB_LE_SUPPORTED_POS  1UL                     /**< Security Manager OOB Low Energy Supported Flag position. */
-#define AD_TYPE_SEC_MGR_OOB_FLAG_SIM_LE_AND_EP_POS     2UL                     /**< Security Manager OOB Simultaneous LE and BR/EDR to Same Device Capable Flag position. */
-#define AD_TYPE_SEC_MGR_OOB_ADDRESS_TYPE_PUBLIC        0UL                     /**< Security Manager OOB Public Address type. */
-#define AD_TYPE_SEC_MGR_OOB_ADDRESS_TYPE_RANDOM        1UL                     /**< Security Manager OOB Random Address type. */
-#define AD_TYPE_SEC_MGR_OOB_FLAG_ADDRESS_TYPE_POS      3UL                     /**< Security Manager OOB Address type Flag (0 = Public Address, 1 = Random Address) position. */
-
 
 /**@brief Security Manager TK value. */
 typedef struct
@@ -206,6 +191,11 @@ uint32_t adv_data_encode(ble_advdata_t const * const p_advdata,
  * if the preference is too large to fit in the provided buffer, the name can be truncated further.
  */
 uint32_t ble_advdata_set(const ble_advdata_t * p_advdata, const ble_advdata_t * p_srdata);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_ADVDATA_H__
 

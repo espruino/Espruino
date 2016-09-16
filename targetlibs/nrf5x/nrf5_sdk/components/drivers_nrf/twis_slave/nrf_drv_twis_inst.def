@@ -1,14 +1,14 @@
 /**
  * @file
  * @brief Xmacro file with contains enumeration of TWIS instances to implement
- * 
+ *
  * Use this file everywhere where anything has to be generated for all active TWIS instances.
  * Xmacro format:
- * 
+ *
  * @code
    X(n)
  * @endcode
- * 
+ *
  * Where @em n is number of the instance itself (0 for NRF_TWIS0).
  */
 #if (TWIS0_ENABLED == 1)

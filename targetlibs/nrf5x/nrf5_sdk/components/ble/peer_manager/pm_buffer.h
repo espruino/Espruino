@@ -18,6 +18,10 @@
 #include "sdk_errors.h"
 #include "pm_mutex.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /**
  * @cond NO_DOXYGEN
@@ -42,7 +46,7 @@ do                                                                  \
                                MUTEX_STORAGE_SIZE(n_blocks),        \
                               (n_blocks),                           \
                               (block_size));                        \
-} while(0)
+} while (0)
 
 
 typedef struct
@@ -106,6 +110,11 @@ uint8_t * pm_buffer_ptr_get(pm_buffer_t * p_buffer, uint8_t id);
  */
 void pm_buffer_release(pm_buffer_t * p_buffer, uint8_t id);
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BUFFER_H__
 

@@ -28,6 +28,10 @@
 #include <stdbool.h>
 #include "ble_flash.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ERROR_MESSAGE_LENGTH  128                                /**< Length of error message to stored. */
 #define STACK_DUMP_LENGTH     256                                /**< Length of stack to be stored at max: 64 entries of 4 bytes each. */
 #define FLASH_PAGE_ERROR_LOG  (BLE_FLASH_PAGE_END - 2)           /**< Address in flash where stack trace can be stored. */
@@ -49,7 +53,7 @@ typedef struct
 
 /**@brief Function for writing the file name/message, line number, and current program stack
  *        to flash.
- * 
+ *
  * @note This function will force the writing to flash, and disregard any radio communication.
  *       USE THIS FUNCTION WITH CARE.
  *
@@ -63,6 +67,11 @@ typedef struct
  */
 uint32_t ble_error_log_write(uint32_t err_code, const uint8_t * p_message, uint16_t line_number);
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BLE_ERROR_LOG_H__ */
 

@@ -15,6 +15,10 @@
 
 #include "nrf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 #define FS_FLAG_INITIALIZED         (1 << 0)  // The module has been initialized.
 #define FS_FLAG_PROCESSING          (1 << 1)  // The module is processing flash operations.
@@ -30,15 +34,8 @@
 #define FS_SECTION_VARS_END_ADDR        NRF_SECTION_VARS_END_ADDR(fs_data)
 
 
-// Register the section 'fs_data'.
-//lint -save -e19
-NRF_SECTION_VARS_REGISTER_SECTION(fs_data);
-//lint -restore
-
-// Declare symbols into the 'fs_data' section.
-NRF_SECTION_VARS_REGISTER_SYMBOLS(fs_config_t, fs_data);
-//lint -esym(526,fs_dataBase)
-//lint -esym(526,fs_dataLimit)
+// Create section 'fs_data'.
+NRF_SECTION_VARS_CREATE_SECTION(fs_data, fs_config_t);
 
 
 // fstorage op-codes.
@@ -64,6 +61,7 @@ typedef enum
 typedef struct
 {
     fs_config_t  const * p_config;          // Application-specific fstorage configuration.
+    void *               p_context;         // User-defined context passed to the interrupt handler.
     fs_op_code_t         op_code;           // ID of the operation.
     union
     {
@@ -131,5 +129,10 @@ static uint32_t const * fs_flash_page_end_addr()
 // will act as the page beyond the end of the available flash storage.
 #define FS_PAGE_END_ADDR    (fs_flash_page_end_addr())
 
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__FSTORAGE_INTERNAL_DEFS_H

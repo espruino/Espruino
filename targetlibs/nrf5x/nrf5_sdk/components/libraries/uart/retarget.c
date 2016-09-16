@@ -9,9 +9,17 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+/** @file
+ *
+ * @defgroup retarget Retarget layer for stdio functions
+ * @{
+ * @ingroup app_common
+ * @} */
+#if RETARGET_ENABLED
 #if !defined(NRF_LOG_USES_RTT) || NRF_LOG_USES_RTT != 1
 #if !defined(HAS_SIMPLE_UART_RETARGET)
+
 
 #include <stdio.h>
 #include <stdint.h>
@@ -20,7 +28,7 @@
 #include "nrf_error.h"
 
 #if !defined(__ICCARM__)
-struct __FILE 
+struct __FILE
 {
     int handle;
 };
@@ -97,5 +105,7 @@ __ATTRIBUTES size_t __write(int file, const unsigned char * p_char, size_t len)
 }
 
 #endif
+
 #endif // !defined(HAS_SIMPLE_UART_RETARGET)
 #endif // NRF_LOG_USES_RTT != 1
+#endif //RETARGET_ENABLED

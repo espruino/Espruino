@@ -17,6 +17,10 @@
 #include "nfc_tlv_block.h"
 #include "sdk_errors.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @defgroup nfc_type_2_tag Type 2 Tag
  * @{
@@ -155,5 +159,10 @@ void type_2_tag_printout(type_2_tag_t * p_type_2_tag);
 /**
  * @}
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NFC_TYPE_2_TAG_PARSER_H__ */

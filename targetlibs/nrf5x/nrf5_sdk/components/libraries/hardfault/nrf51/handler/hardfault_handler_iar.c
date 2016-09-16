@@ -9,7 +9,10 @@
  * the file.
  *
  */
+#include "sdk_config.h"
+#if HARDFAULT_HANDLER_ENABLED
 #include <stdint.h>
+#include "compiler_abstraction.h"
 
 #pragma section = "CSTACK"
 extern void HardFault_c_handler( uint32_t * );
@@ -18,7 +21,7 @@ __stackless void HardFault_Handler(void);
 
 __stackless void HardFault_Handler(void)
 {
-    __asm volatile(
+    __ASM volatile(
     "   ldr   r0, 100f                         \n"
     "   cmp   r0, lr                           \n"
     "   bne   1f                               \n"
@@ -34,7 +37,7 @@ __stackless void HardFault_Handler(void)
     "   ldr   r1, 101f                         \n"
     "   ldr   r2, 102f                         \n"
 
-    /* MSP is in the range of <__StackTop, __StackLimit) */
+    /* MSP is in the range of the stack area */
     "   cmp   r0, r1                           \n"
     "   bhi   2f                               \n"
     "   cmp   r0, r2                           \n"
@@ -63,3 +66,4 @@ __stackless void HardFault_Handler(void)
     "i"(&HardFault_c_handler)
     );
 }
+#endif //HARDFAULT_HANDLER_ENABLED

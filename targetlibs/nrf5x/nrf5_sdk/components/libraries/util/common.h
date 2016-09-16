@@ -18,6 +18,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* @file
 * @brief Common header file for generic macros and definitions
  *
@@ -35,4 +39,9 @@
 #define PINOUT(p)                PINX_GLUE(PIN,p,OUT)  /*!< gpio out pin number 'p' */
 
 /*lint --flb "Leave library region" */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

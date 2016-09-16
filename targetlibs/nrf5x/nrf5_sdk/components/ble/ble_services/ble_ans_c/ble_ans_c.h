@@ -11,7 +11,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_ans_c Alert Notification Service Client
+ * @defgroup ble_ans_c Alert Notification Service Client
  * @{
  * @ingroup ble_sdk_srv
  * @brief Alert Notification module.
@@ -35,6 +35,10 @@
 #include "sdk_common.h"
 #include "ble_srv_common.h"
 #include "ble_db_discovery.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 // Forward declaration of the ble_ans_c_t type.
@@ -339,8 +343,13 @@ uint32_t ble_ans_c_unread_alert_notify(const ble_ans_c_t * p_ans, ble_ans_catego
 uint32_t ble_ans_c_handles_assign(ble_ans_c_t               * p_ans,
                                   const uint16_t              conn_handle,
                                   const ble_ans_c_service_t * p_peer_handles);
-                                  
 
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_ANS_C_H__
 

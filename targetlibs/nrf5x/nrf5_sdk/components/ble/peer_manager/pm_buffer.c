@@ -10,7 +10,8 @@
  *
  */
 
-
+#include "sdk_config.h"
+#if PEER_MANAGER_ENABLED
 #include "pm_buffer.h"
 
 #include <stdbool.h>
@@ -36,7 +37,7 @@ ret_code_t pm_buffer_init(pm_buffer_t * p_buffer,
     if (   (p_buffer           != NULL)
         && (p_buffer_memory    != NULL)
         && (p_mutex_memory     != NULL)
-        && (buffer_memory_size >= (n_blocks*block_size))
+        && (buffer_memory_size >= (n_blocks * block_size))
         && (mutex_memory_size  >= MUTEX_STORAGE_SIZE(n_blocks))
         && (n_blocks           != 0)
         && (block_size         != 0))
@@ -102,7 +103,7 @@ uint8_t * pm_buffer_ptr_get(pm_buffer_t * p_buffer, uint8_t id)
     if ( (id != BUFFER_INVALID_ID)
     &&   pm_mutex_lock_status_get(p_buffer->p_mutex, id) )
     {
-        return ( &p_buffer->p_memory[id*p_buffer->block_size] );
+        return ( &p_buffer->p_memory[id * p_buffer->block_size] );
     }
     else
     {
@@ -120,3 +121,4 @@ void pm_buffer_release(pm_buffer_t * p_buffer, uint8_t id)
         pm_mutex_unlock(p_buffer->p_mutex, id);
     }
 }
+#endif //PEER_MANAGER_ENABLED

@@ -170,7 +170,7 @@ typedef struct
   union {
     ble_uuid_t    uuid16;              /**< 16-bit Attribute UUID. */
     ble_uuid128_t uuid128;             /**< 128-bit Attribute UUID. */
-  } info;
+  } info;                              /**< Attribute information union. */
 } ble_gattc_attr_info_t;
 
 /**@brief Event structure for @ref BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP. */

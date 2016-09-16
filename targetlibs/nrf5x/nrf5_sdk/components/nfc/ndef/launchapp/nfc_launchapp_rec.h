@@ -26,14 +26,18 @@
 #include <stdint.h>
 #include "nfc_ndef_record.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @brief Function for generating a description of an NFC NDEF Android Application Record (AAR).
  *
  * This function declares and initializes a static instance of an NFC NDEF record description
  * of an Android Application Record (AAR).
  *
- * @note The record payload data (@p p_package_name) should be declared as 
- *       static. If it is declared as automatic, the NDEF message encoding 
- *       (see @ref nfc_ndef_msg_encode) must be done in the same variable 
+ * @note The record payload data (@p p_package_name) should be declared as
+ *       static. If it is declared as automatic, the NDEF message encoding
+ *       (see @ref nfc_ndef_msg_encode) must be done in the same variable
  *       scope.
  *
  * @param[in]  p_package_name       Pointer to the Android package name string.
@@ -49,9 +53,9 @@ nfc_ndef_record_desc_t * nfc_android_application_rec_declare(uint8_t const * p_p
  * This function declares and initializes a static instance of an NFC NDEF record description
  * of a Windows LaunchApp record.
  *
- * @note The record payload data (@p p_win_app_id) should be declared as 
- *       static. If it is declared as automatic, the NDEF message encoding 
- *       (see @ref nfc_ndef_msg_encode) must be done in the same variable 
+ * @note The record payload data (@p p_win_app_id) should be declared as
+ *       static. If it is declared as automatic, the NDEF message encoding
+ *       (see @ref nfc_ndef_msg_encode) must be done in the same variable
  *       scope.
  *
  * @param[in]  p_win_app_id         Pointer to the Windows application ID string (GUID).
@@ -62,4 +66,9 @@ nfc_ndef_record_desc_t * nfc_android_application_rec_declare(uint8_t const * p_p
 nfc_ndef_record_desc_t * nfc_windows_launchapp_rec_declare(const uint8_t * p_win_app_id,
                                                            uint8_t         win_app_id_length);
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // NFC_LAUNCHAPP_REC

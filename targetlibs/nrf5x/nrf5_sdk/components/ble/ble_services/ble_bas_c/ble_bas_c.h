@@ -9,7 +9,7 @@
 
 /**@file
  *
- * @defgroup ble_sdk_srv_bas_c Battery Service Client
+ * @defgroup ble_bas_c Battery Service Client
  * @{
  * @ingroup  ble_sdk_srv
  * @brief    Battery Service Client module.
@@ -28,6 +28,10 @@
 #include <stdint.h>
 #include "ble.h"
 #include "ble_db_discovery.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @defgroup bas_c_enums Enumerations
@@ -157,7 +161,7 @@ void ble_bas_c_on_ble_evt(ble_bas_c_t * p_ble_bas_c, const ble_evt_t * p_ble_evt
  *
  * @retval  NRF_SUCCESS     If the SoftDevice has been requested to write to the CCCD of the peer.
  *          NRF_ERROR_NULL  Parameter is NULL.
- *                          Otherwise, an error code returned by the SoftDevice API @ref 
+ *                          Otherwise, an error code returned by the SoftDevice API @ref
  *                          sd_ble_gattc_write.
  */
 uint32_t ble_bas_c_bl_notif_enable(ble_bas_c_t * p_ble_bas_c);
@@ -206,6 +210,11 @@ uint32_t ble_bas_c_handles_assign(ble_bas_c_t *    p_ble_bas_c,
                                   ble_bas_c_db_t * p_peer_handles);
 
 /** @} */ // End tag for Function group.
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_BAS_C_H__
 

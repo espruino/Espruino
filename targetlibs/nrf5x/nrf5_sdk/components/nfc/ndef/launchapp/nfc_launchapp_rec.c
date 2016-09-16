@@ -27,7 +27,7 @@ typedef struct
 } win_launchapp_payload_desc_t;
 
 /** @brief Description of payload of Windows LaunchApp record. */
-static win_launchapp_payload_desc_t win_launchapp_dsc;
+static win_launchapp_payload_desc_t m_win_launchapp_dsc;
 
 static const uint8_t launchapp_type_str[] = {'a', 'n', 'd', 'r', 'o', 'i', 'd', '.', 'c', 'o', 'm',
                                              ':', 'p', 'k', 'g'};
@@ -56,17 +56,17 @@ nfc_ndef_record_desc_t * nfc_android_application_rec_declare(uint8_t const * p_p
     return &NFC_NDEF_RECORD_BIN_DATA(android_app_rec);
 }
 
-#define WIN_LUNCHAPP_EMPTY_PARAMETER 0x20 ///< The empty parameter value for the Wndows LaunchApp Record.
+#define WIN_LAUNCHAPP_EMPTY_PARAMETER 0x20 ///< The empty parameter value for the Windows LaunchApp Record.
 
 /**
- * @brief Function for constructing the payload for a Windows LaunchApp Record.
+ * @brief Function for constructing the payload for a Windows LaunchApp record.
  *
  * This function encodes the payload according to the LaunchApp record definition. It implements an API
  * compatible with p_payload_constructor_t.
  *
  * @param[in] p_input    Pointer to the description of the payload.
- * @param[out] p_buff    Pointer to payload destination. If NULL, the function will calculate
- *                       the expected size of the write based on the description.
+ * @param[out] p_buff    Pointer to payload destination. If NULL, function will
+ *                       calculate the expected size of the LaunchApp record payload.
  *
  * @param[in,out] p_len  Size of available memory to write as input. Size of generated
  *                       payload as output.
@@ -81,29 +81,32 @@ static ret_code_t nfc_win_launchapp_payload_constructor(win_launchapp_payload_de
     win_launchapp_payload_desc_t * launch_desc = (win_launchapp_payload_desc_t *) p_input;
 
     uint32_t temp_len = (uint32_t)launch_desc->platform_length + launch_desc->app_id_length + 7;
-    
-    if (temp_len > *p_len)
+
+    if (p_buff != NULL)
     {
-        return NRF_ERROR_NO_MEM;
+        if (temp_len > *p_len)
+        {
+            return NRF_ERROR_NO_MEM;
+        }
+
+        *p_buff++ = 0x00; // platform count: 1
+        *p_buff++ = 0x01; // -||-
+
+        *p_buff++ = launch_desc->platform_length;
+        memcpy(p_buff, launch_desc->platform, launch_desc->platform_length); // platform
+        p_buff += launch_desc->platform_length;
+
+
+        *p_buff++ = launch_desc->app_id_length;
+        memcpy(p_buff, launch_desc->app_id, launch_desc->app_id_length);
+        p_buff += launch_desc->app_id_length;
+
+        *p_buff++ = 0x00; // parameters length 1B
+        *p_buff++ = 0x01; // -||-
+        *p_buff++ = WIN_LAUNCHAPP_EMPTY_PARAMETER; // empty parameter
     }
-    
+
     *p_len = temp_len;
-
-    *p_buff++ = 0x00; // platform count: 1
-    *p_buff++ = 0x01; // -||-
-
-    *p_buff++ = launch_desc->platform_length;
-    memcpy(p_buff, launch_desc->platform, launch_desc->platform_length); // platform
-    p_buff += launch_desc->platform_length;
-
-
-    *p_buff++ = launch_desc->app_id_length;
-    memcpy(p_buff, launch_desc->app_id, launch_desc->app_id_length);
-    p_buff += launch_desc->app_id_length;
-
-    *p_buff++ = 0x00; // parameters length 1B
-    *p_buff++ = 0x01; // -||-
-    *p_buff++ = WIN_LUNCHAPP_EMPTY_PARAMETER; // empty parameter
 
     return NRF_SUCCESS;
 }
@@ -120,13 +123,13 @@ nfc_ndef_record_desc_t * nfc_windows_launchapp_rec_declare(const uint8_t * p_win
                                      win_launchapp_type_str,
                                      sizeof(win_launchapp_type_str),
                                      nfc_win_launchapp_payload_constructor,
-                                     &win_launchapp_dsc);
+                                     &m_win_launchapp_dsc);
 
-    win_launchapp_dsc.platform        = win_phone_str;
-    win_launchapp_dsc.platform_length = sizeof(win_phone_str);
+    m_win_launchapp_dsc.platform        = win_phone_str;
+    m_win_launchapp_dsc.platform_length = sizeof(win_phone_str);
 
-    win_launchapp_dsc.app_id        = p_win_app_id;
-    win_launchapp_dsc.app_id_length = win_app_id_length;
+    m_win_launchapp_dsc.app_id        = p_win_app_id;
+    m_win_launchapp_dsc.app_id_length = win_app_id_length;
 
     return &NFC_NDEF_GENERIC_RECORD_DESC(win_launchapp);
 }

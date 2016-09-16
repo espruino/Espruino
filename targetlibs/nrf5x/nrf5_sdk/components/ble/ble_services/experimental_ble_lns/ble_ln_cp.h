@@ -26,7 +26,11 @@
 #include "ble_srv_common.h"
 #include "sdk_common.h"
 
-#define BLE_LNS_MAX_ROUTE_NAME_LEN                                  (BLE_L2CAP_MTU_DEF-5)           /**< The maximum length of length of a route name. */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define BLE_LNS_MAX_ROUTE_NAME_LEN                                  (BLE_L2CAP_MTU_DEF - 5)           /**< The maximum length of length of a route name. */
 #define MAX_CTRL_POINT_RESP_PARAM_LEN                               BLE_LNS_MAX_ROUTE_NAME_LEN + 3  /**< Maximum length of a control point response. */
 
 typedef struct ble_lncp_s ble_lncp_t;
@@ -213,6 +217,11 @@ ble_lncp_mask_t ble_lncp_mask_get(ble_lncp_t const * p_lncp);
 bool ble_lncp_is_navigation_running(ble_lncp_t const * p_lncp);
 
 ret_code_t ble_lncp_init(ble_lncp_t * p_lncp, ble_lncp_init_t const * p_lncp_init);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //BLE_LN_CTRLPT_H__
 

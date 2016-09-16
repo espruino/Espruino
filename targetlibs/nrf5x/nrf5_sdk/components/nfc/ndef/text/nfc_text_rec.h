@@ -25,15 +25,27 @@
 
 #include "nfc_ndef_record.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @brief Type of the Unicode Transformation Format.
+ *
+ * Values to specify the type of UTF for an NFC NDEF Text record.
+ */
+typedef enum
+{
+    UTF_8   = 0, ///< Unicode Transformation Format 8.
+    UTF_16  = 1, ///< Unicode Transformation Format 16.
+} nfc_text_rec_utf_type_t;
+
 /**
  * @brief Text record payload descriptor.
  */
 typedef struct
 {
-    enum{
-        UTF_8   = 0,
-        UTF_16  = 1,
-    }               utf;            ///< Type of the Unicode Transformation Format.
+    nfc_text_rec_utf_type_t utf;    ///< Type of the Unicode Transformation Format.
 
     uint8_t const * p_lang_code;    ///< Pointer to the IANA language code.
     uint8_t         lang_code_len;  ///< Length of the IANA language code.
@@ -46,9 +58,10 @@ typedef struct
  * @brief Constructor for an NFC NDEF Text record payload.
  *
  * @param[in]       p_nfc_rec_text_payload_desc Pointer to the Text record description.
- * @param[out]      p_buff                      Pointer to the payload destination.
+ * @param[out]      p_buff                      Pointer to the payload destination. If NULL, function will
+ *                                              calculate the expected size of the Text record payload.
  *
- * @param[in,out]   p_len                       Size of the available memory to write as input. 
+ * @param[in,out]   p_len                       Size of the available memory to write as input.
  *                                              Size of the generated record payload as output.
  */
 ret_code_t nfc_text_rec_payload_constructor(nfc_text_rec_payload_desc_t * p_nfc_rec_text_payload_desc,
@@ -68,11 +81,11 @@ extern const uint8_t nfc_text_rec_type_field[];
 #define NFC_TEXT_REC_TYPE_LENGTH 1
 
 /**
- *@brief Macro for creating and initializing an NFC NDEF record descriptor for an Text record.
+ *@brief Macro for creating and initializing an NFC NDEF record descriptor for a Text record.
  *
- * This macro creates and initializes a static instance of type @ref nfc_ndef_record_desc_t and 
+ * This macro creates and initializes a static instance of type @ref nfc_ndef_record_desc_t and
  * a static instance of type @ref nfc_text_rec_payload_desc_t, which together constitute
- * an instance of an Text record.
+ * an instance of a Text record.
  *
  * Use the macro @ref NFC_NDEF_TEXT_RECORD_DESC to access the NDEF Text record descriptor instance.
  *
@@ -108,10 +121,15 @@ extern const uint8_t nfc_text_rec_type_field[];
                                      &(NAME##_nfc_text_rec_payload_desc))
 
 /**
- * @brief Macro for accessing the NFC NDEF Text record descriptor 
+ * @brief Macro for accessing the NFC NDEF Text record descriptor
  * instance that was created with @ref NFC_NDEF_TEXT_RECORD_DESC_DEF.
  */
 #define NFC_NDEF_TEXT_RECORD_DESC(NAME) NFC_NDEF_GENERIC_RECORD_DESC(NAME)
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // NFC_TEXT_REC_H__

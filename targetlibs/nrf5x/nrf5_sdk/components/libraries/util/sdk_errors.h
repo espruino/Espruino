@@ -21,9 +21,9 @@
  *          are used to provide the cause or nature of error. Each module is assigned a 16-bit
  *          unsigned integer. Which it will use to identify all errors that occurred in it. 16-bit
  *          LSB range is with module id as the MSB in the 32-bit error code is reserved for the
- *          module. As an example, if 0x8800 identifies a certain SDK module, all values from 
+ *          module. As an example, if 0x8800 identifies a certain SDK module, all values from
  *          0x88000000 - 0x8800FFFF are reserved for this module.
- *          It should be noted that common error reasons have been assigned values to make it 
+ *          It should be noted that common error reasons have been assigned values to make it
  *          possible to decode error reason easily. As an example, lets module uninitialized has
  *          been assigned an error code 0x000A0. Then, if application encounters an error code
  *          0xZZZZ00A0, it knows that it accessing a certain module without initializing it.
@@ -35,7 +35,7 @@
  *          A range is reserved for application as well, it can use this range for defining
  *          application specific errors.
  *
- * @note Success code, NRF_SUCCESS, does not include any module identifier.          
+ * @note Success code, NRF_SUCCESS, does not include any module identifier.
 
  */
 
@@ -44,6 +44,10 @@
 
 #include <stdint.h>
 #include "nrf_error.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @defgroup sdk_err_base Base defined for SDK Modules
@@ -57,8 +61,9 @@
  * @defgroup sdk_module_codes Codes reserved as identification for module where the error occurred.
  * @{
  */
-#define DEVICE_MANAGER_ERR_BASE   (0x8000)
 #define MEMORY_MANAGER_ERR_BASE   (0x8100)
+#define PERIPH_DRIVERS_ERR_BASE   (0x8200)
+#define GAZELLE_ERR_BASE          (0x8300)
 /* @} */
 
 
@@ -69,7 +74,7 @@
 #define IOT_ERR_BASE_START        (0xA000)
 #define IOT_ERR_BASE_STOP         (0xAFFF)
 /* @} */
- 
+
 
 /**
  * @defgroup sdk_common_errors Codes reserved as identification for common errors.
@@ -87,13 +92,12 @@
 
 
 /**
- * @defgroup dm_specific_errors Error / status codes specific to device manager.
+ * @defgroup drv_specific_errors Error / status codes specific to drivers.
  * @{
  */
-#define DM_NO_APP_CONTEXT                (DEVICE_MANAGER_ERR_BASE + 0x0040)
-#define DM_SERVICE_CONTEXT_NOT_APPLIED   (DEVICE_MANAGER_ERR_BASE + 0x0041)
-#define DM_CONTEXT_INFO_LOST             (DEVICE_MANAGER_ERR_BASE + 0x0042)
-#define DM_DEVICE_CONTEXT_FULL           (DEVICE_MANAGER_ERR_BASE + 0x0043)
+#define DRV_TWI_ERR_OVERRUN              (PERIPH_DRIVERS_ERR_BASE + 0x0000)
+#define DRV_TWI_ERR_ANACK                (PERIPH_DRIVERS_ERR_BASE + 0x0001)
+#define DRV_TWI_ERR_DNACK                (PERIPH_DRIVERS_ERR_BASE + 0x0002)
 /* @} */
 
 /**
@@ -110,6 +114,11 @@
 typedef uint32_t ret_code_t;
 /** @} */
 /** @} */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // SDK_ERRORS_H__
 

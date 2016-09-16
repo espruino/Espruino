@@ -17,7 +17,7 @@
 
 #include "nrf_adc.h"
 
-#ifndef NRF52
+#ifdef ADC_PRESENT
 
 /**
  * @brief Function for configuring ADC.

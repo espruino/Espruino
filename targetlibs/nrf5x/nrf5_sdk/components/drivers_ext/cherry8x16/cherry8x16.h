@@ -18,13 +18,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
 * @brief Cherry 8x16 keyboard matrix driver
 *
 *
 * @defgroup nrf_drivers_cherry8x16 Cherry 8x16 keyboard matrix driver
 * @{
-* @ingroup nrf_drivers
+* @ingroup ext_drivers
 * @brief Cherry 8x16 keyboard matrix driver.
 */
 
@@ -34,8 +38,8 @@
 #define KEY_PACKET_MODIFIER_KEY_INDEX (0) //!< Index in the key packet where modifier keys such as ALT and Control are stored
 #define KEY_PACKET_RESERVED_INDEX (1) //!< Index in the key packet where OEMs can store information
 #define KEY_PACKET_KEY_INDEX (2) //!< Start index in the key packet where pressed keys are stored
-#define KEY_PACKET_MAX_KEYS (6) //!< Maximum number of keys that can be stored into the key packet                                                                  
-#define KEY_PACKET_SIZE (KEY_PACKET_KEY_INDEX+KEY_PACKET_MAX_KEYS) //!< Total size of the key packet in bytes
+#define KEY_PACKET_MAX_KEYS (6) //!< Maximum number of keys that can be stored into the key packet
+#define KEY_PACKET_SIZE (KEY_PACKET_KEY_INDEX + KEY_PACKET_MAX_KEYS) //!< Total size of the key packet in bytes
 #define KEY_PACKET_NO_KEY (0) //!< Value to be stored to key index to indicate no key is pressed
 
 
@@ -58,7 +62,7 @@ typedef enum
  * @param row_port Pointer to GPIO port address that is used as key matrix row input.
  * @param column_port Pointer to GPIO port address that is used as key matrix column output.
  * @param key_lookup_matrix If NULL, use a default key lookup matrix. Otherwise pointer to a 128 (8x16) element array containing HID keycodes.
- * @return 
+ * @return
  * @retval CHERRY8X16_OK Peripheral was initialized succesfully.
  * @retval CHERRY8X16_NOT_DETECTED Could not detect the peripheral.
  */
@@ -79,5 +83,10 @@ bool cherry8x16_new_packet(const uint8_t ** p_key_packet, uint8_t *p_key_packet_
  *@}
  **/
 
-/*lint --flb "Leave library region" */ 
+/*lint --flb "Leave library region" */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

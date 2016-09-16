@@ -11,7 +11,11 @@
 #ifndef NRF_ERROR_H__
 #define NRF_ERROR_H__
 
-/// @cond Make doxygen skip this file 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/// @cond Make doxygen skip this file
 
 /** @defgroup NRF_ERRORS_BASE Error Codes Base number definitions
  * @{ */
@@ -40,9 +44,14 @@
 #define NRF_ERROR_INVALID_ADDR                (NRF_ERROR_BASE_NUM + 16) ///< Bad Memory Address
 #define NRF_ERROR_BUSY                        (NRF_ERROR_BASE_NUM + 17) ///< Busy
 
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // NRF_ERROR_H__
 
-/// @endcond 
+/// @endcond
 /**
   @}
 */

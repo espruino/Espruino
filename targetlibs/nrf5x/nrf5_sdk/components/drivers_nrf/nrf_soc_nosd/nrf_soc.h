@@ -16,6 +16,10 @@
 #include <stdint.h>
 #include "nrf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**@brief Waits for an application event.
  *
  * An application event is either an application interrupt or a pended interrupt when the
@@ -40,5 +44,10 @@
  * @retval ::NRF_SUCCESS
  */
 uint32_t sd_app_evt_wait(void);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NRF_SOC_H__ */

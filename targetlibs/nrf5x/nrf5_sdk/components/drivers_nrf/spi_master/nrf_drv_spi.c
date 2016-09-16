@@ -10,14 +10,29 @@
  *
  */
 
+#include "sdk_config.h"
+#if SPI_ENABLED
+#define ENABLED_SPI_COUNT (SPI0_ENABLED+SPI1_ENABLED+SPI2_ENABLED)
+#if ENABLED_SPI_COUNT
+
 #include "nrf_drv_spi.h"
 #include "nrf_drv_common.h"
 #include "nrf_gpio.h"
 #include "nrf_assert.h"
 #include "app_util_platform.h"
 
+#define NRF_LOG_MODULE_NAME "SPI"
 
-#ifndef NRF52
+#if SPI_CONFIG_LOG_ENABLED
+#define NRF_LOG_LEVEL       SPI_CONFIG_LOG_LEVEL
+#define NRF_LOG_INFO_COLOR  SPI_CONFIG_INFO_COLOR
+#define NRF_LOG_DEBUG_COLOR SPI_CONFIG_DEBUG_COLOR
+#else //SPI_CONFIG_LOG_ENABLED
+#define NRF_LOG_LEVEL       0
+#endif //SPI_CONFIG_LOG_ENABLED
+#include "nrf_log.h"
+
+#ifndef SPIM_PRESENT
     // Make sure SPIx_USE_EASY_DMA is 0 for nRF51 (if a common
     // "nrf_drv_config.h" file is provided for nRF51 and nRF52).
     #undef  SPI0_USE_EASY_DMA
@@ -26,6 +41,18 @@
     #define SPI1_USE_EASY_DMA 0
     #undef  SPI2_USE_EASY_DMA
     #define SPI2_USE_EASY_DMA 0
+#endif
+
+#ifndef SPI0_USE_EASY_DMA
+#define SPI0_USE_EASY_DMA 0
+#endif
+
+#ifndef SPI1_USE_EASY_DMA
+#define SPI1_USE_EASY_DMA 0
+#endif
+
+#ifndef SPI2_USE_EASY_DMA
+#define SPI2_USE_EASY_DMA 0
 #endif
 
 // This set of macros makes it possible to exclude parts of code when one type
@@ -57,11 +84,7 @@
 #endif
 
 #ifdef SPIM_IN_USE
-#ifdef NRF52_PAN_23
-#define END_INT_MASK     (NRF_SPIM_INT_ENDTX_MASK | NRF_SPIM_INT_ENDRX_MASK)
-#else
 #define END_INT_MASK     NRF_SPIM_INT_END_MASK
-#endif
 #endif
 
 // Control block - driver instance local data.
@@ -81,19 +104,7 @@ typedef struct
     bool tx_done : 1;
     bool rx_done : 1;
 } spi_control_block_t;
-static spi_control_block_t m_cb[SPI_COUNT];
-
-static nrf_drv_spi_config_t const m_default_config[SPI_COUNT] = {
-#if SPI0_ENABLED
-    NRF_DRV_SPI_DEFAULT_CONFIG(0),
-#endif
-#if SPI1_ENABLED
-    NRF_DRV_SPI_DEFAULT_CONFIG(1),
-#endif
-#if SPI2_ENABLED
-    NRF_DRV_SPI_DEFAULT_CONFIG(2),
-#endif
-};
+static spi_control_block_t m_cb[ENABLED_SPI_COUNT];
 
 #if PERIPHERAL_RESOURCE_SHARING_ENABLED
     #define IRQ_HANDLER_NAME(n) irq_handler_for_instance_##n
@@ -108,7 +119,7 @@ static nrf_drv_spi_config_t const m_default_config[SPI_COUNT] = {
     #if SPI2_ENABLED
         IRQ_HANDLER(2);
     #endif
-    static nrf_drv_irq_handler_t const m_irq_handlers[SPI_COUNT] = {
+    static nrf_drv_irq_handler_t const m_irq_handlers[ENABLED_SPI_COUNT] = {
     #if SPI0_ENABLED
         IRQ_HANDLER_NAME(0),
     #endif
@@ -128,6 +139,7 @@ ret_code_t nrf_drv_spi_init(nrf_drv_spi_t const * const p_instance,
                             nrf_drv_spi_config_t const * p_config,
                             nrf_drv_spi_handler_t handler)
 {
+    ASSERT(p_config);
     spi_control_block_t * p_cb  = &m_cb[p_instance->drv_inst_idx];
 
     if (p_cb->state != NRF_DRV_STATE_UNINITIALIZED)
@@ -142,11 +154,6 @@ ret_code_t nrf_drv_spi_init(nrf_drv_spi_t const * const p_instance,
         return NRF_ERROR_BUSY;
     }
 #endif
-
-    if (p_config == NULL)
-    {
-        p_config = &m_default_config[p_instance->drv_inst_idx];
-    }
 
     p_cb->handler = handler;
 
@@ -214,7 +221,7 @@ ret_code_t nrf_drv_spi_init(nrf_drv_spi_t const * const p_instance,
 
         if (p_cb->handler)
         {
-            nrf_spim_int_enable(p_spim, END_INT_MASK | NRF_SPIM_INT_STOPPED_MASK);
+            nrf_spim_int_enable(p_spim, END_INT_MASK);
         }
 
         nrf_spim_enable(p_spim);
@@ -246,6 +253,8 @@ ret_code_t nrf_drv_spi_init(nrf_drv_spi_t const * const p_instance,
 
     p_cb->transfer_in_progress = false;
     p_cb->state = NRF_DRV_STATE_INITIALIZED;
+
+    NRF_LOG_INFO("Init\r\n");
 
     return NRF_SUCCESS;
 }
@@ -308,6 +317,9 @@ ret_code_t nrf_drv_spi_transfer(nrf_drv_spi_t const * const p_instance,
     xfer_desc.tx_length   = tx_buffer_length;
     xfer_desc.rx_length   = rx_buffer_length;
 
+    NRF_LOG_INFO("Transfer tx_len:%d, rx_len:%d\r\n", tx_buffer_length, rx_buffer_length);
+    NRF_LOG_DEBUG("Tx data:\r\n");
+    NRF_LOG_HEXDUMP_DEBUG((uint8_t *)p_tx_buffer, tx_buffer_length);
     return nrf_drv_spi_xfer(p_instance, &xfer_desc, 0);
 }
 
@@ -423,17 +435,16 @@ __STATIC_INLINE void spim_int_enable(NRF_SPIM_Type * p_spim, bool enable)
 {
     if (!enable)
     {
-        nrf_spim_int_disable(p_spim, END_INT_MASK | NRF_SPIM_INT_STOPPED_MASK);
+        nrf_spim_int_disable(p_spim, END_INT_MASK);
     }
     else
     {
-        nrf_spim_int_enable(p_spim, END_INT_MASK |  NRF_SPIM_INT_STOPPED_MASK);
+        nrf_spim_int_enable(p_spim, END_INT_MASK);
     }
 }
 
 __STATIC_INLINE void spim_list_enable_handle(NRF_SPIM_Type * p_spim, uint32_t flags)
 {
-#ifndef NRF52_PAN_46
     if (NRF_DRV_SPI_FLAG_TX_POSTINC & flags)
     {
         nrf_spim_tx_list_enable(p_spim);
@@ -451,7 +462,6 @@ __STATIC_INLINE void spim_list_enable_handle(NRF_SPIM_Type * p_spim, uint32_t fl
     {
         nrf_spim_rx_list_disable(p_spim);
     }
-#endif
 }
 
 static ret_code_t spim_xfer(NRF_SPIM_Type                * p_spim,
@@ -471,13 +481,7 @@ static ret_code_t spim_xfer(NRF_SPIM_Type                * p_spim,
     nrf_spim_tx_buffer_set(p_spim, p_xfer_desc->p_tx_buffer, p_xfer_desc->tx_length);
     nrf_spim_rx_buffer_set(p_spim, p_xfer_desc->p_rx_buffer, p_xfer_desc->rx_length);
 
-#ifdef NRF52_PAN_23
-    nrf_spim_event_clear(p_spim, NRF_SPIM_EVENT_ENDTX);
-    nrf_spim_event_clear(p_spim, NRF_SPIM_EVENT_ENDRX);
-#else
     nrf_spim_event_clear(p_spim, NRF_SPIM_EVENT_END);
-#endif
-    nrf_spim_event_clear(p_spim, NRF_SPIM_EVENT_STOPPED);
 
     spim_list_enable_handle(p_spim, flags);
 
@@ -488,24 +492,16 @@ static ret_code_t spim_xfer(NRF_SPIM_Type                * p_spim,
 
     if (!p_cb->handler)
     {
-#ifdef NRF52_PAN_23
-        while (!nrf_spim_event_check(p_spim, NRF_SPIM_EVENT_ENDTX) ||
-               !nrf_spim_event_check(p_spim, NRF_SPIM_EVENT_ENDRX)) {}
-#else
         while (!nrf_spim_event_check(p_spim, NRF_SPIM_EVENT_END)){}
-#endif
-        // Stop the peripheral after transaction is finished.
-        nrf_spim_task_trigger(p_spim, NRF_SPIM_TASK_STOP);
-        while (!nrf_spim_event_check(p_spim, NRF_SPIM_EVENT_STOPPED)) {}
         if (p_cb->ss_pin != NRF_DRV_SPI_PIN_NOT_USED)
         {
             nrf_gpio_pin_set(p_cb->ss_pin);
         }
     }
-		else
-		{
-				spim_int_enable(p_spim, !(flags & NRF_DRV_SPI_FLAG_NO_XFER_EVT_HANDLER));
-		}
+        else
+        {
+            spim_int_enable(p_spim, !(flags & NRF_DRV_SPI_FLAG_NO_XFER_EVT_HANDLER));
+        }
     return NRF_SUCCESS;
 }
 #endif
@@ -516,8 +512,8 @@ ret_code_t nrf_drv_spi_xfer(nrf_drv_spi_t     const * const p_instance,
 {
     spi_control_block_t * p_cb  = &m_cb[p_instance->drv_inst_idx];
     ASSERT(p_cb->state != NRF_DRV_STATE_UNINITIALIZED);
-    ASSERT(p_tx_buffer != NULL || tx_buffer_length == 0);
-    ASSERT(p_rx_buffer != NULL || rx_buffer_length == 0);
+    ASSERT(p_xfer_desc->p_tx_buffer != NULL || p_xfer_desc->tx_length == 0);
+    ASSERT(p_xfer_desc->p_rx_buffer != NULL || p_xfer_desc->rx_length == 0);
 
     if (p_cb->transfer_in_progress)
     {
@@ -559,36 +555,11 @@ static void irq_handler_spim(NRF_SPIM_Type * p_spim, spi_control_block_t * p_cb)
 {
     ASSERT(p_cb->handler);
 
-#ifdef NRF52_PAN_23
-    if (nrf_spim_event_check(p_spim, NRF_SPIM_EVENT_STOPPED))
-    {
-        nrf_spim_event_clear(p_spim, NRF_SPIM_EVENT_STOPPED);
-        finish_transfer(p_cb);
-    }
-    else
-    {
-        if (nrf_spim_event_check(p_spim, NRF_SPIM_EVENT_ENDTX))
-        {
-            nrf_spim_event_clear(p_spim, NRF_SPIM_EVENT_ENDTX);
-            p_cb->tx_done = true;
-        }
-        if (nrf_spim_event_check(p_spim, NRF_SPIM_EVENT_ENDRX))
-        {
-            nrf_spim_event_clear(p_spim, NRF_SPIM_EVENT_ENDRX);
-            p_cb->rx_done = true;
-        }
-        if (p_cb->tx_done && p_cb->rx_done)
-        {
-            nrf_spim_task_trigger(p_spim, NRF_SPIM_TASK_STOP);
-        }
-    }
-#else
     if (nrf_spim_event_check(p_spim, NRF_SPIM_EVENT_END))
     {
         nrf_spim_event_clear(p_spim, NRF_SPIM_EVENT_END);
         finish_transfer(p_cb);
     }
-#endif
 }
 
 uint32_t nrf_drv_spi_start_task_get(nrf_drv_spi_t const * p_instance)
@@ -653,3 +624,5 @@ IRQ_HANDLER(2)
     #endif
 }
 #endif // SPI2_ENABLED
+#endif // ENABLED_SPI_COUNT
+#endif // SPI_ENABLED

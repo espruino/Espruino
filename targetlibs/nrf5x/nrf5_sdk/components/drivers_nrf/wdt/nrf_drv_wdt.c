@@ -19,6 +19,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#if WDT_ENABLED
+
 /**@brief WDT event handler. */
 static nrf_wdt_event_handler_t m_wdt_event_handler;
 
@@ -83,7 +85,7 @@ void nrf_drv_wdt_enable(void)
 void nrf_drv_wdt_feed(void)
 {
     ASSERT(m_state == NRF_DRV_STATE_POWERED_ON);
-    for(uint32_t i = 0; i < m_alloc_index; i++)
+    for (uint32_t i = 0; i < m_alloc_index; i++)
     {
         nrf_wdt_reload_request_set((nrf_wdt_rr_register_t)(NRF_WDT_RR0 + i));
     }
@@ -116,3 +118,4 @@ void nrf_drv_wdt_channel_feed(nrf_drv_wdt_channel_id channel_id)
     ASSERT(m_state == NRF_DRV_STATE_POWERED_ON);
     nrf_wdt_reload_request_set(channel_id);
 }
+#endif //WDT_ENABLED

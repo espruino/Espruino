@@ -39,6 +39,10 @@ typedef enum
 
 #include "app_mailbox_local.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Mailbox definition structure.
  */
@@ -54,7 +58,7 @@ typedef struct
  * @brief Macro to statically allocate memory for a given mailbox queue.
  */
 #define APP_MAILBOX_DEF(name, QUEUE_SZ, ITEM_SZ)                                            \
-static uint32_t         STRING_CONCATENATE(mailbox_items_,name)[(1+CEIL_DIV((ITEM_SZ),4))*(QUEUE_SZ)];\
+static uint32_t         STRING_CONCATENATE(mailbox_items_,name)[(1 + CEIL_DIV((ITEM_SZ),4)) * (QUEUE_SZ)];\
 static app_mailbox_cb_t STRING_CONCATENATE(mailbox_cb_,name);                                         \
 const app_mailbox_t name =                                                                  \
     {                                                                                       \
@@ -138,6 +142,11 @@ uint32_t app_mailbox_length_get (const app_mailbox_t * p_mailbox);
  * @param mode             New mode to set.
  */
 void app_mailbox_mode_set(const app_mailbox_t * p_mailbox, app_mailbox_overflow_mode_t mode);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //_APP_MAILBOX_H
 /** @} */

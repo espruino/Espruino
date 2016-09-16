@@ -12,7 +12,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_cts_c Current Time Service client
+ * @defgroup ble_cts_c Current Time Service client
  * @{
  * @ingroup ble_sdk_srv
  * @brief Current Time Service client module.
@@ -23,14 +23,14 @@
  *          the application can trigger a read of the current time from the connected server.
  *
  *          The module informs the application about a successful discovery using the
- *          @ref BLE_CTS_C_EVT_DISCOVERY_COMPLETE event. The handles for the CTS server is now 
+ *          @ref BLE_CTS_C_EVT_DISCOVERY_COMPLETE event. The handles for the CTS server is now
  *          available in the @ref ble_cts_c_evt_t structure. These handles must be assigned to an
  *          instance of CTS_C, using @ref ble_cts_c_handles_assign. For more information about
  *          service discovery, see the ble_discovery module documentation @ref lib_ble_db_discovery.
  *
  *          The application can then use the function @ref ble_cts_c_current_time_read to read the
  *          current time. If the read succeeds, it will trigger either a
- *          @ref BLE_CTS_C_EVT_CURRENT_TIME event or a @ref BLE_CTS_C_EVT_INVALID_TIME event 
+ *          @ref BLE_CTS_C_EVT_CURRENT_TIME event or a @ref BLE_CTS_C_EVT_INVALID_TIME event
  *          (depending on if the data that was read was actually a valid time), which is then sent
  *          to the application. The current time is then available in the params field of the
  *          passed @ref ble_cts_c_evt_t structure.
@@ -48,6 +48,10 @@
 #include "ble_date_time.h"
 #include "ble_db_discovery.h"
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 /**@brief "Day Date Time" field of the "Exact Time 256" field of the Current Time Characteristic. */
@@ -197,7 +201,7 @@ uint32_t ble_cts_c_current_time_read(ble_cts_c_t const * p_cts);
 /**@brief Function for assigning handles to a this instance of cts_c.
  *
  * @details Call this function when a link has been established with a peer to
- *          associate the link to this instance of the module. This makes it 
+ *          associate the link to this instance of the module. This makes it
  *          possible to handle several links and associate each link to a particular
  *          instance of this module. The connection handle and attribute handles will be
  *          provided from the discovery event @ref BLE_CTS_C_EVT_DISCOVERY_COMPLETE.
@@ -213,6 +217,11 @@ uint32_t ble_cts_c_current_time_read(ble_cts_c_t const * p_cts);
 uint32_t ble_cts_c_handles_assign(ble_cts_c_t               * p_cts,
                                   const uint16_t              conn_handle,
                                   const ble_cts_c_handles_t * p_peer_handles);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_CTS_C_H__
 

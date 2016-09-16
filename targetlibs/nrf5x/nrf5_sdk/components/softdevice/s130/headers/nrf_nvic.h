@@ -39,7 +39,7 @@
  *
  * @note In order to use this module, the following code has to be added to a .c file:
  *     \code
- *     nrf_nvic_state_t nrf_nvic_state;
+ *     nrf_nvic_state_t nrf_nvic_state = {0};
  *     \endcode
  *
  * @note Definitions and declarations starting with __ (double underscore) in this header file are
@@ -417,6 +417,8 @@ static inline uint32_t sd_nvic_SystemReset(void)
  * @note sd_nvic_critical_region_enter() and ::sd_nvic_critical_region_exit() must be called in matching pairs inside each
  * execution context
  * @sa sd_nvic_critical_region_exit
+ *
+ * @param[out] p_is_nested_critical_region If 1, the application is now in a nested critical region.
  *
  * @retval ::NRF_SUCCESS
  */

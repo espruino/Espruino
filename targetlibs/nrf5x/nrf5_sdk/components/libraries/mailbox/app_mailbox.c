@@ -9,6 +9,8 @@
  * the file.
  *
  */
+#include "sdk_config.h"
+#if APP_MAILBOX_ENABLED
 #include <stddef.h>
 #include <string.h>
 #include "app_mailbox.h"
@@ -150,3 +152,4 @@ void app_mailbox_mode_set(const app_mailbox_t * p_mailbox, app_mailbox_overflow_
     ASSERT(p_mailbox);
     p_mailbox->p_cb->mode = mode;
 }
+#endif //APP_MAILBOX_ENABLED

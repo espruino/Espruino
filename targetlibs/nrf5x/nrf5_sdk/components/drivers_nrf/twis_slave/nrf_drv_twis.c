@@ -9,15 +9,16 @@
  * the file.
  *
  */
+#include "sdk_config.h"
+#if TWIS_ENABLED
+#define ENABLED_TWIS_COUNT (TWIS0_ENABLED+TWIS1_ENABLED)
+#if ENABLED_TWIS_COUNT
 #include "nrf_drv_twis.h"
 #include "nrf_assert.h"
 #include "nordic_common.h"
 #include "app_util_platform.h"
-#include "nrf_gpio.h"
+#include "compiler_abstraction.h"
 
-#if TWIS_COUNT == 0
-#error "TWIS driver included but none of TWIS devices is activated in the configuration file"
-#endif
 
 /**
  * @internal
@@ -76,14 +77,14 @@ typedef struct
 
 
 /** The constant instance part implementation */
-static const nrf_drv_twis_const_inst_t m_const_inst[TWIS_COUNT] =
+static const nrf_drv_twis_const_inst_t m_const_inst[ENABLED_TWIS_COUNT] =
 {
     #define X(n)  { .p_reg = NRF_TWIS##n },
     #include "nrf_drv_twis_inst.def"
 };
 
 /** The variable instance part implementation */
-static nrf_drv_twis_var_inst_t m_var_inst[TWIS_COUNT] =
+static nrf_drv_twis_var_inst_t m_var_inst[ENABLED_TWIS_COUNT] =
 {
     #define X(n) { .state      = NRF_DRV_STATE_UNINITIALIZED, \
                    .substate   = NRF_DRV_TWIS_SUBSTATE_IDLE, \
@@ -102,7 +103,7 @@ static nrf_drv_twis_var_inst_t m_var_inst[TWIS_COUNT] =
     #if TWIS1_ENABLED
         IRQ_HANDLER(1);
     #endif
-    static nrf_drv_irq_handler_t const m_irq_handlers[TWIS_COUNT] = {
+    static nrf_drv_irq_handler_t const m_irq_handlers[ENABLED_TWIS_COUNT] = {
     #if TWIS0_ENABLED
         IRQ_HANDLER_NAME(0),
     #endif
@@ -136,18 +137,7 @@ static nrf_drv_twis_var_inst_t m_var_inst[TWIS_COUNT] =
  * Because of how it is used no atomic instructions are required to support this kind of semaphore.
  * It is not waitable semaphore - function executed or not depending of its state.
  */
-static uint8_t m_sm_semaphore[TWIS_COUNT];
-
-/**
- * @brief Default configuration
- *
- * Array with default configurations for each driver instance.
- */
-static const nrf_drv_twis_config_t m_config_default[TWIS_COUNT] =
-{
-    #define X(n) NRF_DRV_TWIS_DEFAULT_CONFIG(n),
-    #include "nrf_drv_twis_inst.def"
-};
+static uint8_t m_sm_semaphore[ENABLED_TWIS_COUNT];
 
 /**
  * @brief Used interrupts mask
@@ -219,12 +209,12 @@ static inline void nrf_drv_twis_swreset(NRF_TWIS_Type * const p_reg)
  * Function configures selected for work as SDA or SCL.
  * @param pin Pin number to configure
  */
-static inline void nrf_drv_twis_config_pin(uint32_t pin)
+static inline void nrf_drv_twis_config_pin(uint32_t pin, nrf_gpio_pin_pull_t pull)
 {
     nrf_gpio_cfg(pin,
                  NRF_GPIO_PIN_DIR_INPUT,
                  NRF_GPIO_PIN_INPUT_DISCONNECT,
-                 NRF_GPIO_PIN_NOPULL,
+                 pull,
                  NRF_GPIO_PIN_S0D1,
                  NRF_GPIO_PIN_NOSENSE);
 }
@@ -244,7 +234,7 @@ static inline void nrf_drv_twis_config_pin(uint32_t pin)
 static void nrf_drv_call_event_handler(uint8_t instNr, nrf_drv_twis_evt_t const * const pev)
 {
     nrf_drv_twis_event_handler_t evh = m_var_inst[instNr].ev_handler;
-    if(NULL != evh)
+    if (NULL != evh)
     {
         evh(pev);
     }
@@ -318,7 +308,7 @@ static inline void nrf_drv_twis_process_error(
         nrf_drv_twis_evt_type_t ev,
         uint32_t error)
 {
-    if(0 == error)
+    if (0 == error)
         error = NRF_DRV_TWIS_ERROR_UNEXPECTED_EVENT;
     nrf_drv_twis_evt_t evdata;
     evdata.type = ev;
@@ -340,10 +330,10 @@ static inline void nrf_drv_twis_process_error(
  */
 static void nrf_drv_twis_state_machine(uint8_t instNr)
 {
-    if(!TWIS_NO_SYNC_MODE)
+    if (!TWIS_NO_SYNC_MODE)
     {
         /* Exclude parallel processing of this function */
-        if(m_sm_semaphore[instNr])
+        if (m_sm_semaphore[instNr])
         {
             return;
         }
@@ -367,20 +357,20 @@ static void nrf_drv_twis_state_machine(uint8_t instNr)
     ev |= nrf_drv_twis_event_bit_get(p_reg, NRF_TWIS_EVENT_READ);
 
     /* State machine */
-    while(0 != ev)
+    while (0 != ev)
     {
-        switch(substate)
+        switch (substate)
         {
         case NRF_DRV_TWIS_SUBSTATE_IDLE:
-            if(nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_STOPPED))
+            if (nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_STOPPED))
             {
                 /* Stopped event is always allowed in IDLE state - just ignore */
                 ev = nrf_drv_twis_clear_bit(ev, NRF_TWIS_EVENT_STOPPED);
             }
-            else if(nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_READ))
+            else if (nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_READ))
             {
                 evdata.type = TWIS_EVT_READ_REQ;
-                if(nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_TXSTARTED))
+                if (nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_TXSTARTED))
                 {
                     substate = NRF_DRV_TWIS_SUBSTATE_READ_PENDING;
                     evdata.data.buf_req = false;
@@ -396,10 +386,10 @@ static void nrf_drv_twis_state_machine(uint8_t instNr)
                 ev = nrf_drv_twis_clear_bit(ev, NRF_TWIS_EVENT_WRITE);
                 ev = nrf_drv_twis_clear_bit(ev, NRF_TWIS_EVENT_RXSTARTED);
             }
-            else if(nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_WRITE))
+            else if (nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_WRITE))
             {
                 evdata.type = TWIS_EVT_WRITE_REQ;
-                if(nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_RXSTARTED))
+                if (nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_RXSTARTED))
                 {
                     substate = NRF_DRV_TWIS_SUBSTATE_WRITE_PENDING;
                     evdata.data.buf_req = false;
@@ -422,7 +412,7 @@ static void nrf_drv_twis_state_machine(uint8_t instNr)
             }
             break;
         case NRF_DRV_TWIS_SUBSTATE_READ_WAITING:
-            if(nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_TXSTARTED) ||
+            if (nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_TXSTARTED) ||
                nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_WRITE)     ||
                nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_READ)      ||
                nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_STOPPED))
@@ -439,7 +429,7 @@ static void nrf_drv_twis_state_machine(uint8_t instNr)
             }
             break;
         case NRF_DRV_TWIS_SUBSTATE_READ_PENDING:
-            if(nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_WRITE)||
+            if (nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_WRITE)||
                nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_READ) ||
                nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_STOPPED))
             {
@@ -459,7 +449,7 @@ static void nrf_drv_twis_state_machine(uint8_t instNr)
             }
             break;
         case NRF_DRV_TWIS_SUBSTATE_WRITE_WAITING:
-            if(nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_RXSTARTED) ||
+            if (nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_RXSTARTED) ||
                nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_WRITE)     ||
                nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_READ)      ||
                nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_STOPPED))
@@ -476,7 +466,7 @@ static void nrf_drv_twis_state_machine(uint8_t instNr)
             }
             break;
         case NRF_DRV_TWIS_SUBSTATE_WRITE_PENDING:
-            if(nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_WRITE)||
+            if (nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_WRITE)||
                nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_READ) ||
                nrf_drv_twis_check_bit(ev, NRF_TWIS_EVENT_STOPPED))
             {
@@ -503,7 +493,7 @@ static void nrf_drv_twis_state_machine(uint8_t instNr)
     }
 
     m_var_inst[instNr].substate = substate;
-    if(!TWIS_NO_SYNC_MODE)
+    if (!TWIS_NO_SYNC_MODE)
     {
         m_sm_semaphore[instNr] = 0;
     }
@@ -514,9 +504,9 @@ static void nrf_drv_twis_state_machine(uint8_t instNr)
  */
 static inline void nrf_drv_twis_preprocess_status(uint8_t instNr)
 {
-    if(!TWIS_NO_SYNC_MODE)
+    if (!TWIS_NO_SYNC_MODE)
     {
-        if(NULL == m_var_inst[instNr].ev_handler)
+        if (NULL == m_var_inst[instNr].ev_handler)
         {
             nrf_drv_twis_state_machine(instNr);
         }
@@ -554,15 +544,17 @@ static inline void nrf_drv_twis_on_ISR(uint8_t instNr)
 
 
 ret_code_t nrf_drv_twis_init(
-        nrf_drv_twis_t          const * const p_inst,
+        nrf_drv_twis_t          const * const p_instance,
         nrf_drv_twis_config_t   const * p_config,
         nrf_drv_twis_event_handler_t    const event_handler)
 {
-    uint8_t instNr = p_inst->instNr;
+    ASSERT(p_config);
+    ASSERT(p_config->scl != p_config->sda);
+    uint8_t instNr = p_instance->instNr;
     NRF_TWIS_Type * const p_reg = m_const_inst[instNr].p_reg;
     nrf_twis_config_addr_mask_t addr_mask = (nrf_twis_config_addr_mask_t)0;
 
-    if( m_var_inst[instNr].state != NRF_DRV_STATE_UNINITIALIZED)
+    if ( m_var_inst[instNr].state != NRF_DRV_STATE_UNINITIALIZED)
     {
         return NRF_ERROR_INVALID_STATE;
     }
@@ -575,28 +567,23 @@ ret_code_t nrf_drv_twis_init(
     }
 #endif
 
-    if(NULL == p_config)
-    {
-        p_config = &m_config_default[instNr];
-    }
-
-    if(!TWIS_ASSUME_INIT_AFTER_RESET_ONLY)
+    if (!TWIS_ASSUME_INIT_AFTER_RESET_ONLY)
     {
         nrf_drv_twis_swreset(p_reg);
     }
-    
-    nrf_drv_twis_config_pin(p_config->scl);
-    nrf_drv_twis_config_pin(p_config->sda);
 
-    if(0 == (p_config->addr[0] | p_config->addr[1]))
+    nrf_drv_twis_config_pin(p_config->scl, p_config->scl_pull);
+    nrf_drv_twis_config_pin(p_config->sda, p_config->sda_pull);
+
+    if (0 == (p_config->addr[0] | p_config->addr[1]))
         addr_mask = NRF_TWIS_CONFIG_ADDRESS0_MASK;
     else
     {
-        if(0 != p_config->addr[0])
+        if (0 != p_config->addr[0])
         {
             addr_mask |= NRF_TWIS_CONFIG_ADDRESS0_MASK;
         }
-        if(0 != p_config->addr[1])
+        if (0 != p_config->addr[1])
         {
             addr_mask |= NRF_TWIS_CONFIG_ADDRESS1_MASK;
         }
@@ -614,7 +601,7 @@ ret_code_t nrf_drv_twis_init(
     nrf_twis_config_address_set(p_reg, addr_mask);
 
     /* Clear semaphore */
-    if(!TWIS_NO_SYNC_MODE)
+    if (!TWIS_NO_SYNC_MODE)
     {
         m_sm_semaphore[instNr] = 0;
     }
@@ -626,9 +613,9 @@ ret_code_t nrf_drv_twis_init(
 }
 
 
-void nrf_drv_twis_uninit(nrf_drv_twis_t const * const p_inst)
+void nrf_drv_twis_uninit(nrf_drv_twis_t const * const p_instance)
 {
-    uint8_t instNr = p_inst->instNr;
+    uint8_t instNr = p_instance->instNr;
     NRF_TWIS_Type * const p_reg = m_const_inst[instNr].p_reg;
     TWIS_PSEL_Type psel = p_reg->PSEL;
 
@@ -637,11 +624,11 @@ void nrf_drv_twis_uninit(nrf_drv_twis_t const * const p_inst)
     nrf_drv_twis_swreset(p_reg);
 
     /* Clear pins state if */
-    if(!(TWIS_PSEL_SCL_CONNECT_Msk & psel.SCL))
+    if (!(TWIS_PSEL_SCL_CONNECT_Msk & psel.SCL))
     {
         nrf_gpio_cfg_default(psel.SCL);
     }
-    if(!(TWIS_PSEL_SDA_CONNECT_Msk & psel.SDA))
+    if (!(TWIS_PSEL_SDA_CONNECT_Msk & psel.SDA))
     {
         nrf_gpio_cfg_default(psel.SDA);
     }
@@ -656,9 +643,9 @@ void nrf_drv_twis_uninit(nrf_drv_twis_t const * const p_inst)
 }
 
 
-void nrf_drv_twis_enable(nrf_drv_twis_t const * const p_inst)
+void nrf_drv_twis_enable(nrf_drv_twis_t const * const p_instance)
 {
-    uint8_t instNr = p_inst->instNr;
+    uint8_t instNr = p_instance->instNr;
     NRF_TWIS_Type * const p_reg = m_const_inst[instNr].p_reg;
     nrf_drv_twis_var_inst_t * const p_var_inst = &m_var_inst[instNr];
 
@@ -667,7 +654,7 @@ void nrf_drv_twis_enable(nrf_drv_twis_t const * const p_inst)
     nrf_drv_twis_clear_all_events(p_reg);
 
     /* Enable interrupts */
-    if(NULL != p_var_inst->ev_handler)
+    if (NULL != p_var_inst->ev_handler)
     {
         nrf_twis_int_enable(p_reg, m_used_ints_mask);
     }
@@ -679,9 +666,9 @@ void nrf_drv_twis_enable(nrf_drv_twis_t const * const p_inst)
 }
 
 
-void nrf_drv_twis_disable(nrf_drv_twis_t const * const p_inst)
+void nrf_drv_twis_disable(nrf_drv_twis_t const * const p_instance)
 {
-    uint8_t instNr = p_inst->instNr;
+    uint8_t instNr = p_instance->instNr;
     NRF_TWIS_Type * const p_reg = m_const_inst[instNr].p_reg;
 
     ASSERT(m_var_inst[instNr].state != NRF_DRV_STATE_UNINITIALIZED);
@@ -702,7 +689,7 @@ void nrf_drv_twis_disable(nrf_drv_twis_t const * const p_inst)
  */
 //lint -save -e578
 #if defined (__CC_ARM )
-static __asm uint32_t nrf_drv_twis_error_get_and_clear_internal(uint32_t volatile * const perror)
+static __ASM uint32_t nrf_drv_twis_error_get_and_clear_internal(uint32_t volatile * const perror)
 {
     mov   r3, r0
     mov   r1, #0
@@ -718,7 +705,7 @@ static uint32_t nrf_drv_twis_error_get_and_clear_internal(uint32_t volatile * co
 {
     uint32_t ret;
     uint32_t temp;
-    asm volatile(
+    __ASM volatile(
         "   .syntax unified           \n"
         "nrf_drv_twis_error_get_and_clear_internal_try:         \n"
         "   ldrex %[ret], [%[perror]]                           \n"
@@ -740,7 +727,7 @@ static uint32_t nrf_drv_twis_error_get_and_clear_internal(uint32_t volatile * co
 {
     uint32_t ret;
     uint32_t temp;
-    asm volatile(
+    __ASM volatile(
         "1:         \n"
         "   ldrex %[ret], [%[perror]]                           \n"
         "   strex %[temp], %[zero], [%[perror]]                 \n"
@@ -761,10 +748,10 @@ static uint32_t nrf_drv_twis_error_get_and_clear_internal(uint32_t volatile * co
 #endif
 //lint -restore
 
-uint32_t nrf_drv_twis_error_get_and_clear(nrf_drv_twis_t const * const p_inst)
+uint32_t nrf_drv_twis_error_get_and_clear(nrf_drv_twis_t const * const p_instance)
 {
-    nrf_drv_twis_var_inst_t * const p_var_inst = &m_var_inst[p_inst->instNr];
-    nrf_drv_twis_preprocess_status(p_inst->instNr);
+    nrf_drv_twis_var_inst_t * const p_var_inst = &m_var_inst[p_instance->instNr];
+    nrf_drv_twis_preprocess_status(p_instance->instNr);
     /* Make sure that access to error member is atomic
      * so there is no bit that is cleared if it is not copied to local variable already. */
     return nrf_drv_twis_error_get_and_clear_internal(&p_var_inst->error);
@@ -772,26 +759,26 @@ uint32_t nrf_drv_twis_error_get_and_clear(nrf_drv_twis_t const * const p_inst)
 
 
 ret_code_t nrf_drv_twis_tx_prepare(
-        nrf_drv_twis_t const * const p_inst,
+        nrf_drv_twis_t const * const p_instance,
         void const * const p_buf,
         size_t size)
 {
-    uint8_t instNr = p_inst->instNr;
+    uint8_t instNr = p_instance->instNr;
     NRF_TWIS_Type * const p_reg = m_const_inst[instNr].p_reg;
     nrf_drv_twis_var_inst_t * const p_var_inst = &m_var_inst[instNr];
 
     /* Check power state*/
-    if(p_var_inst->state != NRF_DRV_STATE_POWERED_ON)
+    if (p_var_inst->state != NRF_DRV_STATE_POWERED_ON)
     {
         return NRF_ERROR_INVALID_STATE;
     }
     /* Check data address */
-    if(!nrf_drv_is_in_RAM(p_buf))
+    if (!nrf_drv_is_in_RAM(p_buf))
     {
         return NRF_ERROR_INVALID_ADDR;
     }
     /* Check data size */
-    if((size & TWIS_TXD_MAXCNT_MAXCNT_Msk) != size)
+    if ((size & TWIS_TXD_MAXCNT_MAXCNT_Msk) != size)
     {
         return NRF_ERROR_INVALID_LENGTH;
     }
@@ -802,9 +789,9 @@ ret_code_t nrf_drv_twis_tx_prepare(
 }
 
 
-size_t nrf_drv_twis_tx_amount(nrf_drv_twis_t const * const p_inst)
+size_t nrf_drv_twis_tx_amount(nrf_drv_twis_t const * const p_instance)
 {
-    uint8_t instNr = p_inst->instNr;
+    uint8_t instNr = p_instance->instNr;
     NRF_TWIS_Type const * const p_reg = m_const_inst[instNr].p_reg;
 
     return nrf_twis_tx_amount_get(p_reg);
@@ -812,26 +799,26 @@ size_t nrf_drv_twis_tx_amount(nrf_drv_twis_t const * const p_inst)
 
 
 ret_code_t nrf_drv_twis_rx_prepare(
-        nrf_drv_twis_t const * const p_inst,
+        nrf_drv_twis_t const * const p_instance,
         void * const p_buf,
         size_t size)
 {
-    uint8_t instNr = p_inst->instNr;
+    uint8_t instNr = p_instance->instNr;
     NRF_TWIS_Type * const p_reg = m_const_inst[instNr].p_reg;
     nrf_drv_twis_var_inst_t * const p_var_inst = &m_var_inst[instNr];
 
     /* Check power state*/
-    if(p_var_inst->state != NRF_DRV_STATE_POWERED_ON)
+    if (p_var_inst->state != NRF_DRV_STATE_POWERED_ON)
     {
         return NRF_ERROR_INVALID_STATE;
     }
     /* Check data address */
-    if(!nrf_drv_is_in_RAM(p_buf))
+    if (!nrf_drv_is_in_RAM(p_buf))
     {
         return NRF_ERROR_INVALID_ADDR;
     }
     /* Check data size */
-    if((size & TWIS_RXD_MAXCNT_MAXCNT_Msk) != size)
+    if ((size & TWIS_RXD_MAXCNT_MAXCNT_Msk) != size)
     {
         return NRF_ERROR_INVALID_LENGTH;
     }
@@ -841,41 +828,43 @@ ret_code_t nrf_drv_twis_rx_prepare(
 }
 
 
-size_t nrf_drv_twis_rx_amount(nrf_drv_twis_t const * const p_inst)
+size_t nrf_drv_twis_rx_amount(nrf_drv_twis_t const * const p_instance)
 {
-    uint8_t instNr = p_inst->instNr;
+    uint8_t instNr = p_instance->instNr;
     NRF_TWIS_Type const * const p_reg = m_const_inst[instNr].p_reg;
 
     return nrf_twis_rx_amount_get(p_reg);
 }
 
 
-bool nrf_drv_twis_is_busy(nrf_drv_twis_t const * const p_inst)
+bool nrf_drv_twis_is_busy(nrf_drv_twis_t const * const p_instance)
 {
-    nrf_drv_twis_preprocess_status(p_inst->instNr);
-    return NRF_DRV_TWIS_SUBSTATE_IDLE != m_var_inst[(p_inst->instNr)].substate;
+    nrf_drv_twis_preprocess_status(p_instance->instNr);
+    return NRF_DRV_TWIS_SUBSTATE_IDLE != m_var_inst[(p_instance->instNr)].substate;
 }
 
-bool nrf_drv_twis_is_waiting_tx_buff(nrf_drv_twis_t const * const p_inst)
+bool nrf_drv_twis_is_waiting_tx_buff(nrf_drv_twis_t const * const p_instance)
 {
-    nrf_drv_twis_preprocess_status(p_inst->instNr);
-    return NRF_DRV_TWIS_SUBSTATE_READ_WAITING == m_var_inst[(p_inst->instNr)].substate;
+    nrf_drv_twis_preprocess_status(p_instance->instNr);
+    return NRF_DRV_TWIS_SUBSTATE_READ_WAITING == m_var_inst[(p_instance->instNr)].substate;
 }
 
-bool nrf_drv_twis_is_waiting_rx_buff(nrf_drv_twis_t const * const p_inst)
+bool nrf_drv_twis_is_waiting_rx_buff(nrf_drv_twis_t const * const p_instance)
 {
-    nrf_drv_twis_preprocess_status(p_inst->instNr);
-    return NRF_DRV_TWIS_SUBSTATE_WRITE_WAITING == m_var_inst[(p_inst->instNr)].substate;
+    nrf_drv_twis_preprocess_status(p_instance->instNr);
+    return NRF_DRV_TWIS_SUBSTATE_WRITE_WAITING == m_var_inst[(p_instance->instNr)].substate;
 }
 
-bool nrf_drv_twis_is_pending_tx(nrf_drv_twis_t const * const p_inst)
+bool nrf_drv_twis_is_pending_tx(nrf_drv_twis_t const * const p_instance)
 {
-    nrf_drv_twis_preprocess_status(p_inst->instNr);
-    return NRF_DRV_TWIS_SUBSTATE_READ_PENDING == m_var_inst[(p_inst->instNr)].substate;
+    nrf_drv_twis_preprocess_status(p_instance->instNr);
+    return NRF_DRV_TWIS_SUBSTATE_READ_PENDING == m_var_inst[(p_instance->instNr)].substate;
 }
 
-bool nrf_drv_twis_is_pending_rx(nrf_drv_twis_t const * const p_inst)
+bool nrf_drv_twis_is_pending_rx(nrf_drv_twis_t const * const p_instance)
 {
-    nrf_drv_twis_preprocess_status(p_inst->instNr);
-    return NRF_DRV_TWIS_SUBSTATE_WRITE_PENDING == m_var_inst[(p_inst->instNr)].substate;
+    nrf_drv_twis_preprocess_status(p_instance->instNr);
+    return NRF_DRV_TWIS_SUBSTATE_WRITE_PENDING == m_var_inst[(p_instance->instNr)].substate;
 }
+#endif // TWIS_COUNT
+#endif // TWIS_ENABLED

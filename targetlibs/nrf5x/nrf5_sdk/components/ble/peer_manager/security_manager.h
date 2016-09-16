@@ -21,6 +21,10 @@
 #include "peer_manager_types.h"
 #include "security_dispatcher.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /**
  * @cond NO_DOXYGEN
@@ -60,7 +64,6 @@ typedef struct
 } sm_evt_t;
 
 
-
 /**@brief Event handler for events from the Security Manager module.
  *
  * @param[in]  event        The event that has happened.
@@ -69,17 +72,12 @@ typedef struct
 typedef void (*sm_evt_handler_t)(sm_evt_t const * p_event);
 
 
-/**@brief Function for registering with the Security Manager module. This function also
- *        initializes the module if uninitialized.
+/**@brief Function for initializing the Security Manager module.
  *
- * @param[in]  evt_handler  Callback for events from the Security Manager module.
- *
- * @retval NRF_SUCCESS        Registration was successful.
- * @retval NRF_ERROR_NO_MEM   No more registrations possible.
- * @retval NRF_ERROR_NULL     evt_handler was NULL.
- * @retval NRF_ERROR_INTERNAL An unexpected error occurred.
+ * @retval NRF_SUCCESS        If initialization was successful.
+ * @retval NRF_ERROR_INTERNAL If an unexpected error occurred.
  */
-ret_code_t sm_register(sm_evt_handler_t evt_handler);
+ret_code_t sm_init(void);
 
 
 /**@brief Function for dispatching SoftDevice events to the Security Manager module.
@@ -188,5 +186,10 @@ ret_code_t sm_link_secure(uint16_t conn_handle, bool force_repairing);
 /** @}
  * @endcond
  */
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SECURITY_MANAGER_H__ */

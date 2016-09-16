@@ -25,18 +25,22 @@
 
 #include <stdint.h>
 #include "nfc_ndef_record.h"
-#include "ble_advdata.h"
+#include "nfc_ble_oob_advdata.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** @brief Function for generating a description of an NFC NDEF Bluetooth Carrier Configuration LE Record.
  *
  * This function declares and initializes a static instance of an NFC NDEF record description
  * for a Bluetooth Carrier Configuration LE record.
  *
- * @note The record payload data (@p p_ble_advdata) should be declared as static. If it is 
- *       declared as automatic, the NDEF message encoding (see @ref nfc_ble_simplified_le_oob_msg_encode) 
+ * @note The record payload data (@p p_ble_advdata) should be declared as static. If it is
+ *       declared as automatic, the NDEF message encoding (see @ref nfc_ble_simplified_le_oob_msg_encode)
  *       must be done in the same variable scope.
  *
- * @param[in]  rec_payload_id       NDEF record header Payload ID field (Limited to one byte). 
+ * @param[in]  rec_payload_id       NDEF record header Payload ID field (Limited to one byte).
  *                                  If 0, no ID is present in the record description.
  * @param[in]  p_ble_advdata        Pointer to the encoded BLE advertising data structure. This
  *                                  data is used to create the record payload.
@@ -47,4 +51,9 @@ nfc_ndef_record_desc_t * nfc_le_oob_rec_declare(uint8_t                        r
                                                 ble_advdata_t    const * const p_ble_advdata);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // NFC_LE_OOB_REC_H__

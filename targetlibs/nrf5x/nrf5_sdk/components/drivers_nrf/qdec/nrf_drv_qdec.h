@@ -14,19 +14,23 @@
 #define NRF_DRV_QDEC_H__
 
 #include "nrf_qdec.h"
-#include "nrf_drv_config.h"
+#include "sdk_config.h"
 #include "sdk_errors.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @addtogroup nrf_qdec QDEC HAL and driver
  * @ingroup nrf_drivers
  * @brief Quadrature decoder (QDEC) APIs.
- * @details The QDEC HAL provides basic APIs for accessing the registers of the QDEC. 
+ * @details The QDEC HAL provides basic APIs for accessing the registers of the QDEC.
  * The QDEC driver provides APIs on a higher level.
  *
- * @defgroup nrf_drivers_qdec QDEC driver
+ * @defgroup nrf_drv_qdec QDEC driver
  * @{
  * @ingroup nrf_qdec
  * @brief Quadrature decoder (QDEC) driver.
@@ -48,18 +52,18 @@ typedef struct
 } nrf_drv_qdec_config_t;
 
 /**@brief QDEC default configuration. */
-#define NRF_DRV_QDEC_DEFAULT_CONFIG                     \
-    {                                                   \
-        .reportper          = QDEC_CONFIG_REPORTPER,    \
-        .sampleper          = QDEC_CONFIG_SAMPLEPER,    \
-        .psela              = QDEC_CONFIG_PIO_A,        \
-        .pselb              = QDEC_CONFIG_PIO_B,        \
-        .pselled            = QDEC_CONFIG_PIO_LED,      \
-        .ledpre             = QDEC_CONFIG_LEDPRE,       \
-        .ledpol             = QDEC_CONFIG_LEDPOL,       \
-        .interrupt_priority = QDEC_CONFIG_IRQ_PRIORITY, \
-        .dbfen              = QDEC_CONFIG_DBFEN,        \
-        .sample_inten       = QDEC_CONFIG_SAMPLE_INTEN  \
+#define NRF_DRV_QDEC_DEFAULT_CONFIG                                         \
+    {                                                                       \
+        .reportper          = (nrf_qdec_reportper_t)QDEC_CONFIG_REPORTPER,  \
+        .sampleper          = (nrf_qdec_sampleper_t)QDEC_CONFIG_SAMPLEPER,  \
+        .psela              = QDEC_CONFIG_PIO_A,                            \
+        .pselb              = QDEC_CONFIG_PIO_B,                            \
+        .pselled            = QDEC_CONFIG_PIO_LED,                          \
+        .ledpre             = QDEC_CONFIG_LEDPRE,                           \
+        .ledpol             = (nrf_qdec_ledpol_t)QDEC_CONFIG_LEDPOL,        \
+        .interrupt_priority = QDEC_CONFIG_IRQ_PRIORITY,                     \
+        .dbfen              = QDEC_CONFIG_DBFEN,                            \
+        .sample_inten       = QDEC_CONFIG_SAMPLE_INTEN                      \
     }
 
 /**@brief QDEC sample event data.*/
@@ -146,4 +150,9 @@ void nrf_drv_qdec_event_address_get(nrf_qdec_event_t event, uint32_t * p_event);
 /**
    *@}
  **/
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* NRF_DRV_QDEC_H__ */

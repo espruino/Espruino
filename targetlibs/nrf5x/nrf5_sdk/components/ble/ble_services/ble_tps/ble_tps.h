@@ -12,7 +12,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_tps TX Power Service
+ * @defgroup ble_tps TX Power Service
  * @{
  * @ingroup ble_sdk_srv
  * @brief TX Power Service module.
@@ -24,8 +24,8 @@
  *          It provides a function for letting the application update the TX Power Level
  *          characteristic.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
  */
 
@@ -35,6 +35,10 @@
 #include <stdint.h>
 #include "ble.h"
 #include "ble_srv_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**@brief TX Power Service init structure. This contains all options and data needed for
  *        initialization of the service. */
@@ -80,6 +84,11 @@ void ble_tps_on_ble_evt(ble_tps_t * p_tps, ble_evt_t * p_ble_evt);
  * @return      NRF_SUCCESS on success, otherwise an error code.
  */
 uint32_t ble_tps_tx_power_level_set(ble_tps_t * p_tps, int8_t tx_power_level);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_TPS_H__
 

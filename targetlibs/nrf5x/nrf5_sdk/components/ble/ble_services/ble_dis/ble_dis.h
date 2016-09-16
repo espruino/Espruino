@@ -12,7 +12,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_dis Device Information Service
+ * @defgroup ble_dis Device Information Service
  * @{
  * @ingroup ble_sdk_srv
  * @brief Device Information Service module.
@@ -21,8 +21,8 @@
  *          During initialization it adds the Device Information Service to the BLE stack database.
  *          It then encodes the supplied information, and adds the curresponding characteristics.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
  */
 
@@ -32,7 +32,11 @@
 #include <stdint.h>
 #include "ble_srv_common.h"
 
-/** @defgroup DIS_VENDOR_ID_SRC_VALUES Vendor ID Source values  
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/** @defgroup DIS_VENDOR_ID_SRC_VALUES Vendor ID Source values
  * @{
  */
 #define BLE_DIS_VENDOR_ID_SRC_BLUETOOTH_SIG   1                 /**< Vendor ID assigned by Bluetooth SIG. */
@@ -62,7 +66,7 @@ typedef struct
     uint16_t product_version;                                   /**< Product Version. */
 } ble_dis_pnp_id_t;
 
-/**@brief Device Information Service init structure. This contains all possible characteristics 
+/**@brief Device Information Service init structure. This contains all possible characteristics
  *        needed for initialization of the service.
  */
 typedef struct
@@ -81,7 +85,7 @@ typedef struct
 
 /**@brief Function for initializing the Device Information Service.
  *
- * @details This call allows the application to initialize the device information service. 
+ * @details This call allows the application to initialize the device information service.
  *          It adds the DIS service and DIS characteristics to the database, using the initial
  *          values supplied through the p_dis_init parameter. Characteristics which are not to be
  *          added, shall be set to NULL in p_dis_init.
@@ -92,6 +96,11 @@ typedef struct
  * @return      NRF_SUCCESS on successful initialization of service.
  */
 uint32_t ble_dis_init(const ble_dis_init_t * p_dis_init);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_DIS_H__
 

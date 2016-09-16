@@ -86,8 +86,8 @@ extern "C" {
 
 /** @defgroup BLE_GATT_EXEC_WRITE_FLAGS GATT Execute Write flags
  * @{ */
-#define BLE_GATT_EXEC_WRITE_FLAG_PREPARED_CANCEL 0x00
-#define BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE  0x01
+#define BLE_GATT_EXEC_WRITE_FLAG_PREPARED_CANCEL 0x00   /**< Cancel prepared write. */
+#define BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE  0x01   /**< Execute prepared write. */
 /** @} */
 
 /** @defgroup BLE_GATT_HVX_TYPES GATT Handle Value operations

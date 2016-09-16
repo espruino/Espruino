@@ -41,7 +41,6 @@ ret_code_t nfc_text_rec_payload_constructor(nfc_text_rec_payload_desc_t * p_nfc_
      || (p_nfc_rec_text_payload_desc->p_lang_code   == NULL)
      || (p_nfc_rec_text_payload_desc->data_len      == 0)
      || (p_nfc_rec_text_payload_desc->p_data        == NULL)
-     || (p_buff                                     == NULL)
      || (p_len                                      == NULL))
     {
         return NRF_ERROR_INVALID_PARAM;
@@ -49,23 +48,27 @@ ret_code_t nfc_text_rec_payload_constructor(nfc_text_rec_payload_desc_t * p_nfc_
 
     uint32_t payload_size = nfc_text_rec_payload_size_get(p_nfc_rec_text_payload_desc);
 
-    if (payload_size > *p_len)
+    if (p_buff != NULL)
     {
-        return NRF_ERROR_NO_MEM;
+        if (payload_size > *p_len)
+        {
+            return NRF_ERROR_NO_MEM;
+        }
+
+        *p_buff = (p_nfc_rec_text_payload_desc->lang_code_len
+                + (p_nfc_rec_text_payload_desc->utf << TEXT_REC_STATUS_UTF_POS));
+        p_buff += TEXT_REC_STATUS_SIZE;
+
+        memcpy(p_buff,
+            p_nfc_rec_text_payload_desc->p_lang_code,
+            p_nfc_rec_text_payload_desc->lang_code_len);
+        p_buff += p_nfc_rec_text_payload_desc->lang_code_len;
+
+        memcpy(p_buff,
+            p_nfc_rec_text_payload_desc->p_data,
+            p_nfc_rec_text_payload_desc->data_len);
     }
 
-    *p_buff = (p_nfc_rec_text_payload_desc->lang_code_len
-            + (p_nfc_rec_text_payload_desc->utf << TEXT_REC_STATUS_UTF_POS));
-    p_buff += TEXT_REC_STATUS_SIZE;
-
-    memcpy(p_buff,
-           p_nfc_rec_text_payload_desc->p_lang_code,
-           p_nfc_rec_text_payload_desc->lang_code_len);
-    p_buff += p_nfc_rec_text_payload_desc->lang_code_len;
-
-    memcpy(p_buff,
-           p_nfc_rec_text_payload_desc->p_data,
-           p_nfc_rec_text_payload_desc->data_len);
     *p_len = payload_size;
 
     return NRF_SUCCESS;

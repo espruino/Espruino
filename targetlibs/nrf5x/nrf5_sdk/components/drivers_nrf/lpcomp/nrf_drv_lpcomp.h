@@ -16,19 +16,23 @@
 #include "nrf_lpcomp.h"
 #include "sdk_errors.h"
 #include "nrf_drv_common.h"
-#include "nrf_drv_config.h"
+#include "sdk_config.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @addtogroup nrf_lpcomp LPCOMP HAL and driver
  * @ingroup nrf_drivers
  * @brief Low Power Comparator (LPCOMP) APIs.
- * @details The LPCOMP HAL provides basic APIs for accessing the registers of Low Power Comparator. 
+ * @details The LPCOMP HAL provides basic APIs for accessing the registers of Low Power Comparator.
  * The LPCOMP driver provides APIs on a higher level.
  *
- * @defgroup nrf_drivers_lpcomp LPCOMP driver
+ * @defgroup nrf_drv_lpcomp LPCOMP driver
  * @{
  * @ingroup nrf_lpcomp
- * @brief Low Power Comparator (LPCOMP) driver. 
+ * @brief Low Power Comparator (LPCOMP) driver.
  */
 
 /**@brief LPCOMP event handler function type.
@@ -46,17 +50,17 @@ typedef struct
 } nrf_drv_lpcomp_config_t;
 
 /** @brief LPCOMP driver default configuration including the LPCOMP HAL configuration. */
-#define NRF_DRV_LPCONF_DEFAULT_CONFIG                                              \
-    {                                                                              \
-        .hal                = {LPCOMP_CONFIG_REFERENCE , LPCOMP_CONFIG_DETECTION}, \
-        .input              = LPCOMP_CONFIG_INPUT,                                 \
-        .interrupt_priority = LPCOMP_CONFIG_IRQ_PRIORITY                           \
+#define NRF_DRV_LPCONF_DEFAULT_CONFIG                                                                                     \
+    {                                                                                                                     \
+        .hal                = {(nrf_lpcomp_ref_t)LPCOMP_CONFIG_REFERENCE , (nrf_lpcomp_detect_t)LPCOMP_CONFIG_DETECTION}, \
+        .input              = (nrf_lpcomp_input_t)LPCOMP_CONFIG_INPUT,                                                    \
+        .interrupt_priority = LPCOMP_CONFIG_IRQ_PRIORITY                                                                  \
     }
 
 /**
  * @brief Function for initializing the LPCOMP driver.
- * 
- * This function initializes the LPCOMP driver, but does not enable the peripheral or any interrupts. 
+ *
+ * This function initializes the LPCOMP driver, but does not enable the peripheral or any interrupts.
  * To start the driver, call the function nrf_drv_lpcomp_enable() after initialization.
  *
  * If no configuration structure is provided, the driver is initialized with the default settings.
@@ -73,7 +77,7 @@ ret_code_t nrf_drv_lpcomp_init(const nrf_drv_lpcomp_config_t * p_config,
 /**
  *  @brief Function for uninitializing the LCOMP driver.
  *
- *  This function uninitializes the LPCOMP driver. The LPCOMP peripheral and 
+ *  This function uninitializes the LPCOMP driver. The LPCOMP peripheral and
  *  its interrupts are disabled, and local variables are cleaned. After this call, you must
  *  initialize the driver again by calling nrf_drv_lpcomp_init() if you want to use it.
  *
@@ -103,5 +107,10 @@ void nrf_drv_lpcomp_disable(void);
 /**
  *@}
  **/
+
+
+#ifdef __cplusplus
+}
+#endif
 
  #endif /* NRF_DRV_LPCOMP_H__ */

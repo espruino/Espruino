@@ -9,10 +9,10 @@
  * the file.
  *
  */
-
+#include "sdk_config.h"
+#if HCI_SLIP_ENABLED
 #include "hci_slip.h"
 #include <stdlib.h>
-#include "hci_transport_config.h"
 #include "app_uart.h"
 #include "nrf_error.h"
 
@@ -121,7 +121,7 @@ static uint32_t send_tx_byte_encoded(void)
 {
     uint32_t err_code;
 
-    switch(mp_tx_buffer[m_tx_buffer_index])
+    switch (mp_tx_buffer[m_tx_buffer_index])
     {
         case APP_SLIP_END:
             err_code = app_uart_put(APP_SLIP_ESC_END);
@@ -333,13 +333,13 @@ static uint32_t slip_uart_open(void)
 
     app_uart_comm_params_t comm_params =
     {
-        HCI_SLIP_UART_RX_PIN_NUMBER,
-        HCI_SLIP_UART_TX_PIN_NUMBER,
-        HCI_SLIP_UART_RTS_PIN_NUMBER,
-        HCI_SLIP_UART_CTS_PIN_NUMBER,
-        HCI_SLIP_UART_MODE,
+        HCI_UART_RX_PIN,
+        HCI_UART_TX_PIN,
+        HCI_UART_RTS_PIN,
+        HCI_UART_CTS_PIN,
+        (app_uart_flow_control_t)HCI_UART_FLOW_CONTROL,
         false,
-        HCI_SLIP_UART_BAUDRATE
+        HCI_UART_BAUDRATE
     };
 
     err_code = app_uart_init(&comm_params,
@@ -426,3 +426,4 @@ uint32_t hci_slip_rx_buffer_register(uint8_t * p_buffer, uint32_t length)
     handle_rx_byte      = handle_rx_byte_wait_start;
     return NRF_SUCCESS;
 }
+#endif //HCI_SLIP_ENABLED

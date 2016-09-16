@@ -1,13 +1,13 @@
 /* Copyright (c) 2012 Nordic Semiconductor. All Rights Reserved.
  *
- * The information contained herein is confidential property of Nordic 
- * Semiconductor ASA.Terms and conditions of usage are described in detail 
- * in NORDIC SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT. 
+ * The information contained herein is confidential property of Nordic
+ * Semiconductor ASA.Terms and conditions of usage are described in detail
+ * in NORDIC SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
  *
  * Licensees are granted free, non-transferable use of the information. NO
  * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
  * the file.
- *              
+ *
  * $LastChangedRevision: 13999 $
  */
 
@@ -31,6 +31,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Function for initializing and powering on the ECB peripheral.
  *
@@ -43,10 +47,10 @@ bool nrf_ecb_init(void);
 /**
  * @brief Function for encrypting and decrypting 16-byte data using current key.
  *
- * This function avoids unnecessary copying of data if the parameters point to the 
+ * This function avoids unnecessary copying of data if the parameters point to the
  * correct locations in the ECB data structure.
  *
- * @param dst Result of encryption/decryption. 16 bytes will be written. 
+ * @param dst Result of encryption/decryption. 16 bytes will be written.
  * @param src Source with 16-byte data to be encrypted/decrypted.
  *
  * @retval true  If the encryption operation completed.
@@ -60,6 +64,11 @@ bool nrf_ecb_crypt(uint8_t * dst, const uint8_t * src);
  * @param key Pointer to the key. 16 bytes will be read.
  */
 void nrf_ecb_set_key(const uint8_t * key);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NRF_ECB_H__
 

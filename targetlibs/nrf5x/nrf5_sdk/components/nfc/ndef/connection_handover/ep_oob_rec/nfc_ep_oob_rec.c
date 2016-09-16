@@ -41,14 +41,14 @@ static const uint8_t ep_oob_rec_type_field[] =
  */
 static ret_code_t nfc_ep_oob_adv_data_check(ble_advdata_t const *  const p_ble_advdata)
 {
-    if((true == p_ble_advdata->include_ble_device_addr)         ||
+    if ((true == p_ble_advdata->include_ble_device_addr)         ||
        (BLE_ADVDATA_ROLE_NOT_PRESENT != p_ble_advdata->le_role) ||
        (NULL == p_ble_advdata->p_sec_mgr_oob_flags))
     {
         return NRF_ERROR_INVALID_PARAM;
     }
 
-    /* If Flags field in AD structure is present, the BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED flag 
+    /* If Flags field in AD structure is present, the BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED flag
        must be set. */
     if ((0 != p_ble_advdata->flags) &&
             ((p_ble_advdata->flags & BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED) == 0))
@@ -76,17 +76,29 @@ static ret_code_t nfc_ep_oob_bluetooth_device_address_encode(uint8_t  * const p_
     ret_code_t      err_code = NRF_SUCCESS;
     ble_gap_addr_t  device_address;
 
+    memset(&device_address, 0x00, sizeof(device_address));
+
     if (NFC_EP_OOB_REC_GAP_ADDR_LEN > max_len)
     {
         return NRF_ERROR_NO_MEM;
     }
 
     /* Get BLE address */
-    err_code = sd_ble_gap_address_get(&device_address);
-    if (err_code != NRF_SUCCESS)
-    {
-        return err_code;
-    }
+    #if (NRF_SD_BLE_API_VERSION == 2)
+        err_code = sd_ble_gap_address_get(&device_address);
+        if (err_code != NRF_SUCCESS)
+        {
+            return err_code;
+        }
+    #endif
+
+    #if (NRF_SD_BLE_API_VERSION == 3)
+        err_code = sd_ble_gap_addr_get(&device_address);
+        if (err_code != NRF_SUCCESS)
+        {
+            return err_code;
+        }
+    #endif
 
     /* Encode Bluetooth EP device address */
     memcpy(p_encoded_data, device_address.addr, NFC_EP_OOB_REC_GAP_ADDR_LEN);
@@ -101,7 +113,8 @@ static ret_code_t nfc_ep_oob_bluetooth_device_address_encode(uint8_t  * const p_
  * an API compatible with @ref p_payload_constructor_t.
  *
  * @param[in]       p_ble_advdata   Pointer to the description of the payload.
- * @param[out]      p_buff          Pointer to payload destination.
+ * @param[out]      p_buff          Pointer to payload destination. If NULL, function will
+ *                                  calculate the expected size of the record payload.
  *
  * @param[in,out]   p_len           Size of available memory to write as input. Size of generated
  *                                  payload as output.
@@ -110,39 +123,42 @@ static ret_code_t nfc_ep_oob_bluetooth_device_address_encode(uint8_t  * const p_
  * @retval NRF_ERROR_NO_MEM     If available memory was not enough for record payload to be encoded.
  * @retval Other                If any other error occurred during record payload encoding.
  */
-static ret_code_t nfc_ep_oob_payload_constructor(ble_advdata_t * p_ble_advdata, 
-                                                 uint8_t       * p_buff, 
+static ret_code_t nfc_ep_oob_payload_constructor(ble_advdata_t * p_ble_advdata,
+                                                 uint8_t       * p_buff,
                                                  uint32_t      * p_len)
 {
-    ret_code_t  err_code = NRF_SUCCESS;
-    uint8_t   * p_ad_data;
+    ret_code_t  err_code  = NRF_SUCCESS;
+    uint8_t   * p_ad_data = NULL;
     uint16_t    payload_len, ad_data_len;
 
     /* Check correctness of the configuration structure */
     err_code = nfc_ep_oob_adv_data_check(p_ble_advdata);
-    if(NRF_SUCCESS != err_code)
+    if (NRF_SUCCESS != err_code)
     {
         return err_code;
     }
 
-    /* Validate if there is enough memory for OOB payload length field and BLE device address */
-    if(NFC_EP_OOB_REC_PAYLOAD_PREFIX_LEN > *p_len)
+    if (p_buff != NULL)
     {
-        return NRF_ERROR_NO_MEM;
-    }
+        /* Validate if there is enough memory for OOB payload length field and BLE device address */
+        if (NFC_EP_OOB_REC_PAYLOAD_PREFIX_LEN > *p_len)
+        {
+            return NRF_ERROR_NO_MEM;
+        }
 
-    /* Set proper memory offset in payload buffer for AD structure and count available memory.
-     * Bluetooth EP device address and OOB payload length field must be inserted before the AD payload */
-    p_ad_data   = (uint8_t *) (p_buff + NFC_EP_OOB_REC_PAYLOAD_PREFIX_LEN);
-    ad_data_len = *p_len - NFC_EP_OOB_REC_PAYLOAD_PREFIX_LEN;
-    if( *p_len - NFC_EP_OOB_REC_PAYLOAD_PREFIX_LEN > UINT16_MAX )
-    {
-        ad_data_len = UINT16_MAX;
+        /* Set proper memory offset in payload buffer for AD structure and count available memory.
+         * Bluetooth EP device address and OOB payload length field must be inserted before the AD payload */
+        p_ad_data   = (uint8_t *) (p_buff + NFC_EP_OOB_REC_PAYLOAD_PREFIX_LEN);
+        ad_data_len = *p_len - NFC_EP_OOB_REC_PAYLOAD_PREFIX_LEN;
+        if ( *p_len - NFC_EP_OOB_REC_PAYLOAD_PREFIX_LEN > UINT16_MAX )
+        {
+            ad_data_len = UINT16_MAX;
+        }
     }
 
     /* Encode AD structures into NFC record payload */
-    err_code = adv_data_encode(p_ble_advdata, p_ad_data, &ad_data_len);
-    if(NRF_SUCCESS != err_code)
+    err_code = nfc_ble_oob_adv_data_encode(p_ble_advdata, p_ad_data, &ad_data_len);
+    if (NRF_SUCCESS != err_code)
     {
         return err_code;
     }
@@ -150,11 +166,14 @@ static ret_code_t nfc_ep_oob_payload_constructor(ble_advdata_t * p_ble_advdata,
     /* Now as the final payload length is known OOB payload length field, and Bluetooth device
      * address can be encoded */
     payload_len  = ad_data_len + NFC_EP_OOB_REC_PAYLOAD_PREFIX_LEN;
-    p_buff      += uint16_encode(payload_len, p_buff);
-    err_code     = nfc_ep_oob_bluetooth_device_address_encode(p_buff, p_ad_data - p_buff);
-    if(NRF_SUCCESS != err_code)
+    if (p_buff != NULL)
     {
-        return err_code;
+        p_buff      += uint16_encode(payload_len, p_buff);
+        err_code     = nfc_ep_oob_bluetooth_device_address_encode(p_buff, p_ad_data - p_buff);
+        if (NRF_SUCCESS != err_code)
+        {
+            return err_code;
+        }
     }
 
     /* Update total payload length */
@@ -168,7 +187,7 @@ nfc_ndef_record_desc_t * nfc_ep_oob_rec_declare(uint8_t                        r
                                                 ble_advdata_t    const * const p_ble_advdata)
 {
     static uint8_t payload_id = 0;
-        
+
     NFC_NDEF_GENERIC_RECORD_DESC_DEF( nfc_ep_oob_rec,
                                       TNF_MEDIA_TYPE,
                                       &payload_id,   // memory for possible ID value

@@ -12,7 +12,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_ias Immediate Alert Service
+ * @defgroup ble_ias Immediate Alert Service
  * @{
  * @ingroup ble_sdk_srv
  * @brief Immediate Alert Service module.
@@ -21,8 +21,8 @@
  *          During initialization it adds the Immediate Alert Service and Alert Level characteristic
  *          to the BLE stack database.
  *
- *          The application must supply an event handler for receiving Immediate Alert Service 
- *          events. Using this handler, the service will notify the application when the 
+ *          The application must supply an event handler for receiving Immediate Alert Service
+ *          events. Using this handler, the service will notify the application when the
  *          Alert Level characteristic value changes.
  *
  *          The service also provides a function for letting the application poll the current
@@ -31,8 +31,8 @@
  * @note The application must propagate BLE stack events to the Immediate Alert Service
  *       module by calling ble_ias_on_ble_evt() from the @ref softdevice_handler callback.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
 */
 
@@ -41,6 +41,10 @@
 
 #include <stdint.h>
 #include "ble.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**@brief Immediate Alert Service event type. */
 typedef enum
@@ -58,7 +62,7 @@ typedef struct
     } params;
 } ble_ias_evt_t;
 
-// Forward declaration of the ble_ias_t type. 
+// Forward declaration of the ble_ias_t type.
 typedef struct ble_ias_s ble_ias_t;
 
 /**@brief Immediate Alert Service event handler type. */
@@ -107,6 +111,11 @@ void ble_ias_on_ble_evt(ble_ias_t * p_ias, ble_evt_t * p_ble_evt);
  * @param[out]  p_alert_level  Current Alert Level value.
  */
 uint32_t ble_ias_alert_level_get(ble_ias_t * p_ias, uint8_t * p_alert_level);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_IAS_H__
 

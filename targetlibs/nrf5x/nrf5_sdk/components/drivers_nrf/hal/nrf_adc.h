@@ -23,9 +23,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "nrf_peripherals.h"
 #include "nrf.h"
 
-#ifndef NRF52
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if defined(ADC_PRESENT) || defined(__SDK_DOXYGEN__)
 /**
  * @enum  nrf_adc_config_resolution_t
  * @brief Resolution of the analog-to-digital converter.
@@ -132,7 +137,7 @@ typedef struct
 /**
  * @brief Function for configuring ADC.
  *
- * This function powers on the analog-to-digital converter and configures it. 
+ * This function powers on the analog-to-digital converter and configures it.
  * After the configuration, the ADC is in DISABLE state and must be
  * enabled before using it.
  *
@@ -234,7 +239,7 @@ __STATIC_INLINE void nrf_adc_start(void)
 
 
 /**
- * @brief Function for stopping conversion. 
+ * @brief Function for stopping conversion.
  *
  * If the analog-to-digital converter is in inactive state, power consumption is reduced.
  *
@@ -371,6 +376,10 @@ __STATIC_INLINE void nrf_adc_config_set(uint32_t configuration)
 __STATIC_INLINE void nrf_adc_event_clear(nrf_adc_event_t event)
 {
     *((volatile uint32_t *)((uint8_t *)NRF_ADC + (uint32_t)event)) = 0x0UL;
+#if __CORTEX_M == 0x04
+    volatile uint32_t dummy = *((volatile uint32_t *)((uint8_t *)NRF_ADC + (uint32_t)event));
+    (void)dummy;
+#endif
 }
 
 __STATIC_INLINE bool nrf_adc_event_check(nrf_adc_event_t event)
@@ -408,9 +417,14 @@ __STATIC_INLINE void nrf_adc_disable(void)
     NRF_ADC->ENABLE = 0;
 }
 #endif
-#endif /* NRF52 */
+#endif /* ADC_PRESENT */
 /**
  *@}
  **/
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NRF_ADC_H_ */

@@ -22,22 +22,25 @@ const uint8_t nfc_hs_rec_type_field[] = {'H', 's'}; ///< Handover Select record 
 ret_code_t nfc_hs_rec_payload_constructor(nfc_hs_rec_payload_desc_t * p_nfc_hs_rec_payload_desc,
                                           uint8_t                   * p_buff,
                                           uint32_t                  * p_len)
-{  
+{
     ret_code_t err_code = NRF_SUCCESS;
-    
-    // There must be at least 1 free byte in buffer for version byte.
-    if (*p_len < HS_REC_VERSION_SIZE)
-    {    
-        return NRF_ERROR_NO_MEM;
-    }
 
-    // Major/minor version byte.
-    *p_buff = ( (p_nfc_hs_rec_payload_desc->major_version << 4) & 0xF0) |
-              (  p_nfc_hs_rec_payload_desc->minor_version       & 0x0F);
-    p_buff += HS_REC_VERSION_SIZE;
-    
-    // Decrement remaining buffer size.
-    *p_len -= HS_REC_VERSION_SIZE;
+    if (p_buff != NULL)
+    {
+        // There must be at least 1 free byte in buffer for version byte.
+        if (*p_len < HS_REC_VERSION_SIZE)
+        {
+            return NRF_ERROR_NO_MEM;
+        }
+
+        // Major/minor version byte.
+        *p_buff = ( (p_nfc_hs_rec_payload_desc->major_version << 4) & 0xF0) |
+                  (  p_nfc_hs_rec_payload_desc->minor_version       & 0x0F);
+        p_buff += HS_REC_VERSION_SIZE;
+
+        // Decrement remaining buffer size.
+        *p_len -= HS_REC_VERSION_SIZE;
+    }
 
     // Encode local records encapsulated in a message.
     err_code = nfc_ndef_msg_encode(p_nfc_hs_rec_payload_desc->p_local_records, p_buff, p_len);
@@ -48,7 +51,7 @@ ret_code_t nfc_hs_rec_payload_constructor(nfc_hs_rec_payload_desc_t * p_nfc_hs_r
 
     // Add version byte to the total record size.
     *p_len += HS_REC_VERSION_SIZE;
-        
+
     return NRF_SUCCESS;
 }
 

@@ -86,18 +86,19 @@ enum BLE_COMMON_EVTS
 {
   BLE_EVT_TX_COMPLETE  = BLE_EVT_BASE,  /**< Transmission Complete. @ref ble_evt_tx_complete_t */
   BLE_EVT_USER_MEM_REQUEST,             /**< User Memory request. @ref ble_evt_user_mem_request_t */
-  BLE_EVT_USER_MEM_RELEASE              /**< User Memory release. @ref ble_evt_user_mem_release_t */
+  BLE_EVT_USER_MEM_RELEASE,             /**< User Memory release. @ref ble_evt_user_mem_release_t */
+  BLE_EVT_DATA_LENGTH_CHANGED           /**< Link layer PDU length changed. @ref ble_evt_data_length_changed_t. */
 };
 
 /**@brief BLE connection bandwidth types.
- * Bandwidth types supported by the SoftDevice in packets per connection interval.
+ * Bandwidth types supported by the SoftDevice. The bandwidth type dictates the maximum number of full length packets per connection interval.
  */
 enum BLE_CONN_BWS
 {
-  BLE_CONN_BW_NONE = 0,
-  BLE_CONN_BW_LOW,
-  BLE_CONN_BW_MID,
-  BLE_CONN_BW_HIGH
+  BLE_CONN_BW_INVALID = 0,              /**< Invalid connection bandwidth. */
+  BLE_CONN_BW_LOW,                      /**< Low connection bandwidth. */
+  BLE_CONN_BW_MID,                      /**< Medium connection bandwidth. */
+  BLE_CONN_BW_HIGH                      /**< High connection bandwidth. */
 };
 
 /**@brief Common Option IDs.
@@ -106,7 +107,8 @@ enum BLE_CONN_BWS
 enum BLE_COMMON_OPTS
 {
   BLE_COMMON_OPT_CONN_BW = BLE_OPT_BASE,     /**< Bandwidth configuration @ref ble_common_opt_conn_bw_t */
-  BLE_COMMON_OPT_PA_LNA                      /**< PA and LNA options */
+  BLE_COMMON_OPT_PA_LNA,                     /**< PA and LNA options */
+  BLE_COMMON_OPT_CONN_EVT_EXT,               /**< Extended connection events option */
 };
 
 /** @} */
@@ -117,6 +119,18 @@ enum BLE_COMMON_OPTS
 /** @brief  Required pointer alignment for BLE Events.
 */
 #define BLE_EVTS_PTR_ALIGNMENT    4
+
+/** @brief  Maximum possible length for BLE Events.
+ * @note Value of @ref ble_gatt_enable_params_t::att_mtu shall be used as a parameter.
+ * If that value is set to 0 then @ref GATT_MTU_SIZE_DEFAULT must be used instead.
+*/
+#define BLE_EVTS_LEN_MAX(ATT_MTU) (MAX( \
+  sizeof(ble_evt_t), \
+  MAX( \
+    offsetof(ble_evt_t, evt.gattc_evt.params.rel_disc_rsp.includes) + ((ATT_MTU) - 2) / 6 * sizeof(ble_gattc_include_t), \
+    offsetof(ble_evt_t, evt.gattc_evt.params.attr_info_disc_rsp.info.attr_info16) + ((ATT_MTU) - 2) / 4 * sizeof(ble_gattc_attr_info16_t) \
+  ) \
+))
 
 /** @defgroup BLE_USER_MEM_TYPES User Memory Types
  * @{ */
@@ -164,17 +178,26 @@ typedef struct
   ble_user_mem_block_t        mem_block;  /**< User memory block */
 } ble_evt_user_mem_release_t;
 
+/**@brief Event structure for @ref BLE_EVT_DATA_LENGTH_CHANGED. */
+typedef struct
+{
+  uint16_t max_tx_octets;                 /**< The maximum number of payload octets in a Link Layer Data Channel PDU that the local Controller will send. Range: 27-251 */
+  uint16_t max_tx_time;                   /**< The maximum time (in microseconds) that the local Controller will take to send a Link Layer Data Channel PDU. Range: 328-2120  */
+  uint16_t max_rx_octets;                 /**< The maximum number of payload octets in a Link Layer Data Channel PDU that the local controller expects to receive. Range: 27-251 */
+  uint16_t max_rx_time;                   /**< The maximum time (in microseconds) that the local Controller expects to take to receive a Link Layer Data Channel PDU. Range: 328-2120 */
+} ble_evt_data_length_changed_t;
 
 /**@brief Event structure for events not associated with a specific function module. */
 typedef struct
 {
-  uint16_t conn_handle;                 /**< Connection Handle on which this event occurred. */
+  uint16_t conn_handle;                                 /**< Connection Handle on which this event occurred. */
   union
   {
-    ble_evt_tx_complete_t           tx_complete;        /**< Transmission Complete. */
-    ble_evt_user_mem_request_t      user_mem_request;   /**< User Memory Request Event Parameters. */
-    ble_evt_user_mem_release_t      user_mem_release;   /**< User Memory Release Event Parameters. */
-  } params;
+    ble_evt_tx_complete_t           tx_complete;         /**< Transmission Complete. */
+    ble_evt_user_mem_request_t      user_mem_request;    /**< User Memory Request Event Parameters. */
+    ble_evt_user_mem_release_t      user_mem_release;    /**< User Memory Release Event Parameters. */
+    ble_evt_data_length_changed_t   data_length_changed; /**< Data Length Changed Event Parameters. */
+  } params;                                              /**< Event parameter union. */
 } ble_common_evt_t;
 
 /**@brief BLE Event header. */
@@ -195,7 +218,7 @@ typedef struct
     ble_l2cap_evt_t   l2cap_evt;  /**< L2CAP originated event, evt_id in BLE_L2CAP_EVT* series. */
     ble_gattc_evt_t   gattc_evt;  /**< GATT client originated event, evt_id in BLE_GATTC_EVT* series. */
     ble_gatts_evt_t   gatts_evt;  /**< GATT server originated event, evt_id in BLE_GATTS_EVT* series. */
-  } evt;
+  } evt;                          /**< Event union. */
 } ble_evt_t;
 
 
@@ -209,7 +232,9 @@ typedef struct
   uint16_t  subversion_number; /**< Link Layer Sub Version number, corresponds to the SoftDevice Config ID or Firmware ID (FWID). */
 } ble_version_t;
 
-/* @brief: Configuration parameters for the PA and LNA. */
+/**
+ * @brief Configuration parameters for the PA and LNA.
+ */
 typedef struct
 {
      uint8_t enable :1;      /**< Enable toggling for this amplifier */
@@ -217,7 +242,7 @@ typedef struct
      uint8_t gpio_pin :6;    /**< The GPIO pin to toggle for this amplifier */
 } ble_pa_lna_cfg_t;
 
-/*
+/**
  * @brief PA & LNA GPIO toggle configuration
  *
  * This option configures the SoftDevice to toggle pins when the radio is active for use with a power amplifier and/or
@@ -230,7 +255,6 @@ typedef struct
  * @note  This feature is only supported for nRF52, on nRF51 @ref NRF_ERROR_NOT_SUPPORTED will always be returned.
  * @note  Setting this option while the radio is in use (i.e. any of the roles are active) may have undefined consequences
  * and must be avoided by the application.
- *
  */
 typedef struct
 {
@@ -269,6 +293,7 @@ typedef struct
  * @note The global memory pool configuration can be set with the @ref ble_conn_bw_counts_t configuration parameter, which
  * is provided to @ref sd_ble_enable.
  *
+ * @note @ref sd_ble_opt_get is not supported for this option.
  * @note Please refer to SoftDevice Specification for more information on bandwidth configuration.
  *
  * @mscs
@@ -286,11 +311,28 @@ typedef struct
   ble_conn_bw_t      conn_bw;  /**< Bandwidth configuration parameters. */
 } ble_common_opt_conn_bw_t;
 
+/**
+ * @brief Configuration of extended BLE connection events.
+ *
+ * When enabled the SoftDevice will dynamically extend the connection event when possible.
+ *
+ * The connection event length is controlled by the bandwidth configuration as set by @ref ble_common_opt_conn_bw_t.
+ * The connection event can be extended if there is time to send another packet pair before the start of the next connection interval,
+ * and if there are no conflicts with other BLE roles requesting radio time.
+ *
+ * @note @ref sd_ble_opt_get is not supported for this option.
+ */
+typedef struct
+{
+   uint8_t enable : 1; /**< Enable extended BLE connection events, disabled by default. */
+} ble_common_opt_conn_evt_ext_t;
+
 /**@brief Option structure for common options. */
 typedef union
 {
-  ble_common_opt_conn_bw_t conn_bw;       /**< Parameters for the connection bandwidth option. */
-  ble_common_opt_pa_lna_t  pa_lna;        /**< Parameters for controlling PA and LNA pin toggling. */
+  ble_common_opt_conn_bw_t      conn_bw;       /**< Parameters for the connection bandwidth option. */
+  ble_common_opt_pa_lna_t       pa_lna;        /**< Parameters for controlling PA and LNA pin toggling. */
+  ble_common_opt_conn_evt_ext_t conn_evt_ext;  /**< Parameters for enabling extended connection events. */
 } ble_common_opt_t;
 
 /**@brief Common BLE Option type, wrapping the module specific options. */
@@ -357,8 +399,9 @@ typedef struct
 typedef struct
 {
   ble_common_enable_params_t        common_enable_params;  /**< Common init parameters @ref ble_common_enable_params_t. */
-  ble_gap_enable_params_t           gap_enable_params;   /**< GAP init parameters @ref ble_gap_enable_params_t. */
-  ble_gatts_enable_params_t         gatts_enable_params; /**< GATTS init parameters @ref ble_gatts_enable_params_t. */
+  ble_gap_enable_params_t           gap_enable_params;     /**< GAP init parameters @ref ble_gap_enable_params_t. */
+  ble_gatt_enable_params_t          gatt_enable_params;    /**< GATT init parameters @ref ble_gatt_enable_params_t. */
+  ble_gatts_enable_params_t         gatts_enable_params;   /**< GATTS init parameters @ref ble_gatts_enable_params_t. */
 } ble_enable_params_t;
 
 /** @} */
@@ -389,9 +432,19 @@ typedef struct
  * @retval ::NRF_SUCCESS              The BLE stack has been initialized successfully.
  * @retval ::NRF_ERROR_INVALID_STATE  The BLE stack had already been initialized and cannot be reinitialized.
  * @retval ::NRF_ERROR_INVALID_ADDR   Invalid or not sufficiently aligned pointer supplied.
- * @retval ::NRF_ERROR_INVALID_LENGTH The specified Attribute Table size is either too small or not a multiple of 4.
- *                                    The minimum acceptable size is defined by @ref BLE_GATTS_ATTR_TAB_SIZE_MIN.
- * @retval ::NRF_ERROR_INVALID_PARAM  Incorrectly configured VS UUID count or connection count parameters.
+ * @retval ::NRF_ERROR_INVALID_LENGTH One or more of the following is true:
+ *                                    - The specified Attribute Table size is too small.
+ *                                      The minimum acceptable size is defined by @ref BLE_GATTS_ATTR_TAB_SIZE_MIN.
+ *                                    - The specified Attribute Table size is not a multiple of 4.
+ *                                    - The device name length is invalid (must be between 0 and @ref BLE_GAP_DEVNAME_MAX_LEN).
+ *                                    - The device name length is too long for the given Attribute Table.
+ * @retval ::NRF_ERROR_INVALID_PARAM  One or more of the following is true:
+ *                                    - Incorrectly configured VS UUID count.
+ *                                    - Invalid connection count parameters.
+ *                                    - Invalid device name location (vloc).
+ *                                    - Invalid device name security mode.
+ *                                    - Invalid maximum ATT_MTU size, see @ref ble_gatt_enable_params_t::att_mtu.
+ * @retval ::NRF_ERROR_NOT_SUPPORTED  Device name security mode is not supported.
  * @retval ::NRF_ERROR_NO_MEM         The amount of memory assigned to the SoftDevice by *p_app_ram_base is not
  *                                    large enough to fit this configuration's memory requirement. Check *p_app_ram_base
  *                                    and set the start address of the application RAM region accordingly.
@@ -403,7 +456,7 @@ SVCALL(SD_BLE_ENABLE, uint32_t, sd_ble_enable(ble_enable_params_t * p_ble_enable
 /**@brief Get an event from the pending events queue.
  *
  * @param[out] p_dest Pointer to buffer to be filled in with an event, or NULL to retrieve the event length.
- *                    This buffer <b>must be 4-byte aligned in memory</b>.
+ *                    This buffer <b>must be aligned to the extend defined by @ref BLE_EVTS_PTR_ALIGNMENT</b>.
  * @param[in, out] p_len Pointer the length of the buffer, on return it is filled with the event length.
  *
  * @details This call allows the application to pull a BLE event from the BLE stack. The application is signaled that
@@ -416,17 +469,13 @@ SVCALL(SD_BLE_ENABLE, uint32_t, sd_ble_enable(ble_enable_params_t * p_ble_enable
  * p_dest buffer is equally important, since the application needs to provide all the memory necessary for the event to
  * be copied into application memory. If the buffer provided is not large enough to fit the entire contents of the event,
  * @ref NRF_ERROR_DATA_SIZE will be returned and the application can then call again with a larger buffer size.
- * Please note that because of the variable length nature of some events, sizeof(ble_evt_t) will not always be large
- * enough to fit certain events, and so it is the application's responsibility to provide an amount of memory large
- * enough so that the relevant event is copied in full. The application may "peek" the event length by providing p_dest
- * as a NULL pointer and inspecting the value of *p_len upon return:
+ * The maximum possible event length is defined by @ref BLE_EVTS_LEN_MAX. The application may also "peek" the event length
+ * by providing p_dest as a NULL pointer and inspecting the value of *p_len upon return:
  *
  *     \code
  *     uint16_t len;
  *     errcode = sd_ble_evt_get(NULL, &len);
  *     \endcode
- *
- * @note The pointer supplied must be aligned to the extend defined by @ref BLE_EVTS_PTR_ALIGNMENT
  *
  * @mscs
  * @mmsc{@ref BLE_COMMON_IRQ_EVT_MSC}
@@ -479,13 +528,13 @@ SVCALL(SD_BLE_EVT_GET, uint32_t, sd_ble_evt_get(uint8_t *p_dest, uint16_t *p_len
 SVCALL(SD_BLE_TX_PACKET_COUNT_GET, uint32_t, sd_ble_tx_packet_count_get(uint16_t conn_handle, uint8_t *p_count));
 
 
-/**@brief Add a Vendor Specific UUID.
+/**@brief Add a Vendor Specific base UUID.
  *
- * @details This call enables the application to add a vendor specific UUID to the BLE stack's table, for later use
- * all other modules and APIs. This then allows the application to use the shorter, 24-bit @ref ble_uuid_t format
- * when dealing with both 16-bit and 128-bit UUIDs without having to check for lengths and having split code paths.
- * The way that this is accomplished is by extending the grouping mechanism that the Bluetooth SIG standard base
- * UUID uses for all other 128-bit UUIDs. The type field in the @ref ble_uuid_t structure is an index (relative to
+ * @details This call enables the application to add a vendor specific base UUID to the BLE stack's table, for later
+ * use with all other modules and APIs. This then allows the application to use the shorter, 24-bit @ref ble_uuid_t
+ * format when dealing with both 16-bit and 128-bit UUIDs without having to check for lengths and having split code
+ * paths. This is accomplished by extending the grouping mechanism that the Bluetooth SIG standard base UUID uses
+ * for all other 128-bit UUIDs. The type field in the @ref ble_uuid_t structure is an index (relative to
  * @ref BLE_UUID_TYPE_VENDOR_BEGIN) to the table populated by multiple calls to this function, and the uuid field
  * in the same structure contains the 2 bytes at indices 12 and 13. The number of possible 128-bit UUIDs available to
  * the application is therefore the number of Vendor Specific UUIDs added with the help of this function times 65536,

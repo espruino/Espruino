@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, Nordic Semiconductor ASA
+/* Copyright (c) 2016, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-
+ 
 #ifndef NRF52_NAME_CHANGE_H
 #define NRF52_NAME_CHANGE_H
 
@@ -60,8 +60,13 @@
 #define I2S_CONFIG_CHANNELS_CHANNELS_LEFT   I2S_CONFIG_CHANNELS_CHANNELS_Left
 #define I2S_CONFIG_CHANNELS_CHANNELS_RIGHT  I2S_CONFIG_CHANNELS_CHANNELS_Right
 
+/* LPCOMP */
+/* Corrected typo in RESULT register. */
+#define LPCOMP_RESULT_RESULT_Bellow         LPCOMP_RESULT_RESULT_Below
 
-
+/* FICR */
+/* Renamed name of the package. */
+#define FICR_INFO_PACKAGE_PACKAGE_CH        FICR_INFO_PACKAGE_PACKAGE_CI
 
 
 /*lint --flb "Leave library region" */

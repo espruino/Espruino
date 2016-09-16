@@ -17,24 +17,43 @@
 #include <stdbool.h>
 #include "nrf.h"
 #include "sdk_errors.h"
-#include "nrf_drv_config.h"
+#include "sdk_config.h"
+#include "app_util.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-
+#ifdef NRF51
+#ifdef SOFTDEVICE_PRESENT
+#define INTERRUPT_PRIORITY_VALIDATION(pri) STATIC_ASSERT((pri == 1) || (pri == 3))
+#else
+#define INTERRUPT_PRIORITY_VALIDATION(pri) STATIC_ASSERT(pri < 4)
+#endif //SOFTDEVICE_PRESENT
+#else
+#ifdef SOFTDEVICE_PRESENT
+#define INTERRUPT_PRIORITY_VALIDATION(pri) STATIC_ASSERT(((pri > 2) && (pri < 4)) || ((pri > 5) && (pri < 8)))
+#else
+#define INTERRUPT_PRIORITY_VALIDATION(pri) STATIC_ASSERT(pri < 8)
+#endif //SOFTDEVICE_PRESENT
+#endif //NRF52
 /**
- * @brief Offset of event registers in every peripheral instance
+ * @defgroup nrf_drv_common Peripheral drivers common module
+ * @{
+ * @ingroup nrf_drivers
+ * @brief Offset of event registers in every peripheral instance.
  *
- * This is the offset where event registers start in the every peripheral.
+ * This is the offset where event registers start in  every peripheral.
  */
 #define NRF_DRV_COMMON_EVREGS_OFFSET 0x100U
 
 /**
  * @brief Driver state.
  */
-typedef enum 
-{ 
-	NRF_DRV_STATE_UNINITIALIZED, /**< Uninitialized. */
-	NRF_DRV_STATE_INITIALIZED, /**< Initialized but powered off. */
-	NRF_DRV_STATE_POWERED_ON
+typedef enum
+{
+    NRF_DRV_STATE_UNINITIALIZED, /**< Uninitialized. */
+    NRF_DRV_STATE_INITIALIZED, /**< Initialized but powered off. */
+    NRF_DRV_STATE_POWERED_ON
 } nrf_drv_state_t;
 
 /**
@@ -74,8 +93,8 @@ typedef void (*nrf_drv_irq_handler_t)(void);
  *
  * @retval NRF_SUCCESS             If resources were acquired successfully.
  * @retval NRF_ERROR_BUSY          If resources were already acquired.
- * @retval NRF_ERROR_INVALID_PARAM If the specified peripheral is not enabled 
- *                                 or the peripheral does not share resources 
+ * @retval NRF_ERROR_INVALID_PARAM If the specified peripheral is not enabled
+ *                                 or the peripheral does not share resources
  *                                 with other peripherals.
  */
 ret_code_t nrf_drv_common_per_res_acquire(void const * p_per_base,
@@ -117,7 +136,7 @@ __STATIC_INLINE void nrf_drv_common_irq_disable(IRQn_Type IRQn);
  * of peripheral instance.
  *
  * For example the result of this function can be casted directly to
- * the types like @ref nrf_twis_event_t or @ref nrf_rng_events_t...
+ * the types like @ref nrf_twis_event_t or @ref nrf_rng_event_t
  *
  * @param bit Bit position in INTEN register
  * @return Event code to be casted to the right enum type or to be used in functions like
@@ -133,7 +152,7 @@ __STATIC_INLINE uint32_t nrf_drv_bitpos_to_event(uint32_t bit);
  * This function can be used to get bit position in INTEN register from event code.
  *
  * @param event Event code that may be casted from enum values from types like
- * @ref nrf_twis_event_t or @ref nrf_rng_events_t
+ * @ref nrf_twis_event_t or @ref nrf_rng_event_t
  * @return Bit position in INTEN register that corresponds to the given code.
  *
  * @sa nrf_drv_bitpos_to_event
@@ -191,4 +210,11 @@ __STATIC_INLINE bool nrf_drv_is_in_RAM(void const * const ptr)
 
 #endif // SUPPRESS_INLINE_IMPLEMENTATION
 
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // NRF_DRV_COMMON_H__
+
+/** @} */

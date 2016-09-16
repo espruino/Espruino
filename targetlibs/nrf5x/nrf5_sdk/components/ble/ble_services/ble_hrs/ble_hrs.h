@@ -12,7 +12,7 @@
 
 /** @file
  *
- * @defgroup ble_sdk_srv_hrs Heart Rate Service
+ * @defgroup ble_hrs Heart Rate Service
  * @{
  * @ingroup ble_sdk_srv
  * @brief Heart Rate Service module.
@@ -36,8 +36,8 @@
  * @note The application must propagate BLE stack events to the Heart Rate Service module by calling
  *       ble_hrs_on_ble_evt() from the @ref softdevice_handler callback.
  *
- * @note Attention! 
- *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile 
+ * @note Attention!
+ *  To maintain compliance with Nordic Semiconductor ASA Bluetooth profile
  *  qualification listings, this section of source code must not be modified.
  */
 
@@ -48,6 +48,10 @@
 #include <stdbool.h>
 #include "ble.h"
 #include "ble_srv_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Body Sensor Location values
 #define BLE_HRS_BODY_SENSOR_LOCATION_OTHER      0
@@ -73,7 +77,7 @@ typedef struct
     ble_hrs_evt_type_t evt_type;                        /**< Type of event. */
 } ble_hrs_evt_t;
 
-// Forward declaration of the ble_hrs_t type. 
+// Forward declaration of the ble_hrs_t type.
 typedef struct ble_hrs_s ble_hrs_t;
 
 /**@brief Heart Rate Service event handler type. */
@@ -186,6 +190,11 @@ void ble_hrs_sensor_contact_detected_update(ble_hrs_t * p_hrs, bool is_sensor_co
  * @return      NRF_SUCCESS on success, otherwise an error code.
  */
 uint32_t ble_hrs_body_sensor_location_set(ble_hrs_t * p_hrs, uint8_t body_sensor_location);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BLE_HRS_H__
 
