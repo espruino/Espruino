@@ -1311,9 +1311,10 @@ ifeq ($(FAMILY), NRF51)
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
+	DEFINES += -DNRF_SD_BLE_API_VERSION=2
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
 
-  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_3.0.0_softdevice.hex
+  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.1_softdevice.hex
 
   ifdef USE_BOOTLOADER
   ifdef USE_CUSTOM_BOOTLOADER
@@ -1347,6 +1348,7 @@ ifeq ($(FAMILY), NRF52)
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
+	DEFINES += -DNRF_SD_BLE_API_VERSION=3
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_3.0.0_softdevice.hex
 
@@ -1464,7 +1466,7 @@ endif #FAMILY == EFM32
 ifdef NRF5X
   # Just try and get rid of the compile warnings.
   CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
-  DEFINES += -DBLUETOOTH -D$(BOARD) -D$(CHIP) -DNRF_SD_BLE_API_VERSION=3
+  DEFINES += -DBLUETOOTH -D$(BOARD) -D$(CHIP)
 
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
