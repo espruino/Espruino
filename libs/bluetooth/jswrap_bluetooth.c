@@ -230,7 +230,7 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
 #ifdef LED3_PININDEX
   jshPinOutput(LED3_PININDEX, LED3_ONSTATE);
 #endif
-  jsiConsolePrintf("NRF ERROR 0x%x at %s:%d\n", error_code, p_file_name?p_file_name:"?", line_num);
+  jsiConsolePrintf("NRF ERROR 0x%x at %s:%d\n", error_code, p_file_name?(const char *)p_file_name:"?", line_num);
   jsiConsolePrint("REBOOTING.\n");
   jshTransmitFlush();
   jshDelayMicroseconds(1000000);
@@ -951,7 +951,7 @@ static void ble_stack_init(void)
                                                     &ble_enable_params);
     APP_ERROR_CHECK(err_code);
 
-    int softdevice_extra_ram_hack = 0;
+    uint32_t softdevice_extra_ram_hack = 0;
 
     ble_enable_params.common_enable_params.vs_uuid_count = 3;
     softdevice_extra_ram_hack += 32; // now we have more UUIDs, SD needs more RAM
@@ -1313,7 +1313,7 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
 
     if (bleChanged && isAdvertising)
       advertising_stop();
-    err_code = sd_ble_gap_adv_data_set(dPtr, dLen, NULL, 0);
+    err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
     if (err_code)
        jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
      if (bleChanged && isAdvertising)
