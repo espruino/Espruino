@@ -167,7 +167,9 @@ void wakeup_handler() {
 void jshInit() {
   jshInitDevices();
 
+#ifdef LED1_PININDEX
   jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
+#endif
 
   nrf_utils_lfclk_config_and_start();
 
@@ -228,7 +230,9 @@ void jshInit() {
   SysTick_Config(0xFFFFFF);
 #endif
 
+#ifdef LED1_PININDEX
   jshPinOutput(LED1_PININDEX, !LED1_ONSTATE);
+#endif
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
