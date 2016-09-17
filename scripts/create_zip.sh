@@ -32,7 +32,7 @@ echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 
-for BOARDNAME in PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINO_1V3 ESPRUINO_1V3_WIZ NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI MICROBIT ESP8266_BOARD
+for BOARDNAME in PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINOWIFI NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI MICROBIT ESP8266_BOARD
 do
   echo ------------------------------
   echo                  $BOARDNAME
@@ -69,6 +69,8 @@ do
     bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   elif [ "$BOARDNAME" == "PICO_R1_3" ]; then      
     bash -c "$EXTRADEFS scripts/create_pico_image_1v3.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
+  elif [ "$BOARDNAME" == "ESPRUINOWIFI" ]; then      
+    bash -c "$EXTRADEFS scripts/create_espruinowifi_image.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   else 
     bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make clean"
     bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make" || { echo "Build of $BOARDNAME failed" ; exit 1; }
@@ -104,5 +106,5 @@ cp $DIR/dist_licences.txt $ZIPDIR/licences.txt
 
 rm -f $ZIPFILE
 cd zipcontents
-echo zip $ZIPFILE *
-zip $ZIPFILE *
+echo zip -r $ZIPFILE *
+zip -r $ZIPFILE *

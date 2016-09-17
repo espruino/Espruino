@@ -200,12 +200,32 @@ void initHardware() {
  GPIO_InitStructure.GPIO_Pin = stmPin(BTN1_PININDEX);
  GPIO_Init(stmPort(BTN1_PININDEX), &GPIO_InitStructure);
 
+#ifdef ESPRUINOBOARD
+#ifndef DEBUG
+  // reclaim A13 and A14 for the LEDs
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available
+#endif
+#endif
+
  jshPinOutput(LED1_PININDEX, 1);
 
   // if button is not set, jump to the address of the binary
   if (!isButtonPressed()) {
     jumpToEspruinoBinary();
     // we could return here - binary might be very obviously corrupted
+  } else {
+    // Button is pressed - wait for ~3 sec and if it's still pressed,
+    // jump to Espruino again (so button stays pressed and saved JS
+    // code is not loaded)
+    jshPinOutput(LED1_PININDEX, 0);
+    jshPinOutput(LED2_PININDEX, 1);
+    int cnt = 3000;
+    while (isButtonPressed() && --cnt) {
+      volatile int i = 8000;
+      while (i--); // about 1ms delay on either board
+    }
+    if (isButtonPressed())
+      jumpToEspruinoBinary();
   }
 
   // PREEMPTION
@@ -213,13 +233,6 @@ void initHardware() {
 
   RCC_PCLK1Config(RCC_HCLK_Div2); // PCLK1 must be >13 Mhz for USB to work (see STM32F103 C/D/E errata)
   RCC_PCLK2Config(RCC_HCLK_Div4);
-
-#ifdef ESPRUINOBOARD
-#ifndef DEBUG
-  // reclaim A13 and A14 for the LEDs
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available
-#endif
-#endif
 
 
   /* System Clock */

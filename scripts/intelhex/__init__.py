@@ -846,7 +846,7 @@ class IntelHex(object):
             else:                           # conflict
                 if overlap == 'error':
                     raise AddressOverlapError(
-                        'Starting addresses are different')
+                        'Starting addresses are different - existing '+str(self.start_addr)+' vs new '+str(other.start_addr))
                 elif overlap == 'replace':
                     self.start_addr = other.start_addr
 #/IntelHex

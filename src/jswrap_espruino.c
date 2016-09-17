@@ -1117,6 +1117,34 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
   }
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "setPassword",
+  "generate" : "jswrap_espruino_setPassword",
+  "params" : [
+    ["opts","JsVar","The password - max 20 chars"]
+  ]
+}
+Set a password on the console (REPL). When powered on, Espruino will
+then demand a password before the console can be used.
+
+To remove the password, call this function with no arguments.
+
+**Note:** There is no protection against multiple password attempts, so someone
+could conceivably try every password in a dictionary.
+
+**Note:** This password is stored in memory in plain text. If someone is able
+to execute arbitrary JavaScript code on the device (eg, you use `eval` on input
+from unknown sources) or read the device's firmware then they may be able to
+obtain it.
+ */
+void jswrap_espruino_setPassword(JsVar *pwd) {
+  if (pwd)
+    pwd = jsvAsString(pwd, false);
+  jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, pwd));
+}
+
 // ----------------------------------------- USB Specific Stuff
 
 #ifdef USE_USB_HID
