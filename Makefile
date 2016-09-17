@@ -568,7 +568,7 @@ else ifdef ESP8266_BOARD
 EMBEDDED=1
 USE_NET=1
 USE_TELNET=1
-USE_GRAPHICS=1
+#USE_GRAPHICS=1
 USE_CRYPTO=1
 BOARD=ESP8266_BOARD
 # Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
@@ -1924,7 +1924,7 @@ PARTIAL     = espruino_esp8266_partial.o
 LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
 APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
-BOOTLOADER  = "$(ESP8266_SDK_ROOT)/bin/boot_v1.5.bin"
+BOOTLOADER  = $(ESP8266_SDK_ROOT)/bin/boot_v1.6.bin
 BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
 INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
 
@@ -1977,7 +1977,7 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER2_ELF) eagle.app.v6.data.bin
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER2_ELF) eagle.app.v6.rodata.bin
 	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER2_ELF) eagle.app.v6.irom0text.bin
-	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 0 >/dev/null
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 1 >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 
