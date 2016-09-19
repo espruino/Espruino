@@ -185,7 +185,7 @@ void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit);
 void jshSetFlowControlEnabled(IOEventFlags device, bool xOnXOff);
 
 // Functions that can be called in an IRQ when a pin changes state
-typedef void(*JshEventCallbackCallback)(bool state);
+typedef void(*JshEventCallbackCallback)(bool state, IOEventFlags flags);
 
 /// Set a callback function to be called when an event occurs
 void jshSetEventCallback(IOEventFlags channel, JshEventCallbackCallback callback);

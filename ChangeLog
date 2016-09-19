@@ -1,3 +1,5 @@
+     1v88 : jshSetEventCallback callbacks now get an argument with the channel number
+
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
             Fix BBC micro:bit save() regression from 1v86
