@@ -331,9 +331,12 @@ void jshPinSetState(Pin pin, JshPinState state) {
     case JSHPINSTATE_UNDEFINED :
       nrf_gpio_cfg_default(ipin);
       break;
+    case JSHPINSTATE_AF_OUT :
     case JSHPINSTATE_GPIO_OUT :
+    case JSHPINSTATE_USART_OUT :
       nrf_gpio_cfg_output(ipin);
       break;
+    case JSHPINSTATE_AF_OUT_OPENDRAIN :
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN :
       NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
@@ -343,6 +346,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_GPIO_IN :
     case JSHPINSTATE_ADC_IN :
+    case JSHPINSTATE_USART_IN :
       nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP :
@@ -351,16 +355,6 @@ void jshPinSetState(Pin pin, JshPinState state) {
     case JSHPINSTATE_GPIO_IN_PULLDOWN :
       nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLDOWN);
       break;
-    /*case JSHPINSTATE_AF_OUT :
-      break;
-    case JSHPINSTATE_AF_OUT_OPENDRAIN :
-      break;
-    case JSHPINSTATE_USART_IN :
-      break;
-    case JSHPINSTATE_USART_OUT :
-      break;
-    case JSHPINSTATE_DAC_OUT :
-      break;*/
     case JSHPINSTATE_I2C :
       NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
