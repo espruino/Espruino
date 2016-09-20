@@ -288,7 +288,32 @@ void user_uart_init() {
  */
 void user_rf_pre_init() {
   system_update_cpu_freq(160);
+// RF calibration: 0=do what byte 114 of esp_init_data_default says, 1=calibrate VDD33 and TX
+  // power (18ms); 2=calibrate VDD33 only (2ms); 3=full calibration (200ms). The default value of
+  // byte 114 is 0, which has the same effect as option 2 here. We're using option 3 'cause it's
+  // unlikely anyone will notice the 200ms or the extra power consumption given that Espruino
+  // doesn't really support low power sleep modes.
+  // See the appending of the 2A-ESP8266_IOT_SDK_User_Manual.pdf
+  system_phy_set_powerup_option(3); // 3: full RF calibration on reset (200ms)
+  system_phy_set_max_tpw(82);       // 82: max TX power
   //os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
+}
+
+/**
+ * user_rf_cal_sector_set is a required function that is called by the SDK to get a flash
+ * sector number where it can store RF calibration data. This was introduced with SDK 1.5.4.1
+ * and is necessary because Espressif ran out of pre-reserved flash sectors. Ooops...
+ */
+uint32
+user_rf_cal_sector_set(void) {
+  uint32_t sect = 0;
+  switch (system_get_flash_size_map()) {
+  case FLASH_SIZE_4M_MAP_256_256: // 512KB
+    sect = 128 - 10; // 0x76000
+  default:
+    sect = 128; // 0x80000
+  }
+  return sect;
 }
 
 /**

@@ -523,6 +523,11 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
   if (isReset && !(bootCodeInfo & BOOT_CODE_RUN_ALWAYS)) return false;
 
   code = (char *)(FLASH_DATA_LOCATION);
+#ifdef ESP8266
+  // the flash address is just the offset into the flash chip, but to evaluate the code
+  // below we need to jump to the memory-mapped window onto flash, so adjust here
+  code += 0x40200000;
+#endif
 #endif
   jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
   return true;
