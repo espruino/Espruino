@@ -27,11 +27,12 @@
 #ifdef BLUETOOTH
 #include "jswrap_bluetooth.h"
 #include "app_timer.h"
+#else
+#include "nrf_temp.h"
 #endif
 
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
-#include "nrf_temp.h"
 #include "nrf_timer.h"
 #include "nrf_delay.h"
 #ifdef NRF52
@@ -942,9 +943,22 @@ void jshUtilTimerDisable() {
 
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature() {
+#ifdef BLUETOOTH
+  /* Softdevice makes us fault - we must access
+  this via the function */
+  int32_t temp;
+  uint32_t err_code = sd_temp_get(&temp);
+  if (err_code) return NAN;
+  return temp/4.0;
+#else
   nrf_temp_init();
-
-  return nrf_temp_read() / 4.0;
+  NRF_TEMP->TASKS_START = 1;
+  WAIT_UNTIL(NRF_TEMP->EVENTS_DATARDY != 0, "Temperature");
+  NRF_TEMP->EVENTS_DATARDY = 0;
+  JsVarFloat temp = nrf_temp_read() / 4.0;
+  NRF_TEMP->TASKS_STOP = 1;
+  return temp;
+#endif
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents
