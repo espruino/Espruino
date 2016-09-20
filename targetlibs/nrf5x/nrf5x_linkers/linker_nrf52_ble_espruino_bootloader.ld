@@ -5,8 +5,8 @@ GROUP(-lgcc -lc -lnosys)
 
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0x1c000, LENGTH = 0x5e000 /* 0x7A000 and above is reserved for the bootloader. see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h        */
-  RAM (rwx) :  ORIGIN = 0x200025e0, LENGTH = 0xda20
+  FLASH (rx) : ORIGIN = 0x1c000, LENGTH = 0x5d000 /* 0x79000 and above is reserved for the bootloader. see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h        */
+  RAM (rwx) :  ORIGIN = 0x20002600, LENGTH = 0xda00
   /* FIXME - we seem to have to start with 256 bytes less RAM than the figures below */
   /* length is just 65536 - origin */
   /* PERIPH 1 CENTRAL 0 - RAM (rwx) :  ORIGIN = 0x20001E00, LENGTH = 0xE200 */

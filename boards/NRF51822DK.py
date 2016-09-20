@@ -49,20 +49,20 @@ chip = {
   'saved_code' : {
     'address' : ((256 - 3) * 1024),
     'page_size' : 1024,
-    'pages' : 0,
+    'pages' : 3,
     'flash_available' : (256 - 108 - 16) # total flash pages - softdevice - bootloader
   }
 };
 
 devices = {
-  'LED1' : { 'pin' : 'D21' },
-  'LED2' : { 'pin' : 'D22' },
-  'LED3' : { 'pin' : 'D23' },
-  'LED4' : { 'pin' : 'D24' },
-  'BTN1' : { 'pin' : 'D17'},
-  'BTN2' : { 'pin' : 'D18'},
-  'BTN3' : { 'pin' : 'D19'},
-  'BTN4' : { 'pin' : 'D20'},
+  'LED1' : { 'pin' : 'D21', 'inverted' : True },
+  'LED2' : { 'pin' : 'D22', 'inverted' : True },
+  'LED3' : { 'pin' : 'D23', 'inverted' : True },
+  'LED4' : { 'pin' : 'D24', 'inverted' : True },
+  'BTN1' : { 'pin' : 'D17', 'inverted' : True, 'pinstate' : 'IN_PULLUP'},
+  'BTN2' : { 'pin' : 'D18', 'inverted' : True, 'pinstate' : 'IN_PULLUP'},
+  'BTN3' : { 'pin' : 'D19', 'inverted' : True, 'pinstate' : 'IN_PULLUP'},
+  'BTN4' : { 'pin' : 'D20', 'inverted' : True, 'pinstate' : 'IN_PULLUP'},
   'RX_PIN_NUMBER' : { 'pin' : 'D11'},
   'TX_PIN_NUMBER' : { 'pin' : 'D9'},
   'CTS_PIN_NUMBER' : { 'pin' : 'D10'},

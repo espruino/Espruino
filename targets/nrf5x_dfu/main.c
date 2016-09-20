@@ -48,12 +48,16 @@
 #include "pstorage_platform.h"
 #include "nrf_mbr.h"
 #include "nrf_log.h"
+#include "nrf_delay.h"
 #include "platform_config.h"
+
 
 #define BOOTLOADER_BUTTON               BTN1_PININDEX                                            /**< Button used to enter SW update mode. */
 #define BOOTLOADER_BUTTON_ONSTATE       BTN1_ONSTATE                                            /**< Button used to enter SW update mode. */
 #define UPDATE_IN_PROGRESS_LED          LED3_PININDEX                                            /**< Led used to indicate that DFU is active. */
 #define UPDATE_IN_PROGRESS_LED_ONSTATE  LED3_ONSTATE                                            /**< Led used to indicate that DFU is active. */
+#define BOOTLOADER_BUTTON_PRESS_LED          LED2_PININDEX                                            /**< Led used to indicate that DFU is active. */
+#define BOOTLOADER_BUTTON_PRESS_LED_ONSTATE  LED2_ONSTATE                                            /**< Led used to indicate that DFU is active. */
 // Other LED is set in targetlibs/nrf5x/nrf5_sdk/components/libraries/bootloader_dfu/dfu_transport_ble.c (currently LED1)
 
 
@@ -91,6 +95,8 @@ static void leds_init(void)
 {
     nrf_gpio_cfg_output(UPDATE_IN_PROGRESS_LED);
     nrf_gpio_pin_write(UPDATE_IN_PROGRESS_LED, !UPDATE_IN_PROGRESS_LED_ONSTATE);
+    nrf_gpio_cfg_output(BOOTLOADER_BUTTON_PRESS_LED);
+    nrf_gpio_pin_write(BOOTLOADER_BUTTON_PRESS_LED, !BOOTLOADER_BUTTON_PRESS_LED_ONSTATE);
 }
 
 
@@ -131,7 +137,7 @@ static void sys_evt_dispatch(uint32_t event)
  *
  * @details Initializes the SoftDevice and the BLE event interrupt.
  *
- * @param[in] init_softdevice  true if SoftDevice should be initialized. The SoftDevice must only
+ * @param[in] init_softdevice  true if SoftDeviceshould be initialized. The SoftDevice must only
  *                             be initialized if a chip reset has occured. Soft reset from
  *                             application must not reinitialize the SoftDevice.
  */
@@ -237,10 +243,22 @@ int main(void)
     dfu_start  = app_reset;
     dfu_start |= ((nrf_gpio_pin_read(BOOTLOADER_BUTTON) == BOOTLOADER_BUTTON_ONSTATE) ? true: false);
 
+    // If button is held down for 3 seconds, don't start bootloader.
+    // This means that we go straight to Espruino, where the button is still
+    // pressed and can be used to stop execution of the sent code.
+    if (dfu_start) {
+      nrf_gpio_pin_write(BOOTLOADER_BUTTON_PRESS_LED, BOOTLOADER_BUTTON_PRESS_LED_ONSTATE);
+      int count = 3000;
+      while (nrf_gpio_pin_read(BOOTLOADER_BUTTON) == BOOTLOADER_BUTTON_ONSTATE && count) {
+        nrf_delay_us(999);
+        count--;
+      }
+      if (!count)
+        dfu_start = false;
+      nrf_gpio_pin_write(BOOTLOADER_BUTTON_PRESS_LED, !BOOTLOADER_BUTTON_PRESS_LED_ONSTATE);
+    }
 
-
-    if (dfu_start || (!bootloader_app_is_valid(DFU_BANK_0_REGION_START)))
-    {
+    if (dfu_start || (!bootloader_app_is_valid(DFU_BANK_0_REGION_START))) {
         nrf_gpio_pin_write(UPDATE_IN_PROGRESS_LED, UPDATE_IN_PROGRESS_LED_ONSTATE);
 
         // Initiate an update of the firmware.

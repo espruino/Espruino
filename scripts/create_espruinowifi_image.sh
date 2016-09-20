@@ -16,14 +16,13 @@ cd `dirname $0` # scripts
 cd ..            # main dir
 BASEDIR=`pwd`
 
-BOARDNAME=ESPRUINOBOARD
+BOARDNAME=ESPRUINOWIFI
 ESPRUINOFILE=`python scripts/get_board_info.py $BOARDNAME "common.get_board_binary_name(board)"`
 BOOTLOADERFILE=bootloader_$ESPRUINOFILE
-IMGFILE=espruino_full.bin
+IMGFILE=espruinowifi_full.bin
 rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
 
-export ESPRUINO_1V3=1
-# export USB_PRODUCT_ID=0x5741 # For test harness board only
+export ESPRUINOWIFI=1
 # export DEBUG=1
 export RELEASE=1
 
@@ -33,7 +32,7 @@ BOOTLOADER=1 make || { echo 'Build failed' ; exit 1; }
 make clean
 make || { echo 'Build failed' ; exit 1; }
 
-BOOTLOADERSIZE=`python scripts/get_board_info.py $BOARDNAME "common.get_bootloader_size(board)"`
+BOOTLOADERSIZE=`python scripts/get_board_info.py $BOARDNAME "common.get_espruino_binary_address(board)"`
 IMGSIZE=$(expr $BOOTLOADERSIZE + $(stat -c%s "$ESPRUINOFILE"))
 
 echo ---------------------
@@ -56,8 +55,10 @@ dd bs=1 seek=$BOOTLOADERSIZE if=$ESPRUINOFILE of=$IMGFILE conv=notrunc || { echo
 cp $IMGFILE $ESPRUINOFILE || { echo 'Build failed' ; exit 1; }
 echo ---------------------
 echo Finished! Written to $IMGFILE and copied to $ESPRUINOFILE
-echo python scripts/stm32loader.py -p /dev/ttyUSB0 -b 460800 -ewv $ESPRUINOFILE
+echo dfu-util -a 0 -s 0x08000000 -D ${ESPRUINOFILE}
 echo ---------------------
 
 #echo python scripts/stm32loader.py -b 460800 -ewv $IMGFILE
 #python scripts/stm32loader.py -b 460800 -ewv $IMGFILE
+
+

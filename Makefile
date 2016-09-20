@@ -500,6 +500,7 @@ USE_FILESYSTEM=1
 USE_CRYPTO=1
 #USE_TLS=1
 USE_NFC=1
+USE_CUSTOM_BOOTLOADER=1
 
 else ifdef LPC1768
 EMBEDDED=1
@@ -567,19 +568,19 @@ else ifdef ESP8266_BOARD
 EMBEDDED=1
 USE_NET=1
 USE_TELNET=1
-USE_GRAPHICS=1
+#USE_GRAPHICS=1
 USE_CRYPTO=1
 BOARD=ESP8266_BOARD
 # Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
 # too large a firmware (-Os is -O2 without optimizations that increase code size)
 ifndef DISABLE_LTO
-OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -fno-fat-lto-objects -Wl,--allow-multiple-definition
+OPTIMIZEFLAGS+=-Os -g -std=gnu11 -fgnu89-inline -fno-fat-lto-objects -Wl,--allow-multiple-definition
 #OPTIMIZEFLAGS+=-DLINK_TIME_OPTIMISATION # this actually slows things down!
 else
 # DISABLE_LTO is necessary in order to analyze static string sizes (see: topstring makefile target)
 OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 endif
-ESP_FLASH_MAX       ?= 491520   # max bin file: 480KB
+ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 
 ifdef FLASH_4MB
 ESP_FLASH_SIZE      ?= 4        # 4->4MB (512KB+512KB)
@@ -1315,10 +1316,14 @@ ifeq ($(FAMILY), NRF51)
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0_softdevice.hex
 
   ifdef USE_BOOTLOADER
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+  ifdef USE_CUSTOM_BOOTLOADER
+  NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
+  else
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
+  endif
   NFR_BL_START_ADDR = 0x3C000# see dfu_gcc_nrf51.ld
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex # This file writes 0x3FC00 with 0x01 so we can flash the application with the bootloader.
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   endif
@@ -1346,8 +1351,12 @@ ifeq ($(FAMILY), NRF52)
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0_softdevice.hex
 
   ifdef USE_BOOTLOADER
+  ifdef USE_CUSTOM_BOOTLOADER
+  NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
+  else
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
-  NFR_BL_START_ADDR = 0x7A000 # see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h
+  endif
+  NFR_BL_START_ADDR = 0x79000 # see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
@@ -1915,7 +1924,7 @@ PARTIAL     = espruino_esp8266_partial.o
 LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
 APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
-BOOTLOADER  = "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin"
+BOOTLOADER  = $(ESP8266_SDK_ROOT)/bin/boot_v1.6.bin
 BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
 INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
 
@@ -1968,7 +1977,7 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER2_ELF) eagle.app.v6.data.bin
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER2_ELF) eagle.app.v6.rodata.bin
 	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER2_ELF) eagle.app.v6.irom0text.bin
-	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 0 >/dev/null
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 1 >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 
@@ -2065,21 +2074,20 @@ $(PROJ_NAME).hex: $(PROJ_NAME).elf
 ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
  ifdef USE_BOOTLOADER
   ifdef DFU_UPDATE_BUILD
-	echo Not merging softdevice or bootloader with application
+	@echo Not merging softdevice or bootloader with application
 	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
   else
   ifdef BOOTLOADER
-	echo Not merging anything with bootloader
-	echo Copy $(PROJ_NAME).hex to $(NRF_BOOTLOADER) to update
+	@echo Not merging anything with bootloader
   else
-	echo Merging SoftDevice and Bootloader
-	echo FIXME - had to set --overlap=replace
+	@echo Merging SoftDevice and Bootloader
+	@echo FIXME - had to set --overlap=replace
 	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
   endif
   endif
  else
-	echo Merging SoftDevice
+	@echo Merging SoftDevice
 	scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
  endif # USE_BOOTLOADER
@@ -2108,7 +2116,7 @@ flash: all
 ifdef USE_DFU
 	sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
 else ifdef OLIMEXINO_STM32_BOOTLOADER
-	echo Olimexino Serial bootloader
+	@echo Olimexino Serial bootloader
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
 else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
@@ -2120,21 +2128,21 @@ else ifdef NRF5X
 	if [ -d "/media/$(USER)/JLINK" ]; then cp $(PROJ_NAME).hex /media/$(USER)/JLINK;sync; fi
 	if [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).hex /media/JLINK;sync; fi
 else
-	echo ST-LINK flash
+	@echo ST-LINK flash
 	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
 endif
 
 serialflash: all
-	echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0
+	@echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0
 	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ew $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
 #	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ewv $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
 
 gdb:
-	echo "target extended-remote :4242" > gdbinit
-	echo "file $(PROJ_NAME).elf" >> gdbinit
+	@echo "target extended-remote :4242" > gdbinit
+	@echo "file $(PROJ_NAME).elf" >> gdbinit
 	#echo "load" >> gdbinit
-	echo "break main" >> gdbinit
-	echo "break HardFault_Handler" >> gdbinit
+	@echo "break main" >> gdbinit
+	@echo "break HardFault_Handler" >> gdbinit
 	$(GDB) -x gdbinit
 	rm gdbinit
 endif	    # ---------------------------------------------------

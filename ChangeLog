@@ -1,3 +1,9 @@
+     1v88 : jshSetEventCallback callbacks now get an argument with the channel number
+            Tab complete now offers a much better set of completions (fix #926)
+            Fix emitting of events with long names (fix #906)
+            Ensure 'af_opendrain' pin mode gets remembered when saving (fix #890)
+            Add second Promise.thenm argument (fix #869)
+
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
             Fix BBC micro:bit save() regression from 1v86
@@ -9,6 +15,15 @@
             NRF5x: allow raw advertising data in setAdvertising
             Add E.setPassword - allows Espruino console to be locked
             Fix pin header numbering for BBC micro:bit (it changed for the production version) (fix #896)
+            Allow Magnetometer speed to be specified for Puck.js
+            Fix out of memory when appending a string to itself
+            Allow members of the same name as function arguments to be added to a function (fix #913)
+            Fix STM32F4 RTC stopping if reset during first 1 sec of boot, also fix Espruino WiFi board clock startup
+            Fix issue where native functions couldn't be replaced by non-native fns (fix #879)
+            If statements now return values (fix #909)
+            Fix >8 bit SPI when sending single elements with SPI.send (fix #897)
+            Sockets now fire 'end' events (fix #886)
+            Added Graphics.draw/fillCircle (fix #920)
 
      1v86 : Compile Telnet server into linux by default, Add '--telnet' command-line option to enable it
             Fix lock 'leak' in Telnet when Telnet is turned off

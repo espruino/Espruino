@@ -13,7 +13,7 @@ MEMORY
 
    *  see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h       
    */
-  FLASH (rx) : ORIGIN = 0x7A000, LENGTH = 0x4000 
+  FLASH (rx) : ORIGIN = 0x79000, LENGTH = 0x5000 
 
   /** RAM Region for bootloader. This setting is suitable when used with s132. */
   RAM (rwx) :  ORIGIN = 0x20002C00, LENGTH = 0x5380

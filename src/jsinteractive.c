@@ -671,6 +671,8 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
       else if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="input_pulldown";
       else if (statem == JSHPINSTATE_GPIO_OUT) s="output";
       else if (statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN) s="opendrain";
+      else if (statem == JSHPINSTATE_AF_OUT) s="af_output";
+      else if (statem == JSHPINSTATE_AF_OUT_OPENDRAIN) s="af_opendrain";
       if (s) cbprintf(user_callback, user_data, "pinMode(%p, \"%s\");\n",pin,s);
     }
 

@@ -289,7 +289,7 @@ void _jswrap_promise_add(JsVar *parent, JsVar *callback, const char *name) {
   "generate" : "jswrap_promise_then",
   "params" : [
     ["onFulfilled","JsVar","A callback that is called when this promise is resolved"],
-    ["onRejected","JsVar","A callback that is called when this promise is rejected"]
+    ["onRejected","JsVar","A callback that is called when this promise is rejected (or nothing)"]
   ],
   "return" : ["JsVar","The original Promise"]
 }

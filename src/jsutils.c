@@ -361,7 +361,16 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   jshTransmitFlush();
   NVIC_SystemReset();
 #elif defined(ESP8266)
-  jsiConsolePrint("REBOOTING!\n");
+  // typically the Espruino console is over telnet, in which case nothing we do here will ever
+  // show up, so we instead jump through some hoops to print to UART
+  int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
+  os_printf_plus("ASSERT FAILED AT %s:%d\n", file,line);
+  jsiConsolePrint("---console end---\n");
+  int c, console = jsiGetConsoleDevice();
+  while ((c=jshGetCharToTransmit(console)) >= 0)
+    os_printf_plus("%c", c);
+  os_printf_plus("CRASHING.\n");
+  *(int*)0xdead = 0xbeef;
   extern void jswrap_ESP8266_reboot(void);
   jswrap_ESP8266_reboot();
   while(1) ;
