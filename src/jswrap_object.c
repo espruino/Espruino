@@ -172,6 +172,32 @@ Returns an array of all properties (enumerable or not) found directly on a given
  **Note:** This doesn't currently work as it should for built-in objects and their prototypes. See bug #380
  */
 
+
+void _jswrap_object_keys_or_property_names_iterator(
+    const JswSymList *symbols,
+    void (*callback)(void *data, JsVar *name),
+    void *data) {
+  if (!symbols) return;
+  unsigned int i;
+  unsigned char symbolCount = READ_FLASH_UINT8(&symbols->symbolCount);
+  for (i=0;i<symbolCount;i++) {
+    unsigned short strOffset = READ_FLASH_UINT16(&symbols->symbols[i].strOffset);
+#ifndef USE_FLASH_MEMORY
+    JsVar *name = jsvNewFromString(&symbols->symbolChars[strOffset]);
+#else
+    // On the esp8266 the string is in flash, so we have to copy it to RAM first
+    // We can't use flash_strncpy here because it assumes that strings start on a word
+    // boundary and that's not the case here.
+    char buf[64], *b = buf, c; const char *s = &symbols->symbolChars[strOffset];
+    do { c = READ_FLASH_UINT8(s++); *b++ = c; } while (c && b != buf+64);
+    JsVar *name = jsvNewFromString(buf);
+#endif
+    //os_printf_plus("OBJ cb %s\n", buf);
+    callback(data, name);
+    jsvUnLock(name);
+  }
+}
+
 /** This is for Object.keys and Object. However it uses a callback so doesn't allocate anything */
 void jswrap_object_keys_or_property_names_cb(
     JsVar *obj,
@@ -208,43 +234,32 @@ void jswrap_object_keys_or_property_names_cb(
      Assume that ALL builtins are non-enumerable. This isn't great but
      seems to work quite well right now! */
   if (includeNonEnumerable) {
-    const JswSymList *symbols = 0;
-
     JsVar *protoOwner = jspGetPrototypeOwner(obj);
     if (protoOwner) {
       // If protoOwner then this is the prototype (protoOwner is the object)
-      symbols = jswGetSymbolListForObjectProto(protoOwner);
+      const JswSymList *symbols = jswGetSymbolListForObjectProto(protoOwner);
       jsvUnLock(protoOwner);
+      _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
     } else if (!jsvIsObject(obj) || jsvIsRoot(obj)) {
       // get symbols, but only if we're not doing it on a basic object
-      symbols = jswGetSymbolListForObject(obj);
+       const JswSymList *symbols = jswGetSymbolListForObject(obj);
+      _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
     }
 
-    while (symbols) {
-      unsigned int i;
-      unsigned char symbolCount = READ_FLASH_UINT8(&symbols->symbolCount);
-      for (i=0;i<symbolCount;i++) {
-        unsigned short strOffset = READ_FLASH_UINT16(&symbols->symbols[i].strOffset);
-#ifndef USE_FLASH_MEMORY
-        JsVar *name = jsvNewFromString(&symbols->symbolChars[strOffset]);
-#else
-        // On the esp8266 the string is in flash, so we have to copy it to RAM first
-        // We can't use flash_strncpy here because it assumes that strings start on a word
-        // boundary and that's not the case here.
-        char buf[64], *b = buf, c; const char *s = &symbols->symbolChars[strOffset];
-        do { c = READ_FLASH_UINT8(s++); *b++ = c; } while (c && b != buf+64);
-        JsVar *name = jsvNewFromString(buf);
-#endif
-        //os_printf_plus("OBJ cb %s\n", buf);
-        callback(data, name);
-        jsvUnLock(name);
+    if (includePrototype) {
+      if (jsvIsObject(obj)) {
+        JsVar *proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
+        while (jsvIsObject(proto)) {
+          const JswSymList *symbols = jswGetSymbolListForObjectProto(proto);
+          _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
+          JsVar *p2 = jsvObjectGetChild(proto, JSPARSE_INHERITS_VAR, 0);
+          jsvUnLock(proto);
+          proto = p2;
+        }
       }
-
-      symbols = 0;
-      if (includePrototype) {
-        includePrototype = false;
-        symbols = jswGetSymbolListForObjectProto(obj);
-      }
+      // finally include Object/String/etc
+      const JswSymList *symbols = jswGetSymbolListForObjectProto(obj);
+      _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
     }
 
     if (jsvIsArray(obj) || jsvIsString(obj)) {

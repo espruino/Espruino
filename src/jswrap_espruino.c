@@ -61,7 +61,7 @@ Use the STM32's internal thermistor to work out the temperature.
 While this is implemented on Espruino boards, it may not be implemented on other devices. If so it'll return NaN.
 
  **Note:** This is not entirely accurate and varies by a few degrees from chip to chip. It measures the **die temperature**, so when connected to USB it could be reading 10 over degrees C above ambient temperature. When running from battery with `setDeepSleep(true)` it is much more accurate though.
- */
+*/
 
 /*JSON{
   "type" : "staticmethod",
