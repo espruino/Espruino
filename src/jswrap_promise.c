@@ -142,8 +142,7 @@ JsVar *jswrap_promise_all(JsVar *arr) {
     jsvObjectIteratorNew(&it, arr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *p = jsvObjectIteratorGetValue(&it);
-      jsvUnLock(jswrap_promise_then(p, resolve));
-      jsvUnLock(jswrap_promise_catch(p, reject));
+      jsvUnLock(jswrap_promise_then(p, resolve, reject));
       jsvUnLock(p);
       promises++;
       jsvObjectIteratorNext(&it);
@@ -228,13 +227,16 @@ void _jswrap_promise_add(JsVar *parent, JsVar *callback, const char *name) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_promise_then",
   "params" : [
-    ["callback","JsVar","A callback that is called when this promise is resolved"]
+    ["resolve","JsVar","A callback that is called when this promise is resolved"],
+    ["reject","JsVar","A callback that is called when this promise is rejected (or nothing)"]
   ],
   "return" : ["JsVar","The original Promise"]
 }
  */
-JsVar *jswrap_promise_then(JsVar *parent, JsVar *callback) {
-  _jswrap_promise_add(parent, callback, JS_PROMISE_THEN_NAME);
+JsVar *jswrap_promise_then(JsVar *parent, JsVar *resolve, JsVar *reject) {
+  _jswrap_promise_add(parent, resolve, JS_PROMISE_THEN_NAME);
+  if (reject)
+    _jswrap_promise_add(parent, reject, JS_PROMISE_CATCH_NAME);
   return jsvLockAgain(parent);
 }
 

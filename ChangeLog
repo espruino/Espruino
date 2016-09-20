@@ -2,6 +2,7 @@
             Tab complete now offers a much better set of completions (fix #926)
             Fix emitting of events with long names (fix #906)
             Ensure 'af_opendrain' pin mode gets remembered when saving (fix #890)
+            Add second Promise.thenm argument (fix #869)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
