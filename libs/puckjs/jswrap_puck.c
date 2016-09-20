@@ -397,6 +397,35 @@ int jswrap_puck_capSense(Pin tx, Pin rx) {
 }
 
 /*JSON{
+    "type" : "staticmethod",
+    "class" : "Puck",
+    "name" : "light",
+    "#ifdef" : "NRF52",
+    "generate" : "jswrap_puck_light",
+    "return" : ["float", "A light value from 0 to 1" ]
+}
+Read a light value based on the light the red LED is seeing
+*/
+JsVarFloat jswrap_puck_light() {
+  // If pin state wasn't an analog input before, make it one now,
+  // read, and delay, just to make sure everything has time to settle
+  // before the 'real' reading
+  JshPinState s = jshPinGetState(LED1_PININDEX);
+  if (s != JSHPINSTATE_GPIO_IN) {
+    jshPinOutput(LED1_PININDEX,0);// discharge
+    jshPinAnalog(LED1_PININDEX);// analog
+    jshDelayMicroseconds(5000);
+  }
+  JsVarFloat f = jshPinAnalog(LED1_PININDEX)/0.45;
+  if (f>1) f=1;
+  // turn the red LED back on if it was on before
+  if (s & JSHPINSTATE_PIN_IS_ON)
+    jshPinOutput(LED1_PININDEX, 1);
+
+  return f;
+}
+
+/*JSON{
   "type" : "kill",
   "generate" : "jswrap_puck_kill"
 }*/
