@@ -1,5 +1,6 @@
      1v88 : jshSetEventCallback callbacks now get an argument with the channel number
             Tab complete now offers a much better set of completions (fix #926)
+            Fix emitting of events with long names (fix #906)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types

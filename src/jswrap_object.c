@@ -637,7 +637,7 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
     jsWarn("First argument to EventEmitter.emit(..) must be a string");
     return;
   }
-  JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
+  JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%v", event);
   if (!eventName) return; // no memory
 
   // extract data
@@ -693,7 +693,7 @@ void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) 
   }
   if (jsvIsString(event)) {
     // remove the whole child containing listeners
-    JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
+    JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%v", event);
     if (!eventName) return; // no memory
     JsVar *eventListName = jsvFindChildFromVar(parent, eventName, true);
     jsvUnLock(eventName);
@@ -737,7 +737,7 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   }
   if (jsvIsString(event)) {
     // remove the whole child containing listeners
-    JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%s",event);
+    JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%v", event);
     if (!eventName) return; // no memory
 
     JsVar *eventList = jsvFindChildFromVar(parent, eventName, true);
