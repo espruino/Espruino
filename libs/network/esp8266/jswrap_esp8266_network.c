@@ -1657,7 +1657,7 @@ Perform a network ping request. The parameter can be either a String or a numeri
 void jswrap_ESP8266_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
-  ) {
+) {
   memset(&pingOpt, 0, sizeof(pingOpt));
   // If the parameter is a string, get the IP address from the string
   // representation.
@@ -2001,7 +2001,7 @@ static void wifiEventHandler(System_Event_t *evt) {
     int rssi = evt->event_info.ap_probereqrecved.rssi;
     if (rssi > 0) rssi = 0;
     jsvObjectSetChildAndUnLock(jsDetails, "rssi", jsvNewFromInteger(rssi));
-    mac = evt->event_info.sta_connected.mac;
+    mac = evt->event_info.ap_probereqrecved.mac;
     os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
     sendWifiEvent(evt->event, jsDetails);
