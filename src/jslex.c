@@ -170,7 +170,7 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
     JSLJT_TOPHAT, // ^
     JSLJT_ID, // _
     // 96
-    JSLJT_SINGLECHAR, // `
+    JSLJT_STRING, // `
     JSLJT_ID, // A lowercase
     JSLJT_ID, // B lowercase
     JSLJT_ID, // C lowercase
@@ -428,7 +428,10 @@ void jslGetNextToken() {
           }
         }
         jsvStringIteratorFree(&it);
-        lex->tk = lex->currCh==delim ? LEX_STR : LEX_UNFINISHED_STR;
+        if (lex->currCh==delim) {
+          lex->tk =  delim=='`' ? LEX_TEMPLATE_LITERAL : LEX_STR;
+        } else
+          lex->tk = LEX_UNFINISHED_STR;
         jslGetNextCh();
       } break;
       case JSLJT_EXCLAMATION: jslSingleChar();
@@ -618,6 +621,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
   case LEX_INT : strncpy(str, "INT", len); return;
   case LEX_FLOAT : strncpy(str, "FLOAT", len); return;
   case LEX_STR : strncpy(str, "STRING", len); return;
+  case LEX_TEMPLATE_LITERAL : strncpy(str, "TEMPLATE LITERAL", len); return;
   case LEX_UNFINISHED_STR : strncpy(str, "UNFINISHED STRING", len); return;
   }
   if (token>=LEX_EQUAL && token<LEX_R_LIST_END) {

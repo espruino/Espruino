@@ -105,6 +105,9 @@ void jsvStringIteratorGotoEnd(JsvStringIterator *it);
 /// Append a character TO THE END of a string iterator
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch);
 
+/// Append an entire JsVar string TO THE END of a string iterator
+void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str);
+
 static ALWAYS_INLINE void jsvStringIteratorFree(JsvStringIterator *it) {
   jsvUnLock(it->var);
 }

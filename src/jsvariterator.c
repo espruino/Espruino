@@ -238,6 +238,16 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
   jsvSetCharactersInVar(it->var, it->charsInVar);
 }
 
+void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str) {
+  JsvStringIterator sit;
+  jsvStringIteratorNew(&sit, str, 0);
+  while (jsvStringIteratorHasChar(&sit)) {
+    jsvStringIteratorAppend(it, jsvStringIteratorGetChar(&sit));
+    jsvStringIteratorNext(&sit);
+  }
+  jsvStringIteratorFree(&sit);
+}
+
 // --------------------------------------------------------------------------------------------
 
 void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {

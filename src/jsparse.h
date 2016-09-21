@@ -55,6 +55,8 @@ JsVar *jspGetException();
 /** Return a stack trace string if there was one (and clear it) */
 JsVar *jspGetStackTrace();
 
+/** Evaluate the given variable as an expression (in current scope) */
+JsVar *jspEvaluateExpressionVar(JsVar *str);
 /** Execute code form a variable and return the result. If lineNumberOffset
  * is nonzero it's added to the line numbers that get reported for errors/debug */
 JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset);

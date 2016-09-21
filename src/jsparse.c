@@ -1189,6 +1189,7 @@ NO_INLINE JsVar *jspeFactorObject() {
         jslGetNextToken(lex); // skip over current token
       } else if (
           lex->tk==LEX_STR ||
+          lex->tk==LEX_TEMPLATE_LITERAL ||
           lex->tk==LEX_FLOAT ||
           lex->tk==LEX_INT ||
           lex->tk==LEX_R_TRUE ||
@@ -1318,10 +1319,71 @@ NO_INLINE JsVar *jspeFactorDelete() {
   return result;
 }
 
+#ifndef SAVE_ON_FLASH
+JsVar *jspeTemplateLiteral() {
+  JsVar *a = 0;
+  if (JSP_SHOULD_EXECUTE) {
+    JsVar *template = jslGetTokenValueAsVar(lex);
+    a = jsvNewFromEmptyString();
+    if (a && template) {
+      JsvStringIterator it, dit;
+      jsvStringIteratorNew(&it, template, 0);
+      jsvStringIteratorNew(&dit, a, 0);
+      while (jsvStringIteratorHasChar(&it)) {
+        char ch = jsvStringIteratorGetChar(&it);
+        if (ch=='$') {
+          jsvStringIteratorNext(&it);
+          ch = jsvStringIteratorGetChar(&it);
+          if (ch=='{') {
+            // Now parse out the expression
+            jsvStringIteratorNext(&it);
+            int brackets = 1;
+            JsVar *expr = jsvNewFromEmptyString();
+            if (!expr) break;
+            JsvStringIterator eit;
+            jsvStringIteratorNew(&eit, expr, 0);
+            while (jsvStringIteratorHasChar(&it)) {
+              ch = jsvStringIteratorGetChar(&it);
+              jsvStringIteratorNext(&it);
+              if (ch=='{') brackets++;
+              if (ch=='}') {
+                brackets--;
+                if (!brackets) break;
+              }
+              jsvStringIteratorAppend(&eit, ch);
+            }
+            jsvStringIteratorFree(&eit);
+            JsVar *result = jspEvaluateExpressionVar(expr);
+            jsvUnLock(expr);
+            result = jsvAsString(result, true);
+            jsvStringIteratorAppendString(&dit, result);
+            jsvUnLock(result);
+          } else {
+            jsvStringIteratorAppend(&dit, '$');
+          }
+        } else {
+          jsvStringIteratorAppend(&dit, ch);
+          jsvStringIteratorNext(&it);
+        }
+      }
+      jsvStringIteratorFree(&it);
+      jsvStringIteratorFree(&dit);
+    }
+    jsvUnLock(template);
+  }
+  JSP_ASSERT_MATCH(LEX_TEMPLATE_LITERAL);
+  return a;
+}
+#endif
+
 NO_INLINE JsVar *jspeFactor() {
   if (lex->tk==LEX_ID) {
     JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString(lex));
     JSP_ASSERT_MATCH(LEX_ID);
+#ifndef SAVE_ON_FLASH
+    if (lex->tk==LEX_TEMPLATE_LITERAL)
+      jsExceptionHere(JSET_SYNTAXERROR, "Tagged template literals not supported");
+#endif
     return a;
   } else if (lex->tk==LEX_INT) {
     JsVar *v = 0;
@@ -1357,14 +1419,15 @@ NO_INLINE JsVar *jspeFactor() {
     JSP_ASSERT_MATCH(LEX_R_UNDEFINED);
     return 0;
   } else if (lex->tk==LEX_STR) {
-    if (JSP_SHOULD_EXECUTE) {
-      JsVar *a = jslGetTokenValueAsVar(lex);
-      JSP_ASSERT_MATCH(LEX_STR);
-      return a;
-    } else {
-      JSP_ASSERT_MATCH(LEX_STR);
-      return 0;
-    }
+    JsVar *a = 0;
+    if (JSP_SHOULD_EXECUTE)
+      a = jslGetTokenValueAsVar(lex);
+    JSP_ASSERT_MATCH(LEX_STR);
+    return a;
+#ifndef SAVE_ON_FLASH
+  } else if (lex->tk==LEX_TEMPLATE_LITERAL) {
+    return jspeTemplateLiteral();
+#endif
   } else if (lex->tk=='{') {
     return jspeFactorObject();
   } else if (lex->tk=='[') {
@@ -2311,6 +2374,7 @@ NO_INLINE JsVar *jspeStatement() {
       lex->tk==LEX_INT ||
       lex->tk==LEX_FLOAT ||
       lex->tk==LEX_STR ||
+      lex->tk==LEX_TEMPLATE_LITERAL ||
       lex->tk==LEX_R_NEW ||
       lex->tk==LEX_R_NULL ||
       lex->tk==LEX_R_UNDEFINED ||
@@ -2511,6 +2575,22 @@ void jspKill() {
   jsvUnLock(r);
 }
 
+/** Evaluate the given variable as an expression (in current scope) */
+JsVar *jspEvaluateExpressionVar(JsVar *str) {
+  JsLex lex;
+
+  assert(jsvIsString(str));
+  JsLex *oldLex = jslSetLex(&lex);
+  jslInit(str);
+  lex.lineNumberOffset = oldLex->lineNumberOffset;
+
+  // actually do the parsing
+  JsVar *v = jspeExpression();
+  jslKill();
+  jslSetLex(oldLex);
+
+  return jsvSkipNameAndUnLock(v);
+}
 
 /** Execute code form a variable and return the result. If lineNumberOffset
  * is nonzero it's added to the line numbers that get reported for errors/debug */
@@ -2521,6 +2601,7 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(str);
   lex.lineNumberOffset = lineNumberOffset;
+
 
   JsExecInfo oldExecInfo = execInfo;
   execInfo.execute = EXEC_YES;
@@ -2545,11 +2626,7 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   execInfo = oldExecInfo;
 
   // It may have returned a reference, but we just want the value...
-  if (v) {
-    return jsvSkipNameAndUnLock(v);
-  }
-  // nothing returned
-  return 0;
+  return jsvSkipNameAndUnLock(v);
 }
 
 JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
