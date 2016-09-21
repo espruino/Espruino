@@ -344,21 +344,23 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
 }
 
 // Parse function, assuming we're on '{'
-NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar) {
-  JSP_MATCH('{');
+NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnly) {
+  if (!expressionOnly) {
+    JSP_MATCH('{');
 
-#ifndef SAVE_ON_FLASH
-  if (lex->tk==LEX_STR && !strcmp(jslGetTokenValueAsString(lex), "compiled")) {
-    jsWarn("Function marked with \"compiled\" uploaded in source form");
-  }
-#endif
+  #ifndef SAVE_ON_FLASH
+    if (lex->tk==LEX_STR && !strcmp(jslGetTokenValueAsString(lex), "compiled")) {
+      jsWarn("Function marked with \"compiled\" uploaded in source form");
+    }
+  #endif
 
-  /* If the function starts with return, treat it specially -
-   * we don't want to store the 'return' part of it
-   */
-  if (funcVar && lex->tk==LEX_R_RETURN) {
-    funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
-    JSP_ASSERT_MATCH(LEX_R_RETURN);
+    /* If the function starts with return, treat it specially -
+     * we don't want to store the 'return' part of it
+     */
+    if (funcVar && lex->tk==LEX_R_RETURN) {
+      funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
+      JSP_ASSERT_MATCH(LEX_R_RETURN);
+    }
   }
   // Get the line number (if needed)
   JsVarInt lineNumber = 0;
@@ -368,13 +370,21 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar) {
   }
   // Get the code - parse it and figure out where it stops
   JslCharPos funcBegin = jslCharPosClone(&lex->tokenStart);
-  int brackets = 0;
   int lastTokenEnd = -1;
-  while (lex->tk && (brackets || lex->tk != '}')) {
-    if (lex->tk == '{') brackets++;
-    if (lex->tk == '}') brackets--;
-    lastTokenEnd = (int)jsvStringIteratorGetIndex(&lex->it)-1;
-    JSP_ASSERT_MATCH(lex->tk);
+  if (!expressionOnly) {
+    int brackets = 0;
+    while (lex->tk && (brackets || lex->tk != '}')) {
+      if (lex->tk == '{') brackets++;
+      if (lex->tk == '}') brackets--;
+      lastTokenEnd = (int)jsvStringIteratorGetIndex(&lex->it)-1;
+      JSP_ASSERT_MATCH(lex->tk);
+    }
+  } else {
+    JsExecFlags oldExec = execInfo.execute;
+    execInfo.execute = EXEC_NO;
+    jsvUnLock(jspeExpression());
+    execInfo.execute = oldExec;
+    lastTokenEnd = (int)jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
   }
   // Then create var and set (if there was any code!)
   if (funcVar && lastTokenEnd>0) {
@@ -408,7 +418,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar) {
   }
 
   jslCharPosFree(&funcBegin);
-  JSP_MATCH('}');
+  if (!expressionOnly) JSP_MATCH('}');
   return 0;
 }
 
@@ -438,7 +448,7 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
   }
 
   // Parse the actual function block
-  jspeFunctionDefinitionInternal(funcVar);
+  jspeFunctionDefinitionInternal(funcVar, false);
 
   // if we had a function name, add it to the end
   if (funcVar && functionInternalName)
@@ -1399,35 +1409,36 @@ NO_INLINE JsVar *jspeAddNamedFunctionParameter(JsVar *funcVar, JsVar *name) {
 }
 
 #ifndef SAVE_ON_FLASH
+// parse an arrow function
+NO_INLINE JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a) {
+  assert(!a || jsvIsName(a));
+  JSP_ASSERT_MATCH(LEX_ARROW_FUNCTION);
+  if (!funcVar) funcVar = jsvNewWithFlags(JSV_FUNCTION);
+  funcVar = jspeAddNamedFunctionParameter(funcVar, a);
+
+  bool expressionOnly = lex->tk!='{';
+  jspeFunctionDefinitionInternal(funcVar, expressionOnly);
+  return funcVar;
+}
+
 // parse expressions with commas, maybe followed by an arrow function (bracket already matched)
 NO_INLINE JsVar *jspeExpressionOrArrowFunction() {
   JsVar *a = 0;
   JsVar *funcVar = 0;
   bool allNames = true;
-  while (!JSP_SHOULDNT_PARSE) {
+  while (lex->tk!=')' && !JSP_SHOULDNT_PARSE) {
     if (allNames && jsvIsName(a))
       funcVar = jspeAddNamedFunctionParameter(funcVar, a);
     jsvUnLock(a);
     a = jspeAssignmentExpression();
     if (!jsvIsName(a)) allNames = false;
-    if (lex->tk==')') break;
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(',', jsvUnLock2(a,funcVar), 0);
+    if (lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',', jsvUnLock2(a,funcVar), 0);
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(a,funcVar), 0);
   // if arrow is found, create a function
   if (allNames && lex->tk==LEX_ARROW_FUNCTION) {
-    if (allNames && jsvIsName(a))
-      funcVar = jspeAddNamedFunctionParameter(funcVar, a);
+    funcVar = jspeArrowFunction(funcVar, a);
     jsvUnLock(a);
-    a=0;
-
-    JSP_ASSERT_MATCH(LEX_ARROW_FUNCTION);
-    if (lex->tk!='{') {
-      jsExceptionHere(JSET_SYNTAXERROR, "Unbracketed arrow functions not supported");
-      jsvUnLock(funcVar);
-      return 0;
-    }
-    jspeFunctionDefinitionInternal(funcVar);
     return funcVar;
   } else {
     jsvUnLock(funcVar);
@@ -1443,6 +1454,11 @@ NO_INLINE JsVar *jspeFactor() {
 #ifndef SAVE_ON_FLASH
     if (lex->tk==LEX_TEMPLATE_LITERAL)
       jsExceptionHere(JSET_SYNTAXERROR, "Tagged template literals not supported");
+    else if (lex->tk==LEX_ARROW_FUNCTION && jsvIsName(a)) {
+      JsVar *funcVar = jspeArrowFunction(0,a);
+      jsvUnLock(a);
+      a=funcVar;
+    }
 #endif
     return a;
   } else if (lex->tk==LEX_INT) {
