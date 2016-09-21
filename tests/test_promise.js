@@ -12,7 +12,7 @@ var p = new Promise(function(res,rej) {
 }).catch(function(r) {  
   if (r=="Hello") passes.push("SimpleReject");
 }).then(function(r) {  
-  passes.push("FAIL");
+  passes.push("SimpleReject2");
 });
 
 var p = new Promise(function(res,rej) {
@@ -20,7 +20,7 @@ var p = new Promise(function(res,rej) {
 }).then(function(r) {  
   if (r=="Hello") passes.push("InstantResolve");
 }).catch(function(r) {  
-  passes.push("FAIL");
+  passes.push("FAIL1");
 });
 
 var p = new Promise(function(res,rej) {
@@ -35,13 +35,13 @@ var p = new Promise(function(res,rej) {
 var p = Promise.resolve("Hello").then(function(r) {  
   if (r=="Hello") passes.push("PreResolved");
 }).catch(function(r) {  
-  passes.push("FAIL");
+  passes.push("FAIL2");
 });
 
 var p = Promise.reject("Hello").catch(function(r) {  
   if (r=="Hello") passes.push("PreRejected");
 }).then(function(r) {  
-  passes.push("FAIL");
+  passes.push("PreRejected2");
 });
 
 
@@ -58,12 +58,12 @@ var p = Promise.all([new Promise(function(res,rej) {
 }), new Promise(function(res,rej) {
   setTimeout(rej, 10, "Ok"); 
 })]).then(function(r) {  
-  passes.push("FAIL");
+  passes.push("FAIL5");
 }).catch(function(r) {  
   if (r=="Ok") passes.push("RejectAll");
 });
 
 setTimeout(function() {
-  result = passes == "SimpleReject,InstantResolve,PreResolved,PreRejected,SimpleResolve,Resolve1,Resolve2,ResolveAll,RejectAll";
+  result = passes == "SimpleReject,InstantResolve,PreResolved,PreRejected,SimpleReject2,PreRejected2,SimpleResolve,Resolve1,ResolveAll,RejectAll";
   if (!result) console.log(""+passes);
 },30);
