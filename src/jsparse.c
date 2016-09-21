@@ -343,30 +343,9 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
   return true;
 }
 
-NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
-  // actually parse a function... We assume that the LEX_FUNCTION and name
-  // have already been parsed
-  JsVar *funcVar = 0;
-
-  bool actuallyCreateFunction = JSP_SHOULD_EXECUTE;
-  if (actuallyCreateFunction)
-    funcVar = jsvNewWithFlags(JSV_FUNCTION);
-
-  JsVar *functionInternalName = 0;
-  if (parseNamedFunction && lex->tk==LEX_ID) {
-    // you can do `var a = function foo() { foo(); };` - so cope with this
-    if (funcVar) functionInternalName = jslGetTokenValueAsVar(lex);
-    // note that we don't add it to the beginning, because it would mess up our function call code
-    JSP_ASSERT_MATCH(LEX_ID);
-  }
-
-  // Get arguments save them to the structure
-  if (!jspeFunctionArguments(funcVar)) {
-    jsvUnLock2(functionInternalName, funcVar);
-    // parse failed
-    return 0;
-  }
-  JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock(funcVar),0);
+// Parse function, assuming we're on '{'
+NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar) {
+  JSP_MATCH('{');
 
 #ifndef SAVE_ON_FLASH
   if (lex->tk==LEX_STR && !strcmp(jslGetTokenValueAsString(lex), "compiled")) {
@@ -383,7 +362,7 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
   }
   // Get the line number (if needed)
   JsVarInt lineNumber = 0;
-  if (actuallyCreateFunction && lex->lineNumberOffset) {
+  if (funcVar && lex->lineNumberOffset) {
     // jslGetLineNumber is slow, so we only do it if we have debug info
     lineNumber = (JsVarInt)jslGetLineNumber(lex) + (JsVarInt)lex->lineNumberOffset - 1;
   }
@@ -398,7 +377,7 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     JSP_ASSERT_MATCH(lex->tk);
   }
   // Then create var and set (if there was any code!)
-  if (actuallyCreateFunction && lastTokenEnd>0) {
+  if (funcVar && lastTokenEnd>0) {
     // code var
     JsVar *funcCodeVar;
     if (jsvIsNativeString(lex->sourceVar)) {
@@ -426,13 +405,44 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
         jsvUnLock2(jsvAddNamedChild(funcVar, funcLineNumber, JSPARSE_FUNCTION_LINENUMBER_NAME), funcLineNumber);
       }
     }
-    // if we had a function name, add it to the end
-    if (functionInternalName)
-      jsvObjectSetChildAndUnLock(funcVar, JSPARSE_FUNCTION_NAME_NAME, functionInternalName);
   }
 
   jslCharPosFree(&funcBegin);
-  JSP_MATCH_WITH_CLEANUP_AND_RETURN('}',jsvUnLock(funcVar),0);
+  JSP_MATCH('}');
+  return 0;
+}
+
+// Parse function (after 'function' has occurred
+NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
+  // actually parse a function... We assume that the LEX_FUNCTION and name
+  // have already been parsed
+  JsVar *funcVar = 0;
+
+  bool actuallyCreateFunction = JSP_SHOULD_EXECUTE;
+  if (actuallyCreateFunction)
+    funcVar = jsvNewWithFlags(JSV_FUNCTION);
+
+  JsVar *functionInternalName = 0;
+  if (parseNamedFunction && lex->tk==LEX_ID) {
+    // you can do `var a = function foo() { foo(); };` - so cope with this
+    if (funcVar) functionInternalName = jslGetTokenValueAsVar(lex);
+    // note that we don't add it to the beginning, because it would mess up our function call code
+    JSP_ASSERT_MATCH(LEX_ID);
+  }
+
+  // Get arguments save them to the structure
+  if (!jspeFunctionArguments(funcVar)) {
+    jsvUnLock2(functionInternalName, funcVar);
+    // parse failed
+    return 0;
+  }
+
+  // Parse the actual function block
+  jspeFunctionDefinitionInternal(funcVar);
+
+  // if we had a function name, add it to the end
+  if (funcVar && functionInternalName)
+    jsvObjectSetChildAndUnLock(funcVar, JSPARSE_FUNCTION_NAME_NAME, functionInternalName);
 
   return funcVar;
 }
@@ -1376,6 +1386,56 @@ JsVar *jspeTemplateLiteral() {
 }
 #endif
 
+
+NO_INLINE JsVar *jspeAddNamedFunctionParameter(JsVar *funcVar, JsVar *name) {
+  if (!funcVar) funcVar = jsvNewWithFlags(JSV_FUNCTION);
+  char buf[JSLEX_MAX_TOKEN_LENGTH+1];
+  buf[0] = '\xFF';
+  jsvGetString(name, &buf[1], JSLEX_MAX_TOKEN_LENGTH);
+  JsVar *param = jsvAddNamedChild(funcVar, 0, buf);
+  jsvMakeFunctionParameter(param);
+  jsvUnLock(param);
+  return funcVar;
+}
+
+#ifndef SAVE_ON_FLASH
+// parse expressions with commas, maybe followed by an arrow function (bracket already matched)
+NO_INLINE JsVar *jspeExpressionOrArrowFunction() {
+  JsVar *a = 0;
+  JsVar *funcVar = 0;
+  bool allNames = true;
+  while (!JSP_SHOULDNT_PARSE) {
+    if (allNames && jsvIsName(a))
+      funcVar = jspeAddNamedFunctionParameter(funcVar, a);
+    jsvUnLock(a);
+    a = jspeAssignmentExpression();
+    if (!jsvIsName(a)) allNames = false;
+    if (lex->tk==')') break;
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(',', jsvUnLock2(a,funcVar), 0);
+  }
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(a,funcVar), 0);
+  // if arrow is found, create a function
+  if (allNames && lex->tk==LEX_ARROW_FUNCTION) {
+    if (allNames && jsvIsName(a))
+      funcVar = jspeAddNamedFunctionParameter(funcVar, a);
+    jsvUnLock(a);
+    a=0;
+
+    JSP_ASSERT_MATCH(LEX_ARROW_FUNCTION);
+    if (lex->tk!='{') {
+      jsExceptionHere(JSET_SYNTAXERROR, "Unbracketed arrow functions not supported");
+      jsvUnLock(funcVar);
+      return 0;
+    }
+    jspeFunctionDefinitionInternal(funcVar);
+    return funcVar;
+  } else {
+    jsvUnLock(funcVar);
+    return a;
+  }
+}
+#endif
+
 NO_INLINE JsVar *jspeFactor() {
   if (lex->tk==LEX_ID) {
     JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString(lex));
@@ -1400,12 +1460,17 @@ NO_INLINE JsVar *jspeFactor() {
     JSP_ASSERT_MATCH(LEX_FLOAT);
     return v;
   } else if (lex->tk=='(') {
-    JsVar *a = 0;
     JSP_ASSERT_MATCH('(');
     if (!jspCheckStackPosition()) return 0;
-    a = jspeExpression();
+#ifdef SAVE_ON_FLASH
+    // Just parse a normal expression (which can include commas)
+    JsVar *a = jspeExpression();
     if (!JSP_SHOULDNT_PARSE) JSP_MATCH_WITH_RETURN(')',a);
     return a;
+#else
+    return jspeExpressionOrArrowFunction();
+#endif
+
   } else if (lex->tk==LEX_R_TRUE) {
     JSP_ASSERT_MATCH(LEX_R_TRUE);
     return JSP_SHOULD_EXECUTE ? jsvNewFromBool(true) : 0;

@@ -6,6 +6,7 @@
             Fix 'chained' promises (fix #894)
             Fixed memory leak when automatically converting a simple object to a String
             Added ES6 Template Literals 
+            Initial commit of ES6 arrow functions
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
