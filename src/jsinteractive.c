@@ -1357,6 +1357,8 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 67 ('C') - right
   // 27 then 91 then 65 ('A') - up
   // 27 then 91 then 66 ('B') - down
+  // 27 then 91 then 70 - home
+  // 27 then 91 then 72 - end
   //
   // 27 then 91 then 48-57 (numeric digits) then 'd' - set line number, used for that
   //                              inputLine and put into any declared functions
