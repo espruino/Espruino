@@ -56,7 +56,7 @@
 
 /*  S110_SoftDevice_Specification_2.0.pdf
 
-  RTC0 not usable
+  RTC0 not usable (SoftDevice)
   RTC1 used by app_timer.c
   TIMER0 (32 bit) not usable (softdevice)
   TIMER1 (16 bit on nRF51, 32 bit on nRF52) used by jshardware util timer
@@ -270,15 +270,25 @@ bool jshIsUSBSERIALConnected() {
   return true;
 }
 
+/// Hack because we *really* don't want to mess with RTC0 :)
+JsSysTime baseSystemTime = 0;
+uint32_t lastSystemTime = 0;
+
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime() {
+  // Detect RTC overflows
+  uint32_t systemTime = NRF_RTC0->COUNTER;
+  if (lastSystemTime > systemTime)
+    baseSystemTime += 0x1000000; // it's a 24 bit counter
+  lastSystemTime = systemTime;
   // Use RTC0 (also used by BLE stack) - as app_timer starts/stops RTC1
-  return (JsSysTime)NRF_RTC0->COUNTER;
+  return baseSystemTime + (JsSysTime)systemTime;
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
 void jshSetSystemTime(JsSysTime time) {
-
+  baseSystemTime = 0;
+  baseSystemTime = time - jshGetSystemTime();
 }
 
 /// Convert a time in Milliseconds to one in ticks.
@@ -899,6 +909,14 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 bool jshSleep(JsSysTime timeUntilWake) {
   /* Wake ourselves up if we're supposed to, otherwise if we're not waiting for
    any particular time, just sleep. */
+  /* Wake up minimum every 4 minutes, to ensure that we notice if the
+   * RTC is going to overflow. On nRF51 we can only easily use RTC0 for time
+   * (RTC1 gets started and stopped by app timer), and we can't get an IRQ
+   * when it overflows, so we'll have to check for overflows (which means always
+   * waking up with enough time to detect an overflow).
+   */
+  if (timeUntilWake > jshGetTimeFromMilliseconds(240))
+    timeUntilWake = jshGetTimeFromMilliseconds(240);
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
     uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake), APP_TIMER_PRESCALER);
@@ -914,6 +932,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jsiSetSleep(JSI_SLEEP_ASLEEP);
     sd_app_evt_wait(); // Go to sleep, wait to be woken up
     jsiSetSleep(JSI_SLEEP_AWAKE);
+    jshGetSystemTime(); // check for RTC overflows
   }
 #ifdef BLUETOOTH
   // we don't care about the return codes...
