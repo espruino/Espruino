@@ -698,6 +698,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
         // the timeout for sd_ble_gap_adv_start expired - kick it off again
+        bleStatus &= ~BLE_IS_ADVERTISING; // we still think we're advertising, but we stopped
         advertising_start();
         break;
 
@@ -1137,7 +1138,6 @@ void jswrap_nrf_bluetooth_sleep(void) {
   // Stop advertising
   if (bleStatus & BLE_IS_ADVERTISING)
     advertising_stop();
-  NRF_RADIO->TASKS_DISABLE = (1UL);
 }
 
 /*JSON{
@@ -1149,7 +1149,6 @@ void jswrap_nrf_bluetooth_sleep(void) {
 Enable Bluetooth communications (they are enabled by default)
 */
 void jswrap_nrf_bluetooth_wake(void) {
-  // NRF_RADIO->TASKS_DISABLE = (0UL); // BUG: This was causing a hardfault.
   advertising_start();
 }
 
