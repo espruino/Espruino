@@ -345,7 +345,9 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
 
 // Parse function, assuming we're on '{'
 NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnly) {
-  if (!expressionOnly) {
+  if (expressionOnly) {
+    funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
+  } else {
     JSP_MATCH('{');
 
   #ifndef SAVE_ON_FLASH
@@ -382,7 +384,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
   } else {
     JsExecFlags oldExec = execInfo.execute;
     execInfo.execute = EXEC_NO;
-    jsvUnLock(jspeExpression());
+    jsvUnLock(jspeAssignmentExpression());
     execInfo.execute = oldExec;
     lastTokenEnd = (int)jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
   }
