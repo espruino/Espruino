@@ -10,6 +10,7 @@
             Add 'opendrain_pullup' pinMode (including emulation on STM32F1)
             Make OneWire use opendrain_pullup (no resistor needed for short runs now)
             Add Software I2C (with opendrain_pullup) (ref #549, fix #29)
+            Cope with new escape codes for home and end on Ubuntu 16.04 (27,91,70/72)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types

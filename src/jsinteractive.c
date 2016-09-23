@@ -1344,7 +1344,7 @@ void jsiHandleNewLine(bool execute) {
 
 
 void jsiHandleChar(char ch) {
-  // jsiConsolePrintf("[%d:%d]\n", inputState, ch);
+  //jsiConsolePrintf("[%d:%d]\n", inputState, ch);
   //
   // special stuff
   // 1 - Ctrl-a - beginning of line
@@ -1456,7 +1456,9 @@ void jsiHandleChar(char ch) {
         jsiChangeToHistory(false); // if at end of line
       else
         jsiHandleMoveUpDown(1);
-    }
+    } else if (ch == 70) jsiHandleEnd();
+    else if (ch == 72) jsiHandleHome();
+    else jsiConsolePrintf("[%d:%d]\n", inputState, ch);
   } else if (inputState==IS_HAD_27_91_NUMBER) {
     if (ch>='0' && ch<='9') {
       inputStateNumber = (uint16_t)(10*inputStateNumber + ch - '0');
