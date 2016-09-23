@@ -809,6 +809,7 @@ src/jspin.c \
 src/jsinteractive.c \
 src/jsdevices.c \
 src/jstimer.c \
+src/jsi2c.c \
 src/jsspi.c \
 src/jshardware_common.c \
 $(WRAPPERFILE)

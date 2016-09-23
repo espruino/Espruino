@@ -21,6 +21,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
 void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin);
 void jswrap_spi_write(JsVar *parent, JsVar *args);
 
+JsVar *jswrap_i2c_constructor();
 void jswrap_i2c_setup(JsVar *parent, JsVar *options);
 void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *data);
 JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes);

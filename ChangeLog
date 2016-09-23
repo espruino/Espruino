@@ -7,6 +7,9 @@
             Fixed memory leak when automatically converting a simple object to a String
             Added ES6 Template Literals 
             Initial commit of ES6 arrow functions
+            Add 'opendrain_pullup' pinMode (including emulation on STM32F1)
+            Make OneWire use opendrain_pullup (no resistor needed for short runs now)
+            Add Software I2C (with opendrain_pullup) (ref #549, fix #29)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
