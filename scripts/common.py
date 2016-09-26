@@ -313,14 +313,14 @@ def get_prefix_name(jsondata):
 
 def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH": return "devices with low flash memory"
-  if d=="STM32F1": return "STM32F1 devices (including Espruino Board)"
+  if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
-  if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico only)"
+  if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico and Espruino WiFi only)"
   if d=="RELEASE": return "release builds"
   if d=="LINUX": return "Linux-based builds"
-  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico)"
-  if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino Wifi or Linux)"
-  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino Wifi, Linux or ESP8266)"
+  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico and Espruino WiFi)"
+  if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino WiFi or Linux)"
+  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino WiFi, Linux or ESP8266)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 
