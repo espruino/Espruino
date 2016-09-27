@@ -96,6 +96,8 @@ board = {
 
   'left2' : ['A10','A8'],
   '_notes' : {
+    'B6' : "Serial Console TX when USB disconnected, use `USB.setConsole(true)` to avoid",
+    'B7' : "Serial Console RX when USB disconnected, use `USB.setConsole(true)` to avoid",
     'A2' : 'ESP8266 RX',
     'A3' : 'ESP8266 TX',
     'A15' : 'ESP8266 CTS', # ESP8266 Clear to send (when enabled with AT+UART_DEF)
