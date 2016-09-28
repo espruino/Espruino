@@ -12,6 +12,7 @@
             Add Software I2C (with opendrain_pullup) (ref #549, fix #29)
             Cope with new escape codes for home and end on Ubuntu 16.04 (27,91,70/72)
             Tweak VGA output back porch to 2ms (so leftmost pixels always on screen)
+            Fix regression with 2 concurrent waveforms on different pins (fix #930)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
