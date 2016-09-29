@@ -37,7 +37,6 @@
 # RASPBERRYPI=1
 # BEAGLEBONE=1
 # ARIETTA=1
-# LPC1768=1 # beta
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
 # ARMINARM=1
 # NUCLEOF401RE=1
@@ -501,15 +500,6 @@ USE_CRYPTO=1
 #USE_TLS=1
 USE_NFC=1
 USE_CUSTOM_BOOTLOADER=1
-
-else ifdef LPC1768
-EMBEDDED=1
-MBED=1
-BOARD=LPC1768
-MBED_GCC_CS_DIR=$(ROOT)/targetlibs/libmbed/LPC1768/GCC_CS
-PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBED_GCC_CS_DIR)/system_LPC17xx.o $(MBED_GCC_CS_DIR)/core_cm3.o $(MBED_GCC_CS_DIR)/startup_LPC17xx.o
-LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed
-OPTIMIZEFLAGS+=-O3
 
 else ifdef ECU
 # Gordon's car ECU (extremely beta!)
@@ -1610,17 +1600,6 @@ CFLAGS+= -fno-builtin \
 -Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals
 endif
 
-
-ifdef MBED
-ARCHFLAGS += -mcpu=cortex-m3 -mthumb
-ARM=1
-INCLUDE+=-I$(ROOT)/targetlibs/libmbed -I$(ROOT)/targetlibs/libmbed/$(CHIP) -I$(ROOT)/targetlibs/libmbed/$(CHIP)/GCC_CS
-DEFINES += -DMBED
-INCLUDE += -I$(ROOT)/targetlibs/mbed
-SOURCES += targets/mbed/main.c
-CPPSOURCES += targets/mbed/jshardware.cpp
-endif
-
 ifdef ARM
 
   ifndef LINKER_FILE # nRF5x targets define their own linker file.
@@ -2158,7 +2137,7 @@ endif
 
 clean:
 	@echo Cleaning targets
-	$(Q)find . -name \*.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
+	$(Q)find . -name \*.o | grep -v arm-bcm2708 | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
 	$(Q)rm -f $(PROJ_NAME).elf
 	$(Q)rm -f $(PROJ_NAME).hex

@@ -62,7 +62,7 @@ License
 Please see the [LICENSE](LICENSE) file
 
 
-Building 
+Building
 --------
 
 Check out [the page on building Espruino](README_Building.md)
@@ -101,7 +101,6 @@ If you are a board manufacturer interested in getting your board officially supp
 * Carambola - WORKING - GPIO via filesystem (no I2C)
 * Raspberry Pi - WORKING - GPIO via filesystem or wiringPi (no I2C)
 * Sony SmartWatch - NOT WORKING - USB VCP support for F2 still needed
-* MBed platforms - have not worked for a while - full hardware wrapper still required
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
 * [ST NUCLEO-F401RE](http://www.espruino.com/ReferenceNUCLEOF401RE) - WORKING
 * ST NUCLEO-F411RE - WORKING
@@ -114,7 +113,7 @@ If you are a board manufacturer interested in getting your board officially supp
 Modification
 ------------
 
-**Check out [the documentation on the build process](README_BuildProcess.md) first** - this should 
+**Check out [the documentation on the build process](README_BuildProcess.md) first** - this should
 clear up a lot of potential questions about the Espruino architecture.
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for some hints about code style/etc.
@@ -163,4 +162,3 @@ so because we make money from the sales of Espruino boards. If your users reques
 support from us then we have absolutely no obligation to help them. However, we'll
 be a lot more motivated if you're actively helping to improve Espruino for all its
 users (not just your own).
-
