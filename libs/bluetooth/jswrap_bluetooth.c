@@ -1544,6 +1544,7 @@ NRF.updateServices({
 the form `"0xABCD"`, or strings of the form `""ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD""`
 */
 void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
+  uint32_t err_code;
 
   if (jsvIsObject(data)) {
     JsvObjectIterator it;
@@ -1597,21 +1598,45 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
 
               memset(&hvx_params, 0, sizeof(hvx_params));
 
-              // TODO FINISH Get the handle
-              // Can it be retrieved from the SoftDevice by UUID or should it be stored in setServices and looked up ?
-              hvx_params.handle = 17; // TODO REMOVE Hardcoded value
-              hvx_params.type = indication_enabled ? BLE_GATT_HVX_INDICATION : BLE_GATT_HVX_NOTIFICATION;
-              hvx_params.offset = 0;
-              hvx_params.p_len = &len;
-              hvx_params.p_data = attr_char_value.p_value;
+              // Iterate over all handles until the correct UUID or no match is found
+              uint16_t handle;
+              ble_uuid_t uuid_it;
+              memset(&uuid_it, 0, sizeof(uuid_it));
 
-              uint32_t err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
-              if ((err_code != NRF_SUCCESS) && (err_code != NRF_ERROR_INVALID_STATE)
-                  && (err_code != BLE_ERROR_NO_TX_PACKETS)
-                  && (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) {
+              err_code = sd_ble_gatts_initial_user_handle_get(&handle);
+              if (err_code != NRF_SUCCESS) {
                 APP_ERROR_CHECK(err_code);
               }
-              // TODO Retry on NO_TX_BUFFERS (for notifications) ?
+
+              // We assume that handles are sequential
+              while (true) {
+                err_code = sd_ble_gatts_attr_get(handle, &uuid_it, NULL);
+                if (err_code == NRF_ERROR_NOT_FOUND) {
+                  // "Out of bounds" => we went over the last known characteristic
+                  break;
+                } else if (err_code == NRF_SUCCESS) {
+                  // Valid handle => check if UUID matches
+                  if (uuid_it.uuid == char_uuid.uuid) {
+                    hvx_params.handle = handle;
+                    hvx_params.type = indication_enabled ? BLE_GATT_HVX_INDICATION : BLE_GATT_HVX_NOTIFICATION;
+                    hvx_params.offset = 0;
+                    hvx_params.p_len = &len;
+                    hvx_params.p_data = attr_char_value.p_value;
+
+                    err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
+                    if ((err_code != NRF_SUCCESS) && (err_code != NRF_ERROR_INVALID_STATE)
+                        && (err_code != BLE_ERROR_NO_TX_PACKETS)
+                        && (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) {
+                      APP_ERROR_CHECK(err_code);
+                    }
+                    // TODO Retry on NO_TX_BUFFERS (for notifications) ?
+                    break;
+                  }
+                } else {
+                  APP_ERROR_CHECK(err_code);
+                }
+                handle++;
+              }
             }
           }
         }
