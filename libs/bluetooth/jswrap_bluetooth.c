@@ -1373,6 +1373,7 @@ NRF.setServices({
       readable : true,   // optional, default is false
       writable : true,   // optional, default is false
       notify : true,   // optional, default is false
+      indicate : true,   // optional, default is false
       onWrite : function(evt) { // optional
         console.log("Got ", evt.data);
       }
@@ -1437,6 +1438,8 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
           char_md.char_props.broadcast = 1;
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0)))
           char_md.char_props.notify = 1;
+        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "indicate", 0)))
+          char_md.char_props.indicate = 1;
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "readable", 0)))
           char_md.char_props.read = 1;
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "writable", 0))) {
@@ -1550,7 +1553,21 @@ NRF.updateServices({
   }
 });
 ```
-This only works if the characteristic was create with `notify: true` using `setServices`,
+This only works if the characteristic was created with `notify: true` using `setServices`,
+otherwise the characteristic will be updated but no notification will be sent.
+
+To indicate (i.e. notify with ACK) connected clients of a change to the '0xABCD' characteristic in the '0xBCDE' service:
+```
+NRF.updateServices({
+  0xBCDE : {
+    0xABCD : {
+      value : "World",
+      indicate: true
+    }
+  }
+});
+```
+This only works if the characteristic was created with `indicate: true` using `setServices`,
 otherwise the characteristic will be updated but no notification will be sent.
 
 **Note:** See `setServices` for more information
@@ -1591,6 +1608,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
         JsVar *charValue = jsvObjectGetChild(charVar, "value", 0);
 
         bool notification_requested = jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0));
+        bool indication_requested = jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "indicate", 0));
 
         if (charValue) {
           JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, charValue);
@@ -1631,11 +1649,11 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
                     APP_ERROR_CHECK(err_code);
                   }
 
-                  // Notify connected clients if necessary
-                  if (notification_requested && (m_conn_handle != BLE_CONN_HANDLE_INVALID)) {
+                  // Notify/indicate connected clients if necessary
+                  if ((notification_requested || indication_requested) && (m_conn_handle != BLE_CONN_HANDLE_INVALID)) {
                     memset(&hvx_params, 0, sizeof(hvx_params));
                     hvx_params.handle = char_handle;
-                    hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
+                    hvx_params.type = indication_requested ? BLE_GATT_HVX_INDICATION : BLE_GATT_HVX_NOTIFICATION;
                     hvx_params.offset = 0;
                     hvx_params.p_len = &len;
                     hvx_params.p_data = p_value;
