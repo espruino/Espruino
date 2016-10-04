@@ -28,12 +28,13 @@
 #ifdef BLUETOOTH
 #include "jswrap_bluetooth.h"
 #include "app_timer.h"
+#else
+#include "nrf_temp.h"
 #endif
 
 #include "nrf_peripherals.h"
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
-#include "nrf_temp.h"
 #include "nrf_timer.h"
 #include "nrf_delay.h"
 #ifdef NRF52
@@ -57,7 +58,7 @@
 
 /*  S110_SoftDevice_Specification_2.0.pdf
 
-  RTC0 not usable
+  RTC0 not usable (SoftDevice)
   RTC1 used by app_timer.c
   TIMER0 (32 bit) not usable (softdevice)
   TIMER1 (16 bit on nRF51, 32 bit on nRF52) used by jshardware util timer
@@ -271,15 +272,25 @@ bool jshIsUSBSERIALConnected() {
   return true;
 }
 
+/// Hack because we *really* don't want to mess with RTC0 :)
+JsSysTime baseSystemTime = 0;
+uint32_t lastSystemTime = 0;
+
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime() {
+  // Detect RTC overflows
+  uint32_t systemTime = NRF_RTC0->COUNTER;
+  if (lastSystemTime > systemTime)
+    baseSystemTime += 0x1000000; // it's a 24 bit counter
+  lastSystemTime = systemTime;
   // Use RTC0 (also used by BLE stack) - as app_timer starts/stops RTC1
-  return (JsSysTime)NRF_RTC0->COUNTER;
+  return baseSystemTime + (JsSysTime)systemTime;
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
 void jshSetSystemTime(JsSysTime time) {
-
+  baseSystemTime = 0;
+  baseSystemTime = time - jshGetSystemTime();
 }
 
 /// Convert a time in Milliseconds to one in ticks.
@@ -332,18 +343,30 @@ void jshPinSetState(Pin pin, JshPinState state) {
     case JSHPINSTATE_UNDEFINED :
       nrf_gpio_cfg_default(ipin);
       break;
+    case JSHPINSTATE_AF_OUT :
     case JSHPINSTATE_GPIO_OUT :
+    case JSHPINSTATE_USART_OUT :
       nrf_gpio_cfg_output(ipin);
       break;
+    case JSHPINSTATE_AF_OUT_OPENDRAIN :
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN :
       NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
-                              | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
+      break;
+    case JSHPINSTATE_I2C :
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
+      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN :
     case JSHPINSTATE_ADC_IN :
+    case JSHPINSTATE_USART_IN :
       nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP :
@@ -352,25 +375,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
     case JSHPINSTATE_GPIO_IN_PULLDOWN :
       nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLDOWN);
       break;
-    /*case JSHPINSTATE_AF_OUT :
-      break;
-    case JSHPINSTATE_AF_OUT_OPENDRAIN :
-      break;
-    case JSHPINSTATE_USART_IN :
-      break;
-    case JSHPINSTATE_USART_OUT :
-      break;
-    case JSHPINSTATE_DAC_OUT :
-      break;*/
-    case JSHPINSTATE_I2C :
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
-                              | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
-                              | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
-                              | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
-                              | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
-      // may need to be set to GPIO_PIN_CNF_DIR_Output as well depending on I2C state?
-      break;
-    default : assert(0);
+    default : jsiConsolePrintf("Unimplemented pin state %d\n", state);
       break;
   }
 }
@@ -378,7 +383,28 @@ void jshPinSetState(Pin pin, JshPinState state) {
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
-  return 0; // FIXME need to get able to get pin state!
+  uint32_t ipin = (uint32_t)pinInfo[pin].pin;
+  uint32_t p = NRF_GPIO->PIN_CNF[ipin];
+  if ((p&GPIO_PIN_CNF_DIR_Msk)==(GPIO_PIN_CNF_DIR_Output<<GPIO_PIN_CNF_DIR_Pos)) {
+    // Output
+    JshPinState hi = (NRF_GPIO->OUT & (1<<ipin)) ? JSHPINSTATE_PIN_IS_ON : 0;
+    if ((p&GPIO_PIN_CNF_DRIVE_Msk)==(GPIO_PIN_CNF_DRIVE_S0D1<<GPIO_PIN_CNF_DRIVE_Pos)) {
+      if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos))
+        return JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP|hi;
+      else
+        return JSHPINSTATE_GPIO_OUT_OPENDRAIN|hi;
+    } else
+      return JSHPINSTATE_GPIO_OUT|hi;
+  } else {
+    // Input
+    if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos)) {
+      return JSHPINSTATE_GPIO_IN_PULLUP;
+    } else if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pulldown<<GPIO_PIN_CNF_PULL_Pos)) {
+      return JSHPINSTATE_GPIO_IN_PULLDOWN;
+    } else {
+      return JSHPINSTATE_GPIO_IN;
+    }
+  }
 }
 
 #ifdef NRF52
@@ -885,6 +911,14 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 bool jshSleep(JsSysTime timeUntilWake) {
   /* Wake ourselves up if we're supposed to, otherwise if we're not waiting for
    any particular time, just sleep. */
+  /* Wake up minimum every 4 minutes, to ensure that we notice if the
+   * RTC is going to overflow. On nRF51 we can only easily use RTC0 for time
+   * (RTC1 gets started and stopped by app timer), and we can't get an IRQ
+   * when it overflows, so we'll have to check for overflows (which means always
+   * waking up with enough time to detect an overflow).
+   */
+  if (timeUntilWake > jshGetTimeFromMilliseconds(240))
+    timeUntilWake = jshGetTimeFromMilliseconds(240);
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
     uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake), APP_TIMER_PRESCALER);
@@ -900,6 +934,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jsiSetSleep(JSI_SLEEP_ASLEEP);
     sd_app_evt_wait(); // Go to sleep, wait to be woken up
     jsiSetSleep(JSI_SLEEP_AWAKE);
+    jshGetSystemTime(); // check for RTC overflows
   }
 #ifdef BLUETOOTH
   // we don't care about the return codes...
@@ -944,9 +979,22 @@ void jshUtilTimerDisable() {
 
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature() {
+#ifdef BLUETOOTH
+  /* Softdevice makes us fault - we must access
+  this via the function */
+  int32_t temp;
+  uint32_t err_code = sd_temp_get(&temp);
+  if (err_code) return NAN;
+  return temp/4.0;
+#else
   nrf_temp_init();
-
-  return nrf_temp_read() / 4.0;
+  NRF_TEMP->TASKS_START = 1;
+  WAIT_UNTIL(NRF_TEMP->EVENTS_DATARDY != 0, "Temperature");
+  NRF_TEMP->EVENTS_DATARDY = 0;
+  JsVarFloat temp = nrf_temp_read() / 4.0;
+  NRF_TEMP->TASKS_STOP = 1;
+  return temp;
+#endif
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents

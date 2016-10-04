@@ -319,7 +319,7 @@ void CALLED_FROM_INTERRUPT jshPushIOWatchEvent(
   // If there is a callback associated with this GPIO event then invoke
   // it and we are done.
   if (jshEventCallbacks[channel-EV_EXTI0]) {
-    jshEventCallbacks[channel-EV_EXTI0](state);
+    jshEventCallbacks[channel-EV_EXTI0](state, channel);
     return;
   }
 

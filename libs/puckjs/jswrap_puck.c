@@ -35,6 +35,10 @@
 // Has the magnetometer been turned on?
 bool mag_enabled = false;
 
+/* TODO: Use software I2C for this instead. Since we're relying
+ * on the internal pullup resistors there might be some gotchas
+ * since we force high here for 0.1uS here before going open circuit. */
+
 void wr(int pin, bool state) {
   if (state) {
     nrf_gpio_pin_set(pin); nrf_gpio_cfg_output(pin);
@@ -138,7 +142,6 @@ uint8_t i2c_rd(bool nack) {
   return data;
 }
 
-
 // Turn magnetometer on and configure
 bool mag_on(int milliHz) {
   int reg1 = 0;
@@ -172,14 +175,14 @@ bool mag_on(int milliHz) {
   reg1 |= 1; // Active bit
   i2c_wr(reg1);
   i2c_stop();
-return true;
+  return true;
 }
 
 // Wait for magnetometer IRQ line to be set
 void mag_wait() {
   int timeout = I2C_TIMEOUT*2;
   while (!nrf_gpio_pin_read(MAG_INT) && --timeout);
-  if (!timeout) err("Timeout (wait reading)");
+  if (!timeout) jsExceptionHere(JSET_INTERNALERROR, "Timeout (Magnetometer)");
 }
 
 // Read a value
@@ -229,6 +232,22 @@ Class containing [Puck.js's](http://www.puck-js.com) utility functions.
   "return" : ["JsVar", "An Object `{x,y,z}` of magnetometer readings as integers" ]
 }
 Turn on the magnetometer, take a single reading, and then turn it off again.
+
+An object of the form `{x,y,z}' is returned containing magnetometer readings.
+Due to residual magnetism in the Puck and magnetometer itself, with
+no magnetic field the Puck will not return `{x:0,y:0,z:0}`.
+
+Instead, it's up to you to figure out what the 'zero value' is for your
+Puck in your location and to then subtract that from the value returned. If
+you're not trying to measure the Earth's magnetic field then it's a good idea
+to just take a reading at startup and use that.
+
+With the aerial at the top of the board, the `y` reading is vertical, `x` is
+horizontal, and `z` is through the board.
+
+Readings are in increments of 0.1 micro Tesla (uT). The Earth's magnetic field
+varies from around 25-60 uT, so the reading will vary by 250 to 600 depending
+on location.
 */
 JsVar *jswrap_puck_mag() {
   if (!mag_enabled) mag_on(80000);
@@ -247,11 +266,8 @@ JsVar *jswrap_puck_mag() {
 Called after `Puck.magOn()` every time magnetometer data
 is discovered. There is one argument which is an object
 of the form `{x,y,z}' containing magnetometer readings
-as integers.
+as integers (for more information see `Puck.mag()`.
  */
-
-void _jswrap_mag_irq() {
-}
 
 /*JSON{
   "type" : "staticmethod",
@@ -394,6 +410,35 @@ int jswrap_puck_capSense(Pin tx, Pin rx) {
     return (int)nrf_utils_cap_sense(tx, rx);
   }
   return (int)nrf_utils_cap_sense(CAPSENSE_TX_PIN, CAPSENSE_RX_PIN);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Puck",
+    "name" : "light",
+    "#ifdef" : "NRF52",
+    "generate" : "jswrap_puck_light",
+    "return" : ["float", "A light value from 0 to 1" ]
+}
+Read a light value based on the light the red LED is seeing
+*/
+JsVarFloat jswrap_puck_light() {
+  // If pin state wasn't an analog input before, make it one now,
+  // read, and delay, just to make sure everything has time to settle
+  // before the 'real' reading
+  JshPinState s = jshPinGetState(LED1_PININDEX);
+  if (s != JSHPINSTATE_GPIO_IN) {
+    jshPinOutput(LED1_PININDEX,0);// discharge
+    jshPinAnalog(LED1_PININDEX);// analog
+    jshDelayMicroseconds(5000);
+  }
+  JsVarFloat f = jshPinAnalog(LED1_PININDEX)/0.45;
+  if (f>1) f=1;
+  // turn the red LED back on if it was on before
+  if (s & JSHPINSTATE_PIN_IS_ON)
+    jshPinOutput(LED1_PININDEX, 1);
+
+  return f;
 }
 
 /*JSON{

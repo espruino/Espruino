@@ -345,6 +345,7 @@ Set the mode of the given pin.
  * `input_pulldown` - Digital input with internal ~40k pull-down resistor
  * `output` - Digital output
  * `opendrain` - Digital output that only ever pulls down to 0v. Sending a logical `1` leaves the pin open circuit
+ * `opendrain_pullup` - Digital output that pulls down to 0v. Sending a logical `1` enables internal ~40k pull-up resistor
  * `af_output` - Digital output from built-in peripheral
  * `af_opendrain` - Digital output from built-in peripheral that only ever pulls down to 0v.
  * Sending a logical `1` leaves the pin open circuit
@@ -367,6 +368,7 @@ void jswrap_io_pinMode(
     else if (jsvIsStringEqual(mode, "input_pulldown")) m = JSHPINSTATE_GPIO_IN_PULLDOWN;
     else if (jsvIsStringEqual(mode, "output"))         m = JSHPINSTATE_GPIO_OUT;
     else if (jsvIsStringEqual(mode, "opendrain"))      m = JSHPINSTATE_GPIO_OUT_OPENDRAIN;
+    else if (jsvIsStringEqual(mode, "opendrain_pullup")) m = JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP;
     else if (jsvIsStringEqual(mode, "af_output"))      m = JSHPINSTATE_AF_OUT;
     else if (jsvIsStringEqual(mode, "af_opendrain"))   m = JSHPINSTATE_AF_OUT_OPENDRAIN;
   }
@@ -391,7 +393,7 @@ void jswrap_io_pinMode(
   ],
   "return" : ["JsVar","The pin mode, as a string"]
 }
-Return the current mode of the given pin. See `pinMode` for more information.
+Return the current mode of the given pin. See `pinMode` for more information on returned values.
  */
 JsVar *jswrap_io_getPinMode(Pin pin) {
   if (!jshIsPinValid(pin)) {
@@ -407,6 +409,7 @@ JsVar *jswrap_io_getPinMode(Pin pin) {
   case JSHPINSTATE_GPIO_IN_PULLDOWN :   text = "input_pulldown"; break;
   case JSHPINSTATE_GPIO_OUT :           text = "output"; break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN : text = "opendrain"; break;
+  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP : text = "opendrain_pullup"; break;
   case JSHPINSTATE_AF_OUT :             text = "af_output"; break;
   case JSHPINSTATE_AF_OUT_OPENDRAIN :   text = "af_opendrain"; break;
   default: break;

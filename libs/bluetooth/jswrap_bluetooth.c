@@ -80,6 +80,7 @@ bool nfcEnabled = false;
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
+#define APP_CFG_CHAR_MAX_LEN            20                                          /**< Size of the characteristic value being notified (in bytes). */
 
 #ifdef USE_BOOTLOADER
 #define SEC_PARAM_BOND                   1                                          /**< Perform bonding. */
@@ -256,10 +257,8 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 }
 
 void advertising_start(void) {
-  uint32_t err_code = 0;
-
   if (bleStatus & BLE_IS_ADVERTISING) return;
-  // Actually start advertising
+
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
   adv_params.type        = BLE_GAP_ADV_TYPE_ADV_IND;
@@ -268,8 +267,7 @@ void advertising_start(void) {
   adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
   adv_params.interval = advertising_interval;
 
-  err_code = sd_ble_gap_adv_start(&adv_params);
-  // APP_ERROR_CHECK(err_code); // don't bother checking
+  sd_ble_gap_adv_start(&adv_params);
   bleStatus |= BLE_IS_ADVERTISING;
 }
 
@@ -693,6 +691,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
         // the timeout for sd_ble_gap_adv_start expired - kick it off again
+        bleStatus &= ~BLE_IS_ADVERTISING; // we still think we're advertising, but we stopped
         advertising_start();
         break;
 
@@ -1126,7 +1125,6 @@ void jswrap_nrf_bluetooth_sleep(void) {
   // Stop advertising
   if (bleStatus & BLE_IS_ADVERTISING)
     advertising_stop();
-  NRF_RADIO->TASKS_DISABLE = (1UL);
 }
 
 /*JSON{
@@ -1138,7 +1136,6 @@ void jswrap_nrf_bluetooth_sleep(void) {
 Enable Bluetooth communications (they are enabled by default)
 */
 void jswrap_nrf_bluetooth_wake(void) {
-  // NRF_RADIO->TASKS_DISABLE = (0UL); // BUG: This was causing a hardfault.
   advertising_start();
 }
 
@@ -1365,6 +1362,7 @@ NRF.setServices({
       readable : true,   // optional, default is false
       writable : true,   // optional, default is false
       notify : true,   // optional, default is false
+      indicate : true,   // optional, default is false
       onWrite : function(evt) { // optional
         console.log("Got ", evt.data);
       }
@@ -1429,6 +1427,8 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
           char_md.char_props.broadcast = 1;
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0)))
           char_md.char_props.notify = 1;
+        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "indicate", 0)))
+          char_md.char_props.indicate = 1;
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "readable", 0)))
           char_md.char_props.read = 1;
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "writable", 0))) {
@@ -1490,19 +1490,6 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
         }
 
         jsvUnLock(charVar);
-        /* We'd update the characteristic with:
-
-    memset(&hvx_params, 0, sizeof(hvx_params));
-    hvx_params.handle = characteristic_handle.value_handle;
-    hvx_params.p_data = p_string;
-    hvx_params.p_len  = &length;
-    hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
-    return sd_ble_gatts_hvx(p_nus->conn_handle, &hvx_params);
-
-    Maybe we could find the handle out based on characteristic UUID, rather than having
-    to store it?
-
-    */
 
         jsvObjectIteratorNext(&serviceit);
       }
@@ -1520,6 +1507,181 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
     }
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "updateServices",
+    "generate" : "jswrap_nrf_bluetooth_updateServices",
+    "params" : [
+      ["data","JsVar","The service (and characteristics) to update"]
+    ]
+}
+
+Update values for the services and characteristics Espruino advertises.
+Only services and characteristics previously declared using `setServices` are affected.
+
+To update the '0xABCD' characteristic in the '0xBCDE' service:
+```
+NRF.updateServices({
+  0xBCDE : {
+    0xABCD : {
+      value : "World"
+    }
+  }
+});
+```
+
+To notify connected clients of a change to the '0xABCD' characteristic in the '0xBCDE' service:
+```
+NRF.updateServices({
+  0xBCDE : {
+    0xABCD : {
+      value : "World",
+      notify: true
+    }
+  }
+});
+```
+This only works if the characteristic was created with `notify: true` using `setServices`,
+otherwise the characteristic will be updated but no notification will be sent.
+
+To indicate (i.e. notify with ACK) connected clients of a change to the '0xABCD' characteristic in the '0xBCDE' service:
+```
+NRF.updateServices({
+  0xBCDE : {
+    0xABCD : {
+      value : "World",
+      indicate: true
+    }
+  }
+});
+```
+This only works if the characteristic was created with `indicate: true` using `setServices`,
+otherwise the characteristic will be updated but no notification will be sent.
+
+**Note:** See `setServices` for more information
+*/
+void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
+  uint32_t err_code;
+
+  if (jsvIsObject(data)) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, data);
+    while (jsvObjectIteratorHasValue(&it)) {
+      ble_uuid_t ble_uuid;
+      memset(&ble_uuid, 0, sizeof(ble_uuid));
+
+      const char *errorStr;
+      if ((errorStr = bleVarToUUIDAndUnLock(&ble_uuid,
+          jsvObjectIteratorGetKey(&it)))) {
+        jsExceptionHere(JSET_ERROR, "Invalid Service UUID: %s", errorStr);
+        break;
+      }
+
+      JsVar *serviceVar = jsvObjectIteratorGetValue(&it);
+      JsvObjectIterator serviceit;
+      jsvObjectIteratorNew(&serviceit, serviceVar);
+
+      while (jsvObjectIteratorHasValue(&serviceit)) {
+        ble_uuid_t char_uuid;
+        memset(&char_uuid, 0, sizeof(char_uuid));
+
+        if ((errorStr = bleVarToUUIDAndUnLock(&char_uuid,
+            jsvObjectIteratorGetKey(&serviceit)))) {
+          jsExceptionHere(JSET_ERROR, "Invalid Characteristic UUID: %s",
+              errorStr);
+          break;
+        }
+
+        JsVar *charVar = jsvObjectIteratorGetValue(&serviceit);
+        JsVar *charValue = jsvObjectGetChild(charVar, "value", 0);
+
+        bool notification_requested = jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0));
+        bool indication_requested = jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "indicate", 0));
+
+        if (charValue) {
+          JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, charValue);
+          if (vPtr && vLen) {
+            uint8_t* p_value = (uint8_t*) vPtr;
+            uint16_t len = MIN(vLen, APP_CFG_CHAR_MAX_LEN);
+            
+            // Update value and notify/indicate if appropriate
+            uint16_t char_handle;
+            ble_uuid_t uuid_it;
+            ble_gatts_hvx_params_t hvx_params;
+            ble_gatts_value_t gatts_value;
+
+            // Find the first user characteristic handle
+            err_code = sd_ble_gatts_initial_user_handle_get(&char_handle);
+            if (err_code != NRF_SUCCESS) {
+              APP_ERROR_CHECK(err_code);
+            }
+
+            // Iterate over all handles until the correct UUID or no match is found
+            // We assume that handles are sequential
+            while (true) {
+              memset(&uuid_it, 0, sizeof(uuid_it));
+              err_code = sd_ble_gatts_attr_get(char_handle, &uuid_it, NULL);
+              if (err_code == NRF_ERROR_NOT_FOUND) {
+                // "Out of bounds" => we went over the last known characteristic
+                break;
+              } else if (err_code == NRF_SUCCESS) {
+                // Valid handle => check if UUID matches
+                if (uuid_it.uuid == char_uuid.uuid) {
+                  // Update the value for subsequent reads even if no client is currently connected
+                  memset(&gatts_value, 0, sizeof(gatts_value));
+                  gatts_value.len = len;
+                  gatts_value.offset = 0;
+                  gatts_value.p_value = p_value;
+                  err_code = sd_ble_gatts_value_set(m_conn_handle, char_handle, &gatts_value);
+                  if (err_code != NRF_SUCCESS) {
+                    APP_ERROR_CHECK(err_code);
+                  }
+
+                  // Notify/indicate connected clients if necessary
+                  if ((notification_requested || indication_requested) && (m_conn_handle != BLE_CONN_HANDLE_INVALID)) {
+                    memset(&hvx_params, 0, sizeof(hvx_params));
+                    hvx_params.handle = char_handle;
+                    hvx_params.type = indication_requested ? BLE_GATT_HVX_INDICATION : BLE_GATT_HVX_NOTIFICATION;
+                    hvx_params.offset = 0;
+                    hvx_params.p_len = &len;
+                    hvx_params.p_data = p_value;
+
+                    err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
+                    if ((err_code != NRF_SUCCESS)
+                      && (err_code != NRF_ERROR_INVALID_STATE)
+                      && (err_code != BLE_ERROR_NO_TX_PACKETS)
+                      && (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) {
+                      APP_ERROR_CHECK(err_code);
+                    }
+                  }
+                  break;
+                }
+              } else {
+                APP_ERROR_CHECK(err_code);
+              }
+              char_handle++;
+            }
+          }
+        }
+
+        jsvUnLock(charValue);
+        jsvUnLock(charVar);
+
+        jsvObjectIteratorNext(&serviceit);
+      }
+      jsvObjectIteratorFree(&serviceit);
+      jsvUnLock(serviceVar);
+
+      jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+
+  } else if (!jsvIsUndefined(data)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting object or undefined, got %t",
+        data);
+  }
+}
 
 /*JSON{
     "type" : "staticmethod",

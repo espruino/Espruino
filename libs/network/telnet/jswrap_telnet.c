@@ -66,7 +66,7 @@ static uint8_t      tnSrvMode;    // current mode for the telnet server
 
 /*JSON{
   "type"  : "library",
-  "class" : "Telnet"
+  "class" : "TelnetServer"
 }
 This library implements a telnet console for the Espruino interpreter. It requires a network
 connection, e.g. Wifi, and **currently only functions on the ESP8266 and on Linux **. It uses
@@ -77,7 +77,7 @@ port 23 on the ESP8266 and port 2323 on Linux.
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "Telnet",
+  "class"    : "TelnetServer",
   "name"     : "setOptions",
   "generate" : "jswrap_telnet_setOptions",
   "params": [
@@ -110,7 +110,7 @@ void jswrap_telnet_setOptions(JsVar *jsOptions) {
 
 /*JSON{
   "type"     : "init",
-  "class"    : "Telnet",
+  "class"    : "TelnetServer",
   "generate" : "jswrap_telnet_init"
 }
 */
@@ -124,7 +124,7 @@ void jswrap_telnet_init(void) {
 
 /*JSON{
   "type"     : "kill",
-  "class"    : "Telnet",
+  "class"    : "TelnetServer",
   "generate" : "jswrap_telnet_kill"
 }
 */
@@ -134,7 +134,7 @@ void jswrap_telnet_kill(void) {
 
 /*JSON{
   "type"     : "idle",
-  "class"    : "Telnet",
+  "class"    : "TelnetServer",
   "generate" : "jswrap_telnet_idle"
 }
 */
@@ -226,7 +226,12 @@ void telnetRelease(JsNetwork *net) {
   printf("tnSrv: released console from sock %d\n", tnSrv.cliSock);
   netCloseSocket(net, tnSrv.cliSock);
   tnSrv.cliSock = 0;
-  if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(tnSrv.oldConsole, false);
+  IOEventFlags console = jsiGetConsoleDevice();
+  // only switch away from telnet if the current console is TELNET, this allows the current
+  // console to be set to something else while connected via telnet and then not have it
+  // switched again when disconnecting from telnet
+  if (console == EV_TELNET && !jsiIsConsoleDeviceForced())
+    jsiSetConsoleDevice(tnSrv.oldConsole, false);
 }
 
 // Attempt to send buffer on an established client connection, returns true if it sent something

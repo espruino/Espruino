@@ -1,3 +1,19 @@
+     1v88 : jshSetEventCallback callbacks now get an argument with the channel number
+            Tab complete now offers a much better set of completions (fix #926)
+            Fix emitting of events with long names (fix #906)
+            Ensure 'af_opendrain' pin mode gets remembered when saving (fix #890)
+            Add second Promise.thenm argument (fix #869)
+            Fix 'chained' promises (fix #894)
+            Fixed memory leak when automatically converting a simple object to a String
+            Added ES6 Template Literals 
+            Initial commit of ES6 arrow functions
+            Add 'opendrain_pullup' pinMode (including emulation on STM32F1)
+            Make OneWire use opendrain_pullup (no resistor needed for short runs now)
+            Add Software I2C (with opendrain_pullup) (ref #549, fix #29)
+            Cope with new escape codes for home and end on Ubuntu 16.04 (27,91,70/72)
+            Tweak VGA output back porch to 2ms (so leftmost pixels always on screen)
+            Fix regression with 2 concurrent waveforms on different pins (fix #930)
+
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
             Fix BBC micro:bit save() regression from 1v86

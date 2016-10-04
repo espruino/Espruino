@@ -13,9 +13,9 @@ http://www.espruino.com &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [
 About
 -----
 
-Espruino is a JavaScript interpreter for microcontrollers. It is designed to fit into devices with as little as 128kB Flash and 8kB RAM.
+Espruino is a JavaScript interpreter for microcontrollers. It is designed for devices with as little as 128kB Flash and 8kB RAM.
 
-Please support Espruino by [ordering one of our official boards](http://www.espruino.com/Order).
+Please support Espruino by [ordering one of our official boards](http://www.espruino.com/Order) or [donating](http://www.espruino.com/Download)
 
 
 Documentation
@@ -32,7 +32,7 @@ Builds for the [Espruino Board](http://www.espruino.com/EspruinoBoard) and [Pico
 Other documentation of use is:
 
 * [The Forum](http://forum.espruino.com/)
-* [FAQ](http://www.espruino.com//FAQ)
+* [FAQ](http://www.espruino.com/FAQ)
 * [Troubleshooting](http://www.espruino.com/Troubleshooting)
 * [Performance Notes](http://www.espruino.com/Performance)
 * [Implementation Notes](http://www.espruino.com/Internals)
@@ -42,21 +42,27 @@ Other documentation of use is:
 * [Hardware Debugging Notes](http://www.espruino.com/AdvancedDebug)
 
 
+Support / Bugs
+--------------
+
+First, please try and check that your problem hasn't [already been found](https://github.com/espruino/Espruino/issues) or [covered on our forum](http://www.espruino.com/Forum).
+
+[Submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them: a **small** test case (not your whole program), and an actual and expected result. If you can't come up with these, please [post on the forum](http://www.espruino.com/Forum) first as it may just be something in your code that we can help out with.
+
+Work on Espruino is supported by [sales of our boards](http://www.espruino.com/Order).
+
+**If your board isn't made by us but came pre-installed with Espruino then you should contact the manufacturers.**
+
+We try and support users of the boards we sell, but if you bought a non-official board your issue may not get addressed. In this case, please consider [donating](http://www.espruino.com/Download) to help cover the time it takes to fix problems (even so, we can't guarantee to fix every problem).
+
+
 License
 -------
 
 Please see the [LICENSE](LICENSE) file
 
 
-Found a Bug?
-------------
-
-Please check that it hasn't [already been found](https://github.com/espruino/Espruino/issues) or [been covered on our forum](http://www.espruino.com/Forum)
-
-Please [submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them (ideally with a test case for the ```tests``` directory). Please be aware that we're very busy, so if you report something (especially if it doesn't contain a test or a pull request) it may not be fixed for quite some time.
-
-
-Building 
+Building
 --------
 
 Check out [the page on building Espruino](README_Building.md)
@@ -95,7 +101,6 @@ If you are a board manufacturer interested in getting your board officially supp
 * Carambola - WORKING - GPIO via filesystem (no I2C)
 * Raspberry Pi - WORKING - GPIO via filesystem or wiringPi (no I2C)
 * Sony SmartWatch - NOT WORKING - USB VCP support for F2 still needed
-* MBed platforms - have not worked for a while - full hardware wrapper still required
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
 * [ST NUCLEO-F401RE](http://www.espruino.com/ReferenceNUCLEOF401RE) - WORKING
 * ST NUCLEO-F411RE - WORKING
@@ -108,7 +113,7 @@ If you are a board manufacturer interested in getting your board officially supp
 Modification
 ------------
 
-**Check out [the documentation on the build process](README_BuildProcess.md) first** - this should 
+**Check out [the documentation on the build process](README_BuildProcess.md) first** - this should
 clear up a lot of potential questions about the Espruino architecture.
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for some hints about code style/etc.
@@ -157,4 +162,3 @@ so because we make money from the sales of Espruino boards. If your users reques
 support from us then we have absolutely no obligation to help them. However, we'll
 be a lot more motivated if you're actively helping to improve Espruino for all its
 users (not just your own).
-

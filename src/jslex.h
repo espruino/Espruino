@@ -24,6 +24,7 @@ typedef enum LEX_TYPES {
     LEX_INT,
     LEX_FLOAT,
     LEX_STR,
+    LEX_TEMPLATE_LITERAL,
     LEX_UNFINISHED_STR,
     LEX_UNFINISHED_COMMENT,
 
@@ -51,6 +52,7 @@ typedef enum LEX_TYPES {
     LEX_OREQUAL,
     LEX_OROR,
     LEX_XOREQUAL,
+    LEX_ARROW_FUNCTION,
     // reserved words
 #define LEX_R_LIST_START LEX_R_IF
     LEX_R_IF,

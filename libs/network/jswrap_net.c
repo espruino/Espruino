@@ -468,6 +468,8 @@ You can also:
 For more information about generating and using certificates, see:
 
 https://engineering.circle.com/https-authorized-certs-with-node-js/
+
+(You'll need to use 2048 bit certificates as opposed to 4096 bit shown above)
 */
 
 // ---------------------------------------------------------------------------------

@@ -36,7 +36,7 @@ chip = {
   'package' : "",
   'ram'     : 80,
   'flash'   : 0,
-  'speed'   : 80,
+  'speed'   : 160,
   'usart'   : 2,
   'spi'     : 1,
   'i2c'     : 1,
@@ -46,7 +46,7 @@ chip = {
     'address' : 0x78000,
     'page_size' : 4096,
     'pages' : 3,
-    'flash_available' : 480, # firmware can be up to this size
+    'flash_available' : 468, # firmware can be up to this size
   },
 };
 devices = {

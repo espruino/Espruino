@@ -665,13 +665,12 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
           statem == BTN1_PINSTATE) continue;
 #endif
       // don't bother with normal inputs, as they come up in this state (ish) anyway
-      const char *s = 0;
-      // JSHPINSTATE_GPIO_IN is the default - don't do anything for it
-      if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="input_pullup";
-      else if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="input_pulldown";
-      else if (statem == JSHPINSTATE_GPIO_OUT) s="output";
-      else if (statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN) s="opendrain";
-      if (s) cbprintf(user_callback, user_data, "pinMode(%p, \"%s\");\n",pin,s);
+      if (statem != JSHPINSTATE_GPIO_IN) {
+        // use getPinMode to get the correct string (remove some duplication)
+        JsVar *s = jswrap_io_getPinMode(pin);
+        if (s) cbprintf(user_callback, user_data, "pinMode(%p, %q);\n",pin,s);
+        jsvUnLock(s);
+      }
     }
 
   }
@@ -1345,7 +1344,7 @@ void jsiHandleNewLine(bool execute) {
 
 
 void jsiHandleChar(char ch) {
-  // jsiConsolePrintf("[%d:%d]\n", inputState, ch);
+  //jsiConsolePrintf("[%d:%d]\n", inputState, ch);
   //
   // special stuff
   // 1 - Ctrl-a - beginning of line
@@ -1358,6 +1357,8 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 67 ('C') - right
   // 27 then 91 then 65 ('A') - up
   // 27 then 91 then 66 ('B') - down
+  // 27 then 91 then 70 - home
+  // 27 then 91 then 72 - end
   //
   // 27 then 91 then 48-57 (numeric digits) then 'd' - set line number, used for that
   //                              inputLine and put into any declared functions
@@ -1457,7 +1458,9 @@ void jsiHandleChar(char ch) {
         jsiChangeToHistory(false); // if at end of line
       else
         jsiHandleMoveUpDown(1);
-    }
+    } else if (ch == 70) jsiHandleEnd();
+    else if (ch == 72) jsiHandleHome();
+    else jsiConsolePrintf("[%d:%d]\n", inputState, ch);
   } else if (inputState==IS_HAD_27_91_NUMBER) {
     if (ch>='0' && ch<='9') {
       inputStateNumber = (uint16_t)(10*inputStateNumber + ch - '0');

@@ -129,7 +129,8 @@ void jstUtilTimerInterruptHandler() {
         // now search for other tasks writing to this pin... (polyphony)
         int t = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
         while (t!=utilTimerTasksHead) {
-          if (UET_IS_BUFFER_WRITE_EVENT(utilTimerTasks[t].type))
+          if (UET_IS_BUFFER_WRITE_EVENT(utilTimerTasks[t].type) && 
+              utilTimerTasks[t].data.buffer.pinFunction == task->data.buffer.pinFunction)
             sum += ((int)(unsigned int)utilTimerTasks[t].data.buffer.currentValue) - 32768;
           t = (t+1) & (UTILTIMERTASK_TASKS-1);
         }

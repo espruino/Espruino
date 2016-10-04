@@ -101,7 +101,8 @@ bool jshPinGetValue(Pin pin); ///< Get the value of a digital input. DOES NOT ch
 typedef enum {
   JSHPINSTATE_UNDEFINED,            ///< Used when getting the pin state, if we have no idea what it is.
   JSHPINSTATE_GPIO_OUT,             ///< GPIO pin as totem pole output
-  JSHPINSTATE_GPIO_OUT_OPENDRAIN,   ///< GPIO pin as open-collector/open-drain output WITH PULLUP
+  JSHPINSTATE_GPIO_OUT_OPENDRAIN,   ///< GPIO pin as open-collector/open-drain output WITHOUT PULLUP
+  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP, ///< GPIO pin as open-collector/open-drain output WITH PULLUP
   JSHPINSTATE_GPIO_IN,              ///< GPIO pin as input (also tri-stated output)
   JSHPINSTATE_GPIO_IN_PULLUP,       ///< GPIO pin input with internal pull-up
   JSHPINSTATE_GPIO_IN_PULLDOWN,     ///< GPIO pin input with internal pull-down
@@ -123,6 +124,7 @@ typedef enum {
 #define JSHPINSTATE_IS_OUTPUT(state) ( \
              (state)==JSHPINSTATE_GPIO_OUT ||               \
              (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||     \
+             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
              (state)==JSHPINSTATE_AF_OUT ||                 \
              (state)==JSHPINSTATE_AF_OUT_OPENDRAIN ||       \
              (state)==JSHPINSTATE_USART_OUT ||              \
@@ -132,6 +134,7 @@ typedef enum {
 /// Should a pin of this state be Open Drain?
 #define JSHPINSTATE_IS_OPENDRAIN(state) ( \
              (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||     \
+             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
              (state)==JSHPINSTATE_AF_OUT_OPENDRAIN ||       \
              (state)==JSHPINSTATE_I2C              ||       \
 0)
@@ -146,6 +149,7 @@ typedef enum {
 /// Should a pin of this state have an internal pullup?
 #define JSHPINSTATE_IS_PULLUP(state) ( \
             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||      \
+            (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
             (state)==JSHPINSTATE_GPIO_IN_PULLUP ||          \
             (state)==JSHPINSTATE_USART_IN ||                \
 0)
@@ -303,8 +307,8 @@ void jshSPIWait(IOEventFlags device);
 typedef struct {
   Pin pinSCL;
   Pin pinSDA;
-  int bitrate;
-  // timeout?
+  int bitrate;  ///< bits per second
+  bool started; ///< Has I2C 'start' condition been sent so far?
 } PACKED_FLAGS JshI2CInfo;
 
 /// Initialise a JshI2CInfo struct to default settings

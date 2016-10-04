@@ -1154,10 +1154,10 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       // Function found and it's not the default one - execute it
       JsVar *result = jspExecuteFunction(toStringFn,v,0,0);
       jsvUnLock(toStringFn);
-      return jsvAsString(result, true);
+      str = jsvAsString(result, true);
     } else {
       jsvUnLock(toStringFn);
-      return jsvNewFromString("[object Object]");
+      str = jsvNewFromString("[object Object]");
     }
   } else {
     const char *constChar = jsvGetConstString(v);

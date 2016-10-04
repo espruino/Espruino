@@ -37,7 +37,6 @@
 # RASPBERRYPI=1
 # BEAGLEBONE=1
 # ARIETTA=1
-# LPC1768=1 # beta
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
 # ARMINARM=1
 # NUCLEOF401RE=1
@@ -502,15 +501,6 @@ USE_CRYPTO=1
 USE_NFC=1
 USE_CUSTOM_BOOTLOADER=1
 
-else ifdef LPC1768
-EMBEDDED=1
-MBED=1
-BOARD=LPC1768
-MBED_GCC_CS_DIR=$(ROOT)/targetlibs/libmbed/LPC1768/GCC_CS
-PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBED_GCC_CS_DIR)/system_LPC17xx.o $(MBED_GCC_CS_DIR)/core_cm3.o $(MBED_GCC_CS_DIR)/startup_LPC17xx.o
-LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed
-OPTIMIZEFLAGS+=-O3
-
 else ifdef ECU
 # Gordon's car ECU (extremely beta!)
 USE_TRIGGER=1
@@ -568,19 +558,19 @@ else ifdef ESP8266_BOARD
 EMBEDDED=1
 USE_NET=1
 USE_TELNET=1
-USE_GRAPHICS=1
+#USE_GRAPHICS=1
 USE_CRYPTO=1
 BOARD=ESP8266_BOARD
 # Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
 # too large a firmware (-Os is -O2 without optimizations that increase code size)
 ifndef DISABLE_LTO
-OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -fno-fat-lto-objects -Wl,--allow-multiple-definition
+OPTIMIZEFLAGS+=-Os -g -std=gnu11 -fgnu89-inline -fno-fat-lto-objects -Wl,--allow-multiple-definition
 #OPTIMIZEFLAGS+=-DLINK_TIME_OPTIMISATION # this actually slows things down!
 else
 # DISABLE_LTO is necessary in order to analyze static string sizes (see: topstring makefile target)
 OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 endif
-ESP_FLASH_MAX       ?= 491520   # max bin file: 480KB
+ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 
 ifdef FLASH_4MB
 ESP_FLASH_SIZE      ?= 4        # 4->4MB (512KB+512KB)
@@ -809,6 +799,7 @@ src/jspin.c \
 src/jsinteractive.c \
 src/jsdevices.c \
 src/jstimer.c \
+src/jsi2c.c \
 src/jsspi.c \
 src/jshardware_common.c \
 $(WRAPPERFILE)
@@ -1387,82 +1378,6 @@ ifdef USE_NFC
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/nfc_t2t_lib_gcc.a
 endif
 
-ifeq ($(FAMILY), EFM32GG)
-
-  EFM32=1
-
-  ARCHFLAGS += -mcpu=cortex-m3  -mthumb
-
-  GECKO_SDK_PATH=$(ROOT)/targetlibs/Gecko_SDK
-
-  ARM = 1
-  ARM_HAS_OWN_CMSIS = 1
-  INCLUDE += -I$(GECKO_SDK_PATH)/cmsis/Include
-
-  LINKER_FILE = $(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/efm32gg.ld
-
-  INCLUDE += -I$(ROOT)/targets/efm32
-  SOURCES +=                              \
-  targets/efm32/main.c                    \
-  targets/efm32/jshardware.c
-
-  INCLUDE += -I$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Include
-  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/gpiointerrupt/inc
-#  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/ustimer/inc
-  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/rtcdrv/inc
-  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/nvm/inc
-  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/common/inc
-  INCLUDE += -I$(GECKO_SDK_PATH)/emlib/inc
-
-  TARGETSOURCES += \
-	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/startup_efm32gg.c \
-	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/system_efm32gg.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_gpio.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_cmu.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_assert.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_emu.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_msc.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_rtc.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_int.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_system.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_timer.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_usart.c \
-	$(GECKO_SDK_PATH)/emdrv/gpiointerrupt/src/gpiointerrupt.c \
-	$(GECKO_SDK_PATH)/emdrv/rtcdrv/src/rtcdriver.c \
-	$(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c
-#	$(GECKO_SDK_PATH)/emdrv/ustimer/src/ustimer.c
-
-	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm.c \
-	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_acmp.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_adc.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_aes.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_burtc.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_crc.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_cryotimer.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_crypto.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_dac.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_dbg.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_dma.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_ebi.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_i2c.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_idac.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_lcd.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_ldma.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_lesense.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_letimer.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_leuart.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_mpu.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_opamp.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_pcnt.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_prs.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_rmu.c \
-  # $(GECKO_SDK_PATH)/emlib/src/em_rtcc.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_vcmp.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_wdog.c
-
-endif #FAMILY == EFM32
-
 ifdef NRF5X
   # Just try and get rid of the compile warnings.
   CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
@@ -1606,6 +1521,84 @@ ifdef NRF5X
 
 endif #NRF5X
 
+
+ifeq ($(FAMILY), EFM32GG)
+
+  EFM32=1
+
+  ARCHFLAGS += -mcpu=cortex-m3  -mthumb
+
+  GECKO_SDK_PATH=$(ROOT)/targetlibs/Gecko_SDK
+
+  ARM = 1
+  ARM_HAS_OWN_CMSIS = 1
+  INCLUDE += -I$(GECKO_SDK_PATH)/cmsis/Include
+
+  LINKER_FILE = $(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/efm32gg.ld
+
+  INCLUDE += -I$(ROOT)/targets/efm32
+  SOURCES +=                              \
+  targets/efm32/main.c                    \
+  targets/efm32/jshardware.c
+
+  INCLUDE += -I$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Include
+  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/gpiointerrupt/inc
+#  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/ustimer/inc
+  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/rtcdrv/inc
+  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/nvm/inc
+  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/common/inc
+  INCLUDE += -I$(GECKO_SDK_PATH)/emlib/inc
+
+  TARGETSOURCES += \
+	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/startup_efm32gg.c \
+	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/system_efm32gg.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_gpio.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_cmu.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_assert.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_emu.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_msc.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_rtc.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_int.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_system.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_timer.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_usart.c \
+	$(GECKO_SDK_PATH)/emdrv/gpiointerrupt/src/gpiointerrupt.c \
+	$(GECKO_SDK_PATH)/emdrv/rtcdrv/src/rtcdriver.c \
+	$(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c
+#	$(GECKO_SDK_PATH)/emdrv/ustimer/src/ustimer.c
+
+	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm.c \
+	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_acmp.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_adc.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_aes.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_burtc.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_crc.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_cryotimer.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_crypto.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_dac.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_dbg.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_dma.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_ebi.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_i2c.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_idac.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_lcd.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_ldma.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_lesense.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_letimer.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_leuart.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_mpu.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_opamp.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_pcnt.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_prs.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_rmu.c \
+  # $(GECKO_SDK_PATH)/emlib/src/em_rtcc.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_vcmp.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_wdog.c
+
+endif #FAMILY == EFM32
+
+
 ifeq ($(FAMILY),ESP8266)
 # move os_printf strings into flash to save RAM space
 DEFINES += -DUSE_OPTIMIZE_PRINTF
@@ -1617,17 +1610,6 @@ CFLAGS+= -fno-builtin \
 -Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
 -Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
 -Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals
-endif
-
-
-ifdef MBED
-ARCHFLAGS += -mcpu=cortex-m3 -mthumb
-ARM=1
-INCLUDE+=-I$(ROOT)/targetlibs/libmbed -I$(ROOT)/targetlibs/libmbed/$(CHIP) -I$(ROOT)/targetlibs/libmbed/$(CHIP)/GCC_CS
-DEFINES += -DMBED
-INCLUDE += -I$(ROOT)/targetlibs/mbed
-SOURCES += targets/mbed/main.c
-CPPSOURCES += targets/mbed/jshardware.cpp
 endif
 
 ifdef ARM
@@ -1936,7 +1918,7 @@ PARTIAL     = espruino_esp8266_partial.o
 LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
 APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
-BOOTLOADER  = "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin"
+BOOTLOADER  = $(ESP8266_SDK_ROOT)/bin/boot_v1.6.bin
 BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
 INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
 
@@ -1989,7 +1971,7 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER2_ELF) eagle.app.v6.data.bin
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER2_ELF) eagle.app.v6.rodata.bin
 	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER2_ELF) eagle.app.v6.irom0text.bin
-	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 0 >/dev/null
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 1 >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 
@@ -2167,7 +2149,7 @@ endif
 
 clean:
 	@echo Cleaning targets
-	$(Q)find . -name \*.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
+	$(Q)find . -name \*.o | grep -v arm-bcm2708 | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
 	$(Q)rm -f $(PROJ_NAME).elf
 	$(Q)rm -f $(PROJ_NAME).hex
