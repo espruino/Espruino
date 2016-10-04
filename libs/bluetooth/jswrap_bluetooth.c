@@ -1550,8 +1550,8 @@ NRF.updateServices({
   }
 });
 ```
-This only works if the chracteristic was create with `notify: true`,
-otherwise the characteristic will be updated but no otification will be sent.
+This only works if the characteristic was create with `notify: true` using `setServices`,
+otherwise the characteristic will be updated but no notification will be sent.
 
 **Note:** See `setServices` for more information
 */
@@ -1639,7 +1639,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
                     hvx_params.offset = 0;
                     hvx_params.p_len = &len;
                     hvx_params.p_data = p_value;
-                    
+
                     err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
                     if ((err_code != NRF_SUCCESS)
                       && (err_code != NRF_ERROR_INVALID_STATE)
