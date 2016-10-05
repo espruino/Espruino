@@ -1311,7 +1311,7 @@ ifeq ($(FAMILY), NRF51)
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-	INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf51_config
+	INCLUDE += -I$(NRF5X_SDK_PATH)/../nrf51_config
   endif
 
 endif # FAMILY == NRF51
@@ -1345,10 +1345,11 @@ ifeq ($(FAMILY), NRF52)
     OPTIMIZEFLAGS=-Os # try to reduce bootloader size
   else
     LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
-		INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf52_config
+		INCLUDE += -I$(NRF5X_SDK_PATH)/../nrf52_config
   endif
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
+	INCLUDE += -I$(NRF5X_SDK_PATH)/../nrf52_config
   endif
 endif #FAMILY == NRF52
 
