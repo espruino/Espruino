@@ -499,7 +499,6 @@ USE_FILESYSTEM=1
 USE_CRYPTO=1
 #USE_TLS=1
 USE_NFC=1
-USE_CUSTOM_BOOTLOADER=1
 
 else ifdef ECU
 # Gordon's car ECU (extremely beta!)
@@ -1300,20 +1299,15 @@ ifeq ($(FAMILY), NRF51)
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
-  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
+  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
 	DEFINES += -DNRF_SD_BLE_API_VERSION=2
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.1_softdevice.hex
 
   ifdef USE_BOOTLOADER
-  ifdef USE_CUSTOM_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
-  else
-  NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
-  endif
   NFR_BL_START_ADDR = 0x3C000# see dfu_gcc_nrf51.ld
-  NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex # This file writes 0x3FC00 with 0x01 so we can flash the application with the bootloader.
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
@@ -1337,19 +1331,14 @@ ifeq ($(FAMILY), NRF52)
                       $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
-  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
+  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
 	DEFINES += -DNRF_SD_BLE_API_VERSION=3
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_3.0.0_softdevice.hex
 
   ifdef USE_BOOTLOADER
-  ifdef USE_CUSTOM_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
-  else
-  NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
-  endif
   NFR_BL_START_ADDR = 0x78000 # see Makefile, secure_dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h
-  NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
     LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/secure_dfu_gcc_nrf52.ld
@@ -2069,14 +2058,15 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
  ifdef USE_BOOTLOADER
   ifdef DFU_UPDATE_BUILD
 	@echo Not merging softdevice or bootloader with application
-	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
+	# nrfutil  pkg generate --help
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 1 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
   else
   ifdef BOOTLOADER
 	@echo Not merging anything with bootloader
   else
 	@echo Merging SoftDevice and Bootloader
 	@echo FIXME - had to set --overlap=replace
-	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
+	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
   endif
   endif

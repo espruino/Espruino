@@ -20,7 +20,6 @@
 #include "nrf_bootloader_info.h"
 #include "ble_advdata.h"
 #include "ble_conn_params.h"
-#include "boards.h"
 #include "nrf_log.h"
 #include "ble_hci.h"
 #include "app_timer.h"
@@ -29,6 +28,7 @@
 #include "nrf_delay.h"
 
 #include "platform_config.h"
+#include "nrf_gpio.h"
 
 #define DEVICE_NAME                          "DfuTarg"                                              /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME                    "NordicSemiconductor"                                  /**< Manufacturer. Will be passed to Device Information Service. */

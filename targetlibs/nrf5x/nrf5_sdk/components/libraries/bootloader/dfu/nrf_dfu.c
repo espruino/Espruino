@@ -19,7 +19,6 @@
 #include "app_scheduler.h"
 #include "app_timer_appsh.h"
 #include "nrf_log.h"
-#include "boards.h"
 #include "nrf_bootloader_info.h"
 #include "nrf_dfu_req_handler.h"
 
@@ -39,17 +38,6 @@
  */
 __WEAK bool nrf_dfu_enter_check(void)
 {
-    if (nrf_gpio_pin_read(BOOTLOADER_BUTTON) == 0)
-    {
-        return true;
-    }
-
-    if (s_dfu_settings.enter_buttonless_dfu == 1)
-    {
-        s_dfu_settings.enter_buttonless_dfu = 0;
-        (void)nrf_dfu_settings_write(NULL);
-        return true;
-    }
     return false;
 }
 
