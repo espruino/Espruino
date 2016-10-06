@@ -1685,7 +1685,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
               // Notify/indicate connected clients if necessary
               if ((notification_requested || indication_requested) && (m_conn_handle != BLE_CONN_HANDLE_INVALID)) {
                 memset(&hvx_params, 0, sizeof(hvx_params));
-                uint16_t len = (uint16_t)len;
+                uint16_t len = (uint16_t)vLen;
                 hvx_params.handle = char_handle;
                 hvx_params.type = indication_requested ? BLE_GATT_HVX_INDICATION : BLE_GATT_HVX_NOTIFICATION;
                 hvx_params.offset = 0;
