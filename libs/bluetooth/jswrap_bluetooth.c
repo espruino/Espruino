@@ -85,7 +85,6 @@ bool nfcEnabled = false;
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
-#define APP_CFG_CHAR_MAX_LEN            20                                          /**< Size of the characteristic value being notified (in bytes). */
 
 #ifdef USE_BOOTLOADER
 #define SEC_PARAM_BOND                   1                                          /**< Perform bonding. */
@@ -682,6 +681,39 @@ void bleQueueEventAndUnLock(const char *name, JsVar *data) {
 void ble_handle_to_write_event_name(char *eventName, uint16_t handle) {
   strcpy(eventName, BLE_WRITE_EVENT);
   itostr(handle, &eventName[strlen(eventName)], 16);
+}
+
+/// Look up the characteristic's handle from the UUID. returns BLE_GATT_HANDLE_INVALID if not found
+uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
+  // Update value and notify/indicate if appropriate
+  uint16_t char_handle;
+  ble_uuid_t uuid_it;
+  uint32_t err_code;
+
+  // Find the first user characteristic handle
+  err_code = sd_ble_gatts_initial_user_handle_get(&char_handle);
+  if (err_code != NRF_SUCCESS) {
+    APP_ERROR_CHECK(err_code);
+  }
+
+  // Iterate over all handles until the correct UUID or no match is found
+  // We assume that handles are sequential
+  while (true) {
+    memset(&uuid_it, 0, sizeof(uuid_it));
+    err_code = sd_ble_gatts_attr_get(char_handle, &uuid_it, NULL);
+    if (err_code == NRF_ERROR_NOT_FOUND || err_code == BLE_ERROR_INVALID_ATTR_HANDLE) {
+      // "Out of bounds" => we went over the last known characteristic
+      return BLE_GATT_HANDLE_INVALID;
+    } else if (err_code == NRF_SUCCESS) {
+      // Valid handle => check if UUID matches
+      if (uuid_it.uuid == char_uuid.uuid)
+        return char_handle;
+    } else {
+      APP_ERROR_CHECK(err_code);
+    }
+    char_handle++;
+  }
+  return BLE_GATT_HANDLE_INVALID;
 }
 
 /**@brief Function for the application's SoftDevice event handler.
@@ -1349,7 +1381,6 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     advertising_start();
 }
 
-
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
@@ -1359,7 +1390,6 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
       ["data","JsVar","The service (and characteristics) to advertise"]
     ]
 }
-BETA: This only partially works at the moment
 
 Change the services and characteristics Espruino advertises.
 
@@ -1386,6 +1416,10 @@ NRF.setServices({
 
 **Note:** UUIDs can be integers between `0` and `0xFFFF`, strings of
 the form `"0xABCD"`, or strings of the form `""ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD""`
+
+**Note:** Currently, services/characteristics can't be removed once added.
+As a result, calling setServices multiple times will cause characteristics
+to either be updated (value only) or ignored.
 */
 void jswrap_nrf_bluetooth_setServices(JsVar *data) {
   uint32_t err_code;
@@ -1407,14 +1441,7 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
         jsExceptionHere(JSET_ERROR, "Invalid Service UUID: %s", errorStr);
         break;
       }
-      err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
-                                              &ble_uuid,
-                                              &service_handle);
-      if (err_code) {
-        jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_service_add", err_code);
-        break;
-      }
-      // sd_ble_gatts_include_add ?
+      service_handle = BLE_GATT_HANDLE_INVALID;
 
       // Now add characteristics
       JsVar *serviceVar = jsvObjectIteratorGetValue(&it);
@@ -1481,16 +1508,45 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
           }
         }
 
-        err_code = sd_ble_gatts_characteristic_add(service_handle,
-                                                   &char_md,
-                                                   &attr_char_value,
-                                                   &characteristic_handles);
+        uint16_t existing_char_handle = bleGetGATTHandle(char_uuid);
+        if (existing_char_handle != BLE_GATT_HANDLE_INVALID) {
+          // existing characteristic - just update value
+          ble_gatts_value_t gatts_value;
+          if (attr_char_value.p_value) {
+            // Update the value for subsequent reads even if no client is currently connected
+            memset(&gatts_value, 0, sizeof(gatts_value));
+            gatts_value.len = attr_char_value.init_len;
+            gatts_value.offset = 0;
+            gatts_value.p_value = attr_char_value.p_value;
+            err_code = sd_ble_gatts_value_set(m_conn_handle, existing_char_handle, &gatts_value);
+            if (err_code) {
+              jsExceptionHere(JSET_ERROR, "Got BLE error code %d in sd_ble_gatts_value_set", err_code);
+            }
+          }
+        } else {
+          /* Only add service handle if we need it. Since bleGetGATTHandle
+           * can't find these handles, we just assume that if there was a
+           * new characteristic then we need to add a new service for it */
+          if (service_handle == BLE_GATT_HANDLE_INVALID) {
+            err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
+                                                    &ble_uuid,
+                                                    &service_handle);
+            if (err_code) {
+              jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_service_add", err_code);
+              break;
+            }
+          }
 
-        jsvUnLock(charValue); // unlock here in case we were storing data in a flat string
-        if (err_code) {
-          jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_characteristic_add", err_code);
-          break;
+          err_code = sd_ble_gatts_characteristic_add(service_handle,
+                                                     &char_md,
+                                                     &attr_char_value,
+                                                     &characteristic_handles);
+          if (err_code) {
+            jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_characteristic_add", err_code);
+          }
         }
+        jsvUnLock(charValue); // unlock here in case we were storing data in a flat string
+
 
         // Add Write callback
         JsVar *writeCb = jsvObjectGetChild(charVar, "onWrite", 0);
@@ -1595,8 +1651,6 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
 
       while (jsvObjectIteratorHasValue(&serviceit)) {
         ble_uuid_t char_uuid;
-        memset(&char_uuid, 0, sizeof(char_uuid));
-
         if ((errorStr = bleVarToUUIDAndUnLock(&char_uuid,
             jsvObjectIteratorGetKey(&serviceit)))) {
           jsExceptionHere(JSET_ERROR, "Invalid Characteristic UUID: %s",
@@ -1604,80 +1658,57 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
           break;
         }
 
-        JsVar *charVar = jsvObjectIteratorGetValue(&serviceit);
-        JsVar *charValue = jsvObjectGetChild(charVar, "value", 0);
+        uint16_t char_handle = bleGetGATTHandle(char_uuid);
+        if (char_handle != BLE_GATT_HANDLE_INVALID) {
+          JsVar *charVar = jsvObjectIteratorGetValue(&serviceit);
+          JsVar *charValue = jsvObjectGetChild(charVar, "value", 0);
 
-        bool notification_requested = jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0));
-        bool indication_requested = jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "indicate", 0));
+          bool notification_requested = jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0));
+          bool indication_requested = jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "indicate", 0));
 
-        if (charValue) {
-          JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, charValue);
-          if (vPtr && vLen) {
-            uint8_t* p_value = (uint8_t*) vPtr;
-            uint16_t len = MIN(vLen, APP_CFG_CHAR_MAX_LEN);
-            
-            // Update value and notify/indicate if appropriate
-            uint16_t char_handle;
-            ble_uuid_t uuid_it;
-            ble_gatts_hvx_params_t hvx_params;
-            ble_gatts_value_t gatts_value;
+          if (charValue) {
+            JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, charValue);
+            if (vPtr && vLen) {
+              ble_gatts_hvx_params_t hvx_params;
+              ble_gatts_value_t gatts_value;
 
-            // Find the first user characteristic handle
-            err_code = sd_ble_gatts_initial_user_handle_get(&char_handle);
-            if (err_code != NRF_SUCCESS) {
-              APP_ERROR_CHECK(err_code);
-            }
-
-            // Iterate over all handles until the correct UUID or no match is found
-            // We assume that handles are sequential
-            while (true) {
-              memset(&uuid_it, 0, sizeof(uuid_it));
-              err_code = sd_ble_gatts_attr_get(char_handle, &uuid_it, NULL);
-              if (err_code == NRF_ERROR_NOT_FOUND) {
-                // "Out of bounds" => we went over the last known characteristic
-                break;
-              } else if (err_code == NRF_SUCCESS) {
-                // Valid handle => check if UUID matches
-                if (uuid_it.uuid == char_uuid.uuid) {
-                  // Update the value for subsequent reads even if no client is currently connected
-                  memset(&gatts_value, 0, sizeof(gatts_value));
-                  gatts_value.len = len;
-                  gatts_value.offset = 0;
-                  gatts_value.p_value = p_value;
-                  err_code = sd_ble_gatts_value_set(m_conn_handle, char_handle, &gatts_value);
-                  if (err_code != NRF_SUCCESS) {
-                    APP_ERROR_CHECK(err_code);
-                  }
-
-                  // Notify/indicate connected clients if necessary
-                  if ((notification_requested || indication_requested) && (m_conn_handle != BLE_CONN_HANDLE_INVALID)) {
-                    memset(&hvx_params, 0, sizeof(hvx_params));
-                    hvx_params.handle = char_handle;
-                    hvx_params.type = indication_requested ? BLE_GATT_HVX_INDICATION : BLE_GATT_HVX_NOTIFICATION;
-                    hvx_params.offset = 0;
-                    hvx_params.p_len = &len;
-                    hvx_params.p_data = p_value;
-
-                    err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
-                    if ((err_code != NRF_SUCCESS)
-                      && (err_code != NRF_ERROR_INVALID_STATE)
-                      && (err_code != BLE_ERROR_NO_TX_PACKETS)
-                      && (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) {
-                      APP_ERROR_CHECK(err_code);
-                    }
-                  }
-                  break;
-                }
-              } else {
+              // Update the value for subsequent reads even if no client is currently connected
+              memset(&gatts_value, 0, sizeof(gatts_value));
+              gatts_value.len = vLen;
+              gatts_value.offset = 0;
+              gatts_value.p_value = (uint8_t*)vPtr;
+              err_code = sd_ble_gatts_value_set(m_conn_handle, char_handle, &gatts_value);
+              if (err_code != NRF_SUCCESS) {
                 APP_ERROR_CHECK(err_code);
               }
-              char_handle++;
+
+              // Notify/indicate connected clients if necessary
+              if ((notification_requested || indication_requested) && (m_conn_handle != BLE_CONN_HANDLE_INVALID)) {
+                memset(&hvx_params, 0, sizeof(hvx_params));
+                uint16_t len = (uint16_t)len;
+                hvx_params.handle = char_handle;
+                hvx_params.type = indication_requested ? BLE_GATT_HVX_INDICATION : BLE_GATT_HVX_NOTIFICATION;
+                hvx_params.offset = 0;
+                hvx_params.p_len = &len;
+                hvx_params.p_data = (uint8_t*)vPtr;
+
+                err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
+                if ((err_code != NRF_SUCCESS)
+                  && (err_code != NRF_ERROR_INVALID_STATE)
+                  && (err_code != BLE_ERROR_NO_TX_PACKETS)
+                  && (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) {
+                  APP_ERROR_CHECK(err_code);
+                }
+              }
             }
           }
+          jsvUnLock(charValue);
+          jsvUnLock(charVar);
+        } else {
+          JsVar *str = bleUUIDToStr(char_uuid);
+          jsExceptionHere(JSET_ERROR, "Unable to find service with UUID %v", str);
+          jsvUnLock(str);
         }
-
-        jsvUnLock(charValue);
-        jsvUnLock(charVar);
 
         jsvObjectIteratorNext(&serviceit);
       }
