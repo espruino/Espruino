@@ -22,6 +22,7 @@
 #include "jsdevices.h"
 #include "jspin.h"
 #include "jstimer.h"
+#include "jswrap_bluetooth.h"
 #include "nrf_gpio.h"
 #include "nrf5x_utils.h"
 
@@ -440,6 +441,25 @@ JsVarFloat jswrap_puck_light() {
 
   return f;
 }
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Puck",
+    "name" : "getBatteryPercentage",
+    "generate" : "jswrap_puck_getBatteryPercentage",
+    "return" : ["int", "A percentage between 0 and 100" ]
+}
+Return an approximate battery percentage remaining based on
+a normal CR2032 battery (2.8 - 2.0v)
+*/
+int jswrap_puck_getBatteryPercentage() {
+  JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
+  int pc = (v-2.0)*100/0.8;
+  if (pc>100) pc=100;
+  if (pc<0) pc=0;
+  return pc;
+}
+
 
 /*JSON{
   "type" : "kill",
