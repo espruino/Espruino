@@ -119,9 +119,12 @@ uint16_t advertising_interval = APP_DEFAULT_ADV_INTERVAL;
 
 typedef enum  {
   BLE_NONE = 0,
-  BLE_IS_SENDING = 1,
-  BLE_IS_SCANNING = 2,
-  BLE_IS_ADVERTISING = 4,
+  BLE_IS_SENDING = 1,         // sending data with jswrap_nrf_transmit_string?
+  BLE_IS_SCANNING = 2,        // scanning for BLE devices?
+  BLE_IS_ADVERTISING = 4,     // currently advertising info? stops when connected
+  BLE_NEEDS_SETSERVICES = 8,  // We need to reset the services we're reporting, but we can't because we're connected
+  BLE_SERVICES_WERE_SET = 16, // setServices was called already, so we need to restart softdevice before we can call it again
+  BLE_NUS_INITED = 32,        // Has the Nordic UART service been initialised?
 } BLEStatus;
 
 static volatile BLEStatus bleStatus = 0;
@@ -129,12 +132,25 @@ static volatile BLEStatus bleStatus = 0;
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 #define BLE_WRITE_EVENT                 JS_EVENT_PREFIX"blew"
 
+/// Names for objects that get defined in the 'hidden root'
+#define BLE_NAME_SERVICE_DATA           "BLE_SVC_D"
+
 
 /// Called when we have had an event that means we should execute JS
 extern void jshHadEvent();
 
+void bleUpdateServices();
 
-bool jswrap_nrf_transmit_string();
+
+/** Is BLE connected to any device at all? */
+bool bleHasConnection() {
+#if CENTRAL_LINK_COUNT>0
+  return (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) ||
+         (m_conn_handle != BLE_CONN_HANDLE_INVALID);
+#else
+  return m_conn_handle != BLE_CONN_HANDLE_INVALID;
+#endif
+}
 
 /*JSON{
   "type" : "idle",
@@ -151,8 +167,7 @@ bool jswrap_nrf_idle() {
 void jswrap_nrf_kill() {
   // if we were scanning, make sure we stop at reset!
   if (bleStatus & BLE_IS_SCANNING) {
-    sd_ble_gap_scan_stop();
-    bleStatus &= ~BLE_IS_SCANNING;
+    jswrap_nrf_bluetooth_setScan(0);
   }
 #if CENTRAL_LINK_COUNT>0
   // if we were connected to something, disconnect
@@ -160,6 +175,8 @@ void jswrap_nrf_kill() {
      sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
   }
 #endif
+  // make sure we remove any existing services
+  jswrap_nrf_bluetooth_setServices(0);
 }
 
 /*JSON{
@@ -480,7 +497,8 @@ uint32_t radio_notification_init(uint32_t irq_priority, uint8_t notification_typ
 }
 
 void SWI1_IRQHandler(bool radio_evt) {
-  jswrap_nrf_transmit_string();
+  if (bleStatus & BLE_NUS_INITED)
+    jswrap_nrf_transmit_string();
 }
 
 
@@ -489,14 +507,13 @@ void SWI1_IRQHandler(bool radio_evt) {
 static void services_init(void)
 {
     uint32_t       err_code;
+
     ble_nus_init_t nus_init;
-
     memset(&nus_init, 0, sizeof(nus_init));
-
     nus_init.data_handler = nus_data_handler;
-
     err_code = ble_nus_init(&m_nus, &nus_init);
     APP_ERROR_CHECK(err_code);
+    bleStatus |= BLE_NUS_INITED;
 
 #ifdef USE_BOOTLOADER
     ble_dfu_init_t   dfus_init;
@@ -755,14 +772,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", 0);
           jshHadEvent();
-          break;
-        }
+        } else
 #endif
-        m_conn_handle = BLE_CONN_HANDLE_INVALID;
-        if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, 0);
-        // restart advertising after disconnection
-        advertising_start();
-        jshHadEvent();
+        {
+          m_conn_handle = BLE_CONN_HANDLE_INVALID;
+          if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, 0);
+          // restart advertising after disconnection
+          advertising_start();
+          jshHadEvent();
+        }
+        if ((bleStatus & BLE_NEEDS_SETSERVICES) && !bleHasConnection())
+          bleUpdateServices();
         break;
 
       case BLE_GATTS_EVT_SYS_ATTR_MISSING:
@@ -899,7 +919,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
     ble_conn_params_on_ble_evt(p_ble_evt);
-    ble_nus_on_ble_evt(&m_nus, p_ble_evt);
+    if (bleStatus & BLE_NUS_INITED)
+      ble_nus_on_ble_evt(&m_nus, p_ble_evt);
 #ifdef USE_BOOTLOADER
     ble_dfu_on_ble_evt(&m_dfus, p_ble_evt);
 #endif
@@ -1120,31 +1141,82 @@ The main part of this is control of Bluetooth Low Energy - both searching for de
 The Bluetooth Serial port - used when data is sent or received over Bluetooth Smart on nRF51/nRF52 chips.
  */
 
+
+/** Initialise the BLE stack */
+ void ble_init() {
+   ble_stack_init();
+
+ #ifdef USE_BOOTLOADER
+   bool erase_bonds = false;
+   device_manager_init(erase_bonds);
+ #endif
+
+   gap_params_init();
+   services_init();
+   advertising_init();
+   conn_params_init();
+
+   jswrap_nrf_bluetooth_wake();
+
+   radio_notification_init(
+ #ifdef NRF52
+                           6, /* IRQ Priority -  Must be 6 on nRF52. 7 doesn't work */
+ #else
+                           3, /* IRQ Priority -  nRF51 has different IRQ structure */
+ #endif
+                           NRF_RADIO_NOTIFICATION_TYPE_INT_ON_INACTIVE,
+                           NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
+}
+
+/** Completely deinitialise the BLE stack */
+void ble_kill() {
+  jswrap_nrf_bluetooth_sleep();
+
+  if (bleStatus & BLE_NUS_INITED) {
+    // ble_nus_kill(&m_nus);
+    // BLE nus doesn't need deinitialising
+    bleStatus &= ~BLE_NUS_INITED;
+  }
+
+  uint32_t err_code;
+
+  err_code = sd_softdevice_disable();
+  APP_ERROR_CHECK(err_code);
+}
+
+/** We don't have a connection any more, and we must update services. We'll
+need to stop and restart the softdevice! */
+void bleUpdateServices() {
+  assert(!bleHasConnection());
+  assert (bleStatus & BLE_NEEDS_SETSERVICES);
+  bleStatus &= ~(BLE_NEEDS_SETSERVICES | BLE_SERVICES_WERE_SET);
+
+  // if we were scanning, make sure we stop
+  if (bleStatus & BLE_IS_SCANNING) {
+    sd_ble_gap_scan_stop();
+  }
+
+  ble_kill();
+  ble_init();
+  // If we had services set, update them
+  JsVar *services = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
+  if (services) jswrap_nrf_bluetooth_setServices(services);
+  jsvUnLock(services);
+
+  // TODO: re-initialise advertising data
+
+  // if we were scanning, make sure we restart
+  if (bleStatus & BLE_IS_SCANNING) {
+    JsVar *callback = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT, 0);
+    jswrap_nrf_bluetooth_setScan(callback);
+    jsvUnLock(callback);
+  }
+}
+
 void jswrap_nrf_bluetooth_init(void) {
   // Initialize.
   APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
-  ble_stack_init();
-
-#ifdef USE_BOOTLOADER
-  bool erase_bonds = false;
-  device_manager_init(erase_bonds);
-#endif
-
-  gap_params_init();
-  services_init();
-  advertising_init();
-  conn_params_init();
-
-  jswrap_nrf_bluetooth_wake();
-
-  radio_notification_init(
-#ifdef NRF52
-                          6, /* IRQ Priority -  Must be 6 on nRF52. 7 doesn't work */
-#else
-                          3, /* IRQ Priority -  nRF51 has different IRQ structure */
-#endif
-                          NRF_RADIO_NOTIFICATION_TYPE_INT_ON_INACTIVE,
-                          NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
+  ble_init();
 }
 
 /*JSON{
@@ -1422,10 +1494,28 @@ As a result, calling setServices multiple times will cause characteristics
 to either be updated (value only) or ignored.
 */
 void jswrap_nrf_bluetooth_setServices(JsVar *data) {
+  if (!(jsvIsObject(data) || jsvIsUndefined(data))) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting object or undefined, got %t", data);
+    return;
+  }
   uint32_t err_code;
 
   // TODO: Reset services (esp. removing Nordic UART if not needed)
-  // TODO: Reset services on kill
+
+  jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, data);
+  if (bleHasConnection()) {
+    // Defer setting services until we have no active connection
+    jsiConsolePrintf("BLE Connected, so queueing service update for later\n");
+    bleStatus |= BLE_NEEDS_SETSERVICES;
+    return;
+  } else {
+    if (bleStatus & BLE_SERVICES_WERE_SET) {
+      bleUpdateServices();
+      return;
+    }
+  }
+  bleStatus |= BLE_SERVICES_WERE_SET;
+
 
   if (jsvIsObject(data)) {
     JsvObjectIterator it;
@@ -1435,13 +1525,18 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
       uint16_t service_handle;
 
       // Add the service
-
       const char *errorStr;
       if ((errorStr=bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetKey(&it)))) {
         jsExceptionHere(JSET_ERROR, "Invalid Service UUID: %s", errorStr);
         break;
       }
-      service_handle = BLE_GATT_HANDLE_INVALID;
+      err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
+                                              &ble_uuid,
+                                              &service_handle);
+      if (err_code) {
+        jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_service_add", err_code);
+        break;
+      }
 
       // Now add characteristics
       JsVar *serviceVar = jsvObjectIteratorGetValue(&it);
@@ -1508,45 +1603,14 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
           }
         }
 
-        uint16_t existing_char_handle = bleGetGATTHandle(char_uuid);
-        if (existing_char_handle != BLE_GATT_HANDLE_INVALID) {
-          // existing characteristic - just update value
-          ble_gatts_value_t gatts_value;
-          if (attr_char_value.p_value) {
-            // Update the value for subsequent reads even if no client is currently connected
-            memset(&gatts_value, 0, sizeof(gatts_value));
-            gatts_value.len = attr_char_value.init_len;
-            gatts_value.offset = 0;
-            gatts_value.p_value = attr_char_value.p_value;
-            err_code = sd_ble_gatts_value_set(m_conn_handle, existing_char_handle, &gatts_value);
-            if (err_code) {
-              jsExceptionHere(JSET_ERROR, "Got BLE error code %d in sd_ble_gatts_value_set", err_code);
-            }
-          }
-        } else {
-          /* Only add service handle if we need it. Since bleGetGATTHandle
-           * can't find these handles, we just assume that if there was a
-           * new characteristic then we need to add a new service for it */
-          if (service_handle == BLE_GATT_HANDLE_INVALID) {
-            err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
-                                                    &ble_uuid,
-                                                    &service_handle);
-            if (err_code) {
-              jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_service_add", err_code);
-              break;
-            }
-          }
-
-          err_code = sd_ble_gatts_characteristic_add(service_handle,
-                                                     &char_md,
-                                                     &attr_char_value,
-                                                     &characteristic_handles);
-          if (err_code) {
-            jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_characteristic_add", err_code);
-          }
+        err_code = sd_ble_gatts_characteristic_add(service_handle,
+                                                   &char_md,
+                                                   &attr_char_value,
+                                                   &characteristic_handles);
+        if (err_code) {
+          jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_characteristic_add", err_code);
         }
         jsvUnLock(charValue); // unlock here in case we were storing data in a flat string
-
 
         // Add Write callback
         JsVar *writeCb = jsvObjectGetChild(charVar, "onWrite", 0);
@@ -1566,12 +1630,7 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data) {
       jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
-
-
-
-    } else if (!jsvIsUndefined(data)) {
-      jsExceptionHere(JSET_TYPEERROR, "Expecting object or undefined, got %t", data);
-    }
+  }
 }
 
 /*JSON{
@@ -1755,6 +1814,8 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
   jsvObjectSetChild(execInfo.root, BLE_SCAN_EVENT, callback);
   // either start or stop scanning
   if (callback) {
+    if (bleStatus & BLE_IS_SCANNING) return;
+    bleStatus |= BLE_IS_SCANNING;
     ble_gap_scan_params_t     m_scan_param;
     // non-selective scan
     m_scan_param.active       = 0;            // Active scanning set.
@@ -1766,6 +1827,8 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
 
     err_code = sd_ble_gap_scan_start(&m_scan_param);
   } else {
+    if (!(bleStatus & BLE_IS_SCANNING)) return;
+    bleStatus &= ~BLE_IS_SCANNING;
     err_code = sd_ble_gap_scan_stop();
   }
   if (err_code)
