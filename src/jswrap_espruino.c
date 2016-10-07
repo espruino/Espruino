@@ -115,7 +115,7 @@ int nativeCallGetCType() {
 }
 ADVANCED: This is a great way to crash Espruino if you're not sure what you are doing
 
-Create a native function that executes the code at the given address. Eg. `E.nativeCall(0x08012345,'double (double,double)')(1.1, 2.2)` 
+Create a native function that executes the code at the given address. Eg. `E.nativeCall(0x08012345,'double (double,double)')(1.1, 2.2)`
 
 If you're executing a thumb function, you'll almost certainly need to set the bottom bit of the address to 1.
 
@@ -902,7 +902,7 @@ children.
 
 For instance `E.getSizeOf(function(a,b) { })` returns `5`.
 
-But `E.getSizeOf(E.getSizeOf(function(a,b) { }), 1)` returns:
+But `E.getSizeOf(function(a,b) { }, 1)` returns:
 
 ```
  [
@@ -962,7 +962,7 @@ JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
     ["bits","int","If specified, the number of bits per element"]
   ]
 }
-Take each element of the `from` array, look it up in `map` (or call the 
+Take each element of the `from` array, look it up in `map` (or call the
 function with it as a first argument), and write it into the corresponding
 element in the `to` array.
  */

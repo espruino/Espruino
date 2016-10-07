@@ -13,6 +13,9 @@
             Cope with new escape codes for home and end on Ubuntu 16.04 (27,91,70/72)
             Tweak VGA output back porch to 2ms (so leftmost pixels always on screen)
             Fix regression with 2 concurrent waveforms on different pins (fix #930)
+            nRF5x: add updateServices, and allow setServices to be called multiple times (partial #936)
+            Added Puck.getBatteryPercentage() utility function
+            nRF5x: setServices can now uninitialise SD in order to remove added services
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
