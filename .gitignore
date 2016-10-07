@@ -2,7 +2,7 @@
 *.tgz
 *.o
 *.elf
-*.hex
+/*.hex
 *.lst
 *.srec
 *.bin

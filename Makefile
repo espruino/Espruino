@@ -1288,7 +1288,7 @@ endif #USB
 ifeq ($(FAMILY), NRF51)
 
   NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefiles provided in SDK as reference.
@@ -1308,10 +1308,10 @@ ifeq ($(FAMILY), NRF51)
   ifdef USE_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
   NFR_BL_START_ADDR = 0x3C000# see dfu_gcc_nrf51.ld
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   else
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-	INCLUDE += -I$(NRF5X_SDK_PATH)/../nrf51_config
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+	INCLUDE += -I$(NRF5X_SDK_PATH)/nrf51_config
   endif
 
 endif # FAMILY == NRF51
@@ -1319,7 +1319,7 @@ endif # FAMILY == NRF51
 ifeq ($(FAMILY), NRF52)
 
   NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
@@ -1341,15 +1341,15 @@ ifeq ($(FAMILY), NRF52)
   NFR_BL_START_ADDR = 0x78000 # see Makefile, secure_dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
-    LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/secure_dfu_gcc_nrf52.ld
+    LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_dfu_gcc_nrf52.ld
     OPTIMIZEFLAGS=-Os # try to reduce bootloader size
   else
-    LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
-		INCLUDE += -I$(NRF5X_SDK_PATH)/../nrf52_config
+    LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
+		INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
   endif
   else
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
-	INCLUDE += -I$(NRF5X_SDK_PATH)/../nrf52_config
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino.ld
+	INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
   endif
 endif #FAMILY == NRF52
 
