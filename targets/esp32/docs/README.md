@@ -164,7 +164,7 @@ $ cd ..
 * Extract Espruino source from YOUR fork of Espruino:
 ```
 $ git clone https://github.com/YOURGITHUBID/Espruino.git
-``
+```
 
 $ Change into the Espruino folder.
 ```
@@ -179,6 +179,7 @@ $ make
 If all has built correctly, you will now find that you have a flash-able binary representing Espruino for the ESP32.
 
 In summary, here are the steps again without commentary:
+
 ```
 $ mkdir esp32
 $ cd esp32
