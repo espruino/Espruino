@@ -571,12 +571,16 @@ else ifdef ESP32
 BOARD=ESP32
 EMBEDDED=1
 USE_NET=1
+<<<<<<< HEAD
 #USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
 USE_TELNET=1
 DEFINES+=-DESP_PLATFORM -DESP32=1
+=======
+DEFINES+=-DESP_PLATFORM
+>>>>>>> Initial files for the ESP32 environment.
 OPTIMIZEFLAGS+=-Og
 
 else ifdef ESP8266_BOARD
@@ -1013,6 +1017,7 @@ ifdef USE_NET
  ifdef USE_ESP32
  DEFINES += -DUSE_ESP32
  WRAPPERSOURCES += libs/network/esp32/jswrap_esp32_network.c \
+<<<<<<< HEAD
    targets/esp32/jswrap_esp32.c
  INCLUDE += -I$(ROOT)/libs/network/esp32
  SOURCES +=  libs/network/esp32/network_esp32.c \
@@ -1028,6 +1033,11 @@ ifdef USE_NET
    DEFINES += -DRTOS
    WRAPPERSOURCES += targets/esp32/jswrap_rtos.c
   endif # RTOS
+=======
+ 	targets/esp32/jswrap_esp32.c
+ INCLUDE += -I$(ROOT)/libs/network/esp32 -I$(ROOT)/libs/network/linux
+ SOURCES +=  libs/network/linux/network_linux.c
+>>>>>>> Initial files for the ESP32 environment.
  endif # USE_ESP32
  
  ifdef USE_ESP8266
@@ -1407,11 +1417,19 @@ ifeq ($(FAMILY), NRF51)
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
 =======
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
   DEFINES += -DNRF_SD_BLE_API_VERSION=2  
 >>>>>>> nRF51: Remove heap placeholder on nRF51 as not needed since no malloc. Increase nRF51 var count (fix #985)
+=======
+  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
+  DEFINES += -DNRF_SD_BLE_API_VERSION=2  
+=======
+  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
+>>>>>>> Initial files for the ESP32 environment.
+>>>>>>> Initial files for the ESP32 environment.
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0_softdevice.hex
@@ -1420,15 +1438,24 @@ ifeq ($(FAMILY), NRF51)
   ifdef USE_CUSTOM_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+=======
+>>>>>>> Initial files for the ESP32 environment.
   else
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
   endif
   NFR_BL_START_ADDR = 0x3C000# see dfu_gcc_nrf51.ld
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex # This file writes 0x3FC00 with 0x01 so we can flash the application with the bootloader.
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+<<<<<<< HEAD
 =======
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
 >>>>>>> attempt at nRF5x secure bootloader
+=======
+>>>>>>> Initial files for the ESP32 environment.
+>>>>>>> Initial files for the ESP32 environment.
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   endif
@@ -1459,13 +1486,21 @@ ifeq ($(FAMILY), NRF52)
   ifdef USE_CUSTOM_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> Initial files for the ESP32 environment.
   else
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
   endif
   NFR_BL_START_ADDR = 0x79000 # see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
+<<<<<<< HEAD
 =======
 >>>>>>> attempt at nRF5x secure bootloader
+=======
+>>>>>>> Initial files for the ESP32 environment.
+>>>>>>> Initial files for the ESP32 environment.
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
     LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/dfu_gcc_nrf52.ld
@@ -1517,11 +1552,19 @@ ifdef NRF5X
     PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
     WRAPPERSOURCES =
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
 		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
 		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
 >>>>>>> attempt at nRF5x secure bootloader
+=======
+		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
+		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
+		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
+=======
+>>>>>>> Initial files for the ESP32 environment.
+>>>>>>> Initial files for the ESP32 environment.
     SOURCES = \
       targets/nrf5x_dfu/main.c \
       targets/nrf5x_dfu/dfu_ble_svc.c
@@ -1564,11 +1607,19 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/ppi
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
 <<<<<<< HEAD
+<<<<<<< HEAD
 	INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
 =======
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
 >>>>>>> (untested) hardware SPI on nRF52. Needs batch mode to make built-in DMA even remotely useful though
+=======
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
+=======
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
+>>>>>>> Initial files for the ESP32 environment.
+>>>>>>> Initial files for the ESP32 environment.
 
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
@@ -1593,6 +1644,7 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master/nrf_drv_spi.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
 <<<<<<< HEAD
+<<<<<<< HEAD
 	$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
 	$(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
 =======
@@ -1600,6 +1652,15 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
 >>>>>>> (untested) hardware SPI on nRF52. Needs batch mode to make built-in DMA even remotely useful though
+=======
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
+=======
+	$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
+	$(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
+>>>>>>> Initial files for the ESP32 environment.
+>>>>>>> Initial files for the ESP32 environment.
 
   # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
 
@@ -1908,8 +1969,12 @@ endif
 # The prefix for the ESP32 compiler
 CCPREFIX=xtensa-esp32-elf-
 SOURCES += targets/esp32/main.c
+<<<<<<< HEAD
 LDFLAGS += -L$(ESP_IDF_PATH)/ld \
 -L$(ESP_IDF_PATH)/components/bt/lib \
+=======
+LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/components/bt/lib \
+>>>>>>> Initial files for the ESP32 environment.
 -L$(ESP_IDF_PATH)/components/esp32/lib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bootloader \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bt \
@@ -1927,6 +1992,7 @@ LDFLAGS += -L$(ESP_IDF_PATH)/ld \
 -L$(ESP_APP_TEMPLATE_PATH)/build/nvs_flash \
 -L$(ESP_APP_TEMPLATE_PATH)/build/partition_table \
 -L$(ESP_APP_TEMPLATE_PATH)/build/spi_flash \
+<<<<<<< HEAD
 -L$(ESP_APP_TEMPLATE_PATH)/build/tcpip_adapter \
 -L$(ESP_APP_TEMPLATE_PATH)/build/vfs \
 -L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
@@ -1937,6 +2003,12 @@ ESPTOOL?=
 INCLUDE+=\
 -I$(ESP_APP_TEMPLATE_PATH)/build/include \
 -I$(ESP_IDF_PATH)/components \
+=======
+-L$(ESP_APP_TEMPLATE_PATH)/build/tcpip_adapter
+ESPTOOL?=
+INCLUDE+=\
+-I$(ESP_APP_TEMPLATE_PATH)/build/include \
+>>>>>>> Initial files for the ESP32 environment.
 -I$(ESP_IDF_PATH)/components/newlib/include \
 -I$(ESP_IDF_PATH)/components/bt/include \
 -I$(ESP_IDF_PATH)/components/driver/include \
@@ -1948,10 +2020,15 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/lwip/include/lwip/port \
 -I$(ESP_IDF_PATH)/components/lwip/include/lwip/posix \
 -I$(ESP_IDF_PATH)/components/newlib/include \
+<<<<<<< HEAD
 -I$(ESP_IDF_PATH)/components/spi_flash/include \
 -I$(ESP_IDF_PATH)/components/nvs_flash/include \
 -I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
 -I$(ESP_IDF_PATH)/components/vfs/include \
+=======
+-I$(ESP_IDF_PATH)/components/nvs_flash/include \
+-I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
+>>>>>>> Initial files for the ESP32 environment.
 -Itargets/esp32/include
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
 LIBS+=-T esp32_out.ld \
@@ -1965,10 +2042,17 @@ $(ESP_IDF_PATH)/components/newlib/lib/libm.a \
 -ldriver \
 -lesp32 \
 $(ESP_IDF_PATH)/components/esp32/libhal.a  \
+<<<<<<< HEAD
 -lcore \
 -lnet80211 \
 -lphy \
 -lwpa_supplicant \
+=======
+-lcrypto \
+-lcore \
+-lnet80211 \
+-lphy \
+>>>>>>> Initial files for the ESP32 environment.
 -lrtc \
 -lpp \
 -lwpa \
@@ -1982,11 +2066,14 @@ $(ESP_IDF_PATH)/components/esp32/libhal.a  \
 -lnvs_flash \
 -lspi_flash \
 -ltcpip_adapter \
+<<<<<<< HEAD
 -lvfs \
 -lnewlib \
 -lcoexist \
 -lethernet \
 -lstdc++ \
+=======
+>>>>>>> Initial files for the ESP32 environment.
 -lgcc
 endif # ESP32
 
@@ -2139,9 +2226,13 @@ $(PROJ_NAME): $(OBJS)
 # Linking for ESP32
 else ifdef ESP32
 
+<<<<<<< HEAD
 ESP_ZIP     = $(PROJ_NAME).tgz
 
 espruino_esp32.bin: $(OBJS)
+=======
+proj: $(OBJS)
+>>>>>>> Initial files for the ESP32 environment.
 	$(LD) $(LDFLAGS) -o espruino_esp32.elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
@@ -2151,6 +2242,7 @@ espruino_esp32.bin: $(OBJS)
 	-o espruino_esp32.bin \
 	espruino_esp32.elf
 
+<<<<<<< HEAD
 $(ESP_ZIP): espruino_esp32.bin
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
@@ -2163,6 +2255,8 @@ $(ESP_ZIP): espruino_esp32.bin
 
 proj: espruino_esp32.bin $(ESP_ZIP)
 
+=======
+>>>>>>> Initial files for the ESP32 environment.
 flash:
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
@@ -2174,6 +2268,7 @@ flash:
 	--flash_freq "40m" \
 	0x1000 $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
 	0x10000 espruino_esp32.bin \
+<<<<<<< HEAD
 	0x8000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
 
 erase_flash:
@@ -2182,6 +2277,9 @@ erase_flash:
 	--port "/dev/ttyUSB0" \
 	--baud 921600 \
 	erase_flash
+=======
+	0x4000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
+>>>>>>> Initial files for the ESP32 environment.
 
 else ifdef ESP8266
 # Linking the esp8266... The Espruino source files get compiled into the .text section. The
@@ -2361,11 +2459,19 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
   ifdef DFU_UPDATE_BUILD
 	@echo Not merging softdevice or bootloader with application
 <<<<<<< HEAD
+<<<<<<< HEAD
 	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
 =======
 	# nrfutil  pkg generate --help
 	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
 >>>>>>> attempt at nRF5x secure bootloader
+=======
+	# nrfutil  pkg generate --help
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
+=======
+	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
+>>>>>>> Initial files for the ESP32 environment.
+>>>>>>> Initial files for the ESP32 environment.
   else
   ifdef BOOTLOADER
 	@echo Not merging anything with bootloader
@@ -2375,10 +2481,17 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
 	# nrfutil settings generate --family NRF52 --application $(PROJ_NAME).hex --application-version 0xff --bootloader-version 0xff --bl-settings-version 1 dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
 <<<<<<< HEAD
+<<<<<<< HEAD
 	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
 =======
 	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
 >>>>>>> Update vagrant and makefile
+=======
+	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
+=======
+	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
+>>>>>>> Initial files for the ESP32 environment.
+>>>>>>> Initial files for the ESP32 environment.
 	mv tmp.hex $(PROJ_NAME).hex
   endif
   endif

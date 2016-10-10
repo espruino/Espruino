@@ -1,4 +1,5 @@
 void jswrap_ESP32_wifi_soft_init();
+<<<<<<< HEAD
 void jswrap_ESP32_wifi_disconnect(JsVar *jsCallback);
 void jswrap_ESP32_wifi_stopAP(JsVar *jsCallback);
 void jswrap_ESP32_wifi_connect(
@@ -34,3 +35,5 @@ void jswrap_ESP32_ping(
 );
 
 void esp32_wifi_init();
+=======
+>>>>>>> Initial files for the ESP32 environment.

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // Includes from ESP-IDF
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -647,10 +648,21 @@ If you want the connection to happen automatically at boot, add `wifi.save();`.
 
 */
 
+=======
+#include "esp_log.h"
+
+#include "network.h"
+#include "jswrap_esp32_network.h"
+
+// Tag for ESP-IDF logging
+static char *tag = "jswrap_esp32_network";
+
+>>>>>>> Initial files for the ESP32 environment.
 /**
  * Perform a soft initialization of ESP32 networking.
  */
 void jswrap_ESP32_wifi_soft_init() {
+<<<<<<< HEAD
   JsNetwork net;
   networkCreate(&net, JSNETWORKTYPE_ESP32); // Set the network type to be ESP32
   networkState = NETWORKSTATE_ONLINE; // Set the global state of the networking to be online
@@ -1590,3 +1602,10 @@ void jswrap_ESP32_ping(
 }
 
 
+=======
+	ESP_LOGD(tag, ">> jswrap_ESP32_wifi_soft_init");
+	JsNetwork net;
+	networkCreate(&net, JSNETWORKTYPE_SOCKET);	
+	ESP_LOGD(tag, "<< jswrap_ESP32_wifi_soft_init");	
+}
+>>>>>>> Initial files for the ESP32 environment.
