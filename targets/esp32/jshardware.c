@@ -381,9 +381,7 @@ void jshUSARTKick(
     //ESP_LOGD(tag,">> jshUSARTKick");
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
-    // Examination ... if there something more performance than using
-    // printf()?  For example, some kind of putchar()?
-    printf("%c", c);
+    uart_tx_one_char((uint8_t)c);
     c = jshGetCharToTransmit(device);
   }
   //ESP_LOGD(tag,"<< jshUSARTKick");
