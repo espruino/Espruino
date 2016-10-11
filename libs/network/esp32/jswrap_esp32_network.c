@@ -1,8 +1,14 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
-
+#include "esp_event_loop.h"
+#include "jsinteractive.h"
 #include "network.h"
 #include "jswrap_esp32_network.h"
+
+static void sendWifiCompletionCB(
+  JsVar **g_jsCallback,  //!< Pointer to the global callback variable
+  char  *reason          //!< NULL if successful, error string otherwise
+);
 
 // Tag for ESP-IDF logging
 static char *tag = "jswrap_esp32_network";
@@ -12,6 +18,64 @@ static JsVar *g_jsDisconnectCallback;
 
 // A callback function to be invoked when we have an IP address.
 static JsVar *g_jsGotIpCallback;
+
+/**
+ * Wifi event handler
+ * Here we get invoked whenever a WiFi event is received from the ESP32 WiFi
+ * subsystem.  The events include:
+ * * SYSTEM_EVENT_STA_DISCONNECTED - As a station, we were disconnected.
+ */
+static esp_err_t event_handler(void *ctx, system_event_t *event)
+{
+  ESP_LOGD(tag, ">> event_handler");
+  if (event->event_id == SYSTEM_EVENT_STA_DISCONNECTED) {
+    if (jsvIsFunction(g_jsDisconnectCallback)) {
+      jsiQueueEvents(NULL, g_jsDisconnectCallback, NULL, 0);
+      jsvUnLock(g_jsDisconnectCallback);
+      g_jsDisconnectCallback = NULL;
+    }
+    ESP_LOGD(tag, "<< event_handler - STA DISCONNECTED");
+    return ESP_OK;
+  } // End of handle SYSTEM_EVENT_STA_DISCONNECTED
+
+
+  if (event->event_id == SYSTEM_EVENT_STA_GOT_IP) {
+    sendWifiCompletionCB(&g_jsGotIpCallback, NULL);
+    ESP_LOGD(tag, "<< event_handler - STA GOT IP");
+    return ESP_OK;
+  } // End of handle SYSTEM_EVENT_STA_GOT_IP
+
+  ESP_LOGD(tag, "<< event_handler");
+  return ESP_OK;
+} // End of event_handler
+
+
+/**
+ * Initialize the one time ESP32 wifi components including the event
+ * handler.
+ */
+void esp32_wifi_init() {
+  ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
+  wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+  ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+} // End of esp32_wifi_init
+
+
+static void sendWifiCompletionCB(
+    JsVar **g_jsCallback, //!< Pointer to the global callback variable
+    char *reason          //!< NULL if successful, error string otherwise
+) {
+  if (!jsvIsFunction(*g_jsCallback)) return; // we ain't got a function pointer: nothing to do
+
+  JsVar *params[1];
+  params[0] = reason ? jsvNewFromString(reason) : jsvNewNull();
+  jsiQueueEvents(NULL, *g_jsCallback, params, 1);
+  jsvUnLock(params[0]);
+  // unlock and delete the global callback
+  jsvUnLock(*g_jsCallback);
+  *g_jsCallback = NULL;
+}
 
 /*JSON{
    "type": "library",
@@ -201,6 +265,9 @@ void jswrap_ESP32_wifi_connect(
     ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_start: %d", err);
     return;
   }
+
+  // Save the callback for later execution.
+  g_jsGotIpCallback = jsvLockAgainSafe(jsCallback);
 
   // Perform an esp_wifi_connect
   err = esp_wifi_connect();

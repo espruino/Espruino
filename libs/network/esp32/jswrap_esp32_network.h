@@ -32,3 +32,5 @@ void jswrap_ESP32_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
 );
+
+void esp32_wifi_init();

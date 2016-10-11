@@ -27,10 +27,10 @@ upon it:
 # Implementation status
 
 ## connect
-Working.  Event callbacks not implemented.
+Working.
 
 ## disconnect
-Working. Event callbacks not implemented.
+Working.
 
 ## All others
 Not yet implemented
