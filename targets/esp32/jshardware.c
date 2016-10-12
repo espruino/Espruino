@@ -53,19 +53,7 @@ void jshInit() {
   ESP_LOGD(tag,">> jshInit");
   uint32_t freeHeapSize = system_get_free_heap_size();
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
-  // FIX
-  // Setup an ESP32 listening environment.
-  ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-  wifi_config_t sta_config = {
-    .sta = {
-      .ssid = "sweetie",
-      .password = "kolbanpassword",
-      .bssid_set = false
-    }
-  };
-  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
-  ESP_ERROR_CHECK(esp_wifi_start());
-  ESP_ERROR_CHECK(esp_wifi_connect());
+  esp32_wifi_init();
   ESP_LOGD(tag,"<< jshInit");
 } // End of jshInit
 
@@ -381,9 +369,7 @@ void jshUSARTKick(
     //ESP_LOGD(tag,">> jshUSARTKick");
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
-    // Examination ... if there something more performance than using
-    // printf()?  For example, some kind of putchar()?
-    printf("%c", c);
+    uart_tx_one_char((uint8_t)c);
     c = jshGetCharToTransmit(device);
   }
   //ESP_LOGD(tag,"<< jshUSARTKick");
