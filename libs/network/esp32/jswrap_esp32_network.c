@@ -106,7 +106,8 @@ If you want the connection to happen automatically at boot, add `wifi.save();`.
 void jswrap_ESP32_wifi_soft_init() {
 	ESP_LOGD(tag, ">> jswrap_ESP32_wifi_soft_init");
 	JsNetwork net;
-	networkCreate(&net, JSNETWORKTYPE_SOCKET);	
+	networkCreate(&net, JSNETWORKTYPE_ESP32); // Set the network type to be ESP32
+  networkState = NETWORKSTATE_ONLINE; // Set the global state of the networking to be online
 	ESP_LOGD(tag, "<< jswrap_ESP32_wifi_soft_init");	
 }
 

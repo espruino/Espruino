@@ -558,7 +558,7 @@ else ifdef ESP32
 BOARD=ESP32
 EMBEDDED=1
 USE_NET=1
-DEFINES+=-DESP_PLATFORM
+DEFINES+=-DESP_PLATFORM -DESP32=1
 OPTIMIZEFLAGS+=-Og
 
 else ifdef ESP8266_BOARD
@@ -996,8 +996,8 @@ ifdef USE_NET
  DEFINES += -DUSE_ESP32
  WRAPPERSOURCES += libs/network/esp32/jswrap_esp32_network.c \
  	targets/esp32/jswrap_esp32.c
- INCLUDE += -I$(ROOT)/libs/network/esp32 -I$(ROOT)/libs/network/linux
- SOURCES +=  libs/network/linux/network_linux.c
+ INCLUDE += -I$(ROOT)/libs/network/esp32
+ SOURCES +=  libs/network/esp32/network_esp32.c
  endif # USE_ESP32
  
  ifdef USE_ESP8266
