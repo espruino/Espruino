@@ -1397,6 +1397,8 @@ ifdef NRF5X
     SOURCES +=                              \
       targets/nrf5x/main.c                    \
       targets/nrf5x/jshardware.c              \
+			targets/nrf5x/bluetooth.c              \
+			targets/nrf5x/bluetooth_utils.c              \
       targets/nrf5x/nrf5x_utils.c
   endif
 
