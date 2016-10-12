@@ -128,7 +128,7 @@ board_esp01["_css"] = """
 boards = [ board_esp12, board_esp01 ];
 
 def get_pins():
-  pins = pinutils.generate_pins(0,15)
+  pins = pinutils.generate_pins(0,39)
   pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
   pinutils.findpin(pins, "PD1", True)["functions"]["USART0_TX"]=0;
   pinutils.findpin(pins, "PD2", True)["functions"]["USART1_TX"]=0;
