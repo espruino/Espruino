@@ -34,23 +34,7 @@
 bool nfcEnabled = false;
 #endif
 
-#undef USE_BOOTLOADER // FIXME - this now errors with 0x4001 - not sure why
-//... but then IMO we don't want to be able to enable DFU directly from BLE
-//... much better to
-
-
-#ifdef USE_BOOTLOADER
-#include "device_manager.h"
-#include "pstorage.h"
-#include "ble_dfu.h"
-#include "dfu_app_handler.h"
-#include "nrf_delay.h"
-
-#define IS_SRVC_CHANGED_CHARACT_PRESENT 1                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
-#else
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
-#endif
-
 
 #ifdef NRF52
 // nRF52 gets the ability to connect to other
@@ -81,19 +65,6 @@ bool nfcEnabled = false;
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 
-#ifdef USE_BOOTLOADER
-#define SEC_PARAM_BOND                   1                                          /**< Perform bonding. */
-#define SEC_PARAM_MITM                   0                                          /**< Man In The Middle protection not required. */
-#define SEC_PARAM_IO_CAPABILITIES        BLE_GAP_IO_CAPS_NONE                       /**< No I/O capabilities. */
-#define SEC_PARAM_OOB                    0                                          /**< Out Of Band data not available. */
-#define SEC_PARAM_MIN_KEY_SIZE           7                                          /**< Minimum encryption key size. */
-#define SEC_PARAM_MAX_KEY_SIZE           16                                         /**< Maximum encryption key size. */
-
-#define DFU_REV_MAJOR                    0x00                                       /** DFU Major revision number to be exposed. */
-#define DFU_REV_MINOR                    0x01                                       /** DFU Minor revision number to be exposed. */
-#define DFU_REVISION                     ((DFU_REV_MAJOR << 8) | DFU_REV_MINOR)     /** DFU Revision number to be exposed. Combined of major and minor versions. */
-#define APP_SERVICE_HANDLE_START         0x000C                                     /**< Handle of first application specific service when when service changed characteristic is present. */
-#endif
 #define BLE_HANDLE_MAX                   0xFFFF                                     /**< Max handle value in BLE. */
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
@@ -103,11 +74,6 @@ static uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_
 #endif
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
-
-#ifdef USE_BOOTLOADER
-static ble_dfu_t                        m_dfus;                                    /**< Structure used to identify the DFU service. */
-static dm_application_instance_t        m_app_handle;                              /**< Application identifier allocated by device manager */
-#endif
 
 uint16_t advertising_interval = APP_DEFAULT_ADV_INTERVAL;
 
@@ -296,91 +262,6 @@ static void advertising_stop(void) {
   bleStatus &= ~BLE_IS_ADVERTISING;
 }
 
-#ifdef USE_BOOTLOADER
-
-/**@brief Function for loading application-specific context after establishing a secure connection.
- *
- * @details This function will load the application context and check if the ATT table is marked as
- *          changed. If the ATT table is marked as changed, a Service Changed Indication
- *          is sent to the peer if the Service Changed CCCD is set to indicate.
- *
- * @param[in] p_handle The Device Manager handle that identifies the connection for which the context
- *                     should be loaded.
- */
-/*static void app_context_load(dm_handle_t const * p_handle)
-{
-    uint32_t                 err_code;
-    static uint32_t          context_data;
-    dm_application_context_t context;
-
-    context.len    = sizeof(context_data);
-    context.p_data = (uint8_t *)&context_data;
-
-    err_code = dm_application_context_get(p_handle, &context);
-    if (err_code == NRF_SUCCESS)
-    {
-        // Send Service Changed Indication if ATT table has changed.
-        if ((context_data & (DFU_APP_ATT_TABLE_CHANGED << DFU_APP_ATT_TABLE_POS)) != 0)
-        {
-            err_code = sd_ble_gatts_service_changed(m_conn_handle, APP_SERVICE_HANDLE_START, BLE_HANDLE_MAX);
-            if ((err_code != NRF_SUCCESS) &&
-                (err_code != BLE_ERROR_INVALID_CONN_HANDLE) &&
-                (err_code != NRF_ERROR_INVALID_STATE) &&
-                (err_code != BLE_ERROR_NO_TX_PACKETS) &&
-                (err_code != NRF_ERROR_BUSY) &&
-                (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING))
-            {
-                APP_ERROR_HANDLER(err_code);
-            }
-        }
-
-        err_code = dm_application_context_delete(p_handle);
-        APP_ERROR_CHECK(err_code);
-    }
-    else if (err_code == DM_NO_APP_CONTEXT)
-    {
-        // No context available. Ignore.
-    }
-    else
-    {
-        APP_ERROR_HANDLER(err_code);
-    }
-}*/
-
-
-/**@brief Function for preparing for system reset.
- *
- * @details This function implements @ref dfu_app_reset_prepare_t. It will be called by
- *          @ref dfu_app_handler.c before entering the bootloader/DFU.
- *          This allows the current running application to shut down gracefully.
- */
-
-static void reset_prepare(void)
-{
-    uint32_t err_code;
-    if (m_conn_handle != BLE_CONN_HANDLE_INVALID)
-    {
-        // Disconnect from peer.
-        err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-        APP_ERROR_CHECK(err_code);
-    }
-    else
-    {
-        // If not connected, the device will be advertising. Hence stop the advertising.
-        advertising_stop();
-    }
-    err_code = ble_conn_params_stop();
-    APP_ERROR_CHECK(err_code);
-    nrf_delay_ms(500);
-
-    jsiKill();
-    jsvKill();
-    jshKill();
-    jshReset();
-    nrf_delay_ms(100);
-}
-#endif
-
 /**@brief Function for the GAP initialization.
  *
  * @details This function will set up all the necessary GAP (Generic Access Profile) parameters of
@@ -509,24 +390,6 @@ static void services_init(void)
     err_code = ble_nus_init(&m_nus, &nus_init);
     APP_ERROR_CHECK(err_code);
     bleStatus |= BLE_NUS_INITED;
-
-#ifdef USE_BOOTLOADER
-    ble_dfu_init_t   dfus_init;
-
-    // Initialize the Device Firmware Update Service.
-    memset(&dfus_init, 0, sizeof(dfus_init));
-
-    dfus_init.evt_handler   = dfu_app_on_dfu_evt;
-    dfus_init.error_handler = NULL;
-    dfus_init.evt_handler   = dfu_app_on_dfu_evt;
-    dfus_init.revision      = DFU_REVISION;
-
-    err_code = ble_dfu_init(&m_dfus, &dfus_init);
-    APP_ERROR_CHECK(err_code);
-
-    dfu_app_reset_prepare_set(reset_prepare);
-    dfu_app_dm_appl_instance_set(m_app_handle);
-#endif
 }
 
 
@@ -911,18 +774,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
  *
  * @param[in] p_ble_evt  SoftDevice event.
  */
-static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
-{
-    ble_conn_params_on_ble_evt(p_ble_evt);
-    if (bleStatus & BLE_NUS_INITED)
-      ble_nus_on_ble_evt(&m_nus, p_ble_evt);
-#ifdef USE_BOOTLOADER
-    ble_dfu_on_ble_evt(&m_dfus, p_ble_evt);
-#endif
-    on_ble_evt(p_ble_evt);
-#ifdef USE_BOOTLOADER
-    dm_ble_evt_handler(p_ble_evt);
-#endif
+static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
+  ble_conn_params_on_ble_evt(p_ble_evt);
+  if (bleStatus & BLE_NUS_INITED)
+    ble_nus_on_ble_evt(&m_nus, p_ble_evt);
+  on_ble_evt(p_ble_evt);
 }
 
 
@@ -933,12 +789,8 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
  *
  * @param[in] sys_evt  System stack event.
  */
-static void sys_evt_dispatch(uint32_t sys_evt)
-{
-#ifdef USE_BOOTLOADER
-    pstorage_sys_event_handler(sys_evt);
-#endif
-    ble_advertising_on_sys_evt(sys_evt);
+static void sys_evt_dispatch(uint32_t sys_evt) {
+  ble_advertising_on_sys_evt(sys_evt);
 }
 
 #ifdef USE_NFC
@@ -950,21 +802,19 @@ void log_uart_printf(const char * format_msg, ...) {
 /**
  * @brief Callback function for handling NFC events.
  */
-static void nfc_callback(void * p_context, nfc_t2t_event_t event, const uint8_t * p_data, size_t data_length)
-{
-    (void)p_context;
+static void nfc_callback(void * p_context, nfc_t2t_event_t event, const uint8_t * p_data, size_t data_length) {
+  (void)p_context;
 
-    switch (event)
-    {
-        case NFC_T2T_EVENT_FIELD_ON:
-          bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCon", 0);
-          break;
-        case NFC_T2T_EVENT_FIELD_OFF:
-          bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCoff", 0);
-          break;
-        default:
-          break;
-    }
+  switch (event) {
+    case NFC_T2T_EVENT_FIELD_ON:
+      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCon", 0);
+      break;
+    case NFC_T2T_EVENT_FIELD_OFF:
+      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCoff", 0);
+      break;
+    default:
+      break;
+  }
 }
 #endif
 
@@ -1002,11 +852,6 @@ static void ble_stack_init(void)
 
     ble_enable_params.common_enable_params.vs_uuid_count = 3;
     softdevice_extra_ram_hack += 32; // now we have more UUIDs, SD needs more RAM
-
-
-#ifdef USE_BOOTLOADER
-    ble_enable_params.gatts_enable_params.service_changed = 1;
-#endif
 
     //Check the ram settings against the used number of links
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
@@ -1061,58 +906,6 @@ static void advertising_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-#ifdef USE_BOOTLOADER
-/**@brief Function for handling the Device Manager events.
- *
- * @param[in] p_evt  Data associated to the device manager event.
- */
-static uint32_t device_manager_evt_handler(dm_handle_t const * p_handle,
-                                           dm_event_t const  * p_event,
-                                           ret_code_t        event_result)
-{
-    APP_ERROR_CHECK(event_result);
-    if (p_event->event_id == DM_EVT_LINK_SECURED)
-    {
-        //app_context_load(p_handle);
-    }
-    return NRF_SUCCESS;
-}
-
-
-/**@brief Function for the Device Manager initialization.
- *
- * @param[in] erase_bonds  Indicates whether bonding information should be cleared from
- *                         persistent storage during initialization of the Device Manager.
- */
-static void device_manager_init(bool erase_bonds)
-{
-    uint32_t               err_code;
-    dm_init_param_t        init_param = {.clear_persistent_data = erase_bonds};
-    dm_application_param_t register_param;
-
-    // Initialize persistent storage module.
-    err_code = pstorage_init();
-    APP_ERROR_CHECK(err_code);
-
-    err_code = dm_init(&init_param);
-    APP_ERROR_CHECK(err_code);
-
-    memset(&register_param.sec_param, 0, sizeof(ble_gap_sec_params_t));
-
-    register_param.sec_param.bond         = SEC_PARAM_BOND;
-    register_param.sec_param.mitm         = SEC_PARAM_MITM;
-    register_param.sec_param.io_caps      = SEC_PARAM_IO_CAPABILITIES;
-    register_param.sec_param.oob          = SEC_PARAM_OOB;
-    register_param.sec_param.min_key_size = SEC_PARAM_MIN_KEY_SIZE;
-    register_param.sec_param.max_key_size = SEC_PARAM_MAX_KEY_SIZE;
-    register_param.evt_handler            = device_manager_evt_handler;
-    register_param.service_type           = DM_PROTOCOL_CNTXT_GATT_SRVR_ID;
-
-    err_code = dm_register(&m_app_handle, &register_param);
-    APP_ERROR_CHECK(err_code);
-}
-#endif
-
 /*JSON{
     "type": "class",
     "class" : "NRF"
@@ -1134,11 +927,6 @@ The Bluetooth Serial port - used when data is sent or received over Bluetooth Sm
 /** Initialise the BLE stack */
  void ble_init() {
    ble_stack_init();
-
- #ifdef USE_BOOTLOADER
-   bool erase_bonds = false;
-   device_manager_init(erase_bonds);
- #endif
 
    gap_params_init();
    services_init();
