@@ -1,6 +1,10 @@
+// Includes from ESP-IDF
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
+#include "tcpip_adapter.h"
+
+
 #include "jsinteractive.h"
 #include "network.h"
 #include "jswrap_esp32_network.h"
@@ -18,6 +22,9 @@ static JsVar *g_jsDisconnectCallback;
 
 // A callback function to be invoked when we have an IP address.
 static JsVar *g_jsGotIpCallback;
+
+// Format of a MAC address.
+static char macFmt[] = "%02x:%02x:%02x:%02x:%02x:%02x";
 
 /**
  * Wifi event handler
@@ -357,8 +364,68 @@ Retrieve the current overall WiFi configuration. This call provides general info
 JsVar *jswrap_ESP32_wifi_getStatus(JsVar *jsCallback) {
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getStatus");
   ESP_LOGD(tag, "Not implemented");
+  // We have to determine the following information:
+  //
+  // - [    ] The status of the station interface
+  // - [    ] The status of the access point interface
+  // - [done] The current mode of operation
+  // - [    ] The physical modulation
+  // - [done] The power save type
+  // - [    ] The save mode
+  //
+  // For the status of the station and access point interfaces, we don't know how to get those
+  // but have asked here: http://esp32.com/viewtopic.php?f=13&t=330
+
+  // Get the current mode of operation.
+  wifi_mode_t mode;
+  esp_wifi_get_mode(&mode);
+
+  char *modeStr;
+  switch(mode) {
+  case WIFI_MODE_NULL:
+    modeStr = "off";
+    break;
+  case WIFI_MODE_AP:
+    modeStr = "ap";
+    break;
+  case WIFI_MODE_STA:
+    modeStr = "sta";
+    break;
+  case WIFI_MODE_APSTA:
+    modeStr ="sta+ap";
+    break;
+  default:
+    modeStr = "unknown";
+    break;
+  }
+
+  // Get the current power save type
+  wifi_ps_type_t psType;
+  esp_wifi_get_ps(&psType);
+  char *psTypeStr;
+  switch(psType) {
+  case WIFI_PS_LIGHT:
+    psTypeStr = "light";
+    break;
+  case WIFI_PS_MAC:
+    psTypeStr = "mac";
+    break;
+  case WIFI_PS_MODEM:
+    psTypeStr = "modem";
+    break;
+  case WIFI_PS_NONE:
+    psTypeStr = "none";
+    break;
+  default:
+    psTypeStr = "unknown";
+    break;
+  }
+
+  JsVar *jsWiFiStatus = jsvNewObject();
+  jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode", jsvNewFromString(modeStr));
+  jsvObjectSetChildAndUnLock(jsWiFiStatus, "powersave", jsvNewFromString(psTypeStr));
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getStatus");
-  return NULL;
+  return jsWiFiStatus;
 }
 
 /*JSON{
@@ -470,6 +537,48 @@ void jswrap_ESP32_wifi_restore(void) {
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_restore");
 }
+/**
+ * Get the ip info for the given interface.  The interfaces are:
+ * * TCPIP_ADAPTER_IF_STA - Station
+ * * TCPIP_ADAPTER_IF_AP - Access Point
+ */
+static JsVar *getIPInfo(JsVar *jsCallback, tcpip_adapter_if_t interface) {
+  // Check callback
+  if (jsCallback != NULL && !jsvIsNull(jsCallback) && !jsvIsFunction(jsCallback)) {
+    //EXPECT_CB_EXCEPTION(jsCallback);
+    return NULL;
+  }
+
+  // first get IP address info, this may fail if we're not connected
+  tcpip_adapter_ip_info_t ipInfo;
+  esp_err_t err = tcpip_adapter_get_ip_info(interface, &ipInfo);
+  JsVar *jsIpInfo = jsvNewObject();
+  if (err == ESP_OK) {
+    jsvObjectSetChildAndUnLock(jsIpInfo, "ip",
+      networkGetAddressAsString((uint8_t *)&ipInfo.ip, 4, 10, '.'));
+    jsvObjectSetChildAndUnLock(jsIpInfo, "netmask",
+      networkGetAddressAsString((uint8_t *)&ipInfo.netmask, 4, 10, '.'));
+    jsvObjectSetChildAndUnLock(jsIpInfo, "gw",
+      networkGetAddressAsString((uint8_t *)&ipInfo.gw, 4, 10, '.'));
+  }
+
+  // now get MAC address (which always succeeds)
+  uint8_t macAddr[6];
+  esp_wifi_get_mac(interface==TCPIP_ADAPTER_IF_STA?WIFI_IF_STA:WIFI_IF_AP, macAddr);
+  char macAddrString[6*3 + 1];
+  sprintf(macAddrString, macFmt,
+    macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
+  jsvObjectSetChildAndUnLock(jsIpInfo, "mac", jsvNewFromString(macAddrString));
+
+  // Schedule callback if a function was provided
+  if (jsvIsFunction(jsCallback)) {
+    JsVar *params[1];
+    params[0] = jsIpInfo;
+    jsiQueueEvents(NULL, jsCallback, params, 1);
+  }
+
+  return jsIpInfo;
+}
 
 /*JSON{
   "type"     : "staticmethod",
@@ -490,9 +599,9 @@ Note that the `ip`, `netmask`, and `gw` fields are omitted if no connection is e
 */
 JsVar *jswrap_ESP32_wifi_getIP(JsVar *jsCallback) {
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getIP");
-  ESP_LOGD(tag, "Not implemented");
+  JsVar *jsIpInfo = getIPInfo(jsCallback, TCPIP_ADAPTER_IF_STA);
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getIP");
-  return NULL;
+  return jsIpInfo;
 }
 
 /*JSON{
