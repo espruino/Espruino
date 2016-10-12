@@ -26,8 +26,10 @@
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 
 #ifdef BLUETOOTH
-#include "jswrap_bluetooth.h"
 #include "app_timer.h"
+#include "bluetooth.h"
+#include "bluetooth_utils.h"
+#include "jswrap_bluetooth.h"
 #else
 #include "nrf_temp.h"
 #endif
@@ -215,7 +217,8 @@ void jshInit() {
   // Pin change
   nrf_drv_gpiote_init();
 #ifdef BLUETOOTH
-  jswrap_nrf_bluetooth_init();
+  APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
+  jsble_init();
 
   uint32_t err_code = app_timer_create(&m_wakeup_timer_id,
                       APP_TIMER_MODE_SINGLE_SHOT,
