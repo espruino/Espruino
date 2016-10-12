@@ -26,6 +26,9 @@ static JsVar *g_jsGotIpCallback;
 // Format of a MAC address.
 static char macFmt[] = "%02x:%02x:%02x:%02x:%02x:%02x";
 
+#define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
+#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting options object but got %t", jsOPT)
+
 /**
  * Wifi event handler
  * Here we get invoked whenever a WiFi event is received from the ESP32 WiFi
@@ -69,6 +72,13 @@ void esp32_wifi_init() {
 } // End of esp32_wifi_init
 
 
+/**
+ * Some of the WiFi functions have a completion callback which is of the form:
+ * function(err) { ... }
+ * These callbacks are called with an error string (if an error is encountered) or null if there is
+ * no error.  Since this occurrence happens a number of times, this helper function takes as input
+ * a pointer to a callback function and a parameter.
+ */
 static void sendWifiCompletionCB(
     JsVar **g_jsCallback, //!< Pointer to the global callback variable
     char *reason          //!< NULL if successful, error string otherwise
@@ -83,6 +93,7 @@ static void sendWifiCompletionCB(
   jsvUnLock(*g_jsCallback);
   *g_jsCallback = NULL;
 }
+
 
 /*JSON{
    "type": "library",
@@ -138,7 +149,7 @@ void jswrap_ESP32_wifi_disconnect(JsVar *jsCallback) {
 
   // Check that the callback is a good callback if supplied.
   if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
-    //EXPECT_CB_EXCEPTION(jsCallback);
+    EXPECT_CB_EXCEPTION(jsCallback);
     return;
   }
 
@@ -213,7 +224,7 @@ void jswrap_ESP32_wifi_connect(
 
   // Make sure jsOptions is NULL or an object
   if (jsOptions != NULL && !jsvIsObject(jsOptions)) {
-    //EXPECT_OPT_EXCEPTION(jsOptions);
+    EXPECT_OPT_EXCEPTION(jsOptions);
     return;
   }
 
@@ -221,7 +232,7 @@ void jswrap_ESP32_wifi_connect(
   if (g_jsGotIpCallback != NULL) jsvUnLock(g_jsGotIpCallback);
   g_jsGotIpCallback = NULL;
   if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
-    //EXPECT_CB_EXCEPTION(jsCallback);
+    EXPECT_CB_EXCEPTION(jsCallback);
     return;
   }
 
@@ -471,9 +482,41 @@ Retrieve the wifi station configuration and status details. The details object h
 JsVar *jswrap_ESP32_wifi_getDetails(JsVar *jsCallback) {
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getDetails");
   ESP_LOGD(tag, "Not implemented");
+
+  // Check callback
+  if (jsCallback != NULL && !jsvIsNull(jsCallback) && !jsvIsFunction(jsCallback)) {
+    EXPECT_CB_EXCEPTION(jsCallback);
+    return NULL;
+  }
+
+  JsVar *jsDetails = jsvNewObject();
+
+  wifi_sta_config_t config;
+  esp_wifi_get_config(WIFI_IF_STA, &config);
+  char buf[65];
+
+  // ssid
+  strncpy(buf, (char *)config.ssid, 32);
+  buf[32] = 0;
+  jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
+
+  // password
+  strncpy(buf, (char *)config.password, 64);
+  buf[64] = 0;
+  jsvObjectSetChildAndUnLock(jsDetails, "password", jsvNewFromString((char *)config.password));
+
+
+
+  // Schedule callback if a function was provided
+  if (jsvIsFunction(jsCallback)) {
+    JsVar *params[1];
+    params[0] = jsDetails;
+    jsiQueueEvents(NULL, jsCallback, params, 1);
+  }
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getDetails");
-  return NULL;
+  return jsDetails;
 }
+
 
 /*JSON{
   "type"     : "staticmethod",
@@ -497,7 +540,61 @@ Retrieve the current access point configuration and status.  The details object 
 */
 JsVar *jswrap_ESP32_wifi_getAPDetails(JsVar *jsCallback) {
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getAPDetails");
-  ESP_LOGD(tag, "Not implemented");
+  // Check callback
+  if (jsCallback != NULL && !jsvIsNull(jsCallback) && !jsvIsFunction(jsCallback)) {
+    EXPECT_CB_EXCEPTION(jsCallback);
+    return NULL;
+  }
+
+  JsVar *jsDetails = jsvNewObject();
+
+  wifi_ap_config_t config;
+  esp_wifi_get_config(WIFI_IF_AP, &config);
+  char *authModeStr = "";
+  switch(config.authmode) {
+  case WIFI_AUTH_OPEN:
+    authModeStr = "open";
+    break;
+  case WIFI_AUTH_WEP:
+    authModeStr = "wep";
+    break;
+  case WIFI_AUTH_WPA2_PSK:
+    authModeStr = "wpa2";
+    break;
+  case WIFI_AUTH_WPA_PSK:
+    authModeStr = "wpa";
+    break;
+  case WIFI_AUTH_WPA_WPA2_PSK:
+    authModeStr = "wpa_wpa2";
+    break;
+  default:
+    authModeStr = "unknown";
+    break;
+  }
+  jsvObjectSetChildAndUnLock(jsDetails, "authMode", jsvNewFromString(authModeStr));
+  jsvObjectSetChildAndUnLock(jsDetails, "hidden",   jsvNewFromBool(config.ssid_hidden));
+  jsvObjectSetChildAndUnLock(jsDetails, "maxConn",  jsvNewFromInteger(config.max_connection));
+
+  char buf[65];
+
+  // ssid
+  strncpy(buf, (char *)config.ssid, 32);
+  buf[32] = 0;
+  jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
+
+  // password
+  strncpy(buf, (char *)config.password, 64);
+  buf[64] = 0;
+  jsvObjectSetChildAndUnLock(jsDetails, "password", jsvNewFromString((char *)config.password));
+
+  // Schedule callback if a function was provided
+  if (jsvIsFunction(jsCallback)) {
+    JsVar *params[1];
+    params[0] = jsDetails;
+    jsiQueueEvents(NULL, jsCallback, params, 1);
+  }
+  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getDetails");
+  return jsDetails;
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getAPDetails");
   return NULL;
 }
@@ -546,7 +643,7 @@ void jswrap_ESP32_wifi_restore(void) {
 static JsVar *getIPInfo(JsVar *jsCallback, tcpip_adapter_if_t interface) {
   // Check callback
   if (jsCallback != NULL && !jsvIsNull(jsCallback) && !jsvIsFunction(jsCallback)) {
-    //EXPECT_CB_EXCEPTION(jsCallback);
+    EXPECT_CB_EXCEPTION(jsCallback);
     return NULL;
   }
 
@@ -581,6 +678,7 @@ static JsVar *getIPInfo(JsVar *jsCallback, tcpip_adapter_if_t interface) {
   return jsIpInfo;
 }
 
+
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "Wifi",
@@ -605,6 +703,7 @@ JsVar *jswrap_ESP32_wifi_getIP(JsVar *jsCallback) {
   return jsIpInfo;
 }
 
+
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "Wifi",
@@ -623,10 +722,11 @@ Return the access point IP information in an object which contains:
 */
 JsVar *jswrap_ESP32_wifi_getAPIP(JsVar *jsCallback) {
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getAPIP");
-  ESP_LOGD(tag, "Not implemented");
+  JsVar *jsIpInfo = getIPInfo(jsCallback, TCPIP_ADAPTER_IF_AP);
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getAPIP");
-  return NULL;
+  return jsIpInfo;
 }
+
 
 /*JSON{
   "type"     : "staticmethod",

@@ -1,4 +1,4 @@
-#Notes on the development of Espruino for ESO32
+#Notes on the development of Espruino for ESP32
 
 The github URL for core Espruino is:
 
@@ -23,7 +23,7 @@ Files that need modified from Espruino branch "ESP32"  from Espruino branch "mas
 To build, we need to set
 ```
 export ESP32=1
-export ESP\_IDF\_PATH=/path to ESP_IDF
+export ESP_IDF_PATH=/path to ESP_IDF
 export PATH=/opt/xtensa-esp32-elf/bin:$PATH
 ```
 
@@ -129,9 +129,9 @@ $ git clone https://github.com/espressif/esp-idf-template.git template
 * Edit a file called setenv.sh and add the following lines:
 ```
 #!/bin/bash
-export ESP_IDF_PATH=$(PWD)/esp-idf
-export IDF_PATH=$(PWD)/esp-idf
-export ESP_APP_TEMPLATE_PATH=$(PWD)/template
+export ESP_IDF_PATH=$(pwd)/esp-idf
+export IDF_PATH=$(pwd)/esp-idf
+export ESP_APP_TEMPLATE_PATH=$(pwd)/template
 export ESP32=1
 [[ ":$PATH:" != *":/opt/xtensa-esp32-elf/bin:"* ]] && PATH="/opt/xtensa-esp32-elf/bin:${PATH}"
 ```
@@ -149,6 +149,16 @@ $ . ./setenv.sh
 * Change into the new template directory.
 ```
 $ cd template
+```
+
+* Run the `make menuconfig`.
+```
+$ make menuconfig
+```
+
+* Change some of the settings necessary for Espruino:
+```
+Component config -> LWIP -> Enable SO_REUSEADDR option
 ```
 
 * Perform a build to create the libraries and the template application.
@@ -192,7 +202,7 @@ $ nano setenv.sh
 >>>
 #!/bin/bash
 export ESP_IDF_PATH=$(pwd)/esp-idf
-export IDF_PATH=$(PWD)/esp-idf
+export IDF_PATH=$(pwd)/esp-idf
 export ESP_APP_TEMPLATE_PATH=$(pwd)/template
 export ESP32=1
 [[ ":$PATH:" != *":/opt/xtensa-esp32-elf/bin:"* ]] && PATH="/opt/xtensa-esp32-elf/bin:${PATH}"
