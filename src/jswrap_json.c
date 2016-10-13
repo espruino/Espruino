@@ -45,10 +45,16 @@ An Object that handles conversion to and from the JSON data interchange format
   ],
   "return" : ["JsVar","A JSON string"]
 }
-Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval
+Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval.
+
+**Note:** This differs from JavaScript's standard `JSON.stringify` in that:
+
+* The `replacer` argument is ignored
+* Typed arrays like `new Uint8Array(5)` will be dumped as if they were arrays, not as if they were objects (since it is more compact)
  */
 JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space) {
-  JSONFlags flags = JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED;
+  NOT_USED(replacer);
+  JSONFlags flags = JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY;
   JsVar *result = jsvNewFromEmptyString();
   if (result) {// could be out of memory
     char whitespace[11] = "";
@@ -296,11 +302,13 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
         jsvArrayBufferIteratorNext(&it);
       }
       jsvArrayBufferIteratorFree(&it);
+      bool asArray = flags&JSON_ARRAYBUFFER_AS_ARRAY;
 
-      if (allZero) {
+      if (allZero && !asArray) {
         cbprintf(user_callback, user_data, "new %s(%d)", jswGetBasicObjectName(var), jsvGetArrayBufferLength(var));
       } else {
-        cbprintf(user_callback, user_data, "new %s([", jswGetBasicObjectName(var));
+        cbprintf(user_callback, user_data, asArray?"[":"new %s([", jswGetBasicObjectName(var));
+        if (flags&JSON_ALL_NEWLINES) jsonNewLine(nflags, whitespace, user_callback, user_data);
         size_t length = jsvGetArrayBufferLength(var);
         bool limited = (flags&JSON_LIMIT) && (length>JSON_LIMIT_AMOUNT);
         // no newlines needed for array buffers as they only contain simple stuff
@@ -309,6 +317,7 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
         while (jsvArrayBufferIteratorHasElement(&it) && !jspIsInterrupted()) {
           if (!limited || it.index<JSON_LIMITED_AMOUNT || it.index>=length-JSON_LIMITED_AMOUNT) {
             if (it.index>0) cbprintf(user_callback, user_data, (flags&JSON_PRETTY)?", ":",");
+            if (flags&JSON_ALL_NEWLINES) jsonNewLine(nflags, whitespace, user_callback, user_data);
             if (limited && it.index==length-JSON_LIMITED_AMOUNT) cbprintf(user_callback, user_data, JSON_LIMIT_TEXT);
             JsVar *item = jsvArrayBufferIteratorGetValue(&it);
             jsfGetJSONWithCallback(item, nflags, whitespace, user_callback, user_data);
@@ -316,8 +325,9 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
           }
           jsvArrayBufferIteratorNext(&it);
         }
+        if (flags&JSON_ALL_NEWLINES) jsonNewLine(flags, whitespace, user_callback, user_data);
         jsvArrayBufferIteratorFree(&it);
-        cbprintf(user_callback, user_data, "])");
+        cbprintf(user_callback, user_data, asArray?"]":"])");
       }
     } else if (jsvIsObject(var)) {
       IOEventFlags device = (flags & JSON_SHOW_DEVICES) ? jsiGetDeviceFromClass(var) : EV_NONE;
