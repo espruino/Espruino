@@ -2309,6 +2309,16 @@ void jsvRemoveChild(JsVar *parent, JsVar *child) {
   if (jsvGetLastChild(parent) == childref) {
     jsvSetLastChild(parent, jsvGetPrevSibling(child));
     wasChild = true;
+    // If this was an array and we were the last
+    // element, update the length
+    if (jsvIsArray(parent)) {
+      JsVarInt l = 0;
+      // get index of last child
+      if (jsvGetLastChild(parent))
+        l = jsvGetIntegerAndUnLock(jsvLock(jsvGetLastChild(parent)))+1;
+      // set it
+      jsvSetArrayLength(parent, l, false);
+    }
   }
   // unlink from child list
   if (jsvGetPrevSibling(child)) {

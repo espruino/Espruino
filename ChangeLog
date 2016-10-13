@@ -17,6 +17,7 @@
             Added Puck.getBatteryPercentage() utility function
             nRF5x: setServices can now uninitialise SD in order to remove added services
             Added E.lockConsole() for use with E.setPassword()
+            Calling jsvRemoveChild at end of array now updates the length (fix #946)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
