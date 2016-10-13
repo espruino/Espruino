@@ -13,26 +13,29 @@
  */
 #include "jsvar.h"
 
-JsVar *jswrap_json_stringify(JsVar *v);
+JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space);
 JsVar *jswrap_json_parse(JsVar *v);
 
 typedef enum {
   JSON_NONE,
-  JSON_NEWLINES          = 1, // insert newlines in non-simple arrays and objects
-  JSON_PRETTY            = 2, // insert extra spaces between commas
-  JSON_LIMIT             = 4, // limit the amount we print (for the console)
-  JSON_IGNORE_FUNCTIONS  = 8, // don't output functions
-  JSON_SHOW_DEVICES      = 16, // Show built-in device names like SPI/etc
-  JSON_NO_UNDEFINED      = 32, // don't output undefined keys in objects, and use null for undefined in arrays
+  JSON_SOME_NEWLINES     = 1, // insert newlines in non-simple arrays and objects
+  JSON_ALL_NEWLINES      = 2, // insert newlines after everything
+  JSON_PRETTY            = 4, // insert extra spaces between commas
+  JSON_LIMIT             = 8, // limit the amount we print (for the console)
+  JSON_IGNORE_FUNCTIONS  = 16, // don't output functions
+  JSON_SHOW_DEVICES      = 32, // Show built-in device names like SPI/etc
+  JSON_NO_UNDEFINED      = 64, // don't output undefined keys in objects, and use null for undefined in arrays
   // ...
-  JSON_INDENT            = 64, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
+  JSON_INDENT            = 128, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
 } JSONFlags;
 
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */
 void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user_callback, void *user_data);
 /* Dump to JSON, using the given callbacks for printing data */
-void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user_callback, void *user_data);
+void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace, vcbprintf_callback user_callback, void *user_data);
 
+/* Convenience function for using jsfGetJSONWithCallback - print to var */
+void jsfGetJSONWhitespace(JsVar *var, JsVar *result, JSONFlags flags, const char *whitespace);
 /* Convenience function for using jsfGetJSONWithCallback - print to var */
 void jsfGetJSON(JsVar *var, JsVar *result, JSONFlags flags);
 
