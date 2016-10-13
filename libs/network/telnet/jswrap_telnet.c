@@ -248,7 +248,7 @@ bool telnetSendBuf(JsNetwork *net) {
   } else if (sent > 0) {
     // shift remaining chars up in the buffer
     memmove(tnSrv.txBuf, tnSrv.txBuf+sent, (size_t)(tnSrv.txBufLen-sent));
-    tnSrv.txBufLen -= (uint16_t)sent;
+    tnSrv.txBufLen = (uint16_t)(tnSrv.txBufLen - sent);
   } else if (sent < 0) {
     telnetRelease(net);
   }
@@ -289,7 +289,7 @@ bool telnetRecv(JsNetwork *net) {
   char buff[256];
   int r = netRecv(net, tnSrv.cliSock, buff, 256);
   if (r > 0) {
-    jshPushIOCharEvents(EV_TELNET, buff, r);
+    jshPushIOCharEvents(EV_TELNET, buff, (unsigned int)r);
   } else if (r < 0) {
     telnetRelease(net);
   }
