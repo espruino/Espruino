@@ -1328,9 +1328,15 @@ NO_INLINE JsVar *jspeFactorDelete() {
         parent = jsvLockAgain(execInfo.root);
 
       if (parent && !jsvIsFunction(parent)) {
-        // else remove properly. Now arrays don't use the last element
-        // for length we don't have to care
-        jsvRemoveChild(parent, a);
+        // else remove properly.
+        if (jsvIsArray(parent)) {
+          // For arrays, we must make sure we don't change the length
+          JsVarInt l = jsvGetArrayLength(parent);
+          jsvRemoveChild(parent, a);
+          jsvSetArrayLength(parent, l, false);
+        } else {
+          jsvRemoveChild(parent, a);
+        }
         ok = true;
       }
     }
