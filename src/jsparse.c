@@ -826,7 +826,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             bool calledDebugger = false;
             if (execInfo.execute & EXEC_DEBUGGER_MASK) {
               jsiConsolePrint("Value returned is =");
-              jsfPrintJSON(returnVar, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+              jsfPrintJSON(returnVar, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
               jsiConsolePrintChar('\n');
               if (execInfo.execute & EXEC_DEBUGGER_FINISH_FUNCTION) {
                 calledDebugger = true;

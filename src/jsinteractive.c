@@ -521,7 +521,7 @@ void jsiDumpJSON(vcbprintf_callback user_callback, void *user_data, JsVar *data,
     cbprintf(user_callback, user_data, "%v", name);
   } else {
     // if it doesn't, print JSON
-    jsfGetJSONWithCallback(data, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, user_callback, user_data);
+    jsfGetJSONWithCallback(data, JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, 0, user_callback, user_data);
   }
 }
 
@@ -599,7 +599,7 @@ void jsiDumpSerialInitialisation(vcbprintf_callback user_callback, void *user_da
       cbprintf(user_callback, user_data, "%s.setup(%d", serialName, baudrate);
       if (jsvIsObject(options)) {
         user_callback(", ", user_data);
-        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, user_callback, user_data);
+        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, 0, user_callback, user_data);
       }
       user_callback(");\n", user_data);
     }
@@ -616,7 +616,7 @@ void jsiDumpDeviceInitialisation(vcbprintf_callback user_callback, void *user_da
     if (options) {
       cbprintf(user_callback, user_data, "%s.setup(", deviceName);
       if (jsvIsObject(options))
-        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, user_callback, user_data);
+        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, 0, user_callback, user_data);
       user_callback(");\n", user_data);
     }
     jsvUnLock2(options, deviceVar);
@@ -1307,7 +1307,7 @@ void jsiHandleNewLine(bool execute) {
         // print result (but NOT if we had an error)
         if (jsiEcho() && !jspHasError()) {
           jsiConsolePrintChar('=');
-          jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+          jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
           jsiConsolePrint("\n");
         }
         jsvUnLock(v);
@@ -2292,7 +2292,7 @@ void jsiDebuggerPrintScope(JsVar *scope) {
         l++;
       }
       jsiConsolePrint(" : ");
-      jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
       jsiConsolePrint("\n");
     }
 
@@ -2354,7 +2354,7 @@ void jsiDebuggerLine(JsVar *line) {
       JsVar *v = jsvSkipNameAndUnLock(jspParse());
       execInfo = oldExecInfo;
       jsiConsolePrintChar('=');
-      jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
       jsiConsolePrint("\n");
       jsvUnLock(v);
     } else if (!strcmp(id,"info") || !strcmp(id,"i")) {
