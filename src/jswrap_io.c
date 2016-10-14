@@ -334,7 +334,8 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   "generate" : "jswrap_io_pinMode",
   "params"   : [
     ["pin", "pin", "The pin to set pin mode for"],
-    ["mode", "JsVar", "The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."]
+    ["mode", "JsVar", "The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."],
+    ["automatic", "bool", "Optional, default is false. If true, subsequent commands will automatically change the state (see notes below)"]
   ]
 }
 Set the mode of the given pin.
@@ -353,8 +354,9 @@ Set the mode of the given pin.
  **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically *unless* `pinMode` has been called first.  If you want `digitalRead`/etc to set the pin mode automatically after you have called `pinMode`, simply call it again with no mode argument: `pinMode(pin)`
 */
 void jswrap_io_pinMode(
-    Pin pin,    //!< The pin to set.
-    JsVar *mode //!< The new mode of the pin.
+    Pin pin,
+    JsVar *mode,
+    bool automatic
   ) {
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Invalid pin");
@@ -373,7 +375,7 @@ void jswrap_io_pinMode(
     else if (jsvIsStringEqual(mode, "af_opendrain"))   m = JSHPINSTATE_AF_OUT_OPENDRAIN;
   }
   if (m != JSHPINSTATE_UNDEFINED) {
-    jshSetPinStateIsManual(pin, true);
+    jshSetPinStateIsManual(pin, !automatic);
     jshPinSetState(pin, m);
   } else {
     jshSetPinStateIsManual(pin, false);

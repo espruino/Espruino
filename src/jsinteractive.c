@@ -662,17 +662,23 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 #ifdef DEFAULT_CONSOLE_RX_PIN
       // the console input pin is always a pullup now - which is expected
       if (pin == DEFAULT_CONSOLE_RX_PIN &&
-          statem == JSHPINSTATE_GPIO_IN_PULLUP) continue;
+          (statem == JSHPINSTATE_GPIO_IN_PULLUP ||
+           statem == JSHPINSTATE_AF_OUT)) continue;
+#endif
+#ifdef DEFAULT_CONSOLE_TX_PIN
+      // the console input pin is always a pullup now - which is expected
+      if (pin == DEFAULT_CONSOLE_TX_PIN &&
+          statem == JSHPINSTATE_AF_OUT) continue;
 #endif
 #if defined(BTN1_PININDEX) && defined(BTN1_PINSTATE)
       if (pin == BTN1_PININDEX &&
           statem == BTN1_PINSTATE) continue;
 #endif
       // don't bother with normal inputs, as they come up in this state (ish) anyway
-      if (statem != JSHPINSTATE_GPIO_IN) {
+      if (statem != JSHPINSTATE_GPIO_IN && statem != JSHPINSTATE_ADC_IN) {
         // use getPinMode to get the correct string (remove some duplication)
         JsVar *s = jswrap_io_getPinMode(pin);
-        if (s) cbprintf(user_callback, user_data, "pinMode(%p, %q);\n",pin,s);
+        if (s) cbprintf(user_callback, user_data, "pinMode(%p, %q%s);\n",pin,s,jshGetPinStateIsManual(pin)?"":", true");
         jsvUnLock(s);
       }
     }
