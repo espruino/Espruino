@@ -19,7 +19,7 @@ void jswrap_nrf_bluetooth_wake(void);
 
 JsVarFloat jswrap_nrf_bluetooth_getBattery(void);
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options);
-void jswrap_nrf_bluetooth_setServices(JsVar *data);
+void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options);
 void jswrap_nrf_bluetooth_updateServices(JsVar *data);
 void jswrap_nrf_bluetooth_setScan(JsVar *callback);
 void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr);
@@ -31,6 +31,7 @@ void jswrap_nrf_bleservice_discoverCharacteristics(JsVar *service);
 void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data);
 
 void jswrap_nrf_nfcURL(JsVar *url);
+void jswrap_nrf_hid(int key);
 
 bool jswrap_nrf_idle();
 void jswrap_nrf_kill();

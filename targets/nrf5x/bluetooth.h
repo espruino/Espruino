@@ -24,9 +24,13 @@ typedef enum  {
   BLE_IS_SENDING = 1,         // sending data with jswrap_nrf_transmit_string?
   BLE_IS_SCANNING = 2,        // scanning for BLE devices?
   BLE_IS_ADVERTISING = 4,     // currently advertising info? stops when connected
-  BLE_NEEDS_SETSERVICES = 8,  // We need to reset the services we're reporting, but we can't because we're connected
+  BLE_NEEDS_SOFTDEVICE_RESTART = 8,  // We need to reset the services we're reporting, but we can't because we're connected
   BLE_SERVICES_WERE_SET = 16, // setServices was called already, so we need to restart softdevice before we can call it again
-  BLE_NUS_INITED = 32,        // Has the Nordic UART service been initialised?
+
+  BLE_USING_NUS = 32,         // Do we want to use the Nordic UART service?
+  BLE_NUS_INITED = 64,        // Has the Nordic UART service been initialised?
+  BLE_USING_HID = 128,
+  BLE_HID_INITED = 256
 } BLEStatus;
 
 
@@ -44,9 +48,9 @@ void jsble_kill();
 /** Reset BLE to power-on defaults (ish) */
 void jsble_reset();
 
-/** We don't have a connection any more, and we must update services. We'll
-need to stop and restart the softdevice! */
-void jsble_update_services();
+/** Stop and restart the softdevice so that we can update the services in it -
+ * both user-defined as well as UART/HID */
+void jsble_restart_softdevice();
 
 void jsble_advertising_start();
 void jsble_advertising_stop();
@@ -63,6 +67,13 @@ bool jsble_has_simple_connection();
 
 uint32_t jsble_set_scanning(bool enabled);
 
+/** Actually set the services defined in the 'data' object. Note: we can
+ * only do this *once* - so to change it we must reset the softdevice and
+ * then call this again */
+void jsble_set_services(JsVar *data);
+
+uint32_t send_key_scan_press_release(uint8_t    * p_key_pattern,
+                                     uint16_t     pattern_len);
 
 // ------------------------------------------------- lower-level utility fns
 

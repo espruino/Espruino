@@ -344,7 +344,8 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     "name" : "setServices",
     "generate" : "jswrap_nrf_bluetooth_setServices",
     "params" : [
-      ["data","JsVar","The service (and characteristics) to advertise"]
+      ["data","JsVar","The service (and characteristics) to advertise"],
+      ["options","JsVar","Optional object containing options"]
     ]
 }
 
@@ -377,145 +378,73 @@ the form `"0xABCD"`, or strings of the form `""ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDA
 **Note:** Currently, services/characteristics can't be removed once added.
 As a result, calling setServices multiple times will cause characteristics
 to either be updated (value only) or ignored.
+
+`options` can be of the form:
+
+```
+NRF.setServices(undefined, {
+  hid : true, // optional, default is false. Enable BLE HID support
+  uart : true, // optional, default is true. Enable BLE UART support
+});
+```
+
 */
-void jswrap_nrf_bluetooth_setServices(JsVar *data) {
+void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
   if (!(jsvIsObject(data) || jsvIsUndefined(data))) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting object or undefined, got %t", data);
     return;
   }
-  uint32_t err_code;
 
-  // TODO: Reset services (esp. removing Nordic UART if not needed)
+  bool use_hid = false;
+  bool use_uart = true;
 
-  jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, data);
-  if (jsble_has_connection()) {
-    // Defer setting services until we have no active connection
-    jsiConsolePrintf("BLE Connected, so queueing service update for later\n");
-    bleStatus |= BLE_NEEDS_SETSERVICES;
+  jsvConfigObject configs[] = {
+      {"hid", JSV_BOOLEAN, &use_hid},
+      {"uart", JSV_BOOLEAN, &use_uart}
+  };
+  if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
     return;
+  }
+
+  // Handle turning on/off of HID
+  if (use_hid) {
+    if (!(bleStatus & BLE_HID_INITED))
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    bleStatus |= BLE_USING_HID;
   } else {
-    if (bleStatus & BLE_SERVICES_WERE_SET) {
-      jsble_update_services();
+    if (bleStatus & BLE_HID_INITED)
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    bleStatus &= ~BLE_USING_HID;
+  }
+  if (use_uart) {
+    if (!(bleStatus & BLE_NUS_INITED))
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    bleStatus |= BLE_USING_NUS;
+  } else {
+    if (bleStatus & BLE_NUS_INITED)
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    bleStatus &= ~BLE_USING_NUS;
+  }
+
+  // Save the current service data
+  jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, data);
+
+  // work out whether to apply changes
+  if (bleStatus & (BLE_SERVICES_WERE_SET|BLE_NEEDS_SOFTDEVICE_RESTART)) {
+    if (jsble_has_connection()) {
+      // Defer setting services until we have no active connection
+      jsiConsolePrintf("BLE Connected, so queueing service update for later\n");
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+      return;
+    } else {
+      // Not connected, but we can update services now
+      jsble_restart_softdevice();
       return;
     }
   }
-  bleStatus |= BLE_SERVICES_WERE_SET;
-
-
-  if (jsvIsObject(data)) {
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, data);
-    while (jsvObjectIteratorHasValue(&it)) {
-      ble_uuid_t ble_uuid;
-      uint16_t service_handle;
-
-      // Add the service
-      const char *errorStr;
-      if ((errorStr=bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetKey(&it)))) {
-        jsExceptionHere(JSET_ERROR, "Invalid Service UUID: %s", errorStr);
-        break;
-      }
-      err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
-                                              &ble_uuid,
-                                              &service_handle);
-      if (err_code) {
-        jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_service_add", err_code);
-        break;
-      }
-
-      // Now add characteristics
-      JsVar *serviceVar = jsvObjectIteratorGetValue(&it);
-      JsvObjectIterator serviceit;
-      jsvObjectIteratorNew(&serviceit, serviceVar);
-      while (jsvObjectIteratorHasValue(&serviceit)) {
-        ble_uuid_t          char_uuid;
-        ble_gatts_char_md_t char_md;
-        ble_gatts_attr_t    attr_char_value;
-        ble_gatts_attr_md_t attr_md;
-        ble_gatts_char_handles_t  characteristic_handles;
-
-        if ((errorStr=bleVarToUUIDAndUnLock(&char_uuid, jsvObjectIteratorGetKey(&serviceit)))) {
-          jsExceptionHere(JSET_ERROR, "Invalid Characteristic UUID: %s", errorStr);
-          break;
-        }
-        JsVar *charVar = jsvObjectIteratorGetValue(&serviceit);
-
-        memset(&char_md, 0, sizeof(char_md));
-        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "broadcast", 0)))
-          char_md.char_props.broadcast = 1;
-        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0)))
-          char_md.char_props.notify = 1;
-        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "indicate", 0)))
-          char_md.char_props.indicate = 1;
-        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "readable", 0)))
-          char_md.char_props.read = 1;
-        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "writable", 0))) {
-          char_md.char_props.write = 1;
-          char_md.char_props.write_wo_resp = 1;
-        }
-        char_md.p_char_user_desc         = NULL;
-        char_md.p_char_pf                = NULL;
-        char_md.p_user_desc_md           = NULL;
-        char_md.p_cccd_md                = NULL;
-        char_md.p_sccd_md                = NULL;
-
-        memset(&attr_md, 0, sizeof(attr_md));
-        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
-        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
-        attr_md.vloc       = BLE_GATTS_VLOC_STACK;
-        attr_md.rd_auth    = 0;
-        attr_md.wr_auth    = 0;
-        attr_md.vlen       = 1; // TODO: variable length?
-
-        memset(&attr_char_value, 0, sizeof(attr_char_value));
-        attr_char_value.p_uuid       = &char_uuid;
-        attr_char_value.p_attr_md    = &attr_md;
-        attr_char_value.init_len     = 0;
-        attr_char_value.init_offs    = 0;
-        attr_char_value.p_value      = 0;
-        attr_char_value.max_len      = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(charVar, "maxLen", 0));
-        if (attr_char_value.max_len==0) attr_char_value.max_len=1;
-
-        // get initial data
-        JsVar *charValue = jsvObjectGetChild(charVar, "value", 0);
-        if (charValue) {
-          JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, charValue);
-          if (vPtr && vLen) {
-            attr_char_value.p_value = (uint8_t*)vPtr;
-            attr_char_value.init_len = vLen;
-            if (attr_char_value.init_len > attr_char_value.max_len)
-              attr_char_value.max_len = attr_char_value.init_len;
-          }
-        }
-
-        err_code = sd_ble_gatts_characteristic_add(service_handle,
-                                                   &char_md,
-                                                   &attr_char_value,
-                                                   &characteristic_handles);
-        if (err_code) {
-          jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_characteristic_add", err_code);
-        }
-        jsvUnLock(charValue); // unlock here in case we were storing data in a flat string
-
-        // Add Write callback
-        JsVar *writeCb = jsvObjectGetChild(charVar, "onWrite", 0);
-        if (writeCb) {
-          char eventName[12];
-          bleGetWriteEventName(eventName, characteristic_handles.value_handle);
-          jsvObjectSetChildAndUnLock(execInfo.root, eventName, writeCb);
-        }
-
-        jsvUnLock(charVar);
-
-        jsvObjectIteratorNext(&serviceit);
-      }
-      jsvObjectIteratorFree(&serviceit);
-      jsvUnLock(serviceVar);
-
-      jsvObjectIteratorNext(&it);
-    }
-    jsvObjectIteratorFree(&it);
-  }
+  /* otherwise, we can set the services now, since we're only adding
+   * and not changing anything we don't need a restart. */
+  jsble_set_services(data);
 }
 
 /*JSON{
@@ -991,6 +920,29 @@ void jswrap_nrf_nfcURL(JsVar *url) {
     return jsExceptionHere(JSET_ERROR, "nfcStartEmulation: NFC error code %d", ret_val);
 #endif
 }
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "hid",
+    "generate" : "jswrap_nrf_hid",
+    "params" : [
+      ["url","int","The URL string to expose on NFC, or `undefined` to disable NFC"]
+    ]
+}
+Enables NFC and starts advertising the given URL. For example:
+
+```
+NRF.nrfURL("http://espruino.com");
+```
+
+**Note:** This is only available on nRF52-based devices
+*/
+void jswrap_nrf_hid(int key) {
+  uint8_t k = key;
+  send_key_scan_press_release(&k, 1);
+}
+
 
 /* ---------------------------------------------------------------------
  *                                                               TESTING

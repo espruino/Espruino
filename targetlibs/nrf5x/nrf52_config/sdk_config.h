@@ -117,7 +117,7 @@
 
 
 #ifndef BLE_HIDS_ENABLED
-#define BLE_HIDS_ENABLED 0
+#define BLE_HIDS_ENABLED 1
 #endif
 
 // <q> BLE_HRS_C_ENABLED  - ble_hrs_c - Heart Rate Service Client

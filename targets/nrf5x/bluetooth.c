@@ -36,6 +36,9 @@
 #include "nfc_t2t_lib.h"
 #include "nfc_uri_msg.h"
 #endif
+#if BLE_HIDS_ENABLED
+#include "ble_hids.h"
+#endif
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
@@ -62,16 +65,32 @@
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 
+#define OUTPUT_REPORT_INDEX              0                                           /**< Index of Output Report. */
+#define OUTPUT_REPORT_MAX_LEN            1                                           /**< Maximum length of Output Report. */
+#define INPUT_REPORT_KEYS_INDEX          0                                           /**< Index of Input Report. */
+#define OUTPUT_REPORT_BIT_MASK_CAPS_LOCK 0x02                                        /**< CAPS LOCK bit in Output Report (based on 'LED Page (0x08)' of the Universal Serial Bus HID Usage Tables). */
+#define INPUT_REP_REF_ID                 0                                           /**< Id of reference to Keyboard Input Report. */
+#define OUTPUT_REP_REF_ID                0                                           /**< Id of reference to Keyboard Output Report. */
+#define INPUT_REPORT_KEYS_MAX_LEN        8                                           /**< Maximum length of the Input Report characteristic. */
+#define BASE_USB_HID_SPEC_VERSION        0x0101                                      /**< Version number of base USB HID Specification implemented by this application. */
+#define MODIFIER_KEY_POS                 0                                           /**< Position of the modifier byte in the Input Report. */
+#define SCAN_CODE_POS                    2                                           /**< This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code. */
+#define SHIFT_KEY_CODE                   0x02                                        /**< Key code indicating the press of the Shift Key. */
+
+
 #define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2        /**< Reply when unsupported features are requested. */
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
-static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
-
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
+#if BLE_HIDS_ENABLED
+static ble_hids_t                       m_hids;                                   /**< Structure used to identify the HID service. */
+static bool                             m_in_boot_mode = false;
+#endif
+
 uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
 uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
@@ -82,7 +101,7 @@ bool nfcEnabled = false;
 
 uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(375, UNIT_0_625_MS);           /**< The advertising interval (in units of 0.625 ms). */
 
-volatile BLEStatus bleStatus = 0;
+volatile BLEStatus bleStatus = BLE_USING_NUS;
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
@@ -155,6 +174,10 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 
 /// Function for handling errors from the Connection Parameters module.
 static void conn_params_error_handler(uint32_t nrf_error) {
+    APP_ERROR_HANDLER(nrf_error);
+}
+
+static void service_error_handler(uint32_t nrf_error) {
     APP_ERROR_HANDLER(nrf_error);
 }
 
@@ -245,16 +268,23 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           jsble_advertising_start();
           jshHadEvent();
         }
-        if ((bleStatus & BLE_NEEDS_SETSERVICES) && !jsble_has_connection())
-          jsble_update_services();
+        if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
+          jsble_restart_softdevice();
         break;
 
-      case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
-        // Pairing not supported
-        err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_SUCCESS, NULL, NULL);
+      case BLE_GAP_EVT_SEC_PARAMS_REQUEST:{
+        ble_gap_sec_params_t sec_param;
+        memset(&sec_param, 0, sizeof(ble_gap_sec_params_t));
+        sec_param.bond         = 0; // nope
+        sec_param.mitm         = 0; // nope
+        sec_param.io_caps      = BLE_GAP_IO_CAPS_NONE;
+        sec_param.oob          = 1; // Out Of Band data not available.
+        sec_param.min_key_size = 7;
+        sec_param.max_key_size = 16;
+        err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_SUCCESS, &sec_param, NULL);
         // or BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP to disable pairing
         APP_ERROR_CHECK(err_code);
-        break; // BLE_GAP_EVT_SEC_PARAMS_REQUEST
+      } break; // BLE_GAP_EVT_SEC_PARAMS_REQUEST
 
       case BLE_GATTS_EVT_SYS_ATTR_MISSING:
         // No system attributes have been stored.
@@ -450,6 +480,10 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
   ble_conn_params_on_ble_evt(p_ble_evt);
   if (bleStatus & BLE_NUS_INITED)
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
+#if BLE_HIDS_ENABLED
+  if (bleStatus & BLE_HID_INITED)
+    ble_hids_on_ble_evt(&m_hids, p_ble_evt);
+#endif
   on_ble_evt(p_ble_evt);
 }
 
@@ -458,6 +492,65 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 static void sys_evt_dispatch(uint32_t sys_evt) {
   ble_advertising_on_sys_evt(sys_evt);
 }
+
+#if BLE_HIDS_ENABLED
+/// Function for handling the HID Report Characteristic Write event.
+static void on_hid_rep_char_write(ble_hids_evt_t * p_evt) {
+    if (p_evt->params.char_write.char_id.rep_type == BLE_HIDS_REP_TYPE_OUTPUT){
+        uint32_t err_code;
+        uint8_t  report_val;
+        uint8_t  report_index = p_evt->params.char_write.char_id.rep_index;
+
+        if (report_index == OUTPUT_REPORT_INDEX) {
+            // This code assumes that the outptu report is one byte long. Hence the following
+            // static assert is made.
+            STATIC_ASSERT(OUTPUT_REPORT_MAX_LEN == 1);
+
+            err_code = ble_hids_outp_rep_get(&m_hids,
+                                             report_index,
+                                             OUTPUT_REPORT_MAX_LEN,
+                                             0,
+                                             &report_val);
+            APP_ERROR_CHECK(err_code);
+
+            if ((report_val & OUTPUT_REPORT_BIT_MASK_CAPS_LOCK) != 0) {
+              // Caps Lock is turned On.
+              jsiConsolePrintf("Caps Lock is turned On!\n");
+            } else if ((report_val & OUTPUT_REPORT_BIT_MASK_CAPS_LOCK) == 0) {
+                // Caps Lock is turned Off .
+              jsiConsolePrintf("Caps Lock is turned Off!\n");
+            } else {
+                // The report received is not supported by this application. Do nothing.
+            }
+        }
+    }
+}
+
+/// Function for handling HID events.
+static void on_hids_evt(ble_hids_t * p_hids, ble_hids_evt_t * p_evt) {
+    switch (p_evt->evt_type)
+    {
+        case BLE_HIDS_EVT_BOOT_MODE_ENTERED:
+            m_in_boot_mode = true;
+            break;
+
+        case BLE_HIDS_EVT_REPORT_MODE_ENTERED:
+            m_in_boot_mode = false;
+            break;
+
+        case BLE_HIDS_EVT_REP_CHAR_WRITE:
+            on_hid_rep_char_write(p_evt);
+            break;
+
+        case BLE_HIDS_EVT_NOTIF_ENABLED:
+            break;
+
+        default:
+            // No implementation needed.
+            break;
+    }
+}
+#endif
 
 // -----------------------------------------------------------------------------------
 // -------------------------------------------------------------------- INITIALISATION
@@ -528,6 +621,129 @@ uint32_t radio_notification_init(uint32_t irq_priority, uint8_t notification_typ
     return sd_radio_notification_cfg_set(notification_type, notification_distance);
 }
 
+#if BLE_HIDS_ENABLED
+static void hids_init(void)
+{
+    uint32_t                   err_code;
+    ble_hids_init_t            hids_init_obj;
+    ble_hids_inp_rep_init_t    input_report_array[1];
+    ble_hids_inp_rep_init_t  * p_input_report;
+    ble_hids_outp_rep_init_t   output_report_array[1];
+    ble_hids_outp_rep_init_t * p_output_report;
+    uint8_t                    hid_info_flags;
+
+    memset((void *)input_report_array, 0, sizeof(ble_hids_inp_rep_init_t));
+    memset((void *)output_report_array, 0, sizeof(ble_hids_outp_rep_init_t));
+
+    static uint8_t report_map_data[] =
+    {
+        0x05, 0x01,       // Usage Page (Generic Desktop)
+        0x09, 0x06,       // Usage (Keyboard)
+        0xA1, 0x01,       // Collection (Application)
+        0x05, 0x07,       // Usage Page (Key Codes)
+        0x19, 0xe0,       // Usage Minimum (224)
+        0x29, 0xe7,       // Usage Maximum (231)
+        0x15, 0x00,       // Logical Minimum (0)
+        0x25, 0x01,       // Logical Maximum (1)
+        0x75, 0x01,       // Report Size (1)
+        0x95, 0x08,       // Report Count (8)
+        0x81, 0x02,       // Input (Data, Variable, Absolute)
+
+        0x95, 0x01,       // Report Count (1)
+        0x75, 0x08,       // Report Size (8)
+        0x81, 0x01,       // Input (Constant) reserved byte(1)
+
+        0x95, 0x05,       // Report Count (5)
+        0x75, 0x01,       // Report Size (1)
+        0x05, 0x08,       // Usage Page (Page# for LEDs)
+        0x19, 0x01,       // Usage Minimum (1)
+        0x29, 0x05,       // Usage Maximum (5)
+        0x91, 0x02,       // Output (Data, Variable, Absolute), Led report
+        0x95, 0x01,       // Report Count (1)
+        0x75, 0x03,       // Report Size (3)
+        0x91, 0x01,       // Output (Data, Variable, Absolute), Led report padding
+
+        0x95, 0x06,       // Report Count (6)
+        0x75, 0x08,       // Report Size (8)
+        0x15, 0x00,       // Logical Minimum (0)
+        0x25, 0x65,       // Logical Maximum (101)
+        0x05, 0x07,       // Usage Page (Key codes)
+        0x19, 0x00,       // Usage Minimum (0)
+        0x29, 0x65,       // Usage Maximum (101)
+        0x81, 0x00,       // Input (Data, Array) Key array(6 bytes)
+
+        0x09, 0x05,       // Usage (Vendor Defined)
+        0x15, 0x00,       // Logical Minimum (0)
+        0x26, 0xFF, 0x00, // Logical Maximum (255)
+        0x75, 0x08,       // Report Count (2)
+        0x95, 0x02,       // Report Size (8 bit)
+        0xB1, 0x02,       // Feature (Data, Variable, Absolute)
+
+        0xC0              // End Collection (Application)
+    };
+
+    // Initialize HID Service
+    p_input_report                      = &input_report_array[INPUT_REPORT_KEYS_INDEX];
+    p_input_report->max_len             = INPUT_REPORT_KEYS_MAX_LEN;
+    p_input_report->rep_ref.report_id   = INPUT_REP_REF_ID;
+    p_input_report->rep_ref.report_type = BLE_HIDS_REP_TYPE_INPUT;
+
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.cccd_write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.write_perm);
+
+    p_output_report                      = &output_report_array[OUTPUT_REPORT_INDEX];
+    p_output_report->max_len             = OUTPUT_REPORT_MAX_LEN;
+    p_output_report->rep_ref.report_id   = OUTPUT_REP_REF_ID;
+    p_output_report->rep_ref.report_type = BLE_HIDS_REP_TYPE_OUTPUT;
+
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_output_report->security_mode.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_output_report->security_mode.write_perm);
+
+    hid_info_flags = HID_INFO_FLAG_REMOTE_WAKE_MSK | HID_INFO_FLAG_NORMALLY_CONNECTABLE_MSK;
+
+    memset(&hids_init_obj, 0, sizeof(hids_init_obj));
+
+    hids_init_obj.evt_handler                    = on_hids_evt;
+    hids_init_obj.error_handler                  = service_error_handler;
+    hids_init_obj.is_kb                          = true;
+    hids_init_obj.is_mouse                       = false;
+    hids_init_obj.inp_rep_count                  = 1;
+    hids_init_obj.p_inp_rep_array                = input_report_array;
+    hids_init_obj.outp_rep_count                 = 1;
+    hids_init_obj.p_outp_rep_array               = output_report_array;
+    hids_init_obj.feature_rep_count              = 0;
+    hids_init_obj.p_feature_rep_array            = NULL;
+    hids_init_obj.rep_map.data_len               = sizeof(report_map_data);
+    hids_init_obj.rep_map.p_data                 = report_map_data;
+    hids_init_obj.hid_information.bcd_hid        = BASE_USB_HID_SPEC_VERSION;
+    hids_init_obj.hid_information.b_country_code = 0;
+    hids_init_obj.hid_information.flags          = hid_info_flags;
+    hids_init_obj.included_services_count        = 0;
+    hids_init_obj.p_included_services_array      = NULL;
+
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.rep_map.security_mode.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&hids_init_obj.rep_map.security_mode.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.hid_information.security_mode.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&hids_init_obj.hid_information.security_mode.write_perm);
+
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(
+        &hids_init_obj.security_mode_boot_kb_inp_rep.cccd_write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_boot_kb_inp_rep.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&hids_init_obj.security_mode_boot_kb_inp_rep.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_boot_kb_outp_rep.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_boot_kb_outp_rep.write_perm);
+
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_protocol.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_protocol.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&hids_init_obj.security_mode_ctrl_point.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_ctrl_point.write_perm);
+
+    err_code = ble_hids_init(&m_hids, &hids_init_obj);
+    APP_ERROR_CHECK(err_code);
+}
+#endif
+
 static void conn_params_init() {
     uint32_t               err_code;
     ble_conn_params_init_t cp_init;
@@ -551,12 +767,20 @@ static void conn_params_init() {
 static void services_init() {
     uint32_t       err_code;
 
-    ble_nus_init_t nus_init;
-    memset(&nus_init, 0, sizeof(nus_init));
-    nus_init.data_handler = nus_data_handler;
-    err_code = ble_nus_init(&m_nus, &nus_init);
-    APP_ERROR_CHECK(err_code);
-    bleStatus |= BLE_NUS_INITED;
+    if (bleStatus & BLE_USING_NUS) {
+      ble_nus_init_t nus_init;
+      memset(&nus_init, 0, sizeof(nus_init));
+      nus_init.data_handler = nus_data_handler;
+      err_code = ble_nus_init(&m_nus, &nus_init);
+      APP_ERROR_CHECK(err_code);
+      bleStatus |= BLE_NUS_INITED;
+    }
+#if BLE_HIDS_ENABLED
+    if (bleStatus & BLE_USING_HID) {
+      hids_init();
+      bleStatus |= BLE_HID_INITED;
+    }
+#endif
 }
 
 /// Function for the SoftDevice initialization.
@@ -627,9 +851,23 @@ static void advertising_init() {
     // Build advertising data struct to pass into @ref ble_advertising_init.
     jsble_setup_advdata(&advdata);
 
+    static ble_uuid_t adv_uuids[2]; // FIXME - more?
+    int adv_uuid_count = 0;
+    if (bleStatus & BLE_USING_HID) {
+      adv_uuids[adv_uuid_count].uuid = BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE;
+      adv_uuids[adv_uuid_count].type = BLE_UUID_TYPE_BLE;
+      adv_uuid_count++;
+    }
+    if (bleStatus & BLE_USING_NUS) {
+      adv_uuids[adv_uuid_count].uuid = BLE_UUID_NUS_SERVICE;
+      adv_uuids[adv_uuid_count].type = NUS_SERVICE_UUID_TYPE;
+      adv_uuid_count++;
+    }
+
+    jsiConsolePrintf("advertising_init 0x%x\n", bleStatus);
     memset(&scanrsp, 0, sizeof(scanrsp));
-    scanrsp.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-    scanrsp.uuids_complete.p_uuids  = m_adv_uuids;
+    scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
+    scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
 
     ble_adv_modes_config_t options = {0};
     options.ble_adv_fast_enabled  = true;
@@ -669,6 +907,7 @@ void jsble_advertising_stop() {
 
 /** Initialise the BLE stack */
  void jsble_init() {
+
    ble_stack_init();
 
    gap_params_init();
@@ -692,11 +931,10 @@ void jsble_advertising_stop() {
 void jsble_kill() {
   jswrap_nrf_bluetooth_sleep();
 
-  if (bleStatus & BLE_NUS_INITED) {
-    // ble_nus_kill(&m_nus);
-    // BLE nus doesn't need deinitialising
-    bleStatus &= ~BLE_NUS_INITED;
-  }
+  // BLE NUS doesn't need deinitialising (no ble_nus_kill)
+  bleStatus &= ~BLE_NUS_INITED;
+  // BLE HID doesn't need deinitialising (no ble_hids_kill)
+  bleStatus &= ~BLE_HID_INITED;
 
   uint32_t err_code;
 
@@ -716,16 +954,15 @@ void jsble_reset() {
        sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     }
   #endif
-    // make sure we remove any existing services
-    jswrap_nrf_bluetooth_setServices(0);
+    // make sure we remove any existing services *AND* HID/UART changes
+    jswrap_nrf_bluetooth_setServices(0, 0);
 }
 
-/** We don't have a connection any more, and we must update services. We'll
-need to stop and restart the softdevice! */
-void jsble_update_services() {
+/** Stop and restart the softdevice so that we can update the services in it -
+ * both user-defined as well as UART/HID */
+void jsble_restart_softdevice() {
   assert(!jsble_has_connection());
-  assert (bleStatus & BLE_NEEDS_SETSERVICES);
-  bleStatus &= ~(BLE_NEEDS_SETSERVICES | BLE_SERVICES_WERE_SET);
+  bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
 
   // if we were scanning, make sure we stop
   if (bleStatus & BLE_IS_SCANNING) {
@@ -736,7 +973,7 @@ void jsble_update_services() {
   jsble_init();
   // If we had services set, update them
   JsVar *services = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
-  if (services) jswrap_nrf_bluetooth_setServices(services);
+  if (services) jsble_set_services(services);
   jsvUnLock(services);
 
   // TODO: re-initialise advertising data
@@ -767,5 +1004,201 @@ uint32_t jsble_set_scanning(bool enabled) {
      bleStatus &= ~BLE_IS_SCANNING;
      err_code = sd_ble_gap_scan_stop();
    }
+  return err_code;
+}
+
+/** Actually set the services defined in the 'data' object. Note: we can
+ * only do this *once* - so to change it we must reset the softdevice and
+ * then call this again */
+void jsble_set_services(JsVar *data) {
+  uint32_t err_code;
+
+  if (jsvIsObject(data)) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, data);
+    while (jsvObjectIteratorHasValue(&it)) {
+      ble_uuid_t ble_uuid;
+      uint16_t service_handle;
+
+      // Add the service
+      const char *errorStr;
+      if ((errorStr=bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetKey(&it)))) {
+        jsExceptionHere(JSET_ERROR, "Invalid Service UUID: %s", errorStr);
+        break;
+      }
+
+      // Ok, now we're setting up servcies
+      bleStatus |= BLE_SERVICES_WERE_SET;
+      err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY,
+                                              &ble_uuid,
+                                              &service_handle);
+      if (err_code) {
+        jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_service_add", err_code);
+        break;
+      }
+
+
+      // Now add characteristics
+      JsVar *serviceVar = jsvObjectIteratorGetValue(&it);
+      JsvObjectIterator serviceit;
+      jsvObjectIteratorNew(&serviceit, serviceVar);
+      while (jsvObjectIteratorHasValue(&serviceit)) {
+        ble_uuid_t          char_uuid;
+        ble_gatts_char_md_t char_md;
+        ble_gatts_attr_t    attr_char_value;
+        ble_gatts_attr_md_t attr_md;
+        ble_gatts_char_handles_t  characteristic_handles;
+
+        if ((errorStr=bleVarToUUIDAndUnLock(&char_uuid, jsvObjectIteratorGetKey(&serviceit)))) {
+          jsExceptionHere(JSET_ERROR, "Invalid Characteristic UUID: %s", errorStr);
+          break;
+        }
+        JsVar *charVar = jsvObjectIteratorGetValue(&serviceit);
+
+        memset(&char_md, 0, sizeof(char_md));
+        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "broadcast", 0)))
+          char_md.char_props.broadcast = 1;
+        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0)))
+          char_md.char_props.notify = 1;
+        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "indicate", 0)))
+          char_md.char_props.indicate = 1;
+        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "readable", 0)))
+          char_md.char_props.read = 1;
+        if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "writable", 0))) {
+          char_md.char_props.write = 1;
+          char_md.char_props.write_wo_resp = 1;
+        }
+        char_md.p_char_user_desc         = NULL;
+        char_md.p_char_pf                = NULL;
+        char_md.p_user_desc_md           = NULL;
+        char_md.p_cccd_md                = NULL;
+        char_md.p_sccd_md                = NULL;
+
+        memset(&attr_md, 0, sizeof(attr_md));
+        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+        attr_md.vloc       = BLE_GATTS_VLOC_STACK;
+        attr_md.rd_auth    = 0;
+        attr_md.wr_auth    = 0;
+        attr_md.vlen       = 1; // TODO: variable length?
+
+        memset(&attr_char_value, 0, sizeof(attr_char_value));
+        attr_char_value.p_uuid       = &char_uuid;
+        attr_char_value.p_attr_md    = &attr_md;
+        attr_char_value.init_len     = 0;
+        attr_char_value.init_offs    = 0;
+        attr_char_value.p_value      = 0;
+        attr_char_value.max_len      = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(charVar, "maxLen", 0));
+        if (attr_char_value.max_len==0) attr_char_value.max_len=1;
+
+        // get initial data
+        JsVar *charValue = jsvObjectGetChild(charVar, "value", 0);
+        if (charValue) {
+          JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, charValue);
+          if (vPtr && vLen) {
+            attr_char_value.p_value = (uint8_t*)vPtr;
+            attr_char_value.init_len = vLen;
+            if (attr_char_value.init_len > attr_char_value.max_len)
+              attr_char_value.max_len = attr_char_value.init_len;
+          }
+        }
+
+        err_code = sd_ble_gatts_characteristic_add(service_handle,
+                                                   &char_md,
+                                                   &attr_char_value,
+                                                   &characteristic_handles);
+        if (err_code) {
+          jsExceptionHere(JSET_ERROR, "Got BLE error code %d in gatts_characteristic_add", err_code);
+        }
+        jsvUnLock(charValue); // unlock here in case we were storing data in a flat string
+
+        // Add Write callback
+        JsVar *writeCb = jsvObjectGetChild(charVar, "onWrite", 0);
+        if (writeCb) {
+          char eventName[12];
+          bleGetWriteEventName(eventName, characteristic_handles.value_handle);
+          jsvObjectSetChildAndUnLock(execInfo.root, eventName, writeCb);
+        }
+
+        jsvUnLock(charVar);
+
+        jsvObjectIteratorNext(&serviceit);
+      }
+      jsvObjectIteratorFree(&serviceit);
+      jsvUnLock(serviceVar);
+
+      jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+  }
+}
+
+/**@brief   Function for transmitting a key scan Press & Release Notification.
+ *
+ * @warning This handler is an example only. You need to analyze how you wish to send the key
+ *          release.
+ *
+ * @param[in]  p_instance     Identifies the service for which Key Notifications are requested.
+ * @param[in]  p_key_pattern  Pointer to key pattern.
+ * @param[in]  pattern_len    Length of key pattern. 0 < pattern_len < 7.
+ * @param[in]  pattern_offset Offset applied to Key Pattern for transmission.
+ * @param[out] actual_len     Provides actual length of Key Pattern transmitted, making buffering of
+ *                            rest possible if needed.
+ * @return     NRF_SUCCESS on success, BLE_ERROR_NO_TX_PACKETS in case transmission could not be
+ *             completed due to lack of transmission buffer or other error codes indicating reason
+ *             for failure.
+ *
+ * @note       In case of BLE_ERROR_NO_TX_PACKETS, remaining pattern that could not be transmitted
+ *             can be enqueued \ref buffer_enqueue function.
+ *             In case a pattern of 'cofFEe' is the p_key_pattern, with pattern_len as 6 and
+ *             pattern_offset as 0, the notifications as observed on the peer side would be
+ *             1>    'c', 'o', 'f', 'F', 'E', 'e'
+ *             2>    -  , 'o', 'f', 'F', 'E', 'e'
+ *             3>    -  ,   -, 'f', 'F', 'E', 'e'
+ *             4>    -  ,   -,   -, 'F', 'E', 'e'
+ *             5>    -  ,   -,   -,   -, 'E', 'e'
+ *             6>    -  ,   -,   -,   -,   -, 'e'
+ *             7>    -  ,   -,   -,   -,   -,  -
+ *             Here, '-' refers to release, 'c' refers to the key character being transmitted.
+ *             Therefore 7 notifications will be sent.
+ *             In case an offset of 4 was provided, the pattern notifications sent will be from 5-7
+ *             will be transmitted.
+ */
+uint32_t send_key_scan_press_release(uint8_t    * p_key_pattern, uint16_t     pattern_len) {
+  if (!(bleStatus & BLE_HID_INITED)) {
+    jsExceptionHere(JSET_ERROR, "BLE HID not enabled");
+    return 0;
+  }
+  uint32_t err_code;
+  uint16_t data_len;
+  uint8_t  data[INPUT_REPORT_KEYS_MAX_LEN];
+
+  // HID Report Descriptor enumerates an array of size 6, the pattern hence shall not be any
+  // longer than this.
+  STATIC_ASSERT((INPUT_REPORT_KEYS_MAX_LEN - 2) == 6);
+
+  ASSERT(pattern_len <= (INPUT_REPORT_KEYS_MAX_LEN - 2));
+
+  data_len = pattern_len;
+
+  // Reset the data buffer.
+  memset(data, 0, sizeof(data));
+
+  // Copy the scan code.
+  memcpy(data + SCAN_CODE_POS, p_key_pattern, data_len);
+
+  //data[MODIFIER_KEY_POS] |= SHIFT_KEY_CODE;
+
+  if (!m_in_boot_mode) {
+      err_code = ble_hids_inp_rep_send(&m_hids,
+                                       INPUT_REPORT_KEYS_INDEX,
+                                       INPUT_REPORT_KEYS_MAX_LEN,
+                                       data);
+  } else {
+      err_code = ble_hids_boot_kb_inp_rep_send(&m_hids,
+                                               INPUT_REPORT_KEYS_MAX_LEN,
+                                               data);
+  }
+
   return err_code;
 }

@@ -19,7 +19,8 @@
             Added E.lockConsole() for use with E.setPassword()
             Calling jsvRemoveChild at end of array now updates the length (fix #946)
             Allow padding to be specified as 3rd argument of JSON.stringify
-	    JSON.stringify now dumps typed arrays as arrays (fix #489)
+            JSON.stringify now dumps typed arrays as arrays (fix #489)
+            nRF52: BLE HID support and switchable Nordic UART
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
