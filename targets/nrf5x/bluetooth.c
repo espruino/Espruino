@@ -1087,6 +1087,7 @@ void jsble_set_services(JsVar *data) {
   }
 }
 
+#if BLE_HIDS_ENABLED
 void jsble_send_hid_input_report(uint8_t *data, int length) {
   if (!(bleStatus & BLE_HID_INITED)) {
     jsExceptionHere(JSET_ERROR, "BLE HID not enabled");
@@ -1119,3 +1120,4 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
 
   return;
 }
+#endif

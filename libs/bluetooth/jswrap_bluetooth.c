@@ -937,6 +937,7 @@ void jswrap_nrf_nfcURL(JsVar *url) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "sendHIDReport",
+    "#ifdef" : "NRF52",
     "generate" : "jswrap_nrf_sendHIDReport",
     "params" : [
       ["data","JsVar","Input report data as an array"],
@@ -946,6 +947,7 @@ void jswrap_nrf_nfcURL(JsVar *url) {
 Send a USB HID report. HID must first be enabled with `NRF.setServices({}, {hid: hid_report})`
 */
 void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
+#if BLE_HIDS_ENABLED
   JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, data)
   if (vPtr && vLen) {
     if (jsvIsFunction(callback))
@@ -954,6 +956,7 @@ void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
   } else {
     jsExceptionHere(JSET_ERROR, "Expecting array, got %t", data);
   }
+#endif
 }
 
 
