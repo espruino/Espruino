@@ -383,10 +383,14 @@ to either be updated (value only) or ignored.
 
 ```
 NRF.setServices(undefined, {
-  hid : true, // optional, default is false. Enable BLE HID support
+  hid : new Uint8Array(...), // optional, default is undefined. Enable BLE HID support
   uart : true, // optional, default is true. Enable BLE UART support
 });
 ```
+
+To enable BLE HID, you must set `hid` to an array which is the BLE report
+descriptor. The easiest way to do this is to use the `ble_hid_controls`
+or `ble_hid_keyboard` modules.
 
 */
 void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
@@ -395,35 +399,43 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
     return;
   }
 
-  bool use_hid = false;
+#if BLE_HIDS_ENABLED
+  JsVar *use_hid = 0;
+#endif
   bool use_uart = true;
 
   jsvConfigObject configs[] = {
-      {"hid", JSV_BOOLEAN, &use_hid},
+#if BLE_HIDS_ENABLED
+      {"hid", JSV_ARRAY, &use_hid},
+#endif
       {"uart", JSV_BOOLEAN, &use_uart}
   };
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
     return;
   }
 
+#if BLE_HIDS_ENABLED
   // Handle turning on/off of HID
-  if (use_hid) {
-    if (!(bleStatus & BLE_HID_INITED))
-      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-    bleStatus |= BLE_USING_HID;
-  } else {
+  if (jsvIsIterable(use_hid)) {
+    jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_HID_DATA, use_hid);
+    bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+  } else if (!use_hid) {
+    jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_HID_DATA, 0);
     if (bleStatus & BLE_HID_INITED)
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-    bleStatus &= ~BLE_USING_HID;
+  } else {
+    jsExceptionHere(JSET_TYPEERROR, "'hid' must be undefined, or an array");
   }
+  jsvUnLock(use_hid);
+#endif
   if (use_uart) {
     if (!(bleStatus & BLE_NUS_INITED))
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-    bleStatus |= BLE_USING_NUS;
+    jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_NUS, 0);
   } else {
     if (bleStatus & BLE_NUS_INITED)
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-    bleStatus &= ~BLE_USING_NUS;
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_NUS, jsvNewFromBool(false));
   }
 
   // Save the current service data
@@ -927,60 +939,18 @@ void jswrap_nrf_nfcURL(JsVar *url) {
     "name" : "sendHIDReport",
     "generate" : "jswrap_nrf_sendHIDReport",
     "params" : [
-      ["data","JsVar","Input report data, see below"],
+      ["data","JsVar","Input report data as an array"],
       ["callback","JsVar","A callback function to be called when the data is sent"]
     ]
 }
-Send a USB HID report. HID must first be enabled with `NRF.setServices({}, {hid:true})`
-
-Data must be an array of the form:
-
-```
-[modifier, reserved, key1, key2, key3, key4, key5, key6 ]
-```
-
-You can easily look up keyboard key codes, but for example
-to send the 'a' key, send `[0,0,4,0,0,0,0,0]`. To release
-it, send `[0,0,4,0,0,0,0,0]`
-
-The modifiers are as follows:
-
-```
-1   : left control
-2   : left shift
-4   : left alt
-8   : left GUI
-16  : right control
-32  : right shift
-64  : right alt
-128 : right GUI
-```
-
-So to send capital `A`, send `[2,0,4,0,0,0,0,0]` followed by `[0,0,0,0,0,0,0,0]`.
-
-```
-NRF.sendHIDReport([2,0,4], function() {
-  NRF.sendHIDReport([0,0,0])
-})
-```
-
-You can find key codes at http://www.usb.org/developers/hidpage/Hut1_12v2.pdf
-under 'Keyboard/Keypad page', but for quick
-reference:
-
-* `a`...`z` are 4..26
-* `1`..`9` are 30..38
-* `0` is 39
-* Return is 40
-* Space is 44
-
+Send a USB HID report. HID must first be enabled with `NRF.setServices({}, {hid: hid_report})`
 */
 void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
   JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, data)
   if (vPtr && vLen) {
     if (jsvIsFunction(callback))
       jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, callback);
-    jsble_send_hid_input_report(vPtr, vLen);
+    jsble_send_hid_input_report((uint8_t*)vPtr, vLen);
   } else {
     jsExceptionHere(JSET_ERROR, "Expecting array, got %t", data);
   }

@@ -96,7 +96,7 @@ bool nfcEnabled = false;
 
 uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(375, UNIT_0_625_MS);           /**< The advertising interval (in units of 0.625 ms). */
 
-volatile BLEStatus bleStatus = BLE_USING_NUS;
+volatile BLEStatus bleStatus = 0;
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
@@ -236,7 +236,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
           bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
-          if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(EV_BLUETOOTH, false);
+          if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
+            jsiSetConsoleDevice(EV_BLUETOOTH, false);
           jshHadEvent();
         }
 #if CENTRAL_LINK_COUNT>0
@@ -615,8 +616,7 @@ uint32_t radio_notification_init(uint32_t irq_priority, uint8_t notification_typ
 }
 
 #if BLE_HIDS_ENABLED
-static void hids_init(void)
-{
+static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     uint32_t                   err_code;
     ble_hids_init_t            hids_init_obj;
     ble_hids_inp_rep_init_t    input_report_array[1];
@@ -627,52 +627,6 @@ static void hids_init(void)
 
     memset((void *)input_report_array, 0, sizeof(ble_hids_inp_rep_init_t));
     memset((void *)output_report_array, 0, sizeof(ble_hids_outp_rep_init_t));
-
-    static uint8_t report_map_data[] =  {
-        0x05, 0x01,       // Usage Page (Generic Desktop)
-        0x09, 0x06,       // Usage (Keyboard)
-        0xA1, 0x01,       // Collection (Application)
-        0x05, 0x07,       // Usage Page (Key Codes)
-        0x19, 0xe0,       // Usage Minimum (224)
-        0x29, 0xe7,       // Usage Maximum (231)
-        0x15, 0x00,       // Logical Minimum (0)
-        0x25, 0x01,       // Logical Maximum (1)
-        0x75, 0x01,       // Report Size (1)
-        0x95, 0x08,       // Report Count (8)
-        0x81, 0x02,       // Input (Data, Variable, Absolute)
-
-        0x95, 0x01,       // Report Count (1)
-        0x75, 0x08,       // Report Size (8)
-        0x81, 0x01,       // Input (Constant) reserved byte(1)
-
-        0x95, 0x05,       // Report Count (5)
-        0x75, 0x01,       // Report Size (1)
-        0x05, 0x08,       // Usage Page (Page# for LEDs)
-        0x19, 0x01,       // Usage Minimum (1)
-        0x29, 0x05,       // Usage Maximum (5)
-        0x91, 0x02,       // Output (Data, Variable, Absolute), Led report
-        0x95, 0x01,       // Report Count (1)
-        0x75, 0x03,       // Report Size (3)
-        0x91, 0x01,       // Output (Data, Variable, Absolute), Led report padding
-
-        0x95, 0x06,       // Report Count (6)
-        0x75, 0x08,       // Report Size (8)
-        0x15, 0x00,       // Logical Minimum (0)
-        0x25, 0x65,       // Logical Maximum (101)
-        0x05, 0x07,       // Usage Page (Key codes)
-        0x19, 0x00,       // Usage Minimum (0)
-        0x29, 0x65,       // Usage Maximum (101)
-        0x81, 0x00,       // Input (Data, Array) Key array(6 bytes)
-
-        0x09, 0x05,       // Usage (Vendor Defined)
-        0x15, 0x00,       // Logical Minimum (0)
-        0x26, 0xFF, 0x00, // Logical Maximum (255)
-        0x75, 0x08,       // Report Count (2)
-        0x95, 0x02,       // Report Size (8 bit)
-        0xB1, 0x02,       // Feature (Data, Variable, Absolute)
-
-        0xC0              // End Collection (Application)
-    };
 
     // Initialize HID Service
     p_input_report                      = &input_report_array[HID_INPUT_REPORT_KEYS_INDEX];
@@ -706,8 +660,8 @@ static void hids_init(void)
     hids_init_obj.p_outp_rep_array               = output_report_array;
     hids_init_obj.feature_rep_count              = 0;
     hids_init_obj.p_feature_rep_array            = NULL;
-    hids_init_obj.rep_map.data_len               = sizeof(report_map_data);
-    hids_init_obj.rep_map.p_data                 = report_map_data;
+    hids_init_obj.rep_map.data_len               = reportLen;
+    hids_init_obj.rep_map.p_data                 = reportPtr;
     hids_init_obj.hid_information.bcd_hid        = BASE_USB_HID_SPEC_VERSION;
     hids_init_obj.hid_information.b_country_code = 0;
     hids_init_obj.hid_information.flags          = hid_info_flags;
@@ -759,7 +713,8 @@ static void conn_params_init() {
 static void services_init() {
     uint32_t       err_code;
 
-    if (bleStatus & BLE_USING_NUS) {
+    JsVar *usingNus = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_NUS, 0);
+    if (!usingNus || jsvGetBool(usingNus)) { // default is on
       ble_nus_init_t nus_init;
       memset(&nus_init, 0, sizeof(nus_init));
       nus_init.data_handler = nus_data_handler;
@@ -767,11 +722,19 @@ static void services_init() {
       APP_ERROR_CHECK(err_code);
       bleStatus |= BLE_NUS_INITED;
     }
+    jsvUnLock(usingNus);
 #if BLE_HIDS_ENABLED
-    if (bleStatus & BLE_USING_HID) {
-      hids_init();
-      bleStatus |= BLE_HID_INITED;
+    JsVar *hidReport = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_HID_DATA, 0);
+    if (hidReport) {
+      JSV_GET_AS_CHAR_ARRAY(hidPtr, hidLen, hidReport);
+      if (hidPtr && hidLen) {
+        hids_init((uint8_t*)hidPtr, hidLen);
+        bleStatus |= BLE_HID_INITED;
+      } else {
+        jsiConsolePrintf("Not initialising HID - unable to get report descriptor\n");
+      }
     }
+    jsvUnLock(hidReport);
 #endif
 }
 
@@ -845,12 +808,12 @@ static void advertising_init() {
 
     static ble_uuid_t adv_uuids[2]; // FIXME - more?
     int adv_uuid_count = 0;
-    if (bleStatus & BLE_USING_HID) {
+    if (bleStatus & BLE_HID_INITED) {
       adv_uuids[adv_uuid_count].uuid = BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE;
       adv_uuids[adv_uuid_count].type = BLE_UUID_TYPE_BLE;
       adv_uuid_count++;
     }
-    if (bleStatus & BLE_USING_NUS) {
+    if (bleStatus & BLE_NUS_INITED) {
       adv_uuids[adv_uuid_count].uuid = BLE_UUID_NUS_SERVICE;
       adv_uuids[adv_uuid_count].type = NUS_SERVICE_UUID_TYPE;
       adv_uuid_count++;
@@ -1129,6 +1092,10 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
     jsExceptionHere(JSET_ERROR, "BLE HID not enabled");
     return;
   }
+  if (!(bleStatus & BLE_IS_SENDING_HID)) {
+     jsExceptionHere(JSET_ERROR, "BLE HID already sending");
+     return;
+   }
   if (length > HID_KEYS_MAX_LEN) {
     jsExceptionHere(JSET_ERROR, "BLE HID report too long - max length = %d\n", HID_KEYS_MAX_LEN);
     return;
@@ -1145,6 +1112,9 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
       err_code = ble_hids_boot_kb_inp_rep_send(&m_hids,
                                                length,
                                                data);
+  }
+  if (err_code) {
+    jsExceptionHere(JSET_ERROR, "BLE HID error code 0x%x\n", err_code);
   }
 
   return;

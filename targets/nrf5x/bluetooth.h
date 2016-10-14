@@ -33,11 +33,9 @@ typedef enum  {
   BLE_NEEDS_SOFTDEVICE_RESTART = 8,  // We need to reset the services we're reporting, but we can't because we're connected
   BLE_SERVICES_WERE_SET = 16, // setServices was called already, so we need to restart softdevice before we can call it again
 
-  BLE_USING_NUS = 32,         // Do we want to use the Nordic UART service?
-  BLE_NUS_INITED = 64,        // Has the Nordic UART service been initialised?
-  BLE_USING_HID = 128,        // Do we want to use the BLE HID service?
-  BLE_HID_INITED = 256,       // Has the BLE HID service been initialised?
-  BLE_IS_SENDING_HID = 512,   // Are we waiting to send data for USB HID?
+  BLE_NUS_INITED = 32,        // Has the Nordic UART service been initialised?
+  BLE_HID_INITED = 64,        // Has the BLE HID service been initialised?
+  BLE_IS_SENDING_HID = 128,   // Are we waiting to send data for USB HID?
 } BLEStatus;
 
 
