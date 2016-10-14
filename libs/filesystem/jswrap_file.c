@@ -440,6 +440,7 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
 Read data in a file in byte size chunks
 */
 JsVar *jswrap_file_read(JsVar* parent, int length) {
+  if (length<0) length=0;
   JsVar *buffer = 0;
   JsvStringIterator it;
   FRESULT res = 0;
@@ -448,8 +449,19 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
       if(file.data.mode == FM_READ || file.data.mode == FM_READ_WRITE) {
-        char buf[32];
         size_t actual = 0;
+#ifndef LINUX
+        // if we're able to load this into a flat string, do it!
+        size_t len = f_size(&file.data.handle)-f_tell(&file.data.handle);
+        if (len>(size_t)length) len=(size_t)length;
+        buffer = jsvNewFlatStringOfLength(len);
+        if (buffer) {
+          res = f_read(&file.data.handle, jsvGetFlatStringPointer(buffer), len, &actual);
+          if (res) jsfsReportError("Unable to read file", res);
+          return buffer;
+        }
+#endif
+        char buf[32];
 
         while (bytesRead < (size_t)length) {
           size_t requested = (size_t)length - bytesRead;
