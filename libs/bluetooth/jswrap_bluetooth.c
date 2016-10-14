@@ -616,7 +616,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
     "name" : "setScan",
     "generate" : "jswrap_nrf_bluetooth_setScan",
     "params" : [
-      ["callback","JsVar","The callback to call with information about received, or undefined to stop"]
+      ["callback","JsVar","The callback to call with received advertising packets, or undefined to stop"]
     ]
 }
 
@@ -642,6 +642,44 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
   if (err_code)
     jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
 }
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setRSSIHandler",
+    "generate" : "jswrap_nrf_bluetooth_setRSSIHandler",
+    "params" : [
+      ["callback","JsVar","The callback to call with the RSSI value, or undefined to stop"]
+    ]
+}
+
+Start/stop listening for RSSI values on the currently active connection
+
+RSSI is the 'Received Signal Strength Indication' in dBm
+
+```
+// Start scanning
+NRF.setRSSIHandler(function(rssi) {
+  console.log(rssi);
+});
+// prints -85 (or similar)
+
+// Stop Scanning
+NRF.setRSSIHandler();
+```
+*/
+void jswrap_nrf_bluetooth_setRSSIHandler(JsVar *callback) {
+  // set the callback event variable
+  if (!jsvIsFunction(callback)) callback=0;
+  jsvObjectSetChild(execInfo.root, BLE_RSSI_EVENT, callback);
+  // either start or stop scanning
+  uint32_t err_code = jsble_set_rssi_scan(callback != 0);
+  if (err_code)
+    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+}
+
+
+
 
 /*JSON{
     "type" : "staticmethod",

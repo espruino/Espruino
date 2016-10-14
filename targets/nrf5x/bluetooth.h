@@ -36,6 +36,7 @@ typedef enum  {
   BLE_NUS_INITED = 32,        // Has the Nordic UART service been initialised?
   BLE_HID_INITED = 64,        // Has the BLE HID service been initialised?
   BLE_IS_SENDING_HID = 128,   // Are we waiting to send data for USB HID?
+  BLE_IS_RSSI_SCANNING = 256, // Are we scanning for RSSI values
 } BLEStatus;
 
 
@@ -70,7 +71,11 @@ bool jsble_has_central_connection();
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
 bool jsble_has_simple_connection();
 
+/// Scanning for advertisign packets
 uint32_t jsble_set_scanning(bool enabled);
+
+/// returning RSSI values for current connection
+uint32_t jsble_set_rssi_scan(bool enabled);
 
 /** Actually set the services defined in the 'data' object. Note: we can
  * only do this *once* - so to change it we must reset the softdevice and

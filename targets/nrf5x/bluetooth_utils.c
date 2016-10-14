@@ -16,6 +16,7 @@
 #include "jsvariterator.h"
 #include "jsinteractive.h"
 #include "jsparse.h"
+#include "jshardware.h"
 
 #include "app_error.h"
 
@@ -119,12 +120,13 @@ const char *bleVarToUUIDAndUnLock(ble_uuid_t *uuid, JsVar *v) {
   return r;
 }
 
-/// Queue an event on the 'NRF' object
+/// Queue an event on the 'NRF' object. Also calls jshHadEvent()
 void bleQueueEventAndUnLock(const char *name, JsVar *data) {
   //jsiConsolePrintf("[%s] %j\n", name, data);
   JsVar *nrf = jsvObjectGetChild(execInfo.root, "NRF", 0);
   if (jsvHasChildren(nrf)) {
     jsiQueueObjectCallbacks(nrf, name, &data, data?1:0);
+    jshHadEvent();
   }
   jsvUnLock2(nrf, data);
 }

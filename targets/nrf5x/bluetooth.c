@@ -15,6 +15,7 @@
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
 #include "jsdevices.h"
+#include "jshardware.h"
 #include "nrf5x_utils.h"
 #include "bluetooth.h"
 #include "bluetooth_utils.h"
@@ -97,12 +98,6 @@ bool nfcEnabled = false;
 uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(375, UNIT_0_625_MS);           /**< The advertising interval (in units of 0.625 ms). */
 
 volatile BLEStatus bleStatus = 0;
-
-// -----------------------------------------------------------------------------------
-// -----------------------------------------------------------------------------------
-
-/// Called when we have had an event that means we should execute JS
-extern void jshHadEvent();
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
@@ -234,6 +229,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_GAP_EVT_CONNECTED:
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+          if (bleStatus & BLE_IS_RSSI_SCANNING); // attempt to restart RSSI scan
+            sd_ble_gap_rssi_start(m_conn_handle, 0, 0);
           bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
           bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
@@ -244,7 +241,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", 0);
-          jshHadEvent();
         }
 #endif
         break;
@@ -254,10 +250,10 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", 0);
-          jshHadEvent();
         } else
 #endif
         {
+          bleStatus &= ~BLE_IS_RSSI_SCANNING; // scanning will have stopped now we're disconnected
           m_conn_handle = BLE_CONN_HANDLE_INVALID;
           if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, 0);
           // restart advertising after disconnection
@@ -281,6 +277,13 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         // or BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP to disable pairing
         APP_ERROR_CHECK(err_code);
       } break; // BLE_GAP_EVT_SEC_PARAMS_REQUEST
+
+      case BLE_GAP_EVT_RSSI_CHANGED: {
+        JsVar *evt = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
+        if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
+        jsvUnLock(evt);
+        jshHadEvent();
+      } break;
 
       case BLE_GATTS_EVT_SYS_ATTR_MISSING:
         // No system attributes have been stored.
@@ -344,6 +347,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           bleStatus &= ~BLE_IS_SENDING_HID;
           jsiQueueObjectCallbacks(execInfo.root, BLE_HID_SENT_EVENT, 0, 0);
           jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, 0); // fire only once
+          jshHadEvent();
         }
 
         break;
@@ -424,7 +428,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             // When done, sent the result to the handler
             bleQueueEventAndUnLock(JS_EVENT_PREFIX"servicesDiscover", srvcs);
             jsvObjectSetChild(execInfo.hiddenRoot, "bleSvcs", 0);
-            jshHadEvent();
           }
         } // else error
         break;
@@ -445,7 +448,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           }
         }
         bleQueueEventAndUnLock(JS_EVENT_PREFIX"characteristicsDiscover", chars);
-        jshHadEvent();
         break;
       }
       case BLE_GATTC_EVT_DESC_DISC_RSP:
@@ -902,6 +904,8 @@ void jsble_reset() {
     if (bleStatus & BLE_IS_SCANNING) {
       jswrap_nrf_bluetooth_setScan(0);
     }
+    jswrap_nrf_bluetooth_setRSSIHandler(0);
+
   #if CENTRAL_LINK_COUNT>0
     // if we were connected to something, disconnect
     if (jsble_has_central_connection()) {
@@ -957,6 +961,22 @@ uint32_t jsble_set_scanning(bool enabled) {
      if (!(bleStatus & BLE_IS_SCANNING)) return 0;
      bleStatus &= ~BLE_IS_SCANNING;
      err_code = sd_ble_gap_scan_stop();
+   }
+  return err_code;
+}
+
+uint32_t jsble_set_rssi_scan(bool enabled) {
+  uint32_t err_code = 0;
+  if (enabled) {
+     if (bleStatus & BLE_IS_RSSI_SCANNING) return 0;
+     bleStatus |= BLE_IS_RSSI_SCANNING;
+     if (jsble_has_simple_connection())
+       err_code = sd_ble_gap_rssi_start(m_conn_handle, 0, 0);
+   } else {
+     if (!(bleStatus & BLE_IS_RSSI_SCANNING)) return 0;
+     bleStatus &= ~BLE_IS_RSSI_SCANNING;
+     if (jsble_has_simple_connection())
+       err_code = sd_ble_gap_rssi_stop(m_conn_handle);
    }
   return err_code;
 }
