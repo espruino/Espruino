@@ -40,10 +40,10 @@ chip = {
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {
-    'address' : 0x78000,
+    'address' : 0x100000,
     'page_size' : 4096,
-    'pages' : 3,
-    'flash_available' : 468, # firmware can be up to this size
+    'pages' : 16,
+    'flash_available' : 960, # firmware can be up to this size
   },
 };
 devices = {

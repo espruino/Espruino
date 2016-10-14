@@ -1803,6 +1803,7 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/lwip/include/lwip/port \
 -I$(ESP_IDF_PATH)/components/lwip/include/lwip/posix \
 -I$(ESP_IDF_PATH)/components/newlib/include \
+-I$(ESP_IDF_PATH)/components/spi_flash/include \
 -I$(ESP_IDF_PATH)/components/nvs_flash/include \
 -I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
 -Itargets/esp32/include

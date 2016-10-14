@@ -37,8 +37,13 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
+#include "esp_spi_flash.h"
 #include "rom/uart.h"
 #include "driver/gpio.h"
+
+#define FLASH_MAX (4*1024*1024) //4MB
+#define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
+#define FLASH_PAGE (1<<FLASH_PAGE_SHIFT)  //4KB
 
 // The logging tag used for log messages issued by this file.
 static char *tag = "jshardware";
@@ -54,6 +59,7 @@ void jshInit() {
   uint32_t freeHeapSize = system_get_free_heap_size();
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
   esp32_wifi_init();
+  spi_flash_init();
   ESP_LOGD(tag,"<< jshInit");
 } // End of jshInit
 
@@ -613,9 +619,7 @@ unsigned int jshGetRandomNumber() {
  */
 uint32_t jshFlashMax() {
   ESP_LOGD(tag,">> jshFlashMax");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshFlashMax");
-  return 0;
+  return (FLASH_MAX-1);
 }
 
 /**
@@ -631,7 +635,7 @@ void jshFlashRead(
     uint32_t len   //!< Length of data to read
   ) {
   ESP_LOGD(tag,">> jshFlashRead");
-  ESP_LOGD(tag, "Not implemented");
+  spi_flash_read(addr, buf, len);
   ESP_LOGD(tag,"<< jshFlashRead");
 }
 
@@ -648,7 +652,7 @@ void jshFlashWrite(
     uint32_t len   //!< Length of data to write
   ) {
   ESP_LOGD(tag,">> jshFlashWrite");
-  ESP_LOGD(tag, "Not implemented");
+  spi_flash_write(addr, buf, len);
   ESP_LOGD(tag,"<< jshFlashWrite");
 }
 
@@ -663,8 +667,10 @@ bool jshFlashGetPage(
     uint32_t *pageSize   //!<
   ) {
   ESP_LOGD(tag,">> jshFlashGetPage: addr=0x%x", addr);
-  ESP_LOGD(tag,"<< jshFlashGetPage");
-  return false;
+  if (addr >= FLASH_MAX) return false;
+  *startAddr = addr & ~(FLASH_PAGE-1);
+  *pageSize = FLASH_PAGE;
+  return true; 
 }
 
 
@@ -684,7 +690,7 @@ void jshFlashErasePage(
     uint32_t addr //!<
   ) {
   ESP_LOGD(tag,">> jshFlashErasePage: addr=0x%x", addr);
-  ESP_LOGD(tag, "Not implemented");
+  spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);
   ESP_LOGD(tag,"<< jshFlashErasePage");
 }
 
