@@ -21,6 +21,9 @@
             Allow padding to be specified as 3rd argument of JSON.stringify
             JSON.stringify now dumps typed arrays as arrays (fix #489)
             nRF52: BLE HID support and switchable Nordic UART
+            Fix STM32 regression where pinMode was set when it shouldn't have been
+            Add Third option to pinMode to allow the pin mode to be set while keeping it 'unforced'
+            save and dump now keep track of whether pin mode had been forced or not
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
