@@ -10,23 +10,23 @@ http://www.espruino.com/Reference#Wifi
 This will expose a module called `Wifi` which will have the following static methods defined
 upon it:
 
-* `disconnect` 
-* `stopAP`
 * `connect` - Connect to an access point
-* `scan`
-* `startAP`
-* `getStatus`
-* `setConfig`
-* `getDetails`
+* `disconnect`
 * `getAPDetails`
-* `save`
-* `restore`
-* `getIP`
 * `getAPIP`
+* `getDetails`
 * `getHostByName`
 * `getHostname`
-* `setHostname`
+* `getIP` 
+* `getStatus`
 * `ping`
+* `restore`
+* `save`
+* `scan`
+* `setConfig`
+* `setHostname`
+* `startAP`
+* `stopAP`
 
 # Implementation status
 
