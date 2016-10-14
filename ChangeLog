@@ -23,7 +23,8 @@
             nRF52: BLE HID support and switchable Nordic UART
             Fix STM32 regression where pinMode was set when it shouldn't have been
             Add Third option to pinMode to allow the pin mode to be set while keeping it 'unforced'
-            save and dump now keep track of whether pin mode had been forced or not
+            Save and dump now keep track of whether pin mode had been forced or not
+            readFile (and File.read) now uses Flat Strings to allow more memory efficient reads (fix #932)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types

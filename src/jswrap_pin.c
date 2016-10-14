@@ -164,7 +164,7 @@ JsVar *jswrap_pin_getMode(JsVar *parent) {
 Set the mode of the given pin. See [`pinMode`](#l__global_pinMode) for more information on pin modes.
  */
 void jswrap_pin_mode(JsVar *parent, JsVar *mode) {
-  jswrap_io_pinMode(jshGetPinFromVar(parent), mode);  
+  jswrap_io_pinMode(jshGetPinFromVar(parent), mode, false);
 }
 
 /*JSON{
