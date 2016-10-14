@@ -17,6 +17,7 @@
 
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 #define BLE_WRITE_EVENT                 JS_EVENT_PREFIX"blew"
+#define BLE_HID_SENT_EVENT              JS_EVENT_PREFIX"blehid"
 /// Names for objects that get defined in the 'hidden root'
 #define BLE_NAME_SERVICE_DATA           "BLE_SVC_D"
 
