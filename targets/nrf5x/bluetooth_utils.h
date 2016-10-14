@@ -20,6 +20,8 @@
 #define BLE_HID_SENT_EVENT              JS_EVENT_PREFIX"blehid"
 /// Names for objects that get defined in the 'hidden root'
 #define BLE_NAME_SERVICE_DATA           "BLE_SVC_D"
+#define BLE_NAME_HID_DATA               "BLE_HID_D"
+#define BLE_NAME_NUS                    "BLE_UART"
 
 // BLE UUID to string
 JsVar *bleUUIDToStr(ble_uuid_t uuid);
