@@ -1092,7 +1092,7 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
     jsExceptionHere(JSET_ERROR, "BLE HID not enabled");
     return;
   }
-  if (!(bleStatus & BLE_IS_SENDING_HID)) {
+  if (bleStatus & BLE_IS_SENDING_HID) {
      jsExceptionHere(JSET_ERROR, "BLE HID already sending");
      return;
    }
