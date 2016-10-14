@@ -25,6 +25,7 @@
             Add Third option to pinMode to allow the pin mode to be set while keeping it 'unforced'
             Save and dump now keep track of whether pin mode had been forced or not
             readFile (and File.read) now uses Flat Strings to allow more memory efficient reads (fix #932)
+            nRF5x: Add ability to get RSSI of current connection (fix #928)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types

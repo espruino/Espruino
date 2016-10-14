@@ -18,6 +18,7 @@
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 #define BLE_WRITE_EVENT                 JS_EVENT_PREFIX"blew"
 #define BLE_HID_SENT_EVENT              JS_EVENT_PREFIX"blehid"
+#define BLE_RSSI_EVENT                  JS_EVENT_PREFIX"blerssi"
 /// Names for objects that get defined in the 'hidden root'
 #define BLE_NAME_SERVICE_DATA           "BLE_SVC_D"
 #define BLE_NAME_HID_DATA               "BLE_HID_D"
@@ -40,7 +41,7 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v);
 /// Same as bleVarToUUID, but unlocks v
 const char *bleVarToUUIDAndUnLock(ble_uuid_t *uuid, JsVar *v);
 
-/// Queue an event on the 'NRF' object
+/// Queue an event on the 'NRF' object. Also calls jshHadEvent()
 void bleQueueEventAndUnLock(const char *name, JsVar *data);
 
 /// Get the correct event name for a BLE write event to a characteristic (eventName should be max 12 chars long)
