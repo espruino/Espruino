@@ -1394,6 +1394,11 @@ ifeq ($(FAMILY), NRF52)
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
   endif
+
+	# BLE HID Support (only NRF52)
+	INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
+	TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
+
 endif #FAMILY == NRF52
 
 
