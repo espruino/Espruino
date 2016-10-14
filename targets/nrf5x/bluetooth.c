@@ -65,18 +65,13 @@
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 
-#define OUTPUT_REPORT_INDEX              0                                           /**< Index of Output Report. */
-#define OUTPUT_REPORT_MAX_LEN            1                                           /**< Maximum length of Output Report. */
-#define INPUT_REPORT_KEYS_INDEX          0                                           /**< Index of Input Report. */
-#define OUTPUT_REPORT_BIT_MASK_CAPS_LOCK 0x02                                        /**< CAPS LOCK bit in Output Report (based on 'LED Page (0x08)' of the Universal Serial Bus HID Usage Tables). */
-#define INPUT_REP_REF_ID                 0                                           /**< Id of reference to Keyboard Input Report. */
-#define OUTPUT_REP_REF_ID                0                                           /**< Id of reference to Keyboard Output Report. */
-#define INPUT_REPORT_KEYS_MAX_LEN        8                                           /**< Maximum length of the Input Report characteristic. */
+// BLE HID stuff
 #define BASE_USB_HID_SPEC_VERSION        0x0101                                      /**< Version number of base USB HID Specification implemented by this application. */
-#define MODIFIER_KEY_POS                 0                                           /**< Position of the modifier byte in the Input Report. */
-#define SCAN_CODE_POS                    2                                           /**< This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code. */
-#define SHIFT_KEY_CODE                   0x02                                        /**< Key code indicating the press of the Shift Key. */
-
+#define HID_OUTPUT_REPORT_INDEX              0                                           /**< Index of Output Report. */
+#define HID_OUTPUT_REPORT_MAX_LEN            1                                           /**< Maximum length of Output Report. */
+#define HID_INPUT_REPORT_KEYS_INDEX          0                                           /**< Index of Input Report. */
+#define HID_INPUT_REP_REF_ID                 0                                           /**< Id of reference to Keyboard Input Report. */
+#define HID_OUTPUT_REP_REF_ID                0                                           /**< Id of reference to Keyboard Output Report. */
 
 #define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2        /**< Reply when unsupported features are requested. */
 
@@ -344,6 +339,12 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_EVT_TX_COMPLETE:
         // UART Transmit finished - we can try and send more data
         bleStatus &= ~BLE_IS_SENDING;
+        if (bleStatus & BLE_IS_SENDING_HID) {
+          bleStatus &= ~BLE_IS_SENDING_HID;
+          jsiQueueObjectCallbacks(execInfo.root, BLE_HID_SENT_EVENT, 0, 0);
+          jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, 0); // fire only once
+        }
+
         break;
 
       case BLE_GAP_EVT_ADV_REPORT: {
@@ -501,27 +502,19 @@ static void on_hid_rep_char_write(ble_hids_evt_t * p_evt) {
         uint8_t  report_val;
         uint8_t  report_index = p_evt->params.char_write.char_id.rep_index;
 
-        if (report_index == OUTPUT_REPORT_INDEX) {
+        if (report_index == HID_OUTPUT_REPORT_INDEX) {
             // This code assumes that the outptu report is one byte long. Hence the following
             // static assert is made.
-            STATIC_ASSERT(OUTPUT_REPORT_MAX_LEN == 1);
+            STATIC_ASSERT(HID_OUTPUT_REPORT_MAX_LEN == 1);
 
             err_code = ble_hids_outp_rep_get(&m_hids,
                                              report_index,
-                                             OUTPUT_REPORT_MAX_LEN,
+                                             HID_OUTPUT_REPORT_MAX_LEN,
                                              0,
                                              &report_val);
             APP_ERROR_CHECK(err_code);
-
-            if ((report_val & OUTPUT_REPORT_BIT_MASK_CAPS_LOCK) != 0) {
-              // Caps Lock is turned On.
-              jsiConsolePrintf("Caps Lock is turned On!\n");
-            } else if ((report_val & OUTPUT_REPORT_BIT_MASK_CAPS_LOCK) == 0) {
-                // Caps Lock is turned Off .
-              jsiConsolePrintf("Caps Lock is turned Off!\n");
-            } else {
-                // The report received is not supported by this application. Do nothing.
-            }
+            // (report_val & 2) is caps lock
+            // FIXME: Create an event for each HID output report
         }
     }
 }
@@ -635,8 +628,7 @@ static void hids_init(void)
     memset((void *)input_report_array, 0, sizeof(ble_hids_inp_rep_init_t));
     memset((void *)output_report_array, 0, sizeof(ble_hids_outp_rep_init_t));
 
-    static uint8_t report_map_data[] =
-    {
+    static uint8_t report_map_data[] =  {
         0x05, 0x01,       // Usage Page (Generic Desktop)
         0x09, 0x06,       // Usage (Keyboard)
         0xA1, 0x01,       // Collection (Application)
@@ -683,18 +675,18 @@ static void hids_init(void)
     };
 
     // Initialize HID Service
-    p_input_report                      = &input_report_array[INPUT_REPORT_KEYS_INDEX];
-    p_input_report->max_len             = INPUT_REPORT_KEYS_MAX_LEN;
-    p_input_report->rep_ref.report_id   = INPUT_REP_REF_ID;
+    p_input_report                      = &input_report_array[HID_INPUT_REPORT_KEYS_INDEX];
+    p_input_report->max_len             = HID_KEYS_MAX_LEN;
+    p_input_report->rep_ref.report_id   = HID_INPUT_REP_REF_ID;
     p_input_report->rep_ref.report_type = BLE_HIDS_REP_TYPE_INPUT;
 
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.cccd_write_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.write_perm);
 
-    p_output_report                      = &output_report_array[OUTPUT_REPORT_INDEX];
-    p_output_report->max_len             = OUTPUT_REPORT_MAX_LEN;
-    p_output_report->rep_ref.report_id   = OUTPUT_REP_REF_ID;
+    p_output_report                      = &output_report_array[HID_OUTPUT_REPORT_INDEX];
+    p_output_report->max_len             = HID_OUTPUT_REPORT_MAX_LEN;
+    p_output_report->rep_ref.report_id   = HID_OUTPUT_REP_REF_ID;
     p_output_report->rep_ref.report_type = BLE_HIDS_REP_TYPE_OUTPUT;
 
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_output_report->security_mode.read_perm);
@@ -864,7 +856,6 @@ static void advertising_init() {
       adv_uuid_count++;
     }
 
-    jsiConsolePrintf("advertising_init 0x%x\n", bleStatus);
     memset(&scanrsp, 0, sizeof(scanrsp));
     scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
     scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
@@ -1133,72 +1124,28 @@ void jsble_set_services(JsVar *data) {
   }
 }
 
-/**@brief   Function for transmitting a key scan Press & Release Notification.
- *
- * @warning This handler is an example only. You need to analyze how you wish to send the key
- *          release.
- *
- * @param[in]  p_instance     Identifies the service for which Key Notifications are requested.
- * @param[in]  p_key_pattern  Pointer to key pattern.
- * @param[in]  pattern_len    Length of key pattern. 0 < pattern_len < 7.
- * @param[in]  pattern_offset Offset applied to Key Pattern for transmission.
- * @param[out] actual_len     Provides actual length of Key Pattern transmitted, making buffering of
- *                            rest possible if needed.
- * @return     NRF_SUCCESS on success, BLE_ERROR_NO_TX_PACKETS in case transmission could not be
- *             completed due to lack of transmission buffer or other error codes indicating reason
- *             for failure.
- *
- * @note       In case of BLE_ERROR_NO_TX_PACKETS, remaining pattern that could not be transmitted
- *             can be enqueued \ref buffer_enqueue function.
- *             In case a pattern of 'cofFEe' is the p_key_pattern, with pattern_len as 6 and
- *             pattern_offset as 0, the notifications as observed on the peer side would be
- *             1>    'c', 'o', 'f', 'F', 'E', 'e'
- *             2>    -  , 'o', 'f', 'F', 'E', 'e'
- *             3>    -  ,   -, 'f', 'F', 'E', 'e'
- *             4>    -  ,   -,   -, 'F', 'E', 'e'
- *             5>    -  ,   -,   -,   -, 'E', 'e'
- *             6>    -  ,   -,   -,   -,   -, 'e'
- *             7>    -  ,   -,   -,   -,   -,  -
- *             Here, '-' refers to release, 'c' refers to the key character being transmitted.
- *             Therefore 7 notifications will be sent.
- *             In case an offset of 4 was provided, the pattern notifications sent will be from 5-7
- *             will be transmitted.
- */
-uint32_t send_key_scan_press_release(uint8_t    * p_key_pattern, uint16_t     pattern_len) {
+void jsble_send_hid_input_report(uint8_t *data, int length) {
   if (!(bleStatus & BLE_HID_INITED)) {
     jsExceptionHere(JSET_ERROR, "BLE HID not enabled");
-    return 0;
+    return;
   }
+  if (length > HID_KEYS_MAX_LEN) {
+    jsExceptionHere(JSET_ERROR, "BLE HID report too long - max length = %d\n", HID_KEYS_MAX_LEN);
+    return;
+  }
+
+  bleStatus |= BLE_IS_SENDING_HID;
   uint32_t err_code;
-  uint16_t data_len;
-  uint8_t  data[INPUT_REPORT_KEYS_MAX_LEN];
-
-  // HID Report Descriptor enumerates an array of size 6, the pattern hence shall not be any
-  // longer than this.
-  STATIC_ASSERT((INPUT_REPORT_KEYS_MAX_LEN - 2) == 6);
-
-  ASSERT(pattern_len <= (INPUT_REPORT_KEYS_MAX_LEN - 2));
-
-  data_len = pattern_len;
-
-  // Reset the data buffer.
-  memset(data, 0, sizeof(data));
-
-  // Copy the scan code.
-  memcpy(data + SCAN_CODE_POS, p_key_pattern, data_len);
-
-  //data[MODIFIER_KEY_POS] |= SHIFT_KEY_CODE;
-
   if (!m_in_boot_mode) {
       err_code = ble_hids_inp_rep_send(&m_hids,
-                                       INPUT_REPORT_KEYS_INDEX,
-                                       INPUT_REPORT_KEYS_MAX_LEN,
+                                       HID_INPUT_REPORT_KEYS_INDEX,
+                                       length,
                                        data);
   } else {
       err_code = ble_hids_boot_kb_inp_rep_send(&m_hids,
-                                               INPUT_REPORT_KEYS_MAX_LEN,
+                                               length,
                                                data);
   }
 
-  return err_code;
+  return;
 }

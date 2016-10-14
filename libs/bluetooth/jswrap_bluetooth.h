@@ -31,7 +31,7 @@ void jswrap_nrf_bleservice_discoverCharacteristics(JsVar *service);
 void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data);
 
 void jswrap_nrf_nfcURL(JsVar *url);
-void jswrap_nrf_hid(int key);
+void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback);
 
 bool jswrap_nrf_idle();
 void jswrap_nrf_kill();

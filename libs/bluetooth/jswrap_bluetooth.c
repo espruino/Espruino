@@ -924,23 +924,66 @@ void jswrap_nrf_nfcURL(JsVar *url) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
-    "name" : "hid",
-    "generate" : "jswrap_nrf_hid",
+    "name" : "sendHIDReport",
+    "generate" : "jswrap_nrf_sendHIDReport",
     "params" : [
-      ["url","int","The URL string to expose on NFC, or `undefined` to disable NFC"]
+      ["data","JsVar","Input report data, see below"],
+      ["callback","JsVar","A callback function to be called when the data is sent"]
     ]
 }
-Enables NFC and starts advertising the given URL. For example:
+Send a USB HID report. HID must first be enabled with `NRF.setServices({}, {hid:true})`
+
+Data must be an array of the form:
 
 ```
-NRF.nrfURL("http://espruino.com");
+[modifier, reserved, key1, key2, key3, key4, key5, key6 ]
 ```
 
-**Note:** This is only available on nRF52-based devices
+You can easily look up keyboard key codes, but for example
+to send the 'a' key, send `[0,0,4,0,0,0,0,0]`. To release
+it, send `[0,0,4,0,0,0,0,0]`
+
+The modifiers are as follows:
+
+```
+1   : left control
+2   : left shift
+4   : left alt
+8   : left GUI
+16  : right control
+32  : right shift
+64  : right alt
+128 : right GUI
+```
+
+So to send capital `A`, send `[2,0,4,0,0,0,0,0]` followed by `[0,0,0,0,0,0,0,0]`.
+
+```
+NRF.sendHIDReport([2,0,4], function() {
+  NRF.sendHIDReport([0,0,0])
+})
+```
+
+You can find key codes at http://www.usb.org/developers/hidpage/Hut1_12v2.pdf
+under 'Keyboard/Keypad page', but for quick
+reference:
+
+* `a`...`z` are 4..26
+* `1`..`9` are 30..38
+* `0` is 39
+* Return is 40
+* Space is 44
+
 */
-void jswrap_nrf_hid(int key) {
-  uint8_t k = key;
-  send_key_scan_press_release(&k, 1);
+void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
+  JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, data)
+  if (vPtr && vLen) {
+    if (jsvIsFunction(callback))
+      jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, callback);
+    jsble_send_hid_input_report(vPtr, vLen);
+  } else {
+    jsExceptionHere(JSET_ERROR, "Expecting array, got %t", data);
+  }
 }
 
 

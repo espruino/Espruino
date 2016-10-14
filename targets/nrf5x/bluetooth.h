@@ -18,6 +18,12 @@
 #define APP_TIMER_OP_QUEUE_SIZE         1                                           /**< Size of timer operation queues. */
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 
+// BLE HID stuff
+#define HID_KEYS_MAX_LEN                     8                                       /**< Maximum length of the Input Report characteristic. */
+#define HID_MODIFIER_KEY_POS                 0                                       /**< Position of the modifier byte in the Input Report. */
+#define HID_SCAN_CODE_POS                    2                                       /**< This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code. */
+
+
 
 typedef enum  {
   BLE_NONE = 0,
@@ -29,8 +35,9 @@ typedef enum  {
 
   BLE_USING_NUS = 32,         // Do we want to use the Nordic UART service?
   BLE_NUS_INITED = 64,        // Has the Nordic UART service been initialised?
-  BLE_USING_HID = 128,
-  BLE_HID_INITED = 256
+  BLE_USING_HID = 128,        // Do we want to use the BLE HID service?
+  BLE_HID_INITED = 256,       // Has the BLE HID service been initialised?
+  BLE_IS_SENDING_HID = 512,   // Are we waiting to send data for USB HID?
 } BLEStatus;
 
 
@@ -72,8 +79,8 @@ uint32_t jsble_set_scanning(bool enabled);
  * then call this again */
 void jsble_set_services(JsVar *data);
 
-uint32_t send_key_scan_press_release(uint8_t    * p_key_pattern,
-                                     uint16_t     pattern_len);
+/// For BLE HID, send an input report to the receiver. Must be <= HID_KEYS_MAX_LEN
+void jsble_send_hid_input_report(uint8_t *data, int length);
 
 // ------------------------------------------------- lower-level utility fns
 
