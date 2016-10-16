@@ -110,7 +110,8 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
   ESP_LOGD(tag,">> jshGetSerialNumber");
   assert(maxChars >= 6); // it's 32
   esp_wifi_get_mac(WIFI_IF_STA, data);
-  ESP_LOGD(tag,"<< jshGetSerialNumber");
+  ESP_LOGD(tag,"<< jshGetSerialNumber %.2x%.2x%.2x%.2x%.2x%.2x",
+      data[0], data[1], data[2], data[3], data[4], data[5]);
   return 6;
 }
 
@@ -634,9 +635,11 @@ void jshFlashRead(
     uint32_t addr, //!< Flash address to read from
     uint32_t len   //!< Length of data to read
   ) {
-  ESP_LOGD(tag,">> jshFlashRead");
+  // This function is called too often during save() and load() processing to be
+  // useful for logging the entry/exit.
+  //ESP_LOGD(tag,">> jshFlashRead");
   spi_flash_read(addr, buf, len);
-  ESP_LOGD(tag,"<< jshFlashRead");
+  //ESP_LOGD(tag,"<< jshFlashRead");
 }
 
 
@@ -651,9 +654,11 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-  ESP_LOGD(tag,">> jshFlashWrite");
+  // This function is called too often during save() and load() processing to be
+  // useful for logging the entry/exit.
+  //ESP_LOGD(tag,">> jshFlashWrite");
   spi_flash_write(addr, buf, len);
-  ESP_LOGD(tag,"<< jshFlashWrite");
+  //ESP_LOGD(tag,"<< jshFlashWrite");
 }
 
 

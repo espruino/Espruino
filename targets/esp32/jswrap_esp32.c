@@ -29,8 +29,26 @@ static char *tag = "jswrap_esp32";
  ]
 }*/
 void jswrap_ESP32_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
+  ESP_LOGD(tag, ">> jswrap_ESP32_neopixelWrite");
+  ESP_LOGD(tag, "Not yet implemented");
+  ESP_LOGD(tag, "<< jswrap_ESP32_neopixelWrite");
   return;
+} // End of jswrap_ESP32_neopixelWrite
+
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "name"     : "reboot",
+  "generate" : "jswrap_ESP32_reboot"
 }
+Perform a hardware reset/reboot of the ESP32.
+*/
+void jswrap_ESP32_reboot() {
+  ESP_LOGD(tag, ">> jswrap_ESP32_reboot");
+  system_restart(); // Call the ESP-IDF to restart the ESP32.
+  ESP_LOGD(tag, "<< jswrap_ESP32_reboot");
+} // End of jswrap_ESP32_reboot
 
 
 /*JSON{

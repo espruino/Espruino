@@ -2011,6 +2011,13 @@ flash:
 	0x10000 espruino_esp32.bin \
 	0x4000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
 
+erase_flash:
+	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
+	--chip esp32 \
+	--port "/dev/ttyUSB0" \
+	--baud 921600 \
+	erase_flash
+
 else ifdef ESP8266
 # Linking the esp8266... The Espruino source files get compiled into the .text section. The
 # Espressif SDK libraries have .text and .irom0 sections. We need to put the libraries' .text into

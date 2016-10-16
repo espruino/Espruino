@@ -22,5 +22,5 @@
 JsVar *jswrap_ESP32_getState();
 void   jswrap_ESP32_neopixelWrite(Pin pin, JsVar *jsArrayOfData);
 void   jswrap_ESP32_setLogLevel(JsVar *jsTagToSet, JsVar *jsLogLevel);
-
+void   jswrap_ESP32_reboot();
 #endif /* TARGETS_ESP32_JSWRAP_ESP32_H_ */
