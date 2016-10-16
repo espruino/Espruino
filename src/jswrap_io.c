@@ -377,7 +377,7 @@ void jswrap_io_pinMode(
     jshPinSetState(pin, m);
   } else {
     jshSetPinStateIsManual(pin, false);
-    if (!jsvIsUndefined(mode)) {
+    if (!jsvIsUndefined(mode)&&!jsvIsStringEqual("auto")) {
       jsExceptionHere(JSET_ERROR, "Unknown pin mode");
     }
   }
