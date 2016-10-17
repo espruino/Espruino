@@ -152,15 +152,23 @@ void jsiSetConsoleDevice(IOEventFlags device, bool force) {
     jshUSARTSetup(device, &inf);
   }
 
+  bool echo = jsiEcho();
+  // If we're still in 'limbo', move any contents over
+  if (consoleDevice == EV_LIMBO) {
+    echo = false;
+    jshTransmitMove(EV_LIMBO, device);
+    jshUSARTKick(device);
+  }
+
   // Log to the old console that we are moving consoles and then, once we have moved
   // the console, log to the new console that we have moved consoles.
-  jsiConsoleRemoveInputLine();
-  if (jsiEcho()) { // intentionally not using jsiShowInputLine()
+  if (echo) { // intentionally not using jsiShowInputLine()
+    jsiConsoleRemoveInputLine();
     jsiConsolePrintf("-> %s\n", jshGetDeviceString(device));
   }
   IOEventFlags oldDevice = consoleDevice;
   consoleDevice = device;
-  if (jsiEcho()) { // intentionally not using jsiShowInputLine()
+  if (echo) { // intentionally not using jsiShowInputLine()
     jsiConsolePrintf("<- %s\n", jshGetDeviceString(oldDevice));
   }
 }

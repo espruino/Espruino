@@ -26,8 +26,9 @@
             Save and dump now keep track of whether pin mode had been forced or not
             readFile (and File.read) now uses Flat Strings to allow more memory efficient reads (fix #932)
             nRF5x: Add ability to get RSSI of current connection (fix #928)
-	          More STM32 changes to LSI->LSE clock switchover to fix RTC misconfiguration on Espruino WiFi
+            More STM32 changes to LSI->LSE clock switchover to fix RTC misconfiguration on Espruino WiFi
             Move LED + BTN definitions to Symbol Table (allows autocomplete)
+            When moving console before printing has started, move all buffer contents as well
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
