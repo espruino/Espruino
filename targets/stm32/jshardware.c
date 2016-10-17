@@ -751,7 +751,11 @@ void jshDoSysTick() {
 #endif
       RCC_BackupResetCmd(ENABLE);
       RCC_BackupResetCmd(DISABLE);
-      if (!isUsingLSI) RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+      if (!isUsingLSI) {
+        RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+        while(RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET);
+      }
+      RTC_WaitForSynchro();
       jshSetupRTC(isUsingLSI);
 #ifdef STM32F1
       RTC_SetCounter(time);
@@ -1069,6 +1073,7 @@ void jshInit() {
                          RCC_AHBPeriph_GPIOE |
                          RCC_AHBPeriph_GPIOF, ENABLE);
  #elif defined(STM32F2) || defined(STM32F4)
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 |
                          RCC_APB2Periph_SYSCFG, ENABLE);
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
@@ -1145,6 +1150,7 @@ void jshInit() {
     // Reset backup domain - allows us to set the RTC clock source
     RCC_BackupResetCmd(ENABLE);
     RCC_BackupResetCmd(DISABLE);
+    RTC_WaitForSynchro();
     // Turn both LSI(above) and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
     RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
     // Initially set the RTC up to use the internal oscillator
