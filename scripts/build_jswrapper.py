@@ -22,18 +22,22 @@ scriptdir = os.path.dirname(os.path.realpath(__file__))
 basedir = scriptdir+"/../"
 sys.path.append(basedir+"scripts");
 sys.path.append(basedir+"boards");
-import common
+import importlib;
+import common;
 
-if sys.argv[len(sys.argv)-1][:2]!="-F":
-	print("USAGE: build_jswrapper.py ... -Fwrapperfile.c")
+if len(sys.argv)<2 or sys.argv[len(sys.argv)-2][:2]!="-B" or sys.argv[len(sys.argv)-1][:2]!="-F":
+	print("USAGE: build_jswrapper.py ... -BBOARD -Fwrapperfile.c")
 	exit(1)
+
+boardName = sys.argv[len(sys.argv)-2]
+boardName = boardName[2:]
 
 wrapperFileName = sys.argv[len(sys.argv)-1]
 wrapperFileName = wrapperFileName[2:]
 
 # ------------------------------------------------------------------------------------------------------
 
-def codeOut(s): 
+def codeOut(s):
 #  print str(s)
   wrapperFile.write(s+"\n");
 
@@ -96,13 +100,13 @@ def hasThis(func):
 def getParams(func):
   params = []
   if "params" in func:
-    for param in func["params"]:  
-      params.append(param) 
+    for param in func["params"]:
+      params.append(param)
   return params
 
 def getResult(func):
   result = [ "", "Description" ]
-  if "return" in func: result = func["return"]  
+  if "return" in func: result = func["return"]
   return result
 
 def getArgumentSpecifier(jsondata):
@@ -111,9 +115,9 @@ def getArgumentSpecifier(jsondata):
   s = [ toArgumentType(result[0]) ]
   if hasThis(jsondata): s.append("JSWAT_THIS_ARG");
   # Either it's a variable/property, in which case we need to execute the native function in order to return the correct info
-  if jsondata["type"]=="variable" or common.is_property(jsondata): 
+  if jsondata["type"]=="variable" or common.is_property(jsondata):
     s.append("JSWAT_EXECUTE_IMMEDIATELY")
-  # Or it's an object, in which case the native function contains code that creates it - and that must be executed too. 
+  # Or it's an object, in which case the native function contains code that creates it - and that must be executed too.
   # It also returns JsVar
   if jsondata["type"]=="object":
     s = [ toArgumentType("JsVar"), "JSWAT_EXECUTE_IMMEDIATELY" ]
@@ -123,9 +127,9 @@ def getArgumentSpecifier(jsondata):
     s.append("("+toArgumentType(param[1])+" << (JSWAT_BITS*"+str(n)+"))");
     n=n+1
   return " | ".join(s);
-  
-def getCDeclaration(jsondata, name): 
-  # name could be '(*)' for a C function pointer 
+
+def getCDeclaration(jsondata, name):
+  # name could be '(*)' for a C function pointer
   params = getParams(jsondata)
   result = getResult(jsondata);
   s = [ ]
@@ -192,7 +196,10 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 # ------------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------------
 
-jsondatas = common.get_jsondata(False)
+print("BOARD "+boardName)
+board = importlib.import_module(boardName)
+
+jsondatas = common.get_jsondata(is_for_document = False, parseArgs = True, board = board)
 if 'BLACKLIST' in os.environ:
 	jsondatas = removeBlacklistForWrapper(os.environ['BLACKLIST'],jsondatas)
 
@@ -221,7 +228,7 @@ for className in classes:
 
 # ------------------------------------------------------------------------------------------------------
 #print json.dumps(tree, sort_keys=True, indent=2)
-# ------------------------------------------------------------------------------------------------------    
+# ------------------------------------------------------------------------------------------------------
 
 wrapperFile = open(wrapperFileName,'w')
 
@@ -259,14 +266,14 @@ for jsondata in jsondatas:
       if hasThis(jsondata): s.append("JsVar *parent");
       for param in params:
         s.append(toCType(param[1])+" "+param[0]);
-     
+
     codeOut("static "+toCType(result[0])+" "+jsondata["generate"]+"("+", ".join(s)+") {");
     if result[0]:
       codeOut("  return "+jsondata["generate_full"]+";");
     else:
-      codeOut("  "+jsondata["generate_full"]+";");  
+      codeOut("  "+jsondata["generate_full"]+";");
     codeOut("}");
-    codeOut('');        
+    codeOut('');
 
 codeOut('// -----------------------------------------------------------------------------------------');
 codeOut('// -----------------------------------------------------------------------------------------');
@@ -383,7 +390,7 @@ nativeCheck = "jsvIsNativeFunction(parent) && "
 codeOut('    if (jsvIsNativeFunction(parent)) {')
 first = True
 for className in builtins:
-  if className.startswith(nativeCheck):    
+  if className.startswith(nativeCheck):
     codeOut('      '+("" if first else "} else ")+'if ('+className[len(nativeCheck):]+') {')
     first = False
     codeOutBuiltins("        v = ", builtins[className])
@@ -440,7 +447,7 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
-codeOut('const JswSymList *jswGetSymbolListForObject(JsVar *parent) {') 
+codeOut('const JswSymList *jswGetSymbolListForObject(JsVar *parent) {')
 for className in builtins:
   builtin = builtins[className]
   if not className in ["parent","!parent"] and not builtin["isProto"]:
@@ -492,7 +499,7 @@ for jsondata in jsondatas:
         builtinChecks.append(check)
 
 
-codeOut('bool jswIsBuiltInObject(const char *name) {') 
+codeOut('bool jswIsBuiltInObject(const char *name) {')
 codeOut('  return\n'+" ||\n    ".join(builtinChecks)+';')
 codeOut('}')
 
@@ -500,7 +507,7 @@ codeOut('')
 codeOut('')
 
 
-codeOut('void *jswGetBuiltInLibrary(const char *name) {') 
+codeOut('void *jswGetBuiltInLibrary(const char *name) {')
 for lib in libraries:
   codeOut('if (strcmp(name, "'+lib+'")==0) return (void*)gen_jswrap_'+lib+'_'+lib+';');
 codeOut('  return 0;')
@@ -517,7 +524,7 @@ for jsondata in jsondatas:
       objectChecks[jsondata["class"]] = jsondata["check"]
 
 codeOut('/** Given a variable, return the basic object name of it */')
-codeOut('const char *jswGetBasicObjectName(JsVar *var) {') 
+codeOut('const char *jswGetBasicObjectName(JsVar *var) {')
 for className in objectChecks.keys():
   codeOut("  if ("+objectChecks[className]+") return \""+className+"\";")
 codeOut('  return 0;')
@@ -528,7 +535,7 @@ codeOut('')
 
 
 codeOut("/** Given the name of a Basic Object, eg, Uint8Array, String, etc. Return the prototype object's name - or 0. */")
-codeOut('const char *jswGetBasicObjectPrototypeName(const char *objectName) {') 
+codeOut('const char *jswGetBasicObjectPrototypeName(const char *objectName) {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="class":
     if "prototype" in jsondata:
@@ -542,7 +549,7 @@ codeOut('')
 
 codeOut("/** Tasks to run on Idle. Returns true if either one of the tasks returned true (eg. they're doing something and want to avoid sleeping) */")
 codeOut('bool jswIdle() {')
-codeOut('  bool wasBusy = false;')  
+codeOut('  bool wasBusy = false;')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="idle":
     codeOut("  if ("+jsondata["generate"]+"()) wasBusy = true;")
@@ -571,6 +578,3 @@ codeOut('}')
 
 codeOut('')
 codeOut('')
-
-
-

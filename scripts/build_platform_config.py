@@ -329,13 +329,10 @@ codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer)+") // Must be power
 
 codeOut("");
 
-simpleDevices = [
- "LED1","LED2","LED3","LED4","LED5","LED6","LED7","LED8",
- "BTN1","BTN2","BTN3","BTN4"];
 usedPinChecks = ["false"];
 ledChecks = ["false"];
 btnChecks = ["false"];
-for device in simpleDevices:
+for device in pinutils.SIMPLE_DEVICES:
   if device in board.devices:
     codeOutDevice(device)
     check = "(PIN)==" + toPinDef(board.devices[device]["pin"])
