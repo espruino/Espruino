@@ -224,15 +224,26 @@ void jshTransmitClearDevice(
 
 /// Move all output from one device to another
 void jshTransmitMove(IOEventFlags from, IOEventFlags to) {
-  jshInterruptOff();
-  unsigned char tempTail = txTail;
-  while (tempTail != txHead) {
-    if (IOEVENTFLAGS_GETTYPE(txBuffer[tempTail].flags) == from) {
-      txBuffer[tempTail].flags = (txBuffer[tempTail].flags&~EV_TYPE_MASK) | to;
+  if (to==EV_LOOPBACKA || to==EV_LOOPBACKB) {
+    // Loopback is special :(
+    IOEventFlags device = (to==EV_LOOPBACKB) ? EV_LOOPBACKA : EV_LOOPBACKB;
+    int c = jshGetCharToTransmit(from);
+    while (c>=0) {
+      jshPushIOCharEvent(device, (char)c);
+      c = jshGetCharToTransmit(from);
     }
-    tempTail = (unsigned char)((tempTail+1)&TXBUFFERMASK);
+  } else {
+    // Otherwise just rename the contents of the buffer
+    jshInterruptOff();
+    unsigned char tempTail = txTail;
+    while (tempTail != txHead) {
+      if (IOEVENTFLAGS_GETTYPE(txBuffer[tempTail].flags) == from) {
+        txBuffer[tempTail].flags = (txBuffer[tempTail].flags&~EV_TYPE_MASK) | to;
+      }
+      tempTail = (unsigned char)((tempTail+1)&TXBUFFERMASK);
+    }
+    jshInterruptOn();
   }
-  jshInterruptOn();
 }
 
 /**
