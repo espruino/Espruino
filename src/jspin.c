@@ -32,67 +32,12 @@ BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 // ----------------------------------------------------------------------------
 
 
-/**
- * Validate that the pin is a good pin.
- * \return True if the pin is valid.
- */
 bool jshIsPinValid(Pin pin) {
   // Note, PIN_UNDEFINED is always > JSH_PIN_COUNT
   return pin < JSH_PIN_COUNT && pinInfo[pin].port != JSH_PORT_NONE;
 }
 
-/**
- * Get a pin value from an encoded strin.
- * \return A pin value.
- */
 Pin jshGetPinFromString(const char *s) {
-  // !!!FIX!!! This function needs an algorithm description.
-
-  // built in constants
-
-  if (s[0]=='B' && s[1]=='T' && s[2]=='N') {
-#ifdef BTN1_PININDEX
-    if (!s[3]) return BTN1_PININDEX;
-    if (s[3]=='1' && !s[4]) return BTN1_PININDEX;
-#endif
-#ifdef BTN2_PININDEX
-    if (s[3]=='2' && !s[4]) return BTN2_PININDEX;
-#endif
-#ifdef BTN3_PININDEX
-    if (s[3]=='3' && !s[4]) return BTN3_PININDEX;
-#endif
-#ifdef BTN4_PININDEX
-    if (s[3]=='4' && !s[4]) return BTN4_PININDEX;
-#endif
-  }
-  if (s[0]=='L' && s[1]=='E' && s[2]=='D') {
-#ifdef LED1_PININDEX
-    if (!s[3]) return LED1_PININDEX;
-    if (s[3]=='1' && !s[4]) return LED1_PININDEX;
-#endif
-#ifdef LED2_PININDEX
-    if (s[3]=='2' && !s[4]) return LED2_PININDEX;
-#endif
-#ifdef LED3_PININDEX
-    if (s[3]=='3' && !s[4]) return LED3_PININDEX;
-#endif
-#ifdef LED4_PININDEX
-    if (s[3]=='4' && !s[4]) return LED4_PININDEX;
-#endif
-#ifdef LED5_PININDEX
-    if (s[3]=='5' && !s[4]) return LED5_PININDEX;
-#endif
-#ifdef LED6_PININDEX
-    if (s[3]=='6' && !s[4]) return LED6_PININDEX;
-#endif
-#ifdef LED7_PININDEX
-    if (s[3]=='7' && !s[4]) return LED7_PININDEX;
-#endif
-#ifdef LED8_PININDEX
-    if (s[3]=='8' && !s[4]) return LED8_PININDEX;
-#endif
-  }
-
   if ((s[0]>='A' && s[0]<='H') && s[1]) {
     int port = JSH_PORTA+s[0]-'A';
     int pin = -1;
