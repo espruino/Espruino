@@ -22,13 +22,13 @@ sys.path.append(".");
 import common
 import urllib2
 
-# Scans files for comments of the form /*JSON......*/ and then writes out an HTML file describing 
+# Scans files for comments of the form /*JSON......*/ and then writes out an HTML file describing
 # all the functions
 
 # htmldev default is False
 # if htmldev is set to True indicating 'html development mode', script:
 # - creates standalone html version for temporary html generation development by:
-# --- inserting a searchbox text input to test top link function  
+# --- inserting a searchbox text input to test top link function
 # --- skipping MDN links dump and validation to complete quicker
 
 htmldev = False
@@ -63,7 +63,7 @@ htmlFile = open('functions.html', 'w')
 def html(s): htmlFile.write(s+"\n");
 
 def htmlify(d):
-  d = re.sub(r'\n\s*```\n?([^`]+)```', r'\n   <p class=\"description\"><pre><code>\1</code></pre></p>', d) # code tags
+  d = re.sub(r'\n\s*```\n?([^`]+)```', r'\n   <pre class="description"><code>\1</code></pre>', d) # code tags
   d = re.sub(r'```\n?([^`]+)```', r'\n<code>\1</code>', d) # code tags
   d = re.sub(r'`([^`]+)`', r'<code>\1</code>', d) # code tags
   d = re.sub(r'\[([^\]]*)\]\(([^\)]*)\)', r'<a href="\2">\1</a>', d) # links tags
@@ -75,20 +75,20 @@ def htmlify(d):
   starStart = False
   for idx in range(0, len(lines)):
     line = lines[idx]
-    if line[0:2]=="* " and starStart==False: 
+    if re.match('^ *\*',line) and starStart==False:
       starStart=idx
-    if line[0:2]!="* ":
+    if not re.match('^ *\*',line):
       if starStart!=False and starStart+2<=idx:
         l = lines[starStart:idx]
         for i in range(0,len(l)):
-          l[i] = "<li>"+l[i][1:]+"</li>"
+          l[i] = "<li>"+l[i][l[i].index("*")+1:]+"</li>"
         lines = lines[0:starStart-1]+["<ul>"]+l+["</ul>"]+lines[idx:]
         idx += 2+len(l)
       starStart = False
   d = "\n".join(lines);
-  
+
   d = re.sub(r'\*\*([^*]*)\*\*', r'<b>\1</b>', d) # bold
-  d = re.sub(r'\*([^*]*)\*', r'<i>\1</i>', d) # italic
+  d = re.sub(r'\*([^*]+)\*', r'<i>\1</i>', d) # italic
   return d
 
 def html_description(d,current):
@@ -97,7 +97,7 @@ def html_description(d,current):
     if link!=current:
       d = d.replace(" "+link+" ", " <a href=\"#"+links[link]+"\">"+link+"</a> ")
       d = d.replace(" "+link+".", " <a href=\"#"+links[link]+"\">"+link+"</a>.")
-      d = d.replace(" "+link+"(", " <a href=\"#"+links[link]+"\">"+link+"</a>(")    
+      d = d.replace(" "+link+"(", " <a href=\"#"+links[link]+"\">"+link+"</a>(")
   # Apply <p>, but not inside code snippets
   inCode = False
   final = ""
@@ -279,15 +279,15 @@ for jsondata in detail:
   className = ""
   niceName = ""
   linkName = ""
-  if "class" in jsondata: 
+  if "class" in jsondata:
     className=jsondata["class"]
     if className in libraries:
       niceName=className+" Library"
     else:
       niceName=className+" Class"
     linkName=className
-  else: 
-    className=""                           
+  else:
+    className=""
     niceName="Global Functions"
     linkName="_global"
 
@@ -311,7 +311,7 @@ for jsondata in detail:
         if "description" in j: html_description(j["description"], j["name"])
         html("    </li>")
       html("  </ul>")
-    
+
     html("  <h4>Methods and Fields</h4>")
     html("  <ul>")
     for j in jsondatas:
@@ -324,7 +324,7 @@ for jsondata in detail:
   if "githublink" in jsondata:
     html('<a class="githublink" title="Link to source code on GitHub" href="'+jsondata["githublink"]+'">&rArr;</a>');
   html("</h3>")
-  insert_mdn_link(jsondata);      
+  insert_mdn_link(jsondata);
   html("  <p class=\"top\"><a href=\"javascript:toppos();\">(top)</a></p>")
   html("  <h4>Call type:</h4>")
   html("   <p class=\"call\"><code>"+get_code(jsondata)+"</code></p>")
@@ -335,7 +335,7 @@ for jsondata in detail:
     if ("ifdef" in jsondata) or ("ifndef" in jsondata):
       conds = ""
       if "ifdef" in jsondata: conds = common.get_ifdef_description(jsondata["ifdef"])
-      if "ifndef" in jsondata: 
+      if "ifndef" in jsondata:
         if conds!="": conds += " and "
         conds = "not "+common.get_ifdef_description(jsondata["ifndef"])
       desc.append("<b>Note:</b> This is only available in some devices: "+conds);
@@ -357,11 +357,11 @@ for jsondata in detail:
     html("   <p class=\"return\">"+htmlify(desc)+"</p>")
 
   url = "http://www.espruino.com/Reference#"+get_link(jsondata)
-  if url in code_uses: 
+  if url in code_uses:
     uses = code_uses[url]
     html("  <h4>Examples</h4>")
     html("  <p class=\"examples\">This function is used in the following places in Espruino's documentation</p>")
-    html("  <ul class=\"examples\">")    
+    html("  <ul class=\"examples\">")
     for link in uses:
       html('    <li><a href="'+link["url"]+'">'+link["title"]+'</a></li>')
     html("  </ul>")
@@ -379,15 +379,15 @@ for j in jsondatas:
     jkeywords = [ j["name"] ]
     if get_prefixed_name(j)!=j["name"]: jkeywords.append(get_prefixed_name(j))
     if "class" in j: jkeywords.append(j["class"])
-    
+
     for k in jkeywords:
       k = k.lower()
-      if not k in keywords: 
+      if not k in keywords:
         keywords[k] = [ item ]
       else:
         keywords[k].append(item)
 
-#print(json.dumps(keywords, sort_keys=True, indent=2)) 
+#print(json.dumps(keywords, sort_keys=True, indent=2))
 keywordFile = open('function_keywords.js', 'w')
 keywordFile.write(json.dumps(keywords, sort_keys=True, indent=2));
 
@@ -401,7 +401,7 @@ for jsondata in jsondatas:
   elif jsondata["type"]=="function" or jsondata["type"]=="variable" or jsondata["type"]=="class":
       if not jsondata["name"] in builtins:
         builtins.append(jsondata["name"])
-print("------------------------------------------------------")    
+print("------------------------------------------------------")
 print('Global classes and functions: '+' '.join(builtins));
 print("------------------------------------------------------")
 

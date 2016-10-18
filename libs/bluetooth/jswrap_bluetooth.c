@@ -236,7 +236,7 @@ NRF.setAdvertising([0x03,  // Length of Service List
   showName: true/false // include full name, or nothing
   discoverable: true/false // general discoverable, or limited - default is limited
   interval: 600 // Advertising interval in msec, between 20 and 10000
-}` to avoid adding the Nordic UART service
+}
 ```
 */
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
