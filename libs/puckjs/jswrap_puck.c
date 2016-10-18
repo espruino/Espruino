@@ -234,7 +234,7 @@ Class containing [Puck.js's](http://www.puck-js.com) utility functions.
 }
 Turn on the magnetometer, take a single reading, and then turn it off again.
 
-An object of the form `{x,y,z}' is returned containing magnetometer readings.
+An object of the form `{x,y,z}` is returned containing magnetometer readings.
 Due to residual magnetism in the Puck and magnetometer itself, with
 no magnetic field the Puck will not return `{x:0,y:0,z:0}`.
 
@@ -313,7 +313,7 @@ void jswrap_puck_magOn(JsVarFloat hz) {
     if (milliHz==0) milliHz=630;
     if (!mag_on(milliHz)) {
       jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - see docs for valid rates", hz);
-    }      
+    }
     jshPinWatch(MAG_INT, true);
   }
   mag_enabled = true;
