@@ -44,7 +44,7 @@
  * @ref ble_sdk_app_hids_mouse and @ref ble_sdk_app_hids_keyboard.
  * @endif
  *
- * @image html scheduler_working.jpg The high level design of the scheduler
+ * @image html scheduler_working.svg The high level design of the scheduler
  */
 
 #ifndef APP_SCHEDULER_H__

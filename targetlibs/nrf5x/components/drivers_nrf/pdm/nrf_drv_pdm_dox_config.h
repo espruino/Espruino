@@ -4,15 +4,17 @@
  * @{
  * @ingroup nrf_drv_pdm
  */
-/** @brief Enable PDM driver *
+/** @brief Enable PDM driver
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define PDM_ENABLED
 
-/** @brief Mode *
- *  Following options are avaiable:
+/** @brief Mode
+ *
+ *  Following options are available:
  * - 0 - Stereo
  * - 1 - Mono
  *
@@ -21,8 +23,9 @@
 #define PDM_CONFIG_MODE
 
 
-/** @brief Edge *
- *  Following options are avaiable:
+/** @brief Edge
+ *
+ *  Following options are available:
  * - 0 - Left falling
  * - 1 - Left rising
  *
@@ -31,8 +34,9 @@
 #define PDM_CONFIG_EDGE
 
 
-/** @brief Clock frequency *
- *  Following options are avaiable:
+/** @brief Clock frequency
+ *
+ *  Following options are available:
  * - 134217728 - 1000k
  * - 138412032 - 1032k (default)
  * - 142606336 - 1067k
@@ -46,7 +50,7 @@
  *
  * Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
  *
- *  Following options are avaiable:
+ *  Following options are available:
  * - 0 - 0 (highest)
  * - 1 - 1
  * - 2 - 2

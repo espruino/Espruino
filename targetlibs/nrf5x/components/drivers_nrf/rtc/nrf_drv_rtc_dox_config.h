@@ -4,14 +4,16 @@
  * @{
  * @ingroup nrf_drv_rtc
  */
-/** @brief  *
+/** @brief 
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define RTC_ENABLED
 
-/** @brief Frequency *
+/** @brief Frequency
+ *
  *  Minimum value: 16
  *  Maximum value: 32768
  *
@@ -20,7 +22,8 @@
 #define RTC_DEFAULT_CONFIG_FREQUENCY
 
 
-/** @brief Ensures safe compare event triggering *
+/** @brief Ensures safe compare event triggering
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -32,7 +35,7 @@
  *
  * Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
  *
- *  Following options are avaiable:
+ *  Following options are available:
  * - 0 - 0 (highest)
  * - 1 - 1
  * - 2 - 2
@@ -47,7 +50,8 @@
 #define RTC_DEFAULT_CONFIG_IRQ_PRIORITY
 
 
-/** @brief Enable RTC0 instance *
+/** @brief Enable RTC0 instance
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -55,7 +59,8 @@
 #define RTC0_ENABLED
 
 
-/** @brief Enable RTC1 instance *
+/** @brief Enable RTC1 instance
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -63,7 +68,8 @@
 #define RTC1_ENABLED
 
 
-/** @brief Enable RTC2 instance *
+/** @brief Enable RTC2 instance
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -71,7 +77,8 @@
 #define RTC2_ENABLED
 
 
-/** @brief Maximum possible time[us] in highest priority interrupt *
+/** @brief Maximum possible time[us] in highest priority interrupt
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */

@@ -64,7 +64,13 @@ ret_code_t nrf_drv_wdt_init(nrf_drv_wdt_config_t const * p_config,
     }
 
     nrf_wdt_behaviour_set(p_config->behaviour);
-    nrf_wdt_reload_value_set((p_config->reload_value * 32768) / 1000);
+    
+    if ((((uint64_t)p_config->reload_value * 32768) / 1000) > UINT32_MAX) // Check for overflow
+    {
+        return NRF_ERROR_INVALID_PARAM;
+    }
+    
+    nrf_wdt_reload_value_set((uint32_t)(((uint64_t)p_config->reload_value * 32768) / 1000));
 
     nrf_drv_common_irq_enable(WDT_IRQn, p_config->interrupt_priority);
 

@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_hrs_c
  */
-/** @brief Enable Heart Rate Service Client. *
+/** @brief Enable Heart Rate Service Client.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

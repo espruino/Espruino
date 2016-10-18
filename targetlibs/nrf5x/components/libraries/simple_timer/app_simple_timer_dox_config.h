@@ -4,15 +4,17 @@
  * @{
  * @ingroup app_simple_timer
  */
-/** @brief Enabling simple_timer module *
+/** @brief Enabling simple_timer module
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define SIMPLE_TIMER_ENABLED
 
-/** @brief Timer frequency if in Timer mode *
- *  Following options are avaiable:
+/** @brief Timer frequency if in Timer mode
+ *
+ *  Following options are available:
  * - 0 - 16 MHz
  * - 1 - 8 MHz
  * - 2 - 4 MHz
@@ -29,8 +31,9 @@
 #define SIMPLE_TIMER_CONFIG_FREQUENCY
 
 
-/** @brief TIMER instance used *
- *  Following options are avaiable:
+/** @brief TIMER instance used
+ *
+ *  Following options are available:
  * - 0 - 0
  * - 1 - 1
  * - 2 - 2
