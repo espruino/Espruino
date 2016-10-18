@@ -1344,12 +1344,16 @@ ifeq ($(FAMILY), NRF51)
   ifdef USE_BOOTLOADER
   ifdef USE_CUSTOM_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
+<<<<<<< HEAD
   else
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
   endif
   NFR_BL_START_ADDR = 0x3C000# see dfu_gcc_nrf51.ld
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex # This file writes 0x3FC00 with 0x01 so we can flash the application with the bootloader.
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+=======
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+>>>>>>> attempt at nRF5x secure bootloader
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   endif
@@ -1379,11 +1383,14 @@ ifeq ($(FAMILY), NRF52)
   ifdef USE_BOOTLOADER
   ifdef USE_CUSTOM_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
+<<<<<<< HEAD
   else
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
   endif
   NFR_BL_START_ADDR = 0x79000 # see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
+=======
+>>>>>>> attempt at nRF5x secure bootloader
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
     LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/dfu_gcc_nrf52.ld
@@ -1434,6 +1441,12 @@ ifdef NRF5X
     BUILD_LINKER_FLAGS+=--bootloader
     PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
     WRAPPERSOURCES =
+<<<<<<< HEAD
+=======
+		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
+		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
+		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
+>>>>>>> attempt at nRF5x secure bootloader
     SOURCES = \
       targets/nrf5x_dfu/main.c \
       targets/nrf5x_dfu/dfu_ble_svc.c
@@ -2247,7 +2260,12 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
  ifdef USE_BOOTLOADER
   ifdef DFU_UPDATE_BUILD
 	@echo Not merging softdevice or bootloader with application
+<<<<<<< HEAD
 	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
+=======
+	# nrfutil  pkg generate --help
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
+>>>>>>> attempt at nRF5x secure bootloader
   else
   ifdef BOOTLOADER
 	@echo Not merging anything with bootloader
