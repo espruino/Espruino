@@ -4,7 +4,8 @@
  * @{
  * @ingroup led_softblink
  */
-/** @brief Enabling led_softblink module *
+/** @brief Enabling led_softblink module
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

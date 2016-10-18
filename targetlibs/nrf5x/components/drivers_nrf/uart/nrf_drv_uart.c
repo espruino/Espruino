@@ -111,6 +111,7 @@ __STATIC_INLINE void interrupts_enable(const nrf_drv_uart_t * p_instance, uint8_
                                          NRF_UARTE_INT_ENDTX_MASK |
                                          NRF_UARTE_INT_ERROR_MASK |
                                          NRF_UARTE_INT_RXTO_MASK);
+        nrf_drv_common_irq_enable(nrf_drv_get_IRQn((void *)p_instance->reg.p_uarte), interrupt_priority);
     )
     CODE_FOR_UART
     (
@@ -118,9 +119,8 @@ __STATIC_INLINE void interrupts_enable(const nrf_drv_uart_t * p_instance, uint8_
         nrf_uart_event_clear(p_instance->reg.p_uart, NRF_UART_EVENT_RXTO);
         nrf_uart_int_enable(p_instance->reg.p_uart, NRF_UART_INT_MASK_TXDRDY |
                                        NRF_UART_INT_MASK_RXTO);
+        nrf_drv_common_irq_enable(nrf_drv_get_IRQn((void *)p_instance->reg.p_uart), interrupt_priority);
     )
-
-    nrf_drv_common_irq_enable(nrf_drv_get_IRQn((void *)p_instance->reg.p_uart), interrupt_priority);
 }
 
 __STATIC_INLINE void interrupts_disable(const nrf_drv_uart_t * p_instance)
@@ -131,6 +131,7 @@ __STATIC_INLINE void interrupts_disable(const nrf_drv_uart_t * p_instance)
                                           NRF_UARTE_INT_ENDTX_MASK |
                                           NRF_UARTE_INT_ERROR_MASK |
                                           NRF_UARTE_INT_RXTO_MASK);
+        nrf_drv_common_irq_disable(nrf_drv_get_IRQn((void *)p_instance->reg.p_uarte));
     )
     CODE_FOR_UART
     (
@@ -138,8 +139,9 @@ __STATIC_INLINE void interrupts_disable(const nrf_drv_uart_t * p_instance)
                                         NRF_UART_INT_MASK_TXDRDY |
                                         NRF_UART_INT_MASK_ERROR  |
                                         NRF_UART_INT_MASK_RXTO);
+        nrf_drv_common_irq_disable(nrf_drv_get_IRQn((void *)p_instance->reg.p_uart));
     )
-    nrf_drv_common_irq_disable(nrf_drv_get_IRQn((void *)p_instance->reg.p_uart));
+    
 }
 
 __STATIC_INLINE void pins_to_default(const nrf_drv_uart_t * p_instance)

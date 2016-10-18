@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_lls
  */
-/** @brief Enables service *
+/** @brief Enables service
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

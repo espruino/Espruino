@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_bps
  */
-/** @brief Enable Blood Pressure Service. *
+/** @brief Enable Blood Pressure Service.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

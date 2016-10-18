@@ -35,7 +35,7 @@
 
 /* This file is given to prevent your SW from not compiling with the name changes between nRF51 and nRF52 devices.
  * It redefines the old nRF51 names into the new ones as long as the functionality is still supported. If the
- * functionality is gone, there old names are not define, so compilation will fail. Note that also includes macros
+ * functionality is gone, there old names are not defined, so compilation will fail. Note that also includes macros
  * from the nrf51_deprecated.h file. */
 
 

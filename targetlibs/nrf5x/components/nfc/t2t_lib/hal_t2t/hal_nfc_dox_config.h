@@ -4,22 +4,25 @@
  * @{
  * @ingroup hal_nfc
  */
-/** @brief  *
+/** @brief 
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define NFC_HAL_ENABLED
 
-/** @brief Enables logging in the module. *
+/** @brief Enables logging in the module.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define HAL_NFC_CONFIG_LOG_ENABLED
 
-/** @brief Default Severity level *
- *  Following options are avaiable:
+/** @brief Default Severity level
+ *
+ *  Following options are available:
  * - 0 - Off
  * - 1 - Error
  * - 2 - Warning
@@ -31,8 +34,9 @@
 #define HAL_NFC_CONFIG_LOG_LEVEL
 
 
-/** @brief ANSI escape code prefix. *
- *  Following options are avaiable:
+/** @brief ANSI escape code prefix.
+ *
+ *  Following options are available:
  * - 0 - Default
  * - 1 - Black
  * - 2 - Red
@@ -48,8 +52,9 @@
 #define HAL_NFC_CONFIG_INFO_COLOR
 
 
-/** @brief ANSI escape code prefix. *
- *  Following options are avaiable:
+/** @brief ANSI escape code prefix.
+ *
+ *  Following options are available:
  * - 0 - Default
  * - 1 - Black
  * - 2 - Red
@@ -66,14 +71,16 @@
 
 
 
-/** @brief Enables pin debug in the module. *
+/** @brief Enables pin debug in the module.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define HAL_NFC_CONFIG_DEBUG_PIN_ENABLED
 
-/** @brief Pin number *
+/** @brief Pin number
+ *
  *  Minimum value: 0
  *  Maximum value: 31
  *
@@ -82,7 +89,8 @@
 #define HAL_NFC_HCLOCK_ON_DEBUG_PIN
 
 
-/** @brief Pin number *
+/** @brief Pin number
+ *
  *  Minimum value: 0
  *  Maximum value: 31
  *
@@ -91,7 +99,8 @@
 #define HAL_NFC_HCLOCK_OFF_DEBUG_PIN
 
 
-/** @brief Pin number *
+/** @brief Pin number
+ *
  *  Minimum value: 0
  *  Maximum value: 31
  *
@@ -100,7 +109,8 @@
 #define HAL_NFC_NFC_EVENT_DEBUG_PIN
 
 
-/** @brief Pin number *
+/** @brief Pin number
+ *
  *  Minimum value: 0
  *  Maximum value: 31
  *
@@ -109,7 +119,8 @@
 #define HAL_NFC_DETECT_EVENT_DEBUG_PIN
 
 
-/** @brief Pin number *
+/** @brief Pin number
+ *
  *  Minimum value: 0
  *  Maximum value: 31
  *

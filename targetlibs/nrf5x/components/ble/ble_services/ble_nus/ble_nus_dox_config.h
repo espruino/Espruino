@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_nus
  */
-/** @brief Enable Nordic UART Service. *
+/** @brief Enable Nordic UART Service.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

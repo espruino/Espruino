@@ -4,15 +4,17 @@
  * @{
  * @ingroup nrf_drv_qdec
  */
-/** @brief Enable QDEC driver *
+/** @brief Enable QDEC driver
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define QDEC_ENABLED
 
-/** @brief Report period *
- *  Following options are avaiable:
+/** @brief Report period
+ *
+ *  Following options are available:
  * - 0 - 10 Samples
  * - 1 - 40 Samples
  * - 2 - 80 Samples
@@ -27,8 +29,9 @@
 #define QDEC_CONFIG_REPORTPER
 
 
-/** @brief Sample period *
- *  Following options are avaiable:
+/** @brief Sample period
+ *
+ *  Following options are available:
  * - 0 - 128 us
  * - 1 - 256 us
  * - 2 - 512 us
@@ -43,7 +46,8 @@
 #define QDEC_CONFIG_SAMPLEPER
 
 
-/** @brief A pin *
+/** @brief A pin
+ *
  *  Minimum value: 0
  *  Maximum value: 31
  *
@@ -52,7 +56,8 @@
 #define QDEC_CONFIG_PIO_A
 
 
-/** @brief B pin *
+/** @brief B pin
+ *
  *  Minimum value: 0
  *  Maximum value: 31
  *
@@ -61,7 +66,8 @@
 #define QDEC_CONFIG_PIO_B
 
 
-/** @brief LED pin *
+/** @brief LED pin
+ *
  *  Minimum value: 0
  *  Maximum value: 31
  *
@@ -70,15 +76,17 @@
 #define QDEC_CONFIG_PIO_LED
 
 
-/** @brief LED pre *
+/** @brief LED pre
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define QDEC_CONFIG_LEDPRE
 
 
-/** @brief LED polarity *
- *  Following options are avaiable:
+/** @brief LED polarity
+ *
+ *  Following options are available:
  * - 0 - Active low
  * - 1 - Active high
  *
@@ -87,7 +95,8 @@
 #define QDEC_CONFIG_LEDPOL
 
 
-/** @brief Debouncing enable *
+/** @brief Debouncing enable
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -95,7 +104,8 @@
 #define QDEC_CONFIG_DBFEN
 
 
-/** @brief Sample ready interrupt enable *
+/** @brief Sample ready interrupt enable
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -107,7 +117,7 @@
  *
  * Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
  *
- *  Following options are avaiable:
+ *  Following options are available:
  * - 0 - 0 (highest)
  * - 1 - 1
  * - 2 - 2

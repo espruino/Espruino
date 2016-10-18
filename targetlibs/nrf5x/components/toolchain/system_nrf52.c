@@ -44,6 +44,7 @@ static bool errata_36(void);
 static bool errata_37(void);
 static bool errata_57(void);
 static bool errata_66(void);
+static bool errata_108(void);
 
 
 #if defined ( __CC_ARM )
@@ -124,6 +125,12 @@ void SystemInit(void)
         NRF_TEMP->T4 = NRF_FICR->TEMP.T4;
     }
 
+    /* Workaround for Errata 108 "RAM: RAM content cannot be trusted upon waking up from System ON Idle or System OFF mode" found at the Errata document
+       for your device located at https://infocenter.nordicsemi.com/  */
+    if (errata_108()){
+        *(volatile uint32_t *)0x40000EE4 = *(volatile uint32_t *)0x10000258 & 0x0000004F;
+    }
+    
     /* Enable the FPU if the compiler used floating point unit instructions. __FPU_USED is a MACRO defined by the
      * compiler. Since the FPU consumes energy, remember to disable FPU use in the compiler if floating point unit
      * operations are not used in your code. */
@@ -271,6 +278,24 @@ static bool errata_57(void)
 static bool errata_66(void)
 {
     if ((((*(uint32_t *)0xF0000FE0) & 0x000000FF) == 0x6) && (((*(uint32_t *)0xF0000FE4) & 0x0000000F) == 0x0)){
+        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x50){
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+static bool errata_108(void)
+{
+    if ((((*(uint32_t *)0xF0000FE0) & 0x000000FF) == 0x6) && (((*(uint32_t *)0xF0000FE4) & 0x0000000F) == 0x0)){
+        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x30){
+            return true;
+        }
+        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x40){
+            return true;
+        }
         if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x50){
             return true;
         }

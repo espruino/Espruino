@@ -24,7 +24,7 @@
  * design of the circular buffer implementing the RX memory layout is illustrated in the picture
  * below.
  *
- * @image html memory_pool.png "Circular buffer design"
+ * @image html memory_pool.svg "Circular buffer design"
  *
  * The expected call order for the RX APIs is as follows:
  * - hci_mem_pool_rx_produce

@@ -4,7 +4,8 @@
  * @{
  * @ingroup nrf_drv_ppi
  */
-/** @brief Enabling PPI driver *
+/** @brief Enabling PPI driver
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
