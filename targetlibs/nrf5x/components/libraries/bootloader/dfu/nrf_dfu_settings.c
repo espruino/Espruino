@@ -142,9 +142,6 @@ void nrf_dfu_settings_init(void)
     NRF_LOG_INFO("!!!!!!!!!!!!!!! Resetting bootloader settings !!!!!!!!!!!\r\n");
     memset(&s_dfu_settings, 0x00, sizeof(nrf_dfu_settings_t));
     s_dfu_settings.settings_version = NRF_DFU_SETTINGS_VERSION;
-    //* VALID_APP FIX START *//
-    s_dfu_settings.bank_0.bank_code = NRF_DFU_BANK_VALID_APP;
-    //* VALID_APP FIX END *//
     (void)nrf_dfu_settings_write(NULL);
 }
 
