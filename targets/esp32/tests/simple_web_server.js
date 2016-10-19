@@ -5,7 +5,7 @@ var password="kolbanguest";
 
 var wifi=require("Wifi");
 wifi.connect(ssid, {password: password}, function() {
-  console.log("Connected to access point, getting web page");
+  console.log("Connected to access point, listening for clients on port 8080.");
   var http = require("http");
   http.createServer(function (req, res) {
     res.writeHead(200);

@@ -7,6 +7,7 @@
 
 #include "jsinteractive.h"
 #include "network.h"
+#include "jswrap_modules.h"
 #include "jswrap_esp32_network.h"
 
 static void sendWifiCompletionCB(
@@ -29,6 +30,220 @@ static char macFmt[] = "%02x:%02x:%02x:%02x:%02x:%02x";
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting options object but got %t", jsOPT)
 
+/*JSON{
+  "type" : "event",
+  "class" : "Wifi",
+  "name" : "disconnected",
+  "params" : [
+    ["details","JsVar","An object with event details"]
+  ]
+}
+The 'disconnected' event is called when an association with an access point has been lost.
+The details include:
+
+* ssid - The SSID of the access point from which the association was lost
+* mac - The BSSID/mac address of the access point
+* reason - The reason for the disconnection (string)
+
+*/
+
+/*JSON{
+  "type" : "event",
+  "class" : "Wifi",
+  "name" : "associated",
+  "params" : [
+    ["details","JsVar","An object with event details"]
+  ]
+}
+The 'connected' event is called when an association with an access point has succeeded, i.e., a connection to the AP's network has been established.
+The details include:
+
+* ssid - The SSID of the access point to which the association was established
+* mac - The BSSID/mac address of the access point
+* channel - The wifi channel used (an integer, typ 1..14)
+
+*/
+
+/*JSON{
+  "type" : "event",
+  "class" : "Wifi",
+  "name" : "auth_change",
+  "params" : [
+    ["details","JsVar","An object with event details"]
+  ]
+}
+The 'auth_change' event is called when the authentication mode with the associated access point changes.
+The details include:
+
+* oldMode - The old auth mode (string: open, wep, wpa, wpa2, wpa_wpa2)
+* newMode - The new auth mode (string: open, wep, wpa, wpa2, wpa_wpa2)
+
+*/
+
+/*JSON{
+  "type" : "event",
+  "class" : "Wifi",
+  "name" : "dhcp_timeout"
+}
+The 'dhcp_timeout' event is called when a DHCP request to the connected access point fails and thus no IP address could be acquired (or renewed).
+*/
+
+/*JSON{
+  "type" : "event",
+  "class" : "Wifi",
+  "name" : "connected",
+  "params" : [
+    ["details","JsVar","An object with event details"]
+  ]
+}
+The 'connected' event is called when the connection with an access point is ready for traffic. In the case of a dynamic IP address configuration this is when an IP address is obtained, in the case of static IP address allocation this happens when an association is formed (in that case the 'associated' and 'connected' events are fired in rapid succession).
+The details include:
+
+* ip - The IP address obtained as string
+* netmask - The network's IP range mask as string
+* gw - The network's default gateway as string
+
+*/
+
+/*JSON{
+  "type" : "event",
+  "class" : "Wifi",
+  "name" : "sta_joined",
+  "params" : [
+    ["details","JsVar","An object with event details"]
+  ]
+}
+The 'sta_joined' event is called when a station establishes an association (i.e. connects) with the esp8266's access point.
+The details include:
+
+* mac - The MAC address of the station in string format (00:00:00:00:00:00)
+
+*/
+
+/*JSON{
+  "type" : "event",
+  "class" : "Wifi",
+  "name" : "sta_left",
+  "params" : [
+    ["details","JsVar","An object with event details"]
+  ]
+}
+The 'sta_left' event is called when a station disconnects from the esp8266's access point (or its association times out?).
+The details include:
+
+* mac - The MAC address of the station in string format (00:00:00:00:00:00)
+
+*/
+
+/*JSON{
+  "type" : "event",
+  "class" : "Wifi",
+  "name" : "probe_recv",
+  "params" : [
+    ["details","JsVar","An object with event details"]
+  ]
+}
+The 'probe_recv' event is called when a probe request is received from some station by the esp8266's access point.
+The details include:
+
+* mac - The MAC address of the station in string format (00:00:00:00:00:00)
+* rssi - The signal strength in dB of the probe request
+
+*/
+
+/** Get the global object for the Wifi library/module, this is used in order to send the
+ * "on event" callbacks to the handlers.
+ */
+static JsVar *getWifiModule() {
+  JsVar *moduleName = jsvNewFromString("Wifi");
+  JsVar *m = jswrap_require(moduleName);
+  jsvUnLock(moduleName);
+  return m;
+} // End of getWifiModule
+
+/**
+ * Given an ESP32 WiFi event type, determine the corresponding
+ * event handler name we should publish upon.  For example, if we
+ * have an event of type "SYSTEM_EVENT_STA_CONNECTED" then we wish
+ * to publish an event upon "#onassociated".  The implementation
+ * here is a simple switch as at this time we don't want to assume
+ * anything about the values of event types (i.e. whether they are small
+ * and sequential).  If we could make assumptions about the event
+ * types we may have been able to use a lookup array.
+ *
+ * The mappings are:
+ * SYSTEM_EVENT_AP_PROBEREQRECVED   - #onprobe_recv
+ * SYSTEM_EVENT_AP_STACONNECTED     - #onsta_joined
+ * SYSTEM_EVENT_AP_STADISCONNECTED  - #onsta_left
+ * SYSTEM_EVENT_STA_AUTHMODE_CHANGE - #onauth_change
+ * SYSTEM_EVENT_STA_CONNECTED       - #onassociated
+ * SYSTEM_EVENT_STA_DISCONNECTED    - #ondisconnected
+ * SYSTEM_EVENT_STA_GOT_IP          - #onconnected
+ *
+ * See also:
+ * * event_handler()
+ *
+ */
+static char *wifiGetEvent(uint32_t event) {
+  switch(event) {
+  case SYSTEM_EVENT_AP_PROBEREQRECVED:
+    return "#onprobe_recv";
+  case SYSTEM_EVENT_AP_STACONNECTED:
+    return "#onsta_joined";
+  case SYSTEM_EVENT_AP_STADISCONNECTED:
+    return "#onsta_left";
+  case SYSTEM_EVENT_AP_START:
+    break;
+  case SYSTEM_EVENT_AP_STOP:
+    break;
+  case SYSTEM_EVENT_SCAN_DONE:
+    break;
+  case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:
+    return "#onauth_change";
+  case SYSTEM_EVENT_STA_CONNECTED:
+    return "#onassociated";
+  case SYSTEM_EVENT_STA_DISCONNECTED:
+    return "#ondisconnected";
+  case SYSTEM_EVENT_STA_GOT_IP:
+    return "#onconnected";
+  case SYSTEM_EVENT_STA_START:
+    break;
+  case SYSTEM_EVENT_STA_STOP:
+    break;
+  case SYSTEM_EVENT_WIFI_READY:
+    break;
+  }
+  ESP_LOGW(tag, "Unhandled event type: %d", event);
+  return NULL;
+} // End of wifiGetEvent
+
+/**
+ * Invoke the JavaScript callback to notify the program that an ESP8266
+ * WiFi event has occurred.
+ */
+static void sendWifiEvent(
+    uint32_t eventType, //!< The ESP32 WiFi event type.
+    JsVar *jsDetails  //!< The JS object to be passed as a parameter to the callback.
+) {
+  JsVar *module = getWifiModule();
+  if (!module) {
+    return; // out of memory?
+  }
+
+  // get event name as string and compose param list
+  JsVar *params[1];
+  params[0] = jsDetails;
+  char *eventName = wifiGetEvent(eventType);
+  if (eventName == NULL) {
+    return;
+  }
+
+  ESP_LOGD(tag, "wifi.on(%s)\n", eventName);
+  jsiQueueObjectCallbacks(module, eventName, params, 1);
+  jsvUnLock(module);
+  return;
+}
+
 /**
  * Wifi event handler
  * Here we get invoked whenever a WiFi event is received from the ESP32 WiFi
@@ -38,15 +253,73 @@ static char macFmt[] = "%02x:%02x:%02x:%02x:%02x:%02x";
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
   ESP_LOGD(tag, ">> event_handler");
+  /*
+   * SYSTEM_EVENT_STA_DISCONNECT
+   * Structure contains:
+   * * ssid
+   * * ssid_len
+   * * bssid
+   * * reason
+   */
   if (event->event_id == SYSTEM_EVENT_STA_DISCONNECTED) {
     if (jsvIsFunction(g_jsDisconnectCallback)) {
       jsiQueueEvents(NULL, g_jsDisconnectCallback, NULL, 0);
       jsvUnLock(g_jsDisconnectCallback);
       g_jsDisconnectCallback = NULL;
     }
+    JsVar *jsDetails = jsvNewObject();
+
+    char temp[33];
+    memcpy(temp, event->event_info.disconnected.ssid, 32);
+    temp[32] = '\0';
+    jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(temp));
+    sprintf(temp, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+        event->event_info.disconnected.bssid[0],
+        event->event_info.disconnected.bssid[1],
+        event->event_info.disconnected.bssid[2],
+        event->event_info.disconnected.bssid[3],
+        event->event_info.disconnected.bssid[4],
+        event->event_info.disconnected.bssid[5]);
+    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
+    sprintf(temp, "%d", event->event_info.disconnected.reason);
+    jsvObjectSetChildAndUnLock(jsDetails, "reason", jsvNewFromString(temp));
+    sendWifiEvent(event->event_id, jsDetails);
     ESP_LOGD(tag, "<< event_handler - STA DISCONNECTED");
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_DISCONNECTED
+
+  /**
+   * SYSTEM_EVENT_STA_CONNECTED
+   * Structure contains:
+   * * ssid
+   * * ssid_len
+   * * bssid
+   * * channel
+   * * authmode
+   */
+  if (event->event_id == SYSTEM_EVENT_STA_CONNECTED) {
+    // Publish the on("associated") event to any one who has registered
+    // an interest.
+    JsVar *jsDetails = jsvNewObject();
+
+    char temp[33];
+    memcpy(temp, event->event_info.connected.ssid, 32);
+    temp[32] = '\0';
+    jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(temp));
+    sprintf(temp, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+        event->event_info.connected.bssid[0],
+        event->event_info.connected.bssid[1],
+        event->event_info.connected.bssid[2],
+        event->event_info.connected.bssid[3],
+        event->event_info.connected.bssid[4],
+        event->event_info.connected.bssid[5]);
+    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
+    sprintf(temp, "%d", event->event_info.connected.channel);
+    jsvObjectSetChildAndUnLock(jsDetails, "channel", jsvNewFromString(temp));
+    sendWifiEvent(event->event_id, jsDetails);
+    ESP_LOGD(tag, "<< event_handler - STA CONNECTED");
+    return ESP_OK;
+  } // End of handle SYSTEM_EVENT_STA_CONNECTED
 
 
   if (event->event_id == SYSTEM_EVENT_STA_GOT_IP) {
