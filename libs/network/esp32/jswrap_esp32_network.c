@@ -7,6 +7,7 @@
 
 #include "jsinteractive.h"
 #include "network.h"
+#include "jswrap_modules.h"
 #include "jswrap_esp32_network.h"
 
 static void sendWifiCompletionCB(
@@ -29,6 +30,93 @@ static char macFmt[] = "%02x:%02x:%02x:%02x:%02x:%02x";
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting options object but got %t", jsOPT)
 
+/*JSON{
+  "type" : "event",
+  "class" : "Wifi",
+  "name" : "disconnected",
+  "params" : [
+    ["details","JsVar","An object with event details"]
+  ]
+}
+The 'disconnected' event is called when an association with an access point has been lost.
+The details include:
+
+* ssid - The SSID of the access point from which the association was lost
+* mac - The BSSID/mac address of the access point
+* reason - The reason for the disconnection (string)
+
+*/
+
+/** Get the global object for the Wifi library/module, this is used in order to send the
+ * "on event" callbacks to the handlers.
+ */
+static JsVar *getWifiModule() {
+  JsVar *moduleName = jsvNewFromString("Wifi");
+  JsVar *m = jswrap_require(moduleName);
+  jsvUnLock(moduleName);
+  return m;
+}
+
+
+static char *wifiGetEvent(uint32_t event) {
+  switch(event) {
+  case SYSTEM_EVENT_AP_PROBEREQRECVED:
+    return "#onprobe_recv";
+  case SYSTEM_EVENT_AP_STACONNECTED:
+    return "#onsta_joined";
+  case SYSTEM_EVENT_AP_STADISCONNECTED:
+    return "#onsta_left";
+  case SYSTEM_EVENT_AP_START:
+    break;
+  case SYSTEM_EVENT_AP_STOP:
+    break;
+  case SYSTEM_EVENT_SCAN_DONE:
+    break;
+  case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:
+    return "#onauth_change";
+  case SYSTEM_EVENT_STA_CONNECTED:
+    return "#onassociated";
+  case SYSTEM_EVENT_STA_DISCONNECTED:
+    return "#ondisconnected";
+  case SYSTEM_EVENT_STA_GOT_IP:
+    return "#onconnected";
+  case SYSTEM_EVENT_STA_START:
+    break;
+  case SYSTEM_EVENT_STA_STOP:
+    break;
+  case SYSTEM_EVENT_WIFI_READY:
+    break;
+  }
+  ESP_LOGW(tag, "Unhandled event type: %d", event);
+  return NULL;
+}
+
+/**
+ * Invoke the JavaScript callback to notify the program that an ESP8266
+ * WiFi event has occurred.
+ */
+static void sendWifiEvent(
+    uint32_t eventType, //!< The ESP32 WiFi event type.
+    JsVar *jsDetails  //!< The JS object to be passed as a parameter to the callback.
+) {
+  JsVar *module = getWifiModule();
+  if (!module) {
+    return; // out of memory?
+  }
+
+  // get event name as string and compose param list
+  JsVar *params[1];
+  params[0] = jsDetails;
+  char *eventName = wifiGetEvent(eventType);
+  if (eventName == NULL) {
+    return;
+  }
+  ESP_LOGD(tag, "wifi.on(%s)\n", eventName);
+  jsiQueueObjectCallbacks(module, eventName, params, 1);
+  jsvUnLock(module);
+  return;
+}
+
 /**
  * Wifi event handler
  * Here we get invoked whenever a WiFi event is received from the ESP32 WiFi
@@ -44,6 +132,23 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
       jsvUnLock(g_jsDisconnectCallback);
       g_jsDisconnectCallback = NULL;
     }
+    JsVar *jsDetails = jsvNewObject();
+
+    char temp[33];
+    memcpy(temp, event->event_info.disconnected.ssid, 32);
+    temp[32] = '\0';
+    jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(temp));
+    sprintf(temp, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+        event->event_info.disconnected.bssid[0],
+        event->event_info.disconnected.bssid[1],
+        event->event_info.disconnected.bssid[2],
+        event->event_info.disconnected.bssid[3],
+        event->event_info.disconnected.bssid[4],
+        event->event_info.disconnected.bssid[5]);
+    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
+    sprintf(temp, "%d", event->event_info.disconnected.reason);
+    jsvObjectSetChildAndUnLock(jsDetails, "reason", jsvNewFromString(temp));
+    sendWifiEvent(event->event_id, jsDetails);
     ESP_LOGD(tag, "<< event_handler - STA DISCONNECTED");
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_DISCONNECTED
