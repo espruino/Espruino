@@ -229,7 +229,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_GAP_EVT_CONNECTED:
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-          if (bleStatus & BLE_IS_RSSI_SCANNING); // attempt to restart RSSI scan
+          if (bleStatus & BLE_IS_RSSI_SCANNING) // attempt to restart RSSI scan
             sd_ble_gap_rssi_start(m_conn_handle, 0, 0);
           bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
           bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
@@ -1139,5 +1139,37 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
   }
 
   return;
+}
+#endif
+
+#ifdef USE_NFC
+void jsble_nfc_stop() {
+  if (!nfcEnabled) return;
+  nfcEnabled = false;
+  nfc_t2t_emulation_stop();
+  nfc_t2t_done();
+}
+
+void jsble_nfc_start(const uint8_t *data, size_t len) {
+  if (nfcEnabled) jsble_nfc_stop();
+
+  uint32_t ret_val;
+
+  ret_val = nfc_t2t_setup(nfc_callback, NULL);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSetup: Got NFC error code %d", ret_val);
+
+  nfcEnabled = true;
+
+  /* Set created message as the NFC payload */
+  ret_val = nfc_t2t_payload_set( data, len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSetPayload: NFC error code %d", ret_val);
+
+  /* Start sensing NFC field */
+  ret_val = nfc_t2t_emulation_start();
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcStartEmulation: NFC error code %d", ret_val);
+
 }
 #endif
