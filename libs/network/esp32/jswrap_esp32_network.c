@@ -24,8 +24,6 @@ static JsVar *g_jsDisconnectCallback;
 // A callback function to be invoked when we have an IP address.
 static JsVar *g_jsGotIpCallback;
 
-// Format of a MAC address.
-static char macFmt[] = "%02x:%02x:%02x:%02x:%02x:%02x";
 
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting options object but got %t", jsOPT)
@@ -55,8 +53,8 @@ The details include:
     ["details","JsVar","An object with event details"]
   ]
 }
-The 'connected' event is called when an association with an access point has succeeded, i.e., a connection to the AP's network has been established.
-The details include:
+The 'connected' event is called when an association with an access point has succeeded, i.e., a
+connection to the AP's network has been established. The details include:
 
 * ssid - The SSID of the access point to which the association was established
 * mac - The BSSID/mac address of the access point
@@ -85,7 +83,8 @@ The details include:
   "class" : "Wifi",
   "name" : "dhcp_timeout"
 }
-The 'dhcp_timeout' event is called when a DHCP request to the connected access point fails and thus no IP address could be acquired (or renewed).
+The 'dhcp_timeout' event is called when a DHCP request to the connected access point fails and
+thus no IP address could be acquired (or renewed).
 */
 
 /*JSON{
@@ -96,7 +95,10 @@ The 'dhcp_timeout' event is called when a DHCP request to the connected access p
     ["details","JsVar","An object with event details"]
   ]
 }
-The 'connected' event is called when the connection with an access point is ready for traffic. In the case of a dynamic IP address configuration this is when an IP address is obtained, in the case of static IP address allocation this happens when an association is formed (in that case the 'associated' and 'connected' events are fired in rapid succession).
+The 'connected' event is called when the connection with an access point is ready for traffic.
+In the case of a dynamic IP address configuration this is when an IP address is obtained,
+in the case of static IP address allocation this happens when an association is formed
+(in that case the 'associated' and 'connected' events are fired in rapid succession).
 The details include:
 
 * ip - The IP address obtained as string
@@ -113,7 +115,8 @@ The details include:
     ["details","JsVar","An object with event details"]
   ]
 }
-The 'sta_joined' event is called when a station establishes an association (i.e. connects) with the esp8266's access point.
+The 'sta_joined' event is called when a station establishes an association
+(i.e. connects) with the ESP32's access point.
 The details include:
 
 * mac - The MAC address of the station in string format (00:00:00:00:00:00)
@@ -128,7 +131,8 @@ The details include:
     ["details","JsVar","An object with event details"]
   ]
 }
-The 'sta_left' event is called when a station disconnects from the esp8266's access point (or its association times out?).
+The 'sta_left' event is called when a station disconnects from the ESP32's
+access point (or its association times out?).
 The details include:
 
 * mac - The MAC address of the station in string format (00:00:00:00:00:00)
@@ -143,8 +147,8 @@ The details include:
     ["details","JsVar","An object with event details"]
   ]
 }
-The 'probe_recv' event is called when a probe request is received from some station by the esp8266's access point.
-The details include:
+The 'probe_recv' event is called when a probe request is received from some
+station by the ESP32's access point. The details include:
 
 * mac - The MAC address of the station in string format (00:00:00:00:00:00)
 * rssi - The signal strength in dB of the probe request
@@ -273,13 +277,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     memcpy(temp, event->event_info.disconnected.ssid, 32);
     temp[32] = '\0';
     jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(temp));
-    sprintf(temp, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
-        event->event_info.disconnected.bssid[0],
-        event->event_info.disconnected.bssid[1],
-        event->event_info.disconnected.bssid[2],
-        event->event_info.disconnected.bssid[3],
-        event->event_info.disconnected.bssid[4],
-        event->event_info.disconnected.bssid[5]);
+    sprintf(temp, MACSTR, MAC2STR(event->event_info.disconnected.bssid));
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
     sprintf(temp, "%d", event->event_info.disconnected.reason);
     jsvObjectSetChildAndUnLock(jsDetails, "reason", jsvNewFromString(temp));
@@ -306,13 +304,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     memcpy(temp, event->event_info.connected.ssid, 32);
     temp[32] = '\0';
     jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(temp));
-    sprintf(temp, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
-        event->event_info.connected.bssid[0],
-        event->event_info.connected.bssid[1],
-        event->event_info.connected.bssid[2],
-        event->event_info.connected.bssid[3],
-        event->event_info.connected.bssid[4],
-        event->event_info.connected.bssid[5]);
+    sprintf(temp, MACSTR, MAC2STR(event->event_info.connected.bssid));
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
     sprintf(temp, "%d", event->event_info.connected.channel);
     jsvObjectSetChildAndUnLock(jsDetails, "channel", jsvNewFromString(temp));
@@ -337,17 +329,54 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     // 123456789012345_6
     // xxx.xxx.xxx.xxx\0
     char temp[16];
-    sprintf(temp, "%d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.ip));
+    sprintf(temp, IPSTR, IP2STR(&event->event_info.got_ip.ip_info.ip));
     jsvObjectSetChildAndUnLock(jsDetails, "ip", jsvNewFromString(temp));
-    sprintf(temp, "%d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.netmask));
+    sprintf(temp, IPSTR, IP2STR(&event->event_info.got_ip.ip_info.netmask));
     jsvObjectSetChildAndUnLock(jsDetails, "netmask", jsvNewFromString(temp));
-    sprintf(temp, "%d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.gw));
+    sprintf(temp, IPSTR, IP2STR(&event->event_info.got_ip.ip_info.gw));
     jsvObjectSetChildAndUnLock(jsDetails, "gw", jsvNewFromString(temp));
 
     sendWifiEvent(event->event_id, jsDetails);
-
+    ESP_LOGD(tag, "<< event_handler - STA GOT IP");
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_GOT_IP
+
+
+  /**
+   * SYSTEM_EVENT_AP_STACONNECTED
+   * Structure contains:
+   * * mac
+   * * aid
+   */
+  if (event->event_id == SYSTEM_EVENT_AP_STACONNECTED) {
+    JsVar *jsDetails = jsvNewObject();
+    // 12345678901234567_8
+    // xx:xx:xx:xx:xx:xx\0
+    char temp[18];
+    sprintf(temp, MACSTR, MAC2STR(&event->event_info.sta_connected.mac));
+    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
+    sendWifiEvent(event->event_id, jsDetails);
+    ESP_LOGD(tag, "<< event_handler - STA AP STA CONNECTED");
+    return ESP_OK;
+  }
+
+  /**
+   * SYSTEM_EVENT_AP_STADISCONNECTED
+   * Structure contains:
+   * * mac
+   * * aid
+   */
+  if (event->event_id == SYSTEM_EVENT_AP_STADISCONNECTED) {
+    JsVar *jsDetails = jsvNewObject();
+    // 12345678901234567_8
+    // xx:xx:xx:xx:xx:xx\0
+    char temp[18];
+    sprintf(temp, MACSTR, MAC2STR(&event->event_info.sta_disconnected.mac));
+    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
+    sendWifiEvent(event->event_id, jsDetails);
+    ESP_LOGD(tag, "<< event_handler - STA AP STA DISCONNECTED");
+    return ESP_OK;
+  }
 
   ESP_LOGD(tag, "<< event_handler");
   return ESP_OK;
@@ -929,6 +958,7 @@ void jswrap_ESP32_wifi_restore(void) {
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_restore");
 }
+
 /**
  * Get the ip info for the given interface.  The interfaces are:
  * * TCPIP_ADAPTER_IF_STA - Station
@@ -958,8 +988,7 @@ static JsVar *getIPInfo(JsVar *jsCallback, tcpip_adapter_if_t interface) {
   uint8_t macAddr[6];
   esp_wifi_get_mac(interface==TCPIP_ADAPTER_IF_STA?WIFI_IF_STA:WIFI_IF_AP, macAddr);
   char macAddrString[6*3 + 1];
-  sprintf(macAddrString, macFmt,
-    macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
+  sprintf(macAddrString, MACSTR, MAC2STR(macAddr));
   jsvObjectSetChildAndUnLock(jsIpInfo, "mac", jsvNewFromString(macAddrString));
 
   // Schedule callback if a function was provided
