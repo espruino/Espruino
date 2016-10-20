@@ -31,9 +31,7 @@
 #include "ble_nus.h"
 #include "app_util_platform.h"
 #ifdef USE_NFC
-#include "nfc_t2t_lib.h"
 #include "nfc_uri_msg.h"
-bool nfcEnabled = false;
 #endif
 
 
@@ -907,11 +905,8 @@ void jswrap_nrf_nfcURL(JsVar *url) {
 #ifdef USE_NFC
   // Check for disabling NFC
   if (jsvIsUndefined(url)) {
-    if (!nfcEnabled) return;
-    nfcEnabled = false;
     jsvObjectSetChild(execInfo.hiddenRoot, "NFC", 0);
-    nfc_t2t_emulation_stop();
-    nfc_t2t_done();
+    jsble_nfc_stop();
     return;
   }
 
@@ -920,23 +915,13 @@ void jswrap_nrf_nfcURL(JsVar *url) {
     return;
   }
 
-  uint32_t ret_val;
   uint32_t err_code;
-  /* Set up NFC */
-  if (nfcEnabled) {
-    nfc_t2t_emulation_stop();
-    nfc_t2t_done();
-  } else {
-    ret_val = nfc_t2t_setup(nfc_callback, NULL);
-    if (ret_val)
-      return jsExceptionHere(JSET_ERROR, "nfcSetup: Got NFC error code %d", ret_val);
-    nfcEnabled = true;
-  }
+  /* Turn off NFC */
+  jsble_nfc_stop();
 
   JSV_GET_AS_CHAR_ARRAY(urlPtr, urlLen, url);
   if (!urlPtr || !urlLen)
     return jsExceptionHere(JSET_ERROR, "Unable to get URL data");
-
 
   uint8_t msg_buf[256];
   uint32_t len = sizeof(msg_buf);
@@ -959,15 +944,8 @@ void jswrap_nrf_nfcURL(JsVar *url) {
   jsvUnLock(flatStr);
   memcpy(flatStrPtr, msg_buf, len);
 
-  /* Set created message as the NFC payload */
-  ret_val = nfc_t2t_payload_set( (char*)flatStrPtr, len);
-  if (ret_val)
-    return jsExceptionHere(JSET_ERROR, "nfcSetPayload: NFC error code %d", ret_val);
-
-  /* Start sensing NFC field */
-  ret_val = nfc_t2t_emulation_start();
-  if (ret_val)
-    return jsExceptionHere(JSET_ERROR, "nfcStartEmulation: NFC error code %d", ret_val);
+  // start nfc properly
+  jsble_nfc_start(flatStrPtr, len);
 #endif
 }
 
