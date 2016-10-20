@@ -322,9 +322,30 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
   } // End of handle SYSTEM_EVENT_STA_CONNECTED
 
 
+  /**
+   * SYSTEM_EVENT_STA_GOT_IP
+   * Structure contains:
+   * * ipinfo.ip
+   * * ipinfo.netmask
+   * * ip_info.gw
+   */
   if (event->event_id == SYSTEM_EVENT_STA_GOT_IP) {
     sendWifiCompletionCB(&g_jsGotIpCallback, NULL);
     ESP_LOGD(tag, "<< event_handler - STA GOT IP");
+    JsVar *jsDetails = jsvNewObject();
+
+    // 123456789012345_6
+    // xxx.xxx.xxx.xxx\0
+    char temp[16];
+    sprintf(temp, "%d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.ip));
+    jsvObjectSetChildAndUnLock(jsDetails, "ip", jsvNewFromString(temp));
+    sprintf(temp, "%d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.netmask));
+    jsvObjectSetChildAndUnLock(jsDetails, "netmask", jsvNewFromString(temp));
+    sprintf(temp, "%d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.gw));
+    jsvObjectSetChildAndUnLock(jsDetails, "gw", jsvNewFromString(temp));
+
+    sendWifiEvent(event->event_id, jsDetails);
+
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_GOT_IP
 
