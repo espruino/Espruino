@@ -128,10 +128,55 @@ board_esp01["_css"] = """
 boards = [ board_esp12, board_esp01 ];
 
 def get_pins():
-  pins = pinutils.generate_pins(0,39)
+
+  pins = pinutils.generate_pins(0,19);
+
+  pins.extend(pinutils.generate_pins(21,22));
+
+  pins.extend(pinutils.generate_pins(25,27));
+
+  pins.extend(pinutils.generate_pins(32,39));
+
+  pinutils.findpin(pins, "PD36", True)["functions"]["ADC1_IN0"]=0;
+
+  pinutils.findpin(pins, "PD37", True)["functions"]["ADC1_IN1"]=0;
+
+  pinutils.findpin(pins, "PD38", True)["functions"]["ADC1_IN2"]=0;
+
+  pinutils.findpin(pins, "PD39", True)["functions"]["ADC1_IN3"]=0;
+
+  pinutils.findpin(pins, "PD32", True)["functions"]["ADC1_IN4"]=0;
+
+  pinutils.findpin(pins, "PD33", True)["functions"]["ADC1_IN5"]=0;
+
+  pinutils.findpin(pins, "PD34", True)["functions"]["ADC1_IN6"]=0;
+
+  pinutils.findpin(pins, "PD35", True)["functions"]["ADC1_IN7"]=0;
+
+
+  pinutils.findpin(pins, "PD4", True)["functions"]["ADC2_IN0"]=0;
+
+  pinutils.findpin(pins, "PD0", True)["functions"]["ADC2_IN1"]=0;
+
+  pinutils.findpin(pins, "PD2", True)["functions"]["ADC2_IN2"]=0;
+
+  pinutils.findpin(pins, "PD15", True)["functions"]["ADC2_IN3"]=0;
+
+  pinutils.findpin(pins, "PD13", True)["functions"]["ADC2_IN4"]=0;
+
+  pinutils.findpin(pins, "PD12", True)["functions"]["ADC2_IN5"]=0;
+
+  pinutils.findpin(pins, "PD14", True)["functions"]["ADC2_IN6"]=0;
+
+  pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
+
+
   pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
-  pinutils.findpin(pins, "PD1", True)["functions"]["USART0_TX"]=0;
-  pinutils.findpin(pins, "PD2", True)["functions"]["USART1_TX"]=0;
-  pinutils.findpin(pins, "PD3", True)["functions"]["USART0_RX"]=0;
-  # just fake pins D0 .. D15
+
+  pinutils.findpin(pins, "PD10", True)["functions"]["USART0_TX"]=0;
+
+  pinutils.findpin(pins, "PD17", True)["functions"]["USART2_TX"]=0;
+
+  pinutils.findpin(pins, "PD32", True)["functions"]["USART0_RX"]=0;
+
   return pins
