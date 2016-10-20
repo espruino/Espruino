@@ -34,6 +34,7 @@
 
 #include "jswrap_esp32_network.h"
 
+#include "esp_attr.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
@@ -47,9 +48,48 @@
 
 // The logging tag used for log messages issued by this file.
 static char *tag = "jshardware";
+static char *tagGPIO = "jshardware(GPIO)";
 
 // Convert an Espruino pin to an ESP32 pin number.
 static gpio_num_t pinToESP32Pin(Pin pin);
+/**
+ * Convert a pin id to the corresponding Pin Event id.
+ */
+static IOEventFlags pinToEV_EXTI(
+    Pin pin // !< The pin to map to the event id.
+  ) {
+  // Map pin 0 to EV_EXTI0
+  // Map pin 1 to EV_EXTI1
+  // ...
+  // Map pin x to ECEXTIx
+  return (IOEventFlags)(EV_EXTI0 + pin);
+}
+
+/**
+* interrupt handler for gpio interrupts
+*/
+void IRAM_ATTR gpio_intr_test(void* arg){
+  //GPIO intr process. Mainly copied from esp-idf
+  IOEventFlags exti;
+  uint32_t gpio_num = 0;
+  uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);   //read status to get interrupt status for GPIO0-31
+  uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);//read status1 to get interrupt status for GPIO32-39
+  SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, gpio_intr_status);    //Clear intr for gpio0-gpio31
+  SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, gpio_intr_status_h); //Clear intr for gpio32-39
+  do {
+    if(gpio_num < 32) {
+      if(gpio_intr_status & BIT(gpio_num)) { //gpio0-gpio31
+		exti = pinToEV_EXTI(gpio_num);
+		jshPushIOWatchEvent(exti);
+      }
+    } else {
+      if(gpio_intr_status_h & BIT(gpio_num - 32)) {
+		exti = pinToEV_EXTI(gpio_num);
+		jshPushIOWatchEvent(exti);
+      }
+    }
+  } while(++gpio_num < GPIO_PIN_COUNT);
+}
 
 /**
  * Initialize the JavaScript hardware interface.
@@ -60,6 +100,7 @@ void jshInit() {
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
   esp32_wifi_init();
   spi_flash_init();
+  gpio_isr_register(18,gpio_intr_test,NULL);  //TODO ESP32 document usage of interrupt levels (18 in this case)
   ESP_LOGD(tag,"<< jshInit");
 } // End of jshInit
 
@@ -224,10 +265,10 @@ void jshPinSetValue(
 bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
-  ESP_LOGD(tag,">> jshPinGetValue: pin=%d", pin);
+  //ESP_LOGD(tagGPIO,">> jshPinGetValue: pin=%d", pin);
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   bool level = gpio_get_level(gpioNum);
-  ESP_LOGD(tag,"<< jshPinGetValue: level=%d", level);
+  //ESP_LOGD(tagGPIO,"<< jshPinGetValue: level=%d", level);
   return level;
 }
 
@@ -236,6 +277,8 @@ JsVarFloat jshPinAnalog(Pin pin) {
   ESP_LOGD(tag,">> jshPinAnalog: pin=%d", pin);
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshPinAnalog");
+  gpio_num_t gpioNum = pinToESP32Pin(pin);
+  //return (JsVarFloat)system_adc1_read(gpioNum, 3); //TODO ESP32 not supported yet from SDK
   return (JsVarFloat)0;
 }
 
@@ -291,11 +334,13 @@ void jshKickWatchDog() {
  * Get the state of the pin associated with the event flag.
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
-  ESP_LOGD(tag,">> jshGetWatchedPinState");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshGetWatchedPinState");
-  return 0;
-}
+bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
+  //ESP_LOGD(tagGPIO,">> jshGetWatchedPinState: eventFlag=%d", eventFlag);
+  gpio_num_t gpioNum = pinToESP32Pin(eventFlag-EV_EXTI0);
+  bool level = gpio_get_level(gpioNum);
+  //ESP_LOGD(tagGPIO,"<< jshGetWatchedPinState: level=%d", level);
+  return level;
+}}
 
 
 /**
@@ -320,10 +365,7 @@ void jshPinPulse(
 bool jshCanWatch(
     Pin pin //!< The pin that we are asking whether or not we can watch it.
   ) {
-  ESP_LOGD(tag,">> jshCanWatch: pin=%d", pin);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshCanWatch");
-  return true;
+  return true; //lets assume all pins will do
 }
 
 
@@ -335,10 +377,19 @@ IOEventFlags jshPinWatch(
     Pin pin,         //!< The pin to be watched.
     bool shouldWatch //!< True for watching and false for unwatching.
   ) {
-  ESP_LOGD(tag,">> jshPinWatch: pin=%d, shouldWatch=%d", pin, shouldWatch);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshPinWatch");
-  return 0;
+      gpio_num_t gpioNum = pinToESP32Pin(pin);
+	  if(shouldWatch){
+		gpio_set_intr_type(gpioNum,GPIO_INTR_ANYEDGE);             //set posedge interrupt
+		gpio_set_direction(gpioNum,GPIO_MODE_INPUT);               //set as input
+		gpio_set_pull_mode(gpioNum,GPIO_PULLUP_ONLY);              //enable pull-up mode
+		gpio_intr_enable(gpioNum);                                 //enable interrupt
+	  }
+	  else{
+		if(gpio_intr_disable(gpioNum) == ESP_ERR_INVALID_ARG){     //disable interrupt
+			ESP_LOGE(tagGPIO,"*** jshPinWatch error");
+		}
+	  }
+      return pin;
 }
 
 
@@ -361,10 +412,7 @@ bool jshIsEventForPin(
     IOEvent *event, //!< The event that has been detected.
     Pin pin         //!< The identity of a pin.
   ) {
-  ESP_LOGD(tag,">> jshIsEventForPin: pin=%d", pin);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshIsEventForPin");
-return 0;
+  return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEV_EXTI(pin);
 }
 
 //===== USART and Serial =====
