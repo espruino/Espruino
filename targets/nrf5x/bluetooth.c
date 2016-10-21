@@ -53,6 +53,10 @@
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
 #endif
 
+#if (NRF_SD_BLE_API_VERSION == 3)
+#define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                       /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#endif
+
 /* We want to listen as much of the time as possible. Not sure if 100/100 is feasible (50/100 is what's used in examples), but it seems to work fine like this. */
 #define SCAN_INTERVAL                   0x00A0                                      /**< Scan interval in units of 0.625 millisecond. 100ms */
 #define SCAN_WINDOW                     0x00A0                                      /**< Scan window in units of 0.625 millisecond. 100ms */
@@ -338,6 +342,14 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
               }
           }
       } break; // BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST
+
+#if (NRF_SD_BLE_API_VERSION == 3)
+      case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST:
+          err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
+                                                     NRF_BLE_MAX_MTU_SIZE);
+          APP_ERROR_CHECK(err_code);
+          break; // BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST
+#endif
 
 
       case BLE_EVT_TX_COMPLETE:
@@ -774,6 +786,9 @@ static void ble_stack_init() {
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
 
     // Enable BLE stack.
+#if (NRF_SD_BLE_API_VERSION == 3)
+    ble_enable_params.gatt_enable_params.att_mtu = NRF_BLE_MAX_MTU_SIZE;
+#endif
     err_code = softdevice_enable(&ble_enable_params);
     APP_ERROR_CHECK(err_code);
 
@@ -825,7 +840,8 @@ static void advertising_init() {
     scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
     scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
 
-    ble_adv_modes_config_t options = {0};
+    ble_adv_modes_config_t options;
+    memset(&options, 0, sizeof(options));
     options.ble_adv_fast_enabled  = true;
     options.ble_adv_fast_interval = bleAdvertisingInterval;
     options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
