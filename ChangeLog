@@ -31,6 +31,7 @@
             When moving console before printing has started, move all buffer contents as well
             Fix regression where replacing a function starting with 'return' with another would cause errors
             Fix potential issues with Telnet server and return values from netCreateSocket/netAccept on some platforms (fix #931)
+            nRF5x: Add Puck.js self-test code, fix issue where analogRead reset pin state
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
