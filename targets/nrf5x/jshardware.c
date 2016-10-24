@@ -183,6 +183,7 @@ void jshInit() {
   // Only init UART if something is connected and RX is pulled up on boot...
   jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
   if (jshPinGetValue(DEFAULT_CONSOLE_RX_PIN)) {
+    jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN);
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
     inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
