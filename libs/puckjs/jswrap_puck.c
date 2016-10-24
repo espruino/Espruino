@@ -24,6 +24,7 @@
 #include "jstimer.h"
 #include "jswrap_bluetooth.h"
 #include "nrf_gpio.h"
+#include "nrf_delay.h"
 #include "nrf5x_utils.h"
 
 #define MAG_PWR 18
@@ -32,6 +33,8 @@
 #define MAG_SCL 19
 #define MAG3110_ADDR 0x0E
 #define I2C_TIMEOUT 100000
+
+const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 
 // Has the magnetometer been turned on?
 bool mag_enabled = false;
@@ -380,7 +383,7 @@ void jswrap_puck_IR(JsVar *data) {
     hasPulses = true;
     time += jshGetTimeFromMilliseconds(pulseTime);
     pulsePolarity = !pulsePolarity;
-    jsvIteratorNext(&it);
+   jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
 
@@ -460,6 +463,201 @@ int jswrap_puck_getBatteryPercentage() {
   return pc;
 }
 
+
+
+
+static bool selftest_check_pin(Pin pin) {
+  unsigned int i;
+  bool ok = true;
+  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(pin, 1);
+  jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+  if (!jshPinGetValue(pin)) {
+    jsiConsolePrintf("Pin %p forced low\n", pin);
+    ok = false;
+  }
+  for (i=0;i<sizeof(PUCK_IO_PINS)/sizeof(Pin);i++)
+    if (PUCK_IO_PINS[i]!=pin)
+      jshPinOutput(PUCK_IO_PINS[i], 0);
+  if (!jshPinGetValue(pin)) {
+    jsiConsolePrintf("Pin %p shorted low\n", pin);
+    ok = false;
+  }
+
+  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(pin, 0);
+  jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+  if (jshPinGetValue(pin)) {
+    jsiConsolePrintf("Pin %p forced high\n", pin);
+    ok = false;
+  }
+  for (i=0;i<sizeof(PUCK_IO_PINS)/sizeof(Pin);i++)
+     if (PUCK_IO_PINS[i]!=pin)
+       jshPinOutput(PUCK_IO_PINS[i], 1);
+   if (jshPinGetValue(pin)) {
+     jsiConsolePrintf("Pin %p shorted high\n", pin);
+     ok = false;
+   }
+  return ok;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Puck",
+    "name" : "selfTest",
+    "generate" : "jswrap_puck_selfTest",
+    "return" : ["bool", "True if the self-test passed" ]
+}
+Run a self-test, and return true for a pass. This checks for shorts
+between pins, so your Puck shouldn't have anything connected to it.
+
+**Note:** This self-test auto starts if you hold the button on your Puck
+down while inserting the battery, leave it pressed for 3 seconds (while
+the green LED is lit) and release it soon after all LEDs turn on. 5
+red blinks is a fail, 5 green is a pass.
+
+*/
+bool jswrap_puck_selfTest() {
+  unsigned int timeout, i;
+  JsVarFloat v;
+  bool ok = true;
+
+  // light up all LEDs white
+  jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
+  jshPinOutput(LED2_PININDEX, LED2_ONSTATE);
+  jshPinOutput(LED3_PININDEX, LED3_ONSTATE);
+  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
+
+  timeout = 2000;
+  while (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE && timeout--)
+    nrf_delay_ms(1);
+  if (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE) {
+    jsiConsolePrintf("Timeout waiting for button to be released.\n");
+    ok = false;
+  }
+  nrf_delay_ms(100);
+  jshPinInput(LED1_PININDEX);
+  jshPinInput(LED2_PININDEX);
+  jshPinInput(LED3_PININDEX);
+  nrf_delay_ms(500);
+
+
+  jshPinSetState(LED1_PININDEX, JSHPINSTATE_GPIO_IN_PULLUP);
+  nrf_delay_ms(1);
+  v = jshPinAnalog(LED1_PININDEX);
+  jshPinSetState(LED1_PININDEX, JSHPINSTATE_GPIO_IN);
+  if (v<0.4 || v>0.65) {
+    jsiConsolePrintf("LED1 pullup voltage out of range (%f) - disconnected?\n", v);
+    ok = false;
+  }
+
+  jshPinSetState(LED2_PININDEX, JSHPINSTATE_GPIO_IN_PULLUP);
+  nrf_delay_ms(1);
+  v = jshPinAnalog(LED2_PININDEX);
+  jshPinSetState(LED2_PININDEX, JSHPINSTATE_GPIO_IN);
+  if (v<0.65 || v>0.85) {
+    jsiConsolePrintf("LED2 pullup voltage out of range (%f) - disconnected?\n", v);
+    ok = false;
+  }
+
+  jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN_PULLUP);
+  nrf_delay_ms(1);
+  v = jshPinAnalog(LED3_PININDEX);
+  jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN);
+  if (v<0.8 || v>0.95) {
+    jsiConsolePrintf("LED3 pullup voltage out of range (%f) - disconnected?\n", v);
+    ok = false;
+  }
+
+  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(IR_ANODE_PIN, 1);
+  nrf_delay_ms(1);
+  if (jshPinGetValue(IR_CATHODE_PIN)) {
+    jsiConsolePrintf("IR LED wrong way around/shorted?\n");
+    ok = false;
+  }
+
+  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(IR_CATHODE_PIN, 1);
+  nrf_delay_ms(1);
+  if (!jshPinGetValue(IR_ANODE_PIN)) {
+    jsiConsolePrintf("IR LED disconnected?\n");
+    ok = false;
+  }
+
+  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN);
+
+  mag_on(80000);
+  mag_wait();
+  int16_t d[3];
+  mag_read(d);
+  mag_off();
+  mag_enabled = false;
+  if (d[0]==-1 && d[1]==-1 && d[2]==-1) {
+    jsiConsolePrintf("Magnetometer not working?\n");
+    ok = false;
+  }
+
+  jshPinSetState(CAPSENSE_TX_PIN, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(CAPSENSE_RX_PIN, JSHPINSTATE_GPIO_IN);
+  jshPinSetValue(CAPSENSE_TX_PIN, 1);
+  nrf_delay_ms(1);
+  if (!jshPinGetValue(CAPSENSE_RX_PIN)) {
+    jsiConsolePrintf("Capsense resistor disconnected? (pullup)\n");
+    ok = false;
+  }
+  jshPinSetValue(CAPSENSE_TX_PIN, 0);
+  nrf_delay_ms(1);
+  if (!jshPinGetValue(CAPSENSE_RX_PIN)) {
+    jsiConsolePrintf("Capsense resistor disconnected? (pulldown)\n");
+    ok = false;
+  }
+  jshPinSetState(CAPSENSE_TX_PIN, JSHPINSTATE_GPIO_IN);
+
+
+  ok &= selftest_check_pin(1);
+  ok &= selftest_check_pin(2);
+  ok &= selftest_check_pin(6);
+  ok &= selftest_check_pin(7);
+  ok &= selftest_check_pin(8);
+  ok &= selftest_check_pin(28);
+  ok &= selftest_check_pin(29);
+  ok &= selftest_check_pin(30);
+  ok &= selftest_check_pin(31);
+
+  for (i=0;i<sizeof(PUCK_IO_PINS)/sizeof(Pin);i++)
+    jshPinSetState(PUCK_IO_PINS[i], JSHPINSTATE_GPIO_IN);
+
+
+  return ok;
+}
+
+/*JSON{
+  "type" : "init",
+  "generate" : "jswrap_puck_init"
+}*/
+void jswrap_puck_init() {
+  /* If the button is pressed during reset, perform a self test.
+   * With bootloader this means apply power while holding button for >3 secs */
+  static bool firstStart = true;
+  if (firstStart && jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) {
+    firstStart = false; // don't do it during a software reset - only first hardware reset
+    bool result = jswrap_puck_selfTest();
+    // green if good, red if bad
+    Pin indicator = result ? LED2_PININDEX : LED1_PININDEX;
+    int i;
+    for (i=0;i<5;i++) {
+      jshPinOutput(indicator, LED1_ONSTATE);
+      nrf_delay_ms(500);
+      jshPinOutput(indicator, !LED1_ONSTATE);
+      nrf_delay_ms(500);
+    }
+    jshPinInput(indicator);
+  }
+}
 
 /*JSON{
   "type" : "kill",

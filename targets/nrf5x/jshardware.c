@@ -438,7 +438,8 @@ nrf_saadc_value_t nrf_analog_read() {
 // Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin) {
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
-  jshPinSetState(pin, JSHPINSTATE_ADC_IN);
+  if (!jshGetPinStateIsManual(pin))
+    jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 #ifdef NRF52
   // sanity checks for channel
   assert(NRF_SAADC_INPUT_AIN0 == 1);
