@@ -800,6 +800,13 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
     else
       oldFunc->flags &= ~JSV_NATIVE;
   }
+  // If old fn started with 'return' or vice versa...
+  if (jsvIsFunctionReturn(oldFunc) != jsvIsFunctionReturn(newFunc)) {
+    if (jsvIsFunctionReturn(newFunc))
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) |JSV_FUNCTION_RETURN;
+    else
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) |JSV_FUNCTION;
+  }
 
   // Grab scope - the one thing we want to keep
   JsVar *scope = jsvFindChildFromString(oldFunc, JSPARSE_FUNCTION_SCOPE_NAME, false);
