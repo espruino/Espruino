@@ -54,15 +54,15 @@ bool telnetRecv(JsNetwork *net);
 
 // Data structure for a telnet console server
 typedef struct {
-  int          sock;             // listening server socket, 0=none
-  int          cliSock;          // active client socket, 0=none
-  char         txBuf[TX_CHUNK];  // transmit buffer
-  uint16_t     txBufLen;         // number of chars in tx buffer
-  IOEventFlags oldConsole;       // device the console was stolen from
+  int          sock;             ///< listening server socket, 0=none (actual socket numbers are 1 less than this, as 0 is a valid socket)
+  int          cliSock;          ///< active client socket, 0=none (actual socket numbers are 1 less than this, as 0 is a valid socket)
+  char         txBuf[TX_CHUNK];  ///< transmit buffer
+  uint16_t     txBufLen;         ///< number of chars in tx buffer
+  IOEventFlags oldConsole;       ///< device the console was stolen from
 } TelnetServer;
 
-static TelnetServer tnSrv;        // the telnet server, only one right now
-static uint8_t      tnSrvMode;    // current mode for the telnet server
+static TelnetServer tnSrv;        ///< the telnet server, only one right now
+static uint8_t      tnSrvMode;    ///< current mode for the telnet server
 
 /*JSON{
   "type"  : "library",
@@ -153,10 +153,10 @@ bool jswrap_telnet_idle(void) {
   }
 
   // we're supposed to be on, make sure we're listening
-  if (tnSrv.sock == 0) {
+  if (tnSrv.sock <= 0) {
     memset(&tnSrv, 0, sizeof(TelnetServer));
     telnetStart(&net);
-    if (tnSrv.sock == 0) {
+    if (tnSrv.sock <= 0) {
       networkFree(&net);
       return false; // seems like there's a problem...
     }
@@ -179,8 +179,8 @@ bool jswrap_telnet_idle(void) {
 void telnetStart(JsNetwork *net) {
   // create the listening socket
   printf("tnSrv: creating...\n");
-  int sock = netCreateSocket(net, 0, PORT, NCF_NORMAL, NULL);
-  if (sock == 0) {
+  int sock = netCreateSocket(net, 0, PORT, NCF_NORMAL, NULL)+1;
+  if (sock <= 0) {
     printf("tnSrv: cannot create listening socket\n");
     return;
   }
@@ -191,22 +191,22 @@ void telnetStart(JsNetwork *net) {
 // Terminate the telnet console
 void telnetStop(JsNetwork *net) {
   printf("tnSrv: stopped sock=%d\n", tnSrv.sock);
-  if (tnSrv.cliSock != 0) netCloseSocket(net, tnSrv.cliSock);
+  if (tnSrv.cliSock > 0) netCloseSocket(net, tnSrv.cliSock-1);
   tnSrv.cliSock = 0;
-  if (tnSrv.sock != 0) netCloseSocket(net, tnSrv.sock);
+  if (tnSrv.sock > 0) netCloseSocket(net, tnSrv.sock-1);
   tnSrv.sock = 0;
 }
 
 // Attempt to accept a connection, returns true if it did something
 bool telnetAccept(JsNetwork *net) {
   // we're gonna do a single accept per idle iteration for now
-  if (tnSrv.sock == 0) return false;
-  int sock = netAccept(net, tnSrv.sock);
-  if (sock < 0) return false; // nothing
+  if (tnSrv.sock <= 0) return false;
+  int sock = netAccept(net, tnSrv.sock-1)+1;
+  if (sock <= 0) return false; // nothing
 
   // if we already have a client, then disconnect it
-  if (tnSrv.cliSock != 0) {
-    netCloseSocket(net, tnSrv.cliSock);
+  if (tnSrv.cliSock > 0) {
+    netCloseSocket(net, tnSrv.cliSock-1);
   }
   // if the console is not already telnet, then change it
   IOEventFlags console = jsiGetConsoleDevice();
@@ -216,15 +216,15 @@ bool telnetAccept(JsNetwork *net) {
   }
 
   tnSrv.cliSock = sock;
-  printf("tnSrv: accepted console on sock=%d\n", sock);
+  printf("tnSrv: accepted console on sock=%d\n", sock-1);
   return true;
 }
 
 // Close the connection and release the console device
 void telnetRelease(JsNetwork *net) {
   if (!(tnSrv.sock && tnSrv.cliSock)) return;
-  printf("tnSrv: released console from sock %d\n", tnSrv.cliSock);
-  netCloseSocket(net, tnSrv.cliSock);
+  printf("tnSrv: released console from sock %d\n", tnSrv.cliSock-1);
+  netCloseSocket(net, tnSrv.cliSock-1);
   tnSrv.cliSock = 0;
   IOEventFlags console = jsiGetConsoleDevice();
   // only switch away from telnet if the current console is TELNET, this allows the current
@@ -242,7 +242,7 @@ bool telnetSendBuf(JsNetwork *net) {
   if (tnSrv.txBufLen == 0) return false;
 
   // try to send the tx buffer
-  int sent = netSend(net, tnSrv.cliSock, tnSrv.txBuf, tnSrv.txBufLen);
+  int sent = netSend(net, tnSrv.cliSock-1, tnSrv.txBuf, tnSrv.txBufLen);
   if (sent == tnSrv.txBufLen) {
     tnSrv.txBufLen = 0;
   } else if (sent > 0) {
@@ -253,7 +253,7 @@ bool telnetSendBuf(JsNetwork *net) {
     telnetRelease(net);
   }
   if (sent != 0) {
-    //printf("tnSrv: sent sock=%d, %d bytes, %d left\n", tnSrv.sock, sent, tnSrv.txBufLen);
+    //printf("tnSrv: sent sock=%d, %d bytes, %d left\n", tnSrv.sock-1, sent, tnSrv.txBufLen);
   }
   return sent != 0;
 }
@@ -287,14 +287,14 @@ bool telnetRecv(JsNetwork *net) {
   if (tnSrv.sock == 0 || tnSrv.cliSock == 0) return false;
 
   char buff[256];
-  int r = netRecv(net, tnSrv.cliSock, buff, 256);
+  int r = netRecv(net, tnSrv.cliSock-1, buff, 256);
   if (r > 0) {
     jshPushIOCharEvents(EV_TELNET, buff, (unsigned int)r);
   } else if (r < 0) {
     telnetRelease(net);
   }
   if (r != 0) {
-    //printf("tnSrv: recv sock=%d, %d bytes\n", tnSrv.sock, r);
+    //printf("tnSrv: recv sock=%d, %d bytes\n", tnSrv.sock-1, r);
   }
   return r != 0;
 }
