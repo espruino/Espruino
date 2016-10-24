@@ -29,6 +29,7 @@
             More STM32 changes to LSI->LSE clock switchover to fix RTC misconfiguration on Espruino WiFi
             Move LED + BTN definitions to Symbol Table (allows autocomplete)
             When moving console before printing has started, move all buffer contents as well
+            Fix regression where replacing a function starting with 'return' with another would cause errors
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
