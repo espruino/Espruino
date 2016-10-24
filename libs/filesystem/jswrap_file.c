@@ -458,6 +458,7 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
         if (buffer) {
           res = f_read(&file.data.handle, jsvGetFlatStringPointer(buffer), len, &actual);
           if (res) jsfsReportError("Unable to read file", res);
+          fileSetVar(&file);
           return buffer;
         }
 #endif
