@@ -41,6 +41,24 @@ JsVar *bleUUIDToStr(ble_uuid_t uuid) {
   return jsvVarPrintf("%04x%04x-%04x-%04x-%04x-%04x%04x%04x", wdata[7],wdata[6],wdata[5],wdata[4],wdata[3],wdata[2],wdata[1],wdata[0]);
 }
 
+// Convert a variable of the form "aa:bb:cc:dd:ee:ff" to a mac address
+bool bleVarToAddr(JsVar *mac, ble_gap_addr_t *addr) {
+  if (!jsvIsString(mac) ||
+      jsvGetStringLength(mac)!=17 ||
+      jsvGetCharInString(mac, 2)!=':' ||
+      jsvGetCharInString(mac, 5)!=':' ||
+      jsvGetCharInString(mac, 8)!=':' ||
+      jsvGetCharInString(mac, 11)!=':' ||
+      jsvGetCharInString(mac, 14)!=':') {
+    return false;
+  }
+  addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC; // not sure why this isn't public?
+  int i;
+  for (i=0;i<6;i++)
+    addr->addr[5-i] = (chtod(jsvGetCharInString(mac, i*3))<<4) | chtod(jsvGetCharInString(mac, (i*3)+1));
+  return true;
+}
+
 /// BLE MAC address to string
 JsVar *bleAddrToStr(ble_gap_addr_t addr) {
   return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
