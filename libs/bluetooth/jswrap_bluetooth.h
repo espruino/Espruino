@@ -20,6 +20,7 @@ typedef enum {
   BLETASK_PRIMARYSERVICE, ///< Find primary service
   BLETASK_CHARACTERISTIC,  ///< Find characteristics
   BLETASK_CHARACTERISTIC_WRITE, ///< Write to a characteristic
+  BLETASK_CHARACTERISTIC_READ, ///< Read from a characteristic
 } BleTask;
 
 bool bleInTask(BleTask task);
@@ -53,3 +54,4 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent);
 JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar *characteristic);
 JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent);
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteristic, JsVar *data);
+JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic);

@@ -224,7 +224,7 @@ void SWI1_IRQHandler(bool radio_evt) {
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t                         err_code;
-    // jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
+    //jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
 
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
@@ -517,6 +517,15 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_GATTC_EVT_DESC_DISC_RSP:
         jsiConsolePrintf("DESC\n");
         break;
+
+      case BLE_GATTC_EVT_READ_RSP: {
+        ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
+        JsVar *data = jsvNewStringOfLength(p_read->len);
+        if (data) jsvSetString(data, (char*)&p_read->data[0], p_read->len);
+        bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_READ, data);
+        jsvUnLock(data);
+        break;
+      }
 #endif
 
       default:
@@ -1287,7 +1296,7 @@ void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid) {
   }
 }
 
- void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen) {
+void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen) {
   const ble_gattc_write_params_t write_params = {
         .write_op = BLE_GATT_OP_WRITE_CMD,
         .flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE,
@@ -1300,5 +1309,13 @@ void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid) {
     err_code = sd_ble_gattc_write(m_central_conn_handle, &write_params);
     if (jsble_check_error(err_code))
       bleCompleteTaskFail(BLETASK_CHARACTERISTIC_WRITE, 0);
+}
+
+void jsble_central_characteristicRead(JsVar *characteristic) {
+   uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+   uint32_t              err_code;
+   err_code = sd_ble_gattc_read(m_central_conn_handle, handle, 0/*offset*/);
+   if (jsble_check_error(err_code))
+     bleCompleteTaskFail(BLETASK_CHARACTERISTIC_READ, 0);
 }
 #endif
