@@ -24,41 +24,6 @@
 #define JS_PROMISE_RESULT_NAME JS_HIDDEN_CHAR_STR"res"
 
 
-/*
-
-var p = new Promise( function(resolve) { resolve(1); });
-p.then( function(value) {
-        console.log("A"+value);  // 1
-        return value + 1;
-}).then( function(value) {
-        console.log(value);  // 2
-        return new Promise( function( resolve ) { resolve( 4 ); } );
-}).then( function( value ) {
-        console.log( value ); // 4
-} );
-p.then(function(value) {
-        console.log("B"+value); // 1
-});
-
-produces:
-
-A1
-2
-4
-
-Should produce
-
-A1
-B1
-2
-4
-
-Basically .then should return a new promise, rather than returning the same one.
-
-_jswrap_promise_resolve should then execute every promise in the list.
-
- */
-
 /*JSON{
   "type" : "class",
   "class" : "Promise",
@@ -174,6 +139,22 @@ void jswrap_promise_all_reject(JsVar *promise, JsVar *data) {
   }
 }
 
+/// Create a new promise
+JsVar *jspromise_create() {
+  return jspNewObject(0, "Promise");
+}
+
+/// Resolve the given promise
+void jspromise_resolve(JsVar *promise, JsVar *data) {
+  _jswrap_promise_queueresolve(promise, data);
+}
+
+/// Reject the given promise
+void jspromise_reject(JsVar *promise, JsVar *data) {
+  _jswrap_promise_queuereject(promise, data);
+}
+
+
 /*JSON{
   "type" : "constructor",
   "class" : "Promise",
@@ -189,7 +170,7 @@ Create a new Promise. The executor function is executed immediately (before the 
 and
  */
 JsVar *jswrap_promise_constructor(JsVar *executor) {
-  JsVar *obj = jspNewObject(0, "Promise");
+  JsVar *obj = jspromise_create();
   if (obj) {
     // create resolve and reject
     JsVar *args[2] = {
@@ -200,7 +181,7 @@ JsVar *jswrap_promise_constructor(JsVar *executor) {
     if (args[0]) jsvObjectSetChild(args[0], JSPARSE_FUNCTION_THIS_NAME, obj);
     if (args[1]) jsvObjectSetChild(args[1], JSPARSE_FUNCTION_THIS_NAME, obj);
     // call the executor
-    jsvUnLock(jspeFunctionCall(executor, 0, obj, false, 2, args));
+    if (executor) jsvUnLock(jspeFunctionCall(executor, 0, obj, false, 2, args));
     jsvUnLockMany(2, args);
   }
   return obj;
@@ -267,9 +248,9 @@ Return a new promise that is already resolved (at idle it'll
 call `.then`)
 */
 JsVar *jswrap_promise_resolve(JsVar *data) {
-  JsVar *promise = jspNewObject(0, "Promise");
+  JsVar *promise = jspromise_create();
   if (!promise) return 0;
-  _jswrap_promise_queueresolve(promise, data);
+  jspromise_resolve(promise, data);
   return promise;
 }
 
@@ -288,9 +269,9 @@ Return a new promise that is already rejected (at idle it'll
 call `.catch`)
 */
 JsVar *jswrap_promise_reject(JsVar *data) {
-  JsVar *promise = jspNewObject(0, "Promise");
+  JsVar *promise = jspromise_create();
   if (!promise) return 0;
-  _jswrap_promise_queuereject(promise, data);
+  jspromise_reject(promise, data);
   return promise;
 }
 

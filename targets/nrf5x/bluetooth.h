@@ -80,6 +80,9 @@ bool jsble_has_central_connection();
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
 bool jsble_has_simple_connection();
 
+/// Checks for error and reports an exception if there was one. Return true on error
+bool jsble_check_error(uint32_t err_code);
+
 /// Scanning for advertisign packets
 uint32_t jsble_set_scanning(bool enabled);
 
@@ -105,5 +108,12 @@ void jsble_nfc_start(const uint8_t *data, size_t len);
 #endif
 
 #if CENTRAL_LINK_COUNT>0
+/// Connect to the given peer address. When done call bleCompleteTask
 void jsble_central_connect(ble_gap_addr_t peer_addr);
+/// Get primary services. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
+void jsble_central_getPrimaryServices(ble_uuid_t uuid);
+/// Get characteristics. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
+void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid);
+// Write data to the given characteristic. When done call bleCompleteTask
+void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen);
 #endif
