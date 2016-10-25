@@ -1076,7 +1076,7 @@ NRF.setScan(function(d) {
 });
 NRF.setScan(false);
 
-
+// getting all services
 var device;
 NRF.connect("d1:53:36:1a:7a:17").then(function(d) {
   device = d;
@@ -1087,7 +1087,7 @@ NRF.connect("d1:53:36:1a:7a:17").then(function(d) {
   return s[2].getCharacteristics();
 }).then(function(c) {
   console.log("Characteristics ",c);
-  return c[0].writeValue("LED1.set()\n");
+  return c[1].writeValue("LED1.set()\n");
 }).then(function() {
   console.log("Written. Disconnecting");
   device.disconnect();
@@ -1095,6 +1095,25 @@ NRF.connect("d1:53:36:1a:7a:17").then(function(d) {
   console.log("Oops");
 });
 
+
+// getting just what we want
+var device;
+NRF.connect("d1:53:36:1a:7a:17").then(function(d) {
+  device = d;
+  console.log("Connected ",d);
+  return d.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e"); // UART
+}).then(function(s) {
+  console.log("Service ",s);
+  return s.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e"); // RX
+}).then(function(c) {
+  console.log("Characteristic ",c);
+  return c.writeValue("LED1.set()\n");
+}).then(function() {
+  console.log("Written. Disconnecting");
+  device.disconnect();
+}).catch(function() {
+  console.log("Oops");
+});
 
 // ------------------------------ on BLE server (microbit) - allow display of data
 NRF.setServices({
