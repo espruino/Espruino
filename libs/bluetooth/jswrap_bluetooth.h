@@ -13,8 +13,25 @@
  */
 #include "jspin.h"
 
-// public static methods.
-void jswrap_nrf_bluetooth_sleep(void); // maybe these should return err_code?
+// ------------------------------------------------------------------------------
+typedef enum {
+  BLETASK_NONE,
+  BLETASK_CONNECT, ///< Connect in central mode
+  BLETASK_PRIMARYSERVICE, ///< Find primary service
+  BLETASK_CHARACTERISTIC,  ///< Find characteristics
+  BLETASK_CHARACTERISTIC_WRITE, ///< Write to a characteristic
+} BleTask;
+
+bool bleInTask(BleTask task);
+bool bleNewTask(BleTask task);
+void bleCompleteTaskSuccess(BleTask task, JsVar *data);
+void bleCompleteTaskFail(BleTask task, JsVar *data);
+// ------------------------------------------------------------------------------
+bool jswrap_nrf_idle();
+void jswrap_nrf_kill();
+// ------------------------------------------------------------------------------
+
+void jswrap_nrf_bluetooth_sleep(void);
 void jswrap_nrf_bluetooth_wake(void);
 
 JsVarFloat jswrap_nrf_bluetooth_getBattery(void);
@@ -25,14 +42,14 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback);
 void jswrap_nrf_bluetooth_setRSSIHandler(JsVar *callback);
 void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr);
 
-void jswrap_nrf_bluetooth_connect(JsVar *mac);
-void jswrap_nrf_bluetooth_disconnect();
-void jswrap_nrf_bluetooth_discoverServices();
-void jswrap_nrf_bleservice_discoverCharacteristics(JsVar *service);
-void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data);
+JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac);
 
 void jswrap_nrf_nfcURL(JsVar *url);
 void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback);
 
-bool jswrap_nrf_idle();
-void jswrap_nrf_kill();
+void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent);
+JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *service);
+JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent);
+JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar *characteristic);
+JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent);
+JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteristic, JsVar *data);

@@ -30,10 +30,53 @@
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
+#include "jswrap_promise.h"
 #ifdef USE_NFC
 #include "nfc_uri_msg.h"
 #endif
 
+
+// ------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
+
+JsVar *blePromise = 0;
+BleTask bleTask = BLETASK_NONE;
+
+
+bool bleInTask(BleTask task) {
+  return bleTask==task;
+}
+
+bool bleNewTask(BleTask task) {
+  if (bleTask) {
+    jsExceptionHere(JSET_ERROR, "BLE task is already in progress");
+    return false;
+  }
+  assert(!blePromise);
+  blePromise = jspromise_create();
+  bleTask = task;
+  return true;
+}
+
+void bleCompleteTask(BleTask task, bool ok, JsVar *data) {
+  if (task != bleTask) {
+    jsExceptionHere(JSET_INTERNALERROR, "BLE task completed that wasn't scheduled (%d/%d)", task, bleTask);
+    return;
+  }
+  bleTask = BLETASK_NONE;
+  if (blePromise) {
+    if (ok) jspromise_resolve(blePromise, data);
+    else jspromise_reject(blePromise, data);
+  }
+  jshHadEvent();
+}
+
+void bleCompleteTaskSuccess(BleTask task, JsVar *data) {
+  bleCompleteTask(task, true, data);
+}
+void bleCompleteTaskFail(BleTask task, JsVar *data) {
+  bleCompleteTask(task, false, data);
+}
 
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
@@ -51,6 +94,10 @@ bool jswrap_nrf_idle() {
   "generate" : "jswrap_nrf_kill"
 }*/
 void jswrap_nrf_kill() {
+  bleTask = BLETASK_NONE;
+  if (blePromise) jsvUnLock(blePromise);
+  blePromise = 0;
+
   jsble_reset();
 }
 
@@ -140,9 +187,8 @@ void jswrap_nrf_bluetooth_sleep(void) {
 
   // If connected, disconnect.
   if (jsble_has_simple_connection()) {
-      err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-      if (err_code)
-          jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+    err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    jsble_check_error(err_code);
   }
 
   // Stop advertising
@@ -276,8 +322,7 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
         err_code = sd_ble_gap_device_name_set(&sec_mode,
                                               (const uint8_t *)namePtr,
                                               nameLen);
-        if (err_code)
-          jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+        jsble_check_error(err_code);
         bleChanged = true;
       }
       jsvUnLock(v);
@@ -298,11 +343,10 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     if (bleChanged && isAdvertising)
       jsble_advertising_stop();
     err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
-    if (err_code)
-       jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
-     if (bleChanged && isAdvertising)
-       jsble_advertising_start();
-     return; // we're done here now
+    jsble_check_error(err_code);
+    if (bleChanged && isAdvertising)
+      jsble_advertising_start();
+    return; // we're done here now
   } else if (jsvIsObject(data)) {
     ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
     int n = 0;
@@ -330,8 +374,7 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   if (bleChanged && isAdvertising)
     jsble_advertising_stop();
   err_code = ble_advdata_set(&advdata, NULL);
-  if (err_code)
-    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+  jsble_check_error(err_code);
   if (bleChanged && isAdvertising)
     jsble_advertising_start();
 }
@@ -637,8 +680,7 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
   jsvObjectSetChild(execInfo.root, BLE_SCAN_EVENT, callback);
   // either start or stop scanning
   uint32_t err_code = jsble_set_scanning(callback != 0);
-  if (err_code)
-    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+  jsble_check_error(err_code);
 }
 
 /*JSON{
@@ -672,8 +714,7 @@ void jswrap_nrf_bluetooth_setRSSIHandler(JsVar *callback) {
   jsvObjectSetChild(execInfo.root, BLE_RSSI_EVENT, callback);
   // either start or stop scanning
   uint32_t err_code = jsble_set_rssi_scan(callback != 0);
-  if (err_code)
-    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+  jsble_check_error(err_code);
 }
 
 
@@ -693,8 +734,7 @@ Set the BLE radio transmit power. The default TX power is 0 dBm.
 void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
   uint32_t              err_code;
   err_code = sd_ble_gap_tx_power_set(pwr);
-  if (err_code)
-    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+  jsble_check_error(err_code);
 }
 
 /*JSON{
@@ -705,155 +745,34 @@ void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
     "generate" : "jswrap_nrf_bluetooth_connect",
     "params" : [
       ["mac","JsVar","The MAC address to connect to"]
-    ]
+    ],
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) when the connection is complete" ]
 }
-Connect to a BLE device by MAC address
+Connect to a BLE device by MAC address. Returns a promise,
+the argument of which is the `BluetoothRemoteGATTServer` connection.
+
+```
+NRF.connect("aa:bb:cc:dd:ee").then(function(server) {
+  // ...
+});
+```
 
 **Note:** This is only available on some devices
 */
-void jswrap_nrf_bluetooth_connect(JsVar *mac) {
+JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
 #if CENTRAL_LINK_COUNT>0
   // Convert mac address to something readable
   ble_gap_addr_t peer_addr;
   if (!bleVarToAddr(mac, &peer_addr)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting a mac address of the form aa:bb:cc:dd:ee:ff");
-    return;
+    return 0;
   }
 
-  jsble_central_connect(peer_addr);
-#else
-  jsExceptionHere(JSET_ERROR, "Unimplemented");
-#endif
-}
-
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "disconnect",
-    "generate" : "jswrap_nrf_bluetooth_disconnect"
-}
-Disconnect from a previously connected BLE device connected with
-`NRF.connect` - this does not disconnect from something that has
-connected to the Espruino.
-
-**Note:** This is only available on some devices
-*/
-void jswrap_nrf_bluetooth_disconnect() {
-#if CENTRAL_LINK_COUNT>0
-  uint32_t              err_code;
-
-  if (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) {
-    // we have a connection, disconnect
-    err_code = sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-  } else {
-    // no connection - try and cancel the connect attempt (assume we have one)
-    err_code = sd_ble_gap_connect_cancel();
+  if (bleNewTask(BLETASK_CONNECT)) {
+    jsble_central_connect(peer_addr);
+    return jsvLockAgainSafe(blePromise);
   }
-  if (err_code) {
-    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
-  }
-#else
-  jsExceptionHere(JSET_ERROR, "Unimplemented");
-#endif
-}
-
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "discoverServices",
-    "generate" : "jswrap_nrf_bluetooth_discoverServices"
-}
-**Note:** This is only available on some devices
-*/
-void jswrap_nrf_bluetooth_discoverServices() {
-#if CENTRAL_LINK_COUNT>0
-  if (m_central_conn_handle == BLE_CONN_HANDLE_INVALID)
-    return jsExceptionHere(JSET_ERROR, "Not Connected");
-
-  uint32_t              err_code;
-  err_code = sd_ble_gattc_primary_services_discover(m_central_conn_handle, 1 /* start handle */, NULL);
-  if (err_code)
-    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
-
-#else
-  jsExceptionHere(JSET_ERROR, "Unimplemented");
-#endif
-}
-
-/*JSON{
-    "type": "class",
-    "class" : "BLEService"
-}
-**Note:** This is only available on some devices
-*/
-
-/*JSON{
-    "type" : "method",
-    "class" : "BLEService",
-    "name" : "discoverCharacteristics",
-    "generate" : "jswrap_nrf_bleservice_discoverCharacteristics"
-}
-**Note:** This is only available on some devices
-*/
-void jswrap_nrf_bleservice_discoverCharacteristics(JsVar *service) {
-#if CENTRAL_LINK_COUNT>0
-  if (m_central_conn_handle == BLE_CONN_HANDLE_INVALID)
-    return jsExceptionHere(JSET_ERROR, "Not Connected");
-
-  ble_gattc_handle_range_t range;
-  range.start_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "start_handle", 0));
-  range.end_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "end_handle", 0));
-
-  uint32_t              err_code;
-  err_code = sd_ble_gattc_characteristics_discover(m_central_conn_handle, &range);
-  if (err_code)
-    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
-#else
-  jsExceptionHere(JSET_ERROR, "Unimplemented");
-#endif
-}
-
-
-
-/*JSON{
-    "type": "class",
-    "class" : "BLECharacteristic"
-}
-**Note:** This is only available on some devices
-*/
-
-/*JSON{
-    "type" : "method",
-    "class" : "BLECharacteristic",
-    "name" : "write",
-    "generate" : "jswrap_nrf_blecharacteristic_write",
-    "params" : [
-      ["data","JsVar","The data to write"]
-    ]
-}
-**Note:** This is only available on some devices
-*/
-void jswrap_nrf_blecharacteristic_write(JsVar *characteristic, JsVar *data) {
-#if CENTRAL_LINK_COUNT>0
-  if (m_central_conn_handle == BLE_CONN_HANDLE_INVALID)
-    return jsExceptionHere(JSET_ERROR, "Not Connected");
-
-  JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, data);
-  if (!dataPtr) return;
-
-  const ble_gattc_write_params_t write_params = {
-      .write_op = BLE_GATT_OP_WRITE_CMD,
-      .flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE,
-      .handle   = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0)),
-      .offset   = 0,
-      .len      = dataLen,
-      .p_value  = (uint8_t*)dataPtr
-  };
-
-  uint32_t              err_code;
-  err_code = sd_ble_gattc_write(m_central_conn_handle, &write_params);
-  if (err_code)
-    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+  return 0;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif
@@ -951,6 +870,200 @@ void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
 #endif
 }
 
+/*JSON{
+  "type" : "class",
+  "class" : "BluetoothRemoteGATTServer",
+  "#ifdef" : "NRF52"
+}
+Web Bluetooth-style GATT server - get this using `NRF.connect(address)`
+*/
+/*JSON{
+    "type" : "method",
+    "class" : "BluetoothRemoteGATTServer",
+    "name" : "disconnect",
+    "generate" : "jswrap_BluetoothRemoteGATTServer_disconnect"
+}
+Disconnect from a previously connected BLE device connected with
+`NRF.connect` - this does not disconnect from something that has
+connected to the Espruino.
+
+**Note:** This is only available on some devices
+*/
+void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
+#if CENTRAL_LINK_COUNT>0
+  uint32_t              err_code;
+
+  if (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) {
+    // we have a connection, disconnect
+    err_code = sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+  } else {
+    // no connection - try and cancel the connect attempt (assume we have one)
+    err_code = sd_ble_gap_connect_cancel();
+  }
+  jsble_check_error(err_code);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+#endif
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "BluetoothRemoteGATTServer",
+  "name" : "getPrimaryService",
+  "generate" : "jswrap_BluetoothRemoteGATTServer_getPrimaryService",
+  "params" : [ ["service","JsVar","The service UUID"] ],
+  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary service is found" ],
+  "#ifdef" : "NRF52"
+}
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *service) {
+#if CENTRAL_LINK_COUNT>0
+  const char *err;
+  ble_uuid_t uuid;
+
+  if (!bleNewTask(BLETASK_PRIMARYSERVICE))
+    return 0;
+
+  err = bleVarToUUID(&uuid, service);
+  if (err) {
+    jsExceptionHere(JSET_ERROR, "%s", err);
+    return 0;
+  }
+
+  jsble_central_getPrimaryServices(uuid);
+  return jsvLockAgainSafe(blePromise);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+/*JSON{
+  "type" : "method",
+  "class" : "BluetoothRemoteGATTServer",
+  "name" : "getPrimaryServices",
+  "generate" : "jswrap_BluetoothRemoteGATTServer_getPrimaryServices",
+  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary services are found" ],
+  "#ifdef" : "NRF52"
+}
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
+#if CENTRAL_LINK_COUNT>0
+  ble_uuid_t uuid;
+  uuid.type = BLE_UUID_TYPE_UNKNOWN;
+
+  if (!bleNewTask(BLETASK_PRIMARYSERVICE))
+    return 0;
+
+  jsble_central_getPrimaryServices(uuid);
+  return jsvLockAgainSafe(blePromise);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+
+/*JSON{
+  "type" : "class",
+  "class" : "BluetoothRemoteGATTService",
+  "#ifdef" : "NRF52"
+}
+Web Bluetooth-style GATT service - get this using `BluetoothRemoteGATTServer.getPrimaryService(s)`
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "BluetoothRemoteGATTService",
+  "name" : "getCharacteristic",
+  "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristic",
+  "params" : [ ["characteristic","JsVar","The characteristic UUID"] ],
+  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found" ],
+  "#ifdef" : "NRF52"
+}
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar *characteristic) {
+#if CENTRAL_LINK_COUNT>0
+  const char *err;
+  ble_uuid_t uuid;
+
+  if (!bleNewTask(BLETASK_CHARACTERISTIC))
+    return 0;
+
+  err = bleVarToUUID(&uuid, characteristic);
+  if (err) {
+    jsExceptionHere(JSET_ERROR, "%s", err);
+    return 0;
+  }
+
+  jsble_central_getCharacteristics(parent, uuid);
+  return jsvLockAgainSafe(blePromise);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+/*JSON{
+  "type" : "method",
+  "class" : "BluetoothRemoteGATTService",
+  "name" : "getCharacteristics",
+  "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristics",
+  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found" ],
+  "#ifdef" : "NRF52"
+}
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent) {
+#if CENTRAL_LINK_COUNT>0
+  ble_uuid_t uuid;
+  uuid.type = BLE_UUID_TYPE_UNKNOWN;
+
+  if (!bleNewTask(BLETASK_CHARACTERISTIC))
+    return 0;
+
+  jsble_central_getCharacteristics(parent, uuid);
+  return jsvLockAgainSafe(blePromise);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+
+/*JSON{
+  "type" : "class",
+  "class" : "BluetoothRemoteGATTCharacteristic",
+  "#ifdef" : "NRF52"
+}
+Web Bluetooth-style GATT characteristic - get this using `BluetoothRemoteGATTService.getCharacteristic(s)`
+*/
+/*JSON{
+    "type" : "method",
+    "class" : "BluetoothRemoteGATTCharacteristic",
+    "name" : "writeValue",
+    "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue",
+    "params" : [
+      ["data","JsVar","The data to write"]
+    ],
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is written" ]
+}
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteristic, JsVar *data) {
+#if CENTRAL_LINK_COUNT>0
+  JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, data);
+  if (!dataPtr) return 0;
+
+  if (!bleNewTask(BLETASK_CHARACTERISTIC_WRITE))
+    return 0;
+
+  jsble_central_characteristicWrite(characteristic, dataPtr, dataLen);
+  return jsvLockAgainSafe(blePromise);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+
 
 /* ---------------------------------------------------------------------
  *                                                               TESTING
@@ -961,26 +1074,26 @@ void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
 NRF.setScan(function(d) {
   console.log(JSON.stringify(d,null,2));
 });
-
 NRF.setScan(false);
 
-NRF.on('connect', function() { print("CONNECTED"); });
-NRF.connect("f0:de:1d:13:9f:48")
 
-
-NRF.on('servicesDiscover', function(services) {
-  print("services: "+JSON.stringify(services,null,2));
-
-  NRF.on('characteristicsDiscover', function(c) {
-    print("characteristics: "+JSON.stringify(c,null,2));
-    chars = c;
-    chars[0].write(255)
-  });
-  services[services.length-1].discoverCharacteristics();
+var device;
+NRF.connect("d1:53:36:1a:7a:17").then(function(d) {
+  device = d;
+  console.log("Connected ",d);
+  return d.getPrimaryServices();
+}).then(function(s) {
+  console.log("Services ",s);
+  return s[2].getCharacteristics();
+}).then(function(c) {
+  console.log("Characteristics ",c);
+  return c[0].writeValue("LED1.set()\n");
+}).then(function() {
+  console.log("Written. Disconnecting");
+  device.disconnect();
+}).catch(function() {
+  console.log("Oops");
 });
-NRF.discoverServices();
-
-chars[0].write(0)
 
 
 // ------------------------------ on BLE server (microbit) - allow display of data
@@ -1000,5 +1113,8 @@ NRF.setServices({
   }
   // more services allowed
 });
+
+
+
 
  */
