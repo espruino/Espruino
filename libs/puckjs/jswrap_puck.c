@@ -471,7 +471,7 @@ static bool selftest_check_pin(Pin pin) {
   bool ok = true;
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
   jshPinSetValue(pin, 1);
-  jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLUP);
   if (!jshPinGetValue(pin)) {
     jsiConsolePrintf("Pin %p forced low\n", pin);
     ok = false;
@@ -486,7 +486,7 @@ static bool selftest_check_pin(Pin pin) {
 
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
   jshPinSetValue(pin, 0);
-  jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLDOWN);
   if (jshPinGetValue(pin)) {
     jsiConsolePrintf("Pin %p forced high\n", pin);
     ok = false;
@@ -498,6 +498,7 @@ static bool selftest_check_pin(Pin pin) {
      jsiConsolePrintf("Pin %p shorted high\n", pin);
      ok = false;
    }
+  jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
   return ok;
 }
 
@@ -546,7 +547,7 @@ bool jswrap_puck_selfTest() {
   nrf_delay_ms(1);
   v = jshPinAnalog(LED1_PININDEX);
   jshPinSetState(LED1_PININDEX, JSHPINSTATE_GPIO_IN);
-  if (v<0.4 || v>0.65) {
+  if (v<0.35 || v>0.65) {
     jsiConsolePrintf("LED1 pullup voltage out of range (%f) - disconnected?\n", v);
     ok = false;
   }
@@ -611,7 +612,7 @@ bool jswrap_puck_selfTest() {
   }
   jshPinSetValue(CAPSENSE_TX_PIN, 0);
   nrf_delay_ms(1);
-  if (!jshPinGetValue(CAPSENSE_RX_PIN)) {
+  if (jshPinGetValue(CAPSENSE_RX_PIN)) {
     jsiConsolePrintf("Capsense resistor disconnected? (pulldown)\n");
     ok = false;
   }
