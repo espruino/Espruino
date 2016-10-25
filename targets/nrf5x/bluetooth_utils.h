@@ -24,6 +24,9 @@
 #define BLE_NAME_HID_DATA               "BLE_HID_D"
 #define BLE_NAME_NUS                    "BLE_UART"
 
+/// Return true if two UUIDs are equal
+bool bleUUIDEqual(ble_uuid_t a, ble_uuid_t b);
+
 // BLE UUID to string
 JsVar *bleUUIDToStr(ble_uuid_t uuid);
 

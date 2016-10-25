@@ -94,6 +94,7 @@ uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(375, UNIT_0_625_MS);           /
 
 volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
+uint16_t bleFinalHandle;
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
@@ -223,7 +224,7 @@ void SWI1_IRQHandler(bool radio_evt) {
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t                         err_code;
-    //jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
+    // jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
 
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
@@ -418,8 +419,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
       // For discovery....
       case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: {
-        if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
-          if (p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count ==0) return;
+        if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
+            p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count!=0) {
 
           JsVar *srvcs = jsvObjectGetChild(execInfo.hiddenRoot, "bleSvcs", JSV_ARRAY);
           if (srvcs) {
@@ -427,6 +428,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             // Should actually return 'BLEService' object here
             for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++) {
               ble_gattc_service_t *p_srv = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i];
+              // filter based on bleUUIDFilter if it's not invalid
+              if (bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN)
+                if (!bleUUIDEqual(p_srv->uuid, bleUUIDFilter)) continue;
               JsVar *o = jspNewObject(0, "BluetoothRemoteGATTService");
               if (o) {
                 jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_srv->uuid));
@@ -438,15 +442,20 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             }
           }
 
-          if (p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[0].handle_range.end_handle < 0xFFFF) {
+          uint16_t last = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count-1;
+          if (p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[last].handle_range.end_handle < 0xFFFF) {
             jsvUnLock(srvcs);
             // Now try again
-            uint16_t last = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count-1;
             uint16_t start_handle = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[last].handle_range.end_handle+1;
             sd_ble_gattc_primary_services_discover(p_ble_evt->evt.gap_evt.conn_handle, start_handle, NULL);
           } else {
-            // When done, sent the result to the handler
-            // TODO: filter based on bleUUIDFilter if it's not invalid
+            // When done, send the result to the handler
+            if (srvcs && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
+              // single item because filtering
+              JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(srvcs));
+              jsvUnLock(srvcs);
+              srvcs = t;
+            }
             bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, srvcs);
             jsvUnLock(srvcs);
             jsvObjectSetChild(execInfo.hiddenRoot, "bleSvcs", 0);
@@ -455,11 +464,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         break;
       }
       case BLE_GATTC_EVT_CHAR_DISC_RSP: {
-        JsVar *chars = jsvNewEmptyArray();
-        if (chars) {
+        JsVar *chars = jsvObjectGetChild(execInfo.hiddenRoot, "bleChrs", JSV_ARRAY);
+        bool done = true;
+        if (chars &&
+            p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
+            p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count!=0) {
           int i;
           for (i=0;i<p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count;i++) {
             ble_gattc_char_t *p_chr = &p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[i];
+            // filter based on bleUUIDFilter if it's not invalid
+            if (bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN)
+              if (!bleUUIDEqual(p_chr->uuid, bleUUIDFilter)) continue;
             JsVar *o = jspNewObject(0, "BluetoothRemoteGATTCharacteristic");
             if (o) {
               jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_chr->uuid));
@@ -469,8 +484,33 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
               jsvArrayPushAndUnLock(chars, o);
             }
           }
+
+          uint16_t last = p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count-1;
+          if (p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[last].handle_value < bleFinalHandle) {
+            // Now try again
+            uint16_t start_handle = p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[last].handle_value+1;
+            ble_gattc_handle_range_t range;
+            range.start_handle = start_handle;
+            range.end_handle = bleFinalHandle;
+
+            /* Might report an error for invalid handle (we have no way to know for the last characteristic
+             * in the last service it seems). If it does, we're sorted */
+            done = sd_ble_gattc_characteristics_discover(p_ble_evt->evt.gap_evt.conn_handle, &range) != NRF_SUCCESS;
+          }
         }
-        bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, chars);
+
+
+        if (done) {
+          // When done, send the result to the handler
+          if (chars && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
+            // single item because filtering
+            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(chars));
+            jsvUnLock(chars);
+            chars = t;
+          }
+          bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, chars);
+          jsvObjectSetChild(execInfo.hiddenRoot, "bleChrs", 0);
+        }
         jsvUnLock(chars);
         break;
       }
@@ -1225,6 +1265,7 @@ void jsble_central_connect(ble_gap_addr_t peer_addr) {
 
 void jsble_central_getPrimaryServices(ble_uuid_t uuid) {
   bleUUIDFilter = uuid;
+
   uint32_t              err_code;
   err_code = sd_ble_gattc_primary_services_discover(m_central_conn_handle, 1 /* start handle */, NULL);
   if (jsble_check_error(err_code)) {
@@ -1233,9 +1274,11 @@ void jsble_central_getPrimaryServices(ble_uuid_t uuid) {
 }
 
 void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid) {
+  bleUUIDFilter = uuid;
   ble_gattc_handle_range_t range;
   range.start_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "start_handle", 0));
   range.end_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "end_handle", 0));
+  bleFinalHandle = range.end_handle;
 
   uint32_t              err_code;
   err_code = sd_ble_gattc_characteristics_discover(m_central_conn_handle, &range);

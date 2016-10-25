@@ -20,6 +20,11 @@
 
 #include "app_error.h"
 
+/// Return true if two UUIDs are equal
+bool bleUUIDEqual(ble_uuid_t a, ble_uuid_t b) {
+  return a.type==b.type && a.uuid==b.uuid;
+}
+
 /// BLE UUID to string
 JsVar *bleUUIDToStr(ble_uuid_t uuid) {
   if (uuid.type == BLE_UUID_TYPE_UNKNOWN) {
