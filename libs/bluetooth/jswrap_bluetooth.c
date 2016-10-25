@@ -1046,6 +1046,26 @@ Web Bluetooth-style GATT characteristic - get this using `BluetoothRemoteGATTSer
     ],
     "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is written" ]
 }
+
+Write a characteristic's value
+
+```
+var device;
+NRF.connect(device_address).then(function(d) {
+  device = d;
+  return d.getPrimaryService("service_uuid);
+}).then(function(s) {
+  console.log("Service ",s);
+  return s.getCharacteristic(characteristic_uuid);
+}).then(function(c) {
+  return c.writeValue("Hello");
+}).then(function(d) {
+  device.disconnect();
+}).catch(function() {
+  console.log("Something's broken.");
+});
+```
+
 **Note:** This is only available on some devices
 */
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteristic, JsVar *data) {
@@ -1063,7 +1083,48 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
   return 0;
 #endif
 }
+/*JSON{
+    "type" : "method",
+    "class" : "BluetoothRemoteGATTCharacteristic",
+    "name" : "readValue",
+    "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue",
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when the characteristic is read" ]
+}
 
+Read a characteristic's value
+
+```
+var device;
+NRF.connect(device_address).then(function(d) {
+  device = d;
+  return d.getPrimaryService("service_uuid);
+}).then(function(s) {
+  console.log("Service ",s);
+  return s.getCharacteristic(characteristic_uuid);
+}).then(function(c) {
+  return c.readValue();
+}).then(function(d) {
+  console.log("Got:", JSON.stringify(d));
+  device.disconnect();
+}).catch(function() {
+  console.log("Something's broken.");
+});
+```
+
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic) {
+#if CENTRAL_LINK_COUNT>0
+  if (!bleNewTask(BLETASK_CHARACTERISTIC_READ))
+    return 0;
+
+  jsble_central_characteristicRead(characteristic);
+  return jsvLockAgainSafe(blePromise);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
 
 /* ---------------------------------------------------------------------
  *                                                               TESTING
@@ -1095,25 +1156,6 @@ NRF.connect("d1:53:36:1a:7a:17").then(function(d) {
   console.log("Oops");
 });
 
-
-// getting just what we want
-var device;
-NRF.connect("d1:53:36:1a:7a:17").then(function(d) {
-  device = d;
-  console.log("Connected ",d);
-  return d.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e"); // UART
-}).then(function(s) {
-  console.log("Service ",s);
-  return s.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e"); // RX
-}).then(function(c) {
-  console.log("Characteristic ",c);
-  return c.writeValue("LED1.set()\n");
-}).then(function() {
-  console.log("Written. Disconnecting");
-  device.disconnect();
-}).catch(function() {
-  console.log("Oops");
-});
 
 // ------------------------------ on BLE server (microbit) - allow display of data
 NRF.setServices({

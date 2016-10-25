@@ -116,4 +116,6 @@ void jsble_central_getPrimaryServices(ble_uuid_t uuid);
 void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid);
 // Write data to the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen);
+// Read data from the given characteristic. When done call bleCompleteTask
+void jsble_central_characteristicRead(JsVar *characteristic);
 #endif
