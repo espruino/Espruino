@@ -701,6 +701,7 @@ void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "connect",
+    "#ifdef" : "NRF52",
     "generate" : "jswrap_nrf_bluetooth_connect",
     "params" : [
       ["mac","JsVar","The MAC address to connect to"]
@@ -719,22 +720,7 @@ void jswrap_nrf_bluetooth_connect(JsVar *mac) {
     return;
   }
 
-  uint32_t              err_code;
-  ble_gap_scan_params_t     m_scan_param;
-  m_scan_param.active       = 0;            // Active scanning set.
-  m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
-  m_scan_param.window       = SCAN_WINDOW;  // Scan window.
-  m_scan_param.timeout      = 0x0000;       // No timeout.
-
-  ble_gap_conn_params_t   gap_conn_params;
-  gap_conn_params.min_conn_interval = MIN_CONN_INTERVAL;
-  gap_conn_params.max_conn_interval = MAX_CONN_INTERVAL;
-  gap_conn_params.slave_latency     = SLAVE_LATENCY;
-  gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
-
-  err_code = sd_ble_gap_connect(&peer_addr, &m_scan_param, &gap_conn_params);
-  if (err_code)
-    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+  jsble_central_connect(peer_addr);
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif
