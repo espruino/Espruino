@@ -44,15 +44,6 @@
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
-#ifdef NRF52
-// nRF52 gets the ability to connect to other
-#define CENTRAL_LINK_COUNT              1                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
-#define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
-#else
-#define CENTRAL_LINK_COUNT              0                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
-#define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
-#endif
-
 #if (NRF_SD_BLE_API_VERSION == 3)
 #define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                       /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
 #endif
@@ -1187,5 +1178,27 @@ void jsble_nfc_start(const uint8_t *data, size_t len) {
   if (ret_val)
     return jsExceptionHere(JSET_ERROR, "nfcStartEmulation: NFC error code %d", ret_val);
 
+}
+#endif
+
+
+#if CENTRAL_LINK_COUNT>0
+void jsble_central_connect(ble_gap_addr_t peer_addr) {
+  uint32_t              err_code;
+  ble_gap_scan_params_t     m_scan_param;
+  m_scan_param.active       = 0;            // Active scanning set.
+  m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
+  m_scan_param.window       = SCAN_WINDOW;  // Scan window.
+  m_scan_param.timeout      = 0x0000;       // No timeout.
+
+  ble_gap_conn_params_t   gap_conn_params;
+  gap_conn_params.min_conn_interval = MIN_CONN_INTERVAL;
+  gap_conn_params.max_conn_interval = MAX_CONN_INTERVAL;
+  gap_conn_params.slave_latency     = SLAVE_LATENCY;
+  gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
+
+  err_code = sd_ble_gap_connect(&peer_addr, &m_scan_param, &gap_conn_params);
+  if (err_code)
+    jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
 }
 #endif

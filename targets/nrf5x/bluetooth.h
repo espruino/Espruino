@@ -15,6 +15,15 @@
 #include "ble.h"
 #include "ble_advdata.h"
 
+#ifdef NRF52
+// nRF52 gets the ability to connect to other
+#define CENTRAL_LINK_COUNT              1                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
+#define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
+#else
+#define CENTRAL_LINK_COUNT              0                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
+#define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
+#endif
+
 #define APP_TIMER_OP_QUEUE_SIZE         1                                           /**< Size of timer operation queues. */
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 
@@ -93,4 +102,8 @@ void jsble_setup_advdata(ble_advdata_t *advdata);
 #ifdef USE_NFC
 void jsble_nfc_stop();
 void jsble_nfc_start(const uint8_t *data, size_t len);
+#endif
+
+#if CENTRAL_LINK_COUNT>0
+void jsble_central_connect(ble_gap_addr_t peer_addr);
 #endif
