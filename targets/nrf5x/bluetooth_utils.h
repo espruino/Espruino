@@ -27,6 +27,9 @@
 // BLE UUID to string
 JsVar *bleUUIDToStr(ble_uuid_t uuid);
 
+/// Convert a variable of the form "aa:bb:cc:dd:ee:ff" to a mac address
+bool bleVarToAddr(JsVar *mac, ble_gap_addr_t *addr);
+
 /// BLE MAC address to string
 JsVar *bleAddrToStr(ble_gap_addr_t addr);
 

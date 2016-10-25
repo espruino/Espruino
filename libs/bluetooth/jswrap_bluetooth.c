@@ -712,23 +712,13 @@ Connect to a BLE device by MAC address
 */
 void jswrap_nrf_bluetooth_connect(JsVar *mac) {
 #if CENTRAL_LINK_COUNT>0
-  // untested
-  // Convert mac address to something readable - pretty hacky
-  if (!jsvIsString(mac) ||
-      jsvGetStringLength(mac)!=17 ||
-      jsvGetCharInString(mac, 2)!=':' ||
-      jsvGetCharInString(mac, 5)!=':' ||
-      jsvGetCharInString(mac, 8)!=':' ||
-      jsvGetCharInString(mac, 11)!=':' ||
-      jsvGetCharInString(mac, 14)!=':') {
+  // Convert mac address to something readable
+  ble_gap_addr_t peer_addr;
+  if (!bleVarToAddr(mac, &peer_addr)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting a mac address of the form aa:bb:cc:dd:ee:ff");
     return;
   }
-  ble_gap_addr_t peer_addr;
-  peer_addr.addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC; // not sure why this isn't public?
-  int i;
-  for (i=0;i<6;i++)
-    peer_addr.addr[5-i] = (chtod(jsvGetCharInString(mac, i*3))<<4) | chtod(jsvGetCharInString(mac, (i*3)+1));
+
   uint32_t              err_code;
   ble_gap_scan_params_t     m_scan_param;
   m_scan_param.active       = 0;            // Active scanning set.
