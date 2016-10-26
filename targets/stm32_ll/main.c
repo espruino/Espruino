@@ -17,24 +17,24 @@
 #endif
 #include "jsinteractive.h"
 #include "jshardware.h"
-
+ 
 extern void _VECTOR_TABLE;
-
+ 
 int main(void){
-  SCB->VTOR = (unsigned int)&_VECTOR_TABLE;
-
+  SCB->VTOR = (unsigned int)&_VECTOR_TABLE; // VVE TO BE CHECKED !
+ 
   jshInit();
 #ifdef USB
   MX_USB_DEVICE_Init();
 #endif
-
+ 
   bool buttonState = false;
 #ifdef BTN1_PININDEX
   buttonState = jshPinInput(BTN1_PININDEX) == BTN1_ONSTATE;
 #endif
   jsvInit();
   jsiInit(!buttonState); // pressing USER button skips autoload
-
+ 
   while (1) {
     jsiLoop();
   }
@@ -42,4 +42,4 @@ int main(void){
   //jsvKill();
   //jshKill();
 }
-
+ 

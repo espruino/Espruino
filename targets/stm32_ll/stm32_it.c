@@ -1,6 +1,6 @@
-/** 
+/**
   ******************************************************************************
-  * @file    Examples_LL/GPIO/GPIO_InfiniteLedToggling_Init/Src/stm32l4xx_it.c
+  * @file    Examples_LL/USART/USART_Communication_Rx_IT_Continuous/Src/stm32l4xx_it.c
   * @author  MCD Application Team
   * @version V1.5.0
   * @date    29-April-2016
@@ -38,13 +38,26 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32_it.h"
+#include "stm32l4xx_ll_bus.h"
+#include "stm32l4xx_ll_rcc.h"
+#include "stm32l4xx_ll_system.h"
+#include "stm32l4xx_ll_utils.h"
+#include "stm32l4xx_ll_gpio.h"
+#include "stm32l4xx_ll_exti.h"
+#include "stm32l4xx_ll_usart.h"
+#if defined(USE_FULL_ASSERT)
+#include "stm32_assert.h"
+#endif /* USE_FULL_ASSERT */
+
+#include "jshardware.h"
+
+extern void Error_Callback(void);
 
 /** @addtogroup STM32L4xx_LL_Examples
   * @{
   */
 
-/** @addtogroup GPIO_InfiniteLedToggling_Init
+/** @addtogroup USART_Communication_Rx_IT_Continuous
   * @{
   */
 
@@ -159,10 +172,54 @@ void SysTick_Handler(void)
 
 /******************************************************************************/
 /*                 STM32L4xx Peripherals Interrupt Handlers                   */
-/*  Add here the Interrupt Handler for the used peripheral(s) (GPIO), for the  */
+/*  Add here the Interrupt Handler for the used peripheral(s), for the        */
 /*  available peripheral interrupt handler's name please refer to the startup */
 /*  file (startup_stm32l4xx.s).                                               */
 /******************************************************************************/
+
+/**
+  * @brief  This function handles external lines 10 to 15 interrupt request.
+  * @param  None
+  * @retval None
+  */
+void EXTI15_10_IRQHandler(void)
+{
+  /* Manage Flags */
+  if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_13) != RESET)
+  {
+    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_13);
+
+    /* Handle user button press in dedicated function */
+    //UserButton_Callback(); 
+  }
+}
+
+/**
+  * Brief   This function handles USARTx Instance interrupt request.
+  * Param   None
+  * Retval  None
+  */
+void USART2_IRQHandler(void)
+{
+  /* Check RXNE flag value in ISR register */
+  if(LL_USART_IsActiveFlag_RXNE(USART2) && LL_USART_IsEnabledIT_RXNE(USART2))
+  {
+    /* RXNE flag will be cleared by reading of RDR register (done in call) */
+    /* Call function in charge of handling Character reception */
+    //USART_CharReception_Callback();
+	
+	jshPushIOCharEvent(EV_SERIAL2, LL_USART_ReceiveData8(USART2));
+
+
+  }
+  else
+  {
+    /* Call Error function */
+    Error_Callback();
+  }
+}
+
+
 
 /**
   * @}
@@ -173,3 +230,4 @@ void SysTick_Handler(void)
   */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+
