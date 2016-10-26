@@ -690,7 +690,6 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
   Pin pins[3] = { inf->pinRX, inf->pinTX, inf->pinCK };
   JshPinFunction functions[3] = { JSH_USART_RX, JSH_USART_TX, JSH_USART_CK };
 
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
   USART_TypeDef *USARTx = (USART_TypeDef *)checkPinsForDevice(funcType, 3, pins, functions);
   if (!USARTx) return;
 
@@ -872,10 +871,12 @@ void jshInit(){
   /* Configure the system clock to 80 MHz */
   SystemClock_Config();
 
+  // enable clocks
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ALL);
+
 #if 1 // debug
   {
     int i = 0;
-    LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
 	/* Configure IO in output push-pull mode to drive external LED2 */
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_5, LL_GPIO_MODE_OUTPUT);
     /* Toggle IO in an infinite loop */
@@ -884,7 +885,7 @@ void jshInit(){
       LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_5);
       /* Insert delay 250 ms */
       LL_mDelay(150);
-  }
+    }
   }
 #endif
   jshUSARTInitInfo(&inf);
@@ -1003,15 +1004,18 @@ void jshDelayMicroseconds(int microsec){
         return;
 }
   ///< delay a few microseconds. Should use used sparingly and for very short periods - max 1ms
- 
-void jshPinSetValue(Pin pin, bool value){
 
+void jshPinSetValue(Pin pin, bool value){
+    if (value)
+      LL_GPIO_SetOutputPin(stmPort(pin), stmPin(pin));
+    else
+      LL_GPIO_ResetOutputPin(stmPort(pin), stmPin(pin));
 	return;
 }
 
  ///< Set a digital output to 1 or 0. DOES NOT change pin state OR CHECK PIN VALIDITY
 bool jshPinGetValue(Pin pin){
-        return;
+	  return LL_GPIO_IsInputPinSet(stmPort(pin), stmPin(pin)) != 0;
 }
  
  
