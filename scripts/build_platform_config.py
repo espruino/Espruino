@@ -96,6 +96,8 @@ if not LINUX:
     flash_page_size = 4*1024
   if board.chip["family"]=="EFM32GG":
     flash_page_size = 4*1024
+  if board.chip["family"]=="STM32L4":
+    flash_page_size = 128*1024
   flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be a full page, so we're rounding up
   # F4 has different page sizes in different places
   total_flash = board.chip["flash"]*1024
@@ -186,6 +188,11 @@ elif board.chip["family"]=="STM32F4":
   codeOut('#include "stm32f4xx.h"')
   codeOut('#include "stm32f4xx_conf.h"')
   codeOut("#define STM32API2 // hint to jshardware that the API is a lot different")
+elif board.chip["family"]=="STM32L4":
+  board.chip["class"]="STM32_LL"
+  codeOut('#include "stm32l4xx_ll_bus.h"')
+  codeOut('#include "stm32l4xx_ll_rcc.h"')
+  codeOut('#include "stm32l4xx_ll_adc.h"')
 elif board.chip["family"]=="NRF51":
   board.chip["class"]="NRF51"
   codeOut('#include "nrf.h"')
@@ -233,8 +240,8 @@ codeOut("""
 
 """);
 
-if board.chip["class"]=="STM32":
-  if (board.chip["part"][:9]=="STM32F401") | (board.chip["part"][:9]=="STM32F411"):
+if (board.chip["class"]=="STM32") | (board.chip["class"]=="STM32_LL"):
+  if (board.chip["part"][:9]=="STM32F401") | (board.chip["part"][:9]=="STM32F411") | (board.chip["part"][:9]=="STM32L476"):
 # FIXME - need to remove TIM5 from jspininfo
    codeOut("""
 // Used by various pins, but always with other options
