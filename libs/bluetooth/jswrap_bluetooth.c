@@ -67,6 +67,8 @@ void bleCompleteTask(BleTask task, bool ok, JsVar *data) {
   if (blePromise) {
     if (ok) jspromise_resolve(blePromise, data);
     else jspromise_reject(blePromise, data);
+    jsvUnLock(blePromise);
+    blePromise = 0;
   }
   jshHadEvent();
 }
@@ -1053,7 +1055,7 @@ Write a characteristic's value
 var device;
 NRF.connect(device_address).then(function(d) {
   device = d;
-  return d.getPrimaryService("service_uuid);
+  return d.getPrimaryService("service_uuid");
 }).then(function(s) {
   console.log("Service ",s);
   return s.getCharacteristic(characteristic_uuid);
@@ -1097,7 +1099,7 @@ Read a characteristic's value
 var device;
 NRF.connect(device_address).then(function(d) {
   device = d;
-  return d.getPrimaryService("service_uuid);
+  return d.getPrimaryService("service_uuid");
 }).then(function(s) {
   console.log("Service ",s);
   return s.getCharacteristic(characteristic_uuid);
@@ -1133,8 +1135,9 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteris
  // Scanning, getting a service, characteristic, and then writing it
 
 NRF.setScan(function(d) {
-  console.log(JSON.stringify(d,null,2));
+  console.log(JSON.stringify(d.addr,null,2));
 });
+NRF.setScan(function(d) { console.log(d.addr); });
 NRF.setScan(false);
 
 // getting all services

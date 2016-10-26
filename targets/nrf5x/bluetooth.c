@@ -49,8 +49,8 @@
 #endif
 
 /* We want to listen as much of the time as possible. Not sure if 100/100 is feasible (50/100 is what's used in examples), but it seems to work fine like this. */
-#define SCAN_INTERVAL                   0x00A0                                      /**< Scan interval in units of 0.625 millisecond. 100ms */
-#define SCAN_WINDOW                     0x00A0                                      /**< Scan window in units of 0.625 millisecond. 100ms */
+#define SCAN_INTERVAL                   MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan interval in units of 0.625 millisecond - 100 msec */
+#define SCAN_WINDOW                     MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan window in units of 0.625 millisecond - 100 msec */
 
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(7.5, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (7.5 ms), Connection interval uses 1.25 ms units. */
@@ -228,9 +228,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
-        // the timeout for sd_ble_gap_adv_start expired - kick it off again
-        bleStatus &= ~BLE_IS_ADVERTISING; // we still think we're advertising, but we stopped
-        jsble_advertising_start();
+#if CENTRAL_LINK_COUNT>0
+        if (bleInTask(BLETASK_CONNECT)) {
+          // timeout!
+          bleCompleteTaskFail(BLETASK_CONNECT, 0);
+        } else
+#endif
+        {
+          // the timeout for sd_ble_gap_adv_start expired - kick it off again
+          bleStatus &= ~BLE_IS_ADVERTISING; // we still think we're advertising, but we stopped
+          jsble_advertising_start();
+        }
         break;
 
       case BLE_GAP_EVT_CONNECTED:
@@ -1252,21 +1260,26 @@ void jsble_nfc_start(const uint8_t *data, size_t len) {
 #if CENTRAL_LINK_COUNT>0
 void jsble_central_connect(ble_gap_addr_t peer_addr) {
   uint32_t              err_code;
-  ble_gap_scan_params_t     m_scan_param;
+  // TODO: do these need to be static?
+
+  static ble_gap_scan_params_t     m_scan_param;
   memset(&m_scan_param, 0, sizeof(m_scan_param));
-  m_scan_param.active       = 0;            // Active scanning set.
-  m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
-  m_scan_param.window       = SCAN_WINDOW;  // Scan window.
-  m_scan_param.timeout      = 0x0000;       // No timeout.
+  m_scan_param.active       = 1;            // Active scanning set.
+  m_scan_param.interval     = MSEC_TO_UNITS(100, UNIT_0_625_MS); // Scan interval.
+  m_scan_param.window       = MSEC_TO_UNITS(50, UNIT_0_625_MS); // Scan window.
+  m_scan_param.timeout      = 4;            // 4 second timeout.
 
-  ble_gap_conn_params_t   gap_conn_params;
+  static ble_gap_conn_params_t   gap_conn_params;
   memset(&gap_conn_params, 0, sizeof(gap_conn_params));
-  gap_conn_params.min_conn_interval = MIN_CONN_INTERVAL;
-  gap_conn_params.max_conn_interval = MAX_CONN_INTERVAL;
-  gap_conn_params.slave_latency     = SLAVE_LATENCY;
-  gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
+  gap_conn_params.min_conn_interval = MSEC_TO_UNITS(7.5, UNIT_1_25_MS);
+  gap_conn_params.max_conn_interval = MSEC_TO_UNITS(75, UNIT_1_25_MS);
+  gap_conn_params.slave_latency     = 0;
+  gap_conn_params.conn_sup_timeout  = MSEC_TO_UNITS(4000, UNIT_10_MS);
 
-  err_code = sd_ble_gap_connect(&peer_addr, &m_scan_param, &gap_conn_params);
+  static ble_gap_addr_t addr;
+  addr = peer_addr;
+
+  err_code = sd_ble_gap_connect(&addr, &m_scan_param, &gap_conn_params);
   if (jsble_check_error(err_code)) {
     bleCompleteTaskFail(BLETASK_CONNECT, 0);
   }
