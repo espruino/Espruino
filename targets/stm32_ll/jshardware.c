@@ -433,20 +433,21 @@ ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
 
   LL_GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
-  bool af = JSHPINSTATE_IS_AF(state);
+  /* bool af = JSHPINSTATE_IS_AF(state);
+   * af function cannot be configured here because we do not know the af
+   * name... It should be done on the caller of jshPinSetState 
+   * (This is due to a difference between SPL and LL libraries) */
   bool pullup = JSHPINSTATE_IS_PULLUP(state);
   bool pulldown = JSHPINSTATE_IS_PULLDOWN(state);
   bool opendrain = JSHPINSTATE_IS_OPENDRAIN(state);
 
   if (out) {
-    if (af) GPIO_InitStructure.Mode = LL_GPIO_MODE_ALTERNATE;
-    else if (state==JSHPINSTATE_DAC_OUT) GPIO_InitStructure.Mode = LL_GPIO_MODE_ANALOG;
+    if (state==JSHPINSTATE_DAC_OUT) GPIO_InitStructure.Mode = LL_GPIO_MODE_ANALOG;
     else GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
     GPIO_InitStructure.OutputType = opendrain ? LL_GPIO_OUTPUT_OPENDRAIN : LL_GPIO_OUTPUT_PUSHPULL;
     GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_HIGH;
   } else {
     GPIO_InitStructure.Mode = LL_GPIO_MODE_INPUT;
-    if (af) GPIO_InitStructure.Mode = LL_GPIO_MODE_ALTERNATE;
     if (state==JSHPINSTATE_ADC_IN) GPIO_InitStructure.Mode = LL_GPIO_MODE_INPUT;
   }
   GPIO_InitStructure.Pull = pulldown ? LL_GPIO_PULL_DOWN : (pullup ? LL_GPIO_PULL_UP : LL_GPIO_PULL_NO);
