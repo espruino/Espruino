@@ -1854,17 +1854,14 @@ JsVar *jsvSkipOneNameAndUnLock(JsVar *a) {
 }
 
 
-/*
-jsvIsStringEqualOrStartsWith(A, B, false) is a proper A==B
-jsvIsStringEqualOrStartsWith(A, B, true) is A.startsWith(B)
- */
-bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith) {
+
+bool jsvIsStringEqualOrStartsWithOffset(JsVar *var, const char *str, bool isStartsWith, size_t startIdx) {
   if (!jsvHasCharacterData(var)) {
     return 0; // not a string so not equal!
   }
 
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, var, 0);
+  jsvStringIteratorNew(&it, var, startIdx);
   while (jsvStringIteratorHasChar(&it) && *str) {
     if (jsvStringIteratorGetChar(&it) != *str) {
       jsvStringIteratorFree(&it);
@@ -1877,6 +1874,14 @@ bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith
             jsvStringIteratorGetChar(&it)==*str; // should both be 0 if equal
   jsvStringIteratorFree(&it);
   return eq;
+}
+
+/*
+jsvIsStringEqualOrStartsWith(A, B, false) is a proper A==B
+jsvIsStringEqualOrStartsWith(A, B, true) is A.startsWith(B)
+ */
+bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith) {
+  return jsvIsStringEqualOrStartsWithOffset(var, str, isStartsWith, 0);
 }
 
 // Also see jsvIsBasicVarEqual

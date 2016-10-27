@@ -132,6 +132,7 @@ bool jsble_check_error(uint32_t err_code) {
   if (!err_code) return false;
   const char *name = 0;
   if (err_code==NRF_ERROR_INVALID_PARAM) name="INVALID_PARAM";
+  else if (err_code==NRF_ERROR_DATA_SIZE) name="DATA_SIZE";
   if (name) jsExceptionHere(JSET_ERROR, "Got BLE error %s", name);
   else jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
   return true;
@@ -427,10 +428,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
       // For discovery....
       case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: {
+        bool done = true;
+
+        JsVar *srvcs = jsvObjectGetChild(execInfo.hiddenRoot, "bleSvcs", JSV_ARRAY);
         if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
             p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count!=0) {
-
-          JsVar *srvcs = jsvObjectGetChild(execInfo.hiddenRoot, "bleSvcs", JSV_ARRAY);
           if (srvcs) {
             int i;
             // Should actually return 'BLEService' object here
@@ -452,23 +454,23 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
           uint16_t last = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count-1;
           if (p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[last].handle_range.end_handle < 0xFFFF) {
-            jsvUnLock(srvcs);
             // Now try again
             uint16_t start_handle = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[last].handle_range.end_handle+1;
-            sd_ble_gattc_primary_services_discover(p_ble_evt->evt.gap_evt.conn_handle, start_handle, NULL);
-          } else {
-            // When done, send the result to the handler
-            if (srvcs && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
-              // single item because filtering
-              JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(srvcs));
-              jsvUnLock(srvcs);
-              srvcs = t;
-            }
-            bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, srvcs);
-            jsvUnLock(srvcs);
-            jsvObjectSetChild(execInfo.hiddenRoot, "bleSvcs", 0);
+            done = sd_ble_gattc_primary_services_discover(p_ble_evt->evt.gap_evt.conn_handle, start_handle, NULL) != NRF_SUCCESS;;
           }
+        }
+        if (done) {
+          // When done, send the result to the handler
+          if (srvcs && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
+            // single item because filtering
+            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(srvcs));
+            jsvUnLock(srvcs);
+            srvcs = t;
+          }
+          bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, srvcs);
+          jsvObjectSetChild(execInfo.hiddenRoot, "bleSvcs", 0);
         } // else error
+        jsvUnLock(srvcs);
         break;
       }
       case BLE_GATTC_EVT_CHAR_DISC_RSP: {
@@ -846,10 +848,7 @@ static void ble_stack_init() {
                                                     &ble_enable_params);
     APP_ERROR_CHECK(err_code);
 
-    uint32_t softdevice_extra_ram_hack = 0;
-
     ble_enable_params.common_enable_params.vs_uuid_count = 3;
-    softdevice_extra_ram_hack += 32; // now we have more UUIDs, SD needs more RAM
 
     //Check the ram settings against the used number of links
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
@@ -1260,7 +1259,7 @@ void jsble_nfc_start(const uint8_t *data, size_t len) {
 #if CENTRAL_LINK_COUNT>0
 void jsble_central_connect(ble_gap_addr_t peer_addr) {
   uint32_t              err_code;
-  // TODO: do these need to be static?
+  // TODO: do these really need to be static?
 
   static ble_gap_scan_params_t     m_scan_param;
   memset(&m_scan_param, 0, sizeof(m_scan_param));
@@ -1310,18 +1309,19 @@ void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid) {
 }
 
 void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen) {
-  const ble_gattc_write_params_t write_params = {
-        .write_op = BLE_GATT_OP_WRITE_CMD,
-        .flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE,
-        .handle   = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0)),
-        .offset   = 0,
-        .len      = dataLen,
-        .p_value  = (uint8_t*)dataPtr
-    };
-    uint32_t              err_code;
-    err_code = sd_ble_gattc_write(m_central_conn_handle, &write_params);
-    if (jsble_check_error(err_code))
-      bleCompleteTaskFail(BLETASK_CHARACTERISTIC_WRITE, 0);
+  ble_gattc_write_params_t write_params;
+  memset(&write_params, 0, sizeof(write_params));
+  write_params.write_op = BLE_GATT_OP_WRITE_CMD;
+  write_params.flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE;
+  write_params.handle   = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+  write_params.offset   = 0;
+  write_params.len      = dataLen;
+  write_params.p_value  = (uint8_t*)dataPtr;
+
+  uint32_t              err_code;
+  err_code = sd_ble_gattc_write(m_central_conn_handle, &write_params);
+  if (jsble_check_error(err_code))
+    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_WRITE, 0);
 }
 
 void jsble_central_characteristicRead(JsVar *characteristic) {

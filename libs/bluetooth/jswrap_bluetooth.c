@@ -1142,7 +1142,7 @@ NRF.setScan(false);
 
 // getting all services
 var device;
-NRF.connect("d1:53:36:1a:7a:17").then(function(d) {
+NRF.connect("d1:53:36:1a:7a:17 random").then(function(d) {
   device = d;
   console.log("Connected ",d);
   return d.getPrimaryServices();
@@ -1152,6 +1152,23 @@ NRF.connect("d1:53:36:1a:7a:17").then(function(d) {
 }).then(function(c) {
   console.log("Characteristics ",c);
   return c[1].writeValue("LED1.set()\n");
+}).then(function() {
+  console.log("Written. Disconnecting");
+  device.disconnect();
+}).catch(function() {
+  console.log("Oops");
+});
+
+NRF.connect("d1:53:36:1a:7a:17 random").then(function(d) {
+  device = d;
+  console.log("Connected ",d);
+  return d.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
+}).then(function(s) {
+  console.log("Services ",s);
+  return s.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
+}).then(function(c) {
+  console.log("Characteristics ",c);
+  return c.writeValue("LED1.set()\n");
 }).then(function() {
   console.log("Written. Disconnecting");
   device.disconnect();
