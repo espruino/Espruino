@@ -49,7 +49,6 @@ JsVar *bleUUIDToStr(ble_uuid_t uuid) {
 // Convert a variable of the form "aa:bb:cc:dd:ee:ff" to a mac address
 bool bleVarToAddr(JsVar *mac, ble_gap_addr_t *addr) {
   if (!jsvIsString(mac) ||
-      jsvGetStringLength(mac)!=17 ||
       jsvGetCharInString(mac, 2)!=':' ||
       jsvGetCharInString(mac, 5)!=':' ||
       jsvGetCharInString(mac, 8)!=':' ||
@@ -57,22 +56,35 @@ bool bleVarToAddr(JsVar *mac, ble_gap_addr_t *addr) {
       jsvGetCharInString(mac, 14)!=':') {
     return false;
   }
-  addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC; // not sure why this isn't public?
+  memset(addr, 0, sizeof(ble_gap_addr_t));
+  addr->addr_type = BLE_GAP_ADDR_TYPE_PUBLIC;
   int i;
   for (i=0;i<6;i++)
     addr->addr[5-i] = (chtod(jsvGetCharInString(mac, i*3))<<4) | chtod(jsvGetCharInString(mac, (i*3)+1));
+  if (jsvGetStringLength(mac)!=17) {
+    if (jsvIsStringEqualOrStartsWithOffset(mac, " public", false, 17))
+      addr->addr_type = BLE_GAP_ADDR_TYPE_PUBLIC; // default
+    else if (jsvIsStringEqualOrStartsWithOffset(mac, " random", false, 17))
+      addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC;
+    else return false;
+  }
   return true;
 }
 
 /// BLE MAC address to string
 JsVar *bleAddrToStr(ble_gap_addr_t addr) {
-  return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
+  const char *typeStr = "";
+  if (addr.addr_type == BLE_GAP_ADDR_TYPE_PUBLIC)
+    typeStr = " public";
+  else if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_STATIC)
+    typeStr = " random";
+  return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x%s",
       addr.addr[5],
       addr.addr[4],
       addr.addr[3],
       addr.addr[2],
       addr.addr[1],
-      addr.addr[0]);
+      addr.addr[0], typeStr);
 }
 
 /** Convert a JsVar to a UUID - 0 if handled, a string showing the error if not

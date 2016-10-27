@@ -520,6 +520,8 @@ void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col); ///<
 size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col); ///<  IN A STRING, get a character index from a line and column
 
 
+/// Like jsvIsStringEqualOrStartsWith, but starts comparing at some offset (not the beginning of the string)
+bool jsvIsStringEqualOrStartsWithOffset(JsVar *var, const char *str, bool isStartsWith, size_t startIdx);
 /**
   Compare a string with a C string. Returns 0 if A is not a string.
 
