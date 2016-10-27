@@ -1788,7 +1788,8 @@ LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/component
 -L$(ESP_APP_TEMPLATE_PATH)/build/nvs_flash \
 -L$(ESP_APP_TEMPLATE_PATH)/build/partition_table \
 -L$(ESP_APP_TEMPLATE_PATH)/build/spi_flash \
--L$(ESP_APP_TEMPLATE_PATH)/build/tcpip_adapter
+-L$(ESP_APP_TEMPLATE_PATH)/build/tcpip_adapter \
+-L$(ESP_APP_TEMPLATE_PATH)/build/arduino-esp32
 ESPTOOL?=
 INCLUDE+=\
 -I$(ESP_APP_TEMPLATE_PATH)/build/include \
@@ -1806,6 +1807,7 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/spi_flash/include \
 -I$(ESP_IDF_PATH)/components/nvs_flash/include \
 -I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
+-I$(ESP_APP_TEMPLATE_PATH)/components/arduino-esp32/cores/esp32 \
 -Itargets/esp32/include
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
 LIBS+=-T esp32_out.ld \
@@ -1836,6 +1838,7 @@ $(ESP_IDF_PATH)/components/esp32/libhal.a  \
 -lnvs_flash \
 -lspi_flash \
 -ltcpip_adapter \
+-larduino-esp32 \
 -lgcc
 endif # ESP32
 
