@@ -151,6 +151,44 @@ $ . ./setenv.sh
 $ cd template
 ```
 
+* Make the components folder.
+```
+$ mkdir components
+```
+
+* Change into the components folder.
+
+```
+$ cd components
+```
+
+* Retrieve the Arduino-esp32 project
+
+```
+$ git clone https://github.com/espressif/arduino-esp32.git
+```
+
+* Edit the `main.cpp` source file
+```
+$ nano arduino-esp32/cores/esp32/main.cpp
+>>> Comment out app_main
+/*
+extern "C" void app_main()
+{
+    init();
+    initVariant();
+    initWiFi();
+    xTaskCreatePinnedToCore(loopTask, "loopTask", 4096, NULL, 1, NULL, 1);
+}
+*/
+<<<
+```
+
+* Change back up to the template folder
+```
+$ cd ..
+```
+
 * Run the `make menuconfig`.
 ```
 $ make menuconfig
@@ -210,6 +248,21 @@ export ESP32=1
 $ chmod u+x setenv.sh
 $ . ./setenv.sh
 $ cd template
+$ mkdir components
+$ git clone https://github.com/espressif/arduino-esp32.git
+$ nano arduino-esp32/cores/esp32/main.cpp
+>>> Comment out app_main
+/*
+extern "C" void app_main()
+{
+    init();
+    initVariant();
+    initWiFi();
+    xTaskCreatePinnedToCore(loopTask, "loopTask", 4096, NULL, 1, NULL, 1);
+}
+*/
+<<<
+$ cd ..
 $ make
 $ cd ..
 $ git clone https://github.com/YOURGITHUBID/Espruino.git
