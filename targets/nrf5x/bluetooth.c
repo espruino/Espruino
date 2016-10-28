@@ -225,7 +225,7 @@ void SWI1_IRQHandler(bool radio_evt) {
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t                         err_code;
-    //jsiConsolePrintf("\n[%d]\n", p_ble_evt->header.evt_id);
+    //jsiConsolePrintf("\n[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );
 
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
@@ -536,13 +536,29 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       }
 
       case BLE_GATTC_EVT_WRITE_RSP: {
-        if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
+        if (bleInTask(BLETASK_CHARACTERISTIC_NOTIFY))
+          bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_NOTIFY, 0);
+        else if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
           bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_WRITE, 0);
         break;
       }
 
       case BLE_GATTC_EVT_HVX: {
+        // Notification/Indication
         ble_gattc_evt_hvx_t *p_hvx = &p_ble_evt->evt.gattc_evt.params.hvx;
+        // p_hvx>type is BLE_GATT_HVX_NOTIFICATION or BLE_GATT_HVX_INDICATION
+        JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", 0);
+        if (handles) {
+          JsVar *characteristic = jsvGetArrayItem(handles, p_hvx->handle);
+          if (characteristic) {
+            // TODO: should return {target:characteristic} and set characteristic.value
+            JsVar *data = jsvNewStringOfLength(p_hvx->len);
+            if (data) jsvSetString(data, p_hvx->data, p_hvx->len);
+            jsiQueueObjectCallbacks(characteristic, "characteristicvaluechanged", &data, 1);
+            jshHadEvent();
+          }
+          jsvUnLock2(characteristic, handles);
+        }
         break;
       }
 #endif
@@ -1318,13 +1334,14 @@ void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid) {
 }
 
 void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen) {
+  uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
   ble_gattc_write_params_t write_params;
   memset(&write_params, 0, sizeof(write_params));
   write_params.write_op = BLE_GATT_OP_WRITE_REQ;
   // BLE_GATT_OP_WRITE_REQ ===> BLE_GATTC_EVT_WRITE_RSP (write with response)
   // or BLE_GATT_OP_WRITE_CMD ===> BLE_EVT_TX_COMPLETE (simple write)
   write_params.flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE;
-  write_params.handle   = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+  write_params.handle   = handle;
   write_params.offset   = 0;
   write_params.len      = dataLen;
   write_params.p_value  = (uint8_t*)dataPtr;
@@ -1341,5 +1358,28 @@ void jsble_central_characteristicRead(JsVar *characteristic) {
    err_code = sd_ble_gattc_read(m_central_conn_handle, handle, 0/*offset*/);
    if (jsble_check_error(err_code))
      bleCompleteTaskFail(BLETASK_CHARACTERISTIC_READ, 0);
+}
+
+void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
+  uint16_t cccd_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_cccd", 0));
+  // FIXME: we need the cccd handle to be populated for this to work
+
+  uint8_t buf[BLE_CCCD_VALUE_LEN];
+  buf[0] = enable ? BLE_GATT_HVX_NOTIFICATION : 0;
+  buf[1] = 0;
+
+  const ble_gattc_write_params_t write_params = {
+      .write_op = BLE_GATT_OP_WRITE_REQ,
+      .flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE,
+      .handle   = cccd_handle,
+      .offset   = 0,
+      .len      = sizeof(buf),
+      .p_value  = buf
+  };
+
+  uint32_t              err_code;
+  err_code = sd_ble_gattc_write(m_central_conn_handle, &write_params);
+    if (jsble_check_error(err_code))
+      bleCompleteTaskFail(BLETASK_CHARACTERISTIC_NOTIFY, 0);
 }
 #endif
