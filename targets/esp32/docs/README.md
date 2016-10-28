@@ -7,19 +7,6 @@ https://github.com/espruino/Espruino.git
 New board will trigger on
 ESP32=1
 
-Files that need modified from Espruino branch "ESP32"  from Espruino branch "master" (note that this list may not be exclusive):
-
-* Makefile
-* boards/ESP32.py
-* scripts/build_platform_config.py
-* targets/esp32
-* targets/esp32/main.c
-* targets/esp32/jshardware.c
-* libs/network/esp32
-* libs/network/esp32/jswrap_esp32_network.c
-* libs/network/esp32/jswrap_esp32_network.h
-* libs/network/linux/network_linux.c
-
 To build, we need to set
 ```
 export ESP32=1
@@ -86,9 +73,32 @@ We will need three major environmental components in order to build Espruino.  T
 The first is the Xtensa tool chain.  The processor on an ESP32 is made by Xtensa and has its own architecture and instruction set.  When we compile Espruino, we will be generating binary files that are the compiled C files.   These binary files contain the executable instructions and data that will eventually be loaded on the ESP32.  A compiler takes our source code and builds the resulting compiled code.  Our source is C language in text files and our result must be Xtensa binaries.  A tool chain is a suite of tools that take us from the source to the compiled binaries.  These include C compilers, linkers, archivers and a few others.  Espressif makes available a down loadable version of the Xtensa tool chain for Linux on x86 or x86-64.  If you have previously been working with the ESP8266 toolchains, make sure that you realize that the toolchain for ESP32 is distinct from that of the ESP8266.  The source code for the compilers is also available and can be downloaded and compiled yourself.  I had to do this to get the tool chain running on the ARM architecture for my Raspberry Pi.  I don't recommend building your own compiler unless you have a good reason.  Instead find a binary version and download and trust that it won't do mischief on your machine.
 In my recipes I choose to install the tool chain in /opt/xtensa-esp32-elf and add /opt/xtensa-esp32-elf/bin to your environmental PATH.
 
-Next we need the ESP-IDF.  This is the core of the framework that is the foundation upon which we build Espruino.  This package provides the libraries we link against in order to leverage the services of the ESP32 environment.  The package contains modules for WiFi, TCP/IP sockets, GPIO and much more.  The package is distributed from Github and contains pre-built libraries distributed in binary format as well as many modules that are distributed in source and need to be compiled.
+Next we need the ESP-IDF.  This is the core of the framework that is the foundation upon which we build Espruino.  
+This package provides the libraries we link against in order to leverage the services of the ESP32 environment.
+The package contains modules for WiFi, TCP/IP sockets, GPIO and much more.  The package is distributed from Github and contains
+pre-built libraries distributed in binary format as well as many modules that are distributed in source and need to be compiled.
 
-The last thing we need before we are ready to compile Espruino is an instance of an ESP-IDF template application.  This is another project type that is extractable from Github.  The purpose of this project is to be the basis for one of your own ESP32 applications.  The intent is that you download this template application, rename it to reflect the name you want for your target app and then start editing the source for your own purposes.  It also contains a Makefile which knows how to build a full binary ready for flashing onto the ESP32.  At this point you may be thinking to yourself that this seems a strange component to include in our Espruino story … but here is the thinking.  The ESP-IDF is provided partially in binary format and partially as source files that need compiled.  Because of this, we would need to compile the ESP-IDF to be able to have all the linkable libraries.  Unfortunately, as of this time, there doesn't appear to be a recipe to simply "build all the ESP-IDF libraries".  Instead, it is the template application which builds them for us.  When we download a ready-to-compile template and ask it to build, the result is not only a compiled application … but a side effect is that all the ESP-IDF libraries we need are also compiled and placed in directories for us to link against.  While it might be feasible to incorporate these rules to build all the ESP-IDF libraries that Espruino requires into the Espruino Makefile, at this time we have decided that there is no immediate need to do that.  If we download the ESP-IDF and download the ESP-IDF template application and run a compile against that application, the result (from Espruino build perspective) is that we have all the libraries we need to link against with minimal work on our part.  Thankfully, the recipe to achieve these tasks is very easy and very repeatable.
+Next we need an instance of an ESP-IDF template application.  This is another project type that is extractable from Github.
+The true purpose of this project type is to be the basis for one of your own ESP32 applications.  The intent is that you download this
+template application, rename it to reflect the name you want for your target app and then start editing the source for your own
+purposes.  It also contains a Makefile which knows how to build a full binary ready for flashing onto the ESP32.
+At this point you may be thinking to yourself that this seems a strange component to include
+in our Espruino story … but here is the thinking.  The ESP-IDF is provided partially in binary format and partially
+as source files that need compiled.  Because of this, we would need to compile the ESP-IDF to be able to have all 
+the linkable libraries.  Unfortunately, as of this time, there doesn't appear to be a recipe to simply "build all the
+ESP-IDF libraries".  Instead, it is the template application which builds them for us.  When we download a
+ready-to-compile template and ask it to build, the result is not only a compiled application … but a side
+effect is that all the ESP-IDF libraries we need are also compiled and placed in directories for us to link
+against.  While it might be feasible to incorporate these rules to build all the ESP-IDF libraries that
+Espruino requires into the Espruino Makefile, at this time we have decided that there is no immediate need to do that.
+If we download the ESP-IDF and download the ESP-IDF template application and run a compile against that application,
+the result (from Espruino build perspective) is that we have all the libraries we need to link against with minimal work
+on our part.  Thankfully, the recipe to achieve these tasks is very easy and very repeatable.
+
+The last part we need is the Arduino-ESP32 project.  Again you may be thinking "Why Arduino?" ... well the answer is that the
+Arduino libraries for ESP32 provide implementations of I2C and SPI for ESP32 and we can link those into Espruino ignoring the
+rest of the Arduino environment.  The Arduino-ESP32 project is designed for exactly this kind of usage and becomes an ESP-IDF
+component and slots in nicely.
 
 Here are the instructions that need only be followed once.
 * In your home directory (or wherever you want the root of your build to be) create a directory called "esp32".
@@ -263,6 +273,7 @@ extern "C" void app_main()
 */
 <<<
 $ cd ..
+$ make menuconfig
 $ make
 $ cd ..
 $ git clone https://github.com/YOURGITHUBID/Espruino.git
