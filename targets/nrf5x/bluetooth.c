@@ -377,8 +377,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, 0); // fire only once
           jshHadEvent();
         }
-        if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
-          bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_WRITE, 0);
         break;
 
       case BLE_GAP_EVT_ADV_REPORT: {
@@ -534,6 +532,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (data) jsvSetString(data, (char*)&p_read->data[0], p_read->len);
         bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_READ, data);
         jsvUnLock(data);
+        break;
+      }
+
+      case BLE_GATTC_EVT_WRITE_RSP: {
+        if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
+          bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_WRITE, 0);
+        break;
+      }
+
+      case BLE_GATTC_EVT_HVX: {
+        ble_gattc_evt_hvx_t *p_hvx = &p_ble_evt->evt.gattc_evt.params.hvx;
         break;
       }
 #endif
@@ -1311,7 +1320,9 @@ void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid) {
 void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen) {
   ble_gattc_write_params_t write_params;
   memset(&write_params, 0, sizeof(write_params));
-  write_params.write_op = BLE_GATT_OP_WRITE_CMD;
+  write_params.write_op = BLE_GATT_OP_WRITE_REQ;
+  // BLE_GATT_OP_WRITE_REQ ===> BLE_GATTC_EVT_WRITE_RSP (write with response)
+  // or BLE_GATT_OP_WRITE_CMD ===> BLE_EVT_TX_COMPLETE (simple write)
   write_params.flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE;
   write_params.handle   = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
   write_params.offset   = 0;
