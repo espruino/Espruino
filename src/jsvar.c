@@ -2511,8 +2511,7 @@ size_t jsvCountJsVarsUsed(JsVar *v) {
   return c;
 }
 
-
-JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
+JsVar *jsvGetArrayIndex(const JsVar *arr, JsVarInt index) {
   JsVarRef childref = jsvGetLastChild(arr);
   JsVarInt lastArrayIndex = 0;
   // Look at last non-string element!
@@ -2522,7 +2521,7 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
       lastArrayIndex = child->varData.integer;
       // it was the last element... sorted!
       if (lastArrayIndex == index) {
-        return jsvSkipNameAndUnLock(child);
+        return child;
       }
       jsvUnLock(child);
       break;
@@ -2542,7 +2541,7 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
 
       assert(jsvIsInt(child));
       if (child->varData.integer == index) {
-        return jsvSkipNameAndUnLock(child);
+        return child;
       }
       childref = jsvGetPrevSibling(child);
       jsvUnLock(child);
@@ -2555,13 +2554,28 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
 
       assert(jsvIsInt(child));
       if (child->varData.integer == index) {
-        return jsvSkipNameAndUnLock(child);
+        return child;
       }
       childref = jsvGetNextSibling(child);
       jsvUnLock(child);
     }
   }
   return 0; // undefined
+}
+
+JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
+  return jsvSkipNameAndUnLock(jsvGetArrayIndex(arr,index));
+}
+
+void jsvSetArrayItem(const JsVar *arr, JsVarInt index, JsVar *item) {
+  JsVar *indexVar = jsvGetArrayIndex(arr, index);
+  if (indexVar) {
+    jsvSetValueOfName(indexVar, item);
+  } else {
+    indexVar = jsvMakeIntoVariableName(jsvNewFromInteger(jsvGetInteger(index)), item);
+    jsvAddName(arr, indexVar);
+  }
+  jsvUnLock(indexVar);
 }
 
 // Get all elements from arr and put them in itemPtr (unless it'd overflow).

@@ -670,7 +670,9 @@ JsVarInt jsvGetArrayLength(const JsVar *arr); ///< Not the same as GetChildren, 
 JsVarInt jsvSetArrayLength(JsVar *arr, JsVarInt length, bool truncate); ///< set an array's length, optionally truncating if the array becomes shorter
 JsVarInt jsvGetLength(JsVar *src); ///< General purpose length function. Does the 'right' thing
 size_t jsvCountJsVarsUsed(JsVar *v); ///< Count the amount of JsVars used. Mostly useful for debugging
-JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array (and lock it)
+JsVar *jsvGetArrayIndex(const JsVar *arr, JsVarInt index); ///< Get a 'name' at the specified index in the array if it exists (and lock it)
+JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array if it exists (and lock it)
+void jsvSetArrayItem(const JsVar *arr, JsVarInt index, JsVar *item); ///< Set an array item at the specified index in the array
 void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr); ///< Get all elements from arr and put them in itemPtr (unless it'd overflow). Makes sure all of itemPtr either contains a JsVar or 0
 JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array (matchExact==use pointer, not equality check)
 JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
