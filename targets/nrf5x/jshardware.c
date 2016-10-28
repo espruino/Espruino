@@ -85,7 +85,7 @@ unsigned int ticksSinceStart = 0;
 JshPinFunction pinStates[JSH_PIN_COUNT];
 
 #if SPI_ENABLED
-static const NRF_SPI_Type *spi0 = NRF_DRV_SPI_PERIPHERAL(0);
+static const nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
 bool spi0Initialised = false;
 #endif
 
@@ -723,6 +723,11 @@ bool jshIsEventForPin(IOEvent *event, Pin pin) {
 
 /** Is the given device initialised? */
 bool jshIsDeviceInitialised(IOEventFlags device) {
+#if SPI_ENABLED
+  if (device==EV_SPI1) return spi0Initialised;
+#endif
+  if (device==EV_I2C1) return twi1Initialised;
+  if (device==EV_SERIAL1) return uartInitialised;
   return false;
 }
 
@@ -830,12 +835,14 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   spi_config.frequency =  freq;
   spi_config.mode = inf->spiMode;
   spi_config.bit_order = inf->spiMSB ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST;
-
+  if (jshIsPinValid(inf->pinSCK))
+    spi_config.sck_pin = (uint32_t)pinInfo[inf->pinSCK].pin;
   if (jshIsPinValid(inf->pinMISO))
     spi_config.miso_pin = (uint32_t)pinInfo[inf->pinMISO].pin;
   if (jshIsPinValid(inf->pinMOSI))
-      spi_config.mosi_pin = (uint32_t)pinInfo[inf->pinMOSI].pin;
-  if (spi0Initialised) nrf_drv_twi_uninit(&spi0);
+    spi_config.mosi_pin = (uint32_t)pinInfo[inf->pinMOSI].pin;
+
+  if (spi0Initialised) nrf_drv_spi_uninit(&spi0);
   spi0Initialised = true;
   // No event handler means SPI transfers are blocking
   uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL);
@@ -863,7 +870,9 @@ int jshSPISend(IOEventFlags device, int data) {
   if (device!=EV_SPI1) return -1;
   uint8_t tx = (uint8_t)data;
   uint8_t rx = 0;
-  nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
+  if (err_code != NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
   return rx;
 #endif
 }
@@ -873,7 +882,9 @@ void jshSPISend16(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1) return;
   uint16_t tx = (uint16_t)data;
-  nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 1, 0, 0);
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 1, 0, 0);
+  if (err_code != NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
 #endif
 }
 
