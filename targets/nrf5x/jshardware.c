@@ -50,6 +50,7 @@
 #include "nrf_drv_twi.h"
 #include "nrf_drv_gpiote.h"
 #include "nrf_drv_ppi.h"
+#include "nrf_drv_spi.h"
 
 #include "app_uart.h"
 
@@ -65,7 +66,9 @@
   TIMER0 (32 bit) not usable (softdevice)
   TIMER1 (16 bit on nRF51, 32 bit on nRF52) used by jshardware util timer
   TIMER2 (16 bit) free
-  SPI0/1 free
+  SPI0 / TWI0 -> Espruino's SPI1 (only nRF52 - not enough flash on 51)
+  SPI1 / TWI1 -> Espruino's I2C1
+  SPI2 -> free
 
  */
 
@@ -81,6 +84,18 @@ unsigned int ticksSinceStart = 0;
 
 JshPinFunction pinStates[JSH_PIN_COUNT];
 
+#if SPI_ENABLED
+static const NRF_SPI_Type *spi0 = NRF_DRV_SPI_PERIPHERAL(0);
+bool spi0Initialised = false;
+#endif
+
+static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
+bool twi1Initialised = false;
+
+const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
+  if (device == EV_I2C1) return &TWI1;
+  return 0;
+}
 
 
 /// Called when we have had an event that means we should execute JS
@@ -145,7 +160,17 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
     }
 #endif
   case JSH_USART1: if (fInfo==JSH_USART_RX) NRF_UART0->PSELRXD = pin;
-                   else NRF_UART0->PSELTXD = pin; break;
+                   else NRF_UART0->PSELTXD = pin;
+                   break;
+#if SPI_ENABLED
+  case JSH_SPI1: if (fInfo==JSH_SPI_MISO) NRF_SPI0->PSELMISO = pin;
+                 else if (fInfo==JSH_SPI_MOSI) NRF_SPI0->PSELMOSI = pin;
+                 else NRF_SPI0->PSELSCK = pin;
+                 break;
+#endif
+  case JSH_I2C1: if (fInfo==JSH_I2C_SDA) NRF_TWI1->PSELSDA = pin;
+                 else NRF_TWI1->PSELSCL = pin;
+                 break;
   default: assert(0);
   }
 }
@@ -779,44 +804,89 @@ void jshUSARTKick(IOEventFlags device) {
   }
 }
 
+
 /** Set up SPI, if pins are -1 they will be guessed */
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
+#if SPI_ENABLED
+  if (device!=EV_SPI1) return;
 
+  nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG;
+
+  nrf_spi_frequency_t freq;
+  if (inf->baudRate<((125000+250000)/2))
+    freq = SPI_FREQUENCY_FREQUENCY_K125;
+  else if (inf->baudRate<((250000+500000)/2))
+    freq = SPI_FREQUENCY_FREQUENCY_K250;
+  else if (inf->baudRate<((500000+1000000)/2))
+    freq = SPI_FREQUENCY_FREQUENCY_K500;
+  else if (inf->baudRate<((1000000+2000000)/2))
+    freq = SPI_FREQUENCY_FREQUENCY_M1;
+  else if (inf->baudRate<((2000000+4000000)/2))
+    freq = SPI_FREQUENCY_FREQUENCY_M2;
+  else if (inf->baudRate<((4000000+8000000)/2))
+    freq = SPI_FREQUENCY_FREQUENCY_M4;
+  else
+    freq = SPI_FREQUENCY_FREQUENCY_M8;
+  spi_config.frequency =  freq;
+  spi_config.mode = inf->spiMode;
+  spi_config.bit_order = inf->spiMSB ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST;
+
+  if (jshIsPinValid(inf->pinMISO))
+    spi_config.miso_pin = (uint32_t)pinInfo[inf->pinMISO].pin;
+  if (jshIsPinValid(inf->pinMOSI))
+      spi_config.mosi_pin = (uint32_t)pinInfo[inf->pinMOSI].pin;
+  if (spi0Initialised) nrf_drv_twi_uninit(&spi0);
+  spi0Initialised = true;
+  // No event handler means SPI transfers are blocking
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL);
+  if (err_code != NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNALERROR, "SPI Initialisation Error %d\n", err_code);
+
+  // nrf_drv_spi_init will set pins, but this ensures we know so can reset state later
+  if (jshIsPinValid(inf->pinSCK)) {
+    jshPinSetFunction(inf->pinSCK, JSH_SPI1|JSH_SPI_SCK);
+  }
+  if (jshIsPinValid(inf->pinMOSI)) {
+    jshPinSetFunction(inf->pinMOSI, JSH_SPI1|JSH_SPI_MOSI);
+  }
+  if (jshIsPinValid(inf->pinMISO)) {
+    jshPinSetFunction(inf->pinMISO, JSH_SPI1|JSH_SPI_MISO);
+  }
+#endif
 }
 
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(IOEventFlags device, int data) {
-  return -1;
+#if SPI_ENABLED
+  if (device!=EV_SPI1) return -1;
+  uint8_t tx = (uint8_t)data;
+  uint8_t rx = 0;
+  nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
+  return rx;
+#endif
 }
 
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data) {
-
+#if SPI_ENABLED
+  if (device!=EV_SPI1) return;
+  uint16_t tx = (uint16_t)data;
+  nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 1, 0, 0);
+#endif
 }
 
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16) {
-
 }
 
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive) {
-
 }
 
 /** Wait until SPI send is finished, and flush all received data */
 void jshSPIWait(IOEventFlags device) {
-
-}
-
-const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
-bool twi1Initialised = false;
-
-const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
-  if (device == EV_I2C1) return &TWI1;
-  return 0;
 }
 
 /** Set up I2C, if pins are -1 they will be guessed */
@@ -840,6 +910,14 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
   else
     nrf_drv_twi_enable(twi);
+  
+  // nrf_drv_spi_init will set pins, but this ensures we know so can reset state later
+  if (jshIsPinValid(inf->pinSCL)) {
+    jshPinSetFunction(inf->pinSCL, JSH_I2C1|JSH_I2C_SCL);
+  }
+  if (jshIsPinValid(inf->pinSDA)) {
+    jshPinSetFunction(inf->pinSDA, JSH_I2C1|JSH_I2C_SDA);
+  }
 }
 
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
