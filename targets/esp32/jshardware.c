@@ -42,13 +42,21 @@
 #include "rom/uart.h"
 #include "driver/gpio.h"
 
+#include "esp32-hal-spi.h"
+
 #define FLASH_MAX (4*1024*1024) //4MB
 #define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
 #define FLASH_PAGE (1<<FLASH_PAGE_SHIFT)  //4KB
 
+#define UNUSED(x) (void)(x)
+
 // The logging tag used for log messages issued by this file.
 static char *tag = "jshardware";
 static char *tagGPIO = "jshardware(GPIO)";
+
+static spi_t *VSPI_spi;
+static spi_t *HSPI_spi;
+static uint32_t  g_lastSPIRead = (uint32_t)-1;
 
 // Convert an Espruino pin to an ESP32 pin number.
 static gpio_num_t pinToESP32Pin(Pin pin);
@@ -70,6 +78,7 @@ static IOEventFlags pinToEV_EXTI(
 */
 void IRAM_ATTR gpio_intr_test(void* arg){
   //GPIO intr process. Mainly copied from esp-idf
+  UNUSED(arg);
   IOEventFlags exti;
   uint32_t gpio_num = 0;
   uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);   //read status to get interrupt status for GPIO0-31
@@ -163,6 +172,7 @@ void jshInterruptOn()  { }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
+  UNUSED(timeUntilWake);
   //ESP_LOGD(tag,">> jshSleep");  // Can't debug log as called too often.
   //ESP_LOGD(tag,"<< jshSleep");  // Can't debug log as called too often.
    return true;
@@ -176,7 +186,7 @@ void jshDelayMicroseconds(int microsec) {
   ESP_LOGD(tag,">> jshDelayMicroseconds: microsec=%d", microsec);
   // This is likely a poor implementation since the granularity of the FreeRTOS timer
   // is likely to coarse.  But it will serve as a place holder.
-  TickType_t ticks = microsec / (1000 * portTICK_PERIOD_MS);
+  TickType_t ticks = (TickType_t)microsec / (1000 * portTICK_PERIOD_MS);
   vTaskDelay(ticks);
   ESP_LOGD(tag,"<< jshDelayMicroseconds");
 } // End of jshDelayMicroseconds
@@ -278,6 +288,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshPinAnalog");
   gpio_num_t gpioNum = pinToESP32Pin(pin);
+  UNUSED(gpioNum);
   //return (JsVarFloat)system_adc1_read(gpioNum, 3); //TODO ESP32 not supported yet from SDK
   return (JsVarFloat)0;
 }
@@ -294,7 +305,14 @@ int jshPinAnalogFast(Pin pin) {
 /**
  * Set the output PWM value.
  */
-JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
+JshPinFunction jshPinAnalogOutput(Pin pin,
+    JsVarFloat value,
+    JsVarFloat freq,
+    JshAnalogOutputFlags flags) { // if freq<=0, the default is used
+  UNUSED(value);
+  UNUSED(freq);
+  UNUSED(flags);
+
   ESP_LOGD(tag,">> jshPinAnalogOutput: pin=%d", pin);
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshPinAnalogOutput");
@@ -306,6 +324,8 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
  *
  */
 void jshSetOutputValue(JshPinFunction func, int value) {
+  UNUSED(func);
+  UNUSED(value);
   ESP_LOGD(tag,">> JshPinFunction");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< JshPinFunction");
@@ -316,6 +336,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
  *
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
+  UNUSED(timeout);
   ESP_LOGD(tag,">> jshEnableWatchDog");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshEnableWatchDog");
@@ -351,6 +372,7 @@ void jshPinPulse(
     bool pulsePolarity,   //!< The value to be pulsed into the pin.
     JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
 ) {
+  UNUSED(pulseTime);
   ESP_LOGD(tag,">> jshPinPulse: pin=%d, polarity=%d", pin, pulsePolarity);
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshPinPulse");
@@ -364,6 +386,7 @@ void jshPinPulse(
 bool jshCanWatch(
     Pin pin //!< The pin that we are asking whether or not we can watch it.
   ) {
+  UNUSED(pin);
   return true; //lets assume all pins will do
 }
 
@@ -419,6 +442,8 @@ bool jshIsEventForPin(
 
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  UNUSED(device);
+  UNUSED(inf);
   ESP_LOGD(tag,">> jshUSARTSetup");
   ESP_LOGD(tag,"<< jshUSARTSetup");
 }
@@ -449,23 +474,63 @@ void jshUSARTKick(
 
 /**
  * Initialize the hardware SPI device.
- * On the ESP8266, hardware SPI is implemented via a set of pins defined
+ * On the ESP32, hardware SPI is implemented via a set of default pins defined
  * as follows:
  *
- * | GPIO   | NodeMCU | Name  | Function |
- * |--------|---------|-------|----------|
- * | GPIO12 | D6      | HMISO | MISO     |
- * | GPIO13 | D7      | HMOSI | MOSI     |
- * | GPIO14 | D5      | HSCLK | CLK      |
- * | GPIO15 | D8      | HCS   | CS       |
  *
  */
 void jshSPISetup(
     IOEventFlags device, //!< The identity of the SPI device being initialized.
     JshSPIInfo *inf      //!< Flags for the SPI device.
 ) {
-  ESP_LOGD(tag,">> jshSPISetup");
-  ESP_LOGD(tag, "Not implemented");
+  ESP_LOGD(tag,">> jshSPISetup device=%s, baudRate=%d, spiMode=%d, spiMSB=%d",
+      jshGetDeviceString(device),
+      inf->baudRate,
+      inf->spiMode,
+      inf->spiMSB);
+  spi_t *spi = NULL;
+  uint8_t dataMode = SPI_MODE0;
+  switch(inf->spiMode) {
+  case 0:
+    dataMode = SPI_MODE0;
+    break;
+  case 1:
+    dataMode = SPI_MODE1;
+    break;
+  case 2:
+    dataMode = SPI_MODE2;
+    break;
+  case 3:
+    dataMode = SPI_MODE3;
+    break;
+  }
+  uint8_t bitOrder;
+  if (inf->spiMSB == true) {
+    bitOrder = SPI_MSBFIRST;
+  } else {
+    bitOrder = SPI_LSBFIRST;
+  }
+  switch(device) {
+  case EV_SPI1:
+    HSPI_spi = spiStartBus(HSPI, 1000000, dataMode, bitOrder);
+    spi = HSPI_spi;
+    break;
+  case EV_SPI2:
+    VSPI_spi = spiStartBus(VSPI, 1000000, dataMode, bitOrder);
+    spi = VSPI_spi;
+    break;
+  default:
+    ESP_LOGW(tag, "Unexpected device for SPI initialization: %d", device);
+    break;
+  }
+  if (spi != NULL) {
+    spiAttachSCK(spi, -1);
+    spiAttachMISO(spi, -1);
+    spiAttachMOSI(spi, -1);
+    spiAttachSS(spi, 0, -1);
+    spiEnableSSPins(spi, 1<<0);
+    spiSSEnable(spi);
+  }
   ESP_LOGD(tag,"<< jshSPISetup");
 }
 
@@ -477,10 +542,34 @@ int jshSPISend(
     IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
     int data             //!< The data to be sent or an indication that no data is to be sent.
 ) {
-  ESP_LOGD(tag,">> jshSPISend");
-  ESP_LOGD(tag, "Not implemented");
+  ESP_LOGD(tag,">> jshSPISend device=%s, data=%x", jshGetDeviceString(device), data);
+  spi_t *spi;
+  switch(device) {
+  case EV_SPI1:
+    spi = HSPI_spi;
+    break;
+  case EV_SPI2:
+    spi= VSPI_spi;
+    break;
+  default:
+    return -1;
+  }
+
+  if (device != EV_SPI1 && device != EV_SPI2) {
+    return -1;
+  }
+
+  //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
+  int retData = (int)g_lastSPIRead;
+  if (data >=0) {
+    // Send 8 bits of data taken from "data" over the selected spi and store the returned
+    // data for subsequent retrieval.
+    spiTransferBits(spi, (uint32_t)data, &g_lastSPIRead, 8);
+  } else {
+    g_lastSPIRead = (uint32_t)-1;
+  }
   ESP_LOGD(tag,"<< jshSPISend");
-  return 0;
+  return (int)retData;
 }
 
 
@@ -491,6 +580,8 @@ void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
 ) {
+  UNUSED(device);
+  UNUSED(data);
   ESP_LOGD(tag,">> jshSPISend16");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshSPISend16");
@@ -504,6 +595,8 @@ void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
 ) {
+  UNUSED(device);
+  UNUSED(is16);
   ESP_LOGD(tag,">> jshSPISet16");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshSPISet16");
@@ -516,6 +609,7 @@ void jshSPISet16(
 void jshSPIWait(
     IOEventFlags device //!< Unknown
 ) {
+  UNUSED(device);
   ESP_LOGD(tag,">> jshSPIWait");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshSPIWait");
@@ -524,6 +618,8 @@ void jshSPIWait(
 
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+  UNUSED(device);
+  UNUSED(isReceive);
   ESP_LOGD(tag,">> jshSPISetReceive");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshSPISetReceive");
@@ -534,19 +630,36 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 /** Set-up I2C master for ESP8266, default pins are SCL:12, SDA:13. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
- 
+  UNUSED(device);
+  UNUSED(info);
 }
 
 
-void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
-    const unsigned char *data, bool sendStop) {
+void jshI2CWrite(IOEventFlags device,
+    unsigned char address,
+    int nBytes,
+    const unsigned char *data,
+    bool sendStop) {
+  UNUSED(device);
+  UNUSED(address);
+  UNUSED(nBytes);
+  UNUSED(data);
+  UNUSED(sendStop);
   ESP_LOGD(tag,">> jshI2CWrite");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshI2CWrite");
 }
 
-void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
-    unsigned char *data, bool sendStop) {
+void jshI2CRead(IOEventFlags device,
+    unsigned char address,
+    int nBytes,
+    unsigned char *data,
+    bool sendStop) {
+  UNUSED(device);
+  UNUSED(address);
+  UNUSED(nBytes);
+  UNUSED(data);
+  UNUSED(sendStop);
   ESP_LOGD(tag,">> jshI2CRead");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshI2CRead");
@@ -606,6 +719,7 @@ JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called a
  * Set the current time in microseconds.
  */
 void jshSetSystemTime(JsSysTime newTime) {
+  UNUSED(newTime);
   ESP_LOGD(tag,">> jshSetSystemTime");
   ESP_LOGD(tag,"<< jshSetSystemTime");
 }
@@ -618,6 +732,7 @@ void jshUtilTimerDisable() {
 }
 
 void jshUtilTimerStart(JsSysTime period) {
+  UNUSED(period);
   ESP_LOGD(tag,">> jshUtilTimerStart");
   ESP_LOGD(tag,"<< jshUtilTimerStart");
 }
@@ -632,6 +747,7 @@ void jshUtilTimerReschedule(JsSysTime period) {
 //===== Miscellaneous =====
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
+  UNUSED(device);
   ESP_LOGD(tag,">> jshIsDeviceInitialised");
   ESP_LOGD(tag,"<< jshIsDeviceInitialised");
  return 0;
@@ -656,7 +772,7 @@ JsVarFloat jshReadVRef() {
 unsigned int jshGetRandomNumber() {
   ESP_LOGD(tag,">> jshGetRandomNumber");
   ESP_LOGD(tag,"<< jshGetRandomNumber");
-  return rand();
+  return (unsigned int)rand();
 }
 
 //===== Read-write flash =====
@@ -747,6 +863,7 @@ void jshFlashErasePage(
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {
+  UNUSED(options);
   ESP_LOGD(tag,">> jshSetSystemClock");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshSetSystemClock");
