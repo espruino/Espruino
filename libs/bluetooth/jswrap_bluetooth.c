@@ -1058,7 +1058,7 @@ NRF.connect(device_address).then(function(d) {
   return d.getPrimaryService("service_uuid");
 }).then(function(s) {
   console.log("Service ",s);
-  return s.getCharacteristic(characteristic_uuid);
+  return s.getCharacteristic("characteristic_uuid");
 }).then(function(c) {
   return c.writeValue("Hello");
 }).then(function(d) {
@@ -1102,7 +1102,7 @@ NRF.connect(device_address).then(function(d) {
   return d.getPrimaryService("service_uuid");
 }).then(function(s) {
   console.log("Service ",s);
-  return s.getCharacteristic(characteristic_uuid);
+  return s.getCharacteristic("characteristic_uuid");
 }).then(function(c) {
   return c.readValue();
 }).then(function(d) {
@@ -1121,6 +1121,83 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteris
     return 0;
 
   jsble_central_characteristicRead(characteristic);
+  return jsvLockAgainSafe(blePromise);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+
+/*JSON{
+    "type" : "method",
+    "class" : "BluetoothRemoteGATTCharacteristic",
+    "name" : "startNotifications",
+    "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications",
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when notifications have been added" ]
+}
+Starts notifications - whenever this characteristic's value changes, a `characteristicvaluechanged` event is fired.
+
+```
+var device;
+NRF.connect(device_address).then(function(d) {
+  device = d;
+  return d.getPrimaryService("service_uuid");
+}).then(function(s) {
+  console.log("Service ",s);
+  return s.getCharacteristic("characteristic_uuid");
+}).then(function(c) {
+  c.on('characteristicvaluechanged', function(event) {
+    console.log("-> "+event.target.value);
+  });
+  return c.startNotifications();
+}).then(function(d) {
+  console.log("Waiting for notifications"));
+}).catch(function() {
+  console.log("Something's broken.");
+});
+```
+
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *characteristic) {
+#if CENTRAL_LINK_COUNT>0
+  if (!bleNewTask(BLETASK_CHARACTERISTIC_NOTIFY))
+      return 0;
+  // Set our characteristic's handle up in the list of handles to notify for
+  // TODO: What happens when we close the connection and re-open another?
+  uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+  JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", JSV_ARRAY);
+  if (handles) {
+    jsvSetArrayItem(handles, handle, characteristic);
+    jsvUnLock(handles);
+  }
+  jsble_central_characteristicNotify(characteristic, true);
+  return jsvLockAgainSafe(blePromise);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+
+/*JSON{
+    "type" : "method",
+    "class" : "BluetoothRemoteGATTCharacteristic",
+    "name" : "stopNotifications",
+    "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_stopNotifications",
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when notifications have been added" ]
+}
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *characteristic) {
+#if CENTRAL_LINK_COUNT>0
+  // Remove our characteristic handle from the list of handles to notify for
+  uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+  JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", JSV_ARRAY);
+  if (handles) {
+    jsvSetArrayItem(handles, handle, 0);
+    jsvUnLock(handles);
+  }
+  jsble_central_characteristicNotify(characteristic, false);
   return jsvLockAgainSafe(blePromise);
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");

@@ -21,6 +21,7 @@ typedef enum {
   BLETASK_CHARACTERISTIC,  ///< Find characteristics
   BLETASK_CHARACTERISTIC_WRITE, ///< Write to a characteristic
   BLETASK_CHARACTERISTIC_READ, ///< Read from a characteristic
+  BLETASK_CHARACTERISTIC_NOTIFY, ///< Setting whether notifications are on or off
 } BleTask;
 
 bool bleInTask(BleTask task);
@@ -55,3 +56,5 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar 
 JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent);
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteristic, JsVar *data);
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic);
+JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *characteristic);
+JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *characteristic);
