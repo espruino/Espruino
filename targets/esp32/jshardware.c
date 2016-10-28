@@ -334,13 +334,12 @@ void jshKickWatchDog() {
  * Get the state of the pin associated with the event flag.
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
-bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
   //ESP_LOGD(tagGPIO,">> jshGetWatchedPinState: eventFlag=%d", eventFlag);
   gpio_num_t gpioNum = pinToESP32Pin(eventFlag-EV_EXTI0);
   bool level = gpio_get_level(gpioNum);
   //ESP_LOGD(tagGPIO,"<< jshGetWatchedPinState: level=%d", level);
   return level;
-}}
+}
 
 
 /**
