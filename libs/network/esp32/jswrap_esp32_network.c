@@ -639,9 +639,41 @@ re-enabled by calling `startAP`.
 void jswrap_ESP32_wifi_stopAP(JsVar *jsCallback) {
   UNUSED(jsCallback);
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_stopAP");
-  ESP_LOGD(tag, "Not implemented");
+
+  // handle the callback parameter
+  if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
+    EXPECT_CB_EXCEPTION(jsCallback);
+    return;
+  }
+
+  // Change operating mode intelligently.  We want to remove us from being
+  // an access point but if we are also a station, we want to preserve that.
+  esp_err_t err;
+  wifi_mode_t mode;
+  err = esp_wifi_get_mode(&mode);
+  switch(mode) {
+  case WIFI_MODE_NULL:
+  case WIFI_MODE_STA:
+    break;
+  case WIFI_MODE_AP:
+    mode = WIFI_MODE_NULL;
+    break;
+  case WIFI_MODE_APSTA:
+    mode = WIFI_MODE_STA;
+    break;
+  default:
+    break;
+  }
+  err = esp_wifi_set_mode(mode);
+  if (err != ESP_OK) {
+    ESP_LOGW(tag, "jswrap_ESP32_wifi_stopAP: wesp_wifi_set_mode rc=%d", err);
+  }
+
+  if (jsvIsFunction(jsCallback)) {
+    jsiQueueEvents(NULL, jsCallback, NULL, 0);
+  }
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_stopAP");
-}
+} // End of jswrap_ESP32_wifi_stopAP
 
 
 /*JSON{
