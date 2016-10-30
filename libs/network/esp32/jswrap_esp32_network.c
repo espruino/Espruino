@@ -755,9 +755,30 @@ void jswrap_ESP32_wifi_connect(
 
   // At this point, we have the ssid in "ssid" and the password in "password".
   // Perform an esp_wifi_set_mode
-  esp_err_t err = esp_wifi_set_mode(WIFI_MODE_STA);
+  wifi_mode_t mode;
+  esp_err_t err;
+  err = esp_wifi_get_mode(&mode);
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_set_mode: %d", err);
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_get_mode: %d", err);
+    return;
+  }
+  switch(mode) {
+  case WIFI_MODE_NULL:
+  case WIFI_MODE_STA:
+    mode = WIFI_MODE_STA;
+    break;
+  case WIFI_MODE_APSTA:
+  case WIFI_MODE_AP:
+    mode = WIFI_MODE_APSTA;
+    break;
+  default:
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: Unexoected mode type: %d", mode);
+    break;
+  }
+
+  err = esp_wifi_set_mode(mode);
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_set_mode: %d, mode=%d", err, mode);
     return;
   }
 
@@ -791,6 +812,7 @@ void jswrap_ESP32_wifi_connect(
 
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_connect");
 }
+
 
 /*JSON{
   "type"     : "staticmethod",
