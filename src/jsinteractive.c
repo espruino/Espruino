@@ -2138,6 +2138,8 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 
     if (jswIsBuiltInObject(childName)) {
       jsiDumpObjectState(user_callback, user_data, child, data);
+    } else if (jsvIsStringEqualOrStartsWith(childName, JS_EVENT_PREFIX, true)) {
+      // event on global object - skip it, as it'll be internal
     } else if (jsvIsStringEqual(child, JSI_TIMERS_NAME)) {
       // skip - done later
     } else if (jsvIsStringEqual(child, JSI_WATCHES_NAME)) {

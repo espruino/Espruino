@@ -88,10 +88,13 @@ void bleCompleteTaskFail(BleTask task, JsVar *data) {
   "generate" : "jswrap_nrf_init"
 }*/
 void jswrap_nrf_init() {
-/*  if (jsiStatus & JSIS_COMPLETELY_RESET) {
+  if (jsiStatus & JSIS_COMPLETELY_RESET) {
+#ifdef PUCKJS
+    // By default Puck.js's NFC will send you to the PuckJS website
+    // address is included so Web Bluetooth can connect to the correct one
     uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
     uint32_t addr1 =  NRF_FICR->DEVICEADDR[1];
-    JsVar *uri = jsvVarPrintf("https://puck-js.com/go?mac=%02x:%02x:%02x:%02x:%02x:%02x",
+    JsVar *uri = jsvVarPrintf("https://puck-js.com/go?a=%02x:%02x:%02x:%02x:%02x:%02x",
         ((addr1>>8 )&0xFF)|0xC0,
         ((addr1    )&0xFF),
         ((addr0>>24)&0xFF),
@@ -100,6 +103,7 @@ void jswrap_nrf_init() {
         ((addr0    )&0xFF));
     jswrap_nrf_nfcURL(uri);
     jsvUnLock(uri);
+#endif
   } else {
     // start NFC, if it had been set
     JsVar *flatStr = jsvObjectGetChild(execInfo.hiddenRoot, "NFC", 0);
@@ -108,7 +112,7 @@ void jswrap_nrf_init() {
       if (flatStrPtr) jsble_nfc_start(flatStrPtr, jsvGetLength(flatStr));
       jsvUnLock(flatStr);
     }
-  } */
+  }
 }
 
 /*JSON{
