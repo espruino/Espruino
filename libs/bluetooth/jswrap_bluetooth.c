@@ -84,6 +84,34 @@ void bleCompleteTaskFail(BleTask task, JsVar *data) {
 // ------------------------------------------------------------------------------
 
 /*JSON{
+  "type" : "init",
+  "generate" : "jswrap_nrf_init"
+}*/
+void jswrap_nrf_init() {
+/*  if (jsiStatus & JSIS_COMPLETELY_RESET) {
+    uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
+    uint32_t addr1 =  NRF_FICR->DEVICEADDR[1];
+    JsVar *uri = jsvVarPrintf("https://puck-js.com/go?mac=%02x:%02x:%02x:%02x:%02x:%02x",
+        ((addr1>>8 )&0xFF)|0xC0,
+        ((addr1    )&0xFF),
+        ((addr0>>24)&0xFF),
+        ((addr0>>16)&0xFF),
+        ((addr0>>8 )&0xFF),
+        ((addr0    )&0xFF));
+    jswrap_nrf_nfcURL(uri);
+    jsvUnLock(uri);
+  } else {
+    // start NFC, if it had been set
+    JsVar *flatStr = jsvObjectGetChild(execInfo.hiddenRoot, "NFC", 0);
+    if (flatStr) {
+      uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
+      if (flatStrPtr) jsble_nfc_start(flatStrPtr, jsvGetLength(flatStr));
+      jsvUnLock(flatStr);
+    }
+  } */
+}
+
+/*JSON{
   "type" : "idle",
   "generate" : "jswrap_nrf_idle"
 }*/
@@ -96,6 +124,9 @@ bool jswrap_nrf_idle() {
   "generate" : "jswrap_nrf_kill"
 }*/
 void jswrap_nrf_kill() {
+  // stop NFC emulation
+  jsble_nfc_stop(); // not a problem to call this if NFC isn't started
+  // stop any BLE tasks
   bleTask = BLETASK_NONE;
   if (blePromise) jsvUnLock(blePromise);
   blePromise = 0;
@@ -820,10 +851,21 @@ void jswrap_nrf_nfcURL(JsVar *url) {
   if (!urlPtr || !urlLen)
     return jsExceptionHere(JSET_ERROR, "Unable to get URL data");
 
+  nfc_uri_id_t uriType = NFC_URI_NONE;
+  if (memcmp(urlPtr, "http://", 7)==0) {
+    urlPtr+=7;
+    urlLen-=7;
+    uriType = NFC_URI_HTTP;
+  } else if (memcmp(urlPtr, "https://", 8)==0) {
+    urlPtr+=8;
+    urlLen-=8;
+    uriType = NFC_URI_HTTPS;
+  }
+
   uint8_t msg_buf[256];
   uint32_t len = sizeof(msg_buf);
   /* Encode URI message into buffer */
-  err_code = nfc_uri_msg_encode( NFC_URI_NONE, // TODO: could auto-prepend http/etc.
+  err_code = nfc_uri_msg_encode( uriType, // TODO: could auto-prepend http/etc.
                                  (uint8_t *)urlPtr,
                                  urlLen,
                                  msg_buf,
