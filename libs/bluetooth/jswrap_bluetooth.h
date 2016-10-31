@@ -29,6 +29,7 @@ bool bleNewTask(BleTask task);
 void bleCompleteTaskSuccess(BleTask task, JsVar *data);
 void bleCompleteTaskFail(BleTask task, JsVar *data);
 // ------------------------------------------------------------------------------
+void jswrap_nrf_init();
 bool jswrap_nrf_idle();
 void jswrap_nrf_kill();
 // ------------------------------------------------------------------------------

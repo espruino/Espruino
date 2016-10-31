@@ -742,6 +742,8 @@ void jsiSoftKill() {
     jsvObjectSetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, initCode);
     jsvUnLock(initCode);
   }
+  // If we're here we're loading, saving or resetting - board is no longer at power-on state
+  jsiStatus &= ~JSIS_COMPLETELY_RESET; // loading code, remove this flag
 }
 
 void jsiSemiInit(bool autoLoad) {
@@ -757,6 +759,7 @@ void jsiSemiInit(bool autoLoad) {
      Try and load from it... */
   bool loadFlash = autoLoad && jsfFlashContainsCode();
   if (loadFlash) {
+    jsiStatus &= ~JSIS_COMPLETELY_RESET; // loading code, remove this flag
     jspSoftKill();
     jsvSoftKill();
     jsfLoadStateFromFlash();
@@ -815,7 +818,7 @@ void jsiSemiInit(bool autoLoad) {
 
 // The 'proper' init function - this should be called only once at bootup
 void jsiInit(bool autoLoad) {
-  jsiStatus = JSIS_NONE;
+  jsiStatus = JSIS_COMPLETELY_RESET;
 
 #if defined(LINUX) || !defined(USB)
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
@@ -2038,7 +2041,6 @@ void jsiIdle() {
     }
     if ((s&JSIS_TODO_FLASH_SAVE) == JSIS_TODO_FLASH_SAVE) {
       jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_SAVE;
-
       jsvGarbageCollect(); // nice to have everything all tidy!
       jsiSoftKill();
       jspSoftKill();
@@ -2051,7 +2053,6 @@ void jsiIdle() {
     }
     if ((s&JSIS_TODO_FLASH_LOAD) == JSIS_TODO_FLASH_LOAD) {
       jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_LOAD;
-
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
