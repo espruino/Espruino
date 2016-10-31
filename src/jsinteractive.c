@@ -658,10 +658,12 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_I2C1+i));
   // pins
   Pin pin;
-  for (pin=0;jshIsPinValid(pin) && pin<255;pin++) {
+
+  for (pin=0;jshIsPinValid(pin) && pin<JSH_PIN_COUNT;pin++) {
     if (IS_PIN_USED_INTERNALLY(pin)) continue;
     JshPinState state = jshPinGetState(pin);
     JshPinState statem = state&JSHPINSTATE_MASK;
+
     if (statem == JSHPINSTATE_GPIO_OUT && !jshGetPinStateIsManual(pin)) {
       bool isOn = (state&JSHPINSTATE_PIN_IS_ON)!=0;
       if (!isOn && IS_PIN_A_LED(pin)) continue;
@@ -676,12 +678,13 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 #ifdef DEFAULT_CONSOLE_TX_PIN
       // the console input pin is always a pullup now - which is expected
       if (pin == DEFAULT_CONSOLE_TX_PIN &&
-          statem == JSHPINSTATE_AF_OUT) continue;
+          (statem == JSHPINSTATE_AF_OUT)) continue;
 #endif
 #if defined(BTN1_PININDEX) && defined(BTN1_PINSTATE)
       if (pin == BTN1_PININDEX &&
           statem == BTN1_PINSTATE) continue;
 #endif
+
       // don't bother with normal inputs, as they come up in this state (ish) anyway
       if (statem != JSHPINSTATE_GPIO_IN && statem != JSHPINSTATE_ADC_IN) {
         // use getPinMode to get the correct string (remove some duplication)
@@ -690,7 +693,6 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
         jsvUnLock(s);
       }
     }
-
   }
 }
 

@@ -358,6 +358,7 @@ bool jshPinGetValue(Pin pin) {
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state) {
+  assert(jshIsPinValid(pin));
   // If this was set to be some kind of AF (USART, etc), reset it.
   jshPinSetFunction(pin, JSH_NOTHING);
   /* Make sure we kill software PWM if we set the pin state
@@ -412,6 +413,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
+  assert(jshIsPinValid(pin));
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   uint32_t p = NRF_GPIO->PIN_CNF[ipin];
   if ((p&GPIO_PIN_CNF_DIR_Msk)==(GPIO_PIN_CNF_DIR_Output<<GPIO_PIN_CNF_DIR_Pos)) {
@@ -420,10 +422,18 @@ JshPinState jshPinGetState(Pin pin) {
     if ((p&GPIO_PIN_CNF_DRIVE_Msk)==(GPIO_PIN_CNF_DRIVE_S0D1<<GPIO_PIN_CNF_DRIVE_Pos)) {
       if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos))
         return JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP|hi;
+      else {
+        if (pinStates[pin])
+          return JSHPINSTATE_AF_OUT_OPENDRAIN|hi;
+        else
+          return JSHPINSTATE_GPIO_OUT_OPENDRAIN|hi;
+      }
+    } else {
+      if (pinStates[pin])
+        return JSHPINSTATE_AF_OUT|hi;
       else
-        return JSHPINSTATE_GPIO_OUT_OPENDRAIN|hi;
-    } else
-      return JSHPINSTATE_GPIO_OUT|hi;
+        return JSHPINSTATE_GPIO_OUT|hi;
+    }
   } else {
     // Input
     if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos)) {
