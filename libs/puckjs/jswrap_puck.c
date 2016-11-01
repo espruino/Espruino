@@ -547,7 +547,7 @@ bool jswrap_puck_selfTest() {
   nrf_delay_ms(1);
   v = jshPinAnalog(LED1_PININDEX);
   jshPinSetState(LED1_PININDEX, JSHPINSTATE_GPIO_IN);
-  if (v<0.35 || v>0.65) {
+  if (v<0.3 || v>0.65) {
     jsiConsolePrintf("LED1 pullup voltage out of range (%f) - disconnected?\n", v);
     ok = false;
   }
@@ -556,7 +556,7 @@ bool jswrap_puck_selfTest() {
   nrf_delay_ms(1);
   v = jshPinAnalog(LED2_PININDEX);
   jshPinSetState(LED2_PININDEX, JSHPINSTATE_GPIO_IN);
-  if (v<0.65 || v>0.85) {
+  if (v<0.55 || v>0.85) {
     jsiConsolePrintf("LED2 pullup voltage out of range (%f) - disconnected?\n", v);
     ok = false;
   }
@@ -565,7 +565,7 @@ bool jswrap_puck_selfTest() {
   nrf_delay_ms(1);
   v = jshPinAnalog(LED3_PININDEX);
   jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN);
-  if (v<0.8 || v>0.95) {
+  if (v<0.65 || v>0.90) {
     jsiConsolePrintf("LED3 pullup voltage out of range (%f) - disconnected?\n", v);
     ok = false;
   }
