@@ -31,6 +31,15 @@ static JsVar *g_jsScanCallback;
 // A callback function to be invoked when we are being an access point.
 static JsVar *g_jsAPStartedCallback;
 
+// The last time we were connected as a station.
+static system_event_sta_connected_t g_lastEventStaConnected;
+
+// The last time we were disconnected as a station.
+static system_event_sta_disconnected_t g_lastEventStaDisconnected;
+
+// Are we connected as a station?
+static bool g_isStaConnected = false;
+
 
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting options object but got %t", jsOPT)
@@ -183,6 +192,72 @@ static char *authModeToString(wifi_auth_mode_t authMode) {
   return "unknown";
 } // End of authModeToString
 
+
+/**
+ * Convert a Wifi reason code to a string representation.
+ */
+static char *wifiReasonToString(uint8_t reason) {
+  switch(reason) {
+  case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
+    return "4WAY_HANDSHAKE_TIMEOUT";
+  case WIFI_REASON_802_1X_AUTH_FAILED:
+    return "802_1X_AUTH_FAILED";
+  case WIFI_REASON_AKMP_INVALID:
+    return "AKMP_INVALID";
+  case WIFI_REASON_ASSOC_EXPIRE:
+    return "ASSOC_EXPIRE";
+  case WIFI_REASON_ASSOC_FAIL:
+    return "ASSOC_FAIL";
+  case WIFI_REASON_ASSOC_LEAVE:
+    return "ASSOC_LEAVE";
+  case WIFI_REASON_ASSOC_NOT_AUTHED:
+    return "ASSOC_NOT_AUTHED";
+  case WIFI_REASON_ASSOC_TOOMANY:
+    return "ASSOC_TOOMANY";
+  case WIFI_REASON_AUTH_EXPIRE:
+    return "AUTH_EXPIRE";
+  case WIFI_REASON_AUTH_FAIL:
+    return "AUTH_FAIL";
+  case WIFI_REASON_AUTH_LEAVE:
+    return "AUTH_LEAVE";
+  case WIFI_REASON_BEACON_TIMEOUT:
+    return "BEACON_TIMEOUT";
+  case WIFI_REASON_CIPHER_SUITE_REJECTED:
+    return "CIPHER_SUITE_REJECTED";
+  case WIFI_REASON_DISASSOC_PWRCAP_BAD:
+    return "DISASSOC_PWRCAP_BAD";
+  case WIFI_REASON_DISASSOC_SUPCHAN_BAD:
+    return "DISASSOC_SUPCHAN_BAD";
+  case WIFI_REASON_GROUP_CIPHER_INVALID:
+    return "GROUP_CIPHER_INVALID";
+  case WIFI_REASON_GROUP_KEY_UPDATE_TIMEOUT:
+    return "GROUP_KEY_UPDATE_TIMEOUT";
+  case WIFI_REASON_HANDSHAKE_TIMEOUT:
+    return "HANDSHAKE_TIMEOUT";
+  case WIFI_REASON_IE_INVALID:
+    return "IE_INVALID";
+  case WIFI_REASON_IE_IN_4WAY_DIFFERS:
+    return "IE_IN_4WAY_DIFFERS";
+  case WIFI_REASON_INVALID_RSN_IE_CAP:
+    return "INVALID_RSN_IE_CAP";
+  case WIFI_REASON_MIC_FAILURE:
+    return "MIC_FAILURE";
+  case WIFI_REASON_NOT_ASSOCED:
+    return "NOT_ASSOCED";
+  case WIFI_REASON_NOT_AUTHED:
+    return "NOT_AUTHED";
+  case WIFI_REASON_NO_AP_FOUND:
+    return "NO_AP_FOUND";
+  case WIFI_REASON_PAIRWISE_CIPHER_INVALID:
+    return "PAIRWISE_CIPHER_INVALID";
+  case WIFI_REASON_UNSPECIFIED:
+    return "UNSPECIFIED";
+  case WIFI_REASON_UNSUPP_RSN_IE_VERSION:
+    return "REASON_UNSUPP_RSN_IE_VERSION";
+  }
+  ESP_LOGD(tag, "wifiReasonToString: Unknown reasonL %d", reason);
+  return "Unknown reason";
+} // End of wifiReasonToString
 
 /**
  * Convery a wifi_mode_t data type to a string value.
@@ -381,6 +456,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * * reason
    */
   if (event->event_id == SYSTEM_EVENT_STA_DISCONNECTED) {
+    g_isStaConnected = false; // Flag us as disconnected
+    g_lastEventStaDisconnected = event->event_info.disconnected; // Save the last disconnected info
+
     if (jsvIsFunction(g_jsDisconnectCallback)) {
       jsiQueueEvents(NULL, g_jsDisconnectCallback, NULL, 0);
       jsvUnLock(g_jsDisconnectCallback);
@@ -411,6 +489,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * * authmode
    */
   if (event->event_id == SYSTEM_EVENT_STA_CONNECTED) {
+    g_isStaConnected = true; // Flag us as connected.
+    g_lastEventStaConnected = event->event_info.connected; // Save the last connected info
+
     // Publish the on("associated") event to any one who has registered
     // an interest.
     JsVar *jsDetails = jsvNewObject();
@@ -1155,6 +1236,12 @@ JsVar *jswrap_ESP32_wifi_getStatus(JsVar *jsCallback) {
   }
 
   JsVar *jsWiFiStatus = jsvNewObject();
+  if (g_isStaConnected) {
+    jsvObjectSetChildAndUnLock(jsWiFiStatus, "station", jsvNewFromString("connected"));
+  } else {
+    jsvObjectSetChildAndUnLock(jsWiFiStatus, "station",
+        jsvNewFromString(wifiReasonToString(g_lastEventStaDisconnected.reason)));
+  }
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode", jsvNewFromString(modeStr));
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "powersave", jsvNewFromString(psTypeStr));
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getStatus");
@@ -1214,22 +1301,32 @@ JsVar *jswrap_ESP32_wifi_getDetails(JsVar *jsCallback) {
   }
 
   JsVar *jsDetails = jsvNewObject();
+  if (g_isStaConnected == true) {
+    wifi_sta_config_t config;
+    esp_wifi_get_config(WIFI_IF_STA, (wifi_config_t *)&config);
+    char buf[65];
 
-  wifi_sta_config_t config;
-  esp_wifi_get_config(WIFI_IF_STA, (wifi_config_t *)&config);
-  char buf[65];
+    // ssid
+    strncpy(buf, (char *)config.ssid, 32);
+    buf[32] = 0;
+    jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
 
-  // ssid
-  strncpy(buf, (char *)config.ssid, 32);
-  buf[32] = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
+    // password
+    strncpy(buf, (char *)config.password, 64);
+    buf[64] = 0;
+    jsvObjectSetChildAndUnLock(jsDetails, "password", jsvNewFromString((char *)config.password));
 
-  // password
-  strncpy(buf, (char *)config.password, 64);
-  buf[64] = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "password", jsvNewFromString((char *)config.password));
+    // Status
+    jsvObjectSetChildAndUnLock(jsDetails, "status", jsvNewFromString("connected"));
 
-
+    // Authmode
+    jsvObjectSetChildAndUnLock(jsDetails, "authMode",
+        jsvNewFromString(authModeToString(g_lastEventStaConnected.authmode)));
+  } else {
+    // Status
+    jsvObjectSetChildAndUnLock(jsDetails, "status",
+        jsvNewFromString(wifiReasonToString(g_lastEventStaDisconnected.reason)));
+  }
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
