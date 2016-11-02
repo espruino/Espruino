@@ -1,10 +1,17 @@
 # ESP32 Specific
 A static class called "ESP32" is provided that supplies ESP32 specific APIs.
+Note that there is no "requires" needed for these functions.  They are static
+and belong to the class.  For example, to invoke the `reboot` method, one would
+code:
+
+```
+ESP32.reboot();
+```
 
 These include:
 
 ## ESP32.neopixelWrite
-Note yet implemented
+Not yet implemented
 
 ## ESP32.getState
 Returns a Java Script object that has the following properties filled in:
