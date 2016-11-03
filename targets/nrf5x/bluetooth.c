@@ -893,9 +893,11 @@ static void ble_stack_init() {
     err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
     APP_ERROR_CHECK(err_code);
 
+#ifdef PUCKJS
     // can only be enabled if we're sure we have a DC-DC
-    /*err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
-    APP_ERROR_CHECK(err_code);*/
+    err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
+    APP_ERROR_CHECK(err_code);
+#endif
 }
 
 /// Build advertising data struct to pass into @ref ble_advertising_init.
