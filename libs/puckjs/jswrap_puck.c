@@ -223,7 +223,7 @@ JsVar *mag_to_xyz(int16_t d[3]) {
 
 /*JSON{
     "type": "class",
-    "class" : "NRF"
+    "class" : "Puck"
 }
 Class containing [Puck.js's](http://www.puck-js.com) utility functions.
 */
