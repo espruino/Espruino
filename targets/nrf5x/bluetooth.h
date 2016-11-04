@@ -24,7 +24,7 @@
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
 #endif
 
-#define APP_TIMER_OP_QUEUE_SIZE         1                                           /**< Size of timer operation queues. */
+#define APP_TIMER_OP_QUEUE_SIZE         2                                           /**< Size of timer operation queues. */
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 
 // BLE HID stuff
