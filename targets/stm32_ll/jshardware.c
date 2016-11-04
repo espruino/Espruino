@@ -46,6 +46,9 @@
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 
+volatile unsigned int ticksSinceStart = 0;
+volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
+
 static ALWAYS_INLINE uint8_t pinToEVEXTI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint8_t)(EV_EXTI0+(pin-JSH_PIN0));
@@ -900,6 +903,7 @@ void jshInit(){
 #endif
   jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
 
+  SysTick_Config(SYSTICK_RANGE); // IT will be called every SYSTICK_RANGE/SystemCoreClock seconds
 
   return;
 }
@@ -971,33 +975,54 @@ bool jshIsUSBSERIALConnected(){
  
 /// Get the system time (in ticks since the epoch)
 JsSysTime jshGetSystemTime(){
-        return;
+  JsSysTime major1, major2, major3, major4;
+  unsigned int minor;
+  do {
+    major1 = SysTickMajor;
+    major2 = SysTickMajor;
+    minor = SysTick->VAL;
+    major3 = SysTickMajor;
+    major4 = SysTickMajor;
+  } while (major1!=major2 || major2!=major3 || major3!=major4);
+  return major1 - (JsSysTime)minor;
 }
  
 /** Set the system time (in ticks since the epoch) - this should only be called rarely as it
 could mess up things like jsinteractive's timers! */
-void jshSetSystemTime(JsSysTime time){
-        return;
+void jshSetSystemTime(JsSysTime newTime){
+  jshInterruptOff();
+  SysTickMajor = newTime;
+  jshInterruptOn();
+  jshGetSystemTime(); // force update of the time
+
 }
- 
+
+static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
+  return SystemCoreClock;
+}
+
+static JsSysTime jshGetTimeForSecond() {
+  return (JsSysTime)getSystemTimerFreq();
+}
+
 /// Convert a time in Milliseconds since the epoch to one in ticks
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms){
-        return;
+  return (JsSysTime)((ms*(JsVarFloat)jshGetTimeForSecond())/1000);
 }
- 
+
 /// Convert ticks to a time in Milliseconds since the epoch
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time){
-        return;
+  return ((JsVarFloat)time)*1000/(JsVarFloat)jshGetTimeForSecond();
 }
  
  
 // software IO functions...
 void jshInterruptOff(){
-        return;
+  __disable_irq();
 }
 ///< disable interrupts to allow short delays to be accurate
 void jshInterruptOn(){
-        return;
+  __enable_irq();
 }
   ///< re-enable interrupts
 void jshDelayMicroseconds(int microsec){
@@ -1237,7 +1262,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len){
  * These are exposed through functions like `jsDigitalPulse`, `analogWrite(..., {soft:true})`
  * and the `Waveform` class.
  */
- 
+
 /// Start the timer and get it to interrupt once after 'period' (i.e. it should not auto-reload)
 void jshUtilTimerStart(JsSysTime period){
         return;
@@ -1250,22 +1275,46 @@ void jshUtilTimerReschedule(JsSysTime period){
 void jshUtilTimerDisable(){
         return;
 }
- 
+
 // ---------------------------------------------- LOW LEVEL
- 
+
 #ifdef ARM
 // On SYSTick interrupt, call this
 void jshDoSysTick(){
-        return;
+  /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
+  if (execInfo.execute & EXEC_CTRL_C_WAIT)
+    execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_INTERRUPTED;
+  if (execInfo.execute & EXEC_CTRL_C)
+    execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C) | EXEC_CTRL_C_WAIT;
+
+  if (ticksSinceStart!=0xFFFFFFFF)
+    ticksSinceStart++;
+
+  SysTickMajor += SYSTICK_RANGE;
+
+  /* One second after start, call jsinteractive. This is used to swap
+   * to USB (if connected), or the Serial port. */
+  if (ticksSinceStart == 5) {
+    jsiOneSecondAfterStartup();
+  }
+
+#if 0 // debug
+  {
+	/* output a signal on PC3 pin */
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_3);
+  }
+#endif
+
 }
 #endif // ARM
- 
+
 #ifdef STM32
 // push a byte into SPI buffers (called from IRQ)
 void jshSPIPush(IOEventFlags device, uint16_t data){
         return;
 }
- 
+
 // Get the address to read/write to in order to change the state of this pin. Or 0.
 volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags){
         return;
