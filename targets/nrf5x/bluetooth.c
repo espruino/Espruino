@@ -1344,6 +1344,7 @@ void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, siz
   write_params.write_op = BLE_GATT_OP_WRITE_REQ;
   // BLE_GATT_OP_WRITE_REQ ===> BLE_GATTC_EVT_WRITE_RSP (write with response)
   // or BLE_GATT_OP_WRITE_CMD ===> BLE_EVT_TX_COMPLETE (simple write)
+  // or send multiple BLE_GATT_OP_PREP_WRITE_REQ,...,BLE_GATT_OP_EXEC_WRITE_REQ (with offset + 18 bytes in each for 'long' write)
   write_params.flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE;
   write_params.handle   = handle;
   write_params.offset   = 0;
