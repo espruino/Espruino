@@ -587,11 +587,13 @@ static void nfc_callback(void * p_context, nfc_t2t_event_t event, const uint8_t 
 
 /// Function for dispatching a SoftDevice event to all modules with a SoftDevice event handler.
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
-  ble_conn_params_on_ble_evt(p_ble_evt);
-  if (bleStatus & BLE_NUS_INITED) {
-    if (!((p_ble_evt->header.evt_id==BLE_GAP_EVT_CONNECTED) &&
-          (p_ble_evt->evt.gap_evt.params.connected.role != BLE_GAP_ROLE_PERIPH)) &&
-        !(p_ble_evt->header.evt_id==BLE_GAP_EVT_DISCONNECTED))
+  if (!((p_ble_evt->header.evt_id==BLE_GAP_EVT_CONNECTED) &&
+        (p_ble_evt->evt.gap_evt.params.connected.role != BLE_GAP_ROLE_PERIPH)) &&
+      !((p_ble_evt->header.evt_id==BLE_GAP_EVT_DISCONNECTED) &&
+         m_conn_handle != p_ble_evt->evt.gap_evt.conn_handle)) {
+    // Stuff in here should ONLY get called for Peripheral events (not central)
+    ble_conn_params_on_ble_evt(p_ble_evt);
+    if (bleStatus & BLE_NUS_INITED)
       ble_nus_on_ble_evt(&m_nus, p_ble_evt);
   }
 #if BLE_HIDS_ENABLED
