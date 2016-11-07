@@ -3290,6 +3290,39 @@ bool jsvGarbageCollect() {
   return freedSomething;
 }
 
+#ifndef RELEASE
+// Dump any locked variables that aren't referenced from `global` - for debugging memory leaks
+void jsvDumpLockedVars() {
+  jsvGarbageCollect();
+  if (isMemoryBusy) return;
+  isMemoryBusy = true;
+  JsVarRef i;
+  // clear garbage collect flags
+  for (i=1;i<=jsVarsSize;i++)  {
+    JsVar *var = jsvGetAddressOf(i);
+    if ((var->flags&JSV_VARTYPEMASK) != JSV_UNUSED) { // if it is not unused
+      var->flags |= (JsVarFlags)JSV_GARBAGE_COLLECT;
+      // if we have a flat string, skip that many blocks
+      if (jsvIsFlatString(var))
+        i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
+    }
+  }
+  // Add global
+  jsvGarbageCollectMarkUsed(execInfo.root);
+  // Now dump any that aren't used!
+  for (i=1;i<=jsVarsSize;i++)  {
+    JsVar *var = jsvGetAddressOf(i);
+    if ((var->flags&JSV_VARTYPEMASK) != JSV_UNUSED) {
+      if (var->flags & JSV_GARBAGE_COLLECT) {
+        jsvGarbageCollectMarkUsed(var);
+        jsvTrace(var, 0);
+      }
+    }
+  }
+  isMemoryBusy = false;
+}
+#endif
+
 
 /** Remove whitespace to the right of a string - on MULTIPLE LINES */
 JsVar *jsvStringTrimRight(JsVar *srcString) {

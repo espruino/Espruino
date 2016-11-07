@@ -37,6 +37,7 @@ int jswrap_espruino_setClock(JsVar *options);
 
 int jswrap_espruino_reverseByte(int v);
 void jswrap_espruino_dumpTimers();
+void jswrap_espruino_dumpLockedVars();
 JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth);
 void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bits);
 JsVar *jswrap_e_dumpStr();
