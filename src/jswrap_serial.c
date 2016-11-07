@@ -273,7 +273,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   if (options)
     jsvObjectSetChildAndUnLock(parent, DEVICE_OPTIONS_NAME, options);
   else
-    jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
+    jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
 }
 
 

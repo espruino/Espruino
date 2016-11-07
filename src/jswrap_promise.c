@@ -54,10 +54,10 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   } else if (fn) {
     result = jspExecuteFunction(fn, promise, 1, &data);
   }
-  jsvObjectSetChild(promise, JS_PROMISE_THEN_NAME, 0); // remove 'resolve' and 'reject' handlers
-  jsvObjectSetChild(promise, JS_PROMISE_CATCH_NAME, 0); // remove 'resolve' and 'reject' handlers
+  jsvObjectRemoveChild(promise, JS_PROMISE_THEN_NAME); // remove 'resolve' and 'reject' handlers
+  jsvObjectRemoveChild(promise, JS_PROMISE_CATCH_NAME); // remove 'resolve' and 'reject' handlers
   JsVar *chainedPromise = jsvObjectGetChild(promise, "chain", 0);
-  jsvObjectSetChild(promise, "chain", 0); // unlink chain
+  jsvObjectRemoveChild(promise, "chain"); // unlink chain
   if (chainedPromise) {
     JsVar *constr = jspGetConstructor(result);
     if (constr && (void*)constr->varData.native.ptr==(void*)jswrap_promise_constructor) {
@@ -134,7 +134,7 @@ void jswrap_promise_all_reject(JsVar *promise, JsVar *data) {
   if (arr) {
     // if not rejected before
     jsvUnLock(arr);
-    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, 0);
+    jsvObjectRemoveChild(promise, JS_PROMISE_RESULT_NAME);
     _jswrap_promise_queuereject(promise, data);
   }
 }
