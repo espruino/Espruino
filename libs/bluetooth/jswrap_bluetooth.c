@@ -88,6 +88,7 @@ void bleCompleteTaskFail(BleTask task, JsVar *data) {
   "generate" : "jswrap_nrf_init"
 }*/
 void jswrap_nrf_init() {
+#ifdef USE_NFC
   if (jsiStatus & JSIS_COMPLETELY_RESET) {
 #ifdef PUCKJS
     // By default Puck.js's NFC will send you to the PuckJS website
@@ -113,6 +114,7 @@ void jswrap_nrf_init() {
       jsvUnLock(flatStr);
     }
   }
+#endif
 }
 
 /*JSON{
@@ -128,8 +130,10 @@ bool jswrap_nrf_idle() {
   "generate" : "jswrap_nrf_kill"
 }*/
 void jswrap_nrf_kill() {
+#ifdef USE_NFC
   // stop NFC emulation
   jsble_nfc_stop(); // not a problem to call this if NFC isn't started
+#endif
   // stop any BLE tasks
   bleTask = BLETASK_NONE;
   if (blePromise) jsvUnLock(blePromise);
