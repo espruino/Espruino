@@ -869,47 +869,6 @@ void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
-    "name" : "connect",
-    "#ifdef" : "NRF52",
-    "generate" : "jswrap_nrf_bluetooth_connect",
-    "params" : [
-      ["mac","JsVar","The MAC address to connect to"]
-    ],
-    "return" : ["JsVar", "A Promise that is resolved (or rejected) when the connection is complete" ]
-}
-Connect to a BLE device by MAC address. Returns a promise,
-the argument of which is the `BluetoothRemoteGATTServer` connection.
-
-```
-NRF.connect("aa:bb:cc:dd:ee").then(function(server) {
-  // ...
-});
-```
-
-**Note:** This is only available on some devices
-*/
-JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
-#if CENTRAL_LINK_COUNT>0
-  // Convert mac address to something readable
-  ble_gap_addr_t peer_addr;
-  if (!bleVarToAddr(mac, &peer_addr)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting a mac address of the form aa:bb:cc:dd:ee:ff");
-    return 0;
-  }
-
-  if (bleNewTask(BLETASK_CONNECT)) {
-    jsble_central_connect(peer_addr);
-    return jsvLockAgainSafe(blePromise);
-  }
-  return 0;
-#else
-  jsExceptionHere(JSET_ERROR, "Unimplemented");
-#endif
-}
-
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
     "name" : "nfcURL",
     "#ifdef" : "NRF52",
     "generate" : "jswrap_nrf_nfcURL",
@@ -1007,6 +966,48 @@ void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
   } else {
     jsExceptionHere(JSET_ERROR, "Expecting array, got %t", data);
   }
+#endif
+}
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "connect",
+    "#ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_bluetooth_connect",
+    "params" : [
+      ["mac","JsVar","The MAC address to connect to"]
+    ],
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) when the connection is complete" ]
+}
+Connect to a BLE device by MAC address. Returns a promise,
+the argument of which is the `BluetoothRemoteGATTServer` connection.
+
+```
+NRF.connect("aa:bb:cc:dd:ee").then(function(server) {
+  // ...
+});
+```
+
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
+#if CENTRAL_LINK_COUNT>0
+  // Convert mac address to something readable
+  ble_gap_addr_t peer_addr;
+  if (!bleVarToAddr(mac, &peer_addr)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting a mac address of the form aa:bb:cc:dd:ee:ff");
+    return 0;
+  }
+
+  if (bleNewTask(BLETASK_CONNECT)) {
+    jsble_central_connect(peer_addr);
+    return jsvLockAgainSafe(blePromise);
+  }
+  return 0;
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif
 }
 
