@@ -13,6 +13,10 @@
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
 #include "jsdevices.h"
+#include "jswrap_promise.h"
+#include "jswrap_interactive.h"
+#include "jsnative.h"
+
 #include "nrf5x_utils.h"
 #include "bluetooth.h"
 #include "bluetooth_utils.h"
@@ -30,7 +34,7 @@
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
-#include "jswrap_promise.h"
+
 #ifdef USE_NFC
 #include "nfc_uri_msg.h"
 #endif
@@ -502,7 +506,7 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
     jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_HID_DATA, use_hid);
     bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
   } else if (!use_hid) {
-    jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_HID_DATA, 0);
+    jsvObjectRemoveChild(execInfo.hiddenRoot, BLE_NAME_HID_DATA);
     if (bleStatus & BLE_HID_INITED)
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
   } else {
@@ -513,7 +517,7 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
   if (use_uart) {
     if (!(bleStatus & BLE_NUS_INITED))
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-    jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_NUS, 0);
+    jsvObjectRemoveChild(execInfo.hiddenRoot, BLE_NAME_NUS);
   } else {
     if (bleStatus & BLE_NUS_INITED)
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
@@ -707,7 +711,7 @@ Start/stop listening for BLE advertising packets within range.
 ```
 // Start scanning
 NRF.setScan(function(d) {
-  console.log(JSON.stringify(d,null,2));
+  console.log(JSON.stringify(d));
 });
 // prints {"rssi":-72, "addr":"##:##:##:##:##:##", "data":new ArrayBuffer([2,1,6,...])}
 
@@ -718,10 +722,94 @@ NRF.setScan(false);
 void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
   // set the callback event variable
   if (!jsvIsFunction(callback)) callback=0;
-  jsvObjectSetChild(execInfo.root, BLE_SCAN_EVENT, callback);
+  if (callback)
+    jsvObjectSetChild(execInfo.root, BLE_SCAN_EVENT, callback);
+  else
+    jsvObjectRemoveChild(execInfo.root, BLE_SCAN_EVENT);
   // either start or stop scanning
   uint32_t err_code = jsble_set_scanning(callback != 0);
   jsble_check_error(err_code);
+}
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "findDevices",
+    "generate" : "jswrap_nrf_bluetooth_findDevices",
+    "params" : [
+      ["callback","JsVar","The callback to call with received advertising packets, or undefined to stop"],
+      ["time","JsVar","The time in milliseconds to scan for (defaults to 1000)"]
+    ]
+}
+Utility function to return a list of BLE devices detected in range.
+
+```
+NRF.getDevices(1, function(devices) {
+  console.log(JSON.stringify(d,null,2));
+});
+// prints [
+//   {"rssi":-72, "addr":"##:##:##:##:##:##", "data":new ArrayBuffer([2,1,6,...])}
+//   {"rssi":-72, "addr":"##:##:##:##:##:##", "data":new ArrayBuffer([2,1,6,...])}
+//   {"rssi":-72, "addr":"##:##:##:##:##:##", "data":new ArrayBuffer([2,1,6,...])}
+// ]
+```
+*/
+void jswrap_nrf_bluetooth_findDevices_found_cb(JsVar *device) {
+  JsVar *arr = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADV", JSV_ARRAY);
+  if (!arr) return;
+  JsVar *deviceAddr = jsvObjectGetChild(device, "addr", 0);
+  JsVar *found = 0;
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, arr);
+  while (!found && jsvObjectIteratorHasValue(&it)) {
+    JsVar *obj = jsvObjectIteratorGetValue(&it);
+    JsVar *addr = jsvObjectGetChild(obj, "addr", 0);
+    if (jsvCompareString(addr, deviceAddr, 0, 0, true) == 0)
+      found = jsvObjectIteratorGetKey(&it);
+    jsvUnLock2(addr, obj);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  if (found)
+    jsvSetValueOfName(found, device);
+  else
+    jsvArrayPush(arr, device);
+  jsvUnLock3(found, deviceAddr, arr);
+}
+void jswrap_nrf_bluetooth_findDevices_timeout_cb() {
+  jswrap_nrf_bluetooth_setScan(0);
+  JsVar *arr = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADV", JSV_ARRAY);
+  JsVar *cb = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADVCB", 0);
+  jsvObjectRemoveChild(execInfo.hiddenRoot, "BLEADV");
+  jsvObjectRemoveChild(execInfo.hiddenRoot, "BLEADVCB");
+  if (arr && cb) {
+    jsiQueueEvents(0, cb, &arr, 1);
+  }
+  jsvUnLock2(arr,cb);
+}
+void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *timeout) {
+  // utility fn that uses setScan
+  JsVarFloat time = 1000;
+  if (!jsvIsUndefined(timeout)) {
+    time = jsvGetFloat(timeout);
+    if (!jsvIsNumeric(timeout) || time < 10) {
+      jsExceptionHere(JSET_ERROR, "Invalid timeout");
+      return;
+    }
+  }
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "BLEADV", jsvNewEmptyArray());
+  jsvObjectSetChild(execInfo.hiddenRoot, "BLEADVCB", callback);
+  JsVar *fn;
+  fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_findDevices_found_cb, JSWAT_VOID|(JSWAT_JSVAR<<JSWAT_BITS));
+  if (fn) {
+    jswrap_nrf_bluetooth_setScan(fn);
+    jsvUnLock(fn);
+  }
+  fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_findDevices_timeout_cb, JSWAT_VOID);
+  if (fn) {
+    jsvUnLock2(jswrap_interface_setTimeout(fn, time, 0), fn);
+  }
 }
 
 /*JSON{
@@ -841,7 +929,7 @@ void jswrap_nrf_nfcURL(JsVar *url) {
 #ifdef USE_NFC
   // Check for disabling NFC
   if (jsvIsUndefined(url)) {
-    jsvObjectSetChild(execInfo.hiddenRoot, "NFC", 0);
+    jsvObjectRemoveChild(execInfo.hiddenRoot, "NFC");
     jsble_nfc_stop();
     return;
   }
