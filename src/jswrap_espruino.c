@@ -1184,7 +1184,7 @@ this function.
 void jswrap_espruino_setUSBHID(JsVar *arr) {
   if (jsvIsUndefined(arr)) {
     // Disable HID
-    jsvObjectSetChild(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME, 0);
+    jsvObjectRemoveChild(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME);
     return;
   }
   if (!jsvIsObject(arr)) {

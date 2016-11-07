@@ -2356,14 +2356,6 @@ void jsvRemoveAllChildren(JsVar *parent) {
   }
 }
 
-void jsvRemoveNamedChild(JsVar *parent, const char *name) {
-  JsVar *child = jsvFindChildFromString(parent, name, false);
-  if (child) {
-    jsvRemoveChild(parent, child);
-    jsvUnLock(child);
-  }
-}
-
 /// Check if the given name is a child of the parent
 bool jsvIsChild(JsVar *parent, JsVar *child) {
   assert(jsvIsArray(parent) || jsvIsObject(parent));
@@ -2410,6 +2402,14 @@ JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
 
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
   jsvUnLock(jsvObjectSetChild(obj, name, child));
+}
+
+void jsvObjectRemoveChild(JsVar *obj, const char *name) {
+  JsVar *child = jsvFindChildFromString(obj, name, false);
+  if (child) {
+    jsvRemoveChild(obj, child);
+    jsvUnLock(child);
+  }
 }
 
 int jsvGetChildren(JsVar *v) {

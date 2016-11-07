@@ -610,7 +610,7 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     JsVar *buf = jsvObjectGetChild(parent, STREAM_BUFFER_NAME, 0);
     if (jsvIsString(buf)) {
       jsiQueueObjectCallbacks(parent, STREAM_CALLBACK_NAME, &buf, 1);
-      jsvRemoveNamedChild(parent, STREAM_BUFFER_NAME);
+      jsvObjectRemoveChild(parent, STREAM_BUFFER_NAME);
     }
     jsvUnLock(buf);
   }

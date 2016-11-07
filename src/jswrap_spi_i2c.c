@@ -132,7 +132,7 @@ void jswrap_spi_setup(
   if (options)
     jsvUnLock(jsvSetNamedChild(parent, options, DEVICE_OPTIONS_NAME));
   else
-    jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
+    jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
 }
 
 
@@ -554,7 +554,7 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
     if (options)
       jsvUnLock(jsvSetNamedChild(parent, options, DEVICE_OPTIONS_NAME));
     else
-      jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
+      jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
   }
 }
 

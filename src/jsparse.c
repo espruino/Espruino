@@ -2357,7 +2357,7 @@ NO_INLINE JsVar *jspeStatementTry() {
         jsvRemoveChild(execInfo.hiddenRoot, actualExceptionName);
         jsvUnLock(actualExceptionName);
         // remove any stack trace
-        jsvRemoveNamedChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR);
+        jsvObjectRemoveChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR);
       }
       // Now clear the exception flag (it's handled - we hope!)
       execInfo.execute = execInfo.execute & (JsExecFlags)~(EXEC_EXCEPTION|EXEC_ERROR_LINE_REPORTED);

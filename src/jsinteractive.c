@@ -477,7 +477,7 @@ void jsiSoftInit(bool hasBeenReset) {
   JsVar *initCode = jsvObjectGetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, 0);
   if (initCode) {
     jsvUnLock2(jspEvaluateVar(initCode, 0, 0), initCode);
-    jsvRemoveNamedChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
+    jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
   }
 
   // Check any existing watches and set up interrupts for them
@@ -1950,7 +1950,7 @@ void jsiIdle() {
       }
       jsvUnLock(data);
       if (watchPtr) { // if we had a watch pointer, be sure to remove us from it
-        jsvObjectSetChild(watchPtr, "timeout", 0);
+        jsvObjectRemoveChild(watchPtr, "timeout");
         // Deal with non-recurring watches
         if (exec) {
           bool watchRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(watchPtr,  "recur", 0));

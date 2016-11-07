@@ -463,7 +463,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             srvcs = t;
           }
           bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, srvcs);
-          jsvObjectSetChild(execInfo.hiddenRoot, "bleSvcs", 0);
+          jsvObjectRemoveChild(execInfo.hiddenRoot, "bleSvcs");
         } // else error
         jsvUnLock(srvcs);
         break;
@@ -515,7 +515,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           }
           if (chars) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, chars);
           else bleCompleteTaskFail(BLETASK_CHARACTERISTIC, 0);
-          jsvObjectSetChild(execInfo.hiddenRoot, "bleChrs", 0);
+          jsvObjectRemoveChild(execInfo.hiddenRoot, "bleChrs");
         }
         jsvUnLock(chars);
         break;

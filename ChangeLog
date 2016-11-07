@@ -34,6 +34,7 @@
             nRF5x: Add Puck.js self-test code, fix issue where analogRead reset pin state
             nRF5x: Change central mode API to mirror Web Bluetooth
             Fix switch fall-through to default (fix #964)
+            Started using jsvObjectRemoveChild to remove some internal object properties that are undefined (frees some variables)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
