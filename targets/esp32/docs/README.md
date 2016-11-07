@@ -206,7 +206,8 @@ $ make menuconfig
 
 * Change some of the settings necessary for Espruino:
 ```
-Component config -> LWIP -> Enable SO_REUSEADDR option
+Component config -> LWIP -> Enable SO_REUSEADDR option [Enable]
+Component config -> ESP32-specific config ->  Task watchdog [Disable]
 ```
 
 * Perform a build to create the libraries and the template application.

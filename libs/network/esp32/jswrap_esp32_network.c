@@ -4,11 +4,12 @@
 #include "esp_event_loop.h"
 #include "tcpip_adapter.h"
 
-
 #include "jsinteractive.h"
 #include "network.h"
 #include "jswrap_modules.h"
 #include "jswrap_esp32_network.h"
+
+#define UNUSED(x) (void)(x)
 
 static void sendWifiCompletionCB(
   JsVar **g_jsCallback,  //!< Pointer to the global callback variable
@@ -23,6 +24,21 @@ static JsVar *g_jsDisconnectCallback;
 
 // A callback function to be invoked when we have an IP address.
 static JsVar *g_jsGotIpCallback;
+
+// A callback function to be invoked when we complete an access point scan.
+static JsVar *g_jsScanCallback;
+
+// A callback function to be invoked when we are being an access point.
+static JsVar *g_jsAPStartedCallback;
+
+// The last time we were connected as a station.
+static system_event_sta_connected_t g_lastEventStaConnected;
+
+// The last time we were disconnected as a station.
+static system_event_sta_disconnected_t g_lastEventStaDisconnected;
+
+// Are we connected as a station?
+static bool g_isStaConnected = false;
 
 
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
@@ -155,6 +171,179 @@ station by the ESP32's access point. The details include:
 
 */
 
+
+/**
+ * Convert an wifi_auth_mode_t data type to a string value.
+ */
+static char *authModeToString(wifi_auth_mode_t authMode) {
+
+  switch(authMode) {
+  case WIFI_AUTH_OPEN:
+    return "open";
+  case WIFI_AUTH_WEP:
+    return "wep";
+  case WIFI_AUTH_WPA_PSK:
+    return "wpa";
+  case WIFI_AUTH_WPA2_PSK:
+    return "wpa2";
+  case WIFI_AUTH_WPA_WPA2_PSK:
+    return "wpa_wpa2";
+  }
+  return "unknown";
+} // End of authModeToString
+
+
+/**
+ * Convert a Wifi reason code to a string representation.
+ */
+static char *wifiReasonToString(uint8_t reason) {
+  switch(reason) {
+  case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
+    return "4WAY_HANDSHAKE_TIMEOUT";
+  case WIFI_REASON_802_1X_AUTH_FAILED:
+    return "802_1X_AUTH_FAILED";
+  case WIFI_REASON_AKMP_INVALID:
+    return "AKMP_INVALID";
+  case WIFI_REASON_ASSOC_EXPIRE:
+    return "ASSOC_EXPIRE";
+  case WIFI_REASON_ASSOC_FAIL:
+    return "ASSOC_FAIL";
+  case WIFI_REASON_ASSOC_LEAVE:
+    return "ASSOC_LEAVE";
+  case WIFI_REASON_ASSOC_NOT_AUTHED:
+    return "ASSOC_NOT_AUTHED";
+  case WIFI_REASON_ASSOC_TOOMANY:
+    return "ASSOC_TOOMANY";
+  case WIFI_REASON_AUTH_EXPIRE:
+    return "AUTH_EXPIRE";
+  case WIFI_REASON_AUTH_FAIL:
+    return "AUTH_FAIL";
+  case WIFI_REASON_AUTH_LEAVE:
+    return "AUTH_LEAVE";
+  case WIFI_REASON_BEACON_TIMEOUT:
+    return "BEACON_TIMEOUT";
+  case WIFI_REASON_CIPHER_SUITE_REJECTED:
+    return "CIPHER_SUITE_REJECTED";
+  case WIFI_REASON_DISASSOC_PWRCAP_BAD:
+    return "DISASSOC_PWRCAP_BAD";
+  case WIFI_REASON_DISASSOC_SUPCHAN_BAD:
+    return "DISASSOC_SUPCHAN_BAD";
+  case WIFI_REASON_GROUP_CIPHER_INVALID:
+    return "GROUP_CIPHER_INVALID";
+  case WIFI_REASON_GROUP_KEY_UPDATE_TIMEOUT:
+    return "GROUP_KEY_UPDATE_TIMEOUT";
+  case WIFI_REASON_HANDSHAKE_TIMEOUT:
+    return "HANDSHAKE_TIMEOUT";
+  case WIFI_REASON_IE_INVALID:
+    return "IE_INVALID";
+  case WIFI_REASON_IE_IN_4WAY_DIFFERS:
+    return "IE_IN_4WAY_DIFFERS";
+  case WIFI_REASON_INVALID_RSN_IE_CAP:
+    return "INVALID_RSN_IE_CAP";
+  case WIFI_REASON_MIC_FAILURE:
+    return "MIC_FAILURE";
+  case WIFI_REASON_NOT_ASSOCED:
+    return "NOT_ASSOCED";
+  case WIFI_REASON_NOT_AUTHED:
+    return "NOT_AUTHED";
+  case WIFI_REASON_NO_AP_FOUND:
+    return "NO_AP_FOUND";
+  case WIFI_REASON_PAIRWISE_CIPHER_INVALID:
+    return "PAIRWISE_CIPHER_INVALID";
+  case WIFI_REASON_UNSPECIFIED:
+    return "UNSPECIFIED";
+  case WIFI_REASON_UNSUPP_RSN_IE_VERSION:
+    return "REASON_UNSUPP_RSN_IE_VERSION";
+  }
+  ESP_LOGD(tag, "wifiReasonToString: Unknown reasonL %d", reason);
+  return "Unknown reason";
+} // End of wifiReasonToString
+
+/**
+ * Convery a wifi_mode_t data type to a string value.
+ */
+static char *wifiModeToString(wifi_mode_t mode) {
+  switch(mode) {
+  case WIFI_MODE_NULL:
+    return "NULL";
+  case WIFI_MODE_STA:
+    return "STA";
+  case WIFI_MODE_AP:
+    return "AP";
+  case WIFI_MODE_APSTA:
+    return "APSTA";
+  }
+  return "UNKNOWN";
+} // End of wifiModeToString
+
+
+/**
+ * Callback function that is invoked at the culmination of a scan.
+ */
+static void scanCB() {
+  /**
+   * Create a JsVar that is an array of JS objects where each JS object represents a
+   * retrieved access point set of information.   The structure of a record will be:
+   * o authMode
+   * o isHidden
+   * o rssi
+   * o channel
+   * o ssid
+   * When the array has been built, invoke the callback function passing in the array
+   * of records.
+   */
+
+  if (g_jsScanCallback == NULL) {
+    return;
+  }
+
+
+  uint16_t apCount;
+  ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&apCount));
+
+  JsVar *jsAccessPointArray = jsvNewArray(NULL, 0);
+  if (apCount > 0) {
+    wifi_ap_record_t *list = (wifi_ap_record_t *)malloc(sizeof(wifi_ap_record_t) * apCount);
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&apCount, list));
+
+    int i;
+    for (i=0; i<apCount; i++) {
+      JsVar *jsCurrentAccessPoint = jsvNewObject();
+      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(list[i].rssi));
+      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromString(authModeToString(list[i].authmode)));
+
+      // The SSID may **NOT** be NULL terminated ... so handle that.
+      char ssid[32 + 1];
+      strncpy((char *)ssid, list[i].ssid, 32);
+      ssid[32] = '\0';
+      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "ssid", jsvNewFromString(ssid));
+
+          /*
+          char macAddrString[6*3 + 1];
+          os_sprintf(macAddrString, macFmt,
+            bssInfo->bssid[0], bssInfo->bssid[1], bssInfo->bssid[2],
+            bssInfo->bssid[3], bssInfo->bssid[4], bssInfo->bssid[5]);
+          jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "mac", jsvNewFromString(macAddrString));
+          */
+
+      // Add the new record to the array
+      jsvArrayPush(jsAccessPointArray, jsCurrentAccessPoint);
+      jsvUnLock(jsCurrentAccessPoint);
+    } // End of loop over each access point
+    free(list);
+  } // Number of access points > 0
+
+  // We have now completed the scan callback, so now we can invoke the JS callback.
+  JsVar *params[1];
+  params[0] = jsAccessPointArray;
+  jsiQueueEvents(NULL, g_jsScanCallback, params, 1);
+
+  jsvUnLock(jsAccessPointArray);
+  jsvUnLock(g_jsScanCallback);
+  g_jsScanCallback = NULL;
+} // End of scanCB
+
+
 /** Get the global object for the Wifi library/module, this is used in order to send the
  * "on event" callbacks to the handlers.
  */
@@ -256,6 +445,7 @@ static void sendWifiEvent(
  */
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
+  UNUSED(ctx);
   ESP_LOGD(tag, ">> event_handler");
   /*
    * SYSTEM_EVENT_STA_DISCONNECT
@@ -266,6 +456,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * * reason
    */
   if (event->event_id == SYSTEM_EVENT_STA_DISCONNECTED) {
+    g_isStaConnected = false; // Flag us as disconnected
+    g_lastEventStaDisconnected = event->event_info.disconnected; // Save the last disconnected info
+
     if (jsvIsFunction(g_jsDisconnectCallback)) {
       jsiQueueEvents(NULL, g_jsDisconnectCallback, NULL, 0);
       jsvUnLock(g_jsDisconnectCallback);
@@ -296,6 +489,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * * authmode
    */
   if (event->event_id == SYSTEM_EVENT_STA_CONNECTED) {
+    g_isStaConnected = true; // Flag us as connected.
+    g_lastEventStaConnected = event->event_info.connected; // Save the last connected info
+
     // Publish the on("associated") event to any one who has registered
     // an interest.
     JsVar *jsDetails = jsvNewObject();
@@ -378,6 +574,26 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
   }
 
+  /**
+   * SYSTEM_EVENT_SCAN_DONE
+   * Called when a previous network scan has completed.  Here we check to see if we have
+   * a registered callback that is interested in being called when a scan has completed
+   * and, if we do, we build the parameters for that callback and then invoke it.
+   */
+  if (event->event_id == SYSTEM_EVENT_SCAN_DONE) {
+    scanCB();
+    return ESP_OK;
+  }
+
+  /**
+   * SYSTEM_EVENT_AP_START
+   * Called when we have started being an access point.
+   */
+  if (event->event_id == SYSTEM_EVENT_AP_START) {
+    sendWifiCompletionCB(&g_jsAPStartedCallback, NULL);
+    return ESP_OK;
+  }
+
   ESP_LOGD(tag, "<< event_handler");
   return ESP_OK;
 } // End of event_handler
@@ -406,7 +622,10 @@ static void sendWifiCompletionCB(
     JsVar **g_jsCallback, //!< Pointer to the global callback variable
     char *reason          //!< NULL if successful, error string otherwise
 ) {
-  if (!jsvIsFunction(*g_jsCallback)) return; // we ain't got a function pointer: nothing to do
+  // Check that we have a callback function.
+  if (!jsvIsFunction(*g_jsCallback)){
+    return; // we have not got a function pointer: nothing to do
+  }
 
   JsVar *params[1];
   params[0] = reason ? jsvNewFromString(reason) : jsvNewNull();
@@ -415,7 +634,7 @@ static void sendWifiCompletionCB(
   // unlock and delete the global callback
   jsvUnLock(*g_jsCallback);
   *g_jsCallback = NULL;
-}
+} // End of sendWifiCompletionCB
 
 
 /*JSON{
@@ -499,10 +718,43 @@ Stop being an access point and disable the AP operation mode. Ap mode can be
 re-enabled by calling `startAP`.
 */
 void jswrap_ESP32_wifi_stopAP(JsVar *jsCallback) {
+  UNUSED(jsCallback);
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_stopAP");
-  ESP_LOGD(tag, "Not implemented");
+
+  // handle the callback parameter
+  if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
+    EXPECT_CB_EXCEPTION(jsCallback);
+    return;
+  }
+
+  // Change operating mode intelligently.  We want to remove us from being
+  // an access point but if we are also a station, we want to preserve that.
+  esp_err_t err;
+  wifi_mode_t mode;
+  err = esp_wifi_get_mode(&mode);
+  switch(mode) {
+  case WIFI_MODE_NULL:
+  case WIFI_MODE_STA:
+    break;
+  case WIFI_MODE_AP:
+    mode = WIFI_MODE_NULL;
+    break;
+  case WIFI_MODE_APSTA:
+    mode = WIFI_MODE_STA;
+    break;
+  default:
+    break;
+  }
+  err = esp_wifi_set_mode(mode);
+  if (err != ESP_OK) {
+    ESP_LOGW(tag, "jswrap_ESP32_wifi_stopAP: wesp_wifi_set_mode rc=%d", err);
+  }
+
+  if (jsvIsFunction(jsCallback)) {
+    jsiQueueEvents(NULL, jsCallback, NULL, 0);
+  }
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_stopAP");
-}
+} // End of jswrap_ESP32_wifi_stopAP
 
 
 /*JSON{
@@ -542,7 +794,7 @@ void jswrap_ESP32_wifi_connect(
 
   // Create SSID string
   char ssid[33];
-  int len = jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
+  size_t len = jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
   ssid[len]='\0';
 
   // Make sure jsOptions is NULL or an object
@@ -574,7 +826,7 @@ void jswrap_ESP32_wifi_connect(
       return;
     }
     if (jsPassword != NULL) {
-      int len = jsvGetString(jsPassword, password, sizeof(password)-1);
+      size_t len = jsvGetString(jsPassword, password, sizeof(password)-1);
       password[len]='\0';
     } else {
       password[0] = '\0';
@@ -584,9 +836,30 @@ void jswrap_ESP32_wifi_connect(
 
   // At this point, we have the ssid in "ssid" and the password in "password".
   // Perform an esp_wifi_set_mode
-  esp_err_t err = esp_wifi_set_mode(WIFI_MODE_STA);
+  wifi_mode_t mode;
+  esp_err_t err;
+  err = esp_wifi_get_mode(&mode);
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_set_mode: %d", err);
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_get_mode: %d", err);
+    return;
+  }
+  switch(mode) {
+  case WIFI_MODE_NULL:
+  case WIFI_MODE_STA:
+    mode = WIFI_MODE_STA;
+    break;
+  case WIFI_MODE_APSTA:
+  case WIFI_MODE_AP:
+    mode = WIFI_MODE_APSTA;
+    break;
+  default:
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: Unexoected mode type: %d", mode);
+    break;
+  }
+
+  err = esp_wifi_set_mode(mode);
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_set_mode: %d, mode=%d", err, mode);
     return;
   }
 
@@ -621,6 +894,7 @@ void jswrap_ESP32_wifi_connect(
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_connect");
 }
 
+
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "Wifi",
@@ -630,22 +904,94 @@ void jswrap_ESP32_wifi_connect(
     ["callback", "JsVar", "A function to be called back on completion."]
   ]
 }
-Perform a scan for access points. This will enable the station mode if it is not currently enabled. Once the scan is complete the callback function is called with an array of APs found, each AP is an object with:
+Perform a scan for access points. This will enable the station mode if it is not currently
+enabled. Once the scan is complete the callback function is called with an array of APs
+found, each AP is an object with:
 * `ssid`: SSID string.
 * `mac`: access point MAC address in 00:00:00:00:00:00 format.
 * `authMode`: `open`, `wep`, `wpa`, `wpa2`, or `wpa_wpa2`.
 * `channel`: wifi channel 1..13.
 * `hidden`: true if the SSID is hidden.
 * `rssi`: signal strength in dB in the range -110..0.
+For the ESP32, the return values are:
+* `ssid`: SSID string.
+* `authMode`
+* `rssi`: Signal strength.
 Notes:
-* in order to perform the scan the station mode is turned on and remains on, use Wifi.disconnect() to turn it off again, if desired.
-* only one scan can be in progress at a time.
+* in order to perform the scan the station mode is turned on and remains on, use Wifi.disconnect()
+* to turn it off again, if desired. Only one scan can be in progress at a time.
 */
 void jswrap_ESP32_wifi_scan(JsVar *jsCallback) {
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_scan");
-  ESP_LOGD(tag, "Not implemented");
+  // If we have a saved scan callback function we must be scanning already
+  if (g_jsScanCallback != NULL) {
+    jsExceptionHere(JSET_ERROR, "A scan is already in progress.");
+    return;
+  }
+
+  // Check and save callback
+  if (!jsvIsFunction(jsCallback)) {
+    EXPECT_CB_EXCEPTION(jsCallback);
+    return;
+  }
+  g_jsScanCallback = jsvLockAgainSafe(jsCallback);
+
+  // We need to be in some kind of a station mode in order to perform a scan
+  // Now we determine the mode we are currently in and set our new mode appropriately.
+  // NULL -> STA
+  // STA -> STA
+  // AP -> APSTA
+  // APSTA -> APSTA
+  wifi_mode_t mode;
+  esp_err_t err = esp_wifi_get_mode(&mode);
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_scan: esp_wifi_get_mode: %d", err);
+    return;
+  }
+
+  switch(mode) {
+  case WIFI_MODE_NULL:
+    mode = WIFI_MODE_STA;
+    break;
+  case WIFI_MODE_STA:
+    break;
+  case WIFI_MODE_AP:
+    mode = WIFI_MODE_APSTA;
+    break;
+  case WIFI_MODE_APSTA:
+    break;
+  default:
+    ESP_LOGD(tag, "Unknown mode %d", mode);
+    break;
+  }
+
+  ESP_LOGD(tag, "Setting mode to %s", wifiModeToString(mode));
+  err = esp_wifi_set_mode(mode);
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_scan: esp_wifi_set_mode: %d", err);
+    return;
+  }
+
+  // Perform an esp_wifi_start
+  err = esp_wifi_start();
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_start: %d", err);
+    return;
+  }
+
+  wifi_scan_config_t scanConf = {
+     .ssid = NULL,
+     .bssid = NULL,
+     .channel = 0,
+     .show_hidden = true
+  };
+  esp_wifi_scan_start(&scanConf, false); // Don't block for scan.
+  // When the scan completes, we will be notified by an arriving event that is handled
+  // in the event handler.  The event handler will see that we have a callback function
+  // registered and will invoke that callback at that time.
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_scan");
-}
+} // End of jswrap_ESP32_wifi_scan
+
 
 /*JSON{
   "type"     : "staticmethod",
@@ -674,9 +1020,141 @@ void jswrap_ESP32_wifi_startAP(
     JsVar *jsCallback  //!< A callback to be invoked when completed.
   ) {
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_startAP");
-  ESP_LOGD(tag, "Not implemented");
+
+  // Check callback.  It is invalid if it is defined and not a function.
+  if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
+    EXPECT_CB_EXCEPTION(jsCallback);
+    return;
+  }
+
+  // Validate that the SSID value is provided and is a string.
+  if (!jsvIsString(jsSsid)) {
+      jsExceptionHere(JSET_ERROR, "No SSID.");
+    return;
+  }
+
+  // Make sure jsOptions is NULL or an object
+  if (jsOptions != NULL && !jsvIsNull(jsOptions) && !jsvIsObject(jsOptions)) {
+    EXPECT_OPT_EXCEPTION(jsOptions);
+    return;
+  }
+
+  // Check callback
+  if (g_jsAPStartedCallback != NULL) jsvUnLock(g_jsAPStartedCallback);
+  g_jsAPStartedCallback = NULL;
+  if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
+    EXPECT_CB_EXCEPTION(jsCallback);
+    return;
+  }
+
+  wifi_ap_config_t apConfig;
+  bzero(&apConfig, sizeof(apConfig));
+  apConfig.ssid_hidden     = 0;
+  apConfig.beacon_interval = 100;
+  apConfig.channel         = 0;
+  apConfig.authmode        = WIFI_AUTH_OPEN;
+  apConfig.max_connection  = 4;
+  apConfig.ssid_len        = (uint8_t)jsvGetString(jsSsid, (char *)apConfig.ssid, sizeof(apConfig.ssid));
+  apConfig.authmode        = WIFI_AUTH_OPEN;
+  strcpy(apConfig.password, "");
+
+  if (jsvIsObject(jsOptions)) {
+    // Handle channel
+    JsVar *jsChan = jsvObjectGetChild(jsOptions, "channel", 0);
+    if (jsvIsInt(jsChan)) {
+      int chan = jsvGetInteger(jsChan);
+      if (chan >= 1 && chan <= 13) {
+        apConfig.channel = (uint8_t)chan;
+      }
+    }
+    jsvUnLock(jsChan);
+
+    // Handle password
+    JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
+    if (jsPassword != NULL) {
+      if (!jsvIsString(jsPassword) || jsvGetStringLength(jsPassword) < 8) {
+        jsExceptionHere(JSET_ERROR, "Password must be string of at least 8 characters");
+        jsvUnLock(jsPassword);
+        return;
+      }
+      size_t len = jsvGetString(jsPassword, (char *)apConfig.password, sizeof(apConfig.password)-1);
+      apConfig.password[len] = '\0';
+    }
+
+    // Handle the authMode
+    JsVar *jsAuth = jsvObjectGetChild(jsOptions, "authMode", 0);
+    if (jsvIsString(jsAuth)) {
+      if (jsvIsStringEqual(jsAuth, "open")) {
+        apConfig.authmode = WIFI_AUTH_OPEN;
+      } else if (jsvIsStringEqual(jsAuth, "wpa2")) {
+        apConfig.authmode = WIFI_AUTH_WPA2_PSK;
+      } else if (jsvIsStringEqual(jsAuth, "wpa")) {
+        apConfig.authmode = WIFI_AUTH_WPA_PSK;
+      } else if (jsvIsStringEqual(jsAuth, "wpa_wpa2")) {
+        apConfig.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+      } else {
+        jsvUnLock(jsAuth);
+        jsExceptionHere(JSET_ERROR, "Unknown authMode value.");
+        return;
+      }
+    } else {
+    // no explicit auth mode, set according to presence of password
+      if (strlen(apConfig.password) == 0) {
+        apConfig.authmode = WIFI_AUTH_OPEN;
+      } else {
+        apConfig.authmode = WIFI_AUTH_WPA2_PSK;
+      }
+    } // End of no explicit authMode
+
+    jsvUnLock(jsAuth);
+
+    // Make sure password and authMode match
+    if (apConfig.authmode != WIFI_AUTH_OPEN && strlen(apConfig.password) == 0) {
+      jsExceptionHere(JSET_ERROR, "Password not set but authMode not open.");
+      return;
+    }
+
+    // Make sure that if authmode is explicitly open then there is NO password supplied.
+    if (apConfig.authmode == WIFI_AUTH_OPEN && strlen(apConfig.password) > 0) {
+      jsExceptionHere(JSET_ERROR, "Auth mode set to open but password supplied.");
+      return;
+    }
+  } // End we have an options structure
+
+  // Set the mode to be accesss point
+  // FIX ... we can't hard code this to be just an access point.
+  esp_err_t err;
+
+  // set callback
+  if (jsvIsFunction(jsCallback)) {
+    g_jsAPStartedCallback = jsvLockAgainSafe(jsCallback);
+  }
+
+  err = esp_wifi_set_mode(WIFI_MODE_AP);
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_startAP: esp_wifi_set_mode: %d", err);
+    ESP_LOGD(tag, "<< jswrap_ESP32_wifi_startAP");
+    return;
+  }
+
+  err = esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)&apConfig);
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_startAP: wifi_set_config: %d - ssid=%.*s, password=%s, authMode=%d, maxConnections=%d, beacon=%d, channel=%d",
+      err, apConfig.ssid_len, apConfig.ssid, apConfig.password, apConfig.authmode, apConfig.max_connection, apConfig.beacon_interval, apConfig.channel);
+    ESP_LOGD(tag, "<< jswrap_ESP32_wifi_startAP");
+    return;
+  }
+
+  // Perform an esp_wifi_start
+  err = esp_wifi_start();
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_startAP: esp_wifi_start: %d", err);
+    return;
+  }
+
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_startAP");
-}
+} // End of jswrap_ESP32_wifi_startAP
+
 
 /*JSON{
   "type"     : "staticmethod",
@@ -697,6 +1175,7 @@ Retrieve the current overall WiFi configuration. This call provides general info
 * `savedMode` - The saved operation mode which will be applied at boot time: `off`, `sta`, `ap`, `sta+ap`.
 */
 JsVar *jswrap_ESP32_wifi_getStatus(JsVar *jsCallback) {
+  UNUSED(jsCallback);
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getStatus");
   ESP_LOGD(tag, "Not implemented");
   // We have to determine the following information:
@@ -757,11 +1236,18 @@ JsVar *jswrap_ESP32_wifi_getStatus(JsVar *jsCallback) {
   }
 
   JsVar *jsWiFiStatus = jsvNewObject();
+  if (g_isStaConnected) {
+    jsvObjectSetChildAndUnLock(jsWiFiStatus, "station", jsvNewFromString("connected"));
+  } else {
+    jsvObjectSetChildAndUnLock(jsWiFiStatus, "station",
+        jsvNewFromString(wifiReasonToString(g_lastEventStaDisconnected.reason)));
+  }
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode", jsvNewFromString(modeStr));
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "powersave", jsvNewFromString(psTypeStr));
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getStatus");
   return jsWiFiStatus;
-}
+} // End of jswrap_ESP32_wifi_getStatus
+
 
 /*JSON{
   "type"     : "staticmethod",
@@ -779,10 +1265,12 @@ The settings available are:
 Note: esp32 SDK programmers may be missing an "opmode" option to set the sta/ap/sta+ap operation mode. Please use connect/scan/disconnect/startAP/stopAP, which all set the esp32 opmode indirectly.
 */
 void jswrap_ESP32_wifi_setConfig(JsVar *jsSettings) {
+  UNUSED(jsSettings);
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_setConfig");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_setConfig");
-}
+} // End of jswrap_ESP32_wifi_setConfig
+
 
 /*JSON{
   "type"     : "staticmethod",
@@ -813,22 +1301,32 @@ JsVar *jswrap_ESP32_wifi_getDetails(JsVar *jsCallback) {
   }
 
   JsVar *jsDetails = jsvNewObject();
+  if (g_isStaConnected == true) {
+    wifi_sta_config_t config;
+    esp_wifi_get_config(WIFI_IF_STA, (wifi_config_t *)&config);
+    char buf[65];
 
-  wifi_sta_config_t config;
-  esp_wifi_get_config(WIFI_IF_STA, &config);
-  char buf[65];
+    // ssid
+    strncpy(buf, (char *)config.ssid, 32);
+    buf[32] = 0;
+    jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
 
-  // ssid
-  strncpy(buf, (char *)config.ssid, 32);
-  buf[32] = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
+    // password
+    strncpy(buf, (char *)config.password, 64);
+    buf[64] = 0;
+    jsvObjectSetChildAndUnLock(jsDetails, "password", jsvNewFromString((char *)config.password));
 
-  // password
-  strncpy(buf, (char *)config.password, 64);
-  buf[64] = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "password", jsvNewFromString((char *)config.password));
+    // Status
+    jsvObjectSetChildAndUnLock(jsDetails, "status", jsvNewFromString("connected"));
 
-
+    // Authmode
+    jsvObjectSetChildAndUnLock(jsDetails, "authMode",
+        jsvNewFromString(authModeToString(g_lastEventStaConnected.authmode)));
+  } else {
+    // Status
+    jsvObjectSetChildAndUnLock(jsDetails, "status",
+        jsvNewFromString(wifiReasonToString(g_lastEventStaDisconnected.reason)));
+  }
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
@@ -838,7 +1336,7 @@ JsVar *jswrap_ESP32_wifi_getDetails(JsVar *jsCallback) {
   }
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getDetails");
   return jsDetails;
-}
+} // End of jswrap_ESP32_wifi_getDetails
 
 
 /*JSON{
@@ -872,29 +1370,8 @@ JsVar *jswrap_ESP32_wifi_getAPDetails(JsVar *jsCallback) {
   JsVar *jsDetails = jsvNewObject();
 
   wifi_ap_config_t config;
-  esp_wifi_get_config(WIFI_IF_AP, &config);
-  char *authModeStr = "";
-  switch(config.authmode) {
-  case WIFI_AUTH_OPEN:
-    authModeStr = "open";
-    break;
-  case WIFI_AUTH_WEP:
-    authModeStr = "wep";
-    break;
-  case WIFI_AUTH_WPA2_PSK:
-    authModeStr = "wpa2";
-    break;
-  case WIFI_AUTH_WPA_PSK:
-    authModeStr = "wpa";
-    break;
-  case WIFI_AUTH_WPA_WPA2_PSK:
-    authModeStr = "wpa_wpa2";
-    break;
-  default:
-    authModeStr = "unknown";
-    break;
-  }
-  jsvObjectSetChildAndUnLock(jsDetails, "authMode", jsvNewFromString(authModeStr));
+  esp_wifi_get_config(WIFI_IF_AP, (wifi_config_t *)&config);
+  jsvObjectSetChildAndUnLock(jsDetails, "authMode", jsvNewFromString(authModeToString(config.authmode)));
   jsvObjectSetChildAndUnLock(jsDetails, "hidden",   jsvNewFromBool(config.ssid_hidden));
   jsvObjectSetChildAndUnLock(jsDetails, "maxConn",  jsvNewFromInteger(config.max_connection));
 
@@ -920,7 +1397,7 @@ JsVar *jswrap_ESP32_wifi_getAPDetails(JsVar *jsCallback) {
   return jsDetails;
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getAPDetails");
   return NULL;
-}
+} // End of jswrap_ESP32_wifi_getAPDetails
 
 
 /*JSON{
@@ -940,10 +1417,12 @@ Save the current wifi configuration (station and access point) to flash and auto
 * DHCP hostname
 */
 void jswrap_ESP32_wifi_save(JsVar *what) {
+  UNUSED(what);
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_save");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_save");
-}
+} // End of jswrap_ESP32_wifi_save
+
 
 /*JSON{
   "type"     : "staticmethod",
@@ -957,7 +1436,8 @@ void jswrap_ESP32_wifi_restore(void) {
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_restore");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_restore");
-}
+} // End of jswrap_ESP32_wifi_restore
+
 
 /**
  * Get the ip info for the given interface.  The interfaces are:
@@ -999,7 +1479,7 @@ static JsVar *getIPInfo(JsVar *jsCallback, tcpip_adapter_if_t interface) {
   }
 
   return jsIpInfo;
-}
+} // End of getIPInfo
 
 
 /*JSON{
@@ -1024,7 +1504,7 @@ JsVar *jswrap_ESP32_wifi_getIP(JsVar *jsCallback) {
   JsVar *jsIpInfo = getIPInfo(jsCallback, TCPIP_ADAPTER_IF_STA);
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getIP");
   return jsIpInfo;
-}
+} // End of jswrap_ESP32_wifi_getIP
 
 
 /*JSON{
@@ -1068,6 +1548,8 @@ void jswrap_ESP32_wifi_getHostByName(
     JsVar *jsHostname,
     JsVar *jsCallback
 ) {
+  UNUSED(jsHostname);
+  UNUSED(jsCallback);
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getHostByName");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getHostByName");
@@ -1088,6 +1570,7 @@ void jswrap_ESP32_wifi_getHostByName(
 Returns the hostname announced to the DHCP server and broadcast via mDNS when connecting to an access point.
 */
 JsVar *jswrap_ESP32_wifi_getHostname(JsVar *jsCallback) {
+  UNUSED(jsCallback);
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getHostname");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getHostname");
@@ -1110,6 +1593,7 @@ The mDNS announcement also includes an announcement for the "espruino" service.
 void jswrap_ESP32_wifi_setHostname(
     JsVar *jsHostname //!< The hostname to set for device.
 ) {
+  UNUSED(jsHostname);
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_setHostname");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_setHostname");
@@ -1133,6 +1617,8 @@ void jswrap_ESP32_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
 ) {
+  UNUSED(ipAddr);
+  UNUSED(pingCallback);
   ESP_LOGD(tag, ">> jswrap_ESP32_ping");
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_ping");
