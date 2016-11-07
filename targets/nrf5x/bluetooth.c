@@ -120,11 +120,7 @@ bool jsble_has_central_connection() {
 
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
 bool jsble_has_simple_connection() {
-#if CENTRAL_LINK_COUNT>0
   return (m_conn_handle != BLE_CONN_HANDLE_INVALID);
-#else
-  return false;
-#endif
 }
 
 /// Checks for error and reports an exception if there was one. Return true on error
@@ -210,7 +206,8 @@ bool nus_transmit_string() {
     ch = jshGetCharToTransmit(EV_BLUETOOTH);
   }
   if (idx>0) {
-    if (ble_nus_string_send(&m_nus, buf, idx) == NRF_SUCCESS)
+    uint32_t err_code = ble_nus_string_send(&m_nus, buf, idx);
+    if (err_code == NRF_SUCCESS)
       bleStatus |= BLE_IS_SENDING;
   }
   return idx>0;
@@ -516,7 +513,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             jsvUnLock(chars);
             chars = t;
           }
-          bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, chars);
+          if (chars) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, chars);
+          else bleCompleteTaskFail(BLETASK_CHARACTERISTIC, 0);
           jsvObjectSetChild(execInfo.hiddenRoot, "bleChrs", 0);
         }
         jsvUnLock(chars);
@@ -553,7 +551,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           if (characteristic) {
             // TODO: should return {target:characteristic} and set characteristic.value
             JsVar *data = jsvNewStringOfLength(p_hvx->len);
-            if (data) jsvSetString(data, p_hvx->data, p_hvx->len);
+            if (data) jsvSetString(data, (const char*)p_hvx->data, p_hvx->len);
             jsiQueueObjectCallbacks(characteristic, "characteristicvaluechanged", &data, 1);
             jshHadEvent();
           }
@@ -590,8 +588,12 @@ static void nfc_callback(void * p_context, nfc_t2t_event_t event, const uint8_t 
 /// Function for dispatching a SoftDevice event to all modules with a SoftDevice event handler.
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
   ble_conn_params_on_ble_evt(p_ble_evt);
-  if (bleStatus & BLE_NUS_INITED)
-    ble_nus_on_ble_evt(&m_nus, p_ble_evt);
+  if (bleStatus & BLE_NUS_INITED) {
+    if (!((p_ble_evt->header.evt_id==BLE_GAP_EVT_CONNECTED) &&
+          (p_ble_evt->evt.gap_evt.params.connected.role != BLE_GAP_ROLE_PERIPH)) &&
+        !(p_ble_evt->header.evt_id==BLE_GAP_EVT_DISCONNECTED))
+      ble_nus_on_ble_evt(&m_nus, p_ble_evt);
+  }
 #if BLE_HIDS_ENABLED
   if (bleStatus & BLE_HID_INITED)
     ble_hids_on_ble_evt(&m_hids, p_ble_evt);
