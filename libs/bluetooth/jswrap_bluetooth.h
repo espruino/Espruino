@@ -16,6 +16,7 @@
 // ------------------------------------------------------------------------------
 typedef enum {
   BLETASK_NONE,
+  BLETASK_REQUEST_DEVICE, ///< Waiting for requestDevice to finish
   BLETASK_CONNECT, ///< Connect in central mode
   BLETASK_PRIMARYSERVICE, ///< Find primary service
   BLETASK_CHARACTERISTIC,  ///< Find characteristics
@@ -46,6 +47,7 @@ void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *timeout);
 void jswrap_nrf_bluetooth_setRSSIHandler(JsVar *callback);
 void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr);
 
+JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options);
 JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac);
 
 void jswrap_nrf_nfcURL(JsVar *url);

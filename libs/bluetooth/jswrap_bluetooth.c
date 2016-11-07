@@ -14,6 +14,7 @@
 #include "jsinteractive.h"
 #include "jsdevices.h"
 #include "jswrap_promise.h"
+#include "jswrap_object.h"
 #include "jswrap_interactive.h"
 #include "jsnative.h"
 
@@ -807,9 +808,8 @@ void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *timeout) {
     jsvUnLock(fn);
   }
   fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_findDevices_timeout_cb, JSWAT_VOID);
-  if (fn) {
+  if (fn)
     jsvUnLock2(jswrap_interface_setTimeout(fn, time, 0), fn);
-  }
 }
 
 /*JSON{
@@ -968,6 +968,119 @@ void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
   }
 #endif
 }
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "requestDevice",
+    "#ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_bluetooth_requestDevice",
+    "params" : [
+      ["options","JsVar","Options used to filter the device to use"]
+    ],
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) when the connection is complete" ]
+}
+Search for available devices matching the given filters. Since we have no UI here,
+Espruino will pick the FIRST device it finds, or after a timeout it'll call the
+
+```
+NRF.requestDevice({ filters: [{ services: ['battery_service'] }] })
+.then(function(device) {
+  // ...
+}).catch(function() {
+  console.log("Not found");
+});
+```
+
+**Note:** This is only available on some devices
+*/
+#define CENTRAL_LINK_COUNT 1
+#if CENTRAL_LINK_COUNT>0
+
+JsVar *jswrap_nrf_bluetooth_requestDevice_filter_device(JsVar *filter, JsVar *device) {
+  bool matches = true;
+  JsVar *v;
+  if ((v = jsvObjectGetChild(filter, "services", 0))) {
+    // Match services
+    JsVar *deviceService = 0;
+
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, v);
+    if (jsvObjectIteratorHasValue(&it)) {
+      JsVar *service = jsvObjectIteratorGetValue(&it);
+      if (!jsvIsEqual(service, deviceService))
+        matches = false;
+      jsvUnLock(service);
+      jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+    jsvUnLock2(v, deviceService);
+  }
+  return matches ? jsvLockAgain(device) : 0;
+}
+
+JsVar *jswrap_nrf_bluetooth_requestDevice_filter_devices(JsVar *filter, JsVar *devices) {
+  bool foundDevice = 0;
+  JsvObjectIterator dit;
+  jsvObjectIteratorNew(&dit, devices);
+  while (!foundDevice && jsvObjectIteratorHasValue(&dit)) {
+    JsVar *device = jsvObjectIteratorGetValue(&dit);
+    foundDevice = jswrap_nrf_bluetooth_requestDevice_filter_device(filter, device);
+    jsvUnLock(device);
+    jsvObjectIteratorNext(&dit);
+  }
+  jsvObjectIteratorFree(&dit);
+  return 0;
+}
+
+void jswrap_nrf_bluetooth_requestDevice_finish(JsVar *options, JsVar *devices) {
+  if (!bleInTask(BLETASK_REQUEST_DEVICE))
+    return;
+  JsVar *foundDevice = 0;
+  JsVar *filters = jsvObjectGetChild(options, "filters", 0);
+  if (jsvIsArray(filters)) {
+    JsvObjectIterator fit;
+    jsvObjectIteratorNew(&fit, filters);
+    while (!foundDevice && jsvObjectIteratorHasValue(&fit)) {
+      JsVar *filter = jsvObjectIteratorGetValue(&fit);
+      foundDevice = jswrap_nrf_bluetooth_requestDevice_filter_devices(filter, devices);
+      jsvUnLock(filter);
+      jsvObjectIteratorNext(&fit);
+    }
+    jsvObjectIteratorFree(&fit);
+  } else {
+    jsExceptionHere(JSET_TYPEERROR, "requestDevice expecting an array of filters, got %t", filters);
+    bleCompleteTaskFail(BLETASK_REQUEST_DEVICE, 0);
+  }
+  jsvUnLock(filters);
+  bleCompleteTaskSuccess(BLETASK_REQUEST_DEVICE, foundDevice);
+  jsvUnLock(foundDevice);
+}
+#endif
+
+JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options) {
+#if CENTRAL_LINK_COUNT>0
+  if (!(jsvIsUndefined(options) || jsvIsObject(options))) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting an object, for %t", options);
+    return 0;
+  }
+
+  if (bleNewTask(BLETASK_REQUEST_DEVICE)) {
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_requestDevice_finish, JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+    if (fn) {
+      JsVar *fnb = jswrap_function_bind(fn, options, 0);
+      jswrap_nrf_bluetooth_findDevices(fnb, 0/*default timeout*/);
+      jsvUnLock2(fn, fnb);
+    }
+    return jsvLockAgainSafe(blePromise);
+  }
+  return 0;
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+#endif
+}
+
 
 
 /*JSON{
