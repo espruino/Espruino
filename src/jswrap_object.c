@@ -944,38 +944,40 @@ JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
   }
 
   // add bound arguments
-  JsvObjectIterator argIt;
-  jsvObjectIteratorNew(&argIt, argsArray);
-  while (jsvObjectIteratorHasValue(&argIt)) {
-    JsVar *defaultValue = jsvObjectIteratorGetValue(&argIt);
-    bool addedParam = false;
-    while (!addedParam && jsvObjectIteratorHasValue(&fnIt)) {
-      JsVar *param = jsvObjectIteratorGetKey(&fnIt);
-      if (!jsvIsFunctionParameter(param)) {
-        jsvUnLock(param);
-        break;
+  if (argsArray) {
+    JsvObjectIterator argIt;
+    jsvObjectIteratorNew(&argIt, argsArray);
+    while (jsvObjectIteratorHasValue(&argIt)) {
+      JsVar *defaultValue = jsvObjectIteratorGetValue(&argIt);
+      bool addedParam = false;
+      while (!addedParam && jsvObjectIteratorHasValue(&fnIt)) {
+        JsVar *param = jsvObjectIteratorGetKey(&fnIt);
+        if (!jsvIsFunctionParameter(param)) {
+          jsvUnLock(param);
+          break;
+        }
+        JsVar *newParam = jsvCopyNameOnly(param, false,  true);
+        jsvSetValueOfName(newParam, defaultValue);
+        jsvAddName(fn, newParam);
+        addedParam = true;
+        jsvUnLock2(param, newParam);
+        jsvObjectIteratorNext(&fnIt);
       }
-      JsVar *newParam = jsvCopyNameOnly(param, false,  true);
-      jsvSetValueOfName(newParam, defaultValue);
-      jsvAddName(fn, newParam);
-      addedParam = true;
-      jsvUnLock2(param, newParam);
-      jsvObjectIteratorNext(&fnIt);
-    }
 
-    if (!addedParam) {
-      JsVar *paramName = jsvNewFromEmptyString();
-      if (paramName) {
-        jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-        jsvSetValueOfName(paramName, defaultValue);
-        jsvAddName(fn, paramName);
-        jsvUnLock(paramName);
+      if (!addedParam) {
+        JsVar *paramName = jsvNewFromEmptyString();
+        if (paramName) {
+          jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+          jsvSetValueOfName(paramName, defaultValue);
+          jsvAddName(fn, paramName);
+          jsvUnLock(paramName);
+        }
       }
+      jsvUnLock(defaultValue);
+      jsvObjectIteratorNext(&argIt);
     }
-    jsvUnLock(defaultValue);
-    jsvObjectIteratorNext(&argIt);
+    jsvObjectIteratorFree(&argIt);
   }
-  jsvObjectIteratorFree(&argIt);
 
   // Copy the rest of the old function's info
   while (jsvObjectIteratorHasValue(&fnIt)) {
