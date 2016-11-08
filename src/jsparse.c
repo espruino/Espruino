@@ -301,6 +301,13 @@ JsVar *jspGetException() {
     JsVar *exception = jsvSkipName(exceptionName);
     jsvRemoveChild(execInfo.hiddenRoot, exceptionName);
     jsvUnLock(exceptionName);
+
+    JsVar *stack = jspGetStackTrace();
+    if (stack && jsvHasChildren(exception)) {
+      jsvObjectSetChild(exception, "stack", stack);
+    }
+    jsvUnLock(stack);
+
     return exception;
   }
   return 0;
@@ -2348,16 +2355,10 @@ NO_INLINE JsVar *jspeStatementTry() {
     JSP_MATCH(')');
     if (exceptionVar) {
       // set the exception var up properly
-      JsVar *actualExceptionName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR, false);
-      if (actualExceptionName) {
-        JsVar *actualException = jsvSkipName(actualExceptionName);
-        jsvSetValueOfName(exceptionVar, actualException);
-        jsvUnLock(actualException);
-        // remove the actual exception
-        jsvRemoveChild(execInfo.hiddenRoot, actualExceptionName);
-        jsvUnLock(actualExceptionName);
-        // remove any stack trace
-        jsvObjectRemoveChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR);
+      JsVar *exception = jspGetException();
+      if (exception) {
+        jsvSetValueOfName(exceptionVar, exception);
+        jsvUnLock(exception);
       }
       // Now clear the exception flag (it's handled - we hope!)
       execInfo.execute = execInfo.execute & (JsExecFlags)~(EXEC_EXCEPTION|EXEC_ERROR_LINE_REPORTED);

@@ -1105,6 +1105,13 @@ void jsiCheckErrors() {
   }
   if (exception) {
     jsiConsolePrintf("Uncaught %v\n", exception);
+    if (jsvIsObject(exception)) {
+      JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
+      if (stackTrace) {
+        jsiConsolePrintStringVar(stackTrace);
+        jsvUnLock(stackTrace);
+      }
+    }
     jsvUnLock(exception);
   }
   if (jspIsInterrupted()
