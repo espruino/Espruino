@@ -216,6 +216,12 @@ bool nus_transmit_string() {
 void SWI1_IRQHandler(bool radio_evt) {
   if (bleStatus & BLE_NUS_INITED)
     nus_transmit_string();
+#ifndef NRF52
+  /* NRF52 has a systick. On nRF51 we just hook on
+  to this, since it happens quite often */
+  void SysTick_Handler(void);
+  SysTick_Handler();
+#endif
 }
 
 /// Function for the application's SoftDevice event handler.
