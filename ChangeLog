@@ -38,6 +38,8 @@
             Added E.dumpLockedVars() in non-release builds to help debug memory leaks in libraries
             nRF5x: Added NRF.findDevices as a helper function to easily list BT devices in range
             Console now prints the type of Objects if their constructor is in the root scope
+            nRF5x: setScan/findDevices now parses advertising data
+            nRF5x: Added Web Bluetooth style requestDevice function
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types

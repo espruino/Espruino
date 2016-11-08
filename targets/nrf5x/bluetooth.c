@@ -392,6 +392,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             jsvUnLock(data);
             jsvObjectSetChildAndUnLock(evt, "data", ab);
           }
+          // push onto queue
           jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
           jsvUnLock(evt);
           jshHadEvent();

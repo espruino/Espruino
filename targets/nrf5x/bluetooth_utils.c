@@ -25,6 +25,11 @@ bool bleUUIDEqual(ble_uuid_t a, ble_uuid_t b) {
   return a.type==b.type && a.uuid==b.uuid;
 }
 
+JsVar *bleUUID128ToStr(const uint8_t *data) {
+  const uint16_t *wdata = (const uint16_t*)data;
+  return jsvVarPrintf("%04x%04x-%04x-%04x-%04x-%04x%04x%04x", wdata[7],wdata[6],wdata[5],wdata[4],wdata[3],wdata[2],wdata[1],wdata[0]);
+}
+
 /// BLE UUID to string
 JsVar *bleUUIDToStr(ble_uuid_t uuid) {
   if (uuid.type == BLE_UUID_TYPE_UNKNOWN) {
@@ -42,8 +47,7 @@ JsVar *bleUUIDToStr(ble_uuid_t uuid) {
     return jsvVarPrintf("[sd_ble_uuid_encode error %d]", err_code);
   // check error code?
   assert(dataLen==16); // it should always be 16 as we checked above
-  uint16_t *wdata = (uint16_t*)&data[0];
-  return jsvVarPrintf("%04x%04x-%04x-%04x-%04x-%04x%04x%04x", wdata[7],wdata[6],wdata[5],wdata[4],wdata[3],wdata[2],wdata[1],wdata[0]);
+  return bleUUID128ToStr(&data[0]);
 }
 
 // Convert a variable of the form "aa:bb:cc:dd:ee:ff" to a mac address
