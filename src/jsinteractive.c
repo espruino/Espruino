@@ -1326,7 +1326,7 @@ void jsiHandleNewLine(bool execute) {
         // print result (but NOT if we had an error)
         if (jsiEcho() && !jspHasError()) {
           jsiConsolePrintChar('=');
-          jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+          jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES);
           jsiConsolePrint("\n");
         }
         jsvUnLock(v);
@@ -2131,7 +2131,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 
     if (jswIsBuiltInObject(childName)) {
       jsiDumpObjectState(user_callback, user_data, child, data);
-    } else if (jsvIsStringEqualOrStartsWith(childName, JS_EVENT_PREFIX, true)) {
+    } else if (jsvIsStringEqualOrStartsWith(child, JS_EVENT_PREFIX, true)) {
       // event on global object - skip it, as it'll be internal
     } else if (jsvIsStringEqual(child, JSI_TIMERS_NAME)) {
       // skip - done later
@@ -2311,7 +2311,7 @@ void jsiDebuggerPrintScope(JsVar *scope) {
         l++;
       }
       jsiConsolePrint(" : ");
-      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES);
       jsiConsolePrint("\n");
     }
 
@@ -2373,7 +2373,7 @@ void jsiDebuggerLine(JsVar *line) {
       JsVar *v = jsvSkipNameAndUnLock(jspParse());
       execInfo = oldExecInfo;
       jsiConsolePrintChar('=');
-      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES);
       jsiConsolePrint("\n");
       jsvUnLock(v);
     } else if (!strcmp(id,"info") || !strcmp(id,"i")) {

@@ -334,6 +334,19 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
       if (device!=EV_NONE) {
         cbprintf(user_callback, user_data, "%s", jshGetDeviceString(device));
       } else {
+        if (flags & JSON_SHOW_OBJECT_NAMES) {
+          JsVar *proto = jsvObjectGetChild(var, JSPARSE_INHERITS_VAR, 0);
+          if (jsvHasChildren(proto)) {
+            JsVar *constr = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
+            if (constr) {
+              JsVar *p = jsvGetArrayIndexOf(execInfo.root, constr, true);
+              if (p) cbprintf(user_callback, user_data, "%v ", p);
+              jsvUnLock2(p,constr);
+            }
+          }
+          jsvUnLock(proto);
+        }
+
         bool first = true;
         bool needNewLine = false;
         size_t sinceNewLine = 0;
