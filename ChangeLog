@@ -41,6 +41,8 @@
             nRF5x: setScan/findDevices now parses advertising data
             nRF5x: Added Web Bluetooth style requestDevice function
             Add spaces between large tab completes
+            Correct the handling of exceptions in promises
+            Ensure that exceptions have a 'stack' attribute if they can have children
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
