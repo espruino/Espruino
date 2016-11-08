@@ -278,11 +278,8 @@ void jshIdle() {
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
-    if (maxChars <= 0)
-    {
-    	return 0;
-    }
-	return nrf_utils_get_device_id(data, maxChars);
+    memcpy(data, NRF_FICR->DEVICEID, sizeof(NRF_FICR->DEVICEID));
+    return sizeof(NRF_FICR->DEVICEID);
 }
 
 // is the serial device connected?

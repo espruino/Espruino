@@ -72,25 +72,6 @@ void nrf_utils_lfclk_config_and_start()
 
 }
 
-int nrf_utils_get_device_id(uint8_t * device_id, int maxChars)
-{
-	uint32_t deviceID[2];
-	deviceID[0] = NRF_FICR->DEVICEID[0];
-	deviceID[1] = NRF_FICR->DEVICEID[1];
-
-	uint8_t * temp = (uint8_t *) &deviceID[0];
-
-	uint32_t i;
-	for (i = 0; i < maxChars || i < 8; i++)
-	{
-	  *device_id = *temp;
-	  device_id++;
-	  temp++;
-	}
-
-	return i;
-}
-
 uint8_t nrf_utils_get_random_number()
 {
 
