@@ -1074,7 +1074,6 @@ NRF.requestDevice({ timeout:2000, filters: [ ... ] })
 
 **Note:** This is only available on some devices
 */
-#define CENTRAL_LINK_COUNT 1
 #if CENTRAL_LINK_COUNT>0
 
 JsVar *jswrap_nrf_bluetooth_requestDevice_filter_device(JsVar *filter, JsVar *device) {

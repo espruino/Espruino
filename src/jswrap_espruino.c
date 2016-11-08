@@ -888,9 +888,11 @@ void jswrap_espruino_dumpTimers() {
 }
 Dump any locked variables that aren't referenced from `global` - for debugging memory leaks only.
 */
+#ifndef RELEASE
 void jswrap_espruino_dumpLockedVars() {
   jsvDumpLockedVars();
 }
+#endif
 
 /*JSON{
   "type" : "staticmethod",
