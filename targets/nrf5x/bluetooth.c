@@ -254,9 +254,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-          JsVar *remoteServer = jspNewObject(0, "BluetoothRemoteGATTServer");
-          bleCompleteTaskSuccess(BLETASK_CONNECT, remoteServer);
-          jsvUnLock(remoteServer);
+          jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
+          bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
         }
 #endif
         break;
@@ -384,7 +383,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (evt) {
           jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
           //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(p_adv->peer_addr.addr_type));
-          jsvObjectSetChildAndUnLock(evt, "addr", bleAddrToStr(p_adv->peer_addr));
+          jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
           JsVar *data = jsvNewStringOfLength(p_adv->dlen);
           if (data) {
             jsvSetString(data, (char*)p_adv->data, p_adv->dlen);
@@ -425,11 +424,10 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       // For discovery....
       case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: {
         bool done = true;
-
-        JsVar *srvcs = jsvObjectGetChild(execInfo.hiddenRoot, "bleSvcs", JSV_ARRAY);
+        if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
         if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
             p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count!=0) {
-          if (srvcs) {
+          if (bleTaskInfo) {
             int i;
             // Should actually return 'BLEService' object here
             for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++) {
@@ -443,7 +441,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
                 jsvObjectSetChildAndUnLock(o,"isPrimary", jsvNewFromBool(true));
                 jsvObjectSetChildAndUnLock(o,"start_handle", jsvNewFromInteger(p_srv->handle_range.start_handle));
                 jsvObjectSetChildAndUnLock(o,"end_handle", jsvNewFromInteger(p_srv->handle_range.end_handle));
-                jsvArrayPushAndUnLock(srvcs, o);
+                jsvArrayPushAndUnLock(bleTaskInfo, o);
               }
             }
           }
@@ -457,22 +455,20 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
         if (done) {
           // When done, send the result to the handler
-          if (srvcs && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
+          if (bleTaskInfo && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
             // single item because filtering
-            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(srvcs));
-            jsvUnLock(srvcs);
-            srvcs = t;
+            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo));
+            jsvUnLock(bleTaskInfo);
+            bleTaskInfo = t;
           }
-          bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, srvcs);
-          jsvObjectRemoveChild(execInfo.hiddenRoot, "bleSvcs");
+          bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, bleTaskInfo);
         } // else error
-        jsvUnLock(srvcs);
         break;
       }
       case BLE_GATTC_EVT_CHAR_DISC_RSP: {
-        JsVar *chars = jsvObjectGetChild(execInfo.hiddenRoot, "bleChrs", JSV_ARRAY);
         bool done = true;
-        if (chars &&
+        if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
+        if (bleTaskInfo &&
             p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
             p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count!=0) {
           int i;
@@ -487,7 +483,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
               jsvObjectSetChildAndUnLock(o,"handle_value", jsvNewFromInteger(p_chr->handle_value));
               jsvObjectSetChildAndUnLock(o,"handle_decl", jsvNewFromInteger(p_chr->handle_decl));
               // char_props?
-              jsvArrayPushAndUnLock(chars, o);
+              jsvArrayPushAndUnLock(bleTaskInfo, o);
             }
           }
 
@@ -508,17 +504,15 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
         if (done) {
           // When done, send the result to the handler
-          if (chars && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
+          if (bleTaskInfo && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
             // single item because filtering
-            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(chars));
-            jsvUnLock(chars);
-            chars = t;
+            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo));
+            jsvUnLock(bleTaskInfo);
+            bleTaskInfo = t;
           }
-          if (chars) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, chars);
+          if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, bleTaskInfo);
           else bleCompleteTaskFail(BLETASK_CHARACTERISTIC, 0);
-          jsvObjectRemoveChild(execInfo.hiddenRoot, "bleChrs");
         }
-        jsvUnLock(chars);
         break;
       }
       case BLE_GATTC_EVT_DESC_DISC_RSP:
