@@ -34,10 +34,17 @@
 #include "stm32l4xx_ll_system.h"
 #include "stm32l4xx_ll_utils.h"
 #include "stm32l4xx_ll_usart.h"
+#include "stm32l4xx_ll_exti.h"
 #if defined(USE_FULL_ASSERT)
 #include "stm32_assert.h"
 #endif /* USE_FULL_ASSERT */
 
+
+#define IRQ_PRIOR_SPI 1 // we want to be very sure of not losing SPI (this is handled quickly too)
+#define IRQ_PRIOR_SYSTICK 2
+#define IRQ_PRIOR_USART 6 // a little higher so we don't get lockups of something tries to print
+#define IRQ_PRIOR_MED 7
+#define IRQ_PRIOR_LOW 15
 
 
 // ----------------------------------------------------------------------------
@@ -99,29 +106,28 @@ static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
 }
 static ALWAYS_INLINE uint32_t stmExtI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
-#ifdef STM32F3
-  return (uint32_t)(pin-JSH_PIN0); // STM32F3 is different - thanks @Frida!
-#else
+#if 0
   return (uint32_t)(1 << (pin-JSH_PIN0));
-#endif
-/*  if (pin==JSH_PIN0 ) return EXTI_Line0;
-  if (pin==JSH_PIN1 ) return EXTI_Line1;
-  if (pin==JSH_PIN2 ) return EXTI_Line2;
-  if (pin==JSH_PIN3 ) return EXTI_Line3;
-  if (pin==JSH_PIN4 ) return EXTI_Line4;
-  if (pin==JSH_PIN5 ) return EXTI_Line5;
-  if (pin==JSH_PIN6 ) return EXTI_Line6;
-  if (pin==JSH_PIN7 ) return EXTI_Line7;
-  if (pin==JSH_PIN8 ) return EXTI_Line8;
-  if (pin==JSH_PIN9 ) return EXTI_Line9;
-  if (pin==JSH_PIN10) return EXTI_Line10;
-  if (pin==JSH_PIN11) return EXTI_Line11;
-  if (pin==JSH_PIN12) return EXTI_Line12;
-  if (pin==JSH_PIN13) return EXTI_Line13;
-  if (pin==JSH_PIN14) return EXTI_Line14;
-  if (pin==JSH_PIN15) return EXTI_Line15;
+#else
+  if (pin==JSH_PIN0 ) return LL_EXTI_LINE_0;
+  if (pin==JSH_PIN1 ) return LL_EXTI_LINE_1;
+  if (pin==JSH_PIN2 ) return LL_EXTI_LINE_2;
+  if (pin==JSH_PIN3 ) return LL_EXTI_LINE_3;
+  if (pin==JSH_PIN4 ) return LL_EXTI_LINE_4;
+  if (pin==JSH_PIN5 ) return LL_EXTI_LINE_5;
+  if (pin==JSH_PIN6 ) return LL_EXTI_LINE_6;
+  if (pin==JSH_PIN7 ) return LL_EXTI_LINE_7;
+  if (pin==JSH_PIN8 ) return LL_EXTI_LINE_8;
+  if (pin==JSH_PIN9 ) return LL_EXTI_LINE_9;
+  if (pin==JSH_PIN10) return LL_EXTI_LINE_10;
+  if (pin==JSH_PIN11) return LL_EXTI_LINE_11;
+  if (pin==JSH_PIN12) return LL_EXTI_LINE_12;
+  if (pin==JSH_PIN13) return LL_EXTI_LINE_13;
+  if (pin==JSH_PIN14) return LL_EXTI_LINE_14;
+  if (pin==JSH_PIN15) return LL_EXTI_LINE_15;
   jsExceptionHere(JSET_INTERNALERROR, "stmExtI");
-  return EXTI_Line0;*/
+  return LL_EXTI_LINE_0;
+#endif
 }
 
 static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
@@ -143,60 +149,49 @@ static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
 #endif
 }
 
-static ALWAYS_INLINE uint8_t stmPinSource(JsvPinInfoPin ipin) {
+static ALWAYS_INLINE uint32_t stmPinSource(JsvPinInfoPin ipin) {
 
   JsvPinInfoPin pin = pinInfo[ipin].pin;
 #if 0
   return (uint8_t)(pin-JSH_PIN0);
 #else
-  if (pin==JSH_PIN0 ) return LL_GPIO_PIN_0;
-  if (pin==JSH_PIN1 ) return LL_GPIO_PIN_1;
-  if (pin==JSH_PIN2 ) return LL_GPIO_PIN_2;
-  if (pin==JSH_PIN3 ) return LL_GPIO_PIN_3;
-  if (pin==JSH_PIN4 ) return LL_GPIO_PIN_4;
-  if (pin==JSH_PIN5 ) return LL_GPIO_PIN_5;
-  if (pin==JSH_PIN6 ) return LL_GPIO_PIN_6;
-  if (pin==JSH_PIN7 ) return LL_GPIO_PIN_7;
-  if (pin==JSH_PIN8 ) return LL_GPIO_PIN_8;
-  if (pin==JSH_PIN9 ) return LL_GPIO_PIN_9;
-  if (pin==JSH_PIN10) return LL_GPIO_PIN_10;
-  if (pin==JSH_PIN11) return LL_GPIO_PIN_11;
-  if (pin==JSH_PIN12) return LL_GPIO_PIN_12;
-  if (pin==JSH_PIN13) return LL_GPIO_PIN_13;
-  if (pin==JSH_PIN14) return LL_GPIO_PIN_14;
-  if (pin==JSH_PIN15) return LL_GPIO_PIN_15;
+  if (pin==JSH_PIN0 ) return LL_SYSCFG_EXTI_LINE0;
+  if (pin==JSH_PIN1 ) return LL_SYSCFG_EXTI_LINE1;
+  if (pin==JSH_PIN2 ) return LL_SYSCFG_EXTI_LINE2;
+  if (pin==JSH_PIN3 ) return LL_SYSCFG_EXTI_LINE3;
+  if (pin==JSH_PIN4 ) return LL_SYSCFG_EXTI_LINE4;
+  if (pin==JSH_PIN5 ) return LL_SYSCFG_EXTI_LINE5;
+  if (pin==JSH_PIN6 ) return LL_SYSCFG_EXTI_LINE6;
+  if (pin==JSH_PIN7 ) return LL_SYSCFG_EXTI_LINE7;
+  if (pin==JSH_PIN8 ) return LL_SYSCFG_EXTI_LINE8;
+  if (pin==JSH_PIN9 ) return LL_SYSCFG_EXTI_LINE9;
+  if (pin==JSH_PIN10) return LL_SYSCFG_EXTI_LINE10;
+  if (pin==JSH_PIN11) return LL_SYSCFG_EXTI_LINE11;
+  if (pin==JSH_PIN12) return LL_SYSCFG_EXTI_LINE12;
+  if (pin==JSH_PIN13) return LL_SYSCFG_EXTI_LINE13;
+  if (pin==JSH_PIN14) return LL_SYSCFG_EXTI_LINE14;
+  if (pin==JSH_PIN15) return LL_SYSCFG_EXTI_LINE15;
   jsExceptionHere(JSET_INTERNALERROR, "stmPinSource");
-  return LL_GPIO_PIN_0;
+  return LL_SYSCFG_EXTI_LINE0;
 #endif
 }
 
 static ALWAYS_INLINE uint8_t stmPortSource(Pin pin) {
   JsvPinInfoPort port = pinInfo[pin].port;
+#if 0
   return (uint8_t)(port-JSH_PORTA);
-/*#ifdef STM32API2
-  if (port == JSH_PORTA) return EXTI_PortSourceGPIOA;
-  if (port == JSH_PORTB) return EXTI_PortSourceGPIOB;
-  if (port == JSH_PORTC) return EXTI_PortSourceGPIOC;
-  if (port == JSH_PORTD) return EXTI_PortSourceGPIOD;
-  if (port == JSH_PORTE) return EXTI_PortSourceGPIOE;
-  if (port == JSH_PORTF) return EXTI_PortSourceGPIOF;
-#if defined(STM32F4)
-  if (port == JSH_PORTG) return EXTI_PortSourceGPIOG;
-  if (port == JSH_PORTH) return EXTI_PortSourceGPIOH;
-#endif
-  jsExceptionHere(JSET_INTERNALERROR, "stmPortSource");
-  return EXTI_PortSourceGPIOA;
 #else
-  if (port == JSH_PORTA) return GPIO_PortSourceGPIOA;
-  if (port == JSH_PORTB) return GPIO_PortSourceGPIOB;
-  if (port == JSH_PORTC) return GPIO_PortSourceGPIOC;
-  if (port == JSH_PORTD) return GPIO_PortSourceGPIOD;
-  if (port == JSH_PORTE) return GPIO_PortSourceGPIOE;
-  if (port == JSH_PORTF) return GPIO_PortSourceGPIOF;
-  if (port == JSH_PORTG) return GPIO_PortSourceGPIOG;
+  if (port == JSH_PORTA) return LL_SYSCFG_EXTI_PORTA;
+  if (port == JSH_PORTB) return LL_SYSCFG_EXTI_PORTB;
+  if (port == JSH_PORTC) return LL_SYSCFG_EXTI_PORTC;
+  if (port == JSH_PORTD) return LL_SYSCFG_EXTI_PORTD;
+  if (port == JSH_PORTE) return LL_SYSCFG_EXTI_PORTE;
+  if (port == JSH_PORTF) return LL_SYSCFG_EXTI_PORTF;
+  if (port == JSH_PORTG) return LL_SYSCFG_EXTI_PORTG;
+  if (port == JSH_PORTH) return LL_SYSCFG_EXTI_PORTH;
   jsExceptionHere(JSET_INTERNALERROR, "stmPortSource");
-  return GPIO_PortSourceGPIOA;
-#endif*/
+  return LL_SYSCFG_EXTI_PORTA;
+#endif
 }
 
 static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
@@ -904,6 +899,35 @@ void jshInit(){
   jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
 
   SysTick_Config(SYSTICK_RANGE); // IT will be called every SYSTICK_RANGE/SystemCoreClock seconds
+  NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK);
+
+  NVIC_EnableIRQ(EXTI0_IRQn);
+  //NVIC_SetPriority(EXTI0_IRQn,IRQ_PRIOR_MED);
+  NVIC_SetPriority(EXTI0_IRQn,IRQ_PRIOR_MED);
+
+  NVIC_EnableIRQ(EXTI1_IRQn);
+  NVIC_SetPriority(EXTI1_IRQn,IRQ_PRIOR_MED);
+
+  NVIC_EnableIRQ(EXTI2_IRQn);
+  NVIC_SetPriority(EXTI2_IRQn,IRQ_PRIOR_MED);
+
+  NVIC_EnableIRQ(EXTI3_IRQn);
+  NVIC_SetPriority(EXTI3_IRQn,IRQ_PRIOR_MED);
+
+  NVIC_EnableIRQ(EXTI4_IRQn);
+  NVIC_SetPriority(EXTI4_IRQn,IRQ_PRIOR_MED);
+
+  NVIC_EnableIRQ(EXTI9_5_IRQn);
+  NVIC_SetPriority(EXTI9_5_IRQn,IRQ_PRIOR_MED);
+
+  NVIC_EnableIRQ(EXTI15_10_IRQn);
+  NVIC_SetPriority(EXTI15_10_IRQn,IRQ_PRIOR_MED);
+
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
+
+
+
+
 
   return;
 }
@@ -1075,15 +1099,54 @@ void jshPinPulse(Pin pin, bool value, JsVarFloat time){
  
 /// Can the given pin be watched? it may not be possible because of conflicts
 bool jshCanWatch(Pin pin){
-        return;
+  if (jshIsPinValid(pin)) {
+    return watchedPins[pinInfo[pin].pin]==PIN_UNDEFINED;
+  } else
+    return false;;
 }
  
 /// start watching pin - return the EXTI (IRQ number flag) associated with it
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch){
-        return;
+  if (jshIsPinValid(pin)) {
+    // TODO: check for DUPs, also disable interrupt
+    /*int idx = pinToPinSource(IOPIN_DATA[pin].pin);
+    if (pinInterrupt[idx].pin>PININTERRUPTS) jsError("Interrupt already used");
+    pinInterrupt[idx].pin = pin;
+    pinInterrupt[idx].fired = false;
+    pinInterrupt[idx].callbacks = ...;*/
+
+	if (shouldWatch) {
+      // set as input
+      if (!jshGetPinStateIsManual(pin)){
+        jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+	  }
+
+      LL_SYSCFG_SetEXTISource(stmPortSource(pin), stmPinSource(pin));
+    }
+    watchedPins[pinInfo[pin].pin] = (Pin)(shouldWatch ? pin : PIN_UNDEFINED);
+
+	LL_EXTI_InitTypeDef s;
+    LL_EXTI_StructInit(&s);
+    s.Line_0_31 = stmExtI(pin);
+    s.Mode =  LL_EXTI_MODE_IT;
+    s.Trigger = LL_EXTI_TRIGGER_RISING_FALLING;
+    s.LineCommand = shouldWatch ? ENABLE : DISABLE;
+    LL_EXTI_Init(&s);
+
+    return shouldWatch ? (EV_EXTI0+pinInfo[pin].pin)  : EV_NONE;
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  return EV_NONE;
 }
- 
- 
+
+/// Check the pin associated with this EXTI - return true if the pin's input is a logic 1
+bool jshGetWatchedPinState(IOEventFlags device) {
+  int exti = IOEVENTFLAGS_GETTYPE(device) - EV_EXTI0;
+  Pin pin = watchedPins[exti];
+  if (jshIsPinValid(pin))
+    return LL_GPIO_IsInputPinSet(stmPort(pin), stmPin(pin));
+  return false;
+}
+
 /// Given a Pin, return the current pin function associated with it
 JshPinFunction jshGetCurrentPinFunction(Pin pin){
         return;
@@ -1107,15 +1170,11 @@ void jshKickWatchDog(void){
         return;
 }
  
-/// Check the pin associated with this EXTI - return true if the pin's input is a logic 1
-bool jshGetWatchedPinState(IOEventFlags device){
-        return;
-}
  
  
 /// Given an event, check the EXTI flags and see if it was for the given pin
 bool jshIsEventForPin(IOEvent *event, Pin pin){
-        return;
+  return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(pin);
 }
 
 
