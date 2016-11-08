@@ -178,21 +178,83 @@ void SysTick_Handler(void)
 /*  file (startup_stm32l4xx.s).                                               */
 /******************************************************************************/
 
-/**
-  * @brief  This function handles external lines 10 to 15 interrupt request.
-  * @param  None
-  * @retval None
-  */
-void EXTI15_10_IRQHandler(void)
-{
-  /* Manage Flags */
-  if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_13) != RESET)
-  {
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_13);
-
-    /* Handle user button press in dedicated function */
-    //UserButton_Callback(); 
-  }
+void EXTI0_IRQHandler(void) {
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_0) == SET) {
+      jshPushIOWatchEvent(EV_EXTI0);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_0);
+    }
+}
+void EXTI1_IRQHandler(void) {
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1) == SET) {
+      jshPushIOWatchEvent(EV_EXTI1);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_1);
+    }
+}
+void EXTI2_IRQHandler(void) {
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_2) == SET) {
+      jshPushIOWatchEvent(EV_EXTI2);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_2);
+    }
+}
+void EXTI3_IRQHandler(void) {
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_3) == SET) {
+      jshPushIOWatchEvent(EV_EXTI3);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_3);
+    }
+}
+void EXTI4_IRQHandler(void) {
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_4) == SET) {
+      jshPushIOWatchEvent(EV_EXTI4);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_4);
+    }
+}
+void EXTI9_5_IRQHandler(void) {
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_5) == SET) {
+      jshPushIOWatchEvent(EV_EXTI5);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_5);
+    }
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_6) == SET) {
+      jshPushIOWatchEvent(EV_EXTI6);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_6);
+    }
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_7) == SET) {
+      jshPushIOWatchEvent(EV_EXTI7);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_7);
+    }
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_8) == SET) {
+      jshPushIOWatchEvent(EV_EXTI8);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_8);
+    }
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_9) == SET) {
+      jshPushIOWatchEvent(EV_EXTI9);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_9);
+    }
+}
+void EXTI15_10_IRQHandler(void) {
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_10) == SET) {
+      jshPushIOWatchEvent(EV_EXTI10);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_10);
+    }
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_11) == SET) {
+      jshPushIOWatchEvent(EV_EXTI11);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_11);
+    }
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_12) == SET) {
+      jshPushIOWatchEvent(EV_EXTI12);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_12);
+    }
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_13) == SET) {
+      jshPushIOWatchEvent(EV_EXTI13);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_13);
+    }
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_14) == SET) {
+      jshPushIOWatchEvent(EV_EXTI14);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_14);
+    }
+    if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_15) == SET) {
+      jshPushIOWatchEvent(EV_EXTI15);
+      LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_15);
+    }
 }
 
 /**
