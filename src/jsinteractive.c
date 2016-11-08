@@ -1187,10 +1187,12 @@ void jsiTabComplete_printCommon(void *cbdata, JsVar *key) {
   JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
   if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, true)==0) {
     // Print, but do as 2 columns
-    if (data->lineLength==0 || data->lineLength>18) {
+    if (data->lineLength==0) {
       jsiConsolePrintf("%v",key);
       data->lineLength = jsvGetStringLength(key);
     } else {
+      if (data->lineLength>=20)
+        data->lineLength=19; // force one space
       while (data->lineLength<20) {
         jsiConsolePrintChar(' ');
         data->lineLength++;

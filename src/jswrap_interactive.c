@@ -216,7 +216,7 @@ void jswrap_interface_print(JsVar *v) {
     if (jsvIsString(v))
       jsiConsolePrintStringVar(v);
     else
-      jsfPrintJSON(v, JSON_PRETTY | JSON_SOME_NEWLINES);
+      jsfPrintJSON(v, JSON_PRETTY | JSON_SOME_NEWLINES | JSON_SHOW_OBJECT_NAMES);
     jsvUnLock(v);
     jsvObjectIteratorNext(&it);
     if (jsvObjectIteratorHasValue(&it))
