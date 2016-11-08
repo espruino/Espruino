@@ -46,6 +46,8 @@
             nRF5x: Added list of free flash areas
             Make sure Puck.js users can't overwrite bootloader/softdevice (doing so would brick the board)
             Fix micro:bit/nRF51 ctrl-c behaviour (fix #905)
+            Simplified process.env on devices with little memory
+            nRF5x: fixed serial number reporting
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
