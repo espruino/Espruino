@@ -14,7 +14,6 @@
 #include "jsinteractive.h"
 #include "jsdevices.h"
 #include "jswrap_promise.h"
-#include "jswrap_object.h"
 #include "jswrap_interactive.h"
 #include "jswrap_string.h"
 #include "jsnative.h"
@@ -783,9 +782,9 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
   if (callback) {
     JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_setScan_cb, JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
     if (fn) {
-      JsVar *fnb = jswrap_function_bind(fn, callback, 0);
-      jsvObjectSetChild(execInfo.root, BLE_SCAN_EVENT, fnb);
-      jsvUnLock2(fn, fnb);
+      jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, callback);
+      jsvObjectSetChild(execInfo.root, BLE_SCAN_EVENT, fn);
+      jsvUnLock(fn);
     }
   } else
     jsvObjectRemoveChild(execInfo.root, BLE_SCAN_EVENT);
@@ -1182,9 +1181,9 @@ JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options) {
   if (bleNewTask(BLETASK_REQUEST_DEVICE, 0)) {
     JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_requestDevice_finish, JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
     if (fn) {
-      JsVar *fnb = jswrap_function_bind(fn, options, 0);
-      jswrap_nrf_bluetooth_findDevices(fnb, timeout);
-      jsvUnLock2(fn, fnb);
+      jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, options);
+      jswrap_nrf_bluetooth_findDevices(fn, timeout);
+      jsvUnLock(fn);
     }
     promise = jsvLockAgainSafe(blePromise);
   }
