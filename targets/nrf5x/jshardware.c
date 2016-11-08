@@ -959,6 +959,17 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 }
 
 
+bool jshFlashWriteProtect(uint32_t addr) {
+#if PUCKJS
+  /* It's vital we don't let anyone screw with the softdevice or bootloader.
+   * Recovering from changes would require soldering onto SWDIO and SWCLK pads!
+   */
+  if (addr<0x1f000) return true; // softdevice
+  if (addr>=0x78000) return true; // bootloader
+#endif
+  return false;
+}
+
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
   if (addr > (NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE))
@@ -968,9 +979,26 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
   return true;
 }
 
+static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
+}
+
 JsVar *jshFlashGetFree() {
-  // not implemented, or no free pages.
-  return 0;
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+  /* Try and find pages after the end of firmware but before saved code */
+  extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
+  uint32_t firmwareEnd = (uint32_t)&LINKER_ETEXT_VAR;
+  uint32_t pAddr, pSize;
+  jshFlashGetPage(firmwareEnd, &pAddr, &pSize);
+  firmwareEnd = pAddr+pSize;
+  if (firmwareEnd < FLASH_SAVED_CODE_START)
+    addFlashArea(jsFreeFlash, firmwareEnd, FLASH_SAVED_CODE_START-firmwareEnd);
+  return jsFreeFlash;
 }
 
 /// Erase the flash page containing the address.
@@ -978,6 +1006,9 @@ void jshFlashErasePage(uint32_t addr) {
   uint32_t startAddr;
   uint32_t pageSize;
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
+    return;
+  if (jshFlashWriteProtect(startAddr) ||
+      jshFlashWriteProtect(startAddr+pageSize-1))
     return;
   uint32_t err;
   flashIsBusy = true;
@@ -1001,6 +1032,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
  */
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   //jsiConsolePrintf("\njshFlashWrite 0x%x addr 0x%x -> 0x%x, len %d\n", *(uint32_t*)buf, (uint32_t)buf, addr, len);
+  if (jshFlashWriteProtect(addr)) return;
   uint32_t err;
   flashIsBusy = true;
   while ((err = sd_flash_write((uint32_t*)addr, (uint32_t *)buf, len>>2)) == NRF_ERROR_BUSY);

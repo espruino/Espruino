@@ -43,6 +43,8 @@
             Add spaces between large tab completes
             Correct the handling of exceptions in promises
             Ensure that exceptions have a 'stack' attribute if they can have children
+            nRF5x: Added list of free flash areas
+            Make sure Puck.js users can't overwrite bootloader/softdevice (doing so would brick the board)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
