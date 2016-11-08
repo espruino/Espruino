@@ -72,7 +72,6 @@
 
  */
 
-static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 /// For flash - whether it is busy or not...
@@ -116,7 +115,6 @@ void sys_evt_handler(uint32_t sys_evt) {
   }
 }
 
-#ifdef NRF52
 /* SysTick interrupt Handler. */
 void SysTick_Handler(void)  {
   /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
@@ -132,7 +130,6 @@ void SysTick_Handler(void)  {
     jsiOneSecondAfterStartup();
   }
 }
-#endif
 
 #ifdef NRF52
 NRF_PWM_Type *nrf_get_pwm(JshPinFunction func) {
@@ -217,8 +214,6 @@ void jshInit() {
     jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   }
 
-  init = 1;
-
   // Enable and sort out the timer
   nrf_timer_mode_set(NRF_TIMER1, NRF_TIMER_MODE_TIMER);
 #ifdef NRF52
@@ -279,12 +274,6 @@ void jshKill() {
 
 // stuff to do on idle
 void jshIdle() {
-#ifndef NRF52
-  if (init == 1) {
-    jsiOneSecondAfterStartup(); // Do this the first time we enter jshIdle() after we have called jshInit() and never again.
-    init = 0;
-  }
-#endif
 }
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
