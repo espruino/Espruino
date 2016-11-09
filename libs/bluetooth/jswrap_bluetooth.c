@@ -442,6 +442,38 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
 
 Change the services and characteristics Espruino advertises.
 
+To expose some information on Characteristic `ABCD` on service `BCDE` you could do:
+
+```
+NRF.setServices({
+  0xBCDE : {
+    0xABCD : {
+      value : "Hello",
+      readable : true
+    }
+  }
+});
+```
+
+Or to allow the 3 LEDs to be controlled by writing numbers 0 to 7 to a
+characteristic, you can do the following. `evt.data` is an array of
+bytes.
+
+```
+NRF.setServices({
+  0xBCDE : {
+    0xABCD : {
+      writable : true,
+      onWrite : function(evt) {
+        digitalWrite([LED3,LED2,LED1], evt.data[0]);
+      }
+    }
+  }
+});
+```
+
+You can supply many different options:
+
 ```
 NRF.setServices({
   0xBCDE : {
@@ -464,7 +496,7 @@ NRF.setServices({
 ```
 
 **Note:** UUIDs can be integers between `0` and `0xFFFF`, strings of
-the form `"0xABCD"`, or strings of the form `""ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD""`
+the form `"ABCD"`, or strings of the form `"ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD"`
 
 **Note:** Currently, services/characteristics can't be removed once added.
 As a result, calling setServices multiple times will cause characteristics
@@ -564,6 +596,7 @@ Update values for the services and characteristics Espruino advertises.
 Only services and characteristics previously declared using `setServices` are affected.
 
 To update the '0xABCD' characteristic in the '0xBCDE' service:
+
 ```
 NRF.updateServices({
   0xBCDE : {
@@ -1053,15 +1086,7 @@ The following filter types are implemented:
 * `namePrefix` - starting characters of device name
 
 ```
-NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }] }).then(function(device) {
-  console.log(device);
-  return device.gatt.connect();
-}).then(function(gatt) {
-  console.log("Connected");
-  gatt.disconnect();
-}).catch(function() {
-  console.log("Not found");
-});
+NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }] }).then(function(device) { ... });
 // or
 NRF.requestDevice({ filters: [{ services: ['1823'] }] }).then(function(device) { ... });
 ```
@@ -1071,6 +1096,40 @@ You can also specify a timeout to wait for devices in milliseconds. The default 
 ```
 NRF.requestDevice({ timeout:2000, filters: [ ... ] })
 ```
+
+As a full example, to send data to another Puck.js to turn an LED on:
+
+```
+var gatt;
+NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }] }).then(function(device) {
+  return device.gatt.connect();
+}).then(function(g) {
+  gatt = g;
+  return gatt.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
+}).then(function(service) {
+  return service.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
+}).then(function(characteristic) {
+  characteristic.writeValue("LED1.reset()\n");
+}).then(function() {
+  gatt.disconnect();
+  console.log("Done!");
+});
+```
+
+Or slightly more concisely, using ES6 arrow functions:
+
+```
+var gatt;
+NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }]}).then(
+  device => device.gatt.connect()).then(
+  g => (gatt=g).getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e")).then(
+  service => service.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e")).then(
+  characteristic => characteristic.writeValue("LED1.reset()\n")).then(
+  () => { gatt.disconnect(); console.log("Done!"); } );
+```
+
+Note that you'll have to keep track of the `gatt` variable so that you can
+disconnect the Bluetooth connection when you're done.
 
 **Note:** This is only available on some devices
 */
@@ -1643,69 +1702,3 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *cha
   return 0;
 #endif
 }
-
-/* ---------------------------------------------------------------------
- *                                                               TESTING
- * ---------------------------------------------------------------------
-
- // Scanning, getting a service, characteristic, and then writing it
-
-// getting all services
-var device;
-NRF.connect("d1:53:36:1a:7a:17 random").then(function(d) {
-  device = d;
-  console.log("Connected ",d);
-  return d.getPrimaryServices();
-}).then(function(s) {
-  console.log("Services ",s);
-  return s[2].getCharacteristics();
-}).then(function(c) {
-  console.log("Characteristics ",c);
-  return c[1].writeValue("LED1.set()\n");
-}).then(function() {
-  console.log("Written. Disconnecting");
-  device.disconnect();
-}).catch(function() {
-  console.log("Oops");
-});
-
-NRF.connect("d1:53:36:1a:7a:17 random").then(function(d) {
-  device = d;
-  console.log("Connected ",d);
-  return d.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
-}).then(function(s) {
-  console.log("Services ",s);
-  return s.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
-}).then(function(c) {
-  console.log("Characteristics ",c);
-  return c.writeValue("LED1.set()\n");
-}).then(function() {
-  console.log("Written. Disconnecting");
-  device.disconnect();
-}).catch(function() {
-  console.log("Oops");
-});
-
-
-// ------------------------------ on BLE server (microbit) - allow display of data
-NRF.setServices({
-  0xBCDE : {
-    0xABCD : {
-      value : "0", // optional
-      maxLen : 1, // optional (otherwise is length of initial value)
-      broadcast : false, // optional, default is false
-      readable : true,   // optional, default is false
-      writable : true,   // optional, default is false
-      onWrite : function(evt) { // optional
-        show(evt.data);
-      }
-    }
-    // more characteristics allowed
-  }
-  // more services allowed
-});
-
-
-
-
- */
