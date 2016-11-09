@@ -540,6 +540,7 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
     if (DEVICE_IS_I2C(device)) {
       jshI2CSetup(device, &inf);
     } else if (device == EV_NONE) {
+#ifndef SAVE_ON_FLASH
       // software mode - at least configure pins properly
       if (inf.pinSCL != PIN_UNDEFINED) {
         jshPinSetValue(inf.pinSCL, 1);
@@ -549,6 +550,7 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
         jshPinSetValue(inf.pinSDA, 1);
         jshPinSetState(inf.pinSDA,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
       }
+#endif
     }
     // Set up options, so we can initialise it on startup
     if (options)
@@ -595,6 +597,7 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
     if (DEVICE_IS_I2C(device)) {
       jshI2CWrite(device, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
     } else if (device == EV_NONE) {
+#ifndef SAVE_ON_FLASH
       // software
       JshI2CInfo inf;
       JsVar *options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
@@ -603,6 +606,7 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
         jsi2cWrite(&inf, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
       }
       jsvUnLock2(jsvObjectSetChild(parent, "started", jsvNewFromBool(inf.started)), options);
+#endif
     }
   }
 }
@@ -638,6 +642,7 @@ JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
   if (DEVICE_IS_I2C(device)) {
     jshI2CRead(device, (unsigned char)address, nBytes, buf, sendStop);
   } else if (device == EV_NONE) {
+#ifndef SAVE_ON_FLASH
     // software
     JshI2CInfo inf;
     JsVar *options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
@@ -646,6 +651,7 @@ JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
       jsi2cRead(&inf, (unsigned char)address, nBytes, buf, sendStop);
     }
     jsvUnLock2(jsvObjectSetChild(parent, "started", jsvNewFromBool(inf.started)), options);
+#endif
   } else return 0;
 
   JsVar *array = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, nBytes);

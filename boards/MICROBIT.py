@@ -24,7 +24,7 @@ info = {
  'default_console_rx' : "H1", # pin 25
  'default_console_baudrate' : "9600",
  'variables' : 100,
- 'binary_name' : 'espruino_%v_microbit.bin',
+ 'binary_name' : 'espruino_%v_microbit.hex',
  'build' : {
   'defines' : [
      'USE_GRAPHICS',
