@@ -1039,15 +1039,6 @@ static void jshResetPeripherals() {
 #endif
     jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
   }
-  // initialise button state
-#ifdef BTN1_PININDEX
-#ifdef BTN1_PINSTATE
-  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
-  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
-#else
-  jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
-#endif
-#endif
 }
 
 void jshInit() {
