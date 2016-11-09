@@ -49,6 +49,7 @@
             Simplified process.env on devices with little memory
             nRF5x: fixed serial number reporting
             Move button state setup to jshResetDevices
+            Had to remove 'dump()' and SW I2C on devices with very little flash memory (Olimexino/Micro:bit)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types

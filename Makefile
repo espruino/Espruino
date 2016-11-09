@@ -164,7 +164,6 @@ DEFINES+=-DESPRUINO_1V3
 USE_NET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
-USE_TV=1
 USE_HASHLIB=1
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
@@ -709,7 +708,7 @@ endif
 #                                                      Get info out of BOARDNAME.py
 # ---------------------------------------------------------------------------------
 
-PROJ_NAME=$(shell python scripts/get_board_info.py $(BOARD) "common.get_board_binary_name(board)"  | sed -e "s/.bin$$//")
+PROJ_NAME=$(shell python scripts/get_board_info.py $(BOARD) "common.get_board_binary_name(board)"  | sed -e "s/.bin$$//" | sed -e "s/.hex$$//")
 ifeq ($(PROJ_NAME),)
 $(error Unable to work out binary name (PROJ_NAME))
 endif
