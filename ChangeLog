@@ -48,6 +48,7 @@
             Fix micro:bit/nRF51 ctrl-c behaviour (fix #905)
             Simplified process.env on devices with little memory
             nRF5x: fixed serial number reporting
+            Move button state setup to jshResetDevices
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types
