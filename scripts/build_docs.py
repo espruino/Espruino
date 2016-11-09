@@ -72,21 +72,22 @@ def htmlify(d):
   idx = d.find("<code>")
   end = d.find("</code>", idx)
   while idx>=0 and end>idx:
-    codeBlock = d[idx+6:end]
+    codeBlock = d[idx:end+7]
     if codeBlock.find("\n")>=0:
       d = d[0:idx]+"<pre>"+codeBlock+"</pre>"+d[end+7:];
-    idx = d.find("<code>", idx+1)
+    idx = d.find("<code>", end+7+5+6)
     end = d.find("</code>", idx)
   return d;
 
 def html_description(d,current):
   if isinstance(d, list): d = "\n".join(d)
+  d = htmlify(d)
   for link in links:
     if link!=current:
       d = d.replace(" "+link+" ", " <a href=\"#"+links[link]+"\">"+link+"</a> ")
       d = d.replace(" "+link+".", " <a href=\"#"+links[link]+"\">"+link+"</a>.")
       d = d.replace(" "+link+"(", " <a href=\"#"+links[link]+"\">"+link+"</a>(")
-  html("<div class=\"description\">\n" + htmlify(d) + "\n</div>\n")
+  html("<div class=\"description\">\n" + d + "\n</div>\n")
 
 def get_prefixed_name(jsondata):
   s=""
@@ -282,12 +283,12 @@ for jsondata in detail:
         instances.append(j)
     if len(instances)>0:
       html("  <h4>Instances</h4>")
-      html("  <ul>")
+      text = ""
       for j in instances:
-        html("    <li><p class=\"instance\">"+j["name"]+"</p>");
-        if "description" in j: html_description(j["description"], j["name"])
-        html("    </li>")
-      html("  </ul>")
+        text = text + " * `"+j["name"]+"`";
+        if "description" in j: text = text + " " + j["description"]
+        text = text + "\n"
+      html_description(text, "")
 
     html("  <h4>Methods and Fields</h4>")
     html("  <ul>")
@@ -325,7 +326,7 @@ for jsondata in detail:
       if isinstance(desc, list): desc = '<br/>'.join(desc)
       extra = ""
       if  param[1]=="JsVarArray": extra = ", ...";
-      html("   <div class=\"param\">"+htmlify("**"+param[0]+extra+"** "+desc)+"</div>")
+      html("   <div class=\"param\">"+htmlify("`"+param[0]+extra+"` - "+desc)+"</div>")
   if "return" in jsondata:
     html("  <h4>Returns</h4>")
     desc = ""
