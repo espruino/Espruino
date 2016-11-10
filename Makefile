@@ -1791,6 +1791,7 @@ LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/component
 -L$(ESP_APP_TEMPLATE_PATH)/build/tcpip_adapter \
 -L$(ESP_APP_TEMPLATE_PATH)/build/vfs \
 -L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
+-L$(ESP_APP_TEMPLATE_PATH)/build/wpa_supplicant \
 -L$(ESP_APP_TEMPLATE_PATH)/build/arduino-esp32
 ESPTOOL?=
 INCLUDE+=\
@@ -1824,10 +1825,10 @@ $(ESP_IDF_PATH)/components/newlib/lib/libm.a \
 -ldriver \
 -lesp32 \
 $(ESP_IDF_PATH)/components/esp32/libhal.a  \
--lcrypto \
 -lcore \
 -lnet80211 \
 -lphy \
+-lwpa_supplicant \
 -lrtc \
 -lpp \
 -lwpa \
