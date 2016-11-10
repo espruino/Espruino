@@ -421,6 +421,10 @@ void jslGetNextToken() {
             }
             jslTokenAppendChar(ch);
             jsvStringIteratorAppend(&it, ch);
+          } else if (lex->currCh=='\n' && delim!='`') {
+            /* Was a newline - this is now allowed
+             * unless we're a template string */
+            break;
           } else {
             jslTokenAppendChar(lex->currCh);
             jsvStringIteratorAppend(&it, lex->currCh);
@@ -431,7 +435,7 @@ void jslGetNextToken() {
         if (lex->currCh==delim) {
           lex->tk =  delim=='`' ? LEX_TEMPLATE_LITERAL : LEX_STR;
         } else
-          lex->tk = LEX_UNFINISHED_STR;
+          lex->tk =  delim=='`' ? LEX_UNFINISHED_TEMPLATE_LITERAL : LEX_UNFINISHED_STR;
         jslGetNextCh();
       } break;
       case JSLJT_EXCLAMATION: jslSingleChar();
@@ -626,6 +630,8 @@ void jslTokenAsString(int token, char *str, size_t len) {
   case LEX_STR : strncpy(str, "STRING", len); return;
   case LEX_TEMPLATE_LITERAL : strncpy(str, "TEMPLATE LITERAL", len); return;
   case LEX_UNFINISHED_STR : strncpy(str, "UNFINISHED STRING", len); return;
+  case LEX_UNFINISHED_TEMPLATE_LITERAL : strncpy(str, "UNFINISHED TEMPLATE LITERAL", len); return;
+  case LEX_UNFINISHED_COMMENT : strncpy(str, "UNFINISHED COMMENT", len); return;
   }
   if (token>=LEX_EQUAL && token<LEX_R_LIST_END) {
     const char tokenNames[] =
