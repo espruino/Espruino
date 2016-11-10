@@ -268,6 +268,7 @@ void jslGetNextToken() {
       break;
       case 'c': if (jslIsToken("case", 1)) lex->tk = LEX_R_CASE;
       else if (jslIsToken("catch", 1)) lex->tk = LEX_R_CATCH;
+      else if (jslIsToken("const", 1)) lex->tk = LEX_R_CONST;
       else if (jslIsToken("continue", 1)) lex->tk = LEX_R_CONTINUE;
       break;
       case 'd': if (jslIsToken("default", 1)) lex->tk = LEX_R_DEFAULT;
@@ -285,6 +286,8 @@ void jslGetNextToken() {
       case 'i': if (jslIsToken("if", 1)) lex->tk = LEX_R_IF;
       else if (jslIsToken("in", 1)) lex->tk = LEX_R_IN;
       else if (jslIsToken("instanceof", 1)) lex->tk = LEX_R_INSTANCEOF;
+      break;
+      case 'l': if (jslIsToken("let", 1)) lex->tk = LEX_R_LET;
       break;
       case 'n': if (jslIsToken("new", 1)) lex->tk = LEX_R_NEW;
       else if (jslIsToken("null", 1)) lex->tk = LEX_R_NULL;
@@ -672,6 +675,8 @@ void jslTokenAsString(int token, char *str, size_t len) {
         /*LEX_R_FUNCTION   */ "function\0"
         /*LEX_R_RETURN     */ "return\0"
         /*LEX_R_VAR :      */ "var\0"
+        /*LEX_R_LET :      */ "let\0"
+        /*LEX_R_CONST :    */ "const\0"
         /*LEX_R_THIS :     */ "this\0"
         /*LEX_R_THROW :    */ "throw\0"
         /*LEX_R_TRY :      */ "try\0"

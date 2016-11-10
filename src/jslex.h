@@ -66,6 +66,8 @@ typedef enum LEX_TYPES {
     LEX_R_FUNCTION,
     LEX_R_RETURN,
     LEX_R_VAR,
+    LEX_R_LET,
+    LEX_R_CONST,
     LEX_R_THIS,
     LEX_R_THROW,
     LEX_R_TRY,
