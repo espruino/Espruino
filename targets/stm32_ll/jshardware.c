@@ -56,6 +56,12 @@ BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 volatile unsigned int ticksSinceStart = 0;
 volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
 
+int JSH_DELAY_MULTIPLIER = 1;
+
+static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
+  return SystemCoreClock;
+}
+
 static ALWAYS_INLINE uint8_t pinToEVEXTI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint8_t)(EV_EXTI0+(pin-JSH_PIN0));
@@ -799,6 +805,12 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
 // see jshPinWatch/jshGetWatchedPinState
 Pin watchedPins[16];
 
+// simple 4 byte buffers for SPI
+#define JSH_SPIBUF_MASK 3 // 4 bytes
+volatile unsigned char jshSPIBufHead[SPI_COUNT];
+volatile unsigned char jshSPIBufTail[SPI_COUNT];
+volatile unsigned char jshSPIBuf[SPI_COUNT][4]; // 4 bytes packed into an int
+
 /**
   * @brief  System Clock Configuration
   *         The system Clock is configured as follows :
@@ -854,6 +866,47 @@ void SystemClock_Config(void)
   LL_SetSystemCoreClock(80000000);
 }
 
+static void jshResetPeripherals() {
+  // Set pin state to analog input - saves some power
+  Pin i;
+  for (i=0;i<JSH_PIN_COUNT;i++) {
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    if (i==DEFAULT_CONSOLE_TX_PIN) continue;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    if (i==DEFAULT_CONSOLE_RX_PIN) continue;
+#endif
+    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i)) {
+      jshPinSetState(i, JSHPINSTATE_ADC_IN);
+    }
+  }
+  // Initialise UART if we have a default console device on it
+  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
+    JshUSARTInfo inf;
+    jshUSARTInitInfo(&inf);
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
+#endif
+#ifdef DEFAULT_CONSOLE_BAUDRATE
+    inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
+#endif
+    jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
+  }
+  // initialise button state
+#ifdef BTN1_PININDEX
+#ifdef BTN1_PINSTATE
+  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
+#else
+  jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
+#endif
+}
+
+
 /// jshInit is called at start-up, put hardware dependent init stuff in this function
 void jshInit(){
 
@@ -870,36 +923,30 @@ void jshInit(){
   SystemClock_Config();
 
   // enable clocks
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ALL);
 
-#if 1 // debug
-  {
-    int i = 0;
-	/* Configure IO in output push-pull mode to drive external LED2 */
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_5, LL_GPIO_MODE_OUTPUT);
-    /* Toggle IO in an infinite loop */
-    for(i=0;i<10;i++)
-    {
-      LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_5);
-      /* Insert delay 250 ms */
-      LL_mDelay(150);
-    }
-  }
+#ifdef LED1_PININDEX
+  // turn led on (status)
+  jshPinOutput(LED1_PININDEX, 1);
 #endif
-  jshUSARTInitInfo(&inf);
-#ifdef DEFAULT_CONSOLE_TX_PIN
-  inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
-#endif
-#ifdef DEFAULT_CONSOLE_RX_PIN
-  inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
-#endif
-#ifdef DEFAULT_CONSOLE_BAUDRATE
-  inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
-#endif
-  jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
 
-  SysTick_Config(SYSTICK_RANGE); // IT will be called every SYSTICK_RANGE/SystemCoreClock seconds
+  // PREEMPTION
+  ////NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+  // Slow the IO clocks down - we don't need them going so fast!
+  ////LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_2); // PCLK1 must be >13 Mhz for USB to work (see STM32F103 C/D/E errata)
+  ////LL_RCC_SetAPB2Prescaler(LL_RCC_APB1_DIV_4);
+  /* System Clock */
+  ////SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
+
+  SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK);
+
+  jshResetPeripherals();
+#ifdef LED1_PININDEX
+  // turn led back on (status) as it would have just been turned off
+  jshPinOutput(LED1_PININDEX, 1);
+#endif
 
   NVIC_EnableIRQ(EXTI0_IRQn);
   //NVIC_SetPriority(EXTI0_IRQn,IRQ_PRIOR_MED);
@@ -923,11 +970,67 @@ void jshInit(){
   NVIC_EnableIRQ(EXTI15_10_IRQn);
   NVIC_SetPriority(EXTI15_10_IRQn,IRQ_PRIOR_MED);
 
-  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
+#ifndef SAVE_ON_FLASH
+  // Get a random seed to put into rand's random number generator
+  ////srand(jshGetRandomNumber());
+#endif
 
+  /* Work out microsecond delay for jshDelayMicroseconds...
 
+   Different compilers/different architectures may run at different speeds so
+   we'll just time ourselves to see how fast we are at startup. We use SysTick
+   timer here because sadly it looks like the RC oscillator used by default
+   for the RTC on the Espruino board hasn't settled down by this point
+   (or it just may not be accurate enough).
+   */
+//  JSH_DELAY_OVERHEAD = 0;
+  JSH_DELAY_MULTIPLIER = 1024;
+  /* NOTE: we disable interrupts, so we can't spend longer than SYSTICK_RANGE in here
+   * as we'll overflow! */
 
+  jshInterruptOff();
+  jshDelayMicroseconds(1024); // just wait for stuff to settle
+  // AVERAGE OUT OF 3
+  int tStart = -(int)SysTick->VAL;
+  jshDelayMicroseconds(1024); // 1024 because we divide by 1024 in jshDelayMicroseconds
+  jshDelayMicroseconds(1024); // 1024 because we divide by 1024 in jshDelayMicroseconds
+  jshDelayMicroseconds(1024); // 1024 because we divide by 1024 in jshDelayMicroseconds
+  int tEnd3 = -(int)SysTick->VAL;
+  // AVERAGE OUT OF 3
+  jshDelayMicroseconds(2048);
+  jshDelayMicroseconds(2048);
+  jshDelayMicroseconds(2048);
+  int tEnd6 = -(int)SysTick->VAL;
+  int tIter = ((tEnd6 - tEnd3) - (tEnd3 - tStart))/3; // ticks taken to iterate JSH_DELAY_MULTIPLIER times
+  //JsSysTime tOverhead = (tEnd1 - tStart) - tIter; // ticks that are ALWAYS taken
+  /* So: ticks per iteration = tIter / JSH_DELAY_MULTIPLIER
+   *     iterations per tick = JSH_DELAY_MULTIPLIER / tIter
+   *     ticks per millisecond = jshGetTimeFromMilliseconds(1)
+   *     iterations/millisecond = iterations per tick * ticks per millisecond
+   *                              jshGetTimeFromMilliseconds(1) * JSH_DELAY_MULTIPLIER / tIter
+   *
+   *     iterations always taken = ticks always taken * iterations per tick
+   *                             = tOverhead * JSH_DELAY_MULTIPLIER / tIter
+   */
+  JSH_DELAY_MULTIPLIER = (int)(1.024 * getSystemTimerFreq() * JSH_DELAY_MULTIPLIER / (tIter*1000));
+//  JSH_DELAY_OVERHEAD = (int)(tOverhead * JSH_DELAY_MULTIPLIER / tIter);
+  jshInterruptOn();
 
+  /* Enable Utility Timer Update interrupt. We'll enable the
+   * utility timer when we need it. */
+  NVIC_EnableIRQ(UTIL_TIMER_IRQn);
+  NVIC_SetPriority(UTIL_TIMER_IRQn,IRQ_PRIOR_MED);
+
+  // reset SPI buffers
+  for (i=0;i<SPI_COUNT;i++) {
+    jshSPIBufHead[i] = 0;
+    jshSPIBufTail[i] = 0;
+  }
+
+#ifdef LED1_PININDEX
+  // now hardware is initialised, turn led off
+  jshPinOutput(LED1_PININDEX, 0);
+#endif
 
   return;
 }
@@ -1021,9 +1124,7 @@ void jshSetSystemTime(JsSysTime newTime){
 
 }
 
-static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
-  return SystemCoreClock;
-}
+
 
 static JsSysTime jshGetTimeForSecond() {
   return (JsSysTime)getSystemTimerFreq();
@@ -1049,10 +1150,15 @@ void jshInterruptOn(){
   __enable_irq();
 }
   ///< re-enable interrupts
+
+
 void jshDelayMicroseconds(int microsec){
-        return;
+  int iter = (int)(((long long)microsec * (long long)JSH_DELAY_MULTIPLIER) >> 10);
+//  iter -= JSH_DELAY_OVERHEAD;
+  if (iter<0) iter=0;
+  while (iter--) __NOP();
 }
-  ///< delay a few microseconds. Should use used sparingly and for very short periods - max 1ms
+///< delay a few microseconds. Should use used sparingly and for very short periods - max 1ms
 
 void jshPinSetValue(Pin pin, bool value){
     if (value)

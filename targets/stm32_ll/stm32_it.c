@@ -257,32 +257,71 @@ void EXTI15_10_IRQHandler(void) {
     }
 }
 
-/**
-  * Brief   This function handles USARTx Instance interrupt request.
-  * Param   None
-  * Retval  None
-  */
-void USART2_IRQHandler(void)
-{
-  /* Check RXNE flag value in ISR register */
-  if(LL_USART_IsActiveFlag_RXNE(USART2) && LL_USART_IsEnabledIT_RXNE(USART2))
-  {
-    /* RXNE flag will be cleared by reading of RDR register (done in call) */
-    /* Call function in charge of handling Character reception */
-    //USART_CharReception_Callback();
-	
-	jshPushIOCharEvent(EV_SERIAL2, LL_USART_ReceiveData8(USART2));
 
-
+static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
+  if (LL_USART_IsActiveFlag_FE(USART) != RESET) {
+    // If we have a framing error, push status info onto the event queue
+    jshPushIOEvent(
+        IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
   }
-  else
+  if (LL_USART_IsActiveFlag_PE(USART) != RESET) {
+    // If we have a parity error, push status info onto the event queue
+    jshPushIOEvent(
+        IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_PARITY_ERR, 0);
+  }
+  if(LL_USART_IsActiveFlag_RXNE(USART) != RESET) {
+    /* Clear the USART Receive interrupt */
+    //USART_ClearITPendingBit(USART, USART_IT_RXNE);
+    /* Read one byte from the receive data register */
+    jshPushIOCharEvent(device, (char)LL_USART_ReceiveData9(USART));
+  }
+  /* If overrun condition occurs, clear the ORE flag and recover communication */
+  if (LL_USART_IsActiveFlag_ORE(USART) != RESET)
   {
-    /* Call Error function */
-    Error_Callback();
+    (void)LL_USART_ReceiveData9(USART);
+  }
+  if(LL_USART_IsActiveFlag_TXE(USART) != RESET) {
+    /* If we have other data to send, send it */
+    int c = jshGetCharToTransmit(device);
+    if (c >= 0) {
+      LL_USART_TransmitData9(USART, (uint16_t)c);
+    } else
+      LL_USART_DisableIT_TXE(USART );
   }
 }
 
 
+void USART1_IRQHandler(void) {
+  USART_IRQHandler(USART1, EV_SERIAL1);
+}
+
+void USART2_IRQHandler(void) {
+  USART_IRQHandler(USART2, EV_SERIAL2);
+}
+
+#if defined(USART3) && USART_COUNT>=3
+void USART3_IRQHandler(void) {
+  USART_IRQHandler(USART3, EV_SERIAL3);
+}
+#endif
+
+#if defined(UART4) && USART_COUNT>=4
+void UART4_IRQHandler(void) {
+  USART_IRQHandler(UART4, EV_SERIAL4);
+}
+#endif
+
+#if defined(UART5) && USART_COUNT>=5
+void UART5_IRQHandler(void) {
+  USART_IRQHandler(UART5, EV_SERIAL5);
+}
+#endif
+
+#if defined(USART6) && USART_COUNT>=6
+void USART6_IRQHandler(void) {
+  USART_IRQHandler(USART6, EV_SERIAL6);
+}
+#endif
 
 /**
   * @}
