@@ -1921,7 +1921,9 @@ NO_INLINE JsVar *jspeStatementVar() {
   /* variable creation. TODO - we need a better way of parsing the left
    * hand side. Maybe just have a flag called can_create_var that we
    * set and then we parse as if we're doing a normal equals.*/
-  JSP_ASSERT_MATCH(LEX_R_VAR);
+  assert(lex->tk==LEX_R_VAR || lex->tk==LEX_R_LET || lex->tk==LEX_R_CONST);
+  jslGetNextToken();
+  ///TODO: Correctly implement CONST and LET - we just treat them like 'var' at the moment
   bool hasComma = true; // for first time in loop
   while (hasComma && lex->tk == LEX_ID && !jspIsInterrupted()) {
     JsVar *a = 0;
@@ -2494,7 +2496,9 @@ NO_INLINE JsVar *jspeStatement() {
     /* Empty statement - to allow things like ;;; */
     JSP_ASSERT_MATCH(';');
     return 0;
-  } else if (lex->tk==LEX_R_VAR) {
+  } else if (lex->tk==LEX_R_VAR ||
+            lex->tk==LEX_R_LET ||
+            lex->tk==LEX_R_CONST) {
     return jspeStatementVar();
   } else if (lex->tk==LEX_R_IF) {
     return jspeStatementIf();
