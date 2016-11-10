@@ -867,13 +867,18 @@ int jsiCountBracketsInInput() {
   JsLex lex;
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(inputLine);
-  while (lex.tk!=LEX_EOF && lex.tk!=LEX_UNFINISHED_COMMENT) {
+  while (lex.tk!=LEX_EOF &&
+         lex.tk!=LEX_UNFINISHED_COMMENT &&
+         lex.tk!=LEX_UNFINISHED_STR &&
+         lex.tk!=LEX_UNFINISHED_TEMPLATE_LITERAL) {
     if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
     if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
     if (brackets<0) break; // closing bracket before opening!
     jslGetNextToken(&lex);
   }
-  if (lex.tk==LEX_UNFINISHED_COMMENT)
+  if (lex.tk==LEX_UNFINISHED_STR)
+    brackets=0; // execute immediately so it can error
+  if (lex.tk==LEX_UNFINISHED_COMMENT || lex.tk==LEX_UNFINISHED_TEMPLATE_LITERAL)
     brackets=1000; // if there's an unfinished comment, we're in the middle of something
   jslKill();
   jslSetLex(oldLex);
