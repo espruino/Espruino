@@ -236,7 +236,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (bleInTask(BLETASK_CONNECT)) {
           // timeout!
-          bleCompleteTaskFail(BLETASK_CONNECT, 0);
+          bleCompleteTaskFailAndUnLock(BLETASK_CONNECT, jsvNewFromString("Connection Timeout"));
         } else
 #endif
         {
@@ -468,7 +468,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             jsvUnLock(bleTaskInfo);
             bleTaskInfo = t;
           }
-          bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, bleTaskInfo);
+          if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, bleTaskInfo);
+          else bleCompleteTaskFail(BLETASK_PRIMARYSERVICE, jsvNewFromString("No Services found"));
         } // else error
         break;
       }
@@ -518,7 +519,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             bleTaskInfo = t;
           }
           if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, bleTaskInfo);
-          else bleCompleteTaskFail(BLETASK_CHARACTERISTIC, 0);
+          else bleCompleteTaskFail(BLETASK_CHARACTERISTIC, jsvNewFromString("No Characteristics found"));
         }
         break;
       }
@@ -530,8 +531,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
         JsVar *data = jsvNewStringOfLength(p_read->len);
         if (data) jsvSetString(data, (char*)&p_read->data[0], p_read->len);
-        bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_READ, data);
-        jsvUnLock(data);
+        bleCompleteTaskSuccessAndUnLock(BLETASK_CHARACTERISTIC_READ, data);
         break;
       }
 

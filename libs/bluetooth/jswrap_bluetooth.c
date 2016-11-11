@@ -85,8 +85,16 @@ void bleCompleteTask(BleTask task, bool ok, JsVar *data) {
 void bleCompleteTaskSuccess(BleTask task, JsVar *data) {
   bleCompleteTask(task, true, data);
 }
+void bleCompleteTaskSuccessAndUnLock(BleTask task, JsVar *data) {
+  bleCompleteTask(task, true, data);
+  jsvUnLock(data);
+}
 void bleCompleteTaskFail(BleTask task, JsVar *data) {
   bleCompleteTask(task, false, data);
+}
+void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data) {
+  bleCompleteTask(task, false, data);
+  jsvUnLock(data);
 }
 
 // ------------------------------------------------------------------------------
@@ -834,7 +842,7 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
     "generate" : "jswrap_nrf_bluetooth_findDevices",
     "params" : [
       ["callback","JsVar","The callback to call with received advertising packets, or undefined to stop"],
-      ["time","JsVar","The time in milliseconds to scan for (defaults to 1000)"]
+      ["time","JsVar","The time in milliseconds to scan for (defaults to 2000)"]
     ]
 }
 Utility function to return a list of BLE devices detected in range.
@@ -886,7 +894,7 @@ void jswrap_nrf_bluetooth_findDevices_timeout_cb() {
 }
 void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *timeout) {
   // utility fn that uses setScan
-  JsVarFloat time = 1000;
+  JsVarFloat time = 2000;
   if (!jsvIsUndefined(timeout)) {
     time = jsvGetFloat(timeout);
     if (!jsvIsNumeric(timeout) || time < 10) {
@@ -1091,7 +1099,7 @@ NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }] }).then(function(device
 NRF.requestDevice({ filters: [{ services: ['1823'] }] }).then(function(device) { ... });
 ```
 
-You can also specify a timeout to wait for devices in milliseconds. The default is 1 second (1000):
+You can also specify a timeout to wait for devices in milliseconds. The default is 2 seconds (2000):
 
 ```
 NRF.requestDevice({ timeout:2000, filters: [ ... ] })
@@ -1217,13 +1225,14 @@ void jswrap_nrf_bluetooth_requestDevice_finish(JsVar *options, JsVar *devices) {
   } else {
     jsExceptionHere(JSET_TYPEERROR, "requestDevice expecting an array of filters, got %t", filters);
     bleCompleteTaskFail(BLETASK_REQUEST_DEVICE, 0);
+    jsvUnLock(filters);
+    return;
   }
   jsvUnLock(filters);
   if (foundDevice)
-    bleCompleteTaskSuccess(BLETASK_REQUEST_DEVICE, foundDevice);
+    bleCompleteTaskSuccessAndUnLock(BLETASK_REQUEST_DEVICE, foundDevice);
   else
-    bleCompleteTaskFail(BLETASK_REQUEST_DEVICE, 0);
-  jsvUnLock(foundDevice);
+    bleCompleteTaskFailAndUnLock(BLETASK_REQUEST_DEVICE, jsvNewFromString("No device found matching filters"));
 }
 #endif
 
