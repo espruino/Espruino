@@ -4,6 +4,7 @@
             Increased findDevices timeout to 2 seconds
             Allowed 16 bit UUIDs to be specified as simply "ABCD" (no "0x")
             Improved BLE error messages (especially from Promises)
+            Fix STM32F1 regression caused by F4 LSE fixes
 
      1v88 : jshSetEventCallback callbacks now get an argument with the channel number
             Tab complete now offers a much better set of completions (fix #926)
