@@ -1,6 +1,9 @@
      1v89 : Allow entering of multi-line Templated Literals on the command-line (fix #970)
             Make lexer fail when parsing non-templated strings with newlines in 
             Add 'let' and 'const' keywords - treat them like 'var' for now
+            Increased findDevices timeout to 2 seconds
+            Allowed 16 bit UUIDs to be specified as simply "ABCD" (no "0x")
+            Improved BLE error messages (especially from Promises)
 
      1v88 : jshSetEventCallback callbacks now get an argument with the channel number
             Tab complete now offers a much better set of completions (fix #926)

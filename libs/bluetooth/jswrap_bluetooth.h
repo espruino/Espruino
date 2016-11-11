@@ -29,7 +29,9 @@ extern JsVar *bleTaskInfo; // info related to the current task
 bool bleInTask(BleTask task);
 bool bleNewTask(BleTask task, JsVar *taskInfo);
 void bleCompleteTaskSuccess(BleTask task, JsVar *data);
+void bleCompleteTaskSuccessAndUnLock(BleTask task, JsVar *data);
 void bleCompleteTaskFail(BleTask task, JsVar *data);
+void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data);
 // ------------------------------------------------------------------------------
 void jswrap_nrf_init();
 bool jswrap_nrf_idle();

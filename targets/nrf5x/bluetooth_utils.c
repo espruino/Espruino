@@ -95,22 +95,25 @@ JsVar *bleAddrToStr(ble_gap_addr_t addr) {
  * Converts:
  *   Integers -> 16 bit BLE UUID
  *   "0xABCD"   -> 16 bit BLE UUID
+ *   "ABCD"     -> 16 bit BLE UUID
  *   "ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD" -> vendor specific BLE UUID
  */
 const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
   if (jsvIsInt(v)) {
     JsVarInt i = jsvGetInteger(v);
-    if (i<0 || i>0xFFFF) return "Integer out of range";
+    if (i<0 || i>0xFFFF) return "UUID Integer out of range";
     BLE_UUID_BLE_ASSIGN((*uuid), i);
     return 0;
   }
-  if (!jsvIsString(v)) return "Not a String or Integer";
+  if (!jsvIsString(v)) return "UUID Not a String or Integer";
   unsigned int expectedLength = 16;
   unsigned int startIdx = 0;
   if (jsvIsStringEqualOrStartsWith(v,"0x",true)) {
     // deal with 0xABCD vs ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD
     expectedLength = 2;
     startIdx = 2;
+  } else if (jsvGetStringLength(v)==4) {
+    expectedLength = 2;
   }
   uint8_t data[16];
   unsigned int dataLen = 0;
@@ -127,7 +130,7 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
     jsvStringIteratorNext(&it);
     if (hi<0 || lo<0) {
       jsvStringIteratorFree(&it);
-      return "String should only contain hex characters and dashes";
+      return "UUID string should only contain hex characters and dashes";
     }
     data[expectedLength - (dataLen+1)] = (unsigned)((hi<<4) | lo);
     dataLen++;
@@ -135,7 +138,7 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
   if (jsvStringIteratorHasChar(&it)) dataLen++; // make sure we fail is string too long
   jsvStringIteratorFree(&it);
   if (dataLen!=expectedLength) {
-    return "Not the right length (16)";
+    return "UUID not the right length (16 or 2 bytes)";
   }
   // now try and decode the UUID
   uint32_t err_code;
@@ -149,7 +152,7 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
     if (err_code == NRF_ERROR_NO_MEM)
       return "Too many custom UUIDs already";
   }
-  return err_code ? "BLE device error" : 0;
+  return err_code ? "BLE device error adding UUID" : 0;
 }
 
 /// Same as bleVarToUUID, but unlocks v
