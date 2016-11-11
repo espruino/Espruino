@@ -31,6 +31,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jspininfo.h"
+#include "rtosutil.h"
 
 #include "jswrap_esp32_network.h"
 
@@ -147,12 +148,21 @@ void jshIdle() {
   // * Busy polling is never good ... we should eventually use an interrupt
   //   driven mechanism.
   //
+#ifdef RTOS
+  char rxChar;int idx;int rx;
+  idx = task_getCurrentIndex();
+  rx = RTOStasks[idx].rx;
+  rxChar = queue_read(rx);
+  if(rxChar != NULL){ 
+	jshPushIOCharEvents(EV_SERIAL1, &rxChar, 1);
+  }
+#else
   char rxChar;
   STATUS status = uart_rx_one_char((uint8_t *)&rxChar);
   if (status == OK) {
     jshPushIOCharEvents(EV_SERIAL1, &rxChar, 1);
-  }
-  //ESP_LOGD(tag,"<< jshIdle");  // Can't debug log as called too often.
+  }	
+#endif  //ESP_LOGD(tag,"<< jshIdle");  // Can't debug log as called too often.
 }
 
 // ESP32 chips don't have a serial number but they do have a MAC address
@@ -355,13 +365,12 @@ void jshKickWatchDog() {
  * Get the state of the pin associated with the event flag.
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
-bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
   //ESP_LOGD(tagGPIO,">> jshGetWatchedPinState: eventFlag=%d", eventFlag);
   gpio_num_t gpioNum = pinToESP32Pin(eventFlag-EV_EXTI0);
   bool level = gpio_get_level(gpioNum);
   //ESP_LOGD(tagGPIO,"<< jshGetWatchedPinState: level=%d", level);
   return level;
-}}
+}
 
 
 /**
