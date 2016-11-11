@@ -1141,7 +1141,9 @@ void jshInit() {
     // Reset backup domain - allows us to set the RTC clock source
     RCC_BackupResetCmd(ENABLE);
     RCC_BackupResetCmd(DISABLE);
+#ifndef STM32F1
     RTC_WaitForSynchro();
+#endif
     // Turn both LSI(above) and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
     RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
     // Initially set the RTC up to use the internal oscillator
