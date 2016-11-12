@@ -202,9 +202,14 @@ void jshInit() {
 
   BITFIELD_CLEAR(jshPinSoftPWM);
 
+#ifdef DEFAULT_CONSOLE_RX_PIN
+#if !defined(NRF51822DK)
   // Only init UART if something is connected and RX is pulled up on boot...
   jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
   if (jshPinGetValue(DEFAULT_CONSOLE_RX_PIN)) {
+#else
+  if (true) { // need to force UART for nRF51DK
+#endif
     jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN);
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
@@ -213,6 +218,7 @@ void jshInit() {
     inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
     jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   }
+#endif
 
   // Enable and sort out the timer
   nrf_timer_mode_set(NRF_TIMER1, NRF_TIMER_MODE_TIMER);
