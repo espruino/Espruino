@@ -8,13 +8,19 @@ sudo apt-get -y install git
 sudo apt-get -y install lib32z1 lib32ncurses5 lib32bz2-1.0
 sudo apt-get -y install lib32ncurses5
 sudo apt-get -y install ia32-libs
+
+sudo apt-get python27
+
+sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa
+sudo apt-get update
+sudo apt-get install gcc-arm-embedded
  
 # download known working version of arm-none-eabi-gcc
-sudo mkdir ~/gcc-temp
-cd ~/gcc-temp
-sudo wget https://launchpad.net/gcc-arm-embedded/4.8/4.8-2014-q3-update/+download/gcc-arm-none-eabi-4_8-2014q3-20140805-linux.tar.bz2
-cd /usr/local
-sudo tar xjf ~/gcc-temp/gcc-arm-none-eabi-4_8-2014q3-20140805-linux.tar.bz2
+#sudo mkdir ~/gcc-temp
+#cd ~/gcc-temp
+#sudo wget https://launchpad.net/gcc-arm-embedded/4.8/4.8-2014-q3-update/+download/gcc-arm-none-eabi-4_8-2014q3-20140805-linux.tar.bz2
+#cd /usr/local
+#sudo tar xjf ~/gcc-temp/gcc-arm-none-eabi-4_8-2014q3-20140805-linux.tar.bz2
  
 # apply setup config to add compiler to PATH
 # from stackoverflow i.e http://stackoverflow.com/a/28279205
