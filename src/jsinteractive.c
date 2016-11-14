@@ -54,7 +54,7 @@ JsVarRef watchArray = 0; // Linked List of input watches to check and run
 IOEventFlags consoleDevice = DEFAULT_CONSOLE_DEVICE; ///< The console device for user interaction
 Pin pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 Pin pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
-JsiStatus jsiStatus;
+JsiStatus jsiStatus = 0;
 JsSysTime jsiLastIdleTime;  ///< The last time we went around the idle loop - use this for timers
 uint32_t jsiTimeSinceCtrlC;
 // ----------------------------------------------------------------------------
