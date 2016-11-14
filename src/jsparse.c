@@ -1442,11 +1442,14 @@ NO_INLINE JsVar *jspeExpressionOrArrowFunction() {
   JsVar *funcVar = 0;
   bool allNames = true;
   while (lex->tk!=')' && !JSP_SHOULDNT_PARSE) {
-    if (allNames && jsvIsName(a))
+    if (allNames) {
+      // we never get here if this isn't a name and a string
+      jsvUnLock(funcVar);
       funcVar = jspeAddNamedFunctionParameter(funcVar, a);
+    }
     jsvUnLock(a);
     a = jspeAssignmentExpression();
-    if (!jsvIsName(a)) allNames = false;
+    if (!(jsvIsName(a) && jsvIsString(a))) allNames = false;
     if (lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',', jsvUnLock2(a,funcVar), 0);
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(a,funcVar), 0);
