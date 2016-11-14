@@ -753,9 +753,13 @@ void jshDoSysTick() {
       RCC_BackupResetCmd(DISABLE);
       if (!isUsingLSI) {
         RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+#ifndef STM32F1
         while(RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET);
+#endif
       }
+#ifndef STM32F1
       RTC_WaitForSynchro();
+#endif
       jshSetupRTC(isUsingLSI);
 #ifdef STM32F1
       RTC_SetCounter(time);
