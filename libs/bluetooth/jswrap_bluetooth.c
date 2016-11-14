@@ -647,6 +647,7 @@ otherwise the characteristic will be updated but no notification will be sent.
 */
 void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
   uint32_t err_code;
+  bool ok = true;
 
   if (jsvIsObject(data)) {
     JsvObjectIterator it;
@@ -666,7 +667,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
       JsvObjectIterator serviceit;
       jsvObjectIteratorNew(&serviceit, serviceVar);
 
-      while (jsvObjectIteratorHasValue(&serviceit)) {
+      while (ok && jsvObjectIteratorHasValue(&serviceit)) {
         ble_uuid_t char_uuid;
         if ((errorStr = bleVarToUUIDAndUnLock(&char_uuid,
             jsvObjectIteratorGetKey(&serviceit)))) {
@@ -695,12 +696,10 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
               gatts_value.offset = 0;
               gatts_value.p_value = (uint8_t*)vPtr;
               err_code = sd_ble_gatts_value_set(m_conn_handle, char_handle, &gatts_value);
-              if (err_code != NRF_SUCCESS) {
-                APP_ERROR_CHECK(err_code);
-              }
-
-              // Notify/indicate connected clients if necessary
-              if ((notification_requested || indication_requested) && jsble_has_simple_connection()) {
+              if (jsble_check_error(err_code)) {
+                ok = false;
+              } if ((notification_requested || indication_requested) && jsble_has_simple_connection()) {
+                // Notify/indicate connected clients if necessary
                 memset(&hvx_params, 0, sizeof(hvx_params));
                 uint16_t len = (uint16_t)vLen;
                 hvx_params.handle = char_handle;
@@ -714,7 +713,8 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
                   && (err_code != NRF_ERROR_INVALID_STATE)
                   && (err_code != BLE_ERROR_NO_TX_PACKETS)
                   && (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) {
-                  APP_ERROR_CHECK(err_code);
+                  if (jsble_check_error(err_code))
+                    ok = false;
                 }
               }
             }
