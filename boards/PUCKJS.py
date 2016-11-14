@@ -17,7 +17,7 @@ import pinutils;
 
 info = {
  'name' : "PuckJS",
- 'link' :  [ "" ],
+ 'link' :  [ "http://www.espruino.com/PuckJS" ],
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D28",
  'default_console_rx' : "D29",
@@ -25,7 +25,7 @@ info = {
  # Number of variables can be WAY higher on this board
  'variables' : 2000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_puckjs.bin',
+ 'binary_name' : 'espruino_%v_puckjs.hex',
  'build' : {
   'defines' : [
      'USE_BLUETOOTH'
@@ -46,10 +46,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((121 - 3) * 4096), # Bootloader takes pages 121-127
+    'address' : ((120 - 3) * 4096), # Bootloader takes pages 120-127
     'page_size' : 4096,
     'pages' : 3,
-    'flash_available' : 512 - ((31 + 7 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 7, code 3. Each page is 4 kb. 
+    'flash_available' : 512 - ((31 + 8 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 8, code 3. Each page is 4 kb. 
   },
 };
 

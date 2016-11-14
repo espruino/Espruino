@@ -1,3 +1,14 @@
+     1v89 : Allow entering of multi-line Templated Literals on the command-line (fix #970)
+            Make lexer fail when parsing non-templated strings with newlines in 
+            Add 'let' and 'const' keywords - treat them like 'var' for now
+            Increased findDevices timeout to 2 seconds
+            Allowed 16 bit UUIDs to be specified as simply "ABCD" (no "0x")
+            Improved BLE error messages (especially from Promises)
+            Fix STM32F1 regression caused by F4 LSE fixes
+            Fix comma operator regression caused by recent arrow functions addition
+            Remove RTC changes for STM32F1
+            nRF5x: Make sure that updateServices(notify) on a non-notifyable service will just error, rather than reset (fix #973)
+
      1v88 : jshSetEventCallback callbacks now get an argument with the channel number
             Tab complete now offers a much better set of completions (fix #926)
             Fix emitting of events with long names (fix #906)
@@ -34,6 +45,22 @@
             nRF5x: Add Puck.js self-test code, fix issue where analogRead reset pin state
             nRF5x: Change central mode API to mirror Web Bluetooth
             Fix switch fall-through to default (fix #964)
+            Started using jsvObjectRemoveChild to remove some internal object properties that are undefined (frees some variables)
+            Added E.dumpLockedVars() in non-release builds to help debug memory leaks in libraries
+            nRF5x: Added NRF.findDevices as a helper function to easily list BT devices in range
+            Console now prints the type of Objects if their constructor is in the root scope
+            nRF5x: setScan/findDevices now parses advertising data
+            nRF5x: Added Web Bluetooth style requestDevice function
+            Add spaces between large tab completes
+            Correct the handling of exceptions in promises
+            Ensure that exceptions have a 'stack' attribute if they can have children
+            nRF5x: Added list of free flash areas
+            Make sure Puck.js users can't overwrite bootloader/softdevice (doing so would brick the board)
+            Fix micro:bit/nRF51 ctrl-c behaviour (fix #905)
+            Simplified process.env on devices with little memory
+            nRF5x: fixed serial number reporting
+            Move button state setup to jshResetDevices
+            Had to remove 'dump()' and SW I2C on devices with very little flash memory (Olimexino/Micro:bit)
 
      1v87 : Add support for compiling with float-abi=hard (even if it doesn't give us real-world benefits)
             Add shortcut for quick execution of common call types

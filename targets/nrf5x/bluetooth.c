@@ -64,6 +64,7 @@ static bool           m_is_wl_changed;                                      /**<
 #define SCAN_INTERVAL                   MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan interval in units of 0.625 millisecond - 100 msec */
 #define SCAN_WINDOW                     MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan window in units of 0.625 millisecond - 100 msec */
 
+#define ADVERTISING_INTERVAL            MSEC_TO_UNITS(750, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(7.5, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (7.5 ms), Connection interval uses 1.25 ms units. */
 #define MAX_CONN_INTERVAL               MSEC_TO_UNITS(20, UNIT_1_25_MS)             /**< Maximum acceptable connection interval (20 ms (was 75)), Connection interval uses 1.25 ms units. */
@@ -102,7 +103,7 @@ uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_INVALID
 bool nfcEnabled = false;
 #endif
 
-uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(375, UNIT_0_625_MS);           /**< The advertising interval (in units of 0.625 ms). */
+uint16_t bleAdvertisingInterval = ADVERTISING_INTERVAL;
 
 volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
@@ -132,11 +133,7 @@ bool jsble_has_central_connection() {
 
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
 bool jsble_has_simple_connection() {
-#if CENTRAL_LINK_COUNT>0
   return (m_conn_handle != BLE_CONN_HANDLE_INVALID);
-#else
-  return false;
-#endif
 }
 
 /// Checks for error and reports an exception if there was one. Return true on error
@@ -222,7 +219,8 @@ bool nus_transmit_string() {
     ch = jshGetCharToTransmit(EV_BLUETOOTH);
   }
   if (idx>0) {
-    if (ble_nus_string_send(&m_nus, buf, idx) == NRF_SUCCESS)
+    uint32_t err_code = ble_nus_string_send(&m_nus, buf, idx);
+    if (err_code == NRF_SUCCESS)
       bleStatus |= BLE_IS_SENDING;
   }
   return idx>0;
@@ -231,6 +229,12 @@ bool nus_transmit_string() {
 void SWI1_IRQHandler(bool radio_evt) {
   if (bleStatus & BLE_NUS_INITED)
     nus_transmit_string();
+#ifndef NRF52
+  /* NRF52 has a systick. On nRF51 we just hook on
+  to this, since it happens quite often */
+  void SysTick_Handler(void);
+  SysTick_Handler();
+#endif
 }
 
 /// Function for the application's SoftDevice event handler.
@@ -244,7 +248,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (bleInTask(BLETASK_CONNECT)) {
           // timeout!
-          bleCompleteTaskFail(BLETASK_CONNECT, 0);
+          bleCompleteTaskFailAndUnLock(BLETASK_CONNECT, jsvNewFromString("Connection Timeout"));
         } else
 #endif
         {
@@ -269,9 +273,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-          JsVar *remoteServer = jspNewObject(0, "BluetoothRemoteGATTServer");
-          bleCompleteTaskSuccess(BLETASK_CONNECT, remoteServer);
-          jsvUnLock(remoteServer);
+          jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
+          bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
         }
 #endif
         break;
@@ -418,7 +421,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (evt) {
           jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
           //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(p_adv->peer_addr.addr_type));
-          jsvObjectSetChildAndUnLock(evt, "addr", bleAddrToStr(p_adv->peer_addr));
+          jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
           JsVar *data = jsvNewStringOfLength(p_adv->dlen);
           if (data) {
             jsvSetString(data, (char*)p_adv->data, p_adv->dlen);
@@ -426,6 +429,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             jsvUnLock(data);
             jsvObjectSetChildAndUnLock(evt, "data", ab);
           }
+          // push onto queue
           jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
           jsvUnLock(evt);
           jshHadEvent();
@@ -458,11 +462,10 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       // For discovery....
       case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: {
         bool done = true;
-
-        JsVar *srvcs = jsvObjectGetChild(execInfo.hiddenRoot, "bleSvcs", JSV_ARRAY);
+        if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
         if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
             p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count!=0) {
-          if (srvcs) {
+          if (bleTaskInfo) {
             int i;
             // Should actually return 'BLEService' object here
             for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++) {
@@ -476,7 +479,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
                 jsvObjectSetChildAndUnLock(o,"isPrimary", jsvNewFromBool(true));
                 jsvObjectSetChildAndUnLock(o,"start_handle", jsvNewFromInteger(p_srv->handle_range.start_handle));
                 jsvObjectSetChildAndUnLock(o,"end_handle", jsvNewFromInteger(p_srv->handle_range.end_handle));
-                jsvArrayPushAndUnLock(srvcs, o);
+                jsvArrayPushAndUnLock(bleTaskInfo, o);
               }
             }
           }
@@ -490,22 +493,21 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
         if (done) {
           // When done, send the result to the handler
-          if (srvcs && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
+          if (bleTaskInfo && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
             // single item because filtering
-            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(srvcs));
-            jsvUnLock(srvcs);
-            srvcs = t;
+            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo));
+            jsvUnLock(bleTaskInfo);
+            bleTaskInfo = t;
           }
-          bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, srvcs);
-          jsvObjectSetChild(execInfo.hiddenRoot, "bleSvcs", 0);
+          if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, bleTaskInfo);
+          else bleCompleteTaskFail(BLETASK_PRIMARYSERVICE, jsvNewFromString("No Services found"));
         } // else error
-        jsvUnLock(srvcs);
         break;
       }
       case BLE_GATTC_EVT_CHAR_DISC_RSP: {
-        JsVar *chars = jsvObjectGetChild(execInfo.hiddenRoot, "bleChrs", JSV_ARRAY);
         bool done = true;
-        if (chars &&
+        if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
+        if (bleTaskInfo &&
             p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
             p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count!=0) {
           int i;
@@ -520,7 +522,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
               jsvObjectSetChildAndUnLock(o,"handle_value", jsvNewFromInteger(p_chr->handle_value));
               jsvObjectSetChildAndUnLock(o,"handle_decl", jsvNewFromInteger(p_chr->handle_decl));
               // char_props?
-              jsvArrayPushAndUnLock(chars, o);
+              jsvArrayPushAndUnLock(bleTaskInfo, o);
             }
           }
 
@@ -541,16 +543,15 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
         if (done) {
           // When done, send the result to the handler
-          if (chars && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
+          if (bleTaskInfo && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
             // single item because filtering
-            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(chars));
-            jsvUnLock(chars);
-            chars = t;
+            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo));
+            jsvUnLock(bleTaskInfo);
+            bleTaskInfo = t;
           }
-          bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, chars);
-          jsvObjectSetChild(execInfo.hiddenRoot, "bleChrs", 0);
+          if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, bleTaskInfo);
+          else bleCompleteTaskFail(BLETASK_CHARACTERISTIC, jsvNewFromString("No Characteristics found"));
         }
-        jsvUnLock(chars);
         break;
       }
       case BLE_GATTC_EVT_DESC_DISC_RSP:
@@ -561,8 +562,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
         JsVar *data = jsvNewStringOfLength(p_read->len);
         if (data) jsvSetString(data, (char*)&p_read->data[0], p_read->len);
-        bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_READ, data);
-        jsvUnLock(data);
+        bleCompleteTaskSuccessAndUnLock(BLETASK_CHARACTERISTIC_READ, data);
         break;
       }
 
@@ -584,7 +584,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           if (characteristic) {
             // TODO: should return {target:characteristic} and set characteristic.value
             JsVar *data = jsvNewStringOfLength(p_hvx->len);
-            if (data) jsvSetString(data, p_hvx->data, p_hvx->len);
+            if (data) jsvSetString(data, (const char*)p_hvx->data, p_hvx->len);
             jsiQueueObjectCallbacks(characteristic, "characteristicvaluechanged", &data, 1);
             jshHadEvent();
           }
@@ -625,9 +625,15 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
   pm_on_ble_evt(p_ble_evt);
 
 #endif
-  ble_conn_params_on_ble_evt(p_ble_evt);
-  if (bleStatus & BLE_NUS_INITED)
-    ble_nus_on_ble_evt(&m_nus, p_ble_evt);
+  if (!((p_ble_evt->header.evt_id==BLE_GAP_EVT_CONNECTED) &&
+        (p_ble_evt->evt.gap_evt.params.connected.role != BLE_GAP_ROLE_PERIPH)) &&
+      !((p_ble_evt->header.evt_id==BLE_GAP_EVT_DISCONNECTED) &&
+         m_conn_handle != p_ble_evt->evt.gap_evt.conn_handle)) {
+    // Stuff in here should ONLY get called for Peripheral events (not central)
+    ble_conn_params_on_ble_evt(p_ble_evt);
+    if (bleStatus & BLE_NUS_INITED)
+      ble_nus_on_ble_evt(&m_nus, p_ble_evt);
+  }
 #if BLE_HIDS_ENABLED
   if (bleStatus & BLE_HID_INITED)
     ble_hids_on_ble_evt(&m_hids, p_ble_evt);
@@ -1346,19 +1352,21 @@ void jsble_kill() {
 /** Reset BLE to power-on defaults (ish) */
 void jsble_reset() {
   // if we were scanning, make sure we stop at reset!
-    if (bleStatus & BLE_IS_SCANNING) {
-      jswrap_nrf_bluetooth_setScan(0);
-    }
-    jswrap_nrf_bluetooth_setRSSIHandler(0);
+  if (bleStatus & BLE_IS_SCANNING) {
+    jswrap_nrf_bluetooth_setScan(0);
+  }
+  jswrap_nrf_bluetooth_setRSSIHandler(0);
 
-  #if CENTRAL_LINK_COUNT>0
-    // if we were connected to something, disconnect
-    if (jsble_has_central_connection()) {
-       sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-    }
-  #endif
-    // make sure we remove any existing services *AND* HID/UART changes
-    jswrap_nrf_bluetooth_setServices(0, 0);
+#if CENTRAL_LINK_COUNT>0
+  // if we were connected to something, disconnect
+  if (jsble_has_central_connection()) {
+     sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+  }
+#endif
+  // make sure we remove any existing services *AND* HID/UART changes
+  jswrap_nrf_bluetooth_setServices(0, 0);
+  // Set advertising interval back to default
+  bleAdvertisingInterval = ADVERTISING_INTERVAL;
 }
 
 /** Stop and restart the softdevice so that we can update the services in it -
@@ -1676,6 +1684,7 @@ void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, siz
   write_params.write_op = BLE_GATT_OP_WRITE_REQ;
   // BLE_GATT_OP_WRITE_REQ ===> BLE_GATTC_EVT_WRITE_RSP (write with response)
   // or BLE_GATT_OP_WRITE_CMD ===> BLE_EVT_TX_COMPLETE (simple write)
+  // or send multiple BLE_GATT_OP_PREP_WRITE_REQ,...,BLE_GATT_OP_EXEC_WRITE_REQ (with offset + 18 bytes in each for 'long' write)
   write_params.flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE;
   write_params.handle   = handle;
   write_params.offset   = 0;

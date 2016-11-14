@@ -301,6 +301,13 @@ JsVar *jspGetException() {
     JsVar *exception = jsvSkipName(exceptionName);
     jsvRemoveChild(execInfo.hiddenRoot, exceptionName);
     jsvUnLock(exceptionName);
+
+    JsVar *stack = jspGetStackTrace();
+    if (stack && jsvHasChildren(exception)) {
+      jsvObjectSetChild(exception, "stack", stack);
+    }
+    jsvUnLock(stack);
+
     return exception;
   }
   return 0;
@@ -1435,11 +1442,14 @@ NO_INLINE JsVar *jspeExpressionOrArrowFunction() {
   JsVar *funcVar = 0;
   bool allNames = true;
   while (lex->tk!=')' && !JSP_SHOULDNT_PARSE) {
-    if (allNames && jsvIsName(a))
+    if (allNames) {
+      // we never get here if this isn't a name and a string
+      jsvUnLock(funcVar);
       funcVar = jspeAddNamedFunctionParameter(funcVar, a);
+    }
     jsvUnLock(a);
     a = jspeAssignmentExpression();
-    if (!jsvIsName(a)) allNames = false;
+    if (!(jsvIsName(a) && jsvIsString(a))) allNames = false;
     if (lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',', jsvUnLock2(a,funcVar), 0);
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(a,funcVar), 0);
@@ -1914,7 +1924,9 @@ NO_INLINE JsVar *jspeStatementVar() {
   /* variable creation. TODO - we need a better way of parsing the left
    * hand side. Maybe just have a flag called can_create_var that we
    * set and then we parse as if we're doing a normal equals.*/
-  JSP_ASSERT_MATCH(LEX_R_VAR);
+  assert(lex->tk==LEX_R_VAR || lex->tk==LEX_R_LET || lex->tk==LEX_R_CONST);
+  jslGetNextToken();
+  ///TODO: Correctly implement CONST and LET - we just treat them like 'var' at the moment
   bool hasComma = true; // for first time in loop
   while (hasComma && lex->tk == LEX_ID && !jspIsInterrupted()) {
     JsVar *a = 0;
@@ -2348,16 +2360,10 @@ NO_INLINE JsVar *jspeStatementTry() {
     JSP_MATCH(')');
     if (exceptionVar) {
       // set the exception var up properly
-      JsVar *actualExceptionName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR, false);
-      if (actualExceptionName) {
-        JsVar *actualException = jsvSkipName(actualExceptionName);
-        jsvSetValueOfName(exceptionVar, actualException);
-        jsvUnLock(actualException);
-        // remove the actual exception
-        jsvRemoveChild(execInfo.hiddenRoot, actualExceptionName);
-        jsvUnLock(actualExceptionName);
-        // remove any stack trace
-        jsvRemoveNamedChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR);
+      JsVar *exception = jspGetException();
+      if (exception) {
+        jsvSetValueOfName(exceptionVar, exception);
+        jsvUnLock(exception);
       }
       // Now clear the exception flag (it's handled - we hope!)
       execInfo.execute = execInfo.execute & (JsExecFlags)~(EXEC_EXCEPTION|EXEC_ERROR_LINE_REPORTED);
@@ -2493,7 +2499,9 @@ NO_INLINE JsVar *jspeStatement() {
     /* Empty statement - to allow things like ;;; */
     JSP_ASSERT_MATCH(';');
     return 0;
-  } else if (lex->tk==LEX_R_VAR) {
+  } else if (lex->tk==LEX_R_VAR ||
+            lex->tk==LEX_R_LET ||
+            lex->tk==LEX_R_CONST) {
     return jspeStatementVar();
   } else if (lex->tk==LEX_R_IF) {
     return jspeStatementIf();

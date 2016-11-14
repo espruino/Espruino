@@ -72,7 +72,6 @@
 
  */
 
-static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 /// For flash - whether it is busy or not...
@@ -116,7 +115,6 @@ void sys_evt_handler(uint32_t sys_evt) {
   }
 }
 
-#ifdef NRF52
 /* SysTick interrupt Handler. */
 void SysTick_Handler(void)  {
   /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
@@ -132,7 +130,6 @@ void SysTick_Handler(void)  {
     jsiOneSecondAfterStartup();
   }
 }
-#endif
 
 #ifdef NRF52
 NRF_PWM_Type *nrf_get_pwm(JshPinFunction func) {
@@ -205,9 +202,14 @@ void jshInit() {
 
   BITFIELD_CLEAR(jshPinSoftPWM);
 
+#ifdef DEFAULT_CONSOLE_RX_PIN
+#if !defined(NRF51822DK)
   // Only init UART if something is connected and RX is pulled up on boot...
   jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
   if (jshPinGetValue(DEFAULT_CONSOLE_RX_PIN)) {
+#else
+  if (true) { // need to force UART for nRF51DK
+#endif
     jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN);
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
@@ -216,8 +218,7 @@ void jshInit() {
     inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
     jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   }
-
-  init = 1;
+#endif
 
   // Enable and sort out the timer
   nrf_timer_mode_set(NRF_TIMER1, NRF_TIMER_MODE_TIMER);
@@ -279,21 +280,12 @@ void jshKill() {
 
 // stuff to do on idle
 void jshIdle() {
-#ifndef NRF52
-  if (init == 1) {
-    jsiOneSecondAfterStartup(); // Do this the first time we enter jshIdle() after we have called jshInit() and never again.
-    init = 0;
-  }
-#endif
 }
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
-    if (maxChars <= 0)
-    {
-    	return 0;
-    }
-	return nrf_utils_get_device_id(data, maxChars);
+    memcpy(data, NRF_FICR->DEVICEID, sizeof(NRF_FICR->DEVICEID));
+    return sizeof(NRF_FICR->DEVICEID);
 }
 
 // is the serial device connected?
@@ -959,6 +951,17 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 }
 
 
+bool jshFlashWriteProtect(uint32_t addr) {
+#if PUCKJS
+  /* It's vital we don't let anyone screw with the softdevice or bootloader.
+   * Recovering from changes would require soldering onto SWDIO and SWCLK pads!
+   */
+  if (addr<0x1f000) return true; // softdevice
+  if (addr>=0x78000) return true; // bootloader
+#endif
+  return false;
+}
+
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
   if (addr > (NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE))
@@ -968,9 +971,26 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
   return true;
 }
 
+static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
+}
+
 JsVar *jshFlashGetFree() {
-  // not implemented, or no free pages.
-  return 0;
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+  /* Try and find pages after the end of firmware but before saved code */
+  extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
+  uint32_t firmwareEnd = (uint32_t)&LINKER_ETEXT_VAR;
+  uint32_t pAddr, pSize;
+  jshFlashGetPage(firmwareEnd, &pAddr, &pSize);
+  firmwareEnd = pAddr+pSize;
+  if (firmwareEnd < FLASH_SAVED_CODE_START)
+    addFlashArea(jsFreeFlash, firmwareEnd, FLASH_SAVED_CODE_START-firmwareEnd);
+  return jsFreeFlash;
 }
 
 /// Erase the flash page containing the address.
@@ -978,6 +998,9 @@ void jshFlashErasePage(uint32_t addr) {
   uint32_t startAddr;
   uint32_t pageSize;
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
+    return;
+  if (jshFlashWriteProtect(startAddr) ||
+      jshFlashWriteProtect(startAddr+pageSize-1))
     return;
   uint32_t err;
   flashIsBusy = true;
@@ -1001,6 +1024,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
  */
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   //jsiConsolePrintf("\njshFlashWrite 0x%x addr 0x%x -> 0x%x, len %d\n", *(uint32_t*)buf, (uint32_t)buf, addr, len);
+  if (jshFlashWriteProtect(addr)) return;
   uint32_t err;
   flashIsBusy = true;
   while ((err = sd_flash_write((uint32_t*)addr, (uint32_t *)buf, len>>2)) == NRF_ERROR_BUSY);

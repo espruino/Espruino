@@ -477,7 +477,7 @@ void jsiSoftInit(bool hasBeenReset) {
   JsVar *initCode = jsvObjectGetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, 0);
   if (initCode) {
     jsvUnLock2(jspEvaluateVar(initCode, 0, 0), initCode);
-    jsvRemoveNamedChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
+    jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
   }
 
   // Check any existing watches and set up interrupts for them
@@ -867,13 +867,18 @@ int jsiCountBracketsInInput() {
   JsLex lex;
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(inputLine);
-  while (lex.tk!=LEX_EOF && lex.tk!=LEX_UNFINISHED_COMMENT) {
+  while (lex.tk!=LEX_EOF &&
+         lex.tk!=LEX_UNFINISHED_COMMENT &&
+         lex.tk!=LEX_UNFINISHED_STR &&
+         lex.tk!=LEX_UNFINISHED_TEMPLATE_LITERAL) {
     if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
     if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
     if (brackets<0) break; // closing bracket before opening!
     jslGetNextToken(&lex);
   }
-  if (lex.tk==LEX_UNFINISHED_COMMENT)
+  if (lex.tk==LEX_UNFINISHED_STR)
+    brackets=0; // execute immediately so it can error
+  if (lex.tk==LEX_UNFINISHED_COMMENT || lex.tk==LEX_UNFINISHED_TEMPLATE_LITERAL)
     brackets=1000; // if there's an unfinished comment, we're in the middle of something
   jslKill();
   jslSetLex(oldLex);
@@ -1105,6 +1110,13 @@ void jsiCheckErrors() {
   }
   if (exception) {
     jsiConsolePrintf("Uncaught %v\n", exception);
+    if (jsvIsObject(exception)) {
+      JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
+      if (stackTrace) {
+        jsiConsolePrintStringVar(stackTrace);
+        jsvUnLock(stackTrace);
+      }
+    }
     jsvUnLock(exception);
   }
   if (jspIsInterrupted()
@@ -1180,10 +1192,12 @@ void jsiTabComplete_printCommon(void *cbdata, JsVar *key) {
   JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
   if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, true)==0) {
     // Print, but do as 2 columns
-    if (data->lineLength==0 || data->lineLength>18) {
+    if (data->lineLength==0) {
       jsiConsolePrintf("%v",key);
       data->lineLength = jsvGetStringLength(key);
     } else {
+      if (data->lineLength>=20)
+        data->lineLength=19; // force one space
       while (data->lineLength<20) {
         jsiConsolePrintChar(' ');
         data->lineLength++;
@@ -1326,7 +1340,7 @@ void jsiHandleNewLine(bool execute) {
         // print result (but NOT if we had an error)
         if (jsiEcho() && !jspHasError()) {
           jsiConsolePrintChar('=');
-          jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+          jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES);
           jsiConsolePrint("\n");
         }
         jsvUnLock(v);
@@ -1950,7 +1964,7 @@ void jsiIdle() {
       }
       jsvUnLock(data);
       if (watchPtr) { // if we had a watch pointer, be sure to remove us from it
-        jsvObjectSetChild(watchPtr, "timeout", 0);
+        jsvObjectRemoveChild(watchPtr, "timeout");
         // Deal with non-recurring watches
         if (exec) {
           bool watchRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(watchPtr,  "recur", 0));
@@ -2131,7 +2145,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 
     if (jswIsBuiltInObject(childName)) {
       jsiDumpObjectState(user_callback, user_data, child, data);
-    } else if (jsvIsStringEqualOrStartsWith(childName, JS_EVENT_PREFIX, true)) {
+    } else if (jsvIsStringEqualOrStartsWith(child, JS_EVENT_PREFIX, true)) {
       // event on global object - skip it, as it'll be internal
     } else if (jsvIsStringEqual(child, JSI_TIMERS_NAME)) {
       // skip - done later
@@ -2311,7 +2325,7 @@ void jsiDebuggerPrintScope(JsVar *scope) {
         l++;
       }
       jsiConsolePrint(" : ");
-      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES);
       jsiConsolePrint("\n");
     }
 
@@ -2373,7 +2387,7 @@ void jsiDebuggerLine(JsVar *line) {
       JsVar *v = jsvSkipNameAndUnLock(jspParse());
       execInfo = oldExecInfo;
       jsiConsolePrintChar('=');
-      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES);
       jsiConsolePrint("\n");
       jsvUnLock(v);
     } else if (!strcmp(id,"info") || !strcmp(id,"i")) {

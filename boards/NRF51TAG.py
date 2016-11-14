@@ -18,11 +18,11 @@ import pinutils;
 info = {
  'name' : "nRF51 Tag",
  'link' :  [ "" ],
- 'default_console' : "EV_SERIAL1",
- 'default_console_tx' : "D15",
- 'default_console_rx' : "D17",
- 'default_console_baudrate' : "9600",
- 'variables' : 310,
+ 'default_console' : "EV_BLUETOOTH",
+# 'default_console_tx' : "D15",
+# 'default_console_rx' : "D17",
+# 'default_console_baudrate' : "9600",
+ 'variables' : 150,
  'binary_name' : 'espruino_%v_nrf51tag.bin',
  'build' : {
   'defines' : [
@@ -46,10 +46,10 @@ chip = {
    # If using DFU bootloader, it sits at 0x3C000 - 0x40000 (0x40000 is end of flash)
    # Might want to change 256 -> 240 in the code below
   'saved_code' : {
-    'address' : ((256 - 3) * 1024),
+    'address' : ((256 - 3 - 16) * 1024),
     'page_size' : 1024,
     'pages' : 3,
-    'flash_available' : (256 - 108 - 16) # total flash pages - softdevice - bootloader
+    'flash_available' : (256 - 108 - 16 - 3) # total flash pages - softdevice - bootloader - saved code
   }
 };
 

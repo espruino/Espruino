@@ -33,6 +33,8 @@ This is the built-in class for ES6 Promises
 */
 
 void _jswrap_promise_queueresolve(JsVar *promise, JsVar *data);
+void _jswrap_promise_queuereject(JsVar *promise, JsVar *data);
+
 void _jswrap_promise_add(JsVar *parent, JsVar *callback, const char *name);
 void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   JsVar *result = 0;
@@ -54,10 +56,18 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   } else if (fn) {
     result = jspExecuteFunction(fn, promise, 1, &data);
   }
-  jsvObjectSetChild(promise, JS_PROMISE_THEN_NAME, 0); // remove 'resolve' and 'reject' handlers
-  jsvObjectSetChild(promise, JS_PROMISE_CATCH_NAME, 0); // remove 'resolve' and 'reject' handlers
+  jsvObjectRemoveChild(promise, JS_PROMISE_THEN_NAME); // remove 'resolve' and 'reject' handlers
+  jsvObjectRemoveChild(promise, JS_PROMISE_CATCH_NAME); // remove 'resolve' and 'reject' handlers
   JsVar *chainedPromise = jsvObjectGetChild(promise, "chain", 0);
-  jsvObjectSetChild(promise, "chain", 0); // unlink chain
+  jsvObjectRemoveChild(promise, "chain"); // unlink chain
+
+  JsVar *exception = jspGetException();
+  if (exception) {
+    _jswrap_promise_queuereject(chainedPromise, exception);
+    jsvUnLock2(result, chainedPromise);
+    return;
+  }
+
   if (chainedPromise) {
     JsVar *constr = jspGetConstructor(result);
     if (constr && (void*)constr->varData.native.ptr==(void*)jswrap_promise_constructor) {
@@ -75,7 +85,8 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   }
   jsvUnLock2(result, chainedPromise);
 }
-void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, const char *eventName) {
+void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool resolve) {
+  const char *eventName = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
   JsVar *fn = jsvObjectGetChild(promise, eventName, 0);
   // if we didn't have a catch, traverse the chain looking for one
   if (!fn) {
@@ -92,12 +103,17 @@ void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, const 
       chainedPromise = n;
     }
   }
-  if (fn) _jswrap_promise_resolve_or_reject(promise, data, fn);
-  jsvUnLock(fn);
+  if (fn) {
+    _jswrap_promise_resolve_or_reject(promise, data, fn);
+    jsvUnLock(fn);
+  } else {
+    if (!resolve)
+      jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
+  }
 }
 
 void _jswrap_promise_resolve(JsVar *promise, JsVar *data) {
-  _jswrap_promise_resolve_or_reject_chain(promise, data, JS_PROMISE_THEN_NAME);
+  _jswrap_promise_resolve_or_reject_chain(promise, data, true);
 }
 void _jswrap_promise_queueresolve(JsVar *promise, JsVar *data) {
   JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
@@ -108,7 +124,7 @@ void _jswrap_promise_queueresolve(JsVar *promise, JsVar *data) {
 }
 
 void _jswrap_promise_reject(JsVar *promise, JsVar *data) {
-  _jswrap_promise_resolve_or_reject_chain(promise, data, JS_PROMISE_CATCH_NAME);
+  _jswrap_promise_resolve_or_reject_chain(promise, data, false);
 }
 void _jswrap_promise_queuereject(JsVar *promise, JsVar *data) {
   JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
@@ -134,7 +150,7 @@ void jswrap_promise_all_reject(JsVar *promise, JsVar *data) {
   if (arr) {
     // if not rejected before
     jsvUnLock(arr);
-    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, 0);
+    jsvObjectRemoveChild(promise, JS_PROMISE_RESULT_NAME);
     _jswrap_promise_queuereject(promise, data);
   }
 }
@@ -181,8 +197,15 @@ JsVar *jswrap_promise_constructor(JsVar *executor) {
     if (args[0]) jsvObjectSetChild(args[0], JSPARSE_FUNCTION_THIS_NAME, obj);
     if (args[1]) jsvObjectSetChild(args[1], JSPARSE_FUNCTION_THIS_NAME, obj);
     // call the executor
+    JsExecFlags oldExecute = execInfo.execute;
     if (executor) jsvUnLock(jspeFunctionCall(executor, 0, obj, false, 2, args));
+    execInfo.execute = oldExecute;
     jsvUnLockMany(2, args);
+    JsVar *exception = jspGetException();
+    if (exception) {
+      _jswrap_promise_queuereject(obj, exception);
+      jsvUnLock(exception);
+    }
   }
   return obj;
 }

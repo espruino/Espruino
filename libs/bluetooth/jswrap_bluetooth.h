@@ -16,6 +16,7 @@
 // ------------------------------------------------------------------------------
 typedef enum {
   BLETASK_NONE,
+  BLETASK_REQUEST_DEVICE, ///< Waiting for requestDevice to finish
   BLETASK_CONNECT, ///< Connect in central mode
   BLETASK_PRIMARYSERVICE, ///< Find primary service
   BLETASK_CHARACTERISTIC,  ///< Find characteristics
@@ -24,10 +25,13 @@ typedef enum {
   BLETASK_CHARACTERISTIC_NOTIFY, ///< Setting whether notifications are on or off
 } BleTask;
 
+extern JsVar *bleTaskInfo; // info related to the current task
 bool bleInTask(BleTask task);
-bool bleNewTask(BleTask task);
+bool bleNewTask(BleTask task, JsVar *taskInfo);
 void bleCompleteTaskSuccess(BleTask task, JsVar *data);
+void bleCompleteTaskSuccessAndUnLock(BleTask task, JsVar *data);
 void bleCompleteTaskFail(BleTask task, JsVar *data);
+void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data);
 // ------------------------------------------------------------------------------
 void jswrap_nrf_init();
 bool jswrap_nrf_idle();
@@ -42,14 +46,18 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options);
 void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options);
 void jswrap_nrf_bluetooth_updateServices(JsVar *data);
 void jswrap_nrf_bluetooth_setScan(JsVar *callback);
+void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *timeout);
 void jswrap_nrf_bluetooth_setRSSIHandler(JsVar *callback);
 void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr);
-
-JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac);
 
 void jswrap_nrf_nfcURL(JsVar *url);
 void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback);
 
+JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options);
+JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac);
+
+JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
+JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent);
 void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *service);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent);

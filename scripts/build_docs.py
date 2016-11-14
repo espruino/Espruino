@@ -13,6 +13,9 @@
 # jswrap_*.c files
 # ----------------------------------------------------------------------------------------
 
+# Needs:
+#    pip install markdown
+
 import subprocess;
 import re;
 import json;
@@ -21,6 +24,7 @@ import os;
 sys.path.append(".");
 import common
 import urllib2
+import markdown
 
 # Scans files for comments of the form /*JSON......*/ and then writes out an HTML file describing
 # all the functions
@@ -63,53 +67,27 @@ htmlFile = open('functions.html', 'w')
 def html(s): htmlFile.write(s+"\n");
 
 def htmlify(d):
-  d = re.sub(r'\n\s*```\n?([^`]+)```', r'\n   <pre class="description"><code>\1</code></pre>', d) # code tags
-  d = re.sub(r'```\n?([^`]+)```', r'\n<code>\1</code>', d) # code tags
-  d = re.sub(r'`([^`]+)`', r'<code>\1</code>', d) # code tags
-  d = re.sub(r'\[([^\]]*)\]\(([^\)]*)\)', r'<a href="\2">\1</a>', d) # links tags
-  d = re.sub(r'([^">])(http://[^ ]+)', r'\1<a href="\2">\2</a>', d) # links tags
-  d = re.sub(r'\n###([^\n]*)', r'<B>\1</B>', d) # Heading
-
-  lines = d.split("\n");
-  lines.append("");
-  starStart = False
-  for idx in range(0, len(lines)):
-    line = lines[idx]
-    if re.match('^ *\*',line) and starStart==False:
-      starStart=idx
-    if not re.match('^ *\*',line):
-      if starStart!=False and starStart+2<=idx:
-        l = lines[starStart:idx]
-        for i in range(0,len(l)):
-          l[i] = "<li>"+l[i][l[i].index("*")+1:]+"</li>"
-        lines = lines[0:starStart-1]+["<ul>"]+l+["</ul>"]+lines[idx:]
-        idx += 2+len(l)
-      starStart = False
-  d = "\n".join(lines);
-
-  d = re.sub(r'\*\*([^*]*)\*\*', r'<b>\1</b>', d) # bold
-  d = re.sub(r'\*([^*]+)\*', r'<i>\1</i>', d) # italic
-  return d
+  d = markdown.markdown(d)
+  # replace <code> with newlines with pre
+  idx = d.find("<code>")
+  end = d.find("</code>", idx)
+  while idx>=0 and end>idx:
+    codeBlock = d[idx:end+7]
+    if codeBlock.find("\n")>=0:
+      d = d[0:idx]+"<pre>"+codeBlock+"</pre>"+d[end+7:];
+    idx = d.find("<code>", end+7+5+6)
+    end = d.find("</code>", idx)
+  return d;
 
 def html_description(d,current):
   if isinstance(d, list): d = "\n".join(d)
+  d = htmlify(d)
   for link in links:
     if link!=current:
       d = d.replace(" "+link+" ", " <a href=\"#"+links[link]+"\">"+link+"</a> ")
       d = d.replace(" "+link+".", " <a href=\"#"+links[link]+"\">"+link+"</a>.")
       d = d.replace(" "+link+"(", " <a href=\"#"+links[link]+"\">"+link+"</a>(")
-  # Apply <p>, but not inside code snippets
-  inCode = False
-  final = ""
-  for s in htmlify(d).splitlines():
-    if "<code>" in s: inCode = True
-    singleLine = "<code>" in s and "</code>" in s
-    if singleLine or not inCode : final = final + "   <p class=\"description\">"
-    final = final + s
-    if singleLine or not inCode : final = final + "</p>"
-    final = final + "\n"
-    if "</code>" in s: inCode = False
-  html(final)
+  html("<div class=\"description\">\n" + d + "\n</div>\n")
 
 def get_prefixed_name(jsondata):
   s=""
@@ -297,7 +275,7 @@ for jsondata in detail:
     html("  <p class=\"top\"><a href=\"javascript:toppos();\">(top)</a></p>")
     for j in jsondatas:
       if (j["type"]=="class" or j["type"]=="library") and j["class"]==className and "description" in j:
-        ds = html_description(j["description"], className)
+        html_description(j["description"], className)
 
     instances = []
     for j in jsondatas:
@@ -305,12 +283,12 @@ for jsondata in detail:
         instances.append(j)
     if len(instances)>0:
       html("  <h4>Instances</h4>")
-      html("  <ul>")
+      text = ""
       for j in instances:
-        html("    <li><p class=\"instance\">"+j["name"]+"</p>");
-        if "description" in j: html_description(j["description"], j["name"])
-        html("    </li>")
-      html("  </ul>")
+        text = text + " * `"+j["name"]+"`";
+        if "description" in j: text = text + " " + j["description"]
+        text = text + "\n"
+      html_description(text, "")
 
     html("  <h4>Methods and Fields</h4>")
     html("  <ul>")
@@ -327,7 +305,7 @@ for jsondata in detail:
   insert_mdn_link(jsondata);
   html("  <p class=\"top\"><a href=\"javascript:toppos();\">(top)</a></p>")
   html("  <h4>Call type:</h4>")
-  html("   <p class=\"call\"><code>"+get_code(jsondata)+"</code></p>")
+  html("   <div class=\"call\"><code>"+get_code(jsondata)+"</code></div>")
   if "description" in jsondata:
     html("  <h4>Description</h4>")
     desc = jsondata["description"]
@@ -348,13 +326,13 @@ for jsondata in detail:
       if isinstance(desc, list): desc = '<br/>'.join(desc)
       extra = ""
       if  param[1]=="JsVarArray": extra = ", ...";
-      html("   <p class=\"param\"><b> "+param[0]+extra+"</b> "+htmlify(desc)+"</p>")
+      html("   <div class=\"param\">"+htmlify("`"+param[0]+extra+"` - "+desc)+"</div>")
   if "return" in jsondata:
     html("  <h4>Returns</h4>")
     desc = ""
     if len(jsondata["return"])>1: desc=jsondata["return"][1]
     if desc=="": desc="See description above"
-    html("   <p class=\"return\">"+htmlify(desc)+"</p>")
+    html("   <div class=\"return\">"+htmlify(desc)+"</div>")
 
   url = "http://www.espruino.com/Reference#"+get_link(jsondata)
   if url in code_uses:

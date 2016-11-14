@@ -27,7 +27,10 @@
 /// Return true if two UUIDs are equal
 bool bleUUIDEqual(ble_uuid_t a, ble_uuid_t b);
 
-// BLE UUID to string
+// Full 128 bit UUID to string
+JsVar *bleUUID128ToStr(const uint8_t *data);
+
+// Nordic BLE UUID to string
 JsVar *bleUUIDToStr(ble_uuid_t uuid);
 
 /// Convert a variable of the form "aa:bb:cc:dd:ee:ff" to a mac address

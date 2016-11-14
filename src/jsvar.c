@@ -2356,14 +2356,6 @@ void jsvRemoveAllChildren(JsVar *parent) {
   }
 }
 
-void jsvRemoveNamedChild(JsVar *parent, const char *name) {
-  JsVar *child = jsvFindChildFromString(parent, name, false);
-  if (child) {
-    jsvRemoveChild(parent, child);
-    jsvUnLock(child);
-  }
-}
-
 /// Check if the given name is a child of the parent
 bool jsvIsChild(JsVar *parent, JsVar *child) {
   assert(jsvIsArray(parent) || jsvIsObject(parent));
@@ -2400,6 +2392,7 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
   assert(jsvHasChildren(obj));
+  if (!jsvHasChildren(obj)) return 0;
   // child can actually be a name (for instance if it is a named function)
   JsVar *childName = jsvFindChildFromString(obj, name, true);
   if (!childName) return 0; // out of memory
@@ -2410,6 +2403,14 @@ JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
 
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
   jsvUnLock(jsvObjectSetChild(obj, name, child));
+}
+
+void jsvObjectRemoveChild(JsVar *obj, const char *name) {
+  JsVar *child = jsvFindChildFromString(obj, name, false);
+  if (child) {
+    jsvRemoveChild(obj, child);
+    jsvUnLock(child);
+  }
 }
 
 int jsvGetChildren(JsVar *v) {
@@ -3289,6 +3290,39 @@ bool jsvGarbageCollect() {
   isMemoryBusy = false;
   return freedSomething;
 }
+
+#ifndef RELEASE
+// Dump any locked variables that aren't referenced from `global` - for debugging memory leaks
+void jsvDumpLockedVars() {
+  jsvGarbageCollect();
+  if (isMemoryBusy) return;
+  isMemoryBusy = true;
+  JsVarRef i;
+  // clear garbage collect flags
+  for (i=1;i<=jsVarsSize;i++)  {
+    JsVar *var = jsvGetAddressOf(i);
+    if ((var->flags&JSV_VARTYPEMASK) != JSV_UNUSED) { // if it is not unused
+      var->flags |= (JsVarFlags)JSV_GARBAGE_COLLECT;
+      // if we have a flat string, skip that many blocks
+      if (jsvIsFlatString(var))
+        i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
+    }
+  }
+  // Add global
+  jsvGarbageCollectMarkUsed(execInfo.root);
+  // Now dump any that aren't used!
+  for (i=1;i<=jsVarsSize;i++)  {
+    JsVar *var = jsvGetAddressOf(i);
+    if ((var->flags&JSV_VARTYPEMASK) != JSV_UNUSED) {
+      if (var->flags & JSV_GARBAGE_COLLECT) {
+        jsvGarbageCollectMarkUsed(var);
+        jsvTrace(var, 0);
+      }
+    }
+  }
+  isMemoryBusy = false;
+}
+#endif
 
 
 /** Remove whitespace to the right of a string - on MULTIPLE LINES */

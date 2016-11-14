@@ -44,7 +44,7 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
   if (source && destination) {
     JsVar *buffer = jsvObjectGetChild(source, STREAM_BUFFER_NAME, 0);
     if (buffer && jsvGetStringLength(buffer)) {
-      jsvObjectSetChild(source, STREAM_BUFFER_NAME, 0); // remove outstanding data
+      jsvObjectRemoveChild(source, STREAM_BUFFER_NAME); // remove outstanding data
       /* call write fn - we ignore drain/etc here because the source has
       just closed and we want to get this sorted quickly */
       JsVar *writeFunc = jspGetNamedField(destination, "write", false);
