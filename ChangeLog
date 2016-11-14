@@ -7,6 +7,7 @@
             Fix STM32F1 regression caused by F4 LSE fixes
             Fix comma operator regression caused by recent arrow functions addition
             Remove RTC changes for STM32F1
+            nRF5x: Make sure that updateServices(notify) on a non-notifyable service will just error, rather than reset (fix #973)
 
      1v88 : jshSetEventCallback callbacks now get an argument with the channel number
             Tab complete now offers a much better set of completions (fix #926)
