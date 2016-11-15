@@ -241,7 +241,7 @@ codeOut("""
 """);
 
 if (board.chip["class"]=="STM32") | (board.chip["class"]=="STM32_LL"):
-  if (board.chip["part"][:9]=="STM32F401") | (board.chip["part"][:9]=="STM32F411") | (board.chip["part"][:9]=="STM32L476"):
+  if (board.chip["part"][:9]=="STM32F401") | (board.chip["part"][:9]=="STM32F411"):
 # FIXME - need to remove TIM5 from jspininfo
    codeOut("""
 // Used by various pins, but always with other options
@@ -249,6 +249,14 @@ if (board.chip["class"]=="STM32") | (board.chip["class"]=="STM32_LL"):
 #define UTIL_TIMER_IRQn TIM5_IRQn
 #define UTIL_TIMER_IRQHandler TIM5_IRQHandler
 #define UTIL_TIMER_APB1 RCC_APB1Periph_TIM5
+""")
+  elif (board.chip["part"][:9]=="STM32L476"):
+   codeOut("""
+// Used by various pins, but always with other options
+#define UTIL_TIMER TIM5
+#define UTIL_TIMER_IRQn TIM5_IRQn
+#define UTIL_TIMER_IRQHandler TIM5_IRQHandler
+#define UTIL_TIMER_APB1 LL_APB1_GRP1_PERIPH_TIM5
 """)
   elif "subfamily" in board.chip and board.chip["subfamily"]=="MD":
 
