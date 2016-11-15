@@ -8,6 +8,10 @@
             Fix comma operator regression caused by recent arrow functions addition
             Remove RTC changes for STM32F1
             nRF5x: Make sure that updateServices(notify) on a non-notifyable service will just error, rather than reset (fix #973)
+            nRF5x: Ensure setWatch doesn't reset pin state
+            nRF5x: Reset pin states to default on 'reset()'
+            nRF5x: Move advertising back to 375ms (more reliable connections)
+            Puck: allow Puck.mag to work while magnetometer is on
 
      1v88 : jshSetEventCallback callbacks now get an argument with the channel number
             Tab complete now offers a much better set of completions (fix #926)

@@ -52,7 +52,7 @@
 #define SCAN_INTERVAL                   MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan interval in units of 0.625 millisecond - 100 msec */
 #define SCAN_WINDOW                     MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan window in units of 0.625 millisecond - 100 msec */
 
-#define ADVERTISING_INTERVAL            MSEC_TO_UNITS(750, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
+#define ADVERTISING_INTERVAL            MSEC_TO_UNITS(375, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(7.5, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (7.5 ms), Connection interval uses 1.25 ms units. */
 #define MAX_CONN_INTERVAL               MSEC_TO_UNITS(20, UNIT_1_25_MS)             /**< Maximum acceptable connection interval (20 ms (was 75)), Connection interval uses 1.25 ms units. */
