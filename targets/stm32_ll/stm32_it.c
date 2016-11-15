@@ -45,11 +45,13 @@
 #include "stm32l4xx_ll_gpio.h"
 #include "stm32l4xx_ll_exti.h"
 #include "stm32l4xx_ll_usart.h"
+#include "stm32l4xx_ll_tim.h"
 #if defined(USE_FULL_ASSERT)
 #include "stm32_assert.h"
 #endif /* USE_FULL_ASSERT */
 
 #include "jshardware.h"
+#include "jstimer.h"
 
 extern void Error_Callback(void);
 
@@ -322,6 +324,22 @@ void USART6_IRQHandler(void) {
   USART_IRQHandler(USART6, EV_SERIAL6);
 }
 #endif
+
+/**
+* @brief  This function handles TIM2 interrupt.
+* @param  None
+* @retval None
+*/
+void TIM5_IRQHandler(void)
+{
+  // clear interrupt flag
+  if (LL_TIM_IsActiveFlag_UPDATE(UTIL_TIMER ) != RESET) {
+    LL_TIM_ClearFlag_UPDATE(UTIL_TIMER );
+	// or LL_TIM_ClearFlag_CC1(TIM2);
+    jstUtilTimerInterruptHandler();
+  }
+
+}
 
 /**
   * @}

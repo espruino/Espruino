@@ -35,6 +35,7 @@
 #include "stm32l4xx_ll_utils.h"
 #include "stm32l4xx_ll_usart.h"
 #include "stm32l4xx_ll_exti.h"
+#include "stm32l4xx_ll_tim.h"
 #if defined(USE_FULL_ASSERT)
 #include "stm32_assert.h"
 #endif /* USE_FULL_ASSERT */
@@ -1125,7 +1126,6 @@ void jshSetSystemTime(JsSysTime newTime){
 }
 
 
-
 static JsSysTime jshGetTimeForSecond() {
   return (JsSysTime)getSystemTimerFreq();
 }
@@ -1199,8 +1199,28 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
  // if freq<=0, the default is used
  
 /// Pulse a pin for a certain time, but via IRQs, not JS: `digitalWrite(pin,value);setTimeout("digitalWrite(pin,!value)", time*1000);`
-void jshPinPulse(Pin pin, bool value, JsVarFloat time){
-        return;
+void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime){
+  // ---- USE TIMER FOR PULSE
+  if (!jshIsPinValid(pin)) {
+       jsExceptionHere(JSET_ERROR, "Invalid pin!");
+       return;
+  }
+  if (pulseTime<=0) {
+    // just wait for everything to complete
+    jstUtilTimerWaitEmpty();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
+    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+  }
+
 }
  
 /// Can the given pin be watched? it may not be possible because of conflicts
@@ -1428,18 +1448,102 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len){
  * and the `Waveform` class.
  */
 
+unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
+  // TIM2-7, 12-14  on APB1, everything else is on APB2
+  LL_RCC_ClocksTypeDef clocks;
+  LL_RCC_GetSystemClocksFreq(&clocks);
+
+  // This (oddly) looks the same on F1/2/3/4. It's probably not
+  bool APB1 = TIMx==TIM2 || TIMx==TIM3 || TIMx==TIM4 ||
+#ifndef STM32F3
+              TIMx==TIM5 ||
+#endif
+#ifdef TIM6
+              TIMx==TIM6 ||
+#endif
+#ifdef TIM7
+              TIMx==TIM7 ||
+#endif
+#ifdef TIM12
+              TIMx==TIM12 ||
+#endif
+#ifdef TIM13
+              TIMx==TIM13 ||
+#endif
+#ifdef TIM14
+              TIMx==TIM14 ||
+#endif
+              false;
+
+  unsigned int freq = APB1 ? clocks.PCLK1_Frequency : clocks.PCLK2_Frequency;
+  // If APB1 clock divisor is 1x, this is only 1x
+  if (clocks.HCLK_Frequency == freq)
+    return freq;
+  // else it's 2x (???)
+  return freq*2;
+}
+
+
+static NO_INLINE void jshUtilTimerGetPrescale(JsSysTime period, unsigned int *prescale, unsigned int *ticks) {
+  unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
+  if (period<0) period=0;
+  unsigned long long clockTicksL = (timerFreq * (unsigned long long)period) / (unsigned long long)jshGetTimeForSecond();
+  if (clockTicksL>0xFFFFFFFF) clockTicksL=0xFFFFFFFF;
+  unsigned int clockTicks = (unsigned int)clockTicksL;
+  *prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to
+  *ticks = (unsigned int)(clockTicks/((*prescale)+1));
+  if (*ticks<1) *ticks=1;
+  if (*ticks>65535) *ticks=65535;
+}
+
 /// Start the timer and get it to interrupt once after 'period' (i.e. it should not auto-reload)
 void jshUtilTimerStart(JsSysTime period){
-        return;
+  unsigned int prescale, ticks;
+  jshUtilTimerGetPrescale(period, &prescale, &ticks);
+
+  /* TIM6 Periph clock enable */
+  LL_APB1_GRP1_EnableClock(UTIL_TIMER_APB1);
+  //LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM5);
+
+  NVIC_SetPriority(UTIL_TIMER_IRQn, 0);
+  NVIC_EnableIRQ(UTIL_TIMER_IRQn);
+
+  /*Timer configuration------------------------------------------------*/
+  LL_TIM_DisableIT_UPDATE(UTIL_TIMER );
+  LL_TIM_DisableCounter(UTIL_TIMER );
+
+  LL_TIM_InitTypeDef TIM_TimeBaseInitStruct;
+  LL_TIM_StructInit(&TIM_TimeBaseInitStruct);
+  TIM_TimeBaseInitStruct.Prescaler = (uint16_t)prescale;
+  TIM_TimeBaseInitStruct.Autoreload = (uint16_t)ticks;
+  LL_TIM_Init(UTIL_TIMER, /*LL_TIM_CHANNEL_CH1 ,*/ &TIM_TimeBaseInitStruct);
+
+  // init will have caused a timer update - clear it
+  LL_TIM_ClearFlag_UPDATE(UTIL_TIMER );
+  // init interrupts and go
+  LL_TIM_EnableIT_UPDATE(UTIL_TIMER );
+  LL_TIM_EnableCounter(UTIL_TIMER );  /* enable counter */
+
 }
 /// Reschedule the timer (it should already be running) to interrupt after 'period'
 void jshUtilTimerReschedule(JsSysTime period){
-        return;
+  unsigned int prescale, ticks;
+  jshUtilTimerGetPrescale(period, &prescale, &ticks);
+
+  LL_TIM_DisableCounter(UTIL_TIMER );
+ LL_TIM_SetAutoReload(UTIL_TIMER, (uint16_t)ticks);
+  // we need to kick this (even if the prescaler is correct) so the counter value is automatically reloaded
+  LL_TIM_SetPrescaler(UTIL_TIMER, (uint16_t)prescale );
+  // Kicking probably fired off the IRQ...
+  LL_TIM_ClearFlag_UPDATE(UTIL_TIMER );
+  LL_TIM_EnableCounter(UTIL_TIMER );
+
 }
 /// Stop the timer
 void jshUtilTimerDisable(){
-        return;
+  LL_TIM_DisableCounter(UTIL_TIMER );
 }
+
 
 // ---------------------------------------------- LOW LEVEL
 
