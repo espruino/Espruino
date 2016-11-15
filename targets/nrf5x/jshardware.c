@@ -191,16 +191,33 @@ void wakeup_handler() {
 }
 #endif
 
+void jshResetPeripherals() {
+  // Reset all pins to their power-on state (apart from default UART :)
+  // Set pin state to input disconnected - saves power
+  Pin i;
+  for (i=0;i<JSH_PIN_COUNT;i++) {
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    if (i==DEFAULT_CONSOLE_TX_PIN) continue;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    if (i==DEFAULT_CONSOLE_RX_PIN) continue;
+#endif
+    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i)) {
+      jshPinSetState(i, JSHPINSTATE_UNDEFINED);
+    }
+  }
+  BITFIELD_CLEAR(jshPinSoftPWM);
+}
+
 void jshInit() {
   jshInitDevices();
+  jshResetPeripherals();
 
 #ifdef LED1_PININDEX
   jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
 #endif
 
   nrf_utils_lfclk_config_and_start();
-
-  BITFIELD_CLEAR(jshPinSoftPWM);
 
 #ifdef DEFAULT_CONSOLE_RX_PIN
 #if !defined(NRF51822DK)
@@ -271,7 +288,7 @@ void jshInit() {
 // When 'reset' is called - we try and put peripherals back to their power-on state
 void jshReset() {
   jshResetDevices();
-  // TODO: Reset all pins to their power-on state (apart from default UART :)
+  jshResetPeripherals();
 }
 
 void jshKill() {
@@ -284,7 +301,7 @@ void jshIdle() {
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
-    memcpy(data, NRF_FICR->DEVICEID, sizeof(NRF_FICR->DEVICEID));
+    memcpy(data, (void*)NRF_FICR->DEVICEID, sizeof(NRF_FICR->DEVICEID));
     return sizeof(NRF_FICR->DEVICEID);
 }
 
@@ -689,6 +706,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   uint32_t p = (uint32_t)pinInfo[pin].pin;
   if (shouldWatch) {
     nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true); // FIXME: Maybe we want low accuracy? Otherwise this will
+    cls_1_config.is_watcher = true; // stop this resetting the input state
     nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler);
     nrf_drv_gpiote_in_event_enable(p, true);
     return jshGetEventFlagsForWatchedPin(p);

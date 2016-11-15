@@ -38,6 +38,8 @@ const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 
 // Has the magnetometer been turned on?
 bool mag_enabled = false;
+int16_t mag_reading[3];
+
 
 /* TODO: Use software I2C for this instead. Since we're relying
  * on the internal pullup resistors there might be some gotchas
@@ -190,18 +192,18 @@ void mag_wait() {
 }
 
 // Read a value
-void mag_read(int16_t d[3]) {
+void mag_read() {
   i2c_start();
   i2c_wr(MAG3110_ADDR<<1);
   i2c_wr(1);
   i2c_start();
   i2c_wr(1|(MAG3110_ADDR<<1));
-  d[0] = i2c_rd(false)<<8;
-  d[0] |= i2c_rd(false);
-  d[1] = i2c_rd(false)<<8;
-  d[1] |= i2c_rd(false);
-  d[2] = i2c_rd(false)<<8;
-  d[2] |= i2c_rd(true);
+  mag_reading[0] = i2c_rd(false)<<8;
+  mag_reading[0] |= i2c_rd(false);
+  mag_reading[1] = i2c_rd(false)<<8;
+  mag_reading[1] |= i2c_rd(false);
+  mag_reading[2] = i2c_rd(false)<<8;
+  mag_reading[2] |= i2c_rd(true);
   i2c_stop();
 }
 
@@ -254,12 +256,15 @@ varies from around 25-60 uT, so the reading will vary by 250 to 600 depending
 on location.
 */
 JsVar *jswrap_puck_mag() {
-  if (!mag_enabled) mag_on(80000);
-  mag_wait();
-  int16_t d[3];
-  mag_read(d);
-  if (!mag_enabled) mag_off();
-  return mag_to_xyz(d);
+  /* If not enabled, turn on and read. If enabled,
+   * just pass out the last reading */
+  if (!mag_enabled) {
+    mag_on(80000);
+    mag_wait();
+    mag_read();
+    mag_off();
+  }
+  return mag_to_xyz(mag_reading);
 }
 
 /*JSON{
@@ -311,14 +316,16 @@ If given an argument, the sample rate is set (if not, it's at 0.63Hz). The sampl
 
 */
 void jswrap_puck_magOn(JsVarFloat hz) {
-  if (!mag_enabled) {
-    int milliHz = (int)((hz*1000)+0.5);
-    if (milliHz==0) milliHz=630;
-    if (!mag_on(milliHz)) {
-      jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - see docs for valid rates", hz);
-    }
-    jshPinWatch(MAG_INT, true);
+  if (mag_enabled) {
+    jsExceptionHere(JSET_ERROR, "Magnetometer is already on");
+    return;
   }
+  int milliHz = (int)((hz*1000)+0.5);
+  if (milliHz==0) milliHz=630;
+  if (!mag_on(milliHz)) {
+    jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 80, 40, 20, 10, 5, 2.5, 1.25, 0.63, 0.31, 0.16 or 0.08 Hz", hz);
+  }
+  jshPinWatch(MAG_INT, true);
   mag_enabled = true;
 }
 
@@ -593,11 +600,10 @@ bool jswrap_puck_selfTest() {
 
   mag_on(80000);
   mag_wait();
-  int16_t d[3];
-  mag_read(d);
+  mag_read();
   mag_off();
   mag_enabled = false;
-  if (d[0]==-1 && d[1]==-1 && d[2]==-1) {
+  if (mag_reading[0]==-1 && mag_reading[1]==-1 && mag_reading[2]==-1) {
     jsiConsolePrintf("Magnetometer not working?\n");
     ok = false;
   }
@@ -678,8 +684,8 @@ void jswrap_puck_kill() {
 bool jswrap_puck_idle() {
   if (mag_enabled && nrf_gpio_pin_read(MAG_INT)) {
     int16_t d[3];
-    mag_read(d);
-    JsVar *xyz = mag_to_xyz(d);
+    mag_read();
+    JsVar *xyz = mag_to_xyz(mag_reading);
     JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
     if (jsvHasChildren(puck))
         jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"mag", &xyz, 1);
