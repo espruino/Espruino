@@ -1038,7 +1038,8 @@ void jshInit(){
  
 /// jshReset is called from JS 'reset()' - try to put peripherals back to their power-on state
 void jshReset(){
-        return;
+  jshResetDevices();
+  jshResetPeripherals();
 }
  
 /** Code that is executed each time around the idle loop. Prod watchdog timers here,
@@ -1059,17 +1060,31 @@ void jshIdle(){
  * Returns true on success
  */
 bool jshSleep(JsSysTime timeUntilWake){
-        return FALSE;
+  JsSysTime sysTickTime;
+  sysTickTime = SYSTICK_RANGE*5/4;
+  if (timeUntilWake < sysTickTime) {
+    jstSetWakeUp(timeUntilWake);
+  } else {
+    // we're going to wake on a System Tick timer anyway, so don't bother
+  }
+  jsiSetSleep(JSI_SLEEP_ASLEEP);
+  __WFI(); // Wait for Interrupt
+  jsiSetSleep(JSI_SLEEP_AWAKE);
+
+  /* We may have woken up before the wakeup event. If so
+  then make sure we clear the event */
+  jstClearWakeUp();
+  return true;
 }
- 
- 
+
+
 /** Clean up ready to stop Espruino. Unused on embedded targets, but used on Linux,
  * where GPIO that have been exported may need unexporting, and so on. */
 void jshKill(){
         return;
 }
- 
- 
+
+
 /** Get this IC's serial number. Passed max # of chars and a pointer to write to.
  * Returns # of chars of non-null-terminated string.
  *
