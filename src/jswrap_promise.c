@@ -34,8 +34,15 @@ This is the built-in class for ES6 Promises
 
 void _jswrap_promise_queueresolve(JsVar *promise, JsVar *data);
 void _jswrap_promise_queuereject(JsVar *promise, JsVar *data);
-
 void _jswrap_promise_add(JsVar *parent, JsVar *callback, const char *name);
+
+bool _jswrap_promise_is_promise(JsVar *promise) {
+  JsVar *constr = jspGetConstructor(promise);
+  bool isPromise = constr && (void*)constr->varData.native.ptr==(void*)jswrap_promise_constructor;
+  jsvUnLock(constr);
+  return isPromise;
+}
+
 void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   JsVar *result = 0;
   if (jsvIsArray(fn)) {
@@ -69,8 +76,7 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   }
 
   if (chainedPromise) {
-    JsVar *constr = jspGetConstructor(result);
-    if (constr && (void*)constr->varData.native.ptr==(void*)jswrap_promise_constructor) {
+    if (_jswrap_promise_is_promise(result)) {
       // if we were given a promise, loop its 'then' in here
       JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_queueresolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
       if (fn) {
@@ -81,7 +87,6 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
     } else {
       _jswrap_promise_queueresolve(chainedPromise, result);
     }
-    jsvUnLock(constr);
   }
   jsvUnLock2(result, chainedPromise);
 }
@@ -236,12 +241,17 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   if (resolve && reject) {
     jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promise);
     jsvObjectSetChild(reject, JSPARSE_FUNCTION_THIS_NAME, promise);
+    JsVar *promiseResults = jsvNewEmptyArray();
     int promises = 0;
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, arr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *p = jsvObjectIteratorGetValue(&it);
-      jsvUnLock(jswrap_promise_then(p, resolve, reject));
+      if (_jswrap_promise_is_promise(p)) {
+        jsvUnLock(jswrap_promise_then(p, resolve, reject));
+      } else {
+        jsvArrayPush(promiseResults, p);
+      }
       jsvUnLock(p);
       promises++;
       jsvObjectIteratorNext(&it);
@@ -249,7 +259,7 @@ JsVar *jswrap_promise_all(JsVar *arr) {
     jsvObjectIteratorFree(&it);
 
     jsvObjectSetChildAndUnLock(promise, JS_PROMISE_COUNT_NAME, jsvNewFromInteger(promises));
-    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, jsvNewEmptyArray());
+    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, promiseResults);
   }
   jsvUnLock2(resolve, reject);
   return promise;
