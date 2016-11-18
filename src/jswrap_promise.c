@@ -20,8 +20,9 @@
 
 #define JS_PROMISE_THEN_NAME JS_HIDDEN_CHAR_STR"thn"
 #define JS_PROMISE_CATCH_NAME JS_HIDDEN_CHAR_STR"cat"
-#define JS_PROMISE_COUNT_NAME JS_HIDDEN_CHAR_STR"cnt"
+#define JS_PROMISE_REMAINING_NAME JS_HIDDEN_CHAR_STR"left"
 #define JS_PROMISE_RESULT_NAME JS_HIDDEN_CHAR_STR"res"
+#define JS_PROMISE_RESOLVED_NAME "resolved"
 
 
 /*JSON{
@@ -114,7 +115,7 @@ void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool r
     jsvUnLock(fn);
   } else {
     if (resolve)
-      jsvObjectSetChild(promise, "resolved", data);
+      jsvObjectSetChild(promise, JS_PROMISE_RESOLVED_NAME, data);
     else
       jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
   }
@@ -142,12 +143,16 @@ void _jswrap_promise_queuereject(JsVar *promise, JsVar *data) {
   jsvUnLock(fn);
 }
 
-void jswrap_promise_all_resolve(JsVar *promise, JsVar *data) {
-  JsVarInt i = jsvGetIntegerAndUnLock(jsvObjectGetChild(promise, JS_PROMISE_COUNT_NAME, 0));
+void jswrap_promise_all_resolve(JsVar *promise, JsVarInt index, JsVar *data) {
+  JsVarInt remaining = jsvGetIntegerAndUnLock(jsvObjectGetChild(promise, JS_PROMISE_REMAINING_NAME, 0));
   JsVar *arr = jsvObjectGetChild(promise, JS_PROMISE_RESULT_NAME, 0);
   if (arr) {
-    // we may have already rejected...
-    if (jsvArrayPush(arr, data) == i) {
+    // set the result
+    jsvSetArrayItem(arr, index, data);
+    // Update remaining list
+    remaining--;
+    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_REMAINING_NAME, jsvNewFromInteger(remaining));
+    if (remaining==0) {
       _jswrap_promise_queueresolve(promise, arr);
     }
     jsvUnLock(arr);
@@ -239,32 +244,43 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   }
   JsVar *promise = jspNewObject(0, "Promise");
   if (!promise) return 0;
-  JsVar *resolve = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
   JsVar *reject = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-  if (resolve && reject) {
-    jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promise);
+  if (reject) {
     jsvObjectSetChild(reject, JSPARSE_FUNCTION_THIS_NAME, promise);
     JsVar *promiseResults = jsvNewEmptyArray();
-    int promises = 0;
+    int promiseIndex = 0;
+    int promisesComplete = 0;
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, arr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *p = jsvObjectIteratorGetValue(&it);
       if (_jswrap_promise_is_promise(p)) {
-        jsvUnLock(jswrap_promise_then(p, resolve, reject));
+        JsVar *resolve = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_JSVAR<<(JSWAT_BITS*2)));
+        // bind the index variable
+        JsVar *paramName = jsvNewFromEmptyString();
+        if (paramName) {
+          jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+          JsVar *indexVar = jsvNewFromInteger(promiseIndex);
+          jsvSetValueOfName(paramName, indexVar);
+          jsvAddName(resolve, paramName);
+          jsvUnLock2(indexVar, paramName);
+        }
+        jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promise);
+        jsvUnLock2(jswrap_promise_then(p, resolve, reject), resolve);
       } else {
-        jsvArrayPush(promiseResults, p);
+        jsvSetArrayItem(promiseResults, promiseIndex, p);
+        promisesComplete++;
       }
       jsvUnLock(p);
-      promises++;
+      promiseIndex++;
       jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
 
-    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_COUNT_NAME, jsvNewFromInteger(promises));
+    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_REMAINING_NAME, jsvNewFromInteger(promiseIndex-promisesComplete));
     jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, promiseResults);
   }
-  jsvUnLock2(resolve, reject);
+  jsvUnLock(reject);
   return promise;
 }
 
@@ -321,7 +337,7 @@ void _jswrap_promise_add(JsVar *parent, JsVar *callback, bool resolve) {
     // Check to see if promise has already been resolved
     /* Note: we use jsvFindChildFromString not ObjectGetChild so we get the name.
      * If we didn't then we wouldn't know if it was resolved, but with undefined */
-    JsVar *resolved = jsvFindChildFromString(parent, "resolved", 0);
+    JsVar *resolved = jsvFindChildFromString(parent, JS_PROMISE_RESOLVED_NAME, 0);
     if (resolved) {
       resolved = jsvSkipNameAndUnLock(resolved);
       // If so, queue a resolve event
