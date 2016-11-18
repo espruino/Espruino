@@ -33,6 +33,7 @@
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
+#include "nrf_delay.h"
 #ifdef USE_NFC
 #include "nfc_t2t_lib.h"
 #include "nfc_uri_msg.h"
