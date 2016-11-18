@@ -36,6 +36,9 @@
 #include "stm32l4xx_ll_usart.h"
 #include "stm32l4xx_ll_exti.h"
 #include "stm32l4xx_ll_tim.h"
+
+#include "stm32l4xx_hal.h" // Used for flash management
+
 #if defined(USE_FULL_ASSERT)
 #include "stm32_assert.h"
 #endif /* USE_FULL_ASSERT */
@@ -1428,30 +1431,149 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 /** Return start address and size of the flash page the given address resides in. Returns false if
   * the page is outside of the flash address range */
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize){
-        return;
+  if (addr<FLASH_START ||
+      addr>=FLASH_START+FLASH_TOTAL)
+    return false;
+  if (startAddr) *startAddr = addr & (uint32_t)~(FLASH_PAGE_SIZE-1);
+  if (pageSize) *pageSize = FLASH_PAGE_SIZE;
+  return true;
 }
 /** Return a JsVar array containing objects of the form `{addr, length}` for each contiguous block of free
  * memory available. These should be one complete pages, so that erasing the page containing any address in
  * this block won't erase anything useful! */
-JsVar *jshFlashGetFree(){
-        return;
+
+static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
 }
+
+JsVar *jshFlashGetFree(){
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+
+  // Try and find the page after the end of firmware
+  extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
+  uint32_t firmwareEnd = FLASH_START | (uint32_t)&LINKER_ETEXT_VAR;
+  uint32_t pAddr, pSize;
+  jshFlashGetPage(firmwareEnd, &pAddr, &pSize);
+  firmwareEnd = pAddr+pSize;
+  if (firmwareEnd < FLASH_SAVED_CODE_START)
+    addFlashArea(jsFreeFlash, firmwareEnd, FLASH_SAVED_CODE_START-firmwareEnd);
+
+  // Otherwise add undocumented memory
+  addFlashArea(jsFreeFlash, FLASH_SAVED_CODE_START, FLASH_SAVED_CODE_LENGTH);
+
+  return jsFreeFlash;
+
+}
+
+/**
+  * @brief  Gets the bank of a given address
+  * @param  Addr: Address of the FLASH Memory
+  * @retval The bank of a given address
+  */
+static uint32_t GetBank(uint32_t Addr){
+  uint32_t bank = 0;
+  if (READ_BIT(SYSCFG->MEMRMP, SYSCFG_MEMRMP_FB_MODE) == 0){
+    /* No Bank swap */
+    if (Addr < (FLASH_BASE + FLASH_BANK_SIZE)){
+      bank = FLASH_BANK_1;
+    } else{
+      bank = FLASH_BANK_2;
+    }
+  } else{
+    /* Bank swap */
+    if (Addr < (FLASH_BASE + FLASH_BANK_SIZE)){
+      bank = FLASH_BANK_2;
+    } else{
+      bank = FLASH_BANK_1;
+    }
+  }
+
+  return bank;
+}
+
+/**
+  * @brief  Gets the page of a given address
+  * @param  Addr: Address of the FLASH Memory
+  * @retval The page of a given address
+  */
+static uint32_t GetPage(uint32_t Addr){
+  uint32_t page = 0;
+
+  if (Addr < (FLASH_BASE + FLASH_BANK_SIZE)){
+    /* Bank 1 */
+    page = (Addr - FLASH_BASE) / FLASH_PAGE_SIZE;
+  } else {
+    /* Bank 2 */
+    page = (Addr - (FLASH_BASE + FLASH_BANK_SIZE)) / FLASH_PAGE_SIZE;
+  }
+
+  return page;
+}
+
 /// Erase the flash page containing the address
 void jshFlashErasePage(uint32_t addr){
-        return;
+  static FLASH_EraseInitTypeDef EraseInitStruct;
+  uint32_t bank = GetBank(addr);
+  uint32_t page = GetPage(addr);
+  uint32_t PAGEError = 0;
+
+  HAL_FLASH_Unlock();
+
+  // Clear All pending flags
+  //__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | /*FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR*/);
+
+  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
+  EraseInitStruct.Banks       = bank;
+  EraseInitStruct.Page        = page;
+  EraseInitStruct.NbPages     = 1;
+
+  if( HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK){
+    Error_Callback();
+  }
+
+  HAL_FLASH_Lock();
+
 }
+
 /** Read data from flash memory into the buffer, the flash address has no alignment restrictions
   * and the len may be (and often is) 1 byte */
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len){
-        return;
+  //jsiConsolePrintf("jshFlashRead addr=%x, len=%d\n", addr, len);
+  memcpy(buf, (void*)addr, len);
 }
 /** Write data to flash memory from the buffer, the buffer address and flash address are
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len){
-        return;
+
+  //jsiConsolePrintf("jshFlashWrite addr=%x, len=%d\n", addr, len);
+
+  HAL_FLASH_Unlock();
+
+  unsigned int i;
+  //__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+  for (i=0;i<len/8;i++){
+    if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, ((uint64_t*)buf)[i]) != HAL_OK){
+      HAL_FLASH_Lock();
+      Error_Callback();
+    }
+    addr = addr + 8;
+  }
+
+
+
+  //FLASH_WaitForLastOperation(0x2000);
+
+  HAL_FLASH_Lock();
+
 }
- 
- 
+
+
 /** Utility timer handling functions
  *  ------------------------------------------
  * The utility timer is intended to generate an interrupt and then call jstUtilTimerInterruptHandler
