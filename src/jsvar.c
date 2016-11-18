@@ -1775,14 +1775,14 @@ bool jsvIsVariableDefined(JsVar *a) {
  * return 0. Throws a ReferenceError if variable is not defined,
  * but you can check if it will with jsvIsReferenceError */
 JsVar *jsvSkipName(JsVar *a) {
-  JsVar *pa = a;
   if (!a) return 0;
-  if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(pa));
-  if (jsvIsNameIntBool(pa)) return jsvNewFromBool(jsvGetFirstChild(pa)!=0);
+  if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
+  if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
+  if (jsvIsNameIntBool(a)) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
+  JsVar *pa = jsvLockAgain(a);
   while (jsvIsName(pa)) {
     JsVarRef n = jsvGetFirstChild(pa);
-    if (pa!=a) jsvUnLock(pa);
+    jsvUnLock(pa);
     if (!n) {
       if (pa==a && jsvGetRefs(a)==0 && !jsvIsNewChild(a)) {
         jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
@@ -1790,8 +1790,8 @@ JsVar *jsvSkipName(JsVar *a) {
       return 0;
     }
     pa = jsvLock(n);
+    assert(pa!=a);
   }
-  if (pa==a) jsvLockAgain(pa);
   return pa;
 }
 
@@ -1800,14 +1800,14 @@ JsVar *jsvSkipName(JsVar *a) {
  * return 0. Throws a ReferenceError if variable is not defined,
  * but you can check if it will with jsvIsReferenceError */
 JsVar *jsvSkipOneName(JsVar *a) {
-  JsVar *pa = a;
   if (!a) return 0;
-  if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(pa));
-  if (jsvIsNameIntBool(pa)) return jsvNewFromBool(jsvGetFirstChild(pa)!=0);
+  if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
+  if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
+  if (jsvIsNameIntBool(a)) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
+  JsVar *pa = jsvLockAgain(a);
   if (jsvIsName(pa)) {
     JsVarRef n = jsvGetFirstChild(pa);
-    if (pa!=a) jsvUnLock(pa);
+    jsvUnLock(pa);
     if (!n) {
       if (pa==a && jsvGetRefs(a)==0 && !jsvIsNewChild(a)) {
         jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
@@ -1815,8 +1815,8 @@ JsVar *jsvSkipOneName(JsVar *a) {
       return 0;
     }
     pa = jsvLock(n);
+    assert(pa!=a);
   }
-  if (pa==a) jsvLockAgain(pa);
   return pa;
 }
 
@@ -2568,12 +2568,12 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
   return jsvSkipNameAndUnLock(jsvGetArrayIndex(arr,index));
 }
 
-void jsvSetArrayItem(const JsVar *arr, JsVarInt index, JsVar *item) {
+void jsvSetArrayItem(JsVar *arr, JsVarInt index, JsVar *item) {
   JsVar *indexVar = jsvGetArrayIndex(arr, index);
   if (indexVar) {
     jsvSetValueOfName(indexVar, item);
   } else {
-    indexVar = jsvMakeIntoVariableName(jsvNewFromInteger(jsvGetInteger(index)), item);
+    indexVar = jsvMakeIntoVariableName(jsvNewFromInteger(index), item);
     jsvAddName(arr, indexVar);
   }
   jsvUnLock(indexVar);
@@ -3454,7 +3454,7 @@ void *jsvMalloc(size_t size) {
   /** Allocate flat string, return pointer to its first element.
    * As we drop the pointer here, it's left locked. jsvGetFlatStringPointer
    * is also safe if 0 is passed in.  */
-  JsVar *flatStr = jsvNewFlatStringOfLength(size);
+  JsVar *flatStr = jsvNewFlatStringOfLength((unsigned int)size);
   if (!flatStr) {
     jsErrorFlags |= JSERR_LOW_MEMORY;
     // Not allocated - try and free any command history/etc
@@ -3462,7 +3462,7 @@ void *jsvMalloc(size_t size) {
     // Garbage collect
     jsvGarbageCollect();
     // Try again
-    flatStr = jsvNewFlatStringOfLength(size);
+    flatStr = jsvNewFlatStringOfLength((unsigned int)size);
   }
   // intentionally no jsvUnLock - see above
   void *p = (void*)jsvGetFlatStringPointer(flatStr);
