@@ -34,7 +34,7 @@ This is the built-in class for ES6 Promises
 
 void _jswrap_promise_queueresolve(JsVar *promise, JsVar *data);
 void _jswrap_promise_queuereject(JsVar *promise, JsVar *data);
-void _jswrap_promise_add(JsVar *parent, JsVar *callback, const char *name);
+void _jswrap_promise_add(JsVar *parent, JsVar *callback, bool resolve);
 
 bool _jswrap_promise_is_promise(JsVar *promise) {
   JsVar *constr = jspGetConstructor(promise);
@@ -42,6 +42,7 @@ bool _jswrap_promise_is_promise(JsVar *promise) {
   jsvUnLock(constr);
   return isPromise;
 }
+
 
 void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   JsVar *result = 0;
@@ -81,7 +82,7 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
       JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_queueresolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
       if (fn) {
         jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, chainedPromise);
-        _jswrap_promise_add(result, fn, JS_PROMISE_THEN_NAME);
+        _jswrap_promise_add(result, fn, true);
         jsvUnLock(fn);
       }
     } else {
@@ -112,7 +113,9 @@ void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool r
     _jswrap_promise_resolve_or_reject(promise, data, fn);
     jsvUnLock(fn);
   } else {
-    if (!resolve)
+    if (resolve)
+      jsvObjectSetChild(promise, "resolved", data);
+    else
       jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
   }
 }
@@ -308,11 +311,27 @@ JsVar *jswrap_promise_reject(JsVar *data) {
   return promise;
 }
 
-void _jswrap_promise_add(JsVar *parent, JsVar *callback, const char *name) {
+void _jswrap_promise_add(JsVar *parent, JsVar *callback, bool resolve) {
   if (!jsvIsFunction(callback)) {
     jsExceptionHere(JSET_TYPEERROR, "Callback must be a function, got %t", callback);
     return;
   }
+
+  if (resolve) {
+    // Check to see if promise has already been resolved
+    /* Note: we use jsvFindChildFromString not ObjectGetChild so we get the name.
+     * If we didn't then we wouldn't know if it was resolved, but with undefined */
+    JsVar *resolved = jsvFindChildFromString(parent, "resolved", 0);
+    if (resolved) {
+      resolved = jsvSkipNameAndUnLock(resolved);
+      // If so, queue a resolve event
+      jsiQueueEvents(0, callback, &resolved, 1);
+      jsvUnLock(resolved);
+      return;
+    }
+  }
+
+  const char *name = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
   JsVar *c = jsvObjectGetChild(parent, name, 0);
   if (!c) {
     jsvObjectSetChild(parent, name, callback);
@@ -352,9 +371,9 @@ static JsVar *jswrap_promise_get_chained_promise(JsVar *parent) {
 }
  */
 JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected) {
-  _jswrap_promise_add(parent, onFulfilled, JS_PROMISE_THEN_NAME);
+  _jswrap_promise_add(parent, onFulfilled, true);
   if (onRejected)
-    _jswrap_promise_add(parent, onRejected, JS_PROMISE_CATCH_NAME);
+    _jswrap_promise_add(parent, onRejected, false);
   return jswrap_promise_get_chained_promise(parent);
 }
 
@@ -371,6 +390,6 @@ JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected)
 }
  */
 JsVar *jswrap_promise_catch(JsVar *parent, JsVar *onRejected) {
-  _jswrap_promise_add(parent, onRejected, JS_PROMISE_CATCH_NAME);
+  _jswrap_promise_add(parent, onRejected, false);
   return jswrap_promise_get_chained_promise(parent);
 }
