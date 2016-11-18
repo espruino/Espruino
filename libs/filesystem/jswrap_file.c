@@ -135,6 +135,8 @@ void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
   jswrap_E_unmountSD();
   sdSPISetup(spi, csPin);
 #else
+  NOT_USED(spi);
+  NOT_USED(csPin);
   jsExceptionHere(JSET_ERROR, "Unimplemented on Linux");
 #endif
 }
