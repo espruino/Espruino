@@ -1428,7 +1428,6 @@ NO_INLINE JsVar *jspeAddNamedFunctionParameter(JsVar *funcVar, JsVar *name) {
 NO_INLINE JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a) {
   assert(!a || jsvIsName(a));
   JSP_ASSERT_MATCH(LEX_ARROW_FUNCTION);
-  if (!funcVar) funcVar = jsvNewWithFlags(JSV_FUNCTION);
   funcVar = jspeAddNamedFunctionParameter(funcVar, a);
 
   bool expressionOnly = lex->tk!='{';
@@ -1442,9 +1441,8 @@ NO_INLINE JsVar *jspeExpressionOrArrowFunction() {
   JsVar *funcVar = 0;
   bool allNames = true;
   while (lex->tk!=')' && !JSP_SHOULDNT_PARSE) {
-    if (allNames) {
+    if (allNames && a) {
       // we never get here if this isn't a name and a string
-      jsvUnLock(funcVar);
       funcVar = jspeAddNamedFunctionParameter(funcVar, a);
     }
     jsvUnLock(a);
