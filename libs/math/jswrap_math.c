@@ -306,7 +306,7 @@ double jswrap_math_pow(double x, double y) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "random",
-  "generate_full" : "(JsVarFloat)rand() / (JsVarFloat)RAND_MAX",
+  "generate_full" : "(JsVarFloat)espruino_rand() / (JsVarFloat)ESPRUINO_RAND_MAX",
   "return" : ["float","A random number between 0 and 1"]
 }*/
 /*JSON{
