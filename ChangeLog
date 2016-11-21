@@ -1,6 +1,7 @@
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments
             Added more helpful error messages for TLS
+            Allow `Modules.addCached` to take a function (makes module loading more memory efficient)
 
      1v89 : Allow entering of multi-line Templated Literals on the command-line (fix #970)
             Make lexer fail when parsing non-templated strings with newlines in 
