@@ -3479,3 +3479,4 @@ void jsvFree(void *ptr) {
 
   jsvUnLock(flatStr);
 }
+

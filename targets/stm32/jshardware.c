@@ -1249,7 +1249,7 @@ void jshInit() {
 
 #ifndef SAVE_ON_FLASH
   // Get a random seed to put into rand's random number generator
-  srand(jshGetRandomNumber());
+  espruino_srand(jshGetRandomNumber());
 #endif
 
   /* Work out microsecond delay for jshDelayMicroseconds...

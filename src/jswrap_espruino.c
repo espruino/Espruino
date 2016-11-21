@@ -1058,7 +1058,7 @@ JsVar *jswrap_e_dumpStr() {
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "srand",
-  "generate" : "srand",
+  "generate" : "espruino_srand",
   "params" : [
     ["v","int","The 32 bit integer seed to use for the random number generator"]
   ]
