@@ -2767,11 +2767,21 @@ JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **arg
 
 /// Evaluate a JavaScript module and return its exports
 JsVar *jspEvaluateModule(JsVar *moduleContents) {
-  assert(jsvIsString(moduleContents));
+  assert(jsvIsString(moduleContents) || jsvIsFunction(moduleContents));
+  if (jsvIsFunction(moduleContents)) {
+    moduleContents = jsvObjectGetChild(moduleContents,JSPARSE_FUNCTION_CODE_NAME,0);
+    if (!jsvIsString(moduleContents)) {
+      jsvUnLock(moduleContents);
+      return 0;
+    }
+  } else
+    jsvLockAgain(moduleContents);
   JsVar *scope = jsvNewObject();
-  if (!scope) return 0; // out of mem
   JsVar *scopeExports = jsvNewObject();
-  if (!scopeExports) { jsvUnLock(scope); return 0; } // out of mem
+  if (!scope || !scopeExports) { // out of mem
+    jsvUnLock3(scope, scopeExports, moduleContents);
+    return 0;
+  }
   JsVar *exportsName = jsvAddNamedChild(scope, scopeExports, "exports");
   jsvUnLock2(scopeExports, jsvAddNamedChild(scope, scope, "module"));
 
@@ -2782,7 +2792,7 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   execInfo.thisVar = oldThisVar;
   execInfo.execute = oldExecute; // make sure we fully restore state after parsing a module
 
-  jsvUnLock(scope);
+  jsvUnLock2(moduleContents, scope);
   return jsvSkipNameAndUnLock(exportsName);
 }
 
