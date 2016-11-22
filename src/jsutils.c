@@ -824,13 +824,13 @@ size_t jsuGetFreeStack() {
 unsigned int rand_m_w = 0xDEADBEEF;    /* must not be zero */
 unsigned int rand_m_z = 0xCAFEBABE;    /* must not be zero */
 
-int espruino_rand() {
+int rand() {
   rand_m_z = 36969 * (rand_m_z & 65535) + (rand_m_z >> 16);
   rand_m_w = 18000 * (rand_m_w & 65535) + (rand_m_w >> 16);
-  return (int)ESPRUINO_RAND_MAX & (int)((rand_m_z << 16) + rand_m_w);  /* 32-bit result */
+  return (int)RAND_MAX & (int)((rand_m_z << 16) + rand_m_w);  /* 32-bit result */
 }
 
-void espruino_srand(unsigned int seed) {
+void srand(unsigned int seed) {
   rand_m_w = (seed&0xFFFF) | (seed<<16);
   rand_m_z = (seed&0xFFFF0000) | (seed>>16);
 }
