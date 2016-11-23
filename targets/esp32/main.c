@@ -18,8 +18,11 @@
 #include "jshardwarePulse.h"
 #include "spi.h"  //rename to jahardwareSPI.h ?
 
+<<<<<<< HEAD
 #include "esp_spi_flash.h"
 
+=======
+>>>>>>> Allow single byte read from flash so that `save()` works
 extern void jswrap_ESP32_wifi_restore(void) ;
 
 extern void initialise_wifi(void);
@@ -68,6 +71,7 @@ static void espruinoTask(void *data) {
   jsvInit();     // Initialize the variables
 >>>>>>> Initial files for the ESP32 environment.
   jsiInit(true); // Initialize the interactive subsystem
+  jswrap_ESP32_wifi_restore();
   while(1) {
     jsiLoop();   // Perform the primary loop processing
   }

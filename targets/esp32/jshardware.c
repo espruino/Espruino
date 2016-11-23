@@ -145,6 +145,7 @@ void jshInit() {
   ESP_LOGD(tag,">> jshInit");
   uint32_t freeHeapSize = system_get_free_heap_size();
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
+<<<<<<< HEAD
   // FIX
   // Setup an ESP32 listening environment.
   ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
@@ -158,6 +159,12 @@ void jshInit() {
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
   ESP_ERROR_CHECK(esp_wifi_start());
   ESP_ERROR_CHECK(esp_wifi_connect());
+=======
+  esp32_wifi_init();
+  spi_flash_init();
+  jshInitDevices();
+  gpio_isr_register(18,gpio_intr_test,NULL);  //TODO ESP32 document usage of interrupt levels (18 in this case)
+>>>>>>> Allow single byte read from flash so that `save()` works
   ESP_LOGD(tag,"<< jshInit");
 >>>>>>> Initial files for the ESP32 environment.
 } // End of jshInit
@@ -1006,6 +1013,9 @@ void jshFlashRead(
     uint32_t len   //!< Length of data to read
   ) {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Allow single byte read from flash so that `save()` works
 
   if(len == 1){ // Can't read a single byte using the API, so read 4 and select the byte requested
     uint word;
@@ -1013,10 +1023,13 @@ void jshFlashRead(
 	*(uint8_t *)buf = (word >> ((addr & 3) << 3 )) & 255;
   }
   else spi_flash_read(addr, buf, len);
+<<<<<<< HEAD
 =======
   ESP_LOGD(tag,">> jshFlashRead");
   ESP_LOGD(tag,"<< jshFlashRead");
 >>>>>>> Initial files for the ESP32 environment.
+=======
+>>>>>>> Allow single byte read from flash so that `save()` works
 }
 
 

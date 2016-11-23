@@ -44,6 +44,19 @@ static system_event_sta_disconnected_t g_lastEventStaDisconnected;
 // Are we connected as a station?
 static bool g_isStaConnected = false;
 
+<<<<<<< HEAD
+=======
+// Configuration save to flash
+typedef struct {
+  uint16_t    length, version;
+  uint32_t    crc;
+  wifi_mode_t     mode;
+  wifi_sta_config_t sta_config;
+  wifi_config_t ap_config;
+} Wifi_config;
+
+
+>>>>>>> Allow single byte read from flash so that `save()` works
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting options object but got %t", jsOPT)
 
@@ -601,6 +614,10 @@ void esp32_wifi_init() {
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+<<<<<<< HEAD
+=======
+  //ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+>>>>>>> Allow single byte read from flash so that `save()` works
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
   
 } // End of esp32_wifi_init
@@ -744,7 +761,11 @@ void jswrap_ESP32_wifi_stopAP(JsVar *jsCallback) {
   }
   err = esp_wifi_set_mode(mode);
   if (err != ESP_OK) {
+<<<<<<< HEAD
     jsWarn("jswrap_ESP32_wifi_stopAP: esp_wifi_set_mode rc=%d", err);
+=======
+    ESP_LOGW(tag, "jswrap_ESP32_wifi_stopAP: esp_wifi_set_mode rc=%d", err);
+>>>>>>> Allow single byte read from flash so that `save()` works
   }
 
   if (jsvIsFunction(jsCallback)) {
@@ -1384,11 +1405,44 @@ Save the current wifi configuration (station and access point) and automatically
 * DHCP hostname
 */
 void jswrap_ESP32_wifi_save(JsVar *what) {
+<<<<<<< HEAD
   if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
 	esp_wifi_set_auto_connect(false);
   } else {
 	esp_wifi_set_auto_connect(true);
   } 
+=======
+  UNUSED(what);
+  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_save");
+
+  /*uint32_t flashBlock[256];
+  Wifi_config *conf=(Wifi_config *)flashBlock;
+  memset(flashBlock, 0, sizeof(flashBlock));
+
+  conf->length = 1024;
+  conf->version = 1;
+  */
+  
+  if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
+    //conf->mode = 0; // disable
+    // ssids, passwords, and hostname are set to zero thanks to memset above
+	esp_wifi_set_auto_connect(false);
+	jsiConsolePrint("Wifi.save(clear)\n");
+
+  } else {
+	esp_wifi_set_auto_connect(true);
+    /*
+	esp_wifi_get_mode( &conf->mode );
+	esp_wifi_get_config(WIFI_IF_STA, (wifi_config_t *)&conf->sta_config);
+    esp_wifi_get_config(WIFI_IF_AP, (wifi_config_t *)&conf->ap_config);
+	// This address is just after code save area - needs to be checked and should be a #define
+    // Might be better off using the non-volatile key pairs, rather than using flash - or esp_wifi_set_storage(WIFI_STORAGE_FLASH) ?
+    //jshFlashErasePage(0x110000);
+    //jshFlashWrite(conf, 0x110000, sizeof(flashBlock));
+    */
+  } 
+  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_save");
+>>>>>>> Allow single byte read from flash so that `save()` works
 } // End of jswrap_ESP32_wifi_save
 
 
@@ -1401,6 +1455,7 @@ void jswrap_ESP32_wifi_save(JsVar *what) {
 Restores the saved Wifi configuration. See `Wifi.save()`.
 */
 void jswrap_ESP32_wifi_restore(void) {
+<<<<<<< HEAD
   bool auto_connect;
   int err=esp_wifi_get_auto_connect(&auto_connect);
   
@@ -1424,6 +1479,53 @@ void jswrap_ESP32_wifi_restore(void) {
     // No previous wifi.save()
   }
 
+=======
+  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_restore");
+
+/*  
+  uint32_t flashBlock[256];
+  Wifi_config *conf=(Wifi_config *)flashBlock;
+  memset(flashBlock, 0, sizeof(flashBlock));
+  jshFlashRead(flashBlock, 0x110000, sizeof(flashBlock));
+
+  //conf->crc = 0;
+  // HACK uint32_t crcCalc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
+  jsiConsolePrint(conf->sta_config.ssid);
+  jsiConsolePrint("\n");
+  int err=esp_wifi_set_mode( conf->mode );
+  esp_wifi_set_config(WIFI_IF_STA, (wifi_config_t *)&conf->sta_config);
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "jswrap_ESP32_wifi_restore: esp_wifi_set_config : STA %d", err);
+    return;
+  }
+  err=esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)&conf->ap_config);
+  if (err != ESP_OK) {
+	ESP_LOGE(tag, "jswrap_ESP32_wifi_restore: esp_wifi_set_config : AP %d", err);
+    //ESP_LOGE(tag, "jswrap_ESP32_wifi_restore: wifi_set_config: ssid=%.*s, password=%s, authMode=%d, maxConnections=%d, beacon=%d, channel=%d",
+      //err, conf->ap_config.ssid, conf->ap_config.password, conf->ap_config.authmode, conf->ap_config.max_connection, conf->ap_config.beacon_interval, conf->ap_config.channel);
+    ESP_LOGD(tag, "<< jswrap_ESP32_wifi_restore");
+    return;
+  }
+*/
+  bool auto_connect;
+  int err=esp_wifi_get_auto_connect(&auto_connect);
+  if ( auto_connect ) {
+    jsiConsolePrint("jswrap_ESP32_wifi_restore AUTO CONNECT\n");
+    err = esp_wifi_start();
+    if (err != ESP_OK) {
+      ESP_LOGE(tag, "jswrap_ESP32_wifi_restore: esp_wifi_start: %d", err);
+    }	
+    // Perform an esp_wifi_start
+    err = esp_wifi_connect();
+    if (err != ESP_OK) {
+      ESP_LOGE(tag, "jswrap_ESP32_wifi_restore: esp_wifi_connect: %d", err);
+      return;
+    }
+  } else {
+    jsiConsolePrint("esp32_wifi_init CONFIG DEFAULT\n");  
+  }
+  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_restore");
+>>>>>>> Allow single byte read from flash so that `save()` works
 } // End of jswrap_ESP32_wifi_restore
 
 
