@@ -1457,7 +1457,7 @@ void jswrap_ESP32_wifi_restore(void) {
       return;
     }
   } else {
-    jsiConsolePrint("esp32_wifi_init CONFIG DEFAULT\n");  
+    jsiConsolePrint("jswrap_ESP32_wifi_restore: CONFIG DEFAULT\n");  
   }
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_restore");
 } // End of jswrap_ESP32_wifi_restore
