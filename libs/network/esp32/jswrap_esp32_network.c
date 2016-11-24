@@ -40,7 +40,6 @@ static system_event_sta_disconnected_t g_lastEventStaDisconnected;
 // Are we connected as a station?
 static bool g_isStaConnected = false;
 
-
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting options object but got %t", jsOPT)
 
@@ -607,7 +606,9 @@ void esp32_wifi_init() {
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+  //ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
+  
 } // End of esp32_wifi_init
 
 
@@ -747,7 +748,7 @@ void jswrap_ESP32_wifi_stopAP(JsVar *jsCallback) {
   }
   err = esp_wifi_set_mode(mode);
   if (err != ESP_OK) {
-    ESP_LOGW(tag, "jswrap_ESP32_wifi_stopAP: wesp_wifi_set_mode rc=%d", err);
+    ESP_LOGW(tag, "jswrap_ESP32_wifi_stopAP: esp_wifi_set_mode rc=%d", err);
   }
 
   if (jsvIsFunction(jsCallback)) {
@@ -1409,7 +1410,7 @@ JsVar *jswrap_ESP32_wifi_getAPDetails(JsVar *jsCallback) {
     ["what", "JsVar", "An optional parameter to specify what to save, on the esp8266 the two supported values are `clear` and `sta+ap`. The default is `sta+ap`"]
   ]
 }
-Save the current wifi configuration (station and access point) to flash and automatically apply this configuration at boot time, unless `what=="clear"`, in which case the saved configuration is cleared such that wifi remains disabled at boot. The saved configuration includes:
+Save the current wifi configuration (station and access point) and automatically apply this configuration at boot time, unless `what=="clear"`, in which case the saved configuration is cleared such that wifi remains disabled at boot. The saved configuration includes:
 * mode (off/sta/ap/sta+ap)
 * SSIDs & passwords
 * phy (11b/g/n)
@@ -1417,9 +1418,15 @@ Save the current wifi configuration (station and access point) to flash and auto
 * DHCP hostname
 */
 void jswrap_ESP32_wifi_save(JsVar *what) {
-  UNUSED(what);
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_save");
-  ESP_LOGD(tag, "Not implemented");
+  
+  if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
+	esp_wifi_set_auto_connect(false);
+	jsiConsolePrint("Wifi.save(clear)\n");
+
+  } else {
+	esp_wifi_set_auto_connect(true);
+  } 
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_save");
 } // End of jswrap_ESP32_wifi_save
 
@@ -1430,11 +1437,28 @@ void jswrap_ESP32_wifi_save(JsVar *what) {
   "name"     : "restore",
   "generate" : "jswrap_ESP32_wifi_restore"
 }
-Restores the saved Wifi configuration from flash. See `Wifi.save()`.
+Restores the saved Wifi configuration. See `Wifi.save()`.
 */
 void jswrap_ESP32_wifi_restore(void) {
   ESP_LOGD(tag, ">> jswrap_ESP32_wifi_restore");
-  ESP_LOGD(tag, "Not implemented");
+
+  bool auto_connect;
+  int err=esp_wifi_get_auto_connect(&auto_connect);
+  if ( auto_connect ) {
+    jsiConsolePrint("jswrap_ESP32_wifi_restore AUTO CONNECT\n");
+    err = esp_wifi_start();
+    if (err != ESP_OK) {
+      ESP_LOGE(tag, "jswrap_ESP32_wifi_restore: esp_wifi_start: %d", err);
+    }	
+    // Perform an esp_wifi_start
+    err = esp_wifi_connect();
+    if (err != ESP_OK) {
+      ESP_LOGE(tag, "jswrap_ESP32_wifi_restore: esp_wifi_connect: %d", err);
+      return;
+    }
+  } else {
+    jsiConsolePrint("jswrap_ESP32_wifi_restore: CONFIG DEFAULT\n");  
+  }
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_restore");
 } // End of jswrap_ESP32_wifi_restore
 

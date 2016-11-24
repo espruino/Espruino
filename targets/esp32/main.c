@@ -9,7 +9,7 @@
 #include <jsdevices.h>
 #include <jsinteractive.h>
 
-
+extern void jswrap_ESP32_wifi_restore(void) ;
 
 
 
@@ -19,6 +19,7 @@ static void espruinoTask(void *data) {
   jshInit();     // Initialize the hardware
   jsvInit();     // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
+  jswrap_ESP32_wifi_restore();
   while(1) {
     jsiLoop();   // Perform the primary loop processing
   }

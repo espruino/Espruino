@@ -109,6 +109,7 @@ void jshInit() {
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
   esp32_wifi_init();
   spi_flash_init();
+  jshInitDevices();
   gpio_isr_register(18,gpio_intr_test,NULL);  //TODO ESP32 document usage of interrupt levels (18 in this case)
   ESP_LOGD(tag,"<< jshInit");
 } // End of jshInit
@@ -799,11 +800,13 @@ void jshFlashRead(
     uint32_t addr, //!< Flash address to read from
     uint32_t len   //!< Length of data to read
   ) {
-  // This function is called too often during save() and load() processing to be
-  // useful for logging the entry/exit.
-  //ESP_LOGD(tag,">> jshFlashRead");
-  spi_flash_read(addr, buf, len);
-  //ESP_LOGD(tag,"<< jshFlashRead");
+
+  if(len == 1){ // Can't read a single byte using the API, so read 4 and select the byte requested
+    uint word;
+    spi_flash_read(addr & 0xfffffffc,&word,4);
+	*(uint8_t *)buf = (word >> ((addr & 3) << 3 )) & 255;
+  }
+  else spi_flash_read(addr, buf, len);
 }
 
 
