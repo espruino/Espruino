@@ -146,6 +146,7 @@ void jshInit() {
   uint32_t freeHeapSize = system_get_free_heap_size();
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
 <<<<<<< HEAD
+<<<<<<< HEAD
   // FIX
   // Setup an ESP32 listening environment.
   ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
@@ -161,10 +162,20 @@ void jshInit() {
   ESP_ERROR_CHECK(esp_wifi_connect());
 =======
   esp32_wifi_init();
+=======
+>>>>>>> implement some of the missing GPIO pin functions
   spi_flash_init();
+  esp32_wifi_init();
   jshInitDevices();
   gpio_isr_register(18,gpio_intr_test,NULL);  //TODO ESP32 document usage of interrupt levels (18 in this case)
+<<<<<<< HEAD
 >>>>>>> Allow single byte read from flash so that `save()` works
+=======
+   // Initialize something for each of the possible pins.
+  for (int i=0; i<JSH_PIN_COUNT; i++) {
+    g_pinState[i] = 0;
+  }
+>>>>>>> implement some of the missing GPIO pin functions
   ESP_LOGD(tag,"<< jshInit");
 >>>>>>> Initial files for the ESP32 environment.
 } // End of jshInit
@@ -304,9 +315,13 @@ void jshDelayMicroseconds(int microsec) {
  * JSHPINSTATE_GPIO_OUT
  * JSHPINSTATE_GPIO_OUT_OPENDRAIN
 <<<<<<< HEAD
+<<<<<<< HEAD
  * JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP
 =======
 >>>>>>> Initial files for the ESP32 environment.
+=======
+ * JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP
+>>>>>>> implement some of the missing GPIO pin functions
  * JSHPINSTATE_GPIO_IN
  * JSHPINSTATE_GPIO_IN_PULLUP
  * JSHPINSTATE_GPIO_IN_PULLDOWN
@@ -361,6 +376,9 @@ void jshPinSetState(
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
     mode = GPIO_MODE_OUTPUT_OD;
     break;
+  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
+    mode = GPIO_MODE_OUTPUT_OD; // | GPIO_PULLUP_ONLY;
+    break;
   default:
     ESP_LOGE(tag, "jshPinSetState: Unexpected state: %d", state);
 >>>>>>> Initial files for the ESP32 environment.
@@ -369,10 +387,14 @@ void jshPinSetState(
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   gpio_set_direction(gpioNum, mode);
 <<<<<<< HEAD
+<<<<<<< HEAD
   gpio_set_pull_mode(gpioNum, pull_mode);
   gpio_pad_select_gpio(gpioNum);
   g_pinState[pin] = state; // remember what we set this to...
 =======
+=======
+  g_pinState[pin] = state; // remember what we set this to...
+>>>>>>> implement some of the missing GPIO pin functions
   ESP_LOGD(tag,"<< jshPinSetState");
 >>>>>>> Initial files for the ESP32 environment.
 }
@@ -384,12 +406,16 @@ void jshPinSetState(
  */
 JshPinState jshPinGetState(Pin pin) {
 <<<<<<< HEAD
+<<<<<<< HEAD
   return g_pinState[pin];
 =======
   ESP_LOGD(tag,">> jshPinGetState: pin=%d", pin);
   ESP_LOGD(tag,"<< jshPinGetState");
   return 0;
 >>>>>>> Initial files for the ESP32 environment.
+=======
+  return g_pinState[pin];
+>>>>>>> implement some of the missing GPIO pin functions
 }
 
 //===== GPIO and PIN stuff =====
