@@ -73,6 +73,8 @@ static IOEventFlags pinToEV_EXTI(
   return (IOEventFlags)(EV_EXTI0 + pin);
 }
 
+static uint8_t g_pinState[JSH_PIN_COUNT];
+
 /**
 * interrupt handler for gpio interrupts
 */
@@ -107,10 +109,14 @@ void jshInit() {
   ESP_LOGD(tag,">> jshInit");
   uint32_t freeHeapSize = system_get_free_heap_size();
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
-  esp32_wifi_init();
   spi_flash_init();
+  esp32_wifi_init();
   jshInitDevices();
   gpio_isr_register(18,gpio_intr_test,NULL);  //TODO ESP32 document usage of interrupt levels (18 in this case)
+   // Initialize something for each of the possible pins.
+  for (int i=0; i<JSH_PIN_COUNT; i++) {
+    g_pinState[i] = 0;
+  }
   ESP_LOGD(tag,"<< jshInit");
 } // End of jshInit
 
@@ -202,6 +208,7 @@ void jshDelayMicroseconds(int microsec) {
  * JSHPINSTATE_UNDEFINED
  * JSHPINSTATE_GPIO_OUT
  * JSHPINSTATE_GPIO_OUT_OPENDRAIN
+ * JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP
  * JSHPINSTATE_GPIO_IN
  * JSHPINSTATE_GPIO_IN_PULLUP
  * JSHPINSTATE_GPIO_IN_PULLDOWN
@@ -232,12 +239,16 @@ void jshPinSetState(
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
     mode = GPIO_MODE_OUTPUT_OD;
     break;
+  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
+    mode = GPIO_MODE_OUTPUT_OD; // | GPIO_PULLUP_ONLY;
+    break;
   default:
     ESP_LOGE(tag, "jshPinSetState: Unexpected state: %d", state);
   return;
   }
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   gpio_set_direction(gpioNum, mode);
+  g_pinState[pin] = state; // remember what we set this to...
   ESP_LOGD(tag,"<< jshPinSetState");
 }
 
@@ -247,10 +258,7 @@ void jshPinSetState(
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
-  ESP_LOGD(tag,">> jshPinGetState: pin=%d", pin);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshPinGetState");
-  return 0;
+  return g_pinState[pin];
 }
 
 //===== GPIO and PIN stuff =====
@@ -356,13 +364,12 @@ void jshKickWatchDog() {
  * Get the state of the pin associated with the event flag.
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
-bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
   //ESP_LOGD(tagGPIO,">> jshGetWatchedPinState: eventFlag=%d", eventFlag);
   gpio_num_t gpioNum = pinToESP32Pin(eventFlag-EV_EXTI0);
   bool level = gpio_get_level(gpioNum);
   //ESP_LOGD(tagGPIO,"<< jshGetWatchedPinState: level=%d", level);
   return level;
-}}
+}
 
 
 /**
