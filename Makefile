@@ -562,7 +562,7 @@ USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
-#USE_TELNET=1
+USE_TELNET=1
 DEFINES+=-DESP_PLATFORM -DESP32=1
 OPTIMIZEFLAGS+=-Og
 
@@ -1801,6 +1801,7 @@ LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/component
 ESPTOOL?=
 INCLUDE+=\
 -I$(ESP_APP_TEMPLATE_PATH)/build/include \
+-I$(ESP_IDF_PATH)/components \
 -I$(ESP_IDF_PATH)/components/newlib/include \
 -I$(ESP_IDF_PATH)/components/bt/include \
 -I$(ESP_IDF_PATH)/components/driver/include \
