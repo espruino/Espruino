@@ -76,6 +76,7 @@
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
 # NO_COMPILE=1            # skips compiling and linking part, used to echo WRAPPERSOURCES only
+# RTOS=1                  # Adds functions for FreeRTOS, right now for ESP32 only
 
 ifndef GENDIR
 GENDIR=$(shell pwd)/gen
@@ -1612,6 +1613,11 @@ ifeq ($(FAMILY),ESP32)
 CFLAGS+=-Og -Wpointer-arith -Wno-error=unused-function -Wno-error=unused-but-set-variable \
 -Wno-error=unused-variable -Wall -ffunction-sections -fdata-sections -mlongcalls -nostdlib \
 -MMD -MP -std=gnu99 -fstrict-volatile-bitfields -fgnu89-inline
+ifdef RTOS
+  SOURCES += targets/esp32/rtosutil.c
+  WRAPPERSOURCES += targets/esp32/jswrap_rtos.c
+  DEFINES += -DRTOS
+endif
 SOURCES += targets/esp32/jshardware.c
 endif
 
