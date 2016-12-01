@@ -8,10 +8,17 @@
 #include <stdio.h>
 #include <jsdevices.h>
 #include <jsinteractive.h>
+#include "rtosutil.h"
+#include "jshardwareUart.h"
 
 extern void jswrap_ESP32_wifi_restore(void) ;
 
-
+static void uartTask(void *data) {
+  initConsole();
+  while(1) {
+    consoleToEspruino();  
+  }
+}
 
 static void espruinoTask(void *data) {
   vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -32,8 +39,15 @@ static void espruinoTask(void *data) {
 int app_main(void)
 {
   nvs_flash_init();
-  system_init();
   tcpip_adapter_init();
+#ifdef RTOS
+  queues_init();
+  tasks_init();
+  task_init(espruinoTask,"EspruinoTask",10000,5,0);
+  task_init(uartTask,"ConsoleTask",2000,20,0);
+#else
   xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", 10000, NULL, 5, NULL, 0);
+  xTaskCreatePinnedToCore(&uartTask,"uartTask",2000,NULL,20,NULL,0);
+#endif
   return 0;
 }

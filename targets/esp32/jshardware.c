@@ -38,7 +38,6 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
-//#include "spi_flash/cache_utils.h" // attempt to turn off interrupts
 #include "esp_spi_flash.h"
 #include "rom/uart.h"
 #include "driver/gpio.h"
@@ -47,7 +46,7 @@
 
 #define FLASH_MAX (4*1024*1024) //4MB
 #define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
-#define FLASH_PAGE ((uint32_t)1<<FLASH_PAGE_SHIFT)  //4KB
+#define FLASH_PAGE (1<<FLASH_PAGE_SHIFT)  //4KB
 
 #define UNUSED(x) (void)(x)
 
@@ -74,8 +73,6 @@ static IOEventFlags pinToEV_EXTI(
   return (IOEventFlags)(EV_EXTI0 + pin);
 }
 
-static uint8_t g_pinState[JSH_PIN_COUNT];
-
 /**
 * interrupt handler for gpio interrupts
 */
@@ -83,7 +80,7 @@ void IRAM_ATTR gpio_intr_test(void* arg){
   //GPIO intr process. Mainly copied from esp-idf
   UNUSED(arg);
   IOEventFlags exti;
-  Pin gpio_num = 0;
+  uint32_t gpio_num = 0;
   uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);   //read status to get interrupt status for GPIO0-31
   uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);//read status1 to get interrupt status for GPIO32-39
   SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, gpio_intr_status);    //Clear intr for gpio0-gpio31
@@ -110,14 +107,10 @@ void jshInit() {
   ESP_LOGD(tag,">> jshInit");
   uint32_t freeHeapSize = system_get_free_heap_size();
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
-  spi_flash_init();
   esp32_wifi_init();
+  spi_flash_init();
   jshInitDevices();
   gpio_isr_register(18,gpio_intr_test,NULL);  //TODO ESP32 document usage of interrupt levels (18 in this case)
-   // Initialize something for each of the possible pins.
-  for (int i=0; i<JSH_PIN_COUNT; i++) {
-    g_pinState[i] = 0;
-  }
   ESP_LOGD(tag,"<< jshInit");
 } // End of jshInit
 
@@ -155,11 +148,11 @@ void jshIdle() {
   // * Busy polling is never good ... we should eventually use an interrupt
   //   driven mechanism.
   //
-  char rxChar;
-  STATUS status = uart_rx_one_char((uint8_t *)&rxChar);
-  if (status == OK) {
-    jshPushIOCharEvents(EV_SERIAL1, &rxChar, 1);
-  }
+  //char rxChar;
+  //STATUS status = uart_rx_one_char((uint8_t *)&rxChar);
+  //if (status == OK) {
+  //  jshPushIOCharEvents(EV_SERIAL1, &rxChar, 1);
+  //}
   //ESP_LOGD(tag,"<< jshIdle");  // Can't debug log as called too often.
 }
 
@@ -174,22 +167,8 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 }
 
 //===== Interrupts and sleeping
-/* as of 2016-11-29 might not be actually implemented in esp-idf
-see comment https://github.com/espressif/esp-idf/blob/95403b88030a90db71a7fd4d534b92fbce08a421/components/spi_flash/cache_utils.h#L34
-With these in place system won't boot:
-Espruino on ESP32 starting ...
-frc2_timer_task_hdl:3ffdc0d4, prio:22, stack:2048
-phy_version: 187, Oct 10 2016, 19:23:46, 0
-pp_task_hdl : 3ffde8f4, prio:23, stack:8192
-Guru Meditation Error of type IllegalInstruction occurred on core   0. Exception was unhandled.
-//void jshInterruptOff() { spi_flash_disable_interrupts_caches_and_other_cpu(); }
-//void jshInterruptOn()  { spi_flash_enable_interrupts_caches_and_other_cpu();}
 
-vTaskSuspendAll and xTaskResumeAll don't crash - however still not working
-void jshInterruptOff() { vTaskSuspendAll(); }
-void jshInterruptOn()  { xTaskResumeAll(); }
-*/
-void jshInterruptOff() { }
+void jshInterruptOff() {  }
 void jshInterruptOn()  { }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
@@ -223,7 +202,6 @@ void jshDelayMicroseconds(int microsec) {
  * JSHPINSTATE_UNDEFINED
  * JSHPINSTATE_GPIO_OUT
  * JSHPINSTATE_GPIO_OUT_OPENDRAIN
- * JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP
  * JSHPINSTATE_GPIO_IN
  * JSHPINSTATE_GPIO_IN_PULLUP
  * JSHPINSTATE_GPIO_IN_PULLDOWN
@@ -244,7 +222,6 @@ void jshPinSetState(
   ) {
   ESP_LOGD(tag,">> jshPinSetState: pin=%d, state=0x%x", pin, state);
   gpio_mode_t mode;
-  gpio_pull_mode_t pull_mode=GPIO_FLOATING;
   switch(state) {
   case JSHPINSTATE_GPIO_OUT:
     mode = GPIO_MODE_OUTPUT;
@@ -252,20 +229,8 @@ void jshPinSetState(
   case JSHPINSTATE_GPIO_IN:
     mode = GPIO_MODE_INPUT;
     break;
-  case JSHPINSTATE_GPIO_IN_PULLUP:
-    mode = GPIO_MODE_INPUT;
-	pull_mode=GPIO_PULLUP_ONLY;	
-    break;
-  case JSHPINSTATE_GPIO_IN_PULLDOWN:
-    mode = GPIO_MODE_INPUT;
-	pull_mode=GPIO_PULLDOWN_ONLY;	
-    break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
     mode = GPIO_MODE_OUTPUT_OD;
-    break;
-  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
-    mode = GPIO_MODE_OUTPUT_OD;
-	pull_mode=GPIO_PULLUP_ONLY;
     break;
   default:
     ESP_LOGE(tag, "jshPinSetState: Unexpected state: %d", state);
@@ -273,9 +238,6 @@ void jshPinSetState(
   }
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   gpio_set_direction(gpioNum, mode);
-  gpio_set_pull_mode(gpioNum, pull_mode);
-  gpio_pad_select_gpio(gpioNum);
-  g_pinState[pin] = state; // remember what we set this to...
   ESP_LOGD(tag,"<< jshPinSetState");
 }
 
@@ -285,7 +247,10 @@ void jshPinSetState(
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
-  return g_pinState[pin];
+  ESP_LOGD(tag,">> jshPinGetState: pin=%d", pin);
+  ESP_LOGD(tag, "Not implemented");
+  ESP_LOGD(tag,"<< jshPinGetState");
+  return 0;
 }
 
 //===== GPIO and PIN stuff =====
@@ -391,12 +356,13 @@ void jshKickWatchDog() {
  * Get the state of the pin associated with the event flag.
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
+bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
   //ESP_LOGD(tagGPIO,">> jshGetWatchedPinState: eventFlag=%d", eventFlag);
   gpio_num_t gpioNum = pinToESP32Pin(eventFlag-EV_EXTI0);
   bool level = gpio_get_level(gpioNum);
   //ESP_LOGD(tagGPIO,"<< jshGetWatchedPinState: level=%d", level);
   return level;
-}
+}}
 
 
 /**
