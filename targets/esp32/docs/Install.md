@@ -19,7 +19,7 @@ esptool.py \
   --flash_freq "40m" \
   0x10000 espruino_esp32.bin \  
   0x1000 /home/kolban/esp32/Espruino/template/build/bootloader/bootloader.bin \
-  0x8000 /home/kolban/esp32/Espruino/template/build/partitions_singleapp.bin
+  0x4000 /home/kolban/esp32/Espruino/template/build/partitions_singleapp.bin
 
 ```
 

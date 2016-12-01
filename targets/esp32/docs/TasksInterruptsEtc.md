@@ -18,5 +18,4 @@ In this list we have all interrupts handled for Espruino
 | Intr num | level | descripton |
 | --- | --- | --- |
 | 18 | 1 | GPIO interrupt used for setWatch |
-| 17 | 1 | Uart0 (console) |
 
