@@ -226,7 +226,7 @@ static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
   }
 }
 
-void jshSetAFPin(GPIO_TypeDef* port, uint8_t pin, uint8_t af) {
+void jshSetAFPin(GPIO_TypeDef* port, uint16_t pin, uint8_t af) {
   if(pin > LL_GPIO_PIN_0 && pin <=LL_GPIO_PIN_7){
     LL_GPIO_SetAFPin_0_7(port, pin, af);
   } else {
@@ -254,24 +254,50 @@ void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
   }
 }
 
+USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
+ switch (device) {
+   case EV_SERIAL1 : return USART1;
+   case EV_SERIAL2 : return USART2;
+#ifdef USART3
+   case EV_SERIAL3 : return USART3;
+#endif
+#ifdef UART4
+   case EV_SERIAL4 : return UART4;
+#endif
+#ifdef UART5
+   case EV_SERIAL5 : return UART5;
+#endif
+#ifdef USART6
+   case EV_SERIAL6 : return USART6;
+#endif
+   default: return 0;
+ }
+}
+
 void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   device = device&JSH_MASK_TYPE;
   void *ptr = 0;
   if (device == JSH_USART1) {
-    if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
-	else LL_APB2_GRP1_DisableClock(LL_APB2_GRP1_PERIPH_USART1);
+    if(cmd == ENABLE) {
+        LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
+        LL_RCC_SetUSARTClockSource(LL_RCC_USART1_CLKSOURCE_PCLK2);
+    } else LL_APB2_GRP1_DisableClock(LL_APB2_GRP1_PERIPH_USART1);
 	ptr = USART1;
   } else if (device == JSH_USART2) {
-    if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
-	else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_USART2);
+    if(cmd == ENABLE) {
+        LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
+        LL_RCC_SetUSARTClockSource(LL_RCC_USART2_CLKSOURCE_PCLK1);
+    } else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_USART2);
     ptr = USART2;
-#if 0 // VVE to check later...
 #if defined(USART3) && USART_COUNT>=3
   } else if (device == JSH_USART3) {
-    if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
-	else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_USART3);
+    if(cmd == ENABLE) {
+      LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
+      LL_RCC_SetUSARTClockSource(LL_RCC_USART3_CLKSOURCE_PCLK1);
+    } else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_USART3);
 	ptr = USART3;
 #endif
+#if 0 // VVE to check later...
 #if defined(UART4) && USART_COUNT>=4
   } else if (device == JSH_USART4) {
     if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART4);
@@ -607,84 +633,6 @@ void Error_Callback(void)
 
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
-#if 0 // example uart from Guenael
-  /* Configure USARTx (USART IP configuration and related GPIO initialization) */
-  /* Enable the peripheral clock of GPIO Port */
-  USARTx_GPIO_CLK_ENABLE();
-
-  /* Configure Tx Pin as : Alternate function, High Speed, Push pull, Pull up */
-  LL_GPIO_SetPinMode(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_MODE_ALTERNATE);
-  USARTx_SET_TX_GPIO_AF();
-  LL_GPIO_SetPinSpeed(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_SPEED_FREQ_VERY_HIGH);
-  LL_GPIO_SetPinOutputType(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-  LL_GPIO_SetPinPull(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_PULL_UP);
-
-  /* Configure Rx Pin as : Alternate function, High Speed, Push pull, Pull up */
-  LL_GPIO_SetPinMode(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_MODE_ALTERNATE);
-  USARTx_SET_RX_GPIO_AF();
-  LL_GPIO_SetPinSpeed(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_SPEED_FREQ_VERY_HIGH);
-  LL_GPIO_SetPinOutputType(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-  LL_GPIO_SetPinPull(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_PULL_UP);
-
-  /* (2) NVIC Configuration for USART interrupts */
-  /*  - Set priority for USARTx_IRQn */
-  /*  - Enable USARTx_IRQn */
-  NVIC_SetPriority(USARTx_IRQn, 0);  
-  NVIC_EnableIRQ(USARTx_IRQn);
-
-  /* (3) Enable USART peripheral clock and clock source ***********************/
-  USARTx_CLK_ENABLE();
-
-  /* Set clock source */
-  USARTx_CLK_SOURCE();
-
-  /* (4) Configure USART functional parameters ********************************/
-  
-  /* Disable USART prior modifying configuration registers */
-  /* Note: Commented as corresponding to Reset value */
-  // LL_USART_Disable(USARTx_INSTANCE);
-
-  /* TX/RX direction */
-  LL_USART_SetTransferDirection(USARTx_INSTANCE, LL_USART_DIRECTION_TX_RX);
-
-  /* 8 data bit, 1 start bit, 1 stop bit, no parity */
-  LL_USART_ConfigCharacter(USARTx_INSTANCE, LL_USART_DATAWIDTH_8B, LL_USART_PARITY_NONE, LL_USART_STOPBITS_1);
-
-  /* No Hardware Flow control */
-  /* Reset value is LL_USART_HWCONTROL_NONE */
-  // LL_USART_SetHWFlowCtrl(USARTx_INSTANCE, LL_USART_HWCONTROL_NONE);
-
-  /* Oversampling by 16 */
-  /* Reset value is LL_USART_OVERSAMPLING_16 */
-  // LL_USART_SetOverSampling(USARTx_INSTANCE, LL_USART_OVERSAMPLING_16);
-
-  /* Set Baudrate to 115200 using APB frequency set to 80000000 Hz */
-  /* Frequency available for USART peripheral can also be calculated through LL RCC macro */
-  /* Ex :
-      Periphclk = LL_RCC_GetUSARTClockFreq(Instance); or LL_RCC_GetUARTClockFreq(Instance); depending on USART/UART instance
-  
-      In this example, Peripheral Clock is expected to be equal to 80000000 Hz => equal to SystemCoreClock
-  */
-  LL_USART_SetBaudRate(USARTx_INSTANCE, SystemCoreClock, LL_USART_OVERSAMPLING_16, 9600); 
-
-  /* (5) Enable USART *********************************************************/
-  LL_USART_Enable(USARTx_INSTANCE);
-  
-  /* Polling USART initialisation */
-  while((!(LL_USART_IsActiveFlag_TEACK(USARTx_INSTANCE))) || (!(LL_USART_IsActiveFlag_REACK(USARTx_INSTANCE))))
-  { 
-  }
-
-  /* Clear Overrun flag, in case characters have already been sent to USART */
-  LL_USART_ClearFlag_ORE(USARTx_INSTANCE);
-
-  /* Enable RXNE and Error interrupts */
-  LL_USART_EnableIT_RXNE(USARTx_INSTANCE);
-  LL_USART_EnableIT_ERROR(USARTx_INSTANCE);
-
-  return;
-
-#else
 
   assert(DEVICE_IS_USART(device));
 
@@ -727,10 +675,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
     return;
   }
 
-  NVIC_SetPriority(usartIRQ, 0);
+  NVIC_SetPriority(usartIRQ, IRQ_PRIOR_USART);
   NVIC_EnableIRQ(usartIRQ);
-
-  LL_RCC_SetUSARTClockSource(LL_RCC_USART2_CLKSOURCE_PCLK1); // must be done somewhere else...
 
   LL_USART_InitTypeDef USART_InitStructure;
 
@@ -782,6 +728,9 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
   USART_InitStructure.TransferDirection = LL_USART_DIRECTION_RX | LL_USART_DIRECTION_TX;
   USART_InitStructure.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
 
+  
+  USART_InitStructure.OverSampling = LL_USART_OVERSAMPLING_16;
+
   LL_USART_Init(USARTx, &USART_InitStructure);
 
   // Enable USART
@@ -801,8 +750,6 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
 
   return;
 
-#endif
-  
 }
 
 
@@ -1338,52 +1285,15 @@ bool jshIsEventForPin(IOEvent *event, Pin pin){
  * Later down the line this could potentially even set up something like DMA.*/
 void jshUSARTKick(IOEventFlags device){
 
-
-  /* If we have other data to send, send it */
-  int c = jshGetCharToTransmit(device);
-  if (c >= 0) {
-    int ret;
-	void *USART = 0;
-    if (device == EV_SERIAL1) {
-      USART = USART1;
-    } else if (device == EV_SERIAL2) {
-      USART = USART2;
-#if defined(USART3) && USART_COUNT>=3
-    } else if (device == EV_SERIAL3) {
-      USART = USART3;
-#endif
-#if defined(UART4) && USART_COUNT>=4
-    } else if (device == EV_SERIAL4) {
-      USART = UART4;
-#endif
-#if defined(UART5) && USART_COUNT>=5
-    } else if (device == EV_SERIAL5) {
-      USART = UART5;
-#endif
-#if defined(USART6) && USART_COUNT>=6
-    } else if (device == EV_SERIAL6) {
-      USART = USART6;
-#endif
-    } else {
-      jsExceptionHere(JSET_INTERNALERROR, "Unknown serial port device.");
-      return;
-    }
-
-	/* Wait for TXE flag to be raised */
-    while (!LL_USART_IsActiveFlag_TXE(USART))
-    {
-    }
-
-    LL_USART_TransmitData8(USART, c);
-
-	/* Wait for TC flag to be raised for last char */
-    while (!LL_USART_IsActiveFlag_TC(USART))
-    {
-    }
-
+  USART_TypeDef *uart = getUsartFromDevice(device);
+  if (uart && !jshIsDeviceInitialised(device)) {
+    JshUSARTInfo inf;
+    jshUSARTInitInfo(&inf);
+    jshUSARTSetup(device, &inf);
   }
 
-  return;
+  if (uart)  LL_USART_EnableIT_TXE(uart );
+
 }
 
 /** Set up SPI, if pins are -1 they will be guessed */
