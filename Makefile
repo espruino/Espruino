@@ -1804,6 +1804,7 @@ LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/component
 -L$(ESP_APP_TEMPLATE_PATH)/build/vfs \
 -L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/wpa_supplicant \
+-L$(ESP_APP_TEMPLATE_PATH)/build/ethernet \
 -L$(ESP_APP_TEMPLATE_PATH)/build/arduino-esp32
 ESPTOOL?=
 INCLUDE+=\
