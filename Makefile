@@ -1001,10 +1001,10 @@ ifdef USE_NET
  ifdef USE_ESP32
  DEFINES += -DUSE_ESP32
  WRAPPERSOURCES += libs/network/esp32/jswrap_esp32_network.c \
- 	targets/esp32/jswrap_esp32.c
+   targets/esp32/jswrap_esp32.c
  INCLUDE += -I$(ROOT)/libs/network/esp32
- SOURCES +=  libs/network/esp32/network_esp32.c
-	targets/esp32/jshardwareUart.c
+ SOURCES +=  libs/network/esp32/network_esp32.c \
+  targets/esp32/jshardwareUart.c
   ifdef RTOS
    DEFINES += -DRTOS
    WRAPPERSOURCES += targets/esp32/jswrap_rtos.c
@@ -1857,6 +1857,8 @@ $(ESP_IDF_PATH)/components/esp32/libhal.a  \
 -ltcpip_adapter \
 -lvfs \
 -lnewlib \
+-lcoexist \
+-lethernet \
 -larduino-esp32 \
 -lgcc
 endif # ESP32

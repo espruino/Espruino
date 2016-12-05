@@ -1219,12 +1219,6 @@ JsVar *jswrap_ESP32_wifi_getStatus(JsVar *jsCallback) {
   esp_wifi_get_ps(&psType);
   char *psTypeStr;
   switch(psType) {
-  case WIFI_PS_LIGHT:
-    psTypeStr = "light";
-    break;
-  case WIFI_PS_MAC:
-    psTypeStr = "mac";
-    break;
   case WIFI_PS_MODEM:
     psTypeStr = "modem";
     break;
