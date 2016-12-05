@@ -74,7 +74,7 @@ JsVar *jswrap_ESP32_getState() {
   // wish to return.
   JsVar *esp32State = jsvNewObject();
   // system_get_sdk_version() - is deprecated , need to find alternative
-  jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
+  jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString("1.0 2016-12-03"));
   //jsvObjectSetChildAndUnLock(esp32State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
   jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(esp_get_free_heap_size()));
   return esp32State;
