@@ -49,6 +49,12 @@ void heatshrink_encode(unsigned char *data, size_t dataLen, void (*callback)(uns
     } while (pres == HSER_POLL_MORE);
     assert(pres == HSER_POLL_EMPTY);
     if (sunk == dataLen) {
+      while(polled%8 != 0){
+        /*  in this case, fill the memory with 0x0
+            (data will be written in flash only on 64 bits multiples) */
+        callback(0x0, cbdata);
+        polled++;
+      }
       heatshrink_encoder_finish(&hse);
     }
   }
