@@ -46,7 +46,7 @@ Perform a hardware reset/reboot of the ESP32.
 */
 void jswrap_ESP32_reboot() {
   ESP_LOGD(tag, ">> jswrap_ESP32_reboot");
-  system_restart(); // Call the ESP-IDF to restart the ESP32.
+  esp_restart(); // Call the ESP-IDF to restart the ESP32.
   ESP_LOGD(tag, "<< jswrap_ESP32_reboot");
 } // End of jswrap_ESP32_reboot
 
@@ -73,9 +73,10 @@ JsVar *jswrap_ESP32_getState() {
   // Create a new variable and populate it with the properties of the ESP32 that we
   // wish to return.
   JsVar *esp32State = jsvNewObject();
-  jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
+  // system_get_sdk_version() - is deprecated , need to find alternative
+  jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString("1.0 2016-12-03"));
   //jsvObjectSetChildAndUnLock(esp32State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
-  jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size()));
+  jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(esp_get_free_heap_size()));
   return esp32State;
 } // End of jswrap_ESP32_getState
 
