@@ -186,22 +186,33 @@ JsVar *jswrap_flash_read(int length, int addr) {
 #ifndef LINUX
 // cbdata = uint32_t[end_address, address, data]
 void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
+  static uint32_t dataToWrite[2];
+
   // Only write if we can fit in flash
   if (cbdata[1]<cbdata[0]) {
     // write only a word at a time
     cbdata[2]=(uint32_t)(ch<<24) | (cbdata[2]>>8);
-    if ((cbdata[1]&3)==3)
-      jshFlashWrite(&cbdata[2], cbdata[1]&(uint32_t)~3, 4);
+    if ((cbdata[1]&7)==7){
+      dataToWrite[1] = cbdata[2];
+      jshFlashWrite(dataToWrite, cbdata[1]&(uint32_t)~7, 8);
+    } else if ((cbdata[1]&3)==3){
+      dataToWrite[0] = cbdata[2];
+    }
   }
   // inc address ptr
   cbdata[1]++;
   if ((cbdata[1]&1023)==0) jsiConsolePrint(".");
 }
+
 // cbdata = uint32_t[address, errorcount]
 void jsfSaveToFlash_checkcb(unsigned char ch, uint32_t *cbdata) {
   unsigned char data;
+
   jshFlashRead(&data,cbdata[0]++, 1);
-  if (data!=ch) cbdata[1]++; // error count
+  if (data!=ch) {
+      //jsiConsolePrintf("\n checkcb error : ch=%x, cbdata: %x, %x, data = %x", ch, cbdata[0], cbdata[1], data);
+      cbdata[1]++; // error count
+  }
 }
 // cbdata = uint32_t[end_address, address]
 int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
@@ -252,8 +263,8 @@ void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
 #define BOOT_CODE_RUN_ALWAYS  0x80000000
 
 #define FLASH_BOOT_CODE_INFO_LOCATION FLASH_SAVED_CODE_START
-#define FLASH_STATE_END_LOCATION (FLASH_SAVED_CODE_START+4)
-#define FLASH_DATA_LOCATION (FLASH_SAVED_CODE_START+8)
+#define FLASH_STATE_END_LOCATION (FLASH_SAVED_CODE_START+8)
+#define FLASH_DATA_LOCATION (FLASH_SAVED_CODE_START+16)
 
 void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
 #ifdef LINUX
@@ -388,7 +399,7 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
         jsfSaveToFlash_writecb(originalBootCode[i], cbData);
     }
     // write size of boot code to flash
-    jshFlashWrite(&originalBootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 4);
+    jshFlashWrite(&originalBootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 8);
     // state....
     if (flags & SFF_SAVE_STATE) {
       COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
@@ -418,10 +429,10 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
 
   if (success) {
     jsiConsolePrintf("\nCompressed %d bytes to %d", dataSize, writtenBytes);
-    jshFlashWrite(&endOfData, FLASH_STATE_END_LOCATION, 4); // write position of end of data, at start of address space
+    jshFlashWrite(&endOfData, FLASH_STATE_END_LOCATION, 8); // write position of end of data, at start of address space
 
-    uint32_t magic = FLASH_MAGIC;
-    jshFlashWrite(&magic, FLASH_MAGIC_LOCATION, 4);
+    uint64_t magic = FLASH_MAGIC;
+    jshFlashWrite(&magic, FLASH_MAGIC_LOCATION, 8);
 
 
     jsiConsolePrint("\nChecking...");
