@@ -178,11 +178,12 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 void jshInterruptOff() { 
 	//xTaskResumeAll();
   //taskEXIT_CRITICAL(&xJshInterrupt);
+  taskDISABLE_INTERRUPTS();
 }
 
 void jshInterruptOn()  {
   //taskENTER_CRITICAL(&xJshInterrupt);
-  //vTaskSuspendAll();
+  taskENABLE_INTERRUPTS();
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
