@@ -646,49 +646,66 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 
 //===== I2C =====
 
-/** Set-up I2C master for ESP32, default pins are SCL:??, SDA:??. Only device I2C1 is supported
+// Let's get this working with only one device
+i2c_t * i2c=NULL;
+
+/** Set-up I2C master for ESP32, default pins are SCL:21, SDA:22. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   if (device != EV_I2C1) {
-    jsError("Only I2C1 supported"); return; }
-  Pin scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 18;
-  Pin sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 19;
+    jsError("Only I2C1 supported"); 
+	return;
+  }
+  Pin scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 21;
+  Pin sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 22;
 
-  jshPinSetState(scl, JSHPINSTATE_I2C);
-  jshPinSetState(sda, JSHPINSTATE_I2C);
-
-  //i2c_master_gpio_init(scl, sda, info->bitrate);
+  //jshPinSetState(scl, JSHPINSTATE_I2C);
+  //jshPinSetState(sda, JSHPINSTATE_I2C);
+   
+  int num=0;
+  i2c_err_t err;
+  i2c = i2cInit(num, 1, false);
+  //ESP_LOGE(tag, "jshI2CSetup: Frequency: %d", info->bitrate);
+  err=i2cSetFrequency(i2c, (uint32_t)info->bitrate);
+  if ( err != I2C_ERROR_OK ) {
+    ESP_LOGE(tag, "jshI2CSetup: i2cSetFrequency error: %d", err);
+	return;
+  }
+  err=i2cAttachSDA(i2c, pinToESP32Pin(sda));
+  if ( err != I2C_ERROR_OK ) {
+    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSDA error: %d", err);
+	return;
+  }  
+  err=i2cAttachSCL(i2c, pinToESP32Pin(scl));
+  if ( err != I2C_ERROR_OK ) {
+    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSCL error: %d", err);
+	return;
+  }
 }
 
-
 void jshI2CWrite(IOEventFlags device,
-    unsigned char address,
-    int nBytes,
-    const unsigned char *data,
-    bool sendStop) {
-  UNUSED(device);
-  UNUSED(address);
-  UNUSED(nBytes);
-  UNUSED(data);
-  UNUSED(sendStop);
-  ESP_LOGD(tag,">> jshI2CWrite");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshI2CWrite");
+  unsigned char address,
+  int nBytes,
+  const unsigned char *data,
+  bool sendStop) {
+// i2cWrite(i2c_t * i2c, uint16_t address, bool addr_10bit, uint8_t * data, uint8_t len, bool sendStop);
+  i2c_err_t err=i2cWrite(i2c,address,false,data,nBytes,sendStop);
+  if ( err != I2C_ERROR_OK ) {
+    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSCL error: %d", err);
+	return;
+  }
 }
 
 void jshI2CRead(IOEventFlags device,
-    unsigned char address,
-    int nBytes,
-    unsigned char *data,
-    bool sendStop) {
-  UNUSED(device);
-  UNUSED(address);
-  UNUSED(nBytes);
-  UNUSED(data);
-  UNUSED(sendStop);
-  ESP_LOGD(tag,">> jshI2CRead");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshI2CRead");
+  unsigned char address,
+  int nBytes,
+  unsigned char *data,
+  bool sendStop) {
+  i2c_err_t err=i2cRead(i2c,address,false,data,nBytes,sendStop);
+  if ( err != I2C_ERROR_OK ) {
+    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSCL error: %d", err);
+	return;
+  }
 }
 
 //===== System time stuff =====
