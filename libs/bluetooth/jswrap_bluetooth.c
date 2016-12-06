@@ -848,15 +848,37 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
 Utility function to return a list of BLE devices detected in range.
 
 ```
-NRF.getDevices(1, function(devices) {
-  console.log(JSON.stringify(d,null,2));
-});
-// prints [
-//   {"rssi":-72, "id":"##:##:##:##:##:##", "data":new ArrayBuffer([2,1,6,...]), "name":.., "services":[]}
-//   {"rssi":-72, "id":"##:##:##:##:##:##", "data":new ArrayBuffer([2,1,6,...]), "name":.., "services":[]}
-//   {"rssi":-72, "id":"##:##:##:##:##:##", "data":new ArrayBuffer([2,1,6,...]), "name":.., "services":[]}
-// ]
+NRF.findDevices(function(devices) {
+  console.log(devices);
+}, 1000);
 ```
+
+prints something like:
+
+```
+[
+  BluetoothDevice {
+    "id": "e7:e0:57:ad:36:a2 random",
+    "rssi": -45,
+    "services": [  ],
+    "data": new ArrayBuffer([ ... ]),
+    "name": "Puck.js 36a2"
+   },
+  BluetoothDevice {
+    "id": "c0:52:3f:50:42:c9 random",
+    "rssi": -65,
+    "services": [  ],
+    "data": new ArrayBuffer([ ... ]),
+    "name": "Puck.js 8f57"
+   }
+ ]
+```
+
+You could then use [`BluetoothDevice.gatt.connect(...)`](/Reference#l_BluetoothRemoteGATTServer_connect) on
+the device returned, to make a connection.
+
+You can also use [`NRF.connect(...)`](/Reference#l_NRF_connect) on just the `id` string returned, which
+may be useful if you always want to connect to a specific device.
 */
 void jswrap_nrf_bluetooth_findDevices_found_cb(JsVar *device) {
   JsVar *arr = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADV", JSV_ARRAY);
@@ -939,6 +961,7 @@ NRF.setRSSIHandler(function(rssi) {
 // Stop Scanning
 NRF.setRSSIHandler();
 ```
+
 */
 void jswrap_nrf_bluetooth_setRSSIHandler(JsVar *callback) {
   // set the callback event variable
@@ -1117,7 +1140,7 @@ NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }] }).then(function(device
 }).then(function(service) {
   return service.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
 }).then(function(characteristic) {
-  characteristic.writeValue("LED1.reset()\n");
+  characteristic.writeValue("LED1.set()\n");
 }).then(function() {
   gatt.disconnect();
   console.log("Done!");
@@ -1336,14 +1359,10 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
     "generate" : "jswrap_nrf_BluetoothRemoteGATTServer_connect",
     "return" : ["JsVar", "A Promise that is resolved (or rejected) when the connection is complete" ]
 }
-Connect to a BLE device by MAC address. Returns a promise,
+Connect to a BLE device - returns a promise,
 the argument of which is the `BluetoothRemoteGATTServer` connection.
 
-```
-NRF.connect("aa:bb:cc:dd:ee").then(function(server) {
-  // ...
-});
-```
+See [`NRF.requestDevice`](/Reference#l_NRF_requestDevice) for usage examples.
 
 **Note:** This is only available on some devices
 */
