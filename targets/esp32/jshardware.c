@@ -176,13 +176,13 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 //Mux to protect the JshInterrupt status
 //static portMUX_TYPE xJshInterrupt = portMUX_INITIALIZER_UNLOCKED;
 void jshInterruptOff() { 
-	xTaskResumeAll();
+	//xTaskResumeAll();
   //taskEXIT_CRITICAL(&xJshInterrupt);
 }
 
 void jshInterruptOn()  {
   //taskENTER_CRITICAL(&xJshInterrupt);
-  vTaskSuspendAll();
+  //vTaskSuspendAll();
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
