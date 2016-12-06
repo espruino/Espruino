@@ -38,7 +38,6 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
-//#include "spi_flash/cache_utils.h" // attempt to turn off interrupts
 #include "esp_spi_flash.h"
 #include "rom/uart.h"
 #include "driver/gpio.h"
@@ -108,7 +107,7 @@ void IRAM_ATTR gpio_intr_test(void* arg){
  */
 void jshInit() {
   ESP_LOGD(tag,">> jshInit");
-  uint32_t freeHeapSize = system_get_free_heap_size();
+  uint32_t freeHeapSize = esp_get_free_heap_size();
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
   spi_flash_init();
   esp32_wifi_init();
@@ -174,23 +173,17 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 }
 
 //===== Interrupts and sleeping
-/* as of 2016-11-29 might not be actually implemented in esp-idf
-see comment https://github.com/espressif/esp-idf/blob/95403b88030a90db71a7fd4d534b92fbce08a421/components/spi_flash/cache_utils.h#L34
-With these in place system won't boot:
-Espruino on ESP32 starting ...
-frc2_timer_task_hdl:3ffdc0d4, prio:22, stack:2048
-phy_version: 187, Oct 10 2016, 19:23:46, 0
-pp_task_hdl : 3ffde8f4, prio:23, stack:8192
-Guru Meditation Error of type IllegalInstruction occurred on core   0. Exception was unhandled.
-//void jshInterruptOff() { spi_flash_disable_interrupts_caches_and_other_cpu(); }
-//void jshInterruptOn()  { spi_flash_enable_interrupts_caches_and_other_cpu();}
+//Mux to protect the JshInterrupt status
+//static portMUX_TYPE xJshInterrupt = portMUX_INITIALIZER_UNLOCKED;
+void jshInterruptOff() { 
+	xTaskResumeAll();
+  //taskEXIT_CRITICAL(&xJshInterrupt);
+}
 
-vTaskSuspendAll and xTaskResumeAll don't crash - however still not working
-void jshInterruptOff() { vTaskSuspendAll(); }
-void jshInterruptOn()  { xTaskResumeAll(); }
-*/
-void jshInterruptOff() { }
-void jshInterruptOn()  { }
+void jshInterruptOn()  {
+  //taskENTER_CRITICAL(&xJshInterrupt);
+  vTaskSuspendAll();
+}
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
@@ -205,12 +198,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
  * Delay (blocking) for the supplied number of microseconds.
  */
 void jshDelayMicroseconds(int microsec) {
-  ESP_LOGD(tag,">> jshDelayMicroseconds: microsec=%d", microsec);
-  // This is likely a poor implementation since the granularity of the FreeRTOS timer
-  // is likely to coarse.  But it will serve as a place holder.
   TickType_t ticks = (TickType_t)microsec / (1000 * portTICK_PERIOD_MS);
   vTaskDelay(ticks);
-  ESP_LOGD(tag,"<< jshDelayMicroseconds");
 } // End of jshDelayMicroseconds
 
 
@@ -242,7 +231,6 @@ void jshPinSetState(
   Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
-  ESP_LOGD(tag,">> jshPinSetState: pin=%d, state=0x%x", pin, state);
   gpio_mode_t mode;
   gpio_pull_mode_t pull_mode=GPIO_FLOATING;
   switch(state) {
@@ -276,7 +264,6 @@ void jshPinSetState(
   gpio_set_pull_mode(gpioNum, pull_mode);
   gpio_pad_select_gpio(gpioNum);
   g_pinState[pin] = state; // remember what we set this to...
-  ESP_LOGD(tag,"<< jshPinSetState");
 }
 
 
@@ -297,10 +284,8 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
-  ESP_LOGD(tag,">> jshPinSetValue: pin=%d, value=%d", pin, value);
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   gpio_set_level(gpioNum, (uint32_t)value);
-  ESP_LOGD(tag,"<< jshPinSetValue");
 }
 
 
@@ -311,10 +296,8 @@ void jshPinSetValue(
 bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
-  //ESP_LOGD(tagGPIO,">> jshPinGetValue: pin=%d", pin);
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   bool level = gpio_get_level(gpioNum);
-  //ESP_LOGD(tagGPIO,"<< jshPinGetValue: level=%d", level);
   return level;
 }
 
@@ -391,10 +374,8 @@ void jshKickWatchDog() {
  * Get the state of the pin associated with the event flag.
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
-  //ESP_LOGD(tagGPIO,">> jshGetWatchedPinState: eventFlag=%d", eventFlag);
   gpio_num_t gpioNum = pinToESP32Pin(eventFlag-EV_EXTI0);
   bool level = gpio_get_level(gpioNum);
-  //ESP_LOGD(tagGPIO,"<< jshGetWatchedPinState: level=%d", level);
   return level;
 }
 
