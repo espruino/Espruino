@@ -43,10 +43,11 @@
 #include "driver/gpio.h"
 
 #include "esp32-hal-spi.h"
+#include "esp32-hal-i2c.h"
 
 #define FLASH_MAX (4*1024*1024) //4MB
 #define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
-#define FLASH_PAGE (1<<FLASH_PAGE_SHIFT)  //4KB
+#define FLASH_PAGE ((uint32_t)1<<FLASH_PAGE_SHIFT)  //4KB
 
 #define UNUSED(x) (void)(x)
 
@@ -73,6 +74,8 @@ static IOEventFlags pinToEV_EXTI(
   return (IOEventFlags)(EV_EXTI0 + pin);
 }
 
+static uint8_t g_pinState[JSH_PIN_COUNT];
+
 /**
 * interrupt handler for gpio interrupts
 */
@@ -80,7 +83,7 @@ void IRAM_ATTR gpio_intr_test(void* arg){
   //GPIO intr process. Mainly copied from esp-idf
   UNUSED(arg);
   IOEventFlags exti;
-  uint32_t gpio_num = 0;
+  Pin gpio_num = 0;
   uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);   //read status to get interrupt status for GPIO0-31
   uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);//read status1 to get interrupt status for GPIO32-39
   SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, gpio_intr_status);    //Clear intr for gpio0-gpio31
@@ -105,12 +108,16 @@ void IRAM_ATTR gpio_intr_test(void* arg){
  */
 void jshInit() {
   ESP_LOGD(tag,">> jshInit");
-  uint32_t freeHeapSize = system_get_free_heap_size();
+  uint32_t freeHeapSize = esp_get_free_heap_size();
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
-  esp32_wifi_init();
   spi_flash_init();
+  esp32_wifi_init();
   jshInitDevices();
   gpio_isr_register(18,gpio_intr_test,NULL);  //TODO ESP32 document usage of interrupt levels (18 in this case)
+   // Initialize something for each of the possible pins.
+  for (int i=0; i<JSH_PIN_COUNT; i++) {
+    g_pinState[i] = 0;
+  }
   ESP_LOGD(tag,"<< jshInit");
 } // End of jshInit
 
@@ -167,9 +174,18 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 }
 
 //===== Interrupts and sleeping
+//Mux to protect the JshInterrupt status
+//static portMUX_TYPE xJshInterrupt = portMUX_INITIALIZER_UNLOCKED;
+void jshInterruptOff() { 
+	//xTaskResumeAll();
+  //taskEXIT_CRITICAL(&xJshInterrupt);
+  taskDISABLE_INTERRUPTS();
+}
 
-void jshInterruptOff() {  }
-void jshInterruptOn()  { }
+void jshInterruptOn()  {
+  //taskENTER_CRITICAL(&xJshInterrupt);
+  taskENABLE_INTERRUPTS();
+}
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
@@ -184,12 +200,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
  * Delay (blocking) for the supplied number of microseconds.
  */
 void jshDelayMicroseconds(int microsec) {
-  ESP_LOGD(tag,">> jshDelayMicroseconds: microsec=%d", microsec);
-  // This is likely a poor implementation since the granularity of the FreeRTOS timer
-  // is likely to coarse.  But it will serve as a place holder.
   TickType_t ticks = (TickType_t)microsec / (1000 * portTICK_PERIOD_MS);
   vTaskDelay(ticks);
-  ESP_LOGD(tag,"<< jshDelayMicroseconds");
 } // End of jshDelayMicroseconds
 
 
@@ -202,6 +214,7 @@ void jshDelayMicroseconds(int microsec) {
  * JSHPINSTATE_UNDEFINED
  * JSHPINSTATE_GPIO_OUT
  * JSHPINSTATE_GPIO_OUT_OPENDRAIN
+ * JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP
  * JSHPINSTATE_GPIO_IN
  * JSHPINSTATE_GPIO_IN_PULLUP
  * JSHPINSTATE_GPIO_IN_PULLDOWN
@@ -220,8 +233,8 @@ void jshPinSetState(
   Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
-  ESP_LOGD(tag,">> jshPinSetState: pin=%d, state=0x%x", pin, state);
   gpio_mode_t mode;
+  gpio_pull_mode_t pull_mode=GPIO_FLOATING;
   switch(state) {
   case JSHPINSTATE_GPIO_OUT:
     mode = GPIO_MODE_OUTPUT;
@@ -229,8 +242,20 @@ void jshPinSetState(
   case JSHPINSTATE_GPIO_IN:
     mode = GPIO_MODE_INPUT;
     break;
+  case JSHPINSTATE_GPIO_IN_PULLUP:
+    mode = GPIO_MODE_INPUT;
+	pull_mode=GPIO_PULLUP_ONLY;	
+    break;
+  case JSHPINSTATE_GPIO_IN_PULLDOWN:
+    mode = GPIO_MODE_INPUT;
+	pull_mode=GPIO_PULLDOWN_ONLY;	
+    break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
     mode = GPIO_MODE_OUTPUT_OD;
+    break;
+  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
+    mode = GPIO_MODE_OUTPUT_OD;
+	pull_mode=GPIO_PULLUP_ONLY;
     break;
   default:
     ESP_LOGE(tag, "jshPinSetState: Unexpected state: %d", state);
@@ -238,7 +263,9 @@ void jshPinSetState(
   }
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   gpio_set_direction(gpioNum, mode);
-  ESP_LOGD(tag,"<< jshPinSetState");
+  gpio_set_pull_mode(gpioNum, pull_mode);
+  gpio_pad_select_gpio(gpioNum);
+  g_pinState[pin] = state; // remember what we set this to...
 }
 
 
@@ -247,10 +274,7 @@ void jshPinSetState(
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
-  ESP_LOGD(tag,">> jshPinGetState: pin=%d", pin);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshPinGetState");
-  return 0;
+  return g_pinState[pin];
 }
 
 //===== GPIO and PIN stuff =====
@@ -262,10 +286,8 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
-  ESP_LOGD(tag,">> jshPinSetValue: pin=%d, value=%d", pin, value);
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   gpio_set_level(gpioNum, (uint32_t)value);
-  ESP_LOGD(tag,"<< jshPinSetValue");
 }
 
 
@@ -276,10 +298,8 @@ void jshPinSetValue(
 bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
-  //ESP_LOGD(tagGPIO,">> jshPinGetValue: pin=%d", pin);
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   bool level = gpio_get_level(gpioNum);
-  //ESP_LOGD(tagGPIO,"<< jshPinGetValue: level=%d", level);
   return level;
 }
 
@@ -356,13 +376,10 @@ void jshKickWatchDog() {
  * Get the state of the pin associated with the event flag.
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
-bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
-  //ESP_LOGD(tagGPIO,">> jshGetWatchedPinState: eventFlag=%d", eventFlag);
-  gpio_num_t gpioNum = pinToESP32Pin(eventFlag-EV_EXTI0);
+  gpio_num_t gpioNum = pinToESP32Pin((Pin)(eventFlag-EV_EXTI0));
   bool level = gpio_get_level(gpioNum);
-  //ESP_LOGD(tagGPIO,"<< jshGetWatchedPinState: level=%d", level);
   return level;
-}}
+}
 
 
 /**
@@ -629,79 +646,82 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 
 //===== I2C =====
 
-/** Set-up I2C master for ESP8266, default pins are SCL:12, SDA:13. Only device I2C1 is supported
+// Let's get this working with only one device
+i2c_t * i2c=NULL;
+
+/** Set-up I2C master for ESP32, default pins are SCL:21, SDA:22. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
-  UNUSED(device);
-  UNUSED(info);
+  if (device != EV_I2C1) {
+    jsError("Only I2C1 supported"); 
+	return;
+  }
+  Pin scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 21;
+  Pin sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 22;
+
+  //jshPinSetState(scl, JSHPINSTATE_I2C);
+  //jshPinSetState(sda, JSHPINSTATE_I2C);
+   
+  int num=1; // Master mode only 0 is slave mode..
+ 
+  i2c_err_t err;
+  i2c = i2cInit(num, 0, false);
+  //ESP_LOGE(tag, "jshI2CSetup: Frequency: %d", info->bitrate);
+  err=i2cSetFrequency(i2c, (uint32_t)info->bitrate);
+  if ( err != I2C_ERROR_OK ) {
+    ESP_LOGE(tag, "jshI2CSetup: i2cSetFrequency error: %d", err);
+	return;
+  }
+  err=i2cAttachSDA(i2c, pinToESP32Pin(sda));
+  if ( err != I2C_ERROR_OK ) {
+    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSDA error: %d", err);
+	return;
+  }  
+  err=i2cAttachSCL(i2c, pinToESP32Pin(scl));
+  if ( err != I2C_ERROR_OK ) {
+    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSCL error: %d", err);
+	return;
+  }
 }
 
-
 void jshI2CWrite(IOEventFlags device,
-    unsigned char address,
-    int nBytes,
-    const unsigned char *data,
-    bool sendStop) {
-  UNUSED(device);
-  UNUSED(address);
-  UNUSED(nBytes);
-  UNUSED(data);
-  UNUSED(sendStop);
-  ESP_LOGD(tag,">> jshI2CWrite");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshI2CWrite");
+  unsigned char address,
+  int nBytes,
+  const unsigned char *data,
+  bool sendStop) {
+// i2cWrite(i2c_t * i2c, uint16_t address, bool addr_10bit, uint8_t * data, uint8_t len, bool sendStop);
+  i2c_err_t err=i2cWrite(i2c,address,false,data,nBytes,sendStop);
+  if ( err != I2C_ERROR_OK ) {
+    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSCL error: %d", err);
+	return;
+  }
 }
 
 void jshI2CRead(IOEventFlags device,
-    unsigned char address,
-    int nBytes,
-    unsigned char *data,
-    bool sendStop) {
-  UNUSED(device);
-  UNUSED(address);
-  UNUSED(nBytes);
-  UNUSED(data);
-  UNUSED(sendStop);
-  ESP_LOGD(tag,">> jshI2CRead");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshI2CRead");
+  unsigned char address,
+  int nBytes,
+  unsigned char *data,
+  bool sendStop) {
+  i2c_err_t err=i2cRead(i2c,address,false,data,nBytes,sendStop);
+  if ( err != I2C_ERROR_OK ) {
+    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSCL error: %d", err);
+	return;
+  }
 }
 
 //===== System time stuff =====
-
-/* The esp8266 has two notions of system time implemented in the SDK by system_get_time()
- * and system_get_rtc_time(). The former has 1us granularity and comes off the CPU cycle
- * counter, the latter has approx 57us granularity (need to check) and comes off the RTC
- * clock. Both are 32-bit counters and thus need some form of roll-over handling in software
- * to produce a JsSysTime.
- *
- * It seems pretty clear from the API and the calibration concepts that the RTC runs off an
- * internal RC oscillator or something similar and the SDK provides functions to calibrate
- * it WRT the crystal oscillator, i.e., to get the current clock ratio. The only benefit of
- * RTC timer is that it keeps running when in light sleep mode. (It also keeps running in
- * deep sleep mode since it can be used to exit deep sleep but some brilliant engineer at
- * espressif decided to reset the RTC timer when coming out of deep sleep so the time is
- * actually lost!)
- *
- * It seems that the best course of action is to use the system timer for jshGetSystemTime()
- * and related functions and to use the rtc timer only to preserve time during light sleep.
- */
 
 /**
  * Given a time in milliseconds as float, get us the value in microsecond
  */
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-  //ESP_LOGD(tag,">> jshGetTimeFromMilliseconds");
-  return (JsSysTime) (ms * 1000.0 + 0.5);
-  //ESP_LOGD(tag,"<< jshGetTimeFromMilliseconds");
+  return (JsSysTime) (ms * 1000.0);
 }
 
 /**
  * Given a time in microseconds, get us the value in milliseconds (float)
  */
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-  ESP_LOGD(tag,">> jshGetMillisecondsFromTime");
-  ESP_LOGD(tag,"<< jshGetMillisecondsFromTime");
   return (JsVarFloat) time / 1000.0;
 }
 
@@ -710,23 +730,25 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
  * Return the current time in microseconds.
  */
 JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called at interrupt time
-  //ESP_LOGD(tag,">> jshGetSystemTime"); // Can't debug log as called too often.
-  JsSysTime retTime = (JsSysTime)system_get_time();
-  //ESP_LOGD(tag,"<< jshGetSystemTime");  // Can't debug log as called too often.
-  return retTime;
+  struct timeval tm;
+  gettimeofday(&tm, 0);
+  return (JsSysTime)(tm.tv_sec)*1000000L + tm.tv_usec;
 }
-
 
 /**
  * Set the current time in microseconds.
  */
 void jshSetSystemTime(JsSysTime newTime) {
-  UNUSED(newTime);
-  ESP_LOGD(tag,">> jshSetSystemTime");
+  struct timeval tm;
+  struct timezone tz;
+  
+  tm.tv_sec=(time_t)(newTime/1000000L);
+  tm.tv_usec=0;
+  tz.tz_minuteswest=0;
+  tz.tz_dsttime=0;
+  settimeofday(&tm, &tz);
   ESP_LOGD(tag,"<< jshSetSystemTime");
 }
-
-
 
 void jshUtilTimerDisable() {
   ESP_LOGD(tag,">> jshUtilTimerDisable");
@@ -876,81 +898,10 @@ unsigned int jshSetSystemClock(JsVar *options) {
 
 /**
  * Convert an Espruino pin id to a native ESP32 pin id.
- * Notes: It is likely that this can be optimized by taking advantage of the
- * underlying implementation of the ESP32 data types but at this time, let us
- * leave as this explicit algorithm until the dust settles.
  */
 static gpio_num_t pinToESP32Pin(Pin pin) {
-  switch(pin) {
-  case 0:
-    return GPIO_NUM_0;
-  case 1:
-    return GPIO_NUM_1;
-  case 2:
-    return GPIO_NUM_2;
-  case 3:
-    return GPIO_NUM_3;
-  case 4:
-    return GPIO_NUM_4;
-  case 5:
-    return GPIO_NUM_5;
-  case 6:
-    return GPIO_NUM_6;
-  case 7:
-    return GPIO_NUM_7;
-  case 8:
-    return GPIO_NUM_8;
-  case 9:
-    return GPIO_NUM_9;
-  case 10:
-    return GPIO_NUM_10;
-  case 11:
-    return GPIO_NUM_11;
-  case 12:
-    return GPIO_NUM_12;
-  case 13:
-    return GPIO_NUM_13;
-  case 14:
-    return GPIO_NUM_14;
-  case 15:
-    return GPIO_NUM_15;
-  case 16:
-    return GPIO_NUM_16;
-  case 17:
-    return GPIO_NUM_17;
-  case 18:
-    return GPIO_NUM_18;
-  case 19:
-    return GPIO_NUM_19;
-  case 21:
-    return GPIO_NUM_21;
-  case 22:
-    return GPIO_NUM_22;
-  case 23:
-    return GPIO_NUM_23;
-  case 25:
-    return GPIO_NUM_25;
-  case 26:
-    return GPIO_NUM_26;
-  case 27:
-    return GPIO_NUM_27;
-  case 32:
-    return GPIO_NUM_32;
-  case 33:
-    return GPIO_NUM_33;
-  case 34:
-    return GPIO_NUM_34;
-  case 35:
-    return GPIO_NUM_35;
-  case 36:
-    return GPIO_NUM_36;
-  case 37:
-    return GPIO_NUM_37;
-  case 38:
-    return GPIO_NUM_38;
-  case 39:
-    return GPIO_NUM_39;
-  }
+  if ( pin < 40 ) 
+	return pin + GPIO_NUM_0;
   ESP_LOGE(tag, "pinToESP32Pin: Unknown pin: %d", pin);
   return -1;
 }
