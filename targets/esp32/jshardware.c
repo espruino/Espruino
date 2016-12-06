@@ -662,9 +662,10 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   //jshPinSetState(scl, JSHPINSTATE_I2C);
   //jshPinSetState(sda, JSHPINSTATE_I2C);
    
-  int num=0;
+  int num=1; // Master mode only 0 is slave mode..
+ 
   i2c_err_t err;
-  i2c = i2cInit(num, 1, false);
+  i2c = i2cInit(num, 0, false);
   //ESP_LOGE(tag, "jshI2CSetup: Frequency: %d", info->bitrate);
   err=i2cSetFrequency(i2c, (uint32_t)info->bitrate);
   if ( err != I2C_ERROR_OK ) {
