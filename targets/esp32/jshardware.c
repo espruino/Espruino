@@ -43,6 +43,7 @@
 #include "driver/gpio.h"
 
 #include "esp32-hal-spi.h"
+#include "esp32-hal-i2c.h"
 
 #define FLASH_MAX (4*1024*1024) //4MB
 #define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
@@ -375,7 +376,7 @@ void jshKickWatchDog() {
  * Get the state of the pin associated with the event flag.
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
-  gpio_num_t gpioNum = pinToESP32Pin(eventFlag-EV_EXTI0);
+  gpio_num_t gpioNum = pinToESP32Pin((Pin)(eventFlag-EV_EXTI0));
   bool level = gpio_get_level(gpioNum);
   return level;
 }
@@ -645,11 +646,18 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 
 //===== I2C =====
 
-/** Set-up I2C master for ESP8266, default pins are SCL:12, SDA:13. Only device I2C1 is supported
+/** Set-up I2C master for ESP32, default pins are SCL:??, SDA:??. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
-  UNUSED(device);
-  UNUSED(info);
+  if (device != EV_I2C1) {
+    jsError("Only I2C1 supported"); return; }
+  Pin scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 18;
+  Pin sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 19;
+
+  jshPinSetState(scl, JSHPINSTATE_I2C);
+  jshPinSetState(sda, JSHPINSTATE_I2C);
+
+  //i2c_master_gpio_init(scl, sda, info->bitrate);
 }
 
 
@@ -685,24 +693,6 @@ void jshI2CRead(IOEventFlags device,
 
 //===== System time stuff =====
 
-/* The esp8266 has two notions of system time implemented in the SDK by system_get_time()
- * and system_get_rtc_time(). The former has 1us granularity and comes off the CPU cycle
- * counter, the latter has approx 57us granularity (need to check) and comes off the RTC
- * clock. Both are 32-bit counters and thus need some form of roll-over handling in software
- * to produce a JsSysTime.
- *
- * It seems pretty clear from the API and the calibration concepts that the RTC runs off an
- * internal RC oscillator or something similar and the SDK provides functions to calibrate
- * it WRT the crystal oscillator, i.e., to get the current clock ratio. The only benefit of
- * RTC timer is that it keeps running when in light sleep mode. (It also keeps running in
- * deep sleep mode since it can be used to exit deep sleep but some brilliant engineer at
- * espressif decided to reset the RTC timer when coming out of deep sleep so the time is
- * actually lost!)
- *
- * It seems that the best course of action is to use the system timer for jshGetSystemTime()
- * and related functions and to use the rtc timer only to preserve time during light sleep.
- */
-
 /**
  * Given a time in milliseconds as float, get us the value in microsecond
  */
@@ -726,23 +716,25 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
  * Return the current time in microseconds.
  */
 JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called at interrupt time
-  //ESP_LOGD(tag,">> jshGetSystemTime"); // Can't debug log as called too often.
-  JsSysTime retTime = (JsSysTime)system_get_time();
-  //ESP_LOGD(tag,"<< jshGetSystemTime");  // Can't debug log as called too often.
-  return retTime;
+  struct timeval tm;
+  gettimeofday(&tm, 0);
+  return (JsSysTime)(tm.tv_sec)*1000000L + tm.tv_usec;
 }
-
 
 /**
  * Set the current time in microseconds.
  */
 void jshSetSystemTime(JsSysTime newTime) {
-  UNUSED(newTime);
-  ESP_LOGD(tag,">> jshSetSystemTime");
+  struct timeval tm;
+  struct timezone tz;
+  
+  tm.tv_sec=(time_t)(newTime/1000000L);
+  tm.tv_usec=0;
+  tz.tz_minuteswest=0;
+  tz.tz_dsttime=0;
+  settimeofday(&tm, &tz);
   ESP_LOGD(tag,"<< jshSetSystemTime");
 }
-
-
 
 void jshUtilTimerDisable() {
   ESP_LOGD(tag,">> jshUtilTimerDisable");
@@ -892,81 +884,10 @@ unsigned int jshSetSystemClock(JsVar *options) {
 
 /**
  * Convert an Espruino pin id to a native ESP32 pin id.
- * Notes: It is likely that this can be optimized by taking advantage of the
- * underlying implementation of the ESP32 data types but at this time, let us
- * leave as this explicit algorithm until the dust settles.
  */
 static gpio_num_t pinToESP32Pin(Pin pin) {
-  switch(pin) {
-  case 0:
-    return GPIO_NUM_0;
-  case 1:
-    return GPIO_NUM_1;
-  case 2:
-    return GPIO_NUM_2;
-  case 3:
-    return GPIO_NUM_3;
-  case 4:
-    return GPIO_NUM_4;
-  case 5:
-    return GPIO_NUM_5;
-  case 6:
-    return GPIO_NUM_6;
-  case 7:
-    return GPIO_NUM_7;
-  case 8:
-    return GPIO_NUM_8;
-  case 9:
-    return GPIO_NUM_9;
-  case 10:
-    return GPIO_NUM_10;
-  case 11:
-    return GPIO_NUM_11;
-  case 12:
-    return GPIO_NUM_12;
-  case 13:
-    return GPIO_NUM_13;
-  case 14:
-    return GPIO_NUM_14;
-  case 15:
-    return GPIO_NUM_15;
-  case 16:
-    return GPIO_NUM_16;
-  case 17:
-    return GPIO_NUM_17;
-  case 18:
-    return GPIO_NUM_18;
-  case 19:
-    return GPIO_NUM_19;
-  case 21:
-    return GPIO_NUM_21;
-  case 22:
-    return GPIO_NUM_22;
-  case 23:
-    return GPIO_NUM_23;
-  case 25:
-    return GPIO_NUM_25;
-  case 26:
-    return GPIO_NUM_26;
-  case 27:
-    return GPIO_NUM_27;
-  case 32:
-    return GPIO_NUM_32;
-  case 33:
-    return GPIO_NUM_33;
-  case 34:
-    return GPIO_NUM_34;
-  case 35:
-    return GPIO_NUM_35;
-  case 36:
-    return GPIO_NUM_36;
-  case 37:
-    return GPIO_NUM_37;
-  case 38:
-    return GPIO_NUM_38;
-  case 39:
-    return GPIO_NUM_39;
-  }
+  if ( pin < 40 ) 
+	return pin + GPIO_NUM_0;
   ESP_LOGE(tag, "pinToESP32Pin: Unknown pin: %d", pin);
   return -1;
 }
