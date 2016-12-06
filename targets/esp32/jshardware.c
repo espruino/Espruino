@@ -697,17 +697,13 @@ void jshI2CRead(IOEventFlags device,
  * Given a time in milliseconds as float, get us the value in microsecond
  */
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-  //ESP_LOGD(tag,">> jshGetTimeFromMilliseconds");
-  return (JsSysTime) (ms * 1000.0 + 0.5);
-  //ESP_LOGD(tag,"<< jshGetTimeFromMilliseconds");
+  return (JsSysTime) (ms * 1000.0);
 }
 
 /**
  * Given a time in microseconds, get us the value in milliseconds (float)
  */
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-  ESP_LOGD(tag,">> jshGetMillisecondsFromTime");
-  ESP_LOGD(tag,"<< jshGetMillisecondsFromTime");
   return (JsVarFloat) time / 1000.0;
 }
 
