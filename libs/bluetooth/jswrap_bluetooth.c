@@ -1005,7 +1005,7 @@ void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
 Enables NFC and starts advertising the given URL. For example:
 
 ```
-NRF.nrfURL("http://espruino.com");
+NRF.nfcURL("http://espruino.com");
 ```
 
 **Note:** This is only available on nRF52-based devices
