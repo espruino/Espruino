@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file    Examples_LL/USART/USART_Communication_Rx_IT_Continuous/Src/stm32l4xx_it.c
+  * @file    stm32_it.c
   * @author  MCD Application Team
   * @version V1.5.0
   * @date    29-April-2016
@@ -55,13 +55,6 @@
 
 extern void Error_Callback(void);
 
-/** @addtogroup STM32L4xx_LL_Examples
-  * @{
-  */
-
-/** @addtogroup USART_Communication_Rx_IT_Continuous
-  * @{
-  */
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -341,13 +334,7 @@ void TIM5_IRQHandler(void)
 
 }
 
-/**
-  * @}
-  */
 
-/**
-  * @}
-  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 
