@@ -91,7 +91,7 @@ static ALWAYS_INLINE uint8_t pinToEVEXTI(Pin ipin) {
 
 static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
-#if 0
+#if 1
   return (uint16_t)(1 << (pin-JSH_PIN0));
 #else
   if (pin==JSH_PIN0 ) return LL_GPIO_PIN_0;
@@ -116,7 +116,7 @@ static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
 }
 static ALWAYS_INLINE uint32_t stmExtI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
-#if 0
+#if 1
   return (uint32_t)(1 << (pin-JSH_PIN0));
 #else
   if (pin==JSH_PIN0 ) return LL_EXTI_LINE_0;
@@ -143,7 +143,7 @@ static ALWAYS_INLINE uint32_t stmExtI(Pin ipin) {
 static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
 
   JsvPinInfoPort port = pinInfo[pin].port;
-#if 0
+#if 1
   return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
 #else
   if (port == JSH_PORTA) return GPIOA;
@@ -188,7 +188,7 @@ static ALWAYS_INLINE uint32_t stmPinSource(JsvPinInfoPin ipin) {
 
 static ALWAYS_INLINE uint8_t stmPortSource(Pin pin) {
   JsvPinInfoPort port = pinInfo[pin].port;
-#if 0
+#if 1
   return (uint8_t)(port-JSH_PORTA);
 #else
   if (port == JSH_PORTA) return LL_SYSCFG_EXTI_PORTA;
@@ -205,6 +205,9 @@ static ALWAYS_INLINE uint8_t stmPortSource(Pin pin) {
 }
 
 static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
+#if 1
+  return (uint8_t)(LL_GPIO_AF_0+(func-JSH_AF0));
+#else
   switch (func & JSH_MASK_AF) {
   case JSH_AF0   : return LL_GPIO_AF_0;
   case JSH_AF1   : return LL_GPIO_AF_1;
@@ -224,6 +227,7 @@ static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
   case JSH_AF15  : return LL_GPIO_AF_15;
   default: jsExceptionHere(JSET_INTERNALERROR, "functionToAF");return 0;
   }
+#endif
 }
 
 void jshSetAFPin(GPIO_TypeDef* port, uint16_t pin, uint8_t af) {
@@ -297,19 +301,6 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
     } else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_USART3);
 	ptr = USART3;
 #endif
-#if 0 // VVE to check later...
-#if defined(UART4) && USART_COUNT>=4
-  } else if (device == JSH_USART4) {
-    if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART4);
-	else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_USART4);
-	ptr = UART4;
-#endif
-#if defined(UART5) && USART_COUNT>=5
-  } else if (device == JSH_USART5) {
-    if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART5);
-	else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_USART5);
-	ptr = UART5;
-#endif
 #if SPI_COUNT >= 1
   } else if (device==JSH_SPI1) {
     if(cmd == ENABLE)  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI1);
@@ -318,20 +309,20 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
 #endif
 #if SPI_COUNT >= 2
   } else if (device==JSH_SPI2) {
-    if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_SPI2);
-	else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_SPI2);
+    if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_SPI2);
+	else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_SPI2);
     ptr = SPI2;
 #endif
 #if SPI_COUNT >= 3
   } else if (device==JSH_SPI3) {
-    if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_SPI3);
-	else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_SPI3);
+    if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_SPI3);
+	else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_SPI3);
 	ptr = SPI3;
 #endif
 #if I2C_COUNT >= 1
   } else if (device==JSH_I2C1) {
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
-      else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C1);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
+      else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C1);
       /* Seems some F103 parts require this reset step - some hardware problem */
       LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C1);
       LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C1);
@@ -339,8 +330,8 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
 #endif
 #if I2C_COUNT >= 2
   } else if (device==JSH_I2C2) {
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C2);
-      else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C2);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C2);
+      else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C2);
       /* Seems some F103 parts require this reset step - some hardware problem */
       LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C2);
       LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C2);
@@ -348,8 +339,8 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
 #endif
 #if I2C_COUNT >= 3
   } else if (device==JSH_I2C3) {
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C3);
-	  else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C3);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C3);
+	  else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C3);
       /* Seems some F103 parts require this reset step - some hardware problem */
       LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C3);
       LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C3);
@@ -361,33 +352,33 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
 	else  LL_APB2_GRP1_DisableClock(LL_APB2_GRP1_PERIPH_TIM1);
   } else if (device==JSH_TIMER2)  {
     ptr = TIM2;
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
-	  else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM2);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
+	  else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM2);
   } else if (device==JSH_TIMER3)  {
     ptr = TIM3;
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM3);
-	  else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM3);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM3);
+	  else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM3);
   } else if (device==JSH_TIMER4)  {
     ptr = TIM4;
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM4);
-	  else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM4);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM4);
+	  else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM4);
 #ifdef TIM5
   } else if (device==JSH_TIMER5) {
     ptr = TIM5;
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM5);
-	  else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM5);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM5);
+	  else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM5);
 #endif
 #ifdef TIM6
   } else if (device==JSH_TIMER6)  { // Not used for outputs
     ptr = TIM6;
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM6);
-	  else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM6);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM6);
+	  else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM6);
 #endif
 #ifdef TIM7
   } else if (device==JSH_TIMER7)  { // Not used for outputs
     ptr = TIM7;
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM7);
-	  else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM7);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM7);
+	  else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM7);
 #endif
 #ifdef TIM8
   } else if (device==JSH_TIMER8) {
@@ -416,20 +407,20 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
 #ifdef TIM12
   } else if (device==JSH_TIMER12)  {
     ptr = TIM12;
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM12);
-	  else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM12);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM12);
+	  else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM12);
 #endif
 #ifdef TIM13
   } else if (device==JSH_TIMER13)  {
     ptr = TIM13;
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM13);
-	  else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM13);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM13);
+	  else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM13);
 #endif
 #ifdef TIM14
   } else if (device==JSH_TIMER14)  {
     ptr = TIM14;
-      if(cmd == ENABLE) LL_APB2_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM14);
-	  else LL_APB2_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM14);
+      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM14);
+	  else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM14);
 #endif
 #ifdef TIM15
   } else if (device==JSH_TIMER15)  {
@@ -449,7 +440,6 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
     if(cmd == ENABLE)  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_TIM17);
 	else  LL_APB2_GRP1_DisableClock(LL_APB2_GRP1_PERIPH_TIM17);
 #endif
-#endif // VVE to check later...
   } else {
     jsExceptionHere(JSET_INTERNALERROR, "setDeviceClockCmd: Unknown Device %d", (int)device);
   }
@@ -498,24 +488,6 @@ JshPinState jshPinGetState(Pin pin) {
   uint16_t pinn = stmPin(pin);
   int pinNumber = pinInfo[pin].pin;
   bool isOn = (port->ODR&pinn) != 0;
-#ifdef STM32F1
-  unsigned int crBits = ((pinNumber < 8) ? (port->CRL>>(pinNumber*4)) : (port->CRH>>((pinNumber-8)*4))) & 15;
-  unsigned int mode = crBits &3;
-  unsigned int cnf = (crBits>>2)&3;
-  if (mode==0) { // input
-    if (cnf==0) return JSHPINSTATE_ADC_IN;
-    else if (cnf==1) return JSHPINSTATE_GPIO_IN;
-    else /* cnf==2, 3=reserved */
-      return isOn ? JSHPINSTATE_GPIO_IN_PULLUP : JSHPINSTATE_GPIO_IN_PULLDOWN;
-  } else { // output
-    if (cnf&2) // af
-      return (cnf&1) ? JSHPINSTATE_AF_OUT_OPENDRAIN : JSHPINSTATE_AF_OUT;
-    else { // normal
-      return ((cnf&1) ? JSHPINSTATE_GPIO_OUT_OPENDRAIN : JSHPINSTATE_GPIO_OUT) |
-             (isOn ? JSHPINSTATE_PIN_IS_ON : 0);
-    }
-  }
-#else
   int mode = (port->MODER >> (pinNumber*2)) & 3;
   if (mode==0) { // input
     int pupd = (port->PUPDR >> (pinNumber*2)) & 3;
@@ -530,7 +502,6 @@ JshPinState jshPinGetState(Pin pin) {
   } else { // 3, analog
     return JSHPINSTATE_ADC_IN;
   }
-#endif
   // LL_GPIO_IsOutputPinSet(port, pinn);
 }
 
@@ -542,10 +513,6 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
       jshPinSetState(pin,JSHPINSTATE_USART_OUT);
   } else if (JSH_PINFUNCTION_IS_I2C(func)) {
     jshPinSetState(pin, JSHPINSTATE_I2C);
-#ifdef STM32F1  // F4 needs SPI MOSI to be set as AF out
-  } else if (JSH_PINFUNCTION_IS_SPI(func) && ((func&JSH_MASK_INFO)==JSH_SPI_MISO)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLUP); // input pullup for MISO
-#endif
   } else {
     bool opendrain = JSHPINSTATE_IS_OPENDRAIN(jshPinGetState(pin)&JSHPINSTATE_MASK);
     jshPinSetState(pin, opendrain ? JSHPINSTATE_AF_OUT_OPENDRAIN : JSHPINSTATE_AF_OUT); // otherwise general AF out!
@@ -599,19 +566,11 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
   // now set up correct states
   for (i=0;i<count;i++)
       if (jshIsPinValid(pins[i])) {
-        //pinState[pins[i]] = functions[i];
         jshPinSetFunction(pins[i], functions[i]);
       }
 
   return ptr;
 }
-
-
-
-
-
-
-
 
 
 /**
@@ -625,7 +584,6 @@ void Error_Callback(void)
   while(1)
   {
     LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_5);
-    /* Insert delay 250 ms */
     LL_mDelay(150);
   }
 }
@@ -657,18 +615,6 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
 #if defined(USART3) && USART_COUNT>=3
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
-#endif
-#if defined(UART4) && USART_COUNT>=4
-  } else if (device == EV_SERIAL4) {
-    usartIRQ = UART4_IRQn;
-#endif
-#if defined(UART5) && USART_COUNT>=5
-  } else if (device == EV_SERIAL5) {
-    usartIRQ = UART5_IRQn;
-#endif
-#if defined(USART6) && USART_COUNT>=6
-  } else if (device == EV_SERIAL6) {
-    usartIRQ = USART6_IRQn;
 #endif
   } else {
     jsExceptionHere(JSET_INTERNALERROR, "Unknown serial port device.");
@@ -738,7 +684,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
 
   /* Polling USART initialisation */
   while((!(LL_USART_IsActiveFlag_TEACK(USARTx))) || (!(LL_USART_IsActiveFlag_REACK(USARTx))))
-  { 
+  {
   }
 
   /* Clear Overrun flag, in case characters have already been sent to USART */
@@ -882,14 +828,6 @@ void jshInit(){
   jshPinOutput(LED1_PININDEX, 1);
 #endif
 
-  // PREEMPTION
-  ////NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
-  // Slow the IO clocks down - we don't need them going so fast!
-  ////LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_2); // PCLK1 must be >13 Mhz for USB to work (see STM32F103 C/D/E errata)
-  ////LL_RCC_SetAPB2Prescaler(LL_RCC_APB1_DIV_4);
-  /* System Clock */
-  ////SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
-
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK);
 
@@ -900,7 +838,6 @@ void jshInit(){
 #endif
 
   NVIC_EnableIRQ(EXTI0_IRQn);
-  //NVIC_SetPriority(EXTI0_IRQn,IRQ_PRIOR_MED);
   NVIC_SetPriority(EXTI0_IRQn,IRQ_PRIOR_MED);
 
   NVIC_EnableIRQ(EXTI1_IRQn);
@@ -985,13 +922,13 @@ void jshInit(){
 
   return;
 }
- 
+
 /// jshReset is called from JS 'reset()' - try to put peripherals back to their power-on state
 void jshReset(){
   jshResetDevices();
   jshResetPeripherals();
 }
- 
+
 /** Code that is executed each time around the idle loop. Prod watchdog timers here,
  * and on platforms without GPIO interrupts you can check watched Pins for changes. */
 void jshIdle(){
@@ -1045,15 +982,15 @@ void jshKill(){
 int jshGetSerialNumber(unsigned char *data, int maxChars){
         return 0;
 }
- 
- 
+
+
 /** Is the USB port connected such that we could move the console over to it
  * (and that we should store characters sent to USB). On non-USB boards this just returns false. */
 bool jshIsUSBSERIALConnected(){
         return FALSE;
 }
- 
- 
+
+
 /** The system time is used all over Espruino - for:
  *  * setInterval/setTimeout
  *  * new Date()
@@ -1065,7 +1002,7 @@ bool jshIsUSBSERIALConnected(){
  * platforms units should really be at the uS level. Often this timer directly counts
  * clock cycles with the SysTick timer.
  */
- 
+
 /// Get the system time (in ticks since the epoch)
 JsSysTime jshGetSystemTime(){
   JsSysTime major1, major2, major3, major4;
@@ -1079,7 +1016,7 @@ JsSysTime jshGetSystemTime(){
   } while (major1!=major2 || major2!=major3 || major3!=major4);
   return major1 - (JsSysTime)minor;
 }
- 
+
 /** Set the system time (in ticks since the epoch) - this should only be called rarely as it
 could mess up things like jsinteractive's timers! */
 void jshSetSystemTime(JsSysTime newTime){
@@ -1104,8 +1041,8 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms){
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time){
   return ((JsVarFloat)time)*1000/(JsVarFloat)jshGetTimeForSecond();
 }
- 
- 
+
+
 // software IO functions...
 void jshInterruptOff(){
   __disable_irq();
@@ -1114,7 +1051,7 @@ void jshInterruptOff(){
 void jshInterruptOn(){
   __enable_irq();
 }
-  ///< re-enable interrupts
+///< re-enable interrupts
 
 
 void jshDelayMicroseconds(int microsec){
@@ -1132,23 +1069,21 @@ void jshPinSetValue(Pin pin, bool value){
       LL_GPIO_ResetOutputPin(stmPort(pin), stmPin(pin));
 	return;
 }
+///< Set a digital output to 1 or 0. DOES NOT change pin state OR CHECK PIN VALIDITY
 
- ///< Set a digital output to 1 or 0. DOES NOT change pin state OR CHECK PIN VALIDITY
 bool jshPinGetValue(Pin pin){
 	  return LL_GPIO_IsInputPinSet(stmPort(pin), stmPin(pin)) != 0;
 }
- 
- 
 
- 
+
 /** Returns an analog value between 0 and 1. 0 is expected to be 0v, and
  * 1 means jshReadVRef() volts. On most devices jshReadVRef() would return
  * around 3.3, so a reading of 1 represents 3.3v. */
 JsVarFloat jshPinAnalog(Pin pin){
         return;
 }
- 
- 
+
+
 /** Returns a quickly-read analog value in the range 0-65535.
  * This is basically `jshPinAnalog()*65535`
  * For use from an IRQ where high speed is needed */
@@ -1156,13 +1091,13 @@ int jshPinAnalogFast(Pin pin){
         return;
 }
 
- 
+
 /// Output an analog value on a pin - either via DAC, hardware PWM, or software PWM
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags){
         return;
 }
- // if freq<=0, the default is used
- 
+// if freq<=0, the default is used
+
 /// Pulse a pin for a certain time, but via IRQs, not JS: `digitalWrite(pin,value);setTimeout("digitalWrite(pin,!value)", time*1000);`
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime){
   // ---- USE TIMER FOR PULSE
@@ -1187,7 +1122,7 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime){
   }
 
 }
- 
+
 /// Can the given pin be watched? it may not be possible because of conflicts
 bool jshCanWatch(Pin pin){
   if (jshIsPinValid(pin)) {
@@ -1195,7 +1130,7 @@ bool jshCanWatch(Pin pin){
   } else
     return false;;
 }
- 
+
 /// start watching pin - return the EXTI (IRQ number flag) associated with it
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch){
   if (jshIsPinValid(pin)) {
@@ -1242,40 +1177,29 @@ bool jshGetWatchedPinState(IOEventFlags device) {
 JshPinFunction jshGetCurrentPinFunction(Pin pin){
         return;
 }
- 
- 
+
 /** Given a pin function, set that pin to the 16 bit value
  * (used mainly for fast DAC and PWM handling from Utility Timer) */
 void jshSetOutputValue(JshPinFunction func, int value){
         return;
 }
- 
- 
+
+
 /// Enable watchdog with a timeout in seconds, it should be reset from `jshIdle`
 void jshEnableWatchDog(JsVarFloat timeout){
         return;
 }
- 
+
 // Kick the watchdog
 void jshKickWatchDog(void){
         return;
 }
- 
- 
- 
+
+
 /// Given an event, check the EXTI flags and see if it was for the given pin
 bool jshIsEventForPin(IOEvent *event, Pin pin){
   return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(pin);
 }
-
-
-
-
-
-
-
-
-
 
 
 /** Kick a device into action (if required). For instance we may have data ready
@@ -1327,17 +1251,18 @@ void jshSPIWait(IOEventFlags device){
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf){
         return;
 }
- 
+
 /** Write a number of btes to the I2C device. Addresses are 7 bit - that is, between 0 and 0x7F.
  *  sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop){
         return;
 }
+
 /** Read a number of bytes from the I2C device. */
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop){
         return;
 }
- 
+
 /** Return start address and size of the flash page the given address resides in. Returns false if
   * the page is outside of the flash address range */
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize){
@@ -1348,10 +1273,10 @@ bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize){
   if (pageSize) *pageSize = FLASH_PAGE_SIZE;
   return true;
 }
+
 /** Return a JsVar array containing objects of the form `{addr, length}` for each contiguous block of free
  * memory available. These should be one complete pages, so that erasing the page containing any address in
  * this block won't erase anything useful! */
-
 static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
   JsVar *jsArea = jsvNewObject();
   if (!jsArea) return;
@@ -1453,19 +1378,15 @@ void jshFlashErasePage(uint32_t addr){
 /** Read data from flash memory into the buffer, the flash address has no alignment restrictions
   * and the len may be (and often is) 1 byte */
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len){
-  //jsiConsolePrintf("jshFlashRead addr=%x, len=%d\n", addr, len);
   memcpy(buf, (void*)addr, len);
 }
 /** Write data to flash memory from the buffer, the buffer address and flash address are
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len){
 
-  //jsiConsolePrintf("jshFlashWrite addr=%x, len=%d\n", addr, len);
-
   HAL_FLASH_Unlock();
 
   unsigned int i;
-  //__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
 
   for (i=0;i<len/8;i++){
     if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, ((uint64_t*)buf)[i]) != HAL_OK){
@@ -1474,10 +1395,6 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len){
     }
     addr = addr + 8;
   }
-
-
-
-  //FLASH_WaitForLastOperation(0x2000);
 
   HAL_FLASH_Lock();
 
@@ -1578,7 +1495,7 @@ void jshUtilTimerReschedule(JsSysTime period){
   jshUtilTimerGetPrescale(period, &prescale, &ticks);
 
   LL_TIM_DisableCounter(UTIL_TIMER );
- LL_TIM_SetAutoReload(UTIL_TIMER, (uint16_t)ticks);
+  LL_TIM_SetAutoReload(UTIL_TIMER, (uint16_t)ticks);
   // we need to kick this (even if the prescaler is correct) so the counter value is automatically reloaded
   LL_TIM_SetPrescaler(UTIL_TIMER, (uint16_t)prescale );
   // Kicking probably fired off the IRQ...
@@ -1614,14 +1531,6 @@ void jshDoSysTick(){
     jsiOneSecondAfterStartup();
   }
 
-#if 0 // debug
-  {
-	/* output a signal on PC3 pin */
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_3);
-  }
-#endif
-
 }
 #endif // ARM
 
@@ -1636,24 +1545,24 @@ volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags){
         return;
 }
 #endif
- 
+
 /// the temperature from the internal temperature sensor, in degrees C
 JsVarFloat jshReadTemperature(){
         return;
 }
- 
+
 /// The voltage that a reading of 1 from `analogRead` actually represents, in volts
 JsVarFloat jshReadVRef(){
         return;
 }
- 
+
 /** Get a random number - either using special purpose hardware or by
  * reading noise from an analog input. If unimplemented, this should
  * default to `rand()` */
 unsigned int jshGetRandomNumber(){
         return;
 }
- 
+
 /** Change the processor clock info. What's in options is platform
  * specific - you should update the docs for jswrap_espruino_setClock
  * to match what gets implemented here. The return value is the clock
@@ -1661,7 +1570,7 @@ unsigned int jshGetRandomNumber(){
 unsigned int jshSetSystemClock(JsVar *options){
         return;
 }
- 
+
 /** Hacky definition of wait cycles used for WAIT_UNTIL.
  * TODO: make this depend on known system clock speed? */
 #if defined(STM32F401xx) || defined(STM32F411xx)
@@ -1671,7 +1580,7 @@ unsigned int jshSetSystemClock(JsVar *options){
 #else
 #define WAIT_UNTIL_N_CYCLES 2000000
 #endif
- 
+
 /** Wait for the condition to become true, checking a certain amount of times
  * (or until interrupted by Ctrl-C) before leaving and writing a message. */
 #define WAIT_UNTIL(CONDITION, REASON) { \
