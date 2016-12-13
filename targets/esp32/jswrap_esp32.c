@@ -11,7 +11,10 @@
  * ESP32 specific exposed components.
  * ----------------------------------------------------------------------------
  */
+#include <stdio.h>
+ 
 #include "jswrap_esp32.h"
+#include "jshardwareAnalog.h"
 
 #include "esp_system.h"
 #include "esp_log.h"
@@ -35,6 +38,20 @@ void jswrap_ESP32_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   return;
 } // End of jswrap_ESP32_neopixelWrite
 
+/*JSON{
+ "type"     : "staticmethod",
+ "class"    : "ESP32",
+ "name"     : "setAtten",
+ "generate" : "jswrap_ESP32_setAtten",
+ "params"   : [
+   ["pin", "pin", "Pin for Analog read"],
+   ["atten", "int", "Attenuate factor"]
+ ]	
+}*/
+void jswrap_ESP32_setAtten(Pin pin,int atten){
+  printf("Atten:%d\n",atten);
+  rangeADC(pin, atten);
+}
 
 /*JSON{
   "type"     : "staticmethod",

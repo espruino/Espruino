@@ -26,6 +26,7 @@
 #include <stdio.h>
 
 #include "jshardware.h"
+#include "jshardwareAnalog.h"
 #include "jsutils.h"
 #include "jstimer.h"
 #include "jsparse.h"
@@ -113,7 +114,7 @@ void jshInit() {
   spi_flash_init();
   esp32_wifi_init();
   jshInitDevices();
-  gpio_isr_register(18,gpio_intr_test,NULL);  //TODO ESP32 document usage of interrupt levels (18 in this case)
+  gpio_isr_register(gpio_intr_test,NULL,0,NULL);  //changed to automatic assign of interrupt
    // Initialize something for each of the possible pins.
   for (int i=0; i<JSH_PIN_COUNT; i++) {
     g_pinState[i] = 0;
@@ -159,7 +160,7 @@ void jshIdle() {
   //STATUS status = uart_rx_one_char((uint8_t *)&rxChar);
   //if (status == OK) {
   //  jshPushIOCharEvents(EV_SERIAL1, &rxChar, 1);
-  //}
+  // }
   //ESP_LOGD(tag,"<< jshIdle");  // Can't debug log as called too often.
 }
 
@@ -305,21 +306,18 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
 
 
 JsVarFloat jshPinAnalog(Pin pin) {
-  ESP_LOGD(tag,">> jshPinAnalog: pin=%d", pin);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshPinAnalog");
-  gpio_num_t gpioNum = pinToESP32Pin(pin);
-  UNUSED(gpioNum);
-  //return (JsVarFloat)system_adc1_read(gpioNum, 3); //TODO ESP32 not supported yet from SDK
-  return (JsVarFloat)0;
+  //ESP_LOGD(tag,">> jshPinAnalog: pin=%d", pin);
+  //ESP_LOGD(tag, "Not implemented");
+  //ESP_LOGD(tag,"<< jshPinAnalog");
+  return (JsVarFloat) readADC(pin) / 4096;
 }
 
 
 int jshPinAnalogFast(Pin pin) {
-  ESP_LOGD(tag,">> jshPinAnalogFast: pin=%d", pin);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshPinAnalogFast");
-  return 0;
+  //ESP_LOGD(tag,">> jshPinAnalogFast: pin=%d", pin);
+  //ESP_LOGD(tag, "Not implemented");
+  //ESP_LOGD(tag,"<< jshPinAnalogFast");
+  return readADC(pin) << 4;
 }
 
 
@@ -330,13 +328,13 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
     JsVarFloat value,
     JsVarFloat freq,
     JshAnalogOutputFlags flags) { // if freq<=0, the default is used
-  UNUSED(value);
   UNUSED(freq);
   UNUSED(flags);
-
-  ESP_LOGD(tag,">> jshPinAnalogOutput: pin=%d", pin);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshPinAnalogOutput");
+  value = (value * 256);
+  uint8_t val = value;
+  if(pin == 25 || pin == 26){
+	writeDAC(pin,val);
+  }
   return 0;
 }
 

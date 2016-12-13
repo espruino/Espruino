@@ -1004,7 +1004,8 @@ ifdef USE_NET
    targets/esp32/jswrap_esp32.c
  INCLUDE += -I$(ROOT)/libs/network/esp32
  SOURCES +=  libs/network/esp32/network_esp32.c \
-  targets/esp32/jshardwareUart.c
+  targets/esp32/jshardwareUart.c \
+  targets/esp32/jshardwareAnalog.c
   ifdef RTOS
    DEFINES += -DRTOS
    WRAPPERSOURCES += targets/esp32/jswrap_rtos.c

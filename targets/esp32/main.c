@@ -10,11 +10,13 @@
 #include <jsinteractive.h>
 #include "rtosutil.h"
 #include "jshardwareUart.h"
+#include "jshardwareAnalog.h"
 
 extern void jswrap_ESP32_wifi_restore(void) ;
 
 static void uartTask(void *data) {
   initConsole();
+  initADC(1);
   while(1) {
     consoleToEspruino();  
   }

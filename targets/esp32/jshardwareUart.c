@@ -25,7 +25,7 @@
 void initUart(int uart_num,uart_config_t uart_config,int txpin,int rxpin){
   uart_param_config(uart_num, &uart_config);   //Configure UART1 parameters
   uart_set_pin(uart_num, txpin, rxpin, -1, -1); //Set UART0 pins(TX: IO16, RX: IO17, RTS: IO18, CTS: IO19)
-  uart_driver_install(uart_num, 1024, 1024, 10, 17, NULL);  //Install UART driver( We don't need an event queue here)
+  uart_driver_install(uart_num, 1024, 1024, 10, NULL, 0);  //Install UART driver( We don't need an event queue here)
 }
 
 void initConsole(){
