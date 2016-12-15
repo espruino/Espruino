@@ -3,6 +3,7 @@
             Added more helpful error messages for TLS
             Allow `Modules.addCached` to take a function (makes module loading more memory efficient)
             Re-add Espruino's old `rand` function (so no malloc, and ~1kB RAM, ~3kB ROM saved)
+            nRF5x: Ensure 'NRF.sleep' works even when connected
 
      1v89 : Allow entering of multi-line Templated Literals on the command-line (fix #970)
             Make lexer fail when parsing non-templated strings with newlines in 

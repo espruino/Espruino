@@ -280,7 +280,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           m_conn_handle = BLE_CONN_HANDLE_INVALID;
           if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, 0);
           // restart advertising after disconnection
-          jsble_advertising_start();
+          if (!(bleStatus & BLE_IS_SLEEPING))
+            jsble_advertising_start();
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", 0);
           jshHadEvent();
         }

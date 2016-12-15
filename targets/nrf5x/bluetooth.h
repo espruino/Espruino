@@ -46,6 +46,7 @@ typedef enum  {
   BLE_HID_INITED = 64,        // Has the BLE HID service been initialised?
   BLE_IS_SENDING_HID = 128,   // Are we waiting to send data for USB HID?
   BLE_IS_RSSI_SCANNING = 256, // Are we scanning for RSSI values
+  BLE_IS_SLEEPING = 512,      // NRF.sleep has been called
 } BLEStatus;
 
 
