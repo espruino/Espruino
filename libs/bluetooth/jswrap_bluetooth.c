@@ -105,6 +105,9 @@ void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data) {
   "generate" : "jswrap_nrf_init"
 }*/
 void jswrap_nrf_init() {
+  // Turn off sleeping if it was on before
+  jsiStatus &= ~BLE_IS_SLEEPING;
+
 #ifdef USE_NFC
   if (jsiStatus & JSIS_COMPLETELY_RESET) {
 #ifdef PUCKJS
@@ -252,6 +255,7 @@ void jswrap_nrf_bluetooth_sleep(void) {
   // Stop advertising
   if (bleStatus & BLE_IS_ADVERTISING)
     jsble_advertising_stop();
+  bleStatus |= BLE_IS_SLEEPING;
 }
 
 /*JSON{
@@ -263,6 +267,7 @@ void jswrap_nrf_bluetooth_sleep(void) {
 Enable Bluetooth communications (they are enabled by default)
 */
 void jswrap_nrf_bluetooth_wake(void) {
+  bleStatus &= ~BLE_IS_SLEEPING;
   jsble_advertising_start();
 }
 
