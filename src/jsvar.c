@@ -1228,8 +1228,18 @@ JsVar *jsvAsArrayIndex(JsVar *index) {
      is_string(A) && int_to_string(string_to_int(A)) == A
      then convert it to an integer. Shouldn't be too nasty for performance
      as we only do this when accessing an array with a string */
-    if (jsvIsStringNumericStrict(index))
-      return jsvNewFromInteger(jsvGetInteger(index));
+    if (jsvIsStringNumericStrict(index)) {
+      JsVar *i = jsvNewFromInteger(jsvGetInteger(index));
+      JsVar *is = jsvAsString(i, false);
+      if (jsvCompareString(index,is,0,0,false)==0) {
+        // two items are identical - use the integer
+        jsvUnLock(is);
+        return i;
+      } else {
+        // not identical, use as a string
+        jsvUnLock2(i,is);
+      }
+    }
   } else if (jsvIsFloat(index)) {
     // if it's a float that is actually integral, return an integer...
     JsVarFloat v = jsvGetFloat(index);
