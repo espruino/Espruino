@@ -353,6 +353,10 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   bool bleChanged = false;
   bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
 
+  // Save the current service data
+  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, data);
+  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, options);
+
   if (jsvIsObject(options)) {
     JsVar *v;
     v = jsvObjectGetChild(options, "showName", 0);
@@ -575,7 +579,7 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
   }
 
   // Save the current service data
-  jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, data);
+  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, data);
 
   // work out whether to apply changes
   if (bleStatus & (BLE_SERVICES_WERE_SET|BLE_NEEDS_SOFTDEVICE_RESTART)) {

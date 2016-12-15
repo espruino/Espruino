@@ -2424,6 +2424,16 @@ void jsvObjectRemoveChild(JsVar *obj, const char *name) {
   }
 }
 
+/** Set the named child of an object, and return the child (so you can choose to unlock it if you want).
+ * If the child is 0, the 'name' is also removed from the object */
+JsVar *jsvObjectSetOrRemoveChild(JsVar *obj, const char *name, JsVar *child) {
+  if (child)
+    jsvObjectSetChild(obj, name, child);
+  else
+    jsvObjectRemoveChild(obj, name);
+  return child;
+}
+
 int jsvGetChildren(JsVar *v) {
   //OPT: could length be stored as the value of the array?
   int children = 0;

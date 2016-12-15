@@ -9,6 +9,7 @@
             Stop PWM 'glitching' when moving from a nonzero value down to 0 (partial #991)
             nRF5x: Add multi-channel hardware PWM (fix #991, fix #972)
             'dump()' now outputs code written with E.setBootCode as well (fix #999)
+            nRF5x: Remember advertising information even after softdevice reboot  (fix #997)
 
      1v89 : Allow entering of multi-line Templated Literals on the command-line (fix #970)
             Make lexer fail when parsing non-templated strings with newlines in 
