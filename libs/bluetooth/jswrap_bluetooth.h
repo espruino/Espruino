@@ -38,6 +38,8 @@ bool jswrap_nrf_idle();
 void jswrap_nrf_kill();
 // ------------------------------------------------------------------------------
 
+
+void jswrap_nrf_bluetooth_disconnect(void);
 void jswrap_nrf_bluetooth_sleep(void);
 void jswrap_nrf_bluetooth_wake(void);
 
