@@ -1057,34 +1057,36 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
   while (lex->tk=='.' || lex->tk=='[') {
     if (lex->tk == '.') { // ------------------------------------- Record Access
       JSP_ASSERT_MATCH('.');
-      if (JSP_SHOULD_EXECUTE && jslIsIDOrReservedWord(lex)) {
-        // Note: name will go away when we parse something else!
-        const char *name = jslGetTokenValueAsString(lex);
+      if (jslIsIDOrReservedWord(lex)) {
+        if (JSP_SHOULD_EXECUTE) {
+          // Note: name will go away when we parse something else!
+          const char *name = jslGetTokenValueAsString(lex);
 
-        JsVar *aVar = jsvSkipName(a);
-        JsVar *child = 0;
-        if (aVar)
-          child = jspGetNamedField(aVar, name, true);
-        if (!child) {
-          if (jsvHasChildren(aVar)) {
-            // if no child found, create a pointer to where it could be
-            // as we don't want to allocate it until it's written
-            JsVar *nameVar = jslGetTokenValueAsVar(lex);
-            child = jsvCreateNewChild(aVar, nameVar, 0);
-            jsvUnLock(nameVar);
-          } else {
-            // could have been a string...
-            jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", name, aVar);
+          JsVar *aVar = jsvSkipName(a);
+          JsVar *child = 0;
+          if (aVar)
+            child = jspGetNamedField(aVar, name, true);
+          if (!child) {
+            if (jsvHasChildren(aVar)) {
+              // if no child found, create a pointer to where it could be
+              // as we don't want to allocate it until it's written
+              JsVar *nameVar = jslGetTokenValueAsVar(lex);
+              child = jsvCreateNewChild(aVar, nameVar, 0);
+              jsvUnLock(nameVar);
+            } else {
+              // could have been a string...
+              jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", name, aVar);
+            }
           }
+          jsvUnLock(parent);
+          parent = aVar;
+          jsvUnLock(a);
+          a = child;
         }
-        jslGetNextToken(lex); // skip over current token (we checked above that it was an ID or reserved word)
-
-        jsvUnLock(parent);
-        parent = aVar;
-        jsvUnLock(a);
-        a = child;
+        // skip over current token (we checked above that it was an ID or reserved word)
+        jslGetNextToken(lex);
       } else {
-        // Not executing, just match
+        // incorrect token - force a match fail by asking for an ID
         JSP_MATCH_WITH_RETURN(LEX_ID, a);
       }
     } else if (lex->tk == '[') { // ------------------------------------- Array Access
