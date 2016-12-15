@@ -662,6 +662,9 @@ JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child);
 /// Remove the named child of an Object
 void jsvObjectRemoveChild(JsVar *parent, const char *name);
+/** Set the named child of an object, and return the child (so you can choose to unlock it if you want).
+ * If the child is 0, the 'name' is also removed from the object */
+JsVar *jsvObjectSetOrRemoveChild(JsVar *obj, const char *name, JsVar *child);
 
 int jsvGetChildren(JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
 JsVar *jsvGetFirstName(JsVar *v); ///< Get the first child's name from an object,array or function

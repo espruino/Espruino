@@ -1056,7 +1056,11 @@ void jsble_restart_softdevice() {
   if (services) jsble_set_services(services);
   jsvUnLock(services);
 
-  // TODO: re-initialise advertising data
+  // If we had advertising data set, update it
+  JsVar *advData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
+  JsVar *advOpt = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, 0);
+  if (advData || advOpt) jswrap_nrf_bluetooth_setAdvertising(advData, advOpt);
+  jsvUnLock2(advData, advOpt);
 
   // if we were scanning, make sure we restart
   if (bleStatus & BLE_IS_SCANNING) {
