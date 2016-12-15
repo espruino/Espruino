@@ -495,32 +495,34 @@ void jsfLoadStateFromFlash() {
 #endif
 }
 
-/** Load bootup code from flash (this is textual JS code). return true if it exists and was executed.
- * isReset should be set if we're loading after a reset (eg, does the user expect this to be run or not)
- */
-bool jsfLoadBootCodeFromFlash(bool isReset) {
-  char *code = 0;
+/** Get bootup code from flash (this is textual JS code). return a pointer to it if it exists, or 0.
+ * isReset should be set if we're loading after a reset (eg, does the user expect this to be run or not).
+ * Set isReset=false to always return the code  */
+const char *jsfGetBootCodeFromFlash(bool isReset) {
 #ifdef LINUX
+  static char *code = 0;
   FILE *f = fopen("espruino.boot","rb");
-  if (!f) return false;
+  if (!f) return 0;
 
   fseek(f, 0, SEEK_END);
   long len = ftell(f);
   fseek(f, 0, SEEK_SET);
 
-  code = malloc(len+1); // null
+  if (code) free(code);
+  code = malloc(len+1);
   fread(code, len, 1, f);
   code[len] = 0;
   fclose(f);
 #else // !LINUX
-  if (!jsfFlashContainsCode()) return false;
+  char *code = 0;
+  if (!jsfFlashContainsCode()) return 0;
 
   uint32_t bootCodeInfo;
   jshFlashRead(&bootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 4); // length of boot code
   uint32_t bootCodeLen = bootCodeInfo & BOOT_CODE_LENGTH_MASK;
-  if (!bootCodeLen) return false;
+  if (!bootCodeLen) return 0;
   // Don't execute code if we've reset and code shouldn't always be run
-  if (isReset && !(bootCodeInfo & BOOT_CODE_RUN_ALWAYS)) return false;
+  if (isReset && !(bootCodeInfo & BOOT_CODE_RUN_ALWAYS)) return 0;
 
   code = (char *)(FLASH_DATA_LOCATION);
 #ifdef ESP8266
@@ -529,6 +531,15 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
   code += 0x40200000;
 #endif
 #endif
+  return code;
+}
+
+/** Load bootup code from flash (this is textual JS code). return true if it exists and was executed.
+ * isReset should be set if we're loading after a reset (eg, does the user expect this to be run or not).
+ * Set isReset=false to always run the code
+ */
+bool jsfLoadBootCodeFromFlash(bool isReset) {
+  char *code = jsfGetBootCodeFromFlash(isReset);
   jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
   return true;
 }
