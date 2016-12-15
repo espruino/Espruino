@@ -2240,6 +2240,13 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 
   // and now the actual hardware
   jsiDumpHardwareInitialisation(user_callback, user_data, true);
+
+  const char *code = jsfGetBootCodeFromFlash(false);
+  if (code) {
+    user_callback("// Code saved with E.setBootCode\n", user_data);
+    user_callback(code, user_data);
+    user_callback("\n", user_data);
+  }
 }
 
 JsVarInt jsiTimerAdd(JsVar *timerPtr) {
