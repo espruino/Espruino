@@ -1331,6 +1331,23 @@ NRF.connect("aa:bb:cc:dd:ee").then(function(server) {
 });
 ```
 
+You can use it as follows - this would connect to another Puck device and turn its LED on:
+
+```
+var gatt;
+NRF.connect("aa:bb:cc:dd:ee").then(function(g) {
+  gatt = g;
+  return gatt.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
+}).then(function(service) {
+  return service.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
+}).then(function(characteristic) {
+  characteristic.writeValue("LED1.set()\n");
+}).then(function() {
+  gatt.disconnect();
+  console.log("Done!");
+});
+```
+
 **Note:** This is only available on some devices
 */
 JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
