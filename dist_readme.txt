@@ -33,7 +33,7 @@ espruino_#v##_wifi.bin
 
 espruino_#v##_puckjs.zip
    - The firmware image for Espruino Puck.js Devices
-     Use the nRF Control Panel app to flash this firmware
+     See http://www.espruino.com/Puck.js#firmware-updates for more information
 
 espruino_#v##_hystm32_24_ve.bin 
    - 'HY'STM32F103VET6 ARM with 2.4" LCD display
