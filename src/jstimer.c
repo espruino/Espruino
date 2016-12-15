@@ -354,9 +354,10 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) 
 bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
   // if anything is wrong, exit now
   if (dutyCycle<=0 || dutyCycle>=1 || freq<=0) {
-    jshPinSetValue(pin, dutyCycle >= 0.5);
-    // remove any timer tasks and exit
+    // remove any timer tasks
     while (utilTimerRemoveTask(jstPinTaskChecker, (void*)&pin));
+    // Now set pin to the correct state and exit
+    jshPinSetValue(pin, dutyCycle >= 0.5);
     return false;
   }
   // do calculations...
