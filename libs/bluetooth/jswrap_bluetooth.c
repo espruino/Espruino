@@ -169,20 +169,20 @@ void jswrap_nrf_kill() {
   "type" : "event",
   "class" : "NRF",
   "name" : "connect",
-  "#ifdef" : "NRF52"
+  "params" : [
+    ["addr","JsVar","The address of the device that has connected"]
+  ]
 }
-Called when Espruino *connects to another device* - not when a a device
-connects to Espruino.
+Called when a host device connects to Espruino. The first argument contains the address.
  */
 /*JSON{
   "type" : "event",
   "class" : "NRF",
-  "name" : "disconnect",
-  "#ifdef" : "NRF52"
+  "name" : "disconnect"
 }
-Called when Espruino *disconnects from another device* - not when a a device
-disconnects from Espruino.
+Called when a host device disconnects from Espruino.
  */
+
 
 /*JSON{
   "type" : "event",
@@ -234,6 +234,22 @@ The main part of this is control of Bluetooth Low Energy - both searching for de
 }
 The Bluetooth Serial port - used when data is sent or received over Bluetooth Smart on nRF51/nRF52 chips.
  */
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "disconnect",
+    "generate" : "jswrap_nrf_bluetooth_disconnect"
+}
+If a device is connected to Espruino, disconnect from it.
+*/
+void jswrap_nrf_bluetooth_disconnect(void) {
+  uint32_t err_code;
+  if (jsble_has_simple_connection()) {
+    err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    jsble_check_error(err_code);
+  }
+}
 
 /*JSON{
     "type" : "staticmethod",

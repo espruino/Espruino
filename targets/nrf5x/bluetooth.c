@@ -257,7 +257,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
-          bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", 0);
+          JsVar *addr = bleAddrToStr(p_ble_evt->evt.gap_evt.params.connected.peer_addr);
+          bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", addr);
+          jsvUnLock(addr);
           jshHadEvent();
         }
 #if CENTRAL_LINK_COUNT>0

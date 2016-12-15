@@ -11,6 +11,8 @@
             'dump()' now outputs code written with E.setBootCode as well (fix #999)
             nRF5x: Remember advertising information even after softdevice reboot  (fix #997)
             nRF51: Remove heap placeholder on nRF51 as not needed since no malloc. Increase nRF51 var count (fix #985)
+            nRF5x: 'connect' event now contains address of device that has connected, and fix docs
+            nRF5x: Add a 'NRF.disconnect' function to disconnect a client that has connected to Puck.js
 
      1v89 : Allow entering of multi-line Templated Literals on the command-line (fix #970)
             Make lexer fail when parsing non-templated strings with newlines in 
