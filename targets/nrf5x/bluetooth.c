@@ -909,16 +909,23 @@ static void ble_stack_init() {
 #endif
 }
 
+/// Build advertising data struct to pass into @ref ble_advertising_init.
+void jsble_setup_advdata(ble_advdata_t *advdata) {
+  memset(advdata, 0, sizeof(*advdata));
+  advdata->name_type          = BLE_ADVDATA_FULL_NAME;
+  advdata->include_appearance = false;
+  advdata->flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+}
+
+
 /// Function for initializing the Advertising functionality.
 static void advertising_init() {
     uint32_t      err_code;
     ble_advdata_t advdata;
     ble_advdata_t scanrsp;
 
-    memset(&advdata, 0, sizeof(advdata));
-    advdata.name_type          = BLE_ADVDATA_FULL_NAME;
-    advdata.include_appearance = false;
-    advdata.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+    // Build advertising data struct to pass into @ref ble_advertising_init.
+    jsble_setup_advdata(&advdata);
 
     static ble_uuid_t adv_uuids[2]; // FIXME - more?
     int adv_uuid_count = 0;
