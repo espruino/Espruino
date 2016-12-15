@@ -91,7 +91,7 @@ Pin jshGetPinFromString(const char *s) {
   return PIN_UNDEFINED;
 }
 
-/** Write the pin name to a string. String must have at least 8 characters (to be safe) */
+/** Write the pin name to a string. String must have at least 10 characters (to be safe) */
 void jshGetPinString(char *result, Pin pin) {
   result[0] = 0; // just in case
 #ifdef PIN_NAMES_DIRECT
@@ -137,7 +137,7 @@ void jshGetPinString(char *result, Pin pin) {
 #endif
 #endif
     } else {
-      strncpy(result, "undefined", 9);
+      strncpy(result, "undefined", 10);
     }
   }
 
