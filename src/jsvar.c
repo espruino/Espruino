@@ -1161,6 +1161,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
     }
   } else {
     const char *constChar = jsvGetConstString(v);
+    assert(JS_NUMBER_BUFFER_SIZE>=10);
     char buf[JS_NUMBER_BUFFER_SIZE];
     if (constChar) {
       // if we could get this as a simple const char, do that..

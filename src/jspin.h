@@ -196,7 +196,7 @@ bool jshIsPinValid(Pin pin); ///< is the specific pin actually valid?
 
 /// Given a string, convert it to a pin ID (or -1 if it doesn't exist)
 Pin jshGetPinFromString(const char *s);
-/** Write the pin name to a string. String must have at least 8 characters (to be safe) */
+/** Write the pin name to a string. String must have at least 10 characters (to be safe) */
 void jshGetPinString(char *result, Pin pin);
 
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist). safe for undefined!
