@@ -7,6 +7,7 @@
             Fix bug when using >32 bit integers as array indices (fix #984)
             Fix bug when parsing '.catch' while not executing (fix #989)
             Stop PWM 'glitching' when moving from a nonzero value down to 0 (partial #991)
+            nRF5x: Add multi-channel hardware PWM (fix #991, fix #972)
 
      1v89 : Allow entering of multi-line Templated Literals on the command-line (fix #970)
             Make lexer fail when parsing non-templated strings with newlines in 

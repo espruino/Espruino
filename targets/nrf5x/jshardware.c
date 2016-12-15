@@ -567,11 +567,46 @@ int jshPinAnalogFast(Pin pin) {
 #endif
 }
 
+JshPinFunction jshGetFreeTimer(JsVarFloat freq) {
+  int timer, channel, pin;
+  for (timer=0;timer<3;timer++) {
+    bool timerUsed = false;
+    JshPinFunction timerFunc = JSH_TIMER1 + (JSH_TIMER2-JSH_TIMER1)*timer;
+    if (freq>0) {
+      // TODO: we could see if the frequency matches?
+      // if frequency specified then if timer is used by
+      // anything else we'll skip it
+      for (pin=0;pin<JSH_PIN_COUNT;pin++)
+        if ((pinStates[pin]&JSH_MASK_TYPE) == timerFunc)
+          timerUsed = true;
+    }
+    if (!timerUsed) {
+      // now check each channel
+      for (channel=0;channel<4;channel++) {
+        JshPinFunction func = timerFunc | (JSH_TIMER_CH1 + (JSH_TIMER_CH2-JSH_TIMER_CH1)*channel);
+        bool timerUsed = false;
+        for (pin=0;pin<JSH_PIN_COUNT;pin++)
+          if ((pinStates[pin]&(JSH_MASK_TYPE|JSH_MASK_TIMER_CH)) == func)
+            timerUsed = true;
+        if (!timerUsed)
+          return func;
+      }
+    }
+  }
+}
+
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+#ifdef NRF52
+  // Try and use existing pin function
+  JshPinFunction func = pinStates[pin];
+  // If it's not a timer, try and find one
+  if (!JSH_PINFUNCTION_IS_TIMER(func)) {
+    func = jshGetFreeTimer(freq);
+  }
   /* we set the bit field here so that if the user changes the pin state
    * later on, we can get rid of the IRQs */
-#ifdef NRF52
-  if (flags & JSAOF_FORCE_SOFTWARE) {
+  if ((flags & JSAOF_FORCE_SOFTWARE) ||
+      ((flags & JSAOF_ALLOW_SOFTWARE) && !func)) {
 #endif
     if (!jshGetPinStateIsManual(pin)) {
       BITFIELD_SET(jshPinSoftPWM, pin, 0);
@@ -583,8 +618,11 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
     return JSH_NOTHING;
 #ifdef NRF52
   }
-  JshPinFunction func = JSH_TIMER1 | JSH_TIMER_CH1;
-  // FIXME: Search for free timers to use (based on freq as well)
+
+  if (!func) {
+    jsExceptionHere(JSET_ERROR, "No free Hardware PWMs. Try not specifying a frequency, or using analogWrite(pin, val, {soft:true}) for Software PWM\n");
+    return 0;
+  }
 
   NRF_PWM_Type *pwm = nrf_get_pwm(func);
   if (!pwm) { assert(0); return 0; };
@@ -638,10 +676,13 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_STOPPED);
   nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_STOPPED);*/
 
-  static uint16_t pwmValues[4];
-  pwmValues[func >> JSH_SHIFT_INFO] = counter - (uint16_t)(value*counter);
+  int timer = ((func&JSH_MASK_TYPE)-JSH_TIMER1) >> JSH_SHIFT_TYPE;
+  int channel = (func&JSH_MASK_INFO) >> JSH_SHIFT_INFO;
+
+  static uint16_t pwmValues[3][4];
+  pwmValues[timer][channel] = counter - (uint16_t)(value*counter);
   nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
-  nrf_pwm_seq_ptr_set(      pwm, 0, pwmValues);
+  nrf_pwm_seq_ptr_set(      pwm, 0, &pwmValues[timer][0]);
   nrf_pwm_seq_cnt_set(      pwm, 0, 4);
   nrf_pwm_seq_refresh_set(  pwm, 0, 0);
   nrf_pwm_seq_end_delay_set(pwm, 0, 0);
