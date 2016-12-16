@@ -338,7 +338,7 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 
 /// Convert ticks to a time in Milliseconds.
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-  return (JsVarFloat) ((time * 1000) / SYSCLK_FREQ);
+  return (time * 1000.0) / SYSCLK_FREQ;
 }
 
 // software IO functions...
