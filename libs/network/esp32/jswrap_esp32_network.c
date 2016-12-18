@@ -1439,7 +1439,7 @@ void jswrap_ESP32_wifi_restore(void) {
   bool auto_connect;
   int err=esp_wifi_get_auto_connect(&auto_connect);
   if ( auto_connect ) {
-    jsiConsolePrint("jswrap_ESP32_wifi_restore AUTO CONNECT\n");
+    ESP_LOGI(tag,"jswrap_ESP32_wifi_restore AUTO CONNECT\n");
     err = esp_wifi_start();
     if (err != ESP_OK) {
       ESP_LOGE(tag, "jswrap_ESP32_wifi_restore: esp_wifi_start: %d", err);
@@ -1451,7 +1451,7 @@ void jswrap_ESP32_wifi_restore(void) {
       return;
     }
   } else {
-    jsiConsolePrint("jswrap_ESP32_wifi_restore: CONFIG DEFAULT\n");  
+    ESP_LOGI(tag,"jswrap_ESP32_wifi_restore: CONFIG DEFAULT\n");  
   }
   ESP_LOGD(tag, "<< jswrap_ESP32_wifi_restore");
 } // End of jswrap_ESP32_wifi_restore
