@@ -55,7 +55,7 @@ digitalWrite(D18, 0);
 digitalWrite(D5, 0);
 */
 
-SPI2.setup({ sck:5, mosi:D23 });
+SPI2.setup({ sck:D5, mosi:D23 });
 
 
 var g = require("PCD8544").connect(SPI1, 
@@ -64,7 +64,7 @@ var g = require("PCD8544").connect(SPI1,
     D16 /*RST*/, function() {
   g.clear();
   g.setRotation(2); //Flip display 180
-  g.drawString("Hi Esp8266",0,0);
+  g.drawString("Hi Esp32",0,0);
   g.drawLine(0,10,84,10);
   g.flip();
 });
