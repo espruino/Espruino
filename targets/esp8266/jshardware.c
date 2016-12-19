@@ -112,7 +112,7 @@ void jshInit() {
   jshInitDevices();
 
   // sanity check for pin function enum to catch ordering changes
-  if (JSHPINSTATE_I2C != 12 || JSHPINSTATE_GPIO_IN_PULLDOWN != 5 || JSHPINSTATE_MASK != 15) {
+  if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
     jsError("JshPinState #defines have changed, please update pinStateToString()");
   }
 
@@ -304,6 +304,7 @@ static uint8 pinAFFunc[] = {
 static char *pinStateToString(JshPinState state) {
   static char *states[] = {
     "UNDEFINED", "GPIO_OUT", "GPIO_OUT_OPENDRAIN",
+    "GPIO_OUT_OPENDRAIN_PULLUP",
     "GPIO_IN", "GPIO_IN_PULLUP", "GPIO_IN_PULLDOWN",
     "ADC_IN", "AF_OUT", "AF_OUT_OPENDRAIN",
     "USART_IN", "USART_OUT", "DAC_OUT", "I2C",
