@@ -23,7 +23,11 @@ info = {
  'binary_name'              : 'espruino_%v_esp32',
  'build' : {
    'defines' : [
-     'USE_NET'
+     'USE_NET',
+	 'USE_TELNET',
+     'USE_GRAPHICS',
+     'USE_CRYPTO',
+     'USE_TLS'	 
    ]
  }
 };

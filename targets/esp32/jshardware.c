@@ -817,7 +817,6 @@ unsigned int jshGetRandomNumber() {
  *
  */
 uint32_t jshFlashMax() {
-  ESP_LOGD(tag,">> jshFlashMax");
   return (FLASH_MAX-1);
 }
 
@@ -854,11 +853,7 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-  // This function is called too often during save() and load() processing to be
-  // useful for logging the entry/exit.
-  //ESP_LOGD(tag,">> jshFlashWrite");
   spi_flash_write(addr, buf, len);
-  //ESP_LOGD(tag,"<< jshFlashWrite");
 }
 
 
@@ -871,20 +866,27 @@ bool jshFlashGetPage(
     uint32_t *startAddr, //!<
     uint32_t *pageSize   //!<
   ) {
-  ESP_LOGD(tag,">> jshFlashGetPage: addr=0x%x", addr);
   if (addr >= FLASH_MAX) return false;
   *startAddr = addr & ~(FLASH_PAGE-1);
   *pageSize = FLASH_PAGE;
   return true; 
 }
 
-
+void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
+}
 
 JsVar *jshFlashGetFree() {
-  ESP_LOGD(tag,">> jshFlashGetFree");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshFlashGetFree");
-  return 0;
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+  // Space should be reserved here in the parition table - assume 4Mb EEPROM
+  addFlashArea(jsFreeFlash, 0x100000, 0x300000-0x4000);
+  
+  return jsFreeFlash;
 }
 
 
@@ -894,9 +896,7 @@ JsVar *jshFlashGetFree() {
 void jshFlashErasePage(
     uint32_t addr //!<
   ) {
-  ESP_LOGD(tag,">> jshFlashErasePage: addr=0x%x", addr);
   spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);
-  ESP_LOGD(tag,"<< jshFlashErasePage");
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {
