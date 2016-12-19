@@ -39,3 +39,5 @@ function sendForm() {
   }).end(content);
 }
 
+sendForm();
+
