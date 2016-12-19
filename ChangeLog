@@ -1,3 +1,5 @@
+     1v91 : Fix recent regression if no Boot Code defined at startup
+
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments
             Added more helpful error messages for TLS
