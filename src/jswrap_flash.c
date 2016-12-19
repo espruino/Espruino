@@ -540,7 +540,8 @@ const char *jsfGetBootCodeFromFlash(bool isReset) {
  */
 bool jsfLoadBootCodeFromFlash(bool isReset) {
   char *code = jsfGetBootCodeFromFlash(isReset);
-  jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
+  if (code)
+    jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
   return true;
 }
 
