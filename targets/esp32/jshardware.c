@@ -56,8 +56,7 @@
 static char *tag = "jshardware";
 static char *tagGPIO = "jshardware(GPIO)";
 
-static spi_t *VSPI_spi;
-static spi_t *HSPI_spi;
+static spi_t * _spi[VSPI];
 static uint32_t  g_lastSPIRead = (uint32_t)-1;
 
 // Convert an Espruino pin to an ESP32 pin number.
@@ -113,6 +112,7 @@ void jshInit() {
   ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
   spi_flash_init();
   esp32_wifi_init();
+  jswrap_ESP32_wifi_soft_init();
   jshInitDevices();
   gpio_isr_register(gpio_intr_test,NULL,0,NULL);  //changed to automatic assign of interrupt
    // Initialize something for each of the possible pins.
@@ -487,8 +487,28 @@ void jshUSARTKick(
   //ESP_LOGD(tag,"<< jshUSARTKick");
 }
 
+/*
+https://hackadaycom.files.wordpress.com/2016/10/esp32_pinmap.png
+HSPI  2 //SPI bus normally mapped to pins 12 - 15, but can be matrixed to any pins
+15  HSPI SS
+14  HSPI SCK
+12  HSPI MISO
+13  HSPI MOSI
+VSPI  3 //SPI bus normally attached to pin:
+5   VSPI SS
+18  VSPI SCK
+19  VSPI MISO
+23  VSPI MOSI
+*/
 //===== SPI =====
-
+int getSPIFromDevice( IOEventFlags device	) {
+  switch(device) {
+  case EV_SPI1: return HSPI;
+  case EV_SPI2: return VSPI;
+  default: return -1;
+  }
+}
+  
 /**
  * Initialize the hardware SPI device.
  * On the ESP32, hardware SPI is implemented via a set of default pins defined
@@ -527,28 +547,40 @@ void jshSPISetup(
   } else {
     bitOrder = SPI_LSBFIRST;
   }
-  switch(device) {
-  case EV_SPI1:
-    HSPI_spi = spiStartBus(HSPI, 1000000, dataMode, bitOrder);
-    spi = HSPI_spi;
-    break;
-  case EV_SPI2:
-    VSPI_spi = spiStartBus(VSPI, 1000000, dataMode, bitOrder);
-    spi = VSPI_spi;
-    break;
-  default:
-    ESP_LOGW(tag, "Unexpected device for SPI initialization: %d", device);
-    break;
-  }
-  if (spi != NULL) {
-    spiAttachSCK(spi, -1);
-    spiAttachMISO(spi, -1);
-    spiAttachMOSI(spi, -1);
-    spiAttachSS(spi, 0, -1);
+  int which_spi=getSPIFromDevice(device);
+  if (which_spi == -1) {
+	ESP_LOGW(tag, "Unexpected device for SPI initialization: %d", device);
+	}
+  else {
+	int which_spi=getSPIFromDevice(device);
+	Pin sck;
+	Pin miso;
+	Pin mosi;
+	Pin ss; 
+	if ( which_spi == HSPI ) {
+	  sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 14;
+	  miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 12;
+	  mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 13;
+	  // Where do we get the SS pin?
+	  //ss = inf->pinSS != PIN_UNDEFINED ? inf->pinSS : 15;
+	  ss=15;
+	}
+	else {
+	  sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 5;
+	  miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 19;
+	  mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 23;
+	  //ss = inf->pinSS != PIN_UNDEFINED ? inf->pinSS : 18;
+	  ss=18;
+	}
+	spi=spiStartBus(which_spi, inf->baudRate, dataMode, bitOrder);  
+    spiAttachSCK(spi, pinToESP32Pin(sck));
+    spiAttachMISO(spi, pinToESP32Pin(miso));
+    spiAttachMOSI(spi, pinToESP32Pin(mosi));
+    spiAttachSS(spi, 0, pinToESP32Pin(ss));
     spiEnableSSPins(spi, 1<<0);
     spiSSEnable(spi);
+	_spi[which_spi]=spi;
   }
-  ESP_LOGD(tag,"<< jshSPISetup");
 }
 
 
@@ -559,33 +591,19 @@ int jshSPISend(
     IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
     int data             //!< The data to be sent or an indication that no data is to be sent.
 ) {
-  ESP_LOGD(tag,">> jshSPISend device=%s, data=%x", jshGetDeviceString(device), data);
-  spi_t *spi;
-  switch(device) {
-  case EV_SPI1:
-    spi = HSPI_spi;
-    break;
-  case EV_SPI2:
-    spi= VSPI_spi;
-    break;
-  default:
-    return -1;
+  int which_spi =getSPIFromDevice(device);
+  if (which_spi == -1) {
+	return -1;
   }
-
-  if (device != EV_SPI1 && device != EV_SPI2) {
-    return -1;
-  }
-
   //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
   int retData = (int)g_lastSPIRead;
   if (data >=0) {
     // Send 8 bits of data taken from "data" over the selected spi and store the returned
     // data for subsequent retrieval.
-    spiTransferBits(spi, (uint32_t)data, &g_lastSPIRead, 8);
+    spiTransferBits(_spi[which_spi], (uint32_t)data, &g_lastSPIRead, 8);
   } else {
     g_lastSPIRead = (uint32_t)-1;
   }
-  ESP_LOGD(tag,"<< jshSPISend");
   return (int)retData;
 }
 
@@ -597,11 +615,8 @@ void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
 ) {
-  UNUSED(device);
-  UNUSED(data);
-  ESP_LOGD(tag,">> jshSPISend16");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshSPISend16");
+  int which_spi=getSPIFromDevice(device);  
+  spiWriteWord(_spi[which_spi], data);
 }
 
 
@@ -627,9 +642,8 @@ void jshSPIWait(
     IOEventFlags device //!< Unknown
 ) {
   UNUSED(device);
-  ESP_LOGD(tag,">> jshSPIWait");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshSPIWait");
+  int which_spi =getSPIFromDevice(device);  
+  spiWaitReady(_spi[which_spi]);
 }
 
 
@@ -641,6 +655,7 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag,"<< jshSPISetReceive");
 }
+
 
 //===== I2C =====
 
@@ -775,12 +790,10 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
  return 0;
 } // End of jshIsDeviceInitialised
 
-// the esp8266 doesn't have any temperature sensor
+// the esp32 temperature sensor - undocumented library function call. Unsure of values returned.
 JsVarFloat jshReadTemperature() {
-  ESP_LOGD(tag,">> jshReadTemperature");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshReadTemperature");
-  return NAN;
+  extern uint8_t temprature_sens_read();
+  return temprature_sens_read();
 }
 
 // the esp8266 can read the VRef but then there's no analog input, so we don't support this
@@ -804,7 +817,6 @@ unsigned int jshGetRandomNumber() {
  *
  */
 uint32_t jshFlashMax() {
-  ESP_LOGD(tag,">> jshFlashMax");
   return (FLASH_MAX-1);
 }
 
@@ -841,11 +853,7 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-  // This function is called too often during save() and load() processing to be
-  // useful for logging the entry/exit.
-  //ESP_LOGD(tag,">> jshFlashWrite");
   spi_flash_write(addr, buf, len);
-  //ESP_LOGD(tag,"<< jshFlashWrite");
 }
 
 
@@ -858,20 +866,28 @@ bool jshFlashGetPage(
     uint32_t *startAddr, //!<
     uint32_t *pageSize   //!<
   ) {
-  ESP_LOGD(tag,">> jshFlashGetPage: addr=0x%x", addr);
   if (addr >= FLASH_MAX) return false;
   *startAddr = addr & ~(FLASH_PAGE-1);
   *pageSize = FLASH_PAGE;
   return true; 
 }
 
-
+void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
+}
 
 JsVar *jshFlashGetFree() {
-  ESP_LOGD(tag,">> jshFlashGetFree");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshFlashGetFree");
-  return 0;
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+  // Space should be reserved here in the parition table - assume 4Mb EEPROM
+  // Set just after programme save area 
+  addFlashArea(jsFreeFlash, 0x100000 + FLASH_PAGE * 16, 0x300000-FLASH_PAGE * 16-1);
+  
+  return jsFreeFlash;
 }
 
 
@@ -881,9 +897,7 @@ JsVar *jshFlashGetFree() {
 void jshFlashErasePage(
     uint32_t addr //!<
   ) {
-  ESP_LOGD(tag,">> jshFlashErasePage: addr=0x%x", addr);
   spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);
-  ESP_LOGD(tag,"<< jshFlashErasePage");
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {
