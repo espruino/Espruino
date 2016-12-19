@@ -81,7 +81,11 @@ DEVICES = {
  "MEMS":"MEMS",
  "GYRO":"GYRO",
  "JTAG":"JTAG",
- "ESP8266":"ESP8266"
+ "ESP8266":"ESP8266",
+ "MAG":"MAG",
+ "IR":"IR", 
+ "NFC":"NFC",
+ "CAPSENSE":"CAPSENSE",
 };
 
 for i in range(0,7):
