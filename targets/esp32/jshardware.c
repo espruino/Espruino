@@ -884,7 +884,8 @@ JsVar *jshFlashGetFree() {
   JsVar *jsFreeFlash = jsvNewEmptyArray();
   if (!jsFreeFlash) return 0;
   // Space should be reserved here in the parition table - assume 4Mb EEPROM
-  addFlashArea(jsFreeFlash, 0x100000, 0x300000-0x4000);
+  // Set just after programme save area 
+  addFlashArea(jsFreeFlash, 0x100000 + FLASH_PAGE * 16, 0x300000-FLASH_PAGE * 16-1);
   
   return jsFreeFlash;
 }
