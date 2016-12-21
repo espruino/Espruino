@@ -1,6 +1,7 @@
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
             Fix regression where HTTPS without cert/ca or key failed
+            nRF52: Making NRF.getPrimaryService/etc more robust
 
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments

@@ -53,6 +53,10 @@ bool bleInTask(BleTask task) {
   return bleTask==task;
 }
 
+BleTask bleGetCurrentTask() {
+  return bleTask;
+}
+
 bool bleNewTask(BleTask task, JsVar *taskInfo) {
   if (bleTask) {
     jsExceptionHere(JSET_ERROR, "BLE task is already in progress");
@@ -66,6 +70,7 @@ bool bleNewTask(BleTask task, JsVar *taskInfo) {
 }
 
 void bleCompleteTask(BleTask task, bool ok, JsVar *data) {
+  //jsiConsolePrintf(ok?"RES %d %v\n":"REJ %d %q\n", task, data);
   if (task != bleTask) {
     jsExceptionHere(JSET_INTERNALERROR, "BLE task completed that wasn't scheduled (%d/%d)", task, bleTask);
     return;
@@ -1423,8 +1428,9 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
   jsvUnLock2(device, addr);
 
   if (bleNewTask(BLETASK_CONNECT, parent/*BluetoothRemoteGATTServer*/)) {
+    JsVar *promise = jsvLockAgainSafe(blePromise);
     jsble_central_connect(peer_addr);
-    return jsvLockAgainSafe(blePromise);
+    return promise;
   }
   return 0;
 #else
@@ -1462,11 +1468,12 @@ void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
   if (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) {
     // we have a connection, disconnect
     err_code = sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    jsble_check_error(err_code);
   } else {
     // no connection - try and cancel the connect attempt (assume we have one)
     err_code = sd_ble_gap_connect_cancel();
+    // maybe we don't, in which case we don't care about the error code
   }
-  jsble_check_error(err_code);
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
 #endif
@@ -1497,8 +1504,9 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *
     return 0;
   }
 
+  JsVar *promise = jsvLockAgainSafe(blePromise);
   jsble_central_getPrimaryServices(uuid);
-  return jsvLockAgainSafe(blePromise);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
@@ -1521,9 +1529,9 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
 
   if (!bleNewTask(BLETASK_PRIMARYSERVICE, 0))
     return 0;
-
+  JsVar *promise = jsvLockAgainSafe(blePromise);
   jsble_central_getPrimaryServices(uuid);
-  return jsvLockAgainSafe(blePromise);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
@@ -1564,8 +1572,9 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar 
     return 0;
   }
 
+  JsVar *promise = jsvLockAgainSafe(blePromise);
   jsble_central_getCharacteristics(parent, uuid);
-  return jsvLockAgainSafe(blePromise);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
@@ -1589,8 +1598,9 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent) {
   if (!bleNewTask(BLETASK_CHARACTERISTIC, 0))
     return 0;
 
+  JsVar *promise = jsvLockAgainSafe(blePromise);
   jsble_central_getCharacteristics(parent, uuid);
-  return jsvLockAgainSafe(blePromise);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
@@ -1646,8 +1656,9 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
   if (!bleNewTask(BLETASK_CHARACTERISTIC_WRITE, 0))
     return 0;
 
+  JsVar *promise = jsvLockAgainSafe(blePromise);
   jsble_central_characteristicWrite(characteristic, dataPtr, dataLen);
-  return jsvLockAgainSafe(blePromise);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
@@ -1688,8 +1699,9 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteris
   if (!bleNewTask(BLETASK_CHARACTERISTIC_READ, 0))
     return 0;
 
+  JsVar *promise = jsvLockAgainSafe(blePromise);
   jsble_central_characteristicRead(characteristic);
-  return jsvLockAgainSafe(blePromise);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
@@ -1739,8 +1751,9 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
     jsvSetArrayItem(handles, handle, characteristic);
     jsvUnLock(handles);
   }
+  JsVar *promise = jsvLockAgainSafe(blePromise);
   jsble_central_characteristicNotify(characteristic, true);
-  return jsvLockAgainSafe(blePromise);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
@@ -1765,8 +1778,9 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *cha
     jsvSetArrayItem(handles, handle, 0);
     jsvUnLock(handles);
   }
+  JsVar *promise = jsvLockAgainSafe(blePromise);
   jsble_central_characteristicNotify(characteristic, false);
-  return jsvLockAgainSafe(blePromise);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
