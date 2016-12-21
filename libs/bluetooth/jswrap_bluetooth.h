@@ -45,11 +45,12 @@ void jswrap_nrf_kill();
 // ------------------------------------------------------------------------------
 
 
-void jswrap_nrf_bluetooth_disconnect(void);
-void jswrap_nrf_bluetooth_sleep(void);
-void jswrap_nrf_bluetooth_wake(void);
+void jswrap_nrf_bluetooth_disconnect();
+void jswrap_nrf_bluetooth_sleep();
+void jswrap_nrf_bluetooth_wake();
+JsVar *jswrap_nrf_bluetooth_getAddress();
 
-JsVarFloat jswrap_nrf_bluetooth_getBattery(void);
+JsVarFloat jswrap_nrf_bluetooth_getBattery();
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options);
 void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options);
 void jswrap_nrf_bluetooth_updateServices(JsVar *data);
