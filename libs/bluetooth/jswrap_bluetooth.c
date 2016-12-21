@@ -118,15 +118,9 @@ void jswrap_nrf_init() {
 #ifdef PUCKJS
     // By default Puck.js's NFC will send you to the PuckJS website
     // address is included so Web Bluetooth can connect to the correct one
-    uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
-    uint32_t addr1 =  NRF_FICR->DEVICEADDR[1];
-    JsVar *uri = jsvVarPrintf("https://puck-js.com/go?a=%02x:%02x:%02x:%02x:%02x:%02x",
-        ((addr1>>8 )&0xFF)|0xC0,
-        ((addr1    )&0xFF),
-        ((addr0>>24)&0xFF),
-        ((addr0>>16)&0xFF),
-        ((addr0>>8 )&0xFF),
-        ((addr0    )&0xFF));
+    JsVar *addr = jswrap_nrf_bluetooth_getAddress();
+    JsVar *uri = jsvVarPrintf("https://puck-js.com/go?a=%v", addr);
+    jsvUnLock(addr);
     jswrap_nrf_nfcURL(uri);
     jsvUnLock(uri);
 #endif
@@ -248,7 +242,7 @@ The Bluetooth Serial port - used when data is sent or received over Bluetooth Sm
 }
 If a device is connected to Espruino, disconnect from it.
 */
-void jswrap_nrf_bluetooth_disconnect(void) {
+void jswrap_nrf_bluetooth_disconnect() {
   uint32_t err_code;
   if (jsble_has_simple_connection()) {
     err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
@@ -264,7 +258,7 @@ void jswrap_nrf_bluetooth_disconnect(void) {
 }
 Disable Bluetooth communications
 */
-void jswrap_nrf_bluetooth_sleep(void) {
+void jswrap_nrf_bluetooth_sleep() {
   uint32_t err_code;
 
   // If connected, disconnect.
@@ -287,9 +281,30 @@ void jswrap_nrf_bluetooth_sleep(void) {
 }
 Enable Bluetooth communications (they are enabled by default)
 */
-void jswrap_nrf_bluetooth_wake(void) {
+void jswrap_nrf_bluetooth_wake() {
   bleStatus &= ~BLE_IS_SLEEPING;
   jsble_advertising_start();
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "getAddress",
+    "generate" : "jswrap_nrf_bluetooth_getAddress",
+    "return" : ["JsVar", "MAC address - a string of the form 'aa:bb:cc:dd:ee:ff'" ]
+}
+Get this device's Bluetooth MAC address
+*/
+JsVar *jswrap_nrf_bluetooth_getAddress() {
+  uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
+  uint32_t addr1 =  NRF_FICR->DEVICEADDR[1];
+  return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
+      ((addr1>>8 )&0xFF)|0xC0,
+      ((addr1    )&0xFF),
+      ((addr0>>24)&0xFF),
+      ((addr0>>16)&0xFF),
+      ((addr0>>8 )&0xFF),
+      ((addr0    )&0xFF));
 }
 
 /*JSON{
@@ -301,7 +316,7 @@ void jswrap_nrf_bluetooth_wake(void) {
 }
 Get the battery level in volts
 */
-JsVarFloat jswrap_nrf_bluetooth_getBattery(void) {
+JsVarFloat jswrap_nrf_bluetooth_getBattery() {
   return jshReadVRef();
 }
 

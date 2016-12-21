@@ -2,6 +2,7 @@
             Fix handling of return of rejected promise within a promise
             Fix regression where HTTPS without cert/ca or key failed
             nRF52: Making NRF.getPrimaryService/etc more robust
+            nRF5x: Add NRF.getAddress() - fix #1001
 
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments
