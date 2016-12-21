@@ -520,7 +520,7 @@ const char *jsfGetBootCodeFromFlash(bool isReset) {
   uint32_t bootCodeInfo;
   jshFlashRead(&bootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 4); // length of boot code
   uint32_t bootCodeLen = bootCodeInfo & BOOT_CODE_LENGTH_MASK;
-  if (!bootCodeLen) return 0;
+  if (bootCodeLen==BOOT_CODE_LENGTH_MASK || !bootCodeLen) return 0;
   // Don't execute code if we've reset and code shouldn't always be run
   if (isReset && !(bootCodeInfo & BOOT_CODE_RUN_ALWAYS)) return 0;
 
@@ -539,7 +539,7 @@ const char *jsfGetBootCodeFromFlash(bool isReset) {
  * Set isReset=false to always run the code
  */
 bool jsfLoadBootCodeFromFlash(bool isReset) {
-  char *code = jsfGetBootCodeFromFlash(isReset);
+  const char *code = jsfGetBootCodeFromFlash(isReset);
   if (code)
     jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
   return true;
