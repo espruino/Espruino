@@ -2072,7 +2072,9 @@ void jsiIdle() {
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
+      jsvKill();
       jshReset();
+      jsvInit();
       jsfLoadStateFromFlash();
       jsvSoftInit();
       jspSoftInit();

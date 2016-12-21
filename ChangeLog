@@ -3,6 +3,7 @@
             Fix regression where HTTPS without cert/ca or key failed
             nRF52: Making NRF.getPrimaryService/etc more robust
             nRF5x: Add NRF.getAddress() - fix #1001
+            Fix bug that caused load() not to clear memory if only E.setBootCode was used
 
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments
