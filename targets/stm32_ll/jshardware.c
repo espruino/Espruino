@@ -38,6 +38,7 @@
 #include "stm32l4xx_ll_usart.h"
 #include "stm32l4xx_ll_exti.h"
 #include "stm32l4xx_ll_tim.h"
+#include "stm32l4xx_ll_i2c.h"
 
 #include "stm32l4xx_hal.h" // Used for flash management
 
@@ -323,11 +324,15 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
 #endif
 #if I2C_COUNT >= 1
   } else if (device==JSH_I2C1) {
-      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
-      else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C1);
+      if(cmd == ENABLE) {
+        LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
+        LL_RCC_SetI2CClockSource(LL_RCC_I2C1_CLKSOURCE_SYSCLK); // What's happen if we don't specify this ?
+      } else {
+        LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C1);
+      }
       /* Seems some F103 parts require this reset step - some hardware problem */
-      LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C1);
-      LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C1);
+      //LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C1);
+      //LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C1);
       ptr = I2C1;
 #endif
 #if I2C_COUNT >= 2
@@ -446,6 +451,17 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
     jsExceptionHere(JSET_INTERNALERROR, "setDeviceClockCmd: Unknown Device %d", (int)device);
   }
   return ptr;
+}
+
+I2C_TypeDef* getI2CFromDevice(IOEventFlags device) {
+ switch (device) {
+   case EV_I2C1 : return I2C1;
+   case EV_I2C2 : return I2C2;
+#ifdef I2C3
+   case EV_I2C3 : return I2C3;
+#endif
+   default: return 0;
+ }
 }
 
 /// Set the pin state (Output, Input, etc)
@@ -1251,18 +1267,95 @@ void jshSPIWait(IOEventFlags device){
 
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf){
-        return;
+  jshSetDeviceInitialised(device, true);
+  JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
+
+  enum {pinSCL, pinSDA };
+  Pin pins[2] = { inf->pinSCL, inf->pinSDA };
+  JshPinFunction functions[2] = { JSH_I2C_SCL, JSH_I2C_SDA };
+  I2C_TypeDef *I2Cx = (I2C_TypeDef *)checkPinsForDevice(funcType, 2, pins, functions);
+  if (!I2Cx) return;
+
+#if 0
+  /* I2C configuration -------------------------------------------------------*/
+  LL_I2C_InitTypeDef I2C_InitStructure;
+  LL_I2C_StructInit(&I2C_InitStructure);
+  I2C_InitStructure.Timing = 0x00F02B86; // VVE : from i2c example. To retrieve from somewhere else.
+  I2C_InitStructure.PeripheralMode = LL_I2C_MODE_I2C;
+  I2C_InitStructure.TypeAcknowledge = LL_I2C_ACK; // enable event generation for CheckEvent
+  I2C_InitStructure.OwnAddress1 = 0x00;
+  I2C_InitStructure.OwnAddrSize = LL_I2C_OWNADDRESS1_7BIT;
+
+  I2C_InitStructure.AnalogFilter    = LL_I2C_ANALOGFILTER_ENABLE;
+  I2C_InitStructure.DigitalFilter   = 0x00;
+
+  //I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2;
+  //I2C_InitStructure.I2C_ClockSpeed = (uint32_t)inf->bitrate; // 50 kHz I2C speed
+
+  LL_I2C_Init(I2Cx, &I2C_InitStructure);
+
+  //LL_I2C_EnableIT_RX(I2Cx);
+  //LL_I2C_EnableIT_NACK(I2Cx);
+  //LL_I2C_EnableIT_ERR(I2Cx);
+  //LL_I2C_EnableIT_STOP(I2Cx);
+  //LL_I2C_EnableIT_TX(I2Cx);
+#endif
+  LL_I2C_Disable(I2Cx);
+
+  LL_I2C_SetTiming(I2Cx, 0x00F02B86);
+
+  LL_I2C_Enable(I2Cx);
 }
 
 /** Write a number of btes to the I2C device. Addresses are 7 bit - that is, between 0 and 0x7F.
  *  sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop){
-        return;
+
+  //jsiConsolePrintf("\n>jshI2CWrite device=%d, address=%x, nBytes=%d, data=%x %x, sendStop=%d", device, address, nBytes, data[0], data[1], sendStop);
+  I2C_TypeDef *I2C = getI2CFromDevice(device);
+
+  LL_I2C_HandleTransfer(I2C, (unsigned char)(address << 1), LL_I2C_ADDRSLAVE_7BIT, nBytes, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_WRITE);
+
+  while(!LL_I2C_IsActiveFlag_STOP(I2C))
+  {
+    /* Transmit data (TXIS flag raised) */
+
+    /* Check TXIS flag value in ISR register */
+    if(LL_I2C_IsActiveFlag_TXIS(I2C))
+    {
+      /* Write data in Transmit Data register.
+      TXIS flag is cleared by writing data in TXDR register */
+      LL_I2C_TransmitData8(I2C, (*data++));
+
+    }
+  }
+
+  LL_I2C_ClearFlag_STOP(I2C);
+
+  return;
 }
 
 /** Read a number of bytes from the I2C device. */
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop){
-        return;
+  int i = 0;
+  I2C_TypeDef *I2C = getI2CFromDevice(device);
+
+  LL_I2C_HandleTransfer(I2C, (unsigned char)(address << 1), LL_I2C_ADDRSLAVE_7BIT, nBytes, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
+
+  while(!LL_I2C_IsActiveFlag_STOP(I2C)) {
+    /* Receive data (RXNE flag raised) */
+
+    /* Check RXNE flag value in ISR register */
+    if(LL_I2C_IsActiveFlag_RXNE(I2C))
+    {
+      /* Read character in Receive Data register.
+      RXNE flag is cleared by reading data in RXDR register */
+      data[i++] = LL_I2C_ReceiveData8(I2C);
+    }
+  }
+  LL_I2C_ClearFlag_STOP(I2C);
+
+  return;
 }
 
 /** Return start address and size of the flash page the given address resides in. Returns false if
