@@ -1294,6 +1294,7 @@ DEFINES += -DSTM32L4
 DEFINES += -DSTM32L476xx
 DEFINES += -DUSE_FULL_LL_DRIVER
 DEFINES += -DUSE_FULL_ASSERT
+DEFINES += -DFLASH_64BITS_ALIGNEMENT=1 #L4 flash needs to be accessed with 64 bits
 ifdef WICED_XXX
   DEFINES += -DWICED
   # DEFINES included here in bulk from a WICED compilation
