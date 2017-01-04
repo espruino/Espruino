@@ -2,15 +2,17 @@
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
  * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
+ * Copyright (C) 2016 STMicroelectronics
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Hardware interface Layer
- * NOTE: The definitions of these functions are inside:
- *                                         targets/{target}/jshardware.c
+ * Hardware interface Layer to be used with STM32L4 family.
+ *
+ * This is implementing the jshardware.h interface. This is an adaptation from
+ * targets/stm32/jshardware.c file with ST Low Layer interface.
  * ----------------------------------------------------------------------------
  */
  
