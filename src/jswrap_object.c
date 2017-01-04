@@ -537,7 +537,7 @@ JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
   ],
   "return" : ["bool","A Boolean object"]
 }
-Creates a number
+Creates a boolean
  */
 bool jswrap_boolean_constructor(JsVar *value) {
   return jsvGetBool(value);
