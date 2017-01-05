@@ -130,6 +130,8 @@ bool jsble_check_error(uint32_t err_code) {
   if (!err_code) return false;
   const char *name = 0;
   if (err_code==NRF_ERROR_INVALID_PARAM) name="INVALID_PARAM";
+  else if (err_code==NRF_ERROR_INVALID_LENGTH) name="INVALID_LENGTH";
+  else if (err_code==NRF_ERROR_INVALID_FLAGS) name="INVALID_FLAGS";
   else if (err_code==NRF_ERROR_DATA_SIZE) name="DATA_SIZE";
   else if (err_code==BLE_ERROR_INVALID_CONN_HANDLE) name="INVALID_CONN_HANDLE";
   if (name) jsExceptionHere(JSET_ERROR, "Got BLE error %s", name);
