@@ -316,7 +316,7 @@ for jsondata in detail:
       if "ifndef" in jsondata:
         if conds!="": conds += " and "
         conds = "not "+common.get_ifdef_description(jsondata["ifndef"])
-      desc.append("<b>Note:</b> This is only available in some devices: "+conds);
+      desc.append("\n\n**Note:** This is only available in some devices: "+conds);
     html_description(desc, jsondata["name"])
   if "params" in jsondata:
     html("  <h4>Parameters</h4>")
