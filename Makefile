@@ -1786,8 +1786,7 @@ endif
 CCPREFIX=xtensa-esp32-elf-
 SOURCES += targets/esp32/main.c
 LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/components/bt/lib \
-#-L$(ESP_IDF_PATH)/components/esp32/lib \
--L$(ESP_APP_TEMPLATE_PATH)/components/esp32/lib \
+-L$(ESP_IDF_PATH)/components/esp32/lib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bootloader \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bt \
 -L$(ESP_APP_TEMPLATE_PATH)/build/driver \
@@ -1814,7 +1813,6 @@ ESPTOOL?=
 INCLUDE+=\
 -I$(ESP_APP_TEMPLATE_PATH)/build/include \
 -I$(ESP_IDF_PATH)/components \
--I$(ESP_IDF_PATH)/components \
 -I$(ESP_IDF_PATH)/components/newlib/include \
 -I$(ESP_IDF_PATH)/components/bt/include \
 -I$(ESP_IDF_PATH)/components/driver/include \
@@ -1833,9 +1831,7 @@ INCLUDE+=\
 -I$(ESP_APP_TEMPLATE_PATH)/components/arduino-esp32/cores/esp32 \
 -Itargets/esp32/include
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
-#LIBS+=-T$(ESP_IDF_PATH)/components/esp32/ld/esp32_out.ld \
-#LIBS+=-T$(ESP_APP_TEMPLATE_PATH)/components/arduino-esp32/tools/sdk/ld/esp32_out.ld \
-LIBS+=-T$(ESP_APP_TEMPLATE_PATH)/build/esp32/esp32_out.ld \
+LIBS+=-T esp32_out.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.common.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.rom.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.peripherals.ld \
