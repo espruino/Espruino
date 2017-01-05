@@ -1005,6 +1005,7 @@ ifdef USE_NET
  INCLUDE += -I$(ROOT)/libs/network/esp32
  SOURCES +=  libs/network/esp32/network_esp32.c \
   targets/esp32/i2c.c \
+  targets/esp32/spi.c \
   targets/esp32/jshardwareUart.c \
   targets/esp32/jshardwareAnalog.c
   ifdef RTOS
