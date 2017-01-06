@@ -404,7 +404,7 @@ void jswrap_puck_IR(JsVar *data) {
     "type" : "staticmethod",
     "class" : "Puck",
     "name" : "capSense",
-    "#ifdef" : "NRF52",
+    "ifdef" : "NRF52",
     "generate" : "jswrap_puck_capSense",
     "params" : [
       ["tx","pin",""],
@@ -427,7 +427,7 @@ int jswrap_puck_capSense(Pin tx, Pin rx) {
     "type" : "staticmethod",
     "class" : "Puck",
     "name" : "light",
-    "#ifdef" : "NRF52",
+    "ifdef" : "NRF52",
     "generate" : "jswrap_puck_light",
     "return" : ["float", "A light value from 0 to 1" ]
 }
