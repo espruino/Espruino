@@ -41,6 +41,7 @@
 # ARMINARM=1
 # NUCLEOF401RE=1
 # NUCLEOF411RE=1
+# NUCLEOL476RG=1
 # MINISTM32_STRIVE=1
 # MINISTM32_ANGLED_VE=1
 # MINISTM32_ANGLED_VG=1
@@ -362,6 +363,17 @@ USE_NET=1
 BOARD=NUCLEOF411RE
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
+
+else ifdef NUCLEOL476RG
+EMBEDDED=1
+NUCLEO=1
+USE_GRAPHICS=1
+USE_NET=1
+BOARD=NUCLEOL476RG
+STLIB=STM32L476xx
+#PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32l4/lib/startup_stm32f401xx.o
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates/gcc/startup_stm32l476xx.o
 OPTIMIZEFLAGS+=-O3
 
 else ifdef EMW3165
@@ -1239,6 +1251,64 @@ STM32_USB=1
 endif
 endif #STM32F4
 
+ifeq ($(FAMILY), STM32L4)
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARM=1
+DEFINES += -DSTM32L4
+DEFINES += -DSTM32L476xx
+DEFINES += -DUSE_FULL_LL_DRIVER
+DEFINES += -DUSE_FULL_ASSERT
+DEFINES += -DFLASH_64BITS_ALIGNEMENT=1 #L4 flash needs to be accessed with 64 bits
+ifdef WICED_XXX
+  DEFINES += -DWICED
+  # DEFINES included here in bulk from a WICED compilation
+  DEFINES += -DWICED_VERSION=\"3.3.1\" -DBUS=\"SDIO\" -DPLATFORM=\"EMW3165\"
+  DEFINES += -DUSE_STDPERIPH_DRIVER -DOPENSSL -DSTDC_HEADERS
+  DEFINES += -DMAX_WATCHDOG_TIMEOUT_SECONDS=22 -DFIRMWARE_WITH_PMK_CALC_SUPPORT
+  DEFINES += -DADD_LWIP_EAPOL_SUPPORT -DNXD_EXTENDED_BSD_SOCKET_SUPPORT -DADD_NETX_EAPOL_SUPPORT
+  DEFINES += -DWWD_STARTUP_DELAY=10
+  DEFINES += -DNETWORK_LwIP=1 -DLwIP_VERSION=\"v1.4.0.rc1\"
+  DEFINES += -DRTOS_FreeRTOS=1 -DconfigUSE_MUTEXES -DconfigUSE_RECURSIVE_MUTEXES
+  DEFINES += -DFreeRTOS_VERSION=\"v7.5.2\" -DWWD_DIRECT_RESOURCES -DHSE_VALUE=26000000
+  INCLUDE +=
+endif
+STM32_LL=1
+INCLUDE += -I$(ROOT)/targetlibs/stm32l4 -I$(ROOT)/targetlibs/stm32l4/lib -I$(ROOT)/targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Inc -I$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Include -I$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Include -I$(ROOT)/targetlibs/stm32l4/lib/BSP/STM32L4xx_Nucleo -I$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates
+
+TARGETSOURCES +=                                   \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_adc.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_comp.c   \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_crc.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_crs.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_dac.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_dma.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_exti.c   \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_fmc.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_gpio.c   \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_i2c.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_lptim.c  \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_lpuart.c \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_opamp.c  \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_pwr.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rcc.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rng.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rtc.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_sdmmc.c  \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_spi.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_swpmi.c  \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_tim.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usart.c  \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usb.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_utils.c  \
+targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates/system_stm32l4xx.c \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash.c \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ex.c \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c
+
+ifdef USB
+STM32_USB=1
+endif
+endif #STM32L4
 
 # New STM32 Cube based USB
 # This could be global for all STM32 once we figure out why it's so flaky on F1
@@ -1690,6 +1760,17 @@ else # !BOOTLOADER
 endif # BOOTLOADER
 
 endif # STM32
+
+ifdef STM32_LL
+DEFINES += -DSTM32_LL -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
+INCLUDE += -I$(ROOT)/targets/stm32_ll
+ifndef BOOTLOADER
+SOURCES +=                              \
+targets/stm32_ll/main.c                    \
+targets/stm32_ll/jshardware.c              \
+targets/stm32_ll/stm32_it.c
+endif
+endif
 
 ifdef LINUX
 DEFINES += -DLINUX

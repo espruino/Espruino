@@ -169,6 +169,9 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
             if ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
               print(dropped_prefix+" because of #ifdef "+jsondata["ifdef"])
               drop = True
+            if ("#ifdef" in jsondata) or ("#ifndef" in jsondata): 
+              sys.stderr.write( "'#ifdef' where 'ifdef' should be used in " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
+              exit(1)
             if ("#if" in jsondata):
               expr = jsondata["#if"]
               for defn in defines:

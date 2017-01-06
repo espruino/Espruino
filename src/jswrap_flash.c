@@ -186,22 +186,43 @@ JsVar *jswrap_flash_read(int length, int addr) {
 #ifndef LINUX
 // cbdata = uint32_t[end_address, address, data]
 void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
+
+#ifdef FLASH_64BITS_ALIGNEMENT
+	static uint32_t dataToWrite[2];
+#endif
+
   // Only write if we can fit in flash
   if (cbdata[1]<cbdata[0]) {
     // write only a word at a time
     cbdata[2]=(uint32_t)(ch<<24) | (cbdata[2]>>8);
+#ifndef FLASH_64BITS_ALIGNEMENT
     if ((cbdata[1]&3)==3)
-      jshFlashWrite(&cbdata[2], cbdata[1]&(uint32_t)~3, 4);
+    jshFlashWrite(&cbdata[2], cbdata[1]&(uint32_t)~3, 4);
+#else
+	// We want the flash writes to be done every 64 bits.
+	// Store the first 32 bits and write on next 32 bits word.
+    if ((cbdata[1]&7)==7){
+      dataToWrite[1] = cbdata[2];
+      jshFlashWrite(dataToWrite, cbdata[1]&(uint32_t)~7, 8);
+    } else if ((cbdata[1]&3)==3){
+      dataToWrite[0] = cbdata[2];
+    }
+#endif
   }
   // inc address ptr
   cbdata[1]++;
   if ((cbdata[1]&1023)==0) jsiConsolePrint(".");
 }
+
 // cbdata = uint32_t[address, errorcount]
 void jsfSaveToFlash_checkcb(unsigned char ch, uint32_t *cbdata) {
   unsigned char data;
+
   jshFlashRead(&data,cbdata[0]++, 1);
-  if (data!=ch) cbdata[1]++; // error count
+  if (data!=ch) {
+      //jsiConsolePrintf("\n checkcb error : ch=%x, cbdata: %x, %x, data = %x", ch, cbdata[0], cbdata[1], data);
+      cbdata[1]++; // error count
+  }
 }
 // cbdata = uint32_t[end_address, address]
 int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
@@ -251,9 +272,15 @@ void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
 #define BOOT_CODE_LENGTH_MASK 0x00FFFFFF
 #define BOOT_CODE_RUN_ALWAYS  0x80000000
 
+#ifndef FLASH_64BITS_ALIGNEMENT
+#define FLASH_UNITARY_WRITE_SIZE 4
+#else
+#define FLASH_UNITARY_WRITE_SIZE 8
+#endif
+
 #define FLASH_BOOT_CODE_INFO_LOCATION FLASH_SAVED_CODE_START
-#define FLASH_STATE_END_LOCATION (FLASH_SAVED_CODE_START+4)
-#define FLASH_DATA_LOCATION (FLASH_SAVED_CODE_START+8)
+#define FLASH_STATE_END_LOCATION (FLASH_SAVED_CODE_START+FLASH_UNITARY_WRITE_SIZE)
+#define FLASH_DATA_LOCATION (FLASH_SAVED_CODE_START+2*FLASH_UNITARY_WRITE_SIZE)
 
 void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
 #ifdef LINUX
@@ -388,16 +415,16 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
         jsfSaveToFlash_writecb(originalBootCode[i], cbData);
     }
     // write size of boot code to flash
-    jshFlashWrite(&originalBootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 4);
+    jshFlashWrite(&originalBootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, FLASH_UNITARY_WRITE_SIZE);
     // state....
     if (flags & SFF_SAVE_STATE) {
       COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
     }
     endOfData = cbData[1];
     // make sure we write everything in buffer
-    jsfSaveToFlash_writecb(0,cbData);
-    jsfSaveToFlash_writecb(0,cbData);
-    jsfSaveToFlash_writecb(0,cbData);
+	for(int i=0;i<FLASH_UNITARY_WRITE_SIZE;i++)
+      jsfSaveToFlash_writecb(0,cbData);
+
     writtenBytes = endOfData - FLASH_SAVED_CODE_START;
 
     if (cbData[1]>=cbData[0]) {
@@ -418,11 +445,10 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
 
   if (success) {
     jsiConsolePrintf("\nCompressed %d bytes to %d", dataSize, writtenBytes);
-    jshFlashWrite(&endOfData, FLASH_STATE_END_LOCATION, 4); // write position of end of data, at start of address space
+    jshFlashWrite(&endOfData, FLASH_STATE_END_LOCATION, FLASH_UNITARY_WRITE_SIZE); // write position of end of data, at start of address space
 
     uint32_t magic = FLASH_MAGIC;
-    jshFlashWrite(&magic, FLASH_MAGIC_LOCATION, 4);
-
+    jshFlashWrite(&magic, FLASH_MAGIC_LOCATION, FLASH_UNITARY_WRITE_SIZE);
 
     jsiConsolePrint("\nChecking...");
     cbData[0] = FLASH_DATA_LOCATION;
@@ -520,7 +546,7 @@ const char *jsfGetBootCodeFromFlash(bool isReset) {
   uint32_t bootCodeInfo;
   jshFlashRead(&bootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 4); // length of boot code
   uint32_t bootCodeLen = bootCodeInfo & BOOT_CODE_LENGTH_MASK;
-  if (!bootCodeLen) return 0;
+  if (bootCodeLen==BOOT_CODE_LENGTH_MASK || !bootCodeLen) return 0;
   // Don't execute code if we've reset and code shouldn't always be run
   if (isReset && !(bootCodeInfo & BOOT_CODE_RUN_ALWAYS)) return 0;
 
@@ -539,7 +565,7 @@ const char *jsfGetBootCodeFromFlash(bool isReset) {
  * Set isReset=false to always run the code
  */
 bool jsfLoadBootCodeFromFlash(bool isReset) {
-  char *code = jsfGetBootCodeFromFlash(isReset);
+  const char *code = jsfGetBootCodeFromFlash(isReset);
   if (code)
     jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
   return true;

@@ -1,6 +1,11 @@
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
             Fix regression where HTTPS without cert/ca or key failed
+            nRF52: Making NRF.getPrimaryService/etc more robust
+            nRF5x: Add NRF.getAddress() - fix #1001
+            Fix bug that caused load() not to clear memory if only E.setBootCode was used
+            microbit: Update Espruino with pin polarity, so saved code gets loaded without BTN1 pressed
+            Fix bug that caused Bluetooth/TV/USB objects to be added in devices that didn't support them (fix #832)
 
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments
