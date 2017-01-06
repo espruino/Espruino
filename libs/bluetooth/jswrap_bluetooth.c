@@ -187,7 +187,7 @@ Called when a host device disconnects from Espruino.
   "type" : "event",
   "class" : "NRF",
   "name" : "servicesDiscover",
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 Called with discovered services when discovery is finished
  */
@@ -195,7 +195,7 @@ Called with discovered services when discovery is finished
   "type" : "event",
   "class" : "NRF",
   "name" : "characteristicsDiscover",
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 Called with discovered characteristics when discovery is finished
  */
@@ -204,7 +204,7 @@ Called with discovered characteristics when discovery is finished
   "type" : "event",
   "class" : "NRF",
   "name" : "NFCon",
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 Called when an NFC field is detected
  */
@@ -212,7 +212,7 @@ Called when an NFC field is detected
   "type" : "event",
   "class" : "NRF",
   "name" : "NFCoff",
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 Called when an NFC field is no longer detected
  */
@@ -229,7 +229,7 @@ The main part of this is control of Bluetooth Low Energy - both searching for de
   "type" : "object",
   "name" : "Bluetooth",
   "instanceof" : "Serial",
-  "#ifdef" : "BLUETOOTH"
+  "ifdef" : "BLUETOOTH"
 }
 The Bluetooth Serial port - used when data is sent or received over Bluetooth Smart on nRF51/nRF52 chips.
  */
@@ -1041,7 +1041,7 @@ void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "nfcURL",
-    "#ifdef" : "NRF52",
+    "ifdef" : "NRF52",
     "generate" : "jswrap_nrf_nfcURL",
     "params" : [
       ["url","JsVar","The URL string to expose on NFC, or `undefined` to disable NFC"]
@@ -1118,7 +1118,7 @@ void jswrap_nrf_nfcURL(JsVar *url) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "sendHIDReport",
-    "#ifdef" : "NRF52",
+    "ifdef" : "NRF52",
     "generate" : "jswrap_nrf_sendHIDReport",
     "params" : [
       ["data","JsVar","Input report data as an array"],
@@ -1145,7 +1145,7 @@ void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "requestDevice",
-    "#ifdef" : "NRF52",
+    "ifdef" : "NRF52",
     "generate" : "jswrap_nrf_bluetooth_requestDevice",
     "params" : [
       ["options","JsVar","Options used to filter the device to use"]
@@ -1335,7 +1335,7 @@ JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "connect",
-    "#ifdef" : "NRF52",
+    "ifdef" : "NRF52",
     "generate" : "jswrap_nrf_bluetooth_connect",
     "params" : [
       ["mac","JsVar","The MAC address to connect to"]
@@ -1387,7 +1387,7 @@ JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
 /*JSON{
   "type" : "class",
   "class" : "BluetoothDevice",
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 Web Bluetooth-style device - get this using `NRF.requestDevice(address)`
 */
@@ -1395,7 +1395,7 @@ Web Bluetooth-style device - get this using `NRF.requestDevice(address)`
     "type" : "property",
     "class" : "BluetoothDevice",
     "name" : "gatt",
-    "#ifdef" : "NRF52",
+    "ifdef" : "NRF52",
     "generate" : "jswrap_BluetoothDevice_gatt",
     "return" : ["JsVar", "A `BluetoothRemoteGATTServer` for this device" ]
 }
@@ -1417,7 +1417,7 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
     "type" : "method",
     "class" : "BluetoothRemoteGATTServer",
     "name" : "connect",
-    "#ifdef" : "NRF52",
+    "ifdef" : "NRF52",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTServer_connect",
     "return" : ["JsVar", "A Promise that is resolved (or rejected) when the connection is complete" ]
 }
@@ -1456,7 +1456,7 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
 /*JSON{
   "type" : "class",
   "class" : "BluetoothRemoteGATTServer",
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 Web Bluetooth-style GATT server - get this using `NRF.connect(address)`
 or `NRF.requestDevice(options)` then `response.gatt.connect`
@@ -1468,7 +1468,7 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattserver
     "class" : "BluetoothRemoteGATTServer",
     "name" : "disconnect",
     "generate" : "jswrap_BluetoothRemoteGATTServer_disconnect",
-    "#ifdef" : "NRF52"
+    "ifdef" : "NRF52"
 }
 Disconnect from a previously connected BLE device connected with
 `NRF.connect` - this does not disconnect from something that has
@@ -1501,7 +1501,7 @@ void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
   "generate" : "jswrap_BluetoothRemoteGATTServer_getPrimaryService",
   "params" : [ ["service","JsVar","The service UUID"] ],
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary service is found" ],
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 **Note:** This is only available on some devices
 */
@@ -1533,7 +1533,7 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *
   "name" : "getPrimaryServices",
   "generate" : "jswrap_BluetoothRemoteGATTServer_getPrimaryServices",
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary services are found" ],
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 **Note:** This is only available on some devices
 */
@@ -1556,7 +1556,7 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
 /*JSON{
   "type" : "class",
   "class" : "BluetoothRemoteGATTService",
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 Web Bluetooth-style GATT service - get this using `BluetoothRemoteGATTServer.getPrimaryService(s)`
 
@@ -1569,7 +1569,7 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattservice
   "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristic",
   "params" : [ ["characteristic","JsVar","The characteristic UUID"] ],
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found" ],
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 **Note:** This is only available on some devices
 */
@@ -1601,7 +1601,7 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar 
   "name" : "getCharacteristics",
   "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristics",
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found" ],
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 **Note:** This is only available on some devices
 */
@@ -1625,7 +1625,7 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent) {
 /*JSON{
   "type" : "class",
   "class" : "BluetoothRemoteGATTCharacteristic",
-  "#ifdef" : "NRF52"
+  "ifdef" : "NRF52"
 }
 Web Bluetooth-style GATT characteristic - get this using `BluetoothRemoteGATTService.getCharacteristic(s)`
 
