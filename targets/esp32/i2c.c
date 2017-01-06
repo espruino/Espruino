@@ -76,17 +76,34 @@ static esp_err_t checkError( char * caller, esp_err_t ret ) {
   return ret;
 }
 
+int getI2cFromDevice( IOEventFlags device	) {
+  switch(device) {
+  case EV_I2C1: return I2C_NUM_0;
+  case EV_I2C2: return I2C_NUM_1;
+  default: return -1;
+  }
+}
+
 /** Set-up I2C master for ESP32, default pins are SCL:21, SDA:22. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
-  if (device != EV_I2C1) {
-  jsError("Only I2C1 supported"); 
+  int i2c_master_port = getI2cFromDevice(device);
+  if (i2c_master_port == -1) {
+  jsError("Only I2C1 and I2C2 supported"); 
 	return;
   }
-  Pin scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 21;
-  Pin sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 22;
+  Pin scl;
+  Pin sda;
+  if ( i2c_master_port == I2C_NUM_0 ) {
+    scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 21;
+    sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 22;
+  }
+  // Unsure on what to default these pins to?
+  if ( i2c_master_port == I2C_NUM_1 ) {
+    scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 16;
+    sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 17;
+  }  
 
-  int i2c_master_port = I2C_NUM_1;
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;
   conf.sda_io_num = pinToESP32Pin(sda);
