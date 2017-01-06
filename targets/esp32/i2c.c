@@ -32,26 +32,55 @@
 
 #ifndef USE_ARDUINO
 
-#define I2C_MASTER_SCL_IO    19    /*!< gpio number for I2C master clock */
-#define I2C_MASTER_SDA_IO    18    /*!< gpio number for I2C master data  */
 #define I2C_MASTER_NUM I2C_NUM_1   /*!< I2C port number for master dev */
 #define I2C_MASTER_TX_BUF_DISABLE   0   /*!< I2C master do not need buffer */
 #define I2C_MASTER_RX_BUF_DISABLE   0   /*!< I2C master do not need buffer */
-#define I2C_MASTER_FREQ_HZ    100000     /*!< I2C master clock frequency */
+#define I2C_MASTER_FREQ_HZ  100000   /*!< I2C master clock frequency */
 
-#define ACK_CHECK_EN   0x1     /*!< I2C master will check ack from slave*/
-#define ACK_CHECK_DIS  0x0     /*!< I2C master will not check ack from slave */
+#define ACK_CHECK_EN   0x1   /*!< I2C master will check ack from slave*/
+#define ACK_CHECK_DIS  0x0   /*!< I2C master will not check ack from slave */
 
-#define ACK_VAL    0x0         /*!< I2C ack value */
-#define NACK_VAL   0x1         /*!< I2C nack value */
+#define ACK_VAL  0x0     /*!< I2C ack value */
+#define NACK_VAL   0x1     /*!< I2C nack value */
 
 // Let's get this working with only one device
+/* To do: 
+ support both i2c ports
+ Test!
+ Stop bits param -  bool sendStop
+
+  https://esp-idf.readthedocs.io/en/latest/api/i2c.html
+  
+ */
+
+static esp_err_t checkError( char * caller, esp_err_t ret ) {
+  switch(ret) {
+    case ESP_OK: break;
+	case ESP_ERR_INVALID_ARG: {
+	  jsError(  "%s:, Parameter error\n", caller );
+	  break;
+	}
+	case ESP_FAIL: {
+	  jsError(  "%s:, slave doesn’t ACK the transfer.\n", caller );
+	  break;
+	}
+	case ESP_ERR_TIMEOUT: {
+	  jsError(  "%s:, Operation timeout because the bus is busy.\n", caller );
+	  break;
+	}
+	default: {
+	  jsError(  "%s:, unknown error code %d, \n", caller, ret );
+	  break;
+	}
+  }
+  return ret;
+}
 
 /** Set-up I2C master for ESP32, default pins are SCL:21, SDA:22. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   if (device != EV_I2C1) {
-    jsError("Only I2C1 supported"); 
+  jsError("Only I2C1 supported"); 
 	return;
   }
   Pin scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 21;
@@ -59,14 +88,23 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
 
   int i2c_master_port = I2C_NUM_1;
   i2c_config_t conf;
-	conf.mode = I2C_MODE_MASTER;
-	conf.sda_io_num = pinToESP32Pin(sda);
-	conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-	conf.scl_io_num = pinToESP32Pin(scl);
-	conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-	conf.master.clk_speed = info->bitrate;
-	i2c_param_config(i2c_master_port, &conf);
-	i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
+  conf.mode = I2C_MODE_MASTER;
+  conf.sda_io_num = pinToESP32Pin(sda);
+  conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+  conf.scl_io_num = pinToESP32Pin(scl);
+  conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+  conf.master.clk_speed = info->bitrate;
+  esp_err_t err=i2c_param_config(i2c_master_port, &conf);
+  if ( err == ESP_ERR_INVALID_ARG ) {
+	jsError("jshI2CSetup: Invalid arguments"); 
+  return;
+  }
+  err=i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
+  if ( err == ESP_OK ) {
+	jsError("jshI2CSetup: driver installed, sda: %d sdl: %d freq: %d, \n", sda, scl, info->bitrate);
+  } else {
+		checkError("jshI2CSetup",err); 
+  }
 }
 
 void jshI2CWrite(IOEventFlags device,
@@ -74,17 +112,16 @@ void jshI2CWrite(IOEventFlags device,
   int nBytes,
   const unsigned char *data,
   bool sendStop) {
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, address << 1 | I2C_MASTER_WRITE, ACK_CHECK_EN);
-    i2c_master_write(cmd, data, nBytes, ACK_CHECK_EN);	
-    i2c_master_stop(cmd);
-	int i2c_master_port = I2C_NUM_1;
-    int ret = i2c_master_cmd_begin(i2c_master_port, cmd, 1000 / portTICK_RATE_MS); // 1000 seems very large???
-    i2c_cmd_link_delete(cmd);
-    if (ret == ESP_FAIL) {
-        jsError(  "jshI2CWrite: write failed.");
-    }
+  esp_err_t ret;
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+  ret=i2c_master_start(cmd);
+  ret=i2c_master_write_byte(cmd, address << 1 | I2C_MASTER_WRITE, ACK_CHECK_EN);
+  ret=i2c_master_write(cmd, data, nBytes, ACK_CHECK_EN);	
+  ret=i2c_master_stop(cmd);
+  int i2c_master_port = I2C_NUM_1;
+  ret = i2c_master_cmd_begin(i2c_master_port, cmd, 1000 / portTICK_RATE_MS); // 1000 seems very large for ticks_to_wait???
+  i2c_cmd_link_delete(cmd);
+  checkError(  "jshI2CWrite", ret);
 }
 
 void jshI2CRead(IOEventFlags device,
@@ -94,19 +131,21 @@ void jshI2CRead(IOEventFlags device,
   bool sendStop) {
   
   if (nBytes <= 0) {
-        return;
-    }
-	int i2c_master_port = I2C_NUM_1;
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, ( i2c_master_port << 1 ) | I2C_MASTER_READ, ACK_CHECK_EN);
-    if (nBytes > 1) {
-        i2c_master_read(cmd, data, nBytes - 1, ACK_VAL);
-    }
-    i2c_master_read_byte(cmd, data + nBytes - 1, NACK_VAL);
-    i2c_master_stop(cmd);
-    esp_err_t ret = i2c_master_cmd_begin(i2c_master_port, cmd, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd);
+    return;
+  }
+  esp_err_t ret;
+  int i2c_master_port = I2C_NUM_1;
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+  ret=i2c_master_start(cmd);
+  ret=i2c_master_write_byte(cmd, ( i2c_master_port << 1 ) | I2C_MASTER_READ, ACK_CHECK_EN);
+  if (nBytes > 1) {
+    ret=i2c_master_read(cmd, data, nBytes - 1, ACK_VAL);
+  }
+  ret=i2c_master_read_byte(cmd, data + nBytes - 1, NACK_VAL);
+  i2c_master_stop(cmd);
+  ret = i2c_master_cmd_begin(i2c_master_port, cmd, 1000 / portTICK_RATE_MS);
+  i2c_cmd_link_delete(cmd);
+  checkError(  "jshI2CRead", ret);  
 }
 #endif
 
@@ -118,7 +157,7 @@ i2c_t * i2c=NULL;
  *  and only master mode. */
 vxoid jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   if (device != EV_I2C1) {
-    jsError("Only I2C1 supported"); 
+  jsError("Only I2C1 supported"); 
 	return;
   }
   Pin scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 21;
@@ -134,17 +173,17 @@ vxoid jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   //jsError("jshI2CSetup: Frequency: %d", info->bitrate);
   err=i2cSetFrequency(i2c, (uint32_t)info->bitrate);
   if ( err != I2C_ERROR_OK ) {
-    jsError( "jshI2CSetup: i2cSetFrequency error: %d", err);
+  jsError( "jshI2CSetup: i2cSetFrequency error: %d", err);
 	return;
   }
   err=i2cAttachSDA(i2c, pinToESP32Pin(sda));
   if ( err != I2C_ERROR_OK ) {
-    jsError( "jshI2CSetup: i2cAttachSDA error: %d", err);
+  jsError( "jshI2CSetup: i2cAttachSDA error: %d", err);
 	return;
   }  
   err=i2cAttachSCL(i2c, pinToESP32Pin(scl));
   if ( err != I2C_ERROR_OK ) {
-    jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
+  jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
 	return;
   }
 }
@@ -157,7 +196,7 @@ void jshI2CWrite(IOEventFlags device,
 // i2cWrite(i2c_t * i2c, uint16_t address, bool addr_10bit, uint8_t * data, uint8_t len, bool sendStop);
   i2c_err_t err=i2cWrite(i2c,address,false,data,nBytes,sendStop);
   if ( err != I2C_ERROR_OK ) {
-    jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
+  jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
 	return;
   }
 }
@@ -169,7 +208,7 @@ void jshI2CRead(IOEventFlags device,
   bool sendStop) {
   i2c_err_t err=i2cRead(i2c,address,false,data,nBytes,sendStop);
   if ( err != I2C_ERROR_OK ) {
-    jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
+  jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
 	return;
   }
 }
