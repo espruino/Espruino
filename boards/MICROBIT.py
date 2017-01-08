@@ -55,8 +55,8 @@ chip = {
 };
 
 devices = {
-  'BTN1' : { 'pin' : 'D5' }, # 'P0_17'
-  'BTN2' : { 'pin' : 'D11' }, # 'P0_26'
+  'BTN1' : { 'pin' : 'D5', 'inverted' : True, 'pinstate' : 'IN_PULLUP' }, # 'P0_17'
+  'BTN2' : { 'pin' : 'D11', 'inverted' : True, 'pinstate' : 'IN_PULLUP' }, # 'P0_26'
 };
 
 # left-right, or top-bottom order

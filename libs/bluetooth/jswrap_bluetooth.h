@@ -17,16 +17,22 @@
 typedef enum {
   BLETASK_NONE,
   BLETASK_REQUEST_DEVICE, ///< Waiting for requestDevice to finish
-  BLETASK_CONNECT, ///< Connect in central mode
+  BLETASK_CENTRAL_START, // =========================================== Start of central tasks
+  BLETASK_CONNECT = BLETASK_CENTRAL_START, ///< Connect in central mode
   BLETASK_PRIMARYSERVICE, ///< Find primary service
   BLETASK_CHARACTERISTIC,  ///< Find characteristics
   BLETASK_CHARACTERISTIC_WRITE, ///< Write to a characteristic
   BLETASK_CHARACTERISTIC_READ, ///< Read from a characteristic
   BLETASK_CHARACTERISTIC_NOTIFY, ///< Setting whether notifications are on or off
+  BLETASK_CENTRAL_END = BLETASK_CHARACTERISTIC_NOTIFY // ============= End of central tasks
 } BleTask;
+
+// Is this task related to BLE central mode?
+#define BLETASK_IS_CENTRAL(x) ((x)>=BLETASK_CENTRAL_START && ((x)<=BLETASK_CENTRAL_END))
 
 extern JsVar *bleTaskInfo; // info related to the current task
 bool bleInTask(BleTask task);
+BleTask bleGetCurrentTask();
 bool bleNewTask(BleTask task, JsVar *taskInfo);
 void bleCompleteTaskSuccess(BleTask task, JsVar *data);
 void bleCompleteTaskSuccessAndUnLock(BleTask task, JsVar *data);
@@ -39,11 +45,12 @@ void jswrap_nrf_kill();
 // ------------------------------------------------------------------------------
 
 
-void jswrap_nrf_bluetooth_disconnect(void);
-void jswrap_nrf_bluetooth_sleep(void);
-void jswrap_nrf_bluetooth_wake(void);
+void jswrap_nrf_bluetooth_disconnect();
+void jswrap_nrf_bluetooth_sleep();
+void jswrap_nrf_bluetooth_wake();
+JsVar *jswrap_nrf_bluetooth_getAddress();
 
-JsVarFloat jswrap_nrf_bluetooth_getBattery(void);
+JsVarFloat jswrap_nrf_bluetooth_getBattery();
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options);
 void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options);
 void jswrap_nrf_bluetooth_updateServices(JsVar *data);

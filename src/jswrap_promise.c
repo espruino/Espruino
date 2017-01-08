@@ -80,12 +80,15 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   if (chainedPromise) {
     if (_jswrap_promise_is_promise(result)) {
       // if we were given a promise, loop its 'then' in here
-      JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_queueresolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-      if (fn) {
-        jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, chainedPromise);
-        _jswrap_promise_add(result, fn, true);
-        jsvUnLock(fn);
+      JsVar *fnres = jsvNewNativeFunction((void (*)(void))_jswrap_promise_queueresolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+      JsVar *fnrej = jsvNewNativeFunction((void (*)(void))_jswrap_promise_queuereject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+      if (fnres && fnrej) {
+        jsvObjectSetChild(fnres, JSPARSE_FUNCTION_THIS_NAME, chainedPromise);
+        jsvObjectSetChild(fnrej, JSPARSE_FUNCTION_THIS_NAME, chainedPromise);
+        _jswrap_promise_add(result, fnres, true);
+        _jswrap_promise_add(result, fnrej, false);
       }
+      jsvUnLock2(fnres,fnrej);
     } else {
       _jswrap_promise_queueresolve(chainedPromise, result);
     }

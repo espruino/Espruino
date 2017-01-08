@@ -130,7 +130,10 @@ bool jsble_check_error(uint32_t err_code) {
   if (!err_code) return false;
   const char *name = 0;
   if (err_code==NRF_ERROR_INVALID_PARAM) name="INVALID_PARAM";
+  else if (err_code==NRF_ERROR_INVALID_LENGTH) name="INVALID_LENGTH";
+  else if (err_code==NRF_ERROR_INVALID_FLAGS) name="INVALID_FLAGS";
   else if (err_code==NRF_ERROR_DATA_SIZE) name="DATA_SIZE";
+  else if (err_code==BLE_ERROR_INVALID_CONN_HANDLE) name="INVALID_CONN_HANDLE";
   if (name) jsExceptionHere(JSET_ERROR, "Got BLE error %s", name);
   else jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
   return true;
@@ -275,6 +278,10 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
+          BleTask task = bleGetCurrentTask();
+          if (BLETASK_IS_CENTRAL(task)) {
+            bleCompleteTaskFailAndUnLock(task, jsvNewFromString("Disconnected."));
+          }
         } else
 #endif
         {
@@ -434,7 +441,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
 #if CENTRAL_LINK_COUNT>0
       // For discovery....
-      case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: {
+      case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: if (bleInTask(BLETASK_PRIMARYSERVICE)) {
         bool done = true;
         if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
         if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
@@ -474,11 +481,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             bleTaskInfo = t;
           }
           if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, bleTaskInfo);
-          else bleCompleteTaskFail(BLETASK_PRIMARYSERVICE, jsvNewFromString("No Services found"));
+          else bleCompleteTaskFailAndUnLock(BLETASK_PRIMARYSERVICE, jsvNewFromString("No Services found"));
         } // else error
         break;
       }
-      case BLE_GATTC_EVT_CHAR_DISC_RSP: {
+      case BLE_GATTC_EVT_CHAR_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC)) {
         bool done = true;
         if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
         if (bleTaskInfo &&
@@ -524,7 +531,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             bleTaskInfo = t;
           }
           if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, bleTaskInfo);
-          else bleCompleteTaskFail(BLETASK_CHARACTERISTIC, jsvNewFromString("No Characteristics found"));
+          else bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC, jsvNewFromString("No Characteristics found"));
         }
         break;
       }
@@ -532,7 +539,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         jsiConsolePrintf("DESC\n");
         break;
 
-      case BLE_GATTC_EVT_READ_RSP: {
+      case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) {
         ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
         JsVar *data = jsvNewStringOfLength(p_read->len);
         if (data) jsvSetString(data, (char*)&p_read->data[0], p_read->len);
@@ -1329,6 +1336,9 @@ void jsble_central_connect(ble_gap_addr_t peer_addr) {
 }
 
 void jsble_central_getPrimaryServices(ble_uuid_t uuid) {
+  if (!jsble_has_central_connection())
+    return bleCompleteTaskFailAndUnLock(BLETASK_PRIMARYSERVICE, jsvNewFromString("Not connected"));
+
   bleUUIDFilter = uuid;
 
   uint32_t              err_code;
@@ -1339,6 +1349,9 @@ void jsble_central_getPrimaryServices(ble_uuid_t uuid) {
 }
 
 void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid) {
+  if (!jsble_has_central_connection())
+      return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC, jsvNewFromString("Not connected"));
+
   bleUUIDFilter = uuid;
   ble_gattc_handle_range_t range;
   range.start_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "start_handle", 0));
@@ -1353,6 +1366,9 @@ void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid) {
 }
 
 void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen) {
+  if (!jsble_has_central_connection())
+    return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_WRITE, jsvNewFromString("Not connected"));
+
   uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
   ble_gattc_write_params_t write_params;
   memset(&write_params, 0, sizeof(write_params));
@@ -1373,14 +1389,20 @@ void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, siz
 }
 
 void jsble_central_characteristicRead(JsVar *characteristic) {
-   uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
-   uint32_t              err_code;
-   err_code = sd_ble_gattc_read(m_central_conn_handle, handle, 0/*offset*/);
-   if (jsble_check_error(err_code))
-     bleCompleteTaskFail(BLETASK_CHARACTERISTIC_READ, 0);
+  if (!jsble_has_central_connection())
+    return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_READ, jsvNewFromString("Not connected"));
+
+  uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+  uint32_t              err_code;
+  err_code = sd_ble_gattc_read(m_central_conn_handle, handle, 0/*offset*/);
+  if (jsble_check_error(err_code))
+    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_READ, 0);
 }
 
 void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
+  if (!jsble_has_central_connection())
+    return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("Not connected"));
+
   uint16_t cccd_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_cccd", 0));
   // FIXME: we need the cccd handle to be populated for this to work
 
