@@ -7,6 +7,7 @@
             microbit: Update Espruino with pin polarity, so saved code gets loaded without BTN1 pressed
             Fix bug that caused Bluetooth/TV/USB objects to be added in devices that didn't support them (fix #832)
             nRF52: Increase custom UUID count from 3 to 10
+            Adding Global built-in objects like SPI1/Serial1 and Bluetooth to the docs
 
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments

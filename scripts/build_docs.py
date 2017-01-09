@@ -121,7 +121,8 @@ def get_surround(jsondata):
   if jsondata["type"]!="constructor":
     if "class" in jsondata: s=s+jsondata["class"]+"."
   s=s+jsondata["name"]
-  s=s+get_arguments(jsondata)
+  if jsondata["type"]!="object":
+    s=s+get_arguments(jsondata)
   return s
 
 def get_code(jsondata):
@@ -232,7 +233,7 @@ html("  <h2><a name=\"contents\">Contents</a></h2>")
 html("  <h3><a class=\"blush\" name=\"t__global\" href=\"#_global\" onclick=\"place('_global');\">Globals</A></h3>")
 html("  <ul>")
 for jsondata in jsondatas:
-  if "name" in jsondata and not "class" in jsondata and not jsondata["type"]=="object":
+  if "name" in jsondata and not "class" in jsondata:
     link = get_link(jsondata)
     html("    <li><a class=\"blush\" name=\"t_"+link+"\" href=\"#"+link+"\" onclick=\"place('"+link+"');\">"+get_surround(jsondata)+"</a></li>")
     if not "no_create_links" in jsondata:
@@ -285,7 +286,7 @@ for jsondata in detail:
       html("  <h4>Instances</h4>")
       text = ""
       for j in instances:
-        text = text + " * `"+j["name"]+"`";
+        text = text + " * [`"+j["name"]+"`](#l__global_"+j["name"]+")";
         if "description" in j: text = text + " " + j["description"]
         text = text + "\n"
       html_description(text, "")
@@ -304,8 +305,11 @@ for jsondata in detail:
   html("</h3>")
   insert_mdn_link(jsondata);
   html("  <p class=\"top\"><a href=\"javascript:toppos();\">(top)</a></p>")
-  html("  <h4>Call type:</h4>")
-  html("   <div class=\"call\"><code>"+get_code(jsondata)+"</code></div>")
+  if jsondata["type"]!="object":
+    html("  <h4>Call type:</h4>")
+    html("   <div class=\"call\"><code>"+get_code(jsondata)+"</code></div>")
+  elif "instanceof" in jsondata:
+    html("   <h4>Instance of <a href=\"#"+jsondata["instanceof"]+"\"><code>"+jsondata["instanceof"]+"</code></a></div>")
   if "description" in jsondata:
     html("  <h4>Description</h4>")
     desc = jsondata["description"]
@@ -316,7 +320,7 @@ for jsondata in detail:
       if "ifndef" in jsondata:
         if conds!="": conds += " and "
         conds = "not "+common.get_ifdef_description(jsondata["ifndef"])
-      desc.append("\n\n**Note:** This is only available in some devices: "+conds);
+      desc.append("\n\n**Note:** This is only available in "+conds);
     html_description(desc, jsondata["name"])
   if "params" in jsondata:
     html("  <h4>Parameters</h4>")
