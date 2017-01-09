@@ -366,7 +366,7 @@ void jshUtilTimerDisable();
 void jshDoSysTick();
 #endif // ARM
 
-#ifdef STM32
+#if defined(STM32) || defined(STM32_LL)
 // push a byte into SPI buffers (called from IRQ)
 void jshSPIPush(IOEventFlags device, uint16_t data);
 

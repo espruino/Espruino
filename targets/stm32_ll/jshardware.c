@@ -39,6 +39,7 @@
 #include "stm32l4xx_ll_exti.h"
 #include "stm32l4xx_ll_tim.h"
 #include "stm32l4xx_ll_i2c.h"
+#include "stm32l4xx_ll_spi.h"
 
 #include "stm32l4xx_hal.h" // Used for flash management
 
@@ -453,6 +454,15 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   return ptr;
 }
 
+SPI_TypeDef* getSPIFromDevice(IOEventFlags device) {
+ switch (device) {
+   case EV_SPI1 : return SPI1;
+   case EV_SPI2 : return SPI2;
+   case EV_SPI3 : return SPI3;
+   default: return 0;
+ }
+}
+
 I2C_TypeDef* getI2CFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_I2C1 : return I2C1;
@@ -721,10 +731,10 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
 Pin watchedPins[16];
 
 // simple 4 byte buffers for SPI
-#define JSH_SPIBUF_MASK 3 // 4 bytes
+#define JSH_SPIBUF_MASK 7 // 8 bytes
 volatile unsigned char jshSPIBufHead[SPI_COUNT];
 volatile unsigned char jshSPIBufTail[SPI_COUNT];
-volatile unsigned char jshSPIBuf[SPI_COUNT][4]; // 4 bytes packed into an int
+volatile unsigned char jshSPIBuf[SPI_COUNT][JSH_SPIBUF_MASK+1]; // Need to be more than SPI HW Fifo
 
 /**
   * @brief  System Clock Configuration
@@ -1238,31 +1248,164 @@ void jshUSARTKick(IOEventFlags device){
 
 }
 
+static unsigned int jshGetSPIFreq(SPI_TypeDef *SPIx) {
+  LL_RCC_ClocksTypeDef clocks;
+  LL_RCC_GetSystemClocksFreq(&clocks);
+  bool APB2 = SPIx == SPI1;
+  return APB2 ? clocks.PCLK2_Frequency : clocks.PCLK1_Frequency;
+}
+
 /** Set up SPI, if pins are -1 they will be guessed */
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf){
-        return;
+  jshSetDeviceInitialised(device, true);
+  JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
+
+  enum {pinSCK, pinMISO, pinMOSI};
+  Pin pins[3] = { inf->pinSCK, inf->pinMISO, inf->pinMOSI };
+  JshPinFunction functions[3] = { JSH_SPI_SCK, JSH_SPI_MISO, JSH_SPI_MOSI };
+  SPI_TypeDef *SPIx = (SPI_TypeDef *)checkPinsForDevice(funcType, 3, pins, functions);
+  if (!SPIx) return; // failed to find matching pins
+
+  LL_SPI_InitTypeDef LL_SPI_InitStructure;
+  LL_SPI_InitStructure.TransferDirection = LL_SPI_FULL_DUPLEX;
+  LL_SPI_InitStructure.DataWidth = LL_SPI_DATAWIDTH_8BIT;
+  LL_SPI_InitStructure.ClockPolarity = (inf->spiMode&SPIF_CPOL)?LL_SPI_POLARITY_HIGH:LL_SPI_POLARITY_LOW;
+  LL_SPI_InitStructure.ClockPhase = (inf->spiMode&SPIF_CPHA)?LL_SPI_PHASE_2EDGE:LL_SPI_PHASE_1EDGE;
+  LL_SPI_InitStructure.NSS = LL_SPI_NSS_SOFT;
+  LL_SPI_InitStructure.BitOrder = inf->spiMSB ? LL_SPI_MSB_FIRST : LL_SPI_LSB_FIRST;
+  LL_SPI_InitStructure.CRCPoly = 7;
+  LL_SPI_InitStructure.Mode = LL_SPI_MODE_MASTER;
+  LL_SPI_InitStructure.CRCCalculation = LL_SPI_CRCCALCULATION_DISABLE;
+  // try and find the best baud rate
+  unsigned int spiFreq = jshGetSPIFreq(SPIx);
+  const unsigned int baudRatesDivisors[] = { 2,4,8,16,32,64,128,256 };
+  const uint16_t baudRatesIds[] = { LL_SPI_BAUDRATEPRESCALER_DIV2,LL_SPI_BAUDRATEPRESCALER_DIV4,
+      LL_SPI_BAUDRATEPRESCALER_DIV8,LL_SPI_BAUDRATEPRESCALER_DIV16,LL_SPI_BAUDRATEPRESCALER_DIV32,
+      LL_SPI_BAUDRATEPRESCALER_DIV64,LL_SPI_BAUDRATEPRESCALER_DIV128,LL_SPI_BAUDRATEPRESCALER_DIV256 };
+  int bestDifference = 0x7FFFFFFF;
+  unsigned int i;
+  for (i=0;i<sizeof(baudRatesDivisors)/sizeof(unsigned int);i++) {
+    unsigned int rate = spiFreq / baudRatesDivisors[i];
+
+    int rateDiff = inf->baudRate - (int)rate;
+    if (rateDiff<0) rateDiff *= -1;
+
+    // if this is outside what we want, make sure it's considered a bad choice
+    if (inf->baudRateSpec==SPIB_MAXIMUM && rate > (unsigned int)inf->baudRate) rateDiff += 0x10000000;
+    if (inf->baudRateSpec==SPIB_MINIMUM && rate < (unsigned int)inf->baudRate) rateDiff += 0x10000000;
+
+    if (rateDiff < bestDifference) {
+      bestDifference = rateDiff;
+      LL_SPI_InitStructure.BaudRate = baudRatesIds[i];
+    }
+  }
+
+  uint8_t spiIRQ;
+  switch (device) {
+    case EV_SPI1: spiIRQ = SPI1_IRQn; break;
+    case EV_SPI2: spiIRQ = SPI2_IRQn; break;
+#if SPI_COUNT>=3
+    case EV_SPI3: spiIRQ = SPI3_IRQn; break;
+#endif
+    default: assert(0); break;
+  }
+
+  // Enable SPI interrupt
+  NVIC_SetPriority(spiIRQ, IRQ_PRIOR_SPI);
+  NVIC_EnableIRQ(spiIRQ);
+
+  // Set the threshold to have an RXNE event every bytes
+  LL_SPI_SetRxFIFOThreshold(SPIx, LL_SPI_RX_FIFO_TH_QUARTER);
+  // Enable RX interrupt (No TX IRQ wanted)
+  LL_SPI_EnableIT_RXNE(SPIx);
+
+  /* Enable SPI  */
+  LL_SPI_Init(SPIx, &LL_SPI_InitStructure);
+  LL_SPI_Enable(SPIx );
 }
+
+// push a byte into SPI buffers (called from IRQ)
+void jshSPIPush(IOEventFlags device, uint16_t data) {
+  int n = device-EV_SPI1;
+  jshSPIBuf[n][jshSPIBufHead[n]] = (unsigned char)data;
+  jshSPIBufHead[n] = (jshSPIBufHead[n]+1)&JSH_SPIBUF_MASK;
+}
+
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(IOEventFlags device, int data){
-        return;
+  int n = device-EV_SPI1;
+  SPI_TypeDef *SPI = getSPIFromDevice(device);
+
+  /* Loop while DR register in not empty */
+  WAIT_UNTIL(LL_SPI_IsActiveFlag_TXE(SPI) != RESET, "SPI TX");
+
+  if (data >= 0) {
+    /* Send a Byte through the SPI peripheral */
+    LL_SPI_TransmitData8(SPI, (uint16_t)data);
+  } else {
+    // we were actually waiting for a byte to receive - let's hope we get it!
+	//jsiConsolePrintf("\n> jshSPISend : wait for reception");
+    WAIT_UNTIL(jshSPIBufHead[n]!=jshSPIBufTail[n], "SPI RX");
+  }
+
+  /* Return the Byte read from the SPI bus - or -1 if no byte */
+  if (jshSPIBufHead[n]!=jshSPIBufTail[n]) {
+    int data = jshSPIBuf[n][jshSPIBufTail[n]];
+    jshSPIBufTail[n] = (jshSPIBufTail[n]+1)&JSH_SPIBUF_MASK;
+    return data;
+  } else {
+    return -1;
+  }
 }
+
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data){
-        return;
+   SPI_TypeDef *SPI = getSPIFromDevice(device);
+
+  /* Loop while DR register in not empty */
+  WAIT_UNTIL(LL_SPI_IsActiveFlag_TXE(SPI) != RESET, "SPI TX");
+
+  /* Send a Byte through the SPI peripheral */
+  LL_SPI_TransmitData16(SPI, (uint16_t)data);
 }
+
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16){
-        return;
+  SPI_TypeDef *SPI = getSPIFromDevice(device);
+  jsiConsolePrintf("> jshSPISet16 is16=%d", is16);
+  /* Loop until not sending */
+  WAIT_UNTIL(LL_SPI_IsActiveFlag_BSY(SPI ) != SET, "SPI BSY");
+  /* Set the data size */
+  LL_SPI_SetDataWidth(SPI, is16 ? LL_SPI_DATAWIDTH_16BIT : LL_SPI_DATAWIDTH_8BIT);
+  /* Set the threshold for RXNE events */
+  LL_SPI_SetRxFIFOThreshold(SPI, is16 ? LL_SPI_RX_FIFO_TH_HALF : LL_SPI_RX_FIFO_TH_QUARTER);
 }
+
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive){
-        return;
+  SPI_TypeDef *SPI = getSPIFromDevice(device);
+  /* Loop until not sending */
+  WAIT_UNTIL(LL_SPI_IsActiveFlag_BSY(SPI ) != SET, "SPI BSY");
+  /* Set receive state */
+  if(isReceive){
+    LL_SPI_EnableIT_RXNE(SPI);
+  } else {
+    LL_SPI_DisableIT_RXNE(SPI);
+  }
 }
+
 /** Wait until SPI send is finished, and flush all received data */
 void jshSPIWait(IOEventFlags device){
-        return;
+  int n = device-EV_SPI1;
+  SPI_TypeDef *SPI = getSPIFromDevice(device);
+  /* Loop until not sending */
+  WAIT_UNTIL(LL_SPI_IsActiveFlag_BSY(SPI ) != SET, "SPI BSY");
+  /* Clear SPI receive buffer */
+  jshSPIBufTail[n] = jshSPIBufHead[n];
+  /* Just in case we didn't have IRQs, and the register was full... */
+  LL_SPI_ReceiveData8(SPI);
 }
 
 /** Set up I2C, if pins are -1 they will be guessed */
@@ -1542,7 +1685,6 @@ unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
   return freq*2;
 }
 
-
 static NO_INLINE void jshUtilTimerGetPrescale(JsSysTime period, unsigned int *prescale, unsigned int *ticks) {
   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
   if (period<0) period=0;
@@ -1630,10 +1772,7 @@ void jshDoSysTick(){
 #endif // ARM
 
 #ifdef STM32
-// push a byte into SPI buffers (called from IRQ)
-void jshSPIPush(IOEventFlags device, uint16_t data){
-        return;
-}
+
 
 // Get the address to read/write to in order to change the state of this pin. Or 0.
 volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags){
@@ -1673,7 +1812,7 @@ unsigned int jshSetSystemClock(JsVar *options){
 #elif defined(STM32F4)
 #define WAIT_UNTIL_N_CYCLES 5000000
 #else
-#define WAIT_UNTIL_N_CYCLES 2000000
+#define WAIT_UNTIL_N_CYCLES 5000000
 #endif
 
 /** Wait for the condition to become true, checking a certain amount of times
