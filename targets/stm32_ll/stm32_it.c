@@ -46,6 +46,7 @@
 #include "stm32l4xx_ll_exti.h"
 #include "stm32l4xx_ll_usart.h"
 #include "stm32l4xx_ll_tim.h"
+#include "stm32l4xx_ll_spi.h"
 #if defined(USE_FULL_ASSERT)
 #include "stm32_assert.h"
 #endif /* USE_FULL_ASSERT */
@@ -333,6 +334,31 @@ void TIM5_IRQHandler(void)
   }
 
 }
+
+static void SPI_IRQHandler(SPI_TypeDef *SPIx, IOEventFlags device) {
+   while (LL_SPI_IsActiveFlag_RXNE(SPIx ) != RESET) {
+      // Read one byte/word from the receive data register
+      jshSPIPush(device, LL_SPI_ReceiveData8(SPIx));
+    }
+}
+
+#if SPI_COUNT>=1
+void SPI1_IRQHandler(void) {
+  SPI_IRQHandler(SPI1, EV_SPI1);
+}
+#endif
+
+#if SPI_COUNT>=2
+void SPI2_IRQHandler(void) {
+  SPI_IRQHandler(SPI2, EV_SPI2);
+}
+#endif
+
+#if SPI_COUNT>=3
+void SPI3_IRQHandler(void) {
+  SPI_IRQHandler(SPI3, EV_SPI3);
+}
+#endif
 
 
 
