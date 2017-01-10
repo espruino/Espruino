@@ -141,6 +141,8 @@ def get_pins():
 
   pins.extend(pinutils.generate_pins(32,39));
 
+  pins = pinutils.fill_gaps_in_pin_list(pins);
+  
   pinutils.findpin(pins, "PD36", True)["functions"]["ADC1_IN0"]=0;
 
   pinutils.findpin(pins, "PD37", True)["functions"]["ADC1_IN1"]=0;
@@ -156,7 +158,6 @@ def get_pins():
   pinutils.findpin(pins, "PD34", True)["functions"]["ADC1_IN6"]=0;
 
   pinutils.findpin(pins, "PD35", True)["functions"]["ADC1_IN7"]=0;
-
 
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC2_IN0"]=0;
 
@@ -174,6 +175,9 @@ def get_pins():
 
   pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
 
+  pinutils.findpin(pins, "PD25", True)["functions"]["DAC_OUT1"]=0;
+  
+  pinutils.findpin(pins, "PD26", True)["functions"]["DAC_OUT2"]=0;
 
   pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
 
