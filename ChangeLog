@@ -11,6 +11,7 @@
             Puck.js: Tweak battery percentage calculation to try and make it more linear
             Puck.js: Adjust Puck.light() levels based on battery percentage (and add comments)
             nRF5x: Fix E.hwRand() (fix #1010)
+            Ensure tab complete/others include the Object proto even on functions/strings
 
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments
