@@ -605,7 +605,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 void esp32_wifi_init() {
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+  jsError("before esp_wifi_init\n");
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+  jsError("after esp_wifi_init\n");
   //ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
   
@@ -1438,6 +1440,7 @@ void jswrap_ESP32_wifi_restore(void) {
 
   bool auto_connect;
   int err=esp_wifi_get_auto_connect(&auto_connect);
+  ESP_LOGI(tag, "jswrap_ESP32_wifi_restore: esp_wifi_get_auto_connect return status: %d, %d", err, auto_connect);
   if ( auto_connect ) {
     ESP_LOGI(tag,"jswrap_ESP32_wifi_restore AUTO CONNECT\n");
     err = esp_wifi_start();
@@ -1641,3 +1644,29 @@ void jswrap_ESP32_ping(
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_ping");
 }
+
+
+void initialise_wifi(void)
+{
+    tcpip_adapter_init();
+    //wifi_event_group = xEventGroupCreate();
+    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
+    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = "williams",
+            .password = "1a2b3c4d5e",
+        },
+    };
+    ESP_LOGI(tag, "Setting WiFi configuration SSID %s...", wifi_config.sta.ssid);
+    
+	
+	ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+	
+	
+    esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config);
+    ESP_ERROR_CHECK( esp_wifi_start() );
+}
+
