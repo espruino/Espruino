@@ -8,6 +8,8 @@
             Fix bug that caused Bluetooth/TV/USB objects to be added in devices that didn't support them (fix #832)
             nRF52: Increase custom UUID count from 3 to 10
             Adding Global built-in objects like SPI1/Serial1 and Bluetooth to the docs
+            Puck.js: Tweak battery percentage calculation to try and make it more linear
+            Puck.js: Adjust Puck.light() levels based on battery percentage (and add comments)
 
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments
