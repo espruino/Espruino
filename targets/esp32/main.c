@@ -20,7 +20,7 @@ extern void initialise_wifi(void);
 
 static void uartTask(void *data) {
   initConsole();
-  //initADC(1);
+  initADC(1);
   while(1) {
     consoleToEspruino();  
   }
@@ -46,7 +46,6 @@ int app_main(void)
   nvs_flash_init();
   spi_flash_init();
   tcpip_adapter_init();
-  //initialise_wifi();
 #ifdef RTOS
   queues_init();
   tasks_init();
