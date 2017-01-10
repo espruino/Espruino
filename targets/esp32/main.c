@@ -12,7 +12,11 @@
 #include "jshardwareUart.h"
 #include "jshardwareAnalog.h"
 
+#include "esp_spi_flash.h"
+
 extern void jswrap_ESP32_wifi_restore(void) ;
+
+extern void initialise_wifi(void);
 
 static void uartTask(void *data) {
   initConsole();
@@ -34,13 +38,13 @@ static void espruinoTask(void *data) {
   }
 }
 
-
 /**
  * The main entry point into Espruino on an ESP32.
  */
 int app_main(void)
 {
   nvs_flash_init();
+  spi_flash_init();
   tcpip_adapter_init();
 #ifdef RTOS
   queues_init();

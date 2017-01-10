@@ -559,7 +559,7 @@ else ifdef ESP32
 BOARD=ESP32
 EMBEDDED=1
 USE_NET=1
-USE_HASHLIB=1
+#USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
@@ -1785,7 +1785,8 @@ endif
 # The prefix for the ESP32 compiler
 CCPREFIX=xtensa-esp32-elf-
 SOURCES += targets/esp32/main.c
-LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/components/bt/lib \
+LDFLAGS += -L$(ESP_IDF_PATH)/ld \
+-L$(ESP_IDF_PATH)/components/bt/lib \
 -L$(ESP_IDF_PATH)/components/esp32/lib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bootloader \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bt \
@@ -1808,7 +1809,7 @@ LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/component
 -L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/wpa_supplicant \
 -L$(ESP_APP_TEMPLATE_PATH)/build/ethernet \
--L$(ESP_APP_TEMPLATE_PATH)/build/arduino-esp32
+-lgcc
 ESPTOOL?=
 INCLUDE+=\
 -I$(ESP_APP_TEMPLATE_PATH)/build/include \
@@ -1828,7 +1829,6 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/nvs_flash/include \
 -I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
 -I$(ESP_IDF_PATH)/components/vfs/include \
--I$(ESP_APP_TEMPLATE_PATH)/components/arduino-esp32/cores/esp32 \
 -Itargets/esp32/include
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
 LIBS+=-T esp32_out.ld \
@@ -1863,7 +1863,7 @@ $(ESP_IDF_PATH)/components/esp32/libhal.a  \
 -lnewlib \
 -lcoexist \
 -lethernet \
--larduino-esp32 \
+-lstdc++ \
 -lgcc
 endif # ESP32
 

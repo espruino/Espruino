@@ -103,15 +103,15 @@ void IRAM_ATTR gpio_intr_test(void* arg){
  */
 void jshInit() {
   ESP_LOGD(tag,">> jshInit");
-  uint32_t freeHeapSize = esp_get_free_heap_size();
-  ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
+  //uint32_t freeHeapSize = esp_get_free_heap_size();
+  //ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
   spi_flash_init();
   esp32_wifi_init();
-  jswrap_ESP32_wifi_soft_init();
+  //jswrap_ESP32_wifi_soft_init();
   jshInitDevices();
-  if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
-    jsError("JshPinState #defines have changed, please update pinStateToString()");
-  }
+  //if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
+  //  jsError("JshPinState #defines have changed, please update pinStateToString()");
+  //}
   gpio_isr_register(gpio_intr_test,NULL,0,NULL);  //changed to automatic assign of interrupt
    // Initialize something for each of the possible pins.
   for (int i=0; i<JSH_PIN_COUNT; i++) {

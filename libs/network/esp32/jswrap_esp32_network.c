@@ -605,7 +605,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 void esp32_wifi_init() {
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+  jsError("before esp_wifi_init\n");
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+  jsError("after esp_wifi_init\n");
   //ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
   
@@ -1438,6 +1440,7 @@ void jswrap_ESP32_wifi_restore(void) {
 
   bool auto_connect;
   int err=esp_wifi_get_auto_connect(&auto_connect);
+  ESP_LOGI(tag, "jswrap_ESP32_wifi_restore: esp_wifi_get_auto_connect return status: %d, %d", err, auto_connect);
   if ( auto_connect ) {
     ESP_LOGI(tag,"jswrap_ESP32_wifi_restore AUTO CONNECT\n");
     err = esp_wifi_start();
@@ -1641,3 +1644,5 @@ void jswrap_ESP32_ping(
   ESP_LOGD(tag, "Not implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_ping");
 }
+
+

@@ -48,7 +48,6 @@
  support both i2c ports
  Test!
  Stop bits param -  bool sendStop
-
   https://esp-idf.readthedocs.io/en/latest/api/i2c.html
   
  */
@@ -61,7 +60,7 @@ static esp_err_t checkError( char * caller, esp_err_t ret ) {
 	  break;
 	}
 	case ESP_FAIL: {
-	  jsError(  "%s:, slave doesnâ€™t ACK the transfer.\n", caller );
+	  jsError(  "%s:, slave doesn’t ACK the transfer.\n", caller );
 	  break;
 	}
 	case ESP_ERR_TIMEOUT: {
