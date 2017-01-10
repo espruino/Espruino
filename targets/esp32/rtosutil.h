@@ -28,12 +28,17 @@ struct RTOSqueue RTOSqueues[queueMax];
 struct RTOStask{ char *name;TaskHandle_t handle;int rx;};
 struct RTOStask RTOStasks[taskMax];
 
+#define timerMax 2 //for Timer we use an array of timer relevant info
+struct ESP32Timer{ char *name; int group; int index; uint64_t duration; int taskToNotifyIdx; };
+struct ESP32Timer ESP32Timers[timerMax];
+
 void queues_init(); //initializes array of queues
 int queue_indexByName(char *queueName); //returns index of queue in queue array by name
 QueueHandle_t queue_handleByName(char *queueName); //returns handle of queue by name
 int queue_init(char *queueName,int length,int sizeOfEntry); //initializes a queue with name,length and size of each entry
 char *queue_read(int idx); //reads one character from queue
 void queue_writeChar(int idx,char c); //writes one char to queue
+void queue_list(); //logs queue list
 
 void tasks_init(); //initializes array of tasks
 int task_indexByName(char *taskName); //returns index of task in task array by name
@@ -45,5 +50,14 @@ int task_init(TaskFunction_t taskCode, char *taskName,unsigned short stackDepth,
 void task_list(); //lists all entrys of task array usinf printf
 void task_Suspend(int idx); //suspends task given by index in task array
 void task_Resume(int idx); //resumes task given by index in task array
+void task_notify(int idx); //notify task given by index with binary
+void taskWaitNotify(); //waits for notify
+
+void timers_Init();
+int timer_indexByName(char *timerName);
+int timer_Init(char *timerName,int group,int index,int isr_idx);
+void timer_Start(int idx,uint64_t duration);
+void timer_Reschedule(int idx,uint64_t duration);
+void timer_List();
 
 void console_readToQueue(); //reads char from uart and writes to RTOS queue, not using interrupts (yet)
