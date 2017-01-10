@@ -431,7 +431,10 @@ int jswrap_puck_capSense(Pin tx, Pin rx) {
     "generate" : "jswrap_puck_light",
     "return" : ["float", "A light value from 0 to 1" ]
 }
-Read a light value based on the light the red LED is seeing
+Return a light value based on the light the red LED is seeing.
+
+**Note:** If called more than 5 times per second, the received light value
+may not be accurate.
 */
 JsVarFloat jswrap_puck_light() {
   // If pin state wasn't an analog input before, make it one now,
@@ -443,7 +446,8 @@ JsVarFloat jswrap_puck_light() {
     jshPinAnalog(LED1_PININDEX);// analog
     jshDelayMicroseconds(5000);
   }
-  JsVarFloat f = jshPinAnalog(LED1_PININDEX)/0.45;
+  JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
+  JsVarFloat f = jshPinAnalog(LED1_PININDEX)*v/(3*0.45);
   if (f>1) f=1;
   // turn the red LED back on if it was on before
   if (s & JSHPINSTATE_PIN_IS_ON)
@@ -460,11 +464,11 @@ JsVarFloat jswrap_puck_light() {
     "return" : ["int", "A percentage between 0 and 100" ]
 }
 Return an approximate battery percentage remaining based on
-a normal CR2032 battery (2.8 - 2.0v)
+a normal CR2032 battery (2.8 - 2.2v)
 */
 int jswrap_puck_getBatteryPercentage() {
   JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
-  int pc = (v-2.0)*100/0.8;
+  int pc = (v-2.2)*100/0.6;
   if (pc>100) pc=100;
   if (pc<0) pc=0;
   return pc;
