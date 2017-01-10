@@ -249,8 +249,7 @@
 /  The _SYNC_t defines O/S dependent sync object type. e.g. HANDLE, ID, OS_EVENT*,
 /  SemaphoreHandle_t and etc.. */
 
-
-#define _WORD_ACCESS	1
+#define _WORD_ACCESS	0
 /* The _WORD_ACCESS option is an only platform dependent option. It defines
 /  which access method is used to the word data on the FAT volume.
 /
