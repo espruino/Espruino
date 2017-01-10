@@ -14,6 +14,11 @@
  * Contains ESP32 board specific functions.
  * ----------------------------------------------------------------------------
  */
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+//#include "esp_log.h"
+>>>>>>> remove arduino libs dependancy (spi commented out)
  
 #include "i2c.h"
 #include "driver/i2c.h"
@@ -254,11 +259,24 @@ void jshI2CRead(IOEventFlags device,
 
 #ifdef USE_ARDUINO
 // Let's get this working with only one device
+=======
+#include "esp_log.h"
+ 
+#include "i2c.h"
+// Using arduino library
+#include "esp32-hal-i2c.h"
+
+// Let's get this working with only one device
+>>>>>>> remove arduino libs dependancy (spi commented out)
 i2c_t * i2c=NULL;
 
 /** Set-up I2C master for ESP32, default pins are SCL:21, SDA:22. Only device I2C1 is supported
  *  and only master mode. */
+<<<<<<< HEAD
 vxoid jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
+=======
+void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
+>>>>>>> remove arduino libs dependancy (spi commented out)
   if (device != EV_I2C1) {
     jsError("Only I2C1 supported"); 
 	return;
@@ -276,17 +294,29 @@ vxoid jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   //jsError("jshI2CSetup: Frequency: %d", info->bitrate);
   err=i2cSetFrequency(i2c, (uint32_t)info->bitrate);
   if ( err != I2C_ERROR_OK ) {
+<<<<<<< HEAD
   jsError( "jshI2CSetup: i2cSetFrequency error: %d", err);
+=======
+    jsError( "jshI2CSetup: i2cSetFrequency error: %d", err);
+>>>>>>> remove arduino libs dependancy (spi commented out)
 	return;
   }
   err=i2cAttachSDA(i2c, pinToESP32Pin(sda));
   if ( err != I2C_ERROR_OK ) {
+<<<<<<< HEAD
   jsError( "jshI2CSetup: i2cAttachSDA error: %d", err);
+=======
+    jsError( "jshI2CSetup: i2cAttachSDA error: %d", err);
+>>>>>>> remove arduino libs dependancy (spi commented out)
 	return;
   }  
   err=i2cAttachSCL(i2c, pinToESP32Pin(scl));
   if ( err != I2C_ERROR_OK ) {
+<<<<<<< HEAD
   jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
+=======
+    jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
+>>>>>>> remove arduino libs dependancy (spi commented out)
 	return;
   }
 }
@@ -299,7 +329,11 @@ void jshI2CWrite(IOEventFlags device,
 // i2cWrite(i2c_t * i2c, uint16_t address, bool addr_10bit, uint8_t * data, uint8_t len, bool sendStop);
   i2c_err_t err=i2cWrite(i2c,address,false,data,nBytes,sendStop);
   if ( err != I2C_ERROR_OK ) {
+<<<<<<< HEAD
   jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
+=======
+    jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
+>>>>>>> remove arduino libs dependancy (spi commented out)
 	return;
   }
 }
@@ -311,9 +345,18 @@ void jshI2CRead(IOEventFlags device,
   bool sendStop) {
   i2c_err_t err=i2cRead(i2c,address,false,data,nBytes,sendStop);
   if ( err != I2C_ERROR_OK ) {
+<<<<<<< HEAD
   jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
 	return;
   }
 }
 #endif
+<<<<<<< HEAD
+=======
+=======
+    jsError(  "jshI2CSetup: i2cAttachSCL error: %d", err);
+	return;
+  }
+}
+>>>>>>> remove arduino libs dependancy (spi commented out)
 >>>>>>> remove arduino libs dependancy (spi commented out)
