@@ -19,16 +19,25 @@
 #include "spi.h"  //rename to jahardwareSPI.h ?
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 #include "esp_spi_flash.h"
 
 =======
 >>>>>>> Allow single byte read from flash so that `save()` works
+=======
+#include "esp_spi_flash.h"
+
+>>>>>>> remove arduino libs dependancy (spi commented out)
 extern void jswrap_ESP32_wifi_restore(void) ;
 
 extern void initialise_wifi(void);
 
 static void uartTask(void *data) {
   initConsole();
+<<<<<<< HEAD
+=======
+  //initADC(1);
+>>>>>>> remove arduino libs dependancy (spi commented out)
   while(1) {
     consoleToEspruino();  
     serialToEspruino();	
@@ -78,9 +87,12 @@ static void espruinoTask(void *data) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> Initial files for the ESP32 environment.
+=======
+>>>>>>> remove arduino libs dependancy (spi commented out)
 /**
  * The main entry point into Espruino on an ESP32.
  */
@@ -88,8 +100,12 @@ int app_main(void)
 {
   nvs_flash_init();
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> remove arduino libs dependancy (spi commented out)
   spi_flash_init();
   tcpip_adapter_init();
+  //initialise_wifi();
 #ifdef RTOS
   queues_init();
   tasks_init();
