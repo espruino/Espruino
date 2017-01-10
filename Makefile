@@ -1785,15 +1785,9 @@ endif
 # The prefix for the ESP32 compiler
 CCPREFIX=xtensa-esp32-elf-
 SOURCES += targets/esp32/main.c
-<<<<<<< HEAD
-LDFLAGS += \
--L$(ESP_APP_TEMPLATE_PATH)/components/arduino-esp32/tools/sdk/lib \
--L$(ESP_IDF_PATH)/lib \
+LDFLAGS += -L$(ESP_APP_TEMPLATE_PATH)/components/arduino-esp32/tools/sdk/lib \
 -L$(ESP_IDF_PATH)/ld \
 -L$(ESP_IDF_PATH)/components/bt/lib \
-=======
-LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/components/bt/lib \
->>>>>>> 83934495a2c22839b0c4bef20fc114ac64e37f0d
 -L$(ESP_IDF_PATH)/components/esp32/lib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bootloader \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bt \
