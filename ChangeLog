@@ -12,6 +12,8 @@
             Puck.js: Adjust Puck.light() levels based on battery percentage (and add comments)
             nRF5x: Fix E.hwRand() (fix #1010)
             Ensure tab complete/others include the Object proto even on functions/strings
+            nRF5x: Add NRF.restart() to force the restart of the Bluetooth Softdevice if required
+            nRF5x: Add E.setLowPowerConnection(bool) to allow continuous connections to Puck.js (fix #995)
 
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments
