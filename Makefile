@@ -1011,7 +1011,8 @@ ifdef USE_NET
   ifdef RTOS
    DEFINES += -DRTOS
    WRAPPERSOURCES += targets/esp32/jswrap_rtos.c
-   SOURCES += targets/esp32/rtosutil.c
+   SOURCES += targets/esp32/rtosutil.c \
+     targets/esp32/jshardwareTimer.c
   endif # RTOS
  endif # USE_ESP32
  
