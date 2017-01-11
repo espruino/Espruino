@@ -16,17 +16,27 @@
  */
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 =======
 >>>>>>> remove arduino libs dependancy (spi commented out)
 <<<<<<< HEAD
 //#include "esp_log.h"
 >>>>>>> remove arduino libs dependancy (spi commented out)
+=======
+<<<<<<< HEAD
+//#include "esp_log.h"
+=======
+>>>>>>> first pass at i2c and spi functions - untested
+>>>>>>> first pass at i2c and spi functions - untested
  
 #include "i2c.h"
 #include "driver/i2c.h"
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> first pass at i2c and spi functions - untested
 #endif
 
 #ifndef USE_ARDUINO
@@ -36,7 +46,12 @@
 #define I2C_MASTER_TX_BUF_DISABLE   0   /*!< I2C master do not need buffer */
 #define I2C_MASTER_RX_BUF_DISABLE   0   /*!< I2C master do not need buffer */
 #define I2C_MASTER_FREQ_HZ  100000   /*!< I2C master clock frequency */
+<<<<<<< HEAD
 >>>>>>> remove arduino libs dependancy (spi commented out)
+=======
+=======
+>>>>>>> first pass at i2c and spi functions - untested
+>>>>>>> first pass at i2c and spi functions - untested
 
 #define ACK_CHECK_EN   0x1   /*!< I2C master will check ack from slave*/
 #define ACK_CHECK_DIS  0x0   /*!< I2C master will not check ack from slave */
@@ -311,27 +326,27 @@ i2c_t * i2c=NULL;
 static esp_err_t checkError( char * caller, esp_err_t ret ) {
   switch(ret) {
     case ESP_OK: break;
-	case ESP_ERR_INVALID_ARG: {
-	  jsError(  "%s:, Parameter error\n", caller );
-	  break;
-	}
-	case ESP_FAIL: {
-	  jsError(  "%s:, slave doesn’t ACK the transfer.\n", caller );
-	  break;
-	}
-	case ESP_ERR_TIMEOUT: {
-	  jsError(  "%s:, Operation timeout because the bus is busy.\n", caller );
-	  break;
-	}
-	default: {
-	  jsError(  "%s:, unknown error code %d, \n", caller, ret );
-	  break;
-	}
+  case ESP_ERR_INVALID_ARG: {
+    jsError(  "%s:, Parameter error\n", caller );
+    break;
+  }
+  case ESP_FAIL: {
+    jsError(  "%s:, slave doesn’t ACK the transfer.\n", caller );
+    break;
+  }
+  case ESP_ERR_TIMEOUT: {
+    jsError(  "%s:, Operation timeout because the bus is busy.\n", caller );
+    break;
+  }
+  default: {
+    jsError(  "%s:, unknown error code %d, \n", caller, ret );
+    break;
+  }
   }
   return ret;
 }
 
-int getI2cFromDevice( IOEventFlags device	) {
+int getI2cFromDevice( IOEventFlags device  ) {
   switch(device) {
   case EV_I2C1: return I2C_NUM_0;
   case EV_I2C2: return I2C_NUM_1;
@@ -352,7 +367,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   int i2c_master_port = getI2cFromDevice(device);
   if (i2c_master_port == -1) {
   jsError("Only I2C1 and I2C2 supported"); 
-	return;
+  return;
   }
   Pin scl;
   Pin sda;
@@ -375,14 +390,14 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   conf.master.clk_speed = info->bitrate;
   esp_err_t err=i2c_param_config(i2c_master_port, &conf);
   if ( err == ESP_ERR_INVALID_ARG ) {
-	jsError("jshI2CSetup: Invalid arguments"); 
+  jsError("jshI2CSetup: Invalid arguments"); 
   return;
   }
   err=i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
   if ( err == ESP_OK ) {
-	jsError("jshI2CSetup: driver installed, sda: %d sdl: %d freq: %d, \n", sda, scl, info->bitrate);
+  jsError("jshI2CSetup: driver installed, sda: %d sdl: %d freq: %d, \n", sda, scl, info->bitrate);
   } else {
-		checkError("jshI2CSetup",err); 
+    checkError("jshI2CSetup",err); 
   }
 }
 
@@ -391,13 +406,18 @@ void jshI2CWrite(IOEventFlags device,
   int nBytes,
   const unsigned char *data,
   bool sendStop) {
+  
+  int i2c_master_port = getI2cFromDevice(device);
+  if (i2c_master_port == -1) {
+    jsError("Only I2C1 and I2C2 supported"); 
+    return;
+  }
   esp_err_t ret;
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
   ret=i2c_master_start(cmd);
   ret=i2c_master_write_byte(cmd, address << 1 | I2C_MASTER_WRITE, ACK_CHECK_EN);
-  ret=i2c_master_write(cmd, data, nBytes, ACK_CHECK_EN);	
-  ret=i2c_master_stop(cmd);
-  int i2c_master_port = I2C_NUM_1;
+  ret=i2c_master_write(cmd, data, nBytes, ACK_CHECK_EN);  
+  if ( sendStop ) ret=i2c_master_stop(cmd);
   ret = i2c_master_cmd_begin(i2c_master_port, cmd, 1000 / portTICK_RATE_MS); // 1000 seems very large for ticks_to_wait???
   i2c_cmd_link_delete(cmd);
   checkError(  "jshI2CWrite", ret);
@@ -412,8 +432,12 @@ void jshI2CRead(IOEventFlags device,
   if (nBytes <= 0) {
     return;
   }
+  int i2c_master_port = getI2cFromDevice(device);
+  if (i2c_master_port == -1) {
+  jsError("Only I2C1 and I2C2 supported"); 
+  return;
+  }  
   esp_err_t ret;
-  int i2c_master_port = I2C_NUM_1;
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
   ret=i2c_master_start(cmd);
   ret=i2c_master_write_byte(cmd, ( i2c_master_port << 1 ) | I2C_MASTER_READ, ACK_CHECK_EN);
@@ -421,10 +445,11 @@ void jshI2CRead(IOEventFlags device,
     ret=i2c_master_read(cmd, data, nBytes - 1, ACK_VAL);
   }
   ret=i2c_master_read_byte(cmd, data + nBytes - 1, NACK_VAL);
-  i2c_master_stop(cmd);
+  if ( sendStop ) ret=i2c_master_stop(cmd);
   ret = i2c_master_cmd_begin(i2c_master_port, cmd, 1000 / portTICK_RATE_MS);
   i2c_cmd_link_delete(cmd);
   checkError(  "jshI2CRead", ret);  
+<<<<<<< HEAD
 }
 #endif
 
@@ -544,4 +569,10 @@ void jshI2CRead(IOEventFlags device,
 }
 #endif
 >>>>>>> remove arduino libs dependancy (spi commented out)
+<<<<<<< HEAD
 >>>>>>> remove arduino libs dependancy (spi commented out)
+=======
+=======
+}
+>>>>>>> first pass at i2c and spi functions - untested
+>>>>>>> first pass at i2c and spi functions - untested
