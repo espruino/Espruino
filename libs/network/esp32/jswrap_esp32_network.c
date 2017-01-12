@@ -9,6 +9,9 @@
 #include "jswrap_modules.h"
 #include "jswrap_esp32_network.h"
 
+
+#include "jsutils.h"
+
 #define UNUSED(x) (void)(x)
 
 static void sendWifiCompletionCB(
@@ -405,7 +408,7 @@ static char *wifiGetEvent(uint32_t event) {
   case SYSTEM_EVENT_WIFI_READY:
     break;
   }
-  ESP_LOGW(tag, "Unhandled event type: %d", event);
+  jsWarn( "Unhandled wifi event type: %d", event);
   return NULL;
 } // End of wifiGetEvent
 
@@ -430,7 +433,6 @@ static void sendWifiEvent(
     return;
   }
 
-  ESP_LOGD(tag, "wifi.on(%s)\n", eventName);
   jsiQueueObjectCallbacks(module, eventName, params, 1);
   jsvUnLock(module);
   return;
@@ -445,7 +447,6 @@ static void sendWifiEvent(
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
   UNUSED(ctx);
-  ESP_LOGD(tag, ">> event_handler");
   /*
    * SYSTEM_EVENT_STA_DISCONNECT
    * Structure contains:
@@ -474,7 +475,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     sprintf(temp, "%d", event->event_info.disconnected.reason);
     jsvObjectSetChildAndUnLock(jsDetails, "reason", jsvNewFromString(temp));
     sendWifiEvent(event->event_id, jsDetails);
-    ESP_LOGD(tag, "<< event_handler - STA DISCONNECTED");
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_DISCONNECTED
 
@@ -504,7 +504,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     sprintf(temp, "%d", event->event_info.connected.channel);
     jsvObjectSetChildAndUnLock(jsDetails, "channel", jsvNewFromString(temp));
     sendWifiEvent(event->event_id, jsDetails);
-    ESP_LOGD(tag, "<< event_handler - STA CONNECTED");
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_CONNECTED
 
@@ -518,7 +517,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    */
   if (event->event_id == SYSTEM_EVENT_STA_GOT_IP) {
     sendWifiCompletionCB(&g_jsGotIpCallback, NULL);
-    ESP_LOGD(tag, "<< event_handler - STA GOT IP");
     JsVar *jsDetails = jsvNewObject();
 
     // 123456789012345_6
@@ -532,7 +530,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     jsvObjectSetChildAndUnLock(jsDetails, "gw", jsvNewFromString(temp));
 
     sendWifiEvent(event->event_id, jsDetails);
-    ESP_LOGD(tag, "<< event_handler - STA GOT IP");
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_GOT_IP
 
@@ -551,7 +548,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     sprintf(temp, MACSTR, MAC2STR(&event->event_info.sta_connected.mac));
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
     sendWifiEvent(event->event_id, jsDetails);
-    ESP_LOGD(tag, "<< event_handler - STA AP STA CONNECTED");
     return ESP_OK;
   }
 
@@ -569,7 +565,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     sprintf(temp, MACSTR, MAC2STR(&event->event_info.sta_disconnected.mac));
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
     sendWifiEvent(event->event_id, jsDetails);
-    ESP_LOGD(tag, "<< event_handler - STA AP STA DISCONNECTED");
     return ESP_OK;
   }
 
@@ -593,7 +588,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
   }
 
-  ESP_LOGD(tag, "<< event_handler");
   return ESP_OK;
 } // End of event_handler
 
@@ -605,10 +599,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 void esp32_wifi_init() {
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-  jsError("before esp_wifi_init\n");
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-  jsError("after esp_wifi_init\n");
-  //ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
   
 } // End of esp32_wifi_init
@@ -660,11 +651,9 @@ If you want the connection to happen automatically at boot, add `wifi.save();`.
  * Perform a soft initialization of ESP32 networking.
  */
 void jswrap_ESP32_wifi_soft_init() {
-	ESP_LOGD(tag, ">> jswrap_ESP32_wifi_soft_init");
-	JsNetwork net;
-	networkCreate(&net, JSNETWORKTYPE_ESP32); // Set the network type to be ESP32
+  JsNetwork net;
+  networkCreate(&net, JSNETWORKTYPE_ESP32); // Set the network type to be ESP32
   networkState = NETWORKSTATE_ONLINE; // Set the global state of the networking to be online
-	ESP_LOGD(tag, "<< jswrap_ESP32_wifi_soft_init");	
 }
 
 
@@ -686,8 +675,6 @@ void jswrap_ESP32_wifi_disconnect(JsVar *jsCallback) {
   // ESP-IDF function to disconnect us from the access point.  The thinking is that will result
   // in a subsequent event which we will detect and use to call the callback.
   //
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_disconnect");
-
   // Free any existing callback, then register new callback
   if (g_jsDisconnectCallback != NULL) jsvUnLock(g_jsDisconnectCallback);
   g_jsDisconnectCallback = NULL;
@@ -703,8 +690,6 @@ void jswrap_ESP32_wifi_disconnect(JsVar *jsCallback) {
 
   // Call the ESP-IDF to disconnect us from the access point.
   esp_wifi_disconnect();
-
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_disconnect");
 } // End of jswrap_ESP32_wifi_disconnect
 
 
@@ -721,9 +706,6 @@ Stop being an access point and disable the AP operation mode. Ap mode can be
 re-enabled by calling `startAP`.
 */
 void jswrap_ESP32_wifi_stopAP(JsVar *jsCallback) {
-  UNUSED(jsCallback);
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_stopAP");
-
   // handle the callback parameter
   if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
     EXPECT_CB_EXCEPTION(jsCallback);
@@ -750,13 +732,12 @@ void jswrap_ESP32_wifi_stopAP(JsVar *jsCallback) {
   }
   err = esp_wifi_set_mode(mode);
   if (err != ESP_OK) {
-    ESP_LOGW(tag, "jswrap_ESP32_wifi_stopAP: esp_wifi_set_mode rc=%d", err);
+    jsWarn("jswrap_ESP32_wifi_stopAP: esp_wifi_set_mode rc=%d", err);
   }
 
   if (jsvIsFunction(jsCallback)) {
     jsiQueueEvents(NULL, jsCallback, NULL, 0);
   }
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_stopAP");
 } // End of jswrap_ESP32_wifi_stopAP
 
 
@@ -787,7 +768,6 @@ void jswrap_ESP32_wifi_connect(
     JsVar *jsOptions,
     JsVar *jsCallback
   ) {
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_connect");
 
   // Check that the ssid value isn't obviously in error.
   if (!jsvIsString(jsSsid)) {
@@ -843,7 +823,7 @@ void jswrap_ESP32_wifi_connect(
   esp_err_t err;
   err = esp_wifi_get_mode(&mode);
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_get_mode: %d", err);
+    jsError( "jswrap_ESP32_wifi_connect: esp_wifi_get_mode: %d", err);
     return;
   }
   switch(mode) {
@@ -856,13 +836,13 @@ void jswrap_ESP32_wifi_connect(
     mode = WIFI_MODE_APSTA;
     break;
   default:
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: Unexoected mode type: %d", mode);
+    jsError( "jswrap_ESP32_wifi_connect: Unexpected mode type: %d", mode);
     break;
   }
 
   err = esp_wifi_set_mode(mode);
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_set_mode: %d, mode=%d", err, mode);
+    jsError( "jswrap_ESP32_wifi_connect: esp_wifi_set_mode: %d, mode=%d", err, mode);
     return;
   }
 
@@ -871,16 +851,17 @@ void jswrap_ESP32_wifi_connect(
   memcpy(staConfig.sta.ssid, ssid, sizeof(staConfig.sta.ssid));
   memcpy(staConfig.sta.password, password, sizeof(staConfig.sta.password));
   staConfig.sta.bssid_set = false;
+  esp_wifi_set_auto_connect(false); // turn off default behaviour 
   err = esp_wifi_set_config(WIFI_IF_STA,  &staConfig);
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_set_config: %d", err);
+    jsError( "jswrap_ESP32_wifi_connect: esp_wifi_set_config: %d", err);
     return;
   }
 
   // Perform an esp_wifi_start
   err = esp_wifi_start();
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_start: %d", err);
+    jsError( "jswrap_ESP32_wifi_connect: esp_wifi_start: %d", err);
     return;
   }
 
@@ -890,11 +871,9 @@ void jswrap_ESP32_wifi_connect(
   // Perform an esp_wifi_connect
   err = esp_wifi_connect();
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_connect: %d", err);
+    jsError( "jswrap_ESP32_wifi_connect: esp_wifi_connect: %d", err);
     return;
   }
-
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_connect");
 }
 
 
@@ -925,7 +904,6 @@ Notes:
 * to turn it off again, if desired. Only one scan can be in progress at a time.
 */
 void jswrap_ESP32_wifi_scan(JsVar *jsCallback) {
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_scan");
   // If we have a saved scan callback function we must be scanning already
   if (g_jsScanCallback != NULL) {
     jsExceptionHere(JSET_ERROR, "A scan is already in progress.");
@@ -948,7 +926,7 @@ void jswrap_ESP32_wifi_scan(JsVar *jsCallback) {
   wifi_mode_t mode;
   esp_err_t err = esp_wifi_get_mode(&mode);
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_scan: esp_wifi_get_mode: %d", err);
+    jsError( "jswrap_ESP32_wifi_scan: esp_wifi_get_mode: %d", err);
     return;
   }
 
@@ -964,21 +942,20 @@ void jswrap_ESP32_wifi_scan(JsVar *jsCallback) {
   case WIFI_MODE_APSTA:
     break;
   default:
-    ESP_LOGD(tag, "Unknown mode %d", mode);
+    jsError( "Unknown mode %d", mode);
     break;
   }
 
-  ESP_LOGD(tag, "Setting mode to %s", wifiModeToString(mode));
   err = esp_wifi_set_mode(mode);
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_scan: esp_wifi_set_mode: %d", err);
+    jsError( "jswrap_ESP32_wifi_scan: esp_wifi_set_mode: %d", err);
     return;
   }
 
   // Perform an esp_wifi_start
   err = esp_wifi_start();
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_connect: esp_wifi_start: %d", err);
+    jsError( "jswrap_ESP32_wifi_connect: esp_wifi_start: %d", err);
     return;
   }
 
@@ -992,7 +969,6 @@ void jswrap_ESP32_wifi_scan(JsVar *jsCallback) {
   // When the scan completes, we will be notified by an arriving event that is handled
   // in the event handler.  The event handler will see that we have a callback function
   // registered and will invoke that callback at that time.
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_scan");
 } // End of jswrap_ESP32_wifi_scan
 
 
@@ -1022,7 +998,6 @@ void jswrap_ESP32_wifi_startAP(
     JsVar *jsOptions,  //!< Configuration options.
     JsVar *jsCallback  //!< A callback to be invoked when completed.
   ) {
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_startAP");
 
   // Check callback.  It is invalid if it is defined and not a function.
   if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
@@ -1135,27 +1110,23 @@ void jswrap_ESP32_wifi_startAP(
 
   err = esp_wifi_set_mode(WIFI_MODE_AP);
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_startAP: esp_wifi_set_mode: %d", err);
-    ESP_LOGD(tag, "<< jswrap_ESP32_wifi_startAP");
+    jsError( "jswrap_ESP32_wifi_startAP: esp_wifi_set_mode: %d", err);
     return;
   }
 
   err = esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)&apConfig);
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_startAP: wifi_set_config: %d - ssid=%.*s, password=%s, authMode=%d, maxConnections=%d, beacon=%d, channel=%d",
+    jsError( "jswrap_ESP32_wifi_startAP: wifi_set_config: %d - ssid=%.*s, password=%s, authMode=%d, maxConnections=%d, beacon=%d, channel=%d",
       err, apConfig.ssid_len, apConfig.ssid, apConfig.password, apConfig.authmode, apConfig.max_connection, apConfig.beacon_interval, apConfig.channel);
-    ESP_LOGD(tag, "<< jswrap_ESP32_wifi_startAP");
     return;
   }
 
   // Perform an esp_wifi_start
   err = esp_wifi_start();
   if (err != ESP_OK) {
-    ESP_LOGE(tag, "jswrap_ESP32_wifi_startAP: esp_wifi_start: %d", err);
+    jsError( "jswrap_ESP32_wifi_startAP: esp_wifi_start: %d", err);
     return;
   }
-
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_startAP");
 } // End of jswrap_ESP32_wifi_startAP
 
 
@@ -1179,8 +1150,6 @@ Retrieve the current overall WiFi configuration. This call provides general info
 */
 JsVar *jswrap_ESP32_wifi_getStatus(JsVar *jsCallback) {
   UNUSED(jsCallback);
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getStatus");
-  ESP_LOGD(tag, "Not implemented");
   // We have to determine the following information:
   //
   // - [    ] The status of the station interface
@@ -1241,7 +1210,6 @@ JsVar *jswrap_ESP32_wifi_getStatus(JsVar *jsCallback) {
   }
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode", jsvNewFromString(modeStr));
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "powersave", jsvNewFromString(psTypeStr));
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getStatus");
   return jsWiFiStatus;
 } // End of jswrap_ESP32_wifi_getStatus
 
@@ -1263,9 +1231,7 @@ Note: esp32 SDK programmers may be missing an "opmode" option to set the sta/ap/
 */
 void jswrap_ESP32_wifi_setConfig(JsVar *jsSettings) {
   UNUSED(jsSettings);
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_setConfig");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_setConfig");
+  jsError( "jswrap_ESP32_wifi_setConfig - Not implemented");
 } // End of jswrap_ESP32_wifi_setConfig
 
 
@@ -1288,9 +1254,6 @@ Retrieve the wifi station configuration and status details. The details object h
 * `savedSsid` - the SSID to connect to automatically at boot time, null if none.
 */
 JsVar *jswrap_ESP32_wifi_getDetails(JsVar *jsCallback) {
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getDetails");
-  ESP_LOGD(tag, "Not implemented");
-
   // Check callback
   if (jsCallback != NULL && !jsvIsNull(jsCallback) && !jsvIsFunction(jsCallback)) {
     EXPECT_CB_EXCEPTION(jsCallback);
@@ -1331,7 +1294,6 @@ JsVar *jswrap_ESP32_wifi_getDetails(JsVar *jsCallback) {
     params[0] = jsDetails;
     jsiQueueEvents(NULL, jsCallback, params, 1);
   }
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getDetails");
   return jsDetails;
 } // End of jswrap_ESP32_wifi_getDetails
 
@@ -1357,7 +1319,6 @@ Retrieve the current access point configuration and status.  The details object 
 * `savedSsid` - the SSID to broadcast automatically at boot time, null if the access point is to be disabled at boot.
 */
 JsVar *jswrap_ESP32_wifi_getAPDetails(JsVar *jsCallback) {
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getAPDetails");
   // Check callback
   if (jsCallback != NULL && !jsvIsNull(jsCallback) && !jsvIsFunction(jsCallback)) {
     EXPECT_CB_EXCEPTION(jsCallback);
@@ -1390,10 +1351,7 @@ JsVar *jswrap_ESP32_wifi_getAPDetails(JsVar *jsCallback) {
     params[0] = jsDetails;
     jsiQueueEvents(NULL, jsCallback, params, 1);
   }
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getDetails");
   return jsDetails;
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getAPDetails");
-  return NULL;
 } // End of jswrap_ESP32_wifi_getAPDetails
 
 
@@ -1414,16 +1372,11 @@ Save the current wifi configuration (station and access point) and automatically
 * DHCP hostname
 */
 void jswrap_ESP32_wifi_save(JsVar *what) {
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_save");
-  
   if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
 	esp_wifi_set_auto_connect(false);
-	jsiConsolePrint("Wifi.save(clear)\n");
-
   } else {
 	esp_wifi_set_auto_connect(true);
   } 
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_save");
 } // End of jswrap_ESP32_wifi_save
 
 
@@ -1436,27 +1389,29 @@ void jswrap_ESP32_wifi_save(JsVar *what) {
 Restores the saved Wifi configuration. See `Wifi.save()`.
 */
 void jswrap_ESP32_wifi_restore(void) {
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_restore");
-
   bool auto_connect;
   int err=esp_wifi_get_auto_connect(&auto_connect);
-  ESP_LOGI(tag, "jswrap_ESP32_wifi_restore: esp_wifi_get_auto_connect return status: %d, %d", err, auto_connect);
+  
   if ( auto_connect ) {
-    ESP_LOGI(tag,"jswrap_ESP32_wifi_restore AUTO CONNECT\n");
     err = esp_wifi_start();
     if (err != ESP_OK) {
-      ESP_LOGE(tag, "jswrap_ESP32_wifi_restore: esp_wifi_start: %d", err);
+      jsError( "jswrap_ESP32_wifi_restore: esp_wifi_start: %d", err);
     }	
-    // Perform an esp_wifi_start
-    err = esp_wifi_connect();
-    if (err != ESP_OK) {
-      ESP_LOGE(tag, "jswrap_ESP32_wifi_restore: esp_wifi_connect: %d", err);
-      return;
+    
+	wifi_mode_t mode;
+    err = esp_wifi_get_mode(&mode);
+    if ( (  mode == WIFI_MODE_STA ) || (  mode == WIFI_MODE_APSTA ) ) {
+      // Perform an esp_wifi_start
+      err = esp_wifi_connect();
+      if (err != ESP_OK) {
+        jsError( "jswrap_ESP32_wifi_restore: esp_wifi_connect: %d", err - ESP_ERR_WIFI_BASE);
+        return;
+	  }
     }
   } else {
-    ESP_LOGI(tag,"jswrap_ESP32_wifi_restore: CONFIG DEFAULT\n");  
+    // No previous wifi.save()
   }
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_restore");
+
 } // End of jswrap_ESP32_wifi_restore
 
 
@@ -1521,9 +1476,7 @@ Return the station IP information in an object as follows:
 Note that the `ip`, `netmask`, and `gw` fields are omitted if no connection is established:
 */
 JsVar *jswrap_ESP32_wifi_getIP(JsVar *jsCallback) {
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getIP");
   JsVar *jsIpInfo = getIPInfo(jsCallback, TCPIP_ADAPTER_IF_STA);
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getIP");
   return jsIpInfo;
 } // End of jswrap_ESP32_wifi_getIP
 
@@ -1545,9 +1498,7 @@ Return the access point IP information in an object which contains:
 * mac - The MAC address as string of the form 00:00:00:00:00:00
 */
 JsVar *jswrap_ESP32_wifi_getAPIP(JsVar *jsCallback) {
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getAPIP");
   JsVar *jsIpInfo = getIPInfo(jsCallback, TCPIP_ADAPTER_IF_AP);
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getAPIP");
   return jsIpInfo;
 }
 
@@ -1571,9 +1522,8 @@ void jswrap_ESP32_wifi_getHostByName(
 ) {
   UNUSED(jsHostname);
   UNUSED(jsCallback);
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getHostByName");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getHostByName");
+  jsError( "jswrap_ESP32_wifi_getHostByName - Not implemented - no api in esp-idf");
+  // Could use net_esp32_gethostbyname in network_esp32.c
 }
 
 
@@ -1592,9 +1542,7 @@ Returns the hostname announced to the DHCP server and broadcast via mDNS when co
 */
 JsVar *jswrap_ESP32_wifi_getHostname(JsVar *jsCallback) {
   UNUSED(jsCallback);
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_getHostname");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_getHostname");
+  jsError( "jswrap_ESP32_wifi_getHostname - Not implemented");
   return NULL;
 }
 
@@ -1615,9 +1563,7 @@ void jswrap_ESP32_wifi_setHostname(
     JsVar *jsHostname //!< The hostname to set for device.
 ) {
   UNUSED(jsHostname);
-  ESP_LOGD(tag, ">> jswrap_ESP32_wifi_setHostname");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag, "<< jswrap_ESP32_wifi_setHostname");
+  jsError( "jswrap_ESP32_wifi_setHostname - Not implemented");
 }
 
 
@@ -1640,9 +1586,7 @@ void jswrap_ESP32_ping(
 ) {
   UNUSED(ipAddr);
   UNUSED(pingCallback);
-  ESP_LOGD(tag, ">> jswrap_ESP32_ping");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag, "<< jswrap_ESP32_ping");
+  jsError( "jswrap_ESP32_ping - Not implemented");  
 }
 
 

@@ -28,7 +28,6 @@ static void uartTask(void *data) {
 
 static void espruinoTask(void *data) {
   vTaskDelay(1000 / portTICK_PERIOD_MS);
-  printf("Espruino on ESP32 starting ...\n");
   jshInit();     // Initialize the hardware
   jsvInit();     // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
