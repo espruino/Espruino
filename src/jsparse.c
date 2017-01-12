@@ -33,6 +33,9 @@ void jspeBlockNoBrackets();
 JsVar *jspeStatement();
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
+#ifndef SAVE_ON_FLASH
+JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a);
+#endif
 // ----------------------------------------------- Utils
 #define JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, CLEANUP_CODE, RETURN_VAL) { if (!jslMatch((TOKEN))) { CLEANUP_CODE; return RETURN_VAL; } }
 #define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , RETURN_VAL)
@@ -350,10 +353,11 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
   return true;
 }
 
-// Parse function, assuming we're on '{'
+// Parse function, assuming we're on '{'. funcVar can be 0
 NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnly) {
   if (expressionOnly) {
-    funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
+    if (funcVar)
+      funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
   } else {
     JSP_MATCH('{');
 
@@ -469,9 +473,15 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
 /* Parse just the brackets of a function - and throw
  * everything away */
 NO_INLINE bool jspeParseFunctionCallBrackets() {
+  assert(!JSP_SHOULD_EXECUTE);
   JSP_MATCH('(');
   while (!JSP_SHOULDNT_PARSE && lex->tk != ')') {
     jsvUnLock(jspeAssignmentExpression());
+#ifndef SAVE_ON_FLASH
+    if (lex->tk==LEX_ARROW_FUNCTION) {
+      jsvUnLock(jspeArrowFunction(0, 0));
+    }
+#endif
     if (lex->tk!=')') JSP_MATCH(',');
   }
   if (!JSP_SHOULDNT_PARSE) JSP_MATCH(')');
