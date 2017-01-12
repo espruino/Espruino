@@ -1391,16 +1391,22 @@ Restores the saved Wifi configuration. See `Wifi.save()`.
 void jswrap_ESP32_wifi_restore(void) {
   bool auto_connect;
   int err=esp_wifi_get_auto_connect(&auto_connect);
+  
   if ( auto_connect ) {
     err = esp_wifi_start();
     if (err != ESP_OK) {
       jsError( "jswrap_ESP32_wifi_restore: esp_wifi_start: %d", err);
     }	
-    // Perform an esp_wifi_start
-    err = esp_wifi_connect();
-    if (err != ESP_OK) {
-      jsError( "jswrap_ESP32_wifi_restore: esp_wifi_connect: %d", err - ESP_ERR_WIFI_BASE);
-      return;
+    
+	wifi_mode_t mode;
+    err = esp_wifi_get_mode(&mode);
+    if ( (  mode == WIFI_MODE_STA ) || (  mode == WIFI_MODE_APSTA ) ) {
+      // Perform an esp_wifi_start
+      err = esp_wifi_connect();
+      if (err != ESP_OK) {
+        jsError( "jswrap_ESP32_wifi_restore: esp_wifi_connect: %d", err - ESP_ERR_WIFI_BASE);
+        return;
+	  }
     }
   } else {
     // No previous wifi.save()
