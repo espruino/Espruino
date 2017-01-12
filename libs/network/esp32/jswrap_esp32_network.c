@@ -600,8 +600,6 @@ void esp32_wifi_init() {
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-  //ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-  // This autosaves last connection to AP - regardless of if wifi.save() is called or not
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
   
 } // End of esp32_wifi_init
@@ -853,6 +851,7 @@ void jswrap_ESP32_wifi_connect(
   memcpy(staConfig.sta.ssid, ssid, sizeof(staConfig.sta.ssid));
   memcpy(staConfig.sta.password, password, sizeof(staConfig.sta.password));
   staConfig.sta.bssid_set = false;
+  esp_wifi_set_auto_connect(false); // turn off default behaviour 
   err = esp_wifi_set_config(WIFI_IF_STA,  &staConfig);
   if (err != ESP_OK) {
     jsError( "jswrap_ESP32_wifi_connect: esp_wifi_set_config: %d", err);
@@ -1388,7 +1387,6 @@ void jswrap_ESP32_wifi_save(JsVar *what) {
   "generate" : "jswrap_ESP32_wifi_restore"
 }
 Restores the saved Wifi configuration. See `Wifi.save()`.
-The default for the ESP32 is to auto save any connect to an AP. Use wifi.save('clear') to turn off the auto connect.
 */
 void jswrap_ESP32_wifi_restore(void) {
   bool auto_connect;
@@ -1401,11 +1399,11 @@ void jswrap_ESP32_wifi_restore(void) {
     // Perform an esp_wifi_start
     err = esp_wifi_connect();
     if (err != ESP_OK) {
-      jsError( "jswrap_ESP32_wifi_restore: esp_wifi_connect: %d", err);
+      jsError( "jswrap_ESP32_wifi_restore: esp_wifi_connect: %d", err - ESP_ERR_WIFI_BASE);
       return;
     }
   } else {
-    jsError( "jswrap_ESP32_wifi_restore: need to wifi.save() first.\n");  
+    // No previous wifi.save()
   }
 
 } // End of jswrap_ESP32_wifi_restore
@@ -1518,7 +1516,7 @@ void jswrap_ESP32_wifi_getHostByName(
 ) {
   UNUSED(jsHostname);
   UNUSED(jsCallback);
-  jsError( ">> jswrap_ESP32_wifi_getHostByName - Not implemented - no api in esp-idf");
+  jsError( "jswrap_ESP32_wifi_getHostByName - Not implemented - no api in esp-idf");
   // Could use net_esp32_gethostbyname in network_esp32.c
 }
 
@@ -1538,7 +1536,7 @@ Returns the hostname announced to the DHCP server and broadcast via mDNS when co
 */
 JsVar *jswrap_ESP32_wifi_getHostname(JsVar *jsCallback) {
   UNUSED(jsCallback);
-  jsError( ">> jswrap_ESP32_wifi_getHostname - Not implemented");
+  jsError( "jswrap_ESP32_wifi_getHostname - Not implemented");
   return NULL;
 }
 
@@ -1559,7 +1557,7 @@ void jswrap_ESP32_wifi_setHostname(
     JsVar *jsHostname //!< The hostname to set for device.
 ) {
   UNUSED(jsHostname);
-  jsError( ">> jswrap_ESP32_wifi_setHostname - Not implemented");
+  jsError( "jswrap_ESP32_wifi_setHostname - Not implemented");
 }
 
 
@@ -1582,7 +1580,7 @@ void jswrap_ESP32_ping(
 ) {
   UNUSED(ipAddr);
   UNUSED(pingCallback);
-  jsError( ">> jswrap_ESP32_ping - Not implemented");  
+  jsError( "jswrap_ESP32_ping - Not implemented");  
 }
 
 
