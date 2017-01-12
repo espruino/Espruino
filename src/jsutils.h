@@ -338,6 +338,8 @@ bool isIDString(const char *s);
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again. */
 const char *escapeCharacter(char ch);
+/** Parse radix prefixes, or return 0 */
+int getRadix(const char **s, int forceRadix, bool *hasError);
 /// Convert a character to the hexadecimal equivalent (or -1)
 int chtod(char ch);
 /* convert a number in the given radix to an int. if radix=0, autodetect */
