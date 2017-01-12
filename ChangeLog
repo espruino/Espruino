@@ -15,6 +15,7 @@
             nRF5x: Add NRF.restart() to force the restart of the Bluetooth Softdevice if required
             nRF5x: Add E.setLowPowerConnection(bool) to allow continuous connections to Puck.js (fix #995)
             Allow implicit conversion of hexadecimal strings to numbers (fix #1016)
+            Allow arrow functions inside nonexecuting functions (fix #1011)
 
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments
