@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Implementation of JsNetwork for Linux
+ * Implementation of JsNetwork for ESP32 - cloned from linux
  * ----------------------------------------------------------------------------
  */
 #include "network_esp32.h"
