@@ -25,6 +25,12 @@
 #define BLE_NAME_ADVERTISE_OPTIONS      "BLE_ADV_O"
 #define BLE_NAME_HID_DATA               "BLE_HID_D"
 #define BLE_NAME_NUS                    "BLE_UART"
+#define BLE_NAME_FLAGS                  "BLE_FLAGS"
+
+typedef enum {
+  BLE_FLAGS_NONE = 0,
+  BLE_FLAGS_LOW_POWER = 1
+} BLEFlags;
 
 /// Return true if two UUIDs are equal
 bool bleUUIDEqual(ble_uuid_t a, ble_uuid_t b);

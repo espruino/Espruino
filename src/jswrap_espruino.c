@@ -1138,12 +1138,12 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
   "name" : "setPassword",
   "generate" : "jswrap_espruino_setPassword",
   "params" : [
-    ["opts","JsVar","The password - max 20 chars"]
+    ["password","JsVar","The password - max 20 chars"]
   ]
 }
 Set a password on the console (REPL). When powered on, Espruino will
 then demand a password before the console can be used. If you want to
-lock the console immediately after this you can call `"E.lockConsole()`
+lock the console immediately after this you can call `E.lockConsole()`
 
 To remove the password, call this function with no arguments.
 

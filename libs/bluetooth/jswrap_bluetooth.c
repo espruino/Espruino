@@ -289,6 +289,32 @@ void jswrap_nrf_bluetooth_wake() {
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
+    "name" : "restart",
+    "generate" : "jswrap_nrf_bluetooth_restart"
+}
+Restart the Bluetooth softdevice (if there is currently a BLE connection,
+it will queue a restart to be done when the connection closes).
+
+You shouldn't need to call this function in normal usage. However, Nordic's
+BLE softdevice has some settings that cannot be reset. For example there
+are only a certain number of unique UUIDs. Once these are all used the
+only option is to restart the softdevice to clear them all out.
+*/
+void jswrap_nrf_bluetooth_restart() {
+  if (jsble_has_connection()) {
+    jsiConsolePrintf("BLE Connected, queueing BLE restart for later\n");
+    bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    return;
+  } else {
+    // Not connected, so we can restart now
+    jsble_restart_softdevice();
+    return;
+  }
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
     "name" : "getAddress",
     "generate" : "jswrap_nrf_bluetooth_getAddress",
     "return" : ["JsVar", "MAC address - a string of the form 'aa:bb:cc:dd:ee:ff'" ]
@@ -619,16 +645,7 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
 
   // work out whether to apply changes
   if (bleStatus & (BLE_SERVICES_WERE_SET|BLE_NEEDS_SOFTDEVICE_RESTART)) {
-    if (jsble_has_connection()) {
-      // Defer setting services until we have no active connection
-      jsiConsolePrintf("BLE Connected, so queueing service update for later\n");
-      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-      return;
-    } else {
-      // Not connected, but we can update services now
-      jsble_restart_softdevice();
-      return;
-    }
+    jswrap_nrf_bluetooth_restart();
   }
   /* otherwise, we can set the services now, since we're only adding
    * and not changing anything we don't need a restart. */
@@ -1036,6 +1053,44 @@ void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
   err_code = sd_ble_gap_tx_power_set(pwr);
   jsble_check_error(err_code);
 }
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setLowPowerConnection",
+    "generate" : "jswrap_nrf_bluetooth_setLowPowerConnection",
+    "params" : [
+      ["lowPower","bool","Whether the connection is low power or not"]
+    ]
+}
+
+This sets the connection parameters - these affect the transfer speed and
+power usage when the device is connected.
+
+* When not low power, the connection interval is between 7.5 and 20ms
+* When low power, the connection interval is between 500 and 1000ms
+
+When low power connection is enabled, transfers of data over Bluetooth
+will be very slow, however power usage while connected will be drastically
+decreased.
+
+This will only take effect after the connection is disconnected and
+re-established.
+*/
+void jswrap_nrf_bluetooth_setLowPowerConnection(bool lowPower) {
+  BLEFlags oldflags = jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_FLAGS, 0));
+  BLEFlags flags = oldflags;
+  if (lowPower)
+    flags |= BLE_FLAGS_LOW_POWER;
+  else
+    flags &= ~BLE_FLAGS_LOW_POWER;
+  if (flags != oldflags) {
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_FLAGS, jsvNewFromInteger(flags));
+    jswrap_nrf_bluetooth_restart();
+  }
+}
+
 
 /*JSON{
     "type" : "staticmethod",

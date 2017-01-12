@@ -247,7 +247,7 @@ void jswrap_object_keys_or_property_names_cb(
     }
 
     if (includePrototype) {
-      if (jsvIsObject(obj)) {
+      if (jsvIsObject(obj) || jsvIsFunction(obj)) {
         JsVar *proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
         while (jsvIsObject(proto)) {
           const JswSymList *symbols = jswGetSymbolListForObjectProto(proto);
@@ -257,9 +257,13 @@ void jswrap_object_keys_or_property_names_cb(
           proto = p2;
         }
       }
-      // finally include Object/String/etc
+      // include Object/String/etc
       const JswSymList *symbols = jswGetSymbolListForObjectProto(obj);
       _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
+      // if the last call wasn't an Object, add the object proto as well
+      const JswSymList *objSymbols = jswGetSymbolListForObjectProto(0);
+      if (objSymbols!=symbols)
+        _jswrap_object_keys_or_property_names_iterator(objSymbols, callback, data);
     }
 
     if (jsvIsArray(obj) || jsvIsString(obj)) {
