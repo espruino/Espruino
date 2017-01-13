@@ -95,10 +95,10 @@ If we download the ESP-IDF and download the ESP-IDF template application and run
 the result (from Espruino build perspective) is that we have all the libraries we need to link against with minimal work
 on our part.  Thankfully, the recipe to achieve these tasks is very easy and very repeatable.
 
-The last part we need is the Arduino-ESP32 project.  Again you may be thinking "Why Arduino?" ... well the answer is that the
-Arduino libraries for ESP32 provide implementations of I2C and SPI for ESP32 and we can link those into Espruino ignoring the
-rest of the Arduino environment.  The Arduino-ESP32 project is designed for exactly this kind of usage and becomes an ESP-IDF
-component and slots in nicely.
+In early version of Espruino port, SDK for esp32 did not support I2C and SPI.
+Only option at that time was to use Arduino related driver.
+This changed with new SDK which supports I2C, I2S, SPI and a lot of other driver.
+Therefore we don't need Arduino driver anymore. If somebody still wants to use them, we will keep a description at the end of this document.
 
 Here are the instructions that need only be followed once.
 * In your home directory (or wherever you want the root of your build to be) create a directory called "esp32".
@@ -113,7 +113,7 @@ $ cd esp32
 
 * Extract the ESP-IDF from Github
 ```
-$ git clone --recursive https://github.com/espressif/esp-idf.git`
+$ git clone --recursive https://github.com/espressif/esp-idf.git
 ```
 
 * Change into the newly created esp-idf folder.
@@ -161,6 +161,81 @@ $ . ./setenv.sh
 $ cd template
 ```
 
+* If you need Arduino, you have to do it here with commands at the end of this document
+
+* Run the `make menuconfig`.
+```
+$ make menuconfig
+```
+
+* Change some of the settings necessary for Espruino:
+```
+Component config -> LWIP -> Enable SO_REUSEADDR option [Enable]
+Component config -> ESP32-specific config ->  Task watchdog [Disable]
+            sooner or later we need to find a way to refresh Task watchdog
+Component config -> FreeRTOS -> Halt when an SMP-untested function is called [Disable]
+            some functions are marked as "SMP-untested" and a call results in a reset
+            on our test they work fine, and for testing we need some of them
+```
+
+* Perform a build to create the libraries and the template application.
+```
+$ make
+```
+
+* Change back up to the ESP32 root directory.
+```
+$ cd ..
+```
+
+* Extract Espruino source from YOUR fork of Espruino:
+```
+$ git clone https://github.com/YOURGITHUBID/Espruino.git
+```
+
+* Change into the Espruino folder.
+```
+$ cd Espruino
+```
+
+$ Build Espruino:
+```
+$ make
+```
+
+If all has built correctly, you will now find that you have a flash-able binary representing Espruino for the ESP32.
+
+In summary, here are the steps again without commentary:
+
+```
+$ mkdir esp32
+$ cd esp32
+$ git clone --recursive https://github.com/espressif/esp-idf.git
+$ cd esp-idf
+$ git submodule update --init
+$ cd ..
+$ git clone https://github.com/espressif/esp-idf-template.git template
+$ nano setenv.sh
+>>>
+#!/bin/bash
+export ESP_IDF_PATH=$(pwd)/esp-idf
+export IDF_PATH=$(pwd)/esp-idf
+export ESP_APP_TEMPLATE_PATH=$(pwd)/template
+export ESP32=1
+[[ ":$PATH:" != *":/opt/xtensa-esp32-elf/bin:"* ]] && PATH="/opt/xtensa-esp32-elf/bin:${PATH}"
+<<<
+$ chmod u+x setenv.sh
+$ . ./setenv.sh
+$ cd template
+$ make menuconfig
+$ make
+$ cd ..
+$ git clone https://github.com/YOURGITHUBID/Espruino.git
+$ cd Espruino
+$ make
+```
+
+### Include Arduino driver###
 * Make the components folder.
 ```
 $ mkdir components
@@ -199,85 +274,3 @@ extern "C" void app_main()
 $ cd ..
 ```
 
-* Run the `make menuconfig`.
-```
-$ make menuconfig
-```
-
-* Change some of the settings necessary for Espruino:
-```
-Component config -> LWIP -> Enable SO_REUSEADDR option [Enable]
-Component config -> ESP32-specific config ->  Task watchdog [Disable]
-```
-
-* Perform a build to create the libraries and the template application.
-```
-$ make
-```
-
-* Change back up to the ESP32 root directory.
-```
-$ cd ..
-```
-
-* Extract Espruino source from YOUR fork of Espruino:
-```
-$ git clone https://github.com/YOURGITHUBID/Espruino.git
-```
-
-$ Change into the Espruino folder.
-```
-$ cd Espruino
-```
-
-$ Build Espruino:
-```
-$ make
-```
-
-If all has built correctly, you will now find that you have a flash-able binary representing Espruino for the ESP32.
-
-In summary, here are the steps again without commentary:
-
-```
-$ mkdir esp32
-$ cd esp32
-$ git clone --recursive https://github.com/espressif/esp-idf.git
-$ cd esp-idf
-$ git submodule update --init
-$ cd ..
-$ git clone https://github.com/espressif/esp-idf-template.git template
-$ nano setenv.sh
->>>
-#!/bin/bash
-export ESP_IDF_PATH=$(pwd)/esp-idf
-export IDF_PATH=$(pwd)/esp-idf
-export ESP_APP_TEMPLATE_PATH=$(pwd)/template
-export ESP32=1
-[[ ":$PATH:" != *":/opt/xtensa-esp32-elf/bin:"* ]] && PATH="/opt/xtensa-esp32-elf/bin:${PATH}"
-<<<
-$ chmod u+x setenv.sh
-$ . ./setenv.sh
-$ cd template
-$ mkdir components
-$ git clone https://github.com/espressif/arduino-esp32.git
-$ nano arduino-esp32/cores/esp32/main.cpp
->>> Comment out app_main
-/*
-extern "C" void app_main()
-{
-    init();
-    initVariant();
-    initWiFi();
-    xTaskCreatePinnedToCore(loopTask, "loopTask", 4096, NULL, 1, NULL, 1);
-}
-*/
-<<<
-$ cd ..
-$ make menuconfig
-$ make
-$ cd ..
-$ git clone https://github.com/YOURGITHUBID/Espruino.git
-$ cd Espruino
-$ make
-```
