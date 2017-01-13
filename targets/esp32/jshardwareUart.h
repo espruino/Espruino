@@ -1,5 +1,5 @@
 /*
- * This file is designed to support FREERTOS functions in Espruino,
+ * This file is designed to support UART functions in Espruino,
  * a JavaScript interpreter for Microcontrollers designed by Gordon Williams
  *
  * Copyright (C) 2016 by Juergen Marsch 

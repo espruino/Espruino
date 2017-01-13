@@ -9,8 +9,10 @@
 #include <jsdevices.h>
 #include <jsinteractive.h>
 #include "rtosutil.h"
+#include "jstimer.h"
 #include "jshardwareUart.h"
 #include "jshardwareAnalog.h"
+#include "jshardwareTimer.h"
 
 #include "esp_spi_flash.h"
 
@@ -25,6 +27,18 @@ static void uartTask(void *data) {
     consoleToEspruino();  
   }
 }
+
+static void timerTask(void *data) {
+  vTaskDelay(500 / portTICK_PERIOD_MS);
+  timers_Init();
+  timer_Init("EspruinoTimer",0,0,0);
+  timer_List();
+  while(1) {
+    taskWaitNotify();
+	jstUtilTimerInterruptHandler();
+  }
+}
+
 
 static void espruinoTask(void *data) {
   vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -50,6 +64,7 @@ int app_main(void)
   tasks_init();
   task_init(espruinoTask,"EspruinoTask",10000,5,0);
   task_init(uartTask,"ConsoleTask",2000,20,0);
+  task_init(timerTask,"TimerTask",2048,19,0);
 #else
   xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", 10000, NULL, 5, NULL, 0);
   xTaskCreatePinnedToCore(&uartTask,"uartTask",2000,NULL,20,NULL,0);

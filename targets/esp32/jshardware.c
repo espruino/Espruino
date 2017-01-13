@@ -27,6 +27,8 @@
 
 #include "jshardware.h"
 #include "jshardwareAnalog.h"
+#include "jshardwareTimer.h"
+
 #include "jsutils.h"
 #include "jstimer.h"
 #include "jsparse.h"
@@ -434,9 +436,15 @@ IOEventFlags jshPinWatch(
  *
  */
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
-  ESP_LOGD(tag,">> jshGetCurrentPinFunction: pin=%d", pin);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshGetCurrentPinFunction");
+  if (jshIsPinValid(pin)) {
+    int i;
+    for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
+      JshPinFunction func = pinInfo[pin].functions[i];
+      if (JSH_PINFUNCTION_IS_TIMER(func) ||
+          JSH_PINFUNCTION_IS_DAC(func))
+        return func;
+    }
+  }
   return JSH_NOTHING;
 }
 
@@ -527,21 +535,21 @@ void jshSetSystemTime(JsSysTime newTime) {
 }
 
 void jshUtilTimerDisable() {
-  ESP_LOGD(tag,">> jshUtilTimerDisable");
-  ESP_LOGD(tag,"<< jshUtilTimerDisable");
+#ifdef RTOS
+  disableTimer(0);
+#endif
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-  UNUSED(period);
-  ESP_LOGD(tag,">> jshUtilTimerStart");
-  ESP_LOGD(tag,"<< jshUtilTimerStart");
+#ifdef RTOS
+  startTimer(0,(uint64_t) period);
+#endif
 }
 
 void jshUtilTimerReschedule(JsSysTime period) {
-  ESP_LOGD(tag,">> jshUtilTimerReschedule");
-  jshUtilTimerDisable();
-  jshUtilTimerStart(period);
-  ESP_LOGD(tag,"<< jshUtilTimerReschedule");
+#ifdef RTOS
+  rescheduleTimer(0,(uint64_t) period);
+#endif
 }
 
 //===== Miscellaneous =====

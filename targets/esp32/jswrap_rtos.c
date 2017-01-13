@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Task specific exposed components.
+ * Task, queue and timer specific exposed components.
  * ----------------------------------------------------------------------------
  */
 #include <stdio.h>

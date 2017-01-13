@@ -1,5 +1,5 @@
 /*
- * This file is designed to support ADC functions in Espruino for ESP32,
+ * This file is designed to support Timer functions in Espruino for ESP32,
  * a JavaScript interpreter for Microcontrollers designed by Gordon Williams
  *
  * Copyright (C) 2016 by Juergen Marsch 

@@ -11,7 +11,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains ESP32 board specific functions.
+ * Task, queue and timer specific exposed components.
  * ----------------------------------------------------------------------------
  */
  
