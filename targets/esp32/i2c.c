@@ -68,8 +68,8 @@ int getI2cFromDevice( IOEventFlags device  ) {
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   int i2c_master_port = getI2cFromDevice(device);
   if (i2c_master_port == -1) {
-  jsError("Only I2C1 and I2C2 supported"); 
-  return;
+    jsError("Only I2C1 and I2C2 supported"); 
+    return;
   }
   Pin scl;
   Pin sda;
@@ -92,12 +92,12 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   conf.master.clk_speed = info->bitrate;
   esp_err_t err=i2c_param_config(i2c_master_port, &conf);
   if ( err == ESP_ERR_INVALID_ARG ) {
-  jsError("jshI2CSetup: Invalid arguments"); 
+    jsError("jshI2CSetup: Invalid arguments"); 
   return;
   }
   err=i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
   if ( err == ESP_OK ) {
-  jsError("jshI2CSetup: driver installed, sda: %d sdl: %d freq: %d, \n", sda, scl, info->bitrate);
+	jsWarn("jshI2CSetup: driver installed, sda: %d sdl: %d freq: %d, \n", sda, scl, info->bitrate);
   } else {
     checkError("jshI2CSetup",err); 
   }

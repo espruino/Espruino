@@ -2017,7 +2017,18 @@ $(PROJ_NAME): $(OBJS)
 # Linking for ESP32
 else ifdef ESP32
 
-proj: $(OBJS)
+ESP_ZIP     = $(PROJ_NAME).tgz
+
+$(ESP_ZIP): espruino_esp32.bin
+	$(Q)rm -rf build/$(basename $(ESP_ZIP))
+	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
+	$(Q)cp $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
+	  espruino_esp32.bin \
+	  $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin \
+	  build/$(basename $(ESP_ZIP))
+	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
+
+proj: $(OBJS) $(ESP_ZIP)
 	$(LD) $(LDFLAGS) -o espruino_esp32.elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
