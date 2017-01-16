@@ -273,9 +273,9 @@ JsVar *jswrap_puck_mag() {
   "name" : "mag"
 }
 Called after `Puck.magOn()` every time magnetometer data
-is discovered. There is one argument which is an object
-of the form `{x,y,z}' containing magnetometer readings
-as integers (for more information see `Puck.mag()`.
+is sampled. There is one argument which is an object
+of the form `{x,y,z}` containing magnetometer readings
+as integers (for more information see `Puck.mag()`).
  */
 
 /*JSON{
@@ -284,10 +284,10 @@ as integers (for more information see `Puck.mag()`.
   "name" : "magOn",
   "generate" : "jswrap_puck_magOn",
   "params" : [
-      ["samplerate","float","The Samplerate in Hz, or undefined"]
+      ["samplerate","float","The sample rate in Hz, or undefined"]
   ]
 }
-Turn the magnetometer on and configure it. Samples will then cause
+Turn the magnetometer on and start periodic sampling. Samples will then cause
 a 'mag' event on 'Puck':
 
 ```
@@ -298,21 +298,26 @@ Puck.on('mag', function(xyz) {
 // Turn events off with Puck.magOff();
 ```
 
-This call will be ignored if the magnetometer is already on.
+This call will be ignored if the sampling is already on.
 
-If given an argument, the sample rate is set (if not, it's at 0.63Hz). The sample rate should be one of the following:
+If given an argument, the sample rate is set (if not, it's at 0.63 Hz). 
+The sample rate must be one of the following (resulting in the given power consumption):
 
-* 80 Hz -  900uA
-* 40 Hz -  550uA
-* 20 Hz -  275uA
-* 10 Hz -  137uA
-* 5 Hz -  69uA
-* 2.5 Hz -  34uA
-* 1.25 Hz -  17uA
-* 0.63 Hz -  8uA
-* 0.31 Hz -  8uA
-* 0.16 Hz -  8uA
+* 80 Hz - 900uA
+* 40 Hz - 550uA
+* 20 Hz - 275uA
+* 10 Hz - 137uA
+* 5 Hz - 69uA
+* 2.5 Hz - 34uA
+* 1.25 Hz - 17uA
+* 0.63 Hz - 8uA
+* 0.31 Hz - 8uA
+* 0.16 Hz - 8uA
 * 0.08 Hz - 8uA
+
+When the battery level drops too low while sampling is turned on,
+the magnetometer may stop sampling without warning, even while other
+Puck functions continue uninterrupted.
 
 */
 void jswrap_puck_magOn(JsVarFloat hz) {
