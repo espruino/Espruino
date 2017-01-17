@@ -350,9 +350,10 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
   uint32_t originalBootCodeInfo = 0;
   char *originalBootCode = 0;
   uint32_t bootCodeLen = 0;
-  if (!jsvIsString(bootCode) && jsfFlashContainsCode()) {
+  if (!(jsvIsString(bootCode) && jsvGetStringLength(bootCode)) && jsfFlashContainsCode()) {
     jshFlashRead(&originalBootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 4);
     bootCodeLen = originalBootCodeInfo & BOOT_CODE_LENGTH_MASK;
+    if (bootCodeLen == BOOT_CODE_LENGTH_MASK) bootCodeLen = 0;
     if (bootCodeLen) {
       if (originalBootCodeInfo & BOOT_CODE_RUN_ALWAYS)
         flags |= SFF_BOOT_CODE_ALWAYS;
