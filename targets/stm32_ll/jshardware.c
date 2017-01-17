@@ -40,6 +40,8 @@
 #include "stm32l4xx_ll_tim.h"
 #include "stm32l4xx_ll_i2c.h"
 #include "stm32l4xx_ll_spi.h"
+#include "stm32l4xx_ll_adc.h"
+#include "stm32l4xx_ll_cortex.h"
 
 #include "stm32l4xx_hal.h" // Used for flash management
 
@@ -206,6 +208,45 @@ static ALWAYS_INLINE uint8_t stmPortSource(Pin pin) {
   jsExceptionHere(JSET_INTERNALERROR, "stmPortSource");
   return LL_SYSCFG_EXTI_PORTA;
 #endif
+}
+
+static ALWAYS_INLINE ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
+  if (analog & JSH_ANALOG1) return ADC1;
+#ifdef ADC2
+  if (analog & JSH_ANALOG2) return ADC2;
+#endif
+#ifdef ADC3
+  if (analog & JSH_ANALOG3) return ADC3;
+#endif
+#ifdef ADC4
+  if (analog & JSH_ANALOG4) return ADC4;
+#endif
+  jsExceptionHere(JSET_INTERNALERROR, "stmADC");
+  return ADC1;
+}
+
+static ALWAYS_INLINE uint32_t stmADCChannel(JsvPinInfoAnalog analog) {
+  switch (analog & JSH_MASK_ANALOG_CH) {
+  case JSH_ANALOG_CH0  : return LL_ADC_CHANNEL_0;
+  case JSH_ANALOG_CH1  : return LL_ADC_CHANNEL_1;
+  case JSH_ANALOG_CH2  : return LL_ADC_CHANNEL_2;
+  case JSH_ANALOG_CH3  : return LL_ADC_CHANNEL_3;
+  case JSH_ANALOG_CH4  : return LL_ADC_CHANNEL_4;
+  case JSH_ANALOG_CH5  : return LL_ADC_CHANNEL_5;
+  case JSH_ANALOG_CH6  : return LL_ADC_CHANNEL_6;
+  case JSH_ANALOG_CH7  : return LL_ADC_CHANNEL_7;
+  case JSH_ANALOG_CH8  : return LL_ADC_CHANNEL_8;
+  case JSH_ANALOG_CH9  : return LL_ADC_CHANNEL_9;
+  case JSH_ANALOG_CH10  : return LL_ADC_CHANNEL_10;
+  case JSH_ANALOG_CH11  : return LL_ADC_CHANNEL_11;
+  case JSH_ANALOG_CH12  : return LL_ADC_CHANNEL_12;
+  case JSH_ANALOG_CH13  : return LL_ADC_CHANNEL_13;
+  case JSH_ANALOG_CH14  : return LL_ADC_CHANNEL_14;
+  case JSH_ANALOG_CH15  : return LL_ADC_CHANNEL_15;
+  case JSH_ANALOG_CH16  : return LL_ADC_CHANNEL_16;
+  case JSH_ANALOG_CH17  : return LL_ADC_CHANNEL_17;
+  default: jsExceptionHere(JSET_INTERNALERROR, "stmADCChannel"); return 0;
+  }
 }
 
 static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
@@ -500,7 +541,7 @@ ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
     GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_HIGH;
   } else {
     GPIO_InitStructure.Mode = LL_GPIO_MODE_INPUT;
-    if (state==JSHPINSTATE_ADC_IN) GPIO_InitStructure.Mode = LL_GPIO_MODE_INPUT;
+    if (state==JSHPINSTATE_ADC_IN) GPIO_InitStructure.Mode = LL_GPIO_MODE_ANALOG;
   }
   GPIO_InitStructure.Pull = pulldown ? LL_GPIO_PULL_DOWN : (pullup ? LL_GPIO_PULL_UP : LL_GPIO_PULL_NO);
   GPIO_InitStructure.Pin = stmPin(pin);
@@ -1103,12 +1144,141 @@ bool jshPinGetValue(Pin pin){
 	  return LL_GPIO_IsInputPinSet(stmPort(pin), stmPin(pin)) != 0;
 }
 
+// ----------------------------------------------------------------------------
+
+
+/* defines related to ADC operations
+ * (See L4 reference manual and examples for more details) */
+#define ADC_CALIBRATION_TIMEOUT_MS        ((uint32_t)   1)
+#define ADC_ENABLE_TIMEOUT_MS             ((uint32_t)   1)
+#define ADC_DISABLE_TIMEOUT_MS            ((uint32_t)   1)
+#define ADC_STOP_CONVERSION_TIMEOUT_MS    ((uint32_t)   1)
+#define ADC_CONVERSION_TIMEOUT_MS         ((uint32_t) 500)
+
+#define ADC_DELAY_CALIB_ENABLE_CPU_CYCLES (LL_ADC_DELAY_CALIB_ENABLE_ADC_CYCLES * 32) // Delay between ADC end of calibration and ADC enable.
+
+#define VDDA_APPLI                        ((uint32_t)3300) // analog reference voltage in mV (Vref+)
+#define ADC_UNITARY_CONVERSION_TIMEOUT_MS ((uint32_t)   1)
+
+static NO_INLINE int jshAnalogRead(Pin pin, JsvPinInfoAnalog analog, bool fastConversion) {
+  uint32_t value = -1;
+  uint32_t wait_loop_index = 0;
+  uint32_t Timeout = 0;
+  IRQn_Type adcIRQ;
+  ADC_TypeDef *ADCx = stmADC(analog);
+
+  /* Connect GPIO analog switch to ADC input */
+  LL_GPIO_EnablePinAnalogControl(stmPort(pin), stmPin(pin));
+
+  if(ADCx == ADC1 || ADCx == ADC2) {
+    adcIRQ = ADC1_2_IRQn;
+  }else if(ADCx == ADC3) {
+    adcIRQ = ADC3_IRQn;
+  }else {
+    jsExceptionHere(JSET_INTERNALERROR, "jshAnalogRead: Unknown ADC %d", (int)ADCx);
+  }
+
+  NVIC_SetPriority(adcIRQ, 0);
+  NVIC_EnableIRQ(adcIRQ);
+
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ADC);
+
+  /* Set ADC clock (conversion clock) common to several ADC instances */
+  LL_ADC_SetCommonClock(__LL_ADC_COMMON_INSTANCE(ADCx), LL_ADC_CLOCK_SYNC_PCLK_DIV2);
+
+  /* ADC settings */
+  LL_ADC_REG_SetTriggerSource(ADCx, LL_ADC_REG_TRIG_SOFTWARE);
+  LL_ADC_REG_SetContinuousMode(ADCx, LL_ADC_REG_CONV_SINGLE);
+  LL_ADC_REG_SetOverrun(ADCx, LL_ADC_REG_OVR_DATA_OVERWRITTEN);
+  LL_ADC_REG_SetSequencerLength(ADCx, LL_ADC_REG_SEQ_SCAN_DISABLE);
+  LL_ADC_REG_SetSequencerRanks(ADCx, LL_ADC_REG_RANK_1, stmADCChannel(analog));
+  LL_ADC_SetChannelSamplingTime(ADCx, stmADCChannel(analog), LL_ADC_SAMPLINGTIME_47CYCLES_5);
+
+  /* Enable interruption ADC group regular overrun */
+  LL_ADC_EnableIT_OVR(ADCx);
+
+  /* Disable ADC deep power down (enabled by default after reset state) */
+  LL_ADC_DisableDeepPowerDown(ADCx);
+
+  /* Enable ADC internal voltage regulator */
+  LL_ADC_EnableInternalRegulator(ADCx);
+
+  /* Delay for ADC internal voltage regulator stabilization.                */
+  /* Compute number of CPU cycles to wait for, from delay in us.            */
+  /* Note: Variable divided by 2 to compensate partially                    */
+  /*       CPU processing cycles (depends on compilation optimization).     */
+  wait_loop_index = ((LL_ADC_DELAY_INTERNAL_REGUL_STAB_US * (SystemCoreClock / (100000 * 2))) / 10);
+  while(wait_loop_index != 0){
+    wait_loop_index--;
+  }
+
+  /* Run ADC self calibration */
+  LL_ADC_StartCalibration(ADCx, LL_ADC_SINGLE_ENDED);
+
+  /* Poll for ADC effectively calibrated */
+  Timeout = ADC_CALIBRATION_TIMEOUT_MS;
+
+  while (LL_ADC_IsCalibrationOnGoing(ADCx) != 0){
+    if (LL_SYSTICK_IsActiveCounterFlag()){
+      if(Timeout-- == 0){
+        jsiConsolePrintf("\n  jshAnalogRead Timeout !!!");
+      }
+    }
+  }
+
+  /* Delay between ADC end of calibration and ADC enable.                   */
+  /* Note: Variable divided by 2 to compensate partially                    */
+  /*       CPU processing cycles (depends on compilation optimization).     */
+  wait_loop_index = (ADC_DELAY_CALIB_ENABLE_CPU_CYCLES >> 1);
+  while(wait_loop_index != 0){
+    wait_loop_index--;
+  }
+
+  /* Enable ADC */
+  LL_ADC_Enable(ADCx);
+
+  /* Poll for ADC ready to convert */
+  Timeout = ADC_ENABLE_TIMEOUT_MS;
+
+  while (LL_ADC_IsActiveFlag_ADRDY(ADCx) == 0){
+    if (LL_SYSTICK_IsActiveCounterFlag()){
+      if(Timeout-- == 0){
+        jsiConsolePrintf("\n  jshAnalogRead Timeout !!!");
+	  }
+    }
+  }
+
+  /* Perform ADC group regular conversion start, poll for conversion        */
+  LL_ADC_REG_StartConversion(ADCx);
+
+  Timeout = ADC_UNITARY_CONVERSION_TIMEOUT_MS;
+  while (LL_ADC_IsActiveFlag_EOC(ADCx) == 0){
+    if (LL_SYSTICK_IsActiveCounterFlag()){
+      if(Timeout-- == 0){
+        jsiConsolePrintf("\n  jshAnalogRead Timeout !!!");
+	  }
+    }
+  }
+
+  /* Retrieve ADC conversion data */
+  /* (data scale corresponds to ADC resolution: 12 bits) */
+  value = LL_ADC_REG_ReadConversionData12(ADCx);
+
+  return value;
+}
 
 /** Returns an analog value between 0 and 1. 0 is expected to be 0v, and
  * 1 means jshReadVRef() volts. On most devices jshReadVRef() would return
  * around 3.3, so a reading of 1 represents 3.3v. */
 JsVarFloat jshPinAnalog(Pin pin){
-        return;
+  if (pin >= JSH_PIN_COUNT /* inc PIN_UNDEFINED */ || pinInfo[pin].analog==JSH_ANALOG_NONE) {
+    jshPrintCapablePins(pin, "Analog Input", 0,0,0,0, true);
+    return 0;
+  }
+  if (!jshGetPinStateIsManual(pin))
+    jshPinSetState(pin, JSHPINSTATE_ADC_IN);
+
+  return jshAnalogRead(pin, pinInfo[pin].analog, false) / (JsVarFloat)4095;
 }
 
 
@@ -1116,7 +1286,7 @@ JsVarFloat jshPinAnalog(Pin pin){
  * This is basically `jshPinAnalog()*65535`
  * For use from an IRQ where high speed is needed */
 int jshPinAnalogFast(Pin pin){
-        return;
+        return jshPinAnalog(pin)*65535;
 }
 
 
@@ -1787,7 +1957,7 @@ JsVarFloat jshReadTemperature(){
 
 /// The voltage that a reading of 1 from `analogRead` actually represents, in volts
 JsVarFloat jshReadVRef(){
-        return;
+        return 3.3;
 }
 
 /** Get a random number - either using special purpose hardware or by
