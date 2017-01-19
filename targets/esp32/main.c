@@ -13,6 +13,7 @@
 #include "jshardwareUart.h"
 #include "jshardwareAnalog.h"
 #include "jshardwareTimer.h"
+#include "jshardwarePWM.h"
 
 #include "esp_spi_flash.h"
 
@@ -42,6 +43,7 @@ static void timerTask(void *data) {
 
 static void espruinoTask(void *data) {
   vTaskDelay(1000 / portTICK_PERIOD_MS);
+  PWMInit();
   jshInit();     // Initialize the hardware
   jsvInit();     // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
@@ -68,6 +70,7 @@ int app_main(void)
 #else
   xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", 10000, NULL, 5, NULL, 0);
   xTaskCreatePinnedToCore(&uartTask,"uartTask",2000,NULL,20,NULL,0);
+  xtaskCreatePinnedToCore(&timerTask,"timerTask",2048,NULL,19,NULL,0);
 #endif
   return 0;
 }

@@ -28,6 +28,7 @@
 #include "jshardware.h"
 #include "jshardwareAnalog.h"
 #include "jshardwareTimer.h"
+#include "jshardwarePWM.h"
 
 #include "jsutils.h"
 #include "jstimer.h"
@@ -330,11 +331,16 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
     JshAnalogOutputFlags flags) { // if freq<=0, the default is used
   UNUSED(freq);
   UNUSED(flags);
-  value = (value * 256);
-  uint8_t val = value;
   if(pin == 25 || pin == 26){
-	writeDAC(pin,val);
+    value = (value * 256);
+    uint8_t val8 = value;
+	writeDAC(pin,val8);
   }
+  else{
+	value = (value * PWMTimerRange);
+	uint16_t val16 = value;
+	writePWM(pin,val16,(int) freq);
+  }	
   return 0;
 }
 
@@ -343,11 +349,19 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
  *
  */
 void jshSetOutputValue(JshPinFunction func, int value) {
-  UNUSED(func);
-  UNUSED(value);
-  ESP_LOGD(tag,">> JshPinFunction");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< JshPinFunction");
+  int pin;
+  if (JSH_PINFUNCTION_IS_DAC(func)) {
+	uint8_t val = (uint8_t)(value >> 8);
+	switch (func & JSH_MASK_INFO) {
+	  case JSH_DAC_CH1:  writeDAC(25,val); break;
+      case JSH_DAC_CH2:  writeDAC(26,val); break;
+    }
+  }
+  else{
+	pin = ((func >> JSH_SHIFT_INFO) << 4) + ((func >> JSH_SHIFT_TYPE) & 15);
+	value >> (16 - PWMTimerBit);
+	setPWM(pin,value);
+  }
 }
 
 

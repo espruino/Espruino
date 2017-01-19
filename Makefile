@@ -1007,12 +1007,13 @@ ifdef USE_NET
   targets/esp32/i2c.c \
   targets/esp32/spi.c \
   targets/esp32/jshardwareUart.c \
-  targets/esp32/jshardwareAnalog.c
+  targets/esp32/jshardwareAnalog.c \
+  targets/esp32/jshardwarePWM.c \
+  targets/esp32/rtosutil.c \
+  targets/esp32/jshardwareTimer.c
   ifdef RTOS
    DEFINES += -DRTOS
    WRAPPERSOURCES += targets/esp32/jswrap_rtos.c
-   SOURCES += targets/esp32/rtosutil.c \
-     targets/esp32/jshardwareTimer.c
   endif # RTOS
  endif # USE_ESP32
  
@@ -2019,14 +2020,6 @@ else ifdef ESP32
 
 ESP_ZIP     = $(PROJ_NAME).tgz
 
-$(ESP_ZIP): espruino_esp32.bin
-	$(Q)rm -rf build/$(basename $(ESP_ZIP))
-	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
-	$(Q)cp $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
-	  espruino_esp32.bin \
-	  $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin \
-	  build/$(basename $(ESP_ZIP))
-	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
 
 proj: $(OBJS) $(ESP_ZIP)
 	$(LD) $(LDFLAGS) -o espruino_esp32.elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
@@ -2037,6 +2030,16 @@ proj: $(OBJS) $(ESP_ZIP)
 	--flash_freq "40m" \
 	-o espruino_esp32.bin \
 	espruino_esp32.elf
+
+$(ESP_ZIP): espruino_esp32.bin
+	$(Q)rm -rf build/$(basename $(ESP_ZIP))
+	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
+	$(Q)cp $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
+	  espruino_esp32.bin \
+	  $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin \
+	  targets/esp32/README_flash.txt \
+	  build/$(basename $(ESP_ZIP))
+	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
 
 flash:
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
