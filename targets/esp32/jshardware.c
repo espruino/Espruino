@@ -106,7 +106,6 @@ void IRAM_ATTR gpio_intr_test(void* arg){
  * Initialize the JavaScript hardware interface.
  */
 void jshInit() {
-  ESP_LOGD(tag,">> jshInit");
   //uint32_t freeHeapSize = esp_get_free_heap_size();
   //ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
   spi_flash_init();
@@ -121,7 +120,6 @@ void jshInit() {
   for (int i=0; i<JSH_PIN_COUNT; i++) {
     g_pinState[i] = 0;
   }
-  ESP_LOGD(tag,"<< jshInit");
 } // End of jshInit
 
 
@@ -129,18 +127,14 @@ void jshInit() {
  * Reset the Espruino environment.
  */
 void jshReset() {
-  ESP_LOGD(tag,">> jshReset");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshReset");
+  jsError(">> jshReset Not implemented");
 }
 
 /**
  * Re-init the ESP32 after a soft-reset
  */
 void jshSoftInit() {
-  ESP_LOGD(tag,">> jshSoftInit");
   jswrap_ESP32_wifi_soft_init();
-  ESP_LOGD(tag,"<< jshSoftInit");
 }
 
 /**
@@ -149,29 +143,14 @@ void jshSoftInit() {
  * Nothing is needed on the ESP32.
  */
 void jshIdle() {
-  //ESP_LOGD(tag,">> jshIdle");  // Can't debug log as called too often.
-  // Here we poll the serial input looking for a new character which, if we
-  // find, we add to the input queue of input events.  This is going to be
-  // wrong for a variety of reasons including:
-  //
-  // * What if we want to use the serial for data input?
-  // * Busy polling is never good ... we should eventually use an interrupt
-  //   driven mechanism.
-  //
-  //char rxChar;
-  //STATUS status = uart_rx_one_char((uint8_t *)&rxChar);
-  //if (status == OK) {
-  //  jshPushIOCharEvents(EV_SERIAL1, &rxChar, 1);
-  // }
-  //ESP_LOGD(tag,"<< jshIdle");  // Can't debug log as called too often.
+
 }
 
 // ESP32 chips don't have a serial number but they do have a MAC address
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
-  ESP_LOGD(tag,">> jshGetSerialNumber");
   assert(maxChars >= 6); // it's 32
   esp_wifi_get_mac(WIFI_IF_STA, data);
-  ESP_LOGD(tag,"<< jshGetSerialNumber %.2x%.2x%.2x%.2x%.2x%.2x",
+  jsError("<< jshGetSerialNumber %.2x%.2x%.2x%.2x%.2x%.2x",
       data[0], data[1], data[2], data[3], data[4], data[5]);
   return 6;
 }
@@ -193,8 +172,6 @@ void jshInterruptOn()  {
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
   UNUSED(timeUntilWake);
-  //ESP_LOGD(tag,">> jshSleep");  // Can't debug log as called too often.
-  //ESP_LOGD(tag,"<< jshSleep");  // Can't debug log as called too often.
    return true;
 } // End of jshSleep
 
@@ -308,17 +285,11 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
 
 
 JsVarFloat jshPinAnalog(Pin pin) {
-  //ESP_LOGD(tag,">> jshPinAnalog: pin=%d", pin);
-  //ESP_LOGD(tag, "Not implemented");
-  //ESP_LOGD(tag,"<< jshPinAnalog");
   return (JsVarFloat) readADC(pin) / 4096;
 }
 
 
 int jshPinAnalogFast(Pin pin) {
-  //ESP_LOGD(tag,">> jshPinAnalogFast: pin=%d", pin);
-  //ESP_LOGD(tag, "Not implemented");
-  //ESP_LOGD(tag,"<< jshPinAnalogFast");
   return readADC(pin) << 4;
 }
 
@@ -330,7 +301,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
     JsVarFloat value,
     JsVarFloat freq,
     JshAnalogOutputFlags flags) { // if freq<=0, the default is used
-  UNUSED(freq);
   UNUSED(flags);
   if(pin == 25 || pin == 26){
     value = (value * 256);
@@ -371,17 +341,13 @@ void jshSetOutputValue(JshPinFunction func, int value) {
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
   UNUSED(timeout);
-  ESP_LOGD(tag,">> jshEnableWatchDog");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshEnableWatchDog");
+  jsError(tag,">> jshEnableWatchDog Not implemented");
 }
 
 
 // Kick the watchdog
 void jshKickWatchDog() {
-  ESP_LOGD(tag,">> jshKickWatchDog");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshKickWatchDog");
+  jsError(tag,">> jshKickWatchDog Not implemented");
 }
 
 
@@ -480,13 +446,10 @@ bool jshIsEventForPin(
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   UNUSED(device);
   UNUSED(inf);
-  ESP_LOGD(tag,">> jshUSARTSetup");
-  ESP_LOGD(tag,"<< jshUSARTSetup");
+  jsError(">> jshUSARTSetup nt implemeted");
 }
 
 bool jshIsUSBSERIALConnected() {
-  ESP_LOGD(tag,">> jshIsUSBSERIALConnected");
-  ESP_LOGD(tag,"<< jshIsUSBSERIALConnected");
   return false; // "On non-USB boards this just returns false"
 }
 
@@ -497,13 +460,11 @@ bool jshIsUSBSERIALConnected() {
 void jshUSARTKick(
     IOEventFlags device //!< The device to be kicked.
 ) {
-    //ESP_LOGD(tag,">> jshUSARTKick");
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
     uart_tx_one_char((uint8_t)c);
     c = jshGetCharToTransmit(device);
   }
-  //ESP_LOGD(tag,"<< jshUSARTKick");
 }
 
 //===== System time stuff =====
@@ -569,8 +530,7 @@ void jshUtilTimerReschedule(JsSysTime period) {
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
   UNUSED(device);
-  ESP_LOGD(tag,">> jshIsDeviceInitialised");
-  ESP_LOGD(tag,"<< jshIsDeviceInitialised");
+  jsError(">> jshIsDeviceInitialised not implemented");
  return 0;
 } // End of jshIsDeviceInitialised
 
@@ -582,15 +542,11 @@ JsVarFloat jshReadTemperature() {
 
 // the esp8266 can read the VRef but then there's no analog input, so we don't support this
 JsVarFloat jshReadVRef() {
-  ESP_LOGD(tag,">> jshReadVRef");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshReadVRef");
+  jsError(">> jshReadVRef Not implemented");
   return NAN;
 }
 
 unsigned int jshGetRandomNumber() {
-  ESP_LOGD(tag,">> jshGetRandomNumber");
-  ESP_LOGD(tag,"<< jshGetRandomNumber");
   return (unsigned int)rand();
 }
 
@@ -686,9 +642,7 @@ void jshFlashErasePage(
 
 unsigned int jshSetSystemClock(JsVar *options) {
   UNUSED(options);
-  ESP_LOGD(tag,">> jshSetSystemClock");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshSetSystemClock");
+  jsError(">> jshSetSystemClock Not implemented");
   return 0;
 }
 
@@ -698,6 +652,6 @@ unsigned int jshSetSystemClock(JsVar *options) {
 gpio_num_t pinToESP32Pin(Pin pin) {
   if ( pin < 40 ) 
 	return pin + GPIO_NUM_0;
-  ESP_LOGE(tag, "pinToESP32Pin: Unknown pin: %d", pin);
+  jsError( "pinToESP32Pin: Unknown pin: %d", pin);
   return -1;
 }
