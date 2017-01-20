@@ -1010,7 +1010,8 @@ ifdef USE_NET
   targets/esp32/jshardwareAnalog.c \
   targets/esp32/jshardwarePWM.c \
   targets/esp32/rtosutil.c \
-  targets/esp32/jshardwareTimer.c
+  targets/esp32/jshardwareTimer.c \
+  targets/esp32/jshardwarePulse.c
   ifdef RTOS
    DEFINES += -DRTOS
    WRAPPERSOURCES += targets/esp32/jswrap_rtos.c

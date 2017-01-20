@@ -29,6 +29,7 @@
 #include "jshardwareAnalog.h"
 #include "jshardwareTimer.h"
 #include "jshardwarePWM.h"
+#include "jshardwarePulse.h"
 
 #include "jsutils.h"
 #include "jstimer.h"
@@ -114,7 +115,7 @@ void jshInit() {
   jshInitDevices();
   //if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
   //  jsError("JshPinState #defines have changed, please update pinStateToString()");
-  //}
+  // }
   gpio_isr_register(gpio_intr_test,NULL,0,NULL);  //changed to automatic assign of interrupt
    // Initialize something for each of the possible pins.
   for (int i=0; i<JSH_PIN_COUNT; i++) {
@@ -403,10 +404,8 @@ void jshPinPulse(
     bool pulsePolarity,   //!< The value to be pulsed into the pin.
     JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
 ) {
-  UNUSED(pulseTime);
-  ESP_LOGD(tag,">> jshPinPulse: pin=%d, polarity=%d", pin, pulsePolarity);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshPinPulse");
+  int duration = (int)pulseTime * 1000; //from millisecs to microsecs
+  sendPulse(pin, pulsePolarity, duration);
 }
 
 

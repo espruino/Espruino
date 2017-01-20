@@ -14,6 +14,7 @@
 #include "jshardwareAnalog.h"
 #include "jshardwareTimer.h"
 #include "jshardwarePWM.h"
+#include "jshardwarePulse.h"
 
 #include "esp_spi_flash.h"
 
@@ -44,6 +45,7 @@ static void timerTask(void *data) {
 static void espruinoTask(void *data) {
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   PWMInit();
+  RMTInit();
   jshInit();     // Initialize the hardware
   jsvInit();     // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
