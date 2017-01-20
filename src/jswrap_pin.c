@@ -175,6 +175,8 @@ void jswrap_pin_mode(JsVar *parent, JsVar *mode) {
 }
 Toggles the state of the pin from off to on, or from on to off.
 
+**Note:** This method doesn't currently work on the ESP8266 port of Espruino.
+
 **Note:** if you didn't call `pinMode` beforehand then this function will also reset the pin's state to `"output"`
 */
 void jswrap_pin_toggle(JsVar *parent) {
