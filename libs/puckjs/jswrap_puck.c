@@ -273,9 +273,9 @@ JsVar *jswrap_puck_mag() {
   "name" : "mag"
 }
 Called after `Puck.magOn()` every time magnetometer data
-is discovered. There is one argument which is an object
-of the form `{x,y,z}' containing magnetometer readings
-as integers (for more information see `Puck.mag()`.
+is sampled. There is one argument which is an object
+of the form `{x,y,z}` containing magnetometer readings
+as integers (for more information see `Puck.mag()`).
  */
 
 /*JSON{
@@ -284,10 +284,10 @@ as integers (for more information see `Puck.mag()`.
   "name" : "magOn",
   "generate" : "jswrap_puck_magOn",
   "params" : [
-      ["samplerate","float","The Samplerate in Hz, or undefined"]
+      ["samplerate","float","The sample rate in Hz, or undefined"]
   ]
 }
-Turn the magnetometer on and configure it. Samples will then cause
+Turn the magnetometer on and start periodic sampling. Samples will then cause
 a 'mag' event on 'Puck':
 
 ```
@@ -298,21 +298,26 @@ Puck.on('mag', function(xyz) {
 // Turn events off with Puck.magOff();
 ```
 
-This call will be ignored if the magnetometer is already on.
+This call will be ignored if the sampling is already on.
 
-If given an argument, the sample rate is set (if not, it's at 0.63Hz). The sample rate should be one of the following:
+If given an argument, the sample rate is set (if not, it's at 0.63 Hz). 
+The sample rate must be one of the following (resulting in the given power consumption):
 
-* 80 Hz -  900uA
-* 40 Hz -  550uA
-* 20 Hz -  275uA
-* 10 Hz -  137uA
-* 5 Hz -  69uA
-* 2.5 Hz -  34uA
-* 1.25 Hz -  17uA
-* 0.63 Hz -  8uA
-* 0.31 Hz -  8uA
-* 0.16 Hz -  8uA
+* 80 Hz - 900uA
+* 40 Hz - 550uA
+* 20 Hz - 275uA
+* 10 Hz - 137uA
+* 5 Hz - 69uA
+* 2.5 Hz - 34uA
+* 1.25 Hz - 17uA
+* 0.63 Hz - 8uA
+* 0.31 Hz - 8uA
+* 0.16 Hz - 8uA
 * 0.08 Hz - 8uA
+
+When the battery level drops too low while sampling is turned on,
+the magnetometer may stop sampling without warning, even while other
+Puck functions continue uninterrupted.
 
 */
 void jswrap_puck_magOn(JsVarFloat hz) {
@@ -431,7 +436,10 @@ int jswrap_puck_capSense(Pin tx, Pin rx) {
     "generate" : "jswrap_puck_light",
     "return" : ["float", "A light value from 0 to 1" ]
 }
-Read a light value based on the light the red LED is seeing
+Return a light value based on the light the red LED is seeing.
+
+**Note:** If called more than 5 times per second, the received light value
+may not be accurate.
 */
 JsVarFloat jswrap_puck_light() {
   // If pin state wasn't an analog input before, make it one now,
@@ -443,7 +451,8 @@ JsVarFloat jswrap_puck_light() {
     jshPinAnalog(LED1_PININDEX);// analog
     jshDelayMicroseconds(5000);
   }
-  JsVarFloat f = jshPinAnalog(LED1_PININDEX)/0.45;
+  JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
+  JsVarFloat f = jshPinAnalog(LED1_PININDEX)*v/(3*0.45);
   if (f>1) f=1;
   // turn the red LED back on if it was on before
   if (s & JSHPINSTATE_PIN_IS_ON)
@@ -460,11 +469,11 @@ JsVarFloat jswrap_puck_light() {
     "return" : ["int", "A percentage between 0 and 100" ]
 }
 Return an approximate battery percentage remaining based on
-a normal CR2032 battery (2.8 - 2.0v)
+a normal CR2032 battery (2.8 - 2.2v)
 */
 int jswrap_puck_getBatteryPercentage() {
   JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
-  int pc = (v-2.0)*100/0.8;
+  int pc = (v-2.2)*100/0.6;
   if (pc>100) pc=100;
   if (pc<0) pc=0;
   return pc;

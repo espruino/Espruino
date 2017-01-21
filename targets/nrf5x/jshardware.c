@@ -1219,7 +1219,11 @@ JsVarFloat jshReadVRef() {
  * default to `rand()`
  */
 unsigned int jshGetRandomNumber() {
-  return (unsigned int) nrf_utils_get_random_number();
+  unsigned int v = 0;
+  uint8_t bytes_avail = 0;
+  WAIT_UNTIL((sd_rand_application_bytes_available_get(&bytes_avail),bytes_avail>=sizeof(v)),"Random number");
+  sd_rand_application_vector_get(&v, sizeof(v));
+  return v;
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {

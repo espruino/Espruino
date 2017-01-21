@@ -1,3 +1,6 @@
+     1v92 : nRF5x: Fix issue where Espruino could crash during save() if the flash got into a strange state
+            Added Pin.toggle() function
+
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
             Fix regression where HTTPS without cert/ca or key failed
@@ -6,6 +9,16 @@
             Fix bug that caused load() not to clear memory if only E.setBootCode was used
             microbit: Update Espruino with pin polarity, so saved code gets loaded without BTN1 pressed
             Fix bug that caused Bluetooth/TV/USB objects to be added in devices that didn't support them (fix #832)
+            nRF52: Increase custom UUID count from 3 to 10
+            Adding Global built-in objects like SPI1/Serial1 and Bluetooth to the docs
+            Puck.js: Tweak battery percentage calculation to try and make it more linear
+            Puck.js: Adjust Puck.light() levels based on battery percentage (and add comments)
+            nRF5x: Fix E.hwRand() (fix #1010)
+            Ensure tab complete/others include the Object proto even on functions/strings
+            nRF5x: Add NRF.restart() to force the restart of the Bluetooth Softdevice if required
+            nRF5x: Add E.setLowPowerConnection(bool) to allow continuous connections to Puck.js (fix #995)
+            Allow implicit conversion of hexadecimal strings to numbers (fix #1016)
+            Allow arrow functions inside nonexecuting functions (fix #1011)
 
      1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
             Fix arrow function bug when parsing multiple arguments

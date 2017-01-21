@@ -48,6 +48,7 @@ void jswrap_nrf_kill();
 void jswrap_nrf_bluetooth_disconnect();
 void jswrap_nrf_bluetooth_sleep();
 void jswrap_nrf_bluetooth_wake();
+void jswrap_nrf_bluetooth_restart();
 JsVar *jswrap_nrf_bluetooth_getAddress();
 
 JsVarFloat jswrap_nrf_bluetooth_getBattery();
@@ -58,6 +59,7 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback);
 void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *timeout);
 void jswrap_nrf_bluetooth_setRSSIHandler(JsVar *callback);
 void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr);
+void jswrap_nrf_bluetooth_setLowPowerConnection(bool lowPower);
 
 void jswrap_nrf_nfcURL(JsVar *url);
 void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback);

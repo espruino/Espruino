@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------/
-/  FatFs - FAT file system module include file  R0.10a    (C)ChaN, 2014
+/  FatFs - FAT file system module include file  R0.10c    (C)ChaN, 2014
 /----------------------------------------------------------------------------/
 / FatFs module is a generic FAT file system module for small embedded systems.
 / This is a free software that opened for education, research and commercial
@@ -15,7 +15,7 @@
 /----------------------------------------------------------------------------*/
 
 #ifndef _FATFS
-#define _FATFS	29000	/* Revision ID */
+#define _FATFS	80376	/* Revision ID */
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,7 +23,6 @@ extern "C" {
 
 #include "integer.h"	/* Basic integer types */
 #include "ffconf.h"		/* FatFs configuration options */
-
 #if _FATFS != _FFCONF
 #error Wrong configuration file (ffconf.h).
 #endif
@@ -53,7 +52,7 @@ extern PARTITION VolToPart[];	/* Volume - Partition resolution table */
 
 #if _LFN_UNICODE			/* Unicode string */
 #if !_USE_LFN
-#error _LFN_UNICODE must be 0 in non-LFN cfg.
+#error _LFN_UNICODE must be 0 at non-LFN cfg.
 #endif
 #ifndef _INC_TCHAR
 typedef WCHAR TCHAR;
@@ -96,7 +95,7 @@ typedef struct {
 #if _FS_RPATH
 	DWORD	cdir;			/* Current directory start cluster (0:root) */
 #endif
-	DWORD	n_fatent;		/* Number of FAT entries (= number of clusters + 2) */
+	DWORD	n_fatent;		/* Number of FAT entries, = number of clusters + 2 */
 	DWORD	fsize;			/* Sectors per FAT */
 	DWORD	volbase;		/* Volume start sector */
 	DWORD	fatbase;		/* FAT start sector */
@@ -113,25 +112,25 @@ typedef struct {
 typedef struct {
 	FATFS*	fs;				/* Pointer to the related file system object (**do not change order**) */
 	WORD	id;				/* Owner file system mount ID (**do not change order**) */
-	BYTE	flag;			/* File status flags */
+	BYTE	flag;			/* Status flags */
 	BYTE	err;			/* Abort flag (error code) */
 	DWORD	fptr;			/* File read/write pointer (Zeroed on file open) */
 	DWORD	fsize;			/* File size */
-	DWORD	sclust;			/* File data start cluster (0:no data cluster, always 0 when fsize is 0) */
-	DWORD	clust;			/* Current cluster of fpter */
-	DWORD	dsect;			/* Current data sector of fpter */
+	DWORD	sclust;			/* File start cluster (0:no cluster chain, always 0 when fsize is 0) */
+	DWORD	clust;			/* Current cluster of fpter (not valid when fprt is 0) */
+	DWORD	dsect;			/* Sector number appearing in buf[] (0:invalid) */
 #if !_FS_READONLY
-	DWORD	dir_sect;		/* Sector containing the directory entry */
-	BYTE*	dir_ptr;		/* Pointer to the directory entry in the window */
+	DWORD	dir_sect;		/* Sector number containing the directory entry */
+	BYTE*	dir_ptr;		/* Pointer to the directory entry in the win[] */
 #endif
 #if _USE_FASTSEEK
 	DWORD*	cltbl;			/* Pointer to the cluster link map table (Nulled on file open) */
 #endif
 #if _FS_LOCK
-	UINT	lockid;			/* File lock ID (index of file semaphore table Files[]) */
+	UINT	lockid;			/* File lock ID origin from 1 (index of file semaphore table Files[]) */
 #endif
 #if !_FS_TINY
-	BYTE	buf[_MAX_SS];	/* File data read/write buffer */
+	BYTE	buf[_MAX_SS];	/* File private data read/write window */
 #endif
 } FIL;
 
@@ -226,7 +225,7 @@ FRESULT f_chdir (const TCHAR* path);								/* Change current directory */
 FRESULT f_chdrive (const TCHAR* path);								/* Change current drive */
 FRESULT f_getcwd (TCHAR* buff, UINT len);							/* Get current directory */
 FRESULT f_getfree (const TCHAR* path, DWORD* nclst, FATFS** fatfs);	/* Get number of free clusters on the drive */
-FRESULT f_getlabel (const TCHAR* path, TCHAR* label, DWORD* sn);	/* Get volume label */
+FRESULT f_getlabel (const TCHAR* path, TCHAR* label, DWORD* vsn);	/* Get volume label */
 FRESULT f_setlabel (const TCHAR* label);							/* Set volume label */
 FRESULT f_mount (FATFS* fs, const TCHAR* path, BYTE opt);			/* Mount/Unmount a logical drive */
 FRESULT f_mkfs (const TCHAR* path, BYTE sfd, UINT au);				/* Create a file system on the volume */
@@ -236,7 +235,7 @@ int f_puts (const TCHAR* str, FIL* cp);								/* Put a string to the file */
 int f_printf (FIL* fp, const TCHAR* str, ...);						/* Put a formatted string to the file */
 TCHAR* f_gets (TCHAR* buff, int len, FIL* fp);						/* Get a string from the file */
 
-#define f_eof(fp) (((fp)->fptr == (fp)->fsize) ? 1 : 0)
+#define f_eof(fp) ((int)((fp)->fptr == (fp)->fsize))
 #define f_error(fp) ((fp)->err)
 #define f_tell(fp) ((fp)->fptr)
 #define f_size(fp) ((fp)->fsize)
@@ -252,7 +251,7 @@ TCHAR* f_gets (TCHAR* buff, int len, FIL* fp);						/* Get a string from the fil
 /* Additional user defined functions                            */
 
 /* RTC function */
-#if !_FS_READONLY
+#if !_FS_READONLY && !_FS_NORTC
 DWORD get_fattime (void);
 #endif
 
