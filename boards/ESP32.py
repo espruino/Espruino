@@ -133,13 +133,13 @@ boards = [ board_esp12, board_esp01 ];
 
 def get_pins():
 
-  pins = pinutils.generate_pins(0,19);
-
+  pins = pinutils.generate_pins(0,5);
+#6-11 are used by Flash chip
   pins.extend(pinutils.generate_pins(21,22));
 
   pins.extend(pinutils.generate_pins(25,27));
-
-  pins.extend(pinutils.generate_pins(32,39));
+#32-33 are routed to rtc for xtal
+  pins.extend(pinutils.generate_pins(34,39));
 
   pins = pinutils.fill_gaps_in_pin_list(pins);
   
