@@ -374,7 +374,7 @@ JsVar *jswrap_net_createServer(JsVar *callback) {
   "return" : ["JsVar","Returns a new net.Socket object"],
   "return_object" : "Socket"
 }
-Create a socket connection
+Create a TCP socket connection
 */
 JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType) {
   bool unlockOptions = false;
@@ -415,6 +415,32 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
 
   return rq;
 }
+
+/*JSON{
+  "type" : "library",
+  "class" : "dgram"
+}
+This library allows you to create UDP/DATAGRAM servers and clients
+
+In order to use this, you will need an extra module to get network connectivity.
+
+This is designed to be a cut-down version of the [node.js library](http://nodejs.org/api/dgram.html). Please see the [Internet](/Internet) page for more information on how to use it.
+*/
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "dgram",
+  "name" : "createSocket",
+  "generate_full" : "jswrap_net_connect(options, callback, ST_UDP)",
+  "params" : [
+    ["options","JsVar","An object containing host,port fields"],
+    ["callback","JsVar","A `function(sckt)` that will be called  with the socket when a connection is made. You can then call `sckt.write(...)` to send data, and `sckt.on('data', function(data) { ... })` and `sckt.on('close', function() { ... })` to deal with the response."]
+  ],
+  "return" : ["JsVar","Returns a new net.Socket object"],
+  "return_object" : "Socket"
+}
+Create a UDP socket
+*/
 
 
 // ---------------------------------------------------------------------------------

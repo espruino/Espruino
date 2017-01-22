@@ -643,7 +643,7 @@ bool socketIdle(JsNetwork *net) {
           // Normal sockets
           JsVar *sock = jspNewObject(0, "Socket");
           if (sock) { // out of memory?
-            socketSetType(sock, ST_NORMAL);
+            socketSetType(sock, socketType);
             JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS, true);
             if (arr) {
               jsvArrayPush(arr, sock);

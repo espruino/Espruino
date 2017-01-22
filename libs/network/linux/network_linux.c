@@ -66,14 +66,18 @@ bool net_linux_checkError(JsNetwork *net) {
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
 int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType) {
   NOT_USED(net);
+  int ippProto = socketType & ST_UDP ? IPPROTO_UDP : IPPROTO_TCP;
+  int scktType = socketType & ST_UDP ? SOCK_DGRAM : SOCK_STREAM;
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
     sockaddr_in       sin;
     sin.sin_family = AF_INET;
-    sin.sin_port = htons( port );
 
-    sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (sckt<0) return sckt; // error
+    sckt = socket(AF_INET, scktType, ippProto);
+    if (sckt<0) {
+      jsError("Socket creation failed");
+      return sckt; // error
+    }
 
     // turn on non-blocking mode
     #ifdef WIN_OS
@@ -82,6 +86,7 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, S
     #endif
 
     sin.sin_addr.s_addr = (in_addr_t)host;
+    sin.sin_port = htons( port );
 
     int res = connect(sckt,(struct sockaddr *)&sin, sizeof(sockaddr_in) );
 
@@ -93,7 +98,7 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, S
     #endif
      if (err != EINPROGRESS &&
          err != EWOULDBLOCK) {
-       jsError("Connect failed (err %d)\n", err );
+       jsError("Connect failed (err %d)", err);
        closesocket(sckt);
        return -1;
      }
@@ -101,9 +106,7 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, S
 
   } else { // ------------------------------------------------- no host (=server)
 
-    sckt = socket(AF_INET,           // Go over TCP/IP
-                         SOCK_STREAM,       // This is a stream-oriented socket
-                         IPPROTO_TCP);      // Use TCP rather than UDP
+    sckt = socket(AF_INET, scktType, ippProto);
     if (sckt == INVALID_SOCKET) {
       jsError("Socket creation failed");
       return 0;

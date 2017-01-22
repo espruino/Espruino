@@ -24,8 +24,8 @@
 typedef enum {
   ST_NORMAL = 0, // standard socket client/server
   ST_HTTP   = 1, // HTTP client/server
+  ST_UDP    = 2, // UDP socket client/server
   // WebSockets?
-  // UDP?
 
   ST_TYPE_MASK = 3,
   ST_TLS    = 4, // do the given connection with TLS

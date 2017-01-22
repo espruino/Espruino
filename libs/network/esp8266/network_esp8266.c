@@ -269,16 +269,16 @@ static void dumpEspConn(
     LOG(" - type = UDP\n");
     LOG("   - local_port  = %d\n", pEspConn->proto.udp->local_port);
     LOG("   - local_ip    = %d.%d.%d.%d\n",
-        pEspConn->proto.tcp->local_ip[0],
-        pEspConn->proto.tcp->local_ip[1],
-        pEspConn->proto.tcp->local_ip[2],
-        pEspConn->proto.tcp->local_ip[3]);
+        pEspConn->proto.udp->local_ip[0],
+        pEspConn->proto.udp->local_ip[1],
+        pEspConn->proto.udp->local_ip[2],
+        pEspConn->proto.udp->local_ip[3]);
     LOG("   - remote_port = %d\n", pEspConn->proto.udp->remote_port);
     LOG("   - remote_ip   = %d.%d.%d.%d\n",
-        pEspConn->proto.tcp->remote_ip[0],
-        pEspConn->proto.tcp->remote_ip[1],
-        pEspConn->proto.tcp->remote_ip[2],
-        pEspConn->proto.tcp->remote_ip[3]);
+        pEspConn->proto.udp->remote_ip[0],
+        pEspConn->proto.udp->remote_ip[1],
+        pEspConn->proto.udp->remote_ip[2],
+        pEspConn->proto.udp->remote_ip[3]);
     break;
   default:
     LOG(" - type = Unknown!! 0x%x\n", pEspConn->type);
@@ -545,8 +545,10 @@ static void esp8266_callback_connectCB_inbound(
   //dumpEspConn(pEspconn);
 
   // register callbacks on the new connection
-  espconn_regist_disconcb(pEspconn, esp8266_callback_disconnectCB);
-  espconn_regist_reconcb(pEspconn, esp8266_callback_reconnectCB);
+  if (pEspconn->type == ESPCONN_TCP) {
+    espconn_regist_disconcb(pEspconn, esp8266_callback_disconnectCB);
+    espconn_regist_reconcb(pEspconn, esp8266_callback_reconnectCB);
+  }
   espconn_regist_sentcb(pEspconn, esp8266_callback_sentCB);
   espconn_regist_recvcb(pEspconn, esp8266_callback_recvCB);
 
@@ -998,6 +1000,7 @@ int net_ESP8266_BOARD_createSocket(
 
   // allocate espconn data structure and initialize it
   struct espconn *pEspconn = os_zalloc(sizeof(struct espconn));
+
   esp_tcp *tcp = os_zalloc(sizeof(esp_tcp));
   if (pEspconn == NULL || tcp == NULL) {
     DBG("%s: Out of memory for outbound connection\n", DBG_LIB);
@@ -1007,14 +1010,23 @@ int net_ESP8266_BOARD_createSocket(
     return SOCKET_ERR_MEM;
   }
 
+  if (socketType & ST_UDP) {
+    pEspconn->type    = ESPCONN_UDP;
+
+    // esp_tcp and esp_udp start identically (up to remote_ip)
+    // so we can leave the proto.tcp as an alias to proto.udp
+  } else {
+    pEspconn->type    = ESPCONN_TCP;
+
+    espconn_set_opt(pEspconn, ESPCONN_NODELAY); // disable nagle, don't need the extra delay
+  }
+
   pSocketData->pEspconn = pEspconn;
-  pEspconn->type      = ESPCONN_TCP;
   pEspconn->state     = ESPCONN_NONE;
   pEspconn->proto.tcp = tcp;
   tcp->remote_port    = port;
   tcp->local_port     = espconn_port(); // using 0 doesn't work
   pEspconn->reverse   = pSocketData;
-  espconn_set_opt(pEspconn, ESPCONN_NODELAY); // disable nagle, don't need the extra delay
 
   if (ipAddress == (uint32_t)-1) {
     // We need DNS resolution, kick it off
@@ -1050,9 +1062,11 @@ static int connectSocket(
     pSocketData->state = SOCKET_STATE_CONNECTING;
     pSocketData->creationType = SOCKET_CREATED_OUTBOUND;
 
-    espconn_regist_connectcb(pEspconn, esp8266_callback_connectCB_outbound);
-    espconn_regist_disconcb(pEspconn, esp8266_callback_disconnectCB);
-    espconn_regist_reconcb(pEspconn, esp8266_callback_reconnectCB);
+    if (pEspconn->type == ESPCONN_TCP) {
+      espconn_regist_connectcb(pEspconn, esp8266_callback_connectCB_outbound);
+      espconn_regist_disconcb(pEspconn, esp8266_callback_disconnectCB);
+      espconn_regist_reconcb(pEspconn, esp8266_callback_reconnectCB);
+    }
     espconn_regist_sentcb(pEspconn, esp8266_callback_sentCB);
     espconn_regist_recvcb(pEspconn, esp8266_callback_recvCB);
 
@@ -1083,7 +1097,9 @@ static int connectSocket(
     pEspconn->proto.tcp->local_port = pEspconn->proto.tcp->remote_port;
     pEspconn->proto.tcp->remote_port = 0;
 
-    espconn_regist_connectcb(pEspconn, esp8266_callback_connectCB_inbound);
+    if (pEspconn->type == ESPCONN_TCP) {
+      espconn_regist_connectcb(pEspconn, esp8266_callback_connectCB_inbound);
+    }
 
     // Make a call to espconn_accept (this should really be called espconn_listen, sigh)
     int rc = espconn_accept(pEspconn);
