@@ -72,7 +72,7 @@ int app_main(void)
 #else
   xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", 10000, NULL, 5, NULL, 0);
   xTaskCreatePinnedToCore(&uartTask,"uartTask",2000,NULL,20,NULL,0);
-  xtaskCreatePinnedToCore(&timerTask,"timerTask",2048,NULL,19,NULL,0);
+  xTaskCreatePinnedToCore(&timerTask,"timerTask",2048,NULL,19,NULL,0);
 #endif
   return 0;
 }

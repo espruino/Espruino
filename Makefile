@@ -2021,8 +2021,7 @@ else ifdef ESP32
 
 ESP_ZIP     = $(PROJ_NAME).tgz
 
-
-proj: $(OBJS) $(ESP_ZIP)
+espruino_esp32.bin: $(OBJS)
 	$(LD) $(LDFLAGS) -o espruino_esp32.elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
@@ -2041,6 +2040,8 @@ $(ESP_ZIP): espruino_esp32.bin
 	  targets/esp32/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
+
+proj: espruino_esp32.bin $(ESP_ZIP)
 
 flash:
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
