@@ -406,6 +406,24 @@ JsVar *jswrap_date_toUTCString(JsVar *parent) {
   return jsvVarPrintf("%s, %d %s %d %02d:%02d:%02d GMT", &DAYNAMES[date.dow*4], date.day, &MONTHNAMES[date.month*4], date.year, time.hour, time.min, time.sec);
 }
 
+/*JSON{
+  "type" : "method",
+  "class" : "Date",
+  "name" : "toISOString",
+  "generate" : "jswrap_date_toISOString",
+  "return" : ["JsVar","A String"]
+}
+Converts to a ISO 8601 String, eg: `2014-06-20T14:52:20.123Z`
+
+ **Note:** This always assumes a timezone of GMT
+ */
+JsVar *jswrap_date_toISOString(JsVar *parent) {
+  TimeInDay time = getTimeFromDateVar(parent);
+  CalendarDate date = getCalendarDate(time.daysSinceEpoch);
+
+  return jsvVarPrintf("%d-%02d-%02dT%02d:%02d:%02d.%03dZ", date.year, date.month+1, date.day, time.hour, time.min, time.sec, time.ms);
+}
+
 static JsVarInt _parse_int() {
   return (int)stringToIntWithRadix(jslGetTokenValueAsString(), 10, 0);
 }
