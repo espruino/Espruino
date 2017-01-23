@@ -309,7 +309,7 @@ for jsondata in detail:
     html("  <h4>Call type:</h4>")
     html("   <div class=\"call\"><code>"+get_code(jsondata)+"</code></div>")
   elif "instanceof" in jsondata:
-    html("   <h4>Instance of <a href=\"#"+jsondata["instanceof"]+"\"><code>"+jsondata["instanceof"]+"</code></a></div>")
+    html("   <h4>Instance of <a href=\"#"+jsondata["instanceof"]+"\"><code>"+jsondata["instanceof"]+"</code></a></h4>")
   if "description" in jsondata:
     html("  <h4>Description</h4>")
     desc = jsondata["description"]

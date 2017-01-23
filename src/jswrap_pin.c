@@ -59,7 +59,7 @@ JsVar *jswrap_pin_constructor(JsVar *val) {
 }
 Returns the input state of the pin as a boolean.
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"input"`
+ **Note:** if you didn't call `pinMode` beforehand then this function will also reset the pin's state to `"input"`
 */
 bool jswrap_pin_read(JsVar *parent) {
   Pin pin = jshGetPinFromVar(parent);
@@ -74,7 +74,7 @@ bool jswrap_pin_read(JsVar *parent) {
 }
 Sets the output state of the pin to a 1
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
+ **Note:** if you didn't call `pinMode` beforehand then this function will also reset the pin's state to `"output"`
  */
 void jswrap_pin_set(JsVar *parent) {
   Pin pin = jshGetPinFromVar(parent);
@@ -89,7 +89,7 @@ void jswrap_pin_set(JsVar *parent) {
 }
 Sets the output state of the pin to a 0
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
+ **Note:** if you didn't call `pinMode` beforehand then this function will also reset the pin's state to `"output"`
  */
 void jswrap_pin_reset(JsVar *parent) {
   Pin pin = jshGetPinFromVar(parent);
@@ -107,7 +107,7 @@ void jswrap_pin_reset(JsVar *parent) {
 }
 Sets the output state of the pin to the parameter given
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
+ **Note:** if you didn't call `pinMode` beforehand then this function will also reset the pin's state to `"output"`
  */
 void jswrap_pin_write(
     JsVar *parent, //!< The class instance representing the Pin.
@@ -166,6 +166,26 @@ Set the mode of the given pin. See [`pinMode`](#l__global_pinMode) for more info
 void jswrap_pin_mode(JsVar *parent, JsVar *mode) {
   jswrap_io_pinMode(jshGetPinFromVar(parent), mode, false);
 }
+
+/*JSON{
+  "type"     : "method",
+  "class"    : "Pin",
+  "name"     : "toggle",
+  "generate" : "jswrap_pin_toggle"
+}
+Toggles the state of the pin from off to on, or from on to off.
+
+**Note:** This method doesn't currently work on the ESP8266 port of Espruino.
+
+**Note:** if you didn't call `pinMode` beforehand then this function will also reset the pin's state to `"output"`
+*/
+void jswrap_pin_toggle(JsVar *parent) {
+  Pin pin = jshGetPinFromVar(parent);
+  if (!jshIsPinValid(pin)) return;
+  bool on = jshPinGetState(pin)&JSHPINSTATE_PIN_IS_ON;
+  jshPinOutput(pin, !on);
+}
+
 
 /*JSON{
   "type"     : "method",
@@ -250,3 +270,4 @@ JsVar *jswrap_pin_getInfo(
 
   return obj;
 }
+

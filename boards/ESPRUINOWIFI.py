@@ -92,10 +92,11 @@ def rev(x):
 # left-right, or top-bottom order
 board = {
   'left' : rev([ 'B15', 'B14', 'B13', 'B10', 'B1', 'A7', 'A6', 'A5', 'A4', 'A1', 'A0' ]),
-  'right' : rev([ 'GND', 'VBAT', '3.3', 'B3', 'B4', 'B5', 'B6', 'B7','B8', 'B9', 'B0']),
+  'right' : rev([ 'GND', 'VUSB', '3.3', 'B3', 'B4', 'B5', 'B6', 'B7','B8', 'B9', 'B0']),
 
   'left2' : ['A10','A8'],
   '_notes' : {
+    'VUSB' : "This pin is connected directly to USB 5V - as such you should not use it to power Espruino WiFi *unless* the Micro USB port is unplugged",
     'B6' : "Serial Console TX when USB disconnected, use `USB.setConsole(true)` to avoid",
     'B7' : "Serial Console RX when USB disconnected, use `USB.setConsole(true)` to avoid",
     'A2' : 'ESP8266 RX',
