@@ -52,6 +52,7 @@ typedef long long int64_t;
 #include "jswrap_esp8266_network.h"
 #include "jswrap_esp8266.h"
 #include "jswrap_modules.h"
+#include "jswrap_interactive.h"
 #include "jsinteractive.h"
 #include "network.h"
 #include "network_esp8266.h"
@@ -1535,10 +1536,14 @@ static os_timer_t sntpTimer;
 static void sntpSync(void *arg) {
   uint32_t sysTime = (uint32_t)((jshGetSystemTime() + 500000) / 1000000);
   uint32_t ntpTime = sntp_get_current_timestamp();
-  if (ntpTime-sysTime != 0) {
-    DBG("NTP time: %ld delta=%ld %s\n", ntpTime, ntpTime-sysTime, sntp_get_real_time(ntpTime));
+  if (!ntpTime) {
+    DBG("NTP time: null\n");
+  } else {
+    if (ntpTime-sysTime != 0) {
+      DBG("NTP time: %ld delta=%ld %s\n", ntpTime, ntpTime-sysTime, sntp_get_real_time(ntpTime));
+    }
+    jswrap_interactive_setTime((JsVarFloat)ntpTime);
   }
-  jshSetSystemTime((int64_t)ntpTime * 1000000);
   os_timer_disarm(&sntpTimer);
   os_timer_arm(&sntpTimer, 30*1000, 0);
 }

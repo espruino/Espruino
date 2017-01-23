@@ -45,4 +45,5 @@ int jswrap_date_getMonth(JsVar *parent);
 int jswrap_date_getFullYear(JsVar *parent);
 JsVar *jswrap_date_toString(JsVar *parent);
 JsVar *jswrap_date_toUTCString(JsVar *parent);
+JsVar *jswrap_date_toISOString(JsVar *parent);
 JsVarFloat jswrap_date_parse(JsVar *str);
