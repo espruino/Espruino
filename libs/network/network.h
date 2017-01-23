@@ -72,7 +72,7 @@ typedef struct JsNetwork {
   bool (*checkError)(struct JsNetwork *net);
 
   /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-  int (*createsocket)(struct JsNetwork *net, uint32_t host, unsigned short port);
+  int (*createsocket)(struct JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType);
   /// destroys the given socket
   void (*closesocket)(struct JsNetwork *net, int sckt);
   /// If the given server socket can accept a connection, return it (or return < 0)
