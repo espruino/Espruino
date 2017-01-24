@@ -308,7 +308,7 @@ int ssl_send(void *ctx, const unsigned char *buf, size_t len) {
   JsNetwork *net = networkGetCurrent();
   assert(net);
   int sckt = *(int *)ctx;
-  int r = net->send(net, sckt, buf, len);
+  int r = net->send(net, sckt, buf, len, 0, 0);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_WRITE;
   return r;
 }
@@ -721,7 +721,7 @@ int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
   }
 }
 
-int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
+int netSend(JsNetwork *net, int sckt, const void *buf, size_t len, uint32_t host, unsigned short port) {
 #ifdef USE_TLS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
@@ -735,6 +735,6 @@ int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
   } else
 #endif
   {
-    return net->send(net, sckt, buf, len);
+    return net->send(net, sckt, buf, len, host, port);
   }
 }

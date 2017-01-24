@@ -431,15 +431,88 @@ This is designed to be a cut-down version of the [node.js library](http://nodejs
   "type" : "staticmethod",
   "class" : "dgram",
   "name" : "createSocket",
-  "generate_full" : "jswrap_net_connect(options, callback, ST_UDP)",
+  "generate_full" : "jswrap_dgram_createSocket(type, callback)",
   "params" : [
-    ["options","JsVar","An object containing host,port fields"],
-    ["callback","JsVar","A `function(sckt)` that will be called  with the socket when a connection is made. You can then call `sckt.write(...)` to send data, and `sckt.on('data', function(data) { ... })` and `sckt.on('close', function() { ... })` to deal with the response."]
+    ["type","JsVar","Socket type to create e.g. 'udp4'"],
+    ["callback","JsVar","A `function(sckt)` that will be called  with the socket when a connection is made. You can then call `sckt.send(...)` to send data, and `sckt.on('message', function(data) { ... })` and `sckt.on('close', function() { ... })` to deal with the response."]
   ],
-  "return" : ["JsVar","Returns a new net.Socket object"],
-  "return_object" : "Socket"
+  "return" : ["JsVar","Returns a new dgram.Socket object"],
+  "return_object" : "dgramSocket"
 }
 Create a UDP socket
+*/
+JsVar *jswrap_dgram_createSocket(JsVar *type, JsVar *callback) {
+  NOT_USED(type);
+  JsVar *options = jsvNewObject();
+  JsVar *connection = jswrap_net_connect(options, callback, ST_UDP);
+  jsvUnLock(options);
+  return connection;
+}
+
+/*JSON{
+  "type" : "class",
+  "library" : "dgram",
+  "class" : "dgramSocket"
+}
+An actual socket connection - allowing transmit/receive of TCP data
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "dgramSocket",
+  "name" : "send",
+  "generate" : "jswrap_dgram_socket_send",
+  "params" : [
+    ["message","JsVar","A string containing message to send"],
+    ["port","int32","The port to listen on"],
+    ["host","JsVar","A string containing the target host to received the message"]
+  ],
+  "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
+}*/
+bool jswrap_dgram_socket_send(JsVar *parent, JsVar *data, unsigned short portNumber, JsVar *host) {
+  JsNetwork net;
+  if (!networkGetFromVarIfOnline(&net)) return false;
+
+  JsVar *options = jsvObjectGetChild(parent, "opt" /* socketserver.c:HTTP_NAME_OPTIONS_VAR */, 0);
+  if (options) {
+      jsvObjectSetChildAndUnLock(options, "port", (portNumber<=0 || portNumber>65535) ? jsvNewWithFlags(JSV_NULL) : jsvNewFromInteger(portNumber));
+      jsvObjectSetChild(options, "host", host);
+  }
+
+  clientRequestWrite(&net, parent, data);
+  networkFree(&net);
+  return false;
+}
+
+/*JSON{
+  "type" : "event",
+  "class" : "dgramSocket",
+  "name" : "data",
+  "params" : [
+    ["data","JsVar","A string containing the received message"],
+    ["info","JsVar","Sender port/host containing information"]
+  ]
+}
+The 'message' event is called when a datagram message is received. If a handler is defined with `X.on('message', function(msg) { ... })` then it will be called`
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "dgramSocket",
+  "name" : "bind",
+  "generate_full" : "jswrap_net_server_listen(parent, port, ST_UDP)",
+  "params" : [
+    ["port","int32","The port to bind at"]
+  ]
+}
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "dgramSocket",
+  "name" : "close",
+  "params" : [
+    ["had_error","JsVar","A boolean indicating whether the connection had an error (use an error event handler to get error details)."]
+  ]
+}
+Called when the connection closes.
 */
 
 
@@ -507,7 +580,7 @@ https://engineering.circle.com/https-authorized-certs-with-node-js/
   "type" : "method",
   "class" : "Server",
   "name" : "listen",
-  "generate" : "jswrap_net_server_listen",
+  "generate_full" : "jswrap_net_server_listen(parent, port, ST_NORMAL)",
   "params" : [
     ["port","int32","The port to listen on"]
   ]
@@ -515,11 +588,11 @@ https://engineering.circle.com/https-authorized-certs-with-node-js/
 Start listening for new connections on the given port
 */
 
-void jswrap_net_server_listen(JsVar *parent, int port) {
+void jswrap_net_server_listen(JsVar *parent, int port, SocketType socketType) {
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return;
 
-  serverListen(&net, parent, port);
+  serverListen(&net, parent, port, socketType);
   networkFree(&net);
 }
 

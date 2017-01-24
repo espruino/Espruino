@@ -26,7 +26,7 @@ bool socketIdle(JsNetwork *net);
 
 // -----------------------------
 JsVar *serverNew(SocketType socketType, JsVar *callback);
-void serverListen(JsNetwork *net, JsVar *httpServerVar, int port);
+void serverListen(JsNetwork *net, JsVar *httpServerVar, int port, SocketType socketType);
 void serverClose(JsNetwork *net, JsVar *server);
 
 JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback);

@@ -244,7 +244,7 @@ bool telnetSendBuf(JsNetwork *net) {
   if (tnSrv.txBufLen == 0) return false;
 
   // try to send the tx buffer
-  int sent = netSend(net, tnSrv.cliSock-1, tnSrv.txBuf, tnSrv.txBufLen);
+  int sent = netSend(net, tnSrv.cliSock-1, tnSrv.txBuf, tnSrv.txBufLen, 0, 0);
   if (sent == tnSrv.txBufLen) {
     tnSrv.txBufLen = 0;
   } else if (sent > 0) {

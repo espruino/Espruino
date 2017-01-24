@@ -236,8 +236,26 @@ int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData
 
   assert(!jsvIsEmptyString(*sendData));
 
+  unsigned short port = 0;
+  uint32_t host_addr = 0;
+  SocketType socketType = socketGetType(connection);
+  if ((socketType&ST_TYPE_MASK)==ST_UDP) {
+      JsVar *options = jsvObjectGetChild(connection, HTTP_NAME_OPTIONS_VAR, 0);
+      port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", 0));
+
+      char hostName[128];
+      JsVar *hostNameVar = jsvObjectGetChild(options, "host", 0);
+      if (jsvIsUndefined(hostNameVar))
+        strncpy(hostName, "localhost", sizeof(hostName));
+      else
+        jsvGetString(hostNameVar, hostName, sizeof(hostName));
+      jsvUnLock(hostNameVar);
+
+      networkGetHostByName(net, hostName, &host_addr);
+  }
+
   size_t bufLen = httpStringGet(*sendData, buf, (size_t)net->chunkSize);
-  int num = netSend(net, sckt, buf, bufLen);
+  int num = netSend(net, sckt, buf, bufLen, host_addr, port);
   if (num < 0) return num; // an error occurred
   // Now cut what we managed to send off the beginning of sendData
   if (num > 0) {
@@ -641,7 +659,12 @@ bool socketIdle(JsNetwork *net) {
           jsvUnLock2(req, res);
         } else {
           // Normal sockets
-          JsVar *sock = jspNewObject(0, "Socket");
+          JsVar *sock;
+          if ((socketType&ST_TYPE_MASK)==ST_UDP) {
+            sock = jspNewObject(0, "dgramSocket");
+          } else {
+            sock = jspNewObject(0, "Socket");
+          }
           if (sock) { // out of memory?
             socketSetType(sock, socketType);
             JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS, true);
@@ -679,13 +702,13 @@ JsVar *serverNew(SocketType socketType, JsVar *callback) {
   return server;
 }
 
-void serverListen(JsNetwork *net, JsVar *server, int port) {
+void serverListen(JsNetwork *net, JsVar *server, int port, SocketType socketType) {
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_SERVERS, true);
   if (!arr) return; // out of memory
 
   jsvObjectSetChildAndUnLock(server, HTTP_NAME_PORT, jsvNewFromInteger(port));
 
-  int sckt = netCreateSocket(net, 0/*server*/, (unsigned short)port, ST_NORMAL, 0 /*options*/);
+  int sckt = netCreateSocket(net, 0/*server*/, (unsigned short)port, socketType, 0 /*options*/);
   if (sckt<0) {
     jsExceptionHere(JSET_INTERNALERROR, "Unable to create socket\n");
     jsvObjectSetChildAndUnLock(server, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
@@ -722,6 +745,8 @@ JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback) 
     res = jspNewObject(0, "httpCRs");
     if (!res) { jsvUnLock(arr); return 0; } // out of memory?
     req = jspNewObject(0, "httpCRq");
+  } else if ((socketType&ST_TYPE_MASK)==ST_UDP) {
+    req = jspNewObject(0, "dgramSocket");
   } else {
     req = jspNewObject(0, "Socket");
   }
@@ -849,8 +874,9 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
     if (port==0) port = 443;
   }
 #endif
-
-  if (port==0) port = 80;
+  if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
+    if (port==0) port = 80;
+  }
 
   int sckt =  netCreateSocket(net, host_addr, port, socketType, options);
   if (sckt<0) {

@@ -69,9 +69,8 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, S
   int ippProto = socketType & ST_UDP ? IPPROTO_UDP : IPPROTO_TCP;
   int scktType = socketType & ST_UDP ? SOCK_DGRAM : SOCK_STREAM;
   int sckt = -1;
+
   if (host!=0) { // ------------------------------------------------- host (=client)
-    sockaddr_in       sin;
-    sin.sin_family = AF_INET;
 
     sckt = socket(AF_INET, scktType, ippProto);
     if (sckt<0) {
@@ -85,6 +84,16 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, S
     ioctlsocket(sckt,FIONBIO,&n);
     #endif
 
+    if (scktType == SOCK_DGRAM) { // only for UDP
+      // set broadcast
+      int optval = 1;
+      if (setsockopt(sckt,SOL_SOCKET,SO_BROADCAST,(const char *)&optval,sizeof(optval))<0)
+        jsWarn("setsockopt(SO_BROADCAST) failed\n");
+      return sckt;
+    }
+
+    sockaddr_in       sin;
+    sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = (in_addr_t)host;
     sin.sin_port = htons( port );
 
@@ -111,6 +120,7 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, S
       jsError("Socket creation failed");
       return 0;
     }
+
     int optval = 1;
     if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
       jsWarn("setsockopt(SO_REUSADDR) failed\n");
@@ -129,12 +139,14 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, S
       return -1;
     }
 
-    // Make the socket listen
-    nret = listen(sckt, 10); // 10 connections (but this ignored on CC30000)
-    if (nret == SOCKET_ERROR) {
-      jsError("Socket listen failed");
-      closesocket(sckt);
-      return -1;
+    if (scktType == SOCK_STREAM) { // only for TCP
+      // Make the socket listen
+      nret = listen(sckt, 10); // 10 connections (but this ignored on CC30000)
+      if (nret == SOCKET_ERROR) {
+        jsError("Socket listen failed");
+        closesocket(sckt);
+        return -1;
+      }
     }
   }
 
@@ -199,7 +211,7 @@ int net_linux_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
 }
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_linux_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
+int net_linux_send(JsNetwork *net, int sckt, const void *buf, size_t len, uint32_t host, unsigned short port) {
   NOT_USED(net);
   fd_set writefds;
   FD_ZERO(&writefds);
@@ -216,7 +228,17 @@ int net_linux_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
 #if !defined(SO_NOSIGPIPE) && defined(MSG_NOSIGNAL)
     flags |= MSG_NOSIGNAL;
 #endif
-    n = (int)send(sckt, buf, len, flags);
+    jsWarn("Send %d %d %d", len, host, port);
+    if (port) {
+        sockaddr_in       sin;
+        sin.sin_family = AF_INET;
+        sin.sin_addr.s_addr = (in_addr_t)host;
+        sin.sin_port = htons( port );
+
+        n = (int)sendto(sckt, buf, len, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in));
+    } else {
+        n = (int)send(sckt, buf, len, flags);
+    }
     return n;
   } else
     return 0; // just not ready
