@@ -427,6 +427,13 @@ void jshPinSetState(
  */
 JshPinState jshPinGetState(Pin pin) {
   //os_printf("> ESP8266: jshPinGetState %d\n", pin);
+  /*
+    os_printf("> ESP8266: pin %d, pinState %d, reg_read %d, out_addr: %d input get %d\n", 
+      pin, g_pinState[pin], (GPIO_REG_READ(GPIO_OUT_W1TS_ADDRESS)>>pin)&1,
+      (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, GPIO_INPUT_GET(pin));
+  */
+  if ( (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1 ) 
+    return g_pinState[pin] | JSHPINSTATE_PIN_IS_ON;
   return g_pinState[pin];
 }
 
