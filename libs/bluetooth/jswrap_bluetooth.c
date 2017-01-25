@@ -397,6 +397,18 @@ NRF.setAdvertising([0x03,  // Length of Service List
     {interval:100});
 ```
 
+You can even specify an array of arrays, in which case each advertising packet
+will be iterated over in turn - for instance to make your device advertise
+both Eddystone and iBeacon:
+
+```
+NRF.setAdvertising([
+[0x03,0x03,0xAA,0xFE,0x13,0x16,0xAA,0xFE,0x10,0xF8,0x03,'g','o','o','.','g','l','/','C','H','o','J','H','0'],
+[....],
+[....],
+],{interval:500});
+```
+
 `options` is an object, which can contain:
 
 ```
@@ -461,8 +473,23 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     return;
   }
 
-  if (jsvIsArray(data)) {
+  if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
     // raw data...
+    // Check if it's nested arrays - if so we alternate between advertising types
+    bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
+    if (jsvIsArray(data)) {
+      JsVar *item = jsvGetArrayItem(data, 0);
+      if (jsvIsArray(item) || jsvIsArrayBuffer(item)) {
+        // nested - enable multiple advertising - start at index 0
+        bleStatus |= BLE_IS_ADVERTISING_MULTIPLE;
+        // start with the first element
+        jsvUnLock(data);
+        data = item;
+        item = 0;
+      } else
+        jsvUnLock(item);
+    }
+
     JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
     if (!dPtr) {
       jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
