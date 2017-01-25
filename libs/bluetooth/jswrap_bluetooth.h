@@ -62,6 +62,7 @@ void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr);
 void jswrap_nrf_bluetooth_setLowPowerConnection(bool lowPower);
 
 void jswrap_nrf_nfcURL(JsVar *url);
+void jswrap_nrf_nfcRaw(JsVar *payload);
 void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback);
 
 JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options);
