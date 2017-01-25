@@ -47,6 +47,11 @@ typedef enum  {
   BLE_IS_SENDING_HID = 128,   // Are we waiting to send data for USB HID?
   BLE_IS_RSSI_SCANNING = 256, // Are we scanning for RSSI values
   BLE_IS_SLEEPING = 512,      // NRF.sleep has been called
+
+  BLE_IS_ADVERTISING_MULTIPLE = 1024, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 2048,
+  BLE_ADVERTISING_MULTIPLE_SHIFT = GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;
 
 
