@@ -1381,6 +1381,7 @@ JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options) {
   return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
 #endif
 }
 
@@ -1435,6 +1436,7 @@ JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
   return jswrap_nrf_BluetoothRemoteGATTServer_connect(gatt);
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
 #endif
 }
 
@@ -1505,6 +1507,7 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
   return 0;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
 #endif
 }
 
