@@ -82,7 +82,8 @@ void jstUtilTimerInterruptHandler() {
     // execute any timers that are due
     while (utilTimerTasksTail!=utilTimerTasksHead && utilTimerTasks[utilTimerTasksTail].time <= time) {
       UtilTimerTask *task = &utilTimerTasks[utilTimerTasksTail];
-      void (*executeFn)(JsSysTime time) = 0;
+      void (*executeFn)(JsSysTime time, void* userdata) = 0;
+      void *executeData = 0;
 
       // actually perform the task
       switch (task->type) {
@@ -94,7 +95,8 @@ void jstUtilTimerInterruptHandler() {
         }
       } break;
       case UET_EXECUTE:
-        executeFn = task->data.execute;
+        executeFn = task->data.execute.fn;
+        executeData = task->data.execute.userdata;
         break;
 #ifndef SAVE_ON_FLASH
       case UET_READ_SHORT: {
@@ -169,7 +171,7 @@ void jstUtilTimerInterruptHandler() {
       }
 
       // execute the function if we had one (we do this now, because if we did it earlier we'd have to cope with everything changing)
-      if (executeFn) executeFn(time);
+      if (executeFn) executeFn(time, executeData);
     }
 
     // re-schedule the timer if there is something left to do
@@ -316,7 +318,7 @@ static bool jstPinTaskChecker(UtilTimerTask *task, void *data) {
 // data = *fn
 static bool jstExecuteTaskChecker(UtilTimerTask *task, void *data) {
   if (task->type != UET_EXECUTE) return false;
-  return (task->data.execute = data);
+  return memcmp(&task->data.execute, (UtilTimerTaskExec*)data, sizeof(UtilTimerTaskExec))==0;
 }
 
 // --------------------------------------------------------------------------------------------
@@ -431,20 +433,24 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
 }
 
 /// Execute the given function repeatedly after the given time period
-bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime startTime, uint32_t period) {
+bool jstExecuteFn(UtilTimerTaskExecFn fn, void *userdata, JsSysTime startTime, uint32_t period) {
   UtilTimerTask task;
   task.time = startTime;
   task.repeatInterval = period;
   task.type = UET_EXECUTE;
-  task.data.execute = fn;
+  task.data.execute.fn = fn;
+  task.data.execute.userdata = userdata;
 
   WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
   return utilTimerInsertTask(&task);
 }
 
 /// Stop executing the given function
-bool jstStopExecuteFn(void (*fn)(JsSysTime)) {
-  return utilTimerRemoveTask(jstExecuteTaskChecker, (void*)fn);
+bool jstStopExecuteFn(UtilTimerTaskExecFn fn, void *userdata) {
+  UtilTimerTaskExec e;
+  e.fn = fn;
+  e.userdata = userdata;
+  return utilTimerRemoveTask(jstExecuteTaskChecker, (void*)&e);
 }
 
 /// Set the utility timer so we're woken up in whatever time period
@@ -578,7 +584,7 @@ void jstDumpUtilityTimers() {
     case UET_WRITE_SHORT : jsiConsolePrintf("WRITE_SHORT\n"); break;
     case UET_READ_SHORT : jsiConsolePrintf("READ_SHORT\n"); break;
 #endif
-    case UET_EXECUTE : jsiConsolePrintf("EXECUTE %x\n", task.data.execute); break;
+    case UET_EXECUTE : jsiConsolePrintf("EXECUTE %x(%x)\n", task.data.execute.fn, task.data.execute.userdata); break;
     default : jsiConsolePrintf("Unknown type %d\n", task.type); break;
     }
 

@@ -352,11 +352,14 @@ void jswrap_puck_magOff() {
 
 
 // Called when we're done with the IR transmission
-void _jswrap_puck_IR_done(JsSysTime t) {
+void _jswrap_puck_IR_done(JsSysTime t, void *data) {
+  uint32_t d = (uint32_t)data;
+  Pin cathode = d&255;
+  Pin anode = (d>>8)&255;
   // set as input - so no signal
-  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(anode, JSHPINSTATE_GPIO_IN);
   // this one also stops the PWM
-  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(cathode, JSHPINSTATE_GPIO_IN);
 }
 
 /*JSON{
@@ -365,33 +368,43 @@ void _jswrap_puck_IR_done(JsSysTime t) {
   "name" : "IR",
   "generate" : "jswrap_puck_IR",
   "params" : [
-      ["data","JsVar","An array of pulse lengths, in milliseconds"]
+      ["data","JsVar","An array of pulse lengths, in milliseconds"],
+      ["cathode","pin","(optional) pin to use for IR LED cathode - if not defined, the built-in IR LED is used"],
+      ["anode","pin","(optional) pin to use for IR LED anode - if not defined, the built-in IR LED is used"]
   ]
 }
 Transmit the given set of IR pulses - data should be an array of pulse times
 in milliseconds (as `[on, off, on, off, on, etc]`).
+
+For example `Puck.IR(pulseTimes)` - see http://www.espruino.com/Puck.js+Infrared
+for a full example.
+
+You can also attach an external LED to Puck.js, in which case
+you can just execute `Puck.IR(pulseTimes, led_cathode, led_anode)`
+
+
 */
-void jswrap_puck_IR(JsVar *data) {
+void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
   if (!jsvIsIterable(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting an array, got %t", data);
     return;
   }
 
-
-  Pin pin = IR_ANODE_PIN;
-  jshPinAnalogOutput(IR_CATHODE_PIN, 0.5, 38000, 0);
+  if (!jshIsPinValid(anode)) anode = IR_ANODE_PIN;
+  if (!jshIsPinValid(cathode)) cathode = IR_CATHODE_PIN;
+  jshPinAnalogOutput(cathode, 0.9, 38000, 0);
 
   JsSysTime time = jshGetSystemTime();
   bool hasPulses = false;
-  bool pulsePolarity = false;
-  jshPinSetValue(IR_ANODE_PIN, pulsePolarity);
+  bool pulsePolarity = true;
+  jshPinSetValue(anode, pulsePolarity);
 
   JsvIterator it;
   jsvIteratorNew(&it, data);
   while (jsvIteratorHasElement(&it)) {
     JsVarFloat pulseTime = jsvIteratorGetFloatValue(&it);
-    if (hasPulses) jstPinOutputAtTime(time, &pin, 1, pulsePolarity);
-    else jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
+    if (hasPulses) jstPinOutputAtTime(time, &anode, 1, pulsePolarity);
+    else jshPinSetState(anode, JSHPINSTATE_GPIO_OUT);
     hasPulses = true;
     time += jshGetTimeFromMilliseconds(pulseTime);
     pulsePolarity = !pulsePolarity;
@@ -400,7 +413,8 @@ void jswrap_puck_IR(JsVar *data) {
   jsvIteratorFree(&it);
 
   if (hasPulses) {
-    jstExecuteFn(_jswrap_puck_IR_done, time, 0);
+    uint32_t d = cathode | anode<<8;
+    jstExecuteFn(_jswrap_puck_IR_done, (void*)d, time, 0);
   }
 }
 
