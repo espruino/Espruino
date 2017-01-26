@@ -526,7 +526,8 @@ Seek to a certain position in the file
 */
 void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
   if (nBytes<0) {
-    jsWarn(is_skip ? "Bytes to skip must be >=0" : "Position to seek to must be >=0");
+    if (is_skip) jsWarn("Bytes to skip must be >=0");
+    if (is_skip <= 0 ) jsWarn( "Position to seek to must be >=0");
     return;
   }
   FRESULT res = 0;
