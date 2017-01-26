@@ -433,7 +433,7 @@ JshPinState jshPinGetState(Pin pin) {
       (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, GPIO_INPUT_GET(pin));
   */
   if ( (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1 ) 
-    return g_pinState[pin]| JSHPINSTATE_PIN_IS_ON;
+    return g_pinState[pin] | JSHPINSTATE_PIN_IS_ON;
   return g_pinState[pin];
 }
 

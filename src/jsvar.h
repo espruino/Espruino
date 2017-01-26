@@ -572,7 +572,7 @@ long long jsvGetLongIntegerAndUnLock(JsVar *v);
 
 
 /** Get the item at the given location in the array buffer and return the result */
-size_t jsvGetArrayBufferLength(JsVar *arrayBuffer);
+size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer);
 /** Get the String the contains the data for this arrayBuffer */
 JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer);
 /** Get the item at the given location in the array buffer and return the result */
@@ -666,13 +666,13 @@ void jsvObjectRemoveChild(JsVar *parent, const char *name);
  * If the child is 0, the 'name' is also removed from the object */
 JsVar *jsvObjectSetOrRemoveChild(JsVar *obj, const char *name, JsVar *child);
 
-int jsvGetChildren(JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
+int jsvGetChildren(const JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
 JsVar *jsvGetFirstName(JsVar *v); ///< Get the first child's name from an object,array or function
 /// Check if the given name is a child of the parent
 bool jsvIsChild(JsVar *parent, JsVar *child);
 JsVarInt jsvGetArrayLength(const JsVar *arr); ///< Not the same as GetChildren, as it can be a sparse array
 JsVarInt jsvSetArrayLength(JsVar *arr, JsVarInt length, bool truncate); ///< set an array's length, optionally truncating if the array becomes shorter
-JsVarInt jsvGetLength(JsVar *src); ///< General purpose length function. Does the 'right' thing
+JsVarInt jsvGetLength(const JsVar *src); ///< General purpose length function. Does the 'right' thing
 size_t jsvCountJsVarsUsed(JsVar *v); ///< Count the amount of JsVars used. Mostly useful for debugging
 JsVar *jsvGetArrayIndex(const JsVar *arr, JsVarInt index); ///< Get a 'name' at the specified index in the array if it exists (and lock it)
 JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array if it exists (and lock it)

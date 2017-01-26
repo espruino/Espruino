@@ -1613,8 +1613,15 @@ JsVarInt jsvGetInteger(const JsVar *v) {
   if (jsvIsNull(v)) return 0;
   if (jsvIsUndefined(v)) return 0;
   if (jsvIsIntegerish(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
-  if (jsvIsArray(v) && jsvGetArrayLength(v)==1)
-    return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
+  if (jsvIsArray(v) || jsvIsArrayBuffer(v)) {
+    JsVarInt l = jsvGetLength((JsVar *)v);
+    if (l==0) return 0; // 0 length, return 0
+    if (l==1) {
+      if (jsvIsArrayBuffer(v))
+        return jsvGetIntegerAndUnLock(jsvArrayBufferGet((JsVar*)v,0));
+      return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
+    }
+  }
   if (jsvIsFloat(v)) {
     if (isfinite(v->varData.floating))
       return (JsVarInt)(long long)v->varData.floating;
@@ -1660,7 +1667,7 @@ void jsvSetInteger(JsVar *v, JsVarInt value) {
 bool jsvGetBool(const JsVar *v) {
   if (jsvIsString(v))
     return jsvGetStringLength((JsVar*)v)!=0;
-  if (jsvIsFunction(v) || jsvIsArray(v) || jsvIsObject(v))
+  if (jsvIsFunction(v) || jsvIsArray(v) || jsvIsObject(v) || jsvIsArrayBuffer(v))
     return true;
   if (jsvIsFloat(v)) {
     JsVarFloat f = jsvGetFloat(v);
@@ -1673,10 +1680,14 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
   if (!v) return NAN; // undefined
   if (jsvIsFloat(v)) return v->varData.floating;
   if (jsvIsIntegerish(v)) return (JsVarFloat)v->varData.integer;
-  if (jsvIsArray(v)) {
-    JsVarInt l = jsvGetArrayLength(v);
+  if (jsvIsArray(v) || jsvIsArrayBuffer(v)) {
+    JsVarInt l = jsvGetLength(v);
     if (l==0) return 0; // zero element array==0 (not undefined)
-    if (l==1) return jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
+    if (l==1) {
+      if (jsvIsArrayBuffer(v))
+        return jsvGetFloatAndUnLock(jsvArrayBufferGet((JsVar*)v,0));
+      return jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
+    }
   }
   if (jsvIsString(v)) {
     char buf[64];
@@ -1723,7 +1734,7 @@ bool jsvGetBoolAndUnLock(JsVar *v) { return _jsvGetBoolAndUnLock(v); }
 #endif
 
 /** Get the item at the given location in the array buffer and return the result */
-size_t jsvGetArrayBufferLength(JsVar *arrayBuffer) {
+size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer) {
   assert(jsvIsArrayBuffer(arrayBuffer));
   return arrayBuffer->varData.arraybuffer.length;
 }
@@ -2451,7 +2462,7 @@ JsVar *jsvObjectSetOrRemoveChild(JsVar *obj, const char *name, JsVar *child) {
   return child;
 }
 
-int jsvGetChildren(JsVar *v) {
+int jsvGetChildren(const JsVar *v) {
   //OPT: could length be stored as the value of the array?
   int children = 0;
   JsVarRef childref = jsvGetFirstChild(v);
@@ -2486,7 +2497,7 @@ JsVarInt jsvSetArrayLength(JsVar *arr, JsVarInt length, bool truncate) {
   return length;
 }
 
-JsVarInt jsvGetLength(JsVar *src) {
+JsVarInt jsvGetLength(const JsVar *src) {
   if (jsvIsArray(src)) {
     return jsvGetArrayLength(src);
   } else if (jsvIsArrayBuffer(src)) {

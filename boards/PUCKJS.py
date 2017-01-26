@@ -57,7 +57,7 @@ devices = {
   'LED1' : { 'pin' : 'D5' },
   'LED2' : { 'pin' : 'D4' },
   'LED3' : { 'pin' : 'D3' },
-  'IR'   : { 'pin_anode' : 'D26', 'pin_cathode' : 'D25' },
+  'IR'   : { 'pin_anode' : 'D25', 'pin_cathode' : 'D26' },
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
   'CAPSENSE' : { 'pin_rx' : 'D11', 'pin_tx' : 'D12' },
   'NFC': { 'pin_a':'D9', 'pin_b':'D10' },

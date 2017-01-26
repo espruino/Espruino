@@ -215,9 +215,40 @@ bool nus_transmit_string() {
   return idx>0;
 }
 
+/// Radio Notification handler
 void SWI1_IRQHandler(bool radio_evt) {
   if (bleStatus & BLE_NUS_INITED)
     nus_transmit_string();
+  // If we're doing multiple advertising, iterate through advertising options
+  if (bleStatus & BLE_IS_ADVERTISING_MULTIPLE) {
+    int idx = (bleStatus&BLE_ADVERTISING_MULTIPLE_MASK)>>BLE_ADVERTISING_MULTIPLE_SHIFT;
+    JsVar *advData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
+    bool ok = true;
+    if (jsvIsArray(advData)) {
+      JsVar *data = jsvGetArrayItem(advData, idx);
+      idx = (idx+1) % jsvGetArrayLength(advData);
+      bleStatus = (bleStatus&~BLE_ADVERTISING_MULTIPLE_MASK) | (idx<<BLE_ADVERTISING_MULTIPLE_SHIFT);
+      JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
+      if (dPtr && dLen) {
+        uint32_t err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
+        if (err_code)
+          ok = false; // error setting BLE - disable
+      } else {
+        // Invalid adv data - disable
+        ok = false;
+      }
+      jsvUnLock(data);
+    } else {
+      // no advdata - disable multiple advertising
+      ok = false;
+    }
+    if (!ok) {
+      bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
+    }
+    jsvUnLock(advData);
+  }
+
+
 #ifndef NRF52
   /* NRF52 has a systick. On nRF51 we just hook on
   to this, since it happens quite often */
