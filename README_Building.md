@@ -1,8 +1,10 @@
 Building
 ========
 
-**Note:** If you're swapping between compiling for different targets, **you
+**Note:** 
+- If you're swapping between compiling for different targets, **you
 need to call `make clean`** before you compile for the new target.
+- If you have a ld error, double check the board name in the <BOARD>=1 make
 
 Under Linux
 -----------
