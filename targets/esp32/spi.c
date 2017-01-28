@@ -109,12 +109,13 @@ void jshSPISetup(
     //ss = inf->pinSS != PIN_UNDEFINED ? inf->pinSS : 18;
     ss=18;
   }
+
   spi_bus_config_t buscfg={
-        .spiq_io_num=miso,
-        .spid_io_num=mosi,
-        .spiclk_io_num=sck,
-        .spiwp_io_num=-1,
-        .spihd_io_num=-1
+        .miso_io_num=miso,
+        .miso_io_num=mosi,
+        .sclk_io_num=sck,
+        .quadwp_io_num=-1,
+        .quadhd_io_num=-1
     };
   // SPI_DEVICE_BIT_LSBFIRST  - test inf->spiMSB need to look at what values...
   uint32_t flags = 0;
@@ -156,7 +157,7 @@ int jshSPISend(
     t.tx_buffer=&data;               //The data is the cmd itself
 	// https://esp-idf.readthedocs.io/en/latest/api/spi_master.html#type-definitions
 	// should this be a switch or always read?
-	t.flags=SPI_USE_RXDATA;
+	t.flags=SPI_TRANS_USE_RXDATA;
     ret=spi_device_transmit(spi, &t);  //Transmit - blocks until result - need to change this?
 	g_lastSPIRead=t.rx_data[0];
 	
