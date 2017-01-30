@@ -187,8 +187,10 @@ int net_linux_accept(JsNetwork *net, int sckt) {
 }
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_linux_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
+int net_linux_recv(JsNetwork *net, int sckt, void *buf, size_t len, uint32_t *host, unsigned short *port) {
   NOT_USED(net);
+  struct sockaddr_in fromAddr;
+  int fromAddrLen = sizeof(fromAddr);
   int num = 0;
   fd_set s;
   FD_ZERO(&s);
@@ -203,8 +205,11 @@ int net_linux_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
     return -1;
   } else if (n>0) {
     // receive data
-    num = (int)recv(sckt,buf,len,0);
+    num = (int)recvfrom(sckt,buf,len,0,&fromAddr,&fromAddrLen);
     if (num==0) num=-1; // select says data, but recv says 0 means connection is closed
+    *host = fromAddr.sin_addr.s_addr;
+    *port = ntohs(fromAddr.sin_port);
+    jsWarn("Recv %d %x:%d", len, *host, *port);
   }
 
   return num;

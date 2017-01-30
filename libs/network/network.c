@@ -315,8 +315,10 @@ int ssl_send(void *ctx, const unsigned char *buf, size_t len) {
 int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
   JsNetwork *net = networkGetCurrent();
   assert(net);
+  uint32_t host;
+  unsigned short port;
   int sckt = *(int *)ctx;
-  int r = net->recv(net, sckt, buf, len);
+  int r = net->recv(net, sckt, buf, len, &host, &port);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_READ;
   return r;
 }
@@ -703,7 +705,7 @@ void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   net->gethostbyname(net, hostName, out_ip_addr);
 }
 
-int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
+int netRecv(JsNetwork *net, int sckt, void *buf, size_t len, uint32_t *host, unsigned short *port) {
 #ifdef USE_TLS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
@@ -717,7 +719,7 @@ int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
   } else
 #endif
   {
-    return net->recv(net, sckt, buf, len);
+    return net->recv(net, sckt, buf, len, host, port);
   }
 }
 

@@ -472,10 +472,12 @@ bool jswrap_dgram_socket_send(JsVar *parent, JsVar *data, unsigned short portNum
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return false;
 
+  // FIXME: create a message data object {data, host, port} and pass to clientRequestWrite?
   JsVar *options = jsvObjectGetChild(parent, "opt" /* socketserver.c:HTTP_NAME_OPTIONS_VAR */, 0);
   if (options) {
       jsvObjectSetChildAndUnLock(options, "port", (portNumber<=0 || portNumber>65535) ? jsvNewWithFlags(JSV_NULL) : jsvNewFromInteger(portNumber));
       jsvObjectSetChild(options, "host", host);
+      jsvUnLock(options);
   }
 
   clientRequestWrite(&net, parent, data);

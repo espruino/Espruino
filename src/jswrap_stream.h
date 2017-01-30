@@ -30,5 +30,5 @@ JsVar *jswrap_stream_read(JsVar *parent, JsVarInt chars);
  * full. Setting force=true will attempt to fill the buffer as
  * full as possible, and will raise an error flag if data is lost.
  */
-bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force);
+bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, JsVar *dataInfo, bool force);
 

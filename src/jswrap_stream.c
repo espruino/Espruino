@@ -70,14 +70,15 @@ JsVar *jswrap_stream_read(JsVar *parent, JsVarInt chars) {
  * full. Setting force=true will attempt to fill the buffer as
  * full as possible, and will raise an error flag if data is lost.
  */
-bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force) {
+bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, JsVar *dataInfo, bool force) {
   assert(jsvIsObject(parent));
   assert(jsvIsString(dataString));
   bool ok = true;
 
   JsVar *callback = jsvFindChildFromString(parent, STREAM_CALLBACK_NAME, false);
   if (callback) {
-    if (!jsiExecuteEventCallback(parent, callback, 1, &dataString)) {
+    JsVar *args[] = { dataString, dataInfo };
+    if (!jsiExecuteEventCallback(parent, callback, 2, args)) {
       jsError("Error processing Serial data handler - removing it.");
       jsErrorFlags |= JSERR_CALLBACK;
       jsvObjectRemoveChild(parent, STREAM_CALLBACK_NAME);
