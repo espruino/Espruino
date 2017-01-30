@@ -42,7 +42,7 @@ chip = {
   'spi' : 4,
   'i2c' : 3,
   'adc' : 1,
-  'dac' : 0,
+  'dac' : 2,
   'saved_code' : {
     # code size 300000 = 0x493E0 starts at 0x0800 0000 ends at 0x0804 93E0
     # so we have some left room for Espruino firmware and no risk to clear it while saving

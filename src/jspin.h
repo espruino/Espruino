@@ -180,8 +180,7 @@ typedef enum {
   (((F)&JSH_MASK_TYPE)>=JSH_TIMER1) && \
   (((F)&JSH_MASK_TYPE)<=JSH_TIMER18))
 #define JSH_PINFUNCTION_IS_DAC(F) ( \
-  (((F)&JSH_MASK_TYPE)==JSH_DAC) || \
-0 )
+  (((F)&JSH_MASK_TYPE)==JSH_DAC))
 #define JSH_PINFUNCTION_IS_USART(F) ( \
   (((F)&JSH_MASK_TYPE)>=JSH_USART1) && \
   (((F)&JSH_MASK_TYPE)<=JSH_USART6))
