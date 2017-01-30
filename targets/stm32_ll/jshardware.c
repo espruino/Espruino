@@ -42,6 +42,7 @@
 #include "stm32l4xx_ll_spi.h"
 #include "stm32l4xx_ll_adc.h"
 #include "stm32l4xx_ll_cortex.h"
+#include "stm32l4xx_ll_dac.h"
 
 #include "stm32l4xx_hal.h" // Used for flash management
 
@@ -1290,11 +1291,145 @@ int jshPinAnalogFast(Pin pin){
 }
 
 
-/// Output an analog value on a pin - either via DAC, hardware PWM, or software PWM
-JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags){
-        return;
+void jshAnalogConfigureDAC(uint32_t DAC_Channel){
+  uint32_t wait_loop_index = 0;
+
+  /* Configure GPIO in analog mode to be used as DAC output */
+  //LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_4, LL_GPIO_MODE_ANALOG);
+
+  /* Configure NVIC to enable DAC1 interruptions */
+  NVIC_SetPriority(TIM6_DAC_IRQn, 0);
+  NVIC_EnableIRQ(TIM6_DAC_IRQn);
+
+  /* Enable DAC clock */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_DAC1);
+
+  /* Select trigger source */
+  LL_DAC_SetTriggerSource(DAC1, DAC_Channel, LL_DAC_TRIG_SOFTWARE);
+
+  /* Set the output for the selected DAC channel */
+  LL_DAC_ConfigOutput(DAC1, DAC_Channel, LL_DAC_OUTPUT_MODE_NORMAL, LL_DAC_OUTPUT_BUFFER_ENABLE, LL_DAC_OUTPUT_CONNECT_GPIO);
+
+  /* Enable interruption DAC channel1 underrun */
+  //LL_DAC_EnableIT_DMAUDR1(DAC1);
+
+  /* Enable DAC channel */
+  LL_DAC_Enable(DAC1, DAC_Channel);
+
+  /* Delay for DAC channel voltage settling time from DAC channel startup.    */
+  /* Compute number of CPU cycles to wait for, from delay in us.              */
+  /* Note: Variable divided by 2 to compensate partially                      */
+  /*       CPU processing cycles (depends on compilation optimization).       */
+  /* Note: If system core clock frequency is below 200kHz, wait time          */
+  /*       is only a few CPU processing cycles.                               */
+  wait_loop_index = ((LL_DAC_DELAY_STARTUP_VOLTAGE_SETTLING_US * (SystemCoreClock / (100000 * 2))) / 10);
+  while(wait_loop_index != 0)
+  {
+    wait_loop_index--;
+  }
+
+  LL_DAC_EnableTrigger(DAC1, DAC_Channel);
 }
+
+/// Output an analog value on a pin - either via DAC, hardware PWM, or software PWM
 // if freq<=0, the default is used
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags){
+
+  if (value<0) value=0;
+  if (value>1) value=1;
+  if (!isfinite(freq)) freq=0;
+  JshPinFunction func = 0;
+  if (jshIsPinValid(pin) && !(flags&JSAOF_FORCE_SOFTWARE)) {
+    int i;
+    for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
+      if (freq<=0 && JSH_PINFUNCTION_IS_DAC(pinInfo[pin].functions[i])) {
+        // note: we don't use DAC if a frequency is specified
+        func = pinInfo[pin].functions[i];
+      }
+      if (func==0 && JSH_PINFUNCTION_IS_TIMER(pinInfo[pin].functions[i])) {
+        func = pinInfo[pin].functions[i];
+      }
+    }
+  }
+
+  if (!func) {
+    if (jshIsPinValid(pin) && (flags&(JSAOF_ALLOW_SOFTWARE|JSAOF_FORCE_SOFTWARE))) {
+      /* we set the bit field here so that if the user changes the pin state
+       * later on, we can get rid of the IRQs */
+      if (!jshGetPinStateIsManual(pin)) {
+        BITFIELD_SET(jshPinSoftPWM, pin, 0);
+        jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+      }
+      BITFIELD_SET(jshPinSoftPWM, pin, 1);
+      if (freq<=0) freq=50;
+      jstPinPWM(freq, value, pin);
+      return 0;
+    }
+
+    // Otherwise
+    jshPrintCapablePins(pin, "PWM Output", JSH_TIMER1, JSH_TIMERMAX, 0,0, false);
+  #if defined(DAC_COUNT) && DAC_COUNT>0
+    jsiConsolePrint("\nOr pins with DAC output are:\n");
+    jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
+    jsiConsolePrint("\n");
+  #endif
+    if (jshIsPinValid(pin))
+      jsiConsolePrint("You can also use analogWrite(pin, val, {soft:true}) for Software PWM on this pin\n");
+    return 0;
+  }
+
+  if (JSH_PINFUNCTION_IS_DAC(func)) {
+#if defined(DAC_COUNT) && DAC_COUNT>0
+    // Special case for DAC output
+    //uint16_t data = (uint16_t)(value*0xFFF);
+    uint16_t data = (uint16_t)(value*0xFFF);
+    if ((func & JSH_MASK_INFO)==JSH_DAC_CH1) {
+      static bool initialised = false;
+      if (!initialised && value>0) {
+        initialised = true;
+        jshSetPinStateIsManual(pin, false);
+        jshPinSetState(pin, JSHPINSTATE_DAC_OUT);
+        jshAnalogConfigureDAC(LL_DAC_CHANNEL_1);
+      }
+      if(value == 0){
+        // switch off the DAC
+        initialised = false;
+        LL_DAC_DisableTrigger(DAC1, LL_DAC_CHANNEL_1);
+        LL_DAC_Disable(DAC1, LL_DAC_CHANNEL_1);
+        LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_DAC1);
+        NVIC_DisableIRQ(TIM6_DAC_IRQn);
+        jshPinSetState(pin, JSHPINSTATE_ADC_IN);
+      }else{
+        LL_DAC_ConvertData12RightAligned(DAC1,LL_DAC_CHANNEL_1, data);
+        LL_DAC_TrigSWConversion(DAC1, LL_DAC_CHANNEL_1);
+      }
+    } else if ((func & JSH_MASK_INFO)==JSH_DAC_CH2) {
+      static bool initialised = false;
+      if (!initialised && value>0) {
+        initialised = true;
+        jshSetPinStateIsManual(pin, false);
+        jshPinSetState(pin, JSHPINSTATE_DAC_OUT);
+        jshAnalogConfigureDAC(LL_DAC_CHANNEL_2);
+      }
+      if(value == 0){
+        // switch off the DAC
+        initialised = false;
+        LL_DAC_DisableTrigger(DAC1, LL_DAC_CHANNEL_2);
+        LL_DAC_Disable(DAC1, LL_DAC_CHANNEL_2);
+        LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_DAC1);
+        NVIC_DisableIRQ(TIM6_DAC_IRQn);
+        jshPinSetState(pin, JSHPINSTATE_ADC_IN);
+      }else{
+        LL_DAC_ConvertData12RightAligned(DAC1,LL_DAC_CHANNEL_2, data);
+        LL_DAC_TrigSWConversion(DAC1, LL_DAC_CHANNEL_2);
+      }
+    } else
+#endif
+    jsExceptionHere(JSET_INTERNALERROR, "Unknown DAC");
+    return func;
+  }
+
+}
 
 /// Pulse a pin for a certain time, but via IRQs, not JS: `digitalWrite(pin,value);setTimeout("digitalWrite(pin,!value)", time*1000);`
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime){
