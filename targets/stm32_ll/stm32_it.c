@@ -329,7 +329,7 @@ void TIM5_IRQHandler(void)
   // clear interrupt flag
   if (LL_TIM_IsActiveFlag_UPDATE(UTIL_TIMER ) != RESET) {
     LL_TIM_ClearFlag_UPDATE(UTIL_TIMER );
-	// or LL_TIM_ClearFlag_CC1(TIM2);
+    // or LL_TIM_ClearFlag_CC1(TIM2);
     jstUtilTimerInterruptHandler();
   }
 
