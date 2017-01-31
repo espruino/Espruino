@@ -423,7 +423,8 @@ void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
     }
     endOfData = cbData[1];
     // make sure we write everything in buffer
-	for(int i=0;i<FLASH_UNITARY_WRITE_SIZE;i++)
+    int i;
+    for(i=0;i<FLASH_UNITARY_WRITE_SIZE;i++)
       jsfSaveToFlash_writecb(0,cbData);
 
     writtenBytes = endOfData - FLASH_SAVED_CODE_START;
