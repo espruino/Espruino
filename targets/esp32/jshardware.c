@@ -26,6 +26,7 @@
 #include <stdio.h>
 
 #include "jshardware.h"
+#include "jshardwareUart.h"
 #include "jshardwareAnalog.h"
 #include "jshardwareTimer.h"
 #include "jshardwarePWM.h"
@@ -444,9 +445,7 @@ bool jshIsEventForPin(
 
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
-  UNUSED(device);
-  UNUSED(inf);
-  jsError(">> jshUSARTSetup nt implemeted");
+  initSerial(device,inf);
 }
 
 bool jshIsUSBSERIALConnected() {
@@ -462,7 +461,8 @@ void jshUSARTKick(
 ) {
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
-    uart_tx_one_char((uint8_t)c);
+	if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c); 
+    else writeSerial(device,(uint8_t)c);
     c = jshGetCharToTransmit(device);
   }
 }

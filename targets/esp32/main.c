@@ -27,6 +27,7 @@ static void uartTask(void *data) {
   initADC(1);
   while(1) {
     consoleToEspruino();  
+    serialToEspruino();	
   }
 }
 
