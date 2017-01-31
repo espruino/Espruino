@@ -341,7 +341,7 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
     return;
   }
 
-  if (!jshGetPinStateIsManual(pin))
+  if (jshGetPinStateIsManual(pin) != JSHPINSTATE_GPIO_OUT)
     jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
 
   // values for 160Mhz clock
