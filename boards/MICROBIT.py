@@ -23,7 +23,7 @@ info = {
  'default_console_tx' : "H0", # pin 24
  'default_console_rx' : "H1", # pin 25
  'default_console_baudrate' : "9600",
- 'variables' : 350,
+ 'variables' : 300,
  'binary_name' : 'espruino_%v_microbit.hex',
  'build' : {
   'defines' : [
