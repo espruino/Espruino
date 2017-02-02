@@ -45,6 +45,7 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
+#include "rom/ets_sys.h"
 #include "rom/uart.h"
 #include "driver/gpio.h"
 
@@ -128,7 +129,7 @@ void jshInit() {
  * Reset the Espruino environment.
  */
 void jshReset() {
-  jsError(">> jshReset Not implemented");
+  esp_restart();
 }
 
 /**
@@ -151,8 +152,6 @@ void jshIdle() {
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
   assert(maxChars >= 6); // it's 32
   esp_wifi_get_mac(WIFI_IF_STA, data);
-  jsError("<< jshGetSerialNumber %.2x%.2x%.2x%.2x%.2x%.2x",
-      data[0], data[1], data[2], data[3], data[4], data[5]);
   return 6;
 }
 
@@ -181,8 +180,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
  * Delay (blocking) for the supplied number of microseconds.
  */
 void jshDelayMicroseconds(int microsec) {
-  TickType_t ticks = (TickType_t)microsec / (1000 * portTICK_PERIOD_MS);
-  vTaskDelay(ticks);
+  ets_delay_us(microsec);
 } // End of jshDelayMicroseconds
 
 
@@ -342,13 +340,13 @@ void jshSetOutputValue(JshPinFunction func, int value) {
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
   UNUSED(timeout);
-  jsError(tag,">> jshEnableWatchDog Not implemented");
+  jsError(">> jshEnableWatchDog Not implemented,using taskwatchdog from RTOS");
 }
 
 
 // Kick the watchdog
 void jshKickWatchDog() {
-  jsError(tag,">> jshKickWatchDog Not implemented");
+  jsError(tag,">> jshKickWatchDog Not implemented,using taskwatchdog from RTOS");
 }
 
 
@@ -505,25 +503,18 @@ void jshSetSystemTime(JsSysTime newTime) {
   tz.tz_minuteswest=0;
   tz.tz_dsttime=0;
   settimeofday(&tm, &tz);
-  ESP_LOGD(tag,"<< jshSetSystemTime");
 }
 
 void jshUtilTimerDisable() {
-#ifdef RTOS
   disableTimer(0);
-#endif
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-#ifdef RTOS
   startTimer(0,(uint64_t) period);
-#endif
 }
 
 void jshUtilTimerReschedule(JsSysTime period) {
-#ifdef RTOS
   rescheduleTimer(0,(uint64_t) period);
-#endif
 }
 
 //===== Miscellaneous =====
