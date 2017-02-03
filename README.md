@@ -87,13 +87,17 @@ If you are a board manufacturer interested in getting your board officially supp
 
 * [Original Espruino Board](http://www.espruino.com/EspruinoBoard) - great support.
 * [Espruino Pico Board](http://www.espruino.com/Pico) - great support.
+* [Puck.js](http://www.espruino.com/Puck.js) - great support.
+* [Espruino WiFi Board](http://www.espruino.com/WiFi) - great support.
 * Linux - WORKING
+* [BBC micro:bit](http://www.espruino.com/MicroBit) - WORKING
 * [STM32VLDISCOVERY](http://www.espruino.com/ReferenceSTM32VLDISCOVERY) - WORKING - limited memory so some features removed
 * [STM32F3DISCOVERY](http://www.espruino.com/ReferenceSTM32F3DISCOVERY) - USB BROKEN
 * [STM32F4DISCOVERY](http://www.espruino.com/ReferenceSTM32F4DISCOVERY) - WORKING
 * STM32F401CDISCOVERY - appears WORKING, but very little testing done
 * STM32F429IDISCOVERY - WORKING over serial (A9/A10). No USB and no LCD support
-* NRF52832 Preview Development Kit - WORKING with limited functionality. Able to interface with Espruino over BLE (send commands from smartphone or computer) or serial as normal (send commands from chrome IDE or terminal).
+* NRF51822 Development Kit - WORKING
+* NRF52832 Development Kit - WORKING
 * [HY STM32 2.4"](http://www.espruino.com/ReferenceHYSTM32_24) - WORKING
 * [HY STM32 2.8"](http://www.espruino.com/ReferenceHYSTM32_28) - WORKING - limited memory so some features removed
 * [HY STM32 3.2"](http://www.espruino.com/ReferenceHYSTM32_32) - WORKING
