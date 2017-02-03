@@ -548,6 +548,9 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
 
 Change the services and characteristics Espruino advertises.
 
+If you want to **change** the value of a characteristic, you need
+to use `NRF.updateServices()` instead
+
 To expose some information on Characteristic `ABCD` on service `BCDE` you could do:
 
 ```
@@ -1037,20 +1040,18 @@ void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *timeout) {
 }
 
 Start/stop listening for RSSI values on the currently active connection
-
-RSSI is the 'Received Signal Strength Indication' in dBm
+(where This device is a peripheral and is being connected to by a 'central' device)
 
 ```
 // Start scanning
 NRF.setRSSIHandler(function(rssi) {
-  console.log(rssi);
+  console.log(rssi); // prints -85 (or similar)
 });
-// prints -85 (or similar)
-
 // Stop Scanning
 NRF.setRSSIHandler();
 ```
 
+RSSI is the 'Received Signal Strength Indication' in dBm
 */
 void jswrap_nrf_bluetooth_setRSSIHandler(JsVar *callback) {
   // set the callback event variable
