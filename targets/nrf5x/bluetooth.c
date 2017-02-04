@@ -1108,6 +1108,11 @@ void jsble_restart_softdevice() {
   if (advData || advOpt) jswrap_nrf_bluetooth_setAdvertising(advData, advOpt);
   jsvUnLock2(advData, advOpt);
 
+  // If we had scan response data set, update it
+  JsVar *scanData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, 0);
+  if (scanData) jswrap_nrf_bluetooth_setScanResponse(scanData);
+  jsvUnLock(scanData);
+
   // if we were scanning, make sure we restart
   if (bleStatus & BLE_IS_SCANNING) {
     JsVar *callback = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT, 0);
