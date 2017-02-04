@@ -23,6 +23,7 @@
 #define BLE_NAME_SERVICE_DATA           "BLE_SVC_D"
 #define BLE_NAME_ADVERTISE_DATA         "BLE_ADV_D"
 #define BLE_NAME_ADVERTISE_OPTIONS      "BLE_ADV_O"
+#define BLE_NAME_SCAN_RESPONSE_DATA     "BLE_RESP"
 #define BLE_NAME_HID_DATA               "BLE_HID_D"
 #define BLE_NAME_NUS                    "BLE_UART"
 #define BLE_NAME_FLAGS                  "BLE_FLAGS"
