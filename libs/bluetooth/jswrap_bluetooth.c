@@ -555,8 +555,6 @@ NRF.setScanResponse([0x07,  // Length of Data
 */
 void jswrap_nrf_bluetooth_setScanResponse(JsVar *data) {
   uint32_t err_code;
-  ble_advdata_t advdata;
-  jsble_setup_advdata(&advdata);
   
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, data);
 
