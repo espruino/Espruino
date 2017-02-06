@@ -53,6 +53,7 @@ JsVar *jswrap_nrf_bluetooth_getAddress();
 
 JsVarFloat jswrap_nrf_bluetooth_getBattery();
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options);
+void jswrap_nrf_bluetooth_setScanResponse(JsVar *data);
 void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options);
 void jswrap_nrf_bluetooth_updateServices(JsVar *data);
 void jswrap_nrf_bluetooth_setScan(JsVar *callback);
