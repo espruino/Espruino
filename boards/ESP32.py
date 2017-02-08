@@ -135,7 +135,7 @@ def get_pins():
 
   pins = pinutils.generate_pins(0,5);
 #6-11 are used by Flash chip
-  pins.extend(pinutils.generate_pins(12,22));
+  pins.extend(pinutils.generate_pins(12,23));
 
   pins.extend(pinutils.generate_pins(25,27));
 #32-33 are routed to rtc for xtal
