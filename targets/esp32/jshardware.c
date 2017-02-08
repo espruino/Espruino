@@ -129,7 +129,7 @@ void jshInit() {
  * Reset the Espruino environment.
  */
 void jshReset() {
-  esp_restart();
+  //esp_restart();
 }
 
 /**
