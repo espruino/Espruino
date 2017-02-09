@@ -6,6 +6,8 @@
             Puck.js: Allow Puck.IR to take pins for external IR LED (fix #927)
             nRF52: Allow arbitrary NFC data to be specified (fix #1021)
             nRF5x: Allow multiple advertising packets to be set at once with NRF.setAdvertising
+            nRF52: Add 'properties' object to BluetoothRemoteGATTCharacteristic
+            nRF52: Perform write without response if that is what is required 
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise

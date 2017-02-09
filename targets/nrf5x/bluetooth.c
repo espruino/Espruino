@@ -411,13 +411,21 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
       case BLE_EVT_TX_COMPLETE:
         // BLE transmit finished - reset flags
-        //TODO: probably want to figure out *which one* finished?
-        bleStatus &= ~BLE_IS_SENDING;
-        if (bleStatus & BLE_IS_SENDING_HID) {
-          bleStatus &= ~BLE_IS_SENDING_HID;
-          jsiQueueObjectCallbacks(execInfo.root, BLE_HID_SENT_EVENT, 0, 0);
-          jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, 0); // fire only once
-          jshHadEvent();
+#if CENTRAL_LINK_COUNT>0
+        if (p_ble_evt->evt.common_evt.conn_handle == m_central_conn_handle) {
+          if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
+            bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_WRITE, 0);
+        }
+#endif
+        if (p_ble_evt->evt.common_evt.conn_handle == m_conn_handle) {
+          //TODO: probably want to figure out *which one* finished?
+          bleStatus &= ~BLE_IS_SENDING;
+          if (bleStatus & BLE_IS_SENDING_HID) {
+            bleStatus &= ~BLE_IS_SENDING_HID;
+            jsiQueueObjectCallbacks(execInfo.root, BLE_HID_SENT_EVENT, 0, 0);
+            jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, 0); // fire only once
+            jshHadEvent();
+          }
         }
         break;
 
@@ -529,6 +537,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
               jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_chr->uuid));
               jsvObjectSetChildAndUnLock(o,"handle_value", jsvNewFromInteger(p_chr->handle_value));
               jsvObjectSetChildAndUnLock(o,"handle_decl", jsvNewFromInteger(p_chr->handle_decl));
+              JsVar *p = jsvNewObject();
+              if (p) {
+                jsvObjectSetChildAndUnLock(p,"broadcast",jsvNewFromBool(p_chr->char_props.broadcast));
+                jsvObjectSetChildAndUnLock(p,"read",jsvNewFromBool(p_chr->char_props.read));
+                jsvObjectSetChildAndUnLock(p,"writeWithoutResponse",jsvNewFromBool(p_chr->char_props.write_wo_resp));
+                jsvObjectSetChildAndUnLock(p,"write",jsvNewFromBool(p_chr->char_props.write));
+                jsvObjectSetChildAndUnLock(p,"notify",jsvNewFromBool(p_chr->char_props.notify));
+                jsvObjectSetChildAndUnLock(p,"indicate",jsvNewFromBool(p_chr->char_props.indicate));
+                jsvObjectSetChildAndUnLock(p,"authenticatedSignedWrites",jsvNewFromBool(p_chr->char_props.auth_signed_wr));
+                jsvObjectSetChildAndUnLock(o,"properties", p);
+              }
               // char_props?
               jsvArrayPushAndUnLock(bleTaskInfo, o);
             }
@@ -1412,9 +1431,20 @@ void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, siz
     return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_WRITE, jsvNewFromString("Not connected"));
 
   uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+  bool writeWithoutResponse = false;
+  JsVar *properties = jsvObjectGetChild(characteristic, "properties", 0);
+  if (properties) {
+    writeWithoutResponse = jsvGetBoolAndUnLock(jsvObjectGetChild(properties, "writeWithoutResponse", 0));
+    jsvUnLock(properties);
+  }
+
+
   ble_gattc_write_params_t write_params;
   memset(&write_params, 0, sizeof(write_params));
-  write_params.write_op = BLE_GATT_OP_WRITE_REQ;
+  if (writeWithoutResponse)
+    write_params.write_op = BLE_GATT_OP_WRITE_CMD; // write without response
+  else
+    write_params.write_op = BLE_GATT_OP_WRITE_REQ; // write with response
   // BLE_GATT_OP_WRITE_REQ ===> BLE_GATTC_EVT_WRITE_RSP (write with response)
   // or BLE_GATT_OP_WRITE_CMD ===> BLE_EVT_TX_COMPLETE (simple write)
   // or send multiple BLE_GATT_OP_PREP_WRITE_REQ,...,BLE_GATT_OP_EXEC_WRITE_REQ (with offset + 18 bytes in each for 'long' write)
