@@ -35,12 +35,16 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 
 ----
 
-### for Nordic Semiconductor's nRF51/nRF52 series devices
+### for Nordic Semiconductor's nRF51/nRF52 series devices (incl. [Espruino Board](http://www.espruino.com/Puck.js))
 
 The (previously suggested) CodeSourcery GCC compiler is no longer available. We'd suggest you use [gcc-arm-none-eabi](https://launchpad.net/gcc-arm-embedded/+download).
 
-Download the compiler, set up your path so you have access to it, and run:
+Download the compiler, set up your path so you have access to it.
 
+For puck.js:
+```PUCKJS=1 BOOTLOADER=1 RELEASE=1 make```
+
+For other boards:
 ```NRF52832DK=1 RELEASE=1 make```
 
 **Note:** This is for the nRF52 devkit, use `NRF51822DK=1` instead for the nRF51 devkit, `MICROBIT=1` for the BBC micro:bit, or check the first 50-ish lines of the `Makefile` for more board options.
