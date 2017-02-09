@@ -581,9 +581,23 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
         break;
       }
-      case BLE_GATTC_EVT_DESC_DISC_RSP:
-        jsiConsolePrintf("DESC\n");
+      case BLE_GATTC_EVT_DESC_DISC_RSP: {
+        // trigger this with sd_ble_gattc_descriptors_discover(conn_handle, &handle_range);
+       /* ble_gattc_evt_desc_disc_rsp_t * p_desc_disc_rsp_evt = &p_ble_evt->evt.gattc_evt.params.desc_disc_rsp;
+        if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
+          // The descriptor was found at the peer.
+          // If the descriptor was a CCCD, then the cccd_handle needs to be populated.
+          uint32_t i;
+          // Loop through all the descriptors to find the CCCD.
+          for (i = 0; i < p_desc_disc_rsp_evt->count; i++) {
+            if (p_desc_disc_rsp_evt->descs[i].uuid.uuid ==
+                BLE_UUID_DESCRIPTOR_CLIENT_CHAR_CONFIG) {
+                  cccd_handle = p_desc_disc_rsp_evt->descs[i].handle;
+            }
+          }
+        }*/
         break;
+      }
 
       case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) {
         ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
