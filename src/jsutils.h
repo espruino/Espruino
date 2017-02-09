@@ -326,6 +326,12 @@ typedef int64_t JsSysTime;
 #define NIBBLEFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
 */
 
+#if defined(NRF51)
+  // Cortex-M0 does not support unaligned reads
+  #define UNALIGNED_UINT16(addr) ((((uint16_t)*((uint8_t*)(addr)+1)) << 8) | (*(uint8_t*)(addr)))
+#else
+  #define UNALIGNED_UINT16(addr) (*(uint16_t*)addr)
+#endif 
 
 bool isWhitespace(char ch);
 bool isNumeric(char ch);
