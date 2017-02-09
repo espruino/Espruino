@@ -1,15 +1,90 @@
 Building
 ========
 
-**Note:** 
-- If you're swapping between compiling for different targets, **you
-need to call `make clean`** before you compile for the new target.
-- If you have a ld error, double check the board name in the <BOARD>=1 make
+There are several options to building Espruino on various platforms for the OS and board versions that are avaiable.
+
+**Note:**
+
+- If you're swapping between compiling for different targets, **you need to call `make clean`** before you compile for the new target.
+- If you have a ld error, double check the board name in the BOARDNAME=1 make
+- In general, have a look through the Makefile to see what other options are available
+
+espruino
+--------
+
+To build espruino on the OS that one is using is as simple as the following, if prerequisits are met:
+
+```bash
+make clean && make # this can generally ensure that one has a good base before cross compiling to boards
+```
 
 Under Linux
 -----------
 
-Espruino is easy to build under Linux, and it is possible to build under MacOS with some effort. If you don't have Linux it's **much** easier to install it in a Virtual Machine. See the heading **Building under Windows/MacOS with a VM** below for more information.
+Espruino is easy to build under Linux, for either for espruino running on Linux or a board.
+
+The current reference OS for building is Ubuntu 16.xx, and the following can ensure problem free developement:
+
+```bash
+sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa 
+sudo apt-get update
+sudo apt-get upgrade
+curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash - # install node
+sudo apt-get install -y \
+  build-essential lib32z1 lib32ncurses5 lib32bz2-1.0 lib32ncurses5 ia32-libs git python python-pip
+sudo pip install nrfutil # for nRF5X boards
+# gcc-arm-none-eabi for cross-compiling
+sudo apt-get install -y \
+ gcc-arm-none-eabi # This will install the latest version available
+# The following will install the reference version where the $PATH can be used to control which version is used
+mkdir -p /usr/local
+cd /usr/local
+wget https://launchpad.net/gcc-arm-embedded/5.0/5-2016-q3-update/+download/gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
+tar xjf gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2
+export PATH=/usr/local/gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2/bin:$PATH
+# User choice for placement of source repos
+mkdir -p /mnt/c/source/repos/github/espruino
+cd /mnt/c/source/repos/github/espruino
+git clone https://github.com/espruino/EspruinoTools.git
+git clone https://github.com/espruino/Espruino.git
+git clone https://github.com/espruino/EspruinoDocs.git
+git clone https://github.com/espruino/EspruinoWebIDE.git
+cd Espruino
+make clean && make # Create a version of Espruino that runs on your machine
+```
+
+Under MacOS
+-----------
+
+It is possible to build Espruino under MacOS with some effort. If you don't have Linux it's **much** easier to install it in a Virtual Machine. See the heading **Building under Windows/MacOS with a VM** below for more information. However, a PR for an easy native method is allways welcom.
+
+Under Windows
+-------------
+
+It is possible to build Espruino under Windows (using ) with the following addition to the Linux explanation:
+
+- Install Bash on Ubuntu on Windows <https://msdn.microsoft.com/da-dk/commandline/wsl/install_guide>
+- After enablement, just use the instructions for Linux
+
+Or use a Virtual machine as described below.
+
+Cross compilation
+-----------------
+
+### for Raspberry Pi
+
+```
+cd targetlibs
+mkdir raspberrypi
+cd raspberrypi
+git clone git://github.com/raspberrypi/tools.git
+sudo apt-get install ia32-libs
+```
+
+### for OpenWRT
+
+- Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
+- Run ```CARAMBOLA=1 make```
 
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
 
@@ -132,40 +207,10 @@ Compiling Espruino:
 - To compile Espruino you will need to point to the WICED root and include files. This is
   done by specifying a WICED_ROOT environment variable.
 - Adapt the pathnames from the following script:
-```
+
+```bash
   WICED_ROOT=/home/emw3165/WICED-for-EMW/WICED-SDK-3.3.1 make $*
 ```
-
-----
-
-### for Linux
-
-Simple: Just run `make`
-
-----
-
-### for Raspberry Pi
-
-On the Pi, just run `make`.
-
-Or to cross-compile:
-
-```
-cd targetlibs
-mkdir raspberrypi
-cd raspberrypi
-git clone git://github.com/raspberrypi/tools.git
-sudo apt-get install ia32-libs
-```
-
-----
-
-### for Carambola (OpenWRT)
-
-To cross compile,
-
-* Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
-* Run ```CARAMBOLA=1 make```
 
 ----
 
@@ -367,47 +412,13 @@ Compiling Espruino:
   WICED_ROOT=/home/emw3165/WICED-for-EMW/WICED-SDK-3.3.1 make $*
 ```
 
-----
-
-### for Linux
-
-Simple: Just run `make`
-
-----
-
-### for Raspberry Pi
-
-On the Pi, just run `make`.
-
-Or to cross-compile:
-
-```
-cd targetlibs
-mkdir raspberrypi
-cd raspberrypi
-git clone git://github.com/raspberrypi/tools.git
-sudo apt-get install ia32-libs
-```
-
-----
-
-### for Carambola (OpenWRT)
-
-To cross compile,
-
-* Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
-* Run ```CARAMBOLA=1 make```
-
-----
-
-### Documentation
+Documentation
+-------------
 
 ```python scripts/build_docs.py ```
 
 This will create a file called ```functions.html``` that is a version of [the reference pages](http://www.espruino.com/Reference),
 but based on your source code.
-
-----
 
 Building under Windows/MacOS with a VM (Vagrant)
 ------------------------------------------------
@@ -465,47 +476,3 @@ There's some more information on how to do this on the forum at http://forum.esp
 **Note:** if you want to you can change permissions so you don't need `sudo` by typing `sudo cp misc/45-espruino.rules /etc/udev/rules.d;sudo udevadm control --reload-rules` and then re-inserting the board.
 
 ----
-
-Building with Bash on Ubuntu on Windows
----------------------------------------
-
-* Install <https://msdn.microsoft.com/da-dk/commandline/wsl/install_guide>
-* After installation, obtain a bash prompt and use the following, but review the comments:
-
-```
-whoami # installation choice may mean i am root or non-root by default.
-
-sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa # optional, but does no harm
-sudo apt-get update
-sudo apt-get upgrade
-
-curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash - # install node 
-
-sudo apt-get install -y \
-  build-essential lib32z1 lib32ncurses5 lib32bz2-1.0 lib32ncurses5 ia32-libs git 
-
-# Choose if to use the default ppa repository gcc-arm-embedded. Breaking edge.
-# sudo apt-get install -y gcc-arm-embedded
-# Alternativly one can use multiple installations and enable the version to be used with PATH and/or symlink
-mkdir -p /usr/local
-cd /usr/local
-wget https://launchpad.net/gcc-arm-embedded/5.0/5-2016-q3-update/+download/gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
-tar xjf gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2
-wget https://developer.arm.com/-/media/Files/downloads/gnu-rm/6-2016q4/gcc-arm-none-eabi-6_2-2016q4-20161216-linux.tar.bz2
-tar xjf gcc-arm-none-eabi-6_2-2016q4-20161216-linux.tar.bz2
-export PATH=/usr/local/gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2/bin:$PATH
-
-# User choice for placement of source repos
-mkdir -p /mnt/c/source/repos/github/espruino
-cd /mnt/c/source/repos/github/espruino
-
-git clone https://github.com/espruino/EspruinoTools.git
-git clone https://github.com/espruino/Espruino.git
-git clone https://github.com/espruino/EspruinoDocs.git
-git clone https://github.com/espruino/EspruinoWebIDE.git
-
-cd Espruino
-make clean && make
-make clean && NRF52832DK=1 USE_FILESYSTEM=1 RELEASE=1 make
-make clean && MICROBIT=1 RELEASE=1 make
-```
