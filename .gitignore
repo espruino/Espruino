@@ -29,5 +29,6 @@ esp_iot_sdk_v1.5.0
 xtensa-lx106-elf
 *.c#
 esp_iot_sdk_v2.0.0.p1/
+libs/network/mqtt/
 /function_keywords.js
 /functions.html
