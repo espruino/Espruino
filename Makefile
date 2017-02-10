@@ -570,6 +570,7 @@ EMBEDDED=1
 USE_NET=1
 USE_TELNET=1
 USE_GRAPHICS=1
+USE_MQTT=1
 #USE_CRYPTO=1
 BOARD=ESP8266_BOARD
 # Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
@@ -1012,6 +1013,12 @@ ifdef USE_NET
  INCLUDE += -I$(ROOT)/libs/network/telnet
  endif
 endif # USE_NET
+
+ifdef USE_MQTT
+	DEFINES += -DUSE_MQTT
+	WRAPPERSOURCES += libs/network/mqtt/jswrap_mqtt.c
+	INCLUDE += -I$(ROOT)/libs/network/mqtt
+endif # USE_MQTT
 
 ifdef USE_TV
 DEFINES += -DUSE_TV
