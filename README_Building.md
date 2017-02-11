@@ -87,7 +87,7 @@ git clone git://github.com/raspberrypi/tools.git
 ### for OpenWRT
 
 * Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
-* Run ```CARAMBOLA=1 make```
+* Run ```make clean && CARAMBOLA=1 make```
 
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
 
