@@ -99,7 +99,7 @@ Follow the instructions for [OpenWRT build system](https://wiki.openwrt.org/doc/
 
 After a sucessfull OpenWRT build, [OpenWRT Espruino packages](https://github.com/vshymanskyy/OpenWRT-Espruino-packages)
 
-### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
+### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard)
 
 ```make clean && YOUR_BOARD_NAME=1 RELEASE=1 make```
 
@@ -156,7 +156,6 @@ All boards based on the nRF51 are limited in RAM and Flash so many features are 
 
 ```make clean && NRF51822DK=1 RELEASE=1 make```
 
-
 ### for esp8266
 
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
@@ -172,8 +171,7 @@ To run make you need to pass a couple of environment variables to `make`.  These
 * `PATH=<Path to esp-open-sdk/xtensa-lx106-elf/bin/>`
 * `COMPORT=</dev/ttyUSB0|COM1|...>`
 
-The easiest is to place
-the following lines into a script, adapt it to your needs and then run it.
+The easiest is to place the following lines into a script, adapt it to your needs and then run it.
 
 ```bash
 
@@ -253,7 +251,6 @@ python scripts/build_docs.py
 This will create a file called ```functions.html``` that is a version of [the reference pages](http://www.espruino.com/Reference),
 but based on your source code.
 
-
 ## Virtual Machines under Windows and MacOS
 
 The easiest solution for a Virtual Machine for Windows and MacOS is [VirtualBox](https://www.virtualbox.org/).
@@ -266,7 +263,7 @@ A really easy way to provision, ie setup the system for developement, is [Vagran
   * Download and install [Vagrant](https://www.vagrantup.com/downloads.html)
   * Note: for MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io)
     * `brew cask install virtualbox vagrant`
-* Clone this repository and navigate with the command prompt to the contents 
+* Clone this repository and navigate with the command prompt to the contents
 * Install the auto-network plugin
   * `vagrant plugin install vagrant-auto_network`
 * Execute
