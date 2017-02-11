@@ -81,14 +81,15 @@ Or use a Virtual machine as described below dependant on ones taste.
 
 Using [RASPBIAN JESSIE WITH PIXEL](https://www.raspberrypi.org/downloads/raspbian/), getting Espurino is easy.
 
-* clone this repository and cd into the directory
-  * ```make clean && make```
-  * ```chmod +x espurino && sudo cp espurino /usr/local/bin```
-
-The next step is [WiringPi](http://wiringpi.com/)
+To enable the full power of Espruino on the Pi, [WiringPi](http://wiringpi.com/):
 
 * ```sudo apt-get install wiringpi```
 
+Getting Espruino:
+
+* clone this repository and cd into the directory
+  * ```make clean && make```
+  * ```chmod +x espurino && sudo cp espurino /usr/local/bin```
 
 ### for OpenWRT
 
