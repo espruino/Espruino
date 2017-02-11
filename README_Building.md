@@ -18,7 +18,7 @@ make clean && make
 
 Espruino is easy to build under Linux, for either for Espruino running on Linux or a board.
 
-The current reference OS for building is Ubuntu 16.xx, and the following can ensure problem free developement:
+The current reference OS for building is Ubuntu 16.04.1 LTS, and the following can ensure problem free developement:
 
 ### for Espruino
 
@@ -72,7 +72,8 @@ It is possible to build Espruino under Windows with the following addition to th
 Note:
 
 * there is no access to USB in the present version
-  * copy any crosscompile output to one's user directory and either bluetooth or USB the result to the target 
+  * copy any crosscompile output to one's user directory and either bluetooth or USB the result to the target
+* Ubuntu 14.04 LTS is the present version.
 
 Or use a Virtual machine as described below dependant on ones taste.
 
