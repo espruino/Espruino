@@ -95,8 +95,15 @@ Getting Espruino:
 
 ### for OpenWRT
 
+At the present time, a reference installation is needed
+
+Old doc
+
 * Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
 * Run ```make clean && CARAMBOLA=1 make```
+
+Possible new doc from <https://github.com/vshymanskyy/OpenWRT-Espruino-packages>
+<https://github.com/espruino/Espruino/issues/143>
 
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
 
