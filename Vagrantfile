@@ -4,12 +4,12 @@ Vagrant.configure(2) do |config|
 
   # Ubuntu Server
   config.vm.define "headless", primary: true do |headless|
-    headless.vm.box = "ubuntu/trusty64"
+    headless.vm.box = "ubuntu/xenial64"
   end
 
   ## FOLDER ##
 
-  config.vm.synced_folder ".", "/vagrant"
+  config.vm.synced_folder ".", "/home/ubuntu"
 
   ## NETWORK ##
 
