@@ -160,6 +160,7 @@ All boards based on the nRF51 are limited in RAM and Flash so many features are 
 ### for esp8266
 
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
+
 * the esp-open-sdk from <https://github.com/pfalcon/esp-open-sdk>, use make STANDALONE=n
 * the Espressif SDK (version 1.5.0 with lwip patch as of this writing) from <http://bbs.espressif.com/viewforum.php?f=46> and <http://bbs.espressif.com/viewtopic.php?f=7&t=1528>
 
@@ -213,8 +214,9 @@ The strategy employed is to compile portions of WICED into a library using the W
 and then linking this into Espruino.
 
 Setting up WICED:
+
 * WICED does not officially support the EMW3165.
-* Clone https://github.com/MXCHIP-EMW/WICED-for-EMW and follow the instructions there to configure
+* Clone <https://github.com/MXCHIP-EMW/WICED-for-EMW> and follow the instructions there to configure
   WICED and build it. (You will need to sign up for a developer acct with Broadcom.)
 * Build the apsta sample program (snippet) using a command-line like
   `./make EMW3165-FreeRTOS-LwIP-snip.apsta download run JTAG=stlink-v2`
@@ -224,9 +226,11 @@ Setting up WICED:
   console (works well with the WifiMCU board): `./make EMW3165-FreeRTOS-LwIP-snip.scan ...`
 
 Compiling WICED into a library:
+
 * ... if only this worked ...
 
 Compiling Espruino:
+
 * To compile Espruino you will need to point to the WICED root and include files. This is
   done by specifying a WICED_ROOT environment variable.
 * Adapt the pathnames from the following script:
