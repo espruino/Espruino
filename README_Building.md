@@ -74,15 +74,15 @@ Or use a Virtual machine as described below.
 
 ### for Raspberry Pi
 
-```bash
-sudo apt-get update
-sudo apt-get install ia32-libs
-cd targetlibs
-mkdir raspberrypi
-cd raspberrypi
-git clone git://github.com/raspberrypi/tools.git
-# and ???????
-```
+Using [RASPBIAN JESSIE WITH PIXEL](https://www.raspberrypi.org/downloads/raspbian/), getting Espurino is easy.
+
+* clone this repository and cd into the directory
+  * ```make clean && make```
+
+The next step is [WiringPi](http://wiringpi.com/)
+
+* ```sudo apt-get install wiringpi```
+
 
 ### for OpenWRT
 
