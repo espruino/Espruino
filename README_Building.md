@@ -45,20 +45,23 @@ Having sucessfully created an native OS Espruino, try a cross compilation.
 ```bash
 sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa
 sudo apt-get update
-sudo apt-get install -y \
-  python-pip
 sudo pip install nrfutil
-# This will install the latest version and only available from ppa
+# This will install the latest, and only, version available from ppa
 sudo apt-get install -y \
  gcc-arm-none-eabi
+cd ~/source/repos/github/espruino/Espruino
+make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
+```
+
+### gcc-arm-embedded
+
+```bash
 # The following will install the reference version where the $PATH can be used to control which version is used
 sudo mkdir -p /usr/local
 cd /usr/local
 sudo wget https://launchpad.net/gcc-arm-embedded/5.0/5-2016-q3-update/+download/gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
 sudo tar xjf gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2
-export 'PATH=/usr/local/gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2/bin:$PATH'
-cd ~/source/repos/github/espruino/Espruino
-make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
+export 'PATH=/usr/local/gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2/bin:$PATH'>>.bashrc
 ```
 
 ## Under MacOS
