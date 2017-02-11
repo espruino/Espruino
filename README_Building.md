@@ -10,9 +10,9 @@ make clean && make
 
 **Note:**
 
-* If you're swapping between compiling for different targets, **you need to call `make clean`** before you compile for the new target.
-* If you have a ld error, check the board name in the BOARDNAME=1 make in the Makefile.
 * In general, have a look through the Makefile to see what other options are available
+* If you're swapping between compiling for different targets, you need to call `make clean` before you compile for the new target.
+* If you have a ld error, check the board name in the BOARDNAME=1 make in the Makefile.
 
 ## Under Linux
 
@@ -75,11 +75,13 @@ Or use a Virtual machine as described below.
 ### for Raspberry Pi
 
 ```bash
+sudo apt-get update
+sudo apt-get install ia32-libs
 cd targetlibs
 mkdir raspberrypi
 cd raspberrypi
 git clone git://github.com/raspberrypi/tools.git
-sudo apt-get install ia32-libs
+# and ???????
 ```
 
 ### for OpenWRT
@@ -104,9 +106,9 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 
 **Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved on 10240 bytes to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 RELEASE=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones that the Espruino Web IDE expects to use) use the script `scripts/create_espruino_image_1v3.sh` which will compile the bootloader *and* Espruino, and then join them together.
 
-### for Nordic Semiconductor's nRF51/nRF52 series devices (incl. [Espruino Board](http://www.espruino.com/Puck.js))
+### for Nordic Semiconductor's nRF51/nRF52 series devices 
 
-#### for puck.js
+#### for puck.js ([Espruino Board](http://www.espruino.com/Puck.js))
 
 ```PUCKJS=1 BOOTLOADER=1 RELEASE=1 make```
 
