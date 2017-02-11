@@ -131,13 +131,17 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 
 The puck.js is based on the nRF52
 
-```make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make```
+```bash
+make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
+```
 
 #### for [NRF52-DK](https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy/nRF52-DK)
 
 All boards based on the nRF52 have RAM and Flash to support Espruino without feature disablement.
 
-```make clean && NRF52832DK=1 RELEASE=1 make```
+```bash
+make clean && NRF52832DK=1 RELEASE=1 make
+```
 
 #### for [micro:bit](http://microbit.org/)
 
@@ -156,7 +160,9 @@ Note:
 
 All boards based on the nRF51 are limited in RAM and Flash so many features are disabled.
 
-```make clean && NRF51822DK=1 RELEASE=1 make```
+```bash
+make clean && NRF51822DK=1 RELEASE=1 make
+```
 
 ### for esp8266
 
