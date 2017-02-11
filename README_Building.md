@@ -31,7 +31,8 @@ mkdir -p ~/source/repos/github/espruino
 cd ~/source/repos/github/espruino
 git clone https://github.com/espruino/Espruino.git
 cd Espruino
-make clean && make # Create a version of Espruino that runs on your machine
+make clean && make
+chmod +x espurino && sudo cp espurino /usr/local/bin
 ```
 
 ### for an example of cross compilation to for the puck.js:
