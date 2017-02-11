@@ -236,20 +236,29 @@ but based on your source code.
 
 ### Vagrant and VirtualBox
 
-* Clone this repository.
-* Download and install the correct [VirtualBox](https://www.virtualbox.org/) for your platform. eg. If you have Windows, download 'VirtualBox for Windows Hosts'.
-* Download and install the correct [Vagrant](https://www.vagrantup.com/downloads.html) for your platform.
-  > If running on MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io):  `brew cask install virtualbox vagrant` will do it.
-* In your terminal application, navigate to your cloned working copy.
-* Install the auto-network plugin with `vagrant plugin install vagrant-auto_network`
-* Execute `vagrant up`.  This will take a little while while the box is downloaded, and your virtual machine is provisioned.
-* When it is complete, execute `vagrant ssh`, which will open an ssh session into your new VM.
-* Execute `cd /vagrant && ESPRUINO_1V3=1 RELEASE=1 make` and wait.
-* Espruino is now built. See the documentation under **Building under Linux** for more examples.
-* To terminate the ssh session, simply execute `exit`.
-* `vagrant suspend` will pause the VM, `vagrant halt` will stop it, and `vagrant up` will bring it back up again.  See Vagrant's ["Getting Started"](http://docs.vagrantup.com/v2/getting-started/index.html) page for further information.
-
-----
+* For your host OS (Windows or MacOS)
+  * Download and install [VirtualBox](https://www.virtualbox.org/)
+  * Download and install [Vagrant](https://www.vagrantup.com/downloads.html)
+  * Note: for MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io)  
+    * `brew cask install virtualbox vagrant`
+* Clone this repository and navigate with the command prompt to the contents 
+* Install the auto-network plugin
+  * `vagrant plugin install vagrant-auto_network`
+* Execute 
+  * `vagrant up`
+    * This will take a little while while the box is downloaded, and your virtual machine is provisioned.
+  * `vagrant ssh`
+    * a ssh session into your new VM will be created.
+  * `cd /vagrant && make clean && make`
+    * a native OS version of Espruino is now built. See this documentation for further examples
+  * To exit the ssh session
+    *`exit`.
+  * On the host OS, the following are usefull vagrant commands
+    * `vagrant suspend`
+      * will pause the VM
+    * `vagrant halt`
+      * will stop the VM
+    * See Vagrant's ["Getting Started"](https://www.vagrantup.com/docs/getting-started/index.html) page for further information.
 
 ### VirtualBox
 
