@@ -231,7 +231,8 @@ Compiling Espruino:
 
 ```bash
 
-python scripts/build_docs.py 
+sudo pip install markdown
+python scripts/build_docs.py
 
 ```
 
