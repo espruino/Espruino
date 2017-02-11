@@ -91,7 +91,7 @@ git clone git://github.com/raspberrypi/tools.git
 
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
 
-```YOUR_BOARD_NAME=1 RELEASE=1 make```
+```make clean && YOUR_BOARD_NAME=1 RELEASE=1 make```
 
 * See the top of Makefile for board names
 * Without `RELEASE=1`, assertions are kept in the code (which is good for debugging, bad for performance + code size)
