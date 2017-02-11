@@ -165,7 +165,7 @@ export FLASH_4MB=1
 export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.5.0
 export PATH=$PATH:/esp8266/esp-open-sdk/xtensa-lx106-elf/bin/
 export COMPORT=/dev/ttyUSB0
-make $*
+make clean && make $*
 
 ```
 
