@@ -1,8 +1,8 @@
 # Building
 
-There are several options to building espruino on various platforms for the OS and board versions that are avaiable.
+There are several options to building Espruino on various platforms for the OS and board versions that are avaiable.
 
-To build, and run, espruino on the OS that one is using is as simple as the following, if prerequisits are met:
+To build, and run, Espruino on the OS that one is using is as simple as the following, if prerequisits are met:
 
 ```bash
 make clean && make
@@ -16,11 +16,11 @@ make clean && make
 
 ## Under Linux
 
-Espruino is easy to build under Linux, for either for espruino running on Linux or a board.
+Espruino is easy to build under Linux, for either for Espruino running on Linux or a board.
 
 The current reference OS for building is Ubuntu 16.xx, and the following can ensure problem free developement:
 
-### for espruino
+### for Espruino
 
 ```bash
 sudo apt-get upgrade
