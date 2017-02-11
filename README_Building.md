@@ -298,7 +298,7 @@ A really easy way to provision, ie setup the system for developement, is [Vagran
 
 If one does not wish to use vagrant, then install Virtual Box and use the Linux method.
 
-### To flash Espruino from the VM
+## To flash Espruino from the VM
 
 * Plug the Espruino board in while holding BTN1, and wait for Windows to finish connecting to the USB device
 * Go into the VirtualBox Manager (There's no need to stop your VM)
