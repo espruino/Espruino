@@ -118,20 +118,14 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 
 ### for Nordic Semiconductor's nRF51/nRF52 series devices 
 
-Dependant on the board, either usb or bluetooth can be used to program the board.
+Dependant on the board, either usb or bluetooth can be used to program the board or install the bootloader from different devices.
 
 * Bluetooth Low energy
   * the board will appear as `Espruino XYZ` where `XYZ` is the board name
-* Use the Nordic UART Android app - install it, connect to the device, and then issue commands. Note that you will have to explicitly send a Carriage Return at the end of any command in order or it to execute (eg. `1+2 [newline]` then click send)
+* USB
+  * the board appears as a drive to drop a hex on
 
-* Use Web Bluetooth - see [The BBC micro:bit page](http://www.espruino.com/MicroBit) for more information about this.
-Now Espruino is ready to use - you can either use [the Web IDE](http://www.espruino.com/Quick+Start) to connect, or you can use any serial terminal application as long as you connect at 9600 baud (no parity, 1 stop bit).
 
-You can also connect via Bluetooth Low energy - the board will appear as `Espruino XYZ` where `XYZ` is the board name:
-
-* Use the Nordic UART Android app - install it, connect to the device, and then issue commands. Note that you will have to explicitly send a Carriage Return at the end of any command in order or it to execute (eg. `1+2 [newline]` then click send)
-
-* Use Web Bluetooth - see [The BBC micro:bit page](http://www.espruino.com/MicroBit) for more information about this.
 
 #### for puck.js ([Espruino Board](http://www.espruino.com/Puck.js))
 
