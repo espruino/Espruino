@@ -108,18 +108,13 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 
 ### for Nordic Semiconductor's nRF51/nRF52 series devices 
 
-#### for puck.js ([Espruino Board](http://www.espruino.com/Puck.js))
+Dependant on the board, either usb or bluetooth can be used to program the board.
 
-```make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make```
+* Bluetooth Low energy
+  * the board will appear as `Espruino XYZ` where `XYZ` is the board name
+* Use the Nordic UART Android app - install it, connect to the device, and then issue commands. Note that you will have to explicitly send a Carriage Return at the end of any command in order or it to execute (eg. `1+2 [newline]` then click send)
 
-#### for other boards
-
-```NRF52832DK=1 RELEASE=1 make```
-
-**Note:** This is for the nRF52 devkit, use `NRF51822DK=1` instead for the nRF51 devkit, `MICROBIT=1` for the BBC micro:bit, or check the first 50-ish lines of the `Makefile` for more board options.
-
-To program the nRF52 Development Kit with Espruino, type `NRF52832DK=1 RELEASE=1 make flash` on Linux. This will copy the generated `espruino_xx.xx_nrf52832.hex` file to the nRF devkit's USB flash drive - you can however do that manually if you want to.
-
+* Use Web Bluetooth - see [The BBC micro:bit page](http://www.espruino.com/MicroBit) for more information about this.
 Now Espruino is ready to use - you can either use [the Web IDE](http://www.espruino.com/Quick+Start) to connect, or you can use any serial terminal application as long as you connect at 9600 baud (no parity, 1 stop bit).
 
 You can also connect via Bluetooth Low energy - the board will appear as `Espruino XYZ` where `XYZ` is the board name:
@@ -127,6 +122,22 @@ You can also connect via Bluetooth Low energy - the board will appear as `Esprui
 * Use the Nordic UART Android app - install it, connect to the device, and then issue commands. Note that you will have to explicitly send a Carriage Return at the end of any command in order or it to execute (eg. `1+2 [newline]` then click send)
 
 * Use Web Bluetooth - see [The BBC micro:bit page](http://www.espruino.com/MicroBit) for more information about this.
+
+#### for puck.js ([Espruino Board](http://www.espruino.com/Puck.js))
+
+```make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make```
+
+#### for NRF51-DK
+
+```make clean && NRF51822DK=1 RELEASE=1 make```
+
+#### for NRF52-DK
+
+```make clean && NRF52832DK=1 RELEASE=1 make```
+
+### for micro:bit
+
+```make clean && MICROBIT=1 RELEASE=1 make```
 
 
 #### for esp8266
