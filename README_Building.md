@@ -32,7 +32,7 @@ cd ~/source/repos/github/espruino
 git clone https://github.com/espruino/Espruino.git
 cd Espruino
 make clean && make
-chmod +x espurino && sudo cp espurino /usr/local/bin
+chmod +x espruino && sudo cp espruino /usr/local/bin
 ```
 
 ### for an example of cross compilation to for the puck.js
@@ -91,19 +91,13 @@ Getting Espruino:
 
 * clone this repository and cd into the directory
   * ```make clean && make```
-  * ```chmod +x espurino && sudo cp espurino /usr/local/bin```
+  * ```chmod +x espruino && sudo cp espruino /usr/local/bin```
 
 ### for OpenWRT
 
-At the present time, a reference installation is needed
+Follow the instructions for [OpenWRT build system](https://wiki.openwrt.org/doc/howto/buildroot.exigence)
 
-Old doc
-
-* Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
-* Run ```make clean && CARAMBOLA=1 make```
-
-Possible new doc from <https://github.com/vshymanskyy/OpenWRT-Espruino-packages>
-<https://github.com/espruino/Espruino/issues/143>
+After a sucessfull OpenWRT build, [OpenWRT Espruino packages]<https://github.com/vshymanskyy/OpenWRT-Espruino-packages>
 
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
 
