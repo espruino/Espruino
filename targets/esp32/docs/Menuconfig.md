@@ -10,6 +10,7 @@ are:
 
 * Component config -> LWIP -> Enable SO_REUSEADDR option [Enable]
 * Component config -> ESP32-specific config ->  Task watchdog [Disable]
+* Component config > FreeRTOS ->  Halt when an SMP-untested function is called [Disable]
 
 Other options can be changed at your discretion for changes in the environment that
 are primarily to taste.  Examples that I would consider are:

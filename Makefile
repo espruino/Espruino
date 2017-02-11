@@ -2054,7 +2054,7 @@ flash:
 	--flash_freq "40m" \
 	0x1000 $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
 	0x10000 espruino_esp32.bin \
-	0x4000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
+	0x8000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
 
 erase_flash:
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
