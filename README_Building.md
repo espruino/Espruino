@@ -116,7 +116,7 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 
 **Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved on 10240 bytes to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 RELEASE=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones that the Espruino Web IDE expects to use) use the script `scripts/create_espruino_image_1v3.sh` which will compile the bootloader *and* Espruino, and then join them together.
 
-### for Nordic Semiconductor's nRF51/nRF52 series devices 
+### for [Nordic Semiconductor's nRF51/nRF52 series devices](https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy)
 
 Dependant on the board, either usb or bluetooth can be used to program the board or install the bootloader from different devices.
 
@@ -125,23 +125,19 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 * USB
   * the board appears as a drive to drop a hex on
 
-#### for puck.js ([Official Espruino Board](http://www.espruino.com/Puck.js))
+#### for [puck.js](http://www.espruino.com/Puck.js)
 
 ```make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make```
 
-#### for NRF51-DK
+#### for [NRF52-DK](https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy/nRF52-DK)
 
-```make clean && NRF51822DK=1 RELEASE=1 make```
-
-#### for NRF52-DK
+All boards based on the nRF52 have RAM and Flash to support Espruino without feature disablement.
 
 ```make clean && NRF52832DK=1 RELEASE=1 make```
 
-#### for micro:bit
+#### for [micro:bit](http://microbit.org/)
 
-The micro:bit is based on the nRF51 and is very limited in RAM and Flash so many features are disabled.
-
-However, it is fun to use so:
+The micro:bit is based on the nRF51.
 
 * ```make clean && MICROBIT=1 RELEASE=1 make```
 * Drop the hex generated on the micro:bit drive.
@@ -151,6 +147,13 @@ Note:
 * At the time of writing, if one uses the Espruino Web GUI, access the Settings->Communications
   * Request board details on connect: false
   * Throttle Send: true
+
+#### for [NRF51-DK](https://www.nordicsemi.com/eng/Products/nRF51-DK)
+
+All boards based on the nRF51 are limited in RAM and Flash so many features are disabled.
+
+```make clean && NRF51822DK=1 RELEASE=1 make```
+
 
 ### for esp8266
 
