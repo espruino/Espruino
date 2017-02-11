@@ -262,10 +262,12 @@ but based on your source code.
 
 ### VirtualBox
 
-* Download and install the correct [VirtualBox](https://www.virtualbox.org/) for your platform. eg. If you have Windows, download 'VirtualBox for Windows Hosts'.
-* Download the [Ubuntu 14.04 32 bit Desktop ISO Image](http://www.ubuntu.com/download/desktop)
+* For your host OS (Windows or MacOS)
+  * Download and install [VirtualBox](https://www.virtualbox.org/)
+* Download the [current Ubuntu 16.xx.xx LTS](http://www.ubuntu.com/download/desktop)
+  * Note: the correct version will be chosen for the host machine (32 or 64 bit)
 * Run VirtualBox, and click the 'New' button
-* Give the new OS a name, choose `Linux` as the type, and `Ubuntu (32 bit)` as the version
+* Give the new OS a name, choose `Ubuntu`and ensure the correct 32 or 64 bit version is auto-filled
 * Click `Next`, choose 2048MB of memory, and not to create a hard disk image (ignore the warning). **Note:** We're going to run Ubuntu right from the virtual CD without installing (because it's a bit faster and easier). If you have time you might want to create a hard disk image (you won't need as much memory then) and then choose to install Ubuntu when given the chance.
 * Click start, and when prompted for a CD image choose the Ubuntu ISO you downloaded
 * Wait until a picture of a keyboard appears at the bottom of the screen, then press enter
