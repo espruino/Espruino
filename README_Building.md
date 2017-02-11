@@ -110,7 +110,7 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 
 #### for puck.js ([Espruino Board](http://www.espruino.com/Puck.js))
 
-```PUCKJS=1 BOOTLOADER=1 RELEASE=1 make```
+```make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make```
 
 #### for other boards
 
