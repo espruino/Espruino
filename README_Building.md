@@ -135,12 +135,12 @@ You can also connect via Bluetooth Low energy - the board will appear as `Esprui
 
 ```make clean && NRF52832DK=1 RELEASE=1 make```
 
-### for micro:bit
+#### for micro:bit
 
 ```make clean && MICROBIT=1 RELEASE=1 make```
 
 
-#### for esp8266
+### for esp8266
 
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
 * the esp-open-sdk from https://github.com/pfalcon/esp-open-sdk, use make STANDALONE=n
@@ -234,6 +234,9 @@ but based on your source code.
 
 ## Virtual Machines under Windows and MacOS
 
+The easiest solution for a Virtual Machine for Windows and MacOS is [VirtualBox](https://www.virtualbox.org/).
+A really easy way to provision, ie setup the system for developement, is [Vagrant](https://www.vagrantup.com). 
+
 ### Vagrant and VirtualBox
 
 * For your host OS (Windows or MacOS)
@@ -262,27 +265,7 @@ but based on your source code.
 
 ### VirtualBox
 
-* For your host OS (Windows or MacOS)
-  * Download and install [VirtualBox](https://www.virtualbox.org/)
-* Download the [current Ubuntu 16.xx.xx LTS](http://www.ubuntu.com/download/desktop)
-  * Note: the correct version will be chosen for the host machine (32 or 64 bit)
-* Run VirtualBox, and click the 'New' button
-* Give the new OS a name, choose `Ubuntu`and ensure the correct 32 or 64 bit version is auto-filled
-* Click `Next`, choose 2048MB of memory, and not to create a hard disk image (ignore the warning). **Note:** We're going to run Ubuntu right from the virtual CD without installing (because it's a bit faster and easier). If you have time you might want to create a hard disk image (you won't need as much memory then) and then choose to install Ubuntu when given the chance.
-* Click start, and when prompted for a CD image choose the Ubuntu ISO you downloaded
-* Wait until a picture of a keyboard appears at the bottom of the screen, then press enter
-* Select a language, and then choose `Try Ubuntu` with the arrow keys
-* When it's booted, press Alt-F2, type `gnome-terminal`, then enter. **Note:** You could also just press Ctrl-Alt-F2 to get a faster but less shiny-looking terminal window.
-* In the terminal, type: `sudo add-apt-repository ppa:terry.guo/gcc-arm-embedded` and press enter when prompted
-* Type `sudo apt-get update`
-* Type `sudo apt-get install gcc-arm-none-eabi git` and press 'Y' if prompted
-* Type `git clone https://github.com/espruino/Espruino.git`
-* Type `cd Espruino`
-* Type `ESPRUINO_1V3=1 RELEASE=1 make` and wait
-* Espruino is now built. See the documentation under **Building under Linux** for more examples.
-* When you exit the VM, make sure you choose `Save State`. If you `Power Off` you will lose everything you've done so far.
-
-There's some more information on how to do this on the forum at http://forum.espruino.com/conversations/151 including links to a pre-made [Amazon EC2 instance](http://forum.espruino.com/conversations/151/?offset=25#comment20326).
+If one does not wish to use vagrant, then install Virtual Box and use the Linux method.
 
 ### To flash Espruino from the VM
 
