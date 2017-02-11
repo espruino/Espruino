@@ -101,7 +101,9 @@ After a sucessfull OpenWRT build, [OpenWRT Espruino packages](https://github.com
 
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard)
 
-```make clean && YOUR_BOARD_NAME=1 RELEASE=1 make```
+```bash
+make clean && YOUR_BOARD_NAME=1 RELEASE=1 make
+```
 
 * See the top of Makefile for board names
 * Without `RELEASE=1`, assertions are kept in the code (which is good for debugging, bad for performance + code size)
