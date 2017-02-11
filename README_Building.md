@@ -97,7 +97,7 @@ Getting Espruino:
 
 Follow the instructions for [OpenWRT build system](https://wiki.openwrt.org/doc/howto/buildroot.exigence)
 
-After a sucessfull OpenWRT build, [OpenWRT Espruino packages]<https://github.com/vshymanskyy/OpenWRT-Espruino-packages>
+After a sucessfull OpenWRT build, [OpenWRT Espruino packages](https://github.com/vshymanskyy/OpenWRT-Espruino-packages)
 
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
 
