@@ -78,6 +78,7 @@ Using [RASPBIAN JESSIE WITH PIXEL](https://www.raspberrypi.org/downloads/raspbia
 
 * clone this repository and cd into the directory
   * ```make clean && make```
+  * ```chmod +x espurino && sudo cp espurino /usr/local/bin```
 
 The next step is [WiringPi](http://wiringpi.com/)
 
