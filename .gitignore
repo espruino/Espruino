@@ -30,3 +30,7 @@ xtensa-lx106-elf
 *.c#
 esp_iot_sdk_v2.0.0.p1/
 libs/network/mqtt/
+esp-idf-template/
+esp-idf/
+esp32_out.ld
+xtensa-esp32-elf/

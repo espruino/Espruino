@@ -1779,8 +1779,10 @@ endif
 # Definitions for the build of the ESP32
 #
 ifdef ESP32
-ifndef ESP_IDF_PATH
-$(error "The ESP_IDF_PATH variable must be set")
+
+#IDF_PATH
+ifndef IDF_PATH
+$(error "The IDF_PATH variable must be set")
 endif
 ifndef ESP_APP_TEMPLATE_PATH
 $(error "The ESP_APP_TEMPLATE_PATH variable must be set")
@@ -1788,9 +1790,9 @@ endif
 # The prefix for the ESP32 compiler
 CCPREFIX=xtensa-esp32-elf-
 SOURCES += targets/esp32/main.c
-LDFLAGS += -L$(ESP_IDF_PATH)/ld \
--L$(ESP_IDF_PATH)/components/bt/lib \
--L$(ESP_IDF_PATH)/components/esp32/lib \
+LDFLAGS += -L$(IDF_PATH)/ld \
+-L$(IDF_PATH)/components/bt/lib \
+-L$(IDF_PATH)/components/esp32/lib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bootloader \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bt \
 -L$(ESP_APP_TEMPLATE_PATH)/build/driver \
@@ -1816,35 +1818,35 @@ LDFLAGS += -L$(ESP_IDF_PATH)/ld \
 ESPTOOL?=
 INCLUDE+=\
 -I$(ESP_APP_TEMPLATE_PATH)/build/include \
--I$(ESP_IDF_PATH)/components \
--I$(ESP_IDF_PATH)/components/newlib/include \
--I$(ESP_IDF_PATH)/components/bt/include \
--I$(ESP_IDF_PATH)/components/driver/include \
--I$(ESP_IDF_PATH)/components/esp32/include \
--I$(ESP_IDF_PATH)/components/freertos/include \
--I$(ESP_IDF_PATH)/components/json/include \
--I$(ESP_IDF_PATH)/components/log/include \
--I$(ESP_IDF_PATH)/components/lwip/include/lwip \
--I$(ESP_IDF_PATH)/components/lwip/include/lwip/port \
--I$(ESP_IDF_PATH)/components/lwip/include/lwip/posix \
--I$(ESP_IDF_PATH)/components/newlib/include \
--I$(ESP_IDF_PATH)/components/spi_flash/include \
--I$(ESP_IDF_PATH)/components/nvs_flash/include \
--I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
--I$(ESP_IDF_PATH)/components/vfs/include \
+-I$(IDF_PATH)/components \
+-I$(IDF_PATH)/components/newlib/include \
+-I$(IDF_PATH)/components/bt/include \
+-I$(IDF_PATH)/components/driver/include \
+-I$(IDF_PATH)/components/esp32/include \
+-I$(IDF_PATH)/components/freertos/include \
+-I$(IDF_PATH)/components/json/include \
+-I$(IDF_PATH)/components/log/include \
+-I$(IDF_PATH)/components/lwip/include/lwip \
+-I$(IDF_PATH)/components/lwip/include/lwip/port \
+-I$(IDF_PATH)/components/lwip/include/lwip/posix \
+-I$(IDF_PATH)/components/newlib/include \
+-I$(IDF_PATH)/components/spi_flash/include \
+-I$(IDF_PATH)/components/nvs_flash/include \
+-I$(IDF_PATH)/components/tcpip_adapter/include \
+-I$(IDF_PATH)/components/vfs/include \
 -Itargets/esp32/include
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
 LIBS+=-T esp32_out.ld \
--T$(ESP_IDF_PATH)/components/esp32/ld/esp32.common.ld \
--T$(ESP_IDF_PATH)/components/esp32/ld/esp32.rom.ld \
--T$(ESP_IDF_PATH)/components/esp32/ld/esp32.peripherals.ld \
-$(ESP_IDF_PATH)/components/newlib/lib/libc.a \
-$(ESP_IDF_PATH)/components/newlib/lib/libm.a \
+-T$(IDF_PATH)/components/esp32/ld/esp32.common.ld \
+-T$(IDF_PATH)/components/esp32/ld/esp32.rom.ld \
+-T$(IDF_PATH)/components/esp32/ld/esp32.peripherals.ld \
+$(IDF_PATH)/components/newlib/lib/libc.a \
+$(IDF_PATH)/components/newlib/lib/libm.a \
 -lbt \
 -lbtdm_app \
 -ldriver \
 -lesp32 \
-$(ESP_IDF_PATH)/components/esp32/libhal.a  \
+$(IDF_PATH)/components/esp32/libhal.a  \
 -lcore \
 -lnet80211 \
 -lphy \
@@ -2023,7 +2025,7 @@ ESP_ZIP     = $(PROJ_NAME).tgz
 
 espruino_esp32.bin: $(OBJS)
 	$(LD) $(LDFLAGS) -o espruino_esp32.elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
-	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
+	python $(IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
 	elf2image \
 	--flash_mode "dio" \
@@ -2044,7 +2046,7 @@ $(ESP_ZIP): espruino_esp32.bin
 proj: espruino_esp32.bin $(ESP_ZIP)
 
 flash:
-	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
+	python $(IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
 	--port "/dev/ttyUSB0" \
 	--baud 921600 \
@@ -2057,7 +2059,7 @@ flash:
 	0x4000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
 
 erase_flash:
-	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
+	python $(IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
 	--port "/dev/ttyUSB0" \
 	--baud 921600 \
