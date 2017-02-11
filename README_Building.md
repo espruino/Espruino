@@ -35,7 +35,7 @@ make clean && make
 chmod +x espurino && sudo cp espurino /usr/local/bin
 ```
 
-### for an example of cross compilation to for the puck.js:
+### for an example of cross compilation to for the puck.js
 
 ```bash
 sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa
@@ -58,7 +58,7 @@ make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
 
 ## Under MacOS
 
-* It is possible to build Espruino under MacOS with some effort. 
+* It is possible to build Espruino under MacOS with some effort.
   * PR for an easy Espruino build under MacOS are welcome.
 * If you don't have Linux it's much easier to install it in a Virtual Machine (see below).
 
@@ -151,8 +151,8 @@ You can also connect via Bluetooth Low energy - the board will appear as `Esprui
 ### for esp8266
 
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
-* the esp-open-sdk from https://github.com/pfalcon/esp-open-sdk, use make STANDALONE=n
-* the Espressif SDK (version 1.5.0 with lwip patch as of this writing) from http://bbs.espressif.com/viewforum.php?f=46 and http://bbs.espressif.com/viewtopic.php?f=7&t=1528
+* the esp-open-sdk from <https://github.com/pfalcon/esp-open-sdk>, use make STANDALONE=n
+* the Espressif SDK (version 1.5.0 with lwip patch as of this writing) from <http://bbs.espressif.com/viewforum.php?f=46> and <http://bbs.espressif.com/viewtopic.php?f=7&t=1528>
 
 To run make you need to pass a couple of environment variables to `make`.  These include:
 
@@ -244,19 +244,19 @@ but based on your source code.
 ## Virtual Machines under Windows and MacOS
 
 The easiest solution for a Virtual Machine for Windows and MacOS is [VirtualBox](https://www.virtualbox.org/).
-A really easy way to provision, ie setup the system for developement, is [Vagrant](https://www.vagrantup.com). 
+A really easy way to provision, ie setup the system for developement, is [Vagrant](https://www.vagrantup.com).
 
 ### Vagrant and VirtualBox
 
 * For your host OS (Windows or MacOS)
   * Download and install [VirtualBox](https://www.virtualbox.org/)
   * Download and install [Vagrant](https://www.vagrantup.com/downloads.html)
-  * Note: for MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io)  
+  * Note: for MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io)
     * `brew cask install virtualbox vagrant`
 * Clone this repository and navigate with the command prompt to the contents 
 * Install the auto-network plugin
   * `vagrant plugin install vagrant-auto_network`
-* Execute 
+* Execute
   * `vagrant up`
     * This will take a little while while the box is downloaded, and your virtual machine is provisioned.
   * `vagrant ssh`
