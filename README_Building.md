@@ -268,6 +268,11 @@ but based on your source code.
 The easiest solution for a Virtual Machine for Windows and MacOS is [VirtualBox](https://www.virtualbox.org/).
 A really easy way to provision, ie setup the system for developement, is [Vagrant](https://www.vagrantup.com).
 
+Note:
+
+* Windows
+  * Installation of <https://git-scm.com/> gives a ssh that can be used with vagrant ssh
+
 ### Vagrant and VirtualBox
 
 * For your host OS (Windows or MacOS)
