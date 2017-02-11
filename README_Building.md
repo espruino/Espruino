@@ -1,22 +1,19 @@
 Building
 ========
 
-There are several options to building Espruino on various platforms for the OS and board versions that are avaiable.
+There are several options to building espruino on various platforms for the OS and board versions that are avaiable.
+
+To build, and run, espruino on the OS that one is using is as simple as the following, if prerequisits are met:
+
+```bash
+make clean && make # this can generally ensure that one has a good base before cross compiling to boards or other targets.
+```
 
 **Note:**
 
 - If you're swapping between compiling for different targets, **you need to call `make clean`** before you compile for the new target.
-- If you have a ld error, double check the board name in the BOARDNAME=1 make
+- If you have a ld error, check the board name in the BOARDNAME=1 make in the Makefile.
 - In general, have a look through the Makefile to see what other options are available
-
-espruino
---------
-
-To build espruino on the OS that one is using is as simple as the following, if prerequisits are met:
-
-```bash
-make clean && make # this can generally ensure that one has a good base before cross compiling to boards
-```
 
 Under Linux
 -----------
@@ -25,32 +22,39 @@ Espruino is easy to build under Linux, for either for espruino running on Linux 
 
 The current reference OS for building is Ubuntu 16.xx, and the following can ensure problem free developement:
 
+for espruino:
+
 ```bash
-sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa 
-sudo apt-get update
 sudo apt-get upgrade
-curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash - # install node
 sudo apt-get install -y \
   build-essential lib32z1 lib32ncurses5 lib32bz2-1.0 lib32ncurses5 ia32-libs git python python-pip
-sudo pip install nrfutil # for nRF5X boards
-# gcc-arm-none-eabi for cross-compiling
-sudo apt-get install -y \
- gcc-arm-none-eabi # This will install the latest version available
-# The following will install the reference version where the $PATH can be used to control which version is used
-mkdir -p /usr/local
-cd /usr/local
-wget https://launchpad.net/gcc-arm-embedded/5.0/5-2016-q3-update/+download/gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
-tar xjf gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2
-export PATH=/usr/local/gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2/bin:$PATH
 # User choice for placement of source repos
-mkdir -p /mnt/c/source/repos/github/espruino
-cd /mnt/c/source/repos/github/espruino
-git clone https://github.com/espruino/EspruinoTools.git
+mkdir -p ~/source/repos/github/espruino
+cd ~/source/repos/github/espruino
 git clone https://github.com/espruino/Espruino.git
-git clone https://github.com/espruino/EspruinoDocs.git
-git clone https://github.com/espruino/EspruinoWebIDE.git
 cd Espruino
 make clean && make # Create a version of Espruino that runs on your machine
+```
+
+for an example of cross compilation to for the puck.js:
+
+```bash
+sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa
+sudo apt-get update
+sudo apt-get install -y \
+  python-pip
+sudo pip install nrfutil
+# This will install the latest version and only available from ppa
+sudo apt-get install -y \
+ gcc-arm-none-eabi
+# The following will install the reference version where the $PATH can be used to control which version is used
+sudo mkdir -p /usr/local
+cd /usr/local
+sudo wget https://launchpad.net/gcc-arm-embedded/5.0/5-2016-q3-update/+download/gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
+sudo tar xjf gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2
+export 'PATH=/usr/local/gcc-arm-none-eabi-5_4-2016q3-20160926-linux-tar-bz2/bin:$PATH'
+cd ~/source/repos/github/espruino/Espruino
+make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
 ```
 
 Under MacOS
@@ -61,9 +65,9 @@ It is possible to build Espruino under MacOS with some effort. If you don't have
 Under Windows
 -------------
 
-It is possible to build Espruino under Windows (using ) with the following addition to the Linux explanation:
+It is possible to build Espruino under Windows with the following addition to the Linux explanation:
 
-- Install Bash on Ubuntu on Windows <https://msdn.microsoft.com/da-dk/commandline/wsl/install_guide>
+- Install Bash on Ubuntu on Windows 10 <https://msdn.microsoft.com/da-dk/commandline/wsl/install_guide>
 - After enablement, just use the instructions for Linux
 
 Or use a Virtual machine as described below.
