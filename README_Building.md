@@ -125,7 +125,7 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 * USB
   * the board appears as a drive to drop a hex on
 
-#### for puck.js ([Espruino Board](http://www.espruino.com/Puck.js))
+#### for puck.js ([Official Espruino Board](http://www.espruino.com/Puck.js))
 
 ```make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make```
 
@@ -151,7 +151,6 @@ Note:
 * At the time of writing, if one uses the Espruino Web GUI, access the Settings->Communications
   * Request board details on connect: false
   * Throttle Send: true
-
 
 ### for esp8266
 
