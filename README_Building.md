@@ -125,8 +125,6 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 * USB
   * the board appears as a drive to drop a hex on
 
-
-
 #### for puck.js ([Espruino Board](http://www.espruino.com/Puck.js))
 
 ```make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make```
@@ -141,7 +139,18 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 
 #### for micro:bit
 
-```make clean && MICROBIT=1 RELEASE=1 make```
+The micro:bit is based on the nRF51 and is very limited in RAM and Flash so many features are disabled.
+
+However, it is fun to use so:
+
+* ```make clean && MICROBIT=1 RELEASE=1 make```
+* Drop the hex generated on the micro:bit drive.
+
+Note:
+
+* At the time of writing, if one uses the Espruino Web GUI, access the Settings->Communications
+  * Request board details on connect: false
+  * Throttle Send: true
 
 
 ### for esp8266
