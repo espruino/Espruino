@@ -38,7 +38,7 @@ make clean && make
 chmod +x espruino && sudo cp espruino /usr/local/bin
 ```
 
-### for an example of cross compilation to for the puck.js
+### for an example of cross compilation for the puck.js
 
 Having sucessfully created an native OS Espruino, try a cross compilation.
 
@@ -51,9 +51,12 @@ sudo apt-get install -y \
  gcc-arm-none-eabi
 cd ~/source/repos/github/espruino/Espruino
 make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
+ls -l *puckjs*
 ```
 
 ### gcc-arm-embedded
+
+As ppa will only include the latest version, the need for older versions for reference is required.
 
 ```bash
 # The following will install the reference version where the $PATH can be used to control which version is used
