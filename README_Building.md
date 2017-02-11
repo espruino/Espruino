@@ -146,7 +146,7 @@ The micro:bit is based on the nRF51.
 
 Note:
 
-* At the time of writing, if one uses the Espruino Web IDE, access the Settings->Communications
+* At the time of writing, if one uses the [Espruino Web IDE](https://www.espruino.com/Web+IDE), access the Settings->Communications
   * Request board details on connect: false
   * Throttle Send: true
 
