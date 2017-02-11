@@ -136,6 +136,9 @@ The puck.js is based on the nRF52
 make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
 ```
 
+The resulting file is a zip that has to be transferred to the puck.js via a Bluetooth low energy device.
+See <https://www.espruino.com/Puck.js+Quick+Start> for information concerning transferring the zip to the puck.js.
+
 #### for [NRF52-DK](https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy/nRF52-DK)
 
 All boards based on the nRF52 have RAM and Flash to support Espruino without feature disablement.
