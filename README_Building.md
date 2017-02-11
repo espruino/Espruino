@@ -5,14 +5,14 @@ There are several options to building espruino on various platforms for the OS a
 To build, and run, espruino on the OS that one is using is as simple as the following, if prerequisits are met:
 
 ```bash
-make clean && make # this can generally ensure that one has a good base before cross compiling to boards or other targets.
+make clean && make
 ```
 
 **Note:**
 
-- If you're swapping between compiling for different targets, **you need to call `make clean`** before you compile for the new target.
-- If you have a ld error, check the board name in the BOARDNAME=1 make in the Makefile.
-- In general, have a look through the Makefile to see what other options are available
+* If you're swapping between compiling for different targets, **you need to call `make clean`** before you compile for the new target.
+* If you have a ld error, check the board name in the BOARDNAME=1 make in the Makefile.
+* In general, have a look through the Makefile to see what other options are available
 
 ## Under Linux
 
@@ -20,7 +20,7 @@ Espruino is easy to build under Linux, for either for espruino running on Linux 
 
 The current reference OS for building is Ubuntu 16.xx, and the following can ensure problem free developement:
 
-### for espruino:
+### for espruino
 
 ```bash
 sudo apt-get upgrade
@@ -57,14 +57,16 @@ make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
 
 ## Under MacOS
 
-It is possible to build Espruino under MacOS with some effort. If you don't have Linux it's **much** easier to install it in a Virtual Machine. See the heading **Building under Windows/MacOS with a VM** below for more information. However, a PR for an easy native method is allways welcom.
+* It is possible to build Espruino under MacOS with some effort. 
+  * PR for an easy Espruino build under MacOS are welcome.
+* If you don't have Linux it's much easier to install it in a Virtual Machine (see below).
 
 ## Under Windows
 
 It is possible to build Espruino under Windows with the following addition to the Linux explanation:
 
-- Install Bash on Ubuntu on Windows 10 <https://msdn.microsoft.com/da-dk/commandline/wsl/install_guide>
-- After enablement, just use the instructions for Linux
+* Install Bash on Ubuntu on Windows 10 <https://msdn.microsoft.com/da-dk/commandline/wsl/install_guide>
+* After enablement, just use the instructions for Linux
 
 Or use a Virtual machine as described below.
 
@@ -82,8 +84,8 @@ sudo apt-get install ia32-libs
 
 ### for OpenWRT
 
-- Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
-- Run ```CARAMBOLA=1 make```
+* Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
+* Run ```CARAMBOLA=1 make```
 
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
 
@@ -128,8 +130,8 @@ You can also connect via Bluetooth Low energy - the board will appear as `Esprui
 #### for esp8266
 
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
-- the esp-open-sdk from https://github.com/pfalcon/esp-open-sdk, use make STANDALONE=n
-- the Espressif SDK (version 1.5.0 with lwip patch as of this writing) from http://bbs.espressif.com/viewforum.php?f=46 and http://bbs.espressif.com/viewtopic.php?f=7&t=1528
+* the esp-open-sdk from https://github.com/pfalcon/esp-open-sdk, use make STANDALONE=n
+* the Espressif SDK (version 1.5.0 with lwip patch as of this writing) from http://bbs.espressif.com/viewforum.php?f=46 and http://bbs.espressif.com/viewtopic.php?f=7&t=1528
 
 To run make you need to pass a couple of environment variables to `make`.  These include:
 
@@ -181,23 +183,23 @@ The strategy employed is to compile portions of WICED into a library using the W
 and then linking this into Espruino.
 
 Setting up WICED:
-- WICED does not officially support the EMW3165.
-- Clone https://github.com/MXCHIP-EMW/WICED-for-EMW and follow the instructions there to configure
+* WICED does not officially support the EMW3165.
+* Clone https://github.com/MXCHIP-EMW/WICED-for-EMW and follow the instructions there to configure
   WICED and build it. (You will need to sign up for a developer acct with Broadcom.)
-- Build the apsta sample program (snippet) using a command-line like
+* Build the apsta sample program (snippet) using a command-line like
   `./make EMW3165-FreeRTOS-LwIP-snip.apsta download run JTAG=stlink-v2`
-- Hook up your emw3165 to an ST-Link-v2 or your preferred STM32 programmer and flash using the
+* Hook up your emw3165 to an ST-Link-v2 or your preferred STM32 programmer and flash using the
   above command-line. You should see the EMW's access point.
-- An alternative program to test with is the "scan" snip as it will also print something on the
+* An alternative program to test with is the "scan" snip as it will also print something on the
   console (works well with the WifiMCU board): `./make EMW3165-FreeRTOS-LwIP-snip.scan ...`
 
 Compiling WICED into a library:
-- ... if only this worked ...
+* ... if only this worked ...
 
 Compiling Espruino:
-- To compile Espruino you will need to point to the WICED root and include files. This is
+* To compile Espruino you will need to point to the WICED root and include files. This is
   done by specifying a WICED_ROOT environment variable.
-- Adapt the pathnames from the following script:
+* Adapt the pathnames from the following script:
 
 ```bash
 
