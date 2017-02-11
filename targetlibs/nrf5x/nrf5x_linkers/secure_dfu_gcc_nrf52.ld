@@ -96,4 +96,4 @@ SECTIONS
 
 } INSERT AFTER .data
 
-INCLUDE "../nrf5_sdk/components/toolchain/gcc/nrf52_common.ld"
+INCLUDE "../components/toolchain/gcc/nrf52_common.ld"

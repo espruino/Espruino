@@ -4,22 +4,25 @@
  * @{
  * @ingroup nfc_ndef_msg_parser
  */
-/** @brief  *
+/** @brief 
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define NFC_NDEF_MSG_PARSER_ENABLED
 
-/** @brief Enables logging in the module. *
+/** @brief Enables logging in the module.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define NFC_NDEF_MSG_PARSER_LOG_ENABLED
 
-/** @brief Default Severity level *
- *  Following options are avaiable:
+/** @brief Default Severity level
+ *
+ *  Following options are available:
  * - 0 - Off
  * - 1 - Error
  * - 2 - Warning
@@ -31,8 +34,9 @@
 #define NFC_NDEF_MSG_PARSER_LOG_LEVEL
 
 
-/** @brief ANSI escape code prefix. *
- *  Following options are avaiable:
+/** @brief ANSI escape code prefix.
+ *
+ *  Following options are available:
  * - 0 - Default
  * - 1 - Black
  * - 2 - Red

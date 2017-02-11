@@ -82,7 +82,7 @@ May return undefined if no device can be found.
   "type" : "object",
   "name" : "USB",
   "instanceof" : "Serial",
-  "#ifdef" : "USB"
+  "ifdef" : "USB"
 }
 The USB Serial port
  */
@@ -273,7 +273,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   if (options)
     jsvObjectSetChildAndUnLock(parent, DEVICE_OPTIONS_NAME, options);
   else
-    jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
+    jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
 }
 
 

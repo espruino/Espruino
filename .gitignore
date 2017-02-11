@@ -8,6 +8,7 @@
 *.srec
 *.bin
 *.pyc
+/*.zip
 gen/*
 .vagrant/*
 boards/*.html
@@ -28,9 +29,14 @@ node_modules
 esp_iot_sdk_v1.5.0
 xtensa-lx106-elf
 *.c#
+<<<<<<< HEAD
 esp_iot_sdk_v2.0.0.p1/
 libs/network/mqtt/
 esp-idf-template/
 esp-idf/
 esp32_out.ld
 xtensa-esp32-elf/
+=======
+/function_keywords.js
+/functions.html
+>>>>>>> espruino/master

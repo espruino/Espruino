@@ -4,14 +4,16 @@
  * @{
  * @ingroup app_scheduler
  */
-/** @brief Enabling scheduler *
+/** @brief Enabling scheduler
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define APP_SCHEDULER_ENABLED
 
-/** @brief Enabling pause feature *
+/** @brief Enabling pause feature
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -19,7 +21,8 @@
 #define APP_SCHEDULER_WITH_PAUSE
 
 
-/** @brief Enabling scheduler profiling *
+/** @brief Enabling scheduler profiling
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

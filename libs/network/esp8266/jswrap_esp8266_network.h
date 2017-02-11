@@ -38,5 +38,7 @@ JsVar *jswrap_ESP8266_wifi_getHostname(JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_setHostname(JsVar *jsHostname);
 void   jswrap_ESP8266_wifi_getHostByName(JsVar *jsHostname, JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_setSNTP(JsVar *zone, JsVar *server);
+void   jswrap_ESP8266_wifi_setIP(JsVar *jsSettings, JsVar *jsCallback);
+void   jswrap_ESP8266_wifi_setAPIP(JsVar *jsSettings, JsVar *jsCallback);
 
 #endif /* LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_ */

@@ -558,10 +558,10 @@ void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
     if (size>1023) size=1023;
   }
   if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
-    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, 0);
-    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
-    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0);
-    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0);
+    jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_BMP);
+    jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH);
+    jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT);
+    jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR);
   }
   gfx.data.fontSize = (short)size;
   graphicsSetVar(&gfx);

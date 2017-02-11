@@ -453,7 +453,11 @@ bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
 bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
   JsVar *certVar = jsvObjectGetChild(options, "cert", 0);
   if (!certVar) {
+<<<<<<< HEAD
     return true; // still ok - just no key
+=======
+    return true; // still ok - just no cert
+>>>>>>> espruino/master
   }
   int ret = -1;
   jsiConsolePrintf("Loading the Client certificate...\n");
@@ -477,7 +481,11 @@ bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
 bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
   JsVar *caVar = jsvObjectGetChild(options, "ca", 0);
   if (!caVar) {
+<<<<<<< HEAD
     return true; // still ok - just no key
+=======
+    return true; // still ok - just no ca
+>>>>>>> espruino/master
   }
   int ret = -1;
   jsiConsolePrintf("Loading the CA root certificate...\n");

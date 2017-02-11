@@ -47,10 +47,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((128 - 3) * 4096),
+    'address' : ((120 - 3) * 4096), # Bootloader takes pages 120-127
     'page_size' : 4096,
-    'pages' : 0,
-    'flash_available' : (512 - 108 - 24) # Total flash - softdevice - bootloader (this one is code signed unlike nrF51).
+    'pages' : 3,
+    'flash_available' : 512 - ((31 + 8 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 8, code 3. Each page is 4 kb. 
   },
 };
 

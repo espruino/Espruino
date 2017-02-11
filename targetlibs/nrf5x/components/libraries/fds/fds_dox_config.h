@@ -4,28 +4,32 @@
  * @{
  * @ingroup fds
  */
-/** @brief Enabling FDS module. *
+/** @brief Enabling FDS module.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define FDS_ENABLED
 
-/** @brief Size of the internal queue. *
+/** @brief Size of the internal queue.
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define FDS_OP_QUEUE_SIZE
 
 
-/** @brief Determines how many @ref fds_record_chunk_t structures can be buffered at any time. *
+/** @brief Determines how many @ref fds_record_chunk_t structures can be buffered at any time.
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define FDS_CHUNK_QUEUE_SIZE
 
 
-/** @brief Maximum number of callbacks that can be registered. *
+/** @brief Maximum number of callbacks that can be registered.
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
@@ -51,7 +55,7 @@
  * By default, a virtual page is the same size as a physical page.
  * The size of a virtual page must be a multiple of the size of a physical page.
  *
- *  Following options are avaiable:
+ *  Following options are available:
  * - 256 - 256 (nRF51 family only)
  * - 256 - 256 (Software Component only)
  * - 512 - 512 (nRF51 family only)

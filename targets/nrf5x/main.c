@@ -22,7 +22,7 @@ int main() {
 
   bool buttonState = false;
 #ifdef BTN1_PININDEX
-  buttonState = jshPinInput(BTN1_PININDEX) == BTN1_ONSTATE;
+  buttonState = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
 #endif
   jsvInit();
   jsiInit(!buttonState /* load from flash by default */); // pressing USER button skips autoload

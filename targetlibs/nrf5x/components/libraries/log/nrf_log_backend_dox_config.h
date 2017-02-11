@@ -24,15 +24,17 @@
 #define NRF_LOG_TIMESTAMP_DIGITS
 
 
-/** @brief If enabled data is printed over UART *
+/** @brief If enabled data is printed over UART
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define NRF_LOG_BACKEND_SERIAL_USES_UART
 
-/** @brief Default Baudrate *
- *  Following options are avaiable:
+/** @brief Default Baudrate
+ *
+ *  Following options are available:
  * - 323584 - 1200 baud
  * - 643072 - 2400 baud
  * - 1290240 - 4800 baud
@@ -56,36 +58,41 @@
 #define NRF_LOG_BACKEND_SERIAL_UART_BAUDRATE
 
 
-/** @brief UART TX pin *
+/** @brief UART TX pin
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define NRF_LOG_BACKEND_SERIAL_UART_TX_PIN
 
 
-/** @brief UART RX pin *
+/** @brief UART RX pin
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define NRF_LOG_BACKEND_SERIAL_UART_RX_PIN
 
 
-/** @brief UART RTS pin *
+/** @brief UART RTS pin
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define NRF_LOG_BACKEND_SERIAL_UART_RTS_PIN
 
 
-/** @brief UART CTS pin *
+/** @brief UART CTS pin
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define NRF_LOG_BACKEND_SERIAL_UART_CTS_PIN
 
 
-/** @brief Hardware Flow Control *
- *  Following options are avaiable:
+/** @brief Hardware Flow Control
+ *
+ *  Following options are available:
  * - 0 - Disabled
  * - 1 - Enabled
  *
@@ -94,8 +101,9 @@
 #define NRF_LOG_BACKEND_SERIAL_UART_FLOW_CONTROL
 
 
-/** @brief UART instance used *
- *  Following options are avaiable:
+/** @brief UART instance used
+ *
+ *  Following options are available:
  * - 0
  *
  * @note This is an NRF_CONFIG macro.
@@ -104,7 +112,8 @@
 
 
 
-/** @brief If enabled data is printed using RTT *
+/** @brief If enabled data is printed using RTT
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

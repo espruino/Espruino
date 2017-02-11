@@ -434,7 +434,9 @@ bool nrf_dfu_app_is_valid(void)
 {
     NRF_LOG_INFO("Enter nrf_dfu_app_is_valid\r\n");
     if (s_dfu_settings.bank_0.bank_code != NRF_DFU_BANK_VALID_APP &&
+        //* VALID_APP FIX START *//
         s_dfu_settings.bank_0.bank_code != NRF_DFU_BANK_INVALID) // meh. Allows us to work without bootloader_settings
+        //* VALID_APP FIX END *//
     {
        // Bank 0 has no valid app. Nothing to boot
        NRF_LOG_INFO("Return false in valid app check\r\n");

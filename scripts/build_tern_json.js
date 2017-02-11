@@ -1,6 +1,25 @@
 #!/usr/bin/node
+
+// sudo npm install -g marked highlight.js
+
 // This build a JSON description file for Tern.js as
 // specified here: http://ternjs.net/doc/manual.html#typedef
+
+var marked = require('marked');
+// Set default options except highlight which has no default
+marked.setOptions({
+  gfm: true, // github markdown
+  highlight: function (code) {
+    return require('highlight.js').highlightAuto(code).value;
+  },
+  tables: true,
+  breaks: false,
+  pedantic: false,
+  sanitize: false,
+  smartLists: true,
+  smartypants: false,
+  langPrefix: 'lang-'
+});
 
 require("./common.js").readAllWrapperFiles(function(json) {
   var tern = { "!name": "Espruino" };
@@ -8,24 +27,24 @@ require("./common.js").readAllWrapperFiles(function(json) {
   // Handle classes/libraries first
   json.forEach(function (j) {
     try {
-      if (j.type=="class") { 
+      if (j.type=="class") {
         var o = { "!type": "fn()" };
-        o["!doc"] = j.getDescription();
+        o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         tern[j.class] = o;
 
         if ("prototype" in j) {
           o["prototype"] = { "!proto": j.prototype+".prototype" };
         }
-      } else if (j.type=="object") { 
+      } else if (j.type=="object") {
         var o = { "!type": ("instanceof" in j) ? ("+"+j.instanceof) : "?" };
-        o["!doc"] = j.getDescription();
+        o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         tern[j.name] = o;
-      } else if (j.type=="library") { 
+      } else if (j.type=="library") {
         // TODO: bind this into 'require' somehow
         var o = { "!type": "fn()" };
-        o["!doc"] = j.getDescription();
+        o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         tern[j.class] = o;
       }
@@ -37,28 +56,28 @@ require("./common.js").readAllWrapperFiles(function(json) {
   // Handle contents
   json.forEach(function (j) {
     try {
-      if (["include"].indexOf(j.type)>=0) { 
+      if (["include"].indexOf(j.type)>=0) {
         // meh
-      } else if (["class","object","library"].indexOf(j.type)>=0) { 
+      } else if (["class","object","library"].indexOf(j.type)>=0) {
         // aready handled above
-      } else if (["init","idle","kill"].indexOf(j.type)>=0) { 
+      } else if (["init","idle","kill"].indexOf(j.type)>=0) {
         // internal
-      } else if (["event"].indexOf(j.type)>=0) { 
+      } else if (["event"].indexOf(j.type)>=0) {
         // TODO: handle events
-      } else if (["constructor"].indexOf(j.type)>=0) { 
+      } else if (["constructor"].indexOf(j.type)>=0) {
         var o = tern[j.class]; // overwrite existing class with constructor
         if (o===undefined) o=tern[j.class]={};
         o["!type"] = j.getTernType();
-        o["!doc"] = j.getDescription();
+        o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
-      } else if (["staticproperty","staticmethod"].indexOf(j.type)>=0) { 
+      } else if (["staticproperty","staticmethod"].indexOf(j.type)>=0) {
         var o = { "!type": j.getTernType() };
-        o["!doc"] = j.getDescription();
+        o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         tern[j.class][j.name] = o;
-      } else if (["property","method"].indexOf(j.type)>=0) {    
+      } else if (["property","method"].indexOf(j.type)>=0) {
         var o = { "!type": j.getTernType() };
-        o["!doc"] = j.getDescription();
+        o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         if (!("prototype" in tern[j.class])) {
           tern[j.class]["prototype"] = { };
@@ -66,9 +85,9 @@ require("./common.js").readAllWrapperFiles(function(json) {
              tern[j.class]["prototype"]["!stdProto"] = j.class;
         }
         tern[j.class]["prototype"][j.name] = o;
-      } else if (["function","variable"].indexOf(j.type)>=0) { 
+      } else if (["function","variable"].indexOf(j.type)>=0) {
         var o = { "!type": j.getTernType() };
-        o["!doc"] = j.getDescription();
+        o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         tern[j.name] = o;
       } else
@@ -80,8 +99,8 @@ require("./common.js").readAllWrapperFiles(function(json) {
 
  // FIXME: not sure why (because Telnet has children when it shouldn't?) but this breaks tern's parsing :(
  delete tern["Telnet"]["!type"];
- 
+
 
  console.log(JSON.stringify(tern,null,2));
-  
+
 });

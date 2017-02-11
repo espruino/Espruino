@@ -881,6 +881,21 @@ void jswrap_espruino_dumpTimers() {
 
 /*JSON{
   "type" : "staticmethod",
+  "class" : "E",
+  "name" : "dumpLockedVars",
+  "ifndef" : "RELEASE",
+  "generate" : "jswrap_espruino_dumpLockedVars"
+}
+Dump any locked variables that aren't referenced from `global` - for debugging memory leaks only.
+*/
+#ifndef RELEASE
+void jswrap_espruino_dumpLockedVars() {
+  jsvDumpLockedVars();
+}
+#endif
+
+/*JSON{
+  "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "getSizeOf",
@@ -1123,11 +1138,12 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
   "name" : "setPassword",
   "generate" : "jswrap_espruino_setPassword",
   "params" : [
-    ["opts","JsVar","The password - max 20 chars"]
+    ["password","JsVar","The password - max 20 chars"]
   ]
 }
 Set a password on the console (REPL). When powered on, Espruino will
-then demand a password before the console can be used.
+then demand a password before the console can be used. If you want to
+lock the console immediately after this you can call `E.lockConsole()`
 
 To remove the password, call this function with no arguments.
 
@@ -1143,6 +1159,22 @@ void jswrap_espruino_setPassword(JsVar *pwd) {
   if (pwd)
     pwd = jsvAsString(pwd, false);
   jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, pwd));
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "lockConsole",
+  "generate" : "jswrap_espruino_lockConsole"
+}
+If a password has been set with `E.setPassword()`, this will lock the console
+so the password needs to be entered to unlock it.
+*/
+void jswrap_espruino_lockConsole() {
+  JsVar *pwd = jsvObjectGetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, 0);
+  if (pwd)
+    jsiStatus |= JSIS_PASSWORD_PROTECTED;
+  jsvUnLock(pwd);
 }
 
 // ----------------------------------------- USB Specific Stuff
@@ -1167,7 +1199,7 @@ this function.
 void jswrap_espruino_setUSBHID(JsVar *arr) {
   if (jsvIsUndefined(arr)) {
     // Disable HID
-    jsvObjectSetChild(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME, 0);
+    jsvObjectRemoveChild(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME);
     return;
   }
   if (!jsvIsObject(arr)) {

@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_ias
  */
-/** @brief Enable Immediate Alert Service. *
+/** @brief Enable Immediate Alert Service.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

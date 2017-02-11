@@ -520,6 +520,8 @@ void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col); ///<
 size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col); ///<  IN A STRING, get a character index from a line and column
 
 
+/// Like jsvIsStringEqualOrStartsWith, but starts comparing at some offset (not the beginning of the string)
+bool jsvIsStringEqualOrStartsWithOffset(JsVar *var, const char *str, bool isStartsWith, size_t startIdx);
 /**
   Compare a string with a C string. Returns 0 if A is not a string.
 
@@ -570,7 +572,7 @@ long long jsvGetLongIntegerAndUnLock(JsVar *v);
 
 
 /** Get the item at the given location in the array buffer and return the result */
-size_t jsvGetArrayBufferLength(JsVar *arrayBuffer);
+size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer);
 /** Get the String the contains the data for this arrayBuffer */
 JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer);
 /** Get the item at the given location in the array buffer and return the result */
@@ -651,7 +653,6 @@ JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound);
 /// Remove a child - note that the child MUST ACTUALLY BE A CHILD! and should be a name, not a value.
 void jsvRemoveChild(JsVar *parent, JsVar *child);
 void jsvRemoveAllChildren(JsVar *parent);
-void jsvRemoveNamedChild(JsVar *parent, const char *name);
 
 /// Get the named child of an object. If createChild!=0 then create the child
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
@@ -659,16 +660,23 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
 /// Set the named child of an object, and unlock the child
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child);
+/// Remove the named child of an Object
+void jsvObjectRemoveChild(JsVar *parent, const char *name);
+/** Set the named child of an object, and return the child (so you can choose to unlock it if you want).
+ * If the child is 0, the 'name' is also removed from the object */
+JsVar *jsvObjectSetOrRemoveChild(JsVar *obj, const char *name, JsVar *child);
 
-int jsvGetChildren(JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
+int jsvGetChildren(const JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
 JsVar *jsvGetFirstName(JsVar *v); ///< Get the first child's name from an object,array or function
 /// Check if the given name is a child of the parent
 bool jsvIsChild(JsVar *parent, JsVar *child);
 JsVarInt jsvGetArrayLength(const JsVar *arr); ///< Not the same as GetChildren, as it can be a sparse array
 JsVarInt jsvSetArrayLength(JsVar *arr, JsVarInt length, bool truncate); ///< set an array's length, optionally truncating if the array becomes shorter
-JsVarInt jsvGetLength(JsVar *src); ///< General purpose length function. Does the 'right' thing
+JsVarInt jsvGetLength(const JsVar *src); ///< General purpose length function. Does the 'right' thing
 size_t jsvCountJsVarsUsed(JsVar *v); ///< Count the amount of JsVars used. Mostly useful for debugging
-JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array (and lock it)
+JsVar *jsvGetArrayIndex(const JsVar *arr, JsVarInt index); ///< Get a 'name' at the specified index in the array if it exists (and lock it)
+JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array if it exists (and lock it)
+void jsvSetArrayItem(JsVar *arr, JsVarInt index, JsVar *item); ///< Set an array item at the specified index in the array
 void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr); ///< Get all elements from arr and put them in itemPtr (unless it'd overflow). Makes sure all of itemPtr either contains a JsVar or 0
 JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array (matchExact==use pointer, not equality check)
 JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
@@ -686,6 +694,11 @@ void jsvTrace(JsVar *var, int indent);
 
 /** Run a garbage collection sweep - return true if things have been freed */
 bool jsvGarbageCollect();
+
+#ifndef RELEASE
+// Dump any locked variables that aren't referenced from `global` - for debugging memory leaks
+void jsvDumpLockedVars();
+#endif
 
 /** Remove whitespace to the right of a string - on MULTIPLE LINES */
 JsVar *jsvStringTrimRight(JsVar *srcString);

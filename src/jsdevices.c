@@ -82,10 +82,18 @@ void jshResetDevices() {
   for (i=0;i<sizeof(jshSerialDeviceStates) / sizeof(JshSerialDeviceState);i++)
     jshSerialDeviceStates[i] = SDS_NONE;
   jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_FLOW_CONTROL_XON_XOFF;
-  // set up callbacks for events
+  // reset callbacks for events
   for (i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
     jshEventCallbacks[i-EV_EXTI0] = 0;
-
+  // Reset pin state for button
+#ifdef BTN1_PININDEX
+#ifdef BTN1_PINSTATE
+  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
+#else
+  jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -224,15 +232,26 @@ void jshTransmitClearDevice(
 
 /// Move all output from one device to another
 void jshTransmitMove(IOEventFlags from, IOEventFlags to) {
-  jshInterruptOff();
-  unsigned char tempTail = txTail;
-  while (tempTail != txHead) {
-    if (IOEVENTFLAGS_GETTYPE(txBuffer[tempTail].flags) == from) {
-      txBuffer[tempTail].flags = (txBuffer[tempTail].flags&~EV_TYPE_MASK) | to;
+  if (to==EV_LOOPBACKA || to==EV_LOOPBACKB) {
+    // Loopback is special :(
+    IOEventFlags device = (to==EV_LOOPBACKB) ? EV_LOOPBACKA : EV_LOOPBACKB;
+    int c = jshGetCharToTransmit(from);
+    while (c>=0) {
+      jshPushIOCharEvent(device, (char)c);
+      c = jshGetCharToTransmit(from);
     }
-    tempTail = (unsigned char)((tempTail+1)&TXBUFFERMASK);
+  } else {
+    // Otherwise just rename the contents of the buffer
+    jshInterruptOff();
+    unsigned char tempTail = txTail;
+    while (tempTail != txHead) {
+      if (IOEVENTFLAGS_GETTYPE(txBuffer[tempTail].flags) == from) {
+        txBuffer[tempTail].flags = (txBuffer[tempTail].flags&~EV_TYPE_MASK) | to;
+      }
+      tempTail = (unsigned char)((tempTail+1)&TXBUFFERMASK);
+    }
+    jshInterruptOn();
   }
-  jshInterruptOn();
 }
 
 /**

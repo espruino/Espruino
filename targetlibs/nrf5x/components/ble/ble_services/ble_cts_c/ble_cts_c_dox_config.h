@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_cts_c
  */
-/** @brief Enable Current Time Service Client. *
+/** @brief Enable Current Time Service Client.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

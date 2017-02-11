@@ -4,7 +4,8 @@
  * @{
  * @ingroup app_fifo
  */
-/** @brief Enabling app_fifo module *
+/** @brief Enabling app_fifo module
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

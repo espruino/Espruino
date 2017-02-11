@@ -41,6 +41,7 @@
 # ARMINARM=1
 # NUCLEOF401RE=1
 # NUCLEOF411RE=1
+# NUCLEOL476RG=1
 # MINISTM32_STRIVE=1
 # MINISTM32_ANGLED_VE=1
 # MINISTM32_ANGLED_VG=1
@@ -164,7 +165,6 @@ DEFINES+=-DESPRUINO_1V3
 USE_NET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
-USE_TV=1
 USE_HASHLIB=1
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
@@ -367,6 +367,17 @@ STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 
+else ifdef NUCLEOL476RG
+EMBEDDED=1
+NUCLEO=1
+USE_GRAPHICS=1
+USE_NET=1
+BOARD=NUCLEOL476RG
+STLIB=STM32L476xx
+#PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32l4/lib/startup_stm32f401xx.o
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates/gcc/startup_stm32l476xx.o
+OPTIMIZEFLAGS+=-O3
+
 else ifdef EMW3165
 #ifndef WICED_ROOT
 #$(error WICED_ROOT must be defined)
@@ -485,6 +496,7 @@ OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
 USE_NET=1
 USE_GRAPHICS=1
+USE_NFC=1
 DEFINES += -DBOARD_PCA10040 -DPCA10040
 
 # DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
@@ -497,7 +509,7 @@ USE_BLUETOOTH=1
 USE_NET=1
 USE_GRAPHICS=1
 #USE_HASHLIB=1
-USE_FILESYSTEM=1
+#USE_FILESYSTEM=1
 USE_CRYPTO=1
 #USE_TLS=1
 USE_NFC=1
@@ -708,7 +720,7 @@ endif
 #                                                      Get info out of BOARDNAME.py
 # ---------------------------------------------------------------------------------
 
-PROJ_NAME=$(shell python scripts/get_board_info.py $(BOARD) "common.get_board_binary_name(board)"  | sed -e "s/.bin$$//")
+PROJ_NAME=$(shell python scripts/get_board_info.py $(BOARD) "common.get_board_binary_name(board)"  | sed -e "s/.bin$$//" | sed -e "s/.hex$$//")
 ifeq ($(PROJ_NAME),)
 $(error Unable to work out binary name (PROJ_NAME))
 endif
@@ -1275,6 +1287,64 @@ STM32_USB=1
 endif
 endif #STM32F4
 
+ifeq ($(FAMILY), STM32L4)
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARM=1
+DEFINES += -DSTM32L4
+DEFINES += -DSTM32L476xx
+DEFINES += -DUSE_FULL_LL_DRIVER
+DEFINES += -DUSE_FULL_ASSERT
+DEFINES += -DFLASH_64BITS_ALIGNEMENT=1 #L4 flash needs to be accessed with 64 bits
+ifdef WICED_XXX
+  DEFINES += -DWICED
+  # DEFINES included here in bulk from a WICED compilation
+  DEFINES += -DWICED_VERSION=\"3.3.1\" -DBUS=\"SDIO\" -DPLATFORM=\"EMW3165\"
+  DEFINES += -DUSE_STDPERIPH_DRIVER -DOPENSSL -DSTDC_HEADERS
+  DEFINES += -DMAX_WATCHDOG_TIMEOUT_SECONDS=22 -DFIRMWARE_WITH_PMK_CALC_SUPPORT
+  DEFINES += -DADD_LWIP_EAPOL_SUPPORT -DNXD_EXTENDED_BSD_SOCKET_SUPPORT -DADD_NETX_EAPOL_SUPPORT
+  DEFINES += -DWWD_STARTUP_DELAY=10
+  DEFINES += -DNETWORK_LwIP=1 -DLwIP_VERSION=\"v1.4.0.rc1\"
+  DEFINES += -DRTOS_FreeRTOS=1 -DconfigUSE_MUTEXES -DconfigUSE_RECURSIVE_MUTEXES
+  DEFINES += -DFreeRTOS_VERSION=\"v7.5.2\" -DWWD_DIRECT_RESOURCES -DHSE_VALUE=26000000
+  INCLUDE +=
+endif
+STM32_LL=1
+INCLUDE += -I$(ROOT)/targetlibs/stm32l4 -I$(ROOT)/targetlibs/stm32l4/lib -I$(ROOT)/targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Inc -I$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Include -I$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Include -I$(ROOT)/targetlibs/stm32l4/lib/BSP/STM32L4xx_Nucleo -I$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates
+
+TARGETSOURCES +=                                   \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_adc.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_comp.c   \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_crc.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_crs.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_dac.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_dma.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_exti.c   \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_fmc.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_gpio.c   \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_i2c.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_lptim.c  \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_lpuart.c \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_opamp.c  \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_pwr.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rcc.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rng.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rtc.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_sdmmc.c  \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_spi.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_swpmi.c  \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_tim.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usart.c  \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usb.c    \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_utils.c  \
+targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates/system_stm32l4xx.c \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash.c \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ex.c \
+targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c
+
+ifdef USB
+STM32_USB=1
+endif
+endif #STM32L4
 
 # New STM32 Cube based USB
 # This could be global for all STM32 once we figure out why it's so flaky on F1
@@ -1336,7 +1406,12 @@ ifeq ($(FAMILY), NRF51)
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
+<<<<<<< HEAD
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
+=======
+  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
+  DEFINES += -DNRF_SD_BLE_API_VERSION=2  
+>>>>>>> espruino/master
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0_softdevice.hex
@@ -1344,12 +1419,16 @@ ifeq ($(FAMILY), NRF51)
   ifdef USE_BOOTLOADER
   ifdef USE_CUSTOM_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
+<<<<<<< HEAD
   else
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
   endif
   NFR_BL_START_ADDR = 0x3C000# see dfu_gcc_nrf51.ld
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex # This file writes 0x3FC00 with 0x01 so we can flash the application with the bootloader.
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+=======
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+>>>>>>> espruino/master
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   endif
@@ -1379,11 +1458,14 @@ ifeq ($(FAMILY), NRF52)
   ifdef USE_BOOTLOADER
   ifdef USE_CUSTOM_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
+<<<<<<< HEAD
   else
   NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
   endif
   NFR_BL_START_ADDR = 0x79000 # see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h
   NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
+=======
+>>>>>>> espruino/master
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
     LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/dfu_gcc_nrf52.ld
@@ -1394,6 +1476,11 @@ ifeq ($(FAMILY), NRF52)
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
   endif
+
+	# BLE HID Support (only NRF52)
+	INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
+	TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
+
 endif #FAMILY == NRF52
 
 
@@ -1429,6 +1516,12 @@ ifdef NRF5X
     BUILD_LINKER_FLAGS+=--bootloader
     PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
     WRAPPERSOURCES =
+<<<<<<< HEAD
+=======
+		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
+		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
+		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
+>>>>>>> espruino/master
     SOURCES = \
       targets/nrf5x_dfu/main.c \
       targets/nrf5x_dfu/dfu_ble_svc.c
@@ -1436,6 +1529,8 @@ ifdef NRF5X
     SOURCES +=                              \
       targets/nrf5x/main.c                    \
       targets/nrf5x/jshardware.c              \
+			targets/nrf5x/bluetooth.c              \
+			targets/nrf5x/bluetooth_utils.c              \
       targets/nrf5x/nrf5x_utils.c
   endif
 
@@ -1465,9 +1560,15 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/trace
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/ppi
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
+<<<<<<< HEAD
 	INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
+=======
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
+>>>>>>> espruino/master
 
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
@@ -1489,9 +1590,16 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master/nrf_drv_spi.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
+<<<<<<< HEAD
 	$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
 	$(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
+=======
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
+>>>>>>> espruino/master
 
   # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
 
@@ -1722,6 +1830,17 @@ endif # BOOTLOADER
 
 endif # STM32
 
+ifdef STM32_LL
+DEFINES += -DSTM32_LL -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
+INCLUDE += -I$(ROOT)/targets/stm32_ll
+ifndef BOOTLOADER
+SOURCES +=                              \
+targets/stm32_ll/main.c                    \
+targets/stm32_ll/jshardware.c              \
+targets/stm32_ll/stm32_it.c
+endif
+endif
+
 ifdef LINUX
 DEFINES += -DLINUX
 INCLUDE += -I$(ROOT)/targets/linux
@@ -1757,8 +1876,9 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
 ifdef NRF5X
- LDFLAGS += $(ARCHFLAGS)
- LDFLAGS += --specs=nano.specs -lc -lnosys
+ LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
+else ifdef STM32
+ LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
 else ifdef EFM32
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
  LDFLAGS += -Wl,--start-group -lgcc -lc -lnosys -Wl,--end-group
@@ -2242,20 +2362,31 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
  ifdef USE_BOOTLOADER
   ifdef DFU_UPDATE_BUILD
 	@echo Not merging softdevice or bootloader with application
+<<<<<<< HEAD
 	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
+=======
+	# nrfutil  pkg generate --help
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
+>>>>>>> espruino/master
   else
   ifdef BOOTLOADER
 	@echo Not merging anything with bootloader
   else
 	@echo Merging SoftDevice and Bootloader
+        # We can build a DFU settings file we can merge in...
+	# nrfutil settings generate --family NRF52 --application $(PROJ_NAME).hex --application-version 0xff --bootloader-version 0xff --bl-settings-version 1 dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
+<<<<<<< HEAD
 	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
+=======
+	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
+>>>>>>> espruino/master
 	mv tmp.hex $(PROJ_NAME).hex
   endif
   endif
  else
 	@echo Merging SoftDevice
-	scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
+	python scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
  endif # USE_BOOTLOADER
 endif # SOFTDEVICE
@@ -2292,8 +2423,9 @@ else ifdef MICROBIT
 	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
 	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
 else ifdef NRF5X
-	if [ -d "/media/$(USER)/JLINK" ]; then cp $(PROJ_NAME).hex /media/$(USER)/JLINK;sync; fi
-	if [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).hex /media/JLINK;sync; fi
+	if type nrfjprog 2>/dev/null; then nrfjprog --family $(FAMILY) --clockspeed 50000 --program $(PROJ_NAME).hex --chiperase --reset; \
+	elif [ -d "/media/$(USER)/JLINK" ]; then cp $(PROJ_NAME).hex /media/$(USER)/JLINK;sync; \
+	elif [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).hex /media/JLINK;sync; fi
 else
 	@echo ST-LINK flash
 	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)

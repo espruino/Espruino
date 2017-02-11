@@ -81,7 +81,11 @@ DEVICES = {
  "MEMS":"MEMS",
  "GYRO":"GYRO",
  "JTAG":"JTAG",
- "ESP8266":"ESP8266"
+ "ESP8266":"ESP8266",
+ "MAG":"MAG",
+ "IR":"IR", 
+ "NFC":"NFC",
+ "CAPSENSE":"CAPSENSE",
 };
 
 for i in range(0,7):
@@ -108,6 +112,10 @@ URLS = {
  "BLUETOOTH":"/Bluetooth",
  "JTAG":"/AdvancedDebug"
 };
+
+SIMPLE_DEVICES = [
+ "LED1","LED2","LED3","LED4","LED5","LED6","LED7","LED8",
+ "BTN1","BTN2","BTN3","BTN4" ];
 
 # is a pin name valid
 def isvalidpin(pinname):
