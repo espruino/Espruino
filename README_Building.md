@@ -127,6 +127,8 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 
 #### for [puck.js](http://www.espruino.com/Puck.js)
 
+The puck.js is based on the nRF52
+
 ```make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make```
 
 #### for [NRF52-DK](https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy/nRF52-DK)
@@ -140,11 +142,11 @@ All boards based on the nRF52 have RAM and Flash to support Espruino without fea
 The micro:bit is based on the nRF51.
 
 * ```make clean && MICROBIT=1 RELEASE=1 make```
-* Drop the hex generated on the micro:bit drive.
+* Drop the hex generated on the micro:bit drive and it is then an Espruino.
 
 Note:
 
-* At the time of writing, if one uses the Espruino Web GUI, access the Settings->Communications
+* At the time of writing, if one uses the Espruino Web IDE, access the Settings->Communications
   * Request board details on connect: false
   * Throttle Send: true
 
