@@ -25,9 +25,9 @@ The current reference OS for building is Ubuntu 16.04.1 LTS, and the following c
 ### for Espruino
 
 ```bash
-sudo apt-get upgrade
+sudo apt-get update
 sudo apt-get install -y \
-  build-essential lib32z1 lib32ncurses5 lib32bz2-1.0 lib32ncurses5 ia32-libs git python python-pip
+  build-essential git python python-pip
 # User choice for placement of source repos
 mkdir -p ~/source/repos/github/espruino
 cd ~/source/repos/github/espruino
