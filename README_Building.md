@@ -13,6 +13,8 @@ make clean && make
 * In general, have a look through the Makefile to see what other options are available
 * If you're swapping between compiling for different targets, you need to call `make clean` before you compile for the new target.
 * If you have a ld error, check the board name in the BOARDNAME=1 make in the Makefile.
+* ```RELEASE=1``` for performance and code size, without it, assertions are kept for debugging.
+* ```DEBUG=1``` is available.
 
 ## Under Linux
 
@@ -106,7 +108,6 @@ make clean && YOUR_BOARD_NAME=1 RELEASE=1 make
 ```
 
 * See the top of Makefile for board names
-* Without `RELEASE=1`, assertions are kept in the code (which is good for debugging, bad for performance + code size)
 * `BOARDNAME=1 RELEASE=1 make serialflash` will flash to /dev/ttyUSB0 using the STM32 serial bootloader (what's needed for the Espruino and HY boards)
 * `BOARDNAME=1 RELEASE=1 make flash` will flash using st-flash if it's a discovery board, the maple bootloader if using that board, or will copy the binary to `/media/NUCLEO` if using a Nucleo board.
 
