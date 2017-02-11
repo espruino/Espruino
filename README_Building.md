@@ -28,6 +28,7 @@ The current reference OS for building is Ubuntu 16.04.1 LTS, and the following c
 sudo apt-get update
 sudo apt-get install -y \
   build-essential git python python-pip
+sudo pip install --upgrade pip
 # User choice for placement of source repos
 mkdir -p ~/source/repos/github/espruino
 cd ~/source/repos/github/espruino
@@ -38,6 +39,8 @@ chmod +x espruino && sudo cp espruino /usr/local/bin
 ```
 
 ### for an example of cross compilation to for the puck.js
+
+Having sucessfully created an native OS Espruino, try a cross compilation.
 
 ```bash
 sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa
