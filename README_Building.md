@@ -175,7 +175,7 @@ make clean && make $*
 * You will also get an `espruino_1v00_*_esp8266.tgz` archive, which contains everything you
   need to flash a module (except for esptool.py), including a README_flash.txt
 
-####Building on Eclipse
+#### Building on Eclipse
 
 When building on Eclipse, update the Makefile properties to include the definitions show above.  The easiest way to achieve
 that task is to right-click your Espruino project and select `properties`.  From there, navigate to `C/C++ Build > Environment`.
