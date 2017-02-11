@@ -66,9 +66,14 @@ make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
 It is possible to build Espruino under Windows with the following addition to the Linux explanation:
 
 * Install Bash on Ubuntu on Windows 10 <https://msdn.microsoft.com/da-dk/commandline/wsl/install_guide>
-* After enablement, just use the instructions for Linux
+  * After enablement, just use the instructions for Linux
 
-Or use a Virtual machine as described below.
+Note:
+
+* there is no access to USB in the present version
+  * copy any crosscompile output to one's user directory and either bluetooth or USB the result to the target 
+
+Or use a Virtual machine as described below dependant on ones taste.
 
 ## Cross compilation
 
