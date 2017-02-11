@@ -14,3 +14,4 @@ sudo apt-get install gcc-arm-embedded
 # apply setup config to add compiler to PATH
 # from stackoverflow i.e http://stackoverflow.com/a/28279205
 echo "source /vagrant/scripts/vagrant_setup.sh" >> /home/vagrant/.bashrc
+
