@@ -220,8 +220,6 @@ Compiling Espruino:
 
 ```
 
-----
-
 ## Documentation
 
 ```bash
@@ -233,7 +231,6 @@ python scripts/build_docs.py
 This will create a file called ```functions.html``` that is a version of [the reference pages](http://www.espruino.com/Reference),
 but based on your source code.
 
-----
 
 ## Virtual Machines under Windows and MacOS
 
