@@ -180,7 +180,7 @@ make clean && make $*
 When building on Eclipse, update the Makefile properties to include the definitions show above.  The easiest way to achieve
 that task is to right-click your Espruino project and select `properties`.  From there, navigate to `C/C++ Build > Environment`.
 
-### for EMW3165
+#### for EMW3165
 
 Note: the emw3165 port is very preliminary and does not include Wifi support at this time.
 _The text below is what is planned in order to support Wifi, but it doesn't exist yet._
