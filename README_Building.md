@@ -284,8 +284,6 @@ but based on your source code.
 
 There's some more information on how to do this on the forum at http://forum.espruino.com/conversations/151 including links to a pre-made [Amazon EC2 instance](http://forum.espruino.com/conversations/151/?offset=25#comment20326).
 
-----
-
 ### To flash Espruino from the VM
 
 * Plug the Espruino board in while holding BTN1, and wait for Windows to finish connecting to the USB device
