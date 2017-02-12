@@ -1,5 +1,6 @@
 *~
 *.tgz
+*.d
 *.o
 *.elf
 /*.hex
@@ -30,8 +31,18 @@ xtensa-lx106-elf
 *.c#
 esp_iot_sdk_v2.0.0.p1/
 libs/network/mqtt/
+<<<<<<< HEAD
 /function_keywords.js
 /functions.html
 
 *.d
 ／ship
+=======
+esp-idf-template/
+esp-idf/
+esp32_out.ld
+xtensa-esp32-elf/
+/function_keywords.js
+/functions.html
+/ship
+>>>>>>> lanruino_esp32
