@@ -58,10 +58,6 @@
 
 #define UNUSED(x) (void)(x)
 
-// The logging tag used for log messages issued by this file.
-static char *tag = "jshardware";
-static char *tagGPIO = "jshardware(GPIO)";
-
 /**
  * Convert a pin id to the corresponding Pin Event id.
  */
@@ -80,7 +76,7 @@ static uint8_t g_pinState[JSH_PIN_COUNT];
 /**
 * interrupt handler for gpio interrupts
 */
-void IRAM_ATTR gpio_intr_test(void* arg){
+void IRAM_ATTR gpio_intr_handler(void* arg){
   //GPIO intr process. Mainly copied from esp-idf
   UNUSED(arg);
   IOEventFlags exti;
@@ -108,20 +104,25 @@ void IRAM_ATTR gpio_intr_test(void* arg){
  * Initialize the JavaScript hardware interface.
  */
 void jshInit() {
-  //uint32_t freeHeapSize = esp_get_free_heap_size();
-  //ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
-  spi_flash_init();
+  uint32_t freeHeapSize = esp_get_free_heap_size();
+  jsWarn( "Free heap size: %d", freeHeapSize);
   esp32_wifi_init();
   //jswrap_ESP32_wifi_soft_init();
   jshInitDevices();
-  //if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
-  //  jsError("JshPinState #defines have changed, please update pinStateToString()");
-  // }
-  gpio_isr_register(gpio_intr_test,NULL,0,NULL);  //changed to automatic assign of interrupt
+  if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
+    jsError("JshPinState #defines have changed, please update pinStateToString()");
+  }
+  /*
+  jsWarn( "JSHPINSTATE_I2C %d\n",JSHPINSTATE_I2C );
+  jsWarn( "JSHPINSTATE_GPIO_IN_PULLDOWN %d\n",JSHPINSTATE_GPIO_IN_PULLDOWN );
+  jsWarn( "JSHPINSTATE_MASK %d\n",JSHPINSTATE_MASK );
+  */
+  gpio_isr_register(gpio_intr_handler,NULL,0,NULL);  //changed to automatic assign of interrupt
    // Initialize something for each of the possible pins.
   for (int i=0; i<JSH_PIN_COUNT; i++) {
     g_pinState[i] = 0;
   }
+  
 } // End of jshInit
 
 
@@ -129,13 +130,17 @@ void jshInit() {
  * Reset the Espruino environment.
  */
 void jshReset() {
-  //esp_restart();
+    jshResetDevices();
+	jsWarn("jshReset(): To implement - reset GPIO jshPinSetState(x, JSHPINSTATE_GPIO_IN_PULLUP)\n");
+	//jswrap_ESP32_wifi_soft_init();
+	jsWarn(">> jshReset()\n");
 }
 
 /**
  * Re-init the ESP32 after a soft-reset
  */
 void jshSoftInit() {
+  jsWarn(">> jshSoftInit()\n");
   jswrap_ESP32_wifi_soft_init();
 }
 
@@ -237,7 +242,7 @@ void jshPinSetState(
 	pull_mode=GPIO_PULLUP_ONLY;
     break;
   default:
-    ESP_LOGE(tag, "jshPinSetState: Unexpected state: %d", state);
+    jsError( "jshPinSetState: Unexpected state: %d", state);
   return;
   }
   gpio_num_t gpioNum = pinToESP32Pin(pin);
@@ -346,7 +351,7 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
 // Kick the watchdog
 void jshKickWatchDog() {
-  jsError(tag,">> jshKickWatchDog Not implemented,using taskwatchdog from RTOS");
+  jsError(">> jshKickWatchDog Not implemented,using taskwatchdog from RTOS");
 }
 
 
@@ -403,7 +408,7 @@ IOEventFlags jshPinWatch(
 	  }
 	  else{
 		if(gpio_intr_disable(gpioNum) == ESP_ERR_INVALID_ARG){     //disable interrupt
-			ESP_LOGE(tagGPIO,"*** jshPinWatch error");
+			jsError("*** jshPinWatch error");
 		}
 	  }
       return pin;
@@ -520,9 +525,18 @@ void jshUtilTimerReschedule(JsSysTime period) {
 //===== Miscellaneous =====
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  UNUSED(device);
-  jsError(">> jshIsDeviceInitialised not implemented");
- return 0;
+  bool retVal = true;
+  jsError("jshIsDeviceInitialised check on %d not implemented",device);
+ /* esp8266 code below
+  switch(device) {
+  case EV_SPI1:
+    retVal = g_spiInitialized;
+    break;
+  default:
+    break;
+  }  
+  */
+  return retVal;
 } // End of jshIsDeviceInitialised
 
 // the esp32 temperature sensor - undocumented library function call. Unsure of values returned.
