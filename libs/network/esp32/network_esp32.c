@@ -129,7 +129,7 @@ int net_esp32_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
     // Make the socket listen
     nret = listen(sckt, 10); // 10 connections (but this ignored on CC30000)
     if (nret == SOCKET_ERROR) {
-      jsError("Socket listen failed");
+      jsError("Socket listen failed, host:%d, port:%d\n",(int)host,(int)port);
       closesocket(sckt);
       return -1;
     }

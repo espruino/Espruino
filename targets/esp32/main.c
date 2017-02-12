@@ -24,7 +24,6 @@ extern void initialise_wifi(void);
 
 static void uartTask(void *data) {
   initConsole();
-  initADC(1);
   while(1) {
     consoleToEspruino();  
     serialToEspruino();	
@@ -44,13 +43,13 @@ static void timerTask(void *data) {
 
 
 static void espruinoTask(void *data) {
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
   PWMInit();
   RMTInit();
+  initADC(1);
   jshInit();     // Initialize the hardware
   jsvInit();     // Initialize the variables
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
   jsiInit(true); // Initialize the interactive subsystem
-  jswrap_ESP32_wifi_restore();
   while(1) {
     jsiLoop();   // Perform the primary loop processing
   }
