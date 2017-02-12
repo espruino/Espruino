@@ -571,7 +571,9 @@ else ifdef ESP32
 BOARD=ESP32
 EMBEDDED=1
 USE_NET=1
+USE_CONVERT=1
 #USE_HASHLIB=1
+USE_MQTT=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
@@ -1050,10 +1052,16 @@ ifdef USE_NET
  endif
 endif # USE_NET
 
+ifdef USE_CONVERT
+DEFINES += -DUSE_CONVERT
+WRAPPERSOURCES  +=  libs/lanruino/convert/jswrap_convert.c
+INCLUDE += -I$(ROOT)/libs/lanruino/convert
+endif
+
 ifdef USE_MQTT
 	DEFINES += -DUSE_MQTT
-	WRAPPERSOURCES += libs/network/mqtt/jswrap_mqtt.c
-	INCLUDE += -I$(ROOT)/libs/network/mqtt
+	WRAPPERSOURCES += libs/lanruino/mqtt/jswrap_mqtt.c
+	INCLUDE += -I$(ROOT)/libs/netwlanruinork/mqtt
 endif # USE_MQTT
 
 ifdef USE_TV

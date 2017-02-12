@@ -37,4 +37,4 @@ esp_iot_sdk_v2.0.0.p1/
 esp-idf/
 esp32_out.ld
 xtensa-esp32-elf/
-libs/network/mqtt/
+libs/lanruino/mqtt/

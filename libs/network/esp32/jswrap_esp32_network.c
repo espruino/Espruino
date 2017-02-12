@@ -647,7 +647,10 @@ If you want the connection to happen automatically at boot, add `wifi.save();`.
 
 */
 
-/**
+/*JSON{
+  "type" : "init",
+  "generate" : "jswrap_ESP32_wifi_soft_init"
+}
  * Perform a soft initialization of ESP32 networking.
  */
 void jswrap_ESP32_wifi_soft_init() {
