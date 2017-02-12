@@ -301,6 +301,79 @@ Note:
 
 If one does not wish to use vagrant, then install Virtual Box and use the Linux method.
 
+### USB access
+
+In order to access USB, bluetooth or connected USB devices, one has USB filters to dedicate access to the guest OS. 
+An easy method is to use VirtualBox's graphical interface, however, the following is based on text output to document the method for a Vagrantfile.
+
+The following has beed checked with Windows 10 and MacOS users can presumably use the same methods. In this example, an Intel Bluetooth adapter and an MBED CMIS-DAP (micro:bit) are connected.
+
+```bash
+C:\Program Files\Oracle\VirtualBox>VBoxManage.exe list usbhost
+Host USB Devices:
+
+UUID:               45b6f27e-aecf-4163-aac8-cb86b475268f
+VendorId:           0x8087 (8087)
+ProductId:          0x0a2a (0A2A)
+Revision:           0.1 (0001)
+Port:               0
+USB version/speed:  2/High
+Manufacturer:       Intel Corp.
+Address:            {e0cbf06c-cd8b-4647-bb8a-263b43f0f974}\0000
+Current State:      Busy
+
+UUID:               4997796c-0720-4fd6-bab8-e4c0eadccd6f
+VendorId:           0x0d28 (0D28)
+ProductId:          0x0204 (0204)
+Revision:           16.0 (1600)
+Port:               0
+USB version/speed:  1/Full
+Manufacturer:       MBED
+Product:            MBED CMSIS-DAP
+SerialNumber:       9900023436424e45004130140000001400000000cb8928bd
+Address:            \\?\usb#vid_80ee&pid_cafe#9900023436424e45004130140000001400000000cb8928bd#{00873fdf-cafe-80ee-aa5e-00c04fb1720b}
+Current State:      Captured
+```
+
+This results in a Vagrantfile addition of
+
+```bash
+ # Enable USB Controller on VirtualBox
+  config.vm.provider "virtualbox" do |vb|
+    vb.customize ["modifyvm", :id, "--usb", "on"]
+    vb.customize ["modifyvm", :id, "--usbehci", "on"]
+  end
+
+  # Implement determined configuration attributes
+  config.vm.provider "virtualbox" do |vb|
+    vb.customize ["usbfilter", "add", "0",
+        "--target", :id,
+        "--name", "Intel Bluetooth",
+        "--vendorid", 0D28,
+        "--productid", 0204]
+    vb.customize ["usbfilter", "add", "1",
+        "--target", :id,
+        "--name", "Any MBED CMSIS-DAP",
+        "--product", "MBED CMSIS-DAP"]
+  end
+```
+
+When the VirtualBox is starting, the Bluetooth adapter and MBED CMSIS-DAP will be unavailable to the host OS, and will disapear, only to appear as dedicated resources to the guest OS.
+
+The following is the syslog when inserting and removint a micro:bit
+
+```bash
+Feb 12 20:28:55 ubuntu-xenial systemd[1]: Started User Manager for UID 1000.
+Feb 12 20:29:53 ubuntu-xenial kernel: [  184.704069] usb 2-1: USB disconnect, device number 2
+Feb 12 20:29:58 ubuntu-xenial kernel: [  189.757598] usb 2-1: new full-speed USB device number 4 using ohci-pci
+Feb 12 20:29:59 ubuntu-xenial kernel: [  190.235213] usb 2-1: New USB device found, idVendor=0d28, idProduct=0204
+Feb 12 20:29:59 ubuntu-xenial kernel: [  190.235216] usb 2-1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+Feb 12 20:29:59 ubuntu-xenial kernel: [  190.235219] usb 2-1: Product: MBED CMSIS-DAP
+Feb 12 20:29:59 ubuntu-xenial kernel: [  190.235220] usb 2-1: Manufacturer: MBED
+Feb 12 20:29:59 ubuntu-xenial kernel: [  190.235222] usb 2-1: SerialNumber: 9900023436424e45004130140000001400000000cb8928bd
+Feb 12 20:30:06 ubuntu-xenial kernel: [  196.961340] usb 2-1: USB disconnect, device number 4
+```
+
 ## To flash Espruino from the VM
 
 * Plug the Espruino board in while holding BTN1, and wait for Windows to finish connecting to the USB device
