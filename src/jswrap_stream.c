@@ -74,14 +74,20 @@ bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, JsVar *dataInfo, b
   assert(jsvIsObject(parent));
   assert(jsvIsString(dataString));
   bool ok = true;
+  char *callback_name = STREAM_CALLBACK_NAME;
 
-  JsVar *callback = jsvFindChildFromString(parent, STREAM_CALLBACK_NAME, false);
+  JsVar *callback = jsvFindChildFromString(parent, callback_name, false);
+  if (!callback) {
+    // try on:message for UDP
+    callback_name = STREAM_MESSAGE_CALLBACK_NAME;
+    callback = jsvFindChildFromString(parent, callback_name, false);
+  }
   if (callback) {
     JsVar *args[] = { dataString, dataInfo };
     if (!jsiExecuteEventCallback(parent, callback, 2, args)) {
       jsError("Error processing Serial data handler - removing it.");
       jsErrorFlags |= JSERR_CALLBACK;
-      jsvObjectRemoveChild(parent, STREAM_CALLBACK_NAME);
+      jsvObjectRemoveChild(parent, callback_name);
     }
     jsvUnLock(callback);
   } else {
