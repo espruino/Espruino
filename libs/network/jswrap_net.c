@@ -15,6 +15,7 @@
  */
 #include "jswrap_net.h"
 #include "jsvariterator.h"
+#include "jsparse.h"
 #include "socketserver.h"
 #include "network.h"
 

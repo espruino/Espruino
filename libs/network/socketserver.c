@@ -18,8 +18,6 @@
 #include "jshardware.h"
 #include "jswrap_stream.h"
 
-#include <arpa/inet.h>
-
 #define HTTP_NAME_SOCKETTYPE "type" // normal socket or HTTP
 #define HTTP_NAME_PORT "port"
 #define HTTP_NAME_SOCKET "sckt"
@@ -261,6 +259,7 @@ int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData
 
   size_t bufLen = httpStringGet(*sendData, buf, (size_t)net->chunkSize);
   int num = netSend(net, sckt, buf, bufLen, host_addr, port);
+  jsWarn("socketSendData %x:%d (%d -> %d)\n", host_addr, port, bufLen, num);
   if (num < 0) return num; // an error occurred
   // Now cut what we managed to send off the beginning of sendData
   if (num > 0) {
@@ -586,7 +585,9 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
                 jsvObjectSetChild(receiveInfo, HTTP_NAME_RECEIVE_DATA, receiveData);
               }
 
-              jsvObjectSetChildAndUnLock(receiveInfo, "host", jsvNewFromString(inet_ntoa(*(struct in_addr*)&host))),
+              JsVar *hostString = jsvNewFromString(""); // inet_ntoa replacement
+              jsvAppendPrintf(hostString, "%d.%d.%d.%d", ((uint8_t*)&host)[0], ((uint8_t*)&host)[1], ((uint8_t*)&host)[2], ((uint8_t*)&host)[3]);
+              jsvObjectSetChildAndUnLock(receiveInfo, "host", hostString);
               jsvObjectSetChildAndUnLock(receiveInfo, "port", jsvNewFromInteger(port));
 
               if (receiveData) { // could be out of memory
