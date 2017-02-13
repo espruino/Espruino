@@ -18,9 +18,20 @@
 #include "jspininfo.h"
 #include "jshardware.h"
 #include "driver/gpio.h"
+#include "driver/spi_master.h"
 
 // Convert an Espruino pin to an ESP32 pin number.
 gpio_num_t pinToESP32Pin(Pin pin);
+
+#define SPIMax 2
+struct SPIChannel{
+  spi_device_handle_t spi;
+  bool spi_read;
+  uint32_t g_lastSPIRead;
+  spi_host_device_t HOST;
+};
+struct SPIChannel SPIChannels[SPIMax];
+void SPIChannelsInit();
 
 void jshSPISetup( IOEventFlags device, JshSPIInfo *inf );
 

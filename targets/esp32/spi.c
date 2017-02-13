@@ -18,18 +18,26 @@
 #include "jspininfo.h"
 #include "jshardware.h"
 #include "driver/gpio.h"
-#include "driver/spi_master.h"
+#include "spi.h"
 
 #define UNUSED(x) (void)(x)
 
-// Convert an Espruino pin to an ESP32 pin number.
-gpio_num_t pinToESP32Pin(Pin pin);
+int getSPIChannelPnt(IOEventFlags device){
+  return device - EV_SPI1;
+}
+void SPIChannelsInit(){
+  int i;
+  for(i = 0; i < SPIMax; i++){
+    SPIChannels[i].spi = NULL;
+    SPIChannels[i].spi_read = false;
+	SPIChannels[i].g_lastSPIRead = (uint32_t)-1;
+  }
+  SPIChannels[0].HOST = HSPI_HOST;
+  SPIChannels[1].HOST = VSPI_HOST;
+}
 
-static uint32_t  g_lastSPIRead = (uint32_t)-1;
+void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
 
-// Use only one device at time for now.... Expand to support two devices in the future
-spi_device_handle_t spi = NULL;
-    
 /*
 https://hackadaycom.files.wordpress.com/2016/10/esp32_pinmap.png
 HSPI  2 //SPI bus normally mapped to pins 12 - 15, but can be matrixed to any pins
@@ -57,16 +65,9 @@ https://github.com/espressif/esp-idf/blob/master/examples/26_spi_master/main/spi
 
 To do:
 implement inf->spiMSB
-Test!
+Test with ILI9341 works, but could be faster.
+Espruino supports sendig byte by byte, no mass sending is supported.
 */
-
-int getSPIFromDevice( IOEventFlags device  ) {
-  switch(device) {
-  case EV_SPI1: return HSPI_HOST;
-  case EV_SPI2: return VSPI_HOST;
-  default: return -1;
-  }
-}
   
 /**
  * Initialize the hardware SPI device.
@@ -79,40 +80,23 @@ void jshSPISetup(
     IOEventFlags device, //!< The identity of the SPI device being initialized.
     JshSPIInfo *inf      //!< Flags for the SPI device.
 ) {
-  jsError(">> jshSPISetup device=%s, baudRate=%d, spiMode=%d, spiMSB=%d",
-      jshGetDeviceString(device),
-      inf->baudRate,
-      inf->spiMode,
-      inf->spiMSB);
 
-  int which_spi=getSPIFromDevice(device);
-  if (which_spi == -1) {
-    jsError( "Unexpected device for SPI initialization: %d", device);
-    return;
-  }
-  Pin sck;
-  Pin miso;
-  Pin mosi;
-  Pin ss; 
-  if ( which_spi == HSPI_HOST ) {
+  int channelPnt = getSPIChannelPnt(device);
+  Pin sck, miso, mosi;
+  if(SPIChannels[channelPnt].HOST == HSPI_HOST){
     sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 14;
     miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 12;
     mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 13;
-    // Where do we get the SS pin?
-    //ss = inf->pinSS != PIN_UNDEFINED ? inf->pinSS : 15;
-    ss=15;
   }
   else {
     sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 5;
     miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 19;
     mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 23;
-    //ss = inf->pinSS != PIN_UNDEFINED ? inf->pinSS : 18;
-    ss=18;
   }
 
   spi_bus_config_t buscfg={
         .miso_io_num=miso,
-        .miso_io_num=mosi,
+        .mosi_io_num=mosi,
         .sclk_io_num=sck,
         .quadwp_io_num=-1,
         .quadhd_io_num=-1
@@ -123,14 +107,21 @@ void jshSPISetup(
   spi_device_interface_config_t devcfg={
         .clock_speed_hz=inf->baudRate,
         .mode=inf->spiMode,
-        .spics_io_num=ss,               //CS pin
+        .spics_io_num= -1,               //set CS not used by driver
         .queue_size=7,      //We want to be able to queue 7 transactions at a time
 		.flags=flags
     };
-  esp_err_t ret=spi_bus_initialize(which_spi, &buscfg, 1);
+  if(SPIChannels[channelPnt].spi){
+	spi_bus_remove_device(SPIChannels[channelPnt].spi);
+	spi_bus_free(SPIChannels[channelPnt].HOST);
+	jsWarn("spi was already in use, removed old assignment");
+  }
+  esp_err_t ret=spi_bus_initialize(SPIChannels[channelPnt].HOST, &buscfg, 1);
   assert(ret==ESP_OK);
-  ret=spi_bus_add_device(which_spi, &devcfg, &spi);
+  ret = spi_bus_add_device(SPIChannels[channelPnt].HOST, &devcfg, &SPIChannels[channelPnt].spi);
   assert(ret==ESP_OK);
+
+  jshSetDeviceInitialised(device, true);
 }
 
 /** Send data through the given SPI device (if data>=0), and return the result
@@ -140,12 +131,10 @@ int jshSPISend(
     IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
     int data             //!< The data to be sent or an indication that no data is to be sent.
 ) {
-  int which_spi =getSPIFromDevice(device);
-  if (which_spi == -1) {
-  return -1;
-  }
+  int channelPnt = getSPIChannelPnt(device);
+  uint8_t byte = (uint8_t)data;
   //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
-  int retData = (int)g_lastSPIRead;
+  int retData = (int)SPIChannels[channelPnt].g_lastSPIRead;
   if (data >=0) {
     // Send 8 bits of data taken from "data" over the selected spi and store the returned
     // data for subsequent retrieval.
@@ -158,11 +147,12 @@ int jshSPISend(
 	// https://esp-idf.readthedocs.io/en/latest/api/spi_master.html#type-definitions
 	// should this be a switch or always read?
 	t.flags=SPI_TRANS_USE_RXDATA;
-    ret=spi_device_transmit(spi, &t);  //Transmit - blocks until result - need to change this?
-	g_lastSPIRead=t.rx_data[0];
+    ret=spi_device_transmit(SPIChannels[channelPnt].spi, &t);  //Transmit - blocks until result - need to change this?
+	assert(ret == ESP_OK);
+	SPIChannels[channelPnt].g_lastSPIRead=t.rx_data[0];
 	
   } else {
-    g_lastSPIRead = (uint32_t)-1;
+    SPIChannels[channelPnt].g_lastSPIRead = (uint32_t)-1;
   }
   return (int)retData;
 }
@@ -175,7 +165,7 @@ void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
 ) {
-  int which_spi=getSPIFromDevice(device); 
+  int channelPnt = getSPIChannelPnt(device);
   //spiWriteWord(_spi[which_spi], data);
   jsError(">> jshSPISend16: Not implemented");
 }
@@ -200,16 +190,14 @@ void jshSPISet16(
 void jshSPIWait(
     IOEventFlags device //!< Unknown
 ) {
-  UNUSED(device);
-  int which_spi =getSPIFromDevice(device);  
+  int channelPnt = getSPIChannelPnt(device);
   //spiWaitReady(_spi[which_spi]);
-  jsError(">> jshSPIWait: Not implemented");  
+  //jsError(">> jshSPIWait: Not implemented");  
 }
 
 
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive) {
-  UNUSED(device);
-  UNUSED(isReceive);
-  jsError(">> jshSPISetReceive: Not implemented");    
+  int channelPnt = getSPIChannelPnt(device);
+  SPIChannels[channelPnt].spi_read = isReceive;  
 }

@@ -524,20 +524,24 @@ void jshUtilTimerReschedule(JsSysTime period) {
 
 //===== Miscellaneous =====
 
+static uint64_t DEVICE_INITIALISED_FLAGS = 0L;
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  bool retVal = true;
-  jsError("jshIsDeviceInitialised check on %d not implemented",device);
- /* esp8266 code below
-  switch(device) {
-  case EV_SPI1:
-    retVal = g_spiInitialized;
-    break;
-  default:
-    break;
-  }  
-  */
-  return retVal;
+  uint64_t mask = 1ULL << (int)device;
+  return (DEVICE_INITIALISED_FLAGS & mask) != 0L;
+
+//  UNUSED(device);
+//  jsError(">> jshIsDeviceInitialised not implemented");
+// return 0;
 } // End of jshIsDeviceInitialised
+
+void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
+  uint64_t mask = 1ULL << (int)device;
+  if (isInit) {
+    DEVICE_INITIALISED_FLAGS |= mask;
+  } else {
+    DEVICE_INITIALISED_FLAGS &= ~mask;
+  }
+}
 
 // the esp32 temperature sensor - undocumented library function call. Unsure of values returned.
 JsVarFloat jshReadTemperature() {

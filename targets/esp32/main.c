@@ -15,6 +15,7 @@
 #include "jshardwareTimer.h"
 #include "jshardwarePWM.h"
 #include "jshardwarePulse.h"
+#include "spi.h"  //rename to jahardwareSPI.h ?
 
 #include "esp_spi_flash.h"
 
@@ -45,6 +46,7 @@ static void timerTask(void *data) {
 static void espruinoTask(void *data) {
   PWMInit();
   RMTInit();
+  SPIChannelsInit();
   initADC(1);
   jshInit();     // Initialize the hardware
   jsvInit();     // Initialize the variables
