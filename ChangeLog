@@ -8,6 +8,7 @@
             nRF5x: Allow multiple advertising packets to be set at once with NRF.setAdvertising
             nRF52: Add 'properties' object to BluetoothRemoteGATTCharacteristic
             nRF52: Perform write without response if that is what is required 
+            Pico/WiFi: Allow USB HID to work on Windows (from @nailxx)
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
