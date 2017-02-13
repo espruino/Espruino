@@ -20,7 +20,7 @@ make clean && make
 
 Espruino is easy to build under Linux, for either for Espruino running on Linux or a board.
 
-The current reference OS for building is Ubuntu 16.04.1 LTS, and the following can ensure problem free developement:
+The current reference OS for building is Ubuntu 16.04.1 LTS, and the following can ensure problem free development:
 
 ### for Espruino
 
@@ -40,7 +40,7 @@ chmod +x espruino && sudo cp espruino /usr/local/bin
 
 ### for an example of cross compilation for the puck.js
 
-Having sucessfully created an native OS Espruino, try a cross compilation.
+Having successfully created an native OS Espruino, try a cross compilation.
 
 ```bash
 sudo apt-get update
@@ -67,7 +67,7 @@ ls -l *puckjs*
 It is possible to build Espruino under Windows with the following addition to the Linux explanation:
 
 * Install Bash on Ubuntu on Windows 10 <https://msdn.microsoft.com/da-dk/commandline/wsl/install_guide>
-  * After enablement, just use the instructions for Linux
+  * After enabling, just use the instructions for Linux
 
 Note:
 
@@ -75,13 +75,13 @@ Note:
   * copy any crosscompile output to one's user directory and either bluetooth or USB the result to the target
 * Ubuntu 14.04 LTS is the present version.
 
-Or use a Virtual machine as described below dependant on ones taste.
+Or use a Virtual machine as described below dependent on ones taste.
 
 ## Cross compilation
 
 ### for Raspberry Pi
 
-Using [RASPBIAN JESSIE WITH PIXEL](https://www.raspberrypi.org/downloads/raspbian/), getting Espurino is easy.
+Using [RASPBIAN JESSIE WITH PIXEL](https://www.raspberrypi.org/downloads/raspbian/), getting Espruino is easy.
 
 To enable the full power of Espruino on the Pi, [WiringPi](http://wiringpi.com/):
 
@@ -97,7 +97,7 @@ Getting Espruino:
 
 Follow the instructions for [OpenWRT build system](https://wiki.openwrt.org/doc/howto/buildroot.exigence)
 
-After a sucessfull OpenWRT build, [OpenWRT Espruino packages](https://github.com/vshymanskyy/OpenWRT-Espruino-packages)
+After a successful OpenWRT build, [OpenWRT Espruino packages](https://github.com/vshymanskyy/OpenWRT-Espruino-packages)
 
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard)
 
@@ -264,7 +264,7 @@ but based on your source code.
 ## Virtual Machines under Windows and MacOS
 
 The easiest solution for a Virtual Machine for Windows and MacOS is [VirtualBox](https://www.virtualbox.org/).
-A really easy way to provision, ie setup the system for developement, is [Vagrant](https://www.vagrantup.com).
+A really easy way to provision, ie setup the system for development, is [Vagrant](https://www.vagrantup.com).
 
 Note:
 
@@ -290,7 +290,7 @@ Note:
     * a native OS version of Espruino is now built. See this documentation for further examples
   * To exit the ssh session
     *`exit`.
-  * On the host OS, the following are usefull vagrant commands
+  * On the host OS, the following are useful vagrant commands
     * `vagrant suspend`
       * will pause the VM
     * `vagrant halt`
@@ -306,7 +306,7 @@ If one does not wish to use vagrant, then install Virtual Box and use the Linux 
 In order to access USB, bluetooth or connected USB devices, one has USB filters to dedicate access to the guest OS. 
 An easy method is to use VirtualBox's graphical interface, however, the following is based on text output to document the method for a Vagrantfile.
 
-The following has beed checked with Windows 10 and MacOS users can presumably use the same methods. In this example, an Intel Bluetooth adapter and an MBED CMIS-DAP (micro:bit) are connected.
+The following has been checked with Windows 10 and MacOS users can presumably use the same methods. In this example, an Intel Bluetooth adapter and an MBED CMIS-DAP (micro:bit) are connected.
 
 ```bash
 C:\Program Files\Oracle\VirtualBox>VBoxManage.exe list usbhost
@@ -358,9 +358,9 @@ This results in a Vagrantfile addition of
   end
 ```
 
-When the VirtualBox is starting, the Bluetooth adapter and MBED CMSIS-DAP will be unavailable to the host OS, and will disapear, only to appear as dedicated resources to the guest OS.
+When the VirtualBox is starting, the Bluetooth adapter and MBED CMSIS-DAP will be unavailable to the host OS, and will disappear, only to appear as dedicated resources to the guest OS.
 
-The following is the syslog when inserting and removint a micro:bit
+The following is the syslog when inserting and removing a micro:bit
 
 ```bash
 Feb 12 20:28:55 ubuntu-xenial systemd[1]: Started User Manager for UID 1000.
@@ -379,7 +379,7 @@ Feb 12 20:30:06 ubuntu-xenial kernel: [  196.961340] usb 2-1: USB disconnect, de
 * Plug the Espruino board in while holding BTN1, and wait for Windows to finish connecting to the USB device
 * Go into the VirtualBox Manager (There's no need to stop your VM)
 * Click on `USB`, then click on the icon with the `+` sign (With the tooltip 'Adds a new USB filter ... selected USB device')
-* Click on the device labelled `STMicroelectronics STM32 ...`
+* Click on the device labeled `STMicroelectronics STM32 ...`
 * Now unplug the Espruino board, wait a few seconds, and plug it back in (holding BTN1 again)
 * Go back into the VM, and type `sudo ESPRUINO_1V3=1 RELEASE=1 make serialflash`
 * Your board will now be flashed
