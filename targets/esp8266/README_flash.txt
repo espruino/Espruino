@@ -15,6 +15,9 @@ esptool.py --port [/dev/ttyUSB0|COM1] --baud 115200 write_flash \
 
 For 1MB flash use 0xFC000/0xFE000 and for 2MB flash use 0x1FC000/0x1FE000 on the last line.
 
+*** Erase flash before updating to a new version 
+esptool.py --port [/dev/ttyUSB0|COM1] --baud 115200 erase_flash
+
 *** Get esptool.py from https://github.com/themadinventor/esptool
 
 *** To flash a 4MB esp8266 (e.g. esp-12) via wifi use (with appropriate hostname):
