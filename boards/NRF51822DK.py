@@ -101,6 +101,9 @@ def get_pins():
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN5"]=0;
   pinutils.findpin(pins, "PD5", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PD6", True)["functions"]["ADC1_IN7"]=0;
+  # everything is non-5v tolerant 
+  for pin in pins:
+    pin["functions"]["3.3"]=0;
 
   #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
   return pins

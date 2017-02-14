@@ -123,4 +123,7 @@ def get_pins():
    { "name":"PH0", "sortingname":"H0", "port":"D", "num":"24", "functions":{}, "csv":{} },
    { "name":"PH1", "sortingname":"H1", "port":"D", "num":"25", "functions":{}, "csv":{} }
   ];
+  # everything is non-5v tolerant 
+  for pin in pins:
+    pin["functions"]["3.3"]=0;
   return pins
