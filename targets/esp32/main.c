@@ -49,6 +49,7 @@ static void espruinoTask(void *data) {
   SPIChannelsInit();
   initADC(1);
   jshInit();     // Initialize the hardware
+  jswrap_ESP32_wifi_restore();
   jsvInit();     // Initialize the variables
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   jsiInit(true); // Initialize the interactive subsystem
