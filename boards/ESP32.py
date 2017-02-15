@@ -38,9 +38,9 @@ chip = {
   'ram'     : 512,
   'flash'   : 0,
   'speed'   : 160,
-  'usart'   : 2,
+  'usart'   : 3,
   'spi'     : 2,
-  'i2c'     : 1,
+  'i2c'     : 2,
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {
@@ -54,133 +54,86 @@ devices = {
 };
 
 # left-right, or top-bottom order
-board_esp12 = {
-    'top' : ['D1', 'D3', 'D5', 'D4', 'D0', 'D2', 'D15', 'GND'],
-    'bottom' : ['VCC', 'D13', 'D12', 'D14', 'B16', 'CH_EN', 'A0', 'RESET'],
-    'right' : ['D11', 'D8', 'D9', 'D10', 'D7', 'D6'],
+board_esp32 = {
+   'top' : [ 'GND','D23','D22','D1','D3','D21','D20','D19','D18','D5','D17','D16','D4','D0'],
+   'bottom' :  ['GND','VCC','EN','D36','D39','D34','D35','D32','D33','D25','D26','D27','D14','D12'],
+   'right' : [ 'GND','D13','D9','D10','D11','D6','D7','D8','D15','D2']
 };
-board_esp12["bottom"].reverse()
-board_esp12["right"].reverse()
-board_esp12["_css"] = """
+board_esp32["bottom"].reverse()
+board_esp32["right"].reverse()
+board_esp32["_css"] = """
 #board {
   width:  600px;
-  height: 384px;
+  height: 435px;
   left: 50px;
   top: 100px;
-  background-image: url(img/ESP8266_12.jpg);
+  background-image: url(img/ESP32.jpg);
 }
 #boardcontainer {
   height: 600px;
 }
 #board #right {
-  top: 60px;
+  top: 80px;
   left: 600px;
 }
 #board #top {
-  bottom: 360px;
-  left: 195px;
+  bottom: 440px;
+  left: 155px;
 }
 #board #bottom  {
-  top: 365px;
-  left: 195px;
+  top: 435px;
+  left: 155px;
 }
 #board .rightpin {
-  height: 48px;
+  height: 28px;
 }
 #board .toppin, #board .bottompin {
-  width: 44px;
+  width: 24px;
 }
 """;
 
-# left-right, or top-bottom order
-board_esp01 = {
-    'left' : ['D3', 'D0', 'D2', 'GND'],
-    'right' : ['VCC', 'RESET', 'CH_PD', 'D1'],
-    '_hide_not_on_connectors' : True
-};
-board_esp01["_css"] = """
-#board {
-  width:  500px;
-  height: 299px;
-  left: 50px;
-  top: 0px;
-  background-image: url(img/ESP8266_01.jpg);
-}
-#boardcontainer {
-  height: 300px;
-}
-#board #right {
-  top: 30px;
-  left: 200px;
-}
-#board #left {
-  top: 65px;
-  right: 80px;
-}
-#board #right  {
-  top: 65px;
-  left: 460px;
-}
-#board .leftpin {
-  height: 48px;
-}
-#board .rightpin {
-  height: 48px;
-}
-""";
-
-boards = [ board_esp12, board_esp01 ];
+boards = [ board_esp32 ];
 
 def get_pins():
 
-  pins = pinutils.generate_pins(0,19);
-
-  pins.extend(pinutils.generate_pins(21,22));
+  pins = pinutils.generate_pins(0,5);
+#6-11 are used by Flash chip
+  pins.extend(pinutils.generate_pins(12,23));
 
   pins.extend(pinutils.generate_pins(25,27));
+#32-33 are routed to rtc for xtal
+  pins.extend(pinutils.generate_pins(34,39));
 
-  pins.extend(pinutils.generate_pins(32,39));
-
+  pins = pinutils.fill_gaps_in_pin_list(pins);
+  
   pinutils.findpin(pins, "PD36", True)["functions"]["ADC1_IN0"]=0;
-
   pinutils.findpin(pins, "PD37", True)["functions"]["ADC1_IN1"]=0;
-
   pinutils.findpin(pins, "PD38", True)["functions"]["ADC1_IN2"]=0;
-
   pinutils.findpin(pins, "PD39", True)["functions"]["ADC1_IN3"]=0;
-
   pinutils.findpin(pins, "PD32", True)["functions"]["ADC1_IN4"]=0;
-
   pinutils.findpin(pins, "PD33", True)["functions"]["ADC1_IN5"]=0;
-
   pinutils.findpin(pins, "PD34", True)["functions"]["ADC1_IN6"]=0;
-
   pinutils.findpin(pins, "PD35", True)["functions"]["ADC1_IN7"]=0;
 
-
+#ADC2 not supported yet, waiting for driver from espressif
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC2_IN0"]=0;
-
   pinutils.findpin(pins, "PD0", True)["functions"]["ADC2_IN1"]=0;
-
   pinutils.findpin(pins, "PD2", True)["functions"]["ADC2_IN2"]=0;
-
   pinutils.findpin(pins, "PD15", True)["functions"]["ADC2_IN3"]=0;
-
   pinutils.findpin(pins, "PD13", True)["functions"]["ADC2_IN4"]=0;
-
   pinutils.findpin(pins, "PD12", True)["functions"]["ADC2_IN5"]=0;
-
   pinutils.findpin(pins, "PD14", True)["functions"]["ADC2_IN6"]=0;
-
   pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
-
+  
+  pinutils.findpin(pins, "PD25", True)["functions"]["DAC_OUT1"]=0;
+  
+  pinutils.findpin(pins, "PD26", True)["functions"]["DAC_OUT2"]=0;
 
   pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
 
   pinutils.findpin(pins, "PD10", True)["functions"]["USART0_TX"]=0;
-
+  pinutils.findpin(pins, "PD16", True)["functions"]["UARTT2_RX"]=0;
   pinutils.findpin(pins, "PD17", True)["functions"]["USART2_TX"]=0;
-
   pinutils.findpin(pins, "PD32", True)["functions"]["USART0_RX"]=0;
 
   return pins
