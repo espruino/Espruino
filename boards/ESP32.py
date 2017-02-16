@@ -23,15 +23,11 @@ info = {
  'binary_name'              : 'espruino_%v_esp32',
  'build' : {
    'defines' : [
-<<<<<<< HEAD
      'USE_NET',
 	 'USE_TELNET',
      'USE_GRAPHICS',
      'USE_CRYPTO',
      'USE_TLS'	 
-=======
-     'USE_NET'
->>>>>>> Initial files for the ESP32 environment.
    ]
  }
 };
@@ -42,7 +38,6 @@ chip = {
   'ram'     : 512,
   'flash'   : 0,
   'speed'   : 160,
-<<<<<<< HEAD
   'usart'   : 3,
   'spi'     : 2,
   'i2c'     : 2,
@@ -53,18 +48,6 @@ chip = {
     'page_size' : 4096,
     'pages' : 16,
     'flash_available' : 960, # firmware can be up to this size
-=======
-  'usart'   : 2,
-  'spi'     : 1,
-  'i2c'     : 1,
-  'adc'     : 1,
-  'dac'     : 0,
-  'saved_code' : {
-    'address' : 0x78000,
-    'page_size' : 4096,
-    'pages' : 3,
-    'flash_available' : 468, # firmware can be up to this size
->>>>>>> Initial files for the ESP32 environment.
   },
 };
 devices = {
@@ -149,7 +132,6 @@ board_esp01["_css"] = """
 boards = [ board_esp12, board_esp01 ];
 
 def get_pins():
-<<<<<<< HEAD
 
   pins = pinutils.generate_pins(0,5);
 #6-11 are used by Flash chip
@@ -192,12 +174,4 @@ def get_pins():
   pinutils.findpin(pins, "PD32", True)["functions"]["USART0_RX"]=0;
 
   return pins
-=======
-  pins = pinutils.generate_pins(0,15)
-  pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
-  pinutils.findpin(pins, "PD1", True)["functions"]["USART0_TX"]=0;
-  pinutils.findpin(pins, "PD2", True)["functions"]["USART1_TX"]=0;
-  pinutils.findpin(pins, "PD3", True)["functions"]["USART0_RX"]=0;
-  # just fake pins D0 .. D15
-  return pins
->>>>>>> Initial files for the ESP32 environment.
+  

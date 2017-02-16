@@ -21,11 +21,7 @@
 //===== ESP32 Library
 JsVar *jswrap_ESP32_getState();
 void   jswrap_ESP32_neopixelWrite(Pin pin, JsVar *jsArrayOfData);
-<<<<<<< HEAD
 void   jswrap_ESP32_setLogLevel(JsVar *jsTagToSet, JsVar *jsLogLevel);
 void   jswrap_ESP32_reboot();
 void   jswrap_ESP32_setAtten(Pin pin,int atten);
-=======
-
->>>>>>> Initial files for the ESP32 environment.
 #endif /* TARGETS_ESP32_JSWRAP_ESP32_H_ */

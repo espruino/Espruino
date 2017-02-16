@@ -570,24 +570,12 @@ else ifdef ESP32
 BOARD=ESP32
 EMBEDDED=1
 USE_NET=1
-<<<<<<< HEAD
-<<<<<<< HEAD
 #USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
 USE_TELNET=1
-=======
-#USE_HASHLIB=1
-#USE_GRAPHICS=1
-#USE_CRYPTO=1
-#USE_TLS=1
-#USE_TELNET=1
->>>>>>> remove arduino libs dependancy (spi commented out)
 DEFINES+=-DESP_PLATFORM -DESP32=1
-=======
-DEFINES+=-DESP_PLATFORM
->>>>>>> Initial files for the ESP32 environment.
 OPTIMIZEFLAGS+=-Og
 
 else ifdef ESP8266_BOARD
@@ -1024,7 +1012,6 @@ ifdef USE_NET
  ifdef USE_ESP32
  DEFINES += -DUSE_ESP32
  WRAPPERSOURCES += libs/network/esp32/jswrap_esp32_network.c \
-<<<<<<< HEAD
    targets/esp32/jswrap_esp32.c
  INCLUDE += -I$(ROOT)/libs/network/esp32
  SOURCES +=  libs/network/esp32/network_esp32.c \
@@ -1040,11 +1027,6 @@ ifdef USE_NET
    DEFINES += -DRTOS
    WRAPPERSOURCES += targets/esp32/jswrap_rtos.c
   endif # RTOS
-=======
- 	targets/esp32/jswrap_esp32.c
- INCLUDE += -I$(ROOT)/libs/network/esp32 -I$(ROOT)/libs/network/linux
- SOURCES +=  libs/network/linux/network_linux.c
->>>>>>> Initial files for the ESP32 environment.
  endif # USE_ESP32
  
  ifdef USE_ESP8266
@@ -1422,107 +1404,18 @@ ifeq ($(FAMILY), NRF51)
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
-=======
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
   DEFINES += -DNRF_SD_BLE_API_VERSION=2  
->>>>>>> nRF51: Remove heap placeholder on nRF51 as not needed since no malloc. Increase nRF51 var count (fix #985)
-=======
-=======
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
->>>>>>> Add ESP32 Makefile components to master Makefile
-  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
-  DEFINES += -DNRF_SD_BLE_API_VERSION=2  
-=======
-  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
->>>>>>> Initial files for the ESP32 environment.
-<<<<<<< HEAD
->>>>>>> Initial files for the ESP32 environment.
-=======
-=======
-  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
-	DEFINES += -DNRF_SD_BLE_API_VERSION=2
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-<<<<<<< HEAD
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
-=======
-  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
->>>>>>> revert Makefile to previous, adding crypto and graphics
-<<<<<<< HEAD
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
-=======
-  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
-  DEFINES += -DNRF_SD_BLE_API_VERSION=2  
->>>>>>> Add ESP32 Makefile components to master Makefile
->>>>>>> Add ESP32 Makefile components to master Makefile
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.1_softdevice.hex
 
   ifdef USE_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
->>>>>>> Add ESP32 Makefile components to master Makefile
-  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-=======
->>>>>>> Initial files for the ESP32 environment.
-  else
-  NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
-  endif
-  NFR_BL_START_ADDR = 0x3C000# see dfu_gcc_nrf51.ld
-  NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex # This file writes 0x3FC00 with 0x01 so we can flash the application with the bootloader.
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-<<<<<<< HEAD
-=======
-  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
->>>>>>> attempt at nRF5x secure bootloader
-=======
->>>>>>> Initial files for the ESP32 environment.
->>>>>>> Initial files for the ESP32 environment.
-  else
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-=======
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
 	INCLUDE += -I$(NRF5X_SDK_PATH)/nrf51_config
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
-  else
-  NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf51_s130_singlebank_bl.hex
-  endif
-  NFR_BL_START_ADDR = 0x3C000# see dfu_gcc_nrf51.ld
-  NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf51.hex # This file writes 0x3FC00 with 0x01 so we can flash the application with the bootloader.
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-  else
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
-  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-  else
-  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-	INCLUDE += -I$(NRF5X_SDK_PATH)/nrf51_config
->>>>>>> Add ESP32 Makefile components to master Makefile
   endif
 
 endif # FAMILY == NRF51
@@ -1549,37 +1442,6 @@ ifeq ($(FAMILY), NRF52)
 
   ifdef USE_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
-<<<<<<< HEAD
->>>>>>> Initial files for the ESP32 environment.
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
->>>>>>> revert Makefile to previous, adding crypto and graphics
-  else
-  NRF_BOOTLOADER    = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/nrf52_s132_singlebank_bl.hex
-  endif
-  NFR_BL_START_ADDR = 0x79000 # see Makefile, dfu_gcc_nrf52.ld,  linker_nrf52_ble_espruino_bootloader.ld and dfu_types.h
-  NRF_BOOTLOADER_SETTINGS = $(ROOT)/targetlibs/nrf5x/nrf5_singlebank_bl_hex/bootloader_settings_nrf52.hex # Writes address 0x7F000 with 0x01.
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> attempt at nRF5x secure bootloader
-=======
->>>>>>> Initial files for the ESP32 environment.
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
->>>>>>> Initial files for the ESP32 environment.
-=======
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
->>>>>>> Add ESP32 Makefile components to master Makefile
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
     LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_dfu_gcc_nrf52.ld
@@ -1632,47 +1494,9 @@ ifdef NRF5X
     BUILD_LINKER_FLAGS+=--bootloader
     PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
     WRAPPERSOURCES =
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> Add ESP32 Makefile components to master Makefile
 		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
 		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
 		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
->>>>>>> attempt at nRF5x secure bootloader
-=======
-=======
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
-		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
-		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
-		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
-=======
->>>>>>> Initial files for the ESP32 environment.
-<<<<<<< HEAD
->>>>>>> Initial files for the ESP32 environment.
-=======
-=======
-		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
-		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
-		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-<<<<<<< HEAD
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
-		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
-		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
-		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
->>>>>>> Add ESP32 Makefile components to master Makefile
     SOURCES = \
 			targets/nrf5x_dfu/dfu-cc.pb.c \
 			targets/nrf5x_dfu/dfu_public_key.c \
@@ -1716,49 +1540,8 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/ppi
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-	INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
-=======
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
->>>>>>> (untested) hardware SPI on nRF52. Needs batch mode to make built-in DMA even remotely useful though
-=======
-=======
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
->>>>>>> Add ESP32 Makefile components to master Makefile
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
-=======
-	INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
->>>>>>> Initial files for the ESP32 environment.
-<<<<<<< HEAD
->>>>>>> Initial files for the ESP32 environment.
-=======
-=======
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-<<<<<<< HEAD
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
-=======
-	INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
->>>>>>> revert Makefile to previous, adding crypto and graphics
-<<<<<<< HEAD
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
-=======
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
->>>>>>> Add ESP32 Makefile components to master Makefile
->>>>>>> Add ESP32 Makefile components to master Makefile
 
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
@@ -1779,56 +1562,9 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master/nrf_drv_spi.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-	$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-	$(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
-=======
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
->>>>>>> (untested) hardware SPI on nRF52. Needs batch mode to make built-in DMA even remotely useful though
-=======
-=======
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
->>>>>>> Add ESP32 Makefile components to master Makefile
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
-  $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
-=======
-	$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-	$(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
->>>>>>> Initial files for the ESP32 environment.
-<<<<<<< HEAD
->>>>>>> Initial files for the ESP32 environment.
-=======
-=======
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
-  $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-<<<<<<< HEAD
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
-=======
-	$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-	$(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
->>>>>>> revert Makefile to previous, adding crypto and graphics
-<<<<<<< HEAD
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
-=======
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
-  $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
->>>>>>> Add ESP32 Makefile components to master Makefile
->>>>>>> Add ESP32 Makefile components to master Makefile
 
   # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
 
@@ -2144,39 +1880,8 @@ endif
 # The prefix for the ESP32 compiler
 CCPREFIX=xtensa-esp32-elf-
 SOURCES += targets/esp32/main.c
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 LDFLAGS += -L$(ESP_IDF_PATH)/ld \
 -L$(ESP_IDF_PATH)/components/bt/lib \
-=======
-LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/components/bt/lib \
->>>>>>> Initial files for the ESP32 environment.
-=======
-=======
->>>>>>> remove arduino libs dependancy (spi commented out)
-=======
->>>>>>> remove arduino libs dependancy (spi commented out)
-LDFLAGS +=-L$(ESP_IDF_PATH)/lib -L$(ESP_IDF_PATH)/ld -L$(ESP_IDF_PATH)/components/bt/lib \
-=======
-LDFLAGS += \
--L$(ESP_APP_TEMPLATE_PATH)/components/arduino-esp32/tools/sdk/lib \
--L$(ESP_IDF_PATH)/lib \
--L$(ESP_IDF_PATH)/ld \
--L$(ESP_IDF_PATH)/components/bt/lib \
->>>>>>> remove arduino libs dependancy (spi commented out)
-<<<<<<< HEAD
-=======
-=======
-LDFLAGS += -L$(ESP_APP_TEMPLATE_PATH)/components/arduino-esp32/tools/sdk/lib \
--L$(ESP_IDF_PATH)/ld \
-=======
-LDFLAGS += -L$(ESP_IDF_PATH)/ld \
->>>>>>> remove arduino libs dependancy (spi commented out)
--L$(ESP_IDF_PATH)/components/bt/lib \
->>>>>>> remove arduino libs dependancy (spi commented out)
->>>>>>> remove arduino libs dependancy (spi commented out)
 -L$(ESP_IDF_PATH)/components/esp32/lib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bootloader \
 -L$(ESP_APP_TEMPLATE_PATH)/build/bt \
@@ -2194,30 +1899,16 @@ LDFLAGS += -L$(ESP_IDF_PATH)/ld \
 -L$(ESP_APP_TEMPLATE_PATH)/build/nvs_flash \
 -L$(ESP_APP_TEMPLATE_PATH)/build/partition_table \
 -L$(ESP_APP_TEMPLATE_PATH)/build/spi_flash \
-<<<<<<< HEAD
 -L$(ESP_APP_TEMPLATE_PATH)/build/tcpip_adapter \
 -L$(ESP_APP_TEMPLATE_PATH)/build/vfs \
 -L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/wpa_supplicant \
 -L$(ESP_APP_TEMPLATE_PATH)/build/ethernet \
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-#-L$(ESP_APP_TEMPLATE_PATH)/build/arduino-esp32 \
->>>>>>> remove arduino libs dependancy (spi commented out)
-=======
->>>>>>> remove arduino libs dependancy (spi commented out)
 -lgcc
 ESPTOOL?=
 INCLUDE+=\
 -I$(ESP_APP_TEMPLATE_PATH)/build/include \
 -I$(ESP_IDF_PATH)/components \
-=======
--L$(ESP_APP_TEMPLATE_PATH)/build/tcpip_adapter
-ESPTOOL?=
-INCLUDE+=\
--I$(ESP_APP_TEMPLATE_PATH)/build/include \
->>>>>>> Initial files for the ESP32 environment.
 -I$(ESP_IDF_PATH)/components/newlib/include \
 -I$(ESP_IDF_PATH)/components/bt/include \
 -I$(ESP_IDF_PATH)/components/driver/include \
@@ -2229,18 +1920,10 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/lwip/include/lwip/port \
 -I$(ESP_IDF_PATH)/components/lwip/include/lwip/posix \
 -I$(ESP_IDF_PATH)/components/newlib/include \
-<<<<<<< HEAD
 -I$(ESP_IDF_PATH)/components/spi_flash/include \
 -I$(ESP_IDF_PATH)/components/nvs_flash/include \
 -I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
 -I$(ESP_IDF_PATH)/components/vfs/include \
-<<<<<<< HEAD
-=======
--I$(ESP_IDF_PATH)/components/nvs_flash/include \
--I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
->>>>>>> Initial files for the ESP32 environment.
-=======
->>>>>>> remove arduino libs dependancy (spi commented out)
 -Itargets/esp32/include
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
 LIBS+=-T esp32_out.ld \
@@ -2254,17 +1937,10 @@ $(ESP_IDF_PATH)/components/newlib/lib/libm.a \
 -ldriver \
 -lesp32 \
 $(ESP_IDF_PATH)/components/esp32/libhal.a  \
-<<<<<<< HEAD
 -lcore \
 -lnet80211 \
 -lphy \
 -lwpa_supplicant \
-=======
--lcrypto \
--lcore \
--lnet80211 \
--lphy \
->>>>>>> Initial files for the ESP32 environment.
 -lrtc \
 -lpp \
 -lwpa \
@@ -2278,17 +1954,11 @@ $(ESP_IDF_PATH)/components/esp32/libhal.a  \
 -lnvs_flash \
 -lspi_flash \
 -ltcpip_adapter \
-<<<<<<< HEAD
 -lvfs \
 -lnewlib \
 -lcoexist \
 -lethernet \
 -lstdc++ \
-<<<<<<< HEAD
-=======
->>>>>>> Initial files for the ESP32 environment.
-=======
->>>>>>> remove arduino libs dependancy (spi commented out)
 -lgcc
 endif # ESP32
 
@@ -2441,13 +2111,9 @@ $(PROJ_NAME): $(OBJS)
 # Linking for ESP32
 else ifdef ESP32
 
-<<<<<<< HEAD
 ESP_ZIP     = $(PROJ_NAME).tgz
 
 espruino_esp32.bin: $(OBJS)
-=======
-proj: $(OBJS)
->>>>>>> Initial files for the ESP32 environment.
 	$(LD) $(LDFLAGS) -o espruino_esp32.elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
@@ -2457,7 +2123,6 @@ proj: $(OBJS)
 	-o espruino_esp32.bin \
 	espruino_esp32.elf
 
-<<<<<<< HEAD
 $(ESP_ZIP): espruino_esp32.bin
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
@@ -2470,8 +2135,6 @@ $(ESP_ZIP): espruino_esp32.bin
 
 proj: espruino_esp32.bin $(ESP_ZIP)
 
-=======
->>>>>>> Initial files for the ESP32 environment.
 flash:
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
@@ -2483,7 +2146,6 @@ flash:
 	--flash_freq "40m" \
 	0x1000 $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
 	0x10000 espruino_esp32.bin \
-<<<<<<< HEAD
 	0x8000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
 
 erase_flash:
@@ -2491,23 +2153,8 @@ erase_flash:
 	--chip esp32 \
 	--port "/dev/ttyUSB0" \
 	--baud 921600 \
-<<<<<<< HEAD
-	erase_flash
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-	0x4000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
->>>>>>> Initial files for the ESP32 environment.
-=======
 	erase_flash	
->>>>>>> Add ESP32 Makefile components to master Makefile
 
-=======
-	
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
-
->>>>>>> revert Makefile to previous, adding crypto and graphics
 else ifdef ESP8266
 # Linking the esp8266... The Espruino source files get compiled into the .text section. The
 # Espressif SDK libraries have .text and .irom0 sections. We need to put the libraries' .text into
@@ -2685,49 +2332,8 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
  ifdef USE_BOOTLOADER
   ifdef DFU_UPDATE_BUILD
 	@echo Not merging softdevice or bootloader with application
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
-=======
 	# nrfutil  pkg generate --help
 	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
->>>>>>> attempt at nRF5x secure bootloader
-=======
-=======
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
->>>>>>> Add ESP32 Makefile components to master Makefile
-	# nrfutil  pkg generate --help
-	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
-=======
-	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
->>>>>>> Initial files for the ESP32 environment.
-<<<<<<< HEAD
->>>>>>> Initial files for the ESP32 environment.
-=======
-=======
-	# nrfutil  pkg generate --help
-	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-<<<<<<< HEAD
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
-=======
-	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
->>>>>>> revert Makefile to previous, adding crypto and graphics
-<<<<<<< HEAD
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
-=======
-	# nrfutil  pkg generate --help
-	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
->>>>>>> Add ESP32 Makefile components to master Makefile
->>>>>>> Add ESP32 Makefile components to master Makefile
   else
   ifdef BOOTLOADER
 	@echo Not merging anything with bootloader
@@ -2736,45 +2342,7 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
         # We can build a DFU settings file we can merge in...
 	# nrfutil settings generate --family NRF52 --application $(PROJ_NAME).hex --application-version 0xff --bootloader-version 0xff --bl-settings-version 1 dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
-=======
 	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
->>>>>>> Update vagrant and makefile
-=======
-=======
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
->>>>>>> Add ESP32 Makefile components to master Makefile
-	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
-=======
-	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
->>>>>>> Initial files for the ESP32 environment.
-<<<<<<< HEAD
->>>>>>> Initial files for the ESP32 environment.
-=======
-=======
-	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-<<<<<<< HEAD
->>>>>>> Update Makefile to current master - to facilitate an easier merge later
-=======
-=======
-	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
->>>>>>> revert Makefile to previous, adding crypto and graphics
-<<<<<<< HEAD
->>>>>>> revert Makefile to previous, adding crypto and graphics
-=======
-=======
-	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
->>>>>>> Add ESP32 Makefile components to master Makefile
->>>>>>> Add ESP32 Makefile components to master Makefile
 	mv tmp.hex $(PROJ_NAME).hex
   endif
   endif

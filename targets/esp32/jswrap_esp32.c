@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
@@ -21,11 +20,6 @@
 #include "esp_log.h"
 
 static char *tag = "jswrap_esp32";
-=======
-#include "jswrap_esp32.h"
-
-#include "esp_system.h"
->>>>>>> Initial files for the ESP32 environment.
 
 /*JSON{
  "type"     : "staticmethod",
@@ -38,7 +32,6 @@ static char *tag = "jswrap_esp32";
  ]
 }*/
 void jswrap_ESP32_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
-<<<<<<< HEAD
   ESP_LOGD(tag, ">> jswrap_ESP32_neopixelWrite");
   ESP_LOGD(tag, "Not yet implemented");
   ESP_LOGD(tag, "<< jswrap_ESP32_neopixelWrite");
@@ -73,10 +66,6 @@ void jswrap_ESP32_reboot() {
   esp_restart(); // Call the ESP-IDF to restart the ESP32.
   ESP_LOGD(tag, "<< jswrap_ESP32_reboot");
 } // End of jswrap_ESP32_reboot
-=======
-  return;
-}
->>>>>>> Initial files for the ESP32 environment.
 
 
 /*JSON{
@@ -101,7 +90,6 @@ JsVar *jswrap_ESP32_getState() {
   // Create a new variable and populate it with the properties of the ESP32 that we
   // wish to return.
   JsVar *esp32State = jsvNewObject();
-<<<<<<< HEAD
   // system_get_sdk_version() - is deprecated , need to find alternative
   jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString("1.0 2016-12-03"));
   //jsvObjectSetChildAndUnLock(esp32State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
@@ -166,10 +154,3 @@ void jswrap_ESP32_setLogLevel(JsVar *jsTagToSet, JsVar *jsLogLevel) {
   ESP_LOGD(tag, "<< jswrap_ESP32_setLogLevel");
   return;
 } // End of jswrap_ESP32_setLogLevel
-=======
-  jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
-  //jsvObjectSetChildAndUnLock(esp32State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
-  jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size()));
-  return esp32State;
-}
->>>>>>> Initial files for the ESP32 environment.
