@@ -165,7 +165,6 @@ DEFINES+=-DESPRUINO_1V3
 USE_NET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
-USE_TV=1
 USE_HASHLIB=1
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
@@ -497,6 +496,7 @@ OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
 USE_NET=1
 USE_GRAPHICS=1
+USE_NFC=1
 DEFINES += -DBOARD_PCA10040 -DPCA10040
 
 # DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
@@ -509,11 +509,10 @@ USE_BLUETOOTH=1
 USE_NET=1
 USE_GRAPHICS=1
 #USE_HASHLIB=1
-USE_FILESYSTEM=1
+#USE_FILESYSTEM=1
 USE_CRYPTO=1
 #USE_TLS=1
 USE_NFC=1
-USE_CUSTOM_BOOTLOADER=1
 
 else ifdef ECU
 # Gordon's car ECU (extremely beta!)
@@ -732,7 +731,7 @@ endif
 #                                                      Get info out of BOARDNAME.py
 # ---------------------------------------------------------------------------------
 
-PROJ_NAME=$(shell python scripts/get_board_info.py $(BOARD) "common.get_board_binary_name(board)"  | sed -e "s/.bin$$//")
+PROJ_NAME=$(shell python scripts/get_board_info.py $(BOARD) "common.get_board_binary_name(board)"  | sed -e "s/.bin$$//" | sed -e "s/.hex$$//")
 ifeq ($(PROJ_NAME),)
 $(error Unable to work out binary name (PROJ_NAME))
 endif
@@ -1412,18 +1411,18 @@ endif #USB
 ifeq ($(FAMILY), NRF51)
 
   NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefiles provided in SDK as reference.
 
   # nRF51 specific.
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf51_config
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers/nrf51
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1438,6 +1437,8 @@ ifeq ($(FAMILY), NRF51)
 >>>>>>> Update Makefile to current master - to facilitate an easier merge later
 =======
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+>>>>>>> Add ESP32 Makefile components to master Makefile
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
   DEFINES += -DNRF_SD_BLE_API_VERSION=2  
 =======
@@ -1456,14 +1457,21 @@ ifeq ($(FAMILY), NRF51)
 =======
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+<<<<<<< HEAD
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+=======
+  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
+  DEFINES += -DNRF_SD_BLE_API_VERSION=2  
+>>>>>>> Add ESP32 Makefile components to master Makefile
+>>>>>>> Add ESP32 Makefile components to master Makefile
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
 
-  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0_softdevice.hex
+  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.1_softdevice.hex
 
   ifdef USE_BOOTLOADER
-  ifdef USE_CUSTOM_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1473,6 +1481,8 @@ ifeq ($(FAMILY), NRF51)
 >>>>>>> Update Makefile to current master - to facilitate an easier merge later
 =======
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+>>>>>>> Add ESP32 Makefile components to master Makefile
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
 =======
 >>>>>>> Initial files for the ESP32 environment.
@@ -1507,6 +1517,12 @@ ifeq ($(FAMILY), NRF51)
   else
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+  else
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+	INCLUDE += -I$(NRF5X_SDK_PATH)/nrf51_config
+>>>>>>> Add ESP32 Makefile components to master Makefile
   endif
 
 endif # FAMILY == NRF51
@@ -1514,26 +1530,26 @@ endif # FAMILY == NRF51
 ifeq ($(FAMILY), NRF52)
 
   NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
   # nRF52 specific.
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf52_config
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
                       $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
-  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
+  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
+	DEFINES += -DNRF_SD_BLE_API_VERSION=3
 
-  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0_softdevice.hex
+  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_3.0.0_softdevice.hex
 
   ifdef USE_BOOTLOADER
-  ifdef USE_CUSTOM_BOOTLOADER
   NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1562,21 +1578,30 @@ ifeq ($(FAMILY), NRF52)
 >>>>>>> Update Makefile to current master - to facilitate an easier merge later
 =======
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+>>>>>>> Add ESP32 Makefile components to master Makefile
   ifdef BOOTLOADER
     # we're trying to compile the bootloader itself
-    LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/dfu_gcc_nrf52.ld
+    LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_dfu_gcc_nrf52.ld
     OPTIMIZEFLAGS=-Os # try to reduce bootloader size
   else
-    LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
+    LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
+		INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
   endif
   else
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino.ld
+	INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
   endif
+
+	# BLE HID Support (only NRF52)
+	INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
+	TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
+
 endif #FAMILY == NRF52
 
 
 ifdef USE_NFC
-  DEFINES += -DUSE_NFC
+  DEFINES += -DUSE_NFC -DNFC_HAL_ENABLED=1
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/t2t_lib
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/uri
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message
@@ -1592,7 +1617,7 @@ endif
 ifdef NRF5X
   # Just try and get rid of the compile warnings.
   CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
-  DEFINES += -DBLUETOOTH -D$(BOARD)
+  DEFINES += -DBLUETOOTH -D$(BOARD) -D$(CHIP)
 
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
@@ -1611,7 +1636,10 @@ ifdef NRF5X
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> Add ESP32 Makefile components to master Makefile
 		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
 		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
 		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
@@ -1640,25 +1668,38 @@ ifdef NRF5X
 =======
 >>>>>>> revert Makefile to previous, adding crypto and graphics
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
+		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
+		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
+>>>>>>> Add ESP32 Makefile components to master Makefile
     SOURCES = \
-      targets/nrf5x_dfu/main.c \
-      targets/nrf5x_dfu/dfu_ble_svc.c
+			targets/nrf5x_dfu/dfu-cc.pb.c \
+			targets/nrf5x_dfu/dfu_public_key.c \
+			targets/nrf5x_dfu/dfu_req_handling.c \
+			targets/nrf5x_dfu/main.c
   else
     SOURCES +=                              \
       targets/nrf5x/main.c                    \
       targets/nrf5x/jshardware.c              \
+			targets/nrf5x/bluetooth.c              \
+			targets/nrf5x/bluetooth_utils.c              \
       targets/nrf5x/nrf5x_utils.c
   endif
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/cmsis/include
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/gcc
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
+	INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fstorage/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
@@ -1667,17 +1708,15 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/CMSIS/Include
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/gcc
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/common
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_advertising
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/trace
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/ppi
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1692,6 +1731,8 @@ ifdef NRF5X
 >>>>>>> Update Makefile to current master - to facilitate an easier merge later
 =======
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+>>>>>>> Add ESP32 Makefile components to master Makefile
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
 =======
@@ -1710,20 +1751,24 @@ ifdef NRF5X
 =======
 	INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+<<<<<<< HEAD
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+=======
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
+>>>>>>> Add ESP32 Makefile components to master Makefile
+>>>>>>> Add ESP32 Makefile components to master Makefile
 
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
   $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
   $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c \
-  $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
   $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
@@ -1732,7 +1777,9 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master/nrf_drv_spi.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1749,6 +1796,8 @@ ifdef NRF5X
 >>>>>>> Update Makefile to current master - to facilitate an easier merge later
 =======
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+>>>>>>> Add ESP32 Makefile components to master Makefile
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
@@ -1771,54 +1820,69 @@ ifdef NRF5X
 	$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
 	$(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+<<<<<<< HEAD
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+=======
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
+>>>>>>> Add ESP32 Makefile components to master Makefile
+>>>>>>> Add ESP32 Makefile components to master Makefile
 
   # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
 
-  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
-
   ifdef USE_BOOTLOADER
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/device_manager
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu
-  TARGETSOURCES += \
-   $(NRF5X_SDK_PATH)/components/ble/device_manager/device_manager_peripheral.c \
-   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu/ble_dfu.c \
-   $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c \
-   $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_app_handler.c
   ifdef BOOTLOADER
-    DEFINES += -DBOOTLOADER
-    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crc16
-    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/scheduler
-    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/hci
-    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/ble_transport
-
-    TARGETSOURCES = # Make sure we don't include existing files (thanks to pstorage)
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/scheduler/app_scheduler.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_settings.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/bootloader_util.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crc16/crc16.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_single_bank.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_init_template.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/dfu_transport_ble.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage_raw.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_dfu/ble_dfu.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
-    TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
+    DEFINES += -DBOOTLOADER -DNRF_DFU_SETTINGS_VERSION=1
+		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/ble_transport
+    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crc32
+    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader
+		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu
+		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader/ble_dfu
+		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crypto
+		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/svc
+		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/scheduler
+		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/ecc
+		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/sha256
+    INCLUDE += -I$(NRF5X_SDK_PATH)/external/nano-pb
+		INCLUDE += -I$(NRF5X_SDK_PATH)/external/micro-ecc
+    TARGETSOURCES =
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_error_weak.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/fifo/app_fifo.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/scheduler/app_scheduler.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crc32/crc32.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/ble_dfu/nrf_ble_dfu.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_app_start.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_info.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_flash.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_mbr.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_settings.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_transport.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_utils.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_common.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_decode.c
+		TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
   endif
   endif
 
@@ -2048,8 +2112,9 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
 ifdef NRF5X
- LDFLAGS += $(ARCHFLAGS)
- LDFLAGS += --specs=nano.specs -lc -lnosys
+ LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
+else ifdef STM32
+ LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
 else ifdef EFM32
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
  LDFLAGS += -Wl,--start-group -lgcc -lc -lnosys -Wl,--end-group
@@ -2372,7 +2437,7 @@ proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
 $(PROJ_NAME): $(OBJS)
 	@echo $($(quiet_)link)
 	@$(call link)
-
+	
 # Linking for ESP32
 else ifdef ESP32
 
@@ -2426,12 +2491,16 @@ erase_flash:
 	--chip esp32 \
 	--port "/dev/ttyUSB0" \
 	--baud 921600 \
+<<<<<<< HEAD
 	erase_flash
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 	0x4000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
 >>>>>>> Initial files for the ESP32 environment.
+=======
+	erase_flash	
+>>>>>>> Add ESP32 Makefile components to master Makefile
 
 =======
 	
@@ -2620,6 +2689,7 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
 =======
 	# nrfutil  pkg generate --help
@@ -2630,6 +2700,8 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
 >>>>>>> Update Makefile to current master - to facilitate an easier merge later
 =======
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+>>>>>>> Add ESP32 Makefile components to master Makefile
 	# nrfutil  pkg generate --help
 	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
 =======
@@ -2648,13 +2720,23 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
 =======
 	scripts/nrfutil.exe dfu genpkg $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --dev-revision 1 --dev-type 1 --sd-req 0x81
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+<<<<<<< HEAD
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+=======
+	# nrfutil  pkg generate --help
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
+>>>>>>> Add ESP32 Makefile components to master Makefile
+>>>>>>> Add ESP32 Makefile components to master Makefile
   else
   ifdef BOOTLOADER
 	@echo Not merging anything with bootloader
   else
 	@echo Merging SoftDevice and Bootloader
+        # We can build a DFU settings file we can merge in...
+	# nrfutil settings generate --family NRF52 --application $(PROJ_NAME).hex --application-version 0xff --bootloader-version 0xff --bl-settings-version 1 dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2668,6 +2750,8 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
 >>>>>>> Update Makefile to current master - to facilitate an easier merge later
 =======
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+>>>>>>> Add ESP32 Makefile components to master Makefile
 	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
 =======
 	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
@@ -2684,13 +2768,19 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
 =======
 	scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex $(NRF_BOOTLOADER_SETTINGS) -o tmp.hex
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+<<<<<<< HEAD
 >>>>>>> revert Makefile to previous, adding crypto and graphics
+=======
+=======
+	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
+>>>>>>> Add ESP32 Makefile components to master Makefile
+>>>>>>> Add ESP32 Makefile components to master Makefile
 	mv tmp.hex $(PROJ_NAME).hex
   endif
   endif
  else
 	@echo Merging SoftDevice
-	scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
+	python scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
  endif # USE_BOOTLOADER
 endif # SOFTDEVICE
@@ -2727,8 +2817,9 @@ else ifdef MICROBIT
 	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
 	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
 else ifdef NRF5X
-	if [ -d "/media/$(USER)/JLINK" ]; then cp $(PROJ_NAME).hex /media/$(USER)/JLINK;sync; fi
-	if [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).hex /media/JLINK;sync; fi
+	if type nrfjprog 2>/dev/null; then nrfjprog --family $(FAMILY) --clockspeed 50000 --program $(PROJ_NAME).hex --chiperase --reset; \
+	elif [ -d "/media/$(USER)/JLINK" ]; then cp $(PROJ_NAME).hex /media/$(USER)/JLINK;sync; \
+	elif [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).hex /media/JLINK;sync; fi
 else
 	@echo ST-LINK flash
 	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
