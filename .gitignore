@@ -1,5 +1,6 @@
 *~
 *.tgz
+*.d
 *.o
 *.elf
 /*.hex
@@ -25,8 +26,15 @@ diffs/*
 MDN_URLS.txt
 node_modules
 /build/
-esp_iot_sdk_v1.5.0
-xtensa-lx106-elf
 *.c#
 /function_keywords.js
 /functions.html
+*.d
+／ship
+xtensa-lx106-elf
+esp-idf-template/
+esp_iot_sdk_v2.0.0.p1/
+esp-idf/
+esp32_out.ld
+xtensa-esp32-elf/
+libs/lanruino/mqtt/
