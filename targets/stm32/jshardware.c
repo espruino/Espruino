@@ -751,7 +751,15 @@ void jshDoSysTick() {
 #endif
       RCC_BackupResetCmd(ENABLE);
       RCC_BackupResetCmd(DISABLE);
-      if (!isUsingLSI) RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+      if (!isUsingLSI) {
+        RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+#ifndef STM32F1
+        while(RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET);
+#endif
+      }
+#ifndef STM32F1
+      RTC_WaitForSynchro();
+#endif
       jshSetupRTC(isUsingLSI);
 #ifdef STM32F1
       RTC_SetCounter(time);
@@ -1035,15 +1043,6 @@ static void jshResetPeripherals() {
 #endif
     jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
   }
-  // initialise button state
-#ifdef BTN1_PININDEX
-#ifdef BTN1_PINSTATE
-  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
-  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
-#else
-  jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
-#endif
-#endif
 }
 
 void jshInit() {
@@ -1069,6 +1068,7 @@ void jshInit() {
                          RCC_AHBPeriph_GPIOE |
                          RCC_AHBPeriph_GPIOF, ENABLE);
  #elif defined(STM32F2) || defined(STM32F4)
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 |
                          RCC_APB2Periph_SYSCFG, ENABLE);
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
@@ -1145,6 +1145,9 @@ void jshInit() {
     // Reset backup domain - allows us to set the RTC clock source
     RCC_BackupResetCmd(ENABLE);
     RCC_BackupResetCmd(DISABLE);
+#ifndef STM32F1
+    RTC_WaitForSynchro();
+#endif
     // Turn both LSI(above) and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
     RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
     // Initially set the RTC up to use the internal oscillator

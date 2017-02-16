@@ -72,45 +72,6 @@ void nrf_utils_lfclk_config_and_start()
 
 }
 
-int nrf_utils_get_device_id(uint8_t * device_id, int maxChars)
-{
-	uint32_t deviceID[2];
-	deviceID[0] = NRF_FICR->DEVICEID[0];
-	deviceID[1] = NRF_FICR->DEVICEID[1];
-
-	uint8_t * temp = (uint8_t *) &deviceID[0];
-
-	uint32_t i;
-	for (i = 0; i < maxChars || i < 8; i++)
-	{
-	  *device_id = *temp;
-	  device_id++;
-	  temp++;
-	}
-
-	return i;
-}
-
-uint8_t nrf_utils_get_random_number()
-{
-
-  NRF_RNG->CONFIG = 0x00000001; // Use the bias generator.
-  NRF_RNG->TASKS_START = 1;
-
-  while (NRF_RNG->EVENTS_VALRDY != 1)
-  {
-    // Do nothing.
-  }
-
-  NRF_RNG -> EVENTS_VALRDY = 0;
-
-  uint8_t rand_num = (uint8_t) NRF_RNG->VALUE;
-
-  NRF_RNG -> TASKS_STOP = 1;
-
-  return rand_num;
-
-}
 
 unsigned int nrf_utils_cap_sense(int capSenseTxPin, int capSenseRxPin) {
 #ifdef NRF5DDD

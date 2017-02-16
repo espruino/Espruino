@@ -23,8 +23,8 @@ info = {
  'default_console_tx' : "H0", # pin 24
  'default_console_rx' : "H1", # pin 25
  'default_console_baudrate' : "9600",
- 'variables' : 100,
- 'binary_name' : 'espruino_%v_microbit.bin',
+ 'variables' : 300,
+ 'binary_name' : 'espruino_%v_microbit.hex',
  'build' : {
   'defines' : [
      'USE_GRAPHICS',
@@ -55,8 +55,8 @@ chip = {
 };
 
 devices = {
-  'BTN1' : { 'pin' : 'D5' }, # 'P0_17'
-  'BTN2' : { 'pin' : 'D11' }, # 'P0_26'
+  'BTN1' : { 'pin' : 'D5', 'inverted' : True, 'pinstate' : 'IN_PULLUP' }, # 'P0_17'
+  'BTN2' : { 'pin' : 'D11', 'inverted' : True, 'pinstate' : 'IN_PULLUP' }, # 'P0_26'
 };
 
 # left-right, or top-bottom order
@@ -123,4 +123,7 @@ def get_pins():
    { "name":"PH0", "sortingname":"H0", "port":"D", "num":"24", "functions":{}, "csv":{} },
    { "name":"PH1", "sortingname":"H1", "port":"D", "num":"25", "functions":{}, "csv":{} }
   ];
+  # everything is non-5v tolerant 
+  for pin in pins:
+    pin["functions"]["3.3"]=0;
   return pins

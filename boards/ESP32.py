@@ -174,3 +174,4 @@ def get_pins():
   pinutils.findpin(pins, "PD32", True)["functions"]["USART0_RX"]=0;
 
   return pins
+  

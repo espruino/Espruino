@@ -23,7 +23,7 @@ info = {
  'default_console_tx' : "D9",
  'default_console_rx' : "D11",
  'default_console_baudrate' : "9600",
- 'variables' : 1050, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 1050,
  'binary_name' : 'espruino_%v_nrf51822.bin',
  'build' : {
   'defines' : [
@@ -39,10 +39,10 @@ chip = {
   'ram' : 32,
   'flash' : 256,
   'speed' : 16,
-  'usart' : 1, #THIS IS INCORRECT!!!
-  'spi' : 3,
-  'i2c' : 2,
-  'adc' : 1,
+  'usart' : 1,
+  'spi' : 1,
+  'i2c' : 1,
+  'adc' : 0,
   'dac' : 0,
    # If using DFU bootloader, it sits at 0x3C000 - 0x40000 (0x40000 is end of flash)
    # Might want to change 256 -> 240 in the code below
@@ -50,7 +50,7 @@ chip = {
     'address' : ((256 - 3) * 1024),
     'page_size' : 1024,
     'pages' : 3,
-    'flash_available' : (256 - 108 - 16) # total flash pages - softdevice - bootloader
+    'flash_available' : (256 - 108 - 3)
   }
 };
 
@@ -101,6 +101,9 @@ def get_pins():
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN5"]=0;
   pinutils.findpin(pins, "PD5", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PD6", True)["functions"]["ADC1_IN7"]=0;
+  # everything is non-5v tolerant 
+  for pin in pins:
+    pin["functions"]["3.3"]=0;
 
   #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
   return pins

@@ -4,14 +4,16 @@
  * @{
  * @ingroup app_timer
  */
-/** @brief Enabling app_timer module *
+/** @brief Enabling app_timer module
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define APP_TIMER_ENABLED
 
-/** @brief Enable app_timer profiling *
+/** @brief Enable app_timer profiling
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

@@ -1588,5 +1588,3 @@ void jswrap_ESP32_ping(
   UNUSED(pingCallback);
   jsError( "jswrap_ESP32_ping - Not implemented");  
 }
-
-

@@ -33,8 +33,8 @@
 
 /* MDK version */
 #define MDK_MAJOR_VERSION   8
-#define MDK_MINOR_VERSION   7
-#define MDK_MICRO_VERSION   1
+#define MDK_MINOR_VERSION   9
+#define MDK_MICRO_VERSION   0
 
 #if defined(_WIN32)
     /* Do not include nrf51 specific files when building for PC host */

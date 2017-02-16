@@ -32,6 +32,14 @@
 #define _NRF52832_PERIPHERALS_H
 
 
+/* Floating Point Unit */
+#define FPU_PRESENT
+#define FPU_COUNT 1
+
+/* Systick timer */
+#define SYSTICK_PRESENT
+#define SYSTICK_COUNT 1
+
 /* Software Interrupts */
 #define SWI_PRESENT
 #define SWI_COUNT 6

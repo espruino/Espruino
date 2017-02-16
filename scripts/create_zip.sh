@@ -25,14 +25,14 @@ mkdir $ZIPDIR
 
 
 # ESP8266
-export ESP8266_SDK_ROOT=$DIR/esp_iot_sdk_v1.5.0
+export ESP8266_SDK_ROOT=$DIR/esp_iot_sdk_v2.0.0.p1
 export PATH=$PATH:$DIR/xtensa-lx106-elf/bin/
 
 echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 
-for BOARDNAME in PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINOWIFI NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI MICROBIT ESP8266_BOARD
+for BOARDNAME in PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINOWIFI PUCKJS NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI MICROBIT ESP8266_BOARD
 do
   echo ------------------------------
   echo                  $BOARDNAME
@@ -59,8 +59,9 @@ do
   fi
   # actually build
   ESP_BINARY_NAME=`python scripts/get_board_info.py $BOARDNAMEX "common.get_board_binary_name(board)"`
-  if [ "$BOARDNAME" == "MICROBIT" ]; then
-    ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .bin`.hex
+  if [ "$BOARDNAME" == "PUCKJS" ]; then
+    ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+    EXTRADEFS=DFU_UPDATE_BUILD=1
   fi
   echo "Building $ESP_BINARY_NAME"
   echo

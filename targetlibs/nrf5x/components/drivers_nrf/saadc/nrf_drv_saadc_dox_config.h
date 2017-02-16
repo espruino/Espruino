@@ -4,15 +4,17 @@
  * @{
  * @ingroup nrf_drv_saadc
  */
-/** @brief Enable SAADC driver *
+/** @brief Enable SAADC driver
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define SAADC_ENABLED
 
-/** @brief Resolution *
- *  Following options are avaiable:
+/** @brief Resolution
+ *
+ *  Following options are available:
  * - 0 - 8 bit
  * - 1 - 10 bit
  * - 2 - 12 bit
@@ -23,8 +25,9 @@
 #define SAADC_CONFIG_RESOLUTION
 
 
-/** @brief Sample period *
- *  Following options are avaiable:
+/** @brief Sample period
+ *
+ *  Following options are available:
  * - 0 - Disabled
  * - 1 - 2x
  * - 2 - 4x
@@ -40,7 +43,8 @@
 #define SAADC_CONFIG_OVERSAMPLE
 
 
-/** @brief Enabling low power mode *
+/** @brief Enabling low power mode
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -52,7 +56,7 @@
  *
  * Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
  *
- *  Following options are avaiable:
+ *  Following options are available:
  * - 0 - 0 (highest)
  * - 1 - 1
  * - 2 - 2

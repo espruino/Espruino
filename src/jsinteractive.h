@@ -129,20 +129,21 @@ void jsiSetSleep(JsiSleepType isSleep);
 typedef enum {
   JSIS_NONE,
   JSIS_ECHO_OFF = 1, ///< do we provide any user feedback? OFF=no
-  JSIS_ECHO_OFF_FOR_LINE = 2,
-  JSIS_ALLOW_DEEP_SLEEP = 4, // can we go into proper deep sleep?
+  JSIS_ECHO_OFF_FOR_LINE = 2, ///< Echo is off just for one line, then back on
+  JSIS_ALLOW_DEEP_SLEEP = 4, ///< can we go into proper deep sleep?
   JSIS_TIMERS_CHANGED = 8,
 #ifdef USE_DEBUGGER
-  JSIS_IN_DEBUGGER = 16, // We're inside the debug loop
-  JSIS_EXIT_DEBUGGER = 32, // we've been asked to exit the debug loop
+  JSIS_IN_DEBUGGER = 16, ///< We're inside the debug loop
+  JSIS_EXIT_DEBUGGER = 32, ///< we've been asked to exit the debug loop
 #endif
-  JSIS_TODO_FLASH_SAVE = 64, // save to flash
-  JSIS_TODO_FLASH_LOAD = 128, // load from flash
-  JSIS_TODO_RESET = 256, // reset the board, don't load anything
+  JSIS_TODO_FLASH_SAVE = 64, ///< save to flash
+  JSIS_TODO_FLASH_LOAD = 128, ///< load from flash
+  JSIS_TODO_RESET = 256, ///< reset the board, don't load anything
   JSIS_TODO_MASK = JSIS_TODO_FLASH_SAVE|JSIS_TODO_FLASH_LOAD|JSIS_TODO_RESET,
-  JSIS_CONSOLE_FORCED = 512, // see jsiSetConsoleDevice
-  JSIS_WATCHDOG_AUTO = 1024, // Automatically kick the watchdog timer on idle
-  JSIS_PASSWORD_PROTECTED = 2048, // Password protected
+  JSIS_CONSOLE_FORCED = 512, ///< see jsiSetConsoleDevice
+  JSIS_WATCHDOG_AUTO = 1024, ///< Automatically kick the watchdog timer on idle
+  JSIS_PASSWORD_PROTECTED = 2048, ///< Password protected
+  JSIS_COMPLETELY_RESET = 4096, ///< Has the board powered on, having not loaded anything from flash
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE,
   JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED // stuff that DOESN'T get reset on softinit

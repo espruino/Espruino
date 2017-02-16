@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_hids
  */
-/** @brief Enable Human Interface Device Service. *
+/** @brief Enable Human Interface Device Service.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

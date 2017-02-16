@@ -115,13 +115,11 @@ void jswrap_interface_trace(JsVar *root) {
   }
 }
 
-/*XXX{ "type":"function", "name" : "dotty",
-         "description" : "Output dotty-format graph of debugging information",
-         "generate" : "jsvDottyOutput"
-}*/
+
 /*JSON{
   "type" : "function",
   "name" : "dump",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jsiDumpState((vcbprintf_callback)jsiConsolePrintString, 0)"
 }
 Output current interpreter state in a text form such that it can be copied to a new device
@@ -216,7 +214,7 @@ void jswrap_interface_print(JsVar *v) {
     if (jsvIsString(v))
       jsiConsolePrintStringVar(v);
     else
-      jsfPrintJSON(v, JSON_PRETTY | JSON_NEWLINES);
+      jsfPrintJSON(v, JSON_PRETTY | JSON_SOME_NEWLINES | JSON_SHOW_OBJECT_NAMES);
     jsvUnLock(v);
     jsvObjectIteratorNext(&it);
     if (jsvObjectIteratorHasValue(&it))

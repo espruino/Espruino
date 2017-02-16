@@ -247,7 +247,7 @@ void jswrap_object_keys_or_property_names_cb(
     }
 
     if (includePrototype) {
-      if (jsvIsObject(obj)) {
+      if (jsvIsObject(obj) || jsvIsFunction(obj)) {
         JsVar *proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
         while (jsvIsObject(proto)) {
           const JswSymList *symbols = jswGetSymbolListForObjectProto(proto);
@@ -257,9 +257,13 @@ void jswrap_object_keys_or_property_names_cb(
           proto = p2;
         }
       }
-      // finally include Object/String/etc
+      // include Object/String/etc
       const JswSymList *symbols = jswGetSymbolListForObjectProto(obj);
       _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
+      // if the last call wasn't an Object, add the object proto as well
+      const JswSymList *objSymbols = jswGetSymbolListForObjectProto(0);
+      if (objSymbols!=symbols)
+        _jswrap_object_keys_or_property_names_iterator(objSymbols, callback, data);
     }
 
     if (jsvIsArray(obj) || jsvIsString(obj)) {
@@ -537,7 +541,7 @@ JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
   ],
   "return" : ["bool","A Boolean object"]
 }
-Creates a number
+Creates a boolean
  */
 bool jswrap_boolean_constructor(JsVar *value) {
   return jsvGetBool(value);
@@ -610,7 +614,7 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     JsVar *buf = jsvObjectGetChild(parent, STREAM_BUFFER_NAME, 0);
     if (jsvIsString(buf)) {
       jsiQueueObjectCallbacks(parent, STREAM_CALLBACK_NAME, &buf, 1);
-      jsvRemoveNamedChild(parent, STREAM_BUFFER_NAME);
+      jsvObjectRemoveChild(parent, STREAM_BUFFER_NAME);
     }
     jsvUnLock(buf);
   }
@@ -800,6 +804,13 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
     else
       oldFunc->flags &= ~JSV_NATIVE;
   }
+  // If old fn started with 'return' or vice versa...
+  if (jsvIsFunctionReturn(oldFunc) != jsvIsFunctionReturn(newFunc)) {
+    if (jsvIsFunctionReturn(newFunc))
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) |JSV_FUNCTION_RETURN;
+    else
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) |JSV_FUNCTION;
+  }
 
   // Grab scope - the one thing we want to keep
   JsVar *scope = jsvFindChildFromString(oldFunc, JSPARSE_FUNCTION_SCOPE_NAME, false);
@@ -937,38 +948,40 @@ JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
   }
 
   // add bound arguments
-  JsvObjectIterator argIt;
-  jsvObjectIteratorNew(&argIt, argsArray);
-  while (jsvObjectIteratorHasValue(&argIt)) {
-    JsVar *defaultValue = jsvObjectIteratorGetValue(&argIt);
-    bool addedParam = false;
-    while (!addedParam && jsvObjectIteratorHasValue(&fnIt)) {
-      JsVar *param = jsvObjectIteratorGetKey(&fnIt);
-      if (!jsvIsFunctionParameter(param)) {
-        jsvUnLock(param);
-        break;
+  if (argsArray) {
+    JsvObjectIterator argIt;
+    jsvObjectIteratorNew(&argIt, argsArray);
+    while (jsvObjectIteratorHasValue(&argIt)) {
+      JsVar *defaultValue = jsvObjectIteratorGetValue(&argIt);
+      bool addedParam = false;
+      while (!addedParam && jsvObjectIteratorHasValue(&fnIt)) {
+        JsVar *param = jsvObjectIteratorGetKey(&fnIt);
+        if (!jsvIsFunctionParameter(param)) {
+          jsvUnLock(param);
+          break;
+        }
+        JsVar *newParam = jsvCopyNameOnly(param, false,  true);
+        jsvSetValueOfName(newParam, defaultValue);
+        jsvAddName(fn, newParam);
+        addedParam = true;
+        jsvUnLock2(param, newParam);
+        jsvObjectIteratorNext(&fnIt);
       }
-      JsVar *newParam = jsvCopyNameOnly(param, false,  true);
-      jsvSetValueOfName(newParam, defaultValue);
-      jsvAddName(fn, newParam);
-      addedParam = true;
-      jsvUnLock2(param, newParam);
-      jsvObjectIteratorNext(&fnIt);
-    }
 
-    if (!addedParam) {
-      JsVar *paramName = jsvNewFromEmptyString();
-      if (paramName) {
-        jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-        jsvSetValueOfName(paramName, defaultValue);
-        jsvAddName(fn, paramName);
-        jsvUnLock(paramName);
+      if (!addedParam) {
+        JsVar *paramName = jsvNewFromEmptyString();
+        if (paramName) {
+          jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+          jsvSetValueOfName(paramName, defaultValue);
+          jsvAddName(fn, paramName);
+          jsvUnLock(paramName);
+        }
       }
+      jsvUnLock(defaultValue);
+      jsvObjectIteratorNext(&argIt);
     }
-    jsvUnLock(defaultValue);
-    jsvObjectIteratorNext(&argIt);
+    jsvObjectIteratorFree(&argIt);
   }
-  jsvObjectIteratorFree(&argIt);
 
   // Copy the rest of the old function's info
   while (jsvObjectIteratorHasValue(&fnIt)) {

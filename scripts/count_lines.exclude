@@ -4,3 +4,16 @@
 ^\./libs/fat_sd
 ^\./libs/math
 ^\./tmp
+^\./gen
+^\./build
+^\./xtensa-lx106-elf
+^\./esp_iot_sdk_v2.0.0.p1/
+^\./node_modules
+^\./zipcontents
+^\./libs/filesystem/fat_sd
+^\./libs/hashlib
+^\./libs/network/wiznet/.*/
+^\./libs/network/cc3000
+^\./libs/compression/heatshrink
+^\./libs/crypto/mbedtls
+^\./.*\.js

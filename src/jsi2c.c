@@ -38,6 +38,8 @@ bool jsi2cPopulateI2CInfo(
     return false;
 }
 
+#ifndef SAVE_ON_FLASH
+
 // -------------------------------------------------------- I2C Implementation
 
 const int I2C_TIMEOUT = 100000;
@@ -166,3 +168,5 @@ void jsi2cRead(JshI2CInfo *inf, unsigned char address, int nBytes, unsigned char
   if (sendStop) i2c_stop(&d);
   inf->started = d.started;
 }
+
+#endif // SAVE_ON_FLASH

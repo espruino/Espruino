@@ -1,9 +1,9 @@
 FROM ubuntu:14.04
 
 RUN apt-get update && apt-get install -y software-properties-common && apt-get update \
- && add-apt-repository ppa:terry.guo/gcc-arm-embedded \
+ && add-apt-repository ppa:team-gcc-arm-embedded/ppa \
  && apt-get update \ 
- && apt-get install -y git gcc-arm-none-eabi build-essential python
+ && apt-get install -y git gcc-arm-embedded build-essential python
 
 RUN git clone https://github.com/espruino/Espruino espruino
 WORKDIR /espruino

@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_lbs_c
  */
-/** @brief Enable Nordic LED Button Service Client. *
+/** @brief Enable Nordic LED Button Service Client.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

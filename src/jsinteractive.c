@@ -58,7 +58,7 @@ JsVarRef watchArray = 0; // Linked List of input watches to check and run
 IOEventFlags consoleDevice = DEFAULT_CONSOLE_DEVICE; ///< The console device for user interaction
 Pin pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 Pin pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
-JsiStatus jsiStatus;
+JsiStatus jsiStatus = 0;
 JsSysTime jsiLastIdleTime;  ///< The last time we went around the idle loop - use this for timers
 uint32_t jsiTimeSinceCtrlC;
 // ----------------------------------------------------------------------------
@@ -152,15 +152,23 @@ void jsiSetConsoleDevice(IOEventFlags device, bool force) {
     jshUSARTSetup(device, &inf);
   }
 
+  bool echo = jsiEcho();
+  // If we're still in 'limbo', move any contents over
+  if (consoleDevice == EV_LIMBO) {
+    echo = false;
+    jshTransmitMove(EV_LIMBO, device);
+    jshUSARTKick(device);
+  }
+
   // Log to the old console that we are moving consoles and then, once we have moved
   // the console, log to the new console that we have moved consoles.
-  jsiConsoleRemoveInputLine();
-  if (jsiEcho()) { // intentionally not using jsiShowInputLine()
+  if (echo) { // intentionally not using jsiShowInputLine()
+    jsiConsoleRemoveInputLine();
     jsiConsolePrintf("-> %s\n", jshGetDeviceString(device));
   }
   IOEventFlags oldDevice = consoleDevice;
   consoleDevice = device;
-  if (jsiEcho()) { // intentionally not using jsiShowInputLine()
+  if (echo) { // intentionally not using jsiShowInputLine()
     jsiConsolePrintf("<- %s\n", jshGetDeviceString(oldDevice));
   }
 }
@@ -473,7 +481,7 @@ void jsiSoftInit(bool hasBeenReset) {
   JsVar *initCode = jsvObjectGetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, 0);
   if (initCode) {
     jsvUnLock2(jspEvaluateVar(initCode, 0, 0), initCode);
-    jsvRemoveNamedChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
+    jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
   }
 
   // Check any existing watches and set up interrupts for them
@@ -525,7 +533,7 @@ void jsiDumpJSON(vcbprintf_callback user_callback, void *user_data, JsVar *data,
     cbprintf(user_callback, user_data, "%v", name);
   } else {
     // if it doesn't, print JSON
-    jsfGetJSONWithCallback(data, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, user_callback, user_data);
+    jsfGetJSONWithCallback(data, JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, 0, user_callback, user_data);
   }
 }
 
@@ -603,7 +611,7 @@ void jsiDumpSerialInitialisation(vcbprintf_callback user_callback, void *user_da
       cbprintf(user_callback, user_data, "%s.setup(%d", serialName, baudrate);
       if (jsvIsObject(options)) {
         user_callback(", ", user_data);
-        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, user_callback, user_data);
+        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, 0, user_callback, user_data);
       }
       user_callback(");\n", user_data);
     }
@@ -620,7 +628,7 @@ void jsiDumpDeviceInitialisation(vcbprintf_callback user_callback, void *user_da
     if (options) {
       cbprintf(user_callback, user_data, "%s.setup(", deviceName);
       if (jsvIsObject(options))
-        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, user_callback, user_data);
+        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, 0, user_callback, user_data);
       user_callback(");\n", user_data);
     }
     jsvUnLock2(options, deviceVar);
@@ -650,10 +658,12 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_I2C1+i));
   // pins
   Pin pin;
-  for (pin=0;jshIsPinValid(pin) && pin<255;pin++) {
+
+  for (pin=0;jshIsPinValid(pin) && pin<JSH_PIN_COUNT;pin++) {
     if (IS_PIN_USED_INTERNALLY(pin)) continue;
     JshPinState state = jshPinGetState(pin);
     JshPinState statem = state&JSHPINSTATE_MASK;
+
     if (statem == JSHPINSTATE_GPIO_OUT && !jshGetPinStateIsManual(pin)) {
       bool isOn = (state&JSHPINSTATE_PIN_IS_ON)!=0;
       if (!isOn && IS_PIN_A_LED(pin)) continue;
@@ -662,21 +672,27 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 #ifdef DEFAULT_CONSOLE_RX_PIN
       // the console input pin is always a pullup now - which is expected
       if (pin == DEFAULT_CONSOLE_RX_PIN &&
-          statem == JSHPINSTATE_GPIO_IN_PULLUP) continue;
+          (statem == JSHPINSTATE_GPIO_IN_PULLUP ||
+           statem == JSHPINSTATE_AF_OUT)) continue;
+#endif
+#ifdef DEFAULT_CONSOLE_TX_PIN
+      // the console input pin is always a pullup now - which is expected
+      if (pin == DEFAULT_CONSOLE_TX_PIN &&
+          (statem == JSHPINSTATE_AF_OUT)) continue;
 #endif
 #if defined(BTN1_PININDEX) && defined(BTN1_PINSTATE)
       if (pin == BTN1_PININDEX &&
           statem == BTN1_PINSTATE) continue;
 #endif
+
       // don't bother with normal inputs, as they come up in this state (ish) anyway
-      if (statem != JSHPINSTATE_GPIO_IN) {
+      if (statem != JSHPINSTATE_GPIO_IN && statem != JSHPINSTATE_ADC_IN) {
         // use getPinMode to get the correct string (remove some duplication)
         JsVar *s = jswrap_io_getPinMode(pin);
-        if (s) cbprintf(user_callback, user_data, "pinMode(%p, %q);\n",pin,s);
+        if (s) cbprintf(user_callback, user_data, "pinMode(%p, %q%s);\n",pin,s,jshGetPinStateIsManual(pin)?"":", true");
         jsvUnLock(s);
       }
     }
-
   }
 }
 
@@ -728,6 +744,8 @@ void jsiSoftKill() {
     jsvObjectSetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, initCode);
     jsvUnLock(initCode);
   }
+  // If we're here we're loading, saving or resetting - board is no longer at power-on state
+  jsiStatus &= ~JSIS_COMPLETELY_RESET; // loading code, remove this flag
 }
 
 void jsiSemiInit(bool autoLoad) {
@@ -743,6 +761,7 @@ void jsiSemiInit(bool autoLoad) {
      Try and load from it... */
   bool loadFlash = autoLoad && jsfFlashContainsCode();
   if (loadFlash) {
+    jsiStatus &= ~JSIS_COMPLETELY_RESET; // loading code, remove this flag
     jspSoftKill();
     jsvSoftKill();
     jsfLoadStateFromFlash();
@@ -801,7 +820,7 @@ void jsiSemiInit(bool autoLoad) {
 
 // The 'proper' init function - this should be called only once at bootup
 void jsiInit(bool autoLoad) {
-  jsiStatus = JSIS_NONE;
+  jsiStatus = JSIS_COMPLETELY_RESET;
 
 #if defined(LINUX) || !defined(USB)
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
@@ -855,13 +874,18 @@ int jsiCountBracketsInInput() {
   JsLex lex;
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(inputLine);
-  while (lex.tk!=LEX_EOF && lex.tk!=LEX_UNFINISHED_COMMENT) {
+  while (lex.tk!=LEX_EOF &&
+         lex.tk!=LEX_UNFINISHED_COMMENT &&
+         lex.tk!=LEX_UNFINISHED_STR &&
+         lex.tk!=LEX_UNFINISHED_TEMPLATE_LITERAL) {
     if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
     if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
     if (brackets<0) break; // closing bracket before opening!
     jslGetNextToken(&lex);
   }
-  if (lex.tk==LEX_UNFINISHED_COMMENT)
+  if (lex.tk==LEX_UNFINISHED_STR)
+    brackets=0; // execute immediately so it can error
+  if (lex.tk==LEX_UNFINISHED_COMMENT || lex.tk==LEX_UNFINISHED_TEMPLATE_LITERAL)
     brackets=1000; // if there's an unfinished comment, we're in the middle of something
   jslKill();
   jslSetLex(oldLex);
@@ -1093,6 +1117,13 @@ void jsiCheckErrors() {
   }
   if (exception) {
     jsiConsolePrintf("Uncaught %v\n", exception);
+    if (jsvIsObject(exception)) {
+      JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
+      if (stackTrace) {
+        jsiConsolePrintStringVar(stackTrace);
+        jsvUnLock(stackTrace);
+      }
+    }
     jsvUnLock(exception);
   }
   if (jspIsInterrupted()
@@ -1168,10 +1199,12 @@ void jsiTabComplete_printCommon(void *cbdata, JsVar *key) {
   JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
   if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, true)==0) {
     // Print, but do as 2 columns
-    if (data->lineLength==0 || data->lineLength>18) {
+    if (data->lineLength==0) {
       jsiConsolePrintf("%v",key);
       data->lineLength = jsvGetStringLength(key);
     } else {
+      if (data->lineLength>=20)
+        data->lineLength=19; // force one space
       while (data->lineLength<20) {
         jsiConsolePrintChar(' ');
         data->lineLength++;
@@ -1314,7 +1347,7 @@ void jsiHandleNewLine(bool execute) {
         // print result (but NOT if we had an error)
         if (jsiEcho() && !jspHasError()) {
           jsiConsolePrintChar('=');
-          jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+          jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES);
           jsiConsolePrint("\n");
         }
         jsvUnLock(v);
@@ -1938,7 +1971,7 @@ void jsiIdle() {
       }
       jsvUnLock(data);
       if (watchPtr) { // if we had a watch pointer, be sure to remove us from it
-        jsvObjectSetChild(watchPtr, "timeout", 0);
+        jsvObjectRemoveChild(watchPtr, "timeout");
         // Deal with non-recurring watches
         if (exec) {
           bool watchRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(watchPtr,  "recur", 0));
@@ -2024,7 +2057,6 @@ void jsiIdle() {
     }
     if ((s&JSIS_TODO_FLASH_SAVE) == JSIS_TODO_FLASH_SAVE) {
       jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_SAVE;
-
       jsvGarbageCollect(); // nice to have everything all tidy!
       jsiSoftKill();
       jspSoftKill();
@@ -2037,11 +2069,12 @@ void jsiIdle() {
     }
     if ((s&JSIS_TODO_FLASH_LOAD) == JSIS_TODO_FLASH_LOAD) {
       jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_LOAD;
-
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
+      jsvKill();
       jshReset();
+      jsvInit();
       jsfLoadStateFromFlash();
       jsvSoftInit();
       jspSoftInit();
@@ -2121,6 +2154,8 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 
     if (jswIsBuiltInObject(childName)) {
       jsiDumpObjectState(user_callback, user_data, child, data);
+    } else if (jsvIsStringEqualOrStartsWith(child, JS_EVENT_PREFIX, true)) {
+      // event on global object - skip it, as it'll be internal
     } else if (jsvIsStringEqual(child, JSI_TIMERS_NAME)) {
       // skip - done later
     } else if (jsvIsStringEqual(child, JSI_WATCHES_NAME)) {
@@ -2207,6 +2242,13 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 
   // and now the actual hardware
   jsiDumpHardwareInitialisation(user_callback, user_data, true);
+
+  const char *code = jsfGetBootCodeFromFlash(false);
+  if (code) {
+    user_callback("// Code saved with E.setBootCode\n", user_data);
+    user_callback(code, user_data);
+    user_callback("\n", user_data);
+  }
 }
 
 JsVarInt jsiTimerAdd(JsVar *timerPtr) {
@@ -2299,7 +2341,7 @@ void jsiDebuggerPrintScope(JsVar *scope) {
         l++;
       }
       jsiConsolePrint(" : ");
-      jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES);
       jsiConsolePrint("\n");
     }
 
@@ -2361,7 +2403,7 @@ void jsiDebuggerLine(JsVar *line) {
       JsVar *v = jsvSkipNameAndUnLock(jspParse());
       execInfo = oldExecInfo;
       jsiConsolePrintChar('=');
-      jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES);
       jsiConsolePrint("\n");
       jsvUnLock(v);
     } else if (!strcmp(id,"info") || !strcmp(id,"i")) {

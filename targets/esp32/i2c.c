@@ -40,7 +40,7 @@ static esp_err_t checkError( char * caller, esp_err_t ret ) {
     break;
   }
   case ESP_FAIL: {
-    jsError(  "%s:, slave doesn’t ACK the transfer.\n", caller );
+    jsError(  "%s:, slave doesn't ACK the transfer.\n", caller );
     break;
   }
   case ESP_ERR_TIMEOUT: {

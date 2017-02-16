@@ -152,6 +152,7 @@ typedef enum {
             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
             (state)==JSHPINSTATE_GPIO_IN_PULLUP ||          \
             (state)==JSHPINSTATE_USART_IN ||                \
+            (state)==JSHPINSTATE_I2C ||                     \
 0)
 /// Should a pin of this state have an internal pulldown?
 #define JSHPINSTATE_IS_PULLDOWN(state) ( \
@@ -365,7 +366,7 @@ void jshUtilTimerDisable();
 void jshDoSysTick();
 #endif // ARM
 
-#ifdef STM32
+#if defined(STM32) || defined(STM32_LL)
 // push a byte into SPI buffers (called from IRQ)
 void jshSPIPush(IOEventFlags device, uint16_t data);
 
@@ -375,6 +376,11 @@ typedef enum {
 } JshGetPinAddressFlags;
 // Get the address to read/write to in order to change the state of this pin. Or 0.
 volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags);
+#endif
+
+#if defined(NRF51) || defined(NRF52)
+/// Called when we have had an event that means we should execute JS
+extern void jshHadEvent();
 #endif
 
 /// the temperature from the internal temperature sensor, in degrees C

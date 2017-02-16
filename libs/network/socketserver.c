@@ -194,7 +194,7 @@ void _socketConnectionKill(JsNetwork *net, JsVar *connection) {
   int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
   if (sckt>=0) {
     netCloseSocket(net, sckt);
-    jsvObjectSetChild(connection,HTTP_NAME_SOCKET,0);
+    jsvObjectRemoveChild(connection,HTTP_NAME_SOCKET);
   }
 }
 
@@ -441,7 +441,7 @@ void socketClientPushReceiveData(JsVar *connection, JsVar *socket, JsVar **recei
     if (jsvIsEmptyString(*receiveData) ||
         jswrap_stream_pushData(socket, *receiveData, false)) {
       // clear - because we have issued a callback
-      jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
+      jsvObjectRemoveChild(connection,HTTP_NAME_RECEIVE_DATA);
       jsvUnLock(*receiveData);
       *receiveData = 0;
     }

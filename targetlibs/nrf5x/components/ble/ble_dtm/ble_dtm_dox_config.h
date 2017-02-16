@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_dtm
  */
-/** @brief Enabling BLE DTM module *
+/** @brief Enabling BLE DTM module
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
