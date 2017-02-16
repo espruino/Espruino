@@ -54,82 +54,45 @@ devices = {
 };
 
 # left-right, or top-bottom order
-board_esp12 = {
-    'top' : ['D1', 'D3', 'D5', 'D4', 'D0', 'D2', 'D15', 'GND'],
-    'bottom' : ['VCC', 'D13', 'D12', 'D14', 'B16', 'CH_EN', 'A0', 'RESET'],
-    'right' : ['D11', 'D8', 'D9', 'D10', 'D7', 'D6'],
+board_esp32 = {
+   'top' : [ 'GND','D23','D22','D1','D3','D21','D20','D19','D18','D5','D17','D16','D4','D0'],
+   'bottom' :  ['GND','VCC','EN','D36','D39','D34','D35','D32','D33','D25','D26','D27','D14','D12'],
+   'right' : [ 'GND','D13','D9','D10','D11','D6','D7','D8','D15','D2']
 };
-board_esp12["bottom"].reverse()
-board_esp12["right"].reverse()
-board_esp12["_css"] = """
+board_esp32["bottom"].reverse()
+board_esp32["right"].reverse()
+board_esp32["_css"] = """
 #board {
   width:  600px;
-  height: 384px;
+  height: 435px;
   left: 50px;
   top: 100px;
-  background-image: url(img/ESP8266_12.jpg);
+  background-image: url(img/ESP32.jpg);
 }
 #boardcontainer {
   height: 600px;
 }
 #board #right {
-  top: 60px;
+  top: 80px;
   left: 600px;
 }
 #board #top {
-  bottom: 360px;
-  left: 195px;
+  bottom: 440px;
+  left: 155px;
 }
 #board #bottom  {
-  top: 365px;
-  left: 195px;
+  top: 435px;
+  left: 155px;
 }
 #board .rightpin {
-  height: 48px;
+  height: 28px;
 }
 #board .toppin, #board .bottompin {
-  width: 44px;
+  width: 24px;
 }
 """;
 
-# left-right, or top-bottom order
-board_esp01 = {
-    'left' : ['D3', 'D0', 'D2', 'GND'],
-    'right' : ['VCC', 'RESET', 'CH_PD', 'D1'],
-    '_hide_not_on_connectors' : True
-};
-board_esp01["_css"] = """
-#board {
-  width:  500px;
-  height: 299px;
-  left: 50px;
-  top: 0px;
-  background-image: url(img/ESP8266_01.jpg);
-}
-#boardcontainer {
-  height: 300px;
-}
-#board #right {
-  top: 30px;
-  left: 200px;
-}
-#board #left {
-  top: 65px;
-  right: 80px;
-}
-#board #right  {
-  top: 65px;
-  left: 460px;
-}
-#board .leftpin {
-  height: 48px;
-}
-#board .rightpin {
-  height: 48px;
-}
-""";
-
-boards = [ board_esp12, board_esp01 ];
+boards = [ board_esp32 ];
 
 def get_pins():
 
