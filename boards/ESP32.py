@@ -55,8 +55,8 @@ devices = {
 
 # left-right, or top-bottom order
 board_esp32 = {
-   'top' : [ 'GND','D23','D22','D1','D3','D21','D20','D19','D18','D5','D17','D16','D4','D0'],
-   'bottom' :  ['GND','VCC','EN','D36','D39','D34','D35','D32','D33','D25','D26','D27','D14','D12'],
+   'top' : [ 'D0','D4','D16','D17','D5','D18','D19','D20','D21','D3','D1','D22','D23','GND'],   
+   'bottom' : ['D12','D14','D27','D26','D25','D33','D32','D35','D34','D39','D36','EN','3V3','GND'],
    'right' : [ 'GND','D13','D9','D10','D11','D6','D7','D8','D15','D2']
 };
 board_esp32["bottom"].reverse()
