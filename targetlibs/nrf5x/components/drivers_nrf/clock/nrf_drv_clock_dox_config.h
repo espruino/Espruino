@@ -4,15 +4,17 @@
  * @{
  * @ingroup nrf_drv_clock
  */
-/** @brief Enable CLOCK driver *
+/** @brief Enable CLOCK driver
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define CLOCK_ENABLED
 
-/** @brief HF XTAL Frequency *
- *  Following options are avaiable:
+/** @brief HF XTAL Frequency
+ *
+ *  Following options are available:
  * - 0 - Default (64 MHz)
  * - 255 - Default (16 MHz) (nRF51 family only)
  * - 0 - 32 MHz (nRF51 family only)
@@ -22,8 +24,9 @@
 #define CLOCK_CONFIG_XTAL_FREQ
 
 
-/** @brief LF Clock Source *
- *  Following options are avaiable:
+/** @brief LF Clock Source
+ *
+ *  Following options are available:
  * - 0 - RC
  * - 1 - XTAL
  * - 2 - Synth
@@ -37,7 +40,7 @@
  *
  * Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
  *
- *  Following options are avaiable:
+ *  Following options are available:
  * - 0 - 0 (highest)
  * - 1 - 1
  * - 2 - 2

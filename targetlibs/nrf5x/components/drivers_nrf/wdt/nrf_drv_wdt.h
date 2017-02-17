@@ -64,7 +64,7 @@ typedef nrf_wdt_rr_register_t nrf_drv_wdt_channel_id;
  *
  * @note Function asserts if wdt_event_handler is NULL.
  *
- * @return    NRF_SUCCESS on success, NRF_ERROR_INVALID_STATE if module ws already initialized.
+ * @return    NRF_SUCCESS on success, otherwise an error code.
  */
 ret_code_t nrf_drv_wdt_init(nrf_drv_wdt_config_t const * p_config,
                             nrf_wdt_event_handler_t     wdt_event_handler);

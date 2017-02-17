@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_ias_c
  */
-/** @brief Enable Immediate Alert Service Client. *
+/** @brief Enable Immediate Alert Service Client.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

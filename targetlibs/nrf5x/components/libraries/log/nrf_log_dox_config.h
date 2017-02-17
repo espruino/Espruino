@@ -4,22 +4,25 @@
  * @{
  * @ingroup nrf_log
  */
-/** @brief Logging module for nRF5 SDK *
+/** @brief Logging module for nRF5 SDK
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define NRF_LOG_ENABLED
 
-/** @brief If enabled then ANSI escape code for colors is prefixed to every string *
+/** @brief If enabled then ANSI escape code for colors is prefixed to every string
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define NRF_LOG_USES_COLORS
 
-/** @brief ANSI escape code prefix. *
- *  Following options are avaiable:
+/** @brief ANSI escape code prefix.
+ *
+ *  Following options are available:
  * - 0 - Default
  * - 1 - Black
  * - 2 - Red
@@ -35,8 +38,9 @@
 #define NRF_LOG_COLOR_DEFAULT
 
 
-/** @brief ANSI escape code prefix. *
- *  Following options are avaiable:
+/** @brief ANSI escape code prefix.
+ *
+ *  Following options are available:
  * - 0 - Default
  * - 1 - Black
  * - 2 - Red
@@ -52,8 +56,9 @@
 #define NRF_LOG_ERROR_COLOR
 
 
-/** @brief ANSI escape code prefix. *
- *  Following options are avaiable:
+/** @brief ANSI escape code prefix.
+ *
+ *  Following options are available:
  * - 0 - Default
  * - 1 - Black
  * - 2 - Red
@@ -70,8 +75,9 @@
 
 
 
-/** @brief Default Severity level *
- *  Following options are avaiable:
+/** @brief Default Severity level
+ *
+ *  Following options are available:
  * - 0 - Off
  * - 1 - Error
  * - 2 - Warning

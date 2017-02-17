@@ -4,7 +4,8 @@
  * @{
  * @ingroup nrf_drv_spis
  */
-/** @brief  *
+/** @brief 
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -15,7 +16,7 @@
  *
  * Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
  *
- *  Following options are avaiable:
+ *  Following options are available:
  * - 0 - 0 (highest)
  * - 1 - 1
  * - 2 - 2
@@ -30,8 +31,9 @@
 #define SPIS_DEFAULT_CONFIG_IRQ_PRIORITY
 
 
-/** @brief Mode *
- *  Following options are avaiable:
+/** @brief Mode
+ *
+ *  Following options are available:
  * - 0 - MODE_0
  * - 1 - MODE_1
  * - 2 - MODE_2
@@ -42,8 +44,9 @@
 #define SPIS_DEFAULT_MODE
 
 
-/** @brief SPIS default bit order *
- *  Following options are avaiable:
+/** @brief SPIS default bit order
+ *
+ *  Following options are available:
  * - 0 - MSB first
  * - 1 - LSB first
  *
@@ -52,7 +55,8 @@
 #define SPIS_DEFAULT_BIT_ORDER
 
 
-/** @brief SPIS default DEF character *
+/** @brief SPIS default DEF character
+ *
  *  Minimum value: 0
  *  Maximum value: 255
  *
@@ -61,7 +65,8 @@
 #define SPIS_DEFAULT_DEF
 
 
-/** @brief SPIS default ORC character *
+/** @brief SPIS default ORC character
+ *
  *  Minimum value: 0
  *  Maximum value: 255
  *
@@ -70,7 +75,8 @@
 #define SPIS_DEFAULT_ORC
 
 
-/** @brief Enable SPIS0 instance *
+/** @brief Enable SPIS0 instance
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -78,7 +84,8 @@
 #define SPIS0_ENABLED
 
 
-/** @brief Enable SPIS1 instance *
+/** @brief Enable SPIS1 instance
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -86,7 +93,8 @@
 #define SPIS1_ENABLED
 
 
-/** @brief Enable SPIS2 instance *
+/** @brief Enable SPIS2 instance
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

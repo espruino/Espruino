@@ -4,15 +4,17 @@
  * @{
  * @ingroup hci_slip
  */
-/** @brief Enabling HCI transport module. *
+/** @brief Enabling HCI transport module.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define HCI_SLIP_ENABLED
 
-/** @brief Default Baudrate *
- *  Following options are avaiable:
+/** @brief Default Baudrate
+ *
+ *  Following options are available:
  * - 323584 - 1200 baud
  * - 643072 - 2400 baud
  * - 1290240 - 4800 baud
@@ -36,8 +38,9 @@
 #define HCI_UART_BAUDRATE
 
 
-/** @brief Hardware Flow Control *
- *  Following options are avaiable:
+/** @brief Hardware Flow Control
+ *
+ *  Following options are available:
  * - 0 - Disabled
  * - 1 - Enabled
  *
@@ -46,28 +49,32 @@
 #define HCI_UART_FLOW_CONTROL
 
 
-/** @brief UART RX pin *
+/** @brief UART RX pin
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define HCI_UART_RX_PIN
 
 
-/** @brief UART TX pin *
+/** @brief UART TX pin
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define HCI_UART_TX_PIN
 
 
-/** @brief UART RTS pin *
+/** @brief UART RTS pin
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define HCI_UART_RTS_PIN
 
 
-/** @brief UART CTS pin *
+/** @brief UART CTS pin
+ *
  *
  * @note This is an NRF_CONFIG macro.
  */

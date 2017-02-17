@@ -168,7 +168,9 @@ uint32_t nrf_log_push(char * const p_str);
 /**
  * @brief Macro for dissecting a float number into two numbers (integer and residuum).
  */
-#define NRF_LOG_FLOAT(val) (int32_t)(val), (uint32_t)(((val)-(int32_t)val)*100)
+#define NRF_LOG_FLOAT(val) (int32_t)(val),                                     \
+                           (int32_t)(((val > 0) ? (val) - (int32_t)(val)       \
+                                                : (int32_t)(val) - (val))*100)
 
 #endif // NRF_LOG_H_
 

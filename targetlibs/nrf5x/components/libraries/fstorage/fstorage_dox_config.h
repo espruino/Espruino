@@ -4,7 +4,8 @@
  * @{
  * @ingroup fstorage
  */
-/** @brief Enabling fstorage module *
+/** @brief Enabling fstorage module
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

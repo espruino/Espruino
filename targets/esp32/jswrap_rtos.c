@@ -8,9 +8,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Task specific exposed components.
+ * Task, queue and timer specific exposed components.
  * ----------------------------------------------------------------------------
  */
+#include <stdio.h>
 #include "jswrap_rtos.h"
 #include "jsparse.h"
 #include "rtosutil.h"
@@ -67,6 +68,18 @@ Writes one character to queue
 void jswrap_Queue_writeChar(JsVar *parent,char c){
   JsVar *idx = jsvObjectGetChild(parent,"index",1);
   queue_writeChar(idx,c);
+}
+/*JSON{
+ "type"     : "method",
+ "class"    : "Queue",
+ "name"     : "log",
+ "generate" : "jswrap_Queue_log"
+}
+logs list of queues
+*/
+void jswrap_Queue_log(JsVar *parent) {
+  queue_list();
+  return;  
 }
 
 /*JSON{
@@ -132,3 +145,96 @@ returns name of actual task
 JsVar *jswrap_Task_getCurrent(JsVar *parent){
   return jsvNewFromString(task_getCurrentName());
 }
+/*JSON{
+ "type"     : "method",
+ "class"    : "Task",
+ "name"     : "notify",
+ "generate" : "jswrap_Task_notify"
+}
+Sends a binary notify to task 
+*/
+void jswrap_Task_notify(JsVar *parent){
+  JsVar *idx = jsvObjectGetChild(parent,"index",1);
+  task_notify(jsvGetInteger(idx));
+}
+/*JSON{
+ "type"     : "method",
+ "class"    : "Task",
+ "name"     : "log",
+ "generate" : "jswrap_Task_log"
+}
+logs list of tasks
+*/
+void jswrap_Task_log(JsVar *parent) {
+  task_list();
+  return;  
+}
+
+/*JSON{
+  "type"	: "class",
+  "class"	: "Timer"
+}
+A class to handle Timer on base of ESP32 Timer
+*/
+/*JSON{
+  "type"     : "constructor",
+  "class"    : "Timer",
+  "name"     : "Timer",
+  "generate" : "jswrap_Timer_constructor",
+  "params"   : [ ["timerName", "JsVar", "Timer Name"],
+                 ["group", "int", "Timer group"],
+				 ["index", "int", "Timer index"],
+                 ["isrIndex", "int", "isr (0 = Espruino, 1 = test)"]  ],
+  "return"   : ["JsVar","A Timer Object"]
+}
+Creates a Timer Object 
+*/
+JsVar *jswrap_Timer_constructor(JsVar *timerName,int group, int index, int isrIndex){
+  int idx; char name[20];
+  JsVar *timer = jspNewObject(0, "Timer");
+  if(!timer) return 0;
+  name[jsvGetString(timerName, name, sizeof(name))] = '\0';
+  idx = timer_Init(name,group,index,isrIndex);
+  jsvObjectSetChildAndUnLock(timer, "index", jsvNewFromInteger(idx));
+  return timer;
+}
+/*JSON{
+  "type"     : "method",
+  "class"    : "Timer",
+  "name"     : "start",
+  "params"   : [["duration","int","duration of timmer in micro secs"]],  
+  "generate" : "jswrap_Timer_start"
+}
+Starts a timer
+*/
+void jswrap_Timer_start(JsVar *parent, int duration){
+  JsVar *idx = jsvObjectGetChild(parent,"index",1);
+  timer_Start(jsvGetInteger(idx),duration);
+}
+/*JSON{
+  "type"     : "method",
+  "class"    : "Timer",
+  "name"     : "reschedule",
+  "params"   : [["duration","int","duration of timmer in micro secs"]],  
+  "generate" : "jswrap_Timer_reschedule"
+}
+Reschedules a timer, needs to be started at least once
+*/
+void jswrap_Timer_reschedule(JsVar *parent, int duration){
+  JsVar *idx = jsvObjectGetChild(parent,"index",1);
+  timer_Reschedule(jsvGetInteger(idx),duration);
+}
+/*JSON{
+ "type"     : "method",
+ "class"    : "Timer",
+ "name"     : "log",
+ "generate" : "jswrap_Timer_log"
+}
+logs list of timers
+*/
+void jswrap_Timer_log(JsVar *parent) {
+  timer_List();
+  return;  
+}
+
+

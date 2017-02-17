@@ -4,7 +4,8 @@
  * @{
  * @ingroup ble_ans_c
  */
-/** @brief Enable Alert Notification Service Client. *
+/** @brief Enable Alert Notification Service Client.
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

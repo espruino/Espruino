@@ -428,7 +428,7 @@ JsVar *decode_certificate_var(JsVar *var) {
 bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
   JsVar *keyVar = jsvObjectGetChild(options, "key", 0);
   if (!keyVar) {
-    return false;
+    return true; // still ok - just no key
   }
   int ret = -1;
   jsiConsolePrintf("Loading the Client Key...\n");
@@ -453,7 +453,7 @@ bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
 bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
   JsVar *certVar = jsvObjectGetChild(options, "cert", 0);
   if (!certVar) {
-    return false;
+    return true; // still ok - just no cert
   }
   int ret = -1;
   jsiConsolePrintf("Loading the Client certificate...\n");
@@ -477,7 +477,7 @@ bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
 bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
   JsVar *caVar = jsvObjectGetChild(options, "ca", 0);
   if (!caVar) {
-    return false;
+    return true; // still ok - just no ca
   }
   int ret = -1;
   jsiConsolePrintf("Loading the CA root certificate...\n");

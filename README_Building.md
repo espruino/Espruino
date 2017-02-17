@@ -1,14 +1,18 @@
 Building
 ========
 
+**Note:** 
+- If you're swapping between compiling for different targets, **you
+need to call `make clean`** before you compile for the new target.
+- If you have a ld error, double check the board name in the <BOARD>=1 make
 
 Under Linux
 -----------
-  
+
 Espruino is easy to build under Linux, and it is possible to build under MacOS with some effort. If you don't have Linux it's **much** easier to install it in a Virtual Machine. See the heading **Building under Windows/MacOS with a VM** below for more information.
 
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
-  
+
 The (previously suggested) CodeSourcery GCC compiler is no longer available. We'd suggest you use [gcc-arm-none-eabi](https://launchpad.net/gcc-arm-embedded/+download).
 
 Download the compiler, set up your path so you have access to it, and run:
@@ -180,7 +184,7 @@ Building under Windows/MacOS with a VM (Vagrant)
 * In your terminal application, navigate to your cloned working copy.
 * Install the auto-network plugin with `vagrant plugin install vagrant-auto_network`
 * Execute `vagrant up`.  This will take a little while while the box is downloaded, and your virtual machine is provisioned.
-* When it is complete, execute `vagrant ssh`, which will open an ssh session into your new VM. 
+* When it is complete, execute `vagrant ssh`, which will open an ssh session into your new VM.
 * Execute `cd /vagrant && ESPRUINO_1V3=1 RELEASE=1 make` and wait.
 * Espruino is now built. See the documentation under **Building under Linux** for more examples.
 * To terminate the ssh session, simply execute `exit`.
@@ -220,8 +224,7 @@ There's some more information on how to do this on the forum at http://forum.esp
 * Click on `USB`, then click on the icon with the `+` sign (With the tooltip 'Adds a new USB filter ... selected USB device')
 * Click on the device labelled `STMicroelectronics STM32 ...`
 * Now unplug the Espruino board, wait a few seconds, and plug it back in (holding BTN1 again)
-* Go back into the VM, and type `sudo ESPRUINO_1V3=1 RELEASE=1 make serialflash` 
+* Go back into the VM, and type `sudo ESPRUINO_1V3=1 RELEASE=1 make serialflash`
 * Your board will now be flashed
 
 **Note:** if you want to you can change permissions so you don't need `sudo` by typing `sudo cp misc/45-espruino.rules /etc/udev/rules.d;sudo udevadm control --reload-rules` and then re-inserting the board.
-

@@ -213,7 +213,7 @@ static uint16_t find_touched_pad(nrf_csense_instance_t const * p_instance,
              temp_biggest = m_values_buffer[i];
              temp_biggest += m_values_buffer[i + 2];
 
-             if((i != 0) && (i != ((p_instance->number_of_pads-1))))
+             if ((i != 0) && (i != ((p_instance->number_of_pads-1))))
              {
                  temp_biggest /= 2;
              }
@@ -467,7 +467,7 @@ ret_code_t nrf_csense_uninit(void)
         return err_code;
     }
 
-    if(m_nrf_csense.enabled_analog_channels_mask != 0)
+    if (m_nrf_csense.enabled_analog_channels_mask != 0)
     {
         err_code = app_timer_stop(nrf_csense_timer);
         if (err_code != NRF_SUCCESS)
@@ -476,7 +476,7 @@ ret_code_t nrf_csense_uninit(void)
         }
     }
 
-    while((*pp_instance) != NULL)
+    while ((*pp_instance) != NULL)
     {
         nrf_csense_instance_t ** pp_instance_next = (&(*pp_instance)->p_next_instance);
         (*pp_instance) = NULL;
@@ -501,7 +501,7 @@ ret_code_t nrf_csense_add(nrf_csense_instance_t * const p_instance)
 
     nrf_csense_instance_t ** pp_instance = &mp_nrf_csense_instance_head;
 
-    while((*pp_instance) != NULL)
+    while ((*pp_instance) != NULL)
     {
         ASSERT((*pp_instance) != p_instance);
         pp_instance = &((*pp_instance)->p_next_instance);
@@ -609,7 +609,7 @@ ret_code_t nrf_csense_ticks_set(uint32_t ticks)
 
     m_nrf_csense.ticks = ticks;
 
-    if(m_nrf_csense.state == NRF_DRV_STATE_POWERED_ON)
+    if (m_nrf_csense.state == NRF_DRV_STATE_POWERED_ON)
     {
         err_code = app_timer_stop(nrf_csense_timer);
         if (err_code != NRF_SUCCESS)

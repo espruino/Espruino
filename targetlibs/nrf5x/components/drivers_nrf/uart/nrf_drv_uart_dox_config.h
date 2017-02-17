@@ -4,15 +4,17 @@
  * @{
  * @ingroup nrf_drv_uart
  */
-/** @brief Enable UART driver *
+/** @brief Enable UART driver
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define UART_ENABLED
 
-/** @brief Hardware Flow Control *
- *  Following options are avaiable:
+/** @brief Hardware Flow Control
+ *
+ *  Following options are available:
  * - 0 - Disabled
  * - 1 - Enabled
  *
@@ -21,8 +23,9 @@
 #define UART_DEFAULT_CONFIG_HWFC
 
 
-/** @brief Parity *
- *  Following options are avaiable:
+/** @brief Parity
+ *
+ *  Following options are available:
  * - 0 - Excluded
  * - 14 - Included
  *
@@ -31,8 +34,9 @@
 #define UART_DEFAULT_CONFIG_PARITY
 
 
-/** @brief Default Baudrate *
- *  Following options are avaiable:
+/** @brief Default Baudrate
+ *
+ *  Following options are available:
  * - 323584 - 1200 baud
  * - 643072 - 2400 baud
  * - 1290240 - 4800 baud
@@ -60,7 +64,7 @@
  *
  * Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
  *
- *  Following options are avaiable:
+ *  Following options are available:
  * - 0 - 0 (highest)
  * - 1 - 1
  * - 2 - 2
@@ -75,7 +79,8 @@
 #define UART_DEFAULT_CONFIG_IRQ_PRIORITY
 
 
-/** @brief Default setting for using EasyDMA *
+/** @brief Default setting for using EasyDMA
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -83,7 +88,8 @@
 #define UART0_CONFIG_USE_EASY_DMA
 
 
-/** @brief Driver supporting EasyDMA *
+/** @brief Driver supporting EasyDMA
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -91,7 +97,8 @@
 #define UART_EASY_DMA_SUPPORT
 
 
-/** @brief Driver supporting Legacy mode *
+/** @brief Driver supporting Legacy mode
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

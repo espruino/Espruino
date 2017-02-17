@@ -57,7 +57,7 @@
  *
  * The application TX packet processing flow is illustrated by the statemachine below.
  *
- * @image html hci_transport_tx_sm.png "TX - application packet statemachine"
+ * @image html hci_transport_tx_sm.svg "TX - application packet statemachine"
  *
  * \par Component specific configuration options
  *

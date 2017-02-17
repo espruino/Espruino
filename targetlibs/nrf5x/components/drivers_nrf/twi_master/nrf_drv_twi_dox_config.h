@@ -4,15 +4,17 @@
  * @{
  * @ingroup nrf_drv_twi
  */
-/** @brief  *
+/** @brief 
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define TWI_ENABLED
 
-/** @brief Frequency *
- *  Following options are avaiable:
+/** @brief Frequency
+ *
+ *  Following options are available:
  * - 26738688 - 100k
  * - 67108864 - 250k
  * - 104857600 - 400k
@@ -22,7 +24,8 @@
 #define TWI_DEFAULT_CONFIG_FREQUENCY
 
 
-/** @brief Enables bus clearing procedure during init *
+/** @brief Enables bus clearing procedure during init
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -30,7 +33,8 @@
 #define TWI_DEFAULT_CONFIG_CLR_BUS_INIT
 
 
-/** @brief Enables bus holding after uninit *
+/** @brief Enables bus holding after uninit
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -42,7 +46,7 @@
  *
  * Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
  *
- *  Following options are avaiable:
+ *  Following options are available:
  * - 0 - 0 (highest)
  * - 1 - 1
  * - 2 - 2
@@ -57,14 +61,16 @@
 #define TWI_DEFAULT_CONFIG_IRQ_PRIORITY
 
 
-/** @brief Enable TWI0 instance *
+/** @brief Enable TWI0 instance
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define TWI0_ENABLED
 
-/** @brief Use EasyDMA (if present) *
+/** @brief Use EasyDMA (if present)
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
@@ -73,14 +79,16 @@
 
 
 
-/** @brief Enable TWI1 instance *
+/** @brief Enable TWI1 instance
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.
  */
 #define TWI1_ENABLED
 
-/** @brief Use EasyDMA (if present) *
+/** @brief Use EasyDMA (if present)
+ *
  *  Set to 1 to activate.
  *
  * @note This is an NRF_CONFIG macro.

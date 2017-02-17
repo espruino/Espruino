@@ -47,10 +47,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((128 - 3) * 4096),
+    'address' : ((120 - 3) * 4096), # Bootloader takes pages 120-127
     'page_size' : 4096,
-    'pages' : 0,
-    'flash_available' : (512 - 108 - 24) # Total flash - softdevice - bootloader (this one is code signed unlike nrF51).
+    'pages' : 3,
+    'flash_available' : 512 - ((31 + 8 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 8, code 3. Each page is 4 kb. 
   },
 };
 
@@ -103,5 +103,8 @@ def get_pins():
   pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN5"]=0;
   pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
+  # everything is non-5v tolerant 
+  for pin in pins:
+    pin["functions"]["3.3"]=0;
   #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
   return pins

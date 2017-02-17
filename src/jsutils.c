@@ -89,7 +89,7 @@ const char *escapeCharacter(char ch) {
 }
 
 /** Parse radix prefixes, or return 0 */
-static NO_INLINE int getRadix(const char **s, int forceRadix, bool *hasError) {
+NO_INLINE int getRadix(const char **s, int forceRadix, bool *hasError) {
   int radix = 10;
 
   if (forceRadix > 36) {
@@ -121,12 +121,12 @@ static NO_INLINE int getRadix(const char **s, int forceRadix, bool *hasError) {
       else
         (*s)++;
     } else if (!forceRadix) {
-      // check for digits 8 or 9 - if so it's decimal
+      // check for '.' or digits 8 or 9 - if so it's decimal
       const char *p;
       for (p=*s;*p;p++)
-        if (*p<'0' || *p>'9') break;
-        else if (*p>='8')
-          radix = 10;
+        if (*p=='.' || *p=='8' || *p=='9')
+           radix = 10;
+        else if (*p<'0' || *p>'9') break;
     }
   }
   if (forceRadix>0 && forceRadix<=36)
@@ -568,7 +568,7 @@ JsVarFloat stringToFloatWithRadix(
 JsVarFloat stringToFloat(
     const char *s //!< The string to convert to a float.
   ) {
-  return stringToFloatWithRadix(s,10);
+  return stringToFloatWithRadix(s,0); // don't force the radix to anything in particular
 }
 
 
@@ -744,7 +744,7 @@ void vcbprintf(
       } break;
       case 'j': {
         JsVar *v = jsvAsString(va_arg(argp, JsVar*), false/*no unlock*/);
-        jsfGetJSONWithCallback(v, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, user_callback, user_data);
+        jsfGetJSONWithCallback(v, JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, 0, user_callback, user_data);
         break;
       }
       case 't': {
@@ -821,3 +821,16 @@ size_t jsuGetFreeStack() {
 #endif
 }
 
+unsigned int rand_m_w = 0xDEADBEEF;    /* must not be zero */
+unsigned int rand_m_z = 0xCAFEBABE;    /* must not be zero */
+
+int rand() {
+  rand_m_z = 36969 * (rand_m_z & 65535) + (rand_m_z >> 16);
+  rand_m_w = 18000 * (rand_m_w & 65535) + (rand_m_w >> 16);
+  return (int)RAND_MAX & (int)((rand_m_z << 16) + rand_m_w);  /* 32-bit result */
+}
+
+void srand(unsigned int seed) {
+  rand_m_w = (seed&0xFFFF) | (seed<<16);
+  rand_m_z = (seed&0xFFFF0000) | (seed>>16);
+}

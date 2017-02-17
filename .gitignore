@@ -8,6 +8,7 @@
 *.srec
 *.bin
 *.pyc
+/*.zip
 gen/*
 .vagrant/*
 boards/*.html
@@ -28,3 +29,5 @@ node_modules
 esp_iot_sdk_v1.5.0
 xtensa-lx106-elf
 *.c#
+/function_keywords.js
+/functions.html

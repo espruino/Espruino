@@ -367,13 +367,21 @@ uint32_t nrf_drv_uart_errorsrc_get(nrf_drv_uart_t const * p_instance);
 __STATIC_INLINE uint32_t nrf_drv_uart_task_address_get(nrf_drv_uart_t const * p_instance,
                                                        nrf_uart_task_t task)
 {
+#ifdef UART_IN_USE
     return nrf_uart_task_address_get(p_instance->reg.p_uart, task);
+#else
+    return nrf_uarte_task_address_get(p_instance->reg.p_uarte, (nrf_uarte_task_t)task);
+#endif
 }
 
 __STATIC_INLINE uint32_t nrf_drv_uart_event_address_get(nrf_drv_uart_t const * p_instance,
                                                         nrf_uart_event_t event)
 {
+#ifdef UART_IN_USE
     return nrf_uart_event_address_get(p_instance->reg.p_uart, event);
+#else
+    return nrf_uarte_event_address_get(p_instance->reg.p_uarte, (nrf_uarte_event_t)event);
+#endif
 }
 #endif //SUPPRESS_INLINE_IMPLEMENTATION
 

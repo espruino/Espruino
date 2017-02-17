@@ -26,7 +26,12 @@
 #include <stdio.h>
 
 #include "jshardware.h"
+#include "jshardwareUart.h"
 #include "jshardwareAnalog.h"
+#include "jshardwareTimer.h"
+#include "jshardwarePWM.h"
+#include "jshardwarePulse.h"
+
 #include "jsutils.h"
 #include "jstimer.h"
 #include "jsparse.h"
@@ -40,11 +45,12 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
+#include "rom/ets_sys.h"
 #include "rom/uart.h"
 #include "driver/gpio.h"
 
-#include "esp32-hal-spi.h"
-#include "esp32-hal-i2c.h"
+#include "i2c.h"
+#include "spi.h"
 
 #define FLASH_MAX (4*1024*1024) //4MB
 #define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
@@ -52,15 +58,6 @@
 
 #define UNUSED(x) (void)(x)
 
-// The logging tag used for log messages issued by this file.
-static char *tag = "jshardware";
-static char *tagGPIO = "jshardware(GPIO)";
-
-static spi_t * _spi[VSPI];
-static uint32_t  g_lastSPIRead = (uint32_t)-1;
-
-// Convert an Espruino pin to an ESP32 pin number.
-static gpio_num_t pinToESP32Pin(Pin pin);
 /**
  * Convert a pin id to the corresponding Pin Event id.
  */
@@ -79,7 +76,7 @@ static uint8_t g_pinState[JSH_PIN_COUNT];
 /**
 * interrupt handler for gpio interrupts
 */
-void IRAM_ATTR gpio_intr_test(void* arg){
+void IRAM_ATTR gpio_intr_handler(void* arg){
   //GPIO intr process. Mainly copied from esp-idf
   UNUSED(arg);
   IOEventFlags exti;
@@ -107,19 +104,25 @@ void IRAM_ATTR gpio_intr_test(void* arg){
  * Initialize the JavaScript hardware interface.
  */
 void jshInit() {
-  ESP_LOGD(tag,">> jshInit");
   uint32_t freeHeapSize = esp_get_free_heap_size();
-  ESP_LOGD(tag, "Free heap size: %d", freeHeapSize);
-  spi_flash_init();
+  jsWarn( "Free heap size: %d", freeHeapSize);
   esp32_wifi_init();
-  jswrap_ESP32_wifi_soft_init();
+  //jswrap_ESP32_wifi_soft_init();
   jshInitDevices();
-  gpio_isr_register(gpio_intr_test,NULL,0,NULL);  //changed to automatic assign of interrupt
+  if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
+    jsError("JshPinState #defines have changed, please update pinStateToString()");
+  }
+  /*
+  jsWarn( "JSHPINSTATE_I2C %d\n",JSHPINSTATE_I2C );
+  jsWarn( "JSHPINSTATE_GPIO_IN_PULLDOWN %d\n",JSHPINSTATE_GPIO_IN_PULLDOWN );
+  jsWarn( "JSHPINSTATE_MASK %d\n",JSHPINSTATE_MASK );
+  */
+  gpio_isr_register(gpio_intr_handler,NULL,0,NULL);  //changed to automatic assign of interrupt
    // Initialize something for each of the possible pins.
   for (int i=0; i<JSH_PIN_COUNT; i++) {
     g_pinState[i] = 0;
   }
-  ESP_LOGD(tag,"<< jshInit");
+  
 } // End of jshInit
 
 
@@ -127,18 +130,18 @@ void jshInit() {
  * Reset the Espruino environment.
  */
 void jshReset() {
-  ESP_LOGD(tag,">> jshReset");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshReset");
+    jshResetDevices();
+	jsWarn("jshReset(): To implement - reset GPIO jshPinSetState(x, JSHPINSTATE_GPIO_IN_PULLUP)\n");
+	//jswrap_ESP32_wifi_soft_init();
+	jsWarn(">> jshReset()\n");
 }
 
 /**
  * Re-init the ESP32 after a soft-reset
  */
 void jshSoftInit() {
-  ESP_LOGD(tag,">> jshSoftInit");
+  jsWarn(">> jshSoftInit()\n");
   jswrap_ESP32_wifi_soft_init();
-  ESP_LOGD(tag,"<< jshSoftInit");
 }
 
 /**
@@ -147,30 +150,13 @@ void jshSoftInit() {
  * Nothing is needed on the ESP32.
  */
 void jshIdle() {
-  //ESP_LOGD(tag,">> jshIdle");  // Can't debug log as called too often.
-  // Here we poll the serial input looking for a new character which, if we
-  // find, we add to the input queue of input events.  This is going to be
-  // wrong for a variety of reasons including:
-  //
-  // * What if we want to use the serial for data input?
-  // * Busy polling is never good ... we should eventually use an interrupt
-  //   driven mechanism.
-  //
-  //char rxChar;
-  //STATUS status = uart_rx_one_char((uint8_t *)&rxChar);
-  //if (status == OK) {
-  //  jshPushIOCharEvents(EV_SERIAL1, &rxChar, 1);
-  // }
-  //ESP_LOGD(tag,"<< jshIdle");  // Can't debug log as called too often.
+
 }
 
 // ESP32 chips don't have a serial number but they do have a MAC address
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
-  ESP_LOGD(tag,">> jshGetSerialNumber");
   assert(maxChars >= 6); // it's 32
   esp_wifi_get_mac(WIFI_IF_STA, data);
-  ESP_LOGD(tag,"<< jshGetSerialNumber %.2x%.2x%.2x%.2x%.2x%.2x",
-      data[0], data[1], data[2], data[3], data[4], data[5]);
   return 6;
 }
 
@@ -191,8 +177,6 @@ void jshInterruptOn()  {
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
   UNUSED(timeUntilWake);
-  //ESP_LOGD(tag,">> jshSleep");  // Can't debug log as called too often.
-  //ESP_LOGD(tag,"<< jshSleep");  // Can't debug log as called too often.
    return true;
 } // End of jshSleep
 
@@ -201,8 +185,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
  * Delay (blocking) for the supplied number of microseconds.
  */
 void jshDelayMicroseconds(int microsec) {
-  TickType_t ticks = (TickType_t)microsec / (1000 * portTICK_PERIOD_MS);
-  vTaskDelay(ticks);
+  ets_delay_us(microsec);
 } // End of jshDelayMicroseconds
 
 
@@ -259,7 +242,7 @@ void jshPinSetState(
 	pull_mode=GPIO_PULLUP_ONLY;
     break;
   default:
-    ESP_LOGE(tag, "jshPinSetState: Unexpected state: %d", state);
+    jsError( "jshPinSetState: Unexpected state: %d", state);
   return;
   }
   gpio_num_t gpioNum = pinToESP32Pin(pin);
@@ -306,17 +289,11 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
 
 
 JsVarFloat jshPinAnalog(Pin pin) {
-  //ESP_LOGD(tag,">> jshPinAnalog: pin=%d", pin);
-  //ESP_LOGD(tag, "Not implemented");
-  //ESP_LOGD(tag,"<< jshPinAnalog");
   return (JsVarFloat) readADC(pin) / 4096;
 }
 
 
 int jshPinAnalogFast(Pin pin) {
-  //ESP_LOGD(tag,">> jshPinAnalogFast: pin=%d", pin);
-  //ESP_LOGD(tag, "Not implemented");
-  //ESP_LOGD(tag,"<< jshPinAnalogFast");
   return readADC(pin) << 4;
 }
 
@@ -328,13 +305,17 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
     JsVarFloat value,
     JsVarFloat freq,
     JshAnalogOutputFlags flags) { // if freq<=0, the default is used
-  UNUSED(freq);
   UNUSED(flags);
-  value = (value * 256);
-  uint8_t val = value;
   if(pin == 25 || pin == 26){
-	writeDAC(pin,val);
+    value = (value * 256);
+    uint8_t val8 = value;
+	writeDAC(pin,val8);
   }
+  else{
+	value = (value * PWMTimerRange);
+	uint16_t val16 = value;
+	writePWM(pin,val16,(int) freq);
+  }	
   return 0;
 }
 
@@ -343,11 +324,19 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
  *
  */
 void jshSetOutputValue(JshPinFunction func, int value) {
-  UNUSED(func);
-  UNUSED(value);
-  ESP_LOGD(tag,">> JshPinFunction");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< JshPinFunction");
+  int pin;
+  if (JSH_PINFUNCTION_IS_DAC(func)) {
+	uint8_t val = (uint8_t)(value >> 8);
+	switch (func & JSH_MASK_INFO) {
+	  case JSH_DAC_CH1:  writeDAC(25,val); break;
+      case JSH_DAC_CH2:  writeDAC(26,val); break;
+    }
+  }
+  else{
+	pin = ((func >> JSH_SHIFT_INFO) << 4) + ((func >> JSH_SHIFT_TYPE) & 15);
+	value >> (16 - PWMTimerBit);
+	setPWM(pin,value);
+  }
 }
 
 
@@ -356,17 +345,13 @@ void jshSetOutputValue(JshPinFunction func, int value) {
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
   UNUSED(timeout);
-  ESP_LOGD(tag,">> jshEnableWatchDog");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshEnableWatchDog");
+  jsError(">> jshEnableWatchDog Not implemented,using taskwatchdog from RTOS");
 }
 
 
 // Kick the watchdog
 void jshKickWatchDog() {
-  ESP_LOGD(tag,">> jshKickWatchDog");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshKickWatchDog");
+  jsError(">> jshKickWatchDog Not implemented,using taskwatchdog from RTOS");
 }
 
 
@@ -389,10 +374,8 @@ void jshPinPulse(
     bool pulsePolarity,   //!< The value to be pulsed into the pin.
     JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
 ) {
-  UNUSED(pulseTime);
-  ESP_LOGD(tag,">> jshPinPulse: pin=%d, polarity=%d", pin, pulsePolarity);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshPinPulse");
+  int duration = (int)pulseTime * 1000; //from millisecs to microsecs
+  sendPulse(pin, pulsePolarity, duration);
 }
 
 
@@ -425,7 +408,7 @@ IOEventFlags jshPinWatch(
 	  }
 	  else{
 		if(gpio_intr_disable(gpioNum) == ESP_ERR_INVALID_ARG){     //disable interrupt
-			ESP_LOGE(tagGPIO,"*** jshPinWatch error");
+			jsError("*** jshPinWatch error");
 		}
 	  }
       return pin;
@@ -436,9 +419,15 @@ IOEventFlags jshPinWatch(
  *
  */
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
-  ESP_LOGD(tag,">> jshGetCurrentPinFunction: pin=%d", pin);
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshGetCurrentPinFunction");
+  if (jshIsPinValid(pin)) {
+    int i;
+    for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
+      JshPinFunction func = pinInfo[pin].functions[i];
+      if (JSH_PINFUNCTION_IS_TIMER(func) ||
+          JSH_PINFUNCTION_IS_DAC(func))
+        return func;
+    }
+  }
   return JSH_NOTHING;
 }
 
@@ -459,15 +448,10 @@ bool jshIsEventForPin(
 
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
-  UNUSED(device);
-  UNUSED(inf);
-  ESP_LOGD(tag,">> jshUSARTSetup");
-  ESP_LOGD(tag,"<< jshUSARTSetup");
+  initSerial(device,inf);
 }
 
 bool jshIsUSBSERIALConnected() {
-  ESP_LOGD(tag,">> jshIsUSBSERIALConnected");
-  ESP_LOGD(tag,"<< jshIsUSBSERIALConnected");
   return false; // "On non-USB boards this just returns false"
 }
 
@@ -478,247 +462,11 @@ bool jshIsUSBSERIALConnected() {
 void jshUSARTKick(
     IOEventFlags device //!< The device to be kicked.
 ) {
-    //ESP_LOGD(tag,">> jshUSARTKick");
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
-    uart_tx_one_char((uint8_t)c);
+	if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c); 
+    else writeSerial(device,(uint8_t)c);
     c = jshGetCharToTransmit(device);
-  }
-  //ESP_LOGD(tag,"<< jshUSARTKick");
-}
-
-/*
-https://hackadaycom.files.wordpress.com/2016/10/esp32_pinmap.png
-HSPI  2 //SPI bus normally mapped to pins 12 - 15, but can be matrixed to any pins
-15  HSPI SS
-14  HSPI SCK
-12  HSPI MISO
-13  HSPI MOSI
-VSPI  3 //SPI bus normally attached to pin:
-5   VSPI SS
-18  VSPI SCK
-19  VSPI MISO
-23  VSPI MOSI
-*/
-//===== SPI =====
-int getSPIFromDevice( IOEventFlags device	) {
-  switch(device) {
-  case EV_SPI1: return HSPI;
-  case EV_SPI2: return VSPI;
-  default: return -1;
-  }
-}
-  
-/**
- * Initialize the hardware SPI device.
- * On the ESP32, hardware SPI is implemented via a set of default pins defined
- * as follows:
- *
- *
- */
-void jshSPISetup(
-    IOEventFlags device, //!< The identity of the SPI device being initialized.
-    JshSPIInfo *inf      //!< Flags for the SPI device.
-) {
-  ESP_LOGD(tag,">> jshSPISetup device=%s, baudRate=%d, spiMode=%d, spiMSB=%d",
-      jshGetDeviceString(device),
-      inf->baudRate,
-      inf->spiMode,
-      inf->spiMSB);
-  spi_t *spi = NULL;
-  uint8_t dataMode = SPI_MODE0;
-  switch(inf->spiMode) {
-  case 0:
-    dataMode = SPI_MODE0;
-    break;
-  case 1:
-    dataMode = SPI_MODE1;
-    break;
-  case 2:
-    dataMode = SPI_MODE2;
-    break;
-  case 3:
-    dataMode = SPI_MODE3;
-    break;
-  }
-  uint8_t bitOrder;
-  if (inf->spiMSB == true) {
-    bitOrder = SPI_MSBFIRST;
-  } else {
-    bitOrder = SPI_LSBFIRST;
-  }
-  int which_spi=getSPIFromDevice(device);
-  if (which_spi == -1) {
-	ESP_LOGW(tag, "Unexpected device for SPI initialization: %d", device);
-	}
-  else {
-	int which_spi=getSPIFromDevice(device);
-	Pin sck;
-	Pin miso;
-	Pin mosi;
-	Pin ss; 
-	if ( which_spi == HSPI ) {
-	  sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 14;
-	  miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 12;
-	  mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 13;
-	  // Where do we get the SS pin?
-	  //ss = inf->pinSS != PIN_UNDEFINED ? inf->pinSS : 15;
-	  ss=15;
-	}
-	else {
-	  sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 5;
-	  miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 19;
-	  mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 23;
-	  //ss = inf->pinSS != PIN_UNDEFINED ? inf->pinSS : 18;
-	  ss=18;
-	}
-	spi=spiStartBus(which_spi, inf->baudRate, dataMode, bitOrder);  
-    spiAttachSCK(spi, pinToESP32Pin(sck));
-    spiAttachMISO(spi, pinToESP32Pin(miso));
-    spiAttachMOSI(spi, pinToESP32Pin(mosi));
-    spiAttachSS(spi, 0, pinToESP32Pin(ss));
-    spiEnableSSPins(spi, 1<<0);
-    spiSSEnable(spi);
-	_spi[which_spi]=spi;
-  }
-}
-
-
-/** Send data through the given SPI device (if data>=0), and return the result
- * of the previous send (or -1). If data<0, no data is sent and the function
- * waits for data to be returned */
-int jshSPISend(
-    IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
-    int data             //!< The data to be sent or an indication that no data is to be sent.
-) {
-  int which_spi =getSPIFromDevice(device);
-  if (which_spi == -1) {
-	return -1;
-  }
-  //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
-  int retData = (int)g_lastSPIRead;
-  if (data >=0) {
-    // Send 8 bits of data taken from "data" over the selected spi and store the returned
-    // data for subsequent retrieval.
-    spiTransferBits(_spi[which_spi], (uint32_t)data, &g_lastSPIRead, 8);
-  } else {
-    g_lastSPIRead = (uint32_t)-1;
-  }
-  return (int)retData;
-}
-
-
-/**
- * Send 16 bit data through the given SPI device.
- */
-void jshSPISend16(
-    IOEventFlags device, //!< Unknown
-    int data             //!< Unknown
-) {
-  int which_spi=getSPIFromDevice(device);  
-  spiWriteWord(_spi[which_spi], data);
-}
-
-
-/**
- * Set whether to send 16 bits or 8 over SPI.
- */
-void jshSPISet16(
-    IOEventFlags device, //!< Unknown
-    bool is16            //!< Unknown
-) {
-  UNUSED(device);
-  UNUSED(is16);
-  ESP_LOGD(tag,">> jshSPISet16");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshSPISet16");
-}
-
-
-/**
- * Wait until SPI send is finished.
- */
-void jshSPIWait(
-    IOEventFlags device //!< Unknown
-) {
-  UNUSED(device);
-  int which_spi =getSPIFromDevice(device);  
-  spiWaitReady(_spi[which_spi]);
-}
-
-
-/** Set whether to use the receive interrupt or not */
-void jshSPISetReceive(IOEventFlags device, bool isReceive) {
-  UNUSED(device);
-  UNUSED(isReceive);
-  ESP_LOGD(tag,">> jshSPISetReceive");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshSPISetReceive");
-}
-
-
-//===== I2C =====
-
-// Let's get this working with only one device
-i2c_t * i2c=NULL;
-
-/** Set-up I2C master for ESP32, default pins are SCL:21, SDA:22. Only device I2C1 is supported
- *  and only master mode. */
-void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
-  if (device != EV_I2C1) {
-    jsError("Only I2C1 supported"); 
-	return;
-  }
-  Pin scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 21;
-  Pin sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 22;
-
-  //jshPinSetState(scl, JSHPINSTATE_I2C);
-  //jshPinSetState(sda, JSHPINSTATE_I2C);
-   
-  int num=1; // Master mode only 0 is slave mode..
- 
-  i2c_err_t err;
-  i2c = i2cInit(num, 0, false);
-  //ESP_LOGE(tag, "jshI2CSetup: Frequency: %d", info->bitrate);
-  err=i2cSetFrequency(i2c, (uint32_t)info->bitrate);
-  if ( err != I2C_ERROR_OK ) {
-    ESP_LOGE(tag, "jshI2CSetup: i2cSetFrequency error: %d", err);
-	return;
-  }
-  err=i2cAttachSDA(i2c, pinToESP32Pin(sda));
-  if ( err != I2C_ERROR_OK ) {
-    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSDA error: %d", err);
-	return;
-  }  
-  err=i2cAttachSCL(i2c, pinToESP32Pin(scl));
-  if ( err != I2C_ERROR_OK ) {
-    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSCL error: %d", err);
-	return;
-  }
-}
-
-void jshI2CWrite(IOEventFlags device,
-  unsigned char address,
-  int nBytes,
-  const unsigned char *data,
-  bool sendStop) {
-// i2cWrite(i2c_t * i2c, uint16_t address, bool addr_10bit, uint8_t * data, uint8_t len, bool sendStop);
-  i2c_err_t err=i2cWrite(i2c,address,false,data,nBytes,sendStop);
-  if ( err != I2C_ERROR_OK ) {
-    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSCL error: %d", err);
-	return;
-  }
-}
-
-void jshI2CRead(IOEventFlags device,
-  unsigned char address,
-  int nBytes,
-  unsigned char *data,
-  bool sendStop) {
-  i2c_err_t err=i2cRead(i2c,address,false,data,nBytes,sendStop);
-  if ( err != I2C_ERROR_OK ) {
-    ESP_LOGE(tag, "jshI2CSetup: i2cAttachSCL error: %d", err);
-	return;
   }
 }
 
@@ -760,35 +508,40 @@ void jshSetSystemTime(JsSysTime newTime) {
   tz.tz_minuteswest=0;
   tz.tz_dsttime=0;
   settimeofday(&tm, &tz);
-  ESP_LOGD(tag,"<< jshSetSystemTime");
 }
 
 void jshUtilTimerDisable() {
-  ESP_LOGD(tag,">> jshUtilTimerDisable");
-  ESP_LOGD(tag,"<< jshUtilTimerDisable");
+  disableTimer(0);
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-  UNUSED(period);
-  ESP_LOGD(tag,">> jshUtilTimerStart");
-  ESP_LOGD(tag,"<< jshUtilTimerStart");
+  startTimer(0,(uint64_t) period);
 }
 
 void jshUtilTimerReschedule(JsSysTime period) {
-  ESP_LOGD(tag,">> jshUtilTimerReschedule");
-  jshUtilTimerDisable();
-  jshUtilTimerStart(period);
-  ESP_LOGD(tag,"<< jshUtilTimerReschedule");
+  rescheduleTimer(0,(uint64_t) period);
 }
 
 //===== Miscellaneous =====
 
+static uint64_t DEVICE_INITIALISED_FLAGS = 0L;
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  UNUSED(device);
-  ESP_LOGD(tag,">> jshIsDeviceInitialised");
-  ESP_LOGD(tag,"<< jshIsDeviceInitialised");
- return 0;
+  uint64_t mask = 1ULL << (int)device;
+  return (DEVICE_INITIALISED_FLAGS & mask) != 0L;
+
+//  UNUSED(device);
+//  jsError(">> jshIsDeviceInitialised not implemented");
+// return 0;
 } // End of jshIsDeviceInitialised
+
+void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
+  uint64_t mask = 1ULL << (int)device;
+  if (isInit) {
+    DEVICE_INITIALISED_FLAGS |= mask;
+  } else {
+    DEVICE_INITIALISED_FLAGS &= ~mask;
+  }
+}
 
 // the esp32 temperature sensor - undocumented library function call. Unsure of values returned.
 JsVarFloat jshReadTemperature() {
@@ -798,15 +551,11 @@ JsVarFloat jshReadTemperature() {
 
 // the esp8266 can read the VRef but then there's no analog input, so we don't support this
 JsVarFloat jshReadVRef() {
-  ESP_LOGD(tag,">> jshReadVRef");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshReadVRef");
+  jsError(">> jshReadVRef Not implemented");
   return NAN;
 }
 
 unsigned int jshGetRandomNumber() {
-  ESP_LOGD(tag,">> jshGetRandomNumber");
-  ESP_LOGD(tag,"<< jshGetRandomNumber");
   return (unsigned int)rand();
 }
 
@@ -902,18 +651,16 @@ void jshFlashErasePage(
 
 unsigned int jshSetSystemClock(JsVar *options) {
   UNUSED(options);
-  ESP_LOGD(tag,">> jshSetSystemClock");
-  ESP_LOGD(tag, "Not implemented");
-  ESP_LOGD(tag,"<< jshSetSystemClock");
+  jsError(">> jshSetSystemClock Not implemented");
   return 0;
 }
 
 /**
  * Convert an Espruino pin id to a native ESP32 pin id.
  */
-static gpio_num_t pinToESP32Pin(Pin pin) {
+gpio_num_t pinToESP32Pin(Pin pin) {
   if ( pin < 40 ) 
 	return pin + GPIO_NUM_0;
-  ESP_LOGE(tag, "pinToESP32Pin: Unknown pin: %d", pin);
+  jsError( "pinToESP32Pin: Unknown pin: %d", pin);
   return -1;
 }

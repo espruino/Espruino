@@ -79,6 +79,15 @@ FLASH_SIZE = board.chip["flash"]*1024;
 if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1204:
   RAM_SIZE = 128*1024
 
+# on L4, the RAM is divided in 2 parts : 
+#   96k at 0x20000000
+#   32k at 0x10000000
+# Today, the 32k part won't be used. In the future, it can be
+# used for example for the stack. In this case, need to : 
+# _estack = 0x10008000; 
+# and add the RAM in MEMORY table.
+if board.chip["family"]=="STM32L4" and RAM_SIZE > 96*1204:
+  RAM_SIZE = 96*1024
 
 if IS_BOOTLOADER:
   FLASH_SIZE = BOOTLOADER_SIZE

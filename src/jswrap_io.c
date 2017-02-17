@@ -292,7 +292,7 @@ void jswrap_io_digitalWrite(
   ],
   "return"   : ["int","The digital Value of the Pin"]
 }
-Get the digital value of the given pin. 
+Get the digital value of the given pin.
 
  **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"input"`
 
@@ -334,11 +334,13 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   "generate" : "jswrap_io_pinMode",
   "params"   : [
     ["pin", "pin", "The pin to set pin mode for"],
-    ["mode", "JsVar", "The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."]
+    ["mode", "JsVar", "The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument or use 'auto' if you want to revert to automatic pin mode setting."],
+    ["automatic", "bool", "Optional, default is false. If true, subsequent commands will automatically change the state (see notes below)"]
   ]
 }
 Set the mode of the given pin.
 
+ * `auto`/`undefined` - Don't change state, but allow `digitalWrite`/etc to automatically change state as appropriate
  * `analog` - Analog input
  * `input` - Digital input
  * `input_pullup` - Digital input with internal ~40k pull-up resistor
@@ -347,14 +349,17 @@ Set the mode of the given pin.
  * `opendrain` - Digital output that only ever pulls down to 0v. Sending a logical `1` leaves the pin open circuit
  * `opendrain_pullup` - Digital output that pulls down to 0v. Sending a logical `1` enables internal ~40k pull-up resistor
  * `af_output` - Digital output from built-in peripheral
- * `af_opendrain` - Digital output from built-in peripheral that only ever pulls down to 0v.
- * Sending a logical `1` leaves the pin open circuit
+ * `af_opendrain` - Digital output from built-in peripheral that only ever pulls down to 0v. Sending a logical `1` leaves the pin open circuit
 
- **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically *unless* `pinMode` has been called first.  If you want `digitalRead`/etc to set the pin mode automatically after you have called `pinMode`, simply call it again with no mode argument: `pinMode(pin)`
+ **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically *unless* `pinMode` has been called first.
+If you want `digitalRead`/etc to set the pin mode automatically after you have called `pinMode`, simply call it again
+with no mode argument (`pinMode(pin)`), `auto` as the argument (`pinMode(pin, "auto")`), or with the 3rd 'automatic'
+argument set to true (`pinMode(pin, "output", true)`).
 */
 void jswrap_io_pinMode(
-    Pin pin,    //!< The pin to set.
-    JsVar *mode //!< The new mode of the pin.
+    Pin pin,
+    JsVar *mode,
+    bool automatic
   ) {
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Invalid pin");
@@ -373,11 +378,11 @@ void jswrap_io_pinMode(
     else if (jsvIsStringEqual(mode, "af_opendrain"))   m = JSHPINSTATE_AF_OUT_OPENDRAIN;
   }
   if (m != JSHPINSTATE_UNDEFINED) {
-    jshSetPinStateIsManual(pin, true);
+    jshSetPinStateIsManual(pin, !automatic);
     jshPinSetState(pin, m);
   } else {
     jshSetPinStateIsManual(pin, false);
-    if (!jsvIsUndefined(mode)) {
+    if (!jsvIsUndefined(mode) && !jsvIsStringEqual(mode,"auto")) {
       jsExceptionHere(JSET_ERROR, "Unknown pin mode");
     }
   }
@@ -580,13 +585,13 @@ The function may also take an argument, which is an object of type `{state:bool,
  * `time` is the time in seconds at which the pin changed state
  * `lastTime` is the time in seconds at which the **pin last changed state**. When using `edge:'rising'` or `edge:'falling'`, this is not the same as when the function was last called.
 
-For instance, if you want to measure the length of a positive pulse you could use `setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });`. 
+For instance, if you want to measure the length of a positive pulse you could use `setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });`.
 This will only be called on the falling edge of the pulse, but will be able to measure the width of the pulse because `e.lastTime` is the time of the rising edge.
 
 Internally, an interrupt writes the time of the pin's state change into a queue, and the function
-supplied to `setWatch` is executed only from the main message loop. However, if the callback is a 
-native function `void (bool state)` then you can add `irq:true` to options, which will cause the 
-function to be called from within the IRQ. When doing this, interrupts will happen on both edges 
+supplied to `setWatch` is executed only from the main message loop. However, if the callback is a
+native function `void (bool state)` then you can add `irq:true` to options, which will cause the
+function to be called from within the IRQ. When doing this, interrupts will happen on both edges
 and there will be no debouncing.
 
 **Note:** The STM32 chip (used in the [Espruino Board](/EspruinoBoard) and [Pico](/Pico)) cannot
@@ -732,5 +737,3 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
     }
   }
 }
-
-

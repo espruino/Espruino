@@ -1,5 +1,5 @@
 /*
- * This file is designed to support FREERTOS functions in Espruino,
+ * This file is designed to support UART functions in Espruino,
  * a JavaScript interpreter for Microcontrollers designed by Gordon Williams
  *
  * Copyright (C) 2016 by Juergen Marsch 
@@ -14,8 +14,14 @@
  * Contains ESP32 board specific functions.
  * ----------------------------------------------------------------------------
  */
+#include "jshardware.h"
 
 #define uart_console 0
+#define uart_Serial2 1
+#define uart_Serial3 2
 
 void initConsole();
+void initSerial(IOEventFlags device,JshUSARTInfo *inf);
+void writeSerial(IOEventFlags device,uint8_t c); 
 void consoleToEspruino();
+void serialToEspruino();
