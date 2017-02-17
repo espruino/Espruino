@@ -15,6 +15,7 @@
  */
 #include "jswrap_net.h"
 #include "jsvariterator.h"
+#include "jsinteractive.h"
 #include "jsparse.h"
 #include "socketserver.h"
 #include "network.h"
@@ -501,12 +502,20 @@ The 'message' event is called when a datagram message is received. If a handler 
   "type" : "method",
   "class" : "dgramSocket",
   "name" : "bind",
-  "generate_full" : "jswrap_net_server_listen(parent, port, ST_UDP)",
+  "generate" : "jswrap_dgramSocket_bind",
   "params" : [
-    ["port","int32","The port to bind at"]
+    ["port","int32","The port to bind at"],
+    ["callback","JsVar","A function(res) that will be called when the socket is bound. You can then call `res.on('message', function(message, info) { ... })` and `res.on('close', function() { ... })` to deal with the response."]
   ]
 }
 */
+JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callback) {
+  jsvAddNamedChild(parent, callback, "on:bind");
+  jswrap_net_server_listen(parent, port, ST_UDP);
+  jsiQueueObjectCallbacks(parent, "on:bind", &parent, 1);
+  return parent;
+}
+
 /*JSON{
   "type" : "method",
   "class" : "dgramSocket",
