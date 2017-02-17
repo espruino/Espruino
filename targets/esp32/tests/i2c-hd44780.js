@@ -16,7 +16,7 @@ function detect(i2c,first,last) {
       last = last | 0x77;
       var idsOnBus = Array();
       for (var id = first; id < last; id++) {
-          if ( ! isDevice(i2c,id) ) {
+          if ( isDeviceOnBus(i2c,id) != -1)
               idsOnBus.push(id);
           }
       }
