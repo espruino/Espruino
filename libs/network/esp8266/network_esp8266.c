@@ -135,8 +135,12 @@ struct socketData {
   PktBuf   *rxBufQ;           //!< Queue of received buffers
 
   short    errorCode;         //!< Error code, 0=no error
+
   uint32_t        host;
   unsigned short  port;
+
+  uint32_t  multicastGrpIp;
+  uint32_t  multicastIp;
 };
 
 
@@ -1021,7 +1025,8 @@ int net_ESP8266_BOARD_createSocket(
     JsNetwork *net,     //!< The Network we are going to use to create the socket.
     uint32_t ipAddress, //!< The address of the partner of the socket or 0 if we are to be a server.
     unsigned short port,//!< The port number that the partner is listening upon.
-    SocketType socketType
+    SocketType socketType,
+    JsVar *options
 ) {
   // allocate a socket data structure
   struct socketData *pSocketData = allocateNewSocket();
@@ -1059,6 +1064,25 @@ int net_ESP8266_BOARD_createSocket(
   tcp->remote_port    = port;
   tcp->local_port     = espconn_port(); // using 0 doesn't work
   pEspconn->reverse   = pSocketData;
+
+  // multicast support
+  // FIXME: perhaps extend the JsNetwork with addmembership/removemembership instead of using options
+  JsVar *mgrpVar = jsvObjectGetChild(options, "multicastGroup", 0);
+  if (mgrpVar) {
+      char ipStr[18];
+
+      jsvGetString(mgrpVar, ipStr, sizeof(ipStr));
+      jsvUnLock(mgrpVar);
+      uint32_t grpip = networkParseIPAddress(ipStr);
+
+      JsVar *ipVar = jsvObjectGetChild(options, "multicastIp", 0);
+      jsvGetString(ipVar, ipStr, sizeof(ipStr));
+      jsvUnLock(ipVar);
+      uint32_t ip = networkParseIPAddress(ipStr);
+
+      pSocketData->multicastGrpIp = grpip;
+      pSocketData->multicastIp = ip;
+  }
 
   if (ipAddress == (uint32_t)-1) {
     // We need DNS resolution, kick it off
@@ -1155,6 +1179,12 @@ static int connectSocket(
         releaseSocket(pSocketData);
         return rc;
       }
+    }
+
+    if (pSocketData->multicastGrpIp) {
+      // multicast support
+      espconn_igmp_join((ip_addr_t *)&pSocketData->multicastIp,
+                        (ip_addr_t *)&pSocketData->multicastGrpIp);
     }
 
     DBG("%s: listening socket %d on port %d\n", DBG_LIB,

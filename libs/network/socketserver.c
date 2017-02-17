@@ -737,8 +737,9 @@ void serverListen(JsNetwork *net, JsVar *server, int port, SocketType socketType
   if (!arr) return; // out of memory
 
   jsvObjectSetChildAndUnLock(server, HTTP_NAME_PORT, jsvNewFromInteger(port));
+  JsVar *options = jsvObjectGetChild(server, HTTP_NAME_OPTIONS_VAR, false);
 
-  int sckt = netCreateSocket(net, 0/*server*/, (unsigned short)port, socketType, 0 /*options*/);
+  int sckt = netCreateSocket(net, 0/*server*/, (unsigned short)port, socketType, options);
   if (sckt<0) {
     jsExceptionHere(JSET_INTERNALERROR, "Unable to create socket\n");
     jsvObjectSetChildAndUnLock(server, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
@@ -747,7 +748,7 @@ void serverListen(JsNetwork *net, JsVar *server, int port, SocketType socketType
     // add to list of servers
     jsvArrayPush(arr, server);
   }
-  jsvUnLock(arr);
+  jsvUnLock2(options, arr);
 }
 
 void serverClose(JsNetwork *net, JsVar *server) {

@@ -508,6 +508,27 @@ The 'message' event is called when a datagram message is received. If a handler 
 }
 */
 /*JSON{
+  "type" : "method",
+  "class" : "dgramSocket",
+  "name" : "addMembership",
+  "generate" : "jswrap_dgram_addMembership",
+  "params" : [
+    ["group","JsVar","A string containing the group ip to join"],
+    ["ip","JsVar","A string containing the ip to join with"]
+  ]
+}
+*/
+void jswrap_dgram_addMembership(JsVar *parent, JsVar *group, JsVar *ip) {
+  // FIXME: perhaps extend the JsNetwork with addmembership/removemembership instead of using options
+  JsVar *options = jsvObjectGetChild(parent, "opt" /* socketserver.c:HTTP_NAME_OPTIONS_VAR */, 0);
+  if (options) {
+      jsvObjectSetChild(options, "multicastGroup", group);
+      jsvObjectSetChild(options, "multicastIp", ip);
+      jsvUnLock(options);
+  }
+}
+
+/*JSON{
   "type" : "event",
   "class" : "dgramSocket",
   "name" : "close",

@@ -64,7 +64,7 @@ bool net_linux_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType) {
+int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType, JsVar *options) {
   NOT_USED(net);
   int ippProto = socketType & ST_UDP ? IPPROTO_UDP : IPPROTO_TCP;
   int scktType = socketType & ST_UDP ? SOCK_DGRAM : SOCK_STREAM;
@@ -124,6 +124,11 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, S
     int optval = 1;
     if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
       jsWarn("setsockopt(SO_REUSADDR) failed\n");
+#ifdef SO_REUSEPORT
+    if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
+      jsWarn("setsockopt(SO_REUSPORT) failed\n");
+#endif
+
 
     int nret;
     sockaddr_in serverInfo;
@@ -137,6 +142,29 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, S
       jsError("Socket bind failed");
       closesocket(sckt);
       return -1;
+    }
+
+    // multicast support
+    // FIXME: perhaps extend the JsNetwork with addmembership/removemembership instead of using options
+    JsVar *mgrpVar = jsvObjectGetChild(options, "multicastGroup", 0);
+    if (mgrpVar) {
+        char ipStr[18];
+
+        uint32_t grpip;
+        jsvGetString(mgrpVar, ipStr, sizeof(ipStr));
+        jsvUnLock(mgrpVar);
+        net_linux_gethostbyname(net, ipStr, &grpip);
+
+        JsVar *ipVar = jsvObjectGetChild(options, "multicastIp", 0);
+        jsvGetString(ipVar, ipStr, sizeof(ipStr));
+        jsvUnLock(ipVar);
+        uint32_t ip;
+        net_linux_gethostbyname(net, ipStr, &ip);
+
+        struct ip_mreq mreq;
+        mreq.imr_multiaddr = *(struct in_addr *)&grpip;
+        mreq.imr_interface = *(struct in_addr *)&ip;
+        setsockopt (sckt, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
     }
 
     if (scktType == SOCK_STREAM) { // only for TCP
@@ -209,7 +237,7 @@ int net_linux_recv(JsNetwork *net, int sckt, void *buf, size_t len, uint32_t *ho
     if (num==0) num=-1; // select says data, but recv says 0 means connection is closed
     *host = fromAddr.sin_addr.s_addr;
     *port = ntohs(fromAddr.sin_port);
-    jsWarn("Recv %d %x:%d", len, *host, *port);
+    jsWarn("Recv %d %x:%d", num, *host, *port);
   }
 
   return num;
