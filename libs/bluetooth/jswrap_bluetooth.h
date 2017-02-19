@@ -23,6 +23,7 @@ typedef enum {
   BLETASK_CHARACTERISTIC,  ///< Find characteristics
   BLETASK_CHARACTERISTIC_WRITE, ///< Write to a characteristic
   BLETASK_CHARACTERISTIC_READ, ///< Read from a characteristic
+  BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, ///< Discover descriptors and start notifications
   BLETASK_CHARACTERISTIC_NOTIFY, ///< Setting whether notifications are on or off
   BLETASK_CENTRAL_END = BLETASK_CHARACTERISTIC_NOTIFY // ============= End of central tasks
 } BleTask;
