@@ -582,9 +582,10 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
         break;
       }
-      case BLE_GATTC_EVT_DESC_DISC_RSP: {
+      case BLE_GATTC_EVT_DESC_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY)) {
         // trigger this with sd_ble_gattc_descriptors_discover(conn_handle, &handle_range);
-       /* ble_gattc_evt_desc_disc_rsp_t * p_desc_disc_rsp_evt = &p_ble_evt->evt.gattc_evt.params.desc_disc_rsp;
+        uint16_t cccd_handle = 0;
+        ble_gattc_evt_desc_disc_rsp_t * p_desc_disc_rsp_evt = &p_ble_evt->evt.gattc_evt.params.desc_disc_rsp;
         if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
           // The descriptor was found at the peer.
           // If the descriptor was a CCCD, then the cccd_handle needs to be populated.
@@ -593,10 +594,22 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           for (i = 0; i < p_desc_disc_rsp_evt->count; i++) {
             if (p_desc_disc_rsp_evt->descs[i].uuid.uuid ==
                 BLE_UUID_DESCRIPTOR_CLIENT_CHAR_CONFIG) {
-                  cccd_handle = p_desc_disc_rsp_evt->descs[i].handle;
+              cccd_handle = p_desc_disc_rsp_evt->descs[i].handle;
             }
           }
-        }*/
+        }
+        if (cccd_handle) {
+          if(m_characteristic_desc_discover)
+            jsvObjectSetChildAndUnLock(m_characteristic_desc_discover ,"handle_cccd", jsvNewFromInteger(cccd_handle));
+            
+          // FIXME: we just switch task here - this is not nice...
+          bleSwitchTask(BLETASK_CHARACTERISTIC_NOTIFY);
+          jsble_central_characteristicNotify(m_characteristic_desc_discover, true);
+          m_characteristic_desc_discover = NULL;
+        }
+        else {
+          bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, jsvNewFromString("CCCD Handle not found"));
+        }
         break;
       }
 
