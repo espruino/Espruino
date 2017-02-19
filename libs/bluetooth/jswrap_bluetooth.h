@@ -39,6 +39,8 @@ void bleCompleteTaskSuccess(BleTask task, JsVar *data);
 void bleCompleteTaskSuccessAndUnLock(BleTask task, JsVar *data);
 void bleCompleteTaskFail(BleTask task, JsVar *data);
 void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data);
+void bleSwitchTask(BleTask task);
+
 // ------------------------------------------------------------------------------
 void jswrap_nrf_init();
 bool jswrap_nrf_idle();

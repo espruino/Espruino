@@ -101,6 +101,9 @@ void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data) {
   bleCompleteTask(task, false, data);
   jsvUnLock(data);
 }
+void bleSwitchTask(BleTask task) {
+  bleTask = task;
+}
 
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
