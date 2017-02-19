@@ -1955,7 +1955,7 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
     "class" : "BluetoothRemoteGATTCharacteristic",
     "name" : "stopNotifications",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_stopNotifications",
-    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when notifications have been added" ]
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when notifications have been removed" ]
 }
 **Note:** This is only available on some devices
 */
