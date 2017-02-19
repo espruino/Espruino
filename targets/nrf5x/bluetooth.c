@@ -83,6 +83,7 @@ static bool                             m_in_boot_mode = false;
 uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
 uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
+JsVar                           *m_characteristic_desc_discover = NULL; /**< Reference to characeristic during descriptor discovery */
 #endif
 #ifdef USE_NFC
 bool nfcEnabled = false;
@@ -1483,6 +1484,26 @@ void jsble_central_characteristicRead(JsVar *characteristic) {
   err_code = sd_ble_gattc_read(m_central_conn_handle, handle, 0/*offset*/);
   if (jsble_check_error(err_code))
     bleCompleteTaskFail(BLETASK_CHARACTERISTIC_READ, 0);
+}
+
+void jsble_central_characteristicDescDiscover(JsVar *characteristic) {
+  if (!jsble_has_central_connection())
+    return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, jsvNewFromString("Not connected"));
+
+  // start discovery for our single handle only
+  uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+
+  ble_gattc_handle_range_t range;
+  range.start_handle = handle;
+  range.end_handle = handle + 1;
+  
+  m_characteristic_desc_discover = characteristic;
+
+  uint32_t              err_code;
+  err_code = sd_ble_gattc_descriptors_discover(m_central_conn_handle, &range);
+  if (jsble_check_error(err_code)) {
+    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, 0);
+  }
 }
 
 void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
