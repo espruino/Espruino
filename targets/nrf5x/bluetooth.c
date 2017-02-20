@@ -83,7 +83,6 @@ static bool                             m_in_boot_mode = false;
 uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
 uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
-JsVar                           *m_characteristic_desc_discover = NULL; /**< Reference to characeristic during descriptor discovery */
 #endif
 #ifdef USE_NFC
 bool nfcEnabled = false;
@@ -599,13 +598,12 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           }
         }
         if (cccd_handle) {
-          if(m_characteristic_desc_discover)
-            jsvObjectSetChildAndUnLock(m_characteristic_desc_discover ,"handle_cccd", jsvNewFromInteger(cccd_handle));
+          if(bleTaskInfo)
+            jsvObjectSetChildAndUnLock(bleTaskInfo, "handle_cccd", jsvNewFromInteger(cccd_handle));
             
           // FIXME: we just switch task here - this is not nice...
           bleSwitchTask(BLETASK_CHARACTERISTIC_NOTIFY);
-          jsble_central_characteristicNotify(m_characteristic_desc_discover, true);
-          m_characteristic_desc_discover = NULL;
+          jsble_central_characteristicNotify(bleTaskInfo, true);
         }
         else {
           bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, jsvNewFromString("CCCD Handle not found"));
@@ -1510,8 +1508,6 @@ void jsble_central_characteristicDescDiscover(JsVar *characteristic) {
   range.start_handle = handle;
   range.end_handle = handle + 1;
   
-  m_characteristic_desc_discover = characteristic;
-
   uint32_t              err_code;
   err_code = sd_ble_gattc_descriptors_discover(m_central_conn_handle, &range);
   if (jsble_check_error(err_code)) {
@@ -1524,7 +1520,6 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
     return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("Not connected"));
 
   uint16_t cccd_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_cccd", 0));
-  // FIXME: we need the cccd handle to be populated for this to work
 
   uint8_t buf[BLE_CCCD_VALUE_LEN];
   buf[0] = enable ? BLE_GATT_HVX_NOTIFICATION : 0;

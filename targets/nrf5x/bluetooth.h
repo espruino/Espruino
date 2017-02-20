@@ -61,7 +61,6 @@ extern uint16_t                         m_conn_handle;    /**< Handle of the cur
 #if CENTRAL_LINK_COUNT>0
 extern uint16_t                         m_central_conn_handle; /**< Handle for central mode connection */
 
-extern JsVar *m_characteristic_desc_discover; /**< Reference to characeristic during descriptor discovery */
 #endif
 
 /** Initialise the BLE stack */

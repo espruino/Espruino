@@ -1946,7 +1946,7 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
   // Check for existing cccd_handle 
   uint16_t cccd = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic,"handle_cccd", 0));
   if ( !cccd ) {
-    if (!bleNewTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, 0))
+    if (!bleNewTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, characteristic))
       return 0;
     promise = jsvLockAgainSafe(blePromise);
     jsble_central_characteristicDescDiscover(characteristic);
