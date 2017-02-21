@@ -89,22 +89,22 @@ void IRAM_ATTR gpio_intr_handler(void* arg){
     g_pinState[gpio_num] = 0;
     if(gpio_num < 32) {
       if(gpio_intr_status & BIT(gpio_num)) { //gpio0-gpio31
-		exti = pinToEV_EXTI(gpio_num);
-		jshPushIOWatchEvent(exti);
+         exti = pinToEV_EXTI(gpio_num);
+         jshPushIOWatchEvent(exti);
       }
     } else {
       if(gpio_intr_status_h & BIT(gpio_num - 32)) {
-		exti = pinToEV_EXTI(gpio_num);
-		jshPushIOWatchEvent(exti);
+        exti = pinToEV_EXTI(gpio_num);
+        jshPushIOWatchEvent(exti);
       }
     }
   } while(++gpio_num < GPIO_PIN_COUNT);
 }
 
 void jshPinSetStateRange( Pin start, Pin end, JshPinState state ) {
-	for ( Pin p=start; p<=end; p++ ) {
-		jshPinSetState(p, state);
-	}
+    for ( Pin p=start; p<=end; p++ ) {
+        jshPinSetState(p, state);
+    }
 }
 
 void jshPinDefaultPullup() {
@@ -145,9 +145,9 @@ void jshInit() {
  */
 void jshReset() {
     jshResetDevices();
-	jshPinDefaultPullup() ;
-	jsWarn("jshReset(): To implement - reset of i2c and SPI\n");
-	jsWarn(">> jshReset()\n");
+    jshPinDefaultPullup() ;
+    jsWarn("jshReset(): To implement - reset of i2c and SPI\n");
+    jsWarn(">> jshReset()\n");
 }
 
 /**
@@ -178,7 +178,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 //Mux to protect the JshInterrupt status
 //static portMUX_TYPE xJshInterrupt = portMUX_INITIALIZER_UNLOCKED;
 void jshInterruptOff() { 
-	//xTaskResumeAll();
+    //xTaskResumeAll();
   //taskEXIT_CRITICAL(&xJshInterrupt);
   taskDISABLE_INTERRUPTS();
 }
@@ -242,18 +242,18 @@ void jshPinSetState(
     break;
   case JSHPINSTATE_GPIO_IN_PULLUP:
     mode = GPIO_MODE_INPUT;
-	pull_mode=GPIO_PULLUP_ONLY;	
+    pull_mode=GPIO_PULLUP_ONLY;
     break;
   case JSHPINSTATE_GPIO_IN_PULLDOWN:
     mode = GPIO_MODE_INPUT;
-	pull_mode=GPIO_PULLDOWN_ONLY;	
+    pull_mode=GPIO_PULLDOWN_ONLY;
     break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
-    mode = GPIO_MODE_OUTPUT_OD | GPIO_MODE_OUTPUT;
+    mode = GPIO_MODE_OUTPUT_OD;
     break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
-    mode = GPIO_MODE_OUTPUT_OD | GPIO_MODE_OUTPUT;
-	pull_mode=GPIO_PULLUP_ONLY;
+    mode = GPIO_MODE_OUTPUT_OD;
+    pull_mode=GPIO_PULLUP_ONLY;
     break;
   default:
     jsError( "jshPinSetState: Unexpected state: %d", state);
@@ -323,13 +323,13 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
   if(pin == 25 || pin == 26){
     value = (value * 256);
     uint8_t val8 = value;
-	writeDAC(pin,val8);
+    writeDAC(pin,val8);
   }
   else{
-	value = (value * PWMTimerRange);
-	uint16_t val16 = value;
-	writePWM(pin,val16,(int) freq);
-  }	
+    value = (value * PWMTimerRange);
+    uint16_t val16 = value;
+    writePWM(pin,val16,(int) freq);
+  }
   return 0;
 }
 
@@ -340,16 +340,16 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
 void jshSetOutputValue(JshPinFunction func, int value) {
   int pin;
   if (JSH_PINFUNCTION_IS_DAC(func)) {
-	uint8_t val = (uint8_t)(value >> 8);
-	switch (func & JSH_MASK_INFO) {
-	  case JSH_DAC_CH1:  writeDAC(25,val); break;
+    uint8_t val = (uint8_t)(value >> 8);
+    switch (func & JSH_MASK_INFO) {
+      case JSH_DAC_CH1:  writeDAC(25,val); break;
       case JSH_DAC_CH2:  writeDAC(26,val); break;
     }
   }
   else{
-	pin = ((func >> JSH_SHIFT_INFO) << 4) + ((func >> JSH_SHIFT_TYPE) & 15);
-	value >> (16 - PWMTimerBit);
-	setPWM(pin,value);
+    pin = ((func >> JSH_SHIFT_INFO) << 4) + ((func >> JSH_SHIFT_TYPE) & 15);
+    value >> (16 - PWMTimerBit);
+    setPWM(pin,value);
   }
 }
 
@@ -414,17 +414,17 @@ IOEventFlags jshPinWatch(
     bool shouldWatch //!< True for watching and false for unwatching.
   ) {
       gpio_num_t gpioNum = pinToESP32Pin(pin);
-	  if(shouldWatch){
-		gpio_set_intr_type(gpioNum,GPIO_INTR_ANYEDGE);             //set posedge interrupt
-		gpio_set_direction(gpioNum,GPIO_MODE_INPUT);               //set as input
-		gpio_set_pull_mode(gpioNum,GPIO_PULLUP_ONLY);              //enable pull-up mode
-		gpio_intr_enable(gpioNum);                                 //enable interrupt
-	  }
-	  else{
-		if(gpio_intr_disable(gpioNum) == ESP_ERR_INVALID_ARG){     //disable interrupt
-			jsError("*** jshPinWatch error");
-		}
-	  }
+      if(shouldWatch){
+        gpio_set_intr_type(gpioNum,GPIO_INTR_ANYEDGE);             //set posedge interrupt
+        gpio_set_direction(gpioNum,GPIO_MODE_INPUT);               //set as input
+        gpio_set_pull_mode(gpioNum,GPIO_PULLUP_ONLY);              //enable pull-up mode
+        gpio_intr_enable(gpioNum);                                 //enable interrupt
+      }
+      else{
+        if(gpio_intr_disable(gpioNum) == ESP_ERR_INVALID_ARG){     //disable interrupt
+            jsError("*** jshPinWatch error");
+        }
+      }
       return pin;
 }
 
@@ -478,7 +478,7 @@ void jshUSARTKick(
 ) {
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
-	if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c); 
+    if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c); 
     else writeSerial(device,(uint8_t)c);
     c = jshGetCharToTransmit(device);
   }
@@ -599,7 +599,7 @@ void jshFlashRead(
   if(len == 1){ // Can't read a single byte using the API, so read 4 and select the byte requested
     uint word;
     spi_flash_read(addr & 0xfffffffc,&word,4);
-	*(uint8_t *)buf = (word >> ((addr & 3) << 3 )) & 255;
+    *(uint8_t *)buf = (word >> ((addr & 3) << 3 )) & 255;
   }
   else spi_flash_read(addr, buf, len);
 }
@@ -674,7 +674,7 @@ unsigned int jshSetSystemClock(JsVar *options) {
  */
 gpio_num_t pinToESP32Pin(Pin pin) {
   if ( pin < 40 ) 
-	return pin + GPIO_NUM_0;
+    return pin + GPIO_NUM_0;
   jsError( "pinToESP32Pin: Unknown pin: %d", pin);
   return -1;
 }
