@@ -86,6 +86,7 @@ void IRAM_ATTR gpio_intr_handler(void* arg){
   SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, gpio_intr_status);    //Clear intr for gpio0-gpio31
   SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, gpio_intr_status_h); //Clear intr for gpio32-39
   do {
+    g_pinState[gpio_num] = 0;
     if(gpio_num < 32) {
       if(gpio_intr_status & BIT(gpio_num)) { //gpio0-gpio31
 		exti = pinToEV_EXTI(gpio_num);
@@ -98,6 +99,23 @@ void IRAM_ATTR gpio_intr_handler(void* arg){
       }
     }
   } while(++gpio_num < GPIO_PIN_COUNT);
+}
+
+void jshPinSetStateRange( Pin start, Pin end, JshPinState state ) {
+	for ( Pin p=start; p<=end; p++ ) {
+		jshPinSetState(p, state);
+	}
+}
+
+void jshPinDefaultPullup() {
+  // 6-11 are used by Flash chip
+  // 32-33 are routed to rtc for xtal
+  jshPinSetStateRange(0,0,JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetStateRange(12,19,JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetStateRange(21,22,JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetStateRange(25,27,JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetStateRange(34,39,JSHPINSTATE_GPIO_IN_PULLUP);
+  
 }
 
 /**
@@ -118,21 +136,17 @@ void jshInit() {
   jsWarn( "JSHPINSTATE_MASK %d\n",JSHPINSTATE_MASK );
   */
   gpio_isr_register(gpio_intr_handler,NULL,0,NULL);  //changed to automatic assign of interrupt
-   // Initialize something for each of the possible pins.
-  for (int i=0; i<JSH_PIN_COUNT; i++) {
-    g_pinState[i] = 0;
-  }
-  
+  // Initialize something for each of the possible pins.
+  jshPinDefaultPullup();
 } // End of jshInit
-
 
 /**
  * Reset the Espruino environment.
  */
 void jshReset() {
     jshResetDevices();
-	jsWarn("jshReset(): To implement - reset GPIO jshPinSetState(x, JSHPINSTATE_GPIO_IN_PULLUP)\n");
-	//jswrap_ESP32_wifi_soft_init();
+	jshPinDefaultPullup() ;
+	jsWarn("jshReset(): To implement - reset of i2c and SPI\n");
 	jsWarn(">> jshReset()\n");
 }
 
@@ -235,10 +249,10 @@ void jshPinSetState(
 	pull_mode=GPIO_PULLDOWN_ONLY;	
     break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
-    mode = GPIO_MODE_OUTPUT_OD;
+    mode = GPIO_MODE_OUTPUT_OD | GPIO_MODE_OUTPUT;
     break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
-    mode = GPIO_MODE_OUTPUT_OD;
+    mode = GPIO_MODE_OUTPUT_OD | GPIO_MODE_OUTPUT;
 	pull_mode=GPIO_PULLUP_ONLY;
     break;
   default:
