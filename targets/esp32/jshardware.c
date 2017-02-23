@@ -22,7 +22,6 @@
  * of the Espruino environment and can not be changed without express
  * approval from all the stakeholders.  In addition, the semantics of the
  * functions should follow the expected conventions.
- * functions should follow the expected conventions.
  */
 #include <stdio.h>
 
@@ -201,7 +200,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
  */
 void jshDelayMicroseconds(int microsec) {
   ets_delay_us(microsec);
-  //vTaskDelay(microsec / portTICK_PERIOD_MS / 1000);
 } // End of jshDelayMicroseconds
 
 
