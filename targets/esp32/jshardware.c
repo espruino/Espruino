@@ -235,7 +235,7 @@ void jshPinSetState(
   gpio_pull_mode_t pull_mode=GPIO_FLOATING;
   switch(state) {
   case JSHPINSTATE_GPIO_OUT:
-    mode = GPIO_MODE_OUTPUT;
+    mode = GPIO_MODE_INPUT_OUTPUT;
     break;
   case JSHPINSTATE_GPIO_IN:
     mode = GPIO_MODE_INPUT;
@@ -249,10 +249,10 @@ void jshPinSetState(
     pull_mode=GPIO_PULLDOWN_ONLY;
     break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
-    mode = GPIO_MODE_OUTPUT_OD;
+    mode = GPIO_MODE_INPUT_OUTPUT_OD;
     break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
-    mode = GPIO_MODE_OUTPUT_OD;
+    mode = GPIO_MODE_INPUT_OUTPUT_OD;
     pull_mode=GPIO_PULLUP_ONLY;
     break;
   default:
@@ -272,6 +272,8 @@ void jshPinSetState(
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
+  if ( jshPinGetValue(pin) & 1 ) 
+    return g_pinState[pin] | JSHPINSTATE_PIN_IS_ON;
   return g_pinState[pin];
 }
 
