@@ -37,6 +37,7 @@ typedef enum {
   JSNETWORKTYPE_W5500,  ///< WIZnet W5500 support
   JSNETWORKTYPE_JS,  ///< JavaScript network type
   JSNETWORKTYPE_ESP8266_BOARD, ///< Espressif ESP8266 board support
+  JSNETWORKTYPE_ESP32 /// < Espressif ESP32 board support
 } JsNetworkType;
 
 typedef struct {

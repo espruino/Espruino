@@ -37,6 +37,10 @@ extern void jshPrintBanner(void); // prints a debugging banner while we're in be
 extern void jshSoftInit(void);    // re-inits wifi after a soft-reset
 #endif
 
+#ifdef ESP32
+extern void jshSoftInit(void);
+#endif
+
 // ----------------------------------------------------------------------------
 typedef enum {
   IS_NONE,
@@ -775,6 +779,9 @@ void jsiSemiInit(bool autoLoad) {
   jsiSoftInit(!autoLoad);
 
 #ifdef ESP8266
+  jshSoftInit();
+#endif
+#ifdef ESP32
   jshSoftInit();
 #endif
 

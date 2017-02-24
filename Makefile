@@ -46,6 +46,7 @@
 # MINISTM32_ANGLED_VE=1
 # MINISTM32_ANGLED_VG=1
 # ESP8266_BOARD=1         # ESP8266
+# ESP32=1                 # ESP32
 # EFM32GGSTK=1            # Currently only works with DEBUG=1
 # EMW3165=1               # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
 # Or nothing for standard linux compile
@@ -76,6 +77,7 @@
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
 # NO_COMPILE=1            # skips compiling and linking part, used to echo WRAPPERSOURCES only
+# RTOS                    # adds RTOS functions, available only for ESP32 (yet)
 
 ifndef GENDIR
 GENDIR=$(shell pwd)/gen
@@ -564,6 +566,17 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
 
+else ifdef ESP32
+BOARD=ESP32
+EMBEDDED=1
+USE_NET=1
+#USE_HASHLIB=1
+USE_GRAPHICS=1
+USE_CRYPTO=1
+USE_TLS=1
+USE_TELNET=1
+DEFINES+=-DESP_PLATFORM -DESP32=1
+OPTIMIZEFLAGS+=-Og
 
 else ifdef ESP8266_BOARD
 EMBEDDED=1
@@ -740,6 +753,8 @@ ifdef WIZNET
 USE_WIZNET=1
 else ifeq ($(FAMILY),ESP8266)
 USE_ESP8266=1
+else ifeq ($(FAMILY),ESP32)
+USE_ESP32=1
 else ifdef EMW3165
 USE_WICED=1
 else
@@ -994,6 +1009,26 @@ ifdef USE_NET
             targetlibs/wiced/wwd/internal/bus_protocols/SDIO/wwd_bus_protocol.c
  endif
 
+ ifdef USE_ESP32
+ DEFINES += -DUSE_ESP32
+ WRAPPERSOURCES += libs/network/esp32/jswrap_esp32_network.c \
+   targets/esp32/jswrap_esp32.c
+ INCLUDE += -I$(ROOT)/libs/network/esp32
+ SOURCES +=  libs/network/esp32/network_esp32.c \
+  targets/esp32/i2c.c \
+  targets/esp32/spi.c \
+  targets/esp32/jshardwareUart.c \
+  targets/esp32/jshardwareAnalog.c \
+  targets/esp32/jshardwarePWM.c \
+  targets/esp32/rtosutil.c \
+  targets/esp32/jshardwareTimer.c \
+  targets/esp32/jshardwarePulse.c
+  ifdef RTOS
+   DEFINES += -DRTOS
+   WRAPPERSOURCES += targets/esp32/jswrap_rtos.c
+  endif # RTOS
+ endif # USE_ESP32
+ 
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
  WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266_network.c \
@@ -1666,6 +1701,12 @@ ifeq ($(FAMILY), EFM32GG)
 
 endif #FAMILY == EFM32
 
+ifeq ($(FAMILY),ESP32)
+CFLAGS+=-Og -Wpointer-arith -Wno-error=unused-function -Wno-error=unused-but-set-variable \
+-Wno-error=unused-variable -Wall -ffunction-sections -fdata-sections -mlongcalls -nostdlib \
+-MMD -MP -std=gnu99 -fstrict-volatile-bitfields -fgnu89-inline
+SOURCES += targets/esp32/jshardware.c
+endif
 
 ifeq ($(FAMILY),ESP8266)
 # move os_printf strings into flash to save RAM space
@@ -1827,6 +1868,101 @@ ifdef LINKER_FILE
 endif
 
 #
+# Definitions for the build of the ESP32
+#
+ifdef ESP32
+ifndef ESP_IDF_PATH
+$(error "The ESP_IDF_PATH variable must be set")
+endif
+ifndef ESP_APP_TEMPLATE_PATH
+$(error "The ESP_APP_TEMPLATE_PATH variable must be set")
+endif
+# The prefix for the ESP32 compiler
+CCPREFIX=xtensa-esp32-elf-
+SOURCES += targets/esp32/main.c
+LDFLAGS += -L$(ESP_IDF_PATH)/ld \
+-L$(ESP_IDF_PATH)/components/bt/lib \
+-L$(ESP_IDF_PATH)/components/esp32/lib \
+-L$(ESP_APP_TEMPLATE_PATH)/build/bootloader \
+-L$(ESP_APP_TEMPLATE_PATH)/build/bt \
+-L$(ESP_APP_TEMPLATE_PATH)/build/driver \
+-L$(ESP_APP_TEMPLATE_PATH)/build/esp32 \
+-L$(ESP_APP_TEMPLATE_PATH)/build/esptool_py \
+-L$(ESP_APP_TEMPLATE_PATH)/build/expat \
+-L$(ESP_APP_TEMPLATE_PATH)/build/freertos \
+-L$(ESP_APP_TEMPLATE_PATH)/build/json \
+-L$(ESP_APP_TEMPLATE_PATH)/build/log \
+-L$(ESP_APP_TEMPLATE_PATH)/build/lwip \
+-L$(ESP_APP_TEMPLATE_PATH)/build/mbedtls \
+-L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
+-L$(ESP_APP_TEMPLATE_PATH)/build/nghttp \
+-L$(ESP_APP_TEMPLATE_PATH)/build/nvs_flash \
+-L$(ESP_APP_TEMPLATE_PATH)/build/partition_table \
+-L$(ESP_APP_TEMPLATE_PATH)/build/spi_flash \
+-L$(ESP_APP_TEMPLATE_PATH)/build/tcpip_adapter \
+-L$(ESP_APP_TEMPLATE_PATH)/build/vfs \
+-L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
+-L$(ESP_APP_TEMPLATE_PATH)/build/wpa_supplicant \
+-L$(ESP_APP_TEMPLATE_PATH)/build/ethernet \
+-lgcc
+ESPTOOL?=
+INCLUDE+=\
+-I$(ESP_APP_TEMPLATE_PATH)/build/include \
+-I$(ESP_IDF_PATH)/components \
+-I$(ESP_IDF_PATH)/components/newlib/include \
+-I$(ESP_IDF_PATH)/components/bt/include \
+-I$(ESP_IDF_PATH)/components/driver/include \
+-I$(ESP_IDF_PATH)/components/esp32/include \
+-I$(ESP_IDF_PATH)/components/freertos/include \
+-I$(ESP_IDF_PATH)/components/json/include \
+-I$(ESP_IDF_PATH)/components/log/include \
+-I$(ESP_IDF_PATH)/components/lwip/include/lwip \
+-I$(ESP_IDF_PATH)/components/lwip/include/lwip/port \
+-I$(ESP_IDF_PATH)/components/lwip/include/lwip/posix \
+-I$(ESP_IDF_PATH)/components/newlib/include \
+-I$(ESP_IDF_PATH)/components/spi_flash/include \
+-I$(ESP_IDF_PATH)/components/nvs_flash/include \
+-I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
+-I$(ESP_IDF_PATH)/components/vfs/include \
+-Itargets/esp32/include
+LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
+LIBS+=-T esp32_out.ld \
+-T$(ESP_IDF_PATH)/components/esp32/ld/esp32.common.ld \
+-T$(ESP_IDF_PATH)/components/esp32/ld/esp32.rom.ld \
+-T$(ESP_IDF_PATH)/components/esp32/ld/esp32.peripherals.ld \
+$(ESP_IDF_PATH)/components/newlib/lib/libc.a \
+$(ESP_IDF_PATH)/components/newlib/lib/libm.a \
+-lbt \
+-lbtdm_app \
+-ldriver \
+-lesp32 \
+$(ESP_IDF_PATH)/components/esp32/libhal.a  \
+-lcore \
+-lnet80211 \
+-lphy \
+-lwpa_supplicant \
+-lrtc \
+-lpp \
+-lwpa \
+-lexpat \
+-lfreertos \
+-ljson \
+-llog \
+-llwip \
+-lmbedtls \
+-lnghttp \
+-lnvs_flash \
+-lspi_flash \
+-ltcpip_adapter \
+-lvfs \
+-lnewlib \
+-lcoexist \
+-lethernet \
+-lstdc++ \
+-lgcc
+endif # ESP32
+
+#
 # Definitions for the build of the ESP8266
 #
 ifdef ESP8266
@@ -1971,6 +2107,53 @@ proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
 $(PROJ_NAME): $(OBJS)
 	@echo $($(quiet_)link)
 	@$(call link)
+	
+# Linking for ESP32
+else ifdef ESP32
+
+ESP_ZIP     = $(PROJ_NAME).tgz
+
+espruino_esp32.bin: $(OBJS)
+	$(LD) $(LDFLAGS) -o espruino_esp32.elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
+	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
+	--chip esp32 \
+	elf2image \
+	--flash_mode "dio" \
+	--flash_freq "40m" \
+	-o espruino_esp32.bin \
+	espruino_esp32.elf
+
+$(ESP_ZIP): espruino_esp32.bin
+	$(Q)rm -rf build/$(basename $(ESP_ZIP))
+	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
+	$(Q)cp $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
+	  espruino_esp32.bin \
+	  $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin \
+	  targets/esp32/README_flash.txt \
+	  build/$(basename $(ESP_ZIP))
+	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
+
+proj: espruino_esp32.bin $(ESP_ZIP)
+
+flash:
+	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
+	--chip esp32 \
+	--port "/dev/ttyUSB0" \
+	--baud 921600 \
+	write_flash \
+	-z \
+	--flash_mode "dio" \
+	--flash_freq "40m" \
+	0x1000 $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
+	0x10000 espruino_esp32.bin \
+	0x8000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
+
+erase_flash:
+	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
+	--chip esp32 \
+	--port "/dev/ttyUSB0" \
+	--baud 921600 \
+	erase_flash	
 
 else ifdef ESP8266
 # Linking the esp8266... The Espruino source files get compiled into the .text section. The

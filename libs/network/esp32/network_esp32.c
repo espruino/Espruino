@@ -8,12 +8,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Implementation of JsNetwork for Linux
+ * Implementation of JsNetwork for ESP32 - cloned from linux
  * ----------------------------------------------------------------------------
  */
-#include "network.h"
-#include "network_linux.h"
+#include "network_esp32.h"
 
+#include "network.h"
 #include <string.h> // for memset
 
 #define INVALID_SOCKET ((SOCKET)(-1))
@@ -44,7 +44,7 @@
 
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void net_linux_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
+void net_esp32_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   NOT_USED(net);
   struct hostent * host_addr_p = gethostbyname(hostName);
   if (host_addr_p)
@@ -52,19 +52,19 @@ void net_linux_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_a
 }
 
 /// Called on idle. Do any checks required for this device
-void net_linux_idle(JsNetwork *net) {
+void net_esp32_idle(JsNetwork *net) {
   NOT_USED(net);
 }
 
 /// Call just before returning to idle loop. This checks for errors and tries to recover. Returns true if no errors.
-bool net_linux_checkError(JsNetwork *net) {
+bool net_esp32_checkError(JsNetwork *net) {
   NOT_USED(net);
   bool hadErrors = false;
   return hadErrors;
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
+int net_esp32_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
   NOT_USED(net);
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
@@ -129,7 +129,7 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
     // Make the socket listen
     nret = listen(sckt, 10); // 10 connections (but this ignored on CC30000)
     if (nret == SOCKET_ERROR) {
-      jsError("Socket listen failed");
+      jsError("Socket listen failed, host:%d, port:%d\n",(int)host,(int)port);
       closesocket(sckt);
       return -1;
     }
@@ -146,13 +146,13 @@ int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
 }
 
 /// destroys the given socket
-void net_linux_closesocket(JsNetwork *net, int sckt) {
+void net_esp32_closesocket(JsNetwork *net, int sckt) {
   NOT_USED(net);
   closesocket(sckt);
 }
 
 /// If the given server socket can accept a connection, return it (or return < 0)
-int net_linux_accept(JsNetwork *net, int sckt) {
+int net_esp32_accept(JsNetwork *net, int sckt) {
   NOT_USED(net);
   // TODO: look for unreffed servers?
   fd_set s;
@@ -172,7 +172,7 @@ int net_linux_accept(JsNetwork *net, int sckt) {
 }
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_linux_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
+int net_esp32_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
   NOT_USED(net);
   int num = 0;
   fd_set s;
@@ -196,7 +196,7 @@ int net_linux_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
 }
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_linux_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
+int net_esp32_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
   NOT_USED(net);
   fd_set writefds;
   FD_ZERO(&writefds);
@@ -219,14 +219,14 @@ int net_linux_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
     return 0; // just not ready
 }
 
-void netSetCallbacks_linux(JsNetwork *net) {
-  net->idle = net_linux_idle;
-  net->checkError = net_linux_checkError;
-  net->createsocket = net_linux_createsocket;
-  net->closesocket = net_linux_closesocket;
-  net->accept = net_linux_accept;
-  net->gethostbyname = net_linux_gethostbyname;
-  net->recv = net_linux_recv;
-  net->send = net_linux_send;
+void netSetCallbacks_esp32(JsNetwork *net) {
+  net->idle = net_esp32_idle;
+  net->checkError = net_esp32_checkError;
+  net->createsocket = net_esp32_createsocket;
+  net->closesocket = net_esp32_closesocket;
+  net->accept = net_esp32_accept;
+  net->gethostbyname = net_esp32_gethostbyname;
+  net->recv = net_esp32_recv;
+  net->send = net_esp32_send;
   net->chunkSize = 536;
 }
