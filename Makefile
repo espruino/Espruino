@@ -1436,7 +1436,7 @@ ifeq ($(FAMILY), NRF52)
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
-	DEFINES += -DNRF_SD_BLE_API_VERSION=3
+  DEFINES += -DNRF_SD_BLE_API_VERSION=3
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_3.0.0_softdevice.hex
 
@@ -1458,6 +1458,9 @@ ifeq ($(FAMILY), NRF52)
 	# BLE HID Support (only NRF52)
 	INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
 	TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
+        # Neopixel support (only NRF52)  
+        INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
+        TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c 
 
 endif #FAMILY == NRF52
 
@@ -1509,15 +1512,20 @@ ifdef NRF5X
 			targets/nrf5x/bluetooth.c              \
 			targets/nrf5x/bluetooth_utils.c              \
       targets/nrf5x/nrf5x_utils.c
+
+    ifeq ($(FAMILY), NRF52)
+      # Neopixel support (only NRF52)
+      SOURCES    += targets/nrf5x/i2s_ws2812b_drive.c
+    endif
   endif
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components
-	INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/cmsis/include
-	INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/gcc
-	INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain
-	INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
-	INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/cmsis/include
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/gcc
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fstorage/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util

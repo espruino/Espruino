@@ -56,6 +56,9 @@
 
 #include "nrf5x_utils.h"
 #include "softdevice_handler.h"
+#ifdef NRF52
+#include "i2s_ws2812b_drive.h"
+#endif
 
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
 
@@ -1230,3 +1233,15 @@ unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
 }
 
+bool jshNeopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
+#ifdef NRF52
+  if (!jshIsPinValid(pin)) {
+    jsExceptionHere(JSET_ERROR, "Pin is not valid.");
+    return false;
+  }
+  return !i2s_ws2812b_drive_xfer(rgbData, rgbSize/3, pinInfo[pin].pin);
+#else
+  jsExceptionHere(JSET_ERROR, "Neopixel writing not implemented");
+  return false;
+#endif
+}

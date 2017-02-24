@@ -420,7 +420,7 @@
 // <e> I2S_ENABLED - nrf_drv_i2s - I2S peripheral driver
 //==========================================================
 #ifndef I2S_ENABLED
-#define I2S_ENABLED 0
+#define I2S_ENABLED 1
 #endif
 #if  I2S_ENABLED
 // <o> I2S_CONFIG_SCK_PIN - SCK pin  <0-31>

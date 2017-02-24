@@ -9,6 +9,7 @@
             nRF52: Add 'properties' object to BluetoothRemoteGATTCharacteristic
             nRF52: Perform write without response if that is what is required 
             Pico/WiFi: Allow USB HID to work on Windows (from @nailxx)
+            Allow Puck.js/nRF52 devices to drive Neopixel/WS281x/APA10x LEDs with E.neopixelWrite (fix #1023)
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise

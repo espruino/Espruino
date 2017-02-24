@@ -28,6 +28,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jswrap_io.h"
+#include "jsspi.h"
 
 #ifdef ESPRUINOBOARD
 // STM32F1 boards should work with this - but for some reason they crash on init
@@ -2989,3 +2990,38 @@ unsigned int jshSetSystemClock(JsVar *options) {
 #endif
 }
 
+
+bool jshNeopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
+  if (!jshIsPinValid(pin)) {
+    jsExceptionHere(JSET_ERROR, "Pin is not valid.");
+    return false;
+  }
+  JshPinFunction spiDevice = 0;
+  unsigned int i;
+  for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
+    if (JSH_PINFUNCTION_IS_SPI(pinInfo[pin].functions[i]) &&
+        ((pinInfo[pin].functions[i] & JSH_MASK_INFO)==JSH_SPI_MOSI)) {
+      spiDevice = pinInfo[pin].functions[i];
+    }
+  }
+  IOEventFlags device = jshGetFromDevicePinFunction(spiDevice);
+  if (!spiDevice || !device) {
+    jsExceptionHere(JSET_ERROR, "No suitable SPI device found for this pin\n");
+    return false;
+  }
+  JshSPIInfo inf;
+  jshSPIInitInfo(&inf);
+  inf.baudRate = 3200000;
+  inf.pinMOSI = pin;
+  jshSPISetup(device, &inf);
+  jshSPISet16(device, true); // 16 bit output
+  // we're just sending (no receive)
+  jshSPISetReceive(device, false);
+  jshInterruptOff();
+  for (i=0;i<rgbSize;i++)
+    jsspiSend4bit(device, rgbData[i], 1, 3);
+  jshInterruptOn();
+  jshSPIWait(device); // wait until SPI send finished and clear the RX buffer
+  jshSPISet16(device, false); // back to 8 bit
+  return true;
+}
