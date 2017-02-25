@@ -1015,8 +1015,8 @@ ifdef USE_NET
    targets/esp32/jswrap_esp32.c
  INCLUDE += -I$(ROOT)/libs/network/esp32
  SOURCES +=  libs/network/esp32/network_esp32.c \
-  targets/esp32/i2c.c \
-  targets/esp32/spi.c \
+  targets/esp32/jshardwareI2c.c \
+  targets/esp32/jshardwareSpi.c \
   targets/esp32/jshardwareUart.c \
   targets/esp32/jshardwareAnalog.c \
   targets/esp32/jshardwarePWM.c \

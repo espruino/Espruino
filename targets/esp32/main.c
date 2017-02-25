@@ -15,7 +15,7 @@
 #include "jshardwareTimer.h"
 #include "jshardwarePWM.h"
 #include "jshardwarePulse.h"
-#include "spi.h"  //rename to jahardwareSPI.h ?
+#include "jshardwareSpi.h"
 
 #include "esp_spi_flash.h"
 

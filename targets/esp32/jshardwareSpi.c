@@ -18,7 +18,7 @@
 #include "jspininfo.h"
 #include "jshardware.h"
 #include "driver/gpio.h"
-#include "spi.h"
+#include "jshardwareSpi.h"
 
 #define UNUSED(x) (void)(x)
 

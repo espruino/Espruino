@@ -15,7 +15,7 @@
  * ----------------------------------------------------------------------------
  */
  
-#include "i2c.h"
+#include "jshardwareI2c.h"
 #include "driver/i2c.h"
 
 #define ACK_CHECK_EN   0x1   /*!< I2C master will check ack from slave*/

@@ -49,8 +49,8 @@
 #include "rom/uart.h"
 #include "driver/gpio.h"
 
-#include "i2c.h"
-#include "spi.h"
+#include "jshardwareI2c.h"
+#include "jshardwareSpi.h"
 
 #define FLASH_MAX (4*1024*1024) //4MB
 #define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
