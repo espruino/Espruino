@@ -124,7 +124,7 @@ void jshPrintBanner() {
   jsiConsolePrintf(
     "Flash map %s, manuf 0x%x chip 0x%x\n",
     flash_maps[map], fid & 0xff, chip);
-  if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4)) {
+  if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4 && map != 6)) {  
     jsiConsolePrint("WARNING: *** Your flash chip does not match your flash map ***\n");
   }
 }
