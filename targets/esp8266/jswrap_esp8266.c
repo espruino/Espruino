@@ -235,7 +235,7 @@ JsVar *jswrap_ESP8266_getState() {
   uint32_t fid = spi_flash_get_id();
   uint32_t chip = (fid&0xff00)|((fid>>16)&0xff);
   char buff[16];
-  os_sprintf(buff, "0x%02lx 0x%04lx", fid & 0xff, chip);
+  os_sprintf(buff, "0x%02lx 0x%04lx", (long unsigned int) (fid & 0xff), (long unsigned int) chip);
   jsvObjectSetChildAndUnLock(esp8266State, "flashChip",   jsvNewFromString(buff));
 
   return esp8266State;
