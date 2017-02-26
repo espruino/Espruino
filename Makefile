@@ -2013,7 +2013,7 @@ USER2_BIN   = espruino_esp8266_user2.bin
 USER1_ELF   = espruino_esp8266_user1.elf
 USER2_ELF   = espruino_esp8266_user2.elf
 PARTIAL     = espruino_esp8266_partial.o
-ifdef FLASH_4MB
+ifdef FLASH_4MB_C1
 LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.2048.app1.ld
 LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.2048.app2.ld
 else
