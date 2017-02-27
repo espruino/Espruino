@@ -745,12 +745,23 @@ static void gap_params_init() {
     char deviceName[BLE_GAP_DEVNAME_MAX_LEN];
 #ifdef PUCKJS
     strcpy(deviceName,"Puck.js");
+#elif defined(RUUVITAG)
+    strcpy(deviceName,"RuuviTag");
 #else
     strcpy(deviceName,"Espruino "PC_BOARD_ID);
 #endif
 
     size_t len = strlen(deviceName);
 #ifdef PUCKJS
+    // append last 2 bytes of MAC address to name
+    uint32_t addr =  NRF_FICR->DEVICEADDR[0];
+    deviceName[len++] = ' ';
+    deviceName[len++] = itoch((addr>>12)&15);
+    deviceName[len++] = itoch((addr>>8)&15);
+    deviceName[len++] = itoch((addr>>4)&15);
+    deviceName[len++] = itoch((addr)&15);
+    // not null terminated
+#elif defined(RUUVITAG)
     // append last 2 bytes of MAC address to name
     uint32_t addr =  NRF_FICR->DEVICEADDR[0];
     deviceName[len++] = ' ';
@@ -985,6 +996,10 @@ static void ble_stack_init() {
     // can only be enabled if we're sure we have a DC-DC
     err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
     APP_ERROR_CHECK(err_code);
+#elif defined(RUUVITAG)
+    // can only be enabled if we're sure we have a DC-DC
+    err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
+    APP_ERROR_CHECK(err_code);	
 #endif
 }
 

@@ -32,6 +32,7 @@
 # NRF51TAG=1
 # NRF51822DK=1
 # NRF52832DK=1            # Ultra low power BLE (bluetooth low energy) enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
+# RUUVITAG=1              # https://ruuvitag.com
 # CARAMBOLA=1
 # DPTBOARD=1              # DPTechnics IoT development board with BlueCherry.io IoT platform integration and DPT-WEB IDE.
 # RASPBERRYPI=1
@@ -513,6 +514,19 @@ USE_GRAPHICS=1
 USE_CRYPTO=1
 #USE_TLS=1
 USE_NFC=1
+
+else ifdef RUUVITAG
+EMBEDDED=1
+BOARD=RUUVITAG
+OPTIMIZEFLAGS+=-O3
+USE_BLUETOOTH=1
+USE_NET=1
+USE_GRAPHICS=1
+USE_NFC=1
+USE_CRYPTO=1
+#USE_BOOTLOADER=1
+#DFU_UPDATE_BUILD=1
+
 
 else ifdef ECU
 # Gordon's car ECU (extremely beta!)
@@ -2331,9 +2345,15 @@ $(PROJ_NAME).hex: $(PROJ_NAME).elf
 ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
  ifdef USE_BOOTLOADER
   ifdef DFU_UPDATE_BUILD
+    ifdef RUUVITAG
+	@echo Not merging softdevice or bootloader with application
+	# nrfutil  pkg generate --help
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --debug-mode --key-file targets/nrf5x_dfu/ruuvi_open_private.pem
+    else
 	@echo Not merging softdevice or bootloader with application
 	# nrfutil  pkg generate --help
 	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
+    endif
   else
   ifdef BOOTLOADER
 	@echo Not merging anything with bootloader
@@ -2413,8 +2433,8 @@ else
 # log WRAPPERSOURCES to help Firmware creation tool
 $(info WRAPPERSOURCES=$(WRAPPERSOURCES));
 endif
-
 clean:
+
 	@echo Cleaning targets
 	$(Q)find . -name \*.o | grep -v arm-bcm2708 | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
