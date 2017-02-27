@@ -316,15 +316,19 @@ static char *pinStateToString(JshPinState state) {
 
 static void jshDebugPin(Pin pin) {
   os_printf("PIN: %d out=%ld enable=%ld in=%ld\n",
-      pin, (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, (GPIO_REG_READ(GPIO_ENABLE_ADDRESS)>>pin)&1,
-      (GPIO_REG_READ(GPIO_IN_ADDRESS)>>pin)&1);
+      pin, 
+      (long int) (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, 
+      (long int) (GPIO_REG_READ(GPIO_ENABLE_ADDRESS)>>pin)&1,
+      (long int) (GPIO_REG_READ(GPIO_IN_ADDRESS)>>pin)&1);
 
   uint32_t gpio_pin = GPIO_REG_READ(GPIO_PIN_ADDR(pin));
   uint32_t mux = READ_PERI_REG(PERIPHS_IO_MUX + 4*pin);
   os_printf("     dr=%s src=%s func=%ld pull-up=%ld oe=%ld\n",
       gpio_pin & 4 ? "open-drain" : "totem-pole",
       gpio_pin & 1 ? "sigma-delta" : "gpio",
-      (mux>>2)&1 | (mux&3), (mux>>7)&1, mux&1);
+      (long int) ((mux>>2)&1 | (mux&3)), 
+      (long int) ((mux>>7)&1),
+      (long int) mux&1);
 }
 
 /**
@@ -1092,10 +1096,11 @@ static void systemTimeInit(void) {
   rtcTimeStamp.hwTimeStamp = rtcTime;
   sysTimeStamp.timeStamp = rtcTimeStamp.timeStamp;
   sysTimeStamp.hwTimeStamp = sysTime;
-  os_printf("RTC: restore sys=%lu rtc=%lu\n", sysTime, rtcTime);
+  os_printf("RTC: restore sys=%lu rtc=%lu\n", (long unsigned int)sysTime, (long unsigned int)rtcTime);
   os_printf("RTC: restored time: %lu (delta=%lu cal=%luus)\n",
-      (uint32_t)(rtcTimeStamp.timeStamp/1000000),
-      (uint32_t)delta, (cal*1000)>>12);
+      (long unsigned int)(rtcTimeStamp.timeStamp/1000000),
+      (long unsigned int)delta, 
+      (long unsigned int)(cal*1000)>>12);
   saveTime(&rtcTimeStamp);
 }
 

@@ -12,7 +12,7 @@
 # Buttons, and other in-built peripherals are. It is used to build documentation as well
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
-
+import os;
 import pinutils;
 info = {
  'name'            : "ESP8266",
@@ -49,6 +49,16 @@ chip = {
     'flash_available' : 468, # firmware can be up to this size
   },
 };
+
+if (os.environ.has_key("FLASH_4MB_C1")):
+  chip['saved_code'] = {
+    'address' : 0xF8000,
+    'page_size' : 4096,
+    'pages' : 5,
+    'flash_available' : 888, # firmware can be up to this size
+   };
+
+
 devices = {
 };
 

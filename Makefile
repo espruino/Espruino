@@ -582,39 +582,56 @@ else
 # DISABLE_LTO is necessary in order to analyze static string sizes (see: topstring makefile target)
 OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 endif
-ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 
-ifdef FLASH_4MB
+
+ifdef FLASH_4MB_C1
+ESP_FLASH_MAX       ?= 909312   # max bin file: 888KB
+ESP_FLASH_SIZE      ?= 6        # 6->4MB (1024KB+1024KB)       
+ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
+ET_FS               ?= 4MB-c1   # 32Mbit (4MB) flash size in esptool flash command
+ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
+ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
+ET_DEFAULTS         ?= 0x3FC000 # where to flash esp_init_data_default.bin to default SDK settings
+else ifdef FLASH_4MB
+ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 ESP_FLASH_SIZE      ?= 4        # 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
-ET_FS               ?= 32m      # 32Mbit (4MB) flash size in esptool flash command
+ET_FS               ?= 4MB      # 32Mbit (4MB) flash size in esptool flash command
 ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
+ET_DEFAULTS         ?= 0x3FC000 # where to flash esp_init_data_default.bin to default SDK settings
 else ifdef 2MB
+ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 ESP_FLASH_SIZE      ?= 3        # 3->2MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
-ET_FS               ?= 16m      # 16Mbit (2MB) flash size in esptool flash command
+ET_FS               ?= 2MB      # 16Mbit (2MB) flash size in esptool flash command
 ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
+ET_DEFAULTS         ?= 0x1FC000 # where to flash esp_init_data_default.bin to default SDK settings
 else ifdef 1MB
+ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 ESP_FLASH_SIZE      ?= 2       # 2->1MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
-ET_FS               ?=  8m     # 8Mbit (1MB) flash size in esptool flash command
+ET_FS               ?= 1MB     # 8Mbit (1MB) flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
+ET_DEFAULTS         ?= 0xFC000 # where to flash esp_init_data_default.bin to default SDK settings
 else # 512KB
+ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 ESP_FLASH_SIZE      ?= 0       # 0->512KB
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
-ET_FS               ?= 4m      # 4Mbit (512KB) flash size in esptool flash command
+ET_FS               ?= 512KB   # 4Mbit (512KB) flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
+ET_DEFAULTS         ?= 0x7C000 # where to flash esp_init_data_default.bin to default SDK settings
 endif
 
-FLASH_BAUD ?= 115200 # The flash baud rate
+FLASH_BAUD ?= 460800 # The flash baud rate
 # End of ESP8266_BOARD
 else
 ifeq ($(shell uname -m),armv6l)
@@ -1996,8 +2013,13 @@ USER2_BIN   = espruino_esp8266_user2.bin
 USER1_ELF   = espruino_esp8266_user1.elf
 USER2_ELF   = espruino_esp8266_user2.elf
 PARTIAL     = espruino_esp8266_partial.o
+ifdef FLASH_4MB_C1
+LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.2048.app1.ld
+LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.2048.app2.ld
+else
 LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
+endif
 APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
 BOOTLOADER  = $(ESP8266_SDK_ROOT)/bin/boot_v1.6.bin
 BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
@@ -2107,7 +2129,7 @@ flash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT
 	$(error "In order to flash, we need to have the COMPORT variable defined")
 endif
-	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 $(BOOTLOADER) 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
+	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 $(BOOTLOADER) 0x1000 $(USER1_BIN) $(ET_DEFAULTS) $(INIT_DATA) $(ET_BLANK) $(BLANK)
 
 # just flash user1 and don't mess with bootloader or wifi settings
 quickflash: all $(USER1_BIN) $(USER2_BIN)

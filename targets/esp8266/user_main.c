@@ -120,11 +120,11 @@ void jshPrintBanner() {
   uint32_t chip = (fid&0xff00)|((fid>>16)&0xff);
   uint32_t map = system_get_flash_size_map();
   os_printf("Espruino "JS_VERSION"\nFlash map %s, manuf 0x%lx chip 0x%lx\n",
-      flash_maps[map], fid & 0xff, chip);
+      flash_maps[map], (long unsigned int) (fid & 0xff), (long unsigned int)chip);
   jsiConsolePrintf(
     "Flash map %s, manuf 0x%x chip 0x%x\n",
     flash_maps[map], fid & 0xff, chip);
-  if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4)) {
+  if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4 && map != 6)) {  
     jsiConsolePrint("WARNING: *** Your flash chip does not match your flash map ***\n");
   }
 }
@@ -196,7 +196,7 @@ static void eventHandler(
     break;
   // Handle the unknown event type.
   default:
-    os_printf("user_main: eventHandler: Unknown task type: %ld", pEvent->sig);
+    os_printf("user_main: eventHandler: Unknown task type: %ld", (long int) pEvent->sig);
     break;
   }
 }

@@ -1144,6 +1144,7 @@ void jswrap_ESP8266_wifi_save(JsVar *what) {
   uint32_t flashBlock[256];
   Esp8266_config *conf=(Esp8266_config *)flashBlock;
   os_memset(flashBlock, 0, sizeof(flashBlock));
+  uint32_t map = system_get_flash_size_map();
 
   conf->length = 1024;
   conf->version = 24;
@@ -1182,8 +1183,13 @@ void jswrap_ESP8266_wifi_save(JsVar *what) {
 
   conf->crc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
   DBG("Wifi.save: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, conf->crc);
-  jshFlashErasePage(0x7B000);
-  jshFlashWrite(conf, 0x7B000, sizeof(flashBlock));
+  if (map == 6 ) {
+    jshFlashErasePage(0xFD000);
+    jshFlashWrite(conf, 0xFD000, sizeof(flashBlock));    
+  } else {  
+    jshFlashErasePage(0x7B000);
+    jshFlashWrite(conf, 0x7B000, sizeof(flashBlock));
+  }
   DBGV("< Wifi.save: write completed\n");
 }
 
@@ -1202,7 +1208,12 @@ void jswrap_ESP8266_wifi_restore(void) {
   uint32_t flashBlock[256];
   Esp8266_config *conf=(Esp8266_config *)flashBlock;
   os_memset(flashBlock, 0, sizeof(flashBlock));
-  jshFlashRead(flashBlock, 0x7B000, sizeof(flashBlock));
+  uint32_t map = system_get_flash_size_map();
+  if (map == 6 ) {
+    jshFlashRead(flashBlock, 0xFD000, sizeof(flashBlock));
+  } else {
+    jshFlashRead(flashBlock, 0x7B000, sizeof(flashBlock));
+  }  
   DBG("Wifi.restore: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, conf->crc);
   uint32_t crcRd = conf->crc;
   conf->crc = 0;
