@@ -3484,6 +3484,17 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length) {
   return array;
 }
 
+JsVar *jsvNewTypedArrayWithData(JsVarDataArrayBufferViewType type, JsVarInt length, unsigned char *data) {
+  JsVar *buf = jsvNewTypedArray(type, length);
+  if (!buf) return 0;
+  JsVarInt byteLength = JSV_ARRAYBUFFER_GET_SIZE(type) * length;
+  JsVar *arrayBufferData = jsvGetArrayBufferBackingString(buf);
+  if (arrayBufferData)
+    jsvSetString(arrayBufferData, (char *)data, byteLength);
+  jsvUnLock(arrayBufferData);
+  return buf;
+}
+
 JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr) {
   assert(ptr);
   *ptr=0;

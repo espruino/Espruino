@@ -1927,6 +1927,26 @@ NRF.connect(device_address).then(function(d) {
 });
 ```
 
+For example, to listen to the output of another Puck.js's Nordic
+Serial port service, you can use:
+
+```
+var gatt;
+NRF.connect("pu:ck:js:ad:dr:es random").then(function(g) {
+  gatt = g;
+  return gatt.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
+}).then(function(service) {
+  return service.getCharacteristic("6e400003-b5a3-f393-e0a9-e50e24dcca9e");
+}).then(function(characteristic) {
+  characteristic.on('characteristicvaluechanged', function(event) {
+    console.log("RX: "+JSON.stringify(event.target.value.buffer));
+  });
+  return characteristic.startNotifications();
+}).then(function() {
+  console.log("Done!");
+});
+```
+
 **Note:** This is only available on some devices
 */
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *characteristic) {

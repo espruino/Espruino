@@ -604,8 +604,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           // FIXME: we just switch task here - this is not nice...
           bleSwitchTask(BLETASK_CHARACTERISTIC_NOTIFY);
           jsble_central_characteristicNotify(bleTaskInfo, true);
-        }
-        else {
+        } else {
           bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, jsvNewFromString("CCCD Handle not found"));
         }
         break;
@@ -635,11 +634,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (handles) {
           JsVar *characteristic = jsvGetArrayItem(handles, p_hvx->handle);
           if (characteristic) {
-            // TODO: should return {target:characteristic} and set characteristic.value
-            JsVar *data = jsvNewStringOfLength(p_hvx->len);
-            if (data) jsvSetString(data, (const char*)p_hvx->data, p_hvx->len);
-            jsiQueueObjectCallbacks(characteristic, "characteristicvaluechanged", &data, 1);
-            jshHadEvent();
+            // Set characteristic.value, and return {target:characteristic}
+            jsvObjectSetChildAndUnLock(characteristic, "value",
+                jsvNewTypedArrayWithData(ARRAYBUFFERVIEW_UINT8, p_hvx->len, (unsigned char*)p_hvx->data));
+
+            JsVar *evt = jsvNewObject();
+            if (evt) {
+              jsvObjectSetChild(evt, "target", characteristic);
+              jsiQueueObjectCallbacks(characteristic, JS_EVENT_PREFIX"characteristicvaluechanged", &evt, 1);
+              jshHadEvent();
+              jsvUnLock(evt);
+            }
           }
           jsvUnLock2(characteristic, handles);
         }
@@ -1502,11 +1507,11 @@ void jsble_central_characteristicDescDiscover(JsVar *characteristic) {
     return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, jsvNewFromString("Not connected"));
 
   // start discovery for our single handle only
-  uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+  uint16_t handle_value = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
 
   ble_gattc_handle_range_t range;
-  range.start_handle = handle;
-  range.end_handle = handle + 1;
+  range.start_handle = handle_value+1;
+  range.end_handle = handle_value+1;
   
   uint32_t              err_code;
   err_code = sd_ble_gattc_descriptors_discover(m_central_conn_handle, &range);
@@ -1520,6 +1525,8 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
     return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("Not connected"));
 
   uint16_t cccd_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_cccd", 0));
+  if (!cccd_handle)
+    return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("handle_cccd not set"));
 
   uint8_t buf[BLE_CCCD_VALUE_LEN];
   buf[0] = enable ? BLE_GATT_HVX_NOTIFICATION : 0;
