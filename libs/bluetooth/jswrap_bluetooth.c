@@ -107,6 +107,17 @@ void bleSwitchTask(BleTask task) {
 
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
+#ifdef NRF52
+void bleSetActiveBluetoothGattServer(JsVar *var) {
+  jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_GATT_SERVER, var);
+}
+
+JsVar *bleGetActiveBluetoothGattServer() {
+  return jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_GATT_SERVER, 0);
+}
+#endif
+// ------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 
 /*JSON{
   "type" : "init",
@@ -218,6 +229,40 @@ Called when an NFC field is detected
   "ifdef" : "NRF52"
 }
 Called when an NFC field is no longer detected
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "BluetoothDevice",
+  "name" : "gattserverdisconnected",
+  "ifdef" : "NRF52"
+}
+Called when the device gets disconnected.
+
+To connect and then print `Disconnected` when the device is
+disconnected, just do the following:
+
+```
+var gatt;
+var t = getTime();
+NRF.connect("aa:bb:cc:dd:ee:ff").then(function(gatt) {
+  gatt.device.on('gattserverdisconnected', function(event) {
+    console.log("Disconnected");
+  });
+});
+```
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "BluetoothRemoteGATTCharacteristic",
+  "name" : "characteristicvaluechanged",
+  "ifdef" : "NRF52"
+}
+Called when a characteristic's value changes, *after* `BluetoothRemoteGATTCharacteristic.startNotifications` has been called.
+See that for an example.
+
+The first argument is of the form `{target : BluetoothRemoteGATTCharacteristic}`
+
+`BluetoothRemoteGATTCharacteristic.value` will then contain the new value.
  */
 
 /*JSON{

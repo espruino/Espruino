@@ -295,6 +295,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+          bleSetActiveBluetoothGattServer(bleTaskInfo);
           jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
           bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
         }
@@ -304,7 +305,18 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_GAP_EVT_DISCONNECTED:
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
+          JsVar *gattServer = bleGetActiveBluetoothGattServer();
+          if (gattServer) {
+            JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+            jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
+            if (bluetoothDevice) {
+              jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", 0, 0);
+              jshHadEvent();
+            }
+            jsvUnLock2(gattServer, bluetoothDevice);
+          }
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
+          bleSetActiveBluetoothGattServer(0);
           BleTask task = bleGetCurrentTask();
           if (BLETASK_IS_CENTRAL(task)) {
             bleCompleteTaskFailAndUnLock(task, jsvNewFromString("Disconnected."));
@@ -1402,23 +1414,22 @@ void jsble_nfc_start(const uint8_t *data, size_t len) {
 #if CENTRAL_LINK_COUNT>0
 void jsble_central_connect(ble_gap_addr_t peer_addr) {
   uint32_t              err_code;
-  // TODO: do these really need to be static?
 
-  static ble_gap_scan_params_t     m_scan_param;
+  ble_gap_scan_params_t     m_scan_param;
   memset(&m_scan_param, 0, sizeof(m_scan_param));
   m_scan_param.active       = 1;            // Active scanning set.
   m_scan_param.interval     = MSEC_TO_UNITS(100, UNIT_0_625_MS); // Scan interval.
-  m_scan_param.window       = MSEC_TO_UNITS(50, UNIT_0_625_MS); // Scan window.
+  m_scan_param.window       = MSEC_TO_UNITS(90, UNIT_0_625_MS); // Scan window.
   m_scan_param.timeout      = 4;            // 4 second timeout.
 
-  static ble_gap_conn_params_t   gap_conn_params;
+  ble_gap_conn_params_t   gap_conn_params;
   memset(&gap_conn_params, 0, sizeof(gap_conn_params));
   gap_conn_params.min_conn_interval = MSEC_TO_UNITS(7.5, UNIT_1_25_MS);
-  gap_conn_params.max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS);
+  gap_conn_params.max_conn_interval = MSEC_TO_UNITS(500, UNIT_1_25_MS);
   gap_conn_params.slave_latency     = 0;
   gap_conn_params.conn_sup_timeout  = MSEC_TO_UNITS(4000, UNIT_10_MS);
 
-  static ble_gap_addr_t addr;
+  ble_gap_addr_t addr;
   addr = peer_addr;
 
   err_code = sd_ble_gap_connect(&addr, &m_scan_param, &gap_conn_params);

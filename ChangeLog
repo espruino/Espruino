@@ -12,7 +12,8 @@
             Allow Puck.js/nRF52 devices to drive Neopixel/WS281x/APA10x LEDs with E.neopixelWrite (fix #1023)
             Fix crash in JSON.stringify for zero-length typed arrays
             Fix precedence of 'void' keyword (fix #1079)
-            Add BluetoothRemoteGATTCharacteristic.startNotifications (fix #959)
+            nRF52: Add BluetoothRemoteGATTCharacteristic.startNotifications (fix #959)
+            nRF52: Added BluetoothDevice.gattserverdisconnected event
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
