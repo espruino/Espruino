@@ -473,7 +473,7 @@ JsVar* jsvArrayBufferIteratorGetIndex(JsvArrayBufferIterator *it) {
 bool   jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return false;
   if (it->hasAccessedElement) return true;
-  return it->byteOffset <= (it->byteLength-JSV_ARRAYBUFFER_GET_SIZE(it->type));
+  return (it->byteOffset+JSV_ARRAYBUFFER_GET_SIZE(it->type)) <= it->byteLength;
 }
 
 void   jsvArrayBufferIteratorNext(JsvArrayBufferIterator *it) {
@@ -595,4 +595,3 @@ JsvIterator jsvIteratorClone(JsvIterator *it) {
   }
   return newit;
 }
-
