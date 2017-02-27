@@ -32,3 +32,4 @@ xtensa-lx106-elf
 /function_keywords.js
 /functions.html
 targetlibs/nrf5x/examples
+/.vscode
