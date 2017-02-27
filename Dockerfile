@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y software-properties-common && apt-get u
  
 RUN pip install nrfutil
 
-RUN git clone https://github.com/ojousima/Espruino espruino
+RUN git clone https://github.com/espruino/Espruino espruino
 WORKDIR /espruino
 
 # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000

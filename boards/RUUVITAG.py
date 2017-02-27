@@ -1,7 +1,7 @@
 #!/bin/false
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
-# Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
+# Copyright (C) 2013 Ruuvi Innovations Ltd <info@ruuvi.com>
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
