@@ -470,7 +470,7 @@ JsVar* jsvArrayBufferIteratorGetIndex(JsvArrayBufferIterator *it) {
   return jsvNewFromInteger((JsVarInt)it->index);
 }
 
-bool   jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it) {
+bool jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return false;
   if (it->hasAccessedElement) return true;
   return (it->byteOffset+JSV_ARRAYBUFFER_GET_SIZE(it->type)) <= it->byteLength;
