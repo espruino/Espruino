@@ -1182,10 +1182,10 @@ void jswrap_ESP8266_wifi_save(JsVar *what) {
   }
 
   conf->crc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
-  DBG("Wifi.save: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, conf->crc);
+  DBG("Wifi.save: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, (long unsigned int) conf->crc);
   if (map == 6 ) {
-    jshFlashErasePage(0xFD000);
-    jshFlashWrite(conf, 0xFD000, sizeof(flashBlock));    
+    jshFlashErasePage( 0x200000);
+    jshFlashWrite(conf,0x200000, sizeof(flashBlock));    
   } else {  
     jshFlashErasePage(0x7B000);
     jshFlashWrite(conf, 0x7B000, sizeof(flashBlock));
@@ -1210,11 +1210,11 @@ void jswrap_ESP8266_wifi_restore(void) {
   os_memset(flashBlock, 0, sizeof(flashBlock));
   uint32_t map = system_get_flash_size_map();
   if (map == 6 ) {
-    jshFlashRead(flashBlock, 0xFD000, sizeof(flashBlock));
+    jshFlashRead(flashBlock, 0x200000, sizeof(flashBlock));
   } else {
     jshFlashRead(flashBlock, 0x7B000, sizeof(flashBlock));
   }  
-  DBG("Wifi.restore: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, conf->crc);
+  DBG("Wifi.restore: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, (long unsigned int) conf->crc);
   uint32_t crcRd = conf->crc;
   conf->crc = 0;
   uint32_t crcCalc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
@@ -1226,7 +1226,7 @@ void jswrap_ESP8266_wifi_restore(void) {
       conf->phyMode > PHY_MODE_11N || conf->sleepType > MODEM_SLEEP_T ||
       conf->mode > STATIONAP_MODE) {
     DBG("Wifi.restore cannot restore: version read=%d exp=%d, crc read=0x%08lx cacl=0x%08lx\n",
-        conf->version, 24, crcRd, crcCalc);
+        conf->version, 24, (long unsigned int) crcRd, (long unsigned int) crcCalc);
     wifi_set_phy_mode(PHY_MODE_11N);
     wifi_set_opmode_current(SOFTAP_MODE);
     return;
@@ -1558,7 +1558,7 @@ static void sntpSync(void *arg) {
     DBG("NTP time: null\n");
   } else {
     if (ntpTime-sysTime != 0) {
-      DBG("NTP time: %ld delta=%ld %s\n", ntpTime, ntpTime-sysTime, sntp_get_real_time(ntpTime));
+      DBG("NTP time: %ld delta=%ld %s\n", (long unsigned int) ntpTime, (long unsigned int)ntpTime-sysTime, sntp_get_real_time(ntpTime));
     }
     jswrap_interactive_setTime((JsVarFloat)ntpTime);
   }

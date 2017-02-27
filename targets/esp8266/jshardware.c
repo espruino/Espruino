@@ -1266,6 +1266,13 @@ static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
 JsVar *jshFlashGetFree() {
   JsVar *jsFreeFlash = jsvNewEmptyArray();
   if (!jsFreeFlash) return 0;
+
+  uint32_t map = system_get_flash_size_map();
+  if ( map == 6 ) {
+    addFlashArea(jsFreeFlash, 0x300000, 0x300000-0x4000);
+    return jsFreeFlash;
+  }
+
   // Area reserved for EEPROM
   addFlashArea(jsFreeFlash, 0x77000, 0x1000);
 

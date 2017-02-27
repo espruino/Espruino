@@ -52,10 +52,10 @@ chip = {
 
 if (os.environ.has_key("FLASH_4MB_C1")):
   chip['saved_code'] = {
-    'address' : 0xF8000,
+    'address' : 0x201000, # first page is used for wifi save 
     'page_size' : 4096,
-    'pages' : 5,
-    'flash_available' : 888, # firmware can be up to this size
+    'pages' : 255,
+    'flash_available' : 912, # firmware can be up to this size 
    };
 
 
