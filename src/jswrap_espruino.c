@@ -1177,48 +1177,6 @@ void jswrap_espruino_lockConsole() {
   jsvUnLock(pwd);
 }
 
-/*JSON{
- "type"     : "staticmethod",
- "class"    : "E",
- "name"     : "neopixelWrite",
- "generate" : "jswrap_E_neopixelWrite",
- "params"   : [
-   ["pin", "pin", "Pin for output signal."],
-   ["arrayOfData", "JsVar", "Array of RGB LED data bytes"]
- ]
-}
-Write to NeoPixel/WS281x/APA10x-style LEDs attached to the given pin
-
-Different types of LED have the data in different orders - so don't
-be surprised by RGB or BGR orderings!
-
-**Note:** Espruino devices tend to have 3.3v IO, while WS2812/etc run
-off of 5v. Many WS2812 will only register a logic '1' at 70%
-of their input voltage - so if powering them off 5v you will not
-be able to send them data reliably. You can work around this by
-powering the LEDs off a lower voltage (for example 3.7v from a LiPo
-battery), or can put the output into the `af_opendrain` state and use
-a pullup resistor to 5v on STM32 based boards (nRF52 are not 5v tolerant
-so you can't do this).
-*/
-void jswrap_E_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
-  JSV_GET_AS_CHAR_ARRAY(rgbData, rgbSize, jsArrayOfData);
-  if (!rgbData) {
-    jsExceptionHere(JSET_ERROR, "Couldn't convert %t to data to send to LEDs", jsArrayOfData);
-    return;
-  }
-  if (rgbSize == 0) {
-    jsExceptionHere(JSET_ERROR, "Data must be a non empty array.");
-    return;
-  }
-  if (rgbSize % 3 != 0) {
-    jsExceptionHere(JSET_ERROR, "Data length must be a multiple of 3 (RGB).");
-    return;
-  }
-
-  jshNeopixelWrite(pin, (unsigned char *)rgbData, rgbSize);
-}
-
 // ----------------------------------------- USB Specific Stuff
 
 #ifdef USE_USB_HID

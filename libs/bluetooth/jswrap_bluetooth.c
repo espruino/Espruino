@@ -191,7 +191,10 @@ Called when a host device connects to Espruino. The first argument contains the 
 /*JSON{
   "type" : "event",
   "class" : "NRF",
-  "name" : "disconnect"
+  "name" : "disconnect",
+  "params" : [
+    ["reason","int","The reason code reported back by the BLE stack - see Nordic's `ble_hci.h` file for more information"]
+  ]
 }
 Called when a host device disconnects from Espruino.
  */
@@ -234,6 +237,9 @@ Called when an NFC field is no longer detected
   "type" : "event",
   "class" : "BluetoothDevice",
   "name" : "gattserverdisconnected",
+  "params" : [
+    ["reason","int","The reason code reported back by the BLE stack - see Nordic's `ble_hci.h` file for more information"]
+  ],
   "ifdef" : "NRF52"
 }
 Called when the device gets disconnected.
@@ -245,8 +251,8 @@ disconnected, just do the following:
 var gatt;
 var t = getTime();
 NRF.connect("aa:bb:cc:dd:ee:ff").then(function(gatt) {
-  gatt.device.on('gattserverdisconnected', function(event) {
-    console.log("Disconnected");
+  gatt.device.on('gattserverdisconnected', function(reason) {
+    console.log("Disconnected ",reason);
   });
 });
 ```
@@ -1904,10 +1910,10 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
     "class" : "BluetoothRemoteGATTCharacteristic",
     "name" : "readValue",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue",
-    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when the characteristic is read" ]
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) with a DataView when the characteristic is read" ]
 }
 
-Read a characteristic's value
+Read a characteristic's value, return a promise containing a DataView
 
 ```
 var device;
@@ -1920,7 +1926,7 @@ NRF.connect(device_address).then(function(d) {
 }).then(function(c) {
   return c.readValue();
 }).then(function(d) {
-  console.log("Got:", JSON.stringify(d));
+  console.log("Got:", JSON.stringify(d.buffer));
   device.disconnect();
 }).catch(function() {
   console.log("Something's broken.");
@@ -1931,7 +1937,7 @@ NRF.connect(device_address).then(function(d) {
 */
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic) {
 #if CENTRAL_LINK_COUNT>0
-  if (!bleNewTask(BLETASK_CHARACTERISTIC_READ, 0))
+  if (!bleNewTask(BLETASK_CHARACTERISTIC_READ, characteristic))
     return 0;
 
   JsVar *promise = jsvLockAgainSafe(blePromise);

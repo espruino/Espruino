@@ -421,7 +421,4 @@ unsigned int jshSetSystemClock(JsVar *options);
     if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_INTERNALERROR, "Timeout on "REASON); }  \
 }
 
-/** Send the given RGB pixel data out to neopixel/WS2811/APA104/etc */
-bool jshNeopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize);
-
 #endif /* JSHARDWARE_H_ */

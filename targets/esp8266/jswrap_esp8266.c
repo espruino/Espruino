@@ -32,7 +32,7 @@ typedef long long int64_t;
 #include <network_esp8266.h>
 #include "jsinteractive.h" // Pull in the jsiConsolePrint function
 #include <log.h>
-#include <jswrap_espruino.h>
+#include <jswrap_neopixel.h>
 
 
 // ESP8266.reboot
@@ -310,7 +310,7 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
  ]
 }*/
 void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
-  jswrap_E_neopixelWrite(pin, jsArrayOfData);
+  jswrap_neopixel_write(pin, jsArrayOfData);
 }
 
 //===== ESP8266.deepSleep

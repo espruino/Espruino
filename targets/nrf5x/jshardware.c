@@ -56,9 +56,7 @@
 
 #include "nrf5x_utils.h"
 #include "softdevice_handler.h"
-#ifdef NRF52
-#include "i2s_ws2812b_drive.h"
-#endif
+
 
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
 
@@ -112,7 +110,7 @@ void TIMER1_IRQHandler(void) {
   jstUtilTimerInterruptHandler();
 }
 
-void sys_evt_handler(uint32_t sys_evt) {
+void jsh_sys_evt_handler(uint32_t sys_evt) {
   if (sys_evt == NRF_EVT_FLASH_OPERATION_SUCCESS){
     flashIsBusy = false;
   }
@@ -271,10 +269,12 @@ void jshInit() {
                       APP_TIMER_MODE_SINGLE_SHOT,
                       wakeup_handler);
   if (err_code) jsiConsolePrintf("app_timer_create error %d\n", err_code);
+#else
+  // because the code in bluetooth.c will call jsh_sys_evt_handler for us
+  // if we were using bluetooth
+  softdevice_sys_evt_handler_set(jsh_sys_evt_handler);
 #endif
 
-  // Softdevice is initialised now
-  softdevice_sys_evt_handler_set(sys_evt_handler);
   // Enable PPI driver
   err_code = nrf_drv_ppi_init();
   APP_ERROR_CHECK(err_code);
@@ -1231,17 +1231,4 @@ unsigned int jshGetRandomNumber() {
 
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
-}
-
-bool jshNeopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
-#ifdef NRF52
-  if (!jshIsPinValid(pin)) {
-    jsExceptionHere(JSET_ERROR, "Pin is not valid.");
-    return false;
-  }
-  return !i2s_ws2812b_drive_xfer(rgbData, rgbSize/3, pinInfo[pin].pin);
-#else
-  jsExceptionHere(JSET_ERROR, "Neopixel writing not implemented");
-  return false;
-#endif
 }

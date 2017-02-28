@@ -680,8 +680,3 @@ gpio_num_t pinToESP32Pin(Pin pin) {
   jsError( "pinToESP32Pin: Unknown pin: %d", pin);
   return -1;
 }
-
-bool jshNeopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
-  jsExceptionHere(JSET_ERROR, "Neopixel writing not implemented");
-  return false;
-}
