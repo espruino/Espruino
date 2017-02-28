@@ -24,8 +24,6 @@ before_install:
 before_script:
 # - arm-none-eabi-gcc --version
  - xtensa-esp32-elf-gcc -v
- - ls -l app
- - ls -l esp-idf
 
 compiler:
   - gcc
