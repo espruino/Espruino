@@ -807,6 +807,7 @@ TARGETSOURCES =
 WRAPPERSOURCES = \
 src/jswrap_array.c \
 src/jswrap_arraybuffer.c \
+src/jswrap_dataview.c \
 src/jswrap_date.c \
 src/jswrap_error.c \
 src/jswrap_espruino.c \

@@ -15,6 +15,7 @@
             nRF52: Add BluetoothRemoteGATTCharacteristic.startNotifications (fix #959)
             nRF52: Added BluetoothDevice.gattserverdisconnected event
             nRF5x: Report back reason codes for BLE disconnect
+            Added DataView class
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
