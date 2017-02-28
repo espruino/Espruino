@@ -25,6 +25,18 @@ before_script:
 # - arm-none-eabi-gcc --version
  - xtensa-esp32-elf-gcc --version
 
+after_script:
+  - ls *.bin *.hex *.tgz | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
+  # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
+  # in environment using travis' repository settings
+  - "if [[ -n \"$S3_BUCKET\" && -n \"$AWS_ACCESS_KEY_ID\" ]]; then
+      echo Uploading *.tgz to $S3_BUCKET;
+      curl -Ls https://github.com/rlmcpherson/s3gof3r/releases/download/v0.5.0/gof3r_0.5.0_linux_amd64.tar.gz | tar zxf - gof3r_0.5.0_linux_amd64/gof3r;
+      mv gof3r*/gof3r .;
+      ls *.tgz | xargs -I {} ./gof3r put -b $S3_BUCKET -k espruino/{} --acl public-read -p {};
+      ls *.tgz | xargs -I {} echo \"URL: http://$S3_BUCKET/espruino/{}\";
+      fi"
+
 compiler:
   - gcc
 
