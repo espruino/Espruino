@@ -110,7 +110,7 @@ void TIMER1_IRQHandler(void) {
   jstUtilTimerInterruptHandler();
 }
 
-void sys_evt_handler(uint32_t sys_evt) {
+void jsh_sys_evt_handler(uint32_t sys_evt) {
   if (sys_evt == NRF_EVT_FLASH_OPERATION_SUCCESS){
     flashIsBusy = false;
   }
@@ -269,10 +269,12 @@ void jshInit() {
                       APP_TIMER_MODE_SINGLE_SHOT,
                       wakeup_handler);
   if (err_code) jsiConsolePrintf("app_timer_create error %d\n", err_code);
+#else
+  // because the code in bluetooth.c will call jsh_sys_evt_handler for us
+  // if we were using bluetooth
+  softdevice_sys_evt_handler_set(jsh_sys_evt_handler);
 #endif
 
-  // Softdevice is initialised now
-  softdevice_sys_evt_handler_set(sys_evt_handler);
   // Enable PPI driver
   err_code = nrf_drv_ppi_init();
   APP_ERROR_CHECK(err_code);

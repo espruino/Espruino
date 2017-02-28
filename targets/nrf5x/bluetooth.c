@@ -714,6 +714,8 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 /// Function for dispatching a system event to interested modules.
 static void sys_evt_dispatch(uint32_t sys_evt) {
   ble_advertising_on_sys_evt(sys_evt);
+  void jsh_sys_evt_handler(uint32_t sys_evt);
+  jsh_sys_evt_handler(sys_evt);
 }
 
 #if BLE_HIDS_ENABLED
