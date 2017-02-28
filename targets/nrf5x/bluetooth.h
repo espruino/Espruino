@@ -60,6 +60,7 @@ extern uint16_t bleAdvertisingInterval;           /**< The advertising interval 
 extern uint16_t                         m_conn_handle;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
 extern uint16_t                         m_central_conn_handle; /**< Handle for central mode connection */
+
 #endif
 
 /** Initialise the BLE stack */
@@ -124,6 +125,8 @@ void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid);
 void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen);
 // Read data from the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicRead(JsVar *characteristic);
+// Discover descriptors of characteristic
+void jsble_central_characteristicDescDiscover(JsVar *characteristic);
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicNotify(JsVar *characteristic, bool enable);
 #endif

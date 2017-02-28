@@ -180,8 +180,7 @@ typedef enum {
   (((F)&JSH_MASK_TYPE)>=JSH_TIMER1) && \
   (((F)&JSH_MASK_TYPE)<=JSH_TIMER18))
 #define JSH_PINFUNCTION_IS_DAC(F) ( \
-  (((F)&JSH_MASK_TYPE)==JSH_DAC) || \
-0 )
+  (((F)&JSH_MASK_TYPE)==JSH_DAC))
 #define JSH_PINFUNCTION_IS_USART(F) ( \
   (((F)&JSH_MASK_TYPE)>=JSH_USART1) && \
   (((F)&JSH_MASK_TYPE)<=JSH_USART6))
@@ -217,6 +216,8 @@ void jshPinOutput(Pin pin, bool value);
 
 // Convert an event type flag into a jshPinFunction for an actual hardware device
 JshPinFunction jshGetPinFunctionFromDevice(IOEventFlags device);
+// Convert a jshPinFunction to an event type flag
+IOEventFlags jshGetFromDevicePinFunction(JshPinFunction func);
 
 /** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
 JshPinFunction NO_INLINE jshGetPinFunctionForPin(Pin pin, JshPinFunction functionType);

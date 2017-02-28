@@ -24,7 +24,7 @@ info = {
  'build' : {
    'defines' : [
      'USE_NET',
-	 'USE_TELNET',
+     'USE_TELNET',
      'USE_GRAPHICS',
      'USE_CRYPTO',
      'USE_TLS'	 
@@ -55,7 +55,11 @@ devices = {
 
 # left-right, or top-bottom order
 board_esp32 = {
+<<<<<<< HEAD
    'top' :    [ 'D0','D4','D16','D17','D5','D18','D19','D20','D21','D3','D1','D22','D23','GND'],   
+=======
+   'top' : ['GND','D23','D22','D1','D3','D21','D20','D19','D18','D5','D17','D16','D4','D0'],  
+>>>>>>> 761dbafbae2ed426fc38a5b417031b815860ba83
    'bottom' : ['D12','D14','D27','D26','D25','D33','D32','D35','D34','D39','D36','EN','3V3','GND'],
    'right' : [ 'GND','D13','D9','D10','D11','D6','D7','D8','D15','D2']
 };
@@ -66,11 +70,19 @@ board_esp32["_css"] = """
   width:  600px;
   height: 435px;
   left: 50px;
+<<<<<<< HEAD
   top: 150px;
   background-image: url(img/ESP32.jpg);
 }
 #boardcontainer {
   height: 675px;
+=======
+  top: 170px;
+  background-image: url(img/ESP32.jpg);
+}
+#boardcontainer {
+  height: 700px;
+>>>>>>> 761dbafbae2ed426fc38a5b417031b815860ba83
 }
 #board #right {
   top: 80px;
@@ -78,11 +90,19 @@ board_esp32["_css"] = """
 }
 #board #top {
   bottom: 440px;
+<<<<<<< HEAD
   left: 157px;
 }
 #board #bottom  {
   top: 435px;
   left: 157px;
+=======
+  left: 155px;
+}
+#board #bottom  {
+  top: 435px;
+  left: 155px;
+>>>>>>> 761dbafbae2ed426fc38a5b417031b815860ba83
 }
 #board .rightpin {
   height: 28px;
@@ -96,6 +116,7 @@ boards = [ board_esp32 ];
 
 def get_pins():
 
+<<<<<<< HEAD
   pins = pinutils.generate_pins(0,5);
 #6-11 are used by Flash chip
   pins.extend(pinutils.generate_pins(12,23));
@@ -106,6 +127,24 @@ def get_pins():
 
   pins = pinutils.fill_gaps_in_pin_list(pins);
   
+=======
+
+#  { "name":"PD20", "sortingname":"D20", "port":"D", "num":"30", "functions":{ "I2C1_SDA":0 }, "csv":{} },
+
+
+#  pins = pinutils.generate_pins(0,5);
+##6-11 are used by Flash chip
+#  pins.extend(pinutils.generate_pins(12,23));
+
+# pins.extend(pinutils.generate_pins(25,27));
+##32-33 are routed to rtc for xtal
+#  pins.extend(pinutils.generate_pins(34,39));
+
+#  pins = pinutils.fill_gaps_in_pin_list(pins);
+
+  pins = pinutils.generate_pins(0,39) # 40 General Purpose I/O Pins.
+
+>>>>>>> 761dbafbae2ed426fc38a5b417031b815860ba83
   pinutils.findpin(pins, "PD36", True)["functions"]["ADC1_IN0"]=0;
   pinutils.findpin(pins, "PD37", True)["functions"]["ADC1_IN1"]=0;
   pinutils.findpin(pins, "PD38", True)["functions"]["ADC1_IN2"]=0;
@@ -132,8 +171,19 @@ def get_pins():
   pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
 
   pinutils.findpin(pins, "PD10", True)["functions"]["USART0_TX"]=0;
+<<<<<<< HEAD
   pinutils.findpin(pins, "PD16", True)["functions"]["UARTT2_RX"]=0;
   pinutils.findpin(pins, "PD17", True)["functions"]["USART2_TX"]=0;
   pinutils.findpin(pins, "PD32", True)["functions"]["USART0_RX"]=0;
 
   return pins
+=======
+  pinutils.findpin(pins, "PD16", True)["functions"]["USART2_RX"]=0;
+  pinutils.findpin(pins, "PD17", True)["functions"]["USART2_TX"]=0;
+  pinutils.findpin(pins, "PD32", True)["functions"]["USART0_RX"]=0;
+
+  # everything is non-5v tolerant 
+  #for pin in pins:
+  #  pin["functions"]["3.3"]=0;
+  return pins
+>>>>>>> 761dbafbae2ed426fc38a5b417031b815860ba83

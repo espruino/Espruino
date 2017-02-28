@@ -39,7 +39,7 @@ compiler:
 
 env:
   global:
-    #- RELEASE=1
+    - RELEASE=1
     - TRAVIS=1
     - V=0
     - ESP8266_SDK_ROOT=$TRAVIS_BUILD_DIR/esp_iot_sdk_v2.0.0.p1
@@ -63,6 +63,7 @@ env:
     - LCTECH_STM32F103RBT6=1
     - LINUX_BUILD=1
     - EFM32GGSTK=1
+    - NUCLEOL476RG=1
 script: make
 
 notifications:

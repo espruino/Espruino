@@ -295,6 +295,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+          bleSetActiveBluetoothGattServer(bleTaskInfo);
           jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
           bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
         }
@@ -304,7 +305,18 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_GAP_EVT_DISCONNECTED:
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
+          JsVar *gattServer = bleGetActiveBluetoothGattServer();
+          if (gattServer) {
+            JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+            jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
+            if (bluetoothDevice) {
+              jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", 0, 0);
+              jshHadEvent();
+            }
+            jsvUnLock2(gattServer, bluetoothDevice);
+          }
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
+          bleSetActiveBluetoothGattServer(0);
           BleTask task = bleGetCurrentTask();
           if (BLETASK_IS_CENTRAL(task)) {
             bleCompleteTaskFailAndUnLock(task, jsvNewFromString("Disconnected."));
@@ -411,13 +423,21 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
       case BLE_EVT_TX_COMPLETE:
         // BLE transmit finished - reset flags
-        //TODO: probably want to figure out *which one* finished?
-        bleStatus &= ~BLE_IS_SENDING;
-        if (bleStatus & BLE_IS_SENDING_HID) {
-          bleStatus &= ~BLE_IS_SENDING_HID;
-          jsiQueueObjectCallbacks(execInfo.root, BLE_HID_SENT_EVENT, 0, 0);
-          jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, 0); // fire only once
-          jshHadEvent();
+#if CENTRAL_LINK_COUNT>0
+        if (p_ble_evt->evt.common_evt.conn_handle == m_central_conn_handle) {
+          if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
+            bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_WRITE, 0);
+        }
+#endif
+        if (p_ble_evt->evt.common_evt.conn_handle == m_conn_handle) {
+          //TODO: probably want to figure out *which one* finished?
+          bleStatus &= ~BLE_IS_SENDING;
+          if (bleStatus & BLE_IS_SENDING_HID) {
+            bleStatus &= ~BLE_IS_SENDING_HID;
+            jsiQueueObjectCallbacks(execInfo.root, BLE_HID_SENT_EVENT, 0, 0);
+            jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, 0); // fire only once
+            jshHadEvent();
+          }
         }
         break;
 
@@ -529,6 +549,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
               jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_chr->uuid));
               jsvObjectSetChildAndUnLock(o,"handle_value", jsvNewFromInteger(p_chr->handle_value));
               jsvObjectSetChildAndUnLock(o,"handle_decl", jsvNewFromInteger(p_chr->handle_decl));
+              JsVar *p = jsvNewObject();
+              if (p) {
+                jsvObjectSetChildAndUnLock(p,"broadcast",jsvNewFromBool(p_chr->char_props.broadcast));
+                jsvObjectSetChildAndUnLock(p,"read",jsvNewFromBool(p_chr->char_props.read));
+                jsvObjectSetChildAndUnLock(p,"writeWithoutResponse",jsvNewFromBool(p_chr->char_props.write_wo_resp));
+                jsvObjectSetChildAndUnLock(p,"write",jsvNewFromBool(p_chr->char_props.write));
+                jsvObjectSetChildAndUnLock(p,"notify",jsvNewFromBool(p_chr->char_props.notify));
+                jsvObjectSetChildAndUnLock(p,"indicate",jsvNewFromBool(p_chr->char_props.indicate));
+                jsvObjectSetChildAndUnLock(p,"authenticatedSignedWrites",jsvNewFromBool(p_chr->char_props.auth_signed_wr));
+                jsvObjectSetChildAndUnLock(o,"properties", p);
+              }
               // char_props?
               jsvArrayPushAndUnLock(bleTaskInfo, o);
             }
@@ -562,9 +593,34 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
         break;
       }
-      case BLE_GATTC_EVT_DESC_DISC_RSP:
-        jsiConsolePrintf("DESC\n");
+      case BLE_GATTC_EVT_DESC_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY)) {
+        // trigger this with sd_ble_gattc_descriptors_discover(conn_handle, &handle_range);
+        uint16_t cccd_handle = 0;
+        ble_gattc_evt_desc_disc_rsp_t * p_desc_disc_rsp_evt = &p_ble_evt->evt.gattc_evt.params.desc_disc_rsp;
+        if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
+          // The descriptor was found at the peer.
+          // If the descriptor was a CCCD, then the cccd_handle needs to be populated.
+          uint32_t i;
+          // Loop through all the descriptors to find the CCCD.
+          for (i = 0; i < p_desc_disc_rsp_evt->count; i++) {
+            if (p_desc_disc_rsp_evt->descs[i].uuid.uuid ==
+                BLE_UUID_DESCRIPTOR_CLIENT_CHAR_CONFIG) {
+              cccd_handle = p_desc_disc_rsp_evt->descs[i].handle;
+            }
+          }
+        }
+        if (cccd_handle) {
+          if(bleTaskInfo)
+            jsvObjectSetChildAndUnLock(bleTaskInfo, "handle_cccd", jsvNewFromInteger(cccd_handle));
+            
+          // FIXME: we just switch task here - this is not nice...
+          bleSwitchTask(BLETASK_CHARACTERISTIC_NOTIFY);
+          jsble_central_characteristicNotify(bleTaskInfo, true);
+        } else {
+          bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, jsvNewFromString("CCCD Handle not found"));
+        }
         break;
+      }
 
       case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) {
         ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
@@ -590,11 +646,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (handles) {
           JsVar *characteristic = jsvGetArrayItem(handles, p_hvx->handle);
           if (characteristic) {
-            // TODO: should return {target:characteristic} and set characteristic.value
-            JsVar *data = jsvNewStringOfLength(p_hvx->len);
-            if (data) jsvSetString(data, (const char*)p_hvx->data, p_hvx->len);
-            jsiQueueObjectCallbacks(characteristic, "characteristicvaluechanged", &data, 1);
-            jshHadEvent();
+            // Set characteristic.value, and return {target:characteristic}
+            jsvObjectSetChildAndUnLock(characteristic, "value",
+                jsvNewTypedArrayWithData(ARRAYBUFFERVIEW_UINT8, p_hvx->len, (unsigned char*)p_hvx->data));
+
+            JsVar *evt = jsvNewObject();
+            if (evt) {
+              jsvObjectSetChild(evt, "target", characteristic);
+              jsiQueueObjectCallbacks(characteristic, JS_EVENT_PREFIX"characteristicvaluechanged", &evt, 1);
+              jshHadEvent();
+              jsvUnLock(evt);
+            }
           }
           jsvUnLock2(characteristic, handles);
         }
@@ -1108,6 +1170,11 @@ void jsble_restart_softdevice() {
   if (advData || advOpt) jswrap_nrf_bluetooth_setAdvertising(advData, advOpt);
   jsvUnLock2(advData, advOpt);
 
+  // If we had scan response data set, update it
+  JsVar *scanData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, 0);
+  if (scanData) jswrap_nrf_bluetooth_setScanResponse(scanData);
+  jsvUnLock(scanData);
+
   // if we were scanning, make sure we restart
   if (bleStatus & BLE_IS_SCANNING) {
     JsVar *callback = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT, 0);
@@ -1347,23 +1414,22 @@ void jsble_nfc_start(const uint8_t *data, size_t len) {
 #if CENTRAL_LINK_COUNT>0
 void jsble_central_connect(ble_gap_addr_t peer_addr) {
   uint32_t              err_code;
-  // TODO: do these really need to be static?
 
-  static ble_gap_scan_params_t     m_scan_param;
+  ble_gap_scan_params_t     m_scan_param;
   memset(&m_scan_param, 0, sizeof(m_scan_param));
   m_scan_param.active       = 1;            // Active scanning set.
   m_scan_param.interval     = MSEC_TO_UNITS(100, UNIT_0_625_MS); // Scan interval.
-  m_scan_param.window       = MSEC_TO_UNITS(50, UNIT_0_625_MS); // Scan window.
+  m_scan_param.window       = MSEC_TO_UNITS(90, UNIT_0_625_MS); // Scan window.
   m_scan_param.timeout      = 4;            // 4 second timeout.
 
-  static ble_gap_conn_params_t   gap_conn_params;
+  ble_gap_conn_params_t   gap_conn_params;
   memset(&gap_conn_params, 0, sizeof(gap_conn_params));
   gap_conn_params.min_conn_interval = MSEC_TO_UNITS(7.5, UNIT_1_25_MS);
-  gap_conn_params.max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS);
+  gap_conn_params.max_conn_interval = MSEC_TO_UNITS(500, UNIT_1_25_MS);
   gap_conn_params.slave_latency     = 0;
   gap_conn_params.conn_sup_timeout  = MSEC_TO_UNITS(4000, UNIT_10_MS);
 
-  static ble_gap_addr_t addr;
+  ble_gap_addr_t addr;
   addr = peer_addr;
 
   err_code = sd_ble_gap_connect(&addr, &m_scan_param, &gap_conn_params);
@@ -1407,9 +1473,20 @@ void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, siz
     return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_WRITE, jsvNewFromString("Not connected"));
 
   uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+  bool writeWithoutResponse = false;
+  JsVar *properties = jsvObjectGetChild(characteristic, "properties", 0);
+  if (properties) {
+    writeWithoutResponse = jsvGetBoolAndUnLock(jsvObjectGetChild(properties, "writeWithoutResponse", 0));
+    jsvUnLock(properties);
+  }
+
+
   ble_gattc_write_params_t write_params;
   memset(&write_params, 0, sizeof(write_params));
-  write_params.write_op = BLE_GATT_OP_WRITE_REQ;
+  if (writeWithoutResponse)
+    write_params.write_op = BLE_GATT_OP_WRITE_CMD; // write without response
+  else
+    write_params.write_op = BLE_GATT_OP_WRITE_REQ; // write with response
   // BLE_GATT_OP_WRITE_REQ ===> BLE_GATTC_EVT_WRITE_RSP (write with response)
   // or BLE_GATT_OP_WRITE_CMD ===> BLE_EVT_TX_COMPLETE (simple write)
   // or send multiple BLE_GATT_OP_PREP_WRITE_REQ,...,BLE_GATT_OP_EXEC_WRITE_REQ (with offset + 18 bytes in each for 'long' write)
@@ -1436,12 +1513,31 @@ void jsble_central_characteristicRead(JsVar *characteristic) {
     bleCompleteTaskFail(BLETASK_CHARACTERISTIC_READ, 0);
 }
 
+void jsble_central_characteristicDescDiscover(JsVar *characteristic) {
+  if (!jsble_has_central_connection())
+    return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, jsvNewFromString("Not connected"));
+
+  // start discovery for our single handle only
+  uint16_t handle_value = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+
+  ble_gattc_handle_range_t range;
+  range.start_handle = handle_value+1;
+  range.end_handle = handle_value+1;
+  
+  uint32_t              err_code;
+  err_code = sd_ble_gattc_descriptors_discover(m_central_conn_handle, &range);
+  if (jsble_check_error(err_code)) {
+    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, 0);
+  }
+}
+
 void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
   if (!jsble_has_central_connection())
     return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("Not connected"));
 
   uint16_t cccd_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_cccd", 0));
-  // FIXME: we need the cccd handle to be populated for this to work
+  if (!cccd_handle)
+    return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("handle_cccd not set"));
 
   uint8_t buf[BLE_CCCD_VALUE_LEN];
   buf[0] = enable ? BLE_GATT_HVX_NOTIFICATION : 0;

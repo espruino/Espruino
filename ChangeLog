@@ -6,6 +6,14 @@
             Puck.js: Allow Puck.IR to take pins for external IR LED (fix #927)
             nRF52: Allow arbitrary NFC data to be specified (fix #1021)
             nRF5x: Allow multiple advertising packets to be set at once with NRF.setAdvertising
+            nRF52: Add 'properties' object to BluetoothRemoteGATTCharacteristic
+            nRF52: Perform write without response if that is what is required 
+            Pico/WiFi: Allow USB HID to work on Windows (from @nailxx)
+            Allow Puck.js/nRF52 devices to drive Neopixel/WS281x/APA10x LEDs with E.neopixelWrite (fix #1023)
+            Fix crash in JSON.stringify for zero-length typed arrays
+            Fix precedence of 'void' keyword (fix #1079)
+            nRF52: Add BluetoothRemoteGATTCharacteristic.startNotifications (fix #959)
+            nRF52: Added BluetoothDevice.gattserverdisconnected event
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise

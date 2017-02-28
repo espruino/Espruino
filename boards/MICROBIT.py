@@ -23,7 +23,7 @@ info = {
  'default_console_tx' : "H0", # pin 24
  'default_console_rx' : "H1", # pin 25
  'default_console_baudrate' : "9600",
- 'variables' : 350,
+ 'variables' : 300,
  'binary_name' : 'espruino_%v_microbit.hex',
  'build' : {
   'defines' : [
@@ -123,4 +123,7 @@ def get_pins():
    { "name":"PH0", "sortingname":"H0", "port":"D", "num":"24", "functions":{}, "csv":{} },
    { "name":"PH1", "sortingname":"H1", "port":"D", "num":"25", "functions":{}, "csv":{} }
   ];
+  # everything is non-5v tolerant 
+  for pin in pins:
+    pin["functions"]["3.3"]=0;
   return pins
