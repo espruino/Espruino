@@ -731,8 +731,10 @@ bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 /// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
 
-/// Create a new typed array of the given type and length (in elements), and fill it with the given data
-JsVar *jsvNewTypedArrayWithData(JsVarDataArrayBufferViewType type, JsVarInt length, unsigned char *data);
+#ifndef SAVE_ON_FLASH
+/// Create a new DataView of the given length (in elements), and fill it with the given data (if set)
+JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data);
+#endif
 
 /** Create a new arraybuffer of the given type and length, also return a pointer
  * to the contiguous memory area containing it. Returns 0 if it was unable to

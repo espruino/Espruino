@@ -629,8 +629,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
       case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) {
         ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
-        JsVar *data = jsvNewStringOfLength(p_read->len);
-        if (data) jsvSetString(data, (char*)&p_read->data[0], p_read->len);
+
+        JsVar *data = jsvNewDataViewWithData(p_read->len, (char*)&p_read->data[0]);
+        jsvObjectSetChild(bleTaskInfo, "value", data); // set this.value
         bleCompleteTaskSuccessAndUnLock(BLETASK_CHARACTERISTIC_READ, data);
         break;
       }
@@ -653,7 +654,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           if (characteristic) {
             // Set characteristic.value, and return {target:characteristic}
             jsvObjectSetChildAndUnLock(characteristic, "value",
-                jsvNewTypedArrayWithData(ARRAYBUFFERVIEW_UINT8, p_hvx->len, (unsigned char*)p_hvx->data));
+                jsvNewDataViewWithData(p_hvx->len, (unsigned char*)p_hvx->data));
 
             JsVar *evt = jsvNewObject();
             if (evt) {

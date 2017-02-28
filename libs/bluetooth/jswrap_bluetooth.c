@@ -1910,10 +1910,10 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
     "class" : "BluetoothRemoteGATTCharacteristic",
     "name" : "readValue",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue",
-    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when the characteristic is read" ]
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) with a DataView when the characteristic is read" ]
 }
 
-Read a characteristic's value
+Read a characteristic's value, return a promise containing a DataView
 
 ```
 var device;
@@ -1926,7 +1926,7 @@ NRF.connect(device_address).then(function(d) {
 }).then(function(c) {
   return c.readValue();
 }).then(function(d) {
-  console.log("Got:", JSON.stringify(d));
+  console.log("Got:", JSON.stringify(d.buffer));
   device.disconnect();
 }).catch(function() {
   console.log("Something's broken.");
@@ -1937,7 +1937,7 @@ NRF.connect(device_address).then(function(d) {
 */
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic) {
 #if CENTRAL_LINK_COUNT>0
-  if (!bleNewTask(BLETASK_CHARACTERISTIC_READ, 0))
+  if (!bleNewTask(BLETASK_CHARACTERISTIC_READ, characteristic))
     return 0;
 
   JsVar *promise = jsvLockAgainSafe(blePromise);
