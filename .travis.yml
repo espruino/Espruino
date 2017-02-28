@@ -23,7 +23,7 @@ before_install:
  - curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz | tar xfz -
 before_script:
 # - arm-none-eabi-gcc --version
- - xtensa-esp32-elf-gcc -v
+ - xtensa-esp32-elf-gcc --version
 
 compiler:
   - gcc
