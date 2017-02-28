@@ -289,7 +289,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
           JsVar *addr = bleAddrToStr(p_ble_evt->evt.gap_evt.params.connected.peer_addr);
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", addr);
-          jsvUnLock(addr);
           jshHadEvent();
         }
 #if CENTRAL_LINK_COUNT>0
@@ -335,7 +334,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             jsble_advertising_start();
           JsVar *reason = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.disconnected.reason);
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
-          jsvUnLock(reason);
           jshHadEvent();
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
@@ -630,7 +628,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) {
         ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
 
-        JsVar *data = jsvNewDataViewWithData(p_read->len, (char*)&p_read->data[0]);
+        JsVar *data = jsvNewDataViewWithData(p_read->len, (unsigned char*)&p_read->data[0]);
         jsvObjectSetChild(bleTaskInfo, "value", data); // set this.value
         bleCompleteTaskSuccessAndUnLock(BLETASK_CHARACTERISTIC_READ, data);
         break;

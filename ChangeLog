@@ -17,6 +17,7 @@
             nRF5x: Report back reason codes for BLE disconnect
             Added DataView class
             nRF52: char.readValue now returns DataView to be more Web Bluetooth compliant (fix #1091)
+            nRF5x: Fix explicit disconnect being able to reboot Puck (fix #1088)
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
