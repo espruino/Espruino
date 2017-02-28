@@ -191,7 +191,10 @@ Called when a host device connects to Espruino. The first argument contains the 
 /*JSON{
   "type" : "event",
   "class" : "NRF",
-  "name" : "disconnect"
+  "name" : "disconnect",
+  "params" : [
+    ["reason","int","The reason code reported back by the BLE stack - see Nordic's `ble_hci.h` file for more information"]
+  ]
 }
 Called when a host device disconnects from Espruino.
  */
@@ -234,6 +237,9 @@ Called when an NFC field is no longer detected
   "type" : "event",
   "class" : "BluetoothDevice",
   "name" : "gattserverdisconnected",
+  "params" : [
+    ["reason","int","The reason code reported back by the BLE stack - see Nordic's `ble_hci.h` file for more information"]
+  ],
   "ifdef" : "NRF52"
 }
 Called when the device gets disconnected.
@@ -245,8 +251,8 @@ disconnected, just do the following:
 var gatt;
 var t = getTime();
 NRF.connect("aa:bb:cc:dd:ee:ff").then(function(gatt) {
-  gatt.device.on('gattserverdisconnected', function(event) {
-    console.log("Disconnected");
+  gatt.device.on('gattserverdisconnected', function(reason) {
+    console.log("Disconnected ",reason);
   });
 });
 ```

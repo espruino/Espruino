@@ -310,7 +310,10 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
             jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
             if (bluetoothDevice) {
-              jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", 0, 0);
+              // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
+              JsVar *reason = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.disconnected.reason);
+              jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", &reason, 1);
+              jsvUnLock(reason);
               jshHadEvent();
             }
             jsvUnLock2(gattServer, bluetoothDevice);
@@ -330,7 +333,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
             jsble_advertising_start();
-          bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", 0);
+          JsVar *reason = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.disconnected.reason);
+          bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
+          jsvUnLock(reason);
           jshHadEvent();
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
