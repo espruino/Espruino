@@ -811,8 +811,3 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) { }
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
 }
-
-bool jshNeopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
-  jsExceptionHere(JSET_ERROR, "Neopixel writing not implemented");
-  return false;
-}

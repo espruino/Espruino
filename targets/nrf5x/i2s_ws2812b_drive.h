@@ -28,7 +28,7 @@ void i2s_ws2812b_drive_set_buff(rgb_led_t* rgb_led, uint8_t *p_xfer, uint16_t xb
 
 ret_code_t i2s_ws2812b_drive_xfer(rgb_led_t *led_array, uint16_t num_leds, uint8_t drive_pin);
 
-static void i2s_ws2812b_drive_handler(uint32_t const * p_data_received,
+void i2s_ws2812b_drive_handler(uint32_t const * p_data_received,
                          uint32_t       * p_data_to_send,
                          uint16_t         number_of_words);
 #endif // I2S_WS2812B_DRIVER_H__

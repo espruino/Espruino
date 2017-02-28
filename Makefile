@@ -166,6 +166,7 @@ USE_NET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
 USE_HASHLIB=1
+USE_NEOPIXEL=1
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
@@ -183,6 +184,7 @@ USE_HASHLIB=1
 USE_FILESYSTEM=1
 USE_CRYPTO=1
 USE_TLS=1
+USE_NEOPIXEL=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -200,6 +202,7 @@ USE_HASHLIB=1
 USE_FILESYSTEM=1
 USE_CRYPTO=1
 USE_TLS=1
+USE_NEOPIXEL=1
 BOARD=ESPRUINOWIFI
 STLIB=STM32F411xE
 #PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o # <- this seems like overkill
@@ -318,6 +321,7 @@ USE_LCD_FSMC=1
 DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
 USE_FILESYSTEM=1
 USE_FILESYSTEM_SDIO=1
+USE_NEOPIXEL=1
 BOARD=HYSTM32_24
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
@@ -328,6 +332,7 @@ EMBEDDED=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
 DEFINES+=-DILI9325_BITBANG # bit-bang the LCD driver
+USE_NEOPIXEL=1
 SAVE_ON_FLASH=1
 #USE_FILESYSTEM=1 # just normal SPI
 BOARD=HYSTM32_28
@@ -342,6 +347,7 @@ USE_LCD_FSMC=1
 DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
 USE_FILESYSTEM=1
 USE_FILESYSTEM_SDIO=1
+USE_NEOPIXEL=1
 BOARD=HYSTM32_32
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
@@ -352,6 +358,7 @@ EMBEDDED=1
 NUCLEO=1
 USE_GRAPHICS=1
 USE_NET=1
+USE_NEOPIXEL=1
 BOARD=NUCLEOF401RE
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -362,6 +369,7 @@ EMBEDDED=1
 NUCLEO=1
 USE_GRAPHICS=1
 USE_NET=1
+USE_NEOPIXEL=1
 BOARD=NUCLEOF411RE
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -396,6 +404,7 @@ else ifdef STM32F4DISCOVERY
 EMBEDDED=1
 USE_NET=1
 USE_GRAPHICS=1
+USE_NEOPIXEL=1
 DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F4DISCOVERY
 STLIB=STM32F407xx
@@ -406,6 +415,7 @@ else ifdef STM32F411DISCOVERY
 EMBEDDED=1
 USE_NET=1
 USE_GRAPHICS=1
+USE_NEOPIXEL=1
 DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F411DISCOVERY
 STLIB=STM32F411xE
@@ -416,6 +426,7 @@ else ifdef STM32F401CDISCOVERY
 EMBEDDED=1
 USE_NET=1
 USE_GRAPHICS=1
+USE_NEOPIXEL=1
 DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F401CDISCOVERY
 STLIB=STM32F401xE
@@ -425,6 +436,7 @@ OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
 EMBEDDED=1
 USE_GRAPHICS=1
+USE_NEOPIXEL=1
 DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F429IDISCOVERY
 STLIB=STM32F429xx
@@ -435,6 +447,7 @@ else ifdef STM32F3DISCOVERY
 EMBEDDED=1
 USE_NET=1
 USE_GRAPHICS=1
+USE_NEOPIXEL=1
 BOARD=STM32F3DISCOVERY
 STLIB=STM32F3XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o
@@ -443,6 +456,7 @@ OPTIMIZEFLAGS+=-Os
 else ifdef STM32VLDISCOVERY
 EMBEDDED=1
 SAVE_ON_FLASH=1
+USE_NEOPIXEL=1
 BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
@@ -497,6 +511,7 @@ USE_BLUETOOTH=1
 USE_NET=1
 USE_GRAPHICS=1
 USE_NFC=1
+USE_NEOPIXEL=1
 DEFINES += -DBOARD_PCA10040 -DPCA10040
 
 # DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
@@ -513,6 +528,7 @@ USE_GRAPHICS=1
 USE_CRYPTO=1
 #USE_TLS=1
 USE_NFC=1
+USE_NEOPIXEL=1
 
 else ifdef ECU
 # Gordon's car ECU (extremely beta!)
@@ -584,6 +600,7 @@ USE_NET=1
 USE_TELNET=1
 #USE_GRAPHICS=1
 USE_CRYPTO=1
+USE_NEOPIXEL=1
 BOARD=ESP8266_BOARD
 # Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
 # too large a firmware (-Os is -O2 without optimizations that increase code size)
@@ -810,7 +827,7 @@ src/jswrap_serial.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_stream.c \
 src/jswrap_string.c \
-src/jswrap_waveform.c
+src/jswrap_waveform.c \
 
 # it is important that _pin comes before stuff which uses
 # integers (as the check for int *includes* the chek for pin)
@@ -1139,6 +1156,12 @@ libs/crypto/mbedtls/library/md_wrap.c \
 libs/crypto/mbedtls/library/oid.c \
 libs/crypto/mbedtls/library/pkcs5.c
 endif
+endif
+
+ifdef USE_NEOPIXEL
+  DEFINES += -DUSE_NEOPIXEL
+  INCLUDE += -I$(ROOT)/libs/neopixel
+  WRAPPERSOURCES += libs/neopixel/jswrap_neopixel.c
 endif
 
 
