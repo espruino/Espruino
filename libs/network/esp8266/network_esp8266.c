@@ -699,6 +699,11 @@ static void esp8266_callback_recvCB(
     return;
   }
 
+  if (pEspconn->type == ESPCONN_UDP && len > 536/2 /*chunkSize*/) {
+    jsWarn("%s: Recv %d too long (UDP)!\n", DBG_LIB, len);
+    return;
+  }
+
   // Allocate a buffer and add to the receive queue
   PktBuf *buf = PktBuf_New(len);
   if (!buf) {
