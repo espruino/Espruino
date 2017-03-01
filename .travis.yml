@@ -18,8 +18,8 @@ before_install:
  #- sudo apt-get install libsdl1.2-dev gcc-arm-embedded
  #- curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
  #- curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf -
- - curl -Ls https://raw.githubusercontent.com/wilberforce/espruino-esp32/master/app.tgz | tar xfz -
- - curl -Ls https://raw.githubusercontent.com/wilberforce/espruino-esp32/master/esp-idf.tgz | tar xfz -
+ - curl -Ls https://github.com/wilberforce/EspruinoBuildTools/raw/master/esp32/deploy/app.tgz | tar xfz -
+ - curl -Ls https://github.com/wilberforce/EspruinoBuildTools/raw/master/esp32/deploy/esp-idf.tgz | tar xfz -
  - curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz | tar xfz -
 before_script:
 # - arm-none-eabi-gcc --version
@@ -49,7 +49,6 @@ env:
 #    - PATH=$PATH:$TRAVIS_BUILD_DIR/xtensa-lx106-elf/bin/
     -  ESP_IDF_PATH=$TRAVIS_BUILD_DIR/esp-idf
     -  ESP_APP_TEMPLATE_PATH=$TRAVIS_BUILD_DIR/app
-    -  ESP32=1
     -  RELEASE=1
     -  PATH=$PATH:$TRAVIS_BUILD_DIR/xtensa-esp32-elf/bin/
   matrix:
@@ -70,7 +69,7 @@ env:
 #    - NUCLEOF401RE=1
 #    - NUCLEOF411RE=1
 #    - LCTECH_STM32F103RBT6=1
-#    - LINUX_BUILD=1
+    - LINUX_BUILD=1
 #    - EFM32GGSTK=1
 #    - NUCLEOL476RG=1
 script: make
