@@ -510,10 +510,42 @@ The 'message' event is called when a datagram message is received. If a handler 
 }
 */
 JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callback) {
-  jsvAddNamedChild(parent, callback, "on:bind");
-  jswrap_net_server_listen(parent, port, ST_UDP);
-  jsiQueueObjectCallbacks(parent, "on:bind", &parent, 1);
+  // FIXME: move elsewhere...
+  // re-used dgramSocket instance...
+  {
+      jswrap_dgram_close(parent); // close the client-only socket
+      // the close is async, need to run the idle loop
+      JsNetwork net;
+      if (!networkGetFromVarIfOnline(&net)) return parent;
+      socketIdle(&net);
+      networkFree(&net);
+
+      jsvObjectRemoveChild(parent, "cls"/*HTTP_NAME_CLOSE*/);
+      jsvObjectRemoveChild(parent, "clsNow"/*HTTP_NAME_CLOSENOW*/);
+      jsvObjectRemoveChild(parent, "sckt"/*HTTP_NAME_SOCKET*/);
+  }
+
+  jsvObjectSetChild(parent, "#onbind", callback);
+  jswrap_net_server_listen(parent, port, ST_UDP); // create bound socket
+  jsiQueueObjectCallbacks(parent, "#onbind", &parent, 1);
+
   return parent;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "dgramSocket",
+  "name" : "close",
+  "generate" : "jswrap_dgram_close"
+}
+Close the socket
+*/
+void jswrap_dgram_close(JsVar *parent) {
+  JsNetwork net;
+  if (!networkGetFromVarIfOnline(&net)) return;
+
+  clientRequestEnd(&net, parent);
+  networkFree(&net);
 }
 
 /*JSON{
