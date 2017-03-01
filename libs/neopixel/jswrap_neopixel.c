@@ -52,7 +52,7 @@ implementation on some devices - hence this library to simplify things.
     ["data","JsVar","The data to write to the LED strip"]
   ]
 }
-Write to a strip of NeoPixel/WS281x/APA104/SK6812-style LEDs
+Write to a strip of NeoPixel/WS281x/APA104/APA106/SK6812-style LEDs
 attached to the given pin.
 
 ```
