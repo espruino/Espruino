@@ -216,6 +216,8 @@ void jshPinOutput(Pin pin, bool value);
 
 // Convert an event type flag into a jshPinFunction for an actual hardware device
 JshPinFunction jshGetPinFunctionFromDevice(IOEventFlags device);
+// Convert a jshPinFunction to an event type flag
+IOEventFlags jshGetFromDevicePinFunction(JshPinFunction func);
 
 /** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
 JshPinFunction NO_INLINE jshGetPinFunctionForPin(Pin pin, JshPinFunction functionType);

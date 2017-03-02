@@ -316,10 +316,17 @@ ALWAYS_INLINE JsvArrayBufferIterator jsvArrayBufferIteratorClone(JsvArrayBufferI
 static void jsvArrayBufferIteratorGetValueData(JsvArrayBufferIterator *it, char *data) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   assert(!it->hasAccessedElement); // we just haven't implemented this case yet
-  unsigned int i,dataLen = JSV_ARRAYBUFFER_GET_SIZE(it->type);
-  for (i=0;i<dataLen;i++) {
-    data[i] = jsvStringIteratorGetChar(&it->it);
-    if (dataLen!=1) jsvStringIteratorNext(&it->it);
+  int i,dataLen = (int)JSV_ARRAYBUFFER_GET_SIZE(it->type);
+  if (it->type & ARRAYBUFFERVIEW_BIG_ENDIAN) {
+    for (i=dataLen-1;i>=0;i--) {
+       data[i] = jsvStringIteratorGetChar(&it->it);
+       if (dataLen!=1) jsvStringIteratorNext(&it->it);
+     }
+  } else {
+    for (i=0;i<dataLen;i++) {
+      data[i] = jsvStringIteratorGetChar(&it->it);
+      if (dataLen!=1) jsvStringIteratorNext(&it->it);
+    }
   }
   if (dataLen!=1) it->hasAccessedElement = true;
 }
@@ -430,21 +437,28 @@ void jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt 
   if (dataLen!=1) it->hasAccessedElement = true;
 }
 
-void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) {
+void jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   assert(!it->hasAccessedElement); // we just haven't implemented this case yet
   char data[8];
-  unsigned int i,dataLen = JSV_ARRAYBUFFER_GET_SIZE(it->type);
+  int i,dataLen = (int)JSV_ARRAYBUFFER_GET_SIZE(it->type);
 
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
-    jsvArrayBufferIteratorFloatToData(data, dataLen, it->type, jsvGetFloat(value));
+    jsvArrayBufferIteratorFloatToData(data, (unsigned)dataLen, it->type, jsvGetFloat(value));
   } else {
-    jsvArrayBufferIteratorIntToData(data, dataLen, it->type, jsvGetInteger(value));
+    jsvArrayBufferIteratorIntToData(data, (unsigned)dataLen, it->type, jsvGetInteger(value));
   }
 
-  for (i=0;i<dataLen;i++) {
-    jsvStringIteratorSetChar(&it->it, data[i]);
-    if (dataLen!=1) jsvStringIteratorNext(&it->it);
+  if (it->type & ARRAYBUFFERVIEW_BIG_ENDIAN) {
+    for (i=dataLen-1;i>=0;i--) {
+      jsvStringIteratorSetChar(&it->it, data[i]);
+      if (dataLen!=1) jsvStringIteratorNext(&it->it);
+    }
+  } else {
+    for (i=0;i<dataLen;i++) {
+      jsvStringIteratorSetChar(&it->it, data[i]);
+      if (dataLen!=1) jsvStringIteratorNext(&it->it);
+    }
   }
   if (dataLen!=1) it->hasAccessedElement = true;
 }
@@ -470,10 +484,10 @@ JsVar* jsvArrayBufferIteratorGetIndex(JsvArrayBufferIterator *it) {
   return jsvNewFromInteger((JsVarInt)it->index);
 }
 
-bool   jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it) {
+bool jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return false;
   if (it->hasAccessedElement) return true;
-  return it->byteOffset <= (it->byteLength-JSV_ARRAYBUFFER_GET_SIZE(it->type));
+  return (it->byteOffset+JSV_ARRAYBUFFER_GET_SIZE(it->type)) <= it->byteLength;
 }
 
 void   jsvArrayBufferIteratorNext(JsvArrayBufferIterator *it) {
@@ -595,4 +609,3 @@ JsvIterator jsvIteratorClone(JsvIterator *it) {
   }
   return newit;
 }
-

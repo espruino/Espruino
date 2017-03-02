@@ -27,6 +27,7 @@
 #define BLE_NAME_HID_DATA               "BLE_HID_D"
 #define BLE_NAME_NUS                    "BLE_UART"
 #define BLE_NAME_FLAGS                  "BLE_FLAGS"
+#define BLE_NAME_GATT_SERVER            "BLE_GATTS"
 
 typedef enum {
   BLE_FLAGS_NONE = 0,
