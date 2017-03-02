@@ -229,30 +229,28 @@ detail = []
 links = {}
 jsondatas = sorted(jsondatas, key=lambda s: common.get_name_or_space(s).lower())
 
-html("  <h2><a name=\"contents\">Contents</a></h2>")
-html("  <h3><a class=\"blush\" name=\"t__global\" href=\"#_global\" onclick=\"place('_global');\">Globals</A></h3>")
+html('  <div id="contents">')
+html("  <h2><a name=\"contents\"></a>Contents</h2>")
 html("  <ul>")
+html("  <li><a class=\"blush\" name=\"t__global\" href=\"#_global\" onclick=\"place('_global');\">Globals</A></li>")
 for jsondata in jsondatas:
   if "name" in jsondata and not "class" in jsondata:
     link = get_link(jsondata)
-    html("    <li><a class=\"blush\" name=\"t_"+link+"\" href=\"#"+link+"\" onclick=\"place('"+link+"');\">"+get_surround(jsondata)+"</a></li>")
     if not "no_create_links" in jsondata:
       links[get_prefixed_name(jsondata)] = link
     detail.append(jsondata)
 for className in sorted(classes, key=lambda s: s.lower()):
-  html("  </ul>")
-  html("  <h3><a class=\"blush\" name=\"t_"+className+"\" href=\"#"+className+"\" onclick=\"place('"+className+"');\">"+className+"</a></h3>")
-  html("  <ul>")
+  html("  <li><a class=\"blush\" name=\"t_"+className+"\" href=\"#"+className+"\" onclick=\"place('"+className+"');\">"+className+"</a></li>")
   for jsondata in jsondatas:
     if "name" in jsondata and "class" in jsondata and jsondata["class"]==className:
       link = get_link(jsondata)
-      html("    <li><a class=\"blush\" name=\"t_"+link+"\" href=\"#"+link+"\" onclick=\"place('"+link+"');\">"+get_surround(jsondata)+"</a></li>")
       if not "no_create_links" in jsondata:
         links[get_prefixed_name(jsondata)] = link
       detail.append(jsondata)
 html("  </ul>")
+html('  </div><!-- Contents -->')
 
-html("  <h2>Detail</h2>")
+#html("  <h2>Detail</h2>")
 lastClass = "XXX"
 for jsondata in detail:
   className = ""
@@ -267,7 +265,7 @@ for jsondata in detail:
     linkName=className
   else:
     className=""
-    niceName="Global Functions"
+    niceName="Globals"
     linkName="_global"
 
   if className!=lastClass:
@@ -295,7 +293,8 @@ for jsondata in detail:
     html("  <ul>")
     for j in jsondatas:
       if ("name" in j) and (className!="" or not "instanceof" in j) and ((className=="" and not "class" in j) or ("class" in j and j["class"]==className)):
-        html("    <li><a href=\"#"+get_link(j)+"\">"+get_surround(j)+"</a></li>")
+        link = get_link(j)
+        html("    <li><a name=\"t_"+link+"\" href=\"#"+link+"\">"+get_surround(j)+"</a></li>")
     html("  </ul>")
   link = get_link(jsondata)
   html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a>")
@@ -309,7 +308,7 @@ for jsondata in detail:
     html("  <h4>Call type:</h4>")
     html("   <div class=\"call\"><code>"+get_code(jsondata)+"</code></div>")
   elif "instanceof" in jsondata:
-    html("   <h4>Instance of <a href=\"#"+jsondata["instanceof"]+"\"><code>"+jsondata["instanceof"]+"</code></a></h4>")
+    html("   <h4>Instance of <a href=\"#"+jsondata["instanceof"]+"\"><code>"+jsondata["instanceof"]+"</code></a>")
   if "description" in jsondata:
     html("  <h4>Description</h4>")
     desc = jsondata["description"]
