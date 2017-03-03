@@ -13,14 +13,19 @@ language: c
 #      - libsdl1.2-dev gcc-arm-embedded
 
 before_install:
- - sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
+# - sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
  - sudo apt-get update
- - sudo apt-get install libsdl1.2-dev gcc-arm-embedded
- - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
- - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf -
-
+# - sudo apt-get install libsdl1.2-dev gcc-arm-embedded
+# - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
+# - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf -
+# - curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/app.tgz | tar xfz -
+# - curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/esp-idf.tgz | tar xfz -
+# - curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz | tar xfz -
 before_script:
- - arm-none-eabi-gcc --version
+# - arm-none-eabi-gcc --version
+# - xtensa-esp32-elf-gcc --version
+# - chmod +x ./scripts/provision-framework.sh
+ - source ./scripts/provision-framework.sh $ARCH
 
 after_script:
   - ls *.bin *.hex *.tgz | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
@@ -44,26 +49,31 @@ env:
     - V=0
     - ESP8266_SDK_ROOT=$TRAVIS_BUILD_DIR/esp_iot_sdk_v2.0.0.p1
     - PATH=$PATH:$TRAVIS_BUILD_DIR/xtensa-lx106-elf/bin/
+#    -  ESP_IDF_PATH=$TRAVIS_BUILD_DIR/esp-idf
+#    -  ESP_APP_TEMPLATE_PATH=$TRAVIS_BUILD_DIR/app
+    -  RELEASE=1
+#    -  PATH=$PATH:$TRAVIS_BUILD_DIR/xtensa-esp32-elf/bin/
   matrix:
-    - ESP8266_BOARD=1
-    - ESPRUINO_1V3=1
-    - PICO_1V3=1
-    - MICROBIT=1
-    - NRF52832DK=1
-    - OLIMEXINO_STM32=1
-    - MAPLERET6_STM32=1
-    - HYSTM32_24=1
-    - HYSTM32_28=1
-    - HYSTM32_32=1
-    - STM32VLDISCOVERY=1
-    - STM32F3DISCOVERY=1
-    - STM32F4DISCOVERY=1
-    - NUCLEOF401RE=1
-    - NUCLEOF411RE=1
-    - LCTECH_STM32F103RBT6=1
-    - LINUX_BUILD=1
-    - EFM32GGSTK=1
-    - NUCLEOL476RG=1
+    - ESP32=1 BOARD=ESP32
+#    - ESP8266_BOARD=1
+#    - ESPRUINO_1V3=1
+#    - PICO_1V3=1
+#    - MICROBIT=1
+#    - NRF52832DK=1
+#    - OLIMEXINO_STM32=1
+#    - MAPLERET6_STM32=1
+#    - HYSTM32_24=1
+#    - HYSTM32_28=1
+#    - HYSTM32_32=1
+#    - STM32VLDISCOVERY=1
+#    - STM32F3DISCOVERY=1
+#    - STM32F4DISCOVERY=1
+#    - NUCLEOF401RE=1
+#    - NUCLEOF411RE=1
+#    - LCTECH_STM32F103RBT6=1
+#    - LINUX_BUILD=1
+#    - EFM32GGSTK=1
+#    - NUCLEOL476RG=1
 script: make
 
 notifications:
