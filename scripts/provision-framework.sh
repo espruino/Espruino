@@ -23,7 +23,7 @@ if [ $# -eq 0 ]
 then
   echo "USAGE:"
   echo "source scripts/provision.sh {BOARD}"
-  return 0
+  return 1
 fi
 
 BOARD=$1
@@ -31,7 +31,7 @@ BOARD=$1
 # define the board type environment for Makefile
     eval export $BOARD=1
 
-if [ $ARCH = "ESP32" ]; then
+if [ $BOARD = "ESP32" ]; then
     echo ESP32
     if [ ! -d "app" ]; then
         echo installing app folder
@@ -50,8 +50,8 @@ if [ $ARCH = "ESP32" ]; then
     export ESP_IDF_PATH=`pwd`/esp-idf
     export ESP_APP_TEMPLATE_PATH=`pwd`/app
     export PATH=$PATH:`pwd`/xtensa-esp32-elf/bin/
-    return 1
-elif [ $ARCH = "ESP8266_BOARD" ]; then
+    return 0
+elif [ $BOARD = "ESP8266_BOARD" ]; then
     echo ESP8266
     if [ ! -d "esp_iot_sdk_v2.0.0.p1" ]; then
         echo esp_iot_sdk_v2.0.0.p1
@@ -66,9 +66,9 @@ elif [ $ARCH = "ESP8266_BOARD" ]; then
     export ESP8266_SDK_ROOT=`pwd`/esp_iot_sdk_v2.0.0.p1
     export PATH=$PATH:`pwd`/xtensa-lx106-elf/bin/
     return 1
-elif [ $ARCH = "LINUX_BUILD" ]; then
+elif [ $BOARD = "LINUX_BUILD" ]; then
     echo LINUX
-    return 1
+    return 0
 else
     # defaulting to ARM
     echo ARM
@@ -78,5 +78,5 @@ else
         sudo apt-get update
         sudo apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
     fi
-    return 1
+    return 0
 fi
