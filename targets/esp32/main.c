@@ -35,7 +35,6 @@ static void timerTask(void *data) {
   vTaskDelay(500 / portTICK_PERIOD_MS);
   timers_Init();
   timer_Init("EspruinoTimer",0,0,0);
-  timer_List();
   while(1) {
     taskWaitNotify();
 	jstUtilTimerInterruptHandler();

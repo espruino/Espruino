@@ -78,6 +78,9 @@ dac_channel_t pinToDacChannel(Pin pin){
   return channel;
 }
 
+void ADCReset(){
+  initADC(1);
+}
 void initADC(int ADCgroup){
   switch(ADCgroup){
 	case 1:

@@ -146,15 +146,18 @@ void jshInit() {
 void jshReset() {
     jshResetDevices();
     jshPinDefaultPullup() ;
-    jsWarn("jshReset(): To implement - reset of i2c and SPI\n");
-    jsWarn(">> jshReset()\n");
+    UartReset();
+	RMTReset();
+	ADCReset();
+	SPIReset();
+    jsWarn("jshReset(): To implement - reset of i2c\n");
 }
 
 /**
  * Re-init the ESP32 after a soft-reset
  */
 void jshSoftInit() {
-  jsWarn(">> jshSoftInit()\n");
+  //jsWarn(">> jshSoftInit()\n");
   jswrap_ESP32_wifi_soft_init();
 }
 

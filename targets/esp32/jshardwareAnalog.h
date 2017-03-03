@@ -17,6 +17,7 @@
 
 #include "jspininfo.h"
 
+void ADCReset();
 void initADC(int ADCgroup);
 int readADC(Pin pin);
 void rangeADC(Pin pin,int range);
