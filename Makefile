@@ -591,6 +591,7 @@ USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
 USE_TELNET=1
+USE_NEOPIXEL=1
 DEFINES+=-DESP_PLATFORM -DESP32=1
 OPTIMIZEFLAGS+=-Og
 
@@ -1738,6 +1739,8 @@ CFLAGS+=-Og -Wpointer-arith -Wno-error=unused-function -Wno-error=unused-but-set
 -Wno-error=unused-variable -Wall -ffunction-sections -fdata-sections -mlongcalls -nostdlib \
 -MMD -MP -std=gnu99 -fstrict-volatile-bitfields -fgnu89-inline
 SOURCES += targets/esp32/jshardware.c
+SOURCES += targets/esp32/esp32_neopixel.c
+INCLUDE += -I$(ROOT)/targets/esp32
 endif
 
 ifeq ($(FAMILY),ESP8266)
