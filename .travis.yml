@@ -3,7 +3,7 @@
 language: c
 
 # Maybe someday when travis-ci authorizes the ppa:
-# https://github.com/travis-ci/apt-source-whitelist/issues/132
+# https://github.com/travis-ci/apt-source-whitelist/issues/219
 #sudo: false
 #addon:
 #  apt:
@@ -35,9 +35,8 @@ env:
     - RELEASE=1
     - TRAVIS=1
     - V=0
-    -  RELEASE=1
-
-	matrix:
+    - RELEASE=1
+  matrix:
     - ESP32=1                   BOARD=ESP32
     - ESP8266_BOARD=1           BOARD=ESP8266_BOARD
     - ESPRUINO_1V3=1            BOARD=ESPRUINO_1V3
