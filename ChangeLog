@@ -18,7 +18,6 @@
             Added DataView class
             nRF52: char.readValue now returns DataView to be more Web Bluetooth compliant (fix #1091)
             nRF5x: Fix explicit disconnect being able to reboot Puck (fix #1088)
-            nRF5x: Remove ble_conn_params - fixes puck-puck disconnection after ~65 sec (fix #1089)
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
