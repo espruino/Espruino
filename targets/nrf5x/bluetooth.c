@@ -1441,6 +1441,7 @@ void jsble_central_connect(ble_gap_addr_t peer_addr) {
 
   ble_gap_conn_params_t   gap_conn_params;
   memset(&gap_conn_params, 0, sizeof(gap_conn_params));
+  BLEFlags flags = jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_FLAGS, 0));
   if (flags & BLE_FLAGS_LOW_POWER) {
     gap_conn_params.min_conn_interval = MSEC_TO_UNITS(500, UNIT_1_25_MS);   // Minimum acceptable connection interval (500 ms)
     gap_conn_params.max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS);    // Maximum acceptable connection interval (1000 ms)
