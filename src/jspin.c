@@ -238,6 +238,27 @@ JshPinFunction jshGetPinFunctionFromDevice(IOEventFlags device) {
  }
 }
 
+// Convert a jshPinFunction to an event type flag
+IOEventFlags jshGetFromDevicePinFunction(JshPinFunction func) {
+ switch (func & JSH_MASK_TYPE) {
+   case JSH_USART1 : return EV_SERIAL1;
+   case JSH_USART2 : return EV_SERIAL2;
+   case JSH_USART3 : return EV_SERIAL3;
+   case JSH_USART4 : return EV_SERIAL4;
+   case JSH_USART5 : return EV_SERIAL5;
+   case JSH_USART6 : return EV_SERIAL6;
+
+   case JSH_SPI1    : return EV_SPI1;
+   case JSH_SPI2    : return EV_SPI2;
+   case JSH_SPI3    : return EV_SPI3;
+
+   case JSH_I2C1    : return EV_I2C1;
+   case JSH_I2C2    : return EV_I2C2;
+   case JSH_I2C3    : return EV_I2C3;
+   default: return 0;
+ }
+}
+
 /** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
 JshPinFunction NO_INLINE jshGetPinFunctionForPin(Pin pin, JshPinFunction functionType) {
   if (!jshIsPinValid(pin)) return 0;

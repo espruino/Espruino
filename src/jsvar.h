@@ -103,6 +103,7 @@ typedef enum {
   ARRAYBUFFERVIEW_FLOAT = 32,
   ARRAYBUFFERVIEW_CLAMPED = 64, // As in Uint8ClampedArray - clamp to the acceptable bounds
   ARRAYBUFFERVIEW_ARRAYBUFFER = 1 | 128, ///< Basic ArrayBuffer type
+  ARRAYBUFFERVIEW_BIG_ENDIAN = 256, ///< access as big endian (normally little)
 
   ARRAYBUFFERVIEW_UINT8   = 1,
   ARRAYBUFFERVIEW_INT8    = 1 | ARRAYBUFFERVIEW_SIGNED,
@@ -729,6 +730,11 @@ bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 
 /// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
+
+#ifndef SAVE_ON_FLASH
+/// Create a new DataView of the given length (in elements), and fill it with the given data (if set)
+JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data);
+#endif
 
 /** Create a new arraybuffer of the given type and length, also return a pointer
  * to the contiguous memory area containing it. Returns 0 if it was unable to

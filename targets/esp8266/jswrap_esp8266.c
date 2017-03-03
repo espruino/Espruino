@@ -32,16 +32,8 @@ typedef long long int64_t;
 #include <network_esp8266.h>
 #include "jsinteractive.h" // Pull in the jsiConsolePrint function
 #include <log.h>
+#include <jswrap_neopixel.h>
 
-#define _BV(bit) (1 << (bit))
-
-static uint32_t _getCycleCount(void) __attribute__((always_inline));
-
-static inline uint32_t _getCycleCount(void) {
-  uint32_t ccount;
-  __asm__ __volatile__("rsr %0,ccount":"=a" (ccount));
-  return ccount;
-}
 
 // ESP8266.reboot
 
@@ -318,110 +310,7 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
  ]
 }*/
 void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
-  if (!jshIsPinValid(pin)) {
-    jsExceptionHere(JSET_ERROR, "Pin is not valid.");
-    return;
-  }
-  if (jsArrayOfData == NULL) {
-    jsExceptionHere(JSET_ERROR, "No data to send to LEDs.");
-    return;
-  }
-
-  JSV_GET_AS_CHAR_ARRAY(pixels, dataLength, jsArrayOfData);
-  if (!pixels) {
-    return;
-  }
-
-  if (dataLength == 0) {
-    jsExceptionHere(JSET_ERROR, "Data must be a non empty array.");
-    return;
-  }
-  if (dataLength % 3 != 0) {
-    jsExceptionHere(JSET_ERROR, "Data length must be a multiple of 3 (RGB).");
-    return;
-  }
-
-  if (!jshGetPinStateIsManual(pin))
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-
-  // values for 160Mhz clock
-  uint8_t tOne =  90;  // one bit, high typ 800ns
-  uint8_t tZero = 40;  // zero bit, high typ 300ns
-  uint8_t tLow = 170;  // total cycle, typ 1.2us
-  if (system_get_cpu_freq() < 100) {
-    tOne = 56;  // 56 cyc = 700ns
-    tZero = 14; // 14 cycl = 175ns
-    tLow = 100;
-  }
-
-#if 1
-
-  // the loop over the RGB pixel bits below is loaded into the instruction cache from flash
-  // with the result that dependeing on the cache line alignment the first loop iteration
-  // takes too long and thereby messes up the first LED.
-  // The fix is to make it so the first loop iteration does nothing, i.e. just outputs the
-  // same "low" for the full loop as we had before entering this function. This way no LED
-  // gets set to the wrong value and we load the cache line so the second iteration, i.e.,
-  // first real LED bit, runs at full speed.
-  uint32_t pinMask = _BV(pin);    // bit mask for GPIO pin to write to reg
-  uint8_t *p = (uint8_t *)pixels; // pointer to walk through pixel array
-  uint8_t *end = p + dataLength;  // pointer to end of array
-  uint8_t pix = *p++;             // current byte being shifted out
-  uint8_t mask = 0x80;            // mask for current bit
-  uint32_t start;                 // start time of bit
-  // adjust things for the pre-roll
-  p--;                            // next byte we fetch will be the first byte again
-  mask = 0x01;                    // fetch the next byte at the end of the first loop iteration
-  pinMask = 0;                    // zero mask means we set or clear no I/O pin
-  // iterate through all bits
-  ets_intr_lock();                // disable most interrupts
-  while(1) {
-    uint32_t t;
-    if (pix & mask) t = tOne;
-    else            t = tZero;
-    GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);  // Set high
-    start = _getCycleCount();                        // get start time of this bit
-    while (_getCycleCount()-start < t) ;             // busy-wait
-    GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pinMask);  // Set low
-    if (!(mask >>= 1)) {                             // Next bit/byte?
-      if (p >= end) break;                           // at end, we're done
-      pix = *p++;
-      mask = 0x80;
-      pinMask = _BV(pin);
-    }
-    while (_getCycleCount()-start < tLow) ;          // busy-wait
-  }
-  while (_getCycleCount()-start < tLow) ;            // wait for last bit
-  ets_intr_unlock();
-
-#else
-
-  // this is the code without preloading the first bit
-  uint32_t pinMask = _BV(pin);    // bit mask for GPIO pin to write to reg
-  uint8_t *p = (uint8_t *)pixels; // pointer to walk through pixel array
-  uint8_t *end = p + dataLength;  // pointer to end of array
-  uint8_t pix = *p++;             // current byte being shifted out
-  uint8_t mask = 0x80;            // mask for current bit
-  uint32_t start;                 // start time of bit
-  // iterate through all bits
-  while(1) {
-    uint32_t t;
-    if (pix & mask) t = 56; // one bit, high typ 800ns (56 cyc = 700ns)
-    else            t = 14; // zero bit, high typ 300ns (14 cycl = 175ns)
-    GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);  // Set high
-    start = _getCycleCount();                        // get start time of this bit
-    while (_getCycleCount()-start < t) ;             // busy-wait
-    GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pinMask);  // Set low
-    if (!(mask >>= 1)) {                             // Next bit/byte?
-      if (p >= end) break;                           // at end, we're done
-      pix = *p++;
-      mask = 0x80;
-    }
-    while (_getCycleCount()-start < 100) ;           // busy-wait, 100 cyc = 1.25us
-  }
-  while (_getCycleCount()-start < 100) ;             // Wait for last bit
-
-#endif
+  jswrap_neopixel_write(pin, jsArrayOfData);
 }
 
 //===== ESP8266.deepSleep

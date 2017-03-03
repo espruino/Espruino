@@ -21,6 +21,7 @@
 #define uart_Serial3 2
 
 void initConsole();
+void UartReset();
 void initSerial(IOEventFlags device,JshUSARTInfo *inf);
 void writeSerial(IOEventFlags device,uint8_t c); 
 void consoleToEspruino();

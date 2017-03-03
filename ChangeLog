@@ -9,6 +9,16 @@
             nRF52: Add 'properties' object to BluetoothRemoteGATTCharacteristic
             nRF52: Perform write without response if that is what is required 
             Pico/WiFi: Allow USB HID to work on Windows (from @nailxx)
+            Allow Puck.js/nRF52 devices to drive Neopixel/WS281x/APA10x LEDs with require("neopixel").write (fix #1023)
+            Fix crash in JSON.stringify for zero-length typed arrays
+            Fix precedence of 'void' keyword (fix #1079)
+            nRF52: Add BluetoothRemoteGATTCharacteristic.startNotifications (fix #959)
+            nRF52: Added BluetoothDevice.gattserverdisconnected event
+            nRF5x: Report back reason codes for BLE disconnect
+            Added DataView class
+            nRF52: char.readValue now returns DataView to be more Web Bluetooth compliant (fix #1091)
+            nRF5x: Fix explicit disconnect being able to reboot Puck (fix #1088)
+            nRF5x: Remove ble_conn_params - fixes puck-puck disconnection after ~65 sec (fix #1089)
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise

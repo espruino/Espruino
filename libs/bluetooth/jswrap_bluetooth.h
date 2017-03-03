@@ -23,6 +23,7 @@ typedef enum {
   BLETASK_CHARACTERISTIC,  ///< Find characteristics
   BLETASK_CHARACTERISTIC_WRITE, ///< Write to a characteristic
   BLETASK_CHARACTERISTIC_READ, ///< Read from a characteristic
+  BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, ///< Discover descriptors and start notifications
   BLETASK_CHARACTERISTIC_NOTIFY, ///< Setting whether notifications are on or off
   BLETASK_CENTRAL_END = BLETASK_CHARACTERISTIC_NOTIFY // ============= End of central tasks
 } BleTask;
@@ -38,6 +39,15 @@ void bleCompleteTaskSuccess(BleTask task, JsVar *data);
 void bleCompleteTaskSuccessAndUnLock(BleTask task, JsVar *data);
 void bleCompleteTaskFail(BleTask task, JsVar *data);
 void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data);
+void bleSwitchTask(BleTask task);
+
+#ifdef NRF52
+// Set the currently active GATT server
+void bleSetActiveBluetoothGattServer(JsVar *var);
+// Get the currently active GATT server (the return value needs unlocking)
+JsVar *bleGetActiveBluetoothGattServer();
+#endif
+
 // ------------------------------------------------------------------------------
 void jswrap_nrf_init();
 bool jswrap_nrf_idle();

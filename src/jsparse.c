@@ -1553,7 +1553,7 @@ NO_INLINE JsVar *jspeFactor() {
     return jspeFactorTypeOf();
   } else if (lex->tk==LEX_R_VOID) {
     JSP_ASSERT_MATCH(LEX_R_VOID);
-    jsvUnLock(jspeFactor());
+    jsvUnLock(jspeUnaryExpression());
     return 0;
   }
   JSP_MATCH(LEX_EOF);

@@ -1317,3 +1317,4 @@ unsigned int jshSetSystemClock(JsVar *options) {
  */
 void _exit(int status) {
 }
+

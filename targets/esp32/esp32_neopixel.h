@@ -10,17 +10,15 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains ESP32 board specific function definitions.
+ * Contains neopixel (WS2812B) specific function definitions.
  * ----------------------------------------------------------------------------
  */
-#ifndef TARGETS_ES32_JSWRAP_ESP32_H_
-#define TARGETS_ESP32_JSWRAP_ESP32_H_
-#include "jsvar.h"
+#ifndef ESP32_NEOPIXEL_H_
+#define ESP32_NEOPIXEL_H_
 #include "jspin.h"
 
-//===== ESP32 Library
-JsVar *jswrap_ESP32_getState();
-void   jswrap_ESP32_setLogLevel(JsVar *jsTagToSet, JsVar *jsLogLevel);
-void   jswrap_ESP32_reboot();
-void   jswrap_ESP32_setAtten(Pin pin,int atten);
-#endif /* TARGETS_ESP32_JSWRAP_ESP32_H_ */
+//===== neopixel Library
+
+bool esp32_neopixelWrite(Pin pin,unsigned char *rgbData, size_t rgbSize);
+
+#endif /* ESP32_NEOPIXEL_H_ */
