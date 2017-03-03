@@ -11,6 +11,7 @@
  * Task, queue and timer specific exposed components.
  * ----------------------------------------------------------------------------
  */
+ /* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
 #include <stdio.h>
 #include "jswrap_rtos.h"
 #include "jsparse.h"
@@ -18,7 +19,7 @@
 
 /*JSON{
   "type"    : "class",
-  "class"   : "Queue"  
+  "class"   : "Queue"
 }
 A class to support some simple Queue handling for RTOS queues
 */
@@ -79,12 +80,12 @@ logs list of queues
 */
 void jswrap_Queue_log(JsVar *parent) {
   queue_list();
-  return;  
+  return;
 }
 
 /*JSON{
   "type"    : "class",
-  "class"   : "Task"  
+  "class"   : "Task"
 }
 A class to support some simple Task handling for RTOS tasks
 */
@@ -151,7 +152,7 @@ JsVar *jswrap_Task_getCurrent(JsVar *parent){
  "name"     : "notify",
  "generate" : "jswrap_Task_notify"
 }
-Sends a binary notify to task 
+Sends a binary notify to task
 */
 void jswrap_Task_notify(JsVar *parent){
   JsVar *idx = jsvObjectGetChild(parent,"index",1);
@@ -167,7 +168,7 @@ logs list of tasks
 */
 void jswrap_Task_log(JsVar *parent) {
   task_list();
-  return;  
+  return;
 }
 
 /*JSON{
@@ -187,7 +188,7 @@ A class to handle Timer on base of ESP32 Timer
                  ["isrIndex", "int", "isr (0 = Espruino, 1 = test)"]  ],
   "return"   : ["JsVar","A Timer Object"]
 }
-Creates a Timer Object 
+Creates a Timer Object
 */
 JsVar *jswrap_Timer_constructor(JsVar *timerName,int group, int index, int isrIndex){
   int idx; char name[20];
@@ -202,7 +203,7 @@ JsVar *jswrap_Timer_constructor(JsVar *timerName,int group, int index, int isrIn
   "type"     : "method",
   "class"    : "Timer",
   "name"     : "start",
-  "params"   : [["duration","int","duration of timmer in micro secs"]],  
+  "params"   : [["duration","int","duration of timmer in micro secs"]],
   "generate" : "jswrap_Timer_start"
 }
 Starts a timer
@@ -215,7 +216,7 @@ void jswrap_Timer_start(JsVar *parent, int duration){
   "type"     : "method",
   "class"    : "Timer",
   "name"     : "reschedule",
-  "params"   : [["duration","int","duration of timmer in micro secs"]],  
+  "params"   : [["duration","int","duration of timmer in micro secs"]],
   "generate" : "jswrap_Timer_reschedule"
 }
 Reschedules a timer, needs to be started at least once
@@ -234,7 +235,5 @@ logs list of timers
 */
 void jswrap_Timer_log(JsVar *parent) {
   timer_List();
-  return;  
+  return;
 }
-
-

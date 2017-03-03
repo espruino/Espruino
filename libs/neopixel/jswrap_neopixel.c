@@ -52,13 +52,11 @@ implementation on some devices - hence this library to simplify things.
     ["data","JsVar","The data to write to the LED strip"]
   ]
 }
-Write to NeoPixel/WS281x/APA10x-style LEDs attached to the given pin
-
-Different types of LED have the data in different orders - so don't
-be surprised by RGB or BGR orderings!
+Write to a strip of NeoPixel/WS281x/APA104/APA106/SK6812-style LEDs
+attached to the given pin.
 
 ```
-// set just one pixel
+// set just one pixel, red, green, blue
 require("neopixel").write(B15, [255,0,0]);
 
 // Produce an animated rainbow over 25 LEDs
@@ -80,14 +78,23 @@ setInterval(function() {
 }, 100);
 ```
 
-**Note:** Espruino devices tend to have 3.3v IO, while WS2812/etc run
+**Note:**
+
+* Different types of LED have the data in different orders - so don't
+be surprised by RGB or BGR orderings!
+
+* On some platforms like STM32, pins capable of hardware SPI MOSI
+are required.
+
+* Espruino devices tend to have 3.3v IO, while WS2812/etc run
 off of 5v. Many WS2812 will only register a logic '1' at 70%
 of their input voltage - so if powering them off 5v you will not
 be able to send them data reliably. You can work around this by
 powering the LEDs off a lower voltage (for example 3.7v from a LiPo
-battery), or can put the output into the `af_opendrain` state and use
+battery), can put the output into the `af_opendrain` state and use
 a pullup resistor to 5v on STM32 based boards (nRF52 are not 5v tolerant
-so you can't do this).
+so you can't do this), or can use a level shifter to shift the voltage up
+into the 5v range.
 */
 void jswrap_neopixel_write(Pin pin, JsVar *data) {
   JSV_GET_AS_CHAR_ARRAY(rgbData, rgbSize, data);
