@@ -12,19 +12,7 @@ language: c
 #    packages:
 #      - libsdl1.2-dev gcc-arm-embedded
 
-before_install:
-# - sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
- - sudo apt-get update
-# - sudo apt-get install libsdl1.2-dev gcc-arm-embedded
-# - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
-# - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf -
-# - curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/app.tgz | tar xfz -
-# - curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/esp-idf.tgz | tar xfz -
-# - curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz | tar xfz -
 before_script:
-# - arm-none-eabi-gcc --version
-# - xtensa-esp32-elf-gcc --version
-# - chmod +x ./scripts/provision-framework.sh
  - source ./scripts/provision-framework.sh $BOARD
 
 after_script:
@@ -47,33 +35,29 @@ env:
     - RELEASE=1
     - TRAVIS=1
     - V=0
-    - ESP8266_SDK_ROOT=$TRAVIS_BUILD_DIR/esp_iot_sdk_v2.0.0.p1
-    - PATH=$PATH:$TRAVIS_BUILD_DIR/xtensa-lx106-elf/bin/
-#    -  ESP_IDF_PATH=$TRAVIS_BUILD_DIR/esp-idf
-#    -  ESP_APP_TEMPLATE_PATH=$TRAVIS_BUILD_DIR/app
     -  RELEASE=1
-#    -  PATH=$PATH:$TRAVIS_BUILD_DIR/xtensa-esp32-elf/bin/
-  matrix:
+
+	matrix:
     - ESP32=1                   BOARD=ESP32
     - ESP8266_BOARD=1           BOARD=ESP8266_BOARD
-#    - ESPRUINO_1V3=1            BOARD=ESPRUINO_1V3
+    - ESPRUINO_1V3=1            BOARD=ESPRUINO_1V3
     - PICO_1V3=1                BOARD=PICO_1V3
-#    - MICROBIT=1                BOARD=MICROBIT
-#    - NRF52832DK=1              BOARD=NRF52832DK
-#    - OLIMEXINO_STM32=1         BOARD=OLIMEXINO_STM32
-#    - MAPLERET6_STM32=1         BOARD=MAPLERET6_STM32
-#    - HYSTM32_24=1              BOARD=HYSTM32_24
-#    - HYSTM32_28=1              BOARD=HYSTM32_28
-#    - HYSTM32_32=1              BOARD=HYSTM32_32
-#    - STM32VLDISCOVERY=1        BOARD=STM32VLDISCOVERY
-#    - STM32F3DISCOVERY=1        BOARD=STM32F3DISCOVERY
-#    - STM32F4DISCOVERY=1        BOARD=STM32F4DISCOVERY
-#    - NUCLEOF401RE=1            BOARD=NUCLEOF401RE
-#    - NUCLEOF411RE=1            BOARD=NUCLEOF411RE
-#    - LCTECH_STM32F103RBT6=1    BOARD=LCTECH_STM32F103RBT6
+    - MICROBIT=1                BOARD=MICROBIT
+    - NRF52832DK=1              BOARD=NRF52832DK
+    - OLIMEXINO_STM32=1         BOARD=OLIMEXINO_STM32
+    - MAPLERET6_STM32=1         BOARD=MAPLERET6_STM32
+    - HYSTM32_24=1              BOARD=HYSTM32_24
+    - HYSTM32_28=1              BOARD=HYSTM32_28
+    - HYSTM32_32=1              BOARD=HYSTM32_32
+    - STM32VLDISCOVERY=1        BOARD=STM32VLDISCOVERY
+    - STM32F3DISCOVERY=1        BOARD=STM32F3DISCOVERY
+    - STM32F4DISCOVERY=1        BOARD=STM32F4DISCOVERY
+    - NUCLEOF401RE=1            BOARD=NUCLEOF401RE
+    - NUCLEOF411RE=1            BOARD=NUCLEOF411RE
+    - LCTECH_STM32F103RBT6=1    BOARD=LCTECH_STM32F103RBT6
     - LINUX_BUILD=1             BOARD=LINUX_BUILD
-#    - EFM32GGSTK=1              BOARD=EFM32GGSTK
-#    - NUCLEOL476RG=1            BOARD=NUCLEOL476RG
+    - EFM32GGSTK=1              BOARD=EFM32GGSTK
+    - NUCLEOL476RG=1            BOARD=NUCLEOL476RG
 
 script: make
 
