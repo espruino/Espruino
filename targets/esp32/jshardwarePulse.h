@@ -23,6 +23,7 @@ struct RMTChannel{Pin pin;}; //will be extended once we know more about RMT func
 struct RMTChannel RMTChannels[RMTChannelMax];
 
 void RMTInit();
+void RMTReset();
 void sendPulse(Pin pin,              //!< The pin to be pulsed.
     bool pulsePolarity,   //!< The value to be pulsed into the pin.
     int duration  //!< The duration in microseconds to hold the pin.

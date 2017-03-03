@@ -21,6 +21,9 @@
 #include <c_types.h>
 #include <espmissingincludes.h>
 #endif
+#ifdef ESP32
+#include "esp32_neopixel.h"
+#endif
 
 #include <jswrap_neopixel.h>
 #include "jsvariterator.h"
@@ -271,6 +274,12 @@ bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
 #endif
 #undef _BV
   return true;
+}
+
+#elif defined(ESP32)
+
+bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize){
+  return esp32_neopixelWrite(pin,rgbData, rgbSize);
 }
 
 #else

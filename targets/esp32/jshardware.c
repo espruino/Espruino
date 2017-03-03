@@ -49,8 +49,8 @@
 #include "rom/uart.h"
 #include "driver/gpio.h"
 
-#include "i2c.h"
-#include "spi.h"
+#include "jshardwareI2c.h"
+#include "jshardwareSpi.h"
 
 #define FLASH_MAX (4*1024*1024) //4MB
 #define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
@@ -146,15 +146,18 @@ void jshInit() {
 void jshReset() {
     jshResetDevices();
     jshPinDefaultPullup() ;
-    jsWarn("jshReset(): To implement - reset of i2c and SPI\n");
-    jsWarn(">> jshReset()\n");
+    UartReset();
+	RMTReset();
+	ADCReset();
+	SPIReset();
+    jsWarn("jshReset(): To implement - reset of i2c\n");
 }
 
 /**
  * Re-init the ESP32 after a soft-reset
  */
 void jshSoftInit() {
-  jsWarn(">> jshSoftInit()\n");
+  //jsWarn(">> jshSoftInit()\n");
   jswrap_ESP32_wifi_soft_init();
 }
 

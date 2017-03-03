@@ -18,7 +18,7 @@
 #include "jspininfo.h"
 #include "jshardware.h"
 #include "driver/gpio.h"
-#include "spi.h"
+#include "jshardwareSpi.h"
 
 #define UNUSED(x) (void)(x)
 
@@ -35,7 +35,19 @@ void SPIChannelsInit(){
   SPIChannels[0].HOST = HSPI_HOST;
   SPIChannels[1].HOST = VSPI_HOST;
 }
-
+void SPIChannelReset(int channelPnt){
+  spi_bus_remove_device(SPIChannels[channelPnt].spi);
+  spi_bus_free(SPIChannels[channelPnt].HOST);
+  SPIChannels[channelPnt].spi = NULL;
+  SPIChannels[channelPnt].spi_read = false;
+  SPIChannels[channelPnt].g_lastSPIRead = (uint32_t)-1;
+}
+void SPIReset(){
+  int i;
+  for(i = 0; i < SPIMax; i++){
+	if(SPIChannels[i].spi != NULL) SPIChannelReset(i);
+  }
+}
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
 
 /*
@@ -112,8 +124,7 @@ void jshSPISetup(
 		.flags=flags
     };
   if(SPIChannels[channelPnt].spi){
-	spi_bus_remove_device(SPIChannels[channelPnt].spi);
-	spi_bus_free(SPIChannels[channelPnt].HOST);
+	SPIChannelReset(channelPnt);
 	jsWarn("spi was already in use, removed old assignment");
   }
   esp_err_t ret=spi_bus_initialize(SPIChannels[channelPnt].HOST, &buscfg, 1);

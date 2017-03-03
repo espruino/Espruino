@@ -32,6 +32,13 @@ void initUart(int uart_num,uart_config_t uart_config,int txpin,int rxpin){
   r = uart_driver_install(uart_num, 1024, 1024, 10, NULL, 0);  //Install UART driver( We don't need an event queue here)
 }
 
+void UartReset(){
+  uart_driver_delete(uart_console);
+  initConsole();	
+  if(serial2_initialized) uart_driver_delete(uart_Serial2);
+  if(serial3_initialized) uart_driver_delete(uart_Serial3);
+}
+
 void initSerial(IOEventFlags device,JshUSARTInfo *inf){
   uart_config_t uart_config = {
 	.baud_rate = inf->baudRate,

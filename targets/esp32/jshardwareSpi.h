@@ -32,6 +32,7 @@ struct SPIChannel{
 };
 struct SPIChannel SPIChannels[SPIMax];
 void SPIChannelsInit();
+void SPIReset();
 
 void jshSPISetup( IOEventFlags device, JshSPIInfo *inf );
 
