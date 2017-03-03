@@ -278,6 +278,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
         break;
 
+#if CENTRAL_LINK_COUNT>0
+      case BLE_GAP_EVT_CONN_PARAM_UPDATE_REQUEST:
+      {
+          const ble_gap_evt_t * const p_gap_evt = &p_ble_evt->evt.gap_evt;
+          // Accept parameters requested by peer.
+          err_code = sd_ble_gap_conn_param_update(p_gap_evt->conn_handle,
+                                      &p_gap_evt->params.conn_param_update_request.conn_params);
+          APP_ERROR_CHECK(err_code);
+      } break; // BLE_GAP_EVT_CONN_PARAM_UPDATE_REQUEST
+#endif
+
       case BLE_GAP_EVT_CONNECTED:
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
