@@ -3,7 +3,7 @@
 language: c
 
 # Maybe someday when travis-ci authorizes the ppa:
-# https://github.com/travis-ci/apt-source-whitelist/issues/132
+# https://github.com/travis-ci/apt-source-whitelist/issues/219
 #sudo: false
 #addon:
 #  apt:
@@ -12,15 +12,8 @@ language: c
 #    packages:
 #      - libsdl1.2-dev gcc-arm-embedded
 
-before_install:
- - sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
- - sudo apt-get update
- - sudo apt-get install libsdl1.2-dev gcc-arm-embedded
- - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
- - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf -
-
 before_script:
- - arm-none-eabi-gcc --version
+ - source ./scripts/provision-framework.sh $BOARD
 
 after_script:
   - ls *.bin *.hex *.tgz | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
@@ -42,28 +35,29 @@ env:
     - RELEASE=1
     - TRAVIS=1
     - V=0
-    - ESP8266_SDK_ROOT=$TRAVIS_BUILD_DIR/esp_iot_sdk_v2.0.0.p1
-    - PATH=$PATH:$TRAVIS_BUILD_DIR/xtensa-lx106-elf/bin/
+    - RELEASE=1
   matrix:
-    - ESP8266_BOARD=1
-    - ESPRUINO_1V3=1
-    - PICO_1V3=1
-    - MICROBIT=1
-    - NRF52832DK=1
-    - OLIMEXINO_STM32=1
-    - MAPLERET6_STM32=1
-    - HYSTM32_24=1
-    - HYSTM32_28=1
-    - HYSTM32_32=1
-    - STM32VLDISCOVERY=1
-    - STM32F3DISCOVERY=1
-    - STM32F4DISCOVERY=1
-    - NUCLEOF401RE=1
-    - NUCLEOF411RE=1
-    - LCTECH_STM32F103RBT6=1
-    - LINUX_BUILD=1
-    - EFM32GGSTK=1
-    - NUCLEOL476RG=1
+    - ESP32=1                   BOARD=ESP32
+    - ESP8266_BOARD=1           BOARD=ESP8266_BOARD
+    - ESPRUINO_1V3=1            BOARD=ESPRUINO_1V3
+    - PICO_1V3=1                BOARD=PICO_1V3
+    - MICROBIT=1                BOARD=MICROBIT
+    - NRF52832DK=1              BOARD=NRF52832DK
+    - OLIMEXINO_STM32=1         BOARD=OLIMEXINO_STM32
+    - MAPLERET6_STM32=1         BOARD=MAPLERET6_STM32
+    - HYSTM32_24=1              BOARD=HYSTM32_24
+    - HYSTM32_28=1              BOARD=HYSTM32_28
+    - HYSTM32_32=1              BOARD=HYSTM32_32
+    - STM32VLDISCOVERY=1        BOARD=STM32VLDISCOVERY
+    - STM32F3DISCOVERY=1        BOARD=STM32F3DISCOVERY
+    - STM32F4DISCOVERY=1        BOARD=STM32F4DISCOVERY
+    - NUCLEOF401RE=1            BOARD=NUCLEOF401RE
+    - NUCLEOF411RE=1            BOARD=NUCLEOF411RE
+    - LCTECH_STM32F103RBT6=1    BOARD=LCTECH_STM32F103RBT6
+    - LINUX_BUILD=1             BOARD=LINUX_BUILD
+    - EFM32GGSTK=1              BOARD=EFM32GGSTK
+    - NUCLEOL476RG=1            BOARD=NUCLEOL476RG
+
 script: make
 
 notifications:
