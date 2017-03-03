@@ -61,18 +61,18 @@ elif [ $BOARD = "ESP8266_BOARD" ]; then
         echo installing xtensa-lx106-elf-gcc
         curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
     else
-        which xtensa
+        which xtensa-lx106-elf-gcc
     fi
     export ESP8266_SDK_ROOT=`pwd`/esp_iot_sdk_v2.0.0.p1
     export PATH=$PATH:`pwd`/xtensa-lx106-elf/bin/
-    return 1
+    return 0
 elif [ $BOARD = "LINUX_BUILD" ]; then
     echo LINUX
     return 0
 else
     # defaulting to ARM
     echo ARM
-    if hash arm-none-eabi-gcc 2>/dev/null; then
+	if ! type arm-none-eabi-gcc > /dev/null; then
         echo installing gcc-arm-embedded
         sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
         sudo apt-get update
