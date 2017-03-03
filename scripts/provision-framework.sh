@@ -28,10 +28,8 @@ fi
 
 BOARD=$1
 
-# called from user - define the board type for Makefile
-	if [ -z $TRAVIS] ; then
-	    eval export $BOARD=1
-	fi	
+# define the board type environment for Makefile
+    eval export $BOARD=1
 
 if [ $ARCH = "ESP32" ]; then
     echo ESP32
@@ -46,12 +44,12 @@ if [ $ARCH = "ESP32" ]; then
     if ! type xtensa-esp32-elf-gcc > /dev/null; then
         echo installing xtensa-esp32-elf-gcc
         curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz | tar xfz -
-	else
-		which xtensa-esp32-elf-gcc
+    else
+        which xtensa-esp32-elf-gcc
     fi
     export ESP_IDF_PATH=`pwd`/esp-idf
     export ESP_APP_TEMPLATE_PATH=`pwd`/app
-	export PATH=$PATH:`pwd`/xtensa-esp32-elf/bin/
+    export PATH=$PATH:`pwd`/xtensa-esp32-elf/bin/
     return 1
 elif [ $ARCH = "ESP8266_BOARD" ]; then
     echo ESP8266
@@ -59,11 +57,11 @@ elif [ $ARCH = "ESP8266_BOARD" ]; then
         echo esp_iot_sdk_v2.0.0.p1
         curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf -
     fi
-	if ! type xtensa-lx106-elf-gcc > /dev/null; then
+    if ! type xtensa-lx106-elf-gcc > /dev/null; then
         echo installing xtensa-lx106-elf-gcc
         curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
-	else
-		which xtensa
+    else
+        which xtensa
     fi
     export ESP8266_SDK_ROOT=`pwd`/esp_iot_sdk_v2.0.0.p1
     export PATH=$PATH:`pwd`/xtensa-lx106-elf/bin/
