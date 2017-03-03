@@ -25,7 +25,7 @@ before_script:
 # - arm-none-eabi-gcc --version
 # - xtensa-esp32-elf-gcc --version
 # - chmod +x ./scripts/provision-framework.sh
- - source ./scripts/provision-framework.sh $ARCH
+ - source ./scripts/provision-framework.sh $BOARD
 
 after_script:
   - ls *.bin *.hex *.tgz | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
