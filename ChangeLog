@@ -24,6 +24,7 @@
 	    ESP8266: RELEASE=1 sets WIFI_DBG and NET_DBG to 0 to shrink firmware size
 	    ESP8266: Add Wifi.setAPIP() and Wifi.setIP() 
 	    ESP8266: Add i2c clock stretch
+	    Fix E.FFT output (enable magnitude when one array specified)
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
