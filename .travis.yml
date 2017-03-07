@@ -2,16 +2,6 @@
 
 language: c
 
-# Maybe someday when travis-ci authorizes the ppa:
-# https://github.com/travis-ci/apt-source-whitelist/issues/219
-#sudo: false
-#addon:
-#  apt:
-#    sources:
-#      - ppa:team-gcc-arm-embedded/ppa
-#    packages:
-#      - libsdl1.2-dev gcc-arm-embedded
-
 before_script:
  - source ./scripts/provision-framework.sh $BOARD
 
