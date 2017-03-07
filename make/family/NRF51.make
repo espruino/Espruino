@@ -1,4 +1,4 @@
-include common/NRF5X.make
+include make/common/NRF5X.make
 
 NRF5X=1
 NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x

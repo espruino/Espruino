@@ -40,6 +40,7 @@
 #                         # used in build_platform_config.py
 # NO_COMPILE=1            # skips compiling and linking part, used to echo WRAPPERSOURCES only
 # RTOS                    # adds RTOS functions, available only for ESP32 (yet)
+# DFU_UPDATE_BUILD=1      # Uncomment this to build Espruino for a device firmware update over the air (nRF52).
 
 include make/sanitycheck.make
 
@@ -120,197 +121,39 @@ HEADERFILENAME=$(GENDIR)/platform_config.h
 BASEADDRESS=0x08000000
 
 
+ifeq ($(BOARD),)
+ # Try and guess board names
+ ifeq ($(shell uname -m),armv6l)
+  BOARD=RASPBERRYPI # just a guess
+ else ifeq ($(shell uname -n),beaglebone)
+  BOARD=BEAGLEBONE
+ else ifeq ($(shell uname -n),arietta)
+  BOARD=ARIETTA
+ else
+  $(info *************************************************************)
+  $(info *           To build, use BOARD=my_board make               *)
+  $(info *************************************************************)
+ endif
+endif
+
+ifeq ($(BOARD),RASPBERRYPI)
+ ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
+ USE_WIRINGPI=1
+ else
+ DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+ $(info *************************************************************)
+ $(info *  WIRINGPI NOT FOUND, and you probably want it             *)
+ $(info *  see  http://wiringpi.com/download-and-install/           *)
+ $(info *************************************************************)
+ endif
+endif
+
 # ---------------------------------------------------------------------------------
 #                                                      Get info out of BOARDNAME.py
 # ---------------------------------------------------------------------------------
-ifeq ($(BOARD),)
-$(info *************************************************************")
-$(info *           To build, use "BOARD=my_board make              *")
-$(info *************************************************************")
-endif
 $(shell rm -f CURRENT_BOARD.make)
 $(shell python scripts/get_makefile_decls.py $(BOARD) > CURRENT_BOARD.make)
-
 include CURRENT_BOARD.make
-
-ifdef OLD_CODE
-
- ifdef MINISTM32_ANGLED_VE
-
-else ifdef MICROBIT
-EMBEDDED=1
-SAVE_ON_FLASH=1
-# Save on flash, but we still want the debugger and tab complete
-DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
-BOARD=MICROBIT
-OPTIMIZEFLAGS+=-Os
-USE_BLUETOOTH=1
-USE_GRAPHICS=1
-
-else ifdef DO003
-EMBEDDED=1
-SAVE_ON_FLASH=1
-# Save on flash, but we still want the debugger and tab complete
-DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
-BOARD=DO-003
-OPTIMIZEFLAGS+=-Os
-USE_BLUETOOTH=1
-USE_GRAPHICS=1
-
-else ifdef NRF51TAG
-EMBEDDED=1
-SAVE_ON_FLASH=1
-# Save on flash, but we still want the debugger and tab complete
-DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
-BOARD=NRF51TAG
-OPTIMIZEFLAGS+=-Os
-USE_BLUETOOTH=1
-
-else ifdef NRF51822DK
-EMBEDDED=1
-SAVE_ON_FLASH=1
-# Save on flash, but we still want the debugger and tab complete
-DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
-BOARD=NRF51822DK
-OPTIMIZEFLAGS+=-Os
-USE_BLUETOOTH=1
-DEFINES += -DBOARD_PCA10028
-
-# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
-
-else ifdef NRF52832DK
-EMBEDDED=1
-BOARD=NRF52832DK
-OPTIMIZEFLAGS+=-O3
-USE_BLUETOOTH=1
-USE_NET=1
-USE_GRAPHICS=1
-USE_NFC=1
-USE_NEOPIXEL=1
-DEFINES += -DBOARD_PCA10040 -DPCA10040
-
-# DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
-
-else ifdef ARMINARM
-EMBEDDED=1
-USE_NET=1
-USE_GRAPHICS=1
-USE_FILESYSTEM=1
-BOARD=ARMINARM
-DEFINES+=-DESPRUINOBOARD
-STLIB=STM32F10X_HD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef LCTECH_STM32F103RBT6
-EMBEDDED=1
-SAVE_ON_FLASH=1
-BOARD=LCTECH_STM32F103RBT6
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os
-
-else ifdef CARAMBOLA
-EMBEDDED=1
-BOARD=CARAMBOLA
-DEFINES += -DCARAMBOLA -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
-LINUX=1
-USE_FILESYSTEM=1
-USE_GRAPHICS=1
-USE_NET=1
-USE_CRYPTO=1
-USE_TLS=1
-
-else ifdef DPTBOARD
-EMBEDDED=1
-BOARD=DPTBOARD
-DEFINES += -DDPTBOARD -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
-LINUX=1
-OPENWRT_UCLIBC=1	# link with toolchain libc (uClibc or musl)
-FIXED_OBJ_NAME=1	# when defined the linker will always produce 'espruino' as executable name, for packaging in .ipk, .deb,
-USE_FILESYSTEM=1
-USE_GRAPHICS=1
-USE_NET=1
-
-
-else
-ifeq ($(shell uname -m),armv6l)
-RASPBERRYPI=1 # just a guess
-
-else ifeq ($(shell uname -n),beaglebone)
-BEAGLEBONE=1
-
-else ifeq ($(shell uname -n),arietta)
-ARIETTA=1
-endif
-
-ifdef RASPBERRYPI
-EMBEDDED=1
-BOARD=RASPBERRYPI
-DEFINES += -DRASPBERRYPI
-LINUX=1
-USE_FILESYSTEM=1
-USE_GRAPHICS=1
-#USE_LCD_SDL=1
-USE_NET=1
-USE_CRYPTO=1
-USE_TLS=1
-OPTIMIZEFLAGS+=-O3
-ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
-USE_WIRINGPI=1
-else
-DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
-$(info *************************************************************)
-$(info *  WIRINGPI NOT FOUND, and you probably want it             *)
-$(info *  see  http://wiringpi.com/download-and-install/           *)
-$(info *************************************************************)
-endif
-
-else ifdef BEAGLEBONE
-EMBEDDED=1
-BOARD=BEAGLEBONE_BLACK
-DEFINES += -DBEAGLEBONE_BLACK -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
-LINUX=1
-USE_FILESYSTEM=1
-USE_GRAPHICS=1
-USE_NET=1
-USE_CRYPTO=1
-USE_TLS=1
-
-else ifdef ARIETTA
-EMBEDDED=1
-BOARD=ARIETTA_G25
-DEFINES += -DARIETTA_G25 -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
-LINUX=1
-USE_FILESYSTEM=1
-USE_GRAPHICS=1
-USE_NET=1
-USE_CRYPTO=1
-USE_TLS=1
-
-else
-BOARD=LINUX
-LINUX=1
-USE_FILESYSTEM=1
-USE_HASHLIB=1
-USE_GRAPHICS=1
-USE_CRYPTO=1
-USE_TLS=1
-USE_TELNET=1
-#USE_LCD_SDL=1
-
-ifdef MACOSX
-USE_NET=1
-else ifdef MINGW
-#USE_NET=1 # http libs need some tweaks before net can compile
-#LIBS += -lwsock32
-DEFINES += -DHAS_STDLIB=1
-else  # Linux
-USE_NET=1
-endif
-endif
-endif
-endif # OLD_CODE
 
 #set or reset defines like USE_GRAPHIC from an external file to customize firmware
 ifdef SETDEFINES
@@ -740,93 +583,25 @@ ifdef USE_NFC
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/nfc_t2t_lib_gcc.a
 endif
 
+ifdef USE_NUCLEO
+WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
+endif
+
+ifdef WICED
+WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c
+endif
+
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
+
+# =========================================================================
+ifneq ($(FAMILY),)
+include make/family/$(FAMILY).make
+endif
+# =========================================================================
 
 ifdef USB
 DEFINES += -DUSB
 endif
-
-ifeq ($(FAMILY), STM32F1)
-include make/family/STM32F1.make
-endif
-
-ifeq ($(FAMILY), STM32F3)
-include make/family/STM32F3.make
-endif
-
-ifeq ($(FAMILY), STM32F4)
-include make/family/STM32F4.make
-endif
-
-ifeq ($(FAMILY), STM32L4)
-include make/family/STM32L4.make
-endif
-
-ifeq ($(FAMILY), NRF51)
-include make/family/NRF51.make
-endif
-
-ifeq ($(FAMILY), NRF52)
-include make/family/NRF52.make
-endif
-
-ifeq ($(FAMILY), EFM32GG)
-include make/family/EFM32GG.make
-endif
-
-ifeq ($(FAMILY), ESP8266)
-include make/family/ESP8266.make
-endif
-
-ifeq ($(FAMILY), ESP32)
-include make/family/ESP32.make
-endif
-
-
-ifdef CARAMBOLA
-TOOLCHAIN_DIR=$(shell cd ~/workspace/carambola/staging_dir/toolchain-*/bin;pwd)
-export STAGING_DIR=$(TOOLCHAIN_DIR)
-export CCPREFIX=$(TOOLCHAIN_DIR)/mipsel-openwrt-linux-
-endif
-
-ifdef DPTBOARD
-export STAGING_DIR=$(shell cd ~/breakoutopenwrt/staging_dir/toolchain-*/bin;pwd)
-export CCPREFIX=$(STAGING_DIR)/mips-openwrt-linux-
-endif
-
-ifdef RASPBERRYPI
- ifneq ($(shell uname -m),armv6l)
-  # eep. let's cross compile
-  export CCPREFIX=targetlibs/raspberrypi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-
- else
-  # compiling in-place, so give it a normal name
-  PROJ_NAME=espruino
- endif
-endif
-
-ifdef WICED
-#WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c
-endif
-
-ifdef NUCLEO
-WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
-endif
-
-ifdef LINUX
-DEFINES += -DLINUX
-INCLUDE += -I$(ROOT)/targets/linux
-SOURCES +=                              \
-targets/linux/main.c                    \
-targets/linux/jshardware.c
-LIBS += -lpthread # thread lib for input processing
-ifdef OPENWRT_UCLIBC
-LIBS += -lc
-else
-LIBS += -lstdc++
-endif
-endif
-
-
 
 PININFOFILE=$(GENDIR)/jspininfo
 SOURCES += $(PININFOFILE).c
@@ -939,11 +714,7 @@ ifndef NO_COMPILE
 
 compile=$(CC) $(CFLAGS) $< -o $@
 
-ifdef FIXED_OBJ_NAME
-link=$(LD) $(LDFLAGS) -o espruino $(OBJS) $(LIBS)
-else
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
-endif
 
 # note: link is ignored for the ESP8266
 obj_dump=$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst

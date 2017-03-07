@@ -22,9 +22,15 @@ info = {
  'variables' : 715,
  'binary_name' : 'espruino_%v_lctech_stm32f103rbt6.bin',
  'build' : {
-   'defines' : [
+   'optimizeflags' : '-Os',
+   'libraries' : [
+   ],
+   'makefile' : [
+     'SAVE_ON_FLASH=1',
+     'STLIB=STM32F10X_MD',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o'
    ]
- }
+  }
 };
 chip = {
   'part' : "STM32F103RBT6", #T6
@@ -97,4 +103,3 @@ board["_css"] = """
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f103xb.csv', 6, 10, 11)
   return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])
-

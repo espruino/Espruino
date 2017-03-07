@@ -50,8 +50,8 @@ print("PROJ_NAME="+binaryName)
 
 if board.chip["family"]!="LINUX":
     print("EMBEDDED=1")
-    print("FAMILY:="+board.chip['family'])
-    print("CHIP:="+board.chip['part'])
+print("FAMILY="+board.chip['family'])
+print("CHIP="+board.chip['part'])
 
 if "optimizeflags" in board.info["build"]:
     if board.info["build"]["optimizeflags"]:

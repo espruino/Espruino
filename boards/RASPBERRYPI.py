@@ -19,12 +19,19 @@ info = {
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_raspberrypi',
  'build' : {
-   'defines' : [
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_FILESYSTEM',
-     'USE_CRYPTO',
-     'USE_TLS'
+   'optimizeflags' : '-O3',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'FILESYSTEM',
+     'CRYPTO',
+     'TLS',
+     'HASHLIB',
+     'TELNET',
+   ],
+   'makefile' : [
+     'LINUX=1',
+     'DEFINES += -DRASPBERRYPI',
    ]
  }
 };
@@ -47,7 +54,7 @@ devices = {
 };
 
 def get_pins():
-  pins = pinutils.generate_pins(0,31)  
+  pins = pinutils.generate_pins(0,31)
   pinutils.findpin(pins, "PD0", True)["functions"]["I2C1_SDA"]=0; # Rev 1
   pinutils.findpin(pins, "PD1", True)["functions"]["I2C1_SCL"]=0; # Rev 1
   pinutils.findpin(pins, "PD2", True)["functions"]["I2C1_SDA"]=0; # Rev 2
