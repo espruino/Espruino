@@ -29,7 +29,7 @@ info = {
   { 'filename' : 'espruino_%v_pico_1r3_cc3000.bin', 'description' : "TI CC3000 WiFi Networking"},
  ],
  'build' : {
-   'optimizeflags' : '-0s',
+   'optimizeflags' : '-Os',
    'libraries' : [
      'USB_HID',
      'NET',
