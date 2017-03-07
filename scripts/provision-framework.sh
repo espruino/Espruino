@@ -82,8 +82,9 @@ else
         #sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
         #sudo apt-get update
         #sudo apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
+        # Unpack - newer, and much faster
         if [ ! -d "gcc-arm-none-eabi-6-2017-q1-update" ]; then
-          curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/arm/gcc-arm-none-eabi-6-2017-q1-update-linux.tar.bz2 | tar xfz -
+          curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/arm/gcc-arm-none-eabi-6-2017-q1-update-linux.tar.bz2 | tar xfj -
         fi
 	export PATH=$PATH:`pwd`/gcc-arm-none-eabi-6-2017-q1-update/bin
     fi
