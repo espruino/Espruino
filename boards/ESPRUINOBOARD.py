@@ -30,7 +30,7 @@ info = {
   { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "TI CC3000 WiFi Networking"},
  ],
  'build' : {
-   'optimizeflags' : '-0s',
+   'optimizeflags' : '-Os',
    'libraries' : [
      'NET',
      'GRAPHICS',
