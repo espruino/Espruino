@@ -49,9 +49,9 @@ if [ $BOARD = "ESP32" ]; then
         echo installing xtensa-esp32-elf-gcc
         if [ ! -d "xtensa-esp32-elf" ]; then
            curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz | tar xfz -
-		else
-		   echo "Folder found" 
-		fi
+        else
+           echo "Folder found" 
+        fi
     fi
     which xtensa-esp32-elf-gcc
     export ESP_IDF_PATH=`pwd`/esp-idf
@@ -66,14 +66,14 @@ elif [ $BOARD = "ESP8266_BOARD" ]; then
     fi
     if ! type xtensa-lx106-elf-gcc > /dev/null; then
         echo installing xtensa-lx106-elf-gcc
-		if [ ! -d "xtensa-lx106-elf" ]; then
+        if [ ! -d "xtensa-lx106-elf" ]; then
             curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
-		else
-		    echo "Folder found" 
-		fi
+        else
+            echo "Folder found" 
+        fi
         
     fi
-	which xtensa-lx106-elf-gcc
+    which xtensa-lx106-elf-gcc
     export ESP8266_SDK_ROOT=`pwd`/esp_iot_sdk_v2.0.0.p1
     export PATH=$PATH:`pwd`/xtensa-lx106-elf/bin/
     return 0
@@ -83,7 +83,7 @@ elif [ $BOARD = "LINUX_BUILD" ]; then
 else
     # defaulting to ARM
     echo ARM
-	if ! type arm-none-eabi-gcc > /dev/null; then
+    if ! type arm-none-eabi-gcc > /dev/null; then
         echo installing gcc-arm-embedded
         sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
         sudo apt-get update
