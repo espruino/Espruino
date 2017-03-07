@@ -28,7 +28,6 @@ info = {
  'binary_name' : 'espruino_%v_puckjs.hex',
  'build' : {
    'optimizeflags' : '-O3',
-   'defines' : [],
    'libraries' : [
      'BLUETOOTH',
      'NET',

@@ -22,15 +22,23 @@ info = {
  'variables'                : 5000,
  'binary_name'              : 'espruino_%v_esp32',
  'build' : {
-   'defines' : [
-     'USE_NET',
-     'USE_TELNET',
-     'USE_GRAPHICS',
-     'USE_CRYPTO',
-     'USE_TLS'	 
+   'optimizeflags' : '-Og',
+   'libraries' : [
+     'ESP32',
+     'NET',
+     'GRAPHICS',
+     'CRYPTO',
+     'TLS',
+     'TELNET',
+     'NEOPIXEL',
+     'FILESYSTEM'
+   ],
+   'makefile' : [
+     'DEFINES+=-DESP_PLATFORM -DESP32=1'
    ]
  }
 };
+
 chip = {
   'part'    : "ESP32",
   'family'  : "ESP32",
@@ -55,7 +63,7 @@ devices = {
 
 # left-right, or top-bottom order
 board_esp32 = {
-   'top' : ['GND','D23','D22','D1','D3','D21','D20','D19','D18','D5','D17','D16','D4','D0'],  
+   'top' : ['GND','D23','D22','D1','D3','D21','D20','D19','D18','D5','D17','D16','D4','D0'],
    'bottom' : ['D12','D14','D27','D26','D25','D33','D32','D35','D34','D39','D36','EN','3V3','GND'],
    'right' : [ 'GND','D13','D9','D10','D11','D6','D7','D8','D15','D2']
 };
@@ -130,9 +138,9 @@ def get_pins():
   pinutils.findpin(pins, "PD12", True)["functions"]["ADC2_IN5"]=0;
   pinutils.findpin(pins, "PD14", True)["functions"]["ADC2_IN6"]=0;
   pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
-  
+
   pinutils.findpin(pins, "PD25", True)["functions"]["DAC_OUT1"]=0;
-  
+
   pinutils.findpin(pins, "PD26", True)["functions"]["DAC_OUT2"]=0;
 
   pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
@@ -142,7 +150,7 @@ def get_pins():
   pinutils.findpin(pins, "PD17", True)["functions"]["USART2_TX"]=0;
   pinutils.findpin(pins, "PD32", True)["functions"]["USART0_RX"]=0;
 
-  # everything is non-5v tolerant 
+  # everything is non-5v tolerant
   #for pin in pins:
   #  pin["functions"]["3.3"]=0;
   return pins

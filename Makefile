@@ -526,19 +526,6 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
 
-else ifdef ESP32
-BOARD=ESP32
-EMBEDDED=1
-USE_NET=1
-#USE_HASHLIB=1
-USE_GRAPHICS=1
-USE_CRYPTO=1
-USE_TLS=1
-USE_TELNET=1
-USE_NEOPIXEL=1
-USE_FILESYSTEM=1
-DEFINES+=-DESP_PLATFORM -DESP32=1
-OPTIMIZEFLAGS+=-Og
 
 else
 ifeq ($(shell uname -m),armv6l)
@@ -1055,31 +1042,39 @@ endif
 
 ifeq ($(FAMILY), STM32F1)
 include make/family/STM32F1.make
-endif #STM32F1
+endif
 
 ifeq ($(FAMILY), STM32F3)
 include make/family/STM32F3.make
-endif #STM32F3
+endif
 
 ifeq ($(FAMILY), STM32F4)
 include make/family/STM32F4.make
-endif #STM32F4
+endif
 
 ifeq ($(FAMILY), STM32L4)
 include make/family/STM32L4.make
-endif #STM32L4
+endif
 
 ifeq ($(FAMILY), NRF51)
 include make/family/NRF51.make
-endif # FAMILY == NRF51
+endif
 
 ifeq ($(FAMILY), NRF52)
 include make/family/NRF52.make
-endif #FAMILY == NRF52
+endif
 
 ifeq ($(FAMILY), EFM32GG)
 include make/family/EFM32.make
-endif #FAMILY == EFM32
+endif
+
+ifeq ($(FAMILY), ESP8266)
+include make/family/ESP8266.make
+endif
+
+ifeq ($(FAMILY), ESP32)
+include make/family/ESP32.make
+endif
 
 
 ifdef CARAMBOLA
