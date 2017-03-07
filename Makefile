@@ -10,12 +10,14 @@
 # -----------------------------------------------------------------------------
 # Makefile for Espruino
 # -----------------------------------------------------------------------------
-# Set ONE of the following environment variables to compile for that board:
-#
-# ESPRUINOBOARD=1          # Espruino board rev 1.3 and rev 1v4
-# PICO_R1_3=1              # Espruino Pico board rev 1.3
-# ESPRUINOWIFI=1
-# PUCKJS=1
+# Set the BOARD environment variable to one of:
+
+# ESPRUINOBOARD      # Espruino board rev 1.3 and rev 1v4
+# PICO               # Espruino Pico board rev 1.3
+# ESPRUINOWIFI
+# PUCKJS
+# ESP8266_BOARD      # ESP8266
+# ESP32             # ESP32
 
 # OLIMEXINO_STM32=1       # Olimexino STM32
 # MAPLERET6_STM32=1       # Limited production Leaflabs Maple r5 with a STM32F103RET6
@@ -48,8 +50,7 @@
 # MINISTM32_STRIVE=1
 # MINISTM32_ANGLED_VE=1
 # MINISTM32_ANGLED_VG=1
-# ESP8266_BOARD=1         # ESP8266
-# ESP32=1                 # ESP32
+
 # EFM32GGSTK=1            # Currently only works with DEBUG=1
 # EMW3165=1               # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
 # Or nothing for standard linux compile
@@ -81,6 +82,8 @@
 #                         # used in build_platform_config.py
 # NO_COMPILE=1            # skips compiling and linking part, used to echo WRAPPERSOURCES only
 # RTOS                    # adds RTOS functions, available only for ESP32 (yet)
+
+include make/sanitycheck.make
 
 ifndef GENDIR
 GENDIR=$(shell pwd)/gen
@@ -164,7 +167,7 @@ BASEADDRESS=0x08000000
 # ---------------------------------------------------------------------------------
 ifeq ($(BOARD),)
 $(info *************************************************************)
-$(info *           To build, use "BOARD=my_board make              *")
+$(info *           To build, use "BOARD=my_board make              *)
 $(info *************************************************************)
 endif
 $(shell rm -f CURRENT_BOARD.make)
