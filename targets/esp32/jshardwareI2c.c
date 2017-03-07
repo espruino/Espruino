@@ -142,7 +142,7 @@ void jshI2CRead(IOEventFlags device,
   esp_err_t ret;
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
   ret=i2c_master_start(cmd);
-  ret=i2c_master_write_byte(cmd, ( i2c_master_port << 1 ) | I2C_MASTER_READ, ACK_CHECK_EN);
+  ret=i2c_master_write_byte(cmd, ( address << 1 ) | I2C_MASTER_READ, ACK_CHECK_EN);
   if (nBytes > 1) {
     ret=i2c_master_read(cmd, data, nBytes - 1, ACK_VAL);
   }
