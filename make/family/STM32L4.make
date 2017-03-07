@@ -1,5 +1,3 @@
-include make/common/STM32_LL.make
-
 ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 DEFINES += -DSTM32L4
 DEFINES += -DSTM32L476xx
@@ -54,3 +52,5 @@ targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c
 ifdef USB
 include make/common/STM32_USB.make
 endif
+
+include make/common/STM32_LL.make

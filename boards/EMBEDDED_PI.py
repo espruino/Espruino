@@ -21,7 +21,18 @@ info = {
  'link' :  [ "http://coocox.org" ],
  'variables' : 715,
  'binary_name' : 'espruino_%v_embedded_pi.bin',
+ 'build' : {
+   'optimizeflags' : '-Os',
+   'libraries' : [
+   ],
+   'makefile' : [
+     'SAVE_ON_FLASH=1',
+     'STLIB=STM32F10X_MD',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o'
+   ]
+ }
 };
+
 chip = {
   'part' : "STM32F103RB", #T6
   'family' : "STM32F1",
@@ -46,7 +57,7 @@ devices = {
   'BTN1' : { 'pin' : 'D38' }, # 'C9'
   'USB' : { 'pin_disc' :  'D39',
             'pin_dm' : 'D40',
-            'pin_bp' : 'D41' 
+            'pin_bp' : 'D41'
           },
  # 'SD' :  { 'pin_cs' :  'D25',#'D2',
  #           'pin_di' :  'D34',#'B15',
@@ -58,9 +69,9 @@ devices = {
 board = {
   'top' : [ 'D15','D14', 'AREF','GND', 'D13', 'D12', 'D11','D10', 'D9', 'D8', '', 'D7', 'D6', 'D5', 'D4', 'D3', 'D2', 'D1', 'D0'],
   'top2' : [ 'D39','D38','D37', 'D36', 'D35', 'D34', 'D33','D32', 'D31', 'D30', '', 'D29', 'D28', 'D27', 'D26', 'D25', 'D24', 'D23', 'D22'],
-  'bottom' : [ 'NC','DVCC','RST', '3.3', '5', 'GNDA', 'GND', 'VIN', '', 'D16', 'D17', 'D18', 'D19', 'D14', 'D15'],  
+  'bottom' : [ 'NC','DVCC','RST', '3.3', '5', 'GNDA', 'GND', 'VIN', '', 'D16', 'D17', 'D18', 'D19', 'D14', 'D15'],
   'bottom2' : [ 'BOOT0','BOOT1','RST', '3.3', 'NC', 'GND', 'D26', 'D28', '', 'D40', 'D41', 'D42', 'D43', 'D44', 'D45'],
-  
+
   'right2' : [ 'NC','D13','D12' ],
   'right' : [ 'GND','D11','NC' ],
 
@@ -98,7 +109,7 @@ board["_css"] = """
 #left {
   top: 155px;
   right: 520px;
-  
+
 }
 #left2  {
   top:155px;
@@ -121,7 +132,7 @@ board["_css"] = """
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f103xb.csv', 6, 10, 11)
   # Embedded Pi Mapping
-  pinmapping = { 
+  pinmapping = {
     'D0' :'PC11',
     'D1' :'PC10',
     'D2' :'PC12',
@@ -158,11 +169,11 @@ def get_pins():
     'D33':'PA7',
     'D34':'PA6',
     'D35':'PA5',
-    'D36':'PC13', 
+    'D36':'PC13',
     'D37':'PB5',
-    'D38':'PB11', 
-    'D39':'PB10',  
-    'D40':'PC0', 
+    'D38':'PB11',
+    'D39':'PB10',
+    'D40':'PC0',
     'D41':'PC1',
     'D42':'PC2',
     'D43':'PC3',
@@ -175,9 +186,8 @@ def get_pins():
     pin = copy.deepcopy(pinutils.findpin(pins, pinmapping[newname], True))
     pin["name"] = "P"+newname
     pin["sortingname"] = newname[0] + newname[1:].rjust(2,'0')
-    newpins.append(pin) 
+    newpins.append(pin)
   # Because 'pinmapping' is NOT stored in order!!!
   newpins = sorted(newpins, key=lambda pin: pin["sortingname"])
-#  print(json.dumps(newpins, sort_keys=True, indent=2))  
+#  print(json.dumps(newpins, sort_keys=True, indent=2))
   return newpins
-

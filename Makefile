@@ -10,50 +10,8 @@
 # -----------------------------------------------------------------------------
 # Makefile for Espruino
 # -----------------------------------------------------------------------------
-# Set the BOARD environment variable to one of:
-
-# ESPRUINOBOARD      # Espruino board rev 1.3 and rev 1v4
-# PICO               # Espruino Pico board rev 1.3
-# ESPRUINOWIFI
-# PUCKJS
-# ESP8266_BOARD      # ESP8266
-# ESP32             # ESP32
-
-# OLIMEXINO_STM32=1       # Olimexino STM32
-# MAPLERET6_STM32=1       # Limited production Leaflabs Maple r5 with a STM32F103RET6
-# MAPLEMINI=1             # Leaflabs Maple Mini
-# EMBEDDED_PI=1           # COOCOX STM32 Embedded Pi boards
-# HYSTM32_24=1            # HY STM32 2.4 Ebay boards
-# HYSTM32_28=1            # HY STM32 2.8 Ebay boards
-# HYSTM32_32=1            # HY STM32 3.2 VCT6 Ebay boards
-# HYTINY_STM103T=1				# HY-TinySTM103T by Haoyu (hotmcu.com)
-# STM32VLDISCOVERY=1
-# STM32F3DISCOVERY=1
-# STM32F4DISCOVERY=1
-# STM32F411DISCOVERY=1
-# STM32F429IDISCOVERY=1
-# STM32F401CDISCOVERY=1
-# MICROBIT=1
-# NRF51TAG=1
-# NRF51822DK=1
-# NRF52832DK=1            # Ultra low power BLE (bluetooth low energy) enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
-# CARAMBOLA=1
-# DPTBOARD=1              # DPTechnics IoT development board with BlueCherry.io IoT platform integration and DPT-WEB IDE.
-# RASPBERRYPI=1
-# BEAGLEBONE=1
-# ARIETTA=1
-# LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
-# ARMINARM=1
-# NUCLEOF401RE=1
-# NUCLEOF411RE=1
-# NUCLEOL476RG=1
-# MINISTM32_STRIVE=1
-# MINISTM32_ANGLED_VE=1
-# MINISTM32_ANGLED_VG=1
-
-# EFM32GGSTK=1            # Currently only works with DEBUG=1
-# EMW3165=1               # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
-# Or nothing for standard linux compile
+# Set the BOARD environment variable to one of the names of the .py file in
+# the `boards` directory. Eg. PICO, PUCKJS, ESPRUINOWIFI, etc
 #
 # Also:
 #
@@ -166,273 +124,18 @@ BASEADDRESS=0x08000000
 #                                                      Get info out of BOARDNAME.py
 # ---------------------------------------------------------------------------------
 ifeq ($(BOARD),)
-$(info *************************************************************)
-$(info *           To build, use "BOARD=my_board make              *)
-$(info *************************************************************)
+$(info *************************************************************")
+$(info *           To build, use "BOARD=my_board make              *")
+$(info *************************************************************")
 endif
 $(shell rm -f CURRENT_BOARD.make)
 $(shell python scripts/get_makefile_decls.py $(BOARD) > CURRENT_BOARD.make)
 
-
 include CURRENT_BOARD.make
 
-# ---------------------------------------------------------------------------------
-# When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
-# TODO: Load more of this out of the BOARDNAME.py files if at all possible (see next section)
-# ---------------------------------------------------------------------------------
 ifdef OLD_CODE
-ifdef EFM32GGSTK
-EMBEDDED=1
-DEFINES+= -DEFM32GG890F1024=1 # This should be EFM32GG990F1024, temporary hack to avoid the #USB on line 772 in jsinteractive.c
-BOARD=EFM32GGSTK
-OPTIMIZEFLAGS+=-Os
 
-else ifdef OLIMEXINO_STM32
-EMBEDDED=1
-SAVE_ON_FLASH=1
-USE_FILESYSTEM=1
-BOARD=OLIMEXINO_STM32
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os # short on program memory
-
-else ifdef HYTINY_STM103T
-EMBEDDED=1
-USE_GRAPHICS=1
-SAVE_ON_FLASH=1
-BOARD=HYTINY_STM103T
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os # short on program memory
-
-else ifdef MAPLERET6_STM32
-EMBEDDED=1
-USE_NET=1
-USE_GRAPHICS=1
-USE_FILESYSTEM=1
-USE_TV=1
-USE_HASHLIB=1
-BOARD=MAPLERET6_STM32
-STLIB=STM32F10X_HD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef OLIMEXINO_STM32_RE
-EMBEDDED=1
-USE_NET=1
-USE_GRAPHICS=1
-USE_FILESYSTEM=1
-USE_TV=1
-USE_HASHLIB=1
-BOARD=OLIMEXINO_STM32_RE
-STLIB=STM32F10X_HD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef MAPLEMINI
-EMBEDDED=1
-SAVE_ON_FLASH=1
-BOARD=MAPLEMINI
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os # short on program memory
-
-else ifdef EMBEDDED_PI
-EMBEDDED=1
-BOARD=EMBEDDED_PI
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os # short on program memory
-
-else ifdef MINISTM32_STRIVE
-EMBEDDED=1
-USE_GRAPHICS=1
-USE_LCD_FSMC=1
-DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
-DEFINES+=-DUSE_RTC
-DEFINES+=-DSWD_ONLY_NO_JTAG
-USE_FILESYSTEM=1
-USE_FILESYSTEM_SDIO=1
-BOARD=MINISTM32_STRIVE
-STLIB=STM32F10X_HD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef MINISTM32_ANGLED_VE
-EMBEDDED=1
-USE_GRAPHICS=1
-USE_LCD_FSMC=1
-DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
-DEFINES+=-DUSE_RTC
-DEFINES+=-DSWD_ONLY_NO_JTAG
-USE_FILESYSTEM=1
-USE_FILESYSTEM_SDIO=1
-BOARD=MINISTM32_ANGLED_VE
-STLIB=STM32F10X_HD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef MINISTM32_ANGLED_VG
-EMBEDDED=1
-USE_GRAPHICS=1
-USE_LCD_FSMC=1
-DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
-DEFINES+=-DUSE_RTC
-DEFINES+=-DSWD_ONLY_NO_JTAG
-USE_FILESYSTEM=1
-USE_FILESYSTEM_SDIO=1
-BOARD=MINISTM32_ANGLED_VG
-STLIB=STM32F10X_XL
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_xl.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef HYSTM32_24
-EMBEDDED=1
-USE_GRAPHICS=1
-USE_LCD_FSMC=1
-DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
-USE_FILESYSTEM=1
-USE_FILESYSTEM_SDIO=1
-USE_NEOPIXEL=1
-BOARD=HYSTM32_24
-STLIB=STM32F10X_HD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef HYSTM32_28
-EMBEDDED=1
-USE_GRAPHICS=1
-USE_LCD_FSMC=1
-DEFINES+=-DILI9325_BITBANG # bit-bang the LCD driver
-USE_NEOPIXEL=1
-SAVE_ON_FLASH=1
-#USE_FILESYSTEM=1 # just normal SPI
-BOARD=HYSTM32_28
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os
-
-else ifdef HYSTM32_32
-EMBEDDED=1
-USE_GRAPHICS=1
-USE_LCD_FSMC=1
-DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
-USE_FILESYSTEM=1
-USE_FILESYSTEM_SDIO=1
-USE_NEOPIXEL=1
-BOARD=HYSTM32_32
-STLIB=STM32F10X_HD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-Os
-
-else ifdef NUCLEOF401RE
-EMBEDDED=1
-NUCLEO=1
-USE_GRAPHICS=1
-USE_NET=1
-USE_NEOPIXEL=1
-BOARD=NUCLEOF401RE
-STLIB=STM32F401xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef NUCLEOF411RE
-EMBEDDED=1
-NUCLEO=1
-USE_GRAPHICS=1
-USE_NET=1
-USE_NEOPIXEL=1
-BOARD=NUCLEOF411RE
-STLIB=STM32F401xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef NUCLEOL476RG
-EMBEDDED=1
-NUCLEO=1
-USE_GRAPHICS=1
-USE_NET=1
-BOARD=NUCLEOL476RG
-STLIB=STM32L476xx
-#PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32l4/lib/startup_stm32f401xx.o
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates/gcc/startup_stm32l476xx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef EMW3165
-#ifndef WICED_ROOT
-#$(error WICED_ROOT must be defined)
-#endif
-EMBEDDED=1
-#USE_GRAPHICS=1
-#USE_NET=1
-BOARD=EMW3165
-STLIB=STM32F411xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
-OPTIMIZEFLAGS+=-O2
-#WICED=1
-DEFINES += -DPIN_NAMES_DIRECT -DHSE_VALUE=26000000UL
-
-else ifdef STM32F4DISCOVERY
-EMBEDDED=1
-USE_NET=1
-USE_GRAPHICS=1
-USE_NEOPIXEL=1
-DEFINES += -DUSE_USB_OTG_FS=1
-BOARD=STM32F4DISCOVERY
-STLIB=STM32F407xx
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef STM32F411DISCOVERY
-EMBEDDED=1
-USE_NET=1
-USE_GRAPHICS=1
-USE_NEOPIXEL=1
-DEFINES += -DUSE_USB_OTG_FS=1
-BOARD=STM32F411DISCOVERY
-STLIB=STM32F411xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef STM32F401CDISCOVERY
-EMBEDDED=1
-USE_NET=1
-USE_GRAPHICS=1
-USE_NEOPIXEL=1
-DEFINES += -DUSE_USB_OTG_FS=1
-BOARD=STM32F401CDISCOVERY
-STLIB=STM32F401xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef STM32F429IDISCOVERY
-EMBEDDED=1
-USE_GRAPHICS=1
-USE_NEOPIXEL=1
-DEFINES += -DUSE_USB_OTG_FS=1
-BOARD=STM32F429IDISCOVERY
-STLIB=STM32F429xx
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef STM32F3DISCOVERY
-EMBEDDED=1
-USE_NET=1
-USE_GRAPHICS=1
-USE_NEOPIXEL=1
-BOARD=STM32F3DISCOVERY
-STLIB=STM32F3XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o
-OPTIMIZEFLAGS+=-Os
-
-else ifdef STM32VLDISCOVERY
-EMBEDDED=1
-SAVE_ON_FLASH=1
-USE_NEOPIXEL=1
-BOARD=STM32VLDISCOVERY
-STLIB=STM32F10X_MD_VL
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
-OPTIMIZEFLAGS+=-Os # short on program memory
+ ifdef MINISTM32_ANGLED_VE
 
 else ifdef MICROBIT
 EMBEDDED=1
@@ -645,7 +348,7 @@ ifdef DEBUG
  else
   OPTIMIZEFLAGS=-g
  endif
- ifdef EFM32
+ ifeq ($(FAMILY),EFM32GG)
   DEFINES += -DDEBUG_EFM=1 -DDEBUG=1
  endif
 DEFINES+=-DDEBUG
@@ -1068,7 +771,7 @@ include make/family/NRF52.make
 endif
 
 ifeq ($(FAMILY), EFM32GG)
-include make/family/EFM32.make
+include make/family/EFM32GG.make
 endif
 
 ifeq ($(FAMILY), ESP8266)

@@ -20,13 +20,21 @@ info = {
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_hystm32_24_ve.bin',
  'build' : {
-   'defines' : [
-     'USE_GRAPHICS',
-     'USE_LCD_FSMC',
-     'USE_FILESYSTEM',
-     'USE_FILESYSTEM_SDIO'
-   ]
- }
+    'optimizeflags' : '-Os',
+    'libraries' : [
+      'GRAPHICS',
+      'LCD_FSMC',
+      'FILESYSTEM',
+      'FILESYSTEM_SDIO',
+      'NEOPIXEL'
+    ],
+    'makefile' : [
+      'STLIB=STM32F10X_HD',
+      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o',
+      'DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes',
+      'DEFINES+=-DUSE_RTC'
+    ]
+  }
 };
 chip = {
   'part' : "STM32F103VE", #T6
@@ -98,8 +106,8 @@ devices = {
           },
   'JTAG' : {
         'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-        'pin_DI' : 'A15' 
+        'pin_CK' : 'A14',
+        'pin_DI' : 'A15'
           }
 };
 
@@ -150,5 +158,3 @@ board["_css"] = """
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f103xe.csv', 6, 10, 11)
   return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])
-
-
