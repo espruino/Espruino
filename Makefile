@@ -12,8 +12,11 @@
 # -----------------------------------------------------------------------------
 # Set ONE of the following environment variables to compile for that board:
 #
-# ESPRUINO_1V3=1          # Espruino board rev 1.3 and rev 1v4
-# PICO_1V3=1              # Espruino Pico board rev 1.3
+# ESPRUINOBOARD=1          # Espruino board rev 1.3 and rev 1v4
+# PICO_R1_3=1              # Espruino Pico board rev 1.3
+# ESPRUINOWIFI=1
+# PUCKJS=1
+
 # OLIMEXINO_STM32=1       # Olimexino STM32
 # MAPLERET6_STM32=1       # Limited production Leaflabs Maple r5 with a STM32F103RET6
 # MAPLEMINI=1             # Leaflabs Maple Mini
@@ -155,61 +158,20 @@ WRAPPERFILE=$(GENDIR)/jswrapper.c
 HEADERFILENAME=$(GENDIR)/platform_config.h
 BASEADDRESS=0x08000000
 
+
+# ---------------------------------------------------------------------------------
+#                                                      Get info out of BOARDNAME.py
+# ---------------------------------------------------------------------------------
+$(shell rm -f CURRENT_BOARD.make)
+$(shell python scripts/get_makefile_decls.py $(BOARD) > CURRENT_BOARD.make)
+include CURRENT_BOARD.make
+
 # ---------------------------------------------------------------------------------
 # When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
 # TODO: Load more of this out of the BOARDNAME.py files if at all possible (see next section)
 # ---------------------------------------------------------------------------------
-ifdef ESPRUINO_1V3
-EMBEDDED=1
-DEFINES+=-DESPRUINO_1V3
-USE_NET=1
-USE_GRAPHICS=1
-USE_FILESYSTEM=1
-USE_HASHLIB=1
-USE_NEOPIXEL=1
-BOARD=ESPRUINOBOARD
-STLIB=STM32F10X_XL
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-Os
-
-else ifdef PICO_1V3
-EMBEDDED=1
-#USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V3
-USE_USB_HID=1
-USE_NET=1
-USE_GRAPHICS=1
-USE_TV=1
-USE_HASHLIB=1
-USE_FILESYSTEM=1
-USE_CRYPTO=1
-USE_TLS=1
-USE_NEOPIXEL=1
-BOARD=PICO_R1_3
-STLIB=STM32F401xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-Os
-
-else ifdef ESPRUINOWIFI
-EMBEDDED=1
-#USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINOWIFI
-USE_USB_HID=1
-USE_NET=1
-USE_GRAPHICS=1
-USE_TV=1
-USE_HASHLIB=1
-USE_FILESYSTEM=1
-USE_CRYPTO=1
-USE_TLS=1
-USE_NEOPIXEL=1
-BOARD=ESPRUINOWIFI
-STLIB=STM32F411xE
-#PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o # <- this seems like overkill
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-Os
-
-else ifdef EFM32GGSTK
+ifdef OLD_CODE
+ifdef EFM32GGSTK
 EMBEDDED=1
 DEFINES+= -DEFM32GG890F1024=1 # This should be EFM32GG990F1024, temporary hack to avoid the #USB on line 772 in jsinteractive.c
 BOARD=EFM32GGSTK
@@ -516,31 +478,6 @@ DEFINES += -DBOARD_PCA10040 -DPCA10040
 
 # DFU_UPDATE_BUILD=1 # Uncomment this to build Espruino for a device firmware update over the air.
 
-else ifdef PUCKJS
-EMBEDDED=1
-BOARD=PUCKJS
-OPTIMIZEFLAGS+=-O3
-USE_BLUETOOTH=1
-USE_NET=1
-USE_GRAPHICS=1
-#USE_HASHLIB=1
-#USE_FILESYSTEM=1
-USE_CRYPTO=1
-#USE_TLS=1
-USE_NFC=1
-USE_NEOPIXEL=1
-
-else ifdef ECU
-# Gordon's car ECU (extremely beta!)
-USE_TRIGGER=1
-USE_FILESYSTEM=1
-DEFINES +=-DECU -DSTM32F4DISCOVERY
-DEFINES += -DUSE_USB_OTG_FS=1
-BOARD=ECU
-STLIB=STM32F4XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
-OPTIMIZEFLAGS+=-O3
-
 else ifdef ARMINARM
 EMBEDDED=1
 USE_NET=1
@@ -724,6 +661,7 @@ USE_NET=1
 endif
 endif
 endif
+endif # OLD_CODE
 
 #set or reset defines like USE_GRAPHIC from an external file to customize firmware
 ifdef SETDEFINES
@@ -734,32 +672,10 @@ endif
 # ---------------------------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------------
-#                                                      Get info out of BOARDNAME.py
-# ---------------------------------------------------------------------------------
 
-PROJ_NAME=$(shell python scripts/get_board_info.py $(BOARD) "common.get_board_binary_name(board)"  | sed -e "s/.bin$$//" | sed -e "s/.hex$$//")
-ifeq ($(PROJ_NAME),)
-$(error Unable to work out binary name (PROJ_NAME))
-endif
-ifeq ($(BOARD),LINUX)
-PROJ_NAME=espruino
-endif
 
-ifeq ($(shell python scripts/get_board_info.py $(BOARD) "'bootloader' in board.info and board.info['bootloader']==1"),True)
-USE_BOOTLOADER:=1
-BOOTLOADER_PROJ_NAME:=bootloader_$(PROJ_NAME)
-DEFINES+=-DUSE_BOOTLOADER
-endif
 
-ifeq ($(shell python scripts/get_board_info.py $(BOARD) "'USB' in board.devices"),True)
-USB:=1
-endif
 
-ifndef LINUX
-FAMILY:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['family']")
-CHIP:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['part']")
-endif
 
 # ---------------------------------------------------------------------------------
 
@@ -1048,7 +964,7 @@ ifdef USE_NET
    WRAPPERSOURCES += targets/esp32/jswrap_rtos.c
   endif # RTOS
  endif # USE_ESP32
- 
+
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
  WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266_network.c \
@@ -1431,7 +1347,7 @@ ifeq ($(FAMILY), NRF51)
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
-  DEFINES += -DNRF_SD_BLE_API_VERSION=2  
+  DEFINES += -DNRF_SD_BLE_API_VERSION=2
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.1_softdevice.hex
@@ -1484,9 +1400,9 @@ ifeq ($(FAMILY), NRF52)
 	# BLE HID Support (only NRF52)
 	INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
 	TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
-        # Neopixel support (only NRF52)  
+        # Neopixel support (only NRF52)
         INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
-        TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c 
+        TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
 
 endif #FAMILY == NRF52
 
@@ -2143,7 +2059,7 @@ proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
 $(PROJ_NAME): $(OBJS)
 	@echo $($(quiet_)link)
 	@$(call link)
-	
+
 # Linking for ESP32
 else ifdef ESP32
 
@@ -2189,7 +2105,7 @@ erase_flash:
 	--chip esp32 \
 	--port "/dev/ttyUSB0" \
 	--baud 921600 \
-	erase_flash	
+	erase_flash
 
 else ifdef ESP8266
 # Linking the esp8266... The Espruino source files get compiled into the .text section. The

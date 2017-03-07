@@ -27,8 +27,18 @@ info = {
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_puckjs.hex',
  'build' : {
-  'defines' : [
-     'USE_BLUETOOTH'
+   'optimizeflags' : '-03',
+   'defines' : [],
+   'libraries' : [
+     'BLUETOOTH',
+     'NET',
+     'GRAPHICS',
+     'CRYPTO',
+     'NFC',
+     'NEOPIXEL'
+     #'HASHLIB'
+     #'FILESYSTEM'
+     #'TLS'
    ]
  }
 };
@@ -49,7 +59,7 @@ chip = {
     'address' : ((120 - 3) * 4096), # Bootloader takes pages 120-127
     'page_size' : 4096,
     'pages' : 3,
-    'flash_available' : 512 - ((31 + 8 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 8, code 3. Each page is 4 kb. 
+    'flash_available' : 512 - ((31 + 8 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 8, code 3. Each page is 4 kb.
   },
 };
 
@@ -61,7 +71,7 @@ devices = {
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
   'CAPSENSE' : { 'pin_rx' : 'D11', 'pin_tx' : 'D12' },
   'NFC': { 'pin_a':'D9', 'pin_b':'D10' },
-  'MAG': { 'pin_pwr':'D18', 
+  'MAG': { 'pin_pwr':'D18',
            'pin_int':'D17',
            'pin_sda':'D20',
            'pin_scl':'D19' }
@@ -130,8 +140,8 @@ def get_pins():
   pinutils.findpin(pins, "PD29", True)["functions"]["USART1_RX"]=0;
   pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN5"]=0;
   pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
-  pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;  
-  # everything is non-5v tolerant 
+  pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
+  # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;
 

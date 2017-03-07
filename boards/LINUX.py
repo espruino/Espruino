@@ -19,12 +19,17 @@ info = {
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_linux',
  'build' : {
-   'defines' : [
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_FILESYSTEM',
-     'USE_CRYPTO',
-     'USE_TLS'
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'FILESYSTEM',
+     'CRYPTO',
+     'TLS',
+     'HASHLIB',
+     'TELNET',
+   ],
+   'makefile' : [
+     'LINUX=1',
    ]
  }
 };
