@@ -24,15 +24,13 @@ info = {
     'libraries' : [
       'GRAPHICS',
       'LCD_FSMC',
-      'FILESYSTEM',
       'NEOPIXEL'
     ],
     'makefile' : [
       'SAVE_ON_FLASH=1',
       'STLIB=STM32F10X_MD',
       'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o',
-      'DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes',
-      'DEFINES+=-DUSE_RTC'
+      'DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes'
     ]
   }
 };

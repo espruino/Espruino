@@ -32,6 +32,7 @@ xtensa-lx106-elf
 app
 esp-idf
 xtensa-esp32-elf
+gcc-arm-none-eabi*
 *.c#
 /function_keywords.js
 /functions.html

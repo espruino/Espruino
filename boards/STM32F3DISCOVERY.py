@@ -21,7 +21,7 @@ info = {
  'variables' : 1720,
  'binary_name' : 'espruino_%v_stm32f3discovery.bin',
  'build' : {
-   'optimizeflags' : '-O3',
+   'optimizeflags' : '-Os',
    'libraries' : [
      'NET',
      'GRAPHICS',
