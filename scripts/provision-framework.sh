@@ -23,7 +23,7 @@ if [ $# -eq 0 ]
 then
   echo "USAGE:"
   echo "source scripts/provision.sh {BOARD}"
-  exit 1
+  return 1
 fi
 
 # set the current board
@@ -54,7 +54,7 @@ if [ $BOARD = "ESP32" ]; then
     export ESP_IDF_PATH=`pwd`/esp-idf
     export ESP_APP_TEMPLATE_PATH=`pwd`/app
     export PATH=$PATH:`pwd`/xtensa-esp32-elf/bin/
-    exit 0
+    return 0
 elif [ $BOARD = "ESP8266_BOARD" ]; then
     echo ESP8266
     if [ ! -d "esp_iot_sdk_v2.0.0.p1" ]; then
@@ -73,18 +73,22 @@ elif [ $BOARD = "ESP8266_BOARD" ]; then
     which xtensa-lx106-elf-gcc
     export ESP8266_SDK_ROOT=`pwd`/esp_iot_sdk_v2.0.0.p1
     export PATH=$PATH:`pwd`/xtensa-lx106-elf/bin/
-    exit 0
+    return 0
 elif [ $BOARD = "LINUX" ]; then
     echo LINUX
-    exit 0
+    return 0
 else
     # defaulting to ARM
     echo ARM
     if ! type arm-none-eabi-gcc > /dev/null; then
         echo installing gcc-arm-embedded
-        sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
-        sudo apt-get update
-        sudo apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
+        #sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
+        #sudo apt-get update
+        #sudo apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
+        if [ ! -d "gcc-arm-none-eabi-6-2017-q1-update" ]; then
+          curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/arm/gcc-arm-none-eabi-6-2017-q1-update-linux.tar.bz2 | tar xfz -
+        fi
+	export PATH=$PATH:`pwd`/gcc-arm-none-eabi-6-2017-q1-update/bin
     fi
-    exit 0
+    return 0
 fi

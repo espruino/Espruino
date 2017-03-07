@@ -32,7 +32,6 @@ compiler:
 
 env:
   global:
-    - RELEASE=1
     - TRAVIS=1
     - V=0
     - RELEASE=1
