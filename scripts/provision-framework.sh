@@ -27,12 +27,9 @@ then
 fi
 
 # set the current board
-BOARD=$1
+BOARDNAME=$1
 
-# define the board type environment for Makefile
-    eval export $BOARD=1
-
-if [ $BOARD = "ESP32" ]; then
+if [ $BOARDNAME = "ESP32" ]; then
     echo ESP32
     if [ ! -d "app" ]; then
         echo installing app folder
@@ -55,7 +52,7 @@ if [ $BOARD = "ESP32" ]; then
     export ESP_APP_TEMPLATE_PATH=`pwd`/app
     export PATH=$PATH:`pwd`/xtensa-esp32-elf/bin/
     return 0
-elif [ $BOARD = "ESP8266_BOARD" ]; then
+elif [ $BOARDNAME = "ESP8266_BOARD" ]; then
     echo ESP8266
     if [ ! -d "esp_iot_sdk_v2.0.0.p1" ]; then
         echo esp_iot_sdk_v2.0.0.p1
@@ -74,7 +71,7 @@ elif [ $BOARD = "ESP8266_BOARD" ]; then
     export ESP8266_SDK_ROOT=`pwd`/esp_iot_sdk_v2.0.0.p1
     export PATH=$PATH:`pwd`/xtensa-lx106-elf/bin/
     return 0
-elif [ $BOARD = "LINUX" ]; then
+elif [ $BOARDNAME = "LINUX" ]; then
     echo LINUX
     return 0
 else
