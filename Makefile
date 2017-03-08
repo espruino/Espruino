@@ -375,6 +375,23 @@ STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 
+else ifdef NUCLEOF413ZH
+EMBEDDED=1
+NUCLEO=1
+DEFINES += -DUSE_USB_OTG_FS=1
+USE_CAN=1
+USE_USB_HID=1
+USE_NET=1
+USE_GRAPHICS=1
+# USE_TV=1
+# USE_HASHLIB=1
+# USE_CRYPTO=1
+# USE_TLS=1
+BOARD=NUCLEOF413ZH
+STLIB=STM32F413xH
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f413xx.o
+OPTIMIZEFLAGS+=-O3 -w
+
 else ifdef NUCLEOL476RG
 EMBEDDED=1
 NUCLEO=1
@@ -1048,7 +1065,7 @@ ifdef USE_NET
    WRAPPERSOURCES += targets/esp32/jswrap_rtos.c
   endif # RTOS
  endif # USE_ESP32
- 
+
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
  WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266_network.c \
@@ -1431,7 +1448,7 @@ ifeq ($(FAMILY), NRF51)
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
-  DEFINES += -DNRF_SD_BLE_API_VERSION=2  
+  DEFINES += -DNRF_SD_BLE_API_VERSION=2
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
 
   SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.1_softdevice.hex
@@ -1484,9 +1501,9 @@ ifeq ($(FAMILY), NRF52)
 	# BLE HID Support (only NRF52)
 	INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
 	TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
-        # Neopixel support (only NRF52)  
+        # Neopixel support (only NRF52)
         INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
-        TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c 
+        TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
 
 endif #FAMILY == NRF52
 
@@ -2143,7 +2160,7 @@ proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
 $(PROJ_NAME): $(OBJS)
 	@echo $($(quiet_)link)
 	@$(call link)
-	
+
 # Linking for ESP32
 else ifdef ESP32
 
@@ -2189,7 +2206,7 @@ erase_flash:
 	--chip esp32 \
 	--port "/dev/ttyUSB0" \
 	--baud 921600 \
-	erase_flash	
+	erase_flash
 
 else ifdef ESP8266
 # Linking the esp8266... The Espruino source files get compiled into the .text section. The
