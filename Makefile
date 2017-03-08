@@ -734,7 +734,12 @@ quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 	@echo $($(quiet_)compile)
 	@$(call compile)
 
+# case sensitive - Nordic's files are capitals
 .s.o:
+	@echo $($(quiet_)compile)
+	@$(call compile)
+
+.S.o:
 	@echo $($(quiet_)compile)
 	@$(call compile)
 

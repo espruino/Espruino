@@ -15,6 +15,8 @@ PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52
 
 DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
 DEFINES += -DNRF_SD_BLE_API_VERSION=3
+# Force heap to 0, since we're not using it
+DEFINES += -D__HEAP_SIZE=0
 
 SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_3.0.0_softdevice.hex
 
@@ -36,6 +38,6 @@ endif
 # BLE HID Support (only NRF52)
 INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
 TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
-      # Neopixel support (only NRF52)
-      INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
-      TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
+# Neopixel support (only NRF52)
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
