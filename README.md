@@ -110,7 +110,6 @@ If you are a board manufacturer interested in getting your board officially supp
 * ST NUCLEO-F411RE - WORKING
 * ESP8266 - WORKING - Reasonably stable, but expect to find issues
 * Arduino (AVR) - NOT POSSIBLE due to the Hardward architecture of AVRs, even though it would fit into an ATMEGA2560. If `avr-gcc` ever gains an easy way to emulate Von Neumann architecture then it might be portable, but for now it isn't.
-* Arduino (ARM) - very doable, but no work has been done on this.
 
 
 Modification
@@ -127,12 +126,15 @@ Any more questions? [ask on the forum.](http://www.espruino.com/Forum)
 
 ### Porting to new devices
 
-Currently there are a bunch of different files to modify. Eventually the plan is to fit everything into `boards/BOARDNAME.py` and to auto-generate the rest of the config files.
+If you're using an existing architecture everything can be done from `boards/BOARDNAME.py`. See a similar board's `.py` file as an example.
 
-* Most build options handled in `Makefile`
-* Extra libraries like USB/LCD/filesystem in `Makefile`
+However for a new architecture there are a bunch of different files to modify.
+
 * `boards/*.py` files describe the CPU, available pins, and connections - so the relevant linker script, headers + docs can be created
 * `boards/pins/*.csv` are copies of the 'pin definitions' table in the chip's datasheet. They are read in for STM32 chips by the `boards/*.py` files, but they are not required - see `boards/MICROBIT.py` for an example.
+* Global build options are handled in `Makefile`
+* The `make` directory contains arch-specific Makefile fragments
+* Extra libraries like USB/LCD/filesystem are in `Makefile`
 * Processor-specific code in `targets/ARCH` - eg. `targets/stm32`, `targets/linux`
 * Processor-specific libs (like the SDK) in `targetlibs/ARCH`
 * `src/jshardware.h` is effectively a simple abstraction layer for SPI/I2C/etc, which should be implemented in `targets/ARCH/jshardware.c`
