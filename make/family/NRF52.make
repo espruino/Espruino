@@ -15,8 +15,6 @@ PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52
 
 DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
 DEFINES += -DNRF_SD_BLE_API_VERSION=3
-# Force heap to 0, since we're not using it
-DEFINES += -D__HEAP_SIZE=0
 
 SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_3.0.0_softdevice.hex
 

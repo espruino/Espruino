@@ -23,7 +23,8 @@
 # CFILE=test.c            # Compile in the supplied C file
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
-# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
+# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support
+# CC3000=1                # If compiling for a non-linux target that has internet support, use CC3000 support
 # USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
 # GENDIR=MyGenDir		  # sets directory for files generated during make
@@ -179,7 +180,7 @@ else ifeq ($(FAMILY),ESP32)
 USE_ESP32=1
 else ifdef EMW3165
 USE_WICED=1
-else
+else ifdef CC3000
 USE_CC3000=1
 endif
 endif
