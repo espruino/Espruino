@@ -151,7 +151,7 @@ void jshReset() {
 	RMTReset();
 	ADCReset();
 	SPIReset();
-    jsWarn("jshReset(): To implement - reset of i2c\n");
+	I2CReset();
 }
 
 /**
