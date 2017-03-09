@@ -9,7 +9,7 @@ $(error You now need to build with 'BOARD=ESPRUINOBOARD make')
 endif
 
 ifdef PICO_1V3
-$(error You now need to build with 'BOARD=PICO make')
+$(error You now need to build with 'BOARD=PICO_R1_3 make')
 endif
 
 ifdef ESPRUINOWIFI
