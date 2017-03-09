@@ -14,7 +14,7 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
   ifdef DFU_UPDATE_BUILD
 	@echo Not merging softdevice or bootloader with application
 	# nrfutil  pkg generate --help
-	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file $(DFU_PRIVATE_KEY)
   else
   ifdef BOOTLOADER
 	@echo Not merging anything with bootloader
