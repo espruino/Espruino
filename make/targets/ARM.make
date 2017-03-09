@@ -14,13 +14,13 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
   ifdef DFU_UPDATE_BUILD
 	@echo Not merging softdevice or bootloader with application
 	# nrfutil  pkg generate --help
-	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file $(DFU_PRIVATE_KEY)
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
   else
   ifdef BOOTLOADER
 	@echo Not merging anything with bootloader
   else
 	@echo Merging SoftDevice and Bootloader
-        # We can build a DFU settings file we can merge in...
+	# We can build a DFU settings file we can merge in...
 	# nrfutil settings generate --family NRF52 --application $(PROJ_NAME).hex --application-version 0xff --bootloader-version 0xff --bl-settings-version 1 dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
 	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex

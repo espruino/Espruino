@@ -40,7 +40,8 @@ info = {
      #'TLS'
    ],
    'makefile' : [
-     'DFU_PRIVATE_KEY=targets/nrf5x_dfu/ruuvi_open_private.pem'
+     'DFU_PRIVATE_KEY=targets/nrf5x_dfu/ruuvi_open_private.pem',
+     'DFU_SETTINGS=--debug-mode'
    ]
  }
 };

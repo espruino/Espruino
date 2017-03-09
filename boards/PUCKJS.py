@@ -40,7 +40,8 @@ info = {
      #'TLS'
    ],
    'makefile' : [
-     'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem'
+     'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C'
    ]
  }
 };
