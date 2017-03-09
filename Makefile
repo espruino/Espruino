@@ -763,6 +763,7 @@ clean:
 	@echo Cleaning targets
 	$(Q)find . -name \*.o | grep -v arm-bcm2708 | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
+	$(Q)rm -f $(ROOT)/scripts/*.pyc $(ROOT)/boards/*.pyc
 	$(Q)rm -f $(PROJ_NAME).elf
 	$(Q)rm -f $(PROJ_NAME).hex
 	$(Q)rm -f $(PROJ_NAME).bin
