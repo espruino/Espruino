@@ -115,10 +115,17 @@ After a successful OpenWRT build, [OpenWRT Espruino packages](https://github.com
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard)
 
 ```bash
-make clean && BOARD=YOUR_BOARD_NAME RELEASE=1 make
+make clean && BOARD=BOARDNAME RELEASE=1 make
 ```
 
-* See the top of Makefile for board names
+Where BOARDNAME is one of:
+
+* `PICO_R1_3` for Espruino Pico
+* `ESPRUINOBOARD` for Original Espruino
+* `ESPRUINOWIFI` for Espruino WiFi
+
+Or choose another board name based on the files in `boards/*.py`
+
 * `BOARD=BOARDNAME RELEASE=1 make serialflash` will flash to /dev/ttyUSB0 using the STM32 serial bootloader (what's needed for the Espruino and HY boards)
 * `BOARD=BOARDNAME RELEASE=1 make flash` will flash using st-flash if it's a discovery board, the maple bootloader if using that board, or will copy the binary to `/media/NUCLEO` if using a Nucleo board.
 
@@ -139,9 +146,9 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 * USB
   * the board appears as a drive to drop a hex on
 
-#### for [puck.js](http://www.espruino.com/Puck.js)
+#### for [Puck.js](http://www.espruino.com/Puck.js)
 
-The puck.js is based on the nRF52
+The Puck.js is based on the nRF52
 
 ```bash
 make clean && DFU_UPDATE_BUILD=1 BOARD=PUCKJS RELEASE=1 make
