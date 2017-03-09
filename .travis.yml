@@ -6,7 +6,7 @@ before_script:
  - source ./scripts/provision-framework.sh $BOARD
 
 after_script:
-  - ls *.bin *.hex *.tgz | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
+  - ls *.bin *.hex *.tgz *.zip | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
   # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
   # in environment using travis' repository settings
   - "if [[ -n \"$S3_BUCKET\" && -n \"$AWS_ACCESS_KEY_ID\" ]]; then
@@ -27,7 +27,7 @@ env:
     - RELEASE=1
   matrix:
     - BOARD=ESPRUINOBOARD PAD_FOR_BOOTLOADER=1
-    - BOARD=PICO PAD_FOR_BOOTLOADER=1
+    - BOARD=PICO_R1_3 PAD_FOR_BOOTLOADER=1
     - BOARD=ESPRUINOWIFI PAD_FOR_BOOTLOADER=1
     - BOARD=PUCKJS DFU_UPDATE_BUILD=1
     - BOARD=ESP32
