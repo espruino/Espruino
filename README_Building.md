@@ -22,13 +22,13 @@ Espruino is easy to build under Linux, for either for Espruino running on Linux 
 
 The current reference OS for building is Ubuntu 16.04.1 LTS, and the following can ensure problem free development:
 
-### Easy Method : provision-framework.sh
+### Easy Method : provision.sh
 
 Simply run the following with the name of your board to set
 your computer up ready for a build:
 
 ```bash
-source scripts/provision-framework.sh BOARDNAME
+source scripts/provision.sh BOARDNAME
 ```
 
 This should work for common platforms on Linux, but will only set
