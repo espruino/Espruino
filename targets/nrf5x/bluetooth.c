@@ -626,7 +626,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (cccd_handle) {
           if(bleTaskInfo)
             jsvObjectSetChildAndUnLock(bleTaskInfo, "handle_cccd", jsvNewFromInteger(cccd_handle));
-            
+
           // FIXME: we just switch task here - this is not nice...
           bleSwitchTask(BLETASK_CHARACTERISTIC_NOTIFY);
           jsble_central_characteristicNotify(bleTaskInfo, true);
@@ -789,14 +789,16 @@ static void gap_params_init() {
     ble_gap_conn_sec_mode_t sec_mode;
 
     char deviceName[BLE_GAP_DEVNAME_MAX_LEN];
-#ifdef PUCKJS
+#if defined(PUCKJS)
     strcpy(deviceName,"Puck.js");
+#elif defined(RUUVITAG)
+    strcpy(deviceName,"RuuviTag");
 #else
     strcpy(deviceName,"Espruino "PC_BOARD_ID);
 #endif
 
     size_t len = strlen(deviceName);
-#ifdef PUCKJS
+#if defined(PUCKJS) || defined(RUUVITAG)
     // append last 2 bytes of MAC address to name
     uint32_t addr =  NRF_FICR->DEVICEADDR[0];
     deviceName[len++] = ' ';
@@ -1027,7 +1029,7 @@ static void ble_stack_init() {
     err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
     APP_ERROR_CHECK(err_code);
 
-#ifdef PUCKJS
+#if defined(PUCKJS) || defined(RUUVITAG)
     // can only be enabled if we're sure we have a DC-DC
     err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
     APP_ERROR_CHECK(err_code);
@@ -1546,7 +1548,7 @@ void jsble_central_characteristicDescDiscover(JsVar *characteristic) {
   ble_gattc_handle_range_t range;
   range.start_handle = handle_value+1;
   range.end_handle = handle_value+1;
-  
+
   uint32_t              err_code;
   err_code = sd_ble_gattc_descriptors_discover(m_central_conn_handle, &range);
   if (jsble_check_error(err_code)) {

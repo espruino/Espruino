@@ -38,6 +38,9 @@ info = {
      #'HASHLIB'
      #'FILESYSTEM'
      #'TLS'
+   ],
+   'makefile' : [
+     'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem'
    ]
  }
 };
