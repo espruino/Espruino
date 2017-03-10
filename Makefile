@@ -23,7 +23,8 @@
 # CFILE=test.c            # Compile in the supplied C file
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
-# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
+# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support
+# CC3000=1                # If compiling for a non-linux target that has internet support, use CC3000 support
 # USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
 # GENDIR=MyGenDir		  # sets directory for files generated during make
@@ -39,8 +40,9 @@
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
 # NO_COMPILE=1            # skips compiling and linking part, used to echo WRAPPERSOURCES only
-# RTOS                    # adds RTOS functions, available only for ESP32 (yet)
+# RTOS=1                  # adds RTOS functions, available only for ESP32 (yet)
 # DFU_UPDATE_BUILD=1      # Uncomment this to build Espruino for a device firmware update over the air (nRF52).
+# PAD_FOR_BOOTLOADER=1    # When building for Espruino STM32 boards, pad the binary out with 0xFF where the bootloader should be (allows the Web IDE to flash the binary)
 
 include make/sanitycheck.make
 
@@ -179,7 +181,7 @@ else ifeq ($(FAMILY),ESP32)
 USE_ESP32=1
 else ifdef EMW3165
 USE_WICED=1
-else
+else ifdef CC3000
 USE_CC3000=1
 endif
 endif
@@ -734,7 +736,12 @@ quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 	@echo $($(quiet_)compile)
 	@$(call compile)
 
+# case sensitive - Nordic's files are capitals
 .s.o:
+	@echo $($(quiet_)compile)
+	@$(call compile)
+
+.S.o:
 	@echo $($(quiet_)compile)
 	@$(call compile)
 
@@ -757,6 +764,7 @@ clean:
 	@echo Cleaning targets
 	$(Q)find . -name \*.o | grep -v arm-bcm2708 | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
+	$(Q)rm -f $(ROOT)/scripts/*.pyc $(ROOT)/boards/*.pyc
 	$(Q)rm -f $(PROJ_NAME).elf
 	$(Q)rm -f $(PROJ_NAME).hex
 	$(Q)rm -f $(PROJ_NAME).bin

@@ -14,13 +14,13 @@ ifdef SOFTDEVICE # Shouldn't do this when we want to be able to perform DFU OTA!
   ifdef DFU_UPDATE_BUILD
 	@echo Not merging softdevice or bootloader with application
 	# nrfutil  pkg generate --help
-	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex --application-version 0xff --hw-version 52 --sd-req 0x8C --key-file targets/nrf5x_dfu/dfu_private_key.pem
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME).hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
   else
   ifdef BOOTLOADER
 	@echo Not merging anything with bootloader
   else
 	@echo Merging SoftDevice and Bootloader
-        # We can build a DFU settings file we can merge in...
+	# We can build a DFU settings file we can merge in...
 	# nrfutil settings generate --family NRF52 --application $(PROJ_NAME).hex --application-version 0xff --bootloader-version 0xff --bl-settings-version 1 dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
 	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).hex -o tmp.hex
@@ -44,14 +44,17 @@ $(PROJ_NAME).bin : $(PROJ_NAME).elf
 ifndef TRAVIS
 	bash scripts/check_size.sh $(PROJ_NAME).bin
 endif
+ifdef PAD_FOR_BOOTLOADER
+	mv $(PROJ_NAME).bin $(PROJ_NAME).bin.unpadded
+	tr "\000" "\377" < /dev/zero | dd bs=1 count=$(shell python scripts/get_board_info.py $(BOARD) "common.get_espruino_binary_address(board)") of=$(PROJ_NAME).bin
+	cat $(PROJ_NAME).bin.unpadded >> $(PROJ_NAME).bin
+endif
 
 ifdef NRF5X
 proj: $(PROJ_NAME).lst $(PROJ_NAME).hex
 else
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
 endif
-
-#proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all
 ifdef USE_DFU

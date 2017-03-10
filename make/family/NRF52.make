@@ -36,6 +36,6 @@ endif
 # BLE HID Support (only NRF52)
 INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
 TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
-      # Neopixel support (only NRF52)
-      INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
-      TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
+# Neopixel support (only NRF52)
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
