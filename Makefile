@@ -153,7 +153,6 @@ endif
 # ---------------------------------------------------------------------------------
 # TODO: could check board here and make clean if it's different?
 $(shell rm -f CURRENT_BOARD.make)
-$(shell find . -name '*.pyc' -delete)
 $(shell python scripts/get_makefile_decls.py $(BOARD) > CURRENT_BOARD.make)
 include CURRENT_BOARD.make
 
