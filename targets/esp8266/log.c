@@ -19,7 +19,7 @@ typedef long long int64_t;
 #endif
 
 // Whether to prefix lines in memory buffer with a millisecond timestamp: 0=off, 1=on
-#define LOG_TS 1
+#define LOG_TS 0
 
 // Log for the esp8266 to replace outputting to uart1.
 // The log has a ~1KB circular in-memory buffer which os_printf prints into and
@@ -94,7 +94,7 @@ static void log_write_char(char c) {
 }
 
 void esp8266_logInit(uint8_t mode) {
-  if (mode == log_mode) return;
+  //if (mode == log_mode) return;
   if (mode == LOG_MODE_OFF) {
     if (log_buf) os_free(log_buf);
     log_buf = NULL;
@@ -107,7 +107,7 @@ void esp8266_logInit(uint8_t mode) {
   os_install_putc1((void *)log_write_char);
 }
 
-JsVar *esp8266_logGetLine() {
+/*JsVar *esp8266_logGetLine() {
   JsVar *ret;
   char buf[130];
   buf[0] = 0;
@@ -126,7 +126,7 @@ JsVar *esp8266_logGetLine() {
   buf[i++] = 0;
   //for (short j=0; j<i; j++) uart_tx_one_char(1, buf[j]);
   return jsvNewFromString(buf);
-}
+}*/
 
 #if 0
 int ICACHE_FLASH_ATTR

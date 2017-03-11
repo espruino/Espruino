@@ -1636,7 +1636,10 @@ void jswrap_ESP8266_wifi_init1() {
 }
 
 //===== Wifi soft_init
-
+/*JSON{
+  "type":"init",
+  "generate":"jswrap_ESP8266_wifi_soft_init"
+}*/
 // This function is called in soft_init to hook-up the network. This happens from user_main's
 // init_done() and also from `reset()` in order to re-hook-up the network.
 void jswrap_ESP8266_wifi_soft_init() {

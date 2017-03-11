@@ -40,3 +40,4 @@ gcc-arm-none-eabi*
 /functions.html
 targetlibs/nrf5x/examples
 /.vscode
+/libs/lanruino/*

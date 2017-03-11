@@ -778,9 +778,9 @@ void jsiSemiInit(bool autoLoad) {
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit(!autoLoad);
 
-#ifdef ESP8266
+/*#ifdef ESP8266
   jshSoftInit();
-#endif
+#endif*/
 #ifdef ESP32
   jshSoftInit();
 #endif
