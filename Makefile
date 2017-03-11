@@ -457,8 +457,8 @@ ifdef USE_NET
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
  WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266_network.c \
-   targets/esp8266/jswrap_esp8266.c \
-   targets/esp8266/jswrap_nodemcu.c
+   targets/esp8266/jswrap_esp8266.c 
+   #targets/esp8266/jswrap_nodemcu.c
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\

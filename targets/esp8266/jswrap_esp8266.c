@@ -39,7 +39,7 @@ typedef long long int64_t;
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266",
+  "class"    : "process",
   "name"     : "reboot",
   "generate" : "jswrap_ESP8266_reboot"
 }
@@ -59,7 +59,7 @@ void jswrap_ESP8266_reboot() {
  */
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266",
+  "class"    : "process",
   "name"     : "getResetInfo",
   "generate" : "jswrap_ESP8266_getResetInfo",
   "return"   : ["JsVar","An object with the reset cause information"],
@@ -91,7 +91,7 @@ JsVar *jswrap_ESP8266_getResetInfo() {
 
 //===== ESP8266.logDebug
 
-/*JSON{
+/*JXSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
   "name"     : "logDebug",
@@ -107,7 +107,7 @@ void jswrap_ESP8266_logDebug(bool enable) {
   esp8266_logInit(enable ? LOG_MODE_ON1 : LOG_MODE_OFF);
 }
 
-/*JSON{
+/*JSXON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
   "name"     : "setLog",
@@ -123,7 +123,7 @@ void jswrap_ESP8266_setLog(int mode) {
   esp8266_logInit(mode);
 }
 
-/*JSON{
+/*JSXON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
   "name"     : "printLog",
@@ -141,7 +141,7 @@ void jswrap_ESP8266_printLog() {
   jsvUnLock(line);
 }
 
-/*JSON{
+/*JXSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
   "name"     : "readLog",
@@ -155,7 +155,7 @@ Returns one line from the log or up to 128 characters.
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266",
+  "class"    : "E",
   "name"     : "dumpSocketInfo",
   "generate" : "jswrap_ESP8266_dumpSocketInfo"
 }
@@ -169,7 +169,7 @@ void jswrap_ESP8266_dumpSocketInfo(void) {
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266",
+  "class"    : "process",
   "name"     : "setCPUFreq",
   "generate" : "jswrap_ESP8266_setCPUFreq",
   "params"   : [
@@ -193,7 +193,7 @@ void jswrap_ESP8266_setCPUFreq(
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266",
+  "class"    : "process",
   "name"     : "getState",
   "generate" : "jswrap_ESP8266_getState",
   "return"   : ["JsVar", "The state of the ESP8266"]
@@ -237,7 +237,7 @@ JsVar *jswrap_ESP8266_getState() {
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266",
+  "class"    : "E",
   "name"     : "getFreeFlash",
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
@@ -272,7 +272,7 @@ uint32_t crc32(uint8_t *buf, uint32_t len) {
 
 /*JSON{
  "type"     : "staticmethod",
- "class"    : "ESP8266",
+ "class"    : "E",
  "name"     : "crc32",
  "generate" : "jswrap_ESP8266_crc32",
  "return"   : ["JsVar", "32-bit CRC"],
@@ -299,7 +299,7 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
 // one : high typ 700ns, min 500ns; low typ 600ns, max 5us
 // latch: low min 6us
 
-/*JSON{
+/*JXSON{
  "type"     : "staticmethod",
  "class"    : "ESP8266",
  "name"     : "neopixelWrite",
@@ -316,7 +316,7 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
 //===== ESP8266.deepSleep
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266",
+  "class"    : "E",
   "name"     : "deepSleep",
   "generate" : "jswrap_ESP8266_deepSleep",
   "params"   : [
