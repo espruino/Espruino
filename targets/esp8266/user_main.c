@@ -278,7 +278,7 @@ void user_uart_init() {
 
   os_delay_us(1000); // make sure there's a gap on uart output
   //UART_SetPrintPort(1);
-  esp8266_logInit(LOG_MODE_ON1);
+  esp8266_logInit(LOG_MODE_OFF);
 }
 
 /**

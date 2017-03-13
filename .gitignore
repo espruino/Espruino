@@ -8,6 +8,7 @@
 *.srec
 *.bin
 *.pyc
+*.make
 /*.zip
 gen/*
 .vagrant/*
@@ -31,6 +32,7 @@ esp_iot_sdk_v2.0.0.p1
 xtensa-lx106-elf
 app
 esp-idf
+esp-idf-template
 xtensa-esp32-elf
 gcc-arm-none-eabi*
 *.c#
@@ -38,3 +40,4 @@ gcc-arm-none-eabi*
 /functions.html
 targetlibs/nrf5x/examples
 /.vscode
+/libs/lanruino/*

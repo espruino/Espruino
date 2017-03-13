@@ -45,7 +45,7 @@ static unsigned int getaregval(int reg) {
   return gdbstub_savedRegs.a[reg-2];
 }
 
-static void print_stack(uint32_t start, uint32_t end) {
+/*static void print_stack(uint32_t start, uint32_t end) {
   os_printf("\nStack dump:\n");
   for (uint32_t pos = start; pos < end; pos += 0x10) {
     uint32_t* values = (uint32_t*)(pos);
@@ -56,7 +56,7 @@ static void print_stack(uint32_t start, uint32_t end) {
         pos, values[0], values[1], values[2], values[3], (looksLikeStackFrame)?'<':' ');
   }
   os_printf("\n");
-}
+}*/
 
 void _xtos_set_exception_handler(int cause, void (exhandler)(struct XTensa_exception_frame_s *frame));
 int os_printf_plus(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
@@ -64,18 +64,18 @@ int os_printf_plus(const char *format, ...)  __attribute__ ((format (printf, 1, 
 // Print exception info to console
 static void printReason() {
   //register uint32_t sp asm("a1");
-  struct XTensa_exception_frame_s *reg = &gdbstub_savedRegs;
-  os_printf("\n\n***** Fatal exception %ld\n", reg->reason);
-  os_printf("pc=0x%08lx sp=0x%08lx excvaddr=0x%08lx\n", reg->pc, reg->a1, reg->excvaddr);
-  os_printf("ps=0x%08lx sar=0x%08lx vpri=0x%08lx\n", reg->ps, reg->sar, reg->vpri);
-  for (int i=0; i<16; i++) {
-    unsigned int r = getaregval(i);
-    os_printf("r%02d: 0x%08x=%10d ", i, r, r);
-    if (i%3 == 2) os_printf("\n");
-  }
-  os_printf("\n");
+  //struct XTensa_exception_frame_s *reg = &gdbstub_savedRegs;
+  //os_printf("\n\n***** Fatal exception %ld\n", reg->reason);
+  //os_printf("pc=0x%08lx sp=0x%08lx excvaddr=0x%08lx\n", reg->pc, reg->a1, reg->excvaddr);
+  //os_printf("ps=0x%08lx sar=0x%08lx vpri=0x%08lx\n", reg->ps, reg->sar, reg->vpri);
+  //for (int i=0; i<16; i++) {
+  //  unsigned int r = getaregval(i);
+  //  os_printf("r%02d: 0x%08x=%10d ", i, r, r);
+  //  if (i%3 == 2) os_printf("\n");
+  //}
+  os_printf("gdb_exception_handler\r\n");
   //print_stack(reg->pc, sp, 0x3fffffb0);
-  print_stack(getaregval(1), 0x3fffffb0);
+  //print_stack(getaregval(1), 0x3fffffb0);
 }
 
 extern void ets_wdt_disable();

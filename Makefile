@@ -457,8 +457,8 @@ ifdef USE_NET
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
  WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266_network.c \
-   targets/esp8266/jswrap_esp8266.c \
-   targets/esp8266/jswrap_nodemcu.c
+   targets/esp8266/jswrap_esp8266.c 
+   #targets/esp8266/jswrap_nodemcu.c
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\
@@ -471,6 +471,13 @@ ifdef USE_NET
  WRAPPERSOURCES += libs/network/telnet/jswrap_telnet.c
  INCLUDE += -I$(ROOT)/libs/network/telnet
  endif
+
+ ifdef USE_MQTT
+ DEFINES += -DUSE_MQTT
+ WRAPPERSOURCES += libs/lanruino/mqtt/jswrap_mqtt.c
+ INCLUDE += -I$(ROOT)/libs/lanruino/mqtt
+ endif
+
 endif # USE_NET
 
 ifdef USE_TV

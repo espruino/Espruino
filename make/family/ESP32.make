@@ -82,6 +82,7 @@ $(ESP_IDF_PATH)/components/esp32/libhal.a  \
 -lphy \
 -lwpa_supplicant \
 -lrtc \
+-lrtc_clk \
 -lpp \
 -lwpa \
 -lexpat \

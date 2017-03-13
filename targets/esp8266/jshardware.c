@@ -198,9 +198,9 @@ void jshReset() {
 /**
  * Re-init the esp8266 stuff after a soft-reset
  */
-void jshSoftInit() {
+/*void jshSoftInit() {
   jswrap_ESP8266_wifi_soft_init();
-}
+}*/
 
 /**
  * Handle whatever needs to be done in the idle loop when there's nothing to do.
