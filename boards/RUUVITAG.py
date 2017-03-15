@@ -27,7 +27,7 @@ info = {
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_ruuvitag.bin',
  'build' : {
-   'optimizeflags' : '-O3',
+   'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
      'NET',

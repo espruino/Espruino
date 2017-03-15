@@ -1,3 +1,4 @@
+
 /**
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
@@ -11,6 +12,8 @@
  * Platform Specific Bluetooth Functionality
  * ----------------------------------------------------------------------------
  */
+
+#ifdef BLUETOOTH
 
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
@@ -1929,3 +1932,6 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
             }
             break;
  */
+
+#endif
+
