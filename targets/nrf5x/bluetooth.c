@@ -74,7 +74,7 @@
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
-#define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
+#define ADVERTISE_MAX_UUIDS             4 ///< maximum custom UUIDs to advertise
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 #if BLE_HIDS_ENABLED
@@ -1056,7 +1056,7 @@ static void advertising_init() {
     // Build advertising data struct to pass into @ref ble_advertising_init.
     jsble_setup_advdata(&advdata);
 
-    static ble_uuid_t adv_uuids[2]; // FIXME - more?
+    static ble_uuid_t adv_uuids[ADVERTISE_MAX_UUIDS];
     int adv_uuid_count = 0;
     if (bleStatus & BLE_HID_INITED) {
       adv_uuids[adv_uuid_count].uuid = BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE;
@@ -1065,9 +1065,25 @@ static void advertising_init() {
     }
     if (bleStatus & BLE_NUS_INITED) {
       adv_uuids[adv_uuid_count].uuid = BLE_UUID_NUS_SERVICE;
-      adv_uuids[adv_uuid_count].type = NUS_SERVICE_UUID_TYPE;
+      adv_uuids[adv_uuid_count].type = BLE_UUID_TYPE_VENDOR_BEGIN; ///< We just assume we're the first 128 bit UUID in the list!
       adv_uuid_count++;
     }
+    // add any user-defined services
+    JsVar *advServices = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_ADVERTISE, 0);
+    if (jsvIsArray(advServices)) {
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, advServices);
+      while (jsvObjectIteratorHasValue(&it)) {
+        ble_uuid_t ble_uuid;
+        if (adv_uuid_count < ADVERTISE_MAX_UUIDS &&
+            !bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetValue(&it))) {
+          adv_uuids[adv_uuid_count++] = ble_uuid;
+        }
+        jsvObjectIteratorNext(&it);
+      }
+      jsvObjectIteratorFree(&it);
+    }
+    jsvUnLock(advServices);
 
     memset(&scanrsp, 0, sizeof(scanrsp));
     scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
@@ -1584,5 +1600,5 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
     if (jsble_check_error(err_code))
       bleCompleteTaskFail(BLETASK_CHARACTERISTIC_NOTIFY, 0);
 }
-#endif
-#endif
+#endif // CENTRAL_LINK_COUNT>0
+#endif // BLUETOOTH
