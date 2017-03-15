@@ -30,6 +30,7 @@
             Pin.toggle now returns a boolean (fix #1111)
             nRF52: Now use 'high drive' mode for GPIOs
             Puck.js: tweak IR duty cycle, with high drive GPIO range is ~3x more
+            nRF52: switch compilation to size optimisation, not speed
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise

@@ -225,6 +225,7 @@ void jshInit() {
 #ifdef DEFAULT_CONSOLE_RX_PIN
 #if !defined(NRF51822DK) && !defined(NRF52832DK)
   // Only init UART if something is connected and RX is pulled up on boot...
+  // For some reason this may not work correctly when compiled with `-Os`
   jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
   if (jshPinGetValue(DEFAULT_CONSOLE_RX_PIN)) {
 #else
