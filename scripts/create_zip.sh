@@ -32,7 +32,7 @@ echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 
-for BOARDNAME in PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINOWIFI PUCKJS NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI MICROBIT ESP8266_BOARD
+for BOARDNAME in PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINOWIFI PUCKJS NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI MICROBIT ESP8266_BOARD RUUVITAG
 do
   echo ------------------------------
   echo                  $BOARDNAME
@@ -53,6 +53,9 @@ do
     BOARDNAME=PICO_R1_3
     EXTRADEFS=WIZNET=1
     EXTRANAME=_wiznet
+  fi
+  if [ "$BOARDNAME" == "RUUVITAG" ]; then
+    EXTRADEFS=DFU_UPDATE_BUILD=1
   fi
   BOARDNAMEX=$BOARDNAME
   if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then
@@ -75,8 +78,8 @@ do
   elif [ "$BOARDNAME" == "ESPRUINOWIFI" ]; then
     bash -c "$EXTRADEFS scripts/create_espruinowifi_image.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   else
-    bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make clean"
-    bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make" || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make clean"
+    bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   fi
   # rename binary if needed
   if [ -n "$EXTRANAME" ]; then
@@ -88,7 +91,7 @@ do
   if [ "$BOARDNAME" == "ESP8266_BOARD" ]; then
     tar -C $ZIPDIR -xzf ${ESP_BINARY_NAME}.tgz || { echo "Build of $BOARDNAME failed" ; exit 1; }
     # Do some more ESP8266 build stuff
-    bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make combined" || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make combined" || { echo "Build of $BOARDNAME failed" ; exit 1; }
     cp ${ESP_BINARY_NAME}_combined_512.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
   else
     echo Copying ${ESP_BINARY_NAME} to $ZIPDIR/$NEW_BINARY_NAME

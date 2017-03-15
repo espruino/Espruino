@@ -21,7 +21,7 @@ ESPRUINOFILE=`python scripts/get_board_info.py $BOARDNAME "common.get_board_bina
 
 rm -f $ESPRUINOFILE
 
-export PUCKJS=1
+export BOARD=PUCKJS
 export RELEASE=1
 
 BOOTLOADER=1 make clean
