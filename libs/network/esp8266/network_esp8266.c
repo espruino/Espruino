@@ -34,7 +34,11 @@ typedef long long int64_t;
 //#define espconn_abort espconn_disconnect
 
 // Set NET_DBG to 0 to disable debug printf's, to 1 for important printf's
+#ifdef RELEASE
+#define NET_DBG 0
+#else
 #define NET_DBG 1
+#endif
 // Normal debug
 #if NET_DBG > 0
 #define DBG(format, ...) os_printf(format, ## __VA_ARGS__)

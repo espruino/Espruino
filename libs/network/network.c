@@ -28,6 +28,9 @@
 #if defined(USE_ESP8266)
   #include "network_esp8266.h"
 #endif
+#if defined(USE_ESP32)
+  #include "network_esp32.h"
+#endif
 #if defined(LINUX)
   #include "network_linux.h"
 #endif
@@ -235,6 +238,9 @@ bool networkGetFromVar(JsNetwork *net) {
 #if defined(USE_ESP8266)
   case JSNETWORKTYPE_ESP8266_BOARD : netSetCallbacks_esp8266_board(net); break;
 #endif
+#if defined(USE_ESP32)
+  case JSNETWORKTYPE_ESP32 : netSetCallbacks_esp32(net); break;
+#endif
 #if defined(LINUX)
   case JSNETWORKTYPE_SOCKET : netSetCallbacks_linux(net); break;
 #endif
@@ -422,7 +428,7 @@ JsVar *decode_certificate_var(JsVar *var) {
 bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
   JsVar *keyVar = jsvObjectGetChild(options, "key", 0);
   if (!keyVar) {
-    return false;
+    return true; // still ok - just no key
   }
   int ret = -1;
   jsiConsolePrintf("Loading the Client Key...\n");
@@ -447,7 +453,7 @@ bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
 bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
   JsVar *certVar = jsvObjectGetChild(options, "cert", 0);
   if (!certVar) {
-    return false;
+    return true; // still ok - just no cert
   }
   int ret = -1;
   jsiConsolePrintf("Loading the Client certificate...\n");
@@ -471,7 +477,7 @@ bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
 bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
   JsVar *caVar = jsvObjectGetChild(options, "ca", 0);
   if (!caVar) {
-    return false;
+    return true; // still ok - just no ca
   }
   int ret = -1;
   jsiConsolePrintf("Loading the CA root certificate...\n");

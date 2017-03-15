@@ -26,9 +26,9 @@
 #include <math.h>
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "1v88"
+#define JS_VERSION "1v91"
 #else
-#define JS_VERSION "1v88." BUILDNUMBER
+#define JS_VERSION "1v91." BUILDNUMBER
 #endif
 /*
   In code:
@@ -326,6 +326,12 @@ typedef int64_t JsSysTime;
 #define NIBBLEFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
 */
 
+#if defined(NRF51)
+  // Cortex-M0 does not support unaligned reads
+  #define UNALIGNED_UINT16(addr) ((((uint16_t)*((uint8_t*)(addr)+1)) << 8) | (*(uint8_t*)(addr)))
+#else
+  #define UNALIGNED_UINT16(addr) (*(uint16_t*)addr)
+#endif 
 
 bool isWhitespace(char ch);
 bool isNumeric(char ch);
@@ -338,6 +344,8 @@ bool isIDString(const char *s);
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again. */
 const char *escapeCharacter(char ch);
+/** Parse radix prefixes, or return 0 */
+int getRadix(const char **s, int forceRadix, bool *hasError);
 /// Convert a character to the hexadecimal equivalent (or -1)
 int chtod(char ch);
 /* convert a number in the given radix to an int. if radix=0, autodetect */
@@ -446,6 +454,13 @@ void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt
 
 /// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
 int espruino_snprintf( char * s, size_t n, const char * fmt, ... );
+
+//#define RAND_MAX (0x7FFFFFFFU) // needs to be unsigned!
+
+/// a rand() replacement that doesn't need malloc (!!!)
+int rand();
+/// a rand() replacement that doesn't need malloc (!!!)
+void srand(unsigned int seed);
 
 /** get the amount of free stack we have, in bytes */
 size_t jsuGetFreeStack();

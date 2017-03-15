@@ -38,6 +38,8 @@ const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 
 // Has the magnetometer been turned on?
 bool mag_enabled = false;
+int16_t mag_reading[3];
+
 
 /* TODO: Use software I2C for this instead. Since we're relying
  * on the internal pullup resistors there might be some gotchas
@@ -190,18 +192,18 @@ void mag_wait() {
 }
 
 // Read a value
-void mag_read(int16_t d[3]) {
+void mag_read() {
   i2c_start();
   i2c_wr(MAG3110_ADDR<<1);
   i2c_wr(1);
   i2c_start();
   i2c_wr(1|(MAG3110_ADDR<<1));
-  d[0] = i2c_rd(false)<<8;
-  d[0] |= i2c_rd(false);
-  d[1] = i2c_rd(false)<<8;
-  d[1] |= i2c_rd(false);
-  d[2] = i2c_rd(false)<<8;
-  d[2] |= i2c_rd(true);
+  mag_reading[0] = i2c_rd(false)<<8;
+  mag_reading[0] |= i2c_rd(false);
+  mag_reading[1] = i2c_rd(false)<<8;
+  mag_reading[1] |= i2c_rd(false);
+  mag_reading[2] = i2c_rd(false)<<8;
+  mag_reading[2] |= i2c_rd(true);
   i2c_stop();
 }
 
@@ -254,12 +256,15 @@ varies from around 25-60 uT, so the reading will vary by 250 to 600 depending
 on location.
 */
 JsVar *jswrap_puck_mag() {
-  if (!mag_enabled) mag_on(80000);
-  mag_wait();
-  int16_t d[3];
-  mag_read(d);
-  if (!mag_enabled) mag_off();
-  return mag_to_xyz(d);
+  /* If not enabled, turn on and read. If enabled,
+   * just pass out the last reading */
+  if (!mag_enabled) {
+    mag_on(80000);
+    mag_wait();
+    mag_read();
+    mag_off();
+  }
+  return mag_to_xyz(mag_reading);
 }
 
 /*JSON{
@@ -268,9 +273,9 @@ JsVar *jswrap_puck_mag() {
   "name" : "mag"
 }
 Called after `Puck.magOn()` every time magnetometer data
-is discovered. There is one argument which is an object
-of the form `{x,y,z}' containing magnetometer readings
-as integers (for more information see `Puck.mag()`.
+is sampled. There is one argument which is an object
+of the form `{x,y,z}` containing magnetometer readings
+as integers (for more information see `Puck.mag()`).
  */
 
 /*JSON{
@@ -279,10 +284,10 @@ as integers (for more information see `Puck.mag()`.
   "name" : "magOn",
   "generate" : "jswrap_puck_magOn",
   "params" : [
-      ["samplerate","float","The Samplerate in Hz, or undefined"]
+      ["samplerate","float","The sample rate in Hz, or undefined"]
   ]
 }
-Turn the magnetometer on and configure it. Samples will then cause
+Turn the magnetometer on and start periodic sampling. Samples will then cause
 a 'mag' event on 'Puck':
 
 ```
@@ -293,32 +298,39 @@ Puck.on('mag', function(xyz) {
 // Turn events off with Puck.magOff();
 ```
 
-This call will be ignored if the magnetometer is already on.
+This call will be ignored if the sampling is already on.
 
-If given an argument, the sample rate is set (if not, it's at 0.63Hz). The sample rate should be one of the following:
+If given an argument, the sample rate is set (if not, it's at 0.63 Hz). 
+The sample rate must be one of the following (resulting in the given power consumption):
 
-* 80 Hz -  900uA
-* 40 Hz -  550uA
-* 20 Hz -  275uA
-* 10 Hz -  137uA
-* 5 Hz -  69uA
-* 2.5 Hz -  34uA
-* 1.25 Hz -  17uA
-* 0.63 Hz -  8uA
-* 0.31 Hz -  8uA
-* 0.16 Hz -  8uA
+* 80 Hz - 900uA
+* 40 Hz - 550uA
+* 20 Hz - 275uA
+* 10 Hz - 137uA
+* 5 Hz - 69uA
+* 2.5 Hz - 34uA
+* 1.25 Hz - 17uA
+* 0.63 Hz - 8uA
+* 0.31 Hz - 8uA
+* 0.16 Hz - 8uA
 * 0.08 Hz - 8uA
+
+When the battery level drops too low while sampling is turned on,
+the magnetometer may stop sampling without warning, even while other
+Puck functions continue uninterrupted.
 
 */
 void jswrap_puck_magOn(JsVarFloat hz) {
-  if (!mag_enabled) {
-    int milliHz = (int)((hz*1000)+0.5);
-    if (milliHz==0) milliHz=630;
-    if (!mag_on(milliHz)) {
-      jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - see docs for valid rates", hz);
-    }
-    jshPinWatch(MAG_INT, true);
+  if (mag_enabled) {
+    jsExceptionHere(JSET_ERROR, "Magnetometer is already on");
+    return;
   }
+  int milliHz = (int)((hz*1000)+0.5);
+  if (milliHz==0) milliHz=630;
+  if (!mag_on(milliHz)) {
+    jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 80, 40, 20, 10, 5, 2.5, 1.25, 0.63, 0.31, 0.16 or 0.08 Hz", hz);
+  }
+  jshPinWatch(MAG_INT, true);
   mag_enabled = true;
 }
 
@@ -340,11 +352,14 @@ void jswrap_puck_magOff() {
 
 
 // Called when we're done with the IR transmission
-void _jswrap_puck_IR_done(JsSysTime t) {
+void _jswrap_puck_IR_done(JsSysTime t, void *data) {
+  uint32_t d = (uint32_t)data;
+  Pin cathode = d&255;
+  Pin anode = (d>>8)&255;
   // set as input - so no signal
-  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(anode, JSHPINSTATE_GPIO_IN);
   // this one also stops the PWM
-  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(cathode, JSHPINSTATE_GPIO_IN);
 }
 
 /*JSON{
@@ -353,33 +368,43 @@ void _jswrap_puck_IR_done(JsSysTime t) {
   "name" : "IR",
   "generate" : "jswrap_puck_IR",
   "params" : [
-      ["data","JsVar","An array of pulse lengths, in milliseconds"]
+      ["data","JsVar","An array of pulse lengths, in milliseconds"],
+      ["cathode","pin","(optional) pin to use for IR LED cathode - if not defined, the built-in IR LED is used"],
+      ["anode","pin","(optional) pin to use for IR LED anode - if not defined, the built-in IR LED is used"]
   ]
 }
 Transmit the given set of IR pulses - data should be an array of pulse times
 in milliseconds (as `[on, off, on, off, on, etc]`).
+
+For example `Puck.IR(pulseTimes)` - see http://www.espruino.com/Puck.js+Infrared
+for a full example.
+
+You can also attach an external LED to Puck.js, in which case
+you can just execute `Puck.IR(pulseTimes, led_cathode, led_anode)`
+
+
 */
-void jswrap_puck_IR(JsVar *data) {
+void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
   if (!jsvIsIterable(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting an array, got %t", data);
     return;
   }
 
-
-  Pin pin = IR_ANODE_PIN;
-  jshPinAnalogOutput(IR_CATHODE_PIN, 0.5, 38000, 0);
+  if (!jshIsPinValid(anode)) anode = IR_ANODE_PIN;
+  if (!jshIsPinValid(cathode)) cathode = IR_CATHODE_PIN;
+  jshPinAnalogOutput(cathode, 0.75, 38000, 0);
 
   JsSysTime time = jshGetSystemTime();
   bool hasPulses = false;
-  bool pulsePolarity = false;
-  jshPinSetValue(IR_ANODE_PIN, pulsePolarity);
+  bool pulsePolarity = true;
+  jshPinSetValue(anode, pulsePolarity);
 
   JsvIterator it;
   jsvIteratorNew(&it, data);
   while (jsvIteratorHasElement(&it)) {
     JsVarFloat pulseTime = jsvIteratorGetFloatValue(&it);
-    if (hasPulses) jstPinOutputAtTime(time, &pin, 1, pulsePolarity);
-    else jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
+    if (hasPulses) jstPinOutputAtTime(time, &anode, 1, pulsePolarity);
+    else jshPinSetState(anode, JSHPINSTATE_GPIO_OUT);
     hasPulses = true;
     time += jshGetTimeFromMilliseconds(pulseTime);
     pulsePolarity = !pulsePolarity;
@@ -388,7 +413,8 @@ void jswrap_puck_IR(JsVar *data) {
   jsvIteratorFree(&it);
 
   if (hasPulses) {
-    jstExecuteFn(_jswrap_puck_IR_done, time, 0);
+    uint32_t d = cathode | anode<<8;
+    jstExecuteFn(_jswrap_puck_IR_done, (void*)d, time, 0);
   }
 }
 
@@ -397,7 +423,7 @@ void jswrap_puck_IR(JsVar *data) {
     "type" : "staticmethod",
     "class" : "Puck",
     "name" : "capSense",
-    "#ifdef" : "NRF52",
+    "ifdef" : "NRF52",
     "generate" : "jswrap_puck_capSense",
     "params" : [
       ["tx","pin",""],
@@ -420,11 +446,14 @@ int jswrap_puck_capSense(Pin tx, Pin rx) {
     "type" : "staticmethod",
     "class" : "Puck",
     "name" : "light",
-    "#ifdef" : "NRF52",
+    "ifdef" : "NRF52",
     "generate" : "jswrap_puck_light",
     "return" : ["float", "A light value from 0 to 1" ]
 }
-Read a light value based on the light the red LED is seeing
+Return a light value based on the light the red LED is seeing.
+
+**Note:** If called more than 5 times per second, the received light value
+may not be accurate.
 */
 JsVarFloat jswrap_puck_light() {
   // If pin state wasn't an analog input before, make it one now,
@@ -434,9 +463,15 @@ JsVarFloat jswrap_puck_light() {
   if (s != JSHPINSTATE_GPIO_IN) {
     jshPinOutput(LED1_PININDEX,0);// discharge
     jshPinAnalog(LED1_PININDEX);// analog
-    jshDelayMicroseconds(5000);
+    int delay = 5000;
+    // if we were using a peripheral it can take longer
+    // for everything to sort itself out
+    if ((s&JSHPINSTATE_MASK) == JSHPINSTATE_AF_OUT)
+      delay = 50000;
+    jshDelayMicroseconds(delay);
   }
-  JsVarFloat f = jshPinAnalog(LED1_PININDEX)/0.45;
+  JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
+  JsVarFloat f = jshPinAnalog(LED1_PININDEX)*v/(3*0.45);
   if (f>1) f=1;
   // turn the red LED back on if it was on before
   if (s & JSHPINSTATE_PIN_IS_ON)
@@ -453,11 +488,11 @@ JsVarFloat jswrap_puck_light() {
     "return" : ["int", "A percentage between 0 and 100" ]
 }
 Return an approximate battery percentage remaining based on
-a normal CR2032 battery (2.8 - 2.0v)
+a normal CR2032 battery (2.8 - 2.2v)
 */
 int jswrap_puck_getBatteryPercentage() {
   JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
-  int pc = (v-2.0)*100/0.8;
+  int pc = (v-2.2)*100/0.6;
   if (pc>100) pc=100;
   if (pc<0) pc=0;
   return pc;
@@ -593,11 +628,10 @@ bool jswrap_puck_selfTest() {
 
   mag_on(80000);
   mag_wait();
-  int16_t d[3];
-  mag_read(d);
+  mag_read();
   mag_off();
   mag_enabled = false;
-  if (d[0]==-1 && d[1]==-1 && d[2]==-1) {
+  if (mag_reading[0]==-1 && mag_reading[1]==-1 && mag_reading[2]==-1) {
     jsiConsolePrintf("Magnetometer not working?\n");
     ok = false;
   }
@@ -678,8 +712,8 @@ void jswrap_puck_kill() {
 bool jswrap_puck_idle() {
   if (mag_enabled && nrf_gpio_pin_read(MAG_INT)) {
     int16_t d[3];
-    mag_read(d);
-    JsVar *xyz = mag_to_xyz(d);
+    mag_read();
+    JsVar *xyz = mag_to_xyz(mag_reading);
     JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
     if (jsvHasChildren(puck))
         jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"mag", &xyz, 1);

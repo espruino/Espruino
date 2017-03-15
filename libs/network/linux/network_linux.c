@@ -24,15 +24,18 @@
 #ifdef WIN32
  #include <winsock.h>
 #else
+ #ifndef ESP_PLATFORM
+  #include <sys/select.h>
+  #include <arpa/inet.h>
+  #include <netinet/in.h>
+  #include <resolv.h>
+ #endif
  #include <sys/socket.h>
- #include <sys/select.h>
- #include <arpa/inet.h>
  #include <netdb.h>
- #include <netinet/in.h>
  #include <unistd.h>
  #include <fcntl.h>
  #include <stdio.h>
- #include <resolv.h>
+
  typedef struct sockaddr_in sockaddr_in;
  typedef int SOCKET;
 #endif

@@ -91,7 +91,7 @@ Pin jshGetPinFromString(const char *s) {
   return PIN_UNDEFINED;
 }
 
-/** Write the pin name to a string. String must have at least 8 characters (to be safe) */
+/** Write the pin name to a string. String must have at least 10 characters (to be safe) */
 void jshGetPinString(char *result, Pin pin) {
   result[0] = 0; // just in case
 #ifdef PIN_NAMES_DIRECT
@@ -137,7 +137,7 @@ void jshGetPinString(char *result, Pin pin) {
 #endif
 #endif
     } else {
-      strncpy(result, "undefined", 8);
+      strncpy(result, "undefined", 10);
     }
   }
 
@@ -234,6 +234,27 @@ JshPinFunction jshGetPinFunctionFromDevice(IOEventFlags device) {
    case EV_I2C1    : return JSH_I2C1;
    case EV_I2C2    : return JSH_I2C2;
    case EV_I2C3    : return JSH_I2C3;
+   default: return 0;
+ }
+}
+
+// Convert a jshPinFunction to an event type flag
+IOEventFlags jshGetFromDevicePinFunction(JshPinFunction func) {
+ switch (func & JSH_MASK_TYPE) {
+   case JSH_USART1 : return EV_SERIAL1;
+   case JSH_USART2 : return EV_SERIAL2;
+   case JSH_USART3 : return EV_SERIAL3;
+   case JSH_USART4 : return EV_SERIAL4;
+   case JSH_USART5 : return EV_SERIAL5;
+   case JSH_USART6 : return EV_SERIAL6;
+
+   case JSH_SPI1    : return EV_SPI1;
+   case JSH_SPI2    : return EV_SPI2;
+   case JSH_SPI3    : return EV_SPI3;
+
+   case JSH_I2C1    : return EV_I2C1;
+   case JSH_I2C2    : return EV_I2C2;
+   case JSH_I2C3    : return EV_I2C3;
    default: return 0;
  }
 }

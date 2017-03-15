@@ -28,6 +28,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jswrap_io.h"
+#include "jsspi.h"
 
 #ifdef ESPRUINOBOARD
 // STM32F1 boards should work with this - but for some reason they crash on init

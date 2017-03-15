@@ -55,10 +55,7 @@ static ALWAYS_INLINE char jsvStringIteratorGetChar(JsvStringIterator *it) {
 }
 
 /// Gets the current (>=0) character (or -1)
-static ALWAYS_INLINE int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it) {
-  if (!it->ptr || it->charIdx>=it->charsInVar) return -1;
-  return (int)(unsigned char)READ_FLASH_UINT8(&it->ptr[it->charIdx]);
-}
+int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it);
 
 /// Do we have a character, or are we at the end?
 static ALWAYS_INLINE bool jsvStringIteratorHasChar(JsvStringIterator *it) {

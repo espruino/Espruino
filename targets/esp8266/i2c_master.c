@@ -8,6 +8,7 @@
  * Modification history:
  *     2014/3/12, v1.0 create this file.
  *     2015/10/11, modified to work with any pin for Espruino
+ *     2016/05/23, modified to work with clock streching and bitrate
  *
  * ESPRSSIF MIT License
  *
@@ -44,18 +45,13 @@
   gpio_output_set(set, set^both, both, 0);\
 } while(0)
 
-// For ~100khz at 80Mhz or 160Mhz:
-//#define i2c_master_wait    os_delay_us
-// For ~250khz at 160Mhz:
-#define i2c_master_wait(x)    os_delay_us(x/4) // do{}while(0)
+#define i2c_master_wait(x)    os_delay_us(x*y)
 
 #define i2c_master_getDC(void) ((GPIO_REG_READ(GPIO_IN_ADDRESS) >> pinSDA) & 1)
-
-LOCAL uint8 m_nLastSDA;
-LOCAL uint8 m_nLastSCL;
+#define i2c_master_getDD(void) ((GPIO_REG_READ(GPIO_IN_ADDRESS) >> pinSCL) & 1)
 
 LOCAL uint8 pinSDA, pinSCL; // actual gpio pins used
-
+LOCAL uint8 y=1;
 /******************************************************************************
  * FunctionName : i2c_master_setDC
  * Description  : Internal used function -
@@ -69,15 +65,9 @@ i2c_master_setDC(uint8 SDA, uint8 SCL)
 {
     SDA &= 0x01;
     SCL &= 0x01;
-    m_nLastSDA = SDA;
-    m_nLastSCL = SCL;
 
-    //I2C_MASTER_SDA_SCL(SDA, SCL);
-    if (SDA) GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, 1<<pinSDA);
-    else     GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, 1<<pinSDA);
-    if (SCL) GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, 1<<pinSCL);
-    else     GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, 1<<pinSCL);
-
+    I2C_MASTER_SDA_SCL(SDA, SCL);
+  
 }
 
 /******************************************************************************
@@ -107,24 +97,22 @@ i2c_master_init(void)
     uint8 i;
 
     i2c_master_setDC(1, 0);
-    i2c_master_wait(5);
+    i2c_master_wait(2);
 
     // when SCL = 0, toggle SDA to clear up
     i2c_master_setDC(0, 0) ;
-    i2c_master_wait(5);
+    i2c_master_wait(2);
     i2c_master_setDC(1, 0) ;
-    i2c_master_wait(5);
+    i2c_master_wait(2);
 
     // set data_cnt to max value
     for (i = 0; i < 28; i++) {
         i2c_master_setDC(1, 0);
-        i2c_master_wait(5);	// sda 1, scl 0
+        i2c_master_wait(2); // sda 1, scl 0
         i2c_master_setDC(1, 1);
-        i2c_master_wait(5);	// sda 1, scl 1
+        i2c_master_wait(2); // sda 1, scl 1
     }
 
-    // reset all
-    i2c_master_stop();
     return;
 }
 
@@ -140,31 +128,24 @@ i2c_master_gpio_init(uint8 scl, uint8 sda, uint32 bitrate)
 {
     pinSCL = scl;
     pinSDA = sda;
+    if(bitrate > 400000) {bitrate=400000;}
+    if(bitrate < 100000) {bitrate=100000;}
+    y = 400000/bitrate;
 
 #if 0
     ETS_GPIO_INTR_DISABLE();
-//    ETS_INTR_LOCK();
-
-    // Assume the pin mux is set before calling this function
-    //PIN_FUNC_SELECT(I2C_MASTER_SDA_MUX, I2C_MASTER_SDA_FUNC);
-    //PIN_FUNC_SELECT(I2C_MASTER_SCL_MUX, I2C_MASTER_SCL_FUNC);
-
     GPIO_REG_WRITE(GPIO_PIN_ADDR(GPIO_ID_PIN(sda)),
         GPIO_REG_READ(GPIO_PIN_ADDR(GPIO_ID_PIN(sda))) |
         GPIO_PIN_PAD_DRIVER_SET(GPIO_PAD_DRIVER_ENABLE)); //open drain;
     GPIO_REG_WRITE(GPIO_ENABLE_ADDRESS,
         GPIO_REG_READ(GPIO_ENABLE_ADDRESS) | (1 << sda));
-
     GPIO_REG_WRITE(GPIO_PIN_ADDR(GPIO_ID_PIN(scl)),
         GPIO_REG_READ(GPIO_PIN_ADDR(GPIO_ID_PIN(scl))) |
         GPIO_PIN_PAD_DRIVER_SET(GPIO_PAD_DRIVER_ENABLE)); //open drain;
     GPIO_REG_WRITE(GPIO_ENABLE_ADDRESS,
         GPIO_REG_READ(GPIO_ENABLE_ADDRESS) | (1 << scl));
-
     I2C_MASTER_SDA_SCL(1, 1);
-
     ETS_GPIO_INTR_ENABLE() ;
-//    ETS_INTR_UNLOCK();
 #endif
 
     I2C_MASTER_SDA_SCL(1, 1);
@@ -180,12 +161,10 @@ i2c_master_gpio_init(uint8 scl, uint8 sda, uint32 bitrate)
 void ICACHE_FLASH_ATTR
 i2c_master_start(void)
 {
-    i2c_master_setDC(1, m_nLastSCL);
-    i2c_master_wait(5);
-    i2c_master_setDC(1, 1);
-    i2c_master_wait(5);	// sda 1, scl 1
     i2c_master_setDC(0, 1);
-    i2c_master_wait(5);	// sda 0, scl 1
+    i2c_master_wait(1); // sda 0, scl 1
+    i2c_master_setDC(0, 0);
+    i2c_master_wait(1); // sda 0, scl 0
 }
 
 /******************************************************************************
@@ -197,14 +176,10 @@ i2c_master_start(void)
 void ICACHE_FLASH_ATTR
 i2c_master_stop(void)
 {
-    i2c_master_wait(5);
-
-    i2c_master_setDC(0, m_nLastSCL);
-    i2c_master_wait(5);	// sda 0
     i2c_master_setDC(0, 1);
-    i2c_master_wait(5);	// sda 0, scl 1
+    while (!i2c_master_getDD()) {}; // PB
     i2c_master_setDC(1, 1);
-    i2c_master_wait(5);	// sda 1, scl 1
+    i2c_master_wait(1); // sda 1, scl 1
 }
 
 /******************************************************************************
@@ -217,13 +192,13 @@ void ICACHE_FLASH_ATTR
 i2c_master_setAck(uint8 level)
 {
     i2c_master_setDC(level, 0);
-    i2c_master_wait(2);	// sda level, scl 0
+    i2c_master_wait(1); // sda level, scl 0
     i2c_master_setDC(level, 1);
-    i2c_master_wait(4);	// sda level, scl 1
+    while (!i2c_master_getDD()) {}; // PB
     i2c_master_setDC(level, 0);
-    i2c_master_wait(2);	// sda level, scl 0
+    i2c_master_wait(1); // sda level, scl 0
     i2c_master_setDC(1, 0);
-    i2c_master_wait(2);
+    i2c_master_wait(1);
 }
 
 /******************************************************************************
@@ -237,12 +212,12 @@ i2c_master_getAck(void)
 {
     uint8 retVal;
     i2c_master_setDC(1, 0);
-    i2c_master_wait(2);
+    i2c_master_wait(1);
     i2c_master_setDC(1, 1);
-    i2c_master_wait(4);
+    while (!i2c_master_getDD()) {}; // PB
     retVal = i2c_master_getDC();
     i2c_master_setDC(1, 0);
-    i2c_master_wait(2);
+    i2c_master_wait(1);
 
     return !retVal; // 0->true->ACK, 1->false->NACK
 }
@@ -298,20 +273,13 @@ i2c_master_readByte(void)
     uint8 retVal = 0;
     uint8 i;
 
-    i2c_master_wait(2);
-    i2c_master_setDC(m_nLastSDA, 0);
-    i2c_master_wait(4);	// sda 1, scl 0
-
     for (i = 0; i < 8; i++) {
-        i2c_master_setDC(1, 0);
-        i2c_master_wait(4);	// sda 1, scl 0
         i2c_master_setDC(1, 1);
-        i2c_master_wait(3);	// sda 1, scl 1
+        while (!i2c_master_getDD()) {}; // PB
         retVal = (retVal<<1) | (i2c_master_getDC()&1);
+        i2c_master_setDC(1, 0);
+        i2c_master_wait(1); // sda 1, scl 0
     }
-
-    i2c_master_setDC(1, 0);
-    i2c_master_wait(2);	// sda 1, scl 0
 
     return retVal;
 }
@@ -327,18 +295,13 @@ i2c_master_writeByte(uint8 wrdata)
 {
     uint8 dat;
     sint8 i;
-
-    i2c_master_wait(2);
-    i2c_master_setDC(m_nLastSDA, 0);
-    i2c_master_wait(4);
-
+  
     for (i = 7; i >= 0; i--) {
         dat = wrdata >> i;
         i2c_master_setDC(dat, 0);
-        i2c_master_wait(1);
         i2c_master_setDC(dat, 1);
-        i2c_master_wait(5);
+        while (!i2c_master_getDD()) {}; // PB
         i2c_master_setDC(dat, 0);
-        i2c_master_wait(2);
+        i2c_master_wait(1);
     }
 }

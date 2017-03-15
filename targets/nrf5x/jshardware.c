@@ -57,6 +57,7 @@
 #include "nrf5x_utils.h"
 #include "softdevice_handler.h"
 
+
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
 
 /*  S110_SoftDevice_Specification_2.0.pdf
@@ -109,7 +110,7 @@ void TIMER1_IRQHandler(void) {
   jstUtilTimerInterruptHandler();
 }
 
-void sys_evt_handler(uint32_t sys_evt) {
+void jsh_sys_evt_handler(uint32_t sys_evt) {
   if (sys_evt == NRF_EVT_FLASH_OPERATION_SUCCESS){
     flashIsBusy = false;
   }
@@ -191,16 +192,33 @@ void wakeup_handler() {
 }
 #endif
 
+void jshResetPeripherals() {
+  // Reset all pins to their power-on state (apart from default UART :)
+  // Set pin state to input disconnected - saves power
+  Pin i;
+  for (i=0;i<JSH_PIN_COUNT;i++) {
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    if (i==DEFAULT_CONSOLE_TX_PIN) continue;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    if (i==DEFAULT_CONSOLE_RX_PIN) continue;
+#endif
+    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i)) {
+      jshPinSetState(i, JSHPINSTATE_UNDEFINED);
+    }
+  }
+  BITFIELD_CLEAR(jshPinSoftPWM);
+}
+
 void jshInit() {
   jshInitDevices();
+  jshResetPeripherals();
 
 #ifdef LED1_PININDEX
   jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
 #endif
 
   nrf_utils_lfclk_config_and_start();
-
-  BITFIELD_CLEAR(jshPinSoftPWM);
 
 #ifdef DEFAULT_CONSOLE_RX_PIN
 #if !defined(NRF51822DK)
@@ -251,10 +269,12 @@ void jshInit() {
                       APP_TIMER_MODE_SINGLE_SHOT,
                       wakeup_handler);
   if (err_code) jsiConsolePrintf("app_timer_create error %d\n", err_code);
+#else
+  // because the code in bluetooth.c will call jsh_sys_evt_handler for us
+  // if we were using bluetooth
+  softdevice_sys_evt_handler_set(jsh_sys_evt_handler);
 #endif
 
-  // Softdevice is initialised now
-  softdevice_sys_evt_handler_set(sys_evt_handler);
   // Enable PPI driver
   err_code = nrf_drv_ppi_init();
   APP_ERROR_CHECK(err_code);
@@ -271,7 +291,7 @@ void jshInit() {
 // When 'reset' is called - we try and put peripherals back to their power-on state
 void jshReset() {
   jshResetDevices();
-  // TODO: Reset all pins to their power-on state (apart from default UART :)
+  jshResetPeripherals();
 }
 
 void jshKill() {
@@ -284,7 +304,7 @@ void jshIdle() {
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
-    memcpy(data, NRF_FICR->DEVICEID, sizeof(NRF_FICR->DEVICEID));
+    memcpy(data, (void*)NRF_FICR->DEVICEID, sizeof(NRF_FICR->DEVICEID));
     return sizeof(NRF_FICR->DEVICEID);
 }
 
@@ -321,7 +341,7 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 
 /// Convert ticks to a time in Milliseconds.
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-  return (JsVarFloat) ((time * 1000) / SYSCLK_FREQ);
+  return (time * 1000.0) / SYSCLK_FREQ;
 }
 
 // software IO functions...
@@ -363,17 +383,25 @@ void jshPinSetState(Pin pin, JshPinState state) {
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   switch (state) {
     case JSHPINSTATE_UNDEFINED :
-      nrf_gpio_cfg_default(ipin);
+      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_AF_OUT :
     case JSHPINSTATE_GPIO_OUT :
     case JSHPINSTATE_USART_OUT :
-      nrf_gpio_cfg_output(ipin);
+      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_H0H1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_AF_OUT_OPENDRAIN :
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN :
       NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
-                              | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
@@ -381,7 +409,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
     case JSHPINSTATE_I2C :
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
       NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
-                              | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
@@ -550,11 +578,46 @@ int jshPinAnalogFast(Pin pin) {
 #endif
 }
 
+JshPinFunction jshGetFreeTimer(JsVarFloat freq) {
+  int timer, channel, pin;
+  for (timer=0;timer<3;timer++) {
+    bool timerUsed = false;
+    JshPinFunction timerFunc = JSH_TIMER1 + (JSH_TIMER2-JSH_TIMER1)*timer;
+    if (freq>0) {
+      // TODO: we could see if the frequency matches?
+      // if frequency specified then if timer is used by
+      // anything else we'll skip it
+      for (pin=0;pin<JSH_PIN_COUNT;pin++)
+        if ((pinStates[pin]&JSH_MASK_TYPE) == timerFunc)
+          timerUsed = true;
+    }
+    if (!timerUsed) {
+      // now check each channel
+      for (channel=0;channel<4;channel++) {
+        JshPinFunction func = timerFunc | (JSH_TIMER_CH1 + (JSH_TIMER_CH2-JSH_TIMER_CH1)*channel);
+        bool timerUsed = false;
+        for (pin=0;pin<JSH_PIN_COUNT;pin++)
+          if ((pinStates[pin]&(JSH_MASK_TYPE|JSH_MASK_TIMER_CH)) == func)
+            timerUsed = true;
+        if (!timerUsed)
+          return func;
+      }
+    }
+  }
+}
+
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+#ifdef NRF52
+  // Try and use existing pin function
+  JshPinFunction func = pinStates[pin];
+  // If it's not a timer, try and find one
+  if (!JSH_PINFUNCTION_IS_TIMER(func)) {
+    func = jshGetFreeTimer(freq);
+  }
   /* we set the bit field here so that if the user changes the pin state
    * later on, we can get rid of the IRQs */
-#ifdef NRF52
-  if (flags & JSAOF_FORCE_SOFTWARE) {
+  if ((flags & JSAOF_FORCE_SOFTWARE) ||
+      ((flags & JSAOF_ALLOW_SOFTWARE) && !func)) {
 #endif
     if (!jshGetPinStateIsManual(pin)) {
       BITFIELD_SET(jshPinSoftPWM, pin, 0);
@@ -566,8 +629,11 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
     return JSH_NOTHING;
 #ifdef NRF52
   }
-  JshPinFunction func = JSH_TIMER1 | JSH_TIMER_CH1;
-  // FIXME: Search for free timers to use (based on freq as well)
+
+  if (!func) {
+    jsExceptionHere(JSET_ERROR, "No free Hardware PWMs. Try not specifying a frequency, or using analogWrite(pin, val, {soft:true}) for Software PWM\n");
+    return 0;
+  }
 
   NRF_PWM_Type *pwm = nrf_get_pwm(func);
   if (!pwm) { assert(0); return 0; };
@@ -621,10 +687,13 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_STOPPED);
   nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_STOPPED);*/
 
-  static uint16_t pwmValues[4];
-  pwmValues[func >> JSH_SHIFT_INFO] = counter - (uint16_t)(value*counter);
+  int timer = ((func&JSH_MASK_TYPE)-JSH_TIMER1) >> JSH_SHIFT_TYPE;
+  int channel = (func&JSH_MASK_INFO) >> JSH_SHIFT_INFO;
+
+  static uint16_t pwmValues[3][4];
+  pwmValues[timer][channel] = counter - (uint16_t)(value*counter);
   nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
-  nrf_pwm_seq_ptr_set(      pwm, 0, pwmValues);
+  nrf_pwm_seq_ptr_set(      pwm, 0, &pwmValues[timer][0]);
   nrf_pwm_seq_cnt_set(      pwm, 0, 4);
   nrf_pwm_seq_refresh_set(  pwm, 0, 0);
   nrf_pwm_seq_end_delay_set(pwm, 0, 0);
@@ -689,6 +758,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   uint32_t p = (uint32_t)pinInfo[pin].pin;
   if (shouldWatch) {
     nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true); // FIXME: Maybe we want low accuracy? Otherwise this will
+    cls_1_config.is_watcher = true; // stop this resetting the input state
     nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler);
     nrf_drv_gpiote_in_event_enable(p, true);
     return jshGetEventFlagsForWatchedPin(p);
@@ -1160,10 +1230,13 @@ JsVarFloat jshReadVRef() {
  * default to `rand()`
  */
 unsigned int jshGetRandomNumber() {
-  return (unsigned int) nrf_utils_get_random_number();
+  unsigned int v = 0;
+  uint8_t bytes_avail = 0;
+  WAIT_UNTIL((sd_rand_application_bytes_available_get(&bytes_avail),bytes_avail>=sizeof(v)),"Random number");
+  sd_rand_application_vector_get(&v, sizeof(v));
+  return v;
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
 }
-

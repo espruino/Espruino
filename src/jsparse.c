@@ -33,6 +33,9 @@ void jspeBlockNoBrackets();
 JsVar *jspeStatement();
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
+#ifndef SAVE_ON_FLASH
+JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a);
+#endif
 // ----------------------------------------------- Utils
 #define JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, CLEANUP_CODE, RETURN_VAL) { if (!jslMatch((TOKEN))) { CLEANUP_CODE; return RETURN_VAL; } }
 #define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , RETURN_VAL)
@@ -350,10 +353,11 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
   return true;
 }
 
-// Parse function, assuming we're on '{'
+// Parse function, assuming we're on '{'. funcVar can be 0
 NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnly) {
   if (expressionOnly) {
-    funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
+    if (funcVar)
+      funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
   } else {
     JSP_MATCH('{');
 
@@ -469,9 +473,15 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
 /* Parse just the brackets of a function - and throw
  * everything away */
 NO_INLINE bool jspeParseFunctionCallBrackets() {
+  assert(!JSP_SHOULD_EXECUTE);
   JSP_MATCH('(');
   while (!JSP_SHOULDNT_PARSE && lex->tk != ')') {
     jsvUnLock(jspeAssignmentExpression());
+#ifndef SAVE_ON_FLASH
+    if (lex->tk==LEX_ARROW_FUNCTION) {
+      jsvUnLock(jspeArrowFunction(0, 0));
+    }
+#endif
     if (lex->tk!=')') JSP_MATCH(',');
   }
   if (!JSP_SHOULDNT_PARSE) JSP_MATCH(')');
@@ -1057,34 +1067,36 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
   while (lex->tk=='.' || lex->tk=='[') {
     if (lex->tk == '.') { // ------------------------------------- Record Access
       JSP_ASSERT_MATCH('.');
-      if (JSP_SHOULD_EXECUTE && jslIsIDOrReservedWord(lex)) {
-        // Note: name will go away when we parse something else!
-        const char *name = jslGetTokenValueAsString(lex);
+      if (jslIsIDOrReservedWord(lex)) {
+        if (JSP_SHOULD_EXECUTE) {
+          // Note: name will go away when we parse something else!
+          const char *name = jslGetTokenValueAsString(lex);
 
-        JsVar *aVar = jsvSkipName(a);
-        JsVar *child = 0;
-        if (aVar)
-          child = jspGetNamedField(aVar, name, true);
-        if (!child) {
-          if (jsvHasChildren(aVar)) {
-            // if no child found, create a pointer to where it could be
-            // as we don't want to allocate it until it's written
-            JsVar *nameVar = jslGetTokenValueAsVar(lex);
-            child = jsvCreateNewChild(aVar, nameVar, 0);
-            jsvUnLock(nameVar);
-          } else {
-            // could have been a string...
-            jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", name, aVar);
+          JsVar *aVar = jsvSkipName(a);
+          JsVar *child = 0;
+          if (aVar)
+            child = jspGetNamedField(aVar, name, true);
+          if (!child) {
+            if (jsvHasChildren(aVar)) {
+              // if no child found, create a pointer to where it could be
+              // as we don't want to allocate it until it's written
+              JsVar *nameVar = jslGetTokenValueAsVar(lex);
+              child = jsvCreateNewChild(aVar, nameVar, 0);
+              jsvUnLock(nameVar);
+            } else {
+              // could have been a string...
+              jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", name, aVar);
+            }
           }
+          jsvUnLock(parent);
+          parent = aVar;
+          jsvUnLock(a);
+          a = child;
         }
-        jslGetNextToken(lex); // skip over current token (we checked above that it was an ID or reserved word)
-
-        jsvUnLock(parent);
-        parent = aVar;
-        jsvUnLock(a);
-        a = child;
+        // skip over current token (we checked above that it was an ID or reserved word)
+        jslGetNextToken(lex);
       } else {
-        // Not executing, just match
+        // incorrect token - force a match fail by asking for an ID
         JSP_MATCH_WITH_RETURN(LEX_ID, a);
       }
     } else if (lex->tk == '[') { // ------------------------------------- Array Access
@@ -1428,7 +1440,6 @@ NO_INLINE JsVar *jspeAddNamedFunctionParameter(JsVar *funcVar, JsVar *name) {
 NO_INLINE JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a) {
   assert(!a || jsvIsName(a));
   JSP_ASSERT_MATCH(LEX_ARROW_FUNCTION);
-  if (!funcVar) funcVar = jsvNewWithFlags(JSV_FUNCTION);
   funcVar = jspeAddNamedFunctionParameter(funcVar, a);
 
   bool expressionOnly = lex->tk!='{';
@@ -1442,9 +1453,8 @@ NO_INLINE JsVar *jspeExpressionOrArrowFunction() {
   JsVar *funcVar = 0;
   bool allNames = true;
   while (lex->tk!=')' && !JSP_SHOULDNT_PARSE) {
-    if (allNames) {
+    if (allNames && a) {
       // we never get here if this isn't a name and a string
-      jsvUnLock(funcVar);
       funcVar = jspeAddNamedFunctionParameter(funcVar, a);
     }
     jsvUnLock(a);
@@ -1543,7 +1553,7 @@ NO_INLINE JsVar *jspeFactor() {
     return jspeFactorTypeOf();
   } else if (lex->tk==LEX_R_VOID) {
     JSP_ASSERT_MATCH(LEX_R_VOID);
-    jsvUnLock(jspeFactor());
+    jsvUnLock(jspeUnaryExpression());
     return 0;
   }
   JSP_MATCH(LEX_EOF);
@@ -2769,11 +2779,21 @@ JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **arg
 
 /// Evaluate a JavaScript module and return its exports
 JsVar *jspEvaluateModule(JsVar *moduleContents) {
-  assert(jsvIsString(moduleContents));
+  assert(jsvIsString(moduleContents) || jsvIsFunction(moduleContents));
+  if (jsvIsFunction(moduleContents)) {
+    moduleContents = jsvObjectGetChild(moduleContents,JSPARSE_FUNCTION_CODE_NAME,0);
+    if (!jsvIsString(moduleContents)) {
+      jsvUnLock(moduleContents);
+      return 0;
+    }
+  } else
+    jsvLockAgain(moduleContents);
   JsVar *scope = jsvNewObject();
-  if (!scope) return 0; // out of mem
   JsVar *scopeExports = jsvNewObject();
-  if (!scopeExports) { jsvUnLock(scope); return 0; } // out of mem
+  if (!scope || !scopeExports) { // out of mem
+    jsvUnLock3(scope, scopeExports, moduleContents);
+    return 0;
+  }
   JsVar *exportsName = jsvAddNamedChild(scope, scopeExports, "exports");
   jsvUnLock2(scopeExports, jsvAddNamedChild(scope, scope, "module"));
 
@@ -2784,7 +2804,7 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   execInfo.thisVar = oldThisVar;
   execInfo.execute = oldExecute; // make sure we fully restore state after parsing a module
 
-  jsvUnLock(scope);
+  jsvUnLock2(moduleContents, scope);
   return jsvSkipNameAndUnLock(exportsName);
 }
 

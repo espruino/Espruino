@@ -37,6 +37,10 @@ extern void jshPrintBanner(void); // prints a debugging banner while we're in be
 extern void jshSoftInit(void);    // re-inits wifi after a soft-reset
 #endif
 
+#ifdef ESP32
+extern void jshSoftInit(void);
+#endif
+
 // ----------------------------------------------------------------------------
 typedef enum {
   IS_NONE,
@@ -54,7 +58,7 @@ JsVarRef watchArray = 0; // Linked List of input watches to check and run
 IOEventFlags consoleDevice = DEFAULT_CONSOLE_DEVICE; ///< The console device for user interaction
 Pin pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 Pin pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
-JsiStatus jsiStatus;
+JsiStatus jsiStatus = 0;
 JsSysTime jsiLastIdleTime;  ///< The last time we went around the idle loop - use this for timers
 uint32_t jsiTimeSinceCtrlC;
 // ----------------------------------------------------------------------------
@@ -775,6 +779,9 @@ void jsiSemiInit(bool autoLoad) {
   jsiSoftInit(!autoLoad);
 
 #ifdef ESP8266
+  jshSoftInit();
+#endif
+#ifdef ESP32
   jshSoftInit();
 #endif
 
@@ -2065,7 +2072,9 @@ void jsiIdle() {
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
+      jsvKill();
       jshReset();
+      jsvInit();
       jsfLoadStateFromFlash();
       jsvSoftInit();
       jspSoftInit();
@@ -2233,6 +2242,13 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 
   // and now the actual hardware
   jsiDumpHardwareInitialisation(user_callback, user_data, true);
+
+  const char *code = jsfGetBootCodeFromFlash(false);
+  if (code) {
+    user_callback("// Code saved with E.setBootCode\n", user_data);
+    user_callback(code, user_data);
+    user_callback("\n", user_data);
+  }
 }
 
 JsVarInt jsiTimerAdd(JsVar *timerPtr) {

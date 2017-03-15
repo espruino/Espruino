@@ -168,9 +168,7 @@ Return all enumerable keys of the given object
   "return" : ["JsVar","An array of the Object's own properties"]
 }
 Returns an array of all properties (enumerable or not) found directly on a given object.
-
- **Note:** This doesn't currently work as it should for built-in objects and their prototypes. See bug #380
- */
+*/
 
 
 void _jswrap_object_keys_or_property_names_iterator(
@@ -247,7 +245,7 @@ void jswrap_object_keys_or_property_names_cb(
     }
 
     if (includePrototype) {
-      if (jsvIsObject(obj)) {
+      if (jsvIsObject(obj) || jsvIsFunction(obj)) {
         JsVar *proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
         while (jsvIsObject(proto)) {
           const JswSymList *symbols = jswGetSymbolListForObjectProto(proto);
@@ -257,9 +255,13 @@ void jswrap_object_keys_or_property_names_cb(
           proto = p2;
         }
       }
-      // finally include Object/String/etc
+      // include Object/String/etc
       const JswSymList *symbols = jswGetSymbolListForObjectProto(obj);
       _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
+      // if the last call wasn't an Object, add the object proto as well
+      const JswSymList *objSymbols = jswGetSymbolListForObjectProto(0);
+      if (objSymbols!=symbols)
+        _jswrap_object_keys_or_property_names_iterator(objSymbols, callback, data);
     }
 
     if (jsvIsArray(obj) || jsvIsString(obj)) {
@@ -537,7 +539,7 @@ JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
   ],
   "return" : ["bool","A Boolean object"]
 }
-Creates a number
+Creates a boolean
  */
 bool jswrap_boolean_constructor(JsVar *value) {
   return jsvGetBool(value);

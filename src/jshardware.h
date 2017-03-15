@@ -152,6 +152,7 @@ typedef enum {
             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
             (state)==JSHPINSTATE_GPIO_IN_PULLUP ||          \
             (state)==JSHPINSTATE_USART_IN ||                \
+            (state)==JSHPINSTATE_I2C ||                     \
 0)
 /// Should a pin of this state have an internal pulldown?
 #define JSHPINSTATE_IS_PULLDOWN(state) ( \
@@ -365,7 +366,7 @@ void jshUtilTimerDisable();
 void jshDoSysTick();
 #endif // ARM
 
-#ifdef STM32
+#if defined(STM32) || defined(STM32_LL)
 // push a byte into SPI buffers (called from IRQ)
 void jshSPIPush(IOEventFlags device, uint16_t data);
 

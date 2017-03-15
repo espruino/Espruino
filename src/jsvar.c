@@ -20,6 +20,7 @@
 #include "jswrap_math.h" // for jswrap_math_mod
 #include "jswrap_object.h" // for jswrap_object_toString
 #include "jswrap_arraybuffer.h" // for jsvNewTypedArray
+#include "jswrap_dataview.h" // for jsvNewDataViewWithData
 
 #ifdef DEBUG
   /** When freeing, clear the references (nextChild/etc) in the JsVar.
@@ -1161,6 +1162,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
     }
   } else {
     const char *constChar = jsvGetConstString(v);
+    assert(JS_NUMBER_BUFFER_SIZE>=10);
     char buf[JS_NUMBER_BUFFER_SIZE];
     if (constChar) {
       // if we could get this as a simple const char, do that..
@@ -1227,8 +1229,18 @@ JsVar *jsvAsArrayIndex(JsVar *index) {
      is_string(A) && int_to_string(string_to_int(A)) == A
      then convert it to an integer. Shouldn't be too nasty for performance
      as we only do this when accessing an array with a string */
-    if (jsvIsStringNumericStrict(index))
-      return jsvNewFromInteger(jsvGetInteger(index));
+    if (jsvIsStringNumericStrict(index)) {
+      JsVar *i = jsvNewFromInteger(jsvGetInteger(index));
+      JsVar *is = jsvAsString(i, false);
+      if (jsvCompareString(index,is,0,0,false)==0) {
+        // two items are identical - use the integer
+        jsvUnLock(is);
+        return i;
+      } else {
+        // not identical, use as a string
+        jsvUnLock2(i,is);
+      }
+    }
   } else if (jsvIsFloat(index)) {
     // if it's a float that is actually integral, return an integer...
     JsVarFloat v = jsvGetFloat(index);
@@ -1534,8 +1546,22 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
     jsvStringIteratorNext(&it);
 
   // skip a minus. if there was one
-  if (jsvStringIteratorHasChar(&it) && (jsvStringIteratorGetChar(&it)=='-' || jsvStringIteratorGetChar(&it)=='+'))
+  if (jsvStringIteratorGetChar(&it)=='-' || jsvStringIteratorGetChar(&it)=='+')
     jsvStringIteratorNext(&it);
+
+  int radix = 0;
+  if (jsvStringIteratorGetChar(&it)=='0') {
+    jsvStringIteratorNext(&it);
+    char buf[3];
+    buf[0] = '0';
+    buf[1] = jsvStringIteratorGetChar(&it);
+    buf[2] = 0;
+    const char *p = buf;
+    radix = getRadix(&p,0,0);
+    if (p>&buf[1]) jsvStringIteratorNext(&it);
+  }
+  if (radix==0) radix=10;
+
   // now check...
   int chars=0;
   while (jsvStringIteratorHasChar(&it)) {
@@ -1543,9 +1569,12 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
     char ch = jsvStringIteratorGetChar(&it);
     if (ch=='.' && allowDecimalPoint) {
       allowDecimalPoint = false; // there can be only one
-    } else if (!isNumeric(ch)) { // FIXME: should check for non-integer values (floating point?)
-      jsvStringIteratorFree(&it);
-      return false;
+    } else {
+      int n = chtod(ch);
+      if (n<0 || n>=radix) {
+        jsvStringIteratorFree(&it);
+        return false;
+      }
     }
     jsvStringIteratorNext(&it);
   }
@@ -1585,8 +1614,15 @@ JsVarInt jsvGetInteger(const JsVar *v) {
   if (jsvIsNull(v)) return 0;
   if (jsvIsUndefined(v)) return 0;
   if (jsvIsIntegerish(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
-  if (jsvIsArray(v) && jsvGetArrayLength(v)==1)
-    return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
+  if (jsvIsArray(v) || jsvIsArrayBuffer(v)) {
+    JsVarInt l = jsvGetLength((JsVar *)v);
+    if (l==0) return 0; // 0 length, return 0
+    if (l==1) {
+      if (jsvIsArrayBuffer(v))
+        return jsvGetIntegerAndUnLock(jsvArrayBufferGet((JsVar*)v,0));
+      return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
+    }
+  }
   if (jsvIsFloat(v)) {
     if (isfinite(v->varData.floating))
       return (JsVarInt)(long long)v->varData.floating;
@@ -1632,7 +1668,7 @@ void jsvSetInteger(JsVar *v, JsVarInt value) {
 bool jsvGetBool(const JsVar *v) {
   if (jsvIsString(v))
     return jsvGetStringLength((JsVar*)v)!=0;
-  if (jsvIsFunction(v) || jsvIsArray(v) || jsvIsObject(v))
+  if (jsvIsFunction(v) || jsvIsArray(v) || jsvIsObject(v) || jsvIsArrayBuffer(v))
     return true;
   if (jsvIsFloat(v)) {
     JsVarFloat f = jsvGetFloat(v);
@@ -1645,10 +1681,14 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
   if (!v) return NAN; // undefined
   if (jsvIsFloat(v)) return v->varData.floating;
   if (jsvIsIntegerish(v)) return (JsVarFloat)v->varData.integer;
-  if (jsvIsArray(v)) {
-    JsVarInt l = jsvGetArrayLength(v);
+  if (jsvIsArray(v) || jsvIsArrayBuffer(v)) {
+    JsVarInt l = jsvGetLength(v);
     if (l==0) return 0; // zero element array==0 (not undefined)
-    if (l==1) return jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
+    if (l==1) {
+      if (jsvIsArrayBuffer(v))
+        return jsvGetFloatAndUnLock(jsvArrayBufferGet((JsVar*)v,0));
+      return jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
+    }
   }
   if (jsvIsString(v)) {
     char buf[64];
@@ -1688,14 +1728,12 @@ JsVar *jsvAsNumber(JsVar *var) {
   return jsvNewFromFloat(jsvGetFloat(var));
 }
 
-#ifdef SAVE_ON_FLASH
 JsVarInt jsvGetIntegerAndUnLock(JsVar *v) { return _jsvGetIntegerAndUnLock(v); }
 JsVarFloat jsvGetFloatAndUnLock(JsVar *v) { return _jsvGetFloatAndUnLock(v); }
 bool jsvGetBoolAndUnLock(JsVar *v) { return _jsvGetBoolAndUnLock(v); }
-#endif
 
 /** Get the item at the given location in the array buffer and return the result */
-size_t jsvGetArrayBufferLength(JsVar *arrayBuffer) {
+size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer) {
   assert(jsvIsArrayBuffer(arrayBuffer));
   return arrayBuffer->varData.arraybuffer.length;
 }
@@ -1775,14 +1813,14 @@ bool jsvIsVariableDefined(JsVar *a) {
  * return 0. Throws a ReferenceError if variable is not defined,
  * but you can check if it will with jsvIsReferenceError */
 JsVar *jsvSkipName(JsVar *a) {
-  JsVar *pa = a;
   if (!a) return 0;
-  if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(pa));
-  if (jsvIsNameIntBool(pa)) return jsvNewFromBool(jsvGetFirstChild(pa)!=0);
+  if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
+  if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
+  if (jsvIsNameIntBool(a)) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
+  JsVar *pa = jsvLockAgain(a);
   while (jsvIsName(pa)) {
     JsVarRef n = jsvGetFirstChild(pa);
-    if (pa!=a) jsvUnLock(pa);
+    jsvUnLock(pa);
     if (!n) {
       if (pa==a && jsvGetRefs(a)==0 && !jsvIsNewChild(a)) {
         jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
@@ -1790,8 +1828,8 @@ JsVar *jsvSkipName(JsVar *a) {
       return 0;
     }
     pa = jsvLock(n);
+    assert(pa!=a);
   }
-  if (pa==a) jsvLockAgain(pa);
   return pa;
 }
 
@@ -1800,14 +1838,14 @@ JsVar *jsvSkipName(JsVar *a) {
  * return 0. Throws a ReferenceError if variable is not defined,
  * but you can check if it will with jsvIsReferenceError */
 JsVar *jsvSkipOneName(JsVar *a) {
-  JsVar *pa = a;
   if (!a) return 0;
-  if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(pa));
-  if (jsvIsNameIntBool(pa)) return jsvNewFromBool(jsvGetFirstChild(pa)!=0);
+  if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
+  if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
+  if (jsvIsNameIntBool(a)) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
+  JsVar *pa = jsvLockAgain(a);
   if (jsvIsName(pa)) {
     JsVarRef n = jsvGetFirstChild(pa);
-    if (pa!=a) jsvUnLock(pa);
+    jsvUnLock(pa);
     if (!n) {
       if (pa==a && jsvGetRefs(a)==0 && !jsvIsNewChild(a)) {
         jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
@@ -1815,8 +1853,8 @@ JsVar *jsvSkipOneName(JsVar *a) {
       return 0;
     }
     pa = jsvLock(n);
+    assert(pa!=a);
   }
-  if (pa==a) jsvLockAgain(pa);
   return pa;
 }
 
@@ -2413,7 +2451,17 @@ void jsvObjectRemoveChild(JsVar *obj, const char *name) {
   }
 }
 
-int jsvGetChildren(JsVar *v) {
+/** Set the named child of an object, and return the child (so you can choose to unlock it if you want).
+ * If the child is 0, the 'name' is also removed from the object */
+JsVar *jsvObjectSetOrRemoveChild(JsVar *obj, const char *name, JsVar *child) {
+  if (child)
+    jsvObjectSetChild(obj, name, child);
+  else
+    jsvObjectRemoveChild(obj, name);
+  return child;
+}
+
+int jsvGetChildren(const JsVar *v) {
   //OPT: could length be stored as the value of the array?
   int children = 0;
   JsVarRef childref = jsvGetFirstChild(v);
@@ -2448,7 +2496,7 @@ JsVarInt jsvSetArrayLength(JsVar *arr, JsVarInt length, bool truncate) {
   return length;
 }
 
-JsVarInt jsvGetLength(JsVar *src) {
+JsVarInt jsvGetLength(const JsVar *src) {
   if (jsvIsArray(src)) {
     return jsvGetArrayLength(src);
   } else if (jsvIsArrayBuffer(src)) {
@@ -2568,12 +2616,12 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
   return jsvSkipNameAndUnLock(jsvGetArrayIndex(arr,index));
 }
 
-void jsvSetArrayItem(const JsVar *arr, JsVarInt index, JsVar *item) {
+void jsvSetArrayItem(JsVar *arr, JsVarInt index, JsVar *item) {
   JsVar *indexVar = jsvGetArrayIndex(arr, index);
   if (indexVar) {
     jsvSetValueOfName(indexVar, item);
   } else {
-    indexVar = jsvMakeIntoVariableName(jsvNewFromInteger(jsvGetInteger(index)), item);
+    indexVar = jsvMakeIntoVariableName(jsvNewFromInteger(index), item);
     jsvAddName(arr, indexVar);
   }
   jsvUnLock(indexVar);
@@ -3435,6 +3483,25 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length) {
   return array;
 }
 
+#ifndef SAVE_ON_FLASH
+JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data) {
+  JsVar *buf = jswrap_arraybuffer_constructor(length);
+  if (!buf) return 0;
+  JsVar *view = jswrap_dataview_constructor(buf, 0, 0);
+  if (!view) {
+    jsvUnLock(buf);
+    return 0;
+  }
+  if (data) {
+    JsVar *arrayBufferData = jsvGetArrayBufferBackingString(buf);
+    if (arrayBufferData)
+      jsvSetString(arrayBufferData, (char *)data, length);
+    jsvUnLock(arrayBufferData);
+  }
+  return view;
+}
+#endif
+
 JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr) {
   assert(ptr);
   *ptr=0;
@@ -3454,7 +3521,7 @@ void *jsvMalloc(size_t size) {
   /** Allocate flat string, return pointer to its first element.
    * As we drop the pointer here, it's left locked. jsvGetFlatStringPointer
    * is also safe if 0 is passed in.  */
-  JsVar *flatStr = jsvNewFlatStringOfLength(size);
+  JsVar *flatStr = jsvNewFlatStringOfLength((unsigned int)size);
   if (!flatStr) {
     jsErrorFlags |= JSERR_LOW_MEMORY;
     // Not allocated - try and free any command history/etc
@@ -3462,7 +3529,7 @@ void *jsvMalloc(size_t size) {
     // Garbage collect
     jsvGarbageCollect();
     // Try again
-    flatStr = jsvNewFlatStringOfLength(size);
+    flatStr = jsvNewFlatStringOfLength((unsigned int)size);
   }
   // intentionally no jsvUnLock - see above
   void *p = (void*)jsvGetFlatStringPointer(flatStr);

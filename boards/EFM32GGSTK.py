@@ -7,10 +7,18 @@ info = {
   'link': [ "https://www.silabs.com/products/mcu/lowpower/Pages/efm32gg-stk3700.aspx" ],
   'variables': 1720,
   'binary_name': 'espruino_%v_efm32ggstk.bin',
-  'default_console' : "EV_SERIAL4", 
+  'default_console' : "EV_SERIAL4",
   'default_console_tx' : "E0",
   'default_console_rx' : "E1",
   'default_console_baudrate' : "115200",
+  'build' : {
+   'optimizeflags' : '-Os',
+   'libraries' : [
+   ],
+   'makefile' : [
+     'DEFINES+= -DEFM32GG890F1024=1 # This should be EFM32GG990F1024, temporary hack to avoid the #USB on line 772 in jsinteractive.c'
+   ]
+  }
 };
 chip = {
   'part': "EFM32GG990F1024",
@@ -29,7 +37,7 @@ chip = {
 devices = {
   'BTN1' : { 'pin' : 'B9',  'pinstate' : 'IN', 'inverted' : 'true' },
   'BTN2' : { 'pin' : 'B10', 'pinstate' : 'IN' },
-  'LED1' : { 'pin' : 'E2' }, 
+  'LED1' : { 'pin' : 'E2' },
   'LED2' : { 'pin' : 'E3' },
 }
 

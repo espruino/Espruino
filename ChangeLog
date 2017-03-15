@@ -1,3 +1,72 @@
+     1v92 : nRF5x: Fix issue where Espruino could crash during save() if the flash got into a strange state
+            Added Pin.toggle() function
+            Fix implicit casting to bool/number on ArrayBuffers (fix #1030)
+            Fix jstExecuteTaskChecker bug, and allow jstExecuteFn to take a userdata argument
+            Puck.js: Reduce IR LED to 10% duty cycle
+            Puck.js: Allow Puck.IR to take pins for external IR LED (fix #927)
+            nRF52: Allow arbitrary NFC data to be specified (fix #1021)
+            nRF5x: Allow multiple advertising packets to be set at once with NRF.setAdvertising
+            nRF52: Add 'properties' object to BluetoothRemoteGATTCharacteristic
+            nRF52: Perform write without response if that is what is required 
+            Pico/WiFi: Allow USB HID to work on Windows (from @nailxx)
+            Allow Puck.js/nRF52 devices to drive Neopixel/WS281x/APA10x LEDs with require("neopixel").write (fix #1023)
+            Fix crash in JSON.stringify for zero-length typed arrays
+            Fix precedence of 'void' keyword (fix #1079)
+            nRF52: Add BluetoothRemoteGATTCharacteristic.startNotifications (fix #959)
+            nRF52: Added BluetoothDevice.gattserverdisconnected event
+            nRF5x: Report back reason codes for BLE disconnect
+            Added DataView class
+            nRF52: char.readValue now returns DataView to be more Web Bluetooth compliant (fix #1091)
+            nRF5x: Fix explicit disconnect being able to reboot Puck (fix #1088)
+            nRF5x: Respond to conn_params update request, fix puck-puck disconnection after ~65 sec (fix #1089)
+            nRF52: Change connection params for central mode so NRF.setLowPowerConnection affects connection speed
+            Un-inlining jsvGet*AndUnLock functions to give us a little more free flash
+	    ESP8266: RELEASE=1 sets WIFI_DBG and NET_DBG to 0 to shrink firmware size
+	    ESP8266: Add Wifi.setAPIP() and Wifi.setIP() 
+	    ESP8266: Add i2c clock stretch
+	    Fix E.FFT output (enable magnitude when one array specified)
+            Puck.js: Correct reading if using analogWrite to red LED and *then* using Puck.light()
+            Improved build process for all boards
+            Pin.toggle now returns a boolean (fix #1111)
+            nRF52: Now use 'high drive' mode for GPIOs
+            Puck.js: tweak IR duty cycle, with high drive GPIO range is ~3x more
+
+     1v91 : Fix recent regression if no Boot Code defined at startup
+            Fix handling of return of rejected promise within a promise
+            Fix regression where HTTPS without cert/ca or key failed
+            nRF52: Making NRF.getPrimaryService/etc more robust
+            nRF5x: Add NRF.getAddress() - fix #1001
+            Fix bug that caused load() not to clear memory if only E.setBootCode was used
+            microbit: Update Espruino with pin polarity, so saved code gets loaded without BTN1 pressed
+            Fix bug that caused Bluetooth/TV/USB objects to be added in devices that didn't support them (fix #832)
+            nRF52: Increase custom UUID count from 3 to 10
+            Adding Global built-in objects like SPI1/Serial1 and Bluetooth to the docs
+            Puck.js: Tweak battery percentage calculation to try and make it more linear
+            Puck.js: Adjust Puck.light() levels based on battery percentage (and add comments)
+            nRF5x: Fix E.hwRand() (fix #1010)
+            Ensure tab complete/others include the Object proto even on functions/strings
+            nRF5x: Add NRF.restart() to force the restart of the Bluetooth Softdevice if required
+            nRF5x: Add E.setLowPowerConnection(bool) to allow continuous connections to Puck.js (fix #995)
+            Allow implicit conversion of hexadecimal strings to numbers (fix #1016)
+            Allow arrow functions inside nonexecuting functions (fix #1011)
+
+     1v90 : Fixes for Promise.all (passing in non-promises, pre-resolved, and ordering) (fix #976)
+            Fix arrow function bug when parsing multiple arguments
+            Added more helpful error messages for TLS
+            Allow `Modules.addCached` to take a function (makes module loading more memory efficient)
+            Re-add Espruino's old `rand` function (so no malloc, and ~1kB RAM, ~3kB ROM saved)
+            nRF5x: Ensure 'NRF.sleep' works even when connected
+            Fix bug when using >32 bit integers as array indices (fix #984)
+            Fix bug when parsing '.catch' while not executing (fix #989)
+            Stop PWM 'glitching' when moving from a nonzero value down to 0 (partial #991)
+            nRF5x: Add multi-channel hardware PWM (fix #991, fix #972)
+            'dump()' now outputs code written with E.setBootCode as well (fix #999)
+            nRF5x: Remember advertising information even after softdevice reboot  (fix #997)
+            nRF51: Remove heap placeholder on nRF51 as not needed since no malloc. Increase nRF51 var count (fix #985)
+            nRF5x: 'connect' event now contains address of device that has connected, and fix docs
+            nRF5x: Add a 'NRF.disconnect' function to disconnect a client that has connected to Puck.js
+            nRF5x: Fix timing accuracy problems with setWatch
+
      1v89 : Allow entering of multi-line Templated Literals on the command-line (fix #970)
             Make lexer fail when parsing non-templated strings with newlines in 
             Add 'let' and 'const' keywords - treat them like 'var' for now
@@ -8,6 +77,10 @@
             Fix comma operator regression caused by recent arrow functions addition
             Remove RTC changes for STM32F1
             nRF5x: Make sure that updateServices(notify) on a non-notifyable service will just error, rather than reset (fix #973)
+            nRF5x: Ensure setWatch doesn't reset pin state
+            nRF5x: Reset pin states to default on 'reset()'
+            nRF5x: Move advertising back to 375ms (more reliable connections)
+            Puck: allow Puck.mag to work while magnetometer is on
 
      1v88 : jshSetEventCallback callbacks now get an argument with the channel number
             Tab complete now offers a much better set of completions (fix #926)

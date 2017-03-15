@@ -169,6 +169,9 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
             if ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
               print(dropped_prefix+" because of #ifdef "+jsondata["ifdef"])
               drop = True
+            if ("#ifdef" in jsondata) or ("#ifndef" in jsondata):
+              sys.stderr.write( "'#ifdef' where 'ifdef' should be used in " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
+              exit(1)
             if ("#if" in jsondata):
               expr = jsondata["#if"]
               for defn in defines:
@@ -348,10 +351,13 @@ def get_prefix_name(jsondata):
 def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH": return "devices with low flash memory"
   if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
+  if d=="NRF52": return "NRF52 devices (like Puck.js)"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico and Espruino WiFi only)"
   if d=="RELEASE": return "release builds"
   if d=="LINUX": return "Linux-based builds"
+  if d=="BLUETOOTH": return "devices with Bluetooth LE capability"
+  if d=="USB": return "devices with USB"
   if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico and Espruino WiFi)"
   if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino WiFi or Linux)"
   if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino WiFi, Linux or ESP8266)"

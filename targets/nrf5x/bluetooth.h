@@ -46,6 +46,12 @@ typedef enum  {
   BLE_HID_INITED = 64,        // Has the BLE HID service been initialised?
   BLE_IS_SENDING_HID = 128,   // Are we waiting to send data for USB HID?
   BLE_IS_RSSI_SCANNING = 256, // Are we scanning for RSSI values
+  BLE_IS_SLEEPING = 512,      // NRF.sleep has been called
+
+  BLE_IS_ADVERTISING_MULTIPLE = 1024, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 2048,
+  BLE_ADVERTISING_MULTIPLE_SHIFT = GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;
 
 
@@ -54,6 +60,7 @@ extern uint16_t bleAdvertisingInterval;           /**< The advertising interval 
 extern uint16_t                         m_conn_handle;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
 extern uint16_t                         m_central_conn_handle; /**< Handle for central mode connection */
+
 #endif
 
 /** Initialise the BLE stack */
@@ -118,6 +125,8 @@ void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid);
 void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen);
 // Read data from the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicRead(JsVar *characteristic);
+// Discover descriptors of characteristic
+void jsble_central_characteristicDescDiscover(JsVar *characteristic);
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicNotify(JsVar *characteristic, bool enable);
 #endif

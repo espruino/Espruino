@@ -28,10 +28,17 @@ info = {
   'variables' :  2048, # was 7423: (128-12)*1024/16-1
   'binary_name' : 'espruino_%v_emw3165.bin',
  'build' : {
-  'defines' : [
+   'optimizeflags' : '-O2',
+   'libraries' : [
+   ],
+   'makefile' : [
+     'DEFINES+=-DPIN_NAMES_DIRECT -DHSE_VALUE=26000000UL',
+     'STLIB=STM32F411xE',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o'
    ]
- }
+  }
 };
+
 chip = {
   'part' : "STM32F411CE",
   'family' : "STM32F4",

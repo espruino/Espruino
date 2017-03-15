@@ -189,8 +189,9 @@ void jswrap_modules_removeAllCached() {
 Add the given module to the cache
  */
 void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode) {
-  if (!jsvIsString(id) || !jsvIsString(sourceCode)) {
-    jsExceptionHere(JSET_ERROR, "Both arguments to addCached must be strings");
+  if (!jsvIsString(id) ||
+      !(jsvIsString(sourceCode) || jsvIsFunction(sourceCode))) {
+    jsExceptionHere(JSET_ERROR, "args must be addCached(string, string|function)");
     return;
   }
 
