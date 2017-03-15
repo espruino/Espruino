@@ -171,7 +171,8 @@ void jswrap_pin_mode(JsVar *parent, JsVar *mode) {
   "type"     : "method",
   "class"    : "Pin",
   "name"     : "toggle",
-  "generate" : "jswrap_pin_toggle"
+  "generate" : "jswrap_pin_toggle",
+  "return"   : ["bool", "True if the pin is high after calling the function"]
 }
 Toggles the state of the pin from off to on, or from on to off.
 
@@ -179,11 +180,12 @@ Toggles the state of the pin from off to on, or from on to off.
 
 **Note:** if you didn't call `pinMode` beforehand then this function will also reset the pin's state to `"output"`
 */
-void jswrap_pin_toggle(JsVar *parent) {
+bool jswrap_pin_toggle(JsVar *parent) {
   Pin pin = jshGetPinFromVar(parent);
   if (!jshIsPinValid(pin)) return;
-  bool on = jshPinGetState(pin)&JSHPINSTATE_PIN_IS_ON;
-  jshPinOutput(pin, !on);
+  bool on = !(jshPinGetState(pin)&JSHPINSTATE_PIN_IS_ON);
+  jshPinOutput(pin, on);
+  return on;
 }
 
 
