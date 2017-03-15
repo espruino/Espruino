@@ -32,6 +32,8 @@
 #include "jswrap_bluetooth.h"
 #else
 #include "nrf_temp.h"
+void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
+}
 #endif
 
 #include "nrf_peripherals.h"
@@ -221,7 +223,7 @@ void jshInit() {
   nrf_utils_lfclk_config_and_start();
 
 #ifdef DEFAULT_CONSOLE_RX_PIN
-#if !defined(NRF51822DK)
+#if !defined(NRF51822DK) && !defined(NRF52832DK)
   // Only init UART if something is connected and RX is pulled up on boot...
   jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
   if (jshPinGetValue(DEFAULT_CONSOLE_RX_PIN)) {
@@ -260,12 +262,13 @@ void jshInit() {
   nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
 
   // Pin change
+  uint32_t err_code;
   nrf_drv_gpiote_init();
 #ifdef BLUETOOTH
   APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
   jsble_init();
 
-  uint32_t err_code = app_timer_create(&m_wakeup_timer_id,
+  err_code = app_timer_create(&m_wakeup_timer_id,
                       APP_TIMER_MODE_SINGLE_SHOT,
                       wakeup_handler);
   if (err_code) jsiConsolePrintf("app_timer_create error %d\n", err_code);

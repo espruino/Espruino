@@ -1,6 +1,6 @@
 # Just try and get rid of the compile warnings.
 CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
-DEFINES += -DBLUETOOTH -D$(BOARD) -D$(CHIP)
+DEFINES += -D$(BOARD) -D$(CHIP)
 
 ARM = 1
 ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.

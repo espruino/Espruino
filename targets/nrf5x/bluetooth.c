@@ -12,6 +12,8 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifdef BLUETOOTH
+
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
 #include "jsdevices.h"
@@ -1582,4 +1584,5 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
     if (jsble_check_error(err_code))
       bleCompleteTaskFail(BLETASK_CHARACTERISTIC_NOTIFY, 0);
 }
+#endif
 #endif
