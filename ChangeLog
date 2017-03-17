@@ -33,6 +33,7 @@
             nRF52: switch compilation to size optimisation, not speed
             nRF5x: Allow services to be advertised (fix #996)
             JSON.parse now throws an exception if an incorrect value type is found (fix #1117)
+            Pipe close event handlers now use 'this' arg - solves auto-closing pipe when piping from HTTP
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise

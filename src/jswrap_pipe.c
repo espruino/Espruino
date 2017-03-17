@@ -279,9 +279,9 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
           jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
         }
         // set up our event listeners
-        jswrap_object_addEventListener(source, "close", jswrap_pipe_src_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
+        jswrap_object_addEventListener(source, "close", jswrap_pipe_src_close_listener, JSWAT_THIS_ARG);
         jswrap_object_addEventListener(dest, "drain", jswrap_pipe_drain_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
-        jswrap_object_addEventListener(dest, "close", jswrap_pipe_dst_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
+        jswrap_object_addEventListener(dest, "close", jswrap_pipe_dst_close_listener, JSWAT_THIS_ARG);
         // set up the rest of the pipe
         jsvObjectSetChildAndUnLock(pipe, "chunkSize", jsvNewFromInteger(chunkSize));
         jsvObjectSetChildAndUnLock(pipe, "end", jsvNewFromBool(callEnd));
