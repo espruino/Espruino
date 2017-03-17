@@ -1124,7 +1124,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
     uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake), APP_TIMER_PRESCALER);
-    if (ticks<1) return false;
+    if (ticks<APP_TIMER_MIN_TIMEOUT_TICKS) return false; // can't sleep this short an amount of time
     uint32_t err_code = app_timer_start(m_wakeup_timer_id, ticks, NULL);
     if (err_code) jsiConsolePrintf("app_timer_start error %d\n", err_code);
 #else
