@@ -504,6 +504,7 @@ INCLUDE += -I/usr/local/include -L/usr/local/lib
 endif
 
 ifdef USE_BLUETOOTH
+  DEFINES += -DBLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif

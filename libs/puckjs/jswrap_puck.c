@@ -392,7 +392,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
 
   if (!jshIsPinValid(anode)) anode = IR_ANODE_PIN;
   if (!jshIsPinValid(cathode)) cathode = IR_CATHODE_PIN;
-  jshPinAnalogOutput(cathode, 0.9, 38000, 0);
+  jshPinAnalogOutput(cathode, 0.75, 38000, 0);
 
   JsSysTime time = jshGetSystemTime();
   bool hasPulses = false;

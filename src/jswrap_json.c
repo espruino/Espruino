@@ -107,7 +107,7 @@ JsVar *jswrap_json_parse_internal() {
   case '[': {
     JsVar *arr = jsvNewEmptyArray(); if (!arr) return 0;
     jslGetNextToken(lex); // [
-    while (lex->tk != ']') {
+    while (lex->tk != ']' && !jspHasError()) {
       JsVar *value = jswrap_json_parse_internal(lex);
       if (!value ||
           (lex->tk!=']' && !jslMatch(','))) {
@@ -126,7 +126,7 @@ JsVar *jswrap_json_parse_internal() {
   case '{': {
     JsVar *obj = jsvNewObject(); if (!obj) return 0;
     jslGetNextToken(lex); // {
-    while (lex->tk == LEX_STR) {
+    while (lex->tk == LEX_STR && !jspHasError()) {
       JsVar *key = jsvAsArrayIndexAndUnLock(jslGetTokenValueAsVar(lex));
       jslGetNextToken(lex);
       JsVar *value = 0;
@@ -145,7 +145,12 @@ JsVar *jswrap_json_parse_internal() {
     }
     return obj;
   }
-  default: return 0; // undefined = error
+  default: {
+    char buf[32];
+    jslTokenAsString(lex->tk, buf, 32);
+    jsExceptionHere(JSET_SYNTAXERROR, "Expecting a valid value, got %s", buf);
+    return 0; // undefined = error
+  }
   }
 }
 

@@ -1,5 +1,3 @@
-include make/common/NRF5X.make
-
 NRF5X=1
 NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x
 
@@ -39,3 +37,5 @@ TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_h
 # Neopixel support (only NRF52)
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
+
+include make/common/NRF5X.make
