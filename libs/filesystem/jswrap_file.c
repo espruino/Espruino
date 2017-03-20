@@ -559,3 +559,56 @@ void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
 }
 Pipe this file to a stream (an object with a 'write' method)
 */
+
+#ifdef FLASH_FS
+#endif
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "flashFatFs",
+  "generate" : "jswrap_E_flashFatFs",
+  "ifndef" : "SAVE_ON_FLASH",
+  "params" : [
+    ["addr","int","The address to start reading from"],
+    ["format","int","if format is 1 then the area is formatted"]
+  ]
+}
+Setup the flash filesystem so that subsequent calls to `E.openFile` and `require('fs').*` will use the flash area.
+ESP8266 aqnd ESP32.
+
+```
+E.flashFatFs(0x200000,true); // Set flash address and format the file system (needed first time)
+console.log(require("fs").readdirSync());
+
+E.flashFatFs(0x200000,0); 
+dd if=/dev/zero of=fat.fs bs=1024 count=1024
+mkfs.vfat -v -S 4096 fat.fs.img
+ 
+f=require("Flash");
+f.read(10,0x200000);
+
+```
+*/
+
+// Need to put in common header
+#define FS_SECTOR_SIZE 4096
+
+void jswrap_E_flashFatFs(int addr, int format) {
+	jsError("E.flashFatFs addr: %d format: %d\r\n", addr, format);
+	fat_initialised = true;
+
+	if ( format == 1 ) {
+		jsError("E.flashFatFs formatting...");
+		FRESULT res = f_mkfs("/", 1, FS_SECTOR_SIZE);
+	    if (res != FR_OK) {
+		    jsError("[f_mkfs] Error %d\r\n", res);
+			jsfsReportError("Format error:",res);
+	    }
+	}
+	FRESULT res;
+    if ((res = f_mount(&jsfsFAT, "", 0) != FR_OK) ) {
+      jsfsReportError("Unable to mount flash FS", res);
+      return;
+    }	
+}

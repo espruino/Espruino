@@ -13,11 +13,12 @@
 
 
 #ifdef FLASH_FS
+
 #define FS_SECTOR_SIZE 4096
-#define FS_BLOCK_SIZE 32
-#define FS_SECTOR_COUNT 131072; // 4*1024*32 = 131072
+#define FS_BLOCK_SIZE 1
+#define FS_SECTOR_COUNT 256; // 1024*1024 / 4096 = 256
 // Hardcode last page of 4Mb memory
-#define FS_FLASH_BASE 0x300000
+#define FS_FLASH_BASE 0x200000
 #else
 #define FS_SECTOR_SIZE 512
 #define FS_BLOCK_SIZE 32
@@ -106,15 +107,14 @@ DRESULT disk_read (
   Memory_Offset = sector * FS_SECTOR_SIZE;
 
   #ifdef FLASH_FS
-  jsiConsolePrint("Flash disk_read\n");
-  spi_flash_read(FS_FLASH_BASE+addr, buff, Transfer_Length);
+  jsiConsolePrint("Flash disk_read %d %d\n", buff, Transfer_Length);
+  jshFlashRead(FS_FLASH_BASE+addr, buff, Transfer_Length);
   #else
   SD_ReadBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
   #endif
 
   return RES_OK;
 }
-
 
 /*-----------------------------------------------------------------------*/
 /* Write Sector(s)                                                       */
@@ -134,8 +134,9 @@ DRESULT disk_write (
   Memory_Offset = sector * FS_SECTOR_SIZE;
 
   #ifdef FLASH_FS
-  jsiConsolePrint("Flash disk_write\n");
-  spi_flash_write(FS_FLASH_BASE+addr, buff, Transfer_Length);  
+  jsiConsolePrint("Flash disk_write %d %d\n", buff, Transfer_Length);
+  jshFlashErasePage(FS_FLASH_BASE+addr);
+  jshFlashWrite(FS_FLASH_BASE+addr, buff, Transfer_Length);  
   #else
   SD_WriteBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
   #endif
