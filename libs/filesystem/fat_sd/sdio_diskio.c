@@ -12,18 +12,8 @@
 #include "sdio_sdcard.h"
 
 
-#ifdef FLASH_FS
 
-#define FS_SECTOR_SIZE 4096
-#define FS_BLOCK_SIZE 1
-#define FS_SECTOR_COUNT 256; // 1024*1024 / 4096 = 256
-// Hardcode last page of 4Mb memory
-#define FS_FLASH_BASE 0x200000
-#else
-#define FS_SECTOR_SIZE 512
-#define FS_BLOCK_SIZE 32
-#define FS_SECTOR_COUNT 131072; // 4*1024*32 = 131072
-#endif
+SD_CardInfo SDCardInfo2;
 
 /*--------------------------------------------------------------------------
 
@@ -35,10 +25,6 @@
 /*-----------------------------------------------------------------------*/
 /* Initialize Disk Drive                                                 */
 /*-----------------------------------------------------------------------*/
-
-
-#ifndef FLASH_FS
-SD_CardInfo SDCardInfo2;
 
 DSTATUS disk_initialize (
   BYTE drv /* Physical drive number (0) */
@@ -63,19 +49,10 @@ DSTATUS disk_initialize (
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
+  //NAND_Init();
   return 0;
 }
-#else
 
-DSTATUS disk_initialize (
-  BYTE drv /* Physical drive number (0) */
-  )
-{
-  jsiConsolePrint("SD_Init Flash Init\n");
-
-  return 0;
-}
-#endif
 
 /*-----------------------------------------------------------------------*/
 /* Get Disk Status                                                       */
@@ -103,18 +80,15 @@ DRESULT disk_read (
   uint16_t Transfer_Length;
   uint32_t Memory_Offset;
 
-  Transfer_Length =  count * FS_SECTOR_SIZE;
-  Memory_Offset = sector * FS_SECTOR_SIZE;
+  Transfer_Length =  count * 512;
+  Memory_Offset = sector * 512;
 
-  #ifdef FLASH_FS
-  jsiConsolePrint("Flash disk_read %d %d\n", buff, Transfer_Length);
-  jshFlashRead(FS_FLASH_BASE+addr, buff, Transfer_Length);
-  #else
   SD_ReadBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
-  #endif
+  //NAND_Read(Memory_Offset, (uint32_t *)buff, Transfer_Length);
 
   return RES_OK;
 }
+
 
 /*-----------------------------------------------------------------------*/
 /* Write Sector(s)                                                       */
@@ -130,16 +104,11 @@ DRESULT disk_write (
   uint16_t Transfer_Length;
   uint32_t Memory_Offset;
 
-  Transfer_Length =  count * FS_SECTOR_SIZE;
-  Memory_Offset = sector * FS_SECTOR_SIZE;
+  Transfer_Length =  count * 512;
+  Memory_Offset = sector * 512;
 
-  #ifdef FLASH_FS
-  jsiConsolePrint("Flash disk_write %d %d\n", buff, Transfer_Length);
-  jshFlashErasePage(FS_FLASH_BASE+addr);
-  jshFlashWrite(FS_FLASH_BASE+addr, buff, Transfer_Length);  
-  #else
   SD_WriteBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
-  #endif
+  //NAND_Write(Memory_Offset, (uint32_t *)buff, Transfer_Length);
 
   return RES_OK;
 }
@@ -159,33 +128,30 @@ DRESULT disk_ioctl (
   uint32_t status = SD_NO_TRANSFER;
   //uint32_t status = NAND_READY;
 
+
+
   switch (ctrl) {
   case CTRL_SYNC : /// Make sure that no pending write process
-  #ifdef FLASH_FS  
-    res = RES_OK;
-    jsiConsolePrint("Flash disk_ioctl CTRL_SYNC\n");
-  #else
     status = SD_GetTransferState();
     if (status == SD_NO_TRANSFER)
       //status = FSMC_NAND_GetStatus();
       //if (status == NAND_READY)
     {res = RES_OK;}
     else{res = RES_ERROR;}
-   #endif
     break;
 
   case GET_SECTOR_COUNT :   // Get number of sectors on the disk (DWORD)
-    *(DWORD*)buff = FS_SECTOR_COUNT;
+    *(DWORD*)buff = 131072; // 4*1024*32 = 131072
     res = RES_OK;
     break;
 
   case GET_SECTOR_SIZE :   // Get R/W sector size (WORD)
-    *(WORD*)buff = FS_SECTOR_SIZE;
+    *(WORD*)buff = 512;
     res = RES_OK;
     break;
 
   case GET_BLOCK_SIZE :     // Get erase block size in unit of sector (DWORD)
-    *(DWORD*)buff = FS_BLOCK_SIZE;
+    *(DWORD*)buff = 32;
     res = RES_OK;
     break;
   }

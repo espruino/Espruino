@@ -74,5 +74,6 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer);
 JsVar *jswrap_file_read(JsVar* parent, int length);
 void jswrap_file_skip_or_seek(JsVar* parent, int length, bool is_skip);
 void jswrap_file_close(JsVar* parent);
-
+#ifdef USE_FLASH_FILESYSTEM
 void jswrap_E_flashFatFs(int addr, int format);
+#endif
