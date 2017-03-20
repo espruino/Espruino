@@ -132,9 +132,10 @@ ifeq ($(BOARD),)
  else ifeq ($(shell uname -n),arietta)
   BOARD=ARIETTA
  else
-  $(info *************************************************************)
-  $(info *           To build, use BOARD=my_board make               *)
-  $(info *************************************************************)
+  #$(info *************************************************************)
+  #$(info *           To build, use BOARD=my_board make               *)
+  #$(info *************************************************************)
+  BOARD=LINUX
  endif
 endif
 
