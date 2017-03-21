@@ -601,7 +601,7 @@ E.flashFatFs(0x200000,1);
 
 
 //Init
-E.flashFatFs(0x300000,2);
+E.flashFatFs(0x200000,2);
 
 var files = require("fs").readdirSync();
 
@@ -612,6 +612,11 @@ console.log(require("fs").readFileSync("hello.txt")); // prints "Hello World"
 E.flashFatFs(0x200000,20); // read off
 
 E.flashFatFs(0x200000,21);  // read on
+
+
+E.flashFatFs(0x300000,2);
+var f = E.openFile("hello.txt","r");
+f.read(1).charCodeAt(0);
 
 ```
 */

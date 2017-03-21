@@ -76,9 +76,13 @@ DRESULT disk_read (
   Transfer_Length =  count * FS_SECTOR_SIZE;
   Memory_Offset = sector * FS_SECTOR_SIZE + fs_flash_base;
 
+
   jsWarn("Flash disk_read sector: %d, buff: mem: %d buff: %d len: %d", sector, Memory_Offset, buff, Transfer_Length);
+  jshDelayMicroseconds(100000);
   if ( ( read_on && sector > 10 ) || ( sector <= 10 ) ){
 	jshFlashRead( buff, Memory_Offset, Transfer_Length);
+	jsWarn("after read\n");
+	jshDelayMicroseconds(100000);
   }
    else {
      jsWarn("reading disabled...%d", read_on );
