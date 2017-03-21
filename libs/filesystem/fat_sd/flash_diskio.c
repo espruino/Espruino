@@ -12,11 +12,13 @@
 #define FS_SECTOR_SIZE 4096
 #define FS_BLOCK_SIZE 1
 // 1MB = 1024*1024 / 4096 = 256
-// 0-33 format
 #define FS_SECTOR_COUNT 256
 
 // Hardcode  page of 4Mb memory
+ uint32_t fs_flash_base=0;
+ int read_on=true;
 #define FS_FLASH_BASE 0x200000
+
 
 /*--------------------------------------------------------------------------
 
@@ -35,8 +37,11 @@ DSTATUS disk_initialize (
 {
   NOT_USED(drv);
   jsWarn("Flash Init - disk_initialize %d",drv);
-
-  return 0;
+  if ( fs_flash_base == 0 ) {
+	jsError("Need to set Flash address with E.flashFatFs");
+	return FR_NOT_READY;
+  }
+  return RES_OK;
 }
 
 /*-----------------------------------------------------------------------*/
@@ -49,7 +54,7 @@ DSTATUS disk_status (
 {
   NOT_USED(drv);
   jsWarn("Flash Init - disk_status %d",drv);
-  return 0;
+  return RES_OK;
 }
 
 
@@ -69,11 +74,15 @@ DRESULT disk_read (
   uint32_t Memory_Offset;
 
   Transfer_Length =  count * FS_SECTOR_SIZE;
-  Memory_Offset = sector * FS_SECTOR_SIZE + FS_FLASH_BASE;
+  Memory_Offset = sector * FS_SECTOR_SIZE + fs_flash_base;
 
   jsWarn("Flash disk_read sector: %d, buff: mem: %d buff: %d len: %d", sector, Memory_Offset, buff, Transfer_Length);
-  jshFlashRead( buff, Memory_Offset, Transfer_Length);
-
+  if ( ( read_on && sector > 10 ) || ( sector <= 10 ) ){
+	jshFlashRead( buff, Memory_Offset, Transfer_Length);
+  }
+   else {
+     jsWarn("reading disabled...%d", read_on );
+   }
   return RES_OK;
 }
 
@@ -93,7 +102,7 @@ DRESULT disk_write (
   uint32_t Memory_Offset;
 
   Transfer_Length =  count * FS_SECTOR_SIZE;
-  Memory_Offset = sector * FS_SECTOR_SIZE + FS_FLASH_BASE;
+  Memory_Offset = sector * FS_SECTOR_SIZE + fs_flash_base;
 
   jsWarn("Flash disk_write sector:  %d, buff: mem: %d buff: %d len: %d", sector, Memory_Offset, buff, Transfer_Length);
   jshFlashErasePage(Memory_Offset);
@@ -143,4 +152,52 @@ DRESULT disk_ioctl (
   }
 
   return res;
-}l
+}
+
+
+/****/
+
+extern void jsfsReportError(const char *msg, FRESULT res);
+extern bool jsfsInit();
+
+int flashFatFsInit( FATFS * jsfsFAT, int addr, int format) {
+	FRESULT res;
+	// sanity check here?
+	fs_flash_base=addr;
+    if ( format == 1 ) {
+        jsError("E.flashFatFs formatting...");
+		memset(jsfsFAT, 0, sizeof(FATFS));
+		if ((res = f_mount(jsfsFAT, "", 0)) != FR_OK) {
+		  jsfsReportError("Unable to format", res);
+		  return false;
+		}		
+        //res = f_mkfs("/", 1, 0);
+        res = f_mkfs("", 1, 0);  /* path,  Partitioning rule 0:FDISK, 1:SFD super floppy , size of allocation unit */
+        if (res != FR_OK) {
+            jsError("[f_mkfs] Error %d\r\n", res);
+            jsfsReportError("Format error:",res);
+        }
+    }
+	if ( format == 2 ) {
+		jsWarn("jsfsInit: %d", jsfsInit());
+	}
+
+	if ( format == 20 ) {
+		read_on=false;
+		jsWarn("Disable Read %d", read_on );		
+	}
+
+	if ( format == 21 ) {
+		read_on=true;
+		jsWarn("Enable Read %d", read_on );		
+	}
+
+	
+	if ( format == 4 ) {
+        DWORD fre_clust;
+		FATFS* ptr=jsfsFAT;
+		res = f_getfree("", &fre_clust, &ptr);
+		jsWarn("fre_clust: %d", fre_clust);
+	}
+	return true;
+}

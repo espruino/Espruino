@@ -586,44 +586,41 @@ console.log(require("fs").readdirSync());
 E.flashFatFs(0x200000,0); 
 dd if=/dev/zero of=fat.fs.img bs=1024 count=1024
 mkfs.vfat -v -F 12 -S 4096 -s 1 fat.fs.img
- 
+
 f=require("Flash");
-f.read(10,0x200000);
+b=0x300000;
+function rSect(s){
+uintArray=f.read(64,b+s*4096);
+console.log(String.fromCharCode.apply(null, uintArray));
+}
+rSect(34);
+
 
 //Format
 E.flashFatFs(0x200000,1);
 
 
 //Init
-E.flashFatFs(0x200000,2);
+E.flashFatFs(0x300000,2);
 
 var files = require("fs").readdirSync();
 
-require("fs").writeFileSync("hello.txt", "Hello World");
+require("fs").writeFileSync("hello.txt", "Hello World\nHello World\nNew line\n");
 
 console.log(require("fs").readFileSync("hello.txt")); // prints "Hello World"
+
+E.flashFatFs(0x200000,20); // read off
+
+E.flashFatFs(0x200000,21);  // read on
 
 ```
 */
 
+extern void flashFatFsInit( FATFS * jsfsFAT, int addr, int format);
+
 void jswrap_E_flashFatFs(int addr, int format) {
     jsWarn("E.flashFatFs addr: %d format: %d", addr,format);
 
-	FRESULT res;
-    if ( format == 1 ) {
-        jsError("E.flashFatFs formatting...");
-		if ((res = f_mount(&jsfsFAT, "", 0)) != FR_OK) {
-		  jsfsReportError("Unable to mount SD card", res);
-		  return false;
-		}		
-        res = f_mkfs("/", 0, 0);  /* path,  Partitioning rule 0:FDISK, 1:SFD super floppy , size of allocation unit */
-        if (res != FR_OK) {
-            jsError("[f_mkfs] Error %d\r\n", res);
-            jsfsReportError("Format error:",res);
-        }
-    } 
-	if ( format == 2 ) {
-		jsWarn("jsfsInit: %d", jsfsInit());
-	}
+	flashFatFsInit( &jsfsFAT, addr, format);
 }
 #endif
