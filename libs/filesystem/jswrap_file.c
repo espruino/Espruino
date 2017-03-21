@@ -1,5 +1,4 @@
 /*
-/*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
  * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
@@ -28,7 +27,6 @@
 #ifndef LINUX
 FATFS jsfsFAT;
 bool fat_initialised = false;
-bool use_flash_fs=false;
 #endif
 
 #ifdef SD_CARD_ANYWHERE
@@ -71,7 +69,7 @@ void jsfsReportError(const char *msg, FRESULT res) {
 bool jsfsInit() {
 #ifndef LINUX
   if (!fat_initialised) {
-    if ( !use_flash_fs ) {
+#ifndef USE_FLASH_FILESYSTEM  
 #ifdef SD_CARD_ANYWHERE
     if (!isSdSPISetup()) {
 #ifdef SD_SPI
@@ -88,10 +86,10 @@ bool jsfsInit() {
 #else
       jsError("SD card must be setup with E.connectSDCard first");
       return false;
-#endif
+#endif // SD_SPI
     }
-#endif
-  }
+#endif // SD_CARD_ANYWHERE
+#endif // USE_FLASH_FILESYSTEM 
     FRESULT res;
     if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
       jsfsReportError("Unable to mount SD card", res);
@@ -100,7 +98,7 @@ bool jsfsInit() {
     jsWarn("jsfsInit - appears to f_mount!");
     fat_initialised = true;
   }
-#endif
+#endif // LINUX
   return true;
 }
 
@@ -572,6 +570,7 @@ Pipe this file to a stream (an object with a 'write' method)
   "name" : "flashFatFs",
   "generate" : "jswrap_E_flashFatFs",
   "ifndef" : "SAVE_ON_FLASH",
+  "ifdef" : "USE_FLASH_FILESYSTEM",
   "params" : [
     ["addr","int","The address to start reading from"],
     ["format","int","if format is 1 then the area is formatted"]
@@ -586,10 +585,17 @@ console.log(require("fs").readdirSync());
 
 E.flashFatFs(0x200000,0); 
 dd if=/dev/zero of=fat.fs.img bs=1024 count=1024
-mkfs.vfat -v -F 16 -S 4096 -s 1 fat.fs.img
+mkfs.vfat -v -F 12 -S 4096 -s 1 fat.fs.img
  
 f=require("Flash");
 f.read(10,0x200000);
+
+//Format
+E.flashFatFs(0x200000,1);
+
+
+//Init
+E.flashFatFs(0x200000,2);
 
 var files = require("fs").readdirSync();
 
@@ -600,21 +606,24 @@ console.log(require("fs").readFileSync("hello.txt")); // prints "Hello World"
 ```
 */
 
-// Need to put in common header
-#define FS_SECTOR_SIZE 4096
-
 void jswrap_E_flashFatFs(int addr, int format) {
-    jsError("E.flashFatFs addr: %d format: %d\r\n", addr,format);
-    use_flash_fs=true;
+    jsWarn("E.flashFatFs addr: %d format: %d", addr,format);
 
+	FRESULT res;
     if ( format == 1 ) {
         jsError("E.flashFatFs formatting...");
-        FRESULT res = f_mkfs("/", 1, FS_SECTOR_SIZE);
+		if ((res = f_mount(&jsfsFAT, "", 0)) != FR_OK) {
+		  jsfsReportError("Unable to mount SD card", res);
+		  return false;
+		}		
+        res = f_mkfs("/", 0, 0);  /* path,  Partitioning rule 0:FDISK, 1:SFD super floppy , size of allocation unit */
         if (res != FR_OK) {
             jsError("[f_mkfs] Error %d\r\n", res);
             jsfsReportError("Format error:",res);
         }
-    }
-    jsError("jsfsInit: %d", jsfsInit());
+    } 
+	if ( format == 2 ) {
+		jsWarn("jsfsInit: %d", jsfsInit());
+	}
 }
 #endif
