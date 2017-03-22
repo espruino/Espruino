@@ -20,17 +20,11 @@
 #include "ff.h"
 #include "diskio.h"
 #include "jswrap_file.h"
+#include "flash_diskio.h"
 
-// Hardcode last 1Mb of 4Mb flash
- uint32_t fs_flash_base = 0x300000;
- 
-
-// 1MB = 1024*1024 / 4096 = 256
-#define FS_SECTOR_COUNT 256
-// Set sector size as the same a flash block size
-#define FS_SECTOR_SIZE 4096
-// Cluster = 1 sector
-#define FS_BLOCK_SIZE 1
+ uint32_t fs_flash_base     = FS_FLASH_BASE;
+ uint16_t fs_flash_sectors  = FS_SECTOR_COUNT;
+ uint8_t  fs_flash_readonly = false;
 
 /*--------------------------------------------------------------------------
 
@@ -157,33 +151,13 @@ DRESULT disk_ioctl (
   return res;
 }
 
-// Need size, readonly , automount?
-int flashFatFsInit( FATFS * jsfsFAT, int addr, int format) {
-	FRESULT res;
-	// sanity check here?
-	fs_flash_base=addr;
-    if ( format == 1 ) {
-        jsError("E.flashFatFs formatting...");
-		if ((res = f_mount(jsfsFAT, "", 0)) != FR_OK) {
-		  jsfsReportError("Unable to format", res);
-		  return false;
-		}		
-        //res = f_mkfs("/", 1, 0);
-        res = f_mkfs("", 1, 0);  /* path,  Partitioning rule 0:FDISK, 1:SFD super floppy , size of allocation unit */
-        if (res != FR_OK) {
-            jsError("[f_mkfs] Error %d\r\n", res);
-            jsfsReportError("Format error:",res);
-        }
-    }
-	if ( format == 2 ) {
-		jsDebug("jsfsInit: %d", jsfsInit());
-	}
-	
-	if ( format == 4 ) {
-        DWORD fre_clust;
-		FATFS* ptr=jsfsFAT;
-		res = f_getfree("", &fre_clust, &ptr);
-		jsDebug("fre_clust: %d", fre_clust);
-	}
-	return true;
+/*-----------------------------------------------------------------------*/
+// store settings of base addr, sectors, read only
+// used to change default flash areas
+/*-----------------------------------------------------------------------*/
+int flashFatFsInit( uint32_t addr, uint16_t sectors, uint8_t readonly ) {
+  fs_flash_base = addr;
+  fs_flash_sectors = sectors;
+  fs_flash_readonly = readonly;
+  return true;
 }
