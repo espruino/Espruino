@@ -31,7 +31,8 @@ info = {
      'TLS',
      'TELNET',
      'NEOPIXEL',
-     'FILESYSTEM'
+     'FILESYSTEM',
+     'FLASHFS'	 
    ],
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1'

@@ -172,7 +172,7 @@
 
 
 #define	_MIN_SS		512
-#ifdef USE_FLASH_FILESYSTEM
+#ifdef USE_FLASHFS
 #define	_MAX_SS		4096
 #else
 #define	_MAX_SS		512
