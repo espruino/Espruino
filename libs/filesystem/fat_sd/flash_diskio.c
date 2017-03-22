@@ -1,24 +1,36 @@
-// Use Flash memory with devices with large flash - ESP8266/ESP32
 /*
- * @author: Wilberforce - Rhys Williams
- * 
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ *  Copyright (C) 2016 by Rhys Williams (wilberforce)
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * This file is designed to be parsed during the build process
+ *
+ * Contains built-in functions for using Flash memory as disk on devices with
+ * large flash - e.g ESP32 / ESP8266
+ * ----------------------------------------------------------------------------
  */
 
 #include "jsinteractive.h"
 
 #include "ff.h"
 #include "diskio.h"
+#include "jswrap_file.h"
 
-#define FS_SECTOR_SIZE 4096
-#define FS_BLOCK_SIZE 1
+// Hardcode last 1Mb of 4Mb flash
+ uint32_t fs_flash_base = 0x300000;
+ 
+
 // 1MB = 1024*1024 / 4096 = 256
 #define FS_SECTOR_COUNT 256
-
-// Hardcode  page of 4Mb memory
- uint32_t fs_flash_base=0;
- int read_on=true;
-#define FS_FLASH_BASE 0x200000
-
+// Set sector size as the same a flash block size
+#define FS_SECTOR_SIZE 4096
+// Cluster = 1 sector
+#define FS_BLOCK_SIZE 1
 
 /*--------------------------------------------------------------------------
 
@@ -35,12 +47,9 @@ DSTATUS disk_initialize (
   BYTE drv /* Physical drive number (0) */
   )
 {
-  NOT_USED(drv);
-  jsWarn("Flash Init - disk_initialize %d",drv);
-  if ( fs_flash_base == 0 ) {
-	jsError("Need to set Flash address with E.flashFatFs");
-	return FR_NOT_READY;
-  }
+  if (drv != 0)
+     return STA_NODISK;
+  //jsDebug("Flash Disk Init %d",drv);
   return RES_OK;
 }
 
@@ -52,11 +61,10 @@ DSTATUS disk_status (
   BYTE drv /* Physical drive number (0) */
   )
 {
-  NOT_USED(drv);
-  jsWarn("Flash Init - disk_status %d",drv);
+  if (drv != 0)
+     return STA_NODISK;
   return RES_OK;
 }
-
 
 /*-----------------------------------------------------------------------*/
 /* Read Sector(s)                                                        */
@@ -69,24 +77,17 @@ DRESULT disk_read (
   UINT count /* Sector count */
   )
 {
-  NOT_USED(drv);
-  uint16_t Transfer_Length;
-  uint32_t Memory_Offset;
+  if (drv != 0)
+     return STA_NODISK;
+	 
+  uint16_t size;
+  uint32_t addr;
 
-  Transfer_Length =  count * FS_SECTOR_SIZE;
-  Memory_Offset = sector * FS_SECTOR_SIZE + fs_flash_base;
-
-
-  jsWarn("Flash disk_read sector: %d, buff: mem: %d buff: %d len: %d", sector, Memory_Offset, buff, Transfer_Length);
-  jshDelayMicroseconds(100000);
-  if ( ( read_on && sector > 10 ) || ( sector <= 10 ) ){
-	jshFlashRead( buff, Memory_Offset, Transfer_Length);
-	jsWarn("after read\n");
-	jshDelayMicroseconds(100000);
-  }
-   else {
-     jsWarn("reading disabled...%d", read_on );
-   }
+  size =  count * FS_SECTOR_SIZE;
+  addr = sector * FS_SECTOR_SIZE + fs_flash_base;
+  
+  jsDebug("Flash disk_read sector: %d, buff: mem: %d buff: %d len: %d", sector, addr, buff, size);
+  jshFlashRead( buff, addr, size);
   return RES_OK;
 }
 
@@ -101,16 +102,17 @@ DRESULT disk_write (
   UINT count /* Sector count */
   )
 {
-  NOT_USED(drv);
-  uint16_t Transfer_Length;
-  uint32_t Memory_Offset;
+  if (drv != 0)
+     return STA_NODISK;
+  uint16_t size;
+  uint32_t addr;
 
-  Transfer_Length =  count * FS_SECTOR_SIZE;
-  Memory_Offset = sector * FS_SECTOR_SIZE + fs_flash_base;
+  size =  count * FS_SECTOR_SIZE;
+  addr = sector * FS_SECTOR_SIZE + fs_flash_base;
 
-  jsWarn("Flash disk_write sector:  %d, buff: mem: %d buff: %d len: %d", sector, Memory_Offset, buff, Transfer_Length);
-  jshFlashErasePage(Memory_Offset);
-  jshFlashWrite( buff, Memory_Offset,Transfer_Length);  
+  jsDebug("Flash disk_write sector:  %d, buff: mem: %d buff: %d len: %d", sector, addr, buff, size);
+  jshFlashErasePage(addr);
+  jshFlashWrite( buff, addr,size);  
 
   return RES_OK;
 }
@@ -126,31 +128,28 @@ DRESULT disk_ioctl (
   void *buff // Buffer to send/receive control data
   )
 {
-  NOT_USED(drv);
+  if (drv != 0)
+     return STA_NODISK;
   DRESULT res = RES_OK;
-  jsWarn("Flash disk_ioctl %d",ctrl);
 
   switch (ctrl) {
   case CTRL_SYNC : /// Make sure that no pending write process
     res = RES_OK;
-    jsWarn("Flash disk_ioctl CTRL_SYNC");
+    jsDebug("Flash disk_ioctl CTRL_SYNC");
     break;
 
   case GET_SECTOR_COUNT :   // Get number of sectors on the disk (DWORD)
     *(DWORD*)buff = FS_SECTOR_COUNT;
-	jsWarn("disk_ioctl FS_SECTOR_COUNT %d",FS_SECTOR_COUNT);
     res = RES_OK;
     break;
 
   case GET_SECTOR_SIZE :   // Get R/W sector size (WORD)
     *(WORD*)buff = FS_SECTOR_SIZE;
-	jsWarn("disk_ioctl FS_SECTOR_SIZE %d",FS_SECTOR_SIZE);	
     res = RES_OK;
     break;
 
   case GET_BLOCK_SIZE :     // Get erase block size in unit of sector (DWORD)
-    *(DWORD*)buff = FS_BLOCK_SIZE;
-	jsWarn("disk_ioctl FS_BLOCK_SIZE %d",FS_BLOCK_SIZE);		
+    *(DWORD*)buff = FS_BLOCK_SIZE;	
     res = RES_OK;
     break;
   }
@@ -158,19 +157,13 @@ DRESULT disk_ioctl (
   return res;
 }
 
-
-/****/
-
-extern void jsfsReportError(const char *msg, FRESULT res);
-extern bool jsfsInit();
-
+// Need size, readonly , automount?
 int flashFatFsInit( FATFS * jsfsFAT, int addr, int format) {
 	FRESULT res;
 	// sanity check here?
 	fs_flash_base=addr;
     if ( format == 1 ) {
         jsError("E.flashFatFs formatting...");
-		memset(jsfsFAT, 0, sizeof(FATFS));
 		if ((res = f_mount(jsfsFAT, "", 0)) != FR_OK) {
 		  jsfsReportError("Unable to format", res);
 		  return false;
@@ -183,25 +176,14 @@ int flashFatFsInit( FATFS * jsfsFAT, int addr, int format) {
         }
     }
 	if ( format == 2 ) {
-		jsWarn("jsfsInit: %d", jsfsInit());
+		jsDebug("jsfsInit: %d", jsfsInit());
 	}
-
-	if ( format == 20 ) {
-		read_on=false;
-		jsWarn("Disable Read %d", read_on );		
-	}
-
-	if ( format == 21 ) {
-		read_on=true;
-		jsWarn("Enable Read %d", read_on );		
-	}
-
 	
 	if ( format == 4 ) {
         DWORD fre_clust;
 		FATFS* ptr=jsfsFAT;
 		res = f_getfree("", &fre_clust, &ptr);
-		jsWarn("fre_clust: %d", fre_clust);
+		jsDebug("fre_clust: %d", fre_clust);
 	}
 	return true;
 }

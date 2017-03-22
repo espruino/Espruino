@@ -67,6 +67,7 @@ void jsfsReportError(const char *msg, FRESULT res) {
 }
 
 bool jsfsInit() {
+   
 #ifndef LINUX
   if (!fat_initialised) {
 #ifndef USE_FLASH_FILESYSTEM  
@@ -88,14 +89,35 @@ bool jsfsInit() {
       return false;
 #endif // SD_SPI
     }
-#endif // SD_CARD_ANYWHERE
+#endif // SD_CARD_ANYWHER
 #endif // USE_FLASH_FILESYSTEM 
     FRESULT res;
-    if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
-      jsfsReportError("Unable to mount SD card", res);
-      return false;
+#ifdef USE_FLASH_FILESYSTEM 	
+#define FS_MOUNT_OPTION 0 /* Mount later */
+#else	
+#define FS_MOUNT_OPTION 1 /* Mount now */
+#endif // USE_FLASH_FILESYSTEM 
+
+	jsWarn("about to f_mount %d",FS_MOUNT_OPTION);
+    if ((res = f_mount(&jsfsFAT, "", 1)) != FR_OK) {
+#ifdef USE_FLASH_FILESYSTEM
+	  if ( res == FR_NO_FILESYSTEM ) {
+	    res = f_mount(&jsfsFAT, "", 0);
+	    jsWarn("Formatting Flash");
+		/* Auto format the flash. f_mkfs( path, 1=SFD super floppy , default allocation unit ) */
+        res = f_mkfs("", 1, 0);  
+        if (res != FR_OK) {
+            jsfsReportError("Flash Formatting error:",res);
+			return false;
+        }	  
+	  }
+	  // var files = require("fs").readdirSync();
+#endif // USE_FLASH_FILESYSTEM
+       if ( res  != FR_OK ) {
+         jsfsReportError("Unable to mount media", res);
+         return false;
+       }
     }
-    jsWarn("jsfsInit - appears to f_mount!");
     fat_initialised = true;
   }
 #endif // LINUX
@@ -597,7 +619,7 @@ rSect(34);
 
 
 //Format
-E.flashFatFs(0x200000,1);
+E.flashFatFs(0x300000,1);
 
 
 //Init
@@ -621,11 +643,7 @@ f.read(1).charCodeAt(0);
 ```
 */
 
-extern void flashFatFsInit( FATFS * jsfsFAT, int addr, int format);
-
 void jswrap_E_flashFatFs(int addr, int format) {
-    jsWarn("E.flashFatFs addr: %d format: %d", addr,format);
-
 	flashFatFsInit( &jsfsFAT, addr, format);
 }
 #endif
