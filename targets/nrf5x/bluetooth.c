@@ -141,6 +141,7 @@ bool jsble_check_error(uint32_t err_code) {
   if (!err_code) return false;
   const char *name = 0;
   if (err_code==NRF_ERROR_INVALID_PARAM) name="INVALID_PARAM";
+  else if (err_code==NRF_ERROR_INVALID_STATE) name="NRF_ERROR_INVALID_STATE";
   else if (err_code==NRF_ERROR_INVALID_LENGTH) name="INVALID_LENGTH";
   else if (err_code==NRF_ERROR_INVALID_FLAGS) name="INVALID_FLAGS";
   else if (err_code==NRF_ERROR_DATA_SIZE) name="DATA_SIZE";
@@ -328,6 +329,23 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         break;
 
       case BLE_GAP_EVT_DISCONNECTED:
+
+#if PEER_MANAGER_ENABLED
+        if (m_is_wl_changed) {
+            // The whitelist has been modified, update it in the Peer Manager.
+            err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
+            APP_ERROR_CHECK(err_code);
+
+            err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
+            if (err_code != NRF_ERROR_NOT_SUPPORTED)
+            {
+                APP_ERROR_CHECK(err_code);
+            }
+
+            m_is_wl_changed = false;
+        }
+#endif
+
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
           JsVar *gattServer = bleGetActiveBluetoothGattServer();
@@ -364,22 +382,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
           jsble_restart_softdevice();
-
-#if PEER_MANAGER_ENABLED
-        if (m_is_wl_changed) {
-            // The whitelist has been modified, update it in the Peer Manager.
-            err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
-            APP_ERROR_CHECK(err_code);
-
-            err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
-            if (err_code != NRF_ERROR_NOT_SUPPORTED)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-
-            m_is_wl_changed = false;
-        }
-#endif
 
         break;
 
@@ -1742,9 +1744,7 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
                                                length,
                                                data);
   }
-  if (err_code) {
-    jsExceptionHere(JSET_ERROR, "BLE HID error code 0x%x\n", err_code);
-  }
+  jsble_check_error(err_code);
 
   return;
 }
