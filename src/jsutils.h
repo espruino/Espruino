@@ -393,10 +393,6 @@ void jsError_flash(const char *fmt, ...);
 void jsWarn_flash(const char *fmt, ...);
 #endif
 
-#ifndef RELEASE
-#define jsDebug(...) jsWarn(##__VA_ARGS__)
-#endif
-
 // ------------
 /// Error flags for internal errors - update jswrap_espruino_getErrorFlags if you add to this
 typedef enum {
