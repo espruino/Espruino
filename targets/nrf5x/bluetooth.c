@@ -886,8 +886,17 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
                 if (m_whitelist_peer_cnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT)
                 {
                     //bonded to a new peer, add it to the whitelist.
-                    m_whitelist_peers[m_whitelist_peer_cnt++] = m_peer_id;
-                    m_is_wl_changed = true;
+                    // but first check it's not in there already!
+                    uint32_t i;
+                    bool found = false;
+                    for (i=0;i<m_whitelist_peer_cnt;i++)
+                      if (m_whitelist_peers[i]==m_peer_id)
+                        found = true;
+                    // not in already, so add it!
+                    if (!found) {
+                      m_whitelist_peers[m_whitelist_peer_cnt++] = m_peer_id;
+                      m_is_wl_changed = true;
+                    }
                 }
                 //Note: This code will use the older bonded device in the white list and not add any newer bonded to it
                 //      You should check on what kind of white list policy your application should use.
