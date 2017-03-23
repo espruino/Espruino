@@ -73,7 +73,7 @@ DRESULT disk_read (
 {
   if (drv != 0)
      return STA_NODISK;
-	 
+ 
   uint16_t size;
   uint32_t addr;
 
@@ -155,7 +155,7 @@ DRESULT disk_ioctl (
 // store settings of base addr, sectors, read only
 // used to change default flash areas
 /*-----------------------------------------------------------------------*/
-int flashFatFsInit( uint32_t addr, uint16_t sectors, uint8_t readonly ) {
+uint8_t flashFatFsInit( uint32_t addr, uint16_t sectors, uint8_t readonly, uint8_t format ) {
   fs_flash_base = addr;
   fs_flash_sectors = sectors;
   fs_flash_readonly = readonly;

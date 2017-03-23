@@ -77,6 +77,6 @@ void jswrap_file_close(JsVar* parent);
 #ifdef USE_FLASHFS
 void jsfsReportError(const char *msg, FRESULT res);
 bool jsfsInit();
-void jswrap_E_flashFatFs(JsVar* options);
+int jswrap_E_flashFatFS(JsVar* options);
 
 #endif

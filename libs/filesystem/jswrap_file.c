@@ -98,23 +98,8 @@ bool jsfsInit() {
     FRESULT res;
 
     if ((res = f_mount(&jsfsFAT, "", 1)) != FR_OK) {
-#ifdef USE_FLASHFS
-	  if ( res == FR_NO_FILESYSTEM ) {
-	    res = f_mount(&jsfsFAT, "", 0);
-	    jsWarn("Formatting Flash");
-		// Auto format the flash. f_mkfs( path, 1=SFD super floppy , default allocation unit )
-	    // use E.flashFatFs if different flash area or size required
-        res = f_mkfs("", 1, 0);  
-        if (res != FR_OK) {
-            jsfsReportError("Flash Formatting error:",res);
-			return false;
-        }	  
-	  }
-#endif // USE_FLASHFS
-       if ( res  != FR_OK ) {
-         jsfsReportError("Unable to mount media", res);
-         return false;
-       }
+       jsfsReportError("Unable to mount media", res);
+       return false;
     }
     fat_initialised = true;
   }
@@ -568,66 +553,101 @@ void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
   if (res) jsfsReportError(is_skip?"Unable to skip":"Unable to seek", res);
 }
 
-/*
-
-
+/*JSON{
+  "type" : "method",
+  "class" : "File",
+  "name" : "pipe",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_pipe",
+  "params" : [
+    ["destination","JsVar","The destination file/stream that will receive content from the source."],
     ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+  ]
+}
+Pipe this file to a stream (an object with a 'write' method)
 */
 
 #ifdef USE_FLASHFS
 
-/*
-    [["options","JsVar",["An optional object `{ addr : int=0x300000, sectors : int=256, readonly : bool=false }`","addr : start address in flash","sectors: number of sectors to use","readonly: set to true if you want to disable write" ]]]
-*/
-
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",
-  "name" : "flashFatFs",
-  "generate" : "jswrap_E_flashFatFs",
+  "name" : "flashFatFS",
+  "generate" : "jswrap_E_flashFatFS",
   "ifndef" : "SAVE_ON_FLASH",
   "ifdef" : "USE_FLASHFS",
    "params" : [
-    ["options","JsVar",["An optional object `{ addr : int=0x300000, sectors : int=256, readonly : bool=false }`","addr : start address in flash","sectors: number of sectors to use","readonly: set to true if you want to disable write"]]
-  ]
+    ["options","JsVar",["An optional object `{ addr : int=0x300000, sectors : int=256, readonly : bool=false, , format : bool=false }`","addr : start address in flash","sectors: number of sectors to use","readonly: set to true if you want to disable write","format:  Format the media"]]
+  ],
+  "return" : ["bool","True on success, or false on failure"]  
 }
-Change the defaults used for the flash filesystem.
+Change the paramters used for the flash filesystem.
 The default address is the last 1Mb of 4Mb Flash, 0x300000, with total size of 1Mb.
 
+Before first use the media needs to be formatted.
 ```
-E.flashFatFs( { addr: 0x200000, sectors : 100, readonly: true } );
+fs=require("fs");
+
+if ( typeof(fs.readdirSync())==="undefined" ) {
+  console.log("Formatting FS");
+  E.flashFatFS({format:true});
+}
+
+fs.writeFileSync("bang.txt", "This is the way the world ends\nnot with a bang but a whimper.\n");
+
+fs.readdirSync();
 ```
 
 This will create a drive of 100 * 4096 bytes at 0x200000. Be careful with the selection of flash addresses as you can overwrite firmware!
 */
 
-void jswrap_E_flashFatFs(JsVar* options) {
-	uint32_t addr=FS_FLASH_BASE;
-	uint16_t sectors=FS_SECTOR_COUNT;
-	uint8_t readonly=0;
-	// addr : 0x300000, sectors :256, readonly:false
-	if (jsvIsObject(options)) {
-	  JsVar *a = jsvObjectGetChild(options, "addr", false);
-	  if (a) {
-		if (jsvIsNumeric(a) && jsvGetInteger(a)>0x100000)
-		  addr = jsvGetInteger(a);
-		}
-	  JsVar *s = jsvObjectGetChild(options, "sectors", false);
-	  if (s) {
-		if (jsvIsNumeric(s) && jsvGetInteger(s)>0)
-		  sectors = jsvGetInteger(s);
-		}
-	  JsVar *r = jsvObjectGetChild(options, "readonly", false);
-	  if (r) {
-		if (jsvIsNumeric(s))
-		  readonly = r != 0;
-		}
-      jsWarn( "E.flashFatFs a:%d, s: %d r: %d", addr, sectors, readonly );
-	}
-	else if (!jsvIsUndefined(options)) {
-	  jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
-	}
-	
-	flashFatFsInit( addr, sectors, readonly );
+int jswrap_E_flashFatFS(JsVar* options) {
+  uint32_t addr = FS_FLASH_BASE;
+  uint16_t sectors = FS_SECTOR_COUNT;
+  uint8_t readonly = 0;
+  uint8_t format = 0;
+  // addr : 0x300000, sectors :256, readonly:false
+  if (jsvIsObject(options)) {
+    JsVar *a = jsvObjectGetChild(options, "addr", false);
+    if (a) {
+      if (jsvIsNumeric(a) && jsvGetInteger(a)>0x100000)
+        addr = jsvGetInteger(a);
+    }
+    JsVar *s = jsvObjectGetChild(options, "sectors", false);
+    if (s) {
+      if (jsvIsNumeric(s) && jsvGetInteger(s)>0)
+        sectors = jsvGetInteger(s);
+    }
+    JsVar *r = jsvObjectGetChild(options, "readonly", false);
+    if (r) {
+      if (jsvIsBoolean(r))
+        readonly = jsvGetBool(r);
+		jsWarn("readonly not implemented");
+    }
+     JsVar *f = jsvObjectGetChild(options, "format", false);
+    if (f) {
+      if (jsvIsBoolean(f))
+        format = jsvGetBool(f);
+    }
+     jsWarn( "E.flashFatFs a:%d, s: %d r: %d f: %d", addr, sectors, readonly, format );
+  }
+  else if (!jsvIsUndefined(options)) {
+    jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
+  }
+  
+  uint8_t init=flashFatFsInit( addr, sectors, readonly, format );
+  if (init) {
+    if ( format ) {
+      uint8_t res = f_mount(&jsfsFAT, "", 0);
+      jsWarn("Formatting Flash");
+      res = f_mkfs("", 1, 0);  // Super Floppy format, using all space (not partition table)
+      if (res != FR_OK) {
+        jsfsReportError("Flash Formatting error:",res);
+        return false;
+     }
+   }    
+  }
+  jsfsInit();
+  return true;
 }
 #endif
