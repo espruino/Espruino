@@ -27,7 +27,12 @@ MDN_URLS.txt
 node_modules
 /build/
 esp_iot_sdk_v1.5.0
+esp_iot_sdk_v2.0.0.p1
 xtensa-lx106-elf
+app
+esp-idf
+xtensa-esp32-elf
+gcc-arm-none-eabi*
 *.c#
 /function_keywords.js
 /functions.html

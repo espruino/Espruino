@@ -392,7 +392,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
 
   if (!jshIsPinValid(anode)) anode = IR_ANODE_PIN;
   if (!jshIsPinValid(cathode)) cathode = IR_CATHODE_PIN;
-  jshPinAnalogOutput(cathode, 0.9, 38000, 0);
+  jshPinAnalogOutput(cathode, 0.75, 38000, 0);
 
   JsSysTime time = jshGetSystemTime();
   bool hasPulses = false;
@@ -463,7 +463,12 @@ JsVarFloat jswrap_puck_light() {
   if (s != JSHPINSTATE_GPIO_IN) {
     jshPinOutput(LED1_PININDEX,0);// discharge
     jshPinAnalog(LED1_PININDEX);// analog
-    jshDelayMicroseconds(5000);
+    int delay = 5000;
+    // if we were using a peripheral it can take longer
+    // for everything to sort itself out
+    if ((s&JSHPINSTATE_MASK) == JSHPINSTATE_AF_OUT)
+      delay = 50000;
+    jshDelayMicroseconds(delay);
   }
   JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
   JsVarFloat f = jshPinAnalog(LED1_PININDEX)*v/(3*0.45);

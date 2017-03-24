@@ -25,12 +25,21 @@ info = {
  'variables' :  5119, # (96-16)*1024/16-1
  'binary_name' : 'espruino_%v_nucleol476rg.bin',
  'build' : {
-  'defines' : [
-     'USE_GRAPHICS',
-     'USE_NET',
+   'optimizeflags' : '-O3',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'NUCLEO=1',
+     'DEFINES+=-DUSE_USB_OTG_FS=1',
+     'STLIB=STM32L476xx',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates/gcc/startup_stm32l476xx.o'
    ]
- }
+  }
 };
+
 chip = {
   'part' : "STM32L476RG",
   'family' : "STM32L4",
@@ -67,8 +76,8 @@ devices = {
            },
   'JTAG' : {
         'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-        'pin_DI' : 'A15' 
+        'pin_CK' : 'A14',
+        'pin_DI' : 'A15'
           },
 #  'USB' : { 'pin_otg_pwr' : 'C0',
 #            'pin_dm' : 'A11',

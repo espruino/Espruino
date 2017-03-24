@@ -168,9 +168,7 @@ Return all enumerable keys of the given object
   "return" : ["JsVar","An array of the Object's own properties"]
 }
 Returns an array of all properties (enumerable or not) found directly on a given object.
-
- **Note:** This doesn't currently work as it should for built-in objects and their prototypes. See bug #380
- */
+*/
 
 
 void _jswrap_object_keys_or_property_names_iterator(

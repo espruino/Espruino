@@ -420,11 +420,6 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   double *vImag = (double*)alloca(sizeof(double)*pow2);
 
   unsigned int i;
-  for (i=0;i<pow2;i++) {
-    vReal[i]=0;
-    vImag[i]=0;
-  }
-
   // load data
   JsvIterator it;
   jsvIteratorNew(&it, arrReal);
@@ -434,22 +429,27 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
     jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
+  while (i<pow2)
+    vReal[i++]=0;
 
+  i=0;
   if (jsvIsIterable(arrImag)) {
     jsvIteratorNew(&it, arrImag);
-    i=0;
     while (i<pow2 && jsvIteratorHasElement(&it)) {
       vImag[i++] = jsvIteratorGetFloatValue(&it);
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
   }
+  while (i<pow2)
+    vImag[i++]=0;
 
   // do FFT
   FFT(inverse ? -1 : 1, order, vReal, vImag);
 
   // Put the results back
-  bool useModulus = jsvIsIterable(arrImag);
+  // If we had imaginary data then DON'T modulus the result
+  bool useModulus = !jsvIsIterable(arrImag);
 
   jsvIteratorNew(&it, arrReal);
   i=0;

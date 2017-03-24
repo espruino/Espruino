@@ -21,12 +21,20 @@ info = {
  'variables' : 5450,
  'binary_name' : 'espruino_%v_stm32f4discovery.bin',
  'build' : {
-  'defines' : [
-     'USE_GRAPHICS',
-     'USE_NET',
+   'optimizeflags' : '-O3',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'DEFINES+=-DUSE_USB_OTG_FS=1',
+     'STLIB=STM32F407xx',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o'
    ]
- }
+  }
 };
+
 chip = {
   'part' : "STM32F407VGT6",
   'family' : "STM32F4",
@@ -70,15 +78,15 @@ devices = {
                'pin_sda' :  'B9',
                'pin_scl' :  'B6',
                'pin_mclk' :  'C7',
-               'pin_sclk' :  'C10',    
-               'pin_sdin' :  'C12',  
+               'pin_sclk' :  'C10',
+               'pin_sdin' :  'C12',
                'pin_lrck' :  'A4',
-               'pin_nrst' :  'D4',    
+               'pin_nrst' :  'D4',
                 },
   'JTAG' : {
         'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-        'pin_DI' : 'A15' 
+        'pin_CK' : 'A14',
+        'pin_DI' : 'A15'
           },
 };
 

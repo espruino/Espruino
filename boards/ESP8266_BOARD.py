@@ -22,11 +22,12 @@ info = {
  'variables'       : 1700,
  'binary_name'     : 'espruino_%v_esp8266',
  'build' : {
-   'defines' : [
-     'USE_NET',
-     'USE_TELNET',
-     'USE_GRAPHICS',
-     'USE_CRYPTO',
+   'libraries' : [
+     'NET',
+     'TELNET',
+     #'GRAPHICS',
+     'CRYPTO',
+     'NEOPIXEL',
    ]
  }
 };

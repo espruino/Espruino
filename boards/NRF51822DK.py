@@ -26,8 +26,15 @@ info = {
  'variables' : 1050,
  'binary_name' : 'espruino_%v_nrf51822.bin',
  'build' : {
-  'defines' : [
-     'USE_BLUETOOTH'
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'BLUETOOTH',
+     'GRAPHICS',
+   ],
+   'makefile' : [
+     'SAVE_ON_FLASH=1',
+     'DEFINES += -DUSE_DEBUGGER -DUSE_TAB_COMPLETE',
+     'DEFINES += -DBOARD_PCA10028'
    ]
  }
 };
@@ -101,7 +108,7 @@ def get_pins():
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN5"]=0;
   pinutils.findpin(pins, "PD5", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PD6", True)["functions"]["ADC1_IN7"]=0;
-  # everything is non-5v tolerant 
+  # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;
 

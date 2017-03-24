@@ -2,21 +2,11 @@
 
 language: c
 
-# Maybe someday when travis-ci authorizes the ppa:
-# https://github.com/travis-ci/apt-source-whitelist/issues/219
-#sudo: false
-#addon:
-#  apt:
-#    sources:
-#      - ppa:team-gcc-arm-embedded/ppa
-#    packages:
-#      - libsdl1.2-dev gcc-arm-embedded
-
 before_script:
- - source ./scripts/provision-framework.sh $BOARD
+ - source ./scripts/provision.sh $BOARD
 
 after_script:
-  - ls *.bin *.hex *.tgz | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
+  - ls *.bin *.hex *.tgz *.zip | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
   # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
   # in environment using travis' repository settings
   - "if [[ -n \"$S3_BUCKET\" && -n \"$AWS_ACCESS_KEY_ID\" ]]; then
@@ -32,31 +22,32 @@ compiler:
 
 env:
   global:
-    - RELEASE=1
     - TRAVIS=1
     - V=0
     - RELEASE=1
   matrix:
-    - ESP32=1                   BOARD=ESP32
-    - ESP8266_BOARD=1           BOARD=ESP8266_BOARD
-    - ESPRUINO_1V3=1            BOARD=ESPRUINO_1V3
-    - PICO_1V3=1                BOARD=PICO_1V3
-    - MICROBIT=1                BOARD=MICROBIT
-    - NRF52832DK=1              BOARD=NRF52832DK
-    - OLIMEXINO_STM32=1         BOARD=OLIMEXINO_STM32
-    - MAPLERET6_STM32=1         BOARD=MAPLERET6_STM32
-    - HYSTM32_24=1              BOARD=HYSTM32_24
-    - HYSTM32_28=1              BOARD=HYSTM32_28
-    - HYSTM32_32=1              BOARD=HYSTM32_32
-    - STM32VLDISCOVERY=1        BOARD=STM32VLDISCOVERY
-    - STM32F3DISCOVERY=1        BOARD=STM32F3DISCOVERY
-    - STM32F4DISCOVERY=1        BOARD=STM32F4DISCOVERY
-    - NUCLEOF401RE=1            BOARD=NUCLEOF401RE
-    - NUCLEOF411RE=1            BOARD=NUCLEOF411RE
-    - LCTECH_STM32F103RBT6=1    BOARD=LCTECH_STM32F103RBT6
-    - LINUX_BUILD=1             BOARD=LINUX_BUILD
-    - EFM32GGSTK=1              BOARD=EFM32GGSTK
-    - NUCLEOL476RG=1            BOARD=NUCLEOL476RG
+    - BOARD=ESPRUINOBOARD PAD_FOR_BOOTLOADER=1
+    - BOARD=PICO_R1_3 PAD_FOR_BOOTLOADER=1
+    - BOARD=ESPRUINOWIFI PAD_FOR_BOOTLOADER=1
+    - BOARD=PUCKJS DFU_UPDATE_BUILD=1
+    - BOARD=ESP32
+    - BOARD=ESP8266_BOARD
+    - BOARD=MICROBIT
+    - BOARD=NRF52832DK
+    - BOARD=OLIMEXINO_STM32
+    - BOARD=MAPLERET6_STM32
+    - BOARD=HYSTM32_24
+    - BOARD=HYSTM32_28
+    - BOARD=HYSTM32_32
+    - BOARD=STM32VLDISCOVERY
+    - BOARD=STM32F3DISCOVERY
+    - BOARD=STM32F4DISCOVERY
+    - BOARD=NUCLEOF401RE
+    - BOARD=NUCLEOF411RE
+    - BOARD=LINUX
+    - BOARD=EFM32GGSTK
+    - BOARD=NUCLEOL476RG
+    - BOARD=RUUVITAG DFU_UPDATE_BUILD=1
 
 script: make
 

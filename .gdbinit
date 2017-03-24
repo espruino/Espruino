@@ -19,3 +19,8 @@ define typeof
   end
   print (JsVarFlags)(($arg0)->flags&(JSV_VARTYPEMASK))
 end
+define asm
+  set  disassemble-next-line on
+  show disassemble-next-line
+  echo now use stepi 
+end

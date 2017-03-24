@@ -22,7 +22,7 @@ BOOTLOADERFILE=bootloader_$ESPRUINOFILE
 IMGFILE=espruino_full.bin
 rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
 
-export ESPRUINO_1V3=1
+export BOARD=ESPRUINOBOARD
 # export USB_PRODUCT_ID=0x5741 # For test harness board only
 # export DEBUG=1
 export RELEASE=1

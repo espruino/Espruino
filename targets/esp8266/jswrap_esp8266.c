@@ -330,6 +330,7 @@ reducing power consumption drastically.
 deep sleep actually turns off the processor. After the given number of
 microseconds have elapsed, the ESP8266 will restart as if power had been
 turned off and then back on. *All contents of RAM will be lost*.
+Connect GPIO 16 to RST to enable wakeup.
 */
 void   jswrap_ESP8266_deepSleep(JsVar *jsMicros) {
   if (!jsvIsInt(jsMicros)) {

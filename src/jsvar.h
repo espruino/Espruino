@@ -558,15 +558,9 @@ static ALWAYS_INLINE JsVar *jsvAsNumberAndUnLock(JsVar *v) { JsVar *n = jsvAsNum
 static ALWAYS_INLINE JsVarInt _jsvGetIntegerAndUnLock(JsVar *v) { JsVarInt i = jsvGetInteger(v); jsvUnLock(v); return i; }
 static ALWAYS_INLINE JsVarFloat _jsvGetFloatAndUnLock(JsVar *v) { JsVarFloat f = jsvGetFloat(v); jsvUnLock(v); return f; }
 static ALWAYS_INLINE bool _jsvGetBoolAndUnLock(JsVar *v) { bool b = jsvGetBool(v); jsvUnLock(v); return b; }
-#ifdef SAVE_ON_FLASH
 JsVarInt jsvGetIntegerAndUnLock(JsVar *v);
 JsVarFloat jsvGetFloatAndUnLock(JsVar *v);
 bool jsvGetBoolAndUnLock(JsVar *v);
-#else
-#define jsvGetIntegerAndUnLock _jsvGetIntegerAndUnLock
-#define jsvGetFloatAndUnLock _jsvGetFloatAndUnLock
-#define jsvGetBoolAndUnLock _jsvGetBoolAndUnLock
-#endif
 long long jsvGetLongIntegerAndUnLock(JsVar *v);
 
 

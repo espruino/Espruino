@@ -53,7 +53,7 @@ Vagrant.configure(2) do |config|
 
   ## PROVISIONING ##
 
-  config.vm.provision "shell", path: "./scripts/provision.sh"
+  config.vm.provision "shell", path: "./scripts/vagrant_provision.sh"
 
   ## SSH ##
 
@@ -61,4 +61,3 @@ Vagrant.configure(2) do |config|
   config.ssh.forward_x11 = true
 
 end
-
