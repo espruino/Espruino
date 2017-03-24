@@ -70,6 +70,7 @@ LIBS+=-T esp32_out.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.common.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.rom.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.peripherals.ld \
+$(ESP_IDF_PATH)/components/esp32/lib/librtc_clk.a \
 $(ESP_IDF_PATH)/components/newlib/lib/libc.a \
 $(ESP_IDF_PATH)/components/newlib/lib/libm.a \
 -lbt \
