@@ -36,6 +36,7 @@
             Pipe close event handlers now use 'this' arg - solves auto-closing pipe when piping from HTTP
             nRF5x: stop app_timer NRF_ERROR_INVALID_PARAM errors (trying to sleep for too little time)
             Added flash emulation to Linux port
+            Increase max graphics size from 1023 to 32767
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
