@@ -1467,19 +1467,19 @@ JsVar *jswrap_nrf_bluetooth_requestDevice_filter_device(JsVar *filter, JsVar *de
     while (jsvObjectIteratorHasValue(&it)) {
       bool foundService = false;
       JsVar *uservice = jsvObjectIteratorGetValue(&it);
-      JsVar *service = jswrap_string_toUpperLowerCase(uservice, false);
-      jsvUnLock(uservice);
+      ble_uuid_t userviceUuid;
+      bleVarToUUIDAndUnLock(&userviceUuid, uservice);
       JsvObjectIterator dit;
       jsvObjectIteratorNew(&dit, deviceServices);
       while (jsvObjectIteratorHasValue(&dit)) {
         JsVar *deviceService = jsvObjectIteratorGetValue(&dit);
-        if (jsvIsEqual(service, deviceService))
+        ble_uuid_t deviceServiceUuid;
+        bleVarToUUIDAndUnLock(&deviceServiceUuid, deviceService);
+        if (bleUUIDEqual(userviceUuid, deviceServiceUuid))
           foundService = true;
-        jsvUnLock(deviceService);
         jsvObjectIteratorNext(&dit);
       }
       jsvObjectIteratorFree(&dit);
-      jsvUnLock(service);
       if (!foundService) matches = false;
       jsvObjectIteratorNext(&it);
     }
