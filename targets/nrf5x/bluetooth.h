@@ -47,9 +47,10 @@ typedef enum  {
   BLE_IS_SENDING_HID = 128,   // Are we waiting to send data for USB HID?
   BLE_IS_RSSI_SCANNING = 256, // Are we scanning for RSSI values
   BLE_IS_SLEEPING = 512,      // NRF.sleep has been called
+  BLE_PM_INITIALISED = 1024,  // Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
 
-  BLE_IS_ADVERTISING_MULTIPLE = 1024, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 2048,
+  BLE_IS_ADVERTISING_MULTIPLE = 2048, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 4096,
   BLE_ADVERTISING_MULTIPLE_SHIFT = GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;

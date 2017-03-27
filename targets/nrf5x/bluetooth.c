@@ -929,7 +929,10 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
         case PM_EVT_CONN_SEC_CONFIG_REQ:
         {
             // Reject pairing request from an already bonded peer.
-            pm_conn_sec_config_t conn_sec_config = {.allow_repairing = false};
+            // Still allow a device to pair if it doesn't have bonding info for us
+            /* TODO: we could turn this off with a flag? Stops someone reconnecting
+             * by spoofing a peer. */
+            pm_conn_sec_config_t conn_sec_config = {.allow_repairing = true };
             pm_conn_sec_config_reply(p_evt->conn_handle, &conn_sec_config);
         } break;
 
@@ -956,8 +959,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             break;
 
         case PM_EVT_PEER_DATA_UPDATE_FAILED:
-            // Assert.
-            APP_ERROR_CHECK_BOOL(false);
+          // Used to assert here
+            jsWarn("PM: DATA_UPDATE_FAILED");
             break;
 
         case PM_EVT_PEER_DELETE_SUCCEEDED:
@@ -1152,6 +1155,12 @@ static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size)
 }
 
 static void peer_manager_init(bool erase_bonds) {
+
+  /* Only initialise the peer manager once. This stops
+   * crashes caused by repeated SD restarts (jsble_restart_softdevice) */
+  if (bleStatus & BLE_PM_INITIALISED) return;
+  bleStatus |= BLE_PM_INITIALISED;
+
   ble_gap_sec_params_t sec_param;
   ret_code_t           err_code;
 
