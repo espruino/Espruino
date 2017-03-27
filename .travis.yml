@@ -2,28 +2,11 @@
 
 language: c
 
-# Maybe someday when travis-ci authorizes the ppa:
-# https://github.com/travis-ci/apt-source-whitelist/issues/132
-#sudo: false
-#addon:
-#  apt:
-#    sources:
-#      - ppa:team-gcc-arm-embedded/ppa
-#    packages:
-#      - libsdl1.2-dev gcc-arm-embedded
-
-before_install:
- - sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
- - sudo apt-get update
- - sudo apt-get install libsdl1.2-dev gcc-arm-embedded
- - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
- - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf -
-
 before_script:
- - arm-none-eabi-gcc --version
+ - source ./scripts/provision.sh $BOARD
 
 after_script:
-  - ls *.bin *.hex *.tgz | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
+  - ls *.bin *.hex *.tgz *.zip | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
   # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
   # in environment using travis' repository settings
   - "if [[ -n \"$S3_BUCKET\" && -n \"$AWS_ACCESS_KEY_ID\" ]]; then
@@ -39,31 +22,33 @@ compiler:
 
 env:
   global:
-    - RELEASE=1
     - TRAVIS=1
     - V=0
-    - ESP8266_SDK_ROOT=$TRAVIS_BUILD_DIR/esp_iot_sdk_v2.0.0.p1
-    - PATH=$PATH:$TRAVIS_BUILD_DIR/xtensa-lx106-elf/bin/
+    - RELEASE=1
   matrix:
-    - ESP8266_BOARD=1
-    - ESPRUINO_1V3=1
-    - PICO_1V3=1
-    - MICROBIT=1
-    - NRF52832DK=1
-    - OLIMEXINO_STM32=1
-    - MAPLERET6_STM32=1
-    - HYSTM32_24=1
-    - HYSTM32_28=1
-    - HYSTM32_32=1
-    - STM32VLDISCOVERY=1
-    - STM32F3DISCOVERY=1
-    - STM32F4DISCOVERY=1
-    - NUCLEOF401RE=1
-    - NUCLEOF411RE=1
-    - LCTECH_STM32F103RBT6=1
-    - LINUX_BUILD=1
-    - EFM32GGSTK=1
-    - NUCLEOL476RG=1
+    - BOARD=ESPRUINOBOARD PAD_FOR_BOOTLOADER=1
+    - BOARD=PICO_R1_3 PAD_FOR_BOOTLOADER=1
+    - BOARD=ESPRUINOWIFI PAD_FOR_BOOTLOADER=1
+    - BOARD=PUCKJS DFU_UPDATE_BUILD=1
+    - BOARD=ESP32
+    - BOARD=ESP8266_BOARD
+    - BOARD=MICROBIT
+    - BOARD=NRF52832DK
+    - BOARD=OLIMEXINO_STM32
+    - BOARD=MAPLERET6_STM32
+    - BOARD=HYSTM32_24
+    - BOARD=HYSTM32_28
+    - BOARD=HYSTM32_32
+    - BOARD=STM32VLDISCOVERY
+    - BOARD=STM32F3DISCOVERY
+    - BOARD=STM32F4DISCOVERY
+    - BOARD=NUCLEOF401RE
+    - BOARD=NUCLEOF411RE
+    - BOARD=LINUX
+    - BOARD=EFM32GGSTK
+    - BOARD=NUCLEOL476RG
+    - BOARD=RUUVITAG DFU_UPDATE_BUILD=1
+
 script: make
 
 notifications:

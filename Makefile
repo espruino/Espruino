@@ -10,46 +10,8 @@
 # -----------------------------------------------------------------------------
 # Makefile for Espruino
 # -----------------------------------------------------------------------------
-# Set ONE of the following environment variables to compile for that board:
-#
-# ESPRUINO_1V3=1          # Espruino board rev 1.3 and rev 1v4
-# PICO_1V3=1              # Espruino Pico board rev 1.3
-# OLIMEXINO_STM32=1       # Olimexino STM32
-# MAPLERET6_STM32=1       # Limited production Leaflabs Maple r5 with a STM32F103RET6
-# MAPLEMINI=1             # Leaflabs Maple Mini
-# EMBEDDED_PI=1           # COOCOX STM32 Embedded Pi boards
-# HYSTM32_24=1            # HY STM32 2.4 Ebay boards
-# HYSTM32_28=1            # HY STM32 2.8 Ebay boards
-# HYSTM32_32=1            # HY STM32 3.2 VCT6 Ebay boards
-# HYTINY_STM103T=1				# HY-TinySTM103T by Haoyu (hotmcu.com)
-# STM32VLDISCOVERY=1
-# STM32F3DISCOVERY=1
-# STM32F4DISCOVERY=1
-# STM32F411DISCOVERY=1
-# STM32F429IDISCOVERY=1
-# STM32F401CDISCOVERY=1
-# MICROBIT=1
-# NRF51TAG=1
-# NRF51822DK=1
-# NRF52832DK=1            # Ultra low power BLE (bluetooth low energy) enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
-# CARAMBOLA=1
-# DPTBOARD=1              # DPTechnics IoT development board with BlueCherry.io IoT platform integration and DPT-WEB IDE.
-# RASPBERRYPI=1
-# BEAGLEBONE=1
-# ARIETTA=1
-# LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
-# ARMINARM=1
-# NUCLEOF401RE=1
-# NUCLEOF411RE=1
-# NUCLEOL476RG=1
-# MINISTM32_STRIVE=1
-# MINISTM32_ANGLED_VE=1
-# MINISTM32_ANGLED_VG=1
-# ESP8266_BOARD=1         # ESP8266
-# ESP32=1                 # ESP32
-# EFM32GGSTK=1            # Currently only works with DEBUG=1
-# EMW3165=1               # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
-# Or nothing for standard linux compile
+# Set the BOARD environment variable to one of the names of the .py file in
+# the `boards` directory. Eg. PICO, PUCKJS, ESPRUINOWIFI, etc
 #
 # Also:
 #
@@ -61,7 +23,8 @@
 # CFILE=test.c            # Compile in the supplied C file
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
-# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
+# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support
+# CC3000=1                # If compiling for a non-linux target that has internet support, use CC3000 support
 # USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
 # GENDIR=MyGenDir		  # sets directory for files generated during make
@@ -77,7 +40,11 @@
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
 # NO_COMPILE=1            # skips compiling and linking part, used to echo WRAPPERSOURCES only
-# RTOS                    # adds RTOS functions, available only for ESP32 (yet)
+# RTOS=1                  # adds RTOS functions, available only for ESP32 (yet)
+# DFU_UPDATE_BUILD=1      # Uncomment this to build Espruino for a device firmware update over the air (nRF52).
+# PAD_FOR_BOOTLOADER=1    # When building for Espruino STM32 boards, pad the binary out with 0xFF where the bootloader should be (allows the Web IDE to flash the binary)
+
+include make/sanitycheck.make
 
 ifndef GENDIR
 GENDIR=$(shell pwd)/gen
@@ -155,6 +122,7 @@ WRAPPERFILE=$(GENDIR)/jswrapper.c
 HEADERFILENAME=$(GENDIR)/platform_config.h
 BASEADDRESS=0x08000000
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------------
 # When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
 # TODO: Load more of this out of the BOARDNAME.py files if at all possible (see next section)
@@ -669,77 +637,44 @@ RASPBERRYPI=1 # just a guess
 
 else ifeq ($(shell uname -n),beaglebone)
 BEAGLEBONE=1
+=======
+>>>>>>> d1e384e36df31ceb01005c413f31523cd7d8e5a8
 
-else ifeq ($(shell uname -n),arietta)
-ARIETTA=1
+ifeq ($(BOARD),)
+ # Try and guess board names
+ ifeq ($(shell uname -m),armv6l)
+  BOARD=RASPBERRYPI # just a guess
+ else ifeq ($(shell uname -n),beaglebone)
+  BOARD=BEAGLEBONE
+ else ifeq ($(shell uname -n),arietta)
+  BOARD=ARIETTA
+ else
+  #$(info *************************************************************)
+  #$(info *           To build, use BOARD=my_board make               *)
+  #$(info *************************************************************)
+  BOARD=LINUX
+ endif
 endif
 
-ifdef RASPBERRYPI
-EMBEDDED=1
-BOARD=RASPBERRYPI
-DEFINES += -DRASPBERRYPI
-LINUX=1
-USE_FILESYSTEM=1
-USE_GRAPHICS=1
-#USE_LCD_SDL=1
-USE_NET=1
-USE_CRYPTO=1
-USE_TLS=1
-OPTIMIZEFLAGS+=-O3
-ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
-USE_WIRINGPI=1
-else
-DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
-$(info *************************************************************)
-$(info *  WIRINGPI NOT FOUND, and you probably want it             *)
-$(info *  see  http://wiringpi.com/download-and-install/           *)
-$(info *************************************************************)
+ifeq ($(BOARD),RASPBERRYPI)
+ ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
+ USE_WIRINGPI=1
+ else
+ DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+ $(info *************************************************************)
+ $(info *  WIRINGPI NOT FOUND, and you probably want it             *)
+ $(info *  see  http://wiringpi.com/download-and-install/           *)
+ $(info *************************************************************)
+ endif
 endif
 
-else ifdef BEAGLEBONE
-EMBEDDED=1
-BOARD=BEAGLEBONE_BLACK
-DEFINES += -DBEAGLEBONE_BLACK -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
-LINUX=1
-USE_FILESYSTEM=1
-USE_GRAPHICS=1
-USE_NET=1
-USE_CRYPTO=1
-USE_TLS=1
-
-else ifdef ARIETTA
-EMBEDDED=1
-BOARD=ARIETTA_G25
-DEFINES += -DARIETTA_G25 -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
-LINUX=1
-USE_FILESYSTEM=1
-USE_GRAPHICS=1
-USE_NET=1
-USE_CRYPTO=1
-USE_TLS=1
-
-else
-BOARD=LINUX
-LINUX=1
-USE_FILESYSTEM=1
-USE_HASHLIB=1
-USE_GRAPHICS=1
-USE_CRYPTO=1
-USE_TLS=1
-USE_TELNET=1
-#USE_LCD_SDL=1
-
-ifdef MACOSX
-USE_NET=1
-else ifdef MINGW
-#USE_NET=1 # http libs need some tweaks before net can compile
-#LIBS += -lwsock32
-DEFINES += -DHAS_STDLIB=1
-else  # Linux
-USE_NET=1
-endif
-endif
-endif
+# ---------------------------------------------------------------------------------
+#                                                      Get info out of BOARDNAME.py
+# ---------------------------------------------------------------------------------
+# TODO: could check board here and make clean if it's different?
+$(shell rm -f CURRENT_BOARD.make)
+$(shell python scripts/get_makefile_decls.py $(BOARD) > CURRENT_BOARD.make)
+include CURRENT_BOARD.make
 
 #set or reset defines like USE_GRAPHIC from an external file to customize firmware
 ifdef SETDEFINES
@@ -751,34 +686,6 @@ endif
 
 
 # ---------------------------------------------------------------------------------
-#                                                      Get info out of BOARDNAME.py
-# ---------------------------------------------------------------------------------
-
-PROJ_NAME=$(shell python scripts/get_board_info.py $(BOARD) "common.get_board_binary_name(board)"  | sed -e "s/.bin$$//" | sed -e "s/.hex$$//")
-ifeq ($(PROJ_NAME),)
-$(error Unable to work out binary name (PROJ_NAME))
-endif
-ifeq ($(BOARD),LINUX)
-PROJ_NAME=espruino
-endif
-
-ifeq ($(shell python scripts/get_board_info.py $(BOARD) "'bootloader' in board.info and board.info['bootloader']==1"),True)
-USE_BOOTLOADER:=1
-BOOTLOADER_PROJ_NAME:=bootloader_$(PROJ_NAME)
-DEFINES+=-DUSE_BOOTLOADER
-endif
-
-ifeq ($(shell python scripts/get_board_info.py $(BOARD) "'USB' in board.devices"),True)
-USB:=1
-endif
-
-ifndef LINUX
-FAMILY:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['family']")
-CHIP:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['part']")
-endif
-
-# ---------------------------------------------------------------------------------
-
 
 
 # If we're not on Linux and we want internet, we need either CC3000 or WIZnet support
@@ -792,7 +699,7 @@ else ifeq ($(FAMILY),ESP32)
 USE_ESP32=1
 else ifdef EMW3165
 USE_WICED=1
-else
+else ifdef CC3000
 USE_CC3000=1
 endif
 endif
@@ -805,7 +712,7 @@ ifdef DEBUG
  else
   OPTIMIZEFLAGS=-g
  endif
- ifdef EFM32
+ ifeq ($(FAMILY),EFM32GG)
   DEFINES += -DDEBUG_EFM=1 -DDEBUG=1
  endif
 DEFINES+=-DDEBUG
@@ -1051,8 +958,8 @@ ifdef USE_NET
    targets/esp32/jswrap_esp32.c
  INCLUDE += -I$(ROOT)/libs/network/esp32
  SOURCES +=  libs/network/esp32/network_esp32.c \
-  targets/esp32/i2c.c \
-  targets/esp32/spi.c \
+  targets/esp32/jshardwareI2c.c \
+  targets/esp32/jshardwareSpi.c \
   targets/esp32/jshardwareUart.c \
   targets/esp32/jshardwareAnalog.c \
   targets/esp32/jshardwarePWM.c \
@@ -1064,7 +971,7 @@ ifdef USE_NET
    WRAPPERSOURCES += targets/esp32/jswrap_rtos.c
   endif # RTOS
  endif # USE_ESP32
- 
+
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
  WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266_network.c \
@@ -1115,6 +1022,7 @@ INCLUDE += -I/usr/local/include -L/usr/local/lib
 endif
 
 ifdef USE_BLUETOOTH
+  DEFINES += -DBLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
@@ -1183,330 +1091,6 @@ ifdef USE_NEOPIXEL
   WRAPPERSOURCES += libs/neopixel/jswrap_neopixel.c
 endif
 
-
-endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
-
-ifdef USB
-DEFINES += -DUSB
-endif
-
-ifeq ($(FAMILY), STM32F1)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd -mfloat-abi=soft
-ARM=1
-STM32=1
-INCLUDE += -I$(ROOT)/targetlibs/stm32f1 -I$(ROOT)/targetlibs/stm32f1/lib
-DEFINES += -DSTM32F1
-TARGETSOURCES +=                              \
-targetlibs/stm32f1/lib/misc.c              \
-targetlibs/stm32f1/lib/stm32f10x_adc.c     \
-targetlibs/stm32f1/lib/stm32f10x_bkp.c     \
-targetlibs/stm32f1/lib/stm32f10x_can.c     \
-targetlibs/stm32f1/lib/stm32f10x_dac.c     \
-targetlibs/stm32f1/lib/stm32f10x_dma.c     \
-targetlibs/stm32f1/lib/stm32f10x_exti.c    \
-targetlibs/stm32f1/lib/stm32f10x_flash.c   \
-targetlibs/stm32f1/lib/stm32f10x_gpio.c    \
-targetlibs/stm32f1/lib/stm32f10x_i2c.c     \
-targetlibs/stm32f1/lib/stm32f10x_iwdg.c    \
-targetlibs/stm32f1/lib/stm32f10x_pwr.c     \
-targetlibs/stm32f1/lib/stm32f10x_rcc.c     \
-targetlibs/stm32f1/lib/stm32f10x_rtc.c     \
-targetlibs/stm32f1/lib/stm32f10x_sdio.c    \
-targetlibs/stm32f1/lib/stm32f10x_spi.c     \
-targetlibs/stm32f1/lib/stm32f10x_tim.c     \
-targetlibs/stm32f1/lib/stm32f10x_usart.c   \
-targetlibs/stm32f1/lib/stm32f10x_wwdg.c    \
-targetlibs/stm32f1/lib/system_stm32f10x.c
-
-#targetlibs/stm32f1/lib/stm32f10x_cec.c
-#targetlibs/stm32f1/lib/stm32f10x_crc.c
-#targetlibs/stm32f1/lib/stm32f10x_dbgmcu.c
-#targetlibs/stm32f1/lib/stm32f10x_fsmc.c
-
-ifdef USB
-STM32_LEGACY_USB=1
-endif
-endif #STM32F1
-
-ifeq ($(FAMILY), STM32F3)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
-ARM=1
-STM32=1
-INCLUDE += -I$(ROOT)/targetlibs/stm32f3 -I$(ROOT)/targetlibs/stm32f3/lib
-DEFINES += -DSTM32F3
-TARGETSOURCES +=                                 \
-targetlibs/stm32f3/lib/stm32f30x_adc.c        \
-targetlibs/stm32f3/lib/stm32f30x_can.c        \
-targetlibs/stm32f3/lib/stm32f30x_comp.c       \
-targetlibs/stm32f3/lib/stm32f30x_crc.c        \
-targetlibs/stm32f3/lib/stm32f30x_dac.c        \
-targetlibs/stm32f3/lib/stm32f30x_dbgmcu.c     \
-targetlibs/stm32f3/lib/stm32f30x_dma.c        \
-targetlibs/stm32f3/lib/stm32f30x_exti.c       \
-targetlibs/stm32f3/lib/stm32f30x_flash.c      \
-targetlibs/stm32f3/lib/stm32f30x_gpio.c       \
-targetlibs/stm32f3/lib/stm32f30x_i2c.c        \
-targetlibs/stm32f3/lib/stm32f30x_iwdg.c       \
-targetlibs/stm32f3/lib/stm32f30x_misc.c       \
-targetlibs/stm32f3/lib/stm32f30x_opamp.c      \
-targetlibs/stm32f3/lib/stm32f30x_pwr.c        \
-targetlibs/stm32f3/lib/stm32f30x_rcc.c        \
-targetlibs/stm32f3/lib/stm32f30x_rtc.c        \
-targetlibs/stm32f3/lib/stm32f30x_spi.c        \
-targetlibs/stm32f3/lib/stm32f30x_syscfg.c     \
-targetlibs/stm32f3/lib/stm32f30x_tim.c        \
-targetlibs/stm32f3/lib/stm32f30x_usart.c      \
-targetlibs/stm32f3/lib/stm32f30x_wwdg.c       \
-targetlibs/stm32f3/lib/system_stm32f30x.c
-
-ifdef USB
-STM32_LEGACY_USB=1
-endif
-endif #STM32F3
-
-ifeq ($(FAMILY), STM32F4)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
-# The archflags below use the STM32F4's FPU for 32 bit floats, and pass doubles as 64 bit
-# Thing is, we don't use 'float', and only use doubles so this is basically useless to us (and increases code size)
-# ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
-
-ARM=1
-DEFINES += -DSTM32F4
-ifdef WICED_XXX
-  DEFINES += -DWICED
-  # DEFINES included here in bulk from a WICED compilation
-  DEFINES += -DWICED_VERSION=\"3.3.1\" -DBUS=\"SDIO\" -DPLATFORM=\"EMW3165\"
-  DEFINES += -DUSE_STDPERIPH_DRIVER -DOPENSSL -DSTDC_HEADERS
-  DEFINES += -DMAX_WATCHDOG_TIMEOUT_SECONDS=22 -DFIRMWARE_WITH_PMK_CALC_SUPPORT
-  DEFINES += -DADD_LWIP_EAPOL_SUPPORT -DNXD_EXTENDED_BSD_SOCKET_SUPPORT -DADD_NETX_EAPOL_SUPPORT
-  DEFINES += -DWWD_STARTUP_DELAY=10
-  DEFINES += -DNETWORK_LwIP=1 -DLwIP_VERSION=\"v1.4.0.rc1\"
-  DEFINES += -DRTOS_FreeRTOS=1 -DconfigUSE_MUTEXES -DconfigUSE_RECURSIVE_MUTEXES
-  DEFINES += -DFreeRTOS_VERSION=\"v7.5.2\" -DWWD_DIRECT_RESOURCES -DHSE_VALUE=26000000
-  INCLUDE +=
-endif
-STM32=1
-INCLUDE += -I$(ROOT)/targetlibs/stm32f4 -I$(ROOT)/targetlibs/stm32f4/lib
-TARGETSOURCES +=                                 \
-targetlibs/stm32f4/lib/misc.c                 \
-targetlibs/stm32f4/lib/stm32f4xx_adc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_crc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_dac.c        \
-targetlibs/stm32f4/lib/stm32f4xx_dbgmcu.c     \
-targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
-targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
-targetlibs/stm32f4/lib/stm32f4xx_flash.c      \
-targetlibs/stm32f4/lib/stm32f4xx_gpio.c       \
-targetlibs/stm32f4/lib/stm32f4xx_i2c.c        \
-targetlibs/stm32f4/lib/stm32f4xx_iwdg.c       \
-targetlibs/stm32f4/lib/stm32f4xx_pwr.c        \
-targetlibs/stm32f4/lib/stm32f4xx_rcc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_rtc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_sdio.c       \
-targetlibs/stm32f4/lib/stm32f4xx_spi.c        \
-targetlibs/stm32f4/lib/stm32f4xx_syscfg.c     \
-targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
-targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
-targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
-targetlibs/stm32f4/lib/system_stm32f4xx.c
-#targetlibs/stm32f4/lib/stm32f4xx_cryp_aes.c
-#targetlibs/stm32f4/lib/stm32f4xx_dcmi.c
-#targetlibs/stm32f4/lib/stm32f4xx_dma2d.c
-#targetlibs/stm32f4/lib/stm32f4xx_can.c
-#targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c
-#targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c
-#targetlibs/stm32f4/lib/stm32f4xx_cryp.c
-#targetlibs/stm32f4/lib/stm32f4xx_hash.c
-#targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c
-#targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c
-#targetlibs/stm32f4/lib/stm32f4xx_ltdc.c
-#targetlibs/stm32f4/lib/stm32f4xx_rng.c
-#targetlibs/stm32f4/lib/stm32f4xx_sai.c
-#targetlibs/stm32f4/lib/stm324xx_fsmc.c
-ifdef USB
-STM32_USB=1
-endif
-endif #STM32F4
-
-ifeq ($(FAMILY), STM32L4)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
-ARM=1
-DEFINES += -DSTM32L4
-DEFINES += -DSTM32L476xx
-DEFINES += -DUSE_FULL_LL_DRIVER
-DEFINES += -DUSE_FULL_ASSERT
-DEFINES += -DFLASH_64BITS_ALIGNEMENT=1 #L4 flash needs to be accessed with 64 bits
-ifdef WICED_XXX
-  DEFINES += -DWICED
-  # DEFINES included here in bulk from a WICED compilation
-  DEFINES += -DWICED_VERSION=\"3.3.1\" -DBUS=\"SDIO\" -DPLATFORM=\"EMW3165\"
-  DEFINES += -DUSE_STDPERIPH_DRIVER -DOPENSSL -DSTDC_HEADERS
-  DEFINES += -DMAX_WATCHDOG_TIMEOUT_SECONDS=22 -DFIRMWARE_WITH_PMK_CALC_SUPPORT
-  DEFINES += -DADD_LWIP_EAPOL_SUPPORT -DNXD_EXTENDED_BSD_SOCKET_SUPPORT -DADD_NETX_EAPOL_SUPPORT
-  DEFINES += -DWWD_STARTUP_DELAY=10
-  DEFINES += -DNETWORK_LwIP=1 -DLwIP_VERSION=\"v1.4.0.rc1\"
-  DEFINES += -DRTOS_FreeRTOS=1 -DconfigUSE_MUTEXES -DconfigUSE_RECURSIVE_MUTEXES
-  DEFINES += -DFreeRTOS_VERSION=\"v7.5.2\" -DWWD_DIRECT_RESOURCES -DHSE_VALUE=26000000
-  INCLUDE +=
-endif
-STM32_LL=1
-INCLUDE += -I$(ROOT)/targetlibs/stm32l4 -I$(ROOT)/targetlibs/stm32l4/lib -I$(ROOT)/targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Inc -I$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Include -I$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Include -I$(ROOT)/targetlibs/stm32l4/lib/BSP/STM32L4xx_Nucleo -I$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates
-
-TARGETSOURCES +=                                   \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_adc.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_comp.c   \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_crc.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_crs.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_dac.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_dma.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_exti.c   \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_fmc.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_gpio.c   \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_i2c.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_lptim.c  \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_lpuart.c \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_opamp.c  \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_pwr.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rcc.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rng.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rtc.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_sdmmc.c  \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_spi.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_swpmi.c  \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_tim.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usart.c  \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usb.c    \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_utils.c  \
-targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates/system_stm32l4xx.c \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash.c \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ex.c \
-targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c
-
-ifdef USB
-STM32_USB=1
-endif
-endif #STM32L4
-
-# New STM32 Cube based USB
-# This could be global for all STM32 once we figure out why it's so flaky on F1
-ifdef STM32_USB
-TARGETSOURCES +=                                 \
-targetlibs/stm32usb/Src/stm32f4xx_ll_usb.c \
-targetlibs/stm32usb/Src/stm32f4xx_hal_pcd.c \
-targetlibs/stm32usb/Src/stm32f4xx_hal_pcd_ex.c
-
-INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
-TARGETSOURCES +=                                 \
-targetlibs/stm32usb/usbd_conf.c \
-targetlibs/stm32usb/usb_device.c \
-targetlibs/stm32usb/usbd_cdc_hid.c \
-targetlibs/stm32usb/Src/usbd_ctlreq.c \
-targetlibs/stm32usb/Src/usbd_core.c \
-targetlibs/stm32usb/Src/usbd_ioreq.c \
-targetlibs/stm32usb/usbd_desc.c \
-targetlibs/stm32usb/usb_irq.c
-endif #USB
-
-# Old Legacy STM32 USB
-# Used for F1 and F3
-ifdef STM32_LEGACY_USB
-DEFINES += -DLEGACY_USB
-INCLUDE += -I$(ROOT)/targetlibs/stm32legacyusb/lib -I$(ROOT)/targetlibs/stm32legacyusb
-TARGETSOURCES +=                              \
-targetlibs/stm32legacyusb/lib/otgd_fs_cal.c       \
-targetlibs/stm32legacyusb/lib/otgd_fs_dev.c       \
-targetlibs/stm32legacyusb/lib/otgd_fs_int.c       \
-targetlibs/stm32legacyusb/lib/otgd_fs_pcd.c       \
-targetlibs/stm32legacyusb/lib/usb_core.c          \
-targetlibs/stm32legacyusb/lib/usb_init.c          \
-targetlibs/stm32legacyusb/lib/usb_int.c           \
-targetlibs/stm32legacyusb/lib/usb_mem.c           \
-targetlibs/stm32legacyusb/lib/usb_regs.c          \
-targetlibs/stm32legacyusb/lib/usb_sil.c           \
-targetlibs/stm32legacyusb/usb_desc.c             \
-targetlibs/stm32legacyusb/usb_endp.c             \
-targetlibs/stm32legacyusb/usb_istr.c             \
-targetlibs/stm32legacyusb/usb_prop.c             \
-targetlibs/stm32legacyusb/usb_pwr.c              \
-targetlibs/stm32legacyusb/usb_utils.c            \
-targetlibs/stm32legacyusb/legacy_usb.c
-endif #USB
-
-ifeq ($(FAMILY), NRF51)
-
-  NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x
-
-  # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
-  ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefiles provided in SDK as reference.
-
-  # nRF51 specific.
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers/nrf51
-  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
-  PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
-
-  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
-  DEFINES += -DNRF_SD_BLE_API_VERSION=2  
-  LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
-
-  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.1_softdevice.hex
-
-  ifdef USE_BOOTLOADER
-  NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
-  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-  else
-  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
-	INCLUDE += -I$(NRF5X_SDK_PATH)/nrf51_config
-  endif
-
-endif # FAMILY == NRF51
-
-ifeq ($(FAMILY), NRF52)
-
-  NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x
-
-  # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
-  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
-
-  # nRF52 specific.
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
-  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
-                      $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c
-  PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
-
-  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
-  DEFINES += -DNRF_SD_BLE_API_VERSION=3
-
-  SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_3.0.0_softdevice.hex
-
-  ifdef USE_BOOTLOADER
-  NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
-  ifdef BOOTLOADER
-    # we're trying to compile the bootloader itself
-    LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_dfu_gcc_nrf52.ld
-    OPTIMIZEFLAGS=-Os # try to reduce bootloader size
-  else
-    LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
-		INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
-  endif
-  else
-  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino.ld
-	INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
-  endif
-
-	# BLE HID Support (only NRF52)
-	INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
-	TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
-        # Neopixel support (only NRF52)  
-        INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
-        TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c 
-
-endif #FAMILY == NRF52
-
-
 ifdef USE_NFC
   DEFINES += -DUSE_NFC -DNFC_HAL_ENABLED=1
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/t2t_lib
@@ -1521,364 +1105,24 @@ ifdef USE_NFC
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/nfc_t2t_lib_gcc.a
 endif
 
-ifdef NRF5X
-  # Just try and get rid of the compile warnings.
-  CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
-  DEFINES += -DBLUETOOTH -D$(BOARD) -D$(CHIP)
-
-  ARM = 1
-  ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
-  INCLUDE += -I$(ROOT)/targetlibs/nrf5x -I$(NRF5X_SDK_PATH)
-
-  TEMPLATE_PATH = $(ROOT)/targetlibs/nrf5x/nrf5x_linkers # This is where the common linker for both nRF51 & nRF52 is stored.
-  LDFLAGS += -L$(TEMPLATE_PATH)
-
-  # These files are the Espruino HAL implementation.
-  INCLUDE += -I$(ROOT)/targets/nrf5x
-  ifdef BOOTLOADER
-    BUILD_LINKER_FLAGS+=--bootloader
-    PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
-    WRAPPERSOURCES =
-		INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
-		DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
-		DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
-    SOURCES = \
-			targets/nrf5x_dfu/dfu-cc.pb.c \
-			targets/nrf5x_dfu/dfu_public_key.c \
-			targets/nrf5x_dfu/dfu_req_handling.c \
-			targets/nrf5x_dfu/main.c
-  else
-    SOURCES +=                              \
-      targets/nrf5x/main.c                    \
-      targets/nrf5x/jshardware.c              \
-			targets/nrf5x/bluetooth.c              \
-			targets/nrf5x/bluetooth_utils.c              \
-      targets/nrf5x/nrf5x_utils.c
-
-    ifeq ($(FAMILY), NRF52)
-      # Neopixel support (only NRF52)
-      SOURCES    += targets/nrf5x/i2s_ws2812b_drive.c
-    endif
-  endif
-
-  # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/cmsis/include
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/gcc
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fstorage/config
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/timer
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fstorage
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/common
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_advertising
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/ppi
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
-
-  TARGETSOURCES += \
-  $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
-  $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
-  $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c \
-  $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
-  $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
-  $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
-  $(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
-  $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
-  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
-  $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
-  $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master/nrf_drv_spi.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
-  $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
-
-  # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
-
-  ifdef USE_BOOTLOADER
-  ifdef BOOTLOADER
-    DEFINES += -DBOOTLOADER -DNRF_DFU_SETTINGS_VERSION=1
-		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/ble_transport
-    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crc32
-    INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader
-		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu
-		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader/ble_dfu
-		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crypto
-		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/svc
-		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/scheduler
-		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/ecc
-		INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/sha256
-    INCLUDE += -I$(NRF5X_SDK_PATH)/external/nano-pb
-		INCLUDE += -I$(NRF5X_SDK_PATH)/external/micro-ecc
-    TARGETSOURCES =
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_error_weak.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/fifo/app_fifo.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/scheduler/app_scheduler.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crc32/crc32.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/ble_dfu/nrf_ble_dfu.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_app_start.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_info.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_flash.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_mbr.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_settings.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_transport.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_utils.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_common.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_decode.c
-		TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
-  endif
-  endif
-
-endif #NRF5X
-
-
-ifeq ($(FAMILY), EFM32GG)
-
-  EFM32=1
-
-  ARCHFLAGS += -mcpu=cortex-m3  -mthumb
-
-  GECKO_SDK_PATH=$(ROOT)/targetlibs/Gecko_SDK
-
-  ARM = 1
-  ARM_HAS_OWN_CMSIS = 1
-  INCLUDE += -I$(GECKO_SDK_PATH)/cmsis/Include
-
-  LINKER_FILE = $(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/efm32gg.ld
-
-  INCLUDE += -I$(ROOT)/targets/efm32
-  SOURCES +=                              \
-  targets/efm32/main.c                    \
-  targets/efm32/jshardware.c
-
-  INCLUDE += -I$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Include
-  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/gpiointerrupt/inc
-#  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/ustimer/inc
-  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/rtcdrv/inc
-  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/nvm/inc
-  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/common/inc
-  INCLUDE += -I$(GECKO_SDK_PATH)/emlib/inc
-
-  TARGETSOURCES += \
-	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/startup_efm32gg.c \
-	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/system_efm32gg.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_gpio.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_cmu.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_assert.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_emu.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_msc.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_rtc.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_int.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_system.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_timer.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_usart.c \
-	$(GECKO_SDK_PATH)/emdrv/gpiointerrupt/src/gpiointerrupt.c \
-	$(GECKO_SDK_PATH)/emdrv/rtcdrv/src/rtcdriver.c \
-	$(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c
-#	$(GECKO_SDK_PATH)/emdrv/ustimer/src/ustimer.c
-
-	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm.c \
-	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_acmp.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_adc.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_aes.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_burtc.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_crc.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_cryotimer.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_crypto.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_dac.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_dbg.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_dma.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_ebi.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_i2c.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_idac.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_lcd.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_ldma.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_lesense.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_letimer.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_leuart.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_mpu.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_opamp.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_pcnt.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_prs.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_rmu.c \
-  # $(GECKO_SDK_PATH)/emlib/src/em_rtcc.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_vcmp.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_wdog.c
-
-endif #FAMILY == EFM32
-
-ifeq ($(FAMILY),ESP32)
-CFLAGS+=-Og -Wpointer-arith -Wno-error=unused-function -Wno-error=unused-but-set-variable \
--Wno-error=unused-variable -Wall -ffunction-sections -fdata-sections -mlongcalls -nostdlib \
--MMD -MP -std=gnu99 -fstrict-volatile-bitfields -fgnu89-inline
-SOURCES += targets/esp32/jshardware.c
-endif
-
-ifeq ($(FAMILY),ESP8266)
-# move os_printf strings into flash to save RAM space
-DEFINES += -DUSE_OPTIMIZE_PRINTF
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_US_TIMER
-ESP8266=1
-LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain -lpwm -lcrypto
-CFLAGS+= -fno-builtin \
--Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
--Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
--Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
--Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals
-endif
-
-ifdef ARM
-
-  ifndef LINKER_FILE # nRF5x targets define their own linker file.
-    LINKER_FILE = $(GENDIR)/linker.ld
-  endif
-  DEFINES += -DARM
-  ifndef ARM_HAS_OWN_CMSIS # nRF5x targets do not use the shared CMSIS files.
-    INCLUDE += -I$(ROOT)/targetlibs/arm
-  endif
-  OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
-
-  # I've no idea why this breaks the bootloader, but it does.
-  # Given we've left 10k for it, there's no real reason to enable LTO anyway.
-  ifndef BOOTLOADER
-	# Enable link-time optimisations (inlining across files)
-	OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-	DEFINES += -DLINK_TIME_OPTIMISATION
-  endif
-
-  export CCPREFIX?=arm-none-eabi-
-
-endif # ARM
-
-ifdef CARAMBOLA
-TOOLCHAIN_DIR=$(shell cd ~/workspace/carambola/staging_dir/toolchain-*/bin;pwd)
-export STAGING_DIR=$(TOOLCHAIN_DIR)
-export CCPREFIX=$(TOOLCHAIN_DIR)/mipsel-openwrt-linux-
-endif
-
-ifdef DPTBOARD
-export STAGING_DIR=$(shell cd ~/breakoutopenwrt/staging_dir/toolchain-*/bin;pwd)
-export CCPREFIX=$(STAGING_DIR)/mips-openwrt-linux-
-endif
-
-ifdef RASPBERRYPI
- ifneq ($(shell uname -m),armv6l)
-  # eep. let's cross compile
-  export CCPREFIX=targetlibs/raspberrypi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-
- else
-  # compiling in-place, so give it a normal name
-  PROJ_NAME=espruino
- endif
+ifdef USE_NUCLEO
+WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
 endif
 
 ifdef WICED
-#WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c
+WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c
 endif
 
-ifdef STM32
-DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
-INCLUDE += -I$(ROOT)/targets/stm32
-ifndef BOOTLOADER
- SOURCES +=                              \
- targets/stm32/main.c                    \
- targets/stm32/jshardware.c              \
- targets/stm32/stm32_it.c
- ifdef USE_BOOTLOADER
-  BUILD_LINKER_FLAGS+=--using_bootloader
-  # -k applies bootloader hack for Espruino 1v3 boards
-  ifdef MACOSX
-    STM32LOADER_FLAGS+=-k -p /dev/tty.usbmodem*
-  else
-    STM32LOADER_FLAGS+=-k -p /dev/ttyACM0
-  endif
-  BASEADDRESS=$(shell python scripts/get_board_info.py $(BOARD) "hex(0x08000000+common.get_espruino_binary_address(board))")
- endif # USE_BOOTLOADER
-else # !BOOTLOADER
- ifndef USE_BOOTLOADER
- $(error Using bootloader on device that is not expecting one)
- endif
- DEFINES+=-DSAVE_ON_FLASH # hack, as without link time optimisation the always_inlines will fail (even though they are not used)
- BUILD_LINKER_FLAGS+=--bootloader
- PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
- WRAPPERSOURCES =
- SOURCES = \
- targets/stm32_boot/main.c \
- targets/stm32_boot/utils.c
-endif # BOOTLOADER
+endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
-endif # STM32
+# =========================================================================
+ifneq ($(FAMILY),)
+include make/family/$(FAMILY).make
+endif
+# =========================================================================
 
-ifdef STM32_LL
-DEFINES += -DSTM32_LL -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
-INCLUDE += -I$(ROOT)/targets/stm32_ll
-ifndef BOOTLOADER
-SOURCES +=                              \
-targets/stm32_ll/main.c                    \
-targets/stm32_ll/jshardware.c              \
-targets/stm32_ll/stm32_it.c
-endif
-endif
-
-ifdef LINUX
-DEFINES += -DLINUX
-INCLUDE += -I$(ROOT)/targets/linux
-SOURCES +=                              \
-targets/linux/main.c                    \
-targets/linux/jshardware.c
-LIBS += -lpthread # thread lib for input processing
-ifdef OPENWRT_UCLIBC
-LIBS += -lc
-else
-LIBS += -lstdc++
-endif
-endif
-
-ifdef NUCLEO
-WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
+ifdef USB
+DEFINES += -DUSB
 endif
 
 PININFOFILE=$(GENDIR)/jspininfo
@@ -1917,141 +1161,6 @@ ifdef LINKER_FILE
   LDFLAGS += -T$(LINKER_FILE)
 endif
 
-#
-# Definitions for the build of the ESP32
-#
-ifdef ESP32
-ifndef ESP_IDF_PATH
-$(error "The ESP_IDF_PATH variable must be set")
-endif
-ifndef ESP_APP_TEMPLATE_PATH
-$(error "The ESP_APP_TEMPLATE_PATH variable must be set")
-endif
-# The prefix for the ESP32 compiler
-CCPREFIX=xtensa-esp32-elf-
-SOURCES += targets/esp32/main.c
-LDFLAGS += -L$(ESP_IDF_PATH)/ld \
--L$(ESP_IDF_PATH)/components/bt/lib \
--L$(ESP_IDF_PATH)/components/esp32/lib \
--L$(ESP_APP_TEMPLATE_PATH)/build/bootloader \
--L$(ESP_APP_TEMPLATE_PATH)/build/bt \
--L$(ESP_APP_TEMPLATE_PATH)/build/driver \
--L$(ESP_APP_TEMPLATE_PATH)/build/esp32 \
--L$(ESP_APP_TEMPLATE_PATH)/build/esptool_py \
--L$(ESP_APP_TEMPLATE_PATH)/build/expat \
--L$(ESP_APP_TEMPLATE_PATH)/build/freertos \
--L$(ESP_APP_TEMPLATE_PATH)/build/json \
--L$(ESP_APP_TEMPLATE_PATH)/build/log \
--L$(ESP_APP_TEMPLATE_PATH)/build/lwip \
--L$(ESP_APP_TEMPLATE_PATH)/build/mbedtls \
--L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
--L$(ESP_APP_TEMPLATE_PATH)/build/nghttp \
--L$(ESP_APP_TEMPLATE_PATH)/build/nvs_flash \
--L$(ESP_APP_TEMPLATE_PATH)/build/partition_table \
--L$(ESP_APP_TEMPLATE_PATH)/build/spi_flash \
--L$(ESP_APP_TEMPLATE_PATH)/build/tcpip_adapter \
--L$(ESP_APP_TEMPLATE_PATH)/build/vfs \
--L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
--L$(ESP_APP_TEMPLATE_PATH)/build/wpa_supplicant \
--L$(ESP_APP_TEMPLATE_PATH)/build/ethernet \
--lgcc
-ESPTOOL?=
-INCLUDE+=\
--I$(ESP_APP_TEMPLATE_PATH)/build/include \
--I$(ESP_IDF_PATH)/components \
--I$(ESP_IDF_PATH)/components/newlib/include \
--I$(ESP_IDF_PATH)/components/bt/include \
--I$(ESP_IDF_PATH)/components/driver/include \
--I$(ESP_IDF_PATH)/components/esp32/include \
--I$(ESP_IDF_PATH)/components/freertos/include \
--I$(ESP_IDF_PATH)/components/json/include \
--I$(ESP_IDF_PATH)/components/log/include \
--I$(ESP_IDF_PATH)/components/lwip/include/lwip \
--I$(ESP_IDF_PATH)/components/lwip/include/lwip/port \
--I$(ESP_IDF_PATH)/components/lwip/include/lwip/posix \
--I$(ESP_IDF_PATH)/components/newlib/include \
--I$(ESP_IDF_PATH)/components/spi_flash/include \
--I$(ESP_IDF_PATH)/components/nvs_flash/include \
--I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
--I$(ESP_IDF_PATH)/components/vfs/include \
--Itargets/esp32/include
-LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
-LIBS+=-T esp32_out.ld \
--T$(ESP_IDF_PATH)/components/esp32/ld/esp32.common.ld \
--T$(ESP_IDF_PATH)/components/esp32/ld/esp32.rom.ld \
--T$(ESP_IDF_PATH)/components/esp32/ld/esp32.peripherals.ld \
-$(ESP_IDF_PATH)/components/newlib/lib/libc.a \
-$(ESP_IDF_PATH)/components/newlib/lib/libm.a \
--lbt \
--lbtdm_app \
--ldriver \
--lesp32 \
-$(ESP_IDF_PATH)/components/esp32/libhal.a  \
--lcore \
--lnet80211 \
--lphy \
--lwpa_supplicant \
--lrtc \
--lpp \
--lwpa \
--lexpat \
--lfreertos \
--ljson \
--llog \
--llwip \
--lmbedtls \
--lnghttp \
--lnvs_flash \
--lspi_flash \
--ltcpip_adapter \
--lvfs \
--lnewlib \
--lcoexist \
--lethernet \
--lstdc++ \
--lgcc
-endif # ESP32
-
-#
-# Definitions for the build of the ESP8266
-#
-ifdef ESP8266
-# The Root of the ESP8266_SDK distributed by Espressif
-# This must be supplied as a Make environment variable.
-ifndef ESP8266_SDK_ROOT
-$(error "The ESP8266_SDK_ROOT variable must be set")
-endif
-
-# The pefix for the xtensa toolchain
-CCPREFIX=xtensa-lx106-elf-
-DEFINES += -DESP8266
-
-# Extra flags passed to the linker
-LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
--nostdlib \
--Wl,--no-check-sections \
--u call_user_start \
--Wl,-static
-
-# Extra source files specific to the ESP8266
-SOURCES += targets/esp8266/uart.c \
-	targets/esp8266/spi.c \
-	targets/esp8266/user_main.c \
-	targets/esp8266/log.c \
-	targets/esp8266/jshardware.c \
-	targets/esp8266/i2c_master.c \
-	targets/esp8266/esp8266_board_utils.c \
-	targets/esp8266/gdbstub.c \
-	targets/esp8266/gdbstub-entry.S \
-	libs/network/esp8266/network_esp8266.c
-
-# The tool used for building the firmware and flashing
-ESPTOOL    ?= $(ESP8266_SDK_ROOT)/esptool/esptool.py
-
-# Extra include directories specific to the ESP8266
-INCLUDE += -I$(ESP8266_SDK_ROOT)/include -I$(ROOT)/targets/esp8266
-endif # ESP8266
-
 # Adds additional files from unsupported sources(means not supported by Gordon) to actual make
 ifdef UNSUPPORTEDMAKE
 include $(UNSUPPORTEDMAKE)
@@ -2069,11 +1178,6 @@ export OBJCOPY=$(CCPREFIX)objcopy
 export OBJDUMP=$(CCPREFIX)objdump
 export GDB=$(CCPREFIX)gdb
 
-
-.PHONY:  proj
-
-all: 	 proj
-
 ifeq ($(V),1)
         quiet_=
         Q=
@@ -2082,6 +1186,14 @@ else
         Q=@
   export SILENT=1
 endif
+
+# =============================================================================
+# =============================================================================
+# =============================================================================
+
+.PHONY:  proj
+
+all: 	 proj
 
 boardjson: scripts/build_board_json.py $(WRAPPERSOURCES)
 	@echo Generating Board JSON
@@ -2093,7 +1205,6 @@ ifdef USE_NET
 else
 	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 endif
-
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
@@ -2125,11 +1236,8 @@ ifndef NO_COMPILE
 
 compile=$(CC) $(CFLAGS) $< -o $@
 
-ifdef FIXED_OBJ_NAME
-link=$(LD) $(LDFLAGS) -o espruino $(OBJS) $(LIBS)
-else
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
-endif
+
 # note: link is ignored for the ESP8266
 obj_dump=$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
 obj_to_bin=$(OBJCOPY) -O $1 $(PROJ_NAME).elf $(PROJ_NAME).$2
@@ -2147,65 +1255,21 @@ quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 	@echo $($(quiet_)compile)
 	@$(call compile)
 
+# case sensitive - Nordic's files are capitals
 .s.o:
 	@echo $($(quiet_)compile)
 	@$(call compile)
 
+.S.o:
+	@echo $($(quiet_)compile)
+	@$(call compile)
+
 ifdef LINUX # ---------------------------------------------------
-proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
-
-$(PROJ_NAME): $(OBJS)
-	@echo $($(quiet_)link)
-	@$(call link)
-	
-# Linking for ESP32
+include make/targets/LINUX.make
 else ifdef ESP32
-
-ESP_ZIP     = $(PROJ_NAME).tgz
-
-espruino_esp32.bin: $(OBJS)
-	$(LD) $(LDFLAGS) -o espruino_esp32.elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
-	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
-	--chip esp32 \
-	elf2image \
-	--flash_mode "dio" \
-	--flash_freq "40m" \
-	-o espruino_esp32.bin \
-	espruino_esp32.elf
-
-$(ESP_ZIP): espruino_esp32.bin
-	$(Q)rm -rf build/$(basename $(ESP_ZIP))
-	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
-	$(Q)cp $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
-	  espruino_esp32.bin \
-	  $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin \
-	  targets/esp32/README_flash.txt \
-	  build/$(basename $(ESP_ZIP))
-	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
-
-proj: espruino_esp32.bin $(ESP_ZIP)
-
-flash:
-	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
-	--chip esp32 \
-	--port "/dev/ttyUSB0" \
-	--baud 921600 \
-	write_flash \
-	-z \
-	--flash_mode "dio" \
-	--flash_freq "40m" \
-	0x1000 $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
-	0x10000 espruino_esp32.bin \
-	0x8000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_singleapp.bin
-
-erase_flash:
-	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
-	--chip esp32 \
-	--port "/dev/ttyUSB0" \
-	--baud 921600 \
-	erase_flash	
-
+include make/targets/ESP32.make
 else ifdef ESP8266
+<<<<<<< HEAD
 # Linking the esp8266... The Espruino source files get compiled into the .text section. The
 # Espressif SDK libraries have .text and .irom0 sections. We need to put the libraries' .text into
 # .iram0 (32KB on chip instruction ram) and we need to put the Esprunio .text and the libraries'
@@ -2461,10 +1525,14 @@ gdb:
 	@echo "break HardFault_Handler" >> gdbinit
 	$(GDB) -x gdbinit
 	rm gdbinit
+=======
+include make/targets/ESP8266.make
+else # ARM/etc, so generate bin, etc ---------------------------
+include make/targets/ARM.make
+>>>>>>> d1e384e36df31ceb01005c413f31523cd7d8e5a8
 endif	    # ---------------------------------------------------
 
-# end of skipping compiling and linking
-else
+else # NO_COMPILE
 # log WRAPPERSOURCES to help Firmware creation tool
 $(info WRAPPERSOURCES=$(WRAPPERSOURCES));
 endif
@@ -2473,6 +1541,7 @@ clean:
 	@echo Cleaning targets
 	$(Q)find . -name \*.o | grep -v arm-bcm2708 | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
+	$(Q)rm -f $(ROOT)/scripts/*.pyc $(ROOT)/boards/*.pyc
 	$(Q)rm -f $(PROJ_NAME).elf
 	$(Q)rm -f $(PROJ_NAME).hex
 	$(Q)rm -f $(PROJ_NAME).bin

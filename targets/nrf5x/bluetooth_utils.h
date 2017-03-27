@@ -21,6 +21,7 @@
 #define BLE_RSSI_EVENT                  JS_EVENT_PREFIX"blerssi"
 /// Names for objects that get defined in the 'hidden root'
 #define BLE_NAME_SERVICE_DATA           "BLE_SVC_D"
+#define BLE_NAME_SERVICE_ADVERTISE      "BLE_SVC_A"
 #define BLE_NAME_ADVERTISE_DATA         "BLE_ADV_D"
 #define BLE_NAME_ADVERTISE_OPTIONS      "BLE_ADV_O"
 #define BLE_NAME_SCAN_RESPONSE_DATA     "BLE_RESP"

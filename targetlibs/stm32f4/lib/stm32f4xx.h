@@ -171,6 +171,10 @@
 #elif defined(STM32F411xE)
   #define STM32F411xx
   #include "stm32f411xe.h"
+#elif defined(STM32F413xH)
+  // #define STM32F411xx
+  #define STM32F401xx
+  #include "stm32f413xx.h"
 #elif defined(STM32F446xx)
   #include "stm32f446xx.h"
 #else

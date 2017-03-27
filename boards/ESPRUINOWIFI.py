@@ -28,18 +28,26 @@ info = {
   { 'filename' : 'espruino_%v_wifi.bin', 'description' : "Normal Espruino WiFi build"},
  ],
  'build' : {
-   'defines' : [
-     'USE_USB_HID',
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_TV',
-     'USE_HASHLIB',
-     'USE_FILESYSTEM',
-     'USE_CRYPTO',
-     'USE_TLS'
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'USB_HID',
+     'NET',
+     'GRAPHICS',
+     'TV',
+     'HASHLIB',
+     'FILESYSTEM',
+     'CRYPTO',
+     'TLS',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'DEFINES+=-DUSE_USB_OTG_FS=1 -DESPRUINOWIFI',
+     'STLIB=STM32F411xE',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o'
    ]
- }
+  }
 };
+
 chip = {
   'part' : "STM32F411CEU6",
   'family' : "STM32F4",

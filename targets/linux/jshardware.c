@@ -33,6 +33,10 @@
 
 #include <pthread.h>
 
+#define FAKE_FLASH_FILENAME  "espruino.flash"
+#define FAKE_FLASH_BLOCKSIZE 4096
+#define FAKE_FLASH_BLOCKS    16
+
 #ifdef USE_WIRINGPI
 // see http://wiringpi.com/download-and-install/
 //   git clone git://git.drogon.net/wiringPi
@@ -799,14 +803,76 @@ JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
 unsigned int jshGetRandomNumber() { return rand(); }
 
-bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) { return false; }
-JsVar *jshFlashGetFree() {
-  // not implemented, or no free pages.
-  return 0;
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
+  if (addr > (FAKE_FLASH_BLOCKSIZE * FAKE_FLASH_BLOCKS))
+      return false;
+  *startAddr = (uint32_t) (floor(addr / FAKE_FLASH_BLOCKSIZE) * FAKE_FLASH_BLOCKSIZE);
+  *pageSize = FAKE_FLASH_BLOCKSIZE;
+  return true;
 }
-void jshFlashErasePage(uint32_t addr) { }
-void jshFlashRead(void *buf, uint32_t addr, uint32_t len) { memset(buf, 0, len); }
-void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) { }
+JsVar *jshFlashGetFree() {
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  if (!jsFreeFlash) return 0;
+  uint32_t pAddr, pSize;
+  JsVar *jsArea = jsvNewObject();
+  if (!jsArea) return jsFreeFlash;
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger(0));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger(FAKE_FLASH_BLOCKSIZE*FAKE_FLASH_BLOCKS));
+  jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
+  return jsFreeFlash;
+}
+
+static FILE *jshFlashOpenFile() {
+  FILE *f = fopen(FAKE_FLASH_FILENAME, "r+b");
+  if (!f) f = fopen(FAKE_FLASH_FILENAME, "wb");
+  if (!f) return 0;
+  int len = FAKE_FLASH_BLOCKSIZE*FAKE_FLASH_BLOCKS;
+  fseek(f,0,SEEK_END);
+  long filelen = ftell(f);
+  if (filelen<len) {
+    long pad = len-filelen;
+    char *buf = malloc(pad);
+    memset(buf,0xFF, pad);
+    fwrite(buf, 1, pad, f);
+    free(buf);
+  }
+  return f;
+}
+void jshFlashErasePage(uint32_t addr) {
+  FILE *f = jshFlashOpenFile();
+  if (!f) return;
+  uint32_t startAddr, pageSize;
+  if (jshFlashGetPage(addr, &startAddr, &pageSize)) {
+    fseek(f, startAddr, SEEK_SET);
+    char *buf = malloc(pageSize);
+    memset(buf, 0xFF, pageSize);
+    fwrite(buf, 1, pageSize, f);
+    free(buf);
+  }
+  fclose(f);
+}
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+  FILE *f = jshFlashOpenFile();
+  if (!f) return;
+  fseek(f, addr, SEEK_SET);
+  fread(buf, 1, len, f);
+  fclose(f);
+}
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+  FILE *f = jshFlashOpenFile();
+  if (!f) return;
+
+  char *wbuf = malloc(len);
+  fseek(f, addr, SEEK_SET);
+  fread(wbuf, 1, len, f);
+  uint32_t i;
+  for (i=0;i<len;i++)
+    wbuf[i] &= ((char*)buf)[i];
+  fseek(f, addr, SEEK_SET);
+  fwrite(wbuf, 1, len, f);
+  free(wbuf);
+  fclose(f);
+}
 
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;

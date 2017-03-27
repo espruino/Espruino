@@ -1728,11 +1728,9 @@ JsVar *jsvAsNumber(JsVar *var) {
   return jsvNewFromFloat(jsvGetFloat(var));
 }
 
-#ifdef SAVE_ON_FLASH
 JsVarInt jsvGetIntegerAndUnLock(JsVar *v) { return _jsvGetIntegerAndUnLock(v); }
 JsVarFloat jsvGetFloatAndUnLock(JsVar *v) { return _jsvGetFloatAndUnLock(v); }
 bool jsvGetBoolAndUnLock(JsVar *v) { return _jsvGetBoolAndUnLock(v); }
-#endif
 
 /** Get the item at the given location in the array buffer and return the result */
 size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer) {

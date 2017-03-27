@@ -2,7 +2,7 @@
 
 There are several options to building Espruino on various platforms for the OS and board versions that are avaiable.
 
-To build, and run, Espruino on the OS that one is using is as simple as the following, if prerequisits are met:
+To build and run Espruino on the OS that one is using is as simple as the following, if prerequisits are met:
 
 ```bash
 make clean && make
@@ -22,6 +22,19 @@ Espruino is easy to build under Linux, for either for Espruino running on Linux 
 
 The current reference OS for building is Ubuntu 16.04.1 LTS, and the following can ensure problem free development:
 
+### Easy Method : provision.sh
+
+Simply run the following with the name of your board to set
+your computer up ready for a build:
+
+```bash
+source scripts/provision.sh BOARDNAME
+```
+
+This should work for common platforms on Linux, but will only set
+paths up for your current session. You'll have to run it again
+next time you log in.
+
 ### for Espruino
 
 ```bash
@@ -38,7 +51,7 @@ make clean && make
 chmod +x espruino && sudo cp espruino /usr/local/bin
 ```
 
-### for an example of cross compilation for the puck.js
+### for an example of cross compilation for Puck.js
 
 Having successfully created an native OS Espruino, try a cross compilation.
 
@@ -52,7 +65,7 @@ tar xjf gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
 sudo mv gcc-arm-none-eabi-5_4-2016q3-20160926 /usr/local
 export PATH=/usr/local/gcc-arm-none-eabi-5_4-2016q3/bin:$PATH
 cd ~/source/repos/github/espruino/Espruino
-make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
+make clean && DFU_UPDATE_BUILD=1 BOARD=PUCKJS RELEASE=1 make
 ls -l *puckjs*
 ```
 
@@ -102,12 +115,19 @@ After a successful OpenWRT build, [OpenWRT Espruino packages](https://github.com
 ### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard)
 
 ```bash
-make clean && YOUR_BOARD_NAME=1 RELEASE=1 make
+make clean && BOARD=BOARDNAME RELEASE=1 make
 ```
 
-* See the top of Makefile for board names
-* `BOARDNAME=1 RELEASE=1 make serialflash` will flash to /dev/ttyUSB0 using the STM32 serial bootloader (what's needed for the Espruino and HY boards)
-* `BOARDNAME=1 RELEASE=1 make flash` will flash using st-flash if it's a discovery board, the maple bootloader if using that board, or will copy the binary to `/media/NUCLEO` if using a Nucleo board.
+Where BOARDNAME is one of:
+
+* `PICO_R1_3` for Espruino Pico
+* `ESPRUINOBOARD` for Original Espruino
+* `ESPRUINOWIFI` for Espruino WiFi
+
+Or choose another board name based on the files in `boards/*.py`
+
+* `BOARD=BOARDNAME RELEASE=1 make serialflash` will flash to /dev/ttyUSB0 using the STM32 serial bootloader (what's needed for the Espruino and HY boards)
+* `BOARD=BOARDNAME RELEASE=1 make flash` will flash using st-flash if it's a discovery board, the maple bootloader if using that board, or will copy the binary to `/media/NUCLEO` if using a Nucleo board.
 
 It may complain that there isn't enough space on the chip. This isn't an issue unless you save to flash, but you can fix the error in a few ways:
 
@@ -115,7 +135,7 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 * Change the compile flags from `-O3` to `-Os` in the `Makefile`
 * Knock out some functionality (like `USE_GRAPHICS=1`) that you don't need in the `Makefile`
 
-**Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved on 10240 bytes to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 RELEASE=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones that the Espruino Web IDE expects to use) use the script `scripts/create_espruino_image_1v3.sh` which will compile the bootloader *and* Espruino, and then join them together.
+**Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved on 10240 bytes to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `BOARD=ESPRUINO_1V3 RELEASE=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones that the Espruino Web IDE expects to use) use the script `scripts/create_espruino_image_1v3.sh` which will compile the bootloader *and* Espruino, and then join them together.
 
 ### for [Nordic Semiconductor's nRF51/nRF52 series devices](https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy)
 
@@ -126,12 +146,12 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 * USB
   * the board appears as a drive to drop a hex on
 
-#### for [puck.js](http://www.espruino.com/Puck.js)
+#### for [Puck.js](http://www.espruino.com/Puck.js)
 
-The puck.js is based on the nRF52
+The Puck.js is based on the nRF52
 
 ```bash
-make clean && DFU_UPDATE_BUILD=1 PUCKJS=1 RELEASE=1 make
+make clean && DFU_UPDATE_BUILD=1 BOARD=PUCKJS RELEASE=1 make
 ```
 
 The resulting file is a zip that has to be transferred to the puck.js via a Bluetooth low energy device.
@@ -142,14 +162,14 @@ See <https://www.espruino.com/Puck.js+Quick+Start> for information concerning tr
 All boards based on the nRF52 have RAM and Flash to support Espruino without feature disablement.
 
 ```bash
-make clean && NRF52832DK=1 RELEASE=1 make
+make clean && BOARD=NRF52832DK RELEASE=1 make
 ```
 
 #### for [micro:bit](http://microbit.org/)
 
 The micro:bit is based on the nRF51.
 
-* ```make clean && MICROBIT=1 RELEASE=1 make```
+* ```make clean && BOARD=MICROBIT RELEASE=1 make```
 * Drop the hex generated on the micro:bit drive and it is then an Espruino.
 
 Note:
@@ -163,7 +183,7 @@ Note:
 All boards based on the nRF51 are limited in RAM and Flash so many features are disabled.
 
 ```bash
-make clean && NRF51822DK=1 RELEASE=1 make
+make clean && BOARD=NRF51822DK RELEASE=1 make
 ```
 
 ### for esp8266
@@ -175,7 +195,7 @@ In order to compile for the esp8266 on Linux several pre-requisites have to be i
 
 To run make you need to pass a couple of environment variables to `make`.  These include:
 
-* `ESP8266_BOARD=1`
+* `BOARD=ESP8266_BOARD`
 * `FLASH_4MB=1` if you have an esp-12
 * `ESP8266_SDK_ROOT=<Path to the 1.4 SDK>`
 * `PATH=<Path to esp-open-sdk/xtensa-lx106-elf/bin/>`
@@ -186,7 +206,7 @@ The easiest is to place the following lines into a script, adapt it to your need
 ```bash
 
 #! /bin/bash
-export ESP8266_BOARD=1
+export BOARD=ESP8266_BOARD
 export FLASH_4MB=1
 export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.5.0
 export PATH=$PATH:/esp8266/esp-open-sdk/xtensa-lx106-elf/bin/
@@ -289,7 +309,7 @@ Note:
   * `cd /vagrant && make clean && make`
     * a native OS version of Espruino is now built. See this documentation for further examples
   * To exit the ssh session
-    *`exit`.
+    * `exit`.
   * On the host OS, the following are useful vagrant commands
     * `vagrant suspend`
       * will pause the VM
@@ -314,7 +334,7 @@ Note: VirtualBox Guest Additions from VirtualBox are required.
 * Click on `USB`, then click on the icon with the `+` sign (With the tooltip 'Adds a new USB filter ... selected USB device')
 * Click on the device labeled `STMicroelectronics STM32 ...`
 * Now unplug the Espruino board, wait a few seconds, and plug it back in (holding BTN1 again)
-* Go back into the VM, and type `sudo ESPRUINO_1V3=1 RELEASE=1 make serialflash`
+* Go back into the VM, and type `sudo BOARD=ESPRUINO_1V3 RELEASE=1 make serialflash`
 * Your board will now be flashed
 
 **Note:** if you want to you can change permissions so you don't need `sudo` by typing `sudo cp misc/45-espruino.rules /etc/udev/rules.d;sudo udevadm control --reload-rules` and then re-inserting the board.

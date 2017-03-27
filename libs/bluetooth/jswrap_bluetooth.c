@@ -698,22 +698,36 @@ NRF.setServices({
 **Note:** UUIDs can be integers between `0` and `0xFFFF`, strings of
 the form `"ABCD"`, or strings of the form `"ABCDABCD-ABCD-ABCD-ABCD-ABCDABCDABCD"`
 
-**Note:** Currently, services/characteristics can't be removed once added.
-As a result, calling setServices multiple times will cause characteristics
-to either be updated (value only) or ignored.
-
 `options` can be of the form:
 
 ```
 NRF.setServices(undefined, {
   hid : new Uint8Array(...), // optional, default is undefined. Enable BLE HID support
   uart : true, // optional, default is true. Enable BLE UART support
+  advertise: [ '180D' ] // optional, list of service UUIDs to advertise
 });
 ```
 
 To enable BLE HID, you must set `hid` to an array which is the BLE report
 descriptor. The easiest way to do this is to use the `ble_hid_controls`
 or `ble_hid_keyboard` modules.
+
+**Note:** Just creating a service doesn't mean that the service will
+be advertised. It will only be available after a device connects. To
+advertise, specify the UUIDs you wish to advertise in the `advertise`
+field of the second `options` argument. For example this will create
+and advertise a heart rate service:
+
+```
+NRF.setServices({
+  0x180D: { // heart_rate
+    0x2A37: { // heart_rate_measurement
+      notify: true,
+      value : [0x06, heartrate],
+    }
+  }
+}, { advertise: [ '180D' ] });
+```
 
 */
 void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
@@ -726,12 +740,14 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
   JsVar *use_hid = 0;
 #endif
   bool use_uart = true;
+  JsVar *advertise = 0;
 
   jsvConfigObject configs[] = {
 #if BLE_HIDS_ENABLED
       {"hid", JSV_ARRAY, &use_hid},
 #endif
-      {"uart", JSV_BOOLEAN, &use_uart}
+      {"uart", JSV_BOOLEAN, &use_uart},
+      {"advertise",  JSV_ARRAY, &advertise},
   };
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
     return;
@@ -763,6 +779,10 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
 
   // Save the current service data
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, data);
+  // Service UUIDs to advertise
+  if (advertise) bleStatus|=BLE_NEEDS_SOFTDEVICE_RESTART;
+  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_ADVERTISE, advertise);
+  jsvUnLock(advertise);
 
   // work out whether to apply changes
   if (bleStatus & (BLE_SERVICES_WERE_SET|BLE_NEEDS_SOFTDEVICE_RESTART)) {
@@ -983,8 +1003,10 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
             }
           } else if (field_type == BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE ||
                      field_type == BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE) {
-            JsVar *s = jsvVarPrintf("%04x", UNALIGNED_UINT16(&dPtr[i+2]));
-            jsvArrayPushAndUnLock(services, s);
+            for (int svc_idx = 2; svc_idx < field_length + 1; svc_idx += 2) {
+              JsVar *s = jsvVarPrintf("%04x", UNALIGNED_UINT16(&dPtr[i+svc_idx]));
+              jsvArrayPushAndUnLock(services, s);
+            }
           } else if (field_type == BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE ||
                      field_type == BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE) {
             JsVar *s = bleUUID128ToStr((uint8_t*)&dPtr[i+2]);
@@ -1445,19 +1467,19 @@ JsVar *jswrap_nrf_bluetooth_requestDevice_filter_device(JsVar *filter, JsVar *de
     while (jsvObjectIteratorHasValue(&it)) {
       bool foundService = false;
       JsVar *uservice = jsvObjectIteratorGetValue(&it);
-      JsVar *service = jswrap_string_toUpperLowerCase(uservice, false);
-      jsvUnLock(uservice);
+      ble_uuid_t userviceUuid;
+      bleVarToUUIDAndUnLock(&userviceUuid, uservice);
       JsvObjectIterator dit;
       jsvObjectIteratorNew(&dit, deviceServices);
       while (jsvObjectIteratorHasValue(&dit)) {
         JsVar *deviceService = jsvObjectIteratorGetValue(&dit);
-        if (jsvIsEqual(service, deviceService))
+        ble_uuid_t deviceServiceUuid;
+        bleVarToUUIDAndUnLock(&deviceServiceUuid, deviceService);
+        if (bleUUIDEqual(userviceUuid, deviceServiceUuid))
           foundService = true;
-        jsvUnLock(deviceService);
         jsvObjectIteratorNext(&dit);
       }
       jsvObjectIteratorFree(&dit);
-      jsvUnLock(service);
       if (!foundService) matches = false;
       jsvObjectIteratorNext(&it);
     }

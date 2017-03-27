@@ -43,6 +43,11 @@ int getFreeRMT(Pin pin){
   return -1;
 }
 
+void RMTReset(){
+  for(int i = 0; i < RMTChannelMax; i++){
+    if(RMTChannels[i].pin != RMTPinEmpty) rmt_driver_uninstall(i);
+  }
+}  
 void RMTInit(){
   int i;
   for(i = 0; i < RMTChannelMax; i++) RMTChannels[i].pin = RMTPinEmpty;

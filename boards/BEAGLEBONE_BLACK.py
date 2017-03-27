@@ -19,12 +19,19 @@ info = {
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_beaglebone',
  'build' : {
-   'defines' : [
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_FILESYSTEM',
-     'USE_CRYPTO',
-     'USE_TLS'
+   'optimizeflags' : '-O3',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'FILESYSTEM',
+     'CRYPTO',
+     'TLS',
+     'HASHLIB',
+     'TELNET',
+   ],
+   'makefile' : [
+     'LINUX=1',
+     'DEFINES += -DBEAGLEBONE_BLACK -DSYSFS_GPIO_DIR="\"/sys/class/gpio\"',
    ]
  }
 };
@@ -45,7 +52,7 @@ devices = {
 };
 
 def get_pins():
-  pins = pinutils.generate_pins(2,127)  
+  pins = pinutils.generate_pins(2,127)
   pinutils.findpin(pins, "PD19", True)["functions"]["I2C2_SCL"]=0;
   pinutils.findpin(pins, "PD20", True)["functions"]["I2C2_SDA"]=0;
   return pins

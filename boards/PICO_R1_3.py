@@ -29,22 +29,30 @@ info = {
   { 'filename' : 'espruino_%v_pico_1r3_cc3000.bin', 'description' : "TI CC3000 WiFi Networking"},
  ],
  'build' : {
-   'defines' : [
-     'USE_USB_HID',
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_TV',
-     'USE_HASHLIB',
-     'USE_FILESYSTEM',
-     'USE_CRYPTO',
-     'USE_TLS'
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'USB_HID',
+     'NET',
+     'GRAPHICS',
+     'TV',
+     'HASHLIB',
+     'FILESYSTEM',
+     'CRYPTO',
+     'TLS',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'DEFINES+=-DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V3',
+     'STLIB=STM32F401xE',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o'
    ]
- }
+  }
 };
+
 chip = {
   'part' : "STM32F401CDU6",
   'family' : "STM32F4",
-  'package' : "UQFN48", 
+  'package' : "UQFN48",
   'ram' : 96,
   'flash' : 384,
   'speed' : 84,
@@ -67,8 +75,8 @@ devices = {
             'pin_out' : 'H1' }, # checked
   'OSC_RTC' : { 'pin_in' :  'C14', # checked
                 'pin_out' : 'C15' }, # checked
-  'BTN1' : { 'pin' : 'C13', 'pinstate' : 'IN_PULLDOWN' }, 
-  'LED1' : { 'pin' : 'B2' }, 
+  'BTN1' : { 'pin' : 'C13', 'pinstate' : 'IN_PULLDOWN' },
+  'LED1' : { 'pin' : 'B2' },
   'LED2' : { 'pin' : 'B12' },
   'USB' : { 'pin_charge' :  'B0',
             'pin_vsense' :  'A9',
@@ -76,14 +84,14 @@ devices = {
             'pin_dp' : 'A12' }, # checked
   'JTAG' : {
         'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-        'pin_DI' : 'A15' 
+        'pin_CK' : 'A14',
+        'pin_DI' : 'A15'
           }
 };
 
 # left-right, or top-bottom order
 board = {
-  'top' : [ 'BAT_IN','B15', 'B14', 'B13', 'B10', 'B1', 'A7', 'A6', 'A5' ], 
+  'top' : [ 'BAT_IN','B15', 'B14', 'B13', 'B10', 'B1', 'A7', 'A6', 'A5' ],
   'bottom' : [ 'GND', 'VBAT', '3.3', 'B3', 'B4', 'B5', 'B6', 'B7','A8'],
 
   'top2' : ['VBAT','3.3','GND'],

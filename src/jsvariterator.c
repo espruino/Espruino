@@ -181,6 +181,12 @@ JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
   return i;
 }
 
+/// Gets the current (>=0) character (or -1)
+int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it) {
+  if (!it->ptr || it->charIdx>=it->charsInVar) return -1;
+  return (int)(unsigned char)READ_FLASH_UINT8(&it->ptr[it->charIdx]);
+}
+
 void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
   if (jsvStringIteratorHasChar(it))
     it->ptr[it->charIdx] = c;

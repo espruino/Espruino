@@ -25,8 +25,14 @@ info = {
  'variables' : 350,
  'binary_name' : 'espruino_%v_nrf51tag.bin',
  'build' : {
-  'defines' : [
-     'USE_BLUETOOTH'
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'BLUETOOTH',
+     'GRAPHICS',
+   ],
+   'makefile' : [
+     'SAVE_ON_FLASH=1',
+     'DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE',
    ]
  }
 };

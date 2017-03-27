@@ -27,9 +27,14 @@ info = {
  'variables' : 350,
  'binary_name' : 'espruino_%v_do.bin',
  'build' : {
-  'defines' : [
-     'USE_GRAPHICS',
-     'USE_BLUETOOTH',
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'BLUETOOTH',
+     'GRAPHICS',
+   ],
+   'makefile' : [
+     'SAVE_ON_FLASH=1',
+     'DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE',
    ]
  }
 };
@@ -56,7 +61,7 @@ chip = {
 };
 
 devices = {
-  
+
   'LCD' : {
             'width' : 64, 'height' : 32, 'bpp' : 1, 'controller' : 'ssd1306',
             'pin_mosi' : 'D29',
@@ -65,7 +70,7 @@ devices = {
             'pin_rst' : 'D1',
             'pin_cs' : 'D2'
           },
-  'BTN1' : { 'pin' : 'D4', 'pinstate' : 'IN_PULLUP' }, 
+  'BTN1' : { 'pin' : 'D4', 'pinstate' : 'IN_PULLUP' },
   'LED1' : { 'pin' : 'D7' },  # no LED - actually vibrate!
 };
 

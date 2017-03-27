@@ -12,6 +12,8 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifdef BLUETOOTH
+
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
 #include "jsdevices.h"
@@ -72,7 +74,7 @@
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
-#define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
+#define ADVERTISE_MAX_UUIDS             4 ///< maximum custom UUIDs to advertise
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 #if BLE_HIDS_ENABLED
@@ -626,7 +628,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         if (cccd_handle) {
           if(bleTaskInfo)
             jsvObjectSetChildAndUnLock(bleTaskInfo, "handle_cccd", jsvNewFromInteger(cccd_handle));
-            
+
           // FIXME: we just switch task here - this is not nice...
           bleSwitchTask(BLETASK_CHARACTERISTIC_NOTIFY);
           jsble_central_characteristicNotify(bleTaskInfo, true);
@@ -789,14 +791,16 @@ static void gap_params_init() {
     ble_gap_conn_sec_mode_t sec_mode;
 
     char deviceName[BLE_GAP_DEVNAME_MAX_LEN];
-#ifdef PUCKJS
+#if defined(PUCKJS)
     strcpy(deviceName,"Puck.js");
+#elif defined(RUUVITAG)
+    strcpy(deviceName,"RuuviTag");
 #else
     strcpy(deviceName,"Espruino "PC_BOARD_ID);
 #endif
 
     size_t len = strlen(deviceName);
-#ifdef PUCKJS
+#if defined(PUCKJS) || defined(RUUVITAG)
     // append last 2 bytes of MAC address to name
     uint32_t addr =  NRF_FICR->DEVICEADDR[0];
     deviceName[len++] = ' ';
@@ -1027,7 +1031,7 @@ static void ble_stack_init() {
     err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
     APP_ERROR_CHECK(err_code);
 
-#ifdef PUCKJS
+#if defined(PUCKJS) || defined(RUUVITAG)
     // can only be enabled if we're sure we have a DC-DC
     err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
     APP_ERROR_CHECK(err_code);
@@ -1052,7 +1056,7 @@ static void advertising_init() {
     // Build advertising data struct to pass into @ref ble_advertising_init.
     jsble_setup_advdata(&advdata);
 
-    static ble_uuid_t adv_uuids[2]; // FIXME - more?
+    static ble_uuid_t adv_uuids[ADVERTISE_MAX_UUIDS];
     int adv_uuid_count = 0;
     if (bleStatus & BLE_HID_INITED) {
       adv_uuids[adv_uuid_count].uuid = BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE;
@@ -1061,9 +1065,25 @@ static void advertising_init() {
     }
     if (bleStatus & BLE_NUS_INITED) {
       adv_uuids[adv_uuid_count].uuid = BLE_UUID_NUS_SERVICE;
-      adv_uuids[adv_uuid_count].type = NUS_SERVICE_UUID_TYPE;
+      adv_uuids[adv_uuid_count].type = BLE_UUID_TYPE_VENDOR_BEGIN; ///< We just assume we're the first 128 bit UUID in the list!
       adv_uuid_count++;
     }
+    // add any user-defined services
+    JsVar *advServices = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_ADVERTISE, 0);
+    if (jsvIsArray(advServices)) {
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, advServices);
+      while (jsvObjectIteratorHasValue(&it)) {
+        ble_uuid_t ble_uuid;
+        if (adv_uuid_count < ADVERTISE_MAX_UUIDS &&
+            !bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetValue(&it))) {
+          adv_uuids[adv_uuid_count++] = ble_uuid;
+        }
+        jsvObjectIteratorNext(&it);
+      }
+      jsvObjectIteratorFree(&it);
+    }
+    jsvUnLock(advServices);
 
     memset(&scanrsp, 0, sizeof(scanrsp));
     scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
@@ -1441,6 +1461,7 @@ void jsble_central_connect(ble_gap_addr_t peer_addr) {
 
   ble_gap_conn_params_t   gap_conn_params;
   memset(&gap_conn_params, 0, sizeof(gap_conn_params));
+  BLEFlags flags = jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_FLAGS, 0));
   if (flags & BLE_FLAGS_LOW_POWER) {
     gap_conn_params.min_conn_interval = MSEC_TO_UNITS(500, UNIT_1_25_MS);   // Minimum acceptable connection interval (500 ms)
     gap_conn_params.max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS);    // Maximum acceptable connection interval (1000 ms)
@@ -1545,7 +1566,7 @@ void jsble_central_characteristicDescDiscover(JsVar *characteristic) {
   ble_gattc_handle_range_t range;
   range.start_handle = handle_value+1;
   range.end_handle = handle_value+1;
-  
+
   uint32_t              err_code;
   err_code = sd_ble_gattc_descriptors_discover(m_central_conn_handle, &range);
   if (jsble_check_error(err_code)) {
@@ -1579,4 +1600,5 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
     if (jsble_check_error(err_code))
       bleCompleteTaskFail(BLETASK_CHARACTERISTIC_NOTIFY, 0);
 }
-#endif
+#endif // CENTRAL_LINK_COUNT>0
+#endif // BLUETOOTH
