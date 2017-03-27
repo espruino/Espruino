@@ -337,7 +337,8 @@ meaning of option values:
 
 4 - no RF after waking up. Power consumption is the lowest.
 
-**Note:** unlike normal Espruino boards' 'deep sleep' mode, ESP8266 deep sleep actually turns off the processor. After the given number of microseconds have elapsed, the ESP8266 will restart as if power had been turned off and then back on. *All contents of RAM will be lost*.
+**Note:** unlike normal Espruino boards' 'deep sleep' mode, ESP8266 deep sleep actually turns off the processor. After the given number of microseconds have elapsed, the ESP8266 will restart as if power had been turned off and then back on. *All contents of RAM will be lost*. 
+Connect GPIO 16 to RST to enable wakeup.
 
 **Special:** 0 microseconds cause sleep forever until external wakeup RST pull down occurs.
 
