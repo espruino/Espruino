@@ -1003,8 +1003,10 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
             }
           } else if (field_type == BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE ||
                      field_type == BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE) {
-            JsVar *s = jsvVarPrintf("%04x", UNALIGNED_UINT16(&dPtr[i+2]));
-            jsvArrayPushAndUnLock(services, s);
+            for (int svc_idx = 2; svc_idx < field_length + 1; svc_idx += 2) {
+              JsVar *s = jsvVarPrintf("%04x", UNALIGNED_UINT16(&dPtr[i+svc_idx]));
+              jsvArrayPushAndUnLock(services, s);
+            }
           } else if (field_type == BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE ||
                      field_type == BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE) {
             JsVar *s = bleUUID128ToStr((uint8_t*)&dPtr[i+2]);
@@ -1465,19 +1467,19 @@ JsVar *jswrap_nrf_bluetooth_requestDevice_filter_device(JsVar *filter, JsVar *de
     while (jsvObjectIteratorHasValue(&it)) {
       bool foundService = false;
       JsVar *uservice = jsvObjectIteratorGetValue(&it);
-      JsVar *service = jswrap_string_toUpperLowerCase(uservice, false);
-      jsvUnLock(uservice);
+      ble_uuid_t userviceUuid;
+      bleVarToUUIDAndUnLock(&userviceUuid, uservice);
       JsvObjectIterator dit;
       jsvObjectIteratorNew(&dit, deviceServices);
       while (jsvObjectIteratorHasValue(&dit)) {
         JsVar *deviceService = jsvObjectIteratorGetValue(&dit);
-        if (jsvIsEqual(service, deviceService))
+        ble_uuid_t deviceServiceUuid;
+        bleVarToUUIDAndUnLock(&deviceServiceUuid, deviceService);
+        if (bleUUIDEqual(userviceUuid, deviceServiceUuid))
           foundService = true;
-        jsvUnLock(deviceService);
         jsvObjectIteratorNext(&dit);
       }
       jsvObjectIteratorFree(&dit);
-      jsvUnLock(service);
       if (!foundService) matches = false;
       jsvObjectIteratorNext(&it);
     }
