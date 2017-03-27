@@ -19,7 +19,7 @@
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSd" // the data in each file
 #define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSo" // the list of open files
 
-#if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO)
+#if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO) && !defined(USE_FLASHFS)
 #define SD_CARD_ANYWHERE
 #endif
 
@@ -32,6 +32,10 @@ bool fat_initialised = false;
 #ifdef SD_CARD_ANYWHERE
 void sdSPISetup(JsVar *spi, Pin csPin);
 bool isSdSPISetup();
+#endif
+
+#ifdef USE_FLASHFS
+#include "flash_diskio.h"
 #endif
 
 // 'path' must be of JS_DIR_BUF_SIZE
@@ -67,8 +71,10 @@ void jsfsReportError(const char *msg, FRESULT res) {
 }
 
 bool jsfsInit() {
+   
 #ifndef LINUX
   if (!fat_initialised) {
+#ifndef USE_FLASHFS  
 #ifdef SD_CARD_ANYWHERE
     if (!isSdSPISetup()) {
 #ifdef SD_SPI
@@ -85,18 +91,19 @@ bool jsfsInit() {
 #else
       jsError("SD card must be setup with E.connectSDCard first");
       return false;
-#endif
+#endif // SD_SPI
     }
-#endif
-
+#endif // SD_CARD_ANYWHER
+#endif // USE_FLASHFS 
     FRESULT res;
-    if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
-      jsfsReportError("Unable to mount SD card", res);
-      return false;
+
+    if ((res = f_mount(&jsfsFAT, "", 1)) != FR_OK) {
+       jsfsReportError("Unable to mount media", res);
+       return false;
     }
     fat_initialised = true;
   }
-#endif
+#endif // LINUX
   return true;
 }
 
@@ -526,7 +533,10 @@ Seek to a certain position in the file
 */
 void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
   if (nBytes<0) {
-    jsWarn(is_skip ? "Bytes to skip must be >=0" : "Position to seek to must be >=0");
+    if ( is_skip ) 
+	  jsWarn("Bytes to skip must be >=0");
+    else 
+	  jsWarn("Position to seek to must be >=0");
     return;
   }
   FRESULT res = 0;
@@ -559,3 +569,88 @@ void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
 }
 Pipe this file to a stream (an object with a 'write' method)
 */
+
+#ifdef USE_FLASHFS
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "flashFatFS",
+  "generate" : "jswrap_E_flashFatFS",
+  "ifndef" : "SAVE_ON_FLASH",
+  "ifdef" : "USE_FLASHFS",
+   "params" : [
+    ["options","JsVar",["An optional object `{ addr : int=0x300000, sectors : int=256, readonly : bool=false, , format : bool=false }`","addr : start address in flash","sectors: number of sectors to use","readonly: set to true if you want to disable write","format:  Format the media"]]
+  ],
+  "return" : ["bool","True on success, or false on failure"]  
+}
+Change the paramters used for the flash filesystem.
+The default address is the last 1Mb of 4Mb Flash, 0x300000, with total size of 1Mb.
+
+Before first use the media needs to be formatted.
+```
+fs=require("fs");
+
+if ( typeof(fs.readdirSync())==="undefined" ) {
+  console.log("Formatting FS");
+  E.flashFatFS({format:true});
+}
+
+fs.writeFileSync("bang.txt", "This is the way the world ends\nnot with a bang but a whimper.\n");
+
+fs.readdirSync();
+```
+
+This will create a drive of 100 * 4096 bytes at 0x200000. Be careful with the selection of flash addresses as you can overwrite firmware!
+*/
+
+int jswrap_E_flashFatFS(JsVar* options) {
+  uint32_t addr = FS_FLASH_BASE;
+  uint16_t sectors = FS_SECTOR_COUNT;
+  uint8_t readonly = 0;
+  uint8_t format = 0;
+  // addr : 0x300000, sectors :256, readonly:false
+  if (jsvIsObject(options)) {
+    JsVar *a = jsvObjectGetChild(options, "addr", false);
+    if (a) {
+      if (jsvIsNumeric(a) && jsvGetInteger(a)>0x100000)
+        addr = jsvGetInteger(a);
+    }
+    JsVar *s = jsvObjectGetChild(options, "sectors", false);
+    if (s) {
+      if (jsvIsNumeric(s) && jsvGetInteger(s)>0)
+        sectors = jsvGetInteger(s);
+    }
+    JsVar *r = jsvObjectGetChild(options, "readonly", false);
+    if (r) {
+      if (jsvIsBoolean(r))
+        readonly = jsvGetBool(r);
+		jsWarn("readonly not implemented");
+    }
+     JsVar *f = jsvObjectGetChild(options, "format", false);
+    if (f) {
+      if (jsvIsBoolean(f))
+        format = jsvGetBool(f);
+    }
+     jsWarn( "E.flashFatFs a:%d, s: %d r: %d f: %d", addr, sectors, readonly, format );
+  }
+  else if (!jsvIsUndefined(options)) {
+    jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
+  }
+  
+  uint8_t init=flashFatFsInit( addr, sectors, readonly, format );
+  if (init) {
+    if ( format ) {
+      uint8_t res = f_mount(&jsfsFAT, "", 0);
+      jsWarn("Formatting Flash");
+      res = f_mkfs("", 1, 0);  // Super Floppy format, using all space (not partition table)
+      if (res != FR_OK) {
+        jsfsReportError("Flash Formatting error:",res);
+        return false;
+     }
+   }    
+  }
+  jsfsInit();
+  return true;
+}
+#endif
