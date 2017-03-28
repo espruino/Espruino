@@ -35,6 +35,7 @@
             JSON.parse now throws an exception if an incorrect value type is found (fix #1117)
             Pipe close event handlers now use 'this' arg - solves auto-closing pipe when piping from HTTP
             Increase max graphics size from 1023 to 32767
+            nRF52: Don't get stuck in 'HID Busy' state if a HID send failed
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise

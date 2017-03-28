@@ -1750,7 +1750,6 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
     return;
   }
 
-  bleStatus |= BLE_IS_SENDING_HID;
   uint32_t err_code;
   if (!m_in_boot_mode) {
       err_code = ble_hids_inp_rep_send(&m_hids,
@@ -1762,8 +1761,8 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
                                                length,
                                                data);
   }
-  jsble_check_error(err_code);
-
+  if (!jsble_check_error(err_code))
+    bleStatus |= BLE_IS_SENDING_HID;
   return;
 }
 #endif
@@ -1950,8 +1949,8 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
 
   uint32_t              err_code;
   err_code = sd_ble_gattc_write(m_central_conn_handle, &write_params);
-    if (jsble_check_error(err_code))
-      bleCompleteTaskFail(BLETASK_CHARACTERISTIC_NOTIFY, 0);
+  if (jsble_check_error(err_code))
+    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_NOTIFY, 0);
 }
 #endif // CENTRAL_LINK_COUNT>0
 
