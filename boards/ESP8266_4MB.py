@@ -25,13 +25,15 @@ info = {
    'libraries' : [
      'NET',
      'TELNET',
-     #'GRAPHICS',
+     'GRAPHICS',
      'CRYPTO',
      'NEOPIXEL',
+     'FILESYSTEM'
    ],
-  'makefile': [
-    'ESP_FLASH_MAX=479232' 
-  ]
+   'makefile' : [
+     'FLASH_4MB=1',
+     'ESP_FLASH_MAX=933888'
+    ]
  }
 };
 chip = {
@@ -47,21 +49,12 @@ chip = {
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {
-    'address' : 0x78000,
-    'page_size' : 4096,
-    'pages' : 3,
-    'flash_available' : 468, # firmware can be up to this size
-  },
-};
-
-if (os.environ.has_key("FLASH_4MB_C1")):
-  chip['saved_code'] = {
     'address' : 0x201000, # first page is used for wifi save 
     'page_size' : 4096,
-    'pages' : 255,
+    'pages' : 16,
     'flash_available' : 912, # firmware can be up to this size 
-   };
-
+  },
+};
 
 devices = {
 };
@@ -111,38 +104,8 @@ board_esp01 = {
     'right' : ['VCC', 'RESET', 'CH_PD', 'D1'],
     '_hide_not_on_connectors' : True
 };
-board_esp01["_css"] = """
-#board {
-  width:  500px;
-  height: 299px;
-  left: 50px;
-  top: 0px;
-  background-image: url(img/ESP8266_01.jpg);
-}
-#boardcontainer {
-  height: 300px;
-}
-#board #right {
-  top: 30px;
-  left: 200px;
-}
-#board #left {
-  top: 65px;
-  right: 80px;
-}
-#board #right  {
-  top: 65px;
-  left: 460px;
-}
-#board .leftpin {
-  height: 48px;
-}
-#board .rightpin {
-  height: 48px;
-}
-""";
 
-boards = [ board_esp12, board_esp01 ];
+boards = [ board_esp12 ];
 
 def get_pins():
   pins = pinutils.generate_pins(0,15)

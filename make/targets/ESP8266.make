@@ -20,8 +20,13 @@ USER2_BIN   = espruino_esp8266_user2.bin
 USER1_ELF   = espruino_esp8266_user1.elf
 USER2_ELF   = espruino_esp8266_user2.elf
 PARTIAL     = espruino_esp8266_partial.o
+ifdef FLASH_4MB
+LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.2048.app1.ld
+LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.2048.app2.ld
+else
 LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
+endif
 APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
 BOOTLOADER  = $(ESP8266_SDK_ROOT)/bin/boot_v1.6.bin
 BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
