@@ -31,10 +31,10 @@ info = {
    'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
-#     'NET',
-#     'GRAPHICS',
-#     'NFC',
-#     'NEOPIXEL'
+     'NET',
+     'GRAPHICS',
+     'NFC',
+     'NEOPIXEL'
    ],
    'makefile' : [
      'DEFINES += -DBOARD_PCA10040 -DPCA10040'
