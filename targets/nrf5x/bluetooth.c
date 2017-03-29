@@ -766,9 +766,11 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 
 /// Function for dispatching a system event to interested modules.
 static void sys_evt_dispatch(uint32_t sys_evt) {
+#if PEER_MANAGER_ENABLED
   // Dispatch the system event to the fstorage module, where it will be
   // dispatched to the Flash Data Storage (FDS) module.
   fs_sys_event_handler(sys_evt);
+#endif
   // Dispatch to the Advertising module last, since it will check if there are any
   // pending flash operations in fstorage. Let fstorage process system events first,
   // so that it can report correctly to the Advertising module.
