@@ -1654,6 +1654,7 @@ void jsble_set_services(JsVar *data) {
         ble_gatts_attr_t    attr_char_value;
         ble_gatts_attr_md_t attr_md;
         ble_gatts_char_handles_t  characteristic_handles;
+        char description[32];
 
         if ((errorStr=bleVarToUUIDAndUnLock(&char_uuid, jsvObjectIteratorGetKey(&serviceit)))) {
           jsExceptionHere(JSET_ERROR, "Invalid Characteristic UUID: %s", errorStr);
@@ -1679,6 +1680,14 @@ void jsble_set_services(JsVar *data) {
         char_md.p_user_desc_md           = NULL;
         char_md.p_cccd_md                = NULL;
         char_md.p_sccd_md                = NULL;
+        JsVar *charDescriptionVar = jsvObjectGetChild(charVar, "description", 0);
+        if (charDescriptionVar && jsvHasCharacterData(charDescriptionVar)) {
+          int8_t len = jsvGetString(charDescriptionVar, description, sizeof(description));
+          char_md.p_char_user_desc = (uint8_t *)description;
+          char_md.char_user_desc_size = len;
+          char_md.char_user_desc_max_size = len;
+        }
+        jsvUnLock(charDescriptionVar);
 
         memset(&attr_md, 0, sizeof(attr_md));
         BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);

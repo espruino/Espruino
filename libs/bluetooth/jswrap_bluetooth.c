@@ -685,6 +685,7 @@ NRF.setServices({
       writable : true,   // optional, default is false
       notify : true,   // optional, default is false
       indicate : true,   // optional, default is false
+      description: "My Characteristic",  // optional, default is null
       onWrite : function(evt) { // optional
         console.log("Got ", evt.data);
       }
