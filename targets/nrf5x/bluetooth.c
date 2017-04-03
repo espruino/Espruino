@@ -1462,7 +1462,7 @@ void jsble_advertising_start() {
 
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
-  adv_params.type        = BLE_GAP_ADV_TYPE_ADV_IND;
+  adv_params.type        = (bleStatus & BLE_IS_NOT_CONNECTABLE) ? BLE_GAP_ADV_TYPE_ADV_NONCONN_IND : BLE_GAP_ADV_TYPE_ADV_IND;
   adv_params.p_peer_addr = NULL;
   adv_params.fp          = BLE_GAP_ADV_FP_ANY;
   adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
