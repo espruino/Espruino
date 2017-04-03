@@ -57,6 +57,7 @@ typedef enum  {
 
 
 extern volatile BLEStatus bleStatus;
+extern bool bleConnectable;                       /**< whether the device is connectable */
 extern uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
 extern uint16_t                         m_conn_handle;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
