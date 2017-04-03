@@ -71,9 +71,9 @@ int app_main(void)
   tcpip_adapter_init();
 
   // Map the js_code partition into memory so can be accessed by E.setBootCode("")
-	const esp_partition_t* part;
+  const esp_partition_t* part;
   spi_flash_mmap_handle_t hrom;  
-	esp_err_t err;  
+  esp_err_t err;  
   esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "js_code");
   if (it==0) jsError("Couldn't find js_code partition - update with partition_espruino.bin\n");
   else {
@@ -81,7 +81,6 @@ int app_main(void)
     err=esp_partition_mmap(p, 0, p->size, SPI_FLASH_MMAP_DATA, (const void**)&romdata_jscode, &hrom);
     if (err!=ESP_OK) jsError("Couldn't map js_code!\n");
     // The mapping in hrom is never released - as js code can be called at anytime      
-  
   }
   esp_partition_iterator_release(it);
   
