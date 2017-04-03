@@ -511,7 +511,8 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
 
     v = jsvObjectGetChild(options, "connectable", 0);
     if (v) {
-      bleConnectable = jsvGetBoolAndUnLock(v);
+      if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_CONNECTABLE;
+      else bleStatus |= BLE_IS_NOT_CONNECTABLE;
       bleChanged = true;
     }
 

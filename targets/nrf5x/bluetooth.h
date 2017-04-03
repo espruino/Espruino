@@ -48,16 +48,16 @@ typedef enum  {
   BLE_IS_RSSI_SCANNING = 256, // Are we scanning for RSSI values
   BLE_IS_SLEEPING = 512,      // NRF.sleep has been called
   BLE_PM_INITIALISED = 1024,  // Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
+  BLE_IS_NOT_CONNECTABLE = 2048, // Is the device connectable?
 
-  BLE_IS_ADVERTISING_MULTIPLE = 2048, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 4096,
+  BLE_IS_ADVERTISING_MULTIPLE = 4096, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 8192,
   BLE_ADVERTISING_MULTIPLE_SHIFT = GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;
 
 
 extern volatile BLEStatus bleStatus;
-extern bool bleConnectable;                       /**< whether the device is connectable */
 extern uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
 extern uint16_t                         m_conn_handle;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
