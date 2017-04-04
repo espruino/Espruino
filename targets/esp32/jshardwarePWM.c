@@ -14,7 +14,6 @@
  * Contains ESP32 board specific functions.
  * ----------------------------------------------------------------------------
  */
-#include "esp_log.h"
 #include "jsutils.h"
  
 #include "jshardwarePWM.h"

@@ -41,7 +41,6 @@
 #include "jswrap_esp32_network.h"
 
 #include "esp_attr.h"
-#include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
