@@ -182,7 +182,7 @@ Toggles the state of the pin from off to on, or from on to off.
 */
 bool jswrap_pin_toggle(JsVar *parent) {
   Pin pin = jshGetPinFromVar(parent);
-  if (!jshIsPinValid(pin)) return;
+  if (!jshIsPinValid(pin)) return false;
   bool on = !(jshPinGetState(pin)&JSHPINSTATE_PIN_IS_ON);
   jshPinOutput(pin, on);
   return on;

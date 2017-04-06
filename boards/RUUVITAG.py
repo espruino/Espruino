@@ -59,10 +59,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((117 - 3) * 4096), # Bootloader takes pages 117-127 on RuuviTag
+    'address' : ((114 - 3) * 4096), # Bootloader takes pages 117-127 on RuuviTag, FS takes 114-116
     'page_size' : 4096,
     'pages' : 3,
-    'flash_available' : 512 - ((31 + 11 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 11, code 3. Each page is 4 kb.
+    'flash_available' : 512 - ((31 + 11 + 1 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 11, code 3. Each page is 4 kb.
   },
 };
 

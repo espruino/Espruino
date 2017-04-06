@@ -24,8 +24,8 @@
 #if defined(ESP8266)
 extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
 #define printf os_printf_plus
-#elif defined(ESP32) && !defined(RELEASE)
-#define printf jsWarn
+//#elif defined(ESP32) && !defined(RELEASE)
+//#define printf jsWarn
 //#elif defined(LINUX)
 //#define printf printf
 #else

@@ -59,13 +59,13 @@ endif
 flash: all
 ifdef USE_DFU
 	sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
-else ifdef OLIMEXINO_STM32_BOOTLOADER
+else ifeq ($(BOARD),OLIMEXINO_STM32_BOOTLOADER) 
 	@echo Olimexino Serial bootloader
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
 else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
-else ifdef MICROBIT
+else ifeq ($(BOARD),MICROBIT)
 	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
 	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
 else ifdef NRF5X

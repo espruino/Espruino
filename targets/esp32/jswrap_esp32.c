@@ -18,6 +18,7 @@
 
 #include "esp_system.h"
 #include "esp_log.h"
+#include "app_update/include/esp_ota_ops.h"
 
 static char *tag = "jswrap_esp32";
 
@@ -61,22 +62,20 @@ void jswrap_ESP32_reboot() {
 Returns an object that contains details about the state of the ESP32 with the following fields:
 
 * `sdkVersion`   - Version of the SDK.
-* `cpuFrequency` - CPU operating frequency in Mhz.
 * `freeHeap`     - Amount of free heap in bytes.
-* `maxCon`       - Maximum number of concurrent connections.
-* `flashMap`     - Configured flash size&map: '512KB:256/256' .. '4MB:512/512'
-* `flashKB`      - Configured flash size in KB as integer
-* `flashChip`    - Type of flash chip as string with manufacturer & chip, ex: '0xEF 0x4016`
 
 */
 JsVar *jswrap_ESP32_getState() {
   // Create a new variable and populate it with the properties of the ESP32 that we
   // wish to return.
   JsVar *esp32State = jsvNewObject();
-  // system_get_sdk_version() - is deprecated , need to find alternative
-  jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString("1.0 2016-12-03"));
-  //jsvObjectSetChildAndUnLock(esp32State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
+  jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString(esp_get_idf_version()));
   jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(esp_get_free_heap_size()));
+  esp_partition_t * partition=esp_ota_get_boot_partition();
+  jsvObjectSetChildAndUnLock(esp32State, "addr",     jsvNewFromInteger(partition->address));
+  jsvObjectSetChildAndUnLock(esp32State, "partitionBoot", jsvNewFromString( partition->label));
+  //jsvObjectSetChildAndUnLock(esp32State, "partitionRunning",   jsvNewFromString( esp_ota_get_running_partition()->label));
+  //jsvObjectSetChildAndUnLock(esp32State, "partitionNext",   jsvNewFromString( esp_ota_get_next_update_partition(NULL)->label));
   return esp32State;
 } // End of jswrap_ESP32_getState
 
