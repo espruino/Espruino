@@ -40,6 +40,7 @@
 	    Add Fat File System to boards with large Flash (ESP32)
             nRF52: Don't get stuck in 'HID Busy' state if a HID send failed
             Change name of socket close internal variable so it doesn't conflict with Pipe's close call
+            Stop pipe from causing errors if fields of the requested names exist but aren't functions
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
