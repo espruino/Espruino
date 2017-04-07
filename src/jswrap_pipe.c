@@ -69,14 +69,16 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
       jswrap_object_removeAllListeners_cstr(destination, "close");
       // execute the 'end' function
       JsVar *endFunc = jspGetNamedField(destination, "end", false);
-      if (endFunc) {
-        jsvUnLock2(jspExecuteFunction(endFunc, destination, 0, 0), endFunc);
+      if (jsvIsFunction(endFunc)) {
+        jsvUnLock(jspExecuteFunction(endFunc, destination, 0, 0));
       }
+      jsvUnLock(endFunc);
       // execute the 'close' function
       JsVar *closeFunc = jspGetNamedField(destination, "close", false);
-      if (closeFunc) {
-        jsvUnLock2(jspExecuteFunction(closeFunc, destination, 0, 0), closeFunc);
+      if (jsvIsFunction(closeFunc)) {
+        jsvUnLock(jspExecuteFunction(closeFunc, destination, 0, 0));
       }
+      jsvUnLock(closeFunc);
     }
     /* call source.close if available - probably not what node does
     but seems very sensible in this case. If you don't want it,
@@ -86,9 +88,10 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
       jswrap_object_removeAllListeners_cstr(source, "close");
       // execute the 'close' function
       JsVar *closeFunc = jspGetNamedField(source, "close", false);
-      if (closeFunc) {
-        jsvUnLock2(jspExecuteFunction(closeFunc, source, 0, 0), closeFunc);
+      if (jsvIsFunction(closeFunc)) {
+        jsvUnLock(jspExecuteFunction(closeFunc, source, 0, 0));
       }
+      jsvUnLock(closeFunc);
     }
   }
   jsvUnLock2(source, destination);
