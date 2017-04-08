@@ -37,7 +37,8 @@
             nRF5x: stop app_timer NRF_ERROR_INVALID_PARAM errors (trying to sleep for too little time)
             Added flash emulation to Linux port
             Increase max graphics size from 1023 to 32767
-	    Add Fat File System to boards with large Flash (ESP32)
+	    Add ESP32 board
+            Add Fat File System to boards with large Flash (ESP32/ESP8266)
             nRF52: Don't get stuck in 'HID Busy' state if a HID send failed
             Change name of socket close internal variable so it doesn't conflict with Pipe's close call
             Stop pipe from causing errors if fields of the requested names exist but aren't functions
