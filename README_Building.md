@@ -220,6 +220,26 @@ make clean && make $*
   that it's already running Espruino
 * You will also get an `espruino_1v00_*_esp8266.tgz` archive, which contains everything you
   need to flash a module (except for esptool.py), including a README_flash.txt
+  
+### for esp32
+On 64 bit linux:
+
+```
+git clone https://github.com/espruino/Espruino.git
+cd Espruino
+source scripts/provision.sh ESP32
+make clean && BOARD=ESP32 make
+```
+
+If you are on a different platform such as the Mac, you will need to install the toolchain and esp-idf for your platform, see
+http://esp-idf.readthedocs.io/en/latest/macos-setup.html
+
+The easiest way to get the esp-idf environment is to install:
+https://github.com/espruino/EspruinoBuildTools
+
+and then replace the toolchain with what is required for your platform.
+
+You only need to use the *EspruinoBuildTools* if you want to compile esp-idf libaries
 
 #### Building on Eclipse
 
