@@ -55,6 +55,9 @@ static pm_peer_id_t m_peer_id;                              /**< Device referenc
 static pm_peer_id_t   m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];  /**< List of peers currently in the whitelist. */
 static uint32_t       m_whitelist_peer_cnt;                                 /**< Number of peers currently in the whitelist. */
 static bool           m_is_wl_changed;                                      /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
+// needed for peer_manager_init so we can smoothly upgrade from pre 1v92 firmwares
+#include "fds_internal_defs.h"
+#include "fstorage_internal_defs.h"
 #endif
 
 // -----------------------------------------------------------------------------------
@@ -1163,6 +1166,18 @@ static void peer_manager_init(bool erase_bonds) {
   if (bleStatus & BLE_PM_INITIALISED) return;
   bleStatus |= BLE_PM_INITIALISED;
 
+  /* Deal with what happens if we had saved code in pages already.
+  This happens if we had a pre-1v92 firmware with saved code
+  and then updated to something with peer manager so the pages
+  got swapped around */
+  uint32_t *magicWord = ((uint32_t *)FS_PAGE_END_ADDR)-1;
+  if (FLASH_MAGIC == *magicWord) {
+    int i;
+    for (i=1;i<=FDS_PHY_PAGES;i++)
+      jshFlashErasePage(FS_PAGE_END_ADDR - i*FS_PAGE_SIZE);
+  }
+
+
   ble_gap_sec_params_t sec_param;
   ret_code_t           err_code;
 
@@ -1483,7 +1498,6 @@ void jsble_advertising_stop() {
 
 /** Initialise the BLE stack */
  void jsble_init() {
-
    ble_stack_init();
 #if PEER_MANAGER_ENABLED
    peer_manager_init(true /*erase_bonds*/);
