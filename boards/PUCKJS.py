@@ -30,11 +30,11 @@ info = {
    'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
-#     'NET',
-#     'GRAPHICS',
-#     'CRYPTO',
-#     'NFC',
-#     'NEOPIXEL'
+     'NET',
+     'GRAPHICS',
+     'CRYPTO',
+     'NFC',
+     'NEOPIXEL'
      #'HASHLIB'
      #'FILESYSTEM'
      #'TLS'
