@@ -462,7 +462,10 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
 #ifndef LINUX
         // if we're able to load this into a flat string, do it!
         size_t len = f_size(&file.data.handle)-f_tell(&file.data.handle);
-        if (len>(size_t)length) len=(size_t)length;
+        if ( len == 0 ) { // file all read
+          return 0; // if called from a pipe signal end callback
+        }
+        if (len > (size_t)length) len = (size_t)length;
         buffer = jsvNewFlatStringOfLength(len);
         if (buffer) {
           res = f_read(&file.data.handle, jsvGetFlatStringPointer(buffer), len, &actual);
