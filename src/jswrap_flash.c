@@ -555,7 +555,7 @@ const char *jsfGetBootCodeFromFlash(bool isReset) {
 #ifdef ESP32
   // romdata_jscode is memory mapped address from the js_code partition in rom - targets/esp32/main.c
   extern char* romdata_jscode;
-  if (romdata_jscode == 0 {
+  if (romdata_jscode == 0) {
     jsError("Couldn't find js_code partition - update with partition_espruino.bin\n");
     return 0;
   }
