@@ -21,10 +21,10 @@
             nRF5x: Respond to conn_params update request, fix puck-puck disconnection after ~65 sec (fix #1089)
             nRF52: Change connection params for central mode so NRF.setLowPowerConnection affects connection speed
             Un-inlining jsvGet*AndUnLock functions to give us a little more free flash
-            ESP8266: RELEASE=1 sets WIFI_DBG and NET_DBG to 0 to shrink firmware size
-            ESP8266: Add Wifi.setAPIP() and Wifi.setIP() 
-            ESP8266: Add i2c clock stretch
-            Fix E.FFT output (enable magnitude when one array specified)
+	    ESP8266: RELEASE=1 sets WIFI_DBG and NET_DBG to 0 to shrink firmware size
+	    ESP8266: Add Wifi.setAPIP() and Wifi.setIP() 
+	    ESP8266: Add i2c clock stretch
+	    Fix E.FFT output (enable magnitude when one array specified)
             Puck.js: Correct reading if using analogWrite to red LED and *then* using Puck.light()
             Improved build process for all boards
             Pin.toggle now returns a boolean (fix #1111)
@@ -37,13 +37,13 @@
             nRF5x: stop app_timer NRF_ERROR_INVALID_PARAM errors (trying to sleep for too little time)
             Added flash emulation to Linux port
             Increase max graphics size from 1023 to 32767
-	        Add ESP32 board
-            Add Fat File System to boards with large Flash (ESP32/ESP8266)
+	    Add Fat File System to boards with large Flash (ESP32)
             nRF52: Don't get stuck in 'HID Busy' state if a HID send failed
             Change name of socket close internal variable so it doesn't conflict with Pipe's close call
             Stop pipe from causing errors if fields of the requested names exist but aren't functions
             nRF52: Fix upgrade from older firmwares if saved code is in flash, reduce virtual pages to 2
-			Fix File.read so that end of file triggers pipe.end event
+            Fix segfault detected by fuzzing (#1133)
+            Fix File.read so that end of file triggers pipe.end event
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
