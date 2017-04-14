@@ -100,12 +100,12 @@ static bool isValidBPP(int bpp) {
 Create a Graphics object that renders to an Array Buffer. This will have a field called 'buffer' that can get used to get at the buffer itself
 */
 JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *options) {
-  if (width<=0 || height<=0 || width>1023 || height>1023) {
-    jsWarn("Invalid Size");
+  if (width<=0 || height<=0 || width>32767 || height>32767) {
+    jsExceptionHere(JSET_ERROR, "Invalid Size");
     return 0;
   }
   if (!isValidBPP(bpp)) {
-    jsWarn("Invalid BPP");
+    jsExceptionHere(JSET_ERROR, "Invalid BPP");
     return 0;
   }
 
@@ -173,12 +173,12 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
 Create a Graphics object that renders by calling a JavaScript callback function to draw pixels
 */
 JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *callback) {
-  if (width<=0 || height<=0 || width>1023 || height>1023) {
-    jsWarn("Invalid Size");
+  if (width<=0 || height<=0 || width>32767 || height>32767) {
+    jsExceptionHere(JSET_ERROR, "Invalid Size");
     return 0;
   }
   if (!isValidBPP(bpp)) {
-    jsWarn("Invalid BPP");
+    jsExceptionHere(JSET_ERROR, "Invalid BPP");
     return 0;
   }
   JsVar *callbackSetPixel = 0;
@@ -233,8 +233,8 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
 Create a Graphics object that renders to SDL window (Linux-based devices only)
 */
 JsVar *jswrap_graphics_createSDL(int width, int height) {
-  if (width<=0 || height<=0 || width>1023 || height>1023) {
-    jsWarn("Invalid Size");
+  if (width<=0 || height<=0 || width>32767 || height>32767) {
+    jsExceptionHere(JSET_ERROR, "Invalid Size");
     return 0;
   }
 

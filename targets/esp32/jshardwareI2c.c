@@ -15,8 +15,10 @@
  * ----------------------------------------------------------------------------
  */
  
+#include "jshardware.h"
 #include "jshardwareI2c.h"
 #include "driver/i2c.h"
+#include "stdio.h"
 
 #define ACK_CHECK_EN   0x1   /*!< I2C master will check ack from slave*/
 #define ACK_CHECK_DIS  0x0   /*!< I2C master will not check ack from slave */
@@ -31,6 +33,8 @@
   https://esp-idf.readthedocs.io/en/latest/api/i2c.html
   
  */
+
+void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
 
 static esp_err_t checkError( char * caller, esp_err_t ret ) {
   switch(ret) {
@@ -55,6 +59,17 @@ static esp_err_t checkError( char * caller, esp_err_t ret ) {
   return ret;
 }
 
+void I2CReset(){
+  if(jshIsDeviceInitialised(EV_I2C1)){
+	i2c_driver_delete(I2C_NUM_0);
+    jshSetDeviceInitialised(EV_I2C1, false);
+  }
+  if(jshIsDeviceInitialised(EV_I2C2)){
+    i2c_driver_delete(I2C_NUM_1);
+    jshSetDeviceInitialised(EV_I2C2, false);
+  }
+}
+
 int getI2cFromDevice( IOEventFlags device  ) {
   switch(device) {
   case EV_I2C1: return I2C_NUM_0;
@@ -70,6 +85,9 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   if (i2c_master_port == -1) {
     jsError("Only I2C1 and I2C2 supported"); 
     return;
+  }
+  if(jshIsDeviceInitialised(device)){
+	i2c_driver_delete(i2c_master_port);
   }
   Pin scl;
   Pin sda;
@@ -98,6 +116,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   err=i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
   if ( err == ESP_OK ) {
 	jsWarn("jshI2CSetup: driver installed, sda: %d sdl: %d freq: %d, \n", sda, scl, info->bitrate);
+	jshSetDeviceInitialised(device, true);
   } else {
     checkError("jshI2CSetup",err); 
   }
@@ -107,8 +126,7 @@ void jshI2CWrite(IOEventFlags device,
   unsigned char address,
   int nBytes,
   const unsigned char *data,
-  bool sendStop) {
-  
+  bool sendStop) {  
   int i2c_master_port = getI2cFromDevice(device);
   if (i2c_master_port == -1) {
     jsError("Only I2C1 and I2C2 supported"); 
@@ -130,8 +148,7 @@ void jshI2CRead(IOEventFlags device,
   int nBytes,
   unsigned char *data,
   bool sendStop) {
-  
-  if (nBytes <= 0) {
+    if (nBytes <= 0) {
     return;
   }
   int i2c_master_port = getI2cFromDevice(device);
@@ -142,7 +159,7 @@ void jshI2CRead(IOEventFlags device,
   esp_err_t ret;
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
   ret=i2c_master_start(cmd);
-  ret=i2c_master_write_byte(cmd, ( i2c_master_port << 1 ) | I2C_MASTER_READ, ACK_CHECK_EN);
+  ret=i2c_master_write_byte(cmd, ( address << 1 ) | I2C_MASTER_READ, ACK_CHECK_EN);
   if (nBytes > 1) {
     ret=i2c_master_read(cmd, data, nBytes - 1, ACK_VAL);
   }

@@ -2984,7 +2984,8 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
 
     if (jsvIsNativeFunction(a) || jsvIsNativeFunction(b)) {
       // even if one is not native, the contents will be different
-      equal = a->varData.native.ptr == b->varData.native.ptr &&
+      equal = a && b && 
+          a->varData.native.ptr == b->varData.native.ptr &&
           a->varData.native.argTypes == b->varData.native.argTypes &&
           jsvGetFirstChild(a) == jsvGetFirstChild(b);
     }

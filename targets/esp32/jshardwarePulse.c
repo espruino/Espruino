@@ -14,7 +14,6 @@
  * Contains ESP32 board specific functions.
  * ----------------------------------------------------------------------------
  */
-#include "esp_log.h"
 #include "jsutils.h"
  
 #include "jshardwarePulse.h"
@@ -96,6 +95,7 @@ void sendPulse(Pin pin, bool pulsePolarity, int duration){
   if(i < 0) i = RMTInitChannel(pin,pulsePolarity);
   if(i >= 0){
     if(pulsePolarity) setPulseLow(duration);else setPulseHigh(duration);
+	rmt_set_pin(i, RMT_MODE_TX, pin); //set pin to rmt, in case that it was reset to GPIO(see jshPinSetValue)
     rmt_write_items(i, items,1,1);
   }
   else printf("all RMT channels in use\n");

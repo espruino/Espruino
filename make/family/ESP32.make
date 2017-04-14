@@ -44,6 +44,7 @@ LDFLAGS += -L$(ESP_IDF_PATH)/ld \
 -L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/wpa_supplicant \
 -L$(ESP_APP_TEMPLATE_PATH)/build/ethernet \
+-L$(ESP_APP_TEMPLATE_PATH)/build/app_update \
 -lgcc
 ESPTOOL?=
 INCLUDE+=\
@@ -70,6 +71,7 @@ LIBS+=-T esp32_out.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.common.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.rom.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.peripherals.ld \
+$(ESP_IDF_PATH)/components/esp32/lib/librtc_clk.a \
 $(ESP_IDF_PATH)/components/newlib/lib/libc.a \
 $(ESP_IDF_PATH)/components/newlib/lib/libm.a \
 -lbt \
@@ -98,5 +100,6 @@ $(ESP_IDF_PATH)/components/esp32/libhal.a  \
 -lnewlib \
 -lcoexist \
 -lethernet \
+-lapp_update \
 -lstdc++ \
 -lgcc

@@ -41,13 +41,13 @@
 #include "jswrap_esp32_network.h"
 
 #include "esp_attr.h"
-#include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "rom/ets_sys.h"
 #include "rom/uart.h"
 #include "driver/gpio.h"
+#include "soc/gpio_sig_map.h"
 
 #include "jshardwareI2c.h"
 #include "jshardwareSpi.h"
@@ -150,7 +150,7 @@ void jshReset() {
 	RMTReset();
 	ADCReset();
 	SPIReset();
-    jsWarn("jshReset(): To implement - reset of i2c\n");
+	I2CReset();
 }
 
 /**
@@ -290,6 +290,7 @@ void jshPinSetValue(
     bool value //!< The new value of the pin.
   ) {
   gpio_num_t gpioNum = pinToESP32Pin(pin);
+  gpio_matrix_out(gpioNum,SIG_GPIO_OUT_IDX,0,0);  // reset pin to be GPIO in case it was used as rmt or something else
   gpio_set_level(gpioNum, (uint32_t)value);
 }
 
