@@ -32,7 +32,8 @@ info = {
    ],
    'makefile' : [
      'FLASH_4MB=1',
-     'ESP_FLASH_MAX=933888'
+     'ESP_FLASH_MAX=909312',    # 222 pages
+     'FLASH_BAUD=460800'    
     ]
  }
 };
@@ -49,10 +50,11 @@ chip = {
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {
-    'address' : 0x201000, # first page is used for wifi save 
+    #  4096 * (256 pages - ( 1 wifi page + 16 save pages + 16 reserved)) = 4096 * (256 pages - 33 pages) = 0xDF000
+    'address' : 0xDF000,     # 0x100000 - 0x1000 * 0x21  , 
     'page_size' : 4096,
-    'pages' : 16,
-    'flash_available' : 912, # firmware can be up to this size 
+    'pages' : 16,            # allows to save  64K of compressed source 
+    'flash_available' : 888, # firmware can be up to this size 
   },
 };
 
