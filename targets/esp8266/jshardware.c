@@ -1269,11 +1269,11 @@ JsVar *jshFlashGetFree() {
 
   uint32_t map = system_get_flash_size_map();
   if ( map == 6 ) {
-    addFlashArea(jsFreeFlash, 0x200000, 0x40000);
-    addFlashArea(jsFreeFlash, 0x240000, 0x40000);
-    addFlashArea(jsFreeFlash, 0x280000, 0x40000);
-    addFlashArea(jsFreeFlash, 0x2C0000, 0x40000);
-    addFlashArea(jsFreeFlash, 0x300000, 0xFC000);
+    addFlashArea(jsFreeFlash, 0x200000, 0x100000);
+    addFlashArea(jsFreeFlash, 0x300000, 0x40000);
+    addFlashArea(jsFreeFlash, 0x340000, 0x40000);
+    addFlashArea(jsFreeFlash, 0x380000, 0x40000);
+    addFlashArea(jsFreeFlash, 0x3C0000, 0x3C000);
     return jsFreeFlash;
   }
 
