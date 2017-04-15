@@ -28,7 +28,8 @@ info = {
      'GRAPHICS',
      'CRYPTO',
      'NEOPIXEL',
-     'FILESYSTEM'
+     'FILESYSTEM',
+     'FLASHFS'
    ],
    'makefile' : [
      'FLASH_4MB=1',
