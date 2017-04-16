@@ -33,7 +33,7 @@ info = {
    ],
    'makefile' : [
      'FLASH_4MB=1',
-     'ESP_FLASH_MAX=962560'
+     'ESP_FLASH_MAX=962560',
      'FLASH_BAUD=460800'    
     ]
  }
