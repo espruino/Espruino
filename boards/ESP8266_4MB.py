@@ -28,11 +28,12 @@ info = {
      'GRAPHICS',
      'CRYPTO',
      'NEOPIXEL',
-     'FILESYSTEM'
+     'FILESYSTEM',
+     'FLASHFS'
    ],
    'makefile' : [
      'FLASH_4MB=1',
-     'ESP_FLASH_MAX=933888'
+     'ESP_FLASH_MAX=962560'
     ]
  }
 };
@@ -49,10 +50,12 @@ chip = {
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {
-    'address' : 0x201000, # first page is used for wifi save 
+    #'address' : 0x201000, # first page is used for wifi save
+    # 4096 * (256 - 1wifi - 16save - 4reserved) 
+    'address' :  0xEC000, # first page is used for wifi save 
     'page_size' : 4096,
     'pages' : 16,
-    'flash_available' : 912, # firmware can be up to this size 
+    'flash_available' : 940, # firmware can be up to this size 
   },
 };
 

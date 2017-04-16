@@ -14,26 +14,30 @@
 # user setting area that sits between the two 256KB partitions, so we can merrily use it for
 # code.
 ESP_ZIP     = $(PROJ_NAME).tgz
-ESP_COMBINED512 = $(PROJ_NAME)_combined_512.bin
-USER1_BIN   = espruino_esp8266_user1.bin
-USER2_BIN   = espruino_esp8266_user2.bin
-USER1_ELF   = espruino_esp8266_user1.elf
-USER2_ELF   = espruino_esp8266_user2.elf
-PARTIAL     = espruino_esp8266_partial.o
+USER1_BIN    = espruino_esp8266_user1.bin
+USER2_BIN    = espruino_esp8266_user2.bin
+USER1_ELF    = espruino_esp8266_user1.elf
+USER2_ELF    = espruino_esp8266_user2.elf
+PARTIAL      = espruino_esp8266_partial.o
 ifdef FLASH_4MB
-LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.2048.app1.ld
-LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.2048.app2.ld
+ESP_COMBINED_SIZE = 1024
+ESP_FLASH_ADDONS  = $(ET_DEFAULTS) $(INIT_DATA) $(ET_BLANK) $(BLANK)
+LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.2048.app1.ld
+LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.2048.app2.ld
 else
-LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
-LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
+ESP_COMBINED_SIZE = 512
+LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
+LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
 endif
-APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
-BOOTLOADER  = $(ESP8266_SDK_ROOT)/bin/boot_v1.6.bin
-BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
-INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
+ESP_COMBINED = $(PROJ_NAME)_combined_$(ESP_COMBINED_SIZE).bin
+APPGEN_TOOL  = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
+BOOTLOADER   = $(ESP8266_SDK_ROOT)/bin/boot_v1.6.bin
+BLANK        = $(ESP8266_SDK_ROOT)/bin/blank.bin
+INIT_DATA    = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
 
 proj: $(USER1_BIN) $(USER2_BIN) $(ESP_ZIP)
-combined: $(ESP_COMBINED512)
+combined: $(ESP_COMBINED)
+
 
 # generate partially linked .o with all Esprunio source files linked
 $(PARTIAL): $(OBJS) $(LINKER_FILE)
@@ -93,13 +97,17 @@ $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	  build/$(basename $(ESP_ZIP))
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
 
-# Combined 512k binary that includes everything that's needed and can be
-# flashed to 0 in 512k parts
-$(ESP_COMBINED512): $(USER1_BIN) $(USER2_BIN)
-	dd if=/dev/zero ibs=1k count=512 | tr "\000" "\377" > $@
+# Combined 512k/1024k binary that includes everything that's needed and can be
+# flashed to 0 in 512k/1024k parts
+
+$(ESP_COMBINED): $(USER1_BIN) $(USER2_BIN)
+	dd if=/dev/zero ibs=1k count=$(ESP_COMBINED_SIZE) | tr "\000" "\377" > $@
 	dd bs=1 if=$(BOOTLOADER) of=$@ conv=notrunc
 	dd bs=1 seek=4096 if=$(USER1_BIN) of=$@ conv=notrunc
+  ifndef FLASH_4MB
 	dd bs=1 seek=507904 if=$(INIT_DATA) of=$@ conv=notrunc
+  endif
+
 
 # Analyze all the .o files and rank them by the amount of static string area used, useful to figure
 # out where to optimize and move strings to flash
@@ -136,7 +144,21 @@ flash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT
 	$(error "In order to flash, we need to have the COMPORT variable defined")
 endif
-	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 $(BOOTLOADER) 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
+	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 $(BOOTLOADER) 0x1000 $(USER1_BIN) $(ET_DEFAULTS) $(INIT_DATA) $(ET_BLANK) $(BLANK)
+
+
+flash_combined: $(ESP_COMBINED)
+ifndef COMPORT
+	$(error "In order to flash, we need to have the COMPORT variable defined")
+endif
+	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 $(ESP_COMBINED) $(ESP_FLASH_ADDONS)
+
+# erase flash
+flash_erase: .
+ifndef COMPORT
+	$(error "In order to flash, we need to have the COMPORT variable defined")
+endif
+	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) erase_flash 
 
 # just flash user1 and don't mess with bootloader or wifi settings
 quickflash: all $(USER1_BIN) $(USER2_BIN)

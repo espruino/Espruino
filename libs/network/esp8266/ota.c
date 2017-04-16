@@ -129,7 +129,8 @@ static uint32_t flashUser2Addr[] = {
 static uint32_t flashMaxSize[] = {
   (256-4-16)*1024, 0,                                // really: too small...
   (512-4-16)*1024, (512-4-16)*1024, (512-4-16)*1024, // 512KB firmware partitions
-  (1024-4-16)*1024, (1024-4-16)*1024,                // 1024 KB firmware partitions
+  (1024-4-16-1)*1024, (1024-4-16-1)*1024,            // 1024 KB firmware partitions
+  // 4 reserved, 16 for save, 1 for wifi
 };
 
 /*
