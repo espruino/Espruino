@@ -39,3 +39,5 @@ gcc-arm-none-eabi*
 targetlibs/nrf5x/examples
 /.vscode
 /CURRENT_BOARD.make
+/topreadonly
+/topstrings
