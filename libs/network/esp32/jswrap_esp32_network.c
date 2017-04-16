@@ -1,5 +1,4 @@
 // Includes from ESP-IDF
-#include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
 #include "tcpip_adapter.h"
@@ -18,9 +17,6 @@ static void sendWifiCompletionCB(
   JsVar **g_jsCallback,  //!< Pointer to the global callback variable
   char  *reason          //!< NULL if successful, error string otherwise
 );
-
-// Tag for ESP-IDF logging
-static char *tag = "jswrap_esp32_network";
 
 // A callback function to be invoked on a disconnect response.
 static JsVar *g_jsDisconnectCallback;
@@ -257,7 +253,7 @@ static char *wifiReasonToString(uint8_t reason) {
   case WIFI_REASON_UNSUPP_RSN_IE_VERSION:
     return "REASON_UNSUPP_RSN_IE_VERSION";
   }
-  ESP_LOGD(tag, "wifiReasonToString: Unknown reasonL %d", reason);
+  jsWarn( "wifiReasonToString: Unknown reasonL %d", reason);
   return "Unknown reason";
 } // End of wifiReasonToString
 

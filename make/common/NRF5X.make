@@ -49,6 +49,7 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fstorage/config
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fds
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
@@ -61,6 +62,7 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/common
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_advertising
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/peer_manager
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master
@@ -75,6 +77,7 @@ $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c \
 $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
 $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart.c \
+$(NRF5X_SDK_PATH)/components/libraries/fds/fds.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
@@ -90,7 +93,21 @@ $(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master/nrf_drv_spi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
-$(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
+$(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c \
+$(NRF5X_SDK_PATH)/components/libraries/util/sdk_mapped_flags.c \
+$(NRF5X_SDK_PATH)/components/ble/common/ble_conn_state.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_manager.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_id.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_database.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_data_storage.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_buffer.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_mutex.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/id_manager.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/security_manager.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/security_dispatcher.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/gatt_cache_manager.c \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/gatts_cache_manager.c 
+
 
 # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
 

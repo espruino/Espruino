@@ -20,7 +20,7 @@
 
 //===== ESP32 Library
 JsVar *jswrap_ESP32_getState();
-void   jswrap_ESP32_setLogLevel(JsVar *jsTagToSet, JsVar *jsLogLevel);
+JsVar *jswrap_ESP32_setBoot(JsVar *jsPartitionName);
 void   jswrap_ESP32_reboot();
 void   jswrap_ESP32_setAtten(Pin pin,int atten);
 #endif /* TARGETS_ESP32_JSWRAP_ESP32_H_ */

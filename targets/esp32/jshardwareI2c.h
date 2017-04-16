@@ -22,6 +22,8 @@
 // Convert an Espruino pin to an ESP32 pin number.
 gpio_num_t pinToESP32Pin(Pin pin);
 
+void I2CReset();
+
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info);
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop);
 void jshI2CRead(IOEventFlags device,  unsigned char address, int nBytes, unsigned char *data, bool sendStop);

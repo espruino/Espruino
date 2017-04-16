@@ -14,8 +14,6 @@
  * Contains ESP32 board specific functions.
  * ----------------------------------------------------------------------------
  */
-#include "esp_log.h"
- 
 #include "jshardwareAnalog.h"
 #include "driver/adc.h"
 #include "driver/dac.h"

@@ -470,6 +470,7 @@ NRF.setAdvertising([
   name: "Hello" // The name of the device
   showName: true/false // include full name, or nothing
   discoverable: true/false // general discoverable, or limited - default is limited
+  connectable: true/false // whether device is connectable - default is true
   interval: 600 // Advertising interval in msec, between 20 and 10000
 }
 ```
@@ -506,6 +507,13 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
         bleAdvertisingInterval = new_advertising_interval;
         bleChanged = true;
       }
+    }
+
+    v = jsvObjectGetChild(options, "connectable", 0);
+    if (v) {
+      if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_CONNECTABLE;
+      else bleStatus |= BLE_IS_NOT_CONNECTABLE;
+      bleChanged = true;
     }
 
     v = jsvObjectGetChild(options, "name", 0);
@@ -685,6 +693,7 @@ NRF.setServices({
       writable : true,   // optional, default is false
       notify : true,   // optional, default is false
       indicate : true,   // optional, default is false
+      description: "My Characteristic",  // optional, default is null
       onWrite : function(evt) { // optional
         console.log("Got ", evt.data);
       }

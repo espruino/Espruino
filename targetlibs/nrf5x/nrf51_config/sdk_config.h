@@ -48,8 +48,10 @@
  
 
 #ifndef PEER_MANAGER_ENABLED
-#define PEER_MANAGER_ENABLED 1
+#define PEER_MANAGER_ENABLED 0
+// sadly we can't enable this as it uses too much flash
 #endif
+
 
 // </h> 
 //==========================================================

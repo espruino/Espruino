@@ -12,14 +12,14 @@
 # Buttons, and other in-built peripherals are. It is used to build documentation as well
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
-import os;
+
 import pinutils;
 info = {
  'name'            : "ESP8266",
  'espruino_page_link' : 'EspruinoESP8266',
  'default_console' : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
- 'variables'       : 1600,
+ 'variables'       : 1700,
  'binary_name'     : 'espruino_%v_esp8266',
  'build' : {
    'libraries' : [
@@ -28,10 +28,7 @@ info = {
      #'GRAPHICS',
      'CRYPTO',
      'NEOPIXEL',
-   ],
-  'makefile': [
-    'ESP_FLASH_MAX=479232' 
-  ]
+   ]
  }
 };
 chip = {
@@ -53,16 +50,6 @@ chip = {
     'flash_available' : 468, # firmware can be up to this size
   },
 };
-
-if (os.environ.has_key("FLASH_4MB_C1")):
-  chip['saved_code'] = {
-    'address' : 0x201000, # first page is used for wifi save 
-    'page_size' : 4096,
-    'pages' : 255,
-    'flash_available' : 912, # firmware can be up to this size 
-   };
-
-
 devices = {
 };
 

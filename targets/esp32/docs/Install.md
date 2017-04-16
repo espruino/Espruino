@@ -3,7 +3,7 @@ A build of Espruino consists of three binary files called:
 
 * espruino_esp32.bin
 * bootloader.bin
-* paritions_singleapp.bin
+* paritions_espruino.bin
 
 These files are loaded into an ESP32 using the `esptool.py` command.  An example
 of usage would be:
@@ -18,8 +18,8 @@ esptool.py \
   --flash_mode "dio" \
   --flash_freq "40m" \
   0x10000 espruino_esp32.bin \  
-  0x1000 /home/kolban/esp32/Espruino/template/build/bootloader/bootloader.bin \
-  0x8000 /home/kolban/esp32/Espruino/template/build/partitions_singleapp.bin
+  0x1000 ../app/build/bootloader/bootloader.bin \
+  0x8000 ../app/build/partitions_espruino.bin
 
 ```
 

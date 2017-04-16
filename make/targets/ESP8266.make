@@ -140,7 +140,21 @@ topreadonly: $(PARTIAL)
 	$(Q)echo "To get details: $(OBJDUMP) -j .rodata -s src/FILENAME.o"
 
 
-flash: all $(USER1_BIN) $(USER2_BIN)
+_flash: all $(USER1_BIN) $(USER2_BIN)
+ifndef COMPORT
+	$(error "In order to flash, we need to have the COMPORT variable defined")
+endif
+	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 $(BOOTLOADER) 0x1000 $(USER1_BIN) $(ET_DEFAULTS) $(INIT_DATA) $(ET_BLANK) $(BLANK)
+
+
+flash: $(ESP_COMBINED)
+ifndef COMPORT
+	$(error "In order to flash, we need to have the COMPORT variable defined")
+endif
+	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 $(ESP_COMBINED) $(ESP_FLASH_ADDONS)
+
+# erase flash
+flash_erase: .
 ifndef COMPORT
 	$(error "In order to flash, we need to have the COMPORT variable defined")
 endif

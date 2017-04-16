@@ -29,9 +29,9 @@
 #define HTTP_NAME_OPTIONS_VAR "opt"
 #define HTTP_NAME_SERVER_VAR "svr"
 #define HTTP_NAME_CHUNKED "chunked"
-#define HTTP_NAME_CLOSENOW "closeNow"  // boolean: gotta close
+#define HTTP_NAME_CLOSENOW "clsNow"  // boolean: gotta close
 #define HTTP_NAME_CONNECTED "conn"     // boolean: we are connected
-#define HTTP_NAME_CLOSE "close"        // close after sending
+#define HTTP_NAME_CLOSE "cls"        // close after sending
 #define HTTP_NAME_ON_CONNECT JS_EVENT_PREFIX"connect"
 #define HTTP_NAME_ON_CLOSE JS_EVENT_PREFIX"close"
 #define HTTP_NAME_ON_END JS_EVENT_PREFIX"end"

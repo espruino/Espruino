@@ -34,6 +34,7 @@ info = {
    'makefile' : [
      'FLASH_4MB=1',
      'ESP_FLASH_MAX=962560'
+     'FLASH_BAUD=460800'    
     ]
  }
 };
@@ -55,7 +56,7 @@ chip = {
     'address' :  0xEC000, # first page is used for wifi save 
     'page_size' : 4096,
     'pages' : 16,
-    'flash_available' : 940, # firmware can be up to this size 
+    'flash_available' : 940, # firmware can be up to this size
   },
 };
 
