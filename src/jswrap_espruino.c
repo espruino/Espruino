@@ -240,6 +240,7 @@ JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
     return NAN;
   }
   JsVarFloat variance = 0;
+  size_t n = (size_t)jsvGetLength(arr);
 
   JsvIterator itsrc;
   jsvIteratorNew(&itsrc, arr);
@@ -249,6 +250,7 @@ JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
     variance += val*val;
     jsvIteratorNext(&itsrc);
   }
+  variance = variance / ((JsVarFloat) n-1);
   jsvIteratorFree(&itsrc);
   return variance;
 }
