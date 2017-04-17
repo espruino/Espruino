@@ -26,10 +26,10 @@ info = {
      'NET',
      'TELNET',
      'GRAPHICS',
-     'CRYPTO',
+     #'CRYPTO',
      'NEOPIXEL',
-     'FILESYSTEM',
-     'FLASHFS'
+     #'FILESYSTEM',
+     #'FLASHFS'
    ],
    'makefile' : [
      'FLASH_4MB=1',
@@ -51,9 +51,8 @@ chip = {
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {
-    #'address' : 0x201000, # first page is used for wifi save
-    # 4096 * (256 - 1wifi - 16save - 4reserved) 
-    'address' :  0xEC000, # first page is used for wifi save 
+    # 0x300000 + 4096 * (256 - 16save - 1wifi -4reserved) 
+    'address' :  0x3EB000, # first page is used for wifi save 
     'page_size' : 4096,
     'pages' : 16,
     'flash_available' : 940, # firmware can be up to this size

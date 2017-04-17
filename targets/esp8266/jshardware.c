@@ -1273,7 +1273,7 @@ JsVar *jshFlashGetFree() {
     addFlashArea(jsFreeFlash, 0x300000, 0x40000);
     addFlashArea(jsFreeFlash, 0x340000, 0x40000);
     addFlashArea(jsFreeFlash, 0x380000, 0x40000);
-    addFlashArea(jsFreeFlash, 0x3C0000, 0x40000-0x4000);
+    addFlashArea(jsFreeFlash, 0x3C0000, 0x40000-0x15000);
     return jsFreeFlash;
   }
 
