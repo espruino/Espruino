@@ -25,7 +25,7 @@ info = {
  # Number of variables can be WAY higher on this board
  'variables' : 2000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_ruuvitag.bin',
+ 'binary_name' : 'espruino_%v_ruuvitag.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
