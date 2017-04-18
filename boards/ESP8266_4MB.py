@@ -26,7 +26,7 @@ info = {
      'NET',
      'TELNET',
      'GRAPHICS',
-     #'CRYPTO',
+     'CRYPTO',
      'NEOPIXEL',
      #'FILESYSTEM',
      #'FLASHFS'
