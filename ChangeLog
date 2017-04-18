@@ -43,7 +43,7 @@
             Stop pipe from causing errors if fields of the requested names exist but aren't functions
             nRF52: Fix upgrade from older firmwares if saved code is in flash, reduce virtual pages to 2
             Fix segfault detected by fuzzing (#1133)
-            ESP8266: Add BOARD_4M, 1600 vars and GRAPHICS
+            ESP8266: Add BOARD_4M, 1600 vars, 64K save area and GRAPHICS
             ESP8266: Add ESP8266.deepSleep(micros, option)
 
      1v91 : Fix recent regression if no Boot Code defined at startup
