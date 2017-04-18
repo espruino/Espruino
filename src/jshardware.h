@@ -7,6 +7,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
+ *     2016/05/23, modified to work with bitrate on esp8266
+
  * ----------------------------------------------------------------------------
  * Hardware interface Layer
  * NOTE: Most definitions of these functions are inside:
@@ -306,10 +308,11 @@ void jshSPIWait(IOEventFlags device);
 
 /// Settings passed to jshI2CSetup to set I2C up
 typedef struct {
+  int bitrate;
   Pin pinSCL;
   Pin pinSDA;
-  int bitrate;  ///< bits per second
   bool started; ///< Has I2C 'start' condition been sent so far?
+  // timeout?
 } PACKED_FLAGS JshI2CInfo;
 
 /// Initialise a JshI2CInfo struct to default settings
