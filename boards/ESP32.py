@@ -16,7 +16,7 @@
 import pinutils;
 info = {
  'name'                     : "ESP32",
- 'espruino_page_link'       : 'EspruinoESP32',
+ 'espruino_page_link'       : 'ESP32',
  'default_console'          : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
  'variables'                : 5000,
