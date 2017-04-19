@@ -104,8 +104,8 @@ $(ESP_COMBINED): $(USER1_BIN) $(USER2_BIN)
 	dd if=/dev/zero ibs=1k count=$(ESP_COMBINED_SIZE) | tr "\0x00" "\0xFF" > $@
 	dd if=$(BOOTLOADER) of=$@ bs=1 conv=notrunc
 	dd bs=1 seek=4096 if=$(USER1_BIN) of=$@ conv=notrunc
-	dd bs=1 seek=$(ET_BLANK) if=$(BLANK) of=$@ conv=notrunc
-	dd bs=1 seek=$(ET_DEFAULTS) if=$(INIT_DATA) of=$@ conv=notrunc
+	dd bs=1 seek=$(shell printf "%d" $(ET_BLANK)) if=$(BLANK) of=$@ conv=notrunc
+	dd bs=1 seek=$(shell printf "%d" $(ET_DEFAULTS)) if=$(INIT_DATA) of=$@ conv=notrunc
 
 # Analyze all the .o files and rank them by the amount of static string area used, useful to figure
 # out where to optimize and move strings to flash
