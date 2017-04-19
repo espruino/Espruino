@@ -229,14 +229,14 @@ bool jshIsDeviceInitialised(IOEventFlags device);
 
 /// Settings passed to jshUSARTSetup to set it the USART up
 typedef struct {
-  int baudRate; // FIXME uint32_t ???
+  int baudRate;            /// FIXME uint32_t ???
   Pin pinRX;
   Pin pinTX;
   Pin pinCK;
-  unsigned char bytesize; ///< size of byte, 7 or 8
-  unsigned char parity; ///< 0=none, 1=odd, 2=even
-  unsigned char stopbits; ///< 1 or 2
-  bool xOnXOff; ///< XON XOFF flow control?
+  unsigned char bytesize;  ///< size of byte, 7 or 8
+  unsigned char parity;    ///< 0=none, 1=odd, 2=even
+  unsigned char stopbits;  ///< 1 or 2
+  bool xOnXOff;            ///< XON XOFF flow control?
 } PACKED_FLAGS JshUSARTInfo;
 
 /// Initialise a JshUSARTInfo struct to default settings
