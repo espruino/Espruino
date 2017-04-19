@@ -54,9 +54,6 @@ do
     EXTRADEFS=WIZNET=1
     EXTRANAME=_wiznet
   fi
-  if [ "$BOARDNAME" == "RUUVITAG" ]; then
-    EXTRADEFS=DFU_UPDATE_BUILD=1
-  fi
   BOARDNAMEX=$BOARDNAME
   if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then
     BOARDNAMEX=ESPRUINOBOARD
@@ -65,6 +62,10 @@ do
   # actually build
   ESP_BINARY_NAME=`python scripts/get_board_info.py $BOARDNAMEX "common.get_board_binary_name(board)"`
   if [ "$BOARDNAME" == "PUCKJS" ]; then
+    ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+    EXTRADEFS=DFU_UPDATE_BUILD=1
+  fi
+  if [ "$BOARDNAME" == "RUUVITAG" ]; then
     ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
     EXTRADEFS=DFU_UPDATE_BUILD=1
   fi
