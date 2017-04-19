@@ -12,36 +12,44 @@ else
 # DISABLE_LTO is necessary in order to analyze static string sizes (see: topstring makefile target)
 OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 endif
-ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
+
 
 ifdef FLASH_4MB
-ESP_FLASH_SIZE      ?= 4        # 4->4MB (512KB+512KB)
+ESP_FLASH_MAX       ?= 962560   # max bin file: 940KB
+ESP_FLASH_SIZE      ?= 6        # 6->4MB (1024KB+1024KB)       
 ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
-ET_FS               ?= 32m      # 32Mbit (4MB) flash size in esptool flash command
+ET_FS               ?= 4MB-c1   # 32Mbit (4MB) flash size in esptool flash command
 ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
-ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
+ET_BLANK            ?= 0x3FE000 # where to flash blank.bin
+ET_DEFAULTS         ?= 0x3FC000 # where to flash esp_init_data_default.bin to default SDK settings
 else ifdef 2MB
+ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 ESP_FLASH_SIZE      ?= 3        # 3->2MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
 ET_FS               ?= 16m      # 16Mbit (2MB) flash size in esptool flash command
 ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
-ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
+ET_BLANK            ?= 0x1FE000 # where to flash blank.bin
+ET_DEFAULTS         ?= 0x1FC000 # where to flash esp_init_data_default.bin to default SDK settings
 else ifdef 1MB
-ESP_FLASH_SIZE      ?= 2       # 2->1MB (512KB+512KB)
-ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
-ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
-ET_FS               ?=  8m     # 8Mbit (1MB) flash size in esptool flash command
-ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
-ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
+ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
+ESP_FLASH_SIZE      ?= 2        # 2->1MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
+ET_FS               ?=  8m      # 8Mbit (1MB) flash size in esptool flash command
+ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
+ET_BLANK            ?= 0xFE000  # where to flash blank.bin
+ET_DEFAULTS         ?= 0xFC000  # where to flash esp_init_data_default.bin to default SDK settings
 else # 512KB
-ESP_FLASH_SIZE      ?= 0       # 0->512KB
-ESP_FLASH_MODE      ?= 0       # 0->QIO
-ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
-ET_FS               ?= 4m      # 4Mbit (512KB) flash size in esptool flash command
-ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
-ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
+ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
+ESP_FLASH_SIZE      ?= 0        # 0->512KB
+ESP_FLASH_MODE      ?= 0        # 0->QIO
+ESP_FLASH_FREQ_DIV  ?= 0        # 0->40Mhz
+ET_FS               ?= 4m       # 4Mbit (512KB) flash size in esptool flash command
+ET_FF               ?= 40m      # 40Mhz flash speed in esptool flash command
+ET_BLANK            ?= 0x7E000  # where to flash blank.bin
+ET_DEFAULTS         ?= 0x7C000  # where to flash esp_init_data_default.bin to default SDK settings
 endif
 
 FLASH_BAUD ?= 115200 # The flash baud rate

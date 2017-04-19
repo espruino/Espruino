@@ -7,6 +7,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
+ *     2016/05/23, modified to work with bitrate on esp8266
+
  * ----------------------------------------------------------------------------
  * Hardware interface Layer
  * NOTE: Most definitions of these functions are inside:
@@ -227,14 +229,14 @@ bool jshIsDeviceInitialised(IOEventFlags device);
 
 /// Settings passed to jshUSARTSetup to set it the USART up
 typedef struct {
-  int baudRate; // FIXME uint32_t ???
+  int baudRate;            /// FIXME uint32_t ???
   Pin pinRX;
   Pin pinTX;
   Pin pinCK;
-  unsigned char bytesize; ///< size of byte, 7 or 8
-  unsigned char parity; ///< 0=none, 1=odd, 2=even
-  unsigned char stopbits; ///< 1 or 2
-  bool xOnXOff; ///< XON XOFF flow control?
+  unsigned char bytesize;  ///< size of byte, 7 or 8
+  unsigned char parity;    ///< 0=none, 1=odd, 2=even
+  unsigned char stopbits;  ///< 1 or 2
+  bool xOnXOff;            ///< XON XOFF flow control?
 } PACKED_FLAGS JshUSARTInfo;
 
 /// Initialise a JshUSARTInfo struct to default settings
@@ -306,10 +308,11 @@ void jshSPIWait(IOEventFlags device);
 
 /// Settings passed to jshI2CSetup to set I2C up
 typedef struct {
+  int bitrate;
   Pin pinSCL;
   Pin pinSDA;
-  int bitrate;  ///< bits per second
   bool started; ///< Has I2C 'start' condition been sent so far?
+  // timeout?
 } PACKED_FLAGS JshI2CInfo;
 
 /// Initialise a JshI2CInfo struct to default settings

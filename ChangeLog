@@ -22,8 +22,8 @@
             nRF52: Change connection params for central mode so NRF.setLowPowerConnection affects connection speed
             Un-inlining jsvGet*AndUnLock functions to give us a little more free flash
 	    ESP8266: RELEASE=1 sets WIFI_DBG and NET_DBG to 0 to shrink firmware size
-	    ESP8266: Add Wifi.setAPIP() and Wifi.setIP() 
-	    ESP8266: Add i2c clock stretch
+	    ESP8266: Add Wifi.setAPIP() and Wifi.setIP
+	    ESP8266: Add i2c clock stretch (#1097)
 	    Fix E.FFT output (enable magnitude when one array specified)
             Puck.js: Correct reading if using analogWrite to red LED and *then* using Puck.light()
             Improved build process for all boards
@@ -43,6 +43,8 @@
             Stop pipe from causing errors if fields of the requested names exist but aren't functions
             nRF52: Fix upgrade from older firmwares if saved code is in flash, reduce virtual pages to 2
             Fix segfault detected by fuzzing (#1133)
+            ESP8266: Add BOARD ESP8266_4M with 1600 vars, 64K save area and GRAPHICS (#1110)
+            ESP8266: Add ESP8266.deepSleep(micros, option) (#1102)
 
      1v91 : Fix recent regression if no Boot Code defined at startup
             Fix handling of return of rejected promise within a promise
