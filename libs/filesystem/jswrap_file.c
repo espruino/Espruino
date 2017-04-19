@@ -580,7 +580,6 @@ Pipe this file to a stream (an object with a 'write' method)
   "class" : "E",
   "name" : "flashFatFS",
   "generate" : "jswrap_E_flashFatFS",
-  "ifndef" : "SAVE_ON_FLASH",
   "ifdef" : "USE_FLASHFS",
    "params" : [
     ["options","JsVar",["An optional object `{ addr : int=0x300000, sectors : int=256, readonly : bool=false, , format : bool=false }`","addr : start address in flash","sectors: number of sectors to use","readonly: set to true if you want to disable write","format:  Format the media"]]
