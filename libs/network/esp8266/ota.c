@@ -90,7 +90,11 @@ static void sendResponse(OtaConn *oc, uint16_t code, char *text) {
 static char* check_header(void *buf, int which) {
   uint8_t *cd = (uint8_t *)buf;
   uint32_t *buf32 = buf;
-  os_printf("OTA hdr %p: %08lX %08lX %08lX %08lX\n", buf, buf32[0], buf32[1], buf32[2], buf32[3]);
+  os_printf("OTA hdr %p: %08lX %08lX %08lX %08lX\n", buf, 
+    (long unsigned int)buf32[0], 
+    (long unsigned int)buf32[1], 
+    (long unsigned int)buf32[2], 
+    (long unsigned int)buf32[3]);
   if (cd[0] != 0xEA) return "IROM magic missing";
   if (cd[1] != 4 || cd[2] > 3 || (cd[3]>>4) > 6) return "bad flash header";
   if (cd[3] < 3 && cd[3] != which) return "Wrong partition binary";
@@ -142,10 +146,12 @@ static int16_t otaHandleUpload(OtaConn *oc) {
 
   // check overall size
   if (oc->reqLen > flashMaxSize[flashSizeMap]) {
-    os_printf("OTA: FW too large: %ld > %ld\n", oc->reqLen, flashMaxSize[flashSizeMap]);
+    os_printf("OTA: FW too large: %ld > %ld\n", 
+      (long int) oc->reqLen, 
+      (long int)  flashMaxSize[flashSizeMap]);
     err = "Firmware image too large";
   } else if (oc->reqLen < OTA_CHUNK_SZ) {
-    os_printf("OTA: FW too small: %ld\n", oc->reqLen);
+    os_printf("OTA: FW too small: %ld\n", (long int) oc->reqLen);
     err = "Firmware too small";
   }
 
@@ -173,7 +179,7 @@ static int16_t otaHandleUpload(OtaConn *oc) {
 
   // erase next flash block if necessary
   if (address % SPI_FLASH_SEC_SIZE == 0){
-          os_printf("OTA Flashing 0x%05lx\n", address);
+          os_printf("OTA Flashing 0x%05lx\n", (long unsigned int) address);
           spi_flash_erase_sector(address/SPI_FLASH_SEC_SIZE);
   }
 
@@ -290,7 +296,7 @@ static int16_t processHeader(OtaConn *oc) {
   char *clHdr = os_strstr(hdrEnd+1, "Content-Length:");
   if (clHdr) {
     oc->reqLen = atoi(clHdr+strlen("Content-Length:"));
-    os_printf("OTA: content len=%ld\n", oc->reqLen);
+    os_printf("OTA: content len=%ld\n", (long int) oc->reqLen);
   }
 
   return i+4;

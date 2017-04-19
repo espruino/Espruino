@@ -12,23 +12,30 @@
 # Buttons, and other in-built peripherals are. It is used to build documentation as well
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
-
+import os;
 import pinutils;
 info = {
  'name'            : "ESP8266",
  'espruino_page_link' : 'EspruinoESP8266',
  'default_console' : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
- 'variables'       : 1700,
+ 'variables'       : 1600,
  'binary_name'     : 'espruino_%v_esp8266',
  'build' : {
    'libraries' : [
      'NET',
      'TELNET',
-     #'GRAPHICS',
+     'GRAPHICS',
      'CRYPTO',
      'NEOPIXEL',
-   ]
+     #'FILESYSTEM',
+     #'FLASHFS'
+   ],
+   'makefile' : [
+     'FLASH_4MB=1',
+     'ESP_FLASH_MAX=962560',
+     'FLASH_BAUD=460800'    
+    ]
  }
 };
 chip = {
@@ -44,12 +51,14 @@ chip = {
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {
-    'address' : 0x78000,
+    # 0x300000 + 4096 * (256 - 16save - 1wifi -4reserved) 
+    'address' :  0x3EB000, # first page is used for wifi save 
     'page_size' : 4096,
-    'pages' : 3,
-    'flash_available' : 468, # firmware can be up to this size
+    'pages' : 16,
+    'flash_available' : 940, # firmware can be up to this size
   },
 };
+
 devices = {
 };
 
@@ -98,38 +107,8 @@ board_esp01 = {
     'right' : ['VCC', 'RESET', 'CH_PD', 'D1'],
     '_hide_not_on_connectors' : True
 };
-board_esp01["_css"] = """
-#board {
-  width:  500px;
-  height: 299px;
-  left: 50px;
-  top: 0px;
-  background-image: url(img/ESP8266_01.jpg);
-}
-#boardcontainer {
-  height: 300px;
-}
-#board #right {
-  top: 30px;
-  left: 200px;
-}
-#board #left {
-  top: 65px;
-  right: 80px;
-}
-#board #right  {
-  top: 65px;
-  left: 460px;
-}
-#board .leftpin {
-  height: 48px;
-}
-#board .rightpin {
-  height: 48px;
-}
-""";
 
-boards = [ board_esp12, board_esp01 ];
+boards = [ board_esp12 ];
 
 def get_pins():
   pins = pinutils.generate_pins(0,15)
