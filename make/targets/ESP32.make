@@ -9,13 +9,12 @@ $(PROJ_NAME).bin: $(OBJS)
 	--flash_freq "40m" \
 	-o $(PROJ_NAME).bin \
 	$(PROJ_NAME).elf
-	$(Q)cp $(PROJ_NAME).bin espruino_esp32.bin
 
 $(ESP_ZIP): $(PROJ_NAME).bin
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
 	$(Q)cp $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
-	  espruino_esp32.bin \
+	  $(PROJ_NAME).bin \
 	  $(ESP_APP_TEMPLATE_PATH)/build/partitions_espruino.bin \
 	  targets/esp32/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))
