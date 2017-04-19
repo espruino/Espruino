@@ -605,20 +605,20 @@ bool jswrap_puck_selfTest() {
     ok = false;
   }
 
-  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
-  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(IR_ANODE_PIN, 1);
-  nrf_delay_ms(1);
-  if (jshPinGetValue(IR_CATHODE_PIN)) {
-    jsiConsolePrintf("IR LED wrong way around/shorted?\n");
-    ok = false;
-  }
-
   jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
   jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_OUT);
   jshPinSetValue(IR_CATHODE_PIN, 1);
   nrf_delay_ms(1);
-  if (!jshPinGetValue(IR_ANODE_PIN)) {
+  if (jshPinGetValue(IR_ANODE_PIN)) {
+    jsiConsolePrintf("IR LED wrong way around/shorted?\n");
+    ok = false;
+  }
+
+  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(IR_ANODE_PIN, 1);
+  nrf_delay_ms(1);
+  if (!jshPinGetValue(IR_CATHODE_PIN)) {
     jsiConsolePrintf("IR LED disconnected?\n");
     ok = false;
   }
