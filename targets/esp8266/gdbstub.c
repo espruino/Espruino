@@ -53,7 +53,12 @@ static void print_stack(uint32_t start, uint32_t end) {
     bool looksLikeStackFrame = (values[2] == pos + 0x10);
 
     os_printf("%08lx:  %08lx %08lx %08lx %08lx %c\n",
-        pos, values[0], values[1], values[2], values[3], (looksLikeStackFrame)?'<':' ');
+        (long unsigned int) pos, 
+        (long unsigned int) values[0], 
+        (long unsigned int) values[1],
+        (long unsigned int) values[2], 
+        (long unsigned int) values[3], 
+        (looksLikeStackFrame)?'<':' ');
   }
   os_printf("\n");
 }
@@ -65,9 +70,15 @@ int os_printf_plus(const char *format, ...)  __attribute__ ((format (printf, 1, 
 static void printReason() {
   //register uint32_t sp asm("a1");
   struct XTensa_exception_frame_s *reg = &gdbstub_savedRegs;
-  os_printf("\n\n***** Fatal exception %ld\n", reg->reason);
-  os_printf("pc=0x%08lx sp=0x%08lx excvaddr=0x%08lx\n", reg->pc, reg->a1, reg->excvaddr);
-  os_printf("ps=0x%08lx sar=0x%08lx vpri=0x%08lx\n", reg->ps, reg->sar, reg->vpri);
+  os_printf("\n\n***** Fatal exception %ld\n", (long int) reg->reason);
+  os_printf("pc=0x%08lx sp=0x%08lx excvaddr=0x%08lx\n", 
+    (long unsigned int) reg->pc, 
+    (long unsigned int) reg->a1, 
+    (long unsigned int) reg->excvaddr);
+  os_printf("ps=0x%08lx sar=0x%08lx vpri=0x%08lx\n", 
+    (long unsigned int) reg->ps, 
+    (long unsigned int) reg->sar,
+    (long unsigned int) reg->vpri);
   for (int i=0; i<16; i++) {
     unsigned int r = getaregval(i);
     os_printf("r%02d: 0x%08x=%10d ", i, r, r);

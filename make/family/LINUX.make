@@ -1,4 +1,3 @@
-$(info QHO)
 ifeq ($(BOARD),CARAMBOLA)
 TOOLCHAIN_DIR=$(shell cd ~/workspace/carambola/staging_dir/toolchain-*/bin;pwd)
 export STAGING_DIR=$(TOOLCHAIN_DIR)
