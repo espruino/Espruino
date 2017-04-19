@@ -20,7 +20,7 @@ info = {
  'default_console'          : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
  'variables'                : 5000,
- 'binary_name'              : 'espruino_%v_esp32',
+ 'binary_name'              : 'espruino_%v_esp32.bin',
  'build' : {
    'optimizeflags' : '-Og',
    'libraries' : [
