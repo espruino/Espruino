@@ -18,6 +18,7 @@ import pinutils;
 info = {
  'name' : "RuuviTag",
  'link' :  [ "https://ruuvitag.com" ],
+ 'espruino_page_link' : 'Ruuvitag',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D4",
  'default_console_rx' : "D5",
