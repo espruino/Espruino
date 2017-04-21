@@ -314,6 +314,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           if (bleStatus & BLE_IS_RSSI_SCANNING) // attempt to restart RSSI scan
             sd_ble_gap_rssi_start(m_conn_handle, 0, 0);
           bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
+#if BLE_HIDS_ENABLED
+          bleStatus &= ~BLE_IS_SENDING_HID;
+#endif
           bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
@@ -1766,10 +1769,14 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
     jsExceptionHere(JSET_ERROR, "BLE HID not enabled");
     return;
   }
+  if (!jsble_has_simple_connection()) {
+    jsExceptionHere(JSET_ERROR, "Not connected!");
+    return;
+  }
   if (bleStatus & BLE_IS_SENDING_HID) {
-     jsExceptionHere(JSET_ERROR, "BLE HID already sending");
-     return;
-   }
+    jsExceptionHere(JSET_ERROR, "BLE HID already sending");
+    return;
+  }  
   if (length > HID_KEYS_MAX_LEN) {
     jsExceptionHere(JSET_ERROR, "BLE HID report too long - max length = %d\n", HID_KEYS_MAX_LEN);
     return;
@@ -1788,7 +1795,6 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
   }
   if (!jsble_check_error(err_code))
     bleStatus |= BLE_IS_SENDING_HID;
-  return;
 }
 #endif
 

@@ -323,12 +323,10 @@ for jsondata in detail:
     desc = jsondata["description"]
     if not isinstance(desc, list): desc = [ desc ]
     if ("ifdef" in jsondata) or ("ifndef" in jsondata):
-      conds = ""
-      if "ifdef" in jsondata: conds = common.get_ifdef_description(jsondata["ifdef"])
+      if "ifdef" in jsondata: 
+        desc.append("\n\n**Note:** This is only available in "+common.get_ifdef_description(jsondata["ifdef"]));
       if "ifndef" in jsondata:
-        if conds!="": conds += " and "
-        conds = "not "+common.get_ifdef_description(jsondata["ifndef"])
-      desc.append("\n\n**Note:** This is only available in "+conds);
+        desc.append("\n\n**Note:** This is not available in "+common.get_ifdef_description(jsondata["ifndef"]));      
     html_description(desc, jsondata["name"])
   if "params" in jsondata:
     html("  <h4>Parameters</h4>")
