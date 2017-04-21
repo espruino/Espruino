@@ -582,7 +582,7 @@ Pipe this file to a stream (an object with a 'write' method)
   "generate" : "jswrap_E_flashFatFS",
   "ifdef" : "USE_FLASHFS",
    "params" : [
-    ["options","JsVar",["An optional object `{ addr : int=0x300000, sectors : int=256, readonly : bool=false, , format : bool=false }`","addr : start address in flash","sectors: number of sectors to use","readonly: set to true if you want to disable write","format:  Format the media"]]
+    ["options","JsVar",["An optional object `{ addr : int=0x300000, sectors : int=256, format : bool=false }`","addr : start address in flash","sectors: number of sectors to use","format:  Format the media"]]
   ],
   "return" : ["bool","True on success, or false on failure"]  
 }
@@ -590,6 +590,7 @@ Change the paramters used for the flash filesystem.
 The default address is the last 1Mb of 4Mb Flash, 0x300000, with total size of 1Mb.
 
 Before first use the media needs to be formatted.
+
 ```
 fs=require("fs");
 
@@ -603,51 +604,45 @@ fs.writeFileSync("bang.txt", "This is the way the world ends\nnot with a bang bu
 fs.readdirSync();
 ```
 
-This will create a drive of 100 * 4096 bytes at 0x200000. Be careful with the selection of flash addresses as you can overwrite firmware!
+This will create a drive of 100 * 4096 bytes at 0x300000. Be careful with the selection of flash addresses as you can overwrite firmware!
+You only need to format once, as each will erase the content.
+
+`E.flashFatFS({ addr:0x300000,sectors:100,format:true });`
 */
 
 int jswrap_E_flashFatFS(JsVar* options) {
   uint32_t addr = FS_FLASH_BASE;
   uint16_t sectors = FS_SECTOR_COUNT;
-  uint8_t readonly = 0;
   uint8_t format = 0;
-  // addr : 0x300000, sectors :256, readonly:false
   if (jsvIsObject(options)) {
     JsVar *a = jsvObjectGetChild(options, "addr", false);
     if (a) {
       if (jsvIsNumeric(a) && jsvGetInteger(a)>0x100000)
-        addr = jsvGetInteger(a);
+        addr = (uint32_t)jsvGetInteger(a);
     }
     JsVar *s = jsvObjectGetChild(options, "sectors", false);
     if (s) {
       if (jsvIsNumeric(s) && jsvGetInteger(s)>0)
-        sectors = jsvGetInteger(s);
+        sectors = (uint16_t)jsvGetInteger(s);
     }
-    JsVar *r = jsvObjectGetChild(options, "readonly", false);
-    if (r) {
-      if (jsvIsBoolean(r))
-        readonly = jsvGetBool(r);
-		jsWarn("readonly not implemented");
-    }
-     JsVar *f = jsvObjectGetChild(options, "format", false);
+    JsVar *f = jsvObjectGetChild(options, "format", false);
     if (f) {
       if (jsvIsBoolean(f))
         format = jsvGetBool(f);
     }
-     jsWarn( "E.flashFatFs a:%d, s: %d r: %d f: %d", addr, sectors, readonly, format );
   }
   else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
   }
   
-  uint8_t init=flashFatFsInit( addr, sectors, readonly, format );
+  uint8_t init=flashFatFsInit(addr, sectors);
   if (init) {
     if ( format ) {
       uint8_t res = f_mount(&jsfsFAT, "", 0);
-      jsWarn("Formatting Flash");
+      jsDebug("Formatting Flash");
       res = f_mkfs("", 1, 0);  // Super Floppy format, using all space (not partition table)
       if (res != FR_OK) {
-        jsfsReportError("Flash Formatting error:",res);
+        jsExceptionHere(JSET_INTERNALERROR, "Flash Formatting error:",res);
         return false;
      }
    }    

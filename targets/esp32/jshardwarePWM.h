@@ -24,7 +24,7 @@
 
 struct PWMChannel{Pin pin;}; //will be extended once we know more about PWM for Espruino on ESP32
 struct PWMChannel PWMChannels[PWMMax];
-struct PWMFreqChannel{Pin pin; int freq};
+struct PWMFreqChannel{Pin pin; int freq;};
 struct PWMFreqChannel PWMFreqChannels[PWMFreqMax];
 
 void PWMInit();

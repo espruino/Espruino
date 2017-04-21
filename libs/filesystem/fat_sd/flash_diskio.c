@@ -24,7 +24,6 @@
 
  uint32_t fs_flash_base     = FS_FLASH_BASE;
  uint16_t fs_flash_sectors  = FS_SECTOR_COUNT;
- uint8_t  fs_flash_readonly = false;
 
 /*--------------------------------------------------------------------------
 
@@ -74,11 +73,8 @@ DRESULT disk_read (
   if (drv != 0)
      return STA_NODISK;
  
-  uint16_t size;
-  uint32_t addr;
-
-  size =  count * FS_SECTOR_SIZE;
-  addr = sector * FS_SECTOR_SIZE + fs_flash_base;
+  uint16_t size =  (uint16_t)(count * FS_SECTOR_SIZE);
+  uint32_t addr = sector * FS_SECTOR_SIZE + fs_flash_base;
   
   jsDebug("Flash disk_read sector: %d, buff: mem: %d buff: %d len: %d", sector, addr, buff, size);
   jshFlashRead( buff, addr, size);
@@ -98,15 +94,13 @@ DRESULT disk_write (
 {
   if (drv != 0)
      return STA_NODISK;
-  uint16_t size;
-  uint32_t addr;
 
-  size =  count * FS_SECTOR_SIZE;
-  addr = sector * FS_SECTOR_SIZE + fs_flash_base;
+  uint16_t size =  (uint16_t)(count * FS_SECTOR_SIZE);
+  uint32_t addr = sector * FS_SECTOR_SIZE + fs_flash_base;
 
   jsDebug("Flash disk_write sector:  %d, buff: mem: %d buff: %d len: %d", sector, addr, buff, size);
   jshFlashErasePage(addr);
-  jshFlashWrite( buff, addr,size);  
+  jshFlashWrite( (void *)buff, addr,size);  
 
   return RES_OK;
 }
@@ -155,9 +149,8 @@ DRESULT disk_ioctl (
 // store settings of base addr, sectors, read only
 // used to change default flash areas
 /*-----------------------------------------------------------------------*/
-uint8_t flashFatFsInit( uint32_t addr, uint16_t sectors, uint8_t readonly, uint8_t format ) {
+uint8_t flashFatFsInit( uint32_t addr, uint16_t sectors ) {
   fs_flash_base = addr;
   fs_flash_sectors = sectors;
-  fs_flash_readonly = readonly;
   return true;
 }
