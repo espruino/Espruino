@@ -93,7 +93,7 @@ CalendarDate getCalendarDate(int d) {
   //Find the month
 
   m=0;
-  while (mdays[m]<d+1) {
+  while (mdays[m]<d+1 && m<12) {
     m++;
   }
   date.month=m-1;
@@ -122,7 +122,7 @@ int fromCalenderDate(CalendarDate *date) {
   if (yf>=2)
     ydays=ydays+1;
 
-  return f*FDAY+YDAYS[yf]+mdays[date->month]+date->day-1;
+  return f*FDAY+YDAYS[yf]+mdays[date->month%12]+date->day-1;
 };
 
 
@@ -204,14 +204,14 @@ JsVar *jswrap_date_constructor(JsVar *args) {
   } else {
     CalendarDate date;
     date.year = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 0));
-    date.month = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 1));
-    date.day = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 2));
+    date.month = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 1)) % 12);
+    date.day = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 2)) % 31);
     TimeInDay td;
     td.daysSinceEpoch = fromCalenderDate(&date);
-    td.hour = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 3));
-    td.min = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4));
-    td.sec = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5));
-    td.ms = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6));
+    td.hour = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 3)) % 24);
+    td.min = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4)) % 60);
+    td.sec = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5)) % 60);
+    td.ms = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6)) % 1000);
     td.zone = 0;
     time = fromTimeInDay(&td);
   }
