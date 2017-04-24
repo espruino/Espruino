@@ -2512,6 +2512,7 @@ JsVarInt jsvGetLength(const JsVar *src) {
 
 /** Count the amount of JsVars used. Mostly useful for debugging */
 static size_t _jsvCountJsVarsUsedRecursive(JsVar *v, bool resetRecursionFlag) {
+  if (!v) return 0;
   // Use IS_RECURSING  flag to stop recursion
   if (resetRecursionFlag) {
     if (!(v->flags & JSV_IS_RECURSING))
