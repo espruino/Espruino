@@ -1565,7 +1565,7 @@ void jswrap_ESP32_wifi_setHostname(
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266",
+  "class"    : "ESP32",
   "name"     : "ping",
   "generate" : "jswrap_ESP32_ping",
   "params"   : [
