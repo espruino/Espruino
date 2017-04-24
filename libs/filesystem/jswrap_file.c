@@ -590,16 +590,14 @@ Change the paramters used for the flash filesystem.
 The default address is the last 1Mb of 4Mb Flash, 0x300000, with total size of 1Mb.
 
 Before first use the media needs to be formatted.
+
 ```
 fs=require("fs");
-
 if ( typeof(fs.readdirSync())==="undefined" ) {
   console.log("Formatting FS");
   E.flashFatFS({format:true});
 }
-
 fs.writeFileSync("bang.txt", "This is the way the world ends\nnot with a bang but a whimper.\n");
-
 fs.readdirSync();
 ```
 
