@@ -61,11 +61,12 @@ attached to the given pin.
 ```
 // set just one pixel, red, green, blue
 require("neopixel").write(B15, [255,0,0]);
+```
 
+```
 // Produce an animated rainbow over 25 LEDs
 var rgb = new Uint8ClampedArray(25*3);
 var pos = 0;
-
 function getPattern() {
   pos++;
   for (var i=0;i<rgb.length;) {
@@ -75,7 +76,6 @@ function getPattern() {
   }
   return rgb;
 }
-
 setInterval(function() {
   require("neopixel").write(B15, getPattern());
 }, 100);

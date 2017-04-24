@@ -308,7 +308,10 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
    ["pin", "pin", "Pin for output signal."],
    ["arrayOfData", "JsVar", "Array of LED data."]
  ]
-}*/
+}
+
+**This function is deprecated.** Please use `require("neopixel").write(pin, data)` instead
+*/
 void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   jswrap_neopixel_write(pin, jsArrayOfData);
 }
