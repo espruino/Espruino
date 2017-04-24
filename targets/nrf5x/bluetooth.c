@@ -403,8 +403,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             }
             jsiQueueObjectCallbacks(gattServer, BLE_RSSI_EVENT, &rssi, 1);
             jshHadEvent();
-            jsvUnLock(rssi);
-            jsvUnLock2(gattServer, bluetoothDevice);
+            jsvUnLock3(rssi, gattServer, bluetoothDevice);
           }
         } else
 #endif    
