@@ -1811,6 +1811,46 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
 }
 
 /*JSON{
+  "type" : "method",
+  "class" : "BluetoothRemoteGATTServer",
+  "name" : "setRSSIHandler",
+  "generate" : "jswrap_BluetoothRemoteGATTServer_setRSSIHandler",
+  "params" : [
+    ["callback","JsVar","The callback to call with the RSSI value, or undefined to stop"]
+  ],
+  "ifdef" : "NRF52"
+}
+
+Start/stop listening for RSSI values on the active GATT connection
+
+```
+// Start listening for RSSI value updates
+gattServer.setRSSIHandler(function(rssi) {
+  console.log(rssi); // prints -85 (or similar)
+});
+// Stop listening
+gattServer.setRSSIHandler();
+```
+
+RSSI is the 'Received Signal Strength Indication' in dBm
+
+**Note:** This is only available on some devices
+*/
+void jswrap_BluetoothRemoteGATTServer_setRSSIHandler(JsVar *parent, JsVar *callback) {
+#if CENTRAL_LINK_COUNT>0
+  // set the callback event variable
+  if (!jsvIsFunction(callback)) callback=0;
+  jsvObjectSetChild(parent, BLE_RSSI_EVENT, callback);
+  // either start or stop scanning
+  uint32_t err_code = jsble_set_central_rssi_scan(callback != 0);
+  jsble_check_error(err_code);
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+
+/*JSON{
   "type" : "class",
   "class" : "BluetoothRemoteGATTService",
   "ifdef" : "NRF52"
