@@ -539,17 +539,16 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     // raw data...
     // Check if it's nested arrays - if so we alternate between advertising types
     bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
+    JsVar *item = 0;
     if (jsvIsArray(data)) {
-      JsVar *item = jsvGetArrayItem(data, 0);
+      item = jsvGetArrayItem(data, 0);
       if (jsvIsArray(item) || jsvIsArrayBuffer(item)) {
         // nested - enable multiple advertising - start at index 0
         bleStatus |= BLE_IS_ADVERTISING_MULTIPLE;
         // start with the first element
-        jsvUnLock(data);
         data = item;
         item = 0;
-      } else
-        jsvUnLock(item);
+      }
     }
 
     JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
@@ -564,7 +563,8 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     jsble_check_error(err_code);
     if (bleChanged && isAdvertising)
       jsble_advertising_start();
-    return; // we're done here now
+    jsvUnLock(item);
+    return; // we're done here now - don't mess with advertising any more
   } else if (jsvIsObject(data)) {
     ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
     int n = 0;

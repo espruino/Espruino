@@ -1194,7 +1194,7 @@ static void peer_manager_init(bool erase_bonds) {
   if (FLASH_MAGIC == *magicWord) {
     int i;
     for (i=1;i<=FDS_PHY_PAGES;i++)
-      jshFlashErasePage(FS_PAGE_END_ADDR - i*FS_PAGE_SIZE);
+      jshFlashErasePage(((uint32_t)FS_PAGE_END_ADDR) - i*FS_PAGE_SIZE);
   }
 
 
