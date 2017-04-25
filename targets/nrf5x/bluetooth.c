@@ -1486,7 +1486,7 @@ static void advertising_init() {
     options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
 
     err_code = ble_advertising_init(&advdata, &scanrsp, &options, on_adv_evt, NULL);
-    APP_ERROR_CHECK(err_code);
+    jsble_check_error(err_code);
 }
 
 // -----------------------------------------------------------------------------------

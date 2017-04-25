@@ -738,6 +738,15 @@ NRF.setServices({
 }, { advertise: [ '180D' ] });
 ```
 
+You may specify 128 bit UUIDs to advertise, however you may get a `DATA_SIZE`
+exception because there is insufficient space in the Bluetooth LE advertising
+packet for the 128 bit UART UUID as well as the UUID you specified. In this
+case you can add `uart:false` after the `advertise` element to disable the
+UART, however you then be unable to connect to Puck.js's console via Bluetooth.
+
+If you absolutely require two or more 128 bit UUIDs then you will have to
+specify your own raw advertising data packets with `NRF.setAdvertising`
+
 */
 void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
   if (!(jsvIsObject(data) || jsvIsUndefined(data))) {
