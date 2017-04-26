@@ -821,11 +821,12 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
     block->varData.str[blockChars++] = ch;
     jsvStringIteratorNext(&it);
   }
-  jsvStringIteratorFree(&it);
   jsvSetCharactersInVar(block, blockChars);
   jsvUnLock(block);
-  // Just make sure we only assert if there's a bug here. If we just ran out of memory it's ok
-  assert((l == jsvGetStringLength(var)) || (jsErrorFlags&JSERR_MEMORY));
+  // Just make sure we only assert if there's a bug here. If we just ran out of memory or at end of string it's ok
+  assert((l == jsvGetStringLength(var)) || (jsErrorFlags&JSERR_MEMORY) || !jsvStringIteratorHasChar(&it));
+  jsvStringIteratorFree(&it);
+  
 
   return var;
 }

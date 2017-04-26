@@ -78,9 +78,13 @@ espruino_#v##_microbit.hex
    - Espruino for the BBC micro:bit - just copy this file onto the
    flash drive that appears when you plug the micro:bit in.
 
+espruino_#v##_ruuvitag.zip
+   - The firmware image for Ruuvitag Devices
+     See http://www.espruino.com/Ruuvitag for more information
 
-ESP8266
--------
+
+ESP8266 / ESP32
+---------------
 
 See http://www.espruino.com/EspruinoESP8266 for more info
 
@@ -88,8 +92,19 @@ espruino_#v##_esp8266_combined_512.bin
    - ESP8266 'combined' port for 512k devices like ESP01
        Flash with: esptool.py write_flash 0 espruino_#v##_esp8266_combined_512.bin
 
+espruino_#v##_esp8266_4mb_combined_4096.bin
+   - ESP8266 'combined' port for 4MB devices like ESP12
+       Flash with: esptool.py write_flash 0 espruino_#v##_esp8266_combined_4096.bin
+
 espruino_#v##_esp8266
    - ESP8266 port as separate files - see README in directory for more information
+
+espruino_#v##_esp8266_4mb
+   - ESP8266 port for 4mb devices as separate files - see README in directory for more information
+
+espruino_#v##_esp32.zip
+   - The firmware image for ESP32 Devices
+     See http://www.espruino.com/ESP32 for more information
 
 
 

@@ -391,12 +391,29 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
         break;
 
-      case BLE_GAP_EVT_RSSI_CHANGED: {
-        JsVar *evt = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
-        if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
-        jsvUnLock(evt);
-        jshHadEvent();
-      } break;
+      case BLE_GAP_EVT_RSSI_CHANGED: 
+#if CENTRAL_LINK_COUNT>0
+        if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
+          JsVar *gattServer = bleGetActiveBluetoothGattServer();
+          if (gattServer) {
+            JsVar *rssi = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
+            JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+            if (bluetoothDevice) {
+              jsvObjectSetChild(bluetoothDevice, "rssi", rssi);
+            }
+            jsiQueueObjectCallbacks(gattServer, BLE_RSSI_EVENT, &rssi, 1);
+            jshHadEvent();
+            jsvUnLock3(rssi, gattServer, bluetoothDevice);
+          }
+        } else
+#endif    
+        {
+          JsVar *evt = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
+          if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
+          jsvUnLock(evt);
+          jshHadEvent();
+        }
+        break;
 
 #if PEER_MANAGER_ENABLED==0
       case BLE_GAP_EVT_SEC_PARAMS_REQUEST:{
@@ -1177,7 +1194,7 @@ static void peer_manager_init(bool erase_bonds) {
   if (FLASH_MAGIC == *magicWord) {
     int i;
     for (i=1;i<=FDS_PHY_PAGES;i++)
-      jshFlashErasePage(FS_PAGE_END_ADDR - i*FS_PAGE_SIZE);
+      jshFlashErasePage(((uint32_t)FS_PAGE_END_ADDR) - i*FS_PAGE_SIZE);
   }
 
 
@@ -1469,7 +1486,7 @@ static void advertising_init() {
     options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
 
     err_code = ble_advertising_init(&advdata, &scanrsp, &options, on_adv_evt, NULL);
-    APP_ERROR_CHECK(err_code);
+    jsble_check_error(err_code);
 }
 
 // -----------------------------------------------------------------------------------
@@ -1628,6 +1645,23 @@ uint32_t jsble_set_rssi_scan(bool enabled) {
      if (jsble_has_simple_connection())
        err_code = sd_ble_gap_rssi_stop(m_conn_handle);
    }
+  return err_code;
+}
+
+uint32_t jsble_set_central_rssi_scan(bool enabled) {
+  uint32_t err_code = 0;
+  if (enabled) {
+    if (jsble_has_central_connection())
+      err_code = sd_ble_gap_rssi_start(m_central_conn_handle, 0, 0);
+  } else {
+    if (jsble_has_central_connection())
+      err_code = sd_ble_gap_rssi_stop(m_central_conn_handle);
+  }
+  if (err_code == NRF_ERROR_INVALID_STATE) {
+    // We either tried to start when already started, or stop when
+    // already stopped, so we can simply ignore this condition.
+    err_code = 0;
+  }
   return err_code;
 }
 

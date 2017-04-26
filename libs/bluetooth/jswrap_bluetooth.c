@@ -539,17 +539,16 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     // raw data...
     // Check if it's nested arrays - if so we alternate between advertising types
     bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
+    JsVar *item = 0;
     if (jsvIsArray(data)) {
-      JsVar *item = jsvGetArrayItem(data, 0);
+      item = jsvGetArrayItem(data, 0);
       if (jsvIsArray(item) || jsvIsArrayBuffer(item)) {
         // nested - enable multiple advertising - start at index 0
         bleStatus |= BLE_IS_ADVERTISING_MULTIPLE;
         // start with the first element
-        jsvUnLock(data);
         data = item;
         item = 0;
-      } else
-        jsvUnLock(item);
+      }
     }
 
     JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
@@ -564,7 +563,8 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     jsble_check_error(err_code);
     if (bleChanged && isAdvertising)
       jsble_advertising_start();
-    return; // we're done here now
+    jsvUnLock(item);
+    return; // we're done here now - don't mess with advertising any more
   } else if (jsvIsObject(data)) {
     ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
     int n = 0;
@@ -737,6 +737,15 @@ NRF.setServices({
   }
 }, { advertise: [ '180D' ] });
 ```
+
+You may specify 128 bit UUIDs to advertise, however you may get a `DATA_SIZE`
+exception because there is insufficient space in the Bluetooth LE advertising
+packet for the 128 bit UART UUID as well as the UUID you specified. In this
+case you can add `uart:false` after the `advertise` element to disable the
+UART, however you then be unable to connect to Puck.js's console via Bluetooth.
+
+If you absolutely require two or more 128 bit UUIDs then you will have to
+specify your own raw advertising data packets with `NRF.setAdvertising`
 
 */
 void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
@@ -1804,6 +1813,46 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
   JsVar *promise = jsvLockAgainSafe(blePromise);
   jsble_central_getPrimaryServices(uuid);
   return promise;
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "BluetoothRemoteGATTServer",
+  "name" : "setRSSIHandler",
+  "generate" : "jswrap_BluetoothRemoteGATTServer_setRSSIHandler",
+  "params" : [
+    ["callback","JsVar","The callback to call with the RSSI value, or undefined to stop"]
+  ],
+  "ifdef" : "NRF52"
+}
+
+Start/stop listening for RSSI values on the active GATT connection
+
+```
+// Start listening for RSSI value updates
+gattServer.setRSSIHandler(function(rssi) {
+  console.log(rssi); // prints -85 (or similar)
+});
+// Stop listening
+gattServer.setRSSIHandler();
+```
+
+RSSI is the 'Received Signal Strength Indication' in dBm
+
+**Note:** This is only available on some devices
+*/
+void jswrap_BluetoothRemoteGATTServer_setRSSIHandler(JsVar *parent, JsVar *callback) {
+#if CENTRAL_LINK_COUNT>0
+  // set the callback event variable
+  if (!jsvIsFunction(callback)) callback=0;
+  jsvObjectSetChild(parent, BLE_RSSI_EVENT, callback);
+  // either start or stop scanning
+  uint32_t err_code = jsble_set_central_rssi_scan(callback != 0);
+  jsble_check_error(err_code);
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;

@@ -482,10 +482,14 @@ for example:
 ```
 // shift out to single clk+data
 shiftOut(A0, { clk : A1 }, [1,0,1,0]);
+```
 
+```
 // shift out a whole byte (like software SPI)
 shiftOut(A0, { clk : A1, repeat: 8 }, [1,2,3,4]);
+```
 
+```
 // shift out via 4 data pins
 shiftOut([A3,A2,A1,A0], { clk : A4 }, [1,2,3,4]);
 ```
