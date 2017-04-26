@@ -1648,6 +1648,7 @@ uint32_t jsble_set_rssi_scan(bool enabled) {
   return err_code;
 }
 
+#if CENTRAL_LINK_COUNT>0
 uint32_t jsble_set_central_rssi_scan(bool enabled) {
   uint32_t err_code = 0;
   if (enabled) {
@@ -1664,6 +1665,7 @@ uint32_t jsble_set_central_rssi_scan(bool enabled) {
   }
   return err_code;
 }
+#endif
 
 /** Actually set the services defined in the 'data' object. Note: we can
  * only do this *once* - so to change it we must reset the softdevice and

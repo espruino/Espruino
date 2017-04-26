@@ -98,9 +98,6 @@ uint32_t jsble_set_scanning(bool enabled);
 /// returning RSSI values for current connection
 uint32_t jsble_set_rssi_scan(bool enabled);
 
-/// RSSI monitoring in central mode
-uint32_t jsble_set_central_rssi_scan(bool enabled);
-
 /** Actually set the services defined in the 'data' object. Note: we can
  * only do this *once* - so to change it we must reset the softdevice and
  * then call this again */
@@ -134,4 +131,6 @@ void jsble_central_characteristicRead(JsVar *characteristic);
 void jsble_central_characteristicDescDiscover(JsVar *characteristic);
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicNotify(JsVar *characteristic, bool enable);
+/// RSSI monitoring in central mode
+uint32_t jsble_set_central_rssi_scan(bool enabled);
 #endif
