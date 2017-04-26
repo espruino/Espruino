@@ -608,6 +608,7 @@ JshPinFunction jshGetFreeTimer(JsVarFloat freq) {
       }
     }
   }
+  return JSH_NOTHING;
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
