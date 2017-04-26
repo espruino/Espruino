@@ -34,13 +34,11 @@ static void uartTask(void *data) {
 }
 
 static void timerTask(void *data) {
-  // not sure why this delay is needed?
-  // vTaskDelay(500 / portTICK_PERIOD_MS);
   timers_Init();
   timer_Init("EspruinoTimer",0,0,0);
   while(1) {
     taskWaitNotify();
-	jstUtilTimerInterruptHandler();
+    jstUtilTimerInterruptHandler();
   }
 }
 

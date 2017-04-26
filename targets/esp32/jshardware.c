@@ -341,8 +341,8 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   }
   else{
     pin = ((func >> JSH_SHIFT_INFO) << 4) + ((func >> JSH_SHIFT_TYPE) & 15);
-    // Was warning: statement with no effect [-Wunused-value] - changed to value - needs testing!
-    //value >> (16 - PWMTimerBit);
+    // convert the 16 bit value to a 10 bit value.
+    value=value >> (16 - PWMTimerBit);
     setPWM( (Pin)pin, (uint16_t)value);
   }
 }
