@@ -318,14 +318,14 @@ bool jshIsUSBSERIALConnected() {
 }
 
 /// Hack because we *really* don't want to mess with RTC0 :)
-JsSysTime baseSystemTime = 0;
-uint32_t lastSystemTime = 0;
+volatile JsSysTime baseSystemTime = 0;
+volatile uint32_t lastSystemTime = 0;
 
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime() {
   // Detect RTC overflows
   uint32_t systemTime = NRF_RTC0->COUNTER;
-  if (lastSystemTime > systemTime)
+  if ((lastSystemTime & 0x800000) && !(systemTime & 0x800000))
     baseSystemTime += 0x1000000; // it's a 24 bit counter
   lastSystemTime = systemTime;
   // Use RTC0 (also used by BLE stack) - as app_timer starts/stops RTC1
