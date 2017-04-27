@@ -431,9 +431,19 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
     ],
     "return" : ["int", "Capacitive sense counter" ]
 }
-Capacitive sense. TX must be connected to RX pin and sense plate via 1MOhm resistor.
+Capacitive sense - the higher the capacitance, the higher the number returned.
 
-If no pins are supplied, the NFC ring is used for capacitive sense.
+If called without arguments, a value depending on the capacitance of what is 
+attached to pin D11 will be returned. If you attach a length of wire to D11,
+you'll be able to see a higher value returned when your hand is near the wire
+than when it is away.
+
+You can also supply pins to use yourself, however if you do this then
+the TX pin must be connected to RX pin and sense plate via a roughly 1MOhm 
+resistor.
+
+When not supplying pins, Puck.js uses an internal resistor between D12(tx)
+and D11(rx).
 */
 int jswrap_puck_capSense(Pin tx, Pin rx) {
   if (jshIsPinValid(tx) && jshIsPinValid(rx)) {
