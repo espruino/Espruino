@@ -413,10 +413,12 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       bool hadError = fireErrorEvent(error, connection, socket);
 
       // fire the close listeners
-      jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_END, NULL, 0);
+      if (connection!=socket)
+        jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_END, NULL, 0);
       jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, NULL, 0);
       JsVar *params[1] = { jsvNewFromBool(hadError) };
-      jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CLOSE, params, 1);
+      if (connection!=socket)
+        jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CLOSE, params, 1);
       jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, params, 1);
       jsvUnLock(params[0]);
 
@@ -558,9 +560,6 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     if (closeConnectionNow) {
       socketClientPushReceiveData(connection, socket, &receiveData);
       if (!receiveData) {
-        if ((socketType&ST_TYPE_MASK) != ST_HTTP)
-          jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
-
         // If we had data to send but the socket closed, this is an error
         JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
         if (sendData && jsvGetStringLength(sendData) > 0 && error == SOCKET_ERR_CLOSED)
