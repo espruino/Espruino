@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2015 Gordon Williams <gw@pur3.co.uk>
  *
- * This Source Code Form is subject to the terms of the Mozilla Publici
+ * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
@@ -122,10 +122,7 @@ void jshPinDefaultPullup() {
  * Initialize the JavaScript hardware interface.
  */
 void jshInit() {
-  uint32_t freeHeapSize = esp_get_free_heap_size();
-  jsWarn( "Free heap size: %d", freeHeapSize);
   esp32_wifi_init();
-  //jswrap_ESP32_wifi_soft_init();
   jshInitDevices();
   if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
     jsError("JshPinState #defines have changed, please update pinStateToString()");
@@ -177,17 +174,11 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
   return 6;
 }
 
-//===== Interrupts and sleeping
-//Mux to protect the JshInterrupt status
-//static portMUX_TYPE xJshInterrupt = portMUX_INITIALIZER_UNLOCKED;
 void jshInterruptOff() { 
-    //xTaskResumeAll();
-  //taskEXIT_CRITICAL(&xJshInterrupt);
   taskDISABLE_INTERRUPTS();
 }
 
 void jshInterruptOn()  {
-  //taskENTER_CRITICAL(&xJshInterrupt);
   taskENABLE_INTERRUPTS();
 }
 
@@ -202,7 +193,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
  * Delay (blocking) for the supplied number of microseconds.
  */
 void jshDelayMicroseconds(int microsec) {
-  ets_delay_us(microsec);
+  ets_delay_us((uint32_t)microsec);
 } // End of jshDelayMicroseconds
 
 
@@ -327,14 +318,10 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
     JshAnalogOutputFlags flags) { // if freq<=0, the default is used
   UNUSED(flags);
   if(pin == 25 || pin == 26){
-    value = (value * 256);
-    uint8_t val8 = value;
-    writeDAC(pin,val8);
+    writeDAC(pin,(uint8_t)(value * 256));
   }
   else{
-    value = (value * PWMTimerRange);
-    uint16_t val16 = value;
-    writePWM(pin,val16,(int) freq);
+    writePWM(pin,( uint16_t)(value * PWMTimerRange),(int) freq);
   }
   return 0;
 }
@@ -354,8 +341,9 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   }
   else{
     pin = ((func >> JSH_SHIFT_INFO) << 4) + ((func >> JSH_SHIFT_TYPE) & 15);
-    value >> (16 - PWMTimerBit);
-    setPWM(pin,value);
+    // convert the 16 bit value to a 10 bit value.
+    value=value >> (16 - PWMTimerBit);
+    setPWM( (Pin)pin, (uint16_t)value);
   }
 }
 
@@ -401,13 +389,12 @@ void jshPinPulse(
 
 /**
  * Determine whether the pin can be watchable.
- * \return Returns true if the pin is wathchable.
+ * \return Returns true if the pin is watchable.
  */
 bool jshCanWatch(
     Pin pin //!< The pin that we are asking whether or not we can watch it.
   ) {
-  UNUSED(pin);
-  return true; //lets assume all pins will do
+  return pin == 0 || ( pin >= 12 && pin <= 19 ) || pin == 21 ||  pin == 22 || ( pin >= 25 && pin <= 27 ) || ( pin >= 34 && pin <= 39 );
 }
 
 
