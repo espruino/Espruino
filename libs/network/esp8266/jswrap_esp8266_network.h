@@ -10,35 +10,20 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains ESP8266 board specific function definitions.
+ * Contains ESP8266 and Wifi library specific functions.
+ *
+ * FOR DESCRIPTIONS OF THE WIFI FUNCTIONS IN THIS FILE, SEE
+ * libs/network/jswrap_wifi.c (or http://www.espruino.com/Reference#Wifi)
  * ----------------------------------------------------------------------------
  */
+
+#include "jswrap_wifi.h"
 
 #ifndef LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_
 #define LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_
 #include "jsvar.h"
 
-//===== Wifi library
 void   jswrap_ESP8266_wifi_init1();
 void   jswrap_ESP8266_wifi_soft_init();
-void   jswrap_ESP8266_wifi_connect(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_startAP(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_scan(JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_save(JsVar *what);
-void   jswrap_ESP8266_wifi_restore(void);
-JsVar *jswrap_ESP8266_wifi_getStatus(JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_setConfig(JsVar *jsOptions);
-JsVar *jswrap_ESP8266_wifi_getDetails(JsVar *jsCallback);
-JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback);
-JsVar *jswrap_ESP8266_wifi_getIP(JsVar *jsCallback);
-JsVar *jswrap_ESP8266_wifi_getAPIP(JsVar *jsCallback);
-JsVar *jswrap_ESP8266_wifi_getHostname(JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_setHostname(JsVar *jsHostname);
-void   jswrap_ESP8266_wifi_getHostByName(JsVar *jsHostname, JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_setSNTP(JsVar *zone, JsVar *server);
-void   jswrap_ESP8266_wifi_setIP(JsVar *jsSettings, JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_setAPIP(JsVar *jsSettings, JsVar *jsCallback);
 
 #endif /* LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_ */

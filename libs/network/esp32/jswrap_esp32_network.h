@@ -1,36 +1,28 @@
-void jswrap_ESP32_wifi_soft_init();
-void jswrap_ESP32_wifi_disconnect(JsVar *jsCallback);
-void jswrap_ESP32_wifi_stopAP(JsVar *jsCallback);
-void jswrap_ESP32_wifi_connect(
-    JsVar *jsSsid,
-    JsVar *jsOptions,
-    JsVar *jsCallback
-  );
-void jswrap_ESP32_wifi_scan(JsVar *jsCallback);
-void jswrap_ESP32_wifi_startAP(
-    JsVar *jsSsid,     //!< The network SSID that we will use to listen as.
-    JsVar *jsOptions,  //!< Configuration options.
-    JsVar *jsCallback  //!< A callback to be invoked when completed.
-  );
-JsVar *jswrap_ESP32_wifi_getStatus(JsVar *jsCallback);
-void jswrap_ESP32_wifi_setConfig(JsVar *jsSettings);
-JsVar *jswrap_ESP32_wifi_getDetails(JsVar *jsCallback);
-JsVar *jswrap_ESP32_wifi_getAPDetails(JsVar *jsCallback);
-void jswrap_ESP32_wifi_save(JsVar *what);
-void jswrap_ESP32_wifi_restore(void);
-JsVar *jswrap_ESP32_wifi_getIP(JsVar *jsCallback);
-JsVar *jswrap_ESP32_wifi_getAPIP(JsVar *jsCallback);
-void jswrap_ESP32_wifi_getHostByName(
-    JsVar *jsHostname,
-    JsVar *jsCallback
-);
-JsVar *jswrap_ESP32_wifi_getHostname(JsVar *jsCallback);
-void jswrap_ESP32_wifi_setHostname(
-    JsVar *jsHostname //!< The hostname to set for device.
-);
+/*
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ * Copyright (C) 2015 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * This file is designed to be parsed during the build process
+ *
+ * Contains ESP32 and Wifi library specific functions.
+ *
+ * FOR DESCRIPTIONS OF THE WIFI FUNCTIONS IN THIS FILE, SEE
+ * libs/network/jswrap_wifi.c (or http://www.espruino.com/Reference#Wifi)
+ * ----------------------------------------------------------------------------
+ */
+
+#include "jswrap_wifi.h"
+
 void jswrap_ESP32_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
 );
 
 void esp32_wifi_init();
+void esp32_wifi_soft_init();

@@ -155,7 +155,7 @@ void jshReset() {
  */
 void jshSoftInit() {
   //jsWarn(">> jshSoftInit()\n");
-  jswrap_ESP32_wifi_soft_init();
+  esp32_wifi_soft_init();
 }
 
 /**
