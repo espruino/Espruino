@@ -88,11 +88,11 @@ int app_main(void)
 #ifdef RTOS
   queues_init();
   tasks_init();
-  task_init(espruinoTask,"EspruinoTask",10000,5,0);
+  task_init(espruinoTask,"EspruinoTask",20000,5,0);
   task_init(uartTask,"ConsoleTask",2000,20,0);
   task_init(timerTask,"TimerTask",2048,19,0);
 #else
-  xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", 10000, NULL, 5, NULL, 0);
+  xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", 20000, NULL, 5, NULL, 0);
   xTaskCreatePinnedToCore(&uartTask,"uartTask",2000,NULL,20,NULL,0);
   xTaskCreatePinnedToCore(&timerTask,"timerTask",2048,NULL,19,NULL,0);
 #endif
