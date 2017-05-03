@@ -443,7 +443,9 @@ ifdef USE_NET
 
  ifdef USE_ESP32
  DEFINES += -DUSE_ESP32
- WRAPPERSOURCES += libs/network/esp32/jswrap_esp32_network.c \
+ WRAPPERSOURCES += \
+   libs/network/jswrap_wifi.c \
+   libs/network/esp32/jswrap_esp32_network.c \
    targets/esp32/jswrap_esp32.c
  INCLUDE += -I$(ROOT)/libs/network/esp32
  SOURCES +=  libs/network/esp32/network_esp32.c \
@@ -463,7 +465,9 @@ ifdef USE_NET
 
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
- WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266_network.c \
+ WRAPPERSOURCES += \
+   libs/network/jswrap_wifi.c \
+   libs/network/esp8266/jswrap_esp8266_network.c \
    targets/esp8266/jswrap_esp8266.c \
    targets/esp8266/jswrap_nodemcu.c
  INCLUDE += -I$(ROOT)/libs/network/esp8266
