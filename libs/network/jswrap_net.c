@@ -527,7 +527,30 @@ void jswrap_net_server_close(JsVar *parent) {
     ["data","JsVar","A string containing data to send"]
   ],
   "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
-}*/
+}
+This function writes the `data` argument as a string. Data that is passed in
+(including arrays) will be converted to a string with the normal JavaScript 
+`toString` method.
+
+If you wish to send binary data then you need to convert that data directly to a 
+String. This can be done with `String.fromCharCode`, however it's often easier
+and faster to use the Espruino-specific `E.toString`, which will read its arguments
+as an array of bytes and convert that to a String:
+
+```
+socket.write(E.toString([0,1,2,3,4,5]));
+```
+
+If you need to send something other than bytes, you can use 'Typed Arrays', or
+even `DataView`:
+
+```
+var d = new DataView(new ArrayBuffer(8)); // 8 byte array buffer
+d.setFloat32(0, 765.3532564); // write float at bytes 0-3
+d.setInt8(4, 42); // write int8 at byte 4
+socket.write(E.toString(d.buffer))
+```
+*/
 bool jswrap_net_socket_write(JsVar *parent, JsVar *data) {
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return false;
@@ -545,7 +568,9 @@ bool jswrap_net_socket_write(JsVar *parent, JsVar *data) {
     ["data","JsVar","A string containing data to send"]
   ]
 }
-Close this socket - optional data to append as an argument
+Close this socket - optional data to append as an argument.
+
+See `Socket.write` for more information about the data argument
 */
 void jswrap_net_socket_end(JsVar *parent, JsVar *data) {
   JsNetwork net;
