@@ -270,6 +270,18 @@ void jswrap_object_keys_or_property_names_cb(
       jsvUnLock(name);
     }
   }
+
+  // If this is the root object, add all the pins (as these are not part of the symbol table)
+  if (jsvIsRoot(obj)) {
+    int i;
+    for (i=0;i<JSH_PIN_COUNT;i++) {
+      char buf[10];
+      jshGetPinString(buf, i);
+      JsVar *str = jsvNewFromString(buf);
+      callback(data, str);
+      jsvUnLock(str);
+    }
+  }
 }
 
 JsVar *jswrap_object_keys_or_property_names(
