@@ -4,7 +4,7 @@
             Ensure NetworkJS reports receive errors back correctly
             nRF5x: Fix issue where connect and immediate disconnect could in some cases trigger an error from nordic's libraries that'd cause a reboot
             Fix regression that caused Original Espruino to have lost Filesystem/hashlib/neopixel support in 1v92
-
+	    Re-add TV output to Original Espruino
 
      1v92 : nRF5x: Fix issue where Espruino could crash during save() if the flash got into a strange state
             Added Pin.toggle() function
