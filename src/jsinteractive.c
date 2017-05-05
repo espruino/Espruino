@@ -527,7 +527,7 @@ void jsiSoftInit(bool hasBeenReset) {
  * the name is dumped.  */
 void jsiDumpJSON(vcbprintf_callback user_callback, void *user_data, JsVar *data, JsVar *existing) {
   // Check if it exists in the root scope
-  JsVar *name = jsvGetArrayIndexOf(execInfo.root,  data, true);
+  JsVar *name = jsvGetIndexOf(execInfo.root,  data, true);
   if (name && jsvIsString(name) && name!=existing) {
     // if it does, print the name
     cbprintf(user_callback, user_data, "%v", name);
@@ -912,7 +912,7 @@ void jsiHistoryAddLine(JsVar *newLine) {
   JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, JSV_ARRAY);
   if (!history) return; // out of memory
   // if it was already in history, remove it - we'll put it back in front
-  JsVar *alreadyInHistory = jsvGetArrayIndexOf(history, newLine, false/*not exact*/);
+  JsVar *alreadyInHistory = jsvGetIndexOf(history, newLine, false/*not exact*/);
   if (alreadyInHistory) {
     jsvRemoveChild(history, alreadyInHistory);
     jsvUnLock(alreadyInHistory);
@@ -926,7 +926,7 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
   JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
   JsVar *historyLine = 0;
   if (history) {
-    JsVar *idx = jsvGetArrayIndexOf(history, inputLine, true/*exact*/); // get index of current line
+    JsVar *idx = jsvGetIndexOf(history, inputLine, true/*exact*/); // get index of current line
     if (idx) {
       if (previous && jsvGetPrevSibling(idx)) {
         historyLine = jsvSkipNameAndUnLock(jsvLock(jsvGetPrevSibling(idx)));
@@ -947,7 +947,7 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
 bool jsiIsInHistory(JsVar *line) {
   JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
   if (!history) return false;
-  JsVar *historyFound = jsvGetArrayIndexOf(history, line, true/*exact*/);
+  JsVar *historyFound = jsvGetIndexOf(history, line, true/*exact*/);
   bool inHistory = historyFound!=0;
   jsvUnLock2(historyFound, history);
   return inHistory;
@@ -1977,7 +1977,7 @@ void jsiIdle() {
           bool watchRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(watchPtr,  "recur", 0));
           if (!watchRecurring) {
             JsVar *watchArrayPtr = jsvLock(watchArray);
-            JsVar *watchNamePtr = jsvGetArrayIndexOf(watchArrayPtr, watchPtr, true);
+            JsVar *watchNamePtr = jsvGetIndexOf(watchArrayPtr, watchPtr, true);
             if (watchNamePtr) {
               jsvRemoveChild(watchArrayPtr, watchNamePtr);
               jsvUnLock(watchNamePtr);

@@ -364,7 +364,7 @@ void jswrap_file_close(JsVar* parent) {
 
       JsVar *arr = fsGetArray(false);
       if (arr) {
-        JsVar *idx = jsvGetArrayIndexOf(arr, file.fileVar, true);
+        JsVar *idx = jsvGetIndexOf(arr, file.fileVar, true);
         if (idx) {
           jsvRemoveChild(arr, idx);
           jsvUnLock(idx);

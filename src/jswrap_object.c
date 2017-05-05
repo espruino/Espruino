@@ -718,7 +718,7 @@ void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) 
         jsvRemoveChild(parent, eventListName);
       } else if (jsvIsArray(eventList)) {
         // it's an array, search for the index
-        JsVar *idx = jsvGetArrayIndexOf(eventList, callback, true);
+        JsVar *idx = jsvGetIndexOf(eventList, callback, true);
         if (idx) {
           jsvRemoveChild(eventList, idx);
           jsvUnLock(idx);
