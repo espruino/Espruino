@@ -34,8 +34,8 @@ info = {
    'libraries' : [
      'NET',
      'GRAPHICS',
-     'NEOPIXEL'
-     'HASHLIB'
+     'NEOPIXEL',
+     'HASHLIB',
      'FILESYSTEM'
    ],
    'makefile' : [
