@@ -6,6 +6,7 @@
             Fix regression that caused Original Espruino to have lost Filesystem/hashlib/neopixel support in 1v92
 	    Re-add TV output to Original Espruino
             Fix some stack overflow bugs on Linux found by fuzzing (#1147)
+            Remove un-needed code for parsing '.' in var statement (#1147)
 
      1v92 : nRF5x: Fix issue where Espruino could crash during save() if the flash got into a strange state
             Added Pin.toggle() function

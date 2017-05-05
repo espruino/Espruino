@@ -1951,16 +1951,6 @@ NO_INLINE JsVar *jspeStatementVar() {
       }
     }
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(a), lastDefined);
-    // now do stuff defined with dots
-    while (lex->tk == '.') {
-      JSP_MATCH_WITH_CLEANUP_AND_RETURN('.', jsvUnLock(a), lastDefined);
-      if (JSP_SHOULD_EXECUTE) {
-        JsVar *lastA = a;
-        a = jsvFindChildFromString(lastA, jslGetTokenValueAsString(lex), true);
-        jsvUnLock(lastA);
-      }
-      JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(a), lastDefined);
-    }
     // sort out initialiser
     if (lex->tk == '=') {
       JsVar *var;
