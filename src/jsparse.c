@@ -1102,6 +1102,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
     } else if (lex->tk == '[') { // ------------------------------------- Array Access
       JsVar *index;
       JSP_ASSERT_MATCH('[');
+      if (!jspCheckStackPosition()) return parent;
       index = jsvSkipNameAndUnLock(jspeAssignmentExpression());
       JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock2(parent, index);, a);
       if (JSP_SHOULD_EXECUTE) {
@@ -1538,8 +1539,10 @@ NO_INLINE JsVar *jspeFactor() {
     return jspeTemplateLiteral();
 #endif
   } else if (lex->tk=='{') {
+    if (!jspCheckStackPosition()) return 0;
     return jspeFactorObject();
   } else if (lex->tk=='[') {
+    if (!jspCheckStackPosition()) return 0;
     return jspeFactorArray();
   } else if (lex->tk==LEX_R_FUNCTION) {
     JSP_ASSERT_MATCH(LEX_R_FUNCTION);

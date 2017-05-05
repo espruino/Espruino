@@ -816,8 +816,15 @@ size_t jsuGetFreeStack() {
 #ifdef ARM
   void *frame = __builtin_frame_address(0);
   return (size_t)((char*)&LINKER_END_VAR) - (size_t)((char*)frame);
+#elif defined(LINUX)
+  // On linux, we set STACK_BASE from `main`.
+  char ptr; // this is on the stack
+  extern void *STACK_BASE;
+  uint32_t count =  (uint32_t)((size_t)STACK_BASE - (size_t)&ptr);
+  return 1000000 - count; // give it 1 megabyte of stack
 #else
-  return 100000000; // lots.
+  // stack depth seems pretty platform-specific :( Default to a value that disables it
+  return 1000000; // no stack depth check on this platform
 #endif
 }
 

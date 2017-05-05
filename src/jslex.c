@@ -863,7 +863,10 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
     cbprintf(user_callback, user_data, "...");
     size_t skipChars = tokenPos-30 - startOfLine;
     startOfLine += 3+skipChars;
-    col -= skipChars;
+    if (skipChars<=col)
+      col -= skipChars;
+    else
+      col = 0;
     lineLength -= skipChars;
   }
 

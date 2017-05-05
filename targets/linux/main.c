@@ -246,8 +246,13 @@ int handleErrors() {
   return e;
 }
 
+void *STACK_BASE; ///< used for jsuGetFreeStack on Linux
+
 int main(int argc, char **argv) {
   int i, args = 0;
+
+  STACK_BASE = (void*)&i; // used for jsuGetFreeStack on Linux
+
   const char *singleArg = 0;
   for (i=1;i<argc;i++) {
     if (argv[i][0]=='-') {
