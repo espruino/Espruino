@@ -13,8 +13,9 @@ $(PROJ_NAME).bin: $(OBJS)
 $(ESP_ZIP): $(PROJ_NAME).bin
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
+	$(Q)cp $(PROJ_NAME).bin espruino_esp32.bin
 	$(Q)cp $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
-	  $(PROJ_NAME).bin \
+	  espruino_esp32.bin \
 	  $(ESP_APP_TEMPLATE_PATH)/build/partitions_espruino.bin \
 	  targets/esp32/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))
