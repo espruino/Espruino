@@ -33,7 +33,7 @@ This class helps
   "name" : "DataView",
   "generate" : "jswrap_dataview_constructor",
   "params" : [
-    ["buffer","JsVar","The ArrauBuffer to base this on"],
+    ["buffer","JsVar","The ArrayBuffer to base this on"],
     ["byteOffset","int","(optional) The offset of this view in bytes"],
     ["byteLength","int","(optional) The length in bytes"]
   ],
