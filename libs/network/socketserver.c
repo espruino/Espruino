@@ -696,7 +696,7 @@ void serverClose(JsNetwork *net, JsVar *server) {
     // close socket
     _socketConnectionKill(net, server);
     // remove from array
-    JsVar *idx = jsvGetArrayIndexOf(arr, server, true);
+    JsVar *idx = jsvGetIndexOf(arr, server, true);
     if (idx) {
       jsvRemoveChild(arr, idx);
       jsvUnLock(idx);

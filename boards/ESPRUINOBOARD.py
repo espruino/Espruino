@@ -34,8 +34,9 @@ info = {
    'libraries' : [
      'NET',
      'GRAPHICS',
-     'NEOPIXEL'
-     'HASHLIB'
+     'NEOPIXEL',
+     'HASHLIB',
+     'TV',
      'FILESYSTEM'
    ],
    'makefile' : [
@@ -62,16 +63,7 @@ chip = {
     'page_size' : 2048, # size of pages
     'pages' : 10, # number of pages we're using
     'flash_available' : 256-(20+10) # 20 used for code, 10 for bootloader
-  },
- 'build' : {
-   'defines' : [
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_TV',
-     'USE_HASHLIB',
-     'USE_FILESYSTEM'
-   ]
- }
+  }
 };
 devices = {
   'OSC' : { 'pin_in' :  'D0',

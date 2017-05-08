@@ -9,13 +9,15 @@ Support / Bugs
 
 First, please try and check that your problem hasn't [already been found](https://github.com/espruino/Espruino/issues) or [covered on our forum](http://www.espruino.com/Forum).
 
+**Do not post 'it doesn't work for me' / 'I can't connect' / 'How do I make a foobar' issues.** Please ask these on the [forum](http://www.espruino.com/Forum) where you will get a much more helpful response. Issues posted here should be for actual software bugs or feature requests.
+
 [Submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them: a minimal test case, and an actual and expected result. If you can't come up with these, please [post on the forum](http://www.espruino.com/Forum) first as it may just be something in your code that we can help out with.
 
 Work on Espruino is supported by [sales of our boards](http://www.espruino.com/Order).
 
 **If your board isn't made by us but came pre-installed with Espruino then you should contact the manufacturers.**
 
-We try and support users of the boards we sell, but if you bought a non-official board your issue may not get addressed. In this case, please consider [donating](http://www.espruino.com/Download) to help cover the time it takes to fix problems (even so, we can't guarantee to fix every problem).
+We try and support users of the boards we sell, but if you bought a non-official board your issue may not get addressed. In this case, please consider [donating](http://www.espruino.com/Donate) to help cover the time it takes to fix problems (even so, we can't guarantee to fix every problem).
 
 
 Documentation

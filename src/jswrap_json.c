@@ -344,7 +344,7 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
           if (jsvHasChildren(proto)) {
             JsVar *constr = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
             if (constr) {
-              JsVar *p = jsvGetArrayIndexOf(execInfo.root, constr, true);
+              JsVar *p = jsvGetIndexOf(execInfo.root, constr, true);
               if (p) cbprintf(user_callback, user_data, "%v ", p);
               jsvUnLock2(p,constr);
             }

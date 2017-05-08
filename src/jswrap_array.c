@@ -96,14 +96,15 @@ Find the length of the array
   "name" : "indexOf",
   "generate" : "jswrap_array_indexOf",
   "params" : [
-    ["value","JsVar","The value to check for"]
+    ["value","JsVar","The value to check for"],
+    ["startIndex","int","(optional) the index to search from, or 0 if not specified"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"]
 }
 Return the index of the value in the array, or -1
  */
-JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value) {
-  JsVar *idxName = jsvGetArrayIndexOf(parent, value, false/*not exact*/);
+JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value, JsVarInt startIdx) {
+  JsVar *idxName = jsvGetIndexOfFull(parent, value, false/*not exact*/, true/*integer indices only*/, startIdx);
   // but this is the name - we must turn it into a var
   if (idxName == 0) return jsvNewFromInteger(-1); // not found!
   JsVar *idx = jsvCopyNameOnly(idxName, false/* no children */, false/* Make sure this is not a name*/);

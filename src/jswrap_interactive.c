@@ -249,7 +249,7 @@ void jswrap_interface_edit(JsVar *funcName) {
   if (jsvIsString(funcName)) {
     if (jsvIsFunction(func)) {
       JsVar *scopeVar = jsvFindChildFromString(func, JSPARSE_FUNCTION_SCOPE_NAME, false);
-      JsVar *inRoot = jsvGetArrayIndexOf(execInfo.root, func, true);
+      JsVar *inRoot = jsvGetIndexOf(execInfo.root, func, true);
       bool normalDecl = scopeVar==0 && inRoot!=0;
       jsvUnLock2(inRoot, scopeVar);
       JsVar *newLine = jsvNewFromEmptyString();

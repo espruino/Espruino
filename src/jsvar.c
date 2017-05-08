@@ -2644,26 +2644,35 @@ void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr) {
     itemPtr[i++] = 0; // just ensure we don't end up with bad data
 }
 
-/// Get the index of the value in the array (matchExact==use pointer, not equality check)
-JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
+/// Get the index of the value in the array (matchExact==use pointer not equality check, matchIntegerIndices = don't check non-integers)
+JsVar *jsvGetIndexOfFull(JsVar *arr, JsVar *value, bool matchExact, bool matchIntegerIndices, int startIdx) {
   JsVarRef indexref;
   assert(jsvIsArray(arr) || jsvIsObject(arr));
   indexref = jsvGetFirstChild(arr);
   while (indexref) {
     JsVar *childIndex = jsvLock(indexref);
-    assert(jsvIsName(childIndex));
-    JsVar *childValue = jsvSkipName(childIndex);
-    if (childValue==value ||
-        (!matchExact && jsvMathsOpTypeEqual(childValue, value))) {
+    if (!matchIntegerIndices ||
+        (jsvIsInt(childIndex) && jsvGetInteger(childIndex)>=startIdx)) {
+      assert(jsvIsName(childIndex));
+      JsVar *childValue = jsvSkipName(childIndex);
+      if (childValue==value ||
+          (!matchExact && jsvMathsOpTypeEqual(childValue, value))) {
+        jsvUnLock(childValue);
+        return childIndex;
+      }
       jsvUnLock(childValue);
-      return childIndex;
     }
-    jsvUnLock(childValue);
     indexref = jsvGetNextSibling(childIndex);
     jsvUnLock(childIndex);
   }
   return 0; // undefined
 }
+
+/// Get the index of the value in the array or object (matchExact==use pointer, not equality check)
+JsVar *jsvGetIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
+  return jsvGetIndexOfFull(arr, value, matchExact, false, 0);
+}
+
 
 /// Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
 JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue) {
@@ -2770,7 +2779,7 @@ JsVar *jsvArrayPopFirst(JsVar *arr) {
 
 /// Adds a new variable element to the end of an array (IF it was not already there). Return true if successful
 void jsvArrayAddUnique(JsVar *arr, JsVar *v) {
-  JsVar *idx = jsvGetArrayIndexOf(arr, v, false); // did it already exist?
+  JsVar *idx = jsvGetIndexOf(arr, v, false); // did it already exist?
   if (!idx) {
     jsvArrayPush(arr, v); // if 0, it failed
   } else {
@@ -3497,7 +3506,7 @@ JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data) {
   if (data) {
     JsVar *arrayBufferData = jsvGetArrayBufferBackingString(buf);
     if (arrayBufferData)
-      jsvSetString(arrayBufferData, (char *)data, length);
+      jsvSetString(arrayBufferData, (char *)data, (size_t)length);
     jsvUnLock(arrayBufferData);
   }
   return view;

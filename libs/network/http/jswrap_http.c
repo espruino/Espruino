@@ -370,7 +370,11 @@ Stop listening for new HTTP connections
     ["data","JsVar","A string containing data to send"]
   ],
   "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
-}*/
+}
+This function writes the `data` argument as a string. Data that is passed in
+(including arrays) will be converted to a string with the normal JavaScript 
+`toString` method. For more information about sending binary data see `Socket.write`
+*/
 bool jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
   serverResponseWrite(parent, data);
   return false;
@@ -384,7 +388,9 @@ bool jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
   "params" : [
     ["data","JsVar","A string containing data to send"]
   ]
-}*/
+}
+See `Socket.write` for more information about the data argument
+*/
 void jswrap_httpSRs_end(JsVar *parent, JsVar *data) {
   if (!jsvIsUndefined(data)) jswrap_httpSRs_write(parent, data);
   serverResponseEnd(parent);
@@ -418,7 +424,11 @@ void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
     ["data","JsVar","A string containing data to send"]
   ],
   "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
-}*/
+}
+This function writes the `data` argument as a string. Data that is passed in
+(including arrays) will be converted to a string with the normal JavaScript 
+`toString` method. For more information about sending binary data see `Socket.write`
+*/
 // Re-use existing
 
 /*JSON{
@@ -431,6 +441,8 @@ void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
   ]
 }
 Finish this HTTP request - optional data to append as an argument
+
+See `Socket.write` for more information about the data argument
 */
 // Re-use existing
 

@@ -189,7 +189,15 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 
 /// Function for handling errors from the Connection Parameters module.
 static void conn_params_error_handler(uint32_t nrf_error) {
-    APP_ERROR_HANDLER(nrf_error);
+  /* connection parameters module can produce this if the connection
+   * is disconnected at just the right point while it is trying to
+   * negotiate connection parameters. Ignore it, since we don't
+   * want it to be able to reboot the device!
+   */
+  if (nrf_error == NRF_ERROR_INVALID_STATE)
+    return;
+
+  APP_ERROR_HANDLER(nrf_error);
 }
 
 static void service_error_handler(uint32_t nrf_error) {
