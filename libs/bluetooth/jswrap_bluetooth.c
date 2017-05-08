@@ -1761,6 +1761,56 @@ void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
 }
 
 /*JSON{
+    "type" : "method",
+    "class" : "BluetoothRemoteGATTServer",
+    "name" : "startBonding",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_BluetoothRemoteGATTServer_startBonding",
+    "params" : [
+      ["forceRePair","bool","If the device is already bonded, re-pair it"]
+    ],
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) when the bonding is complete" ]
+}
+Start negotiating bonding (secure communications) with the connected device,
+and return a Promise that is completed on success or failure.
+
+```
+var gatt;
+NRF.requestDevice({ filters: [{ name: 'Puck.js abcd' }] }).then(function(device) {
+  console.log("found device");
+  return device.gatt.connect();
+}).then(function(g) {
+  gatt = g;
+  console.log("connected");
+  return gatt.startBonding();
+}).then(function() {
+  console.log("bonded");
+  gatt.disconnect();
+}).catch(function(e) {
+  console.log("ERROR",e);
+});
+```
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Puck.js.
+
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_nrf_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair) {
+#if CENTRAL_LINK_COUNT>0
+  if (bleNewTask(BLETASK_BONDING, parent/*BluetoothRemoteGATTServer*/)) {
+    JsVar *promise = jsvLockAgainSafe(blePromise);
+    jsble_central_startBonding(forceRePair);
+    return promise;
+  }
+  return 0;
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+
+/*JSON{
   "type" : "method",
   "class" : "BluetoothRemoteGATTServer",
   "name" : "getPrimaryService",

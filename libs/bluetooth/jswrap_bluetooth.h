@@ -25,6 +25,7 @@ typedef enum {
   BLETASK_CHARACTERISTIC_READ, ///< Read from a characteristic
   BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, ///< Discover descriptors and start notifications
   BLETASK_CHARACTERISTIC_NOTIFY, ///< Setting whether notifications are on or off
+  BLETASK_BONDING, ///< Try and bond in central mode
   BLETASK_CENTRAL_END = BLETASK_CHARACTERISTIC_NOTIFY // ============= End of central tasks
 } BleTask;
 
@@ -82,6 +83,7 @@ JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac);
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent);
 void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent);
+JsVar *jswrap_nrf_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *service);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent);
 void jswrap_BluetoothRemoteGATTServer_setRSSIHandler(JsVar *parent, JsVar *callback);

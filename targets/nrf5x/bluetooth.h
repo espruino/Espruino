@@ -131,6 +131,8 @@ void jsble_central_characteristicRead(JsVar *characteristic);
 void jsble_central_characteristicDescDiscover(JsVar *characteristic);
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicNotify(JsVar *characteristic, bool enable);
+/// Start bonding on the current central connection
+void jsble_central_startBonding(bool forceRePair);
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(bool enabled);
 #endif
