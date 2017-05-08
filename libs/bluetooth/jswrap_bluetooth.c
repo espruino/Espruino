@@ -373,7 +373,10 @@ void jswrap_nrf_bluetooth_restart() {
     "generate" : "jswrap_nrf_bluetooth_getAddress",
     "return" : ["JsVar", "MAC address - a string of the form 'aa:bb:cc:dd:ee:ff'" ]
 }
-Get this device's Bluetooth MAC address
+Get this device's Bluetooth MAC address.
+
+For Puck.js, the last 5 characters of this (eg. `ee:ff`)
+are used in the device's advertised Bluetooth name.
 */
 JsVar *jswrap_nrf_bluetooth_getAddress() {
   uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
@@ -394,7 +397,10 @@ JsVar *jswrap_nrf_bluetooth_getAddress() {
     "generate" : "jswrap_nrf_bluetooth_getBattery",
     "return" : ["float", "Battery level in volts" ]
 }
-Get the battery level in volts
+Get the battery level in volts (the voltage that the NRF chip is running off of).
+
+This is the battery level of the device itself - it has nothing to with any
+device that might be connected.
 */
 JsVarFloat jswrap_nrf_bluetooth_getBattery() {
   return jshReadVRef();
