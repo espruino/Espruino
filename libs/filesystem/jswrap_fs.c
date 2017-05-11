@@ -332,11 +332,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
   FRESULT res = 0;
   if (jsfsInit()) {
     FILINFO info;
-#if _USE_LFN!=0
-    char lfnBuf[_MAX_LFN+1];
-    info.lfname = lfnBuf;
-    info.lfsize = sizeof(lfnBuf);
-#endif
+    memset(&info,0,sizeof(info));
     res = f_stat(pathStr, &info);
     if (res==0 /*ok*/) {
       JsVar *obj = jsvNewObject();
