@@ -67,7 +67,7 @@ void jsfsReportError(const char *msg, FRESULT res) {
   else if (res==FR_MKFS_ABORTED   ) errStr = "MKFS_ABORTED";
   else if (res==FR_TIMEOUT        ) errStr = "TIMEOUT";
 #endif
-  jsError("%s : %s", msg, errStr);
+  jsExceptionHere(JSET_ERROR,"%s : %s", msg, errStr);
 }
 
 bool jsfsInit() {
@@ -89,7 +89,7 @@ bool jsfsInit() {
       sdSPISetup(spi, SD_CS_PIN);
       jsvUnLock(spi);
 #else
-      jsError("SD card must be setup with E.connectSDCard first");
+      jsExceptionHere(JSET_ERROR,"SD card must be setup with E.connectSDCard first");
       return false;
 #endif // SD_SPI
     }
@@ -330,7 +330,7 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
 
       }
     } else {
-      jsError("Path is undefined");
+      jsExceptionHere(JSET_ERROR,"Path is undefined");
     }
 
     jsvUnLock(arr);
