@@ -56,6 +56,8 @@ typedef enum {
   SDS_FLOW_CONTROL_XON_XOFF = 8, // flow control enabled
 } PACKED_FLAGS JshSerialDeviceState;
 JshSerialDeviceState jshSerialDeviceStates[EV_SERIAL1+USART_COUNT-EV_SERIAL_START];
+/// Device clear to send hardware flow control pins (PIN_UNDEFINED if not used)
+Pin jshSerialDeviceCTSPins[EV_SERIAL1+USART_COUNT-EV_SERIAL_START];
 #define TO_SERIAL_DEVICE_STATE(X) ((X)-EV_SERIAL_START)
 
 // ----------------------------------------------------------------------------
@@ -79,8 +81,10 @@ void jshResetDevices() {
   // Reset list of pins that were set manually
   jshResetPinStateIsManual();
   // setup flow control
-  for (i=0;i<sizeof(jshSerialDeviceStates) / sizeof(JshSerialDeviceState);i++)
+  for (i=0;i<sizeof(jshSerialDeviceStates) / sizeof(JshSerialDeviceState);i++) {
     jshSerialDeviceStates[i] = SDS_NONE;
+    jshSerialDeviceCTSPins[i] = PIN_UNDEFINED;
+  }
   jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_FLOW_CONTROL_XON_XOFF;
   // reset callbacks for events
   for (i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
@@ -562,7 +566,8 @@ IOEventFlags jshFromDeviceString(
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
   if (DEVICE_IS_USART(device)) {
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
+    int devIdx = TO_SERIAL_DEVICE_STATE(device);
+    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if ((*deviceState) & SDS_FLOW_CONTROL_XON_XOFF) {
       if (hostShouldTransmit) {
         if (((*deviceState)&(SDS_XOFF_SENT|SDS_XON_PENDING)) == SDS_XOFF_SENT) {
@@ -580,6 +585,9 @@ void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
         }
       }
     }
+    Pin flowControlPin = jshSerialDeviceCTSPins[devIdx];
+    if (flowControlPin != PIN_UNDEFINED)
+      jshPinSetValue(flowControlPin, !hostShouldTransmit);
   }
 }
 
@@ -590,14 +598,22 @@ JsVar *jshGetDeviceObject(IOEventFlags device) {
   return jsvObjectGetChild(execInfo.root, deviceStr, 0);
 }
 
-/// Set whether to use flow control on the given device or not
-void jshSetFlowControlEnabled(IOEventFlags device, bool xOnXOff) {
+/// Set whether to use flow control on the given device or not. CTS is low when ready, high when not.
+void jshSetFlowControlEnabled(IOEventFlags device, bool software, Pin pinCTS) {
   if (!DEVICE_IS_USART(device)) return;
-  JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
-  if (xOnXOff)
+  int devIdx = TO_SERIAL_DEVICE_STATE(device);
+  JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+  if (software)
     (*deviceState) |= SDS_FLOW_CONTROL_XON_XOFF;
   else
     (*deviceState) &= ~SDS_FLOW_CONTROL_XON_XOFF;
+
+  jshSerialDeviceCTSPins[devIdx] = PIN_UNDEFINED;
+  if (jshIsPinValid(pinCTS)) {
+    jshPinSetState(pinCTS, JSHPINSTATE_GPIO_OUT);
+    jshPinSetValue(pinCTS, 0); // CTS ready
+    jshSerialDeviceCTSPins[devIdx] = pinCTS;
+  }
 }
 
 /// Set a callback function to be called when an event occurs

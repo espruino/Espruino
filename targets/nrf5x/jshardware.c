@@ -831,6 +831,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (device != EV_SERIAL1)
     return;
 
+  jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
+
   int baud = nrf_utils_get_baud_enum(inf->baudRate);
   if (baud==0)
     return jsError("Invalid baud rate %d", inf->baudRate);

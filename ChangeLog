@@ -11,6 +11,7 @@
             Add Array.indexOf fromIndex support (fix #162)
             Puck.js: Add BluetoothRemoteGATTServer.startBonding to allow bonding to be initiated when Puck.js is a central
             Fat FS: closedir after readdir, FS errors should be catchable (#1164), fs.statSync (#1163)
+            Allow hardware (CTS) flow control (fix #1165)
 
      1v92 : nRF5x: Fix issue where Espruino could crash during save() if the flash got into a strange state
             Added Pin.toggle() function

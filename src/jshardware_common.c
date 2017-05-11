@@ -18,6 +18,7 @@ void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->pinRX    = PIN_UNDEFINED;
   inf->pinTX    = PIN_UNDEFINED;
   inf->pinCK    = PIN_UNDEFINED;
+  inf->pinCTS   = PIN_UNDEFINED;
   inf->bytesize = DEFAULT_BYTESIZE;
   inf->parity   = DEFAULT_PARITY; // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2 FIXME: enum?
   inf->stopbits = DEFAULT_STOPBITS;

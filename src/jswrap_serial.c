@@ -183,12 +183,16 @@ Unless `force` is set to true, changes in the connection state of the board
   "generate" : "jswrap_serial_setup",
   "params" : [
     ["baudrate","JsVar","The baud rate - the default is 9600"],
-    ["options","JsVar",["An optional structure containing extra information on initialising the serial port.","```{rx:pin,tx:pin,bytesize:8,parity:null/'none'/'o'/'odd'/'e'/'even',stopbits:1,flow:null/undefined/'none'/'xon',path:null/undefined/string}```","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `UART`/`USART` markers.","Note that even after changing the RX and TX pins, if you have called setup before then the previous RX and TX pins will still be connected to the Serial port as well - until you set them to something else using digitalWrite"]]
+    ["options","JsVar",["An optional structure containing extra information on initialising the serial port.","```{rx:pin,tx:pin,ck:pin,cts:pin,bytesize:8,parity:null/'none'/'o'/'odd'/'e'/'even',stopbits:1,flow:null/undefined/'none'/'xon',path:null/undefined/string}```","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `UART`/`USART` markers.","Note that even after changing the RX and TX pins, if you have called setup before then the previous RX and TX pins will still be connected to the Serial port as well - until you set them to something else using digitalWrite"]]
   ]
 }
 Setup this Serial port with the given baud rate and options.
 
-If not specified in options, the default pins are used (usually the lowest numbered pins on the lowest port that supports this peripheral)
+If not specified in options, the default pins are used (usually the lowest numbered pins on the lowest port that supports this peripheral).
+
+Flow control can be xOn/xOff (`flow:'xon'`) or hardware flow control
+(receive only) if `cts` is specified. If `cts` is set to a pin, the
+pin's value will be 0 when Espruino is ready for data and 1 when it isn't.
  */
 void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
@@ -209,6 +213,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
       {"rx", JSV_PIN, &inf.pinRX},
       {"tx", JSV_PIN, &inf.pinTX},
       {"ck", JSV_PIN, &inf.pinCK},
+      {"cts", JSV_PIN, &inf.pinCTS},
       {"bytesize", JSV_INTEGER, &inf.bytesize},
       {"stopbits", JSV_INTEGER, &inf.stopbits},
       {"path", JSV_STRING_0, &path},

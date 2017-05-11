@@ -232,7 +232,8 @@ typedef struct {
   int baudRate;            /// FIXME uint32_t ???
   Pin pinRX;
   Pin pinTX;
-  Pin pinCK;
+  Pin pinCK;               ///< Clock, or PIN_UNDEFINED
+  Pin pinCTS;              ///< Clear to send, or PIN_UNDEFINED
   unsigned char bytesize;  ///< size of byte, 7 or 8
   unsigned char parity;    ///< 0=none, 1=odd, 2=even
   unsigned char stopbits;  ///< 1 or 2
