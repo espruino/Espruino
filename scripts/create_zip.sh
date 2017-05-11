@@ -108,6 +108,9 @@ do
   else
     echo Copying ${ESP_BINARY_NAME} to $ZIPDIR/$NEW_BINARY_NAME
     cp ${ESP_BINARY_NAME} $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    if [ "$BOARDNAME" == "ESP32" ]; then
+      tar -C $ZIPDIR -xzf  `basename $ESP_BINARY_NAME .bin`.tgz || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    fi
   fi
 done
 
