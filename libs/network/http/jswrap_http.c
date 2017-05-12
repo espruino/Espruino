@@ -261,6 +261,7 @@ var options = {
     port: 80,            // (optional) port, defaults to 80
     path: '/',           // path sent to server
     method: 'GET',       // HTTP command sent to server (must be uppercase 'GET', 'POST', etc)
+    protocol: 'http:',   // optional protocol - https: or http:
     headers: { key : value, key : value } // (optional) HTTP headers
   };
 require("http").request(options, function(res) {
