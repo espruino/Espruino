@@ -339,6 +339,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleSetActiveBluetoothGattServer(bleTaskInfo);
           jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
+          if (bleStatus & BLE_IS_RSSI_SCANNING) // attempt to restart RSSI scan
+            sd_ble_gap_rssi_start(m_central_conn_handle, 0, 0);
           bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
         }
 #endif
@@ -1650,16 +1652,21 @@ uint32_t jsble_set_scanning(bool enabled) {
 
 uint32_t jsble_set_rssi_scan(bool enabled) {
   uint32_t err_code = 0;
+  uint16_t handle = 0;
+  if (jsble_has_simple_connection()) handle = m_conn_handle;
+#if CENTRAL_LINK_COUNT>0
+  if (jsble_has_central_connection()) handle = m_central_conn_handle;
+#endif
   if (enabled) {
      if (bleStatus & BLE_IS_RSSI_SCANNING) return 0;
      bleStatus |= BLE_IS_RSSI_SCANNING;
-     if (jsble_has_simple_connection())
-       err_code = sd_ble_gap_rssi_start(m_conn_handle, 0, 0);
+     if (handle)
+       err_code = sd_ble_gap_rssi_start(handle, 0, 0);
    } else {
      if (!(bleStatus & BLE_IS_RSSI_SCANNING)) return 0;
      bleStatus &= ~BLE_IS_RSSI_SCANNING;
-     if (jsble_has_simple_connection())
-       err_code = sd_ble_gap_rssi_stop(m_conn_handle);
+     if (handle)
+       err_code = sd_ble_gap_rssi_stop(handle);
    }
   return err_code;
 }

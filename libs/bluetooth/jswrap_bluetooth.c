@@ -1177,7 +1177,7 @@ void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *timeout) {
 }
 
 Start/stop listening for RSSI values on the currently active connection
-(where This device is a peripheral and is being connected to by a 'central' device)
+(when This device is either a peripheral or a central device connected to the opposite)
 
 ```
 // Start scanning
