@@ -632,6 +632,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             JsVar *o = jspNewObject(0, "BluetoothRemoteGATTCharacteristic");
             if (o) {
               jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_chr->uuid));
+              JsVar *p = jspNewObject(0,0);
+              if (p) {
+                jsvObjectSetChildAndUnLock(p,"read", jsvNewFromBool(p_chr->char_props.read));
+                jsvObjectSetChildAndUnLock(p,"write", jsvNewFromBool(p_chr->char_props.write));
+                jsvObjectSetChildAndUnLock(p,"write_wo_resp", jsvNewFromBool(p_chr->char_props.write_wo_resp));
+                jsvObjectSetChildAndUnLock(p,"notify", jsvNewFromBool(p_chr->char_props.notify));
+                jsvObjectSetChildAndUnLock(p,"indicate", jsvNewFromBool(p_chr->char_props.indicate));
+                jsvObjectSetChildAndUnLock(p,"broadcast", jsvNewFromBool(p_chr->char_props.broadcast));
+                jsvObjectSetChildAndUnLock(p,"auth_signed_wr", jsvNewFromBool(p_chr->char_props.auth_signed_wr));
+                jsvObjectSetChildAndUnLock(o,"props", p);
+              }
               jsvObjectSetChildAndUnLock(o,"handle_value", jsvNewFromInteger(p_chr->handle_value));
               jsvObjectSetChildAndUnLock(o,"handle_decl", jsvNewFromInteger(p_chr->handle_decl));
               JsVar *p = jsvNewObject();
