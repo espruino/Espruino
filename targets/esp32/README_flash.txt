@@ -2,7 +2,7 @@ How to flash Espruino ESP32
 ===========================
 
 *** To flash an ESP32 using the serial port use:
-python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
+python ${ESP_IDF_PATH}/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
 	--port "/dev/ttyUSB0" \
 	--baud 921600 \
