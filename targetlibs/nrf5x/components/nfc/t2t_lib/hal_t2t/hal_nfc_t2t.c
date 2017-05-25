@@ -614,7 +614,11 @@ void NFCT_IRQHandler(void)
     {
         /* Take into account only number of whole bytes */
         uint32_t rx_data_size = ((NRF_NFCT->RXD.AMOUNT & NFCT_RXD_AMOUNT_RXDATABYTES_Msk) >>
-                                 NFCT_RXD_AMOUNT_RXDATABYTES_Pos) - NFC_CRC_SIZE;
+                                 NFCT_RXD_AMOUNT_RXDATABYTES_Pos);
+        /* Prevent integer underflow */
+        if(rx_data_size >= NFC_CRC_SIZE) rx_data_size -= NFC_CRC_SIZE; 
+        else rx_data_size = 0;
+
         nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXFRAMEEND);
 
         /* Look for Tag 2 Type READ Command */
@@ -631,8 +635,12 @@ void NFCT_IRQHandler(void)
         }
         else
         {
-            /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
-            if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
+            /* Frame is garbage, wait for next frame reception */
+            if(rx_data_size == 0)
+            {
+                NRF_NFCT->TASKS_ENABLERXDATA = 1;            
+            } /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
+            else if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
             {
                 m_slp_req_received = true;
             }
