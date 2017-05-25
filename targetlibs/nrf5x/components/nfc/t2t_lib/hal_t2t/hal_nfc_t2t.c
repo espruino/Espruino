@@ -621,8 +621,13 @@ void NFCT_IRQHandler(void)
 
         nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXFRAMEEND);
 
+        /* Frame is garbage, wait for next frame reception */
+        if(rx_data_size == 0)
+        {
+            NRF_NFCT->TASKS_ENABLERXDATA = 1;
+        }
         /* Look for Tag 2 Type READ Command */
-        if (m_nfc_rx_buffer[0] == T2T_READ_CMD)
+        else if (m_nfc_rx_buffer[0] == T2T_READ_CMD)
         {
             if(m_nfc_lib_callback != NULL)
             {
@@ -635,12 +640,8 @@ void NFCT_IRQHandler(void)
         }
         else
         {
-            /* Frame is garbage, wait for next frame reception */
-            if(rx_data_size == 0)
-            {
-                NRF_NFCT->TASKS_ENABLERXDATA = 1;            
-            } /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
-            else if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
+            /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
+            if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
             {
                 m_slp_req_received = true;
             }
