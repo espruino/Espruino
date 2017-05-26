@@ -1941,6 +1941,17 @@ void jsble_nfc_start(const uint8_t *data, size_t len) {
 
   nfcEnabled = true;
 }
+
+void jsble_nfc_send(const uint8_t *data, size_t len) {
+  if (!nfcEnabled) return;
+
+  uint32_t ret_val;
+
+  /* Start sensing NFC field */
+  ret_val = hal_nfc_send(data, len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSend: NFC error code %d", ret_val);
+}
 #endif
 
 
