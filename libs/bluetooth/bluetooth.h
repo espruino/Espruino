@@ -167,8 +167,12 @@ void jsble_setup_advdata(ble_advdata_t *advdata);
 #endif
 
 #ifdef USE_NFC
+
+#define TAG_HEADER_LEN            0x0A
+
 void jsble_nfc_stop();
 void jsble_nfc_start(const uint8_t *data, size_t len);
+void jsble_nfc_get_internal(uint8_t *data, size_t *max_len);
 #endif
 
 #if CENTRAL_LINK_COUNT>0

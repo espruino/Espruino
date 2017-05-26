@@ -72,6 +72,8 @@ typedef enum {
 /** @brief Parameter IDs for set/get function. */
 typedef enum {
     HAL_NFC_PARAM_ID_TESTING,         ///<  Used for unit tests.
+    HAL_NFC_PARAM_ID_UID,             ///<  Set custom UID
+    HAL_NFC_PARAM_ID_INTERNAL,        ///<  Get internal bytes, replaces nfc_t2t_internal_set()
     HAL_NFC_PARAM_ID_UNKNOWN
 } hal_nfc_param_id_t;
 
@@ -125,7 +127,7 @@ ret_code_t hal_nfc_setup(hal_nfc_callback_t callback, void * p_context);
   *                     was invalid (for example, wrong data length), an error code
   *                     is returned.
   */
-ret_code_t hal_nfc_parameter_set(hal_nfc_param_id_t id, void * p_data, size_t data_length);
+ret_code_t hal_nfc_parameter_set(hal_nfc_param_id_t id, const void * p_data, size_t data_length);
 
 
 /** @brief Function for querying a HAL_NFC parameter value.
