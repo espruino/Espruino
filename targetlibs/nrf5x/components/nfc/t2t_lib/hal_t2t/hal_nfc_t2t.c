@@ -603,6 +603,9 @@ void NFCT_IRQHandler(void)
 
         nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXFRAMEEND);
 
+        /* Use default FRAMEDELAY, for all cases but callback */
+        NRF_NFCT->FRAMEDELAYMAX = 0x1000UL; //302us, taken from datasheet
+
         /* Frame is garbage, wait for next frame reception */
         if(rx_data_size == 0)
         {
@@ -619,6 +622,9 @@ void NFCT_IRQHandler(void)
         } else
         if(m_nfc_lib_callback != NULL)
         {
+            /* JS-has a high latency, set relaxed FRAMEDELAY and hope for a forgiving reader */
+            NRF_NFCT->FRAMEDELAYMAX = 0xFFFFUL; //4.8ms
+
             /* This callback should trigger transmission of a Response */
             m_nfc_lib_callback(m_nfc_lib_context,
                                HAL_NFC_EVENT_DATA_RECEIVED,
