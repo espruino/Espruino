@@ -116,8 +116,7 @@
 #define NFCID1_LAST_BYTE1_SHIFT     8u                                          /**< Shift value for NFC ID byte 1 */
 #define NFCID1_LAST_BYTE0_SHIFT     0u                                          /**< Shift value for NFC ID byte 0 */
 
-#define NFC_RX_BUFFER_SIZE          16u                                         /**< NFC Rx data buffer size */
-#define T2T_READ_CMD                0x30u                                       /**< Type 2 Tag Read command identifier */
+#define NFC_RX_BUFFER_SIZE          64u                                         /**< NFC Rx data buffer size */
 #define NFC_SLP_REQ_CMD             0x50u                                       /**< NFC SLP_REQ command identifier */
 #define NFC_UID_SIZE                7u                                          /**< UID size in bytes */
 #define NFC_CRC_SIZE                2u                                          /**< CRC size in bytes */
@@ -609,27 +608,22 @@ void NFCT_IRQHandler(void)
         {
             NRF_NFCT->TASKS_ENABLERXDATA = 1;
         }
-        /* Look for Tag 2 Type READ Command */
-        else if (m_nfc_rx_buffer[0] == T2T_READ_CMD)
+        /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
+        if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
         {
-            if(m_nfc_lib_callback != NULL)
-            {
-                /* This callback should trigger transmission of READ Response */
-                m_nfc_lib_callback(m_nfc_lib_context,
-                                   HAL_NFC_EVENT_DATA_RECEIVED,
-                                   (void*)m_nfc_rx_buffer,
-                                   rx_data_size);
-            }
-        }
-        else
-        {
-            /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
-            if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
-            {
-                m_slp_req_received = true;
-            }
-            /* Not a READ Command, so wait for next frame reception */
+            m_slp_req_received = true;
+
+            /* Wait for next frame reception */
             NRF_NFCT->TASKS_ENABLERXDATA = 1;
+
+        } else
+        if(m_nfc_lib_callback != NULL)
+        {
+            /* This callback should trigger transmission of a Response */
+            m_nfc_lib_callback(m_nfc_lib_context,
+                               HAL_NFC_EVENT_DATA_RECEIVED,
+                               (void*)m_nfc_rx_buffer,
+                               rx_data_size);
         }
 
         NRF_LOG_DEBUG("Rx fend\r\n");
