@@ -87,6 +87,7 @@ devices = {
 #           'pin_int':'D17',
 #           'pin_sda':'D20',
 #           'pin_scl':'D19' }
+  # Pin D22 is used for clock when driving neopixels - as not specifying a pin seems to break things
 };
 
 # left-right, or top-bottom order

@@ -76,6 +76,7 @@ devices = {
   'TX_PIN_NUMBER' : { 'pin' : 'D6'},
   'CTS_PIN_NUMBER' : { 'pin' : 'D7'},
   'RTS_PIN_NUMBER' : { 'pin' : 'D5'},
+  # Pin D22 is used for clock when driving neopixels - as not specifying a pin seems to break things
 };
 
 # left-right, or top-bottom order
