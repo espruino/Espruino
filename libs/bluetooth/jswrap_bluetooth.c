@@ -1819,22 +1819,35 @@ void jswrap_nrf_nfcStop() {
     "ifdef" : "NRF52",
     "generate" : "jswrap_nrf_nfcSend",
     "params" : [
-      ["payload","JsVar","The tx data"]
+      ["payload","JsVar","Optional tx data"]
     ]
 }
-Transmits a NFC packet to the connected NFC reader.
+Acknowledges the last frame and optionally transmits a response.
+If payload is an array, then a array.length byte nfc frame is sent.
+If payload is a int, then a 4bit ACK/NACK is sent.
+**Note:** ```nfcSend``` should always be called after an ```NFCrx``` event.
 
 ```
 NRF.nfcSend(new Uint8Array([0x01, 0x02, ...]));
+// or
+NRF.nfcSend(0x0A);
+// or
+NRF.nfcSend();
 ```
 
 **Note:** This is only available on nRF52-based devices
 */
 void jswrap_nrf_nfcSend(JsVar *payload) {
 #ifdef USE_NFC
+  /* Switch to RX */
   if (jsvIsUndefined(payload))
-    return jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
+    return jsble_nfc_send_rsp(0, 0);
 
+  /* Send 4 bit ACK/NACK */
+  if (jsvIsInt(payload))
+    return jsble_nfc_send_rsp(jsvGetInteger(payload), 4);
+
+  /* Send n byte payload */
   JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, payload);
   if (!dataPtr || !dataLen)
     return jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
@@ -1848,8 +1861,6 @@ void jswrap_nrf_nfcSend(JsVar *payload) {
   uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
   jsvUnLock(flatStr);
   memcpy(flatStrPtr, dataPtr, dataLen);
-
-  // start nfc properly
   jsble_nfc_send(flatStrPtr, dataLen);
 #endif
 }

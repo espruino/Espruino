@@ -499,11 +499,47 @@ ret_code_t hal_nfc_send(const uint8_t * p_data, size_t data_length)
     /* Ignore previous TX END events, SW takes care only for data frames which tranmission is triggered in this function */
     nrf_nfct_event_clear(&NRF_NFCT->EVENTS_TXFRAMEEND);
 
-    NRF_NFCT->PACKETPTR     = (uint32_t) p_data;
-    NRF_NFCT->TXD.AMOUNT    = (data_length << NFCT_TXD_AMOUNT_TXDATABYTES_Pos) &
-                               NFCT_TXD_AMOUNT_TXDATABYTES_Msk;
-    NRF_NFCT->INTENSET      = (NFCT_INTENSET_TXFRAMEEND_Enabled << NFCT_INTENSET_TXFRAMEEND_Pos);
-    NRF_NFCT->TASKS_STARTTX = 1;
+    /* Restore default TX configuration */
+    NRF_NFCT->TXD.FRAMECONFIG =   (NFCT_TXD_FRAMECONFIG_PARITY_Parity << NFCT_TXD_FRAMECONFIG_PARITY_Pos)
+                                | (NFCT_TXD_FRAMECONFIG_DISCARDMODE_DiscardStart << NFCT_TXD_FRAMECONFIG_DISCARDMODE_Pos)
+                                | (NFCT_TXD_FRAMECONFIG_SOF_SoF << NFCT_TXD_FRAMECONFIG_SOF_Pos)
+                                | (NFCT_TXD_FRAMECONFIG_CRCMODETX_CRC16TX << NFCT_TXD_FRAMECONFIG_CRCMODETX_Pos);
+
+    NRF_NFCT->PACKETPTR       = (uint32_t) p_data;
+    NRF_NFCT->TXD.AMOUNT      = (data_length << NFCT_TXD_AMOUNT_TXDATABYTES_Pos) & NFCT_TXD_AMOUNT_TXDATABYTES_Msk;
+    NRF_NFCT->INTENSET        = (NFCT_INTENSET_TXFRAMEEND_Enabled << NFCT_INTENSET_TXFRAMEEND_Pos);
+    NRF_NFCT->TASKS_STARTTX   = 1;
+
+    NRF_LOG_INFO("Send\r\n");
+    return NRF_SUCCESS;
+}
+
+ret_code_t hal_nfc_send_rsp(const uint8_t data, size_t data_length)
+{
+    /* No rx data available, so wait for next frame reception */
+    if (data_length == 0)
+    {
+        NRF_NFCT->TASKS_ENABLERXDATA = 1;
+        return NRF_SUCCESS;
+    }
+
+    /* Data is sent asynchronously using DMA. */
+    static uint8_t buffer[1];
+    buffer[0] = data;
+
+    /* Ignore previous TX END events, SW takes care only for data frames which tranmission is triggered in this function */
+    nrf_nfct_event_clear(&NRF_NFCT->EVENTS_TXFRAMEEND);
+
+    /* Configure peripheral for ACK/NACK */
+    NRF_NFCT->TXD.FRAMECONFIG =   (NFCT_TXD_FRAMECONFIG_PARITY_Parity << NFCT_TXD_FRAMECONFIG_PARITY_Pos)
+                                | (NFCT_TXD_FRAMECONFIG_DISCARDMODE_DiscardEnd << NFCT_TXD_FRAMECONFIG_DISCARDMODE_Pos)
+                                | (NFCT_TXD_FRAMECONFIG_SOF_SoF << NFCT_TXD_FRAMECONFIG_SOF_Pos)
+                                | (NFCT_TXD_FRAMECONFIG_CRCMODETX_NoCRCTX << NFCT_TXD_FRAMECONFIG_CRCMODETX_Pos);
+
+    NRF_NFCT->PACKETPTR       = (uint32_t) buffer;
+    NRF_NFCT->TXD.AMOUNT      = (data_length << NFCT_TXD_AMOUNT_TXDATABITS_Pos) & NFCT_TXD_AMOUNT_TXDATABITS_Msk;
+    NRF_NFCT->INTENSET        = (NFCT_INTENSET_TXFRAMEEND_Enabled << NFCT_INTENSET_TXFRAMEEND_Pos);
+    NRF_NFCT->TASKS_STARTTX   = 1;
 
     NRF_LOG_INFO("Send\r\n");
     return NRF_SUCCESS;

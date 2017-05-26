@@ -170,6 +170,16 @@ ret_code_t hal_nfc_start(void);
 ret_code_t hal_nfc_send(const uint8_t * p_data, size_t data_length);
 
 
+/** @brief Function for completing a RX and optionaly sending a ACK or NACK to reader.
+  *
+  * @param[in] data         The response to send.
+  * @param[in] data_length  Size of the response in bits 0-7.
+  *
+  * @retval NRF_SUCCESS If the packet was sent. Otherwise, an error code is returned.
+  */
+ret_code_t hal_nfc_send_rsp(const uint8_t p_data, size_t data_length);
+
+
 /** @brief Function for stopping the NFC subsystem.
   *
   * After this function returns, NFC readers will no longer be able to connect
