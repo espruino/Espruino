@@ -597,9 +597,9 @@ void NFCT_IRQHandler(void)
         /* Take into account only number of whole bytes */
         uint32_t rx_data_size = ((NRF_NFCT->RXD.AMOUNT & NFCT_RXD_AMOUNT_RXDATABYTES_Msk) >>
                                  NFCT_RXD_AMOUNT_RXDATABYTES_Pos);
+
         /* Prevent integer underflow */
-        if(rx_data_size >= NFC_CRC_SIZE) rx_data_size -= NFC_CRC_SIZE; 
-        else rx_data_size = 0;
+        if(rx_data_size >= NFC_CRC_SIZE) rx_data_size -= NFC_CRC_SIZE;
 
         nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXFRAMEEND);
 
@@ -607,10 +607,10 @@ void NFCT_IRQHandler(void)
         NRF_NFCT->FRAMEDELAYMAX = 0x1000UL; //302us, taken from datasheet
 
         /* Frame is garbage, wait for next frame reception */
-        if(rx_data_size == 0)
+        if((rx_data_size == 0) || (rx_data_size > NFC_RX_BUFFER_SIZE))
         {
             NRF_NFCT->TASKS_ENABLERXDATA = 1;
-        }
+        } else
         /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
         if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
         {
