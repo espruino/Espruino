@@ -41,6 +41,7 @@ info = {
      #'TLS'
    ],
    'makefile' : [
+     'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/ruuvi_open_private.pem',
      'DFU_SETTINGS=--debug-mode'
    ]
