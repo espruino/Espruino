@@ -1852,16 +1852,7 @@ void jswrap_nrf_nfcSend(JsVar *payload) {
   if (!dataPtr || !dataLen)
     return jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
 
-  /* Create a flat string - we need this to store the NFC data so it hangs around.
-   * Avoid having a static var so we have RAM available if not using NFC */
-  JsVar *flatStr = jsvNewFlatStringOfLength(dataLen);
-  if (!flatStr)
-    return jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
-  jsvObjectSetChild(execInfo.hiddenRoot, "NfcSend", flatStr);
-  uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
-  jsvUnLock(flatStr);
-  memcpy(flatStrPtr, dataPtr, dataLen);
-  jsble_nfc_send(flatStrPtr, dataLen);
+  jsble_nfc_send((uint8_t*)dataPtr, dataLen);
 #endif
 }
 

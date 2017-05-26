@@ -158,9 +158,8 @@ ret_code_t hal_nfc_start(void);
 
 /** @brief Function for sending a packet to the connected NFC reader.
   *
-  * The provided data buffer belongs to the caller and is guaranteed to be
-  * valid until the HAL_NFC_EVENT_DATA_TRANSMITTED event is received by the
-  * callback.
+  * The provided data buffer belongs to the caller and may be freed after this
+  * function completes.
   *
   * @param[in] p_data       The data packet to send.
   * @param[in] data_length  Size of the packet in bytes.
