@@ -911,9 +911,13 @@ static void nfc_callback(void * p_context, hal_nfc_event_t event, const uint8_t 
     case HAL_NFC_EVENT_FIELD_OFF:
       jsble_queue_pending_d(BLEP_NFC_STATUS,0);
       break;
-    case HAL_NFC_EVENT_DATA_RECEIVED:
-      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCrx", 0 /*todo data*/);
+    case HAL_NFC_EVENT_DATA_RECEIVED: {
+      char *ptr = 0;
+      JsVar *arr = jsvNewArrayBufferWithPtr((unsigned int)data_length, &ptr);
+      if (ptr) memcpy(ptr, p_data, data_length);
+      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCrx", arr);
       break;
+    }
     case HAL_NFC_EVENT_DATA_TRANSMITTED:
       bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCtx", 0);
       break;
