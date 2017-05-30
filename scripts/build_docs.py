@@ -259,6 +259,7 @@ for className in sorted(classes, key=lambda s: s.lower()):
 html("  </ul>")
 html('  </div><!-- Contents -->')
 
+html("  <a class=\"blush\" name=\"top\"\>");
 #html("  <h2>Detail</h2>")
 lastClass = "XXX"
 for jsondata in detail:
