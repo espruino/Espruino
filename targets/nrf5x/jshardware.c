@@ -287,6 +287,11 @@ void jshInit() {
   SysTick_Config(0xFFFFFF);
 #endif
 
+#ifndef SAVE_ON_FLASH
+  // Get a random seed to put into rand's random number generator
+  srand(jshGetRandomNumber());
+#endif
+
 #ifdef LED1_PININDEX
   jshPinOutput(LED1_PININDEX, !LED1_ONSTATE);
 #endif
