@@ -302,7 +302,12 @@ if LINUX:
   bufferSizeTX = 256
   bufferSizeTimer = 16
 else:
-  bufferSizeIO = 64 if board.chip["ram"]<20 else 128
+  if board.chip["ram"]<20:
+    bufferSizeIO = 64
+  elif board.chip["ram"]>=256:
+    bufferSizeIO = 512
+  else:
+    bufferSizeIO = 128
   bufferSizeTX = 32 if board.chip["ram"]<20 else 128
   bufferSizeTimer = 4 if board.chip["ram"]<20 else 16
 
