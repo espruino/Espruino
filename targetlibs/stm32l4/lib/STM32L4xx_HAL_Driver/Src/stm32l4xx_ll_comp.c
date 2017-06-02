@@ -2,13 +2,11 @@
   ******************************************************************************
   * @file    stm32l4xx_ll_comp.c
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   COMP LL module driver
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -282,8 +280,8 @@ ErrorStatus LL_COMP_Init(COMP_TypeDef *COMPx, LL_COMP_InitTypeDef *COMP_InitStru
 
 /**
   * @brief Set each @ref LL_COMP_InitTypeDef field to default value.
-  * @param COMP_InitStruct: pointer to a @ref LL_COMP_InitTypeDef structure
-  *                         whose fields will be set to default values.
+  * @param COMP_InitStruct Pointer to a @ref LL_COMP_InitTypeDef structure
+  *                        whose fields will be set to default values.
   * @retval None
   */
 void LL_COMP_StructInit(LL_COMP_InitTypeDef *COMP_InitStruct)

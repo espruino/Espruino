@@ -2,13 +2,11 @@
   ******************************************************************************
   * @file    stm32l4xx_ll_comp.h
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   Header file of COMP LL module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -64,7 +62,7 @@ extern "C" {
   */
 
 /* COMP registers bits positions */
-#define LL_COMP_OUTPUT_LEVEL_BITOFFSET_POS ((uint32_t)30U) /* Value equivalent to POSITION_VAL(COMP_CSR_VALUE) */
+#define LL_COMP_OUTPUT_LEVEL_BITOFFSET_POS (30U) /* Value equivalent to POSITION_VAL(COMP_CSR_VALUE) */
 
 /**
   * @}
@@ -127,7 +125,7 @@ typedef struct
 /** @defgroup COMP_LL_EC_COMMON_WINDOWMODE Comparator common modes - Window mode
   * @{
   */
-#define LL_COMP_WINDOWMODE_DISABLE                 ((uint32_t)0x00000000U) /*!< Window mode disable: Comparators 1 and 2 are independent */
+#define LL_COMP_WINDOWMODE_DISABLE                 (0x00000000U)           /*!< Window mode disable: Comparators 1 and 2 are independent */
 #define LL_COMP_WINDOWMODE_COMP1_INPUT_PLUS_COMMON (COMP_CSR_WINMODE)      /*!< Window mode enable: Comparators instances pair COMP1 and COMP2 have their input plus connected together. The common input is COMP1 input plus (COMP2 input plus is no more accessible). */
 /**
   * @}
@@ -136,7 +134,7 @@ typedef struct
 /** @defgroup COMP_LL_EC_POWERMODE Comparator modes - Power mode
   * @{
   */
-#define LL_COMP_POWERMODE_HIGHSPEED     ((uint32_t)0x00000000U)                   /*!< COMP power mode to high speed */
+#define LL_COMP_POWERMODE_HIGHSPEED     (0x00000000U)                             /*!< COMP power mode to high speed */
 #define LL_COMP_POWERMODE_MEDIUMSPEED   (COMP_CSR_PWRMODE_0)                      /*!< COMP power mode to medium speed */
 #define LL_COMP_POWERMODE_ULTRALOWPOWER (COMP_CSR_PWRMODE_1 | COMP_CSR_PWRMODE_0) /*!< COMP power mode to ultra-low power */
 /**
@@ -146,10 +144,10 @@ typedef struct
 /** @defgroup COMP_LL_EC_INPUT_PLUS Comparator inputs - Input plus (input non-inverting) selection
   * @{
   */
-#define LL_COMP_INPUT_PLUS_IO1          ((uint32_t)0x00000000U)                 /*!< Comparator input plus connected to IO1 (pin PC5 for COMP1, pin PB4 for COMP2) */
+#define LL_COMP_INPUT_PLUS_IO1          (0x00000000U)                           /*!< Comparator input plus connected to IO1 (pin PC5 for COMP1, pin PB4 for COMP2) */
 #define LL_COMP_INPUT_PLUS_IO2          (COMP_CSR_INPSEL_0)                     /*!< Comparator input plus connected to IO2 (pin PB2 for COMP1, pin PB6 for COMP2) */
 #if defined(COMP_CSR_INPSEL_1)
-#define LL_COMP_INPUT_PLUS_IO3          (COMP_CSR_INPSEL_1 | COMP_CSR_INPSEL_0) /*!< Comparator input plus connected to IO3 (pin PA1 for COMP1, pin PA3 for COMP2) */
+#define LL_COMP_INPUT_PLUS_IO3          (COMP_CSR_INPSEL_1)                     /*!< Comparator input plus connected to IO3 (pin PA1 for COMP1, pin PA3 for COMP2) */
 #endif
 /**
   * @}
@@ -206,7 +204,7 @@ typedef struct
 /** @defgroup COMP_LL_EC_INPUT_HYSTERESIS Comparator input - Hysteresis
   * @{
   */
-#define LL_COMP_HYSTERESIS_NONE         ((uint32_t)0x00000000U)             /*!< No hysteresis */
+#define LL_COMP_HYSTERESIS_NONE         (0x00000000U)                       /*!< No hysteresis */
 #define LL_COMP_HYSTERESIS_LOW          (                  COMP_CSR_HYST_0) /*!< Hysteresis level low */
 #define LL_COMP_HYSTERESIS_MEDIUM       (COMP_CSR_HYST_1                  ) /*!< Hysteresis level medium */
 #define LL_COMP_HYSTERESIS_HIGH         (COMP_CSR_HYST_1 | COMP_CSR_HYST_0) /*!< Hysteresis level high */
@@ -217,7 +215,7 @@ typedef struct
 /** @defgroup COMP_LL_EC_OUTPUT_POLARITY Comparator output - Output polarity
   * @{
   */
-#define LL_COMP_OUTPUTPOL_NONINVERTED   ((uint32_t)0x00000000U) /*!< COMP output polarity is not inverted: comparator output is high when the plus (non-inverting) input is at a higher voltage than the minus (inverting) input */
+#define LL_COMP_OUTPUTPOL_NONINVERTED   (0x00000000U)           /*!< COMP output polarity is not inverted: comparator output is high when the plus (non-inverting) input is at a higher voltage than the minus (inverting) input */
 #define LL_COMP_OUTPUTPOL_INVERTED      (COMP_CSR_POLARITY)     /*!< COMP output polarity is inverted: comparator output is low when the plus (non-inverting) input is at a lower voltage than the minus (inverting) input */
 /**
   * @}
@@ -226,7 +224,7 @@ typedef struct
 /** @defgroup COMP_LL_EC_OUTPUT_BLANKING_SOURCE Comparator output - Blanking source
   * @{
   */
-#define LL_COMP_BLANKINGSRC_NONE        ((uint32_t)0x00000000U) /*!<Comparator output without blanking */
+#define LL_COMP_BLANKINGSRC_NONE            (0x00000000U)           /*!<Comparator output without blanking */
 #define LL_COMP_BLANKINGSRC_TIM1_OC5_COMP1  (COMP_CSR_BLANKING_0)   /*!< Comparator output blanking source TIM1 OC5 (specific to COMP instance: COMP1) */
 #define LL_COMP_BLANKINGSRC_TIM2_OC3_COMP1  (COMP_CSR_BLANKING_1)   /*!< Comparator output blanking source TIM2 OC3 (specific to COMP instance: COMP1) */
 #define LL_COMP_BLANKINGSRC_TIM3_OC3_COMP1  (COMP_CSR_BLANKING_2)   /*!< Comparator output blanking source TIM3 OC3 (specific to COMP instance: COMP1) */
@@ -254,8 +252,8 @@ typedef struct
 /** @defgroup COMP_LL_EC_OUTPUT_LEVEL Comparator output - Output level
   * @{
   */
-#define LL_COMP_OUTPUT_LEVEL_LOW        ((uint32_t)0x00000000U) /*!< Comparator output level low (if the polarity is not inverted, otherwise to be complemented) */
-#define LL_COMP_OUTPUT_LEVEL_HIGH       ((uint32_t)0x00000001U) /*!< Comparator output level high (if the polarity is not inverted, otherwise to be complemented) */
+#define LL_COMP_OUTPUT_LEVEL_LOW        (0x00000000U)           /*!< Comparator output level low (if the polarity is not inverted, otherwise to be complemented) */
+#define LL_COMP_OUTPUT_LEVEL_HIGH       (0x00000001U)           /*!< Comparator output level high (if the polarity is not inverted, otherwise to be complemented) */
 /**
   * @}
   */
@@ -273,7 +271,7 @@ typedef struct
 /* Literal set to maximum value (refer to device datasheet,                   */
 /* parameter "tSTART").                                                       */
 /* Unit: us                                                                   */
-#define LL_COMP_DELAY_STARTUP_US          ((uint32_t) 80U)  /*!< Delay for COMP startup time */
+#define LL_COMP_DELAY_STARTUP_US          ( 80U)  /*!< Delay for COMP startup time */
 
 /* Delay for comparator voltage scaler stabilization time.                    */
 /* Note: Voltage scaler is used when selecting comparator input               */
@@ -281,7 +279,7 @@ typedef struct
 /* Literal set to maximum value (refer to device datasheet,                   */
 /* parameter "tSTART_SCALER").                                                */
 /* Unit: us                                                                   */
-#define LL_COMP_DELAY_VOLTAGE_SCALER_STAB_US ((uint32_t) 200U)  /*!< Delay for COMP voltage scaler stabilization time */
+#define LL_COMP_DELAY_VOLTAGE_SCALER_STAB_US ( 200U)  /*!< Delay for COMP voltage scaler stabilization time */
 
 /**
   * @}
@@ -458,7 +456,7 @@ __STATIC_INLINE uint32_t LL_COMP_GetPowerMode(COMP_TypeDef *COMPx)
   *         @arg @ref LL_COMP_INPUT_MINUS_3_4VREFINT
   *         @arg @ref LL_COMP_INPUT_MINUS_VREFINT
   *         @arg @ref LL_COMP_INPUT_MINUS_DAC1_CH1
-  *         @arg @ref LL_COMP_INPUT_MINUS_DAC1_CH2
+  *         @arg @ref LL_COMP_INPUT_MINUS_DAC1_CH2 (*)
   *         @arg @ref LL_COMP_INPUT_MINUS_IO1
   *         @arg @ref LL_COMP_INPUT_MINUS_IO2
   *         @arg @ref LL_COMP_INPUT_MINUS_IO3 (*)
@@ -553,7 +551,7 @@ __STATIC_INLINE uint32_t LL_COMP_GetInputPlus(COMP_TypeDef *COMPx)
   *         @arg @ref LL_COMP_INPUT_MINUS_3_4VREFINT
   *         @arg @ref LL_COMP_INPUT_MINUS_VREFINT
   *         @arg @ref LL_COMP_INPUT_MINUS_DAC1_CH1
-  *         @arg @ref LL_COMP_INPUT_MINUS_DAC1_CH2
+  *         @arg @ref LL_COMP_INPUT_MINUS_DAC1_CH2 (*)
   *         @arg @ref LL_COMP_INPUT_MINUS_IO1
   *         @arg @ref LL_COMP_INPUT_MINUS_IO2
   *         @arg @ref LL_COMP_INPUT_MINUS_IO3 (*)
@@ -587,7 +585,7 @@ __STATIC_INLINE void LL_COMP_SetInputMinus(COMP_TypeDef *COMPx, uint32_t InputMi
   *         @arg @ref LL_COMP_INPUT_MINUS_3_4VREFINT
   *         @arg @ref LL_COMP_INPUT_MINUS_VREFINT
   *         @arg @ref LL_COMP_INPUT_MINUS_DAC1_CH1
-  *         @arg @ref LL_COMP_INPUT_MINUS_DAC1_CH2
+  *         @arg @ref LL_COMP_INPUT_MINUS_DAC1_CH2 (*)
   *         @arg @ref LL_COMP_INPUT_MINUS_IO1
   *         @arg @ref LL_COMP_INPUT_MINUS_IO2
   *         @arg @ref LL_COMP_INPUT_MINUS_IO3 (*)

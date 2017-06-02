@@ -2,13 +2,11 @@
   ******************************************************************************
   * @file    stm32l4xx_hal_can.h
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   Header file of CAN HAL module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -257,7 +255,9 @@ typedef struct
 #define   HAL_CAN_ERROR_ACK         ((uint32_t)0x00000020)    /*!< Acknowledgment error */
 #define   HAL_CAN_ERROR_BR          ((uint32_t)0x00000040)    /*!< Bit recessive        */
 #define   HAL_CAN_ERROR_BD          ((uint32_t)0x00000080)    /*!< LEC dominant         */
-#define   HAL_CAN_ERROR_CRC         ((uint32_t)0x00000100)   /*!< LEC transfer error   */
+#define   HAL_CAN_ERROR_CRC         ((uint32_t)0x00000100)    /*!< LEC transfer error   */
+#define   HAL_CAN_ERROR_FOV0        ((uint32_t)0x00000200)    /*!< FIFO0 overrun error  */
+#define   HAL_CAN_ERROR_FOV1        ((uint32_t)0x00000400)    /*!< FIFO1 overrun error  */
 /**
   * @}
   */

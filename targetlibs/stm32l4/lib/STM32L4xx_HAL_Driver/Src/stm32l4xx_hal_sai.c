@@ -2,8 +2,6 @@
   ******************************************************************************
   * @file    stm32l4xx_hal_sai.c
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   SAI HAL module driver.
   *          This file provides firmware functions to manage the following
   *          functionalities of the Serial Audio Interface (SAI) peripheral:
@@ -74,6 +72,11 @@
         (+@) The number of slots should be even when SAI_FS_CHANNEL_IDENTIFICATION is selected.
 
   [..]
+    (@) For STM32L4Rx/STM32L4Sx devices, PDM interface can be activated through HAL_SAI_Init function.
+        Please note that PDM interface is only available for SAI1 sub-block A.
+        PDM microphone delays can be tuned with HAL_SAIEx_ConfigPdmMicDelay function.
+
+  [..]
     Three operation modes are available within this driver :
 
     *** Polling mode IO operation ***
@@ -138,7 +141,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -199,7 +202,8 @@ typedef enum {
   */
 #define SAI_FIFO_SIZE       8
 #define SAI_DEFAULT_TIMEOUT 4
-#define SAI_xCR2_MUTECNT_OFFSET POSITION_VAL(SAI_xCR2_MUTECNT)
+#define SAI_LONG_TIMEOUT    1000
+
 /**
   * @}
   */
@@ -263,6 +267,7 @@ static void SAI_DMAAbort(DMA_HandleTypeDef *hdma);
         (++) FIFO Threshold
         (++) Frame Config
         (++) Slot Config
+        (++) PDM Config (only for STM32L4Rx/STM32L4Sx devices)
 
       (+) Call the function HAL_SAI_DeInit() to restore the default configuration
           of the selected SAI peripheral.
@@ -352,6 +357,9 @@ HAL_StatusTypeDef HAL_SAI_Init(SAI_HandleTypeDef *hsai)
   assert_param(IS_SAI_BLOCK_COMPANDING_MODE(hsai->Init.CompandingMode));
   assert_param(IS_SAI_BLOCK_TRISTATE_MANAGEMENT(hsai->Init.TriState));
   assert_param(IS_SAI_BLOCK_SYNCEXT(hsai->Init.SynchroExt));
+#if defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
+  assert_param(IS_SAI_BLOCK_MCK_OVERSAMPLING(hsai->Init.MckOverSampling));
+#endif /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
   
   /* Check the SAI Block Frame parameters */
   assert_param(IS_SAI_BLOCK_FRAME_LENGTH(hsai->FrameInit.FrameLength));
@@ -365,6 +373,23 @@ HAL_StatusTypeDef HAL_SAI_Init(SAI_HandleTypeDef *hsai)
   assert_param(IS_SAI_BLOCK_SLOT_SIZE(hsai->SlotInit.SlotSize));
   assert_param(IS_SAI_BLOCK_SLOT_NUMBER(hsai->SlotInit.SlotNumber));
   assert_param(IS_SAI_SLOT_ACTIVE(hsai->SlotInit.SlotActive));
+  
+#if defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
+  /* Check the SAI PDM parameters */
+  assert_param(IS_FUNCTIONAL_STATE(hsai->Init.PdmInit.Activation));
+  if(hsai->Init.PdmInit.Activation == ENABLE)
+  {
+    assert_param(IS_SAI_PDM_MIC_PAIRS_NUMBER(hsai->Init.PdmInit.MicPairsNbr));
+    assert_param(IS_SAI_PDM_CLOCK_ENABLE(hsai->Init.PdmInit.ClockEnable));
+    /* Check that SAI sub-block is SAI1 sub-block A, in master RX mode with free protocol */
+    if((hsai->Instance != SAI1_Block_A) ||
+       (hsai->Init.AudioMode != SAI_MODEMASTER_RX) ||
+       (hsai->Init.Protocol != SAI_FREE_PROTOCOL))
+    {
+      return HAL_ERROR;
+    }
+  }
+#endif /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
   
   if(hsai->State == HAL_SAI_STATE_RESET)
   {
@@ -420,7 +445,9 @@ HAL_StatusTypeDef HAL_SAI_Init(SAI_HandleTypeDef *hsai)
       break;
   }
   
-#if defined(STM32L471xx) || defined(STM32L475xx) || defined(STM32L476xx) || defined(STM32L485xx) || defined(STM32L486xx)
+#if defined(STM32L471xx) || defined(STM32L475xx) || defined(STM32L476xx) || defined(STM32L485xx) || defined(STM32L486xx) || \
+    defined(STM32L496xx) || defined(STM32L4A6xx) || \
+    defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
   
   if((hsai->Instance == SAI1_Block_A) || (hsai->Instance == SAI1_Block_B))
   {
@@ -435,7 +462,9 @@ HAL_StatusTypeDef HAL_SAI_Init(SAI_HandleTypeDef *hsai)
   
   SAI1->GCR = tmpregisterGCR;
   
-#endif /* STM32L471xx || STM32L475xx || STM32L476xx || STM32L485xx || STM32L486xx */
+#endif /* STM32L471xx || STM32L475xx || STM32L476xx || STM32L485xx || STM32L486xx || */
+       /* STM32L496xx || STM32L4A6xx || */
+       /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
   
   if(hsai->Init.AudioFrequency != SAI_AUDIO_FREQUENCY_MCKDIV)
   {
@@ -443,7 +472,9 @@ HAL_StatusTypeDef HAL_SAI_Init(SAI_HandleTypeDef *hsai)
     uint32_t tmpval;
     
     /* In this case, the MCKDIV value is calculated to get AudioFrequency */
-#if defined(STM32L471xx) || defined(STM32L475xx) || defined(STM32L476xx) || defined(STM32L485xx) || defined(STM32L486xx)
+#if defined(STM32L471xx) || defined(STM32L475xx) || defined(STM32L476xx) || defined(STM32L485xx) || defined(STM32L486xx) || \
+    defined(STM32L496xx) || defined(STM32L4A6xx) || \
+    defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
     
     if((hsai->Instance == SAI1_Block_A ) || (hsai->Instance == SAI1_Block_B ))
     {
@@ -458,8 +489,36 @@ HAL_StatusTypeDef HAL_SAI_Init(SAI_HandleTypeDef *hsai)
     
     freq = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_SAI1);
     
-#endif /* STM32L471xx || STM32L475xx || STM32L476xx || STM32L485xx || STM32L486xx */
+#endif /* STM32L471xx || STM32L475xx || STM32L476xx || STM32L485xx || STM32L486xx || */
+       /* STM32L496xx || STM32L4A6xx || */
+       /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
     
+#if defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
+    /* Configure Master Clock Divider using the following formula :
+       - If NOMCK = 1 :
+         MCKDIV[5:0] = SAI_CK_x / (FS * (FRL + 1))
+       - If NOMCK = 0 :
+         MCKDIV[5:0] = SAI_CK_x / (FS * (OSR + 1) * 256) */
+    if(hsai->Init.NoDivider == SAI_MASTERDIVIDER_DISABLE)
+    { /* NOMCK = 1 */
+      /* (freq x 10) to keep Significant digits */
+      tmpval = (freq * 10) / (hsai->Init.AudioFrequency * hsai->FrameInit.FrameLength);
+    }
+    else
+    { /* NOMCK = 0 */
+      uint32_t tmposr;
+      tmposr = (hsai->Init.MckOverSampling == SAI_MCK_OVERSAMPLING_ENABLE) ? 2 : 1;
+      /* (freq x 10) to keep Significant digits */
+      tmpval = (freq * 10) / (hsai->Init.AudioFrequency * tmposr * 256);
+    }
+    hsai->Init.Mckdiv = tmpval / 10;
+    
+    /* Round result to the nearest integer */
+    if((tmpval % 10) > 8)
+    {
+      hsai->Init.Mckdiv+= 1;
+    }
+#else
     /* Configure Master Clock using the following formula :
        MCLK_x = SAI_CK_x / (MCKDIV[3:0] * 2) with MCLK_x = 256 * FS
        FS = SAI_CK_x / (MCKDIV[3:0] * 2) * 256
@@ -473,6 +532,7 @@ HAL_StatusTypeDef HAL_SAI_Init(SAI_HandleTypeDef *hsai)
     {
       hsai->Init.Mckdiv+= 1;
     }
+#endif /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
   }
   
   /* Compute CKSTR bits of SAI CR1 according ClockStrobing and AudioMode */
@@ -487,6 +547,19 @@ HAL_StatusTypeDef HAL_SAI_Init(SAI_HandleTypeDef *hsai)
   
   /* SAI Block Configuration -------------------------------------------------*/
   /* SAI CR1 Configuration */
+#if defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
+  hsai->Instance->CR1&=~(SAI_xCR1_MODE | SAI_xCR1_PRTCFG |  SAI_xCR1_DS |      \
+                         SAI_xCR1_LSBFIRST | SAI_xCR1_CKSTR | SAI_xCR1_SYNCEN |\
+                         SAI_xCR1_MONO | SAI_xCR1_OUTDRIV  | SAI_xCR1_DMAEN |  \
+                         SAI_xCR1_NOMCK | SAI_xCR1_MCKDIV | SAI_xCR1_OSR);
+  
+  hsai->Instance->CR1|=(hsai->Init.AudioMode | hsai->Init.Protocol |           \
+                        hsai->Init.DataSize | hsai->Init.FirstBit  |           \
+                        ckstr_bits | syncen_bits |                             \
+                        hsai->Init.MonoStereoMode | hsai->Init.OutputDrive |   \
+                        hsai->Init.NoDivider | (hsai->Init.Mckdiv << 20) |     \
+                        hsai->Init.MckOverSampling);
+#else
   hsai->Instance->CR1&=~(SAI_xCR1_MODE | SAI_xCR1_PRTCFG |  SAI_xCR1_DS |      \
                          SAI_xCR1_LSBFIRST | SAI_xCR1_CKSTR | SAI_xCR1_SYNCEN |\
                          SAI_xCR1_MONO | SAI_xCR1_OUTDRIV  | SAI_xCR1_DMAEN |  \
@@ -497,6 +570,7 @@ HAL_StatusTypeDef HAL_SAI_Init(SAI_HandleTypeDef *hsai)
                         ckstr_bits | syncen_bits |                             \
                         hsai->Init.MonoStereoMode | hsai->Init.OutputDrive |   \
                         hsai->Init.NoDivider | (hsai->Init.Mckdiv << 20));
+#endif /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
   
   /* SAI CR2 Configuration */
   hsai->Instance->CR2&= ~(SAI_xCR2_FTH | SAI_xCR2_FFLUSH | SAI_xCR2_COMP | SAI_xCR2_CPL);
@@ -518,6 +592,22 @@ HAL_StatusTypeDef HAL_SAI_Init(SAI_HandleTypeDef *hsai)
   
   hsai->Instance->SLOTR|=  hsai->SlotInit.FirstBitOffset |  hsai->SlotInit.SlotSize
                           | (hsai->SlotInit.SlotActive << 16) | ((hsai->SlotInit.SlotNumber - 1) <<  8);
+  
+#if defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
+  /* SAI PDM Configuration ---------------------------------------------------*/
+  if(hsai->Instance == SAI1_Block_A)
+  {
+    /* Disable PDM interface */
+    SAI1->PDMCR &= ~(SAI_PDMCR_PDMEN);
+    if(hsai->Init.PdmInit.Activation == ENABLE)
+    {
+      /* Configure and enable PDM interface */
+      SAI1->PDMCR = (hsai->Init.PdmInit.ClockEnable | 
+                   ((hsai->Init.PdmInit.MicPairsNbr - 1) << SAI_PDMCR_MICNBR_Pos));
+      SAI1->PDMCR |= SAI_PDMCR_PDMEN;
+    }
+  }
+#endif /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
   
   /* Initialize the error code */
   hsai->ErrorCode = HAL_SAI_ERROR_NONE;
@@ -556,6 +646,18 @@ HAL_StatusTypeDef HAL_SAI_DeInit(SAI_HandleTypeDef *hsai)
   
   /* Flush the fifo */
   SET_BIT(hsai->Instance->CR2, SAI_xCR2_FFLUSH);
+  
+#if defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
+  /* Disable SAI PDM interface */
+  if(hsai->Instance == SAI1_Block_A)
+  {
+    /* Reset PDM delays */
+    SAI1->PDMDLY = 0U;
+    
+    /* Disable PDM interface */
+    SAI1->PDMCR &= ~(SAI_PDMCR_PDMEN);
+  }
+#endif /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
   
   /* DeInit the low level hardware: GPIO, CLOCK, NVIC and DMA */
   HAL_SAI_MspDeInit(hsai);
@@ -1054,6 +1156,9 @@ HAL_StatusTypeDef HAL_SAI_DMAStop(SAI_HandleTypeDef *hsai)
   /* Disable SAI peripheral */
   SAI_Disable(hsai);
   
+  /* Flush the fifo */
+  SET_BIT(hsai->Instance->CR2, SAI_xCR2_FFLUSH);
+
   hsai->State = HAL_SAI_STATE_READY;
   
   /* Process Unlocked */
@@ -1125,6 +1230,8 @@ HAL_StatusTypeDef HAL_SAI_Abort(SAI_HandleTypeDef *hsai)
   */
 HAL_StatusTypeDef HAL_SAI_Transmit_DMA(SAI_HandleTypeDef *hsai, uint8_t *pData, uint16_t Size)
 {
+  uint32_t tickstart = HAL_GetTick();
+
   if((pData == NULL) || (Size == 0))
   {
     return  HAL_ERROR;
@@ -1160,18 +1267,34 @@ HAL_StatusTypeDef HAL_SAI_Transmit_DMA(SAI_HandleTypeDef *hsai, uint8_t *pData, 
       return  HAL_ERROR;
     }
     
+    /* Enable the interrupts for error handling */
+    __HAL_SAI_ENABLE_IT(hsai, SAI_InterruptFlag(hsai, SAI_MODE_DMA));
+    
+    /* Enable SAI Tx DMA Request */
+    hsai->Instance->CR1 |= SAI_xCR1_DMAEN;
+    
+    /* Wait untill FIFO is not empty */
+    while((hsai->Instance->SR & SAI_xSR_FLVL) == SAI_FIFOSTATUS_EMPTY)
+    {
+      /* Check for the Timeout */
+      if((HAL_GetTick() - tickstart) > SAI_LONG_TIMEOUT)
+      {
+        /* Update error code */
+        hsai->ErrorCode |= HAL_SAI_ERROR_TIMEOUT;
+        
+        /* Process Unlocked */
+        __HAL_UNLOCK(hsai);
+
+        return HAL_TIMEOUT;
+      }
+    }
+    
     /* Check if the SAI is already enabled */
     if((hsai->Instance->CR1 & SAI_xCR1_SAIEN) == RESET)
     {
       /* Enable SAI peripheral */
       __HAL_SAI_ENABLE(hsai);
     }
-    
-    /* Enable the interrupts for error handling */
-    __HAL_SAI_ENABLE_IT(hsai, SAI_InterruptFlag(hsai, SAI_MODE_DMA));
-    
-    /* Enable SAI Tx DMA Request */
-    hsai->Instance->CR1 |= SAI_xCR1_DMAEN;
     
     /* Process Unlocked */
     __HAL_UNLOCK(hsai);
@@ -1306,7 +1429,7 @@ HAL_StatusTypeDef HAL_SAI_EnableRxMuteMode(SAI_HandleTypeDef *hsai, SAIcallback 
   {
     /* set the mute counter */
     CLEAR_BIT(hsai->Instance->CR2, SAI_xCR2_MUTECNT);
-    SET_BIT(hsai->Instance->CR2, (uint32_t)((uint32_t)counter << SAI_xCR2_MUTECNT_OFFSET));
+    SET_BIT(hsai->Instance->CR2, (uint32_t)((uint32_t)counter << SAI_xCR2_MUTECNT_Pos));
     hsai->mutecallback = callback;
     /* enable the IT interrupt */
     __HAL_SAI_ENABLE_IT(hsai, SAI_IT_MUTEDET);
