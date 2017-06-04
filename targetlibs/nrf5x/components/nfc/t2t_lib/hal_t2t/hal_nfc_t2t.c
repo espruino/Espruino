@@ -490,6 +490,10 @@ ret_code_t hal_nfc_start(void)
 
 ret_code_t hal_nfc_send(const uint8_t * p_data, size_t data_length)
 {
+    if (!m_field_on)
+    {
+        return NRF_ERROR_INVALID_STATE;
+    }
     if (data_length == 0)
     {
         return NRF_ERROR_DATA_SIZE;
@@ -515,6 +519,11 @@ ret_code_t hal_nfc_send(const uint8_t * p_data, size_t data_length)
 
 ret_code_t hal_nfc_send_rsp(const uint8_t data, size_t data_length)
 {
+    if (!m_field_on)
+    {
+        return NRF_ERROR_INVALID_STATE;
+    }
+
     /* No rx data available, so wait for next frame reception */
     if (data_length == 0)
     {
