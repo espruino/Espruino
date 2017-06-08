@@ -277,7 +277,7 @@ static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
 }
 
 void jshSetAFPin(GPIO_TypeDef* port, uint16_t pin, uint8_t af) {
-  if(pin > LL_GPIO_PIN_0 && pin <=LL_GPIO_PIN_7){
+  if(pin >= LL_GPIO_PIN_0 && pin <=LL_GPIO_PIN_7){
     LL_GPIO_SetAFPin_0_7(port, pin, af);
   } else {
     LL_GPIO_SetAFPin_8_15(port, pin, af);
@@ -380,20 +380,24 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
 #endif
 #if I2C_COUNT >= 2
   } else if (device==JSH_I2C2) {
-      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C2);
-      else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C2);
+      if(cmd == ENABLE) {
+        LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C2);
+        LL_RCC_SetI2CClockSource(LL_RCC_I2C2_CLKSOURCE_SYSCLK);
+      } else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C2);
       /* Seems some F103 parts require this reset step - some hardware problem */
-      LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C2);
-      LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C2);
+      //LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C2);
+      //LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C2);
       ptr = I2C2;
 #endif
 #if I2C_COUNT >= 3
   } else if (device==JSH_I2C3) {
-      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C3);
-      else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C3);
+      if(cmd == ENABLE) {
+        LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C3);
+        LL_RCC_SetI2CClockSource(LL_RCC_I2C3_CLKSOURCE_SYSCLK);
+      } else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C3);
       /* Seems some F103 parts require this reset step - some hardware problem */
-      LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C3);
-      LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C3);
+      //LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C3);
+      //LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C3);
       ptr = I2C3;
 #endif
   } else if (device==JSH_TIMER1) {
