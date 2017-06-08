@@ -16,6 +16,7 @@
             Puck.js: Fix increased battery drain after NFC usage (fix #1171)
             Puck.js: Fix WS2811 output library that would output bad data after neopixel waveform (fix #1154)
             nRF52: Seed random number generator at boot (fix #1166)
+            Stop trailing decimal point if there are no digits after it - which could cause issues in JSON
             Don't enter debugger if we're in the middle of uploading (echo_off_for_line) (fix #644)
 
      1v92 : nRF5x: Fix issue where Espruino could crash during save() if the flash got into a strange state
