@@ -630,14 +630,18 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
     }
 #ifndef USE_NO_FLOATS
     if (((fractionalDigits<0) && val>0) || fractionalDigits>0) {
-      if (--len <= 0) { *str=0; return; } // bounds check
-      *(str++)='.';
+      bool hasPt = false;
       val*=radix;
       while (((fractionalDigits<0) && (fractionalDigits>-12) && (val > stopAtError)) || (fractionalDigits > 0)) {
         int v = (int)(val+((fractionalDigits==1) ? 0.4 : 0.00000001) );
         val = (val-v)*radix;
+	if (v==radix) v=radix-1;
+        if (!hasPt) {	
+	  hasPt = true;
+          if (--len <= 0) { *str=0; return; } // bounds check
+          *(str++)='.';
+        }
         if (--len <= 0) { *str=0; return; } // bounds check
-        if (v==radix) v=radix-1;
         *(str++)=itoch(v);
         fractionalDigits--;
       }
