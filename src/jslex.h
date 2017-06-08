@@ -20,7 +20,7 @@
 
 typedef enum LEX_TYPES {
     LEX_EOF = 0,
-    LEX_ID = 256,
+    LEX_ID = 128,
     LEX_INT,
     LEX_FLOAT,
     LEX_STR,
@@ -145,10 +145,10 @@ JsVar *jslGetTokenValueAsVar();
 bool jslIsIDOrReservedWord();
 
 // Only for more 'internal' use
-void jslSeek(JslCharPos seekToChar); // like jslSeekTo, but doesn't pre-fill characters
 void jslGetNextToken(); ///< Get the text token from our text string
 
-JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo); // Create a new STRING from part of the lexer
+/// Create a new STRING from part of the lexer
+JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo);
 
 /// Return the line number at the current character position (this isn't fast as it searches the string)
 unsigned int jslGetLineNumber();

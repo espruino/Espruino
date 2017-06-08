@@ -206,7 +206,7 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
 
 // handle a single char
 static ALWAYS_INLINE void jslSingleChar() {
-  lex->tk = lex->currCh;
+  lex->tk = (unsigned char)lex->currCh;
   jslGetNextCh();
 }
 
@@ -600,6 +600,7 @@ void jslSeekTo(size_t seekToChar) {
 }
 
 void jslSeekToP(JslCharPos *seekToChar) {
+  JsVar *v;
   if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
   lex->it = jsvStringIteratorClone(&seekToChar->it);
@@ -776,57 +777,41 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
   size_t maxLength = charTo + 1 - jsvStringIteratorGetIndex(&charFrom->it);
   assert(maxLength>0); // will fail if 0
   // Try and create a flat string first
-  JsVar *var = 0;
-  if (maxLength > JSV_FLAT_STRING_BREAK_EVEN) {
-    var = jsvNewFlatStringOfLength((unsigned int)maxLength);
-    if (var) {
-      // Flat string
-      char *flatPtr = jsvGetFlatStringPointer(var);
-      *(flatPtr++) = charFrom->currCh;
-      JsvStringIterator it = jsvStringIteratorClone(&charFrom->it);
-      while (jsvStringIteratorHasChar(&it) && (--maxLength>0)) {
-        *(flatPtr++) = jsvStringIteratorGetChar(&it);
-        jsvStringIteratorNext(&it);
-      }
-      jsvStringIteratorFree(&it);
-      return var;
-    }
-  }
   // Non-flat string...
-  var = jsvNewFromEmptyString();
+  JsVar *var = jsvNewFromEmptyString();
   if (!var) { // out of memory
     return 0;
   }
 
-  //jsvAppendStringVar(var, lex->sourceVar, charFrom->it->index, (int)(charTo-charFrom));
-  JsVar *block = jsvLockAgain(var);
-  block->varData.str[0] = charFrom->currCh;
-  size_t blockChars = 1;
-
-  size_t l = maxLength;
+  JsvStringIterator dstit;
+  jsvStringIteratorNew(&dstit, var, 0);
   // now start appending
-  JsvStringIterator it = jsvStringIteratorClone(&charFrom->it);
-  while (jsvStringIteratorHasChar(&it) && (--maxLength>0)) {
-    char ch = jsvStringIteratorGetChar(&it);
-    if (blockChars >= jsvGetMaxCharactersInVar(block)) {
-      jsvSetCharactersInVar(block, blockChars);
-      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
-      if (!next) break; // out of memory
-      // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
-      jsvSetLastChild(block, jsvGetRef(next));
-      jsvUnLock(block);
-      block = next;
-      blockChars=0; // it's new, so empty
+  JsLex *oldLex = lex;
+  JsLex newLex;
+  lex = &newLex;
+  jslInit(var);
+  jslSeekToP(charFrom);
+  while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
+    if (lex->tk==LEX_ID ||
+        lex->tk==LEX_INT ||
+        lex->tk==LEX_FLOAT ||
+        lex->tk==LEX_STR ||
+        lex->tk==LEX_TEMPLATE_LITERAL) {
+      jsvStringIteratorAppend(&dstit, lex->tokenStart.currCh);
+      JsvStringIterator it = jsvStringIteratorClone(&lex->tokenStart.it);
+      while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
+        jsvStringIteratorAppend(&dstit, jsvStringIteratorGetChar(&it));
+        jsvStringIteratorNext(&it);
+      }
+      jsvStringIteratorFree(&it);
+    } else {
+      jsvStringIteratorAppend(&dstit, (char)lex->tk);
     }
-    block->varData.str[blockChars++] = ch;
-    jsvStringIteratorNext(&it);
+    jslGetNextToken();
   }
-  jsvSetCharactersInVar(block, blockChars);
-  jsvUnLock(block);
-  // Just make sure we only assert if there's a bug here. If we just ran out of memory or at end of string it's ok
-  assert((l == jsvGetStringLength(var)) || (jsErrorFlags&JSERR_MEMORY) || !jsvStringIteratorHasChar(&it));
-  jsvStringIteratorFree(&it);
-  
+  jsvStringIteratorFree(&dstit);
+  jslKill();
+  lex = oldLex;
 
   return var;
 }
