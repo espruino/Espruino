@@ -24,12 +24,15 @@ typedef enum LEX_TYPES {
     LEX_INT,
     LEX_FLOAT,
     LEX_STR,
+    LEX_UNFINISHED_STR, // always after LEX_STR
     LEX_TEMPLATE_LITERAL,
-    LEX_UNFINISHED_STR,
-    LEX_UNFINISHED_TEMPLATE_LITERAL,
+    LEX_UNFINISHED_TEMPLATE_LITERAL, // always after LEX_TEMPLATE_LITERAL
+    LEX_REGEX,
+    LEX_UNFINISHED_REGEX, // always after LEX_REGEX
     LEX_UNFINISHED_COMMENT,
 
-    LEX_EQUAL,
+_LEX_OPERATOR_START,
+    LEX_EQUAL = _LEX_OPERATOR_START,
     LEX_TYPEEQUAL,
     LEX_NEQUAL,
     LEX_NTYPEEQUAL,
@@ -53,10 +56,13 @@ typedef enum LEX_TYPES {
     LEX_OREQUAL,
     LEX_OROR,
     LEX_XOREQUAL,
+    // Note: single character operators are represented by themselves
+_LEX_OPERATOR_END = LEX_XOREQUAL,
     LEX_ARROW_FUNCTION,
+
     // reserved words
-#define LEX_R_LIST_START LEX_R_IF
-    LEX_R_IF,
+_LEX_R_LIST_START,
+    LEX_R_IF = _LEX_R_LIST_START,
     LEX_R_ELSE,
     LEX_R_DO,
     LEX_R_WHILE,
@@ -87,9 +93,9 @@ typedef enum LEX_TYPES {
     LEX_R_TYPEOF,
     LEX_R_VOID,
     LEX_R_DEBUGGER,
-
-    LEX_R_LIST_END /* always the last entry */
+_LEX_R_LIST_END = LEX_R_DEBUGGER /* always the last entry */
 } LEX_TYPES;
+
 
 typedef struct JslCharPos {
   JsvStringIterator it;
@@ -108,7 +114,7 @@ typedef struct JsLex
   JslCharPos tokenStart; ///< Position in the data at the beginning of the token we have here
   size_t tokenLastStart; ///< Position in the data of the first character of the last token
   char token[JSLEX_MAX_TOKEN_LENGTH]; ///< Data contained in the token we have here
-  JsVar *tokenValue; ///< JsVar containing the current token - used only for strings
+  JsVar *tokenValue; ///< JsVar containing the current token - used only for strings/regex
   unsigned char tokenl; ///< the current length of token
 
   /** Amount we add to the line number when we're reporting to the user

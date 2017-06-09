@@ -210,6 +210,128 @@ static ALWAYS_INLINE void jslSingleChar() {
   jslGetNextCh();
 }
 
+static void jslLexString() {
+  char delim = lex->currCh;
+  lex->tokenValue = jsvNewFromEmptyString();
+  if (!lex->tokenValue) {
+    lex->tk = LEX_EOF;
+    return;
+  }
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, lex->tokenValue, 0);
+  // strings...
+  jslGetNextCh();
+  while (lex->currCh && lex->currCh!=delim) {
+    if (lex->currCh == '\\') {
+      jslGetNextCh();
+      char ch = lex->currCh;
+      switch (lex->currCh) {
+      case 'n'  : ch = 0x0A; jslGetNextCh(); break;
+      case 'b'  : ch = 0x08; jslGetNextCh(); break;
+      case 'f'  : ch = 0x0C; jslGetNextCh(); break;
+      case 'r'  : ch = 0x0D; jslGetNextCh(); break;
+      case 't'  : ch = 0x09; jslGetNextCh(); break;
+      case 'v'  : ch = 0x0B; jslGetNextCh(); break;
+      case 'u' :
+      case 'x' : { // hex digits
+        char buf[5] = "0x??";
+        if (lex->currCh == 'u') {
+          // We don't support unicode, so we just take the bottom 8 bits
+          // of the unicode character
+          jslGetNextCh();
+          jslGetNextCh();
+        }
+        jslGetNextCh();
+        buf[2] = lex->currCh; jslGetNextCh();
+        buf[3] = lex->currCh; jslGetNextCh();
+        ch = (char)stringToInt(buf);
+      } break;
+      default:
+        if (lex->currCh>='0' && lex->currCh<='7') {
+          // octal digits
+          char buf[5] = "0";
+          buf[1] = lex->currCh;
+          int n=2;
+          jslGetNextCh();
+          if (lex->currCh>='0' && lex->currCh<='7') {
+            buf[n++] = lex->currCh; jslGetNextCh();
+            if (lex->currCh>='0' && lex->currCh<='7') {
+              buf[n++] = lex->currCh; jslGetNextCh();
+            }
+          }
+          buf[n]=0;
+          ch = (char)stringToInt(buf);
+        } else {
+          // for anything else, just push the character through
+          jslGetNextCh();
+        }
+        break;
+      }
+      jslTokenAppendChar(ch);
+      jsvStringIteratorAppend(&it, ch);
+    } else if (lex->currCh=='\n' && delim!='`') {
+      /* Was a newline - this is now allowed
+       * unless we're a template string */
+      break;
+    } else {
+      jslTokenAppendChar(lex->currCh);
+      jsvStringIteratorAppend(&it, lex->currCh);
+      jslGetNextCh();
+    }
+  }
+  jsvStringIteratorFree(&it);
+  if (delim=='`')
+    lex->tk = LEX_TEMPLATE_LITERAL;
+  else lex->tk = LEX_STR;
+  // unfinished strings
+  if (lex->currCh!=delim)
+    lex->tk++; // +1 gets you to 'unfinished X'
+  jslGetNextCh();
+}
+
+static void jslLexRegex() {
+  lex->tokenValue = jsvNewFromEmptyString();
+  if (!lex->tokenValue) {
+    lex->tk = LEX_EOF;
+    return;
+  }
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, lex->tokenValue, 0);
+  jsvStringIteratorAppend(&it, '/');
+  // strings...
+  jslGetNextCh();
+  while (lex->currCh && lex->currCh!='/') {
+    if (lex->currCh == '\\') {
+      jsvStringIteratorAppend(&it, lex->currCh);
+      jslGetNextCh();
+    } else if (lex->currCh=='\n') {
+      /* Was a newline - this is now allowed
+       * unless we're a template string */
+      break;
+    }
+    jsvStringIteratorAppend(&it, lex->currCh);
+    jslGetNextCh();
+  }
+  lex->tk = LEX_REGEX;
+  if (lex->currCh!='/') {
+    lex->tk++; // +1 gets you to 'unfinished X'
+  } else {
+    jsvStringIteratorAppend(&it, '/');
+    // regex modifiers
+    if (lex->tk=='g' ||
+        lex->tk=='i' ||
+        lex->tk=='m' ||
+        lex->tk=='y' ||
+        lex->tk=='u') {
+      jslTokenAppendChar(lex->currCh);
+      jsvStringIteratorAppend(&it, lex->currCh);
+      jslGetNextCh();
+    }
+  }
+  jsvStringIteratorFree(&it);
+  jslGetNextCh();
+}
+
 void jslGetNextToken() {
   jslGetNextToken_start:
   // Skip whitespace
@@ -237,6 +359,7 @@ void jslGetNextToken() {
       goto jslGetNextToken_start;
     }
   }
+  int lastToken = lex->tk;
   lex->tk = LEX_EOF;
   lex->tokenl = 0; // clear token string
   if (lex->tokenValue) {
@@ -364,83 +487,7 @@ void jslGetNextToken() {
           }
         }
       } break;
-      case JSLJT_STRING:
-      {
-        char delim = lex->currCh;
-        lex->tokenValue = jsvNewFromEmptyString();
-        if (!lex->tokenValue) {
-          lex->tk = LEX_EOF;
-          return;
-        }
-        JsvStringIterator it;
-        jsvStringIteratorNew(&it, lex->tokenValue, 0);
-        // strings...
-        jslGetNextCh();
-        while (lex->currCh && lex->currCh!=delim) {
-          if (lex->currCh == '\\') {
-            jslGetNextCh();
-            char ch = lex->currCh;
-            switch (lex->currCh) {
-            case 'n'  : ch = 0x0A; jslGetNextCh(); break;
-            case 'b'  : ch = 0x08; jslGetNextCh(); break;
-            case 'f'  : ch = 0x0C; jslGetNextCh(); break;
-            case 'r'  : ch = 0x0D; jslGetNextCh(); break;
-            case 't'  : ch = 0x09; jslGetNextCh(); break;
-            case 'v'  : ch = 0x0B; jslGetNextCh(); break;
-            case 'u' :
-            case 'x' : { // hex digits
-              char buf[5] = "0x??";
-              if (lex->currCh == 'u') {
-                // We don't support unicode, so we just take the bottom 8 bits
-                // of the unicode character
-                jslGetNextCh();
-                jslGetNextCh();
-              }
-              jslGetNextCh();
-              buf[2] = lex->currCh; jslGetNextCh();
-              buf[3] = lex->currCh; jslGetNextCh();
-              ch = (char)stringToInt(buf);
-            } break;
-            default:
-              if (lex->currCh>='0' && lex->currCh<='7') {
-                // octal digits
-                char buf[5] = "0";
-                buf[1] = lex->currCh;
-                int n=2;
-                jslGetNextCh();
-                if (lex->currCh>='0' && lex->currCh<='7') {
-                  buf[n++] = lex->currCh; jslGetNextCh();
-                  if (lex->currCh>='0' && lex->currCh<='7') {
-                    buf[n++] = lex->currCh; jslGetNextCh();
-                  }
-                }
-                buf[n]=0;
-                ch = (char)stringToInt(buf);
-              } else {
-                // for anything else, just push the character through
-                jslGetNextCh();
-              }
-              break;
-            }
-            jslTokenAppendChar(ch);
-            jsvStringIteratorAppend(&it, ch);
-          } else if (lex->currCh=='\n' && delim!='`') {
-            /* Was a newline - this is now allowed
-             * unless we're a template string */
-            break;
-          } else {
-            jslTokenAppendChar(lex->currCh);
-            jsvStringIteratorAppend(&it, lex->currCh);
-            jslGetNextCh();
-          }
-        }
-        jsvStringIteratorFree(&it);
-        if (lex->currCh==delim) {
-          lex->tk =  delim=='`' ? LEX_TEMPLATE_LITERAL : LEX_STR;
-        } else
-          lex->tk =  delim=='`' ? LEX_UNFINISHED_TEMPLATE_LITERAL : LEX_UNFINISHED_STR;
-        jslGetNextCh();
-      } break;
+      case JSLJT_STRING: jslLexString(); break;
       case JSLJT_EXCLAMATION: jslSingleChar();
       if (lex->currCh=='=') { // !=
         lex->tk = LEX_NEQUAL;
@@ -492,10 +539,41 @@ void jslGetNextToken() {
         lex->tk = LEX_MULEQUAL;
         jslGetNextCh();
       } break;
-      case JSLJT_FORWARDSLASH: jslSingleChar();
-      if (lex->currCh=='=') {
-        lex->tk = LEX_DIVEQUAL;
-        jslGetNextCh();
+      case JSLJT_FORWARDSLASH:
+      // yay! JS is so awesome.
+      if (lastToken==LEX_EOF ||
+          lastToken=='!' ||
+          lastToken=='%' ||
+          lastToken=='&' ||
+          lastToken=='*' ||
+          lastToken=='+' ||
+          lastToken=='-' ||
+          lastToken=='/' ||
+          lastToken=='<' ||
+          lastToken=='=' ||
+          lastToken=='>' ||
+          lastToken=='?' ||
+          (lastToken>=_LEX_OPERATOR_START && lastToken<=_LEX_OPERATOR_END) ||
+          (lastToken>=_LEX_R_LIST_START && lastToken<=_LEX_R_LIST_END) || // keywords
+          lastToken==LEX_R_CASE ||
+          lastToken==LEX_R_NEW ||
+          lastToken=='[' ||
+          lastToken=='{' ||
+          lastToken=='}' ||
+          lastToken=='(' ||
+          lastToken==',' ||
+          lastToken==';' ||
+          lastToken==':' ||
+          lastToken==LEX_ARROW_FUNCTION) {
+        // EOF operator keyword case new [ { } ( , ; : =>
+        // phew. We're a regex
+        jslLexRegex();
+      } else {
+        jslSingleChar();
+        if (lex->currCh=='=') {
+          lex->tk = LEX_DIVEQUAL;
+          jslGetNextCh();
+        }
       } break;
       case JSLJT_PERCENT: jslSingleChar();
       if (lex->currCh=='=') {
@@ -631,12 +709,14 @@ void jslTokenAsString(int token, char *str, size_t len) {
   case LEX_INT : strncpy(str, "INT", len); return;
   case LEX_FLOAT : strncpy(str, "FLOAT", len); return;
   case LEX_STR : strncpy(str, "STRING", len); return;
-  case LEX_TEMPLATE_LITERAL : strncpy(str, "TEMPLATE LITERAL", len); return;
   case LEX_UNFINISHED_STR : strncpy(str, "UNFINISHED STRING", len); return;
+  case LEX_TEMPLATE_LITERAL : strncpy(str, "TEMPLATE LITERAL", len); return;
   case LEX_UNFINISHED_TEMPLATE_LITERAL : strncpy(str, "UNFINISHED TEMPLATE LITERAL", len); return;
+  case LEX_REGEX : strncpy(str, "REGEX", len); return;
+  case LEX_UNFINISHED_REGEX : strncpy(str, "UNFINISHED REGEX", len); return;
   case LEX_UNFINISHED_COMMENT : strncpy(str, "UNFINISHED COMMENT", len); return;
   }
-  if (token>=LEX_EQUAL && token<LEX_R_LIST_END) {
+  if (token>=_LEX_OPERATOR_START && token<_LEX_R_LIST_END) {
     const char tokenNames[] =
         /* LEX_EQUAL      :   */ "==\0"
         /* LEX_TYPEEQUAL  :   */ "===\0"
@@ -698,7 +778,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
         /*LEX_R_DEBUGGER : */ "debugger\0"
         ;
     unsigned int p = 0;
-    int n = token-LEX_EQUAL;
+    int n = token-_LEX_OPERATOR_START;
     while (n>0 && p<sizeof(tokenNames)) {
       while (tokenNames[p] && p<sizeof(tokenNames)) p++;
       p++; // skip the zero
@@ -749,7 +829,7 @@ JsVar *jslGetTokenValueAsVar() {
 
 bool jslIsIDOrReservedWord() {
   return lex->tk == LEX_ID ||
-         lex->tk >= LEX_R_LIST_START;
+         (lex->tk >= _LEX_R_LIST_START && lex->tk <= _LEX_R_LIST_END);
 }
 
 /// Match, and return true on success, false on failure
