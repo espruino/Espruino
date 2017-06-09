@@ -277,7 +277,7 @@ static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
 }
 
 void jshSetAFPin(GPIO_TypeDef* port, uint16_t pin, uint8_t af) {
-  if(pin > LL_GPIO_PIN_0 && pin <=LL_GPIO_PIN_7){
+  if(pin >= LL_GPIO_PIN_0 && pin <=LL_GPIO_PIN_7){
     LL_GPIO_SetAFPin_0_7(port, pin, af);
   } else {
     LL_GPIO_SetAFPin_8_15(port, pin, af);
@@ -380,20 +380,24 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
 #endif
 #if I2C_COUNT >= 2
   } else if (device==JSH_I2C2) {
-      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C2);
-      else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C2);
+      if(cmd == ENABLE) {
+        LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C2);
+        LL_RCC_SetI2CClockSource(LL_RCC_I2C2_CLKSOURCE_SYSCLK);
+      } else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C2);
       /* Seems some F103 parts require this reset step - some hardware problem */
-      LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C2);
-      LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C2);
+      //LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C2);
+      //LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C2);
       ptr = I2C2;
 #endif
 #if I2C_COUNT >= 3
   } else if (device==JSH_I2C3) {
-      if(cmd == ENABLE) LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C3);
-      else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C3);
+      if(cmd == ENABLE) {
+        LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C3);
+        LL_RCC_SetI2CClockSource(LL_RCC_I2C3_CLKSOURCE_SYSCLK);
+      } else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C3);
       /* Seems some F103 parts require this reset step - some hardware problem */
-      LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C3);
-      LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C3);
+      //LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C3);
+      //LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_I2C3);
       ptr = I2C3;
 #endif
   } else if (device==JSH_TIMER1) {
@@ -1160,11 +1164,11 @@ bool jshPinGetValue(Pin pin){
 
 /* defines related to ADC operations
  * (See L4 reference manual and examples for more details) */
-#define ADC_CALIBRATION_TIMEOUT_MS        ((uint32_t)   1)
+//#define ADC_CALIBRATION_TIMEOUT_MS        ((uint32_t)   1)
 #define ADC_ENABLE_TIMEOUT_MS             ((uint32_t)   1)
-#define ADC_DISABLE_TIMEOUT_MS            ((uint32_t)   1)
-#define ADC_STOP_CONVERSION_TIMEOUT_MS    ((uint32_t)   1)
-#define ADC_CONVERSION_TIMEOUT_MS         ((uint32_t) 500)
+//#define ADC_DISABLE_TIMEOUT_MS            ((uint32_t)   1)
+//#define ADC_STOP_CONVERSION_TIMEOUT_MS    ((uint32_t)   1)
+//#define ADC_CONVERSION_TIMEOUT_MS         ((uint32_t) 500)
 
 #define ADC_DELAY_CALIB_ENABLE_CPU_CYCLES (LL_ADC_DELAY_CALIB_ENABLE_ADC_CYCLES * 32) // Delay between ADC end of calibration and ADC enable.
 
@@ -1198,53 +1202,16 @@ static NO_INLINE int jshAnalogRead(Pin pin, JsvPinInfoAnalog analog, bool fastCo
   /* Set ADC clock (conversion clock) common to several ADC instances */
   LL_ADC_SetCommonClock(__LL_ADC_COMMON_INSTANCE(ADCx), LL_ADC_CLOCK_SYNC_PCLK_DIV2);
 
-  /* ADC settings */
-  LL_ADC_REG_SetTriggerSource(ADCx, LL_ADC_REG_TRIG_SOFTWARE);
-  LL_ADC_REG_SetContinuousMode(ADCx, LL_ADC_REG_CONV_SINGLE);
-  LL_ADC_REG_SetOverrun(ADCx, LL_ADC_REG_OVR_DATA_OVERWRITTEN);
-  LL_ADC_REG_SetSequencerLength(ADCx, LL_ADC_REG_SEQ_SCAN_DISABLE);
-  LL_ADC_REG_SetSequencerRanks(ADCx, LL_ADC_REG_RANK_1, stmADCChannel(analog));
-  LL_ADC_SetChannelSamplingTime(ADCx, stmADCChannel(analog), LL_ADC_SAMPLINGTIME_47CYCLES_5);
-
-  /* Enable interruption ADC group regular overrun */
-  LL_ADC_EnableIT_OVR(ADCx);
-
   /* Disable ADC deep power down (enabled by default after reset state) */
   LL_ADC_DisableDeepPowerDown(ADCx);
 
   /* Enable ADC internal voltage regulator */
   LL_ADC_EnableInternalRegulator(ADCx);
 
-  /* Delay for ADC internal voltage regulator stabilization.                */
-  /* Compute number of CPU cycles to wait for, from delay in us.            */
-  /* Note: Variable divided by 2 to compensate partially                    */
-  /*       CPU processing cycles (depends on compilation optimization).     */
-  wait_loop_index = ((LL_ADC_DELAY_INTERNAL_REGUL_STAB_US * (SystemCoreClock / (100000 * 2))) / 10);
-  while(wait_loop_index != 0){
-    wait_loop_index--;
-  }
+  jshDelayMicroseconds(1024*10);
 
-  /* Run ADC self calibration */
-  LL_ADC_StartCalibration(ADCx, LL_ADC_SINGLE_ENDED);
-
-  /* Poll for ADC effectively calibrated */
-  Timeout = ADC_CALIBRATION_TIMEOUT_MS;
-
-  while (LL_ADC_IsCalibrationOnGoing(ADCx) != 0){
-    if (LL_SYSTICK_IsActiveCounterFlag()){
-      if(Timeout-- == 0){
-        jsiConsolePrintf("\n  jshAnalogRead Timeout !!!");
-      }
-    }
-  }
-
-  /* Delay between ADC end of calibration and ADC enable.                   */
-  /* Note: Variable divided by 2 to compensate partially                    */
-  /*       CPU processing cycles (depends on compilation optimization).     */
-  wait_loop_index = (ADC_DELAY_CALIB_ENABLE_CPU_CYCLES >> 1);
-  while(wait_loop_index != 0){
-    wait_loop_index--;
-  }
+  /* ADC settings */
+  LL_ADC_REG_SetSequencerRanks(ADCx, LL_ADC_REG_RANK_1, stmADCChannel(analog));
 
   /* Enable ADC */
   LL_ADC_Enable(ADCx);
@@ -1263,7 +1230,7 @@ static NO_INLINE int jshAnalogRead(Pin pin, JsvPinInfoAnalog analog, bool fastCo
   /* Perform ADC group regular conversion start, poll for conversion        */
   LL_ADC_REG_StartConversion(ADCx);
 
-  Timeout = ADC_UNITARY_CONVERSION_TIMEOUT_MS;
+  Timeout = ADC_UNITARY_CONVERSION_TIMEOUT_MS*5;
   while (LL_ADC_IsActiveFlag_EOC(ADCx) == 0){
     if (LL_SYSTICK_IsActiveCounterFlag()){
       if(Timeout-- == 0){
@@ -1272,9 +1239,14 @@ static NO_INLINE int jshAnalogRead(Pin pin, JsvPinInfoAnalog analog, bool fastCo
     }
   }
 
+  LL_ADC_ClearFlag_EOC(ADCx);
+
   /* Retrieve ADC conversion data */
   /* (data scale corresponds to ADC resolution: 12 bits) */
   value = LL_ADC_REG_ReadConversionData12(ADCx);
+
+  LL_AHB2_GRP1_ForceReset(LL_AHB2_GRP1_PERIPH_ADC);
+  LL_AHB2_GRP1_ReleaseReset(LL_AHB2_GRP1_PERIPH_ADC);
 
   return value;
 }
