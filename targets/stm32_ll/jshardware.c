@@ -2077,13 +2077,13 @@ void jshDoSysTick(){
 
 // Get the address to read/write to in order to change the state of this pin. Or 0.
 volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags){
-        return;
+        return 0;
 }
 #endif
 
 /// the temperature from the internal temperature sensor, in degrees C
 JsVarFloat jshReadTemperature(){
-        return;
+        return NAN;
 }
 
 /// The voltage that a reading of 1 from `analogRead` actually represents, in volts
@@ -2103,5 +2103,5 @@ unsigned int jshGetRandomNumber(){
  * to match what gets implemented here. The return value is the clock
  * speed in Hz though. */
 unsigned int jshSetSystemClock(JsVar *options){
-        return;
+        return 0;
 }
