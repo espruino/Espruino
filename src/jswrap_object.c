@@ -276,7 +276,7 @@ void jswrap_object_keys_or_property_names_cb(
     int i;
     for (i=0;i<JSH_PIN_COUNT;i++) {
       char buf[10];
-      jshGetPinString(buf, i);
+      jshGetPinString(buf, (Pin)i);
       JsVar *str = jsvNewFromString(buf);
       callback(data, str);
       jsvUnLock(str);

@@ -774,28 +774,20 @@ bool jslMatch(int expected_tk) {
 }
 
 JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
-  size_t maxLength = charTo + 1 - jsvStringIteratorGetIndex(&charFrom->it);
-  assert(maxLength>0); // will fail if 0
-  // Try and create a flat string first
-  // Non-flat string...
-  JsVar *var = jsvNewFromEmptyString();
-  if (!var) { // out of memory
-    return 0;
-  }
-
-  JsvStringIterator dstit;
-  jsvStringIteratorNew(&dstit, var, 0);
-  // now start appending
+  // save old lex
   JsLex *oldLex = lex;
   JsLex newLex;
   lex = &newLex;
-  jslInit(var);
+  // work out length
+  size_t length = 0;
+  jslInit(oldLex->sourceVar);
   jslSeekToP(charFrom);
   int lastTk = LEX_EOF;
   while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
     if ((lex->tk==LEX_ID || lex->tk==LEX_FLOAT || lex->tk==LEX_INT) &&
         ( lastTk==LEX_ID ||  lastTk==LEX_FLOAT ||  lastTk==LEX_INT)) {
       jsExceptionHere(JSET_SYNTAXERROR, "ID/number following ID/number isn't valid JS");
+      length = 0;
       break;
     }
     if (lex->tk==LEX_ID ||
@@ -803,20 +795,49 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
         lex->tk==LEX_FLOAT ||
         lex->tk==LEX_STR ||
         lex->tk==LEX_TEMPLATE_LITERAL) {
-      jsvStringIteratorAppend(&dstit, lex->tokenStart.currCh);
-      JsvStringIterator it = jsvStringIteratorClone(&lex->tokenStart.it);
-      while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
-        jsvStringIteratorAppend(&dstit, jsvStringIteratorGetChar(&it));
-        jsvStringIteratorNext(&it);
-      }
-      jsvStringIteratorFree(&it);
+      length += jsvStringIteratorGetIndex(&lex->it)-jsvStringIteratorGetIndex(&lex->tokenStart.it);
     } else {
-      jsvStringIteratorAppend(&dstit, (char)lex->tk);
+      length++;
     }
     lastTk = lex->tk;
     jslGetNextToken();
   }
-  jsvStringIteratorFree(&dstit);
+
+  // Try and create a flat string first
+  JsVar *var = 0;
+  if (length/* > JSV_FLAT_STRING_BREAK_EVEN*/) {
+    var = jsvNewFlatStringOfLength((unsigned int)length);
+  }
+  // Non-flat string...
+  if (length && !var)
+    var = jsvNewFromEmptyString();
+  if (var) { // out of memory
+    JsvStringIterator dstit;
+    jsvStringIteratorNew(&dstit, var, 0);
+    // now start appending
+    jslSeekToP(charFrom);
+    while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
+      if (lex->tk==LEX_ID ||
+          lex->tk==LEX_INT ||
+          lex->tk==LEX_FLOAT ||
+          lex->tk==LEX_STR ||
+          lex->tk==LEX_TEMPLATE_LITERAL) {
+        jsvStringIteratorAppendOrSet(&dstit, lex->tokenStart.currCh);
+        JsvStringIterator it = jsvStringIteratorClone(&lex->tokenStart.it);
+        while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
+          jsvStringIteratorAppendOrSet(&dstit, jsvStringIteratorGetChar(&it));
+          jsvStringIteratorNext(&it);
+        }
+        jsvStringIteratorFree(&it);
+      } else {
+        jsvStringIteratorAppendOrSet(&dstit, (char)lex->tk);
+      }
+      lastTk = lex->tk;
+      jslGetNextToken();
+    }
+    jsvStringIteratorFree(&dstit);
+  }
+  // restore lex
   jslKill();
   lex = oldLex;
 

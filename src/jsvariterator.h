@@ -102,6 +102,9 @@ void jsvStringIteratorGotoEnd(JsvStringIterator *it);
 /// Append a character TO THE END of a string iterator
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch);
 
+/// Like append, but works on a string iterator iterating over a flat string
+void jsvStringIteratorAppendOrSet(JsvStringIterator *it, char ch);
+
 /// Append an entire JsVar string TO THE END of a string iterator
 void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str);
 
