@@ -29,7 +29,6 @@ bool isWhitespace(char ch) {
            (ch==0x0B) || // vertical tab
            (ch==0x0C) || // form feed
            (ch==0x20) || // space
-           (((unsigned char)ch)==0xA0) || // no break space
            (ch=='\n') ||
            (ch=='\r');
 }

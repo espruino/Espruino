@@ -791,7 +791,13 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
   lex = &newLex;
   jslInit(var);
   jslSeekToP(charFrom);
+  int lastTk = LEX_EOF;
   while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
+    if ((lex->tk==LEX_ID || lex->tk==LEX_FLOAT || lex->tk==LEX_INT) &&
+        ( lastTk==LEX_ID ||  lastTk==LEX_FLOAT ||  lastTk==LEX_INT)) {
+      jsExceptionHere(JSET_SYNTAXERROR, "ID/number following ID/number isn't valid JS");
+      break;
+    }
     if (lex->tk==LEX_ID ||
         lex->tk==LEX_INT ||
         lex->tk==LEX_FLOAT ||
@@ -807,6 +813,7 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
     } else {
       jsvStringIteratorAppend(&dstit, (char)lex->tk);
     }
+    lastTk = lex->tk;
     jslGetNextToken();
   }
   jsvStringIteratorFree(&dstit);
