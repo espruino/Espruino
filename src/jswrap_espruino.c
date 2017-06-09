@@ -756,7 +756,7 @@ JsVar *jswrap_espruino_memoryArea(int addr, int len) {
   }
   JsVar *v = jsvNewWithFlags(JSV_NATIVE_STRING);
   if (!v) return 0;
-  v->varData.nativeStr.ptr = (char*)addr;
+  v->varData.nativeStr.ptr = (char*)(size_t)addr;
   v->varData.nativeStr.len = (uint16_t)len;
   return v;
 }
