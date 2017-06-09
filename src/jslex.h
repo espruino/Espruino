@@ -20,7 +20,8 @@
 
 typedef enum LEX_TYPES {
     LEX_EOF = 0,
-    LEX_ID = 128,
+    LEX_TOKEN_START = 128,
+    LEX_ID = LEX_TOKEN_START,
     LEX_INT,
     LEX_FLOAT,
     LEX_STR,

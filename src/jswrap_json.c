@@ -216,9 +216,34 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
       if (flags & JSON_LIMIT) {
         cbprintf(user_callback, user_data, "{%s}", JSON_LIMIT_TEXT);
       } else {
-        const char *prefix = jsvIsFunctionReturn(var) ? "return " : "";
-        bool hadNewLine = jsvGetStringIndexOf(codeVar,'\n')>0;
-        cbprintf(user_callback, user_data, hadNewLine?"{\n  %s%v\n}":"{%s%v}", prefix, codeVar);
+        user_callback("{", user_data);
+        if (jsvIsFunctionReturn(var))
+          user_callback("return ", user_data);
+        // reconstruct the tokenised output into something more readable
+        char buf[32];
+        unsigned char lastch = 0;
+        JsvStringIterator it;
+        jsvStringIteratorNew(&it, codeVar, 0);
+
+        while (jsvStringIteratorHasChar(&it)) {
+          unsigned char ch = (unsigned char)jsvStringIteratorGetChar(&it);
+          if ((lastch>=LEX_R_LIST_START || ch>=LEX_R_LIST_START) &&
+              (lastch>=LEX_R_LIST_START || isAlpha(lastch) || isNumeric(lastch)) &&
+              (ch>=LEX_R_LIST_START || isAlpha(ch) || isNumeric(ch)))
+            user_callback(" ", user_data);
+          if (ch >= LEX_TOKEN_START) {
+            jslTokenAsString(ch, buf, sizeof(buf));
+          } else {
+            buf[0] = (char)ch;
+            buf[1] = 0;
+          }
+          user_callback(buf, user_data);
+          jsvStringIteratorNext(&it);
+          lastch = ch;
+        }
+        jsvStringIteratorFree(&it);
+
+        user_callback("}", user_data);
       }
     } else cbprintf(user_callback, user_data, "{}");
   }
