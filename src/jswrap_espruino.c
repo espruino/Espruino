@@ -1177,6 +1177,25 @@ void jswrap_espruino_lockConsole() {
   jsvUnLock(pwd);
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "setTimeZone",
+  "generate" : "jswrap_espruino_setTimeZone",
+  "params" : [
+    ["zone","float","The time zone in hours"]
+  ]
+}
+Set the time zone to be used with `Date` objects.
+
+For example `E.setTimeZone(1)` will be GMT+0100
+*/
+void jswrap_espruino_setTimeZone(JsVarFloat zone) {
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_TIMEZONE_VAR,
+      jsvNewFromInteger((int)(zone*60)));
+}
+
 // ----------------------------------------- USB Specific Stuff
 
 #ifdef USE_USB_HID

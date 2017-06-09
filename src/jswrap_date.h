@@ -24,7 +24,7 @@ typedef struct {
   int day,month,year,dow;
 } CalendarDate;
 
-TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in);
+TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT);
 JsVarFloat fromTimeInDay(TimeInDay *td);
 CalendarDate getCalendarDate(int d);
 int fromCalenderDate(CalendarDate *date);

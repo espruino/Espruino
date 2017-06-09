@@ -44,6 +44,7 @@ JsVar *jswrap_e_dumpStr();
 JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri);
 void jswrap_espruino_setPassword(JsVar *pwd);
 void jswrap_espruino_lockConsole();
+void jswrap_espruino_setTimeZone(JsVarFloat zone);
 
 void jswrap_espruino_setUSBHID(JsVar *arr);
 bool jswrap_espruino_sendUSBHID(JsVar *arr);
