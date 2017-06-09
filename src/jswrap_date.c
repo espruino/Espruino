@@ -168,8 +168,7 @@ JsVarFloat jswrap_date_now() {
 
 JsVar *jswrap_date_from_milliseconds(JsVarFloat time) {
   JsVar *d = jspNewObject(0,"Date");
-  if (!d) return 0;
-  jsvObjectSetChildAndUnLock(d, "ms", jsvNewFromFloat(time));
+  jswrap_date_setTime(d, time);
   return d;
 }
 
@@ -255,6 +254,24 @@ Return the number of milliseconds since 1970
 JsVarFloat jswrap_date_getTime(JsVar *date) {
   return jsvGetFloatAndUnLock(jsvObjectGetChild(date, "ms", 0));
 }
+/*JSON{
+  "type" : "method",
+  "class" : "Date",
+  "name" : "getTime",
+  "generate" : "jswrap_date_setTime",
+  "params" : [
+    ["timeValue","float","the number of milliseconds since 1970"]
+  ],
+  "return" : ["float","the number of milliseconds since 1970"]
+}
+Set the time/date of this Date class
+ */
+JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue) {
+  if (date)
+    jsvObjectSetChildAndUnLock(date, "ms", jsvNewFromFloat(timeValue));
+  return timeValue;
+}
+
 
 static TimeInDay getTimeFromDateVar(JsVar *date) {
   return getTimeFromMilliSeconds(jswrap_date_getTime(date));
@@ -369,6 +386,178 @@ The year, eg. 2014
 int jswrap_date_getFullYear(JsVar *parent) {
   return getCalendarDateFromDateVar(parent).year;
 }
+
+
+/// -------------------------------------------------------
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setHours",
+  "generate" : "jswrap_date_setHours",
+  "params" : [
+    ["hoursValue","int","number of hours, 0..23"],
+    ["minutesValue","JsVar","number of minutes, 0..59"],
+    ["secondsValue","JsVar","optional - number of seconds, 0..59"],
+    ["millisecondsValue","JsVar","optional - number of milliseconds, 0..999"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+0..23
+ */
+JsVarFloat jswrap_date_setHours(JsVar *parent, int hoursValue, JsVar *minutesValue, JsVar *secondsValue, JsVar *millisecondsValue) {
+  TimeInDay td = getTimeFromDateVar(parent);
+  td.hour = hoursValue;
+  if (jsvIsNumeric(minutesValue))
+    td.min = jsvGetInteger(minutesValue);
+  if (jsvIsNumeric(secondsValue))
+    td.sec = jsvGetInteger(secondsValue);
+  if (jsvIsNumeric(millisecondsValue))
+    td.ms = jsvGetInteger(millisecondsValue);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setMinutes",
+  "generate" : "jswrap_date_setMinutes",
+  "params" : [
+    ["minutesValue","int","number of minutes, 0..59"],
+    ["secondsValue","JsVar","optional - number of seconds, 0..59"],
+    ["millisecondsValue","JsVar","optional - number of milliseconds, 0..999"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+0..59
+ */
+JsVarFloat jswrap_date_setMinutes(JsVar *parent, int minutesValue, JsVar *secondsValue, JsVar *millisecondsValue) {
+  TimeInDay td = getTimeFromDateVar(parent);
+  td.min = minutesValue;
+  if (jsvIsNumeric(secondsValue))
+    td.sec = jsvGetInteger(secondsValue);
+  if (jsvIsNumeric(millisecondsValue))
+    td.ms = jsvGetInteger(millisecondsValue);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setSeconds",
+  "generate" : "jswrap_date_setSeconds",
+  "params" : [
+    ["secondsValue","int","number of seconds, 0..59"],
+    ["millisecondsValue","JsVar","optional - number of milliseconds, 0..999"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+0..59
+ */
+JsVarFloat jswrap_date_setSeconds(JsVar *parent, int secondsValue, JsVar *millisecondsValue) {
+  TimeInDay td = getTimeFromDateVar(parent);
+  td.sec = secondsValue;
+  if (jsvIsNumeric(millisecondsValue))
+    td.ms = jsvGetInteger(millisecondsValue);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setMilliseconds",
+  "generate" : "jswrap_date_setMilliseconds",
+  "params" : [
+    ["millisecondsValue","int","number of milliseconds, 0..999"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+ */
+JsVarFloat jswrap_date_setMilliseconds(JsVar *parent, int millisecondsValue) {
+  TimeInDay td = getTimeFromDateVar(parent);
+  td.ms = millisecondsValue;
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setDate",
+  "generate" : "jswrap_date_setDate",
+  "params" : [
+    ["dayValue","int","the day of the month, between 0 and 31"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+Day of the month 1..31
+ */
+JsVarFloat jswrap_date_setDate(JsVar *parent, int dayValue) {
+  TimeInDay td = getTimeFromDateVar(parent);
+  CalendarDate d = getCalendarDate(td.daysSinceEpoch);
+  d.day = dayValue;
+  td.daysSinceEpoch = fromCalenderDate(&d);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setMonth",
+  "generate" : "jswrap_date_setMonth",
+  "params" : [
+    ["yearValue","int","The month, between 0 and 11"],
+    ["dayValue","JsVar","optional - the day, between 0 and 31"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+Month of the year 0..11
+ */
+JsVarFloat jswrap_date_setMonth(JsVar *parent, int monthValue, JsVar *dayValue) {
+  TimeInDay td = getTimeFromDateVar(parent);
+  CalendarDate d = getCalendarDate(td.daysSinceEpoch);
+  d.month = monthValue;
+  if (jsvIsNumeric(dayValue))
+    d.day = jsvGetInteger(dayValue);
+  td.daysSinceEpoch = fromCalenderDate(&d);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setFullYear",
+  "generate" : "jswrap_date_setFullYear",
+  "params" : [
+    ["yearValue","int","The full year - eg. 1989"],
+    ["yearValue","JsVar","optional - the month, between 0 and 11"],
+    ["dayValue","JsVar","optional - the day, between 0 and 31"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+ */
+JsVarFloat jswrap_date_setFullYear(JsVar *parent, int yearValue, JsVar *monthValue, JsVar *dayValue) {
+  TimeInDay td = getTimeFromDateVar(parent);
+  CalendarDate d = getCalendarDate(td.daysSinceEpoch);
+  d.year = yearValue;
+  if (jsvIsNumeric(monthValue))
+    d.month = jsvGetInteger(monthValue);
+  if (jsvIsNumeric(dayValue))
+    d.day = jsvGetInteger(dayValue);
+  td.daysSinceEpoch = fromCalenderDate(&d);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+
+/// -------------------------------------------------------
+
 
 /*JSON{
   "type" : "method",
