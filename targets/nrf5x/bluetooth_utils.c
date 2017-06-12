@@ -200,7 +200,8 @@ uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
       return BLE_GATT_HANDLE_INVALID;
     } else if (err_code == NRF_SUCCESS) {
       // Valid handle => check if UUID matches
-      if (uuid_it.uuid == char_uuid.uuid)
+      if (uuid_it.uuid == char_uuid.uuid &&
+          uuid_it.type == char_uuid.type)
         return char_handle;
     } else {
       APP_ERROR_CHECK(err_code);

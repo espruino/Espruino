@@ -333,7 +333,6 @@ void jswrap_nrf_bluetooth_sleep() {
     err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     jsble_check_error(err_code);
   }
-
 }
 
 /*JSON{
@@ -854,21 +853,41 @@ NRF.updateServices({
 });
 ```
 
-To notify connected clients of a change to the '0xABCD' characteristic in the '0xBCDE' service:
+You can also use 128 bit UUIDs, for example `"b7920001-3c1b-4b40-869f-3c0db9be80c6"`.
+
+To define a service and characteristic and then notify connected clients of a
+change to it when a button is pressed:
+
 ```
-NRF.updateServices({
+NRF.setServices({
   0xBCDE : {
     0xABCD : {
-      value : "World",
+      value : "Hello",
+      maxLen : 20,
       notify: true
     }
   }
 });
+setWatch(function() {
+  NRF.updateServices({
+    0xBCDE : {
+      0xABCD : {
+        value : "World!",
+        notify: true
+      }
+    }
+  });
+}, BTN, { repeat:true, edge:"rising", debounce: 50 });
 ```
+
 This only works if the characteristic was created with `notify: true` using `setServices`,
 otherwise the characteristic will be updated but no notification will be sent.
 
+Also note that `maxLen` was specified. If it wasn't then the maximum length of
+the characteristic would have been 5 - the length of `"Hello"`.
+
 To indicate (i.e. notify with ACK) connected clients of a change to the '0xABCD' characteristic in the '0xBCDE' service:
+
 ```
 NRF.updateServices({
   0xBCDE : {
@@ -879,10 +898,11 @@ NRF.updateServices({
   }
 });
 ```
+
 This only works if the characteristic was created with `indicate: true` using `setServices`,
 otherwise the characteristic will be updated but no notification will be sent.
 
-**Note:** See `setServices` for more information
+**Note:** See `NRF.setServices` for more information
 */
 void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
   uint32_t err_code;
