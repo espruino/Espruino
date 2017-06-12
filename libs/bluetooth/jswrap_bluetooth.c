@@ -310,21 +310,30 @@ void jswrap_nrf_bluetooth_disconnect() {
     "name" : "sleep",
     "generate" : "jswrap_nrf_bluetooth_sleep"
 }
-Disable Bluetooth communications
+Disable Bluetooth advertising and disconnect from any device that
+connected to Puck.js as a peripheral (this won't affect any devices
+that Puck.js initiated connections to).
+
+This makes Puck.js undiscoverable, so it can't be connected to.
+
+Use `NRF.wake()` to wake up and make Puck.js connectable again.
 */
 void jswrap_nrf_bluetooth_sleep() {
   uint32_t err_code;
 
+  // set as sleeping
+  bleStatus |= BLE_IS_SLEEPING;
+  // stop advertising
+  if (bleStatus & BLE_IS_ADVERTISING)
+    jsble_advertising_stop();
+  bleStatus &= ~BLE_IS_ADVERTISING;
   // If connected, disconnect.
   if (jsble_has_simple_connection()) {
+    // when we disconnect, we'll see BLE_IS_SLEEPING and won't advertise
     err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     jsble_check_error(err_code);
   }
 
-  // Stop advertising
-  if (bleStatus & BLE_IS_ADVERTISING)
-    jsble_advertising_stop();
-  bleStatus |= BLE_IS_SLEEPING;
 }
 
 /*JSON{
@@ -333,7 +342,10 @@ void jswrap_nrf_bluetooth_sleep() {
     "name" : "wake",
     "generate" : "jswrap_nrf_bluetooth_wake"
 }
-Enable Bluetooth communications (they are enabled by default)
+Enable Bluetooth advertising (this is enabled by default), which
+allows other devices to discover and connect to Puck.js.
+
+Use `NRF.sleep()` to disable advertising.
 */
 void jswrap_nrf_bluetooth_wake() {
   bleStatus &= ~BLE_IS_SLEEPING;
