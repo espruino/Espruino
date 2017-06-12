@@ -1524,11 +1524,8 @@ void jsble_advertising_start() {
 }
 
 void jsble_advertising_stop() {
-  uint32_t err_code;
-
   if (!(bleStatus & BLE_IS_ADVERTISING)) return;
-  err_code = sd_ble_gap_adv_stop();
-  APP_ERROR_CHECK(err_code);
+  sd_ble_gap_adv_stop();
   bleStatus &= ~BLE_IS_ADVERTISING;
 }
 
