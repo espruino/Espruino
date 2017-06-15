@@ -370,7 +370,7 @@ Stop listening for new HTTP connections
   "params" : [
     ["data","JsVar","A string containing data to send"]
   ],
-  "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
+  "return" : ["bool","For node.js compatibility, returns the boolean false. When the send buffer is empty, a `drain` event will be sent"]
 }
 This function writes the `data` argument as a string. Data that is passed in
 (including arrays) will be converted to a string with the normal JavaScript 
@@ -424,7 +424,7 @@ void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
   "params" : [
     ["data","JsVar","A string containing data to send"]
   ],
-  "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
+  "return" : ["bool","For node.js compatibility, returns the boolean false. When the send buffer is empty, a `drain` event will be sent"]
 }
 This function writes the `data` argument as a string. Data that is passed in
 (including arrays) will be converted to a string with the normal JavaScript 
