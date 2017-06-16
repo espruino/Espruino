@@ -54,14 +54,6 @@ ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
 endif
 
-ifndef PYTHON
-ifneq "$(findstring Python 3, $(shell python --version 2>&1))" ""
-PYTHON=python2.7
-else
-PYTHON=python
-endif
-endif
-
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS=
 DEFINES=
@@ -164,7 +156,7 @@ endif
 # ---------------------------------------------------------------------------------
 # TODO: could check board here and make clean if it's different?
 $(shell rm -f CURRENT_BOARD.make)
-$(shell $(PYTHON) scripts/get_makefile_decls.py $(BOARD) > CURRENT_BOARD.make)
+$(shell python scripts/get_makefile_decls.py $(BOARD) > CURRENT_BOARD.make)
 include CURRENT_BOARD.make
 
 #set or reset defines like USE_GRAPHIC from an external file to customize firmware
@@ -702,34 +694,34 @@ boardjson: scripts/build_board_json.py $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
 ifdef USE_NET
         # hack to ensure that Pico/etc have all possible firmware configs listed
-	$(Q)$(PYTHON) scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -DUSE_WIZNET=1 -DUSE_CC3000=1 -B$(BOARD)
+	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -DUSE_WIZNET=1 -DUSE_CC3000=1 -B$(BOARD)
 else
-	$(Q)$(PYTHON) scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
+	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 endif
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
-	$(Q)$(PYTHON) scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
+	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
 
 ifdef PININFOFILE
 $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 	@echo Generating pin info
-	$(Q)$(PYTHON) scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
+	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
 ifndef NRF5X # nRF5x devices use their own linker files that aren't automatically generated.
 ifndef EFM32
 $(LINKER_FILE): scripts/build_linker.py
 	@echo Generating linker scripts
-	$(Q)$(PYTHON) scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
 endif # EFM32
 endif # NRF5X
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
-	$(Q)$(PYTHON) scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
+	$(Q)python scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
 
 # skips compiling and linking, if NO_COMPILE is defined
 # Generation of temporary files and setting of wrappersources is already done this moment
