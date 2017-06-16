@@ -28,6 +28,8 @@ if silent:
   class Discarder(object):
     def write(self, text):
         pass # do nothing
+    def flush(self):
+        pass # do nothing
   # now discard everything coming out of stdout
   sys.stdout = Discarder()
 
