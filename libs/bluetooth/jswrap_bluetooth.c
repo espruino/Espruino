@@ -491,6 +491,13 @@ NRF.setAdvertising([
   interval: 600 // Advertising interval in msec, between 20 and 10000
 }
 ```
+
+So for instance to set the name of Puck.js you can just use the command:
+
+```
+NRF.setAdvertising({},{name:"Hello"});
+```
+
 */
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   uint32_t err_code;
