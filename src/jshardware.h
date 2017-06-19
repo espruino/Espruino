@@ -238,6 +238,7 @@ typedef struct {
   unsigned char parity;    ///< 0=none, 1=odd, 2=even
   unsigned char stopbits;  ///< 1 or 2
   bool xOnXOff;            ///< XON XOFF flow control?
+  bool errorHandling;      ///< Whether to forward parity/framing errors
 } PACKED_FLAGS JshUSARTInfo;
 
 /// Initialise a JshUSARTInfo struct to default settings

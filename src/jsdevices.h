@@ -190,4 +190,10 @@ typedef void(*JshEventCallbackCallback)(bool state, IOEventFlags flags);
 /// Set a callback function to be called when an event occurs
 void jshSetEventCallback(IOEventFlags channel, JshEventCallbackCallback callback);
 
+/// Set whether a Serial device puts framing/parity errors into the input queue
+void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling);
+
+/// Get whether a Serial device puts framing/parity errors into the input queue
+bool jshGetErrorHandlingEnabled(IOEventFlags device); 
+
 #endif /* JSDEVICES_H_ */

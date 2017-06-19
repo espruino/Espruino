@@ -280,15 +280,17 @@ void RTC_WKUP_IRQHandler(void)
 }
 #endif
 
-static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
+NO_INLINE static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
   if (USART_GetFlagStatus(USART, USART_FLAG_FE) != RESET) {
     // If we have a framing error, push status info onto the event queue
-    jshPushIOEvent(
+    if (jshGetErrorHandlingEnabled(device))
+      jshPushIOEvent(
         IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
   }
   if (USART_GetFlagStatus(USART, USART_FLAG_PE) != RESET) {
     // If we have a parity error, push status info onto the event queue
-    jshPushIOEvent(
+    if (jshGetErrorHandlingEnabled(device))
+      jshPushIOEvent(
         IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_PARITY_ERR, 0);
   }
   if(USART_GetITStatus(USART, USART_IT_RXNE) != RESET) {
@@ -391,4 +393,3 @@ void SDIO_IRQHandler(void)
 }
 #endif
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
-

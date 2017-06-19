@@ -1980,6 +1980,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   jshSetDeviceInitialised(device, true);
 
   jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
+  jshSetErrorHandlingEnabled(device, inf->errorHandling);
 
   JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
   if (funcType==0) return; // not a proper serial port, ignore it
@@ -2989,4 +2990,3 @@ unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
 #endif
 }
-

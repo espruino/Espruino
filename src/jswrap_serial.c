@@ -46,8 +46,12 @@ but the `STOP` bit wasn't in the correct place. This is either because there
 was noise on the line, or the line has been pulled to 0 for a long period
 of time.
 
+To enable this, you must initialise Serial with `SerialX.setup(..., { ..., errors:true });`
+
 **Note:** Even though there was an error, the byte will still be received and
 passed to the `data` handler.
+
+**Note:** This only works on STM32 and NRF52 based devices (eg. all official Espruino boards)
  */
 /*JSON{
   "type" : "event",
@@ -57,8 +61,12 @@ passed to the `data` handler.
 The `parity` event is called when the UART was configured with a parity bit,
 and this doesn't match the bits that have actually been received.
 
+To enable this, you must initialise Serial with `SerialX.setup(..., { ..., errors:true });`
+
 **Note:** Even though there was an error, the byte will still be received and
 passed to the `data` handler.
+
+**Note:** This only works on STM32 and NRF52 based devices (eg. all official Espruino boards)
  */
 // this is created in jsiIdle based on EV_SERIALx_STATUS ecents
 
@@ -192,13 +200,15 @@ Setup this Serial port with the given baud rate and options.
 {
   rx:pin,                           // Receive pin (data in to Espruino)
   tx:pin,                           // Transmit pin (data out of Espruino)
-  ck:pin,                           // Clock Pin
-  cts:pin,                          // Clear to Send Pin
-  bytesize:8,                       // How many data bits - 7 or 8
-  parity:null/'none'/'o'/'odd'/'e'/'even', // Parity bit
-  stopbits:1,                       // Number of stop bits to use
-  flow:null/undefined/'none'/'xon', // software flow control
+  ck:pin,                           // (default none) Clock Pin
+  cts:pin,                          // (default none) Clear to Send Pin
+  bytesize:8,                       // (default 8)How many data bits - 7 or 8
+  parity:null/'none'/'o'/'odd'/'e'/'even', 
+                                    // (default none) Parity bit
+  stopbits:1,                       // (default 1) Number of stop bits to use
+  flow:null/undefined/'none'/'xon', // (default none) software flow control
   path:null/undefined/string        // Linux Only - the path to the Serial device to use
+  errors:false                      // (default false) whether to forward framing/parity errors
 }
 ```
 
@@ -217,6 +227,13 @@ port as well - until you set them to something else using `digitalWrite` or
 Flow control can be xOn/xOff (`flow:'xon'`) or hardware flow control
 (receive only) if `cts` is specified. If `cts` is set to a pin, the
 pin's value will be 0 when Espruino is ready for data and 1 when it isn't.
+
+By default, framing or parity errors don't create `framing` or `parity` events
+on the `Serial` object because storing these errors uses up additional
+storage in the queue. If you're intending to receive a lot of malformed
+data then the queue mioght overflow `E.getErrorFlags()` would return `FIFO_FULL`.
+However if you need to respond to `framing` or `parity` errors then 
+you'll need to use `errors:true` when initialising serial.
 */
 void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
@@ -243,6 +260,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
       {"path", JSV_STRING_0, &path},
       {"parity", JSV_OBJECT /* a variable */, &parity},
       {"flow", JSV_OBJECT /* a variable */, &flow},
+      {"errors", JSV_BOOLEAN, &inf.errorHandling},
   };
 
 

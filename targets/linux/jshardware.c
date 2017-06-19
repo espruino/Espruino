@@ -617,6 +617,12 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   assert(DEVICE_IS_USART(device));
   if (ioDevices[device]) close(ioDevices[device]);
   ioDevices[device] = 0;
+  
+  if (inf->errorHandling) {
+    jsExceptionHere(JSET_ERROR, "Linux Espruino builds can't handle framing/parity errors (errors:true)");
+    return;
+  } 
+  
   char path[256];
   if (jshGetDevicePath(device, path, sizeof(path))) {
     ioDevices[device] = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK);
