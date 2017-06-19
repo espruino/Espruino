@@ -32,6 +32,7 @@
 #define HID_MODIFIER_KEY_POS                 0                                       /**< Position of the modifier byte in the Input Report. */
 #define HID_SCAN_CODE_POS                    2                                       /**< This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code. */
 
+#define DEFAULT_ADVERTISING_INTERVAL    MSEC_TO_UNITS(375, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
 
 
 typedef enum  {
@@ -69,8 +70,6 @@ extern uint16_t                         m_central_conn_handle; /**< Handle for c
 void jsble_init();
 /** Completely deinitialise the BLE stack */
 void jsble_kill();
-/** Reset BLE to power-on defaults (ish) */
-void jsble_reset();
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */

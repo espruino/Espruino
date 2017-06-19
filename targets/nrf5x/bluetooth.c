@@ -71,7 +71,6 @@ static bool           m_is_wl_changed;                                      /**<
 #define SCAN_INTERVAL                   MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan interval in units of 0.625 millisecond - 100 msec */
 #define SCAN_WINDOW                     MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan window in units of 0.625 millisecond - 100 msec */
 
-#define ADVERTISING_INTERVAL            MSEC_TO_UNITS(375, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
@@ -106,7 +105,7 @@ uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_INVALID
 bool nfcEnabled = false;
 #endif
 
-uint16_t bleAdvertisingInterval = ADVERTISING_INTERVAL;
+uint16_t bleAdvertisingInterval = DEFAULT_ADVERTISING_INTERVAL;
 
 volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
@@ -1567,25 +1566,6 @@ void jsble_kill() {
   APP_ERROR_CHECK(err_code);
 }
 
-/** Reset BLE to power-on defaults (ish) */
-void jsble_reset() {
-  // if we were scanning, make sure we stop at reset!
-  if (bleStatus & BLE_IS_SCANNING) {
-    jswrap_nrf_bluetooth_setScan(0);
-  }
-  jswrap_nrf_bluetooth_setRSSIHandler(0);
-
-#if CENTRAL_LINK_COUNT>0
-  // if we were connected to something, disconnect
-  if (jsble_has_central_connection()) {
-     sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-  }
-#endif
-  // make sure we remove any existing services *AND* HID/UART changes
-  jswrap_nrf_bluetooth_setServices(0, 0);
-  // Set advertising interval back to default
-  bleAdvertisingInterval = ADVERTISING_INTERVAL;
-}
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */
@@ -1600,28 +1580,6 @@ void jsble_restart_softdevice() {
 
   jsble_kill();
   jsble_init();
-  // If we had services set, update them
-  JsVar *services = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
-  if (services) jsble_set_services(services);
-  jsvUnLock(services);
-
-  // If we had advertising data set, update it
-  JsVar *advData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
-  JsVar *advOpt = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, 0);
-  if (advData || advOpt) jswrap_nrf_bluetooth_setAdvertising(advData, advOpt);
-  jsvUnLock2(advData, advOpt);
-
-  // If we had scan response data set, update it
-  JsVar *scanData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, 0);
-  if (scanData) jswrap_nrf_bluetooth_setScanResponse(scanData);
-  jsvUnLock(scanData);
-
-  // if we were scanning, make sure we restart
-  if (bleStatus & BLE_IS_SCANNING) {
-    JsVar *callback = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT, 0);
-    jswrap_nrf_bluetooth_setScan(callback);
-    jsvUnLock(callback);
-  }
 }
 
 uint32_t jsble_set_scanning(bool enabled) {

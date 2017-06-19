@@ -127,8 +127,9 @@ void jswrap_nrf_init() {
   // Turn off sleeping if it was on before
   jsiStatus &= ~BLE_IS_SLEEPING;
 
-#ifdef USE_NFC
+
   if (jsiStatus & JSIS_COMPLETELY_RESET) {
+#ifdef USE_NFC
 #ifdef PUCKJS
     // By default Puck.js's NFC will send you to the PuckJS website
     // address is included so Web Bluetooth can connect to the correct one
@@ -138,7 +139,9 @@ void jswrap_nrf_init() {
     jswrap_nrf_nfcURL(uri);
     jsvUnLock(uri);
 #endif
+#endif
   } else {
+#ifdef USE_NFC
     // start NFC, if it had been set
     JsVar *flatStr = jsvObjectGetChild(execInfo.hiddenRoot, "NFC", 0);
     if (flatStr) {
@@ -146,8 +149,32 @@ void jswrap_nrf_init() {
       if (flatStrPtr) jsble_nfc_start(flatStrPtr, jsvGetLength(flatStr));
       jsvUnLock(flatStr);
     }
-  }
 #endif
+  }
+  // Set advertising interval back to default
+  bleAdvertisingInterval = DEFAULT_ADVERTISING_INTERVAL;
+  // restart various
+  JsVar *v,*o;
+  v = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT,0);
+  if (v) jsble_set_scanning(true);
+  jsvUnLock(v);
+  v = jsvObjectGetChild(execInfo.root, BLE_RSSI_EVENT,0);
+  if (v) jsble_set_rssi_scan(true);
+  jsvUnLock(v);
+  // advertising
+  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
+  o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, 0);
+  jswrap_nrf_bluetooth_setAdvertising(v, o);
+  jsvUnLock2(v,o);
+  // services
+  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
+  o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS, 0);
+  jswrap_nrf_bluetooth_setServices(v, o);
+  jsvUnLock2(v,o);
+  // If we had scan response data set, update it
+  JsVar *scanData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, 0);
+  if (scanData) jswrap_nrf_bluetooth_setScanResponse(scanData);
+  jsvUnLock(scanData);
 }
 
 /*JSON{
@@ -171,8 +198,16 @@ void jswrap_nrf_kill() {
   bleTask = BLETASK_NONE;
   if (blePromise) jsvUnLock(blePromise);
   blePromise = 0;
+  // if we were scanning, make sure we stop
+  jsble_set_scanning(false);
+  jsble_set_rssi_scan(false);
 
-  jsble_reset();
+#if CENTRAL_LINK_COUNT>0
+  // if we were connected to something, disconnect
+  if (jsble_has_central_connection()) {
+     sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+  }
+#endif
 }
 
 // ------------------------------------------------------------------------------
@@ -819,8 +854,9 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
     jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_NUS, jsvNewFromBool(false));
   }
 
-  // Save the current service data
+  // Save the current service data and options
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, data);
+  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS, options);
   // Service UUIDs to advertise
   if (advertise) bleStatus|=BLE_NEEDS_SOFTDEVICE_RESTART;
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_ADVERTISE, advertise);
