@@ -503,15 +503,19 @@ NRF.setAdvertising([0x03,  // Length of Service List
     {interval:100});
 ```
 
+**Note:** When specifying data as an array, certain advertising options such as
+`discoverable` and `showName` won't have any effect.
+
 You can even specify an array of arrays, in which case each advertising packet
-will be iterated over in turn - for instance to make your device advertise
+will be used in turn - for instance to make your device advertise
 both Eddystone and iBeacon:
 
 ```
 NRF.setAdvertising([
-[0x03,0x03,0xAA,0xFE,0x13,0x16,0xAA,0xFE,0x10,0xF8,0x03,'g','o','o','.','g','l','/','C','H','o','J','H','0'],
-[....],
-[....],
+  require("ble_ibeacon").get(...),
+  require("ble_eddystone").get(...),
+  [....],
+  [....],
 ],{interval:500});
 ```
 
@@ -547,15 +551,6 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
 
   if (jsvIsObject(options)) {
     JsVar *v;
-    v = jsvObjectGetChild(options, "showName", 0);
-    if (v) advdata.name_type = jsvGetBoolAndUnLock(v) ?
-        BLE_ADVDATA_FULL_NAME :
-        BLE_ADVDATA_NO_NAME;
-
-    v = jsvObjectGetChild(options, "discoverable", 0);
-    if (v) advdata.flags = jsvGetBoolAndUnLock(v) ?
-        BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE :
-        BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
 
     v = jsvObjectGetChild(options, "interval", 0);
     if (v) {
@@ -644,7 +639,7 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     advdata.service_data_count   = n;
     advdata.p_service_data_array = service_data;
   } else if (!jsvIsUndefined(data)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting object or undefined, got %t", data);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
     return;
   }
 
@@ -654,6 +649,81 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   jsble_check_error(err_code);
   if (bleChanged && isAdvertising)
     jsble_advertising_start();
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "getAdvertisingData",
+    "generate" : "jswrap_nrf_bluetooth_getAdvertisingData",
+    "params" : [
+      ["data","JsVar","The data to advertise as an object"],
+      ["options","JsVar","An optional object of options"]
+    ],
+    "return" : ["JsVar", "An array containing the advertising data" ]
+}
+This is just like `NRF.setAdvertising`, except instead of advertising
+the data, it returns the packet that would be advertised as an array.
+*/
+JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
+  uint32_t err_code;
+  ble_advdata_t advdata;
+  jsble_setup_advdata(&advdata);
+  bool bleChanged = false;
+
+  if (jsvIsObject(options)) {
+    JsVar *v;
+    v = jsvObjectGetChild(options, "showName", 0);
+    if (v) advdata.name_type = jsvGetBoolAndUnLock(v) ?
+        BLE_ADVDATA_FULL_NAME :
+        BLE_ADVDATA_NO_NAME;
+
+    v = jsvObjectGetChild(options, "discoverable", 0);
+    if (v) advdata.flags = jsvGetBoolAndUnLock(v) ?
+        BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE :
+        BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+  } else if (!jsvIsUndefined(options)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting 'options' to be object or undefined, got %t", options);
+    return 0;
+  }
+
+  if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
+    return jsvLockAgain(data);
+  }
+  else if (jsvIsObject(data)) {
+    ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
+    int n = 0;
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, data);
+    while (jsvObjectIteratorHasValue(&it)) {
+      service_data[n].service_uuid = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
+      JsVar *v = jsvObjectIteratorGetValue(&it);
+      JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, v);
+      jsvUnLock(v);
+      service_data[n].data.size    = dLen;
+      service_data[n].data.p_data  = (uint8_t*)dPtr;
+      jsvObjectIteratorNext(&it);
+      n++;
+    }
+    jsvObjectIteratorFree(&it);
+
+    advdata.service_data_count   = n;
+    advdata.p_service_data_array = service_data;
+
+    uint32_t  err_code;
+    uint16_t  len_advdata = BLE_GAP_ADV_MAX_SIZE;
+    uint8_t   encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
+    uint8_t * p_encoded_advdata;
+
+    err_code = advdata_check(&advdata);
+    if (jsble_check_error(err_code)) return 0;
+    err_code = adv_data_encode(&advdata, encoded_advdata, &len_advdata);
+    if (jsble_check_error(err_code)) return 0;
+    return jsvNewArrayBufferWithData(len_advdata, encoded_advdata);
+  } else if (!jsvIsUndefined(data)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
+    return 0;
+  }
 }
 
 /*JSON{
