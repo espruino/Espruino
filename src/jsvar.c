@@ -3528,6 +3528,18 @@ JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr) {
   return arr;
 }
 
+JsVar *jsvNewArrayBufferWithData(JsVarInt length, unsigned char *data) {
+  assert(data);
+  JsVar *dst = 0;
+  JsVar *arr = jsvNewArrayBufferWithPtr(length, &dst);
+  if (!dst) {
+    jsvUnLock(arr);
+    return 0;
+  }
+  memcpy(dst, data, length);
+  return arr;
+}
+
 void *jsvMalloc(size_t size) {
   /** Allocate flat string, return pointer to its first element.
    * As we drop the pointer here, it's left locked. jsvGetFlatStringPointer
