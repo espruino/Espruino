@@ -74,7 +74,7 @@ bool net_cc3000_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_cc3000_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
+int net_cc3000_createsocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType) {
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
 

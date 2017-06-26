@@ -22,6 +22,16 @@
 #define NETWORK_VAR_NAME "net"
 
 typedef enum {
+  ST_NORMAL = 0, // standard socket client/server
+  ST_HTTP   = 1, // HTTP client/server
+  // WebSockets?
+  // UDP?
+
+  ST_TYPE_MASK = 3,
+  ST_TLS    = 4, // do the given connection with TLS
+} SocketType;
+
+typedef enum {
   NETWORKSTATE_OFFLINE,
   NETWORKSTATE_CONNECTED, // connected but not online (no DHCP)
   NETWORKSTATE_ONLINE, // DHCP (or manual address)
@@ -62,7 +72,7 @@ typedef struct JsNetwork {
   bool (*checkError)(struct JsNetwork *net);
 
   /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-  int (*createsocket)(struct JsNetwork *net, uint32_t host, unsigned short port);
+  int (*createsocket)(struct JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType);
   /// destroys the given socket
   void (*closesocket)(struct JsNetwork *net, int sckt);
   /// If the given server socket can accept a connection, return it (or return < 0)
@@ -100,16 +110,11 @@ void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *
 /** Some devices (CC3000) store the IP address with the first element last, so we must flip it */
 unsigned long networkFlipIPAddress(unsigned long addr);
 
-typedef enum {
-  NCF_NORMAL = 0,
-  NCF_TLS = 1
-} NetCreateFlags;
-
 /// Check for any errors and try and recover (CC3000 only really)
 bool netCheckError(JsNetwork *net);
 
 /// Create a socket (server (host==0) or client)
-int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags, JsVar *options);
+int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType, JsVar *options);
 
 /// Ask this socket to close - it may not close immediately
 void netCloseSocket(JsNetwork *net, int sckt);

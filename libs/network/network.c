@@ -668,14 +668,14 @@ bool netCheckError(JsNetwork *net) {
   return net->checkError(net);
 }
 
-int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags, JsVar *options) {
-  int sckt = net->createsocket(net, host, port);
+int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType, JsVar *options) {
+  int sckt = net->createsocket(net, host, port, socketType);
   if (sckt<0) return sckt;
 
 #ifdef USE_TLS
   assert(sckt>=0 && sckt<32);
   BITFIELD_SET(socketIsHTTPS, sckt, 0);
-  if (flags & NCF_TLS) {
+  if (socketType & ST_TLS) {
     if (ssl_newSocketData(sckt, options)) {
       BITFIELD_SET(socketIsHTTPS, sckt, 1);
     } else {

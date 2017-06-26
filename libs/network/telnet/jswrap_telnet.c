@@ -181,7 +181,7 @@ bool jswrap_telnet_idle(void) {
 void telnetStart(JsNetwork *net) {
   // create the listening socket
   printf("tnSrv: creating...\n");
-  int sock = netCreateSocket(net, 0, PORT, NCF_NORMAL, NULL)+1;
+  int sock = netCreateSocket(net, 0, PORT, ST_NORMAL, NULL)+1;
   if (sock <= 0) {
     printf("tnSrv: cannot create listening socket\n");
     return;
