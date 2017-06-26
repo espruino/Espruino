@@ -164,12 +164,12 @@ void jswrap_nrf_init() {
   // advertising
   v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
   o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, 0);
-  jswrap_nrf_bluetooth_setAdvertising(v, o);
+  if (v || o) jswrap_nrf_bluetooth_setAdvertising(v, o);
   jsvUnLock2(v,o);
   // services
   v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
   o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS, 0);
-  jswrap_nrf_bluetooth_setServices(v, o);
+  if (v || o) jswrap_nrf_bluetooth_setServices(v, o);
   jsvUnLock2(v,o);
   // If we had scan response data set, update it
   JsVar *scanData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, 0);
@@ -672,9 +672,8 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     return;
   }
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, initialArray);
-  jsvUnLock(initialArray);
   if (!dPtr) {
-    jsvUnLock(advArray);
+    jsvUnLock2(advArray, initialArray);
     jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
     return;
   }
@@ -686,6 +685,7 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   if (bleChanged && isAdvertising)
     jsble_advertising_stop();
   err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
+  jsvUnLock(initialArray);
   jsble_check_error(err_code);
   if (bleChanged && isAdvertising)
     jsble_advertising_start();
