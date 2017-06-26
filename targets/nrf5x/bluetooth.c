@@ -31,7 +31,6 @@
 #include "nrf_log.h"
 #include "ble_hci.h"
 #include "ble_advdata.h"
-#include "ble_advertising.h"
 #include "ble_conn_params.h"
 #include "softdevice_handler.h"
 #include "app_timer.h"
@@ -799,7 +798,6 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
     ble_hids_on_ble_evt(&m_hids, p_ble_evt);
 #endif
   on_ble_evt(p_ble_evt);
-  ble_advertising_on_ble_evt(p_ble_evt);
 }
 
 
@@ -810,79 +808,8 @@ static void sys_evt_dispatch(uint32_t sys_evt) {
   // dispatched to the Flash Data Storage (FDS) module.
   fs_sys_event_handler(sys_evt);
 #endif
-  // Dispatch to the Advertising module last, since it will check if there are any
-  // pending flash operations in fstorage. Let fstorage process system events first,
-  // so that it can report correctly to the Advertising module.
-  ble_advertising_on_sys_evt(sys_evt);
   void jsh_sys_evt_handler(uint32_t sys_evt);
   jsh_sys_evt_handler(sys_evt);
-}
-
-static void on_adv_evt(ble_adv_evt_t ble_adv_evt) {
-    uint32_t err_code;
-
-    switch (ble_adv_evt)
-    {
-        case BLE_ADV_EVT_DIRECTED:
-            NRF_LOG_INFO("BLE_ADV_EVT_DIRECTED\r\n");
-            break; //BLE_ADV_EVT_DIRECTED
-        case BLE_ADV_EVT_FAST:
-            NRF_LOG_INFO("BLE_ADV_EVT_FAST\r\n");
-            break; //BLE_ADV_EVT_FAST
-        case BLE_ADV_EVT_SLOW:
-            NRF_LOG_INFO("BLE_ADV_EVT_SLOW\r\n");
-            break; //BLE_ADV_EVT_SLOW
-        case BLE_ADV_EVT_FAST_WHITELIST:
-            NRF_LOG_INFO("BLE_ADV_EVT_FAST_WHITELIST\r\n");
-            break; //BLE_ADV_EVT_FAST_WHITELIST
-        case BLE_ADV_EVT_SLOW_WHITELIST:
-            NRF_LOG_INFO("BLE_ADV_EVT_SLOW_WHITELIST\r\n");
-            break; //BLE_ADV_EVT_SLOW_WHITELIST
-        case BLE_ADV_EVT_IDLE:
-            break; //BLE_ADV_EVT_IDLE
-#if PEER_MANAGER_ENABLED
-        case BLE_ADV_EVT_WHITELIST_REQUEST:
-        {
-            ble_gap_addr_t whitelist_addrs[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];
-            ble_gap_irk_t  whitelist_irks[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];
-            uint32_t       addr_cnt = BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
-            uint32_t       irk_cnt  = BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
-
-            err_code = pm_whitelist_get(whitelist_addrs, &addr_cnt,
-                                        whitelist_irks,  &irk_cnt);
-            APP_ERROR_CHECK(err_code);
-            NRF_LOG_DEBUG("pm_whitelist_get returns %d addr in whitelist and %d irk whitelist\r\n",
-                           addr_cnt,
-                           irk_cnt);
-
-            // Apply the whitelist.
-            err_code = ble_advertising_whitelist_reply(whitelist_addrs, addr_cnt,
-                                                       whitelist_irks,  irk_cnt);
-            APP_ERROR_CHECK(err_code);
-        } break; //BLE_ADV_EVT_WHITELIST_REQUEST
-
-        case BLE_ADV_EVT_PEER_ADDR_REQUEST:
-        {
-            pm_peer_data_bonding_t peer_bonding_data;
-
-            // Only Give peer address if we have a handle to the bonded peer.
-            if (m_peer_id != PM_PEER_ID_INVALID)
-            {
-                err_code = pm_peer_data_bonding_load(m_peer_id, &peer_bonding_data);
-                if (err_code != NRF_ERROR_NOT_FOUND)
-                {
-                    APP_ERROR_CHECK(err_code);
-
-                    ble_gap_addr_t * p_peer_addr = &(peer_bonding_data.peer_id.id_addr_info);
-                    err_code = ble_advertising_peer_addr_reply(p_peer_addr);
-                    APP_ERROR_CHECK(err_code);
-                }
-            }
-        } break; //BLE_ADV_EVT_PEER_ADDR_REQUEST
-#endif
-        default:
-            break;
-    }
 }
 
 #if PEER_MANAGER_ENABLED
@@ -1460,7 +1387,6 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
 
 /// Function for initializing the Advertising functionality.
 static void advertising_init() {
-    uint32_t      err_code;
     ble_advdata_t advdata;
     ble_advdata_t scanrsp;
 
@@ -1500,14 +1426,7 @@ static void advertising_init() {
     scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
     scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
 
-    ble_adv_modes_config_t options;
-    memset(&options, 0, sizeof(options));
-    options.ble_adv_fast_enabled  = true;
-    options.ble_adv_fast_interval = bleAdvertisingInterval;
-    options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
-
-    err_code = ble_advertising_init(&advdata, &scanrsp, &options, on_adv_evt, NULL);
-    jsble_check_error(err_code);
+    ble_advdata_set(&advdata, &scanrsp);
 }
 
 // -----------------------------------------------------------------------------------
@@ -1515,7 +1434,6 @@ static void advertising_init() {
 
 void jsble_advertising_start() {
   if (bleStatus & BLE_IS_ADVERTISING) return;
-
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
   adv_params.type        = (bleStatus & BLE_IS_NOT_CONNECTABLE) ? BLE_GAP_ADV_TYPE_ADV_NONCONN_IND : BLE_GAP_ADV_TYPE_ADV_IND;

@@ -29,7 +29,6 @@
 #include "nrf.h"
 #include "ble_hci.h"
 #include "ble_advdata.h"
-#include "ble_advertising.h"
 #include "ble_conn_params.h"
 #include "softdevice_handler.h"
 #include "app_timer.h"
@@ -391,15 +390,10 @@ void jswrap_nrf_bluetooth_sleep() {
   // set as sleeping
   bleStatus |= BLE_IS_SLEEPING;
   // stop advertising
-  if (bleStatus & BLE_IS_ADVERTISING)
-    jsble_advertising_stop();
-  bleStatus &= ~BLE_IS_ADVERTISING;
+  jsble_advertising_stop();
   // If connected, disconnect.
-  if (jsble_has_simple_connection()) {
-    // when we disconnect, we'll see BLE_IS_SLEEPING and won't advertise
-    err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-    jsble_check_error(err_code);
-  }
+  // when we disconnect, we'll see BLE_IS_SLEEPING and won't advertise
+  jswrap_nrf_bluetooth_disconnect();
 }
 
 /*JSON{
