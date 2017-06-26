@@ -132,6 +132,8 @@ void jsble_central_characteristicDescDiscover(JsVar *characteristic);
 void jsble_central_characteristicNotify(JsVar *characteristic, bool enable);
 /// Start bonding on the current central connection
 void jsble_central_startBonding(bool forceRePair);
+/// Get the security status of the current link
+JsVar *jsble_central_getSecurityStatus();
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(bool enabled);
 #endif

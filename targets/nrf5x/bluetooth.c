@@ -430,8 +430,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_GAP_EVT_SEC_PARAMS_REQUEST:{
         ble_gap_sec_params_t sec_param;
         memset(&sec_param, 0, sizeof(ble_gap_sec_params_t));
-        sec_param.bond         = 0; // nope
-        sec_param.mitm         = 0; // nope
+        sec_param.bond         = 1;
+        sec_param.mitm         = 1;
+        sec_param.lesc         = 1;
         sec_param.io_caps      = BLE_GAP_IO_CAPS_NONE;
         sec_param.oob          = 0; // Out Of Band data not available.
         sec_param.min_key_size = 7;
@@ -1999,6 +2000,25 @@ void jsble_central_startBonding(bool forceRePair) {
   if (jsble_check_error(err_code)) {
     bleCompleteTaskFail(BLETASK_BONDING, 0);
   }
+}
+
+JsVar *jsble_central_getSecurityStatus() {
+  if (!jsble_has_central_connection())
+    return 0;
+  pm_conn_sec_status_t status;
+
+  uint32_t err_code = pm_conn_sec_status_get(m_central_conn_handle, &status);
+  if (!jsble_check_error(err_code)) {
+    JsVar *result = jsvNewWithFlags(JSV_OBJECT);
+    if (result) {
+      jsvObjectSetChildAndUnLock(result, "connected", jsvNewFromBool(status.connected));
+      jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
+      jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
+      jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
+    }
+    return result;
+  }
+  return 0;
 }
 
 #endif // CENTRAL_LINK_COUNT>0

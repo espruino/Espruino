@@ -1977,7 +1977,7 @@ NRF.requestDevice({ filters: [{ name: 'Puck.js abcd' }] }).then(function(device)
   console.log("connected");
   return gatt.startBonding();
 }).then(function() {
-  console.log("bonded");
+  console.log("bonded", gatt.getSecurityStatus());
   gatt.disconnect();
 }).catch(function(e) {
   console.log("ERROR",e);
@@ -1997,6 +1997,45 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool for
     return promise;
   }
   return 0;
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
+}
+
+
+/*JSON{
+    "type" : "method",
+    "class" : "BluetoothRemoteGATTServer",
+    "name" : "getSecurityStatus",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_BluetoothRemoteGATTServer_getSecurityStatus",
+    "return" : ["JsVar", "An object" ]
+}
+Return an object with information about the security
+state of the current connection:
+
+
+```
+{
+  connected       // The connection is active (not disconnected).
+  encrypted       // Communication on this link is encrypted.
+  mitm_protected  // The encrypted communication is also protected against man-in-the-middle attacks.
+  bonded          // The peer is bonded with us
+}
+```
+
+See `BluetoothRemoteGATTServer.startBonding` for information about
+negotiating a secure connection.
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Puck.js.
+
+**Note:** This is only available on some devices
+*/
+JsVar *jswrap_nrf_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent) {
+#if CENTRAL_LINK_COUNT>0
+  return jsble_central_getSecurityStatus();
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;

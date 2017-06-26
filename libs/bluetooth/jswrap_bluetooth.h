@@ -87,6 +87,7 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent);
 void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent);
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair);
+JsVar *jswrap_nrf_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *service);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent);
 void jswrap_BluetoothRemoteGATTServer_setRSSIHandler(JsVar *parent, JsVar *callback);
