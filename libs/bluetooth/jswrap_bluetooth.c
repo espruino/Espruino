@@ -210,6 +210,38 @@ void jswrap_nrf_kill() {
 #endif
 }
 
+void jswrap_nrf_dumpBluetoothInitialisation(vcbprintf_callback user_callback, void *user_data) {
+
+
+  JsVar *v,*o;
+  v = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT,0);
+  if (v) {
+    user_callback("NRF.setScan(", user_data);
+    jsiDumpJSON(user_callback, user_data, v, 0);
+    user_callback(");\n", user_data);
+  }
+  jsvUnLock(v);
+  v = jsvObjectGetChild(execInfo.root, BLE_RSSI_EVENT,0);
+  if (v) {
+    user_callback("NRF.setRSSIHandler(", user_data);
+    jsiDumpJSON(user_callback, user_data, v, 0);
+    user_callback(");\n", user_data);
+  }
+  jsvUnLock(v);
+  // advertising
+  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
+  o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, 0);
+  if (v || o)
+    cbprintf(user_callback, user_data, "NRF.setAdvertising(%j, %j);\n",v,o);
+  jsvUnLock2(v,o);
+  // services
+  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
+  o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS, 0);
+  if (v || o)
+    cbprintf(user_callback, user_data, "NRF.setServices(%j, %j);\n",v,o);
+  jsvUnLock2(v,o);
+}
+
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
 
@@ -464,7 +496,8 @@ JsVarFloat jswrap_nrf_bluetooth_getBattery() {
 }
 Change the data that Espruino advertises.
 
-Data can be of the form `{ UUID : data_as_byte_array }`. The UUID should be a [Bluetooth Service ID](https://developer.bluetooth.org/gatt/services/Pages/ServicesHome.aspx).
+Data can be of the form `{ UUID : data_as_byte_array }`. The UUID should be
+a [Bluetooth Service ID](https://developer.bluetooth.org/gatt/services/Pages/ServicesHome.aspx).
 
 For example to return battery level at 95%, do:
 
@@ -484,10 +517,8 @@ setInterval(function() {
 }, 30000);
 ```
 
-**Note:** Currently only standardised bluetooth UUIDs are allowed (see the
-list above).
-
-You can also supply the raw advertising data in an array. For example to advertise as an Eddystone beacon:
+You can also supply the raw advertising data in an array. For example
+to advertise as an Eddystone beacon:
 
 ```
 NRF.setAdvertising([0x03,  // Length of Service List
@@ -503,19 +534,17 @@ NRF.setAdvertising([0x03,  // Length of Service List
     {interval:100});
 ```
 
-**Note:** When specifying data as an array, certain advertising options such as
-`discoverable` and `showName` won't have any effect.
+(However for Eddystone we'd advise that you use the [Espruino Eddystone library](/Puck.js+Eddystone))
 
-You can even specify an array of arrays, in which case each advertising packet
+You can even specify an array of arrays or objects, in which case each advertising packet
 will be used in turn - for instance to make your device advertise
 both Eddystone and iBeacon:
 
 ```
 NRF.setAdvertising([
-  require("ble_ibeacon").get(...),
-  require("ble_eddystone").get(...),
-  [....],
-  [....],
+  {0x180F : [Puck.getBatteryPercentage()]}, // normal advertising, with battery %
+  require("ble_ibeacon").get(...), // iBeacon
+  require("ble_eddystone").get(...), // eddystone
 ],{interval:500});
 ```
 
@@ -531,23 +560,25 @@ NRF.setAdvertising([
 }
 ```
 
-So for instance to set the name of Puck.js you can just use the command:
+So for instance to set the name of Puck.js without advertising any
+other data you can just use the command:
 
 ```
 NRF.setAdvertising({},{name:"Hello"});
 ```
 
+**Note:** When specifying data as an array, certain advertising options such as
+`discoverable` and `showName` won't have any effect.
+
+**Note:** The size of Bluetooth LE advertising packets is limited to 31 bytes. If
+you want to advertise more data, consider using an array for `data`, or
+`NRF.setScanResponse`.
+
 */
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   uint32_t err_code;
-  ble_advdata_t advdata;
-  jsble_setup_advdata(&advdata);
   bool bleChanged = false;
   bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
-
-  // Save the current service data
-  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, data);
-  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, options);
 
   if (jsvIsObject(options)) {
     JsVar *v;
@@ -589,63 +620,72 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     return;
   }
 
-  if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
-    // raw data...
+  JsVar *advArray = 0;
+  JsVar *initialArray = 0;
+
+  if (jsvIsObject(data) || jsvIsUndefined(data)) {
+    // if it's an object, work out what the advertising data for it is
+    advArray = jswrap_nrf_bluetooth_getAdvertisingData(data, options);
+    // if undefined, make sure we *save* undefined
+    if (jsvIsUndefined(data)) {
+      initialArray = advArray;
+      advArray = 0;
+    }
+  } else if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
+    advArray = jsvLockAgain(data);
     // Check if it's nested arrays - if so we alternate between advertising types
     bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
-    JsVar *item = 0;
-    if (jsvIsArray(data)) {
-      item = jsvGetArrayItem(data, 0);
-      if (jsvIsArray(item) || jsvIsArrayBuffer(item)) {
-        // nested - enable multiple advertising - start at index 0
-        bleStatus |= BLE_IS_ADVERTISING_MULTIPLE;
-        // start with the first element
-        data = item;
-        item = 0;
-      }
-    }
-
-    JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
-    if (!dPtr) {
-      jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
-      return;
-    }
-
-    if (bleChanged && isAdvertising)
-      jsble_advertising_stop();
-    err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
-    jsble_check_error(err_code);
-    if (bleChanged && isAdvertising)
-      jsble_advertising_start();
-    jsvUnLock(item);
-    return; // we're done here now - don't mess with advertising any more
-  } else if (jsvIsObject(data)) {
-    ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
-    int n = 0;
+    // check for nested, and if so then preconvert the objects into arrays
+    bool isNested = false;
+    int elements = 0;
     JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, data);
+    jsvObjectIteratorNew(&it, advArray);
     while (jsvObjectIteratorHasValue(&it)) {
-      service_data[n].service_uuid = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
       JsVar *v = jsvObjectIteratorGetValue(&it);
-      JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, v);
+      if (jsvIsObject(v) || jsvIsUndefined(v)) {
+        JsVar *newv = jswrap_nrf_bluetooth_getAdvertisingData(v, options);
+        jsvObjectIteratorSetValue(&it, newv);
+        jsvUnLock(newv);
+        isNested = true;
+      } else if (jsvIsArray(v) || jsvIsArrayBuffer(v)) {
+        isNested = true;
+      }
+      elements++;
       jsvUnLock(v);
-      service_data[n].data.size    = dLen;
-      service_data[n].data.p_data  = (uint8_t*)dPtr;
       jsvObjectIteratorNext(&it);
-      n++;
     }
     jsvObjectIteratorFree(&it);
-
-    advdata.service_data_count   = n;
-    advdata.p_service_data_array = service_data;
-  } else if (!jsvIsUndefined(data)) {
+    // it's nested - set multiple advertising mode
+    if (isNested) {
+      // nested - enable multiple advertising - start at index 0
+      if (elements>1)
+        bleStatus |= BLE_IS_ADVERTISING_MULTIPLE;
+      // start with the first element
+      initialArray = jsvGetArrayItem(advArray, 0);
+    }
+  }
+  if (!initialArray) initialArray = jsvLockAgain(advArray);
+  // failure check
+  if (!(jsvIsArray(initialArray) || jsvIsArrayBuffer(initialArray))) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
+    jsvUnLock2(advArray, initialArray);
     return;
   }
-
+  JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, initialArray);
+  jsvUnLock(initialArray);
+  if (!dPtr) {
+    jsvUnLock(advArray);
+    jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
+    return;
+  }
+  // Save the current service data
+  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, advArray);
+  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, options);
+  jsvUnLock(advArray);
+  // now actually update advertising
   if (bleChanged && isAdvertising)
     jsble_advertising_stop();
-  err_code = ble_advdata_set(&advdata, NULL);
+  err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
   jsble_check_error(err_code);
   if (bleChanged && isAdvertising)
     jsble_advertising_start();
@@ -669,7 +709,6 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   uint32_t err_code;
   ble_advdata_t advdata;
   jsble_setup_advdata(&advdata);
-  bool bleChanged = false;
 
   if (jsvIsObject(options)) {
     JsVar *v;
@@ -689,8 +728,7 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
 
   if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
     return jsvLockAgain(data);
-  }
-  else if (jsvIsObject(data)) {
+  } else if (jsvIsObject(data)) {
     ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
     int n = 0;
     JsvObjectIterator it;
@@ -709,21 +747,17 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
 
     advdata.service_data_count   = n;
     advdata.p_service_data_array = service_data;
-
-    uint32_t  err_code;
-    uint16_t  len_advdata = BLE_GAP_ADV_MAX_SIZE;
-    uint8_t   encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
-    uint8_t * p_encoded_advdata;
-
-    err_code = advdata_check(&advdata);
-    if (jsble_check_error(err_code)) return 0;
-    err_code = adv_data_encode(&advdata, encoded_advdata, &len_advdata);
-    if (jsble_check_error(err_code)) return 0;
-    return jsvNewArrayBufferWithData(len_advdata, encoded_advdata);
   } else if (!jsvIsUndefined(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
     return 0;
   }
+
+  uint16_t  len_advdata = BLE_GAP_ADV_MAX_SIZE;
+  uint8_t   encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
+
+  err_code = adv_data_encode(&advdata, encoded_advdata, &len_advdata);
+  if (jsble_check_error(err_code)) return 0;
+  return jsvNewArrayBufferWithData(len_advdata, encoded_advdata);
 }
 
 /*JSON{
@@ -743,6 +777,10 @@ NRF.setScanResponse([0x07,  // Length of Data
   0x09,  // Param: Complete Local Name
   'S', 'a', 'm', 'p', 'l', 'e']);
 ```
+
+**Note:** `NRF.setServices(..., {advertise:[ ... ]})` writes advertised
+services into the scan response - so you can't use both `advertise`
+and `NRF.setServices` or one will overwrite the other.
 */
 void jswrap_nrf_bluetooth_setScanResponse(JsVar *data) {
   uint32_t err_code;

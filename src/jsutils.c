@@ -747,7 +747,7 @@ void vcbprintf(
         if (quoted) user_callback("\"",user_data);
       } break;
       case 'j': {
-        JsVar *v = jsvAsString(va_arg(argp, JsVar*), false/*no unlock*/);
+        JsVar *v = va_arg(argp, JsVar*);
         jsfGetJSONWithCallback(v, JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, 0, user_callback, user_data);
         break;
       }

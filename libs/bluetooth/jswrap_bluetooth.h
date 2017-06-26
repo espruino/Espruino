@@ -53,6 +53,8 @@ JsVar *bleGetActiveBluetoothGattServer();
 void jswrap_nrf_init();
 bool jswrap_nrf_idle();
 void jswrap_nrf_kill();
+// Used to dump bluetooth initialisation info for 'dump'
+void jswrap_nrf_dumpBluetoothInitialisation(vcbprintf_callback user_callback, void *user_data);
 // ------------------------------------------------------------------------------
 
 
