@@ -986,7 +986,8 @@ static void dnsFoundCallback(const char *hostName, ip_addr_t *ipAddr, void *arg)
 int net_ESP8266_BOARD_createSocket(
     JsNetwork *net,     //!< The Network we are going to use to create the socket.
     uint32_t ipAddress, //!< The address of the partner of the socket or 0 if we are to be a server.
-    unsigned short port //!< The port number that the partner is listening upon.
+    unsigned short port,//!< The port number that the partner is listening upon.
+    SocketType socketType
 ) {
   // allocate a socket data structure
   struct socketData *pSocketData = allocateNewSocket();
