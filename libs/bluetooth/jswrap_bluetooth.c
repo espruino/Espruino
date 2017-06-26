@@ -1327,6 +1327,10 @@ void jswrap_nrf_bluetooth_findDevices_timeout_cb() {
   jsvUnLock2(arr,cb);
 }
 void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *timeout) {
+  if (!jsvIsFunction(callback)) {
+    jsExceptionHere(JSET_ERROR, "Expecting function for first argument, got %t", callback);
+    return;
+  }
   // utility fn that uses setScan
   JsVarFloat time = 2000;
   if (!jsvIsUndefined(timeout)) {
