@@ -1787,7 +1787,6 @@ JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options) {
 }
 
 
-
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
@@ -1841,6 +1840,31 @@ JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
 #endif
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setWhitelist",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_setWhitelist",
+    "params" : [
+      ["whitelisting","bool","Are we using a whitelist? (default false)"]
+    ]
+}
+If set to true, whenever a device bonds it will be added to the
+whitelist.
+
+When set to false, the whitelist is cleared and newly bonded
+devices will not be added to the whitelist.
+
+**Note:** This is remembered between `reset()`s but isn't
+remembered after power-on (you'll have to add it to `onInit()`.
+*/
+void jswrap_nrf_setWhitelist(bool whitelist) {
+#if PEER_MANAGER_ENABLED
+  jsble_central_setWhitelist(whitelist);
+#endif
+}
+
 
 /*JSON{
   "type" : "class",
@@ -1861,6 +1885,7 @@ Web Bluetooth-style device - get this using `NRF.requestDevice(address)`
 **Note:** This is only available on some devices
 */
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
+#if CENTRAL_LINK_COUNT>0
   JsVar *gatt = jsvObjectGetChild(parent, "gatt", 0);
   if (gatt) return gatt;
 
@@ -1869,6 +1894,10 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
   jsvObjectSetChild(gatt, "device", parent);
   jsvObjectSetChildAndUnLock(gatt, "connected", jsvNewFromBool(false));
   return gatt;
+#else
+  jsExceptionHere(JSET_ERROR, "Unimplemented");
+  return 0;
+#endif
 }
 
 /*JSON{

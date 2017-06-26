@@ -51,7 +51,7 @@
 #include "fds.h"
 #include "fstorage.h"
 #include "ble_conn_state.h"
-static pm_peer_id_t m_peer_id;                              /**< Device reference handle to the current bonded central. */
+static pm_peer_id_t   m_peer_id;                              /**< Device reference handle to the current bonded central. */
 static pm_peer_id_t   m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];  /**< List of peers currently in the whitelist. */
 static uint32_t       m_whitelist_peer_cnt;                                 /**< Number of peers currently in the whitelist. */
 static bool           m_is_wl_changed;                                      /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
@@ -283,10 +283,26 @@ void SWI1_IRQHandler(bool radio_evt) {
 #endif
 }
 
+static void ble_update_whitelist() {
+  uint32_t err_code;
+  if (m_is_wl_changed) {
+    // The whitelist has been modified, update it in the Peer Manager.
+    err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
+    if (err_code != NRF_ERROR_NOT_SUPPORTED)
+    {
+        APP_ERROR_CHECK(err_code);
+    }
+
+    m_is_wl_changed = false;
+  }
+}
+
 /// Function for the application's SoftDevice event handler.
-static void on_ble_evt(ble_evt_t * p_ble_evt)
-{
-    uint32_t                         err_code;
+static void on_ble_evt(ble_evt_t * p_ble_evt) {
+    uint32_t err_code;
     //jsiConsolePrintf("\n[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );
 
     switch (p_ble_evt->header.evt_id) {
@@ -346,19 +362,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_GAP_EVT_DISCONNECTED:
 
 #if PEER_MANAGER_ENABLED
-        if (m_is_wl_changed) {
-            // The whitelist has been modified, update it in the Peer Manager.
-            err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
-            APP_ERROR_CHECK(err_code);
-
-            err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
-            if (err_code != NRF_ERROR_NOT_SUPPORTED)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-
-            m_is_wl_changed = false;
-        }
+        ble_update_whitelist();
 #endif
 
 #if CENTRAL_LINK_COUNT>0
@@ -916,7 +920,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             {
                 APP_ERROR_CHECK(err_code);
             }
-            if (p_evt->params.conn_sec_succeeded.procedure == PM_LINK_SECURED_PROCEDURE_BONDING)
+            if (p_evt->params.conn_sec_succeeded.procedure == PM_LINK_SECURED_PROCEDURE_BONDING &&
+                bleStatus & BLE_WHITELIST_ON_BOND)
             {
                 NRF_LOG_DEBUG("New Bond, add the peer to the whitelist if possible\r\n");
                 NRF_LOG_DEBUG("\tm_whitelist_peer_cnt %d, MAX_PEERS_WLIST %d\r\n",
@@ -2021,19 +2026,20 @@ JsVar *jsble_central_getSecurityStatus() {
   return 0;
 }
 
+void jsble_central_setWhitelist(bool whitelist) {
+#if PEER_MANAGER_ENABLED
+  if (whitelist) {
+    bleStatus |= BLE_WHITELIST_ON_BOND;
+  } else {
+    bleStatus &= ~BLE_WHITELIST_ON_BOND;
+    m_whitelist_peer_cnt = 0;
+    m_is_wl_changed = true;
+    ble_update_whitelist();
+  }
+#endif
+}
+
 #endif // CENTRAL_LINK_COUNT>0
-
-/** TODO: Provide function to remove advertising whitelist on request?
-
-             if (m_conn_handle == BLE_CONN_HANDLE_INVALID)  {
-                err_code = ble_advertising_restart_without_whitelist();
-                if (err_code != NRF_ERROR_INVALID_STATE)
-                {
-                    APP_ERROR_CHECK(err_code);
-                }
-            }
-            break;
- */
 
 #endif // BLUETOOTH
 

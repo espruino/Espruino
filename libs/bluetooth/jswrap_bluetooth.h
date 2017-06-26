@@ -82,6 +82,7 @@ void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback);
 
 JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options);
 JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac);
+void jswrap_nrf_setWhitelist(bool whitelist);
 
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent);
