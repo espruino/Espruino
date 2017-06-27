@@ -3531,7 +3531,7 @@ JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr) {
 JsVar *jsvNewArrayBufferWithData(JsVarInt length, unsigned char *data) {
   assert(data);
   JsVar *dst = 0;
-  JsVar *arr = jsvNewArrayBufferWithPtr(length, &dst);
+  JsVar *arr = jsvNewArrayBufferWithPtr(length, (char**)&dst);
   if (!dst) {
     jsvUnLock(arr);
     return 0;
