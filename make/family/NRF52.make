@@ -31,11 +31,21 @@ LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino.ld
 INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
 endif
 
+ifndef BOOTLOADER
 # BLE HID Support (only NRF52)
 INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
 TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
 # Neopixel support (only NRF52)
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
+# Secure connection support
+
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/ecc
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
+INCLUDE += -I$(NRF5X_SDK_PATH)/external/micro-ecc
+TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
+endif
 
 include make/common/NRF5X.make

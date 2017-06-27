@@ -57,6 +57,25 @@ static bool           m_is_wl_changed;                                      /**<
 // needed for peer_manager_init so we can smoothly upgrade from pre 1v92 firmwares
 #include "fds_internal_defs.h"
 #include "fstorage_internal_defs.h"
+// If we have peer manager we have central mode and NRF52
+// So just enable link security
+#define LINK_SECURITY
+#endif
+
+#ifdef LINK_SECURITY
+// Code to handle secure Bluetooth links
+#include "ecc.h"
+
+#define BLE_GAP_LESC_P256_SK_LEN 32
+/**@brief GAP LE Secure Connections P-256 Private Key. */
+typedef struct
+{
+  uint8_t   sk[BLE_GAP_LESC_P256_SK_LEN];        /**< LE Secure Connections Elliptic Curve Diffie-Hellman P-256 Private Key in little-endian. */
+} ble_gap_lesc_p256_sk_t;
+
+__ALIGN(4) static ble_gap_lesc_p256_sk_t m_lesc_sk;    /**< LESC ECC Private Key */
+__ALIGN(4) static ble_gap_lesc_p256_pk_t m_lesc_pk;    /**< LESC ECC Public Key */
+__ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #endif
 
 // -----------------------------------------------------------------------------------
@@ -282,6 +301,7 @@ void SWI1_IRQHandler(bool radio_evt) {
 #endif
 }
 
+#if CENTRAL_LINK_COUNT>0
 static void ble_update_whitelist() {
   uint32_t err_code;
   if (m_is_wl_changed) {
@@ -298,6 +318,7 @@ static void ble_update_whitelist() {
     m_is_wl_changed = false;
   }
 }
+#endif
 
 /// Function for the application's SoftDevice event handler.
 static void on_ble_evt(ble_evt_t * p_ble_evt) {
@@ -431,10 +452,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
 #if PEER_MANAGER_ENABLED==0
       case BLE_GAP_EVT_SEC_PARAMS_REQUEST:{
+        //jsiConsolePrintf("BLE_GAP_EVT_SEC_PARAMS_REQUEST\n");
         ble_gap_sec_params_t sec_param;
         memset(&sec_param, 0, sizeof(ble_gap_sec_params_t));
         sec_param.bond         = 1;
-        sec_param.mitm         = 1;
+        sec_param.mitm         = 0;
         sec_param.lesc         = 1;
         sec_param.io_caps      = BLE_GAP_IO_CAPS_NONE;
         sec_param.oob          = 0; // Out Of Band data not available.
@@ -450,6 +472,30 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
         err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
         APP_ERROR_CHECK(err_code);
         break;
+#endif
+#ifdef LINK_SECURITY
+      case BLE_GAP_EVT_PASSKEY_DISPLAY:
+        //jsiConsolePrintf("BLE_GAP_EVT_PASSKEY_DISPLAY\n");
+          // display p_ble_evt->evt.gap_evt.params.passkey_display.passkey
+          break;
+      case BLE_GAP_EVT_AUTH_KEY_REQUEST:
+        //jsiConsolePrintf("BLE_GAP_EVT_AUTH_KEY_REQUEST\n");
+          break;
+      case BLE_GAP_EVT_LESC_DHKEY_REQUEST:
+          //jsiConsolePrintf("BLE_GAP_EVT_LESC_DHKEY_REQUEST\n");
+          err_code = ecc_p256_shared_secret_compute(&m_lesc_sk.sk[0], &p_ble_evt->evt.gap_evt.params.lesc_dhkey_request.p_pk_peer->pk[0], &m_lesc_dhkey.key[0]);
+          APP_ERROR_CHECK(err_code);
+          err_code = sd_ble_gap_lesc_dhkey_reply(p_ble_evt->evt.gap_evt.conn_handle, &m_lesc_dhkey);
+          APP_ERROR_CHECK(err_code);
+          break;
+       case BLE_GAP_EVT_AUTH_STATUS:
+         /*jsiConsolePrintf("BLE_GAP_EVT_AUTH_STATUS: status=0x%x bond=0x%x lv4: %d kdist_own:0x%x kdist_peer:0x%x\r\n",
+                        p_ble_evt->evt.gap_evt.params.auth_status.auth_status,
+                        p_ble_evt->evt.gap_evt.params.auth_status.bonded,
+                        p_ble_evt->evt.gap_evt.params.auth_status.sm1_levels.lv4,
+                        *((uint8_t *)&p_ble_evt->evt.gap_evt.params.auth_status.kdist_own),
+                        *((uint8_t *)&p_ble_evt->evt.gap_evt.params.auth_status.kdist_peer));*/
+          break;
 #endif
 
       case BLE_GATTC_EVT_TIMEOUT:
@@ -941,7 +987,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_PEER_DELETE_FAILED:
             // Assert.
-            APP_ERROR_CHECK(p_evt->params.peer_delete_failed.error);
+            jsWarn("PM: PM_EVT_PEER_DELETE_FAILED %d", p_evt->params.peer_delete_failed.error);
             break;
 
         case PM_EVT_PEERS_DELETE_SUCCEEDED:
@@ -1194,6 +1240,17 @@ static void peer_manager_init(bool erase_bonds) {
   if (err_code != NRF_ERROR_NOT_SUPPORTED) {
      APP_ERROR_CHECK(err_code);
   }
+
+#ifdef LINK_SECURITY
+  ecc_init(true);
+
+  err_code = ecc_p256_keypair_gen(m_lesc_sk.sk, m_lesc_pk.pk);
+  APP_ERROR_CHECK(err_code);
+
+  /* Set the public key */
+  err_code = pm_lesc_public_key_set(&m_lesc_pk);
+  APP_ERROR_CHECK(err_code);
+#endif
 }
 #endif
 
