@@ -160,13 +160,19 @@ bool jsble_has_simple_connection() {
 bool jsble_check_error(uint32_t err_code) {
   if (!err_code) return false;
   const char *name = 0;
-  if (err_code==NRF_ERROR_INVALID_PARAM) name="INVALID_PARAM";
-  else if (err_code==NRF_ERROR_INVALID_STATE) name="NRF_ERROR_INVALID_STATE";
-  else if (err_code==NRF_ERROR_INVALID_LENGTH) name="INVALID_LENGTH";
-  else if (err_code==NRF_ERROR_INVALID_FLAGS) name="INVALID_FLAGS";
-  else if (err_code==NRF_ERROR_DATA_SIZE) name="DATA_SIZE";
-  else if (err_code==BLE_ERROR_INVALID_CONN_HANDLE) name="INVALID_CONN_HANDLE";
-  if (name) jsExceptionHere(JSET_ERROR, "Got BLE error %s", name);
+  switch (err_code) {
+   case NRF_ERROR_NO_MEM        : name="NO_MEM"; break;
+   case NRF_ERROR_INVALID_PARAM : name="INVALID_PARAM"; break;
+   case NRF_ERROR_INVALID_STATE : name="INVALID_STATE"; break;
+   case NRF_ERROR_INVALID_LENGTH: name="INVALID_LENGTH"; break;
+   case NRF_ERROR_INVALID_FLAGS : name="INVALID_FLAGS"; break;
+   case NRF_ERROR_DATA_SIZE     : name="DATA_SIZE"; break;
+   case NRF_ERROR_FORBIDDEN     : name="FORBIDDEN"; break;
+   case NRF_ERROR_BUSY          : name="BUSY"; break;
+   case BLE_ERROR_INVALID_CONN_HANDLE
+                                : name="INVALID_CONN_HANDLE"; break;
+  }
+  if (name) jsExceptionHere(JSET_ERROR, "Got BLE error 0x%x (%s)", err_code, name);
   else jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
   return true;
 }
@@ -217,9 +223,11 @@ static void conn_params_error_handler(uint32_t nrf_error) {
   APP_ERROR_HANDLER(nrf_error);
 }
 
+#if BLE_HIDS_ENABLED
 static void service_error_handler(uint32_t nrf_error) {
     APP_ERROR_HANDLER(nrf_error);
 }
+#endif
 
 /// Function for handling an event from the Connection Parameters Module.
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
