@@ -236,7 +236,9 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
     jsExceptionHere(JSET_ERROR, "Expecting a string or array, got %t", binaryData);
     return 0;
   }
-  JsVar* base64Data = jsvNewFromEmptyString();
+  int inputLength = jsvGetStringLength(binaryData);
+  int outputLength = ((inputLength+2)/3)*4;
+  JsVar* base64Data = jsvNewStringOfLength(outputLength);
   if (!base64Data) return 0;
   JsvIterator itsrc;
   JsvStringIterator itdst;
@@ -263,10 +265,10 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
 
     int triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
 
-    jsvStringIteratorAppend(&itdst, (char)jswrap_btoa_encode(triple >> 18));
-    jsvStringIteratorAppend(&itdst, (char)jswrap_btoa_encode(triple >> 12));
-    jsvStringIteratorAppend(&itdst, (char)((padding>1)?'=':jswrap_btoa_encode(triple >> 6)));
-    jsvStringIteratorAppend(&itdst, (char)((padding>0)?'=':jswrap_btoa_encode(triple)));
+    jsvStringIteratorSetCharAndNext(&itdst, (char)jswrap_btoa_encode(triple >> 18));
+    jsvStringIteratorSetCharAndNext(&itdst, (char)jswrap_btoa_encode(triple >> 12));
+    jsvStringIteratorSetCharAndNext(&itdst, (char)((padding>1)?'=':jswrap_btoa_encode(triple >> 6)));
+    jsvStringIteratorSetCharAndNext(&itdst, (char)((padding>0)?'=':jswrap_btoa_encode(triple)));
   }
 
   jsvIteratorFree(&itsrc);
@@ -292,7 +294,9 @@ JsVar *jswrap_atob(JsVar *base64Data) {
     jsExceptionHere(JSET_ERROR, "Expecting a string, got %t", base64Data);
     return 0;
   }
-  JsVar* binaryData = jsvNewFromEmptyString();
+  int inputLength = jsvGetStringLength(base64Data);
+  int outputLength = inputLength*3/4;
+  JsVar* binaryData = jsvNewStringOfLength(outputLength);
   if (!binaryData) return 0;
   JsvStringIterator itsrc;
   JsvStringIterator itdst;
@@ -317,9 +321,9 @@ JsVar *jswrap_atob(JsVar *base64Data) {
       }
     }
 
-    if (valid>0) jsvStringIteratorAppend(&itdst, (char)(triple >> 16));
-    if (valid>1) jsvStringIteratorAppend(&itdst, (char)(triple >> 8));
-    if (valid>2) jsvStringIteratorAppend(&itdst, (char)(triple));
+    if (valid>0) jsvStringIteratorSetCharAndNext(&itdst, (char)(triple >> 16));
+    if (valid>1) jsvStringIteratorSetCharAndNext(&itdst, (char)(triple >> 8));
+    if (valid>2) jsvStringIteratorSetCharAndNext(&itdst, (char)(triple));
   }
 
   jsvStringIteratorFree(&itsrc);

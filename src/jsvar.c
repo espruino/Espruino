@@ -770,6 +770,11 @@ JsVar *jsvNewFromString(const char *str) {
 }
 
 JsVar *jsvNewStringOfLength(unsigned int byteLength) {
+  // if string large enough, try and make a flat string instead
+  if (byteLength > JSV_FLAT_STRING_BREAK_EVEN) {
+    JsVar *v = jsvNewFlatStringOfLength(byteLength);
+    if (v) return v;
+  }
   // Create a var
   JsVar *first = jsvNewWithFlags(JSV_STRING_0);
   if (!first) {
