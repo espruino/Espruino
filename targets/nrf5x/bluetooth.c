@@ -546,7 +546,15 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
                   {
                       auth_reply.type = BLE_GATTS_AUTHORIZE_TYPE_READ;
                   }
-                  auth_reply.params.write.gatt_status = APP_FEATURE_NOT_SUPPORTED;
+
+                  if (req.request.write.op == BLE_GATTS_OP_EXEC_WRITE_REQ_CANCEL)
+                  {
+                      auth_reply.params.write.gatt_status = BLE_GATT_STATUS_SUCCESS;
+                  }
+                  else
+                  {
+                      auth_reply.params.write.gatt_status = APP_FEATURE_NOT_SUPPORTED;
+                  }
                   err_code = sd_ble_gatts_rw_authorize_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                              &auth_reply);
                   APP_ERROR_CHECK(err_code);
