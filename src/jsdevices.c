@@ -54,6 +54,7 @@ typedef enum {
   SDS_XON_PENDING = 2,
   SDS_XOFF_SENT = 4, // sending XON clears this
   SDS_FLOW_CONTROL_XON_XOFF = 8, // flow control enabled
+  SDS_ERROR_HANDLING = 16
 } PACKED_FLAGS JshSerialDeviceState;
 JshSerialDeviceState jshSerialDeviceStates[EV_SERIAL1+USART_COUNT-EV_SERIAL_START];
 /// Device clear to send hardware flow control pins (PIN_UNDEFINED if not used)
@@ -624,4 +625,19 @@ void jshSetEventCallback(
   // Save the callback function for this event channel.
   assert(channel>=EV_EXTI0 && channel<=EV_EXTI_MAX);
   jshEventCallbacks[channel-EV_EXTI0] = callback;
+}
+
+void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {
+  int devIdx = TO_SERIAL_DEVICE_STATE(device);
+  JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+  if (errorHandling)
+    (*deviceState) |= SDS_ERROR_HANDLING;
+  else
+    (*deviceState) &= ~SDS_ERROR_HANDLING;
+}
+
+bool jshGetErrorHandlingEnabled(IOEventFlags device) {
+  int devIdx = TO_SERIAL_DEVICE_STATE(device);
+  JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+  return (SDS_ERROR_HANDLING & *deviceState)!=0;
 }

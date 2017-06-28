@@ -28,6 +28,8 @@ if silent:
   class Discarder(object):
     def write(self, text):
         pass # do nothing
+    def flush(self):
+        pass # do nothing
   # now discard everything coming out of stdout
   sys.stdout = Discarder()
 
@@ -155,7 +157,8 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           jsondata = json.loads(jsonstring)
           if len(description): jsondata["description"] = description;
           jsondata["filename"] = jswrap
-          jsondata["include"] = jswrap[:-2]+".h"
+          if jswrap[-2:]==".c":
+            jsondata["include"] = jswrap[:-2]+".h"
           jsondata["githublink"] = "https://github.com/espruino/Espruino/blob/master/"+jswrap+"#L"+str(linenumber)
 
           dropped_prefix = "Dropped "
@@ -328,9 +331,10 @@ def get_struct_from_jsondata(jsondata):
 def get_includes_from_jsondata(jsondatas):
         includes = []
         for jsondata in jsondatas:
-          include = jsondata["include"]
-          if not include in includes:
-                includes.append(include)
+          if "include" in jsondata:
+            include = jsondata["include"]
+            if not include in includes:
+              includes.append(include)
         return includes
 
 def is_property(jsondata):

@@ -24,7 +24,7 @@ typedef struct {
   int day,month,year,dow;
 } CalendarDate;
 
-TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in);
+TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT);
 JsVarFloat fromTimeInDay(TimeInDay *td);
 CalendarDate getCalendarDate(int d);
 int fromCalenderDate(CalendarDate *date);
@@ -35,6 +35,7 @@ JsVar *jswrap_date_constructor(JsVar *args);
 
 JsVarFloat jswrap_date_getTimezoneOffset(JsVar *parent);
 JsVarFloat jswrap_date_getTime(JsVar *parent);
+JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue);
 int jswrap_date_getHours(JsVar *parent);
 int jswrap_date_getMinutes(JsVar *parent);
 int jswrap_date_getSeconds(JsVar *parent);
@@ -43,7 +44,17 @@ int jswrap_date_getDay(JsVar *parent);
 int jswrap_date_getDate(JsVar *parent);
 int jswrap_date_getMonth(JsVar *parent);
 int jswrap_date_getFullYear(JsVar *parent);
+
+JsVarFloat jswrap_date_setHours(JsVar *parent, int hoursValue, JsVar *minutesValue, JsVar *secondsValue, JsVar *millisecondsValue);
+JsVarFloat jswrap_date_setMinutes(JsVar *parent, int minutesValue, JsVar *secondsValue, JsVar *millisecondsValue);
+JsVarFloat jswrap_date_setSeconds(JsVar *parent, int secondsValue, JsVar *millisecondsValue);
+JsVarFloat jswrap_date_setMilliseconds(JsVar *parent, int millisecondsValue);
+JsVarFloat jswrap_date_setDate(JsVar *parent, int dayValue);
+JsVarFloat jswrap_date_setMonth(JsVar *parent, int monthValue, JsVar *dayValue);
+JsVarFloat jswrap_date_setFullYear(JsVar *parent, int yearValue, JsVar *monthValue, JsVar *dayValue);
+
 JsVar *jswrap_date_toString(JsVar *parent);
 JsVar *jswrap_date_toUTCString(JsVar *parent);
 JsVar *jswrap_date_toISOString(JsVar *parent);
 JsVarFloat jswrap_date_parse(JsVar *str);
+

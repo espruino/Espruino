@@ -23,6 +23,7 @@ void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->parity   = DEFAULT_PARITY; // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2 FIXME: enum?
   inf->stopbits = DEFAULT_STOPBITS;
   inf->xOnXOff = false;
+  inf->errorHandling = false;
 }
 
 void jshSPIInitInfo(JshSPIInfo *inf) {

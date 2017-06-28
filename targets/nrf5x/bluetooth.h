@@ -32,6 +32,7 @@
 #define HID_MODIFIER_KEY_POS                 0                                       /**< Position of the modifier byte in the Input Report. */
 #define HID_SCAN_CODE_POS                    2                                       /**< This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code. */
 
+#define DEFAULT_ADVERTISING_INTERVAL    MSEC_TO_UNITS(375, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
 
 
 typedef enum  {
@@ -49,9 +50,10 @@ typedef enum  {
   BLE_IS_SLEEPING = 512,      // NRF.sleep has been called
   BLE_PM_INITIALISED = 1024,  // Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
   BLE_IS_NOT_CONNECTABLE = 2048, // Is the device connectable?
+  BLE_WHITELIST_ON_BOND = 4096,  // Should we write to the whitelist whenever we bond to a device?
 
-  BLE_IS_ADVERTISING_MULTIPLE = 4096, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 8192,
+  BLE_IS_ADVERTISING_MULTIPLE = 8192, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 16384,
   BLE_ADVERTISING_MULTIPLE_SHIFT = GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;
@@ -69,8 +71,6 @@ extern uint16_t                         m_central_conn_handle; /**< Handle for c
 void jsble_init();
 /** Completely deinitialise the BLE stack */
 void jsble_kill();
-/** Reset BLE to power-on defaults (ish) */
-void jsble_reset();
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */
@@ -133,6 +133,11 @@ void jsble_central_characteristicDescDiscover(JsVar *characteristic);
 void jsble_central_characteristicNotify(JsVar *characteristic, bool enable);
 /// Start bonding on the current central connection
 void jsble_central_startBonding(bool forceRePair);
+/// Get the security status of the current link
+JsVar *jsble_central_getSecurityStatus();
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(bool enabled);
+// Set whether or not the whitelist is enabled
+void jsble_central_setWhitelist(bool whitelist);
 #endif
+

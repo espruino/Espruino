@@ -23,6 +23,9 @@
 #include "jswrap_flash.h" // load and save to flash
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
 #include "jsnative.h" // jsnSanityTest
+#ifdef BLUETOOTH
+#include "jswrap_bluetooth.h"
+#endif
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -694,6 +697,9 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
       }
     }
   }
+#ifdef BLUETOOTH
+  jswrap_nrf_dumpBluetoothInitialisation(user_callback, user_data);
+#endif
 }
 
 // Used when shutting down before flashing

@@ -257,12 +257,14 @@ void EXTI15_10_IRQHandler(void) {
 static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
   if (LL_USART_IsActiveFlag_FE(USART) != RESET) {
     // If we have a framing error, push status info onto the event queue
-    jshPushIOEvent(
+    if (jshGetErrorHandlingEnabled(device))
+      jshPushIOEvent(
         IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
   }
   if (LL_USART_IsActiveFlag_PE(USART) != RESET) {
     // If we have a parity error, push status info onto the event queue
-    jshPushIOEvent(
+    if (jshGetErrorHandlingEnabled(device))
+      jshPushIOEvent(
         IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_PARITY_ERR, 0);
   }
   if(LL_USART_IsActiveFlag_RXNE(USART) != RESET) {
@@ -363,4 +365,3 @@ void SPI3_IRQHandler(void) {
 
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
-

@@ -53,6 +53,8 @@ JsVar *bleGetActiveBluetoothGattServer();
 void jswrap_nrf_init();
 bool jswrap_nrf_idle();
 void jswrap_nrf_kill();
+// Used to dump bluetooth initialisation info for 'dump'
+void jswrap_nrf_dumpBluetoothInitialisation(vcbprintf_callback user_callback, void *user_data);
 // ------------------------------------------------------------------------------
 
 
@@ -64,6 +66,7 @@ JsVar *jswrap_nrf_bluetooth_getAddress();
 
 JsVarFloat jswrap_nrf_bluetooth_getBattery();
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options);
+JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options);
 void jswrap_nrf_bluetooth_setScanResponse(JsVar *data);
 void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options);
 void jswrap_nrf_bluetooth_updateServices(JsVar *data);
@@ -79,11 +82,13 @@ void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback);
 
 JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options);
 JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac);
+void jswrap_nrf_setWhitelist(bool whitelist);
 
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent);
 void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent);
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair);
+JsVar *jswrap_nrf_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *service);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent);
 void jswrap_BluetoothRemoteGATTServer_setRSSIHandler(JsVar *parent, JsVar *callback);

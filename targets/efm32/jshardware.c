@@ -698,6 +698,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
 {
   // Initializes UART and registers a callback function defined above to read characters into the static variable character.
 
+  if (inf->errorHandling) {
+    jsExceptionHere(JSET_ERROR, "EFM32 Espruino builds can't handle framing/parity errors (errors:true)");
+    return;
+  }
+
   USART_TypeDef* uart; // Re-mapping from Espruino to EFM32
   uint32_t rxIRQ;
   uint32_t txIRQ;

@@ -770,6 +770,11 @@ JsVar *jsvNewFromString(const char *str) {
 }
 
 JsVar *jsvNewStringOfLength(unsigned int byteLength) {
+  // if string large enough, try and make a flat string instead
+  if (byteLength > JSV_FLAT_STRING_BREAK_EVEN) {
+    JsVar *v = jsvNewFlatStringOfLength(byteLength);
+    if (v) return v;
+  }
   // Create a var
   JsVar *first = jsvNewWithFlags(JSV_STRING_0);
   if (!first) {
@@ -3525,6 +3530,18 @@ JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr) {
   }
   *ptr = jsvGetFlatStringPointer(backingString);
   jsvUnLock(backingString);
+  return arr;
+}
+
+JsVar *jsvNewArrayBufferWithData(JsVarInt length, unsigned char *data) {
+  assert(data);
+  JsVar *dst = 0;
+  JsVar *arr = jsvNewArrayBufferWithPtr(length, (char**)&dst);
+  if (!dst) {
+    jsvUnLock(arr);
+    return 0;
+  }
+  memcpy(dst, data, length);
   return arr;
 }
 

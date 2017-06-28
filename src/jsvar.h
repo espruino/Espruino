@@ -737,6 +737,9 @@ JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data);
  * allocate it. */
 JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr);
 
+/** create an arraybuffer containing the given data */
+JsVar *jsvNewArrayBufferWithData(JsVarInt length, unsigned char *data);
+
 /** Allocate a flat area of memory inside Espruino's Variable storage space.
  * This may return 0 on failure.
  *

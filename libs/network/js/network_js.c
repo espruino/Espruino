@@ -62,7 +62,7 @@ bool net_js_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_js_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
+int net_js_createsocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType) {
   NOT_USED(net);
   JsVar *hostVar = 0;
   if (host!=0) {

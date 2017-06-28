@@ -31,7 +31,6 @@
 #include "nrf_log.h"
 #include "ble_hci.h"
 #include "ble_advdata.h"
-#include "ble_advertising.h"
 #include "ble_conn_params.h"
 #include "softdevice_handler.h"
 #include "app_timer.h"
@@ -51,13 +50,32 @@
 #include "fds.h"
 #include "fstorage.h"
 #include "ble_conn_state.h"
-static pm_peer_id_t m_peer_id;                              /**< Device reference handle to the current bonded central. */
+static pm_peer_id_t   m_peer_id;                              /**< Device reference handle to the current bonded central. */
 static pm_peer_id_t   m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];  /**< List of peers currently in the whitelist. */
 static uint32_t       m_whitelist_peer_cnt;                                 /**< Number of peers currently in the whitelist. */
 static bool           m_is_wl_changed;                                      /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
 // needed for peer_manager_init so we can smoothly upgrade from pre 1v92 firmwares
 #include "fds_internal_defs.h"
 #include "fstorage_internal_defs.h"
+// If we have peer manager we have central mode and NRF52
+// So just enable link security
+#define LINK_SECURITY
+#endif
+
+#ifdef LINK_SECURITY
+// Code to handle secure Bluetooth links
+#include "ecc.h"
+
+#define BLE_GAP_LESC_P256_SK_LEN 32
+/**@brief GAP LE Secure Connections P-256 Private Key. */
+typedef struct
+{
+  uint8_t   sk[BLE_GAP_LESC_P256_SK_LEN];        /**< LE Secure Connections Elliptic Curve Diffie-Hellman P-256 Private Key in little-endian. */
+} ble_gap_lesc_p256_sk_t;
+
+__ALIGN(4) static ble_gap_lesc_p256_sk_t m_lesc_sk;    /**< LESC ECC Private Key */
+__ALIGN(4) static ble_gap_lesc_p256_pk_t m_lesc_pk;    /**< LESC ECC Public Key */
+__ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #endif
 
 // -----------------------------------------------------------------------------------
@@ -71,7 +89,6 @@ static bool           m_is_wl_changed;                                      /**<
 #define SCAN_INTERVAL                   MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan interval in units of 0.625 millisecond - 100 msec */
 #define SCAN_WINDOW                     MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan window in units of 0.625 millisecond - 100 msec */
 
-#define ADVERTISING_INTERVAL            MSEC_TO_UNITS(375, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
@@ -106,7 +123,7 @@ uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_INVALID
 bool nfcEnabled = false;
 #endif
 
-uint16_t bleAdvertisingInterval = ADVERTISING_INTERVAL;
+uint16_t bleAdvertisingInterval = DEFAULT_ADVERTISING_INTERVAL;
 
 volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
@@ -143,13 +160,19 @@ bool jsble_has_simple_connection() {
 bool jsble_check_error(uint32_t err_code) {
   if (!err_code) return false;
   const char *name = 0;
-  if (err_code==NRF_ERROR_INVALID_PARAM) name="INVALID_PARAM";
-  else if (err_code==NRF_ERROR_INVALID_STATE) name="NRF_ERROR_INVALID_STATE";
-  else if (err_code==NRF_ERROR_INVALID_LENGTH) name="INVALID_LENGTH";
-  else if (err_code==NRF_ERROR_INVALID_FLAGS) name="INVALID_FLAGS";
-  else if (err_code==NRF_ERROR_DATA_SIZE) name="DATA_SIZE";
-  else if (err_code==BLE_ERROR_INVALID_CONN_HANDLE) name="INVALID_CONN_HANDLE";
-  if (name) jsExceptionHere(JSET_ERROR, "Got BLE error %s", name);
+  switch (err_code) {
+   case NRF_ERROR_NO_MEM        : name="NO_MEM"; break;
+   case NRF_ERROR_INVALID_PARAM : name="INVALID_PARAM"; break;
+   case NRF_ERROR_INVALID_STATE : name="INVALID_STATE"; break;
+   case NRF_ERROR_INVALID_LENGTH: name="INVALID_LENGTH"; break;
+   case NRF_ERROR_INVALID_FLAGS : name="INVALID_FLAGS"; break;
+   case NRF_ERROR_DATA_SIZE     : name="DATA_SIZE"; break;
+   case NRF_ERROR_FORBIDDEN     : name="FORBIDDEN"; break;
+   case NRF_ERROR_BUSY          : name="BUSY"; break;
+   case BLE_ERROR_INVALID_CONN_HANDLE
+                                : name="INVALID_CONN_HANDLE"; break;
+  }
+  if (name) jsExceptionHere(JSET_ERROR, "Got BLE error 0x%x (%s)", err_code, name);
   else jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
   return true;
 }
@@ -200,9 +223,11 @@ static void conn_params_error_handler(uint32_t nrf_error) {
   APP_ERROR_HANDLER(nrf_error);
 }
 
+#if BLE_HIDS_ENABLED
 static void service_error_handler(uint32_t nrf_error) {
     APP_ERROR_HANDLER(nrf_error);
 }
+#endif
 
 /// Function for handling an event from the Connection Parameters Module.
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
@@ -284,10 +309,28 @@ void SWI1_IRQHandler(bool radio_evt) {
 #endif
 }
 
+#if CENTRAL_LINK_COUNT>0
+static void ble_update_whitelist() {
+  uint32_t err_code;
+  if (m_is_wl_changed) {
+    // The whitelist has been modified, update it in the Peer Manager.
+    err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
+    if (err_code != NRF_ERROR_NOT_SUPPORTED)
+    {
+        APP_ERROR_CHECK(err_code);
+    }
+
+    m_is_wl_changed = false;
+  }
+}
+#endif
+
 /// Function for the application's SoftDevice event handler.
-static void on_ble_evt(ble_evt_t * p_ble_evt)
-{
-    uint32_t                         err_code;
+static void on_ble_evt(ble_evt_t * p_ble_evt) {
+    uint32_t err_code;
     //jsiConsolePrintf("\n[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );
 
     switch (p_ble_evt->header.evt_id) {
@@ -347,19 +390,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
       case BLE_GAP_EVT_DISCONNECTED:
 
 #if PEER_MANAGER_ENABLED
-        if (m_is_wl_changed) {
-            // The whitelist has been modified, update it in the Peer Manager.
-            err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
-            APP_ERROR_CHECK(err_code);
-
-            err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
-            if (err_code != NRF_ERROR_NOT_SUPPORTED)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-
-            m_is_wl_changed = false;
-        }
+        ble_update_whitelist();
 #endif
 
 #if CENTRAL_LINK_COUNT>0
@@ -429,10 +460,12 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
 #if PEER_MANAGER_ENABLED==0
       case BLE_GAP_EVT_SEC_PARAMS_REQUEST:{
+        //jsiConsolePrintf("BLE_GAP_EVT_SEC_PARAMS_REQUEST\n");
         ble_gap_sec_params_t sec_param;
         memset(&sec_param, 0, sizeof(ble_gap_sec_params_t));
-        sec_param.bond         = 0; // nope
-        sec_param.mitm         = 0; // nope
+        sec_param.bond         = 1;
+        sec_param.mitm         = 0;
+        sec_param.lesc         = 1;
         sec_param.io_caps      = BLE_GAP_IO_CAPS_NONE;
         sec_param.oob          = 0; // Out Of Band data not available.
         sec_param.min_key_size = 7;
@@ -447,6 +480,30 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
         APP_ERROR_CHECK(err_code);
         break;
+#endif
+#ifdef LINK_SECURITY
+      case BLE_GAP_EVT_PASSKEY_DISPLAY:
+        //jsiConsolePrintf("BLE_GAP_EVT_PASSKEY_DISPLAY\n");
+          // display p_ble_evt->evt.gap_evt.params.passkey_display.passkey
+          break;
+      case BLE_GAP_EVT_AUTH_KEY_REQUEST:
+        //jsiConsolePrintf("BLE_GAP_EVT_AUTH_KEY_REQUEST\n");
+          break;
+      case BLE_GAP_EVT_LESC_DHKEY_REQUEST:
+          //jsiConsolePrintf("BLE_GAP_EVT_LESC_DHKEY_REQUEST\n");
+          err_code = ecc_p256_shared_secret_compute(&m_lesc_sk.sk[0], &p_ble_evt->evt.gap_evt.params.lesc_dhkey_request.p_pk_peer->pk[0], &m_lesc_dhkey.key[0]);
+          APP_ERROR_CHECK(err_code);
+          err_code = sd_ble_gap_lesc_dhkey_reply(p_ble_evt->evt.gap_evt.conn_handle, &m_lesc_dhkey);
+          APP_ERROR_CHECK(err_code);
+          break;
+       case BLE_GAP_EVT_AUTH_STATUS:
+         /*jsiConsolePrintf("BLE_GAP_EVT_AUTH_STATUS: status=0x%x bond=0x%x lv4: %d kdist_own:0x%x kdist_peer:0x%x\r\n",
+                        p_ble_evt->evt.gap_evt.params.auth_status.auth_status,
+                        p_ble_evt->evt.gap_evt.params.auth_status.bonded,
+                        p_ble_evt->evt.gap_evt.params.auth_status.sm1_levels.lv4,
+                        *((uint8_t *)&p_ble_evt->evt.gap_evt.params.auth_status.kdist_own),
+                        *((uint8_t *)&p_ble_evt->evt.gap_evt.params.auth_status.kdist_peer));*/
+          break;
 #endif
 
       case BLE_GATTC_EVT_TIMEOUT:
@@ -795,7 +852,6 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
     ble_hids_on_ble_evt(&m_hids, p_ble_evt);
 #endif
   on_ble_evt(p_ble_evt);
-  ble_advertising_on_ble_evt(p_ble_evt);
 }
 
 
@@ -806,79 +862,8 @@ static void sys_evt_dispatch(uint32_t sys_evt) {
   // dispatched to the Flash Data Storage (FDS) module.
   fs_sys_event_handler(sys_evt);
 #endif
-  // Dispatch to the Advertising module last, since it will check if there are any
-  // pending flash operations in fstorage. Let fstorage process system events first,
-  // so that it can report correctly to the Advertising module.
-  ble_advertising_on_sys_evt(sys_evt);
   void jsh_sys_evt_handler(uint32_t sys_evt);
   jsh_sys_evt_handler(sys_evt);
-}
-
-static void on_adv_evt(ble_adv_evt_t ble_adv_evt) {
-    uint32_t err_code;
-
-    switch (ble_adv_evt)
-    {
-        case BLE_ADV_EVT_DIRECTED:
-            NRF_LOG_INFO("BLE_ADV_EVT_DIRECTED\r\n");
-            break; //BLE_ADV_EVT_DIRECTED
-        case BLE_ADV_EVT_FAST:
-            NRF_LOG_INFO("BLE_ADV_EVT_FAST\r\n");
-            break; //BLE_ADV_EVT_FAST
-        case BLE_ADV_EVT_SLOW:
-            NRF_LOG_INFO("BLE_ADV_EVT_SLOW\r\n");
-            break; //BLE_ADV_EVT_SLOW
-        case BLE_ADV_EVT_FAST_WHITELIST:
-            NRF_LOG_INFO("BLE_ADV_EVT_FAST_WHITELIST\r\n");
-            break; //BLE_ADV_EVT_FAST_WHITELIST
-        case BLE_ADV_EVT_SLOW_WHITELIST:
-            NRF_LOG_INFO("BLE_ADV_EVT_SLOW_WHITELIST\r\n");
-            break; //BLE_ADV_EVT_SLOW_WHITELIST
-        case BLE_ADV_EVT_IDLE:
-            break; //BLE_ADV_EVT_IDLE
-#if PEER_MANAGER_ENABLED
-        case BLE_ADV_EVT_WHITELIST_REQUEST:
-        {
-            ble_gap_addr_t whitelist_addrs[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];
-            ble_gap_irk_t  whitelist_irks[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];
-            uint32_t       addr_cnt = BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
-            uint32_t       irk_cnt  = BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
-
-            err_code = pm_whitelist_get(whitelist_addrs, &addr_cnt,
-                                        whitelist_irks,  &irk_cnt);
-            APP_ERROR_CHECK(err_code);
-            NRF_LOG_DEBUG("pm_whitelist_get returns %d addr in whitelist and %d irk whitelist\r\n",
-                           addr_cnt,
-                           irk_cnt);
-
-            // Apply the whitelist.
-            err_code = ble_advertising_whitelist_reply(whitelist_addrs, addr_cnt,
-                                                       whitelist_irks,  irk_cnt);
-            APP_ERROR_CHECK(err_code);
-        } break; //BLE_ADV_EVT_WHITELIST_REQUEST
-
-        case BLE_ADV_EVT_PEER_ADDR_REQUEST:
-        {
-            pm_peer_data_bonding_t peer_bonding_data;
-
-            // Only Give peer address if we have a handle to the bonded peer.
-            if (m_peer_id != PM_PEER_ID_INVALID)
-            {
-                err_code = pm_peer_data_bonding_load(m_peer_id, &peer_bonding_data);
-                if (err_code != NRF_ERROR_NOT_FOUND)
-                {
-                    APP_ERROR_CHECK(err_code);
-
-                    ble_gap_addr_t * p_peer_addr = &(peer_bonding_data.peer_id.id_addr_info);
-                    err_code = ble_advertising_peer_addr_reply(p_peer_addr);
-                    APP_ERROR_CHECK(err_code);
-                }
-            }
-        } break; //BLE_ADV_EVT_PEER_ADDR_REQUEST
-#endif
-        default:
-            break;
-    }
 }
 
 #if PEER_MANAGER_ENABLED
@@ -916,7 +901,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             {
                 APP_ERROR_CHECK(err_code);
             }
-            if (p_evt->params.conn_sec_succeeded.procedure == PM_LINK_SECURED_PROCEDURE_BONDING)
+            if (p_evt->params.conn_sec_succeeded.procedure == PM_LINK_SECURED_PROCEDURE_BONDING &&
+                bleStatus & BLE_WHITELIST_ON_BOND)
             {
                 NRF_LOG_DEBUG("New Bond, add the peer to the whitelist if possible\r\n");
                 NRF_LOG_DEBUG("\tm_whitelist_peer_cnt %d, MAX_PEERS_WLIST %d\r\n",
@@ -1009,7 +995,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_PEER_DELETE_FAILED:
             // Assert.
-            APP_ERROR_CHECK(p_evt->params.peer_delete_failed.error);
+            jsWarn("PM: PM_EVT_PEER_DELETE_FAILED %d", p_evt->params.peer_delete_failed.error);
             break;
 
         case PM_EVT_PEERS_DELETE_SUCCEEDED:
@@ -1262,6 +1248,17 @@ static void peer_manager_init(bool erase_bonds) {
   if (err_code != NRF_ERROR_NOT_SUPPORTED) {
      APP_ERROR_CHECK(err_code);
   }
+
+#ifdef LINK_SECURITY
+  ecc_init(true);
+
+  err_code = ecc_p256_keypair_gen(m_lesc_sk.sk, m_lesc_pk.pk);
+  APP_ERROR_CHECK(err_code);
+
+  /* Set the public key */
+  err_code = pm_lesc_public_key_set(&m_lesc_pk);
+  APP_ERROR_CHECK(err_code);
+#endif
 }
 #endif
 
@@ -1455,7 +1452,6 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
 
 /// Function for initializing the Advertising functionality.
 static void advertising_init() {
-    uint32_t      err_code;
     ble_advdata_t advdata;
     ble_advdata_t scanrsp;
 
@@ -1495,14 +1491,7 @@ static void advertising_init() {
     scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
     scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
 
-    ble_adv_modes_config_t options;
-    memset(&options, 0, sizeof(options));
-    options.ble_adv_fast_enabled  = true;
-    options.ble_adv_fast_interval = bleAdvertisingInterval;
-    options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
-
-    err_code = ble_advertising_init(&advdata, &scanrsp, &options, on_adv_evt, NULL);
-    jsble_check_error(err_code);
+    ble_advdata_set(&advdata, &scanrsp);
 }
 
 // -----------------------------------------------------------------------------------
@@ -1510,7 +1499,6 @@ static void advertising_init() {
 
 void jsble_advertising_start() {
   if (bleStatus & BLE_IS_ADVERTISING) return;
-
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
   adv_params.type        = (bleStatus & BLE_IS_NOT_CONNECTABLE) ? BLE_GAP_ADV_TYPE_ADV_NONCONN_IND : BLE_GAP_ADV_TYPE_ADV_IND;
@@ -1524,11 +1512,8 @@ void jsble_advertising_start() {
 }
 
 void jsble_advertising_stop() {
-  uint32_t err_code;
-
   if (!(bleStatus & BLE_IS_ADVERTISING)) return;
-  err_code = sd_ble_gap_adv_stop();
-  APP_ERROR_CHECK(err_code);
+  sd_ble_gap_adv_stop();
   bleStatus &= ~BLE_IS_ADVERTISING;
 }
 
@@ -1570,25 +1555,6 @@ void jsble_kill() {
   APP_ERROR_CHECK(err_code);
 }
 
-/** Reset BLE to power-on defaults (ish) */
-void jsble_reset() {
-  // if we were scanning, make sure we stop at reset!
-  if (bleStatus & BLE_IS_SCANNING) {
-    jswrap_nrf_bluetooth_setScan(0);
-  }
-  jswrap_nrf_bluetooth_setRSSIHandler(0);
-
-#if CENTRAL_LINK_COUNT>0
-  // if we were connected to something, disconnect
-  if (jsble_has_central_connection()) {
-     sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-  }
-#endif
-  // make sure we remove any existing services *AND* HID/UART changes
-  jswrap_nrf_bluetooth_setServices(0, 0);
-  // Set advertising interval back to default
-  bleAdvertisingInterval = ADVERTISING_INTERVAL;
-}
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */
@@ -1603,28 +1569,6 @@ void jsble_restart_softdevice() {
 
   jsble_kill();
   jsble_init();
-  // If we had services set, update them
-  JsVar *services = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
-  if (services) jsble_set_services(services);
-  jsvUnLock(services);
-
-  // If we had advertising data set, update it
-  JsVar *advData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
-  JsVar *advOpt = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, 0);
-  if (advData || advOpt) jswrap_nrf_bluetooth_setAdvertising(advData, advOpt);
-  jsvUnLock2(advData, advOpt);
-
-  // If we had scan response data set, update it
-  JsVar *scanData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, 0);
-  if (scanData) jswrap_nrf_bluetooth_setScanResponse(scanData);
-  jsvUnLock(scanData);
-
-  // if we were scanning, make sure we restart
-  if (bleStatus & BLE_IS_SCANNING) {
-    JsVar *callback = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT, 0);
-    jswrap_nrf_bluetooth_setScan(callback);
-    jsvUnLock(callback);
-  }
 }
 
 uint32_t jsble_set_scanning(bool enabled) {
@@ -2046,19 +1990,39 @@ void jsble_central_startBonding(bool forceRePair) {
   }
 }
 
+JsVar *jsble_central_getSecurityStatus() {
+  if (!jsble_has_central_connection())
+    return 0;
+  pm_conn_sec_status_t status;
+
+  uint32_t err_code = pm_conn_sec_status_get(m_central_conn_handle, &status);
+  if (!jsble_check_error(err_code)) {
+    JsVar *result = jsvNewWithFlags(JSV_OBJECT);
+    if (result) {
+      jsvObjectSetChildAndUnLock(result, "connected", jsvNewFromBool(status.connected));
+      jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
+      jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
+      jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
+    }
+    return result;
+  }
+  return 0;
+}
+
+void jsble_central_setWhitelist(bool whitelist) {
+#if PEER_MANAGER_ENABLED
+  if (whitelist) {
+    bleStatus |= BLE_WHITELIST_ON_BOND;
+  } else {
+    bleStatus &= ~BLE_WHITELIST_ON_BOND;
+    m_whitelist_peer_cnt = 0;
+    m_is_wl_changed = true;
+    ble_update_whitelist();
+  }
+#endif
+}
+
 #endif // CENTRAL_LINK_COUNT>0
-
-/** TODO: Provide function to remove advertising whitelist on request?
-
-             if (m_conn_handle == BLE_CONN_HANDLE_INVALID)  {
-                err_code = ble_advertising_restart_without_whitelist();
-                if (err_code != NRF_ERROR_INVALID_STATE)
-                {
-                    APP_ERROR_CHECK(err_code);
-                }
-            }
-            break;
- */
 
 #endif // BLUETOOTH
 

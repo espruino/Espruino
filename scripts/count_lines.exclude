@@ -17,3 +17,6 @@
 ^\./libs/compression/heatshrink
 ^\./libs/crypto/mbedtls
 ^\./.*\.js
+^\./esp-idf
+^\./xtensa-esp32-elf
+^\./gcc-arm-none-

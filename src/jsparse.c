@@ -1538,6 +1538,9 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (lex->tk==LEX_TEMPLATE_LITERAL) {
     return jspeTemplateLiteral();
 #endif
+  } else if (lex->tk==LEX_REGEX) {
+    jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in Espruino\n");
+    JSP_ASSERT_MATCH(LEX_REGEX);
   } else if (lex->tk=='{') {
     if (!jspCheckStackPosition()) return 0;
     return jspeFactorObject();
@@ -2475,6 +2478,7 @@ NO_INLINE JsVar *jspeStatement() {
       lex->tk==LEX_FLOAT ||
       lex->tk==LEX_STR ||
       lex->tk==LEX_TEMPLATE_LITERAL ||
+      lex->tk==LEX_REGEX ||
       lex->tk==LEX_R_NEW ||
       lex->tk==LEX_R_NULL ||
       lex->tk==LEX_R_UNDEFINED ||

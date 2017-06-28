@@ -65,6 +65,9 @@ static ALWAYS_INLINE bool jsvStringIteratorHasChar(JsvStringIterator *it) {
 /// Sets a character (will not extend the string - just overwrites)
 void jsvStringIteratorSetChar(JsvStringIterator *it, char c);
 
+/// Sets a character (will not extend the string - just overwrites) and moves on to next character
+void jsvStringIteratorSetCharAndNext(JsvStringIterator *it, char c);
+
 /// Gets the current index in the string
 static ALWAYS_INLINE size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
   return it->varIndex + it->charIdx;

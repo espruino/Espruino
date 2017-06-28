@@ -192,6 +192,12 @@ void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
     it->ptr[it->charIdx] = c;
 }
 
+void jsvStringIteratorSetCharAndNext(JsvStringIterator *it, char c) {
+  if (jsvStringIteratorHasChar(it))
+    it->ptr[it->charIdx] = c;
+  jsvStringIteratorNextInline(it);
+}
+
 void jsvStringIteratorNext(JsvStringIterator *it) {
   jsvStringIteratorNextInline(it);
 }

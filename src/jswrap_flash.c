@@ -528,6 +528,7 @@ void jsfLoadStateFromFlash() {
  * Set isReset=false to always return the code  */
 const char *jsfGetBootCodeFromFlash(bool isReset) {
 #ifdef LINUX
+  NOT_USED(isReset);
   static char *code = 0;
   FILE *f = fopen("espruino.boot","rb");
   if (!f) return 0;
@@ -537,8 +538,8 @@ const char *jsfGetBootCodeFromFlash(bool isReset) {
   fseek(f, 0, SEEK_SET);
 
   if (code) free(code);
-  code = malloc(len+1);
-  fread(code, len, 1, f);
+  code = malloc((size_t)len+1);
+  fread(code, (size_t)len, 1, f);
   code[len] = 0;
   fclose(f);
 #else // !LINUX

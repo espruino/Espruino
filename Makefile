@@ -54,12 +54,12 @@ ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
 endif
 
-INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
-LIBS=
-DEFINES=
-CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
-LDFLAGS=-Winline
-OPTIMIZEFLAGS=
+INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
+LIBS?=
+DEFINES?=
+CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
+LDFLAGS?=-Winline
+OPTIMIZEFLAGS?=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
 DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
 
@@ -136,6 +136,7 @@ ifeq ($(BOARD),)
   #$(info *           To build, use BOARD=my_board make               *)
   #$(info *************************************************************)
   BOARD=LINUX
+  DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
  endif
 endif
 

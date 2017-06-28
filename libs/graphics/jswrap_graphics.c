@@ -641,11 +641,14 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     char ch = jsvStringIteratorGetChar(&it);
     if (gfx.data.fontSize>0) {
 #ifndef SAVE_ON_FLASH
-      int w = (int)graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
+      int w = (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
+      if (x>-w && x<gfx.data.width  && y>-gfx.data.fontSize && y<gfx.data.height)
+        graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
       x+=w;
 #endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
-      graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
+      if (x>-4 && x<gfx.data.width && y>-6 && y<gfx.data.height)
+        graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
       x+=4;
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
       // get char width and offset in string
@@ -665,7 +668,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
         width = (int)jsvGetInteger(customWidth);
         bmpOffset = width*(ch-customFirstChar);
       }
-      if (ch>=customFirstChar) {
+      if (ch>=customFirstChar && (x>-width) && (x<gfx.data.width) && y>-customHeight && y<gfx.data.height) {
         bmpOffset *= customHeight;
         // now render character
         JsvStringIterator cit;

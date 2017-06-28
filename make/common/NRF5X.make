@@ -61,7 +61,6 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/common
-INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_advertising
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/peer_manager
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
@@ -82,7 +81,6 @@ $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
-$(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
 $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \

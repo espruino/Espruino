@@ -709,7 +709,12 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (device == EV_SERIAL1) uart_no = UART0;
   else if (device == EV_SERIAL2) uart_no = UART1;
   else {
-    jsError("jshUSARTSetup Unknown device %d\n", device);
+    jsExceptionHere(JSET_ERROR, "jshUSARTSetup Unknown device %d\n", device);
+    return;
+  }
+  
+  if (inf->errorHandling) {
+    jsExceptionHere(JSET_ERROR, "ESP8266 Espruino builds can't handle framing/parity errors (errors:true)");
     return;
   }
 
@@ -1333,4 +1338,3 @@ unsigned int jshSetSystemClock(JsVar *options) {
  */
 void _exit(int status) {
 }
-
