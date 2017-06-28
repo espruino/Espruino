@@ -884,13 +884,7 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
   }
 
   // Try and create a flat string first
-  JsVar *var = 0;
-  if (length/* > JSV_FLAT_STRING_BREAK_EVEN*/) {
-    var = jsvNewFlatStringOfLength((unsigned int)length);
-  }
-  // Non-flat string...
-  if (length && !var)
-    var = jsvNewFromEmptyString();
+  JsVar *var = jsvNewStringOfLength((unsigned int)length);
   if (var) { // out of memory
     JsvStringIterator dstit;
     jsvStringIteratorNew(&dstit, var, 0);
@@ -902,15 +896,15 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
           lex->tk==LEX_FLOAT ||
           lex->tk==LEX_STR ||
           lex->tk==LEX_TEMPLATE_LITERAL) {
-        jsvStringIteratorAppendOrSet(&dstit, lex->tokenStart.currCh);
+        jsvStringIteratorSetCharAndNext(&dstit, lex->tokenStart.currCh);
         JsvStringIterator it = jsvStringIteratorClone(&lex->tokenStart.it);
         while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
-          jsvStringIteratorAppendOrSet(&dstit, jsvStringIteratorGetChar(&it));
+          jsvStringIteratorSetCharAndNext(&dstit, jsvStringIteratorGetChar(&it));
           jsvStringIteratorNext(&it);
         }
         jsvStringIteratorFree(&it);
       } else {
-        jsvStringIteratorAppendOrSet(&dstit, (char)lex->tk);
+        jsvStringIteratorSetCharAndNext(&dstit, (char)lex->tk);
       }
       lastTk = lex->tk;
       jslGetNextToken();

@@ -250,17 +250,6 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
   jsvSetCharactersInVar(it->var, it->charsInVar);
 }
 
-void jsvStringIteratorAppendOrSet(JsvStringIterator *it, char ch) {
-  if (jsvIsFlatString(it->var)) {
-    if (it->charIdx < it->charsInVar) {
-      it->ptr[it->charIdx] = ch;
-      it->charIdx++;
-    } else assert(0);
-  } else {
-    jsvStringIteratorAppend(it,ch);
-  }
-}
-
 void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str) {
   JsvStringIterator sit;
   jsvStringIteratorNew(&sit, str, 0);
