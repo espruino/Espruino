@@ -237,30 +237,10 @@ int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData
 
   assert(!jsvIsEmptyString(*sendData));
 
-  // FIXME: the sendData could instead of a string be an array of messages to send
-  //        [{data, host, port}, ...]
-  unsigned short port = 0;
-  uint32_t host_addr = 0;
   SocketType socketType = socketGetType(connection);
-  if ((socketType&ST_TYPE_MASK)==ST_UDP) {
-      JsVar *options = jsvObjectGetChild(connection, HTTP_NAME_OPTIONS_VAR, 0);
-      port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", 0));
-      JsVar *hostNameVar = jsvObjectGetChild(options, "host", 0);
-      jsvUnLock(options);
-
-      char hostName[128];
-      if (jsvIsUndefined(hostNameVar))
-        strncpy(hostName, "localhost", sizeof(hostName));
-      else
-        jsvGetString(hostNameVar, hostName, sizeof(hostName));
-      jsvUnLock(hostNameVar);
-
-      networkGetHostByName(net, hostName, &host_addr);
-  }
-
   size_t bufLen = httpStringGet(*sendData, buf, (size_t)net->chunkSize);
-  int num = netSend(net, sckt, buf, bufLen, host_addr, port);
-  jsWarn("socketSendData %x:%d (%d -> %d)\n", host_addr, port, bufLen, num);
+  int num = netSend(net, socketType, sckt, buf, bufLen);
+  jsWarn("socketSendData %x:%d (%d -> %d)\n", *(uint32_t*)buf, *(unsigned short*)(buf+sizeof(uint32_t)), bufLen, num);
   if (num < 0) return num; // an error occurred
   // Now cut what we managed to send off the beginning of sendData
   if (num > 0) {
@@ -347,9 +327,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
     int error = 0;
 
     if (!closeConnectionNow) {
-      uint32_t host;
-      unsigned short port;
-      int num = netRecv(net, sckt, buf, (size_t)net->chunkSize, &host, &port);
+      int num = netRecv(net, socketType, sckt, buf, (size_t)net->chunkSize);
       if (num<0) {
         // we probably disconnected so just get rid of this
         closeConnectionNow = true;
@@ -360,11 +338,18 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
           JsVar *oldReceiveData = receiveData;
           if (!receiveData) receiveData = jsvNewFromEmptyString();
           if (receiveData) {
-            jsvAppendStringBuf(receiveData, buf, (size_t)num);
             if ((socketType&ST_TYPE_MASK)==ST_UDP) {
               JsVar *address = jsvNewFromEmptyString(); // inet_ntoa replacement
               JsVar *receiveInfo = jsvNewObject();
               if (receiveInfo && address) { // could be out of memory
+                uint32_t delta = sizeof(uint32_t) + sizeof(unsigned short);
+                uint32_t host;
+                unsigned short port;
+                host = *(uint32_t*)buf;
+                port = *(unsigned short*)(buf + sizeof(uint32_t));
+                buf += delta;
+                num -= delta;
+                jsvAppendStringBuf(receiveData, buf, (size_t)num);
                 jsvAppendPrintf(address, "%d.%d.%d.%d", ((uint8_t*)&host)[0], ((uint8_t*)&host)[1], ((uint8_t*)&host)[2], ((uint8_t*)&host)[3]);
                 jsvObjectSetChildAndUnLock(receiveInfo, "address", address);
                 jsvObjectSetChildAndUnLock(receiveInfo, "port", jsvNewFromInteger(port));
@@ -373,6 +358,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
                 jsvUnLock(receiveInfo);
               }
             } else {
+              jsvAppendStringBuf(receiveData, buf, (size_t)num);
               bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
               if (!hadHeaders && httpParseHeaders(&receiveData, connection, true)) {
                 hadHeaders = true;
@@ -539,7 +525,9 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         if (sendData && !jsvIsEmptyString(sendData)) {
           // don't try to send if we're already in error state
           int num = 0;
-          if (error == 0) num = socketSendData(net, connection, sckt, &sendData);
+          if (error == 0) {
+              num = socketSendData(net, connection, sckt, &sendData);
+          }
           if (num > 0 && !alreadyConnected && !isHttp) { // whoa, we sent something, must be connected!
             jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &connection, 1);
             jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(true));
@@ -557,9 +545,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         }
         // Now read data if possible (and we have space for it)
         if (!receiveData || !hadHeaders) {
-          uint32_t host;
-          unsigned short port;
-          int num = netRecv(net, sckt, buf, (size_t)net->chunkSize, &host, &port);
+          int num = netRecv(net, socketType, sckt, buf, (size_t)net->chunkSize);
           if (!alreadyConnected && num == SOCKET_ERR_NO_CONN) {
             ; // ignore... it's just telling us we're not connected yet
           } else if (num < 0) {
@@ -583,12 +569,18 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
                 receiveData = jsvNewFromEmptyString();
               }
               if (receiveData) { // could be out of memory
-                jsvAppendStringBuf(receiveData, buf, (size_t)num);
-
                 if ((socketType&ST_TYPE_MASK)==ST_UDP) {
                   JsVar *address = jsvNewFromEmptyString(); // inet_ntoa replacement
                   JsVar *receiveInfo = jsvNewObject();
                   if (receiveInfo && address) { // could be out of memory
+                    uint32_t delta = sizeof(uint32_t) + sizeof(unsigned short);
+                    uint32_t host;
+                    unsigned short port;
+                    host = *(uint32_t*)buf;
+                    port = *(unsigned short*)(buf + sizeof(uint32_t));
+                    buf += delta;
+                    num -= delta;
+                    jsvAppendStringBuf(receiveData, buf, (size_t)num);
                     jsvAppendPrintf(address, "%d.%d.%d.%d", ((uint8_t*)&host)[0], ((uint8_t*)&host)[1], ((uint8_t*)&host)[2], ((uint8_t*)&host)[3]);
                     jsvObjectSetChildAndUnLock(receiveInfo, "address", address);
                     jsvObjectSetChildAndUnLock(receiveInfo, "port", jsvNewFromInteger(port));
@@ -597,6 +589,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
                     jsvUnLock(receiveInfo);
                   }
                 } else {
+                  jsvAppendStringBuf(receiveData, buf, (size_t)num);
                   jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
 
                   if ((socketType&ST_TYPE_MASK)==ST_HTTP && !hadHeaders) {
@@ -740,14 +733,14 @@ JsVar *serverNew(SocketType socketType, JsVar *callback) {
   return server;
 }
 
-void serverListen(JsNetwork *net, JsVar *server, int port, SocketType socketType) {
+void serverListen(JsNetwork *net, JsVar *server, unsigned short port, SocketType socketType) {
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_SERVERS, true);
   if (!arr) return; // out of memory
 
   jsvObjectSetChildAndUnLock(server, HTTP_NAME_PORT, jsvNewFromInteger(port));
   JsVar *options = jsvObjectGetChild(server, HTTP_NAME_OPTIONS_VAR, false);
 
-  int sckt = netCreateSocket(net, 0/*server*/, (unsigned short)port, socketType, options);
+  int sckt = netCreateSocket(net, 0/*server*/, port, socketType, options);
   if (sckt<0) {
     jsExceptionHere(JSET_INTERNALERROR, "Unable to create socket\n");
     jsvObjectSetChildAndUnLock(server, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
@@ -814,12 +807,13 @@ JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback) 
   return req;
 }
 
-void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data) {
+void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, JsVar *host, unsigned short portNumber) {
   if (!_socketConnectionOpen(httpClientReqVar)) {
     jsExceptionHere(JSET_ERROR, "This socket is closed.");
     return;
   }
   SocketType socketType = socketGetType(httpClientReqVar);
+
   // Append data to sendData
   JsVar *sendData = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, 0);
   if (!sendData) {
@@ -876,6 +870,15 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data) {
         // prefixed with the length
         jsvAppendPrintf(sendData, "%x\r\n%v\r\n", jsvGetStringLength(s), s);
       } else {
+        if ((socketType&ST_TYPE_MASK) == ST_UDP) {
+          char hostName[128];
+          jsvGetString(host, hostName, sizeof(hostName));
+          uint32_t host_addr = 0;
+          networkGetHostByName(net, hostName, &host_addr);
+          jsvAppendStringBuf(sendData, (const char*)&host_addr, sizeof(host_addr));
+          jsvAppendStringBuf(sendData, (const char*)&portNumber, sizeof(portNumber));
+        }
+
         jsvAppendStringVarComplete(sendData,s);
       }
       jsvUnLock(s);
@@ -953,7 +956,7 @@ void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
     }
     // on HTTP, this actually means we connect
     // force sendData to be made
-    clientRequestWrite(net, httpClientReqVar, finalData);
+    clientRequestWrite(net, httpClientReqVar, finalData, NULL, 0);
     jsvUnLock(finalData);
   } else {
     // on normal sockets, we actually request close after all data sent

@@ -465,24 +465,16 @@ An actual socket connection - allowing transmit/receive of TCP data
   "generate" : "jswrap_dgram_socket_send",
   "params" : [
     ["message","JsVar","A string containing message to send"],
-    ["port","int32","The port to listen on"],
-    ["host","JsVar","A string containing the target host to received the message"]
+    ["port","int32","The port to send the message to"],
+    ["host","JsVar","A string containing the message target host"]
   ],
   "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
 }*/
-bool jswrap_dgram_socket_send(JsVar *parent, JsVar *data, unsigned short portNumber, JsVar *host) {
+bool jswrap_dgram_socket_send(JsVar *parent, JsVar *data, unsigned short port, JsVar *host) {
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return false;
 
-  // FIXME: create a message data object {data, host, port} and pass to clientRequestWrite?
-  JsVar *options = jsvObjectGetChild(parent, "opt" /* socketserver.c:HTTP_NAME_OPTIONS_VAR */, 0);
-  if (options) {
-      jsvObjectSetChildAndUnLock(options, "port", (portNumber<=0 || portNumber>65535) ? jsvNewWithFlags(JSV_NULL) : jsvNewFromInteger(portNumber));
-      jsvObjectSetChild(options, "host", host);
-      jsvUnLock(options);
-  }
-
-  clientRequestWrite(&net, parent, data);
+  clientRequestWrite(&net, parent, data, host, port);
   networkFree(&net);
   return false;
 }
@@ -498,11 +490,10 @@ bool jswrap_dgram_socket_send(JsVar *parent, JsVar *data, unsigned short portNum
 }
 The 'message' event is called when a datagram message is received. If a handler is defined with `X.on('message', function(msg) { ... })` then it will be called`
 */
-bool jswrap_dgram_messageCallback(JsVar *parent, JsVar *msg, JsVar *rinfo) {
+void jswrap_dgram_messageCallback(JsVar *parent, JsVar *msg, JsVar *rinfo) {
   assert(jsvIsObject(parent));
   assert(jsvIsString(msg));
   assert(jsvIsObject(rinfo));
-  bool ok = true;
 
   JsVar *callback = jsvFindChildFromString(parent, DGRAM_MESSAGE_CALLBACK_NAME, false);
   if (callback) {
@@ -675,7 +666,7 @@ void jswrap_net_server_listen(JsVar *parent, int port, SocketType socketType) {
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return;
 
-  serverListen(&net, parent, port, socketType);
+  serverListen(&net, parent, (unsigned short)port, socketType);
   networkFree(&net);
 }
 
@@ -736,7 +727,7 @@ socket.write(E.toString(d.buffer))
 bool jswrap_net_socket_write(JsVar *parent, JsVar *data) {
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return false;
-  clientRequestWrite(&net, parent, data);
+  clientRequestWrite(&net, parent, data, NULL, 0);
   networkFree(&net);
   return false;
 }

@@ -80,9 +80,9 @@ typedef struct JsNetwork {
   /// Get an IP address from a name
   void (*gethostbyname)(struct JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
   /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-  int (*recv)(struct JsNetwork *net, int sckt, void *buf, size_t len, uint32_t *host, unsigned short *port);
+  int (*recv)(struct JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len);
   /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-  int (*send)(struct JsNetwork *net, int sckt, const void *buf, size_t len, uint32_t host, unsigned short port);
+  int (*send)(struct JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len);
 } PACKED_FLAGS JsNetwork;
 
 // ---------------------------------- these are in network.c
@@ -124,7 +124,8 @@ void netCloseSocket(JsNetwork *net, int sckt);
 int netAccept(JsNetwork *net, int sckt);
 
 void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
-int netRecv(JsNetwork *net, int sckt, void *buf, size_t len, uint32_t *host, unsigned short *port);
-int netSend(JsNetwork *net, int sckt, const void *buf, size_t len, uint32_t host, unsigned short port);
+
+int netRecv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len);
+int netSend(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len);
 
 #endif // _NETWORK_H

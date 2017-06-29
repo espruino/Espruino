@@ -308,17 +308,15 @@ int ssl_send(void *ctx, const unsigned char *buf, size_t len) {
   JsNetwork *net = networkGetCurrent();
   assert(net);
   int sckt = *(int *)ctx;
-  int r = net->send(net, sckt, buf, len, 0, 0);
+  int r = net->send(net, ST_TLS, sckt, buf, len);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_WRITE;
   return r;
 }
 int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
   JsNetwork *net = networkGetCurrent();
   assert(net);
-  uint32_t host;
-  unsigned short port;
   int sckt = *(int *)ctx;
-  int r = net->recv(net, sckt, buf, len, &host, &port);
+  int r = net->recv(net, ST_TLS, sckt, buf, len);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_READ;
   return r;
 }
@@ -705,7 +703,7 @@ void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   net->gethostbyname(net, hostName, out_ip_addr);
 }
 
-int netRecv(JsNetwork *net, int sckt, void *buf, size_t len, uint32_t *host, unsigned short *port) {
+int netRecv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
 #ifdef USE_TLS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
@@ -719,11 +717,11 @@ int netRecv(JsNetwork *net, int sckt, void *buf, size_t len, uint32_t *host, uns
   } else
 #endif
   {
-    return net->recv(net, sckt, buf, len, host, port);
+    return net->recv(net, socketType, sckt, buf, len);
   }
 }
 
-int netSend(JsNetwork *net, int sckt, const void *buf, size_t len, uint32_t host, unsigned short port) {
+int netSend(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
 #ifdef USE_TLS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
@@ -737,6 +735,6 @@ int netSend(JsNetwork *net, int sckt, const void *buf, size_t len, uint32_t host
   } else
 #endif
   {
-    return net->send(net, sckt, buf, len, host, port);
+    return net->send(net, socketType, sckt, buf, len);
   }
 }

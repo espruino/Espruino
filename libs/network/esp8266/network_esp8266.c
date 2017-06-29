@@ -35,14 +35,15 @@ typedef long long int64_t;
 
 // Set NET_DBG to 0 to disable debug printf's, to 1 for important printf's
 #ifdef RELEASE
-#define NET_DBG 2
+#define NET_DBG 0
 #else
 #define NET_DBG 1
 #endif
 // Normal debug
 #if NET_DBG > 0
-#include "jsinteractive.h"
-#define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+// #include "jsinteractive.h"
+// #define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
 static char DBG_LIB[] = "net_esp8266"; // library name
 #else
 #define DBG(format, ...) do { } while(0)
@@ -699,8 +700,9 @@ static void esp8266_callback_recvCB(
     return;
   }
 
-  if (pEspconn->type == ESPCONN_UDP && len > 536/2 /*chunkSize*/) {
-    jsWarn("%s: Recv %d too long (UDP)!\n", DBG_LIB, len);
+  bool isUDP = pEspconn->type == ESPCONN_UDP;
+  if (isUDP && len > 536/2 /*chunkSize*/) {
+    jsWarn("Recv %d too long (UDP)!\n", len);
     return;
   }
 
@@ -721,11 +723,13 @@ static void esp8266_callback_recvCB(
     return;
   }
 
-  // UDP remote host/port
-  remot_info *premot = NULL;
-  if (espconn_get_connection_info(pEspconn, &premot, 0) == ESPCONN_OK) {
-    pSocketData->host = *(uint32_t *)&premot->remote_ip;
-    pSocketData->port = *(unsigned short *)&premot->remote_port;
+  if (isUDP) {
+    // UDP remote host/port
+    remot_info *premot = NULL;
+    if (espconn_get_connection_info(pEspconn, &premot, 0) == ESPCONN_OK) {
+      pSocketData->host = *(uint32_t *)&premot->remote_ip;
+      pSocketData->port = *(unsigned short *)&premot->remote_port;
+    }
   }
 
   DBG("%s: Recv %d to %x:%d\n", DBG_LIB, len, pSocketData->host, pSocketData->port);
@@ -797,11 +801,10 @@ int net_ESP8266_BOARD_accept(
  */
 int net_ESP8266_BOARD_recv(
     JsNetwork *net, //!< The Network we are going to use to create the socket.
+    SocketType socketType, //!< The socket type bitmask
     int sckt,       //!< The socket from which we are to receive data.
     void *buf,      //!< The storage buffer into which we will receive data.
-    size_t len,     //!< The length of the buffer.
-    uint32_t *host,
-    unsigned short *port
+    size_t len      //!< The length of the buffer.
 ) {
   //DBG("%s:recv\n", DBG_LIB);
   struct socketData *pSocketData = getSocketData(sckt);
@@ -832,21 +835,29 @@ int net_ESP8266_BOARD_recv(
   }
   PktBuf *rxBuf = pSocketData->rxBufQ;
 
-  // UDP remote host/port
-  *host = pSocketData->host;
-  *port = pSocketData->port;
+  int delta = 0;
+  if (socketType & ST_UDP) {
+    delta = sizeof(unsigned short) + sizeof(uint32_t);
+    uint32_t *host = (uint32_t*)buf;
+    unsigned short *port = (unsigned short*)&host[1];
+    buf = &port[1];
+    len -= delta;
+    // UDP remote host/port
+    *host = pSocketData->host;
+    *port = pSocketData->port;
+  }
 
   // If the receive buffer is able to completely fit in the buffer
   // passed into us then we can copy all the data and the receive buffer will be clear.
   if (rxBuf->filled <= len) {
     os_memcpy(buf, rxBuf->data, rxBuf->filled);
-    int retLen = rxBuf->filled;
+    uint16_t retLen = rxBuf->filled;
     pSocketData->rxBufQ = PktBuf_ShiftFree(rxBuf);
     // if we now have exactly one buffer enqueued we need to re-enable the flood
     if (pSocketData->rxBufQ != NULL && pSocketData->rxBufQ->next == NULL)
       espconn_recv_unhold(pSocketData->pEspconn);
     //DBG("%s: socket %d JS recv %d\n", DBG_LIB, sckt, retLen);
-    return retLen;
+    return retLen + delta;
   }
 
   // If we are here, then we have more data in the receive buffer than is available
@@ -861,7 +872,7 @@ int net_ESP8266_BOARD_recv(
   os_memmove(rxBuf->data, rxBuf->data + len, newLen);
   rxBuf->filled = newLen;
   //DBG("%s: socket %d JS recv %d\n", DBG_LIB, sckt, len);
-  return len;
+  return len + delta;
 }
 
 
@@ -874,11 +885,10 @@ int net_ESP8266_BOARD_recv(
  */
 int net_ESP8266_BOARD_send(
     JsNetwork *net,  //!< The Network we are going to use to create the socket.
+    SocketType socketType, //!< The socket type bitmask
     int sckt,        //!< The socket over which we will send data.
     const void *buf, //!< The buffer containing the data to be sent.
-    size_t len,      //!< The length of data in the buffer to send.
-    uint32_t host,
-    unsigned short port
+    size_t len       //!< The length of data in the buffer to send.
 ) {
   //DBG("%s:send\n", DBG_LIB);
   struct socketData *pSocketData = getSocketData(sckt);
@@ -908,6 +918,20 @@ int net_ESP8266_BOARD_send(
   // Log the content of the data we are sending.
   //esp8266_board_writeString(buf, len);
   //os_printf("\n");
+  int delta = 0;
+  if (socketType & ST_UDP) {
+    delta = sizeof(unsigned short) + sizeof(uint32_t);
+    uint32_t *host = (uint32_t*)buf;
+    unsigned short *port = (unsigned short*)&host[1];
+
+    // UDP remote IP/port need to be set everytime we call espconn_send
+    *(uint32_t *)&pSocketData->pEspconn->proto.tcp->remote_ip = *host;
+    pSocketData->pEspconn->proto.tcp->remote_port = *port;
+
+    buf += delta;
+    len -= delta;
+    DBG("%s: Sendto %d to %x:%d\n", DBG_LIB, len, *host, *port);
+  }
 
   // Copy the data to be sent into a transmit buffer we hand off to espconn
   assert(pSocketData->currentTx == NULL);
@@ -920,12 +944,6 @@ int net_ESP8266_BOARD_send(
     return pSocketData->errorCode;
   }
   memcpy(pSocketData->currentTx, buf, len);
-
-  // UDP remote IP/port need to be set everytime we call espconn_send
-  *(uint32_t *)&pSocketData->pEspconn->proto.tcp->remote_ip = host;
-  pSocketData->pEspconn->proto.tcp->remote_port = port;
-
-  DBG("%s: Sendto %d to %x:%d\n", DBG_LIB, len, host, port);
 
   // Set transmitting now as the sentCB is called synchronously from inside
   // espconn_send for UDP
@@ -943,7 +961,7 @@ int net_ESP8266_BOARD_send(
   }
 
   //DBG("%s: socket %d JS send %d\n", DBG_LIB, sckt, len);
-  return len;
+  return len + delta;
 }
 
 
@@ -1030,7 +1048,7 @@ int net_ESP8266_BOARD_createSocket(
     JsNetwork *net,     //!< The Network we are going to use to create the socket.
     uint32_t ipAddress, //!< The address of the partner of the socket or 0 if we are to be a server.
     unsigned short port,//!< The port number that the partner is listening upon.
-    SocketType socketType,
+    SocketType socketType, //!< The socket type bitmask
     JsVar *options
 ) {
   // allocate a socket data structure

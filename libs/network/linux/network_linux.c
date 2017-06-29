@@ -215,7 +215,7 @@ int net_linux_accept(JsNetwork *net, int sckt) {
 }
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_linux_recv(JsNetwork *net, int sckt, void *buf, size_t len, uint32_t *host, unsigned short *port) {
+int net_linux_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
   NOT_USED(net);
   struct sockaddr_in fromAddr;
   int fromAddrLen = sizeof(fromAddr);
@@ -233,18 +233,27 @@ int net_linux_recv(JsNetwork *net, int sckt, void *buf, size_t len, uint32_t *ho
     return -1;
   } else if (n>0) {
     // receive data
-    num = (int)recvfrom(sckt,buf,len,0,&fromAddr,&fromAddrLen);
-    if (num==0) num=-1; // select says data, but recv says 0 means connection is closed
-    *host = fromAddr.sin_addr.s_addr;
-    *port = ntohs(fromAddr.sin_port);
-    jsWarn("Recv %d %x:%d", num, *host, *port);
+    if (socketType & ST_UDP) {
+      int delta = sizeof(unsigned short) + sizeof(in_addr_t);
+      uint32_t *host = (uint32_t*)buf;
+      unsigned short *port = (unsigned short*)&host[1];
+      num = (int)recvfrom(sckt,buf+delta,len-delta,0,&fromAddr,&fromAddrLen);
+      *host = fromAddr.sin_addr.s_addr;
+      *port = ntohs(fromAddr.sin_port);
+      jsWarn("Recv %d %x:%d", num, *host, *port);
+      if (num==0) return -1; // select says data, but recv says 0 means connection is closed
+      num += delta;
+    } else {
+      num = (int)recvfrom(sckt,buf,len,0,&fromAddr,&fromAddrLen);
+      if (num==0) return -1; // select says data, but recv says 0 means connection is closed
+    }
   }
 
   return num;
 }
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_linux_send(JsNetwork *net, int sckt, const void *buf, size_t len, uint32_t host, unsigned short port) {
+int net_linux_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
   NOT_USED(net);
   fd_set writefds;
   FD_ZERO(&writefds);
@@ -261,14 +270,17 @@ int net_linux_send(JsNetwork *net, int sckt, const void *buf, size_t len, uint32
 #if !defined(SO_NOSIGPIPE) && defined(MSG_NOSIGNAL)
     flags |= MSG_NOSIGNAL;
 #endif
-    jsWarn("Send %d %d %d", len, host, port);
-    if (port) {
+    if (socketType & ST_UDP) {
         sockaddr_in       sin;
+        int delta = sizeof(unsigned short) + sizeof(uint32_t);
+        uint32_t *host = (uint32_t*)buf;
+        unsigned short *port = (unsigned short*)&host[1];
         sin.sin_family = AF_INET;
-        sin.sin_addr.s_addr = (in_addr_t)host;
-        sin.sin_port = htons( port );
+        sin.sin_addr.s_addr = *(in_addr_t*)host;
+        sin.sin_port = htons(*port);
 
-        n = (int)sendto(sckt, buf, len, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in));
+        jsWarn("Send %d %x:%d", len - delta, *host, *port);
+        n = (int)sendto(sckt, buf + delta, len - delta, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in)) + delta;
     } else {
         n = (int)send(sckt, buf, len, flags);
     }
