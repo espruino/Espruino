@@ -35,7 +35,8 @@
             Don't draw font characters that are off the edge of the screen
             Make atob and btoa use flat string for larger amounts of data (faster & more memory efficient) (fix #1192)
             nRF52: Pull in Nordic SDK13 code to crash caused by writing large characteristic (fix #1181)
-            Puck.js: Added Puck.magTemp() function to get the magnetometer;'s temperature as well
+            Puck.js: Added Puck.magTemp() function to get the magnetometer's temperature as well
+            nRF5x: Fix issue where 'NRF.sleep()' called while a connection was active could cause Espruino to go into a high power draw mode
 
      1v92 : nRF5x: Fix issue where Espruino could crash during save() if the flash got into a strange state
             Added Pin.toggle() function
