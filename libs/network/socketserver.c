@@ -487,8 +487,8 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
       if (hadHeaders)
         socketClientPushReceiveData(connection, socket, &receiveData);
 
-      JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
       if (!closeConnectionNow) {
+        JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
         // send data if possible
         if (sendData && !jsvIsEmptyString(sendData)) {
           // don't try to send if we're already in error state
