@@ -28,7 +28,7 @@
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 
 // BLE HID stuff
-#define HID_KEYS_MAX_LEN                     8                                       /**< Maximum length of the Input Report characteristic. */
+#define HID_KEYS_MAX_LEN                     16                                      /**< Maximum length of the Input Report characteristic. */
 #define HID_MODIFIER_KEY_POS                 0                                       /**< Position of the modifier byte in the Input Report. */
 #define HID_SCAN_CODE_POS                    2                                       /**< This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code. */
 
