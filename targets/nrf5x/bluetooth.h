@@ -61,10 +61,9 @@ typedef enum  {
 
 extern volatile BLEStatus bleStatus;
 extern uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
-extern uint16_t                         m_conn_handle;    /**< Handle of the current connection. */
+extern volatile uint16_t                         m_conn_handle;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
-extern uint16_t                         m_central_conn_handle; /**< Handle for central mode connection */
-
+extern volatile uint16_t                         m_central_conn_handle; /**< Handle for central mode connection */
 #endif
 
 /** Initialise the BLE stack */
