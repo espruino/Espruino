@@ -1582,6 +1582,8 @@ void jsble_restart_softdevice() {
 
   jsble_kill();
   jsble_init();
+  // reinitialise everything
+  jswrap_nrf_reconfigure_softdevice();
 }
 
 uint32_t jsble_set_scanning(bool enabled) {

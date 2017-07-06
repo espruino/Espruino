@@ -55,6 +55,8 @@ bool jswrap_nrf_idle();
 void jswrap_nrf_kill();
 // Used to dump bluetooth initialisation info for 'dump'
 void jswrap_nrf_dumpBluetoothInitialisation(vcbprintf_callback user_callback, void *user_data);
+/** Reconfigure the softdevice (on init or after restart) to have all the services/advertising we need */
+void jswrap_nrf_reconfigure_softdevice();
 // ------------------------------------------------------------------------------
 
 
