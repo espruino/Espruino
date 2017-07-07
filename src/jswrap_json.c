@@ -312,7 +312,14 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
       if (allZero && !asArray) {
         cbprintf(user_callback, user_data, "new %s(%d)", jswGetBasicObjectName(var), jsvGetArrayBufferLength(var));
       } else {
-        cbprintf(user_callback, user_data, asArray?"[":"new %s([", jswGetBasicObjectName(var));
+        const char *aname = jswGetBasicObjectName(var);
+        /* You can't do `new ArrayBuffer([1,2,3])` so we have to output
+         * `new Uint8Array([1,2,3]).buffer`! */
+        bool isBasicArrayBuffer = strcmp(aname,"ArrayBuffer")==0;
+        if (isBasicArrayBuffer) {
+          aname="Uint8Array";
+        }
+        cbprintf(user_callback, user_data, asArray?"[":"new %s([", aname);
         if (flags&JSON_ALL_NEWLINES) jsonNewLine(nflags, whitespace, user_callback, user_data);
         size_t length = jsvGetArrayBufferLength(var);
         bool limited = (flags&JSON_LIMIT) && (length>JSON_LIMIT_AMOUNT);
@@ -333,6 +340,7 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
         if (flags&JSON_ALL_NEWLINES) jsonNewLine(flags, whitespace, user_callback, user_data);
         jsvArrayBufferIteratorFree(&it);
         cbprintf(user_callback, user_data, asArray?"]":"])");
+        if (isBasicArrayBuffer) cbprintf(user_callback, user_data, ".buffer");
       }
     } else if (jsvIsObject(var)) {
       IOEventFlags device = (flags & JSON_SHOW_DEVICES) ? jsiGetDeviceFromClass(var) : EV_NONE;

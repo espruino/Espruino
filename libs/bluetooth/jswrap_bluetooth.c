@@ -630,7 +630,7 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
       initialArray = advArray;
       advArray = 0;
     }
-  } else if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
+  } else if (jsvIsArray(data)) {
     advArray = jsvLockAgain(data);
     // Check if it's nested arrays - if so we alternate between advertising types
     bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
@@ -662,6 +662,10 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
       // start with the first element
       initialArray = jsvGetArrayItem(advArray, 0);
     }
+  } else if (jsvIsArrayBuffer(data)) {
+    // it's just data - no multiple advertising
+    advArray = jsvLockAgain(data);
+    bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
   }
   if (!initialArray) initialArray = jsvLockAgain(advArray);
   // failure check
