@@ -26,6 +26,7 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
+#include "jsflags.h"
 
 //EFM32 HAL includes
 #include "em_chip.h"
