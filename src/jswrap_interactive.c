@@ -16,7 +16,9 @@
 #include "jswrap_interactive.h"
 #include "jswrap_json.h" // for print/console.log
 #include "jsvar.h"
+#include "jsflags.h"
 #include "jsinteractive.h"
+
 
 /*JSON{
   "type" : "class",
@@ -79,20 +81,18 @@ void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
 /*JSON{
   "type" : "function",
   "name" : "setDeepSleep",
+  "if" : "defined(EFM32) || defined(STM32)",
   "generate" : "jswrap_interface_setDeepSleep",
   "params" : [
     ["sleep","bool",""]
   ]
 }
-Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on the Espruino Board.
+Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on STM32 Espruino Boards.
 
 Please see http://www.espruino.com/Power+Consumption for more details on this.
  */
 void jswrap_interface_setDeepSleep(bool sleep) {
-  if (sleep)
-    jsiStatus |= JSIS_ALLOW_DEEP_SLEEP;
-  else
-    jsiStatus &= ~JSIS_ALLOW_DEEP_SLEEP;
+  jsfSetFlag(JSF_DEEP_SLEEP, sleep);
 }
 
 

@@ -925,7 +925,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
    */
   //jsiConsolePrintf("\ns: %d, t: %d, R: %d, T: %d", jsiStatus, timeUntilWake, jstUtilTimerIsRunning(), jshHasTransmitData());
   if (
-      (jsiStatus & JSIS_ALLOW_DEEP_SLEEP) &&
+      jsfGetFlag(JSF_DEEP_SLEEP) &&
       (timeUntilWake > (jshGetTimeForSecond()/2)) &&  // if there's less time than this then we can't go to sleep because we can't be sure we'll wake in time
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down

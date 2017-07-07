@@ -1010,7 +1010,7 @@ void jshIdle(){
  * If time is 0xFFFFFFFFFFFFFFFF then go to sleep without setting a timer to wake
  * up.
  *
- * This function can also check `jsiStatus & JSIS_ALLOW_DEEP_SLEEP`, and if there
+ * This function can also check `jsfGetFlag(JSF_DEEP_SLEEP)`, and if there
  * is no pending serial data and nothing working on Timers, it will put the device
  * into deep sleep mode where the high speed oscillator turns off.
  *

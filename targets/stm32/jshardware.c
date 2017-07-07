@@ -2416,7 +2416,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
        What about EXTI line 18 - USB Wakeup event
        Check time until wake against where we are in the RTC counter - we can sleep for 0.1 sec if we're 90% of the way through the counter...
    */
-  if ((jsiStatus & JSIS_ALLOW_DEEP_SLEEP) &&  // from setDeepSleep
+  if (jsfGetFlag(JSF_DEEP_SLEEP) &&  // from setDeepSleep
 #ifdef STM32F1
       (timeUntilWake > (jshGetTimeForSecond()*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake in time
 #else

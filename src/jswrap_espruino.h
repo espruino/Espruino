@@ -13,6 +13,7 @@
  */
 #include "jsvar.h"
 #include "jshardware.h"
+#include "jsflags.h" // for E.get/setFlags
 
 JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data);
 

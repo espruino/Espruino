@@ -16,6 +16,7 @@
 #include "jshardware.h"
 #include "jstimer.h"
 #include "jspin.h"
+#include "jsflags.h"
 #include "jswrapper.h"
 #include "jswrap_json.h"
 #include "jswrap_io.h"
@@ -461,7 +462,7 @@ void jsiSoftInit(bool hasBeenReset) {
   jsiInputLineCursorMoved();
   inputLineIterator.var = 0;
 
-  jsiStatus &= ~JSIS_ALLOW_DEEP_SLEEP;
+  jsfSetFlag(JSF_DEEP_SLEEP, 0);
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
   pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
 
@@ -473,6 +474,13 @@ void jsiSoftInit(bool hasBeenReset) {
   // when adding an interval from onInit (called below)
   jsiLastIdleTime = jshGetSystemTime();
   jsiTimeSinceCtrlC = 0xFFFFFFFF;
+
+  // Set up interpreter flags and remove
+  JsVar *flags = jsvObjectGetChild(execInfo.hiddenRoot, JSI_JSFLAGS_NAME, 0);
+  if (flags) {
+    jsFlags = jsvGetIntegerAndUnLock(flags);
+    jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_JSFLAGS_NAME);
+  }
 
   // Run wrapper initialisation stuff
   jswInit();
@@ -647,8 +655,10 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
   if (pinSleepIndicator != DEFAULT_SLEEP_PIN_INDICATOR) {
     cbprintf(user_callback, user_data, "setSleepIndicator(%p);\n", pinSleepIndicator);
   }
-  if (jsiStatus&JSIS_ALLOW_DEEP_SLEEP) {
-    user_callback("setDeepSleep(1);\n", user_data);
+  if (humanReadableDump && jsFlags/* non-standard flags */) {
+    JsVar *v = jsfGetFlags();
+    cbprintf(user_callback, user_data, "E.setFlags(%j);\n", v);
+    jsvUnLock(v);
   }
 
   jsiDumpSerialInitialisation(user_callback, user_data, "USB", humanReadableDump);
@@ -741,6 +751,10 @@ void jsiSoftKill() {
     jsvUnLock(watchArrayPtr);
     watchArray=0;
   }
+  // Save flags if required
+  if (jsFlags)
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JSI_JSFLAGS_NAME, jsvNewFromInteger(jsFlags));
+
   // Save initialisation information
   JsVar *initCode = jsvNewFromEmptyString();
   if (initCode) { // out of memory
