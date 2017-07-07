@@ -155,7 +155,10 @@ bool jslIsIDOrReservedWord();
 void jslGetNextToken(); ///< Get the text token from our text string
 
 /// Create a new STRING from part of the lexer
-JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo);
+JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo);
+
+/// Create a new STRING from part of the lexer - keywords get tokenised
+JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo);
 
 /// Return the line number at the current character position (this isn't fast as it searches the string)
 unsigned int jslGetLineNumber();

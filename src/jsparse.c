@@ -413,7 +413,11 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
         funcCodeVar->varData.nativeStr.len = (uint16_t)(lastTokenEnd - s);
       }
     } else {
-      funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
+      if (jsfGetFlag(JSF_PRETOKENISE)) {
+        funcCodeVar = jslNewTokenisedStringFromLexer(&funcBegin, (size_t)lastTokenEnd);
+      } else {
+        funcCodeVar = jslNewStringFromLexer(&funcBegin, (size_t)lastTokenEnd);
+      }
     }
     jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME), funcCodeVar);
     // scope var

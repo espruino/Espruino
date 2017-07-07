@@ -654,7 +654,7 @@ JsVar *jswrap_espruino_getErrorFlags() {
 Get Espruino's interpreter flags that control the way it handles your JavaScript code.
 
 * `deepSleep` - Allow deep sleep modes (also set by setDeepSleep)
-
+* `pretokenise` - When adding functions, pre-minify them and tokenise reserved words
 */
 /*JSON{
   "type" : "staticmethod",
