@@ -228,8 +228,8 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
         while (jsvStringIteratorHasChar(&it)) {
           unsigned char ch = (unsigned char)jsvStringIteratorGetChar(&it);
           if ((lastch>=_LEX_R_LIST_START || ch>=_LEX_R_LIST_START) &&
-              (lastch>=_LEX_R_LIST_START || isAlpha(lastch) || isNumeric(lastch)) &&
-              (ch>=_LEX_R_LIST_START || isAlpha(ch) || isNumeric(ch)))
+              (lastch>=_LEX_R_LIST_START || isAlpha((char)lastch) || isNumeric((char)lastch)) &&
+              (ch>=_LEX_R_LIST_START || isAlpha((char)ch) || isNumeric((char)ch)))
             user_callback(" ", user_data);
           if (ch >= LEX_TOKEN_START) {
             jslTokenAsString(ch, buf, sizeof(buf));
