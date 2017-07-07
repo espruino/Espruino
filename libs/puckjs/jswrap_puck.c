@@ -38,7 +38,7 @@ const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 
 // Has the magnetometer been turned on?
 bool mag_enabled = false;
-int16_t mag_reading[3];
+int16_t mag_reading[3];  //< magnetometer xyz reading
 
 
 /* TODO: Use software I2C for this instead. Since we're relying
@@ -195,7 +195,7 @@ void mag_wait() {
 void mag_read() {
   i2c_start();
   i2c_wr(MAG3110_ADDR<<1);
-  i2c_wr(1);
+  i2c_wr(1); // OUT_X_MSB
   i2c_start();
   i2c_wr(1|(MAG3110_ADDR<<1));
   mag_reading[0] = i2c_rd(false)<<8;
@@ -207,11 +207,24 @@ void mag_read() {
   i2c_stop();
 }
 
+// Get temperature
+int8_t mag_read_temp() {
+  i2c_start();
+  i2c_wr(MAG3110_ADDR<<1);
+  i2c_wr(15); // DIE_TEMP
+  i2c_start();
+  i2c_wr(1|(MAG3110_ADDR<<1));
+  int8_t temp = i2c_rd(true);
+  i2c_stop();
+  return temp;
+}
+
 // Turn magnetometer off
 void mag_off() {
   nrf_gpio_cfg_input(MAG_SDA, NRF_GPIO_PIN_NOPULL);
   nrf_gpio_cfg_input(MAG_SCL, NRF_GPIO_PIN_NOPULL);
-  nrf_gpio_cfg_input(MAG_PWR, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_pin_clear(MAG_PWR);
+  nrf_gpio_cfg_output(MAG_PWR);
 }
 
 JsVar *mag_to_xyz(int16_t d[3]) {
@@ -265,6 +278,34 @@ JsVar *jswrap_puck_mag() {
     mag_off();
   }
   return mag_to_xyz(mag_reading);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Puck",
+  "name" : "magTemp",
+  "generate" : "jswrap_puck_magTemp",
+  "return" : ["int", "Temperature in degrees C" ]
+}
+Turn on the magnetometer, take a single temperature reading from the MAG3110 chip, and then turn it off again.
+
+(If the magnetometer is already on, this just returns the last reading obtained)
+
+`E.getTemperature()` uses the microcontroller's temperature sensor, but this uses the magnetometer's.
+
+The reading obtained is an integer (so no decimal places), but the sensitivity is factory trimmed. to 1°C, however the temperature
+offset isn't - so absolute readings may still need calibrating.
+*/
+JsVarInt jswrap_puck_magTemp() {
+  JsVarInt t;
+  if (!mag_enabled) {
+    mag_on(80000);
+    mag_wait();
+    t = mag_read_temp();
+    mag_off();
+  } else
+    t = mag_read_temp();
+  return t;
 }
 
 /*JSON{
@@ -322,8 +363,9 @@ Puck functions continue uninterrupted.
 */
 void jswrap_puck_magOn(JsVarFloat hz) {
   if (mag_enabled) {
-    jsExceptionHere(JSET_ERROR, "Magnetometer is already on");
-    return;
+    jswrap_puck_magOff();
+    // wait 1ms for power-off
+    jshDelayMicroseconds(1000);
   }
   int milliHz = (int)((hz*1000)+0.5);
   if (milliHz==0) milliHz=630;
@@ -720,8 +762,9 @@ void jswrap_puck_kill() {
   "generate" : "jswrap_puck_idle"
 }*/
 bool jswrap_puck_idle() {
+  /* jshPinWatch should mean that we wake up whenever a new
+   * magnetometer reading is ready */
   if (mag_enabled && nrf_gpio_pin_read(MAG_INT)) {
-    int16_t d[3];
     mag_read();
     JsVar *xyz = mag_to_xyz(mag_reading);
     JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);

@@ -643,6 +643,33 @@ JsVar *jswrap_espruino_getErrorFlags() {
   return arr;
 }
 
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "getFlags",
+  "generate" : "jsfGetFlags",
+  "return" : ["JsVar","An object containing flag names and their values"]
+}
+Get Espruino's interpreter flags that control the way it handles your JavaScript code.
+
+* `deepSleep` - Allow deep sleep modes (also set by setDeepSleep)
+
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "setFlags",
+  "generate" : "jsfSetFlags",
+  "params" : [
+    ["str","JsVar","An object containing flag names and boolean values. You need only specify the flags that you want to change."]
+  ]
+}
+Set the Espruino interpreter flags that control the way it handles your JavaScript code.
+
+Run `E.getFlags()` and check its description for a list of available flags and their values.
+*/
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",

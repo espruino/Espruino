@@ -115,12 +115,12 @@ static ble_hids_t                       m_hids;                                 
 static bool                             m_in_boot_mode = false;
 #endif
 
-uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
+volatile uint16_t                       m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
-uint16_t                         m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
+volatile uint16_t                       m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
 #endif
 #ifdef USE_NFC
-bool nfcEnabled = false;
+volatile bool nfcEnabled = false;
 #endif
 
 uint16_t bleAdvertisingInterval = DEFAULT_ADVERTISING_INTERVAL;
@@ -246,9 +246,12 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 }
 
 bool nus_transmit_string() {
-  if (!jsble_has_simple_connection() || !(bleStatus & BLE_NUS_INITED)) {
+  if (!jsble_has_simple_connection() ||
+      !(bleStatus & BLE_NUS_INITED) ||
+      (bleStatus & BLE_IS_SLEEPING)) {
     // If no connection, drain the output buffer
     while (jshGetCharToTransmit(EV_BLUETOOTH)>=0);
+    return false;
   }
   if (bleStatus & BLE_IS_SENDING) return false;
   static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
@@ -422,6 +425,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
           bleStatus &= ~BLE_IS_RSSI_SCANNING; // scanning will have stopped now we're disconnected
           m_conn_handle = BLE_CONN_HANDLE_INVALID;
           if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, 0);
+          // by calling nus_transmit_string here, without a connection, we clear the Bluetooth output buffer
+          nus_transmit_string();
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
             jsble_advertising_start();
@@ -546,7 +551,15 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
                   {
                       auth_reply.type = BLE_GATTS_AUTHORIZE_TYPE_READ;
                   }
-                  auth_reply.params.write.gatt_status = APP_FEATURE_NOT_SUPPORTED;
+
+                  if (req.request.write.op == BLE_GATTS_OP_EXEC_WRITE_REQ_CANCEL)
+                  {
+                      auth_reply.params.write.gatt_status = BLE_GATT_STATUS_SUCCESS;
+                  }
+                  else
+                  {
+                      auth_reply.params.write.gatt_status = APP_FEATURE_NOT_SUPPORTED;
+                  }
                   err_code = sd_ble_gatts_rw_authorize_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                              &auth_reply);
                   APP_ERROR_CHECK(err_code);
@@ -1569,6 +1582,8 @@ void jsble_restart_softdevice() {
 
   jsble_kill();
   jsble_init();
+  // reinitialise everything
+  jswrap_nrf_reconfigure_softdevice();
 }
 
 uint32_t jsble_set_scanning(bool enabled) {

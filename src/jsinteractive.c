@@ -16,6 +16,7 @@
 #include "jshardware.h"
 #include "jstimer.h"
 #include "jspin.h"
+#include "jsflags.h"
 #include "jswrapper.h"
 #include "jswrap_json.h"
 #include "jswrap_io.h"
@@ -461,7 +462,7 @@ void jsiSoftInit(bool hasBeenReset) {
   jsiInputLineCursorMoved();
   inputLineIterator.var = 0;
 
-  jsiStatus &= ~JSIS_ALLOW_DEEP_SLEEP;
+  jsfSetFlag(JSF_DEEP_SLEEP, 0);
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
   pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
 
@@ -473,6 +474,13 @@ void jsiSoftInit(bool hasBeenReset) {
   // when adding an interval from onInit (called below)
   jsiLastIdleTime = jshGetSystemTime();
   jsiTimeSinceCtrlC = 0xFFFFFFFF;
+
+  // Set up interpreter flags and remove
+  JsVar *flags = jsvObjectGetChild(execInfo.hiddenRoot, JSI_JSFLAGS_NAME, 0);
+  if (flags) {
+    jsFlags = jsvGetIntegerAndUnLock(flags);
+    jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_JSFLAGS_NAME);
+  }
 
   // Run wrapper initialisation stuff
   jswInit();
@@ -598,12 +606,12 @@ NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_d
 }
 
 /** Dump the code required to initialise a serial port to this string */
-void jsiDumpSerialInitialisation(vcbprintf_callback user_callback, void *user_data, const char *serialName, bool addObjectProperties) {
+void jsiDumpSerialInitialisation(vcbprintf_callback user_callback, void *user_data, const char *serialName, bool humanReadableDump) {
   JsVar *serialVarName = jsvFindChildFromString(execInfo.root, serialName, false);
   JsVar *serialVar = jsvSkipName(serialVarName);
 
   if (serialVar) {
-    if (addObjectProperties)
+    if (humanReadableDump)
       jsiDumpObjectState(user_callback, user_data, serialVarName, serialVar);
 
     JsVar *baud = jsvObjectGetChild(serialVar, USART_BAUDRATE_NAME, 0);
@@ -639,7 +647,7 @@ void jsiDumpDeviceInitialisation(vcbprintf_callback user_callback, void *user_da
 }
 
 /** Dump all the code required to initialise hardware to this string */
-void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_data, bool addObjectProperties) {
+void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_data, bool humanReadableDump) {
   if (jsiStatus&JSIS_ECHO_OFF) user_callback("echo(0);", user_data);
   if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
     cbprintf(user_callback, user_data, "setBusyIndicator(%p);\n", pinBusyIndicator);
@@ -647,14 +655,16 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
   if (pinSleepIndicator != DEFAULT_SLEEP_PIN_INDICATOR) {
     cbprintf(user_callback, user_data, "setSleepIndicator(%p);\n", pinSleepIndicator);
   }
-  if (jsiStatus&JSIS_ALLOW_DEEP_SLEEP) {
-    user_callback("setDeepSleep(1);\n", user_data);
+  if (humanReadableDump && jsFlags/* non-standard flags */) {
+    JsVar *v = jsfGetFlags();
+    cbprintf(user_callback, user_data, "E.setFlags(%j);\n", v);
+    jsvUnLock(v);
   }
 
-  jsiDumpSerialInitialisation(user_callback, user_data, "USB", addObjectProperties);
+  jsiDumpSerialInitialisation(user_callback, user_data, "USB", humanReadableDump);
   int i;
   for (i=0;i<USART_COUNT;i++)
-    jsiDumpSerialInitialisation(user_callback, user_data, jshGetDeviceString(EV_SERIAL1+i), addObjectProperties);
+    jsiDumpSerialInitialisation(user_callback, user_data, jshGetDeviceString(EV_SERIAL1+i), humanReadableDump);
   for (i=0;i<SPI_COUNT;i++)
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_SPI1+i));
   for (i=0;i<I2C_COUNT;i++)
@@ -698,7 +708,8 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
     }
   }
 #ifdef BLUETOOTH
-  jswrap_nrf_dumpBluetoothInitialisation(user_callback, user_data);
+  if (humanReadableDump)
+    jswrap_nrf_dumpBluetoothInitialisation(user_callback, user_data);
 #endif
 }
 
@@ -740,12 +751,16 @@ void jsiSoftKill() {
     jsvUnLock(watchArrayPtr);
     watchArray=0;
   }
+  // Save flags if required
+  if (jsFlags)
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JSI_JSFLAGS_NAME, jsvNewFromInteger(jsFlags));
+
   // Save initialisation information
   JsVar *initCode = jsvNewFromEmptyString();
   if (initCode) { // out of memory
     JsvStringIterator it;
     jsvStringIteratorNew(&it, initCode, 0);
-    jsiDumpHardwareInitialisation((vcbprintf_callback)&jsvStringIteratorPrintfCallback, &it, false);
+    jsiDumpHardwareInitialisation((vcbprintf_callback)&jsvStringIteratorPrintfCallback, &it, false/*human readable*/);
     jsvStringIteratorFree(&it);
     jsvObjectSetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, initCode);
     jsvUnLock(initCode);
@@ -2247,7 +2262,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
   jsvObjectIteratorFree(&it);
 
   // and now the actual hardware
-  jsiDumpHardwareInitialisation(user_callback, user_data, true);
+  jsiDumpHardwareInitialisation(user_callback, user_data, true/*human readable*/);
 
   const char *code = jsfGetBootCodeFromFlash(false);
   if (code) {

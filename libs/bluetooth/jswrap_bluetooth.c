@@ -152,6 +152,12 @@ void jswrap_nrf_init() {
   }
   // Set advertising interval back to default
   bleAdvertisingInterval = DEFAULT_ADVERTISING_INTERVAL;
+  // Now set up whatever advertising we were doing before
+  jswrap_nrf_reconfigure_softdevice();
+}
+
+/** Reconfigure the softdevice (on init or after restart) to have all the services/advertising we need */
+void jswrap_nrf_reconfigure_softdevice() {
   // restart various
   JsVar *v,*o;
   v = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT,0);
@@ -167,9 +173,8 @@ void jswrap_nrf_init() {
   jsvUnLock2(v,o);
   // services
   v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
-  o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS, 0);
-  if (v || o) jswrap_nrf_bluetooth_setServices(v, o);
-  jsvUnLock2(v,o);
+  if (v) jsble_set_services(v);
+  jsvUnLock(v);
   // If we had scan response data set, update it
   JsVar *scanData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, 0);
   if (scanData) jswrap_nrf_bluetooth_setScanResponse(scanData);
@@ -625,7 +630,7 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
       initialArray = advArray;
       advArray = 0;
     }
-  } else if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
+  } else if (jsvIsArray(data)) {
     advArray = jsvLockAgain(data);
     // Check if it's nested arrays - if so we alternate between advertising types
     bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
@@ -657,6 +662,10 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
       // start with the first element
       initialArray = jsvGetArrayItem(advArray, 0);
     }
+  } else if (jsvIsArrayBuffer(data)) {
+    // it's just data - no multiple advertising
+    advArray = jsvLockAgain(data);
+    bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
   }
   if (!initialArray) initialArray = jsvLockAgain(advArray);
   // failure check
@@ -967,10 +976,11 @@ void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options) {
   // work out whether to apply changes
   if (bleStatus & (BLE_SERVICES_WERE_SET|BLE_NEEDS_SOFTDEVICE_RESTART)) {
     jswrap_nrf_bluetooth_restart();
+  } else {
+    /* otherwise, we can set the services now, since we're only adding
+     * and not changing anything we don't need a restart. */
+    jsble_set_services(data);
   }
-  /* otherwise, we can set the services now, since we're only adding
-   * and not changing anything we don't need a restart. */
-  jsble_set_services(data);
 }
 
 /*JSON{

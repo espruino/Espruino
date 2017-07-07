@@ -528,14 +528,14 @@ Set the prototype of the given object - this is like writing
 `object.__proto__ = prototype` but is the 'proper' ES6 way of doing it
  */
 JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
-  JsVar *v = jspGetNamedField(object, "__proto__", true);
+  JsVar *v = jsvIsObject(object) ? jspGetNamedField(object, "__proto__", true) : 0;
   if (!jsvIsName(v)) {
-    jsExceptionHere(JSET_TYPEERROR, "Can't extend this object\n");
+    jsExceptionHere(JSET_TYPEERROR, "Can't extend %t\n", v);
   } else {
     jsvSetValueOfName(v, proto);
   }
   jsvUnLock(v);
-  return jsvLockAgain(object);
+  return jsvLockAgainSafe(object);
 }
 
 // --------------------------------------------------------------------------

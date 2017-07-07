@@ -243,6 +243,7 @@ src/jswrap_waveform.c \
 # integers (as the check for int *includes* the chek for pin)
 SOURCES = \
 src/jslex.c \
+src/jsflags.c \
 src/jsvar.c \
 src/jsvariterator.c \
 src/jsutils.c \
