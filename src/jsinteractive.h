@@ -152,8 +152,10 @@ typedef enum {
 extern JsiStatus jsiStatus;
 bool jsiEcho();
 
+#ifndef SAVE_ON_FLASH
 extern Pin pinBusyIndicator;
 extern Pin pinSleepIndicator;
+#endif
 extern JsSysTime jsiLastIdleTime; ///< The last time we went around the idle loop - use this for timers
 
 void jsiDumpJSON(vcbprintf_callback user_callback, void *user_data, JsVar *data, JsVar *existing);

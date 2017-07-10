@@ -36,7 +36,7 @@ info = {
      'GRAPHICS',
      'NEOPIXEL',
      'HASHLIB',
-     'TV',
+#     'TV', # TV had to be removed because of flash usage
      'FILESYSTEM'
    ],
    'makefile' : [

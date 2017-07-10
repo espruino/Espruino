@@ -293,7 +293,7 @@ Turn on the magnetometer, take a single temperature reading from the MAG3110 chi
 
 `E.getTemperature()` uses the microcontroller's temperature sensor, but this uses the magnetometer's.
 
-The reading obtained is an integer (so no decimal places), but the sensitivity is factory trimmed. to 1°C, however the temperature
+The reading obtained is an integer (so no decimal places), but the sensitivity is factory trimmed. to 1&deg;C, however the temperature
 offset isn't - so absolute readings may still need calibrating.
 */
 JsVarInt jswrap_puck_magTemp() {

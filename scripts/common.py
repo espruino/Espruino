@@ -182,6 +182,8 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
                   dname = defn[:defn.find('=')]
                   dkey = defn[defn.find('=')+1:]
                   expr = expr.replace(dname, dkey);
+              # Now replace any defined(...) we haven't heard of with false
+              expr = re.sub(r"defined\([^\)]*\)", "False", expr)
               try:
                 r = eval(expr)
               except:
@@ -356,6 +358,7 @@ def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH": return "devices with low flash memory"
   if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
   if d=="NRF52": return "NRF52 devices (like Puck.js)"
+  if d=="ESP8266": return "Espruino running on ESP8266"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico and Espruino WiFi only)"
   if d=="RELEASE": return "release builds"
