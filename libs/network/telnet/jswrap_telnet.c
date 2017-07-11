@@ -289,7 +289,7 @@ bool telnetRecv(JsNetwork *net) {
   if (tnSrv.sock == 0 || tnSrv.cliSock == 0) return false;
 
   char buff[256];
-  int r = netRecv(net, tnSrv.cliSock-1, buff, 256);
+  int r = netRecv(net, tnSrv.cliSock-1, buff, 255);
   if (r > 0) {
     jshPushIOCharEvents(EV_TELNET, buff, (unsigned int)r);
   } else if (r < 0) {
