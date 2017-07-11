@@ -370,6 +370,13 @@ DEFINES += -DUSE_USB_HID
 endif
 
 ifdef USE_NET
+
+ ifdef USE_TELNET
+ DEFINES += -DUSE_TELNET
+ WRAPPERSOURCES += libs/network/telnet/jswrap_telnet.c
+ INCLUDE += -I$(ROOT)/libs/network/telnet
+ endif
+
  DEFINES += -DUSE_NET
  INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
  WRAPPERSOURCES += \
@@ -479,10 +486,10 @@ ifdef USE_NET
  libs/network/esp8266/ota.c
  endif
 
- ifdef USE_TELNET
- DEFINES += -DUSE_TELNET
- WRAPPERSOURCES += libs/network/telnet/jswrap_telnet.c
- INCLUDE += -I$(ROOT)/libs/network/telnet
+ ifdef USE_MQTT
+ DEFINES += -DUSE_MQTT
+ WRAPPERSOURCES += libs/network/mqtt/jswrap_mqtt.c
+ INCLUDE += -I$(ROOT)/libs/network/mqtt
  endif
 endif # USE_NET
 
