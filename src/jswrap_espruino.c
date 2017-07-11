@@ -1286,11 +1286,13 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 }
 
 #endif
+
 #ifdef LINUX
 #include <stdio.h>
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",
+  "ifdef" : "LINUX",
   "name" : "shell",
   "generate" : "jswrap_espruino_shell",
   "params" : [
