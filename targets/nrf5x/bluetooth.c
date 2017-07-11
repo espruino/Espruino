@@ -312,7 +312,7 @@ void SWI1_IRQHandler(bool radio_evt) {
 #endif
 }
 
-#if CENTRAL_LINK_COUNT>0
+#if PEER_MANAGER_ENABLED
 static void ble_update_whitelist() {
   uint32_t err_code;
   if (m_is_wl_changed) {
@@ -1996,6 +1996,7 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
 }
 
 void jsble_central_startBonding(bool forceRePair) {
+#if PEER_MANAGER_ENABLED
   if (!jsble_has_central_connection())
       return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Not connected"));
 
@@ -2003,9 +2004,13 @@ void jsble_central_startBonding(bool forceRePair) {
   if (jsble_check_error(err_code)) {
     bleCompleteTaskFail(BLETASK_BONDING, 0);
   }
+#else
+  return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Peer Manager not compiled in"));
+#endif
 }
 
 JsVar *jsble_central_getSecurityStatus() {
+#if PEER_MANAGER_ENABLED
   if (!jsble_has_central_connection())
     return 0;
   pm_conn_sec_status_t status;
@@ -2022,6 +2027,10 @@ JsVar *jsble_central_getSecurityStatus() {
     return result;
   }
   return 0;
+#else
+  jsExceptionHere(JSET_ERROR,"Peer Manager not compiled in");
+  return 0;
+#endif
 }
 
 void jsble_central_setWhitelist(bool whitelist) {
