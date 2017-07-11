@@ -1286,3 +1286,34 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 }
 
 #endif
+#ifdef LINUX
+#include <stdio.h>
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "shell",
+  "generate" : "jswrap_espruino_shell",
+  "params" : [
+    ["cmd","JsVar",""]
+  ],
+  "return" : ["JsVar",""]
+}
+ */
+JsVar *jswrap_espruino_shell(JsVar *cmd){
+  JsVar *resArray=jsvNewEmptyArray();
+  char cmdStr[1024];
+  jsvGetString(cmd,cmdStr,1023);
+  FILE *pp = popen(cmdStr, "r"); 
+  if (pp) {
+    char tmpStr[1024]; 
+    while (fgets(tmpStr, sizeof(tmpStr), pp) != NULL) {
+        if (tmpStr[strlen(tmpStr) - 1] == '\n') {
+            tmpStr[strlen(tmpStr) - 1] = '\0'; 
+        }
+        jsvArrayPushAndUnLock(resArray,jsvNewFromString(tmpStr));
+    }
+    pclose(pp);
+  }
+  return resArray;
+}
+#endif
