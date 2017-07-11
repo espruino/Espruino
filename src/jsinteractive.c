@@ -60,8 +60,10 @@ JsVarRef timerArray = 0; // Linked List of timers to check and run
 JsVarRef watchArray = 0; // Linked List of input watches to check and run
 // ----------------------------------------------------------------------------
 IOEventFlags consoleDevice = DEFAULT_CONSOLE_DEVICE; ///< The console device for user interaction
+#ifndef SAVE_ON_FLASH
 Pin pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 Pin pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
+#endif
 JsiStatus jsiStatus = 0;
 JsSysTime jsiLastIdleTime;  ///< The last time we went around the idle loop - use this for timers
 uint32_t jsiTimeSinceCtrlC;
@@ -415,13 +417,12 @@ void jsiClearInputLine(bool updateConsole) {
   inputCursorPos = 0;
 }
 
-/**
- * ??? What does this do ???.
- */
+/* Sets 'busy state' - this is used for lighting up a busy indicator LED, which can be used for debugging power usage */
 void jsiSetBusy(
     JsiBusyDevice device, //!< ???
     bool isBusy           //!< ???
   ) {
+#ifndef SAVE_ON_FLASH
   static JsiBusyDevice business = 0;
 
   if (isBusy)
@@ -431,6 +432,7 @@ void jsiSetBusy(
 
   if (pinBusyIndicator != PIN_UNDEFINED)
     jshPinOutput(pinBusyIndicator, business!=0);
+#endif
 }
 
 /**
@@ -439,8 +441,10 @@ void jsiSetBusy(
  * if the sleep type is awake and false otherwise.
  */
 void jsiSetSleep(JsiSleepType isSleep) {
+#ifndef SAVE_ON_FLASH
   if (pinSleepIndicator != PIN_UNDEFINED)
     jshPinOutput(pinSleepIndicator, isSleep == JSI_SLEEP_AWAKE);
+#endif
 }
 
 static JsVarRef _jsiInitNamedArray(const char *name) {
@@ -463,8 +467,10 @@ void jsiSoftInit(bool hasBeenReset) {
   inputLineIterator.var = 0;
 
   jsfSetFlag(JSF_DEEP_SLEEP, 0);
+#ifndef SAVE_ON_FLASH
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
   pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
+#endif
 
   // Load timer/watch arrays
   timerArray = _jsiInitNamedArray(JSI_TIMERS_NAME);
@@ -649,19 +655,23 @@ void jsiDumpDeviceInitialisation(vcbprintf_callback user_callback, void *user_da
 /** Dump all the code required to initialise hardware to this string */
 void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_data, bool humanReadableDump) {
   if (jsiStatus&JSIS_ECHO_OFF) user_callback("echo(0);", user_data);
+#ifndef SAVE_ON_FLASH
   if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
     cbprintf(user_callback, user_data, "setBusyIndicator(%p);\n", pinBusyIndicator);
   }
   if (pinSleepIndicator != DEFAULT_SLEEP_PIN_INDICATOR) {
     cbprintf(user_callback, user_data, "setSleepIndicator(%p);\n", pinSleepIndicator);
   }
+#endif
   if (humanReadableDump && jsFlags/* non-standard flags */) {
     JsVar *v = jsfGetFlags();
     cbprintf(user_callback, user_data, "E.setFlags(%j);\n", v);
     jsvUnLock(v);
   }
 
+#ifdef USB
   jsiDumpSerialInitialisation(user_callback, user_data, "USB", humanReadableDump);
+#endif
   int i;
   for (i=0;i<USART_COUNT;i++)
     jsiDumpSerialInitialisation(user_callback, user_data, jshGetDeviceString(EV_SERIAL1+i), humanReadableDump);
@@ -776,7 +786,9 @@ void jsiSemiInit(bool autoLoad) {
   interruptedDuringEvent = false;
   // Set defaults
   jsiStatus &= ~JSIS_SOFTINIT_MASK;
+#ifndef SAVE_ON_FLASH
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
+#endif
 
   /* If flash contains any code, then we should
      Try and load from it... */

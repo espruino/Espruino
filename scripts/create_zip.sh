@@ -44,6 +44,10 @@ do
   echo ------------------------------
   EXTRADEFS=
   EXTRANAME=
+  if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then
+    BOARDNAME=ESPRUINOBOARD
+    EXTRADEFS=CC3000=1
+  fi
   if [ "$BOARDNAME" == "ESPRUINO_1V3_WIZ" ]; then
     BOARDNAME=ESPRUINOBOARD
     EXTRADEFS=WIZNET=1
@@ -59,13 +63,9 @@ do
     EXTRADEFS=WIZNET=1
     EXTRANAME=_wiznet
   fi
-  BOARDNAMEX=$BOARDNAME
-  if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then
-    BOARDNAMEX=ESPRUINOBOARD
-    EXTRADEFS=CC3000=1
-  fi
+
   # actually build
-  ESP_BINARY_NAME=`python scripts/get_board_info.py $BOARDNAMEX "common.get_board_binary_name(board)"`
+  ESP_BINARY_NAME=`python scripts/get_board_info.py $BOARDNAME "common.get_board_binary_name(board)"`
   if [ "$BOARDNAME" == "PUCKJS" ]; then
     ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
     EXTRADEFS=DFU_UPDATE_BUILD=1
@@ -78,7 +78,7 @@ do
   echo "Building $ESP_BINARY_NAME"
   echo
   rm -f $BINARY_NAME
-  if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then
+  if [ "$BOARDNAME" == "ESPRUINOBOARD" ]; then
     bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   elif [ "$BOARDNAME" == "PICO_R1_3" ]; then
     bash -c "$EXTRADEFS scripts/create_pico_image_1v3.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
