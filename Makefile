@@ -550,6 +550,12 @@ libs/crypto/mbedtls/library/sha1.c \
 libs/crypto/mbedtls/library/sha256.c \
 libs/crypto/mbedtls/library/sha512.c
 
+ifdef USE_XTEA
+DEFINES += -DUSE_XTEA
+SOURCES += \
+libs/crypto/mbedtls/library/xtea.c 
+endif
+
 ifdef USE_TLS
   USE_AES=1
   DEFINES += -DUSE_TLS

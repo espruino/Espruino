@@ -16,7 +16,7 @@
 #include "jsvar.h"
 #include "jsvariterator.h"
 #include "jswrap_crypto.h"
-
+#include "jsinteractive.h"
 #ifdef USE_AES
 #include "mbedtls/include/mbedtls/aes.h"
 #endif
@@ -28,6 +28,9 @@
 #include "mbedtls/include/mbedtls/pk.h"
 #include "mbedtls/include/mbedtls/x509.h"
 #include "mbedtls/include/mbedtls/ssl.h"
+#endif
+#ifdef USE_XTEA
+#include "mbedtls/include/mbedtls/xtea.h"
 #endif
 
 
@@ -450,5 +453,102 @@ JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
 */
 JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options) {
   return jswrap_crypto_AEScrypt(message, key, options, false);
+}
+#endif
+
+
+#ifdef USE_XTEA
+/*JSON{
+  "type" : "class",
+  "class" : "XTEA",
+  "ifdef" : "USE_XTEA"
+}
+*/
+static mbedtls_xtea_context ctx;
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "XTEA",
+  "name" : "setup",
+  "generate" : "jswrap_crypto_xtea_setup",
+  "params" : [
+    ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"]
+  ],
+  "ifdef" : "USE_XTEA"
+}
+*/
+
+void   jswrap_crypto_xtea_setup(JsVar *key){
+  mbedtls_xtea_init(&ctx);
+  if(!jsvIsUndefined(key)){
+    jsvIterateCallbackToBytes(key, ctx.k, sizeof(ctx.k));
+  }
+}
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "XTEA",
+  "name" : "update",
+  "generate" : "jswrap_crypto_xtea_update",
+  "params" : [
+    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
+  ],
+  "return" : ["JsVar","Returns an ArrayBuffer"],
+  "ifdef" : "USE_XTEA"
+}
+*/
+JsVar *jswrap_crypto_xtea_update(JsVar *options){
+  JsVar *modeVar=0,*messageVar=0;
+
+  JsVar *resStrVar=jsvNewFromEmptyString();
+
+  jsvConfigObject configs[]={
+            {"mode",JSV_OBJECT,&modeVar},
+            {"message",JSV_OBJECT,&messageVar}
+        };
+  
+  if(jsvReadConfigObject(options,configs,sizeof(configs)/sizeof(jsvConfigObject))){
+    char mode=MBEDTLS_XTEA_ENCRYPT;
+
+    if(jsvIsString(modeVar)){
+      if(jsvIsStringEqual(modeVar,"d")||jsvIsStringEqual(modeVar,"decrypt")){
+        mode=MBEDTLS_XTEA_DECRYPT;
+      }
+    }
+
+    if(jsvIsString(messageVar)){
+      char input[8],output[8];
+      int idx=0;
+      JsvStringIterator it;
+      memset(input,0,8);
+      jsvStringIteratorNew(&it, messageVar, 0);
+      while (jsvStringIteratorHasChar(&it)) {
+          input[idx%8] = jsvStringIteratorGetChar(&it);
+          idx++;
+          if((idx%8)==0&&idx!=0){
+            memset(output,0,8);
+            mbedtls_xtea_crypt_ecb(&ctx,mode,input,output);
+            jsvAppendStringBuf(resStrVar,output,8);
+            memset(input,0,8);
+          }
+          jsvStringIteratorNext(&it);
+      }
+      if((idx%8)!=0){
+        memset(output,0,8);
+        mbedtls_xtea_crypt_ecb(&ctx,mode,input,output);
+        jsvAppendStringBuf(resStrVar,output,8);
+      }
+      jsvStringIteratorFree(&it);
+    }
+
+    if(!jsvIsUndefined(modeVar)){
+      jsvUnLock(modeVar);
+    }
+
+    if(!jsvIsUndefined(messageVar)){
+      jsvUnLock(messageVar);
+    }
+
+  }
+  return resStrVar;
 }
 #endif

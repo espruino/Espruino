@@ -70,7 +70,7 @@
 #define MBEDTLS_SSL_TLS_C
 #define MBEDTLS_X509_CRT_PARSE_C
 #define MBEDTLS_X509_USE_C
-
+#define MBEDTLS_XTEA_C
 /**
  * Enables specific curves within the Elliptic Curve module.
  * By default all supported curves are enabled.
