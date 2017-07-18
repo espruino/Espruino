@@ -25,6 +25,6 @@ JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options);
 #endif
 
 #ifdef USE_XTEA
-void   jswrap_crypto_xtea_setup(JsVar *key);
-JsVar *jswrap_crypto_xtea_update(JsVar *options);
+JsVar *jswrap_crypto_xtea_encrypt(JsVar *message,JsVar *key);
+JsVar *jswrap_crypto_xtea_decrypt(JsVar *message,JsVar *key);
 #endif

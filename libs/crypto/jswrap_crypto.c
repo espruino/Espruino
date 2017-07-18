@@ -17,6 +17,7 @@
 #include "jsvariterator.h"
 #include "jswrap_crypto.h"
 #include "jsinteractive.h"
+#include "jswrap_object.h"
 #ifdef USE_AES
 #include "mbedtls/include/mbedtls/aes.h"
 #endif
@@ -460,95 +461,176 @@ JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options) {
 #ifdef USE_XTEA
 /*JSON{
   "type" : "class",
-  "class" : "XTEA",
-  "ifdef" : "USE_XTEA"
-}
-*/
-static mbedtls_xtea_context ctx;
-
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "XTEA",
-  "name" : "setup",
-  "generate" : "jswrap_crypto_xtea_setup",
-  "params" : [
-    ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"]
-  ],
+  "class" : "xxtea",
   "ifdef" : "USE_XTEA"
 }
 */
 
-void   jswrap_crypto_xtea_setup(JsVar *key){
-  mbedtls_xtea_init(&ctx);
-  if(!jsvIsUndefined(key)){
-    jsvIterateCallbackToBytes(key, ctx.k, sizeof(ctx.k));
+uint32_t _jswrap_length(uint32_t vl){
+  uint32_t l=vl/4;
+  if((vl%4)!=0){
+    l++;
+  }
+  return l;
+}
+
+//#include <stdio.h>
+
+void _jswrap_stl(JsVar *str,uint32_t *buf,int length,bool inc_len){
+  JsvStringIterator it;
+  int idx=0;
+  jsvStringIteratorNew(&it, str, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    uint32_t c = jsvStringIteratorGetChar(&it)&0xff;
+    buf[idx>>2]|=(c<<((idx%4)*8));
+    idx++;
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  idx=_jswrap_length(idx);
+  if(inc_len){
+    buf[idx]=length;
+    idx++;
+  }
+  //for(int i=0;i<idx;i++){
+  //  printf("%ld ",buf[i]);
+  //}
+  //printf("\n");
+}
+
+JsVar *_jswrap_lts(uint32_t *buf,int length,bool inc_len){
+  JsVar *str=jsvNewFromEmptyString();
+  uint32_t n=(length-1)<<2;
+  if(inc_len){
+    n=buf[length-1];
+  }
+  uint32_t vl;
+  uint8_t vll;
+  for(uint32_t i=0;i<length;++i){
+    vl=buf[i];
+    //printf("%d: %ld \n",i,vl);
+    jsvAppendCharacter(str,(vl>>0)&0xff);
+    jsvAppendCharacter(str,(vl>>8)&0xff);
+    jsvAppendCharacter(str,(vl>>16)&0xff);
+    jsvAppendCharacter(str,(vl>>24)&0xff);
+    //jsiConsolePrintf("%x %x %x %x \n",(vl>>0)&0xff,(vl>>8)&0xff,(vl>>16)&0xff,(vl>>24)&0xff);
+  }
+  if(inc_len){
+    JsVar *substr=jsvNewFromEmptyString();
+    jsvAppendStringVar(substr, str, (size_t)0, (size_t)n);
+    jsvUnLock(str);
+    return substr;
+  }else{
+    return str;
   }
 }
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "XTEA",
-  "name" : "update",
-  "generate" : "jswrap_crypto_xtea_update",
-  "params" : [
-    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
-  ],
-  "return" : ["JsVar","Returns an ArrayBuffer"],
-  "ifdef" : "USE_XTEA"
-}
-*/
-JsVar *jswrap_crypto_xtea_update(JsVar *options){
-  JsVar *modeVar=0,*messageVar=0;
 
-  JsVar *resStrVar=jsvNewFromEmptyString();
+JsVar *_jswrap_crypto_xtea(JsVar *key,JsVar *message,char mode){
+  int size=0;
+  uint32_t *k=0,*v=0,delta=0x9E3779B9;
+  JsVar *resStrVar=0;
+  JsVarInt key_len= jsvGetIntegerAndUnLock(jswrap_object_length(key));
+  size=_jswrap_length(key_len);
+  size=size<4?4:size;
+  k=jsvMalloc(size*sizeof(uint32_t));
+  _jswrap_stl(key,k,key_len,false);
+  if(mode==MBEDTLS_AES_ENCRYPT){
+    JsVarInt message_len=jsvGetIntegerAndUnLock(jswrap_object_length(message));
+    size=_jswrap_length(message_len);
+    v=jsvMalloc((size+1)*sizeof(uint32_t));
+    _jswrap_stl(message,v,message_len,true);
 
-  jsvConfigObject configs[]={
-            {"mode",JSV_OBJECT,&modeVar},
-            {"message",JSV_OBJECT,&messageVar}
-        };
-  
-  if(jsvReadConfigObject(options,configs,sizeof(configs)/sizeof(jsvConfigObject))){
-    char mode=MBEDTLS_XTEA_ENCRYPT;
-
-    if(jsvIsString(modeVar)){
-      if(jsvIsStringEqual(modeVar,"d")||jsvIsStringEqual(modeVar,"decrypt")){
-        mode=MBEDTLS_XTEA_DECRYPT;
+    uint32_t n=size;
+    uint32_t z=v[n];
+    uint32_t y=v[0];
+    uint32_t mx,e;
+    int32_t q=floor(6+52/(n+1)),p;
+    uint32_t sum=0;
+    while(0<=--q){
+      sum=sum+delta&0xffffffff;
+      e=sum>>2&3;
+      for(p=0;p<n;++p){
+        y=v[p+1];
+        mx=(z>>5^y<<2)+(y>>3^z<<4)^(sum^y)+(k[p&3^e]^z);
+        z=v[p]=v[p]+mx&0xffffffff;
       }
+      y=v[0];
+      mx=(z>>5^y<<2)+(y>>3^z<<4)^(sum^y)+(k[p&3^e]^z);
+      z=v[n]=v[n]+mx&0xffffffff;
     }
+    resStrVar=_jswrap_lts(v,n+1,false);
 
-    if(jsvIsString(messageVar)){
-      char input[8],output[8];
-      int idx=0;
-      JsvStringIterator it;
-      memset(input,0,8);
-      jsvStringIteratorNew(&it, messageVar, 0);
-      while (jsvStringIteratorHasChar(&it)) {
-          input[idx%8] = jsvStringIteratorGetChar(&it);
-          idx++;
-          if((idx%8)==0&&idx!=0){
-            memset(output,0,8);
-            mbedtls_xtea_crypt_ecb(&ctx,mode,input,output);
-            jsvAppendStringBuf(resStrVar,output,8);
-            memset(input,0,8);
-          }
-          jsvStringIteratorNext(&it);
+  }else{
+    JsVarInt message_len=jsvGetIntegerAndUnLock(jswrap_object_length(message));
+    size=_jswrap_length(message_len);
+    v=jsvMalloc((size)*sizeof(uint32_t));
+    _jswrap_stl(message,v,message_len,false);
+
+    uint32_t n=size-1;
+    uint32_t z=v[n-1],y=v[0];
+    uint32_t mx,e,p;
+    int32_t q=floor(6+52/(n+1));
+    uint32_t sum=(q*delta)&0xffffffff;
+
+    while(sum!=0){
+      e=sum>>2&3;
+      for(p=n;p>0;--p){
+        z=v[p-1];
+        mx=(z>>5^y<<2)+(y>>3^z<<4)^(sum^y)+(k[p&3^e]^z);
+        y=v[p]=v[p]-mx&0xffffffff;
       }
-      if((idx%8)!=0){
-        memset(output,0,8);
-        mbedtls_xtea_crypt_ecb(&ctx,mode,input,output);
-        jsvAppendStringBuf(resStrVar,output,8);
-      }
-      jsvStringIteratorFree(&it);
+      z=v[n];
+      mx=(z>>5^y<<2)+(y>>3^z<<4)^(sum^y)+(k[p&3^e]^z);
+      y=v[0]=v[0]-mx&0xffffffff;
+      sum=sum-delta&0xffffffff;
     }
 
-    if(!jsvIsUndefined(modeVar)){
-      jsvUnLock(modeVar);
-    }
+    resStrVar=_jswrap_lts(v,size,true);
+  }
 
-    if(!jsvIsUndefined(messageVar)){
-      jsvUnLock(messageVar);
-    }
-
+  if(k){
+    jsvFree(k);
+  }
+  if(v){
+    jsvFree(v);
   }
   return resStrVar;
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "xxtea",
+  "name" : "encrypt",
+  "generate" : "jswrap_crypto_xtea_encrypt",
+  "params" : [
+    ["message","JsVar","Key to encrypt message "],
+    ["key","JsVar","message to encrypt"]
+  ],
+  "return" : ["JsVar","Returns a String"],
+  "ifdef" : "USE_XTEA"
+}
+*/
+JsVar *jswrap_crypto_xtea_encrypt(JsVar *message,JsVar *key){
+  return _jswrap_crypto_xtea(key,message,MBEDTLS_XTEA_ENCRYPT);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "xxtea",
+  "name" : "decrypt",
+  "generate" : "jswrap_crypto_xtea_decrypt",
+  "params" : [
+    ["message","JsVar","Key to decrypt message "],
+    ["key","JsVar","message to decrypt"]
+  ],
+  "return" : ["JsVar","Returns a String"],
+  "ifdef" : "USE_XTEA"
+}
+*/
+JsVar *jswrap_crypto_xtea_decrypt(JsVar *message,JsVar *key){
+  return _jswrap_crypto_xtea(key,message,MBEDTLS_XTEA_DECRYPT);
+}
+
+
+
 #endif
