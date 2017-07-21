@@ -89,8 +89,16 @@ if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1204:
 if board.chip["family"]=="STM32L4" and RAM_SIZE > 96*1204:
   RAM_SIZE = 96*1024
 
+# IS_BOOTLOADER will only get used on official Espruino
+# boards. The ST discovery bootloader rejects firmwares that
+# aren't based at 0x08000000, however it seems to be wrong. If you use
+# DFU then the built-in DFU bootloader will fail to load
+# the firmware on reboot if FLASH_BASE is 0x08000000, but
+# will work if it's 0x00000000
 if IS_BOOTLOADER:
   FLASH_SIZE = BOOTLOADER_SIZE
+  FLASH_BASE = 0x00000000
+
 elif IS_USING_BOOTLOADER:
   FLASH_BASE = common.get_espruino_binary_address(board)
   FLASH_SIZE -= BOOTLOADER_SIZE

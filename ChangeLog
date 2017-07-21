@@ -1,3 +1,5 @@
+            Allow Espruino boards to reset straight out of the DFU Bootloader             
+
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime
             Fix regression causing multiple end/close callbacks when using standard TCP/IP socket client/server
