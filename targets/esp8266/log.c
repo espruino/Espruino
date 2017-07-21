@@ -94,7 +94,7 @@ static void log_write_char(char c) {
 }
 
 void esp8266_logInit(uint8_t mode) {
-  if (mode == log_mode) return;
+  //if (mode == log_mode) return;
   if (mode == LOG_MODE_OFF) {
     if (log_buf) os_free(log_buf);
     log_buf = NULL;
