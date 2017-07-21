@@ -30,9 +30,6 @@
 #include "mbedtls/include/mbedtls/x509.h"
 #include "mbedtls/include/mbedtls/ssl.h"
 #endif
-#ifdef USE_XTEA
-#include "mbedtls/include/mbedtls/xtea.h"
-#endif
 
 
 /*JSON{
@@ -534,7 +531,7 @@ JsVar *_jswrap_crypto_xtea(JsVar *key,JsVar *message,char mode){
   size=size<4?4:size;
   k=jsvMalloc(size*sizeof(uint32_t));
   _jswrap_stl(key,k,key_len,false);
-  if(mode==MBEDTLS_AES_ENCRYPT){
+  if(mode==1){
     JsVarInt message_len=jsvGetIntegerAndUnLock(jswrap_object_length(message));
     size=_jswrap_length(message_len);
     v=jsvMalloc((size+1)*sizeof(uint32_t));
@@ -611,7 +608,7 @@ JsVar *_jswrap_crypto_xtea(JsVar *key,JsVar *message,char mode){
 }
 */
 JsVar *jswrap_crypto_xtea_encrypt(JsVar *message,JsVar *key){
-  return _jswrap_crypto_xtea(key,message,MBEDTLS_XTEA_ENCRYPT);
+  return _jswrap_crypto_xtea(key,message,1);
 }
 
 /*JSON{
@@ -628,7 +625,7 @@ JsVar *jswrap_crypto_xtea_encrypt(JsVar *message,JsVar *key){
 }
 */
 JsVar *jswrap_crypto_xtea_decrypt(JsVar *message,JsVar *key){
-  return _jswrap_crypto_xtea(key,message,MBEDTLS_XTEA_DECRYPT);
+  return _jswrap_crypto_xtea(key,message,0);
 }
 
 
