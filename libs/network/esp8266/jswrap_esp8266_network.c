@@ -514,14 +514,18 @@ void jswrap_wifi_startAP(
     // Handle password
     JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
     if (jsPassword != NULL) {
-      if (!jsvIsString(jsPassword) || jsvGetStringLength(jsPassword) < 8) {
-        jsExceptionHere(JSET_ERROR, "Password must be string of at least 8 characters");
-        jsvUnLock(jsPassword);
-        return;
+      // handle password:null
+      if (jsvGetStringLength(jsPassword) != 0) {
+        if (!jsvIsString(jsPassword) || jsvGetStringLength(jsPassword) < 8) {
+          jsExceptionHere(JSET_ERROR, "Password must be string of at least 8 characters");
+          jsvUnLock(jsPassword);
+          return;
+        }
+        int len = jsvGetString(jsPassword, (char *)softApConfig.password, sizeof(softApConfig.password)-1);
+        softApConfig.password[len] = '\0';
       }
-      int len = jsvGetString(jsPassword, (char *)softApConfig.password, sizeof(softApConfig.password)-1);
-      softApConfig.password[len] = '\0';
     }
+    jsvUnLock(jsPassword);
 
     // Handle "authMode" processing.  Here we check that "authMode", if supplied, is
     // one of the allowed values and set the softApConfig object property appropriately.
