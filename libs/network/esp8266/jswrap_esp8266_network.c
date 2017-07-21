@@ -514,14 +514,18 @@ void jswrap_wifi_startAP(
     // Handle password
     JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
     if (jsPassword != NULL) {
-      if (!jsvIsString(jsPassword) || jsvGetStringLength(jsPassword) < 8) {
-        jsExceptionHere(JSET_ERROR, "Password must be string of at least 8 characters");
-        jsvUnLock(jsPassword);
-        return;
+      // handle password:null
+      if (jsvGetStringLength(jsPassword) != 0) {
+        if (!jsvIsString(jsPassword) || jsvGetStringLength(jsPassword) < 8) {
+          jsExceptionHere(JSET_ERROR, "Password must be string of at least 8 characters");
+          jsvUnLock(jsPassword);
+          return;
+        }
+        int len = jsvGetString(jsPassword, (char *)softApConfig.password, sizeof(softApConfig.password)-1);
+        softApConfig.password[len] = '\0';
       }
-      int len = jsvGetString(jsPassword, (char *)softApConfig.password, sizeof(softApConfig.password)-1);
-      softApConfig.password[len] = '\0';
     }
+    jsvUnLock(jsPassword);
 
     // Handle "authMode" processing.  Here we check that "authMode", if supplied, is
     // one of the allowed values and set the softApConfig object property appropriately.
@@ -1168,8 +1172,15 @@ void   jswrap_ESP8266_wifi_init1() {
   DBG("< Wifi init1, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
 }
 
+
+/*JSON{
+  "type":"init",
+  "generate":"jswrap_ESP8266_wifi_soft_init"
+}
+
 // This function is called in soft_init to hook-up the network. This happens from user_main's
 // init_done() and also from `reset()` in order to re-hook-up the network.
+*/
 void jswrap_ESP8266_wifi_soft_init() {
   DBGV("> Wifi.soft_init\n");
 
