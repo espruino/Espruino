@@ -1205,10 +1205,6 @@ void   jswrap_ESP8266_wifi_init1() {
   DBG("< Wifi init1, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
 }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> master
 /*JSON{
   "type":"init",
   "generate":"jswrap_ESP8266_wifi_soft_init"
