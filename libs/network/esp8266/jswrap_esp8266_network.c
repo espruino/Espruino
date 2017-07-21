@@ -1168,8 +1168,15 @@ void   jswrap_ESP8266_wifi_init1() {
   DBG("< Wifi init1, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
 }
 
+
+/*JSON{
+  "type":"init",
+  "generate":"jswrap_ESP8266_wifi_soft_init"
+}
+
 // This function is called in soft_init to hook-up the network. This happens from user_main's
 // init_done() and also from `reset()` in order to re-hook-up the network.
+*/
 void jswrap_ESP8266_wifi_soft_init() {
   DBGV("> Wifi.soft_init\n");
 
