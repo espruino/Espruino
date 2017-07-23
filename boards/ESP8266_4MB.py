@@ -28,6 +28,8 @@ info = {
      'GRAPHICS',
      'CRYPTO',
      'NEOPIXEL',
+     'MQTT',
+     'XTEA'
      #'FILESYSTEM',
      #'FLASHFS'
    ],

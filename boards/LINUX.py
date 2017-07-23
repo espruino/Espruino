@@ -27,6 +27,8 @@ info = {
      'TLS',
      'HASHLIB',
      'TELNET',
+     'MQTT',
+     'XTEA'
    ],
    'makefile' : [
      'LINUX=1',

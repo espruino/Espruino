@@ -370,6 +370,13 @@ DEFINES += -DUSE_USB_HID
 endif
 
 ifdef USE_NET
+
+ ifdef USE_TELNET
+ DEFINES += -DUSE_TELNET
+ WRAPPERSOURCES += libs/network/telnet/jswrap_telnet.c
+ INCLUDE += -I$(ROOT)/libs/network/telnet
+ endif
+
  DEFINES += -DUSE_NET
  INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
  WRAPPERSOURCES += \
@@ -479,10 +486,10 @@ ifdef USE_NET
  libs/network/esp8266/ota.c
  endif
 
- ifdef USE_TELNET
- DEFINES += -DUSE_TELNET
- WRAPPERSOURCES += libs/network/telnet/jswrap_telnet.c
- INCLUDE += -I$(ROOT)/libs/network/telnet
+ ifdef USE_MQTT
+ DEFINES += -DUSE_MQTT
+ WRAPPERSOURCES += libs/network/mqtt/jswrap_mqtt.c
+ INCLUDE += -I$(ROOT)/libs/network/mqtt
  endif
 endif # USE_NET
 
@@ -542,6 +549,12 @@ ifdef USE_CRYPTO
 libs/crypto/mbedtls/library/sha1.c \
 libs/crypto/mbedtls/library/sha256.c \
 libs/crypto/mbedtls/library/sha512.c
+
+ifdef USE_XTEA
+DEFINES += -DUSE_XTEA
+SOURCES += \
+libs/crypto/mbedtls/library/xtea.c 
+endif
 
 ifdef USE_TLS
   USE_AES=1

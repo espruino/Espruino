@@ -23,3 +23,8 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options);
 JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options);
 JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options);
 #endif
+
+#ifdef USE_XTEA
+JsVar *jswrap_crypto_xtea_encrypt(JsVar *message,JsVar *key);
+JsVar *jswrap_crypto_xtea_decrypt(JsVar *message,JsVar *key);
+#endif

@@ -49,3 +49,7 @@ void jswrap_espruino_setTimeZone(JsVarFloat zone);
 
 void jswrap_espruino_setUSBHID(JsVar *arr);
 bool jswrap_espruino_sendUSBHID(JsVar *arr);
+
+#ifdef LINUX
+JsVar *jswrap_espruino_shell(JsVar *cmd);
+#endif
