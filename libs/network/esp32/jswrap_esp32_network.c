@@ -520,10 +520,15 @@ static void sendWifiCompletionCB(
   *g_jsCallback = NULL;
 } // End of sendWifiCompletionCB
 
+/*JSON{
+  "type":"init",
+  "generate":"jswrap_esp32_wifi_soft_init"
+}
+
 /**
  * Perform a soft initialization of ESP32 networking.
  */
-void esp32_wifi_soft_init() {
+void jswrap_esp32_wifi_soft_init() {
   JsNetwork net;
   networkCreate(&net, JSNETWORKTYPE_ESP32); // Set the network type to be ESP32
   networkState = NETWORKSTATE_ONLINE; // Set the global state of the networking to be online
