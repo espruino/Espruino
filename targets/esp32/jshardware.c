@@ -141,9 +141,9 @@ void jshInit() {
  * Reset the Espruino environment.
  */
 void jshReset() {
-    jshResetDevices();
-    jshPinDefaultPullup() ;
-    UartReset();
+  jshResetDevices();
+  jshPinDefaultPullup() ;
+  UartReset();
   RMTReset();
   ADCReset();
   SPIReset();
