@@ -70,24 +70,17 @@ JsVar *jswrap_stream_read(JsVar *parent, JsVarInt chars) {
  * full. Setting force=true will attempt to fill the buffer as
  * full as possible, and will raise an error flag if data is lost.
  */
-bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, JsVar *dataInfo, bool force) {
+bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force) {
   assert(jsvIsObject(parent));
   assert(jsvIsString(dataString));
   bool ok = true;
-  char *callback_name = STREAM_CALLBACK_NAME;
 
-  JsVar *callback = jsvFindChildFromString(parent, callback_name, false);
-  if (!callback) {
-    // try on:message for UDP
-    callback_name = STREAM_MESSAGE_CALLBACK_NAME;
-    callback = jsvFindChildFromString(parent, callback_name, false);
-  }
+  JsVar *callback = jsvFindChildFromString(parent, STREAM_CALLBACK_NAME, false);
   if (callback) {
-    JsVar *args[] = { dataString, dataInfo };
-    if (!jsiExecuteEventCallback(parent, callback, 2, args)) {
+    if (!jsiExecuteEventCallback(parent, callback, 1, &dataString)) {
       jsError("Error processing Serial data handler - removing it.");
       jsErrorFlags |= JSERR_CALLBACK;
-      jsvObjectRemoveChild(parent, callback_name);
+      jsvObjectRemoveChild(parent, STREAM_CALLBACK_NAME);
     }
     jsvUnLock(callback);
   } else {

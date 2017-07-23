@@ -16,7 +16,6 @@
 
 #define STREAM_BUFFER_NAME JS_HIDDEN_CHAR_STR"buf" // the buffer to store data in when no listener is defined
 #define STREAM_CALLBACK_NAME JS_EVENT_PREFIX"data"
-#define STREAM_MESSAGE_CALLBACK_NAME JS_EVENT_PREFIX"message"
 #define STREAM_MAX_BUFFER_SIZE 512
 
 JsVarInt jswrap_stream_available(JsVar *parent);
@@ -31,5 +30,5 @@ JsVar *jswrap_stream_read(JsVar *parent, JsVarInt chars);
  * full. Setting force=true will attempt to fill the buffer as
  * full as possible, and will raise an error flag if data is lost.
  */
-bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, JsVar *dataInfo, bool force);
+bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force);
 

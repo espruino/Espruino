@@ -7,7 +7,9 @@ let dgram = require('dgram');
 let srv = dgram.createSocket('udp4');
 srv.bind(port, function(bsrv) {
   bsrv.on('message', function(msg, info) {
-    bsrv.send(msg+'!', info.port, info.host);
+    console.log("<"+JSON.stringify(msg));
+    console.log("<"+JSON.stringify(info));
+    bsrv.send(msg+'!', info.port, info.address);
   });
 });
 srv.on('close', function() {
@@ -19,7 +21,7 @@ client.on('message', function(msg, info) {
   console.log(">"+JSON.stringify(msg));
   console.log(">"+JSON.stringify(info));
 
-  result = msg=="42!" && info.host=="127.0.0.1" && info.port==port;
+  result = msg=="42!" && info.address=="127.0.0.1" && info.port==port;
 
   clearTimeout(); // stop the fail fast
 

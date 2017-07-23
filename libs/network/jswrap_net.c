@@ -490,14 +490,32 @@ bool jswrap_dgram_socket_send(JsVar *parent, JsVar *data, unsigned short portNum
 /*JSON{
   "type" : "event",
   "class" : "dgramSocket",
-  "name" : "data",
+  "name" : "message",
   "params" : [
-    ["data","JsVar","A string containing the received message"],
-    ["info","JsVar","Sender port/host containing information"]
+    ["msg","JsVar","A string containing the received message"],
+    ["rinfo","JsVar","Sender address,port containing information"]
   ]
 }
 The 'message' event is called when a datagram message is received. If a handler is defined with `X.on('message', function(msg) { ... })` then it will be called`
 */
+bool jswrap_dgram_messageCallback(JsVar *parent, JsVar *msg, JsVar *rinfo) {
+  assert(jsvIsObject(parent));
+  assert(jsvIsString(msg));
+  assert(jsvIsObject(rinfo));
+  bool ok = true;
+
+  JsVar *callback = jsvFindChildFromString(parent, DGRAM_MESSAGE_CALLBACK_NAME, false);
+  if (callback) {
+    JsVar *args[] = { msg, rinfo };
+    if (!jsiExecuteEventCallback(parent, callback, 2, args)) {
+      jsError("Error processing Datagram message handler - removing it.");
+      jsErrorFlags |= JSERR_CALLBACK;
+      jsvObjectRemoveChild(parent, DGRAM_MESSAGE_CALLBACK_NAME);
+    }
+    jsvUnLock(callback);
+  }
+}
+
 /*JSON{
   "type" : "method",
   "class" : "dgramSocket",

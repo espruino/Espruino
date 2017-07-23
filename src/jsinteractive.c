@@ -1771,7 +1771,7 @@ int jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
     jsvStringIteratorFree(&it);
 
     // Now run the handler
-    jswrap_stream_pushData(usartClass, stringData, NULL, true);
+    jswrap_stream_pushData(usartClass, stringData, true);
     jsvUnLock(stringData);
   }
   return eventsHandled;
