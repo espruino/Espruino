@@ -157,7 +157,7 @@ void jshTransmit(
     bool wasConsoleLimbo = device==EV_LIMBO && jsiGetConsoleDevice()==EV_LIMBO;
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
-      if (jsvIsInInterrupt()) {
+      if (jshIsInInterrupt()) {
         // if we're printing from an IRQ, don't wait - it's unlikely TX will ever finish
         jsErrorFlags |= JSERR_BUFFER_FULL;
         return;

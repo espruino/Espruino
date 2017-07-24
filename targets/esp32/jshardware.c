@@ -182,7 +182,7 @@ void jshInterruptOn()  {
 }
 
 /// Are we currently in an interrupt?
-bool jsvIsInInterrupt() {
+bool jshIsInInterrupt() {
   return false; // FIXME!
 }
 

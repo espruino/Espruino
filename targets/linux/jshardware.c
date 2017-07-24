@@ -423,7 +423,7 @@ void jshInterruptOn() {
 }
 
 /// Are we currently in an interrupt?
-bool jsvIsInInterrupt() {
+bool jshIsInInterrupt() {
   return false; // or check if we're in the IO handling thread?
 }
 

@@ -223,7 +223,7 @@ void jshInterruptOff() { ets_intr_lock(); }
 void jshInterruptOn()  { ets_intr_unlock(); }
 
 /// Are we currently in an interrupt?
-bool jsvIsInInterrupt() {
+bool jshIsInInterrupt() {
   return false; // FIXME
 }
 

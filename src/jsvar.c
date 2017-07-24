@@ -382,11 +382,14 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
     jsErrorFlags |= JSERR_MEMORY_BUSY;
     return 0;
   }
+  JsVar *v = 0;
+  jshInterruptOff(); // to allow this to be used from an IRQ
   if (jsVarFirstEmpty!=0) {
-    jshInterruptOff(); // to allow this to be used from an IRQ
-    JsVar *v = jsvGetAddressOf(jsVarFirstEmpty); // jsvResetVariable will lock
+    v = jsvGetAddressOf(jsVarFirstEmpty); // jsvResetVariable will lock
     jsVarFirstEmpty = jsvGetNextSibling(v); // move our reference to the next in the fr
-    jshInterruptOn();
+  }
+  jshInterruptOn();
+  if (v) {
     assert(v->flags == JSV_UNUSED);
     // Cope with IRQs/multi-threading when getting a new free variable
  /*   JsVarRef empty;
@@ -403,6 +406,10 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
     return v;
   }
   jsErrorFlags |= JSERR_LOW_MEMORY;
+  /* If we're calling from an IRQ, do NOT try and do fancy
+   * stuff to free memory */
+  if (jshIsInInterrupt())
+    return 0;
   /* we don't have memory - second last hope - run garbage collector */
   if (jsvGarbageCollect()) {
     return jsvNewWithFlags(flags); // if it freed something, continue

@@ -443,7 +443,7 @@ void jshInterruptOn() {
 }
 
 /// Are we currently in an interrupt?
-bool jsvIsInInterrupt() {
+bool jshIsInInterrupt() {
   return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
 }
 
