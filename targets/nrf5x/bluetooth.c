@@ -1206,7 +1206,13 @@ static void peer_manager_init(bool erase_bonds) {
   and then updated to something with peer manager so the pages
   got swapped around */
   uint32_t *magicWord = ((uint32_t *)FS_PAGE_END_ADDR)-1;
-  if (FLASH_MAGIC == *magicWord) {
+  /* If the button is pressed at boot, clear out flash
+   * pages as well. Nice easy way to reset! */
+  bool buttonPressed = false;
+#ifdef BTN1_PININDEX
+  buttonPressed = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
+#endif
+  if (FLASH_MAGIC == *magicWord || buttonPressed) {
     int i;
     for (i=1;i<=FDS_PHY_PAGES;i++)
       jshFlashErasePage(((uint32_t)FS_PAGE_END_ADDR) - i*FS_PAGE_SIZE);
