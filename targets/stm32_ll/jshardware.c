@@ -1138,6 +1138,10 @@ void jshInterruptOn(){
 }
 ///< re-enable interrupts
 
+/// Are we currently in an interrupt?
+bool jsvIsInInterrupt() {
+  return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
 
 void jshDelayMicroseconds(int microsec){
   int iter = (int)(((long long)microsec * (long long)JSH_DELAY_MULTIPLIER) >> 10);

@@ -222,6 +222,11 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 void jshInterruptOff() { ets_intr_lock(); }
 void jshInterruptOn()  { ets_intr_unlock(); }
 
+/// Are we currently in an interrupt?
+bool jsvIsInInterrupt() {
+  return false; // FIXME
+}
+
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
   int time = (int) timeUntilWake;

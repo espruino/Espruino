@@ -94,6 +94,7 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time);
 // software IO functions...
 void jshInterruptOff(); ///< disable interrupts to allow short delays to be accurate
 void jshInterruptOn();  ///< re-enable interrupts
+bool jsvIsInInterrupt(); ///< Are we currently in an interrupt?
 void jshDelayMicroseconds(int microsec);  ///< delay a few microseconds. Should use used sparingly and for very short periods - max 1ms
 
 void jshPinSetValue(Pin pin, bool value); ///< Set a digital output to 1 or 0. DOES NOT change pin state OR CHECK PIN VALIDITY

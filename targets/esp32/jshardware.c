@@ -181,6 +181,11 @@ void jshInterruptOn()  {
   taskENABLE_INTERRUPTS();
 }
 
+/// Are we currently in an interrupt?
+bool jsvIsInInterrupt() {
+  return false; // FIXME!
+}
+
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
   UNUSED(timeUntilWake);

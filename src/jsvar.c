@@ -1133,7 +1133,9 @@ size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len
 /// Set the Data in this string. This must JUST overwrite - not extend or shrink
 void jsvSetString(JsVar *v, const char *str, size_t len) {
   assert(jsvHasCharacterData(v));
-  assert(len == jsvGetStringLength(v));
+  // the iterator checks, so it is safe not to assert if the length is different
+  //assert(len == jsvGetStringLength(v));
+
 
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, 0);
@@ -2297,6 +2299,7 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFoun
 /// See jsvIsNewChild - for fields that don't exist yet
 JsVar *jsvCreateNewChild(JsVar *parent, JsVar *index, JsVar *child) {
   JsVar *newChild = jsvAsName(index);
+  if (!newChild) return 0;
   assert(!jsvGetFirstChild(newChild));
   if (child) jsvSetValueOfName(newChild, child);
   assert(!jsvGetNextSibling(newChild) && !jsvGetPrevSibling(newChild));
@@ -2311,6 +2314,7 @@ JsVar *jsvCreateNewChild(JsVar *parent, JsVar *index, JsVar *child) {
 
 /** Try and turn the supplied variable into a name. If not, make a new one. This locks again. */
 JsVar *jsvAsName(JsVar *var) {
+  if (!var) return 0;
   if (jsvGetRefs(var) == 0) {
     // Not reffed - great! let's just use it
     if (!jsvIsName(var))

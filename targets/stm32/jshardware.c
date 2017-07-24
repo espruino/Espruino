@@ -840,6 +840,10 @@ void jshInterruptOn() {
   //  jshPinSetValue(LED4_PININDEX,0);
 }
 
+/// Are we currently in an interrupt?
+bool jsvIsInInterrupt() {
+  return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
 
 //int JSH_DELAY_OVERHEAD = 0;
 int JSH_DELAY_MULTIPLIER = 1;

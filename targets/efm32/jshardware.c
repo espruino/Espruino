@@ -442,6 +442,11 @@ void jshInterruptOn() {
   INT_Enable();
 }
 
+/// Are we currently in an interrupt?
+bool jsvIsInInterrupt() {
+  return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
+
 void jshDelayMicroseconds(int microsec) {
   if (microsec <= 0) {
     return;

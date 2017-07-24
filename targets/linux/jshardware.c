@@ -422,6 +422,11 @@ void jshInterruptOff() {
 void jshInterruptOn() {
 }
 
+/// Are we currently in an interrupt?
+bool jsvIsInInterrupt() {
+  return false; // or check if we're in the IO handling thread?
+}
+
 void jshDelayMicroseconds(int microsec) {
   usleep(microsec);
 }

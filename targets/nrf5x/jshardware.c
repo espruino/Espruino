@@ -362,6 +362,11 @@ void jshInterruptOn() {
   __enable_irq(); // *** This wont be good with SoftDevice!
 }
 
+/// Are we currently in an interrupt?
+bool jsvIsInInterrupt() {
+  return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
+
 void jshDelayMicroseconds(int microsec) {
   if (microsec <= 0) {
     return;

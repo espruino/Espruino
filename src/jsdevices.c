@@ -14,6 +14,9 @@
 #include "jsdevices.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#ifdef BLUETOOTH
+#include "bluetooth.h"
+#endif
 
 #ifdef LINUX
 #include <stdio.h>
@@ -129,6 +132,12 @@ void jshTransmit(
     return;
   }
 #endif
+#ifdef BLUETOOTH
+  if (device==EV_BLUETOOTH && !jsble_has_simple_connection()) {
+    jshTransmitClearDevice(EV_BLUETOOTH); // clear out stuff already waiting
+    return;
+  }
+#endif
 #else // if PC, just put to stdout
   if (device==DEFAULT_CONSOLE_DEVICE) {
     fputc(data, stdout);
@@ -148,6 +157,11 @@ void jshTransmit(
     bool wasConsoleLimbo = device==EV_LIMBO && jsiGetConsoleDevice()==EV_LIMBO;
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
+      if (jsvIsInInterrupt()) {
+        // if we're printing from an IRQ, don't wait - it's unlikely TX will ever finish
+        jsErrorFlags |= JSERR_BUFFER_FULL;
+        return;
+      }
 #ifdef USB
       // just in case USB was unplugged while we were waiting!
       if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);
