@@ -337,7 +337,10 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     jsExceptionHere(JSET_ERROR, "Unsupported first argument of type %t\n", arr);
     return 0;
   }
-  if (length==0) length = (JsVarInt)(jsvGetArrayBufferLength(arrayBuffer) / JSV_ARRAYBUFFER_GET_SIZE(type));
+  if (length==0) {
+    length = (JsVarInt)((jsvGetArrayBufferLength(arrayBuffer)-byteOffset) / JSV_ARRAYBUFFER_GET_SIZE(type)); 
+    if (length<0) length=0;
+  }
   JsVar *typedArr = jsvNewWithFlags(JSV_ARRAYBUFFER);
   if (typedArr) {
     typedArr->varData.arraybuffer.type = type;
