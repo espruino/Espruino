@@ -581,6 +581,21 @@ Enable the watchdog timer. This will reset Espruino if it isn't able to return t
 
 If `isAuto` is false, you must call `E.kickWatchdog()` yourself every so often or the chip will reset.
 
+```
+E.enableWatchdog(0.5); // automatic mode                                                        
+while(1); // Espruino will reboot because it has not been idle for 0.5 sec
+```
+
+```
+E.enableWatchdog(1, false);                                                         
+setInterval(function() {
+  if (everything_ok)
+    E.kickWatchdog();
+}, 500);
+/* Espruino will now reset if everything_ok is false,
+or if the interval fails to be called */
+```
+
 **NOTE:** This will not work with `setDeepSleep` unless you explicitly wake Espruino up with an interval of less than the timeout.
 
 **NOTE:** This is only implemented on STM32 and nRF5x devices (all official Espruino boards).
