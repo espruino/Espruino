@@ -794,9 +794,14 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 
 /// Enable watchdog with a timeout in seconds
 void jshEnableWatchDog(JsVarFloat timeout) {
+  NRF_WDT->CONFIG = (WDT_CONFIG_HALT_Pause << WDT_CONFIG_HALT_Pos) | ( WDT_CONFIG_SLEEP_Run << WDT_CONFIG_SLEEP_Pos);
+  NRF_WDT->CRV = (int)(timeout*32768);
+  NRF_WDT->RREN |= WDT_RREN_RR0_Msk;  //Enable reload register 0
+  NRF_WDT->TASKS_START = 1;
 }
 
 void jshKickWatchDog() {
+  NRF_WDT->RR[0] = 0x6E524635;
 }
 
 /** Check the pin associated with this EXTI - return true if it is a 1 */

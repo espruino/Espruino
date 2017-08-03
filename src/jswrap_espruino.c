@@ -583,7 +583,7 @@ If `isAuto` is false, you must call `E.kickWatchdog()` yourself every so often o
 
 **NOTE:** This will not work with `setDeepSleep` unless you explicitly wake Espruino up with an interval of less than the timeout.
 
-**NOTE:** This is only implemented on STM32 devices.
+**NOTE:** This is only implemented on STM32 and nRF5x devices (all official Espruino boards).
  */
 void jswrap_espruino_enableWatchdog(JsVarFloat time, JsVar *isAuto) {
   if (time<0 || isnan(time)) time=1;
@@ -604,7 +604,7 @@ void jswrap_espruino_enableWatchdog(JsVarFloat time, JsVar *isAuto) {
 Kicks a Watchdog timer set up with `E.enableWatchdog(..., false)`. See
 `E.enableWatchdog` for more information.
 
-**NOTE:** This is only implemented on STM32 devices.
+**NOTE:** This is only implemented on STM32 and nRF5x devices (all official Espruino boards).
  */
 void jswrap_espruino_kickWatchdog() {
   jshKickWatchDog();
