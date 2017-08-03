@@ -20,17 +20,17 @@ info = {
  'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1199/PF252419" ],
  'default_console' : "EV_SERIAL2", # FIXME: This was S2 because of pin conflict. Not sure if it's really an issue?
  'variables' : 5450,
- 'binary_name' : 'espruino_%v_Wio_Tracker_LTE.bin',
+ 'binary_name' : 'espruino_%v_Wio_LTE.bin',
  'build' : {
    'optimizeflags' : '-O3',
    'libraries' : [
      'NET',
-     'GRAPHICS',
-     'NEOPIXEL'
+     'NEOPIXEL',
+     'FILESYSTEM',
    ],
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
-     'DEFINES+=-DWIO_TRACKER_LTE',
+     'DEFINES+=-DWIO_LTE',
      'STLIB=STM32F407xx',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o'
    ]
@@ -38,7 +38,6 @@ info = {
 };
 
 chip = {
-  # 'part' : "STM32F407VGT6",
   'part' : "STM32F405RGT6",
   'family' : "STM32F4",
   'package' : "LQFP100",
@@ -62,11 +61,22 @@ devices = {
             'pin_dp' : 'A12',
             'pin_vbus' : 'A9',
             'pin_id' : 'A10', },
-  'JTAG' : {
-        'pin_MS' : 'A13',
-        'pin_CK' : 'A14',
-        'pin_DI' : 'A15'
-          },
+
+  'PWR_PINS' : { 'pin_dtr' : 'A1',
+                 'pin_neopixel_pwr' : 'A8',
+                 'pin_sdcard_pwr' : 'A15',
+                 'pin_battery_read' : 'B0',
+                 'pin_neopixel' : 'B1',
+                 'pin_lte_pwr' : 'B5',
+                 'pin_vccb' : 'B10',
+                 'pin_ant_pwr' : 'B12',
+                 'pin_lte_status' : 'B15',
+                 'pin_wakeup_in' : 'C0',
+                 'pin_ap_ready' : 'C1',
+                 'pin_wakeup_disable' : 'C2',
+                 'pin_lte_reset' : 'C3',
+                 'pin_pwr_key' : 'C4',
+                 'pin_codec_i2c_pwr' : 'C5'},
 };
 
 # left-right, or top-bottom order

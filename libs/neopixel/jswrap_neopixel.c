@@ -24,7 +24,7 @@
 #ifdef ESP32
 #include "esp32_neopixel.h"
 #endif
-#ifdef WIO_TRACKER_LTE
+#ifdef WIO_LTE
 #include "stm32_ws2812b_driver.h"
 #endif
 
@@ -125,40 +125,13 @@ void jswrap_neopixel_write(Pin pin, JsVar *data) {
 // -------------------------------------------------------------- Platform specific
 // -----------------------------------------------------------------------------------
 
-#if defined(WIO_TRACKER_LTE)
+#if defined(WIO_LTE)
 
 bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
-  uint16_t c;
-  // uint8_t state = 1;
-  unsigned char *p = (uint8_t *)rgbData;
-
-  if (!jshIsPinValid(pin)) {
-    jsExceptionHere(JSET_ERROR, "Pin is not valid.");
-    return false;
-  }
-  
-  // Set neopixel output pin 
-  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-  
-  jshInterruptOff();
-  for(c = 0; c < rgbSize; c++) {
-    for(int i = 7; i >= 0; i--)
-    {
-      if(p[c] & (0x01 << i)) {
-        PATERN_1_CODE(pin);
-      } 
-      else {
-        PATERN_0_CODE(pin);
-      }    
-    }
-  }
-  jshDelayMicroseconds(50);
-  jshInterruptOn();
-
-  return true;
+  return stm32_neopixelWrite(pin, rgbData, rgbSize);
 }
 
-#elif defined(STM32) && !defined(WIO_TRACKER_LTE) // ----------------------------------------------------------------
+#elif defined(STM32) // ----------------------------------------------------------------
 
 // this one could potentially work on other platforms as well...
 bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {

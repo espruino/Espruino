@@ -6,7 +6,8 @@ ifndef BOOTLOADER
  SOURCES +=                              \
  targets/stm32/main.c                    \
  targets/stm32/jshardware.c              \
- targets/stm32/stm32_it.c
+ targets/stm32/stm32_it.c                \
+ targets/stm32/stm32_ws2812b_driver.c
  ifdef USE_BOOTLOADER
   BUILD_LINKER_FLAGS+=--using_bootloader
   # -k applies bootloader hack for Espruino 1v3 boards
