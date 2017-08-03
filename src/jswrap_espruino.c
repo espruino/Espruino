@@ -592,8 +592,8 @@ setInterval(function() {
   if (everything_ok)
     E.kickWatchdog();
 }, 500);
-/* Espruino will now reset if everything_ok is false,
-or if the interval fails to be called */
+// Espruino will now reset if everything_ok is false,
+// or if the interval fails to be called 
 ```
 
 **NOTE:** This will not work with `setDeepSleep` unless you explicitly wake Espruino up with an interval of less than the timeout.
