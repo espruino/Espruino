@@ -114,7 +114,7 @@ topstrings: $(PARTIAL)
 	$(Q)for f in `find . -name \*.o`; do \
 	  str=$$($(OBJDUMP) -j .rodata.str1.1 -j .rodata.str1.4 -h $$f 2>/dev/null | \
 	    egrep -o 'rodata.str1.. [0-9a-f]+' | \
-	    awk $$(expr match "$$(awk --version)" "GNU.*" >/dev/null && echo --non-decimal-data) \
+	    awk $$(expr "$$(awk --version)" : "GNU.*" >/dev/null && echo --non-decimal-data) \
 	      -e '{printf "%d\n", ("0x" $$2);}'); \
 	  [ "$$str" ] && echo "$$str $$f"; \
 	done | \
@@ -128,7 +128,7 @@ topreadonly: $(PARTIAL)
 	$(Q)for f in `find . -name \*.o`; do \
 	  str=$$($(OBJDUMP) -j .rodata -h $$f 2>/dev/null | \
 	    egrep -o 'rodata +[0-9a-f]+' | \
-	    awk $$(expr match "$$(awk --version)" "GNU.*" >/dev/null && echo --non-decimal-data) \
+	    awk $$(expr "$$(awk --version)" : "GNU.*" >/dev/null && echo --non-decimal-data) \
 	      -e '{printf "%d\n", ("0x" $$2);}'); \
 	  [ "$$str" ] && echo "$$str $$f"; \
 	done | \
