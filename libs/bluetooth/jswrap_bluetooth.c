@@ -1184,6 +1184,10 @@ NRF.setScan(function(d) {
 be able to print them to the console. It's best only to print a few, or
 to use a function like `NRF.findDevices(..)` which will collate a list
 of available devices.
+
+**Note:** Using setScan turns the radio's receive mode on constantly. This
+can draw a *lot* of power (12mA or so), so you should use it sparingly or
+you can run your battery down quickly.
 */
 void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
   /* This is called when we get data - do some processing here in the main loop
@@ -1295,6 +1299,9 @@ the device returned, to make a connection.
 
 You can also use [`NRF.connect(...)`](/Reference#l_NRF_connect) on just the `id` string returned, which
 may be useful if you always want to connect to a specific device.
+
+**Note:** Using findDevices turns the radio's receive mode on for 2000ms (or however long you specify). This
+can draw a *lot* of power (12mA or so), so you should use it sparingly or you can run your battery down quickly.
 */
 void jswrap_nrf_bluetooth_findDevices_found_cb(JsVar *device) {
   JsVar *arr = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADV", JSV_ARRAY);
