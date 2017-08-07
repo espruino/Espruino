@@ -7,6 +7,7 @@
             On nRF52 devices, allow button press at boot to clear out peer manager data
             Work out length of typed array with offset correctly (fix #1204)
             nRF5x: Add Watchdog timer handling
+            Allow IRQs during STM32 neopixel send
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime

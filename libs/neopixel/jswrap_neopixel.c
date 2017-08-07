@@ -151,10 +151,11 @@ bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
   jshSPISet16(device, true); // 16 bit output
   // we're just sending (no receive)
   jshSPISetReceive(device, false);
-  jshInterruptOff();
+  //jshInterruptOff(); - now we're not getting data for each byte, it should be less of
+  // an issue keeping IRQs on
   for (i=0;i<rgbSize;i++)
     jsspiSend4bit(device, rgbData[i], 1, 3);
-  jshInterruptOn();
+  //jshInterruptOn();
   jshSPIWait(device); // wait until SPI send finished and clear the RX buffer
   jshSPISet16(device, false); // back to 8 bit
   return true;
