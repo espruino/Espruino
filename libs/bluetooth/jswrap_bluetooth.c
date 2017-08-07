@@ -390,8 +390,6 @@ This makes Puck.js undiscoverable, so it can't be connected to.
 Use `NRF.wake()` to wake up and make Puck.js connectable again.
 */
 void jswrap_nrf_bluetooth_sleep() {
-  uint32_t err_code;
-
   // set as sleeping
   bleStatus |= BLE_IS_SLEEPING;
   // stop advertising
@@ -1926,6 +1924,16 @@ See [`NRF.requestDevice`](/Reference#l_NRF_requestDevice) for usage examples.
 
 **Note:** This is only available on some devices
 */
+static void _jswrap_nrf_bluetooth_central_connect(JsVar *addr) {
+  // this function gets called on idle - just to make it less
+  // likely we get connected while in the middle of executing stuff
+  ble_gap_addr_t peer_addr;
+  // this should be ok since we checked in jswrap_nrf_BluetoothRemoteGATTServer_connect
+  jsiConsolePrintf("jsble_central_connect %q\n",addr);
+  if (!bleVarToAddr(addr, &peer_addr)) return;
+  jsble_central_connect(peer_addr);
+}
+
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
 
@@ -1938,14 +1946,19 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting a device with a mac address of the form aa:bb:cc:dd:ee:ff");
     return 0;
   }
-  jsvUnLock2(device, addr);
+  jsvUnLock(device);
 
+  JsVar *promise = 0;
   if (bleNewTask(BLETASK_CONNECT, parent/*BluetoothRemoteGATTServer*/)) {
-    JsVar *promise = jsvLockAgainSafe(blePromise);
-    jsble_central_connect(peer_addr);
-    return promise;
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_nrf_bluetooth_central_connect, JSWAT_VOID|(JSWAT_JSVAR<<JSWAT_BITS));
+    if (fn) {
+      jsiQueueEvents(0, fn, &addr, 1);
+      jsvUnLock(fn);
+      promise = jsvLockAgainSafe(blePromise);
+    }
   }
-  return 0;
+  jsvUnLock(addr);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
