@@ -9,6 +9,7 @@
             nRF5x: Add Watchdog timer handling
             Allow IRQs during STM32 neopixel send
             nRF52: start new connections on idle to ease memory allocation conflicts between code execution & IRQs
+            nRF52: Ignore INVALID_STATE from CONN_PARAM_UPDATE_REQUEST (it can happen if we disconnect and then SD requests an update)
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime

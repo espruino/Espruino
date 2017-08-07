@@ -360,7 +360,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
           // Accept parameters requested by peer.
           err_code = sd_ble_gap_conn_param_update(p_gap_evt->conn_handle,
                                       &p_gap_evt->params.conn_param_update_request.conn_params);
-          APP_ERROR_CHECK(err_code);
+          if (err_code!=NRF_ERROR_INVALID_STATE) APP_ERROR_CHECK(err_code);
+          // This sometimes fails with NRF_ERROR_INVALID_STATE if this request
+          // comes in between sd_ble_gap_disconnect being called and the DISCONNECT
+          // event being received. The SD obviously does the checks for us, so lets
+          // avoid crashing because of it!
       } break; // BLE_GAP_EVT_CONN_PARAM_UPDATE_REQUEST
 #endif
 
