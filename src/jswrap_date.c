@@ -68,6 +68,7 @@ JsVarFloat fromTimeInDay(TimeInDay *td) {
 // First calculate the number of four-year-interval, so calculation
 // of leap year will be simple. Btw, because 2000 IS a leap year and
 // 2100 is out of range, the formlua is simplified
+// dow,date/day/month/year will always be in range
 CalendarDate getCalendarDate(int d) {
   int y,m;
   const short *mdays=DAYS;
@@ -100,18 +101,15 @@ CalendarDate getCalendarDate(int d) {
 
   date.year=y;
 
-  //Find the month
-
+  // Find the month
   m=0;
-  while (mdays[m]<d+1 && m<12) {
-    m++;
-  }
+  while (mdays[m]<d+1 && m<12) m++;
   date.month=m-1;
   date.day=d - mdays[date.month]+1;
 
-
   // Calculate day of week. Sunday is 0
   date.dow=(date.daysSinceEpoch+BASE_DOW)%7;
+  if (date.dow<0) date.dow+=7;
   return date;
 };
 
@@ -119,6 +117,7 @@ int fromCalenderDate(CalendarDate *date) {
   int y=date->year - 1970;
   int f=y/4;
   int yf=y%4;
+  if (yf<0) yf+=4;
   const short *mdays;
 
   int ydays=yf*YDAY;
@@ -132,7 +131,10 @@ int fromCalenderDate(CalendarDate *date) {
   if (yf>=2)
     ydays=ydays+1;
 
-  return f*FDAY+YDAYS[yf]+mdays[date->month%12]+date->day-1;
+  int m = date->month%12;
+  if (m<0) m+=12;
+
+  return f*FDAY+YDAYS[yf]+mdays[m]+date->day-1;
 };
 
 
@@ -218,8 +220,8 @@ JsVar *jswrap_date_constructor(JsVar *args) {
   } else {
     CalendarDate date;
     date.year = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 0));
-    date.month = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 1)) % 12);
-    date.day = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 2)) % 31);
+    date.month = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 1)));
+    date.day = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 2)));
     TimeInDay td;
     td.daysSinceEpoch = fromCalenderDate(&date);
     td.hour = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 3)) % 24);
