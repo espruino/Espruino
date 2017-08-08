@@ -1929,7 +1929,6 @@ static void _jswrap_nrf_bluetooth_central_connect(JsVar *addr) {
   // likely we get connected while in the middle of executing stuff
   ble_gap_addr_t peer_addr;
   // this should be ok since we checked in jswrap_nrf_BluetoothRemoteGATTServer_connect
-  jsiConsolePrintf("jsble_central_connect %q\n",addr);
   if (!bleVarToAddr(addr, &peer_addr)) return;
   jsble_central_connect(peer_addr);
 }
