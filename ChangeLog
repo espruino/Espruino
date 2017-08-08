@@ -13,6 +13,7 @@
             Fix Date.toString for dates before 1970
             STM32: Fix handling of months when setting the internal RTC
             Move to a faster jsvNewFlatStringOfLength which avoids blocking memory allocation
+            nRF5x: If a task is in progress, report the task ID (BleTask enum)
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime

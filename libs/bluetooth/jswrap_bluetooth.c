@@ -58,7 +58,7 @@ BleTask bleGetCurrentTask() {
 
 bool bleNewTask(BleTask task, JsVar *taskInfo) {
   if (bleTask) {
-    jsExceptionHere(JSET_ERROR, "BLE task is already in progress");
+    jsExceptionHere(JSET_ERROR, "BLE task %d is already in progress", (int)bleTask);
     return false;
   }
   assert(!blePromise && !bleTaskInfo);
