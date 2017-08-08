@@ -1172,10 +1172,23 @@ Start/stop listening for BLE advertising packets within range. Returns a
 packets=10;
 NRF.setScan(function(d) {
   packets--;
-  console.log(d); // print packet info
   if (packets<=0)
     NRF.setScan(); // stop scanning
+  else
+    console.log(d); // print packet info
 });
+```
+
+Each `BluetoothDevice` will look a bit like:
+
+```
+BluetoothDevice {
+  "id": "aa:bb:cc:dd:ee:ff", // address
+  "rssi": -89,               // signal strength
+  "services": [ "128bit-uuid", ... ],     // zero or more service UUIDs
+  "data": new Uint8Array([ ... ]).buffer, // ArrayBuffer of returned data
+  "name": "DeviceName"       // the advertised device name
+ }
 ```
 
 **Note:** BLE advertising packets can arrive quickly - faster than you'll
