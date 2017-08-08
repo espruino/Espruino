@@ -1431,10 +1431,10 @@ JsSysTime jshGetRTCSystemTime() {
 
   CalendarDate cdate;
   TimeInDay ctime;
-  cdate.day = date.RTC_Date;
-  cdate.month = date.RTC_Month;
-  cdate.year = 2000+date.RTC_Year;
-  cdate.dow = date.RTC_WeekDay%7;
+  cdate.day = date.RTC_Date; // 1..31 -> 1..31
+  cdate.month = date.RTC_Month-1; // 1..12 -> 0..11
+  cdate.year = 2000+date.RTC_Year; // 0..99 -> 2000..2099
+  cdate.dow = date.RTC_WeekDay%7; // 1(monday)..7 -> 0(sunday)..6
   ctime.daysSinceEpoch = fromCalenderDate(&cdate);
   ctime.zone = 0;
   ctime.ms = 0;
@@ -1504,10 +1504,12 @@ void jshSetSystemTime(JsSysTime newTime) {
   TimeInDay ctime = getTimeFromMilliSeconds((JsVarFloat)newTime * 1000 / JSSYSTIME_SECOND, true /*force to GMT*/);
   CalendarDate cdate = getCalendarDate(ctime.daysSinceEpoch);
 
-  date.RTC_Date = (uint8_t)cdate.day;
-  date.RTC_Month = (uint8_t)cdate.month;
-  date.RTC_Year = (uint8_t)(cdate.year - 2000);
-  date.RTC_WeekDay = (uint8_t)(cdate.dow + 1);
+  date.RTC_Date = (uint8_t)cdate.day; // 1..31 -> 1..31
+  date.RTC_Month = (uint8_t)(cdate.month+1); // 0..11 -> 1..12
+  date.RTC_Year = (uint8_t)(cdate.year - 2000); //  2000..2099 -> 0..99
+  if (date.RTC_Year>99) date.RTC_Year=0; // overflow
+  date.RTC_WeekDay = (uint8_t)(cdate.dow); // 0(sunday)..6 -> 1(monday)..7
+  if (date.RTC_WeekDay==0) date.RTC_WeekDay=7; // 1-based
 
   time.RTC_Seconds = (uint8_t)ctime.sec;
   time.RTC_Minutes = (uint8_t)ctime.min;
