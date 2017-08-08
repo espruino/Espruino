@@ -353,7 +353,6 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
   return (time * 1000.0) / SYSCLK_FREQ;
 }
 
-// software IO functions...
 void jshInterruptOff() {
   __disable_irq(); // Disabling interrupts is not reasonable when using one of the SoftDevices.
 }
@@ -361,6 +360,20 @@ void jshInterruptOff() {
 void jshInterruptOn() {
   __enable_irq(); // *** This wont be good with SoftDevice!
 }
+
+/* TODO: Looks like we could use:
+
+ __set_BASEPRI(3<<5);
+
+ to turn IRQs off for *just* the softdevice
+ SWI IRQs, and then
+
+  __set_BASEPRI(0);
+
+ to turn them back on. It could be useful
+ if we wanted to avoid causing SD issues
+ by blocking IRQs. */
+
 
 /// Are we currently in an interrupt?
 bool jshIsInInterrupt() {
