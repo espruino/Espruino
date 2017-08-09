@@ -354,25 +354,21 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 }
 
 void jshInterruptOff() {
-  __disable_irq(); // Disabling interrupts is not reasonable when using one of the SoftDevices.
+#ifdef BLUETOOTH
+  // disable non-softdevice IRQs
+  __set_BASEPRI(4<<5); // Disabling interrupts completely is not reasonable when using one of the SoftDevices.
+#else
+  __disable_irq();
+#endif
 }
 
 void jshInterruptOn() {
-  __enable_irq(); // *** This wont be good with SoftDevice!
-}
-
-/* TODO: Looks like we could use:
-
- __set_BASEPRI(3<<5);
-
- to turn IRQs off for *just* the softdevice
- SWI IRQs, and then
-
+#ifdef BLUETOOTH
   __set_BASEPRI(0);
-
- to turn them back on. It could be useful
- if we wanted to avoid causing SD issues
- by blocking IRQs. */
+#else
+  __enable_irq();
+#endif
+}
 
 
 /// Are we currently in an interrupt?
@@ -1272,7 +1268,7 @@ unsigned int jshGetRandomNumber() {
   unsigned int v = 0;
   uint8_t bytes_avail = 0;
   WAIT_UNTIL((sd_rand_application_bytes_available_get(&bytes_avail),bytes_avail>=sizeof(v)),"Random number");
-  sd_rand_application_vector_get(&v, sizeof(v));
+  sd_rand_application_vector_get((uint8_t*)&v, sizeof(v));
   return v;
 }
 
