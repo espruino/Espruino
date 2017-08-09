@@ -156,9 +156,9 @@ bool jsble_has_simple_connection() {
   return (m_conn_handle != BLE_CONN_HANDLE_INVALID);
 }
 
-/// Checks for error and reports an exception if there was one. Return true on error
-bool jsble_check_error(uint32_t err_code) {
-  if (!err_code) return false;
+/// Checks for error and reports an exception string if there was one, else 0 if no error
+JsVar *jsble_get_error_string(uint32_t err_code) {
+  if (!err_code) return 0;
   const char *name = 0;
   switch (err_code) {
    case NRF_ERROR_NO_MEM        : name="NO_MEM"; break;
@@ -172,8 +172,16 @@ bool jsble_check_error(uint32_t err_code) {
    case BLE_ERROR_INVALID_CONN_HANDLE
                                 : name="INVALID_CONN_HANDLE"; break;
   }
-  if (name) jsExceptionHere(JSET_ERROR, "Got BLE error 0x%x (%s)", err_code, name);
-  else jsExceptionHere(JSET_ERROR, "Got BLE error code %d", err_code);
+  if (name) return jsvVarPrintf("Got BLE error 0x%x (%s)", err_code, name);
+  else return jsvVarPrintf("Got BLE error code %d", err_code);
+}
+
+/// Checks for error and reports an exception if there was one. Return true on error
+bool jsble_check_error(uint32_t err_code) {
+  JsVar *v = jsble_get_error_string(err_code);
+  if (!v) return 0;
+  jsExceptionHere(JSET_ERROR, "%v", v);
+  jsvUnLock(v);
   return true;
 }
 
@@ -1880,8 +1888,10 @@ void jsble_central_connect(ble_gap_addr_t peer_addr) {
   addr = peer_addr;
 
   err_code = sd_ble_gap_connect(&addr, &m_scan_param, &gap_conn_params);
-  if (jsble_check_error(err_code)) {
-    bleCompleteTaskFail(BLETASK_CONNECT, 0);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_CONNECT, errStr);
+    jsvUnLock(errStr);
   }
 }
 
@@ -1893,8 +1903,10 @@ void jsble_central_getPrimaryServices(ble_uuid_t uuid) {
 
   uint32_t              err_code;
   err_code = sd_ble_gattc_primary_services_discover(m_central_conn_handle, 1 /* start handle */, NULL);
-  if (jsble_check_error(err_code)) {
-    bleCompleteTaskFail(BLETASK_PRIMARYSERVICE, 0);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_PRIMARYSERVICE, errStr);
+    jsvUnLock(errStr);
   }
 }
 
@@ -1910,8 +1922,10 @@ void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid) {
 
   uint32_t              err_code;
   err_code = sd_ble_gattc_characteristics_discover(m_central_conn_handle, &range);
-  if (jsble_check_error(err_code)) {
-    bleCompleteTaskFail(BLETASK_CHARACTERISTIC, 0);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_CHARACTERISTIC, errStr);
+    jsvUnLock(errStr);
   }
 }
 
@@ -1945,8 +1959,11 @@ void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, siz
 
   uint32_t              err_code;
   err_code = sd_ble_gattc_write(m_central_conn_handle, &write_params);
-  if (jsble_check_error(err_code))
-    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_WRITE, 0);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_WRITE, errStr);
+    jsvUnLock(errStr);
+  }
 }
 
 void jsble_central_characteristicRead(JsVar *characteristic) {
@@ -1956,8 +1973,11 @@ void jsble_central_characteristicRead(JsVar *characteristic) {
   uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
   uint32_t              err_code;
   err_code = sd_ble_gattc_read(m_central_conn_handle, handle, 0/*offset*/);
-  if (jsble_check_error(err_code))
-    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_READ, 0);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_READ, errStr);
+    jsvUnLock(errStr);
+  }
 }
 
 void jsble_central_characteristicDescDiscover(JsVar *characteristic) {
@@ -1973,8 +1993,10 @@ void jsble_central_characteristicDescDiscover(JsVar *characteristic) {
 
   uint32_t              err_code;
   err_code = sd_ble_gattc_descriptors_discover(m_central_conn_handle, &range);
-  if (jsble_check_error(err_code)) {
-    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, 0);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, errStr);
+    jsvUnLock(errStr);
   }
 }
 
@@ -2001,8 +2023,11 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
 
   uint32_t              err_code;
   err_code = sd_ble_gattc_write(m_central_conn_handle, &write_params);
-  if (jsble_check_error(err_code))
-    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_NOTIFY, 0);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_CHARACTERISTIC_NOTIFY, errStr);
+    jsvUnLock(errStr);
+  }
 }
 
 void jsble_central_startBonding(bool forceRePair) {
@@ -2011,8 +2036,10 @@ void jsble_central_startBonding(bool forceRePair) {
       return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Not connected"));
 
   uint32_t err_code = pm_conn_secure(m_central_conn_handle, forceRePair);
-  if (jsble_check_error(err_code)) {
-    bleCompleteTaskFail(BLETASK_BONDING, 0);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_BONDING, errStr);
+    jsvUnLock(errStr);
   }
 #else
   return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Peer Manager not compiled in"));
