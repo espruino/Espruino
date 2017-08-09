@@ -32,16 +32,6 @@ static void uartTask(void *data) {
   }
 }
 
-static void timerTask(void *data) {
-  timers_Init();
-  timer_Init("EspruinoTimer",0,0,0);
-  while(1) {
-    taskWaitNotify();
-    jstUtilTimerInterruptHandler();
-  }
-}
-
-
 static void espruinoTask(void *data) {
   PWMInit();
   RMTInit();
@@ -70,6 +60,8 @@ int app_main(void)
   nvs_flash_init();
   spi_flash_init();
   tcpip_adapter_init();
+  timers_Init();
+  timer_Init("EspruinoTimer",0,0,0);
 
   // Map the js_code partition into memory so can be accessed by E.setBootCode("")
   const esp_partition_t* part;
@@ -90,11 +82,9 @@ int app_main(void)
   tasks_init();
   task_init(espruinoTask,"EspruinoTask",20000,5,0);
   task_init(uartTask,"ConsoleTask",2000,20,0);
-  task_init(timerTask,"TimerTask",2048,19,0);
 #else
   xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", 20000, NULL, 5, NULL, 0);
   xTaskCreatePinnedToCore(&uartTask,"uartTask",2000,NULL,20,NULL,0);
-  xTaskCreatePinnedToCore(&timerTask,"timerTask",2048,NULL,19,NULL,0);
 #endif
   return 0;
 }

@@ -14,6 +14,9 @@
  * Task, queue and timer specific exposed components.
  * ----------------------------------------------------------------------------
  */
+
+#include "jsinteractive.h"
+#include "jstimer.h"
  
 #include "rom/uart.h"
 #include "rtosutil.h"
@@ -156,7 +159,6 @@ void taskWaitNotify(){
 BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 void IRAM_ATTR espruino_isr(void *para){
   int idx = (int) para;
-//printf("y%d",idx);
   if(idx == 0){
     TIMERG0.hw_timer[TIMER_0].update = 1;
     TIMERG0.int_clr_timers.t0 = 1;
@@ -165,7 +167,7 @@ void IRAM_ATTR espruino_isr(void *para){
     TIMERG0.hw_timer[TIMER_1].update = 1;
     TIMERG0.int_clr_timers.t1 = 1;
   }
-  vTaskNotifyGiveFromISR(RTOStasks[ESP32Timers[idx].taskToNotifyIdx].handle,&xHigherPriorityTaskWoken);
+  jstUtilTimerInterruptHandler();
 }
 void IRAM_ATTR test_isr(void *para){
   int idx = (int) para;
@@ -228,14 +230,12 @@ int timer_Init(char *timerName,int group,int index,int isr_idx){
   return -1;
 }
 void timer_Start(int idx,uint64_t duration){
-//printf("StartTimer:%d = %d\n",idx,duration);
   timer_enable_intr(ESP32Timers[idx].group, ESP32Timers[idx].index);
   timer_set_alarm_value(ESP32Timers[idx].group, ESP32Timers[idx].index, duration - TIMER_FINE_ADJ);
   TIMERG0.hw_timer[idx].config.alarm_en = 1;
   timer_start(ESP32Timers[idx].group, ESP32Timers[idx].index);
 }
 void timer_Reschedule(int idx,uint64_t duration){
-//printf("reschedule:%d\n",cnt++);
   timer_set_alarm_value(ESP32Timers[idx].group, ESP32Timers[idx].index, duration - TIMER_FINE_ADJ);
   TIMERG0.hw_timer[idx].config.alarm_en = 1;
 }
