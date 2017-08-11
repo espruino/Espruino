@@ -1116,12 +1116,14 @@ static void gap_params_init() {
     strcpy(deviceName,"Puck.js");
 #elif defined(RUUVITAG)
     strcpy(deviceName,"RuuviTag");
+#elif defined(HEXBADGE)
+    strcpy(deviceName,"Badge");
 #else
     strcpy(deviceName,"Espruino "PC_BOARD_ID);
 #endif
 
     size_t len = strlen(deviceName);
-#if defined(PUCKJS) || defined(RUUVITAG)
+#if defined(PUCKJS) || defined(RUUVITAG) || defined(HEXBADGE)
     // append last 2 bytes of MAC address to name
     uint32_t addr =  NRF_FICR->DEVICEADDR[0];
     deviceName[len++] = ' ';

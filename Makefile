@@ -601,11 +601,16 @@ ifdef USE_NFC
 endif
 
 ifdef USE_NUCLEO
-WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
+  WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
+endif
+
+ifdef USE_HEXBADGE
+  INCLUDE += -I$(ROOT)/libs/hexbadge
+  WRAPPERSOURCES += libs/hexbadge/jswrap_hexbadge.c
 endif
 
 ifdef WICED
-WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c
+  WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c
 endif
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
