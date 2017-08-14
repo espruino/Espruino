@@ -73,6 +73,9 @@ static IOEventFlags pinToEV_EXTI(
 
 static uint8_t g_pinState[JSH_PIN_COUNT];
 
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+
 /**
 * interrupt handler for gpio interrupts
 */
@@ -124,6 +127,7 @@ void jshPinDefaultPullup() {
 void jshInit() {
   esp32_wifi_init();
   jshInitDevices();
+  BITFIELD_CLEAR(jshPinSoftPWM);
   if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
     jsError("JshPinState #defines have changed, please update pinStateToString()");
   }
@@ -229,6 +233,12 @@ void jshPinSetState(
   Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
   gpio_mode_t mode;
   gpio_pull_mode_t pull_mode=GPIO_FLOATING;
   switch(state) {
@@ -321,11 +331,25 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
     JsVarFloat freq,
     JshAnalogOutputFlags flags) { // if freq<=0, the default is used
   UNUSED(flags);
+  if (value<0) value=0;
+  if (value>1) value=1;
+  if (!isfinite(freq)) freq=0;
   if(pin == 25 || pin == 26){
+	if(flags & (JSAOF_ALLOW_SOFTWARE | JSAOF_FORCE_SOFTWARE)) jsError("pin does not support software PWM");
     writeDAC(pin,(uint8_t)(value * 256));
   }
   else{
-    writePWM(pin,( uint16_t)(value * PWMTimerRange),(int) freq);
+	if(flags & JSAOF_ALLOW_SOFTWARE){
+	  if (!jshGetPinStateIsManual(pin)){ 
+        BITFIELD_SET(jshPinSoftPWM, pin, 0);
+        jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+      }
+      BITFIELD_SET(jshPinSoftPWM, pin, 1);
+      if ((freq<=0)) freq=50;
+      jstPinPWM(freq, value, pin);
+      return 0;
+    }
+    else writePWM(pin,( uint16_t)(value * PWMTimerRange),(int) freq);
   }
   return 0;
 }
@@ -386,8 +410,30 @@ void jshPinPulse(
     bool pulsePolarity,   //!< The value to be pulsed into the pin.
     JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
 ) {
-  int duration = (int)pulseTime * 1000; //from millisecs to microsecs
-  sendPulse(pin, pulsePolarity, duration);
+  // ESP32 specific version, replaced by Espruino Style version from nrf52
+  //int duration = (int)pulseTime * 1000; //from millisecs to microsecs
+  //sendPulse(pin, pulsePolarity, duration);
+
+  // ---- USE TIMER FOR PULSE
+  if (!jshIsPinValid(pin)) {
+       jsExceptionHere(JSET_ERROR, "Invalid pin!");
+       return;
+  }
+  if (pulseTime<=0) {
+    // just wait for everything to complete
+    jstUtilTimerWaitEmpty();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
+    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+  }
 }
 
 
@@ -532,10 +578,12 @@ void jshUtilTimerDisable() {
 }
 
 void jshUtilTimerStart(JsSysTime period) {
+  if(period <= 30){period = 30;}
   startTimer(0,(uint64_t) period);
 }
 
 void jshUtilTimerReschedule(JsSysTime period) {
+  if(period <= 30){period = 30;}
   rescheduleTimer(0,(uint64_t) period);
 }
 

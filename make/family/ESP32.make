@@ -38,6 +38,7 @@ LDFLAGS += -L$(ESP_IDF_PATH)/ld \
 -L$(ESP_APP_TEMPLATE_PATH)/build/nghttp \
 -L$(ESP_APP_TEMPLATE_PATH)/build/nvs_flash \
 -L$(ESP_APP_TEMPLATE_PATH)/build/partition_table \
+-L$(ESP_APP_TEMPLATE_PATH)/build/soc \
 -L$(ESP_APP_TEMPLATE_PATH)/build/spi_flash \
 -L$(ESP_APP_TEMPLATE_PATH)/build/tcpip_adapter \
 -L$(ESP_APP_TEMPLATE_PATH)/build/vfs \
@@ -65,13 +66,15 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/nvs_flash/include \
 -I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
 -I$(ESP_IDF_PATH)/components/vfs/include \
+-I$(ESP_IDF_PATH)/components/soc/esp32/include \
+-I$(ESP_IDF_PATH)/components/soc/esp32/include/soc \
 -Itargets/esp32/include
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
 LIBS+=-T esp32_out.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.common.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.rom.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.peripherals.ld \
-$(ESP_IDF_PATH)/components/esp32/lib/librtc_clk.a \
+$(ESP_IDF_PATH)/components/esp32/lib/librtc.a \
 $(ESP_IDF_PATH)/components/newlib/lib/libc.a \
 $(ESP_IDF_PATH)/components/newlib/lib/libm.a \
 -lbt \
@@ -94,6 +97,7 @@ $(ESP_IDF_PATH)/components/esp32/libhal.a  \
 -lmbedtls \
 -lnghttp \
 -lnvs_flash \
+-lsoc \
 -lspi_flash \
 -ltcpip_adapter \
 -lvfs \

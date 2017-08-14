@@ -1,5 +1,8 @@
 #Notes on the development of Espruino for ESP32
 
+The simple way to get your own development area is to follow https://github.com/espruino/EspruinoBuildTools/tree/master/esp32
+Wilberforce created a lot of helpful tools, which are also used for build with Travis 
+
 The github URL for core Espruino is:
 
 https://github.com/espruino/Espruino.git
@@ -161,6 +164,11 @@ $ . ./setenv.sh
 $ cd template
 ```
 
+* Get partition table optimized for Espruino
+```
+$ curl -O https://raw.githubusercontent.com/espruino/EspruinoBuildTools/master/esp32/build/app/partitions_espruino.csv
+```
+
 * If you need Arduino, you have to do it here with commands at the end of this document
 
 * Run the `make menuconfig`.
@@ -176,6 +184,14 @@ Component config -> ESP32-specific config ->  Task watchdog [Disable]
 Component config -> FreeRTOS -> Halt when an SMP-untested function is called [Disable]
             some functions are marked as "SMP-untested" and a call results in a reset
             on our test they work fine, and for testing we need some of them
+Component config -> Log output -> Default log verbosity -> Error
+			send errors to log, not warnings or messages
+Component config -> Log output -> Use ANSI terminal clolors in log output [Disable]
+			WEB IDE does not support colorized messages
+Partition Table -> Custom partition table CSV -> partitions_espruino.csv
+			uses partitionstable which is optimized for Espruino
+Bootloader config -> Bootloader log verbosity -> Error
+			during boot, send error messades only. Otherwise you get a lot of lines that are not helpful			
 ```
 
 * Perform a build to create the libraries and the template application.
