@@ -24,7 +24,7 @@ info = {
  'default_console_baudrate' : "9600",
  # Number of variables can be WAY higher on this board
  'variables' : 2000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
-# 'bootloader' : 1,
+ 'bootloader' : 1,
  'binary_name' : 'espruino_%v_hexbadge.bin',
  'build' : {
    'optimizeflags' : '-Os',
@@ -37,7 +37,9 @@ info = {
      'HEXBADGE'
    ],
    'makefile' : [
-     'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1' # Looks like proper production nRF52s had this issue
+     'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
+     'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C'
    ]
  }
 };
@@ -64,18 +66,18 @@ chip = {
 };
 
 devices = {
-  'LED1' : { 'pin' : 'D25', 'inverted' : False },
-  'LED2' : { 'pin' : 'D26', 'inverted' : False },
-  'LED3' : { 'pin' : 'D27', 'inverted' : False },
-  'LED4' : { 'pin' : 'D28', 'inverted' : False },
-  'LED5' : { 'pin' : 'D29', 'inverted' : False },
-  'LED6' : { 'pin' : 'D30', 'inverted' : False },
-  'BTN1' : { 'pin' : 'D19', 'inverted' : False, 'pinstate' : 'IN_PULLDOWN' },
-  'BTN2' : { 'pin' : 'D20', 'inverted' : False, 'pinstate' : 'IN_PULLDOWN' },
-  'BTN3' : { 'pin' : 'D31', 'inverted' : False, 'pinstate' : 'IN_PULLDOWN' },
-  'BTN4' : { 'pin' : 'D16', 'inverted' : False, 'pinstate' : 'IN_PULLDOWN' },
-  'BTN5' : { 'pin' : 'D17', 'inverted' : False, 'pinstate' : 'IN_PULLDOWN' },
-  'BTN6' : { 'pin' : 'D18', 'inverted' : False, 'pinstate' : 'IN_PULLDOWN' },
+  'LED1' : { 'pin' : 'D25' },
+  'LED2' : { 'pin' : 'D26' },
+  'LED3' : { 'pin' : 'D27' },
+  'LED4' : { 'pin' : 'D28' },
+  'LED5' : { 'pin' : 'D29' },
+  'LED6' : { 'pin' : 'D30' },
+  'BTN1' : { 'pin' : 'D19', 'pinstate' : 'IN_PULLDOWN' },
+  'BTN2' : { 'pin' : 'D20', 'pinstate' : 'IN_PULLDOWN' },
+  'BTN3' : { 'pin' : 'D31', 'pinstate' : 'IN_PULLDOWN' },
+  'BTN4' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' },
+  'BTN5' : { 'pin' : 'D17', 'pinstate' : 'IN_PULLDOWN' },
+  'BTN6' : { 'pin' : 'D18', 'pinstate' : 'IN_PULLDOWN' },
   # Pin D22 is used for clock when driving neopixels - as not specifying a pin seems to break things
 };
 
