@@ -66,8 +66,6 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/nvs_flash/include \
 -I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
 -I$(ESP_IDF_PATH)/components/vfs/include \
--I$(ESP_IDF_PATH)/components/soc/esp32/include \
--I$(ESP_IDF_PATH)/components/soc/esp32/include/soc \
 -Itargets/esp32/include
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
 LIBS+=-T esp32_out.ld \
@@ -77,7 +75,6 @@ LIBS+=-T esp32_out.ld \
 $(ESP_IDF_PATH)/components/esp32/lib/librtc.a \
 $(ESP_IDF_PATH)/components/newlib/lib/libc.a \
 $(ESP_IDF_PATH)/components/newlib/lib/libm.a \
-$(ESP_IDF_PATH)/components/esp32/lib/libphy.a \
 -lbt \
 -lbtdm_app \
 -ldriver \
