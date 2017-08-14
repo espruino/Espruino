@@ -67,6 +67,7 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/tcpip_adapter/include \
 -I$(ESP_IDF_PATH)/components/vfs/include \
 -I$(ESP_IDF_PATH)/components/soc/esp32/include \
+-I$(ESP_IDF_PATH)/components/soc/esp32/include/soc \
 -Itargets/esp32/include
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,-EL
 LIBS+=-T esp32_out.ld \
