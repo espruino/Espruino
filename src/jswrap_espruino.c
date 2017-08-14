@@ -677,7 +677,7 @@ Get Espruino's interpreter flags that control the way it handles your JavaScript
   "name" : "setFlags",
   "generate" : "jsfSetFlags",
   "params" : [
-    ["str","JsVar","An object containing flag names and boolean values. You need only specify the flags that you want to change."]
+    ["flags","JsVar","An object containing flag names and boolean values. You need only specify the flags that you want to change."]
   ]
 }
 Set the Espruino interpreter flags that control the way it handles your JavaScript code.
