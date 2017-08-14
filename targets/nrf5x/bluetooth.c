@@ -429,7 +429,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
           bleSetActiveBluetoothGattServer(0);
           BleTask task = bleGetCurrentTask();
           if (BLETASK_IS_CENTRAL(task)) {
-            bleCompleteTaskFailAndUnLock(task, jsvNewFromString("Disconnected."));
+            bleCompleteTaskFailAndUnLock(task, jsvNewFromString("Disconnected"));
           }
         } else
 #endif
