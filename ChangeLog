@@ -17,6 +17,7 @@
             nRF52: Report central mode promise errors correctly if returned by softdevice
             Remove 'out of memory' warning messages (it's stored as a flag anyway)
             nRF5x: Don't disable IRQs completely for some things - only disable Espruino ones
+            Fix tab complete for Pins (fix #1213)
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime
