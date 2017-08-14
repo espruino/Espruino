@@ -1937,6 +1937,7 @@ See [`NRF.requestDevice`](/Reference#l_NRF_requestDevice) for usage examples.
 
 **Note:** This is only available on some devices
 */
+#if CENTRAL_LINK_COUNT>0
 static void _jswrap_nrf_bluetooth_central_connect(JsVar *addr) {
   // this function gets called on idle - just to make it less
   // likely we get connected while in the middle of executing stuff
@@ -1945,6 +1946,7 @@ static void _jswrap_nrf_bluetooth_central_connect(JsVar *addr) {
   if (!bleVarToAddr(addr, &peer_addr)) return;
   jsble_central_connect(peer_addr);
 }
+#endif
 
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0

@@ -59,7 +59,6 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf5x_utils.h"
 #include "softdevice_handler.h"
 
-
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
 
 /*  S110_SoftDevice_Specification_2.0.pdf
@@ -354,8 +353,8 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 }
 
 void jshInterruptOff() {
-#ifdef BLUETOOTH
-  // disable non-softdevice IRQs
+#if defined(BLUETOOTH) && defined(NRF52)
+  // disable non-softdevice IRQs. This only seems available on Cortex M3 (not the nRF51's M0)
   __set_BASEPRI(4<<5); // Disabling interrupts completely is not reasonable when using one of the SoftDevices.
 #else
   __disable_irq();
@@ -363,7 +362,7 @@ void jshInterruptOff() {
 }
 
 void jshInterruptOn() {
-#ifdef BLUETOOTH
+#if defined(BLUETOOTH) && defined(NRF52)
   __set_BASEPRI(0);
 #else
   __enable_irq();
