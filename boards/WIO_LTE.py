@@ -26,12 +26,13 @@ info = {
    'libraries' : [
      'NET',
      'NEOPIXEL',
-     'FILESYSTEM',
+    #  'FILESYSTEM',  # Add FILESYSTEM will force javascript module to load from SD card, remain to be seen.
    ],
    'makefile' : [
+    #  'SAVE_ON_FLASH=1',  # Add this to enable functions connectSDCard .etc
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DWIO_LTE',
-     'STLIB=STM32F407xx',
+     'STLIB=STM32F405xx',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o'
    ]
   }
@@ -76,7 +77,7 @@ devices = {
                  'pin_wakeup_disable' : 'C2',
                  'pin_lte_reset' : 'C3',
                  'pin_pwr_key' : 'C4',
-                 'pin_codec_i2c_pwr' : 'C5'},
+                 'pin_codec_i2c_pwr' : 'C5'},              
 };
 
 # left-right, or top-bottom order
