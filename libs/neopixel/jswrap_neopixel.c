@@ -24,6 +24,9 @@
 #ifdef ESP32
 #include "esp32_neopixel.h"
 #endif
+#ifdef WIO_LTE
+#include "stm32_ws2812b_driver.h"
+#endif
 
 #include <jswrap_neopixel.h>
 #include "jsvariterator.h"
@@ -122,7 +125,13 @@ void jswrap_neopixel_write(Pin pin, JsVar *data) {
 // -------------------------------------------------------------- Platform specific
 // -----------------------------------------------------------------------------------
 
-#if defined(STM32) // ----------------------------------------------------------------
+#if defined(WIO_LTE)
+
+bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
+  return stm32_neopixelWrite(pin, rgbData, rgbSize);
+}
+
+#elif defined(STM32) // ----------------------------------------------------------------
 
 // this one could potentially work on other platforms as well...
 bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {

@@ -144,6 +144,7 @@
   */
 
 #if defined(STM32F405xx)
+  #define STM32F40_41xxx // legacy definition
   #include "stm32f405xx.h"
 #elif defined(STM32F415xx)
   #include "stm32f415xx.h"
