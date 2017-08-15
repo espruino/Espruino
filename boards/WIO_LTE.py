@@ -26,10 +26,9 @@ info = {
    'libraries' : [
      'NET',
      'NEOPIXEL',
-    #  'FILESYSTEM',  # Add FILESYSTEM will force javascript module to load from SD card, remain to be seen.
+     'FILESYSTEM',  # Add FILESYSTEM will force javascript module to load from SD card, remain to be seen.
    ],
    'makefile' : [
-    #  'SAVE_ON_FLASH=1',  # Add this to enable functions connectSDCard .etc
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DWIO_LTE',
      'STLIB=STM32F405xx',
