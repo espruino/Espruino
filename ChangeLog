@@ -18,6 +18,9 @@
             Remove 'out of memory' warning messages (it's stored as a flag anyway)
             nRF5x: Don't disable IRQs completely for some things - only disable Espruino ones
             Fix tab complete for Pins (fix #1213)
+ 	    ESP8266: Fix load() causes endless loops (fix #1037)
+	    ESP8266: Wifi library doesn't handle {password: null} (fix #753)
+	    ESP8266: make topstrings and topreadonly work on Mac OS X (fix #1210)
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime
