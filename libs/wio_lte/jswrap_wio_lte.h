@@ -14,4 +14,5 @@
 #include "jspin.h"
 
 void jswrap_wio_lte_led(int r, int g, int b);
+void jswrap_wio_lte_setGrovePower(bool pwr);
 void jswrap_wio_lte_init();
