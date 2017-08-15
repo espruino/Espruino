@@ -520,14 +520,7 @@ void jsiSoftInit(bool hasBeenReset) {
   // Timers are stored by time in the future now, so no need
   // to fiddle with them.
 
-  // And look for onInit function
-  JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
-  if (onInit) {
-    if (jsiEcho()) jsiConsolePrint("Running onInit()...\n");
-    jsiExecuteEventCallback(0, onInit, 0, 0);
-    jsvUnLock(onInit);
-  }
-  // Now look for `init` events on `E`
+  // Execute `init` events on `E`
   JsVar *E = jsvObjectGetChild(execInfo.root, "E", 0);
   if (E) {
     JsVar *callback = jsvObjectGetChild(E, INIT_CALLBACK_NAME, 0);
@@ -536,6 +529,13 @@ void jsiSoftInit(bool hasBeenReset) {
       jsvUnLock(callback);
     }
     jsvUnLock(E);
+  }
+  // Execute the `onInit` function
+  JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
+  if (onInit) {
+    if (jsiEcho()) jsiConsolePrint("Running onInit()...\n");
+    jsiExecuteEventCallback(0, onInit, 0, 0);
+    jsvUnLock(onInit);
   }
 }
 
