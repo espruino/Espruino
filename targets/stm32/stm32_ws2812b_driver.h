@@ -6,6 +6,8 @@
  *
  */
 
+/* Software-based WS2812 driver - timings are designed for STM32F405 */
+
 #ifndef STM32_WS2812B_DRIVER_H__
 #define STM32_WS2812B_DRIVER_H__
 

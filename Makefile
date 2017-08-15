@@ -609,6 +609,13 @@ ifdef USE_HEXBADGE
   WRAPPERSOURCES += libs/hexbadge/jswrap_hexbadge.c
 endif
 
+ifdef USE_WIO_LTE
+  INCLUDE += -I$(ROOT)/libs/wio_lte
+  WRAPPERSOURCES += libs/wio_lte/jswrap_wio_lte.c
+  SOURCES += targets/stm32/stm32_ws2812b_driver.c
+endif
+
+
 ifdef WICED
   WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c
 endif

@@ -5,6 +5,7 @@
  * the file.
  *
  */
+/* Software-based WS2812 driver */
 
 #include "stm32_ws2812b_driver.h"
 
