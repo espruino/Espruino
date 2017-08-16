@@ -27,10 +27,12 @@ info = {
      'NET',
      'NEOPIXEL',
      'FILESYSTEM',  # Add FILESYSTEM will force javascript module to load from SD card, remain to be seen.
+     'WIO_LTE'
    ],
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DWIO_LTE',
+     'USE_DFU=1',
      'STLIB=STM32F405xx',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o'
    ]
@@ -91,7 +93,7 @@ board["_css"] = """
   width: 680px;
   height: 1020px;
   left: 200px;
-  background-image: url(img/STM32F4DISCOVERY.jpg);
+  background-image: url(img/WIO_LTE.jpg);
 }
 #boardcontainer {
   height: 1020px;

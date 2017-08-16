@@ -21,7 +21,10 @@ typedef struct {
 
 typedef struct {
   int daysSinceEpoch;
-  int day,month,year,dow;
+  int day;  // 1..31
+  int month; // 0..11
+  int year; // eg. 2017
+  int dow; // 0..6, Sunday is 0
 } CalendarDate;
 
 TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT);

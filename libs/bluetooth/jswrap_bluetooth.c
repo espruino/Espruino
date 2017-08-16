@@ -58,7 +58,7 @@ BleTask bleGetCurrentTask() {
 
 bool bleNewTask(BleTask task, JsVar *taskInfo) {
   if (bleTask) {
-    jsExceptionHere(JSET_ERROR, "BLE task is already in progress");
+    jsExceptionHere(JSET_ERROR, "BLE task %d is already in progress", (int)bleTask);
     return false;
   }
   assert(!blePromise && !bleTaskInfo);
@@ -390,8 +390,6 @@ This makes Puck.js undiscoverable, so it can't be connected to.
 Use `NRF.wake()` to wake up and make Puck.js connectable again.
 */
 void jswrap_nrf_bluetooth_sleep() {
-  uint32_t err_code;
-
   // set as sleeping
   bleStatus |= BLE_IS_SLEEPING;
   // stop advertising
@@ -1174,16 +1172,33 @@ Start/stop listening for BLE advertising packets within range. Returns a
 packets=10;
 NRF.setScan(function(d) {
   packets--;
-  console.log(d); // print packet info
   if (packets<=0)
     NRF.setScan(); // stop scanning
+  else
+    console.log(d); // print packet info
 });
+```
+
+Each `BluetoothDevice` will look a bit like:
+
+```
+BluetoothDevice {
+  "id": "aa:bb:cc:dd:ee:ff", // address
+  "rssi": -89,               // signal strength
+  "services": [ "128bit-uuid", ... ],     // zero or more service UUIDs
+  "data": new Uint8Array([ ... ]).buffer, // ArrayBuffer of returned data
+  "name": "DeviceName"       // the advertised device name
+ }
 ```
 
 **Note:** BLE advertising packets can arrive quickly - faster than you'll
 be able to print them to the console. It's best only to print a few, or
 to use a function like `NRF.findDevices(..)` which will collate a list
 of available devices.
+
+**Note:** Using setScan turns the radio's receive mode on constantly. This
+can draw a *lot* of power (12mA or so), so you should use it sparingly or
+you can run your battery down quickly.
 */
 void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
   /* This is called when we get data - do some processing here in the main loop
@@ -1295,6 +1310,9 @@ the device returned, to make a connection.
 
 You can also use [`NRF.connect(...)`](/Reference#l_NRF_connect) on just the `id` string returned, which
 may be useful if you always want to connect to a specific device.
+
+**Note:** Using findDevices turns the radio's receive mode on for 2000ms (or however long you specify). This
+can draw a *lot* of power (12mA or so), so you should use it sparingly or you can run your battery down quickly.
 */
 void jswrap_nrf_bluetooth_findDevices_found_cb(JsVar *device) {
   JsVar *arr = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADV", JSV_ARRAY);
@@ -1645,7 +1663,7 @@ NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }] }).then(function(device
 }).then(function(service) {
   return service.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
 }).then(function(characteristic) {
-  characteristic.writeValue("LED1.set()\n");
+  return characteristic.writeValue("LED1.set()\n");
 }).then(function() {
   gatt.disconnect();
   console.log("Done!");
@@ -1821,7 +1839,7 @@ NRF.connect("aa:bb:cc:dd:ee").then(function(g) {
 }).then(function(service) {
   return service.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
 }).then(function(characteristic) {
-  characteristic.writeValue("LED1.set()\n");
+  return characteristic.writeValue("LED1.set()\n");
 }).then(function() {
   gatt.disconnect();
   console.log("Done!");
@@ -1919,6 +1937,17 @@ See [`NRF.requestDevice`](/Reference#l_NRF_requestDevice) for usage examples.
 
 **Note:** This is only available on some devices
 */
+#if CENTRAL_LINK_COUNT>0
+static void _jswrap_nrf_bluetooth_central_connect(JsVar *addr) {
+  // this function gets called on idle - just to make it less
+  // likely we get connected while in the middle of executing stuff
+  ble_gap_addr_t peer_addr;
+  // this should be ok since we checked in jswrap_nrf_BluetoothRemoteGATTServer_connect
+  if (!bleVarToAddr(addr, &peer_addr)) return;
+  jsble_central_connect(peer_addr);
+}
+#endif
+
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
 
@@ -1931,14 +1960,19 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting a device with a mac address of the form aa:bb:cc:dd:ee:ff");
     return 0;
   }
-  jsvUnLock2(device, addr);
+  jsvUnLock(device);
 
+  JsVar *promise = 0;
   if (bleNewTask(BLETASK_CONNECT, parent/*BluetoothRemoteGATTServer*/)) {
-    JsVar *promise = jsvLockAgainSafe(blePromise);
-    jsble_central_connect(peer_addr);
-    return promise;
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_nrf_bluetooth_central_connect, JSWAT_VOID|(JSWAT_JSVAR<<JSWAT_BITS));
+    if (fn) {
+      jsiQueueEvents(0, fn, &addr, 1);
+      jsvUnLock(fn);
+      promise = jsvLockAgainSafe(blePromise);
+    }
   }
-  return 0;
+  jsvUnLock(addr);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;

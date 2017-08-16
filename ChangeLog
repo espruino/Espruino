@@ -6,6 +6,23 @@
              - Do not garbage collect inside an IRQ
             On nRF52 devices, allow button press at boot to clear out peer manager data
             Work out length of typed array with offset correctly (fix #1204)
+            nRF5x: Add Watchdog timer handling
+            Allow IRQs during STM32 neopixel send
+            nRF52: start new connections on idle to ease memory allocation conflicts between code execution & IRQs
+            nRF52: Ignore INVALID_STATE from CONN_PARAM_UPDATE_REQUEST (it can happen if we disconnect and then SD requests an update)
+            Fix Date.toString for dates before 1970
+            STM32: Fix handling of months when setting the internal RTC
+            Move to a faster jsvNewFlatStringOfLength which avoids blocking memory allocation
+            nRF5x: If a task is in progress, report the task ID (BleTask enum)
+            nRF52: Report central mode promise errors correctly if returned by softdevice
+            Remove 'out of memory' warning messages (it's stored as a flag anyway)
+            nRF5x: Don't disable IRQs completely for some things - only disable Espruino ones
+            Fix tab complete for Pins (fix #1213)
+            ESP8266: Fix load() causes endless loops (fix #1037)
+            ESP8266: Wifi library doesn't handle {password: null} (fix #753)
+            ESP8266: make topstrings and topreadonly work on Mac OS X (fix #1210)
+            Change order of execution for init - E.on('init',...) now executed before onInit
+            Added Error flag to show if a UART overflow has occurred
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime

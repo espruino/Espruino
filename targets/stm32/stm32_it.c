@@ -300,8 +300,8 @@ NO_INLINE static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device
     jshPushIOCharEvent(device, (char)USART_ReceiveData(USART));
   }
   /* If overrun condition occurs, clear the ORE flag and recover communication */
-  if (USART_GetFlagStatus(USART, USART_FLAG_ORE) != RESET)
-  {
+  if (USART_GetFlagStatus(USART, USART_FLAG_ORE) != RESET) {
+    jsErrorFlags |= JSERR_UART_OVERFLOW;
     (void)USART_ReceiveData(USART);
   }
   if(USART_GetITStatus(USART, USART_IT_TXE) != RESET) {

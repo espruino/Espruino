@@ -59,7 +59,6 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf5x_utils.h"
 #include "softdevice_handler.h"
 
-
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
 
 /*  S110_SoftDevice_Specification_2.0.pdf
@@ -353,14 +352,23 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
   return (time * 1000.0) / SYSCLK_FREQ;
 }
 
-// software IO functions...
 void jshInterruptOff() {
-  __disable_irq(); // Disabling interrupts is not reasonable when using one of the SoftDevices.
+#if defined(BLUETOOTH) && defined(NRF52)
+  // disable non-softdevice IRQs. This only seems available on Cortex M3 (not the nRF51's M0)
+  __set_BASEPRI(4<<5); // Disabling interrupts completely is not reasonable when using one of the SoftDevices.
+#else
+  __disable_irq();
+#endif
 }
 
 void jshInterruptOn() {
-  __enable_irq(); // *** This wont be good with SoftDevice!
+#if defined(BLUETOOTH) && defined(NRF52)
+  __set_BASEPRI(0);
+#else
+  __enable_irq();
+#endif
 }
+
 
 /// Are we currently in an interrupt?
 bool jshIsInInterrupt() {
@@ -794,9 +802,14 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 
 /// Enable watchdog with a timeout in seconds
 void jshEnableWatchDog(JsVarFloat timeout) {
+  NRF_WDT->CONFIG = (WDT_CONFIG_HALT_Pause << WDT_CONFIG_HALT_Pos) | ( WDT_CONFIG_SLEEP_Run << WDT_CONFIG_SLEEP_Pos);
+  NRF_WDT->CRV = (int)(timeout*32768);
+  NRF_WDT->RREN |= WDT_RREN_RR0_Msk;  //Enable reload register 0
+  NRF_WDT->TASKS_START = 1;
 }
 
 void jshKickWatchDog() {
+  NRF_WDT->RR[0] = 0x6E524635;
 }
 
 /** Check the pin associated with this EXTI - return true if it is a 1 */
@@ -825,6 +838,8 @@ void uart0_event_handle(app_uart_evt_t * p_event) {
       jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
     if (p_event->data.error_communication & (UART_ERRORSRC_PARITY_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1))
       jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_PARITY_ERR, 0);
+    if (p_event->data.error_communication & (UART_ERRORSRC_OVERRUN_Msk))
+      jsErrorFlags |= JSERR_UART_OVERFLOW;
   } else if (p_event->evt_type == APP_UART_TX_EMPTY) {
     int ch = jshGetCharToTransmit(EV_SERIAL1);
     if (ch >= 0) {
@@ -1254,7 +1269,7 @@ unsigned int jshGetRandomNumber() {
   unsigned int v = 0;
   uint8_t bytes_avail = 0;
   WAIT_UNTIL((sd_rand_application_bytes_available_get(&bytes_avail),bytes_avail>=sizeof(v)),"Random number");
-  sd_rand_application_vector_get(&v, sizeof(v));
+  sd_rand_application_vector_get((uint8_t*)&v, sizeof(v));
   return v;
 }
 

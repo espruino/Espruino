@@ -24,6 +24,7 @@ sys.path.append(basedir+"scripts");
 sys.path.append(basedir+"boards");
 import importlib;
 import common;
+from collections import OrderedDict;
 
 if len(sys.argv)<2 or sys.argv[len(sys.argv)-2][:2]!="-B" or sys.argv[len(sys.argv)-1][:2]!="-F":
 	print("USAGE: build_jswrapper.py ... -BBOARD -Fwrapperfile.c")
@@ -63,7 +64,7 @@ def getTestFor(className, static):
     if className=="Pin": return "jsvIsPin(parent)"
     if className=="Integer": return "jsvIsInt(parent)"
     if className=="Double": return "jsvIsFloat(parent)"
-    if className=="Number": return "jsvIsInt(parent) || jsvIsFloat(parent)"
+    if className=="Number": return "jsvIsNumeric(parent)"
     if className=="Object": return "parent" # we assume all are objects
     if className=="Array": return "jsvIsArray(parent)"
     if className=="ArrayBufferView": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type!=ARRAYBUFFERVIEW_ARRAYBUFFER"
@@ -326,7 +327,7 @@ for jsondata in jsondatas:
     libraries.append(jsondata["class"])
 
 print("Classifying Functions")
-builtins = {}
+builtins = OrderedDict()
 for jsondata in jsondatas:
   if "name" in jsondata:
     jsondata["static"] = not (jsondata["type"]=="property" or jsondata["type"]=="method")
@@ -483,7 +484,7 @@ codeOut('  }')
 nativeCheck = "jsvIsNativeFunction(parent) && "
 for className in builtins:
   if className!="parent" and  className!="!parent" and not "constructorPtr" in className and not className.startswith(nativeCheck):
-    codeOut('    if ('+className+") return &jswSymbolTables["+builtins[className]["indexName"]+"];");
+    codeOut('  if ('+className+") return &jswSymbolTables["+builtins[className]["indexName"]+"];");
 codeOut("  return &jswSymbolTables["+builtins["parent"]["indexName"]+"];")
 codeOut('}')
 
