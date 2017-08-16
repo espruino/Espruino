@@ -7,7 +7,6 @@
             On nRF52 devices, allow button press at boot to clear out peer manager data
             Work out length of typed array with offset correctly (fix #1204)
             nRF5x: Add Watchdog timer handling
-            Allow IRQs during STM32 neopixel send
             nRF52: start new connections on idle to ease memory allocation conflicts between code execution & IRQs
             nRF52: Ignore INVALID_STATE from CONN_PARAM_UPDATE_REQUEST (it can happen if we disconnect and then SD requests an update)
             Fix Date.toString for dates before 1970
