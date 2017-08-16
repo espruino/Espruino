@@ -22,6 +22,7 @@
             ESP8266: Wifi library doesn't handle {password: null} (fix #753)
             ESP8266: make topstrings and topreadonly work on Mac OS X (fix #1210)
             Change order of execution for init - E.on('init',...) now executed before onInit
+            Added Error flag to show if a UART overflow has occurred
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime

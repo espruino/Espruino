@@ -644,6 +644,8 @@ Get and reset the error flags. Returns an array that can contain:
 `'LOW_MEMORY'`: Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history
 
 `'MEMORY'`: Espruino ran out of memory and was unable to allocate some data that it needed.
+
+`'JSERR_UART_OVERFLOW'` : A UART received data but it was not read in time and was lost
  */
 JsVar *jswrap_espruino_getErrorFlags() {
   JsVar *arr = jsvNewEmptyArray();
@@ -653,7 +655,8 @@ JsVar *jswrap_espruino_getErrorFlags() {
   if (jsErrorFlags&JSERR_CALLBACK) jsvArrayPushAndUnLock(arr, jsvNewFromString("CALLBACK"));
   if (jsErrorFlags&JSERR_LOW_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("LOW_MEMORY"));
   if (jsErrorFlags&JSERR_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY"));
-  if (jsErrorFlags&JSERR_MEMORY_BUSY) jsvArrayPushAndUnLock(arr, jsvNewFromString("JSERR_MEMORY_BUSY"));
+  if (jsErrorFlags&JSERR_MEMORY_BUSY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY_BUSY"));
+  if (jsErrorFlags&JSERR_UART_OVERFLOW) jsvArrayPushAndUnLock(arr, jsvNewFromString("UART_OVERFLOW"));
   jsErrorFlags = JSERR_NONE;
   return arr;
 }

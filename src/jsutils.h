@@ -404,6 +404,7 @@ typedef enum {
   JSERR_LOW_MEMORY = 8, ///< Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history
   JSERR_MEMORY = 16, ///< Espruino ran out of memory and was unable to allocate some data that it needed.
   JSERR_MEMORY_BUSY = 32, ///< Espruino was busy doing something with memory (eg. garbage collection) so an IRQ couldn't allocate memory
+  JSERR_UART_OVERFLOW = 64 ///< A UART received data but it was not read in time and was lost
 } PACKED_FLAGS JsErrorFlags;
 
 /** Error flags for things that we don't really want to report on the console,
