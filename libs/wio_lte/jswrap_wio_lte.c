@@ -123,5 +123,5 @@ void jswrap_wio_lte_setGrovePower(bool pwr) {
 }*/
 void jswrap_wio_lte_init() {
   // initialise the SD card
-  //jsvUnLock(jspEvaluate("(function(){digitalWrite(A15,1);var spi=new SPI();spi.setup({mosi:D2,miso:C8,sck:C12});E.connectSDCard(spi,C11);})();",true));
+  jsvUnLock(jspEvaluate("(function(){digitalWrite(A15,1);var spi=new SPI();spi.setup({mosi:D2,miso:C8,sck:C12});setTimeout(function(){E.connectSDCard(spi,C11);}, 4000);})();",true));
 }
