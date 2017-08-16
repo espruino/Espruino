@@ -24,6 +24,7 @@
             Change order of execution for init - E.on('init',...) now executed before onInit
             Added Error flag to show if a UART overflow has occurred
             Change more instances of jsWarn to jsException
+            Avoid printing error messages during execution, and report to console on idle when if errors were flagged (fix #766)
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime

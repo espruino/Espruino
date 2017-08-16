@@ -21,6 +21,7 @@
 #include "jswrap_json.h"
 #include "jswrap_io.h"
 #include "jswrap_stream.h"
+#include "jswrap_espruino.h" // jswrap_espruino_getErrorFlagArray
 #include "jswrap_flash.h" // load and save to flash
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
 #include "jsnative.h" // jsnSanityTest
@@ -79,6 +80,7 @@ uint16_t jsiLineNumberOffset; ///< When we execute code, this is the 'offset' we
 bool hasUsedHistory = false; ///< Used to speed up - if we were cycling through history and then edit, we need to copy the string
 unsigned char loopsIdling; ///< How many times around the loop have we been entirely idle?
 bool interruptedDuringEvent; ///< Were we interrupted while executing an event? If so may want to clear timers
+JsErrorFlags lastJsErrorFlags = 0; ///< Compare with jsErrorFlags in order to report errors
 // ----------------------------------------------------------------------------
 
 #ifdef USE_DEBUGGER
@@ -459,6 +461,7 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 // 'claim' anything we are using
 void jsiSoftInit(bool hasBeenReset) {
   jsErrorFlags = 0;
+  lastJsErrorFlags = 0;
   events = jsvNewEmptyArray();
   inputLine = jsvNewFromEmptyString();
   inputCursorPos = 0;
@@ -2073,6 +2076,17 @@ void jsiIdle() {
     interruptedDuringEvent = false;
     jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted during event processing.\n");
+  }
+  if (lastJsErrorFlags != jsErrorFlags) {
+    JsErrorFlags newErrors = jsErrorFlags & ~lastJsErrorFlags;
+    if (newErrors) {
+      JsVar *v = jswrap_espruino_getErrorFlagArray(newErrors);
+      if (v) {
+        jsiConsolePrintf("New interpreter error: %v\n", v);
+        jsvUnLock(v);
+      }
+    }
+    lastJsErrorFlags = jsErrorFlags;
   }
 
   // check for TODOs

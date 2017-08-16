@@ -625,6 +625,21 @@ void jswrap_espruino_kickWatchdog() {
   jshKickWatchDog();
 }
 
+/// Return an array of errors based on the current flags
+JsVar *jswrap_espruino_getErrorFlagArray(JsErrorFlags flags) {
+  JsVar *arr = jsvNewEmptyArray();
+  if (!arr) return 0;
+  if (flags&JSERR_RX_FIFO_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("FIFO_FULL"));
+  if (flags&JSERR_BUFFER_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("BUFFER_FULL"));
+  if (flags&JSERR_CALLBACK) jsvArrayPushAndUnLock(arr, jsvNewFromString("CALLBACK"));
+  if (flags&JSERR_LOW_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("LOW_MEMORY"));
+  if (flags&JSERR_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY"));
+  if (flags&JSERR_MEMORY_BUSY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY_BUSY"));
+  if (flags&JSERR_UART_OVERFLOW) jsvArrayPushAndUnLock(arr, jsvNewFromString("UART_OVERFLOW"));
+
+  return arr;
+}
+
 /*JSON{
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
@@ -648,17 +663,9 @@ Get and reset the error flags. Returns an array that can contain:
 `'JSERR_UART_OVERFLOW'` : A UART received data but it was not read in time and was lost
  */
 JsVar *jswrap_espruino_getErrorFlags() {
-  JsVar *arr = jsvNewEmptyArray();
-  if (!arr) return 0;
-  if (jsErrorFlags&JSERR_RX_FIFO_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("FIFO_FULL"));
-  if (jsErrorFlags&JSERR_BUFFER_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("BUFFER_FULL"));
-  if (jsErrorFlags&JSERR_CALLBACK) jsvArrayPushAndUnLock(arr, jsvNewFromString("CALLBACK"));
-  if (jsErrorFlags&JSERR_LOW_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("LOW_MEMORY"));
-  if (jsErrorFlags&JSERR_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY"));
-  if (jsErrorFlags&JSERR_MEMORY_BUSY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY_BUSY"));
-  if (jsErrorFlags&JSERR_UART_OVERFLOW) jsvArrayPushAndUnLock(arr, jsvNewFromString("UART_OVERFLOW"));
+  JsErrorFlags flags = jsErrorFlags;
   jsErrorFlags = JSERR_NONE;
-  return arr;
+  return jswrap_espruino_getErrorFlagArray(flags);
 }
 
 

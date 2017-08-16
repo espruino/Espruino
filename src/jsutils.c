@@ -21,7 +21,7 @@
 
 /** Error flags for things that we don't really want to report on the console,
  * but which are good to know about */
-JsErrorFlags jsErrorFlags;
+volatile JsErrorFlags jsErrorFlags;
 
 
 bool isWhitespace(char ch) {

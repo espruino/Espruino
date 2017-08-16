@@ -409,7 +409,7 @@ typedef enum {
 
 /** Error flags for things that we don't really want to report on the console,
  * but which are good to know about */
-extern JsErrorFlags jsErrorFlags;
+extern volatile JsErrorFlags jsErrorFlags;
 
 JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix);
 JsVarFloat stringToFloat(const char *str);

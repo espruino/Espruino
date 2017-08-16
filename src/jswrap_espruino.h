@@ -28,6 +28,8 @@ JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, 
 
 void jswrap_espruino_enableWatchdog(JsVarFloat time, JsVar *isAuto);
 void jswrap_espruino_kickWatchdog();
+/// Return an array of errors based on the current flags
+JsVar *jswrap_espruino_getErrorFlagArray(JsErrorFlags flags);
 JsVar *jswrap_espruino_getErrorFlags();
 JsVar *jswrap_espruino_toArrayBuffer(JsVar *str);
 JsVar *jswrap_espruino_toUint8Array(JsVar *args);

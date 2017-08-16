@@ -436,8 +436,6 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
   return jsvNewWithFlags(flags);
 #else
   // On a micro, we're screwed.
-  if (!(jsErrorFlags&JSERR_MEMORY))
-    jsError("Out of Memory!");
   jsErrorFlags |= JSERR_MEMORY;
   jspSetInterrupted(true);
   return 0;
@@ -2718,10 +2716,7 @@ JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue) {
   }
 
   JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), value);
-  if (!idx) {
-    jsWarn("Out of memory while appending to array");
-    return 0;
-  }
+  if (!idx) return 0; // out of memory - error flag will have been set already
   jsvAddName(arr, idx);
   jsvUnLock(idx);
   return index+1;
@@ -2732,10 +2727,7 @@ JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
   assert(jsvIsArray(arr));
   JsVarInt index = jsvGetArrayLength(arr);
   JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), value);
-  if (!idx) {
-    jsWarn("Out of memory while appending to array");
-    return 0;
-  }
+  if (!idx) return 0; // out of memory - error flag will have been set already
   jsvAddName(arr, idx);
   jsvUnLock(idx);
   return jsvGetArrayLength(arr);
