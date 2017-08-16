@@ -2319,7 +2319,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
   I2C_ClearFlag(I2C, I2C_FLAG_STOPF);
   if (I2C_GetFlagStatus(I2C, I2C_FLAG_NACKF) != RESET) {
     I2C_ClearFlag(I2C, I2C_FLAG_NACKF);
-    jsWarn("I2C got NACK");
+    jsExceptionHere(JSET_INTERNALERROR, "I2C got NACK");
   }
 #else
   WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_BUSY), "I2C Write BUSY");
@@ -2357,7 +2357,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
   I2C_ClearFlag(I2C, I2C_FLAG_STOPF);
   if (I2C_GetFlagStatus(I2C, I2C_FLAG_NACKF) != RESET) {
     I2C_ClearFlag(I2C, I2C_FLAG_NACKF);
-    jsWarn("I2C got NACK");
+    jsExceptionHere(JSET_INTERNALERROR,"I2C got NACK");
   }
 #else
   I2C_GenerateSTART(I2C, ENABLE);

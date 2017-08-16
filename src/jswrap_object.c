@@ -312,11 +312,11 @@ Creates a new object with the specified prototype object and properties. propert
  */
 JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject) {
   if (!jsvIsObject(proto) && !jsvIsNull(proto)) {
-    jsWarn("Object prototype may only be an Object or null: %t", proto);
+    jsExceptionHere(JSET_TYPEERROR, "Object prototype may only be an Object or null: %t", proto);
     return 0;
   }
   if (jsvIsObject(propertiesObject)) {
-    jsWarn("propertiesObject is not supported yet");
+    jsExceptionHere(JSET_ERROR, "propertiesObject is not supported yet");
   }
   JsVar *obj = jsvNewObject();
   if (!obj) return 0;
@@ -583,15 +583,15 @@ Register an event listener for this object, for instance ```http.on('data', func
  */
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
   if (!jsvHasChildren(parent)) {
-    jsWarn("Parent must be an object - not a String, Integer, etc.");
+    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
   }
   if (!jsvIsString(event)) {
-    jsWarn("First argument to EventEmitter.on(..) must be a string");
+    jsExceptionHere(JSET_TYPEERROR, "First argument to EventEmitter.on(..) must be a string");
     return;
   }
   if (!jsvIsFunction(listener) && !jsvIsString(listener)) {
-    jsWarn("Second argument to EventEmitter.on(..) must be a function or a String (containing code)");
+    jsExceptionHere(JSET_TYPEERROR, "Second argument to EventEmitter.on(..) must be a function or a String (containing code)");
     return;
   }
 
@@ -644,11 +644,11 @@ Call the event listeners for this object, for instance ```http.emit('data', 'Foo
  */
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   if (!jsvHasChildren(parent)) {
-    jsWarn("Parent must be an object - not a String, Integer, etc.");
+    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
   }
   if (!jsvIsString(event)) {
-    jsWarn("First argument to EventEmitter.emit(..) must be a string");
+    jsExceptionHere(JSET_TYPEERROR, "First argument to EventEmitter.emit(..) must be a string");
     return;
   }
   JsVar *eventName = jsvVarPrintf(JS_EVENT_PREFIX"%v", event);
@@ -662,7 +662,7 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   jsvObjectIteratorNew(&it, argArray);
   while (jsvObjectIteratorHasValue(&it)) {
     if (n>=MAX_ARGS) {
-      jsWarn("Too many arguments");
+      jsExceptionHere(JSET_TYPEERROR, "Too many arguments (>%d)", MAX_ARGS);
       break;
     }
     args[n++] = jsvObjectIteratorGetValue(&it);
@@ -702,7 +702,7 @@ Serial1.removeListener("data", foo);
  */
 void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) {
   if (!jsvHasChildren(parent)) {
-    jsWarn("Parent must be an object - not a String, Integer, etc.");
+    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
   }
   if (jsvIsString(event)) {
@@ -728,7 +728,7 @@ void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) 
     }
     jsvUnLock(eventListName);
   } else {
-    jsWarn("First argument to EventEmitter.removeListener(..) must be a string");
+    jsExceptionHere(JSET_TYPEERROR, "First argument to EventEmitter.removeListener(..) must be a string");
     return;
   }
 }
@@ -746,7 +746,7 @@ Removes all listeners, or those of the specified event.
  */
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   if (!jsvHasChildren(parent)) {
-    jsWarn("Parent must be an object - not a String, Integer, etc.");
+    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
   }
   if (jsvIsString(event)) {
@@ -775,7 +775,7 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
     }
     jsvObjectIteratorFree(&it);
   } else {
-    jsWarn("First argument to EventEmitter.removeAllListeners(..) must be a string, or undefined");
+    jsExceptionHere(JSET_TYPEERROR, "First argument to EventEmitter.removeAllListeners(..) must be a string, or undefined");
     return;
   }
 }
@@ -804,7 +804,7 @@ This replaces the function with the one in the argument - while keeping the old 
  */
 void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   if (!jsvIsFunction(newFunc)) {
-    jsWarn("First argument of replaceWith should be a function - ignoring");
+    jsExceptionHere(JSET_TYPEERROR, "First argument of replaceWith should be a function - ignoring");
     return;
   }
   // If old was native or vice versa...

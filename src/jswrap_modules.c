@@ -47,7 +47,7 @@ Load the given module, and return the exported functions
  */
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {
-    jsWarn("Expecting a module name as a string, but got %t", moduleName);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting a module name as a string, but got %t", moduleName);
     return 0;
   }
   // Search to see if we have already loaded this module
@@ -88,7 +88,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
 #endif
     if (!fileContents || jsvIsStringEqual(fileContents,"")) {
       jsvUnLock2(moduleExportName, fileContents);
-      jsWarn("Module %q not found", moduleName);
+      jsExceptionHere(JSET_ERROR, "Module %q not found", moduleName);
       return 0;
     }
     moduleExport = jspEvaluateModule(fileContents);
@@ -152,7 +152,7 @@ void jswrap_modules_removeCached(JsVar *id) {
 
   JsVar *moduleExportName = jsvFindChildFromVar(moduleList, id, false);
   if (!moduleExportName) {
-    jsWarn("Module not found");
+    jsExceptionHere(JSET_ERROR, "Module %q not found", id);
   } else {
     jsvRemoveChild(moduleList, moduleExportName);
     jsvUnLock(moduleExportName);
@@ -200,7 +200,7 @@ void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode) {
 
   JsVar *moduleExport = jspEvaluateModule(sourceCode);
   if (!moduleExport) {
-    jsWarn("Unable to load module");
+    jsExceptionHere(JSET_ERROR, "Unable to load module %q", id);
   } else {
     JsVar *moduleName = jsvFindChildFromVar(moduleList, id, true);
     if (moduleName) {
