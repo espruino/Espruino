@@ -232,11 +232,11 @@ NO_INLINE static void _socketCloseAllConnections(JsNetwork *net) {
 
 // returns 0 on success and a (negative) error number on failure
 int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData) {
-  char *buf = alloca(net->chunkSize); // allocate on stack
+  char *buf = alloca((size_t)net->chunkSize); // allocate on stack
 
   assert(!jsvIsEmptyString(*sendData));
 
-  size_t bufLen = httpStringGet(*sendData, buf, net->chunkSize);
+  size_t bufLen = httpStringGet(*sendData, buf, (size_t)net->chunkSize);
   int num = netSend(net, sckt, buf, bufLen);
   if (num < 0) return num; // an error occurred
   // Now cut what we managed to send off the beginning of sendData
@@ -303,7 +303,7 @@ static bool fireErrorEvent(int error, JsVar *obj1, JsVar *obj2) {
 // -----------------------------
 
 bool socketServerConnectionsIdle(JsNetwork *net) {
-  char *buf = alloca(net->chunkSize); // allocate on stack
+  char *buf = alloca((size_t)net->chunkSize); // allocate on stack
 
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_SERVER_CONNECTIONS,false);
   if (!arr) return false;
@@ -324,7 +324,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
     int error = 0;
 
     if (!closeConnectionNow) {
-      int num = netRecv(net, sckt, buf, net->chunkSize);
+      int num = netRecv(net, sckt, buf, (size_t)net->chunkSize);
       if (num<0) {
         // we probably disconnected so just get rid of this
         closeConnectionNow = true;
@@ -352,7 +352,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
                 jsvObjectSetChildAndUnLock(connection, HTTP_NAME_RECEIVE_COUNT,
                     jsvNewFromInteger(
                       jsvGetIntegerAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_RECEIVE_COUNT, JSV_INTEGER)) +
-                      jsvGetStringLength(receiveData)
+                      (JsVarInt)jsvGetStringLength(receiveData)
                     ));
               }
               // execute 'data' callback or save data
@@ -458,7 +458,7 @@ void socketClientPushReceiveData(JsVar *connection, JsVar *socket, JsVar **recei
 }
 
 bool socketClientConnectionsIdle(JsNetwork *net) {
-  char *buf = alloca(net->chunkSize); // allocate on stack
+  char *buf = alloca((size_t)net->chunkSize); // allocate on stack
 
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,false);
   if (!arr) return false;
@@ -518,7 +518,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         }
         // Now read data if possible (and we have space for it)
         if (!receiveData || !hadHeaders) {
-          int num = netRecv(net, sckt, buf, net->chunkSize);
+          int num = netRecv(net, sckt, buf, (size_t)net->chunkSize);
           //if (num != 0) printf("recv returned %d\r\n", num);
           if (!alreadyConnected && num == SOCKET_ERR_NO_CONN) {
             ; // ignore... it's just telling us we're not connected yet
