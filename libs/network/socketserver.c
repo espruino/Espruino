@@ -195,7 +195,14 @@ void _socketConnectionKill(JsNetwork *net, JsVar *connection) {
   if (sckt>=0) {
     netCloseSocket(net, sckt);
     jsvObjectRemoveChild(connection,HTTP_NAME_SOCKET);
+    jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(false));
+    jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CLOSE, jsvNewFromBool(true));
   }
+}
+
+bool _socketConnectionOpen(JsVar *connection) {
+  return !(jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false)) ||
+           jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSE, false)));
 }
 
 // -----------------------------
@@ -733,6 +740,10 @@ JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback) 
 }
 
 void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data) {
+  if (!_socketConnectionOpen(httpClientReqVar)) {
+    jsExceptionHere(JSET_ERROR, "This socket is closed.");
+    return;
+  }
   SocketType socketType = socketGetType(httpClientReqVar);
   // Append data to sendData
   JsVar *sendData = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, 0);
@@ -903,6 +914,10 @@ void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar
 
 
 void serverResponseWrite(JsVar *httpServerResponseVar, JsVar *data) {
+  if (!_socketConnectionOpen(httpServerResponseVar)) {
+    jsExceptionHere(JSET_ERROR, "This socket is closed.");
+    return;
+  }
   // Append data to sendData
   JsVar *sendData = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_SEND_DATA, 0);
   if (!sendData) {

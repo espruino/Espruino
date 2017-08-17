@@ -27,6 +27,8 @@
             Increase HTTP server and client version from 1.0 to 1.1 (needed for Websockets on Safari)
             Stop 'require' creating an undefined Module entry in the modules list (fix #1218)
             Stop require dumping filesystem errors as well as 'module not found'
+            Now throw an exception when writing to a closed socket (fix #1220)
+            Set the internal 'conn' variable to false when a connection closes to avoid confusion
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime
