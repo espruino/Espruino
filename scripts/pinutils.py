@@ -86,6 +86,7 @@ DEVICES = {
  "IR":"IR", 
  "NFC":"NFC",
  "CAPSENSE":"CAPSENSE",
+ "PWR":"PWR"
 };
 
 for i in range(0,7):

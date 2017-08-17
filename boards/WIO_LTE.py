@@ -42,7 +42,7 @@ info = {
 chip = {
   'part' : "STM32F405RGT6",
   'family' : "STM32F4",
-  'package' : "LQFP100",
+  'package' : "LQFP64",
   'ram' : 192,
   'flash' : 1024,
   'speed' : 168,
@@ -63,58 +63,53 @@ devices = {
             'pin_dp' : 'A12',
             'pin_vbus' : 'A9',
             'pin_id' : 'A10', },
-
-  'PWR_PINS' : { 'pin_dtr' : 'A1',
-                 'pin_neopixel_pwr' : 'A8',
-                 'pin_sdcard_pwr' : 'A15',
-                 'pin_battery_read' : 'B0',
-                 'pin_neopixel' : 'B1',
-                 'pin_lte_pwr' : 'B5',
-                 'pin_vccb' : 'B10',
-                 'pin_ant_pwr' : 'B12',
-                 'pin_lte_status' : 'B15',
-                 'pin_wakeup_in' : 'C0',
-                 'pin_ap_ready' : 'C1',
-                 'pin_wakeup_disable' : 'C2',
-                 'pin_lte_reset' : 'C3',
-                 'pin_pwr_key' : 'C4',
-                 'pin_codec_i2c_pwr' : 'C5'},              
+  'JTAG' : {
+        'pin_MS' : 'A13',
+        'pin_CK' : 'A14',
+        #'pin_DI' : 'A15'
+          },
+  'PWR' : { 
+            'pin_dtr' : 'A1',
+            'pin_neopixel_pwr' : 'A8',
+            'pin_sdcard_pwr' : 'A15',
+            'pin_battery_read' : 'B0',
+            'pin_lte_pwr' : 'B5',
+            'pin_vccb' : 'B10',
+            'pin_ant_pwr' : 'B12',
+            'pin_lte_status' : 'B15',
+            'pin_wakeup_in' : 'C0',
+            'pin_ap_ready' : 'C1',
+            'pin_wakeup_disable' : 'C2',
+            'pin_lte_reset' : 'C3',
+            'pin_pwr_key' : 'C4',
+            'pin_codec_i2c_pwr' : 'C5' },              
 };
 
 # left-right, or top-bottom order
 board = {
-  'left' : [ 'GND', 'VDD', 'GND', 'C1','C3','A1','A3','A5','A7','C5','B1','GND','E7','E9','E11','E13','E15','B11','B13','B15','D9','D11','D13','D15','GND'],
-  'left2' : [ 'GND', 'VDD', 'NRST', 'C0','C2','A0','A2','A4','A6','C4','B0','B2','E8','E10','E12','E14','B10','B12','B14','D8','D10','D12','D14','NC','GND'],
-  'right2' : [ 'GND', '5V', '3V3', 'H0', 'C14','E6','E4','E2','E0','B8','BOOT0','B6','B4','D7','D5','D3','D1','C12','C10','A14','A10','A8','C8','C6','GND'],
-  'right' : [ 'GND', '5V', '3V3', 'H1', 'C15','C13','E5','E3','E1','B9','VDD','B7','B5','B3','D6','D4','D2','D0','C11','A15','A13','A9','C9','C7','GND'],
+  'left' : [ 'GND', '3V3', 'A5', 'A4', '', '', 'GND', '3V3', 'B6', 'B7', '', '', 'GND', '3V3', 'B9', 'B8'],
+  'right' : [ 'A6', 'A7', '3V3', 'GND', '', '', 'B4', 'B3', '3V3', 'GND', '', '', 'C6', 'C7', '3V3', 'GND'],
 };
 board["_css"] = """
 #board {
-  width: 680px;
-  height: 1020px;
+  width: 450px;
+  height: 468px;
   left: 200px;
   background-image: url(img/WIO_LTE.jpg);
 }
 #boardcontainer {
-  height: 1020px;
+  height: 468px;
 }
 #left {
-  top: 375px;
-  right: 590px;
+  top: 118px;
+  right: 336px;
 }
-#left2 {
-  top: 375px;
-  left: 105px;
-}
-
 #right  {
-  top: 375px;
-  left: 550px;
+  top: 118px;
+  left: 336px;
 }
-#right2  {
-  top: 375px;
-  right: 145px;
-}
+.leftpin { height: 15px; }
+.rightpin { height: 15px; }
 """;
 
 def get_pins():
