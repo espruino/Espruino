@@ -25,6 +25,8 @@
             Change more instances of jsWarn to jsException
             Avoid printing error messages during execution, and report to console on idle when if errors were flagged (fix #766)
             Increase HTTP server and client version from 1.0 to 1.1 (needed for Websockets on Safari)
+            Stop 'require' creating an undefined Module entry in the modules list (fix #1218)
+            Stop require dumping filesystem errors as well as 'module not found'
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime

@@ -54,13 +54,10 @@ JsVar *jswrap_require(JsVar *moduleName) {
 
   JsVar *moduleList = jswrap_modules_getModuleList();
   if (!moduleList) return 0; // out of memory
-  JsVar *moduleExportName = jsvFindChildFromVar(moduleList, moduleName, true);
+  JsVar *moduleExport = jsvSkipName(jsvFindChildFromVar(moduleList, moduleName, false));
   jsvUnLock(moduleList);
-  if (!moduleExportName) return 0; // out of memory
-  JsVar *moduleExport = jsvSkipName(moduleExportName);
   if (moduleExport) {
     // Found the module!
-    jsvUnLock(moduleExportName);
     return moduleExport;
   }
 
@@ -80,14 +77,20 @@ JsVar *jswrap_require(JsVar *moduleName) {
     //if (jsvIsStringEqual(moduleName,"fs")) {}
 #ifdef USE_FILESYSTEM
     JsVar *modulePath = jsvNewFromString("node_modules/");
-    if (!modulePath) { jsvUnLock(moduleExportName); return 0; } // out of memory
+    if (!modulePath) return 0; // out of memory
     jsvAppendStringVarComplete(modulePath, moduleName);
     jsvAppendString(modulePath,".js");
     fileContents = jswrap_fs_readFile(modulePath);
     jsvUnLock(modulePath);
+    JsVar *exception = jspGetException();
+    if (exception) {  // throw away exception & file if we had one
+      execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_EXCEPTION;
+      jsvUnLock2(fileContents, exception);
+      fileContents = 0;
+    }
 #endif
     if (!fileContents || jsvIsStringEqual(fileContents,"")) {
-      jsvUnLock2(moduleExportName, fileContents);
+      jsvUnLock(fileContents);
       jsExceptionHere(JSET_ERROR, "Module %q not found", moduleName);
       return 0;
     }
@@ -95,9 +98,18 @@ JsVar *jswrap_require(JsVar *moduleName) {
     jsvUnLock(fileContents);
   }
 
-  if (moduleExport) // could have been out of memory
-    jsvSetValueOfName(moduleExportName, moduleExport); // save in cache
-  jsvUnLock(moduleExportName);
+  // Now save module
+  if (moduleExport) { // could have been out of memory
+    JsVar *moduleList = jswrap_modules_getModuleList();
+    if (moduleList) {
+      JsVar *moduleExportName = jsvFindChildFromVar(moduleList, moduleName, true);
+      if (moduleExportName)
+        jsvSetValueOfName(moduleExportName, moduleExport); // save in cache
+      jsvUnLock(moduleExportName);
+    }
+    jsvUnLock(moduleList);
+  }
+
   return moduleExport;
 }
 
