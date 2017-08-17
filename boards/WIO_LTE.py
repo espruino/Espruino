@@ -101,15 +101,15 @@ board["_css"] = """
   height: 468px;
 }
 #left {
-  top: 118px;
+  top: 129px;
   right: 336px;
 }
 #right  {
-  top: 118px;
+  top: 129px;
   left: 336px;
 }
-.leftpin { height: 15px; }
-.rightpin { height: 15px; }
+.leftpin { height: 16px; }
+.rightpin { height: 16px; }
 """;
 
 def get_pins():

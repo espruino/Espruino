@@ -82,6 +82,11 @@ espruino_#v##_ruuvitag.zip
    - The firmware image for Ruuvitag Devices
      See http://www.espruino.com/Ruuvitag for more information
 
+espruino_#v##_Wio_LTE.zip
+   - The firmware image for Seed Wio LTE Devices
+     See http://www.espruino.com/WioLTE for more information
+
+
 
 ESP8266 / ESP32
 ---------------
