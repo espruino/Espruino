@@ -2,6 +2,11 @@
 
 language: c
 
+addons:
+  apt:
+    packages:
+    - python-serial
+
 before_script:
  - source ./scripts/provision.sh $BOARD
 
