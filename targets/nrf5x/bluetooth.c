@@ -347,9 +347,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
 #if CENTRAL_LINK_COUNT>0
-        if (bleInTask(BLETASK_BONDING)) // BLE_GAP_TIMEOUT_SRC_SECURITY_REQUEST ?
+        if (bleInTask(BLETASK_BONDING)) { // BLE_GAP_TIMEOUT_SRC_SECURITY_REQUEST ?
           bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Connection Timeout"));
-        if (bleInTask(BLETASK_CONNECT)) {
+        } else if (bleInTask(BLETASK_CONNECT)) {
           // timeout!
           bleCompleteTaskFailAndUnLock(BLETASK_CONNECT, jsvNewFromString("Connection Timeout"));
         } else
