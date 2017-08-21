@@ -50,7 +50,7 @@ chip = {
   'usart' : 3,
   'spi' : 4,
   'i2c' : 3,
-  'adc' : 2,
+  'adc' : 3,
   'dac' : 2,
   'saved_code' : {
     # code size 300000 = 0x493E0 starts at 0x0800 0000 ends at 0x0804 93E0
