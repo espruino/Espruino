@@ -54,7 +54,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
 
   JsVar *moduleList = jswrap_modules_getModuleList();
   if (!moduleList) return 0; // out of memory
-  JsVar *moduleExport = jsvSkipName(jsvFindChildFromVar(moduleList, moduleName, false));
+  JsVar *moduleExport = jsvSkipNameAndUnLock(jsvFindChildFromVar(moduleList, moduleName, false));
   jsvUnLock(moduleList);
   if (moduleExport) {
     // Found the module!
