@@ -2,13 +2,10 @@
 
 language: c
 
-addons:
-  apt:
-    packages:
-    - python-serial
-
 before_script:
  - source ./scripts/provision.sh $BOARD
+ - python --version
+ - python -m pip install pyserial
 
 after_script:
   - ls *.bin *.hex *.tgz *.zip | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"

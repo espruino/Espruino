@@ -50,7 +50,7 @@ chip = {
   'usart'   : 3,
   'spi'     : 2,
   'i2c'     : 2,
-  'adc'     : 1,
+  'adc'     : 2,
   'dac'     : 0,
   'saved_code' : {
     'address' : 0x100000,
