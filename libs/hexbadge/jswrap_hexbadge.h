@@ -15,6 +15,7 @@
 
 int jswrap_badge_capSense(int corner);
 int jswrap_badge_getBatteryPercentage();
+void jswrap_badge_setContrast(JsVarFloat c);
 
 void jswrap_badge_init();
 void jswrap_badge_kill();

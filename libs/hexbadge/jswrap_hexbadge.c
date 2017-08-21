@@ -175,6 +175,28 @@ void badge_lcd_flip(JsVar *g) {
   jsvUnLock(buf);
 }
 
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Badge",
+    "name" : "setContrast",
+    "generate" : "jswrap_badge_setContrast",
+    "params" : [
+      ["c","float","Contrast between 0 and 1"]
+    ]
+}
+Set the LCD's contrast */
+void jswrap_badge_setContrast(JsVarFloat c) {
+  if (c<0) c=0;
+  if (c>1) c=1;
+  jshPinSetValue(LCD_CS,0);
+  jshPinSetValue(LCD_DC,0);
+  badge_lcd_wr(0x81);
+  badge_lcd_wr((int)(63*c));
+  //badge_lcd_wr(0x20|div); div = 0..7
+  jshPinSetValue(LCD_CS,1);
+}
+
 /*JSON{
   "type" : "init",
   "generate" : "jswrap_badge_init"
@@ -238,6 +260,7 @@ void jswrap_badge_init() {
   // LCD init 2
   jshDelayMicroseconds(10000);
   jshPinSetValue(LCD_RST,1);
+  jshDelayMicroseconds(10000);
   const unsigned char LCD_INIT_DATA[] = {
        0xE2,
        0xA3,
