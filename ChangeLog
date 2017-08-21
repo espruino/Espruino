@@ -29,6 +29,7 @@
             Stop require dumping filesystem errors as well as 'module not found'
             Now throw an exception when writing to a closed socket (fix #1220)
             Set the internal 'conn' variable to false when a connection closes to avoid confusion
+            nRF5x: Fix typo so we wake every 4 min for RTC, not 0.25 sec!
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime

@@ -1151,8 +1151,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
    * when it overflows, so we'll have to check for overflows (which means always
    * waking up with enough time to detect an overflow).
    */
-  if (timeUntilWake > jshGetTimeFromMilliseconds(240))
-    timeUntilWake = jshGetTimeFromMilliseconds(240);
+  if (timeUntilWake > jshGetTimeFromMilliseconds(240*1000))
+    timeUntilWake = jshGetTimeFromMilliseconds(240*1000);
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
     uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake), APP_TIMER_PRESCALER);
@@ -1164,12 +1164,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
   }
   hadEvent = false;
+  jsiSetSleep(JSI_SLEEP_ASLEEP);
   while (!hadEvent) {
-    jsiSetSleep(JSI_SLEEP_ASLEEP);
     sd_app_evt_wait(); // Go to sleep, wait to be woken up
-    jsiSetSleep(JSI_SLEEP_AWAKE);
     jshGetSystemTime(); // check for RTC overflows
   }
+  jsiSetSleep(JSI_SLEEP_AWAKE);
 #ifdef BLUETOOTH
   // we don't care about the return codes...
   app_timer_stop(m_wakeup_timer_id);
