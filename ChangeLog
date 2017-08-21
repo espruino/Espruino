@@ -31,6 +31,8 @@
             Set the internal 'conn' variable to false when a connection closes to avoid confusion
             nRF5x: Fix typo so we wake every 4 min for RTC, not 0.25 sec!
             process.memory() now reports time taken for GC and vars GC'd
+            Slightly more aggressive idle GC on most platforms (at 5% free)
+            Don't warn the user when we had to run a GC pass during execution
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime

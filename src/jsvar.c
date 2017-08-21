@@ -327,11 +327,8 @@ bool jsvMoreFreeVariablesThan(unsigned int vars) {
   if (!vars) return false;
   JsVarRef r = jsVarFirstEmpty;
   while (r) {
-    if (!vars) return true;
-    vars--;
-
-    JsVar *v = jsvGetAddressOf(r);
-    r = jsvGetNextSibling(v);
+    if (!vars--) return true;
+    r = jsvGetNextSibling(jsvGetAddressOf(r));
   }
   return false;
 }
@@ -3301,7 +3298,6 @@ int jsvGarbageCollect() {
   for (i=1;i<=jsVarsSize;i++)  {
     JsVar *var = jsvGetAddressOf(i);
     if (var->flags & JSV_GARBAGE_COLLECT) {
-      freedCount++;
       if (jsvIsFlatString(var)) {
         // If we're a flat string, there are more blocks to free.
         unsigned int count = (unsigned int)jsvGetFlatStringBlocks(var);
@@ -3359,6 +3355,7 @@ int jsvGarbageCollect() {
         if (lastEmpty) jsvSetNextSibling(lastEmpty, i);
         else jsVarFirstEmpty = i;
         lastEmpty = var;
+        freedCount++;
       }
     } else if (jsvIsFlatString(var)) {
       // if we have a flat string, skip forward that many blocks

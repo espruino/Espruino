@@ -78,7 +78,7 @@ InputState inputState = 0; ///< state for dealing with cursor keys
 uint16_t inputStateNumber; ///< Number from when `Esc [ 1234` is sent - for storing line number
 uint16_t jsiLineNumberOffset; ///< When we execute code, this is the 'offset' we apply to line numbers in error/debug
 bool hasUsedHistory = false; ///< Used to speed up - if we were cycling through history and then edit, we need to copy the string
-unsigned char loopsIdling; ///< How many times around the loop have we been entirely idle?
+unsigned char loopsIdling = 0; ///< How many times around the loop have we been entirely idle?
 bool interruptedDuringEvent; ///< Were we interrupted while executing an event? If so may want to clear timers
 JsErrorFlags lastJsErrorFlags = 0; ///< Compare with jsErrorFlags in order to report errors
 // ----------------------------------------------------------------------------
@@ -2079,7 +2079,7 @@ void jsiIdle() {
   }
   if (lastJsErrorFlags != jsErrorFlags) {
     JsErrorFlags newErrors = jsErrorFlags & ~lastJsErrorFlags;
-    if (newErrors) {
+    if (newErrors & ~JSERR_WARNINGS_MASK) {
       JsVar *v = jswrap_espruino_getErrorFlagArray(newErrors);
       if (v) {
         jsiConsolePrintf("New interpreter error: %v\n", v);
@@ -2138,6 +2138,7 @@ void jsiIdle() {
       !jsvMoreFreeVariablesThan(JS_VARS_BEFORE_IDLE_GC)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     jsvGarbageCollect();
+    loopsIdling = 0;
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
 
@@ -2146,7 +2147,7 @@ void jsiIdle() {
     jshKickWatchDog();
 
   // Go to sleep!
-  if (loopsIdling>1 && // once around the idle loop without having done any work already (just in case)
+  if (loopsIdling>=1 && // once around the idle loop without having done any work already (just in case)
 #ifdef USB
       !jshIsUSBSERIALConnected() && // if USB is on, no point sleeping (later, sleep might be more drastic)
 #endif
