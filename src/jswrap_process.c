@@ -122,12 +122,14 @@ JsVar *jswrap_process_env() {
 }
 Run a Garbage Collection pass, and return an object containing information on memory usage.
 
-* `free` : Memory that is available to be used (in blocks)
+* `free`  : Memory that is available to be used (in blocks)
 * `usage` : Memory that has been used (in blocks)
 * `total` : Total memory (in blocks)
 * `history` : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'
+* `gc`      : Memory freed during the GC pass
+* `gctime`  : Time taken for GC pass (in milliseconds)
 * `stackEndAddress` : (on ARM) the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion the bytes above this can be used.
-* `flash_start` : (on ARM) the address of the start of flash memory (usually `0x8000000`)
+* `flash_start`      : (on ARM) the address of the start of flash memory (usually `0x8000000`)
 * `flash_binary_end` : (on ARM) the address in flash memory of the end of Espruino's firmware.
 * `flash_code_start` : (on ARM) the address in flash memory of pages that store any code that you save with `save()`.
 * `flash_length` : (on ARM) the amount of flash memory this firmware was built for (in bytes). **Note:** Some STM32 chips actually have more memory than is advertised.
@@ -137,7 +139,9 @@ Memory units are specified in 'blocks', which are around 16 bytes each (dependin
 **Note:** To find free areas of flash memory, see `require('Flash').getFree()`
  */
 JsVar *jswrap_process_memory() {
-  jsvGarbageCollect();
+  JsSysTime time1 = jshGetSystemTime();
+  int gc = jsvGarbageCollect();
+  JsSysTime time2 = jshGetSystemTime();
   JsVar *obj = jsvNewObject();
   if (obj) {
     unsigned int history = 0;
@@ -152,6 +156,8 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "usage", jsvNewFromInteger((JsVarInt)usage));
     jsvObjectSetChildAndUnLock(obj, "total", jsvNewFromInteger((JsVarInt)total));
     jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
+    jsvObjectSetChildAndUnLock(obj, "gc", jsvNewFromInteger((JsVarInt)gc));
+    jsvObjectSetChildAndUnLock(obj, "gctime", jsvNewFromFloat(jshGetMillisecondsFromTime(time2-time1)));
 
 #ifdef ARM
     extern int LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings

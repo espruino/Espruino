@@ -689,8 +689,8 @@ static ALWAYS_INLINE bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr));
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVar *var, int indent);
 
-/** Run a garbage collection sweep - return true if things have been freed */
-bool jsvGarbageCollect();
+/** Run a garbage collection sweep - return nonzero if things have been freed */
+int jsvGarbageCollect();
 
 #ifndef RELEASE
 // Dump any locked variables that aren't referenced from `global` - for debugging memory leaks

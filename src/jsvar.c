@@ -3266,8 +3266,8 @@ static void jsvGarbageCollectMarkUsed(JsVar *var) {
   }
 }
 
-/** Run a garbage collection sweep - return true if things have been freed */
-bool jsvGarbageCollect() {
+/** Run a garbage collection sweep - return nonzero if things have been freed */
+int jsvGarbageCollect() {
   if (isMemoryBusy) return false;
   isMemoryBusy = MEMBUSY_GC;
   JsVarRef i;
@@ -3295,16 +3295,17 @@ bool jsvGarbageCollect() {
    * Also update the free list - this means that every new variable that
    * gets allocated gets allocated towards the start of memory, which
    * hopefully helps compact everything towards the start. */
-  bool freedSomething = false;
+  int freedCount = 0;
   jsVarFirstEmpty = 0;
   JsVar *lastEmpty = 0;
   for (i=1;i<=jsVarsSize;i++)  {
     JsVar *var = jsvGetAddressOf(i);
     if (var->flags & JSV_GARBAGE_COLLECT) {
-      freedSomething = true;
+      freedCount++;
       if (jsvIsFlatString(var)) {
         // If we're a flat string, there are more blocks to free.
         unsigned int count = (unsigned int)jsvGetFlatStringBlocks(var);
+        freedCount+=count;
         // Free the first block
         var->flags = JSV_UNUSED;
         // add this to our free list
@@ -3371,7 +3372,7 @@ bool jsvGarbageCollect() {
   }
   if (lastEmpty) jsvSetNextSibling(lastEmpty, 0);
   isMemoryBusy = MEM_NOT_BUSY;
-  return freedSomething;
+  return freedCount;
 }
 
 #ifndef RELEASE
