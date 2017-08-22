@@ -634,6 +634,8 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   }
 
+  int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
+  int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
   JsVar *str = jsvAsString(var, false);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
@@ -642,12 +644,12 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     if (gfx.data.fontSize>0) {
 #ifndef SAVE_ON_FLASH
       int w = (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
-      if (x>-w && x<gfx.data.width  && y>-gfx.data.fontSize && y<gfx.data.height)
+      if (x>-w && x<maxX  && y>-gfx.data.fontSize && y<maxY)
         graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
       x+=w;
 #endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
-      if (x>-4 && x<gfx.data.width && y>-6 && y<gfx.data.height)
+      if (x>-4 && x<maxX && y>-6 && y<maxY)
         graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
       x+=4;
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
@@ -668,7 +670,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
         width = (int)jsvGetInteger(customWidth);
         bmpOffset = width*(ch-customFirstChar);
       }
-      if (ch>=customFirstChar && (x>-width) && (x<gfx.data.width) && y>-customHeight && y<gfx.data.height) {
+      if (ch>=customFirstChar && (x>-width) && (x<maxX) && (y>-customHeight) && y<maxY) {
         bmpOffset *= customHeight;
         // now render character
         JsvStringIterator cit;
