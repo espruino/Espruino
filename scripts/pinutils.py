@@ -116,7 +116,7 @@ URLS = {
 
 SIMPLE_DEVICES = [
  "LED1","LED2","LED3","LED4","LED5","LED6","LED7","LED8",
- "BTN1","BTN2","BTN3","BTN4" ];
+ "BTN1","BTN2","BTN3","BTN4","BTN5","BTN6","BTN7","BTN8" ];
 
 # is a pin name valid
 def isvalidpin(pinname):

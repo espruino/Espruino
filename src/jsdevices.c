@@ -102,6 +102,46 @@ void jshResetDevices() {
   jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
 #endif
 #endif
+#ifdef BTN2_PININDEX
+#ifdef BTN2_PINSTATE
+  jshSetPinStateIsManual(BTN2_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN2_PININDEX, BTN2_PINSTATE);
+#else
+  jshPinSetState(BTN2_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
+#endif
+#ifdef BTN3_PININDEX
+#ifdef BTN3_PINSTATE
+  jshSetPinStateIsManual(BTN3_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN3_PININDEX, BTN3_PINSTATE);
+#else
+  jshPinSetState(BTN3_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
+#endif
+#ifdef BTN4_PININDEX
+#ifdef BTN4_PINSTATE
+  jshSetPinStateIsManual(BTN4_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN4_PININDEX, BTN4_PINSTATE);
+#else
+  jshPinSetState(BTN4_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
+#endif
+#ifdef BTN5_PININDEX
+#ifdef BTN5_PINSTATE
+  jshSetPinStateIsManual(BTN5_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN5_PININDEX, BTN5_PINSTATE);
+#else
+  jshPinSetState(BTN5_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
+#endif
+#ifdef BTN6_PININDEX
+#ifdef BTN6_PINSTATE
+  jshSetPinStateIsManual(BTN6_PININDEX, true); // so subsequent reads don't overwrite the state
+  jshPinSetState(BTN6_PININDEX, BTN6_PINSTATE);
+#else
+  jshPinSetState(BTN6_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
+#endif
 }
 
 // ----------------------------------------------------------------------------
