@@ -72,7 +72,7 @@ typedef struct JsNetwork {
   bool (*checkError)(struct JsNetwork *net);
 
   /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-  int (*createsocket)(struct JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType, JsVar *options);
+  int (*createsocket)(struct JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options);
   /// destroys the given socket
   void (*closesocket)(struct JsNetwork *net, int sckt);
   /// If the given server socket can accept a connection, return it (or return < 0)
@@ -114,7 +114,7 @@ unsigned long networkFlipIPAddress(unsigned long addr);
 bool netCheckError(JsNetwork *net);
 
 /// Create a socket (server (host==0) or client)
-int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType, JsVar *options);
+int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options);
 
 /// Ask this socket to close - it may not close immediately
 void netCloseSocket(JsNetwork *net, int sckt);

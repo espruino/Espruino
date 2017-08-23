@@ -740,7 +740,7 @@ void serverListen(JsNetwork *net, JsVar *server, unsigned short port, SocketType
   jsvObjectSetChildAndUnLock(server, HTTP_NAME_PORT, jsvNewFromInteger(port));
   JsVar *options = jsvObjectGetChild(server, HTTP_NAME_OPTIONS_VAR, false);
 
-  int sckt = netCreateSocket(net, 0/*server*/, port, socketType, options);
+  int sckt = netCreateSocket(net, socketType, 0/*server*/, port, options);
   if (sckt<0) {
     jsExceptionHere(JSET_INTERNALERROR, "Unable to create socket\n");
     jsvObjectSetChildAndUnLock(server, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
@@ -931,7 +931,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
     if (port==0) port = 80;
   }
 
-  int sckt =  netCreateSocket(net, host_addr, port, socketType, options);
+  int sckt =  netCreateSocket(net, socketType, host_addr, port, options);
   if (sckt<0) {
     jsExceptionHere(JSET_INTERNALERROR, "Unable to create socket\n");
     // As this is already in the list of connections, an error will be thrown on idle anyway

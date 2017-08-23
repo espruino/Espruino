@@ -668,8 +668,8 @@ bool netCheckError(JsNetwork *net) {
   return net->checkError(net);
 }
 
-int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType, JsVar *options) {
-  int sckt = net->createsocket(net, host, port, socketType, options);
+int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
+  int sckt = net->createsocket(net, socketType, host, port, options);
   if (sckt<0) return sckt;
 
 #ifdef USE_TLS

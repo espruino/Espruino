@@ -64,7 +64,7 @@ bool net_linux_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_linux_createsocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType, JsVar *options) {
+int net_linux_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
   NOT_USED(net);
   int ippProto = socketType & ST_UDP ? IPPROTO_UDP : IPPROTO_TCP;
   int scktType = socketType & ST_UDP ? SOCK_DGRAM : SOCK_STREAM;

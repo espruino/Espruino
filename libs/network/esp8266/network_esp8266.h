@@ -35,7 +35,7 @@ int  net_ESP8266_BOARD_recv(JsNetwork *net, SocketType socketType, int sckt, voi
 int  net_ESP8266_BOARD_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len);
 void net_ESP8266_BOARD_idle(JsNetwork *net);
 bool net_ESP8266_BOARD_checkError(JsNetwork *net);
-int  net_ESP8266_BOARD_createSocket(JsNetwork *net, uint32_t ipAddress, unsigned short port, SocketType socketType, JsVar *options);
+int  net_ESP8266_BOARD_createSocket(JsNetwork *net, SocketType socketType, uint32_t ipAddress, unsigned short port, JsVar *options);
 void net_ESP8266_BOARD_closeSocket(JsNetwork *net, int sckt);
 void net_ESP8266_BOARD_gethostbyname(JsNetwork *net, char *hostName, uint32_t *outIp);
 #endif /* LIBS_NETWORK_ESP8266_NETWORK_ESP8266_H_ */

@@ -70,7 +70,7 @@ bool net_wiznet_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_wiznet_createsocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType) {
+int net_wiznet_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
 
@@ -150,7 +150,7 @@ int net_wiznet_accept(JsNetwork *net, int sckt) {
 }
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_wiznet_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
+int net_wiznet_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
   int num = 0;
   if (getSn_SR((uint8_t)sckt) == SOCK_LISTEN) {
     // socket is operating as a TCP server - something has gone wrong.
@@ -166,7 +166,7 @@ int net_wiznet_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
 }
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_wiznet_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
+int net_wiznet_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
   int r = (int)send((uint8_t)sckt, buf, (uint16_t)len, MSG_NOSIGNAL);
   if (jspIsInterrupted()) return -1;
   return r;

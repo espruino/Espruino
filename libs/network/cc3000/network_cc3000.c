@@ -74,7 +74,7 @@ bool net_cc3000_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_cc3000_createsocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType) {
+int net_cc3000_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
 
@@ -164,7 +164,7 @@ int net_cc3000_accept(JsNetwork *net, int sckt) {
 }
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_cc3000_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
+int net_cc3000_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
   int num = 0;
   fd_set s;
   FD_ZERO(&s);
@@ -191,7 +191,7 @@ int net_cc3000_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
 }
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_cc3000_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
+int net_cc3000_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
   if (cc3000_socket_has_closed(sckt))
     return -1;
 
