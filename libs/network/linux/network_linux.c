@@ -42,6 +42,15 @@
 
  #define closesocket(SOCK) close(SOCK)
 
+#if NET_DBG > 0
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+// #include "jsinteractive.h"
+// #define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
+static char DBG_LIB[] = "socketserver"; // library name
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
+
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
 void net_linux_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
@@ -240,7 +249,8 @@ int net_linux_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, s
       num = (int)recvfrom(sckt,buf+delta,len-delta,0,&fromAddr,&fromAddrLen);
       *host = fromAddr.sin_addr.s_addr;
       *port = ntohs(fromAddr.sin_port);
-      jsWarn("Recv %d %x:%d", num, *host, *port);
+
+      DBG("Recv %d %x:%d", num, *host, *port);
       if (num==0) return -1; // select says data, but recv says 0 means connection is closed
       num += delta;
     } else {
@@ -279,7 +289,7 @@ int net_linux_send(JsNetwork *net, SocketType socketType, int sckt, const void *
         sin.sin_addr.s_addr = *(in_addr_t*)host;
         sin.sin_port = htons(*port);
 
-        jsWarn("Send %d %x:%d", len - delta, *host, *port);
+        DBG("Send %d %x:%d", len - delta, *host, *port);
         n = (int)sendto(sckt, buf + delta, len - delta, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in)) + delta;
     } else {
         n = (int)send(sckt, buf, len, flags);

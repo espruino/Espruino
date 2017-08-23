@@ -49,6 +49,15 @@ extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf
 #define printf os_printf_plus
 #endif
 
+#if NET_DBG > 0
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+// #include "jsinteractive.h"
+// #define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
+static char DBG_LIB[] = "socketserver"; // library name
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
+
 // -----------------------------
 
 static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
@@ -240,7 +249,7 @@ int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData
   SocketType socketType = socketGetType(connection);
   size_t bufLen = httpStringGet(*sendData, buf, (size_t)net->chunkSize);
   int num = netSend(net, socketType, sckt, buf, bufLen);
-  jsWarn("socketSendData %x:%d (%d -> %d)\n", *(uint32_t*)buf, *(unsigned short*)(buf+sizeof(uint32_t)), bufLen, num);
+  DBG("socketSendData %x:%d (%d -> %d)\n", *(uint32_t*)buf, *(unsigned short*)(buf+sizeof(uint32_t)), bufLen, num);
   if (num < 0) return num; // an error occurred
   // Now cut what we managed to send off the beginning of sendData
   if (num > 0) {
@@ -430,7 +439,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       jsvUnLock(sendData);
     }
     if (closeConnectionNow) {
-      jsWarn("CLOSE NOW");
+      DBG("CLOSE NOW");
 
       // send out any data that we were POSTed
       JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
@@ -613,7 +622,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     }
 
     if (closeConnectionNow) {
-      jsWarn("close now");
+      DBG("close now");
 
       socketClientPushReceiveData(connection, socket, &receiveData);
       if (!receiveData) {
@@ -759,7 +768,7 @@ void serverListen(JsNetwork *net, JsVar *server, unsigned short port, SocketType
     }
   }
 
-  jsWarn("serverListen port=%d (%d)", port, sckt);
+  DBG("serverListen port=%d (%d)", port, sckt);
   jsvUnLock2(options, arr);
 }
 
