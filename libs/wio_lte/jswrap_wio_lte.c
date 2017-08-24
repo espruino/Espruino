@@ -58,10 +58,10 @@ void jswrap_wio_lte_led(int r, int g, int b) {
     "name" : "setGrovePower",
     "generate" : "jswrap_wio_lte_setGrovePower",
     "params" : [
-      ["onoff","bool","Whether to turn the Grove connectors power on or off (D38 is always powered)"]
+      ["onoff","bool","Whether to turn the Grove connectors power on or off (D38/D39 are always powered)"]
     ]
 }
-Set the power of Grove connecters, except D38 D39 they are always on
+Set the power of Grove connectors, except for `D38` and `D39` which are always on.
 */
 void jswrap_wio_lte_setGrovePower(bool pwr) {
   jshPinOutput(JSH_PORTB_OFFSET+10, pwr);
@@ -73,10 +73,12 @@ void jswrap_wio_lte_setGrovePower(bool pwr) {
     "name" : "setLEDPower",
     "generate" : "jswrap_wio_lte_setLEDPower",
     "params" : [
-      ["onoff","bool","Whether to turn the Grove connectors power on or off (D38 is always powered)"]
+      ["onoff","bool","true = on, false = off"]
     ]
 }
-Set the WIO's LED
+Turn power to the WIO's LED on or off.
+
+Turning the LED on won't immediately display a color - that must be done with `WioLTE.LED(r,g,b)`
 */
 void jswrap_wio_lte_setLEDPower(bool pwr) {
   jshPinOutput(JSH_PORTA_OFFSET+8, pwr);
