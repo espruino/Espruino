@@ -596,3 +596,25 @@ bool jsfFlashContainsCode() {
   return magic == (int)FLASH_MAGIC;
 #endif
 }
+
+/** Completely clear any saved code from flash. */
+void jsfRemoveCodeFromFlash() {
+  jsiConsolePrint("Erasing saved code.");
+#ifdef LINUX
+  unlink("espruino.boot");
+  unlink("espruino.state");
+#else // !LINUX
+  uint32_t pageStart, pageLength;
+  uint32_t addr = FLASH_SAVED_CODE_START;
+  if (jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) {
+    jshFlashErasePage(pageStart);
+    while (pageStart+pageLength < FLASH_MAGIC_LOCATION) { // until end address
+      jsiConsolePrint(".");
+      addr = pageStart+pageLength; // next page
+      if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) break;
+      jshFlashErasePage(pageStart);
+    }
+  }
+#endif
+  jsiConsolePrint("\nDone!\n");
+}

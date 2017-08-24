@@ -15,6 +15,7 @@
  */
 #include "jswrap_interactive.h"
 #include "jswrap_json.h" // for print/console.log
+#include "jswrap_flash.h" // for jsfRemoveCodeFromFlash
 #include "jsvar.h"
 #include "jsflags.h"
 #include "jsinteractive.h"
@@ -183,14 +184,30 @@ hold Button 1 down a fraction of a second later.
 /*JSON{
   "type" : "function",
   "name" : "reset",
-  "generate_full" : "jsiStatus|=JSIS_TODO_RESET;"
+  "generate" : "jswrap_interface_reset",
+  "params" : [
+    ["clearFlash","bool","Remove saved code from flash as well"]
+  ]
 }
-Reset the interpreter - clear program memory, and do not load a saved program from flash. This does NOT reset the underlying hardware (which allows you to reset the device without it disconnecting from USB).
+Reset the interpreter - clear program memory in RAM, and do not load a saved program from flash. This does NOT reset the underlying hardware (which allows you to reset the device without it disconnecting from USB).
 
 This command only executes when the Interpreter returns to the Idle state - for instance ```a=1;reset();a=2;``` will still leave 'a' as undefined.
 
 The safest way to do a full reset is to hit the reset button.
- */
+
+If `reset()` is called with no arguments, it will reset the board's state in
+RAM but will not reset the state in flash. When next powered on (or when
+`load()` is called) the board will load the previously saved code.
+
+Calling `reset(true)` will cause *all saved code in flash memory to
+be cleared as well*.
+
+*/
+void jswrap_interface_reset(bool clearFlash) {
+  jsiStatus |= JSIS_TODO_RESET;
+  if (clearFlash) jsfRemoveCodeFromFlash();
+}
+
 /*JSON{
   "type" : "function",
   "name" : "print",

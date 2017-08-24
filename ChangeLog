@@ -35,6 +35,8 @@
             Don't warn the user when we had to run a GC pass during execution
             Fix issue drawing on right-hand side of rotated graphics where H>W (regression in 1v93) 
             If >1 button, set pin state correctly at boot/reset
+            Add an argument to `reset`. `reset(true)` will now cause all Flash memory to be cleared as well.
+            Puck.js: Holding down the button while booting (past the the 5 LED flashes) will now cause data saved in Flash to be cleared
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime

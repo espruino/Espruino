@@ -26,6 +26,7 @@
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf5x_utils.h"
+#include "jswrap_flash.h" // for jsfRemoveCodeFromFlash
 
 #define MAG_PWR 18
 #define MAG_INT 17
@@ -743,6 +744,10 @@ void jswrap_puck_init() {
       nrf_delay_ms(500);
     }
     jshPinInput(indicator);
+    // If the button is *still* pressed, remove all code from flash memory too!
+    if (jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) {
+      jsfRemoveCodeFromFlash();
+    }
   }
 }
 

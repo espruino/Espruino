@@ -39,3 +39,5 @@ const char *jsfGetBootCodeFromFlash(bool isReset);
 bool jsfLoadBootCodeFromFlash(bool isReset);
 /// Returns true if flash contains something useful
 bool jsfFlashContainsCode();
+/** Completely clear any saved code from flash. */
+void jsfRemoveCodeFromFlash();
