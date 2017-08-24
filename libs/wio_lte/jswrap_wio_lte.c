@@ -61,10 +61,25 @@ void jswrap_wio_lte_led(int r, int g, int b) {
       ["onoff","bool","Whether to turn the Grove connectors power on or off (D38 is always powered)"]
     ]
 }
-Set the WIO's LED
+Set the power of Grove connecters, except D38 D39 they are always on
 */
 void jswrap_wio_lte_setGrovePower(bool pwr) {
   jshPinOutput(JSH_PORTB_OFFSET+10, pwr);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "WioLTE",
+    "name" : "setLEDPower",
+    "generate" : "jswrap_wio_lte_setLEDPower",
+    "params" : [
+      ["onoff","bool","Whether to turn the Grove connectors power on or off (D38 is always powered)"]
+    ]
+}
+Set the WIO's LED
+*/
+void jswrap_wio_lte_setLEDPower(bool pwr) {
+  jshPinOutput(JSH_PORTA_OFFSET+8, pwr);
 }
 
 /*JSON{
