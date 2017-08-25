@@ -835,16 +835,18 @@ int net_ESP8266_BOARD_recv(
   }
   PktBuf *rxBuf = pSocketData->rxBufQ;
 
-  int delta = 0;
+  size_t delta = 0;
   if (socketType & ST_UDP) {
-    delta = sizeof(unsigned short) + sizeof(uint32_t);
+    delta = sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
     uint32_t *host = (uint32_t*)buf;
     unsigned short *port = (unsigned short*)&host[1];
-    buf = &port[1];
+    uint16_t *size = (uint16_t*)&port[1];
+    buf += delta;
     len -= delta;
     // UDP remote host/port
     *host = pSocketData->host;
     *port = pSocketData->port;
+    *size = rxBuf->filled;
   }
 
   // If the receive buffer is able to completely fit in the buffer
@@ -918,18 +920,19 @@ int net_ESP8266_BOARD_send(
   // Log the content of the data we are sending.
   //esp8266_board_writeString(buf, len);
   //os_printf("\n");
-  int delta = 0;
+  size_t delta = 0;
   if (socketType & ST_UDP) {
-    delta = sizeof(unsigned short) + sizeof(uint32_t);
+    delta = sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
     uint32_t *host = (uint32_t*)buf;
     unsigned short *port = (unsigned short*)&host[1];
+    uint16_t *size = (uint16_t*)&port[1];
 
     // UDP remote IP/port need to be set everytime we call espconn_send
     *(uint32_t *)&pSocketData->pEspconn->proto.tcp->remote_ip = *host;
     pSocketData->pEspconn->proto.tcp->remote_port = *port;
 
     buf += delta;
-    len -= delta;
+    len = *size;
     DBG("%s: Sendto %d to %x:%d\n", DBG_LIB, len, *host, *port);
   }
 

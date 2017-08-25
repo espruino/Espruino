@@ -351,9 +351,9 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
               JsVar *address = jsvNewFromEmptyString(); // inet_ntoa replacement
               JsVar *receiveInfo = jsvNewObject();
               if (receiveInfo && address) { // could be out of memory
-                uint32_t delta = sizeof(uint32_t) + sizeof(unsigned short);
+                uint32_t delta = sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
                 uint32_t host;
-                unsigned short port;
+                unsigned short *port;
                 host = *(uint32_t*)buf;
                 port = *(unsigned short*)(buf + sizeof(uint32_t));
                 buf += delta;
@@ -582,7 +582,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
                   JsVar *address = jsvNewFromEmptyString(); // inet_ntoa replacement
                   JsVar *receiveInfo = jsvNewObject();
                   if (receiveInfo && address) { // could be out of memory
-                    uint32_t delta = sizeof(uint32_t) + sizeof(unsigned short);
+                    uint32_t delta = sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
                     uint32_t host;
                     unsigned short port;
                     host = *(uint32_t*)buf;
@@ -883,9 +883,11 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, Js
           char hostName[128];
           jsvGetString(host, hostName, sizeof(hostName));
           uint32_t host_addr = 0;
+          uint16_t size = jsvGetStringLength(s);
           networkGetHostByName(net, hostName, &host_addr);
           jsvAppendStringBuf(sendData, (const char*)&host_addr, sizeof(host_addr));
           jsvAppendStringBuf(sendData, (const char*)&portNumber, sizeof(portNumber));
+          jsvAppendStringBuf(sendData, (const char*)&size, sizeof(size));
         }
 
         jsvAppendStringVarComplete(sendData,s);
