@@ -742,6 +742,16 @@ JsVar *serverNew(SocketType socketType, JsVar *callback) {
   return server;
 }
 
+void serverAddMembership(JsNetwork *net, JsVar *server, JsVar *group, JsVar *ip) {
+  // FIXME: perhaps extend the JsNetwork with addmembership/removemembership instead of using options
+  JsVar *options = jsvObjectGetChild(server, HTTP_NAME_OPTIONS_VAR, 0);
+  if (options) {
+      jsvObjectSetChild(options, "multicastGroup", group);
+      jsvObjectSetChild(options, "multicastIp", ip);
+      jsvUnLock(options);
+  }
+}
+
 void serverListen(JsNetwork *net, JsVar *server, unsigned short port, SocketType socketType) {
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_SERVERS, true);
   if (!arr) return; // out of memory

@@ -26,6 +26,7 @@ bool socketIdle(JsNetwork *net);
 
 // -----------------------------
 JsVar *serverNew(SocketType socketType, JsVar *callback);
+void serverAddMembership(JsNetwork *net, JsVar *socket, JsVar *group, JsVar *ip);
 void serverListen(JsNetwork *net, JsVar *httpServerVar, unsigned short port, SocketType socketType);
 void serverClose(JsNetwork *net, JsVar *server);
 
