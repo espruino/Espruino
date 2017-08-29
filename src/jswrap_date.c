@@ -45,7 +45,7 @@ TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT) {
   t.zone = forceGMT ? 0 : getTimeZone();
   ms_in += t.zone*60000;
   t.daysSinceEpoch = (int)(ms_in / MSDAY);
-  
+
   int ms = (int)(ms_in - ((JsVarFloat)t.daysSinceEpoch * MSDAY));
   if (ms<0) {
     ms += MSDAY;
@@ -661,6 +661,7 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
           time->ms = (int)(f*1000) % 1000;
           jslGetNextToken();
           if (lex->tk == LEX_ID && strcmp(jslGetTokenValueAsString(),"GMT")==0) {
+            time->zone = 0;
             jslGetNextToken();
           }
           if (lex->tk == '+' || lex->tk == '-') {
@@ -703,7 +704,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
   time.min = 0;
   time.sec = 0;
   time.ms = 0;
-  time.zone = getTimeZone();
+  time.zone = 0;
   CalendarDate date = getCalendarDate(0);
 
   JsLex lex;
@@ -715,6 +716,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
     date.dow = getDay(jslGetTokenValueAsString());
     if (date.month>=0) {
       // Aug 9, 1995
+      time.zone = getTimeZone();
       jslGetNextToken();
       if (lex.tk == LEX_INT) {
         date.day = _parse_int();
@@ -731,6 +733,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
         }
       }
     } else if (date.dow>=0) {
+      time.zone = getTimeZone();
       date.month = 0;
       jslGetNextToken();
       if (lex.tk==',') {
@@ -770,6 +773,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
             date.day = _parse_int();
             jslGetNextToken();
             if (lex.tk == LEX_ID && jslGetTokenValueAsString()[0]=='T') {
+              time.zone = getTimeZone();
               _parse_time(&time, 1);
             }
           }
