@@ -160,6 +160,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   "type" : "staticmethod",
   "class" : "Graphics",
   "name" : "createCallback",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_createCallback",
   "params" : [
     ["width","int32","Pixels wide"],

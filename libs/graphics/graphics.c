@@ -79,8 +79,10 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
 #endif
     if (gfx->data.type == JSGRAPHICSTYPE_ARRAYBUFFER) {
       lcdSetCallbacks_ArrayBuffer(gfx);
+#ifndef SAVE_ON_FLASH
     } else if (gfx->data.type == JSGRAPHICSTYPE_JS) {
       lcdSetCallbacks_JS(gfx);
+#endif
     } else {
       jsExceptionHere(JSET_INTERNALERROR, "Unknown graphics type\n");
       assert(0);

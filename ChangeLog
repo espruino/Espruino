@@ -38,6 +38,7 @@
             Add an argument to `reset`. `reset(true)` will now cause all Flash memory to be cleared as well.
             Puck.js: Holding down the button while booting (past the the 5 LED flashes) will now cause data saved in Flash to be cleared
             STM32: Remove the 'utility timer' from the list of available PWM pins, fixing A0/1/2 PWM on F4 (fix #1229)
+            Disable Graphics.createCallback on devices with small amounts of flash memory - rarely used on those devices and fixes HYSTM32_28 build
 
      1v93 : Ensure that specifying too many advertising UUIDs causes an exception, not a reboot
             nRF5x: Fix for time jump caused by reentrancy in jshGetSystemTime
