@@ -1066,7 +1066,10 @@ void jswrap_wifi_setHostname(
 
 static bool mdns_started;
 
+// FIXME: To be removed in favor of using mDNS.js module instead
 void startMDNS(char *hostname) {
+  return; // FIXME: debug
+
   if (mdns_started) stopMDNS();
 
   // find our IP address

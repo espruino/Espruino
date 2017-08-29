@@ -62,7 +62,7 @@ bool net_js_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_js_createsocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType) {
+int net_js_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
   NOT_USED(net);
   JsVar *hostVar = 0;
   if (host!=0) {
@@ -106,7 +106,7 @@ int net_js_accept(JsNetwork *net, int serverSckt) {
 }
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_js_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
+int net_js_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
   NOT_USED(net);
   JsVar *args[2] = {
       jsvNewFromInteger(sckt),
@@ -132,7 +132,7 @@ int net_js_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
 }
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_js_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
+int net_js_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
   NOT_USED(net);
   JsVar *args[2] = {
       jsvNewFromInteger(sckt),
