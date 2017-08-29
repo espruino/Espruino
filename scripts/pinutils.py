@@ -263,3 +263,54 @@ def append_devices_to_pin_list(pins, board):
       pins[i]["functions"][devicepins[pin["name"]]["device"]] = devicepins[pin["name"]]["function"]
 #      print pins[i]["functions"][devicepins[pin["name"]]["device"]]
   return pins
+
+# Get the utility timer for a specific board
+def get_device_util_timer(board):
+  if (board.chip["family"]=="STM32L4"):
+    if board.chip["part"].startswith("STM32L476"):
+      return { 'timer' : "TIM5", 'defines' : """
+  // Used by various pins, but always with other options
+  #define UTIL_TIMER TIM5
+  #define UTIL_TIMER_IRQn TIM5_IRQn
+  #define UTIL_TIMER_IRQHandler TIM5_IRQHandler
+  #define UTIL_TIMER_APB1 LL_APB1_GRP1_PERIPH_TIM5
+  """}
+  if ((board.chip["family"]=="STM32F1") | (board.chip["family"]=="STM32F2") | 
+     (board.chip["family"]=="STM32F3") | (board.chip["family"]=="STM32F4")):
+    if board.chip["part"].startswith("STM32F401") | board.chip["part"].startswith("STM32F411"):
+      return { 'timer' : "TIM5", 'defines' : """
+// Used by various pins, but always with other options
+#define UTIL_TIMER TIM5
+#define UTIL_TIMER_IRQn TIM5_IRQn
+#define UTIL_TIMER_IRQHandler TIM5_IRQHandler
+#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM5
+"""}
+    elif "subfamily" in board.chip and board.chip["subfamily"]=="MD":
+     return { 'timer' : "TIM4", 'defines' : """
+// frustratingly the 103_MD (non-VL) chips in Olimexino don't have any timers other than 1-4
+#define UTIL_TIMER TIM4
+#define UTIL_TIMER_IRQn TIM4_IRQn
+#define UTIL_TIMER_IRQHandler TIM4_IRQHandler
+#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM4
+"""}
+    else:
+     return { 'timer' : "TIM7", 'defines' : """
+// nice timer not used by anything else
+#define UTIL_TIMER TIM7
+#define UTIL_TIMER_IRQn TIM7_IRQn
+#define UTIL_TIMER_IRQHandler TIM7_IRQHandler
+#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM7
+"""}
+  return False
+  
+# Remove any pinfunctions from the pins array that are used elsewhere the the board
+def remove_used_pinfunctions(pins, board):
+  util_timer = get_device_util_timer(board)
+  if util_timer!=False:
+    used_function = util_timer['timer']
+    for i,pin in enumerate(pins):
+      newfunctions = {}
+      for fidx,f in enumerate(pin["functions"]):
+        if not f.startswith(used_function): newfunctions[f]=pin["functions"][f]
+      pins[i]["functions"] = newfunctions
+  return pins

@@ -48,6 +48,7 @@ board = importlib.import_module(boardname)
 
 # Call the included board_specific file - it sets up 'pins' and 'fill_gaps'
 pins = board.get_pins()
+pins = pinutils.remove_used_pinfunctions(pins, board)
 
 #print(json.dumps(pins, sort_keys=True, indent=2))
 
@@ -161,4 +162,3 @@ writeheader("")
 writeheader("extern const JshPinInfo pinInfo[JSH_PIN_COUNT];");
 writeheader("")
 writeheader("#endif // JSPININFO_H")
-

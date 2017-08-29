@@ -242,41 +242,9 @@ codeOut("""
 
 """);
 
-if (board.chip["class"]=="STM32") | (board.chip["class"]=="STM32_LL"):
-  if (board.chip["part"][:9]=="STM32F401") | (board.chip["part"][:9]=="STM32F411"):
-# FIXME - need to remove TIM5 from jspininfo
-   codeOut("""
-// Used by various pins, but always with other options
-#define UTIL_TIMER TIM5
-#define UTIL_TIMER_IRQn TIM5_IRQn
-#define UTIL_TIMER_IRQHandler TIM5_IRQHandler
-#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM5
-""")
-  elif (board.chip["part"][:9]=="STM32L476"):
-   codeOut("""
-// Used by various pins, but always with other options
-#define UTIL_TIMER TIM5
-#define UTIL_TIMER_IRQn TIM5_IRQn
-#define UTIL_TIMER_IRQHandler TIM5_IRQHandler
-#define UTIL_TIMER_APB1 LL_APB1_GRP1_PERIPH_TIM5
-""")
-  elif "subfamily" in board.chip and board.chip["subfamily"]=="MD":
-
-   codeOut("""
-// frustratingly the 103_MD (non-VL) chips in Olimexino don't have any timers other than 1-4
-#define UTIL_TIMER TIM4
-#define UTIL_TIMER_IRQn TIM4_IRQn
-#define UTIL_TIMER_IRQHandler TIM4_IRQHandler
-#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM4
-""")
-  else:
-   codeOut("""
-// nice timer not used by anything else
-#define UTIL_TIMER TIM7
-#define UTIL_TIMER_IRQn TIM7_IRQn
-#define UTIL_TIMER_IRQHandler TIM7_IRQHandler
-#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM7
-""")
+util_timer = pinutils.get_device_util_timer(board)
+if util_timer!=False:
+  codeOut(util_timer['defines']);
 
 codeOut("");
 # ------------------------------------------------------------------------------------- Chip Specifics

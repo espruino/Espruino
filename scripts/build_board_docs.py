@@ -56,6 +56,7 @@ board = importlib.import_module(boardname)
 # Call the included board_specific file - it sets up 'pins' and 'fill_gaps'
 pins = board.get_pins()
 pins = pinutils.append_devices_to_pin_list(pins, board)
+pins = pinutils.remove_used_pinfunctions(pins, board)
 
 #if not embeddable and  "link" in board.info and board.info["link"][0].startswith("http://www.espruino.com"):
 #  writeHTML('<html><head><meta http-equiv="refresh" content="0; url="'+board.info["link"][0]+'"></head><body>Please wait. redirecting...</body></html>');
@@ -427,4 +428,3 @@ else:
 if not embeddable:
   writeHTML(" </BODY>")
   writeHTML("</HTML>")
-
