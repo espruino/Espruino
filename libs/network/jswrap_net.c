@@ -569,13 +569,10 @@ void jswrap_dgram_close(JsVar *parent) {
 }
 */
 void jswrap_dgram_addMembership(JsVar *parent, JsVar *group, JsVar *ip) {
-  // FIXME: perhaps extend the JsNetwork with addmembership/removemembership instead of using options
-  JsVar *options = jsvObjectGetChild(parent, "opt" /* socketserver.c:HTTP_NAME_OPTIONS_VAR */, 0);
-  if (options) {
-      jsvObjectSetChild(options, "multicastGroup", group);
-      jsvObjectSetChild(options, "multicastIp", ip);
-      jsvUnLock(options);
-  }
+  JsNetwork net;
+  if (!networkGetFromVarIfOnline(&net)) return;
+
+  serverAddMembership(&net, parent, group, ip);
 }
 
 /*JSON{
