@@ -24,8 +24,8 @@
 typedef enum {
   ST_NORMAL = 0, // standard socket client/server
   ST_HTTP   = 1, // HTTP client/server
+  ST_UDP    = 2, // UDP socket client/server
   // WebSockets?
-  // UDP?
 
   ST_TYPE_MASK = 3,
   ST_TLS    = 4, // do the given connection with TLS
@@ -72,7 +72,7 @@ typedef struct JsNetwork {
   bool (*checkError)(struct JsNetwork *net);
 
   /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-  int (*createsocket)(struct JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType);
+  int (*createsocket)(struct JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options);
   /// destroys the given socket
   void (*closesocket)(struct JsNetwork *net, int sckt);
   /// If the given server socket can accept a connection, return it (or return < 0)
@@ -80,9 +80,9 @@ typedef struct JsNetwork {
   /// Get an IP address from a name
   void (*gethostbyname)(struct JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
   /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-  int (*recv)(struct JsNetwork *net, int sckt, void *buf, size_t len);
+  int (*recv)(struct JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len);
   /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-  int (*send)(struct JsNetwork *net, int sckt, const void *buf, size_t len);
+  int (*send)(struct JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len);
 } PACKED_FLAGS JsNetwork;
 
 // ---------------------------------- these are in network.c
@@ -114,7 +114,7 @@ unsigned long networkFlipIPAddress(unsigned long addr);
 bool netCheckError(JsNetwork *net);
 
 /// Create a socket (server (host==0) or client)
-int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType, JsVar *options);
+int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options);
 
 /// Ask this socket to close - it may not close immediately
 void netCloseSocket(JsNetwork *net, int sckt);
@@ -124,7 +124,8 @@ void netCloseSocket(JsNetwork *net, int sckt);
 int netAccept(JsNetwork *net, int sckt);
 
 void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
-int netRecv(JsNetwork *net, int sckt, void *buf, size_t len);
-int netSend(JsNetwork *net, int sckt, const void *buf, size_t len);
+
+int netRecv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len);
+int netSend(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len);
 
 #endif // _NETWORK_H

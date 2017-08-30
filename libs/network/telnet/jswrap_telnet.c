@@ -181,7 +181,7 @@ bool jswrap_telnet_idle(void) {
 void telnetStart(JsNetwork *net) {
   // create the listening socket
   printf("tnSrv: creating...\n");
-  int sock = netCreateSocket(net, 0, PORT, ST_NORMAL, NULL)+1;
+  int sock = netCreateSocket(net, ST_NORMAL, 0, PORT, NULL)+1;
   if (sock <= 0) {
     printf("tnSrv: cannot create listening socket\n");
     return;
@@ -244,7 +244,7 @@ bool telnetSendBuf(JsNetwork *net) {
   if (tnSrv.txBufLen == 0) return false;
 
   // try to send the tx buffer
-  int sent = netSend(net, tnSrv.cliSock-1, tnSrv.txBuf, tnSrv.txBufLen);
+  int sent = netSend(net, ST_NORMAL, tnSrv.cliSock-1, tnSrv.txBuf, tnSrv.txBufLen);
   if (sent == tnSrv.txBufLen) {
     tnSrv.txBufLen = 0;
   } else if (sent > 0) {
@@ -289,7 +289,7 @@ bool telnetRecv(JsNetwork *net) {
   if (tnSrv.sock == 0 || tnSrv.cliSock == 0) return false;
 
   char buff[256];
-  int r = netRecv(net, tnSrv.cliSock-1, buff, 256);
+  int r = netRecv(net, ST_NORMAL, tnSrv.cliSock-1, buff, 256);
   if (r > 0) {
     jshPushIOCharEvents(EV_TELNET, buff, (unsigned int)r);
   } else if (r < 0) {

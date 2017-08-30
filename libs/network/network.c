@@ -308,7 +308,7 @@ int ssl_send(void *ctx, const unsigned char *buf, size_t len) {
   JsNetwork *net = networkGetCurrent();
   assert(net);
   int sckt = *(int *)ctx;
-  int r = net->send(net, sckt, buf, len);
+  int r = net->send(net, ST_TLS, sckt, buf, len);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_WRITE;
   return r;
 }
@@ -316,7 +316,7 @@ int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
   JsNetwork *net = networkGetCurrent();
   assert(net);
   int sckt = *(int *)ctx;
-  int r = net->recv(net, sckt, buf, len);
+  int r = net->recv(net, ST_TLS, sckt, buf, len);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_READ;
   return r;
 }
@@ -668,8 +668,8 @@ bool netCheckError(JsNetwork *net) {
   return net->checkError(net);
 }
 
-int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, SocketType socketType, JsVar *options) {
-  int sckt = net->createsocket(net, host, port, socketType);
+int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
+  int sckt = net->createsocket(net, socketType, host, port, options);
   if (sckt<0) return sckt;
 
 #ifdef USE_TLS
@@ -703,7 +703,7 @@ void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   net->gethostbyname(net, hostName, out_ip_addr);
 }
 
-int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
+int netRecv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
 #ifdef USE_TLS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
@@ -717,11 +717,11 @@ int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
   } else
 #endif
   {
-    return net->recv(net, sckt, buf, len);
+    return net->recv(net, socketType, sckt, buf, len);
   }
 }
 
-int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
+int netSend(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
 #ifdef USE_TLS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
@@ -735,6 +735,6 @@ int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
   } else
 #endif
   {
-    return net->send(net, sckt, buf, len);
+    return net->send(net, socketType, sckt, buf, len);
   }
 }

@@ -26,11 +26,12 @@ bool socketIdle(JsNetwork *net);
 
 // -----------------------------
 JsVar *serverNew(SocketType socketType, JsVar *callback);
-void serverListen(JsNetwork *net, JsVar *httpServerVar, int port);
+void serverAddMembership(JsNetwork *net, JsVar *socket, JsVar *group, JsVar *ip);
+void serverListen(JsNetwork *net, JsVar *httpServerVar, unsigned short port, SocketType socketType);
 void serverClose(JsNetwork *net, JsVar *server);
 
 JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback);
-void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data);
+void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, JsVar *host, unsigned short port);
 void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar);
 void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar);
 
