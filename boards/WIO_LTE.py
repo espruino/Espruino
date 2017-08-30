@@ -108,8 +108,8 @@ board["_css"] = """
   top: 98px;
   left: 352px;
 }
-.leftpin { height: 16px; }
-.rightpin { height: 16px; }
+.leftpin { height: 18px; padding:0px; }
+.rightpin { height: 18px; padding:0px; }
 """;
 
 def get_pins():
