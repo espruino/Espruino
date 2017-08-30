@@ -42,6 +42,14 @@
 
  #define closesocket(SOCK) close(SOCK)
 
+#if NET_DBG > 0
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+// #include "jsinteractive.h"
+// #define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
+static char DBG_LIB[] = "socketserver"; // library name
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
 void net_esp32_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
@@ -66,14 +74,17 @@ bool net_esp32_checkError(JsNetwork *net) {
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
 int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
   NOT_USED(net);
+  int ippProto = socketType & ST_UDP ? IPPROTO_UDP : IPPROTO_TCP;
+  int scktType = socketType & ST_UDP ? SOCK_DGRAM : SOCK_STREAM;
   int sckt = -1;
-  if (host!=0) { // ------------------------------------------------- host (=client)
-    sockaddr_in       sin;
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons( port );
 
-    sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (sckt<0) return sckt; // error
+  if (host!=0) { // ------------------------------------------------- host (=client)
+
+    sckt = socket(AF_INET, scktType, ippProto);
+    if (sckt<0) {
+      jsError("Socket creation failed");
+      return sckt; // error
+    }
 
     // turn on non-blocking mode
     #ifdef WIN_OS
@@ -81,7 +92,18 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
     ioctlsocket(sckt,FIONBIO,&n);
     #endif
 
+    if (scktType == SOCK_DGRAM) { // only for UDP
+      // set broadcast
+      int optval = 1;
+      if (setsockopt(sckt,SOL_SOCKET,SO_BROADCAST,(const char *)&optval,sizeof(optval))<0)
+        jsWarn("setsockopt(SO_BROADCAST) failed\n");
+      return sckt;
+    }
+
+    sockaddr_in       sin;
+    sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = (in_addr_t)host;
+    sin.sin_port = htons( port );
 
     int res = connect(sckt,(struct sockaddr *)&sin, sizeof(sockaddr_in) );
 
@@ -93,7 +115,7 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
     #endif
      if (err != EINPROGRESS &&
          err != EWOULDBLOCK) {
-       jsError("Connect failed (err %d)\n", err );
+       jsError("Connect failed (err %d)", err);
        closesocket(sckt);
        return -1;
      }
@@ -101,16 +123,20 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
 
   } else { // ------------------------------------------------- no host (=server)
 
-    sckt = socket(AF_INET,           // Go over TCP/IP
-                         SOCK_STREAM,       // This is a stream-oriented socket
-                         IPPROTO_TCP);      // Use TCP rather than UDP
+    sckt = socket(AF_INET, scktType, ippProto);
     if (sckt == INVALID_SOCKET) {
       jsError("Socket creation failed");
       return 0;
     }
+
     int optval = 1;
     if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
       jsWarn("setsockopt(SO_REUSADDR) failed\n");
+#ifdef SO_REUSEPORT
+//    if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
+//      jsWarn("setsockopt(SO_REUSPORT) failed\n");
+#endif
+
 
     int nret;
     sockaddr_in serverInfo;
@@ -126,12 +152,37 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
       return -1;
     }
 
-    // Make the socket listen
-    nret = listen(sckt, 10); // 10 connections (but this ignored on CC30000)
-    if (nret == SOCKET_ERROR) {
-      jsError("Socket listen failed, host:%d, port:%d\n",(int)host,(int)port);
-      closesocket(sckt);
-      return -1;
+    // multicast support
+    // FIXME: perhaps extend the JsNetwork with addmembership/removemembership instead of using options
+    JsVar *mgrpVar = jsvObjectGetChild(options, "multicastGroup", 0);
+    if (mgrpVar) {
+        char ipStr[18];
+
+        uint32_t grpip;
+        jsvGetString(mgrpVar, ipStr, sizeof(ipStr));
+        jsvUnLock(mgrpVar);
+        net_esp32_gethostbyname(net, ipStr, &grpip);
+
+        JsVar *ipVar = jsvObjectGetChild(options, "multicastIp", 0);
+        jsvGetString(ipVar, ipStr, sizeof(ipStr));
+        jsvUnLock(ipVar);
+        uint32_t ip;
+        net_esp32_gethostbyname(net, ipStr, &ip);
+
+        struct ip_mreq mreq;
+        mreq.imr_multiaddr = *(struct in_addr *)&grpip;
+        mreq.imr_interface = *(struct in_addr *)&ip;
+        setsockopt (sckt, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
+    }
+
+    if (scktType == SOCK_STREAM) { // only for TCP
+      // Make the socket listen
+      nret = listen(sckt, 10); // 10 connections (but this ignored on CC30000)
+      if (nret == SOCKET_ERROR) {
+        jsError("Socket listen failed");
+        closesocket(sckt);
+        return -1;
+      }
     }
   }
 
@@ -174,6 +225,8 @@ int net_esp32_accept(JsNetwork *net, int sckt) {
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_esp32_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
   NOT_USED(net);
+  struct sockaddr_in fromAddr;
+  int fromAddrLen = sizeof(fromAddr);
   int num = 0;
   fd_set s;
   FD_ZERO(&s);
@@ -188,8 +241,23 @@ int net_esp32_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, s
     return -1;
   } else if (n>0) {
     // receive data
-    num = (int)recv(sckt,buf,len,0);
-    if (num==0) num=-1; // select says data, but recv says 0 means connection is closed
+    if (socketType & ST_UDP) {
+      size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
+      uint32_t *host = (uint32_t*)buf;
+      unsigned short *port = (unsigned short*)&host[1];
+      uint16_t *size = (unsigned short*)&port[1];
+      num = (int)recvfrom(sckt,buf+delta,len-delta,0,&fromAddr,&fromAddrLen);
+      *host = fromAddr.sin_addr.s_addr;
+      *port = ntohs(fromAddr.sin_port);
+      *size = num;
+
+      DBG("Recv %d %x:%d", num, *host, *port);
+      if (num==0) return -1; // select says data, but recv says 0 means connection is closed
+      num += delta;
+    } else {
+      num = (int)recvfrom(sckt,buf,len,0,&fromAddr,&fromAddrLen);
+      if (num==0) return -1; // select says data, but recv says 0 means connection is closed
+    }
   }
 
   return num;
@@ -213,7 +281,21 @@ int net_esp32_send(JsNetwork *net, SocketType socketType, int sckt, const void *
 #if !defined(SO_NOSIGPIPE) && defined(MSG_NOSIGNAL)
     flags |= MSG_NOSIGNAL;
 #endif
-    n = (int)send(sckt, buf, len, flags);
+    if (socketType & ST_UDP) {
+        sockaddr_in       sin;
+        size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
+        uint32_t *host = (uint32_t*)buf;
+        unsigned short *port = (unsigned short*)&host[1];
+        uint16_t *size = (uint16_t*)&port[1];
+        sin.sin_family = AF_INET;
+        sin.sin_addr.s_addr = *(in_addr_t*)host;
+        sin.sin_port = htons(*port);
+
+        DBG("Send %d %x:%d", len - delta, *host, *port);
+        n = (int)sendto(sckt, buf + delta, *size, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in)) + delta;
+    } else {
+        n = (int)send(sckt, buf, len, flags);
+    }
     return n;
   } else
     return 0; // just not ready
