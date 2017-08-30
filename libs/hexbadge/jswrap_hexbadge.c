@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
 
 #include <jswrap_hexbadge.h>
 #include "jsinteractive.h"

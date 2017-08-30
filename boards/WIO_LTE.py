@@ -92,8 +92,8 @@ board = {
 };
 board["_css"] = """
 #board {
-  width: 450px;
-  height: 468px;
+  width: 457px;
+  height: 480px;
   left: 200px;
   background-image: url(img/WIO_LTE.jpg);
 }
@@ -101,12 +101,12 @@ board["_css"] = """
   height: 468px;
 }
 #left {
-  top: 129px;
-  right: 336px;
+  top: 98px;
+  right: 352px;
 }
 #right  {
-  top: 129px;
-  left: 336px;
+  top: 98px;
+  left: 352px;
 }
 .leftpin { height: 16px; }
 .rightpin { height: 16px; }
