@@ -1165,7 +1165,8 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
 }
 
 Start/stop listening for BLE advertising packets within range. Returns a
-`BluetoothDevice` for each advertsing packet
+`BluetoothDevice` for each advertsing packet. **This is not an active scan, so
+Scan Response advertising data is not included**
 
 ```
 // Start scanning
@@ -1209,41 +1210,53 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
   JsVar *device = jspNewObject(0, "BluetoothDevice");
   jsvObjectSetChildAndUnLock(device, "id", jsvObjectGetChild(adv, "id", 0));
   jsvObjectSetChildAndUnLock(device, "rssi", jsvObjectGetChild(adv, "rssi", 0));
-  JsVar *services = jsvObjectSetChild(device, "services", jsvNewEmptyArray());
+  JsVar *services = jsvNewEmptyArray();
+  JsVar *servicedata = jsvNewObject();
   JsVar *data = jsvObjectGetChild(adv, "data", 0);
   if (data) {
     jsvObjectSetChild(device, "data", data);
     JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
     if (dPtr && dLen) {
-      if (services) {
+      if (services && servicedata) {
         uint32_t i = 0;
         while (i < dLen) {
           uint8_t field_length = dPtr[i];
           uint8_t field_type   = dPtr[i + 1];
 
-          if (field_type == BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME) {
-            JsVar *s = jsvNewFromEmptyString();
-            if (s) {
-              jsvAppendStringBuf(s, (char*)&dPtr[i+2], field_length-1);
-              jsvObjectSetChildAndUnLock(device, "name", s);
-            }
-          } else if (field_type == BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE ||
+          if (field_type == BLE_GAP_AD_TYPE_SHORT_LOCAL_NAME) { // 0x08 - Short Name
+            jsvObjectSetChildAndUnLock(device, "shortName", jsvNewStringOfLength(field_length-1, (char*)&dPtr[i+2]));
+          } else if (field_type == BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME) { // 0x09 - Complete Name
+            jsvObjectSetChildAndUnLock(device, "name", jsvNewStringOfLength(field_length-1, (char*)&dPtr[i+2]));
+          } else if (field_type == BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE || // 0x02, 0x03 - 16 bit UUID
                      field_type == BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE) {
             for (int svc_idx = 2; svc_idx < field_length + 1; svc_idx += 2) {
               JsVar *s = jsvVarPrintf("%04x", UNALIGNED_UINT16(&dPtr[i+svc_idx]));
               jsvArrayPushAndUnLock(services, s);
             }
-          } else if (field_type == BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE ||
+          } else if (field_type == BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE || // 0x06, 0x07 - 128 bit UUID
                      field_type == BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE) {
             JsVar *s = bleUUID128ToStr((uint8_t*)&dPtr[i+2]);
             jsvArrayPushAndUnLock(services, s);
-          } // or unknown...
+          }  else if (field_type == BLE_GAP_AD_TYPE_SERVICE_DATA) { // 0x16 - service data 16 bit UUID
+            const char name[] = {
+              itoch(((unsigned char)dPtr[i+3])>>4),
+              itoch(((unsigned char)dPtr[i+3])&15),
+              itoch(((unsigned char)dPtr[i+2])>>4),
+              itoch(((unsigned char)dPtr[i+2])&15),
+              0
+            };
+            jsvObjectSetChildAndUnLock(servicedata, name, jsvNewArrayBufferWithData(field_length-3, (unsigned char*)&dPtr[i+4]));
+           }// or unknown...
           i += field_length + 1;
         }
       }
     }
   }
-  jsvUnLock2(data, services);
+  if (jsvGetArrayLength(services))
+    jsvObjectSetChild(device, "services", services);
+  if (jsvGetLength(servicedata))
+    jsvObjectSetChild(device, "servicedata", servicedata);
+  jsvUnLock3(data, services, servicedata);
   jspExecuteFunction(callback, 0, 1, &device);
   jsvUnLock(device);
 }
@@ -1276,7 +1289,8 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
       ["time","JsVar","The time in milliseconds to scan for (defaults to 2000)"]
     ]
 }
-Utility function to return a list of BLE devices detected in range.
+Utility function to return a list of BLE devices detected in range. Behind the scenes,
+this uses `NRF.setScan(...)` and collates the results.
 
 ```
 NRF.findDevices(function(devices) {
@@ -1291,19 +1305,21 @@ prints something like:
   BluetoothDevice {
     "id": "e7:e0:57:ad:36:a2 random",
     "rssi": -45,
-    "services": [  ],
+    "services": [ "4567" ],
+    "servicedata" : { "0123" : [ 1 ] }
     "data": new ArrayBuffer([ ... ]),
     "name": "Puck.js 36a2"
    },
   BluetoothDevice {
     "id": "c0:52:3f:50:42:c9 random",
     "rssi": -65,
-    "services": [  ],
     "data": new ArrayBuffer([ ... ]),
     "name": "Puck.js 8f57"
    }
  ]
 ```
+
+For more information on the structure, see `NRF.setScan`.
 
 You could then use [`BluetoothDevice.gatt.connect(...)`](/Reference#l_BluetoothRemoteGATTServer_connect) on
 the device returned, to make a connection.
@@ -1313,6 +1329,9 @@ may be useful if you always want to connect to a specific device.
 
 **Note:** Using findDevices turns the radio's receive mode on for 2000ms (or however long you specify). This
 can draw a *lot* of power (12mA or so), so you should use it sparingly or you can run your battery down quickly.
+
+**Note:** The 'data' field contains the data of *the last packet received*. There may have been more
+packets. To get data for each packet individually use `NRF.setScan` instead.
 */
 void jswrap_nrf_bluetooth_findDevices_found_cb(JsVar *device) {
   JsVar *arr = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADV", JSV_ARRAY);
@@ -1325,14 +1344,37 @@ void jswrap_nrf_bluetooth_findDevices_found_cb(JsVar *device) {
     JsVar *obj = jsvObjectIteratorGetValue(&it);
     JsVar *addr = jsvObjectGetChild(obj, "id", 0);
     if (jsvCompareString(addr, deviceAddr, 0, 0, true) == 0)
-      found = jsvObjectIteratorGetKey(&it);
+      found = jsvLockAgain(obj);
     jsvUnLock2(addr, obj);
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
   if (found) {
-    // TODO: merge information?
-    jsvSetValueOfName(found, device);
+    JsvObjectIterator oit;
+    jsvObjectIteratorNew(&oit, device);
+    while (jsvObjectIteratorHasValue(&oit)) {
+      JsVar *key = jsvObjectIteratorGetKey(&oit);
+      JsVar *value = jsvSkipName(key);
+      JsVar *existingKey = jsvFindChildFromVar(found, key, true);
+      bool isServices = jsvIsStringEqual(key,"services");
+      bool isServiceData = jsvIsStringEqual(key,"servicedata");
+      if (isServices || isServiceData) {
+        // for services or servicedata we append to the array/object
+        JsVar *existingValue = jsvSkipName(existingKey);
+        if (existingValue) {
+          if (isServices) {
+            jsvArrayPushAll(existingValue, value, true);
+          } else {
+            jsvObjectAppendAll(existingValue, value);
+          }
+          jsvUnLock(existingValue);
+        } else // nothing already - just copy
+          jsvSetValueOfName(existingKey, value);
+      }
+      jsvUnLock3(existingKey, key, value);
+      jsvObjectIteratorNext(&oit);
+    }
+    jsvObjectIteratorFree(&oit);
   } else
     jsvArrayPush(arr, device);
   jsvUnLock3(found, deviceAddr, arr);

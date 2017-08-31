@@ -763,7 +763,7 @@ JsVar *jswrap_array_concat(JsVar *parent, JsVar *args) {
   JsVar *source = jsvLockAgain(parent);
   do {
     if (jsvIsArray(source)) {
-      jsvArrayPushAll(result, source);
+      jsvArrayPushAll(result, source, false);
     } else
       jsvArrayPush(result, source);
     // Next, append arguments

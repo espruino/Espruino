@@ -2784,13 +2784,22 @@ JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value) {
 }
 
 /// Append all values from the source array to the target array
-void jsvArrayPushAll(JsVar *target, JsVar *source) {
+void jsvArrayPushAll(JsVar *target, JsVar *source, bool checkDuplicates) {
   assert(jsvIsArray(target));
   assert(jsvIsArray(source));
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, source);
   while (jsvObjectIteratorHasValue(&it)) {
-    jsvArrayPushAndUnLock(target, jsvObjectIteratorGetValue(&it));
+    JsVar *v = jsvObjectIteratorGetValue(&it);
+    bool add = true;
+    if (checkDuplicates) {
+      JsVar *idx = jsvGetIndexOf(target, v, false);
+      if (idx) {
+        add = false;
+        jsvUnLock(idx);
+      }
+    }
+    if (add) jsvArrayPushAndUnLock(target, v);
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);

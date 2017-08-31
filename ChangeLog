@@ -4,6 +4,8 @@
             Internal: Added jsvObjectSetChildVar/jsvObjectSetChildVar/jsvObjectSetChildVar
             Internal: Fix jsvCopy if given a NAME_INT/etc
             Added ES6's Object.assign
+            nNR5x: NRF.setScan now reads service data automatically
+            nNR5x: NRF.findDevices aggregates data from multiple advertising packets
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs
