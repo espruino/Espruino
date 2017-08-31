@@ -677,7 +677,6 @@ JsVar *jsvGetArrayIndex(const JsVar *arr, JsVarInt index); ///< Get a 'name' at 
 JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array if it exists (and lock it)
 void jsvSetArrayItem(JsVar *arr, JsVarInt index, JsVar *item); ///< Set an array item at the specified index in the array
 void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr); ///< Get all elements from arr and put them in itemPtr (unless it'd overflow). Makes sure all of itemPtr either contains a JsVar or 0
-JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array (matchExact==use pointer, not equality check)
 JsVar *jsvGetIndexOfFull(JsVar *arr, JsVar *value, bool matchExact, bool matchIntegerIndices, int startIdx); ///< Get the index of the value in the array (matchExact==use pointer not equality check, matchIntegerIndices = don't check non-integers)
 JsVar *jsvGetIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array or object (matchExact==use pointer, not equality check)
 JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
