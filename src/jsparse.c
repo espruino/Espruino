@@ -1030,8 +1030,8 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
     } else if (jsvIsString(object) && jsvIsInt(nameVar)) {
       JsVarInt idx = jsvGetInteger(nameVar);
       if (idx>=0 && idx<(JsVarInt)jsvGetStringLength(object)) {
-        child = jsvNewStringOfLength(1);
-        if (child) child->varData.str[0] = jsvGetCharInString(object, (size_t)idx);
+        char ch = jsvGetCharInString(object, (size_t)idx);
+        child = jsvNewStringOfLength(1, &ch);
       } else if (returnName)
         child = jsvCreateNewChild(object, nameVar, 0); // just return *something* to show this is handled
     } else {

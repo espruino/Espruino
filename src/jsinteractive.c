@@ -1028,7 +1028,7 @@ void jsiIsAboutToEditInputLine() {
   if (hasUsedHistory) {
     hasUsedHistory = false;
     if (jsiIsInHistory(inputLine)) {
-      JsVar *newLine = jsvCopy(inputLine);
+      JsVar *newLine = jsvCopy(inputLine, false);
       if (newLine) { // could have been out of memory!
         jsiInputLineCursorMoved();
         jsvUnLock(inputLine);

@@ -163,7 +163,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
     arrData = jsvNewFlatStringOfLength((unsigned int)byteLength);
   // if we haven't found one, spread it out
   if (!arrData)
-    arrData = jsvNewStringOfLength((unsigned int)byteLength);
+    arrData = jsvNewStringOfLength((unsigned int)byteLength, NULL);
   if (!arrData) return 0;
   JsVar *v = jsvNewArrayBufferFromString(arrData, (unsigned int)byteLength);
   jsvUnLock(arrData);

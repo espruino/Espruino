@@ -183,7 +183,7 @@ static void fileSetVar(JsFile *file) {
   JsVar *fHandle = jsvFindChildFromString(file->fileVar, JS_FS_DATA_NAME, true);
   JsVar *data = jsvSkipName(fHandle);
   if (!data) {
-    data = jsvNewStringOfLength(sizeof(JsFileData));
+    data = jsvNewStringOfLength(sizeof(JsFileData), NULL);
     jsvSetValueOfName(fHandle, data);
   }
   jsvUnLock(fHandle);

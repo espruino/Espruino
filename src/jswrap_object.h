@@ -38,6 +38,7 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
 JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props);
 JsVar *jswrap_object_getPrototypeOf(JsVar *object);
 JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto);
+JsVar *jswrap_object_assign(JsVar *args);
 
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener);
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray);

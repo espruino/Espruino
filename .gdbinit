@@ -11,6 +11,9 @@ define typeof
   if (($arg0)->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_0 && (($arg0)->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_MAX
     printf "JSV_NAME_STRING_%d\n", (($arg0)->flags&JSV_VARTYPEMASK)-JSV_NAME_STRING_0
   end
+  if (($arg0)->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_INT_0 && (($arg0)->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_INT_MAX
+    printf "JSV_NAME_STRING_INT_%d\n", (($arg0)->flags&JSV_VARTYPEMASK)-JSV_NAME_STRING_INT_0
+  end
   if (($arg0)->flags&JSV_VARTYPEMASK)>=JSV_STRING_0 && (($arg0)->flags&JSV_VARTYPEMASK)<=JSV_STRING_MAX
     printf "JSV_STRING_%d\n", (($arg0)->flags&JSV_VARTYPEMASK)-JSV_STRING_0
   end

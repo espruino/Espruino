@@ -142,7 +142,7 @@ JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
 Copy this object completely
  */
 JsVar *jswrap_object_clone(JsVar *parent) {
-  return jsvCopy(parent);
+  return jsvCopy(parent, true);
 }
 
 /*JSON{
@@ -538,6 +538,46 @@ JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
   return jsvLockAgainSafe(object);
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
+  "name" : "assign",
+  "generate" : "jswrap_object_assign",
+  "params" : [
+    ["args","JsVarArray","The target object, then any items objects to use as sources of keys"]
+  ],
+  "return" : ["JsVar","The target object"]
+}
+Appends all keys and values in any subsequent objects to the first object
+
+**Note:** Unlike the standard ES6 `Object.assign`, this will throw an exception
+if given raw strings, bools or numbers rather than objects.
+ */
+JsVar *jswrap_object_assign(JsVar *args) {
+  JsVar *result = 0;
+
+  JsvObjectIterator argsIt;
+  jsvObjectIteratorNew(&argsIt, args);
+  bool error = false;
+  while (!error && jsvObjectIteratorHasValue(&argsIt)) {
+    JsVar *arg = jsvObjectIteratorGetValue(&argsIt);
+    if (jsvIsUndefined(arg) || jsvIsNull(arg)) {
+      // ignore
+    } else if (!jsvIsObject(arg)) {
+      jsExceptionHere(JSET_TYPEERROR, "Expecting Object, got %t\n", arg);
+      error = true;
+    } else if (!result) {
+      result = jsvLockAgain(arg);
+    } else {
+      jsvObjectAppendAll(result, arg);
+    }
+    jsvUnLock(arg);
+    jsvObjectIteratorNext(&argsIt);
+  };
+  jsvObjectIteratorFree(&argsIt);
+  return result;
+}
+
 // --------------------------------------------------------------------------
 //                                                         Misc constructors
 
@@ -836,7 +876,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
     JsVar *el = jsvObjectIteratorGetKey(&it);
     jsvObjectIteratorNext(&it);
     if (!jsvIsStringEqual(el, JSPARSE_FUNCTION_SCOPE_NAME)) {
-      JsVar *copy = jsvCopy(el);
+      JsVar *copy = jsvCopy(el, true);
       if (copy) {
         jsvAddName(oldFunc, copy);
         jsvUnLock(copy);
@@ -946,7 +986,7 @@ JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
     JsVar *defaultValue = jsvObjectIteratorGetValue(&fnIt);
     bool wasBound = jsvIsFunctionParameter(param) && defaultValue;
     if (wasBound) {
-      JsVar *newParam = jsvCopy(param);
+      JsVar *newParam = jsvCopy(param, true);
       if (newParam) { // could be out of memory
         jsvAddName(fn, newParam);
         jsvUnLock(newParam);

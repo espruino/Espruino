@@ -1,5 +1,9 @@
             nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line
+            Internal: Added initialiser argument to jsvNewStringOfLength
+            Internal: Added jsvObjectSetChildVar/jsvObjectSetChildVar/jsvObjectSetChildVar
+            Internal: Fix jsvCopy if given a NAME_INT/etc
+            Added ES6's Object.assign
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs

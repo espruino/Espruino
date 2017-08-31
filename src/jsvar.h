@@ -306,7 +306,7 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount);
 JsVar *jsvNewWithFlags(JsVarFlags flags); ///< Create a new variable with the given flags
 JsVar *jsvNewFlatStringOfLength(unsigned int byteLength); ///< Try and create a special flat string
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
-JsVar *jsvNewStringOfLength(unsigned int byteLength); ///< Create a new string of the given length - full of 0s
+JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData); ///< Create a new string of the given length - full of 0s (or initialData if specified)
 static ALWAYS_INLINE JsVar *jsvNewFromEmptyString() { JsVar *v = jsvNewWithFlags(JSV_STRING_0); return v; } ;///< Create a new empty string
 static ALWAYS_INLINE JsVar *jsvNewNull() { return jsvNewWithFlags(JSV_NULL); } ;///< Create a new null variable
 /** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)  */
@@ -633,7 +633,7 @@ JsVar *jsvNegateAndUnLock(JsVar *v);
 JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent);
 
 /// Copy this variable and return the locked copy
-JsVar *jsvCopy(JsVar *src);
+JsVar *jsvCopy(JsVar *src, bool copyChildren);
 /** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false.
     If keepAsName==false, this will be converted into a normal variable */
 JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName);
@@ -653,6 +653,8 @@ void jsvRemoveAllChildren(JsVar *parent);
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
+/// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
+JsVar *jsvObjectSetChildVar(JsVar *obj, JsVar *name, JsVar *child);
 /// Set the named child of an object, and unlock the child
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child);
 /// Remove the named child of an Object
@@ -660,6 +662,8 @@ void jsvObjectRemoveChild(JsVar *parent, const char *name);
 /** Set the named child of an object, and return the child (so you can choose to unlock it if you want).
  * If the child is 0, the 'name' is also removed from the object */
 JsVar *jsvObjectSetOrRemoveChild(JsVar *obj, const char *name, JsVar *child);
+/** Append all keys from the source object to the target object. Will ignore hidden/internal fields */
+void jsvObjectAppendAll(JsVar *target, JsVar *source);
 
 int jsvGetChildren(const JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
 JsVar *jsvGetFirstName(JsVar *v); ///< Get the first child's name from an object,array or function
@@ -679,12 +683,15 @@ JsVar *jsvGetIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the in
 JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, and returns the new length
 JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, unlocks it, and returns the new length
+void jsvArrayPushAll(JsVar *target, JsVar *source); ///< Append all values from the source array to the target array
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME. DOES NOT RENUMBER.
 void jsvArrayAddUnique(JsVar *arr, JsVar *v); ///< Adds a new variable element to the end of an array (IF it was not already there). Return true if successful
 JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler); ///< Join all elements of an array together into a string
 void jsvArrayInsertBefore(JsVar *arr, JsVar *beforeIndex, JsVar *element); ///< Insert a new element before beforeIndex, DOES NOT UPDATE INDICES
 static ALWAYS_INLINE bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr)); return !jsvGetFirstChild(arr); } ///< Return true is array is empty
+
+
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVar *var, int indent);

@@ -884,7 +884,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   }
 
   // Try and create a flat string first
-  JsVar *var = jsvNewStringOfLength((unsigned int)length);
+  JsVar *var = jsvNewStringOfLength((unsigned int)length, NULL);
   if (var) { // out of memory
     JsvStringIterator dstit;
     jsvStringIteratorNew(&dstit, var, 0);

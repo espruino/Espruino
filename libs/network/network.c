@@ -185,7 +185,7 @@ void networkGetHostByName(
 
 
 void networkCreate(JsNetwork *net, JsNetworkType type) {
-  net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData));
+  net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData), NULL);
   if (!net->networkVar) return;
   net->data.type = type;
   net->data.device = EV_NONE;

@@ -97,7 +97,7 @@ void graphicsSetVar(JsGraphics *gfx) {
   JsVar *dataname = jsvFindChildFromString(gfx->graphicsVar, JS_HIDDEN_CHAR_STR"gfx", true);
   JsVar *data = jsvSkipName(dataname);
   if (!data) {
-    data = jsvNewStringOfLength(sizeof(JsGraphicsData));
+    data = jsvNewStringOfLength(sizeof(JsGraphicsData), NULL);
     jsvSetValueOfName(dataname, data);
   }
   jsvUnLock(dataname);

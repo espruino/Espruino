@@ -238,7 +238,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
   }
   int inputLength = jsvGetStringLength(binaryData);
   int outputLength = ((inputLength+2)/3)*4;
-  JsVar* base64Data = jsvNewStringOfLength(outputLength);
+  JsVar* base64Data = jsvNewStringOfLength(outputLength, NULL);
   if (!base64Data) return 0;
   JsvIterator itsrc;
   JsvStringIterator itdst;
@@ -296,7 +296,7 @@ JsVar *jswrap_atob(JsVar *base64Data) {
   }
   int inputLength = jsvGetStringLength(base64Data);
   int outputLength = inputLength*3/4;
-  JsVar* binaryData = jsvNewStringOfLength(outputLength);
+  JsVar* binaryData = jsvNewStringOfLength(outputLength, NULL);
   if (!binaryData) return 0;
   JsvStringIterator itsrc;
   JsvStringIterator itdst;
