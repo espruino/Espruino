@@ -101,12 +101,8 @@ JsVar *jswrap_require(JsVar *moduleName) {
   // Now save module
   if (moduleExport) { // could have been out of memory
     JsVar *moduleList = jswrap_modules_getModuleList();
-    if (moduleList) {
-      JsVar *moduleExportName = jsvFindChildFromVar(moduleList, moduleName, true);
-      if (moduleExportName)
-        jsvSetValueOfName(moduleExportName, moduleExport); // save in cache
-      jsvUnLock(moduleExportName);
-    }
+    if (moduleList)
+      jsvObjectSetChildVar(moduleList, moduleName, moduleExport);
     jsvUnLock(moduleList);
   }
 
@@ -214,11 +210,7 @@ void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode) {
   if (!moduleExport) {
     jsExceptionHere(JSET_ERROR, "Unable to load module %q", id);
   } else {
-    JsVar *moduleName = jsvFindChildFromVar(moduleList, id, true);
-    if (moduleName) {
-      jsvSetValueOfName(moduleName, moduleExport);
-      jsvUnLock(moduleName);
-    }
+    jsvObjectSetChildVar(moduleList, id, moduleExport);
     jsvUnLock(moduleExport);
   }
   jsvUnLock(moduleList);

@@ -451,11 +451,8 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
 
   JsVar *name = jsvAsArrayIndex(propName);
   JsVar *value = jsvObjectGetChild(desc, "value", 0);
-  JsVar *property = jsvFindChildFromVar(parent, name, true);
-  jsvUnLock(name);
-  if (property && value)
-    jsvSetValueOfName(property, value);
-  jsvUnLock2(property, value);
+  jsvObjectSetChildVar(parent, name, value);
+  jsvUnLock2(name, value);
 
   return jsvLockAgain(parent);
 }
