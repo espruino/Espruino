@@ -1152,6 +1152,7 @@ void jsiCheckErrors() {
     }
   }
   if (exception) {
+    jsiConsoleRemoveInputLine();
     jsiConsolePrintf("Uncaught %v\n", exception);
     if (jsvIsObject(exception)) {
       JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
@@ -2082,6 +2083,7 @@ void jsiIdle() {
     if (newErrors & ~JSERR_WARNINGS_MASK) {
       JsVar *v = jswrap_espruino_getErrorFlagArray(newErrors);
       if (v) {
+        jsiConsoleRemoveInputLine();
         jsiConsolePrintf("New interpreter error: %v\n", v);
         jsvUnLock(v);
       }
@@ -2173,8 +2175,10 @@ bool jsiLoop() {
 #ifndef EMBEDDED
       if (jsiTimeSinceCtrlC < jshGetTimeFromMilliseconds(5000))
         exit(0); // exit if ctrl-c on empty input line
-      else
+      else {
+        jsiConsoleRemoveInputLine();
         jsiConsolePrintf("Press Ctrl-C again to exit\n");
+      }
 #endif
       jsiTimeSinceCtrlC = 0;
     }

@@ -1,4 +1,5 @@
             nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
+            Ensure Exceptions/errors are reported on a blank line
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs
