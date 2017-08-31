@@ -1,3 +1,5 @@
+            nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
+
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs
              - if writing to disconnected Bluetooth device, throw data away immediately
