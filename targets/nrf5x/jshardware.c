@@ -834,17 +834,12 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 void uart0_event_handle(app_uart_evt_t * p_event) {
   jshHadEvent();
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
-    if (p_event->data.error_communication & (UART_ERRORSRC_BREAK_Msk|UART_ERRORSRC_FRAMING_Msk)) {
-      if (jshGetErrorHandlingEnabled(EV_SERIAL1))
-        jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
-    }
-    if (p_event->data.error_communication & (UART_ERRORSRC_PARITY_Msk)) {
-      if (jshGetErrorHandlingEnabled(EV_SERIAL1))
-        jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_PARITY_ERR, 0);
-    }
-    if (p_event->data.error_communication & (UART_ERRORSRC_OVERRUN_Msk)) {
+    if (p_event->data.error_communication & (UART_ERRORSRC_BREAK_Msk|UART_ERRORSRC_FRAMING_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1))
+      jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
+    if (p_event->data.error_communication & (UART_ERRORSRC_PARITY_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1))
+      jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_PARITY_ERR, 0);
+    if (p_event->data.error_communication & (UART_ERRORSRC_OVERRUN_Msk))
       jsErrorFlags |= JSERR_UART_OVERFLOW;
-    }
   } else if (p_event->evt_type == APP_UART_TX_EMPTY) {
     int ch = jshGetCharToTransmit(EV_SERIAL1);
     if (ch >= 0) {
@@ -892,9 +887,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   jshPinSetFunction(inf->pinRX, JSH_USART1|JSH_USART_RX);
   jshPinSetFunction(inf->pinTX, JSH_USART1|JSH_USART_TX);
 
-  APP_UART_FIFO_INIT(&comm_params,
-                16, // RX buffer size
-                0, // TX buffer size
+  APP_UART_INIT(&comm_params,
                 uart0_event_handle,
                 APP_IRQ_PRIORITY_HIGH,
                 err_code);
