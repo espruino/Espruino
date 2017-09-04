@@ -18,14 +18,25 @@
    "type": "library",
    "class": "Wifi"
 }
-The wifi library is a generic cross-platform library to control the Wifi interface.  It supports functionality such as connecting to wifi networks, getting network information, starting and access point, etc.
-**Currently this library is ESP8266 specific** and needs to be ported to other Espruino platforms.
+The wifi library is **an ESP8266 and ESP32-specific** library to control the Wifi interface.
+It supports functionality such as connecting to wifi networks, getting network information,
+starting and access point, etc.
 
-To get started and connect to your local access point all you need is
+
+Eventually all WiFi Espruino platforms will use this library as a base, however for now
+if you're not running Espruino on an ESP8266/ESP32 you will need to consult the documentation
+for that device:
+
+* Espruino WiFi [API documentation is here](http://www.espruino.com/WiFi#using-wifi)
+* ESP8266 connected to Espruino [documentation is here](http://www.espruino.com/ESP8266#software)
+
+However if you do have a ESP8266/ESP32, you can use the WiFi library as follows:
+
 ```
 var wifi = require("Wifi");
 wifi.connect("my-ssid", {password:"my-pwd"}, function(ap){ console.log("connected:", ap); });
 ```
+
 If you want the connection to happen automatically at boot, add `wifi.save();`.
 
 */
