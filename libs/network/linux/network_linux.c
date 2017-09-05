@@ -40,13 +40,11 @@
  typedef int SOCKET;
 #endif
 
- #define closesocket(SOCK) close(SOCK)
+#define closesocket(SOCK) close(SOCK)
 
 #if NET_DBG > 0
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
-// #include "jsinteractive.h"
-// #define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
-static char DBG_LIB[] = "socketserver"; // library name
+ #include "jsinteractive.h"
+ #define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif

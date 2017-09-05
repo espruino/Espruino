@@ -106,7 +106,12 @@ int flash_strcmp(const char *mem, const char *flash);
     it as a no-op for everyone else. This is identical the ICACHE_RAM_ATTR used elsewhere. */
 #define CALLED_FROM_INTERRUPT __attribute__((section(".iram1.text")))
 #else
+#if defined(ESP32)
+#include "esp_attr.h"
+#define CALLED_FROM_INTERRUPT IRAM_ATTR
+#else
 #define CALLED_FROM_INTERRUPT
+#endif
 #endif
 
 
