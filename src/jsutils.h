@@ -42,65 +42,6 @@
 #endif
 
 #if defined(ESP8266)
-
-// Use this in #ifdef to select flash/non-flash code
-#define USE_FLASH_MEMORY
-
-// For the esp8266 we need the posibility to store arrays in flash, because mem is so small
-#define IN_FLASH_MEMORY   __attribute__((section(".irom.literal"))) __attribute__((aligned(4)))
-
-/** Place constant strings into flash when we can in order to save RAM space. Strings in flash
-    must be accessed with word reads on aligned boundaries, so we'll have to copy them before
-    regular use. */
-#define FLASH_STR(name, x) static const char name[] IN_FLASH_MEMORY = x
-
-/** FLASH_STRCMP compares a string in RAM with a string in FLASH (2nd arg) */
-#define FLASH_STRCMP flash_strcmp
-
-/// Get the length of a string in flash
-size_t flash_strlen(const char *str);
-
-/// Copy a string from flash to RAM
-char *flash_strncpy(char *dest, const char *source, size_t cap);
-
-/// memcopy a byte from flash to RAM
-unsigned char *flash_memcpy(unsigned char *dest, const unsigned char *source, size_t cap);
-
-/// Compare a string in memory with a string in flash
-int flash_strcmp(const char *mem, const char *flash);
-
-/** Read a uint8_t from this pointer, which could be in RAM or Flash.
-    On ESP8266 you have to read flash in 32 bit chunks, so force a 32 bit read
-    and extract just the 8 bits we want */
-#define READ_FLASH_UINT8(ptr) ({ uint32_t __p = (uint32_t)(char*)(ptr); volatile uint32_t __d = *(uint32_t*)(__p & (uint32_t)~3); ((uint8_t*)&__d)[__p & 3]; })
-
-/** Read a uint16_t from this pointer, which could be in RAM or Flash. */
-#define READ_FLASH_UINT16(ptr) (READ_FLASH_UINT8(ptr) | (READ_FLASH_UINT8(((char*)ptr)+1)<<8) )
-
-#else
-
-#undef USE_FLASH_MEMORY
-
-// On non-ESP8266, const stuff goes in flash memory anyway
-#define IN_FLASH_MEMORY
-
-#define FLASH_STR(name, x) static const char name[] = x
-
-/** Read a uint8_t from this pointer, which could be in RAM or Flash.
-    On ARM this is just a standard read, it's different on ESP8266 */
-#define READ_FLASH_UINT8(ptr) (*(uint8_t*)(ptr))
-
-/** Read a uint16_t from this pointer, which could be in RAM or Flash.
-    On ARM this is just a standard read, it's different on ESP8266 */
-#define READ_FLASH_UINT16(ptr) (*(uint16_t*)(ptr))
-
-/** FLASH_STRCMP is simply strcmp, it's only special on ESP8266 */
-#define FLASH_STRCMP strcmp
-
-#endif
-
-
-#if defined(ESP8266)
 /** For the esp8266 we need to add CALLED_FROM_INTERRUPT to all functions that may execute at
     interrupt time so they get loaded into static RAM instead of flash. We define
     it as a no-op for everyone else. This is identical the ICACHE_RAM_ATTR used elsewhere. */
@@ -262,13 +203,7 @@ typedef int64_t JsSysTime;
 #define JSPARSE_MODULE_CACHE_NAME "modules"
 
 #if !defined(NO_ASSERT)
- #ifdef USE_FLASH_MEMORY
-   // Place assert strings into flash to save RAM
-   #define assert(X) do { \
-     FLASH_STR(flash_X, __STRING(X)); \
-     if (!(X)) jsAssertFail(__FILE__,__LINE__,flash_X); \
-   } while(0)
- #elif defined(__STRING)
+ #if defined(__STRING)
    // Normal assert with string in RAM
    #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,__STRING(X)); } while(0)
  #else
@@ -381,31 +316,10 @@ typedef enum {
 
 void jsAssertFail(const char *file, int line, const char *expr);
 
-#ifndef USE_FLASH_MEMORY
 // Normal functions thet place format string in ram
 void jsExceptionHere(JsExceptionType type, const char *fmt, ...);
 void jsError(const char *fmt, ...);
 void jsWarn(const char *fmt, ...);
-#else
-// Special jsError and jsWarn functions that place the format string into flash to save RAM
-#define jsExceptionHere(type, fmt, ...) do { \
-    FLASH_STR(flash_str, fmt); \
-    jsExceptionHere_flash(type, flash_str, ##__VA_ARGS__); \
-  } while(0)
-void jsExceptionHere_flash(JsExceptionType type, const char *fmt, ...);
-
-#define jsError(fmt, ...) do { \
-    FLASH_STR(flash_str, fmt); \
-    jsError_flash(flash_str, ##__VA_ARGS__); \
-  } while(0)
-void jsError_flash(const char *fmt, ...);
-
-#define jsWarn(fmt, ...) do { \
-    FLASH_STR(flash_str, fmt); \
-    jsWarn_flash(flash_str, ##__VA_ARGS__); \
-  } while(0)
-void jsWarn_flash(const char *fmt, ...);
-#endif
 
 // ------------
 /// Error flags for internal errors - update jswrap_espruino_getErrorFlags if you add to this

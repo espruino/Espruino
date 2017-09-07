@@ -75,12 +75,9 @@ static void startMDNS(char *hostname);
 static void stopMDNS();
 
 // Some common error handling
+#define EXPECT_CB_EXCEPTION(jsCB) jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 
-FLASH_STR(expect_cb, "Expecting callback function but got %v");
-#define EXPECT_CB_EXCEPTION(jsCB) jsExceptionHere_flash(JSET_ERROR, expect_cb, jsCB)
-
-FLASH_STR(expect_opt, "Expecting options object but got %t");
-#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere_flash(JSET_ERROR, expect_opt, jsOPT)
+#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting options object but got %t", jsOPT)
 
 // #NOTE: For callback functions, be sure and unlock them in the `kill` handler.
 
@@ -128,68 +125,57 @@ static Esp8266_config esp8266Config;
 //===== Mapping from enums to strings
 
 // Reasons for which a connection failed
-// (The code here is a bit of a nightmare in order to get the strings into FLASH so they don't
-// eat up valuable RAM space. Sadly the FLASH_STR's __attribute__ stuff can't be applied to the
-// wifiReasons array as a whole.)
-FLASH_STR(__wr0,  "0 - <Not Used>");           // 0
-FLASH_STR(__wr1,  "unspecified");              // 1 - REASON_UNSPECIFIED
-FLASH_STR(__wr2,  "auth_expire");              // 2 - REASON_AUTH_EXPIRE
-FLASH_STR(__wr3,  "auth_leave");               // 3 - REASON_AUTH_LEAVE
-FLASH_STR(__wr4,  "assoc_expire");             // 4 - REASON_ASSOC_EXPIRE
-FLASH_STR(__wr5,  "assoc_toomany");            // 5 - REASON_ASSOC_TOOMANY
-FLASH_STR(__wr6,  "not_authed");               // 6 - REASON_NOT_AUTHED
-FLASH_STR(__wr7,  "not_assoced");              // 7 - REASON_NOT_ASSOCED
-FLASH_STR(__wr8,  "assoc_leave");              // 8 - REASON_ASSOC_LEAVE
-FLASH_STR(__wr9,  "assoc_not_authed");         // 9 - REASON_ASSOC_NOT_AUTHED
-FLASH_STR(__wr10, "disassoc_pwrcap_bad");      // 10 - REASON_DISASSOC_PWRCAP_BAD
-FLASH_STR(__wr11, "disassoc_supchan_bad");     // 11 - REASON_DISASSOC_SUPCHAN_BAD
-FLASH_STR(__wr12, "12 - <Not Used>");          // 12
-FLASH_STR(__wr13, "ie_invalid");               // 13 - REASON_IE_INVALID
-FLASH_STR(__wr14, "mic_failure");              // 14 - REASON_MIC_FAILURE
-FLASH_STR(__wr15, "4way_handshake_timeout");   // 15 - REASON_4WAY_HANDSHAKE_TIMEOUT
-FLASH_STR(__wr16, "group_key_update_timeout"); // 16 - REASON_GROUP_KEY_UPDATE_TIMEOUT
-FLASH_STR(__wr17, "ie_in_4way_differs");       // 17 - REASON_IE_IN_4WAY_DIFFERS
-FLASH_STR(__wr18, "group_cipher_invalid");     // 18 - REASON_GROUP_CIPHER_INVALID
-FLASH_STR(__wr19, "pairwise_cipher_invalid");  // 19 - REASON_PAIRWISE_CIPHER_INVALID
-FLASH_STR(__wr20, "akmp_invalid");             // 20 - REASON_AKMP_INVALID
-FLASH_STR(__wr21, "unsupp_rsn_ie_version");    // 21 - REASON_UNSUPP_RSN_IE_VERSION
-FLASH_STR(__wr22, "invalid_rsn_ie_cap");       // 22 - REASON_UNSUPP_RSN_IE_VERSION
-FLASH_STR(__wr23, "802_1x_auth_failed");       // 23 - REASON_802_1X_AUTH_FAILED
-FLASH_STR(__wr24, "cipher_suite_rejected");    // 24 - REASON_CIPHER_SUITE_REJECTED
-FLASH_STR(__wr200, "beacon_timeout");          // 200 - REASON_BEACON_TIMEOUT
-FLASH_STR(__wr201, "no_ap_found");             // 201 - REASON_NO_AP_FOUND
 static const char *wifiReasons[] = {
-  __wr0, __wr1, __wr2, __wr3, __wr4, __wr5, __wr6, __wr7, __wr8, __wr9, __wr10,
-  __wr11, __wr12, __wr13, __wr14, __wr15, __wr16, __wr17, __wr18, __wr19, __wr20,
-  __wr21, __wr22, __wr23, __wr24, __wr200, __wr201
+  "0 - <Not Used>",           // 0
+  "unspecified",              // 1 - REASON_UNSPECIFIED
+  "auth_expire",              // 2 - REASON_AUTH_EXPIRE
+  "auth_leave",               // 3 - REASON_AUTH_LEAVE
+  "assoc_expire",             // 4 - REASON_ASSOC_EXPIRE
+  "assoc_toomany",            // 5 - REASON_ASSOC_TOOMANY
+  "not_authed",               // 6 - REASON_NOT_AUTHED
+  "not_assoced",              // 7 - REASON_NOT_ASSOCED
+  "assoc_leave",              // 8 - REASON_ASSOC_LEAVE
+  "assoc_not_authed",         // 9 - REASON_ASSOC_NOT_AUTHED
+  "disassoc_pwrcap_bad",      // 10 - REASON_DISASSOC_PWRCAP_BAD
+  "disassoc_supchan_bad",     // 11 - REASON_DISASSOC_SUPCHAN_BAD
+  "12 - <Not Used>",          // 12
+  "ie_invalid",               // 13 - REASON_IE_INVALID
+  "mic_failure",              // 14 - REASON_MIC_FAILURE
+  "4way_handshake_timeout",   // 15 - REASON_4WAY_HANDSHAKE_TIMEOUT
+  "group_key_update_timeout", // 16 - REASON_GROUP_KEY_UPDATE_TIMEOUT
+  "ie_in_4way_differs",       // 17 - REASON_IE_IN_4WAY_DIFFERS
+  "group_cipher_invalid",     // 18 - REASON_GROUP_CIPHER_INVALID
+  "pairwise_cipher_invalid",  // 19 - REASON_PAIRWISE_CIPHER_INVALID
+  "akmp_invalid",             // 20 - REASON_AKMP_INVALID
+  "unsupp_rsn_ie_version",    // 21 - REASON_UNSUPP_RSN_IE_VERSION
+  "invalid_rsn_ie_cap",       // 22 - REASON_UNSUPP_RSN_IE_VERSION
+  "802_1x_auth_failed",       // 23 - REASON_802_1X_AUTH_FAILED
+  "cipher_suite_rejected",    // 24 - REASON_CIPHER_SUITE_REJECTED
+   "beacon_timeout",          // 200 - REASON_BEACON_TIMEOUT
+   "no_ap_found",             // 201 - REASON_NO_AP_FOUND
 };
 
-static char wifiReasonBuff[sizeof("group_key_update_timeout")+1]; // length of longest string
 static char *wifiGetReason(uint8 wifiReason) {
   const char *reason;
   if (wifiReason <= 24) reason = wifiReasons[wifiReason];
   else if (wifiReason >= 200 && wifiReason <= 201) reason = wifiReasons[wifiReason-200+24];
   else reason = wifiReasons[1];
-  flash_strncpy(wifiReasonBuff, reason, sizeof(wifiReasonBuff));
-  wifiReasonBuff[sizeof(wifiReasonBuff)-1] = 0; // force null termination
-  return wifiReasonBuff;
+  return reason;
 }
 
 // Wifi events
-FLASH_STR(__ev0, "#onassociated");
-FLASH_STR(__ev1, "#ondisconnected");
-FLASH_STR(__ev2, "#onauth_change");
-FLASH_STR(__ev3, "#onconnected");
-FLASH_STR(__ev4, "#ondhcp_timeout");
-FLASH_STR(__ev5, "#onsta_joined");
-FLASH_STR(__ev6, "#onsta_left");
-FLASH_STR(__ev7, "#onprobe_recv");
-static const char *wifi_events[] = { __ev0, __ev1, __ev2, __ev3, __ev4, __ev5, __ev6, __ev7 };
-static char wifiEventBuff[sizeof("#ondisconnected")+1]; // length of longest string
+static const char *wifi_events[] = {
+  "#onassociated",
+  "#ondisconnected",
+  "#onauth_change",
+  "#onconnected",
+  "#ondhcp_timeout",
+  "#onsta_joined",
+  "#onsta_left",
+  "#onprobe_recv"
+};
 static char *wifiGetEvent(uint32 event) {
-  flash_strncpy(wifiEventBuff, wifi_events[event], sizeof(wifiEventBuff));
-  wifiEventBuff[sizeof(wifiEventBuff)-1] = 0;
-  return wifiEventBuff;
+  return wifi_events[event];
 }
 
 static char *wifiAuth[] = { "open", "wep", "wpa", "wpa2", "wpa_wpa2" };
@@ -579,11 +565,7 @@ void jswrap_wifi_startAP(
     // Set the return error as a function of the return code returned from the call to
     // the ESP8266 API to create the AP
     JsVar *params[1];
-    FLASH_STR(_fstr, "Error from wifi_softap_set_config");
-    size_t len = flash_strlen(_fstr);
-    char buff[len+1];
-    flash_strncpy(buff, _fstr, len+1);
-    params[0] = ok ? jsvNewNull() : jsvNewFromString(buff);
+    params[0] = ok ? jsvNewNull() : jsvNewFromString("Error from wifi_softap_set_config");
     jsiQueueEvents(NULL, jsCallback, params, 1);
     jsvUnLock(params[0]);
   }

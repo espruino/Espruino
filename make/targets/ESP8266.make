@@ -39,15 +39,12 @@ proj: $(USER1_BIN) $(USER2_BIN) $(ESP_ZIP)
 combined: $(ESP_COMBINED)
 
 
-# generate partially linked .o with all Esprunio source files linked
+# generate partially linked .o with all Espruino source files linked
 $(PARTIAL): $(OBJS) $(LINKER_FILE)
 	@echo LD $@
-ifdef USE_CRYPTO
-	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text libs/crypto/mbedtls/library/sha1.o
-	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text libs/crypto/mbedtls/library/sha256.o
-	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text libs/crypto/mbedtls/library/sha512.o
-endif
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
+	# Hacky - move all of Espruino's stuff into ROM. Can't we move more of the standard library?
+	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text  $@
 	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal $@
 
 # generate fully linked 'user1' .elf using linker script for first OTA partition

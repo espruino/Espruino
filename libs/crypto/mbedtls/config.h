@@ -118,12 +118,6 @@
 #define MBEDTLS_PLATFORM_CALLOC_MACRO(X,Y) jsvMalloc((X)*(Y))
 #define MBEDTLS_PLATFORM_FREE_MACRO(X) jsvFree(X)
 
-/* use flash safe version of memcpy so that rodata can be moved to irom */
-#ifdef ESP8266
-#define memcpy(d,s,n) flash_memcpy(d,s,n)
-#endif
-
-
 #include "mbedtls/check_config.h"
 
 #endif /* MBEDTLS_CONFIG_H */

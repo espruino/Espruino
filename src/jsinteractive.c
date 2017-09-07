@@ -208,39 +208,16 @@ NO_INLINE void jsiConsolePrintString(const char *str) {
   }
 }
 
-#ifdef USE_FLASH_MEMORY
-// internal version that copies str from flash to an internal buffer
-NO_INLINE void jsiConsolePrintString_int(const char *str) {
-  size_t len = flash_strlen(str);
-  char buff[len+1];
-  flash_strncpy(buff, str, len+1);
-  jsiConsolePrintString(buff);
-}
-#endif
-
 /**
  * Perform a printf to the console.
  * Execute a printf command to the current JS console.
  */
-#ifndef USE_FLASH_MEMORY
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
   vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
   va_end(argp);
 }
-#else
-void jsiConsolePrintf_int(const char *fmt, ...) {
-  // fmt is in flash and requires special aligned accesses
-  size_t len = flash_strlen(fmt);
-  char buff[len+1];
-  flash_strncpy(buff, fmt, len+1);
-  va_list argp;
-  va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString, 0, buff, argp);
-  va_end(argp);
-}
-#endif
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, size_t maxChars, bool andBackup) {

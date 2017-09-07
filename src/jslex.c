@@ -34,7 +34,7 @@ JslCharPos jslCharPosClone(JslCharPos *pos) {
 
 /// Return the next character (do not move to the next character)
 static ALWAYS_INLINE char jslNextCh() {
-  return (char)(lex->it.ptr ? READ_FLASH_UINT8(&lex->it.ptr[lex->it.charIdx]) : 0);
+  return (char)(lex->it.ptr ? lex->it.ptr[lex->it.charIdx] : 0);
 }
 
 /// Move on to the next character

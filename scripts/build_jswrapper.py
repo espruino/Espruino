@@ -160,7 +160,7 @@ def codeOutSymbolTable(builtin):
       print (codeName + "." + symName+" not included in Symbol Table because no 'generate'")
   builtin["symbolTableChars"] = "\""+listChars+"\"";
   builtin["symbolTableCount"] = str(len(listSymbols));
-  codeOut("static const JswSymPtr jswSymbols_"+codeName+"[] FLASH_SECT = {\n  "+",\n  ".join(listSymbols)+"\n};");
+  codeOut("static const JswSymPtr jswSymbols_"+codeName+"[] = {\n  "+",\n  ".join(listSymbols)+"\n};");
 
 def codeOutBuiltins(indent, builtin):
   codeOut(indent+"jswBinarySearch(&jswSymbolTables["+builtin["indexName"]+"], parent, name);");
@@ -285,16 +285,16 @@ codeOut("""
 // Binary search coded to allow for JswSyms to be in flash on the esp8266 where they require
 // word accesses
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
-  uint8_t symbolCount = READ_FLASH_UINT8(&symbolsPtr->symbolCount);
+  uint8_t symbolCount = symbolsPtr->symbolCount;
   int searchMin = 0;
   int searchMax = symbolCount - 1;
   while (searchMin <= searchMax) {
     int idx = (searchMin+searchMax) >> 1;
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];
-    unsigned short strOffset = READ_FLASH_UINT16(&sym->strOffset);
-    int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[strOffset]);
+    unsigned short strOffset = sym->strOffset;
+    int cmp = strcmp(name, &symbolsPtr->symbolChars[strOffset]);
     if (cmp==0) {
-      unsigned short functionSpec = READ_FLASH_UINT16(&sym->functionSpec);
+      unsigned short functionSpec = sym->functionSpec;
       if ((functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
         return jsnCallFunction(sym->functionPtr, functionSpec, parent, 0, 0);
       return jsvNewNativeFunction(sym->functionPtr, functionSpec);
@@ -350,11 +350,6 @@ for jsondata in jsondatas:
       builtins[testCode] = { "name" : builtinName, "className" : className, "isProto" : isProto, "functions" : [] }
     builtins[testCode]["functions"].append(jsondata);
 
-# For the ESP8266 we want to put the structures into flash, we need a fresh section 'cause the
-# .irom.literal section used elsewhere has different readability attributes, sigh
-codeOut("#ifdef ESP8266\n#define FLASH_SECT __attribute__((section(\".irom.literal2\"))) __attribute__((aligned(4)))");
-codeOut("#else\n#define FLASH_SECT\n#endif\n");
-
 print("Outputting Symbol Tables")
 idx = 0
 for b in builtins:
@@ -369,10 +364,10 @@ codeOut('');
 # output the strings, possibly with __attribute__ to put them into flash
 for b in builtins:
   builtin = builtins[b]
-  codeOut("FLASH_STR(jswSymbols_"+builtin["name"]+"_str, " + builtin["symbolTableChars"] +");");
+  codeOut("static const char jswSymbols_"+builtin["name"]+"_str[] = " + builtin["symbolTableChars"] +";");
 codeOut('');
 # output the symbol table array referencing the above strings
-codeOut('const JswSymList jswSymbolTables[] FLASH_SECT = {');
+codeOut('const JswSymList jswSymbolTables[] = {');
 for b in builtins:
   builtin = builtins[b]
   codeOut("  {"+", ".join(["jswSymbols_"+builtin["name"], "jswSymbols_"+builtin["name"]+"_str", builtin["symbolTableCount"]])+"},");

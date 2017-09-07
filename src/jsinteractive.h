@@ -74,25 +74,9 @@ bool jsiIsConsoleDeviceForced();
 void jsiConsolePrintChar(char data);
 /// Transmit a string (may be any string)
 void jsiConsolePrintString(const char *str);
-#ifndef USE_FLASH_MEMORY
 #define jsiConsolePrint jsiConsolePrintString
 /// Write the formatted string to the console (see vcbprintf)
 void jsiConsolePrintf(const char *fmt, ...);
-#else
-/// Write the formatted string to the console (see vcbprintf), but place the format string into
-// into flash
-#define jsiConsolePrintf(fmt, ...) do { \
-    FLASH_STR(flash_str, fmt); \
-    jsiConsolePrintf_int(flash_str, ##__VA_ARGS__); \
-  } while(0)
-void jsiConsolePrintf_int(const char *fmt, ...);
-/// Transmit a string (must be a literal string)
-#define jsiConsolePrint(str) do { \
-    FLASH_STR(flash_str, str); \
-    jsiConsolePrintString_int(flash_str); \
-} while(0)
-void jsiConsolePrintString_int(const char *str);
-#endif
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVar(JsVar *v);
 /// If the input line was shown in the console, remove it

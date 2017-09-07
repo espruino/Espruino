@@ -26,7 +26,7 @@
  // 48
 
 #define LCD_FONT_3X5_CHARS 95
-const unsigned short LCD_FONT_3X5[] IN_FLASH_MEMORY = { // from 33 up to 127
+const unsigned short LCD_FONT_3X5[] = { // from 33 up to 127
     PACK_5_TO_16( _X_ , X_X , _X_ , _X_ , X_X ), // !"#$%
     PACK_5_TO_16( _X_ , ___ , XXX , XX_ , __X ),
     PACK_5_TO_16( _X_ , ___ , _X_ , XXX , _X_ ),

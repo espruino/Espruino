@@ -186,8 +186,6 @@ long long stringToInt(const char *s) {
   return stringToIntWithRadix(s,0,0);
 }
 
-#ifndef USE_FLASH_MEMORY
-
 // JsError, jsWarn, jsExceptionHere implementations that expect the format string to be in normal
 // RAM where is can be accessed normally.
 
@@ -251,103 +249,13 @@ NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
   jsvUnLock(var);
 }
 
-#else
-
-// JsError, jsWarn, jsExceptionHere implementations that expect the format string to be in FLASH
-// and first copy it into RAM in order to prevent issues with byte access, this is necessary on
-// platforms, like the esp8266, where data flash can only be accessed using word-aligned reads.
-
-NO_INLINE void jsError_flash(const char *fmt, ...) {
-  size_t len = flash_strlen(fmt);
-  char buff[len+1];
-  flash_strncpy(buff, fmt, len+1);
-
-  jsiConsoleRemoveInputLine();
-  jsiConsolePrint("ERROR: ");
-  va_list argp;
-  va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
-  va_end(argp);
-  jsiConsolePrint("\n");
-}
-
-NO_INLINE void jsWarn_flash(const char *fmt, ...) {
-  size_t len = flash_strlen(fmt);
-  char buff[len+1];
-  flash_strncpy(buff, fmt, len+1);
-
-  jsiConsoleRemoveInputLine();
-  jsiConsolePrint("WARNING: ");
-  va_list argp;
-  va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
-  va_end(argp);
-  jsiConsolePrint("\n");
-}
-
-NO_INLINE void jsExceptionHere_flash(JsExceptionType type, const char *ffmt, ...) {
-  size_t len = flash_strlen(ffmt);
-  char fmt[len+1];
-  flash_strncpy(fmt, ffmt, len+1);
-
-  // If we already had an exception, forget this
-  if (jspHasError()) return;
-
-  jsiConsoleRemoveInputLine();
-
-  JsVar *var = jsvNewFromEmptyString();
-  if (!var) {
-    jspSetError(false);
-    return; // out of memory
-  }
-
-  JsvStringIterator it;
-  jsvStringIteratorNew(&it, var, 0);
-  jsvStringIteratorGotoEnd(&it);
-
-  vcbprintf_callback cb = (vcbprintf_callback)jsvStringIteratorPrintfCallback;
-
-  va_list argp;
-  va_start(argp, ffmt);
-  vcbprintf(cb,&it, fmt, argp);
-  va_end(argp);
-
-  jsvStringIteratorFree(&it);
-
-  if (type != JSET_STRING) {
-    JsVar *obj = 0;
-    if (type == JSET_ERROR) obj = jswrap_error_constructor(var);
-    else if (type == JSET_SYNTAXERROR) obj = jswrap_syntaxerror_constructor(var);
-    else if (type == JSET_TYPEERROR) obj = jswrap_typeerror_constructor(var);
-    else if (type == JSET_INTERNALERROR) obj = jswrap_internalerror_constructor(var);
-    else if (type == JSET_REFERENCEERROR) obj = jswrap_referenceerror_constructor(var);
-    jsvUnLock(var);
-    var = obj;
-  }
-
-  jspSetException(var);
-  jsvUnLock(var);
-}
-
-#endif
-
 NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   static bool inAssertFail = false;
   bool wasInAssertFail = inAssertFail;
   inAssertFail = true;
   jsiConsoleRemoveInputLine();
   if (expr) {
-#ifndef USE_FLASH_MEMORY
     jsiConsolePrintf("ASSERT(%s) FAILED AT ", expr);
-#else
-    jsiConsolePrintString("ASSERT(");
-    // string is in flash and requires word access, thus copy it onto the stack
-    size_t len = flash_strlen(expr);
-    char buff[len+1];
-    flash_strncpy(buff, expr, len+1);
-    jsiConsolePrintString(buff);
-    jsiConsolePrintString(") FAILED AT ");
-#endif
   } else {
     jsiConsolePrint("ASSERT FAILED AT ");
   }
@@ -382,97 +290,6 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
 #endif
   inAssertFail = false;
 }
-
-#ifdef USE_FLASH_MEMORY
-// Helpers to deal with constant strings stored in flash that have to be accessed using word-aligned
-// and word-sized reads
-
-// Get the length of a string in flash
-size_t flash_strlen(const char *str) {
-  size_t len = 0;
-  uint32_t *s = (uint32_t *)str;
-
-  while (1) {
-    uint32_t w = *s++;
-    if ((w & 0xff) == 0) break;
-    len++; w >>= 8;
-    if ((w & 0xff) == 0) break;
-    len++; w >>= 8;
-    if ((w & 0xff) == 0) break;
-    len++; w >>= 8;
-    if ((w & 0xff) == 0) break;
-    len++;
-  }
-  return len;
-}
-
-// Copy a string from flash
-char *flash_strncpy(char *dst, const char *src, size_t c) {
-  char *d = dst;
-  uint32_t *s = (uint32_t *)src;
-  size_t slen = flash_strlen(src);
-  size_t len = slen > c ? c : slen;
-
-  // copy full words from source string
-  while (len >= 4) {
-    uint32_t w = *s++;
-    *d++ = w & 0xff; w >>= 8;
-    *d++ = w & 0xff; w >>= 8;
-    *d++ = w & 0xff; w >>= 8;
-    *d++ = w & 0xff;
-    len -= 4;
-  }
-  // copy any remaining bytes
-  if (len > 0) {
-    uint32_t w = *s++;
-    while (len-- > 0) {
-      *d++ = w & 0xff; w >>= 8;
-    }
-  }
-  // terminating null
-  if (slen < c) *d = 0;
-  return dst;
-}
-
-// Compare a string in memory with a string in flash
-int flash_strcmp(const char *mem, const char *flash) {
-  while (1) {
-    char m = *mem++;
-    char c = READ_FLASH_UINT8(flash++);
-    if (m == 0) return c != 0 ? -1 : 0;
-    if (c == 0) return 1;
-    if (c > m) return -1;
-    if (m > c) return 1;
-  }
-}
-
-// memcopy a string from flash
-unsigned char *flash_memcpy(unsigned char *dst, const unsigned char *src, size_t c) {
-  unsigned char *d = dst;
-  uint32_t *s = (uint32_t *)src;
-  size_t len = c;
-
-  // copy full words from source string
-  while (len >= 4) {
-    uint32_t w = *s++;
-    *d++ = w & 0xff; w >>= 8;
-    *d++ = w & 0xff; w >>= 8;
-    *d++ = w & 0xff; w >>= 8;
-    *d++ = w & 0xff;
-    len -= 4;
-  }
-  // copy any remaining bytes
-  if (len > 0) {
-    uint32_t w = *s++;
-    while (len-- > 0) {
-      *d++ = w & 0xff; w >>= 8;
-    }
-  }
-  return dst;
-}
-
-#endif
-
 
 /**
  * Convert a string to a JS float variable where the string is of a specific radix.

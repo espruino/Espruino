@@ -88,9 +88,9 @@ Write 32 bits of memory at the given location - VERY DANGEROUS!
  */
 
 uint32_t _jswrap_io_peek(JsVarInt addr, int wordSize) {
-  if (wordSize==1) return READ_FLASH_UINT8((char*)(size_t)addr);
+  if (wordSize==1) return *(unsigned char*)(size_t)addr;
   if (wordSize==2) {
-    return READ_FLASH_UINT8((char*)(size_t)addr) | (uint32_t)(READ_FLASH_UINT8((char*)(size_t)(addr+1)) << 8);
+    return (*(unsigned char*)(size_t)addr) | (uint32_t)((*(unsigned char*)(size_t)(addr+1)) << 8);
   }
   if (wordSize==4) return (uint32_t)*(unsigned int*)(size_t)addr;
   return 0;

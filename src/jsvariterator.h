@@ -51,7 +51,7 @@ JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it);
 /// Gets the current character (or 0)
 static ALWAYS_INLINE char jsvStringIteratorGetChar(JsvStringIterator *it) {
   if (!it->ptr) return 0;
-  return (char)READ_FLASH_UINT8(&it->ptr[it->charIdx]);
+  return (char)it->ptr[it->charIdx];
 }
 
 /// Gets the current (>=0) character (or -1)

@@ -62,9 +62,9 @@ ESP8266=1
 LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain -lpwm -lcrypto
 CFLAGS+= -fno-builtin \
 -Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
--Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
+-Wno-unused-parameter -Wno-ignored-qualifiers \
 -Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
--Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals
+-Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals -mforce-l32
 
 #
 # The Root of the ESP8266_SDK distributed by Espressif
