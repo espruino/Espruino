@@ -1537,7 +1537,7 @@ void jsiHandleChar(char ch) {
         jsiHandleMoveUpDown(1);
     } else if (ch == 70) jsiHandleEnd();
     else if (ch == 72) jsiHandleHome();
-    else jsiConsolePrintf("[%d:%d]\n", inputState, ch);
+    //else jsiConsolePrintf("[%d:%d]\n", inputState, ch); // debugging unknown escape sequence
   } else if (inputState==IS_HAD_27_91_NUMBER) {
     if (ch>='0' && ch<='9') {
       inputStateNumber = (uint16_t)(10*inputStateNumber + ch - '0');
