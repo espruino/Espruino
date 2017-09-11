@@ -19,7 +19,7 @@
 #include "nrf.h"
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
-#include "app_uart.h"
+#include "nrf_uart.h"
 #include "nrf_error.h"
 #include "nrf_nvmc.h"
 #include "nrf_timer.h"

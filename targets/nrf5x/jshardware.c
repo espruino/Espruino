@@ -25,6 +25,7 @@
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 
+#include "app_util_platform.h"
 #ifdef BLUETOOTH
 #include "app_timer.h"
 #include "bluetooth.h"
@@ -53,8 +54,6 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_drv_gpiote.h"
 #include "nrf_drv_ppi.h"
 #include "nrf_drv_spi.h"
-
-#include "app_uart.h"
 
 #include "nrf5x_utils.h"
 #include "softdevice_handler.h"
@@ -92,6 +91,11 @@ bool spi0Initialised = false;
 
 static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
 bool twi1Initialised = false;
+
+static const nrf_drv_uart_t UART0 = NRF_DRV_UART_INSTANCE(0);
+static uint8_t uart0rxBuffer[2]; // 2 char buffer
+static uint8_t uart0txBuffer[1];
+
 
 const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
@@ -830,16 +834,11 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   if (device==EV_SERIAL1) return uartInitialised;
   return false;
 }
-
+/*
 void uart0_event_handle(app_uart_evt_t * p_event) {
   jshHadEvent();
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
-    if (p_event->data.error_communication & (UART_ERRORSRC_BREAK_Msk|UART_ERRORSRC_FRAMING_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1))
-      jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
-    if (p_event->data.error_communication & (UART_ERRORSRC_PARITY_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1))
-      jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_PARITY_ERR, 0);
-    if (p_event->data.error_communication & (UART_ERRORSRC_OVERRUN_Msk))
-      jsErrorFlags |= JSERR_UART_OVERFLOW;
+
   } else if (p_event->evt_type == APP_UART_TX_EMPTY) {
     int ch = jshGetCharToTransmit(EV_SERIAL1);
     if (ch >= 0) {
@@ -853,6 +852,50 @@ void uart0_event_handle(app_uart_evt_t * p_event) {
     jshPushIOCharEvent(EV_SERIAL1, (char) character);
   }
 }
+*/
+
+void uart0_startrx() {
+  uint32_t err_code;
+  err_code = nrf_drv_uart_rx(&UART0, &uart0rxBuffer[0],1);
+  if (err_code) jsWarn("nrf_drv_uart_rx 1 failed, error %d", err_code);
+  err_code = nrf_drv_uart_rx(&UART0, &uart0rxBuffer[1],1);
+  if (err_code) jsWarn("nrf_drv_uart_rx 2 failed, error %d", err_code);
+}
+
+void uart0_starttx() {
+  int ch = jshGetCharToTransmit(EV_SERIAL1);
+  if (ch >= 0) {
+    uartIsSending = true;
+    uart0txBuffer[0] = ch;
+    nrf_drv_uart_tx(&UART0, uart0txBuffer, 1);
+  } else
+    uartIsSending = false;
+}
+
+
+static void uart0_event_handle(nrf_drv_uart_event_t * p_event, void* p_context) {
+    if (p_event->type == NRF_DRV_UART_EVT_RX_DONE) {
+      // Char received
+      uint8_t ch = p_event->data.rxtx.p_data[0];
+      nrf_drv_uart_rx(&UART0, p_event->data.rxtx.p_data, 1);
+      jshPushIOCharEvent(EV_SERIAL1, (char)ch);
+      jshHadEvent();
+    } else if (p_event->type == NRF_DRV_UART_EVT_ERROR) {
+      // error
+      if (p_event->data.error.error_mask & (UART_ERRORSRC_BREAK_Msk|UART_ERRORSRC_FRAMING_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1))
+        jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
+      if (p_event->data.error.error_mask & (UART_ERRORSRC_PARITY_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1))
+        jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_PARITY_ERR, 0);
+      if (p_event->data.error.error_mask & (UART_ERRORSRC_OVERRUN_Msk))
+        jsErrorFlags |= JSERR_UART_OVERFLOW;
+      // restart RX on both buffers
+      uart0_startrx();
+      jshHadEvent();
+    } else if (p_event->type == NRF_DRV_UART_EVT_TX_DONE) {
+      // ready to transmit another character...
+      uart0_starttx();
+    }
+}
 
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
@@ -862,7 +905,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
   jshSetErrorHandlingEnabled(device, inf->errorHandling);
 
-  int baud = nrf_utils_get_baud_enum(inf->baudRate);
+  nrf_uart_baudrate_t baud = (nrf_uart_baudrate_t)nrf_utils_get_baud_enum(inf->baudRate);
   if (baud==0)
     return jsError("Invalid baud rate %d", inf->baudRate);
   if (!jshIsPinValid(inf->pinRX) || !jshIsPinValid(inf->pinTX))
@@ -870,29 +913,35 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
   if (uartInitialised) {
     uartInitialised = false;
-    app_uart_close();
+    nrf_drv_uart_uninit(&UART0);
   }
 
-  uint32_t err_code;
-  const app_uart_comm_params_t comm_params = {
-      pinInfo[inf->pinRX].pin,
-      pinInfo[inf->pinTX].pin,
-      (uint8_t)UART_PIN_DISCONNECTED,
-      (uint8_t)UART_PIN_DISCONNECTED,
-      APP_UART_FLOW_CONTROL_DISABLED,
-      inf->parity!=0, // TODO: ODD or EVEN parity?
-      baud
-  };
   // APP_UART_INIT will set pins, but this ensures we know so can reset state later
   jshPinSetFunction(inf->pinRX, JSH_USART1|JSH_USART_RX);
   jshPinSetFunction(inf->pinTX, JSH_USART1|JSH_USART_TX);
 
-  APP_UART_INIT(&comm_params,
-                uart0_event_handle,
-                APP_IRQ_PRIORITY_HIGH,
-                err_code);
-  if (err_code)
-    jsExceptionHere(JSET_INTERNALERROR, "app_uart_init failed, error %d", err_code);
+  nrf_drv_uart_config_t config = NRF_DRV_UART_DEFAULT_CONFIG;
+  config.baudrate = baud;
+  config.hwfc = NRF_UART_HWFC_DISABLED; // flow control
+  config.interrupt_priority = APP_IRQ_PRIORITY_HIGH;
+  config.parity = inf->parity ? NRF_UART_PARITY_INCLUDED : NRF_UART_PARITY_EXCLUDED;
+  config.pselcts = 0xFFFFFFFF;
+  config.pselrts = 0xFFFFFFFF;
+  config.pselrxd = pinInfo[inf->pinRX].pin;
+  config.pseltxd = pinInfo[inf->pinTX].pin;
+  /* TODO: could check and allow *just* RX or TX. Could make sense as
+   * TX won't draw any extra power when not in use */
+
+  uint32_t err_code = nrf_drv_uart_init(&UART0, &config, uart0_event_handle);
+  if (err_code) {
+    jsExceptionHere(JSET_INTERNALERROR, "nrf_drv_uart_init failed, error %d", err_code);
+  } else {
+    // Turn on receiver if RX pin is connected
+    if (config.pselrxd != 0xFFFFFFFF) {
+      nrf_drv_uart_rx_enable(&UART0);
+      uart0_startrx();
+    }
+  }
   uartInitialised = true;
 }
 
@@ -900,16 +949,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 void jshUSARTKick(IOEventFlags device) {
   if (device == EV_SERIAL1) {
     if (uartInitialised) {
-      if (!uartIsSending) {
-        jshInterruptOff();
-        int ch = jshGetCharToTransmit(EV_SERIAL1);
-        if (ch >= 0) {
-          // put data - this will kick off the USART
-          while (app_uart_put((uint8_t)ch) != NRF_SUCCESS);
-          uartIsSending = true;
-        }
-        jshInterruptOn();
-      }
+      if (!uartIsSending)
+        uart0_starttx();
     } else {
       // UART not initialised yet - just drain
       while (jshGetCharToTransmit(EV_SERIAL1)>=0);
