@@ -11,6 +11,7 @@
             Fix memory leak in tab completion code
             Add `E.errorFlag` event to allow JS to respond to internal errors
             Use Esc[J VT100 code when cycling through command history (much faster REPL on low bandwidth connections)
+            ESP8266: Remove debugger again as it will never work on 8266
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs

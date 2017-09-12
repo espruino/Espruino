@@ -279,8 +279,12 @@ SOURCES += \
 libs/compression/compress_rle.c
 
 else
+
+ifneq ($(FAMILY),ESP8266)
 # If we have enough flash, include the debugger
+# ESP8266 can't do it because it expects tasks to finish within set time
 DEFINES+=-DUSE_DEBUGGER
+endif
 # Use use tab complete
 DEFINES+=-DUSE_TAB_COMPLETE
 
