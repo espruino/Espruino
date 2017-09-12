@@ -4,9 +4,9 @@
 
 SAMD=1
 
-ARCHFLAGS += -mthumb -mcpu=cortex-m3 -mlong-calls
+ARCHFLAGS += -mcpu=cortex-m3
 
-CFLAGS+=-c -Wall --param max-inline-insns-single=500 -mcpu=cortex-m3 -mthumb -mlong-calls -ffunction-sections -fdata-sections -nostdlib -std=c99 -Os
+CFLAGS+=-c -Wall --param max-inline-insns-single=500 -mcpu=cortex-m3 -ffunction-sections -fdata-sections -nostdlib -std=c99 -Os
 SOURCES += targets/samd/jshardware.c
 INCLUDE += -I$(ROOT)/targets/samd
 
