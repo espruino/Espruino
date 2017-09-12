@@ -1138,6 +1138,12 @@ bool jsiAtEndOfInputLine() {
 }
 
 void jsiCheckErrors() {
+  if (interruptedDuringEvent) {
+    jspSetInterrupted(false);
+    interruptedDuringEvent = false;
+    jsiConsoleRemoveInputLine();
+    jsiConsolePrint("Execution Interrupted during event processing.\n");
+  }
   JsVar *exception = jspGetException();
   if (exception) {
     JsVar *process = jsvObjectGetChild(execInfo.root, "process", 0);
@@ -1176,6 +1182,27 @@ void jsiCheckErrors() {
   if (stackTrace) {
     jsiConsolePrintStringVar(stackTrace);
     jsvUnLock(stackTrace);
+  }
+  if (lastJsErrorFlags != jsErrorFlags) {
+    JsErrorFlags newErrors = jsErrorFlags & ~lastJsErrorFlags;
+    if (newErrors & ~JSERR_WARNINGS_MASK) {
+      JsVar *v = jswrap_espruino_getErrorFlagArray(newErrors);
+      JsVar *E = jsvObjectGetChild(execInfo.root, "E", 0);
+      if (E) {
+        JsVar *callback = jsvObjectGetChild(E, JS_EVENT_PREFIX"errorFlag", 0);
+        if (callback) {
+          jsiExecuteEventCallback(0, callback, 1, &v);
+          jsvUnLock(callback);
+        }
+        jsvUnLock(E);
+      }
+      if (v) {
+        jsiConsoleRemoveInputLine();
+        jsiConsolePrintf("New interpreter error: %v\n", v);
+        jsvUnLock(v);
+      }
+    }
+    lastJsErrorFlags = jsErrorFlags;
   }
 }
 
@@ -2071,24 +2098,6 @@ void jsiIdle() {
   // execute any outstanding events
   if (!jspIsInterrupted()) {
     jsiExecuteEvents();
-  }
-  if (interruptedDuringEvent) {
-    jspSetInterrupted(false);
-    interruptedDuringEvent = false;
-    jsiConsoleRemoveInputLine();
-    jsiConsolePrint("Execution Interrupted during event processing.\n");
-  }
-  if (lastJsErrorFlags != jsErrorFlags) {
-    JsErrorFlags newErrors = jsErrorFlags & ~lastJsErrorFlags;
-    if (newErrors & ~JSERR_WARNINGS_MASK) {
-      JsVar *v = jswrap_espruino_getErrorFlagArray(newErrors);
-      if (v) {
-        jsiConsoleRemoveInputLine();
-        jsiConsolePrintf("New interpreter error: %v\n", v);
-        jsvUnLock(v);
-      }
-    }
-    lastJsErrorFlags = jsErrorFlags;
   }
 
   // check for TODOs
