@@ -283,28 +283,6 @@ void jsiConsolePrintStringVar(JsVar *v) {
   jsiConsolePrintStringVarWithNewLineChar(v,0,0);
 }
 
-/** Assuming that we are at the end of the string, this backs up
- * and deletes it */
-void jsiConsoleEraseStringVarBackwards(JsVar *v) {
-  assert(jsvHasCharacterData(v));
-
-  size_t line, lines = jsvGetLinesInString(v);
-  for (line=lines;line>0;line--) {
-    size_t i,chars = jsvGetCharsOnLine(v, line);
-    if (line==lines) {
-      for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
-    }
-    for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
-    for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
-    if (line>1) {
-      // clear the character before - this would have had a colon
-      jsiConsolePrint("\x08 ");
-      // move cursor up
-      jsiConsolePrint("\x1B[A"); // 27,91,65 - up
-    }
-  }
-}
-
 /** Assuming that we are at fromCharacter position in the string var,
  * erase everything that comes AFTER and return the cursor to 'fromCharacter'
  * On newlines, if erasePrevCharacter, we remove the character before too. */
@@ -992,8 +970,8 @@ bool jsiIsInHistory(JsVar *line) {
 void jsiReplaceInputLine(JsVar *newLine) {
   if (jsiShowInputLine()) {
     size_t oldLen =  jsvGetStringLength(inputLine);
-    jsiMoveCursorChar(inputLine, inputCursorPos, oldLen); // move cursor to end
-    jsiConsoleEraseStringVarBackwards(inputLine);
+    jsiMoveCursorChar(inputLine, inputCursorPos, 0); // move cursor to start
+    jsiConsolePrint("\x1B[J"); // 27,91,74 - delete all to right and down
     jsiConsolePrintStringVarWithNewLineChar(newLine,0,':');
   }
   jsiInputLineCursorMoved();
@@ -1013,7 +991,8 @@ void jsiChangeToHistory(bool previous) {
     hasUsedHistory = true;
   } else if (!previous) { // if next, but we have something, just clear the line
     if (jsiShowInputLine()) {
-      jsiConsoleEraseStringVarBackwards(inputLine);
+      jsiMoveCursorChar(inputLine, inputCursorPos, 0); // move cursor to start
+      jsiConsolePrint("\x1B[J"); // 27,91,74 - delete all to right and down
     }
     jsiInputLineCursorMoved();
     jsvUnLock(inputLine);

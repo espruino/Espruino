@@ -10,6 +10,7 @@
             nRF5x: Fix issue with findDevices/setScan servicedata when all digits of service are numbers (eg "1809")
             Fix memory leak in tab completion code
             Add `E.errorFlag` event to allow JS to respond to internal errors
+            Use Esc[J VT100 code when cycling through command history (much faster REPL on low bandwidth connections)
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs
