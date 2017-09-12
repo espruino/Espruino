@@ -1,3 +1,24 @@
+# If we're trying to make a full binary and there's no bootloader,
+# create one automatically
+ifndef DFU_UPDATE_BUILD
+ifdef USE_BOOTLOADER
+ifndef BOOTLOADER
+ifeq ("$(wildcard $(NRF_BOOTLOADER))","")
+$(info *************************************************************)
+$(info NO BOOTLOADER $(NRF_BOOTLOADER) FOUND)
+$(info *************************************************************)
+$(info RUNNING MAKE CLEAN)
+$(info $(shell BOARD=$(BOARD) RELEASE=1 BOOTLOADER=1 make clean))
+$(info RUNNING MAKE TO CREATE BOOTLOADER)
+$(info $(shell BOARD=$(BOARD) RELEASE=1 BOOTLOADER=1 make))
+$(info *************************************************************)
+$(info BOOTLOADER BUILD COMPLETE)  
+$(info *************************************************************)
+endif 
+endif #BOOTLOADER
+endif #USE_BOOTLOADER
+endif #DFU_UPDATE_BUILD
+
 # Just try and get rid of the compile warnings.
 CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
 DEFINES += -D$(BOARD) -D$(CHIP)
