@@ -9,8 +9,8 @@ info = {
  'variables': 1720,
  'binary_name': 'espruino_%v_arduinodue.bin',
  'default_console' : "EV_SERIAL4",
- 'default_console_tx' : "1",
- 'default_console_rx' : "0",
+ 'default_console_tx' : "D1",
+ 'default_console_rx' : "D0",
  'default_console_baudrate' : "115200",
  'build' : {
   'optimizeflags' : '-Os',
@@ -35,22 +35,22 @@ chip = {
 };
 
 devices = {
- 'LED1' : { 'pin' : '13' },
- 'RX_PIN_NUMBER' : { 'pin' : '0'},
- 'TX_PIN_NUMBER' : { 'pin' : '1'}, 
+ 'LED1' : { 'pin' : 'D13' },
+ 'RX_PIN_NUMBER' : { 'pin' : 'D0'},
+ 'TX_PIN_NUMBER' : { 'pin' : 'D1'}, 
 }
 
 # left-right, from bottom to top - up is where the power jack is
 board = {
   'left' : [],
-  'right' : ['0', '1', '13'],
+  'right' : ['D0', 'D1', 'D13'],
 };
 
 def get_pins():
-  pins = pinutils.generate_pins(0,2)
-  pinutils.findpin(pins, "0", True)["functions"]["RXD"]=0;
-  pinutils.findpin(pins, "1", True)["functions"]["TXD"]=0;
-  pinutils.findpin(pins, "13", True)["functions"]["LED"]=0;
+  pins = pinutils.generate_pins(0,53)
+  pinutils.findpin(pins, "PD0", True)["functions"]["RXD"]=0;
+  pinutils.findpin(pins, "PD1", True)["functions"]["TXD"]=0;
+  pinutils.findpin(pins, "PD13", True)["functions"]["LED"]=0;
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;
