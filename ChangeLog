@@ -4,8 +4,14 @@
             Internal: Added jsvObjectSetChildVar/jsvObjectSetChildVar/jsvObjectSetChildVar
             Internal: Fix jsvCopy if given a NAME_INT/etc
             Added ES6's Object.assign
-            nNR5x: NRF.setScan now reads service data automatically
-            nNR5x: NRF.findDevices aggregates data from multiple advertising packets
+            nRF5x: NRF.setScan now reads service data automatically
+            nRF5x: NRF.findDevices aggregates data from multiple advertising packets
+            nRF5x: Remove app_uart and use nrf_drv_uart with double buffering - fix uart overflow errors (fix #1238)
+            nRF5x: Fix issue with findDevices/setScan servicedata when all digits of service are numbers (eg "1809")
+            Fix memory leak in tab completion code
+            Add `E.errorFlag` event to allow JS to respond to internal errors
+            Use Esc[J VT100 code when cycling through command history (much faster REPL on low bandwidth connections)
+            ESP8266: Remove debugger again as it will never work on 8266
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs

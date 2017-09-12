@@ -260,28 +260,6 @@ void jsiConsolePrintStringVar(JsVar *v) {
   jsiConsolePrintStringVarWithNewLineChar(v,0,0);
 }
 
-/** Assuming that we are at the end of the string, this backs up
- * and deletes it */
-void jsiConsoleEraseStringVarBackwards(JsVar *v) {
-  assert(jsvHasCharacterData(v));
-
-  size_t line, lines = jsvGetLinesInString(v);
-  for (line=lines;line>0;line--) {
-    size_t i,chars = jsvGetCharsOnLine(v, line);
-    if (line==lines) {
-      for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
-    }
-    for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
-    for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
-    if (line>1) {
-      // clear the character before - this would have had a colon
-      jsiConsolePrint("\x08 ");
-      // move cursor up
-      jsiConsolePrint("\x1B[A"); // 27,91,65 - up
-    }
-  }
-}
-
 /** Assuming that we are at fromCharacter position in the string var,
  * erase everything that comes AFTER and return the cursor to 'fromCharacter'
  * On newlines, if erasePrevCharacter, we remove the character before too. */
@@ -969,8 +947,8 @@ bool jsiIsInHistory(JsVar *line) {
 void jsiReplaceInputLine(JsVar *newLine) {
   if (jsiShowInputLine()) {
     size_t oldLen =  jsvGetStringLength(inputLine);
-    jsiMoveCursorChar(inputLine, inputCursorPos, oldLen); // move cursor to end
-    jsiConsoleEraseStringVarBackwards(inputLine);
+    jsiMoveCursorChar(inputLine, inputCursorPos, 0); // move cursor to start
+    jsiConsolePrint("\x1B[J"); // 27,91,74 - delete all to right and down
     jsiConsolePrintStringVarWithNewLineChar(newLine,0,':');
   }
   jsiInputLineCursorMoved();
@@ -990,7 +968,8 @@ void jsiChangeToHistory(bool previous) {
     hasUsedHistory = true;
   } else if (!previous) { // if next, but we have something, just clear the line
     if (jsiShowInputLine()) {
-      jsiConsoleEraseStringVarBackwards(inputLine);
+      jsiMoveCursorChar(inputLine, inputCursorPos, 0); // move cursor to start
+      jsiConsolePrint("\x1B[J"); // 27,91,74 - delete all to right and down
     }
     jsiInputLineCursorMoved();
     jsvUnLock(inputLine);
@@ -1115,6 +1094,12 @@ bool jsiAtEndOfInputLine() {
 }
 
 void jsiCheckErrors() {
+  if (interruptedDuringEvent) {
+    jspSetInterrupted(false);
+    interruptedDuringEvent = false;
+    jsiConsoleRemoveInputLine();
+    jsiConsolePrint("Execution Interrupted during event processing.\n");
+  }
   JsVar *exception = jspGetException();
   if (exception) {
     JsVar *process = jsvObjectGetChild(execInfo.root, "process", 0);
@@ -1153,6 +1138,27 @@ void jsiCheckErrors() {
   if (stackTrace) {
     jsiConsolePrintStringVar(stackTrace);
     jsvUnLock(stackTrace);
+  }
+  if (lastJsErrorFlags != jsErrorFlags) {
+    JsErrorFlags newErrors = jsErrorFlags & ~lastJsErrorFlags;
+    if (newErrors & ~JSERR_WARNINGS_MASK) {
+      JsVar *v = jswrap_espruino_getErrorFlagArray(newErrors);
+      JsVar *E = jsvObjectGetChild(execInfo.root, "E", 0);
+      if (E) {
+        JsVar *callback = jsvObjectGetChild(E, JS_EVENT_PREFIX"errorFlag", 0);
+        if (callback) {
+          jsiExecuteEventCallback(0, callback, 1, &v);
+          jsvUnLock(callback);
+        }
+        jsvUnLock(E);
+      }
+      if (v) {
+        jsiConsoleRemoveInputLine();
+        jsiConsolePrintf("New interpreter error: %v\n", v);
+        jsvUnLock(v);
+      }
+    }
+    lastJsErrorFlags = jsErrorFlags;
   }
 }
 
@@ -1267,7 +1273,7 @@ void jsiTabComplete() {
     if (actualPartialLen > data.partialLen) {
       // we had a token but were past the end of it when asked
       // to autocomplete ---> no token
-      jsvUnLock(data.partial);
+      jsvUnLock2(object, data.partial);
       return;
     } else if (actualPartialLen < data.partialLen) {
       JsVar *v = jsvNewFromStringVar(data.partial, 0, actualPartialLen);
@@ -1321,7 +1327,7 @@ void jsiTabComplete() {
     // Return the input line
     jsiConsoleReturnInputLine();
   }
-  jsvUnLock(object);
+  jsvUnLock2(object, data.partial);
   // apply the completion
   if (data.possible) {
     char buf[JSLEX_MAX_TOKEN_LENGTH];
@@ -2048,24 +2054,6 @@ void jsiIdle() {
   // execute any outstanding events
   if (!jspIsInterrupted()) {
     jsiExecuteEvents();
-  }
-  if (interruptedDuringEvent) {
-    jspSetInterrupted(false);
-    interruptedDuringEvent = false;
-    jsiConsoleRemoveInputLine();
-    jsiConsolePrint("Execution Interrupted during event processing.\n");
-  }
-  if (lastJsErrorFlags != jsErrorFlags) {
-    JsErrorFlags newErrors = jsErrorFlags & ~lastJsErrorFlags;
-    if (newErrors & ~JSERR_WARNINGS_MASK) {
-      JsVar *v = jswrap_espruino_getErrorFlagArray(newErrors);
-      if (v) {
-        jsiConsoleRemoveInputLine();
-        jsiConsolePrintf("New interpreter error: %v\n", v);
-        jsvUnLock(v);
-      }
-    }
-    lastJsErrorFlags = jsErrorFlags;
   }
 
   // check for TODOs

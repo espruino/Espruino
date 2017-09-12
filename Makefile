@@ -279,8 +279,12 @@ SOURCES += \
 libs/compression/compress_rle.c
 
 else
+
+ifneq ($(FAMILY),ESP8266)
 # If we have enough flash, include the debugger
+# ESP8266 can't do it because it expects tasks to finish within set time
 DEFINES+=-DUSE_DEBUGGER
+endif
 # Use use tab complete
 DEFINES+=-DUSE_TAB_COMPLETE
 
@@ -788,7 +792,7 @@ endif
 
 clean:
 	@echo Cleaning targets
-	$(Q)find . -name \*.o | grep -v arm-bcm2708 | xargs rm -f
+	$(Q)find . -name \*.o | grep -v "./arm-bcm2708\|./gcc-arm-none-eabi" | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
 	$(Q)rm -f $(ROOT)/scripts/*.pyc $(ROOT)/boards/*.pyc
 	$(Q)rm -f $(PROJ_NAME).elf

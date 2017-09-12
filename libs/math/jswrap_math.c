@@ -449,7 +449,7 @@ Wrap a number around if it is less than 0 or greater than or equal to max. For i
   "name" : "min",
   "generate_full" : "jswrap_math_minmax(args, false)",
   "params" : [
-    ["args","JsVarArray","A floating point value to clip"]
+    ["args","JsVarArray","Floating point values to clip"]
   ],
   "return" : ["float","The minimum of the supplied values"]
 }
@@ -461,7 +461,7 @@ Find the minimum of a series of numbers
   "name" : "max",
   "generate_full" : "jswrap_math_minmax(args, true)",
   "params" : [
-    ["args","JsVarArray","A floating point value to clip"]
+    ["args","JsVarArray","Floating point values to clip"]
   ],
   "return" : ["float","The maximum of the supplied values"]
 }

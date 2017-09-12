@@ -1,3 +1,24 @@
+# If we're trying to make a full binary and there's no bootloader,
+# create one automatically
+ifndef DFU_UPDATE_BUILD
+ifdef USE_BOOTLOADER
+ifndef BOOTLOADER
+ifeq ("$(wildcard $(NRF_BOOTLOADER))","")
+$(info *************************************************************)
+$(info NO BOOTLOADER $(NRF_BOOTLOADER) FOUND)
+$(info *************************************************************)
+$(info RUNNING MAKE CLEAN)
+$(info $(shell BOARD=$(BOARD) RELEASE=1 BOOTLOADER=1 make clean))
+$(info RUNNING MAKE TO CREATE BOOTLOADER)
+$(info $(shell BOARD=$(BOARD) RELEASE=1 BOOTLOADER=1 make))
+$(info *************************************************************)
+$(info BOOTLOADER BUILD COMPLETE)  
+$(info *************************************************************)
+endif 
+endif #BOOTLOADER
+endif #USE_BOOTLOADER
+endif #DFU_UPDATE_BUILD
+
 # Just try and get rid of the compile warnings.
 CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
 DEFINES += -D$(BOARD) -D$(CHIP)
@@ -51,7 +72,6 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fds
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
-INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/timer
@@ -75,7 +95,6 @@ $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
 $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c \
 $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
-$(NRF5X_SDK_PATH)/components/libraries/uart/app_uart.c \
 $(NRF5X_SDK_PATH)/components/libraries/fds/fds.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \

@@ -1238,14 +1238,14 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
             JsVar *s = bleUUID128ToStr((uint8_t*)&dPtr[i+2]);
             jsvArrayPushAndUnLock(services, s);
           }  else if (field_type == BLE_GAP_AD_TYPE_SERVICE_DATA) { // 0x16 - service data 16 bit UUID
-            const char name[] = {
-              itoch(((unsigned char)dPtr[i+3])>>4),
-              itoch(((unsigned char)dPtr[i+3])&15),
-              itoch(((unsigned char)dPtr[i+2])>>4),
-              itoch(((unsigned char)dPtr[i+2])&15),
-              0
-            };
-            jsvObjectSetChildAndUnLock(servicedata, name, jsvNewArrayBufferWithData(field_length-3, (unsigned char*)&dPtr[i+4]));
+            JsVar *childName = jsvAsArrayIndexAndUnLock(jsvVarPrintf("%04x", UNALIGNED_UINT16(&dPtr[i+2])));
+            if (childName) {
+              JsVar *child = jsvFindChildFromVar(servicedata, childName, true);
+              JsVar *value = jsvNewArrayBufferWithData(field_length-3, (unsigned char*)&dPtr[i+4]);
+              if (child && value) jsvSetValueOfName(child, value);
+              jsvUnLock2(child, value);
+            }
+            jsvUnLock(childName);
            }// or unknown...
           i += field_length + 1;
         }

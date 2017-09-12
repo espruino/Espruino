@@ -34,6 +34,9 @@ This class contains information about Espruino itself
 This event is called when an exception gets thrown and isn't caught (eg. it gets all the way back to the event loop).
 
 You can use this for logging potential problems that might occur during execution.
+
+**Note:** When this is used, exceptions will cease to be reported on the console - which
+may make debugging difficult!
 */
 
 /*JSON{
