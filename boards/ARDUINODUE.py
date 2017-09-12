@@ -26,7 +26,7 @@ chip = {
  'package': "LQFP144",
  'ram': 96,
  'flash': 512,
- 'speed': 84usa,
+ 'speed': 84,
  'usart': 4,
  'spi': 4,
  'i2c': 2,
@@ -54,4 +54,4 @@ def get_pins():
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;
-return pins
+  return pins
