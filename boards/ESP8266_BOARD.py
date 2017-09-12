@@ -26,7 +26,7 @@ info = {
      'NET',
      'TELNET',
      #'GRAPHICS',
-     #'CRYPTO', # disabled for now as not enougn flash memory
+     'CRYPTO',
      'NEOPIXEL',
    ]
  }
