@@ -42,9 +42,13 @@ combined: $(ESP_COMBINED)
 # generate partially linked .o with all Espruino source files linked
 $(PARTIAL): $(OBJS) $(LINKER_FILE)
 	@echo LD $@
+        # super super hacky - renaming stuff that seems to stop the boot so it doesn't get put into flash
+	find libs/network -name "*.o" | xargs -I{} $(Q)$(OBJCOPY) --rename-section .rodata.str1.1=.rodata.str1.1x {}
+	find targets/esp8266 -name "*.o" | xargs -I{} $(Q)$(OBJCOPY) --rename-section .rodata.str1.1=.rodata.str1.1x {}
+        # merge everything into one file
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
 	# Hacky - move all of Espruino's stuff into ROM. Can't we move more of the standard library?
-	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text  $@
+	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text --rename-section .rodata.str1.1=.irom0.text --rename-section .rodata.str1.4=.irom0.text $@
 	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal $@
 
 # generate fully linked 'user1' .elf using linker script for first OTA partition
