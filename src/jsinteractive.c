@@ -1290,7 +1290,7 @@ void jsiTabComplete() {
     if (actualPartialLen > data.partialLen) {
       // we had a token but were past the end of it when asked
       // to autocomplete ---> no token
-      jsvUnLock(data.partial);
+      jsvUnLock2(object, data.partial);
       return;
     } else if (actualPartialLen < data.partialLen) {
       JsVar *v = jsvNewFromStringVar(data.partial, 0, actualPartialLen);
@@ -1344,7 +1344,7 @@ void jsiTabComplete() {
     // Return the input line
     jsiConsoleReturnInputLine();
   }
-  jsvUnLock(object);
+  jsvUnLock2(object, data.partial);
   // apply the completion
   if (data.possible) {
     char buf[JSLEX_MAX_TOKEN_LENGTH];
