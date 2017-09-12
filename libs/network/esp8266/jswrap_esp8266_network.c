@@ -1141,23 +1141,6 @@ void jswrap_ESP8266_wifi_reset() {
   DBGV("< Wifi reset\n");
 }
 
-// This function is called in the user_main's user_init() to set-up the wifi based on what
-// was saved in flash. This will restore the settings from flash into the SDK so the SDK
-// fires-up the right AP/STA modes and connections.
-void   jswrap_ESP8266_wifi_init1() {
-  DBGV("> Wifi.init1\n");
-
-  jswrap_wifi_restore();
-
-  // register the state change handler so we get debug printout for sure
-  wifi_set_event_handler_cb(wifiEventHandler);
-
-  // tell the SDK to let us have 10 connections
-  espconn_tcp_set_max_con(MAX_SOCKETS);
-  DBG("< Wifi init1, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
-}
-
-
 /*JSON{
   "type":"init",
   "generate":"jswrap_ESP8266_wifi_soft_init"
@@ -1167,6 +1150,24 @@ void   jswrap_ESP8266_wifi_init1() {
 // init_done() and also from `reset()` in order to re-hook-up the network.
 */
 void jswrap_ESP8266_wifi_soft_init() {
+  static bool first = true;
+  if (first) {
+    first = false;
+    // This sets up the wifi based on what
+    // was saved in flash. This will restore the settings from flash into the SDK so the SDK
+    // fires-up the right AP/STA modes and connections.
+    DBGV("> Wifi.init1\n");
+
+    jswrap_wifi_restore();
+
+    // register the state change handler so we get debug printout for sure
+    wifi_set_event_handler_cb(wifiEventHandler);
+
+    // tell the SDK to let us have 10 connections
+    espconn_tcp_set_max_con(MAX_SOCKETS);
+    DBG("< Wifi init1, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
+  }
+
   DBGV("> Wifi.soft_init\n");
 
   // initialize the network stack

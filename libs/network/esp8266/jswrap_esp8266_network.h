@@ -23,7 +23,6 @@
 #define LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_
 #include "jsvar.h"
 
-void   jswrap_ESP8266_wifi_init1();
 void   jswrap_ESP8266_wifi_soft_init();
 
 #endif /* LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_ */

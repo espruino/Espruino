@@ -46,12 +46,6 @@ static void mainLoop();
 // The task queue for the app
 static os_event_t taskAppQueue[TASK_QUEUE_LENGTH];
 
-// Flag indicating whether or not main loop processing is suspended.
-static bool suspendMainLoopFlag = false;
-
-// Time structure for main loop time suspension.
-static os_timer_t mainLoopSuspendTimer;
-
 // --- Globals
 
 uint16_t espFlashKB; // KB of flash (512, 1024, 2048, 4096)
@@ -136,26 +130,6 @@ static void queueTaskMainLoop() {
   system_os_post(TASK_APP_QUEUE, TASK_APP_MAINLOOP, 0);
 }
 
-
-/**
- * Suspend processing the main loop for a period of time.
- */
-void suspendMainLoop(
-    uint32 interval //!< suspension interval in milliseconds
-  ) {
-  suspendMainLoopFlag = true;
-  os_timer_arm(&mainLoopSuspendTimer, interval, 0 /* No repeat */);
-}
-
-
-/**
- * Enable main loop processing.
- */
-static void enableMainLoop() {
-  suspendMainLoopFlag = false;
-  queueTaskMainLoop();
-}
-
 /**
  * Idle callback from the SDK, triggers an idle loop iteration
  */
@@ -203,6 +177,7 @@ static void eventHandler(
 
 
 static uint32 lastTime = 0;
+int ctr = 10000;
 
 /**
  * Perform the main loop processing.
@@ -210,9 +185,6 @@ static uint32 lastTime = 0;
  * as often as possible.
  */
 static void mainLoop() {
-  if (suspendMainLoopFlag == true) {
-    return;
-  }
   jsiLoop();
 
 #ifdef EPS8266_BOARD_HEARTBEAT
@@ -227,8 +199,7 @@ static void mainLoop() {
 #endif
 
   // Setup for another callback
-  //queueTaskMainLoop();
-  suspendMainLoop(0); // HACK to get around SDK 1.4 bug
+  queueTaskMainLoop();
 }
 
 
@@ -240,6 +211,9 @@ static void mainLoop() {
 static void initDone() {
   os_printf("> initDone\n");
   otaInit(88);
+
+  // Time to initialize Wifi so it comes up the way we want it
+  //jswrap_ESP8266_wifi_init1();
 
   extern void gdbstub_init();
   gdbstub_init();
@@ -258,7 +232,6 @@ static void initDone() {
   // At this point, our JavaScript environment should be up and running.
 
   // Register the idle callback handler to run the main loop
-  //ets_set_idle_cb(idle_cb, NULL); //
   queueTaskMainLoop(); // get things going without idle callback
 
   os_printf("< initDone\n");
@@ -337,11 +310,6 @@ void user_init() {
 
   espFlashKB = flash_kb[system_get_flash_size_map()];
 
-  // Time to initialize Wifi so it comes up the way we want it
-  jswrap_ESP8266_wifi_init1();
-
   // Register the ESP8266 initialization callback.
   system_init_done_cb(initDone);
-
-  os_timer_setfn(&mainLoopSuspendTimer, enableMainLoop, NULL);
 }
