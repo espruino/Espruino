@@ -211,6 +211,8 @@ elif board.chip["family"]=="ESP8266":
   board.chip["class"]="ESP8266"
 elif board.chip["family"]=="ESP32":
   board.chip["class"]="ESP32"
+elif board.chip["family"]=="samd":
+  board.chip["class"]="samd"
 else:
   die('Unknown chip family '+board.chip["family"])
 
