@@ -164,6 +164,7 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
 #endif
   case JSH_USART1: if (fInfo==JSH_USART_RX) NRF_UART0->PSELRXD = pin;
                    else NRF_UART0->PSELTXD = pin;
+                   // TODO: do we need to disable the UART driver if both pins are undefined?
                    break;
 #if SPI_ENABLED
   case JSH_SPI1: if (fInfo==JSH_SPI_MISO) NRF_SPI0->PSELMISO = pin;
