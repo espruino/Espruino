@@ -43,8 +43,8 @@ combined: $(ESP_COMBINED)
 $(PARTIAL): $(OBJS) $(LINKER_FILE)
 	@echo LD $@
         # super super hacky - renaming stuff that seems to stop the boot so it doesn't get put into flash
-	find libs/network -name "*.o" | xargs -I{} $(Q)$(OBJCOPY) --rename-section .rodata.str1.1=.rodata.str1.1x {}
-	find targets/esp8266 -name "*.o" | xargs -I{} $(Q)$(OBJCOPY) --rename-section .rodata.str1.1=.rodata.str1.1x {}
+	find libs/network -name "*.o" | xargs -I{} $(OBJCOPY) --rename-section .rodata.str1.1=.rodata.str1.1x {}
+	find targets/esp8266 -name "*.o" | xargs -I{} $(OBJCOPY) --rename-section .rodata.str1.1=.rodata.str1.1x {}
         # merge everything into one file
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
 	# Hacky - move all of Espruino's stuff into ROM. Can't we move more of the standard library?
