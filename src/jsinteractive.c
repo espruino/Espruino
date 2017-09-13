@@ -813,7 +813,7 @@ void jsiSemiInit(bool autoLoad) {
           "|   __|_ -| . |  _| | | |   | . |\n"
           "|_____|___|  _|_| |___|_|_|_|___|\n"
           "          |_| http://espruino.com\n"
-          " "JS_VERSION" Copyright 2016 G.Williams\n"
+          " "JS_VERSION" Copyright 2017 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
 #if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS)
