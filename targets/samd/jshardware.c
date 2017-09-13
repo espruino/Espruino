@@ -31,7 +31,7 @@
 // SAMD Includes
 #include "../../targetlibs/samd/include/due_sam3x.init.h"
 
-#define SYSCLK_FREQ 48000000 // Using standard HFXO freq
+#define SYSCLK_FREQ 84000000 // Using standard HFXO freq
 #define USE_RTC
 
 //---------------------- RTC/clock ----------------------------/
