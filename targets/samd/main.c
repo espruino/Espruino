@@ -16,9 +16,6 @@
 #include "jsinteractive.h"
 #include "jshardware.h"
 
-#include "em_gpio.h"
-#include "em_cmu.h"
-
 int main() {
 
   jshInit();
@@ -26,7 +23,6 @@ int main() {
   jsvInit();
 
   bool buttonState = false;
-  buttonState = jshPinInput(BTN1_PININDEX) == BTN1_ONSTATE;
 
   jsiInit(!buttonState); // holding down USER button skips autoload
   
