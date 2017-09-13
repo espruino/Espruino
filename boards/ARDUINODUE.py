@@ -22,7 +22,7 @@ info = {
 };
 chip = {
  'part': "ATSAM3X8E",
- 'family': "samd",
+ 'family': "SAMD",
  'package': "LQFP144",
  'ram': 96,
  'flash': 512,
