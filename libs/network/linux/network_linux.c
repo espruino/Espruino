@@ -128,14 +128,15 @@ int net_linux_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
       return 0;
     }
 
-    int optval = 1;
-    if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
-      jsWarn("setsockopt(SO_REUSADDR) failed\n");
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "reuseAddr", 0))) {
+      int optval = 1;
+      if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
+        jsWarn("setsockopt(SO_REUSADDR) failed\n");
 #ifdef SO_REUSEPORT
-    if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
-      jsWarn("setsockopt(SO_REUSPORT) failed\n");
+      if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
+        jsWarn("setsockopt(SO_REUSPORT) failed\n");
 #endif
-
+    }
 
     int nret;
     sockaddr_in serverInfo;
