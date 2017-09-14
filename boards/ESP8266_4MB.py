@@ -51,8 +51,8 @@ chip = {
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {
-    # 0x300000 + 4096 * (256 - 16save - 1wifi -4reserved) 
-    'address' :  0x3EB000, # first page is used for wifi save 
+    # 0x000000 + 4096 * (256 - 16save - 1wifi -4reserved) 
+    'address' :  0x0EB000, # first page is used for wifi save 
     'page_size' : 4096,
     'pages' : 16,
     'flash_available' : 940, # firmware can be up to this size
