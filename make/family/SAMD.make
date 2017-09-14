@@ -31,7 +31,7 @@ LINKER_FILE=$(ROOT)/targetlibs/samd/sam/linker_scripts/gcc/flash.ld
 SOURCES += targets/samd/jshardware.c
 
 SOURCES += targets/samd/main.c
-LDFLAGS += $(INCLUDES) --entry=Reset_Handler $(ROOT)/targetlibs/samd/lib/libsam_sam3x8e_gcc_rel.a
+LDFLAGS += $(INCLUDES) --entry=Reset_Handler $(ROOT)/targetlibs/samd/lib/libsam_sam3x8e_gcc_rel.a -mthumb
 
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
