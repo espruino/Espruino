@@ -283,34 +283,9 @@ void jsiConsolePrintStringVar(JsVar *v) {
   jsiConsolePrintStringVarWithNewLineChar(v,0,0);
 }
 
-/** Assuming that we are at fromCharacter position in the string var,
- * erase everything that comes AFTER and return the cursor to 'fromCharacter'
- * On newlines, if erasePrevCharacter, we remove the character before too. */
-void jsiConsoleEraseStringVarFrom(JsVar *v, size_t fromCharacter, bool erasePrevCharacter) {
-  assert(jsvHasCharacterData(v));
-  size_t cursorLine, cursorCol;
-  jsvGetLineAndCol(v, fromCharacter, &cursorLine, &cursorCol);
-  // delete contents of current line
-  size_t i, chars = jsvGetCharsOnLine(v, cursorLine);
-  for (i=cursorCol;i<=chars;i++) jsiConsolePrintChar(' ');
-  for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
-
-  size_t line, lines = jsvGetLinesInString(v);
-  for (line=cursorLine+1;line<=lines;line++) {
-    jsiConsolePrint("\x1B[B"); // move down
-    chars = jsvGetCharsOnLine(v, line);
-    for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
-    for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
-    if (erasePrevCharacter) {
-      jsiConsolePrint("\x08 "); // move cursor back and insert space
-    }
-  }
-  // move the cursor back up
-  for (line=cursorLine+1;line<=lines;line++)
-    jsiConsolePrint("\x1B[A"); // 27,91,65 - up
-  // move the cursor forwards
-  for (i=1;i<cursorCol;i++)
-    jsiConsolePrint("\x1B[C"); // 27,91,67 - right
+/** Erase everything from the cursor position onwards */
+void jsiConsoleEraseAfterCursor() {
+  jsiConsolePrint("\x1B[J"); // 27,91,74 - delete all to right and down
 }
 
 void jsiMoveCursor(size_t oldX, size_t oldY, size_t newX, size_t newY) {
@@ -348,9 +323,9 @@ void jsiConsoleRemoveInputLine() {
   if (!inputLineRemoved) {
     inputLineRemoved = true;
     if (jsiEcho() && inputLine) { // intentionally not using jsiShowInputLine()
-      jsiMoveCursorChar(inputLine, inputCursorPos, 0);
-      jsiConsoleEraseStringVarFrom(inputLine, 0, true);
-      jsiConsolePrintChar(0x08); // go back to start of line
+      jsiMoveCursorChar(inputLine, inputCursorPos, 0); // move cursor to start of line
+      jsiConsolePrintChar('\r'); // go propery to start of line - past '>'
+      jsiConsoleEraseAfterCursor(); // delete all to right and down
 #ifdef USE_DEBUGGER
       if (jsiStatus & JSIS_IN_DEBUGGER) {
         jsiConsolePrintChar(0x08); // d
@@ -971,7 +946,7 @@ void jsiReplaceInputLine(JsVar *newLine) {
   if (jsiShowInputLine()) {
     size_t oldLen =  jsvGetStringLength(inputLine);
     jsiMoveCursorChar(inputLine, inputCursorPos, 0); // move cursor to start
-    jsiConsolePrint("\x1B[J"); // 27,91,74 - delete all to right and down
+    jsiConsoleEraseAfterCursor(); // delete all to right and down
     jsiConsolePrintStringVarWithNewLineChar(newLine,0,':');
   }
   jsiInputLineCursorMoved();
@@ -992,7 +967,7 @@ void jsiChangeToHistory(bool previous) {
   } else if (!previous) { // if next, but we have something, just clear the line
     if (jsiShowInputLine()) {
       jsiMoveCursorChar(inputLine, inputCursorPos, 0); // move cursor to start
-      jsiConsolePrint("\x1B[J"); // 27,91,74 - delete all to right and down
+      jsiConsoleEraseAfterCursor(); // delete all to right and down
     }
     jsiInputLineCursorMoved();
     jsvUnLock(inputLine);
@@ -1026,7 +1001,7 @@ void jsiHandleDelete(bool isBackspace) {
       (!isBackspace && jsvGetCharInString(inputLine,inputCursorPos)=='\n');
   // If we mod this to keep the string, use jsiIsAboutToEditInputLine
   if (deleteNewline && jsiShowInputLine()) {
-    jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, true/*before newline*/); // erase all in front
+    jsiConsoleEraseAfterCursor(); // erase all in front
     if (isBackspace) {
       // delete newline char
       jsiConsolePrint("\x08 "); // delete and then send space
@@ -1409,7 +1384,7 @@ void jsiHandleNewLine(bool execute) {
     }
   } else { // new line - but not at end of line!
     jsiIsAboutToEditInputLine();
-    if (jsiShowInputLine()) jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, false/*no need to erase the char before*/); // erase all in front
+    if (jsiShowInputLine()) jsiConsoleEraseAfterCursor(); // erase all in front
     JsVar *v = jsvNewFromEmptyString();
     if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
     jsvAppendCharacter(v, '\n');
@@ -1485,6 +1460,7 @@ void jsiHandleChar(char ch) {
     inputState = IS_NONE; // ignore 0 - it's scary
   } else if (ch == 1) { // Ctrl-a
     jsiHandleHome();
+    // Ctrl-C (char code 3) gets handled in an IRQ
   } else if (ch == 4) { // Ctrl-d
     jsiHandleDelete(false/*not backspace*/);
   } else if (ch == 5) { // Ctrl-e
