@@ -78,8 +78,6 @@ BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 /// For flash - whether it is busy or not...
 volatile bool flashIsBusy = false;
 volatile bool hadEvent = false; // set if we've had an event we need to deal with
-bool uartIsSending = false;
-bool uartInitialised = false;
 unsigned int ticksSinceStart = 0;
 
 JshPinFunction pinStates[JSH_PIN_COUNT];
@@ -95,7 +93,8 @@ bool twi1Initialised = false;
 static const nrf_drv_uart_t UART0 = NRF_DRV_UART_INSTANCE(0);
 static uint8_t uart0rxBuffer[2]; // 2 char buffer
 static uint8_t uart0txBuffer[1];
-
+bool uartIsSending = false;
+bool uartInitialised = false;
 
 const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
@@ -227,15 +226,16 @@ void jshInit() {
   nrf_utils_lfclk_config_and_start();
 
 #ifdef DEFAULT_CONSOLE_RX_PIN
-#if !defined(NRF51822DK) && !defined(NRF52832DK)
   // Only init UART if something is connected and RX is pulled up on boot...
-  // For some reason this may not work correctly when compiled with `-Os`
+  /* Some devices (nRF52DK) use a very weak connection to the UART.
+   * So much so that even turning on the PULLDOWN resistor is enough to
+   * pull it down to 0. In these cases use the pulldown for a while,
+   * but then turn it off and wait to see if the value rises back up. */
   jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+  jshDelayMicroseconds(10);
+  jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN);
+  jshDelayMicroseconds(10);
   if (jshPinGetValue(DEFAULT_CONSOLE_RX_PIN)) {
-#else
-  if (true) { // need to force UART for nRF51DK
-#endif
-    jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN);
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
     inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
@@ -835,25 +835,6 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   if (device==EV_SERIAL1) return uartInitialised;
   return false;
 }
-/*
-void uart0_event_handle(app_uart_evt_t * p_event) {
-  jshHadEvent();
-  if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
-
-  } else if (p_event->evt_type == APP_UART_TX_EMPTY) {
-    int ch = jshGetCharToTransmit(EV_SERIAL1);
-    if (ch >= 0) {
-      uartIsSending = true;
-      while (app_uart_put((uint8_t)ch) != NRF_SUCCESS);
-    } else
-      uartIsSending = false;
-  } else if (p_event->evt_type == APP_UART_DATA) {
-    uint8_t character;
-    while (app_uart_get(&character) != NRF_SUCCESS);
-    jshPushIOCharEvent(EV_SERIAL1, (char) character);
-  }
-}
-*/
 
 void uart0_startrx() {
   uint32_t err_code;
@@ -916,6 +897,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     uartInitialised = false;
     nrf_drv_uart_uninit(&UART0);
   }
+  uartIsSending = false;
 
   // APP_UART_INIT will set pins, but this ensures we know so can reset state later
   jshPinSetFunction(inf->pinRX, JSH_USART1|JSH_USART_RX);
@@ -935,7 +917,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
   uint32_t err_code = nrf_drv_uart_init(&UART0, &config, uart0_event_handle);
   if (err_code) {
-    jsExceptionHere(JSET_INTERNALERROR, "nrf_drv_uart_init failed, error %d", err_code);
+    jsWarn("nrf_drv_uart_init failed, error %d", err_code);
   } else {
     // Turn on receiver if RX pin is connected
     if (config.pselrxd != 0xFFFFFFFF) {
