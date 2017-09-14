@@ -294,8 +294,6 @@ typedef struct {
   mbedtls_ssl_config conf;
 } SSLSocketData;
 
-BITFIELD_DECL(socketIsHTTPS, 32);
-
 static void ssl_debug( void *ctx, int level,
                       const char *file, int line, const char *str )
 {
@@ -334,8 +332,6 @@ int ssl_entropy(void *data, unsigned char *output, size_t len ) {
 }
 
 void ssl_freeSocketData(int sckt) {
-  BITFIELD_SET(socketIsHTTPS, sckt, 0);
-
   JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", 0);
   if (!ssl) return;
   JsVar *scktVar = jsvNewFromInteger(sckt);
@@ -674,10 +670,8 @@ int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsign
 
 #ifdef USE_TLS
   assert(sckt>=0 && sckt<32);
-  BITFIELD_SET(socketIsHTTPS, sckt, 0);
   if (socketType & ST_TLS) {
     if (ssl_newSocketData(sckt, options)) {
-      BITFIELD_SET(socketIsHTTPS, sckt, 1);
     } else {
       return -1; // fail!
     }
@@ -686,9 +680,9 @@ int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsign
   return sckt;
 }
 
-void netCloseSocket(JsNetwork *net, int sckt) {
+void netCloseSocket(JsNetwork *net, SocketType socketType, int sckt) {
 #ifdef USE_TLS
-  if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+  if (socketType & ST_TLS) {
     ssl_freeSocketData(sckt);
   }
 #endif
@@ -705,7 +699,7 @@ void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
 
 int netRecv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
 #ifdef USE_TLS
-  if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+  if (socketType & ST_TLS) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
     if (!sd) return -1;
     if (sd->connecting) return 0; // busy
@@ -723,7 +717,7 @@ int netRecv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t l
 
 int netSend(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
 #ifdef USE_TLS
-  if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+  if (socketType & ST_TLS) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
     if (!sd) return -1;
     if (sd->connecting) return 0; // busy
