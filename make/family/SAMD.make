@@ -7,6 +7,15 @@ ARM_HAS_OWN_CMSIS=1
 DEFINES += -DARM
 export CCPREFIX?=arm-none-eabi-
 
+CROSS_COMPILE = arm-none-eabi-
+AR = $(CROSS_COMPILE)ar
+CC = $(CROSS_COMPILE)gcc
+CXX = $(CROSS_COMPILE)g++
+AS = $(CROSS_COMPILE)as
+NM = $(CROSS_COMPILE)nm
+LKELF = $(CROSS_COMPILE)g++
+OBJCP = $(CROSS_COMPILE)objcopy
+
 INCLUDE += -I$(ROOT)/targetlibs/samd/include
 INCLUDE += -I$(ROOT)/targetlibs/samd/sam
 INCLUDE += -I$(ROOT)/targetlibs/samd/sam/libsam
@@ -22,7 +31,7 @@ LINKER_FILE=$(ROOT)/targetlibs/samd/sam/linker_scripts/gcc/flash.ld
 SOURCES += targets/samd/jshardware.c
 
 SOURCES += targets/samd/main.c
-LDFLAGS += $(INCLUDES)
+LDFLAGS += $(INCLUDES) --entry=Reset_Handler $(ROOT)/targetlibs/samd/lib/libsam_sam3x8e_gcc_rel.a
 
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition

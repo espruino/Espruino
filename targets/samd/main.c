@@ -17,7 +17,6 @@
 #include "jshardware.h"
 
 int main() {
-
   jshInit();
   
   jsvInit();
@@ -30,8 +29,4 @@ int main() {
   {
     jsiLoop();
   }
-  
-  //jsiKill();
-  //jsvKill();
-  //jshKill();
 }
