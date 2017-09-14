@@ -66,6 +66,14 @@ CFLAGS+= -fno-builtin \
 -Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
 -Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals
 
+# only use mfore-l32 if 4MB board for now
+ifdef FLASH_4MB 
+MFORCE32 = `xtensa-lx106-elf-gcc --help=target | grep mforce-l32`
+ifneq ($(MFORCE32),)
+CFLAGS += -mforce-l32
+endif
+endif
+
 #
 # The Root of the ESP8266_SDK distributed by Espressif
 # This must be supplied as a Make environment variable.
