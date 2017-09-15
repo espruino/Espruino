@@ -118,24 +118,31 @@ void EMAC_Handler       (void) __attribute__ ((weak, alias("__phantom_handler"))
 void CAN0_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
 void CAN1_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
 
+void jshInterruptOff() {
+	__disable_irq();
+}
+
+void jshInterruptOn() {
+	__enable_irq();
+}
+
 // Uart Receive does only loopback for now
 void UART_Handler() {
 	uint32_t status = UART->UART_SR;
 	if((status & UART_SR_RXRDY) == UART_SR_RXRDY) {
 		while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
 		//UART->UART_THR = UART->UART_RHR;
-		uint8_t test = UART->UART_RHR;
-		UART->UART_THR = test;
+		uint8_t mychar = UART->UART_RHR;
+		jshPushIOCharEvent(EV_SERIAL1, mychar);
 	}
 }
 
 
 void jshInit() {
-	// Send "Hello World" over TX1 to say that we're there!
-	
 	/* The general init (clock, libc, watchdog ...) */
 	init_controller();
 
+	/* Init the UART for REPL */
 	// Set I/O Pins for UART to Output
 	PIO_Configure(PIOA, PIO_PERIPH_A,PIO_PA8A_URXD|PIO_PA9A_UTXD, PIO_DEFAULT);
 
@@ -169,63 +176,170 @@ void jshInit() {
 
         /* Board pin 13 == PB27 */
         PIO_Configure(PIOB, PIO_OUTPUT_1, PIO_PB27, PIO_DEFAULT);
+}
 
-	/* Main loop */
-	while(1) {
-               Sleep(5000);
+void jshIdle() {
+        /* While we're idle, we check for UART Transmit */
+        int check_char = jshGetCharToTransmit(EV_SERIAL1);
+        if (check_char >= 0)
+        {
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+                        UART->UART_THR = check_char;
+        }
+}
 
-				// Now send Hello World, one char at a time, whenever the UART Transmitter is ready!
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = 'H';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = 'e';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = 'l';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = 'l';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = 'o';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = ' ';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = 'W';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = 'o';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = 'r';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = 'l';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = 'd';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = '!';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = '!';
-				
-                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-				UART->UART_THR = '!';
+void jshUSARTKick(IOEventFlags device) {
+}
 
-		/* And blink the LED */
-		if(PIOB->PIO_ODSR & PIO_PB27) {
-			/* Set clear register */
-                       	PIOB->PIO_CODR = PIO_PB27;
-               	} else {
-                	/* Set set register */
-                       	PIOB->PIO_SODR = PIO_PB27;
-               	}
- 	}
- 	
+void jshPinSetValue(Pin pin, bool value) {
+}
+
+JsVarFloat jshPinAnalog(Pin pin) {
 	return 0;
+}
+
+JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
+	return 0;
+}
+
+JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
+	return 0;
+}
+
+void jshFlashErasePage(uint32_t addr) {
+}
+
+bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
+	return false;
+}
+
+void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
+}
+
+void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
+}
+
+JsSysTime jshGetSystemTime() {
+	return 0;
+}
+
+bool jshIsInInterrupt() {
+	return false;
+}
+
+void jshPinSetState(Pin pin, JshPinState state) {
+}
+
+void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+}
+
+void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
+}
+
+void jshSPISet16(IOEventFlags device, bool is16) {
+}
+
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+}
+
+void jshSPIWait(IOEventFlags device) {
+}
+
+bool jshIsDeviceInitialised(IOEventFlags device) {
+	return false;
+}
+
+void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
+}
+
+bool jshPinGetValue(Pin pin) {
+}
+
+void jshDelayMicroseconds(int microsec) {
+}
+
+void jshEnableWatchDog(JsVarFloat timeout) {
+}
+
+void jshKickWatchDog() {
+}
+
+int jshGetSerialNumber(unsigned char *data, int maxChars) {
+	return 666;
+}
+
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+	return JSH_NOTHING;
+}
+
+void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
+}
+
+JshPinState jshPinGetState(Pin pin) {
+	return 0;
+}
+
+bool jshCanWatch(Pin pin) {
+	return false;
+}
+
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+	return EV_NONE;
+}
+
+void jshSetSystemTime(JsSysTime newTime) {
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+	return 0;
+}
+
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
+}
+
+JsVar *jshFlashGetFree() {
+	return 0;
+}
+
+JshPinFunction jshGetCurrentPinFunction(Pin pin) {
+	return JSH_NOTHING;
+}
+
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
+}
+
+void jshUtilTimerStart(JsSysTime period) {
+}
+
+int jshSPISend(IOEventFlags device, int data) {
+	return -1;
+}
+
+void jshSPISend16(IOEventFlags device, int data) {
+}
+
+JsVarFloat jshReadTemperature() {
+	return 0;
+}
+
+JsVarFloat jshReadVRef() {
+	return 0;
+}
+
+bool jshSleep(JsSysTime timeUntilWake) {
+	return false;
+}
+
+void jshReset() {
+}
+
+bool jshIsEventForPin(IOEvent *event, Pin pin) {
+	return false;
+}
+
+void jshUtilTimerDisable() {
+}
+
+unsigned int jshGetRandomNumber() {
+	return 1234;
 }
