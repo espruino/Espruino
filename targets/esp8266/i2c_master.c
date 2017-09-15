@@ -33,7 +33,7 @@
  *
 *******************************************************************************/
 #include "ets_sys.h"
-#include "osapi.h"
+#include "osapi_release.h"
 #include "gpio.h"
 #include "espmissingincludes.h"
 

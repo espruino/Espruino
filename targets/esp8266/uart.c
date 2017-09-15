@@ -20,7 +20,7 @@
 #include "ets_sys.h"
 #include "osapi.h"
 #include "uart.h"
-#include "osapi.h"
+#include "osapi_release.h"
 #include "uart_register.h"
 #include "mem.h"
 #include "os_type.h"
