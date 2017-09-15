@@ -68,10 +68,7 @@ CFLAGS+= -fno-builtin \
 
 # only use mfore-l32 if 4MB board for now
 ifdef FLASH_4MB 
-MFORCE32 = `xtensa-lx106-elf-gcc --help=target | grep mforce-l32`
-ifneq ($(MFORCE32),)
 CFLAGS += -mforce-l32
-endif
 endif
 
 #
