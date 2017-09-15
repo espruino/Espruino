@@ -613,7 +613,7 @@ JsVar *jswrap_interface_setWatch(
   }
 
   if (!jsiIsWatchingPin(pin) && !jshCanWatch(pin)) {
-    jsWarn("Unable to set watch. You may already have a watch on a pin with the same number (eg. A0 and B0)");
+    jsWarn("Unable to set watch. You may already have a watch on a pin with the same number (eg. A0 and B0),\nor this pin cannot be used with watch");
     return 0;
   }
 

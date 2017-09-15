@@ -117,7 +117,7 @@ bool netCheckError(JsNetwork *net);
 int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options);
 
 /// Ask this socket to close - it may not close immediately
-void netCloseSocket(JsNetwork *net, int sckt);
+void netCloseSocket(JsNetwork *net, SocketType socketType, int sckt);
 
 /** If this is a server socket and we have an incoming connection then
  * accept and return the socket number - else return <0 */

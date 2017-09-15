@@ -363,6 +363,36 @@ void jshPinSetState(
     Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
+  
+  os_printf("> ESP8266: jshPinSetState state: %s\n",pinStateToString(state));
+
+  /* handle D16 */
+  if (pin == 16) {
+    switch(state){
+      case JSHPINSTATE_GPIO_OUT:
+        // mux configuration for XPD_DCDC to output rtc_gpio0
+        WRITE_PERI_REG(PAD_XPD_DCDC_CONF, (READ_PERI_REG(PAD_XPD_DCDC_CONF) & 0xffffffbc) | (uint32)0x1);  
+        //mux configuration for out enable
+        WRITE_PERI_REG(RTC_GPIO_CONF,(READ_PERI_REG(RTC_GPIO_CONF) & (uint32)0xfffffffe) | (uint32)0x0);
+        //out enable
+        WRITE_PERI_REG(RTC_GPIO_ENABLE,(READ_PERI_REG(RTC_GPIO_ENABLE) & (uint32)0xfffffffe) | (uint32)0x1);
+        break;
+      case JSHPINSTATE_GPIO_IN:
+        // mux configuration for XPD_DCDC and rtc_gpio0 connection
+        WRITE_PERI_REG(PAD_XPD_DCDC_CONF,(READ_PERI_REG(PAD_XPD_DCDC_CONF) & 0xffffffbc) | (uint32)0x1);             
+        //mux configuration for out enable
+        WRITE_PERI_REG(RTC_GPIO_CONF,(READ_PERI_REG(RTC_GPIO_CONF) & (uint32)0xfffffffe) | (uint32)0x0);
+        //out disable
+        WRITE_PERI_REG(RTC_GPIO_ENABLE,READ_PERI_REG(RTC_GPIO_ENABLE) & (uint32)0xfffffffe);             
+        break;
+      default:
+        jsError("only output and input are valid for D16");
+        return;
+     }
+     g_pinState[pin] = state;
+     return;
+  } 
+
   /* Make sure we kill software PWM if we set the pin state
    * after we've started it */
   if (BITFIELD_GET(jshPinSoftPWM, pin)) {
@@ -441,9 +471,17 @@ JshPinState jshPinGetState(Pin pin) {
       pin, g_pinState[pin], (GPIO_REG_READ(GPIO_OUT_W1TS_ADDRESS)>>pin)&1,
       (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, GPIO_INPUT_GET(pin));
   */
-  if ( (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1 ) 
-    return g_pinState[pin] | JSHPINSTATE_PIN_IS_ON;
-  return g_pinState[pin];
+  int rc = g_pinState[pin];
+  if (pin == 16) {
+    if ((uint8)(READ_PERI_REG(RTC_GPIO_IN_DATA) & 1) &1) {
+       rc = g_pinState[pin] | JSHPINSTATE_PIN_IS_ON;
+    } 
+  } else {
+    if ( (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1 ) {
+      rc = g_pinState[pin] | JSHPINSTATE_PIN_IS_ON;
+    } 
+  }
+  return rc;
 }
 
 //===== GPIO and PIN stuff =====
@@ -456,8 +494,17 @@ void jshPinSetValue(
     bool value //!< The new value of the pin.
   ) {
   //os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
-  if (value & 1) GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, 1<<pin);
-  else           GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, 1<<pin);
+  /* handle GPIO16 */
+  if (pin == 16) {
+    WRITE_PERI_REG(RTC_GPIO_OUT,(READ_PERI_REG(RTC_GPIO_OUT) & (uint32)0xfffffffe) | (uint32)(value & 1));
+  } else {
+    if (value & 1) { 
+      GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, 1<<pin);
+    } else {
+      GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, 1<<pin);
+    }
+  }
+  return;
   //jshDebugPin(pin);
 }
 
@@ -469,8 +516,12 @@ void jshPinSetValue(
 bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
-  //os_printf("> ESP8266: jshPinGetValue pin=%d, value=%d\n", pin, GPIO_INPUT_GET(pin));
-  return GPIO_INPUT_GET(pin);
+  /* handle D16 */
+  if (pin == 16) {
+    return (READ_PERI_REG(RTC_GPIO_IN_DATA) & 1);
+  } else {
+    return GPIO_INPUT_GET(pin);
+  }
 }
 
 
@@ -646,11 +697,17 @@ bool jshCanWatch(
     Pin pin //!< The pin that we are asking whether or not we can watch it.
   ) {
   // As of right now, let us assume that all pins on an ESP8266 are watchable.
-  os_printf("> jshCanWatch: pin=%d\n", pin);
-  os_printf("< jshCanWatch = true\n");
-  return true;
+  bool rc;
+  //os_printf("> jshCanWatch: pin=%d\n", pin);
+  // exclude pin 16
+  if ( pin == 16 ) {
+    rc = false;
+  } else {
+    rc = true;
+  }
+  //os_printf("< jshCanWatch = %d (0:false,1:true)\n",rc);
+  return rc;
 }
-
 
 /**
  * Do what ever is necessary to watch a pin.

@@ -203,7 +203,8 @@ void _socketConnectionKill(JsNetwork *net, JsVar *connection) {
   if (!net || networkState != NETWORKSTATE_ONLINE) return;
   int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
   if (sckt>=0) {
-    netCloseSocket(net, sckt);
+    SocketType socketType = socketGetType(connection);
+    netCloseSocket(net, socketType, sckt);
     jsvObjectRemoveChild(connection,HTTP_NAME_SOCKET);
     jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(false));
     jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CLOSE, jsvNewFromBool(true));
