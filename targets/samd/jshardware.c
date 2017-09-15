@@ -181,8 +181,7 @@ void jshInit() {
 void jshIdle() {
         /* While we're idle, we check for UART Transmit */
         int check_char = jshGetCharToTransmit(EV_SERIAL1);
-        if (check_char >= 0)
-        {
+        if (check_char >= 0) {
                 while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
                         UART->UART_THR = check_char;
         }
