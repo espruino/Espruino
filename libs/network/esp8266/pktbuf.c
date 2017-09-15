@@ -3,7 +3,7 @@
 #include <c_types.h>
 #include <user_interface.h>
 #include <mem.h>
-#include <osapi.h>
+#include "osapi_release.h"
 #include <espmissingincludes.h>
 #include "pktbuf.h"
 

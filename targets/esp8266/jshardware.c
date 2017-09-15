@@ -14,7 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include <ets_sys.h>
-#include <osapi.h>
+#include "osapi_release.h"
 #include <os_type.h>
 #include <c_types.h>
 #include <user_interface.h>

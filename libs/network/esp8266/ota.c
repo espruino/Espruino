@@ -4,7 +4,7 @@
 #include <c_types.h>
 #include <user_interface.h>
 #include <mem.h>
-#include <osapi.h>
+#include "osapi_release.h"
 #include <upgrade.h>
 #include <espconn.h>
 #include <espmissingincludes.h>

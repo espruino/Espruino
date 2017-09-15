@@ -14,7 +14,7 @@
 #include "gpio.h"
 #include "xtensa/corebits.h"
 
-#include "osapi.h"
+#include "osapi_release.h"
 #include "user_interface.h"
 #include "espmissingincludes.h"
 

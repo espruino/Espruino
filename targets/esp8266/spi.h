@@ -15,7 +15,7 @@
 
 #include "spi_register.h"
 #include "ets_sys.h"
-#include "osapi.h"
+#include "osapi_release.h"
 #include "os_type.h"
 
 // Define SPI hardware modules
