@@ -76,7 +76,7 @@ RAM_SIZE = board.chip["ram"]*1024;
 FLASH_SIZE = board.chip["flash"]*1024;
 
 # Beware - on some devices (the STM32F4) the memory is divided into two non-continuous blocks
-if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1204:
+if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1024:
   RAM_SIZE = 128*1024
 
 # on L4, the RAM is divided in 2 parts : 
@@ -86,7 +86,7 @@ if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1204:
 # used for example for the stack. In this case, need to : 
 # _estack = 0x10008000; 
 # and add the RAM in MEMORY table.
-if board.chip["family"]=="STM32L4" and RAM_SIZE > 96*1204:
+if board.chip["family"]=="STM32L4" and RAM_SIZE > 96*1024:
   RAM_SIZE = 96*1024
 
 # IS_BOOTLOADER will only get used on official Espruino
