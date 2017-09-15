@@ -56,7 +56,7 @@ devices = {
 # left-right, or top-bottom order
 board_esp12 = {
     'top' : ['D1', 'D3', 'D5', 'D4', 'D0', 'D2', 'D15', 'GND'],
-    'bottom' : ['VCC', 'D13', 'D12', 'D14', 'B16', 'CH_EN', 'A0', 'RESET'],
+    'bottom' : ['VCC', 'D13', 'D12', 'D14', 'D16', 'CH_EN', 'A0', 'RESET'],
     'right' : ['D11', 'D8', 'D9', 'D10', 'D7', 'D6'],
 };
 board_esp12["bottom"].reverse()
@@ -132,10 +132,10 @@ board_esp01["_css"] = """
 boards = [ board_esp12, board_esp01 ];
 
 def get_pins():
-  pins = pinutils.generate_pins(0,15)
+  pins = pinutils.generate_pins(0,16)
   pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
   pinutils.findpin(pins, "PD1", True)["functions"]["USART0_TX"]=0;
   pinutils.findpin(pins, "PD2", True)["functions"]["USART1_TX"]=0;
   pinutils.findpin(pins, "PD3", True)["functions"]["USART0_RX"]=0;
-  # just fake pins D0 .. D15
+  # just fake pins D0 .. D16
   return pins
