@@ -66,6 +66,11 @@ CFLAGS+= -fno-builtin \
 -Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
 -Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals
 
+# only use mfore-l32 if 4MB board for now
+ifdef FLASH_4MB 
+CFLAGS += -mforce-l32
+endif
+
 #
 # The Root of the ESP8266_SDK distributed by Espressif
 # This must be supplied as a Make environment variable.
