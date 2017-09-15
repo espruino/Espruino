@@ -31,10 +31,11 @@ LINKER_FILE=$(ROOT)/targetlibs/samd/sam/linker_scripts/gcc/flash.ld
 SOURCES += targets/samd/jshardware.c
 SOURCES += targets/samd/main.c
 
-LDFLAGS += $(INCLUDES) -Os -Wl,--gc-sections -L -lm -lgcc -mthumb -Wl,--cref 
-LDFLAGS += -Wl,--gc-sections -mcpu=cortex-m3 -Wl,--entry=Reset_Handler
-LDFLAGS += $(ROOT)/targetlibs/samd/lib/libsam_sam3x8e_gcc_rel.a -mthumb
+LDFLAGS += $(INCLUDES) -Os -L -lgcc -mthumb
+LDFLAGS += -mcpu=cortex-m3 -Wl,--entry=Reset_Handler
+LDFLAGS += -mthumb
 
+LIBS += $(ROOT)/targetlibs/samd/lib/libsam_sam3x8e_gcc_rel.a
 
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition

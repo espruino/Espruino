@@ -40,8 +40,12 @@
 
 void jshInit() {
 	// Blink a LED to say that we're there!
+	
 	/* The general init (clock, libc, watchdog ...) */
-  	init_controller();
+	SystemInit();
+	if (SysTick_Config(SystemCoreClock / 1000)) while (1);
+	WDT_Disable(WDT);
+	__libc_init_array();
 
  	/* Board pin 13 == PB27 */
 	PIO_Configure(PIOB, PIO_OUTPUT_1, PIO_PB27, PIO_DEFAULT);
