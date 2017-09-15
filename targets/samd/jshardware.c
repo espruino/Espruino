@@ -60,7 +60,7 @@ void WDT_Handler        (void) __attribute__ ((weak, alias("__phantom_handler"))
 void PMC_Handler        (void) __attribute__ ((weak, alias("__phantom_handler")));
 void EFC0_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
 void EFC1_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
-void UART_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
+//void UART_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
 #ifdef _SAM3XA_SMC_INSTANCE_
 void SMC_Handler        (void) __attribute__ ((weak, alias("__phantom_handler")));
 #endif
@@ -118,11 +118,54 @@ void EMAC_Handler       (void) __attribute__ ((weak, alias("__phantom_handler"))
 void CAN0_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
 void CAN1_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
 
+// Uart Receive does only loopback for now
+void UART_Handler() {
+	uint32_t status = UART->UART_SR;
+	if((status & UART_SR_RXRDY) == UART_SR_RXRDY) {
+		while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+		//UART->UART_THR = UART->UART_RHR;
+		uint8_t test = UART->UART_RHR;
+		UART->UART_THR = test;
+	}
+}
+
+
 void jshInit() {
 	// Send "Hello World" over TX1 to say that we're there!
 	
 	/* The general init (clock, libc, watchdog ...) */
 	init_controller();
+
+	// Set I/O Pins for UART to Output
+	PIO_Configure(PIOA, PIO_PERIPH_A,PIO_PA8A_URXD|PIO_PA9A_UTXD, PIO_DEFAULT);
+
+	// Enable Pullup on Rx and Tx Pin
+	PIOA->PIO_PUER = PIO_PA8A_URXD | PIO_PA9A_UTXD;
+
+	// Enable Clock for UART
+	pmc_enable_periph_clk(ID_UART);
+
+	// Disable PDC Channel
+	UART->UART_PTCR = UART_PTCR_RXTDIS | UART_PTCR_TXTDIS;
+
+	// Reset and disable receiver and transmitter
+	UART->UART_CR = UART_CR_RSTRX | UART_CR_RSTTX | UART_CR_RXDIS | UART_CR_TXDIS;
+
+	// Configure mode
+	UART->UART_MR = UART_MR_PAR_NO | UART_MR_CHMODE_NORMAL;
+
+	// Configure baudrate (asynchronous, no oversampling)
+	UART->UART_BRGR = (SYSCLK_FREQ / 9600) >> 4;
+
+	// Configure interrupts
+	UART->UART_IDR = 0xFFFFFFFF;
+	UART->UART_IER = UART_IER_RXRDY | UART_IER_OVRE | UART_IER_FRAME;
+
+	// Enable UART interrupt in NVIC
+	NVIC_EnableIRQ(UART_IRQn);
+
+	// Enable receiver and transmitter
+	UART->UART_CR = UART_CR_RXEN | UART_CR_TXEN;
 
         /* Board pin 13 == PB27 */
         PIO_Configure(PIOB, PIO_OUTPUT_1, PIO_PB27, PIO_DEFAULT);
@@ -130,13 +173,58 @@ void jshInit() {
 	/* Main loop */
 	while(1) {
                Sleep(5000);
-               if(PIOB->PIO_ODSR & PIO_PB27) {
-                       /* Set clear register */
-                       PIOB->PIO_CODR = PIO_PB27;
-               } else {
-                       /* Set set register */
-                       PIOB->PIO_SODR = PIO_PB27;
-               }
+
+				// Now send Hello World, one char at a time, whenever the UART Transmitter is ready!
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = 'H';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = 'e';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = 'l';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = 'l';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = 'o';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = ' ';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = 'W';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = 'o';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = 'r';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = 'l';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = 'd';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = '!';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = '!';
+				
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+				UART->UART_THR = '!';
+
+		/* And blink the LED */
+		if(PIOB->PIO_ODSR & PIO_PB27) {
+			/* Set clear register */
+                       	PIOB->PIO_CODR = PIO_PB27;
+               	} else {
+                	/* Set set register */
+                       	PIOB->PIO_SODR = PIO_PB27;
+               	}
  	}
  	
 	return 0;
