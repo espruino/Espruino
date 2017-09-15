@@ -15,7 +15,7 @@
  */
 
 #include <user_interface.h>
-#include <osapi.h>
+#include "osapi_release.h"
 #include <sntp.h>
 #include <uart.h>
 #include <espmissingincludes.h>
