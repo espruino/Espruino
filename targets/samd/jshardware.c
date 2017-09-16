@@ -19,7 +19,6 @@
 #include <stdio.h>
 
 //Espruino includes
-#include "jshardware.h"
 #include "jstimer.h"
 #include "jsutils.h"
 #include "jsparse.h"
@@ -29,14 +28,6 @@
 #include "jsflags.h"
 
 #define SYSCLK_FREQ 84000000 // Using standard HFXO freq
-#define USE_RTC
-
-//---------------------- RTC/clock ----------------------------/
-#define RTC_INITIALISE_TICKS 4 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
-#define JSSYSTIME_SECOND_SHIFT 20
-#define JSSYSTIME_SECOND  (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
-#define JSSYSTIME_MSECOND (1<<JSSYSTIME_SECOND_SHIFT)/1000
-#define JSSYSTIME_USECOND (1<<JSSYSTIME_SECOND_SHIFT)/1000000
 
 /********************************************************************************
  * Device interrupt vector. 
