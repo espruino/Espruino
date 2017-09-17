@@ -118,15 +118,25 @@ void jshInterruptOn() {
 	__enable_irq();
 }
 
-// Uart Receive does only loopback for now
+// Uart Receive, bumps the char through to espruino interpreter
 void UART_Handler() {
 	uint32_t status = UART->UART_SR;
 	if((status & UART_SR_RXRDY) == UART_SR_RXRDY) {
 		while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-		//UART->UART_THR = UART->UART_RHR;
 		uint8_t mychar = UART->UART_RHR;
 		jshPushIOCharEvent(EV_SERIAL1, mychar);
 	}
+
+        /* While we're idle, we check for UART Transmit */
+        int check_char = 0;
+	while (check_char >= 0) {
+		check_char = jshGetCharToTransmit(EV_SERIAL1);
+        	if (check_char >= 0) {
+                	while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+                        	UART->UART_THR = check_char;
+        	}
+	}
+
 }
 
 
@@ -166,11 +176,15 @@ void jshInit() {
 	// Enable receiver and transmitter
 	UART->UART_CR = UART_CR_RXEN | UART_CR_TXEN;
 
-        /* Board pin 13 == PB27 */
-        PIO_Configure(PIOB, PIO_OUTPUT_1, PIO_PB27, PIO_DEFAULT);
+        while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+        	UART->UART_THR = 'x';
+
 }
 
 void jshIdle() {
+        while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+                UART->UART_THR = 'X';
+
         /* While we're idle, we check for UART Transmit */
         int check_char = jshGetCharToTransmit(EV_SERIAL1);
         if (check_char >= 0) {
@@ -180,6 +194,16 @@ void jshIdle() {
 }
 
 void jshUSARTKick(IOEventFlags device) {
+        while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+                UART->UART_THR = 'Y';
+
+        /* While we're idle, we check for UART Transmit */
+        int check_char = jshGetCharToTransmit(EV_SERIAL1);
+        if (check_char >= 0) {
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+                        UART->UART_THR = check_char;
+        }
+
 }
 
 void jshPinSetValue(Pin pin, bool value) {
@@ -208,6 +232,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 }
 
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
+//	memcpy(buf, (void*)addr, len);
 }
 
 JsSysTime jshGetSystemTime() {
