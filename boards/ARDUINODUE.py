@@ -8,10 +8,10 @@ info = {
  'link': [ "https://store.arduino.cc/usa/arduino-due" ],
  'variables': 1720,
  'binary_name': 'espruino_%v_arduinodue.bin',
- 'default_console' : "EV_SERIAL4",
+ 'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D1",
  'default_console_rx' : "D0",
- 'default_console_baudrate' : "115200",
+ 'default_console_baudrate' : "9600",
  'build' : {
   'optimizeflags' : '-Os',
   'libraries' : [
