@@ -30,16 +30,40 @@
 #define SYSCLK_FREQ 84000000 // Using standard HFXO freq
 #define UART1BAUDRATE 9600
 
+void serdebugstring(char* debugstring) {
+        int i = 0;
+        while(1) {
+                if (debugstring[i] == 0) {
+                        break;
+                }
+                while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+                UART->UART_THR = debugstring[i];
+                i++;
+        }
+}
+
+void serdebugint(int debugval) {
+        while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+        UART->UART_THR = (char) (debugval >> 24);
+        while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+        UART->UART_THR = (char) (debugval >> 16);
+        while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+        UART->UART_THR = (char) (debugval >> 8);
+        while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+        UART->UART_THR = (char) debugval;
+}
+
 /********************************************************************************
  * Device interrupt vector. 
  ********************************************************************************/
+
 static void __phantom_handler(void) { while(1); }
 
-void NMI_Handler        (void) __attribute__ ((weak, alias("__phantom_handler")));
-void HardFault_Handler  (void) __attribute__ ((weak, alias("__phantom_handler")));
-void MemManage_Handler  (void) __attribute__ ((weak, alias("__phantom_handler")));
-void BusFault_Handler   (void) __attribute__ ((weak, alias("__phantom_handler")));
-void UsageFault_Handler (void) __attribute__ ((weak, alias("__phantom_handler")));
+void NMI_Handler        (void) { serdebugstring("nmi"); } 
+void HardFault_Handler  (void) { serdebugstring("hf"); } 
+void MemManage_Handler  (void) { serdebugstring("mf"); } 
+void BusFault_Handler   (void) { serdebugstring("bf"); }
+void UsageFault_Handler (void) { serdebugstring("uf"); }
 void DebugMon_Handler   (void) __attribute__ ((weak, alias("__phantom_handler")));
 void SVC_Handler        (void) __attribute__ ((weak, alias("__phantom_handler")));
 void PendSV_Handler     (void) __attribute__ ((weak, alias("__phantom_handler")));
@@ -118,18 +142,6 @@ void jshInterruptOn() {
 	__enable_irq();
 }
 
-void serdebug(char* debugstring) {
-	int i = 0;
-	while(1) {
-		if (debugstring[i] == 0) {
-			break;
-		}
-		while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-		UART->UART_THR = debugstring[i];	
-		i++;
-	}
-}
-
 // Uart Receive, bumps the char through to espruino interpreter
 void UART_Handler() {
 	uint32_t status = UART->UART_SR;
@@ -176,7 +188,7 @@ void jshInit() {
 	// Enable receiver and transmitter
 	UART->UART_CR = UART_CR_RXEN | UART_CR_TXEN;
 
-	serdebug("init");
+	serdebugstring("init");
 }
 
 void jshIdle() {
@@ -193,7 +205,7 @@ void jshUSARTKick(IOEventFlags device) {
         int check_char = jshGetCharToTransmit(device);
         if (check_char >= 0) {
                 while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-                        UART->UART_THR = check_char;
+                UART->UART_THR = check_char;
         }
 
 }
@@ -225,7 +237,12 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
 	/* This Code completly stalls everything - maybe some kind of hard fault because of accessing not allowed memory? */
-//	memcpy(buf, (void*)addr, len);
+	addr = 305419896;
+        serdebugstring("x");
+	serdebugint(addr);
+	serdebugstring("x");
+	memcpy(buf, (void*)addr, len);
+	serdebugstring("y");
 }
 
 JsSysTime jshGetSystemTime() {
