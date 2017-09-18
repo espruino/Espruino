@@ -42,7 +42,7 @@ void serdebugstring(char* debugstring) {
         }
 }
 
-void serdebugint(int debugval) {
+void serdebugintinhex(int debugval) {
         while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
         UART->UART_THR = (char) (debugval >> 24);
         while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
@@ -50,7 +50,7 @@ void serdebugint(int debugval) {
         while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
         UART->UART_THR = (char) (debugval >> 8);
         while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-        UART->UART_THR = (char) debugval;
+        UART->UART_THR = (char) (debugval);
 }
 
 /********************************************************************************
@@ -239,7 +239,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
 	/* This Code completly stalls everything - maybe some kind of hard fault because of accessing not allowed memory? */
 	addr = 305419896;
         serdebugstring("x");
-	serdebugint(addr);
+	serdebugintinhex(addr);
 	serdebugstring("x");
 	memcpy(buf, (void*)addr, len);
 	serdebugstring("y");
