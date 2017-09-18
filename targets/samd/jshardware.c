@@ -42,7 +42,7 @@ void serdebugstring(char* debugstring) {
         }
 }
 
-void serdebugintinhex(int debugval) {
+void serdebugint(int debugval) {
         while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
         UART->UART_THR = (char) (debugval >> 24);
         while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
@@ -236,13 +236,13 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 }
 
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
-	/* This Code completly stalls everything - maybe some kind of hard fault because of accessing not allowed memory? */
-	addr = 305419896;
-        serdebugstring("x");
-	serdebugintinhex(addr);
-	serdebugstring("x");
-	memcpy(buf, (void*)addr, len);
-	serdebugstring("y");
+	/* This Code completly stalls everything, including Interrupts. 
+	   We have a nested hard fault when reading von address 0x0807FFFC */
+//      serdebugstring("z");
+//	serdebugint(addr);
+//	serdebugstring("z");
+//	memcpy(buf, (void*)addr, len);
+//	serdebugstring("y");
 }
 
 JsSysTime jshGetSystemTime() {
