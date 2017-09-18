@@ -126,17 +126,6 @@ void UART_Handler() {
 		uint8_t mychar = UART->UART_RHR;
 		jshPushIOCharEvent(EV_SERIAL1, mychar);
 	}
-
-        /* While we're idle, we check for UART Transmit */
-        int check_char = 0;
-	while (check_char >= 0) {
-		check_char = jshGetCharToTransmit(EV_SERIAL1);
-        	if (check_char >= 0) {
-                	while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-                        	UART->UART_THR = check_char;
-        	}
-	}
-
 }
 
 
@@ -175,16 +164,9 @@ void jshInit() {
 
 	// Enable receiver and transmitter
 	UART->UART_CR = UART_CR_RXEN | UART_CR_TXEN;
-
-        while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-        	UART->UART_THR = 'x';
-
 }
 
 void jshIdle() {
-        while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-                UART->UART_THR = 'X';
-
         /* While we're idle, we check for UART Transmit */
         int check_char = jshGetCharToTransmit(EV_SERIAL1);
         if (check_char >= 0) {
@@ -194,10 +176,7 @@ void jshIdle() {
 }
 
 void jshUSARTKick(IOEventFlags device) {
-        while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-                UART->UART_THR = 'Y';
-
-        /* While we're idle, we check for UART Transmit */
+        /* Check for UART Transmit */
         int check_char = jshGetCharToTransmit(EV_SERIAL1);
         if (check_char >= 0) {
                 while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
@@ -232,6 +211,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 }
 
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
+	/* This Code completly stalls everything - maybe some kind of hard fault because of accessing not allowed memory? */
 //	memcpy(buf, (void*)addr, len);
 }
 
