@@ -35,15 +35,15 @@
  ********************************************************************************/
 static void __phantom_handler(void) { while(1); }
 
-void NMI_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
-void HardFault_Handler (void) __attribute__ ((weak, alias("__phantom_handler")));
-void MemManage_Handler (void) __attribute__ ((weak, alias("__phantom_handler")));
-void BusFault_Handler  (void) __attribute__ ((weak, alias("__phantom_handler")));
-void UsageFault_Handler(void) __attribute__ ((weak, alias("__phantom_handler")));
-void DebugMon_Handler  (void) __attribute__ ((weak, alias("__phantom_handler")));
-void SVC_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
-void PendSV_Handler    (void) __attribute__ ((weak, alias("__phantom_handler")));
-void SysTick_Handler(void) { TimeTick_Increment(); }
+void NMI_Handler        (void) __attribute__ ((weak, alias("__phantom_handler")));
+void HardFault_Handler  (void) __attribute__ ((weak, alias("__phantom_handler")));
+void MemManage_Handler  (void) __attribute__ ((weak, alias("__phantom_handler")));
+void BusFault_Handler   (void) __attribute__ ((weak, alias("__phantom_handler")));
+void UsageFault_Handler (void) __attribute__ ((weak, alias("__phantom_handler")));
+void DebugMon_Handler   (void) __attribute__ ((weak, alias("__phantom_handler")));
+void SVC_Handler        (void) __attribute__ ((weak, alias("__phantom_handler")));
+void PendSV_Handler     (void) __attribute__ ((weak, alias("__phantom_handler")));
+void SysTick_Handler    (void) { TimeTick_Increment(); }
 void SUPC_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
 void RSTC_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
 void RTC_Handler        (void) __attribute__ ((weak, alias("__phantom_handler")));
@@ -118,6 +118,18 @@ void jshInterruptOn() {
 	__enable_irq();
 }
 
+void serdebug(char* debugstring) {
+	int i = 0;
+	while(1) {
+		if (debugstring[i] == 0) {
+			break;
+		}
+		while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
+		UART->UART_THR = debugstring[i];	
+		i++;
+	}
+}
+
 // Uart Receive, bumps the char through to espruino interpreter
 void UART_Handler() {
 	uint32_t status = UART->UART_SR;
@@ -127,7 +139,6 @@ void UART_Handler() {
 		jshPushIOCharEvent(EV_SERIAL1, mychar);
 	}
 }
-
 
 void jshInit() {
 	/* The general init (clock, libc, watchdog ...) */
@@ -164,6 +175,8 @@ void jshInit() {
 
 	// Enable receiver and transmitter
 	UART->UART_CR = UART_CR_RXEN | UART_CR_TXEN;
+
+	serdebug("init");
 }
 
 void jshIdle() {
@@ -171,13 +184,13 @@ void jshIdle() {
         int check_char = jshGetCharToTransmit(EV_SERIAL1);
         if (check_char >= 0) {
                 while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
-                        UART->UART_THR = check_char;
+                UART->UART_THR = check_char;
         }
 }
 
 void jshUSARTKick(IOEventFlags device) {
         /* Check for UART Transmit */
-        int check_char = jshGetCharToTransmit(EV_SERIAL1);
+        int check_char = jshGetCharToTransmit(device);
         if (check_char >= 0) {
                 while((UART->UART_SR & UART_SR_TXRDY) != UART_SR_TXRDY);
                         UART->UART_THR = check_char;
