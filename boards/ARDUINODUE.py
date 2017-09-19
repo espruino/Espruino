@@ -36,7 +36,7 @@ chip = {
    'address' : 0x0008000,
    'page_size' : 256,
    'pages' : 2048,
-   'flash_available' : 468,	# TODO: Check if more or less is available
+   'flash_available' : 312,	# Firmware is roughly 800 Pages 200 KB, leaving around 312 KB unused 
  },
 };
 
