@@ -211,6 +211,16 @@ void jshUSARTKick(IOEventFlags device) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
+	switch(pinInfo[pin].pin) {
+		case 13:
+			if (value) {
+				PIOB->PIO_SODR = PIO_PB27;
+			} else {
+				PIOB->PIO_CODR = PIO_PB27;
+			};
+			break;
+		default: return;
+	}
 }
 
 JsVarFloat jshPinAnalog(Pin pin) {
@@ -248,6 +258,17 @@ bool jshIsInInterrupt() {
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
+        switch(pinInfo[pin].pin) {
+                case 13:
+                        if (state == JSHPINSTATE_GPIO_IN) {
+                                PIO_Configure(PIOB, PIO_INPUT, PIO_PB27, PIO_DEFAULT);
+                        }
+			if (state == JSHPINSTATE_GPIO_OUT) {
+                                PIO_Configure(PIOB, PIO_OUTPUT_1, PIO_PB27, PIO_DEFAULT);
+                        };
+                        break;
+                default: return;
+        }
 }
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
