@@ -300,6 +300,12 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
 bool jshPinGetValue(Pin pin) {
+	switch(pinInfo[pin].pin) {
+		case 13:
+			return PIOB->PIO_PDSR & PIO_PB27;
+			break;
+		default: return;
+	}
 }
 
 void jshDelayMicroseconds(int microsec) {
