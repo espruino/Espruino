@@ -156,6 +156,12 @@ void jshInit() {
 	/* The general init (clock, libc, watchdog ...) */
 	init_controller();
 
+	// Enable Clock für GPIO
+	pmc_enable_periph_clk(ID_PIOA);
+	pmc_enable_periph_clk(ID_PIOB);
+	pmc_enable_periph_clk(ID_PIOC);
+	pmc_enable_periph_clk(ID_PIOD);
+
 	/* Init the UART for REPL */
 	// Set I/O Pins for UART to Output
 	PIO_Configure(PIOA, PIO_PERIPH_A,PIO_PA8A_URXD|PIO_PA9A_UTXD, PIO_DEFAULT);
