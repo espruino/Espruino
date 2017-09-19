@@ -32,6 +32,12 @@ chip = {
  'i2c': 2,
  'adc': 1,
  'dac': 1,
+ 'saved_code' : {
+   'address' : 0x0008000,
+   'page_size' : 256,
+   'pages' : 2048,
+   'flash_available' : 468,	# TODO: Check if more or less is available
+ },
 };
 
 devices = {

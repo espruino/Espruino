@@ -188,7 +188,7 @@ void jshInit() {
 	// Enable receiver and transmitter
 	UART->UART_CR = UART_CR_RXEN | UART_CR_TXEN;
 
-	serdebugstring("init");
+//	serdebugstring("init");
 }
 
 void jshIdle() {
@@ -236,13 +236,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 }
 
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
-	/* This Code completly stalls everything, including Interrupts. 
-	   We have a nested hard fault when reading von address 0x0807FFFC */
-//      serdebugstring("z");
-//	serdebugint(addr);
-//	serdebugstring("z");
-//	memcpy(buf, (void*)addr, len);
-//	serdebugstring("y");
+	memcpy(buf, (void*)addr, len);
 }
 
 JsSysTime jshGetSystemTime() {
