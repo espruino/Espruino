@@ -156,7 +156,7 @@ void jshInit() {
 	/* The general init (clock, libc, watchdog ...) */
 	init_controller();
 
-	// Enable Clock für GPIO
+	// Enable Clock for GPIO
 	pmc_enable_periph_clk(ID_PIOA);
 	pmc_enable_periph_clk(ID_PIOB);
 	pmc_enable_periph_clk(ID_PIOC);
