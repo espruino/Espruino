@@ -56,7 +56,7 @@ board = {
 };
 
 def get_pins():
-  pins = pinutils.generate_pins(0,53)
+  pins = pinutils.generate_pins(0,69)
   pinutils.findpin(pins, "PD0", True)["functions"]["RXD"]=0;
   pinutils.findpin(pins, "PD1", True)["functions"]["TXD"]=0;
   pinutils.findpin(pins, "PD13", True)["functions"]["LED"]=0;
