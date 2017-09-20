@@ -27,71 +27,11 @@
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 #include "jsflags.h"
 
+// My Includes
+#include "jshardware.h"
+
 #define SYSCLK_FREQ 84000000 // Using standard HFXO freq
 #define UART1BAUDRATE 9600
-
-// Array for Pins, sorted by Pin-Number (DXX), first is Bank, second is Pin-Mask
-int mypins[53][2] = {
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOB, PIO_PB27 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-{ PIOA, PIO_PA8 },
-};
 
 void serdebugstring(char* debugstring) {
         int i = 0;
@@ -280,19 +220,20 @@ void jshUSARTKick(IOEventFlags device) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
-	switch(pin) {
-		case 13:
-			if (value) {
-				PIO_Set(mypins[13][0], mypins[13][1]);
-			} else {
-				PIO_Clear(mypins[13][0], mypins[13][1]);
-			};
-			break;
-		default: return;
-	}
+	// We don't want UART0 here, because thats our Console
+	if (pin == 0 || pin == 1) { return; };
+
+	if (value) {
+		PIO_Set(mypins[pin][0], mypins[pin][1]);
+	} else {
+		PIO_Clear(mypins[pin][0], mypins[pin][1]);
+	};
 }
 
 JsVarFloat jshPinAnalog(Pin pin) {
+        // We don't want UART0 here, because thats our Console
+        if (pin == 0 || pin == 1) { return; };
+
 	return 0;
 }
 
@@ -327,17 +268,16 @@ bool jshIsInInterrupt() {
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
-        switch(pin) {
-                case 13:
-                        if (state == JSHPINSTATE_GPIO_IN) {
-                                PIO_Configure(PIOB, PIO_INPUT, PIO_PB27, PIO_DEFAULT);
-                        }
-			if (state == JSHPINSTATE_GPIO_OUT) {
-                                PIO_Configure(PIOB, PIO_OUTPUT_1, PIO_PB27, PIO_DEFAULT);
-                        };
-                        break;
-                default: return;
-        }
+        // We don't want UART0 here, because thats our Console
+        if (pin == 0 || pin == 1) { return; };
+
+	if (state == JSHPINSTATE_GPIO_IN) {
+		PIO_Configure(mypins[pin][0], PIO_INPUT, mypins[pin][1], PIO_DEFAULT);
+	}
+
+	if (state == JSHPINSTATE_GPIO_OUT) {
+		PIO_Configure(mypins[pin][0], PIO_OUTPUT_1, mypins[pin][1], PIO_DEFAULT);
+	};
 }
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
@@ -363,12 +303,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
 bool jshPinGetValue(Pin pin) {
-	switch(pin) {
-		case 13:
-			PIO_Get(PIOB, PIO_INPUT, PIO_PB27);
-			break;
-		default: return;
-	}
+	PIO_Get(mypins[pin][0], PIO_INPUT, mypins[pin][1]);
 }
 
 void jshDelayMicroseconds(int microsec) {
@@ -385,10 +320,16 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+        // We don't want UART0 here, because thats our Console
+        if (pin == 0 || pin == 1) { return; };
+
 	return JSH_NOTHING;
 }
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
+        // We don't want UART0 here, because thats our Console
+        if (pin == 0 || pin == 1) { return; };
+
 }
 
 JshPinState jshPinGetState(Pin pin) {
@@ -400,6 +341,9 @@ bool jshCanWatch(Pin pin) {
 }
 
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+        // We don't want UART0 here, because thats our Console
+        if (pin == 0 || pin == 1) { return; };
+
 	return EV_NONE;
 }
 
