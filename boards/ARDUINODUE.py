@@ -51,7 +51,7 @@ devices = {
 board = {
   'left' : ['CANTX', 'CANRX', 'DAC1', 'DAC0', 'A11', 'A10', 'A9', 'A8', 'A7', 'A6', 'A5', 'A4', 'A3', 'A2', 'A1', 'A0', 'VIN', 'GND', 'GND', '5V', '3V3', 'RESET', 'IOREF'],
   'right' : ['SCL', 'SDA', 'RX1', 'TX1', 'RX2', 'TX2', 'RX3', 'TX3', 'RX0', 'RX1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'GND', 'AREF', 'SDA1', 'SCL1'],
-  'middle' : ['GND', 'RESET', 'MOSI', 'SCK', '5V', 'MISO']
+  'middle' : ['GND', 'RESET', 'MOSI', 'SCK', '5V', 'MISO'],
   'bottom' : ['GND', 'GND', 'D53', 'D52', 'D51', 'D50', 'D49', 'D48', 'D47', 'D46', 'D45', 'D44', 'D43', 'D42', 'D41', 'D40', 'D39', 'D38', 'D37', 'D36', 'D35', 'D34', 'D33', 'D32', 'D31', 'D30', 'D29', 'D28', 'D27', 'D26', 'D25', 'D24', '5V', '5V'],
 };
 
