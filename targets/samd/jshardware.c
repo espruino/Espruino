@@ -197,6 +197,21 @@ void jshInit() {
 	// Enable receiver and transmitter
 	UART->UART_CR = UART_CR_RXEN | UART_CR_TXEN;
 
+	// Activate RTC
+	RTC->RTC_MR = 0;
+	RTC->RTC_CR = 0;
+	serdebugstring("mr");
+	serdebugint(RTC->RTC_MR);
+	serdebugstring("mr");
+	serdebugstring("cr");
+	serdebugint(RTC->RTC_CR);
+        serdebugstring("cr");
+
+
+	serdebugstring("tim");
+	int mytime = RTC_TIMR_SEC(RTC->RTC_TIMR);
+	serdebugint(mytime);
+	serdebugstring("tim");
 //	serdebugstring("init");
 }
 
@@ -222,6 +237,13 @@ void jshUSARTKick(IOEventFlags device) {
 void jshPinSetValue(Pin pin, bool value) {
 	// We don't want UART0 here, because thats our Console
 	if (pin == 0 || pin == 1) { return; };
+
+        serdebugstring("tim");
+        int mytime = RTC_TIMR_SEC(RTC->RTC_TIMR);
+        serdebugint(mytime);
+        serdebugstring("tim");
+
+
 
 	if (value) {
 		PIO_Set(mypins[pin][0], mypins[pin][1]);
@@ -260,7 +282,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
 }
 
 JsSysTime jshGetSystemTime() {
-	return GetTickCount();
+	return (JsSysTime) GetTickCount()*1000000L;
 }
 
 bool jshIsInInterrupt() {
