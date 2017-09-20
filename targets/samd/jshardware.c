@@ -200,18 +200,7 @@ void jshInit() {
 	// Activate RTC
 	RTC->RTC_MR = 0;
 	RTC->RTC_CR = 0;
-	serdebugstring("mr");
-	serdebugint(RTC->RTC_MR);
-	serdebugstring("mr");
-	serdebugstring("cr");
-	serdebugint(RTC->RTC_CR);
-        serdebugstring("cr");
 
-
-	serdebugstring("tim");
-	int mytime = RTC_TIMR_SEC(RTC->RTC_TIMR);
-	serdebugint(mytime);
-	serdebugstring("tim");
 //	serdebugstring("init");
 }
 
@@ -238,13 +227,6 @@ void jshPinSetValue(Pin pin, bool value) {
 	// We don't want UART0 here, because thats our Console
 	if (pin == 0 || pin == 1) { return; };
 
-        serdebugstring("tim");
-        int mytime = RTC_TIMR_SEC(RTC->RTC_TIMR);
-        serdebugint(mytime);
-        serdebugstring("tim");
-
-
-
 	if (value) {
 		PIO_Set(mypins[pin][0], mypins[pin][1]);
 	} else {
@@ -260,11 +242,11 @@ JsVarFloat jshPinAnalog(Pin pin) {
 }
 
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-	return 0;
+	return ((JsVarFloat)time)/1000;
 }
 
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-	return 0;
+	return (JsSysTime)(ms*1000);
 }
 
 void jshFlashErasePage(uint32_t addr) {
@@ -282,7 +264,12 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
 }
 
 JsSysTime jshGetSystemTime() {
-	return (JsSysTime) GetTickCount()*1000000L;
+	uint8_t hour = (RTC->RTC_TIMR & RTC_TIMR_HOUR_Msk) >> RTC_TIMR_HOUR_Pos;
+	uint8_t minute = (RTC->RTC_TIMR & RTC_TIMR_MIN_Msk) >> RTC_TIMR_MIN_Pos;
+	uint8_t seconds = (RTC->RTC_TIMR & RTC_TIMR_SEC_Msk) >> RTC_TIMR_SEC_Pos;
+	int upper = ((hour * 24) + (minute * 60)) + seconds;
+	int lower = GetTickCount() * 1000;
+        return (JsSysTime)(upper)*1000000L + lower;
 }
 
 bool jshIsInInterrupt() {
