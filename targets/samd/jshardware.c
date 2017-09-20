@@ -30,6 +30,69 @@
 #define SYSCLK_FREQ 84000000 // Using standard HFXO freq
 #define UART1BAUDRATE 9600
 
+// Array for Pins, sorted by Pin-Number (DXX), first is Bank, second is Pin-Mask
+int mypins[53][2] = {
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOB, PIO_PB27 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+{ PIOA, PIO_PA8 },
+};
+
 void serdebugstring(char* debugstring) {
         int i = 0;
         while(1) {
@@ -217,12 +280,12 @@ void jshUSARTKick(IOEventFlags device) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
-	switch(pinInfo[pin].pin) {
+	switch(pin) {
 		case 13:
 			if (value) {
-				PIOB->PIO_SODR = PIO_PB27;
+				PIO_Set(mypins[13][0], mypins[13][1]);
 			} else {
-				PIOB->PIO_CODR = PIO_PB27;
+				PIO_Clear(mypins[13][0], mypins[13][1]);
 			};
 			break;
 		default: return;
@@ -264,7 +327,7 @@ bool jshIsInInterrupt() {
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
-        switch(pinInfo[pin].pin) {
+        switch(pin) {
                 case 13:
                         if (state == JSHPINSTATE_GPIO_IN) {
                                 PIO_Configure(PIOB, PIO_INPUT, PIO_PB27, PIO_DEFAULT);
@@ -300,9 +363,9 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
 bool jshPinGetValue(Pin pin) {
-	switch(pinInfo[pin].pin) {
+	switch(pin) {
 		case 13:
-			return PIOB->PIO_PDSR & PIO_PB27;
+			PIO_Get(PIOB, PIO_INPUT, PIO_PB27);
 			break;
 		default: return;
 	}
