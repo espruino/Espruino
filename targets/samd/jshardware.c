@@ -263,7 +263,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
 }
 
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-	// GetTickCount(I is in Milliseconds
+	// GetTickCount() is in Milliseconds
 	return ((JsVarFloat)time);
 }
 
