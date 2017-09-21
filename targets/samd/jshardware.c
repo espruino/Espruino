@@ -33,6 +33,9 @@
 #define SYSCLK_FREQ 84000000 // Using standard HFXO freq
 #define UART1BAUDRATE 9600
 
+// Systemtick counter
+uint32_t uppercounter = 0;
+
 void serdebugstring(char* debugstring) {
         int i = 0;
         while(1) {
@@ -70,7 +73,7 @@ void UsageFault_Handler (void) { serdebugstring("uf"); }
 void DebugMon_Handler   (void) __attribute__ ((weak, alias("__phantom_handler")));
 void SVC_Handler        (void) __attribute__ ((weak, alias("__phantom_handler")));
 void PendSV_Handler     (void) __attribute__ ((weak, alias("__phantom_handler")));
-void SysTick_Handler    (void) { TimeTick_Increment(); }
+void SysTick_Handler    (void) { TimeTick_Increment(); if (GetTickCount() == 0) { uppercounter++; } }
 void SUPC_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
 void RSTC_Handler       (void) __attribute__ ((weak, alias("__phantom_handler")));
 void RTC_Handler        (void) __attribute__ ((weak, alias("__phantom_handler")));
@@ -286,7 +289,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
 }
 
 JsSysTime jshGetSystemTime() {
-	return GetTickCount();
+	return (JsSysTime) (uppercounter * 100000) + GetTickCount();
 }
 
 bool jshIsInInterrupt() {
