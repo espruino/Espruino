@@ -263,11 +263,12 @@ JsVarFloat jshPinAnalog(Pin pin) {
 }
 
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-	return ((JsVarFloat)time)/1000;
+	// GetTickCount(I is in Milliseconds
+	return ((JsVarFloat)time);
 }
 
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-	return (JsSysTime)(ms*1000);
+	return (JsSysTime)(ms);
 }
 
 void jshFlashErasePage(uint32_t addr) {
@@ -285,7 +286,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
 }
 
 JsSysTime jshGetSystemTime() {
-	return GetTickCount() * 1000;
+	return GetTickCount();
 }
 
 bool jshIsInInterrupt() {
