@@ -289,7 +289,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
 }
 
 JsSysTime jshGetSystemTime() {
-	return (JsSysTime) (uppercounter * 100000) + GetTickCount();
+	return (JsSysTime) (uppercounter * 0xFFFFFFFF) + GetTickCount();
 }
 
 bool jshIsInInterrupt() {
