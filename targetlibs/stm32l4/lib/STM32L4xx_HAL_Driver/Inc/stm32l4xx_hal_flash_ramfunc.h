@@ -2,13 +2,11 @@
   ******************************************************************************
   * @file    stm32l4xx_hal_flash_ramfunc.h
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   Header file of FLASH RAMFUNC driver.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -100,6 +98,9 @@
 /* Peripheral Control functions  ************************************************/
 __RAM_FUNC  HAL_FLASHEx_EnableRunPowerDown(void);
 __RAM_FUNC  HAL_FLASHEx_DisableRunPowerDown(void);
+#if defined (STM32L4R5xx) || defined (STM32L4R7xx) || defined (STM32L4R9xx) || defined (STM32L4S5xx) || defined (STM32L4S7xx) || defined (STM32L4S9xx)
+__RAM_FUNC  HAL_FLASHEx_OB_DBankConfig(uint32_t DBankConfig);
+#endif
 /**
   * @}
   */ 

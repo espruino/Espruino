@@ -2,8 +2,6 @@
   ******************************************************************************
   * @file      startup_stm32l443xx.s
   * @author    MCD Application Team
-  * @version   V1.1.1
-  * @date      29-April-2016
   * @brief     STM32L443xx devices vector table for GCC toolchain.
   *            This module performs:
   *                - Set the initial SP
@@ -17,7 +15,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:

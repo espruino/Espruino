@@ -2,8 +2,6 @@
   ******************************************************************************
   * @file    stm32l4xx_hal_pcd_ex.c
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   PCD Extended HAL module driver.  
   *          This file provides firmware functions to manage the following 
   *          functionalities of the USB Peripheral Controller:
@@ -12,7 +10,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -45,18 +43,19 @@
 /** @addtogroup STM32L4xx_HAL_Driver
   * @{
   */
-#ifdef HAL_PCD_MODULE_ENABLED
-
-#if defined(STM32L475xx) || defined(STM32L476xx) || \
-    defined(STM32L485xx) || defined(STM32L486xx) || \
-    defined(STM32L432xx) || defined(STM32L433xx) || \
-    defined(STM32L442xx) || defined(STM32L443xx)
-
 
 /** @defgroup PCDEx PCDEx
   * @brief PCD Extended HAL module driver
   * @{
   */
+
+#ifdef HAL_PCD_MODULE_ENABLED
+
+#if defined(STM32L432xx) || defined(STM32L433xx) || defined(STM32L442xx) || defined(STM32L443xx) || \
+    defined(STM32L452xx) || defined(STM32L462xx) || \
+    defined(STM32L475xx) || defined(STM32L476xx) || defined(STM32L485xx) || defined(STM32L486xx) || \
+    defined(STM32L496xx) || defined(STM32L4A6xx) || \
+    defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
 
 /* Private types -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -272,7 +271,7 @@ HAL_StatusTypeDef HAL_PCDEx_DeActivateBCD(PCD_HandleTypeDef *hpcd)
 }
 #endif /* USB_OTG_FS */
 
-#if defined (USB)
+#if defined (STM32_USB)
 /**
   * @brief  Configure PMA for EP
   * @param  hpcd : Device instance
@@ -461,7 +460,7 @@ HAL_StatusTypeDef HAL_PCDEx_DeActivateLPM(PCD_HandleTypeDef *hpcd)
   return HAL_OK;  
 }
 
-#endif /* USB_FS */
+#endif /* STM32_USB */
 
 /**
   * @brief  Send LPM message to user layer callback.
@@ -504,19 +503,21 @@ __weak void HAL_PCDEx_BCD_Callback(PCD_HandleTypeDef *hpcd, PCD_BCD_MsgTypeDef m
 /**
   * @}
   */
-/**
-  * @}
-  */
 
-/**
-  * @}
-  */
-
-#endif /* STM32L475xx || STM32L476xx || */
-       /* STM32L485xx || STM32L486xx || */
-       /* STM32L432xx || STM32L433xx || */
-       /* STM32L442xx || STM32L443xx    */
+#endif /* STM32L432xx || STM32L433xx || STM32L442xx || STM32L443xx || */
+       /* STM32L452xx || STM32L462xx || */
+       /* STM32L475xx || STM32L476xx || STM32L485xx || STM32L486xx || */
+       /* STM32L496xx || STM32L4A6xx || */
+       /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
 
 #endif /* HAL_PCD_MODULE_ENABLED */
+
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

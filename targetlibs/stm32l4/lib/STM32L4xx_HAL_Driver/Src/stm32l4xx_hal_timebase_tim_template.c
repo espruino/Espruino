@@ -2,8 +2,6 @@
   ******************************************************************************
   * @file    stm32l4xx_hal_timebase_tim_template.c 
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   HAL time base based on the hardware TIM Template.
   *    
   *          This file override the native HAL time base functions (defined as weak)
@@ -29,7 +27,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -133,6 +131,7 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
   TimHandle.Init.Prescaler = uwPrescalerValue;
   TimHandle.Init.ClockDivision = 0;
   TimHandle.Init.CounterMode = TIM_COUNTERMODE_UP;
+  TimHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if(HAL_TIM_Base_Init(&TimHandle) == HAL_OK)
   {
     /* Start the TIM time Base generation in interrupt mode */
