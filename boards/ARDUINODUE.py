@@ -33,10 +33,10 @@ chip = {
  'adc': 1,
  'dac': 1,
  'saved_code' : {
-   'address' : 0x0008000,
+   'address' : 0x000C0000,
    'page_size' : 256,
-   'pages' : 2048,
-   'flash_available' : 312,	# Firmware is roughly 800 Pages 200 KB, leaving around 312 KB unused 
+   'pages' : 1024,		# Total flash is 2048 Pages in two banks
+   'flash_available' : 1024,	# We have 2 banks of flash with 1024 pages each, Firmware is roughly 800 Pages but we only use bank 1 for code and bank 2 for saving Javascript 
  },
 };
 
