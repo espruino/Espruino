@@ -30,6 +30,7 @@
 // My Includes
 #include "jshardware.h"
 #include "flash.h"
+#include "../targetlibs/samd/sam/libsam/include/efc.h"
 
 #define SYSCLK_FREQ 84000000 // Using standard HFXO freq
 #define UART1BAUDRATE 9600
@@ -286,6 +287,10 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
 
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 	jsiConsolePrintf("\ntcjshFlashWrite addr 0x%x len 0x%x", addr, len);
+
+	flash_unlock((uint32_t)addr, (uint32_t)addr + len - 1, 0, 0);
+	flash_write((uint32_t)addr, buf, len, 1);
+	flash_lock((uint32_t)addr, (uint32_t)addr + len - 1, 0, 0);
 }
 
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {

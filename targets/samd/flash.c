@@ -48,6 +48,50 @@
 #include <string.h>
 #include <stdio.h>
 
+// My Includes
+#include "targetlibs/samd/include/due_sam3x.init.h"
+#include "jshardware.h"
+#include "flash.h"
+#include "../targetlibs/samd/sam/libsam/include/efc.h"
+
+/**
+ * \brief Compute the lock range associated with the given address range.
+ *
+ * \param ul_start Start address of lock range.
+ * \param ul_end End address of lock range.
+ * \param pul_actual_start Actual start address of lock range.
+ * \param pul_actual_end Actual end address of lock range.
+ */
+static void compute_lock_range(uint32_t ul_start, uint32_t ul_end, uint32_t *pul_actual_start, uint32_t *pul_actual_end) {
+	uint32_t ul_actual_start, ul_actual_end;
+
+	ul_actual_start = ul_start - (ul_start % IFLASH_LOCK_REGION_SIZE);
+	ul_actual_end = ul_end - (ul_end % IFLASH_LOCK_REGION_SIZE) +
+			IFLASH_LOCK_REGION_SIZE - 1;
+
+	if (pul_actual_start) {
+		*pul_actual_start = ul_actual_start;
+	}
+
+	if (pul_actual_end) {
+		*pul_actual_end = ul_actual_end;
+	}
+}
+
+/**
+ * \brief Translate the given flash address to page and offset values.
+ * \note pus_page and pus_offset must not be null in order to store the
+ * corresponding values.
+ *
+ * \param pp_efc Pointer to an EFC pointer.
+ * \param ul_addr Address to translate.
+ * \param pus_page The first page accessed.
+ * \param pus_offset Byte offset in the first page.
+ */
+static void translate_address(Efc **pp_efc, uint32_t ul_addr, uint16_t *pus_page, uint16_t *pus_offset) {
+
+}
+
 /**
  * \brief Lock all the regions in the given address range. The actual lock
  * range is reported through two output parameters.
@@ -59,8 +103,41 @@
  *
  * \return 0 if successful, otherwise returns an error code.
  */
-uint32_t flash_lock(uint32_t ul_start, uint32_t ul_end,
-		uint32_t *pul_actual_start, uint32_t *pul_actual_end)
-{
+uint32_t flash_lock(uint32_t ul_start, uint32_t ul_end, uint32_t *pul_actual_start, uint32_t *pul_actual_end) {
+
+}
+
+/**
+ * \brief Unlock all the regions in the given address range. The actual unlock
+ * range is reported through two output parameters.
+ *
+ * \param ul_start Start address of unlock range.
+ * \param ul_end End address of unlock range.
+ * \param pul_actual_start Start address of the actual unlock range (optional).
+ * \param pul_actual_end End address of the actual unlock range (optional).
+ *
+ * \return 0 if successful, otherwise returns an error code.
+ */
+uint32_t flash_unlock(uint32_t ul_start, uint32_t ul_end, uint32_t *pul_actual_start, uint32_t *pul_actual_end) {
+
+}
+
+/**
+ * \brief Write a data buffer on flash.
+ *
+ * \note This function works in polling mode, and thus only returns when the
+ * data has been effectively written.
+ * \note For dual bank flash, this function doesn't support cross write from
+ * bank 0 to bank 1. In this case, flash_write must be called twice (ie for
+ * each bank).
+ *
+ * \param ul_address Write address.
+ * \param p_buffer Data buffer.
+ * \param ul_size Size of data buffer in bytes.
+ * \param ul_erase_flag Flag to set if erase first.
+ *
+ * \return 0 if successful, otherwise returns an error code.
+ */
+uint32_t flash_write(uint32_t ul_address, const void *p_buffer, uint32_t ul_size, uint32_t ul_erase_flag) {
 
 }
