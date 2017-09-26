@@ -2,13 +2,11 @@
   ******************************************************************************
   * @file    stm32l4xx_hal_cryp_ex.h
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   Header file of CRYPEx HAL module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -43,7 +41,7 @@
  extern "C" {
 #endif
 
-#if defined (STM32L442xx) || defined (STM32L443xx) || defined(STM32L485xx) || defined(STM32L486xx)
+#if defined (STM32L442xx) || defined (STM32L443xx) || defined (STM32L462xx) || defined(STM32L485xx) || defined(STM32L486xx) || defined(STM32L4A6xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
    
 
 /* Includes ------------------------------------------------------------------*/
@@ -137,7 +135,7 @@ HAL_StatusTypeDef CRYP_AES_Auth_IT(CRYP_HandleTypeDef *hcryp);
   * @}
   */ 
   
-#endif /* defined (STM32L442xx) || defined (STM32L443xx) || defined(STM32L485xx) || defined(STM32L486xx) */     
+#endif /* defined (STM32L442xx) || defined (STM32L443xx) || defined (STM32L462xx) || defined(STM32L485xx) || defined(STM32L486xx) || defined(STM32L4A6xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx) */     
   
 #ifdef __cplusplus
 }

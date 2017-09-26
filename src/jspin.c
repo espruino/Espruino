@@ -38,7 +38,7 @@ bool jshIsPinValid(Pin pin) {
 }
 
 Pin jshGetPinFromString(const char *s) {
-  if ((s[0]>='A' && s[0]<='H') && s[1]) {
+  if ((s[0]>='A' && s[0]<='I') && s[1]) {
     int port = JSH_PORTA+s[0]-'A';
     int pin = -1;
     if (s[1]>='0' && s[1]<='9') {
@@ -82,6 +82,10 @@ Pin jshGetPinFromString(const char *s) {
 #if JSH_PORTH_OFFSET!=-1
       } else if (port == JSH_PORTH) {
         if (pin<JSH_PORTH_COUNT) return (Pin)(JSH_PORTH_OFFSET + pin);
+#endif
+#if JSH_PORTI_OFFSET!=-1
+      } else if (port == JSH_PORTI) {
+        if (pin<JSH_PORTI_COUNT) return (Pin)(JSH_PORTI_OFFSET + pin);
 #endif
       }
 #endif
@@ -134,6 +138,11 @@ void jshGetPinString(char *result, Pin pin) {
     } else if (pin>=JSH_PORTH_OFFSET && pin<JSH_PORTH_OFFSET+JSH_PORTH_COUNT) {
       result[0]='H';
       itostr(pin-JSH_PORTH_OFFSET,&result[1],10);
+#endif
+#if JSH_PORTI_OFFSET!=-1
+    } else if (pin>=JSH_PORTI_OFFSET && pin<JSH_PORTI_OFFSET+JSH_PORTI_COUNT) {
+      result[0]='I';
+      itostr(pin-JSH_PORTI_OFFSET,&result[1],10);
 #endif
 #endif
     } else {

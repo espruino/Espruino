@@ -2,13 +2,11 @@
   ******************************************************************************
   * @file    stm32l4xx_hal_pcd.h
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   Header file of PCD HAL module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -43,10 +41,11 @@
  extern "C" {
 #endif
 
-#if defined(STM32L475xx) || defined(STM32L476xx) || \
-    defined(STM32L485xx) || defined(STM32L486xx) || \
-    defined(STM32L432xx) || defined(STM32L433xx) || \
-    defined(STM32L442xx) || defined(STM32L443xx)
+#if defined(STM32L432xx) || defined(STM32L433xx) || defined(STM32L442xx) || defined(STM32L443xx) || \
+    defined(STM32L452xx) || defined(STM32L462xx) || \
+    defined(STM32L475xx) || defined(STM32L476xx) || defined(STM32L485xx) || defined(STM32L486xx) || \
+    defined(STM32L496xx) || defined(STM32L4A6xx) || \
+    defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_ll_usb.h"
@@ -85,7 +84,7 @@ typedef enum
   LPM_L3 = 0x03, /* off */
 }PCD_LPM_StateTypeDef;
 
-#if defined (USB)
+#if defined (STM32_USB)
 /**
   * @brief  PCD double buffered endpoint direction
   */
@@ -105,7 +104,7 @@ typedef enum
   PCD_EP_BUF0,
   PCD_EP_BUF1
 }PCD_EP_BUF_NUM;  
-#endif /* USB */
+#endif /* STM32_USB */
 
 #if defined (USB_OTG_FS)
 typedef USB_OTG_GlobalTypeDef  PCD_TypeDef;
@@ -113,11 +112,11 @@ typedef USB_OTG_CfgTypeDef     PCD_InitTypeDef;
 typedef USB_OTG_EPTypeDef      PCD_EPTypeDef;
 #endif /* USB_OTG_FS */
 
-#if defined (USB)
+#if defined (STM32_USB)
 typedef USB_TypeDef        PCD_TypeDef;
 typedef USB_CfgTypeDef     PCD_InitTypeDef;
 typedef USB_EPTypeDef      PCD_EPTypeDef;
-#endif /* USB */                         
+#endif /* STM32_USB */
 
 /** 
   * @brief  PCD Handle Structure definition  
@@ -234,7 +233,7 @@ typedef struct
 
 #endif /* USB_OTG_FS */
 
-#if defined (USB)
+#if defined (STM32_USB)
 #define __HAL_PCD_ENABLE(__HANDLE__)                                  USB_EnableGlobalInt ((__HANDLE__)->Instance)
 #define __HAL_PCD_DISABLE(__HANDLE__)                                 USB_DisableGlobalInt ((__HANDLE__)->Instance)
 #define __HAL_PCD_GET_FLAG(__HANDLE__, __INTERRUPT__)                 ((USB_ReadInterrupts((__HANDLE__)->Instance) & (__INTERRUPT__)) == (__INTERRUPT__))
@@ -264,7 +263,7 @@ typedef struct
 
 #define __HAL_USB_WAKEUP_EXTI_GENERATE_SWIT()   (EXTI->SWIER1 |= USB_WAKEUP_EXTI_LINE)
 
-#endif /* USB */
+#endif /* STM32_USB */
                                                                         
 /**
   * @}
@@ -360,15 +359,15 @@ PCD_StateTypeDef HAL_PCD_GetState(PCD_HandleTypeDef *hpcd);
 #define USB_OTG_FS_WAKEUP_EXTI_LINE                                   ((uint32_t)0x00020000)  /*!< External interrupt line 17 Connected to the USB EXTI Line */
 #endif /* USB_OTG_FS */
 
-#if defined (USB)
+#if defined (STM32_USB)
 #define  USB_WAKEUP_EXTI_LINE                                         ((uint32_t)0x00020000)  /*!< External interrupt line 17Connected to the USB EXTI Line */
-#endif /* USB */
+#endif /* STM32_USB */
 
 /**
   * @}
   */
 
-#if defined (USB)
+#if defined (STM32_USB)
 /** @defgroup PCD_EP0_MPS PCD EP0 MPS
   * @{
   */
@@ -403,7 +402,7 @@ PCD_StateTypeDef HAL_PCD_GetState(PCD_HandleTypeDef *hpcd);
 /**
   * @}
   */
-#endif /* USB */
+#endif /* STM32_USB */
 /**
   * @}
   */
@@ -412,7 +411,7 @@ PCD_StateTypeDef HAL_PCD_GetState(PCD_HandleTypeDef *hpcd);
 /** @addtogroup PCD_Private_Macros PCD Private Macros
  * @{
  */
-#if defined (USB)
+#if defined (STM32_USB)
 /* SetENDPOINT */
 #define PCD_SET_ENDPOINT(USBx, bEpNum,wRegValue)  (*(&(USBx)->EP0R + (bEpNum) * 2)= (uint16_t)(wRegValue))
 
@@ -832,10 +831,11 @@ PCD_StateTypeDef HAL_PCD_GetState(PCD_HandleTypeDef *hpcd);
 #define PCD_GET_EP_DBUF0_CNT(USBx, bEpNum)     (PCD_GET_EP_TX_CNT((USBx), (bEpNum)))
 #define PCD_GET_EP_DBUF1_CNT(USBx, bEpNum)     (PCD_GET_EP_RX_CNT((USBx), (bEpNum)))
 
-#endif /* USB */
+#endif /* STM32_USB */
 
-#if defined(STM32L432xx) || defined(STM32L433xx) || \
-    defined(STM32L442xx) || defined(STM32L443xx)
+#if defined(STM32L432xx) || defined(STM32L433xx) || defined(STM32L442xx) || defined(STM32L443xx) || \
+    defined(STM32L452xx) || defined(STM32L462xx)
+
 /** @defgroup PCD_Instance_definition PCD Instance definition
   * @{
   */
@@ -843,8 +843,8 @@ PCD_StateTypeDef HAL_PCD_GetState(PCD_HandleTypeDef *hpcd);
 /**
   * @}
   */
-#endif /* STM32L432xx || STM32L433xx || */
-       /* STM32L442xx || STM32L443xx    */
+#endif /* STM32L432xx || STM32L433xx || STM32L442xx || STM32L443xx || */
+       /* STM32L452xx || STM32L462xx */
   
 /**
   * @}
@@ -858,10 +858,11 @@ PCD_StateTypeDef HAL_PCD_GetState(PCD_HandleTypeDef *hpcd);
   * @}
   */
 
-#endif /* STM32L475xx || STM32L476xx || */
-       /* STM32L485xx || STM32L486xx || */
-       /* STM32L432xx || STM32L433xx || */
-       /* STM32L442xx || STM32L443xx    */
+#endif /* STM32L432xx || STM32L433xx || STM32L442xx || STM32L443xx || */
+       /* STM32L452xx || STM32L462xx || */
+       /* STM32L475xx || STM32L476xx || STM32L485xx || STM32L486xx || */
+       /* STM32L496xx || STM32L4A6xx || */
+       /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
 
 #ifdef __cplusplus
 }

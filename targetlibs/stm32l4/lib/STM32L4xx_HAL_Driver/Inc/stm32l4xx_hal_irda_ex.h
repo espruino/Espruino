@@ -2,13 +2,11 @@
   ******************************************************************************
   * @file    stm32l4xx_hal_irda_ex.h
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   Header file of IRDA HAL Extended module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -66,11 +64,13 @@
   */
 
 /** @brief  Report the IRDA clock source.
-  * @param  __HANDLE__: specifies the IRDA Handle.
-  * @param  __CLOCKSOURCE__: output variable.
+  * @param  __HANDLE__ specifies the IRDA Handle.
+  * @param  __CLOCKSOURCE__ output variable.
   * @retval IRDA clocking source, written in __CLOCKSOURCE__.
   */
-#if defined (STM32L471xx) || defined (STM32L475xx) || defined (STM32L476xx) || defined (STM32L485xx) || defined (STM32L486xx)  
+#if defined (STM32L471xx) || defined (STM32L475xx) || defined (STM32L476xx) || defined (STM32L485xx) || defined (STM32L486xx) || \
+    defined (STM32L496xx) || defined (STM32L4A6xx) || \
+    defined (STM32L4R5xx) || defined (STM32L4R7xx) || defined (STM32L4R9xx) || defined (STM32L4S5xx) || defined (STM32L4S7xx) || defined (STM32L4S9xx)
 #define IRDA_GETCLOCKSOURCE(__HANDLE__,__CLOCKSOURCE__)       \
   do {                                                        \
     if((__HANDLE__)->Instance == USART1)                      \
@@ -292,6 +292,94 @@
        }                                                      \
     }                                                         \
   } while(0)
+#elif defined (STM32L451xx) || defined (STM32L452xx) || defined (STM32L462xx)
+#define IRDA_GETCLOCKSOURCE(__HANDLE__,__CLOCKSOURCE__)       \
+  do {                                                        \
+    if((__HANDLE__)->Instance == USART1)                      \
+    {                                                         \
+       switch(__HAL_RCC_GET_USART1_SOURCE())                  \
+       {                                                      \
+        case RCC_USART1CLKSOURCE_PCLK2:                       \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_PCLK2;         \
+          break;                                              \
+        case RCC_USART1CLKSOURCE_HSI:                         \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_HSI;           \
+          break;                                              \
+        case RCC_USART1CLKSOURCE_SYSCLK:                      \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_SYSCLK;        \
+          break;                                              \
+        case RCC_USART1CLKSOURCE_LSE:                         \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_LSE;           \
+          break;                                              \
+        default:                                              \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_UNDEFINED;     \
+          break;                                              \
+       }                                                      \
+    }                                                         \
+    else if((__HANDLE__)->Instance == USART2)                 \
+    {                                                         \
+       switch(__HAL_RCC_GET_USART2_SOURCE())                  \
+       {                                                      \
+        case RCC_USART2CLKSOURCE_PCLK1:                       \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_PCLK1;         \
+          break;                                              \
+        case RCC_USART2CLKSOURCE_HSI:                         \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_HSI;           \
+          break;                                              \
+        case RCC_USART2CLKSOURCE_SYSCLK:                      \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_SYSCLK;        \
+          break;                                              \
+        case RCC_USART2CLKSOURCE_LSE:                         \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_LSE;           \
+          break;                                              \
+        default:                                              \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_UNDEFINED;     \
+          break;                                              \
+       }                                                      \
+    }                                                         \
+    else if((__HANDLE__)->Instance == USART3)                 \
+    {                                                         \
+       switch(__HAL_RCC_GET_USART3_SOURCE())                  \
+       {                                                      \
+        case RCC_USART3CLKSOURCE_PCLK1:                       \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_PCLK1;         \
+          break;                                              \
+        case RCC_USART3CLKSOURCE_HSI:                         \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_HSI;           \
+          break;                                              \
+        case RCC_USART3CLKSOURCE_SYSCLK:                      \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_SYSCLK;        \
+          break;                                              \
+        case RCC_USART3CLKSOURCE_LSE:                         \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_LSE;           \
+          break;                                              \
+        default:                                              \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_UNDEFINED;     \
+          break;                                              \
+       }                                                      \
+    }                                                         \
+    else if((__HANDLE__)->Instance == UART4)                  \
+    {                                                         \
+       switch(__HAL_RCC_GET_UART4_SOURCE())                   \
+       {                                                      \
+        case RCC_UART4CLKSOURCE_PCLK1:                        \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_PCLK1;         \
+          break;                                              \
+        case RCC_UART4CLKSOURCE_HSI:                          \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_HSI;           \
+          break;                                              \
+        case RCC_UART4CLKSOURCE_SYSCLK:                       \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_SYSCLK;        \
+          break;                                              \
+        case RCC_UART4CLKSOURCE_LSE:                          \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_LSE;           \
+          break;                                              \
+        default:                                              \
+          (__CLOCKSOURCE__) = IRDA_CLOCKSOURCE_UNDEFINED;     \
+          break;                                              \
+       }                                                      \
+    }                                                         \
+  } while(0)  
 #endif
 
 /**

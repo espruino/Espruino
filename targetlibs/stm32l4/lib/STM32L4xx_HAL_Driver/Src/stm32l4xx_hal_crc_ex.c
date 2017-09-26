@@ -2,8 +2,6 @@
   ******************************************************************************
   * @file    stm32l4xx_hal_crc_ex.c
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   Extended CRC HAL module driver.
   *          This file provides firmware functions to manage the extended 
   *          functionalities of the CRC peripheral.  
@@ -20,7 +18,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -144,7 +142,7 @@ HAL_StatusTypeDef HAL_CRCEx_Polynomial_Set(CRC_HandleTypeDef *hcrc, uint32_t Pol
       /* no polynomial definition vs. polynomial length issue possible */
       break; 
     default:
-      break;                        
+      return  HAL_ERROR;                        
   }
 
   /* set generating polynomial */

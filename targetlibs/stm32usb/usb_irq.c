@@ -20,6 +20,10 @@
 #ifdef STM32F4
   #include "stm32f4xx_hal_pcd.h"
 #endif
+#ifdef STM32L4
+  #include "stm32l4xx_hal_pcd.h"
+#endif
+
 
 extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
@@ -63,3 +67,12 @@ void OTG_FS_IRQHandler(void) {
 }
 
 #endif // STM32F4
+
+#ifdef STM32L4
+/**
+* @brief This function handles USB On The Go FS global interrupt.
+*/
+void OTG_FS_IRQHandler(void) {
+  HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
+}
+#endif // STM32L4

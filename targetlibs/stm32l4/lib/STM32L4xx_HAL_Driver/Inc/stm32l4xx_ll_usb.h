@@ -2,13 +2,11 @@
   ******************************************************************************
   * @file    stm32l4xx_ll_usb.h
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   Header file of USB Core HAL module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -43,10 +41,11 @@
  extern "C" {
 #endif
 
-#if defined(STM32L475xx) || defined(STM32L476xx) || \
-    defined(STM32L485xx) || defined(STM32L486xx) || \
-    defined(STM32L432xx) || defined(STM32L433xx) || \
-    defined(STM32L442xx) || defined(STM32L443xx)
+#if defined(STM32L432xx) || defined(STM32L433xx) || defined(STM32L442xx) || defined(STM32L443xx) || \
+    defined(STM32L452xx) || defined(STM32L462xx) || \
+    defined(STM32L475xx) || defined(STM32L476xx) || defined(STM32L485xx) || defined(STM32L486xx) || \
+    defined(STM32L496xx) || defined(STM32L4A6xx) || \
+    defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
       
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_hal_def.h"
@@ -233,7 +232,7 @@ typedef struct
 }USB_OTG_HCTypeDef;
 #endif /* USB_OTG_FS */
 
-#if defined (USB)
+#if defined (STM32_USB)
 /** 
   * @brief  USB Initialization Structure definition  
   */
@@ -303,7 +302,7 @@ typedef struct
   uint32_t  xfer_count;     /*!< Partial transfer length in case of multi packet transfer                 */
 
 } USB_EPTypeDef;
-#endif /* USB */
+#endif /* STM32_USB */
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -464,7 +463,7 @@ typedef struct
 
 #endif /* USB_OTG_FS */
 
-#if defined (USB)  
+#if defined (STM32_USB)
 /** @defgroup USB_LL_EP0_MPS USB Low Layer EP0 MPS
   * @{
   */
@@ -489,7 +488,7 @@ typedef struct
   */ 
 
 #define BTABLE_ADDRESS                         (0x000)
-#endif /* USB */
+#endif /* STM32_USB */
 
 /**
   * @}
@@ -561,7 +560,7 @@ HAL_StatusTypeDef USB_ActivateRemoteWakeup(USB_OTG_GlobalTypeDef *USBx);
 HAL_StatusTypeDef USB_DeActivateRemoteWakeup(USB_OTG_GlobalTypeDef *USBx);
 #endif /* USB_OTG_FS */
 
-#if defined (USB)
+#if defined (STM32_USB)
 HAL_StatusTypeDef USB_CoreInit(USB_TypeDef *USBx, USB_CfgTypeDef Init);
 HAL_StatusTypeDef USB_DevInit(USB_TypeDef *USBx, USB_CfgTypeDef Init);
 HAL_StatusTypeDef USB_EnableGlobalInt(USB_TypeDef *USBx);
@@ -593,7 +592,7 @@ HAL_StatusTypeDef USB_ActivateRemoteWakeup(USB_TypeDef *USBx);
 HAL_StatusTypeDef USB_DeActivateRemoteWakeup(USB_TypeDef *USBx);
 void USB_WritePMA(USB_TypeDef  *USBx, uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes);
 void USB_ReadPMA(USB_TypeDef  *USBx, uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes);
-#endif /* USB */
+#endif /* STM32_USB */
 /**
   * @}
   */ 
@@ -602,10 +601,11 @@ void USB_ReadPMA(USB_TypeDef  *USBx, uint8_t *pbUsrBuf, uint16_t wPMABufAddr, ui
   * @}
   */
 
-#endif /* STM32L475xx || STM32L476xx || */
-       /* STM32L485xx || STM32L486xx || */
-       /* STM32L432xx || STM32L433xx || */
-       /* STM32L442xx || STM32L443xx    */
+#endif /* STM32L432xx || STM32L433xx || STM32L442xx || STM32L443xx || */
+       /* STM32L452xx || STM32L462xx || */
+       /* STM32L475xx || STM32L476xx || STM32L485xx || STM32L486xx || */
+       /* STM32L496xx || STM32L4A6xx || */
+       /* STM32L4R5xx || STM32L4R7xx || STM32L4R9xx || STM32L4S5xx || STM32L4S7xx || STM32L4S9xx */
   
 #ifdef __cplusplus
 }
