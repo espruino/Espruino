@@ -278,6 +278,8 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 
 void jshFlashErasePage(uint32_t addr) {
 //	jsiConsolePrintf("\ntcjshFlashErasePage addr 0x%x", addr);
+	// We're erasing the whole flash bank here, because only on bank1 we have the espruino code, bank2 is completly for javascript code
+	flash_erase_all(addr);
 }
 
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
