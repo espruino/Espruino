@@ -29,6 +29,7 @@
 
 // My Includes
 #include "jshardware.h"
+#include "flash.h"
 
 #define SYSCLK_FREQ 84000000 // Using standard HFXO freq
 #define UART1BAUDRATE 9600
@@ -275,16 +276,20 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 }
 
 void jshFlashErasePage(uint32_t addr) {
+	jsiConsolePrintf("\ntcjshFlashErasePage addr 0x%x", addr);
 }
 
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
+	jsiConsolePrintf("\ntcjshFlashGetPage addr 0x%x startAddr 0x%x pageSize 0x%x", addr, *startAddr, *pageSize);
 	return false;
 }
 
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
+	jsiConsolePrintf("\ntcjshFlashWrite addr 0x%x len 0x%x", addr, len);
 }
 
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
+	jsiConsolePrintf("\ntcjshFlashRead addr 0x%x len 0x%x", addr, len);
 	memcpy(buf, (void*)addr, len);
 }
 
@@ -387,6 +392,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 }
 
 JsVar *jshFlashGetFree() {
+	jsiConsolePrintf("\ntcjshGetFree");
 	return 0;
 }
 
