@@ -169,10 +169,10 @@ void jshInit() {
 	SystemInit();
 
 	/*
-	 * Config systick interrupt timing, core clock is in microseconds --> 1ms
+	 * Config systick interrupt timing, core clock is in microseconds --> 10 Microsecond Accuracy
 	 * Defined in CMSIS/CMSIS/include/core_cm3.h
 	 */
-	if (SysTick_Config(SystemCoreClock / 1000)) while (1);
+	if (SysTick_Config(SystemCoreClock / 100000)) while (1);
 
 	/*
 	 * No watchdog now
@@ -268,12 +268,12 @@ JsVarFloat jshPinAnalog(Pin pin) {
 }
 
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-	// GetTickCount() is in Milliseconds
-	return ((JsVarFloat)time);
+	// GetTickCount() is in 10 Microseconds
+	return ((JsVarFloat)time/100);
 }
 
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-	return (JsSysTime)(ms);
+	return (JsSysTime)(ms*100);
 }
 
 void jshFlashErasePage(uint32_t addr) {
