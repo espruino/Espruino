@@ -41,7 +41,31 @@
  *
  */
 
-#define IFLASH_LOCK_REGION_SIZE (16384u)
+#define IFLASH0_SIZE             (0x40000u)
+#define IFLASH0_PAGE_SIZE        (256u)
+#define IFLASH0_LOCK_REGION_SIZE (16384u)
+#define IFLASH0_NB_OF_PAGES      (1024u)
+#define IFLASH1_SIZE             (0x40000u)
+#define IFLASH1_PAGE_SIZE        (256u)
+#define IFLASH1_LOCK_REGION_SIZE (16384u)
+#define IFLASH1_NB_OF_PAGES      (1024u)
+#define IFLASH0_ADDR   		 (0x00080000u)
+#define IFLASH1_ADDR   		 (IFLASH0_ADDR+IFLASH0_SIZE)
+
+#define IFLASH_PAGE_SIZE     	 IFLASH0_PAGE_SIZE
+#define IFLASH_LOCK_REGION_SIZE  IFLASH0_LOCK_REGION_SIZE
+
+/* Flash page buffer for alignment */
+static uint32_t gs_ul_page_buffer[IFLASH_PAGE_SIZE / sizeof(uint32_t)];
+
+typedef enum flash_rc {
+	FLASH_RC_OK = 0,        //!< Operation OK
+	FLASH_RC_YES = 0,       //!< Yes
+	FLASH_RC_NO = 1,        //!< No
+	FLASH_RC_ERROR = 0x10,  //!< General error
+	FLASH_RC_INVALID,       //!< Invalid argument input
+	FLASH_RC_NOT_SUPPORT = 0xFFFFFFFF    //!< Operation is not supported
+} flash_rc_t;
 
 uint32_t flash_write(uint32_t ul_address, const void *p_buffer, uint32_t ul_size, uint32_t ul_erase_flag);
 uint32_t flash_lock(uint32_t ul_start, uint32_t ul_end, uint32_t *pul_actual_start, uint32_t *pul_actual_end);
