@@ -286,15 +286,14 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
 }
 
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
-	jsiConsolePrintf("\ntcjshFlashWrite addr 0x%x len 0x%x", addr, len);
-
+//	jsiConsolePrintf("\ntcjshFlashWrite addr 0x%x len 0x%x", addr, len);
 	flash_unlock((uint32_t)addr, (uint32_t)addr + len - 1, 0, 0);
 	flash_write((uint32_t)addr, buf, len, 1);
 	flash_lock((uint32_t)addr, (uint32_t)addr + len - 1, 0, 0);
 }
 
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
-	jsiConsolePrintf("\ntcjshFlashRead addr 0x%x len 0x%x", addr, len);
+//	jsiConsolePrintf("\ntcjshFlashRead addr 0x%x len 0x%x", addr, len);
 	memcpy(buf, (void*)addr, len);
 }
 
