@@ -28,9 +28,9 @@ CFLAGS += -Os $(INCLUDE)
 
 LINKER_FILE=$(ROOT)/targetlibs/samd/sam/linker_scripts/gcc/flash.ld
 
-SOURCES += targets/samd/flash.c
 SOURCES += targets/samd/jshardware.c
 SOURCES += targets/samd/main.c
+SOURCES += targets/samd/flash.c
 
 LDFLAGS += $(INCLUDES) -Os -L -lgcc -mthumb
 LDFLAGS += -mcpu=cortex-m3 -Wl,--entry=Reset_Handler
