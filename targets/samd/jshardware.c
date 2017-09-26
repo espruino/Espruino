@@ -277,11 +277,11 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 }
 
 void jshFlashErasePage(uint32_t addr) {
-	jsiConsolePrintf("\ntcjshFlashErasePage addr 0x%x", addr);
+//	jsiConsolePrintf("\ntcjshFlashErasePage addr 0x%x", addr);
 }
 
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
-	jsiConsolePrintf("\ntcjshFlashGetPage addr 0x%x startAddr 0x%x pageSize 0x%x", addr, *startAddr, *pageSize);
+//	jsiConsolePrintf("\ntcjshFlashGetPage addr 0x%x startAddr 0x%x pageSize 0x%x", addr, *startAddr, *pageSize);
 	return false;
 }
 
@@ -396,7 +396,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 }
 
 JsVar *jshFlashGetFree() {
-	jsiConsolePrintf("\ntcjshGetFree");
+//	jsiConsolePrintf("\ntcjshGetFree");
 	return 0;
 }
 
