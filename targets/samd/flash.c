@@ -312,3 +312,27 @@ uint32_t flash_write(uint32_t ul_address, const void *p_buffer, uint32_t ul_size
 
 	return FLASH_RC_OK;
 }
+
+/**
+ * \brief Erase the entire flash.
+ *
+ * \note Only the flash bank including ul_address will be erased. If there are
+ * two flash banks, we need to call this function twice with each bank start
+ * address.
+ *
+ * \param ul_address  Flash bank start address.
+ *
+ * \return 0 if successful; otherwise returns an error code.
+ */
+uint32_t flash_erase_all(uint32_t ul_address)
+{
+	Efc *p_efc;
+
+	translate_address(&p_efc, ul_address, NULL, NULL);
+
+	if (EFC_RC_OK != efc_perform_command(p_efc, EFC_FCMD_EA, 0)) {
+		return FLASH_RC_ERROR;
+	}
+
+	return FLASH_RC_OK;
+}
