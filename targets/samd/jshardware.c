@@ -32,7 +32,6 @@
 #include "flash.h"
 #include "../targetlibs/samd/sam/libsam/include/efc.h"
 
-#define SYSCLK_FREQ 84000000 // Using standard HFXO freq
 #define UART1BAUDRATE 9600
 
 // Systemtick counter
@@ -211,7 +210,7 @@ void jshInit() {
 	UART->UART_MR = UART_MR_PAR_NO | UART_MR_CHMODE_NORMAL;
 
 	// Configure baudrate (asynchronous, no oversampling)
-	UART->UART_BRGR = (SYSCLK_FREQ / UART1BAUDRATE) >> 4;
+	UART->UART_BRGR = (SystemCoreClock / UART1BAUDRATE) >> 4;
 
 	// Configure interrupts
 	UART->UART_IDR = 0xFFFFFFFF;
