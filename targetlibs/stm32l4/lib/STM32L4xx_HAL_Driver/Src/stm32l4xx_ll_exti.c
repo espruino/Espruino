@@ -2,13 +2,11 @@
   ******************************************************************************
   * @file    stm32l4xx_ll_exti.c
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   EXTI LL module driver.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -108,11 +106,15 @@ uint32_t LL_EXTI_DeInit(void)
   LL_EXTI_WriteReg(FTSR1,  0x00000000U);
   /* Software interrupt event register set to default reset values */
   LL_EXTI_WriteReg(SWIER1, 0x00000000U);
-  /* Pending register set to default reset values */
+  /* Pending register clear */
   LL_EXTI_WriteReg(PR1,    0x007DFFFFU);
 
   /* Interrupt mask register 2 set to default reset values */
+#if defined(LL_EXTI_LINE_40)
+  LL_EXTI_WriteReg(IMR2,        0x00000187U);
+#else
   LL_EXTI_WriteReg(IMR2,        0x00000087U);
+#endif
   /* Event mask register 2 set to default reset values */
   LL_EXTI_WriteReg(EMR2,        0x00000000U);
   /* Rising Trigger selection register 2 set to default reset values */
@@ -121,7 +123,7 @@ uint32_t LL_EXTI_DeInit(void)
   LL_EXTI_WriteReg(FTSR2,       0x00000000U);
   /* Software interrupt event register 2 set to default reset values */
   LL_EXTI_WriteReg(SWIER2,      0x00000000U);
-  /* Pending register 2 set to default reset values */
+  /* Pending register 2 clear */
   LL_EXTI_WriteReg(PR2,         0x00000078U);
 
   return SUCCESS;

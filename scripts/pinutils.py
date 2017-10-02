@@ -19,7 +19,7 @@ import json;
 import sys;
 import os;
 
-ALLOWED_PORTS = "ABCDEFGH";
+ALLOWED_PORTS = "ABCDEFGHI";
 ALLOWED_FUNCTIONS = {}
 CLASSES = {}
 NAMES = {}
@@ -267,7 +267,7 @@ def append_devices_to_pin_list(pins, board):
 # Get the utility timer for a specific board
 def get_device_util_timer(board):
   if (board.chip["family"]=="STM32L4"):
-    if board.chip["part"].startswith("STM32L476"):
+    if board.chip["part"].startswith("STM32L476") | board.chip["part"].startswith("STM32L496"):
       return { 'timer' : "TIM5", 'defines' : """
   // Used by various pins, but always with other options
   #define UTIL_TIMER TIM5

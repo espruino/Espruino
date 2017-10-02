@@ -43,6 +43,7 @@
 #include "stm32l4xx_ll_adc.h"
 #include "stm32l4xx_ll_cortex.h"
 #include "stm32l4xx_ll_dac.h"
+#include "stm32l4xx_ll_pwr.h"
 
 #include "stm32l4xx_hal.h" // Used for flash management
 
@@ -799,31 +800,53 @@ volatile unsigned char jshSPIBuf[SPI_COUNT][JSH_SPIBUF_MASK+1]; // Need to be mo
   */
 void SystemClock_Config(void)
 {
-  /* MSI configuration and activation */
+  /* code directly coming from cube MX, L496 disco board */
+
   LL_FLASH_SetLatency(LL_FLASH_LATENCY_4);
+  if(LL_FLASH_GetLatency() != LL_FLASH_LATENCY_4)
+  {
+    while(1);
+  }
+  LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE1);
+
+#ifdef USB
+  /* Select HSI48 as USB clock source */
+  LL_RCC_HSI48_Enable();
+  /* Wait till HSI48 is ready */
+  while(LL_RCC_HSI48_IsReady() != 1)
+  {
+  }
+#endif
+
+  /* MSI configuration and activation */
   LL_RCC_MSI_Enable();
+  /* Wait till MSI is ready */
   while(LL_RCC_MSI_IsReady() != 1)
   {
   };
 
+  LL_RCC_MSI_EnableRangeSelection();
+  LL_RCC_MSI_SetRange(LL_RCC_MSIRANGE_6);
+  LL_RCC_MSI_SetCalibTrimming(0);
+
   /* Main PLL configuration and activation */
   LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_MSI, LL_RCC_PLLM_DIV_1, 40, LL_RCC_PLLR_DIV_2);
-  LL_RCC_PLL_Enable();
   LL_RCC_PLL_EnableDomain_SYS();
+  LL_RCC_PLL_Enable();
+  /* Wait till PLL is ready */
   while(LL_RCC_PLL_IsReady() != 1)
   {
   };
 
   /* Sysclk activation on the main PLL */
   LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
+  LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_1);
+  LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_1);
   LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL);
+  /* Wait till System clock is ready */
   while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL)
   {
   };
-
-  /* Set APB1 & APB2 prescaler*/
-  LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_1);
-  LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_1);
 
   /* Set systick to 1ms in using frequency set to 80MHz */
   /* This frequency can be calculated through LL RCC macro */
@@ -833,6 +856,12 @@ void SystemClock_Config(void)
 
   /* Update CMSIS variable (which can be updated also through SystemCoreClockUpdate function) */
   LL_SetSystemCoreClock(80000000);
+#ifdef USB
+  LL_RCC_SetUSBClockSource(LL_RCC_USB_CLKSOURCE_HSI48);
+#endif
+
+  /* SysTick_IRQn interrupt configuration */
+  NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
 }
 
 static void jshResetPeripherals() {
@@ -892,6 +921,19 @@ void jshInit(){
   // enable clocks
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ALL);
+
+#ifdef USB
+  __HAL_RCC_PWR_CLK_ENABLE();
+
+  /* enable USB power on Pwrctrl CR2 register */
+  HAL_PWREx_EnableVddUSB();
+#endif
+
+
+#if defined(GPIOG)
+  /* enable the Vddio2 power supply to use PG[15:2] */
+  HAL_PWREx_EnableVddIO2();
+#endif
 
 #ifdef LED1_PININDEX
   // turn led on (status)
@@ -1002,7 +1044,21 @@ void jshReset(){
 /** Code that is executed each time around the idle loop. Prod watchdog timers here,
  * and on platforms without GPIO interrupts you can check watched Pins for changes. */
 void jshIdle(){
-
+#ifdef USB
+  static bool wasUSBConnected = false;
+  bool USBConnected = jshIsUSBSERIALConnected();
+  if (wasUSBConnected != USBConnected) {
+    wasUSBConnected = USBConnected;
+    if (USBConnected && jsiGetConsoleDevice()!=EV_LIMBO) {
+      if (!jsiIsConsoleDeviceForced())
+        jsiSetConsoleDevice(EV_USBSERIAL, false);
+    } else {
+      if (!jsiIsConsoleDeviceForced() && jsiGetConsoleDevice()==EV_USBSERIAL)
+        jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, false);
+      jshTransmitClearDevice(EV_USBSERIAL); // clear the transmit queue
+    }
+  }
+#endif
         return;
 }
 
@@ -1072,7 +1128,11 @@ int jshGetSerialNumber(unsigned char *data, int maxChars){
 /** Is the USB port connected such that we could move the console over to it
  * (and that we should store characters sent to USB). On non-USB boards this just returns false. */
 bool jshIsUSBSERIALConnected(){
-    return FALSE;
+#ifdef USB
+  return USB_IsConnected();
+#else
+  return false;
+#endif
 }
 
 
@@ -1188,8 +1248,11 @@ static NO_INLINE int jshAnalogRead(Pin pin, JsvPinInfoAnalog analog, bool fastCo
   IRQn_Type adcIRQ;
   ADC_TypeDef *ADCx = stmADC(analog);
 
+#if defined(GPIO_ASCR_ASC0)
+  /* For families where Analog Control ASC0 register is present */
   /* Connect GPIO analog switch to ADC input */
   LL_GPIO_EnablePinAnalogControl(stmPort(pin), stmPin(pin));
+#endif /* GPIO_ASCR_ASC0 */
 
   if(ADCx == ADC1 || ADCx == ADC2) {
     adcIRQ = ADC1_2_IRQn;

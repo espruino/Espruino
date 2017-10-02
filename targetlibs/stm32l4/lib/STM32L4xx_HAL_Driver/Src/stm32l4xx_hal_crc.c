@@ -2,8 +2,6 @@
   ******************************************************************************
   * @file    stm32l4xx_hal_crc.c
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   CRC HAL module driver.   
   *          This file provides firmware functions to manage the following 
   *          functionalities of the CRC peripheral:
@@ -33,7 +31,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
