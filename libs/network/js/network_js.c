@@ -74,12 +74,14 @@ int net_js_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, un
       hostVar = networkGetAddressAsString((unsigned char *)&host, 4,10,'.');
   }
   // else server, hostVar=0
-  JsVar *args[2] = {
+  JsVar *args[4] = {
       hostVar,
-      jsvNewFromInteger(port)
+      jsvNewFromInteger(port),
+      jsvNewFromInteger((JsVarInt)socketType),
+      options
   };
-  int sckt = jsvGetIntegerAndUnLock(callFn("create", 2, args));
-  jsvUnLockMany(2, args);
+  int sckt = jsvGetIntegerAndUnLock(callFn("create", 4, args));
+  jsvUnLockMany(3, args);
   return sckt;
 }
 
@@ -92,7 +94,7 @@ void net_js_closesocket(JsNetwork *net, int sckt) {
   jsvUnLock2(callFn("close", 1, args), args[0]);
 }
 
-/// If the given server socket can accept a connection, return it (or return < 0)
+/// If the given server socket can accept a connection, return the socket number of the new connection (or return < 0)
 int net_js_accept(JsNetwork *net, int serverSckt) {
   NOT_USED(net);
   JsVar *netObj = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_NAME, 0);
@@ -108,12 +110,13 @@ int net_js_accept(JsNetwork *net, int serverSckt) {
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_js_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
   NOT_USED(net);
-  JsVar *args[2] = {
+  JsVar *args[3] = {
       jsvNewFromInteger(sckt),
       jsvNewFromInteger((JsVarInt)len),
+      jsvNewFromInteger((JsVarInt)socketType),
   };
-  JsVar *res = callFn( "recv", 2, args);
-  jsvUnLockMany(2, args);
+  JsVar *res = callFn( "recv", 3, args);
+  jsvUnLockMany(3, args);
   int r = -1; // fail
   if (jsvIsString(res)) {
     r = (int)jsvGetStringLength(res);
@@ -134,13 +137,13 @@ int net_js_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_js_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
   NOT_USED(net);
-  JsVar *args[2] = {
+  JsVar *args[3] = {
       jsvNewFromInteger(sckt),
-      jsvNewFromEmptyString()
+      jsvNewStringOfLength(len, buf),
+      jsvNewFromInteger((JsVarInt)socketType)
   };
-  jsvAppendStringBuf(args[1], buf, len);
-  int r = jsvGetIntegerAndUnLock(callFn( "send", 2, args));
-  jsvUnLockMany(2, args);
+  int r = jsvGetIntegerAndUnLock(callFn( "send", 3, args));
+  jsvUnLockMany(3, args);
   return r;
 }
 
