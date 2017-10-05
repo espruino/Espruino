@@ -317,19 +317,19 @@ static void jslLexRegex() {
     lex->tk++; // +1 gets you to 'unfinished X'
   } else {
     jsvStringIteratorAppend(&it, '/');
+    jslGetNextCh();
     // regex modifiers
-    if (lex->tk=='g' ||
-        lex->tk=='i' ||
-        lex->tk=='m' ||
-        lex->tk=='y' ||
-        lex->tk=='u') {
+    while (lex->currCh=='g' ||
+        lex->currCh=='i' ||
+        lex->currCh=='m' ||
+        lex->currCh=='y' ||
+        lex->currCh=='u') {
       jslTokenAppendChar(lex->currCh);
       jsvStringIteratorAppend(&it, lex->currCh);
       jslGetNextCh();
     }
   }
   jsvStringIteratorFree(&it);
-  jslGetNextCh();
 }
 
 void jslGetNextToken() {
