@@ -37,6 +37,9 @@ testreg(re.exec(names)," ;",49);
 test(re.lastIndex, 51);
 testreg(re.exec(names),null);
 test(re.lastIndex, 0);
+test(names.split(re), "Harry Trump,Fred Barney,Helen Rigby,Bill Abel");
+
+
 test("Hellowa worldssaaa a a a".replace(/a/,""),"Hellow worldssaaa a a a");
 test("Hellowa worldssaaa a a a".replace(/a/g,""),"Hellow worldss   ");
 test("Hello".replace(/(l)/g,"[$1]"), "He[l][l]o");
