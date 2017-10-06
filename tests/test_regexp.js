@@ -1,7 +1,7 @@
 tests=0;
 testPass=0;
 
-function test(regex, matches, index) {
+function testreg(regex, matches, index) {
   tests++;
   if (regex==matches) {
     if (matches==null || regex.index==index)
@@ -9,14 +9,26 @@ function test(regex, matches, index) {
   }
   console.log("Test "+tests+" failed, got ",regex);
 }
+function test(a, b) {
+  tests++;
+  if (a==b) {
+    return testPass++;
+  }
+  console.log("Test "+tests+" failed, got ",regex);
+}
 
-test(new RegExp("a").exec("bc"), null);
-test(/a/.exec("abcdef"),"a",0);
-test(/a/.exec("bcdaef"),"a",3);
-test(/a(b)c/.exec("abc"),"abc,b",0);
-test(/\sWorld/.exec("Hello World")," World",5);
-test(/a*b/.exec("Helloaaabc"),"aaab", 5);
-test(/[bac]*d/.exec("Hello abcd"),"abcd", 6);
+testreg(new RegExp("a").exec("bc"), null);
+testreg(/a/.exec("abcdef"),"a",0);
+testreg(/a/.exec("bcdaef"),"a",3);
+testreg(/a(b)c/.exec("abc"),"abc,b",0);
+testreg(/\sWorld/.exec("Hello World")," World",5);
+testreg(/a*b/.exec("Helloaaabc"),"aaab", 5);
+testreg(/[bac]*d/.exec("Hello abcd"),"abcd", 6);
+
+test("Hellowa worldssaaa a a a".replace(/a/,""),"Hellow worldssaaa a a a");
+test("Hellowa worldssaaa a a a".replace(/a/g,""),"Hellow worldss   ");
+test("Hello".replace(/(l)/g,"[$1]"), "He[l][l]o");
+test("Hello".replace(/e(l)/g,"[$1]"), "H[l]lo");
 
 result = tests==testPass;
 console.log("Pass",result);

@@ -15,6 +15,9 @@
  */
 #include "jswrap_string.h"
 #include "jsvariterator.h"
+#ifndef SAVE_ON_FLASH
+#include "jswrap_regexp.h"
+#endif
 
 /*JSON{
   "type" : "class",
@@ -214,8 +217,72 @@ Search and replace ONE occurrance of `subStr` with `newSubStr` and return the re
  */
 JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
   JsVar *str = jsvAsString(parent, false);
-  subStr = jsvAsString(subStr, false);
   newSubStr = jsvAsString(newSubStr, false);
+#ifndef SAVE_ON_FLASH
+  if (jsvIsInstanceOf(subStr, "RegExp")) {
+    jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
+    bool global = jswrap_regexp_hasFlag(subStr,'g');
+    JsVar *match;
+    match = jswrap_regexp_exec(subStr, str);
+    while (match && !jsvIsNull(match)) {
+      // get info about match
+      JsVar *matchStr = jsvGetArrayItem(match,0);
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
+      JsVarInt len = (JsVarInt)jsvGetStringLength(matchStr);
+      jsvUnLock(matchStr);
+      // do the replacement
+      JsVar *newStr = jsvNewFromStringVar(str, 0, (size_t)idx);
+      JsvStringIterator dst;
+      jsvStringIteratorNew(&dst, newStr, 0);
+      jsvStringIteratorGotoEnd(&dst);
+      JsvStringIterator src;
+      jsvStringIteratorNew(&src, newSubStr, 0);
+      while (jsvStringIteratorHasChar(&src)) {
+        char ch = jsvStringIteratorGetChar(&src);
+        if (ch=='$') {
+          jsvStringIteratorNext(&src);
+          ch = jsvStringIteratorGetChar(&src);
+          JsVar *group = 0;
+          if (ch>'0' && ch<='9')
+            group = jsvGetArrayItem(match, ch-'0');
+          if (group) {
+            jsvStringIteratorAppendString(&dst, group, 0);
+            jsvUnLock(group);
+          } else {
+            jsvStringIteratorAppend(&dst, '$');
+            jsvStringIteratorAppend(&dst, ch);
+          }
+        } else {
+          jsvStringIteratorAppend(&dst, ch);
+        }
+        jsvStringIteratorNext(&src);
+      }
+      jsvStringIteratorFree(&src);
+      JsVarInt lastIndex = (JsVarInt)jsvStringIteratorGetIndex(&dst);
+      jsvStringIteratorAppendString(&dst, str, (size_t)(idx+len));
+      jsvStringIteratorFree(&dst);
+      jsvUnLock(str);
+      str = newStr;
+      // search again if global
+      jsvUnLock(match);
+      match = 0;
+      if (global) {
+        jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(lastIndex));
+        match = jswrap_regexp_exec(subStr, str);
+      }
+    }
+    jsvUnLock(match);
+    jsvUnLock(newSubStr);
+    // reset lastIndex if global
+    if (global)
+      jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
+    return str;
+  }
+#endif
+
+
+  subStr = jsvAsString(subStr, false);
+
 
   int idx = jswrap_string_indexOf(parent, subStr, 0, false);
   if (idx>=0) {

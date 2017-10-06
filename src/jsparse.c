@@ -1411,7 +1411,7 @@ JsVar *jspeTemplateLiteral() {
             JsVar *result = jspEvaluateExpressionVar(expr);
             jsvUnLock(expr);
             result = jsvAsString(result, true);
-            jsvStringIteratorAppendString(&dit, result);
+            jsvStringIteratorAppendString(&dit, result, 0);
             jsvUnLock(result);
           } else {
             jsvStringIteratorAppend(&dit, '$');
@@ -1551,7 +1551,7 @@ NO_INLINE JsVar *jspeFactor() {
     jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in this version of Espruino\n");
 #else
     JsVar *regex = jslGetTokenValueAsVar(lex);
-    int regexEnd = 0, regexLen = 0;
+    size_t regexEnd = 0, regexLen = 0;
     JsvStringIterator it;
     jsvStringIteratorNew(&it, regex, 0);
     while (jsvStringIteratorHasChar(&it)) {

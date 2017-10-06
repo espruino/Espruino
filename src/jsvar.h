@@ -730,6 +730,9 @@ typedef struct {
  */
 bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 
+/// Is the variable an instance of the given class. Eg. `jsvIsInstanceOf(e, "Error")` - does a simple, non-recursive check that doesn't take account of builtins like String
+bool jsvIsInstanceOf(JsVar *var, const char *constructorName);
+
 /// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
 

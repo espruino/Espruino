@@ -217,6 +217,7 @@ JsVar *jswrap_regexp_constructor(JsVar *str, JsVar *flags) {
     else
       jsvObjectSetChild(r, "flags", flags);
   }
+  jsvObjectSetChildAndUnLock(r, "lastIndex", jsvNewFromInteger(0));
   return r;
 }
 
@@ -254,6 +255,7 @@ Or with groups:
 ```
  */
 JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *str) {
+  JsVarInt lastIndex = jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, "lastIndex", 0));
   JsVar *regex = jsvObjectGetChild(parent, "source", 0);
   if (!jsvIsString(regex)) {
     jsvUnLock(regex);
@@ -267,8 +269,16 @@ JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *str) {
   }
   jsvGetString(regex, regexPtr, regexLen+1);
   jsvUnLock(regex);
-  JsVar *rmatch = match(regexPtr, str, 0);
-  if (!rmatch) return jsvNewWithFlags(JSV_NULL);
+  JsVar *rmatch = match(regexPtr, str, (size_t)lastIndex);
+  if (!rmatch) {
+    return jsvNewWithFlags(JSV_NULL);
+  } else {
+    // if it's global, set lastIndex
+    if (jswrap_regexp_hasFlag(parent,'g')) {
+      lastIndex = jsvGetIntegerAndUnLock(jsvObjectGetChild(rmatch, "index", 0));
+      jsvObjectSetChildAndUnLock(parent, "lastIndex", jsvNewFromInteger(lastIndex+1));
+    }
+  }
   return rmatch;
 }
 
@@ -290,4 +300,21 @@ bool jswrap_regexp_test(JsVar *parent, JsVar *str) {
   bool r = v && !jsvIsNull(v);
   jsvUnLock(v);
   return r;
+}
+
+/// Does this regex have the given flag?
+bool jswrap_regexp_hasFlag(JsVar *parent, char flag) {
+  JsVar *flags = jsvObjectGetChild(parent, "flags", 0);
+  bool has = false;
+  if (jsvIsString(flags)) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, flags, 0);
+    while (jsvStringIteratorHasChar(&it)) {
+      has |= jsvStringIteratorGetChar(&it)==flag;
+      jsvStringIteratorNext(&it);
+    }
+    jsvStringIteratorFree(&it);
+  }
+  jsvUnLock(flags);
+  return has;
 }
