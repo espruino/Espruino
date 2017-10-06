@@ -18,6 +18,7 @@
             ESP8266: Remove osprintf for RELEASE=1 
             Networkjs now forwards `socketType` - laying groundwork for UDP over AT command (#1232)
             Added simple RegExp implemention (partial fix #256)
+            Speed up JSON.stringify for Arrays, and output non-numeric array elements in REPL (fix #64)
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs
