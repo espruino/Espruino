@@ -17,6 +17,7 @@
 #include "jsparse.h"
 #include "jshardware.h"
 #include "jslex.h"
+#include "jsinteractive.h"
 
 /* TODO:
  *
@@ -24,11 +25,7 @@
  * lastIndex support?
  */
 
-// Based on
-// http://www.cs.princeton.edu/courses/archive/spr09/cos333/beautiful.html
-// - this is a super basic regex parser
-
-#define MAX_GROUPS 8
+#define MAX_GROUPS 9
 
 typedef struct {
   JsVar *sourceStr;
@@ -148,23 +145,33 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
   }
   int charLength;
   bool charMatched = matchcharacter(regexp, txtIt, &charLength);
-  if (regexp[charLength] == '*') {
+  if (regexp[charLength] == '*' || regexp[charLength] == '+') {
+    bool starOperator = regexp[charLength] == '*';
     char *regexpAfterStar = regexp+charLength+1;
-    // Check ZERO instances
-    JsvStringIterator txtIt2 = jsvStringIteratorClone(txtIt);
-    JsVar *rmatch = matchhere(regexpAfterStar, &txtIt2, info);
+    JsvStringIterator txtIt2;
+    // Try and match everything after right now
+    txtIt2 = jsvStringIteratorClone(txtIt);
+    JsVar *lastrmatch = matchhere(regexpAfterStar, &txtIt2, info);
     jsvStringIteratorFree(&txtIt2);
-    if (rmatch) return rmatch;
-    // Match more than one instances
+    // For star - nothing matched - so push straight through with whatever we had
+    if (starOperator && !charMatched)
+      return lastrmatch;
+    // Otherwise try and match more than one
     while (jsvStringIteratorHasChar(txtIt) && charMatched) {
+      // We had this character matched, so move on and see if we can match with the new one
       jsvStringIteratorNext(txtIt);
       charMatched = matchcharacter(regexp, txtIt, &charLength);
+      // See if we can match after the character...
       txtIt2 = jsvStringIteratorClone(txtIt);
-      rmatch = matchhere(regexpAfterStar, &txtIt2, info);
+      JsVar *rmatch = matchhere(regexpAfterStar, &txtIt2, info);
       jsvStringIteratorFree(&txtIt2);
-      if (rmatch) return rmatch;
+      // can't match with this - use the last one
+      if (rmatch) {
+        jsvUnLock(lastrmatch);
+        lastrmatch = rmatch;
+      }
     }
-    return 0;
+    return lastrmatch;
   }
   // End of regex
   if (regexp[0] == '$' && regexp[1] == '\0') {
@@ -187,6 +194,9 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
   "class" : "RegExp"
 }
 The built-in class for handling Regular Expressions
+
+**Note:** Espruino's regular expression parser does not contain all the features
+present in a full ES6 JS engine. However it does contain support for the all the basics.
 */
 
 /*JSON{
@@ -202,7 +212,7 @@ The built-in class for handling Regular Expressions
   "return" : ["JsVar","A RegExp object"],
   "return_object" : "RegExp"
 }
-Creates a RegExp object
+Creates a RegExp object, for handling Regular Expressions
  */
 JsVar *jswrap_regexp_constructor(JsVar *str, JsVar *flags) {
   if (!jsvIsString(str)) {
@@ -271,14 +281,19 @@ JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *str) {
   jsvUnLock(regex);
   JsVar *rmatch = match(regexPtr, str, (size_t)lastIndex);
   if (!rmatch) {
-    return jsvNewWithFlags(JSV_NULL);
+    rmatch = jsvNewWithFlags(JSV_NULL);
+    lastIndex = 0;
   } else {
     // if it's global, set lastIndex
     if (jswrap_regexp_hasFlag(parent,'g')) {
-      lastIndex = jsvGetIntegerAndUnLock(jsvObjectGetChild(rmatch, "index", 0));
-      jsvObjectSetChildAndUnLock(parent, "lastIndex", jsvNewFromInteger(lastIndex+1));
-    }
+      JsVar *matchStr = jsvGetArrayItem(rmatch,0);
+      lastIndex = jsvGetIntegerAndUnLock(jsvObjectGetChild(rmatch, "index", 0)) +
+                  (JsVarInt)jsvGetStringLength(matchStr);
+      jsvUnLock(matchStr);
+    } else
+      lastIndex = 0;
   }
+  jsvObjectSetChildAndUnLock(parent, "lastIndex", jsvNewFromInteger(lastIndex));
   return rmatch;
 }
 

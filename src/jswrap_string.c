@@ -219,6 +219,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
   JsVar *str = jsvAsString(parent, false);
   newSubStr = jsvAsString(newSubStr, false);
 #ifndef SAVE_ON_FLASH
+  // Use RegExp if one is passed in
   if (jsvIsInstanceOf(subStr, "RegExp")) {
     jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
     bool global = jswrap_regexp_hasFlag(subStr,'g');
@@ -387,6 +388,7 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
 Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==[1,2,3]```
  */
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
+  if (!jsvIsString(parent)) return 0;
   JsVar *array = jsvNewEmptyArray();
   if (!array) return 0; // out of memory
 
@@ -394,6 +396,34 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
     jsvArrayPush(array, parent);
     return array;
   }
+
+
+#ifndef SAVE_ON_FLASH
+  // Use RegExp if one is passed in
+  if (jsvIsInstanceOf(split, "RegExp")) {
+    int last = 0;
+    JsVar *match;
+    jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
+    match = jswrap_regexp_exec(split, parent);
+    while (match && !jsvIsNull(match)) {
+      // get info about match
+      JsVar *matchStr = jsvGetArrayItem(match,0);
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
+      JsVarInt len = (JsVarInt)jsvGetStringLength(matchStr);
+      jsvUnLock(matchStr);
+      // do the replacement
+      jsvArrayPushAndUnLock(array, jsvNewFromStringVar(parent, (size_t)last, (size_t)(idx-last)));
+      last = idx+len;
+      // search again
+      jsvUnLock(match);
+      jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(last));
+      match = jswrap_regexp_exec(split, parent);
+    }
+    jsvUnLock(match);
+    jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
+    return array;
+  }
+#endif
 
   split = jsvAsString(split, false);
 
