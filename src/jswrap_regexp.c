@@ -18,6 +18,15 @@
 #include "jshardware.h"
 #include "jslex.h"
 
+/* TODO:
+ *
+ * Groups
+ * Escape characters in regex
+ * Handling of []
+ * Handling of 'global' flag especially
+ * lastIndex support?
+ */
+
 // Based on
 // http://www.cs.princeton.edu/courses/archive/spr09/cos333/beautiful.html
 // - this is a super basic regex parser

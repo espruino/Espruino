@@ -375,20 +375,6 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
       if ((flags&JSON_PRETTY))
         jsfGetJSONForObjectItWithCallback(&it, flags, whitespace, nflags, user_callback, user_data, first);
       jsvObjectIteratorFree(&it);
-/*
-      for (i=0;i<length && !jspIsInterrupted();i++) {
-        if (!limited || i<JSON_LIMITED_AMOUNT || i>=length-JSON_LIMITED_AMOUNT) {
-          if (i>0) cbprintf(user_callback, user_data, (flags&JSON_PRETTY)?", ":",");
-          if (limited && i==length-JSON_LIMITED_AMOUNT) {
-            if (needNewLine) jsonNewLine(nflags, whitespace, user_callback, user_data);
-            cbprintf(user_callback, user_data, JSON_LIMIT_TEXT);
-          }
-          JsVar *item = jsvGetArrayItem(var, (JsVarInt)i);
-          if (jsvIsUndefined(item) && (flags&JSON_NO_UNDEFINED))
-            item = jsvNewWithFlags(JSV_NULL);
-
-        }
-      }*/
       if (needNewLine) jsonNewLine(flags, whitespace, user_callback, user_data);
       cbprintf(user_callback, user_data, (flags&JSON_PRETTY)?" ]":"]");
     } else if (jsvIsArrayBuffer(var)) {
