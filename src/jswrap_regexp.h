@@ -15,3 +15,4 @@
 
 JsVar *jswrap_regexp_constructor(JsVar *str, JsVar *flags);
 JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *str);
+bool jswrap_regexp_test(JsVar *parent, JsVar *str);

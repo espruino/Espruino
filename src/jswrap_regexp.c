@@ -231,7 +231,27 @@ JsVar *jswrap_regexp_constructor(JsVar *str, JsVar *flags) {
   "generate" : "jswrap_regexp_exec",
   "return" : ["JsVar","A result array, or null"]
 }
+Test this regex on a string - returns a result array on success, or `null` otherwise.
 
+```
+>/Wo/.exec("Hello World");
+=[
+  "Wo",
+  "index": 6,
+  "input": "Hello World"
+ ]
+```
+
+Or with groups:
+
+```
+>/W(o)rld/.exec("Hello World");
+=[
+  "World",
+  "o", "index": 6,
+  "input": "Hello World"
+ ]
+```
  */
 JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *str) {
   JsVar *regex = jsvObjectGetChild(parent, "source", 0);
@@ -250,4 +270,24 @@ JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *str) {
   JsVar *rmatch = match(regexPtr, str, 0);
   if (!rmatch) return jsvNewWithFlags(JSV_NULL);
   return rmatch;
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "RegExp",
+  "name" : "test",
+  "params" : [
+    ["str","JsVar","A string to match on"]
+  ],
+  "generate" : "jswrap_regexp_test",
+  "return" : ["bool","true for a match, or false"]
+}
+Test this regex on a string - returns `true` on a successful match, or `false` otherwise
+ */
+bool jswrap_regexp_test(JsVar *parent, JsVar *str) {
+  JsVar *v = jswrap_regexp_exec(parent, str);
+  bool r = v && !jsvIsNull(v);
+  jsvUnLock(v);
+  return r;
 }
