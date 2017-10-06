@@ -1,6 +1,6 @@
 // issue with function decls when the last token is right at the end of the line
 
-var a=eval("function a() {\n  aaaaaaaaa\nssssssss\n}")
+var a=eval("function a() {\n  12345\nssssssss\n}")
 var r=a.toString();
 
-result = r=="function () {\n  aaaaaaaaa\nssssssss\n}";
+result = r.replace(/\s/g,"")=="function(){12345ssssssss}";
