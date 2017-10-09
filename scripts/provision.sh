@@ -99,6 +99,8 @@ elif [ $FAMILY = "STM32L4" ]; then
     ARM=1
 elif [ $FAMILY = "EFM32GG" ]; then
     ARM=1
+elif [ $FAMILY = "SAMD" ]; then
+    ARM=1
 else
     echo "Unknown board ($BOARDNAME) or family ($FAMILY)"
     return 1
