@@ -14,7 +14,7 @@ function test(a, b) {
   if (a==b) {
     return testPass++;
   }
-  console.log("Test "+tests+" failed");
+  console.log("Test "+tests+" failed - ",a,"vs",b);
 }
 
 testreg(new RegExp("a").exec("bc"), null);
@@ -44,6 +44,11 @@ test("Hellowa worldssaaa a a a".replace(/a/,""),"Hellow worldssaaa a a a");
 test("Hellowa worldssaaa a a a".replace(/a/g,""),"Hellow worldss   ");
 test("Hello".replace(/(l)/g,"[$1]"), "He[l][l]o");
 test("Hello".replace(/e(l)/g,"[$1]"), "H[l]lo");
+
+test("Hello".replace(/l/g, x=>"Boop"), "HeBoopBoopo");
+test("Hello".replace(/l/g,(match,idx)=>idx), "He23o");
+test("Hello".replace(/(l)/g,(match,l,idx)=>`[${l}]`), "He[l][l]o");
+
 
 result = tests==testPass;
 console.log(result?"Pass":"Fail",":",tests,"tests total");

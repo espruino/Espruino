@@ -21,6 +21,7 @@
             Speed up JSON.stringify for Arrays, and output non-numeric array elements in REPL (fix #64)
             Bump nRF52-based boards variable count from 2000 to 2500 (fix #1215)
             Ensure Ctrl-C doesn't redraw the input line if it's already empty
+            Added String.replace(regex, function) (fix #1256)
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs
