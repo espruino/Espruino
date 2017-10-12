@@ -49,6 +49,12 @@ test("Hello".replace(/l/g, x=>"Boop"), "HeBoopBoopo");
 test("Hello".replace(/l/g,(match,idx)=>idx), "He23o");
 test("Hello".replace(/(l)/g,(match,l,idx)=>`[${l}]`), "He[l][l]o");
 
+test("dddd".replace(/d/g, "d"), "dddd");
+test("dddd".replace(/d/g, "dd"), "dddddddd");
+test("dddd".replace(/[de]/g, "ee"), "eeeeeeee");
+test("dddd".replace(/d/g, x=>"dd"), "dddddddd");
+
+test("5c6F".replace(/(\d+)([^\d])/g, (m, r, c) => new Array(+r + 1).join(c)), "cccccFFFFFF")
 
 result = tests==testPass;
 console.log(result?"Pass":"Fail",":",tests,"tests total");

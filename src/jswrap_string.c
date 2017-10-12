@@ -278,7 +278,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
         }
         jsvStringIteratorFree(&src);
       }
-      JsVarInt lastIndex = (JsVarInt)jsvStringIteratorGetIndex(&dst);
+      JsVarInt lastIndex = 1+(JsVarInt)jsvStringIteratorGetIndex(&dst);
       jsvStringIteratorAppendString(&dst, str, (size_t)(idx+len));
       jsvStringIteratorFree(&dst);
       jsvUnLock2(str,matchStr);
