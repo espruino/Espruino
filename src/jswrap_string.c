@@ -230,7 +230,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
     bool global = jswrap_regexp_hasFlag(subStr,'g');
     JsVar *match;
     match = jswrap_regexp_exec(subStr, str);
-    while (match && !jsvIsNull(match)) {
+    while (match && !jsvIsNull(match) && !jspIsInterrupted()) {
       // get info about match
       JsVar *matchStr = jsvGetArrayItem(match,0);
       JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
