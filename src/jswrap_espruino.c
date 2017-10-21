@@ -809,7 +809,7 @@ JsVar *jswrap_espruino_toUint8Array(JsVar *args) {
     ["addr","int","The address of the memory area"],
     ["len","int","The length (in bytes) of the memory area"]
   ],
-  "return" : ["JsVar","A Uint8Array"],
+  "return" : ["JsVar","A String"],
   "return_object" : "String"
 }
 This creates and returns a special type of string, which actually references
