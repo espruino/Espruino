@@ -253,11 +253,10 @@ as an array of bits where the last array element is the least significant bit.
 In this case, pin values are set least significant bit first (from the right-hand side
 of the array of pins). This means you can use the same pin multiple times, for
 example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0 followed by A1.
-*/
 
-/**
- * Set the output of a GPIO.
- */
+If the pin argument is an object with a `write` method, the `write` method will
+be called with the value passed through.
+*/
 void jswrap_io_digitalWrite(
     JsVar *pinVar, //!< A pin or pins.
     JsVarInt value //!< The value of the output.
@@ -274,9 +273,16 @@ void jswrap_io_digitalWrite(
       jsvUnLock(pinNamePtr);
       value = value>>1; // next bit down
     }
-  }
-  // Handle the case where it is a single pin.
-  else {
+  } else if (jsvIsObject(pinVar)) {
+    JsVar *w = jspGetNamedField(pinVar, "write", false);
+    if (jsvIsFunction(w)) {
+      JsVar *v = jsvNewFromInteger(value);
+      jsvUnLock(jspeFunctionCall(w,0,pinVar,false,1,&v));
+      jsvUnLock(v);
+    } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    jsvUnLock(w);
+  } else {
+    // Handle the case where it is a single pin.
     Pin pin = jshGetPinFromVar(pinVar);
     jshPinOutput(pin, value != 0);
   }
@@ -298,11 +304,10 @@ Get the digital value of the given pin.
 
 If the pin argument is an array of pins (eg. `[A2,A1,A0]`) the value returned will be an number where
 the last array element is the least significant bit, for example if `A0=A1=1` and `A2=0`, `digitalRead([A2,A1,A0]) == 0b011`
-*/
 
-/**
- * Read the value of a GPIO pin.
- */
+If the pin argument is an object with a `read` method, the `read` method will be called and the integer value it returns
+passed back.
+*/
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   // Hadnle the case where it is an array of pins.
   if (jsvIsArray(pinVar)) {
@@ -320,9 +325,16 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
     jsvObjectIteratorFree(&it);
     if (pins==0) return 0; // return undefined if array empty
     return value;
-  }
-  // Handle the case where it is a single pin.
-  else {
+  } else if (jsvIsObject(pinVar)) {
+    JsVarInt v = 0;
+    JsVar *r = jspGetNamedField(pinVar, "read", false);
+    if (jsvIsFunction(r)) {
+      v = jsvGetIntegerAndUnLock(jspeFunctionCall(r,0,pinVar,false,0,0));
+    } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    jsvUnLock(r);
+    return v;
+  } else {
+    // Handle the case where it is a single pin.
     Pin pin = jshGetPinFromVar(pinVar);
     return jshPinInput(pin);
   }

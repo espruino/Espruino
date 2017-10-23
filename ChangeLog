@@ -23,6 +23,7 @@
             Ensure Ctrl-C doesn't redraw the input line if it's already empty
             Added String.replace(regex, function) (fix #1256)
             With E.setFlags({pretokenise:1}), ensure stack traces are not tokenised (fix #1258)
+            Allow digitalWrite/Read to take an object as an argument (calling .write and .read on it)
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs
