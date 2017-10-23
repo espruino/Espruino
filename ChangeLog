@@ -16,6 +16,14 @@
             ESP8266: move code save section to fist partition for memory mapping for ESP8266_4MB (fix #1240)
             ESP8266: Add GPIO16 as D16 without watch (#1206) but soft PWM/I2C/SPI/etc 
             ESP8266: Remove osprintf for RELEASE=1 
+            Networkjs now forwards `socketType` - laying groundwork for UDP over AT command (#1232)
+            Added simple RegExp implemention (partial fix #256)
+            Speed up JSON.stringify for Arrays, and output non-numeric array elements in REPL (fix #64)
+            Bump nRF52-based boards variable count from 2000 to 2500 (fix #1215)
+            Ensure Ctrl-C doesn't redraw the input line if it's already empty
+            Added String.replace(regex, function) (fix #1256)
+            With E.setFlags({pretokenise:1}), ensure stack traces are not tokenised (fix #1258)
+            Allow digitalWrite/Read to take an object as an argument (calling .write and .read on it)
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs

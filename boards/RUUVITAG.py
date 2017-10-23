@@ -23,8 +23,7 @@ info = {
  'default_console_tx' : "D4",
  'default_console_rx' : "D5",
  'default_console_baudrate' : "9600",
- # Number of variables can be WAY higher on this board
- 'variables' : 2000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_ruuvitag.hex',
  'build' : {
@@ -42,6 +41,7 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"RuuviTag"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/ruuvi_open_private.pem',
      'DFU_SETTINGS=--debug-mode'
    ]

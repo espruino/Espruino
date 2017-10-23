@@ -445,9 +445,9 @@ Create a UDP socket
 */
 JsVar *jswrap_dgram_createSocket(JsVar *type, JsVar *callback) {
   NOT_USED(type);
-  JsVar *options = jsvNewObject();
+  JsVar *options = jsvIsObject(type) ? type : jsvNewObject();
   JsVar *connection = jswrap_net_connect(options, callback, ST_UDP);
-  jsvUnLock(options);
+  if (options != type) jsvUnLock(options);
   return connection;
 }
 

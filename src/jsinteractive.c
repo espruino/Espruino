@@ -363,6 +363,10 @@ void jsiConsoleReturnInputLine() {
  * the user's terminal.
  */
 void jsiClearInputLine(bool updateConsole) {
+  // input line already empty - don't do anything
+  if (jsvIsEmptyString(inputLine))
+    return;
+  // otherwise...
   if (updateConsole)
     jsiConsoleRemoveInputLine();
   // clear input line

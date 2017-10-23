@@ -317,19 +317,19 @@ static void jslLexRegex() {
     lex->tk++; // +1 gets you to 'unfinished X'
   } else {
     jsvStringIteratorAppend(&it, '/');
+    jslGetNextCh();
     // regex modifiers
-    if (lex->tk=='g' ||
-        lex->tk=='i' ||
-        lex->tk=='m' ||
-        lex->tk=='y' ||
-        lex->tk=='u') {
+    while (lex->currCh=='g' ||
+        lex->currCh=='i' ||
+        lex->currCh=='m' ||
+        lex->currCh=='y' ||
+        lex->currCh=='u') {
       jslTokenAppendChar(lex->currCh);
       jsvStringIteratorAppend(&it, lex->currCh);
       jslGetNextCh();
     }
   }
   jsvStringIteratorFree(&it);
-  jslGetNextCh();
 }
 
 void jslGetNextToken() {
@@ -692,6 +692,20 @@ void jslReset() {
   jslSeekTo(0);
 }
 
+
+
+/** When printing out a function, with pretokenise a
+ * character could end up being a special token. This
+ * handles that case. */
+void jslFunctionCharAsString(unsigned char ch, char *str, size_t len) {
+  if (ch >= LEX_TOKEN_START) {
+    jslTokenAsString(ch, str, len);
+  } else {
+    str[0] = (char)ch;
+    str[1] = 0;
+  }
+}
+
 void jslTokenAsString(int token, char *str, size_t len) {
   // see JS_ERROR_TOKEN_BUF_SIZE
   if (token>32 && token<128) {
@@ -986,6 +1000,13 @@ unsigned int jslGetLineNumber() {
   return (unsigned int)line;
 }
 
+/// Do we need a space between these two characters when printing a function's text?
+bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch) {
+  return (lastch>=_LEX_R_LIST_START || ch>=_LEX_R_LIST_START) &&
+         (lastch>=_LEX_R_LIST_START || isAlpha((char)lastch) || isNumeric((char)lastch)) &&
+         (ch>=_LEX_R_LIST_START || isAlpha((char)ch) || isNumeric((char)ch));
+}
+
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos) {
   size_t line,col;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
@@ -1017,18 +1038,25 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
     lineLength -= skipChars;
   }
 
-  // print the string until the end of the line, or 60 chars (whichever is lesS)
+  // print the string until the end of the line, or 60 chars (whichever is less)
   int chars = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, lex->sourceVar, startOfLine);
+  unsigned char lastch = 0;
   while (jsvStringIteratorHasChar(&it) && chars<60) {
-    char ch = jsvStringIteratorGetChar(&it);
+    unsigned char ch = (unsigned char)jsvStringIteratorGetChar(&it);
     if (ch == '\n') break;
-    char buf[2];
-    buf[0] = ch;
-    buf[1] = 0;
+    if (jslNeedSpaceBetween(lastch, ch)) {
+      col++;
+      user_callback(" ", user_data);
+    }
+    char buf[32];
+    jslFunctionCharAsString(ch, buf, sizeof(buf));
+    size_t len = strlen(buf);
+    col += len-1;
     user_callback(buf, user_data);
     chars++;
+    lastch = ch;
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);

@@ -283,7 +283,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_atob",
   "params" : [
-    ["binaryData","JsVar","A string of base64 data to decode"]
+    ["base64Data","JsVar","A string of base64 data to decode"]
   ],
   "return" : ["JsVar","A string containing the decoded data"]
 }

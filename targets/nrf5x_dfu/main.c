@@ -36,10 +36,20 @@
 #undef BOOTLOADER_BUTTON
 #define BOOTLOADER_BUTTON               BTN1_PININDEX                                            /**< Button used to enter SW update mode. */
 #define BOOTLOADER_BUTTON_ONSTATE       BTN1_ONSTATE                                            /**< Button used to enter SW update mode. */
+#ifdef LED3_PININDEX
 #define UPDATE_IN_PROGRESS_LED          LED3_PININDEX                                            /**< Led used to indicate that DFU is active. */
 #define UPDATE_IN_PROGRESS_LED_ONSTATE  LED3_ONSTATE                                            /**< Led used to indicate that DFU is active. */
+#else
+#define UPDATE_IN_PROGRESS_LED          LED1_PININDEX                                            /**< Led used to indicate that DFU is active. */
+#define UPDATE_IN_PROGRESS_LED_ONSTATE  LED1_ONSTATE                                            /**< Led used to indicate that DFU is active. */
+#endif
+#ifdef LED2_PININDEX
 #define BOOTLOADER_BUTTON_PRESS_LED          LED2_PININDEX                                            /**< Led used to indicate that DFU is active. */
 #define BOOTLOADER_BUTTON_PRESS_LED_ONSTATE  LED2_ONSTATE                                            /**< Led used to indicate that DFU is active. */
+#else
+#define BOOTLOADER_BUTTON_PRESS_LED          LED1_PININDEX                                            /**< Led used to indicate that DFU is active. */
+#define BOOTLOADER_BUTTON_PRESS_LED_ONSTATE  LED1_ONSTATE                                            /**< Led used to indicate that DFU is active. */
+#endif
 // Other LED is set in targetlibs/nrf5x/nrf5_sdk/components/libraries/bootloader_dfu/dfu_transport_ble.c (currently LED1)
 
 

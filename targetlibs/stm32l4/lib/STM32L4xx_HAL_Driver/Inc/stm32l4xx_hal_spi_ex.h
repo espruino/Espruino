@@ -1,14 +1,12 @@
- /**
+/**
   ******************************************************************************
   * @file    stm32l4xx_hal_spi_ex.h
   * @author  MCD Application Team
-  * @version V1.5.1
-  * @date    31-May-2016
   * @brief   Header file of SPI HAL Extended module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -40,7 +38,7 @@
 #define __STM32L4xx_HAL_SPI_EX_H
 
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
@@ -56,7 +54,7 @@
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
-/* Exported macros ------------------------------------------------------------*/
+/* Exported macros -----------------------------------------------------------*/
 /* Exported functions --------------------------------------------------------*/
 /** @addtogroup SPIEx_Exported_Functions
   * @{

@@ -3576,6 +3576,21 @@ bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) 
   return ok;
 }
 
+/// Is the variable an instance of the given class. Eg. `jsvIsInstanceOf(e, "Error")` - does a simple, non-recursive check that doesn't take account of builtins like String
+bool jsvIsInstanceOf(JsVar *var, const char *constructorName) {
+  bool isInst = false;
+  if (!jsvHasChildren(var)) return false;
+  JsVar *proto = jsvObjectGetChild(var, JSPARSE_INHERITS_VAR, 0);
+  if (jsvIsObject(proto)) {
+    JsVar *constr = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
+    if (constr)
+      isInst = jspIsConstructor(constr, constructorName);
+    jsvUnLock(constr);
+  }
+  jsvUnLock(proto);
+  return isInst;
+}
+
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length) {
   JsVar *lenVar = jsvNewFromInteger(length);
   if (!lenVar) return 0;

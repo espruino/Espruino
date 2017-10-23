@@ -42,7 +42,7 @@ Initialise the network using the callbacks given and return the first argument. 
 
 ```
 require("NetworkJS").create({
-  create : function(host,port) {
+  create : function(host, port, socketType, options) {
     // Create a socket and return its index, host is a string, port is an integer.
     // If host isn't defined, create a server socket
     console.log("Create",host,port);
@@ -55,18 +55,21 @@ require("NetworkJS").create({
     // Accept the connection on the server socket. Returns socket number or -1 if no connection
     return -1;
   },
-  recv : function(sckt, maxLen) {
+  recv : function(sckt, maxLen, socketType) {
     // Receive data. Returns a string (even if empty).
     // If non-string returned, socket is then closed
     return null;//or "";
   },
-  send : function(sckt, data) {
+  send : function(sckt, data, socketType) {
     // Send data (as string). Returns the number of bytes sent - 0 is ok.
     // Less than 0
     return data.length;
   }
 });
 ```
+
+`socketType` is an integer - 2 for UDP, or see SocketType in https://github.com/espruino/Espruino/blob/master/libs/network/network.h
+for more information.
 */
 JsVar *jswrap_networkjs_create(JsVar *obj) {
   JsNetwork net;

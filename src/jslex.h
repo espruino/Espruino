@@ -144,6 +144,11 @@ void jslSeekTo(size_t seekToChar);
 void jslSeekToP(JslCharPos *seekToChar);
 
 bool jslMatch(int expected_tk); ///< Match, and return true on success, false on failure
+
+/** When printing out a function, with pretokenise a
+ * character could end up being a special token. This
+ * handles that case. */
+void jslFunctionCharAsString(unsigned char ch, char *str, size_t len);
 void jslTokenAsString(int token, char *str, size_t len); ///< output the given token as a string - for debugging
 void jslGetTokenString(char *str, size_t len);
 char *jslGetTokenValueAsString();
@@ -162,6 +167,9 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo);
 
 /// Return the line number at the current character position (this isn't fast as it searches the string)
 unsigned int jslGetLineNumber();
+
+/// Do we need a space between these two characters when printing a function's text?
+bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch);
 
 /// Print position in the form 'line X col Y'
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos);

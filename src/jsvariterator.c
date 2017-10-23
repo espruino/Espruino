@@ -250,9 +250,9 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
   jsvSetCharactersInVar(it->var, it->charsInVar);
 }
 
-void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str) {
+void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   JsvStringIterator sit;
-  jsvStringIteratorNew(&sit, str, 0);
+  jsvStringIteratorNew(&sit, str, startIdx);
   while (jsvStringIteratorHasChar(&sit)) {
     jsvStringIteratorAppend(it, jsvStringIteratorGetChar(&sit));
     jsvStringIteratorNext(&sit);

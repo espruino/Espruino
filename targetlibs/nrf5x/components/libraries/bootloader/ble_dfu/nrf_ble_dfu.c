@@ -88,9 +88,11 @@ DFU_TRANSPORT_REGISTER(nrf_dfu_transport_t const dfu_trans) =
 static void leds_init(void)
 {
     nrf_gpio_cfg_output(LED1_PININDEX);
-    nrf_gpio_cfg_output(LED3_PININDEX);
     nrf_gpio_pin_write(LED1_PININDEX, !LED1_ONSTATE);
+#ifdef LED3_PININDEX
+    nrf_gpio_cfg_output(LED3_PININDEX);
     nrf_gpio_pin_write(LED3_PININDEX, !LED3_ONSTATE);
+#endif
 }
 static void leds_set_advertising(bool on)
 {
@@ -98,7 +100,11 @@ static void leds_set_advertising(bool on)
 }
 static void leds_set_connected(bool on)
 {
+#ifdef LED3_PININDEX
     nrf_gpio_pin_write(LED3_PININDEX, on ? LED3_ONSTATE : !LED3_ONSTATE);
+#else
+    nrf_gpio_pin_write(LED1_PININDEX, on ? LED1_ONSTATE : !LED1_ONSTATE);
+#endif
 }
 
 /**@brief     Function for handling a Connection Parameters error.

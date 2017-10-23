@@ -19,6 +19,9 @@
 #include "jswrap_functions.h" // insane check for eval in jspeFunctionCall
 #include "jswrap_json.h" // for jsfPrintJSON
 #include "jswrap_espruino.h" // for jswrap_espruino_memoryArea
+#ifndef SAVE_ON_FLASH
+#include "jswrap_regexp.h" // for jswrap_regexp_constructor
+#endif
 
 /* Info about execution when Parsing - this saves passing it on the stack
  * for each call */
@@ -1408,7 +1411,7 @@ JsVar *jspeTemplateLiteral() {
             JsVar *result = jspEvaluateExpressionVar(expr);
             jsvUnLock(expr);
             result = jsvAsString(result, true);
-            jsvStringIteratorAppendString(&dit, result);
+            jsvStringIteratorAppendString(&dit, result, 0);
             jsvUnLock(result);
           } else {
             jsvStringIteratorAppend(&dit, '$');
@@ -1543,8 +1546,30 @@ NO_INLINE JsVar *jspeFactor() {
     return jspeTemplateLiteral();
 #endif
   } else if (lex->tk==LEX_REGEX) {
-    jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in Espruino\n");
+    JsVar *a = 0;
+#ifdef SAVE_ON_FLASH
+    jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in this version of Espruino\n");
+#else
+    JsVar *regex = jslGetTokenValueAsVar(lex);
+    size_t regexEnd = 0, regexLen = 0;
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, regex, 0);
+    while (jsvStringIteratorHasChar(&it)) {
+      regexLen++;
+      if (jsvStringIteratorGetChar(&it)=='/')
+        regexEnd = regexLen;
+      jsvStringIteratorNext(&it);
+    }
+    jsvStringIteratorFree(&it);
+    JsVar *flags = 0;
+    if (regexEnd < regexLen)
+      flags = jsvNewFromStringVar(regex, regexEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    JsVar *regexSource = jsvNewFromStringVar(regex, 1, regexEnd-2);
+    a = jswrap_regexp_constructor(regexSource, flags);
+    jsvUnLock3(regex, flags, regexSource);
+#endif
     JSP_ASSERT_MATCH(LEX_REGEX);
+    return a;
   } else if (lex->tk=='{') {
     if (!jspCheckStackPosition()) return 0;
     return jspeFactorObject();
