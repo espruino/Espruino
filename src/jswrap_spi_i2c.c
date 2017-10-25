@@ -526,7 +526,7 @@ The third I2C port
   "name" : "setup",
   "generate" : "jswrap_i2c_setup",
   "params" : [
-    ["options","JsVar",["An optional structure containing extra information on initialising the I2C port","```{scl:pin, sda:pin, bitrate:100000}```","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `I2C` marker. Note that 400000kHz is the maximum bitrate for most parts."]]
+    ["options","JsVar",["An optional structure containing extra information on initialising the I2C port","```{scl:pin, sda:pin, bitrate:100000}```","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `I2C` marker. Note that 400kHz is the maximum bitrate for most parts."]]
   ]
 }
 Set up this I2C port
