@@ -44,7 +44,7 @@ chip = {
   'usart' : 3,
   'spi' : 5,
   'i2c' : 3,
-  'adc' : 1,
+  'adc' : 2,
   'dac' : 0,
   'saved_code' : {
     # code size 225248 = 0x36FE0 starts at 0x0800 0000 ends at 0x0803 6FE0
