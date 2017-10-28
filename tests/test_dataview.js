@@ -44,5 +44,9 @@ d.setUint32(0,0x12345678,true)
 test("d.getUint32(0,true)", "0x12345678");
 d.setUint32(0,0x12345678)
 test("d.getUint32(0)", "0x12345678");
+d.setUint32(0,0xffff5678,true) // sign-bit value
+test("d.getUint32(0,true)", "0xffff5678");
+d.setUint32(0,0xffff5678) // sign-bit value
+test("d.getUint32(0)", "0xffff5678");
 
 result = testsRun==testsPass;
