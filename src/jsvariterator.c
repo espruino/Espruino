@@ -372,7 +372,7 @@ JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it) {
     return jsvNewFromFloat(jsvArrayBufferIteratorDataToFloat(it, data));
   } else {
     JsVarInt i = jsvArrayBufferIteratorDataToInt(it, data);
-    if (it->type == ARRAYBUFFERVIEW_UINT32)
+    if ((it->type & ~ARRAYBUFFERVIEW_BIG_ENDIAN) == ARRAYBUFFERVIEW_UINT32)
       return jsvNewFromLongInteger((long long)(uint32_t)i);
     return jsvNewFromInteger(i);
   }
