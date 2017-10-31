@@ -101,6 +101,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           print("Got define from board: " + i);
           defines.append(i)
 
+    explicit_files = False
     if parseArgs and len(sys.argv)>1:
       print("Using files from command line")
       for i in range(1,len(sys.argv)):
@@ -121,6 +122,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
             print("Unknown command-line option")
             exit(1)
         else:
+          explicit_files = True
           jswraps.append(arg)
     else:
       print("Scanning for jswrap.c files")
@@ -139,7 +141,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
       print("Scanning "+jswrap)
       code = open(jswrap, "r").read()
 
-      if is_for_document and "DO_NOT_INCLUDE_IN_DOCS" in code:
+      if is_for_document and not explicit_files and "DO_NOT_INCLUDE_IN_DOCS" in code:
         print("FOUND 'DO_NOT_INCLUDE_IN_DOCS' IN FILE "+jswrap)
         continue
 
