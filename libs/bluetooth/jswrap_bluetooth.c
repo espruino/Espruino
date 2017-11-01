@@ -61,6 +61,14 @@ bool bleNewTask(BleTask task, JsVar *taskInfo) {
     jsExceptionHere(JSET_ERROR, "BLE task %d is already in progress", (int)bleTask);
     return false;
   }
+/*  if (blePromise) {
+    jsiConsolePrintf("Existing blePromise!\n");
+    jsvTrace(blePromise,2);
+  }
+  if (bleTaskInfo) {
+    jsiConsolePrintf("Existing bleTaskInfo!\n");
+    jsvTrace(bleTaskInfo,2);
+  }*/
   assert(!blePromise && !bleTaskInfo);
   blePromise = jspromise_create();
   bleTask = task;
@@ -202,6 +210,8 @@ void jswrap_nrf_kill() {
   bleTask = BLETASK_NONE;
   if (blePromise) jsvUnLock(blePromise);
   blePromise = 0;
+  if (bleTaskInfo) jsvUnLock(bleTaskInfo);
+  bleTaskInfo = 0;
   // if we were scanning, make sure we stop
   jsble_set_scanning(false);
   jsble_set_rssi_scan(false);

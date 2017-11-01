@@ -25,6 +25,7 @@
             With E.setFlags({pretokenise:1}), ensure stack traces are not tokenised (fix #1258)
             Allow digitalWrite/Read to take an object as an argument (calling .write and .read on it)
             Add `E.getAddressOf` to allow embedded targets to get memory addresses for DMA/etc
+            Fix issue where doing a soft reset in the middle of some BLE ops could cause an assert in debug builds
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs
