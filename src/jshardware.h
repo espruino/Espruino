@@ -387,6 +387,8 @@ volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags);
 #if defined(NRF51) || defined(NRF52)
 /// Called when we have had an event that means we should execute JS
 extern void jshHadEvent();
+#else
+#define jshHadEvent() /* We should ensure we exit idle mode */
 #endif
 
 /// the temperature from the internal temperature sensor, in degrees C

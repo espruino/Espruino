@@ -12,8 +12,37 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifndef BLUETOOTH_H
+#define BLUETOOTH_H
+
+#ifdef NRF5X
 #include "ble.h"
 #include "ble_advdata.h"
+#else
+typedef struct {
+  uint16_t uuid;
+  uint8_t type;
+} PACKED_FLAGS ble_uuid_t;
+typedef struct {
+  //uint8_t addr_id_peer;
+  uint8_t addr_type;
+  uint8_t addr[6];
+} ble_gap_addr_t;
+#define BLE_GATT_HANDLE_INVALID (0)
+#define BLE_GAP_ADDR_TYPE_PUBLIC (0)
+#define BLE_GAP_ADDR_TYPE_RANDOM_STATIC (1)
+#define BLE_GAP_ADV_MAX_SIZE (31)
+#define BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE   0x02
+#define BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE         0x03
+#define BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE  0x06
+#define BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE        0x07
+#define BLE_GAP_AD_TYPE_SERVICE_DATA                        0x16
+#define BLE_GAP_AD_TYPE_SHORT_LOCAL_NAME                    0x08
+#define BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME                 0x09
+#define BLE_UUID_TYPE_UNKNOWN (0)
+#define BLE_UUID_TYPE_BLE (1)
+#define MSEC_TO_UNITS(MS,MEH) MS
+#endif
 
 #ifdef NRF52
 // nRF52 gets the ability to connect to other
@@ -102,13 +131,18 @@ uint32_t jsble_set_rssi_scan(bool enabled);
  * then call this again */
 void jsble_set_services(JsVar *data);
 
+/// Disconnect from the given connection
+uint32_t jsble_disconnect(uint16_t conn_handle);
+
 /// For BLE HID, send an input report to the receiver. Must be <= HID_KEYS_MAX_LEN
 void jsble_send_hid_input_report(uint8_t *data, int length);
 
 // ------------------------------------------------- lower-level utility fns
 
+#ifdef NRF5X
 /// Build advertising data struct to pass into @ref ble_advertising_init.
 void jsble_setup_advdata(ble_advdata_t *advdata);
+#endif
 
 #ifdef USE_NFC
 void jsble_nfc_stop();
@@ -140,3 +174,4 @@ uint32_t jsble_set_central_rssi_scan(bool enabled);
 void jsble_central_setWhitelist(bool whitelist);
 #endif
 
+#endif // BLUETOOTH_H

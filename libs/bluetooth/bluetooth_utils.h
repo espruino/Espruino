@@ -13,7 +13,7 @@
  */
 
 #include "jsvar.h"
-#include "ble.h"
+#include "bluetooth.h"
 
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 #define BLE_WRITE_EVENT                 JS_EVENT_PREFIX"blew"

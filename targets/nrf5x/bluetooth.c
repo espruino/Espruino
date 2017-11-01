@@ -1788,6 +1788,11 @@ void jsble_set_services(JsVar *data) {
   }
 }
 
+/// Disconnect from the given connection
+uint32_t jsble_disconnect(uint16_t conn_handle) {
+  return sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+}
+
 #if BLE_HIDS_ENABLED
 void jsble_send_hid_input_report(uint8_t *data, int length) {
   if (!(bleStatus & BLE_HID_INITED)) {

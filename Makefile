@@ -525,6 +525,7 @@ ifdef USE_BLUETOOTH
   DEFINES += -DBLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
+  SOURCES += libs/bluetooth/bluetooth_utils.c
 endif
 
 ifeq ($(BOARD),MICROBIT)

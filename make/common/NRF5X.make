@@ -21,7 +21,7 @@ endif #DFU_UPDATE_BUILD
 
 # Just try and get rid of the compile warnings.
 CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
-DEFINES += -D$(BOARD) -D$(CHIP)
+DEFINES += -D$(BOARD) -D$(CHIP) -DNRF5X
 
 ARM = 1
 ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
@@ -49,7 +49,6 @@ else
     targets/nrf5x/main.c                    \
     targets/nrf5x/jshardware.c              \
     targets/nrf5x/bluetooth.c              \
-    targets/nrf5x/bluetooth_utils.c              \
     targets/nrf5x/nrf5x_utils.c
 
   ifeq ($(FAMILY), NRF52)

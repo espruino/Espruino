@@ -18,13 +18,15 @@
 #include "jswrap_string.h"
 #include "jsnative.h"
 
-#include "nrf5x_utils.h"
-#include "bluetooth.h"
 #include "bluetooth_utils.h"
+#include "bluetooth.h"
 
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+
+#ifdef NRF5X
+#include "nrf5x_utils.h"
 #include "nordic_common.h"
 #include "nrf.h"
 #include "ble_hci.h"
@@ -37,6 +39,7 @@
 
 #ifdef USE_NFC
 #include "nfc_uri_msg.h"
+#endif
 #endif
 
 
@@ -219,7 +222,7 @@ void jswrap_nrf_kill() {
 #if CENTRAL_LINK_COUNT>0
   // if we were connected to something, disconnect
   if (jsble_has_central_connection()) {
-     sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    jsble_disconnect(m_central_conn_handle);
   }
 #endif
 }
@@ -380,7 +383,7 @@ If a device is connected to Espruino, disconnect from it.
 void jswrap_nrf_bluetooth_disconnect() {
   uint32_t err_code;
   if (jsble_has_simple_connection()) {
-    err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    err_code = jsble_disconnect(m_conn_handle);
     jsble_check_error(err_code);
   }
 }
@@ -464,8 +467,13 @@ For Puck.js, the last 5 characters of this (eg. `ee:ff`)
 are used in the device's advertised Bluetooth name.
 */
 JsVar *jswrap_nrf_bluetooth_getAddress() {
+#ifdef NRF5X
   uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
   uint32_t addr1 =  NRF_FICR->DEVICEADDR[1];
+#else
+  uint32_t addr0 = 0xDEADDEAD;
+  uint32_t addr1 = 0xDEAD;
+#endif
   return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
       ((addr1>>8 )&0xFF)|0xC0,
       ((addr1    )&0xFF),
@@ -612,11 +620,16 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     if (v) {
       JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, v);
       if (namePtr) {
+#ifdef NRF5X
         ble_gap_conn_sec_mode_t sec_mode;
         BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
         err_code = sd_ble_gap_device_name_set(&sec_mode,
                                               (const uint8_t *)namePtr,
                                               nameLen);
+#else
+        err_code = 0xDEAD;
+        jsiConsolePrintf("FIXME\n");
+#endif
         jsble_check_error(err_code);
         bleChanged = true;
       }
@@ -695,7 +708,12 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   // now actually update advertising
   if (bleChanged && isAdvertising)
     jsble_advertising_stop();
+#ifdef NRF5X
   err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
+#else
+  err_code = 0xDEAD;
+  jsiConsolePrintf("FIXME\n");
+#endif
   jsvUnLock(initialArray);
   jsble_check_error(err_code);
   if (bleChanged && isAdvertising)
@@ -718,11 +736,14 @@ the data, it returns the packet that would be advertised as an array.
 */
 JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   uint32_t err_code;
+#ifdef NRF5X
   ble_advdata_t advdata;
   jsble_setup_advdata(&advdata);
+#endif
 
   if (jsvIsObject(options)) {
     JsVar *v;
+#ifdef NRF5X
     v = jsvObjectGetChild(options, "showName", 0);
     if (v) advdata.name_type = jsvGetBoolAndUnLock(v) ?
         BLE_ADVDATA_FULL_NAME :
@@ -732,6 +753,7 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
     if (v) advdata.flags = jsvGetBoolAndUnLock(v) ?
         BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE :
         BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+#endif
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting 'options' to be object or undefined, got %t", options);
     return 0;
@@ -740,24 +762,29 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
     return jsvLockAgain(data);
   } else if (jsvIsObject(data)) {
+#ifdef NRF5X
     ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
+#endif
     int n = 0;
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, data);
     while (jsvObjectIteratorHasValue(&it)) {
-      service_data[n].service_uuid = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
       JsVar *v = jsvObjectIteratorGetValue(&it);
       JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, v);
       jsvUnLock(v);
+#ifdef NRF5X
+      service_data[n].service_uuid = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
       service_data[n].data.size    = dLen;
       service_data[n].data.p_data  = (uint8_t*)dPtr;
+#endif
       jsvObjectIteratorNext(&it);
       n++;
     }
     jsvObjectIteratorFree(&it);
-
+#ifdef NRF5X
     advdata.service_data_count   = n;
     advdata.p_service_data_array = service_data;
+#endif
   } else if (!jsvIsUndefined(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
     return 0;
@@ -766,7 +793,12 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   uint16_t  len_advdata = BLE_GAP_ADV_MAX_SIZE;
   uint8_t   encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
 
+#ifdef NRF5X
   err_code = adv_data_encode(&advdata, encoded_advdata, &len_advdata);
+#else
+  err_code = 0xDEAD;
+  jsiConsolePrintf("FIXME\n");
+#endif
   if (jsble_check_error(err_code)) return 0;
   return jsvNewArrayBufferWithData(len_advdata, encoded_advdata);
 }
@@ -804,8 +836,12 @@ void jswrap_nrf_bluetooth_setScanResponse(JsVar *data) {
       jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
       return;
     }
-
+#ifdef NRF5X
     err_code = sd_ble_gap_adv_data_set(NULL, 0, (uint8_t *)dPtr, dLen);
+#else
+    err_code = 0xDEAD;
+    jsiConsolePrintf("FIXME\n");
+#endif
     jsble_check_error(err_code);
   } else if (!jsvIsUndefined(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting array-like object or undefined, got %t", data);
@@ -1109,6 +1145,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
           if (charValue) {
             JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, charValue);
             if (vPtr && vLen) {
+#ifdef NRF5X
               ble_gatts_hvx_params_t hvx_params;
               ble_gatts_value_t gatts_value;
 
@@ -1139,6 +1176,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
                     ok = false;
                 }
               }
+#endif
             }
           }
           jsvUnLock(charValue);
@@ -1476,7 +1514,12 @@ Set the BLE radio transmit power. The default TX power is 0 dBm.
 */
 void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
   uint32_t              err_code;
+#ifdef NRF5X
   err_code = sd_ble_gap_tx_power_set(pwr);
+#else
+  err_code = 0xDEAD;
+  jsiConsolePrintf("FIXME\n");
+#endif
   jsble_check_error(err_code);
 }
 
@@ -2060,7 +2103,7 @@ void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
 
   if (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) {
     // we have a connection, disconnect
-    err_code = sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    err_code = jsble_disconnect(m_central_conn_handle);
     jsble_check_error(err_code);
   } else {
     // no connection - try and cancel the connect attempt (assume we have one)
