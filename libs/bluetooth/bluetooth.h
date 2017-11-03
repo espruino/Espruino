@@ -39,6 +39,7 @@ typedef struct {
 #define BLE_GAP_AD_TYPE_SERVICE_DATA                        0x16
 #define BLE_GAP_AD_TYPE_SHORT_LOCAL_NAME                    0x08
 #define BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME                 0x09
+#define BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA          0xFF
 #define BLE_UUID_TYPE_UNKNOWN (0)
 #define BLE_UUID_TYPE_BLE (1)
 #define MSEC_TO_UNITS(MS,MEH) MS

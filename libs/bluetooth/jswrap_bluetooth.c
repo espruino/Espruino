@@ -1236,6 +1236,8 @@ BluetoothDevice {
   "rssi": -89,               // signal strength
   "services": [ "128bit-uuid", ... ],     // zero or more service UUIDs
   "data": new Uint8Array([ ... ]).buffer, // ArrayBuffer of returned data
+  "serviceData" : { "0123" : [ 1 ] }, // if service data is in 'data', it's extracted here
+  "manufacturerData" : [...], // if manufacturer data is in 'data', it's extracted here
   "name": "DeviceName"       // the advertised device name
  }
 ```
@@ -1259,13 +1261,13 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
   jsvObjectSetChildAndUnLock(device, "id", jsvObjectGetChild(adv, "id", 0));
   jsvObjectSetChildAndUnLock(device, "rssi", jsvObjectGetChild(adv, "rssi", 0));
   JsVar *services = jsvNewEmptyArray();
-  JsVar *servicedata = jsvNewObject();
+  JsVar *serviceData = jsvNewObject();
   JsVar *data = jsvObjectGetChild(adv, "data", 0);
   if (data) {
     jsvObjectSetChild(device, "data", data);
     JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
     if (dPtr && dLen) {
-      if (services && servicedata) {
+      if (services && serviceData) {
         uint32_t i = 0;
         while (i < dLen) {
           uint8_t field_length = dPtr[i];
@@ -1285,16 +1287,19 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
                      field_type == BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE) {
             JsVar *s = bleUUID128ToStr((uint8_t*)&dPtr[i+2]);
             jsvArrayPushAndUnLock(services, s);
-          }  else if (field_type == BLE_GAP_AD_TYPE_SERVICE_DATA) { // 0x16 - service data 16 bit UUID
+          } else if (field_type == BLE_GAP_AD_TYPE_SERVICE_DATA) { // 0x16 - service data 16 bit UUID
             JsVar *childName = jsvAsArrayIndexAndUnLock(jsvVarPrintf("%04x", UNALIGNED_UINT16(&dPtr[i+2])));
             if (childName) {
-              JsVar *child = jsvFindChildFromVar(servicedata, childName, true);
+              JsVar *child = jsvFindChildFromVar(serviceData, childName, true);
               JsVar *value = jsvNewArrayBufferWithData(field_length-3, (unsigned char*)&dPtr[i+4]);
               if (child && value) jsvSetValueOfName(child, value);
               jsvUnLock2(child, value);
             }
             jsvUnLock(childName);
-           }// or unknown...
+          } else if (field_type == BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA) {
+            jsvObjectSetChildAndUnLock(device, "manufacturerData",
+                jsvNewArrayBufferWithData(field_length-1, (unsigned char*)&dPtr[i+2]));
+          } // or unknown...
           i += field_length + 1;
         }
       }
@@ -1302,9 +1307,9 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
   }
   if (jsvGetArrayLength(services))
     jsvObjectSetChild(device, "services", services);
-  if (jsvGetLength(servicedata))
-    jsvObjectSetChild(device, "servicedata", servicedata);
-  jsvUnLock3(data, services, servicedata);
+  if (jsvGetLength(serviceData))
+    jsvObjectSetChild(device, "serviceData", serviceData);
+  jsvUnLock3(data, services, serviceData);
   jspExecuteFunction(callback, 0, 1, &device);
   jsvUnLock(device);
 }
@@ -1354,7 +1359,8 @@ prints something like:
     "id": "e7:e0:57:ad:36:a2 random",
     "rssi": -45,
     "services": [ "4567" ],
-    "servicedata" : { "0123" : [ 1 ] }
+    "serviceData" : { "0123" : [ 1 ] },
+    "manufacturerData" : [...],
     "data": new ArrayBuffer([ ... ]),
     "name": "Puck.js 36a2"
    },
