@@ -1411,7 +1411,7 @@ void jswrap_nrf_bluetooth_findDevices_found_cb(JsVar *device) {
       JsVar *value = jsvSkipName(key);
       JsVar *existingKey = jsvFindChildFromVar(found, key, true);
       bool isServices = jsvIsStringEqual(key,"services");
-      bool isServiceData = jsvIsStringEqual(key,"servicedata");
+      bool isServiceData = jsvIsStringEqual(key,"serviceData");
       if (isServices || isServiceData) {
         // for services or servicedata we append to the array/object
         JsVar *existingValue = jsvSkipName(existingKey);
