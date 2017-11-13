@@ -3614,6 +3614,7 @@ JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data) {
       jsvSetString(arrayBufferData, (char *)data, (size_t)length);
     jsvUnLock(arrayBufferData);
   }
+  jsvUnLock(buf);
   return view;
 }
 #endif
