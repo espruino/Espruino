@@ -610,6 +610,8 @@ native function `void (bool state)` then you can add `irq:true` to options, whic
 function to be called from within the IRQ. When doing this, interrupts will happen on both edges
 and there will be no debouncing.
 
+**Note:** if you didn't call `pinMode` beforehand then this function will reset pin's state to `"input"`
+
 **Note:** The STM32 chip (used in the [Espruino Board](/EspruinoBoard) and [Pico](/Pico)) cannot
 watch two pins with the same number - eg `A0` and `B0`.
 
