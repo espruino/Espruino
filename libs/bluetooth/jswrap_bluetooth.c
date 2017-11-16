@@ -551,6 +551,13 @@ NRF.setAdvertising([0x03,  // Length of Service List
 
 (However for Eddystone we'd advise that you use the [Espruino Eddystone library](/Puck.js+Eddystone))
 
+**Note:** When specifying data as an array, certain advertising options such as
+`discoverable` and `showName` won't have any effect.
+
+**Note:** The size of Bluetooth LE advertising packets is limited to 31 bytes. If
+you want to advertise more data, consider using an array for `data` (See below), or
+`NRF.setScanResponse`.
+
 You can even specify an array of arrays or objects, in which case each advertising packet
 will be used in turn - for instance to make your device advertise
 both Eddystone and iBeacon:
@@ -572,6 +579,8 @@ NRF.setAdvertising([
   discoverable: true/false // general discoverable, or limited - default is limited
   connectable: true/false // whether device is connectable - default is true
   interval: 600 // Advertising interval in msec, between 20 and 10000
+  manufacturer: 0x0590 // IF sending manufacturer data, this is the manufacturer ID
+  manufacturerData: [...] // IF sending manufacturer data, this is an array of data
 }
 ```
 
@@ -582,13 +591,10 @@ other data you can just use the command:
 NRF.setAdvertising({},{name:"Hello"});
 ```
 
-**Note:** When specifying data as an array, certain advertising options such as
-`discoverable` and `showName` won't have any effect.
-
-**Note:** The size of Bluetooth LE advertising packets is limited to 31 bytes. If
-you want to advertise more data, consider using an array for `data`, or
-`NRF.setScanResponse`.
-
+You can also specify 'manufacturer data', which is another form of advertising data.
+We've registered the Manufacturer ID 0x0590 (as Pur3 Ltd) for use with *Official
+Espruino devices* - use it to advertise whatever data you'd like, but we'd recommend
+using JSON.
 */
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   uint32_t err_code;
@@ -753,6 +759,26 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
     if (v) advdata.flags = jsvGetBoolAndUnLock(v) ?
         BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE :
         BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+
+    v = jsvObjectGetChild(options, "manufacturerData", 0);
+    if (v) {
+      JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, v);
+      if (dPtr && dLen) {
+        advdata.p_manuf_specific_data = (ble_advdata_manuf_data_t*)alloca(sizeof(ble_advdata_manuf_data_t));
+        advdata.p_manuf_specific_data->company_identifier = 0xFFFF; // pre-fill with test manufacturer data
+        advdata.p_manuf_specific_data->data.size = dLen;
+        advdata.p_manuf_specific_data->data.p_data = dPtr;
+      }
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChild(options, "manufacturer", 0);
+    if (v) {
+      if (advdata.p_manuf_specific_data)
+        advdata.p_manuf_specific_data->company_identifier = jsvGetInteger(v);
+      else
+        jsExceptionHere(JSET_TYPEERROR, "'manufacturer' specified without 'manufacturerdata'");
+      jsvUnLock(v);
+    }
 #endif
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting 'options' to be object or undefined, got %t", options);
@@ -1237,7 +1263,8 @@ BluetoothDevice {
   "services": [ "128bit-uuid", ... ],     // zero or more service UUIDs
   "data": new Uint8Array([ ... ]).buffer, // ArrayBuffer of returned data
   "serviceData" : { "0123" : [ 1 ] }, // if service data is in 'data', it's extracted here
-  "manufacturerData" : [...], // if manufacturer data is in 'data', it's extracted here
+  "manufacturer" : 0x1234, // if manufacturer data is in 'data', the 16 bit manufacturer ID is extracted here
+  "manufacturerData" : [...], // if manufacturer data is in 'data', the data is extracted here
   "name": "DeviceName"       // the advertised device name
  }
 ```
@@ -1297,8 +1324,10 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
             }
             jsvUnLock(childName);
           } else if (field_type == BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA) {
+            jsvObjectSetChildAndUnLock(device, "manufacturer",
+                            jsvNewFromInteger((dPtr[i+3]<<8) | dPtr[i+2]));
             jsvObjectSetChildAndUnLock(device, "manufacturerData",
-                jsvNewArrayBufferWithData(field_length-1, (unsigned char*)&dPtr[i+2]));
+                jsvNewArrayBufferWithData(field_length-3, (unsigned char*)&dPtr[i+4]));
           } // or unknown...
           i += field_length + 1;
         }

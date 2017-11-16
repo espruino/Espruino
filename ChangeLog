@@ -30,6 +30,7 @@
             Fix memory leak when allocating DataViews
             nRF5x: Fix memory leak on BLE notifications
             Ensure net/http .listen return the server instance (fix #1276)
+            nRF5x: Allow Manufacturer Data to be specified with setAdvertising
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs
