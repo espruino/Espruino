@@ -525,7 +525,7 @@ JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callba
       jswrap_dgram_close(parent); // close the client-only socket
       // the close is async, need to run the idle loop
       JsNetwork net;
-      if (!networkGetFromVarIfOnline(&net)) return parent;
+      if (!networkGetFromVarIfOnline(&net)) return jsvLockAgain(parent);
       socketIdle(&net);
       networkFree(&net);
 
@@ -535,10 +535,10 @@ JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callba
   }
 
   jsvObjectSetChild(parent, "#onbind", callback);
-  jswrap_net_server_listen(parent, port, ST_UDP); // create bound socket
+  jsvUnLock(jswrap_net_server_listen(parent, port, ST_UDP)); // create bound socket
   jsiQueueObjectCallbacks(parent, "#onbind", &parent, 1);
 
-  return parent;
+  return jsvLockAgain(parent);
 }
 
 /*JSON{
@@ -654,17 +654,19 @@ https://engineering.circle.com/https-authorized-certs-with-node-js/
   "generate_full" : "jswrap_net_server_listen(parent, port, ST_NORMAL)",
   "params" : [
     ["port","int32","The port to listen on"]
-  ]
+  ],
+  "return" : ["JsVar","The HTTP server instance that 'listen' was called on"]
 }
 Start listening for new connections on the given port
 */
 
-void jswrap_net_server_listen(JsVar *parent, int port, SocketType socketType) {
+JsVar *jswrap_net_server_listen(JsVar *parent, int port, SocketType socketType) {
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return;
 
   serverListen(&net, parent, (unsigned short)port, socketType);
   networkFree(&net);
+  return jsvLockAgain(parent);
 }
 
 /*JSON{

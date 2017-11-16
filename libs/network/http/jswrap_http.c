@@ -341,7 +341,8 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   "generate" : "jswrap_net_server_listen",
   "params" : [
     ["port","int32","The port to listen on"]
-  ]
+  ],
+  "return" : ["JsVar","The HTTP server instance that 'listen' was called on"]
 }
 Start listening for new HTTP connections on the given port
 */
