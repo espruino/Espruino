@@ -525,7 +525,7 @@ JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callba
       jswrap_dgram_close(parent); // close the client-only socket
       // the close is async, need to run the idle loop
       JsNetwork net;
-      if (!networkGetFromVarIfOnline(&net)) return jsvLockAgain(parent);
+      if (!networkGetFromVarIfOnline(&net)) return parent;
       socketIdle(&net);
       networkFree(&net);
 
@@ -538,7 +538,7 @@ JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callba
   jsvUnLock(jswrap_net_server_listen(parent, port, ST_UDP)); // create bound socket
   jsiQueueObjectCallbacks(parent, "#onbind", &parent, 1);
 
-  return jsvLockAgain(parent);
+  return parent;
 }
 
 /*JSON{
@@ -661,12 +661,13 @@ Start listening for new connections on the given port
 */
 
 JsVar *jswrap_net_server_listen(JsVar *parent, int port, SocketType socketType) {
+  parent = jsvLockAgain(parent); // we're returning the parent, so need to re-lock it
   JsNetwork net;
-  if (!networkGetFromVarIfOnline(&net)) return;
+  if (!networkGetFromVarIfOnline(&net)) return parent;
 
   serverListen(&net, parent, (unsigned short)port, socketType);
   networkFree(&net);
-  return jsvLockAgain(parent);
+  return parent;
 }
 
 /*JSON{

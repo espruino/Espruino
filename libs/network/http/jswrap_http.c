@@ -338,7 +338,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   "type" : "method",
   "class" : "httpSrv",
   "name" : "listen",
-  "generate" : "jswrap_net_server_listen",
+  "generate_full" : "jswrap_net_server_listen(parent, port, ST_HTTP)",
   "params" : [
     ["port","int32","The port to listen on"]
   ],
