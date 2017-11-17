@@ -515,10 +515,13 @@ void jswrap_dgram_messageCallback(JsVar *parent, JsVar *msg, JsVar *rinfo) {
   "params" : [
     ["port","int32","The port to bind at"],
     ["callback","JsVar","A function(res) that will be called when the socket is bound. You can then call `res.on('message', function(message, info) { ... })` and `res.on('close', function() { ... })` to deal with the response."]
-  ]
+  ],
+  "return" : ["JsVar","The dgramSocket instance that 'bind' was called on"]
 }
 */
 JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callback) {
+  parent = jsvLockAgain(parent); // we're returning the parent, so need to re-lock it
+
   // FIXME: move elsewhere...
   // re-used dgramSocket instance...
   {
