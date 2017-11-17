@@ -243,12 +243,23 @@ NO_INLINE static void _socketCloseAllConnections(JsNetwork *net) {
 
 // returns 0 on success and a (negative) error number on failure
 int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData) {
-  char *buf = alloca((size_t)net->chunkSize); // allocate on stack
+  SocketType socketType = socketGetType(connection);
 
   assert(!jsvIsEmptyString(*sendData));
 
-  SocketType socketType = socketGetType(connection);
-  size_t bufLen = httpStringGet(*sendData, buf, (size_t)net->chunkSize);
+  size_t sndBufLen;
+  if ((socketType&ST_TYPE_MASK)==ST_UDP) {
+      sndBufLen = (size_t)jsvGetStringLength(*sendData);
+      if (sndBufLen+1024 > jsuGetFreeStack()) {
+          jsExceptionHere(JSET_ERROR, "Not enough free stack to send this amount of data");
+          return -1;
+      }
+  } else {
+      sndBufLen = (size_t)net->chunkSize;
+  }
+  char *buf = alloca(sndBufLen); // allocate on stack
+
+  size_t bufLen = httpStringGet(*sendData, buf, sndBufLen);
   int num = netSend(net, socketType, sckt, buf, bufLen);
   DBG("socketSendData %x:%d (%d -> %d)\n", *(uint32_t*)buf, *(unsigned short*)(buf+sizeof(uint32_t)), bufLen, num);
   if (num < 0) return num; // an error occurred
