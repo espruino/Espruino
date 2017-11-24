@@ -77,6 +77,9 @@ typedef enum {
   EV_SERIAL5_STATUS,
   EV_SERIAL6_STATUS,
   EV_SERIAL_STATUS_MAX = EV_SERIAL6_STATUS,
+#ifdef BLUETOOTH
+  EV_BLUETOOTH_PENDING, // Pending tasks set by
+#endif
   EV_SPI1,
   EV_SPI2,
   EV_SPI3,

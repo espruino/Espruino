@@ -77,7 +77,7 @@ bool jsvIterateCallback(
   // Handle the data being iterable
   else if (jsvIsIterable(data)) {
     JsvIterator it;
-    jsvIteratorNew(&it, data);
+    jsvIteratorNew(&it, data, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it) && ok) {
       JsVar *el = jsvIteratorGetValue(&it);
       ok = jsvIterateCallback(el, callback, callbackData);
@@ -520,10 +520,15 @@ void   jsvArrayBufferIteratorFree(JsvArrayBufferIterator *it) {
 // --------------------------------------------------------------------------------------------
 /* General Purpose iterator, for Strings, Arrays, Objects, Typed Arrays */
 
-void jsvIteratorNew(JsvIterator *it, JsVar *obj) {
+void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags) {
   if (jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj)) {
     it->type = JSVI_OBJECT;
-    jsvObjectIteratorNew(&it->it.obj, obj);
+    if (jsvIsArray(obj) && (flags&JSIF_EVERY_ARRAY_ELEMENT)) {
+      it->type = JSVI_FULLARRAY;
+      it->it.obj.index = 0;
+      it->it.obj.var = jsvLockAgain(obj);
+    }
+    jsvObjectIteratorNew(&it->it.obj.it, obj);
   } else if (jsvIsArrayBuffer(obj)) {
     it->type = JSVI_ARRAYBUFFER;
     jsvArrayBufferIteratorNew(&it->it.buf, obj, 0);
@@ -535,7 +540,8 @@ void jsvIteratorNew(JsvIterator *it, JsVar *obj) {
 
 JsVar *jsvIteratorGetKey(JsvIterator *it) {
   switch (it->type) {
-  case JSVI_OBJECT : return jsvObjectIteratorGetKey(&it->it.obj);
+  case JSVI_FULLARRAY : return jsvNewFromInteger(it->it.obj.index);
+  case JSVI_OBJECT : return jsvObjectIteratorGetKey(&it->it.obj.it);
   case JSVI_STRING : return jsvMakeIntoVariableName(jsvNewFromInteger((JsVarInt)jsvStringIteratorGetIndex(&it->it.str)), 0); // some things expect a veriable name
   case JSVI_ARRAYBUFFER : return jsvMakeIntoVariableName(jsvArrayBufferIteratorGetIndex(&it->it.buf), 0); // some things expect a veriable name
   default: assert(0); return 0;
@@ -544,7 +550,11 @@ JsVar *jsvIteratorGetKey(JsvIterator *it) {
 
 JsVar *jsvIteratorGetValue(JsvIterator *it) {
   switch (it->type) {
-  case JSVI_OBJECT : return jsvObjectIteratorGetValue(&it->it.obj);
+  case JSVI_FULLARRAY: if (jsvIsIntegerish(it->it.obj.it.var) &&
+                           jsvGetInteger(it->it.obj.it.var) == it->it.obj.index)
+                         return jsvObjectIteratorGetValue(&it->it.obj.it);
+                       return 0;
+  case JSVI_OBJECT : return jsvObjectIteratorGetValue(&it->it.obj.it);
   case JSVI_STRING : { char buf[2] = {jsvStringIteratorGetChar(&it->it.str),0}; return jsvNewFromString(buf); }
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetValueAndRewind(&it->it.buf);
   default: assert(0); return 0;
@@ -553,10 +563,20 @@ JsVar *jsvIteratorGetValue(JsvIterator *it) {
 
 JsVarInt jsvIteratorGetIntegerValue(JsvIterator *it) {
   switch (it->type) {
+  case JSVI_FULLARRAY: {
+    if (jsvIsNameInt(it->it.obj.it.var) &&
+        jsvGetInteger(it->it.obj.it.var) == it->it.obj.index)
+      return (JsVarInt)jsvGetFirstChildSigned(it->it.obj.it.var);
+    if (jsvIsIntegerish(it->it.obj.it.var) &&
+        jsvGetInteger(it->it.obj.it.var) == it->it.obj.index)
+      return jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it->it.obj.it));
+    return 0;
+  }
   case JSVI_OBJECT : {
     // fast path for arrays of ints
-    if (jsvIsNameInt(it->it.obj.var)) return (JsVarInt)jsvGetFirstChildSigned(it->it.obj.var);
-    return jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it->it.obj));
+    if (jsvIsNameInt(it->it.obj.it.var))
+      return (JsVarInt)jsvGetFirstChildSigned(it->it.obj.it.var);
+    return jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it->it.obj.it));
   }
   case JSVI_STRING : return (JsVarInt)jsvStringIteratorGetChar(&it->it.str);
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetIntegerValue(&it->it.buf);
@@ -566,16 +586,25 @@ JsVarInt jsvIteratorGetIntegerValue(JsvIterator *it) {
 
 JsVarFloat jsvIteratorGetFloatValue(JsvIterator *it) {
   switch (it->type) {
-  case JSVI_OBJECT : return jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it->it.obj));
+  case JSVI_FULLARRAY: if (jsvIsIntegerish(it->it.obj.it.var) &&
+                           jsvGetInteger(it->it.obj.it.var) == it->it.obj.index)
+                         return jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it->it.obj.it));
+                       return NAN;
+  case JSVI_OBJECT : return jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it->it.obj.it));
   case JSVI_STRING : return (JsVarFloat)jsvStringIteratorGetChar(&it->it.str);
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetFloatValue(&it->it.buf);
-  default: assert(0); return 0;
+  default: assert(0); return NAN;
   }
 }
 
 JsVar *jsvIteratorSetValue(JsvIterator *it, JsVar *value) {
   switch (it->type) {
-  case JSVI_OBJECT : jsvObjectIteratorSetValue(&it->it.obj, value); break;
+  case JSVI_FULLARRAY:  if (jsvIsIntegerish(it->it.obj.it.var) &&
+                             jsvGetInteger(it->it.obj.it.var) == it->it.obj.index)
+                          jsvObjectIteratorSetValue(&it->it.obj.it, value);
+                        jsvSetArrayItem(it->it.obj.var, it->it.obj.index, value);
+                        break;
+  case JSVI_OBJECT : jsvObjectIteratorSetValue(&it->it.obj.it, value); break;
   case JSVI_STRING : jsvStringIteratorSetChar(&it->it.str, (char)(jsvIsString(value) ? value->varData.str[0] : (char)jsvGetInteger(value))); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorSetValueAndRewind(&it->it.buf, value); break;
   default: assert(0); break;
@@ -585,7 +614,8 @@ JsVar *jsvIteratorSetValue(JsvIterator *it, JsVar *value) {
 
 bool jsvIteratorHasElement(JsvIterator *it) {
   switch (it->type) {
-  case JSVI_OBJECT : return jsvObjectIteratorHasValue(&it->it.obj);
+  case JSVI_FULLARRAY: return it->it.obj.index < jsvGetArrayLength(it->it.obj.var);
+  case JSVI_OBJECT : return jsvObjectIteratorHasValue(&it->it.obj.it);
   case JSVI_STRING : return jsvStringIteratorHasChar(&it->it.str);
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorHasElement(&it->it.buf);
   default: assert(0); return 0;
@@ -594,7 +624,12 @@ bool jsvIteratorHasElement(JsvIterator *it) {
 
 void jsvIteratorNext(JsvIterator *it) {
   switch (it->type) {
-  case JSVI_OBJECT : jsvObjectIteratorNext(&it->it.obj); break;
+  case JSVI_FULLARRAY: it->it.obj.index++;
+                       if (jsvIsIntegerish(it->it.obj.it.var) &&
+                           jsvGetInteger(it->it.obj.it.var)<it->it.obj.index)
+                         jsvObjectIteratorNext(&it->it.obj.it);
+                       break;
+  case JSVI_OBJECT : jsvObjectIteratorNext(&it->it.obj.it); break;
   case JSVI_STRING : jsvStringIteratorNext(&it->it.str); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorNext(&it->it.buf); break;
   default: assert(0); break;
@@ -603,7 +638,8 @@ void jsvIteratorNext(JsvIterator *it) {
 
 void jsvIteratorFree(JsvIterator *it) {
   switch (it->type) {
-  case JSVI_OBJECT : jsvObjectIteratorFree(&it->it.obj); break;
+  case JSVI_FULLARRAY: jsvUnLock(it->it.obj.var); // intentionally no break
+  case JSVI_OBJECT : jsvObjectIteratorFree(&it->it.obj.it); break;
   case JSVI_STRING : jsvStringIteratorFree(&it->it.str); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorFree(&it->it.buf); break;
   default: assert(0); break;
@@ -614,7 +650,9 @@ JsvIterator jsvIteratorClone(JsvIterator *it) {
   JsvIterator newit;
   newit.type = it->type;
   switch (it->type) {
-  case JSVI_OBJECT : newit.it.obj = jsvObjectIteratorClone(&it->it.obj); break;
+  case JSVI_FULLARRAY: newit.it.obj.index = it->it.obj.index;
+                       newit.it.obj.var = jsvLockAgain(it->it.obj.var);  // intentionally no break
+  case JSVI_OBJECT : newit.it.obj.it = jsvObjectIteratorClone(&it->it.obj.it); break;
   case JSVI_STRING : newit.it.str = jsvStringIteratorClone(&it->it.str); break;
   case JSVI_ARRAYBUFFER : newit.it.buf = jsvArrayBufferIteratorClone(&it->it.buf); break;
   default: assert(0); break;

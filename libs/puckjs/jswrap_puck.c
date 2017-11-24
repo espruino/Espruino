@@ -443,7 +443,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
   jshPinSetValue(anode, pulsePolarity);
 
   JsvIterator it;
-  jsvIteratorNew(&it, data);
+  jsvIteratorNew(&it, data, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&it)) {
     JsVarFloat pulseTime = jsvIteratorGetFloatValue(&it);
     if (hasPulses) jstPinOutputAtTime(time, &anode, 1, pulsePolarity);

@@ -33,6 +33,8 @@
             nRF5x: Allow Manufacturer Data to be specified with setAdvertising
             Fix memory leak in jsvArrayPushAll
             nRF5x: jsvArrayPushAll memory leak fixes NRF.findDevices memory leak when services present
+            jsvNewIterator now has an option to iterate over sparse arrays as if they weren't sparse
+            Fixed some built-in functions that misbehaved when given sparse arrays
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs

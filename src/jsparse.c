@@ -2223,7 +2223,7 @@ NO_INLINE JsVar *jspeStatementFor() {
         JsVar *foundPrototype = 0;
 
         JsvIterator it;
-        jsvIteratorNew(&it, array);
+        jsvIteratorNew(&it, array, JSIF_DEFINED_ARRAY_ElEMENTS);
         bool hasHadBreak = false;
         while (JSP_SHOULD_EXECUTE && jsvIteratorHasElement(&it) && !hasHadBreak) {
           JsVar *loopIndexVar = jsvIteratorGetKey(&it);
@@ -2264,7 +2264,7 @@ NO_INLINE JsVar *jspeStatementFor() {
 
           if (!jsvIteratorHasElement(&it) && foundPrototype) {
             jsvIteratorFree(&it);
-            jsvIteratorNew(&it, foundPrototype);
+            jsvIteratorNew(&it, foundPrototype, JSIF_DEFINED_ARRAY_ElEMENTS);
             jsvUnLock(foundPrototype);
             foundPrototype = 0;
           }

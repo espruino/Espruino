@@ -368,7 +368,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   } else if (jsvIsIterable(srcdata)) {
     jshInterruptOff();
     JsvIterator it;
-    jsvIteratorNew(&it, srcdata);
+    jsvIteratorNew(&it, srcdata, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
       unsigned char in = (unsigned char)jsvIteratorGetIntegerValue(&it);
       jsspiSend4bit(device, in, bit0, bit1);
@@ -437,7 +437,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   } else if (jsvIsIterable(srcdata)) {
     jshInterruptOff();
     JsvIterator it;
-    jsvIteratorNew(&it, srcdata);
+    jsvIteratorNew(&it, srcdata, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
       unsigned char in = (unsigned char)jsvIteratorGetIntegerValue(&it);
       jsspiSend8bit(device, in, bit0, bit1);
