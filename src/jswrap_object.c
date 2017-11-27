@@ -209,7 +209,7 @@ void jswrap_object_keys_or_property_names_cb(
     JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(obj);
 
     JsvIterator it;
-    jsvIteratorNew(&it, obj);
+    jsvIteratorNew(&it, obj, JSIF_DEFINED_ARRAY_ElEMENTS);
     while (jsvIteratorHasElement(&it)) {
       JsVar *key = jsvIteratorGetKey(&it);
       if (!(checkerFunction && checkerFunction(key)) || (jsvIsStringEqual(key, JSPARSE_CONSTRUCTOR_VAR))) {
@@ -929,7 +929,7 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
     for (i=0;i<argC;i++) args[i] = 0;
     // TODO: Use jsvGetArrayItems?
     JsvIterator it;
-    jsvIteratorNew(&it, argsArray);
+    jsvIteratorNew(&it, argsArray, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
       JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
       if (idx>=0 && idx<(int)argC) {

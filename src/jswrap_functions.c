@@ -242,7 +242,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
   if (!base64Data) return 0;
   JsvIterator itsrc;
   JsvStringIterator itdst;
-  jsvIteratorNew(&itsrc, binaryData);
+  jsvIteratorNew(&itsrc, binaryData, JSIF_EVERY_ARRAY_ELEMENT);
   jsvStringIteratorNew(&itdst, base64Data, 0);
 
 

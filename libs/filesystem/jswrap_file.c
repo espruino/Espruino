@@ -395,7 +395,7 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
     if (fileGetFromVar(&file, parent)) {
       if(file.data.mode == FM_WRITE || file.data.mode == FM_READ_WRITE) {
         JsvIterator it;
-        jsvIteratorNew(&it, buffer);
+        jsvIteratorNew(&it, buffer, JSIF_EVERY_ARRAY_ELEMENT);
         char buf[32];
 
         while (jsvIteratorHasElement(&it)) {

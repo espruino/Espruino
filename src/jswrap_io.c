@@ -129,7 +129,7 @@ void jswrap_io_poke(JsVarInt addr, JsVar *data, int wordSize) {
     _jswrap_io_poke(addr, (uint32_t)jsvGetInteger(data), wordSize);
   } else if (jsvIsIterable(data)) {
     JsvIterator it;
-    jsvIteratorNew(&it, data);
+    jsvIteratorNew(&it, data, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
       _jswrap_io_poke(addr, (uint32_t)jsvIteratorGetIntegerValue(&it), wordSize);
       addr += wordSize;
@@ -220,7 +220,7 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
   } else if (jsvIsIterable(times)) {
     // iterable, so output a square wave
     JsvIterator it;
-    jsvIteratorNew(&it, times);
+    jsvIteratorNew(&it, times, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
       JsVarFloat time = jsvIteratorGetFloatValue(&it);
       if (time>=0 && !isnan(time))

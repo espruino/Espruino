@@ -231,7 +231,7 @@ JsVarFloat jswrap_espruino_sum(JsVar *arr) {
   JsVarFloat sum = 0;
 
   JsvIterator itsrc;
-  jsvIteratorNew(&itsrc, arr);
+  jsvIteratorNew(&itsrc, arr, JSIF_DEFINED_ARRAY_ElEMENTS);
   while (jsvIteratorHasElement(&itsrc)) {
     sum += jsvIteratorGetFloatValue(&itsrc);
     jsvIteratorNext(&itsrc);
@@ -262,7 +262,7 @@ JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
   JsVarFloat variance = 0;
 
   JsvIterator itsrc;
-  jsvIteratorNew(&itsrc, arr);
+  jsvIteratorNew(&itsrc, arr, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&itsrc)) {
     JsVarFloat val = jsvIteratorGetFloatValue(&itsrc);
     val -= mean;
@@ -297,9 +297,9 @@ JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
   JsVarFloat conv = 0;
 
   JsvIterator it1;
-  jsvIteratorNew(&it1, arr1);
+  jsvIteratorNew(&it1, arr1, JSIF_EVERY_ARRAY_ELEMENT);
   JsvIterator it2;
-  jsvIteratorNew(&it2, arr2);
+  jsvIteratorNew(&it2, arr2, JSIF_EVERY_ARRAY_ELEMENT);
 
   // get iterator2 at the correct offset
   int l = (int)jsvGetLength(arr2);
@@ -316,7 +316,7 @@ JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
     // restart iterator if it hit the end
     if (!jsvIteratorHasElement(&it2)) {
       jsvIteratorFree(&it2);
-      jsvIteratorNew(&it2, arr2);
+      jsvIteratorNew(&it2, arr2, JSIF_EVERY_ARRAY_ELEMENT);
     }
   }
   jsvIteratorFree(&it1);
@@ -442,7 +442,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   unsigned int i;
   // load data
   JsvIterator it;
-  jsvIteratorNew(&it, arrReal);
+  jsvIteratorNew(&it, arrReal, JSIF_EVERY_ARRAY_ELEMENT);
   i=0;
   while (jsvIteratorHasElement(&it)) {
     vReal[i++] = jsvIteratorGetFloatValue(&it);
@@ -454,7 +454,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
 
   i=0;
   if (jsvIsIterable(arrImag)) {
-    jsvIteratorNew(&it, arrImag);
+    jsvIteratorNew(&it, arrImag, JSIF_EVERY_ARRAY_ELEMENT);
     while (i<pow2 && jsvIteratorHasElement(&it)) {
       vImag[i++] = jsvIteratorGetFloatValue(&it);
       jsvIteratorNext(&it);
@@ -471,7 +471,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   // If we had imaginary data then DON'T modulus the result
   bool useModulus = !jsvIsIterable(arrImag);
 
-  jsvIteratorNew(&it, arrReal);
+  jsvIteratorNew(&it, arrReal, JSIF_EVERY_ARRAY_ELEMENT);
   i=0;
   while (jsvIteratorHasElement(&it)) {
     JsVarFloat f;
@@ -486,7 +486,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   }
   jsvIteratorFree(&it);
   if (jsvIsIterable(arrImag)) {
-    jsvIteratorNew(&it, arrImag);
+    jsvIteratorNew(&it, arrImag, JSIF_EVERY_ARRAY_ELEMENT);
     i=0;
     while (jsvIteratorHasElement(&it)) {
       jsvUnLock(jsvIteratorSetValue(&it, jsvNewFromFloat(vImag[i++])));

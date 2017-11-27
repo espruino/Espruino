@@ -2883,21 +2883,16 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
   JsVar *str = jsvNewFromEmptyString();
   if (!str) return 0; // out of memory
 
-  JsVarInt index = 0;
   JsvIterator it;
-  jsvIteratorNew(&it, arr);
-  bool hasMemory = true;
-  while (hasMemory && jsvIteratorHasElement(&it)) {
+  jsvIteratorNew(&it, arr, JSIF_EVERY_ARRAY_ELEMENT);
+  bool first = true;
+  while (!jspIsInterrupted() && jsvIteratorHasElement(&it)) {
     JsVar *key = jsvIteratorGetKey(&it);
     if (jsvIsInt(key)) {
-      JsVarInt thisIndex = jsvGetInteger(key);
       // add the filler
-      if (filler) {
-        while (index<thisIndex) {
-          index++;
-          jsvAppendStringVarComplete(str, filler);
-        }
-      }
+      if (filler && !first)
+        jsvAppendStringVarComplete(str, filler);
+      first = false;
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
       if (value && !jsvIsNull(value)) {
@@ -2905,8 +2900,6 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
         if (valueStr) { // could be out of memory
           jsvAppendStringVarComplete(str, valueStr);
           jsvUnLock(valueStr);
-        } else {
-          hasMemory = false;
         }
       }
       jsvUnLock(value);
@@ -2915,15 +2908,6 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
     jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
-
-  // pad missing elements from sparse arrays
-  if (hasMemory && filler && jsvIsArray(arr)) {
-    JsVarInt length = jsvGetArrayLength(arr);
-    while (++index < length) {
-      jsvAppendStringVarComplete(str, filler);
-    }
-  }
-
   return str;
 }
 
@@ -3141,7 +3125,7 @@ JsVar *jsvNegateAndUnLock(JsVar *v) {
 JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent) {
   if (maxDepth<=0) return 0;
   JsvIterator it;
-  jsvIteratorNew(&it, root);
+  jsvIteratorNew(&it, root, JSIF_DEFINED_ARRAY_ElEMENTS);
   while (jsvIteratorHasElement(&it)) {
     JsVar *el = jsvIteratorGetValue(&it);
     if (el == element && root != ignoreParent) {
@@ -3273,7 +3257,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
     jsvUnLock(child);
   } else if (jsvHasChildren(var)) {
     JsvIterator it;
-    jsvIteratorNew(&it, var);
+    jsvIteratorNew(&it, var, JSIF_DEFINED_ARRAY_ElEMENTS);
     bool first = true;
     while (jsvIteratorHasElement(&it) && !jspIsInterrupted()) {
       if (first) jsiConsolePrintf("\n");
