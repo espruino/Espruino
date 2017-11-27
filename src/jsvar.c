@@ -2799,7 +2799,8 @@ void jsvArrayPushAll(JsVar *target, JsVar *source, bool checkDuplicates) {
         jsvUnLock(idx);
       }
     }
-    if (add) jsvArrayPushAndUnLock(target, v);
+    if (add) jsvArrayPush(target, v);
+    jsvUnLock(v);
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
