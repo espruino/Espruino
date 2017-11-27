@@ -24,6 +24,7 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
+#include "jsflags.h"
 
 #include "app_util_platform.h"
 #ifdef BLUETOOTH
@@ -1082,6 +1083,8 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 
 bool jshFlashWriteProtect(uint32_t addr) {
+  // allow protection to be overwritten
+  if (jsfGetFlag(JSF_UNSAFE_FLASH)) return false;
 #if PUCKJS
   /* It's vital we don't let anyone screw with the softdevice or bootloader.
    * Recovering from changes would require soldering onto SWDIO and SWCLK pads!

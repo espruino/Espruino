@@ -700,6 +700,7 @@ Get Espruino's interpreter flags that control the way it handles your JavaScript
 
 * `deepSleep` - Allow deep sleep modes (also set by setDeepSleep)
 * `pretokenise` - When adding functions, pre-minify them and tokenise reserved words
+* `unsafeFlash` - Some platforms stop writes/erases to interpreter memory to stop you bricking the device accidentally - this removes that protection
 */
 /*JSON{
   "type" : "staticmethod",
