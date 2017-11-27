@@ -333,7 +333,6 @@ disconnected, just do the following:
 
 ```
 var gatt;
-var t = getTime();
 NRF.connect("aa:bb:cc:dd:ee:ff").then(function(gatt) {
   gatt.device.on('gattserverdisconnected', function(reason) {
     console.log("Disconnected ",reason);
