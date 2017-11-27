@@ -129,92 +129,8 @@ volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
 uint16_t bleFinalHandle;
 
-/* If we're received an advertising message it's put in here and then a message
- * to process it is shoved in the queue. Not 100% ideal if we don't get around
- * to processing it in time... Could shove all the data in the queue? */
-static ble_gap_evt_adv_report_t blePendingAdvReport;
-
-
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
-
-void jsble_queue_pending(BLEPending blep, uint16_t data) {
-  jshPushIOEvent(EV_BLUETOOTH_PENDING, (JsSysTime)blep);
-  jshHadEvent();
-}
-
-void jsble_exec_pending(BLEPending blep, uint16_t data) {
- switch (blep) {
-   case BLE_DISCONNECTED:
-     JsVar *reason = jsvNewFromInteger(data);
-     bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
-     break;
-   case BLEP_RSSI_CENTRAL:
-     JsVar *gattServer = bleGetActiveBluetoothGattServer();
-     if (gattServer) {
-       JsVar *rssi = jsvNewFromInteger((char)data);
-       JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
-       if (bluetoothDevice) {
-         jsvObjectSetChild(bluetoothDevice, "rssi", rssi);
-       }
-       jsiQueueObjectCallbacks(gattServer, BLE_RSSI_EVENT, &rssi, 1);
-       jsvUnLock3(rssi, gattServer, bluetoothDevice);
-     }
-     break;
-   case BLEP_RSSI_PERIPH:
-     JsVar *evt = jsvNewFromInteger((char)data);
-     if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
-     jsvUnLock(evt);
-     break
-   case BLEP_ADV_REPORT:
-     JsVar *evt = jsvNewObject();
-     if (evt) {
-       jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(blePendingAdvReport.rssi));
-       //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
-       jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(blePendingAdvReport.peer_addr));
-       JsVar *data = jsvNewStringOfLength(blePendingAdvReport.dlen, (char*)blePendingAdvReport.data);
-       if (data) {
-         JsVar *ab = jsvNewArrayBufferFromString(data, blePendingAdvReport.dlen);
-         jsvUnLock(data);
-         jsvObjectSetChildAndUnLock(evt, "data", ab);
-       }
-       // push onto queue
-       jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
-       jsvUnLock(evt);
-     }
-     break;
-   case BLEP_TASK_FAIL_CONN_TIMEOUT:
-     bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Connection Timeout"));
-     break;
-   case BLEP_TASK_FAIL_DISCONNECTED:
-     bleCompleteTaskFailAndUnLock(leGetCurrentTask(), jsvNewFromString("Disconnected"));
-   case BLEP_TASK_CENTRAL_CONNECTED:
-     jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
-     bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
-     break;
-   case BLEP_GATT_SERVER_DISCONNECTED:
-     JsVar *gattServer = bleGetActiveBluetoothGattServer();
-     if (gattServer) {
-       JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
-       jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
-       if (bluetoothDevice) {
-         // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
-         JsVar *reason = jsvNewFromInteger(data);
-         jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", &reason, 1);
-         jsvUnLock(reason);
-         jshHadEvent();
-       }
-       jsvUnLock2(gattServer, bluetoothDevice);
-     }
-     bleSetActiveBluetoothGattServer(0);
-     break;
- }
-}
-
-
-// -----------------------------------------------------------------------------------
-// -----------------------------------------------------------------------------------
-
 
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection() {
@@ -432,9 +348,10 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
       case BLE_GAP_EVT_TIMEOUT:
 #if CENTRAL_LINK_COUNT>0
         if (bleInTask(BLETASK_BONDING)) { // BLE_GAP_TIMEOUT_SRC_SECURITY_REQUEST ?
-          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT);
+          bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Connection Timeout"));
         } else if (bleInTask(BLETASK_CONNECT)) {
-          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT);
+          // timeout!
+          bleCompleteTaskFailAndUnLock(BLETASK_CONNECT, jsvNewFromString("Connection Timeout"));
         } else
 #endif
         {
@@ -479,7 +396,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleSetActiveBluetoothGattServer(bleTaskInfo);
-          jsble_queue_pending(BLEP_TASK_CENTRAL_CONNECTED);
+          jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
+          bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
         }
 #endif
         break;
@@ -492,13 +410,26 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
-          jsble_queue_pending(BLEP_GATT_SERVER_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
-
+          if (bleInTask(BLETASK_BONDING))
+            bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Disconnected"));
+          JsVar *gattServer = bleGetActiveBluetoothGattServer();
+          if (gattServer) {
+            JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+            jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
+            if (bluetoothDevice) {
+              // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
+              JsVar *reason = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.disconnected.reason);
+              jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", &reason, 1);
+              jsvUnLock(reason);
+              jshHadEvent();
+            }
+            jsvUnLock2(gattServer, bluetoothDevice);
+          }
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
-
+          bleSetActiveBluetoothGattServer(0);
           BleTask task = bleGetCurrentTask();
           if (BLETASK_IS_CENTRAL(task)) {
-            jsble_queue_pending(BLEP_TASK_FAIL_DISCONNECTED);
+            bleCompleteTaskFailAndUnLock(task, jsvNewFromString("Disconnected"));
           }
         } else
 #endif
@@ -511,7 +442,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
             jsble_advertising_start();
-          jsble_queue_pending(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
+          JsVar *reason = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.disconnected.reason);
+          bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
+          jshHadEvent();
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
           jsble_restart_softdevice();
@@ -521,11 +454,24 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
       case BLE_GAP_EVT_RSSI_CHANGED: 
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
-          jsble_queue_pending(BLEP_RSSI_CENTRAL, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
+          JsVar *gattServer = bleGetActiveBluetoothGattServer();
+          if (gattServer) {
+            JsVar *rssi = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
+            JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+            if (bluetoothDevice) {
+              jsvObjectSetChild(bluetoothDevice, "rssi", rssi);
+            }
+            jsiQueueObjectCallbacks(gattServer, BLE_RSSI_EVENT, &rssi, 1);
+            jshHadEvent();
+            jsvUnLock3(rssi, gattServer, bluetoothDevice);
+          }
         } else
 #endif    
         {
-          jsble_queue_pending(BLEP_RSSI_PERIPH, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
+          JsVar *evt = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
+          if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
+          jsvUnLock(evt);
+          jshHadEvent();
         }
         break;
 
@@ -665,14 +611,28 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
       case BLE_GAP_EVT_ADV_REPORT: {
         // Advertising data received
         const ble_gap_evt_adv_report_t *p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
-        blePendingAdvReport = *p_adv;
-        ble_queue_pending(BLEP_ADV_REPORT);
+
+        JsVar *evt = jsvNewObject();
+        if (evt) {
+          jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
+          //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(p_adv->peer_addr.addr_type));
+          jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
+          JsVar *data = jsvNewStringOfLength(p_adv->dlen, (char*)p_adv->data);
+          if (data) {
+            JsVar *ab = jsvNewArrayBufferFromString(data, p_adv->dlen);
+            jsvUnLock(data);
+            jsvObjectSetChildAndUnLock(evt, "data", ab);
+          }
+          // push onto queue
+          jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
+          jsvUnLock(evt);
+          jshHadEvent();
+        }
         break;
         }
 
       case BLE_GATTS_EVT_WRITE: {
         ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
-        jsble_queue_pending_data(p_evt_write, sizeof(p_evt_write) + p_evt_write->len)
         // We got a param write event - add this to the object callback queue
         JsVar *evt = jsvNewObject();
         if (evt) {

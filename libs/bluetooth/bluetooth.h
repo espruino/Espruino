@@ -88,18 +88,6 @@ typedef enum  {
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;
 
-typedef enum {
-  BLEP_NONE,
-  BLEP_DISCONNECTED,
-  BLEP_RSSI_CENTRAL,
-  BLEP_RSSI_PERIPH,
-  BLEP_ADV_REPORT,
-  BLEP_TASK_FAIL_CONN_TIMEOUT,
-  BLEP_TASK_FAIL_DISCONNECTED,
-  BLEP_TASK_CENTRAL_CONNECTED,
-  BLEP_GATT_SERVER_DISCONNECTED,
-} BLEPending;
-
 
 extern volatile BLEStatus bleStatus;
 extern uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
@@ -112,12 +100,6 @@ extern volatile uint16_t                         m_central_conn_handle; /**< Han
 void jsble_init();
 /** Completely deinitialise the BLE stack */
 void jsble_kill();
-/** Add a task to the queue to be executed (to be called mainly from IRQ-land) */
-void jsble_queue_pending(BLEPending blep, uint16_t data);
-/** Add data to the queue, for use by a task */
-void jsble_queue_pending_data(char *data, size_t data_len);
-/** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land*/
-void jsble_exec_pending(BLEPending blep, uint16_t data);
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */

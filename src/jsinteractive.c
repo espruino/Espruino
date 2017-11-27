@@ -1811,10 +1811,6 @@ void jsiIdle() {
           jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
       }
       jsvUnLock(usartClass);
-#ifdef BLUETOOTH
-    } else if (eventType == EV_BLUETOOTH_PENDING) {
-      jsble_exec_pending((BLEPending)event.data.time);
-#endif
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...
       // Check everything in our Watch array
