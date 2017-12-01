@@ -90,7 +90,7 @@ board = {
   'right2' : [ 'D15' ],
   '_notes' : {
     'D11' : "Capacitive sense. D12 is connected to this pin via a 1 MOhm resistor",
-    'D29' : "If pulled up to 1 on startup, D28 and D29 become Serial1",
+    'D28' : "If pulled up to 1 on startup, D28 and D29 become Serial1",
   }
 };
 
