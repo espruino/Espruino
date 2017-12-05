@@ -312,16 +312,17 @@ void jswrap_badge_init() {
   jshPinSetValue(LCD_RST,1);
   jshDelayMicroseconds(10000);
   const unsigned char LCD_INIT_DATA[] = {
-       0xE2,
-       0xA3,
-       0xA1,
-       0xC8,
-       0x25,
-       0x81,
+       // 0xE2,   // soft reset
+       0xA3,   // bias 1/7
+       0xC8,   // reverse scan dir
+       0x25,   // regulation resistor ratio (0..7)
+       0x81,   // contrast control
        0x17,
-       0x2F,
-       0xAF
+       0x2F,   // control power circuits - last 3 bits = VB/VR/VF
+       0xA1,   // start at column 0
+       0xAF    // disp on
   };
+  // TODO: start at column 128 (0xA0) and don't 'flip' the LCD
   for (unsigned int i=0;i<sizeof(LCD_INIT_DATA);i++)
     badge_lcd_wr(LCD_INIT_DATA[i]);
   jshPinSetValue(LCD_CS,1);
