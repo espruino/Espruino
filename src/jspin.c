@@ -34,7 +34,7 @@ BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 
 bool jshIsPinValid(Pin pin) {
   // Note, PIN_UNDEFINED is always > JSH_PIN_COUNT
-  return pin < JSH_PIN_COUNT && pinInfo[pin].port != JSH_PORT_NONE;
+  return pin < JSH_PIN_COUNT && (pinInfo[pin].port&JSH_PORT_MASK) != JSH_PORT_NONE;
 }
 
 Pin jshGetPinFromString(const char *s) {
@@ -56,7 +56,7 @@ Pin jshGetPinFromString(const char *s) {
 #ifdef PIN_NAMES_DIRECT
       int i;
       for (i=0;i<JSH_PIN_COUNT;i++)
-        if (pinInfo[i].port == port && pinInfo[i].pin==pin)
+        if ((pinInfo[i].port&JSH_PORT_MASK) == port && pinInfo[i].pin==pin)
           return (Pin)i;
 #else
       if (port == JSH_PORTA) {
@@ -100,7 +100,7 @@ void jshGetPinString(char *result, Pin pin) {
   result[0] = 0; // just in case
 #ifdef PIN_NAMES_DIRECT
   if (jshIsPinValid(pin)) {
-    result[0] = (char)('A'+pinInfo[pin].port-JSH_PORTA);
+    result[0] = (char)('A'+(pinInfo[pin].port&JSH_PORT_MASK)-JSH_PORTA);
     itostr(pinInfo[pin].pin-JSH_PIN0,&result[1],10);
 #else
     if (

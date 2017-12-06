@@ -60,8 +60,8 @@ chip = {
 };
 
 devices = {
-  'BTN1' : { 'pin' : 'D5', 'inverted' : True, 'pinstate' : 'IN_PULLUP' }, # 'P0_17'
-  'BTN2' : { 'pin' : 'D11', 'inverted' : True, 'pinstate' : 'IN_PULLUP' }, # 'P0_26'
+  'BTN1' : { 'pin' : 'D5', 'pinstate' : 'IN_PULLUP' }, # 'P0_17' -  Pin negated in software
+  'BTN2' : { 'pin' : 'D11', 'pinstate' : 'IN_PULLUP' }, # 'P0_26' -  Pin negated in software
 };
 
 # left-right, or top-bottom order
@@ -128,6 +128,9 @@ def get_pins():
    { "name":"PH0", "sortingname":"H0", "port":"D", "num":"24", "functions":{}, "csv":{} },
    { "name":"PH1", "sortingname":"H1", "port":"D", "num":"25", "functions":{}, "csv":{} }
   ];
+  # Make buttons negated
+  pinutils.findpin(pins, "PD5", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD11", True)["functions"]["NEGATED"]=0;
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;

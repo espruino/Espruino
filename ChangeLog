@@ -37,6 +37,7 @@
             Fixed some built-in functions that misbehaved when given sparse arrays
             Puck.js: Allow flash memory protection to be overwridden with E.setFlags
             Fix lexing of '/*/' as a complete block comment
+            nRF5x: Add support for negating pins in software (eg. buttons/LEDs)
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs

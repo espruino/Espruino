@@ -389,11 +389,14 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
   nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
 }
 
 bool jshPinGetValue(Pin pin) {
-  return (bool)nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
+  bool value = nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
+  return value;
 }
 
 // Set the pin state
@@ -406,6 +409,10 @@ void jshPinSetState(Pin pin, JshPinState state) {
   if (BITFIELD_GET(jshPinSoftPWM, pin)) {
     BITFIELD_SET(jshPinSoftPWM, pin, 0);
     jstPinPWM(0,0,pin);
+  }
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) {
+    if (state==JSHPINSTATE_GPIO_IN_PULLUP) state=JSHPINSTATE_GPIO_IN_PULLDOWN;
+    else if (state==JSHPINSTATE_GPIO_IN_PULLDOWN) state=JSHPINSTATE_GPIO_IN_PULLUP;
   }
 
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
@@ -636,6 +643,8 @@ JshPinFunction jshGetFreeTimer(JsVarFloat freq) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+  if (pinInfo[pin].port & JSH_PIN_NEGATED)
+    value = 1-value;
 #ifdef NRF52
   // Try and use existing pin function
   JshPinFunction func = pinStates[pin];

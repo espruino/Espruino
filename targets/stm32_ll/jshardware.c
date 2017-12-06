@@ -150,7 +150,7 @@ static ALWAYS_INLINE uint32_t stmExtI(Pin ipin) {
 
 static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
 
-  JsvPinInfoPort port = pinInfo[pin].port;
+  JsvPinInfoPort port = pinInfo[pin].port&JSH_PORT_MASK;
 #if 1
   return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
 #else
@@ -195,7 +195,7 @@ static ALWAYS_INLINE uint32_t stmPinSource(JsvPinInfoPin ipin) {
 }
 
 static ALWAYS_INLINE uint8_t stmPortSource(Pin pin) {
-  JsvPinInfoPort port = pinInfo[pin].port;
+  JsvPinInfoPort port = pinInfo[pin].port&JSH_PORT_MASK;
 #if 1
   return (uint8_t)(port-JSH_PORTA);
 #else
