@@ -358,7 +358,7 @@ libs/graphics/lcd_js.c
 
 ifdef USE_LCD_SDL
   DEFINES += -DUSE_LCD_SDL
-  SOURCES += libs/graphics/lcd_sd/.c
+  SOURCES += libs/graphics/lcd_sdl.c
   LIBS += -lSDL
   INCLUDE += -I/usr/include/SDL
 endif
