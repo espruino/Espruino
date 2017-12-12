@@ -454,7 +454,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       jsvUnLock(sendData);
     }
     if (closeConnectionNow) {
-      DBG("CLOSE NOW");
+      DBG("CLOSE NOW\n");
 
       // send out any data that we were POSTed
       JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
@@ -620,7 +620,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     }
 
     if (closeConnectionNow) {
-      DBG("close now");
+      DBG("close now\n");
 
       socketClientPushReceiveData(connection, socket, &receiveData);
       if (!receiveData) {
@@ -777,7 +777,7 @@ void serverListen(JsNetwork *net, JsVar *server, unsigned short port, SocketType
     }
   }
 
-  DBG("serverListen port=%d (%d)", port, sckt);
+  DBG("serverListen port=%d (%d)\n", port, sckt);
   jsvUnLock2(options, arr);
 }
 
