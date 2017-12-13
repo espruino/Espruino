@@ -407,7 +407,7 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
   JsVar *rq = clientRequestNew(socketType, options, callback);
   if (unlockOptions) jsvUnLock(options);
 
-  if ((socketType&ST_TYPE_MASK) != ST_HTTP) {
+  if ((socketType&ST_TYPE_MASK) == ST_NORMAL) {
     JsNetwork net;
     if (networkGetFromVarIfOnline(&net)) {
       clientRequestConnect(&net, rq);
@@ -521,21 +521,6 @@ void jswrap_dgram_messageCallback(JsVar *parent, JsVar *msg, JsVar *rinfo) {
 */
 JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callback) {
   parent = jsvLockAgain(parent); // we're returning the parent, so need to re-lock it
-
-  // FIXME: move elsewhere...
-  // re-used dgramSocket instance...
-  {
-      jswrap_dgram_close(parent); // close the client-only socket
-      // the close is async, need to run the idle loop
-      JsNetwork net;
-      if (!networkGetFromVarIfOnline(&net)) return parent;
-      socketIdle(&net);
-      networkFree(&net);
-
-      jsvObjectRemoveChild(parent, "cls"/*HTTP_NAME_CLOSE*/);
-      jsvObjectRemoveChild(parent, "clsNow"/*HTTP_NAME_CLOSENOW*/);
-      jsvObjectRemoveChild(parent, "sckt"/*HTTP_NAME_SOCKET*/);
-  }
 
   jsvObjectSetChild(parent, "#onbind", callback);
   jsvUnLock(jswrap_net_server_listen(parent, port, ST_UDP)); // create bound socket
