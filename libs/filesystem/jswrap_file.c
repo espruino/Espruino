@@ -15,6 +15,7 @@
  */
 #include "jswrap_file.h"
 #include "jsparse.h"
+#include "jsflags.h"
 
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSd" // the data in each file
 #define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSo" // the list of open files
@@ -385,7 +386,14 @@ void jswrap_file_close(JsVar* parent) {
   ],
   "return" : ["int32","the number of bytes written"]
 }
-write data to a file
+Write data to a file.
+
+**Note:** By default this function flushes all changes to the
+SD card, which makes it slow (but also safe!). You can use
+`E.setFlags({unsyncFiles:1})` to disable this behaviour and
+really speed up writes - but then you must be sure to close
+all files you are writing before power is lost or you will
+cause damage to your SD card's filesystem.
 */
 size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
   FRESULT res = 0;
@@ -419,11 +427,13 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
         }
         jsvIteratorFree(&it);
         // finally, sync - just in case there's a reset or something
+        if (!jsfGetFlag(JSF_UNSYNC_FILES)) {
 #ifndef LINUX
-        f_sync(&file.data.handle);
+          f_sync(&file.data.handle);
 #else
-        fflush(file.data.handle);
+          fflush(file.data.handle);
 #endif
+        }
       }
 
       fileSetVar(&file);

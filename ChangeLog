@@ -38,6 +38,7 @@
             Puck.js: Allow flash memory protection to be overwridden with E.setFlags
             Fix lexing of '/*/' as a complete block comment
             nRF5x: Add support for negating pins in software (eg. buttons/LEDs)
+            Add `E.setFlags({unsyncFiles:1}` which doesn't sync the file to the SD card after each write - it's *much* faster
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs
