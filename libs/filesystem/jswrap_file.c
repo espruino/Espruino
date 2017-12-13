@@ -82,6 +82,7 @@ bool jsfsInit() {
       JsVar *spi = jsvSkipNameAndUnLock(jspGetNamedVariable(deviceStr));
       JshSPIInfo inf;
       jshSPIInitInfo(&inf);
+      inf.baudRate = 4000000; // 4Mhz bit rate for onboard SD cards
       inf.pinMISO = SD_DO_PIN;
       inf.pinMOSI = SD_DI_PIN;
       inf.pinSCK = SD_CLK_PIN;
