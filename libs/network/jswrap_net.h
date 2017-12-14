@@ -14,6 +14,7 @@
 #include "jsvar.h"
 #include "socketserver.h"
 
+#define DGRAM_ON_BIND_NAME          JS_EVENT_PREFIX"bind"
 #define DGRAM_MESSAGE_CALLBACK_NAME JS_EVENT_PREFIX"message"
 
 bool jswrap_net_idle();
@@ -36,9 +37,4 @@ JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callba
 void jswrap_dgram_messageCallback(JsVar *parent, JsVar *dataString, JsVar *dataInfo);
 void jswrap_dgram_close(JsVar *parent);
 void jswrap_dgram_addMembership(JsVar *parent, JsVar *group, JsVar *ip);
-bool jswrap_dgram_socket_send(JsVar *parent, JsVar *data, unsigned short portNumber, JsVar *host);
-
-
-
-
-
+void jswrap_dgram_socket_send(JsVar *parent, JsVar *buffer, JsVar *offset, JsVar *length, JsVar *args);
