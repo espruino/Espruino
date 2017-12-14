@@ -103,6 +103,7 @@ typedef enum {
   ARRAYBUFFERVIEW_FLOAT = 32,
   ARRAYBUFFERVIEW_CLAMPED = 64, // As in Uint8ClampedArray - clamp to the acceptable bounds
   ARRAYBUFFERVIEW_ARRAYBUFFER = 1 | 128, ///< Basic ArrayBuffer type
+  ARRAYBUFFERVIEW_BIG_ENDIAN = 256, ///< access as big endian (normally little)
 
   ARRAYBUFFERVIEW_UINT8   = 1,
   ARRAYBUFFERVIEW_INT8    = 1 | ARRAYBUFFERVIEW_SIGNED,
@@ -305,7 +306,7 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount);
 JsVar *jsvNewWithFlags(JsVarFlags flags); ///< Create a new variable with the given flags
 JsVar *jsvNewFlatStringOfLength(unsigned int byteLength); ///< Try and create a special flat string
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
-JsVar *jsvNewStringOfLength(unsigned int byteLength); ///< Create a new string of the given length - full of 0s
+JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData); ///< Create a new string of the given length - full of 0s (or initialData if specified)
 static ALWAYS_INLINE JsVar *jsvNewFromEmptyString() { JsVar *v = jsvNewWithFlags(JSV_STRING_0); return v; } ;///< Create a new empty string
 static ALWAYS_INLINE JsVar *jsvNewNull() { return jsvNewWithFlags(JSV_NULL); } ;///< Create a new null variable
 /** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)  */
@@ -520,6 +521,8 @@ void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col); ///<
 size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col); ///<  IN A STRING, get a character index from a line and column
 
 
+/// Like jsvIsStringEqualOrStartsWith, but starts comparing at some offset (not the beginning of the string)
+bool jsvIsStringEqualOrStartsWithOffset(JsVar *var, const char *str, bool isStartsWith, size_t startIdx);
 /**
   Compare a string with a C string. Returns 0 if A is not a string.
 
@@ -555,22 +558,16 @@ static ALWAYS_INLINE JsVar *jsvAsNumberAndUnLock(JsVar *v) { JsVar *n = jsvAsNum
 static ALWAYS_INLINE JsVarInt _jsvGetIntegerAndUnLock(JsVar *v) { JsVarInt i = jsvGetInteger(v); jsvUnLock(v); return i; }
 static ALWAYS_INLINE JsVarFloat _jsvGetFloatAndUnLock(JsVar *v) { JsVarFloat f = jsvGetFloat(v); jsvUnLock(v); return f; }
 static ALWAYS_INLINE bool _jsvGetBoolAndUnLock(JsVar *v) { bool b = jsvGetBool(v); jsvUnLock(v); return b; }
-#ifdef SAVE_ON_FLASH
 JsVarInt jsvGetIntegerAndUnLock(JsVar *v);
 JsVarFloat jsvGetFloatAndUnLock(JsVar *v);
 bool jsvGetBoolAndUnLock(JsVar *v);
-#else
-#define jsvGetIntegerAndUnLock _jsvGetIntegerAndUnLock
-#define jsvGetFloatAndUnLock _jsvGetFloatAndUnLock
-#define jsvGetBoolAndUnLock _jsvGetBoolAndUnLock
-#endif
 long long jsvGetLongIntegerAndUnLock(JsVar *v);
 
 
 
 
 /** Get the item at the given location in the array buffer and return the result */
-size_t jsvGetArrayBufferLength(JsVar *arrayBuffer);
+size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer);
 /** Get the String the contains the data for this arrayBuffer */
 JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer);
 /** Get the item at the given location in the array buffer and return the result */
@@ -636,7 +633,7 @@ JsVar *jsvNegateAndUnLock(JsVar *v);
 JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent);
 
 /// Copy this variable and return the locked copy
-JsVar *jsvCopy(JsVar *src);
+JsVar *jsvCopy(JsVar *src, bool copyChildren);
 /** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false.
     If keepAsName==false, this will be converted into a normal variable */
 JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName);
@@ -651,29 +648,41 @@ JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound);
 /// Remove a child - note that the child MUST ACTUALLY BE A CHILD! and should be a name, not a value.
 void jsvRemoveChild(JsVar *parent, JsVar *child);
 void jsvRemoveAllChildren(JsVar *parent);
-void jsvRemoveNamedChild(JsVar *parent, const char *name);
 
 /// Get the named child of an object. If createChild!=0 then create the child
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
+/// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
+JsVar *jsvObjectSetChildVar(JsVar *obj, JsVar *name, JsVar *child);
 /// Set the named child of an object, and unlock the child
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child);
+/// Remove the named child of an Object
+void jsvObjectRemoveChild(JsVar *parent, const char *name);
+/** Set the named child of an object, and return the child (so you can choose to unlock it if you want).
+ * If the child is 0, the 'name' is also removed from the object */
+JsVar *jsvObjectSetOrRemoveChild(JsVar *obj, const char *name, JsVar *child);
+/** Append all keys from the source object to the target object. Will ignore hidden/internal fields */
+void jsvObjectAppendAll(JsVar *target, JsVar *source);
 
-int jsvGetChildren(JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
+int jsvGetChildren(const JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
 JsVar *jsvGetFirstName(JsVar *v); ///< Get the first child's name from an object,array or function
 /// Check if the given name is a child of the parent
 bool jsvIsChild(JsVar *parent, JsVar *child);
 JsVarInt jsvGetArrayLength(const JsVar *arr); ///< Not the same as GetChildren, as it can be a sparse array
 JsVarInt jsvSetArrayLength(JsVar *arr, JsVarInt length, bool truncate); ///< set an array's length, optionally truncating if the array becomes shorter
-JsVarInt jsvGetLength(JsVar *src); ///< General purpose length function. Does the 'right' thing
+JsVarInt jsvGetLength(const JsVar *src); ///< General purpose length function. Does the 'right' thing
 size_t jsvCountJsVarsUsed(JsVar *v); ///< Count the amount of JsVars used. Mostly useful for debugging
-JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array (and lock it)
+JsVar *jsvGetArrayIndex(const JsVar *arr, JsVarInt index); ///< Get a 'name' at the specified index in the array if it exists (and lock it)
+JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array if it exists (and lock it)
+void jsvSetArrayItem(JsVar *arr, JsVarInt index, JsVar *item); ///< Set an array item at the specified index in the array
 void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr); ///< Get all elements from arr and put them in itemPtr (unless it'd overflow). Makes sure all of itemPtr either contains a JsVar or 0
-JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array (matchExact==use pointer, not equality check)
+JsVar *jsvGetIndexOfFull(JsVar *arr, JsVar *value, bool matchExact, bool matchIntegerIndices, int startIdx); ///< Get the index of the value in the array (matchExact==use pointer not equality check, matchIntegerIndices = don't check non-integers)
+JsVar *jsvGetIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array or object (matchExact==use pointer, not equality check)
 JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, and returns the new length
 JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, unlocks it, and returns the new length
+void jsvArrayPushAll(JsVar *target, JsVar *source, bool checkDuplicates); ///< Append all values from the source array to the target array
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME. DOES NOT RENUMBER.
 void jsvArrayAddUnique(JsVar *arr, JsVar *v); ///< Adds a new variable element to the end of an array (IF it was not already there). Return true if successful
@@ -681,11 +690,18 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler); ///< Join all elements of an arr
 void jsvArrayInsertBefore(JsVar *arr, JsVar *beforeIndex, JsVar *element); ///< Insert a new element before beforeIndex, DOES NOT UPDATE INDICES
 static ALWAYS_INLINE bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr)); return !jsvGetFirstChild(arr); } ///< Return true is array is empty
 
+
+
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVar *var, int indent);
 
-/** Run a garbage collection sweep - return true if things have been freed */
-bool jsvGarbageCollect();
+/** Run a garbage collection sweep - return nonzero if things have been freed */
+int jsvGarbageCollect();
+
+#ifndef RELEASE
+// Dump any locked variables that aren't referenced from `global` - for debugging memory leaks
+void jsvDumpLockedVars();
+#endif
 
 /** Remove whitespace to the right of a string - on MULTIPLE LINES */
 JsVar *jsvStringTrimRight(JsVar *srcString);
@@ -714,13 +730,24 @@ typedef struct {
  */
 bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 
+/// Is the variable an instance of the given class. Eg. `jsvIsInstanceOf(e, "Error")` - does a simple, non-recursive check that doesn't take account of builtins like String
+bool jsvIsInstanceOf(JsVar *var, const char *constructorName);
+
 /// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
+
+#ifndef SAVE_ON_FLASH
+/// Create a new DataView of the given length (in elements), and fill it with the given data (if set)
+JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data);
+#endif
 
 /** Create a new arraybuffer of the given type and length, also return a pointer
  * to the contiguous memory area containing it. Returns 0 if it was unable to
  * allocate it. */
 JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr);
+
+/** create an arraybuffer containing the given data */
+JsVar *jsvNewArrayBufferWithData(JsVarInt length, unsigned char *data);
 
 /** Allocate a flat area of memory inside Espruino's Variable storage space.
  * This may return 0 on failure.

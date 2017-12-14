@@ -264,6 +264,9 @@ int32_t sanity_int_flt_int(int32_t a, JsVarFloat b, int32_t c) {
 
 /** Perform sanity tests to ensure that  jsnCallFunction is working as expected */
 void jsnSanityTest() {
+  if (sizeof(JsnArgumentType)!=2)
+    jsiConsolePrintf("WARNING: jsnative.c sanity check failed (sizeof(JsnArgumentType)==2) %d\n", sizeof(JsnArgumentType));
+
   JsVar *args[4];
   if (jsvGetFloatAndUnLock(jsnCallFunction(sanity_pi, JSWAT_JSVARFLOAT, 0, 0, 0)) != 3.141592)
     jsiConsolePrint("WARNING: jsnative.c sanity check failed (returning double values)\n");

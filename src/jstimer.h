@@ -74,11 +74,18 @@ typedef struct UtilTimerTaskBuffer {
   };
 } PACKED_FLAGS UtilTimerTaskBuffer;
 
+typedef void (*UtilTimerTaskExecFn)(JsSysTime time, void* userdata);
+
+typedef struct UtilTimerTaskExec {
+  UtilTimerTaskExecFn fn;
+  void *userdata;
+} PACKED_FLAGS UtilTimerTaskExec;
+
 
 typedef union UtilTimerTaskData {
   UtilTimerTaskSet set;
   UtilTimerTaskBuffer buffer;
-  void (*execute)(JsSysTime time);
+  UtilTimerTaskExec execute;
 } UtilTimerTaskData;
 
 typedef struct UtilTimerTask {
@@ -109,10 +116,10 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin);
 
 /// Execute the given function repeatedly after the given time period. If periof=0, don't repeat
-bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime startTime, uint32_t period);
+bool jstExecuteFn(UtilTimerTaskExecFn fn, void *userdata, JsSysTime startTime, uint32_t period);
 
 /// Stop executing the given function
-bool jstStopExecuteFn(void (*fn)(JsSysTime));
+bool jstStopExecuteFn(UtilTimerTaskExecFn fn, void *userdata);
 
 /// Set the utility timer so we're woken up in whatever time period
 bool jstSetWakeUp(JsSysTime period);

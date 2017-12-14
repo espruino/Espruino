@@ -20,14 +20,20 @@
 
 typedef enum LEX_TYPES {
     LEX_EOF = 0,
-    LEX_ID = 256,
+    LEX_TOKEN_START = 128,
+    LEX_ID = LEX_TOKEN_START,
     LEX_INT,
     LEX_FLOAT,
     LEX_STR,
-    LEX_UNFINISHED_STR,
+    LEX_UNFINISHED_STR, // always after LEX_STR
+    LEX_TEMPLATE_LITERAL,
+    LEX_UNFINISHED_TEMPLATE_LITERAL, // always after LEX_TEMPLATE_LITERAL
+    LEX_REGEX,
+    LEX_UNFINISHED_REGEX, // always after LEX_REGEX
     LEX_UNFINISHED_COMMENT,
 
-    LEX_EQUAL,
+_LEX_OPERATOR_START,
+    LEX_EQUAL = _LEX_OPERATOR_START,
     LEX_TYPEEQUAL,
     LEX_NEQUAL,
     LEX_NTYPEEQUAL,
@@ -51,9 +57,13 @@ typedef enum LEX_TYPES {
     LEX_OREQUAL,
     LEX_OROR,
     LEX_XOREQUAL,
+    // Note: single character operators are represented by themselves
+_LEX_OPERATOR_END = LEX_XOREQUAL,
+    LEX_ARROW_FUNCTION,
+
     // reserved words
-#define LEX_R_LIST_START LEX_R_IF
-    LEX_R_IF,
+_LEX_R_LIST_START,
+    LEX_R_IF = _LEX_R_LIST_START,
     LEX_R_ELSE,
     LEX_R_DO,
     LEX_R_WHILE,
@@ -63,6 +73,8 @@ typedef enum LEX_TYPES {
     LEX_R_FUNCTION,
     LEX_R_RETURN,
     LEX_R_VAR,
+    LEX_R_LET,
+    LEX_R_CONST,
     LEX_R_THIS,
     LEX_R_THROW,
     LEX_R_TRY,
@@ -82,9 +94,9 @@ typedef enum LEX_TYPES {
     LEX_R_TYPEOF,
     LEX_R_VOID,
     LEX_R_DEBUGGER,
-
-    LEX_R_LIST_END /* always the last entry */
+_LEX_R_LIST_END = LEX_R_DEBUGGER /* always the last entry */
 } LEX_TYPES;
+
 
 typedef struct JslCharPos {
   JsvStringIterator it;
@@ -103,7 +115,7 @@ typedef struct JsLex
   JslCharPos tokenStart; ///< Position in the data at the beginning of the token we have here
   size_t tokenLastStart; ///< Position in the data of the first character of the last token
   char token[JSLEX_MAX_TOKEN_LENGTH]; ///< Data contained in the token we have here
-  JsVar *tokenValue; ///< JsVar containing the current token - used only for strings
+  JsVar *tokenValue; ///< JsVar containing the current token - used only for strings/regex
   unsigned char tokenl; ///< the current length of token
 
   /** Amount we add to the line number when we're reporting to the user
@@ -132,6 +144,11 @@ void jslSeekTo(size_t seekToChar);
 void jslSeekToP(JslCharPos *seekToChar);
 
 bool jslMatch(int expected_tk); ///< Match, and return true on success, false on failure
+
+/** When printing out a function, with pretokenise a
+ * character could end up being a special token. This
+ * handles that case. */
+void jslFunctionCharAsString(unsigned char ch, char *str, size_t len);
 void jslTokenAsString(int token, char *str, size_t len); ///< output the given token as a string - for debugging
 void jslGetTokenString(char *str, size_t len);
 char *jslGetTokenValueAsString();
@@ -140,13 +157,19 @@ JsVar *jslGetTokenValueAsVar();
 bool jslIsIDOrReservedWord();
 
 // Only for more 'internal' use
-void jslSeek(JslCharPos seekToChar); // like jslSeekTo, but doesn't pre-fill characters
 void jslGetNextToken(); ///< Get the text token from our text string
 
-JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo); // Create a new STRING from part of the lexer
+/// Create a new STRING from part of the lexer
+JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo);
+
+/// Create a new STRING from part of the lexer - keywords get tokenised
+JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo);
 
 /// Return the line number at the current character position (this isn't fast as it searches the string)
 unsigned int jslGetLineNumber();
+
+/// Do we need a space between these two characters when printing a function's text?
+bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch);
 
 /// Print position in the form 'line X col Y'
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos);

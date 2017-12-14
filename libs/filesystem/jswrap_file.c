@@ -15,11 +15,11 @@
  */
 #include "jswrap_file.h"
 #include "jsparse.h"
+#include "jsflags.h"
 
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSd" // the data in each file
 #define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSo" // the list of open files
-
-#if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO)
+#if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO) && !defined(USE_FLASHFS)
 #define SD_CARD_ANYWHERE
 #endif
 
@@ -32,6 +32,10 @@ bool fat_initialised = false;
 #ifdef SD_CARD_ANYWHERE
 void sdSPISetup(JsVar *spi, Pin csPin);
 bool isSdSPISetup();
+#endif
+
+#ifdef USE_FLASHFS
+#include "flash_diskio.h"
 #endif
 
 // 'path' must be of JS_DIR_BUF_SIZE
@@ -63,12 +67,14 @@ void jsfsReportError(const char *msg, FRESULT res) {
   else if (res==FR_MKFS_ABORTED   ) errStr = "MKFS_ABORTED";
   else if (res==FR_TIMEOUT        ) errStr = "TIMEOUT";
 #endif
-  jsError("%s : %s", msg, errStr);
+  jsExceptionHere(JSET_ERROR,"%s : %s", msg, errStr);
 }
 
 bool jsfsInit() {
+   
 #ifndef LINUX
   if (!fat_initialised) {
+#ifndef USE_FLASHFS  
 #ifdef SD_CARD_ANYWHERE
     if (!isSdSPISetup()) {
 #ifdef SD_SPI
@@ -76,6 +82,7 @@ bool jsfsInit() {
       JsVar *spi = jsvSkipNameAndUnLock(jspGetNamedVariable(deviceStr));
       JshSPIInfo inf;
       jshSPIInitInfo(&inf);
+      inf.baudRate = 4000000; // 4Mhz bit rate for onboard SD cards
       inf.pinMISO = SD_DO_PIN;
       inf.pinMOSI = SD_DI_PIN;
       inf.pinSCK = SD_CLK_PIN;
@@ -83,20 +90,21 @@ bool jsfsInit() {
       sdSPISetup(spi, SD_CS_PIN);
       jsvUnLock(spi);
 #else
-      jsError("SD card must be setup with E.connectSDCard first");
+      jsExceptionHere(JSET_ERROR,"SD card must be setup with E.connectSDCard first");
       return false;
-#endif
+#endif // SD_SPI
     }
-#endif
-
+#endif // SD_CARD_ANYWHER
+#endif // USE_FLASHFS 
     FRESULT res;
-    if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
-      jsfsReportError("Unable to mount SD card", res);
-      return false;
+
+    if ((res = f_mount(&jsfsFAT, "", 1)) != FR_OK) {
+       jsfsReportError("Unable to mount media", res);
+       return false;
     }
     fat_initialised = true;
   }
-#endif
+#endif // LINUX
   return true;
 }
 
@@ -135,6 +143,8 @@ void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
   jswrap_E_unmountSD();
   sdSPISetup(spi, csPin);
 #else
+  NOT_USED(spi);
+  NOT_USED(csPin);
   jsExceptionHere(JSET_ERROR, "Unimplemented on Linux");
 #endif
 }
@@ -159,28 +169,15 @@ static JsVar* fsGetArray(bool create) {
 static bool fileGetFromVar(JsFile *file, JsVar *parent) {
   bool ret = false;
   JsVar *fHandle = jsvObjectGetChild(parent, JS_FS_DATA_NAME, 0);
-  if (fHandle) {
-    jsvGetString(fHandle, (char*)&file->data, sizeof(JsFileData)+1/*trailing zero*/);
-    jsvUnLock(fHandle);
+  if (fHandle && jsvIsFlatString(fHandle)) {
+    file->data = jsvGetFlatStringPointer(fHandle);
     file->fileVar = parent;
-    if(file->data.state == FS_OPEN) {// return false if the file has been closed.
+    if(file->data->state == FS_OPEN) {// return false if the file has been closed.
       ret = true;
     }
   }
-  return ret;
-}
-
-static void fileSetVar(JsFile *file) {
-  JsVar *fHandle = jsvFindChildFromString(file->fileVar, JS_FS_DATA_NAME, true);
-  JsVar *data = jsvSkipName(fHandle);
-  if (!data) {
-    data = jsvNewStringOfLength(sizeof(JsFileData));
-    jsvSetValueOfName(fHandle, data);
-  }
   jsvUnLock(fHandle);
-  assert(data);
-  jsvSetString(data, (char*)&file->data, sizeof(JsFileData));
-  jsvUnLock(data);
+  return ret;
 }
 
 /*JSON{
@@ -229,10 +226,19 @@ void jswrap_E_unmountSD() {
 static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
   JsVar *parent = jspNewObject(0, "File");
   if (!parent) return false; // low memory
+
+  JsVar *data = jsvNewFlatStringOfLength(sizeof(JsFileData));
+  if (!data) { // out of memory for flat string
+    jsvUnLock(parent);
+    return false;
+  }
+  file->data = jsvGetFlatStringPointer(data);
+  jsvObjectSetChildAndUnLock(parent, JS_FS_DATA_NAME, data);
   file->fileVar = parent;
-  file->data.mode = mode;
-  file->data.type = type;
-  file->data.state = FS_NONE;
+  assert(file->data);
+  file->data->mode = mode;
+  file->data->type = type;
+  file->data->state = FS_NONE;
   return true;
 }
 
@@ -253,6 +259,7 @@ Open a file
 JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
   FRESULT res = FR_INVALID_NAME;
   JsFile file;
+  file.data = 0;
   file.fileVar = 0;
   FileMode fMode = FM_NONE;
   if (jsfsInit()) {
@@ -299,15 +306,14 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
       }
       if(fMode != FM_NONE && allocateJsFile(&file, fMode, FT_FILE)) {
 #ifndef LINUX
-        if ((res=f_open(&file.data.handle, pathStr, ff_mode)) == FR_OK) {
-          if (append) f_lseek(&file.data.handle, file.data.handle.fsize); // move to end of file
+        if ((res=f_open(&file.data->handle, pathStr, ff_mode)) == FR_OK) {
+          if (append) f_lseek(&file.data->handle, file.data->handle.fsize); // move to end of file
 #else
-        file.data.handle = fopen(pathStr, modeStr);
-        if (file.data.handle) {
+        file.data->handle = fopen(pathStr, modeStr);
+        if (file.data->handle) {
           res=FR_OK;
 #endif
-          file.data.state = FS_OPEN;
-          fileSetVar(&file);
+          file.data->state = FS_OPEN;
           // add to list of open files
           jsvArrayPush(arr, file.fileVar);
         } else {
@@ -321,7 +327,7 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
 
       }
     } else {
-      jsError("Path is undefined");
+      jsExceptionHere(JSET_ERROR,"Path is undefined");
     }
 
     jsvUnLock(arr);
@@ -342,20 +348,19 @@ Close an open file.
 void jswrap_file_close(JsVar* parent) {
   if (jsfsInit()) {
     JsFile file;
-    if (fileGetFromVar(&file, parent) && file.data.state == FS_OPEN) {
+    if (fileGetFromVar(&file, parent) && file.data->state == FS_OPEN) {
 #ifndef LINUX
-      f_close(&file.data.handle);
+      f_close(&file.data->handle);
 #else
-      fclose(file.data.handle);
-      file.data.handle = 0;
+      fclose(file.data->handle);
+      file.data->handle = 0;
 #endif
-      file.data.state = FS_CLOSED;
-      fileSetVar(&file);
+      file.data->state = FS_CLOSED;
       // TODO: could try and free the memory used by file.data ?
 
       JsVar *arr = fsGetArray(false);
       if (arr) {
-        JsVar *idx = jsvGetArrayIndexOf(arr, file.fileVar, true);
+        JsVar *idx = jsvGetIndexOf(arr, file.fileVar, true);
         if (idx) {
           jsvRemoveChild(arr, idx);
           jsvUnLock(idx);
@@ -376,7 +381,14 @@ void jswrap_file_close(JsVar* parent) {
   ],
   "return" : ["int32","the number of bytes written"]
 }
-write data to a file
+Write data to a file.
+
+**Note:** By default this function flushes all changes to the
+SD card, which makes it slow (but also safe!). You can use
+`E.setFlags({unsyncFiles:1})` to disable this behaviour and
+really speed up writes - but then you must be sure to close
+all files you are writing before power is lost or you will
+cause damage to your SD card's filesystem.
 */
 size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
   FRESULT res = 0;
@@ -384,9 +396,9 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
-      if(file.data.mode == FM_WRITE || file.data.mode == FM_READ_WRITE) {
+      if(file.data->mode == FM_WRITE || file.data->mode == FM_READ_WRITE) {
         JsvIterator it;
-        jsvIteratorNew(&it, buffer);
+        jsvIteratorNew(&it, buffer, JSIF_EVERY_ARRAY_ELEMENT);
         char buf[32];
 
         while (jsvIteratorHasElement(&it)) {
@@ -399,9 +411,9 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
           // write it out
           size_t written = 0;
 #ifndef LINUX
-          res = f_write(&file.data.handle, &buf, n, &written);
+          res = f_write(&file.data->handle, &buf, n, &written);
 #else
-          written = fwrite(&buf, 1, n, file.data.handle);
+          written = fwrite(&buf, 1, n, file.data->handle);
 #endif
           bytesWritten += written;
           if(written == 0)
@@ -410,14 +422,14 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
         }
         jsvIteratorFree(&it);
         // finally, sync - just in case there's a reset or something
+        if (!jsfGetFlag(JSF_UNSYNC_FILES)) {
 #ifndef LINUX
-        f_sync(&file.data.handle);
+          f_sync(&file.data->handle);
 #else
-        fflush(file.data.handle);
+          fflush(file.data->handle);
 #endif
+        }
       }
-
-      fileSetVar(&file);
     }
   }
 
@@ -440,6 +452,7 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
 Read data in a file in byte size chunks
 */
 JsVar *jswrap_file_read(JsVar* parent, int length) {
+  if (length<0) length=0;
   JsVar *buffer = 0;
   JsvStringIterator it;
   FRESULT res = 0;
@@ -447,9 +460,23 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
-      if(file.data.mode == FM_READ || file.data.mode == FM_READ_WRITE) {
-        char buf[32];
+      if(file.data->mode == FM_READ || file.data->mode == FM_READ_WRITE) {
         size_t actual = 0;
+#ifndef LINUX
+        // if we're able to load this into a flat string, do it!
+        size_t len = f_size(&file.data->handle)-f_tell(&file.data->handle);
+        if ( len == 0 ) { // file all read
+          return 0; // if called from a pipe signal end callback
+        }
+        if (len > (size_t)length) len = (size_t)length;
+        buffer = jsvNewFlatStringOfLength(len);
+        if (buffer) {
+          res = f_read(&file.data->handle, jsvGetFlatStringPointer(buffer), len, &actual);
+          if (res) jsfsReportError("Unable to read file", res);
+          return buffer;
+        }
+#endif
+        char buf[32];
 
         while (bytesRead < (size_t)length) {
           size_t requested = (size_t)length - bytesRead;
@@ -457,10 +484,10 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
             requested = sizeof( buf );
           actual = 0;
     #ifndef LINUX
-          res = f_read(&file.data.handle, buf, requested, &actual);
+          res = f_read(&file.data->handle, buf, requested, &actual);
           if(res) break;
     #else
-          actual = fread(buf, 1, requested, file.data.handle);
+          actual = fread(buf, 1, requested, file.data->handle);
     #endif
           if (actual>0) {
             if (!buffer) {
@@ -475,7 +502,6 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
           bytesRead += actual;
           if(actual != requested) break;
         }
-        fileSetVar(&file);
       }
     }
   }
@@ -511,20 +537,22 @@ Seek to a certain position in the file
 */
 void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
   if (nBytes<0) {
-    jsWarn(is_skip ? "Bytes to skip must be >=0" : "Position to seek to must be >=0");
+    if ( is_skip ) 
+	  jsWarn("Bytes to skip must be >=0");
+    else 
+	  jsWarn("Position to seek to must be >=0");
     return;
   }
   FRESULT res = 0;
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
-      if(file.data.mode == FM_READ || file.data.mode == FM_WRITE || file.data.mode == FM_READ_WRITE) {
+      if(file.data->mode == FM_READ || file.data->mode == FM_WRITE || file.data->mode == FM_READ_WRITE) {
   #ifndef LINUX
-        res = (FRESULT)f_lseek(&file.data.handle, (DWORD)(is_skip ? f_tell(&file.data.handle) : 0) + (DWORD)nBytes);
+        res = (FRESULT)f_lseek(&file.data->handle, (DWORD)(is_skip ? f_tell(&file.data->handle) : 0) + (DWORD)nBytes);
   #else
-        fseek(file.data.handle, nBytes, is_skip ? SEEK_CUR : SEEK_SET);
+        fseek(file.data->handle, nBytes, is_skip ? SEEK_CUR : SEEK_SET);
   #endif
-        fileSetVar(&file);
       }
     }
   }
@@ -544,3 +572,79 @@ void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
 }
 Pipe this file to a stream (an object with a 'write' method)
 */
+
+#ifdef USE_FLASHFS
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "flashFatFS",
+  "generate" : "jswrap_E_flashFatFS",
+  "ifdef" : "USE_FLASHFS",
+   "params" : [
+    ["options","JsVar",["An optional object `{ addr : int=0x300000, sectors : int=256, format : bool=false }`","addr : start address in flash","sectors: number of sectors to use","format:  Format the media"]]
+  ],
+  "return" : ["bool","True on success, or false on failure"]  
+}
+Change the paramters used for the flash filesystem.
+The default address is the last 1Mb of 4Mb Flash, 0x300000, with total size of 1Mb.
+
+Before first use the media needs to be formatted.
+
+```
+fs=require("fs");
+if ( typeof(fs.readdirSync())==="undefined" ) {
+  console.log("Formatting FS");
+  E.flashFatFS({format:true});
+}
+fs.writeFileSync("bang.txt", "This is the way the world ends\nnot with a bang but a whimper.\n");
+fs.readdirSync();
+```
+
+This will create a drive of 100 * 4096 bytes at 0x300000. Be careful with the selection of flash addresses as you can overwrite firmware!
+You only need to format once, as each will erase the content.
+
+`E.flashFatFS({ addr:0x300000,sectors:100,format:true });`
+*/
+
+int jswrap_E_flashFatFS(JsVar* options) {
+  uint32_t addr = FS_FLASH_BASE;
+  uint16_t sectors = FS_SECTOR_COUNT;
+  uint8_t format = 0;
+  if (jsvIsObject(options)) {
+    JsVar *a = jsvObjectGetChild(options, "addr", false);
+    if (a) {
+      if (jsvIsNumeric(a) && jsvGetInteger(a)>0x100000)
+        addr = (uint32_t)jsvGetInteger(a);
+    }
+    JsVar *s = jsvObjectGetChild(options, "sectors", false);
+    if (s) {
+      if (jsvIsNumeric(s) && jsvGetInteger(s)>0)
+        sectors = (uint16_t)jsvGetInteger(s);
+    }
+    JsVar *f = jsvObjectGetChild(options, "format", false);
+    if (f) {
+      if (jsvIsBoolean(f))
+        format = jsvGetBool(f);
+    }
+  }
+  else if (!jsvIsUndefined(options)) {
+    jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
+  }
+  
+  uint8_t init=flashFatFsInit(addr, sectors);
+  if (init) {
+    if ( format ) {
+      uint8_t res = f_mount(&jsfsFAT, "", 0);
+      jsDebug("Formatting Flash");
+      res = f_mkfs("", 1, 0);  // Super Floppy format, using all space (not partition table)
+      if (res != FR_OK) {
+        jsExceptionHere(JSET_INTERNALERROR, "Flash Formatting error:",res);
+        return false;
+     }
+   }    
+  }
+  jsfsInit();
+  return true;
+}
+#endif

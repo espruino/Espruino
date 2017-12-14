@@ -58,9 +58,8 @@ typedef struct {
 } PACKED_FLAGS JsFileData;
 
 typedef struct JsFile {
-  JsVar* fileVar; // this won't be locked again - we just know that it is already locked by something else
-  JsFileData data;
-  unsigned char _blank; //< this is needed as jsvGetString for 'data' wants to add a trailing zero
+  JsVar* fileVar; //< this won't be locked again - we just know that it is already locked by something else
+  JsFileData *data;
 } PACKED_FLAGS JsFile;
 
 // Called when stopping, to make sure all files are closed
@@ -74,3 +73,9 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer);
 JsVar *jswrap_file_read(JsVar* parent, int length);
 void jswrap_file_skip_or_seek(JsVar* parent, int length, bool is_skip);
 void jswrap_file_close(JsVar* parent);
+#ifdef USE_FLASHFS
+void jsfsReportError(const char *msg, FRESULT res);
+bool jsfsInit();
+int jswrap_E_flashFatFS(JsVar* options);
+
+#endif

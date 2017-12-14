@@ -19,17 +19,6 @@
 #include "jsvar.h"
 #include "network.h"
 
-typedef enum {
-  ST_NORMAL = 0, // standard socket client/server
-  ST_HTTP   = 1, // HTTP client/server
-  // WebSockets?
-  // UDP?
-
-  ST_TYPE_MASK = 3,
-  ST_TLS    = 4, // do the given connection with TLS
-} SocketType;
-
-
 // -----------------------------
 void socketInit();
 void socketKill(JsNetwork *net);
@@ -37,11 +26,12 @@ bool socketIdle(JsNetwork *net);
 
 // -----------------------------
 JsVar *serverNew(SocketType socketType, JsVar *callback);
-void serverListen(JsNetwork *net, JsVar *httpServerVar, int port);
+void serverAddMembership(JsNetwork *net, JsVar *socket, JsVar *group, JsVar *ip);
+void serverListen(JsNetwork *net, JsVar *httpServerVar, unsigned short port, SocketType socketType);
 void serverClose(JsNetwork *net, JsVar *server);
 
 JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback);
-void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data);
+void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, JsVar *host, unsigned short port);
 void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar);
 void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar);
 

@@ -9,6 +9,7 @@ Directories and Files
 * `doxygen/`:           Directory for auto-generated code documentation - see [doxygen/README.md](doxygen/README.md) for more info
 * `gen/`:               Auto-Generated Source Files
 * `libs/`:              Optional libraries to include in Espruino (Math, Filesystem, Graphics, etc)
+* `make/`:              Makefile fragments for each architecture
 * `misc/`:              Other useful things
 * `scripts/`:           Scripts for generating files in gen, and for analysing code/compilation/etc
 * `src/`:               Main source code
@@ -25,18 +26,18 @@ Build Commands
 Building for an Espruino board is generally done by typing:
 
 ```
-BOARDNAME=1 make
+BOARD=BOARDNAME make
 ```
 
 And for release, by typing:
 
 ```
-RELEASE=1 BOARDNAME=1 make
+RELEASE=1 BOARD=BOARDNAME make
 ```
 
 Valid board names are in comments at the head of the [`Makefile`](https://github.com/espruino/Espruino/blob/master/Makefile)..
 
-Release builds have all the assertions removed, saving space. Normal builds still have the assertions, and debug builds (with `DEBUG=1` have more debug info in the assertions, as well as the debug info needed for proper GDB debugging).
+Release builds have all the assertions removed, reducing flash usage. Normal builds still have the assertions, and debug builds (with `DEBUG=1` have more debug info in the assertions, as well as the debug info needed for proper GDB debugging).
 
 The Make system has the following targets:
 
@@ -48,9 +49,9 @@ The Make system has the following targets:
 Build Process
 -------------
 
-* Most build logic is in the [`Makefile`](https://github.com/espruino/Espruino/blob/master/Makefile).
-* An `ifdef BOARDNAME` in the Makefile sets up some specific build options, as well as what gets included (eg. `USE_NET=1`). The `BOARD` variable references a [Board Definition File](#boarddefinition) in `boards/`.
-* `boards/$BOARD.py` is read, and various information (chip family, part number, binary name, whether it has a bootloader) is read out into variables in the Makefile. **Note:** in the future more of the build options should be inferred from the `BOARD.py` file,
+* Overall build logic is in the [`Makefile`](https://github.com/espruino/Espruino/blob/master/Makefile).
+* The  [Board Definition File](#boarddefinition) in `boards/$BOARD.py` is parsed by [`scripts/get_makefile_decls.py`](scripts/get_makefile_decls.py) to work out extra definitions for the Makefile (chip family, part number, binary name, whether it has a bootloader), which control the build.
+* Architecture-specic build logic is in the [`make`](https://github.com/espruino/Espruino/tree/master/make) directory - this is called based off `family` in the [Board Definition File](#boarddefinition) in `boards/`.
 * The `Makefile` adds source files to `$SOURCES`, and 'wrapper' source files to `$WRAPPERSOURCES`. [Wrapper files](#wrapperfiles) are files that contain functions that are exposed to JS.
 * The script [`scripts/build_platform_config.py`](scripts/build_platform_config.py) is run which generates `gen/platform_config.h` from `boards/$BOARD.py` - this contains information like the amount of RAM, as well as buffer sizes and the amount of variables that will be stored.
 * The script [`scripts/build_pininfo.py`](scripts/build_pininfo.py) creates [the pin definitions](#pindefinitions) and puts them in `gen/jspininfo.c`
@@ -78,7 +79,8 @@ Board Definition File  <a name="boarddefinition">
 The board definition files are `.py` files that reside in the [`boards`](boards) folder (for example [the Pico one](boards/PICO_R1_3.py)). They're used all over the place:
 
 * To work out the binary's name
-* To help choose what gets built in the Makefile
+* To choose which libraries get built in via the Makefile
+* To specify the architecture-specific Makefile fragments are used
 * To create `gen/platform_config.h` via [`scripts/build_playform_config.py`](scripts/build_playform_config.py)
 * To generate the linker file `gen/linker.ld` using [`scripts/build_linker.py`](scripts/build_linker.py). Mainly STM32-based targets only.
 * To create [the pin definitions](#pindefinitions)
@@ -95,6 +97,10 @@ These contain:
 * `bootloader` - whether the binary image needs compiling with a special USB-VCP bootloader (Espruino boards only)
 * `binary_name` - the name of the binary that'll be produced
 * `binaries` - available binaries - this is used by the Web IDE to allow the user to choose which binary to upload
+* `build` - controls what gets build via the Makefile:
+  * `optimizeflags` - flags like `-O3` to give to the compiler
+  * `libraries` - list of libraries to include
+  * `makefile` - list of commands/definitions to execute in the Makefile
 
 ### chip
 
@@ -110,13 +116,13 @@ These contain:
 * Number of `adc`s
 * Number of `dac`s
 * `saved_code` - how and where to save JS code in the chip's flash memory
-  * The `address` of the start of the code in flash memory. Note that on STM32 chips this 
+  * The `address` of the start of the code in flash memory. Note that on STM32 chips this
     is at 0x08000000 even though code executes from 0x00000000 (the two areas are mirrored but
     0x00000000 is faster to execute from while 0x08000000 is what's needed for writing to flash)
   * The `page_size` in bytes of the first flash page containing code (not used now?)
   * The number of flash `pages` we're using for code (not used now?)
   *  `flash_available` in KB, used as a sanity check by [`scripts/check_size.sh`](scripts/check_size.sh) after the build completes
-* `place_text_section` what address to start the program code at - This is `0` if not specified, 
+* `place_text_section` what address to start the program code at - This is `0` if not specified,
   but is useful in devices like the Pico where varying page sizes mean that the program code may
   be located after the saved program code (and/or bootloader)
 
@@ -139,7 +145,7 @@ Stuff you can use is `LED1`-`LED8`, `BTN1`-`BTN4`, `USB`, `LCD` (for boards with
 Pin Definitions <a name="pindefinitions">
 ---------------
 
-The pin definitions are created by [`scripts/build_pininfo.py`](`scripts/build_pininfo.py`) and are stored in `gen/jspininfo.c`. The script calls 
+The pin definitions are created by [`scripts/build_pininfo.py`](`scripts/build_pininfo.py`) and are stored in `gen/jspininfo.c`. The script calls
  `get_pins` in `boards/$BOARD.py` and a structure of the following form is returned:
 
 ```
@@ -209,5 +215,3 @@ The wrapper files are also parsed by:
 
 * [`scripts/build_docs.py`](scripts/build_docs.py), which builds the HTML file used for the Espruino [Reference](http://www.espruino.com/Reference).
 * [`scripts/build_tern_json.js`](scripts/build_tern_json.js), which generates a JSON description of all functions (along with their documentation) which is used for code completion in the Web IDE *and to parse all code examples in order to produce the 'Examples' links in the [Reference](http://www.espruino.com/Reference)*.
-
-

@@ -136,7 +136,9 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
           }
         }
       }
-#ifdef LINUX
+#ifndef LINUX
+      f_closedir(&dirs);
+#else
       closedir(dir);
 #endif
     }
@@ -330,6 +332,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
   FRESULT res = 0;
   if (jsfsInit()) {
     FILINFO info;
+    memset(&info,0,sizeof(info));
     res = f_stat(pathStr, &info);
     if (res==0 /*ok*/) {
       JsVar *obj = jsvNewObject();
@@ -365,4 +368,53 @@ JsVar *jswrap_fs_stat(JsVar *path) {
 #endif
 
   return 0;
+}
+
+  /*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "mkdir",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_mkdir",
+  "params" : [
+    ["path","JsVar","The name of the directory to create"]
+  ],
+  "return" : ["bool","True on success, or false on failure"]
+}
+Create the directory
+
+NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "mkdirSync",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_mkdir",
+  "params" : [
+    ["path","JsVar","The name of the directory to create"]
+  ],
+  "return" : ["bool","True on success, or false on failure"]
+}
+Create the directory
+*/
+bool jswrap_fs_mkdir(JsVar *path) {
+  char pathStr[JS_DIR_BUF_SIZE] = "";
+  if (!jsvIsUndefined(path))
+    if (!jsfsGetPathString(pathStr, path)) return 0;
+
+#ifndef LINUX
+  FRESULT res = 0;
+  if (jsfsInit()) {
+    res = f_mkdir(pathStr);
+  }
+#else
+  FRESULT res = mkdir(pathStr, 0777);
+#endif
+
+  if (res) {
+    jsfsReportError("Unable to create the directory", res);
+    return false;
+  }
+  return true;
 }

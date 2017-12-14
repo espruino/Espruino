@@ -271,7 +271,7 @@ void tv_vga_irq() {
   jshPinSetValue(tvPinSyncV, tvCurrentLine>=2); // 2 lines of sync
   jshDelayMicroseconds(1);
   jshPinSetValue(tvPinSync, 1);
-  jshDelayMicroseconds(1);
+  jshDelayMicroseconds(2);
 
   uint32_t lineIdx = ((uint32_t)tvCurrentLine - 20) / tvLineRepeat; // 20px = front porch
   if (lineIdx < tvHeight) {

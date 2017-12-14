@@ -21,6 +21,7 @@
 #define JSI_TIMERS_NAME "timers"
 #define JSI_HISTORY_NAME "history"
 #define JSI_INIT_CODE_NAME "init"
+#define JSI_JSFLAGS_NAME "flags"
 #define JSI_ONINIT_NAME "onInit"
 
 /// autoLoad = do we load the current state if it exists?
@@ -128,21 +129,21 @@ void jsiSetSleep(JsiSleepType isSleep);
 
 typedef enum {
   JSIS_NONE,
-  JSIS_ECHO_OFF = 1, ///< do we provide any user feedback? OFF=no
-  JSIS_ECHO_OFF_FOR_LINE = 2,
-  JSIS_ALLOW_DEEP_SLEEP = 4, // can we go into proper deep sleep?
-  JSIS_TIMERS_CHANGED = 8,
+  JSIS_ECHO_OFF           = 1<<0, ///< do we provide any user feedback? OFF=no
+  JSIS_ECHO_OFF_FOR_LINE  = 1<<1, ///< Echo is off just for one line, then back on
+  JSIS_TIMERS_CHANGED     = 1<<2,
 #ifdef USE_DEBUGGER
-  JSIS_IN_DEBUGGER = 16, // We're inside the debug loop
-  JSIS_EXIT_DEBUGGER = 32, // we've been asked to exit the debug loop
+  JSIS_IN_DEBUGGER        = 1<<3, ///< We're inside the debug loop
+  JSIS_EXIT_DEBUGGER      = 1<<4, ///< we've been asked to exit the debug loop
 #endif
-  JSIS_TODO_FLASH_SAVE = 64, // save to flash
-  JSIS_TODO_FLASH_LOAD = 128, // load from flash
-  JSIS_TODO_RESET = 256, // reset the board, don't load anything
+  JSIS_TODO_FLASH_SAVE    = 1<<5, ///< save to flash
+  JSIS_TODO_FLASH_LOAD    = 1<<6, ///< load from flash
+  JSIS_TODO_RESET         = 1<<7, ///< reset the board, don't load anything
   JSIS_TODO_MASK = JSIS_TODO_FLASH_SAVE|JSIS_TODO_FLASH_LOAD|JSIS_TODO_RESET,
-  JSIS_CONSOLE_FORCED = 512, // see jsiSetConsoleDevice
-  JSIS_WATCHDOG_AUTO = 1024, // Automatically kick the watchdog timer on idle
-  JSIS_PASSWORD_PROTECTED = 2048, // Password protected
+  JSIS_CONSOLE_FORCED     = 1<<8, ///< see jsiSetConsoleDevice
+  JSIS_WATCHDOG_AUTO      = 1<<9, ///< Automatically kick the watchdog timer on idle
+  JSIS_PASSWORD_PROTECTED = 1<<10, ///< Password protected
+  JSIS_COMPLETELY_RESET   = 1<<11, ///< Has the board powered on, having not loaded anything from flash
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE,
   JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED // stuff that DOESN'T get reset on softinit
@@ -151,10 +152,13 @@ typedef enum {
 extern JsiStatus jsiStatus;
 bool jsiEcho();
 
+#ifndef SAVE_ON_FLASH
 extern Pin pinBusyIndicator;
 extern Pin pinSleepIndicator;
+#endif
 extern JsSysTime jsiLastIdleTime; ///< The last time we went around the idle loop - use this for timers
 
+void jsiDumpJSON(vcbprintf_callback user_callback, void *user_data, JsVar *data, JsVar *existing);
 void jsiDumpState(vcbprintf_callback user_callback, void *user_data);
 #define TIMER_MIN_INTERVAL 0.1 // in milliseconds
 extern JsVarRef timerArray; // Linked List of timers to check and run

@@ -26,6 +26,7 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
+#include "jsflags.h"
 
 //EFM32 HAL includes
 #include "em_chip.h"
@@ -121,7 +122,7 @@ void TIMER0_IRQHandler(void) {
 Pin watchedPins[16];
 
 static ALWAYS_INLINE GPIO_Port_TypeDef efm32PortFromPin(uint32_t pin){
-  return (GPIO_Port_TypeDef) (pinInfo[pin].port - JSH_PORTA);
+  return (GPIO_Port_TypeDef) ((pinInfo[pin].port&JSH_PORT_MASK) - JSH_PORTA);
 }
 
 static ALWAYS_INLINE uint8_t efm32EventFromPin(Pin pin) {
@@ -441,6 +442,11 @@ void jshInterruptOn() {
   INT_Enable();
 }
 
+/// Are we currently in an interrupt?
+bool jshIsInInterrupt() {
+  return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
+
 void jshDelayMicroseconds(int microsec) {
   if (microsec <= 0) {
     return;
@@ -698,6 +704,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
 {
   // Initializes UART and registers a callback function defined above to read characters into the static variable character.
 
+  if (inf->errorHandling) {
+    jsExceptionHere(JSET_ERROR, "EFM32 Espruino builds can't handle framing/parity errors (errors:true)");
+    return;
+  }
+
   USART_TypeDef* uart; // Re-mapping from Espruino to EFM32
   uint32_t rxIRQ;
   uint32_t txIRQ;
@@ -920,7 +931,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
    */
   //jsiConsolePrintf("\ns: %d, t: %d, R: %d, T: %d", jsiStatus, timeUntilWake, jstUtilTimerIsRunning(), jshHasTransmitData());
   if (
-      (jsiStatus & JSIS_ALLOW_DEEP_SLEEP) &&
+      jsfGetFlag(JSF_DEEP_SLEEP) &&
       (timeUntilWake > (jshGetTimeForSecond()/2)) &&  // if there's less time than this then we can't go to sleep because we can't be sure we'll wake in time
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down

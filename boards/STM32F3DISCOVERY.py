@@ -21,11 +21,17 @@ info = {
  'variables' : 1720,
  'binary_name' : 'espruino_%v_stm32f3discovery.bin',
  'build' : {
-  'defines' : [
-     'USE_GRAPHICS',
-     'USE_NET',
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'STLIB=STM32F3XX',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o'
    ]
- }
+  }
 };
 chip = {
   'part' : "STM32F303VCT6",
@@ -83,15 +89,15 @@ devices = {
                'pin_sda' :  'B9',
                'pin_scl' :  'B6',
                'pin_mclk' :  'C7',
-               'pin_sclk' :  'C10',    
-               'pin_sdin' :  'C12',  
+               'pin_sclk' :  'C10',
+               'pin_sdin' :  'C12',
                'pin_lrck' :  'A4',
-               'pin_nrst' :  'D4',    
+               'pin_nrst' :  'D4',
                 },
   'JTAG' : {
         'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-        'pin_DI' : 'A15' 
+        'pin_CK' : 'A14',
+        'pin_DI' : 'A15'
           },
 };
 
@@ -133,6 +139,6 @@ board["_css"] = """
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f303.csv', 3, 6, 7)
   pins = pinutils.scan_pin_af_file(pins, 'stm32f303_af.csv', 1, 2)
-#  print(json.dumps(pins, sort_keys=True, indent=2))  
+#  print(json.dumps(pins, sort_keys=True, indent=2))
 #  return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])
   return pinutils.fill_gaps_in_pin_list(pins)

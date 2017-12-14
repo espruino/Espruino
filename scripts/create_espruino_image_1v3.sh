@@ -22,7 +22,7 @@ BOOTLOADERFILE=bootloader_$ESPRUINOFILE
 IMGFILE=espruino_full.bin
 rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
 
-export ESPRUINO_1V3=1
+export BOARD=ESPRUINOBOARD
 # export USB_PRODUCT_ID=0x5741 # For test harness board only
 # export DEBUG=1
 export RELEASE=1
@@ -56,6 +56,7 @@ dd bs=1 seek=$BOOTLOADERSIZE if=$ESPRUINOFILE of=$IMGFILE conv=notrunc || { echo
 cp $IMGFILE $ESPRUINOFILE || { echo 'Build failed' ; exit 1; }
 echo ---------------------
 echo Finished! Written to $IMGFILE and copied to $ESPRUINOFILE
+echo python scripts/stm32loader.py -p /dev/ttyUSB0 -b 460800 -ewv $ESPRUINOFILE
 echo ---------------------
 
 #echo python scripts/stm32loader.py -b 460800 -ewv $IMGFILE

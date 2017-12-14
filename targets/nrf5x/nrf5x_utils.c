@@ -18,9 +18,16 @@
 
 #include "nrf.h"
 #include "nrf_gpio.h"
-#include "app_uart.h"
+#include "nrf_gpiote.h"
+#include "nrf_uart.h"
 #include "nrf_error.h"
 #include "nrf_nvmc.h"
+#include "nrf_timer.h"
+
+#include "nrf_drv_gpiote.h"
+#include "nrf_drv_ppi.h"
+
+#include "jsparse.h"
 
 unsigned int nrf_utils_get_baud_enum(int baud) {
   switch (baud) {
@@ -56,8 +63,8 @@ void nrf_utils_lfclk_config_and_start()
   NRF_CLOCK->TASKS_LFCLKSTART = 1;
   while(NRF_CLOCK->EVENTS_LFCLKSTARTED == 0);
 
-  /* 
-  // wait until the clock is running - Xtal only? 
+  /*
+  // wait until the clock is running - Xtal only?
   while (((NRF_CLOCK->LFCLKSTAT & CLOCK_LFCLKSTAT_STATE_Msk) != ((CLOCK_LFCLKSTAT_STATE_Running << CLOCK_LFCLKSTAT_STATE_Pos) & CLOCK_LFCLKSTAT_STATE_Msk)))
   {
     // Do nothing...
@@ -65,42 +72,119 @@ void nrf_utils_lfclk_config_and_start()
 
 }
 
-int nrf_utils_get_device_id(uint8_t * device_id, int maxChars)
-{
-	uint32_t deviceID[2];
-	deviceID[0] = NRF_FICR->DEVICEID[0];
-	deviceID[1] = NRF_FICR->DEVICEID[1];
 
-	uint8_t * temp = (uint8_t *) &deviceID[0];
+unsigned int nrf_utils_cap_sense(int capSenseTxPin, int capSenseRxPin) {
+#ifdef NRF5DDD
+  uint32_t err_code;
 
-	uint32_t i;
-	for (i = 0; i < maxChars || i < 8; i++)
-	{
-	  *device_id = *temp;
-	  device_id++;
-	  temp++;
-	}
+  nrf_drv_gpiote_in_config_t rxconfig = GPIOTE_CONFIG_IN_SENSE_LOTOHI(true);
+  nrf_drv_gpiote_in_init(capSenseRxPin, &rxconfig, 0);
+  nrf_drv_gpiote_in_event_enable(capSenseRxPin, false /* no interrupt */);
+  //
 
-	return i;
-}
+  nrf_drv_gpiote_out_config_t txconfig = GPIOTE_CONFIG_OUT_TASK_TOGGLE(true);
+  nrf_drv_gpiote_out_init(capSenseTxPin, &txconfig);
+  nrf_drv_gpiote_out_task_enable(capSenseTxPin);
+  //;
 
-uint8_t nrf_utils_get_random_number()
-{
-  
-  NRF_RNG->CONFIG = 0x00000001; // Use the bias generator.
-  NRF_RNG->TASKS_START = 1;
+  nrf_timer_mode_set(NRF_TIMER2, TIMER_MODE_MODE_Timer);
+  nrf_timer_bit_width_set(NRF_TIMER2, NRF_TIMER_BIT_WIDTH_16);
+  nrf_timer_frequency_set(NRF_TIMER2, NRF_TIMER_FREQ_16MHz);
+  nrf_timer_cc_write(NRF_TIMER2, 0, 0);
+  nrf_timer_cc_write(NRF_TIMER2, 1, 2047);
+  nrf_timer_cc_write(NRF_TIMER2, 3, 4095);
+  nrf_timer_shorts_enable(NRF_TIMER2, NRF_TIMER_SHORT_COMPARE3_CLEAR_MASK);
 
-  while (NRF_RNG->EVENTS_VALRDY != 1)
-  {
-    // Do nothing.
+  nrf_ppi_channel_t ppi_channel1, ppi_channel2, ppi_channel3;
+
+  // 1: When RX pin goes low->high, capture it in the timer
+  err_code = nrf_drv_ppi_channel_alloc(&ppi_channel1);
+  APP_ERROR_CHECK(err_code);
+  err_code = nrf_drv_ppi_channel_assign(ppi_channel1,
+                                        nrf_drv_gpiote_in_event_addr_get(capSenseRxPin),
+                                        nrf_timer_task_address_get(NRF_TIMER2, NRF_TIMER_TASK_CAPTURE2));
+  APP_ERROR_CHECK(err_code);
+
+  // 2: When timer is at Compare0, toggle
+  err_code = nrf_drv_ppi_channel_alloc(&ppi_channel2);
+  APP_ERROR_CHECK(err_code);
+  err_code = nrf_drv_ppi_channel_assign(ppi_channel2,
+                                        nrf_timer_event_address_get(NRF_TIMER2, NRF_TIMER_EVENT_COMPARE0),
+                                        nrf_drv_gpiote_out_task_addr_get(capSenseTxPin));
+  APP_ERROR_CHECK(err_code);
+  // 3: When timer is at Compare1, toggle
+  err_code = nrf_drv_ppi_channel_alloc(&ppi_channel3);
+  APP_ERROR_CHECK(err_code);
+  err_code = nrf_drv_ppi_channel_assign(ppi_channel3,
+                                        nrf_timer_event_address_get(NRF_TIMER2, NRF_TIMER_EVENT_COMPARE1),
+                                        nrf_drv_gpiote_out_task_addr_get(capSenseTxPin));
+  APP_ERROR_CHECK(err_code);
+
+  // Enable both configured PPI channels
+  err_code = nrf_drv_ppi_channel_enable(ppi_channel1);
+  APP_ERROR_CHECK(err_code);
+  err_code = nrf_drv_ppi_channel_enable(ppi_channel2);
+  APP_ERROR_CHECK(err_code);
+  err_code = nrf_drv_ppi_channel_enable(ppi_channel3);
+  APP_ERROR_CHECK(err_code);
+
+  // start timer
+
+  NRF_TIMER2->CC[2] = 0;
+  nrf_timer_task_trigger(NRF_TIMER2, NRF_TIMER_TASK_START);
+  nrf_gpio_cfg_input(capSenseRxPin, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_cfg_output(capSenseTxPin);
+
+  //
+  unsigned int sum = 0;
+  NRF_TIMER2->EVENTS_COMPARE[1] = 0;
+  int i;
+  for (i=0;i<50;i++) {
+    unsigned int timeout = 100000;
+    while (!NRF_TIMER2->EVENTS_COMPARE[1] && --timeout);
+    NRF_TIMER2->EVENTS_COMPARE[1] = 0;
+    sum += NRF_TIMER2->CC[2];
+    if (jspIsInterrupted()) break;
   }
 
-  NRF_RNG -> EVENTS_VALRDY = 0;
+  nrf_gpio_cfg_input(capSenseTxPin, NRF_GPIO_PIN_NOPULL);
 
-  uint8_t rand_num = (uint8_t) NRF_RNG->VALUE;
+  nrf_timer_task_trigger(NRF_TIMER2, NRF_TIMER_TASK_STOP);
+  nrf_timer_shorts_disable(NRF_TIMER2, NRF_TIMER_SHORT_COMPARE3_CLEAR_MASK);
+  nrf_drv_ppi_channel_disable(ppi_channel3);
+  nrf_drv_ppi_channel_disable(ppi_channel2);
+  nrf_drv_ppi_channel_disable(ppi_channel1);
+  nrf_drv_ppi_channel_free(ppi_channel3);
+  nrf_drv_ppi_channel_free(ppi_channel2);
+  nrf_drv_ppi_channel_free(ppi_channel1);
 
-  NRF_RNG -> TASKS_STOP = 1;
+  nrf_drv_gpiote_in_uninit(capSenseTxPin);
+  nrf_drv_gpiote_in_uninit(capSenseRxPin);
 
-  return rand_num;
+  return sum;
+#else
+  unsigned int sum = 0;
 
+  int i;
+  unsigned int mask = 1<<capSenseRxPin;
+
+  nrf_gpio_cfg_input(capSenseRxPin, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_pin_clear(capSenseTxPin);
+  nrf_gpio_cfg_output(capSenseTxPin);
+
+  for (i=0;i<100;i++) {
+    const unsigned int CTR_MAX = 100000;
+    unsigned int ctr = CTR_MAX;
+    nrf_gpio_pin_set(capSenseTxPin);
+    while (!(NRF_GPIO->IN & mask) && ctr--);
+    sum += CTR_MAX-ctr;
+    nrf_gpio_pin_clear(capSenseTxPin);
+    while (NRF_GPIO->IN & mask && ctr--);
+    sum += CTR_MAX-ctr;
+    if (jspIsInterrupted()) break;
+  }
+  nrf_gpio_cfg_input(capSenseTxPin, NRF_GPIO_PIN_NOPULL);
+
+  return sum;
+#endif
 }

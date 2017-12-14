@@ -170,7 +170,7 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
     JSLJT_TOPHAT, // ^
     JSLJT_ID, // _
     // 96
-    JSLJT_SINGLECHAR, // `
+    JSLJT_STRING, // `
     JSLJT_ID, // A lowercase
     JSLJT_ID, // B lowercase
     JSLJT_ID, // C lowercase
@@ -206,8 +206,130 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
 
 // handle a single char
 static ALWAYS_INLINE void jslSingleChar() {
-  lex->tk = lex->currCh;
+  lex->tk = (unsigned char)lex->currCh;
   jslGetNextCh();
+}
+
+static void jslLexString() {
+  char delim = lex->currCh;
+  lex->tokenValue = jsvNewFromEmptyString();
+  if (!lex->tokenValue) {
+    lex->tk = LEX_EOF;
+    return;
+  }
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, lex->tokenValue, 0);
+  // strings...
+  jslGetNextCh();
+  while (lex->currCh && lex->currCh!=delim) {
+    if (lex->currCh == '\\') {
+      jslGetNextCh();
+      char ch = lex->currCh;
+      switch (lex->currCh) {
+      case 'n'  : ch = 0x0A; jslGetNextCh(); break;
+      case 'b'  : ch = 0x08; jslGetNextCh(); break;
+      case 'f'  : ch = 0x0C; jslGetNextCh(); break;
+      case 'r'  : ch = 0x0D; jslGetNextCh(); break;
+      case 't'  : ch = 0x09; jslGetNextCh(); break;
+      case 'v'  : ch = 0x0B; jslGetNextCh(); break;
+      case 'u' :
+      case 'x' : { // hex digits
+        char buf[5] = "0x??";
+        if (lex->currCh == 'u') {
+          // We don't support unicode, so we just take the bottom 8 bits
+          // of the unicode character
+          jslGetNextCh();
+          jslGetNextCh();
+        }
+        jslGetNextCh();
+        buf[2] = lex->currCh; jslGetNextCh();
+        buf[3] = lex->currCh; jslGetNextCh();
+        ch = (char)stringToInt(buf);
+      } break;
+      default:
+        if (lex->currCh>='0' && lex->currCh<='7') {
+          // octal digits
+          char buf[5] = "0";
+          buf[1] = lex->currCh;
+          int n=2;
+          jslGetNextCh();
+          if (lex->currCh>='0' && lex->currCh<='7') {
+            buf[n++] = lex->currCh; jslGetNextCh();
+            if (lex->currCh>='0' && lex->currCh<='7') {
+              buf[n++] = lex->currCh; jslGetNextCh();
+            }
+          }
+          buf[n]=0;
+          ch = (char)stringToInt(buf);
+        } else {
+          // for anything else, just push the character through
+          jslGetNextCh();
+        }
+        break;
+      }
+      jslTokenAppendChar(ch);
+      jsvStringIteratorAppend(&it, ch);
+    } else if (lex->currCh=='\n' && delim!='`') {
+      /* Was a newline - this is now allowed
+       * unless we're a template string */
+      break;
+    } else {
+      jslTokenAppendChar(lex->currCh);
+      jsvStringIteratorAppend(&it, lex->currCh);
+      jslGetNextCh();
+    }
+  }
+  jsvStringIteratorFree(&it);
+  if (delim=='`')
+    lex->tk = LEX_TEMPLATE_LITERAL;
+  else lex->tk = LEX_STR;
+  // unfinished strings
+  if (lex->currCh!=delim)
+    lex->tk++; // +1 gets you to 'unfinished X'
+  jslGetNextCh();
+}
+
+static void jslLexRegex() {
+  lex->tokenValue = jsvNewFromEmptyString();
+  if (!lex->tokenValue) {
+    lex->tk = LEX_EOF;
+    return;
+  }
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, lex->tokenValue, 0);
+  jsvStringIteratorAppend(&it, '/');
+  // strings...
+  jslGetNextCh();
+  while (lex->currCh && lex->currCh!='/') {
+    if (lex->currCh == '\\') {
+      jsvStringIteratorAppend(&it, lex->currCh);
+      jslGetNextCh();
+    } else if (lex->currCh=='\n') {
+      /* Was a newline - this is now allowed
+       * unless we're a template string */
+      break;
+    }
+    jsvStringIteratorAppend(&it, lex->currCh);
+    jslGetNextCh();
+  }
+  lex->tk = LEX_REGEX;
+  if (lex->currCh!='/') {
+    lex->tk++; // +1 gets you to 'unfinished X'
+  } else {
+    jsvStringIteratorAppend(&it, '/');
+    jslGetNextCh();
+    // regex modifiers
+    while (lex->currCh=='g' ||
+        lex->currCh=='i' ||
+        lex->currCh=='m' ||
+        lex->currCh=='y' ||
+        lex->currCh=='u') {
+      jslTokenAppendChar(lex->currCh);
+      jsvStringIteratorAppend(&it, lex->currCh);
+      jslGetNextCh();
+    }
+  }
+  jsvStringIteratorFree(&it);
 }
 
 void jslGetNextToken() {
@@ -225,6 +347,8 @@ void jslGetNextToken() {
     }
     // block comments
     if (jslNextCh()=='*') {
+      jslGetNextCh();
+      jslGetNextCh();
       while (lex->currCh && !(lex->currCh=='*' && jslNextCh()=='/'))
         jslGetNextCh();
       if (!lex->currCh) {
@@ -237,6 +361,7 @@ void jslGetNextToken() {
       goto jslGetNextToken_start;
     }
   }
+  int lastToken = lex->tk;
   lex->tk = LEX_EOF;
   lex->tokenl = 0; // clear token string
   if (lex->tokenValue) {
@@ -268,6 +393,7 @@ void jslGetNextToken() {
       break;
       case 'c': if (jslIsToken("case", 1)) lex->tk = LEX_R_CASE;
       else if (jslIsToken("catch", 1)) lex->tk = LEX_R_CATCH;
+      else if (jslIsToken("const", 1)) lex->tk = LEX_R_CONST;
       else if (jslIsToken("continue", 1)) lex->tk = LEX_R_CONTINUE;
       break;
       case 'd': if (jslIsToken("default", 1)) lex->tk = LEX_R_DEFAULT;
@@ -285,6 +411,8 @@ void jslGetNextToken() {
       case 'i': if (jslIsToken("if", 1)) lex->tk = LEX_R_IF;
       else if (jslIsToken("in", 1)) lex->tk = LEX_R_IN;
       else if (jslIsToken("instanceof", 1)) lex->tk = LEX_R_INSTANCEOF;
+      break;
+      case 'l': if (jslIsToken("let", 1)) lex->tk = LEX_R_LET;
       break;
       case 'n': if (jslIsToken("new", 1)) lex->tk = LEX_R_NEW;
       else if (jslIsToken("null", 1)) lex->tk = LEX_R_NULL;
@@ -361,76 +489,7 @@ void jslGetNextToken() {
           }
         }
       } break;
-      case JSLJT_STRING:
-      {
-        char delim = lex->currCh;
-        lex->tokenValue = jsvNewFromEmptyString();
-        if (!lex->tokenValue) {
-          lex->tk = LEX_EOF;
-          return;
-        }
-        JsvStringIterator it;
-        jsvStringIteratorNew(&it, lex->tokenValue, 0);
-        // strings...
-        jslGetNextCh();
-        while (lex->currCh && lex->currCh!=delim) {
-          if (lex->currCh == '\\') {
-            jslGetNextCh();
-            char ch = lex->currCh;
-            switch (lex->currCh) {
-            case 'n'  : ch = 0x0A; jslGetNextCh(); break;
-            case 'b'  : ch = 0x08; jslGetNextCh(); break;
-            case 'f'  : ch = 0x0C; jslGetNextCh(); break;
-            case 'r'  : ch = 0x0D; jslGetNextCh(); break;
-            case 't'  : ch = 0x09; jslGetNextCh(); break;
-            case 'v'  : ch = 0x0B; jslGetNextCh(); break;
-            case 'u' :
-            case 'x' : { // hex digits
-              char buf[5] = "0x??";
-              if (lex->currCh == 'u') {
-                // We don't support unicode, so we just take the bottom 8 bits
-                // of the unicode character
-                jslGetNextCh();
-                jslGetNextCh();
-              }
-              jslGetNextCh();
-              buf[2] = lex->currCh; jslGetNextCh();
-              buf[3] = lex->currCh; jslGetNextCh();
-              ch = (char)stringToInt(buf);
-            } break;
-            default:
-              if (lex->currCh>='0' && lex->currCh<='7') {
-                // octal digits
-                char buf[5] = "0";
-                buf[1] = lex->currCh;
-                int n=2;
-                jslGetNextCh();
-                if (lex->currCh>='0' && lex->currCh<='7') {
-                  buf[n++] = lex->currCh; jslGetNextCh();
-                  if (lex->currCh>='0' && lex->currCh<='7') {
-                    buf[n++] = lex->currCh; jslGetNextCh();
-                  }
-                }
-                buf[n]=0;
-                ch = (char)stringToInt(buf);
-              } else {
-                // for anything else, just push the character through
-                jslGetNextCh();
-              }
-              break;
-            }
-            jslTokenAppendChar(ch);
-            jsvStringIteratorAppend(&it, ch);
-          } else {
-            jslTokenAppendChar(lex->currCh);
-            jsvStringIteratorAppend(&it, lex->currCh);
-            jslGetNextCh();
-          }
-        }
-        jsvStringIteratorFree(&it);
-        lex->tk = lex->currCh==delim ? LEX_STR : LEX_UNFINISHED_STR;
-        jslGetNextCh();
-      } break;
+      case JSLJT_STRING: jslLexString(); break;
       case JSLJT_EXCLAMATION: jslSingleChar();
       if (lex->currCh=='=') { // !=
         lex->tk = LEX_NEQUAL;
@@ -482,10 +541,41 @@ void jslGetNextToken() {
         lex->tk = LEX_MULEQUAL;
         jslGetNextCh();
       } break;
-      case JSLJT_FORWARDSLASH: jslSingleChar();
-      if (lex->currCh=='=') {
-        lex->tk = LEX_DIVEQUAL;
-        jslGetNextCh();
+      case JSLJT_FORWARDSLASH:
+      // yay! JS is so awesome.
+      if (lastToken==LEX_EOF ||
+          lastToken=='!' ||
+          lastToken=='%' ||
+          lastToken=='&' ||
+          lastToken=='*' ||
+          lastToken=='+' ||
+          lastToken=='-' ||
+          lastToken=='/' ||
+          lastToken=='<' ||
+          lastToken=='=' ||
+          lastToken=='>' ||
+          lastToken=='?' ||
+          (lastToken>=_LEX_OPERATOR_START && lastToken<=_LEX_OPERATOR_END) ||
+          (lastToken>=_LEX_R_LIST_START && lastToken<=_LEX_R_LIST_END) || // keywords
+          lastToken==LEX_R_CASE ||
+          lastToken==LEX_R_NEW ||
+          lastToken=='[' ||
+          lastToken=='{' ||
+          lastToken=='}' ||
+          lastToken=='(' ||
+          lastToken==',' ||
+          lastToken==';' ||
+          lastToken==':' ||
+          lastToken==LEX_ARROW_FUNCTION) {
+        // EOF operator keyword case new [ { } ( , ; : =>
+        // phew. We're a regex
+        jslLexRegex();
+      } else {
+        jslSingleChar();
+        if (lex->currCh=='=') {
+          lex->tk = LEX_DIVEQUAL;
+          jslGetNextCh();
+        }
       } break;
       case JSLJT_PERCENT: jslSingleChar();
       if (lex->currCh=='=') {
@@ -500,6 +590,9 @@ void jslGetNextToken() {
           lex->tk = LEX_TYPEEQUAL;
           jslGetNextCh();
         }
+      } else if (lex->currCh=='>') { // =>
+        lex->tk = LEX_ARROW_FUNCTION;
+        jslGetNextCh();
       } break;
       case JSLJT_LESSTHAN: jslSingleChar();
       if (lex->currCh=='=') { // <=
@@ -601,6 +694,20 @@ void jslReset() {
   jslSeekTo(0);
 }
 
+
+
+/** When printing out a function, with pretokenise a
+ * character could end up being a special token. This
+ * handles that case. */
+void jslFunctionCharAsString(unsigned char ch, char *str, size_t len) {
+  if (ch >= LEX_TOKEN_START) {
+    jslTokenAsString(ch, str, len);
+  } else {
+    str[0] = (char)ch;
+    str[1] = 0;
+  }
+}
+
 void jslTokenAsString(int token, char *str, size_t len) {
   // see JS_ERROR_TOKEN_BUF_SIZE
   if (token>32 && token<128) {
@@ -619,8 +726,13 @@ void jslTokenAsString(int token, char *str, size_t len) {
   case LEX_FLOAT : strncpy(str, "FLOAT", len); return;
   case LEX_STR : strncpy(str, "STRING", len); return;
   case LEX_UNFINISHED_STR : strncpy(str, "UNFINISHED STRING", len); return;
+  case LEX_TEMPLATE_LITERAL : strncpy(str, "TEMPLATE LITERAL", len); return;
+  case LEX_UNFINISHED_TEMPLATE_LITERAL : strncpy(str, "UNFINISHED TEMPLATE LITERAL", len); return;
+  case LEX_REGEX : strncpy(str, "REGEX", len); return;
+  case LEX_UNFINISHED_REGEX : strncpy(str, "UNFINISHED REGEX", len); return;
+  case LEX_UNFINISHED_COMMENT : strncpy(str, "UNFINISHED COMMENT", len); return;
   }
-  if (token>=LEX_EQUAL && token<LEX_R_LIST_END) {
+  if (token>=_LEX_OPERATOR_START && token<_LEX_R_LIST_END) {
     const char tokenNames[] =
         /* LEX_EQUAL      :   */ "==\0"
         /* LEX_TYPEEQUAL  :   */ "===\0"
@@ -646,6 +758,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
         /* LEX_OREQUAL :      */ "|=\0"
         /* LEX_OROR :         */ "||\0"
         /* LEX_XOREQUAL :     */ "^=\0"
+        /* LEX_ARROW_FUNCTION */ "=>\0"
 
         // reserved words
         /*LEX_R_IF :       */ "if\0"
@@ -658,6 +771,8 @@ void jslTokenAsString(int token, char *str, size_t len) {
         /*LEX_R_FUNCTION   */ "function\0"
         /*LEX_R_RETURN     */ "return\0"
         /*LEX_R_VAR :      */ "var\0"
+        /*LEX_R_LET :      */ "let\0"
+        /*LEX_R_CONST :    */ "const\0"
         /*LEX_R_THIS :     */ "this\0"
         /*LEX_R_THROW :    */ "throw\0"
         /*LEX_R_TRY :      */ "try\0"
@@ -679,7 +794,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
         /*LEX_R_DEBUGGER : */ "debugger\0"
         ;
     unsigned int p = 0;
-    int n = token-LEX_EQUAL;
+    int n = token-_LEX_OPERATOR_START;
     while (n>0 && p<sizeof(tokenNames)) {
       while (tokenNames[p] && p<sizeof(tokenNames)) p++;
       p++; // skip the zero
@@ -730,7 +845,7 @@ JsVar *jslGetTokenValueAsVar() {
 
 bool jslIsIDOrReservedWord() {
   return lex->tk == LEX_ID ||
-         lex->tk >= LEX_R_LIST_START;
+         (lex->tk >= _LEX_R_LIST_START && lex->tk <= _LEX_R_LIST_END);
 }
 
 /// Match, and return true on success, false on failure
@@ -753,7 +868,74 @@ bool jslMatch(int expected_tk) {
   return true;
 }
 
-JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
+JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
+  // New method - tokenise functions
+  // save old lex
+  JsLex *oldLex = lex;
+  JsLex newLex;
+  lex = &newLex;
+  // work out length
+  size_t length = 0;
+  jslInit(oldLex->sourceVar);
+  jslSeekToP(charFrom);
+  int lastTk = LEX_EOF;
+  while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
+    if ((lex->tk==LEX_ID || lex->tk==LEX_FLOAT || lex->tk==LEX_INT) &&
+        ( lastTk==LEX_ID ||  lastTk==LEX_FLOAT ||  lastTk==LEX_INT)) {
+      jsExceptionHere(JSET_SYNTAXERROR, "ID/number following ID/number isn't valid JS");
+      length = 0;
+      break;
+    }
+    if (lex->tk==LEX_ID ||
+        lex->tk==LEX_INT ||
+        lex->tk==LEX_FLOAT ||
+        lex->tk==LEX_STR ||
+        lex->tk==LEX_TEMPLATE_LITERAL) {
+      length += jsvStringIteratorGetIndex(&lex->it)-jsvStringIteratorGetIndex(&lex->tokenStart.it);
+    } else {
+      length++;
+    }
+    lastTk = lex->tk;
+    jslGetNextToken();
+  }
+
+  // Try and create a flat string first
+  JsVar *var = jsvNewStringOfLength((unsigned int)length, NULL);
+  if (var) { // out of memory
+    JsvStringIterator dstit;
+    jsvStringIteratorNew(&dstit, var, 0);
+    // now start appending
+    jslSeekToP(charFrom);
+    while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
+      if (lex->tk==LEX_ID ||
+          lex->tk==LEX_INT ||
+          lex->tk==LEX_FLOAT ||
+          lex->tk==LEX_STR ||
+          lex->tk==LEX_TEMPLATE_LITERAL) {
+        jsvStringIteratorSetCharAndNext(&dstit, lex->tokenStart.currCh);
+        JsvStringIterator it = jsvStringIteratorClone(&lex->tokenStart.it);
+        while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
+          jsvStringIteratorSetCharAndNext(&dstit, jsvStringIteratorGetChar(&it));
+          jsvStringIteratorNext(&it);
+        }
+        jsvStringIteratorFree(&it);
+      } else {
+        jsvStringIteratorSetCharAndNext(&dstit, (char)lex->tk);
+      }
+      lastTk = lex->tk;
+      jslGetNextToken();
+    }
+    jsvStringIteratorFree(&dstit);
+  }
+  // restore lex
+  jslKill();
+  lex = oldLex;
+
+  return var;
+}
+
+JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
+  // Original method - just copy it verbatim
   size_t maxLength = charTo + 1 - jsvStringIteratorGetIndex(&charFrom->it);
   assert(maxLength>0); // will fail if 0
   // Try and create a flat string first
@@ -802,11 +984,12 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
     block->varData.str[blockChars++] = ch;
     jsvStringIteratorNext(&it);
   }
-  jsvStringIteratorFree(&it);
   jsvSetCharactersInVar(block, blockChars);
   jsvUnLock(block);
-  // Just make sure we only assert if there's a bug here. If we just ran out of memory it's ok
-  assert((l == jsvGetStringLength(var)) || (jsErrorFlags&JSERR_MEMORY));
+  // Just make sure we only assert if there's a bug here. If we just ran out of memory or at end of string it's ok
+  assert((l == jsvGetStringLength(var)) || (jsErrorFlags&JSERR_MEMORY) || !jsvStringIteratorHasChar(&it));
+  jsvStringIteratorFree(&it);
+
 
   return var;
 }
@@ -817,6 +1000,13 @@ unsigned int jslGetLineNumber() {
   size_t col;
   jsvGetLineAndCol(lex->sourceVar, jsvStringIteratorGetIndex(&lex->tokenStart.it)-1, &line, &col);
   return (unsigned int)line;
+}
+
+/// Do we need a space between these two characters when printing a function's text?
+bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch) {
+  return (lastch>=_LEX_R_LIST_START || ch>=_LEX_R_LIST_START) &&
+         (lastch>=_LEX_R_LIST_START || isAlpha((char)lastch) || isNumeric((char)lastch)) &&
+         (ch>=_LEX_R_LIST_START || isAlpha((char)ch) || isNumeric((char)ch));
 }
 
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos) {
@@ -843,22 +1033,32 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
     cbprintf(user_callback, user_data, "...");
     size_t skipChars = tokenPos-30 - startOfLine;
     startOfLine += 3+skipChars;
-    col -= skipChars;
+    if (skipChars<=col)
+      col -= skipChars;
+    else
+      col = 0;
     lineLength -= skipChars;
   }
 
-  // print the string until the end of the line, or 60 chars (whichever is lesS)
+  // print the string until the end of the line, or 60 chars (whichever is less)
   int chars = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, lex->sourceVar, startOfLine);
+  unsigned char lastch = 0;
   while (jsvStringIteratorHasChar(&it) && chars<60) {
-    char ch = jsvStringIteratorGetChar(&it);
+    unsigned char ch = (unsigned char)jsvStringIteratorGetChar(&it);
     if (ch == '\n') break;
-    char buf[2];
-    buf[0] = ch;
-    buf[1] = 0;
+    if (jslNeedSpaceBetween(lastch, ch)) {
+      col++;
+      user_callback(" ", user_data);
+    }
+    char buf[32];
+    jslFunctionCharAsString(ch, buf, sizeof(buf));
+    size_t len = strlen(buf);
+    col += len-1;
     user_callback(buf, user_data);
     chars++;
+    lastch = ch;
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);

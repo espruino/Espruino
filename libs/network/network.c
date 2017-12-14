@@ -28,6 +28,9 @@
 #if defined(USE_ESP8266)
   #include "network_esp8266.h"
 #endif
+#if defined(USE_ESP32)
+  #include "network_esp32.h"
+#endif
 #if defined(LINUX)
   #include "network_linux.h"
 #endif
@@ -182,7 +185,7 @@ void networkGetHostByName(
 
 
 void networkCreate(JsNetwork *net, JsNetworkType type) {
-  net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData));
+  net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData), NULL);
   if (!net->networkVar) return;
   net->data.type = type;
   net->data.device = EV_NONE;
@@ -235,12 +238,15 @@ bool networkGetFromVar(JsNetwork *net) {
 #if defined(USE_ESP8266)
   case JSNETWORKTYPE_ESP8266_BOARD : netSetCallbacks_esp8266_board(net); break;
 #endif
+#if defined(USE_ESP32)
+  case JSNETWORKTYPE_ESP32 : netSetCallbacks_esp32(net); break;
+#endif
 #if defined(LINUX)
   case JSNETWORKTYPE_SOCKET : netSetCallbacks_linux(net); break;
 #endif
   case JSNETWORKTYPE_JS : netSetCallbacks_js(net); break;
   default:
-    jsError("Unknown network device %d", net->data.type);
+    jsExceptionHere(JSET_INTERNALERROR, "Unknown network device %d", net->data.type);
     networkFree(net);
     return false;
   }
@@ -253,7 +259,7 @@ bool networkGetFromVar(JsNetwork *net) {
 bool networkGetFromVarIfOnline(JsNetwork *net) {
   bool found = networkGetFromVar(net);
   if (!found || networkState != NETWORKSTATE_ONLINE) {
-    jsError("Not connected to the internet");
+    jsExceptionHere(JSET_INTERNALERROR, "Not connected to the internet");
     if (found) networkFree(net);
     return false;
   }
@@ -288,21 +294,19 @@ typedef struct {
   mbedtls_ssl_config conf;
 } SSLSocketData;
 
-BITFIELD_DECL(socketIsHTTPS, 32);
-
 static void ssl_debug( void *ctx, int level,
                       const char *file, int line, const char *str )
 {
     ((void) ctx);
     ((void) level);
-    jsiConsolePrintf( "%s:%d: %s", file, line, str );
+    // jsiConsolePrintf( "%s:%d: %s", file, line, str );
 }
 
 int ssl_send(void *ctx, const unsigned char *buf, size_t len) {
   JsNetwork *net = networkGetCurrent();
   assert(net);
   int sckt = *(int *)ctx;
-  int r = net->send(net, sckt, buf, len);
+  int r = net->send(net, ST_TLS, sckt, buf, len);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_WRITE;
   return r;
 }
@@ -310,7 +314,7 @@ int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
   JsNetwork *net = networkGetCurrent();
   assert(net);
   int sckt = *(int *)ctx;
-  int r = net->recv(net, sckt, buf, len);
+  int r = net->recv(net, ST_TLS, sckt, buf, len);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_READ;
   return r;
 }
@@ -328,8 +332,6 @@ int ssl_entropy(void *data, unsigned char *output, size_t len ) {
 }
 
 void ssl_freeSocketData(int sckt) {
-  BITFIELD_SET(socketIsHTTPS, sckt, 0);
-
   JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", 0);
   if (!ssl) return;
   JsVar *scktVar = jsvNewFromInteger(sckt);
@@ -355,7 +357,7 @@ void ssl_freeSocketData(int sckt) {
 #ifdef USE_FILESYSTEM
 /* load cert file from filesystem */
 JsVar *load_cert_file(JsVar *cert) {
-  jsiConsolePrintf("Loading certificate file: %q\n", cert);
+  // jsiConsolePrintf("Loading certificate file: %q\n", cert);
   JsVar *fileContents = jswrap_fs_readFile(cert);
   if (!fileContents || jsvIsStringEqual(fileContents, "")) {
     jsWarn("File %q not found", cert);
@@ -422,10 +424,10 @@ JsVar *decode_certificate_var(JsVar *var) {
 bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
   JsVar *keyVar = jsvObjectGetChild(options, "key", 0);
   if (!keyVar) {
-    return false;
+    return true; // still ok - just no key
   }
   int ret = -1;
-  jsiConsolePrintf("Loading the Client Key...\n");
+  // jsiConsolePrintf("Loading the Client Key...\n");
 
   JsVar *buffer = decode_certificate_var(keyVar);
   JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, buffer);
@@ -437,7 +439,7 @@ bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
   jsvUnLock(keyVar);
   if (ret != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-    jsError("HTTPS init failed! mbedtls_pk_parse_key: %v\n", e);
+    jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_pk_parse_key: %v\n", e);
     jsvUnLock(e);
     return false;
   }
@@ -447,10 +449,10 @@ bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
 bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
   JsVar *certVar = jsvObjectGetChild(options, "cert", 0);
   if (!certVar) {
-    return false;
+    return true; // still ok - just no cert
   }
   int ret = -1;
-  jsiConsolePrintf("Loading the Client certificate...\n");
+  // jsiConsolePrintf("Loading the Client certificate...\n");
 
   JsVar *buffer = decode_certificate_var(certVar);
   JSV_GET_AS_CHAR_ARRAY(certPtr, certLen, buffer);
@@ -462,7 +464,7 @@ bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
   jsvUnLock(certVar);
   if (ret != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'cert': %v\n", e);
+    jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_x509_crt_parse of 'cert': %v\n", e);
     jsvUnLock(e);
     return false;
   }
@@ -471,10 +473,10 @@ bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
 bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
   JsVar *caVar = jsvObjectGetChild(options, "ca", 0);
   if (!caVar) {
-    return false;
+    return true; // still ok - just no ca
   }
   int ret = -1;
-  jsiConsolePrintf("Loading the CA root certificate...\n");
+  // jsiConsolePrintf("Loading the CA root certificate...\n");
 
   JsVar *buffer = decode_certificate_var(caVar);
   JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, buffer);
@@ -486,7 +488,7 @@ bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
   jsvUnLock(caVar);
   if (ret != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'ca': %v\n", e);
+    jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_x509_crt_parse of 'ca': %v\n", e);
     jsvUnLock(e);
     return false;
   }
@@ -516,7 +518,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   }
   JsVar *sslData = jsvNewFlatStringOfLength(sizeof(SSLSocketData));
   if (!sslData) {
-    jsError("Not enough memory to allocate SSL socket\n");
+    jsExceptionHere(JSET_INTERNALERROR, "Not enough memory to allocate SSL socket\n");
     jsvUnLock(sslDataVar);
     return false;
   }
@@ -530,7 +532,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   sd->sckt = sckt;
   sd->connecting = true;
 
-  jsiConsolePrintf( "Connecting with TLS...\n" );
+  // jsiConsolePrintf( "Connecting with TLS...\n" );
 
   int ret;
 
@@ -545,7 +547,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
                              (const unsigned char *) pers,
                              strlen(pers))) != 0 ) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-    jsError("HTTPS init failed! mbedtls_ctr_drbg_seed: %v\n", e );
+    jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_ctr_drbg_seed: %v\n", e );
     jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
@@ -565,7 +567,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
                   MBEDTLS_SSL_TRANSPORT_STREAM,
                   MBEDTLS_SSL_PRESET_DEFAULT )) != 0 ) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-    jsError("HTTPS init failed! mbedtls_ssl_config_defaults returned: %v\n", e );
+    jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_ssl_config_defaults returned: %v\n", e );
     jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
@@ -575,7 +577,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
     // this would get set if options.key was set
     if (( ret = mbedtls_ssl_conf_own_cert(&sd->conf, &sd->owncert, &sd->pkey)) != 0 ) {
       JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-      jsError("HTTPS init failed! mbedtls_ssl_conf_own_cert: %v\n", e );
+      jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_ssl_conf_own_cert: %v\n", e );
       jsvUnLock(e);
       ssl_freeSocketData(sckt);
       return false;
@@ -589,7 +591,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
 
   if (( ret = mbedtls_ssl_setup( &sd->ssl, &sd->conf )) != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-    jsError("Failed! mbedtls_ssl_setup: %v\n", e );
+    jsExceptionHere(JSET_INTERNALERROR, "Failed! mbedtls_ssl_setup: %v\n", e );
     jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
@@ -597,7 +599,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
 
   if (( ret = mbedtls_ssl_set_hostname( &sd->ssl, "mbed TLS Server 1" )) != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-    jsError("HTTPS init failed! mbedtls_ssl_set_hostname: %v\n", e );
+    jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_ssl_set_hostname: %v\n", e );
     jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
@@ -605,7 +607,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
 
   mbedtls_ssl_set_bio( &sd->ssl, &sd->sckt, ssl_send, ssl_recv, NULL );
 
-  jsiConsolePrintf("Performing the SSL/TLS handshake...\n" );
+  // jsiConsolePrintf("Performing the SSL/TLS handshake...\n" );
 
   return true;
 }
@@ -630,21 +632,21 @@ SSLSocketData *ssl_getSocketData(int sckt) {
     if ( ( ret = mbedtls_ssl_handshake( &sd->ssl ) ) != 0 ) {
       if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE ) {
         JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-        jsError( "Failed! mbedtls_ssl_handshake returned %v\n", e );
+        jsExceptionHere(JSET_INTERNALERROR,  "Failed! mbedtls_ssl_handshake returned %v\n", e );
         jsvUnLock(e);
         return 0; // this signals an error
       }
       // else we just continue - connecting=true so other things should wait
     } else {
       // Verify the server certificate
-      jsiConsolePrintf("Verifying peer X.509 certificate...\n");
+      // jsiConsolePrintf("Verifying peer X.509 certificate...\n");
 
       /* In real life, we probably want to bail out when ret != 0 */
       uint32_t flags;
       if( ( flags = mbedtls_ssl_get_verify_result( &sd->ssl ) ) != 0 ) {
         char vrfy_buf[512];
         mbedtls_x509_crt_verify_info( vrfy_buf, sizeof( vrfy_buf ), "  ! ", flags );
-        jsError("Failed! %s\n", vrfy_buf );
+        jsExceptionHere(JSET_INTERNALERROR, "Failed! %s\n", vrfy_buf );
         return 0;
       }
       sd->connecting = false;
@@ -662,16 +664,14 @@ bool netCheckError(JsNetwork *net) {
   return net->checkError(net);
 }
 
-int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags, JsVar *options) {
-  int sckt = net->createsocket(net, host, port);
+int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
+  int sckt = net->createsocket(net, socketType, host, port, options);
   if (sckt<0) return sckt;
 
 #ifdef USE_TLS
   assert(sckt>=0 && sckt<32);
-  BITFIELD_SET(socketIsHTTPS, sckt, 0);
-  if (flags & NCF_TLS) {
+  if (socketType & ST_TLS) {
     if (ssl_newSocketData(sckt, options)) {
-      BITFIELD_SET(socketIsHTTPS, sckt, 1);
     } else {
       return -1; // fail!
     }
@@ -680,9 +680,9 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
   return sckt;
 }
 
-void netCloseSocket(JsNetwork *net, int sckt) {
+void netCloseSocket(JsNetwork *net, SocketType socketType, int sckt) {
 #ifdef USE_TLS
-  if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+  if (socketType & ST_TLS) {
     ssl_freeSocketData(sckt);
   }
 #endif
@@ -697,9 +697,9 @@ void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   net->gethostbyname(net, hostName, out_ip_addr);
 }
 
-int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
+int netRecv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
 #ifdef USE_TLS
-  if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+  if (socketType & ST_TLS) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
     if (!sd) return -1;
     if (sd->connecting) return 0; // busy
@@ -711,13 +711,13 @@ int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
   } else
 #endif
   {
-    return net->recv(net, sckt, buf, len);
+    return net->recv(net, socketType, sckt, buf, len);
   }
 }
 
-int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
+int netSend(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
 #ifdef USE_TLS
-  if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+  if (socketType & ST_TLS) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
     if (!sd) return -1;
     if (sd->connecting) return 0; // busy
@@ -729,6 +729,6 @@ int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
   } else
 #endif
   {
-    return net->send(net, sckt, buf, len);
+    return net->send(net, socketType, sckt, buf, len);
   }
 }

@@ -7,6 +7,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
+ *     2016/05/23, modified to work with bitrate on esp8266
+
  * ----------------------------------------------------------------------------
  * Hardware interface Layer
  * NOTE: Most definitions of these functions are inside:
@@ -92,6 +94,7 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time);
 // software IO functions...
 void jshInterruptOff(); ///< disable interrupts to allow short delays to be accurate
 void jshInterruptOn();  ///< re-enable interrupts
+bool jshIsInInterrupt(); ///< Are we currently in an interrupt?
 void jshDelayMicroseconds(int microsec);  ///< delay a few microseconds. Should use used sparingly and for very short periods - max 1ms
 
 void jshPinSetValue(Pin pin, bool value); ///< Set a digital output to 1 or 0. DOES NOT change pin state OR CHECK PIN VALIDITY
@@ -101,7 +104,8 @@ bool jshPinGetValue(Pin pin); ///< Get the value of a digital input. DOES NOT ch
 typedef enum {
   JSHPINSTATE_UNDEFINED,            ///< Used when getting the pin state, if we have no idea what it is.
   JSHPINSTATE_GPIO_OUT,             ///< GPIO pin as totem pole output
-  JSHPINSTATE_GPIO_OUT_OPENDRAIN,   ///< GPIO pin as open-collector/open-drain output WITH PULLUP
+  JSHPINSTATE_GPIO_OUT_OPENDRAIN,   ///< GPIO pin as open-collector/open-drain output WITHOUT PULLUP
+  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP, ///< GPIO pin as open-collector/open-drain output WITH PULLUP
   JSHPINSTATE_GPIO_IN,              ///< GPIO pin as input (also tri-stated output)
   JSHPINSTATE_GPIO_IN_PULLUP,       ///< GPIO pin input with internal pull-up
   JSHPINSTATE_GPIO_IN_PULLDOWN,     ///< GPIO pin input with internal pull-down
@@ -123,6 +127,7 @@ typedef enum {
 #define JSHPINSTATE_IS_OUTPUT(state) ( \
              (state)==JSHPINSTATE_GPIO_OUT ||               \
              (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||     \
+             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
              (state)==JSHPINSTATE_AF_OUT ||                 \
              (state)==JSHPINSTATE_AF_OUT_OPENDRAIN ||       \
              (state)==JSHPINSTATE_USART_OUT ||              \
@@ -132,6 +137,7 @@ typedef enum {
 /// Should a pin of this state be Open Drain?
 #define JSHPINSTATE_IS_OPENDRAIN(state) ( \
              (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||     \
+             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
              (state)==JSHPINSTATE_AF_OUT_OPENDRAIN ||       \
              (state)==JSHPINSTATE_I2C              ||       \
 0)
@@ -146,8 +152,10 @@ typedef enum {
 /// Should a pin of this state have an internal pullup?
 #define JSHPINSTATE_IS_PULLUP(state) ( \
             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||      \
+            (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
             (state)==JSHPINSTATE_GPIO_IN_PULLUP ||          \
             (state)==JSHPINSTATE_USART_IN ||                \
+            (state)==JSHPINSTATE_I2C ||                     \
 0)
 /// Should a pin of this state have an internal pulldown?
 #define JSHPINSTATE_IS_PULLDOWN(state) ( \
@@ -222,14 +230,16 @@ bool jshIsDeviceInitialised(IOEventFlags device);
 
 /// Settings passed to jshUSARTSetup to set it the USART up
 typedef struct {
-  int baudRate; // FIXME uint32_t ???
+  int baudRate;            /// FIXME uint32_t ???
   Pin pinRX;
   Pin pinTX;
-  Pin pinCK;
-  unsigned char bytesize; ///< size of byte, 7 or 8
-  unsigned char parity; ///< 0=none, 1=odd, 2=even
-  unsigned char stopbits; ///< 1 or 2
-  bool xOnXOff; ///< XON XOFF flow control?
+  Pin pinCK;               ///< Clock, or PIN_UNDEFINED
+  Pin pinCTS;              ///< Clear to send, or PIN_UNDEFINED
+  unsigned char bytesize;  ///< size of byte, 7 or 8
+  unsigned char parity;    ///< 0=none, 1=odd, 2=even
+  unsigned char stopbits;  ///< 1 or 2
+  bool xOnXOff;            ///< XON XOFF flow control?
+  bool errorHandling;      ///< Whether to forward parity/framing errors
 } PACKED_FLAGS JshUSARTInfo;
 
 /// Initialise a JshUSARTInfo struct to default settings
@@ -301,9 +311,10 @@ void jshSPIWait(IOEventFlags device);
 
 /// Settings passed to jshI2CSetup to set I2C up
 typedef struct {
+  int bitrate;
   Pin pinSCL;
   Pin pinSDA;
-  int bitrate;
+  bool started; ///< Has I2C 'start' condition been sent so far?
   // timeout?
 } PACKED_FLAGS JshI2CInfo;
 
@@ -361,7 +372,7 @@ void jshUtilTimerDisable();
 void jshDoSysTick();
 #endif // ARM
 
-#ifdef STM32
+#if defined(STM32) || defined(STM32_LL)
 // push a byte into SPI buffers (called from IRQ)
 void jshSPIPush(IOEventFlags device, uint16_t data);
 
@@ -371,6 +382,13 @@ typedef enum {
 } JshGetPinAddressFlags;
 // Get the address to read/write to in order to change the state of this pin. Or 0.
 volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags);
+#endif
+
+#if defined(NRF51) || defined(NRF52)
+/// Called when we have had an event that means we should execute JS
+extern void jshHadEvent();
+#else
+#define jshHadEvent() /* We should ensure we exit idle mode */
 #endif
 
 /// the temperature from the internal temperature sensor, in degrees C

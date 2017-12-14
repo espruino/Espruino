@@ -4,7 +4,7 @@
 #include <c_types.h>
 #include <user_interface.h>
 #include <mem.h>
-#include <osapi.h>
+#include "osapi_release.h"
 #include <upgrade.h>
 #include <espconn.h>
 #include <espmissingincludes.h>
@@ -87,12 +87,17 @@ static void sendResponse(OtaConn *oc, uint16_t code, char *text) {
  *
  * It returns an error string if something is amiss
  */
-static char* check_header(void *buf) {
+static char* check_header(void *buf, int which) {
   uint8_t *cd = (uint8_t *)buf;
   uint32_t *buf32 = buf;
-  os_printf("OTA hdr %p: %08lX %08lX %08lX %08lX\n", buf, buf32[0], buf32[1], buf32[2], buf32[3]);
+  os_printf("OTA hdr %p: %08lX %08lX %08lX %08lX\n", buf, 
+    (long unsigned int)buf32[0], 
+    (long unsigned int)buf32[1], 
+    (long unsigned int)buf32[2], 
+    (long unsigned int)buf32[3]);
   if (cd[0] != 0xEA) return "IROM magic missing";
   if (cd[1] != 4 || cd[2] > 3 || (cd[3]>>4) > 6) return "bad flash header";
+  if (cd[3] < 3 && cd[3] != which) return "Wrong partition binary";
   if (((uint16_t *)buf)[3] != 0x4010) return "Invalid entry addr";
   if (((uint32_t *)buf)[2] != 0) return "Invalid start offset";
   return NULL;
@@ -141,10 +146,12 @@ static int16_t otaHandleUpload(OtaConn *oc) {
 
   // check overall size
   if (oc->reqLen > flashMaxSize[flashSizeMap]) {
-    os_printf("OTA: FW too large: %ld > %ld\n", oc->reqLen, flashMaxSize[flashSizeMap]);
+    os_printf("OTA: FW too large: %ld > %ld\n", 
+      (long int) oc->reqLen, 
+      (long int)  flashMaxSize[flashSizeMap]);
     err = "Firmware image too large";
   } else if (oc->reqLen < OTA_CHUNK_SZ) {
-    os_printf("OTA: FW too small: %ld\n", oc->reqLen);
+    os_printf("OTA: FW too small: %ld\n", (long int) oc->reqLen);
     err = "Firmware too small";
   }
 
@@ -153,8 +160,11 @@ static int16_t otaHandleUpload(OtaConn *oc) {
   uint16_t toFlash = OTA_CHUNK_SZ;
   if (oc->rxBufFill < toFlash) toFlash = oc->rxBufFill;
 
+  // let's see which partition we need to flash
+  uint8 id = system_upgrade_userbin_check();
+
   // check that data starts with an appropriate header
-  if (err == NULL && offset == 0) err = check_header(oc->rxBuffer+oc->rxBufOff);
+  if (err == NULL && offset == 0) err = check_header(oc->rxBuffer+oc->rxBufOff, 1-id);
 
   // return an error if there is one
   if (err != NULL) {
@@ -163,14 +173,13 @@ static int16_t otaHandleUpload(OtaConn *oc) {
     return -1;
   }
 
-  // let's see which partition we need to flash and what flash address that puts us at
-  uint8 id = system_upgrade_userbin_check();
+  // let's see which what flash address we're uploading to
   uint32_t address = id ? 0x1000 : flashUser2Addr[flashSizeMap];
   address += offset;
 
   // erase next flash block if necessary
   if (address % SPI_FLASH_SEC_SIZE == 0){
-          os_printf("OTA Flashing 0x%05lx\n", address);
+          os_printf("OTA Flashing 0x%05lx\n", (long unsigned int) address);
           spi_flash_erase_sector(address/SPI_FLASH_SEC_SIZE);
   }
 
@@ -200,7 +209,7 @@ static int16_t otaHandleReboot(OtaConn *oc) {
 
   uint32 buf[8];
   spi_flash_read(address, buf, sizeof(buf));
-  char *err = check_header(buf);
+  char *err = check_header(buf, 1-id);
   if (err != NULL) {
           os_printf("OTA Error %d: %s\n", 400, err);
           sendResponse(oc, 400, err);
@@ -287,7 +296,7 @@ static int16_t processHeader(OtaConn *oc) {
   char *clHdr = os_strstr(hdrEnd+1, "Content-Length:");
   if (clHdr) {
     oc->reqLen = atoi(clHdr+strlen("Content-Length:"));
-    os_printf("OTA: content len=%ld\n", oc->reqLen);
+    os_printf("OTA: content len=%ld\n", (long int) oc->reqLen);
   }
 
   return i+4;

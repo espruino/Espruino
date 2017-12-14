@@ -1,0 +1,138 @@
+# Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
+#
+# The information contained herein is property of Nordic Semiconductor ASA.
+# Terms and conditions of usage are described in detail in NORDIC
+# SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
+#
+# Licensees are granted free, non-transferable use of the information. NO
+# WARRANTY of ANY KIND is provided. This heading must NOT be removed from
+# the file.
+
+PLATFORM_SUFFIX := $(if $(filter Windows%,$(OS)),windows,posix)
+TOOLCHAIN_CONFIG_FILE := $(TEMPLATE_PATH)/Makefile.$(PLATFORM_SUFFIX)
+include $(TOOLCHAIN_CONFIG_FILE)
+
+# Toolchain commands
+CC      := "$(GNU_INSTALL_ROOT)/bin/$(GNU_PREFIX)-gcc"
+CXX     := "$(GNU_INSTALL_ROOT)/bin/$(GNU_PREFIX)-c++"
+AS      := "$(GNU_INSTALL_ROOT)/bin/$(GNU_PREFIX)-as"
+AR      := "$(GNU_INSTALL_ROOT)/bin/$(GNU_PREFIX)-ar" -r
+LD      := "$(GNU_INSTALL_ROOT)/bin/$(GNU_PREFIX)-ld"
+NM      := "$(GNU_INSTALL_ROOT)/bin/$(GNU_PREFIX)-nm"
+OBJDUMP := "$(GNU_INSTALL_ROOT)/bin/$(GNU_PREFIX)-objdump"
+OBJCOPY := "$(GNU_INSTALL_ROOT)/bin/$(GNU_PREFIX)-objcopy"
+SIZE    := "$(GNU_INSTALL_ROOT)/bin/$(GNU_PREFIX)-size"
+$(if $(shell $(CC) --version),,$(info Cannot find: $(CC).) \
+  $(info Please set values in: "$(abspath $(TOOLCHAIN_CONFIG_FILE))") \
+  $(info according to the actual configuration of your system.) \
+  $(error Cannot continue))
+
+# Use ccache on linux if available
+CCACHE := $(if $(filter Windows%,$(OS)),, \
+               $(if $(wildcard /usr/bin/ccache),ccache))
+CC     := $(CCACHE) $(CC)
+
+MK := mkdir
+RM := rm -rf
+
+# echo suspend
+ifeq ($(VERBOSE),1)
+  NO_ECHO :=
+else
+  NO_ECHO := @
+endif
+
+# $1 type of item
+# $2 path to check
+define ensure_exists
+$(if $(wildcard $(2)),, $(warning Cannot find $(1): $(2)))
+endef
+
+# $1 object file
+# $2 source file
+define bind_obj_with_src
+$(eval $(1) := $(2))
+endef
+
+# $1 target name
+# $2 list of source files
+define get_object_files
+$(foreach src_file, $(2), \
+  $(call ensure_exists,source file, $(src_file)) \
+  $(eval obj_file := \
+    $(OUTPUT_DIRECTORY)/$(strip $(1))_$(notdir $(src_file)).o) \
+  $(eval $(strip $(1))_dependencies += $(obj_file:.o=.d)) \
+  $(call bind_obj_with_src, $(obj_file), $(src_file)) \
+  $(eval $(obj_file): Makefile) \
+  $(obj_file))
+endef
+
+# $1 target name
+# $2 link target name
+define prepare_build
+$(eval $(2): \
+  $(call get_object_files, $(1), $(SRC_FILES) $(SRC_FILES_$(strip $(1))))) \
+$(eval INC_PATHS := \
+  $(foreach folder, $(INC_FOLDERS) $(INC_FOLDERS_$(strip $(1))), \
+    $(call ensure_exists,include folder, $(folder)) \
+    -I"$(folder)"))
+endef
+
+# $1 target name
+define define_target
+$(eval OUTPUT_FILE := $(OUTPUT_DIRECTORY)/$(strip $(1))) \
+$(eval $(1): $(OUTPUT_FILE).out $(OUTPUT_FILE).hex $(OUTPUT_FILE).bin) \
+$(call prepare_build, $(1), $(OUTPUT_FILE).out)
+endef
+
+# $1 target name
+# $2 library file name
+define define_library
+$(eval $(1) := $(2)) \
+$(call prepare_build, $(1), $(1))
+endef
+
+.PHONY: $(TARGETS) default all clean help flash
+
+all: $(TARGETS)
+
+clean:
+	$(RM) $(OUTPUT_DIRECTORY)
+
+# Create build directories
+$(OUTPUT_DIRECTORY):
+	$(MK) $@
+
+# Create objects from C source files
+$(OUTPUT_DIRECTORY)/%.c.o: | $(OUTPUT_DIRECTORY)
+	@echo Compiling file: $(notdir $($@))
+	$(NO_ECHO)$(CC) -std=c99 $(CFLAGS) $(INC_PATHS) -c -o $@ "$($@)"
+
+# Create objects from C++ source files
+$(OUTPUT_DIRECTORY)/%.cpp.o: | $(OUTPUT_DIRECTORY)
+	@echo Compiling file: $(notdir $($@))
+	$(NO_ECHO)$(CXX) $(CFLAGS) $(CXXFLAGS) $(INC_PATHS) -c -o $@ "$($@)"
+
+# Create objects from assembly files
+$(OUTPUT_DIRECTORY)/%.S.o \
+$(OUTPUT_DIRECTORY)/%.s.o: | $(OUTPUT_DIRECTORY)
+	@echo Assembling file: $(notdir $($@))
+	$(NO_ECHO)$(CC) -std=c99 $(ASMFLAGS) $(INC_PATHS) -c -o $@ "$($@)"
+
+# Link object files
+%.out:
+	@echo Linking target: $@
+	$(NO_ECHO)$(CC) -Wl,-Map=$(@:.out=.map) $(LDFLAGS) $^ $(LIB_FILES) -lm -o $@
+	-@echo ''
+	$(NO_ECHO)$(SIZE) $@
+	-@echo ''
+
+# Create binary .bin file from the .out file
+%.bin: %.out
+	@echo Preparing: $@
+	$(NO_ECHO)$(OBJCOPY) -O binary $< $@
+
+# Create binary .hex file from the .out file
+%.hex: %.out
+	@echo Preparing: $@
+	$(NO_ECHO)$(OBJCOPY) -O ihex $< $@

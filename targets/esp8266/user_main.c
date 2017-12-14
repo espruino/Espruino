@@ -15,7 +15,7 @@
  */
 
 #include <user_interface.h>
-#include <osapi.h>
+#include "osapi_release.h"
 #include <sntp.h>
 #include <uart.h>
 #include <espmissingincludes.h>
@@ -120,11 +120,11 @@ void jshPrintBanner() {
   uint32_t chip = (fid&0xff00)|((fid>>16)&0xff);
   uint32_t map = system_get_flash_size_map();
   os_printf("Espruino "JS_VERSION"\nFlash map %s, manuf 0x%lx chip 0x%lx\n",
-      flash_maps[map], fid & 0xff, chip);
+      flash_maps[map], (long unsigned int) (fid & 0xff), (long unsigned int)chip);
   jsiConsolePrintf(
     "Flash map %s, manuf 0x%x chip 0x%x\n",
     flash_maps[map], fid & 0xff, chip);
-  if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4)) {
+  if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4 && map != 6)) {  
     jsiConsolePrint("WARNING: *** Your flash chip does not match your flash map ***\n");
   }
 }
@@ -196,7 +196,7 @@ static void eventHandler(
     break;
   // Handle the unknown event type.
   default:
-    os_printf("user_main: eventHandler: Unknown task type: %ld", pEvent->sig);
+    os_printf("user_main: eventHandler: Unknown task type: %ld", (long int) pEvent->sig);
     break;
   }
 }
@@ -288,7 +288,32 @@ void user_uart_init() {
  */
 void user_rf_pre_init() {
   system_update_cpu_freq(160);
+// RF calibration: 0=do what byte 114 of esp_init_data_default says, 1=calibrate VDD33 and TX
+  // power (18ms); 2=calibrate VDD33 only (2ms); 3=full calibration (200ms). The default value of
+  // byte 114 is 0, which has the same effect as option 2 here. We're using option 3 'cause it's
+  // unlikely anyone will notice the 200ms or the extra power consumption given that Espruino
+  // doesn't really support low power sleep modes.
+  // See the appending of the 2A-ESP8266_IOT_SDK_User_Manual.pdf
+  system_phy_set_powerup_option(3); // 3: full RF calibration on reset (200ms)
+  system_phy_set_max_tpw(82);       // 82: max TX power
   //os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
+}
+
+/**
+ * user_rf_cal_sector_set is a required function that is called by the SDK to get a flash
+ * sector number where it can store RF calibration data. This was introduced with SDK 1.5.4.1
+ * and is necessary because Espressif ran out of pre-reserved flash sectors. Ooops...
+ */
+uint32
+user_rf_cal_sector_set(void) {
+  uint32_t sect = 0;
+  switch (system_get_flash_size_map()) {
+  case FLASH_SIZE_4M_MAP_256_256: // 512KB
+    sect = 128 - 10; // 0x76000
+  default:
+    sect = 128; // 0x80000
+  }
+  return sect;
 }
 
 /**

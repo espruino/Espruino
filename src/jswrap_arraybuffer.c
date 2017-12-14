@@ -163,7 +163,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
     arrData = jsvNewFlatStringOfLength((unsigned int)byteLength);
   // if we haven't found one, spread it out
   if (!arrData)
-    arrData = jsvNewStringOfLength((unsigned int)byteLength);
+    arrData = jsvNewStringOfLength((unsigned int)byteLength, NULL);
   if (!arrData) return 0;
   JsVar *v = jsvNewArrayBufferFromString(arrData, (unsigned int)byteLength);
   jsvUnLock(arrData);
@@ -337,7 +337,10 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     jsExceptionHere(JSET_ERROR, "Unsupported first argument of type %t\n", arr);
     return 0;
   }
-  if (length==0) length = (JsVarInt)(jsvGetArrayBufferLength(arrayBuffer) / JSV_ARRAYBUFFER_GET_SIZE(type));
+  if (length==0) {
+    length = (JsVarInt)((jsvGetArrayBufferLength(arrayBuffer)-byteOffset) / JSV_ARRAYBUFFER_GET_SIZE(type)); 
+    if (length<0) length=0;
+  }
   JsVar *typedArr = jsvNewWithFlags(JSV_ARRAYBUFFER);
   if (typedArr) {
     typedArr->varData.arraybuffer.type = type;
@@ -348,7 +351,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     if (copyData) {
       // if we were given an array, populate this ArrayBuffer
       JsvIterator it;
-      jsvIteratorNew(&it, arr);
+      jsvIteratorNew(&it, arr, JSIF_DEFINED_ARRAY_ElEMENTS);
       while (jsvIteratorHasElement(&it)) {
         JsVar *idx = jsvIteratorGetKey(&it);
         if (jsvIsInt(idx)) {
@@ -414,7 +417,7 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
     return;
   }
   JsvIterator itsrc;
-  jsvIteratorNew(&itsrc, arr);
+  jsvIteratorNew(&itsrc, arr, JSIF_EVERY_ARRAY_ELEMENT);
   JsvArrayBufferIterator itdst;
   jsvArrayBufferIteratorNew(&itdst, parent, (size_t)offset);
 
@@ -474,7 +477,7 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
 
   // now iterate
   JsvIterator it; // TODO: if we really are limited to ArrayBuffers, this could be an ArrayBufferIterator.
-  jsvIteratorNew(&it, parent);
+  jsvIteratorNew(&it, parent, JSIF_EVERY_ARRAY_ELEMENT);
   JsvArrayBufferIterator itdst;
   jsvArrayBufferIteratorNew(&itdst, array, 0);
 

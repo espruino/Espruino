@@ -32,68 +32,13 @@ BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 // ----------------------------------------------------------------------------
 
 
-/**
- * Validate that the pin is a good pin.
- * \return True if the pin is valid.
- */
 bool jshIsPinValid(Pin pin) {
   // Note, PIN_UNDEFINED is always > JSH_PIN_COUNT
-  return pin < JSH_PIN_COUNT && pinInfo[pin].port != JSH_PORT_NONE;
+  return pin < JSH_PIN_COUNT && (pinInfo[pin].port&JSH_PORT_MASK) != JSH_PORT_NONE;
 }
 
-/**
- * Get a pin value from an encoded strin.
- * \return A pin value.
- */
 Pin jshGetPinFromString(const char *s) {
-  // !!!FIX!!! This function needs an algorithm description.
-
-  // built in constants
-
-  if (s[0]=='B' && s[1]=='T' && s[2]=='N') {
-#ifdef BTN1_PININDEX
-    if (!s[3]) return BTN1_PININDEX;
-    if (s[3]=='1' && !s[4]) return BTN1_PININDEX;
-#endif
-#ifdef BTN2_PININDEX
-    if (s[3]=='2' && !s[4]) return BTN2_PININDEX;
-#endif
-#ifdef BTN3_PININDEX
-    if (s[3]=='3' && !s[4]) return BTN3_PININDEX;
-#endif
-#ifdef BTN4_PININDEX
-    if (s[3]=='4' && !s[4]) return BTN4_PININDEX;
-#endif
-  }
-  if (s[0]=='L' && s[1]=='E' && s[2]=='D') {
-#ifdef LED1_PININDEX
-    if (!s[3]) return LED1_PININDEX;
-    if (s[3]=='1' && !s[4]) return LED1_PININDEX;
-#endif
-#ifdef LED2_PININDEX
-    if (s[3]=='2' && !s[4]) return LED2_PININDEX;
-#endif
-#ifdef LED3_PININDEX
-    if (s[3]=='3' && !s[4]) return LED3_PININDEX;
-#endif
-#ifdef LED4_PININDEX
-    if (s[3]=='4' && !s[4]) return LED4_PININDEX;
-#endif
-#ifdef LED5_PININDEX
-    if (s[3]=='5' && !s[4]) return LED5_PININDEX;
-#endif
-#ifdef LED6_PININDEX
-    if (s[3]=='6' && !s[4]) return LED6_PININDEX;
-#endif
-#ifdef LED7_PININDEX
-    if (s[3]=='7' && !s[4]) return LED7_PININDEX;
-#endif
-#ifdef LED8_PININDEX
-    if (s[3]=='8' && !s[4]) return LED8_PININDEX;
-#endif
-  }
-
-  if ((s[0]>='A' && s[0]<='H') && s[1]) {
+  if ((s[0]>='A' && s[0]<='I') && s[1]) {
     int port = JSH_PORTA+s[0]-'A';
     int pin = -1;
     if (s[1]>='0' && s[1]<='9') {
@@ -111,7 +56,7 @@ Pin jshGetPinFromString(const char *s) {
 #ifdef PIN_NAMES_DIRECT
       int i;
       for (i=0;i<JSH_PIN_COUNT;i++)
-        if (pinInfo[i].port == port && pinInfo[i].pin==pin)
+        if ((pinInfo[i].port&JSH_PORT_MASK) == port && pinInfo[i].pin==pin)
           return (Pin)i;
 #else
       if (port == JSH_PORTA) {
@@ -138,6 +83,10 @@ Pin jshGetPinFromString(const char *s) {
       } else if (port == JSH_PORTH) {
         if (pin<JSH_PORTH_COUNT) return (Pin)(JSH_PORTH_OFFSET + pin);
 #endif
+#if JSH_PORTI_OFFSET!=-1
+      } else if (port == JSH_PORTI) {
+        if (pin<JSH_PORTI_COUNT) return (Pin)(JSH_PORTI_OFFSET + pin);
+#endif
       }
 #endif
     }
@@ -146,12 +95,12 @@ Pin jshGetPinFromString(const char *s) {
   return PIN_UNDEFINED;
 }
 
-/** Write the pin name to a string. String must have at least 8 characters (to be safe) */
+/** Write the pin name to a string. String must have at least 10 characters (to be safe) */
 void jshGetPinString(char *result, Pin pin) {
   result[0] = 0; // just in case
 #ifdef PIN_NAMES_DIRECT
   if (jshIsPinValid(pin)) {
-    result[0] = (char)('A'+pinInfo[pin].port-JSH_PORTA);
+    result[0] = (char)('A'+(pinInfo[pin].port&JSH_PORT_MASK)-JSH_PORTA);
     itostr(pinInfo[pin].pin-JSH_PIN0,&result[1],10);
 #else
     if (
@@ -190,9 +139,14 @@ void jshGetPinString(char *result, Pin pin) {
       result[0]='H';
       itostr(pin-JSH_PORTH_OFFSET,&result[1],10);
 #endif
+#if JSH_PORTI_OFFSET!=-1
+    } else if (pin>=JSH_PORTI_OFFSET && pin<JSH_PORTI_OFFSET+JSH_PORTI_COUNT) {
+      result[0]='I';
+      itostr(pin-JSH_PORTI_OFFSET,&result[1],10);
+#endif
 #endif
     } else {
-      strncpy(result, "undefined", 8);
+      strncpy(result, "undefined", 10);
     }
   }
 
@@ -289,6 +243,27 @@ JshPinFunction jshGetPinFunctionFromDevice(IOEventFlags device) {
    case EV_I2C1    : return JSH_I2C1;
    case EV_I2C2    : return JSH_I2C2;
    case EV_I2C3    : return JSH_I2C3;
+   default: return 0;
+ }
+}
+
+// Convert a jshPinFunction to an event type flag
+IOEventFlags jshGetFromDevicePinFunction(JshPinFunction func) {
+ switch (func & JSH_MASK_TYPE) {
+   case JSH_USART1 : return EV_SERIAL1;
+   case JSH_USART2 : return EV_SERIAL2;
+   case JSH_USART3 : return EV_SERIAL3;
+   case JSH_USART4 : return EV_SERIAL4;
+   case JSH_USART5 : return EV_SERIAL5;
+   case JSH_USART6 : return EV_SERIAL6;
+
+   case JSH_SPI1    : return EV_SPI1;
+   case JSH_SPI2    : return EV_SPI2;
+   case JSH_SPI3    : return EV_SPI3;
+
+   case JSH_I2C1    : return EV_I2C1;
+   case JSH_I2C2    : return EV_I2C2;
+   case JSH_I2C3    : return EV_I2C3;
    default: return 0;
  }
 }

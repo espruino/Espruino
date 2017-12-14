@@ -20,12 +20,19 @@ info = {
  'variables' : 500,
  'binary_name' : 'espruino_%v_stm32vldiscovery.bin',
  'build' : {
-  'defines' : [
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'SAVE_ON_FLASH=1',
+     'STLIB=STM32F10X_MD_VL',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o'
    ]
  }
 };
 chip = {
-  'part' : "STM32F100RBT6", 
+  'part' : "STM32F100RBT6",
   'family' : "STM32F1",
   'package' : "LQFP64",
   'ram' : 8,
@@ -47,8 +54,8 @@ devices = {
   'BTN1' : { 'pin' : 'A0' },
   'JTAG' : {
         'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-        'pin_DI' : 'A15' 
+        'pin_CK' : 'A14',
+        'pin_DI' : 'A15'
           },
 };
 

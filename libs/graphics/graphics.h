@@ -66,7 +66,7 @@ typedef struct {
 typedef struct JsGraphics {
   JsVar *graphicsVar; // this won't be locked again - we just know that it is already locked by something else
   JsGraphicsData data;
-  unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero  
+  unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero
 
   void (*setPixel)(struct JsGraphics *gfx, short x, short y, unsigned int col);
   void (*fillRect)(struct JsGraphics *gfx, short x1, short y1, short x2, short y2);
@@ -99,6 +99,8 @@ void         graphicsClear(JsGraphics *gfx);
 void         graphicsFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2); // Simple fillrect - doesn't call device-specific FR
 void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
+void graphicsDrawCircle(JsGraphics *gfx, short posX, short posY, short rad);
+void graphicsFillCircle(JsGraphics *gfx, short x, short y, short rad);
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str);
 void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); // may overwrite vertices...

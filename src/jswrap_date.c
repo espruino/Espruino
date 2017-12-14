@@ -29,13 +29,23 @@ const short YDAYS[4] = {0,365,365*2,365*3+1};
 const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec";
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
+/// return time zone in minutes
+static int getTimeZone() {
+#ifdef SAVE_ON_FLASH
+  return 0;
+#else
+  return jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR, 0));
+#endif
+}
+
 /* NOTE: we use / and % here because the compiler is smart enough to
  * condense them into one op. */
-
-TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in) {
+TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT) {
   TimeInDay t;
+  t.zone = forceGMT ? 0 : getTimeZone();
+  ms_in += t.zone*60000;
   t.daysSinceEpoch = (int)(ms_in / MSDAY);
-  
+
   int ms = (int)(ms_in - ((JsVarFloat)t.daysSinceEpoch * MSDAY));
   if (ms<0) {
     ms += MSDAY;
@@ -47,7 +57,7 @@ TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in) {
   s = s % 3600;
   t.min = s/60;
   t.sec = s%60;
-  t.zone = 0;
+
   return t;
 }
 
@@ -58,6 +68,7 @@ JsVarFloat fromTimeInDay(TimeInDay *td) {
 // First calculate the number of four-year-interval, so calculation
 // of leap year will be simple. Btw, because 2000 IS a leap year and
 // 2100 is out of range, the formlua is simplified
+// dow,date/day/month/year will always be in range
 CalendarDate getCalendarDate(int d) {
   int y,m;
   const short *mdays=DAYS;
@@ -90,18 +101,15 @@ CalendarDate getCalendarDate(int d) {
 
   date.year=y;
 
-  //Find the month
-
+  // Find the month
   m=0;
-  while (mdays[m]<d+1) {
-    m++;
-  }
+  while (mdays[m]<d+1 && m<12) m++;
   date.month=m-1;
   date.day=d - mdays[date.month]+1;
 
-
   // Calculate day of week. Sunday is 0
   date.dow=(date.daysSinceEpoch+BASE_DOW)%7;
+  if (date.dow<0) date.dow+=7;
   return date;
 };
 
@@ -109,6 +117,7 @@ int fromCalenderDate(CalendarDate *date) {
   int y=date->year - 1970;
   int f=y/4;
   int yf=y%4;
+  if (yf<0) yf+=4;
   const short *mdays;
 
   int ydays=yf*YDAY;
@@ -122,7 +131,10 @@ int fromCalenderDate(CalendarDate *date) {
   if (yf>=2)
     ydays=ydays+1;
 
-  return f*FDAY+YDAYS[yf]+mdays[date->month]+date->day-1;
+  int m = date->month%12;
+  if (m<0) m+=12;
+
+  return f*FDAY+YDAYS[yf]+mdays[m]+date->day-1;
 };
 
 
@@ -148,7 +160,12 @@ static int getDay(const char *s) {
   "type" : "class",
   "class" : "Date"
 }
-The built-in class for handling Dates
+The built-in class for handling Dates.
+
+**Note:** By default the time zone is GMT+0, however you can change the
+timezone using the `E.setTimeZone(...)` function.
+
+For example `E.setTimeZone(1)` will be GMT+0100
  */
 
 /*JSON{
@@ -168,8 +185,7 @@ JsVarFloat jswrap_date_now() {
 
 JsVar *jswrap_date_from_milliseconds(JsVarFloat time) {
   JsVar *d = jspNewObject(0,"Date");
-  if (!d) return 0;
-  jsvObjectSetChildAndUnLock(d, "ms", jsvNewFromFloat(time));
+  jswrap_date_setTime(d, time);
   return d;
 }
 
@@ -204,15 +220,15 @@ JsVar *jswrap_date_constructor(JsVar *args) {
   } else {
     CalendarDate date;
     date.year = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 0));
-    date.month = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 1));
-    date.day = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 2));
+    date.month = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 1)));
+    date.day = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 2)));
     TimeInDay td;
     td.daysSinceEpoch = fromCalenderDate(&date);
-    td.hour = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 3));
-    td.min = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4));
-    td.sec = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5));
-    td.ms = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6));
-    td.zone = 0;
+    td.hour = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 3)) % 24);
+    td.min = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4)) % 60);
+    td.sec = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5)) % 60);
+    td.ms = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6)) % 1000);
+    td.zone = getTimeZone();
     time = fromTimeInDay(&td);
   }
 
@@ -255,13 +271,31 @@ Return the number of milliseconds since 1970
 JsVarFloat jswrap_date_getTime(JsVar *date) {
   return jsvGetFloatAndUnLock(jsvObjectGetChild(date, "ms", 0));
 }
-
-static TimeInDay getTimeFromDateVar(JsVar *date) {
-  return getTimeFromMilliSeconds(jswrap_date_getTime(date));
+/*JSON{
+  "type" : "method",
+  "class" : "Date",
+  "name" : "getTime",
+  "generate" : "jswrap_date_setTime",
+  "params" : [
+    ["timeValue","float","the number of milliseconds since 1970"]
+  ],
+  "return" : ["float","the number of milliseconds since 1970"]
+}
+Set the time/date of this Date class
+ */
+JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue) {
+  if (date)
+    jsvObjectSetChildAndUnLock(date, "ms", jsvNewFromFloat(timeValue));
+  return timeValue;
 }
 
-static CalendarDate getCalendarDateFromDateVar(JsVar *date) {
-  return getCalendarDate(getTimeFromDateVar(date).daysSinceEpoch);
+
+static TimeInDay getTimeFromDateVar(JsVar *date, bool forceGMT) {
+  return getTimeFromMilliSeconds(jswrap_date_getTime(date), forceGMT);
+}
+
+static CalendarDate getCalendarDateFromDateVar(JsVar *date, bool forceGMT) {
+  return getCalendarDate(getTimeFromDateVar(date, forceGMT).daysSinceEpoch);
 }
 
 
@@ -275,7 +309,7 @@ static CalendarDate getCalendarDateFromDateVar(JsVar *date) {
 0..23
  */
 int jswrap_date_getHours(JsVar *parent) {
-  return getTimeFromDateVar(parent).hour;
+  return getTimeFromDateVar(parent, false/*system timezone*/).hour;
 }
 
 /*JSON{
@@ -288,7 +322,7 @@ int jswrap_date_getHours(JsVar *parent) {
 0..59
  */
 int jswrap_date_getMinutes(JsVar *parent) {
-  return getTimeFromDateVar(parent).min;
+  return getTimeFromDateVar(parent, false/*system timezone*/).min;
 }
 
 /*JSON{
@@ -301,7 +335,7 @@ int jswrap_date_getMinutes(JsVar *parent) {
 0..59
  */
 int jswrap_date_getSeconds(JsVar *parent) {
-  return getTimeFromDateVar(parent).sec;
+  return getTimeFromDateVar(parent, false/*system timezone*/).sec;
 }
 
 /*JSON{
@@ -314,7 +348,7 @@ int jswrap_date_getSeconds(JsVar *parent) {
 0..999
  */
 int jswrap_date_getMilliseconds(JsVar *parent) {
-  return getTimeFromDateVar(parent).ms;
+  return getTimeFromDateVar(parent, false/*system timezone*/).ms;
 }
 
 /*JSON{
@@ -327,7 +361,7 @@ int jswrap_date_getMilliseconds(JsVar *parent) {
 Day of the week (0=sunday, 1=monday, etc)
  */
 int jswrap_date_getDay(JsVar *parent) {
-  return getCalendarDateFromDateVar(parent).dow;
+  return getCalendarDateFromDateVar(parent, false/*system timezone*/).dow;
 }
 
 /*JSON{
@@ -340,7 +374,7 @@ int jswrap_date_getDay(JsVar *parent) {
 Day of the month 1..31
  */
 int jswrap_date_getDate(JsVar *parent) {
-  return getCalendarDateFromDateVar(parent).day;
+  return getCalendarDateFromDateVar(parent, false/*system timezone*/).day;
 }
 
 
@@ -354,7 +388,7 @@ int jswrap_date_getDate(JsVar *parent) {
 Month of the year 0..11
  */
 int jswrap_date_getMonth(JsVar *parent) {
-  return getCalendarDateFromDateVar(parent).month;
+  return getCalendarDateFromDateVar(parent, false/*system timezone*/).month;
 }
 
 /*JSON{
@@ -367,8 +401,180 @@ int jswrap_date_getMonth(JsVar *parent) {
 The year, eg. 2014
  */
 int jswrap_date_getFullYear(JsVar *parent) {
-  return getCalendarDateFromDateVar(parent).year;
+  return getCalendarDateFromDateVar(parent, false/*system timezone*/).year;
 }
+
+
+/// -------------------------------------------------------
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setHours",
+  "generate" : "jswrap_date_setHours",
+  "params" : [
+    ["hoursValue","int","number of hours, 0..23"],
+    ["minutesValue","JsVar","number of minutes, 0..59"],
+    ["secondsValue","JsVar","optional - number of seconds, 0..59"],
+    ["millisecondsValue","JsVar","optional - number of milliseconds, 0..999"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+0..23
+ */
+JsVarFloat jswrap_date_setHours(JsVar *parent, int hoursValue, JsVar *minutesValue, JsVar *secondsValue, JsVar *millisecondsValue) {
+  TimeInDay td = getTimeFromDateVar(parent, false/*system timezone*/);
+  td.hour = hoursValue;
+  if (jsvIsNumeric(minutesValue))
+    td.min = jsvGetInteger(minutesValue);
+  if (jsvIsNumeric(secondsValue))
+    td.sec = jsvGetInteger(secondsValue);
+  if (jsvIsNumeric(millisecondsValue))
+    td.ms = jsvGetInteger(millisecondsValue);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setMinutes",
+  "generate" : "jswrap_date_setMinutes",
+  "params" : [
+    ["minutesValue","int","number of minutes, 0..59"],
+    ["secondsValue","JsVar","optional - number of seconds, 0..59"],
+    ["millisecondsValue","JsVar","optional - number of milliseconds, 0..999"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+0..59
+ */
+JsVarFloat jswrap_date_setMinutes(JsVar *parent, int minutesValue, JsVar *secondsValue, JsVar *millisecondsValue) {
+  TimeInDay td = getTimeFromDateVar(parent, false/*system timezone*/);
+  td.min = minutesValue;
+  if (jsvIsNumeric(secondsValue))
+    td.sec = jsvGetInteger(secondsValue);
+  if (jsvIsNumeric(millisecondsValue))
+    td.ms = jsvGetInteger(millisecondsValue);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setSeconds",
+  "generate" : "jswrap_date_setSeconds",
+  "params" : [
+    ["secondsValue","int","number of seconds, 0..59"],
+    ["millisecondsValue","JsVar","optional - number of milliseconds, 0..999"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+0..59
+ */
+JsVarFloat jswrap_date_setSeconds(JsVar *parent, int secondsValue, JsVar *millisecondsValue) {
+  TimeInDay td = getTimeFromDateVar(parent, false/*system timezone*/);
+  td.sec = secondsValue;
+  if (jsvIsNumeric(millisecondsValue))
+    td.ms = jsvGetInteger(millisecondsValue);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setMilliseconds",
+  "generate" : "jswrap_date_setMilliseconds",
+  "params" : [
+    ["millisecondsValue","int","number of milliseconds, 0..999"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+ */
+JsVarFloat jswrap_date_setMilliseconds(JsVar *parent, int millisecondsValue) {
+  TimeInDay td = getTimeFromDateVar(parent, false/*system timezone*/);
+  td.ms = millisecondsValue;
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setDate",
+  "generate" : "jswrap_date_setDate",
+  "params" : [
+    ["dayValue","int","the day of the month, between 0 and 31"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+Day of the month 1..31
+ */
+JsVarFloat jswrap_date_setDate(JsVar *parent, int dayValue) {
+  TimeInDay td = getTimeFromDateVar(parent, false/*system timezone*/);
+  CalendarDate d = getCalendarDate(td.daysSinceEpoch);
+  d.day = dayValue;
+  td.daysSinceEpoch = fromCalenderDate(&d);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setMonth",
+  "generate" : "jswrap_date_setMonth",
+  "params" : [
+    ["yearValue","int","The month, between 0 and 11"],
+    ["dayValue","JsVar","optional - the day, between 0 and 31"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+Month of the year 0..11
+ */
+JsVarFloat jswrap_date_setMonth(JsVar *parent, int monthValue, JsVar *dayValue) {
+  TimeInDay td = getTimeFromDateVar(parent, false/*system timezone*/);
+  CalendarDate d = getCalendarDate(td.daysSinceEpoch);
+  d.month = monthValue;
+  if (jsvIsNumeric(dayValue))
+    d.day = jsvGetInteger(dayValue);
+  td.daysSinceEpoch = fromCalenderDate(&d);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "setFullYear",
+  "generate" : "jswrap_date_setFullYear",
+  "params" : [
+    ["yearValue","int","The full year - eg. 1989"],
+    ["yearValue","JsVar","optional - the month, between 0 and 11"],
+    ["dayValue","JsVar","optional - the day, between 0 and 31"]
+  ],
+  "return" : ["float","The number of milliseconds since 1970"]
+}
+ */
+JsVarFloat jswrap_date_setFullYear(JsVar *parent, int yearValue, JsVar *monthValue, JsVar *dayValue) {
+  TimeInDay td = getTimeFromDateVar(parent, false/*system timezone*/);
+  CalendarDate d = getCalendarDate(td.daysSinceEpoch);
+  d.year = yearValue;
+  if (jsvIsNumeric(monthValue))
+    d.month = jsvGetInteger(monthValue);
+  if (jsvIsNumeric(dayValue))
+    d.day = jsvGetInteger(dayValue);
+  td.daysSinceEpoch = fromCalenderDate(&d);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
+}
+
+
+/// -------------------------------------------------------
+
 
 /*JSON{
   "type" : "method",
@@ -379,13 +585,24 @@ int jswrap_date_getFullYear(JsVar *parent) {
 }
 Converts to a String, eg: `Fri Jun 20 2014 14:52:20 GMT+0000`
 
- **Note:** This always assumes a timezone of GMT+0000
- */
+ **Note:** This uses whatever timezone was set with `E.setTimeZone()`
+*/
 JsVar *jswrap_date_toString(JsVar *parent) {
-  TimeInDay time = getTimeFromDateVar(parent);
+  TimeInDay time = getTimeFromDateVar(parent, false/*system timezone*/);
   CalendarDate date = getCalendarDate(time.daysSinceEpoch);
-
-  return jsvVarPrintf("%s %s %d %d %02d:%02d:%02d GMT+0000", &DAYNAMES[date.dow*4], &MONTHNAMES[date.month*4], date.day, date.year, time.hour, time.min, time.sec);
+  char zonesign;
+  int zone;
+  if (time.zone<0) {
+    zone = -time.zone;
+    zonesign = '-';
+  } else {
+    zone = +time.zone;
+    zonesign = '+';
+  }
+  return jsvVarPrintf("%s %s %d %d %02d:%02d:%02d GMT%c%04d",
+      &DAYNAMES[date.dow*4], &MONTHNAMES[date.month*4], date.day, date.year,
+      time.hour, time.min, time.sec,
+      zonesign, ((zone/60)*100)+(zone%60));
 }
 
 /*JSON{
@@ -400,10 +617,28 @@ Converts to a String, eg: `Fri, 20 Jun 2014 14:52:20 GMT`
  **Note:** This always assumes a timezone of GMT
  */
 JsVar *jswrap_date_toUTCString(JsVar *parent) {
-  TimeInDay time = getTimeFromDateVar(parent);
+  TimeInDay time = getTimeFromDateVar(parent, true/*GMT*/);
   CalendarDate date = getCalendarDate(time.daysSinceEpoch);
 
   return jsvVarPrintf("%s, %d %s %d %02d:%02d:%02d GMT", &DAYNAMES[date.dow*4], date.day, &MONTHNAMES[date.month*4], date.year, time.hour, time.min, time.sec);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Date",
+  "name" : "toISOString",
+  "generate" : "jswrap_date_toISOString",
+  "return" : ["JsVar","A String"]
+}
+Converts to a ISO 8601 String, eg: `2014-06-20T14:52:20.123Z`
+
+ **Note:** This always assumes a timezone of GMT
+ */
+JsVar *jswrap_date_toISOString(JsVar *parent) {
+  TimeInDay time = getTimeFromDateVar(parent, true/*GMT*/);
+  CalendarDate date = getCalendarDate(time.daysSinceEpoch);
+
+  return jsvVarPrintf("%d-%02d-%02dT%02d:%02d:%02d.%03dZ", date.year, date.month+1, date.day, time.hour, time.min, time.sec, time.ms);
 }
 
 static JsVarInt _parse_int() {
@@ -426,6 +661,7 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
           time->ms = (int)(f*1000) % 1000;
           jslGetNextToken();
           if (lex->tk == LEX_ID && strcmp(jslGetTokenValueAsString(),"GMT")==0) {
+            time->zone = 0;
             jslGetNextToken();
           }
           if (lex->tk == '+' || lex->tk == '-') {
@@ -480,6 +716,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
     date.dow = getDay(jslGetTokenValueAsString());
     if (date.month>=0) {
       // Aug 9, 1995
+      time.zone = getTimeZone();
       jslGetNextToken();
       if (lex.tk == LEX_INT) {
         date.day = _parse_int();
@@ -496,6 +733,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
         }
       }
     } else if (date.dow>=0) {
+      time.zone = getTimeZone();
       date.month = 0;
       jslGetNextToken();
       if (lex.tk==',') {
@@ -535,6 +773,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
             date.day = _parse_int();
             jslGetNextToken();
             if (lex.tk == LEX_ID && jslGetTokenValueAsString()[0]=='T') {
+              time.zone = getTimeZone();
               _parse_time(&time, 1);
             }
           }

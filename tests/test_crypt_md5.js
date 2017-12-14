@@ -321,7 +321,7 @@ function binl_md5(x, len)
     a = md5_ii(a, b, c, d, x[i+ 8], 6 ,  1873313359);
     d = md5_ii(d, a, b, c, x[i+15], 10, -30611744);
     c = md5_ii(c, d, a, b, x[i+ 6], 15, -1560198380);
-    b = md5_ii(b, c, d, a, x[i+13], 21,  1309151649);b
+    b = md5_ii(b, c, d, a, x[i+13], 21,  1309151649);
     
     a = md5_ii(a, b, c, d, x[i+ 4], 6 , -145523070);
     d = md5_ii(d, a, b, c, x[i+11], 10, -1120210379);

@@ -20,11 +20,19 @@ info = {
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_hystm32_28_rb.bin',
  'build' : {
-   'defines' : [
-     'USE_GRAPHICS',
-     'USE_LCD_FSMC'
-   ]
- }
+    'optimizeflags' : '-Os',
+    'libraries' : [
+      'GRAPHICS',
+      'LCD_FSMC',
+      'NEOPIXEL'
+    ],
+    'makefile' : [
+      'SAVE_ON_FLASH=1',
+      'STLIB=STM32F10X_MD',
+      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o',
+      'DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes'
+    ]
+  }
 };
 chip = {
   'part' : "STM32F103RB", #T6
@@ -97,8 +105,8 @@ devices = {
           },
   'JTAG' : {
         'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-        'pin_DI' : 'A15' 
+        'pin_CK' : 'A14',
+        'pin_DI' : 'A15'
           }
 };
 

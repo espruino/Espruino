@@ -13,6 +13,10 @@
 # jswrap_*.c files
 # ----------------------------------------------------------------------------------------
 
+# Needs:
+#    pip install markdown
+#    pip install markdown-urlize
+
 import subprocess;
 import re;
 import json;
@@ -21,14 +25,16 @@ import os;
 sys.path.append(".");
 import common
 import urllib2
+import markdown
+import htmlentitydefs
 
-# Scans files for comments of the form /*JSON......*/ and then writes out an HTML file describing 
+# Scans files for comments of the form /*JSON......*/ and then writes out an HTML file describing
 # all the functions
 
 # htmldev default is False
 # if htmldev is set to True indicating 'html development mode', script:
 # - creates standalone html version for temporary html generation development by:
-# --- inserting a searchbox text input to test top link function  
+# --- inserting a searchbox text input to test top link function
 # --- skipping MDN links dump and validation to complete quicker
 
 htmldev = False
@@ -63,53 +69,27 @@ htmlFile = open('functions.html', 'w')
 def html(s): htmlFile.write(s+"\n");
 
 def htmlify(d):
-  d = re.sub(r'\n\s*```\n?([^`]+)```', r'\n   <p class=\"description\"><pre><code>\1</code></pre></p>', d) # code tags
-  d = re.sub(r'```\n?([^`]+)```', r'\n<code>\1</code>', d) # code tags
-  d = re.sub(r'`([^`]+)`', r'<code>\1</code>', d) # code tags
-  d = re.sub(r'\[([^\]]*)\]\(([^\)]*)\)', r'<a href="\2">\1</a>', d) # links tags
-  d = re.sub(r'([^">])(http://[^ ]+)', r'\1<a href="\2">\2</a>', d) # links tags
-  d = re.sub(r'\n###([^\n]*)', r'<B>\1</B>', d) # Heading
-
-  lines = d.split("\n");
-  lines.append("");
-  starStart = False
-  for idx in range(0, len(lines)):
-    line = lines[idx]
-    if line[0:2]=="* " and starStart==False: 
-      starStart=idx
-    if line[0:2]!="* ":
-      if starStart!=False and starStart+2<=idx:
-        l = lines[starStart:idx]
-        for i in range(0,len(l)):
-          l[i] = "<li>"+l[i][1:]+"</li>"
-        lines = lines[0:starStart-1]+["<ul>"]+l+["</ul>"]+lines[idx:]
-        idx += 2+len(l)
-      starStart = False
-  d = "\n".join(lines);
-  
-  d = re.sub(r'\*\*([^*]*)\*\*', r'<b>\1</b>', d) # bold
-  d = re.sub(r'\*([^*]*)\*', r'<i>\1</i>', d) # italic
-  return d
+  d = markdown.markdown(d, extensions=['urlize'])
+  # replace <code> with newlines with pre
+  idx = d.find("<code>")
+  end = d.find("</code>", idx)
+  while idx>=0 and end>idx:
+    codeBlock = d[idx:end+7]
+    if codeBlock.find("\n")>=0:
+      d = d[0:idx]+"<pre>"+codeBlock+"</pre>"+d[end+7:];
+    idx = d.find("<code>", end+7+5+6)
+    end = d.find("</code>", idx)
+  return d;
 
 def html_description(d,current):
   if isinstance(d, list): d = "\n".join(d)
+  d = htmlify(d)
   for link in links:
     if link!=current:
       d = d.replace(" "+link+" ", " <a href=\"#"+links[link]+"\">"+link+"</a> ")
       d = d.replace(" "+link+".", " <a href=\"#"+links[link]+"\">"+link+"</a>.")
-      d = d.replace(" "+link+"(", " <a href=\"#"+links[link]+"\">"+link+"</a>(")    
-  # Apply <p>, but not inside code snippets
-  inCode = False
-  final = ""
-  for s in htmlify(d).splitlines():
-    if "<code>" in s: inCode = True
-    singleLine = "<code>" in s and "</code>" in s
-    if singleLine or not inCode : final = final + "   <p class=\"description\">"
-    final = final + s
-    if singleLine or not inCode : final = final + "</p>"
-    final = final + "\n"
-    if "</code>" in s: inCode = False
-  html(final)
+      d = d.replace(" "+link+"(", " <a href=\"#"+links[link]+"\">"+link+"</a>(")
+  html("<div class=\"description\">\n" + d + "\n</div>\n")
 
 def get_prefixed_name(jsondata):
   s=""
@@ -143,7 +123,8 @@ def get_surround(jsondata):
   if jsondata["type"]!="constructor":
     if "class" in jsondata: s=s+jsondata["class"]+"."
   s=s+jsondata["name"]
-  s=s+get_arguments(jsondata)
+  if jsondata["type"]!="object":
+    s=s+get_arguments(jsondata)
   return s
 
 def get_code(jsondata):
@@ -161,6 +142,14 @@ def get_link(jsondata):
     s=s+"_global_"
   s=s+jsondata["name"]
   return s
+
+def html_escape(text):
+  escaped_chars = ""
+  for c in text:
+    if (ord(c) < 32) or (ord(c) > 126):
+      c = '&{};'.format(htmlentitydefs.codepoint2name[ord(c)])
+    escaped_chars = escaped_chars + c
+  return escaped_chars
 
 # If MDN doesn't 404 then include a link to it
 def insert_mdn_link(jsondata):
@@ -213,13 +202,13 @@ html("  .fwrdblush { background-color: gold; }")
 html("  .bwrdblush { background-color: lightblue; }")
 html("  </style>")
 html("  <script>function vpos(nme,f) {")
-html("  }</script>")
-html("  <script>function blush(node){")
+html("  }")
+html("  function blush(node){")
 html("    var clazz = (node.name && node.name.substr(0,2) === \"t_\") ? \"bwrdblush\" : \"fwrdblush\";")
 html("    node.className = node.className + \" \" + clazz;")
 html("    setTimeout(function(){ node.className = node.className.replace(new RegExp(\"\\s*\" + clazz + \"\\s*\",\"g\"),\"\"); },750);")
-html("  }</script>")
-html("  <script>function place(nme){")
+html("  }")
+html("  function place(nme){")
 html("    var ns = document.getElementsByName(nme);")
 html("    if (ns.length > 0) {")
 html("      var n = ns[0], t = 0 - Math.floor(window.innerHeight * 0.2);")
@@ -228,8 +217,8 @@ html("      blush(ns[0]);")
 html("      setTimeout(function(){ window.scroll(0,(t < 0) ? 0 : t); },10);")
 html("    }")
 html("    return true;")
-html("  }</script>")
-html("  <script>function toppos(){")
+html("  }")
+html("  function toppos(){")
 html("    document.location=\"#top\"")
 html("    var ns = document.getElementsByName(\"searchbox\"), n;")
 html("    if ((ns.length > 0) && (typeof (n = ns[0]).value !== \"undefined\")) {")
@@ -250,45 +239,44 @@ detail = []
 links = {}
 jsondatas = sorted(jsondatas, key=lambda s: common.get_name_or_space(s).lower())
 
-html("  <h2><a name=\"contents\">Contents</a></h2>")
-html("  <h3><a class=\"blush\" name=\"t__global\" href=\"#_global\" onclick=\"place('_global');\">Globals</A></h3>")
+html('  <div id="contents">')
+html("  <h2><a name=\"contents\"></a>Contents</h2>")
 html("  <ul>")
+html("  <li><a class=\"blush\" name=\"t__global\" href=\"#_global\" onclick=\"place('_global');\">Globals</A></li>")
 for jsondata in jsondatas:
-  if "name" in jsondata and not "class" in jsondata and not jsondata["type"]=="object":
+  if "name" in jsondata and not "class" in jsondata:
     link = get_link(jsondata)
-    html("    <li><a class=\"blush\" name=\"t_"+link+"\" href=\"#"+link+"\" onclick=\"place('"+link+"');\">"+get_surround(jsondata)+"</a></li>")
     if not "no_create_links" in jsondata:
       links[get_prefixed_name(jsondata)] = link
     detail.append(jsondata)
 for className in sorted(classes, key=lambda s: s.lower()):
-  html("  </ul>")
-  html("  <h3><a class=\"blush\" name=\"t_"+className+"\" href=\"#"+className+"\" onclick=\"place('"+className+"');\">"+className+"</a></h3>")
-  html("  <ul>")
+  html("  <li><a class=\"blush\" name=\"t_"+className+"\" href=\"#"+className+"\" onclick=\"place('"+className+"');\">"+className+"</a></li>")
   for jsondata in jsondatas:
     if "name" in jsondata and "class" in jsondata and jsondata["class"]==className:
       link = get_link(jsondata)
-      html("    <li><a class=\"blush\" name=\"t_"+link+"\" href=\"#"+link+"\" onclick=\"place('"+link+"');\">"+get_surround(jsondata)+"</a></li>")
       if not "no_create_links" in jsondata:
         links[get_prefixed_name(jsondata)] = link
       detail.append(jsondata)
 html("  </ul>")
+html('  </div><!-- Contents -->')
 
-html("  <h2>Detail</h2>")
+html("  <a class=\"blush\" name=\"top\"\>");
+#html("  <h2>Detail</h2>")
 lastClass = "XXX"
 for jsondata in detail:
   className = ""
   niceName = ""
   linkName = ""
-  if "class" in jsondata: 
+  if "class" in jsondata:
     className=jsondata["class"]
     if className in libraries:
       niceName=className+" Library"
     else:
       niceName=className+" Class"
     linkName=className
-  else: 
-    className=""                           
-    niceName="Global Functions"
+  else:
+    className=""
+    niceName="Globals"
     linkName="_global"
 
   if className!=lastClass:
@@ -297,7 +285,7 @@ for jsondata in detail:
     html("  <p class=\"top\"><a href=\"javascript:toppos();\">(top)</a></p>")
     for j in jsondatas:
       if (j["type"]=="class" or j["type"]=="library") and j["class"]==className and "description" in j:
-        ds = html_description(j["description"], className)
+        html_description(j["description"], className)
 
     instances = []
     for j in jsondatas:
@@ -305,18 +293,19 @@ for jsondata in detail:
         instances.append(j)
     if len(instances)>0:
       html("  <h4>Instances</h4>")
-      html("  <ul>")
+      text = ""
       for j in instances:
-        html("    <li><p class=\"instance\">"+j["name"]+"</p>");
-        if "description" in j: html_description(j["description"], j["name"])
-        html("    </li>")
-      html("  </ul>")
-    
+        text = text + " * [`"+j["name"]+"`](#l__global_"+j["name"]+")";
+        if "description" in j: text = text + " " + j["description"]
+        text = text + "\n"
+      html_description(text, "")
+
     html("  <h4>Methods and Fields</h4>")
     html("  <ul>")
     for j in jsondatas:
       if ("name" in j) and (className!="" or not "instanceof" in j) and ((className=="" and not "class" in j) or ("class" in j and j["class"]==className)):
-        html("    <li><a href=\"#"+get_link(j)+"\">"+get_surround(j)+"</a></li>")
+        link = get_link(j)
+        html("    <li><a name=\"t_"+link+"\" href=\"#"+link+"\">"+get_surround(j)+"</a></li>")
     html("  </ul>")
   link = get_link(jsondata)
   html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a>")
@@ -324,21 +313,22 @@ for jsondata in detail:
   if "githublink" in jsondata:
     html('<a class="githublink" title="Link to source code on GitHub" href="'+jsondata["githublink"]+'">&rArr;</a>');
   html("</h3>")
-  insert_mdn_link(jsondata);      
+  insert_mdn_link(jsondata);
   html("  <p class=\"top\"><a href=\"javascript:toppos();\">(top)</a></p>")
-  html("  <h4>Call type:</h4>")
-  html("   <p class=\"call\"><code>"+get_code(jsondata)+"</code></p>")
+  if jsondata["type"]!="object":
+    html("  <h4>Call type:</h4>")
+    html("   <div class=\"call\"><code>"+get_code(jsondata)+"</code></div>")
+  elif "instanceof" in jsondata:
+    html("   <h4>Instance of <a href=\"#"+jsondata["instanceof"]+"\"><code>"+jsondata["instanceof"]+"</code></a>")
   if "description" in jsondata:
     html("  <h4>Description</h4>")
     desc = jsondata["description"]
     if not isinstance(desc, list): desc = [ desc ]
     if ("ifdef" in jsondata) or ("ifndef" in jsondata):
-      conds = ""
-      if "ifdef" in jsondata: conds = common.get_ifdef_description(jsondata["ifdef"])
-      if "ifndef" in jsondata: 
-        if conds!="": conds += " and "
-        conds = "not "+common.get_ifdef_description(jsondata["ifndef"])
-      desc.append("<b>Note:</b> This is only available in some devices: "+conds);
+      if "ifdef" in jsondata: 
+        desc.append("\n\n**Note:** This is only available in "+common.get_ifdef_description(jsondata["ifdef"]));
+      if "ifndef" in jsondata:
+        desc.append("\n\n**Note:** This is not available in "+common.get_ifdef_description(jsondata["ifndef"]));      
     html_description(desc, jsondata["name"])
   if "params" in jsondata:
     html("  <h4>Parameters</h4>")
@@ -348,22 +338,22 @@ for jsondata in detail:
       if isinstance(desc, list): desc = '<br/>'.join(desc)
       extra = ""
       if  param[1]=="JsVarArray": extra = ", ...";
-      html("   <p class=\"param\"><b> "+param[0]+extra+"</b> "+htmlify(desc)+"</p>")
+      html("   <div class=\"param\">"+htmlify("`"+param[0]+extra+"` - "+desc)+"</div>")
   if "return" in jsondata:
     html("  <h4>Returns</h4>")
     desc = ""
     if len(jsondata["return"])>1: desc=jsondata["return"][1]
     if desc=="": desc="See description above"
-    html("   <p class=\"return\">"+htmlify(desc)+"</p>")
+    html("   <div class=\"return\">"+htmlify(desc)+"</div>")
 
   url = "http://www.espruino.com/Reference#"+get_link(jsondata)
-  if url in code_uses: 
+  if url in code_uses:
     uses = code_uses[url]
     html("  <h4>Examples</h4>")
     html("  <p class=\"examples\">This function is used in the following places in Espruino's documentation</p>")
-    html("  <ul class=\"examples\">")    
+    html("  <ul class=\"examples\">")
     for link in uses:
-      html('    <li><a href="'+link["url"]+'">'+link["title"]+'</a></li>')
+      html('    <li><a href="'+link["url"]+'">'+html_escape(link["title"])+'</a></li>')
     html("  </ul>")
 
 html(" </body>")
@@ -379,15 +369,15 @@ for j in jsondatas:
     jkeywords = [ j["name"] ]
     if get_prefixed_name(j)!=j["name"]: jkeywords.append(get_prefixed_name(j))
     if "class" in j: jkeywords.append(j["class"])
-    
+
     for k in jkeywords:
       k = k.lower()
-      if not k in keywords: 
+      if not k in keywords:
         keywords[k] = [ item ]
       else:
         keywords[k].append(item)
 
-#print(json.dumps(keywords, sort_keys=True, indent=2)) 
+#print(json.dumps(keywords, sort_keys=True, indent=2))
 keywordFile = open('function_keywords.js', 'w')
 keywordFile.write(json.dumps(keywords, sort_keys=True, indent=2));
 
@@ -401,7 +391,7 @@ for jsondata in jsondatas:
   elif jsondata["type"]=="function" or jsondata["type"]=="variable" or jsondata["type"]=="class":
       if not jsondata["name"] in builtins:
         builtins.append(jsondata["name"])
-print("------------------------------------------------------")    
+print("------------------------------------------------------")
 print('Global classes and functions: '+' '.join(builtins));
 print("------------------------------------------------------")
 

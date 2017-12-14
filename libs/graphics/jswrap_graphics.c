@@ -100,12 +100,12 @@ static bool isValidBPP(int bpp) {
 Create a Graphics object that renders to an Array Buffer. This will have a field called 'buffer' that can get used to get at the buffer itself
 */
 JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *options) {
-  if (width<=0 || height<=0 || width>1023 || height>1023) {
-    jsWarn("Invalid Size");
+  if (width<=0 || height<=0 || width>32767 || height>32767) {
+    jsExceptionHere(JSET_ERROR, "Invalid Size");
     return 0;
   }
   if (!isValidBPP(bpp)) {
-    jsWarn("Invalid BPP");
+    jsExceptionHere(JSET_ERROR, "Invalid BPP");
     return 0;
   }
 
@@ -160,6 +160,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   "type" : "staticmethod",
   "class" : "Graphics",
   "name" : "createCallback",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_createCallback",
   "params" : [
     ["width","int32","Pixels wide"],
@@ -173,12 +174,12 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
 Create a Graphics object that renders by calling a JavaScript callback function to draw pixels
 */
 JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *callback) {
-  if (width<=0 || height<=0 || width>1023 || height>1023) {
-    jsWarn("Invalid Size");
+  if (width<=0 || height<=0 || width>32767 || height>32767) {
+    jsExceptionHere(JSET_ERROR, "Invalid Size");
     return 0;
   }
   if (!isValidBPP(bpp)) {
-    jsWarn("Invalid BPP");
+    jsExceptionHere(JSET_ERROR, "Invalid BPP");
     return 0;
   }
   JsVar *callbackSetPixel = 0;
@@ -233,8 +234,8 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
 Create a Graphics object that renders to SDL window (Linux-based devices only)
 */
 JsVar *jswrap_graphics_createSDL(int width, int height) {
-  if (width<=0 || height<=0 || width>1023 || height>1023) {
-    jsWarn("Invalid Size");
+  if (width<=0 || height<=0 || width>32767 || height>32767) {
+    jsExceptionHere(JSET_ERROR, "Invalid Size");
     return 0;
   }
 
@@ -335,6 +336,44 @@ void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "fillCircle",
+  "generate" : "jswrap_graphics_fillCircle",
+  "params" : [
+    ["x","int32","The X axis"],
+    ["y","int32","The Y axis"],
+    ["rad","int32","The circle radius"]
+  ]
+}
+Draw a filled circle in the Foreground Color
+*/
+ void jswrap_graphics_fillCircle(JsVar *parent, int x, int y, int rad) {
+   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+   graphicsFillCircle(&gfx, (short)x,(short)y,(short)rad);
+   graphicsSetVar(&gfx); // gfx data changed because modified area
+ }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "drawCircle",
+  "generate" : "jswrap_graphics_drawCircle",
+  "params" : [
+    ["x","int32","The X axis"],
+    ["y","int32","The Y axis"],
+    ["rad","int32","The circle radius"]
+  ]
+}
+Draw an unfilled circle 1px wide in the Foreground Color
+*/
+void jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+  graphicsDrawCircle(&gfx, (short)x,(short)y,(short)rad);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "getPixel",
   "generate" : "jswrap_graphics_getPixel",
   "params" : [
@@ -366,7 +405,7 @@ Set a pixel's color
 void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   unsigned int col = gfx.data.fgColor;
-  if (!jsvIsUndefined(color)) 
+  if (!jsvIsUndefined(color))
     col = (unsigned int)jsvGetInteger(color);
   graphicsSetPixel(&gfx, (short)x, (short)y, col);
   gfx.data.cursorX = (short)x;
@@ -510,7 +549,7 @@ Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmapped Font
     ["size","int32","The height of the font, as an integer"]
   ]
 }
-Make subsequent calls to `drawString` use a Vector Font of the given height 
+Make subsequent calls to `drawString` use a Vector Font of the given height
 */
 void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
@@ -520,10 +559,10 @@ void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
     if (size>1023) size=1023;
   }
   if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
-    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, 0);
-    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
-    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0);
-    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0);
+    jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_BMP);
+    jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH);
+    jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT);
+    jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR);
   }
   gfx.data.fontSize = (short)size;
   graphicsSetVar(&gfx);
@@ -596,6 +635,8 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   }
 
+  int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
+  int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
   JsVar *str = jsvAsString(var, false);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
@@ -603,11 +644,14 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     char ch = jsvStringIteratorGetChar(&it);
     if (gfx.data.fontSize>0) {
 #ifndef SAVE_ON_FLASH
-      int w = (int)graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
+      int w = (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
+      if (x>-w && x<maxX  && y>-gfx.data.fontSize && y<maxY)
+        graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
       x+=w;
 #endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
-      graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
+      if (x>-4 && x<maxX && y>-6 && y<maxY)
+        graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
       x+=4;
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
       // get char width and offset in string
@@ -627,7 +671,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
         width = (int)jsvGetInteger(customWidth);
         bmpOffset = width*(ch-customFirstChar);
       }
-      if (ch>=customFirstChar) {
+      if (ch>=customFirstChar && (x>-width) && (x<maxX) && (y>-customHeight) && y<maxY) {
         bmpOffset *= customHeight;
         // now render character
         JsvStringIterator cit;
@@ -782,7 +826,7 @@ void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
   short verts[maxVerts];
   int idx = 0;
   JsvIterator it;
-  jsvIteratorNew(&it, poly);
+  jsvIteratorNew(&it, poly, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&it) && idx<maxVerts) {
     verts[idx++] = (short)jsvIteratorGetIntegerValue(&it);
     jsvIteratorNext(&it);

@@ -26,6 +26,8 @@ void jspSoftKill(); ///< used when recovering from or saving to flash
 /** Returns true if the constructor function given is the same as that
  * of the object with the given name. */
 bool jspIsConstructor(JsVar *constructor, const char *constructorName);
+/** Get the constructor of the given object, or return 0 if ot found, or not a function */
+JsVar *jspGetConstructor(JsVar *object);
 
 /// Create a new built-in object that jswrapper can use to check for built-in functions
 JsVar *jspNewBuiltin(const char *name);
@@ -53,6 +55,8 @@ JsVar *jspGetException();
 /** Return a stack trace string if there was one (and clear it) */
 JsVar *jspGetStackTrace();
 
+/** Evaluate the given variable as an expression (in current scope) */
+JsVar *jspEvaluateExpressionVar(JsVar *str);
 /** Execute code form a variable and return the result. If lineNumberOffset
  * is nonzero it's added to the line numbers that get reported for errors/debug */
 JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset);
@@ -79,22 +83,23 @@ typedef enum  {
   EXEC_YES = 1,
   EXEC_BREAK = 2,     // Have we had a 'break' keyword (so should skip to end of loop and exit)
   EXEC_CONTINUE = 4,  // Have we had a 'continue' keywrord (so should skip to end of loop and restart)
+  EXEC_RETURN = 8,    // Have we had a 'return' keyword (so should skip to end of the function)
 
-  EXEC_INTERRUPTED = 8, // true if execution has been interrupted
-  EXEC_EXCEPTION = 16, // we had an exception, so don't execute until we hit a try/catch block
-  EXEC_ERROR = 32,
-  EXEC_ERROR_LINE_REPORTED = 64, // if an error has been reported, set this so we don't do it too much (EXEC_ERROR will STILL be set)
+  EXEC_INTERRUPTED = 16, // true if execution has been interrupted
+  EXEC_EXCEPTION = 32, // we had an exception, so don't execute until we hit a try/catch block
+  EXEC_ERROR = 64,
+  EXEC_ERROR_LINE_REPORTED = 128, // if an error has been reported, set this so we don't do it too much (EXEC_ERROR will STILL be set)
 
-  EXEC_FOR_INIT = 128, // when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
-  EXEC_IN_LOOP = 256, // when in a loop, set this - we can then block break/continue outside it
-  EXEC_IN_SWITCH = 512, // when in a switch, set this - we can then block break outside it/loops
+  EXEC_FOR_INIT = 256, // when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
+  EXEC_IN_LOOP = 512, // when in a loop, set this - we can then block break/continue outside it
+  EXEC_IN_SWITCH = 1024, // when in a switch, set this - we can then block break outside it/loops
 
   /** If Ctrl-C is pressed, the EXEC_CTRL_C flag is set on an interrupt. The next time a SysTick
    * happens, it sets EXEC_CTRL_C_WAIT, and if we get ANOTHER SysTick and it hasn't been handled,
    * we go to a full-on EXEC_INTERRUPTED. That means we only interrupt code if we're actually stuck
    * in something, and otherwise the console just clears the line. */
-  EXEC_CTRL_C = 1024, // If Ctrl-C was pressed, set this
-  EXEC_CTRL_C_WAIT = 2048, // If Ctrl-C was set and SysTick happens then this is set instead
+  EXEC_CTRL_C = 2048, // If Ctrl-C was pressed, set this
+  EXEC_CTRL_C_WAIT = 4096, // If Ctrl-C was set and SysTick happens then this is set instead
 
 #ifdef USE_DEBUGGER
   /** When the lexer hits a newline character, it'll then drop right
@@ -107,10 +112,10 @@ typedef enum  {
   EXEC_DEBUGGER_MASK = EXEC_DEBUGGER_NEXT_LINE | EXEC_DEBUGGER_STEP_INTO | EXEC_DEBUGGER_FINISH_FUNCTION,
 #endif
 
-  EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED|EXEC_EXCEPTION,
+  EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_RETURN|EXEC_INTERRUPTED|EXEC_EXCEPTION,
   EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR|EXEC_EXCEPTION, // here, we have an error, but unless EXEC_NO_PARSE, we should continue parsing but not executing
   EXEC_NO_PARSE_MASK = EXEC_INTERRUPTED|EXEC_ERROR, // in these cases we should exit as fast as possible - skipping out of parsing
-  EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH|EXEC_CONTINUE|EXEC_BREAK|EXEC_ERROR_MASK, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
+  EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH|EXEC_CONTINUE|EXEC_BREAK|EXEC_RETURN|EXEC_ERROR_MASK, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
   EXEC_CTRL_C_MASK = EXEC_CTRL_C | EXEC_CTRL_C_WAIT, // Ctrl-C was pressed at some point
 
 } JsExecFlags;

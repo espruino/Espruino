@@ -55,10 +55,7 @@ static ALWAYS_INLINE char jsvStringIteratorGetChar(JsvStringIterator *it) {
 }
 
 /// Gets the current (>=0) character (or -1)
-static ALWAYS_INLINE int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it) {
-  if (!it->ptr || it->charIdx>=it->charsInVar) return -1;
-  return (int)(unsigned char)READ_FLASH_UINT8(&it->ptr[it->charIdx]);
-}
+int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it);
 
 /// Do we have a character, or are we at the end?
 static ALWAYS_INLINE bool jsvStringIteratorHasChar(JsvStringIterator *it) {
@@ -67,6 +64,9 @@ static ALWAYS_INLINE bool jsvStringIteratorHasChar(JsvStringIterator *it) {
 
 /// Sets a character (will not extend the string - just overwrites)
 void jsvStringIteratorSetChar(JsvStringIterator *it, char c);
+
+/// Sets a character (will not extend the string - just overwrites) and moves on to next character
+void jsvStringIteratorSetCharAndNext(JsvStringIterator *it, char c);
 
 /// Gets the current index in the string
 static ALWAYS_INLINE size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
@@ -104,6 +104,9 @@ void jsvStringIteratorGotoEnd(JsvStringIterator *it);
 
 /// Append a character TO THE END of a string iterator
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch);
+
+/// Append an entire JsVar string TO THE END of a string iterator
+void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str, size_t startIdx);
 
 static ALWAYS_INLINE void jsvStringIteratorFree(JsvStringIterator *it) {
   jsvUnLock(it->var);
@@ -186,19 +189,38 @@ bool   jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it);
 void   jsvArrayBufferIteratorNext(JsvArrayBufferIterator *it);
 void   jsvArrayBufferIteratorFree(JsvArrayBufferIterator *it);
 // --------------------------------------------------------------------------------------------
+typedef struct {
+  JsvObjectIterator it;
+  JsVar *var; // underlying array when using JSVI_FULLARRAY
+  JsVarInt index; // index when using JSVI_FULLARRAY
+} JsvIteratorObj;
+
 union JsvIteratorUnion {
   JsvStringIterator str;
-  JsvObjectIterator obj;
+  JsvIteratorObj obj;
   JsvArrayBufferIterator buf;
 };
 
 /** General Purpose iterator, for Strings, Arrays, Objects, Typed Arrays */
 typedef struct JsvIterator {
-  enum {JSVI_STRING, JSVI_OBJECT, JSVI_ARRAYBUFFER } type;
+  enum {
+    JSVI_STRING,
+    JSVI_OBJECT,
+    JSVI_ARRAYBUFFER,
+    JSVI_FULLARRAY, // iterate over ALL array items - including not defined
+  } type;
   union JsvIteratorUnion it;
 } JsvIterator;
 
-void jsvIteratorNew(JsvIterator *it, JsVar *obj);
+typedef enum {
+  JSIF_DEFINED_ARRAY_ElEMENTS = 0, ///< iterate only over defined array elements in sparse arrays
+  JSIF_EVERY_ARRAY_ELEMENT = 1, ///< iterate over every element in arrays, even if not defined
+} JsvIteratorFlags;
+
+/** Create a new iterator for any type of variable.
+If iterating over an array and everyArrayElement is false, any
+array elements that haven't been specified will be skipped */
+void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags);
 JsVar *jsvIteratorGetKey(JsvIterator *it);
 JsVar *jsvIteratorGetValue(JsvIterator *it);
 JsVarInt jsvIteratorGetIntegerValue(JsvIterator *it);

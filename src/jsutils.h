@@ -26,9 +26,9 @@
 #include <math.h>
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "1v86"
+#define JS_VERSION "1v94"
 #else
-#define JS_VERSION "1v86." BUILDNUMBER
+#define JS_VERSION "1v94." BUILDNUMBER
 #endif
 /*
   In code:
@@ -106,7 +106,12 @@ int flash_strcmp(const char *mem, const char *flash);
     it as a no-op for everyone else. This is identical the ICACHE_RAM_ATTR used elsewhere. */
 #define CALLED_FROM_INTERRUPT __attribute__((section(".iram1.text")))
 #else
+#if defined(ESP32)
+#include "esp_attr.h"
+#define CALLED_FROM_INTERRUPT IRAM_ATTR
+#else
 #define CALLED_FROM_INTERRUPT
+#endif
 #endif
 
 
@@ -220,7 +225,15 @@ typedef int64_t JsSysTime;
 
 #define JS_NUMBER_BUFFER_SIZE 66 ///< 64 bit base 2 + minus + terminating 0
 
-#define JS_VARS_BEFORE_IDLE_GC 32 ///< If we have less free variables than this, do a garbage collect on Idle
+/* If we have less free variables than this, do a garbage collect on Idle.
+ * Note that the check for free variables takes an amount of time proportional
+ * to the size of JS_VARS_BEFORE_IDLE_GC */
+#ifdef JSVAR_CACHE_SIZE
+#define JS_VARS_BEFORE_IDLE_GC (JSVAR_CACHE_SIZE/20)
+#else
+#define JS_VARS_BEFORE_IDLE_GC 32
+#endif
+
 
 #define JSPARSE_MAX_SCOPES  8
 
@@ -242,6 +255,7 @@ typedef int64_t JsSysTime;
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"nam" // for named functions (a = function foo() { foo(); })
 #define JSPARSE_FUNCTION_LINENUMBER_NAME JS_HIDDEN_CHAR_STR"lin" // The line number offset of the function
 #define JS_EVENT_PREFIX "#on"
+#define JS_TIMEZONE_VAR "tz"
 
 #define JSPARSE_EXCEPTION_VAR "except" // when exceptions are thrown, they're stored in the root scope
 #define JSPARSE_STACKTRACE_VAR "sTrace" // for errors/exceptions, a stack trace is stored as a string
@@ -326,6 +340,12 @@ typedef int64_t JsSysTime;
 #define NIBBLEFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
 */
 
+#if defined(NRF51)
+  // Cortex-M0 does not support unaligned reads
+  #define UNALIGNED_UINT16(addr) ((((uint16_t)*((uint8_t*)(addr)+1)) << 8) | (*(uint8_t*)(addr)))
+#else
+  #define UNALIGNED_UINT16(addr) (*(uint16_t*)addr)
+#endif 
 
 bool isWhitespace(char ch);
 bool isNumeric(char ch);
@@ -338,6 +358,8 @@ bool isIDString(const char *s);
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again. */
 const char *escapeCharacter(char ch);
+/** Parse radix prefixes, or return 0 */
+int getRadix(const char **s, int forceRadix, bool *hasError);
 /// Convert a character to the hexadecimal equivalent (or -1)
 int chtod(char ch);
 /* convert a number in the given radix to an int. if radix=0, autodetect */
@@ -395,11 +417,14 @@ typedef enum {
   JSERR_LOW_MEMORY = 8, ///< Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history
   JSERR_MEMORY = 16, ///< Espruino ran out of memory and was unable to allocate some data that it needed.
   JSERR_MEMORY_BUSY = 32, ///< Espruino was busy doing something with memory (eg. garbage collection) so an IRQ couldn't allocate memory
+  JSERR_UART_OVERFLOW = 64, ///< A UART received data but it was not read in time and was lost
+
+  JSERR_WARNINGS_MASK = JSERR_LOW_MEMORY ///< Issues that are warnings, not actual problems
 } PACKED_FLAGS JsErrorFlags;
 
 /** Error flags for things that we don't really want to report on the console,
  * but which are good to know about */
-extern JsErrorFlags jsErrorFlags;
+extern volatile JsErrorFlags jsErrorFlags;
 
 JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix);
 JsVarFloat stringToFloat(const char *str);
@@ -446,6 +471,13 @@ void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt
 
 /// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
 int espruino_snprintf( char * s, size_t n, const char * fmt, ... );
+
+//#define RAND_MAX (0x7FFFFFFFU) // needs to be unsigned!
+
+/// a rand() replacement that doesn't need malloc (!!!)
+int rand();
+/// a rand() replacement that doesn't need malloc (!!!)
+void srand(unsigned int seed);
 
 /** get the amount of free stack we have, in bytes */
 size_t jsuGetFreeStack();

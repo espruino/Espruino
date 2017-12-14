@@ -62,7 +62,7 @@ bool net_js_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_js_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
+int net_js_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
   NOT_USED(net);
   JsVar *hostVar = 0;
   if (host!=0) {
@@ -74,12 +74,14 @@ int net_js_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
       hostVar = networkGetAddressAsString((unsigned char *)&host, 4,10,'.');
   }
   // else server, hostVar=0
-  JsVar *args[2] = {
+  JsVar *args[4] = {
       hostVar,
-      jsvNewFromInteger(port)
+      jsvNewFromInteger(port),
+      jsvNewFromInteger((JsVarInt)socketType),
+      options
   };
-  int sckt = jsvGetIntegerAndUnLock(callFn("create", 2, args));
-  jsvUnLockMany(2, args);
+  int sckt = jsvGetIntegerAndUnLock(callFn("create", 4, args));
+  jsvUnLockMany(3, args);
   return sckt;
 }
 
@@ -92,7 +94,7 @@ void net_js_closesocket(JsNetwork *net, int sckt) {
   jsvUnLock2(callFn("close", 1, args), args[0]);
 }
 
-/// If the given server socket can accept a connection, return it (or return < 0)
+/// If the given server socket can accept a connection, return the socket number of the new connection (or return < 0)
 int net_js_accept(JsNetwork *net, int serverSckt) {
   NOT_USED(net);
   JsVar *netObj = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_NAME, 0);
@@ -106,35 +108,42 @@ int net_js_accept(JsNetwork *net, int serverSckt) {
 }
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_js_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
+int net_js_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
   NOT_USED(net);
-  JsVar *args[2] = {
+  JsVar *args[3] = {
       jsvNewFromInteger(sckt),
       jsvNewFromInteger((JsVarInt)len),
+      jsvNewFromInteger((JsVarInt)socketType),
   };
-  JsVar *res = callFn( "recv", 2, args);
-  jsvUnLockMany(2, args);
+  JsVar *res = callFn( "recv", 3, args);
+  jsvUnLockMany(3, args);
   int r = -1; // fail
   if (jsvIsString(res)) {
     r = (int)jsvGetStringLength(res);
     if (r>(int)len) { r=(int)len; assert(0); }
     jsvGetStringChars(res, 0, (char*)buf, (size_t)r);
     // FIXME: jsvGetStringChars adds a 0 - does that actually write past the end of the array, or clip the data we get?
+  } else if (jsvIsInt(res)) {
+    r = jsvGetInteger(res);
+    if (r>=0) {
+      jsExceptionHere(JSET_ERROR, "JSNetwork.recv returned >=0");
+      r=-1;
+    }
   }
   jsvUnLock(res);
   return r;
 }
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-int net_js_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
+int net_js_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
   NOT_USED(net);
-  JsVar *args[2] = {
+  JsVar *args[3] = {
       jsvNewFromInteger(sckt),
-      jsvNewFromEmptyString()
+      jsvNewStringOfLength(len, buf),
+      jsvNewFromInteger((JsVarInt)socketType)
   };
-  jsvAppendStringBuf(args[1], buf, len);
-  int r = jsvGetIntegerAndUnLock(callFn( "send", 2, args));
-  jsvUnLockMany(2, args);
+  int r = jsvGetIntegerAndUnLock(callFn( "send", 3, args));
+  jsvUnLockMany(3, args);
   return r;
 }
 

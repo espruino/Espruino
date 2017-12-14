@@ -49,6 +49,10 @@
 #include "stm32f4xx.h"
 #include "stm32f4xx_hal.h"
 #endif
+#ifdef STM32L4
+#include "stm32l4xx.h"
+#include "stm32l4xx_hal.h"
+#endif
 
 /** @addtogroup USBD_OTG_DRIVER
   * @{
@@ -64,7 +68,7 @@
   */ 
 
 /*---------- -----------*/
-#define USBD_MAX_NUM_INTERFACES     1
+#define USBD_MAX_NUM_INTERFACES     2
 /*---------- -----------*/
 #define USBD_MAX_NUM_CONFIGURATION     1
 /*---------- -----------*/
@@ -78,8 +82,8 @@
 
 /****************************************/
 /* #define for FS and HS identification */
-#define DEVICE_FS 		0
-#define DEVICE_HS 		1
+#define DEVICE_FS     0
+#define DEVICE_HS     1
 
 /** @defgroup USBD_Exported_Macros
   * @{

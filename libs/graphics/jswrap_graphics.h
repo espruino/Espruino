@@ -32,6 +32,8 @@ int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height);
 void jswrap_graphics_clear(JsVar *parent);
 void jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2);
 void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2);
+void jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad);
+void jswrap_graphics_fillCircle(JsVar *parent, int x, int y, int rad);
 int jswrap_graphics_getPixel(JsVar *parent, int x, int y);
 void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color);
 void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground);

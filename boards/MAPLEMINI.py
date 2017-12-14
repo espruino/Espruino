@@ -22,8 +22,18 @@ info = {
  'variables' : 715,
  'binary_name' : 'espruino_%v_maplemini.bin',
  'build' : {
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'FILESYSTEM'
+   ],
+   'makefile' : [
+     'SAVE_ON_FLASH=1',
+     'STLIB=STM32F10X_MD',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o'
+   ]
  }
 };
+
 chip = {
   'part' : "STM32F103CB", #T6
   'family' : "STM32F1",
@@ -42,10 +52,10 @@ devices = {
 #  'OSC' : { 'pin_1' :  'D0',
 #            'pin_2' : 'D1' },
   'LED1' : { 'pin' : 'D33' },
-  'BTN1' : { 'pin' : 'D32' }, 
+  'BTN1' : { 'pin' : 'D32' },
   'USB' : { 'pin_disc' :  'D34',
             'pin_dm' : 'D24',
-            'pin_dp' : 'D23' 
+            'pin_dp' : 'D23'
           },
 };
 
@@ -59,7 +69,7 @@ board = {
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f103xb.csv', 6, 10, 11)
   # Olimexino/Maple pins have stupid names
-  pinmapping = { 
+  pinmapping = {
     'D0' :'PB11',
     'D1' :'PB10',
     'D2' :'PB2',
@@ -75,7 +85,7 @@ def get_pins():
     'D12':'PC15',
     'D13':'PC14',
     'D14':'PC13',
-    'D15':'PB7', 
+    'D15':'PB7',
     'D16':'PB6',
     'D17':'PB5',
     'D18':'PB4',
@@ -102,9 +112,8 @@ def get_pins():
     pin = pinutils.findpin(pins, pinmapping[newname], True)
     pin["name"] = "P"+newname
     pin["sortingname"] = newname[0] + newname[1:].rjust(2,'0')
-    newpins.append(pin) 
+    newpins.append(pin)
   # Because 'pinmapping' is NOT stored in order!!!
   newpins = sorted(newpins, key=lambda pin: pin["sortingname"])
-#  print(json.dumps(newpins, sort_keys=True, indent=2))  
+#  print(json.dumps(newpins, sort_keys=True, indent=2))
   return newpins
-

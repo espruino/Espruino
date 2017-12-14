@@ -28,9 +28,16 @@ typedef enum {
 void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode);
 /// Load the RAM image from flash (this is the actual interpreter state)
 void jsfLoadStateFromFlash();
+/** Get bootup code from flash (this is textual JS code). return a pointer to it if it exists, or 0.
+ * isReset should be set if we're loading after a reset (eg, does the user expect this to be run or not).
+ * Set isReset=false to always return the code  */
+const char *jsfGetBootCodeFromFlash(bool isReset);
 /** Load bootup code from flash (this is textual JS code). return true if it exists and was executed.
- * isReset should be set if we're loading after a reset (eg, does the user expect this to be run or not)
+ * isReset should be set if we're loading after a reset (eg, does the user expect this to be run or not).
+ * Set isReset=false to always run the code
  */
 bool jsfLoadBootCodeFromFlash(bool isReset);
 /// Returns true if flash contains something useful
 bool jsfFlashContainsCode();
+/** Completely clear any saved code from flash. */
+void jsfRemoveCodeFromFlash();

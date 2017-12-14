@@ -129,7 +129,7 @@ void jswrap_io_poke(JsVarInt addr, JsVar *data, int wordSize) {
     _jswrap_io_poke(addr, (uint32_t)jsvGetInteger(data), wordSize);
   } else if (jsvIsIterable(data)) {
     JsvIterator it;
-    jsvIteratorNew(&it, data);
+    jsvIteratorNew(&it, data, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
       _jswrap_io_poke(addr, (uint32_t)jsvIteratorGetIntegerValue(&it), wordSize);
       addr += wordSize;
@@ -220,7 +220,7 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
   } else if (jsvIsIterable(times)) {
     // iterable, so output a square wave
     JsvIterator it;
-    jsvIteratorNew(&it, times);
+    jsvIteratorNew(&it, times, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
       JsVarFloat time = jsvIteratorGetFloatValue(&it);
       if (time>=0 && !isnan(time))
@@ -253,11 +253,10 @@ as an array of bits where the last array element is the least significant bit.
 In this case, pin values are set least significant bit first (from the right-hand side
 of the array of pins). This means you can use the same pin multiple times, for
 example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0 followed by A1.
-*/
 
-/**
- * Set the output of a GPIO.
- */
+If the pin argument is an object with a `write` method, the `write` method will
+be called with the value passed through.
+*/
 void jswrap_io_digitalWrite(
     JsVar *pinVar, //!< A pin or pins.
     JsVarInt value //!< The value of the output.
@@ -274,9 +273,16 @@ void jswrap_io_digitalWrite(
       jsvUnLock(pinNamePtr);
       value = value>>1; // next bit down
     }
-  }
-  // Handle the case where it is a single pin.
-  else {
+  } else if (jsvIsObject(pinVar)) {
+    JsVar *w = jspGetNamedField(pinVar, "write", false);
+    if (jsvIsFunction(w)) {
+      JsVar *v = jsvNewFromInteger(value);
+      jsvUnLock(jspeFunctionCall(w,0,pinVar,false,1,&v));
+      jsvUnLock(v);
+    } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    jsvUnLock(w);
+  } else {
+    // Handle the case where it is a single pin.
     Pin pin = jshGetPinFromVar(pinVar);
     jshPinOutput(pin, value != 0);
   }
@@ -292,17 +298,16 @@ void jswrap_io_digitalWrite(
   ],
   "return"   : ["int","The digital Value of the Pin"]
 }
-Get the digital value of the given pin. 
+Get the digital value of the given pin.
 
  **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"input"`
 
 If the pin argument is an array of pins (eg. `[A2,A1,A0]`) the value returned will be an number where
 the last array element is the least significant bit, for example if `A0=A1=1` and `A2=0`, `digitalRead([A2,A1,A0]) == 0b011`
-*/
 
-/**
- * Read the value of a GPIO pin.
- */
+If the pin argument is an object with a `read` method, the `read` method will be called and the integer value it returns
+passed back.
+*/
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   // Hadnle the case where it is an array of pins.
   if (jsvIsArray(pinVar)) {
@@ -320,9 +325,16 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
     jsvObjectIteratorFree(&it);
     if (pins==0) return 0; // return undefined if array empty
     return value;
-  }
-  // Handle the case where it is a single pin.
-  else {
+  } else if (jsvIsObject(pinVar)) {
+    JsVarInt v = 0;
+    JsVar *r = jspGetNamedField(pinVar, "read", false);
+    if (jsvIsFunction(r)) {
+      v = jsvGetIntegerAndUnLock(jspeFunctionCall(r,0,pinVar,false,0,0));
+    } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    jsvUnLock(r);
+    return v;
+  } else {
+    // Handle the case where it is a single pin.
     Pin pin = jshGetPinFromVar(pinVar);
     return jshPinInput(pin);
   }
@@ -334,26 +346,32 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   "generate" : "jswrap_io_pinMode",
   "params"   : [
     ["pin", "pin", "The pin to set pin mode for"],
-    ["mode", "JsVar", "The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."]
+    ["mode", "JsVar", "The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument or use 'auto' if you want to revert to automatic pin mode setting."],
+    ["automatic", "bool", "Optional, default is false. If true, subsequent commands will automatically change the state (see notes below)"]
   ]
 }
 Set the mode of the given pin.
 
+ * `auto`/`undefined` - Don't change state, but allow `digitalWrite`/etc to automatically change state as appropriate
  * `analog` - Analog input
  * `input` - Digital input
  * `input_pullup` - Digital input with internal ~40k pull-up resistor
  * `input_pulldown` - Digital input with internal ~40k pull-down resistor
  * `output` - Digital output
  * `opendrain` - Digital output that only ever pulls down to 0v. Sending a logical `1` leaves the pin open circuit
+ * `opendrain_pullup` - Digital output that pulls down to 0v. Sending a logical `1` enables internal ~40k pull-up resistor
  * `af_output` - Digital output from built-in peripheral
- * `af_opendrain` - Digital output from built-in peripheral that only ever pulls down to 0v.
- * Sending a logical `1` leaves the pin open circuit
+ * `af_opendrain` - Digital output from built-in peripheral that only ever pulls down to 0v. Sending a logical `1` leaves the pin open circuit
 
- **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically *unless* `pinMode` has been called first.  If you want `digitalRead`/etc to set the pin mode automatically after you have called `pinMode`, simply call it again with no mode argument: `pinMode(pin)`
+ **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically *unless* `pinMode` has been called first.
+If you want `digitalRead`/etc to set the pin mode automatically after you have called `pinMode`, simply call it again
+with no mode argument (`pinMode(pin)`), `auto` as the argument (`pinMode(pin, "auto")`), or with the 3rd 'automatic'
+argument set to true (`pinMode(pin, "output", true)`).
 */
 void jswrap_io_pinMode(
-    Pin pin,    //!< The pin to set.
-    JsVar *mode //!< The new mode of the pin.
+    Pin pin,
+    JsVar *mode,
+    bool automatic
   ) {
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Invalid pin");
@@ -367,15 +385,16 @@ void jswrap_io_pinMode(
     else if (jsvIsStringEqual(mode, "input_pulldown")) m = JSHPINSTATE_GPIO_IN_PULLDOWN;
     else if (jsvIsStringEqual(mode, "output"))         m = JSHPINSTATE_GPIO_OUT;
     else if (jsvIsStringEqual(mode, "opendrain"))      m = JSHPINSTATE_GPIO_OUT_OPENDRAIN;
+    else if (jsvIsStringEqual(mode, "opendrain_pullup")) m = JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP;
     else if (jsvIsStringEqual(mode, "af_output"))      m = JSHPINSTATE_AF_OUT;
     else if (jsvIsStringEqual(mode, "af_opendrain"))   m = JSHPINSTATE_AF_OUT_OPENDRAIN;
   }
   if (m != JSHPINSTATE_UNDEFINED) {
-    jshSetPinStateIsManual(pin, true);
+    jshSetPinStateIsManual(pin, !automatic);
     jshPinSetState(pin, m);
   } else {
     jshSetPinStateIsManual(pin, false);
-    if (!jsvIsUndefined(mode)) {
+    if (!jsvIsUndefined(mode) && !jsvIsStringEqual(mode,"auto")) {
       jsExceptionHere(JSET_ERROR, "Unknown pin mode");
     }
   }
@@ -391,7 +410,7 @@ void jswrap_io_pinMode(
   ],
   "return" : ["JsVar","The pin mode, as a string"]
 }
-Return the current mode of the given pin. See `pinMode` for more information.
+Return the current mode of the given pin. See `pinMode` for more information on returned values.
  */
 JsVar *jswrap_io_getPinMode(Pin pin) {
   if (!jshIsPinValid(pin)) {
@@ -407,6 +426,7 @@ JsVar *jswrap_io_getPinMode(Pin pin) {
   case JSHPINSTATE_GPIO_IN_PULLDOWN :   text = "input_pulldown"; break;
   case JSHPINSTATE_GPIO_OUT :           text = "output"; break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN : text = "opendrain"; break;
+  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP : text = "opendrain_pullup"; break;
   case JSHPINSTATE_AF_OUT :             text = "af_output"; break;
   case JSHPINSTATE_AF_OUT_OPENDRAIN :   text = "af_opendrain"; break;
   default: break;
@@ -474,10 +494,14 @@ for example:
 ```
 // shift out to single clk+data
 shiftOut(A0, { clk : A1 }, [1,0,1,0]);
+```
 
+```
 // shift out a whole byte (like software SPI)
 shiftOut(A0, { clk : A1, repeat: 8 }, [1,2,3,4]);
+```
 
+```
 // shift out via 4 data pins
 shiftOut([A3,A2,A1,A0], { clk : A4 }, [1,2,3,4]);
 ```
@@ -577,14 +601,16 @@ The function may also take an argument, which is an object of type `{state:bool,
  * `time` is the time in seconds at which the pin changed state
  * `lastTime` is the time in seconds at which the **pin last changed state**. When using `edge:'rising'` or `edge:'falling'`, this is not the same as when the function was last called.
 
-For instance, if you want to measure the length of a positive pulse you could use `setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });`. 
+For instance, if you want to measure the length of a positive pulse you could use `setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });`.
 This will only be called on the falling edge of the pulse, but will be able to measure the width of the pulse because `e.lastTime` is the time of the rising edge.
 
 Internally, an interrupt writes the time of the pin's state change into a queue, and the function
-supplied to `setWatch` is executed only from the main message loop. However, if the callback is a 
-native function `void (bool state)` then you can add `irq:true` to options, which will cause the 
-function to be called from within the IRQ. When doing this, interrupts will happen on both edges 
+supplied to `setWatch` is executed only from the main message loop. However, if the callback is a
+native function `void (bool state)` then you can add `irq:true` to options, which will cause the
+function to be called from within the IRQ. When doing this, interrupts will happen on both edges
 and there will be no debouncing.
+
+**Note:** if you didn't call `pinMode` beforehand then this function will reset pin's state to `"input"`
 
 **Note:** The STM32 chip (used in the [Espruino Board](/EspruinoBoard) and [Pico](/Pico)) cannot
 watch two pins with the same number - eg `A0` and `B0`.
@@ -601,7 +627,7 @@ JsVar *jswrap_interface_setWatch(
   }
 
   if (!jsiIsWatchingPin(pin) && !jshCanWatch(pin)) {
-    jsWarn("Unable to set watch. You may already have a watch on a pin with the same number (eg. A0 and B0)");
+    jsWarn("Unable to set watch. You may already have a watch on a pin with the same number (eg. A0 and B0),\nor this pin cannot be used with watch");
     return 0;
   }
 
@@ -729,5 +755,3 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
     }
   }
 }
-
-

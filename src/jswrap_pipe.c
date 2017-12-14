@@ -44,7 +44,7 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
   if (source && destination) {
     JsVar *buffer = jsvObjectGetChild(source, STREAM_BUFFER_NAME, 0);
     if (buffer && jsvGetStringLength(buffer)) {
-      jsvObjectSetChild(source, STREAM_BUFFER_NAME, 0); // remove outstanding data
+      jsvObjectRemoveChild(source, STREAM_BUFFER_NAME); // remove outstanding data
       /* call write fn - we ignore drain/etc here because the source has
       just closed and we want to get this sorted quickly */
       JsVar *writeFunc = jspGetNamedField(destination, "write", false);
@@ -69,14 +69,16 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
       jswrap_object_removeAllListeners_cstr(destination, "close");
       // execute the 'end' function
       JsVar *endFunc = jspGetNamedField(destination, "end", false);
-      if (endFunc) {
-        jsvUnLock2(jspExecuteFunction(endFunc, destination, 0, 0), endFunc);
+      if (jsvIsFunction(endFunc)) {
+        jsvUnLock(jspExecuteFunction(endFunc, destination, 0, 0));
       }
+      jsvUnLock(endFunc);
       // execute the 'close' function
       JsVar *closeFunc = jspGetNamedField(destination, "close", false);
-      if (closeFunc) {
-        jsvUnLock2(jspExecuteFunction(closeFunc, destination, 0, 0), closeFunc);
+      if (jsvIsFunction(closeFunc)) {
+        jsvUnLock(jspExecuteFunction(closeFunc, destination, 0, 0));
       }
+      jsvUnLock(closeFunc);
     }
     /* call source.close if available - probably not what node does
     but seems very sensible in this case. If you don't want it,
@@ -86,9 +88,10 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
       jswrap_object_removeAllListeners_cstr(source, "close");
       // execute the 'close' function
       JsVar *closeFunc = jspGetNamedField(source, "close", false);
-      if (closeFunc) {
-        jsvUnLock2(jspExecuteFunction(closeFunc, source, 0, 0), closeFunc);
+      if (jsvIsFunction(closeFunc)) {
+        jsvUnLock(jspExecuteFunction(closeFunc, source, 0, 0));
       }
+      jsvUnLock(closeFunc);
     }
   }
   jsvUnLock2(source, destination);
@@ -279,9 +282,9 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
           jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
         }
         // set up our event listeners
-        jswrap_object_addEventListener(source, "close", jswrap_pipe_src_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
+        jswrap_object_addEventListener(source, "close", jswrap_pipe_src_close_listener, JSWAT_THIS_ARG);
         jswrap_object_addEventListener(dest, "drain", jswrap_pipe_drain_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
-        jswrap_object_addEventListener(dest, "close", jswrap_pipe_dst_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
+        jswrap_object_addEventListener(dest, "close", jswrap_pipe_dst_close_listener, JSWAT_THIS_ARG);
         // set up the rest of the pipe
         jsvObjectSetChildAndUnLock(pipe, "chunkSize", jsvNewFromInteger(chunkSize));
         jsvObjectSetChildAndUnLock(pipe, "end", jsvNewFromBool(callEnd));

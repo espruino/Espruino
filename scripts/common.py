@@ -9,27 +9,32 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
 # ----------------------------------------------------------------------------------------
-# Reads board information from boards/BOARDNAME.py - used by build_board_docs, 
+# Reads board information from boards/BOARDNAME.py - used by build_board_docs,
 # build_pininfo, and build_platform_config
 # ----------------------------------------------------------------------------------------
 
+# Global
 import subprocess;
 import re;
 import json;
 import sys;
 import os;
 import importlib;
+# Local
+import pinutils;
 
 silent = os.getenv("SILENT");
 if silent:
   class Discarder(object):
     def write(self, text):
         pass # do nothing
+    def flush(self):
+        pass # do nothing
   # now discard everything coming out of stdout
   sys.stdout = Discarder()
 
 # http://stackoverflow.com/questions/4814970/subprocess-check-output-doesnt-seem-to-exist-python-2-6-5
-if "check_output" not in dir( subprocess ): 
+if "check_output" not in dir( subprocess ):
     def f(*popenargs, **kwargs):
         if 'stdout' in kwargs:
             raise ValueError('stdout argument not allowed, it will be overridden.')
@@ -45,16 +50,16 @@ if "check_output" not in dir( subprocess ):
     subprocess.check_output = f
 
 
-# Scans files for comments of the form /*JSON......*/ 
-# 
+# Scans files for comments of the form /*JSON......*/
+#
 # Comments look like:
 #
 #/*JSON{ "type":"staticmethod|staticproperty|constructor|method|property|function|variable|class|library|idle|init|kill",
 #                      // class = built-in class that does not require instantiation
 #                      // library = built-in class that needs require('classname')
 #                      // idle = function to run on idle regardless
-#                      // init = function to run on initialisation            
-#                      // kill = function to run on deinitialisation                            
+#                      // init = function to run on initialisation
+#                      // kill = function to run on deinitialisation
 #         "class" : "Double", "name" : "doubleToIntBits",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
 #         "generate_full|generate|wrap" : "*(JsVarInt*)&x",
@@ -84,145 +89,184 @@ if "check_output" not in dir( subprocess ):
 
 
 def get_jsondata(is_for_document, parseArgs = True, board = False):
-        scriptdir = os.path.dirname	(os.path.realpath(__file__))
-        print("Script location "+scriptdir)
-        os.chdir(scriptdir+"/..")
+    scriptdir = os.path.dirname	(os.path.realpath(__file__))
+    print("Script location "+scriptdir)
+    os.chdir(scriptdir+"/..")
 
-        jswraps = []
-        defines = []
+    jswraps = []
+    defines = []
 
-        if board and ("build" in board.info)  and ("defines" in board.info["build"]):
-          for i in board.info["build"]["defines"]:
-            print("Got define from board: " + i);
-            defines.append(i)
+    if board and ("build" in board.info)  and ("defines" in board.info["build"]):
+        for i in board.info["build"]["defines"]:
+          print("Got define from board: " + i);
+          defines.append(i)
 
-        if parseArgs and len(sys.argv)>1:
-          print("Using files from command line")
-          for i in range(1,len(sys.argv)):
-            arg = sys.argv[i]
-            if arg[0]=="-":
-              if arg[1]=="D": 
-                defines.append(arg[2:])
-              elif arg[1]=="B": 
-                board = importlib.import_module(arg[2:])
-                if "usart" in board.chip: defines.append("USART_COUNT="+str(board.chip["usart"]));
-                if "spi" in board.chip: defines.append("SPI_COUNT="+str(board.chip["spi"]));
-                if "i2c" in board.chip: defines.append("I2C_COUNT="+str(board.chip["i2c"]));
-                if "USB" in board.devices: defines.append("defined(USB)=True"); 
-                else: defines.append("defined(USB)=False");
-              elif arg[1]=="F":
-                "" # -Fxxx.yy in args is filename xxx.yy, which is mandatory for build_jswrapper.py
-              else:
-                print("Unknown command-line option")
-                exit(1)
-            else:
-              jswraps.append(arg)
+    explicit_files = False
+    if parseArgs and len(sys.argv)>1:
+      print("Using files from command line")
+      for i in range(1,len(sys.argv)):
+        arg = sys.argv[i]
+        if arg[0]=="-":
+          if arg[1]=="D":
+            defines.append(arg[2:])
+          elif arg[1]=="B":
+            board = importlib.import_module(arg[2:])
+            if "usart" in board.chip: defines.append("USART_COUNT="+str(board.chip["usart"]));
+            if "spi" in board.chip: defines.append("SPI_COUNT="+str(board.chip["spi"]));
+            if "i2c" in board.chip: defines.append("I2C_COUNT="+str(board.chip["i2c"]));
+            if "USB" in board.devices: defines.append("defined(USB)=True");
+            else: defines.append("defined(USB)=False");
+          elif arg[1]=="F":
+            "" # -Fxxx.yy in args is filename xxx.yy, which is mandatory for build_jswrapper.py
+          else:
+            print("Unknown command-line option")
+            exit(1)
         else:
-          print("Scanning for jswrap.c files")
-          jswraps = subprocess.check_output(["find", ".", "-name", "jswrap*.c"]).strip().split("\n")
+          explicit_files = True
+          jswraps.append(arg)
+    else:
+      print("Scanning for jswrap.c files")
+      jswraps = subprocess.check_output(["find", ".", "-name", "jswrap*.c"]).strip().split("\n")
 
-        if len(defines)>1:
-          print("Got #DEFINES:")
-          for d in defines: print("   "+d)
+    if len(defines)>1:
+      print("Got #DEFINES:")
+      for d in defines: print("   "+d)
 
-        jsondatas = []
-        for jswrap in jswraps:
-          # ignore anything from archives
-          if jswrap.startswith("./archives/"): continue
+    jsondatas = []
+    for jswrap in jswraps:
+      # ignore anything from archives
+      if jswrap.startswith("./archives/"): continue
 
-          # now scan
-          print("Scanning "+jswrap)
-          code = open(jswrap, "r").read()
+      # now scan
+      print("Scanning "+jswrap)
+      code = open(jswrap, "r").read()
 
-          if is_for_document and "DO_NOT_INCLUDE_IN_DOCS" in code: 
-            print("FOUND 'DO_NOT_INCLUDE_IN_DOCS' IN FILE "+jswrap)
-            continue
+      if is_for_document and not explicit_files and "DO_NOT_INCLUDE_IN_DOCS" in code:
+        print("FOUND 'DO_NOT_INCLUDE_IN_DOCS' IN FILE "+jswrap)
+        continue
 
-          for comment in re.findall(r"/\*JSON.*?\*/", code, re.VERBOSE | re.MULTILINE | re.DOTALL):
-            charnumber = code.find(comment)
-            linenumber = 1+code.count("\n", 0, charnumber)
-            # Strip off /*JSON .. */ bit
-            comment = comment[6:-2]
+      for comment in re.findall(r"/\*JSON.*?\*/", code, re.VERBOSE | re.MULTILINE | re.DOTALL):
+        charnumber = code.find(comment)
+        linenumber = 1+code.count("\n", 0, charnumber)
+        # Strip off /*JSON .. */ bit
+        comment = comment[6:-2]
 
-            endOfJson = comment.find("\n}")+2;
-            jsonstring = comment[0:endOfJson];
-            description =  comment[endOfJson:].strip();
+        endOfJson = comment.find("\n}")+2;
+        jsonstring = comment[0:endOfJson];
+        description =  comment[endOfJson:].strip();
 #            print("Parsing "+jsonstring)
-            try:
-              jsondata = json.loads(jsonstring)
-              if len(description): jsondata["description"] = description;
-              jsondata["filename"] = jswrap
-              jsondata["include"] = jswrap[:-2]+".h"
-              jsondata["githublink"] = "https://github.com/espruino/Espruino/blob/master/"+jswrap+"#L"+str(linenumber)
+        try:
+          jsondata = json.loads(jsonstring)
+          if len(description): jsondata["description"] = description;
+          jsondata["filename"] = jswrap
+          if jswrap[-2:]==".c":
+            jsondata["include"] = jswrap[:-2]+".h"
+          jsondata["githublink"] = "https://github.com/espruino/Espruino/blob/master/"+jswrap+"#L"+str(linenumber)
 
-              dropped_prefix = "Dropped "
-              if "name" in jsondata: dropped_prefix += jsondata["name"]+" "
-              elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
-              drop = False
-              if not is_for_document:
-                if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
-                  print(dropped_prefix+" because of #ifndef "+jsondata["ifndef"])
-                  drop = True
-                if ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
-                  print(dropped_prefix+" because of #ifdef "+jsondata["ifdef"])
-                  drop = True
-                if ("#if" in jsondata):
-                  expr = jsondata["#if"]
-                  for defn in defines:
-                    if defn.find('=')!=-1:
-                      dname = defn[:defn.find('=')]
-                      dkey = defn[defn.find('=')+1:]                      
-                      expr = expr.replace(dname, dkey);
-                  try: 
-                    r = eval(expr)
-                  except:
-                    print("WARNING: error evaluating '"+expr+"' - from '"+jsondata["#if"]+"'")
-                    r = True
-                  if not r:
-                    print(dropped_prefix+" because of #if "+jsondata["#if"]+ " -> "+expr)
-                    drop = True
-              if not drop:
-                jsondatas.append(jsondata)
-            except ValueError as e:
-              sys.stderr.write( "JSON PARSE FAILED for " +  jsonstring + " - "+ str(e) + "\n")
+          dropped_prefix = "Dropped "
+          if "name" in jsondata: dropped_prefix += jsondata["name"]+" "
+          elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
+          drop = False
+          if not is_for_document:
+            if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
+              print(dropped_prefix+" because of #ifndef "+jsondata["ifndef"])
+              drop = True
+            if ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
+              print(dropped_prefix+" because of #ifdef "+jsondata["ifdef"])
+              drop = True
+            if ("#ifdef" in jsondata) or ("#ifndef" in jsondata):
+              sys.stderr.write( "'#ifdef' where 'ifdef' should be used in " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
               exit(1)
-            except:
-              sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
-              exit(1)
-        print("Scanning finished.")
-        return jsondatas
+            if ("#if" in jsondata):
+              expr = jsondata["#if"]
+              for defn in defines:
+                if defn.find('=')!=-1:
+                  dname = defn[:defn.find('=')]
+                  dkey = defn[defn.find('=')+1:]
+                  expr = expr.replace(dname, dkey);
+              # Now replace any defined(...) we haven't heard of with false
+              expr = re.sub(r"defined\([^\)]*\)", "False", expr)
+              try:
+                r = eval(expr)
+              except:
+                print("WARNING: error evaluating '"+expr+"' - from '"+jsondata["#if"]+"'")
+                r = True
+              if not r:
+                print(dropped_prefix+" because of #if "+jsondata["#if"]+ " -> "+expr)
+                drop = True
+          if not drop:
+            jsondatas.append(jsondata)
+        except ValueError as e:
+          sys.stderr.write( "JSON PARSE FAILED for " +  jsonstring + " - "+ str(e) + "\n")
+          exit(1)
+        except:
+          sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
+          exit(1)
+    print("Scanning finished.")
+
+    if board:
+      for device in pinutils.SIMPLE_DEVICES:
+        if device in board.devices:
+          jsondatas.append({
+            "type" : "variable",
+            "name" : device,
+            "generate_full" : device+"_PININDEX",
+            "return" : ["pin", device],
+            "filename" : "BOARD.py",
+            "include" : "platform_config.h"
+          })
+      if "LED1" in board.devices:
+        jsondatas.append({
+          "type" : "variable",
+          "name" : "LED",
+          "generate_full" : "LED1_PININDEX",
+          "return" : ["pin", "LED1"],
+          "filename" : "BOARD.py",
+          "include" : "platform_config.h"
+        })
+      if "BTN1" in board.devices:
+        jsondatas.append({
+          "type" : "variable",
+          "name" : "BTN",
+          "generate_full" : "BTN1_PININDEX",
+          "return" : ["pin", "Button 1"],
+          "filename" : "BOARD.py",
+          "include" : "platform_config.h"
+        })
+
+    return jsondatas
 
 # Takes the data from get_jsondata and restructures it in prepartion for output as JS
-# 
-# Results look like:, 
+#
+# Results look like:,
 #{
 #  "Pin": {
 #    "desc": [
-#      "This is the built-in class for Pins, such as D0,D1,LED1, or BTN", 
+#      "This is the built-in class for Pins, such as D0,D1,LED1, or BTN",
 #      "You can call the methods on Pin, or you can use Wiring-style functions such as digitalWrite"
-#    ], 
+#    ],
 #    "methods": {
 #      "read": {
-#        "desc": "Returns the input state of the pin as a boolean", 
-#        "params": [], 
+#        "desc": "Returns the input state of the pin as a boolean",
+#        "params": [],
 #        "return": [
-#          "bool", 
+#          "bool",
 #          "Whether pin is a logical 1 or 0"
 #        ]
-#      }, 
+#      },
 #      "reset": {
-#        "desc": "Sets the output state of the pin to a 0", 
-#        "params": [], 
+#        "desc": "Sets the output state of the pin to a 0",
+#        "params": [],
 #        "return": []
-#      }, 
+#      },
 #      ...
-#    }, 
-#    "props": {}, 
-#    "staticmethods": {}, 
+#    },
+#    "props": {},
+#    "staticmethods": {},
 #    "staticprops": {}
 #  },
 #  "print": {
-#    "desc": "Print the supplied string", 
+#    "desc": "Print the supplied string",
 #    "return": []
 #  },
 #  ...
@@ -291,9 +335,10 @@ def get_struct_from_jsondata(jsondata):
 def get_includes_from_jsondata(jsondatas):
         includes = []
         for jsondata in jsondatas:
-          include = jsondata["include"]
-          if not include in includes:
-                includes.append(include)
+          if "include" in jsondata:
+            include = jsondata["include"]
+            if not include in includes:
+              includes.append(include)
         return includes
 
 def is_property(jsondata):
@@ -313,14 +358,19 @@ def get_prefix_name(jsondata):
 
 def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH": return "devices with low flash memory"
-  if d=="STM32F1": return "STM32F1 devices (including Espruino Board)"
+  if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
+  if d=="NRF52": return "NRF52 devices (like Puck.js)"
+  if d=="ESP8266": return "Espruino running on ESP8266"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
-  if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico only)"
+  if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico and Espruino WiFi only)"
   if d=="RELEASE": return "release builds"
   if d=="LINUX": return "Linux-based builds"
-  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico)"
-  if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino Wifi or Linux)"
-  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino Wifi, Linux or ESP8266)"
+  if d=="BLUETOOTH": return "devices with Bluetooth LE capability"
+  if d=="USB": return "devices with USB"
+  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico and Espruino WiFi)"
+  if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino WiFi or Linux)"
+  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino WiFi, Linux or ESP8266)"
+  if d=="USE_FLASHFS": return "devices with filesystem in Flash support enabled (ESP32 only)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 
@@ -350,7 +400,7 @@ def get_version():
                 if commits_since_release=="0": return v
                 else: return v+"."+commits_since_release
         return "UNKNOWN"
-               
+
 
 def get_name_or_space(jsondata):
         if "name" in jsondata: return jsondata["name"]

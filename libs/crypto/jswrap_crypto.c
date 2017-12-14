@@ -38,7 +38,7 @@
 }
 Cryptographic functions
 
-**Note:** This library is currently only included in builds for the Espruino Pico. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
+**Note:** This library is currently only included in builds for the Espruino Pico and Espruino WiFi. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
 */
 
 
@@ -50,7 +50,7 @@ Cryptographic functions
 }
 Class containing AES encryption/decryption
 
-**Note:** This library is currently only included in builds for the Espruino Pico. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
+**Note:** This library is currently only included in builds for the Espruino Pico and Espruino WiFi. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
 */
 /*JSON{
   "type" : "staticproperty",
@@ -70,6 +70,8 @@ const char *jswrap_crypto_error_to_str(int err) {
     case MBEDTLS_ERR_X509_INVALID_FORMAT:
     case MBEDTLS_ERR_PK_KEY_INVALID_FORMAT:
       return "Invalid format";
+    case MBEDTLS_ERR_SSL_PK_TYPE_MISMATCH:
+      return "Public key type mismatch";
     case MBEDTLS_ERR_X509_ALLOC_FAILED:
     case MBEDTLS_ERR_SSL_ALLOC_FAILED:
     case MBEDTLS_ERR_PK_ALLOC_FAILED:

@@ -8,5 +8,6 @@ function B() {
  this.b = 42;
 }
 
-result = new A(new B()) == 42;
+var r = new A(new B());
+result = r.a.b == 42;
 

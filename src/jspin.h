@@ -32,6 +32,9 @@ typedef enum {
   JSH_PORTF,
   JSH_PORTG,
   JSH_PORTH,
+  JSH_PORTI,
+  JSH_PORT_MASK = 15,
+  JSH_PIN_NEGATED = 16
 } PACKED_FLAGS JsvPinInfoPort;
 
 typedef enum {
@@ -57,12 +60,14 @@ typedef enum {
 typedef enum {
   JSH_ANALOG_NONE = 0,
   JSH_ANALOG1     = 32,
+#if ADC_COUNT>1
   JSH_ANALOG2     = 64,
   JSH_ANALOG3     = 128,
   JSH_ANALOG4     = 256,
   JSH_ANALOG12    = JSH_ANALOG1|JSH_ANALOG2,
   JSH_ANALOG123   = JSH_ANALOG1|JSH_ANALOG2|JSH_ANALOG3,
   JSH_ANALOG34    = JSH_ANALOG3|JSH_ANALOG4,
+#endif
 
   JSH_ANALOG_CH0 = 0,
   JSH_ANALOG_CH1,
@@ -84,7 +89,11 @@ typedef enum {
   JSH_ANALOG_CH17,
 
   JSH_MASK_ANALOG_CH  = 31,
+#if ADC_COUNT>1
   JSH_MASK_ANALOG_ADC = JSH_ANALOG1|JSH_ANALOG2|JSH_ANALOG3|JSH_ANALOG4,
+#else
+  JSH_MASK_ANALOG_ADC = JSH_ANALOG1,
+#endif
 
 } PACKED_FLAGS JsvPinInfoAnalog;
 
@@ -136,7 +145,8 @@ typedef enum {
   JSH_I2C1     = 0x0280,
   JSH_I2C2     = 0x0290,
   JSH_I2C3     = 0x02A0,
-  JSH_I2CMAX   = JSH_I2C3,
+  JSH_I2C4     = 0x02B0,
+  JSH_I2CMAX   = JSH_I2C4,
   JSH_USART1   = 0x0300,
   JSH_USART2   = 0x0310,
   JSH_USART3   = 0x0320,
@@ -180,8 +190,7 @@ typedef enum {
   (((F)&JSH_MASK_TYPE)>=JSH_TIMER1) && \
   (((F)&JSH_MASK_TYPE)<=JSH_TIMER18))
 #define JSH_PINFUNCTION_IS_DAC(F) ( \
-  (((F)&JSH_MASK_TYPE)==JSH_DAC) || \
-0 )
+  (((F)&JSH_MASK_TYPE)==JSH_DAC))
 #define JSH_PINFUNCTION_IS_USART(F) ( \
   (((F)&JSH_MASK_TYPE)>=JSH_USART1) && \
   (((F)&JSH_MASK_TYPE)<=JSH_USART6))
@@ -196,7 +205,7 @@ bool jshIsPinValid(Pin pin); ///< is the specific pin actually valid?
 
 /// Given a string, convert it to a pin ID (or -1 if it doesn't exist)
 Pin jshGetPinFromString(const char *s);
-/** Write the pin name to a string. String must have at least 8 characters (to be safe) */
+/** Write the pin name to a string. String must have at least 10 characters (to be safe) */
 void jshGetPinString(char *result, Pin pin);
 
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist). safe for undefined!
@@ -217,6 +226,8 @@ void jshPinOutput(Pin pin, bool value);
 
 // Convert an event type flag into a jshPinFunction for an actual hardware device
 JshPinFunction jshGetPinFunctionFromDevice(IOEventFlags device);
+// Convert a jshPinFunction to an event type flag
+IOEventFlags jshGetFromDevicePinFunction(JshPinFunction func);
 
 /** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
 JshPinFunction NO_INLINE jshGetPinFunctionForPin(Pin pin, JshPinFunction functionType);

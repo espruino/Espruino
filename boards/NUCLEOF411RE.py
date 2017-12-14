@@ -25,11 +25,19 @@ info = {
  'variables' :  7423, # (128-12)*1024/16-1
  'binary_name' : 'espruino_%v_nucleof411re.bin',
  'build' : {
-  'defines' : [
-     'USE_GRAPHICS',
-     'USE_NET',
+   'optimizeflags' : '-O3',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'NUCLEO=1',
+     'DEFINES+=-DUSE_USB_OTG_FS=1',
+     'STLIB=STM32F401xE',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o'
    ]
- }
+  }
 };
 chip = {
   'part' : "STM32F411RET6",
@@ -38,7 +46,7 @@ chip = {
   'ram' : 128, # 0x0001 8000 long, from 0x2000 0000 to 0x2001 7FFF
   'flash' : 512, # 0x0008 0000 long, from 0x0800 0000 to 0x0807 FFFF
   'speed' : 100,
-  'usart' : 3,
+  'usart' : 6,
   'spi' : 4,
   'i2c' : 3,
   'adc' : 1,
@@ -68,8 +76,8 @@ devices = {
            },
   'JTAG' : {
         'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-        'pin_DI' : 'A15' 
+        'pin_CK' : 'A14',
+        'pin_DI' : 'A15'
           },
 #  'USB' : { 'pin_otg_pwr' : 'C0',
 #            'pin_dm' : 'A11',

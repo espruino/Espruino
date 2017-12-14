@@ -21,12 +21,19 @@ info = {
  'variables' : 5450,
  'binary_name' : 'espruino_%v_stm32f429idiscovery.bin',
  'build' : {
-  'defines' : [
-     'USE_GRAPHICS',
-     'USE_NET',
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'GRAPHICS',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'DEFINES+=-DUSE_USB_OTG_FS=1',
+     'STLIB=STM32F429xx',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o'
    ]
- }
+  }
 };
+
 chip = {
   'part' : "STM32F429ZIT6",
   'family' : "STM32F4",
@@ -52,7 +59,7 @@ devices = {
   'USB' : { 'pin_dm' : 'B14',
             'pin_dp' : 'B15',
             'pin_vbus' : 'B13',
-            'pin_id' : 'B12', 
+            'pin_id' : 'B12',
             'pin_pso' : 'C4',  # Power supply enable
             'pin_oc' : 'C5',   # Overcurrent
            },
@@ -91,7 +98,7 @@ devices = {
             'pin_d16' : 'G6',
             'pin_rd' : 'D12', # RDX
             'pin_wr' : 'D13',# WRQ (or SPI DC - data=1/command=0)
-            'pin_cs' : 'C2', # SPI CS (enable=0) 
+            'pin_cs' : 'C2', # SPI CS (enable=0)
             'pin_en' : 'F10',
             'pin_vsync' : 'A4',
             'pin_hsync' : 'C6',
@@ -104,7 +111,7 @@ devices = {
             'pin_im3' : 'D7', # solder bridge normally open, pulled to 0
           },
   'SDRAM' : {
-            'pin_sdcke1' : 'B5', 
+            'pin_sdcke1' : 'B5',
             'pin_sdne1' : 'B6',
             'pin_sdnwe' : 'C0',
             'pin_d2' : 'D0',
@@ -145,8 +152,8 @@ devices = {
   },
   'JTAG' : {
         'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-        'pin_DI' : 'A15' 
+        'pin_CK' : 'A14',
+        'pin_DI' : 'A15'
           },
 };
 

@@ -76,12 +76,35 @@ RAM_SIZE = board.chip["ram"]*1024;
 FLASH_SIZE = board.chip["flash"]*1024;
 
 # Beware - on some devices (the STM32F4) the memory is divided into two non-continuous blocks
-if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1204:
+if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1024:
   RAM_SIZE = 128*1024
 
+# on L476, the RAM is divided in 2 parts :
+#   96k at 0x20000000
+#   32k at 0x10000000
+# Today, the 32k part won't be used. In the future, it can be
+# used for example for the stack. In this case, need to : 
+# _estack = 0x10008000; 
+# and add the RAM in MEMORY table.
+if board.chip["part"].startswith("STM32L476") and RAM_SIZE > 96*1024:
+  RAM_SIZE = 96*1024
 
+# on L496, the RAM is divided in 2 parts :
+#   256k at 0x20000000
+#   64k at 0x10000000
+if board.chip["part"].startswith("STM32L496") and RAM_SIZE > 256*1024:
+  RAM_SIZE = 256*1024
+
+# IS_BOOTLOADER will only get used on official Espruino
+# boards. The ST discovery bootloader rejects firmwares that
+# aren't based at 0x08000000, however it seems to be wrong. If you use
+# DFU then the built-in DFU bootloader will fail to load
+# the firmware on reboot if FLASH_BASE is 0x08000000, but
+# will work if it's 0x00000000
 if IS_BOOTLOADER:
   FLASH_SIZE = BOOTLOADER_SIZE
+  FLASH_BASE = 0x00000000
+
 elif IS_USING_BOOTLOADER:
   FLASH_BASE = common.get_espruino_binary_address(board)
   FLASH_SIZE -= BOOTLOADER_SIZE

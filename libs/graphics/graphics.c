@@ -79,8 +79,10 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
 #endif
     if (gfx->data.type == JSGRAPHICSTYPE_ARRAYBUFFER) {
       lcdSetCallbacks_ArrayBuffer(gfx);
+#ifndef SAVE_ON_FLASH
     } else if (gfx->data.type == JSGRAPHICSTYPE_JS) {
       lcdSetCallbacks_JS(gfx);
+#endif
     } else {
       jsExceptionHere(JSET_INTERNALERROR, "Unknown graphics type\n");
       assert(0);
@@ -95,7 +97,7 @@ void graphicsSetVar(JsGraphics *gfx) {
   JsVar *dataname = jsvFindChildFromString(gfx->graphicsVar, JS_HIDDEN_CHAR_STR"gfx", true);
   JsVar *data = jsvSkipName(dataname);
   if (!data) {
-    data = jsvNewStringOfLength(sizeof(JsGraphicsData));
+    data = jsvNewStringOfLength(sizeof(JsGraphicsData), NULL);
     jsvSetValueOfName(dataname, data);
   }
   jsvUnLock(dataname);
@@ -199,6 +201,60 @@ void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
   graphicsFillRectDevice(gfx,x2,y1,x2,y2);
   graphicsFillRectDevice(gfx,x1,y2,x2,y2);
   graphicsFillRectDevice(gfx,x1,y2,x1,y1);
+}
+
+void graphicsDrawCircle(JsGraphics *gfx, short posX, short posY, short rad) {
+  graphicsToDeviceCoordinates(gfx, &posX, &posY);
+
+  int radY = 0,
+      radX = rad;
+  // Decision criterion divided by 2 evaluated at radX=radX, radY=0
+  int decisionOver2 = 1 - radX;
+
+  while (radX >= radY) {
+    graphicsSetPixelDevice(gfx, radX + posX,  radY + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, radY + posX,  radX + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, -radX + posX,  radY + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, -radY + posX,  radX + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, -radX + posX, -radY + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, -radY + posX, -radX + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, radX + posX, -radY + posY, gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx, radY + posX, -radX + posY, gfx->data.fgColor);
+    radY++;
+
+    if (decisionOver2 <= 0) {
+      // Change in decision criterion for radY -> radY+1
+      decisionOver2 += 2 * radY + 1;
+    }
+    else {
+      radX--;
+      // Change for radY -> radY+1, radX -> radX-1
+      decisionOver2 += 2 * (radY - radX) + 1;
+    }
+  }
+}
+
+void graphicsFillCircle(JsGraphics *gfx, short x, short y, short rad) {
+  graphicsToDeviceCoordinates(gfx, &x, &y);
+
+  int radY = 0;
+  int decisionOver2 = 1 - rad;
+
+  while (rad >= radY) {
+    graphicsFillRectDevice(gfx, rad + x, radY + y, -rad + x, -radY + y);
+    graphicsFillRectDevice(gfx, radY + x, rad + y, -radY + x, -rad + y);
+    graphicsFillRectDevice(gfx, -rad + x, radY + y, rad + x, -radY + y);
+    graphicsFillRectDevice(gfx, -radY + x, rad + y, radY + x, -rad + y);
+    radY++;
+    if (decisionOver2 <= 0){
+      // Change in decision criterion for radY -> radY+1
+      decisionOver2 += 2 * radY + 1;
+    }else{
+      rad--;
+      // Change for radY -> radY+1, rad -> rad-1
+      decisionOver2 += 2 * (radY - rad) + 1;
+    }
+  }
 }
 
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str) {

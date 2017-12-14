@@ -21,30 +21,38 @@ info = {
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "B6",
  'default_console_rx' : "B7",
- 'variables' : 5100,
+ 'variables' : 7148,
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_wifi.bin',
  'binaries' : [
   { 'filename' : 'espruino_%v_wifi.bin', 'description' : "Normal Espruino WiFi build"},
  ],
  'build' : {
-   'defines' : [
-     'USE_USB_HID',
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_TV',
-     'USE_HASHLIB',
-     'USE_FILESYSTEM',
-     'USE_CRYPTO',
-     'USE_TLS'
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'USB_HID',
+     'NET',
+     'GRAPHICS',
+     'TV',
+     'HASHLIB',
+     'FILESYSTEM',
+     'CRYPTO',
+     'TLS',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'DEFINES+=-DUSE_USB_OTG_FS=1 -DESPRUINOWIFI',
+     'STLIB=STM32F411xE',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o'
    ]
- }
+  }
 };
+
 chip = {
   'part' : "STM32F411CEU6",
   'family' : "STM32F4",
-  'package' : "UQFN48", 
-  'ram' : 96,
+  'package' : "UQFN48",
+  'ram' : 128,
   'flash' : 512,
   'speed' : 100,
   'usart' : 6,
@@ -66,32 +74,39 @@ devices = {
             'pin_out' : 'H1' }, # checked
   'OSC_RTC' : { 'pin_in' :  'C14', # checked
                 'pin_out' : 'C15' }, # checked
-  'BTN1' : { 'pin' : 'C13', 'pinstate' : 'IN_PULLDOWN' }, 
-  'LED1' : { 'pin' : 'B2' }, 
+  'BTN1' : { 'pin' : 'C13', 'pinstate' : 'IN_PULLDOWN' },
+  'LED1' : { 'pin' : 'B2' },
   'LED2' : { 'pin' : 'B12' },
   'USB' : { 'pin_vsense' :  'A9',
             'pin_dm' : 'A11',   # checked
             'pin_dp' : 'A12' }, # checked
   'JTAG' : {
         'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-#        'pin_DI' : 'A15' 
+        'pin_CK' : 'A14',
+#        'pin_DI' : 'A15'
           },
   'ESP8266' : { 'pin_rx' :  'A2',
-                'pin_tx' : 'A3',  
+                'pin_tx' : 'A3',
                 'pin_cts' : 'A15',
                 'pin_ch_pd' : 'A14',
                 'pin_gpio0' : 'A13',
    },
 };
 
+def rev(x):
+    x.reverse();
+    return x;
+
 # left-right, or top-bottom order
 board = {
-  'top' : [ 'B15', 'B14', 'B13', 'B10', 'B1', 'A7', 'A6', 'A5', 'A4', 'A1', 'A0' ], 
-  'bottom' : [ 'GND', 'VBAT', '3.3', 'B3', 'B4', 'B5', 'B6', 'B7','B8', 'B9', 'B0'],
+  'left' : rev([ 'B15', 'B14', 'B13', 'B10', 'B1', 'A7', 'A6', 'A5', 'A4', 'A1', 'A0' ]),
+  'right' : rev([ 'GND', 'VUSB', '3.3', 'B3', 'B4', 'B5', 'B6', 'B7','B8', 'B9', 'B0']),
 
-  'right' : ['A10','A8'],
+  'left2' : ['A10','A8'],
   '_notes' : {
+    'VUSB' : "This pin is connected directly to USB 5V - as such you should not use it to power Espruino WiFi *unless* the Micro USB port is unplugged",
+    'B6' : "Serial Console TX when USB disconnected, use `USB.setConsole(true)` to avoid",
+    'B7' : "Serial Console RX when USB disconnected, use `USB.setConsole(true)` to avoid",
     'A2' : 'ESP8266 RX',
     'A3' : 'ESP8266 TX',
     'A15' : 'ESP8266 CTS', # ESP8266 Clear to send (when enabled with AT+UART_DEF)
@@ -101,32 +116,30 @@ board = {
 };
 board["_css"] = """
 #board {
-  width: 550px;
-  height: 272px;
-  top: 300px;
-  left : 100px;
+  width: 371px;
+  height: 450px;
+  top: 25px;
+  left : 200px;
   background-image: url(img/ESPRUINOWIFI.png);
 }
 #boardcontainer {
-  height: 800px;
+  height: 500px;
 }
-#top {
-  bottom: 253px;
-  left: 194px;
+#left {
+  top: 10px;
+  right: 370px;
 }
-#bottom {
-  top: 255px;
-  left: 192px;
+#right {
+  top: 10px;
+  left: 370px;
 }
-
-#right  {
-  top: 60px;
-  left: 540px;
+#left2  {
+  top: 380px;
+  left: 60px;
 }
-.toppin { width: 32px; }
-.bottompin { width: 32px; }
-
-.rightpin { height: 17px; }
+.leftpin { height: 39px; }
+.rightpin { height: 39px; }
+.left2pin { height: 39px; }
 
 """;
 

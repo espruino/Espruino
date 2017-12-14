@@ -19,12 +19,19 @@ info = {
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_arietta',
  'build' : {
-   'defines' : [
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_FILESYSTEM',
-     'USE_CRYPTO',
-     'USE_TLS'
+   'optimizeflags' : '-O3',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'FILESYSTEM',
+     'CRYPTO',
+     'TLS',
+     'HASHLIB',
+     'TELNET',
+   ],
+   'makefile' : [
+     'LINUX=1',
+     'DEFINES += -DARIETTA_G25 -DSYSFS_GPIO_DIR="\"/sys/class/gpio\"',
    ]
  }
 };
@@ -46,8 +53,8 @@ devices = {
 };
 
 def get_pins():
-  pins = pinutils.generate_pins(0,31)  
+  pins = pinutils.generate_pins(0,31)
   pinutils.findpin(pins, "PD7", True)["functions"]["SPI1_SCK"]=0;
   pinutils.findpin(pins, "PD8", True)["functions"]["SPI1_MOSI"]=0;
   pinutils.findpin(pins, "PD10", True)["functions"]["SPI1_MISO"]=0;
-  return pins  
+  return pins

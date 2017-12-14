@@ -102,15 +102,9 @@ JsVar *jswrap_hashlib_sha2(JsHashType hash_type) {
     return 0; // out of memory
   }
 
-  JsVar *jsCtx = jsvNewStringOfLength(hashFunctions[hash_type].ctx_size);
-
-  if (!jsCtx) {
-    return 0; // out of memory
-  }
-
   hashFunctions[hash_type].init(hashFunctions[hash_type].data);
 
-  jsvSetString(jsCtx, hashFunctions[hash_type].data, hashFunctions[hash_type].ctx_size);
+  JsVar *jsCtx = jsvNewStringOfLength(hashFunctions[hash_type].ctx_size, hashFunctions[hash_type].data);
 
   jsvObjectSetChildAndUnLock(hashobj, "block_size",  jsvNewFromInteger((JsVarInt)hashFunctions[hash_type].block_size));
   jsvObjectSetChildAndUnLock(hashobj, "context",     jsCtx);
@@ -178,16 +172,13 @@ JsVar *jswrap_hashlib_hash_digest(JsVar *parent) {
   type = jsvGetInteger(child);
   jsvUnLock(child);
 
-  JsVar *digest = jsvNewStringOfLength(hashFunctions[type].digest_size);
-  if (!digest) return 0; // out of memory
-
   jsCtx = jsvObjectGetChild(parent, "context", 0);
 
   jsvGetString(jsCtx, hashFunctions[type].data, hashFunctions[type].ctx_size + 1); // trailing zero
   jsvUnLock(jsCtx);
 
   hashFunctions[type].final(hashFunctions[type].data, buff);
-  jsvSetString(digest, buff, hashFunctions[type].digest_size);
+  JsVar *digest = jsvNewStringOfLength(hashFunctions[type].digest_size, buff);
 
   return digest;
 }
@@ -215,7 +206,7 @@ JsVar *jswrap_hashlib_hash_hexdigest(JsVar *parent) {
   type = jsvGetInteger(child);
   jsvUnLock(child);
 
-  digest = jsvNewStringOfLength(0); // hashFunctions[type].digest_size*2
+  digest = jsvNewFromEmptyString(); // hashFunctions[type].digest_size*2
   if (!digest) return 0; // out of memory
 
   jsCtx = jsvObjectGetChild(parent, "context", 0);

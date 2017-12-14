@@ -14,7 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include <ets_sys.h>
-#include <osapi.h>
+#include "osapi_release.h"
 #include <os_type.h>
 #include <c_types.h>
 #include <user_interface.h>
@@ -112,7 +112,8 @@ void jshInit() {
   jshInitDevices();
 
   // sanity check for pin function enum to catch ordering changes
-  if (JSHPINSTATE_I2C != 12 || JSHPINSTATE_GPIO_IN_PULLDOWN != 5 || JSHPINSTATE_MASK != 15) {
+  if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
+    //jsError("%d %d %d\n",JSHPINSTATE_I2C, JSHPINSTATE_GPIO_IN_PULLDOWN,JSHPINSTATE_MASK); 
     jsError("JshPinState #defines have changed, please update pinStateToString()");
   }
 
@@ -221,6 +222,11 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 void jshInterruptOff() { ets_intr_lock(); }
 void jshInterruptOn()  { ets_intr_unlock(); }
 
+/// Are we currently in an interrupt?
+bool jshIsInInterrupt() {
+  return false; // FIXME
+}
+
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
   int time = (int) timeUntilWake;
@@ -304,6 +310,7 @@ static uint8 pinAFFunc[] = {
 static char *pinStateToString(JshPinState state) {
   static char *states[] = {
     "UNDEFINED", "GPIO_OUT", "GPIO_OUT_OPENDRAIN",
+    "GPIO_OUT_OPENDRAIN_PULLUP",	  
     "GPIO_IN", "GPIO_IN_PULLUP", "GPIO_IN_PULLDOWN",
     "ADC_IN", "AF_OUT", "AF_OUT_OPENDRAIN",
     "USART_IN", "USART_OUT", "DAC_OUT", "I2C",
@@ -314,15 +321,19 @@ static char *pinStateToString(JshPinState state) {
 
 static void jshDebugPin(Pin pin) {
   os_printf("PIN: %d out=%ld enable=%ld in=%ld\n",
-      pin, (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, (GPIO_REG_READ(GPIO_ENABLE_ADDRESS)>>pin)&1,
-      (GPIO_REG_READ(GPIO_IN_ADDRESS)>>pin)&1);
+      pin, 
+      (long int) (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, 
+      (long int) (GPIO_REG_READ(GPIO_ENABLE_ADDRESS)>>pin)&1,
+      (long int) (GPIO_REG_READ(GPIO_IN_ADDRESS)>>pin)&1);
 
   uint32_t gpio_pin = GPIO_REG_READ(GPIO_PIN_ADDR(pin));
   uint32_t mux = READ_PERI_REG(PERIPHS_IO_MUX + 4*pin);
   os_printf("     dr=%s src=%s func=%ld pull-up=%ld oe=%ld\n",
       gpio_pin & 4 ? "open-drain" : "totem-pole",
       gpio_pin & 1 ? "sigma-delta" : "gpio",
-      (mux>>2)&1 | (mux&3), (mux>>7)&1, mux&1);
+      (long int) ((mux>>2)&1 | (mux&3)), 
+      (long int) ((mux>>7)&1),
+      (long int) mux&1);
 }
 
 /**
@@ -333,6 +344,7 @@ static void jshDebugPin(Pin pin) {
  * JSHPINSTATE_UNDEFINED
  * JSHPINSTATE_GPIO_OUT
  * JSHPINSTATE_GPIO_OUT_OPENDRAIN
+ * JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP
  * JSHPINSTATE_GPIO_IN
  * JSHPINSTATE_GPIO_IN_PULLUP
  * JSHPINSTATE_GPIO_IN_PULLDOWN
@@ -351,6 +363,36 @@ void jshPinSetState(
     Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
+  
+  os_printf("> ESP8266: jshPinSetState state: %s\n",pinStateToString(state));
+
+  /* handle D16 */
+  if (pin == 16) {
+    switch(state){
+      case JSHPINSTATE_GPIO_OUT:
+        // mux configuration for XPD_DCDC to output rtc_gpio0
+        WRITE_PERI_REG(PAD_XPD_DCDC_CONF, (READ_PERI_REG(PAD_XPD_DCDC_CONF) & 0xffffffbc) | (uint32)0x1);  
+        //mux configuration for out enable
+        WRITE_PERI_REG(RTC_GPIO_CONF,(READ_PERI_REG(RTC_GPIO_CONF) & (uint32)0xfffffffe) | (uint32)0x0);
+        //out enable
+        WRITE_PERI_REG(RTC_GPIO_ENABLE,(READ_PERI_REG(RTC_GPIO_ENABLE) & (uint32)0xfffffffe) | (uint32)0x1);
+        break;
+      case JSHPINSTATE_GPIO_IN:
+        // mux configuration for XPD_DCDC and rtc_gpio0 connection
+        WRITE_PERI_REG(PAD_XPD_DCDC_CONF,(READ_PERI_REG(PAD_XPD_DCDC_CONF) & 0xffffffbc) | (uint32)0x1);             
+        //mux configuration for out enable
+        WRITE_PERI_REG(RTC_GPIO_CONF,(READ_PERI_REG(RTC_GPIO_CONF) & (uint32)0xfffffffe) | (uint32)0x0);
+        //out disable
+        WRITE_PERI_REG(RTC_GPIO_ENABLE,READ_PERI_REG(RTC_GPIO_ENABLE) & (uint32)0xfffffffe);             
+        break;
+      default:
+        jsError("only output and input are valid for D16");
+        return;
+     }
+     g_pinState[pin] = state;
+     return;
+  } 
+
   /* Make sure we kill software PWM if we set the pin state
    * after we've started it */
   if (BITFIELD_GET(jshPinSoftPWM, pin)) {
@@ -373,6 +415,7 @@ void jshPinSetState(
   switch (state) {
   case JSHPINSTATE_GPIO_OUT:
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
+  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
   case JSHPINSTATE_GPIO_IN:
   case JSHPINSTATE_GPIO_IN_PULLUP:
   case JSHPINSTATE_I2C:
@@ -423,7 +466,22 @@ void jshPinSetState(
  */
 JshPinState jshPinGetState(Pin pin) {
   //os_printf("> ESP8266: jshPinGetState %d\n", pin);
-  return g_pinState[pin];
+  /*
+    os_printf("> ESP8266: pin %d, pinState %d, reg_read %d, out_addr: %d input get %d\n", 
+      pin, g_pinState[pin], (GPIO_REG_READ(GPIO_OUT_W1TS_ADDRESS)>>pin)&1,
+      (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, GPIO_INPUT_GET(pin));
+  */
+  int rc = g_pinState[pin];
+  if (pin == 16) {
+    if ((uint8)(READ_PERI_REG(RTC_GPIO_IN_DATA) & 1) &1) {
+       rc = g_pinState[pin] | JSHPINSTATE_PIN_IS_ON;
+    } 
+  } else {
+    if ( (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1 ) {
+      rc = g_pinState[pin] | JSHPINSTATE_PIN_IS_ON;
+    } 
+  }
+  return rc;
 }
 
 //===== GPIO and PIN stuff =====
@@ -436,8 +494,17 @@ void jshPinSetValue(
     bool value //!< The new value of the pin.
   ) {
   //os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
-  GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, (value&1)<<pin);
-  GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, (!value)<<pin);
+  /* handle GPIO16 */
+  if (pin == 16) {
+    WRITE_PERI_REG(RTC_GPIO_OUT,(READ_PERI_REG(RTC_GPIO_OUT) & (uint32)0xfffffffe) | (uint32)(value & 1));
+  } else {
+    if (value & 1) { 
+      GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, 1<<pin);
+    } else {
+      GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, 1<<pin);
+    }
+  }
+  return;
   //jshDebugPin(pin);
 }
 
@@ -449,8 +516,12 @@ void jshPinSetValue(
 bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
-  //os_printf("> ESP8266: jshPinGetValue pin=%d, value=%d\n", pin, GPIO_INPUT_GET(pin));
-  return GPIO_INPUT_GET(pin);
+  /* handle D16 */
+  if (pin == 16) {
+    return (READ_PERI_REG(RTC_GPIO_IN_DATA) & 1);
+  } else {
+    return GPIO_INPUT_GET(pin);
+  }
 }
 
 
@@ -626,11 +697,17 @@ bool jshCanWatch(
     Pin pin //!< The pin that we are asking whether or not we can watch it.
   ) {
   // As of right now, let us assume that all pins on an ESP8266 are watchable.
-  os_printf("> jshCanWatch: pin=%d\n", pin);
-  os_printf("< jshCanWatch = true\n");
-  return true;
+  bool rc;
+  //os_printf("> jshCanWatch: pin=%d\n", pin);
+  // exclude pin 16
+  if ( pin == 16 ) {
+    rc = false;
+  } else {
+    rc = true;
+  }
+  //os_printf("< jshCanWatch = %d (0:false,1:true)\n",rc);
+  return rc;
 }
-
 
 /**
  * Do what ever is necessary to watch a pin.
@@ -694,7 +771,12 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (device == EV_SERIAL1) uart_no = UART0;
   else if (device == EV_SERIAL2) uart_no = UART1;
   else {
-    jsError("jshUSARTSetup Unknown device %d\n", device);
+    jsExceptionHere(JSET_ERROR, "jshUSARTSetup Unknown device %d\n", device);
+    return;
+  }
+  
+  if (inf->errorHandling) {
+    jsExceptionHere(JSET_ERROR, "ESP8266 Espruino builds can't handle framing/parity errors (errors:true)");
     return;
   }
 
@@ -867,15 +949,15 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 
 //===== I2C =====
 
-/** Set-up I2C master for ESP8266, default pins are SCL:14, SDA:2. Only device I2C1 is supported
+/** Set-up I2C master for ESP8266, default pins are SCL:12, SDA:13. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   //os_printf("> jshI2CSetup: SCL=%d SDA=%d bitrate=%d\n",
   //    info->pinSCL, info->pinSDA, info->bitrate);
   if (device != EV_I2C1) {
     jsError("Only I2C1 supported"); return; }
-  Pin scl = info->pinSCL !=PIN_UNDEFINED ? info->pinSCL : 14;
-  Pin sda = info->pinSDA !=PIN_UNDEFINED ? info->pinSDA : 2;
+  Pin scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 12;
+  Pin sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 13;
 
   jshPinSetState(scl, JSHPINSTATE_I2C);
   jshPinSetState(sda, JSHPINSTATE_I2C);
@@ -1081,10 +1163,11 @@ static void systemTimeInit(void) {
   rtcTimeStamp.hwTimeStamp = rtcTime;
   sysTimeStamp.timeStamp = rtcTimeStamp.timeStamp;
   sysTimeStamp.hwTimeStamp = sysTime;
-  os_printf("RTC: restore sys=%lu rtc=%lu\n", sysTime, rtcTime);
+  os_printf("RTC: restore sys=%lu rtc=%lu\n", (long unsigned int)sysTime, (long unsigned int)rtcTime);
   os_printf("RTC: restored time: %lu (delta=%lu cal=%luus)\n",
-      (uint32_t)(rtcTimeStamp.timeStamp/1000000),
-      (uint32_t)delta, (cal*1000)>>12);
+      (long unsigned int)(rtcTimeStamp.timeStamp/1000000),
+      (long unsigned int)delta, 
+      (long unsigned int)(cal*1000)>>12);
   saveTime(&rtcTimeStamp);
 }
 
@@ -1150,12 +1233,12 @@ unsigned int jshGetRandomNumber() {
 /**
  * Determine available flash depending on EEprom size
  *
- */  
+ */
 uint32_t jshFlashMax() {
-  extern uint16_t espFlashKB; 
+  extern uint16_t espFlashKB;
   return 1024*espFlashKB;
 }
-  
+
 /**
  * Read data from flash memory into the buffer.
  *
@@ -1250,6 +1333,17 @@ static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
 JsVar *jshFlashGetFree() {
   JsVar *jsFreeFlash = jsvNewEmptyArray();
   if (!jsFreeFlash) return 0;
+
+  uint32_t map = system_get_flash_size_map();
+  if ( map == 6 ) {
+    addFlashArea(jsFreeFlash, 0x200000, 0x100000);
+    addFlashArea(jsFreeFlash, 0x300000, 0x40000);
+    addFlashArea(jsFreeFlash, 0x340000, 0x40000);
+    addFlashArea(jsFreeFlash, 0x380000, 0x40000);
+    addFlashArea(jsFreeFlash, 0x3C0000, 0x40000);
+    return jsFreeFlash;
+  }
+
   // Area reserved for EEPROM
   addFlashArea(jsFreeFlash, 0x77000, 0x1000);
 

@@ -21,12 +21,18 @@ info = {
  'variables' : 3250,
  'binary_name' : 'espruino_%v_ARMinARM.bin',
  'build' : {
-  'defines' : [
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_FILESYSTEM'
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'NEOPIXEL'
+     'FILESYSTEM'
+   ],
+   'makefile' : [
+     'STLIB=STM32F10X_HD',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o'
    ]
- }
+  }
 };
 chip = {
   'part' : "STM32F103RET6",

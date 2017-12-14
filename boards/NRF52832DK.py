@@ -23,50 +23,59 @@ info = {
  'default_console_tx' : "D6",
  'default_console_rx' : "D8",
  'default_console_baudrate' : "9600",
- # Number of variables can be WAY higher on this board
- 'variables' : 2040, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
 # 'bootloader' : 1,
  'binary_name' : 'espruino_%v_nrf52832.bin',
  'build' : {
-  'defines' : [
-     'USE_BLUETOOTH'
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'BLUETOOTH',
+     'NET',
+     'GRAPHICS',
+     'NFC',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'DEFINES += -DBOARD_PCA10040 -DPCA10040'
    ]
  }
 };
+
 
 chip = {
   'part' : "NRF52832",
   'family' : "NRF52",
   'package' : "QFN48",
-  'ram' : 64, # Currently there is a bug with NRF52 preview DK's RAM but this will be fixed next revision.
+  'ram' : 64,
   'flash' : 512,
   'speed' : 64,
-  'usart' : 1, 
+  'usart' : 1,
   'spi' : 3,
   'i2c' : 2,
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((128 - 3) * 4096),
+    'address' : ((118 - 3) * 4096), # Bootloader takes pages 120-127, FS takes 118-119
     'page_size' : 4096,
-    'pages' : 0,
-    'flash_available' : (512 - 108 - 24) # Total flash - softdevice - bootloader (this one is code signed unlike nrF51).
+    'pages' : 3,
+    'flash_available' : 512 - ((31 + 8 + 1 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 1, code 3. Each page is 4 kb.
   },
 };
 
 devices = {
-  'LED1' : { 'pin' : 'D17', 'inverted' : True },
-  'LED2' : { 'pin' : 'D18', 'inverted' : True },
-  'LED3' : { 'pin' : 'D19', 'inverted' : True },
-  'LED4' : { 'pin' : 'D20', 'inverted' : True },
-  'BTN1' : { 'pin' : 'D13', 'inverted' : True },
-  'BTN2' : { 'pin' : 'D14', 'inverted' : True },
-  'BTN3' : { 'pin' : 'D15', 'inverted' : True },
-  'BTN4' : { 'pin' : 'D16', 'inverted' : True },
+  'BTN1' : { 'pin' : 'D13', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'BTN2' : { 'pin' : 'D14', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'BTN3' : { 'pin' : 'D15', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'BTN4' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'LED1' : { 'pin' : 'D17' }, # Pin negated in software
+  'LED2' : { 'pin' : 'D18' }, # Pin negated in software
+  'LED3' : { 'pin' : 'D19' }, # Pin negated in software
+  'LED4' : { 'pin' : 'D20' }, # Pin negated in software
   'RX_PIN_NUMBER' : { 'pin' : 'D8'},
   'TX_PIN_NUMBER' : { 'pin' : 'D6'},
   'CTS_PIN_NUMBER' : { 'pin' : 'D7'},
   'RTS_PIN_NUMBER' : { 'pin' : 'D5'},
+  # Pin D22 is used for clock when driving neopixels - as not specifying a pin seems to break things
 };
 
 # left-right, or top-bottom order
@@ -87,14 +96,6 @@ def get_pins():
   pinutils.findpin(pins, "PD8", True)["functions"]["RXD"]=0;
   pinutils.findpin(pins, "PD9", True)["functions"]["NFC1"]=0;
   pinutils.findpin(pins, "PD10", True)["functions"]["NFC2"]=0;
-  pinutils.findpin(pins, "PD13", True)["functions"]["Button_1"]=0;
-  pinutils.findpin(pins, "PD14", True)["functions"]["Button_2"]=0;
-  pinutils.findpin(pins, "PD15", True)["functions"]["Button_3"]=0;
-  pinutils.findpin(pins, "PD16", True)["functions"]["Button_4"]=0;
-  pinutils.findpin(pins, "PD17", True)["functions"]["LED_1"]=0;
-  pinutils.findpin(pins, "PD18", True)["functions"]["LED_2"]=0;
-  pinutils.findpin(pins, "PD19", True)["functions"]["LED_3"]=0;
-  pinutils.findpin(pins, "PD20", True)["functions"]["LED_4"]=0;
   pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN0"]=0;
   pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN1"]=0;
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN2"]=0;
@@ -103,5 +104,18 @@ def get_pins():
   pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN5"]=0;
   pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
+  # Make buttons and LEDs negated
+  pinutils.findpin(pins, "PD13", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD14", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD15", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD16", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD17", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD18", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD19", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD20", True)["functions"]["NEGATED"]=0;
+  
+  # everything is non-5v tolerant
+  for pin in pins:
+    pin["functions"]["3.3"]=0;
   #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
   return pins

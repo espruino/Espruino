@@ -21,7 +21,7 @@ OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
  * with other linker script that defines memory regions FLASH and RAM.
  * It references following symbols, which must be defined in code:
  *   Reset_Handler : Entry of reset handler
- * 
+ *
  * It defines following symbols, which code can use without definition:
  *   __exidx_start
  *   __exidx_end
@@ -73,9 +73,9 @@ SECTIONS
 
     KEEP(*(.eh_frame*))
   } > FLASH
-    
 
-  .ARM.extab : 
+
+  .ARM.extab :
   {
     *(.ARM.extab* .gnu.linkonce.armextab.*)
   } > FLASH
@@ -90,7 +90,7 @@ SECTIONS
   __etext = .;
   _etext = .;
   _sidata = .;
-    
+
   .data : AT (__etext)
   {
     __data_start__ = .;
@@ -138,7 +138,7 @@ SECTIONS
     __bss_end__ = .;
     _ebss = .;
   } > RAM
-  
+
   .heap (COPY):
   {
     __end__ = .;
@@ -163,7 +163,10 @@ SECTIONS
   _estack = __StackTop;
   __StackLimit = __StackTop - SIZEOF(.stack_dummy);
   PROVIDE(__stack = __StackTop);
-  
+
   /* Check if data + heap + stack exceeds RAM limit */
-  ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")
+  /*
+  FIXME: removing this test for now as seem unable to get rid of the heap
+   - which we don't need
+  ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")*/
 }

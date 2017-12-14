@@ -52,25 +52,9 @@ int main(void) {
   int flashy = 0;
   BootloaderState state = BLS_UNDEFINED;
   char currentCommand = 0;
-  
-  unsigned int buttonLifted = 0;
-  unsigned int buttonPressed = 0;
+
 
   while (1) {
-    // if we pressed the button to enter the bootloader, then released,
-    // then pressed again (with debounce) then let's jump back to Espruino
-    if (isButtonPressed()) {
-      if (buttonPressed<0xFFFFFFFF) 
-        buttonPressed++;
-      if (buttonLifted>10000 && buttonPressed>10000) {
-        setLEDs(0);
-        jumpToEspruinoBinary();
-      }
-    } else {
-      if (buttonLifted<0xFFFFFFFF) 
-        buttonLifted++;
-    }
-
     if (!jshIsUSBSERIALConnected()) {
       setLEDs(0b0101);
       // reset, led off
@@ -156,8 +140,12 @@ int main(void) {
               addr |= _getc_blocking()  << 16;
               addr |= _getc_blocking()  << 8;
               addr |= _getc_blocking();
+              chksumc = ((addr)&0xFF)^((addr>>8)&0xFF)^((addr>>16)&0xFF)^((addr>>24)&0xFF);
               chksum = _getc_blocking();
-              // TODO: check checksum
+              if (chksumc != chksum) {
+                _putc(NACK);
+                break;
+              }
               _putc(ACK);
               setLEDs(7); // jumping...
               unsigned int *ResetHandler = (unsigned int *)(addr + 4);

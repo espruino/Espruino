@@ -21,12 +21,17 @@ info = {
  'variables': 3250,
  'binary_name': 'espruino_%v_olimexino_stm32_re.bin',
  'build' : {
-   'defines' : [
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_FILESYSTEM',
-     'USE_TV',
-     'USE_HASHLIB'
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'FILESYSTEM',
+     'TV',
+     'HASHLIB'
+   ],
+   'makefile' : [
+     'STLIB=STM32F10X_HD',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o'
    ]
  }
 }
@@ -99,7 +104,7 @@ board["_css"] = """
 #left {
   top: 155px;
   right: 520px;
-  
+
 }
 #left2  {
   top:155px;

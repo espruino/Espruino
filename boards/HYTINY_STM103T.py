@@ -21,13 +21,20 @@ info = {
  'variables' : 1020,
  'binary_name' : 'espruino_%v_hytiny_stm103t.bin',
  'build' : {
-   'defines' : [
-     'USE_GRAPHICS'
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'GRAPHICS'
+   ],
+   'makefile' : [
+     'SAVE_ON_FLASH=1',
+     'STLIB=STM32F10X_MD',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o'
    ]
  }
 };
+
 chip = {
-  'part' : "STM32F103TBT6", 
+  'part' : "STM32F103TBT6",
   'family' : "STM32F1",
   'package' : "VFQFPN36",
   'ram' : 20,
@@ -52,7 +59,7 @@ devices = {
   'LED1' : { 'pin' : 'A1' },
   'USB' : { 'pin_disc' : 'A0',
             'pin_dm' : 'A11',
-            'pin_dp' : 'A12' 
+            'pin_dp' : 'A12'
           },
 };
 

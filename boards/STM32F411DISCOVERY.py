@@ -21,11 +21,18 @@ info = {
  'variables' : 5450,
  'binary_name' : 'espruino_%v_stm32f411discovery.bin',
  'build' : {
-  'defines' : [
-     'USE_GRAPHICS',
-     'USE_NET',
+   'optimizeflags' : '-O3',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'DEFINES+=-DUSE_USB_OTG_FS=1',
+     'STLIB=STM32F411xE',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o'
    ]
- }
+  }
 };
 chip = {
   'part' : "STM32F411RET6",
@@ -37,7 +44,7 @@ chip = {
   'usart' : 3,
   'spi' : 5,
   'i2c' : 3,
-  'adc' : 1,
+  'adc' : 2,
   'dac' : 0,
   'saved_code' : {
     # code size 225248 = 0x36FE0 starts at 0x0800 0000 ends at 0x0803 6FE0

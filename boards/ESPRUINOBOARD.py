@@ -15,13 +15,13 @@
 
 import pinutils;
 info = {
- 'name' : "Espruino Board rev 1.3/1.4",
+ 'name' : "Original Espruino Board rev 1.3/1.4",
  'link' : [ "http://www.espruino.com/EspruinoBoard" ],
  'espruino_page_link' : "EspruinoBoard",
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "A9",
  'default_console_rx' : "A10",
- 'variables' : 2250,
+ 'variables' : 2240,
  'bootloader' : 1,
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_espruino_1r3.bin',
@@ -30,14 +30,21 @@ info = {
   { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "TI CC3000 WiFi Networking"},
  ],
  'build' : {
-   'defines' : [
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_TV',
-     'USE_HASHLIB',
-     'USE_FILESYSTEM'
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'NEOPIXEL',
+     'HASHLIB',
+#     'TV', # TV had to be removed because of flash usage
+     'FILESYSTEM'
+   ],
+   'makefile' : [
+     'DEFINES+=-DESPRUINO_1V3',
+     'STLIB=STM32F10X_XL',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o'
    ]
- }
+  }
 };
 chip = {
   'part' : "STM32F103RCT6",
@@ -56,16 +63,7 @@ chip = {
     'page_size' : 2048, # size of pages
     'pages' : 10, # number of pages we're using
     'flash_available' : 256-(20+10) # 20 used for code, 10 for bootloader
-  },
- 'build' : {
-   'defines' : [
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_TV',
-     'USE_HASHLIB',
-     'USE_FILESYSTEM'
-   ]
- }
+  }
 };
 devices = {
   'OSC' : { 'pin_in' :  'D0',
@@ -92,7 +90,7 @@ board = {
   'right' : [ 'A15', 'A14', 'A13', 'A10', 'A9', 'A8', 'C11', 'C10', 'C9', 'C8', 'C7', 'C6', 'C5', 'C4', 'B15', 'B14', 'B13', '3.3', 'VBAT', 'GND' ],
   'left' : [ 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B12', 'C12', 'C15', 'C0', 'C1', 'C2', 'C3', 'A0', 'A1', '3.3', 'VBAT', 'GND' ],
   'bottom' : [ 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'B0', 'B1', 'B10', 'B11' ],
-        
+
   '_notes' : {
     'B4' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outputs we'd recommend that you don't use B4 and B5 with analogWrite.",
     'B5' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outputs we'd recommend that you don't use B4 and B5 with analogWrite.",
@@ -110,7 +108,7 @@ board["_css"] = """
 }
 #left {
   top: 45px;
-  right: 431px;  
+  right: 431px;
 }
 #right  {
   top: 45px;

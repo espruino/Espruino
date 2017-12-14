@@ -21,11 +21,19 @@ info = {
  'variables' : 3040,
  'binary_name' : 'espruino_%v_stm32f401cdiscovery.bin',
  'build' : {
-  'defines' : [
-     'USE_GRAPHICS',
-     'USE_NET',
+   'optimizeflags' : '-Os',
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'NEOPIXEL'
+   ],
+   'makefile' : [
+     'SAVE_ON_FLASH=1',
+     'DEFINES+=-DUSE_USB_OTG_FS=1',
+     'STLIB=STM32F401xE',
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o'
    ]
- }
+  }
 };
 chip = {
   'part' : "STM32F401VCT6",
@@ -84,10 +92,10 @@ devices = {
                'pin_sda' :  'B9',
                'pin_scl' :  'B6',
                'pin_mclk' :  'C7',
-               'pin_sclk' :  'C10',    
-               'pin_sdin' :  'C12',  
+               'pin_sclk' :  'C10',
+               'pin_sdin' :  'C12',
                'pin_lrck' :  'A4',
-               'pin_nrst' :  'D4',    
+               'pin_nrst' :  'D4',
                 },
 };
 
@@ -131,5 +139,3 @@ def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f401.csv', 5, 8, 9)
   pins = pinutils.scan_pin_af_file(pins, 'stm32f401_af.csv', 0, 1)
   return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])
-
-

@@ -15,8 +15,11 @@
  */
 #include "jswrap_interactive.h"
 #include "jswrap_json.h" // for print/console.log
+#include "jswrap_flash.h" // for jsfRemoveCodeFromFlash
 #include "jsvar.h"
+#include "jsflags.h"
 #include "jsinteractive.h"
+
 
 /*JSON{
   "type" : "class",
@@ -37,6 +40,7 @@ A reference to the global scope, where everything is defined.
 /*JSON{
   "type" : "function",
   "name" : "setBusyIndicator",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_interface_setBusyIndicator",
   "params" : [
     ["pin","JsVar",""]
@@ -44,6 +48,7 @@ A reference to the global scope, where everything is defined.
 }
 When Espruino is busy, set the pin specified here high. Set this to undefined to disable the feature.
  */
+#ifndef SAVE_ON_FLASH
 void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
   Pin oldPin = pinBusyIndicator;
   pinBusyIndicator = jshGetPinFromVar(pinVar);
@@ -53,10 +58,12 @@ void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
     if (pinBusyIndicator!=PIN_UNDEFINED) jshPinOutput(pinBusyIndicator, 1);
   }
 }
+#endif
 
 /*JSON{
   "type" : "function",
   "name" : "setSleepIndicator",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_interface_setSleepIndicator",
   "params" : [
     ["pin","JsVar",""]
@@ -66,6 +73,7 @@ When Espruino is asleep, set the pin specified here low (when it's awake, set it
 
 Please see http://www.espruino.com/Power+Consumption for more details on this.
  */
+#ifndef SAVE_ON_FLASH
 void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
   Pin oldPin = pinSleepIndicator;
   pinSleepIndicator = jshGetPinFromVar(pinVar);
@@ -75,24 +83,23 @@ void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
     if (pinSleepIndicator!=PIN_UNDEFINED) jshPinOutput(pinSleepIndicator, 1);
   }
 }
+#endif
 
 /*JSON{
   "type" : "function",
   "name" : "setDeepSleep",
+  "if" : "defined(EFM32) || defined(STM32)",
   "generate" : "jswrap_interface_setDeepSleep",
   "params" : [
     ["sleep","bool",""]
   ]
 }
-Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on the Espruino Board.
+Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on STM32 Espruino Boards.
 
 Please see http://www.espruino.com/Power+Consumption for more details on this.
  */
 void jswrap_interface_setDeepSleep(bool sleep) {
-  if (sleep)
-    jsiStatus |= JSIS_ALLOW_DEEP_SLEEP;
-  else
-    jsiStatus &= ~JSIS_ALLOW_DEEP_SLEEP;
+  jsfSetFlag(JSF_DEEP_SLEEP, sleep);
 }
 
 
@@ -106,22 +113,27 @@ void jswrap_interface_setDeepSleep(bool sleep) {
   ]
 }
 Output debugging information
+
+Note: This is not included on boards with low amounts of flash memory, or the Espruino board.
  */
 void jswrap_interface_trace(JsVar *root) {
+  #ifdef ESPRUINOBOARD
+  // leave this function out on espruino board - we need to save as much flash as possible
+  jsiConsolePrintf("Trace not included on this board");
+  #else
   if (jsvIsUndefined(root)) {
     jsvTrace(execInfo.root, 0);
   } else {
     jsvTrace(root, 0);
   }
+  #endif
 }
 
-/*XXX{ "type":"function", "name" : "dotty",
-         "description" : "Output dotty-format graph of debugging information",
-         "generate" : "jsvDottyOutput"
-}*/
+
 /*JSON{
   "type" : "function",
   "name" : "dump",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jsiDumpState((vcbprintf_callback)jsiConsolePrintString, 0)"
 }
 Output current interpreter state in a text form such that it can be copied to a new device
@@ -172,14 +184,30 @@ hold Button 1 down a fraction of a second later.
 /*JSON{
   "type" : "function",
   "name" : "reset",
-  "generate_full" : "jsiStatus|=JSIS_TODO_RESET;"
+  "generate" : "jswrap_interface_reset",
+  "params" : [
+    ["clearFlash","bool","Remove saved code from flash as well"]
+  ]
 }
-Reset the interpreter - clear program memory, and do not load a saved program from flash. This does NOT reset the underlying hardware (which allows you to reset the device without it disconnecting from USB).
+Reset the interpreter - clear program memory in RAM, and do not load a saved program from flash. This does NOT reset the underlying hardware (which allows you to reset the device without it disconnecting from USB).
 
 This command only executes when the Interpreter returns to the Idle state - for instance ```a=1;reset();a=2;``` will still leave 'a' as undefined.
 
 The safest way to do a full reset is to hit the reset button.
- */
+
+If `reset()` is called with no arguments, it will reset the board's state in
+RAM but will not reset the state in flash. When next powered on (or when
+`load()` is called) the board will load the previously saved code.
+
+Calling `reset(true)` will cause *all saved code in flash memory to
+be cleared as well*.
+
+*/
+void jswrap_interface_reset(bool clearFlash) {
+  jsiStatus |= JSIS_TODO_RESET;
+  if (clearFlash) jsfRemoveCodeFromFlash();
+}
+
 /*JSON{
   "type" : "function",
   "name" : "print",
@@ -216,7 +244,7 @@ void jswrap_interface_print(JsVar *v) {
     if (jsvIsString(v))
       jsiConsolePrintStringVar(v);
     else
-      jsfPrintJSON(v, JSON_PRETTY | JSON_NEWLINES);
+      jsfPrintJSON(v, JSON_PRETTY | JSON_SOME_NEWLINES | JSON_SHOW_OBJECT_NAMES);
     jsvUnLock(v);
     jsvObjectIteratorNext(&it);
     if (jsvObjectIteratorHasValue(&it))
@@ -245,13 +273,13 @@ void jswrap_interface_edit(JsVar *funcName) {
     func = jsvSkipNameAndUnLock(jsvFindChildFromVar(execInfo.root, funcName, 0));
   } else {
     func = funcName;
-    funcName = jsvGetPathTo(execInfo.root, func, 2, 0);
+    funcName = jsvGetPathTo(execInfo.root, func, 4, 0);
   }
 
   if (jsvIsString(funcName)) {
     if (jsvIsFunction(func)) {
       JsVar *scopeVar = jsvFindChildFromString(func, JSPARSE_FUNCTION_SCOPE_NAME, false);
-      JsVar *inRoot = jsvGetArrayIndexOf(execInfo.root, func, true);
+      JsVar *inRoot = jsvGetIndexOf(execInfo.root, func, true);
       bool normalDecl = scopeVar==0 && inRoot!=0;
       jsvUnLock2(inRoot, scopeVar);
       JsVar *newLine = jsvNewFromEmptyString();
@@ -443,7 +471,7 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
   } else {
     // Create a new timer
     JsVar *timerPtr = jsvNewObject();
-    if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
+    if (isnan(interval) || interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
     JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
     jsvObjectSetChildAndUnLock(timerPtr, "time", jsvNewFromLongInteger((jshGetSystemTime() - jsiLastIdleTime) + intervalInt));
     if (!isTimeout) {

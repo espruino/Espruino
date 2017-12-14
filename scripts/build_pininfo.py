@@ -48,6 +48,7 @@ board = importlib.import_module(boardname)
 
 # Call the included board_specific file - it sets up 'pins' and 'fill_gaps'
 pins = board.get_pins()
+pins = pinutils.remove_used_pinfunctions(pins, board)
 
 #print(json.dumps(pins, sort_keys=True, indent=2))
 
@@ -110,8 +111,9 @@ for pin in pins:
       analog = "JSH_ANALOG"+adc+"|JSH_ANALOG_CH"+channel;
   functions = pin["jshFunctions"]
   while len(functions)<pinInfoFunctionCount: functions.append("0")
-
-  writesource("/* "+pin["name"].ljust(4)+" */ { JSH_PORT"+pin["port"]+", JSH_PIN0+"+pin["num"]+", "+analog+", { "+', '.join(functions)+" } },")
+  portextra = ""
+  if "NEGATED" in pin["functions"]: portextra="|JSH_PIN_NEGATED"
+  writesource("/* "+pin["name"].ljust(4)+" */ { JSH_PORT"+pin["port"]+portextra+", JSH_PIN0+"+pin["num"]+", "+analog+", { "+', '.join(functions)+" } },")
 writesource("};")
 
 portinfo = {}
@@ -161,4 +163,3 @@ writeheader("")
 writeheader("extern const JshPinInfo pinInfo[JSH_PIN_COUNT];");
 writeheader("")
 writeheader("#endif // JSPININFO_H")
-

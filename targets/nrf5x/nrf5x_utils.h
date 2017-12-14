@@ -25,8 +25,7 @@ unsigned int nrf_utils_get_baud_enum(int baud);
 // Configure the low frequency clock to use the external 32.768 kHz crystal as a source & start.
 void nrf_utils_lfclk_config_and_start(void);
 
-int nrf_utils_get_device_id(uint8_t * device_id, int maxChars);
-uint8_t nrf_utils_get_random_number(void);
+unsigned int nrf_utils_cap_sense(int capSenseTxPin, int capSenseRxPin);
 
 #endif // NRF5X_UTILS_H__
 

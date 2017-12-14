@@ -1,7 +1,8 @@
-// currently has wrong number of elements (iterator issue?)
+// This is intentionally wrong
+// see https://github.com/espruino/Espruino/issues/489
 
 var a = new Uint8Array(2);
 a[1] = 1;
 var as = JSON.stringify(new Uint8Array(1));
 var bs = JSON.stringify(a);
-result = as=="new Uint8Array(1)" && bs=="new Uint8Array([0,1])";
+result = as=="[0]" && bs=="[0,1]";

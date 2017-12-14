@@ -77,6 +77,9 @@ typedef enum {
   EV_SERIAL5_STATUS,
   EV_SERIAL6_STATUS,
   EV_SERIAL_STATUS_MAX = EV_SERIAL6_STATUS,
+#ifdef BLUETOOTH
+  EV_BLUETOOTH_PENDING, // Pending tasks set by
+#endif
   EV_SPI1,
   EV_SPI2,
   EV_SPI3,
@@ -181,13 +184,19 @@ int jshGetCharToTransmit(IOEventFlags device);
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit);
 
-/// Set whether to use flow control on the given device or not
-void jshSetFlowControlEnabled(IOEventFlags device, bool xOnXOff);
+/// Set whether to use flow control on the given device or not. Whether to use software, and if hardware, the pin to use for RTS
+void jshSetFlowControlEnabled(IOEventFlags device, bool software, unsigned char/*Pin*/ pinCTS);
 
 // Functions that can be called in an IRQ when a pin changes state
-typedef void(*JshEventCallbackCallback)(bool state);
+typedef void(*JshEventCallbackCallback)(bool state, IOEventFlags flags);
 
 /// Set a callback function to be called when an event occurs
 void jshSetEventCallback(IOEventFlags channel, JshEventCallbackCallback callback);
+
+/// Set whether a Serial device puts framing/parity errors into the input queue
+void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling);
+
+/// Get whether a Serial device puts framing/parity errors into the input queue
+bool jshGetErrorHandlingEnabled(IOEventFlags device); 
 
 #endif /* JSDEVICES_H_ */

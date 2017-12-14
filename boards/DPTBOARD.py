@@ -17,12 +17,21 @@ import pinutils;
 info = {
  'name' : "DPT-Board",
  'default_console' : "EV_USBSERIAL",
- 'binary_name' : 'espruino_%v_dpt_board',
+ 'binary_name' : 'espruino',
  'build' : {
-  'defines' : [
-     'USE_NET',
-     'USE_GRAPHICS',
-     'USE_FILESYSTEM'
+   'libraries' : [
+     'NET',
+     'GRAPHICS',
+     'FILESYSTEM',
+     'CRYPTO',
+     'TLS',
+     'HASHLIB',
+     'TELNET',
+   ],
+   'makefile' : [
+     'LINUX=1',
+     'DEFINES += -DDPTBOARD -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""',
+     'OPENWRT_UCLIBC=1	# link with toolchain libc (uClibc or musl)'
    ]
  }
 };
@@ -44,6 +53,6 @@ devices = {
 };
 
 def get_pins():
-  pins = pinutils.generate_pins(0,27)  
+  pins = pinutils.generate_pins(0,27)
 
   return pins

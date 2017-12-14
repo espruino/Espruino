@@ -15,17 +15,25 @@ types of Microcontroller:
 
 espruino_#v##_pico_1r3_cc3000.bin  
 espruino_#v##_pico_1r3_wiznet.bin  
-   - The firmware image for the latest Espruino Pico Boards.
+   - The firmware image for Espruino Pico Boards.
      We'd strongly suggest that you use the Web IDE to flash this.
      Each image is for a different type of networking device.
      If you don't want a network device, it doesn't matter which you choose.
 
 espruino_#v##_espruino_1r3.bin  
 espruino_#v##_espruino_1r3_wiznet.bin  
-   - The firmware image for the latest Espruino Boards (rev 1v3 and 1v4)
+   - The firmware image for Original Espruino Boards
      We'd strongly suggest that you use the Web IDE to flash this.
      Each image is for a different type of networking device.
      If you don't want a network device, it doesn't matter which you choose.
+
+espruino_#v##_wifi.bin  
+   - The firmware image for Espruino WiFi Boards
+     We'd strongly suggest that you use the Web IDE to flash this.
+
+espruino_#v##_puckjs.zip
+   - The firmware image for Espruino Puck.js Devices
+     See http://www.espruino.com/Puck.js#firmware-updates for more information
 
 espruino_#v##_hystm32_24_ve.bin 
    - 'HY'STM32F103VET6 ARM with 2.4" LCD display
@@ -70,9 +78,18 @@ espruino_#v##_microbit.hex
    - Espruino for the BBC micro:bit - just copy this file onto the
    flash drive that appears when you plug the micro:bit in.
 
+espruino_#v##_ruuvitag.zip
+   - The firmware image for Ruuvitag Devices
+     See http://www.espruino.com/Ruuvitag for more information
 
-ESP8266
--------
+espruino_#v##_Wio_LTE.zip
+   - The firmware image for Seed Wio LTE Devices
+     See http://www.espruino.com/WioLTE for more information
+
+
+
+ESP8266 / ESP32
+---------------
 
 See http://www.espruino.com/EspruinoESP8266 for more info
 
@@ -80,8 +97,19 @@ espruino_#v##_esp8266_combined_512.bin
    - ESP8266 'combined' port for 512k devices like ESP01
        Flash with: esptool.py write_flash 0 espruino_#v##_esp8266_combined_512.bin
 
+espruino_#v##_esp8266_4mb_combined_4096.bin
+   - ESP8266 'combined' port for 4MB devices like ESP12
+       Flash with: esptool.py write_flash 0 espruino_#v##_esp8266_combined_4096.bin
+
 espruino_#v##_esp8266
    - ESP8266 port as separate files - see README in directory for more information
+
+espruino_#v##_esp8266_4mb
+   - ESP8266 port for 4mb devices as separate files - see README in directory for more information
+
+espruino_#v##_esp32.zip
+   - The firmware image for ESP32 Devices
+     See http://www.espruino.com/ESP32 for more information
 
 
 

@@ -19,7 +19,7 @@ import json;
 import sys;
 import os;
 
-ALLOWED_PORTS = "ABCDEFGH";
+ALLOWED_PORTS = "ABCDEFGHI";
 ALLOWED_FUNCTIONS = {}
 CLASSES = {}
 NAMES = {}
@@ -81,6 +81,12 @@ DEVICES = {
  "MEMS":"MEMS",
  "GYRO":"GYRO",
  "JTAG":"JTAG",
+ "ESP8266":"ESP8266",
+ "MAG":"MAG",
+ "IR":"IR", 
+ "NFC":"NFC",
+ "CAPSENSE":"CAPSENSE",
+ "PWR":"PWR"
 };
 
 for i in range(0,7):
@@ -108,6 +114,10 @@ URLS = {
  "JTAG":"/AdvancedDebug"
 };
 
+SIMPLE_DEVICES = [
+ "LED1","LED2","LED3","LED4","LED5","LED6","LED7","LED8",
+ "BTN1","BTN2","BTN3","BTN4","BTN5","BTN6","BTN7","BTN8" ];
+
 # is a pin name valid
 def isvalidpin(pinname):
   pinport = pinname[1:2]
@@ -116,12 +126,12 @@ def isvalidpin(pinname):
     pinnum = pinname[2:]
     return pinnum.isdigit()
   return False
-    
+
 
 # Find/populate a pin
 def haspin(pins, pinname):
   for pin in pins:
-    if pin["name"]==pinname: 
+    if pin["name"]==pinname:
       return True
   return False
 
@@ -129,7 +139,7 @@ def haspin(pins, pinname):
 def findpin(pins, pinname, force):
   if pinname.find('-')!=-1: pinname = pinname[:pinname.find('-')]
   for pin in pins:
-    if pin["name"]==pinname: 
+    if pin["name"]==pinname:
       return pin
   if force:
     print("ERROR: pin "+pinname+" not found")
@@ -154,8 +164,8 @@ def scan_pin_af_file(pins, filename, nameoffset, afoffset):
     pinname = pindata[nameoffset].strip()
     if pinname.find('(')>0: pinname = pinname[:pinname.find('(')]
     if not isvalidpin(pinname): continue
-    pin = findpin(pins, pinname, False)    
-    #print(json.dumps(pin, sort_keys=True, indent=2))  
+    pin = findpin(pins, pinname, False)
+    #print(json.dumps(pin, sort_keys=True, indent=2))
     for af in range(0, len(pindata)-afoffset):
       fnames = pindata[af+afoffset].split("/")
       for fname in fnames:
@@ -166,29 +176,29 @@ def scan_pin_af_file(pins, filename, nameoffset, afoffset):
   return pins
 
 # Code for scanning normal file
-def scan_pin_file(pins, filename, nameoffset, functionoffset, altfunctionoffset): 
+def scan_pin_file(pins, filename, nameoffset, functionoffset, altfunctionoffset):
   f = open(os.path.dirname(os.path.realpath(__file__))+'/../boards/pins/'+filename)
-  lines = f.readlines()  
+  lines = f.readlines()
   f.close()
   headings = lines[0].split(",")
   for line in lines:
     pindata = line.split(",")
     pinname = pindata[nameoffset].strip()
 
-    extrafunction = "" 
-    if "BOOT1" in line: extrafunction="BOOT1"                            
+    extrafunction = ""
+    if "BOOT1" in line: extrafunction="BOOT1"
     if pinname.find('(')>0: pinname = pinname[:pinname.find('(')]
     if not isvalidpin(pinname): continue
     pin = findpin(pins, pinname, False)
     for i,head in enumerate(headings):
-      pin["csv"][head] = pindata[i].strip()      
+      pin["csv"][head] = pindata[i].strip()
     if extrafunction!="":
       pin["functions"][extrafunction] = 0
-    for fn in pindata[functionoffset].strip().split("/"): 
+    for fn in pindata[functionoffset].strip().split("/"):
       fname = fn.strip()
-      pin["functions"][fname] = 0      
+      pin["functions"][fname] = 0
     if altfunctionoffset>=0:
-      for fn in pindata[altfunctionoffset].strip().split("/"): 
+      for fn in pindata[altfunctionoffset].strip().split("/"):
         fname = fn.strip()
         pin["functions"][fname] = 1
 #    print pin["name"]+" : "+', '.join(pin["functions"])
@@ -247,10 +257,60 @@ def get_device_pins(board):
 # If devices are used by a board, fill in their details for each pin
 def append_devices_to_pin_list(pins, board):
   devicepins = get_device_pins(board)
-  
+
   for i,pin in enumerate(pins):
     if pin["name"] in devicepins:
       pins[i]["functions"][devicepins[pin["name"]]["device"]] = devicepins[pin["name"]]["function"]
-#      print pins[i]["functions"][devicepins[pin["name"]]["device"]] 
+#      print pins[i]["functions"][devicepins[pin["name"]]["device"]]
   return pins
 
+# Get the utility timer for a specific board
+def get_device_util_timer(board):
+  if (board.chip["family"]=="STM32L4"):
+    if board.chip["part"].startswith("STM32L476") | board.chip["part"].startswith("STM32L496"):
+      return { 'timer' : "TIM5", 'defines' : """
+  // Used by various pins, but always with other options
+  #define UTIL_TIMER TIM5
+  #define UTIL_TIMER_IRQn TIM5_IRQn
+  #define UTIL_TIMER_IRQHandler TIM5_IRQHandler
+  #define UTIL_TIMER_APB1 LL_APB1_GRP1_PERIPH_TIM5
+  """}
+  if ((board.chip["family"]=="STM32F1") | (board.chip["family"]=="STM32F2") | 
+     (board.chip["family"]=="STM32F3") | (board.chip["family"]=="STM32F4")):
+    if board.chip["part"].startswith("STM32F401") | board.chip["part"].startswith("STM32F411"):
+      return { 'timer' : "TIM5", 'defines' : """
+// Used by various pins, but always with other options
+#define UTIL_TIMER TIM5
+#define UTIL_TIMER_IRQn TIM5_IRQn
+#define UTIL_TIMER_IRQHandler TIM5_IRQHandler
+#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM5
+"""}
+    elif "subfamily" in board.chip and board.chip["subfamily"]=="MD":
+     return { 'timer' : "TIM4", 'defines' : """
+// frustratingly the 103_MD (non-VL) chips in Olimexino don't have any timers other than 1-4
+#define UTIL_TIMER TIM4
+#define UTIL_TIMER_IRQn TIM4_IRQn
+#define UTIL_TIMER_IRQHandler TIM4_IRQHandler
+#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM4
+"""}
+    else:
+     return { 'timer' : "TIM7", 'defines' : """
+// nice timer not used by anything else
+#define UTIL_TIMER TIM7
+#define UTIL_TIMER_IRQn TIM7_IRQn
+#define UTIL_TIMER_IRQHandler TIM7_IRQHandler
+#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM7
+"""}
+  return False
+  
+# Remove any pinfunctions from the pins array that are used elsewhere the the board
+def remove_used_pinfunctions(pins, board):
+  util_timer = get_device_util_timer(board)
+  if util_timer!=False:
+    used_function = util_timer['timer']
+    for i,pin in enumerate(pins):
+      newfunctions = {}
+      for fidx,f in enumerate(pin["functions"]):
+        if not f.startswith(used_function): newfunctions[f]=pin["functions"][f]
+      pins[i]["functions"] = newfunctions
+  return pins

@@ -48,7 +48,7 @@ JsVar *jswrap_stream_read(JsVar *parent, JsVarInt chars) {
       // return the whole buffer and remove it
       data = buf;
       buf = 0;
-      jsvRemoveNamedChild(parent, STREAM_BUFFER_NAME);
+      jsvObjectRemoveChild(parent, STREAM_BUFFER_NAME);
     } else {
       // return just part of the buffer, and shorten it accordingly
       data = jsvNewFromStringVar(buf, 0, (size_t)chars);
@@ -80,7 +80,7 @@ bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force) {
     if (!jsiExecuteEventCallback(parent, callback, 1, &dataString)) {
       jsError("Error processing Serial data handler - removing it.");
       jsErrorFlags |= JSERR_CALLBACK;
-      jsvRemoveNamedChild(parent, STREAM_CALLBACK_NAME);
+      jsvObjectRemoveChild(parent, STREAM_CALLBACK_NAME);
     }
     jsvUnLock(callback);
   } else {

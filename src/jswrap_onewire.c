@@ -31,7 +31,7 @@ static Pin onewire_getpin(JsVar *parent) {
 
 /** Reset one-wire, return true if a device was present */
 static bool NO_INLINE OneWireReset(Pin pin) {
-  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN);
+  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   //jshInterruptOff();
   jshPinSetValue(pin, 0);
   jshDelayMicroseconds(500);
@@ -45,7 +45,7 @@ static bool NO_INLINE OneWireReset(Pin pin) {
 
 /** Write 'bits' bits, and return what was read (to read, you must send all 1s) */
 static JsVarInt NO_INLINE OneWireRead(Pin pin, int bits) {
-  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN);
+  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   JsVarInt result = 0;
   JsVarInt mask = 1;
   while (bits-- > 0) {
@@ -66,7 +66,7 @@ static JsVarInt NO_INLINE OneWireRead(Pin pin, int bits) {
 
 /** Write 'bits' bits, and return what was read (to read, you must send all 1s) */
 static void NO_INLINE OneWireWrite(Pin pin, int bits, unsigned long long data) {
-  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN);
+  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   unsigned long long mask = 1;
   while (bits-- > 0) {
     if (data & mask) { // short pulse
@@ -138,7 +138,7 @@ void jswrap_onewire_select(JsVar *parent, JsVar *rom) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return;
   if (!jsvIsString(rom) || jsvGetStringLength(rom)!=16) {
-    jsWarn("Invalid OneWire device address");
+    jsExceptionHere(JSET_TYPEERROR, "Invalid OneWire device address %q", rom);
     return;
   }
 
