@@ -170,7 +170,7 @@ static bool fileGetFromVar(JsFile *file, JsVar *parent) {
   bool ret = false;
   JsVar *fHandle = jsvObjectGetChild(parent, JS_FS_DATA_NAME, 0);
   if (fHandle && jsvIsFlatString(fHandle)) {
-    file->data = jsvGetFlatStringPointer(fHandle);
+    file->data = (JsFileData*)jsvGetFlatStringPointer(fHandle);
     file->fileVar = parent;
     if(file->data->state == FS_OPEN) {// return false if the file has been closed.
       ret = true;
@@ -232,7 +232,7 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
     jsvUnLock(parent);
     return false;
   }
-  file->data = jsvGetFlatStringPointer(data);
+  file->data = (JsFileData*)jsvGetFlatStringPointer(data);
   jsvObjectSetChildAndUnLock(parent, JS_FS_DATA_NAME, data);
   file->fileVar = parent;
   assert(file->data);
