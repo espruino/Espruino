@@ -30,6 +30,7 @@ info = {
    ],
    'makefile' : [
      'LINUX=1',
+     'USE_LCD_SDL=1'
    ]
  }
 };
