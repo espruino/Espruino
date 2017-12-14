@@ -127,6 +127,11 @@ def getArgumentSpecifier(jsondata):
   for param in params:
     s.append("("+toArgumentType(param[1])+" << (JSWAT_BITS*"+str(n)+"))");
     n=n+1
+  if n>5:
+    sys.stderr.write("ERROR: getArgumentSpecifier: Too many arguments to fit in type specifier, Use JsVarArray\n")
+    sys.stderr.write(json.dumps(jsondata, sort_keys=True, indent=2)+"\n")
+    exit(1)
+
   return " | ".join(s);
 
 def getCDeclaration(jsondata, name):
