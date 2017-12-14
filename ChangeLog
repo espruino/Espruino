@@ -42,6 +42,7 @@
             Filesystem API now uses flat strings (avoiding the 512 byte copy for each call)
             Increase default internal SD card bitrate to 4MHz (from 100k)
             nRF5x: Handle promise completions and advertising using IO queue, to avoid MEMORY_BUSY messages (#1277)
+            Allow E.HSBtoRGB to wrap 'hue' value, and allow it to return an array of [r,g,b] (fix #1283)
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs

@@ -1194,16 +1194,20 @@ signal.
   "params" : [
     ["hue","float","The hue, as a value between 0 and 1"],
     ["sat","float","The saturation, as a value between 0 and 1"],
-    ["bri","float","The brightness, as a value between 0 and 1"]
+    ["bri","float","The brightness, as a value between 0 and 1"],
+    ["asArray","bool","If true, return an array of [R,G,B] values betwen 0 and 255"]
   ],
-  "return" : ["int","A 24 bit number containing bytes representing red, green, and blue: 0xBBGGRR"]
+  "return" : ["JsVar","A 24 bit number containing bytes representing red, green, and blue `0xBBGGRR`. Or if `asArray` is true, an array `[R,G,B]`"]
 }
-Convert hue, saturation and brightness to red, green and blue (packed into an integer)
+Convert hue, saturation and brightness to red, green and blue (packed into an integer if `asArray==false` or an array if `asArray==true`).
 
 This replaces `Graphics.setColorHSB` and `Graphics.setBgColorHSB`. On devices with 24 bit colour it can
-be used as: `Graphics.setColorHSB(E.HSBtoRGB(h, s, b))`
+be used as: `Graphics.setColor(E.HSBtoRGB(h, s, b))`
+
+You can quickly set RGB items in an Array or Typed Array using `array.set(E.HSBtoRGB(h, s, b,true), offset)`,
+which can be useful with arrays used with `require("neopixel").write`.
  */
-JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri) {
+int jswrap_espruino_HSBtoRGB_int(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri) {
   int   r, g, b, hi, bi, x, y, z;
   JsVarFloat hfrac;
 
@@ -1213,7 +1217,7 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
     return (r<<16) | (r<<8) | r;
   }
   else {
-    hue *= 6;
+    hue = (hue-floor(hue))*6; // auto-wrap hue
     hi = (int)hue;
     hfrac = hue - hi;
     hi = hi % 6;
@@ -1235,6 +1239,18 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
 
     return (b<<16) | (g<<8) | r;
   }
+}
+JsVar *jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri, bool asArray) {
+  int rgb = jswrap_espruino_HSBtoRGB_int(hue, sat, bri);
+  if (!asArray) return jsvNewFromInteger(rgb);
+  JsVar *arrayElements[] = {
+      jsvNewFromInteger(rgb&0xFF),
+      jsvNewFromInteger((rgb>>8)&0xFF),
+      jsvNewFromInteger((rgb>>16)&0xFF)
+  };
+  JsVar *arr = jsvNewArray(arrayElements, 3);
+  jsvUnLockMany(3, arrayElements);
+  return arr;
 }
 
 /*JSON{
