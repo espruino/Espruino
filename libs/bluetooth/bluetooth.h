@@ -113,11 +113,11 @@ void jsble_init();
 /** Completely deinitialise the BLE stack */
 void jsble_kill();
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) */
-void jsble_queue_pending(BLEPending blep, uint16_t data);
-/** Add data to the queue, for use by a task */
-void jsble_queue_pending_data(char *data, size_t data_len);
+void jsble_queue_pending(BLEPending blep);
+/** Add a task to the queue to be executed (to be called mainly from IRQ-land) */
+void jsble_queue_pending_d(BLEPending blep, uint16_t data);
 /** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land*/
-void jsble_exec_pending(BLEPending blep, uint16_t data);
+void jsble_exec_pending(IOEvent *event);
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */
