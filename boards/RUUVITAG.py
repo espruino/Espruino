@@ -43,7 +43,7 @@ info = {
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"RuuviTag"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/ruuvi_open_private.pem',
-     'DFU_SETTINGS=--debug-mode'
+     'DFU_SETTINGS=--debug-mode --hw-version 52 --sd-req 0x8C'
    ]
  }
 };

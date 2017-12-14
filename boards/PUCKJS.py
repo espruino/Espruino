@@ -42,7 +42,9 @@ info = {
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C'
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
+     'INCLUDE += -I$(ROOT)/libs/puckjs',
+     'WRAPPERSOURCES += libs/puckjs/jswrap_puck.c'
    ]
  }
 };

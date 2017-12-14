@@ -553,9 +553,12 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 /**
  * Return the current time in microseconds.
  */
+static portMUX_TYPE JSmicrosMux = portMUX_INITIALIZER_UNLOCKED;
 JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called at interrupt time
   struct timeval tm;
+  portENTER_CRITICAL_ISR(&JSmicrosMux);
   gettimeofday(&tm, 0);
+  portEXIT_CRITICAL_ISR(&JSmicrosMux);
   return (JsSysTime)(tm.tv_sec)*1000000L + tm.tv_usec;
 }
 

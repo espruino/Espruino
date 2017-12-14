@@ -21,9 +21,10 @@ typedef enum {
   JSF_DEEP_SLEEP          = 1<<0, ///< Allow deep sleep modes (also set by setDeepSleep)
   JSF_PRETOKENISE         = 1<<1, ///< When adding functions, pre-minify them and tokenise reserved words
   JSF_UNSAFE_FLASH        = 1<<2, ///< Some platforms stop writes/erases to interpreter memory to stop you bricking the device accidentally - this removes that protection
+  JSF_UNSYNC_FILES        = 1<<3, ///< When accessing files, *don't* flush all data to the SD card after each command. Faster, but risky if power is lost
 } PACKED_FLAGS JsFlags;
 
-#define JSFLAG_NAMES "deepSleep\0pretokenise\0unsafeFlash\0"
+#define JSFLAG_NAMES "deepSleep\0pretokenise\0unsafeFlash\0unsyncFiles\0"
 // NOTE: \0 also added by compiler - two \0's are required!
 
 extern volatile JsFlags jsFlags;
