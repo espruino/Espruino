@@ -221,6 +221,8 @@ void jsble_exec_pending(IOEvent *event) {
      bleSetActiveBluetoothGattServer(0);
      break;
    }
+   case BLEP_NFC_STATUS:
+     bleQueueEventAndUnLock(data ? JS_EVENT_PREFIX"NFCon" : JS_EVENT_PREFIX"NFCoff", 0);
  }
 }
 
@@ -484,6 +486,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
           bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
+          // TODO: queue connection event via jsble_queue_pending
           JsVar *addr = bleAddrToStr(p_ble_evt->evt.gap_evt.params.connected.peer_addr);
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", addr);
           jshHadEvent();
@@ -677,6 +680,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
       case BLE_GAP_EVT_ADV_REPORT: {
         // Advertising data received
+        // TODO: actually push advertising data onto queue (this method can occasionally lose advertising reports)
         const ble_gap_evt_adv_report_t *p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
         blePendingAdvReport = *p_adv;
         jsble_queue_pending(BLEP_ADV_REPORT);
@@ -868,7 +872,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
             // Set characteristic.value, and return {target:characteristic}
             jsvObjectSetChildAndUnLock(characteristic, "value",
                 jsvNewDataViewWithData(p_hvx->len, (unsigned char*)p_hvx->data));
-
+            // TODO: queue event with jsble_queue_pending
             JsVar *evt = jsvNewObject();
             if (evt) {
               jsvObjectSetChild(evt, "target", characteristic);
@@ -896,10 +900,10 @@ static void nfc_callback(void * p_context, nfc_t2t_event_t event, const uint8_t 
 
   switch (event) {
     case NFC_T2T_EVENT_FIELD_ON:
-      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCon", 0);
+      jsble_queue_pending_d(BLEP_NFC_STATUS,1);
       break;
     case NFC_T2T_EVENT_FIELD_OFF:
-      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCoff", 0);
+      jsble_queue_pending_d(BLEP_NFC_STATUS,0);
       break;
     default:
       break;

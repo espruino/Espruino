@@ -15,6 +15,8 @@
 #ifndef BLUETOOTH_H
 #define BLUETOOTH_H
 
+#include "jsdevices.h"
+
 #ifdef NRF5X
 #include "ble.h"
 #include "ble_advdata.h"
@@ -98,6 +100,7 @@ typedef enum {
   BLEP_TASK_FAIL_DISCONNECTED,
   BLEP_TASK_CENTRAL_CONNECTED,
   BLEP_GATT_SERVER_DISCONNECTED,
+  BLEP_NFC_STATUS,
 } BLEPending;
 
 
