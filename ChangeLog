@@ -46,6 +46,7 @@
             Remove spikes when changing pin state (fix #1274)
             Changes to reduce code duplication in jswrapper.c
             Fix `E.setBootCode` when no argument is supplied
+            Add WIZnet W5500 support to Espruino WiFi build
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs

@@ -42,6 +42,7 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1 -DESPRUINOWIFI',
+     'WIZNET=1', # Add support for W5500
      'STLIB=STM32F411xE',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o'
    ]
