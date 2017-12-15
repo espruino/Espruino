@@ -158,19 +158,6 @@ void jsble_exec_pending(IOEvent *event) {
      bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
      break;
    }
-   case BLEP_RSSI_CENTRAL: {
-     JsVar *gattServer = bleGetActiveBluetoothGattServer();
-     if (gattServer) {
-       JsVar *rssi = jsvNewFromInteger((char)data);
-       JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
-       if (bluetoothDevice) {
-         jsvObjectSetChild(bluetoothDevice, "rssi", rssi);
-       }
-       jsiQueueObjectCallbacks(gattServer, BLE_RSSI_EVENT, &rssi, 1);
-       jsvUnLock3(rssi, gattServer, bluetoothDevice);
-     }
-     break;
-   }
    case BLEP_RSSI_PERIPH: {
      JsVar *evt = jsvNewFromInteger((char)data);
      if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
@@ -192,6 +179,20 @@ void jsble_exec_pending(IOEvent *event) {
        // push onto queue
        jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
        jsvUnLock(evt);
+     }
+     break;
+   }
+#if CENTRAL_LINK_COUNT>0
+   case BLEP_RSSI_CENTRAL: {
+     JsVar *gattServer = bleGetActiveBluetoothGattServer();
+     if (gattServer) {
+       JsVar *rssi = jsvNewFromInteger((char)data);
+       JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+       if (bluetoothDevice) {
+         jsvObjectSetChild(bluetoothDevice, "rssi", rssi);
+       }
+       jsiQueueObjectCallbacks(gattServer, BLE_RSSI_EVENT, &rssi, 1);
+       jsvUnLock3(rssi, gattServer, bluetoothDevice);
      }
      break;
    }
@@ -221,8 +222,13 @@ void jsble_exec_pending(IOEvent *event) {
      bleSetActiveBluetoothGattServer(0);
      break;
    }
+#endif
+#ifdef USE_NFC
    case BLEP_NFC_STATUS:
      bleQueueEventAndUnLock(data ? JS_EVENT_PREFIX"NFCon" : JS_EVENT_PREFIX"NFCoff", 0);
+#endif
+   default:
+     jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
  }
 }
 
