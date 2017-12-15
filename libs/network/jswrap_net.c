@@ -411,8 +411,8 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
     JsNetwork net;
     if (networkGetFromVarIfOnline(&net)) {
       clientRequestConnect(&net, rq);
+      networkFree(&net);
     }
-    networkFree(&net);
   }
 
   return rq;
@@ -464,19 +464,47 @@ An actual socket connection - allowing transmit/receive of TCP data
   "name" : "send",
   "generate" : "jswrap_dgram_socket_send",
   "params" : [
-    ["message","JsVar","A string containing message to send"],
-    ["port","int32","The port to send the message to"],
-    ["host","JsVar","A string containing the message target host"]
-  ],
-  "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
+    ["buffer","JsVar","A string containing message to send"],
+    ["offset","JsVar","Offset in the passed string where the message starts [optional]"],
+    ["length","JsVar","Number of bytes in the message [optional]"],
+    ["args","JsVarArray","Destination port number, Destination IP address string"]
+  ]
 }*/
-bool jswrap_dgram_socket_send(JsVar *parent, JsVar *data, unsigned short port, JsVar *host) {
+// There are futher arguments within the 'args' JsVarArray:
+//  ["port","JsVar","Destination port number to send the message to"],
+//  ["address","JsVar","Destination hostname or IP address string"]
+void jswrap_dgram_socket_send(JsVar *parent, JsVar *buffer, JsVar *offset, JsVar *length, JsVar *args) {
+  assert(jsvIsObject(parent));
+  assert(jsvIsString(buffer));
   JsNetwork net;
-  if (!networkGetFromVarIfOnline(&net)) return false;
+  if (!networkGetFromVarIfOnline(&net)) return;
 
-  clientRequestWrite(&net, parent, data, host, port);
+  JsVar *msg;
+  JsVar *address;
+  JsVar *port = jsvGetArrayItem(args, 0);
+  if (jsvIsNumeric(port)) {
+    int from = jsvGetInteger(offset);
+    int count = jsvGetInteger(length);
+    msg = jsvNewFromEmptyString();
+    if (!msg) {
+      networkFree(&net);
+      return; // out of memory
+    }
+    jsvAppendStringVar(msg, buffer, (size_t)from, (size_t)count);
+    address = jsvGetArrayItem(args, 1);
+  } else {
+    jsvUnLock(port);
+
+    msg = buffer;
+    port = offset;
+    address = length;
+    assert(jsvIsNumeric(port));
+  }
+  clientRequestWrite(&net, parent, msg, address, jsvGetInteger(port));
+  if (msg != buffer) {
+    jsvUnLock3(msg, port, address);
+  }
   networkFree(&net);
-  return false;
 }
 
 /*JSON{
@@ -522,9 +550,9 @@ void jswrap_dgram_messageCallback(JsVar *parent, JsVar *msg, JsVar *rinfo) {
 JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callback) {
   parent = jsvLockAgain(parent); // we're returning the parent, so need to re-lock it
 
-  jsvObjectSetChild(parent, "#onbind", callback);
+  jsvObjectSetChild(parent, DGRAM_ON_BIND_NAME, callback);
   jsvUnLock(jswrap_net_server_listen(parent, port, ST_UDP)); // create bound socket
-  jsiQueueObjectCallbacks(parent, "#onbind", &parent, 1);
+  jsiQueueObjectCallbacks(parent, DGRAM_ON_BIND_NAME, &parent, 1);
 
   return parent;
 }
