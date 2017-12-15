@@ -863,7 +863,10 @@ To remove boot code that has been saved previously, use `E.setBootCode("")`
 void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec) {
   JsvSaveFlashFlags flags = 0;
   if (alwaysExec) flags |= SFF_BOOT_CODE_ALWAYS;
+  if (jsvIsString(code)) code = jsvLockAgain(code);
+  else code = jsvNewFromEmptyString();
   jsfSaveToFlash(flags, code);
+  jsvUnLock(code);
 }
 
 
