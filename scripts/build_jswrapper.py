@@ -386,6 +386,18 @@ codeOut('};');
 codeOut('');
 codeOut('');
 
+codeOut('const JswSymList *jswGetSymbolListForConstructorProto(JsVar *constructor) {')
+codeOut('  void *constructorPtr = constructor->varData.native.ptr;')
+for className in builtins:
+  builtin = builtins[className]
+  if builtin["isProto"] and "constructorPtr" in className:
+    codeOut("  if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut('  return 0;')
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
 
 codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name) {')
 codeOut('  JsVar *v;')
@@ -411,20 +423,12 @@ codeOut('    JsVar *proto = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChil
 codeOut('    JsVar *constructor = jsvIsObject(proto)?jsvSkipNameAndUnLock(jsvFindChildFromString(proto, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
 codeOut('    jsvUnLock(proto);')
 codeOut('    if (constructor && jsvIsNativeFunction(constructor)) {')
-codeOut('      void *constructorPtr = constructor->varData.native.ptr;')
+codeOut('      const JswSymList *l = jswGetSymbolListForConstructorProto(constructor);')
 codeOut('      jsvUnLock(constructor);')
-first = True
-for className in builtins:
-  if "constructorPtr" in className:
-    if first:
-      codeOut('      if ('+className+') {')
-      first = False
-    else:
-      codeOut('      } else if ('+className+') {')
-    codeOutBuiltins("        v = ", builtins[className])
-    codeOut('        if (v) return v;')
-if not first:
-  codeOut("      }")
+codeOut('      if (l) {');
+codeOut('        v = jswBinarySearch(l, parent, name);')
+codeOut('        if (v) return v;');
+codeOut('      }')
 codeOut('    } else {')
 codeOut('      jsvUnLock(constructor);')
 codeOut('    }')
@@ -482,12 +486,9 @@ for className in builtins:
 codeOut('  }')
 codeOut('  JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
 codeOut('  if (constructor && jsvIsNativeFunction(constructor)) {')
-codeOut('    void *constructorPtr = constructor->varData.native.ptr;')
-codeOut('   jsvUnLock(constructor);')
-for className in builtins:
-  builtin = builtins[className]
-  if builtin["isProto"] and "constructorPtr" in className:
-    codeOut("    if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut('    const JswSymList *l = jswGetSymbolListForConstructorProto(constructor);')
+codeOut('    jsvUnLock(constructor);')
+codeOut('    if (l) return l;')
 codeOut('  }')
 nativeCheck = "jsvIsNativeFunction(parent) && "
 for className in builtins:
