@@ -1,4 +1,4 @@
-            nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
+     1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line
             Internal: Added initialiser argument to jsvNewStringOfLength
             Internal: Added jsvObjectSetChildVar/jsvObjectSetChildVar/jsvObjectSetChildVar
