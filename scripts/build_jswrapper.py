@@ -394,15 +394,11 @@ codeOut('  if (parent && !jsvIsRoot(parent)) {')
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 nativeCheck = "jsvIsNativeFunction(parent) && "
 codeOut('    if (jsvIsNativeFunction(parent)) {')
-first = True
-for className in builtins:
-  if className.startswith(nativeCheck):
-    codeOut('      '+("" if first else "} else ")+'if ('+className[len(nativeCheck):]+') {')
-    first = False
-    codeOutBuiltins("        v = ", builtins[className])
-    codeOut('        if (v) return v;');
-if not first:
-  codeOut("      }")
+codeOut('      JswSymList *l = jswGetSymbolListForObject(parent);')
+codeOut('      if (l) {');
+codeOut('        v = jswBinarySearch(l, parent, name);')
+codeOut('        if (v) return v;');
+codeOut('      }')
 codeOut('    }')
 for className in builtins:
   if className!="parent" and  className!="!parent" and not "constructorPtr" in className and not className.startswith(nativeCheck):
@@ -459,7 +455,7 @@ codeOut("  if (jsvIsNativeFunction(parent)) {");
 for className in builtins:
   builtin = builtins[className]
   if not className in ["parent","!parent"] and not builtin["isProto"] and className.startswith(nativeTestStr):
-    codeOut("  if ("+className[len(nativeTestStr):]+") return &jswSymbolTables["+builtin["indexName"]+"];");
+    codeOut("    if ("+className[len(nativeTestStr):]+") return &jswSymbolTables["+builtin["indexName"]+"];");
 codeOut("  }");
 for className in builtins:
   builtin = builtins[className]
@@ -482,7 +478,7 @@ for className in builtins:
       if jsondata["type"]=="constructor" and jsondata["name"]==builtin["className"]:
         check = "(void*)parent->varData.native.ptr==(void*)"+jsondata["generate"]
 
-    codeOut("      if ("+check+") return &jswSymbolTables["+builtin["indexName"]+"];");
+    codeOut("    if ("+check+") return &jswSymbolTables["+builtin["indexName"]+"];");
 codeOut('  }')
 codeOut('  JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
 codeOut('  if (constructor && jsvIsNativeFunction(constructor)) {')
