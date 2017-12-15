@@ -105,6 +105,7 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length) {
     // missing quite a few here
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
     if (regexp[1]=='\\') return ch=='\\';
+    if (regexp[1]=='/') return ch=='/';
     if (regexp[1]=='d') return isNumeric(ch);
     if (regexp[1]=='D') return !isNumeric(ch);
     if (regexp[1]=='f') return ch==0x0C;
