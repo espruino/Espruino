@@ -16,7 +16,7 @@
             ESP8266: move code save section to fist partition for memory mapping for ESP8266_4MB (fix #1240)
             ESP8266: Add GPIO16 as D16 without watch (#1206) but soft PWM/I2C/SPI/etc 
             ESP8266: Remove osprintf for RELEASE=1 
-            Networkjs now forwards `socketType` - laying groundwork for UDP over AT command (#1232)
+            Internal: Networkjs now forwards `socketType` - laying groundwork for UDP over AT command (#1232)
             Added simple RegExp implemention (partial fix #256)
             Speed up JSON.stringify for Arrays, and output non-numeric array elements in REPL (fix #64)
             nRF5x: Bump nRF52-based boards variable count from 2000 to 2500 (fix #1215)
@@ -31,9 +31,9 @@
             nRF5x: Fix memory leak on BLE notifications
             Ensure net/http .listen return the server instance (fix #1276)
             nRF5x: Allow Manufacturer Data to be specified with setAdvertising
-            Fix memory leak in jsvArrayPushAll
+            Internal: Fix memory leak in jsvArrayPushAll
             nRF5x: jsvArrayPushAll memory leak fixes NRF.findDevices memory leak when services present
-            jsvNewIterator now has an option to iterate over sparse arrays as if they weren't sparse
+            Internal: jsvNewIterator now has an option to iterate over sparse arrays as if they weren't sparse
             Fixed some built-in functions that misbehaved when given sparse arrays
             Puck.js: Allow flash memory protection to be overwridden with E.setFlags
             Fix lexing of '/*/' as a complete block comment
