@@ -319,6 +319,19 @@ Called when an NFC field is no longer detected
  */
 /*JSON{
   "type" : "event",
+  "class" : "NRF",
+  "name" : "NFCrx",
+  "params" : [
+    ["arr","JsVar","An ArrayBuffer containign the received data"]
+  ],
+  "ifdef" : "NRF52"
+}
+When NFC is started with `NRF.nfcStart`, this is fired
+when NFC data is received. It doesn't get called if
+NFC is started with `NRF.nfcURL` or `NRF.nfcRaw`
+ */
+/*JSON{
+  "type" : "event",
   "class" : "BluetoothDevice",
   "name" : "gattserverdisconnected",
   "params" : [
@@ -1750,7 +1763,10 @@ void jswrap_nrf_nfcRaw(JsVar *payload) {
     ],
     "return" : ["JsVar", "Internal tag memory (first 10 bytes of tag data)" ]
 }
-Enables NFC and starts advertising.
+**Advanced NFC Functionality.** If you just want to advertise a URL, use `NRF.nfcURL` instead.
+
+Enables NFC and starts advertising. `NFCrx` events will be
+fired when data is received.
 
 ```
 NRF.nfcStart();
@@ -1813,6 +1829,8 @@ JsVar *jswrap_nrf_nfcStart(JsVar *payload) {
     "generate" : "jswrap_nrf_nfcStop",
     "params" : [ ]
 }
+**Advanced NFC Functionality.** If you just want to advertise a URL, use `NRF.nfcURL` instead.
+
 Disables NFC.
 
 ```
@@ -1839,6 +1857,8 @@ void jswrap_nrf_nfcStop() {
       ["payload","JsVar","Optional tx data"]
     ]
 }
+**Advanced NFC Functionality.** If you just want to advertise a URL, use `NRF.nfcURL` instead.
+
 Acknowledges the last frame and optionally transmits a response.
 If payload is an array, then a array.length byte nfc frame is sent.
 If payload is a int, then a 4bit ACK/NACK is sent.
