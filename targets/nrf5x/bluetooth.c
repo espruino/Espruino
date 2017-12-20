@@ -226,6 +226,7 @@ void jsble_exec_pending(IOEvent *event) {
 #ifdef USE_NFC
    case BLEP_NFC_STATUS:
      bleQueueEventAndUnLock(data ? JS_EVENT_PREFIX"NFCon" : JS_EVENT_PREFIX"NFCoff", 0);
+     break;
 #endif
    default:
      jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
