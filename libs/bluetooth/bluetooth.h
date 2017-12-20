@@ -188,6 +188,9 @@ void jsble_setup_advdata(ble_advdata_t *advdata);
 #define NDEF_MSG_LEN_OFFSET       0x11
 #define NDEF_PL_LEN_LSB_OFFSET    0x17 /* we support pl < 256 */
 
+#define NDEF_TERM_TLV             0xfe /* last TLV block / byte */
+#define NDEF_TERM_TLV_LEN         0x01
+
 void jsble_nfc_stop();
 void jsble_nfc_start(const uint8_t *data, size_t len);
 void jsble_nfc_get_internal(uint8_t *data, size_t *max_len);
