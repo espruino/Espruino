@@ -912,10 +912,44 @@ static void nfc_callback(void * p_context, hal_nfc_event_t event, const uint8_t 
       jsble_queue_pending_d(BLEP_NFC_STATUS,0);
       break;
     case HAL_NFC_EVENT_DATA_RECEIVED: {
-      char *ptr = 0;
-      JsVar *arr = jsvNewArrayBufferWithPtr((unsigned int)data_length, &ptr);
-      if (ptr) memcpy(ptr, p_data, data_length);
-      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCrx", arr);
+      /* try to fetch NfcData data */
+      JsVar *nfcData = jsvObjectGetChild(execInfo.hiddenRoot, "NfcData", 0);
+      if(nfcData) {
+        /* success handle request internally */
+        JSV_GET_AS_CHAR_ARRAY(nfcDataPtr, nfcDataLen, nfcData);
+        jsvUnLock(nfcData);
+
+        /* check data, on error let request go into timeout - reader will retry. */
+        if (!nfcDataPtr || !nfcDataLen) {
+          break;
+        }
+
+        /* check rx data length and read block command code (0x30) */
+        if(data_length < 2 || p_data[0] != 0x30) {
+          jsble_nfc_send_rsp(0, 0); /* switch to rx */
+          break;
+        }
+
+        /* fetch block index (addressing is done in multiples of 4 byte */
+        size_t idx = p_data[1] * 4;
+
+        /* assemble 16 byte block */
+        uint8_t buf[16]; memset(buf, '\0', 16);
+        if(idx + 16 < nfcDataLen) {
+          memcpy(buf, nfcDataPtr + idx, 16);
+        } else
+        if(idx < nfcDataLen) {
+          memcpy(buf, nfcDataPtr + idx, nfcDataLen - idx);
+        }
+        /* send response */
+        jsble_nfc_send(buf, 16);
+      } else {
+        /* no NfcData available, fire js-event */
+        char *ptr = 0;
+        JsVar *arr = jsvNewArrayBufferWithPtr((unsigned int)data_length, &ptr);
+        if (ptr) memcpy(ptr, p_data, data_length);
+        bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCrx", arr);
+      }
       break;
     }
     case HAL_NFC_EVENT_DATA_TRANSMITTED:
