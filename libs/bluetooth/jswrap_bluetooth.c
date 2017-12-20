@@ -153,7 +153,7 @@ void jswrap_nrf_init() {
   } else {
 #ifdef USE_NFC
     // start NFC, if it had been set
-    JsVar *flatStr = jsvObjectGetChild(execInfo.hiddenRoot, "NFC", 0);
+    JsVar *flatStr = jsvObjectGetChild(execInfo.hiddenRoot, "NfcEnabled", 0);
     if (flatStr) {
       uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
       if (flatStrPtr) jsble_nfc_start(flatStrPtr, jsvGetLength(flatStr));
@@ -1617,8 +1617,8 @@ void jswrap_nrf_nfcURL(JsVar *url) {
 #ifdef USE_NFC
   // Check for disabling NFC
   if (jsvIsUndefined(url)) {
-    jsvObjectRemoveChild(execInfo.hiddenRoot, "NFC");
-    jsble_nfc_stop();
+    jsvObjectRemoveChild(execInfo.hiddenRoot, "NfcData");
+    jswrap_nrf_nfcStop();
     return;
   }
 
@@ -1627,9 +1627,6 @@ void jswrap_nrf_nfcURL(JsVar *url) {
     return;
   }
 
-  uint32_t err_code;
-  /* Turn off NFC */
-  jsble_nfc_stop();
   JSV_GET_AS_CHAR_ARRAY(urlPtr, urlLen, url);
   if (!urlPtr || !urlLen)
     return jsExceptionHere(JSET_ERROR, "Unable to get URL data");
@@ -1645,29 +1642,36 @@ void jswrap_nrf_nfcURL(JsVar *url) {
     uriType = NFC_URI_HTTPS;
   }
 
-  uint8_t msg_buf[256];
-  uint32_t len = sizeof(msg_buf);
-  /* Encode URI message into buffer */
-  err_code = nfc_uri_msg_encode( uriType, // TODO: could auto-prepend http/etc.
-                                 (uint8_t *)urlPtr,
-                                 urlLen,
-                                 msg_buf,
-                                 &len);
-  if (err_code)
-    return jsExceptionHere(JSET_ERROR, "nfc_uri_msg_encode: NFC error code %d", err_code);
-
-  /* Create a flat string - we need this to store the URI data so it hangs around.
-   * Avoid having a static var so we have RAM available if not using NFC */
-  JsVar *flatStr = jsvNewFlatStringOfLength(len);
+  /* Encode NDEF message into a flat string - we need this to store the
+   * data so it hangs around. Avoid having a static var so we have RAM
+   * available if not using NFC. NFC data is read by nfc_callback */
+  JsVar *flatStr = jsvNewFlatStringOfLength(NDEF_FULL_URL_HEADER_LEN + urlLen + NDEF_TERM_TLV_LEN);
   if (!flatStr)
     return jsExceptionHere(JSET_ERROR, "Unable to create string with URI data in");
-  jsvObjectSetChild(execInfo.hiddenRoot, "NFC", flatStr);
+  jsvObjectSetChild(execInfo.hiddenRoot, "NfcData", flatStr);
   uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
   jsvUnLock(flatStr);
-  memcpy(flatStrPtr, msg_buf, len);
 
-  // start nfc properly
-  jsble_nfc_start(flatStrPtr, len);
+  /* assemble NDEF Message */
+  memcpy(flatStrPtr, NDEF_HEADER, NDEF_FULL_URL_HEADER_LEN); /* fill header */
+  flatStrPtr[NDEF_IC_OFFSET] = uriType; /* set URI Identifier Code */
+  memcpy(flatStrPtr+NDEF_FULL_URL_HEADER_LEN, urlPtr, urlLen); /* add payload */
+
+  /* inject length fields into header */
+  flatStrPtr[NDEF_MSG_LEN_OFFSET] = NDEF_RECORD_HEADER_LEN + urlLen;
+  flatStrPtr[NDEF_PL_LEN_LSB_OFFSET] = NDEF_IC_LEN + urlLen;
+
+  /* write terminator TLV block */
+  flatStrPtr[NDEF_FULL_URL_HEADER_LEN + urlLen] = NDEF_TERM_TLV;
+
+  /* start nfc peripheral */
+  JsVar* uid = jswrap_nrf_nfcStart(NULL);
+
+  /* inject UID/BCC */
+  size_t len;
+  char *uidPtr = jsvGetDataPointer(uid, &len);
+  if(uidPtr) memcpy(flatStrPtr, uidPtr, TAG_HEADER_LEN);
+  jsvUnLock(uid);
 #endif
 }
 
@@ -1694,30 +1698,178 @@ void jswrap_nrf_nfcRaw(JsVar *payload) {
 #ifdef USE_NFC
   // Check for disabling NFC
   if (jsvIsUndefined(payload)) {
-    jsvObjectRemoveChild(execInfo.hiddenRoot, "NFC");
-    jsble_nfc_stop();
+    jsvObjectRemoveChild(execInfo.hiddenRoot, "NfcData");
+    jswrap_nrf_nfcStop();
     return;
   }
-
-  /* Turn off NFC */
-  jsble_nfc_stop();
 
   JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, payload);
   if (!dataPtr || !dataLen)
     return jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
 
   /* Create a flat string - we need this to store the NFC data so it hangs around.
-   * Avoid having a static var so we have RAM available if not using NFC */
-  JsVar *flatStr = jsvNewFlatStringOfLength(dataLen);
+   * Avoid having a static var so we have RAM available if not using NFC.
+   * NFC data is read by nfc_callback in bluetooth.c */
+  JsVar *flatStr = jsvNewFlatStringOfLength(NDEF_FULL_RAW_HEADER_LEN + dataLen + NDEF_TERM_TLV_LEN);
   if (!flatStr)
     return jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
-  jsvObjectSetChild(execInfo.hiddenRoot, "NFC", flatStr);
+  jsvObjectSetChild(execInfo.hiddenRoot, "NfcData", flatStr);
   uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
   jsvUnLock(flatStr);
-  memcpy(flatStrPtr, dataPtr, dataLen);
 
-  // start nfc properly
-  jsble_nfc_start(flatStrPtr, dataLen);
+  /* assemble NDEF Message */
+  memcpy(flatStrPtr, NDEF_HEADER, NDEF_FULL_RAW_HEADER_LEN); /* fill header */
+  memcpy(flatStrPtr+NDEF_FULL_RAW_HEADER_LEN, dataPtr, dataLen); /* add payload */
+
+  /* inject length fields into header */
+  flatStrPtr[NDEF_MSG_LEN_OFFSET] = dataLen;
+
+  /* write terminator TLV block */
+  flatStrPtr[NDEF_FULL_RAW_HEADER_LEN + dataLen] = NDEF_TERM_TLV;
+
+  /* start nfc peripheral */
+  JsVar* uid = jswrap_nrf_nfcStart(NULL);
+
+  /* inject UID/BCC */
+  size_t len;
+  char *uidPtr = jsvGetDataPointer(uid, &len);
+  if(uidPtr) memcpy(flatStrPtr, uidPtr, TAG_HEADER_LEN);
+  jsvUnLock(uid);
+#endif
+}
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "nfcStart",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_nfcStart",
+    "params" : [
+      ["payload","JsVar","Optional 7 byte UID"]
+    ],
+    "return" : ["JsVar", "Internal tag memory (first 10 bytes of tag data)" ]
+}
+Enables NFC and starts advertising.
+
+```
+NRF.nfcStart();
+```
+
+**Note:** This is only available on nRF52-based devices
+*/
+JsVar *jswrap_nrf_nfcStart(JsVar *payload) {
+#ifdef USE_NFC
+  /* Turn off NFC */
+  jsble_nfc_stop();
+
+  /* Create a flat string - we need this to store the NFC data so it hangs around.
+   * Avoid having a static var so we have RAM available if not using NFC */
+  JsVar *flatStr = 0;
+  if (!jsvIsUndefined(payload)) {
+    /* Custom UID */
+    JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, payload);
+    if (!dataPtr || !dataLen) {
+      jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
+      return 0;
+    }
+    flatStr = jsvNewFlatStringOfLength(dataLen);
+    if (!flatStr) {
+      jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
+      return 0;
+    }
+    jsvObjectSetChild(execInfo.hiddenRoot, "NfcEnabled", flatStr);
+    jsvUnLock(flatStr);
+    uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
+    memcpy(flatStrPtr, dataPtr, dataLen);
+  } else {
+    /* Default UID */
+    flatStr = jsvNewFlatStringOfLength(0);
+    if (!flatStr) {
+      jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
+      return 0;
+    }
+    jsvObjectSetChild(execInfo.hiddenRoot, "NfcEnabled", flatStr);
+    jsvUnLock(flatStr);
+  }
+
+  /* start nfc */
+  uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
+  jsble_nfc_start(flatStrPtr, jsvGetLength(flatStr));
+
+  /* return internal tag header */
+  char *ptr = 0; size_t size = TAG_HEADER_LEN;
+  JsVar *arr = jsvNewArrayBufferWithPtr(size, &ptr);
+  if (ptr) jsble_nfc_get_internal((uint8_t *)ptr, &size);
+  return arr;
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "nfcStop",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_nfcStop",
+    "params" : [ ]
+}
+Disables NFC.
+
+```
+NRF.nfcStop();
+```
+
+**Note:** This is only available on nRF52-based devices
+*/
+void jswrap_nrf_nfcStop() {
+#ifdef USE_NFC
+  jsvObjectRemoveChild(execInfo.hiddenRoot, "NfcEnabled");
+  jsble_nfc_stop();
+#endif
+}
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "nfcSend",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_nfcSend",
+    "params" : [
+      ["payload","JsVar","Optional tx data"]
+    ]
+}
+Acknowledges the last frame and optionally transmits a response.
+If payload is an array, then a array.length byte nfc frame is sent.
+If payload is a int, then a 4bit ACK/NACK is sent.
+**Note:** ```nfcSend``` should always be called after an ```NFCrx``` event.
+
+```
+NRF.nfcSend(new Uint8Array([0x01, 0x02, ...]));
+// or
+NRF.nfcSend(0x0A);
+// or
+NRF.nfcSend();
+```
+
+**Note:** This is only available on nRF52-based devices
+*/
+void jswrap_nrf_nfcSend(JsVar *payload) {
+#ifdef USE_NFC
+  /* Switch to RX */
+  if (jsvIsUndefined(payload))
+    return jsble_nfc_send_rsp(0, 0);
+
+  /* Send 4 bit ACK/NACK */
+  if (jsvIsInt(payload))
+    return jsble_nfc_send_rsp(jsvGetInteger(payload), 4);
+
+  /* Send n byte payload */
+  JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, payload);
+  if (!dataPtr || !dataLen)
+    return jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
+
+  jsble_nfc_send((uint8_t*)dataPtr, dataLen);
 #endif
 }
 

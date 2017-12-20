@@ -38,8 +38,7 @@
 #include "app_util_platform.h"
 #include "nrf_delay.h"
 #ifdef USE_NFC
-#include "nfc_t2t_lib.h"
-#include "nfc_uri_msg.h"
+#include "hal_t2t/hal_nfc_t2t.h"
 #endif
 #if BLE_HIDS_ENABLED
 #include "ble_hids.h"
@@ -902,15 +901,59 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
 #ifdef USE_NFC
 /// Callback function for handling NFC events.
-static void nfc_callback(void * p_context, nfc_t2t_event_t event, const uint8_t * p_data, size_t data_length) {
+static void nfc_callback(void * p_context, hal_nfc_event_t event, const uint8_t * p_data, size_t data_length) {
   (void)p_context;
 
   switch (event) {
-    case NFC_T2T_EVENT_FIELD_ON:
+    case HAL_NFC_EVENT_FIELD_ON:
       jsble_queue_pending_d(BLEP_NFC_STATUS,1);
       break;
-    case NFC_T2T_EVENT_FIELD_OFF:
+    case HAL_NFC_EVENT_FIELD_OFF:
       jsble_queue_pending_d(BLEP_NFC_STATUS,0);
+      break;
+    case HAL_NFC_EVENT_DATA_RECEIVED: {
+      /* try to fetch NfcData data */
+      JsVar *nfcData = jsvObjectGetChild(execInfo.hiddenRoot, "NfcData", 0);
+      if(nfcData) {
+        /* success handle request internally */
+        JSV_GET_AS_CHAR_ARRAY(nfcDataPtr, nfcDataLen, nfcData);
+        jsvUnLock(nfcData);
+
+        /* check data, on error let request go into timeout - reader will retry. */
+        if (!nfcDataPtr || !nfcDataLen) {
+          break;
+        }
+
+        /* check rx data length and read block command code (0x30) */
+        if(data_length < 2 || p_data[0] != 0x30) {
+          jsble_nfc_send_rsp(0, 0); /* switch to rx */
+          break;
+        }
+
+        /* fetch block index (addressing is done in multiples of 4 byte */
+        size_t idx = p_data[1] * 4;
+
+        /* assemble 16 byte block */
+        uint8_t buf[16]; memset(buf, '\0', 16);
+        if(idx + 16 < nfcDataLen) {
+          memcpy(buf, nfcDataPtr + idx, 16);
+        } else
+        if(idx < nfcDataLen) {
+          memcpy(buf, nfcDataPtr + idx, nfcDataLen - idx);
+        }
+        /* send response */
+        jsble_nfc_send(buf, 16);
+      } else {
+        /* no NfcData available, fire js-event */
+        char *ptr = 0;
+        JsVar *arr = jsvNewArrayBufferWithPtr((unsigned int)data_length, &ptr);
+        if (ptr) memcpy(ptr, p_data, data_length);
+        bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCrx", arr);
+      }
+      break;
+    }
+    case HAL_NFC_EVENT_DATA_TRANSMITTED:
+      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCtx", 0);
       break;
     default:
       break;
@@ -1894,33 +1937,63 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
 
 #ifdef USE_NFC
 void jsble_nfc_stop() {
-  if (!nfcEnabled) return;
   nfcEnabled = false;
-  nfc_t2t_emulation_stop();
-  nfc_t2t_done();
+  hal_nfc_stop();
+  hal_nfc_done();
 }
 
-void jsble_nfc_start(const uint8_t *data, size_t len) {
-  if (nfcEnabled) jsble_nfc_stop();
+void jsble_nfc_get_internal(uint8_t *data, size_t *max_len) {
 
   uint32_t ret_val;
 
-  ret_val = nfc_t2t_setup(nfc_callback, NULL);
+  ret_val = hal_nfc_parameter_get(HAL_NFC_PARAM_ID_INTERNAL, data, max_len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcGetInternal: Got NFC error code %d", ret_val);
+}
+
+void jsble_nfc_start(const uint8_t *data, size_t len) {
+  jsble_nfc_stop();
+
+  uint32_t ret_val;
+
+  /* Set UID / UID Length */
+  if (len)
+    ret_val = hal_nfc_parameter_set(HAL_NFC_PARAM_ID_UID, data, len);
+  else
+    ret_val = hal_nfc_parameter_set(HAL_NFC_PARAM_ID_UID, "\0\0\0\0\0\0\0", 7);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSetUid: Got NFC error code %d", ret_val);
+
+  ret_val = hal_nfc_setup(nfc_callback, NULL);
   if (ret_val)
     return jsExceptionHere(JSET_ERROR, "nfcSetup: Got NFC error code %d", ret_val);
 
-  nfcEnabled = true;
-
-  /* Set created message as the NFC payload */
-  ret_val = nfc_t2t_payload_set( data, len);
-  if (ret_val)
-    return jsExceptionHere(JSET_ERROR, "nfcSetPayload: NFC error code %d", ret_val);
-
   /* Start sensing NFC field */
-  ret_val = nfc_t2t_emulation_start();
+  ret_val = hal_nfc_start();
   if (ret_val)
     return jsExceptionHere(JSET_ERROR, "nfcStartEmulation: NFC error code %d", ret_val);
 
+  nfcEnabled = true;
+}
+
+void jsble_nfc_send(const uint8_t *data, size_t len) {
+  if (!nfcEnabled) return;
+
+  uint32_t ret_val;
+
+  ret_val = hal_nfc_send(data, len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSend: NFC error code %d", ret_val);
+}
+
+void jsble_nfc_send_rsp(const uint8_t data, size_t len) {
+  if (!nfcEnabled) return;
+
+  uint32_t ret_val;
+
+  ret_val = hal_nfc_send_rsp(data, len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSend: NFC error code %d", ret_val);
 }
 #endif
 
