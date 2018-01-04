@@ -124,6 +124,7 @@ typedef struct {
   char        dhcpHostname[64];
 } Esp8266_config;
 static Esp8266_config esp8266Config;
+static uint8  savedMode = 0;
 
 //===== Mapping from enums to strings
 
@@ -621,7 +622,7 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "powersave",
     jsvNewFromString(sleep == NONE_SLEEP_T ? "none" : "ps-poll"));
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "savedMode",
-    jsvNewFromString("off"));
+    jsvNewFromString(wifiMode[savedMode]));
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
@@ -809,6 +810,7 @@ void jswrap_wifi_save(JsVar *what) {
 
   if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
     conf->mode = 0; // disable
+    savedMode = conf->mode;
     conf->phyMode = PHY_MODE_11N;
     conf->sleepType = MODEM_SLEEP_T;
     // ssids, passwords, and hostname are set to zero thanks to memset above
@@ -838,7 +840,7 @@ void jswrap_wifi_save(JsVar *what) {
     char *hostname = wifi_station_get_hostname();
     if (hostname) os_strncpy(conf->dhcpHostname, hostname, 64);
   }
-
+  savedMode = conf->mode;
   conf->crc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
   DBG("Wifi.save: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, (long unsigned int) conf->crc);
   if (map == 6 ) {
@@ -885,6 +887,7 @@ void jswrap_wifi_restore(void) {
   wifi_set_phy_mode(conf->phyMode);
   wifi_set_sleep_type(conf->sleepType);
   wifi_set_opmode_current(conf->mode);
+  savedMode = conf->mode;
 
   if (conf->mode & SOFTAP_MODE) {
     struct softap_config ap_config;
