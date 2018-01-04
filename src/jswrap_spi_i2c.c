@@ -472,7 +472,7 @@ All addresses are in 7 bit format. If you have an 8 bit address then you need to
 }
 Create a software I2C port. This has limited functionality (no baud rate), but it can work on any pins.
 
-Use `SPI.setup` to configure this port.
+Use `I2C.setup` to configure this port.
  */
 JsVar *jswrap_i2c_constructor() {
   return jsvNewObject();
