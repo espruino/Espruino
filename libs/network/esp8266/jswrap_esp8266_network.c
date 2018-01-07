@@ -159,17 +159,21 @@ FLASH_STR(__wr23, "802_1x_auth_failed");       // 23 - REASON_802_1X_AUTH_FAILED
 FLASH_STR(__wr24, "cipher_suite_rejected");    // 24 - REASON_CIPHER_SUITE_REJECTED
 FLASH_STR(__wr200, "beacon_timeout");          // 200 - REASON_BEACON_TIMEOUT
 FLASH_STR(__wr201, "no_ap_found");             // 201 - REASON_NO_AP_FOUND
+FLASH_STR(__wr202, "auth_failed");             // 202 - REASON_AUTH_FAIL
+FLASH_STR(__wr203, "assoc_failed");            // 203 - REASON_ASSOC_FAIL
+FLASH_STR(__wr204, "handshake_timeout");       // 204 - REASON_HANDSHAKE_TIMEOUT
+
 static const char *wifiReasons[] = {
   __wr0, __wr1, __wr2, __wr3, __wr4, __wr5, __wr6, __wr7, __wr8, __wr9, __wr10,
   __wr11, __wr12, __wr13, __wr14, __wr15, __wr16, __wr17, __wr18, __wr19, __wr20,
-  __wr21, __wr22, __wr23, __wr24, __wr200, __wr201
+  __wr21, __wr22, __wr23, __wr24, __wr200, __wr201, __wr202, __wr203, __wr204
 };
 
 static char wifiReasonBuff[sizeof("group_key_update_timeout")+1]; // length of longest string
 static char *wifiGetReason(uint8 wifiReason) {
   const char *reason;
   if (wifiReason <= 24) reason = wifiReasons[wifiReason];
-  else if (wifiReason >= 200 && wifiReason <= 201) reason = wifiReasons[wifiReason-200+24];
+  else if (wifiReason >= 200 && wifiReason <= 204) reason = wifiReasons[wifiReason-200+24];
   else reason = wifiReasons[1];
   flash_strncpy(wifiReasonBuff, reason, sizeof(wifiReasonBuff));
   wifiReasonBuff[sizeof(wifiReasonBuff)-1] = 0; // force null termination
@@ -1554,9 +1558,9 @@ static void wifiEventHandler(System_Event_t *evt) {
     reason = wifiGetReason(evt->event_info.disconnected.reason);
     int8 wifiConnectStatus = wifi_station_get_connect_status();
     if (wifiConnectStatus < 0) wifiConnectStatus = 0;
-    DBG("Wifi event: disconnected from ssid %s, reason %s (%d) status=%s\n",
+    DBG("Wifi event: disconnected from ssid %s, reason %s (%d) status=%s(%d)\n",
       evt->event_info.disconnected.ssid, reason, evt->event_info.disconnected.reason,
-      wifiConn[wifiConnectStatus]);
+      wifiConn[wifiConnectStatus], wifiConnectStatus );
 
     if (g_skipDisconnect) {
       DBGV("  Skipping disconnect\n");
@@ -1565,10 +1569,21 @@ static void wifiEventHandler(System_Event_t *evt) {
     }
 
     // if'were connecting and we get a fatal error, then make a callback
-    if (wifiConnectStatus == STATION_WRONG_PASSWORD && jsvIsFunction(g_jsGotIpCallback)) {
-      sendWifiCompletionCB(&g_jsGotIpCallback, "bad password");
+    // need two more cases
+    if ((wifiConnectStatus == STATION_WRONG_PASSWORD ||
+         wifiConnectStatus == STATION_NO_AP_FOUND ||
+         wifiConnectStatus == STATION_CONNECT_FAIL ) 
+         && jsvIsFunction(g_jsGotIpCallback)) {
+      sendWifiCompletionCB(&g_jsGotIpCallback, wifiConn[wifiConnectStatus]);
+    }
+    // plus REASON_AUTH_EXPIRE
+    if (wifiConnectStatus == STATION_CONNECTING  &&
+         evt->event_info.disconnected.reason == REASON_AUTH_EXPIRE  &&
+         jsvIsFunction(g_jsGotIpCallback)) {
+      sendWifiCompletionCB(&g_jsGotIpCallback, reason);
     }
 
+    
     // if we're in the process of disconnecting we want to turn STA mode off now
     // at that point we may need to make a callback too
     if (g_disconnecting) {
