@@ -21,11 +21,6 @@
  */
 
 // Set WIFI_DBG to 0 to disable debug printf's, to 1 for important printf's, to 2 for verbose
-#ifdef RELEASE
-#define WIFI_DBG 0
-#else
-#define WIFI_DBG 1
-#endif
 // Normal debug
 #if WIFI_DBG > 0
 #define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
