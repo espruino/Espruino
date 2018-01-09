@@ -21,22 +21,23 @@
  */
 
 // Set WIFI_DBG to 0 to disable debug printf's, to 1 for important printf's, to 2 for verbose
+//#ifdef RELEASE
+//#define WIFI_DBG 0
+//#else
+//#define WIFI_DBG 1
+//#endif
 #ifdef RELEASE
-#define WIFI_DBG 0
+  #define DBG(format, ...) do { } while(0)
+  #define DBGV(format, ...) do { } while(0)
 #else
-#define WIFI_DBG 1
-#endif
-// Normal debug
-#if WIFI_DBG > 0
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
-#else
-#define DBG(format, ...) do { } while(0)
-#endif
-// Verbose debug
-#if WIFI_DBG > 1
-#define DBGV(format, ...) os_printf(format, ## __VA_ARGS__)
-#else
-#define DBGV(format, ...) do { } while(0)
+  // Normal debug
+  #if WIFI_DBG > 0
+    #define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+  #endif
+  // Verbose debug
+  #if WIFI_DBG > 1
+    #define DBGV(format, ...) os_printf(format, ## __VA_ARGS__)
+  #endif
 #endif
 
 // Because the ESP8266 JS wrapper is assured to be running on an ESP8266 we
@@ -124,6 +125,7 @@ typedef struct {
   char        dhcpHostname[64];
 } Esp8266_config;
 static Esp8266_config esp8266Config;
+static uint8  savedMode = 0;
 
 //===== Mapping from enums to strings
 
@@ -158,17 +160,21 @@ FLASH_STR(__wr23, "802_1x_auth_failed");       // 23 - REASON_802_1X_AUTH_FAILED
 FLASH_STR(__wr24, "cipher_suite_rejected");    // 24 - REASON_CIPHER_SUITE_REJECTED
 FLASH_STR(__wr200, "beacon_timeout");          // 200 - REASON_BEACON_TIMEOUT
 FLASH_STR(__wr201, "no_ap_found");             // 201 - REASON_NO_AP_FOUND
+FLASH_STR(__wr202, "auth_failed");             // 202 - REASON_AUTH_FAIL
+FLASH_STR(__wr203, "assoc_failed");            // 203 - REASON_ASSOC_FAIL
+FLASH_STR(__wr204, "handshake_timeout");       // 204 - REASON_HANDSHAKE_TIMEOUT
+
 static const char *wifiReasons[] = {
   __wr0, __wr1, __wr2, __wr3, __wr4, __wr5, __wr6, __wr7, __wr8, __wr9, __wr10,
   __wr11, __wr12, __wr13, __wr14, __wr15, __wr16, __wr17, __wr18, __wr19, __wr20,
-  __wr21, __wr22, __wr23, __wr24, __wr200, __wr201
+  __wr21, __wr22, __wr23, __wr24, __wr200, __wr201, __wr202, __wr203, __wr204
 };
 
 static char wifiReasonBuff[sizeof("group_key_update_timeout")+1]; // length of longest string
 static char *wifiGetReason(uint8 wifiReason) {
   const char *reason;
   if (wifiReason <= 24) reason = wifiReasons[wifiReason];
-  else if (wifiReason >= 200 && wifiReason <= 201) reason = wifiReasons[wifiReason-200+24];
+  else if (wifiReason >= 200 && wifiReason <= 204) reason = wifiReasons[wifiReason-200+24];
   else reason = wifiReasons[1];
   flash_strncpy(wifiReasonBuff, reason, sizeof(wifiReasonBuff));
   wifiReasonBuff[sizeof(wifiReasonBuff)-1] = 0; // force null termination
@@ -621,7 +627,7 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "powersave",
     jsvNewFromString(sleep == NONE_SLEEP_T ? "none" : "ps-poll"));
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "savedMode",
-    jsvNewFromString("off"));
+    jsvNewFromString(wifiMode[savedMode]));
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
@@ -809,6 +815,7 @@ void jswrap_wifi_save(JsVar *what) {
 
   if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
     conf->mode = 0; // disable
+    savedMode = conf->mode;
     conf->phyMode = PHY_MODE_11N;
     conf->sleepType = MODEM_SLEEP_T;
     // ssids, passwords, and hostname are set to zero thanks to memset above
@@ -838,7 +845,7 @@ void jswrap_wifi_save(JsVar *what) {
     char *hostname = wifi_station_get_hostname();
     if (hostname) os_strncpy(conf->dhcpHostname, hostname, 64);
   }
-
+  savedMode = conf->mode;
   conf->crc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
   DBG("Wifi.save: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, (long unsigned int) conf->crc);
   if (map == 6 ) {
@@ -885,6 +892,7 @@ void jswrap_wifi_restore(void) {
   wifi_set_phy_mode(conf->phyMode);
   wifi_set_sleep_type(conf->sleepType);
   wifi_set_opmode_current(conf->mode);
+  savedMode = conf->mode;
 
   if (conf->mode & SOFTAP_MODE) {
     struct softap_config ap_config;
@@ -1551,9 +1559,9 @@ static void wifiEventHandler(System_Event_t *evt) {
     reason = wifiGetReason(evt->event_info.disconnected.reason);
     int8 wifiConnectStatus = wifi_station_get_connect_status();
     if (wifiConnectStatus < 0) wifiConnectStatus = 0;
-    DBG("Wifi event: disconnected from ssid %s, reason %s (%d) status=%s\n",
+    DBG("Wifi event: disconnected from ssid %s, reason %s (%d) status=%s(%d)\n",
       evt->event_info.disconnected.ssid, reason, evt->event_info.disconnected.reason,
-      wifiConn[wifiConnectStatus]);
+      wifiConn[wifiConnectStatus], wifiConnectStatus );
 
     if (g_skipDisconnect) {
       DBGV("  Skipping disconnect\n");
@@ -1562,10 +1570,21 @@ static void wifiEventHandler(System_Event_t *evt) {
     }
 
     // if'were connecting and we get a fatal error, then make a callback
-    if (wifiConnectStatus == STATION_WRONG_PASSWORD && jsvIsFunction(g_jsGotIpCallback)) {
-      sendWifiCompletionCB(&g_jsGotIpCallback, "bad password");
+    // need two more cases
+    if ((wifiConnectStatus == STATION_WRONG_PASSWORD ||
+         wifiConnectStatus == STATION_NO_AP_FOUND ||
+         wifiConnectStatus == STATION_CONNECT_FAIL ) 
+         && jsvIsFunction(g_jsGotIpCallback)) {
+      sendWifiCompletionCB(&g_jsGotIpCallback, wifiConn[wifiConnectStatus]);
+    }
+    // plus REASON_AUTH_EXPIRE
+    if (wifiConnectStatus == STATION_CONNECTING  &&
+         evt->event_info.disconnected.reason == REASON_AUTH_EXPIRE  &&
+         jsvIsFunction(g_jsGotIpCallback)) {
+      sendWifiCompletionCB(&g_jsGotIpCallback, reason);
     }
 
+    
     // if we're in the process of disconnecting we want to turn STA mode off now
     // at that point we may need to make a callback too
     if (g_disconnecting) {
