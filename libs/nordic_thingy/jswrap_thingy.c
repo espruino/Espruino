@@ -68,14 +68,18 @@ void jshVirtualPinInitialise() {
   // these are the power-on defaults
   sxDirection = 0xFFFF;
   sxValues    = 0xFFFF;
+  sxWriteReg(SX_REG_DATAA, sxValues&0xFF);
+  sxWriteReg(SX_REG_DATAB, sxValues>>8);
+  sxWriteReg(SX_REG_DIRA, sxDirection&0xFF);
+  sxWriteReg(SX_REG_DIRB, sxDirection>>8);
 }
 
 void jshVirtualPinSetValue(Pin pin, bool state) {
   int p = pinInfo[pin].pin;
   if (state) sxValues |= 1<<p;
   else sxValues &= ~(1<<p);
-  if (p<8) sxWriteReg(SX_REG_DATAA, sxValues&0xFF); // DATAA
-  else sxWriteReg(SX_REG_DATAB, sxValues>>8); // DATAB
+  if (p<8) sxWriteReg(SX_REG_DATAA, sxValues&0xFF);
+  else sxWriteReg(SX_REG_DATAB, sxValues>>8);
 }
 
 bool jshVirtualPinGetValue(Pin pin) {
@@ -88,8 +92,8 @@ void jshVirtualPinSetState(Pin pin, JshPinState state) {
     sxDirection &= ~(1<<p);
   else
     sxDirection |= (1<<p);
-  if (p<8) sxWriteReg(SX_REG_DIRA, sxDirection&0xFF); // DIRA
-  else sxWriteReg(SX_REG_DIRB, sxDirection>>8); // DIRB
+  if (p<8) sxWriteReg(SX_REG_DIRA, sxDirection&0xFF);
+  else sxWriteReg(SX_REG_DIRB, sxDirection>>8);
 }
 
 /*JSON{"type" : "variable", "name" : "MOS1", "generate_full" : "18", "return" : ["pin","A Pin"]
