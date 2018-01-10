@@ -410,6 +410,8 @@ unsigned int jshSetSystemClock(JsVar *options);
 
 #if JSH_PORTV_COUNT>0
 /// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
+void jshVirtualPinInitialise();
+/// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
 void jshVirtualPinSetValue(Pin pin, bool state);
 /// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
 bool jshVirtualPinGetValue(Pin pin);

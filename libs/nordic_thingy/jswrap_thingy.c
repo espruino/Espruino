@@ -23,27 +23,34 @@
 #include "jshardware.h"
 #include "jsi2c.h"
 
+
 #define I2C_SDA 7
 #define I2C_SCL 8
+// SX1509 IO Expader
 #define SX_I2C_ADDR 0x3e
 #define SX_RESET 16
 #define SX_POWER 30
+#define SX_REG_DIRA 0x0F
+#define SX_REG_DIRB 0x0E
+#define SX_REG_DATAA 0x11
+#define SX_REG_DATAB 0x10
 
 unsigned short sxValues = 0;
 unsigned short sxDirection = 0;
 
 JshI2CInfo i2cInfo = {
-    .bitrate = 400000,
+    .bitrate = 0x7FFFFFFF, // FAST
     .pinSCL = I2C_SCL,
     .pinSDA = I2C_SDA,
     .started = false
 };
 
+// Write to IO expander
 void sxWriteReg(unsigned reg, unsigned d) {
   unsigned char data[2] = {reg,d};
   jsi2cWrite(&i2cInfo, SX_I2C_ADDR, sizeof(data), data, true);
 }
-
+// Read from IO expander
 unsigned char sxReadReg(unsigned reg) {
   unsigned char data = reg;
   jsi2cWrite(&i2cInfo, SX_I2C_ADDR, 1, &data, true);
@@ -51,10 +58,24 @@ unsigned char sxReadReg(unsigned reg) {
   return data;
 }
 
+void jshVirtualPinInitialise() {
+  jshPinOutput(SX_POWER, 1); // enable IO expander power
+  jshPinSetValue(i2cInfo.pinSDA, 1);
+  jshPinSetState(i2cInfo.pinSCL,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  jshPinSetValue(i2cInfo.pinSDA, 1);
+  jshPinSetState(i2cInfo.pinSDA,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  jshDelayMicroseconds(10);
+  // these are the power-on defaults
+  sxDirection = 0xFFFF;
+  sxValues    = 0xFFFF;
+}
+
 void jshVirtualPinSetValue(Pin pin, bool state) {
-  if (state) sxValues |= 1<<pinInfo[pin].pin;
-  else sxValues &= ~(1<<pinInfo[pin].pin);
-  sxWriteReg(0x11, sxValues); // DATAA
+  int p = pinInfo[pin].pin;
+  if (state) sxValues |= 1<<p;
+  else sxValues &= ~(1<<p);
+  if (p<8) sxWriteReg(SX_REG_DATAA, sxValues&0xFF); // DATAA
+  else sxWriteReg(SX_REG_DATAB, sxValues>>8); // DATAB
 }
 
 bool jshVirtualPinGetValue(Pin pin) {
@@ -62,12 +83,31 @@ bool jshVirtualPinGetValue(Pin pin) {
 }
 
 void jshVirtualPinSetState(Pin pin, JshPinState state) {
+  int p = pinInfo[pin].pin;
   if (JSHPINSTATE_IS_OUTPUT(state))
-    sxDirection &= ~(1<<pinInfo[pin].pin);
+    sxDirection &= ~(1<<p);
   else
-    sxDirection |= (1<<pinInfo[pin].pin);
-  sxWriteReg(0x0F, sxDirection); // DIRA
+    sxDirection |= (1<<p);
+  if (p<8) sxWriteReg(SX_REG_DIRA, sxDirection&0xFF); // DIRA
+  else sxWriteReg(SX_REG_DIRB, sxDirection>>8); // DIRB
 }
+
+/*JSON{"type" : "variable", "name" : "MOS1", "generate_full" : "18", "return" : ["pin","A Pin"]
+}*/
+/*JSON{"type" : "variable", "name" : "MOS2", "generate_full" : "19", "return" : ["pin","A Pin"]
+}*/
+/*JSON{"type" : "variable", "name" : "MOS3", "generate_full" : "20", "return" : ["pin","A Pin"]
+}*/
+/*JSON{"type" : "variable", "name" : "MOS4", "generate_full" : "21", "return" : ["pin","A Pin"]
+}*/
+/*JSON{"type" : "variable", "name" : "IOEXT0", "generate_full" : "JSH_PORTV_OFFSET + 0", "return" : ["pin","A Pin"]
+}*/
+/*JSON{"type" : "variable", "name" : "IOEXT1", "generate_full" : "JSH_PORTV_OFFSET + 1", "return" : ["pin","A Pin"]
+}*/
+/*JSON{"type" : "variable", "name" : "IOEXT2", "generate_full" : "JSH_PORTV_OFFSET + 2", "return" : ["pin","A Pin"]
+}*/
+/*JSON{"type" : "variable", "name" : "IOEXT3", "generate_full" : "JSH_PORTV_OFFSET + 3", "return" : ["pin","A Pin"]
+}*/
 
 
 /*JSON{
@@ -75,10 +115,6 @@ void jshVirtualPinSetState(Pin pin, JshPinState state) {
   "generate" : "jswrap_thingy_init"
 }*/
 void jswrap_thingy_init() {
-  jshPinOutput(SX_POWER, 1); // enable IO expander power
-  sxDirection = sxReadReg(0x0F); // DIRA
-  sxValues    = sxReadReg(0x11); // DATAA
-  sxWriteReg(0x21, 0); // disable LED driver
 }
 
 /*JSON{

@@ -208,6 +208,11 @@ void jshResetPeripherals() {
   // Set pin state to input disconnected - saves power
   Pin i;
   for (i=0;i<JSH_PIN_COUNT;i++) {
+#if JSH_PORTV_COUNT>0
+    // don't reset virtual pins
+    if ((pinInfo[i].port & JSH_PORT_MASK)==JSH_PORTV)
+      continue;
+#endif
 #ifdef DEFAULT_CONSOLE_TX_PIN
     if (i==DEFAULT_CONSOLE_TX_PIN) continue;
 #endif
@@ -219,6 +224,10 @@ void jshResetPeripherals() {
     }
   }
   BITFIELD_CLEAR(jshPinSoftPWM);
+
+#if JSH_PORTV_COUNT>0
+  jshVirtualPinInitialise();
+#endif
 }
 
 void jshInit() {
@@ -672,13 +681,18 @@ JshPinFunction jshGetFreeTimer(JsVarFloat freq) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
-  if (pinInfo[pin].port & JSH_PIN_NEGATED)
-    value = 1-value;
 #ifdef NRF52
   // Try and use existing pin function
   JshPinFunction func = pinStates[pin];
+
   // If it's not a timer, try and find one
   if (!JSH_PINFUNCTION_IS_TIMER(func)) {
+#if JSH_PORTV_COUNT>0
+    // don't handle virtual ports (eg. pins on an IO Expander)
+    if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+      func = 0;
+    else
+#endif
     func = jshGetFreeTimer(freq);
   }
   /* we set the bit field here so that if the user changes the pin state
@@ -701,6 +715,11 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
     jsExceptionHere(JSET_ERROR, "No free Hardware PWMs. Try not specifying a frequency, or using analogWrite(pin, val, {soft:true}) for Software PWM\n");
     return 0;
   }
+
+  /* if negated... No need to invert when doing SW PWM
+  as the SW output is already negating it! */
+  if (pinInfo[pin].port & JSH_PIN_NEGATED)
+    value = 1-value;
 
   NRF_PWM_Type *pwm = nrf_get_pwm(func);
   if (!pwm) { assert(0); return 0; };
