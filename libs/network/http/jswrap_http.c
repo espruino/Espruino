@@ -338,10 +338,11 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   "type" : "method",
   "class" : "httpSrv",
   "name" : "listen",
-  "generate" : "jswrap_net_server_listen",
+  "generate_full" : "jswrap_net_server_listen(parent, port, ST_HTTP)",
   "params" : [
     ["port","int32","The port to listen on"]
-  ]
+  ],
+  "return" : ["JsVar","The HTTP server instance that 'listen' was called on"]
 }
 Start listening for new HTTP connections on the given port
 */

@@ -169,7 +169,7 @@ static ALWAYS_INLINE uint32_t stmExtI(Pin ipin) {
 }
 
 static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
-  JsvPinInfoPort port = pinInfo[pin].port;
+  JsvPinInfoPort port = pinInfo[pin].port&JSH_PORT_MASK;
   return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
   /*if (port == JSH_PORTA) return GPIOA;
   if (port == JSH_PORTB) return GPIOB;
@@ -209,7 +209,7 @@ static ALWAYS_INLINE uint8_t stmPinSource(JsvPinInfoPin ipin) {
 }
 
 static ALWAYS_INLINE uint8_t stmPortSource(Pin pin) {
-  JsvPinInfoPort port = pinInfo[pin].port;
+  JsvPinInfoPort port = pinInfo[pin].port&JSH_PORT_MASK;
   return (uint8_t)(port-JSH_PORTA);
 /*#ifdef STM32API2
   if (port == JSH_PORTA) return EXTI_PortSourceGPIOA;

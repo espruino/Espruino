@@ -826,7 +826,7 @@ void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
   short verts[maxVerts];
   int idx = 0;
   JsvIterator it;
-  jsvIteratorNew(&it, poly);
+  jsvIteratorNew(&it, poly, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&it) && idx<maxVerts) {
     verts[idx++] = (short)jsvIteratorGetIntegerValue(&it);
     jsvIteratorNext(&it);

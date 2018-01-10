@@ -351,7 +351,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     if (copyData) {
       // if we were given an array, populate this ArrayBuffer
       JsvIterator it;
-      jsvIteratorNew(&it, arr);
+      jsvIteratorNew(&it, arr, JSIF_DEFINED_ARRAY_ElEMENTS);
       while (jsvIteratorHasElement(&it)) {
         JsVar *idx = jsvIteratorGetKey(&it);
         if (jsvIsInt(idx)) {
@@ -417,7 +417,7 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
     return;
   }
   JsvIterator itsrc;
-  jsvIteratorNew(&itsrc, arr);
+  jsvIteratorNew(&itsrc, arr, JSIF_EVERY_ARRAY_ELEMENT);
   JsvArrayBufferIterator itdst;
   jsvArrayBufferIteratorNew(&itdst, parent, (size_t)offset);
 
@@ -477,7 +477,7 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
 
   // now iterate
   JsvIterator it; // TODO: if we really are limited to ArrayBuffers, this could be an ArrayBufferIterator.
-  jsvIteratorNew(&it, parent);
+  jsvIteratorNew(&it, parent, JSIF_EVERY_ARRAY_ELEMENT);
   JsvArrayBufferIterator itdst;
   jsvArrayBufferIteratorNew(&itdst, array, 0);
 

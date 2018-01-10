@@ -22,7 +22,7 @@ static bool isNegativeZero(double x) {
 }
 
 double jswrap_math_sin(double x) {
-#ifdef SAVE_ON_FLASH
+#ifdef SAVE_ON_FLASH_MATH
   /* To save on flash, do our own sin function that's slower/nastier
    * but is smaller! If we pull in gcc's it adds:
    * __kernel_rem_pio2    2054 bytes
@@ -166,7 +166,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
   "return" : ["float","The arc tangent of x, between -PI/2 and PI/2"]
 }*/
 double jswrap_math_atan(double x) {
-#ifdef SAVE_ON_FLASH
+#ifdef SAVE_ON_FLASH_MATH
   /* To save on flash, do our own atan function that's slower/nastier
    * but is smaller! */
   // exploit symmetry - we're only accurate when x is small

@@ -368,7 +368,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   } else if (jsvIsIterable(srcdata)) {
     jshInterruptOff();
     JsvIterator it;
-    jsvIteratorNew(&it, srcdata);
+    jsvIteratorNew(&it, srcdata, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
       unsigned char in = (unsigned char)jsvIteratorGetIntegerValue(&it);
       jsspiSend4bit(device, in, bit0, bit1);
@@ -437,7 +437,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   } else if (jsvIsIterable(srcdata)) {
     jshInterruptOff();
     JsvIterator it;
-    jsvIteratorNew(&it, srcdata);
+    jsvIteratorNew(&it, srcdata, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
       unsigned char in = (unsigned char)jsvIteratorGetIntegerValue(&it);
       jsspiSend8bit(device, in, bit0, bit1);
@@ -472,7 +472,7 @@ All addresses are in 7 bit format. If you have an 8 bit address then you need to
 }
 Create a software I2C port. This has limited functionality (no baud rate), but it can work on any pins.
 
-Use `SPI.setup` to configure this port.
+Use `I2C.setup` to configure this port.
  */
 JsVar *jswrap_i2c_constructor() {
   return jsvNewObject();
@@ -526,7 +526,7 @@ The third I2C port
   "name" : "setup",
   "generate" : "jswrap_i2c_setup",
   "params" : [
-    ["options","JsVar",["An optional structure containing extra information on initialising the I2C port","```{scl:pin, sda:pin, bitrate:100000}```","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `I2C` marker. Note that 400000kHz is the maximum bitrate for most parts."]]
+    ["options","JsVar",["An optional structure containing extra information on initialising the I2C port","```{scl:pin, sda:pin, bitrate:100000}```","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `I2C` marker. Note that 400kHz is the maximum bitrate for most parts."]]
   ]
 }
 Set up this I2C port

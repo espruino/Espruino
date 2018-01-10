@@ -38,8 +38,7 @@
 #include "app_util_platform.h"
 #include "nrf_delay.h"
 #ifdef USE_NFC
-#include "nfc_t2t_lib.h"
-#include "nfc_uri_msg.h"
+#include "hal_t2t/hal_nfc_t2t.h"
 #endif
 #if BLE_HIDS_ENABLED
 #include "ble_hids.h"
@@ -129,8 +128,114 @@ volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
 uint16_t bleFinalHandle;
 
+/* If we're received an advertising message it's put in here and then a message
+ * to process it is shoved in the queue. Not 100% ideal if we don't get around
+ * to processing it in time... Could shove all the data in the queue? */
+static ble_gap_evt_adv_report_t blePendingAdvReport;
+
+
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
+
+void jsble_queue_pending_d(BLEPending blep, uint16_t data) {
+  JsSysTime d = (JsSysTime)((data<<8)|blep);
+  jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
+  jshHadEvent();
+}
+
+void jsble_queue_pending(BLEPending blep) {
+  jsble_queue_pending_d(blep,0);
+}
+
+void jsble_exec_pending(IOEvent *event) {
+  BLEPending blep = (BLEPending)event->data.time;
+  uint16_t data = (uint16_t)(event->data.time>>8);
+  switch (blep) {
+   case BLEP_NONE: break;
+   case BLEP_DISCONNECTED: {
+     JsVar *reason = jsvNewFromInteger(data);
+     bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
+     break;
+   }
+   case BLEP_RSSI_PERIPH: {
+     JsVar *evt = jsvNewFromInteger((char)data);
+     if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
+     jsvUnLock(evt);
+     break;
+   }
+   case BLEP_ADV_REPORT: {
+     JsVar *evt = jsvNewObject();
+     if (evt) {
+       jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(blePendingAdvReport.rssi));
+       //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
+       jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(blePendingAdvReport.peer_addr));
+       JsVar *data = jsvNewStringOfLength(blePendingAdvReport.dlen, (char*)blePendingAdvReport.data);
+       if (data) {
+         JsVar *ab = jsvNewArrayBufferFromString(data, blePendingAdvReport.dlen);
+         jsvUnLock(data);
+         jsvObjectSetChildAndUnLock(evt, "data", ab);
+       }
+       // push onto queue
+       jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
+       jsvUnLock(evt);
+     }
+     break;
+   }
+#if CENTRAL_LINK_COUNT>0
+   case BLEP_RSSI_CENTRAL: {
+     JsVar *gattServer = bleGetActiveBluetoothGattServer();
+     if (gattServer) {
+       JsVar *rssi = jsvNewFromInteger((char)data);
+       JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+       if (bluetoothDevice) {
+         jsvObjectSetChild(bluetoothDevice, "rssi", rssi);
+       }
+       jsiQueueObjectCallbacks(gattServer, BLE_RSSI_EVENT, &rssi, 1);
+       jsvUnLock3(rssi, gattServer, bluetoothDevice);
+     }
+     break;
+   }
+   case BLEP_TASK_FAIL_CONN_TIMEOUT:
+     bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Connection Timeout"));
+     break;
+   case BLEP_TASK_FAIL_DISCONNECTED:
+     bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
+   case BLEP_TASK_CENTRAL_CONNECTED:
+     jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
+     bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
+     break;
+   case BLEP_GATT_SERVER_DISCONNECTED: {
+     JsVar *gattServer = bleGetActiveBluetoothGattServer();
+     if (gattServer) {
+       JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+       jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
+       if (bluetoothDevice) {
+         // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
+         JsVar *reason = jsvNewFromInteger(data);
+         jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", &reason, 1);
+         jsvUnLock(reason);
+         jshHadEvent();
+       }
+       jsvUnLock2(gattServer, bluetoothDevice);
+     }
+     bleSetActiveBluetoothGattServer(0);
+     break;
+   }
+#endif
+#ifdef USE_NFC
+   case BLEP_NFC_STATUS:
+     bleQueueEventAndUnLock(data ? JS_EVENT_PREFIX"NFCon" : JS_EVENT_PREFIX"NFCoff", 0);
+     break;
+#endif
+   default:
+     jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
+ }
+}
+
+
+// -----------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------
+
 
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection() {
@@ -348,10 +453,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
       case BLE_GAP_EVT_TIMEOUT:
 #if CENTRAL_LINK_COUNT>0
         if (bleInTask(BLETASK_BONDING)) { // BLE_GAP_TIMEOUT_SRC_SECURITY_REQUEST ?
-          bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Connection Timeout"));
+          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT);
         } else if (bleInTask(BLETASK_CONNECT)) {
-          // timeout!
-          bleCompleteTaskFailAndUnLock(BLETASK_CONNECT, jsvNewFromString("Connection Timeout"));
+          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT);
         } else
 #endif
         {
@@ -388,6 +492,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
           bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
+          // TODO: queue connection event via jsble_queue_pending
           JsVar *addr = bleAddrToStr(p_ble_evt->evt.gap_evt.params.connected.peer_addr);
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", addr);
           jshHadEvent();
@@ -396,8 +501,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleSetActiveBluetoothGattServer(bleTaskInfo);
-          jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
-          bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
+          jsble_queue_pending(BLEP_TASK_CENTRAL_CONNECTED);
         }
 #endif
         break;
@@ -410,26 +514,13 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
-          if (bleInTask(BLETASK_BONDING))
-            bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Disconnected"));
-          JsVar *gattServer = bleGetActiveBluetoothGattServer();
-          if (gattServer) {
-            JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
-            jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
-            if (bluetoothDevice) {
-              // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
-              JsVar *reason = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.disconnected.reason);
-              jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", &reason, 1);
-              jsvUnLock(reason);
-              jshHadEvent();
-            }
-            jsvUnLock2(gattServer, bluetoothDevice);
-          }
+          jsble_queue_pending_d(BLEP_GATT_SERVER_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
+
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
-          bleSetActiveBluetoothGattServer(0);
+
           BleTask task = bleGetCurrentTask();
           if (BLETASK_IS_CENTRAL(task)) {
-            bleCompleteTaskFailAndUnLock(task, jsvNewFromString("Disconnected"));
+            jsble_queue_pending(BLEP_TASK_FAIL_DISCONNECTED);
           }
         } else
 #endif
@@ -442,9 +533,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
             jsble_advertising_start();
-          JsVar *reason = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.disconnected.reason);
-          bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
-          jshHadEvent();
+          jsble_queue_pending_d(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
           jsble_restart_softdevice();
@@ -454,24 +543,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
       case BLE_GAP_EVT_RSSI_CHANGED: 
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
-          JsVar *gattServer = bleGetActiveBluetoothGattServer();
-          if (gattServer) {
-            JsVar *rssi = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
-            JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
-            if (bluetoothDevice) {
-              jsvObjectSetChild(bluetoothDevice, "rssi", rssi);
-            }
-            jsiQueueObjectCallbacks(gattServer, BLE_RSSI_EVENT, &rssi, 1);
-            jshHadEvent();
-            jsvUnLock3(rssi, gattServer, bluetoothDevice);
-          }
+          jsble_queue_pending_d(BLEP_RSSI_CENTRAL, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
         } else
 #endif    
         {
-          JsVar *evt = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
-          if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
-          jsvUnLock(evt);
-          jshHadEvent();
+          jsble_queue_pending_d(BLEP_RSSI_PERIPH, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
         }
         break;
 
@@ -610,29 +686,16 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
       case BLE_GAP_EVT_ADV_REPORT: {
         // Advertising data received
+        // TODO: actually push advertising data onto queue (this method can occasionally lose advertising reports)
         const ble_gap_evt_adv_report_t *p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
-
-        JsVar *evt = jsvNewObject();
-        if (evt) {
-          jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
-          //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(p_adv->peer_addr.addr_type));
-          jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
-          JsVar *data = jsvNewStringOfLength(p_adv->dlen, (char*)p_adv->data);
-          if (data) {
-            JsVar *ab = jsvNewArrayBufferFromString(data, p_adv->dlen);
-            jsvUnLock(data);
-            jsvObjectSetChildAndUnLock(evt, "data", ab);
-          }
-          // push onto queue
-          jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
-          jsvUnLock(evt);
-          jshHadEvent();
-        }
+        blePendingAdvReport = *p_adv;
+        jsble_queue_pending(BLEP_ADV_REPORT);
         break;
         }
 
       case BLE_GATTS_EVT_WRITE: {
         ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
+        // TODO: move to writing via event queue with jsble_queue_pending
         // We got a param write event - add this to the object callback queue
         JsVar *evt = jsvNewObject();
         if (evt) {
@@ -815,7 +878,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
             // Set characteristic.value, and return {target:characteristic}
             jsvObjectSetChildAndUnLock(characteristic, "value",
                 jsvNewDataViewWithData(p_hvx->len, (unsigned char*)p_hvx->data));
-
+            // TODO: queue event with jsble_queue_pending
             JsVar *evt = jsvNewObject();
             if (evt) {
               jsvObjectSetChild(evt, "target", characteristic);
@@ -838,15 +901,59 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
 #ifdef USE_NFC
 /// Callback function for handling NFC events.
-static void nfc_callback(void * p_context, nfc_t2t_event_t event, const uint8_t * p_data, size_t data_length) {
+static void nfc_callback(void * p_context, hal_nfc_event_t event, const uint8_t * p_data, size_t data_length) {
   (void)p_context;
 
   switch (event) {
-    case NFC_T2T_EVENT_FIELD_ON:
-      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCon", 0);
+    case HAL_NFC_EVENT_FIELD_ON:
+      jsble_queue_pending_d(BLEP_NFC_STATUS,1);
       break;
-    case NFC_T2T_EVENT_FIELD_OFF:
-      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCoff", 0);
+    case HAL_NFC_EVENT_FIELD_OFF:
+      jsble_queue_pending_d(BLEP_NFC_STATUS,0);
+      break;
+    case HAL_NFC_EVENT_DATA_RECEIVED: {
+      /* try to fetch NfcData data */
+      JsVar *nfcData = jsvObjectGetChild(execInfo.hiddenRoot, "NfcData", 0);
+      if(nfcData) {
+        /* success handle request internally */
+        JSV_GET_AS_CHAR_ARRAY(nfcDataPtr, nfcDataLen, nfcData);
+        jsvUnLock(nfcData);
+
+        /* check data, on error let request go into timeout - reader will retry. */
+        if (!nfcDataPtr || !nfcDataLen) {
+          break;
+        }
+
+        /* check rx data length and read block command code (0x30) */
+        if(data_length < 2 || p_data[0] != 0x30) {
+          jsble_nfc_send_rsp(0, 0); /* switch to rx */
+          break;
+        }
+
+        /* fetch block index (addressing is done in multiples of 4 byte */
+        size_t idx = p_data[1] * 4;
+
+        /* assemble 16 byte block */
+        uint8_t buf[16]; memset(buf, '\0', 16);
+        if(idx + 16 < nfcDataLen) {
+          memcpy(buf, nfcDataPtr + idx, 16);
+        } else
+        if(idx < nfcDataLen) {
+          memcpy(buf, nfcDataPtr + idx, nfcDataLen - idx);
+        }
+        /* send response */
+        jsble_nfc_send(buf, 16);
+      } else {
+        /* no NfcData available, fire js-event */
+        char *ptr = 0;
+        JsVar *arr = jsvNewArrayBufferWithPtr((unsigned int)data_length, &ptr);
+        if (ptr) memcpy(ptr, p_data, data_length);
+        bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCrx", arr);
+      }
+      break;
+    }
+    case HAL_NFC_EVENT_DATA_TRANSMITTED:
+      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCtx", 0);
       break;
     default:
       break;
@@ -1788,6 +1895,11 @@ void jsble_set_services(JsVar *data) {
   }
 }
 
+/// Disconnect from the given connection
+uint32_t jsble_disconnect(uint16_t conn_handle) {
+  return sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+}
+
 #if BLE_HIDS_ENABLED
 void jsble_send_hid_input_report(uint8_t *data, int length) {
   if (!(bleStatus & BLE_HID_INITED)) {
@@ -1825,33 +1937,63 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
 
 #ifdef USE_NFC
 void jsble_nfc_stop() {
-  if (!nfcEnabled) return;
   nfcEnabled = false;
-  nfc_t2t_emulation_stop();
-  nfc_t2t_done();
+  hal_nfc_stop();
+  hal_nfc_done();
 }
 
-void jsble_nfc_start(const uint8_t *data, size_t len) {
-  if (nfcEnabled) jsble_nfc_stop();
+void jsble_nfc_get_internal(uint8_t *data, size_t *max_len) {
 
   uint32_t ret_val;
 
-  ret_val = nfc_t2t_setup(nfc_callback, NULL);
+  ret_val = hal_nfc_parameter_get(HAL_NFC_PARAM_ID_INTERNAL, data, max_len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcGetInternal: Got NFC error code %d", ret_val);
+}
+
+void jsble_nfc_start(const uint8_t *data, size_t len) {
+  jsble_nfc_stop();
+
+  uint32_t ret_val;
+
+  /* Set UID / UID Length */
+  if (len)
+    ret_val = hal_nfc_parameter_set(HAL_NFC_PARAM_ID_UID, data, len);
+  else
+    ret_val = hal_nfc_parameter_set(HAL_NFC_PARAM_ID_UID, "\0\0\0\0\0\0\0", 7);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSetUid: Got NFC error code %d", ret_val);
+
+  ret_val = hal_nfc_setup(nfc_callback, NULL);
   if (ret_val)
     return jsExceptionHere(JSET_ERROR, "nfcSetup: Got NFC error code %d", ret_val);
 
-  nfcEnabled = true;
-
-  /* Set created message as the NFC payload */
-  ret_val = nfc_t2t_payload_set( data, len);
-  if (ret_val)
-    return jsExceptionHere(JSET_ERROR, "nfcSetPayload: NFC error code %d", ret_val);
-
   /* Start sensing NFC field */
-  ret_val = nfc_t2t_emulation_start();
+  ret_val = hal_nfc_start();
   if (ret_val)
     return jsExceptionHere(JSET_ERROR, "nfcStartEmulation: NFC error code %d", ret_val);
 
+  nfcEnabled = true;
+}
+
+void jsble_nfc_send(const uint8_t *data, size_t len) {
+  if (!nfcEnabled) return;
+
+  uint32_t ret_val;
+
+  ret_val = hal_nfc_send(data, len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSend: NFC error code %d", ret_val);
+}
+
+void jsble_nfc_send_rsp(const uint8_t data, size_t len) {
+  if (!nfcEnabled) return;
+
+  uint32_t ret_val;
+
+  ret_val = hal_nfc_send_rsp(data, len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSend: NFC error code %d", ret_val);
 }
 #endif
 

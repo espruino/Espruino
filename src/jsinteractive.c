@@ -26,6 +26,7 @@
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
 #include "jsnative.h" // jsnSanityTest
 #ifdef BLUETOOTH
+#include "bluetooth.h"
 #include "jswrap_bluetooth.h"
 #endif
 
@@ -1811,6 +1812,10 @@ void jsiIdle() {
           jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
       }
       jsvUnLock(usartClass);
+#ifdef BLUETOOTH
+    } else if (eventType == EV_BLUETOOTH_PENDING) {
+      jsble_exec_pending(&event);
+#endif
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...
       // Check everything in our Watch array

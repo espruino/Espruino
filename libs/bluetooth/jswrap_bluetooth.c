@@ -18,13 +18,15 @@
 #include "jswrap_string.h"
 #include "jsnative.h"
 
-#include "nrf5x_utils.h"
-#include "bluetooth.h"
 #include "bluetooth_utils.h"
+#include "bluetooth.h"
 
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+
+#ifdef NRF5X
+#include "nrf5x_utils.h"
 #include "nordic_common.h"
 #include "nrf.h"
 #include "ble_hci.h"
@@ -37,6 +39,7 @@
 
 #ifdef USE_NFC
 #include "nfc_uri_msg.h"
+#endif
 #endif
 
 
@@ -61,6 +64,14 @@ bool bleNewTask(BleTask task, JsVar *taskInfo) {
     jsExceptionHere(JSET_ERROR, "BLE task %d is already in progress", (int)bleTask);
     return false;
   }
+/*  if (blePromise) {
+    jsiConsolePrintf("Existing blePromise!\n");
+    jsvTrace(blePromise,2);
+  }
+  if (bleTaskInfo) {
+    jsiConsolePrintf("Existing bleTaskInfo!\n");
+    jsvTrace(bleTaskInfo,2);
+  }*/
   assert(!blePromise && !bleTaskInfo);
   blePromise = jspromise_create();
   bleTask = task;
@@ -142,7 +153,7 @@ void jswrap_nrf_init() {
   } else {
 #ifdef USE_NFC
     // start NFC, if it had been set
-    JsVar *flatStr = jsvObjectGetChild(execInfo.hiddenRoot, "NFC", 0);
+    JsVar *flatStr = jsvObjectGetChild(execInfo.hiddenRoot, "NfcEnabled", 0);
     if (flatStr) {
       uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
       if (flatStrPtr) jsble_nfc_start(flatStrPtr, jsvGetLength(flatStr));
@@ -202,6 +213,8 @@ void jswrap_nrf_kill() {
   bleTask = BLETASK_NONE;
   if (blePromise) jsvUnLock(blePromise);
   blePromise = 0;
+  if (bleTaskInfo) jsvUnLock(bleTaskInfo);
+  bleTaskInfo = 0;
   // if we were scanning, make sure we stop
   jsble_set_scanning(false);
   jsble_set_rssi_scan(false);
@@ -209,7 +222,7 @@ void jswrap_nrf_kill() {
 #if CENTRAL_LINK_COUNT>0
   // if we were connected to something, disconnect
   if (jsble_has_central_connection()) {
-     sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    jsble_disconnect(m_central_conn_handle);
   }
 #endif
 }
@@ -306,6 +319,19 @@ Called when an NFC field is no longer detected
  */
 /*JSON{
   "type" : "event",
+  "class" : "NRF",
+  "name" : "NFCrx",
+  "params" : [
+    ["arr","JsVar","An ArrayBuffer containign the received data"]
+  ],
+  "ifdef" : "NRF52"
+}
+When NFC is started with `NRF.nfcStart`, this is fired
+when NFC data is received. It doesn't get called if
+NFC is started with `NRF.nfcURL` or `NRF.nfcRaw`
+ */
+/*JSON{
+  "type" : "event",
   "class" : "BluetoothDevice",
   "name" : "gattserverdisconnected",
   "params" : [
@@ -320,7 +346,6 @@ disconnected, just do the following:
 
 ```
 var gatt;
-var t = getTime();
 NRF.connect("aa:bb:cc:dd:ee:ff").then(function(gatt) {
   gatt.device.on('gattserverdisconnected', function(reason) {
     console.log("Disconnected ",reason);
@@ -370,7 +395,7 @@ If a device is connected to Espruino, disconnect from it.
 void jswrap_nrf_bluetooth_disconnect() {
   uint32_t err_code;
   if (jsble_has_simple_connection()) {
-    err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    err_code = jsble_disconnect(m_conn_handle);
     jsble_check_error(err_code);
   }
 }
@@ -454,8 +479,13 @@ For Puck.js, the last 5 characters of this (eg. `ee:ff`)
 are used in the device's advertised Bluetooth name.
 */
 JsVar *jswrap_nrf_bluetooth_getAddress() {
+#ifdef NRF5X
   uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
   uint32_t addr1 =  NRF_FICR->DEVICEADDR[1];
+#else
+  uint32_t addr0 = 0xDEADDEAD;
+  uint32_t addr1 = 0xDEAD;
+#endif
   return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
       ((addr1>>8 )&0xFF)|0xC0,
       ((addr1    )&0xFF),
@@ -533,6 +563,13 @@ NRF.setAdvertising([0x03,  // Length of Service List
 
 (However for Eddystone we'd advise that you use the [Espruino Eddystone library](/Puck.js+Eddystone))
 
+**Note:** When specifying data as an array, certain advertising options such as
+`discoverable` and `showName` won't have any effect.
+
+**Note:** The size of Bluetooth LE advertising packets is limited to 31 bytes. If
+you want to advertise more data, consider using an array for `data` (See below), or
+`NRF.setScanResponse`.
+
 You can even specify an array of arrays or objects, in which case each advertising packet
 will be used in turn - for instance to make your device advertise
 both Eddystone and iBeacon:
@@ -554,6 +591,8 @@ NRF.setAdvertising([
   discoverable: true/false // general discoverable, or limited - default is limited
   connectable: true/false // whether device is connectable - default is true
   interval: 600 // Advertising interval in msec, between 20 and 10000
+  manufacturer: 0x0590 // IF sending manufacturer data, this is the manufacturer ID
+  manufacturerData: [...] // IF sending manufacturer data, this is an array of data
 }
 ```
 
@@ -564,13 +603,10 @@ other data you can just use the command:
 NRF.setAdvertising({},{name:"Hello"});
 ```
 
-**Note:** When specifying data as an array, certain advertising options such as
-`discoverable` and `showName` won't have any effect.
-
-**Note:** The size of Bluetooth LE advertising packets is limited to 31 bytes. If
-you want to advertise more data, consider using an array for `data`, or
-`NRF.setScanResponse`.
-
+You can also specify 'manufacturer data', which is another form of advertising data.
+We've registered the Manufacturer ID 0x0590 (as Pur3 Ltd) for use with *Official
+Espruino devices* - use it to advertise whatever data you'd like, but we'd recommend
+using JSON.
 */
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   uint32_t err_code;
@@ -602,11 +638,16 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     if (v) {
       JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, v);
       if (namePtr) {
+#ifdef NRF5X
         ble_gap_conn_sec_mode_t sec_mode;
         BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
         err_code = sd_ble_gap_device_name_set(&sec_mode,
                                               (const uint8_t *)namePtr,
                                               nameLen);
+#else
+        err_code = 0xDEAD;
+        jsiConsolePrintf("FIXME\n");
+#endif
         jsble_check_error(err_code);
         bleChanged = true;
       }
@@ -685,7 +726,12 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   // now actually update advertising
   if (bleChanged && isAdvertising)
     jsble_advertising_stop();
+#ifdef NRF5X
   err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
+#else
+  err_code = 0xDEAD;
+  jsiConsolePrintf("FIXME\n");
+#endif
   jsvUnLock(initialArray);
   jsble_check_error(err_code);
   if (bleChanged && isAdvertising)
@@ -708,11 +754,14 @@ the data, it returns the packet that would be advertised as an array.
 */
 JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   uint32_t err_code;
+#ifdef NRF5X
   ble_advdata_t advdata;
   jsble_setup_advdata(&advdata);
+#endif
 
   if (jsvIsObject(options)) {
     JsVar *v;
+#ifdef NRF5X
     v = jsvObjectGetChild(options, "showName", 0);
     if (v) advdata.name_type = jsvGetBoolAndUnLock(v) ?
         BLE_ADVDATA_FULL_NAME :
@@ -722,6 +771,27 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
     if (v) advdata.flags = jsvGetBoolAndUnLock(v) ?
         BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE :
         BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+
+    v = jsvObjectGetChild(options, "manufacturerData", 0);
+    if (v) {
+      JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, v);
+      if (dPtr && dLen) {
+        advdata.p_manuf_specific_data = (ble_advdata_manuf_data_t*)alloca(sizeof(ble_advdata_manuf_data_t));
+        advdata.p_manuf_specific_data->company_identifier = 0xFFFF; // pre-fill with test manufacturer data
+        advdata.p_manuf_specific_data->data.size = dLen;
+        advdata.p_manuf_specific_data->data.p_data = dPtr;
+      }
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChild(options, "manufacturer", 0);
+    if (v) {
+      if (advdata.p_manuf_specific_data)
+        advdata.p_manuf_specific_data->company_identifier = jsvGetInteger(v);
+      else
+        jsExceptionHere(JSET_TYPEERROR, "'manufacturer' specified without 'manufacturerdata'");
+      jsvUnLock(v);
+    }
+#endif
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting 'options' to be object or undefined, got %t", options);
     return 0;
@@ -730,24 +800,29 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
     return jsvLockAgain(data);
   } else if (jsvIsObject(data)) {
+#ifdef NRF5X
     ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
+#endif
     int n = 0;
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, data);
     while (jsvObjectIteratorHasValue(&it)) {
-      service_data[n].service_uuid = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
       JsVar *v = jsvObjectIteratorGetValue(&it);
       JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, v);
       jsvUnLock(v);
+#ifdef NRF5X
+      service_data[n].service_uuid = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
       service_data[n].data.size    = dLen;
       service_data[n].data.p_data  = (uint8_t*)dPtr;
+#endif
       jsvObjectIteratorNext(&it);
       n++;
     }
     jsvObjectIteratorFree(&it);
-
+#ifdef NRF5X
     advdata.service_data_count   = n;
     advdata.p_service_data_array = service_data;
+#endif
   } else if (!jsvIsUndefined(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
     return 0;
@@ -756,7 +831,12 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   uint16_t  len_advdata = BLE_GAP_ADV_MAX_SIZE;
   uint8_t   encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
 
+#ifdef NRF5X
   err_code = adv_data_encode(&advdata, encoded_advdata, &len_advdata);
+#else
+  err_code = 0xDEAD;
+  jsiConsolePrintf("FIXME\n");
+#endif
   if (jsble_check_error(err_code)) return 0;
   return jsvNewArrayBufferWithData(len_advdata, encoded_advdata);
 }
@@ -794,8 +874,12 @@ void jswrap_nrf_bluetooth_setScanResponse(JsVar *data) {
       jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
       return;
     }
-
+#ifdef NRF5X
     err_code = sd_ble_gap_adv_data_set(NULL, 0, (uint8_t *)dPtr, dLen);
+#else
+    err_code = 0xDEAD;
+    jsiConsolePrintf("FIXME\n");
+#endif
     jsble_check_error(err_code);
   } else if (!jsvIsUndefined(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting array-like object or undefined, got %t", data);
@@ -1099,6 +1183,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
           if (charValue) {
             JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, charValue);
             if (vPtr && vLen) {
+#ifdef NRF5X
               ble_gatts_hvx_params_t hvx_params;
               ble_gatts_value_t gatts_value;
 
@@ -1129,6 +1214,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
                     ok = false;
                 }
               }
+#endif
             }
           }
           jsvUnLock(charValue);
@@ -1188,6 +1274,9 @@ BluetoothDevice {
   "rssi": -89,               // signal strength
   "services": [ "128bit-uuid", ... ],     // zero or more service UUIDs
   "data": new Uint8Array([ ... ]).buffer, // ArrayBuffer of returned data
+  "serviceData" : { "0123" : [ 1 ] }, // if service data is in 'data', it's extracted here
+  "manufacturer" : 0x1234, // if manufacturer data is in 'data', the 16 bit manufacturer ID is extracted here
+  "manufacturerData" : [...], // if manufacturer data is in 'data', the data is extracted here
   "name": "DeviceName"       // the advertised device name
  }
 ```
@@ -1211,13 +1300,13 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
   jsvObjectSetChildAndUnLock(device, "id", jsvObjectGetChild(adv, "id", 0));
   jsvObjectSetChildAndUnLock(device, "rssi", jsvObjectGetChild(adv, "rssi", 0));
   JsVar *services = jsvNewEmptyArray();
-  JsVar *servicedata = jsvNewObject();
+  JsVar *serviceData = jsvNewObject();
   JsVar *data = jsvObjectGetChild(adv, "data", 0);
   if (data) {
     jsvObjectSetChild(device, "data", data);
     JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
     if (dPtr && dLen) {
-      if (services && servicedata) {
+      if (services && serviceData) {
         uint32_t i = 0;
         while (i < dLen) {
           uint8_t field_length = dPtr[i];
@@ -1237,16 +1326,21 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
                      field_type == BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE) {
             JsVar *s = bleUUID128ToStr((uint8_t*)&dPtr[i+2]);
             jsvArrayPushAndUnLock(services, s);
-          }  else if (field_type == BLE_GAP_AD_TYPE_SERVICE_DATA) { // 0x16 - service data 16 bit UUID
+          } else if (field_type == BLE_GAP_AD_TYPE_SERVICE_DATA) { // 0x16 - service data 16 bit UUID
             JsVar *childName = jsvAsArrayIndexAndUnLock(jsvVarPrintf("%04x", UNALIGNED_UINT16(&dPtr[i+2])));
             if (childName) {
-              JsVar *child = jsvFindChildFromVar(servicedata, childName, true);
+              JsVar *child = jsvFindChildFromVar(serviceData, childName, true);
               JsVar *value = jsvNewArrayBufferWithData(field_length-3, (unsigned char*)&dPtr[i+4]);
               if (child && value) jsvSetValueOfName(child, value);
               jsvUnLock2(child, value);
             }
             jsvUnLock(childName);
-           }// or unknown...
+          } else if (field_type == BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA) {
+            jsvObjectSetChildAndUnLock(device, "manufacturer",
+                            jsvNewFromInteger((dPtr[i+3]<<8) | dPtr[i+2]));
+            jsvObjectSetChildAndUnLock(device, "manufacturerData",
+                jsvNewArrayBufferWithData(field_length-3, (unsigned char*)&dPtr[i+4]));
+          } // or unknown...
           i += field_length + 1;
         }
       }
@@ -1254,9 +1348,9 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
   }
   if (jsvGetArrayLength(services))
     jsvObjectSetChild(device, "services", services);
-  if (jsvGetLength(servicedata))
-    jsvObjectSetChild(device, "servicedata", servicedata);
-  jsvUnLock3(data, services, servicedata);
+  if (jsvGetLength(serviceData))
+    jsvObjectSetChild(device, "serviceData", serviceData);
+  jsvUnLock3(data, services, serviceData);
   jspExecuteFunction(callback, 0, 1, &device);
   jsvUnLock(device);
 }
@@ -1306,7 +1400,8 @@ prints something like:
     "id": "e7:e0:57:ad:36:a2 random",
     "rssi": -45,
     "services": [ "4567" ],
-    "servicedata" : { "0123" : [ 1 ] }
+    "serviceData" : { "0123" : [ 1 ] },
+    "manufacturerData" : [...],
     "data": new ArrayBuffer([ ... ]),
     "name": "Puck.js 36a2"
    },
@@ -1357,7 +1452,7 @@ void jswrap_nrf_bluetooth_findDevices_found_cb(JsVar *device) {
       JsVar *value = jsvSkipName(key);
       JsVar *existingKey = jsvFindChildFromVar(found, key, true);
       bool isServices = jsvIsStringEqual(key,"services");
-      bool isServiceData = jsvIsStringEqual(key,"servicedata");
+      bool isServiceData = jsvIsStringEqual(key,"serviceData");
       if (isServices || isServiceData) {
         // for services or servicedata we append to the array/object
         JsVar *existingValue = jsvSkipName(existingKey);
@@ -1466,7 +1561,12 @@ Set the BLE radio transmit power. The default TX power is 0 dBm.
 */
 void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
   uint32_t              err_code;
+#ifdef NRF5X
   err_code = sd_ble_gap_tx_power_set(pwr);
+#else
+  err_code = 0xDEAD;
+  jsiConsolePrintf("FIXME\n");
+#endif
   jsble_check_error(err_code);
 }
 
@@ -1530,8 +1630,8 @@ void jswrap_nrf_nfcURL(JsVar *url) {
 #ifdef USE_NFC
   // Check for disabling NFC
   if (jsvIsUndefined(url)) {
-    jsvObjectRemoveChild(execInfo.hiddenRoot, "NFC");
-    jsble_nfc_stop();
+    jsvObjectRemoveChild(execInfo.hiddenRoot, "NfcData");
+    jswrap_nrf_nfcStop();
     return;
   }
 
@@ -1540,9 +1640,6 @@ void jswrap_nrf_nfcURL(JsVar *url) {
     return;
   }
 
-  uint32_t err_code;
-  /* Turn off NFC */
-  jsble_nfc_stop();
   JSV_GET_AS_CHAR_ARRAY(urlPtr, urlLen, url);
   if (!urlPtr || !urlLen)
     return jsExceptionHere(JSET_ERROR, "Unable to get URL data");
@@ -1558,29 +1655,36 @@ void jswrap_nrf_nfcURL(JsVar *url) {
     uriType = NFC_URI_HTTPS;
   }
 
-  uint8_t msg_buf[256];
-  uint32_t len = sizeof(msg_buf);
-  /* Encode URI message into buffer */
-  err_code = nfc_uri_msg_encode( uriType, // TODO: could auto-prepend http/etc.
-                                 (uint8_t *)urlPtr,
-                                 urlLen,
-                                 msg_buf,
-                                 &len);
-  if (err_code)
-    return jsExceptionHere(JSET_ERROR, "nfc_uri_msg_encode: NFC error code %d", err_code);
-
-  /* Create a flat string - we need this to store the URI data so it hangs around.
-   * Avoid having a static var so we have RAM available if not using NFC */
-  JsVar *flatStr = jsvNewFlatStringOfLength(len);
+  /* Encode NDEF message into a flat string - we need this to store the
+   * data so it hangs around. Avoid having a static var so we have RAM
+   * available if not using NFC. NFC data is read by nfc_callback */
+  JsVar *flatStr = jsvNewFlatStringOfLength(NDEF_FULL_URL_HEADER_LEN + urlLen + NDEF_TERM_TLV_LEN);
   if (!flatStr)
     return jsExceptionHere(JSET_ERROR, "Unable to create string with URI data in");
-  jsvObjectSetChild(execInfo.hiddenRoot, "NFC", flatStr);
+  jsvObjectSetChild(execInfo.hiddenRoot, "NfcData", flatStr);
   uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
   jsvUnLock(flatStr);
-  memcpy(flatStrPtr, msg_buf, len);
 
-  // start nfc properly
-  jsble_nfc_start(flatStrPtr, len);
+  /* assemble NDEF Message */
+  memcpy(flatStrPtr, NDEF_HEADER, NDEF_FULL_URL_HEADER_LEN); /* fill header */
+  flatStrPtr[NDEF_IC_OFFSET] = uriType; /* set URI Identifier Code */
+  memcpy(flatStrPtr+NDEF_FULL_URL_HEADER_LEN, urlPtr, urlLen); /* add payload */
+
+  /* inject length fields into header */
+  flatStrPtr[NDEF_MSG_LEN_OFFSET] = NDEF_RECORD_HEADER_LEN + urlLen;
+  flatStrPtr[NDEF_PL_LEN_LSB_OFFSET] = NDEF_IC_LEN + urlLen;
+
+  /* write terminator TLV block */
+  flatStrPtr[NDEF_FULL_URL_HEADER_LEN + urlLen] = NDEF_TERM_TLV;
+
+  /* start nfc peripheral */
+  JsVar* uid = jswrap_nrf_nfcStart(NULL);
+
+  /* inject UID/BCC */
+  size_t len;
+  char *uidPtr = jsvGetDataPointer(uid, &len);
+  if(uidPtr) memcpy(flatStrPtr, uidPtr, TAG_HEADER_LEN);
+  jsvUnLock(uid);
 #endif
 }
 
@@ -1607,30 +1711,185 @@ void jswrap_nrf_nfcRaw(JsVar *payload) {
 #ifdef USE_NFC
   // Check for disabling NFC
   if (jsvIsUndefined(payload)) {
-    jsvObjectRemoveChild(execInfo.hiddenRoot, "NFC");
-    jsble_nfc_stop();
+    jsvObjectRemoveChild(execInfo.hiddenRoot, "NfcData");
+    jswrap_nrf_nfcStop();
     return;
   }
-
-  /* Turn off NFC */
-  jsble_nfc_stop();
 
   JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, payload);
   if (!dataPtr || !dataLen)
     return jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
 
   /* Create a flat string - we need this to store the NFC data so it hangs around.
-   * Avoid having a static var so we have RAM available if not using NFC */
-  JsVar *flatStr = jsvNewFlatStringOfLength(dataLen);
+   * Avoid having a static var so we have RAM available if not using NFC.
+   * NFC data is read by nfc_callback in bluetooth.c */
+  JsVar *flatStr = jsvNewFlatStringOfLength(NDEF_FULL_RAW_HEADER_LEN + dataLen + NDEF_TERM_TLV_LEN);
   if (!flatStr)
     return jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
-  jsvObjectSetChild(execInfo.hiddenRoot, "NFC", flatStr);
+  jsvObjectSetChild(execInfo.hiddenRoot, "NfcData", flatStr);
   uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
   jsvUnLock(flatStr);
-  memcpy(flatStrPtr, dataPtr, dataLen);
 
-  // start nfc properly
-  jsble_nfc_start(flatStrPtr, dataLen);
+  /* assemble NDEF Message */
+  memcpy(flatStrPtr, NDEF_HEADER, NDEF_FULL_RAW_HEADER_LEN); /* fill header */
+  memcpy(flatStrPtr+NDEF_FULL_RAW_HEADER_LEN, dataPtr, dataLen); /* add payload */
+
+  /* inject length fields into header */
+  flatStrPtr[NDEF_MSG_LEN_OFFSET] = dataLen;
+
+  /* write terminator TLV block */
+  flatStrPtr[NDEF_FULL_RAW_HEADER_LEN + dataLen] = NDEF_TERM_TLV;
+
+  /* start nfc peripheral */
+  JsVar* uid = jswrap_nrf_nfcStart(NULL);
+
+  /* inject UID/BCC */
+  size_t len;
+  char *uidPtr = jsvGetDataPointer(uid, &len);
+  if(uidPtr) memcpy(flatStrPtr, uidPtr, TAG_HEADER_LEN);
+  jsvUnLock(uid);
+#endif
+}
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "nfcStart",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_nfcStart",
+    "params" : [
+      ["payload","JsVar","Optional 7 byte UID"]
+    ],
+    "return" : ["JsVar", "Internal tag memory (first 10 bytes of tag data)" ]
+}
+**Advanced NFC Functionality.** If you just want to advertise a URL, use `NRF.nfcURL` instead.
+
+Enables NFC and starts advertising. `NFCrx` events will be
+fired when data is received.
+
+```
+NRF.nfcStart();
+```
+
+**Note:** This is only available on nRF52-based devices
+*/
+JsVar *jswrap_nrf_nfcStart(JsVar *payload) {
+#ifdef USE_NFC
+  /* Turn off NFC */
+  jsble_nfc_stop();
+
+  /* Create a flat string - we need this to store the NFC data so it hangs around.
+   * Avoid having a static var so we have RAM available if not using NFC */
+  JsVar *flatStr = 0;
+  if (!jsvIsUndefined(payload)) {
+    /* Custom UID */
+    JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, payload);
+    if (!dataPtr || !dataLen) {
+      jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
+      return 0;
+    }
+    flatStr = jsvNewFlatStringOfLength(dataLen);
+    if (!flatStr) {
+      jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
+      return 0;
+    }
+    jsvObjectSetChild(execInfo.hiddenRoot, "NfcEnabled", flatStr);
+    jsvUnLock(flatStr);
+    uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
+    memcpy(flatStrPtr, dataPtr, dataLen);
+  } else {
+    /* Default UID */
+    flatStr = jsvNewFlatStringOfLength(0);
+    if (!flatStr) {
+      jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
+      return 0;
+    }
+    jsvObjectSetChild(execInfo.hiddenRoot, "NfcEnabled", flatStr);
+    jsvUnLock(flatStr);
+  }
+
+  /* start nfc */
+  uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
+  jsble_nfc_start(flatStrPtr, jsvGetLength(flatStr));
+
+  /* return internal tag header */
+  char *ptr = 0; size_t size = TAG_HEADER_LEN;
+  JsVar *arr = jsvNewArrayBufferWithPtr(size, &ptr);
+  if (ptr) jsble_nfc_get_internal((uint8_t *)ptr, &size);
+  return arr;
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "nfcStop",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_nfcStop",
+    "params" : [ ]
+}
+**Advanced NFC Functionality.** If you just want to advertise a URL, use `NRF.nfcURL` instead.
+
+Disables NFC.
+
+```
+NRF.nfcStop();
+```
+
+**Note:** This is only available on nRF52-based devices
+*/
+void jswrap_nrf_nfcStop() {
+#ifdef USE_NFC
+  jsvObjectRemoveChild(execInfo.hiddenRoot, "NfcEnabled");
+  jsble_nfc_stop();
+#endif
+}
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "nfcSend",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_nfcSend",
+    "params" : [
+      ["payload","JsVar","Optional tx data"]
+    ]
+}
+**Advanced NFC Functionality.** If you just want to advertise a URL, use `NRF.nfcURL` instead.
+
+Acknowledges the last frame and optionally transmits a response.
+If payload is an array, then a array.length byte nfc frame is sent.
+If payload is a int, then a 4bit ACK/NACK is sent.
+**Note:** ```nfcSend``` should always be called after an ```NFCrx``` event.
+
+```
+NRF.nfcSend(new Uint8Array([0x01, 0x02, ...]));
+// or
+NRF.nfcSend(0x0A);
+// or
+NRF.nfcSend();
+```
+
+**Note:** This is only available on nRF52-based devices
+*/
+void jswrap_nrf_nfcSend(JsVar *payload) {
+#ifdef USE_NFC
+  /* Switch to RX */
+  if (jsvIsUndefined(payload))
+    return jsble_nfc_send_rsp(0, 0);
+
+  /* Send 4 bit ACK/NACK */
+  if (jsvIsInt(payload))
+    return jsble_nfc_send_rsp(jsvGetInteger(payload), 4);
+
+  /* Send n byte payload */
+  JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, payload);
+  if (!dataPtr || !dataLen)
+    return jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
+
+  jsble_nfc_send((uint8_t*)dataPtr, dataLen);
 #endif
 }
 
@@ -2050,7 +2309,7 @@ void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
 
   if (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) {
     // we have a connection, disconnect
-    err_code = sd_ble_gap_disconnect(m_central_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    err_code = jsble_disconnect(m_central_conn_handle);
     jsble_check_error(err_code);
   } else {
     // no connection - try and cancel the connect attempt (assume we have one)

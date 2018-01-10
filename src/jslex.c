@@ -347,6 +347,8 @@ void jslGetNextToken() {
     }
     // block comments
     if (jslNextCh()=='*') {
+      jslGetNextCh();
+      jslGetNextCh();
       while (lex->currCh && !(lex->currCh=='*' && jslNextCh()=='/'))
         jslGetNextCh();
       if (!lex->currCh) {

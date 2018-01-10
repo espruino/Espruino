@@ -105,6 +105,7 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length) {
     // missing quite a few here
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
     if (regexp[1]=='\\') return ch=='\\';
+    if (regexp[1]=='/') return ch=='/';
     if (regexp[1]=='d') return isNumeric(ch);
     if (regexp[1]=='D') return !isNumeric(ch);
     if (regexp[1]=='f') return ch==0x0C;
@@ -244,25 +245,27 @@ JsVar *jswrap_regexp_constructor(JsVar *str, JsVar *flags) {
 }
 Test this regex on a string - returns a result array on success, or `null` otherwise.
 
-```
->/Wo/.exec("Hello World");
-=[
-  "Wo",
-  "index": 6,
-  "input": "Hello World"
- ]
-```
 
-Or with groups:
+`/Wo/.exec("Hello World")` will return:
 
 ```
->/W(o)rld/.exec("Hello World");
-=[
-  "World",
-  "o", "index": 6,
-  "input": "Hello World"
- ]
+[
+ "Wo",
+ "index": 6,
+ "input": "Hello World"
+]
 ```
+
+Or with groups `/W(o)rld/.exec("Hello World")` returns:
+
+```
+[
+ "World",
+ "o", "index": 6,
+ "input": "Hello World"
+]
+```
+
  */
 JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *str) {
   JsVarInt lastIndex = jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, "lastIndex", 0));

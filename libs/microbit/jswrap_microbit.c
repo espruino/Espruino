@@ -178,7 +178,7 @@ void jswrap_microbit_show(JsVar *image) {
   if (jsvIsIterable(image)) {
     bool str = jsvIsString(image);
     JsvIterator it;
-    jsvIteratorNew(&it, image);
+    jsvIteratorNew(&it, image, JSIF_EVERY_ARRAY_ELEMENT);
     int n = 0;
     while (jsvIteratorHasElement(&it)) {
       int ch = jsvIteratorGetIntegerValue(&it);

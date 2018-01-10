@@ -34,7 +34,7 @@ BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 
 bool jshIsPinValid(Pin pin) {
   // Note, PIN_UNDEFINED is always > JSH_PIN_COUNT
-  return pin < JSH_PIN_COUNT && pinInfo[pin].port != JSH_PORT_NONE;
+  return pin < JSH_PIN_COUNT && (pinInfo[pin].port&JSH_PORT_MASK) != JSH_PORT_NONE;
 }
 
 Pin jshGetPinFromString(const char *s) {
@@ -56,7 +56,7 @@ Pin jshGetPinFromString(const char *s) {
 #ifdef PIN_NAMES_DIRECT
       int i;
       for (i=0;i<JSH_PIN_COUNT;i++)
-        if (pinInfo[i].port == port && pinInfo[i].pin==pin)
+        if ((pinInfo[i].port&JSH_PORT_MASK) == port && pinInfo[i].pin==pin)
           return (Pin)i;
 #else
       if (port == JSH_PORTA) {
@@ -95,30 +95,45 @@ Pin jshGetPinFromString(const char *s) {
   return PIN_UNDEFINED;
 }
 
+
+
 /** Write the pin name to a string. String must have at least 10 characters (to be safe) */
 void jshGetPinString(char *result, Pin pin) {
   result[0] = 0; // just in case
 #ifdef PIN_NAMES_DIRECT
   if (jshIsPinValid(pin)) {
-    result[0] = (char)('A'+pinInfo[pin].port-JSH_PORTA);
+    result[0] = (char)('A'+(pinInfo[pin].port&JSH_PORT_MASK)-JSH_PORTA);
     itostr(pinInfo[pin].pin-JSH_PIN0,&result[1],10);
 #else
-    if (
+    if (false) {
+#if JSH_PORTB_OFFSET!=-1
+    } else if(
 #if JSH_PORTA_OFFSET!=0
         pin>=JSH_PORTA_OFFSET &&
 #endif
         pin<JSH_PORTA_OFFSET+JSH_PORTA_COUNT) {
       result[0]='A';
       itostr(pin-JSH_PORTA_OFFSET,&result[1],10);
+#endif
+#if JSH_PORTB_OFFSET!=-1
     } else if (pin>=JSH_PORTB_OFFSET && pin<JSH_PORTB_OFFSET+JSH_PORTB_COUNT) {
       result[0]='B';
       itostr(pin-JSH_PORTB_OFFSET,&result[1],10);
+#endif
+#if JSH_PORTC_OFFSET!=-1
     } else if (pin>=JSH_PORTC_OFFSET && pin<JSH_PORTC_OFFSET+JSH_PORTC_COUNT) {
       result[0]='C';
       itostr(pin-JSH_PORTC_OFFSET,&result[1],10);
-    } else if (pin>=JSH_PORTD_OFFSET && pin<JSH_PORTD_OFFSET+JSH_PORTD_COUNT) {
+#endif
+#if JSH_PORTD_OFFSET!=-1
+    } else if (
+#if JSH_PORTD_OFFSET!=0
+        pin>=JSH_PORTD_OFFSET &&
+#endif
+        pin<JSH_PORTD_OFFSET+JSH_PORTD_COUNT) {
       result[0]='D';
       itostr(pin-JSH_PORTD_OFFSET,&result[1],10);
+#endif
 #if JSH_PORTE_OFFSET!=-1
     } else if (pin>=JSH_PORTE_OFFSET && pin<JSH_PORTE_OFFSET+JSH_PORTE_COUNT) {
       result[0]='E';
@@ -215,9 +230,9 @@ void jshPinOutput(
     bool value //!< The new value to set on the pin.
   ) {
   if (jshIsPinValid(pin)) {
+    jshPinSetValue(pin, value);
     if (!jshGetPinStateIsManual(pin))
       jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
   }
   // Handle pin being invalid.
   else jsExceptionHere(JSET_ERROR, "Invalid pin!");

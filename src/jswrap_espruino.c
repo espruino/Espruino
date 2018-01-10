@@ -231,7 +231,7 @@ JsVarFloat jswrap_espruino_sum(JsVar *arr) {
   JsVarFloat sum = 0;
 
   JsvIterator itsrc;
-  jsvIteratorNew(&itsrc, arr);
+  jsvIteratorNew(&itsrc, arr, JSIF_DEFINED_ARRAY_ElEMENTS);
   while (jsvIteratorHasElement(&itsrc)) {
     sum += jsvIteratorGetFloatValue(&itsrc);
     jsvIteratorNext(&itsrc);
@@ -262,7 +262,7 @@ JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
   JsVarFloat variance = 0;
 
   JsvIterator itsrc;
-  jsvIteratorNew(&itsrc, arr);
+  jsvIteratorNew(&itsrc, arr, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&itsrc)) {
     JsVarFloat val = jsvIteratorGetFloatValue(&itsrc);
     val -= mean;
@@ -297,9 +297,9 @@ JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
   JsVarFloat conv = 0;
 
   JsvIterator it1;
-  jsvIteratorNew(&it1, arr1);
+  jsvIteratorNew(&it1, arr1, JSIF_EVERY_ARRAY_ELEMENT);
   JsvIterator it2;
-  jsvIteratorNew(&it2, arr2);
+  jsvIteratorNew(&it2, arr2, JSIF_EVERY_ARRAY_ELEMENT);
 
   // get iterator2 at the correct offset
   int l = (int)jsvGetLength(arr2);
@@ -316,7 +316,7 @@ JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
     // restart iterator if it hit the end
     if (!jsvIteratorHasElement(&it2)) {
       jsvIteratorFree(&it2);
-      jsvIteratorNew(&it2, arr2);
+      jsvIteratorNew(&it2, arr2, JSIF_EVERY_ARRAY_ELEMENT);
     }
   }
   jsvIteratorFree(&it1);
@@ -442,7 +442,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   unsigned int i;
   // load data
   JsvIterator it;
-  jsvIteratorNew(&it, arrReal);
+  jsvIteratorNew(&it, arrReal, JSIF_EVERY_ARRAY_ELEMENT);
   i=0;
   while (jsvIteratorHasElement(&it)) {
     vReal[i++] = jsvIteratorGetFloatValue(&it);
@@ -454,7 +454,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
 
   i=0;
   if (jsvIsIterable(arrImag)) {
-    jsvIteratorNew(&it, arrImag);
+    jsvIteratorNew(&it, arrImag, JSIF_EVERY_ARRAY_ELEMENT);
     while (i<pow2 && jsvIteratorHasElement(&it)) {
       vImag[i++] = jsvIteratorGetFloatValue(&it);
       jsvIteratorNext(&it);
@@ -471,7 +471,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   // If we had imaginary data then DON'T modulus the result
   bool useModulus = !jsvIsIterable(arrImag);
 
-  jsvIteratorNew(&it, arrReal);
+  jsvIteratorNew(&it, arrReal, JSIF_EVERY_ARRAY_ELEMENT);
   i=0;
   while (jsvIteratorHasElement(&it)) {
     JsVarFloat f;
@@ -486,7 +486,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   }
   jsvIteratorFree(&it);
   if (jsvIsIterable(arrImag)) {
-    jsvIteratorNew(&it, arrImag);
+    jsvIteratorNew(&it, arrImag, JSIF_EVERY_ARRAY_ELEMENT);
     i=0;
     while (jsvIteratorHasElement(&it)) {
       jsvUnLock(jsvIteratorSetValue(&it, jsvNewFromFloat(vImag[i++])));
@@ -700,6 +700,8 @@ Get Espruino's interpreter flags that control the way it handles your JavaScript
 
 * `deepSleep` - Allow deep sleep modes (also set by setDeepSleep)
 * `pretokenise` - When adding functions, pre-minify them and tokenise reserved words
+* `unsafeFlash` - Some platforms stop writes/erases to interpreter memory to stop you bricking the device accidentally - this removes that protection
+* `unsyncFiles` - When writing files, *don't* flush all data to the SD card after each command (the default is *to* flush). This is much faster, but can cause filesystem damage if power is lost without the filesystem unmounted.
 */
 /*JSON{
   "type" : "staticmethod",
@@ -861,7 +863,10 @@ To remove boot code that has been saved previously, use `E.setBootCode("")`
 void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec) {
   JsvSaveFlashFlags flags = 0;
   if (alwaysExec) flags |= SFF_BOOT_CODE_ALWAYS;
+  if (jsvIsString(code)) code = jsvLockAgain(code);
+  else code = jsvNewFromEmptyString();
   jsfSaveToFlash(flags, code);
+  jsvUnLock(code);
 }
 
 
@@ -1036,6 +1041,37 @@ JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
   return jsvNewFromInteger((JsVarInt)jsvCountJsVarsUsed(v));
 }
 
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "getAddressOf",
+  "generate" : "jswrap_espruino_getAddressOf",
+  "params" : [
+    ["v","JsVar","A variable to get the address of"],
+    ["flatAddress","bool","If a flat String or flat ArrayBuffer is supplied, return the address of the data inside it - otherwise 0"]
+  ],
+  "return" : ["int","The address of the given variable"]
+}
+Return the address in memory of the given variable. This can then
+be used with `peek` and `poke` functions. However, changing data in
+JS variables directly (flatAddress=false) will most likely result in a crash.
+
+This functions exists to allow embedded targets to set up
+peripherals such as DMA so that they write directly to
+JS variables.
+
+See http://www.espruino.com/Internals for more information
+ */
+JsVarInt jswrap_espruino_getAddressOf(JsVar *v, bool flatAddress) {
+  if (flatAddress) {
+    size_t len=0;
+    return (JsVarInt)(size_t)jsvGetDataPointer(v, &len);
+  }
+  return (JsVarInt)(size_t)v;
+}
+
 /*JSON{
   "type" : "staticmethod",
     "ifndef" : "SAVE_ON_FLASH",
@@ -1161,16 +1197,20 @@ signal.
   "params" : [
     ["hue","float","The hue, as a value between 0 and 1"],
     ["sat","float","The saturation, as a value between 0 and 1"],
-    ["bri","float","The brightness, as a value between 0 and 1"]
+    ["bri","float","The brightness, as a value between 0 and 1"],
+    ["asArray","bool","If true, return an array of [R,G,B] values betwen 0 and 255"]
   ],
-  "return" : ["int","A 24 bit number containing bytes representing red, green, and blue: 0xBBGGRR"]
+  "return" : ["JsVar","A 24 bit number containing bytes representing red, green, and blue `0xBBGGRR`. Or if `asArray` is true, an array `[R,G,B]`"]
 }
-Convert hue, saturation and brightness to red, green and blue (packed into an integer)
+Convert hue, saturation and brightness to red, green and blue (packed into an integer if `asArray==false` or an array if `asArray==true`).
 
 This replaces `Graphics.setColorHSB` and `Graphics.setBgColorHSB`. On devices with 24 bit colour it can
-be used as: `Graphics.setColorHSB(E.HSBtoRGB(h, s, b))`
+be used as: `Graphics.setColor(E.HSBtoRGB(h, s, b))`
+
+You can quickly set RGB items in an Array or Typed Array using `array.set(E.HSBtoRGB(h, s, b,true), offset)`,
+which can be useful with arrays used with `require("neopixel").write`.
  */
-JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri) {
+int jswrap_espruino_HSBtoRGB_int(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri) {
   int   r, g, b, hi, bi, x, y, z;
   JsVarFloat hfrac;
 
@@ -1180,7 +1220,7 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
     return (r<<16) | (r<<8) | r;
   }
   else {
-    hue *= 6;
+    hue = (hue-floor(hue))*6; // auto-wrap hue
     hi = (int)hue;
     hfrac = hue - hi;
     hi = hi % 6;
@@ -1202,6 +1242,18 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
 
     return (b<<16) | (g<<8) | r;
   }
+}
+JsVar *jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri, bool asArray) {
+  int rgb = jswrap_espruino_HSBtoRGB_int(hue, sat, bri);
+  if (!asArray) return jsvNewFromInteger(rgb);
+  JsVar *arrayElements[] = {
+      jsvNewFromInteger(rgb&0xFF),
+      jsvNewFromInteger((rgb>>8)&0xFF),
+      jsvNewFromInteger((rgb>>16)&0xFF)
+  };
+  JsVar *arr = jsvNewArray(arrayElements, 3);
+  jsvUnLockMany(3, arrayElements);
+  return arr;
 }
 
 /*JSON{

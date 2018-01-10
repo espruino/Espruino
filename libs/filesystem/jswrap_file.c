@@ -15,10 +15,10 @@
  */
 #include "jswrap_file.h"
 #include "jsparse.h"
+#include "jsflags.h"
 
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSd" // the data in each file
 #define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSo" // the list of open files
-
 #if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO) && !defined(USE_FLASHFS)
 #define SD_CARD_ANYWHERE
 #endif
@@ -82,6 +82,7 @@ bool jsfsInit() {
       JsVar *spi = jsvSkipNameAndUnLock(jspGetNamedVariable(deviceStr));
       JshSPIInfo inf;
       jshSPIInitInfo(&inf);
+      inf.baudRate = 4000000; // 4Mhz bit rate for onboard SD cards
       inf.pinMISO = SD_DO_PIN;
       inf.pinMOSI = SD_DI_PIN;
       inf.pinSCK = SD_CLK_PIN;
@@ -168,28 +169,15 @@ static JsVar* fsGetArray(bool create) {
 static bool fileGetFromVar(JsFile *file, JsVar *parent) {
   bool ret = false;
   JsVar *fHandle = jsvObjectGetChild(parent, JS_FS_DATA_NAME, 0);
-  if (fHandle) {
-    jsvGetString(fHandle, (char*)&file->data, sizeof(JsFileData)+1/*trailing zero*/);
-    jsvUnLock(fHandle);
+  if (fHandle && jsvIsFlatString(fHandle)) {
+    file->data = (JsFileData*)jsvGetFlatStringPointer(fHandle);
     file->fileVar = parent;
-    if(file->data.state == FS_OPEN) {// return false if the file has been closed.
+    if(file->data->state == FS_OPEN) {// return false if the file has been closed.
       ret = true;
     }
   }
-  return ret;
-}
-
-static void fileSetVar(JsFile *file) {
-  JsVar *fHandle = jsvFindChildFromString(file->fileVar, JS_FS_DATA_NAME, true);
-  JsVar *data = jsvSkipName(fHandle);
-  if (!data) {
-    data = jsvNewStringOfLength(sizeof(JsFileData), NULL);
-    jsvSetValueOfName(fHandle, data);
-  }
   jsvUnLock(fHandle);
-  assert(data);
-  jsvSetString(data, (char*)&file->data, sizeof(JsFileData));
-  jsvUnLock(data);
+  return ret;
 }
 
 /*JSON{
@@ -238,10 +226,19 @@ void jswrap_E_unmountSD() {
 static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
   JsVar *parent = jspNewObject(0, "File");
   if (!parent) return false; // low memory
+
+  JsVar *data = jsvNewFlatStringOfLength(sizeof(JsFileData));
+  if (!data) { // out of memory for flat string
+    jsvUnLock(parent);
+    return false;
+  }
+  file->data = (JsFileData*)jsvGetFlatStringPointer(data);
+  jsvObjectSetChildAndUnLock(parent, JS_FS_DATA_NAME, data);
   file->fileVar = parent;
-  file->data.mode = mode;
-  file->data.type = type;
-  file->data.state = FS_NONE;
+  assert(file->data);
+  file->data->mode = mode;
+  file->data->type = type;
+  file->data->state = FS_NONE;
   return true;
 }
 
@@ -262,6 +259,7 @@ Open a file
 JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
   FRESULT res = FR_INVALID_NAME;
   JsFile file;
+  file.data = 0;
   file.fileVar = 0;
   FileMode fMode = FM_NONE;
   if (jsfsInit()) {
@@ -308,15 +306,14 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
       }
       if(fMode != FM_NONE && allocateJsFile(&file, fMode, FT_FILE)) {
 #ifndef LINUX
-        if ((res=f_open(&file.data.handle, pathStr, ff_mode)) == FR_OK) {
-          if (append) f_lseek(&file.data.handle, file.data.handle.fsize); // move to end of file
+        if ((res=f_open(&file.data->handle, pathStr, ff_mode)) == FR_OK) {
+          if (append) f_lseek(&file.data->handle, file.data->handle.fsize); // move to end of file
 #else
-        file.data.handle = fopen(pathStr, modeStr);
-        if (file.data.handle) {
+        file.data->handle = fopen(pathStr, modeStr);
+        if (file.data->handle) {
           res=FR_OK;
 #endif
-          file.data.state = FS_OPEN;
-          fileSetVar(&file);
+          file.data->state = FS_OPEN;
           // add to list of open files
           jsvArrayPush(arr, file.fileVar);
         } else {
@@ -351,15 +348,14 @@ Close an open file.
 void jswrap_file_close(JsVar* parent) {
   if (jsfsInit()) {
     JsFile file;
-    if (fileGetFromVar(&file, parent) && file.data.state == FS_OPEN) {
+    if (fileGetFromVar(&file, parent) && file.data->state == FS_OPEN) {
 #ifndef LINUX
-      f_close(&file.data.handle);
+      f_close(&file.data->handle);
 #else
-      fclose(file.data.handle);
-      file.data.handle = 0;
+      fclose(file.data->handle);
+      file.data->handle = 0;
 #endif
-      file.data.state = FS_CLOSED;
-      fileSetVar(&file);
+      file.data->state = FS_CLOSED;
       // TODO: could try and free the memory used by file.data ?
 
       JsVar *arr = fsGetArray(false);
@@ -385,7 +381,14 @@ void jswrap_file_close(JsVar* parent) {
   ],
   "return" : ["int32","the number of bytes written"]
 }
-write data to a file
+Write data to a file.
+
+**Note:** By default this function flushes all changes to the
+SD card, which makes it slow (but also safe!). You can use
+`E.setFlags({unsyncFiles:1})` to disable this behaviour and
+really speed up writes - but then you must be sure to close
+all files you are writing before power is lost or you will
+cause damage to your SD card's filesystem.
 */
 size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
   FRESULT res = 0;
@@ -393,9 +396,9 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
-      if(file.data.mode == FM_WRITE || file.data.mode == FM_READ_WRITE) {
+      if(file.data->mode == FM_WRITE || file.data->mode == FM_READ_WRITE) {
         JsvIterator it;
-        jsvIteratorNew(&it, buffer);
+        jsvIteratorNew(&it, buffer, JSIF_EVERY_ARRAY_ELEMENT);
         char buf[32];
 
         while (jsvIteratorHasElement(&it)) {
@@ -408,9 +411,9 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
           // write it out
           size_t written = 0;
 #ifndef LINUX
-          res = f_write(&file.data.handle, &buf, n, &written);
+          res = f_write(&file.data->handle, &buf, n, &written);
 #else
-          written = fwrite(&buf, 1, n, file.data.handle);
+          written = fwrite(&buf, 1, n, file.data->handle);
 #endif
           bytesWritten += written;
           if(written == 0)
@@ -419,14 +422,14 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
         }
         jsvIteratorFree(&it);
         // finally, sync - just in case there's a reset or something
+        if (!jsfGetFlag(JSF_UNSYNC_FILES)) {
 #ifndef LINUX
-        f_sync(&file.data.handle);
+          f_sync(&file.data->handle);
 #else
-        fflush(file.data.handle);
+          fflush(file.data->handle);
 #endif
+        }
       }
-
-      fileSetVar(&file);
     }
   }
 
@@ -457,20 +460,19 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
-      if(file.data.mode == FM_READ || file.data.mode == FM_READ_WRITE) {
+      if(file.data->mode == FM_READ || file.data->mode == FM_READ_WRITE) {
         size_t actual = 0;
 #ifndef LINUX
         // if we're able to load this into a flat string, do it!
-        size_t len = f_size(&file.data.handle)-f_tell(&file.data.handle);
+        size_t len = f_size(&file.data->handle)-f_tell(&file.data->handle);
         if ( len == 0 ) { // file all read
           return 0; // if called from a pipe signal end callback
         }
         if (len > (size_t)length) len = (size_t)length;
         buffer = jsvNewFlatStringOfLength(len);
         if (buffer) {
-          res = f_read(&file.data.handle, jsvGetFlatStringPointer(buffer), len, &actual);
+          res = f_read(&file.data->handle, jsvGetFlatStringPointer(buffer), len, &actual);
           if (res) jsfsReportError("Unable to read file", res);
-          fileSetVar(&file);
           return buffer;
         }
 #endif
@@ -482,10 +484,10 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
             requested = sizeof( buf );
           actual = 0;
     #ifndef LINUX
-          res = f_read(&file.data.handle, buf, requested, &actual);
+          res = f_read(&file.data->handle, buf, requested, &actual);
           if(res) break;
     #else
-          actual = fread(buf, 1, requested, file.data.handle);
+          actual = fread(buf, 1, requested, file.data->handle);
     #endif
           if (actual>0) {
             if (!buffer) {
@@ -500,7 +502,6 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
           bytesRead += actual;
           if(actual != requested) break;
         }
-        fileSetVar(&file);
       }
     }
   }
@@ -546,13 +547,12 @@ void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
-      if(file.data.mode == FM_READ || file.data.mode == FM_WRITE || file.data.mode == FM_READ_WRITE) {
+      if(file.data->mode == FM_READ || file.data->mode == FM_WRITE || file.data->mode == FM_READ_WRITE) {
   #ifndef LINUX
-        res = (FRESULT)f_lseek(&file.data.handle, (DWORD)(is_skip ? f_tell(&file.data.handle) : 0) + (DWORD)nBytes);
+        res = (FRESULT)f_lseek(&file.data->handle, (DWORD)(is_skip ? f_tell(&file.data->handle) : 0) + (DWORD)nBytes);
   #else
-        fseek(file.data.handle, nBytes, is_skip ? SEEK_CUR : SEEK_SET);
+        fseek(file.data->handle, nBytes, is_skip ? SEEK_CUR : SEEK_SET);
   #endif
-        fileSetVar(&file);
       }
     }
   }

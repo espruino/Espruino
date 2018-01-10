@@ -127,6 +127,11 @@ def getArgumentSpecifier(jsondata):
   for param in params:
     s.append("("+toArgumentType(param[1])+" << (JSWAT_BITS*"+str(n)+"))");
     n=n+1
+  if n>5:
+    sys.stderr.write("ERROR: getArgumentSpecifier: Too many arguments to fit in type specifier, Use JsVarArray\n")
+    sys.stderr.write(json.dumps(jsondata, sort_keys=True, indent=2)+"\n")
+    exit(1)
+
   return " | ".join(s);
 
 def getCDeclaration(jsondata, name):
@@ -381,6 +386,18 @@ codeOut('};');
 codeOut('');
 codeOut('');
 
+codeOut('const JswSymList *jswGetSymbolListForConstructorProto(JsVar *constructor) {')
+codeOut('  void *constructorPtr = constructor->varData.native.ptr;')
+for className in builtins:
+  builtin = builtins[className]
+  if builtin["isProto"] and "constructorPtr" in className:
+    codeOut("  if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut('  return 0;')
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
 
 codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name) {')
 codeOut('  JsVar *v;')
@@ -389,15 +406,11 @@ codeOut('  if (parent && !jsvIsRoot(parent)) {')
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 nativeCheck = "jsvIsNativeFunction(parent) && "
 codeOut('    if (jsvIsNativeFunction(parent)) {')
-first = True
-for className in builtins:
-  if className.startswith(nativeCheck):
-    codeOut('      '+("" if first else "} else ")+'if ('+className[len(nativeCheck):]+') {')
-    first = False
-    codeOutBuiltins("        v = ", builtins[className])
-    codeOut('        if (v) return v;');
-if not first:
-  codeOut("      }")
+codeOut('      JswSymList *l = jswGetSymbolListForObject(parent);')
+codeOut('      if (l) {');
+codeOut('        v = jswBinarySearch(l, parent, name);')
+codeOut('        if (v) return v;');
+codeOut('      }')
 codeOut('    }')
 for className in builtins:
   if className!="parent" and  className!="!parent" and not "constructorPtr" in className and not className.startswith(nativeCheck):
@@ -410,20 +423,12 @@ codeOut('    JsVar *proto = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChil
 codeOut('    JsVar *constructor = jsvIsObject(proto)?jsvSkipNameAndUnLock(jsvFindChildFromString(proto, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
 codeOut('    jsvUnLock(proto);')
 codeOut('    if (constructor && jsvIsNativeFunction(constructor)) {')
-codeOut('      void *constructorPtr = constructor->varData.native.ptr;')
+codeOut('      const JswSymList *l = jswGetSymbolListForConstructorProto(constructor);')
 codeOut('      jsvUnLock(constructor);')
-first = True
-for className in builtins:
-  if "constructorPtr" in className:
-    if first:
-      codeOut('      if ('+className+') {')
-      first = False
-    else:
-      codeOut('      } else if ('+className+') {')
-    codeOutBuiltins("        v = ", builtins[className])
-    codeOut('        if (v) return v;')
-if not first:
-  codeOut("      }")
+codeOut('      if (l) {');
+codeOut('        v = jswBinarySearch(l, parent, name);')
+codeOut('        if (v) return v;');
+codeOut('      }')
 codeOut('    } else {')
 codeOut('      jsvUnLock(constructor);')
 codeOut('    }')
@@ -449,9 +454,16 @@ codeOut('')
 codeOut('')
 
 codeOut('const JswSymList *jswGetSymbolListForObject(JsVar *parent) {')
+nativeTestStr = "jsvIsNativeFunction(parent) && ";
+codeOut("  if (jsvIsNativeFunction(parent)) {");
 for className in builtins:
   builtin = builtins[className]
-  if not className in ["parent","!parent"] and not builtin["isProto"]:
+  if not className in ["parent","!parent"] and not builtin["isProto"] and className.startswith(nativeTestStr):
+    codeOut("    if ("+className[len(nativeTestStr):]+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut("  }");
+for className in builtins:
+  builtin = builtins[className]
+  if not className in ["parent","!parent"] and not builtin["isProto"] and not className.startswith(nativeTestStr):
     codeOut("  if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
 codeOut("  if (parent==execInfo.root) return &jswSymbolTables[jswSymbolIndex_global];");
 codeOut("  return 0;")
@@ -474,12 +486,9 @@ for className in builtins:
 codeOut('  }')
 codeOut('  JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
 codeOut('  if (constructor && jsvIsNativeFunction(constructor)) {')
-codeOut('    void *constructorPtr = constructor->varData.native.ptr;')
-codeOut('   jsvUnLock(constructor);')
-for className in builtins:
-  builtin = builtins[className]
-  if builtin["isProto"] and "constructorPtr" in className:
-    codeOut("    if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut('    const JswSymList *l = jswGetSymbolListForConstructorProto(constructor);')
+codeOut('    jsvUnLock(constructor);')
+codeOut('    if (l) return l;')
 codeOut('  }')
 nativeCheck = "jsvIsNativeFunction(parent) && "
 for className in builtins:
