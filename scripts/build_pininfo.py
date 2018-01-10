@@ -111,8 +111,9 @@ for pin in pins:
       analog = "JSH_ANALOG"+adc+"|JSH_ANALOG_CH"+channel;
   functions = pin["jshFunctions"]
   while len(functions)<pinInfoFunctionCount: functions.append("0")
-
-  writesource("/* "+pin["name"].ljust(4)+" */ { JSH_PORT"+pin["port"]+", JSH_PIN0+"+pin["num"]+", "+analog+", { "+', '.join(functions)+" } },")
+  portextra = ""
+  if "NEGATED" in pin["functions"]: portextra="|JSH_PIN_NEGATED"
+  writesource("/* "+pin["name"].ljust(4)+" */ { JSH_PORT"+pin["port"]+portextra+", JSH_PIN0+"+pin["num"]+", "+analog+", { "+', '.join(functions)+" } },")
 writesource("};")
 
 portinfo = {}

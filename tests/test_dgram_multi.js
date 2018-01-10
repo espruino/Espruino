@@ -62,4 +62,4 @@ setTimeout(function() {
 }, 100);
 
 client.send('42', port1, 'localhost');
-client.send('24', port2, 'localhost');
+client.send('___24___', 3, 2, port2, 'localhost');

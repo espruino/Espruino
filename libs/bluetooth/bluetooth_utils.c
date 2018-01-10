@@ -18,7 +18,9 @@
 #include "jsparse.h"
 #include "jshardware.h"
 
+#ifdef NRF5X
 #include "app_error.h"
+#endif
 
 /// Return true if two UUIDs are equal
 bool bleUUIDEqual(ble_uuid_t a, ble_uuid_t b) {
@@ -40,6 +42,7 @@ JsVar *bleUUIDToStr(ble_uuid_t uuid) {
   }
   if (uuid.type == BLE_UUID_TYPE_BLE)
     return jsvVarPrintf("0x%04x", uuid.uuid);
+#ifdef NRF5X
   uint8_t data[16];
   uint8_t dataLen;
   uint32_t err_code = sd_ble_uuid_encode(&uuid, &dataLen, data);
@@ -48,6 +51,10 @@ JsVar *bleUUIDToStr(ble_uuid_t uuid) {
   // check error code?
   assert(dataLen==16); // it should always be 16 as we checked above
   return bleUUID128ToStr(&data[0]);
+#else
+  jsiConsolePrintf("FIXME\n");
+  return 0;
+#endif
 }
 
 // Convert a variable of the form "aa:bb:cc:dd:ee:ff" to a mac address
@@ -102,7 +109,8 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
   if (jsvIsInt(v)) {
     JsVarInt i = jsvGetInteger(v);
     if (i<0 || i>0xFFFF) return "UUID Integer out of range";
-    BLE_UUID_BLE_ASSIGN((*uuid), i);
+    uuid->type = BLE_UUID_TYPE_BLE;
+    uuid->uuid = i;
     return 0;
   }
   if (!jsvIsString(v)) return "UUID Not a String or Integer";
@@ -140,6 +148,7 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
   if (dataLen!=expectedLength) {
     return "UUID not the right length (16 or 2 bytes)";
   }
+#ifdef NRF5X
   // now try and decode the UUID
   uint32_t err_code;
   err_code = sd_ble_uuid_decode(dataLen, data, uuid);
@@ -153,6 +162,10 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
       return "Too many custom UUIDs already";
   }
   return err_code ? "BLE device error adding UUID" : 0;
+#else
+  jsiConsolePrintf("FIXME\n");
+  return 0;
+#endif
 }
 
 /// Same as bleVarToUUID, but unlocks v
@@ -181,6 +194,7 @@ void bleGetWriteEventName(char *eventName, uint16_t handle) {
 
 /// Look up the characteristic's handle from the UUID. returns BLE_GATT_HANDLE_INVALID if not found
 uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
+#ifdef NRF5X
   // Update value and notify/indicate if appropriate
   uint16_t char_handle;
   ble_uuid_t uuid_it;
@@ -208,5 +222,8 @@ uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
     }
     char_handle++;
   }
+#else
+  jsiConsolePrintf("FIXME\n");
+#endif
   return BLE_GATT_HANDLE_INVALID;
 }

@@ -58,9 +58,8 @@ typedef struct {
 } PACKED_FLAGS JsFileData;
 
 typedef struct JsFile {
-  JsVar* fileVar; // this won't be locked again - we just know that it is already locked by something else
-  JsFileData data;
-  unsigned char _blank; //< this is needed as jsvGetString for 'data' wants to add a trailing zero
+  JsVar* fileVar; //< this won't be locked again - we just know that it is already locked by something else
+  JsFileData *data;
 } PACKED_FLAGS JsFile;
 
 // Called when stopping, to make sure all files are closed

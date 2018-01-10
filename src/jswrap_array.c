@@ -199,7 +199,7 @@ JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVa
   bool isDone = false;
   if (result || !wantArray) {
     JsvIterator it;
-    jsvIteratorNew(&it, parent);
+    jsvIteratorNew(&it, parent, JSIF_DEFINED_ARRAY_ElEMENTS);
     while (jsvIteratorHasElement(&it) && !isDone) {
       JsVar *index = jsvIteratorGetKey(&it);
       if (jsvIsInt(index)) {
@@ -359,7 +359,7 @@ JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
   }
   JsVar *previousValue = jsvLockAgainSafe(initialValue);
   JsvIterator it;
-  jsvIteratorNew(&it, parent);
+  jsvIteratorNew(&it, parent, JSIF_DEFINED_ARRAY_ElEMENTS);
   if (!previousValue) {
     bool isDone = false;
     while (!isDone && jsvIteratorHasElement(&it)) {
@@ -572,7 +572,7 @@ JsVar *jswrap_array_slice(JsVar *parent, JsVarInt start, JsVar *endVar) {
   bool isDone = false;
 
   JsvIterator it;
-  jsvIteratorNew(&it, parent);
+  jsvIteratorNew(&it, parent, JSIF_EVERY_ARRAY_ELEMENT);
 
   while (jsvIteratorHasElement(&it) && !isDone) {
     JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
@@ -581,6 +581,7 @@ JsVar *jswrap_array_slice(JsVar *parent, JsVarInt start, JsVar *endVar) {
       jsvIteratorNext(&it);
     } else {
       if (k < final) {
+        // TODO: could skip sparse array items?
         jsvArrayPushAndUnLock(array, jsvIteratorGetValue(&it));
         jsvIteratorNext(&it);
         k++;
@@ -724,7 +725,7 @@ JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
    */
   int n=0;
   if (jsvIsArray(array) || jsvIsObject(array)) {
-    jsvIteratorNew(&it, array);
+    jsvIteratorNew(&it, array, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
       n++;
       jsvIteratorNext(&it);
@@ -734,7 +735,7 @@ JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
     n = (int)jsvGetLength(array);
   }
 
-  jsvIteratorNew(&it, array);
+  jsvIteratorNew(&it, array, JSIF_EVERY_ARRAY_ELEMENT);
   _jswrap_array_sort(&it, n, compareFn);
   jsvIteratorFree(&it);
   return jsvLockAgain(array);
@@ -803,39 +804,15 @@ JsVar *jswrap_array_fill(JsVar *parent, JsVar *value, JsVarInt start, JsVar *end
 
 
   JsvIterator it;
-  jsvIteratorNew(&it, parent);
-  JsVarInt last = start;
+  jsvIteratorNew(&it, parent, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&it) && !jspIsInterrupted()) {
     JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
-    // as it could be a sparse array, we may have missed items out...
-    while (last<idx && !jspIsInterrupted()) {
-      if (last>=start && last<end) {
-        JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromInteger(last), value);
-        if (namedChild) {
-          jsvAddName(parent, namedChild);
-          jsvUnLock(namedChild);
-        }
-      }
-      last++;
-    }
     if (idx>=start && idx<end) {
       jsvIteratorSetValue(&it, value);
     }
-    last = idx+1;
     jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
-  while (last<end && !jspIsInterrupted()) {
-    if (last>=start) {
-      JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromInteger(last), value);
-      if (namedChild) {
-        jsvAddName(parent, namedChild);
-        jsvUnLock(namedChild);
-      }
-    }
-    last++;
-  }
-
   return jsvLockAgain(parent);
 }
 
@@ -904,7 +881,7 @@ JsVar *jswrap_array_reverse(JsVar *parent) {
      * We work out how many NUMERIC keys they have, and we
      * reverse only those. Then, we reverse the key values too */
     JsvIterator it;
-    jsvIteratorNew(&it, parent);
+    jsvIteratorNew(&it, parent, JSIF_DEFINED_ARRAY_ElEMENTS);
     while (jsvIteratorHasElement(&it)) {
       JsVar *k = jsvIteratorGetKey(&it);
       if (jsvIsInt(k)) len++;
@@ -916,7 +893,7 @@ JsVar *jswrap_array_reverse(JsVar *parent) {
     len = jsvGetLength(parent);
 
   JsvIterator it;
-  jsvIteratorNew(&it, parent);
+  jsvIteratorNew(&it, parent, JSIF_DEFINED_ARRAY_ElEMENTS);
   if (len>1) {
     _jswrap_array_reverse_block(parent, &it, len);
   }

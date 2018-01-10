@@ -407,12 +407,12 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
   JsVar *rq = clientRequestNew(socketType, options, callback);
   if (unlockOptions) jsvUnLock(options);
 
-  if ((socketType&ST_TYPE_MASK) != ST_HTTP) {
+  if ((socketType&ST_TYPE_MASK) == ST_NORMAL) {
     JsNetwork net;
     if (networkGetFromVarIfOnline(&net)) {
       clientRequestConnect(&net, rq);
+      networkFree(&net);
     }
-    networkFree(&net);
   }
 
   return rq;
@@ -464,19 +464,47 @@ An actual socket connection - allowing transmit/receive of TCP data
   "name" : "send",
   "generate" : "jswrap_dgram_socket_send",
   "params" : [
-    ["message","JsVar","A string containing message to send"],
-    ["port","int32","The port to send the message to"],
-    ["host","JsVar","A string containing the message target host"]
-  ],
-  "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
+    ["buffer","JsVar","A string containing message to send"],
+    ["offset","JsVar","Offset in the passed string where the message starts [optional]"],
+    ["length","JsVar","Number of bytes in the message [optional]"],
+    ["args","JsVarArray","Destination port number, Destination IP address string"]
+  ]
 }*/
-bool jswrap_dgram_socket_send(JsVar *parent, JsVar *data, unsigned short port, JsVar *host) {
+// There are futher arguments within the 'args' JsVarArray:
+//  ["port","JsVar","Destination port number to send the message to"],
+//  ["address","JsVar","Destination hostname or IP address string"]
+void jswrap_dgram_socket_send(JsVar *parent, JsVar *buffer, JsVar *offset, JsVar *length, JsVar *args) {
+  assert(jsvIsObject(parent));
+  assert(jsvIsString(buffer));
   JsNetwork net;
-  if (!networkGetFromVarIfOnline(&net)) return false;
+  if (!networkGetFromVarIfOnline(&net)) return;
 
-  clientRequestWrite(&net, parent, data, host, port);
+  JsVar *msg;
+  JsVar *address;
+  JsVar *port = jsvGetArrayItem(args, 0);
+  if (jsvIsNumeric(port)) {
+    int from = jsvGetInteger(offset);
+    int count = jsvGetInteger(length);
+    msg = jsvNewFromEmptyString();
+    if (!msg) {
+      networkFree(&net);
+      return; // out of memory
+    }
+    jsvAppendStringVar(msg, buffer, (size_t)from, (size_t)count);
+    address = jsvGetArrayItem(args, 1);
+  } else {
+    jsvUnLock(port);
+
+    msg = buffer;
+    port = offset;
+    address = length;
+    assert(jsvIsNumeric(port));
+  }
+  clientRequestWrite(&net, parent, msg, address, jsvGetInteger(port));
+  if (msg != buffer) {
+    jsvUnLock3(msg, port, address);
+  }
   networkFree(&net);
-  return false;
 }
 
 /*JSON{
@@ -515,28 +543,16 @@ void jswrap_dgram_messageCallback(JsVar *parent, JsVar *msg, JsVar *rinfo) {
   "params" : [
     ["port","int32","The port to bind at"],
     ["callback","JsVar","A function(res) that will be called when the socket is bound. You can then call `res.on('message', function(message, info) { ... })` and `res.on('close', function() { ... })` to deal with the response."]
-  ]
+  ],
+  "return" : ["JsVar","The dgramSocket instance that 'bind' was called on"]
 }
 */
 JsVar *jswrap_dgramSocket_bind(JsVar *parent, unsigned short port, JsVar *callback) {
-  // FIXME: move elsewhere...
-  // re-used dgramSocket instance...
-  {
-      jswrap_dgram_close(parent); // close the client-only socket
-      // the close is async, need to run the idle loop
-      JsNetwork net;
-      if (!networkGetFromVarIfOnline(&net)) return parent;
-      socketIdle(&net);
-      networkFree(&net);
+  parent = jsvLockAgain(parent); // we're returning the parent, so need to re-lock it
 
-      jsvObjectRemoveChild(parent, "cls"/*HTTP_NAME_CLOSE*/);
-      jsvObjectRemoveChild(parent, "clsNow"/*HTTP_NAME_CLOSENOW*/);
-      jsvObjectRemoveChild(parent, "sckt"/*HTTP_NAME_SOCKET*/);
-  }
-
-  jsvObjectSetChild(parent, "#onbind", callback);
-  jswrap_net_server_listen(parent, port, ST_UDP); // create bound socket
-  jsiQueueObjectCallbacks(parent, "#onbind", &parent, 1);
+  jsvObjectSetChild(parent, DGRAM_ON_BIND_NAME, callback);
+  jsvUnLock(jswrap_net_server_listen(parent, port, ST_UDP)); // create bound socket
+  jsiQueueObjectCallbacks(parent, DGRAM_ON_BIND_NAME, &parent, 1);
 
   return parent;
 }
@@ -654,17 +670,20 @@ https://engineering.circle.com/https-authorized-certs-with-node-js/
   "generate_full" : "jswrap_net_server_listen(parent, port, ST_NORMAL)",
   "params" : [
     ["port","int32","The port to listen on"]
-  ]
+  ],
+  "return" : ["JsVar","The HTTP server instance that 'listen' was called on"]
 }
 Start listening for new connections on the given port
 */
 
-void jswrap_net_server_listen(JsVar *parent, int port, SocketType socketType) {
+JsVar *jswrap_net_server_listen(JsVar *parent, int port, SocketType socketType) {
+  parent = jsvLockAgain(parent); // we're returning the parent, so need to re-lock it
   JsNetwork net;
-  if (!networkGetFromVarIfOnline(&net)) return;
+  if (!networkGetFromVarIfOnline(&net)) return parent;
 
   serverListen(&net, parent, (unsigned short)port, socketType);
   networkFree(&net);
+  return parent;
 }
 
 /*JSON{

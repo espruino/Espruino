@@ -35,7 +35,7 @@ static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
 }
 
 static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
-  JsvPinInfoPort port = pinInfo[pin].port;
+  JsvPinInfoPort port = pinInfo[pin].port&JSH_PORT_MASK;
   return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
 }
 

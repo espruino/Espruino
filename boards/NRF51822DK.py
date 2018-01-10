@@ -62,14 +62,14 @@ chip = {
 };
 
 devices = {
-  'LED1' : { 'pin' : 'D21', 'inverted' : True },
-  'LED2' : { 'pin' : 'D22', 'inverted' : True },
-  'LED3' : { 'pin' : 'D23', 'inverted' : True },
-  'LED4' : { 'pin' : 'D24', 'inverted' : True },
-  'BTN1' : { 'pin' : 'D17', 'inverted' : True, 'pinstate' : 'IN_PULLUP'},
-  'BTN2' : { 'pin' : 'D18', 'inverted' : True, 'pinstate' : 'IN_PULLUP'},
-  'BTN3' : { 'pin' : 'D19', 'inverted' : True, 'pinstate' : 'IN_PULLUP'},
-  'BTN4' : { 'pin' : 'D20', 'inverted' : True, 'pinstate' : 'IN_PULLUP'},
+  'BTN1' : { 'pin' : 'D17', 'pinstate' : 'IN_PULLDOWN'}, # Pin negated in software
+  'BTN2' : { 'pin' : 'D18', 'pinstate' : 'IN_PULLDOWN'}, # Pin negated in software
+  'BTN3' : { 'pin' : 'D19', 'pinstate' : 'IN_PULLDOWN'}, # Pin negated in software
+  'BTN4' : { 'pin' : 'D20', 'pinstate' : 'IN_PULLDOWN'}, # Pin negated in software
+  'LED1' : { 'pin' : 'D21' }, # Pin negated in software
+  'LED2' : { 'pin' : 'D22' }, # Pin negated in software
+  'LED3' : { 'pin' : 'D23' }, # Pin negated in software
+  'LED4' : { 'pin' : 'D24' }, # Pin negated in software
   'RX_PIN_NUMBER' : { 'pin' : 'D11'},
   'TX_PIN_NUMBER' : { 'pin' : 'D9'},
   'CTS_PIN_NUMBER' : { 'pin' : 'D10'},
@@ -108,6 +108,17 @@ def get_pins():
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN5"]=0;
   pinutils.findpin(pins, "PD5", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PD6", True)["functions"]["ADC1_IN7"]=0;
+
+  # Make buttons and LEDs negated
+  pinutils.findpin(pins, "PD17", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD18", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD19", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD20", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD21", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD22", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD23", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD24", True)["functions"]["NEGATED"]=0;
+
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;

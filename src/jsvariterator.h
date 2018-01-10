@@ -189,19 +189,38 @@ bool   jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it);
 void   jsvArrayBufferIteratorNext(JsvArrayBufferIterator *it);
 void   jsvArrayBufferIteratorFree(JsvArrayBufferIterator *it);
 // --------------------------------------------------------------------------------------------
+typedef struct {
+  JsvObjectIterator it;
+  JsVar *var; // underlying array when using JSVI_FULLARRAY
+  JsVarInt index; // index when using JSVI_FULLARRAY
+} JsvIteratorObj;
+
 union JsvIteratorUnion {
   JsvStringIterator str;
-  JsvObjectIterator obj;
+  JsvIteratorObj obj;
   JsvArrayBufferIterator buf;
 };
 
 /** General Purpose iterator, for Strings, Arrays, Objects, Typed Arrays */
 typedef struct JsvIterator {
-  enum {JSVI_STRING, JSVI_OBJECT, JSVI_ARRAYBUFFER } type;
+  enum {
+    JSVI_STRING,
+    JSVI_OBJECT,
+    JSVI_ARRAYBUFFER,
+    JSVI_FULLARRAY, // iterate over ALL array items - including not defined
+  } type;
   union JsvIteratorUnion it;
 } JsvIterator;
 
-void jsvIteratorNew(JsvIterator *it, JsVar *obj);
+typedef enum {
+  JSIF_DEFINED_ARRAY_ElEMENTS = 0, ///< iterate only over defined array elements in sparse arrays
+  JSIF_EVERY_ARRAY_ELEMENT = 1, ///< iterate over every element in arrays, even if not defined
+} JsvIteratorFlags;
+
+/** Create a new iterator for any type of variable.
+If iterating over an array and everyArrayElement is false, any
+array elements that haven't been specified will be skipped */
+void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags);
 JsVar *jsvIteratorGetKey(JsvIterator *it);
 JsVar *jsvIteratorGetValue(JsvIterator *it);
 JsVarInt jsvIteratorGetIntegerValue(JsvIterator *it);

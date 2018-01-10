@@ -243,12 +243,23 @@ NO_INLINE static void _socketCloseAllConnections(JsNetwork *net) {
 
 // returns 0 on success and a (negative) error number on failure
 int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData) {
-  char *buf = alloca((size_t)net->chunkSize); // allocate on stack
+  SocketType socketType = socketGetType(connection);
 
   assert(!jsvIsEmptyString(*sendData));
 
-  SocketType socketType = socketGetType(connection);
-  size_t bufLen = httpStringGet(*sendData, buf, (size_t)net->chunkSize);
+  size_t sndBufLen;
+  if ((socketType&ST_TYPE_MASK)==ST_UDP) {
+      sndBufLen = (size_t)jsvGetStringLength(*sendData);
+      if (sndBufLen+1024 > jsuGetFreeStack()) {
+          jsExceptionHere(JSET_ERROR, "Not enough free stack to send this amount of data");
+          return -1;
+      }
+  } else {
+      sndBufLen = (size_t)net->chunkSize;
+  }
+  char *buf = alloca(sndBufLen); // allocate on stack
+
+  size_t bufLen = httpStringGet(*sendData, buf, sndBufLen);
   int num = netSend(net, socketType, sckt, buf, bufLen);
   DBG("socketSendData %x:%d (%d -> %d)\n", *(uint32_t*)buf, *(unsigned short*)(buf+sizeof(uint32_t)), bufLen, num);
   if (num < 0) return num; // an error occurred
@@ -443,7 +454,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       jsvUnLock(sendData);
     }
     if (closeConnectionNow) {
-      DBG("CLOSE NOW");
+      DBG("CLOSE NOW\n");
 
       // send out any data that we were POSTed
       JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
@@ -609,7 +620,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     }
 
     if (closeConnectionNow) {
-      DBG("close now");
+      DBG("close now\n");
 
       socketClientPushReceiveData(connection, socket, &receiveData);
       if (!receiveData) {
@@ -766,7 +777,7 @@ void serverListen(JsNetwork *net, JsVar *server, unsigned short port, SocketType
     }
   }
 
-  DBG("serverListen port=%d (%d)", port, sckt);
+  DBG("serverListen port=%d (%d)\n", port, sckt);
   jsvUnLock2(options, arr);
 }
 
@@ -894,14 +905,15 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, Js
     }
   }
   jsvUnLock(sendData);
-  if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
-    // on HTTP we connect after the first write
+  if ((socketType&ST_TYPE_MASK) != ST_NORMAL) {
+    // on HTTP/UDP we connect on-demand with the first write/send
     clientRequestConnect(net, httpClientReqVar);
   }
 }
 
 // Connect this connection/socket
 void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
+  DBG("clientRequestConnect\n");
   // Have we already connected? If so, don't go further
   if (jsvGetIntegerAndUnLock(jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SOCKET, 0))>0)
     return;

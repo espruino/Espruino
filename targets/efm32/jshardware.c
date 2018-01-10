@@ -122,7 +122,7 @@ void TIMER0_IRQHandler(void) {
 Pin watchedPins[16];
 
 static ALWAYS_INLINE GPIO_Port_TypeDef efm32PortFromPin(uint32_t pin){
-  return (GPIO_Port_TypeDef) (pinInfo[pin].port - JSH_PORTA);
+  return (GPIO_Port_TypeDef) ((pinInfo[pin].port&JSH_PORT_MASK) - JSH_PORTA);
 }
 
 static ALWAYS_INLINE uint8_t efm32EventFromPin(Pin pin) {

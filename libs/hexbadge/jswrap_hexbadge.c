@@ -66,73 +66,97 @@ const Pin LCD_MOSI = 15;
   "name" : "BTNA",
   "generate_full" : "19",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to the 'A' button. Reads as `1` when pressed, `0` when not
+*/
 /*JSON{
   "type" : "variable",
   "name" : "BTNB",
   "generate_full" : "20",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to the 'B' button. Reads as `1` when pressed, `0` when not
+*/
 /*JSON{
   "type" : "variable",
   "name" : "BTNU",
   "generate_full" : "31",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to the up button. Reads as `1` when pressed, `0` when not
+*/
 /*JSON{
   "type" : "variable",
   "name" : "BTND",
   "generate_full" : "16",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to the down button. Reads as `1` when pressed, `0` when not
+*/
 /*JSON{
   "type" : "variable",
   "name" : "BTNL",
   "generate_full" : "17",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to the left button. Reads as `1` when pressed, `0` when not
+*/
 /*JSON{
   "type" : "variable",
   "name" : "BTNR",
   "generate_full" : "18",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to the right button. Reads as `1` when pressed, `0` when not
+*/
 /*JSON{
   "type" : "variable",
   "name" : "CORNER1",
   "generate_full" : "25",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to Corner #1
+*/
 /*JSON{
   "type" : "variable",
   "name" : "CORNER2",
   "generate_full" : "26",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to Corner #2
+*/
 /*JSON{
   "type" : "variable",
   "name" : "CORNER3",
   "generate_full" : "27",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to Corner #3
+*/
 /*JSON{
   "type" : "variable",
   "name" : "CORNER4",
   "generate_full" : "28",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to Corner #4
+*/
 /*JSON{
   "type" : "variable",
   "name" : "CORNER5",
   "generate_full" : "29",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to Corner #5
+*/
 /*JSON{
   "type" : "variable",
   "name" : "CORNER6",
   "generate_full" : "30",
   "return" : ["pin",""]
-}*/
+}
+The pin connected to Corner #6
+*/
 
 
 
@@ -154,7 +178,7 @@ Class containing utility functions for accessing IO on the hexagonal badge
 }
 Capacitive sense - the higher the capacitance, the higher the number returned.
 
-Supply a corner between 1 and 6, and a
+Supply a corner number between 1 and 6, and an integer value will be returned that is proportional to the capacitance
 */
 int jswrap_badge_capSense(int corner) {
   if (corner>=1 && corner<=6) {
@@ -288,16 +312,17 @@ void jswrap_badge_init() {
   jshPinSetValue(LCD_RST,1);
   jshDelayMicroseconds(10000);
   const unsigned char LCD_INIT_DATA[] = {
-       0xE2,
-       0xA3,
-       0xA1,
-       0xC8,
-       0x25,
-       0x81,
+       // 0xE2,   // soft reset
+       0xA3,   // bias 1/7
+       0xC8,   // reverse scan dir
+       0x25,   // regulation resistor ratio (0..7)
+       0x81,   // contrast control
        0x17,
-       0x2F,
-       0xAF
+       0x2F,   // control power circuits - last 3 bits = VB/VR/VF
+       0xA1,   // start at column 0
+       0xAF    // disp on
   };
+  // TODO: start at column 128 (0xA0) and don't 'flip' the LCD
   for (unsigned int i=0;i<sizeof(LCD_INIT_DATA);i++)
     badge_lcd_wr(LCD_INIT_DATA[i]);
   jshPinSetValue(LCD_CS,1);

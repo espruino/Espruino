@@ -12,8 +12,40 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifndef BLUETOOTH_H
+#define BLUETOOTH_H
+
+#include "jsdevices.h"
+
+#ifdef NRF5X
 #include "ble.h"
 #include "ble_advdata.h"
+#else
+typedef struct {
+  uint16_t uuid;
+  uint8_t type;
+} PACKED_FLAGS ble_uuid_t;
+typedef struct {
+  //uint8_t addr_id_peer;
+  uint8_t addr_type;
+  uint8_t addr[6];
+} ble_gap_addr_t;
+#define BLE_GATT_HANDLE_INVALID (0)
+#define BLE_GAP_ADDR_TYPE_PUBLIC (0)
+#define BLE_GAP_ADDR_TYPE_RANDOM_STATIC (1)
+#define BLE_GAP_ADV_MAX_SIZE (31)
+#define BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE   0x02
+#define BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE         0x03
+#define BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE  0x06
+#define BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE        0x07
+#define BLE_GAP_AD_TYPE_SERVICE_DATA                        0x16
+#define BLE_GAP_AD_TYPE_SHORT_LOCAL_NAME                    0x08
+#define BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME                 0x09
+#define BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA          0xFF
+#define BLE_UUID_TYPE_UNKNOWN (0)
+#define BLE_UUID_TYPE_BLE (1)
+#define MSEC_TO_UNITS(MS,MEH) MS
+#endif
 
 #ifdef NRF52
 // nRF52 gets the ability to connect to other
@@ -58,6 +90,19 @@ typedef enum  {
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;
 
+typedef enum {
+  BLEP_NONE,
+  BLEP_DISCONNECTED,
+  BLEP_RSSI_CENTRAL,
+  BLEP_RSSI_PERIPH,
+  BLEP_ADV_REPORT,
+  BLEP_TASK_FAIL_CONN_TIMEOUT,
+  BLEP_TASK_FAIL_DISCONNECTED,
+  BLEP_TASK_CENTRAL_CONNECTED,
+  BLEP_GATT_SERVER_DISCONNECTED,
+  BLEP_NFC_STATUS,
+} BLEPending;
+
 
 extern volatile BLEStatus bleStatus;
 extern uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
@@ -70,6 +115,12 @@ extern volatile uint16_t                         m_central_conn_handle; /**< Han
 void jsble_init();
 /** Completely deinitialise the BLE stack */
 void jsble_kill();
+/** Add a task to the queue to be executed (to be called mainly from IRQ-land) */
+void jsble_queue_pending(BLEPending blep);
+/** Add a task to the queue to be executed (to be called mainly from IRQ-land) */
+void jsble_queue_pending_d(BLEPending blep, uint16_t data);
+/** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land*/
+void jsble_exec_pending(IOEvent *event);
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */
@@ -102,17 +153,49 @@ uint32_t jsble_set_rssi_scan(bool enabled);
  * then call this again */
 void jsble_set_services(JsVar *data);
 
+/// Disconnect from the given connection
+uint32_t jsble_disconnect(uint16_t conn_handle);
+
 /// For BLE HID, send an input report to the receiver. Must be <= HID_KEYS_MAX_LEN
 void jsble_send_hid_input_report(uint8_t *data, int length);
 
 // ------------------------------------------------- lower-level utility fns
 
+#ifdef NRF5X
 /// Build advertising data struct to pass into @ref ble_advertising_init.
 void jsble_setup_advdata(ble_advdata_t *advdata);
+#endif
 
 #ifdef USE_NFC
+
+#define TAG_HEADER_LEN            0x0A
+
+#define NDEF_HEADER "\x00\x00\x00\x00" /* |      UID/BCC      | TT = Tag Type            */ \
+                    "\x00\x00\x00\x00" /* |      UID/BCC      | ML = NDEF Message Length */ \
+                    "\x00\x00\xFF\xFF" /* | UID/BCC |   LOCK  | TF = TNF and Flags       */ \
+                    "\xE1\x11\x7C\x0F" /* |  Cap. Container   | TL = Type Legnth         */ \
+                    "\x03\x00\xC1\x01" /* | TT | ML | TF | TL | RT = Record Type         */ \
+                    "\x00\x00\x00\x00" /* |  Payload Length   | IC = URI Identifier Code */ \
+                    "\x55\x00"         /* | RT | IC | Payload |      0x00: No prepending */
+
+#define NDEF_FULL_RAW_HEADER_LEN  0x12 /* full header until ML */
+#define NDEF_FULL_URL_HEADER_LEN  0x1A /* full header until IC */
+
+#define NDEF_RECORD_HEADER_LEN    0x08 /* record header (TF, TL, PL, RT, IC ) */
+#define NDEF_IC_OFFSET            0x19
+#define NDEF_IC_LEN               0x01
+
+#define NDEF_MSG_LEN_OFFSET       0x11
+#define NDEF_PL_LEN_LSB_OFFSET    0x17 /* we support pl < 256 */
+
+#define NDEF_TERM_TLV             0xfe /* last TLV block / byte */
+#define NDEF_TERM_TLV_LEN         0x01
+
 void jsble_nfc_stop();
 void jsble_nfc_start(const uint8_t *data, size_t len);
+void jsble_nfc_get_internal(uint8_t *data, size_t *max_len);
+void jsble_nfc_send(const uint8_t *data, size_t len);
+void jsble_nfc_send_rsp(const uint8_t data, size_t len);
 #endif
 
 #if CENTRAL_LINK_COUNT>0
@@ -140,3 +223,4 @@ uint32_t jsble_set_central_rssi_scan(bool enabled);
 void jsble_central_setWhitelist(bool whitelist);
 #endif
 
+#endif // BLUETOOTH_H
