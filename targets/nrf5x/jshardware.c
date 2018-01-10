@@ -147,6 +147,11 @@ NRF_PWM_Type *nrf_get_pwm(JshPinFunction func) {
 #endif
 
 static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
+#if JSH_PORTV_COUNT>0
+  // don't handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return;
+#endif
   JshPinFunction fType = func&JSH_MASK_TYPE;
   JshPinFunction fInfo = func&JSH_MASK_INFO;
   switch (fType) {
@@ -389,12 +394,26 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
+  assert(jshIsPinValid(pin));
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinSetValue(pin, value);
+#endif
   nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
 }
 
 bool jshPinGetValue(Pin pin) {
-  bool value = nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
+  assert(jshIsPinValid(pin));
+  bool value;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    value = jshVirtualPinGetValue(pin);
+  else
+#endif
+  value = nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
   return value;
 }
@@ -414,6 +433,11 @@ void jshPinSetState(Pin pin, JshPinState state) {
     if (state==JSHPINSTATE_GPIO_IN_PULLUP) state=JSHPINSTATE_GPIO_IN_PULLDOWN;
     else if (state==JSHPINSTATE_GPIO_IN_PULLDOWN) state=JSHPINSTATE_GPIO_IN_PULLUP;
   }
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinSetState(pin, state);
+#endif
 
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   switch (state) {
@@ -469,6 +493,11 @@ void jshPinSetState(Pin pin, JshPinState state) {
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
   assert(jshIsPinValid(pin));
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return JSHPINSTATE_UNDEFINED;
+#endif
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   uint32_t p = NRF_GPIO->PIN_CNF[ipin];
   if ((p&GPIO_PIN_CNF_DIR_Msk)==(GPIO_PIN_CNF_DIR_Output<<GPIO_PIN_CNF_DIR_Pos)) {

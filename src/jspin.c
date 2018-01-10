@@ -159,6 +159,11 @@ void jshGetPinString(char *result, Pin pin) {
       result[0]='I';
       itostr(pin-JSH_PORTI_OFFSET,&result[1],10);
 #endif
+#if JSH_PORTV_OFFSET!=-1
+    } else if (pin>=JSH_PORTV_OFFSET && pin<JSH_PORTV_OFFSET+JSH_PORTV_COUNT) {
+      result[0]='V';
+      itostr(pin-JSH_PORTV_OFFSET,&result[1],10);
+#endif
 #endif
     } else {
       strncpy(result, "undefined", 10);
