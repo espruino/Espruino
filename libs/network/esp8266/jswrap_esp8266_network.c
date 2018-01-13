@@ -33,10 +33,14 @@
   // Normal debug
   #if WIFI_DBG > 0
     #define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+  #else
+    #define DBG(format, ...) do { } while(0)
   #endif
   // Verbose debug
   #if WIFI_DBG > 1
     #define DBGV(format, ...) os_printf(format, ## __VA_ARGS__)
+  #else
+    #define DBGV(format, ...) do { } while(0)
   #endif
 #endif
 
