@@ -28,11 +28,20 @@
 #include <stdbool.h>
 #include "nordic_common.h"
 #include "nrf.h"
+
+#ifdef NRF5X_SDK_12
+#include "softdevice_handler.h"
+#else
+#include "nrf_sdm.h" // for softdevice_disable
+#include "nrf_sdh.h"
+#include "nrf_sdh_ble.h"
+#include "nrf_sdh_soc.h"
+#endif
+
 #include "nrf_log.h"
 #include "ble_hci.h"
 #include "ble_advdata.h"
 #include "ble_conn_params.h"
-#include "softdevice_handler.h"
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
@@ -81,17 +90,28 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 // -----------------------------------------------------------------------------------
 
 #if (NRF_SD_BLE_API_VERSION == 3)
-#define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                       /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                        /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
+
 #endif
+#if (NRF_SD_BLE_API_VERSION == 5)
+#define NRF_BLE_MAX_MTU_SIZE            BLE_GATT_ATT_MTU_DEFAULT                     /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
+#endif
+
+#define APP_BLE_CONN_CFG_TAG                1                                       /**< A tag identifying the SoftDevice BLE configuration. */
+#define APP_BLE_OBSERVER_PRIO               2                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
+#define APP_SOC_OBSERVER_PRIO               1                                       /**< Applications' SoC observer priority. You shoulnd't need to modify this value. */
 
 /* We want to listen as much of the time as possible. Not sure if 100/100 is feasible (50/100 is what's used in examples), but it seems to work fine like this. */
 #define SCAN_INTERVAL                   MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan interval in units of 0.625 millisecond - 100 msec */
 #define SCAN_WINDOW                     MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan window in units of 0.625 millisecond - 100 msec */
 
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
-#define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 
 // BLE HID stuff
 #define BASE_USB_HID_SPEC_VERSION        0x0101                                      /**< Version number of base USB HID Specification implemented by this application. */
@@ -376,7 +396,13 @@ bool nus_transmit_string() {
     ch = jshGetCharToTransmit(EV_BLUETOOTH);
   }
   if (idx>0) {
+#ifdef NRF5X_SDK_12
     uint32_t err_code = ble_nus_string_send(&m_nus, buf, idx);
+#else
+    uint16_t len = idx;
+    uint32_t err_code = ble_nus_string_send(&m_nus, buf, &len);
+    assert(len==idx);
+#endif
     if (err_code == NRF_SUCCESS)
       bleStatus |= BLE_IS_SENDING;
   }
@@ -445,7 +471,7 @@ static void ble_update_whitelist() {
 #endif
 
 /// Function for the application's SoftDevice event handler.
-static void on_ble_evt(ble_evt_t * p_ble_evt) {
+static void ble_evt_handler(ble_evt_t * p_ble_evt) {
     uint32_t err_code;
     //jsiConsolePrintf("\n[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );
 
@@ -664,7 +690,13 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 #endif
 
 
+#ifdef NRF5X_SDK_12
       case BLE_EVT_TX_COMPLETE:
+#else
+      case BLE_GATTC_EVT_WRITE_CMD_TX_COMPLETE: // Write without Response transmission complete.
+      case BLE_GATTS_EVT_HVN_TX_COMPLETE: // Handle Value Notification transmission complete
+        // FIXME: was just BLE_EVT_TX_COMPLETE - do we now get called twice in some cases?
+#endif
         // BLE transmit finished - reset flags
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.common_evt.conn_handle == m_central_conn_handle) {
@@ -961,6 +993,7 @@ static void nfc_callback(void * p_context, hal_nfc_event_t event, const uint8_t 
 }
 #endif
 
+#ifdef NRF5X_SDK_12
 /// Function for dispatching a SoftDevice event to all modules with a SoftDevice event handler.
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 #if PEER_MANAGER_ENABLED
@@ -981,12 +1014,12 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
   if (bleStatus & BLE_HID_INITED)
     ble_hids_on_ble_evt(&m_hids, p_ble_evt);
 #endif
-  on_ble_evt(p_ble_evt);
+  ble_evt_handler(p_ble_evt);
 }
-
+#endif
 
 /// Function for dispatching a system event to interested modules.
-static void sys_evt_dispatch(uint32_t sys_evt) {
+static void soc_evt_handler(uint32_t sys_evt) {
 #if PEER_MANAGER_ENABLED
   // Dispatch the system event to the fstorage module, where it will be
   // dispatched to the Flash Data Storage (FDS) module.
@@ -1521,6 +1554,8 @@ static void services_init() {
 
 /// Function for the SoftDevice initialization.
 static void ble_stack_init() {
+#ifdef NRF5X_SDK_12
+
     uint32_t err_code;
 
     // TODO: enable if we're on a device with 32kHz xtal
@@ -1565,8 +1600,30 @@ static void ble_stack_init() {
     APP_ERROR_CHECK(err_code);
 
     // Register with the SoftDevice handler module for BLE events.
-    err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
+    err_code = softdevice_sys_evt_handler_set(soc_evt_handler);
     APP_ERROR_CHECK(err_code);
+
+
+#else
+    ret_code_t err_code;
+
+    err_code = nrf_sdh_enable_request();
+    APP_ERROR_CHECK(err_code);
+
+    // Configure the BLE stack using the default settings.
+    // Fetch the start address of the application RAM.
+    uint32_t ram_start = 0;
+    err_code = nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ram_start);
+    APP_ERROR_CHECK(err_code);
+
+    // Enable BLE stack.
+    err_code = nrf_sdh_ble_enable(&ram_start);
+    APP_ERROR_CHECK(err_code);
+
+    // Register a handler for BLE events.
+    NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
+    NRF_SDH_SOC_OBSERVER(m_soc_observer, APP_SOC_OBSERVER_PRIO, soc_evt_handler, NULL);
+#endif
 
 #if defined(PUCKJS) || defined(RUUVITAG)
     // can only be enabled if we're sure we have a DC-DC
@@ -1641,7 +1698,11 @@ void jsble_advertising_start() {
   adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
   adv_params.interval = bleAdvertisingInterval;
 
+#ifdef NRF5X_SDK_12
   sd_ble_gap_adv_start(&adv_params);
+#else
+  sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
+#endif
   bleStatus |= BLE_IS_ADVERTISING;
 }
 
@@ -2025,7 +2086,11 @@ void jsble_central_connect(ble_gap_addr_t peer_addr) {
   ble_gap_addr_t addr;
   addr = peer_addr;
 
+#ifdef NRF5X_SDK_12
   err_code = sd_ble_gap_connect(&addr, &m_scan_param, &gap_conn_params);
+#else
+  err_code = sd_ble_gap_connect(&addr, &m_scan_param, &gap_conn_params, APP_BLE_CONN_CFG_TAG);
+#endif
   JsVar *errStr = jsble_get_error_string(err_code);
   if (errStr) {
     bleCompleteTaskFail(BLETASK_CONNECT, errStr);

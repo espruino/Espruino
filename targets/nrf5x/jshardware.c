@@ -57,7 +57,9 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_drv_spi.h"
 
 #include "nrf5x_utils.h"
+#ifdef NRF5X_SDK_12
 #include "softdevice_handler.h"
+#endif
 
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
 
@@ -271,7 +273,11 @@ void jshInit() {
   uint32_t err_code;
   nrf_drv_gpiote_init();
 #ifdef BLUETOOTH
+#ifdef NRF5X_SDK_12
   APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
+#else
+  app_timer_init();
+#endif
   jsble_init();
 
   err_code = app_timer_create(&m_wakeup_timer_id,
@@ -987,7 +993,11 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   if (spi0Initialised) nrf_drv_spi_uninit(&spi0);
   spi0Initialised = true;
   // No event handler means SPI transfers are blocking
+#ifdef NRF5X_SDK_12
   uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL);
+#else
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL, NULL);
+#endif
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "SPI Initialisation Error %d\n", err_code);
 
@@ -1191,7 +1201,11 @@ bool jshSleep(JsSysTime timeUntilWake) {
     timeUntilWake = jshGetTimeFromMilliseconds(240*1000);
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
+#ifdef NRF5X_SDK_12
     uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake), APP_TIMER_PRESCALER);
+#else
+    uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake));
+#endif
     if (ticks<APP_TIMER_MIN_TIMEOUT_TICKS) return false; // can't sleep this short an amount of time
     uint32_t err_code = app_timer_start(m_wakeup_timer_id, ticks, NULL);
     if (err_code) jsiConsolePrintf("app_timer_start error %d\n", err_code);

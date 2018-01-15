@@ -1,0 +1,235 @@
+/* Linker script for Nordic Semiconductor nRF51 devices
+ *
+ * Version: Sourcery G++ 4.5-1
+ * Support: https://support.codesourcery.com/GNUToolchain/
+ *
+ * Copyright (c) 2007, 2008, 2009, 2010 CodeSourcery, Inc.
+ *
+ * The authors hereby grant permission to use, copy, modify, distribute,
+ * and license this software and its documentation for any purpose, provided
+ * that existing copyright notices are retained in all copies and that this
+ * notice is included verbatim in any distributions.  No written agreement,
+ * license, or royalty fee is required for any of the authorized uses.
+ * Modifications to this software may be copyrighted by their authors
+ * and need not follow the licensing terms described here, provided that
+ * the new terms are clearly indicated on the first page of each file where
+ * they apply.
+ */
+OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
+
+/* Linker script to place sections and symbol values. Should be used together
+ * with other linker script that defines memory regions FLASH and RAM.
+ * It references following symbols, which must be defined in code:
+ *   Reset_Handler : Entry of reset handler
+ *
+ * It defines following symbols, which code can use without definition:
+ *   __exidx_start
+ *   __exidx_end
+ *   __etext
+ *   __data_start__
+ *   __preinit_array_start
+ *   __preinit_array_end
+ *   __init_array_start
+ *   __init_array_end
+ *   __fini_array_start
+ *   __fini_array_end
+ *   __data_end__
+ *   __bss_start__
+ *   __bss_end__
+ *   __end__
+ *   end
+ *   __HeapLimit
+ *   __StackLimit
+ *   __StackTop
+ *   __stack
+ */
+ENTRY(Reset_Handler)
+
+SECTIONS
+{
+  . = ALIGN(4);
+  .mem_section_dummy_ram :
+  {
+  }
+  .log_dynamic_data :
+  {
+    PROVIDE(__start_log_dynamic_data = .);
+    KEEP(*(SORT(.log_dynamic_data*)))
+    PROVIDE(__stop_log_dynamic_data = .);
+  } > RAM
+  .fs_data :
+  {
+    PROVIDE(__start_fs_data = .);
+    KEEP(*(.fs_data))
+    PROVIDE(__stop_fs_data = .);
+  } > RAM
+} INSERT AFTER .data;
+
+SECTIONS
+{
+  .mem_section_dummy_rom :
+  {
+  }
+  .log_const_data :
+  {
+    PROVIDE(__start_log_const_data = .);
+    KEEP(*(SORT(.log_const_data*)))
+    PROVIDE(__stop_log_const_data = .);
+  } > FLASH
+  .sdh_ble_observers :
+  {
+    PROVIDE(__start_sdh_ble_observers = .);
+    KEEP(*(SORT(.sdh_ble_observers*)))
+    PROVIDE(__stop_sdh_ble_observers = .);
+  } > FLASH
+  .sdh_soc_observers :
+  {
+    PROVIDE(__start_sdh_soc_observers = .);
+    KEEP(*(SORT(.sdh_soc_observers*)))
+    PROVIDE(__stop_sdh_soc_observers = .);
+  } > FLASH
+  .sdh_req_observers :
+  {
+    PROVIDE(__start_sdh_req_observers = .);
+    KEEP(*(SORT(.sdh_req_observers*)))
+    PROVIDE(__stop_sdh_req_observers = .);
+  } > FLASH
+  .sdh_state_observers :
+  {
+    PROVIDE(__start_sdh_state_observers = .);
+    KEEP(*(SORT(.sdh_state_observers*)))
+    PROVIDE(__stop_sdh_state_observers = .);
+  } > FLASH
+  .sdh_stack_observers :
+  {
+    PROVIDE(__start_sdh_stack_observers = .);
+    KEEP(*(SORT(.sdh_stack_observers*)))
+    PROVIDE(__stop_sdh_stack_observers = .);
+  } > FLASH
+} INSERT AFTER .text
+
+SECTIONS
+{
+  .text :
+  {
+    KEEP(*(.isr_vector))
+    *(.text*)
+
+    KEEP(*(.init))
+    KEEP(*(.fini))
+
+    /* .ctors */
+    *crtbegin.o(.ctors)
+    *crtbegin?.o(.ctors)
+    *(EXCLUDE_FILE(*crtend?.o *crtend.o) .ctors)
+    *(SORT(.ctors.*))
+    *(.ctors)
+
+    /* .dtors */
+    *crtbegin.o(.dtors)
+    *crtbegin?.o(.dtors)
+    *(EXCLUDE_FILE(*crtend?.o *crtend.o) .dtors)
+    *(SORT(.dtors.*))
+    *(.dtors)
+
+    *(.rodata*)
+
+    KEEP(*(.eh_frame*))
+  } > FLASH
+
+
+  .ARM.extab :
+  {
+    *(.ARM.extab* .gnu.linkonce.armextab.*)
+  } > FLASH
+
+  __exidx_start = .;
+  .ARM.exidx :
+  {
+    *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+  } > FLASH
+  __exidx_end = .;
+
+  __etext = .;
+  _etext = .;
+  _sidata = .;
+
+  .data : AT (__etext)
+  {
+    __data_start__ = .;
+    _sdata = .;
+    *(vtable)
+    *(.data*)
+
+    . = ALIGN(4);
+    /* preinit data */
+    PROVIDE_HIDDEN (__preinit_array_start = .);
+    KEEP(*(.preinit_array))
+    PROVIDE_HIDDEN (__preinit_array_end = .);
+
+    . = ALIGN(4);
+    /* init data */
+    PROVIDE_HIDDEN (__init_array_start = .);
+    KEEP(*(SORT(.init_array.*)))
+    KEEP(*(.init_array))
+    PROVIDE_HIDDEN (__init_array_end = .);
+
+
+    . = ALIGN(4);
+    /* finit data */
+    PROVIDE_HIDDEN (__fini_array_start = .);
+    KEEP(*(SORT(.fini_array.*)))
+    KEEP(*(.fini_array))
+    PROVIDE_HIDDEN (__fini_array_end = .);
+
+    KEEP(*(.jcr*))
+    . = ALIGN(4);
+    /* All data end */
+    __data_end__ = .;
+    _edata = .;
+
+  } > RAM
+
+  .bss :
+  {
+    . = ALIGN(4);
+    __bss_start__ = .;
+    _sbss = .;
+    *(.bss*)
+    *(COMMON)
+    . = ALIGN(4);
+    __bss_end__ = .;
+    _ebss = .;
+  } > RAM
+
+  .heap (COPY):
+  {
+    __end__ = .;
+    PROVIDE(end = .);
+    *(.heap*)
+    __HeapLimit = .;
+  } > RAM
+
+  PROVIDE ( _end = end );
+
+  /* .stack_dummy section doesn't contains any symbols. It is only
+   * used for linker to calculate size of stack sections, and assign
+   * values to stack symbols later */
+  .stack_dummy (COPY):
+  {
+    *(.stack*)
+  } > RAM
+
+  /* Set stack top to end of RAM, and stack limit move down by
+   * size of stack_dummy section */
+  __StackTop = ORIGIN(RAM) + LENGTH(RAM);
+  _estack = __StackTop;
+  __StackLimit = __StackTop - SIZEOF(.stack_dummy);
+  PROVIDE(__stack = __StackTop);
+
+  /* Check if data + heap + stack exceeds RAM limit */
+  /*
+  FIXME: removing this test for now as seem unable to get rid of the heap
+   - which we don't need
+  ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")*/
+}

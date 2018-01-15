@@ -1,5 +1,16 @@
 NRF5X=1
-NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x
+
+#NRF5X_SDK=12
+#NRF5X_SDK_12=1
+#NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_12
+#DEFINES += -DNRF_SD_BLE_API_VERSION=3
+#SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_3.0.0_softdevice.hex
+
+NRF5X_SDK=14
+NRF5X_SDK_14=1
+NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_14
+DEFINES += -DNRF_SD_BLE_API_VERSION=5
+SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_5.0.0_softdevice.hex
 
 # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
 ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
@@ -12,9 +23,6 @@ TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
 PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
 DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
-DEFINES += -DNRF_SD_BLE_API_VERSION=3
-
-SOFTDEVICE        = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_3.0.0_softdevice.hex
 
 ifdef USE_BOOTLOADER
 NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex

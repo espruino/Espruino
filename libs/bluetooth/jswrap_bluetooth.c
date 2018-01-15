@@ -32,10 +32,12 @@
 #include "ble_hci.h"
 #include "ble_advdata.h"
 #include "ble_conn_params.h"
-#include "softdevice_handler.h"
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
+#ifdef NRF5X_SDK_12
+#include "softdevice_handler.h"
+#endif
 
 #ifdef USE_NFC
 #include "nfc_uri_msg.h"
@@ -832,7 +834,11 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   uint8_t   encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
 
 #ifdef NRF5X
+#ifdef NRF5X_SDK_12
   err_code = adv_data_encode(&advdata, encoded_advdata, &len_advdata);
+#else
+  err_code = ble_advdata_encode(&advdata, encoded_advdata, &len_advdata);
+#endif
 #else
   err_code = 0xDEAD;
   jsiConsolePrintf("FIXME\n");
@@ -1208,7 +1214,11 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
                 err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
                 if ((err_code != NRF_SUCCESS)
                   && (err_code != NRF_ERROR_INVALID_STATE)
+#ifdef NRF5X_SDK_12
                   && (err_code != BLE_ERROR_NO_TX_PACKETS)
+#else
+                  && (err_code != NRF_ERROR_RESOURCES)
+#endif
                   && (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)) {
                   if (jsble_check_error(err_code))
                     ok = false;

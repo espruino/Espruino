@@ -1,0 +1,22 @@
+/* Linker script to configure memory regions. */
+
+SEARCH_DIR(.)
+GROUP(-lgcc -lc -lnosys)
+
+MEMORY
+{
+  FLASH (rx) : ORIGIN = 0x23000, LENGTH = 0x5d000
+  RAM (rwx) :  ORIGIN = 0x20003000, LENGTH = 0xd000
+}
+
+SECTIONS
+{
+  .fs_data :
+  {
+    PROVIDE(__start_fs_data = .);
+    KEEP(*(.fs_data))
+    PROVIDE(__stop_fs_data = .);
+  } > RAM
+} INSERT AFTER .data;
+
+INCLUDE "gcc_nrf5x_espruino_common.ld"
