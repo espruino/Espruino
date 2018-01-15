@@ -43,6 +43,8 @@ typedef long long int64_t;
     // #include "jsinteractive.h"
     // #define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
     static char DBG_LIB[] = "net_esp8266"; // library name
+  #else
+    #define DBG(format, ...) do { } while(0)
   #endif
 #endif
 
