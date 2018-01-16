@@ -206,10 +206,6 @@ SECTIONS
     _irom0_text_end = ABSOLUTE(.);
   } >irom0_0_seg :irom0_0_phdr
 
-  bigflash_free_size = (0x100000 - 0x1010 - SIZEOF(.irom0.text) - 8 - SIZEOF(.data) - 8 - SIZEOF(.rodata) - 8 - SIZEOF(.text) - 32) & 0xff000;
-  _bigflash_free_start = 0x100000 - bigflash_free_size;
-  _bigflash_free_end = _bigflash_free_start + bigflash_free_size;
-
 }
 
 /* get ROM code address */
