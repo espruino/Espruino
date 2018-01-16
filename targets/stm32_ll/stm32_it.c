@@ -268,10 +268,13 @@ static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
         IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_PARITY_ERR, 0);
   }
   if(LL_USART_IsActiveFlag_RXNE(USART) != RESET) {
-    /* Clear the USART Receive interrupt */
-    //USART_ClearITPendingBit(USART, USART_IT_RXNE);
     /* Read one byte from the receive data register */
-    jshPushIOCharEvent(device, (char)LL_USART_ReceiveData9(USART));
+    char ch = (char)LL_USART_ReceiveData9(USART);
+    /* Mask it if needed... */
+    bool jshIsSerial7Bit(IOEventFlags device);
+    if (jshIsSerial7Bit(device)) ch &= 0x7F;
+    /* Put it in our queue */
+    jshPushIOCharEvent(device, ch);
   }
   /* If overrun condition occurs, clear the ORE flag and recover communication */
   if (LL_USART_IsActiveFlag_ORE(USART) != RESET)

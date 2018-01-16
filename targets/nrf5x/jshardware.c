@@ -50,7 +50,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_adc.h"
 #endif
 
-#include "nrf_drv_uart.h"
+#include "nrf_drv_.h"
 #include "nrf_drv_twi.h"
 #include "nrf_drv_gpiote.h"
 #include "nrf_drv_ppi.h"

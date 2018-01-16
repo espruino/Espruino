@@ -63,7 +63,7 @@ typedef enum {
 #ifdef USE_TELNET
   EV_TELNET,
 #endif
-  EV_SERIAL1,
+  EV_SERIAL1, // Used for IO for UARTS
   EV_SERIAL2,
   EV_SERIAL3,
   EV_SERIAL4,
@@ -104,7 +104,7 @@ typedef enum {
   EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,
 } PACKED_FLAGS IOEventFlags;
 
-
+#define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK!=63) jsError("DEVICE_SANITY_CHECK failed")
 
 // Return true if the device is a USART
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))

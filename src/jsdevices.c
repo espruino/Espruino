@@ -75,6 +75,7 @@ volatile unsigned char ioHead=0, ioTail=0;
 /** Initialize any device-specific structures, like flow control states.
  * Called from jshInit */
 void jshInitDevices() {
+  DEVICE_SANITY_CHECK();
   jshResetDevices();
 }
 
