@@ -162,7 +162,7 @@ void jshTransmit(
   if (device == EV_TELNET) {
     // gross hack to avoid deadlocking on the network here
     extern void telnetSendChar(char c);
-    telnetSendChar(data);
+    telnetSendChar((char)data);
     return;
   }
 #endif

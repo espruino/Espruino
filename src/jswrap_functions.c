@@ -236,9 +236,9 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
     jsExceptionHere(JSET_ERROR, "Expecting a string or array, got %t", binaryData);
     return 0;
   }
-  int inputLength = jsvGetStringLength(binaryData);
-  int outputLength = ((inputLength+2)/3)*4;
-  JsVar* base64Data = jsvNewStringOfLength(outputLength, NULL);
+  size_t inputLength = jsvGetStringLength(binaryData);
+  size_t outputLength = ((inputLength+2)/3)*4;
+  JsVar* base64Data = jsvNewStringOfLength((unsigned int)outputLength, NULL);
   if (!base64Data) return 0;
   JsvIterator itsrc;
   JsvStringIterator itdst;
@@ -294,9 +294,9 @@ JsVar *jswrap_atob(JsVar *base64Data) {
     jsExceptionHere(JSET_ERROR, "Expecting a string, got %t", base64Data);
     return 0;
   }
-  int inputLength = jsvGetStringLength(base64Data);
-  int outputLength = inputLength*3/4;
-  JsVar* binaryData = jsvNewStringOfLength(outputLength, NULL);
+  size_t inputLength = jsvGetStringLength(base64Data);
+  size_t outputLength = inputLength*3/4;
+  JsVar* binaryData = jsvNewStringOfLength((unsigned int)outputLength, NULL);
   if (!binaryData) return 0;
   JsvStringIterator itsrc;
   JsvStringIterator itdst;

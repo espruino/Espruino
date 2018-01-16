@@ -500,7 +500,7 @@ void jswrap_dgram_socket_send(JsVar *parent, JsVar *buffer, JsVar *offset, JsVar
     address = length;
     assert(jsvIsNumeric(port));
   }
-  clientRequestWrite(&net, parent, msg, address, jsvGetInteger(port));
+  clientRequestWrite(&net, parent, msg, address, (unsigned short)jsvGetInteger(port));
   if (msg != buffer) {
     jsvUnLock3(msg, port, address);
   }

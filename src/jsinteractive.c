@@ -949,7 +949,6 @@ bool jsiIsInHistory(JsVar *line) {
 
 void jsiReplaceInputLine(JsVar *newLine) {
   if (jsiShowInputLine()) {
-    size_t oldLen =  jsvGetStringLength(inputLine);
     jsiMoveCursorChar(inputLine, inputCursorPos, 0); // move cursor to start
     jsiConsoleEraseAfterCursor(); // delete all to right and down
     jsiConsolePrintStringVarWithNewLineChar(newLine,0,':');
@@ -1741,7 +1740,7 @@ static JsVar *jsiExtractIOEventData(IOEvent *event, int *eventsHandled) {
       // look down the stack and see if there is more data
       if (jshIsTopEvent(IOEVENTFLAGS_GETTYPE(event->flags))) {
         jshPopIOEvent(event);
-        *eventsHandled++;
+        (*eventsHandled)++;
         chars = IOEVENTFLAGS_GETCHARS(event->flags);
       } else
         chars = 0;

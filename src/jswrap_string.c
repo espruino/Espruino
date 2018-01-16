@@ -241,7 +241,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
       jsvStringIteratorNew(&dst, newStr, 0);
       jsvStringIteratorGotoEnd(&dst);
       if (jsvIsFunction(replace)) {
-        int argCount = 0;
+        unsigned int argCount = 0;
         JsVar *args[13];
         args[argCount++] = jsvLockAgain(matchStr);
         JsVar *v;
