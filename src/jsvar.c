@@ -981,7 +981,7 @@ JsVar *jsvNewNativeString(char *ptr, size_t len) {
   JsVar *str = jsvNewWithFlags(JSV_NATIVE_STRING);
   if (!str) return 0;
   str->varData.nativeStr.ptr = ptr;
-  str->varData.nativeStr.len = len;
+  str->varData.nativeStr.len = (uint16_t)len;
   return str;
 }
 
