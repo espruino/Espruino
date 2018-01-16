@@ -32,7 +32,7 @@
 
 // ----------------------------------------------------------------------------------------------
 
-static void graphicsSetPixelDevice(JsGraphics *gfx, short x, short y, unsigned int col);
+static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int col);
 
 void graphicsFallbackSetPixel(JsGraphics *gfx, short x, short y, unsigned int col) {
   NOT_USED(gfx);
@@ -121,13 +121,13 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, short *x, short *y) {
 
 // ----------------------------------------------------------------------------------------------
 
-static void graphicsSetPixelDevice(JsGraphics *gfx, short x, short y, unsigned int col) {
+static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int col) {
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
-  if (x < gfx->data.modMinX) gfx->data.modMinX=x;
-  if (x > gfx->data.modMaxX) gfx->data.modMaxX=x;
-  if (y < gfx->data.modMinY) gfx->data.modMinY=y;
-  if (y > gfx->data.modMaxY) gfx->data.modMaxY=y;
-  gfx->setPixel(gfx,x,y,col & (unsigned int)((1L<<gfx->data.bpp)-1));
+  if (x < gfx->data.modMinX) gfx->data.modMinX=(short)x;
+  if (x > gfx->data.modMaxX) gfx->data.modMaxX=(short)x;
+  if (y < gfx->data.modMinY) gfx->data.modMinY=(short)y;
+  if (y > gfx->data.modMaxY) gfx->data.modMaxY=(short)y;
+  gfx->setPixel(gfx,(short)x,(short)y,col & (unsigned int)((1L<<gfx->data.bpp)-1));
 }
 
 static unsigned int graphicsGetPixelDevice(JsGraphics *gfx, short x, short y) {
@@ -135,34 +135,34 @@ static unsigned int graphicsGetPixelDevice(JsGraphics *gfx, short x, short y) {
   return gfx->getPixel(gfx, x, y);
 }
 
-static void graphicsFillRectDevice(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
+static void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
   if (x1>x2) {
-    short t = x1;
+    int t = x1;
     x1 = x2;
     x2 = t;
   }
   if (y1>y2) {
-    short t = y1;
+    int t = y1;
     y1 = y2;
     y2 = t;
   }
   if (x1<0) x1=0;
   if (y1<0) y1=0;
-  if (x2>=gfx->data.width) x2 = (short)(gfx->data.width - 1);
-  if (y2>=gfx->data.height) y2 = (short)(gfx->data.height - 1);
+  if (x2>=gfx->data.width) x2 = gfx->data.width - 1;
+  if (y2>=gfx->data.height) y2 = gfx->data.height - 1;
   if (x2<x1 || y2<y1) return; // nope
 
-  if (x1 < gfx->data.modMinX) gfx->data.modMinX=x1;
-  if (x2 > gfx->data.modMaxX) gfx->data.modMaxX=x2;
-  if (y1 < gfx->data.modMinY) gfx->data.modMinY=y1;
-  if (y2 > gfx->data.modMaxY) gfx->data.modMaxY=y2;
+  if (x1 < gfx->data.modMinX) gfx->data.modMinX=(short)x1;
+  if (x2 > gfx->data.modMaxX) gfx->data.modMaxX=(short)x2;
+  if (y1 < gfx->data.modMinY) gfx->data.modMinY=(short)y1;
+  if (y2 > gfx->data.modMaxY) gfx->data.modMaxY=(short)y2;
 
   if (x1==x2 && y1==y2) {
-    graphicsSetPixelDevice(gfx,x1,y1,gfx->data.fgColor);
+    gfx->setPixel(gfx,(short)x1,(short)y1,gfx->data.fgColor);
     return;
   }
 
-  return gfx->fillRect(gfx, x1, y1, x2, y2);
+  return gfx->fillRect(gfx, (short)x1, (short)y1, (short)x2, (short)y2);
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -283,7 +283,7 @@ void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
     int step = ((y2-y1)<<8) / xl;
     short x;
     for (x=x1;x<=x2;x++) {
-      graphicsSetPixelDevice(gfx, x, (short)(pos>>8), gfx->data.fgColor);
+      graphicsSetPixelDevice(gfx, x, pos>>8, gfx->data.fgColor);
       pos += step;
     }
   } else {
@@ -296,7 +296,7 @@ void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
     int step = ((x2-x1)<<8) / yl;
     short y;
     for (y=y1;y<=y2;y++) {
-      graphicsSetPixelDevice(gfx, (short)(pos>>8), y, gfx->data.fgColor);
+      graphicsSetPixelDevice(gfx, pos>>8, y, gfx->data.fgColor);
       pos += step;
     }
   }

@@ -93,7 +93,9 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
     print("Script location "+scriptdir)
     os.chdir(scriptdir+"/..")
 
+    # C files that we'll scan for JSON data
     jswraps = []
+    # definitions that are used when evaluating IFDEFs/etc
     defines = []
 
     if board and ("build" in board.info)  and ("defines" in board.info["build"]):
@@ -121,9 +123,12 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           else:
             print("Unknown command-line option")
             exit(1)
-        else:
+        elif arg[-2:]==".c": 
+          # C file, all good
           explicit_files = True
           jswraps.append(arg)
+        else:
+          print("WARNING: Ignoring unknown file type: " + arg)
     else:
       print("Scanning for jswrap.c files")
       jswraps = subprocess.check_output(["find", ".", "-name", "jswrap*.c"]).strip().split("\n")
@@ -233,7 +238,6 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           "filename" : "BOARD.py",
           "include" : "platform_config.h"
         })
-
     return jsondatas
 
 # Takes the data from get_jsondata and restructures it in prepartion for output as JS

@@ -828,11 +828,7 @@ JsVar *jswrap_espruino_memoryArea(int addr, int len) {
     jsExceptionHere(JSET_ERROR, "Memory area too long! Max is 65535 bytes\n");
     return 0;
   }
-  JsVar *v = jsvNewWithFlags(JSV_NATIVE_STRING);
-  if (!v) return 0;
-  v->varData.nativeStr.ptr = (char*)(size_t)addr;
-  v->varData.nativeStr.len = (uint16_t)len;
-  return v;
+  return jsvNewNativeString((char*)(size_t)addr, (size_t)len);
 }
 
 /*JSON{

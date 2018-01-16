@@ -92,6 +92,19 @@ volatile unsigned char jshSPIBuf[SPI_COUNT][4]; // 4 bytes packed into an int
 JsSysTime jshLastWokenByUSB = 0;
 #endif
 
+/* On STM32 there's no 7 bit UART mode, so
+ * we much just fake it by using an 8 bit UART
+ * and then masking off the top bit */
+unsigned char jsh7BitUART;
+bool jshIsSerial7Bit(IOEventFlags device) {
+  assert(SERIAL_COUNT<=8);
+  return jsh7BitUART & (1<<(device-EV_SERIAL1));
+}
+void jshSetIsSerial7Bit(IOEventFlags device, bool is7Bit) {
+  assert(SERIAL_COUNT<=8);
+  if (is7Bit) jsh7BitUART |= (1<<(device-EV_SERIAL1));
+  else  jsh7BitUART &= ~(1<<(device-EV_SERIAL1));
+}
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
@@ -1061,6 +1074,7 @@ void jshInit() {
 #ifdef STM32F1
   BITFIELD_CLEAR(jshPinOpendrainPullup);
 #endif
+  jsh7BitUART = 0;
 
   // enable clocks
  #if defined(STM32F3)
@@ -2038,11 +2052,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   // USART_ReceiveData(USART1) & 0x7F; for the 7-bit case and
   // USART_ReceiveData(USART1) & 0xFF; for the 8-bit case
   // the register is 9-bits long.
+  jshSetIsSerial7Bit(device, inf->bytesize == 7);
 
   if((inf->bytesize == 7 && inf->parity > 0) || (inf->bytesize == 8 && inf->parity == 0)) {
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-  }
-  else if((inf->bytesize == 8 && inf->parity > 0) || (inf->bytesize == 9 && inf->parity == 0)) {
+  }   else if((inf->bytesize == 8 && inf->parity > 0) || (inf->bytesize == 9 && inf->parity == 0)) {
     USART_InitStructure.USART_WordLength = USART_WordLength_9b;
   }
   else {
