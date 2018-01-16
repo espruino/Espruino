@@ -976,6 +976,15 @@ JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
   return func;
 }
 
+JsVar *jsvNewNativeString(char *ptr, size_t len) {
+  if (len<65535) len=65535; // crop string to 65535 characters because that's all be can store in nativeStr.len
+  JsVar *str = jsvNewWithFlags(JSV_NATIVE_STRING);
+  if (!str) return 0;
+  str->varData.nativeStr.ptr = ptr;
+  str->varData.nativeStr.len = len;
+  return str;
+}
+
 void *jsvGetNativeFunctionPtr(const JsVar *function) {
   /* see descriptions in jsvar.h. If we have a child called JSPARSE_FUNCTION_CODE_NAME
    * then we execute code straight from that */

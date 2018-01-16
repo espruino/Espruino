@@ -36,6 +36,17 @@ boardName = boardName[2:]
 wrapperFileName = sys.argv[len(sys.argv)-1]
 wrapperFileName = wrapperFileName[2:]
 
+# Load any JS modules specified on command-line
+jsmodules = {}
+for i in range(1,len(sys.argv)):
+  arg = sys.argv[i]
+  if arg[0]!="-" and arg[-3:]==".js": 
+    modulename = arg.rsplit('/',1)[1][:-3]
+    if modulename[-4:]==".min": modulename=modulename[:-4]
+    print("Loading JS module: "+arg+" -> "+modulename)
+    jscode = open(arg, "r").read()
+    jsmodules[modulename] = jscode
+
 # ------------------------------------------------------------------------------------------------------
 
 def codeOut(s):
@@ -406,7 +417,7 @@ codeOut('  if (parent && !jsvIsRoot(parent)) {')
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 nativeCheck = "jsvIsNativeFunction(parent) && "
 codeOut('    if (jsvIsNativeFunction(parent)) {')
-codeOut('      JswSymList *l = jswGetSymbolListForObject(parent);')
+codeOut('      const JswSymList *l = jswGetSymbolListForObject(parent);')
 codeOut('      if (l) {');
 codeOut('        v = jswBinarySearch(l, parent, name);')
 codeOut('        if (v) return v;');
@@ -584,6 +595,13 @@ codeOut('void jswKill() {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="kill":
     codeOut("  "+jsondata["generate"]+"();")
+codeOut('}')
+
+codeOut("/** If we have a built-in module with the given name, return the module's contents - or 0 */")
+codeOut('const char *jswGetBuiltinModule(const char *name) {')
+for modulename in jsmodules:
+  codeOut("  if (!strcmp(name,\""+modulename+"\")) return "+json.dumps(jsmodules[modulename])+";")
+codeOut('  return 0;')
 codeOut('}')
 
 codeOut('')

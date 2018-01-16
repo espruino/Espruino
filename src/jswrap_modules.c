@@ -51,7 +51,6 @@ JsVar *jswrap_require(JsVar *moduleName) {
     return 0;
   }
   // Search to see if we have already loaded this module
-
   JsVar *moduleList = jswrap_modules_getModuleList();
   if (!moduleList) return 0; // out of memory
   JsVar *moduleExport = jsvSkipNameAndUnLock(jsvFindChildFromVar(moduleList, moduleName, false));
@@ -61,21 +60,31 @@ JsVar *jswrap_require(JsVar *moduleName) {
     return moduleExport;
   }
 
-  // Now check if it is built-in
+  // Now check if it is built-in (as an actual native function)
   char moduleNameBuf[32];
   void *builtInLib = 0;
   if (jsvGetString(moduleName, moduleNameBuf, sizeof(moduleNameBuf))<sizeof(moduleNameBuf))
     builtInLib = jswGetBuiltInLibrary(moduleNameBuf);
-
   if (builtInLib) {
     // create a 'fake' module that Espruino can use to map its built-in functions against
     moduleExport = jsvNewNativeFunction(builtInLib, 0);
-  } else {
-    // Now try and load it
-    JsVar *fileContents = 0;
-    //if (jsvIsStringEqual(moduleName,"http")) {}
-    //if (jsvIsStringEqual(moduleName,"fs")) {}
+  } 
+  // Ok - it's not built-in as native. We want to get the actual text and execute it
+  // Look and see if it's built-in as JS
+  if (!moduleExport) {
+    const char *builtInJS = jswGetBuiltinModule(moduleNameBuf);
+    if (builtInJS) {
+      JsVar *fileContents = jsvNewNativeString((char*)builtInJS, strlen(builtInJS));       
+      if (fileContents) {
+        moduleExport = jspEvaluateModule(fileContents);
+        jsvUnLock(fileContents);
+      }
+    }
+  }
+  // If we have filesystem support, look on the filesystem
 #ifdef USE_FILESYSTEM
+  if (!moduleExport) {
+    JsVar *fileContents = 0;        
     JsVar *modulePath = jsvNewFromString("node_modules/");
     if (!modulePath) return 0; // out of memory
     jsvAppendStringVarComplete(modulePath, moduleName);
@@ -88,22 +97,21 @@ JsVar *jswrap_require(JsVar *moduleName) {
       jsvUnLock2(fileContents, exception);
       fileContents = 0;
     }
-#endif
-    if (!fileContents || jsvIsStringEqual(fileContents,"")) {
-      jsvUnLock(fileContents);
-      jsExceptionHere(JSET_ERROR, "Module %q not found", moduleName);
-      return 0;
-    }
-    moduleExport = jspEvaluateModule(fileContents);
+    if (fileContents && jsvGetStringLength(fileContents)>0)
+      moduleExport = jspEvaluateModule(fileContents);
     jsvUnLock(fileContents);
   }
-
+#endif    
+   
   // Now save module
   if (moduleExport) { // could have been out of memory
     JsVar *moduleList = jswrap_modules_getModuleList();
     if (moduleList)
       jsvObjectSetChildVar(moduleList, moduleName, moduleExport);
     jsvUnLock(moduleList);
+  } else {
+    // nope. no module
+    jsExceptionHere(JSET_ERROR, "Module %q not found", moduleName);
   }
 
   return moduleExport;

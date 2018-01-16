@@ -409,12 +409,8 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
     if (jsvIsNativeString(lex->sourceVar)) {
       /* If we're parsing from a Native String (eg. E.memoryArea, E.setBootCode) then
       use another Native String to load function code straight from flash */
-      funcCodeVar = jsvNewWithFlags(JSV_NATIVE_STRING);
-      if (funcCodeVar) {
-        int s = (int)jsvStringIteratorGetIndex(&funcBegin.it) - 1;
-        funcCodeVar->varData.nativeStr.ptr = lex->sourceVar->varData.nativeStr.ptr + s;
-        funcCodeVar->varData.nativeStr.len = (uint16_t)(lastTokenEnd - s);
-      }
+      int s = (int)jsvStringIteratorGetIndex(&funcBegin.it) - 1;
+      funcCodeVar = jsvNewNativeString(lex->sourceVar->varData.nativeStr.ptr + s, lastTokenEnd - s);
     } else {
       if (jsfGetFlag(JSF_PRETOKENISE)) {
         funcCodeVar = jslNewTokenisedStringFromLexer(&funcBegin, (size_t)lastTokenEnd);
@@ -2773,7 +2769,7 @@ JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
    */
   JsVar *evCode;
   if (stringIsStatic)
-    evCode = jswrap_espruino_memoryArea((int)(size_t)str, (int)strlen(str));
+    evCode = jsvNewNativeString(str, strlen(str));
   else
     evCode = jsvNewFromString(str);
   if (!evCode) return 0;
