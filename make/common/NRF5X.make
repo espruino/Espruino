@@ -148,12 +148,12 @@ $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh.c \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_ble.c \
 $(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars/nrf_section_iter.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage.c \
+$(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage_sd.c \
 $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c \
 $(NRF5X_SDK_PATH)/components/libraries/atomic_fifo/nrf_atfifo.c \
 $(NRF5X_SDK_PATH)/components/libraries/strerror/nrf_strerror.c \
 $(NRF5X_SDK_PATH)/components/libraries/experimental_memobj/nrf_memobj.c \
-$(NRF5X_SDK_PATH)/components/libraries/balloc/nrf_balloc.c \
-$(NRF5X_SDK_PATH)/components/libraries/experimental_log/src/nrf_log_frontend.c
+$(NRF5X_SDK_PATH)/components/libraries/balloc/nrf_balloc.c
 endif
 
 

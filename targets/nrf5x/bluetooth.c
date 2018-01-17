@@ -56,7 +56,11 @@
 #if PEER_MANAGER_ENABLED
 #include "peer_manager.h"
 #include "fds.h"
+#if NRF_SD_BLE_API_VERSION<5
 #include "fstorage.h"
+#include "fstorage_internal_defs.h"
+#define FDS_PHY_PAGE_SIZE FS_PAGE_SIZE
+#endif
 #include "ble_conn_state.h"
 static pm_peer_id_t   m_peer_id;                              /**< Device reference handle to the current bonded central. */
 static pm_peer_id_t   m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];  /**< List of peers currently in the whitelist. */
@@ -64,7 +68,6 @@ static uint32_t       m_whitelist_peer_cnt;                                 /**<
 static bool           m_is_wl_changed;                                      /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
 // needed for peer_manager_init so we can smoothly upgrade from pre 1v92 firmwares
 #include "fds_internal_defs.h"
-#include "fstorage_internal_defs.h"
 // If we have peer manager we have central mode and NRF52
 // So just enable link security
 #define LINK_SECURITY
@@ -367,6 +370,77 @@ static void conn_params_error_handler(uint32_t nrf_error) {
 static void service_error_handler(uint32_t nrf_error) {
     APP_ERROR_HANDLER(nrf_error);
 }
+#endif
+
+#if NRF_LOG_ENABLED
+void nrf_log_frontend_std_0(uint32_t severity_mid, char const * const p_str) {
+  nrf_log_frontend_std_6(severity_mid, p_str,0,0,0,0,0,0);
+}
+
+
+void nrf_log_frontend_std_1(uint32_t            severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0) {
+  nrf_log_frontend_std_6(severity_mid, p_str,val0,0,0,0,0,0);
+}
+
+
+void nrf_log_frontend_std_2(uint32_t           severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0,
+                            uint32_t           val1) {
+  nrf_log_frontend_std_6(severity_mid, p_str,val0,val1,0,0,0,0);
+}
+
+
+void nrf_log_frontend_std_3(uint32_t           severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0,
+                            uint32_t           val1,
+                            uint32_t           val2) {
+  nrf_log_frontend_std_6(severity_mid, p_str,val0,val1,val2,0,0,0);
+}
+
+
+void nrf_log_frontend_std_4(uint32_t           severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0,
+                            uint32_t           val1,
+                            uint32_t           val2,
+                            uint32_t           val3) {
+  nrf_log_frontend_std_6(severity_mid, p_str,val0,val1,val2,val3,0,0);
+}
+
+
+void nrf_log_frontend_std_5(uint32_t           severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0,
+                            uint32_t           val1,
+                            uint32_t           val2,
+                            uint32_t           val3,
+                            uint32_t           val4) {
+  nrf_log_frontend_std_6(severity_mid, p_str,val0,val1,val2,val3,val4,0);
+}
+
+
+void nrf_log_frontend_std_6(uint32_t           severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0,
+                            uint32_t           val1,
+                            uint32_t           val2,
+                            uint32_t           val3,
+                            uint32_t           val4,
+                            uint32_t           val5) {
+#ifdef DEFAULT_CONSOLE_DEVICE
+  jshTransmitPrintf(DEFAULT_CONSOLE_DEVICE, p_str, val0, val1, val2, val3, val4, val5);
+  jshTransmit(DEFAULT_CONSOLE_DEVICE, '\r');
+  jshTransmit(DEFAULT_CONSOLE_DEVICE, '\n');
+#endif
+}
+
+nrf_log_module_dynamic_data_t NRF_LOG_MODULE_DATA_DYNAMIC = {
+    .module_id = 0
+};
 #endif
 
 /// Function for handling an event from the Connection Parameters Module.
@@ -786,7 +860,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         }
 
       case BLE_GATTS_EVT_WRITE: {
-        ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
+        const ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
         // TODO: detect if this was a nus write. If so, DO NOT create an event for it!
         // TODO: move to writing via event queue with jsble_queue_pending
         // We got a param write event - add this to the object callback queue
@@ -818,7 +892,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             int i;
             // Should actually return 'BLEService' object here
             for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++) {
-              ble_gattc_service_t *p_srv = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i];
+              const ble_gattc_service_t *p_srv = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i];
               // filter based on bleUUIDFilter if it's not invalid
               if (bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN)
                 if (!bleUUIDEqual(p_srv->uuid, bleUUIDFilter)) continue;
@@ -861,7 +935,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count!=0) {
           int i;
           for (i=0;i<p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count;i++) {
-            ble_gattc_char_t *p_chr = &p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[i];
+            const ble_gattc_char_t *p_chr = &p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[i];
             // filter based on bleUUIDFilter if it's not invalid
             if (bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN)
               if (!bleUUIDEqual(p_chr->uuid, bleUUIDFilter)) continue;
@@ -917,7 +991,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GATTC_EVT_DESC_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY)) {
         // trigger this with sd_ble_gattc_descriptors_discover(conn_handle, &handle_range);
         uint16_t cccd_handle = 0;
-        ble_gattc_evt_desc_disc_rsp_t * p_desc_disc_rsp_evt = &p_ble_evt->evt.gattc_evt.params.desc_disc_rsp;
+        const ble_gattc_evt_desc_disc_rsp_t * p_desc_disc_rsp_evt = &p_ble_evt->evt.gattc_evt.params.desc_disc_rsp;
         if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
           // The descriptor was found at the peer.
           // If the descriptor was a CCCD, then the cccd_handle needs to be populated.
@@ -944,7 +1018,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       }
 
       case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) {
-        ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
+        const ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
 
         JsVar *data = jsvNewDataViewWithData(p_read->len, (unsigned char*)&p_read->data[0]);
         jsvObjectSetChild(bleTaskInfo, "value", data); // set this.value
@@ -962,7 +1036,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
       case BLE_GATTC_EVT_HVX: {
         // Notification/Indication
-        ble_gattc_evt_hvx_t *p_hvx = &p_ble_evt->evt.gattc_evt.params.hvx;
+        const ble_gattc_evt_hvx_t *p_hvx = &p_ble_evt->evt.gattc_evt.params.hvx;
         // p_hvx>type is BLE_GATT_HVX_NOTIFICATION or BLE_GATT_HVX_INDICATION
         JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", 0);
         if (handles) {
@@ -1082,19 +1156,33 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 /// Function for dispatching a system event to interested modules.
 #if NRF_SD_BLE_API_VERSION<5
 static void soc_evt_handler(uint32_t sys_evt) {
-#else
-static void soc_evt_handler(uint32_t sys_evt, void * p_context) {
-#endif
 #if PEER_MANAGER_ENABLED
   // Dispatch the system event to the fstorage module, where it will be
   // dispatched to the Flash Data Storage (FDS) module.
   fs_sys_event_handler(sys_evt);
+#endif
+#else
+static void soc_evt_handler(uint32_t sys_evt, void * p_context) {
 #endif
   void jsh_sys_evt_handler(uint32_t sys_evt);
   jsh_sys_evt_handler(sys_evt);
 }
 
 #if PEER_MANAGER_ENABLED
+/**@brief Function for handling File Data Storage events.
+ *
+ * @param[in] p_evt  Peer Manager event.
+ * @param[in] cmd
+ */
+static void fds_evt_handler(fds_evt_t const * const p_evt)
+{
+    if (p_evt->id == FDS_EVT_GC)
+    {
+        NRF_LOG_DEBUG("GC completed\n");
+    }
+}
+
+
 /// Function for handling Peer Manager events.
 static void pm_evt_handler(pm_evt_t const * p_evt) {
     ret_code_t err_code;
@@ -1407,6 +1495,20 @@ static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size)
     }
 }
 
+static uint32_t flash_end_addr(void)
+{
+#if NRF_SD_BLE_API_VERSION>=5
+// Copied from fds.c because this isn't exported :(
+    uint32_t const bootloader_addr = NRF_UICR->NRFFW[0];
+    uint32_t const page_sz         = NRF_FICR->CODEPAGESIZE;
+    uint32_t const code_sz         = NRF_FICR->CODESIZE;
+    return (bootloader_addr != 0xFFFFFFFF) ? bootloader_addr : (code_sz * page_sz);
+#else
+    return (uint32_t)FS_PAGE_END_ADDR;
+#endif
+}
+
+
 static void peer_manager_init(bool erase_bonds) {
 
   /* Only initialise the peer manager once. This stops
@@ -1418,7 +1520,7 @@ static void peer_manager_init(bool erase_bonds) {
   This happens if we had a pre-1v92 firmware with saved code
   and then updated to something with peer manager so the pages
   got swapped around */
-  uint32_t *magicWord = ((uint32_t *)FS_PAGE_END_ADDR)-1;
+  uint32_t *magicWord = ((uint32_t *)flash_end_addr())-1;
   /* If the button is pressed at boot, clear out flash
    * pages as well. Nice easy way to reset! */
   bool buttonPressed = false;
@@ -1428,7 +1530,7 @@ static void peer_manager_init(bool erase_bonds) {
   if (FLASH_MAGIC == *magicWord || buttonPressed) {
     int i;
     for (i=1;i<=FDS_PHY_PAGES;i++)
-      jshFlashErasePage(((uint32_t)FS_PAGE_END_ADDR) - i*FS_PAGE_SIZE);
+      jshFlashErasePage((flash_end_addr()) - i*FDS_PHY_PAGE_SIZE);
   }
 
 
@@ -1464,6 +1566,9 @@ static void peer_manager_init(bool erase_bonds) {
   APP_ERROR_CHECK(err_code);
 
   err_code = pm_register(pm_evt_handler);
+  APP_ERROR_CHECK(err_code);
+
+  err_code = fds_register(fds_evt_handler);
   APP_ERROR_CHECK(err_code);
 
   memset(m_whitelist_peers, PM_PEER_ID_INVALID, sizeof(m_whitelist_peers));

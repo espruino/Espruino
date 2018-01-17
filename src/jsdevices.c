@@ -227,6 +227,18 @@ void jshTransmit(
   jshUSARTKick(device); // set up interrupts if required
 }
 
+static void jshTransmitPrintfCallback(const char *str, void *user_data) {
+  IOEventFlags device = (IOEventFlags)user_data;
+  while (*str) jshTransmit(device, *(str++));
+}
+
+void jshTransmitPrintf(IOEventFlags device, const char *fmt, ...) {
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf(jshTransmitPrintfCallback,(void *)device, fmt, argp);
+  va_end(argp);
+}
+
 // Return the device at the top of the transmit queue (or EV_NONE)
 IOEventFlags jshGetDeviceToTransmit() {
   if (!jshHasTransmitData()) return EV_NONE;

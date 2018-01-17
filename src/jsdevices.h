@@ -167,6 +167,8 @@ JsVar *jshGetDeviceObject(IOEventFlags device);
 //                                                         DATA TRANSMIT BUFFER
 /// Queue a character for transmission
 void jshTransmit(IOEventFlags device, unsigned char data);
+// Queue a formatted string for transmission
+void jshTransmitPrintf(IOEventFlags device, const char *fmt, ...);
 /// Wait for transmit to finish
 void jshTransmitFlush();
 /// Clear everything from a device
