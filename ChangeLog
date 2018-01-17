@@ -4,6 +4,7 @@
             ESP8266: switch to single ld file eagle.app.v6.new.2048.ld for ESP8266_4MB board
             Allow JS modules to be built-in by adding files to JSMODULESOURCES
             Fix slow/hacky handling of 7 bit serial data for STM32
+            Add more stack checks so invalid code `typeof typeof typeof x100` can't break stack (fix #1310)
 
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

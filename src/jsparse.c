@@ -1573,14 +1573,17 @@ NO_INLINE JsVar *jspeFactor() {
     if (!jspCheckStackPosition()) return 0;
     return jspeFactorArray();
   } else if (lex->tk==LEX_R_FUNCTION) {
+    if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_FUNCTION);
     return jspeFunctionDefinition(true);
   } else if (lex->tk==LEX_R_THIS) {
     JSP_ASSERT_MATCH(LEX_R_THIS);
     return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.root );
   } else if (lex->tk==LEX_R_DELETE) {
+    if (!jspCheckStackPosition()) return 0;
     return jspeFactorDelete();
   } else if (lex->tk==LEX_R_TYPEOF) {
+    if (!jspCheckStackPosition()) return 0;
     return jspeFactorTypeOf();
   } else if (lex->tk==LEX_R_VOID) {
     JSP_ASSERT_MATCH(LEX_R_VOID);
