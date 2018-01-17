@@ -104,7 +104,6 @@ const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   return 0;
 }
 
-
 /// Called when we have had an event that means we should execute JS
 void jshHadEvent() {
   hadEvent = true;
@@ -957,6 +956,18 @@ void jshUSARTKick(IOEventFlags device) {
       while (jshGetCharToTransmit(EV_SERIAL1)>=0);
     }
   }
+#if NRF_SD_BLE_API_VERSION>=5
+  if (device == EV_BLUETOOTH) {
+    /* FIXME This sucks - we don't want to do this here as
+    it means we always transmit just one character in a packet
+    all on its own! We'd be much better off flagging that we
+    had chars to send and then maybe doing them later with an
+    app_timer (if there's no solution for radio_notification) */
+    bool nus_transmit_string();
+    if (bleStatus & BLE_NUS_INITED)
+      nus_transmit_string();
+  }
+#endif
 }
 
 

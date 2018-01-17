@@ -426,6 +426,7 @@ bool nus_transmit_string() {
   return idx>0;
 }
 
+#if NRF_SD_BLE_API_VERSION<5
 /// Radio Notification handler
 void SWI1_IRQHandler(bool radio_evt) {
   if (bleStatus & BLE_NUS_INITED)
@@ -467,6 +468,7 @@ void SWI1_IRQHandler(bool radio_evt) {
   SysTick_Handler();
 #endif
 }
+#endif
 
 #if PEER_MANAGER_ENABLED
 static void ble_update_whitelist() {
@@ -759,8 +761,12 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         }
 #endif
         if (p_ble_evt->evt.common_evt.conn_handle == m_conn_handle) {
-          //TODO: probably want to figure out *which one* finished?
+          //TODO: probably want to figure out *which write* finished?
           bleStatus &= ~BLE_IS_SENDING;
+#if NRF_SD_BLE_API_VERSION>=5
+          if (bleStatus & BLE_NUS_INITED) // push more UART data out if we can
+            nus_transmit_string();
+#endif
           if (bleStatus & BLE_IS_SENDING_HID) {
             bleStatus &= ~BLE_IS_SENDING_HID;
             jsiQueueObjectCallbacks(execInfo.root, BLE_HID_SENT_EVENT, 0, 0);
@@ -1350,7 +1356,7 @@ static void gap_params_init() {
     APP_ERROR_CHECK(err_code);
 }
 
-uint32_t radio_notification_init(uint32_t irq_priority, uint8_t notification_type, uint8_t notification_distance) {
+static uint32_t radio_notification_init(uint32_t irq_priority, uint8_t notification_type, uint8_t notification_distance) {
     uint32_t err_code;
 
     err_code = sd_nvic_ClearPendingIRQ(SWI1_IRQn);
@@ -1785,6 +1791,7 @@ void jsble_advertising_stop() {
 
    jswrap_nrf_bluetooth_wake();
 
+#if NRF_SD_BLE_API_VERSION<5
    err_code = radio_notification_init(
  #ifdef NRF52
                            6, /* IRQ Priority -  Must be 6 on nRF52. 7 doesn't work */
@@ -1794,6 +1801,7 @@ void jsble_advertising_stop() {
                            NRF_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH,
                            NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
    APP_ERROR_CHECK(err_code);
+#endif
 }
 
 /** Completely deinitialise the BLE stack */
