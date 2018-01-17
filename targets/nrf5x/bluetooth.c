@@ -29,7 +29,7 @@
 #include "nordic_common.h"
 #include "nrf.h"
 
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
 #include "softdevice_handler.h"
 #else
 #include "nrf_sdm.h" // for softdevice_disable
@@ -89,15 +89,13 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
-#if (NRF_SD_BLE_API_VERSION == 3)
+#if NRF_SD_BLE_API_VERSION < 5
 #define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                        /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
-
-#endif
-#if (NRF_SD_BLE_API_VERSION == 5)
-#define NRF_BLE_MAX_MTU_SIZE            BLE_GATT_ATT_MTU_DEFAULT                     /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#else
+#define NRF_BLE_MAX_MTU_SIZE            NRF_SDH_BLE_GATT_MAX_MTU_SIZE               /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
@@ -128,9 +126,18 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 
 #define ADVERTISE_MAX_UUIDS             4 ///< maximum custom UUIDs to advertise
 
+#if NRF_SD_BLE_API_VERSION < 5
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
+#else
+BLE_NUS_DEF(m_nus);                                                                 /**< Structure to identify the Nordic UART Service. */
+#endif
+
 #if BLE_HIDS_ENABLED
+#if NRF_SD_BLE_API_VERSION < 5
 static ble_hids_t                       m_hids;                                   /**< Structure used to identify the HID service. */
+#else
+BLE_HIDS_DEF(m_hids);
+#endif
 static bool                             m_in_boot_mode = false;
 #endif
 
@@ -373,10 +380,20 @@ void log_uart_printf(const char * format_msg, ...) {
 
 // -----------------------------------------------------------------------------------
 // -------------------------------------------------------------------------- HANDLERS
+
+#if NRF_SD_BLE_API_VERSION<5
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length) {
-    jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_data, length);
-    jshHadEvent();
+  jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_data, length);
+  jshHadEvent();
 }
+#else
+static void nus_data_handler(ble_nus_evt_t * p_evt) {
+  if (p_evt->type == BLE_NUS_EVT_RX_DATA) {
+    jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
+    jshHadEvent();
+  }
+}
+#endif
 
 bool nus_transmit_string() {
   if (!jsble_has_simple_connection() ||
@@ -396,7 +413,7 @@ bool nus_transmit_string() {
     ch = jshGetCharToTransmit(EV_BLUETOOTH);
   }
   if (idx>0) {
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
     uint32_t err_code = ble_nus_string_send(&m_nus, buf, idx);
 #else
     uint16_t len = idx;
@@ -471,7 +488,11 @@ static void ble_update_whitelist() {
 #endif
 
 /// Function for the application's SoftDevice event handler.
+#if NRF_SD_BLE_API_VERSION<5
 static void ble_evt_handler(ble_evt_t * p_ble_evt) {
+#else
+static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
+#endif
     uint32_t err_code;
     //jsiConsolePrintf("\n[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );
 
@@ -681,16 +702,49 @@ static void ble_evt_handler(ble_evt_t * p_ble_evt) {
           }
       } break; // BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST
 
-#if (NRF_SD_BLE_API_VERSION == 3)
+#if (NRF_SD_BLE_API_VERSION >= 3)
       case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST:
           err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                      NRF_BLE_MAX_MTU_SIZE);
           APP_ERROR_CHECK(err_code);
           break; // BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST
 #endif
+#if (NRF_SD_BLE_API_VERSION >= 4)
+          case BLE_GAP_EVT_DATA_LENGTH_UPDATE_REQUEST:{
+            /* Allow SoftDevice to choose Data Length Update Procedure parameters
+            automatically. */
+            sd_ble_gap_data_length_update(p_ble_evt->evt.gap_evt.conn_handle, NULL, NULL);
+            break;
+          }
+          case BLE_GAP_EVT_DATA_LENGTH_UPDATE:{
+            /* Data Length Update Procedure completed, see
+            p_ble_evt->evt.gap_evt.params.data_length_update.effective_params for negotiated
+            parameters. */
+            break;
+          }
+#endif
+#if (NRF_SD_BLE_API_VERSION >= 5)
+          case BLE_GAP_EVT_PHY_UPDATE_REQUEST: {
+            /* The PHYs requested by the peer can be read from the event parameters:
+            p_ble_evt->evt.gap_evt.params.phy_update_request.peer_preferred_phys.
+            * Note that the peer's TX correponds to our RX and vice versa. */
+            /* Allow SoftDevice to choose PHY Update Procedure parameters automatically. */
+            ble_gap_phys_t phys = {BLE_GAP_PHY_AUTO, BLE_GAP_PHY_AUTO};
+            sd_ble_gap_phy_update(p_ble_evt->evt.gap_evt.conn_handle, &phys);
+            break;
+          }
+          case BLE_GAP_EVT_PHY_UPDATE: {
+            if (p_ble_evt->evt.gap_evt.params.phy_update.status == BLE_HCI_STATUS_CODE_SUCCESS) {
+              /* PHY Update Procedure completed, see
+              p_ble_evt->evt.gap_evt.params.phy_update.tx_phy and
+              p_ble_evt->evt.gap_evt.params.phy_update.rx_phy for the currently active PHYs of
+              the link. */
+            }
+            break;
+          }
+#endif
 
-
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
       case BLE_EVT_TX_COMPLETE:
 #else
       case BLE_GATTC_EVT_WRITE_CMD_TX_COMPLETE: // Write without Response transmission complete.
@@ -727,6 +781,7 @@ static void ble_evt_handler(ble_evt_t * p_ble_evt) {
 
       case BLE_GATTS_EVT_WRITE: {
         ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
+        // TODO: detect if this was a nus write. If so, DO NOT create an event for it!
         // TODO: move to writing via event queue with jsble_queue_pending
         // We got a param write event - add this to the object callback queue
         JsVar *evt = jsvNewObject();
@@ -993,7 +1048,7 @@ static void nfc_callback(void * p_context, hal_nfc_event_t event, const uint8_t 
 }
 #endif
 
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
 /// Function for dispatching a SoftDevice event to all modules with a SoftDevice event handler.
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 #if PEER_MANAGER_ENABLED
@@ -1019,7 +1074,11 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 #endif
 
 /// Function for dispatching a system event to interested modules.
+#if NRF_SD_BLE_API_VERSION<5
 static void soc_evt_handler(uint32_t sys_evt) {
+#else
+static void soc_evt_handler(uint32_t sys_evt, void * p_context) {
+#endif
 #if PEER_MANAGER_ENABLED
   // Dispatch the system event to the fstorage module, where it will be
   // dispatched to the Flash Data Storage (FDS) module.
@@ -1554,7 +1613,7 @@ static void services_init() {
 
 /// Function for the SoftDevice initialization.
 static void ble_stack_init() {
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
 
     uint32_t err_code;
 
@@ -1589,7 +1648,7 @@ static void ble_stack_init() {
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
 
     // Enable BLE stack.
-#if (NRF_SD_BLE_API_VERSION == 3)
+#if (NRF_SD_BLE_API_VERSION >= 3)
     ble_enable_params.gatt_enable_params.att_mtu = NRF_BLE_MAX_MTU_SIZE;
 #endif
     err_code = softdevice_enable(&ble_enable_params);
@@ -1698,7 +1757,7 @@ void jsble_advertising_start() {
   adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
   adv_params.interval = bleAdvertisingInterval;
 
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
   sd_ble_gap_adv_start(&adv_params);
 #else
   sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
@@ -1714,6 +1773,7 @@ void jsble_advertising_stop() {
 
 /** Initialise the BLE stack */
  void jsble_init() {
+   uint32_t err_code;
    ble_stack_init();
 #if PEER_MANAGER_ENABLED
    peer_manager_init(true /*erase_bonds*/);
@@ -1725,14 +1785,15 @@ void jsble_advertising_stop() {
 
    jswrap_nrf_bluetooth_wake();
 
-   radio_notification_init(
+   err_code = radio_notification_init(
  #ifdef NRF52
                            6, /* IRQ Priority -  Must be 6 on nRF52. 7 doesn't work */
  #else
                            3, /* IRQ Priority -  nRF51 has different IRQ structure */
  #endif
-                           NRF_RADIO_NOTIFICATION_TYPE_INT_ON_INACTIVE,
+                           NRF_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH,
                            NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
+   APP_ERROR_CHECK(err_code);
 }
 
 /** Completely deinitialise the BLE stack */
@@ -2086,7 +2147,7 @@ void jsble_central_connect(ble_gap_addr_t peer_addr) {
   ble_gap_addr_t addr;
   addr = peer_addr;
 
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
   err_code = sd_ble_gap_connect(&addr, &m_scan_param, &gap_conn_params);
 #else
   err_code = sd_ble_gap_connect(&addr, &m_scan_param, &gap_conn_params, APP_BLE_CONN_CFG_TAG);

@@ -35,7 +35,7 @@
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
 #include "softdevice_handler.h"
 #endif
 
@@ -834,7 +834,7 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   uint8_t   encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
 
 #ifdef NRF5X
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
   err_code = adv_data_encode(&advdata, encoded_advdata, &len_advdata);
 #else
   err_code = ble_advdata_encode(&advdata, encoded_advdata, &len_advdata);
@@ -1214,7 +1214,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
                 err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
                 if ((err_code != NRF_SUCCESS)
                   && (err_code != NRF_ERROR_INVALID_STATE)
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
                   && (err_code != BLE_ERROR_NO_TX_PACKETS)
 #else
                   && (err_code != NRF_ERROR_RESOURCES)

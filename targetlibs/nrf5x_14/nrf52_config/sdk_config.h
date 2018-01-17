@@ -7090,7 +7090,7 @@
 
 // <o> NRF_SDH_BLE_TOTAL_LINK_COUNT - Maximum number of total concurrent connections using the default configuration.
 #ifndef NRF_SDH_BLE_TOTAL_LINK_COUNT
-#define NRF_SDH_BLE_TOTAL_LINK_COUNT 1
+#define NRF_SDH_BLE_TOTAL_LINK_COUNT 2
 #endif
 
 // <o> NRF_SDH_BLE_GAP_EVENT_LENGTH - The time set aside for this connection on every connection interval in 1.25 ms units.
@@ -7101,6 +7101,7 @@
 // <o> NRF_SDH_BLE_GATT_MAX_MTU_SIZE - Static maximum MTU size.
 #ifndef NRF_SDH_BLE_GATT_MAX_MTU_SIZE
 #define NRF_SDH_BLE_GATT_MAX_MTU_SIZE 23
+// #define NRF_SDH_BLE_GATT_MAX_MTU_SIZE 247 // TODO: could maybe manage this much?
 #endif
 
 // <o> NRF_SDH_BLE_GATTS_ATTR_TAB_SIZE - Attribute Table size in bytes. The size must be a multiple of 4.
@@ -7448,12 +7449,12 @@
 // <2=> NRF_CLOCK_LF_SRC_SYNTH
 
 #ifndef NRF_SDH_CLOCK_LF_SRC
-#define NRF_SDH_CLOCK_LF_SRC 1
+#define NRF_SDH_CLOCK_LF_SRC 0 // RC clock
 #endif
 
 // <o> NRF_SDH_CLOCK_LF_RC_CTIV - SoftDevice calibration timer interval.
 #ifndef NRF_SDH_CLOCK_LF_RC_CTIV
-#define NRF_SDH_CLOCK_LF_RC_CTIV 0
+#define NRF_SDH_CLOCK_LF_RC_CTIV 16
 #endif
 
 // <o> NRF_SDH_CLOCK_LF_RC_TEMP_CTIV - SoftDevice calibration timer interval under constant temperature.
@@ -7461,7 +7462,7 @@
 // <i>  if the temperature has not changed.
 
 #ifndef NRF_SDH_CLOCK_LF_RC_TEMP_CTIV
-#define NRF_SDH_CLOCK_LF_RC_TEMP_CTIV 0
+#define NRF_SDH_CLOCK_LF_RC_TEMP_CTIV 4
 #endif
 
 // <o> NRF_SDH_CLOCK_LF_XTAL_ACCURACY  - External crystal clock accuracy used in the LL to compute timing windows.

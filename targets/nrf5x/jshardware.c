@@ -57,7 +57,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_drv_spi.h"
 
 #include "nrf5x_utils.h"
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
 #include "softdevice_handler.h"
 #endif
 
@@ -275,7 +275,7 @@ void jshInit() {
   uint32_t err_code;
   nrf_drv_gpiote_init();
 #ifdef BLUETOOTH
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
   APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
 #else
   app_timer_init();
@@ -995,7 +995,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   if (spi0Initialised) nrf_drv_spi_uninit(&spi0);
   spi0Initialised = true;
   // No event handler means SPI transfers are blocking
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
   uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL);
 #else
   uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL, NULL);
@@ -1203,7 +1203,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     timeUntilWake = jshGetTimeFromMilliseconds(240*1000);
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
-#ifdef NRF5X_SDK_12
+#if NRF_SD_BLE_API_VERSION<5
     uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake), APP_TIMER_PRESCALER);
 #else
     uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake));
