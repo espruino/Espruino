@@ -27,8 +27,11 @@ ARM = 1
 ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
 INCLUDE += -I$(NRF5X_SDK_PATH)
 
-TEMPLATE_PATH = $(NRF5X_SDK_PATH)/nrf5x_linkers # This is where the common linker for both nRF51 & nRF52 is stored.
-LDFLAGS += -L$(TEMPLATE_PATH)
+ifdef NRF5X_SDK_12
+LDFLAGS += -L$(NRF5X_SDK_PATH)/nrf5x_linkers # This is where the common linker for both nRF51 & nRF52 is stored.
+else
+LDFLAGS += -L$(NRF5X_SDK_PATH)/components/toolchain/gcc # This is where the common linker for both nRF51 & nRF52 is stored.
+endif
 
 # These files are the Espruino HAL implementation.
 INCLUDE += -I$(ROOT)/targets/nrf5x

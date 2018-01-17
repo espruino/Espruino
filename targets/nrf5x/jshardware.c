@@ -219,6 +219,8 @@ void jshResetPeripherals() {
 }
 
 void jshInit() {
+  memset(pinStates, 0, sizeof(pinStates));
+
   jshInitDevices();
   jshResetPeripherals();
 
