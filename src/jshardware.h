@@ -408,6 +408,17 @@ unsigned int jshGetRandomNumber();
  * speed in Hz though. */
 unsigned int jshSetSystemClock(JsVar *options);
 
+#if JSH_PORTV_COUNT>0
+/// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
+void jshVirtualPinInitialise();
+/// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
+void jshVirtualPinSetValue(Pin pin, bool state);
+/// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
+bool jshVirtualPinGetValue(Pin pin);
+/// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
+void jshVirtualPinSetState(Pin pin, JshPinState state);
+#endif
+
 /** Hacky definition of wait cycles used for WAIT_UNTIL.
  * TODO: make this depend on known system clock speed? */
 #if defined(STM32F401xx) || defined(STM32F411xx)
