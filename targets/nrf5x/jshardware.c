@@ -76,6 +76,11 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+// Current values used in PWM channel counters
+static uint16_t pwmValues[3][4];
+// Current values used in main PWM counters
+static uint16_t pwmCounters[3];
+
 /// For flash - whether it is busy or not...
 volatile bool flashIsBusy = false;
 volatile bool hadEvent = false; // set if we've had an event we need to deal with
@@ -775,20 +780,36 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 
   int timer = ((func&JSH_MASK_TYPE)-JSH_TIMER1) >> JSH_SHIFT_TYPE;
   int channel = (func&JSH_MASK_INFO) >> JSH_SHIFT_INFO;
-
-  static uint16_t pwmValues[3][4];
+  pwmCounters[timer] = counter;
   pwmValues[timer][channel] = counter - (uint16_t)(value*counter);
   nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
   nrf_pwm_seq_ptr_set(      pwm, 0, &pwmValues[timer][0]);
   nrf_pwm_seq_cnt_set(      pwm, 0, 4);
   nrf_pwm_seq_refresh_set(  pwm, 0, 0);
   nrf_pwm_seq_end_delay_set(pwm, 0, 0);
-
   nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
   // nrf_pwm_disable(pwm);
   return func;
 #endif
 } // if freq<=0, the default is used
+
+/// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
+void jshSetOutputValue(JshPinFunction func, int value) {
+  if (!JSH_PINFUNCTION_IS_TIMER(func))
+    return;
+
+  NRF_PWM_Type *pwm = nrf_get_pwm(func);
+  int timer = ((func&JSH_MASK_TYPE)-JSH_TIMER1) >> JSH_SHIFT_TYPE;
+  int channel = (func&JSH_MASK_INFO) >> JSH_SHIFT_INFO;
+  uint32_t counter = pwmCounters[timer];
+  pwmValues[timer][channel] = counter - (uint16_t)((uint32_t)value*counter >> 16);
+  nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
+  nrf_pwm_seq_ptr_set(      pwm, 0, &pwmValues[timer][0]);
+  nrf_pwm_seq_cnt_set(      pwm, 0, 4);
+  nrf_pwm_seq_refresh_set(  pwm, 0, 0);
+  nrf_pwm_seq_end_delay_set(pwm, 0, 0);
+  nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
+}
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   // ---- USE TIMER FOR PULSE
@@ -856,11 +877,8 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
 
 /// Given a Pin, return the current pin function associated with it
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
-  return JSH_NOTHING;
-}
-
-/// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
-void jshSetOutputValue(JshPinFunction func, int value) {
+  if (!jshIsPinValid(pin)) return JSH_NOTHING;
+  return pinStates[pin];
 }
 
 /// Enable watchdog with a timeout in seconds
