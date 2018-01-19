@@ -1134,7 +1134,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_PEERS_DELETE_FAILED:
             // Assert.
-            APP_ERROR_CHECK(p_evt->params.peers_delete_failed_evt.error);
+            jsWarn("PM: PM_EVT_PEERS_DELETE_FAILED %d", p_evt->params.peers_delete_failed_evt.error);
+            //APP_ERROR_CHECK(p_evt->params.peers_delete_failed_evt.error);
             break;
 
         case PM_EVT_LOCAL_DB_CACHE_APPLIED:
@@ -1655,7 +1656,7 @@ void jsble_advertising_stop() {
  void jsble_init() {
    ble_stack_init();
 #if PEER_MANAGER_ENABLED
-   peer_manager_init(true /*erase_bonds*/);
+   peer_manager_init(false /*don't erase_bonds*/);
 #endif
    gap_params_init();
    services_init();
