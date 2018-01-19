@@ -500,7 +500,6 @@ bool nus_transmit_string() {
   return idx>0;
 }
 
-#if NRF_SD_BLE_API_VERSION<5
 /// Radio Notification handler
 void SWI1_IRQHandler(bool radio_evt) {
   if (bleStatus & BLE_NUS_INITED)
@@ -542,7 +541,6 @@ void SWI1_IRQHandler(bool radio_evt) {
   SysTick_Handler();
 #endif
 }
-#endif
 
 #if PEER_MANAGER_ENABLED
 static void ble_update_whitelist() {
@@ -1295,7 +1293,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_ERROR_UNEXPECTED:
             // Assert.
-            APP_ERROR_CHECK(p_evt->params.error_unexpected.error);
+            jsWarn("PM: PM_EVT_ERROR_UNEXPECTED %d", p_evt->params.error_unexpected.error);
+            //APP_ERROR_CHECK(p_evt->params.error_unexpected.error);
             break;
 
         case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
@@ -1320,7 +1319,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_PEERS_DELETE_FAILED:
             // Assert.
-            APP_ERROR_CHECK(p_evt->params.peers_delete_failed_evt.error);
+            jsWarn("PM: PM_EVT_PEERS_DELETE_FAILED %d", p_evt->params.peers_delete_failed_evt.error);
+            //APP_ERROR_CHECK(p_evt->params.peers_delete_failed_evt.error);
             break;
 
         case PM_EVT_LOCAL_DB_CACHE_APPLIED:
@@ -1886,17 +1886,6 @@ void jsble_advertising_stop() {
  void jsble_init() {
    uint32_t err_code;
    ble_stack_init();
-#if PEER_MANAGER_ENABLED
-   peer_manager_init(true /*erase_bonds*/);
-#endif
-   gap_params_init();
-   services_init();
-   advertising_init();
-   conn_params_init();
-
-   jswrap_nrf_bluetooth_wake();
-
-#if NRF_SD_BLE_API_VERSION<5
    err_code = radio_notification_init(
  #ifdef NRF52
                            6, /* IRQ Priority -  Must be 6 on nRF52. 7 doesn't work */
@@ -1906,7 +1895,15 @@ void jsble_advertising_stop() {
                            NRF_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH,
                            NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
    APP_ERROR_CHECK(err_code);
+#if PEER_MANAGER_ENABLED
+   peer_manager_init(false /*don't erase_bonds*/);
 #endif
+   gap_params_init();
+   services_init();
+   advertising_init();
+   conn_params_init();
+
+   jswrap_nrf_bluetooth_wake();
 }
 
 /** Completely deinitialise the BLE stack */
