@@ -61,7 +61,7 @@ Pin jshGetPinFromString(const char *s) {
 #else
       if (0) {
 #if JSH_PORTA_OFFSET!=-1
-      else if (port == JSH_PORTA) {
+      } else if (port == JSH_PORTA) {
         if (pin<JSH_PORTA_COUNT) return (Pin)(JSH_PORTA_OFFSET + pin);
 #endif
 #if JSH_PORTB_OFFSET!=-1
