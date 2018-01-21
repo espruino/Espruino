@@ -177,6 +177,9 @@ ifdef USE_NET
 ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
+ifdef W5100
+USE_WIZNET_W5100=1
+endif
 else ifeq ($(FAMILY),ESP8266)
 USE_ESP8266=1
 else ifeq ($(FAMILY),ESP32)
@@ -426,8 +429,14 @@ ifdef USE_NET
  libs/network/wiznet/DNS/dns.c \
  libs/network/wiznet/DHCP/dhcp.c \
  libs/network/wiznet/Ethernet/wizchip_conf.c \
- libs/network/wiznet/Ethernet/socket.c \
- libs/network/wiznet/W5500/w5500.c
+ libs/network/wiznet/Ethernet/socket.c
+  ifdef USE_WIZNET_W5100
+   DEFINES += -D_WIZCHIP_=5100
+   SOURCES += libs/network/wiznet/W5100/w5100.c
+  else
+   DEFINES += -D_WIZCHIP_=5500
+   SOURCES += libs/network/wiznet/W5500/w5500.c
+  endif
  endif
 
  ifdef USE_WICED
