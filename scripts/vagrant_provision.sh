@@ -3,7 +3,10 @@
 # This script is run by Vagrant when a new machine is provisioned.
 #
 
-sudo apt-get -qq -y install git
+# To mute 'dpkg-preconfigure: unable to re-open stdin: No such file or directory'
+# warning the DEBIAN_FRONTEND=noninteractive needs to be set for `apt-get install`
+
+sudo DEBIAN_FRONTEND=noninteractive apt-get -qq -y install git
 
 # move to 'Espruino' directory
 cd `dirname $0`/..

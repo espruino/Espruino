@@ -33,7 +33,7 @@ FAMILY=`scripts/get_board_info.py $BOARDNAME 'board.chip["family"]'`
 if [ "$FAMILY" = "ESP32" ]; then
     echo ESP32
     # needed for esptool for merging binaries
-    sudo apt-get install -qq -y python python-pip
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python-pip
     sudo pip -q install pyserial
     # SDK
     if [ ! -d "app" ]; then
@@ -84,7 +84,7 @@ elif [ "$FAMILY" = "NRF52" ]; then
     echo NRF52
     if ! type nrfutil 2> /dev/null > /dev/null; then
       echo Installing nrfutil
-      sudo apt-get install -qq -y python python-pip
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python-pip
       sudo pip -q install nrfutil
     fi
     ARM=1
@@ -114,7 +114,7 @@ if [ $ARM = "1" ]; then
         echo installing gcc-arm-embedded
         #sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
         #sudo apt-get update
-        #sudo apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
+        #sudo DEBIAN_FRONTEND=noninteractive apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
         # Unpack - newer, and much faster
         if [ ! -d "gcc-arm-none-eabi-6-2017-q1-update" ]; then
           curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/arm/gcc-arm-none-eabi-6-2017-q1-update-linux.tar.bz2 | tar xfj - --no-same-owner
