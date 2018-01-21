@@ -38,16 +38,16 @@ if [ "$FAMILY" = "ESP32" ]; then
     # SDK
     if [ ! -d "app" ]; then
         echo installing app folder
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/app.tgz | tar xfz -
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/app.tgz | tar xfz - --no-same-owner
     fi
     if [ ! -d "esp-idf" ]; then
         echo installing esp-idf folder
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/esp-idf.tgz | tar xfz -
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
     fi
     if ! type xtensa-esp32-elf-gcc 2> /dev/null > /dev/null; then
         echo installing xtensa-esp32-elf-gcc
         if [ ! -d "xtensa-esp32-elf" ]; then
-           curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz | tar xfz -
+           curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz | tar xfz - --no-same-owner
         else
            echo "Folder found"
         fi
@@ -61,12 +61,12 @@ elif [ "$FAMILY" = "ESP8266" ]; then
     echo ESP8266
     if [ ! -d "esp_iot_sdk_v2.0.0.p1" ]; then
         echo esp_iot_sdk_v2.0.0.p1
-        curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf -
+        curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf - --no-same-owner
     fi
     if ! type xtensa-lx106-elf-gcc 2> /dev/null > /dev/null; then
         echo installing xtensa-lx106-elf-gcc
         if [ ! -d "xtensa-lx106-elf" ]; then
-            curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
+            curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf - --no-same-owner
         else
             echo "Folder found"
         fi
@@ -117,7 +117,7 @@ if [ $ARM = "1" ]; then
         #sudo apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
         # Unpack - newer, and much faster
         if [ ! -d "gcc-arm-none-eabi-6-2017-q1-update" ]; then
-          curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/arm/gcc-arm-none-eabi-6-2017-q1-update-linux.tar.bz2 | tar xfj -
+          curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/arm/gcc-arm-none-eabi-6-2017-q1-update-linux.tar.bz2 | tar xfj - --no-same-owner
         else
             echo "Folder found"
         fi
