@@ -795,6 +795,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 
 /// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value) {
+#ifdef NRF52
   if (!JSH_PINFUNCTION_IS_TIMER(func))
     return;
 
@@ -809,6 +810,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   nrf_pwm_seq_refresh_set(  pwm, 0, 0);
   nrf_pwm_seq_end_delay_set(pwm, 0, 0);
   nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
+#endif
 }
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
