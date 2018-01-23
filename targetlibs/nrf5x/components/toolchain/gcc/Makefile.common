@@ -54,29 +54,55 @@ define bind_obj_with_src
 $(eval $(1) := $(2))
 endef
 
+# $1 object file
+# $2 target name
+define bind_obj_with_target
+$(eval $(1)T := $(2))
+endef
+
+# $1 target name
+# $2 source file name
+# Note: this additional .o for .s-files is a workaround for issues with make 4.1
+#       from MinGW (it does nothing to remake .s.o files when a rule for .S.o
+#       files is defined as well).
+define get_object_file_name
+$(OUTPUT_DIRECTORY)/$(strip $(1))_$(patsubst %.s,%.s.o,$(notdir $(2))).o
+endef
+
 # $1 target name
 # $2 list of source files
 define get_object_files
 $(foreach src_file, $(2), \
   $(call ensure_exists,source file, $(src_file)) \
-  $(eval obj_file := \
-    $(OUTPUT_DIRECTORY)/$(strip $(1))_$(notdir $(src_file)).o) \
-  $(eval $(strip $(1))_dependencies += $(obj_file:.o=.d)) \
+  $(eval obj_file := $(call get_object_file_name, $(1), $(src_file))) \
+  $(eval DEPENDENCIES += $(obj_file:.o=.d)) \
   $(call bind_obj_with_src, $(obj_file), $(src_file)) \
+  $(call bind_obj_with_target, $(obj_file), $(1)) \
   $(eval $(obj_file): Makefile) \
   $(obj_file))
+endef
+
+# $1 variable name
+# $2 target name
+define target_specific
+$($(addsuffix _$(strip $(2)), $(1)))
 endef
 
 # $1 target name
 # $2 link target name
 define prepare_build
+$(eval DEPENDENCIES :=) \
 $(eval $(2): \
-  $(call get_object_files, $(1), $(SRC_FILES) $(SRC_FILES_$(strip $(1))))) \
-$(eval INC_PATHS := \
-  $(foreach folder, $(INC_FOLDERS) $(INC_FOLDERS_$(strip $(1))), \
+  $(call get_object_files, $(1), $(SRC_FILES) \
+    $(call target_specific, SRC_FILES, $(1)))) \
+$(eval -include $(DEPENDENCIES)) \
+$(eval INC_PATHS_$(strip $(1)) := \
+  $(foreach folder, $(INC_FOLDERS) $(call target_specific, INC_FOLDERS, $(1)), \
     $(call ensure_exists,include folder, $(folder)) \
     -I"$(folder)"))
 endef
+
+INC_PATHS = $(call target_specific, INC_PATHS, $($@T))
 
 # $1 target name
 define define_target
@@ -106,23 +132,28 @@ $(OUTPUT_DIRECTORY):
 # Create objects from C source files
 $(OUTPUT_DIRECTORY)/%.c.o: | $(OUTPUT_DIRECTORY)
 	@echo Compiling file: $(notdir $($@))
-	$(NO_ECHO)$(CC) -std=c99 $(CFLAGS) $(INC_PATHS) -c -o $@ "$($@)"
+	$(NO_ECHO)$(CC) -MP -MD -std=c99 $(CFLAGS) $(INC_PATHS) -c -o $@ "$($@)"
 
 # Create objects from C++ source files
 $(OUTPUT_DIRECTORY)/%.cpp.o: | $(OUTPUT_DIRECTORY)
 	@echo Compiling file: $(notdir $($@))
-	$(NO_ECHO)$(CXX) $(CFLAGS) $(CXXFLAGS) $(INC_PATHS) -c -o $@ "$($@)"
+	$(NO_ECHO)$(CXX) -MP -MD $(CFLAGS) $(CXXFLAGS) $(INC_PATHS) -c -o $@ "$($@)"
 
 # Create objects from assembly files
 $(OUTPUT_DIRECTORY)/%.S.o \
-$(OUTPUT_DIRECTORY)/%.s.o: | $(OUTPUT_DIRECTORY)
+$(OUTPUT_DIRECTORY)/%.s.o.o: | $(OUTPUT_DIRECTORY)
 	@echo Assembling file: $(notdir $($@))
-	$(NO_ECHO)$(CC) -std=c99 $(ASMFLAGS) $(INC_PATHS) -c -o $@ "$($@)"
+	$(NO_ECHO)$(CC) -MP -MD -std=c99 $(ASMFLAGS) $(INC_PATHS) -c -o $@ "$($@)"
 
+export FILE_LIST
+DUMP_FILE_LIST := \
+  "$(MAKE)" -s --no-print-directory -f $(TEMPLATE_PATH)/file_list.mk
 # Link object files
 %.out:
+	$(eval FILE_LIST := $^ $(LIB_FILES))
+	$(NO_ECHO)$(DUMP_FILE_LIST) > $(@:.out=.in)
 	@echo Linking target: $@
-	$(NO_ECHO)$(CC) -Wl,-Map=$(@:.out=.map) $(LDFLAGS) $^ $(LIB_FILES) -lm -o $@
+	$(NO_ECHO)$(CC) -Wl,-Map=$(@:.out=.map) $(LDFLAGS) @$(@:.out=.in) -lm -o $@
 	-@echo ''
 	$(NO_ECHO)$(SIZE) $@
 	-@echo ''

@@ -1,16 +1,44 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
-#include "sdk_config.h"
-#if FDS_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(FDS)
 #include "fds.h"
 #include "fds_internal_defs.h"
 
@@ -18,7 +46,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include "fstorage.h"
-#include "app_util.h"
 #include "nrf_error.h"
 
 #if defined(FDS_CRC_ENABLED)
@@ -39,7 +66,8 @@ FS_REGISTER_CFG(fs_config_t fs_config) =
 };
 
 // Used to flag a record as dirty, i.e. ready for garbage collection.
-static fds_tl_t const m_fds_tl_dirty =
+// Must be statically allocated since it will be written to flash.
+__ALIGN(4) static fds_tl_t const m_fds_tl_dirty =
 {
     .record_key   = FDS_RECORD_KEY_DIRTY,
     .length_words = 0xFFFF  // Leave the record length field unchanged in flash.
@@ -707,7 +735,7 @@ static fds_init_opts_t pages_init()
                 page_scan(p_page_addr, &m_swap_page.write_offset, NULL);
 
                 ret |= (m_swap_page.write_offset == FDS_PAGE_TAG_SIZE) ?
-                        SWAP_EMPTY : SWAP_DIRTY;
+                        PAGE_SWAP_CLEAN : PAGE_SWAP_DIRTY;
                 break;
 
             default:
@@ -764,13 +792,20 @@ static ret_code_t record_header_write_finalize(fds_op_t * const p_op, uint32_t *
 }
 
 
-static ret_code_t record_header_flag_dirty(uint32_t * const p_record)
+static ret_code_t record_header_flag_dirty(uint32_t * const p_record, uint16_t page_to_gc)
 {
     // Flag the record as dirty.
     fs_ret_t ret = fs_store(&fs_config, p_record,
                             (uint32_t*)&m_fds_tl_dirty, FDS_HEADER_SIZE_TL, NULL);
 
-    return (ret == FS_SUCCESS) ? FDS_SUCCESS : FDS_ERR_BUSY;
+    if (ret != FS_SUCCESS)
+    {
+        return FDS_ERR_BUSY;
+    }
+
+    m_pages[page_to_gc].can_gc = true;
+
+    return FDS_SUCCESS;
 }
 
 
@@ -795,10 +830,7 @@ static ret_code_t record_find_and_delete(fds_op_t * const p_op)
         p_op->del.record_key = p_header->tl.record_key;
 
         // Flag the record as dirty.
-        ret = record_header_flag_dirty((uint32_t*)desc.p_record);
-
-        // This page can now be garbage collected.
-        m_pages[page].can_gc = true;
+        ret = record_header_flag_dirty((uint32_t*)desc.p_record, page);
     }
     else
     {
@@ -825,10 +857,7 @@ static ret_code_t file_find_and_delete(fds_op_t * const p_op)
     if (ret == FDS_SUCCESS)
     {
          // A record was found: flag it as dirty.
-        ret = record_header_flag_dirty((uint32_t*)desc.p_record);
-
-        // This page can now be garbage collected.
-        m_pages[tok.page].can_gc = true;
+        ret = record_header_flag_dirty((uint32_t*)desc.p_record, tok.page);
     }
     else // FDS_ERR_NOT_FOUND
     {
@@ -1195,6 +1224,10 @@ static ret_code_t write_execute(uint32_t prev_ret, fds_op_t * const p_op)
 
     // This must persist across calls.
     static fds_record_desc_t desc = {0};
+    // When a record is updated, this variable will hold the page where the old
+    // copy was stored. This will be used to set the can_gc flag when the header is
+    // invalidated (FDS_OP_WRITE_FLAG_DIRTY).
+    static uint16_t page;
 
     if (prev_ret != FS_SUCCESS)
     {
@@ -1214,8 +1247,6 @@ static ret_code_t write_execute(uint32_t prev_ret, fds_op_t * const p_op)
             // The first step of updating a record constists of locating the copy to be deleted.
             // If the old copy couldn't be found for any reason then the update should fail.
             // This prevents duplicates when queuing multiple updates of the same record.
-
-            uint16_t page;
             desc.p_record  = NULL;
             desc.record_id = p_op->write.record_to_delete;
 
@@ -1244,7 +1275,7 @@ static ret_code_t write_execute(uint32_t prev_ret, fds_op_t * const p_op)
             break;
 
         case FDS_OP_WRITE_FLAG_DIRTY:
-            ret = record_header_flag_dirty((uint32_t*)desc.p_record);
+            ret = record_header_flag_dirty((uint32_t*)desc.p_record, page);
             p_op->write.step = FDS_OP_WRITE_DONE;
             break;
 
@@ -1602,7 +1633,11 @@ ret_code_t fds_register(fds_cb_t cb)
 
 ret_code_t fds_init(void)
 {
-    fds_evt_t const evt_success = { .id = FDS_EVT_INIT, .result = FDS_SUCCESS };
+    fds_evt_t const evt_success =
+    {
+        .id     = FDS_EVT_INIT,
+        .result = FDS_SUCCESS
+    };
 
     // No initialization is necessary. Notify the application immediately.
     if (flag_is_set(FDS_FLAG_INITIALIZED))
@@ -1622,28 +1657,24 @@ ret_code_t fds_init(void)
 
     // Initialize the page structure (m_pages), and determine which
     // initialization steps are required given the current state of the filesystem.
-    fds_init_opts_t init_opts = pages_init();
-
-    if (init_opts == NO_PAGES)
-    {
-        return FDS_ERR_NO_PAGES;
-    }
-
-    if (init_opts == ALREADY_INSTALLED)
-    {
-        // No initialization is necessary. Notify the application immediately.
-        flag_set(FDS_FLAG_INITIALIZED);
-        flag_clear(FDS_FLAG_INITIALIZING);
-
-        event_send(&evt_success);
-        return FDS_SUCCESS;
-    }
-
     fds_op_t op;
     op.op_code = FDS_OP_INIT;
 
+    fds_init_opts_t init_opts = pages_init();
+
     switch (init_opts)
     {
+        case NO_PAGES:
+        case NO_SWAP:
+            return FDS_ERR_NO_PAGES;
+
+        case ALREADY_INSTALLED:
+            // No initialization is necessary. Notify the application immediately.
+            flag_set(FDS_FLAG_INITIALIZED);
+            flag_clear(FDS_FLAG_INITIALIZING);
+            event_send(&evt_success);
+            return FDS_SUCCESS;
+
         case FRESH_INSTALL:
         case TAG_SWAP:
             op.init.step = FDS_OP_INIT_TAG_SWAP;
@@ -2070,4 +2101,4 @@ ret_code_t fds_verify_crc_on_writes(bool enable)
 }
 
 #endif
-#endif //FDS_ENABLED
+#endif //NRF_MODULE_ENABLED(FDS)

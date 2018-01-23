@@ -1,13 +1,41 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 #ifndef NRF_DRV_COMP_H__
@@ -89,23 +117,23 @@ typedef struct
 } nrf_drv_comp_config_t;
 
 /** @brief COMP threshold default configuration. */
-#define COMP_CONFIG_TH                               \
-{                                                    \
-    .th_down = VOLTAGE_THRESHOLD_TO_INT(0.5, 1.8),     \
-    .th_up = VOLTAGE_THRESHOLD_TO_INT(1.5, 1.8)     \
+#define COMP_CONFIG_TH                                  \
+{                                                       \
+    .th_down = VOLTAGE_THRESHOLD_TO_INT(0.5, 1.8),      \
+    .th_up = VOLTAGE_THRESHOLD_TO_INT(1.5, 1.8)         \
 }
 
 /** @brief COMP driver default configuration including the COMP HAL configuration. */
-#define NRF_DRV_COMP_CONF_DEFAULT_CONFIG(INPUT)                                        \
-{                                                                               \
-        .reference          = (nrf_comp_ref_t)COMP_CONFIG_REF,                      \
-        .main_mode          = (nrf_comp_main_mode_t)COMP_CONFIG_MAIN_MODE,          \
-    .threshold          = COMP_CONFIG_TH,                                       \
-        .speed_mode         = (nrf_comp_sp_mode_t)COMP_CONFIG_SPEED_MODE,           \
-        .hyst               = (nrf_comp_hyst_t)COMP_CONFIG_HYST,                    \
-        .isource            = (nrf_isource_t)COMP_CONFIG_ISOURCE,                   \
-        .input              = (nrf_comp_input_t)INPUT,                                \
-    .interrupt_priority = COMP_CONFIG_IRQ_PRIORITY                              \
+#define NRF_DRV_COMP_DEFAULT_CONFIG(INPUT)                                     \
+{                                                                                   \
+    .reference          = (nrf_comp_ref_t)COMP_CONFIG_REF,                          \
+    .main_mode          = (nrf_comp_main_mode_t)COMP_CONFIG_MAIN_MODE,              \
+    .threshold          = COMP_CONFIG_TH,                                           \
+    .speed_mode         = (nrf_comp_sp_mode_t)COMP_CONFIG_SPEED_MODE,               \
+    .hyst               = (nrf_comp_hyst_t)COMP_CONFIG_HYST,                        \
+    .isource            = (nrf_isource_t)COMP_CONFIG_ISOURCE,                       \
+    .input              = (nrf_comp_input_t)INPUT,                                  \
+    .interrupt_priority = COMP_CONFIG_IRQ_PRIORITY                                  \
 }
 
 /**
@@ -204,66 +232,6 @@ __STATIC_INLINE uint32_t nrf_drv_comp_event_address_get(nrf_comp_event_t comp_ev
 {
     return (uint32_t)nrf_comp_event_address_get(comp_event);
 }
-
-/**
- * @brief Function for converting a GPIO pin number to an analog COMP channel.
- *
- * @param[in]  pin                        GPIO pin number.
- *
- * @return     COMP channel. The function returns UINT8_MAX
- *             if the specified pin is not an analog input.
- */
-__STATIC_INLINE nrf_comp_input_t nrf_drv_comp_gpio_to_ain(uint8_t pin);
-
-/**
- * @brief Function for converting a COMP channel to a GPIO pin number.
- *
- * @param[in]  ain                        COMP channel.
- *
- * @return     GPIO pin number. The function returns UINT8_MAX
- *             if the specified channel is not a GPIO pin.
- */
-__STATIC_INLINE uint8_t nrf_drv_comp_ain_to_gpio(nrf_comp_input_t ain);
-
-#ifndef SUPPRESS_INLINE_IMPLEMENTATION
-
-__STATIC_INLINE nrf_comp_input_t nrf_drv_comp_gpio_to_ain(uint8_t pin)
-{
-    // AIN0 - AIN3
-    if ((pin >= 2) && (pin <= 5))
-    {
-        return (nrf_comp_input_t)(pin - 2);
-    }
-    // AIN4 - AIN7
-    else if ((pin >= 28) && (pin <= 31))
-    {
-        return (nrf_comp_input_t)(pin - 24);
-    }
-    else
-    {
-        return (nrf_comp_input_t)UINT8_MAX;
-    }
-}
-
-__STATIC_INLINE uint8_t nrf_drv_comp_ain_to_gpio(nrf_comp_input_t ain)
-{
-    // AIN0 - AIN3
-    if (ain <= 3)
-    {
-        return (uint8_t)(ain + 2);
-    }
-    // AIN4 - AIN7
-    else if ((ain >= 4) && ((uint8_t)ain <= 7))
-    {
-        return (uint8_t)(ain + 24);
-    }
-    else
-    {
-        return UINT8_MAX;
-    }
-}
-
-#endif //SUPPRESS_INLINE_IMPLEMENTATION
 
 /**
  *@}

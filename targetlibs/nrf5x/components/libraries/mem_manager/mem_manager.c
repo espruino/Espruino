@@ -1,17 +1,44 @@
-/* Copyright (c) 2014 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2014 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
-#include "sdk_config.h"
-#if MEM_MANAGER_ENABLED
 #include "sdk_common.h"
+#if NRF_MODULE_ENABLED(MEM_MANAGER)
 #include "mem_manager.h"
 #include "nrf_assert.h"
 #define NRF_LOG_MODULE_NAME "MEM_MNGR"
@@ -43,12 +70,12 @@
  *
  * @param[in] PARAM Parameter checked for NULL.
  *
- * @retval (NRF_ERROR_NULL | MEMORY_MANAGER_ERR_BASE) when @ref PARAM is NULL.
+ * @retval (NRF_ERROR_NULL | NRF_ERROR_MEMORY_MANAGER_ERR_BASE) when @ref PARAM is NULL.
  */
 #define NULL_PARAM_CHECK(PARAM)                            \
     if ((PARAM) == NULL)                                   \
     {                                                      \
-        return (NRF_ERROR_NULL | MEMORY_MANAGER_ERR_BASE); \
+        return (NRF_ERROR_NULL | NRF_ERROR_MEMORY_MANAGER_ERR_BASE); \
     }
 
 /**
@@ -67,14 +94,14 @@
  * @brief Macro for verifying module's initialization status.
  *        Returning with an appropriate error code on failure.
  *
- * @retval (NRF_ERROR_INVALID_STATE | MEMORY_MANAGER_ERR_BASE) module is uninitialized.
+ * @retval (NRF_ERROR_INVALID_STATE | NRF_ERROR_MEMORY_MANAGER_ERR_BASE) module is uninitialized.
  */
 #define VERIFY_MODULE_INITIALIZED()                                     \
     do                                                                  \
     {                                                                   \
         if (!m_module_initialized)                                      \
         {                                                               \
-            return (NRF_ERROR_INVALID_STATE | MEMORY_MANAGER_ERR_BASE); \
+            return (NRF_ERROR_INVALID_STATE | NRF_ERROR_MEMORY_MANAGER_ERR_BASE); \
         }                                                               \
     } while (0)
 
@@ -97,7 +124,7 @@
  *
  * @param[in] SIZE Requested size to be allocated.
  *
- * @retval (NRF_ERROR_INVALID_PARAM | MEMORY_MANAGER_ERR_BASE) if requested size is greater
+ * @retval (NRF_ERROR_INVALID_PARAM | NRF_ERROR_MEMORY_MANAGER_ERR_BASE) if requested size is greater
  *         than the largest block size managed by the module.
  */
 #define VERIFY_REQUESTED_SIZE(SIZE)                                     \
@@ -105,7 +132,7 @@
     {                                                                   \
         if (((SIZE) == 0) ||((SIZE) >  MAX_MEM_SIZE))                   \
         {                                                               \
-            return (NRF_ERROR_INVALID_PARAM | MEMORY_MANAGER_ERR_BASE); \
+            return (NRF_ERROR_INVALID_PARAM | NRF_ERROR_MEMORY_MANAGER_ERR_BASE); \
         }                                                               \
     } while (0)
 
@@ -644,7 +671,7 @@ uint32_t nrf_mem_reserve(uint8_t ** pp_buffer, uint32_t * p_size)
     const uint32_t block_cat    = get_block_cat(requested_size, TOTAL_BLOCK_COUNT);
     uint32_t       block_index  = m_block_start[block_cat];
     uint32_t       memory_index = m_block_mem_start[block_cat];
-    uint32_t       err_code     = (NRF_ERROR_NO_MEM | MEMORY_MANAGER_ERR_BASE);
+    uint32_t       err_code     = (NRF_ERROR_NO_MEM | NRF_ERROR_MEMORY_MANAGER_ERR_BASE);
 
     NRF_LOG_DEBUG("[MM]: Start index for the pool = 0x%08lX, total block count 0x%08X\r\n",
            block_index,
@@ -891,4 +918,4 @@ void nrf_mem_diagnose(void)
 
 #endif // MEM_MANAGER_ENABLE_DIAGNOSTICS
 /** @} */
-#endif //MEM_MANAGER_ENABLED
+#endif //NRF_MODULE_ENABLED(MEM_MANAGER)

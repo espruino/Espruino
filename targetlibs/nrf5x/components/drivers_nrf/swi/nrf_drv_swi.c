@@ -1,13 +1,41 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 #include "nrf_drv_common.h"
@@ -18,6 +46,20 @@
 #include <stdlib.h>
 #include "nrf_drv_swi.h"
 #include "app_util_platform.h"
+
+#define NRF_LOG_MODULE_NAME "SWI"
+
+#if EGU_ENABLED
+#if SWI_CONFIG_LOG_ENABLED
+#define NRF_LOG_LEVEL       SWI_CONFIG_LOG_LEVEL
+#define NRF_LOG_INFO_COLOR  SWI_CONFIG_INFO_COLOR
+#define NRF_LOG_DEBUG_COLOR SWI_CONFIG_DEBUG_COLOR
+#else //SWI_CONFIG_LOG_ENABLED
+#define NRF_LOG_LEVEL       0
+#endif //SWI_CONFIG_LOG_ENABLED
+#endif //EGU_ENABLED
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
 
 STATIC_ASSERT(SWI_COUNT > 0);
 STATIC_ASSERT(SWI_COUNT <= SWI_MAX);
@@ -115,7 +157,7 @@ static nrf_swi_flags_t   m_swi_flags[SWI_ARRAY_SIZE];
  * @param[in]  swi                 SWI number.
  * @return     number of available channels.
  */
-#if EGU_ENABLED > 0
+#if NRF_MODULE_ENABLED(EGU)
 __STATIC_INLINE uint32_t swi_channel_number(nrf_swi_t swi)
 {
     uint32_t retval = 0;
@@ -148,7 +190,7 @@ __STATIC_INLINE uint32_t swi_channel_number(nrf_swi_t swi)
 #define swi_channel_number(swi) SWI_MAX_FLAGS
 #endif
 
-#if EGU_ENABLED > 0
+#if NRF_MODULE_ENABLED(EGU)
 
 /**@brief Get the specific EGU instance. */
 __STATIC_INLINE NRF_EGU_Type * egu_instance_get(nrf_swi_t swi)
@@ -263,12 +305,18 @@ __STATIC_INLINE bool swi_is_allocated(nrf_swi_t swi)
 
 ret_code_t nrf_drv_swi_init(void)
 {
+    ret_code_t err_code;
+    
     if (m_drv_state == NRF_DRV_STATE_UNINITIALIZED)
     {
         m_drv_state = NRF_DRV_STATE_INITIALIZED;
-        return NRF_SUCCESS;
+        err_code = NRF_SUCCESS;
+        NRF_LOG_INFO("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+        return err_code;
     }
-    return MODULE_ALREADY_INITIALIZED;
+    err_code = NRF_ERROR_MODULE_ALREADY_INITIALIZED;
+    NRF_LOG_INFO("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 }
 
 
@@ -280,7 +328,7 @@ void nrf_drv_swi_uninit(void)
     {
         m_swi_handlers[i - SWI_START_NUMBER] = NULL;
         nrf_drv_common_irq_disable(nrf_drv_swi_irq_of((nrf_swi_t) i));
-#if EGU_ENABLED > 0
+#if NRF_MODULE_ENABLED(EGU)
         NRF_EGU_Type * NRF_EGUx = egu_instance_get(i);
         nrf_egu_int_disable(NRF_EGUx, NRF_EGU_INT_ALL);
 #endif
@@ -312,7 +360,7 @@ ret_code_t nrf_drv_swi_alloc(nrf_swi_t * p_swi, nrf_swi_handler_t event_handler,
             m_swi_handlers[i - SWI_START_NUMBER] = event_handler;
             *p_swi = (nrf_swi_t) i;
             nrf_drv_common_irq_enable(nrf_drv_swi_irq_of(*p_swi), priority);
-#if EGU_ENABLED > 0
+#if NRF_MODULE_ENABLED(EGU)
             NRF_EGU_Type * NRF_EGUx = egu_instance_get(i);
             nrf_egu_int_enable(NRF_EGUx, NRF_EGU_INT_ALL);
 #endif
@@ -321,9 +369,11 @@ ret_code_t nrf_drv_swi_alloc(nrf_swi_t * p_swi, nrf_swi_handler_t event_handler,
         CRITICAL_REGION_EXIT();
         if (err_code == NRF_SUCCESS)
         {
+            NRF_LOG_INFO("SWI channel allocated: %d.\r\n", (*p_swi));
             break;
         }
     }
+    NRF_LOG_INFO("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
     return err_code;
 }
 
@@ -332,7 +382,7 @@ void nrf_drv_swi_trigger(nrf_swi_t swi, uint8_t flag_number)
 {
     ASSERT(swi_is_allocated((uint32_t) swi));
     ASSERT(flag_number < swi_channel_number(swi));
-#if EGU_ENABLED > 0
+#if NRF_MODULE_ENABLED(EGU)
     NRF_EGU_Type * NRF_EGUx = egu_instance_get(swi);
     nrf_egu_task_trigger(NRF_EGUx, nrf_egu_task_trigger_get(NRF_EGUx, flag_number));
 #else
@@ -342,7 +392,7 @@ void nrf_drv_swi_trigger(nrf_swi_t swi, uint8_t flag_number)
 }
 
 
-#if EGU_ENABLED > 0
+#if NRF_MODULE_ENABLED(EGU)
 
 uint32_t nrf_drv_swi_task_trigger_address_get(nrf_swi_t swi, uint8_t channel)
 {
@@ -357,4 +407,3 @@ uint32_t nrf_drv_swi_event_triggered_address_get(nrf_swi_t swi, uint8_t channel)
 }
 
 #endif
-

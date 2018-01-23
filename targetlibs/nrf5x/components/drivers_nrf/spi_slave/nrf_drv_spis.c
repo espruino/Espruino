@@ -1,17 +1,45 @@
-/* Copyright (c) 2013 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2013 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
-#include "sdk_config.h"
-#if SPIS_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(SPIS)
 #define ENABLED_SPIS_COUNT (SPIS0_ENABLED+SPIS1_ENABLED+SPIS2_ENABLED)
 #if ENABLED_SPIS_COUNT
 #include "nrf_drv_spis.h"
@@ -22,9 +50,23 @@
 #include "app_error.h"
 #include "app_util_platform.h"
 #include "nrf_drv_common.h"
-#include "nordic_common.h"
-#include "sdk_common.h"
 #include "nrf_assert.h"
+
+#define NRF_LOG_MODULE_NAME "SPIS"
+
+#if SPIS_CONFIG_LOG_ENABLED
+#define NRF_LOG_LEVEL       SPIS_CONFIG_LOG_LEVEL
+#define NRF_LOG_INFO_COLOR  SPIS_CONFIG_INFO_COLOR
+#define NRF_LOG_DEBUG_COLOR SPIS_CONFIG_DEBUG_COLOR
+#define EVT_TO_STR(event)   (event == NRF_SPIS_EVENT_ACQUIRED ? "NRF_SPIS_EVENT_ACQUIRED" :                  \
+                            (event == NRF_SPIS_EVENT_END ? "NRF_SPIS_EVENT_END" :  "UNKNOWN ERROR"))
+
+#else //SPIS_CONFIG_LOG_ENABLED
+#define EVT_TO_STR(event)   ""
+#define NRF_LOG_LEVEL       0
+#endif //SPIS_CONFIG_LOG_ENABLED
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
 
 
 /**@brief States of the SPI transaction state machine. */
@@ -37,27 +79,27 @@ typedef enum
 } nrf_drv_spis_state_t;
 
 
-#if PERIPHERAL_RESOURCE_SHARING_ENABLED
+#if NRF_MODULE_ENABLED(PERIPHERAL_RESOURCE_SHARING)
     #define IRQ_HANDLER_NAME(n) irq_handler_for_instance_##n
     #define IRQ_HANDLER(n)      static void IRQ_HANDLER_NAME(n)(void)
 
-    #if SPIS0_ENABLED
+    #if NRF_MODULE_ENABLED(SPIS0)
         IRQ_HANDLER(0);
     #endif
-    #if SPIS1_ENABLED
+    #if NRF_MODULE_ENABLED(SPIS1)
         IRQ_HANDLER(1);
     #endif
-    #if SPIS2_ENABLED
+    #if NRF_MODULE_ENABLED(SPIS2)
         IRQ_HANDLER(2);
     #endif
     static nrf_drv_irq_handler_t const m_irq_handlers[ENABLED_SPIS_COUNT] = {
-    #if SPIS0_ENABLED
+    #if NRF_MODULE_ENABLED(SPIS0)
         IRQ_HANDLER_NAME(0),
     #endif
-    #if SPIS1_ENABLED
+    #if NRF_MODULE_ENABLED(SPIS1)
         IRQ_HANDLER_NAME(1),
     #endif
-    #if SPIS2_ENABLED
+    #if NRF_MODULE_ENABLED(SPIS2)
         IRQ_HANDLER_NAME(2),
     #endif
     };
@@ -92,27 +134,36 @@ ret_code_t nrf_drv_spis_init(nrf_drv_spis_t const * const  p_instance,
 {
     ASSERT(p_config);
     spis_cb_t * p_cb = &m_cb[p_instance->instance_id];
-
+    ret_code_t err_code;
+    
     NRF_SPIS_Type * p_spis = p_instance->p_reg;
 
     if (p_cb->state != NRF_DRV_STATE_UNINITIALIZED)
     {
-        return NRF_ERROR_INVALID_STATE;
+        err_code = NRF_ERROR_INVALID_STATE;
+        NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+        return err_code;
     }
 
     if ((uint32_t)p_config->mode > (uint32_t)NRF_DRV_SPIS_MODE_3)
     {
-        return NRF_ERROR_INVALID_PARAM;
+        err_code = NRF_ERROR_INVALID_PARAM;
+        NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+        return err_code;
     }
     if (!event_handler)
     {
-        return NRF_ERROR_NULL;
+        err_code = NRF_ERROR_NULL;
+        NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+        return err_code;
     }
-#if PERIPHERAL_RESOURCE_SHARING_ENABLED
+#if NRF_MODULE_ENABLED(PERIPHERAL_RESOURCE_SHARING)
     if (nrf_drv_common_per_res_acquire(p_spis,
             m_irq_handlers[p_instance->instance_id]) != NRF_SUCCESS)
     {
-        return NRF_ERROR_BUSY;
+        err_code = NRF_ERROR_BUSY;
+        NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+        return err_code;
     }
 #endif
 
@@ -197,7 +248,9 @@ ret_code_t nrf_drv_spis_init(nrf_drv_spis_t const * const  p_instance,
     // Enable SPI slave device.
     nrf_spis_enable(p_spis);
 
-    return NRF_SUCCESS;
+    err_code = NRF_SUCCESS;
+    NRF_LOG_INFO("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 }
 
 
@@ -214,11 +267,12 @@ void nrf_drv_spis_uninit(nrf_drv_spis_t const * const  p_instance)
     nrf_spis_int_disable(p_spis, DISABLE_ALL);
     #undef  DISABLE_ALL
 
-#if PERIPHERAL_RESOURCE_SHARING_ENABLED
+#if NRF_MODULE_ENABLED(PERIPHERAL_RESOURCE_SHARING)
     nrf_drv_common_per_res_release(p_spis);
 #endif
 
     p_cb->state = NRF_DRV_STATE_UNINITIALIZED;
+    NRF_LOG_INFO("Initialized.\r\n");
 }
 
 
@@ -246,7 +300,10 @@ static void spis_state_entry_action_execute(NRF_SPIS_Type * p_spis,
         case SPIS_XFER_COMPLETED:
             event.evt_type  = NRF_DRV_SPIS_XFER_DONE;
             event.rx_amount = nrf_spis_rx_amount_get(p_spis);
-            event.tx_amount = nrf_spis_tx_amount_get(p_spis);
+            event.tx_amount = nrf_spis_tx_amount_get(p_spis);            
+            NRF_LOG_INFO("Transfer rx_len:%d.\r\n", event.rx_amount);
+            NRF_LOG_DEBUG("Rx data:\r\n");
+            NRF_LOG_HEXDUMP_DEBUG((uint8_t *)p_cb->rx_buffer, event.rx_amount * sizeof(p_cb->rx_buffer));
             APP_ERROR_CHECK_BOOL(p_cb->handler != NULL);
             p_cb->handler(event);
             break;
@@ -289,7 +346,9 @@ ret_code_t nrf_drv_spis_buffers_set(nrf_drv_spis_t const * const  p_instance,
     if ((p_tx_buffer != NULL && !nrf_drv_is_in_RAM(p_tx_buffer)) ||
         (p_rx_buffer != NULL && !nrf_drv_is_in_RAM(p_rx_buffer)))
     {
-        return NRF_ERROR_INVALID_ADDR;
+        err_code = NRF_ERROR_INVALID_ADDR;
+        NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+        return err_code;
     }
 
     switch (p_cb->spi_state)
@@ -316,6 +375,7 @@ ret_code_t nrf_drv_spis_buffers_set(nrf_drv_spis_t const * const  p_instance,
             break;
     }
 
+    NRF_LOG_INFO("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
     return err_code;
 }
 
@@ -330,6 +390,7 @@ static void spis_irq_handler(NRF_SPIS_Type * p_spis, spis_cb_t * p_cb)
     if (nrf_spis_event_check(p_spis, NRF_SPIS_EVENT_ACQUIRED))
     {
         nrf_spis_event_clear(p_spis, NRF_SPIS_EVENT_ACQUIRED);
+        NRF_LOG_DEBUG("SPIS: Event: %s.\r\n", (uint32_t)EVT_TO_STR(NRF_SPIS_EVENT_ACQUIRED));
 
         switch (p_cb->spi_state)
         {
@@ -352,6 +413,7 @@ static void spis_irq_handler(NRF_SPIS_Type * p_spis, spis_cb_t * p_cb)
     if (nrf_spis_event_check(p_spis, NRF_SPIS_EVENT_END))
     {
         nrf_spis_event_clear(p_spis, NRF_SPIS_EVENT_END);
+        NRF_LOG_DEBUG("SPIS: Event: %s.\r\n", (uint32_t)EVT_TO_STR(NRF_SPIS_EVENT_END));
 
         switch (p_cb->spi_state)
         {
@@ -366,17 +428,17 @@ static void spis_irq_handler(NRF_SPIS_Type * p_spis, spis_cb_t * p_cb)
     }
 }
 
-#if SPIS0_ENABLED
+#if NRF_MODULE_ENABLED(SPIS0)
     SPIS_IRQHANDLER_TEMPLATE(0)
 #endif
 
-#if SPIS1_ENABLED
+#if NRF_MODULE_ENABLED(SPIS1)
     SPIS_IRQHANDLER_TEMPLATE(1)
 #endif
 
-#if SPIS2_ENABLED
+#if NRF_MODULE_ENABLED(SPIS2)
     SPIS_IRQHANDLER_TEMPLATE(2)
 #endif
 
 #endif // SPI_COUNT > 0
-#endif // SPIS_ENABLED
+#endif // NRF_MODULE_ENABLED(SPIS)

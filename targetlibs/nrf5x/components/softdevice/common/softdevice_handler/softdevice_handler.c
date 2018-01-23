@@ -1,29 +1,61 @@
-/* Copyright (c) 2012 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2012 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
-#include "sdk_config.h"
 #include "softdevice_handler.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "nordic_common.h"
-#include "app_error.h"
-#include "nrf_assert.h"
-#include "nrf_nvic.h"
 #include "nrf.h"
+#include "nrf_assert.h"
+#include "nrf_soc.h"
+#include "nrf_nvic.h"
 #include "sdk_common.h"
-#if CLOCK_ENABLED
+
+#if NRF_MODULE_ENABLED(CLOCK)
 #include "nrf_drv_clock.h"
-#endif
+#endif // NRF_MODULE_ENABLED(CLOCK)
+#include "app_error.h"
+
+#if NRF_MODULE_ENABLED(RNG)
+#include "nrf_drv_rng.h"
+#endif // NRF_MODULE_ENABLED(RNG)
 
 #define NRF_LOG_MODULE_NAME "SDH"
 #include "nrf_log.h"
@@ -68,23 +100,6 @@ static ant_evt_handler_t              m_ant_evt_handler;                /**< App
 
 static sys_evt_handler_t              m_sys_evt_handler;                /**< Application event handler for handling System (SOC) events.  */
 
-#if (CLOCK_ENABLED && defined(SOFTDEVICE_PRESENT))
-/**
- * @brief Check the selected ISR state.
- *
- * Implementation of a function that checks the current IRQ state.
- *
- * @param[in] IRQn External interrupt number. Value cannot be negative.
- *
- * @retval true  Selected IRQ is enabled.
- * @retval false Selected IRQ is disabled.
- */
-static inline bool isr_enable_check(IRQn_Type IRQn)
-{
-    return 0 != (NVIC->ISER[(((uint32_t)(int32_t)IRQn) >> 5UL)] & (uint32_t)(1UL << (((uint32_t)(int32_t)IRQn) & 0x1FUL)));
-}
-#endif
-
 /**@brief       Callback function for asserts in the SoftDevice.
  *
  * @details     A pointer to this function will be passed to the SoftDevice. This function will be
@@ -112,7 +127,7 @@ void intern_softdevice_events_execute(void)
 
         return;
     }
-#if CLOCK_ENABLED
+#if NRF_MODULE_ENABLED(CLOCK)
     bool no_more_soc_evts = false;
 #else
     bool no_more_soc_evts = (m_sys_evt_handler == NULL);
@@ -152,7 +167,7 @@ void intern_softdevice_events_execute(void)
             else
             {
                 // Call application's SOC event handler.
-#if (CLOCK_ENABLED && defined(SOFTDEVICE_PRESENT))
+#if (NRF_MODULE_ENABLED(CLOCK) && defined(SOFTDEVICE_PRESENT))
                 nrf_drv_clock_on_soc_event(evt_id);
                 if (m_sys_evt_handler)
                 {
@@ -292,11 +307,19 @@ uint32_t softdevice_handler_init(nrf_clock_lf_cfg_t *           p_clock_lf_cfg,
     m_evt_schedule_func = evt_schedule_func;
 
     // Initialize SoftDevice.
-#if (CLOCK_ENABLED && defined(SOFTDEVICE_PRESENT))
-    bool power_clock_isr_enabled = isr_enable_check(POWER_CLOCK_IRQn);
+#if (NRF_MODULE_ENABLED(CLOCK) && defined(SOFTDEVICE_PRESENT))
+    bool power_clock_isr_enabled = nrf_drv_common_irq_enable_check(POWER_CLOCK_IRQn);
     if (power_clock_isr_enabled)
     {
         NVIC_DisableIRQ(POWER_CLOCK_IRQn);
+    }
+#endif
+
+#if (NRF_MODULE_ENABLED(RNG) && defined(SOFTDEVICE_PRESENT))
+    bool rng_isr_enabled = nrf_drv_common_irq_enable_check(RNG_IRQn);
+    if (rng_isr_enabled)
+    {
+        NVIC_DisableIRQ(RNG_IRQn);
     }
 #endif
 #if defined(S212) || defined(S332)
@@ -307,7 +330,14 @@ uint32_t softdevice_handler_init(nrf_clock_lf_cfg_t *           p_clock_lf_cfg,
 
     if (err_code != NRF_SUCCESS)
     {
-#if (CLOCK_ENABLED && defined(SOFTDEVICE_PRESENT))
+
+#if (NRF_MODULE_ENABLED(RNG) && defined(SOFTDEVICE_PRESENT))
+        if (rng_isr_enabled)
+        {
+            NVIC_EnableIRQ(RNG_IRQn);
+        }
+#endif
+#if (NRF_MODULE_ENABLED(CLOCK) && defined(SOFTDEVICE_PRESENT))
         if (power_clock_isr_enabled)
         {
             NVIC_EnableIRQ(POWER_CLOCK_IRQn);
@@ -317,7 +347,7 @@ uint32_t softdevice_handler_init(nrf_clock_lf_cfg_t *           p_clock_lf_cfg,
     }
 
     m_softdevice_enabled = true;
-#if (CLOCK_ENABLED && defined(SOFTDEVICE_PRESENT))
+#if (NRF_MODULE_ENABLED(CLOCK) && defined(SOFTDEVICE_PRESENT))
     nrf_drv_clock_on_sd_enable();
 #endif
 
@@ -335,15 +365,19 @@ uint32_t softdevice_handler_init(nrf_clock_lf_cfg_t *           p_clock_lf_cfg,
 uint32_t softdevice_handler_sd_disable(void)
 {
     uint32_t err_code = sd_softdevice_disable();
-#if (CLOCK_ENABLED && defined(SOFTDEVICE_PRESENT))
     if (err_code == NRF_SUCCESS)
     {
         m_softdevice_enabled = false;
+
+#if (NRF_MODULE_ENABLED(CLOCK) && defined(SOFTDEVICE_PRESENT))
         nrf_drv_clock_on_sd_disable();
-    }
-#else
-    m_softdevice_enabled = !(err_code == NRF_SUCCESS);
 #endif
+
+#if (NRF_MODULE_ENABLED(RNG) && defined(SOFTDEVICE_PRESENT))
+        nrf_drv_rng_on_sd_disable();
+#endif
+    }
+
     return err_code;
 }
 
@@ -464,7 +498,7 @@ static inline uint32_t ram_total_size_get(void)
     uint32_t total_ram_size = size_ram_blocks;
     total_ram_size = total_ram_size * (NRF_FICR->NUMRAMBLOCK);
     return total_ram_size;
-#elif defined (NRF52)
+#elif (defined (NRF52) || defined(NRF52840_XXAA))
     return RAM_TOTAL_SIZE;
 #endif /* NRF51 */
 }
@@ -527,15 +561,15 @@ uint32_t softdevice_enable(ble_enable_params_t * p_ble_enable_params)
 #endif
 
     app_ram_base = ram_start;
-    NRF_LOG_INFO("sd_ble_enable: RAM START at 0x%x\r\n",
+    NRF_LOG_DEBUG("sd_ble_enable: RAM start at 0x%x\r\n",
                     app_ram_base);
     err_code = sd_ble_enable(p_ble_enable_params, &app_ram_base);
 
     if (app_ram_base != ram_start)
     {
-        NRF_LOG_WARNING("sd_ble_enable: app_ram_base should be adjusted to 0x%x\r\n",
+        NRF_LOG_WARNING("sd_ble_enable: RAM start should be adjusted to 0x%x\r\n",
                 app_ram_base);
-        NRF_LOG_WARNING("ram size should be adjusted to 0x%x \r\n",
+        NRF_LOG_WARNING("RAM size should be adjusted to 0x%x \r\n",
                 ram_end_address_get() - app_ram_base);
     }
     else if (err_code != NRF_SUCCESS)

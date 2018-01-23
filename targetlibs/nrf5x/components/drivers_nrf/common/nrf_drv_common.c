@@ -1,26 +1,70 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 #include <stddef.h>
 #include "nrf_drv_common.h"
 #include "nrf_assert.h"
 #include "app_util_platform.h"
+#include "nrf_peripherals.h"
 
+#if NRF_DRV_COMMON_POWER_CLOCK_ISR
+#include "nrf_drv_power.h"
+#include "nrf_drv_clock.h"
+#endif
 #ifdef SOFTDEVICE_PRESENT
 #include "nrf_soc.h"
 #endif
 
+#if NRF_MODULE_ENABLED(PERIPHERAL_RESOURCE_SHARING)
 
-#if PERIPHERAL_RESOURCE_SHARING_ENABLED
+#define NRF_LOG_MODULE_NAME "COMMON"
+
+#if COMMON_CONFIG_LOG_ENABLED
+#define NRF_LOG_LEVEL       COMMON_CONFIG_LOG_LEVEL
+#define NRF_LOG_INFO_COLOR  COMMON_CONFIG_INFO_COLOR
+#define NRF_LOG_DEBUG_COLOR COMMON_CONFIG_DEBUG_COLOR
+#else //COMMON_CONFIG_LOG_ENABLED
+#define NRF_LOG_LEVEL       0
+#endif //COMMON_CONFIG_LOG_ENABLED
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
 
 typedef struct {
     nrf_drv_irq_handler_t handler;
@@ -28,7 +72,7 @@ typedef struct {
 } shared_resource_t;
 
 // SPIM0, SPIS0, SPI0, TWIM0, TWIS0, TWI0
-#if (SPI0_ENABLED || SPIS0_ENABLED || TWI0_ENABLED || TWIS0_ENABLED)
+#if (NRF_MODULE_ENABLED(SPI0) || NRF_MODULE_ENABLED(SPIS0) || NRF_MODULE_ENABLED(TWI0) || NRF_MODULE_ENABLED(TWIS0))
     #define SERIAL_BOX_0_IN_USE
     // [this checking may need a different form in unit tests, hence macro]
     #ifndef IS_SERIAL_BOX_0
@@ -41,10 +85,10 @@ typedef struct {
         ASSERT(m_serial_box_0.handler);
         m_serial_box_0.handler();
     }
-#endif // (SPI0_ENABLED || SPIS0_ENABLED || TWI0_ENABLED || TWIS0_ENABLED)
+#endif // (NRF_MODULE_ENABLED(SPI0) || NRF_MODULE_ENABLED(SPIS0) || NRF_MODULE_ENABLED(TWI0) || NRF_MODULE_ENABLED(TWIS0))
 
 // SPIM1, SPIS1, SPI1, TWIM1, TWIS1, TWI1
-#if (SPI1_ENABLED || SPIS1_ENABLED || TWI1_ENABLED || TWIS1_ENABLED)
+#if (NRF_MODULE_ENABLED(SPI1) || NRF_MODULE_ENABLED(SPIS1) || NRF_MODULE_ENABLED(TWI1) || NRF_MODULE_ENABLED(TWIS1))
     #define SERIAL_BOX_1_IN_USE
     // [this checking may need a different form in unit tests, hence macro]
     #ifndef IS_SERIAL_BOX_1
@@ -52,15 +96,19 @@ typedef struct {
     #endif
 
     static shared_resource_t m_serial_box_1 = { .acquired = false };
+#ifdef TWIM_PRESENT
+    void SPIM1_SPIS1_TWIM1_TWIS1_SPI1_TWI1_IRQHandler(void)
+#else
     void SPI1_TWI1_IRQHandler(void)
+#endif
     {
         ASSERT(m_serial_box_1.handler);
         m_serial_box_1.handler();
     }
-#endif // (SPI1_ENABLED || SPIS1_ENABLED || TWI1_ENABLED || TWIS1_ENABLED)
+#endif // (NRF_MODULE_ENABLED(SPI1) || NRF_MODULE_ENABLED(SPIS1) || NRF_MODULE_ENABLED(TWI1) || NRF_MODULE_ENABLED(TWIS1))
 
 // SPIM2, SPIS2, SPI2
-#if (SPI2_ENABLED || SPIS2_ENABLED)
+#if (NRF_MODULE_ENABLED(SPI2) || NRF_MODULE_ENABLED(SPIS2))
     #define SERIAL_BOX_2_IN_USE
     // [this checking may need a different form in unit tests, hence macro]
     #ifndef IS_SERIAL_BOX_2
@@ -73,10 +121,10 @@ typedef struct {
         ASSERT(m_serial_box_2.handler);
         m_serial_box_2.handler();
     }
-#endif // (SPI2_ENABLED || SPIS2_ENABLED)
+#endif // (NRF_MODULE_ENABLED(SPI2) || NRF_MODULE_ENABLED(SPIS2))
 
 // COMP, LPCOMP
-#if (COMP_ENABLED || LPCOMP_ENABLED)
+#if (NRF_MODULE_ENABLED(COMP) || NRF_MODULE_ENABLED(LPCOMP))
     #define COMP_LPCOMP_IN_USE
 
     #ifndef IS_COMP_LPCOMP
@@ -89,7 +137,7 @@ typedef struct {
         ASSERT(m_comp_lpcomp.handler);
         m_comp_lpcomp.handler();
     }
-#endif    // (COMP_ENABLED || LPCOMP_ENABLED)
+#endif    // (NRF_MODULE_ENABLED(COMP) || NRF_MODULE_ENABLED(LPCOMP))
 
 #if defined(SERIAL_BOX_0_IN_USE) || \
     defined(SERIAL_BOX_1_IN_USE) || \
@@ -98,6 +146,8 @@ typedef struct {
 static ret_code_t acquire_shared_resource(shared_resource_t * p_resource,
                                           nrf_drv_irq_handler_t handler)
 {
+    ret_code_t err_code;
+    
     bool busy = false;
 
     CRITICAL_REGION_ENTER();
@@ -113,11 +163,15 @@ static ret_code_t acquire_shared_resource(shared_resource_t * p_resource,
 
     if (busy)
     {
-        return NRF_ERROR_BUSY;
+        err_code = NRF_ERROR_BUSY;
+        NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+        return err_code;
     }
 
     p_resource->handler = handler;
-    return NRF_SUCCESS;
+    err_code = NRF_SUCCESS;
+    NRF_LOG_INFO("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 }
 #endif
 
@@ -151,8 +205,11 @@ ret_code_t nrf_drv_common_per_res_acquire(void const * p_per_base,
         return acquire_shared_resource(&m_comp_lpcomp, handler);
     }
 #endif
-
-    return NRF_ERROR_INVALID_PARAM;
+    ret_code_t err_code;
+    
+    err_code = NRF_ERROR_INVALID_PARAM;
+    NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 }
 
 void nrf_drv_common_per_res_release(void const * p_per_base)
@@ -192,15 +249,47 @@ void nrf_drv_common_per_res_release(void const * p_per_base)
     {}
 }
 
-#endif // PERIPHERAL_RESOURCE_SHARING_ENABLED
+#endif // NRF_MODULE_ENABLED(PERIPHERAL_RESOURCE_SHARING)
+
+#if NRF_MODULE_ENABLED(POWER)
+void nrf_drv_common_power_irq_disable(void)
+{
+#if NRF_DRV_COMMON_POWER_CLOCK_ISR
+    if(!nrf_drv_clock_init_check())
+#endif
+    {
+        nrf_drv_common_irq_disable(POWER_CLOCK_IRQn);
+    }
+}
+#endif
+
+#if NRF_MODULE_ENABLED(CLOCK)
+void nrf_drv_common_clock_irq_disable(void)
+{
+#if NRF_DRV_COMMON_POWER_CLOCK_ISR
+    if(!nrf_drv_power_init_check())
+#endif
+    {
+        nrf_drv_common_irq_disable(POWER_CLOCK_IRQn);
+    }
+}
+#endif
+
+#if NRF_DRV_COMMON_POWER_CLOCK_ISR
+void POWER_CLOCK_IRQHandler(void)
+{
+    extern void nrf_drv_clock_onIRQ(void);
+    extern void nrf_drv_power_onIRQ(void);
+
+    nrf_drv_clock_onIRQ();
+    nrf_drv_power_onIRQ();
+}
+#endif // NRF_DRV_COMMON_POWER_CLOCK_ISR
 
 
 void nrf_drv_common_irq_enable(IRQn_Type IRQn, uint8_t priority)
 {
-
-#ifdef SOFTDEVICE_PRESENT
-    ASSERT((priority == APP_IRQ_PRIORITY_LOW) || (priority == APP_IRQ_PRIORITY_HIGH));
-#endif
+    INTERRUPT_PRIORITY_ASSERT(priority);
 
     NVIC_SetPriority(IRQn, priority);
     NVIC_ClearPendingIRQ(IRQn);

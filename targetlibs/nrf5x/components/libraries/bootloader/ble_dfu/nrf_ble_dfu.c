@@ -1,13 +1,41 @@
-/* Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 #include "nrf_ble_dfu.h"
@@ -18,8 +46,8 @@
 #include "nrf_dfu_transport.h"
 #include "nrf_dfu_mbr.h"
 #include "nrf_bootloader_info.h"
-#include "ble_advdata.h"
 #include "ble_conn_params.h"
+#include "boards.h"
 #include "nrf_log.h"
 #include "ble_hci.h"
 #include "app_timer.h"
@@ -27,8 +55,8 @@
 #include "nrf_log.h"
 #include "nrf_delay.h"
 
-#include "platform_config.h"
-#include "nrf_gpio.h"
+#define ADVERTISING_LED_PIN_NO               BSP_LED_0                                              /**< Is on when device is advertising. */
+#define CONNECTED_LED_PIN_NO                 BSP_LED_1                                              /**< Is on when device has connected. */
 
 #define DEVICE_NAME                          "DfuTarg"                                              /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME                    "NordicSemiconductor"                                  /**< Manufacturer. Will be passed to Device Information Service. */
@@ -44,6 +72,8 @@
 #define FIRST_CONN_PARAMS_UPDATE_DELAY       APP_TIMER_TICKS(100, APP_TIMER_PRESCALER)              /**< Time from the Connected event to first time sd_ble_gap_conn_param_update is called (100 milliseconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY        APP_TIMER_TICKS(500, APP_TIMER_PRESCALER)              /**< Time between each call to sd_ble_gap_conn_param_update after the first call (500 milliseconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT         3                                                      /**< Number of attempts before giving up the connection parameter negotiation. */
+
+#define MAX_ADV_DATA_LENGTH                  20                                                     /**< Maximum length of advertising data. */
 
 #define APP_ADV_INTERVAL                     MSEC_TO_UNITS(25, UNIT_0_625_MS)                       /**< The advertising interval (25 ms.). */
 #define APP_ADV_TIMEOUT_IN_SECONDS           BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED                  /**< The advertising timeout in units of seconds. This is set to @ref BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED so that the advertisement is done as long as there there is a call to @ref dfu_transport_close function.*/
@@ -84,28 +114,6 @@ DFU_TRANSPORT_REGISTER(nrf_dfu_transport_t const dfu_trans) =
 };
 //lint -restore
 
-#include "platform_config.h"
-static void leds_init(void)
-{
-    nrf_gpio_cfg_output(LED1_PININDEX);
-    nrf_gpio_pin_write(LED1_PININDEX, !LED1_ONSTATE);
-#ifdef LED3_PININDEX
-    nrf_gpio_cfg_output(LED3_PININDEX);
-    nrf_gpio_pin_write(LED3_PININDEX, !LED3_ONSTATE);
-#endif
-}
-static void leds_set_advertising(bool on)
-{
-    nrf_gpio_pin_write(LED1_PININDEX, on ? LED1_ONSTATE : !LED1_ONSTATE);
-}
-static void leds_set_connected(bool on)
-{
-#ifdef LED3_PININDEX
-    nrf_gpio_pin_write(LED3_PININDEX, on ? LED3_ONSTATE : !LED3_ONSTATE);
-#else
-    nrf_gpio_pin_write(LED1_PININDEX, on ? LED1_ONSTATE : !LED1_ONSTATE);
-#endif
-}
 
 /**@brief     Function for handling a Connection Parameters error.
  *
@@ -137,25 +145,51 @@ static uint32_t conn_params_init(void)
 /**@brief     Function for the Advertising functionality initialization.
  *
  * @details   Encodes the required advertising data and passes it to the stack.
- *            Also builds a structure to be passed to the stack when starting advertising.
+ *            The advertising data encoded here is specific for DFU. 
+ *            Setting advertising data can by done by calling @ref ble_advdata_set.
  */
 static uint32_t advertising_init(uint8_t adv_flags)
 {
-    ble_advdata_t advdata;
-    ble_uuid_t    service_uuid;
+    uint32_t    err_code;
+    uint16_t    len_advdata                 = 9;
+    uint16_t    max_device_name_length      = MAX_ADV_DATA_LENGTH - len_advdata;
+    uint16_t    actual_device_name_length   = max_device_name_length;
 
-    BLE_UUID_BLE_ASSIGN(service_uuid, BLE_DFU_SERVICE_UUID);
+    uint8_t     p_encoded_advdata[MAX_ADV_DATA_LENGTH];
+    
+    // Encode flags.
+    p_encoded_advdata[0]                    = 0x2;
+    p_encoded_advdata[1]                    = BLE_GAP_AD_TYPE_FLAGS;
+    p_encoded_advdata[2]                    = adv_flags;
+    
+    // Encode 'more available' uuid list.
+    p_encoded_advdata[3]                    = 0x3;
+    p_encoded_advdata[4]                    = BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE;
+    p_encoded_advdata[5]                    = LSB_16(BLE_DFU_SERVICE_UUID);
+    p_encoded_advdata[6]                    = MSB_16(BLE_DFU_SERVICE_UUID);
 
-    // Build and set advertising data.
-    memset(&advdata, 0, sizeof(advdata));
-
-    advdata.name_type                     = BLE_ADVDATA_FULL_NAME;
-    advdata.include_appearance            = false;
-    advdata.flags                         = adv_flags;
-    advdata.uuids_more_available.uuid_cnt = 1;
-    advdata.uuids_more_available.p_uuids  = &service_uuid;
-
-    return ble_advdata_set(&advdata, NULL);
+    // Get GAP device name and length
+    err_code = sd_ble_gap_device_name_get(&p_encoded_advdata[9], &actual_device_name_length);
+    if (err_code != NRF_SUCCESS)
+    {
+        return err_code;
+    }
+    
+    // Set GAP device in advertising data.
+    if (actual_device_name_length <= max_device_name_length)
+    {
+        p_encoded_advdata[7]                = actual_device_name_length + 1; // (actual_length + ADV_AD_TYPE_FIELD_SIZE(1))
+        p_encoded_advdata[8]                = BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME;
+        len_advdata                        += actual_device_name_length;
+    }
+    else
+    {
+        // Must use a shorter advertising name than the actual name of the device
+        p_encoded_advdata[7]                = max_device_name_length + 1; // (length + ADV_AD_TYPE_FIELD_SIZE(1))
+        p_encoded_advdata[8]                = BLE_GAP_AD_TYPE_SHORT_LOCAL_NAME;
+        len_advdata                         = MAX_ADV_DATA_LENGTH;
+    }
+    return sd_ble_gap_adv_data_set(p_encoded_advdata, len_advdata, NULL, 0);
 }
 
 
@@ -186,8 +220,8 @@ static uint32_t advertising_start(void)
     err_code = sd_ble_gap_adv_start(&adv_params);
     VERIFY_SUCCESS(err_code);
 
-    leds_set_advertising(true);
-    leds_set_connected(false);
+    nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
+    nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
 
     m_flags |= DFU_BLE_FLAG_IS_ADVERTISING;
     return NRF_SUCCESS;
@@ -208,7 +242,7 @@ static uint32_t advertising_stop(void)
     err_code = sd_ble_gap_adv_stop();
     VERIFY_SUCCESS(err_code);
 
-    leds_set_advertising(false);
+    nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
 
     m_flags |= DFU_BLE_FLAG_IS_ADVERTISING;
     return NRF_SUCCESS;
@@ -493,7 +527,7 @@ static bool on_rw_authorize_req(ble_dfu_t * p_dfu, ble_evt_t * p_ble_evt)
     ble_gatts_rw_authorize_reply_params_t   auth_reply = {0};
     ble_gatts_evt_rw_authorize_request_t  * p_authorize_request;
     ble_gatts_evt_write_t                 * p_ble_write_evt;
-
+    
     p_authorize_request = &(p_ble_evt->evt.gatts_evt.params.authorize_request);
     p_ble_write_evt = &(p_ble_evt->evt.gatts_evt.params.authorize_request.request.write);
 
@@ -513,7 +547,7 @@ static bool on_rw_authorize_req(ble_dfu_t * p_dfu, ble_evt_t * p_ble_evt)
         {
             // Send an error response to the peer indicating that the CCCD is improperly configured.
             auth_reply.params.write.gatt_status = BLE_GATT_STATUS_ATTERR_CPS_CCCD_CONFIG_ERROR;
-
+ 
             // Ignore response of auth reply
             (void)sd_ble_gatts_rw_authorize_reply(m_conn_handle, &auth_reply);
             return false;
@@ -582,8 +616,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
-            leds_set_connected(true);
-            leds_set_advertising(false);
+            nrf_gpio_pin_clear(CONNECTED_LED_PIN_NO);
+            nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
 
             m_conn_handle    = p_ble_evt->evt.gap_evt.conn_handle;
             m_flags &= ~DFU_BLE_FLAG_IS_ADVERTISING;
@@ -628,9 +662,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             {
                 if (on_rw_authorize_req(&m_dfu, p_ble_evt))
                 {
-                    err_code = on_ctrl_pt_write(&m_dfu,
+                    err_code = on_ctrl_pt_write(&m_dfu, 
                            &(p_ble_evt->evt.gatts_evt.params.authorize_request.request.write));
-#ifdef NRF_DFU_DEBUG_VERSION
+#ifdef NRF_DFU_DEBUG_VERSION  
                     if (err_code != NRF_SUCCESS)
                     {
                         NRF_LOG_ERROR("Could not handle on_ctrl_pt_write. err_code: 0x%04x\r\n", err_code);
@@ -652,19 +686,19 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             err_code = sd_ble_gatts_sys_attr_set(p_ble_evt->evt.gap_evt.conn_handle, NULL, 0, 0);
             APP_ERROR_CHECK(err_code);
             break;
-
+        
         case BLE_GATTS_EVT_WRITE:
             on_write(&m_dfu, p_ble_evt);
             break;
 
 #if (NRF_SD_BLE_API_VERSION == 3)
         case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST:
-            err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
+            err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle, 
                                                        NRF_BLE_MAX_MTU_SIZE);
             APP_ERROR_CHECK(err_code);
             break; // BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST
 #endif
-
+        
         default:
             // No implementation needed.
             break;
@@ -684,6 +718,20 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     ble_conn_params_on_ble_evt(p_ble_evt);
     on_ble_evt(p_ble_evt);
 }
+
+
+/**@brief       Function for the LEDs initialization.
+ *
+ * @details     Initializes all LEDs used by this application.
+ */
+static void leds_init(void)
+{
+    nrf_gpio_cfg_output(ADVERTISING_LED_PIN_NO);
+    nrf_gpio_cfg_output(CONNECTED_LED_PIN_NO);
+    nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
+    nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
+}
+
 
 static uint32_t gap_address_change(void)
 {
@@ -752,11 +800,7 @@ static uint32_t gap_params_init(void)
 static uint32_t ble_stack_init(bool init_softdevice)
 {
     uint32_t         err_code;
-    nrf_clock_lf_cfg_t clock_lf_cfg = {
-            .source        = NRF_CLOCK_LF_SRC_RC,
-            .rc_ctiv       = 16, // recommended for nRF52
-            .rc_temp_ctiv  = 2,  // recommended for nRF52
-            .xtal_accuracy = 0};
+    nrf_clock_lf_cfg_t clock_lf_cfg = NRF_CLOCK_LFCLKSRC;
 
     if (init_softdevice)
     {
@@ -777,8 +821,8 @@ static uint32_t ble_stack_init(bool init_softdevice)
 
 #if (NRF_SD_BLE_API_VERSION == 3)
     ble_enable_params.gatt_enable_params.att_mtu = NRF_BLE_MAX_MTU_SIZE;
-#endif
-
+#endif    
+    
     // Enable BLE stack.
     err_code = softdevice_enable(&ble_enable_params);
     return err_code;

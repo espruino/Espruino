@@ -1,13 +1,41 @@
-/* Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 #include "nrf_dfu_settings.h"
@@ -15,6 +43,8 @@
 #include "nrf_log.h"
 #include "crc32.h"
 #include <string.h>
+#include "app_scheduler.h"
+#include "nrf_delay.h"
 
 /** @brief  This variable reserves a codepage for bootloader specific settings,
  *          to ensure the compiler doesn't locate any code or variables at his location.
@@ -109,6 +139,30 @@ static void dfu_settings_write_callback(fs_evt_t const * const evt, fs_ret_t res
     }
 }
 
+static void delay_operation(void)
+{
+   nrf_delay_ms(100);
+   app_sched_execute();
+}
+
+static void wait_for_pending(void)
+{
+    while (flash_operation_pending == true)
+    {
+        NRF_LOG_INFO("Waiting for other flash operation to finish.\r\n");
+        delay_operation();
+    }
+}
+
+static void wait_for_queue(void)
+{
+    while (fs_queue_is_full())
+    {
+        NRF_LOG_INFO("Waiting for available space on flash queue.\r\n");
+        delay_operation();
+    }
+}
+
 
 uint32_t nrf_dfu_settings_calculate_crc(void)
 {
@@ -142,28 +196,37 @@ void nrf_dfu_settings_init(void)
     NRF_LOG_INFO("!!!!!!!!!!!!!!! Resetting bootloader settings !!!!!!!!!!!\r\n");
     memset(&s_dfu_settings, 0x00, sizeof(nrf_dfu_settings_t));
     s_dfu_settings.settings_version = NRF_DFU_SETTINGS_VERSION;
-    (void)nrf_dfu_settings_write(NULL);
+    APP_ERROR_CHECK(nrf_dfu_settings_write(NULL));
 }
 
 
 ret_code_t nrf_dfu_settings_write(dfu_flash_callback_t callback)
 {
+    ret_code_t err_code = FS_SUCCESS;
     NRF_LOG_INFO("Erasing old settings at: 0x%08x\r\n", (uint32_t)&m_dfu_settings_buffer[0]);
 
-    if (flash_operation_pending == true)
-    {
-        NRF_LOG_INFO("Could not queue writing of DFU Settings\r\n");
-        return NRF_ERROR_BUSY;
-    }
-
+    // Wait for any ongoing operation (because of multiple calls to nrf_dfu_settings_write)
+    wait_for_pending();
+    
     flash_operation_pending = true;
     m_callback = callback;
-
-    if(nrf_dfu_flash_erase((uint32_t*)&m_dfu_settings_buffer[0], 1, NULL) != FS_SUCCESS)
+    
+    do 
     {
+        wait_for_queue();
+        
+        // Not setting the callback function because ERASE is required before STORE
+        // Only report completion on successful STORE.
+        err_code = nrf_dfu_flash_erase((uint32_t*)&m_dfu_settings_buffer[0], 1, NULL);
+        
+    } while (err_code == FS_ERR_QUEUE_FULL);
+    
+    
+    if (err_code != FS_SUCCESS)
+    {
+        NRF_LOG_ERROR("Erasing from flash memory failed.\r\n");
         flash_operation_pending = false;
-        NRF_LOG_INFO("Failed to erase bootloader settings\r\n");
-        return NRF_ERROR_BUSY;
+        return NRF_ERROR_INTERNAL;
     }
 
     s_dfu_settings.crc = nrf_dfu_settings_calculate_crc();
@@ -172,11 +235,23 @@ ret_code_t nrf_dfu_settings_write(dfu_flash_callback_t callback)
 
     static nrf_dfu_settings_t temp_dfu_settings;
     memcpy(&temp_dfu_settings, &s_dfu_settings, sizeof(nrf_dfu_settings_t));
-    if(nrf_dfu_flash_store((uint32_t*)&m_dfu_settings_buffer[0], (uint32_t*)&temp_dfu_settings, sizeof(nrf_dfu_settings_t)/4, dfu_settings_write_callback) != FS_SUCCESS)
+
+    do 
     {
+        wait_for_queue();
+        
+        err_code = nrf_dfu_flash_store((uint32_t*)&m_dfu_settings_buffer[0],
+                                       (uint32_t*)&temp_dfu_settings,
+                                       sizeof(nrf_dfu_settings_t)/4,
+                                       dfu_settings_write_callback);
+
+    } while (err_code == FS_ERR_QUEUE_FULL);
+    
+    if (err_code != FS_SUCCESS)
+    {
+        NRF_LOG_ERROR("Storing to flash memory failed.\r\n");
         flash_operation_pending = false;
-        NRF_LOG_INFO("Failed to write bootloader settings\r\n");
-        return NRF_ERROR_BUSY;
+        return NRF_ERROR_INTERNAL;
     }
 
     NRF_LOG_INFO("Writing settings...\r\n");

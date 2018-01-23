@@ -1,13 +1,41 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 /**@file
@@ -27,7 +55,7 @@
 #include <stdint.h>
 #include "app_util.h"
 #include "app_util_platform.h"
-#include "sdk_config.h"
+#include "sdk_common.h"
 #include "sdk_errors.h"
 #include "nrf_peripherals.h"
 
@@ -35,7 +63,7 @@
     #define EGU_ENABLED 0
 #endif
 
-#if EGU_ENABLED > 0
+#if NRF_MODULE_ENABLED(EGU)
 #include "nrf_egu.h"
 #endif
 
@@ -61,7 +89,7 @@ typedef uint16_t nrf_swi_flags_t;
 typedef void (* nrf_swi_handler_t)(nrf_swi_t, nrf_swi_flags_t);
 
 /**@brief Maximum numbers of SWIs. This number is fixed for a specific chip. */
-#if EGU_ENABLED > 0
+#if NRF_MODULE_ENABLED(EGU)
 #define SWI_MAX              EGU_COUNT
 #else
 #define SWI_MAX              SWI_COUNT
@@ -85,13 +113,13 @@ typedef void (* nrf_swi_handler_t)(nrf_swi_t, nrf_swi_flags_t);
 #endif
 
 /**@brief Default SWI priority. */
-#define SWI_DEFAULT_PRIORITY APP_IRQ_PRIORITY_LOW
+#define SWI_DEFAULT_PRIORITY APP_IRQ_PRIORITY_LOWEST
 
 
 /**@brief Function for initializing the SWI module.
  *
- * @retval     NRF_SUCCESS                If the module was successfully initialized.
- * @retval     MODULE_ALREADY_INITIALIZED If the module has already been initialized.
+ * @retval     NRF_SUCCESS                           If the module was successfully initialized.
+ * @retval     NRF_ERROR_MODULE_ALREADY_INITIALIZED  If the module has already been initialized.
  */
 ret_code_t nrf_drv_swi_init(void);
 
@@ -152,7 +180,7 @@ uint32_t nrf_drv_swi_task_trigger_address_get(nrf_swi_t swi, uint8_t channel);
  */
 uint32_t nrf_drv_swi_event_triggered_address_get(nrf_swi_t swi, uint8_t channel);
 
-#endif // EGU_ENABLED > 0
+#endif // NRF_MODULE_ENABLED(EGU)
 
 
 

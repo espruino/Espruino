@@ -44,6 +44,7 @@
 #include "hal_nfc_t2t.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "nfc_t2t_lib.h"
 #include "nfc_fixes.h"
 #include "nrf.h"
 #include "app_util_platform.h"
@@ -116,17 +117,17 @@
 #define NFCID1_LAST_BYTE1_SHIFT     8u                                          /**< Shift value for NFC ID byte 1 */
 #define NFCID1_LAST_BYTE0_SHIFT     0u                                          /**< Shift value for NFC ID byte 0 */
 
-#define NFC_BUFFER_SIZE             255u                                        /**< NFC data buffer size */
+#define NFC_RX_BUFFER_SIZE          16u                                         /**< NFC Rx data buffer size */
+#define T2T_READ_CMD                0x30u                                       /**< Type 2 Tag Read command identifier */
 #define NFC_SLP_REQ_CMD             0x50u                                       /**< NFC SLP_REQ command identifier */
-#define NFC_UID_SIZE                7u                                          /**< UID size in bytes */
 #define NFC_CRC_SIZE                2u                                          /**< CRC size in bytes */
 
 #ifdef HAL_NFC_NRF52840_ENGINEERING_A_WORKAROUND
-    #define NRF_NFCT_ERRORSTATUS_ALL (NFCT_ERRORSTATUS_FRAMEDELAYTIMEOUT_Msk)   /**< Mask for clearing all error flags in NFCT_ERRORSTATUS register */
+    #define NRF_NFCT_ERRORSTATUS_ALL (NFCT_ERRORSTATUS_FRAMEDELAYTIMEOUT_Msk)    /**< Mask for clearing all error flags in NFCT_ERRORSTATUS register */
 #else
     #define NRF_NFCT_ERRORSTATUS_ALL    (NFCT_ERRORSTATUS_NFCFIELDTOOWEAK_Msk   | \
                                         NFCT_ERRORSTATUS_NFCFIELDTOOSTRONG_Msk  | \
-                                        NFCT_ERRORSTATUS_FRAMEDELAYTIMEOUT_Msk) /**< Mask for clearing all error flags in NFCT_ERRORSTATUS register */
+                                        NFCT_ERRORSTATUS_FRAMEDELAYTIMEOUT_Msk)    /**< Mask for clearing all error flags in NFCT_ERRORSTATUS register */
 #endif // HAL_NFC_NRF52840_ENGINEERING_A_WORKAROUND
 
 #define NRF_NFCT_FRAMESTATUS_RX_MSK (NFCT_FRAMESTATUS_RX_OVERRUN_Msk      | \
@@ -149,11 +150,9 @@ static inline void nrf_nfct_clock_event_handler(nrf_drv_clock_evt_type_t event);
 static inline void nrf_nfct_field_event_handler(volatile nfct_field_sense_state_t field_state);
 
 /* Static data */
-static uint8_t                      m_nfc_uid[7] = {0};                                           /**< Cache of custom uid */
-static uint8_t                      m_nfc_internal[T2T_INTERNAL_BYTES_NR] = {0};                  /**< Cache of internal tag memory (first 10 bytes) */
 static hal_nfc_callback_t           m_nfc_lib_callback = (hal_nfc_callback_t) NULL;               /**< Callback to nfc_lib layer */
 static void *                       m_nfc_lib_context;                                            /**< Callback execution context */
-static volatile uint8_t             m_nfc_buffer[NFC_BUFFER_SIZE]         = {0};                  /**< Buffer for NFC Rx data */
+static volatile uint8_t             m_nfc_rx_buffer[NFC_RX_BUFFER_SIZE]   = {0};                  /**< Buffer for NFC Rx data */
 static volatile bool                m_slp_req_received                    = false;                /**< Flag indicating that SLP_REQ Command was received */
 static volatile bool                m_field_on                            = false;                /**< Flag indicating that NFC Tag field is present */
 static nrf_drv_clock_handler_item_t m_clock_handler_item;                                         /**< Clock event handler item structure */
@@ -184,7 +183,7 @@ static void hal_nfc_field_check(void);
 static void field_timer_with_callback_config()
 {
     NRF_TIMER4->MODE      = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
-    NRF_TIMER4->BITMODE   = TIMER_BITMODE_BITMODE_16Bit << TIMER_BITMODE_BITMODE_Pos;
+    NRF_TIMER4->BITMODE   = TIMER_BITMODE_BITMODE_08Bit << TIMER_BITMODE_BITMODE_Pos;
     NRF_TIMER4->PRESCALER = 4 << TIMER_PRESCALER_PRESCALER_Pos;
     NRF_TIMER4->CC[0]     = HAL_NFC_FIELD_TIMER_PERIOD << TIMER_CC_CC_Pos;
     NRF_TIMER4->SHORTS    = TIMER_SHORTS_COMPARE0_CLEAR_Enabled << TIMER_SHORTS_COMPARE0_CLEAR_Pos;
@@ -216,17 +215,11 @@ static inline void hal_nfc_common_hw_setup(uint8_t * const nfc_internal)
     uint32_t nfc_tag_header0 = NRF_FICR->NFC.TAGHEADER0;
     uint32_t nfc_tag_header1 = NRF_FICR->NFC.TAGHEADER1;
     
-#ifdef HAL_NFC_NRF52840_ENGINEERING_A_WORKAROUND
 /* Begin: Bugfix for FTPAN-98 */
-    *(volatile uint32_t *) 0x4000568C = 0x00038148;
+#ifdef HAL_NFC_NRF52840_ENGINEERING_A_WORKAROUND
+     *(volatile uint32_t *)0x4000568C = 0x00038148;
+#endif
 /* End: Bugfix for FTPAN-98 */
-/* Begin: Bugfix for FTPAN-144 */
-    *(volatile uint32_t *) 0x4000561c = 0x01;
-    *(volatile uint32_t *) 0x4000562c = 0x3F;
-    *(volatile uint32_t *) 0x4000563c = 0x0;
-/* End: Bugfix for FTPAN-144 */
-#endif // HAL_NFC_NRF52840_ENGINEERING_A_WORKAROUND
-
     
 #ifdef HAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND
     NRF_NFCT->INTENSET = (NFCT_INTENSET_FIELDDETECTED_Enabled << NFCT_INTENSET_FIELDDETECTED_Pos);
@@ -238,30 +231,16 @@ static inline void hal_nfc_common_hw_setup(uint8_t * const nfc_internal)
     NRF_NFCT->INTENSET = (NFCT_INTENSET_ERROR_Enabled    << NFCT_INTENSET_ERROR_Pos) |
                          (NFCT_INTENSET_SELECTED_Enabled << NFCT_INTENSET_SELECTED_Pos);
 
-    if(m_nfc_uid[0] | m_nfc_uid[1] | m_nfc_uid[2] | m_nfc_uid[3] | m_nfc_uid[4] | m_nfc_uid[5] | m_nfc_uid[6])
-    {
-        nfc_internal[0] = m_nfc_uid[0];                                                        //SN0
-        nfc_internal[1] = m_nfc_uid[1];                                                        //SN1
-        nfc_internal[2] = m_nfc_uid[2];                                                        //SN2
-        nfc_internal[4] = m_nfc_uid[3];                                                        //SN3
-        nfc_internal[5] = m_nfc_uid[4];                                                        //SN4
-        nfc_internal[6] = m_nfc_uid[5];                                                        //SN5
-        nfc_internal[7] = m_nfc_uid[6];                                                        //SN6
-    }
-    else
-    {
-        nfc_internal[0] = (uint8_t) (LSB_32(nfc_tag_header0 >> T2T_INTERNAL_BYTE_SN0_SHIFT));  //SN0
-        nfc_internal[1] = (uint8_t) (LSB_32(nfc_tag_header0 >> T2T_INTERNAL_BYTE_SN1_SHIFT));  //SN1
-        nfc_internal[2] = (uint8_t) (LSB_32(nfc_tag_header0 >> T2T_INTERNAL_BYTE_SN2_SHIFT));  //SN2
-        nfc_internal[4] = (uint8_t) (LSB_32(nfc_tag_header1 >> T2T_INTERNAL_BYTE_SN3_SHIFT));  //SN3
-        nfc_internal[5] = (uint8_t) (LSB_32(nfc_tag_header1 >> T2T_INTERNAL_BYTE_SN4_SHIFT));  //SN4
-        nfc_internal[6] = (uint8_t) (LSB_32(nfc_tag_header1 >> T2T_INTERNAL_BYTE_SN5_SHIFT));  //SN5
-        nfc_internal[7] = (uint8_t) (LSB_32(nfc_tag_header1 >> T2T_INTERNAL_BYTE_SN6_SHIFT));  //SN6
-    }
-
     /* According to ISO/IEC 14443-3 */
+    nfc_internal[0] = (uint8_t) (LSB_32(nfc_tag_header0 >> T2T_INTERNAL_BYTE_SN0_SHIFT));      //SN0
+    nfc_internal[1] = (uint8_t) (LSB_32(nfc_tag_header0 >> T2T_INTERNAL_BYTE_SN1_SHIFT));      //SN1
+    nfc_internal[2] = (uint8_t) (LSB_32(nfc_tag_header0 >> T2T_INTERNAL_BYTE_SN2_SHIFT));      //SN2
     nfc_internal[3] = (uint8_t) ((CASCADE_TAG_BYTE) ^ nfc_internal[0] ^ 
                                   nfc_internal[1]   ^ nfc_internal[2]);                        //BCC0 = CASCADE_TAG_BYTE ^ SN0 ^ SN1 ^ SN2
+    nfc_internal[4] = (uint8_t) (LSB_32(nfc_tag_header1 >> T2T_INTERNAL_BYTE_SN3_SHIFT));      //SN3
+    nfc_internal[5] = (uint8_t) (LSB_32(nfc_tag_header1 >> T2T_INTERNAL_BYTE_SN4_SHIFT));      //SN4
+    nfc_internal[6] = (uint8_t) (LSB_32(nfc_tag_header1 >> T2T_INTERNAL_BYTE_SN5_SHIFT));      //SN5
+    nfc_internal[7] = (uint8_t) (LSB_32(nfc_tag_header1 >> T2T_INTERNAL_BYTE_SN6_SHIFT));      //SN6
     nfc_internal[8] = (uint8_t) (nfc_internal[4] ^ nfc_internal[5] ^
                                  nfc_internal[6] ^ nfc_internal[7]);                           //BCC1 = SN3 ^ SN4 ^ SN5 ^ SN6
     nfc_internal[9] = (uint8_t) (NFC_LIB_VERSION);                                             //For internal use
@@ -289,11 +268,15 @@ static inline void hal_nfc_common_hw_setup(uint8_t * const nfc_internal)
 
 ret_code_t hal_nfc_setup(hal_nfc_callback_t callback, void * p_context)
 {
+    uint8_t  nfc_internal[T2T_INTERNAL_BYTES_NR];
+    
     m_nfc_lib_callback = callback;
     m_nfc_lib_context  = p_context;
     
-    hal_nfc_common_hw_setup(m_nfc_internal);
+    hal_nfc_common_hw_setup(nfc_internal);
 
+    (void) nfc_t2t_internal_set((uint8_t *) nfc_internal, sizeof(nfc_internal));
+    
     /* Initialize SDK Clock module for handling high precission clock requests */
     m_clock_handler_item.event_handler = nrf_nfct_clock_event_handler;
     m_clock_handler_item.p_next        = NULL;
@@ -307,7 +290,7 @@ ret_code_t hal_nfc_setup(hal_nfc_callback_t callback, void * p_context)
     NRF_LOG_INFO("Init\r\n");
     HAL_NFC_DEBUG_PINS_INITIALIZE();
 
-    if ((err_code == NRF_SUCCESS) || (err_code == MODULE_ALREADY_INITIALIZED))
+    if ((err_code == NRF_SUCCESS) || (err_code == NRF_ERROR_MODULE_ALREADY_INITIALIZED))
     {
         return NRF_SUCCESS;
     }
@@ -438,39 +421,23 @@ static inline void nrf_nfct_field_event_handler(volatile nfct_field_sense_state_
 }
 #endif // HAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND
 
-ret_code_t hal_nfc_parameter_set(hal_nfc_param_id_t id, const void * p_data, size_t data_length)
+/* This function is used by nfc_lib for unit testing only */
+ret_code_t hal_nfc_parameter_set(hal_nfc_param_id_t id, void * p_data, size_t data_length)
 {
-    switch(id)
-    {
-        case HAL_NFC_PARAM_ID_UID:
-            if(data_length != NFC_UID_SIZE)
-            {
-                return NRF_ERROR_INVALID_LENGTH;
-            }
-            memcpy((void *)m_nfc_uid, p_data, NFC_UID_SIZE);
-            break;
-        default:
-            break;
-    }
+    (void)id;
+    (void)p_data;
+    (void)data_length;
+
     return NRF_SUCCESS;
 } 
 
+/* This function is used by nfc_lib for unit testing only */
 ret_code_t hal_nfc_parameter_get(hal_nfc_param_id_t id, void * p_data, size_t * p_max_data_length)
 {
-    switch(id)
-    {
-        case HAL_NFC_PARAM_ID_INTERNAL:
-            if(*p_max_data_length < T2T_INTERNAL_BYTES_NR)
-            {
-                *p_max_data_length = T2T_INTERNAL_BYTES_NR;
-                return NRF_ERROR_INVALID_LENGTH;
-            }
-            *p_max_data_length = T2T_INTERNAL_BYTES_NR;
-            memcpy(p_data, (void *)m_nfc_internal, T2T_INTERNAL_BYTES_NR);
-            break;
-        default:
-            break;
-    }
+    (void)id;
+    (void)p_data;
+    (void)p_max_data_length;
+
     return NRF_SUCCESS;
 }
 
@@ -478,11 +445,12 @@ ret_code_t hal_nfc_parameter_get(hal_nfc_param_id_t id, void * p_data, size_t * 
 ret_code_t hal_nfc_start(void)
 {
     NRF_NFCT->ERRORSTATUS = NRF_NFCT_ERRORSTATUS_ALL;
-    NRF_NFCT->TASKS_SENSE = 1;
 
     NVIC_ClearPendingIRQ(NFCT_IRQn);
     NVIC_SetPriority(NFCT_IRQn, APP_IRQ_PRIORITY_LOW);
     NVIC_EnableIRQ(NFCT_IRQn);
+
+    NRF_NFCT->TASKS_SENSE = 1;
 
     NRF_LOG_INFO("Start\r\n");
     return NRF_SUCCESS;
@@ -490,67 +458,19 @@ ret_code_t hal_nfc_start(void)
 
 ret_code_t hal_nfc_send(const uint8_t * p_data, size_t data_length)
 {
-    if (!m_field_on)
-    {
-        return NRF_ERROR_INVALID_STATE;
-    }
-    if ((data_length == 0) || (data_length > NFC_BUFFER_SIZE))
+    if (data_length == 0)
     {
         return NRF_ERROR_DATA_SIZE;
     }
 
-    /* Copy data into input and output buffer */
-    memcpy(m_nfc_buffer, p_data, NFC_BUFFER_SIZE);
-
     /* Ignore previous TX END events, SW takes care only for data frames which tranmission is triggered in this function */
     nrf_nfct_event_clear(&NRF_NFCT->EVENTS_TXFRAMEEND);
 
-    /* Restore default TX configuration */
-    NRF_NFCT->TXD.FRAMECONFIG =   (NFCT_TXD_FRAMECONFIG_PARITY_Parity << NFCT_TXD_FRAMECONFIG_PARITY_Pos)
-                                | (NFCT_TXD_FRAMECONFIG_DISCARDMODE_DiscardStart << NFCT_TXD_FRAMECONFIG_DISCARDMODE_Pos)
-                                | (NFCT_TXD_FRAMECONFIG_SOF_SoF << NFCT_TXD_FRAMECONFIG_SOF_Pos)
-                                | (NFCT_TXD_FRAMECONFIG_CRCMODETX_CRC16TX << NFCT_TXD_FRAMECONFIG_CRCMODETX_Pos);
-
-    NRF_NFCT->PACKETPTR       = (uint32_t) m_nfc_buffer;
-    NRF_NFCT->TXD.AMOUNT      = (data_length << NFCT_TXD_AMOUNT_TXDATABYTES_Pos) & NFCT_TXD_AMOUNT_TXDATABYTES_Msk;
-    NRF_NFCT->INTENSET        = (NFCT_INTENSET_TXFRAMEEND_Enabled << NFCT_INTENSET_TXFRAMEEND_Pos);
-    NRF_NFCT->TASKS_STARTTX   = 1;
-
-    NRF_LOG_INFO("Send\r\n");
-    return NRF_SUCCESS;
-}
-
-ret_code_t hal_nfc_send_rsp(const uint8_t data, size_t data_length)
-{
-    if (!m_field_on)
-    {
-        return NRF_ERROR_INVALID_STATE;
-    }
-
-    /* No rx data available, so wait for next frame reception */
-    if (data_length == 0)
-    {
-        NRF_NFCT->TASKS_ENABLERXDATA = 1;
-        return NRF_SUCCESS;
-    }
-
-    /* Data is sent asynchronously using DMA. */
-    static uint8_t buffer[1];
-    buffer[0] = data;
-
-    /* Ignore previous TX END events, SW takes care only for data frames which tranmission is triggered in this function */
-    nrf_nfct_event_clear(&NRF_NFCT->EVENTS_TXFRAMEEND);
-
-    /* Configure peripheral for ACK/NACK */
-    NRF_NFCT->TXD.FRAMECONFIG =   (NFCT_TXD_FRAMECONFIG_PARITY_Parity << NFCT_TXD_FRAMECONFIG_PARITY_Pos)
-                                | (NFCT_TXD_FRAMECONFIG_DISCARDMODE_DiscardEnd << NFCT_TXD_FRAMECONFIG_DISCARDMODE_Pos)
-                                | (NFCT_TXD_FRAMECONFIG_SOF_SoF << NFCT_TXD_FRAMECONFIG_SOF_Pos)
-                                | (NFCT_TXD_FRAMECONFIG_CRCMODETX_NoCRCTX << NFCT_TXD_FRAMECONFIG_CRCMODETX_Pos);
-
-    NRF_NFCT->PACKETPTR       = (uint32_t) buffer;
-    NRF_NFCT->TXD.AMOUNT      = (data_length << NFCT_TXD_AMOUNT_TXDATABITS_Pos) & NFCT_TXD_AMOUNT_TXDATABITS_Msk;
-    NRF_NFCT->INTENSET        = (NFCT_INTENSET_TXFRAMEEND_Enabled << NFCT_INTENSET_TXFRAMEEND_Pos);
-    NRF_NFCT->TASKS_STARTTX   = 1;
+    NRF_NFCT->PACKETPTR     = (uint32_t) p_data;
+    NRF_NFCT->TXD.AMOUNT    = (data_length << NFCT_TXD_AMOUNT_TXDATABYTES_Pos) &
+                               NFCT_TXD_AMOUNT_TXDATABYTES_Msk;
+    NRF_NFCT->INTENSET      = (NFCT_INTENSET_TXFRAMEEND_Enabled << NFCT_INTENSET_TXFRAMEEND_Pos);
+    NRF_NFCT->TASKS_STARTTX = 1;
 
     NRF_LOG_INFO("Send\r\n");
     return NRF_SUCCESS;
@@ -608,40 +528,30 @@ void NFCT_IRQHandler(void)
     {
         /* Take into account only number of whole bytes */
         uint32_t rx_data_size = ((NRF_NFCT->RXD.AMOUNT & NFCT_RXD_AMOUNT_RXDATABYTES_Msk) >>
-                                 NFCT_RXD_AMOUNT_RXDATABYTES_Pos);
-
-        /* Prevent integer underflow */
-        if(rx_data_size >= NFC_CRC_SIZE) rx_data_size -= NFC_CRC_SIZE;
-
+                                 NFCT_RXD_AMOUNT_RXDATABYTES_Pos) - NFC_CRC_SIZE;
         nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXFRAMEEND);
 
-        /* Use default FRAMEDELAY, for all cases but callback */
-        NRF_NFCT->FRAMEDELAYMAX = 0x1000UL; //302us, taken from datasheet
-
-        /* Frame is garbage, wait for next frame reception */
-        if((rx_data_size == 0) || (rx_data_size > NFC_BUFFER_SIZE))
+        /* Look for Tag 2 Type READ Command */
+        if (m_nfc_rx_buffer[0] == T2T_READ_CMD)
         {
+            if(m_nfc_lib_callback != NULL)
+            {
+                /* This callback should trigger transmission of READ Response */
+                m_nfc_lib_callback(m_nfc_lib_context,
+                                   HAL_NFC_EVENT_DATA_RECEIVED,
+                                   (void*)m_nfc_rx_buffer,
+                                   rx_data_size);
+            }
+        }
+        else
+        {
+            /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
+            if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
+            {
+                m_slp_req_received = true;
+            }
+            /* Not a READ Command, so wait for next frame reception */
             NRF_NFCT->TASKS_ENABLERXDATA = 1;
-        } else
-        /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
-        if(m_nfc_buffer[0] == NFC_SLP_REQ_CMD)
-        {
-            m_slp_req_received = true;
-
-            /* Wait for next frame reception */
-            NRF_NFCT->TASKS_ENABLERXDATA = 1;
-
-        } else
-        if(m_nfc_lib_callback != NULL)
-        {
-            /* JS-has a high latency, set relaxed FRAMEDELAY and hope for a forgiving reader */
-            NRF_NFCT->FRAMEDELAYMAX = 0xFFFFUL; //4.8ms
-
-            /* This callback should trigger transmission of a Response */
-            m_nfc_lib_callback(m_nfc_lib_context,
-                               HAL_NFC_EVENT_DATA_RECEIVED,
-                               (void*)m_nfc_buffer,
-                               rx_data_size);
         }
 
         NRF_LOG_DEBUG("Rx fend\r\n");
@@ -655,8 +565,8 @@ void NFCT_IRQHandler(void)
         NRF_NFCT->INTENCLR = (NFCT_INTENCLR_TXFRAMEEND_Clear << NFCT_INTENCLR_TXFRAMEEND_Pos);
 
         /* Set up for reception */
-        NRF_NFCT->PACKETPTR          = (uint32_t) m_nfc_buffer;
-        NRF_NFCT->MAXLEN             = NFC_BUFFER_SIZE;
+        NRF_NFCT->PACKETPTR          = (uint32_t) m_nfc_rx_buffer;
+        NRF_NFCT->MAXLEN             = NFC_RX_BUFFER_SIZE;
         NRF_NFCT->TASKS_ENABLERXDATA = 1;
 
         if (m_nfc_lib_callback != NULL)
@@ -675,8 +585,8 @@ void NFCT_IRQHandler(void)
         nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXERROR);
 
         /* Set up registers for EasyDMA and start receiving packets */
-        NRF_NFCT->PACKETPTR          = (uint32_t) m_nfc_buffer;
-        NRF_NFCT->MAXLEN             = NFC_BUFFER_SIZE;
+        NRF_NFCT->PACKETPTR          = (uint32_t) m_nfc_rx_buffer;
+        NRF_NFCT->MAXLEN             = NFC_RX_BUFFER_SIZE;
         NRF_NFCT->TASKS_ENABLERXDATA = 1;
 
         NRF_NFCT->INTENSET = (NFCT_INTENSET_RXFRAMEEND_Enabled << NFCT_INTENSET_RXFRAMEEND_Pos) |
@@ -812,7 +722,9 @@ static inline void nrf_nfct_field_event_handler(volatile nfct_field_sense_state_
  */
 static inline void hal_nfc_re_setup(void)
 {
-    hal_nfc_common_hw_setup(m_nfc_internal);
+    uint8_t  nfc_internal[T2T_INTERNAL_BYTES_NR];
+
+    hal_nfc_common_hw_setup(nfc_internal);
 
     NRF_LOG_INFO("Reinitialize\r\n");
 }

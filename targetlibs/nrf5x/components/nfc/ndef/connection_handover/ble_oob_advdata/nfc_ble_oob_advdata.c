@@ -1,17 +1,50 @@
-/* Copyright (c) 2012 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2012 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 #include "nfc_ble_oob_advdata.h"
 #include "sdk_common.h"
+#include "nfc_ble_pair_msg.h"
+
+// LESC OOB data AD_TYPE values.
+#define BLE_GAP_AD_TYPE_LESC_CONFIRM_VALUE  0x22
+#define BLE_GAP_AD_TYPE_LESC_RANDOM_VALUE   0x23
 
 /**
  * @brief Macro for verifying basic parameters used for encoding single BLE AD Type.
@@ -80,6 +113,8 @@ static ret_code_t tk_value_encode(ble_advdata_tk_value_t * p_tk_value,
                                   uint16_t               * p_offset,
                                   uint16_t                 max_size)
 {
+    ret_code_t err_code;
+    
     NFC_BLE_OOB_ADVDATA_INPUT_VERIFY(p_encoded_data, p_offset, AD_TYPE_TK_VALUE_SIZE, max_size);
 
     // Encode TK Value.
@@ -88,12 +123,64 @@ static ret_code_t tk_value_encode(ble_advdata_tk_value_t * p_tk_value,
     p_encoded_data[*p_offset]  = BLE_GAP_AD_TYPE_SECURITY_MANAGER_TK_VALUE;
     *p_offset                 += ADV_AD_TYPE_FIELD_SIZE;
 
-    for (int8_t i = AD_TYPE_TK_VALUE_DATA_SIZE - 1; i >= 0; i--, (*p_offset)++)
-    {
-        p_encoded_data[*p_offset] = p_tk_value->tk[i];
-    }
+    // Remember location of TK in the buffer if this feature was enabled.
+    err_code = nfc_tk_to_group_add(&p_encoded_data[*p_offset]);
+    VERIFY_SUCCESS(err_code);
+    
+    nfc_tk_value_payload_encode(p_tk_value, &p_encoded_data[*p_offset]);
+    (*p_offset) += AD_TYPE_TK_VALUE_DATA_SIZE;
 
     return NRF_SUCCESS;
+}
+
+/**@brief Function for encoding LESC OOB data in the CH NDEF message.
+ *
+ * @param[in]      p_lesc_value    Pointer to the LESC OOB values to be encoded.
+ * @param[out]     p_encoded_data  Pointer to the buffer where encoded data will be returned.
+ * @param[in,out]  p_offset        \c in: Offset of \p p_encoded_data buffer before this AD type encoding.
+ *                                 \c out: Offset of \p p_encoded_data buffer after this AD type encoding.
+ * @param[in]      max_size        Size of \p p_encoded_data buffer.
+ *
+ * @retval NRF_SUCCESS             If the operation was successful.
+ * @retval NRF_ERROR_DATA_SIZE     If the provided buffer size is too small.
+ */
+static ret_code_t lesc_value_encode(ble_gap_lesc_oob_data_t * p_lesc_value,
+                                    uint8_t                 * p_encoded_data,
+                                    uint16_t                * p_offset,
+                                    uint16_t                  max_size)
+{
+    ret_code_t err_code;
+
+    NFC_BLE_OOB_ADVDATA_INPUT_VERIFY(p_encoded_data, p_offset, AD_TYPE_LESC_SIZE, max_size);
+
+    // Encode LESC Confirm Value.
+    p_encoded_data[*p_offset]  = (uint8_t)(ADV_AD_TYPE_FIELD_SIZE + AD_TYPE_CONFIRM_VALUE_DATA_SIZE);
+    *p_offset                 += ADV_LENGTH_FIELD_SIZE;
+    p_encoded_data[*p_offset]  = BLE_GAP_AD_TYPE_LESC_CONFIRM_VALUE;
+    *p_offset                 += ADV_AD_TYPE_FIELD_SIZE;
+    
+    memcpy(&p_encoded_data[*p_offset], p_lesc_value->c, sizeof(p_lesc_value->c)); 
+    
+    uint8_t *p_confirm = &p_encoded_data[*p_offset];
+    
+    (*p_offset) += AD_TYPE_CONFIRM_VALUE_DATA_SIZE;
+
+    // Encode LESC Random Value.
+    p_encoded_data[*p_offset]  = (uint8_t)(ADV_AD_TYPE_FIELD_SIZE + AD_TYPE_RANDOM_VALUE_DATA_SIZE);
+    *p_offset                 += ADV_LENGTH_FIELD_SIZE;
+    p_encoded_data[*p_offset]  = BLE_GAP_AD_TYPE_LESC_RANDOM_VALUE;
+    *p_offset                 += ADV_AD_TYPE_FIELD_SIZE;
+    
+    memcpy(&p_encoded_data[*p_offset], p_lesc_value->r, sizeof(p_lesc_value->r)); 
+    
+    uint8_t *p_random = &p_encoded_data[*p_offset];
+
+    (*p_offset) += AD_TYPE_RANDOM_VALUE_DATA_SIZE;
+    
+    // Remember location of LESC OOB data in the buffer in case of key changes.
+    err_code = nfc_lesc_pos_set(p_confirm, p_random);
+    
+    return err_code;
 }
 
 /**@brief Function for encoding data of LE Role AD Type.
@@ -222,7 +309,8 @@ static ret_code_t nfc_ble_oob_adv_data_check(ble_advdata_t advdata)
     advdata.flags                   = 0;
     advdata.name_type               = BLE_ADVDATA_NO_NAME;
     advdata.short_name_len          = 0;
-
+    advdata.p_lesc_data             = NULL;
+    
     ble_advdata_t pattern_advdata;
     memset(&pattern_advdata, 0, sizeof(ble_advdata_t));
 
@@ -240,7 +328,7 @@ ret_code_t nfc_ble_oob_adv_data_encode(ble_advdata_t const * const p_advdata,
                                        uint8_t             * const p_encoded_data,
                                        uint16_t            * const p_len)
 {
-    uint32_t err_code = NRF_SUCCESS;
+    ret_code_t err_code = NRF_SUCCESS;
     uint16_t max_size = *p_len;
     uint16_t offset   = 0;
 
@@ -257,7 +345,14 @@ ret_code_t nfc_ble_oob_adv_data_encode(ble_advdata_t const * const p_advdata,
                                              max_size);
         VERIFY_SUCCESS(err_code);
     }
-
+    
+    // Encode LESC keys
+    if (p_advdata->p_lesc_data != NULL)
+    {
+        err_code = lesc_value_encode(p_advdata->p_lesc_data, p_encoded_data, &offset, max_size);
+        VERIFY_SUCCESS(err_code);
+    }
+    
     // Encode Security Manager TK value.
     if (p_advdata->p_tk_value != NULL)
     {
@@ -286,4 +381,13 @@ ret_code_t nfc_ble_oob_adv_data_encode(ble_advdata_t const * const p_advdata,
     }
 
     return err_code;
+}
+
+void nfc_tk_value_payload_encode(ble_advdata_tk_value_t * p_tk_value,
+                                 uint8_t                * p_tk_payload_data)
+{
+    for (uint8_t i = 0; i < AD_TYPE_TK_VALUE_DATA_SIZE; i++)
+    {
+        *(p_tk_payload_data++) = p_tk_value->tk[i];
+    }
 }

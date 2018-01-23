@@ -1909,7 +1909,8 @@
 #define FICR_INFO_PACKAGE_PACKAGE_Pos (0UL) /*!< Position of PACKAGE field. */
 #define FICR_INFO_PACKAGE_PACKAGE_Msk (0xFFFFFFFFUL << FICR_INFO_PACKAGE_PACKAGE_Pos) /*!< Bit mask of PACKAGE field. */
 #define FICR_INFO_PACKAGE_PACKAGE_QF (0x2000UL) /*!< QFxx - 48-pin QFN */
-#define FICR_INFO_PACKAGE_PACKAGE_CI (0x2001UL) /*!< CIxx - 7x8 WLCSP 56 balls */
+#define FICR_INFO_PACKAGE_PACKAGE_CH (0x2001UL) /*!< CHxx - 7x8 WLCSP 56 balls */
+#define FICR_INFO_PACKAGE_PACKAGE_CI (0x2002UL) /*!< CIxx - 7x8 WLCSP 56 balls */
 #define FICR_INFO_PACKAGE_PACKAGE_Unspecified (0xFFFFFFFFUL) /*!< Unspecified */
 
 /* Register: FICR_INFO_RAM */
@@ -11093,18 +11094,21 @@
 #define TWI_ERRORSRC_DNACK_Msk (0x1UL << TWI_ERRORSRC_DNACK_Pos) /*!< Bit mask of DNACK field. */
 #define TWI_ERRORSRC_DNACK_NotPresent (0UL) /*!< Read: error not present */
 #define TWI_ERRORSRC_DNACK_Present (1UL) /*!< Read: error present */
+#define TWI_ERRORSRC_DNACK_Clear (1UL) /*!< Write: clear error on writing '1' */
 
 /* Bit 1 : NACK received after sending the address (write '1' to clear) */
 #define TWI_ERRORSRC_ANACK_Pos (1UL) /*!< Position of ANACK field. */
 #define TWI_ERRORSRC_ANACK_Msk (0x1UL << TWI_ERRORSRC_ANACK_Pos) /*!< Bit mask of ANACK field. */
 #define TWI_ERRORSRC_ANACK_NotPresent (0UL) /*!< Read: error not present */
 #define TWI_ERRORSRC_ANACK_Present (1UL) /*!< Read: error present */
+#define TWI_ERRORSRC_ANACK_Clear (1UL) /*!< Write: clear error on writing '1' */
 
 /* Bit 0 : Overrun error */
 #define TWI_ERRORSRC_OVERRUN_Pos (0UL) /*!< Position of OVERRUN field. */
 #define TWI_ERRORSRC_OVERRUN_Msk (0x1UL << TWI_ERRORSRC_OVERRUN_Pos) /*!< Bit mask of OVERRUN field. */
 #define TWI_ERRORSRC_OVERRUN_NotPresent (0UL) /*!< Read: no overrun occured */
 #define TWI_ERRORSRC_OVERRUN_Present (1UL) /*!< Read: overrun occured */
+#define TWI_ERRORSRC_OVERRUN_Clear (1UL) /*!< Write: clear error on writing '1' */
 
 /* Register: TWI_ENABLE */
 /* Description: Enable TWI */
@@ -11362,6 +11366,12 @@
 #define TWIM_ERRORSRC_ANACK_Msk (0x1UL << TWIM_ERRORSRC_ANACK_Pos) /*!< Bit mask of ANACK field. */
 #define TWIM_ERRORSRC_ANACK_NotReceived (0UL) /*!< Error did not occur */
 #define TWIM_ERRORSRC_ANACK_Received (1UL) /*!< Error occurred */
+
+/* Bit 0 : Overrun error */
+#define TWIM_ERRORSRC_OVERRUN_Pos (0UL) /*!< Position of OVERRUN field. */
+#define TWIM_ERRORSRC_OVERRUN_Msk (0x1UL << TWIM_ERRORSRC_OVERRUN_Pos) /*!< Bit mask of OVERRUN field. */
+#define TWIM_ERRORSRC_OVERRUN_NotReceived (0UL) /*!< Error did not occur */
+#define TWIM_ERRORSRC_OVERRUN_Received (1UL) /*!< Error occurred */
 
 /* Register: TWIM_ENABLE */
 /* Description: Enable TWIM */
@@ -11961,6 +11971,7 @@
 #define UART_BAUDRATE_BAUDRATE_Baud14400 (0x003B0000UL) /*!< 14400 baud (actual rate: 14414) */
 #define UART_BAUDRATE_BAUDRATE_Baud19200 (0x004EA000UL) /*!< 19200 baud (actual rate: 19208) */
 #define UART_BAUDRATE_BAUDRATE_Baud28800 (0x0075F000UL) /*!< 28800 baud (actual rate: 28829) */
+#define UART_BAUDRATE_BAUDRATE_Baud31250 (0x00800000UL) /*!< 31250 baud */
 #define UART_BAUDRATE_BAUDRATE_Baud38400 (0x009D5000UL) /*!< 38400 baud (actual rate: 38462) */
 #define UART_BAUDRATE_BAUDRATE_Baud56000 (0x00E50000UL) /*!< 56000 baud (actual rate: 55944) */
 #define UART_BAUDRATE_BAUDRATE_Baud57600 (0x00EBF000UL) /*!< 57600 baud (actual rate: 57762) */
@@ -12336,6 +12347,7 @@
 #define UARTE_BAUDRATE_BAUDRATE_Baud14400 (0x003AF000UL) /*!< 14400 baud (actual rate: 14401) */
 #define UARTE_BAUDRATE_BAUDRATE_Baud19200 (0x004EA000UL) /*!< 19200 baud (actual rate: 19208) */
 #define UARTE_BAUDRATE_BAUDRATE_Baud28800 (0x0075C000UL) /*!< 28800 baud (actual rate: 28777) */
+#define UARTE_BAUDRATE_BAUDRATE_Baud31250 (0x00800000UL) /*!< 31250 baud */
 #define UARTE_BAUDRATE_BAUDRATE_Baud38400 (0x009D0000UL) /*!< 38400 baud (actual rate: 38369) */
 #define UARTE_BAUDRATE_BAUDRATE_Baud56000 (0x00E50000UL) /*!< 56000 baud (actual rate: 55944) */
 #define UARTE_BAUDRATE_BAUDRATE_Baud57600 (0x00EB0000UL) /*!< 57600 baud (actual rate: 57554) */

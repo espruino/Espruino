@@ -1,17 +1,45 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
-#include "sdk_config.h"
-#if PEER_MANAGER_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(PEER_MANAGER)
 #include "peer_data_storage.h"
 
 #include <stdint.h>
@@ -22,7 +50,6 @@
 #include "peer_id.h"
 #include "peer_data.h"
 #include "fds.h"
-#include "sdk_common.h"
 
 
 // Macro for verifying that the peer id is within a valid range.
@@ -334,7 +361,7 @@ ret_code_t pds_init()
     ret = fds_init();
     if (ret != NRF_SUCCESS)
     {
-        return NRF_ERROR_NO_MEM;
+        return NRF_ERROR_STORAGE_FULL;
     }
 
     peer_id_init();
@@ -482,7 +509,7 @@ ret_code_t pds_space_reserve(pm_peer_data_const_t const * p_peer_data,
             return NRF_ERROR_INVALID_LENGTH;
 
         case FDS_ERR_NO_SPACE_IN_FLASH:
-            return NRF_ERROR_NO_MEM;
+            return NRF_ERROR_STORAGE_FULL;
 
         default:
             return NRF_ERROR_INTERNAL;
@@ -552,10 +579,10 @@ ret_code_t pds_peer_data_store(pm_peer_id_t                 peer_id,
     }
     else // NRF_SUCCESS
     {
-        // Token shouldn't be zero at this point.
-        // NRF_PM_DEBUG_CHECK(prepare_token != PDS_PREPARE_TOKEN_INVALID);
-
-        (void)fds_reserve_cancel((fds_reserve_token_t*)&prepare_token);
+        if (prepare_token != PDS_PREPARE_TOKEN_INVALID)
+        {
+            (void)fds_reserve_cancel((fds_reserve_token_t*)&prepare_token);
+        }
 
         // Update existing record.
         ret = fds_record_update(&rec_desc, &rec);
@@ -576,7 +603,7 @@ ret_code_t pds_peer_data_store(pm_peer_id_t                 peer_id,
             return NRF_ERROR_BUSY;
 
         case FDS_ERR_NO_SPACE_IN_FLASH:
-            return NRF_ERROR_NO_MEM;
+            return NRF_ERROR_STORAGE_FULL;
 
         default:
             return NRF_ERROR_INTERNAL;
@@ -663,4 +690,4 @@ uint32_t pds_peer_count_get(void)
     NRF_PM_DEBUG_CHECK(m_module_initialized);
     return peer_id_n_ids();
 }
-#endif //PEER_MANAGER_ENABLED
+#endif // NRF_MODULE_ENABLED(PEER_MANAGER)

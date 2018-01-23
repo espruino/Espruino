@@ -48,7 +48,7 @@
 #include "nrf_svc.h"
 #include <stdint.h>
 
-#ifndef NRF52
+#if !(defined(NRF52) || defined(NRF52840_XXAA))
 #error "This header file shall only be included for nRF52 projects"
 #endif
 

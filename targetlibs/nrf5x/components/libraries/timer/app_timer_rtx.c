@@ -1,27 +1,54 @@
-/* Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
-#include "sdk_config.h"
-#if APP_TIMER_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(APP_TIMER)
 #include "app_timer.h"
 #include <stdlib.h>
 #include "nrf.h"
 #include "nrf_soc.h"
 #include "app_error.h"
-#include "app_util.h"
 #include "cmsis_os.h"
 #include "app_util_platform.h"
 
-#define RTC1_IRQ_PRI        APP_IRQ_PRIORITY_LOW    /**< Priority of the RTC1 interrupt. */
+#define RTC1_IRQ_PRI        APP_IRQ_PRIORITY_LOWEST    /**< Priority of the RTC1 interrupt. */
 
 #define MAX_RTC_COUNTER_VAL 0x00FFFFFF /**< Maximum value of the RTC counter. */
 
@@ -29,30 +56,30 @@
 typedef struct
 {
     osTimerDef_t timerDef;
-    uint32_t     buffer[5];
+    uint32_t     buffer[6];
     osTimerId    id;
 }app_timer_info_t;
 
 /**@brief Store an array of timers with configuration. */
 typedef struct
 {
-    uint8_t            max_timers; /**< The maximum number of timers*/
-    uint32_t           prescaler;
-    app_timer_info_t * app_timers; /**< Pointer to table of timers*/
+    uint8_t             max_timers;         /**< The maximum number of timers*/
+    uint32_t            prescaler;
+    app_timer_info_t *  app_timers;         /**< Pointer to table of timers*/
 }app_timer_control_t;
-app_timer_control_t app_timer_control;
+app_timer_control_t     app_timer_control;
 
 /**@brief This structure is defined by RTX. It keeps information about created osTimers. It is used in app_timer_start(). */
-typedef struct os_timer_cb_
-{
-    struct os_timer_cb_ * next;
-    uint8_t               state;
-    uint8_t               type;
-    uint16_t              reserved;
-    uint16_t              tcnt;
-    uint16_t              icnt;
-    void                * arg;
-    const osTimerDef_t  * timer;
+typedef struct os_timer_cb_ 
+{                   
+    struct os_timer_cb_ *   next;               /**< Pointer to next active Timer */
+    uint8_t                 state;              /**< Timer State */
+    uint8_t                 type;               /**< Timer Type (Periodic/One-shot). */
+    uint16_t                reserved;           /**< Reserved. */
+    uint32_t                tcnt;               /**< Timer Delay Count. */
+    uint32_t                icnt;               /**< Timer Initial Count. */ 
+    void *                  arg;                /**< Timer Function Argument. */
+    const osTimerDef_t *    timer;              /**< Pointer to Timer definition. */
 } os_timer_cb;
 
 /**@brief This functions are defined by RTX.*/
@@ -60,26 +87,32 @@ typedef struct os_timer_cb_
 extern osStatus svcTimerStop(osTimerId timer_id);                        /**< Used in app_timer_stop(). */
 extern osStatus svcTimerStart(osTimerId timer_id, uint32_t millisec);    /**< Used in app_timer_start(). */
 // lint --restore
-static void * rt_id2obj(void *id)                                         /**< Used in app_timer_start(). This function gives information if osTimerID is valid */
+static void * rt_id2obj (void *id)          /**< Used in app_timer_start(). This function gives information if osTimerID is valid */
 {
-
-    if ((uint32_t)id & 3)
-        return NULL;
+    if ((uint32_t)id & 3U)
+    { 
+        return NULL; 
+    }
 
 #ifdef OS_SECTIONS_LINK_INFO
-
-    if ((os_section_id$$Base != 0) && (os_section_id$$Limit != 0))
+  
+    if ((os_section_id$$Base != 0U) && (os_section_id$$Limit != 0U)) 
     {
-        if (id < (void *)os_section_id$$Base)
-            return NULL;
-
-        if (id >= (void *)os_section_id$$Limit)
-            return NULL;
+        if (id  < (void *)os_section_id$$Base)  
+        { 
+            return NULL; 
+        }
+        
+        if (id >= (void *)os_section_id$$Limit) 
+        { 
+            return NULL; 
+        }
     }
 #endif
 
     return id;
 }
+
 
 
 uint32_t app_timer_init(uint32_t                      prescaler,
@@ -248,4 +281,4 @@ uint32_t app_timer_cnt_diff_compute(uint32_t   ticks_to,
     *p_ticks_diff = ((ticks_to - ticks_from) & MAX_RTC_COUNTER_VAL);
     return NRF_SUCCESS;
 }
-#endif //APP_TIMER_ENABLED
+#endif //NRF_MODULE_ENABLED(APP_TIMER)
