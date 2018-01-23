@@ -8,6 +8,7 @@
             nRF5x: Fix PWM output via Waveform class
             Fix free stack checking on ARM
             nRF52: Make slightly more space available for stack
+            nRF5x: Move to SDK 12.3
 
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line
