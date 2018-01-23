@@ -53,7 +53,7 @@ Vagrant.configure(2) do |config|
 
   ## PROVISIONING ##
 
-  config.vm.provision "shell", path: "./scripts/vagrant_provision.sh"
+  config.vm.provision "shell", inline: "cd /vagrant && ./scripts/vagrant_provision.sh"
 
   ## SSH ##
 
