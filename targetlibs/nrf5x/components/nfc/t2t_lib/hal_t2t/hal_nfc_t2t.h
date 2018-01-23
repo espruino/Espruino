@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * Copyright (c) 2015 - 2017, Telit Communications Cyprus Ltd
  * 
  * All rights reserved.
  * 
@@ -56,6 +56,9 @@
 #include <string.h>
 #include <sdk_errors.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** @brief Events passed to the upper-layer callback function. */
 typedef enum {
@@ -69,6 +72,8 @@ typedef enum {
 /** @brief Parameter IDs for set/get function. */
 typedef enum {
     HAL_NFC_PARAM_ID_TESTING,         ///<  Used for unit tests.
+    HAL_NFC_PARAM_ID_UID,             ///<  Set custom UID
+    HAL_NFC_PARAM_ID_INTERNAL,        ///<  Get internal bytes, replaces nfc_t2t_internal_set()
     HAL_NFC_PARAM_ID_UNKNOWN
 } hal_nfc_param_id_t;
 
@@ -122,7 +127,7 @@ ret_code_t hal_nfc_setup(hal_nfc_callback_t callback, void * p_context);
   *                     was invalid (for example, wrong data length), an error code
   *                     is returned.
   */
-ret_code_t hal_nfc_parameter_set(hal_nfc_param_id_t id, void * p_data, size_t data_length);
+ret_code_t hal_nfc_parameter_set(hal_nfc_param_id_t id, const void * p_data, size_t data_length);
 
 
 /** @brief Function for querying a HAL_NFC parameter value.
@@ -153,9 +158,8 @@ ret_code_t hal_nfc_start(void);
 
 /** @brief Function for sending a packet to the connected NFC reader.
   *
-  * The provided data buffer belongs to the caller and is guaranteed to be
-  * valid until the HAL_NFC_EVENT_DATA_TRANSMITTED event is received by the
-  * callback.
+  * The provided data buffer belongs to the caller and may be freed after this
+  * function completes.
   *
   * @param[in] p_data       The data packet to send.
   * @param[in] data_length  Size of the packet in bytes.
@@ -163,6 +167,16 @@ ret_code_t hal_nfc_start(void);
   * @retval NRF_SUCCESS If the packet was sent. Otherwise, an error code is returned.
   */
 ret_code_t hal_nfc_send(const uint8_t * p_data, size_t data_length);
+
+
+/** @brief Function for completing a RX and optionaly sending a ACK or NACK to reader.
+  *
+  * @param[in] data         The response to send.
+  * @param[in] data_length  Size of the response in bits 0-7.
+  *
+  * @retval NRF_SUCCESS If the packet was sent. Otherwise, an error code is returned.
+  */
+ret_code_t hal_nfc_send_rsp(const uint8_t p_data, size_t data_length);
 
 
 /** @brief Function for stopping the NFC subsystem.
@@ -184,6 +198,10 @@ ret_code_t hal_nfc_stop(void);
   * @retval NRF_SUCCESS This function always succeeds.
   */
 ret_code_t hal_nfc_done(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */
 #endif /* HAL_NFC_H__ */

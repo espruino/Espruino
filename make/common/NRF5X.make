@@ -75,6 +75,7 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/timer
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fstorage
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/queue
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus
@@ -95,6 +96,7 @@ $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c \
 $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
 $(NRF5X_SDK_PATH)/components/libraries/fds/fds.c \
+$(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
