@@ -34,11 +34,12 @@ extern "C" {
 
 #define BUFFER_INVALID_ID 0xFF
 
+// fix from https://devzone.nordicsemi.com/question/94884/peer-manager-fail-to-save-a-bonding-data-in-sdk11-and-sdk12/?answer=94887#post-id-94887
 #define PM_BUFFER_INIT(p_buffer, n_blocks, block_size, err_code)    \
 do                                                                  \
 {                                                                   \
-    static uint8_t buffer_memory[(n_blocks) * (block_size)];        \
-    static uint8_t mutex_memory[MUTEX_STORAGE_SIZE(n_blocks)];      \
+  __ALIGN(sizeof(uint32_t)) static uint8_t buffer_memory[(n_blocks) * (block_size)];        \
+  __ALIGN(sizeof(uint32_t)) static uint8_t mutex_memory[MUTEX_STORAGE_SIZE(n_blocks)];      \
     err_code = pm_buffer_init((p_buffer),                           \
                                buffer_memory,                       \
                               (n_blocks) * (block_size),            \

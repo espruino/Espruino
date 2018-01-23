@@ -9,8 +9,8 @@
  * the file.
  *
  */
-#include "sdk_config.h"
-#if FDS_ENABLED
+#include "sdk_common.h"
+//#if NRF_MODULE_ENABLED(FDS)
 #include "fds.h"
 #include "fds_internal_defs.h"
 
@@ -18,7 +18,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include "fstorage.h"
-#include "app_util.h"
 #include "nrf_error.h"
 
 #if defined(FDS_CRC_ENABLED)
@@ -764,13 +763,20 @@ static ret_code_t record_header_write_finalize(fds_op_t * const p_op, uint32_t *
 }
 
 
-static ret_code_t record_header_flag_dirty(uint32_t * const p_record)
+static ret_code_t record_header_flag_dirty(uint32_t * const p_record, uint16_t page_to_gc)
 {
     // Flag the record as dirty.
     fs_ret_t ret = fs_store(&fs_config, p_record,
                             (uint32_t*)&m_fds_tl_dirty, FDS_HEADER_SIZE_TL, NULL);
 
-    return (ret == FS_SUCCESS) ? FDS_SUCCESS : FDS_ERR_BUSY;
+    if (ret != FS_SUCCESS)
+    {
+        return FDS_ERR_BUSY;
+    }
+
+    m_pages[page_to_gc].can_gc = true;
+
+    return FDS_SUCCESS;
 }
 
 
@@ -795,10 +801,7 @@ static ret_code_t record_find_and_delete(fds_op_t * const p_op)
         p_op->del.record_key = p_header->tl.record_key;
 
         // Flag the record as dirty.
-        ret = record_header_flag_dirty((uint32_t*)desc.p_record);
-
-        // This page can now be garbage collected.
-        m_pages[page].can_gc = true;
+        ret = record_header_flag_dirty((uint32_t*)desc.p_record, page);
     }
     else
     {
@@ -825,10 +828,7 @@ static ret_code_t file_find_and_delete(fds_op_t * const p_op)
     if (ret == FDS_SUCCESS)
     {
          // A record was found: flag it as dirty.
-        ret = record_header_flag_dirty((uint32_t*)desc.p_record);
-
-        // This page can now be garbage collected.
-        m_pages[tok.page].can_gc = true;
+        ret = record_header_flag_dirty((uint32_t*)desc.p_record, tok.page);
     }
     else // FDS_ERR_NOT_FOUND
     {
@@ -1195,6 +1195,10 @@ static ret_code_t write_execute(uint32_t prev_ret, fds_op_t * const p_op)
 
     // This must persist across calls.
     static fds_record_desc_t desc = {0};
+    // When a record is updated, this variable will hold the page where the old
+    // copy was stored. This will be used to set the can_gc flag when the header is
+    // invalidated (FDS_OP_WRITE_FLAG_DIRTY).
+    static uint16_t page;
 
     if (prev_ret != FS_SUCCESS)
     {
@@ -1214,8 +1218,6 @@ static ret_code_t write_execute(uint32_t prev_ret, fds_op_t * const p_op)
             // The first step of updating a record constists of locating the copy to be deleted.
             // If the old copy couldn't be found for any reason then the update should fail.
             // This prevents duplicates when queuing multiple updates of the same record.
-
-            uint16_t page;
             desc.p_record  = NULL;
             desc.record_id = p_op->write.record_to_delete;
 
@@ -1244,7 +1246,7 @@ static ret_code_t write_execute(uint32_t prev_ret, fds_op_t * const p_op)
             break;
 
         case FDS_OP_WRITE_FLAG_DIRTY:
-            ret = record_header_flag_dirty((uint32_t*)desc.p_record);
+            ret = record_header_flag_dirty((uint32_t*)desc.p_record, page);
             p_op->write.step = FDS_OP_WRITE_DONE;
             break;
 
@@ -2070,4 +2072,4 @@ ret_code_t fds_verify_crc_on_writes(bool enable)
 }
 
 #endif
-#endif //FDS_ENABLED
+//#endif //NRF_MODULE_ENABLED(FDS)

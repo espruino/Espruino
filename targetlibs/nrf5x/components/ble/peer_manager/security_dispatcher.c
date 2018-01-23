@@ -596,7 +596,14 @@ ret_code_t smd_params_reply(uint16_t                 conn_handle,
     }
     else
     {
-        // Pairing only, no action needed.
+        //https://devzone.nordicsemi.com/question/95556/peer-manager-lesc-just-works-pairing-bug/
+        //Pairing
+        if(p_sec_params->lesc) //LESC 'Just works' pairing
+        {
+                // Add own public key and buffer for peer public key to parameters passed to softdevice
+                sec_keyset.keys_own.p_pk       = p_public_key;
+                sec_keyset.keys_peer.p_pk      = &m_peer_pk;
+        }
     }
 
     if (err_code == NRF_SUCCESS)
