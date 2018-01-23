@@ -1,26 +1,52 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
-#include "sdk_config.h"
-#if PEER_MANAGER_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(PEER_MANAGER)
 #include "peer_database.h"
 
 #include <string.h>
-#include "app_util.h"
 #include "peer_manager_types.h"
 #include "peer_manager_internal.h"
 #include "peer_data_storage.h"
 #include "pm_buffer.h"
-#include "sdk_common.h"
 
 
 #define N_WRITE_BUFFERS             (8)                 /**< The number of write buffers available. */
@@ -97,7 +123,7 @@ static void write_buffer_record_invalidate(pdb_buffer_record_t * p_record)
 {
     p_record->peer_id          = PM_PEER_ID_INVALID;
     p_record->data_id          = PM_PEER_DATA_ID_INVALID;
-    p_record->buffer_block_id  = BUFFER_INVALID_ID;
+    p_record->buffer_block_id  = PM_BUFFER_INVALID_ID;
     p_record->store_busy       = false;
     p_record->store_flash_full = false;
     p_record->store_requested  = false;
@@ -327,7 +353,7 @@ void pdb_pds_evt_handler(pds_evt_t const * p_event)
                 {
                     event.peer_id = m_write_buffer_records[i].peer_id;
                     event.data_id = m_write_buffer_records[i].data_id;
-                    if (err_code == NRF_ERROR_NO_MEM)
+                    if (err_code == NRF_ERROR_STORAGE_FULL)
                     {
                         event.evt_id = PDB_EVT_ERROR_NO_MEM;
                     }
@@ -530,11 +556,11 @@ ret_code_t pdb_write_buf_get(pm_peer_id_t       peer_id,
         }
     }
 
-    if (write_buffer_record->buffer_block_id == BUFFER_INVALID_ID)
+    if (write_buffer_record->buffer_block_id == PM_BUFFER_INVALID_ID)
     {
         write_buffer_record->buffer_block_id = pm_buffer_block_acquire(&m_write_buffer, n_bufs);
 
-        if (write_buffer_record->buffer_block_id == BUFFER_INVALID_ID)
+        if (write_buffer_record->buffer_block_id == PM_BUFFER_INVALID_ID)
         {
             write_buffer_record_invalidate(write_buffer_record);
             return NRF_ERROR_BUSY;
@@ -691,13 +717,13 @@ ret_code_t pdb_write_buf_store(pm_peer_id_t      peer_id,
             p_write_buffer_record->store_flash_full = false;
             err_code = NRF_SUCCESS;
         }
-        else if (err_code == NRF_ERROR_NO_MEM)
+        else if (err_code == NRF_ERROR_STORAGE_FULL)
         {
             m_n_writes++;
             p_write_buffer_record->store_busy       = false;
             p_write_buffer_record->store_flash_full = true;
         }
-        else if ((err_code != NRF_ERROR_NO_MEM) && (err_code != NRF_ERROR_INVALID_PARAM))
+        else if (err_code != NRF_ERROR_INVALID_PARAM)
         {
             err_code = NRF_ERROR_INTERNAL;
         }
@@ -755,4 +781,4 @@ ret_code_t pdb_raw_store(pm_peer_id_t           peer_id,
     NRF_PM_DEBUG_CHECK(m_module_initialized);
     return pds_peer_data_store(peer_id, p_peer_data, PDS_PREPARE_TOKEN_INVALID, p_store_token);
 }
-#endif //PEER_MANAGER_ENABLED
+#endif // NRF_MODULE_ENABLED(PEER_MANAGER)

@@ -307,7 +307,7 @@ ret_code_t hal_nfc_setup(hal_nfc_callback_t callback, void * p_context)
     NRF_LOG_INFO("Init\r\n");
     HAL_NFC_DEBUG_PINS_INITIALIZE();
 
-    if ((err_code == NRF_SUCCESS) || (err_code == MODULE_ALREADY_INITIALIZED))
+    if ((err_code == NRF_SUCCESS) || (err_code == NRF_ERROR_MODULE_ALREADY_INITIALIZED))
     {
         return NRF_SUCCESS;
     }

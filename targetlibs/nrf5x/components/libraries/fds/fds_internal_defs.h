@@ -1,13 +1,41 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 #ifndef FDS_INTERNAL_DEFS_H__
@@ -50,9 +78,9 @@ extern "C" {
 #define FDS_OP_COMPLETED        (0x1D1D)
 
 // The size of a physical page, in 4-byte words.
-#if   defined(NRF51)
+#if     defined(NRF51)
     #define FDS_PHY_PAGE_SIZE   (256)
-#elif defined(NRF52)
+ #elif (defined(NRF52) || defined(NRF52840_XXAA))
     #define FDS_PHY_PAGE_SIZE   (1024)
 #endif
 
@@ -222,46 +250,50 @@ typedef struct
 
 enum
 {
-    PAGE_ERASED = 0x1,
-    PAGE_DATA   = 0x2,
-    SWAP_EMPTY  = 0x4,
-    SWAP_DIRTY  = 0x8,
+    PAGE_ERASED     = 0x1,  // One or more erased pages found.
+    PAGE_DATA       = 0x2,  // One or more data pages found.
+    PAGE_SWAP_CLEAN = 0x4,  // A clean (empty) swap page was found.
+    PAGE_SWAP_DIRTY = 0x8,  // A dirty (non-empty) swap page was found.
 };
 
 
 typedef enum
 {
+    // No erased pages or FDS pages found.
     // This is a fatal error.
     NO_PAGES,
 
-    // All pages are erased. Perform a fresh installation.
-    FRESH_INSTALL     = (PAGE_ERASED),
+    // The filesystem can not be garbage collected.
+    // This is a fatal error.
+    NO_SWAP             = (PAGE_DATA),
 
-    // Swap is missing. Tag an erased page as swap.
-    TAG_SWAP          = (PAGE_ERASED | PAGE_DATA),
+    // Perform a fresh installation.
+    FRESH_INSTALL       = (PAGE_ERASED),
 
-    // Swap is empty. Tag all erased pages as data.
-    TAG_DATA         = (PAGE_ERASED | SWAP_EMPTY),
+    // Tag an erased page as swap.
+    TAG_SWAP            = (PAGE_ERASED | PAGE_DATA),
 
-    // Swap is empty. Tag all remaining erased pages as data.
-    TAG_DATA_INST    = (PAGE_ERASED | PAGE_DATA | SWAP_EMPTY),
+    // Tag all erased pages as data.
+    TAG_DATA            = (PAGE_ERASED | PAGE_SWAP_CLEAN),
 
-    // The swap is dirty. This indicates that the device powered off during GC. However, since there
-    // is also an erased page, it is possible to assume that that page had been entirely garbage
-    // collected. Hence, tag the swap as data, one erased page as swap and any remaining pages as data.
-    PROMOTE_SWAP      = (PAGE_ERASED | SWAP_DIRTY),
+    // Tag all remaining erased pages as data.
+    TAG_DATA_INST       = (PAGE_ERASED | PAGE_DATA | PAGE_SWAP_CLEAN),
 
-    // Similar to the above. Tag the swap as data, one erased page as swap, and any remain
-    // pages as data.
-    PROMOTE_SWAP_INST = (PAGE_ERASED | PAGE_DATA | SWAP_DIRTY),
+    // The swap is dirty, likely because the device powered off during GC.
+    // Because there is also an erased page, assume that that page has been garbage collected.
+    // Hence, tag the swap as data (promote), an erased page as swap and remaining pages as data.
+    PROMOTE_SWAP        = (PAGE_ERASED | PAGE_SWAP_DIRTY),
 
-    // The swap is dirty (written) and there are no erased pages. This indicates that the device
-    // was powered off during GC. It is safe to discard (erase) the swap, since data that was
-    // swapped out lies in one of the valid pages.
-    DISCARD_SWAP      = (PAGE_DATA  | SWAP_DIRTY),
+    // Tag the swap as data (promote), an erased page as swap and remaining pages as data.
+    PROMOTE_SWAP_INST   = (PAGE_ERASED | PAGE_DATA | PAGE_SWAP_DIRTY),
+
+    // The swap is dirty (written) and there are no erased pages. It is likely that the device
+    // powered off during GC. It is safe to discard (erase) the swap, since data that was
+    // swapped out still lies in one of the valid pages.
+    DISCARD_SWAP        = (PAGE_DATA  | PAGE_SWAP_DIRTY),
 
     // Do nothing.
-    ALREADY_INSTALLED = (PAGE_DATA  | SWAP_EMPTY),
+    ALREADY_INSTALLED   = (PAGE_DATA  | PAGE_SWAP_CLEAN),
 
 } fds_init_opts_t;
 

@@ -64,11 +64,6 @@
 /* Corrected typo in RESULT register. */
 #define LPCOMP_RESULT_RESULT_Bellow         LPCOMP_RESULT_RESULT_Below
 
-/* FICR */
-/* Renamed name of the package. */
-#define FICR_INFO_PACKAGE_PACKAGE_CH        FICR_INFO_PACKAGE_PACKAGE_CI
-
-
 /*lint --flb "Leave library region" */
 
 #endif /* NRF52_NAME_CHANGE_H */

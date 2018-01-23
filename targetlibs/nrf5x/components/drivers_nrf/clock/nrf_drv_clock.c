@@ -1,26 +1,71 @@
-/* Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
-#include "sdk_config.h"
-#if CLOCK_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(CLOCK)
 
 #include "nrf_drv_clock.h"
 #include "nrf_error.h"
-#include "nordic_common.h"
 #include "app_util_platform.h"
 #ifdef SOFTDEVICE_PRESENT
 #include "softdevice_handler.h"
 #include "nrf_sdm.h"
 #include "nrf_soc.h"
 #endif
+
+#define NRF_LOG_MODULE_NAME "CLOCK"
+
+#if CLOCK_CONFIG_LOG_ENABLED
+#define NRF_LOG_LEVEL       CLOCK_CONFIG_LOG_LEVEL
+#define NRF_LOG_INFO_COLOR  CLOCK_CONFIG_INFO_COLOR
+#define NRF_LOG_DEBUG_COLOR CLOCK_CONFIG_DEBUG_COLOR
+#define EVT_TO_STR(event)   (event == NRF_CLOCK_EVENT_HFCLKSTARTED ? "NRF_CLOCK_EVENT_HFCLKSTARTED" :        \
+                            (event == NRF_CLOCK_EVENT_LFCLKSTARTED ? "NRF_CLOCK_EVENT_LFCLKSTARTED" :        \
+                            (event == NRF_CLOCK_EVENT_DONE ? "NRF_CLOCK_EVENT_DONE" :                        \
+                            (event == NRF_CLOCK_EVENT_CTTO ? "NRF_CLOCK_EVENT_CTTO" : "UNKNOWN EVENT"))))
+#else //CLOCK_CONFIG_LOG_ENABLED
+#define EVT_TO_STR(event)   ""
+#define NRF_LOG_LEVEL       0
+#endif //CLOCK_CONFIG_LOG_ENABLED
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+
 
 /* Validate configuration */
 INTERRUPT_PRIORITY_VALIDATION(CLOCK_CONFIG_IRQ_PRIORITY);
@@ -126,47 +171,69 @@ static void hfclk_stop(void)
     m_clock_cb.hfclk_on = false;
 }
 
+bool nrf_drv_clock_init_check(void)
+{
+    return m_clock_cb.module_initialized;
+}
+
 ret_code_t nrf_drv_clock_init(void)
 {
+    ret_code_t err_code = NRF_SUCCESS;
     if (m_clock_cb.module_initialized)
     {
-        return MODULE_ALREADY_INITIALIZED;
+        err_code = NRF_ERROR_MODULE_ALREADY_INITIALIZED;
     }
-
-    m_clock_cb.p_hf_head      = NULL;
-    m_clock_cb.hfclk_requests = 0;
-    m_clock_cb.p_lf_head      = NULL;
-    m_clock_cb.lfclk_requests = 0;
-    nrf_drv_common_irq_enable(POWER_CLOCK_IRQn, CLOCK_CONFIG_IRQ_PRIORITY);
-#ifdef SOFTDEVICE_PRESENT
-    if (!softdevice_handler_is_enabled())
-#endif
+    else
     {
-        nrf_clock_lf_src_set((nrf_clock_lfclk_t)CLOCK_CONFIG_LF_SRC);
-    }
+        m_clock_cb.p_hf_head      = NULL;
+        m_clock_cb.hfclk_requests = 0;
+        m_clock_cb.p_lf_head      = NULL;
+        m_clock_cb.lfclk_requests = 0;
+        nrf_drv_common_power_clock_irq_init();
+#ifdef SOFTDEVICE_PRESENT
+        if (!softdevice_handler_is_enabled())
+#endif
+        {
+            nrf_clock_lf_src_set((nrf_clock_lfclk_t)CLOCK_CONFIG_LF_SRC);
+        }
 
 #if CALIBRATION_SUPPORT
-    m_clock_cb.cal_state = CAL_STATE_IDLE;
+        m_clock_cb.cal_state = CAL_STATE_IDLE;
 #endif
 
-    m_clock_cb.module_initialized = true;
-    return NRF_SUCCESS;
+        m_clock_cb.module_initialized = true;
+    }
+
+    NRF_LOG_INFO("Function: %s, error code: %s.\r\n",
+        (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 }
 
 void nrf_drv_clock_uninit(void)
 {
     ASSERT(m_clock_cb.module_initialized);
-    nrf_drv_common_irq_disable(POWER_CLOCK_IRQn);
+    nrf_drv_common_clock_irq_disable();
     nrf_clock_int_disable(0xFFFFFFFF);
 
     lfclk_stop();
     hfclk_stop();
     m_clock_cb.module_initialized = false;
+    NRF_LOG_INFO("Uninitialized.\r\n");
 }
 
 static void item_enqueue(nrf_drv_clock_handler_item_t ** p_head,
                          nrf_drv_clock_handler_item_t * p_item)
 {
+    nrf_drv_clock_handler_item_t * p_next = *p_head;
+    while(p_next)
+    {
+        if(p_next == p_item)
+        {
+            return;
+        }
+        p_next = p_next->p_next;
+    }
+
     p_item->p_next = (*p_head ? *p_head : NULL);
     *p_head = p_item;
 }
@@ -329,12 +396,12 @@ static void clock_calibration_hf_started(nrf_drv_clock_evt_type_t event)
 
 ret_code_t nrf_drv_clock_calibration_start(uint8_t interval, nrf_drv_clock_event_handler_t handler)
 {
+    ret_code_t err_code = NRF_SUCCESS;
 #if CALIBRATION_SUPPORT
     ASSERT(m_clock_cb.cal_state == CAL_STATE_IDLE);
-    ret_code_t ret = NRF_SUCCESS;
     if (m_clock_cb.lfclk_on == false)
     {
-        ret = NRF_ERROR_INVALID_STATE;
+        err_code = NRF_ERROR_INVALID_STATE;
     }
     else if (m_clock_cb.cal_state == CAL_STATE_IDLE)
     {
@@ -356,16 +423,20 @@ ret_code_t nrf_drv_clock_calibration_start(uint8_t interval, nrf_drv_clock_event
     }
     else
     {
-        ret = NRF_ERROR_BUSY;
+        err_code = NRF_ERROR_BUSY;
     }
-    return ret;
+    NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 #else
-    return NRF_ERROR_FORBIDDEN;
+    err_code = NRF_ERROR_FORBIDDEN;
+    NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 #endif // CALIBRATION_SUPPORT
 }
 
 ret_code_t nrf_drv_clock_calibration_abort(void)
 {
+    ret_code_t err_code = NRF_SUCCESS;
 #if CALIBRATION_SUPPORT
     CRITICAL_REGION_ENTER();
     switch (m_clock_cb.cal_state)
@@ -388,20 +459,28 @@ ret_code_t nrf_drv_clock_calibration_abort(void)
         break;
     }
     CRITICAL_REGION_EXIT();
-    return NRF_SUCCESS;
+    
+    NRF_LOG_INFO("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 #else
-    return NRF_ERROR_FORBIDDEN;
+    err_code = NRF_ERROR_FORBIDDEN;
+    NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 #endif // CALIBRATION_SUPPORT
 }
 
 ret_code_t nrf_drv_clock_is_calibrating(bool * p_is_calibrating)
 {
+    ret_code_t err_code = NRF_SUCCESS;
 #if CALIBRATION_SUPPORT
     ASSERT(m_clock_cb.module_initialized);
     *p_is_calibrating = (m_clock_cb.cal_state != CAL_STATE_IDLE);
-    return NRF_SUCCESS;
+    NRF_LOG_INFO("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 #else
-    return NRF_ERROR_FORBIDDEN;
+    err_code = NRF_ERROR_FORBIDDEN;
+    NRF_LOG_WARNING("Function: %s, error code: %s.\r\n", (uint32_t)__func__, (uint32_t)ERR_TO_STR(err_code));
+    return err_code;
 #endif // CALIBRATION_SUPPORT
 }
 
@@ -429,11 +508,16 @@ __STATIC_INLINE void clock_clk_started_notify(nrf_drv_clock_evt_type_t evt_type)
     }
 }
 
+#if NRF_DRV_COMMON_POWER_CLOCK_ISR
+void nrf_drv_clock_onIRQ(void)
+#else
 void POWER_CLOCK_IRQHandler(void)
+#endif
 {
     if (nrf_clock_event_check(NRF_CLOCK_EVENT_HFCLKSTARTED))
     {
         nrf_clock_event_clear(NRF_CLOCK_EVENT_HFCLKSTARTED);
+        NRF_LOG_DEBUG("Event: %s.\r\n", (uint32_t)EVT_TO_STR(NRF_CLOCK_EVENT_HFCLKSTARTED));
         nrf_clock_int_disable(NRF_CLOCK_INT_HF_STARTED_MASK);
         m_clock_cb.hfclk_on = true;
         clock_clk_started_notify(NRF_DRV_CLOCK_EVT_HFCLK_STARTED);
@@ -441,6 +525,7 @@ void POWER_CLOCK_IRQHandler(void)
     if (nrf_clock_event_check(NRF_CLOCK_EVENT_LFCLKSTARTED))
     {
         nrf_clock_event_clear(NRF_CLOCK_EVENT_LFCLKSTARTED);
+        NRF_LOG_DEBUG("Event: %s.\r\n", (uint32_t)EVT_TO_STR(NRF_CLOCK_EVENT_LFCLKSTARTED));
         nrf_clock_int_disable(NRF_CLOCK_INT_LF_STARTED_MASK);
         m_clock_cb.lfclk_on = true;
         clock_clk_started_notify(NRF_DRV_CLOCK_EVT_LFCLK_STARTED);
@@ -449,6 +534,7 @@ void POWER_CLOCK_IRQHandler(void)
     if (nrf_clock_event_check(NRF_CLOCK_EVENT_CTTO))
     {
         nrf_clock_event_clear(NRF_CLOCK_EVENT_CTTO);
+        NRF_LOG_DEBUG("Event: %s.\r\n", (uint32_t)EVT_TO_STR(NRF_CLOCK_EVENT_CTTO));
         nrf_clock_int_disable(NRF_CLOCK_INT_CTTO_MASK);
         nrf_drv_clock_hfclk_request(&m_clock_cb.cal_hfclk_started_handler_item);
     }
@@ -456,6 +542,7 @@ void POWER_CLOCK_IRQHandler(void)
     if (nrf_clock_event_check(NRF_CLOCK_EVENT_DONE))
     {
         nrf_clock_event_clear(NRF_CLOCK_EVENT_DONE);
+        NRF_LOG_DEBUG("Event: %s.\r\n", (uint32_t)EVT_TO_STR(NRF_CLOCK_EVENT_DONE));
         nrf_clock_int_disable(NRF_CLOCK_INT_DONE_MASK);
         nrf_drv_clock_hfclk_release();
         bool aborted = (m_clock_cb.cal_state == CAL_STATE_ABORT);
@@ -509,4 +596,4 @@ void nrf_drv_clock_on_sd_disable(void)
 #undef NRF_CLOCK_LFCLK_Xtal
 #undef NRF_CLOCK_LFCLK_Synth
 
-#endif //CLOCK_ENABLED
+#endif // NRF_MODULE_ENABLED(CLOCK)

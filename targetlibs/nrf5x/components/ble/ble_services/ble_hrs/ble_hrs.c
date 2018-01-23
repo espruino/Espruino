@@ -1,41 +1,68 @@
-/* Copyright (c) 2012 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2012 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 /* Attention!
 *  To maintain compliance with Nordic Semiconductor ASA’s Bluetooth profile
 *  qualification listings, this section of source code must not be modified.
 */
-#include "sdk_config.h"
-#if BLE_HRS_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(BLE_HRS)
 #include "ble_hrs.h"
 #include <string.h>
-#include "nordic_common.h"
 #include "ble_l2cap.h"
 #include "ble_srv_common.h"
-#include "app_util.h"
 
 
-#define OPCODE_LENGTH 1                                                    /**< Length of opcode inside Heart Rate Measurement packet. */
-#define HANDLE_LENGTH 2                                                    /**< Length of handle inside Heart Rate Measurement packet. */
-#define MAX_HRM_LEN   (BLE_L2CAP_MTU_DEF - OPCODE_LENGTH - HANDLE_LENGTH)  /**< Maximum size of a transmitted Heart Rate Measurement. */
+#define OPCODE_LENGTH 1                                                              /**< Length of opcode inside Heart Rate Measurement packet. */
+#define HANDLE_LENGTH 2                                                              /**< Length of handle inside Heart Rate Measurement packet. */
+#define INIT_MAX_HRM_LEN (GATT_MTU_SIZE_DEFAULT - OPCODE_LENGTH - HANDLE_LENGTH)     /**< Maximum size of a transmitted Heart Rate Measurement. */
+#define MAX_HRM_LEN      (NRF_BLE_GATT_MAX_MTU_SIZE - OPCODE_LENGTH - HANDLE_LENGTH) /**< Maximum size of a transmitted Heart Rate Measurement. */
 
-#define INITIAL_VALUE_HRM                       0                          /**< Initial Heart Rate Measurement value. */
+#define INITIAL_VALUE_HRM                       0                                    /**< Initial Heart Rate Measurement value. */
 
 // Heart Rate Measurement flag bits
-#define HRM_FLAG_MASK_HR_VALUE_16BIT           (0x01 << 0)                 /**< Heart Rate Value Format bit. */
-#define HRM_FLAG_MASK_SENSOR_CONTACT_DETECTED  (0x01 << 1)                 /**< Sensor Contact Detected bit. */
-#define HRM_FLAG_MASK_SENSOR_CONTACT_SUPPORTED (0x01 << 2)                 /**< Sensor Contact Supported bit. */
-#define HRM_FLAG_MASK_EXPENDED_ENERGY_INCLUDED (0x01 << 3)                 /**< Energy Expended Status bit. Feature Not Supported */
-#define HRM_FLAG_MASK_RR_INTERVAL_INCLUDED     (0x01 << 4)                 /**< RR-Interval bit. */
+#define HRM_FLAG_MASK_HR_VALUE_16BIT           (0x01 << 0)                           /**< Heart Rate Value Format bit. */
+#define HRM_FLAG_MASK_SENSOR_CONTACT_DETECTED  (0x01 << 1)                           /**< Sensor Contact Detected bit. */
+#define HRM_FLAG_MASK_SENSOR_CONTACT_SUPPORTED (0x01 << 2)                           /**< Sensor Contact Supported bit. */
+#define HRM_FLAG_MASK_EXPENDED_ENERGY_INCLUDED (0x01 << 3)                           /**< Energy Expended Status bit. Feature Not Supported */
+#define HRM_FLAG_MASK_RR_INTERVAL_INCLUDED     (0x01 << 4)                           /**< RR-Interval bit. */
 
 
 /**@brief Function for handling the Connect event.
@@ -171,7 +198,7 @@ static uint8_t hrm_encode(ble_hrs_t * p_hrs, uint16_t heart_rate, uint8_t * p_en
     }
     for (i = 0; i < p_hrs->rr_interval_count; i++)
     {
-        if (len + sizeof(uint16_t) > MAX_HRM_LEN)
+        if (len + sizeof(uint16_t) > p_hrs->max_hrm_len)
         {
             // Not all stored rr_interval values can fit into the encoded hrm,
             // move the remaining values to the start of the buffer.
@@ -311,6 +338,7 @@ uint32_t ble_hrs_init(ble_hrs_t * p_hrs, const ble_hrs_init_t * p_hrs_init)
     p_hrs->conn_handle                 = BLE_CONN_HANDLE_INVALID;
     p_hrs->is_sensor_contact_detected  = false;
     p_hrs->rr_interval_count           = 0;
+    p_hrs->max_hrm_len                 = INIT_MAX_HRM_LEN;
 
     // Add service
     BLE_UUID_BLE_ASSIGN(ble_uuid, BLE_UUID_HEART_RATE_SERVICE);
@@ -439,4 +467,13 @@ uint32_t ble_hrs_body_sensor_location_set(ble_hrs_t * p_hrs, uint8_t body_sensor
 
     return sd_ble_gatts_value_set(p_hrs->conn_handle, p_hrs->bsl_handles.value_handle, &gatts_value);
 }
-#endif//BLE_HRS_ENABLED
+
+
+void ble_hrs_on_gatt_evt(ble_hrs_t * p_hrs, nrf_ble_gatt_evt_t * p_gatt_evt)
+{
+    if (p_hrs->conn_handle == p_gatt_evt->conn_handle)
+    {
+        p_hrs->max_hrm_len = p_gatt_evt->att_mtu_effective - OPCODE_LENGTH - HANDLE_LENGTH;
+    }
+}
+#endif // NRF_MODULE_ENABLED(BLE_HRS)

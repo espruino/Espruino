@@ -1,13 +1,41 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 
@@ -33,7 +61,7 @@ extern "C" {
  *
  */
 
-#define PDB_WRITE_BUF_SIZE (sizeof(pm_peer_data_bonding_t))
+#define PDB_WRITE_BUF_SIZE (sizeof(pm_peer_data_bonding_t)) //!< The size (in bytes) of each block in the internal buffer accessible via @ref pdb_write_buf_get.
 
 /**@brief Events that can come from the peer_database module.
  */
@@ -208,7 +236,7 @@ ret_code_t pdb_write_buf_release(pm_peer_id_t peer_id, pm_peer_data_id_t data_id
  * @param[in]  data_id  The type of data to reserve space for.
  *
  * @retval NRF_SUCCESS              Successfully reserved space in persistent storage.
- * @retval NRF_ERROR_NO_MEM         Not enough room in persistent storage.
+ * @retval NRF_ERROR_STORAGE_FULL   Not enough room in persistent storage.
  * @retval NRF_ERROR_BUSY           Could not process request at this time. Reattempt later.
  * @retval NRF_ERROR_NOT_FOUND      No buffer has been allocated for this peer ID/data ID pair.
  * @retval NRF_ERROR_INVALID_PARAM  Data ID or Peer ID was invalid or unallocated.
@@ -225,7 +253,7 @@ ret_code_t pdb_write_buf_store_prepare(pm_peer_id_t peer_id, pm_peer_data_id_t d
  * @param[in]  data_id      Which piece of data to store.
  *
  * @retval NRF_SUCCESS              Data storing was successfully started.
- * @retval NRF_ERROR_NO_MEM         No space available in persistent storage. Please clear some
+ * @retval NRF_ERROR_STORAGE_FULL   No space available in persistent storage. Please clear some
  *                                  space, the operation will be reattempted after the next compress
  *                                  procedure. This error will not happen if
  *                                  @ref pdb_write_buf_store_prepare is called beforehand.
@@ -305,7 +333,7 @@ pm_peer_id_t pdb_next_deleted_peer_id_get(pm_peer_id_t prev_peer_id);
  * @retval NRF_SUCESS               The update was initiated successfully
  * @retval NRF_ERROR_NOT_FOUND      The old store token was invalid.
  * @retval NRF_ERROR_NULL           Data contained a NULL pointer.
- * @retval NRF_ERROR_NO_MEM         No space available in persistent storage.
+ * @retval NRF_ERROR_STORAGE_FULL   No space available in persistent storage.
  * @retval NRF_ERROR_BUSY           FDS or underlying modules are busy and can't take any
  *                                  more requests
  * @retval NRF_ERROR_INVALID_STATE  Module is not initialized.
@@ -345,7 +373,7 @@ ret_code_t pdb_peer_data_load(pm_peer_id_t              peer_id,
  * @retval NRF_SUCCESS               Data successfully written.
  * @retval NRF_ERROR_INVALID_PARAM   Data ID or Peer ID was invalid or unallocated.
  * @retval NRF_ERROR_NULL            p_peer_data contained a NULL pointer.
- * @retval NRF_ERROR_NO_MEM          No space available in persistent storage.
+ * @retval NRF_ERROR_STORAGE_FULL    No space available in persistent storage.
  * @retval NRF_ERROR_INVALID_LENGTH  Data length above the maximum allowed.
  * @retval NRF_ERROR_BUSY            Unable to perform operation at this time.
  */

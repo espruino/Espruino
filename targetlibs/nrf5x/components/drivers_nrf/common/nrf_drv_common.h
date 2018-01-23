@@ -1,13 +1,41 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 #ifndef NRF_DRV_COMMON_H__
@@ -17,34 +45,56 @@
 #include <stdbool.h>
 #include "nrf.h"
 #include "sdk_errors.h"
-#include "sdk_config.h"
-#include "app_util.h"
+#include "sdk_common.h"
+#include "nrf_assert.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifdef NRF51
 #ifdef SOFTDEVICE_PRESENT
-#define INTERRUPT_PRIORITY_VALIDATION(pri) STATIC_ASSERT((pri == 1) || (pri == 3))
+#define INTERRUPT_PRIORITY_IS_VALID(pri) (((pri) == 1) || ((pri) == 3))
 #else
-#define INTERRUPT_PRIORITY_VALIDATION(pri) STATIC_ASSERT(pri < 4)
+#define INTERRUPT_PRIORITY_IS_VALID(pri) ((pri) < 4)
 #endif //SOFTDEVICE_PRESENT
 #else
 #ifdef SOFTDEVICE_PRESENT
-#define INTERRUPT_PRIORITY_VALIDATION(pri) STATIC_ASSERT(((pri > 2) && (pri < 4)) || ((pri > 5) && (pri < 8)))
+#define INTERRUPT_PRIORITY_IS_VALID(pri) ((((pri) > 1) && ((pri) < 4)) || (((pri) > 5) && ((pri) < 8)))
 #else
-#define INTERRUPT_PRIORITY_VALIDATION(pri) STATIC_ASSERT(pri < 8)
+#define INTERRUPT_PRIORITY_IS_VALID(pri) ((pri) < 8)
 #endif //SOFTDEVICE_PRESENT
 #endif //NRF52
+
+#define INTERRUPT_PRIORITY_VALIDATION(pri) STATIC_ASSERT(INTERRUPT_PRIORITY_IS_VALID((pri)))
+#define INTERRUPT_PRIORITY_ASSERT(pri)     ASSERT(INTERRUPT_PRIORITY_IS_VALID((pri)))
+
 /**
  * @defgroup nrf_drv_common Peripheral drivers common module
  * @{
  * @ingroup nrf_drivers
+ */
+
+/**
  * @brief Offset of event registers in every peripheral instance.
  *
  * This is the offset where event registers start in  every peripheral.
  */
 #define NRF_DRV_COMMON_EVREGS_OFFSET 0x100U
+
+/**
+ * @brief The flag that is set when POWER_CLOCK ISR is implemented in common module
+ *
+ * This flag means that the function POWER_CLOCK_IRQHandler is implemented in
+ * nrf_drv_common.c file. In the @c clock and @c power modules functions
+ * nrf_drv_clock_onIRQ nrf_drv_power_onIRQ should be implemented
+ * and they would be called from common implementation.
+ *
+ * None of the checking is done here.
+ * The implementation functions in @c clock and @c power are required to handle
+ * correctly the case when they are called without any event bit set.
+ */
+#define NRF_DRV_COMMON_POWER_CLOCK_ISR (NRF_MODULE_ENABLED(CLOCK) && NRF_MODULE_ENABLED(POWER))
 
 /**
  * @brief Driver state.
@@ -71,7 +121,7 @@ typedef enum
 typedef void (*nrf_drv_irq_handler_t)(void);
 
 
-#if PERIPHERAL_RESOURCE_SHARING_ENABLED
+#if NRF_MODULE_ENABLED(PERIPHERAL_RESOURCE_SHARING)
 
 /**
  * @brief Function for acquiring shared peripheral resources associated with
@@ -108,7 +158,7 @@ ret_code_t nrf_drv_common_per_res_acquire(void const * p_per_base,
  */
 void nrf_drv_common_per_res_release(void const * p_per_base);
 
-#endif // PERIPHERAL_RESOURCE_SHARING_ENABLED
+#endif // NRF_MODULE_ENABLED(PERIPHERAL_RESOURCE_SHARING)
 
 
 /**
@@ -120,6 +170,44 @@ void nrf_drv_common_per_res_release(void const * p_per_base);
  * @param[in] priority Interrupt priority
  */
 void nrf_drv_common_irq_enable(IRQn_Type IRQn, uint8_t priority);
+
+#if NRF_MODULE_ENABLED(POWER)
+/**
+ * @brief Disable power IRQ
+ *
+ * Power and clock peripheral uses the same IRQ.
+ * This function disables POWER_CLOCK IRQ only if CLOCK driver
+ * is uninitialized.
+ *
+ * @sa nrf_drv_common_power_clock_irq_init
+ */
+void nrf_drv_common_power_irq_disable(void);
+#endif
+
+#if NRF_MODULE_ENABLED(CLOCK)
+/**
+ * @brief Disable clock IRQ
+ *
+ * Power and clock peripheral uses the same IRQ.
+ * This function disables POWER_CLOCK IRQ only if POWER driver
+ * is uninitialized.
+ *
+ * @sa nrf_drv_common_power_clock_irq_init
+ */
+void nrf_drv_common_clock_irq_disable(void);
+#endif
+
+/**
+ * @brief Check if interrupt is enabled
+ *
+ * Function that checks if selected interrupt is enabled.
+ *
+ * @param[in] IRQn     Interrupt id
+ *
+ * @retval true  Selected IRQ is enabled.
+ * @retval false Selected IRQ is disabled.
+ */
+__STATIC_INLINE bool nrf_drv_common_irq_enable_check(IRQn_Type IRQn);
 
 /**
  * @brief Function disables NVIC interrupt
@@ -168,6 +256,29 @@ __STATIC_INLINE uint32_t nrf_drv_event_to_bitpos(uint32_t event);
  */
 __STATIC_INLINE IRQn_Type nrf_drv_get_IRQn(void const * const pinst);
 
+#if NRF_MODULE_ENABLED(CLOCK) || NRF_MODULE_ENABLED(POWER)
+/**
+ * @brief Enable and setup power clock IRQ
+ *
+ * This function would be called from @ref nrf_drv_clock and @ref nrf_drv_power
+ * to enable related interrupt.
+ * This function avoids multiple interrupt configuration.
+ *
+ * @note
+ * This function is aviable only if @ref nrf_drv_clock or @ref nrf_drv_power
+ * module is enabled.
+ *
+ * @note
+ * If both @ref nrf_drv_clock and @ref nrf_drv_power modules are enabled,
+ * during the compilation the check is made that
+ * @ref CLOCK_CONFIG_IRQ_PRIORITY equals @ref POWER_CONFIG_IRQ_PRIORITY.
+ *
+ * @sa nrf_drv_common_power_irq_disable
+ * @sa nrf_drv_common_clock_irq_disable
+ */
+__STATIC_INLINE void nrf_drv_common_power_clock_irq_init(void);
+#endif
+
 /**
  * @brief Check if given object is in RAM
  *
@@ -179,8 +290,13 @@ __STATIC_INLINE IRQn_Type nrf_drv_get_IRQn(void const * const pinst);
  */
 __STATIC_INLINE bool nrf_drv_is_in_RAM(void const * const ptr);
 
-
 #ifndef SUPPRESS_INLINE_IMPLEMENTATION
+
+__STATIC_INLINE bool nrf_drv_common_irq_enable_check(IRQn_Type IRQn)
+{
+    return 0 != (NVIC->ISER[(((uint32_t)(int32_t)IRQn) >> 5UL)] &
+        (uint32_t)(1UL << (((uint32_t)(int32_t)IRQn) & 0x1FUL)));
+}
 
 __STATIC_INLINE void nrf_drv_common_irq_disable(IRQn_Type IRQn)
 {
@@ -202,6 +318,28 @@ __STATIC_INLINE IRQn_Type nrf_drv_get_IRQn(void const * const pinst)
     uint8_t ret = (uint8_t)((uint32_t)pinst>>12U);
     return (IRQn_Type) ret;
 }
+
+#if NRF_MODULE_ENABLED(CLOCK) || NRF_MODULE_ENABLED(POWER)
+__STATIC_INLINE void nrf_drv_common_power_clock_irq_init(void)
+{
+    if(!nrf_drv_common_irq_enable_check(POWER_CLOCK_IRQn))
+    {
+        nrf_drv_common_irq_enable(
+            POWER_CLOCK_IRQn,
+#if NRF_DRV_COMMON_POWER_CLOCK_ISR
+    #if CLOCK_CONFIG_IRQ_PRIORITY != POWER_CONFIG_IRQ_PRIORITY
+    #error CLOCK_CONFIG_IRQ_PRIORITY and POWER_CONFIG_IRQ_PRIORITY have to be the same.
+    #endif
+            CLOCK_CONFIG_IRQ_PRIORITY
+#elif NRF_MODULE_ENABLED(CLOCK)
+            CLOCK_CONFIG_IRQ_PRIORITY
+#elif NRF_MODULE_ENABLED(POWER)
+            POWER_CONFIG_IRQ_PRIORITY
+#endif
+            );
+    }
+}
+#endif
 
 __STATIC_INLINE bool nrf_drv_is_in_RAM(void const * const ptr)
 {

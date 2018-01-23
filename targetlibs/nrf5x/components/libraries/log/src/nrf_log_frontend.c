@@ -1,16 +1,44 @@
-/* Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
-#include "sdk_config.h"
-#if NRF_LOG_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(NRF_LOG)
 #include "app_util.h"
 #include "app_util_platform.h"
 #include "nrf_log.h"
@@ -284,18 +312,20 @@ void nrf_log_handlers_set(nrf_log_std_handler_t     std_handler,
  * @brief Allocates chunk in a buffer for one entry and injects overflow if
  * there is no room for requested entry.
  *
- * @param nargs Number of 32bit arguments. In case of allocating for hex dump it
+ * @param nargs    Number of 32bit arguments. In case of allocating for hex dump it
  * is the size of the buffer in 32bit words (ceiled).
+ * @param p_wr_idx Pointer to write index.
  *
  * @return True if successful allocation, false otherwise.
  *
  */
-static inline bool buf_prealloc(uint32_t nargs)
+static inline bool buf_prealloc(uint32_t nargs, uint32_t * p_wr_idx)
 {
     nargs += HEADER_SIZE;
     uint32_t ovflw_tag_size = HEADER_SIZE;
     bool     ret            = true;
     CRITICAL_REGION_ENTER();
+    *p_wr_idx = m_log_data.wr_idx;
     uint32_t available_words = (m_log_data.mask + 1) - (m_log_data.wr_idx - m_log_data.rd_idx);
     uint32_t required_words  = nargs + ovflw_tag_size; // room for current entry and overflow
     if (required_words > available_words)
@@ -333,16 +363,20 @@ static inline bool buf_prealloc(uint32_t nargs)
  *
  * @param len32    Length of buffer to allocate. Given in words.
  * @param p_offset Offset of the buffer.
+ * @param p_wr_idx Pointer to write index.
  *
  * @return A pointer to the allocated buffer. NULL if allocation failed.
  */
-static inline uint32_t * cont_buf_prealloc(uint32_t len32, uint32_t * p_offset)
+static inline uint32_t * cont_buf_prealloc(uint32_t len32,
+                                           uint32_t * p_offset,
+                                           uint32_t * p_wr_idx)
 {
     uint32_t * p_buf = NULL;
 
     len32++; // Increment because 32bit header is needed to be stored.
 
     CRITICAL_REGION_ENTER();
+    *p_wr_idx = m_log_data.wr_idx;
     uint32_t available_words = (m_log_data.mask + 1) -
                                (m_log_data.wr_idx & m_log_data.mask);
     if (len32 <= available_words)
@@ -400,11 +434,11 @@ uint32_t nrf_log_push(char * const p_str)
     return (uint32_t)p_str;
 #else //(NRF_LOG_DEFERRED == 0)
     uint32_t mask      = m_log_data.mask;
-    uint32_t wr_idx    = m_log_data.wr_idx;
     uint32_t slen      = strlen(p_str) + 1;
     uint32_t buflen    = CEIL_DIV(slen, 4);
     uint32_t offset    = 0;
-    char   * p_dst_str = (char *)cont_buf_prealloc(buflen, &offset);
+    uint32_t wr_idx;
+    char   * p_dst_str = (char *)cont_buf_prealloc(buflen, &offset, &wr_idx);
     if (p_dst_str)
     {
         PUSHED_HEADER_DEF(header, offset, buflen);
@@ -423,8 +457,8 @@ void nrf_log_frontend_std_0(uint8_t severity, char const * const p_str)
 #else //(NRF_LOG_DEFERRED == 0)
     uint32_t nargs  = 0;
     uint32_t mask   = m_log_data.mask;
-    uint32_t wr_idx = m_log_data.wr_idx;
-    if (buf_prealloc(nargs))
+    uint32_t wr_idx;
+    if (buf_prealloc(nargs, &wr_idx))
     {
         // Proceed only if buffer was successfully preallocated.
         STD_HEADER_DEF(header, p_str, severity, nargs);
@@ -447,8 +481,8 @@ void nrf_log_frontend_std_1(uint8_t            severity,
 #else //(NRF_LOG_DEFERRED == 0)
     uint32_t nargs  = 1;
     uint32_t mask   = m_log_data.mask;
-    uint32_t wr_idx = m_log_data.wr_idx;
-    if (buf_prealloc(nargs))
+    uint32_t wr_idx;
+    if (buf_prealloc(nargs, &wr_idx))
     {
         // Proceed only if buffer was successfully preallocated.
         STD_HEADER_DEF(header, p_str, severity, nargs);
@@ -473,8 +507,8 @@ void nrf_log_frontend_std_2(uint8_t            severity,
 #else //(NRF_LOG_DEFERRED == 0)
     uint32_t nargs  = 2;
     uint32_t mask   = m_log_data.mask;
-    uint32_t wr_idx = m_log_data.wr_idx;
-    if (buf_prealloc(nargs))
+    uint32_t wr_idx;
+    if (buf_prealloc(nargs, &wr_idx))
     {
         // Proceed only if buffer was successfully preallocated.
         STD_HEADER_DEF(header, p_str, severity, nargs);
@@ -501,8 +535,8 @@ void nrf_log_frontend_std_3(uint8_t            severity,
 #else //(NRF_LOG_DEFERRED == 0)
     uint32_t nargs  = 3;
     uint32_t mask   = m_log_data.mask;
-    uint32_t wr_idx = m_log_data.wr_idx;
-    if (buf_prealloc(nargs))
+    uint32_t wr_idx;
+    if (buf_prealloc(nargs, &wr_idx))
     {
         // Proceed only if buffer was successfully preallocated.
         STD_HEADER_DEF(header, p_str, severity, nargs);
@@ -531,8 +565,8 @@ void nrf_log_frontend_std_4(uint8_t            severity,
 #else //(NRF_LOG_DEFERRED == 0)
     uint32_t nargs  = 4;
     uint32_t mask   = m_log_data.mask;
-    uint32_t wr_idx = m_log_data.wr_idx;
-    if (buf_prealloc(nargs))
+    uint32_t wr_idx;
+    if (buf_prealloc(nargs, &wr_idx))
     {
         // Proceed only if buffer was successfully preallocated.
         STD_HEADER_DEF(header, p_str, severity, nargs);
@@ -563,8 +597,8 @@ void nrf_log_frontend_std_5(uint8_t            severity,
 #else //(NRF_LOG_DEFERRED == 0)
     uint32_t nargs  = 5;
     uint32_t mask   = m_log_data.mask;
-    uint32_t wr_idx = m_log_data.wr_idx;
-    if (buf_prealloc(nargs))
+    uint32_t wr_idx;
+    if (buf_prealloc(nargs, &wr_idx))
     {
         // Proceed only if buffer was successfully preallocated.
         STD_HEADER_DEF(header, p_str, severity, nargs);
@@ -597,8 +631,8 @@ void nrf_log_frontend_std_6(uint8_t            severity,
 #else //(NRF_LOG_DEFERRED == 0)
     uint32_t nargs  = 6;
     uint32_t mask   = m_log_data.mask;
-    uint32_t wr_idx = m_log_data.wr_idx;
-    if (buf_prealloc(nargs))
+    uint32_t wr_idx;
+    if (buf_prealloc(nargs, &wr_idx))
     {
         // Proceed only if buffer was successfully preallocated.
         STD_HEADER_DEF(header, p_str, severity, nargs);
@@ -645,10 +679,10 @@ void nrf_log_frontend_hexdump(uint8_t            severity,
     }
     while (curr_offset < length);
 #else //(NRF_LOG_DEFERRED == 0)
-    uint32_t wr_idx = m_log_data.wr_idx;
     uint32_t mask   = m_log_data.mask;
 
-    if (buf_prealloc(CEIL_DIV(length, 4) + 1))
+    uint32_t wr_idx;
+    if (buf_prealloc(CEIL_DIV(length, 4) + 1, &wr_idx))
     {
         HEXDUMP_HEADER_DEF(header, severity, length);
         m_log_data.buffer[wr_idx++ & mask] = header.raw;
@@ -789,4 +823,4 @@ uint8_t nrf_log_getchar(void)
     return nrf_log_backend_getchar();
 }
 
-#endif // NRF_LOG_ENABLED
+#endif // NRF_MODULE_ENABLED(NRF_LOG)

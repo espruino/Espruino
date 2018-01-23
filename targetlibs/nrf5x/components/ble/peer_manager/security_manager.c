@@ -1,17 +1,45 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
-#include "sdk_config.h"
-#if PEER_MANAGER_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(PEER_MANAGER)
 #include "security_manager.h"
 
 #include <string.h>
@@ -64,11 +92,11 @@ static void flags_set_from_err_code(uint16_t conn_handle, ret_code_t err_code, b
     bool flag_value_flash_full = false;
     bool flag_value_busy       = false;
 
-    if (    (err_code == NRF_ERROR_NO_MEM)
+    if (    (err_code == NRF_ERROR_STORAGE_FULL)
          || (err_code == NRF_ERROR_BUSY)
          || (err_code == NRF_SUCCESS))
     {
-        if ((err_code == NRF_ERROR_NO_MEM))
+        if ((err_code == NRF_ERROR_STORAGE_FULL))
         {
             flag_value_busy       = false;
             flag_value_flash_full = true;
@@ -127,7 +155,7 @@ static void events_send_from_err_code(uint16_t conn_handle, ret_code_t err_code)
         {
             evt.evt_id = SM_EVT_ERROR_SMP_TIMEOUT;
         }
-        else if (err_code == NRF_ERROR_NO_MEM)
+        else if (err_code == NRF_ERROR_STORAGE_FULL)
         {
             evt.evt_id = SM_EVT_ERROR_NO_MEM;
         }
@@ -172,7 +200,7 @@ static ret_code_t link_secure(uint16_t conn_handle, bool null_params, bool force
             ble_conn_state_user_flag_set(conn_handle, m_flag_link_secure_force_repairing, force_repairing);
             err_code = NRF_SUCCESS;
             break;
-        case NRF_ERROR_NO_MEM:
+        case NRF_ERROR_STORAGE_FULL:
             ble_conn_state_user_flag_set(conn_handle, m_flag_link_secure_null_params, null_params);
             ble_conn_state_user_flag_set(conn_handle, m_flag_link_secure_force_repairing, force_repairing);
             break;
@@ -540,4 +568,4 @@ ret_code_t sm_link_secure(uint16_t conn_handle, bool force_repairing)
     ret = link_secure(conn_handle, false, force_repairing, false);
     return ret;
 }
-#endif //PEER_MANAGER_ENABLED
+#endif // NRF_MODULE_ENABLED(PEER_MANAGER)

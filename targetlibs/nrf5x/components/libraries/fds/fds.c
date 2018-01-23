@@ -1,16 +1,44 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 #include "sdk_common.h"
-//#if NRF_MODULE_ENABLED(FDS)
+#if NRF_MODULE_ENABLED(FDS)
 #include "fds.h"
 #include "fds_internal_defs.h"
 
@@ -38,7 +66,8 @@ FS_REGISTER_CFG(fs_config_t fs_config) =
 };
 
 // Used to flag a record as dirty, i.e. ready for garbage collection.
-static fds_tl_t const m_fds_tl_dirty =
+// Must be statically allocated since it will be written to flash.
+__ALIGN(4) static fds_tl_t const m_fds_tl_dirty =
 {
     .record_key   = FDS_RECORD_KEY_DIRTY,
     .length_words = 0xFFFF  // Leave the record length field unchanged in flash.
@@ -706,7 +735,7 @@ static fds_init_opts_t pages_init()
                 page_scan(p_page_addr, &m_swap_page.write_offset, NULL);
 
                 ret |= (m_swap_page.write_offset == FDS_PAGE_TAG_SIZE) ?
-                        SWAP_EMPTY : SWAP_DIRTY;
+                        PAGE_SWAP_CLEAN : PAGE_SWAP_DIRTY;
                 break;
 
             default:
@@ -1604,7 +1633,11 @@ ret_code_t fds_register(fds_cb_t cb)
 
 ret_code_t fds_init(void)
 {
-    fds_evt_t const evt_success = { .id = FDS_EVT_INIT, .result = FDS_SUCCESS };
+    fds_evt_t const evt_success =
+    {
+        .id     = FDS_EVT_INIT,
+        .result = FDS_SUCCESS
+    };
 
     // No initialization is necessary. Notify the application immediately.
     if (flag_is_set(FDS_FLAG_INITIALIZED))
@@ -1624,28 +1657,24 @@ ret_code_t fds_init(void)
 
     // Initialize the page structure (m_pages), and determine which
     // initialization steps are required given the current state of the filesystem.
-    fds_init_opts_t init_opts = pages_init();
-
-    if (init_opts == NO_PAGES)
-    {
-        return FDS_ERR_NO_PAGES;
-    }
-
-    if (init_opts == ALREADY_INSTALLED)
-    {
-        // No initialization is necessary. Notify the application immediately.
-        flag_set(FDS_FLAG_INITIALIZED);
-        flag_clear(FDS_FLAG_INITIALIZING);
-
-        event_send(&evt_success);
-        return FDS_SUCCESS;
-    }
-
     fds_op_t op;
     op.op_code = FDS_OP_INIT;
 
+    fds_init_opts_t init_opts = pages_init();
+
     switch (init_opts)
     {
+        case NO_PAGES:
+        case NO_SWAP:
+            return FDS_ERR_NO_PAGES;
+
+        case ALREADY_INSTALLED:
+            // No initialization is necessary. Notify the application immediately.
+            flag_set(FDS_FLAG_INITIALIZED);
+            flag_clear(FDS_FLAG_INITIALIZING);
+            event_send(&evt_success);
+            return FDS_SUCCESS;
+
         case FRESH_INSTALL:
         case TAG_SWAP:
             op.init.step = FDS_OP_INIT_TAG_SWAP;
@@ -2072,4 +2101,4 @@ ret_code_t fds_verify_crc_on_writes(bool enable)
 }
 
 #endif
-//#endif //NRF_MODULE_ENABLED(FDS)
+#endif //NRF_MODULE_ENABLED(FDS)
