@@ -1,13 +1,41 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 
@@ -15,6 +43,7 @@
 #define BUFFER_H__
 
 #include <stdint.h>
+#include "compiler_abstraction.h"
 #include "sdk_errors.h"
 #include "pm_mutex.h"
 
@@ -32,20 +61,28 @@ extern "C" {
  */
 
 
-#define BUFFER_INVALID_ID 0xFF
+#define PM_BUFFER_INVALID_ID 0xFF //!< Invalid buffer block ID.
 
-#define PM_BUFFER_INIT(p_buffer, n_blocks, block_size, err_code)    \
-do                                                                  \
-{                                                                   \
-    static uint8_t buffer_memory[(n_blocks) * (block_size)];        \
-    static uint8_t mutex_memory[MUTEX_STORAGE_SIZE(n_blocks)];      \
-    err_code = pm_buffer_init((p_buffer),                           \
-                               buffer_memory,                       \
-                              (n_blocks) * (block_size),            \
-                               mutex_memory,                        \
-                               MUTEX_STORAGE_SIZE(n_blocks),        \
-                              (n_blocks),                           \
-                              (block_size));                        \
+
+/**@brief Convenience macro for declaring memory and initializing a buffer instance.
+ *
+ * @param[out] p_buffer    The buffer instance to initialize.
+ * @param[in]  n_blocks    The desired number of blocks in the buffer.
+ * @param[in]  block_size  The desired block size of the buffer.
+ * @param[out] err_code    The return code from @ref pm_buffer_init.
+ */
+#define PM_BUFFER_INIT(p_buffer, n_blocks, block_size, err_code)          \
+do                                                                        \
+{                                                                         \
+    __ALIGN(4) static uint8_t buffer_memory[(n_blocks) * (block_size)];   \
+    __ALIGN(4) static uint8_t mutex_memory[MUTEX_STORAGE_SIZE(n_blocks)]; \
+    err_code = pm_buffer_init((p_buffer),                                 \
+                               buffer_memory,                             \
+                              (n_blocks) * (block_size),                  \
+                               mutex_memory,                              \
+                               MUTEX_STORAGE_SIZE(n_blocks),              \
+                              (n_blocks),                                 \
+                              (block_size));                              \
 } while (0)
 
 
@@ -87,7 +124,7 @@ ret_code_t pm_buffer_init(pm_buffer_t * p_buffer,
  * @param[in]  n_blocks  The number of contiguous blocks to acquire.
  *
  * @return The id of the acquired block, if successful.
- * @retval BUFFER_INVALID_ID  If unsuccessful.
+ * @retval PM_BUFFER_INVALID_ID  If unsuccessful.
  */
 uint8_t pm_buffer_block_acquire(pm_buffer_t * p_buffer, uint32_t n_blocks);
 

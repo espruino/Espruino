@@ -38,8 +38,8 @@ bool jshIsPinValid(Pin pin) {
 }
 
 Pin jshGetPinFromString(const char *s) {
-  if ((s[0]>='A' && s[0]<='I') && s[1]) {
-    int port = JSH_PORTA+s[0]-'A';
+  if (((s[0]>='A' && s[0]<='I') || s[0]=='V') && s[1]) {
+    int port = (s[0]=='V') ? JSH_PORTV : JSH_PORTA+s[0]-'A';
     int pin = -1;
     if (s[1]>='0' && s[1]<='9') {
       if (!s[2]) { // D0-D9
@@ -59,14 +59,23 @@ Pin jshGetPinFromString(const char *s) {
         if ((pinInfo[i].port&JSH_PORT_MASK) == port && pinInfo[i].pin==pin)
           return (Pin)i;
 #else
-      if (port == JSH_PORTA) {
+      if (0) {
+#if JSH_PORTA_OFFSET!=-1
+      } else if (port == JSH_PORTA) {
         if (pin<JSH_PORTA_COUNT) return (Pin)(JSH_PORTA_OFFSET + pin);
+#endif
+#if JSH_PORTB_OFFSET!=-1
       } else if (port == JSH_PORTB) {
         if (pin<JSH_PORTB_COUNT) return (Pin)(JSH_PORTB_OFFSET + pin);
+#endif
+#if JSH_PORTC_OFFSET!=-1
       } else if (port == JSH_PORTC) {
         if (pin<JSH_PORTC_COUNT) return (Pin)(JSH_PORTC_OFFSET + pin);
+#endif
+#if JSH_PORTD_OFFSET!=-1
       } else if (port == JSH_PORTD) {
         if (pin<JSH_PORTD_COUNT) return (Pin)(JSH_PORTD_OFFSET + pin);
+#endif
 #if JSH_PORTE_OFFSET!=-1
       } else if (port == JSH_PORTE) {
         if (pin<JSH_PORTE_COUNT) return (Pin)(JSH_PORTE_OFFSET + pin);
@@ -86,6 +95,10 @@ Pin jshGetPinFromString(const char *s) {
 #if JSH_PORTI_OFFSET!=-1
       } else if (port == JSH_PORTI) {
         if (pin<JSH_PORTI_COUNT) return (Pin)(JSH_PORTI_OFFSET + pin);
+#endif
+#if JSH_PORTV_OFFSET!=-1
+      } else if (port == JSH_PORTV) {
+        if (pin<JSH_PORTV_COUNT) return (Pin)(JSH_PORTV_OFFSET + pin);
 #endif
       }
 #endif
@@ -158,6 +171,11 @@ void jshGetPinString(char *result, Pin pin) {
     } else if (pin>=JSH_PORTI_OFFSET && pin<JSH_PORTI_OFFSET+JSH_PORTI_COUNT) {
       result[0]='I';
       itostr(pin-JSH_PORTI_OFFSET,&result[1],10);
+#endif
+#if JSH_PORTV_OFFSET!=-1
+    } else if (pin>=JSH_PORTV_OFFSET && pin<JSH_PORTV_OFFSET+JSH_PORTV_COUNT) {
+      result[0]='V';
+      itostr(pin-JSH_PORTV_OFFSET,&result[1],10);
 #endif
 #endif
     } else {

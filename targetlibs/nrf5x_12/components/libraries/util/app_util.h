@@ -1,13 +1,41 @@
-/* Copyright (c) 2012 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2012 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 /** @file
@@ -76,23 +104,45 @@ enum
 #define STRING_CONCATENATE(lhs, rhs) STRING_CONCATENATE_IMPL(lhs, rhs)
 
 
-// Disable lint-warnings/errors for STATIC_ASSERT
-//lint --emacro(10,STATIC_ASSERT)
-//lint --emacro(18,STATIC_ASSERT)
-//lint --emacro(19,STATIC_ASSERT)
-//lint --emacro(30,STATIC_ASSERT)
-//lint --emacro(37,STATIC_ASSERT)
-//lint --emacro(42,STATIC_ASSERT)
-//lint --emacro(26,STATIC_ASSERT)
-//lint --emacro(102,STATIC_ASSERT)
-//lint --emacro(533,STATIC_ASSERT)
-//lint --emacro(534,STATIC_ASSERT)
-//lint --emacro(132,STATIC_ASSERT)
-//lint --emacro(414,STATIC_ASSERT)
-//lint --emacro(578,STATIC_ASSERT)
-//lint --emacro(628,STATIC_ASSERT)
-//lint --emacro(648,STATIC_ASSERT)
-//lint --emacro(830,STATIC_ASSERT)
+// Disable lint-warnings/errors for STATIC_ASSERT_MSG
+//lint --emacro(10, STATIC_ASSERT_MSG)
+//lint --emacro(18, STATIC_ASSERT_MSG)
+//lint --emacro(19, STATIC_ASSERT_MSG)
+//lint --emacro(30, STATIC_ASSERT_MSG)
+//lint --emacro(37, STATIC_ASSERT_MSG)
+//lint --emacro(42, STATIC_ASSERT_MSG)
+//lint --emacro(26, STATIC_ASSERT_MSG)
+//lint --emacro(102,STATIC_ASSERT_MSG)
+//lint --emacro(533,STATIC_ASSERT_MSG)
+//lint --emacro(534,STATIC_ASSERT_MSG)
+//lint --emacro(132,STATIC_ASSERT_MSG)
+//lint --emacro(414,STATIC_ASSERT_MSG)
+//lint --emacro(578,STATIC_ASSERT_MSG)
+//lint --emacro(628,STATIC_ASSERT_MSG)
+//lint --emacro(648,STATIC_ASSERT_MSG)
+//lint --emacro(830,STATIC_ASSERT_MSG)
+
+
+/**@brief Macro for doing static (i.e. compile time) assertion.
+*
+* @note If the EXPR isn't resolvable, then the error message won't be shown.
+*
+* @note The output of STATIC_ASSERT_MSG will be different across different compilers.
+*
+* @param[in] EXPR Constant expression to be verified.
+* @param[in] MSG  Name of the static assert.
+*/
+#if defined(__COUNTER__)
+
+    #define STATIC_ASSERT_MSG(EXPR, MSG) \
+        ;enum { STRING_CONCATENATE(MSG, __COUNTER__) = 1 / (!!(EXPR)) }
+
+#else
+
+    #define STATIC_ASSERT_MSG(EXPR, MSG) \
+        ;enum { STRING_CONCATENATE(MSG, __LINE__) = 1 / (!!(EXPR)) }
+
+#endif
 
 
 /**@brief Macro for doing static (i.e. compile time) assertion.
@@ -103,17 +153,8 @@ enum
 *
 * @param[in] EXPR Constant expression to be verified.
 */
-#if defined ( __COUNTER__ )
+#define STATIC_ASSERT(EXPR) STATIC_ASSERT_MSG((EXPR), static_assert_)
 
-#define STATIC_ASSERT(EXPR) \
-    ;enum { STRING_CONCATENATE(static_assert_, __COUNTER__) = 1 / (!!(EXPR)) }
-
-#else
-
-#define STATIC_ASSERT(EXPR) \
-    ;enum { STRING_CONCATENATE(assert_line_, __LINE__) = 1 / (!!(EXPR)) }
-
-#endif
 
 /**@brief Implementation details for NUM_VAR_ARGS */
 #define NUM_VA_ARGS_IMPL(                              \
@@ -271,6 +312,433 @@ typedef struct
 #define GET_ARG_2(a1, a2) a2
 
 
+/**@brief Container of macro (borrowed from Linux kernel).
+ *
+ * This macro returns parent structure address basing on child member address.
+ *
+ * @param ptr       Address of child type.
+ * @param type      Type of parent structure.
+ * @param member    Name of child field in parent structure.
+ *
+ * @return Parent structure address.
+ * */
+#define CONTAINER_OF(ptr, type, member)                 \
+        (type *)((char *)ptr - offsetof(type, member))
+
+
+/**
+ * @brief Define Bit-field mask
+ *
+ * Macro that defined the mask with selected number of bits set, starting from
+ * provided bit number.
+ *
+ * @param[in] bcnt Number of bits in the bit-field
+ * @param[in] boff Lowest bit number
+ */
+#define BF_MASK(bcnt, boff) ( ((1U << (bcnt)) - 1U) << (boff) )
+
+/**
+ * @brief Get bit-field
+ *
+ * Macro that extracts selected bit-field from provided value
+ *
+ * @param[in] val  Value from witch selected bit-field would be extracted
+ * @param[in] bcnt Number of bits in the bit-field
+ * @param[in] boff Lowest bit number
+ *
+ * @return Value of the selected bits
+ */
+#define BF_GET(val, bcnt, boff) ( ( (val) & BF_MASK((bcnt), (boff)) ) >> (boff) )
+
+/**
+ * @brief Create bit-field value
+ *
+ * Value is masked and shifted to match given bit-field
+ *
+ * @param[in] val  Value to set on bit-field
+ * @param[in] bcnt Number of bits for bit-field
+ * @param[in] boff Offset of bit-field
+ *
+ * @return Value positioned of given bit-field.
+ */
+#define BF_VAL(val, bcnt, boff) ( (((uint32_t)(val)) << (boff)) & BF_MASK(bcnt, boff) )
+
+/**
+ * @name Configuration of complex bit-field
+ *
+ * @sa BF_CX
+ * @{
+ */
+/** @brief Position of bit count in complex bit-field value */
+#define BF_CX_BCNT_POS  0U
+/** @brief Mask of bit count in complex bit-field value */
+#define BF_CX_BCNT_MASK (0xffU << BF_CX_BCNT_POS)
+/** @brief Position of bit position in complex bit-field value */
+#define BF_CX_BOFF_POS  8U
+/** @brief Mask of bit position in complex bit-field value */
+#define BF_CX_BOFF_MASK (0xffU << BF_CX_BOFF_POS)
+/** @} */
+
+/**
+ * @brief Define complex bit-field
+ *
+ * Complex bit-field would contain its position and size in one number.
+ * @sa BF_CX_MASK
+ * @sa BF_CX_POS
+ * @sa BF_CX_GET
+ *
+ * @param[in] bcnt Number of bits in the bit-field
+ * @param[in] boff Lowest bit number
+ *
+ * @return The single number that describes the bit-field completely.
+ */
+#define BF_CX(bcnt, boff) ( ((((uint32_t)(bcnt)) << BF_CX_BCNT_POS) & BF_CX_BCNT_MASK) | ((((uint32_t)(boff)) << BF_CX_BOFF_POS) & BF_CX_BOFF_MASK) )
+
+/**
+ * @brief Get number of bits in bit-field
+ *
+ * @sa BF_CX
+ *
+ * @param bf_cx Complex bit-field
+ *
+ * @return Number of bits in given bit-field
+ */
+#define BF_CX_BCNT(bf_cx) ( ((bf_cx) & BF_CX_BCNT_MASK) >> BF_CX_BCNT_POS )
+
+/**
+ * @brief Get lowest bit number in the field
+ *
+ * @sa BF_CX
+ *
+ * @param[in] bf_cx Complex bit-field
+ *
+ * @return Lowest bit number in given bit-field
+ */
+#define BF_CX_BOFF(bf_cx) ( ((bf_cx) & BF_CX_BOFF_MASK) >> BF_CX_BOFF_POS )
+
+/**
+ * @brief Get bit mask of the selected field
+ *
+ * @sa BF_CX
+ *
+ * @param[in] bf_cx Complex bit-field
+ *
+ * @return Mask of given bit-field
+ */
+#define BF_CX_MASK(bf_cx) BF_MASK(BF_CX_BCNT(bf_cx), BF_CX_BOFF(bf_cx))
+
+/**
+ * @brief Get bit-field
+ *
+ * Macro that extracts selected bit-field from provided value.
+ * Bit-field is given as a complex value.
+ *
+ * @sa BF_CX
+ * @sa BF_GET
+ *
+ * @param[in] val   Value from witch selected bit-field would be extracted
+ * @param[in] bf_cx Complex bit-field
+ *
+ * @return Value of the selected bits.
+ */
+#define BF_CX_GET(val, bf_cx) BF_GET(val, BF_CX_BCNT(bf_cx), BF_CX_BOFF(bf_cx))
+
+/**
+ * @brief Create bit-field value
+ *
+ * Value is masked and shifted to match given bit-field.
+ *
+ * @param[in] val  Value to set on bit-field
+ * @param[in] bf_cx Complex bit-field
+ *
+ * @return Value positioned of given bit-field.
+ */
+#define BF_CX_VAL(val, bf_cx) BF_VAL(val, BF_CX_BCNT(bf_cx), BF_CX_BOFF(bf_cx))
+
+/**
+ * @brief Extracting data from the brackets
+ *
+ * This macro get rid of brackets around the argument.
+ * It can be used to pass multiple arguments in logical one argument to a macro.
+ * Call it with arguments inside brackets:
+ * @code
+ * #define ARGUMENTS (a, b, c)
+ * BRACKET_EXTRACT(ARGUMENTS)
+ * @endcode
+ * It would produce:
+ * @code
+ * a, b, c
+ * @endcode
+ *
+ * @param a Argument with anything inside brackets
+ * @return Anything that appears inside the brackets of the argument
+ *
+ * @note
+ * The argument of the macro have to be inside brackets.
+ * In other case the compilation would fail.
+ */
+#define BRACKET_EXTRACT(a)  BRACKET_EXTRACT_(a)
+#define BRACKET_EXTRACT_(a) BRACKET_EXTRACT__ a
+#define BRACKET_EXTRACT__(...) __VA_ARGS__
+
+
+/**
+ * @brief Check if number of parameters is more than 1
+ *
+ * @param ... Arguments to count
+ *
+ * @return 0 If argument count is <= 1
+ * @return 1 If argument count is > 1
+ *
+ * @sa NUM_VA_ARGS
+ * @sa NUM_IS_MORE_THAN_1
+ */
+#define NUM_VA_ARGS_IS_MORE_THAN_1(...) NUM_IS_MORE_THAN_1(NUM_VA_ARGS(__VA_ARGS__))
+
+/**
+ * @brief Check if given numeric value is bigger than 1
+ *
+ * This macro accepts numeric value, that may be the result of argument expansion.
+ * This numeric value is then converted to 0 if it is lover than 1 or to 1 if
+ * its value is higher than 1.
+ * The generated result can be used to glue it into other macro mnemonic name.
+ *
+ * @param N Numeric value to check
+ *
+ * @return 0 If argument is <= 1
+ * @return 1 If argument is > 1
+ *
+ * @note Any existing definition of a form NUM_IS_MORE_THAN_1_PROBE_[N] can
+ *       broke the result of this macro
+ */
+#define NUM_IS_MORE_THAN_1(N) NUM_IS_MORE_THAN_1_(N)
+#define NUM_IS_MORE_THAN_1_(N)  NUM_IS_MORE_THAN_1_PROBE_(NUM_IS_MORE_THAN_1_PROBE_ ## N, 1)
+#define NUM_IS_MORE_THAN_1_PROBE_(...) GET_VA_ARG_1(GET_ARGS_AFTER_1(__VA_ARGS__))
+#define NUM_IS_MORE_THAN_1_PROBE_0 ~, 0
+#define NUM_IS_MORE_THAN_1_PROBE_1 ~, 0
+
+/**
+ * @brief Get the first argument
+ *
+ * @param ... Arguments to select
+ *
+ * @return First argument or empty if no arguments are provided
+ */
+#define GET_VA_ARG_1(...) GET_VA_ARG_1_(__VA_ARGS__, ) // Make sure that also for 1 argument it works
+#define GET_VA_ARG_1_(a1, ...) a1
+
+/**
+ * @brief Get all the arguments but the first one
+ *
+ * @param ... Arguments to select
+ *
+ * @return All arguments after the first one or empty if less than 2 arguments are provided
+ */
+#define GET_ARGS_AFTER_1(...) GET_ARGS_AFTER_1_(__VA_ARGS__, ) // Make sure that also for 1 argument it works
+#define GET_ARGS_AFTER_1_(a1, ...) __VA_ARGS__
+
+/**
+ * @brief Size of a field in declared structure
+ *
+ * Macro that returns the size of the structure field.
+ * @param struct_type Variable type to get the field size from
+ * @param field Field name to analyze. It can be even field inside field (field.somethingelse.and_another).
+ *
+ * @return Size of the field
+ */
+#define FIELD_SIZE(struct_type, field) sizeof(((struct struct_type*)NULL)->field)
+
+/**
+ * @brief Number of elements in field array in declared structure
+ *
+ * Macro that returns number of elementy in structure field.
+ * @param struct_type Variable type to get the field size from
+ * @param field Field name to analyze.
+ *
+ * @return Number of elements in field array
+ *
+ * @sa FIELD_SIZE
+ */
+#define FIELD_ARRAY_SIZE(struct_type, field) (FIELD_SIZE(struct_type, field) / FIELD_SIZE(struct_type, field[0]))
+
+/**
+ * @brief Mapping macro
+ *
+ * Macro that process all arguments using given macro
+ *
+ * @param ... Macro name to be used for argument processing followed by arguments to process.
+ *            Macro should have following form: MACRO(argument)
+ *
+ * @return All arguments processed by given macro
+ */
+#define MACRO_MAP(...) MACRO_MAP_(__VA_ARGS__)
+#define MACRO_MAP_(...) MACRO_MAP_N(NUM_VA_ARGS_LESS_1(__VA_ARGS__), __VA_ARGS__) // To make sure it works also for 2 arguments in total
+
+/**
+ * @brief Mapping macro, recursive version
+ *
+ *  Can be used in @ref MACRO_MAP macro
+ */
+#define MACRO_MAP_REC(...) MACRO_MAP_REC_(__VA_ARGS__)
+#define MACRO_MAP_REC_(...) MACRO_MAP_REC_N(NUM_VA_ARGS_LESS_1(__VA_ARGS__), __VA_ARGS__) // To make sure it works also for 2 arguments in total
+/**
+ * @brief Mapping N arguments macro
+ *
+ * Macro similar to @ref MACRO_MAP but maps exact number of arguments.
+ * If there is more arguments given, the rest would be ignored.
+ *
+ * @param N   Number of arguments to map
+ * @param ... Macro name to be used for argument processing followed by arguments to process.
+ *            Macro should have following form: MACRO(argument)
+ *
+ * @return Selected number of arguments processed by given macro
+ */
+#define MACRO_MAP_N(N, ...) MACRO_MAP_N_(N, __VA_ARGS__)
+#define MACRO_MAP_N_(N, ...) CONCAT_2(MACRO_MAP_, N)(__VA_ARGS__, )
+
+/**
+ * @brief Mapping N arguments macro, recursive version
+ *
+ *  Can be used in @ref MACRO_MAP_N macro
+ */
+#define MACRO_MAP_REC_N(N, ...) MACRO_MAP_REC_N_(N, __VA_ARGS__)
+#define MACRO_MAP_REC_N_(N, ...) CONCAT_2(MACRO_MAP_REC_, N)(__VA_ARGS__, )
+
+#define MACRO_MAP_0(           ...)
+#define MACRO_MAP_1( macro, a, ...) macro(a)
+#define MACRO_MAP_2( macro, a, ...) macro(a) MACRO_MAP_1 (macro, __VA_ARGS__, )
+#define MACRO_MAP_3( macro, a, ...) macro(a) MACRO_MAP_2 (macro, __VA_ARGS__, )
+#define MACRO_MAP_4( macro, a, ...) macro(a) MACRO_MAP_3 (macro, __VA_ARGS__, )
+#define MACRO_MAP_5( macro, a, ...) macro(a) MACRO_MAP_4 (macro, __VA_ARGS__, )
+#define MACRO_MAP_6( macro, a, ...) macro(a) MACRO_MAP_5 (macro, __VA_ARGS__, )
+#define MACRO_MAP_7( macro, a, ...) macro(a) MACRO_MAP_6 (macro, __VA_ARGS__, )
+#define MACRO_MAP_8( macro, a, ...) macro(a) MACRO_MAP_7 (macro, __VA_ARGS__, )
+#define MACRO_MAP_9( macro, a, ...) macro(a) MACRO_MAP_8 (macro, __VA_ARGS__, )
+#define MACRO_MAP_10(macro, a, ...) macro(a) MACRO_MAP_9 (macro, __VA_ARGS__, )
+#define MACRO_MAP_11(macro, a, ...) macro(a) MACRO_MAP_10(macro, __VA_ARGS__, )
+#define MACRO_MAP_12(macro, a, ...) macro(a) MACRO_MAP_11(macro, __VA_ARGS__, )
+#define MACRO_MAP_13(macro, a, ...) macro(a) MACRO_MAP_12(macro, __VA_ARGS__, )
+#define MACRO_MAP_14(macro, a, ...) macro(a) MACRO_MAP_13(macro, __VA_ARGS__, )
+#define MACRO_MAP_15(macro, a, ...) macro(a) MACRO_MAP_14(macro, __VA_ARGS__, )
+
+#define MACRO_MAP_REC_0(           ...)
+#define MACRO_MAP_REC_1( macro, a, ...) macro(a)
+#define MACRO_MAP_REC_2( macro, a, ...) macro(a) MACRO_MAP_REC_1 (macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_3( macro, a, ...) macro(a) MACRO_MAP_REC_2 (macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_4( macro, a, ...) macro(a) MACRO_MAP_REC_3 (macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_5( macro, a, ...) macro(a) MACRO_MAP_REC_4 (macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_6( macro, a, ...) macro(a) MACRO_MAP_REC_5 (macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_7( macro, a, ...) macro(a) MACRO_MAP_REC_6 (macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_8( macro, a, ...) macro(a) MACRO_MAP_REC_7 (macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_9( macro, a, ...) macro(a) MACRO_MAP_REC_8 (macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_10(macro, a, ...) macro(a) MACRO_MAP_REC_9 (macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_11(macro, a, ...) macro(a) MACRO_MAP_REC_10(macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_12(macro, a, ...) macro(a) MACRO_MAP_REC_11(macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_13(macro, a, ...) macro(a) MACRO_MAP_REC_12(macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_14(macro, a, ...) macro(a) MACRO_MAP_REC_13(macro, __VA_ARGS__, )
+#define MACRO_MAP_REC_15(macro, a, ...) macro(a) MACRO_MAP_REC_14(macro, __VA_ARGS__, )
+
+/**
+ * @brief Mapping macro with current index
+ *
+ * Basically macro similar to @ref MACRO_MAP, but the processing function would get an argument
+ * and current argument index (beginning from 0).
+ *
+ * @param ... Macro name to be used for argument processing followed by arguments to process.
+ *            Macro should have following form: MACRO(argument, index)
+ * @return All arguments processed by given macro
+ */
+#define MACRO_MAP_FOR(...) MACRO_MAP_FOR_(__VA_ARGS__)
+#define MACRO_MAP_FOR_N_LIST 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+#define MACRO_MAP_FOR_(...) MACRO_MAP_FOR_N(NUM_VA_ARGS_LESS_1(__VA_ARGS__), __VA_ARGS__)
+
+/**
+ * @brief Mapping N arguments macro with current index
+ *
+ * Macro is similar to @ref MACRO_MAP_FOR but maps exact number of arguments.
+ * If there is more arguments given, the rest would be ignored.
+ *
+ * @param N   Number of arguments to map
+ * @param ... Macro name to be used for argument processing followed by arguments to process.
+ *            Macro should have following form: MACRO(argument, index)
+ *
+ * @return Selected number of arguments processed by given macro
+ */
+#define MACRO_MAP_FOR_N(N, ...) MACRO_MAP_FOR_N_(N, __VA_ARGS__)
+#define MACRO_MAP_FOR_N_(N, ...) CONCAT_2(MACRO_MAP_FOR_, N)((MACRO_MAP_FOR_N_LIST), __VA_ARGS__, )
+
+#define MACRO_MAP_FOR_0( n_list,           ...)
+#define MACRO_MAP_FOR_1( n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)))
+#define MACRO_MAP_FOR_2( n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_1 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_3( n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_2 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_4( n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_3 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_5( n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_4 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_6( n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_5 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_7( n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_6 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_8( n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_7 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_9( n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_8 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_10(n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_9 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_11(n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_10((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_12(n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_11((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_13(n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_12((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_14(n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_13((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_15(n_list, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list))) MACRO_MAP_FOR_14((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), macro, __VA_ARGS__, )
+
+
+/**
+ * @brief Mapping macro with current index and parameter
+ *
+ * Version of @ref MACRO_MAP_FOR that passes also the same parameter to all macros.
+ *
+ * @param param Parameter that would be passed to each macro call during mapping.
+ * @param ...   Macro name to be used for argument processing followed by arguments to process.
+ *              Macro should have following form: MACRO(argument, index, param)
+ *
+ * @return All arguments processed by given macro
+ */
+#define MACRO_MAP_FOR_PARAM(param, ...) MACRO_MAP_FOR_PARAM_(param, __VA_ARGS__)
+#define MACRO_MAP_FOR_PARAM_(param, ...) MACRO_MAP_FOR_PARAM_N(NUM_VA_ARGS_LESS_1(__VA_ARGS__), param, __VA_ARGS__)
+
+/**
+ * @brief Mapping N arguments macro with with current index and parameter
+ *
+ * @param N     Number of arguments to map
+ * @param param Parameter that would be passed to each macro call during mapping.
+ * @param ...   Macro name to be used for argument processing followed by arguments to process.
+ *              Macro should have following form: MACRO(argument, index, param)
+ *
+ * @return All arguments processed by given macro
+ */
+#define MACRO_MAP_FOR_PARAM_N(N, param, ...) MACRO_MAP_FOR_PARAM_N_(N, param, __VA_ARGS__)
+#define MACRO_MAP_FOR_PARAM_N_(N, param, ...) CONCAT_2(MACRO_MAP_FOR_PARAM_, N)((MACRO_MAP_FOR_N_LIST), param, __VA_ARGS__, )
+
+
+#define MACRO_MAP_FOR_PARAM_0( n_list, param, ...)
+#define MACRO_MAP_FOR_PARAM_1( n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param)
+#define MACRO_MAP_FOR_PARAM_2( n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_1 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_3( n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_2 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_4( n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_3 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_5( n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_4 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_6( n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_5 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_7( n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_6 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_8( n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_7 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_9( n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_8 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_10(n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_9 ((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_11(n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_10((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_12(n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_11((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_13(n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_12((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_14(n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_13((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+#define MACRO_MAP_FOR_PARAM_15(n_list, param, macro, a, ...) macro(a, GET_VA_ARG_1(BRACKET_EXTRACT(n_list)), param) MACRO_MAP_FOR_PARAM_14((GET_ARGS_AFTER_1(BRACKET_EXTRACT(n_list))), param, macro, __VA_ARGS__, )
+
+
+/**@brief Adding curly brace to macro parameter
+ *
+ * Useful in array of structures initialization.
+ *
+ * @param p parameter to put into the curly brace*/
+#define PARAM_CBRACE(p) { p },
+
+
 /**@brief Function for changing the value unit.
  *
  * @param[in]   value               Value to be rescaled.
@@ -410,6 +878,22 @@ static __INLINE uint32_t uint32_big_decode(const uint8_t * p_encoded_data)
              (((uint32_t)((uint8_t *)p_encoded_data)[1]) << 16) |
              (((uint32_t)((uint8_t *)p_encoded_data)[2]) << 8)  |
              (((uint32_t)((uint8_t *)p_encoded_data)[3]) << 0) );
+}
+
+/**
+ * @brief Function for encoding an uint16 value in big-endian format.
+ *
+ * @param[in]   value            Value to be encoded.
+ * @param[out]  p_encoded_data   Buffer where the encoded data will be written.
+ *
+ * @return      Number of bytes written.
+ */
+static __INLINE uint8_t uint16_big_encode(uint16_t value, uint8_t * p_encoded_data)
+{
+    p_encoded_data[0] = (uint8_t) (value >> 8);
+    p_encoded_data[1] = (uint8_t) (value & 0xFF);
+
+    return sizeof(uint16_t);
 }
 
 /**@brief Function for encoding a uint32 value in big-endian format.

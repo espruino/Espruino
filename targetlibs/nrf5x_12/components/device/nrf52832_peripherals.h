@@ -192,6 +192,8 @@
 
 #define LPCOMP_REFSEL_RESOLUTION 16
 
+#define LPCOMP_FEATURE_HYST_PRESENT
+
 /* Comparator */
 #define COMP_PRESENT
 #define COMP_COUNT 1

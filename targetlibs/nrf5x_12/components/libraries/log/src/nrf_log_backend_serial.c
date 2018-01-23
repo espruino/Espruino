@@ -1,22 +1,50 @@
-/* Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
-#include "sdk_config.h"
-#if NRF_LOG_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(NRF_LOG)
 #include "nrf_log_backend.h"
 #include "nrf_error.h"
-#include "nordic_common.h"
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 #if NRF_LOG_BACKEND_SERIAL_USES_RTT
 #include <SEGGER_RTT_Conf.h>
@@ -27,15 +55,11 @@
 #include "nrf_drv_uart.h"
 #endif
 
-#if NRF_LOG_BACKEND_SERIAL_USES_RTT
-static char m_rtt_buffer[NRF_LOG_BACKEND_MAX_STRING_LENGTH];
-#endif
-
 #if NRF_LOG_BACKEND_SERIAL_USES_UART
 static char m_uart_buffer[NRF_LOG_BACKEND_MAX_STRING_LENGTH];
 static nrf_drv_uart_t m_uart = NRF_DRV_UART_INSTANCE(NRF_LOG_BACKEND_UART_INSTANCE);
 
-#if (UART_ENABLED == 0)
+#if !NRF_MODULE_ENABLED(UART)
 #error "UART driver must be enabled to use UART in nrf_log."
 #endif
 
@@ -55,6 +79,7 @@ static nrf_drv_uart_t m_uart = NRF_DRV_UART_INSTANCE(NRF_LOG_BACKEND_UART_INSTAN
 
 static bool m_initialized   = false;
 static bool m_blocking_mode = false;
+static const char m_default_color[] = "\x1B[0m";
 
 #if (NRF_LOG_BACKEND_SERIAL_USES_UART)
 static volatile bool m_rx_done = false;
@@ -74,27 +99,17 @@ static void uart_event_handler(nrf_drv_uart_event_t * p_event, void * p_context)
 
 ret_code_t nrf_log_backend_init(bool blocking)
 {
-    uint32_t              ret_code;
 
     if (m_initialized && (blocking == m_blocking_mode))
     {
         return NRF_SUCCESS;
     }
-
-#if NRF_LOG_BACKEND_SERIAL_USES_RTT
-    ret_code = SEGGER_RTT_ConfigUpBuffer(
-        0,
-        "Normal",
-        m_rtt_buffer,
-        NRF_LOG_BACKEND_MAX_STRING_LENGTH,
-        SEGGER_RTT_MODE_NO_BLOCK_TRIM);
-    if ( ret_code != 0)
-    {
-        return NRF_ERROR_INVALID_STATE;
-    }
-#endif //NRF_LOG_BACKEND_SERIAL_USES_RTT
-
+#if (NRF_LOG_BACKEND_SERIAL_USES_RTT)
+    SEGGER_RTT_Init();
+#endif
+    
 #if (NRF_LOG_BACKEND_SERIAL_USES_UART)
+    uint32_t              ret_code;
     nrf_drv_uart_config_t uart_config = NRF_DRV_UART_DEFAULT_CONFIG;
     uart_config.hwfc     =
             (nrf_uart_hwfc_t)NRF_LOG_BACKEND_SERIAL_UART_FLOW_CONTROL;
@@ -217,12 +232,11 @@ static bool timestamp_process(const uint32_t * const p_timestamp, char * p_str, 
     if (p_timestamp)
     {
 #if NRF_LOG_USES_COLORS
-        char color[] = "\x1B[0m";
-        len = sizeof(color) - 1;
-        memcpy(p_str, color, len);
+        len = sizeof(m_default_color) - 1;
+        memcpy(p_str, m_default_color, len);
         *p_len += len;
 #endif //NRF_LOG_USES_COLORS
-        len = sprintf(&p_str[len], TIMESTAMP_STR(NRF_LOG_TIMESTAMP_DIGITS), (int)*p_timestamp);
+        len = snprintf(&p_str[len],NRF_LOG_BACKEND_MAX_STRING_LENGTH, TIMESTAMP_STR(NRF_LOG_TIMESTAMP_DIGITS), (int)*p_timestamp);
         ret = buf_len_update(p_len, len);
     }
     else
@@ -268,26 +282,27 @@ static bool nrf_log_backend_serial_std_handler(
         }
 
         case 1:
-            tmp_str_len = sprintf(&str[buffer_len], p_str, p_args[0]);
+            tmp_str_len = snprintf(&str[buffer_len], NRF_LOG_BACKEND_MAX_STRING_LENGTH-buffer_len, p_str, p_args[0]);
 
             break;
 
         case 2:
-            tmp_str_len = sprintf(&str[buffer_len], p_str, p_args[0], p_args[1]);
+            tmp_str_len = snprintf(&str[buffer_len], NRF_LOG_BACKEND_MAX_STRING_LENGTH-buffer_len, p_str, p_args[0], p_args[1]);
             break;
 
         case 3:
-            tmp_str_len = sprintf(&str[buffer_len], p_str, p_args[0], p_args[1], p_args[2]);
+            tmp_str_len = snprintf(&str[buffer_len], NRF_LOG_BACKEND_MAX_STRING_LENGTH-buffer_len, p_str, p_args[0], p_args[1], p_args[2]);
             break;
 
         case 4:
             tmp_str_len =
-                sprintf(&str[buffer_len], p_str, p_args[0], p_args[1], p_args[2], p_args[3]);
+                snprintf(&str[buffer_len], NRF_LOG_BACKEND_MAX_STRING_LENGTH-buffer_len, p_str, p_args[0], p_args[1], p_args[2], p_args[3]);
             break;
 
         case 5:
             tmp_str_len =
-                sprintf(&str[buffer_len],
+                snprintf(&str[buffer_len],
+                        NRF_LOG_BACKEND_MAX_STRING_LENGTH-buffer_len,
                         p_str,
                         p_args[0],
                         p_args[1],
@@ -298,7 +313,8 @@ static bool nrf_log_backend_serial_std_handler(
 
         case 6:
             tmp_str_len =
-                sprintf(&str[buffer_len],
+                snprintf(&str[buffer_len],
+                        NRF_LOG_BACKEND_MAX_STRING_LENGTH-buffer_len,
                         p_str,
                         p_args[0],
                         p_args[1],
@@ -312,14 +328,21 @@ static bool nrf_log_backend_serial_std_handler(
             break;
     }
     status = buf_len_update(&buffer_len, tmp_str_len);
-    if (!status || buffer_len > NRF_LOG_BACKEND_MAX_STRING_LENGTH)
+    uint32_t full_buff_len = NRF_LOG_USES_COLORS ?
+            buffer_len + sizeof(m_default_color)-1 : buffer_len;
+    if (status && (full_buff_len <= NRF_LOG_BACKEND_MAX_STRING_LENGTH))
     {
-        // error, sprintf failed.
-        return false;
+        if (NRF_LOG_USES_COLORS)
+        {
+            memcpy(&str[buffer_len], m_default_color, sizeof(m_default_color)-1);
+            buffer_len = full_buff_len;
+        }
+        return serial_tx((uint8_t *)str, buffer_len);
     }
     else
     {
-        return serial_tx((uint8_t *)str, buffer_len);
+        // error, snprintf failed.
+        return false;
     }
 }
 
@@ -333,19 +356,6 @@ static void byte2hex(const uint8_t c, char * p_out)
     {
         nibble       = (c >> (4 * i)) & 0x0F;
         p_out[1 - i] = (nibble > 9) ? ('A' + nibble - 10) : ('0' + nibble);
-    }
-}
-
-
-static char char2readablechar(char c)
-{
-    if ((c >= 32) && (c <= 126))
-    {
-        return c;
-    }
-    else
-    {
-        return '.';
     }
 }
 
@@ -433,7 +443,7 @@ static uint32_t nrf_log_backend_serial_hexdump_handler(
                 byte2hex(c, p_hex_part);
                 p_hex_part    += 2; // move the pointer since byte in hex was added.
                 *p_hex_part++  = ' ';
-                *p_char_part++ = char2readablechar(c);
+                *p_char_part++ = isprint(c) ? c : '.';
                 byte_cnt++;
             }
         }
@@ -444,6 +454,12 @@ static uint32_t nrf_log_backend_serial_hexdump_handler(
                          (HEXDUMP_BYTES_PER_LINE * HEXDUMP_HEXBYTE_AREA + 1) + // space for hex dump and separator between hexdump and string
                          HEXDUMP_BYTES_PER_LINE +                              // space for stringS dump
                          2;                                                    // space for new line
+        if (NRF_LOG_USES_COLORS)
+        {
+            memcpy(&str[buffer_len], m_default_color, sizeof(m_default_color)-1);
+            buffer_len +=  sizeof(m_default_color)-1;
+        }
+
         if (!serial_tx((uint8_t *)str, buffer_len))
         {
             return byte_cnt;
@@ -477,4 +493,4 @@ uint8_t nrf_log_backend_getchar(void)
     return serial_get_byte();
 }
 
-#endif // NRF_LOG_ENABLED
+#endif // NRF_MODULE_ENABLED(NRF_LOG)

@@ -1,32 +1,70 @@
-/* Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
-#include "sdk_config.h"
-#if NRF_DRV_CSENSE_ENABLED
-#include "nrf_gpio.h"
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(NRF_DRV_CSENSE)
 #include "nrf_drv_csense.h"
+#include "nrf_peripherals.h"
+#include "nrf_gpio.h"
 #include "app_error.h"
 #include "app_util_platform.h"
 #include "nrf_assert.h"
 #include "string.h"
 #include <stdio.h>
 
-#ifdef NRF52
+#if defined(__CORTEX_M) && (__CORTEX_M < 4)
+#ifndef ARM_MATH_CM0PLUS
+#define ARM_MATH_CM0PLUS
+#endif
+/*lint -save -e689 */
+#include "arm_math.h"
+/*lint -restore */
+#endif
+
+#ifdef COMP_PRESENT
 #include "nrf_drv_comp.h"
 #include "nrf_drv_ppi.h"
 #include "nrf_drv_timer.h"
-#endif //NRF52
+#endif //COMP_PRESENT
 
-#ifdef NRF51
+#ifndef COMP_PRESENT
 #include "nrf_drv_adc.h"
 
 /**
@@ -40,9 +78,9 @@
 
 /* ADC channel used to call conversion. */
 static nrf_drv_adc_channel_t adc_channel = NRF_DRV_ADC_DEFAULT_CHANNEL(0);
-#endif //NRF51
+#endif //COMP_PRESENT
 
-#ifdef NRF52
+#ifdef COMP_PRESENT
 /* Number of channels required by PPI. */
 #define PPI_REQUIRED_CHANNELS 3
 
@@ -57,7 +95,7 @@ static nrf_ppi_channel_t m_ppi_channels[PPI_REQUIRED_CHANNELS];
 static const nrf_drv_timer_t m_timer0 = NRF_DRV_TIMER_INSTANCE(TIMER0_FOR_CSENSE);
 static const nrf_drv_timer_t m_timer1 = NRF_DRV_TIMER_INSTANCE(TIMER1_FOR_CSENSE);
 /* @} */
-#endif    //NRF52
+#endif //COMP_PRESENT
 
 /* Configuration of the capacitive sensor module. */
 typedef struct
@@ -80,28 +118,7 @@ static csense_t m_csense;
  */
 __STATIC_INLINE void calculate_next_channel(void)
 {
-#if defined( __CORTEX_M) && (__CORTEX_M > 0)
     m_csense.cur_chann_idx = 31 - __CLZ(m_csense.channels_to_read);
-#else
-    uint8_t channel = m_csense.channels_to_read;
-    //find the first non-zero on right
-    channel &= ((~channel)+1);
-
-    m_csense.cur_chann_idx = 7;
-
-    if(channel & 0x0F)
-    {
-        m_csense.cur_chann_idx -= 4;
-    }
-    if(channel & 0x33)
-    {
-        m_csense.cur_chann_idx -= 2;
-    }
-    if(channel & 0x55)
-    {
-        m_csense.cur_chann_idx -= 1;
-    }
-#endif // (__CORTEX_M) && (__CORTEX_M > 0)
 }
 
 /**
@@ -113,10 +130,10 @@ static void conversion_handler(uint16_t val)
 {
     nrf_drv_csense_evt_t event_struct;
 
-#ifdef NRF51
+#ifndef COMP_PRESENT
     nrf_gpio_pin_set(m_csense.output_pin);
-#endif
-
+#endif //COMP_PRESENT
+    
     m_csense.analog_values[m_csense.cur_chann_idx] = val;
 
     event_struct.read_value = val;
@@ -144,7 +161,7 @@ static void conversion_handler(uint16_t val)
     }
 }
 
-#ifdef NRF52
+#ifdef COMP_PRESENT
 /**
  * @brief Timer0 interrupt handler.
  *
@@ -221,7 +238,7 @@ static ret_code_t ppi_init(void)
     uint8_t i;
 
     err_code = nrf_drv_ppi_init();
-    if ((err_code != NRF_SUCCESS) && (err_code != MODULE_ALREADY_INITIALIZED))
+    if ((err_code != NRF_SUCCESS) && (err_code != NRF_ERROR_MODULE_ALREADY_INITIALIZED))
     {
         return NRF_ERROR_INTERNAL;
     }
@@ -283,7 +300,7 @@ static void comp_event_handler(nrf_comp_event_t event){}
 /**
  * @brief Function for initializing COMP module in relaxation oscillator mode.
  *
- * @note The frequency of the oscillator depends on threshold voltages, current source and capacitance of pad and can be calculated as f_OSC = I_SOURCE / (2C·(VUP-VDOWN) ).
+ * @note The frequency of the oscillator depends on threshold voltages, current source and capacitance of pad and can be calculated as f_OSC = I_SOURCE / (2CÂ·(VUP-VDOWN) ).
  *
  * @retval NRF_ERROR_INTERNAL                If there were error while initializing COMP driver.
  * @retval NRF_SUCCESS                       If the COMP driver initialization was successful.
@@ -291,7 +308,7 @@ static void comp_event_handler(nrf_comp_event_t event){}
 static ret_code_t comp_init(void)
 {
     ret_code_t err_code;
-    nrf_drv_comp_config_t m_comp_config = NRF_DRV_COMP_CONF_DEFAULT_CONFIG(NRF_COMP_INPUT_0);
+    nrf_drv_comp_config_t m_comp_config = NRF_DRV_COMP_DEFAULT_CONFIG(NRF_COMP_INPUT_0);
 
     /* Workaround for Errata 12 "COMP: Reference ladder is not correctly calibrated" found at the Errata document
        for your device located at https://infocenter.nordicsemi.com/ */
@@ -307,9 +324,9 @@ static ret_code_t comp_init(void)
 
     return NRF_SUCCESS;
 }
-#endif //NRF52
+#endif //COMP_PRESENT
 
-#ifdef NRF51
+#ifndef COMP_PRESENT
 /**
  * @brief ADC handler.
  *
@@ -343,7 +360,7 @@ static ret_code_t adc_init(void)
 
     return NRF_SUCCESS;
 }
-#endif    //NRF51
+#endif //COMP_PRESENT
 
 ret_code_t nrf_drv_csense_init(nrf_drv_csense_config_t const * p_config, nrf_drv_csense_event_handler_t event_handler)
 {
@@ -362,22 +379,21 @@ ret_code_t nrf_drv_csense_init(nrf_drv_csense_config_t const * p_config, nrf_drv
         return NRF_ERROR_INVALID_PARAM;
     }
 
-#ifdef NRF51
+#ifndef COMP_PRESENT
     m_csense.output_pin = p_config->output_pin;
     nrf_gpio_cfg_output(m_csense.output_pin);
     nrf_gpio_pin_set(m_csense.output_pin);
-#endif //NRF51
-
+#endif //COMP_PRESENT
+    
     m_csense.event_handler = event_handler;
-    m_csense.timers_powered_on = false;
-
-#ifdef NRF51
+    
+#ifndef COMP_PRESENT
     err_code = adc_init();
     if(err_code != NRF_SUCCESS)
     {
         return err_code;
     }
-#else //NRF52
+#else
     err_code = comp_init();
     if(err_code != NRF_SUCCESS)
     {
@@ -393,7 +409,7 @@ ret_code_t nrf_drv_csense_init(nrf_drv_csense_config_t const * p_config, nrf_drv
     {
         return err_code;
     }
-#endif //NRF51
+#endif //COMP_PRESENT
 
     m_csense.module_state = NRF_DRV_STATE_INITIALIZED;
 
@@ -405,10 +421,10 @@ ret_code_t nrf_drv_csense_uninit(void)
     ASSERT(m_csense.module_state != NRF_DRV_STATE_UNINITIALIZED);
 
     nrf_drv_csense_channels_disable(0xFF);
-
-#ifdef NRF51
+    
+#ifndef COMP_PRESENT
     nrf_drv_adc_uninit();
-#else // NRF52
+#else
     ret_code_t err_code;
     uint8_t i;
 
@@ -428,8 +444,8 @@ ret_code_t nrf_drv_csense_uninit(void)
     {
         return err_code;
     }
-#endif //NRF51
-
+#endif //COMP_PRESENT
+    
     m_csense.module_state = NRF_DRV_STATE_UNINITIALIZED;
 
     memset((void*)&m_csense, 0, sizeof(m_csense));
@@ -484,7 +500,7 @@ ret_code_t nrf_drv_csense_sample(void)
             calculate_next_channel();
         }
 
-#ifdef NRF51
+#ifndef COMP_PRESENT
         ret_code_t err_code;
 
         adc_channel.config.config.ain = (nrf_adc_config_input_t)(1<<m_csense.cur_chann_idx);
@@ -494,7 +510,7 @@ ret_code_t nrf_drv_csense_sample(void)
         {
             return err_code;
         }
-#else // NRF52
+#else
         if (!m_csense.timers_powered_on)
         {
             nrf_drv_timer_enable(&m_timer0);
@@ -508,7 +524,7 @@ ret_code_t nrf_drv_csense_sample(void)
         }
         nrf_drv_comp_pin_select((nrf_comp_input_t)m_csense.cur_chann_idx);
         nrf_drv_comp_start(0, 0);
-#endif //NRF51
+#endif //COMP_PRESENT
     }
 
     return NRF_SUCCESS;
@@ -518,4 +534,4 @@ bool nrf_drv_csense_is_busy(void)
 {
     return m_csense.busy;
 }
-#endif //NRF_DRV_CSENSE_ENABLED
+#endif //NRF_MODULE_ENABLED(NRF_DRV_CSENSE)

@@ -1,13 +1,41 @@
-/* Copyright (c) 2016 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 #include "nrf_dfu_utils.h"
@@ -117,7 +145,7 @@ static uint32_t nrf_dfu_app_continue(uint32_t               src_addr)
         }
 
         s_dfu_settings.write_offset += cur_len;
-        (void)nrf_dfu_settings_write(NULL);
+        ret_val = nrf_dfu_settings_write(NULL);
 
         target_addr += cur_len;
         src_addr += cur_len;
@@ -142,7 +170,7 @@ static uint32_t nrf_dfu_app_continue(uint32_t               src_addr)
     }
 
     nrf_dfu_invalidate_bank(&s_dfu_settings.bank_1);
-    (void)nrf_dfu_settings_write(NULL);
+    ret_val = nrf_dfu_settings_write(NULL);
 
     return ret_val;
 }
@@ -220,7 +248,7 @@ static uint32_t nrf_dfu_sd_continue_impl(uint32_t             src_addr,
 
         // Save the updated point of writes in case of power loss
         s_dfu_settings.write_offset = s_dfu_settings.sd_size - length_left;
-        (void)nrf_dfu_settings_write(NULL);
+        ret_val = nrf_dfu_settings_write(NULL);
     }
     while (length_left > 0);
 
@@ -256,7 +284,7 @@ static uint32_t nrf_dfu_sd_continue(uint32_t             src_addr,
     }
 
     nrf_dfu_invalidate_bank(p_bank);
-    (void)nrf_dfu_settings_write(NULL);
+    ret_val = nrf_dfu_settings_write(NULL);
 
     return ret_val;
 }
@@ -299,7 +327,7 @@ static uint32_t nrf_dfu_bl_continue(uint32_t src_addr, nrf_dfu_bank_t * p_bank)
 
         // Invalidate bank, marking completion
         nrf_dfu_invalidate_bank(p_bank);
-        (void)nrf_dfu_settings_write(NULL);
+        ret_val = nrf_dfu_settings_write(NULL);
     }
     else
     {
@@ -433,10 +461,7 @@ uint32_t nrf_dfu_continue(uint32_t * p_enter_dfu_mode)
 bool nrf_dfu_app_is_valid(void)
 {
     NRF_LOG_INFO("Enter nrf_dfu_app_is_valid\r\n");
-    if (s_dfu_settings.bank_0.bank_code != NRF_DFU_BANK_VALID_APP &&
-        //* VALID_APP FIX START *//
-        s_dfu_settings.bank_0.bank_code != NRF_DFU_BANK_INVALID) // meh. Allows us to work without bootloader_settings
-        //* VALID_APP FIX END *//
+    if (s_dfu_settings.bank_0.bank_code != NRF_DFU_BANK_VALID_APP)
     {
        // Bank 0 has no valid app. Nothing to boot
        NRF_LOG_INFO("Return false in valid app check\r\n");

@@ -1,31 +1,58 @@
-/* Copyright (c) 2015 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
- *
+/**
+ * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
-#include "sdk_config.h"
-#if APP_GPIOTE_ENABLED
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(APP_GPIOTE)
 #include "app_gpiote.h"
 #include "nrf_drv_gpiote.h"
-#include "sdk_common.h"
-
+#include "nrf_bitmask.h"
 #define MODULE_INITIALIZED (mp_users != NULL) /**< Macro designating whether the module has been initialized properly. */
 
 /**@brief GPIOTE user type. */
 typedef struct
 {
-    uint32_t                   pins_mask;             /**< Mask defining which pins user wants to monitor. */
-    uint32_t                   pins_low_to_high_mask; /**< Mask defining which pins will generate events to this user when toggling low->high. */
-    uint32_t                   pins_high_to_low_mask; /**< Mask defining which pins will generate events to this user when toggling high->low. */
-    uint32_t                   sense_high_pins;       /**< Mask defining which pins are configured to generate GPIOTE interrupt on transition to high level. */
-    app_gpiote_event_handler_t event_handler;         /**< Pointer to function to be executed when an event occurs. */
-    bool                       enabled;               /**< Flag indicating whether user is enabled. */
+    uint32_t                   pins_mask[GPIO_COUNT];             /**< Mask defining which pins user wants to monitor. */
+    uint32_t                   pins_low_to_high_mask[GPIO_COUNT]; /**< Mask defining which pins will generate events to this user when toggling low->high. */
+    uint32_t                   pins_high_to_low_mask[GPIO_COUNT]; /**< Mask defining which pins will generate events to this user when toggling high->low. */
+    uint32_t                   sense_high_pins[GPIO_COUNT];       /**< Mask defining which pins are configured to generate GPIOTE interrupt on transition to high level. */
+    app_gpiote_event_handler_t event_handler;                     /**< Pointer to function to be executed when an event occurs. */
+    bool                       enabled;                           /**< Flag indicating whether user is enabled. */
 } gpiote_user_t;
 
 STATIC_ASSERT(sizeof(gpiote_user_t) <= GPIOTE_USER_NODE_SIZE);
@@ -34,28 +61,33 @@ STATIC_ASSERT(sizeof(gpiote_user_t) % 4 == 0);
 static uint8_t         m_user_array_size;             /**< Size of user array. */
 static uint8_t         m_user_count;                  /**< Number of registered users. */
 static gpiote_user_t * mp_users = NULL;               /**< Array of GPIOTE users. */
-static uint32_t        m_pins;                        /**< Mask of initialized pins. */
-static uint32_t        m_last_pins_state;             /**< Most recent state of pins. */
-
+static uint32_t        m_pins[GPIO_COUNT];            /**< Mask of initialized pins. */
+static uint32_t        m_last_pins_state[GPIO_COUNT]; /**< Most recent state of pins. */
 
 void gpiote_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
     int i;
-    uint32_t pin_mask = 1 << pin;
-    bool hitolo = (m_last_pins_state & pin_mask) ? true : false;
-    m_last_pins_state = nrf_gpio_pins_read();
+    uint32_t pin_mask[GPIO_COUNT] = {0};
+    uint32_t empty_pin_mask[GPIO_COUNT] = {0};
+    nrf_bitmask_bit_set(pin, pin_mask);
+    bool hitolo = nrf_bitmask_bit_is_set(pin, m_last_pins_state);
+    nrf_gpio_ports_read(0, GPIO_COUNT, m_last_pins_state);
 
     for (i = 0; i < m_user_count; i++)
     {
-        if (mp_users[i].enabled && (pin_mask & mp_users[i].pins_mask))
+        if (mp_users[i].enabled && nrf_bitmask_bit_is_set(pin, mp_users[i].pins_mask))
         {
-            if ((pin_mask & mp_users[i].pins_high_to_low_mask) && hitolo)
+            if (
+          nrf_bitmask_bit_is_set(pin, mp_users[i].pins_high_to_low_mask)
+          && hitolo)
             {
-                mp_users[i].event_handler(0,pin_mask);
+                mp_users[i].event_handler(empty_pin_mask,pin_mask);
             }
-            else if ((pin_mask & mp_users[i].pins_low_to_high_mask) && !hitolo)
+            else if (
+          nrf_bitmask_bit_is_set(pin, mp_users[i].pins_low_to_high_mask)
+          && !hitolo)
             {
-                mp_users[i].event_handler(pin_mask,0);
+                mp_users[i].event_handler(pin_mask,empty_pin_mask);
             }
         }
     }
@@ -80,7 +112,7 @@ uint32_t app_gpiote_init(uint8_t max_users, void * p_buffer)
     mp_users             = (gpiote_user_t *)p_buffer;
     m_user_array_size    = max_users;
     m_user_count         = 0;
-    m_pins              = 0;
+    memset(m_pins,0, sizeof(m_pins));
 
     memset(mp_users, 0, m_user_array_size * sizeof(gpiote_user_t));
 
@@ -93,11 +125,11 @@ uint32_t app_gpiote_init(uint8_t max_users, void * p_buffer)
 }
 
 uint32_t app_gpiote_user_register(app_gpiote_user_id_t     * p_user_id,
-                                  uint32_t                   pins_low_to_high_mask,
-                                  uint32_t                   pins_high_to_low_mask,
+                                  uint32_t const *           p_pins_low_to_high_mask,
+                                  uint32_t const *           p_pins_high_to_low_mask,
                                   app_gpiote_event_handler_t event_handler)
 {
-    uint32_t user_pin_mask;
+    uint32_t user_pin_mask[GPIO_COUNT];
     uint32_t ret_val = NRF_SUCCESS;
 
     // Check state and parameters.
@@ -112,28 +144,33 @@ uint32_t app_gpiote_user_register(app_gpiote_user_id_t     * p_user_id,
         return NRF_ERROR_NO_MEM;
     }
 
-    user_pin_mask = pins_low_to_high_mask | pins_high_to_low_mask;
+    nrf_bitmask_masks_or(p_pins_low_to_high_mask, p_pins_high_to_low_mask,
+                user_pin_mask, sizeof(user_pin_mask));
     // Allocate new user.
-    mp_users[m_user_count].pins_mask             = user_pin_mask;
-    mp_users[m_user_count].pins_low_to_high_mask = pins_low_to_high_mask;
-    mp_users[m_user_count].pins_high_to_low_mask = pins_high_to_low_mask;
+    memcpy(mp_users[m_user_count].pins_mask,
+            user_pin_mask, sizeof(mp_users[m_user_count].pins_mask));
+    memcpy(mp_users[m_user_count].pins_low_to_high_mask,
+            p_pins_low_to_high_mask, sizeof(mp_users[m_user_count].pins_low_to_high_mask));
+    memcpy(mp_users[m_user_count].pins_high_to_low_mask,
+            p_pins_high_to_low_mask, sizeof(mp_users[m_user_count].pins_high_to_low_mask));
     mp_users[m_user_count].event_handler         = event_handler;
     mp_users[m_user_count].enabled               = false;
 
     *p_user_id = m_user_count++;
 
-    uint32_t mask = 1;
     uint32_t i;
     const nrf_drv_gpiote_in_config_t config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(false);
-    for (i = 0; i < 32; i++)
+
+    uint32_t num_of_pins = NUMBER_OF_PINS ;
+    for (i = 0; i < num_of_pins; i++)
     {
-        if ((mask & user_pin_mask) & ~m_pins)
+        if (nrf_bitmask_bit_is_set(i, user_pin_mask) &&
+           !nrf_bitmask_bit_is_set(i, m_pins))
         {
             ret_val = nrf_drv_gpiote_in_init(i, &config, gpiote_handler);
             VERIFY_SUCCESS(ret_val);
-            m_pins |= mask;
+            nrf_bitmask_bit_set(i, m_pins);
         }
-        mask <<= 1;
     }
     return ret_val;
 }
@@ -159,12 +196,12 @@ __STATIC_INLINE uint32_t error_check(app_gpiote_user_id_t user_id)
 static void pin_event_enable(uint32_t pin, bool enable)
 {
     uint32_t i;
-    uint32_t pin_mask = 1UL << pin;
     bool enabled = false;
     //search if any user already enabled given pin
     for (i = 0; i < m_user_count; i++)
     {
-        if (mp_users[i].enabled && (mp_users[i].pins_mask & pin_mask))
+        if (mp_users[i].enabled &&
+                nrf_bitmask_bit_is_set(pin, mp_users[i].pins_mask))
         {
             enabled = true;
             break;
@@ -174,7 +211,7 @@ static void pin_event_enable(uint32_t pin, bool enable)
     {
         if (enable)
         {
-            m_last_pins_state = nrf_gpio_pins_read();
+            nrf_gpio_ports_read(0, GPIO_COUNT, m_last_pins_state);
             nrf_drv_gpiote_in_event_enable(pin, true);
         }
         else
@@ -200,14 +237,12 @@ static uint32_t user_enable(app_gpiote_user_id_t user_id, bool enable)
     if (ret_code == NRF_SUCCESS)
     {
         uint32_t i;
-        uint32_t mask = 1UL;
-        for (i = 0; i < 32; i++)
+        for (i = 0; i < NUMBER_OF_PINS; i++)
         {
-            if (mp_users[user_id].pins_mask & mask)
+            if (nrf_bitmask_bit_is_set(i, mp_users[user_id].pins_mask))
             {
                 pin_event_enable(i, enable);
             }
-            mask <<= 1;
         }
     }
     return ret_code;
@@ -252,10 +287,10 @@ uint32_t app_gpiote_pins_state_get(app_gpiote_user_id_t user_id, uint32_t * p_pi
     if (ret_code == NRF_SUCCESS)
     {
         p_user  = &mp_users[user_id];
-        // Get pins.
-        *p_pins = nrf_gpio_pins_read() & p_user->pins_mask;
 
+        nrf_gpio_ports_read(0, GPIO_COUNT, p_pins);
+        nrf_bitmask_masks_and(p_pins, p_user->pins_mask, p_pins, sizeof(p_user->pins_mask));
     }
     return ret_code;
 }
-#endif //APP_GPIOTE_ENABLED
+#endif //NRF_MODULE_ENABLED(APP_GPIOTE)

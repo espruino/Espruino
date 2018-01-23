@@ -1,19 +1,49 @@
-/* Copyright (c) 2013 Nordic Semiconductor. All Rights Reserved.
- *
- * The information contained herein is property of Nordic Semiconductor ASA.
- * Terms and conditions of usage are described in detail in NORDIC
- * SEMICONDUCTOR STANDARD SOFTWARE LICENSE AGREEMENT.
- *
- * Licensees are granted free, non-transferable use of the information. NO
- * WARRANTY of ANY KIND is provided. This heading must NOT be removed from
- * the file.
+/**
+ * Copyright (c) 2013 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
-#include "sdk_config.h"
-#if BLE_DB_DISCOVERY_ENABLED
+
+#include "sdk_common.h"
+#if NRF_MODULE_ENABLED(BLE_DB_DISCOVERY)
 #include "ble_db_discovery.h"
 #include <stdlib.h>
 #include "ble.h"
-#include "sdk_common.h"
+#include "ble_srv_common.h"
 #define NRF_LOG_MODULE_NAME "BLE_DB_DISC"
 #include "nrf_log.h"
 
@@ -624,7 +654,10 @@ static void on_characteristic_discovery_rsp(ble_db_discovery_t * const    p_db_d
             p_srv_being_discovered->charateristics[i].characteristic =
                 p_char_disc_rsp_evt->chars[j];
 
-            p_srv_being_discovered->charateristics[i].cccd_handle = BLE_GATT_HANDLE_INVALID;
+            p_srv_being_discovered->charateristics[i].cccd_handle       = BLE_GATT_HANDLE_INVALID;
+            p_srv_being_discovered->charateristics[i].ext_prop_handle   = BLE_GATT_HANDLE_INVALID;
+            p_srv_being_discovered->charateristics[i].user_desc_handle  = BLE_GATT_HANDLE_INVALID;
+            p_srv_being_discovered->charateristics[i].report_ref_handle = BLE_GATT_HANDLE_INVALID;
         }
 
         ble_gattc_char_t * p_last_known_char;
@@ -741,20 +774,39 @@ static void on_descriptor_discovery_rsp(ble_db_discovery_t * const    p_db_disco
     if (p_ble_gattc_evt->gatt_status == BLE_GATT_STATUS_SUCCESS)
     {
         // The descriptor was found at the peer.
-        // If the descriptor was a CCCD, then the cccd_handle needs to be populated.
-
-        uint32_t i;
-
-        // Loop through all the descriptors to find the CCCD.
-        for (i = 0; i < p_desc_disc_rsp_evt->count; i++)
+        // Iterate through and collect CCCD, Extended Properties,
+        // User Description & Report Reference descriptor handles.
+        for (uint32_t i = 0; i < p_desc_disc_rsp_evt->count; i++)
         {
-            if (
-                p_desc_disc_rsp_evt->descs[i].uuid.uuid ==
-                BLE_UUID_DESCRIPTOR_CLIENT_CHAR_CONFIG
-               )
+            switch (p_desc_disc_rsp_evt->descs[i].uuid.uuid)
             {
-                p_char_being_discovered->cccd_handle = p_desc_disc_rsp_evt->descs[i].handle;
+                case BLE_UUID_DESCRIPTOR_CLIENT_CHAR_CONFIG:
+                    p_char_being_discovered->cccd_handle =
+                        p_desc_disc_rsp_evt->descs[i].handle;
+                    break;
 
+                case BLE_UUID_DESCRIPTOR_CHAR_EXT_PROP:
+                    p_char_being_discovered->ext_prop_handle =
+                        p_desc_disc_rsp_evt->descs[i].handle;
+                    break;
+
+                case BLE_UUID_DESCRIPTOR_CHAR_USER_DESC:
+                    p_char_being_discovered->user_desc_handle =
+                        p_desc_disc_rsp_evt->descs[i].handle;
+                    break;
+
+                case BLE_UUID_REPORT_REF_DESCR:
+                    p_char_being_discovered->report_ref_handle =
+                        p_desc_disc_rsp_evt->descs[i].handle;
+                    break;
+            }
+
+            /* Break if we've found all the descriptors we are looking for. */
+            if (p_char_being_discovered->cccd_handle       != BLE_GATT_HANDLE_INVALID &&
+                p_char_being_discovered->ext_prop_handle   != BLE_GATT_HANDLE_INVALID &&
+                p_char_being_discovered->user_desc_handle  != BLE_GATT_HANDLE_INVALID &&
+                p_char_being_discovered->report_ref_handle != BLE_GATT_HANDLE_INVALID)
+            {
                 break;
             }
         }
@@ -800,7 +852,7 @@ static void on_descriptor_discovery_rsp(ble_db_discovery_t * const    p_db_disco
     if (raise_discov_complete)
     {
         NRF_LOG_INFO("Discovery of service with UUID 0x%x completed with success for Connection"
-               "handle %d\r\n", p_srv_being_discovered->srv_uuid.uuid,
+               " handle %d\r\n", p_srv_being_discovered->srv_uuid.uuid,
                p_ble_gattc_evt->conn_handle);
 
         discovery_complete_evt_trigger(p_db_discovery,
@@ -870,7 +922,8 @@ uint32_t ble_db_discovery_start(ble_db_discovery_t * const p_db_discovery,
     m_pending_usr_evt_index   = 0;
 
     p_db_discovery->discoveries_count = 0;
-    p_db_discovery->curr_srv_ind = 0;
+    p_db_discovery->curr_srv_ind      = 0;
+    p_db_discovery->curr_char_ind     = 0;
 
     p_srv_being_discovered = &(p_db_discovery->services[p_db_discovery->curr_srv_ind]);
 
@@ -935,4 +988,4 @@ void ble_db_discovery_on_ble_evt(ble_db_discovery_t * const p_db_discovery,
             break;
     }
 }
-#endif //BLE_DB_DISCOVERY_ENABLED
+#endif // NRF_MODULE_ENABLED(BLE_DB_DISCOVERY)

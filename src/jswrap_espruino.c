@@ -431,7 +431,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
     order++;
   }
 
-  if (jsuGetFreeStack() < 100+sizeof(double)*pow2*2) {
+  if (jsuGetFreeStack() < 256+sizeof(double)*pow2*2) {
     jsExceptionHere(JSET_ERROR, "Insufficient stack for computing FFT");
     return;
   }

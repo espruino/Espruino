@@ -78,6 +78,11 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+// Current values used in PWM channel counters
+static uint16_t pwmValues[3][4];
+// Current values used in main PWM counters
+static uint16_t pwmCounters[3];
+
 /// For flash - whether it is busy or not...
 volatile bool flashIsBusy = false;
 volatile bool hadEvent = false; // set if we've had an event we need to deal with
@@ -148,6 +153,11 @@ NRF_PWM_Type *nrf_get_pwm(JshPinFunction func) {
 #endif
 
 static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
+#if JSH_PORTV_COUNT>0
+  // don't handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return;
+#endif
   JshPinFunction fType = func&JSH_MASK_TYPE;
   JshPinFunction fInfo = func&JSH_MASK_INFO;
   switch (fType) {
@@ -204,6 +214,11 @@ void jshResetPeripherals() {
   // Set pin state to input disconnected - saves power
   Pin i;
   for (i=0;i<JSH_PIN_COUNT;i++) {
+#if JSH_PORTV_COUNT>0
+    // don't reset virtual pins
+    if ((pinInfo[i].port & JSH_PORT_MASK)==JSH_PORTV)
+      continue;
+#endif
 #ifdef DEFAULT_CONSOLE_TX_PIN
     if (i==DEFAULT_CONSOLE_TX_PIN) continue;
 #endif
@@ -215,6 +230,10 @@ void jshResetPeripherals() {
     }
   }
   BITFIELD_CLEAR(jshPinSoftPWM);
+
+#if JSH_PORTV_COUNT>0
+  jshVirtualPinInitialise();
+#endif
 }
 
 void jshInit() {
@@ -396,12 +415,26 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
+  assert(jshIsPinValid(pin));
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinSetValue(pin, value);
+#endif
   nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
 }
 
 bool jshPinGetValue(Pin pin) {
-  bool value = nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
+  assert(jshIsPinValid(pin));
+  bool value;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    value = jshVirtualPinGetValue(pin);
+  else
+#endif
+  value = nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
   return value;
 }
@@ -421,6 +454,11 @@ void jshPinSetState(Pin pin, JshPinState state) {
     if (state==JSHPINSTATE_GPIO_IN_PULLUP) state=JSHPINSTATE_GPIO_IN_PULLDOWN;
     else if (state==JSHPINSTATE_GPIO_IN_PULLDOWN) state=JSHPINSTATE_GPIO_IN_PULLUP;
   }
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinSetState(pin, state);
+#endif
 
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   switch (state) {
@@ -476,6 +514,11 @@ void jshPinSetState(Pin pin, JshPinState state) {
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
   assert(jshIsPinValid(pin));
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return JSHPINSTATE_UNDEFINED;
+#endif
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   uint32_t p = NRF_GPIO->PIN_CNF[ipin];
   if ((p&GPIO_PIN_CNF_DIR_Msk)==(GPIO_PIN_CNF_DIR_Output<<GPIO_PIN_CNF_DIR_Pos)) {
@@ -650,13 +693,18 @@ JshPinFunction jshGetFreeTimer(JsVarFloat freq) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
-  if (pinInfo[pin].port & JSH_PIN_NEGATED)
-    value = 1-value;
 #ifdef NRF52
   // Try and use existing pin function
   JshPinFunction func = pinStates[pin];
+
   // If it's not a timer, try and find one
   if (!JSH_PINFUNCTION_IS_TIMER(func)) {
+#if JSH_PORTV_COUNT>0
+    // don't handle virtual ports (eg. pins on an IO Expander)
+    if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+      func = 0;
+    else
+#endif
     func = jshGetFreeTimer(freq);
   }
   /* we set the bit field here so that if the user changes the pin state
@@ -679,6 +727,11 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
     jsExceptionHere(JSET_ERROR, "No free Hardware PWMs. Try not specifying a frequency, or using analogWrite(pin, val, {soft:true}) for Software PWM\n");
     return 0;
   }
+
+  /* if negated... No need to invert when doing SW PWM
+  as the SW output is already negating it! */
+  if (pinInfo[pin].port & JSH_PIN_NEGATED)
+    value = 1-value;
 
   NRF_PWM_Type *pwm = nrf_get_pwm(func);
   if (!pwm) { assert(0); return 0; };
@@ -734,20 +787,38 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 
   int timer = ((func&JSH_MASK_TYPE)-JSH_TIMER1) >> JSH_SHIFT_TYPE;
   int channel = (func&JSH_MASK_INFO) >> JSH_SHIFT_INFO;
-
-  static uint16_t pwmValues[3][4];
+  pwmCounters[timer] = counter;
   pwmValues[timer][channel] = counter - (uint16_t)(value*counter);
   nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
   nrf_pwm_seq_ptr_set(      pwm, 0, &pwmValues[timer][0]);
   nrf_pwm_seq_cnt_set(      pwm, 0, 4);
   nrf_pwm_seq_refresh_set(  pwm, 0, 0);
   nrf_pwm_seq_end_delay_set(pwm, 0, 0);
-
   nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
   // nrf_pwm_disable(pwm);
   return func;
 #endif
 } // if freq<=0, the default is used
+
+/// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
+void jshSetOutputValue(JshPinFunction func, int value) {
+#ifdef NRF52
+  if (!JSH_PINFUNCTION_IS_TIMER(func))
+    return;
+
+  NRF_PWM_Type *pwm = nrf_get_pwm(func);
+  int timer = ((func&JSH_MASK_TYPE)-JSH_TIMER1) >> JSH_SHIFT_TYPE;
+  int channel = (func&JSH_MASK_INFO) >> JSH_SHIFT_INFO;
+  uint32_t counter = pwmCounters[timer];
+  pwmValues[timer][channel] = counter - (uint16_t)((uint32_t)value*counter >> 16);
+  nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
+  nrf_pwm_seq_ptr_set(      pwm, 0, &pwmValues[timer][0]);
+  nrf_pwm_seq_cnt_set(      pwm, 0, 4);
+  nrf_pwm_seq_refresh_set(  pwm, 0, 0);
+  nrf_pwm_seq_end_delay_set(pwm, 0, 0);
+  nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
+#endif
+}
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   // ---- USE TIMER FOR PULSE
@@ -815,11 +886,8 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
 
 /// Given a Pin, return the current pin function associated with it
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
-  return JSH_NOTHING;
-}
-
-/// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
-void jshSetOutputValue(JshPinFunction func, int value) {
+  if (!jshIsPinValid(pin)) return JSH_NOTHING;
+  return pinStates[pin];
 }
 
 /// Enable watchdog with a timeout in seconds

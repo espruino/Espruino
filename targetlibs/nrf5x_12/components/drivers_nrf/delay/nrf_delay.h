@@ -1,3 +1,42 @@
+/**
+ * Copyright (c) 2011 - 2017, Nordic Semiconductor ASA
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ * 
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ * 
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ * 
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ */
 #ifndef _NRF_DELAY_H
 #define _NRF_DELAY_H
 
@@ -55,7 +94,7 @@ loop:
     CMP SystemCoreClock, CLOCK_FREQ_16MHz
     BEQ cond
     NOP
-#ifdef NRF52
+#if defined(NRF52) || defined(NRF52840_XXAA) || defined(NRF52832)
     NOP
     NOP
     NOP
@@ -105,8 +144,8 @@ loop:
     NOP
 #endif
 cond:
-    SUBS number_of_us,number_of_us, #1
-    BNE    loop
+    SUBS number_of_us, #1
+    BNE loop
     }
 }
 
@@ -127,7 +166,7 @@ __STATIC_INLINE void nrf_delay_us(uint32_t number_of_us)
     {
 __ASM volatile (
 #if ( defined(__GNUC__) && (__CORTEX_M == (0x00U) ) )
-        ".syntax unified\n"
+    ".syntax unified\n"
 #endif
 "1:\n"
        " NOP\n"
@@ -138,10 +177,10 @@ __ASM volatile (
        " NOP\n"
        " NOP\n"
        " NOP\n"
-       " CMP %[SystemCoreClock],%[clock16MHz]\n"
-       " BEQ.n 2f\n"
+       " CMP %[SystemCoreClock], %[clock16MHz]\n"
+       " BEQ.N 2f\n"
        " NOP\n"
-#ifdef NRF52
+#if defined(NRF52) || defined(NRF52840_XXAA) || defined(NRF52832)
        " NOP\n"
        " NOP\n"
        " NOP\n"
@@ -191,22 +230,22 @@ __ASM volatile (
        " NOP\n"
 #endif
 "2:\n"
-       " SUBS %0, %0, #1\n"
-       " BNE.n 1b\n"
-#if __CORTEX_M == (0x00U)
-#ifdef __GNUC__
+       " SUBS %[number_of_us], #1\n"
+       " BNE.N 1b\n"
+#if ( defined(__GNUC__) && (__CORTEX_M == (0x00U) ) )
     ".syntax divided\n"
 #endif
-    :"+l" (number_of_us) :
+#if ( __CORTEX_M == (0x00U) )
+    // The SUBS instruction in Cortex-M0 is available only in 16-bit encoding,
+    // hence it requires a "lo" register (r0-r7) as an operand.
+    : [number_of_us]    "=l"             (number_of_us)
 #else
-    :"+r" (number_of_us) :
+    : [number_of_us]    "=r"             (number_of_us)
 #endif
-                [SystemCoreClock] "r" (SystemCoreClock),
-                [clock16MHz] "r" (clock16MHz)
-        );
-#ifdef __ICCARM__
-        __DMB();
-#endif
+    : [SystemCoreClock] "r"              (SystemCoreClock),
+      [clock16MHz]      "r"              (clock16MHz),
+                        "[number_of_us]" (number_of_us)
+    );
     }
 }
 #endif

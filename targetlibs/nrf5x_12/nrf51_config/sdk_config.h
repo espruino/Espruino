@@ -924,7 +924,7 @@
 
 // <o> RNG_CONFIG_POOL_SIZE - Pool size 
 #ifndef RNG_CONFIG_POOL_SIZE
-#define RNG_CONFIG_POOL_SIZE 8
+#define RNG_CONFIG_POOL_SIZE 32
 #endif
 
 // <o> RNG_CONFIG_IRQ_PRIORITY  - Interrupt priority
@@ -1577,13 +1577,6 @@
 #define UART_DEFAULT_CONFIG_IRQ_PRIORITY 3
 #endif
 
-// <q> UART0_CONFIG_USE_EASY_DMA  - Default setting for using EasyDMA
- 
-
-#ifndef UART0_CONFIG_USE_EASY_DMA
-#define UART0_CONFIG_USE_EASY_DMA 0
-#endif
-
 // <q> UART_EASY_DMA_SUPPORT  - Driver supporting EasyDMA
  
 
@@ -1600,6 +1593,21 @@
 
 #endif //UART_ENABLED
 // </e>
+
+// <e> UART0_ENABLED - Enable UART0 instance
+//==========================================================
+#ifndef UART0_ENABLED
+#define UART0_ENABLED 1
+#endif
+#if  UART0_ENABLED
+// <q> UART0_CONFIG_USE_EASY_DMA  - Default setting for using EasyDMA
+ 
+
+#ifndef UART0_CONFIG_USE_EASY_DMA
+#define UART0_CONFIG_USE_EASY_DMA 0
+#endif
+
+#endif //UART0_ENABLED
 
 // <e> WDT_ENABLED - nrf_drv_wdt - WDT peripheral driver
 //==========================================================
@@ -2105,6 +2113,13 @@
 
 #endif //NRF_DRV_CSENSE_ENABLED
 // </e>
+
+// <q> NRF_QUEUE_ENABLED  - nrf_queue - Queue module
+ 
+
+#ifndef NRF_QUEUE_ENABLED
+#define NRF_QUEUE_ENABLED 1
+#endif
 
 // <q> SLIP_ENABLED  - slip - SLIP encoding decoding
  

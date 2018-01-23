@@ -818,7 +818,10 @@ extern int LINKER_END_VAR; // should be 'void', but 'int' avoids warnings
 size_t jsuGetFreeStack() {
 #ifdef ARM
   void *frame = __builtin_frame_address(0);
-  return (size_t)((char*)&LINKER_END_VAR) - (size_t)((char*)frame);
+  size_t stackPos = (size_t)((char*)frame);
+  size_t stackEnd = (size_t)((char*)&LINKER_END_VAR);
+  if (stackPos < stackEnd) return 0; // should never happen, but just in case of overflow!
+  return  stackPos - stackEnd;
 #elif defined(LINUX)
   // On linux, we set STACK_BASE from `main`.
   char ptr; // this is on the stack
