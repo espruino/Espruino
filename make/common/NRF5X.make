@@ -94,7 +94,6 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
 else
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common
-INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/queue
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log/src
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/atomic
@@ -106,26 +105,19 @@ endif
 
 
 TARGETSOURCES += \
-$(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
-$(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
-$(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
-$(NRF5X_SDK_PATH)/components/libraries/fds/fds.c \
-$(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
-$(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
-$(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
-$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
-$(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master/nrf_drv_spi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
-$(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c \
-$(NRF5X_SDK_PATH)/components/libraries/util/sdk_mapped_flags.c \
+$(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
+$(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
+$(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_state.c \
+$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_manager.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_id.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_database.c \
@@ -136,7 +128,15 @@ $(NRF5X_SDK_PATH)/components/ble/peer_manager/id_manager.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/security_manager.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/security_dispatcher.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/gatt_cache_manager.c \
-$(NRF5X_SDK_PATH)/components/ble/peer_manager/gatts_cache_manager.c 
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/gatts_cache_manager.c \
+$(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
+$(NRF5X_SDK_PATH)/components/libraries/fds/fds.c \
+$(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c \
+$(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c \
+$(NRF5X_SDK_PATH)/components/libraries/util/sdk_mapped_flags.c \
+$(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
+$(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c 
+
 
 ifdef NRF5X_SDK_12
 TARGETSOURCES += \
@@ -145,9 +145,9 @@ $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c 
 else
 TARGETSOURCES += \
-$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh.c \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_ble.c \
+$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c \
 $(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars/nrf_section_iter.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage_sd.c \
