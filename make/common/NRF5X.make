@@ -190,6 +190,7 @@ ifdef BOOTLOADER
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c 
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
