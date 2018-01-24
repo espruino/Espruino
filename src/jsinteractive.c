@@ -1102,6 +1102,7 @@ void jsiCheckErrors() {
     jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted during event processing.\n");
   }
+  bool reportedError = false;
   JsVar *exception = jspGetException();
   if (exception) {
     JsVar *process = jsvObjectGetChild(execInfo.root, "process", 0);
@@ -1118,6 +1119,7 @@ void jsiCheckErrors() {
   if (exception) {
     jsiConsoleRemoveInputLine();
     jsiConsolePrintf("Uncaught %v\n", exception);
+    reportedError = true;
     if (jsvIsObject(exception)) {
       JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
       if (stackTrace) {
@@ -1135,10 +1137,12 @@ void jsiCheckErrors() {
     jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted\n");
     jspSetInterrupted(false);
+    reportedError = true;
   }
   JsVar *stackTrace = jspGetStackTrace();
   if (stackTrace) {
-    jsiConsolePrintStringVar(stackTrace);
+    if (reportedError)
+      jsiConsolePrintStringVar(stackTrace);
     jsvUnLock(stackTrace);
   }
   if (lastJsErrorFlags != jsErrorFlags) {

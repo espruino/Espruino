@@ -839,7 +839,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
               if (returnVarName) // could have failed with out of memory
                 jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
             }
-            JsExecFlags hasError = execInfo.execute&(EXEC_ERROR_MASK|EXEC_CTRL_C_MASK);
+            // Store a stack trace if we had an error
+            JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
 
 #ifdef USE_DEBUGGER
