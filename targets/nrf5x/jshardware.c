@@ -1088,7 +1088,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
  * waits for data to be returned */
 int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
-  if (device!=EV_SPI1) return -1;
+  if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
   uint8_t tx = (uint8_t)data;
   uint8_t rx = 0;
   uint32_t err_code = nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
@@ -1101,7 +1101,7 @@ int jshSPISend(IOEventFlags device, int data) {
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data) {
 #if SPI_ENABLED
-  if (device!=EV_SPI1) return;
+  if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return;
   uint16_t tx = (uint16_t)data;
   uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 1, 0, 0);
   if (err_code != NRF_SUCCESS)
@@ -1155,7 +1155,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
   const  nrf_drv_twi_t *twi = jshGetTWI(device);
-  if (!twi) return;
+  if (!twi || !jshIsDeviceInitialised(device)) return;
   uint32_t err_code = nrf_drv_twi_tx(twi, address, data, nBytes, !sendStop);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);
@@ -1163,7 +1163,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
   const nrf_drv_twi_t *twi = jshGetTWI(device);
-  if (!twi) return;
+  if (!twi || !jshIsDeviceInitialised(device)) return;
   uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
