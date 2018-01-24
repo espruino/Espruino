@@ -229,7 +229,7 @@ void jshTransmit(
 
 static void jshTransmitPrintfCallback(const char *str, void *user_data) {
   IOEventFlags device = (IOEventFlags)user_data;
-  while (*str) jshTransmit(device, *(str++));
+  while (*str) jshTransmit(device, (unsigned char)*(str++));
 }
 
 void jshTransmitPrintf(IOEventFlags device, const char *fmt, ...) {
