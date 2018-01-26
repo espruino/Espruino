@@ -31,6 +31,7 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
+     'DEFINES+=-DPIN_NAMES_DIRECT=1', # Package skips out some pins, so we can't assume each port starts from 0
      'DEFINES+=-DWIO_LTE',
      'USE_DFU=1',
      'STLIB=STM32F405xx',

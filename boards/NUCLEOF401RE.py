@@ -34,6 +34,7 @@ info = {
    'makefile' : [
      'NUCLEO=1',
      'DEFINES+=-DUSE_USB_OTG_FS=1',
+     'DEFINES+=-DPIN_NAMES_DIRECT=1', # Package skips out some pins, so we can't assume each port starts from 0
      'STLIB=STM32F401xE',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o'
    ]
