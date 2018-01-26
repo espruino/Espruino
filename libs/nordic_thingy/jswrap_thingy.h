@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains JavaScript interface for the hexagonal Espruino badge
+ * Contains JavaScript interface for the Nordic Thingy:52
  * ----------------------------------------------------------------------------
  */
 #include "jspin.h"

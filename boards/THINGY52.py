@@ -39,7 +39,13 @@ info = {
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
      'INCLUDE += -I$(ROOT)/libs/nordic_thingy',
-     'WRAPPERSOURCES += libs/nordic_thingy/jswrap_thingy.c'
+     'WRAPPERSOURCES += libs/nordic_thingy/jswrap_thingy.c',
+     'JSMODULESOURCES+=libs/nordic_thingy/LIS2DH12.min.js',
+     'JSMODULESOURCES+=libs/nordic_thingy/LPS22HB.min.js',
+     'JSMODULESOURCES+=libs/nordic_thingy/HTS221.min.js',
+     'JSMODULESOURCES+=libs/nordic_thingy/CCS811.min.js',
+     'JSMODULESOURCES+=libs/nordic_thingy/BH1745.min.js',
+     'JSMODULESOURCES+=libs/nordic_thingy/Thingy.min.js'
    ]
  }
 };

@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains JavaScript interface for the hexagonal Espruino badge
+ * Contains JavaScript interface for the Nordic Thingy:52
  * ----------------------------------------------------------------------------
  */
 
@@ -119,6 +119,8 @@ void jshVirtualPinSetState(Pin pin, JshPinState state) {
   "generate" : "jswrap_thingy_init"
 }*/
 void jswrap_thingy_init() {
+  // Force the Thingy js module to be loaded to 'Thingy' global var
+  jsvUnLock(jspEvaluate("global.Thingy=require(\"Thingy\");",true));
 }
 
 /*JSON{
