@@ -695,8 +695,23 @@ void vcbprintf(
       fmt++;
       char fmtChar = *fmt++;
       switch (fmtChar) {
-      case '0': {
-        int digits = (*fmt++) - '0';
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':
+      {
+        const char *pad = " ";
+        if (fmtChar=='0') {
+          pad = "0";
+          fmtChar = *fmt++;
+        }
+        int digits = fmtChar - '0';
          // of the form '%02d'
         int v = va_arg(argp, int);
         if (*fmt=='x') itostr_extra(v, buf, false, 16);
@@ -704,7 +719,7 @@ void vcbprintf(
         fmt++; // skip over 'd'
         int len = (int)strlen(buf);
         while (len < digits) {
-          user_callback("0",user_data);
+          user_callback(pad,user_data);
           len++;
         }
         user_callback(buf,user_data);
