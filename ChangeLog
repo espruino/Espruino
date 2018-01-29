@@ -14,6 +14,7 @@
             Internal printf can now pad with spaces
             Add `E.dumpFreeList` in non-release builds to help with debugging
             Fix mild memory leak in jsvMakeIntoVariableName that caused GC to run more often than normal
+            E.toString now tries harder to allocate a Flat String, and works with no-alloc for Uint8Array/FlatStrings
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

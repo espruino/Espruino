@@ -748,11 +748,17 @@ JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   "return" : ["JsVar","A String"],
   "return_object" : "String"
 }
-Returns a 'flat' string representing the data in the arguments.
+Returns a 'flat' string representing the data in the arguments, or return `undefined`
+if a flat string cannot be created.
 
 This creates a string from the given arguments. If an argument is a String or an Array,
 each element is traversed and added as an 8 bit character. If it is anything else, it is
 converted to a character directly.
+
+In the case where there's one argument which is an 8 bit typed array backed by a
+flat string of the same length, the backing string will be returned without doing
+a copy or other allocation. The same applies if there's a single argument which
+is itself a flat string.
  */
 void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
   jsvStringIteratorSetChar(it, (char)ch);
@@ -760,7 +766,34 @@ void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
 }
 
 JsVar *jswrap_espruino_toString(JsVar *args) {
-  JsVar *str = jsvNewFlatStringOfLength((unsigned int)jsvIterateCallbackCount(args));
+  // One argument
+  if (jsvGetArrayLength(args)==1) {
+    JsVar *arg = jsvGetArrayItem(args,0);
+    // Is it a flat string? If so we're there already - just return it
+    if (jsvIsFlatString(arg))
+      return arg;
+    // In the case where we have a Uint8Array,etc, return it directly
+    if (jsvIsArrayBuffer(arg) &&
+        JSV_ARRAYBUFFER_GET_SIZE(arg->varData.arraybuffer.type)==1 &&
+        arg->varData.arraybuffer.byteOffset==0) {
+      JsVar *backing = jsvGetArrayBufferBackingString(arg);
+      if (jsvIsFlatString(backing) &&
+          jsvGetCharactersInVar(backing) == arg->varData.arraybuffer.length) {
+        jsvUnLock(arg);
+        return backing;
+      }
+      jsvUnLock(backing);
+    }
+    jsvUnLock(arg);
+  }
+
+  unsigned int len = (unsigned int)jsvIterateCallbackCount(args);
+  JsVar *str = jsvNewFlatStringOfLength(len);
+  if (!str) {
+    // if we couldn't do it, try again after garbage collecting
+    jsvGarbageCollect();
+    str = jsvNewFlatStringOfLength(len);
+  }
   if (!str) return 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
