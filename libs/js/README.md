@@ -18,6 +18,12 @@ info = {
 };
 ```
 
+or add them as prefix to make
+
+```
+JSMODULESOURCES=libs/js/YOUR_MODULE.min.js make
+``` 
+
 Then when you rebuild, `require("YOUR_MODULE")` will
 magically pull in your module.
 
