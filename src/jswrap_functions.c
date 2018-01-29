@@ -26,7 +26,23 @@
   "generate" : "jswrap_arguments",
   "return" : ["JsVar","An array containing all the arguments given to the function"]
 }
-A variable containing the arguments given to the function
+A variable containing the arguments given to the function:
+
+```
+function hello() {
+  console.log(arguments.length, JSON.stringify(arguments));
+}
+hello()        // 0 []
+hello("Test")  // 1 ["Test"]
+hello(1,2,3)   // 3 [1,2,3]
+```
+
+**Note:** Due to the way Espruino works this is doesn't behave exactly
+the same as in normal JavaScript. The length of the arguments array
+will never be less than the number of arguments specified in the 
+function declaration: `(function(a){ return arguments.length; })() == 1`.
+Normal JavaScript interpreters would return `0` in the above case.
+
  */
 extern JsExecInfo execInfo;
 JsVar *jswrap_arguments() {
