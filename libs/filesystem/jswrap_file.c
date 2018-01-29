@@ -124,11 +124,23 @@ Setup the filesystem so that subsequent calls to `E.openFile` and `require('fs')
 It can even work using software SPI - for instance:
 
 ```
+// DI/CMD = C7
+// DO/DAT0 = C8
+// CK/CLK = C9
+// CD/CS/DAT3 = C6
 var spi = new SPI();
-spi.setup({mosi:C7,miso:C8,sck:C9});
-E.connectSDCard(spi,C6);
+spi.setup({mosi:C7, miso:C8, sck:C9});
+E.connectSDCard(spi, C6);
 console.log(require("fs").readdirSync());
 ```
+
+See [the page on File IO](http://www.espruino.com/File+IO) for more information.
+
+**Note:** We'd strongly suggest you add a pullup resistor from CD/CS pin to 3.3v. It is
+good practise to avoid accidental writes before Espruino is initialised, and some cards
+will not work reliably without one.
+
+**Note:** If you want to remove an SD card after you have started using it, you *must* call `E.unmountSD()` or you may cause damage to the card.
 */
 void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
 #ifdef SD_CARD_ANYWHERE
@@ -149,8 +161,6 @@ void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
 #endif
 }
 
-/* TODO: maybe this should be in the 'E' library. However we don't currently
- * have a way of doing that in build_jswrapper.py  */
 /*JSON{
   "type" : "class",
   "class" : "File"
