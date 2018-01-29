@@ -702,6 +702,8 @@ int jsvGarbageCollect();
 #ifndef RELEASE
 // Dump any locked variables that aren't referenced from `global` - for debugging memory leaks
 void jsvDumpLockedVars();
+// Dump the free list - in order
+void jsvDumpFreeList();
 #endif
 
 /** Remove whitespace to the right of a string - on MULTIPLE LINES */

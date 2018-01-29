@@ -969,6 +969,21 @@ void jswrap_espruino_dumpLockedVars() {
 
 /*JSON{
   "type" : "staticmethod",
+  "class" : "E",
+  "name" : "dumpFreeList",
+  "ifndef" : "RELEASE",
+  "generate" : "jswrap_espruino_dumpFreeList"
+}
+Dump any locked variables that aren't referenced from `global` - for debugging memory leaks only.
+*/
+#ifndef RELEASE
+void jswrap_espruino_dumpFreeList() {
+  jsvDumpFreeList();
+}
+#endif
+
+/*JSON{
+  "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "getSizeOf",

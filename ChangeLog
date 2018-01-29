@@ -12,6 +12,8 @@
             Stop stack traces from being gathered in functions for Ctrl-C (fix #1313)
             nRF5x: Fix crash if I2C is used before being initialised (fix #1301)
             Internal printf can now pad with spaces
+            Add `E.dumpFreeList` in non-release builds to help with debugging
+            Fix mild memory leak in jsvMakeIntoVariableName that caused GC to run more often than normal
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

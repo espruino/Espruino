@@ -911,6 +911,14 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
         jsvUnLock(ext);
       }
       jsvSetCharactersInVar(var, JSVAR_DATA_STRING_NAME_LEN);
+      // Free any old stringexts
+      JsVarRef oldRef = jsvGetLastChild(var);
+      while (oldRef) {
+        JsVar *v = jsvGetAddressOf(oldRef);
+        oldRef = jsvGetLastChild(v);
+        jsvFreePtrInternal(v);
+      }
+      // set up new stringexts
       jsvSetLastChild(var, jsvGetRef(startExt));
       jsvSetNextSibling(var, 0);
       jsvSetPrevSibling(var, 0);
@@ -3464,6 +3472,22 @@ void jsvDumpLockedVars() {
     }
   }
   isMemoryBusy = MEM_NOT_BUSY;
+}
+
+// Dump the free list - in order
+void jsvDumpFreeList() {
+  JsVarRef ref = jsVarFirstEmpty;
+  int n = 0;
+  while (ref) {
+    jsiConsolePrintf("%5d ", (int)ref);
+    if (++n >= 16) {
+      n = 0;
+      jsiConsolePrintf("\n");
+    }
+    JsVar *v = jsvGetAddressOf(ref);
+    ref = jsvGetNextSibling(v);
+  }
+  jsiConsolePrintf("\n");
 }
 #endif
 
