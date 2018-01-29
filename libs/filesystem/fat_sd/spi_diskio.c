@@ -36,6 +36,7 @@
 #include "platform_config.h"
 #include "jsutils.h"
 #include "jshardware.h"
+#include "jsparse.h"
 #include "jsspi.h"
 #include "diskio.h"
 
@@ -325,11 +326,16 @@ DSTATUS disk_initialize (
 	if (drv) return STA_NOINIT;			/* Supports only single drive */
 	if (Stat & STA_NODISK) return Stat;	/* No card in the socket */
 
-	power_on();							/* Force socket power on */
-	for (n = 10; n; n--) read_spi_byte();	/* 80 dummy clocks */
+	// try and initialise the SD card - give it a few tries
+	int tries = 2;
+	do {
+	  power_on();             /* Force socket power on */
+    for (n = 10; n; n--) read_spi_byte();	/* 80 dummy clocks */
+    n = send_cmd(CMD0, 0);
+	} while ((n != 1) && (tries-- > 0) && !jspIsInterrupted());
 
 	ty = 0;
-	if (send_cmd(CMD0, 0) == 1) {			/* Enter Idle state */
+	if (n == 1) {			/* Enter Idle state */
 	    JsSysTime endTime = jshGetSystemTime()+jshGetTimeFromMilliseconds(1000); /* Initialization timeout of 1000 msec */
 		if (send_cmd(CMD8, 0x1AA) == 1) {	/* SDHC */
 			for (n = 0; n < 4; n++) ocr[n] = read_spi_byte();		/* Get trailing return value of R7 resp */
