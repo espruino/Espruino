@@ -259,8 +259,8 @@ codeOut("#define RAM_TOTAL ("+str(board.chip['ram'])+"*1024)")
 codeOut("#define FLASH_TOTAL ("+str(board.chip['flash'])+"*1024)")
 codeOut("");
 if LINUX:
-  codeOut('#define RESIZABLE_JSVARS // Allocate variables in blocks using malloc')
-  #codeOut("#define JSVAR_CACHE_SIZE                "+str(200)+" // Number of JavaScript variables in RAM")
+  #codeOut('#define RESIZABLE_JSVARS // Allocate variables in blocks using malloc')
+  codeOut("#define JSVAR_CACHE_SIZE                "+str(60)+" // Number of JavaScript variables in RAM")
 else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(int(flash_available_for_code)))
