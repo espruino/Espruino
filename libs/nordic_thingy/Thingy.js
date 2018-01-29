@@ -5,13 +5,21 @@ Nordic Thingy Support Library
 
 TODO:
 
+Beep
 MPU9250 support - the library at the moment only works for the magnetometer
 Microphone support - will most likely need native support
 
+// Button
+BTN
 
-MOS1/2/3/4 MOSFET outputs
+// R/G/B leds
+LED1/2/3  
 
-IOEXT0/1/2/3 External IO outputs
+// MOSFET outputs
+MOS1/2/3/4 
+
+// External IO outputs
+IOEXT0/1/2/3 
 
 // Get repeated callbacks with {x,y,z}. Call with no argument to disable
 Thingy.onAcceleration = function(callback)
