@@ -129,7 +129,8 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
     return 0;
   }
 
-  /* PHY link status check */
+#if _WIZCHIP_ == 5500
+  /* PHY link status check - W5100 doesn't have this */
   do {
     if(ctlwizchip(CW_GET_PHYLINK, (void*)&tmp) == -1) {
       jsiConsolePrint("Unknown PHY Link status.\r\n");
@@ -137,6 +138,7 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
       return 0;
     }
   } while (tmp == PHY_LINK_OFF);
+#endif
 
   networkFree(&net);
 
