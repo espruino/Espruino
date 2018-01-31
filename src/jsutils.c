@@ -695,8 +695,23 @@ void vcbprintf(
       fmt++;
       char fmtChar = *fmt++;
       switch (fmtChar) {
-      case '0': {
-        int digits = (*fmt++) - '0';
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':
+      {
+        const char *pad = " ";
+        if (fmtChar=='0') {
+          pad = "0";
+          fmtChar = *fmt++;
+        }
+        int digits = fmtChar - '0';
          // of the form '%02d'
         int v = va_arg(argp, int);
         if (*fmt=='x') itostr_extra(v, buf, false, 16);
@@ -704,7 +719,7 @@ void vcbprintf(
         fmt++; // skip over 'd'
         int len = (int)strlen(buf);
         while (len < digits) {
-          user_callback("0",user_data);
+          user_callback(pad,user_data);
           len++;
         }
         user_callback(buf,user_data);
@@ -818,7 +833,10 @@ extern int LINKER_END_VAR; // should be 'void', but 'int' avoids warnings
 size_t jsuGetFreeStack() {
 #ifdef ARM
   void *frame = __builtin_frame_address(0);
-  return (size_t)((char*)&LINKER_END_VAR) - (size_t)((char*)frame);
+  size_t stackPos = (size_t)((char*)frame);
+  size_t stackEnd = (size_t)((char*)&LINKER_END_VAR);
+  if (stackPos < stackEnd) return 0; // should never happen, but just in case of overflow!
+  return  stackPos - stackEnd;
 #elif defined(LINUX)
   // On linux, we set STACK_BASE from `main`.
   char ptr; // this is on the stack

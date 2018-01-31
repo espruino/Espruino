@@ -27,3 +27,8 @@ define asm
   show disassemble-next-line
   echo now use stepi 
 end
+# Watchdog timer off for NRF52 devices
+define wdt_off
+  p (*(uint32_t*)0x4001050C)=1
+end
+

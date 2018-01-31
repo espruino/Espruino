@@ -63,7 +63,7 @@ typedef enum {
 #ifdef USE_TELNET
   EV_TELNET,
 #endif
-  EV_SERIAL1,
+  EV_SERIAL1, // Used for IO for UARTS
   EV_SERIAL2,
   EV_SERIAL3,
   EV_SERIAL4,
@@ -77,6 +77,9 @@ typedef enum {
   EV_SERIAL5_STATUS,
   EV_SERIAL6_STATUS,
   EV_SERIAL_STATUS_MAX = EV_SERIAL6_STATUS,
+#ifdef BLUETOOTH
+  EV_BLUETOOTH_PENDING, // Pending tasks set by
+#endif
   EV_SPI1,
   EV_SPI2,
   EV_SPI3,
@@ -101,7 +104,7 @@ typedef enum {
   EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,
 } PACKED_FLAGS IOEventFlags;
 
-
+#define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK!=63) jsError("DEVICE_SANITY_CHECK failed")
 
 // Return true if the device is a USART
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))
@@ -164,6 +167,8 @@ JsVar *jshGetDeviceObject(IOEventFlags device);
 //                                                         DATA TRANSMIT BUFFER
 /// Queue a character for transmission
 void jshTransmit(IOEventFlags device, unsigned char data);
+// Queue a formatted string for transmission
+void jshTransmitPrintf(IOEventFlags device, const char *fmt, ...);
 /// Wait for transmit to finish
 void jshTransmitFlush();
 /// Clear everything from a device

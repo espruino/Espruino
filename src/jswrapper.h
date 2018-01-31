@@ -118,4 +118,7 @@ void jswInit();
 /** Tasks to run on Deinitialisation */
 void jswKill();
 
+/** If we have a built-in module with the given name, return the module's contents - or 0 */
+const char *jswGetBuiltinModule(const char *name);
+
 #endif // JSWRAPPER_H

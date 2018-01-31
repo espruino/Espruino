@@ -139,7 +139,7 @@ int net_js_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf
   NOT_USED(net);
   JsVar *args[3] = {
       jsvNewFromInteger(sckt),
-      jsvNewStringOfLength(len, buf),
+      jsvNewStringOfLength((unsigned int)len, buf),
       jsvNewFromInteger((JsVarInt)socketType)
   };
   int r = jsvGetIntegerAndUnLock(callFn( "send", 3, args));

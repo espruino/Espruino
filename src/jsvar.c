@@ -911,6 +911,14 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
         jsvUnLock(ext);
       }
       jsvSetCharactersInVar(var, JSVAR_DATA_STRING_NAME_LEN);
+      // Free any old stringexts
+      JsVarRef oldRef = jsvGetLastChild(var);
+      while (oldRef) {
+        JsVar *v = jsvGetAddressOf(oldRef);
+        oldRef = jsvGetLastChild(v);
+        jsvFreePtrInternal(v);
+      }
+      // set up new stringexts
       jsvSetLastChild(var, jsvGetRef(startExt));
       jsvSetNextSibling(var, 0);
       jsvSetPrevSibling(var, 0);
@@ -974,6 +982,15 @@ JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
   func->varData.native.ptr = ptr;
   func->varData.native.argTypes = argTypes;
   return func;
+}
+
+JsVar *jsvNewNativeString(char *ptr, size_t len) {
+  if (len<65535) len=65535; // crop string to 65535 characters because that's all be can store in nativeStr.len
+  JsVar *str = jsvNewWithFlags(JSV_NATIVE_STRING);
+  if (!str) return 0;
+  str->varData.nativeStr.ptr = ptr;
+  str->varData.nativeStr.len = (uint16_t)len;
+  return str;
 }
 
 void *jsvGetNativeFunctionPtr(const JsVar *function) {
@@ -3455,6 +3472,22 @@ void jsvDumpLockedVars() {
     }
   }
   isMemoryBusy = MEM_NOT_BUSY;
+}
+
+// Dump the free list - in order
+void jsvDumpFreeList() {
+  JsVarRef ref = jsVarFirstEmpty;
+  int n = 0;
+  while (ref) {
+    jsiConsolePrintf("%5d ", (int)ref);
+    if (++n >= 16) {
+      n = 0;
+      jsiConsolePrintf("\n");
+    }
+    JsVar *v = jsvGetAddressOf(ref);
+    ref = jsvGetNextSibling(v);
+  }
+  jsiConsolePrintf("\n");
 }
 #endif
 

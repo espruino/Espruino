@@ -297,7 +297,12 @@ NO_INLINE static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device
     /* Clear the USART Receive interrupt */
     USART_ClearITPendingBit(USART, USART_IT_RXNE);
     /* Read one byte from the receive data register */
-    jshPushIOCharEvent(device, (char)USART_ReceiveData(USART));
+    char ch = (char)USART_ReceiveData(USART);
+    /* Mask it if needed... */
+    bool jshIsSerial7Bit(IOEventFlags device);
+    if (jshIsSerial7Bit(device)) ch &= 0x7F;
+    /* Put it in our queue */
+    jshPushIOCharEvent(device, ch);
   }
   /* If overrun condition occurs, clear the ORE flag and recover communication */
   if (USART_GetFlagStatus(USART, USART_FLAG_ORE) != RESET) {

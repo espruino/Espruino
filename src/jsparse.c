@@ -409,12 +409,8 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
     if (jsvIsNativeString(lex->sourceVar)) {
       /* If we're parsing from a Native String (eg. E.memoryArea, E.setBootCode) then
       use another Native String to load function code straight from flash */
-      funcCodeVar = jsvNewWithFlags(JSV_NATIVE_STRING);
-      if (funcCodeVar) {
-        int s = (int)jsvStringIteratorGetIndex(&funcBegin.it) - 1;
-        funcCodeVar->varData.nativeStr.ptr = lex->sourceVar->varData.nativeStr.ptr + s;
-        funcCodeVar->varData.nativeStr.len = (uint16_t)(lastTokenEnd - s);
-      }
+      int s = (int)jsvStringIteratorGetIndex(&funcBegin.it) - 1;
+      funcCodeVar = jsvNewNativeString(lex->sourceVar->varData.nativeStr.ptr + s, (unsigned int)(lastTokenEnd - s));
     } else {
       if (jsfGetFlag(JSF_PRETOKENISE)) {
         funcCodeVar = jslNewTokenisedStringFromLexer(&funcBegin, (size_t)lastTokenEnd);
@@ -843,7 +839,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
               if (returnVarName) // could have failed with out of memory
                 jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
             }
-            JsExecFlags hasError = execInfo.execute&(EXEC_ERROR_MASK|EXEC_CTRL_C_MASK);
+            // Store a stack trace if we had an error
+            JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
 
 #ifdef USE_DEBUGGER
@@ -1577,14 +1574,17 @@ NO_INLINE JsVar *jspeFactor() {
     if (!jspCheckStackPosition()) return 0;
     return jspeFactorArray();
   } else if (lex->tk==LEX_R_FUNCTION) {
+    if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_FUNCTION);
     return jspeFunctionDefinition(true);
   } else if (lex->tk==LEX_R_THIS) {
     JSP_ASSERT_MATCH(LEX_R_THIS);
     return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.root );
   } else if (lex->tk==LEX_R_DELETE) {
+    if (!jspCheckStackPosition()) return 0;
     return jspeFactorDelete();
   } else if (lex->tk==LEX_R_TYPEOF) {
+    if (!jspCheckStackPosition()) return 0;
     return jspeFactorTypeOf();
   } else if (lex->tk==LEX_R_VOID) {
     JSP_ASSERT_MATCH(LEX_R_VOID);
@@ -2773,7 +2773,7 @@ JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
    */
   JsVar *evCode;
   if (stringIsStatic)
-    evCode = jswrap_espruino_memoryArea((int)(size_t)str, (int)strlen(str));
+    evCode = jsvNewNativeString((char*)str, strlen(str));
   else
     evCode = jsvNewFromString(str);
   if (!evCode) return 0;

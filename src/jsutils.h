@@ -26,9 +26,9 @@
 #include <math.h>
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "1v94"
+#define JS_VERSION "1v95"
 #else
-#define JS_VERSION "1v94." BUILDNUMBER
+#define JS_VERSION "1v95." BUILDNUMBER
 #endif
 /*
   In code:
@@ -39,6 +39,10 @@
 
 #ifndef alloca
 #define alloca(x) __builtin_alloca(x)
+#endif
+
+#ifdef SAVE_ON_FLASH
+#define SAVE_ON_FLASH_MATH 1
 #endif
 
 #if defined(ESP8266)

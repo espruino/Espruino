@@ -33,6 +33,7 @@ typedef enum {
   JSH_PORTG,
   JSH_PORTH,
   JSH_PORTI,
+  JSH_PORTV,
   JSH_PORT_MASK = 15,
   JSH_PIN_NEGATED = 16
 } PACKED_FLAGS JsvPinInfoPort;

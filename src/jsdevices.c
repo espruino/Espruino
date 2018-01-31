@@ -75,6 +75,7 @@ volatile unsigned char ioHead=0, ioTail=0;
 /** Initialize any device-specific structures, like flow control states.
  * Called from jshInit */
 void jshInitDevices() {
+  DEVICE_SANITY_CHECK();
   jshResetDevices();
 }
 
@@ -161,7 +162,7 @@ void jshTransmit(
   if (device == EV_TELNET) {
     // gross hack to avoid deadlocking on the network here
     extern void telnetSendChar(char c);
-    telnetSendChar(data);
+    telnetSendChar((char)data);
     return;
   }
 #endif
@@ -224,6 +225,18 @@ void jshTransmit(
   txHead = txHeadNext;
 
   jshUSARTKick(device); // set up interrupts if required
+}
+
+static void jshTransmitPrintfCallback(const char *str, void *user_data) {
+  IOEventFlags device = (IOEventFlags)user_data;
+  while (*str) jshTransmit(device, (unsigned char)*(str++));
+}
+
+void jshTransmitPrintf(IOEventFlags device, const char *fmt, ...) {
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf(jshTransmitPrintfCallback,(void *)device, fmt, argp);
+  va_end(argp);
 }
 
 // Return the device at the top of the transmit queue (or EV_NONE)

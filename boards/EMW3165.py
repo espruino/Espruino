@@ -34,7 +34,8 @@ info = {
    'makefile' : [
      'DEFINES+=-DPIN_NAMES_DIRECT -DHSE_VALUE=26000000UL',
      'STLIB=STM32F411xE',
-     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o'
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o',
+     'WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c'
    ]
   }
 };

@@ -431,7 +431,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
     order++;
   }
 
-  if (jsuGetFreeStack() < 100+sizeof(double)*pow2*2) {
+  if (jsuGetFreeStack() < 256+sizeof(double)*pow2*2) {
     jsExceptionHere(JSET_ERROR, "Insufficient stack for computing FFT");
     return;
   }
@@ -701,6 +701,7 @@ Get Espruino's interpreter flags that control the way it handles your JavaScript
 * `deepSleep` - Allow deep sleep modes (also set by setDeepSleep)
 * `pretokenise` - When adding functions, pre-minify them and tokenise reserved words
 * `unsafeFlash` - Some platforms stop writes/erases to interpreter memory to stop you bricking the device accidentally - this removes that protection
+* `unsyncFiles` - When writing files, *don't* flush all data to the SD card after each command (the default is *to* flush). This is much faster, but can cause filesystem damage if power is lost without the filesystem unmounted.
 */
 /*JSON{
   "type" : "staticmethod",
@@ -747,11 +748,17 @@ JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   "return" : ["JsVar","A String"],
   "return_object" : "String"
 }
-Returns a 'flat' string representing the data in the arguments.
+Returns a 'flat' string representing the data in the arguments, or return `undefined`
+if a flat string cannot be created.
 
 This creates a string from the given arguments. If an argument is a String or an Array,
 each element is traversed and added as an 8 bit character. If it is anything else, it is
 converted to a character directly.
+
+In the case where there's one argument which is an 8 bit typed array backed by a
+flat string of the same length, the backing string will be returned without doing
+a copy or other allocation. The same applies if there's a single argument which
+is itself a flat string.
  */
 void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
   jsvStringIteratorSetChar(it, (char)ch);
@@ -759,7 +766,34 @@ void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
 }
 
 JsVar *jswrap_espruino_toString(JsVar *args) {
-  JsVar *str = jsvNewFlatStringOfLength((unsigned int)jsvIterateCallbackCount(args));
+  // One argument
+  if (jsvGetArrayLength(args)==1) {
+    JsVar *arg = jsvGetArrayItem(args,0);
+    // Is it a flat string? If so we're there already - just return it
+    if (jsvIsFlatString(arg))
+      return arg;
+    // In the case where we have a Uint8Array,etc, return it directly
+    if (jsvIsArrayBuffer(arg) &&
+        JSV_ARRAYBUFFER_GET_SIZE(arg->varData.arraybuffer.type)==1 &&
+        arg->varData.arraybuffer.byteOffset==0) {
+      JsVar *backing = jsvGetArrayBufferBackingString(arg);
+      if (jsvIsFlatString(backing) &&
+          jsvGetCharactersInVar(backing) == arg->varData.arraybuffer.length) {
+        jsvUnLock(arg);
+        return backing;
+      }
+      jsvUnLock(backing);
+    }
+    jsvUnLock(arg);
+  }
+
+  unsigned int len = (unsigned int)jsvIterateCallbackCount(args);
+  JsVar *str = jsvNewFlatStringOfLength(len);
+  if (!str) {
+    // if we couldn't do it, try again after garbage collecting
+    jsvGarbageCollect();
+    str = jsvNewFlatStringOfLength(len);
+  }
   if (!str) return 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
@@ -827,11 +861,7 @@ JsVar *jswrap_espruino_memoryArea(int addr, int len) {
     jsExceptionHere(JSET_ERROR, "Memory area too long! Max is 65535 bytes\n");
     return 0;
   }
-  JsVar *v = jsvNewWithFlags(JSV_NATIVE_STRING);
-  if (!v) return 0;
-  v->varData.nativeStr.ptr = (char*)(size_t)addr;
-  v->varData.nativeStr.len = (uint16_t)len;
-  return v;
+  return jsvNewNativeString((char*)(size_t)addr, (size_t)len);
 }
 
 /*JSON{
@@ -862,7 +892,10 @@ To remove boot code that has been saved previously, use `E.setBootCode("")`
 void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec) {
   JsvSaveFlashFlags flags = 0;
   if (alwaysExec) flags |= SFF_BOOT_CODE_ALWAYS;
+  if (jsvIsString(code)) code = jsvLockAgain(code);
+  else code = jsvNewFromEmptyString();
   jsfSaveToFlash(flags, code);
+  jsvUnLock(code);
 }
 
 
@@ -964,6 +997,21 @@ Dump any locked variables that aren't referenced from `global` - for debugging m
 #ifndef RELEASE
 void jswrap_espruino_dumpLockedVars() {
   jsvDumpLockedVars();
+}
+#endif
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "dumpFreeList",
+  "ifndef" : "RELEASE",
+  "generate" : "jswrap_espruino_dumpFreeList"
+}
+Dump any locked variables that aren't referenced from `global` - for debugging memory leaks only.
+*/
+#ifndef RELEASE
+void jswrap_espruino_dumpFreeList() {
+  jsvDumpFreeList();
 }
 #endif
 
@@ -1193,16 +1241,20 @@ signal.
   "params" : [
     ["hue","float","The hue, as a value between 0 and 1"],
     ["sat","float","The saturation, as a value between 0 and 1"],
-    ["bri","float","The brightness, as a value between 0 and 1"]
+    ["bri","float","The brightness, as a value between 0 and 1"],
+    ["asArray","bool","If true, return an array of [R,G,B] values betwen 0 and 255"]
   ],
-  "return" : ["int","A 24 bit number containing bytes representing red, green, and blue: 0xBBGGRR"]
+  "return" : ["JsVar","A 24 bit number containing bytes representing red, green, and blue `0xBBGGRR`. Or if `asArray` is true, an array `[R,G,B]`"]
 }
-Convert hue, saturation and brightness to red, green and blue (packed into an integer)
+Convert hue, saturation and brightness to red, green and blue (packed into an integer if `asArray==false` or an array if `asArray==true`).
 
 This replaces `Graphics.setColorHSB` and `Graphics.setBgColorHSB`. On devices with 24 bit colour it can
-be used as: `Graphics.setColorHSB(E.HSBtoRGB(h, s, b))`
+be used as: `Graphics.setColor(E.HSBtoRGB(h, s, b))`
+
+You can quickly set RGB items in an Array or Typed Array using `array.set(E.HSBtoRGB(h, s, b,true), offset)`,
+which can be useful with arrays used with `require("neopixel").write`.
  */
-JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri) {
+int jswrap_espruino_HSBtoRGB_int(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri) {
   int   r, g, b, hi, bi, x, y, z;
   JsVarFloat hfrac;
 
@@ -1212,7 +1264,7 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
     return (r<<16) | (r<<8) | r;
   }
   else {
-    hue *= 6;
+    hue = (hue-floor(hue))*6; // auto-wrap hue
     hi = (int)hue;
     hfrac = hue - hi;
     hi = hi % 6;
@@ -1234,6 +1286,18 @@ JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri
 
     return (b<<16) | (g<<8) | r;
   }
+}
+JsVar *jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri, bool asArray) {
+  int rgb = jswrap_espruino_HSBtoRGB_int(hue, sat, bri);
+  if (!asArray) return jsvNewFromInteger(rgb);
+  JsVar *arrayElements[] = {
+      jsvNewFromInteger(rgb&0xFF),
+      jsvNewFromInteger((rgb>>8)&0xFF),
+      jsvNewFromInteger((rgb>>16)&0xFF)
+  };
+  JsVar *arr = jsvNewArray(arrayElements, 3);
+  jsvUnLockMany(3, arrayElements);
+  return arr;
 }
 
 /*JSON{

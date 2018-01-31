@@ -241,15 +241,15 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
       jsvStringIteratorNew(&dst, newStr, 0);
       jsvStringIteratorGotoEnd(&dst);
       if (jsvIsFunction(replace)) {
-        int argCount = 0;
+        unsigned int argCount = 0;
         JsVar *args[13];
         args[argCount++] = jsvLockAgain(matchStr);
         JsVar *v;
-        while ((v = jsvGetArrayItem(match,argCount)))
+        while ((v = jsvGetArrayItem(match, (JsVarInt)argCount)))
           args[argCount++] = v;
         args[argCount++] = jsvObjectGetChild(match,"index",0);
         args[argCount++] = jsvObjectGetChild(match,"input",0);
-        JsVar *result = jsvAsString(jspeFunctionCall(replace, 0, 0, false, argCount, args), true);
+        JsVar *result = jsvAsString(jspeFunctionCall(replace, 0, 0, false, (JsVarInt)argCount, args), true);
         jsvUnLockMany(argCount, args);
         jsvStringIteratorAppendString(&dst, result, 0);
         jsvUnLock(result);

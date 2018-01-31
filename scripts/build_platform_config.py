@@ -195,13 +195,17 @@ elif board.chip["family"]=="STM32L4":
   codeOut('#include "stm32l4xx_ll_adc.h"')
 elif board.chip["family"]=="NRF51":
   board.chip["class"]="NRF51"
+  linker_etext_var = "__etext";
+  linker_end_var = "end";
   codeOut('#include "nrf.h"')
 elif board.chip["family"]=="NRF52":
   board.chip["class"]="NRF52"
+  linker_etext_var = "__etext";
+  linker_end_var = "end";
   codeOut('#include "nrf.h"') # TRY THIS BUT NOT SURE~!
 elif board.chip["family"]=="EFM32GG":
-  linker_etext_var = "__etext";
   board.chip["class"]="EFM32"
+  linker_etext_var = "__etext";
   codeOut('#include "em_device.h"')
 elif board.chip["family"]=="LPC1768":
   board.chip["class"]="MBED"
@@ -255,8 +259,8 @@ codeOut("#define RAM_TOTAL ("+str(board.chip['ram'])+"*1024)")
 codeOut("#define FLASH_TOTAL ("+str(board.chip['flash'])+"*1024)")
 codeOut("");
 if LINUX:
-  codeOut('#define RESIZABLE_JSVARS // Allocate variables in blocks using malloc')
-  #codeOut("#define JSVAR_CACHE_SIZE                "+str(200)+" // Number of JavaScript variables in RAM")
+  #codeOut('#define RESIZABLE_JSVARS // Allocate variables in blocks using malloc')
+  codeOut("#define JSVAR_CACHE_SIZE                "+str(60)+" // Number of JavaScript variables in RAM")
 else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(int(flash_available_for_code)))

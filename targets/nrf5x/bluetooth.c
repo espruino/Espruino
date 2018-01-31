@@ -28,18 +28,26 @@
 #include <stdbool.h>
 #include "nordic_common.h"
 #include "nrf.h"
+
+#if NRF_SD_BLE_API_VERSION<5
+#include "softdevice_handler.h"
+#else
+#include "nrf_sdm.h" // for softdevice_disable
+#include "nrf_sdh.h"
+#include "nrf_sdh_ble.h"
+#include "nrf_sdh_soc.h"
+#endif
+
 #include "nrf_log.h"
 #include "ble_hci.h"
 #include "ble_advdata.h"
 #include "ble_conn_params.h"
-#include "softdevice_handler.h"
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
 #include "nrf_delay.h"
 #ifdef USE_NFC
-#include "nfc_t2t_lib.h"
-#include "nfc_uri_msg.h"
+#include "hal_t2t/hal_nfc_t2t.h"
 #endif
 #if BLE_HIDS_ENABLED
 #include "ble_hids.h"
@@ -48,7 +56,11 @@
 #if PEER_MANAGER_ENABLED
 #include "peer_manager.h"
 #include "fds.h"
+#if NRF_SD_BLE_API_VERSION<5
 #include "fstorage.h"
+#include "fstorage_internal_defs.h"
+#define FDS_PHY_PAGE_SIZE FS_PAGE_SIZE
+#endif
 #include "ble_conn_state.h"
 static pm_peer_id_t   m_peer_id;                              /**< Device reference handle to the current bonded central. */
 static pm_peer_id_t   m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];  /**< List of peers currently in the whitelist. */
@@ -56,7 +68,6 @@ static uint32_t       m_whitelist_peer_cnt;                                 /**<
 static bool           m_is_wl_changed;                                      /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
 // needed for peer_manager_init so we can smoothly upgrade from pre 1v92 firmwares
 #include "fds_internal_defs.h"
-#include "fstorage_internal_defs.h"
 // If we have peer manager we have central mode and NRF52
 // So just enable link security
 #define LINK_SECURITY
@@ -81,18 +92,27 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
-#if (NRF_SD_BLE_API_VERSION == 3)
-#define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                       /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#if NRF_SD_BLE_API_VERSION < 5
+#define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                        /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
+#else
+#define NRF_BLE_MAX_MTU_SIZE            NRF_SDH_BLE_GATT_MAX_MTU_SIZE               /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 #endif
+
+#define APP_BLE_CONN_CFG_TAG                1                                       /**< A tag identifying the SoftDevice BLE configuration. */
+#define APP_BLE_OBSERVER_PRIO               2                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
+#define APP_SOC_OBSERVER_PRIO               1                                       /**< Applications' SoC observer priority. You shoulnd't need to modify this value. */
 
 /* We want to listen as much of the time as possible. Not sure if 100/100 is feasible (50/100 is what's used in examples), but it seems to work fine like this. */
 #define SCAN_INTERVAL                   MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan interval in units of 0.625 millisecond - 100 msec */
 #define SCAN_WINDOW                     MSEC_TO_UNITS(100, UNIT_0_625_MS)            /**< Scan window in units of 0.625 millisecond - 100 msec */
 
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
-#define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 
 // BLE HID stuff
 #define BASE_USB_HID_SPEC_VERSION        0x0101                                      /**< Version number of base USB HID Specification implemented by this application. */
@@ -109,9 +129,18 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 
 #define ADVERTISE_MAX_UUIDS             4 ///< maximum custom UUIDs to advertise
 
+#if NRF_SD_BLE_API_VERSION < 5
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
+#else
+BLE_NUS_DEF(m_nus);                                                                 /**< Structure to identify the Nordic UART Service. */
+#endif
+
 #if BLE_HIDS_ENABLED
+#if NRF_SD_BLE_API_VERSION < 5
 static ble_hids_t                       m_hids;                                   /**< Structure used to identify the HID service. */
+#else
+BLE_HIDS_DEF(m_hids);
+#endif
 static bool                             m_in_boot_mode = false;
 #endif
 
@@ -129,8 +158,114 @@ volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
 uint16_t bleFinalHandle;
 
+/* If we're received an advertising message it's put in here and then a message
+ * to process it is shoved in the queue. Not 100% ideal if we don't get around
+ * to processing it in time... Could shove all the data in the queue? */
+static ble_gap_evt_adv_report_t blePendingAdvReport;
+
+
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
+
+void jsble_queue_pending_d(BLEPending blep, uint16_t data) {
+  JsSysTime d = (JsSysTime)((data<<8)|blep);
+  jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
+  jshHadEvent();
+}
+
+void jsble_queue_pending(BLEPending blep) {
+  jsble_queue_pending_d(blep,0);
+}
+
+void jsble_exec_pending(IOEvent *event) {
+  BLEPending blep = (BLEPending)event->data.time;
+  uint16_t data = (uint16_t)(event->data.time>>8);
+  switch (blep) {
+   case BLEP_NONE: break;
+   case BLEP_DISCONNECTED: {
+     JsVar *reason = jsvNewFromInteger(data);
+     bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
+     break;
+   }
+   case BLEP_RSSI_PERIPH: {
+     JsVar *evt = jsvNewFromInteger((char)data);
+     if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
+     jsvUnLock(evt);
+     break;
+   }
+   case BLEP_ADV_REPORT: {
+     JsVar *evt = jsvNewObject();
+     if (evt) {
+       jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(blePendingAdvReport.rssi));
+       //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
+       jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(blePendingAdvReport.peer_addr));
+       JsVar *data = jsvNewStringOfLength(blePendingAdvReport.dlen, (char*)blePendingAdvReport.data);
+       if (data) {
+         JsVar *ab = jsvNewArrayBufferFromString(data, blePendingAdvReport.dlen);
+         jsvUnLock(data);
+         jsvObjectSetChildAndUnLock(evt, "data", ab);
+       }
+       // push onto queue
+       jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
+       jsvUnLock(evt);
+     }
+     break;
+   }
+#if CENTRAL_LINK_COUNT>0
+   case BLEP_RSSI_CENTRAL: {
+     JsVar *gattServer = bleGetActiveBluetoothGattServer();
+     if (gattServer) {
+       JsVar *rssi = jsvNewFromInteger((char)data);
+       JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+       if (bluetoothDevice) {
+         jsvObjectSetChild(bluetoothDevice, "rssi", rssi);
+       }
+       jsiQueueObjectCallbacks(gattServer, BLE_RSSI_EVENT, &rssi, 1);
+       jsvUnLock3(rssi, gattServer, bluetoothDevice);
+     }
+     break;
+   }
+   case BLEP_TASK_FAIL_CONN_TIMEOUT:
+     bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Connection Timeout"));
+     break;
+   case BLEP_TASK_FAIL_DISCONNECTED:
+     bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
+   case BLEP_TASK_CENTRAL_CONNECTED:
+     jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
+     bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
+     break;
+   case BLEP_GATT_SERVER_DISCONNECTED: {
+     JsVar *gattServer = bleGetActiveBluetoothGattServer();
+     if (gattServer) {
+       JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+       jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
+       if (bluetoothDevice) {
+         // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
+         JsVar *reason = jsvNewFromInteger(data);
+         jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", &reason, 1);
+         jsvUnLock(reason);
+         jshHadEvent();
+       }
+       jsvUnLock2(gattServer, bluetoothDevice);
+     }
+     bleSetActiveBluetoothGattServer(0);
+     break;
+   }
+#endif
+#ifdef USE_NFC
+   case BLEP_NFC_STATUS:
+     bleQueueEventAndUnLock(data ? JS_EVENT_PREFIX"NFCon" : JS_EVENT_PREFIX"NFCoff", 0);
+     break;
+#endif
+   default:
+     jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
+ }
+}
+
+
+// -----------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------
+
 
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection() {
@@ -237,6 +372,77 @@ static void service_error_handler(uint32_t nrf_error) {
 }
 #endif
 
+#if NRF_LOG_ENABLED
+void nrf_log_frontend_std_0(uint32_t severity_mid, char const * const p_str) {
+  nrf_log_frontend_std_6(severity_mid, p_str,0,0,0,0,0,0);
+}
+
+
+void nrf_log_frontend_std_1(uint32_t            severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0) {
+  nrf_log_frontend_std_6(severity_mid, p_str,val0,0,0,0,0,0);
+}
+
+
+void nrf_log_frontend_std_2(uint32_t           severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0,
+                            uint32_t           val1) {
+  nrf_log_frontend_std_6(severity_mid, p_str,val0,val1,0,0,0,0);
+}
+
+
+void nrf_log_frontend_std_3(uint32_t           severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0,
+                            uint32_t           val1,
+                            uint32_t           val2) {
+  nrf_log_frontend_std_6(severity_mid, p_str,val0,val1,val2,0,0,0);
+}
+
+
+void nrf_log_frontend_std_4(uint32_t           severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0,
+                            uint32_t           val1,
+                            uint32_t           val2,
+                            uint32_t           val3) {
+  nrf_log_frontend_std_6(severity_mid, p_str,val0,val1,val2,val3,0,0);
+}
+
+
+void nrf_log_frontend_std_5(uint32_t           severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0,
+                            uint32_t           val1,
+                            uint32_t           val2,
+                            uint32_t           val3,
+                            uint32_t           val4) {
+  nrf_log_frontend_std_6(severity_mid, p_str,val0,val1,val2,val3,val4,0);
+}
+
+
+void nrf_log_frontend_std_6(uint32_t           severity_mid,
+                            char const * const p_str,
+                            uint32_t           val0,
+                            uint32_t           val1,
+                            uint32_t           val2,
+                            uint32_t           val3,
+                            uint32_t           val4,
+                            uint32_t           val5) {
+#ifdef DEFAULT_CONSOLE_DEVICE
+  jshTransmitPrintf(DEFAULT_CONSOLE_DEVICE, p_str, val0, val1, val2, val3, val4, val5);
+  jshTransmit(DEFAULT_CONSOLE_DEVICE, '\r');
+  jshTransmit(DEFAULT_CONSOLE_DEVICE, '\n');
+#endif
+}
+
+nrf_log_module_dynamic_data_t NRF_LOG_MODULE_DATA_DYNAMIC = {
+    .module_id = 0
+};
+#endif
+
 /// Function for handling an event from the Connection Parameters Module.
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
 }
@@ -248,10 +454,20 @@ void log_uart_printf(const char * format_msg, ...) {
 
 // -----------------------------------------------------------------------------------
 // -------------------------------------------------------------------------- HANDLERS
+
+#if NRF_SD_BLE_API_VERSION<5
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length) {
-    jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_data, length);
-    jshHadEvent();
+  jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_data, length);
+  jshHadEvent();
 }
+#else
+static void nus_data_handler(ble_nus_evt_t * p_evt) {
+  if (p_evt->type == BLE_NUS_EVT_RX_DATA) {
+    jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
+    jshHadEvent();
+  }
+}
+#endif
 
 bool nus_transmit_string() {
   if (!jsble_has_simple_connection() ||
@@ -271,7 +487,13 @@ bool nus_transmit_string() {
     ch = jshGetCharToTransmit(EV_BLUETOOTH);
   }
   if (idx>0) {
+#if NRF_SD_BLE_API_VERSION<5
     uint32_t err_code = ble_nus_string_send(&m_nus, buf, idx);
+#else
+    uint16_t len = idx;
+    uint32_t err_code = ble_nus_string_send(&m_nus, buf, &len);
+    assert(len==idx);
+#endif
     if (err_code == NRF_SUCCESS)
       bleStatus |= BLE_IS_SENDING;
   }
@@ -340,7 +562,11 @@ static void ble_update_whitelist() {
 #endif
 
 /// Function for the application's SoftDevice event handler.
-static void on_ble_evt(ble_evt_t * p_ble_evt) {
+#if NRF_SD_BLE_API_VERSION<5
+static void ble_evt_handler(ble_evt_t * p_ble_evt) {
+#else
+static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
+#endif
     uint32_t err_code;
     //jsiConsolePrintf("\n[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );
 
@@ -348,10 +574,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
       case BLE_GAP_EVT_TIMEOUT:
 #if CENTRAL_LINK_COUNT>0
         if (bleInTask(BLETASK_BONDING)) { // BLE_GAP_TIMEOUT_SRC_SECURITY_REQUEST ?
-          bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Connection Timeout"));
+          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT);
         } else if (bleInTask(BLETASK_CONNECT)) {
-          // timeout!
-          bleCompleteTaskFailAndUnLock(BLETASK_CONNECT, jsvNewFromString("Connection Timeout"));
+          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT);
         } else
 #endif
         {
@@ -388,6 +613,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
           bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
+          // TODO: queue connection event via jsble_queue_pending
           JsVar *addr = bleAddrToStr(p_ble_evt->evt.gap_evt.params.connected.peer_addr);
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", addr);
           jshHadEvent();
@@ -396,8 +622,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleSetActiveBluetoothGattServer(bleTaskInfo);
-          jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
-          bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
+          jsble_queue_pending(BLEP_TASK_CENTRAL_CONNECTED);
         }
 #endif
         break;
@@ -410,26 +635,13 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
-          if (bleInTask(BLETASK_BONDING))
-            bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Disconnected"));
-          JsVar *gattServer = bleGetActiveBluetoothGattServer();
-          if (gattServer) {
-            JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
-            jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
-            if (bluetoothDevice) {
-              // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
-              JsVar *reason = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.disconnected.reason);
-              jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", &reason, 1);
-              jsvUnLock(reason);
-              jshHadEvent();
-            }
-            jsvUnLock2(gattServer, bluetoothDevice);
-          }
+          jsble_queue_pending_d(BLEP_GATT_SERVER_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
+
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
-          bleSetActiveBluetoothGattServer(0);
+
           BleTask task = bleGetCurrentTask();
           if (BLETASK_IS_CENTRAL(task)) {
-            bleCompleteTaskFailAndUnLock(task, jsvNewFromString("Disconnected"));
+            jsble_queue_pending(BLEP_TASK_FAIL_DISCONNECTED);
           }
         } else
 #endif
@@ -442,9 +654,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
             jsble_advertising_start();
-          JsVar *reason = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.disconnected.reason);
-          bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
-          jshHadEvent();
+          jsble_queue_pending_d(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
           jsble_restart_softdevice();
@@ -454,24 +664,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
       case BLE_GAP_EVT_RSSI_CHANGED: 
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
-          JsVar *gattServer = bleGetActiveBluetoothGattServer();
-          if (gattServer) {
-            JsVar *rssi = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
-            JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
-            if (bluetoothDevice) {
-              jsvObjectSetChild(bluetoothDevice, "rssi", rssi);
-            }
-            jsiQueueObjectCallbacks(gattServer, BLE_RSSI_EVENT, &rssi, 1);
-            jshHadEvent();
-            jsvUnLock3(rssi, gattServer, bluetoothDevice);
-          }
+          jsble_queue_pending_d(BLEP_RSSI_CENTRAL, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
         } else
 #endif    
         {
-          JsVar *evt = jsvNewFromInteger(p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
-          if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
-          jsvUnLock(evt);
-          jshHadEvent();
+          jsble_queue_pending_d(BLEP_RSSI_PERIPH, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
         }
         break;
 
@@ -579,16 +776,55 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
           }
       } break; // BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST
 
-#if (NRF_SD_BLE_API_VERSION == 3)
+#if (NRF_SD_BLE_API_VERSION >= 3)
       case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST:
           err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                      NRF_BLE_MAX_MTU_SIZE);
           APP_ERROR_CHECK(err_code);
           break; // BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST
 #endif
+#if (NRF_SD_BLE_API_VERSION >= 4)
+          case BLE_GAP_EVT_DATA_LENGTH_UPDATE_REQUEST:{
+            /* Allow SoftDevice to choose Data Length Update Procedure parameters
+            automatically. */
+            sd_ble_gap_data_length_update(p_ble_evt->evt.gap_evt.conn_handle, NULL, NULL);
+            break;
+          }
+          case BLE_GAP_EVT_DATA_LENGTH_UPDATE:{
+            /* Data Length Update Procedure completed, see
+            p_ble_evt->evt.gap_evt.params.data_length_update.effective_params for negotiated
+            parameters. */
+            break;
+          }
+#endif
+#if (NRF_SD_BLE_API_VERSION >= 5)
+          case BLE_GAP_EVT_PHY_UPDATE_REQUEST: {
+            /* The PHYs requested by the peer can be read from the event parameters:
+            p_ble_evt->evt.gap_evt.params.phy_update_request.peer_preferred_phys.
+            * Note that the peer's TX correponds to our RX and vice versa. */
+            /* Allow SoftDevice to choose PHY Update Procedure parameters automatically. */
+            ble_gap_phys_t phys = {BLE_GAP_PHY_AUTO, BLE_GAP_PHY_AUTO};
+            sd_ble_gap_phy_update(p_ble_evt->evt.gap_evt.conn_handle, &phys);
+            break;
+          }
+          case BLE_GAP_EVT_PHY_UPDATE: {
+            if (p_ble_evt->evt.gap_evt.params.phy_update.status == BLE_HCI_STATUS_CODE_SUCCESS) {
+              /* PHY Update Procedure completed, see
+              p_ble_evt->evt.gap_evt.params.phy_update.tx_phy and
+              p_ble_evt->evt.gap_evt.params.phy_update.rx_phy for the currently active PHYs of
+              the link. */
+            }
+            break;
+          }
+#endif
 
-
+#if NRF_SD_BLE_API_VERSION<5
       case BLE_EVT_TX_COMPLETE:
+#else
+      case BLE_GATTC_EVT_WRITE_CMD_TX_COMPLETE: // Write without Response transmission complete.
+      case BLE_GATTS_EVT_HVN_TX_COMPLETE: // Handle Value Notification transmission complete
+        // FIXME: was just BLE_EVT_TX_COMPLETE - do we now get called twice in some cases?
+#endif
         // BLE transmit finished - reset flags
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.common_evt.conn_handle == m_central_conn_handle) {
@@ -597,8 +833,12 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
         }
 #endif
         if (p_ble_evt->evt.common_evt.conn_handle == m_conn_handle) {
-          //TODO: probably want to figure out *which one* finished?
+          //TODO: probably want to figure out *which write* finished?
           bleStatus &= ~BLE_IS_SENDING;
+#if NRF_SD_BLE_API_VERSION>=5
+          if (bleStatus & BLE_NUS_INITED) // push more UART data out if we can
+            nus_transmit_string();
+#endif
           if (bleStatus & BLE_IS_SENDING_HID) {
             bleStatus &= ~BLE_IS_SENDING_HID;
             jsiQueueObjectCallbacks(execInfo.root, BLE_HID_SENT_EVENT, 0, 0);
@@ -610,29 +850,17 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
       case BLE_GAP_EVT_ADV_REPORT: {
         // Advertising data received
+        // TODO: actually push advertising data onto queue (this method can occasionally lose advertising reports)
         const ble_gap_evt_adv_report_t *p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
-
-        JsVar *evt = jsvNewObject();
-        if (evt) {
-          jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
-          //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(p_adv->peer_addr.addr_type));
-          jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
-          JsVar *data = jsvNewStringOfLength(p_adv->dlen, (char*)p_adv->data);
-          if (data) {
-            JsVar *ab = jsvNewArrayBufferFromString(data, p_adv->dlen);
-            jsvUnLock(data);
-            jsvObjectSetChildAndUnLock(evt, "data", ab);
-          }
-          // push onto queue
-          jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
-          jsvUnLock(evt);
-          jshHadEvent();
-        }
+        blePendingAdvReport = *p_adv;
+        jsble_queue_pending(BLEP_ADV_REPORT);
         break;
         }
 
       case BLE_GATTS_EVT_WRITE: {
-        ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
+        const ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
+        // TODO: detect if this was a nus write. If so, DO NOT create an event for it!
+        // TODO: move to writing via event queue with jsble_queue_pending
         // We got a param write event - add this to the object callback queue
         JsVar *evt = jsvNewObject();
         if (evt) {
@@ -662,7 +890,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
             int i;
             // Should actually return 'BLEService' object here
             for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++) {
-              ble_gattc_service_t *p_srv = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i];
+              const ble_gattc_service_t *p_srv = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i];
               // filter based on bleUUIDFilter if it's not invalid
               if (bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN)
                 if (!bleUUIDEqual(p_srv->uuid, bleUUIDFilter)) continue;
@@ -705,7 +933,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
             p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count!=0) {
           int i;
           for (i=0;i<p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count;i++) {
-            ble_gattc_char_t *p_chr = &p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[i];
+            const ble_gattc_char_t *p_chr = &p_ble_evt->evt.gattc_evt.params.char_disc_rsp.chars[i];
             // filter based on bleUUIDFilter if it's not invalid
             if (bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN)
               if (!bleUUIDEqual(p_chr->uuid, bleUUIDFilter)) continue;
@@ -761,7 +989,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
       case BLE_GATTC_EVT_DESC_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY)) {
         // trigger this with sd_ble_gattc_descriptors_discover(conn_handle, &handle_range);
         uint16_t cccd_handle = 0;
-        ble_gattc_evt_desc_disc_rsp_t * p_desc_disc_rsp_evt = &p_ble_evt->evt.gattc_evt.params.desc_disc_rsp;
+        const ble_gattc_evt_desc_disc_rsp_t * p_desc_disc_rsp_evt = &p_ble_evt->evt.gattc_evt.params.desc_disc_rsp;
         if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
           // The descriptor was found at the peer.
           // If the descriptor was a CCCD, then the cccd_handle needs to be populated.
@@ -788,7 +1016,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
       }
 
       case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) {
-        ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
+        const ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
 
         JsVar *data = jsvNewDataViewWithData(p_read->len, (unsigned char*)&p_read->data[0]);
         jsvObjectSetChild(bleTaskInfo, "value", data); // set this.value
@@ -806,7 +1034,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
       case BLE_GATTC_EVT_HVX: {
         // Notification/Indication
-        ble_gattc_evt_hvx_t *p_hvx = &p_ble_evt->evt.gattc_evt.params.hvx;
+        const ble_gattc_evt_hvx_t *p_hvx = &p_ble_evt->evt.gattc_evt.params.hvx;
         // p_hvx>type is BLE_GATT_HVX_NOTIFICATION or BLE_GATT_HVX_INDICATION
         JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", 0);
         if (handles) {
@@ -815,7 +1043,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
             // Set characteristic.value, and return {target:characteristic}
             jsvObjectSetChildAndUnLock(characteristic, "value",
                 jsvNewDataViewWithData(p_hvx->len, (unsigned char*)p_hvx->data));
-
+            // TODO: queue event with jsble_queue_pending
             JsVar *evt = jsvNewObject();
             if (evt) {
               jsvObjectSetChild(evt, "target", characteristic);
@@ -838,15 +1066,59 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
 #ifdef USE_NFC
 /// Callback function for handling NFC events.
-static void nfc_callback(void * p_context, nfc_t2t_event_t event, const uint8_t * p_data, size_t data_length) {
+static void nfc_callback(void * p_context, hal_nfc_event_t event, const uint8_t * p_data, size_t data_length) {
   (void)p_context;
 
   switch (event) {
-    case NFC_T2T_EVENT_FIELD_ON:
-      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCon", 0);
+    case HAL_NFC_EVENT_FIELD_ON:
+      jsble_queue_pending_d(BLEP_NFC_STATUS,1);
       break;
-    case NFC_T2T_EVENT_FIELD_OFF:
-      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCoff", 0);
+    case HAL_NFC_EVENT_FIELD_OFF:
+      jsble_queue_pending_d(BLEP_NFC_STATUS,0);
+      break;
+    case HAL_NFC_EVENT_DATA_RECEIVED: {
+      /* try to fetch NfcData data */
+      JsVar *nfcData = jsvObjectGetChild(execInfo.hiddenRoot, "NfcData", 0);
+      if(nfcData) {
+        /* success handle request internally */
+        JSV_GET_AS_CHAR_ARRAY(nfcDataPtr, nfcDataLen, nfcData);
+        jsvUnLock(nfcData);
+
+        /* check data, on error let request go into timeout - reader will retry. */
+        if (!nfcDataPtr || !nfcDataLen) {
+          break;
+        }
+
+        /* check rx data length and read block command code (0x30) */
+        if(data_length < 2 || p_data[0] != 0x30) {
+          jsble_nfc_send_rsp(0, 0); /* switch to rx */
+          break;
+        }
+
+        /* fetch block index (addressing is done in multiples of 4 byte */
+        size_t idx = p_data[1] * 4;
+
+        /* assemble 16 byte block */
+        uint8_t buf[16]; memset(buf, '\0', 16);
+        if(idx + 16 < nfcDataLen) {
+          memcpy(buf, nfcDataPtr + idx, 16);
+        } else
+        if(idx < nfcDataLen) {
+          memcpy(buf, nfcDataPtr + idx, nfcDataLen - idx);
+        }
+        /* send response */
+        jsble_nfc_send(buf, 16);
+      } else {
+        /* no NfcData available, fire js-event */
+        char *ptr = 0;
+        JsVar *arr = jsvNewArrayBufferWithPtr((unsigned int)data_length, &ptr);
+        if (ptr) memcpy(ptr, p_data, data_length);
+        bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCrx", arr);
+      }
+      break;
+    }
+    case HAL_NFC_EVENT_DATA_TRANSMITTED:
+      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCtx", 0);
       break;
     default:
       break;
@@ -854,6 +1126,7 @@ static void nfc_callback(void * p_context, nfc_t2t_event_t event, const uint8_t 
 }
 #endif
 
+#if NRF_SD_BLE_API_VERSION<5
 /// Function for dispatching a SoftDevice event to all modules with a SoftDevice event handler.
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 #if PEER_MANAGER_ENABLED
@@ -874,22 +1147,40 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
   if (bleStatus & BLE_HID_INITED)
     ble_hids_on_ble_evt(&m_hids, p_ble_evt);
 #endif
-  on_ble_evt(p_ble_evt);
+  ble_evt_handler(p_ble_evt);
 }
-
+#endif
 
 /// Function for dispatching a system event to interested modules.
-static void sys_evt_dispatch(uint32_t sys_evt) {
+#if NRF_SD_BLE_API_VERSION<5
+static void soc_evt_handler(uint32_t sys_evt) {
 #if PEER_MANAGER_ENABLED
   // Dispatch the system event to the fstorage module, where it will be
   // dispatched to the Flash Data Storage (FDS) module.
   fs_sys_event_handler(sys_evt);
+#endif
+#else
+static void soc_evt_handler(uint32_t sys_evt, void * p_context) {
 #endif
   void jsh_sys_evt_handler(uint32_t sys_evt);
   jsh_sys_evt_handler(sys_evt);
 }
 
 #if PEER_MANAGER_ENABLED
+/**@brief Function for handling File Data Storage events.
+ *
+ * @param[in] p_evt  Peer Manager event.
+ * @param[in] cmd
+ */
+static void fds_evt_handler(fds_evt_t const * const p_evt)
+{
+    if (p_evt->id == FDS_EVT_GC)
+    {
+        NRF_LOG_DEBUG("GC completed\n");
+    }
+}
+
+
 /// Function for handling Peer Manager events.
 static void pm_evt_handler(pm_evt_t const * p_evt) {
     ret_code_t err_code;
@@ -1002,7 +1293,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_ERROR_UNEXPECTED:
             // Assert.
-            APP_ERROR_CHECK(p_evt->params.error_unexpected.error);
+            jsWarn("PM: PM_EVT_ERROR_UNEXPECTED %d", p_evt->params.error_unexpected.error);
+            //APP_ERROR_CHECK(p_evt->params.error_unexpected.error);
             break;
 
         case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
@@ -1027,7 +1319,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_PEERS_DELETE_FAILED:
             // Assert.
-            APP_ERROR_CHECK(p_evt->params.peers_delete_failed_evt.error);
+            jsWarn("PM: PM_EVT_PEERS_DELETE_FAILED %d", p_evt->params.peers_delete_failed_evt.error);
+            //APP_ERROR_CHECK(p_evt->params.peers_delete_failed_evt.error);
             break;
 
         case PM_EVT_LOCAL_DB_CACHE_APPLIED:
@@ -1151,7 +1444,7 @@ static void gap_params_init() {
     APP_ERROR_CHECK(err_code);
 }
 
-uint32_t radio_notification_init(uint32_t irq_priority, uint8_t notification_type, uint8_t notification_distance) {
+static uint32_t radio_notification_init(uint32_t irq_priority, uint8_t notification_type, uint8_t notification_distance) {
     uint32_t err_code;
 
     err_code = sd_nvic_ClearPendingIRQ(SWI1_IRQn);
@@ -1202,6 +1495,20 @@ static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size)
     }
 }
 
+static uint32_t flash_end_addr(void)
+{
+#if NRF_SD_BLE_API_VERSION>=5
+// Copied from fds.c because this isn't exported :(
+    uint32_t const bootloader_addr = NRF_UICR->NRFFW[0];
+    uint32_t const page_sz         = NRF_FICR->CODEPAGESIZE;
+    uint32_t const code_sz         = NRF_FICR->CODESIZE;
+    return (bootloader_addr != 0xFFFFFFFF) ? bootloader_addr : (code_sz * page_sz);
+#else
+    return (uint32_t)FS_PAGE_END_ADDR;
+#endif
+}
+
+
 static void peer_manager_init(bool erase_bonds) {
 
   /* Only initialise the peer manager once. This stops
@@ -1213,7 +1520,7 @@ static void peer_manager_init(bool erase_bonds) {
   This happens if we had a pre-1v92 firmware with saved code
   and then updated to something with peer manager so the pages
   got swapped around */
-  uint32_t *magicWord = ((uint32_t *)FS_PAGE_END_ADDR)-1;
+  uint32_t *magicWord = ((uint32_t *)flash_end_addr())-1;
   /* If the button is pressed at boot, clear out flash
    * pages as well. Nice easy way to reset! */
   bool buttonPressed = false;
@@ -1223,7 +1530,7 @@ static void peer_manager_init(bool erase_bonds) {
   if (FLASH_MAGIC == *magicWord || buttonPressed) {
     int i;
     for (i=1;i<=FDS_PHY_PAGES;i++)
-      jshFlashErasePage(((uint32_t)FS_PAGE_END_ADDR) - i*FS_PAGE_SIZE);
+      jshFlashErasePage((flash_end_addr()) - i*FDS_PHY_PAGE_SIZE);
   }
 
 
@@ -1259,6 +1566,9 @@ static void peer_manager_init(bool erase_bonds) {
   APP_ERROR_CHECK(err_code);
 
   err_code = pm_register(pm_evt_handler);
+  APP_ERROR_CHECK(err_code);
+
+  err_code = fds_register(fds_evt_handler);
   APP_ERROR_CHECK(err_code);
 
   memset(m_whitelist_peers, PM_PEER_ID_INVALID, sizeof(m_whitelist_peers));
@@ -1414,6 +1724,8 @@ static void services_init() {
 
 /// Function for the SoftDevice initialization.
 static void ble_stack_init() {
+#if NRF_SD_BLE_API_VERSION<5
+
     uint32_t err_code;
 
     // TODO: enable if we're on a device with 32kHz xtal
@@ -1447,7 +1759,7 @@ static void ble_stack_init() {
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT, PERIPHERAL_LINK_COUNT);
 
     // Enable BLE stack.
-#if (NRF_SD_BLE_API_VERSION == 3)
+#if (NRF_SD_BLE_API_VERSION >= 3)
     ble_enable_params.gatt_enable_params.att_mtu = NRF_BLE_MAX_MTU_SIZE;
 #endif
     err_code = softdevice_enable(&ble_enable_params);
@@ -1458,13 +1770,39 @@ static void ble_stack_init() {
     APP_ERROR_CHECK(err_code);
 
     // Register with the SoftDevice handler module for BLE events.
-    err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
+    err_code = softdevice_sys_evt_handler_set(soc_evt_handler);
     APP_ERROR_CHECK(err_code);
+
+
+#else
+    ret_code_t err_code;
+
+    err_code = nrf_sdh_enable_request();
+    APP_ERROR_CHECK(err_code);
+
+    // Configure the BLE stack using the default settings.
+    // Fetch the start address of the application RAM.
+    uint32_t ram_start = 0;
+    err_code = nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ram_start);
+    APP_ERROR_CHECK(err_code);
+
+    // Enable BLE stack.
+    err_code = nrf_sdh_ble_enable(&ram_start);
+    APP_ERROR_CHECK(err_code);
+
+    // Register a handler for BLE events.
+    NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
+    NRF_SDH_SOC_OBSERVER(m_soc_observer, APP_SOC_OBSERVER_PRIO, soc_evt_handler, NULL);
+#endif
 
 #if defined(PUCKJS) || defined(RUUVITAG)
     // can only be enabled if we're sure we have a DC-DC
     err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
     APP_ERROR_CHECK(err_code);
+#endif
+#ifdef DEBUG
+    // disable watchdog timer in debug mode, so we can use GDB
+    NRF_WDT->CONFIG &= ~8;
 #endif
 }
 
@@ -1534,7 +1872,11 @@ void jsble_advertising_start() {
   adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
   adv_params.interval = bleAdvertisingInterval;
 
+#if NRF_SD_BLE_API_VERSION<5
   sd_ble_gap_adv_start(&adv_params);
+#else
+  sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
+#endif
   bleStatus |= BLE_IS_ADVERTISING;
 }
 
@@ -1546,9 +1888,19 @@ void jsble_advertising_stop() {
 
 /** Initialise the BLE stack */
  void jsble_init() {
+   uint32_t err_code;
    ble_stack_init();
+   err_code = radio_notification_init(
+ #ifdef NRF52
+                           6, /* IRQ Priority -  Must be 6 on nRF52. 7 doesn't work */
+ #else
+                           3, /* IRQ Priority -  nRF51 has different IRQ structure */
+ #endif
+                           NRF_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH,
+                           NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
+   APP_ERROR_CHECK(err_code);
 #if PEER_MANAGER_ENABLED
-   peer_manager_init(true /*erase_bonds*/);
+   peer_manager_init(false /*don't erase_bonds*/);
 #endif
    gap_params_init();
    services_init();
@@ -1556,15 +1908,6 @@ void jsble_advertising_stop() {
    conn_params_init();
 
    jswrap_nrf_bluetooth_wake();
-
-   radio_notification_init(
- #ifdef NRF52
-                           6, /* IRQ Priority -  Must be 6 on nRF52. 7 doesn't work */
- #else
-                           3, /* IRQ Priority -  nRF51 has different IRQ structure */
- #endif
-                           NRF_RADIO_NOTIFICATION_TYPE_INT_ON_INACTIVE,
-                           NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
 }
 
 /** Completely deinitialise the BLE stack */
@@ -1830,33 +2173,63 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
 
 #ifdef USE_NFC
 void jsble_nfc_stop() {
-  if (!nfcEnabled) return;
   nfcEnabled = false;
-  nfc_t2t_emulation_stop();
-  nfc_t2t_done();
+  hal_nfc_stop();
+  hal_nfc_done();
 }
 
-void jsble_nfc_start(const uint8_t *data, size_t len) {
-  if (nfcEnabled) jsble_nfc_stop();
+void jsble_nfc_get_internal(uint8_t *data, size_t *max_len) {
 
   uint32_t ret_val;
 
-  ret_val = nfc_t2t_setup(nfc_callback, NULL);
+  ret_val = hal_nfc_parameter_get(HAL_NFC_PARAM_ID_INTERNAL, data, max_len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcGetInternal: Got NFC error code %d", ret_val);
+}
+
+void jsble_nfc_start(const uint8_t *data, size_t len) {
+  jsble_nfc_stop();
+
+  uint32_t ret_val;
+
+  /* Set UID / UID Length */
+  if (len)
+    ret_val = hal_nfc_parameter_set(HAL_NFC_PARAM_ID_UID, data, len);
+  else
+    ret_val = hal_nfc_parameter_set(HAL_NFC_PARAM_ID_UID, "\0\0\0\0\0\0\0", 7);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSetUid: Got NFC error code %d", ret_val);
+
+  ret_val = hal_nfc_setup(nfc_callback, NULL);
   if (ret_val)
     return jsExceptionHere(JSET_ERROR, "nfcSetup: Got NFC error code %d", ret_val);
 
-  nfcEnabled = true;
-
-  /* Set created message as the NFC payload */
-  ret_val = nfc_t2t_payload_set( data, len);
-  if (ret_val)
-    return jsExceptionHere(JSET_ERROR, "nfcSetPayload: NFC error code %d", ret_val);
-
   /* Start sensing NFC field */
-  ret_val = nfc_t2t_emulation_start();
+  ret_val = hal_nfc_start();
   if (ret_val)
     return jsExceptionHere(JSET_ERROR, "nfcStartEmulation: NFC error code %d", ret_val);
 
+  nfcEnabled = true;
+}
+
+void jsble_nfc_send(const uint8_t *data, size_t len) {
+  if (!nfcEnabled) return;
+
+  uint32_t ret_val;
+
+  ret_val = hal_nfc_send(data, len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSend: NFC error code %d", ret_val);
+}
+
+void jsble_nfc_send_rsp(const uint8_t data, size_t len) {
+  if (!nfcEnabled) return;
+
+  uint32_t ret_val;
+
+  ret_val = hal_nfc_send_rsp(data, len);
+  if (ret_val)
+    return jsExceptionHere(JSET_ERROR, "nfcSend: NFC error code %d", ret_val);
 }
 #endif
 
@@ -1888,7 +2261,11 @@ void jsble_central_connect(ble_gap_addr_t peer_addr) {
   ble_gap_addr_t addr;
   addr = peer_addr;
 
+#if NRF_SD_BLE_API_VERSION<5
   err_code = sd_ble_gap_connect(&addr, &m_scan_param, &gap_conn_params);
+#else
+  err_code = sd_ble_gap_connect(&addr, &m_scan_param, &gap_conn_params, APP_BLE_CONN_CFG_TAG);
+#endif
   JsVar *errStr = jsble_get_error_string(err_code);
   if (errStr) {
     bleCompleteTaskFail(BLETASK_CONNECT, errStr);

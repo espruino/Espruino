@@ -34,6 +34,8 @@ info = {
    'makefile' : [
      'SAVE_ON_FLASH=1',
      'DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE',
+     'INCLUDE += -I$(ROOT)/libs/microbit',
+     'WRAPPERSOURCES += libs/microbit/jswrap_microbit.c'
    ]
  }
 };

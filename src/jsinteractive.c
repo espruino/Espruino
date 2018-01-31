@@ -26,6 +26,7 @@
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
 #include "jsnative.h" // jsnSanityTest
 #ifdef BLUETOOTH
+#include "bluetooth.h"
 #include "jswrap_bluetooth.h"
 #endif
 
@@ -948,7 +949,6 @@ bool jsiIsInHistory(JsVar *line) {
 
 void jsiReplaceInputLine(JsVar *newLine) {
   if (jsiShowInputLine()) {
-    size_t oldLen =  jsvGetStringLength(inputLine);
     jsiMoveCursorChar(inputLine, inputCursorPos, 0); // move cursor to start
     jsiConsoleEraseAfterCursor(); // delete all to right and down
     jsiConsolePrintStringVarWithNewLineChar(newLine,0,':');
@@ -1102,6 +1102,7 @@ void jsiCheckErrors() {
     jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted during event processing.\n");
   }
+  bool reportedError = false;
   JsVar *exception = jspGetException();
   if (exception) {
     JsVar *process = jsvObjectGetChild(execInfo.root, "process", 0);
@@ -1118,6 +1119,7 @@ void jsiCheckErrors() {
   if (exception) {
     jsiConsoleRemoveInputLine();
     jsiConsolePrintf("Uncaught %v\n", exception);
+    reportedError = true;
     if (jsvIsObject(exception)) {
       JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
       if (stackTrace) {
@@ -1135,10 +1137,12 @@ void jsiCheckErrors() {
     jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted\n");
     jspSetInterrupted(false);
+    reportedError = true;
   }
   JsVar *stackTrace = jspGetStackTrace();
   if (stackTrace) {
-    jsiConsolePrintStringVar(stackTrace);
+    if (reportedError)
+      jsiConsolePrintStringVar(stackTrace);
     jsvUnLock(stackTrace);
   }
   if (lastJsErrorFlags != jsErrorFlags) {
@@ -1720,21 +1724,12 @@ void jsiCtrlC() {
   execInfo.execute |= EXEC_CTRL_C;
 }
 
-/** Take an event for a UART and handle the chareacters we're getting, potentially
- * grabbing more characters as well if it's easy. If more character events are
- * grabbed, the number of extra events (not characters) is returned */
-int jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
-  int eventsHandled = 0;
-  /* work out byteSize. On STM32 we fake 7 bit, and it's easier to
-   * check the options and work out the masking here than it is to
-   * do it in the IRQ */
-  unsigned char bytesize = 8;
-  JsVar *options = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
-  if(jsvIsObject(options)) {
-    unsigned char c = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
-    if (c>=7 && c<10) bytesize = c;
-  }
-  jsvUnLock(options);
+/** Grab as many characters as possible from the event queue for the given event
+   and return a JsVar containing them. 'eventsHandled' is set to the number of
+   extra events (not characters) is returned */
+static JsVar *jsiExtractIOEventData(IOEvent *event, int *eventsHandled) {
+  assert(eventsHandled);
+  *eventsHandled = 0;
 
   JsVar *stringData = jsvNewFromEmptyString();
   if (stringData) {
@@ -1744,19 +1739,28 @@ int jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
     int i, chars = IOEVENTFLAGS_GETCHARS(event->flags);
     while (chars) {
       for (i=0;i<chars;i++) {
-        char ch = (char)(event->data.chars[i] & ((1<<bytesize)-1)); // mask
-        jsvStringIteratorAppend(&it, ch);
+        jsvStringIteratorAppend(&it, event->data.chars[i]);
       }
       // look down the stack and see if there is more data
       if (jshIsTopEvent(IOEVENTFLAGS_GETTYPE(event->flags))) {
         jshPopIOEvent(event);
-        eventsHandled++;
+        (*eventsHandled)++;
         chars = IOEVENTFLAGS_GETCHARS(event->flags);
       } else
         chars = 0;
     }
     jsvStringIteratorFree(&it);
+  }
+  return stringData;
+}
 
+/** Take an event for a UART and handle the characters we're getting, potentially
+ * grabbing more characters as well if it's easy. If more character events are
+ * grabbed, the number of extra events (not characters) is returned */
+int jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
+  int eventsHandled = 0;
+  JsVar *stringData = jsiExtractIOEventData(event,  &eventsHandled);
+  if (stringData) {
     // Now run the handler
     jswrap_stream_pushData(usartClass, stringData, true);
     jsvUnLock(stringData);
@@ -1811,6 +1815,10 @@ void jsiIdle() {
           jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
       }
       jsvUnLock(usartClass);
+#ifdef BLUETOOTH
+    } else if (eventType == EV_BLUETOOTH_PENDING) {
+      jsble_exec_pending(&event);
+#endif
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...
       // Check everything in our Watch array

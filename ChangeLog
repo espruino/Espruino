@@ -1,4 +1,24 @@
-            nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
+            ESP8266: no callback if SSID is not available (fix #1297)
+            ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)
+            ESP8266: cleanup defines WIFI_DBG and NET_DBG for RELEASE
+            ESP8266: switch to single ld file eagle.app.v6.new.2048.ld for ESP8266_4MB board
+            Allow JS modules to be built-in by adding files to JSMODULESOURCES
+            Fix slow/hacky handling of 7 bit serial data for STM32
+            Add more stack checks so invalid code `typeof typeof typeof x100` can't break stack (fix #1310)
+            nRF5x: Fix PWM output via Waveform class
+            Fix free stack checking on ARM
+            nRF52: Make slightly more space available for stack
+            nRF5x: Move to SDK 12.3
+            Stop stack traces from being gathered in functions for Ctrl-C (fix #1313)
+            nRF5x: Fix crash if I2C is used before being initialised (fix #1301)
+            Internal printf can now pad with spaces
+            Add `E.dumpFreeList` in non-release builds to help with debugging
+            Fix mild memory leak in jsvMakeIntoVariableName that caused GC to run more often than normal
+            E.toString now tries harder to allocate a Flat String, and works with no-alloc for Uint8Array/FlatStrings
+            WIO_LTE fix SD card initialisation
+            Improve SD card reliability on all boards by trying to initialise multiple times before failing
+  
+     1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line
             Internal: Added initialiser argument to jsvNewStringOfLength
             Internal: Added jsvObjectSetChildVar/jsvObjectSetChildVar/jsvObjectSetChildVar
@@ -16,7 +36,7 @@
             ESP8266: move code save section to fist partition for memory mapping for ESP8266_4MB (fix #1240)
             ESP8266: Add GPIO16 as D16 without watch (#1206) but soft PWM/I2C/SPI/etc 
             ESP8266: Remove osprintf for RELEASE=1 
-            Networkjs now forwards `socketType` - laying groundwork for UDP over AT command (#1232)
+            Internal: Networkjs now forwards `socketType` - laying groundwork for UDP over AT command (#1232)
             Added simple RegExp implemention (partial fix #256)
             Speed up JSON.stringify for Arrays, and output non-numeric array elements in REPL (fix #64)
             nRF5x: Bump nRF52-based boards variable count from 2000 to 2500 (fix #1215)
@@ -31,13 +51,22 @@
             nRF5x: Fix memory leak on BLE notifications
             Ensure net/http .listen return the server instance (fix #1276)
             nRF5x: Allow Manufacturer Data to be specified with setAdvertising
-            Fix memory leak in jsvArrayPushAll
+            Internal: Fix memory leak in jsvArrayPushAll
             nRF5x: jsvArrayPushAll memory leak fixes NRF.findDevices memory leak when services present
-            jsvNewIterator now has an option to iterate over sparse arrays as if they weren't sparse
+            Internal: jsvNewIterator now has an option to iterate over sparse arrays as if they weren't sparse
             Fixed some built-in functions that misbehaved when given sparse arrays
             Puck.js: Allow flash memory protection to be overwridden with E.setFlags
             Fix lexing of '/*/' as a complete block comment
             nRF5x: Add support for negating pins in software (eg. buttons/LEDs)
+            Add `E.setFlags({unsyncFiles:1}` which doesn't sync the file to the SD card after each write - it's *much* faster
+            Filesystem API now uses flat strings (avoiding the 512 byte copy for each call)
+            Increase default internal SD card bitrate to 4MHz (from 100k)
+            nRF5x: Handle promise completions and advertising using IO queue, to avoid MEMORY_BUSY messages (#1277)
+            Allow E.HSBtoRGB to wrap 'hue' value, and allow it to return an array of [r,g,b] (fix #1283)
+            Remove spikes when changing pin state (fix #1274)
+            Changes to reduce code duplication in jswrapper.c
+            Fix `E.setBootCode` when no argument is supplied
+            Add WIZnet W5500 support to Espruino WiFi build
 
      1v94 : Allow Espruino boards to reset straight out of the DFU Bootloader             
             Improvements in handling errors in code running in IRQs

@@ -338,7 +338,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     return 0;
   }
   if (length==0) {
-    length = (JsVarInt)((jsvGetArrayBufferLength(arrayBuffer)-byteOffset) / JSV_ARRAYBUFFER_GET_SIZE(type)); 
+    length = ((JsVarInt)jsvGetArrayBufferLength(arrayBuffer)-byteOffset) / (JsVarInt)JSV_ARRAYBUFFER_GET_SIZE(type); 
     if (length<0) length=0;
   }
   JsVar *typedArr = jsvNewWithFlags(JSV_ARRAYBUFFER);

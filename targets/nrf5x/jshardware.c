@@ -57,7 +57,9 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_drv_spi.h"
 
 #include "nrf5x_utils.h"
+#if NRF_SD_BLE_API_VERSION<5
 #include "softdevice_handler.h"
+#endif
 
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
 
@@ -76,6 +78,11 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+// Current values used in PWM channel counters
+static uint16_t pwmValues[3][4];
+// Current values used in main PWM counters
+static uint16_t pwmCounters[3];
+
 /// For flash - whether it is busy or not...
 volatile bool flashIsBusy = false;
 volatile bool hadEvent = false; // set if we've had an event we need to deal with
@@ -101,7 +108,6 @@ const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
   return 0;
 }
-
 
 /// Called when we have had an event that means we should execute JS
 void jshHadEvent() {
@@ -147,6 +153,11 @@ NRF_PWM_Type *nrf_get_pwm(JshPinFunction func) {
 #endif
 
 static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
+#if JSH_PORTV_COUNT>0
+  // don't handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return;
+#endif
   JshPinFunction fType = func&JSH_MASK_TYPE;
   JshPinFunction fInfo = func&JSH_MASK_INFO;
   switch (fType) {
@@ -203,6 +214,11 @@ void jshResetPeripherals() {
   // Set pin state to input disconnected - saves power
   Pin i;
   for (i=0;i<JSH_PIN_COUNT;i++) {
+#if JSH_PORTV_COUNT>0
+    // don't reset virtual pins
+    if ((pinInfo[i].port & JSH_PORT_MASK)==JSH_PORTV)
+      continue;
+#endif
 #ifdef DEFAULT_CONSOLE_TX_PIN
     if (i==DEFAULT_CONSOLE_TX_PIN) continue;
 #endif
@@ -214,9 +230,15 @@ void jshResetPeripherals() {
     }
   }
   BITFIELD_CLEAR(jshPinSoftPWM);
+
+#if JSH_PORTV_COUNT>0
+  jshVirtualPinInitialise();
+#endif
 }
 
 void jshInit() {
+  memset(pinStates, 0, sizeof(pinStates));
+
   jshInitDevices();
   jshResetPeripherals();
 
@@ -271,7 +293,11 @@ void jshInit() {
   uint32_t err_code;
   nrf_drv_gpiote_init();
 #ifdef BLUETOOTH
+#if NRF_SD_BLE_API_VERSION<5
   APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
+#else
+  app_timer_init();
+#endif
   jsble_init();
 
   err_code = app_timer_create(&m_wakeup_timer_id,
@@ -389,12 +415,26 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
+  assert(jshIsPinValid(pin));
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinSetValue(pin, value);
+#endif
   nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
 }
 
 bool jshPinGetValue(Pin pin) {
-  bool value = nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
+  assert(jshIsPinValid(pin));
+  bool value;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    value = jshVirtualPinGetValue(pin);
+  else
+#endif
+  value = nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
   return value;
 }
@@ -414,6 +454,11 @@ void jshPinSetState(Pin pin, JshPinState state) {
     if (state==JSHPINSTATE_GPIO_IN_PULLUP) state=JSHPINSTATE_GPIO_IN_PULLDOWN;
     else if (state==JSHPINSTATE_GPIO_IN_PULLDOWN) state=JSHPINSTATE_GPIO_IN_PULLUP;
   }
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinSetState(pin, state);
+#endif
 
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   switch (state) {
@@ -469,6 +514,11 @@ void jshPinSetState(Pin pin, JshPinState state) {
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin) {
   assert(jshIsPinValid(pin));
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return JSHPINSTATE_UNDEFINED;
+#endif
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   uint32_t p = NRF_GPIO->PIN_CNF[ipin];
   if ((p&GPIO_PIN_CNF_DIR_Msk)==(GPIO_PIN_CNF_DIR_Output<<GPIO_PIN_CNF_DIR_Pos)) {
@@ -643,13 +693,18 @@ JshPinFunction jshGetFreeTimer(JsVarFloat freq) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
-  if (pinInfo[pin].port & JSH_PIN_NEGATED)
-    value = 1-value;
 #ifdef NRF52
   // Try and use existing pin function
   JshPinFunction func = pinStates[pin];
+
   // If it's not a timer, try and find one
   if (!JSH_PINFUNCTION_IS_TIMER(func)) {
+#if JSH_PORTV_COUNT>0
+    // don't handle virtual ports (eg. pins on an IO Expander)
+    if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+      func = 0;
+    else
+#endif
     func = jshGetFreeTimer(freq);
   }
   /* we set the bit field here so that if the user changes the pin state
@@ -672,6 +727,11 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
     jsExceptionHere(JSET_ERROR, "No free Hardware PWMs. Try not specifying a frequency, or using analogWrite(pin, val, {soft:true}) for Software PWM\n");
     return 0;
   }
+
+  /* if negated... No need to invert when doing SW PWM
+  as the SW output is already negating it! */
+  if (pinInfo[pin].port & JSH_PIN_NEGATED)
+    value = 1-value;
 
   NRF_PWM_Type *pwm = nrf_get_pwm(func);
   if (!pwm) { assert(0); return 0; };
@@ -727,20 +787,38 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 
   int timer = ((func&JSH_MASK_TYPE)-JSH_TIMER1) >> JSH_SHIFT_TYPE;
   int channel = (func&JSH_MASK_INFO) >> JSH_SHIFT_INFO;
-
-  static uint16_t pwmValues[3][4];
+  pwmCounters[timer] = counter;
   pwmValues[timer][channel] = counter - (uint16_t)(value*counter);
   nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
   nrf_pwm_seq_ptr_set(      pwm, 0, &pwmValues[timer][0]);
   nrf_pwm_seq_cnt_set(      pwm, 0, 4);
   nrf_pwm_seq_refresh_set(  pwm, 0, 0);
   nrf_pwm_seq_end_delay_set(pwm, 0, 0);
-
   nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
   // nrf_pwm_disable(pwm);
   return func;
 #endif
 } // if freq<=0, the default is used
+
+/// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
+void jshSetOutputValue(JshPinFunction func, int value) {
+#ifdef NRF52
+  if (!JSH_PINFUNCTION_IS_TIMER(func))
+    return;
+
+  NRF_PWM_Type *pwm = nrf_get_pwm(func);
+  int timer = ((func&JSH_MASK_TYPE)-JSH_TIMER1) >> JSH_SHIFT_TYPE;
+  int channel = (func&JSH_MASK_INFO) >> JSH_SHIFT_INFO;
+  uint32_t counter = pwmCounters[timer];
+  pwmValues[timer][channel] = counter - (uint16_t)((uint32_t)value*counter >> 16);
+  nrf_pwm_loop_set(pwm, PWM_LOOP_CNT_Disabled);
+  nrf_pwm_seq_ptr_set(      pwm, 0, &pwmValues[timer][0]);
+  nrf_pwm_seq_cnt_set(      pwm, 0, 4);
+  nrf_pwm_seq_refresh_set(  pwm, 0, 0);
+  nrf_pwm_seq_end_delay_set(pwm, 0, 0);
+  nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
+#endif
+}
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   // ---- USE TIMER FOR PULSE
@@ -808,11 +886,8 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
 
 /// Given a Pin, return the current pin function associated with it
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
-  return JSH_NOTHING;
-}
-
-/// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
-void jshSetOutputValue(JshPinFunction func, int value) {
+  if (!jshIsPinValid(pin)) return JSH_NOTHING;
+  return pinStates[pin];
 }
 
 /// Enable watchdog with a timeout in seconds
@@ -987,7 +1062,11 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   if (spi0Initialised) nrf_drv_spi_uninit(&spi0);
   spi0Initialised = true;
   // No event handler means SPI transfers are blocking
+#if NRF_SD_BLE_API_VERSION<5
   uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL);
+#else
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL, NULL);
+#endif
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "SPI Initialisation Error %d\n", err_code);
 
@@ -1009,7 +1088,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
  * waits for data to be returned */
 int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
-  if (device!=EV_SPI1) return -1;
+  if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
   uint8_t tx = (uint8_t)data;
   uint8_t rx = 0;
   uint32_t err_code = nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
@@ -1022,7 +1101,7 @@ int jshSPISend(IOEventFlags device, int data) {
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data) {
 #if SPI_ENABLED
-  if (device!=EV_SPI1) return;
+  if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return;
   uint16_t tx = (uint16_t)data;
   uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 1, 0, 0);
   if (err_code != NRF_SUCCESS)
@@ -1076,7 +1155,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
   const  nrf_drv_twi_t *twi = jshGetTWI(device);
-  if (!twi) return;
+  if (!twi || !jshIsDeviceInitialised(device)) return;
   uint32_t err_code = nrf_drv_twi_tx(twi, address, data, nBytes, !sendStop);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);
@@ -1084,7 +1163,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
   const nrf_drv_twi_t *twi = jshGetTWI(device);
-  if (!twi) return;
+  if (!twi || !jshIsDeviceInitialised(device)) return;
   uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
@@ -1191,7 +1270,11 @@ bool jshSleep(JsSysTime timeUntilWake) {
     timeUntilWake = jshGetTimeFromMilliseconds(240*1000);
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
+#if NRF_SD_BLE_API_VERSION<5
     uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake), APP_TIMER_PRESCALER);
+#else
+    uint32_t ticks = APP_TIMER_TICKS(jshGetMillisecondsFromTime(timeUntilWake));
+#endif
     if (ticks<APP_TIMER_MIN_TIMEOUT_TICKS) return false; // can't sleep this short an amount of time
     uint32_t err_code = app_timer_start(m_wakeup_timer_id, ticks, NULL);
     if (err_code) jsiConsolePrintf("app_timer_start error %d\n", err_code);

@@ -58,6 +58,20 @@
 #define IRQ_PRIOR_MED 7
 #define IRQ_PRIOR_LOW 15
 
+/* On STM32 there's no 7 bit UART mode, so
+ * we much just fake it by using an 8 bit UART
+ * and then masking off the top bit */
+unsigned char jsh7BitUART;
+bool jshIsSerial7Bit(IOEventFlags device) {
+  assert(SERIAL_COUNT<=8);
+  return jsh7BitUART & (1<<(device-EV_SERIAL1));
+}
+void jshSetIsSerial7Bit(IOEventFlags device, bool is7Bit) {
+  assert(SERIAL_COUNT<=8);
+  if (is7Bit) jsh7BitUART |= (1<<(device-EV_SERIAL1));
+  else  jsh7BitUART &= ~(1<<(device-EV_SERIAL1));
+}
+
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
@@ -708,6 +722,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
   // LL_USART_ReceiveData9(USART1) & 0x7F; for the 7-bit case and
   // LL_USART_ReceiveData9(USART1) & 0xFF; for the 8-bit case
   // the register is 9-bits long.
+  jshSetIsSerial7Bit(device, inf->bytesize == 7);
 
   if((inf->bytesize == 7 && inf->parity > 0) || (inf->bytesize == 8 && inf->parity == 0)) {
     USART_InitStructure.DataWidth = LL_USART_DATAWIDTH_8B;
