@@ -68,11 +68,11 @@ chip = {
 };
 
 devices = {
-  'LED1' : { 'pin' : 'D16' }, # Pin negated in software
-  'BTN1' : { 'pin' : 'D24', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
-  'BTN2' : { 'pin' : 'D23', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
-  'BTN3' : { 'pin' : 'D22', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
-  'BTN4' : { 'pin' : 'D21', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'LED1' : { 'pin' : 'H0' }, # Pin negated in software
+  'BTN1' : { 'pin' : 'H1', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'BTN2' : { 'pin' : 'H2', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'BTN3' : { 'pin' : 'H3', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'BTN4' : { 'pin' : 'H4', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
 };
 
 # left-right, or top-bottom order
@@ -82,29 +82,46 @@ board["_css"] = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(0,31) # 32 General Purpose I/O Pins.
-  pinutils.findpin(pins, "PD0", True)["functions"]["XL1"]=0;
-  pinutils.findpin(pins, "PD1", True)["functions"]["XL2"]=0;
-  pinutils.findpin(pins, "PD5", True)["functions"]["RTS"]=0;
-  pinutils.findpin(pins, "PD6", True)["functions"]["TXD"]=0;
-  pinutils.findpin(pins, "PD7", True)["functions"]["CTS"]=0;
-  pinutils.findpin(pins, "PD8", True)["functions"]["RXD"]=0;
-  pinutils.findpin(pins, "PD9", True)["functions"]["NFC1"]=0;
-  pinutils.findpin(pins, "PD10", True)["functions"]["NFC2"]=0;
-  pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN0"]=0;
-  pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN1"]=0;
-  pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN2"]=0;
-  pinutils.findpin(pins, "PD5", True)["functions"]["ADC1_IN3"]=0;
-  pinutils.findpin(pins, "PD28", True)["functions"]["ADC1_IN4"]=0;
-  pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN5"]=0;
-  pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
-  pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
+  pins = [
+   { "name":"PA0", "sortingname":"A00", "port":"A", "num":"2", "functions":{ "ADC1_IN0":0 }, "csv":{} },
+   { "name":"PA1", "sortingname":"A01", "port":"A", "num":"3", "functions":{ "ADC1_IN1":0 }, "csv":{} },
+   { "name":"PA2", "sortingname":"A02", "port":"A", "num":"4", "functions":{ "ADC1_IN2":0 }, "csv":{} },
+   { "name":"PA3", "sortingname":"A03", "port":"A", "num":"5", "functions":{ "ADC1_IN3":0 }, "csv":{} },
+   { "name":"PA4", "sortingname":"A04", "port":"A", "num":"28", "functions":{ "ADC1_IN4":0 }, "csv":{} },
+   { "name":"PA5", "sortingname":"A05", "port":"A", "num":"29", "functions":{ "ADC1_IN5":0 }, "csv":{} },
+   
+   { "name":"PD0",  "sortingname":"D00", "port":"D", "num":"25", "functions":{}, "csv":{} },
+   { "name":"PD1",  "sortingname":"D01", "port":"D", "num":"26", "functions":{}, "csv":{} },
+   { "name":"PD2",  "sortingname":"D02", "port":"D", "num":"27", "functions":{}, "csv":{} },
+   { "name":"PD3",  "sortingname":"D03", "port":"D", "num":"30", "functions":{ "ADC1_IN6":0 }, "csv":{} },
+   { "name":"PD4",  "sortingname":"D04", "port":"D", "num":"31", "functions":{ "ADC1_IN7":0 }, "csv":{} },
+   { "name":"PD5",  "sortingname":"D05", "port":"D", "num":"0", "functions":{}, "csv":{} }, 
+   { "name":"PD6",  "sortingname":"D06", "port":"D", "num":"1", "functions":{}, "csv":{} }, 
+   { "name":"PD7",  "sortingname":"D07", "port":"D", "num":"6", "functions":{}, "csv":{} }, 
+   { "name":"PD8",  "sortingname":"D08", "port":"D", "num":"7", "functions":{}, "csv":{} },
+   { "name":"PD9",  "sortingname":"D09", "port":"D", "num":"8", "functions":{}, "csv":{} }, 
+   { "name":"PD10", "sortingname":"D10", "port":"D", "num":"17", "functions":{}, "csv":{} },
+   { "name":"PD11", "sortingname":"D11", "port":"D", "num":"18", "functions":{}, "csv":{} },
+   { "name":"PD12", "sortingname":"D12", "port":"D", "num":"19", "functions":{}, "csv":{} },
+   { "name":"PD13", "sortingname":"D13", "port":"D", "num":"20", "functions":{}, "csv":{} },
+
+   { "name":"PH0", "sortingname":"H0", "port":"H", "num":"16", "functions":{}, "csv":{} }, # LED
+   { "name":"PH1", "sortingname":"H1", "port":"H", "num":"24", "functions":{}, "csv":{} }, # BTN1
+   { "name":"PH2", "sortingname":"H2", "port":"H", "num":"23", "functions":{}, "csv":{} }, # 2
+   { "name":"PH3", "sortingname":"H3", "port":"H", "num":"22", "functions":{}, "csv":{} }, # 3
+   { "name":"PH4", "sortingname":"H4", "port":"H", "num":"21", "functions":{}, "csv":{} }, # 4
+   { "name":"PH5", "sortingname":"H5", "port":"H", "num":"13", "functions":{}, "csv":{} }, # LCD DC
+   { "name":"PH6", "sortingname":"H6", "port":"H", "num":"12", "functions":{}, "csv":{} }, # LCD CS
+   { "name":"PH7", "sortingname":"H7", "port":"H", "num":"11", "functions":{}, "csv":{} }, # LCD RST
+   { "name":"PH8", "sortingname":"H8", "port":"H", "num":"14", "functions":{}, "csv":{} }, # LCD SCK
+   { "name":"PH9", "sortingname":"H9", "port":"H", "num":"15", "functions":{}, "csv":{} }, # LCD MOSI
+  ];
   # Make buttons and LEDs negated
-  pinutils.findpin(pins, "PD16", True)["functions"]["NEGATED"]=0;
-  pinutils.findpin(pins, "PD21", True)["functions"]["NEGATED"]=0;
-  pinutils.findpin(pins, "PD22", True)["functions"]["NEGATED"]=0;
-  pinutils.findpin(pins, "PD23", True)["functions"]["NEGATED"]=0;
-  pinutils.findpin(pins, "PD24", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PH0", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PH1", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PH2", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PH3", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PH4", True)["functions"]["NEGATED"]=0;
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;

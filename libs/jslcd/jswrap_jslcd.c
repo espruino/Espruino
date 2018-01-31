@@ -32,11 +32,11 @@
 #include "jswrap_graphics.h"
 #include "lcd_arraybuffer.h"
 
-const Pin LCD_DC = 13;
-const Pin LCD_CS = 12;
-const Pin LCD_RST = 11;
-const Pin LCD_SCK = 14;
-const Pin LCD_MOSI = 15;
+const Pin LCD_DC = JSH_PORTH_OFFSET+5;
+const Pin LCD_CS = JSH_PORTH_OFFSET+6;
+const Pin LCD_RST = JSH_PORTH_OFFSET+7;
+const Pin LCD_SCK = JSH_PORTH_OFFSET+8;
+const Pin LCD_MOSI = JSH_PORTH_OFFSET+9;
 
 /*JSON{
     "type": "class",
