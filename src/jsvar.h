@@ -367,46 +367,46 @@ JsVarRef jsvRefRef(JsVarRef ref);
 /// Helper fn, Unreference - set this variable as not used by anything
 JsVarRef jsvUnRefRef(JsVarRef ref);
 
-extern ALWAYS_INLINE bool jsvIsRoot(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsPin(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsSimpleInt(const JsVar *v); ///< is just a very basic integer value
-extern ALWAYS_INLINE bool jsvIsInt(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsFloat(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsBoolean(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsString(const JsVar *v); ///< String, or a NAME too
-extern ALWAYS_INLINE bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
-extern ALWAYS_INLINE bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
-extern ALWAYS_INLINE bool jsvIsFlatString(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsNativeString(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsNumeric(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsFunction(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsFunctionReturn(const JsVar *v); ///< Is this a function with an implicit 'return' at the start?
-extern ALWAYS_INLINE bool jsvIsFunctionParameter(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsObject(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsArray(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsArrayBuffer(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsArrayBufferName(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsNative(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsNativeFunction(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsUndefined(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsNull(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsBasic(const JsVar *v); ///< Is this *not* an array/object/etc
-extern ALWAYS_INLINE bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
+extern bool jsvIsRoot(const JsVar *v);
+extern bool jsvIsPin(const JsVar *v);
+extern bool jsvIsSimpleInt(const JsVar *v); ///< is just a very basic integer value
+extern bool jsvIsInt(const JsVar *v);
+extern bool jsvIsFloat(const JsVar *v);
+extern bool jsvIsBoolean(const JsVar *v);
+extern bool jsvIsString(const JsVar *v); ///< String, or a NAME too
+extern bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
+extern bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
+extern bool jsvIsFlatString(const JsVar *v);
+extern bool jsvIsNativeString(const JsVar *v);
+extern bool jsvIsNumeric(const JsVar *v);
+extern bool jsvIsFunction(const JsVar *v);
+extern bool jsvIsFunctionReturn(const JsVar *v); ///< Is this a function with an implicit 'return' at the start?
+extern bool jsvIsFunctionParameter(const JsVar *v);
+extern bool jsvIsObject(const JsVar *v);
+extern bool jsvIsArray(const JsVar *v);
+extern bool jsvIsArrayBuffer(const JsVar *v);
+extern bool jsvIsArrayBufferName(const JsVar *v);
+extern bool jsvIsNative(const JsVar *v);
+extern bool jsvIsNativeFunction(const JsVar *v);
+extern bool jsvIsUndefined(const JsVar *v);
+extern bool jsvIsNull(const JsVar *v);
+extern bool jsvIsBasic(const JsVar *v); ///< Is this *not* an array/object/etc
+extern bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
 /// Names with values have firstChild set to a value - AND NOT A REFERENCE
-extern ALWAYS_INLINE bool jsvIsNameWithValue(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsNameInt(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsNameIntInt(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsNameIntBool(const JsVar *v);
+extern bool jsvIsNameWithValue(const JsVar *v);
+extern bool jsvIsNameInt(const JsVar *v);
+extern bool jsvIsNameIntInt(const JsVar *v);
+extern bool jsvIsNameIntBool(const JsVar *v);
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
-extern ALWAYS_INLINE bool jsvIsNewChild(const JsVar *v);
+extern bool jsvIsNewChild(const JsVar *v);
 
 /// Are var.varData.ref.* (excl pad) used for data (so we expect them not to be empty)
-extern ALWAYS_INLINE bool jsvIsRefUsedForData(const JsVar *v);
+extern bool jsvIsRefUsedForData(const JsVar *v);
 
 /// Can the given variable be converted into an integer without loss of precision
-extern ALWAYS_INLINE bool jsvIsIntegerish(const JsVar *v);
+extern bool jsvIsIntegerish(const JsVar *v);
 
-extern ALWAYS_INLINE bool jsvIsIterable(const JsVar *v);
+extern bool jsvIsIterable(const JsVar *v);
 
 /** Does this string contain only Numeric characters (with optional whitespace and/or '-'/'+' at the front)? NOT '.'/'e' and similar (allowDecimalPoint is for '.' only) */
 bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint);
@@ -430,64 +430,13 @@ static ALWAYS_INLINE bool jsvHasRef(const JsVar *v) { return !jsvIsStringExt(v);
 
 /** Return the is the number of characters this one JsVar can contain, NOT string length (eg, a chain of JsVars)
  * This will return an invalid length when applied to Flat Strings */
-static ALWAYS_INLINE size_t jsvGetMaxCharactersInVar(const JsVar *v) {
-  // see jsvCopy - we need to know about this in there too
-  if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_MAX_LEN;
-  assert(jsvHasCharacterData(v));
-  if (jsvIsName(v)) return JSVAR_DATA_STRING_NAME_LEN;
-  return JSVAR_DATA_STRING_LEN;
-}
+size_t jsvGetMaxCharactersInVar(const JsVar *v);
 
 /// This is the number of characters a JsVar can contain, NOT string length
-static ALWAYS_INLINE size_t jsvGetCharactersInVar(const JsVar *v) {
-  unsigned int f = v->flags&JSV_VARTYPEMASK;
-  if (f == JSV_FLAT_STRING)
-    return (size_t)v->varData.integer;
-  if (f == JSV_NATIVE_STRING)
-    return (size_t)v->varData.nativeStr.len;
-  assert(f >= JSV_NAME_STRING_INT_0);
-  assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
-         (JSV_NAME_STRING_0 < JSV_STRING_0) &&
-         (JSV_STRING_0 < JSV_STRING_EXT_0)); // this relies on ordering
-  if (f<=JSV_NAME_STRING_MAX) {
-    if (f<=JSV_NAME_STRING_INT_MAX)
-      return f-JSV_NAME_STRING_INT_0;
-    else
-      return f-JSV_NAME_STRING_0;
-  } else {
-    if (f<=JSV_STRING_MAX) return f-JSV_STRING_0;
-    assert(f <= JSV_STRING_EXT_MAX);
-    return f - JSV_STRING_EXT_0;
-  }
-}
+size_t jsvGetCharactersInVar(const JsVar *v);
 
 /// This is the number of characters a JsVar can contain, NOT string length
-static ALWAYS_INLINE void jsvSetCharactersInVar(JsVar *v, size_t chars) {
-  unsigned int f = v->flags&JSV_VARTYPEMASK;
-  assert(!(jsvIsFlatString(v) || jsvIsNativeString(v)));
-
-  JsVarFlags m = (JsVarFlags)(v->flags&~JSV_VARTYPEMASK);
-  assert(f >= JSV_NAME_STRING_INT_0);
-  assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
-         (JSV_NAME_STRING_0 < JSV_STRING_0) &&
-         (JSV_STRING_0 < JSV_STRING_EXT_0)); // this relies on ordering
-  if (f<=JSV_NAME_STRING_MAX) {
-    assert(chars <= JSVAR_DATA_STRING_NAME_LEN);
-    if (f<=JSV_NAME_STRING_INT_MAX)
-      v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_INT_0+chars));
-    else
-      v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_0+chars));
-  } else {
-    if (f<=JSV_STRING_MAX) {
-      assert(chars <= JSVAR_DATA_STRING_LEN);
-      v->flags = (JsVarFlags)(m | (JSV_STRING_0+chars));
-    } else {
-      assert(chars <= JSVAR_DATA_STRING_MAX_LEN);
-      assert(f <= JSV_STRING_EXT_MAX);
-      v->flags = (JsVarFlags)(m | (JSV_STRING_EXT_0+chars));
-    }
-  }
-}
+void jsvSetCharactersInVar(JsVar *v, size_t chars);
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
  * so 'a=5'=='a=7' but 'a=5'!='b=5')
