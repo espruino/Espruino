@@ -3,14 +3,24 @@
 //! \file socket.c
 //! \brief SOCKET APIs Implements file.
 //! \details SOCKET APIs like as Berkeley Socket APIs. 
-//! \version 1.0.2
+//! \version 1.0.3
 //! \date 2013/10/21
 //! \par  Revision history
-//!       <2013/10/21> 1st Release
-//!       <2013/11/04> V1.0.1 2nd Release. Refer to "20131104".
-//!                    In sendto(), Add to clear timeout interrupt status (Sn_IR_TIMEOUT)
+//!       <2015/02/05> Notice
+//!        The version history is not updated after this point.
+//!        Download the latest version directly from GitHub. Please visit the our GitHub repository for ioLibrary.
+//!        >> https://github.com/Wiznet/ioLibrary_Driver
+//!       <2014/05/01> V1.0.3. Refer to M20140501
+//!         1. Implicit type casting -> Explicit type casting.
+//!         2. replace 0x01 with PACK_REMAINED in recvfrom()
+//!         3. Validation a destination ip in connect() & sendto(): 
+//!            It occurs a fatal error on converting unint32 address if uint8* addr parameter is not aligned by 4byte address.
+//!            Copy 4 byte addr value into temporary uint32 variable and then compares it.
 //!       <2013/12/20> V1.0.2 Refer to M20131220
 //!                    Remove Warning.
+//!       <2013/11/04> V1.0.1 2nd Release. Refer to "20131104".
+//!                    In sendto(), Add to clear timeout interrupt status (Sn_IR_TIMEOUT)
+//!       <2013/10/21> 1st Release
 //! \author MidnightCow
 //! \copyright
 //!
@@ -46,18 +56,30 @@
 #include "jsparse.h"
 #include "Ethernet/socket.h"
 
-
-#define SOCK_ANY_PORT_NUM  0xC000;
+//M20150401 : Typing Error
+//#define SOCK_ANY_PORT_NUM  0xC000;
+#define SOCK_ANY_PORT_NUM  0xC000
 
 static uint16_t sock_any_port = SOCK_ANY_PORT_NUM;
 static uint16_t sock_io_mode = 0;
 static uint16_t sock_is_sending = 0;
+
 static uint16_t sock_remained_size[_WIZCHIP_SOCK_NUM_] = {0,0,};
-static uint8_t  sock_pack_info[_WIZCHIP_SOCK_NUM_] = {0,};
+
+//M20150601 : For extern decleation
+//static uint8_t  sock_pack_info[_WIZCHIP_SOCK_NUM_] = {0,};
+uint8_t  sock_pack_info[_WIZCHIP_SOCK_NUM_] = {0,};
+//
 
 #if _WIZCHIP_ == 5200
    static uint16_t sock_next_rd[_WIZCHIP_SOCK_NUM_] ={0,};
 #endif
+
+//A20150601 : For integrating with W5300
+#if _WIZCHIP_ == 5300
+   uint8_t sock_remained_byte[_WIZCHIP_SOCK_NUM_] = {0,}; // set by wiz_recv_data()
+#endif
+
 
 #define CHECK_SOCKNUM()   \
    do{                    \
@@ -87,6 +109,16 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
 	switch(protocol)
 	{
       case Sn_MR_TCP :
+         {
+            //M20150601 : Fixed the warning - taddr will never be NULL
+		    /*
+            uint8_t taddr[4];
+            getSIPR(taddr);
+            */
+            uint32_t taddr;
+            getSIPR((uint8_t*)&taddr);
+            if(taddr == 0) return SOCKERR_SOCKINIT;
+         }
       case Sn_MR_UDP :
       case Sn_MR_MACRAW :
          break;
@@ -98,7 +130,9 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
       default :
          return SOCKERR_SOCKMODE;
 	}
-	if((flag & 0x06) != 0) return SOCKERR_SOCKFLAG;
+	//M20150601 : For SF_TCP_ALIGN & W5300
+	//if((flag & 0x06) != 0) return SOCKERR_SOCKFLAG;
+	if((flag & 0x04) != 0) return SOCKERR_SOCKFLAG;
 #if _WIZCHIP_ == 5200
    if(flag & 0x10) return SOCKERR_SOCKFLAG;
 #endif
@@ -108,7 +142,13 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
    	switch(protocol)
    	{
    	   case Sn_MR_TCP:
-   	      if((flag & (SF_TCP_NODELAY|SF_IO_NONBLOCK))==0) return SOCKERR_SOCKFLAG;
+   		  //M20150601 :  For SF_TCP_ALIGN & W5300
+          #if _WIZCHIP_ == 5300
+   		     if((flag & (SF_TCP_NODELAY|SF_IO_NONBLOCK|SF_TCP_ALIGN))==0) return SOCKERR_SOCKFLAG;
+          #else
+   		     if((flag & (SF_TCP_NODELAY|SF_IO_NONBLOCK))==0) return SOCKERR_SOCKFLAG;
+          #endif
+
    	      break;
    	   case Sn_MR_UDP:
    	      if(flag & SF_IGMP_VER2)
@@ -127,7 +167,12 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
    	}
    }
 	close(sn);
-	setSn_MR(sn, (protocol | (flag & 0xF0)));
+	//M20150601
+	#if _WIZCHIP_ == 5300
+	   setSn_MR(sn, ((uint16_t)(protocol | (flag & 0xF0))) | (((uint16_t)(flag & 0x02)) << 7) );
+    #else
+	   setSn_MR(sn, (protocol | (flag & 0xF0)));
+    #endif
 	if(!port)
 	{
 	   port = sock_any_port++;
@@ -136,15 +181,16 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
    setSn_PORT(sn,port);	
    setSn_CR(sn,Sn_CR_OPEN);
    while(getSn_CR(sn));
-   
-   //mgg1010 line below added - without it, if a socket is re-used, it may inherit the previous
-   // value of NONBLOCK
-   
-   sock_io_mode &= ~(1 << sn);   
-   sock_io_mode |= ((flag & SF_IO_NONBLOCK) << sn);   
+   //A20150401 : For release the previous sock_io_mode
+   sock_io_mode &= ~(1 <<sn);
+   //
+	sock_io_mode |= ((flag & SF_IO_NONBLOCK) << sn);   
    sock_is_sending &= ~(1<<sn);
    sock_remained_size[sn] = 0;
-   sock_pack_info[sn] = 0;
+   //M20150601 : repalce 0 with PACK_COMPLETED
+   //sock_pack_info[sn] = 0;
+   sock_pack_info[sn] = PACK_COMPLETED;
+   //
    while(getSn_SR(sn) == SOCK_CLOSED);
    return (int8_t)sn;
 }	   
@@ -152,12 +198,39 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
 int8_t close(uint8_t sn)
 {
 	CHECK_SOCKNUM();
-	
+//A20160426 : Applied the erratum 1 of W5300
+#if   (_WIZCHIP_ == 5300) 
+   //M20160503 : Wrong socket parameter. s -> sn 
+   //if( ((getSn_MR(s)& 0x0F) == Sn_MR_TCP) && (getSn_TX_FSR(s) != getSn_TxMAX(s)) ) 
+   if( ((getSn_MR(sn)& 0x0F) == Sn_MR_TCP) && (getSn_TX_FSR(sn) != getSn_TxMAX(sn)) ) 
+   { 
+      uint8 destip[4] = {0, 0, 0, 1};
+      // TODO
+      // You can wait for completing to sending data;
+      // wait about 1 second;
+      // if you have completed to send data, skip the code of erratum 1
+      // ex> wait_1s();
+      //     if (getSn_TX_FSR(s) == getSn_TxMAX(s)) continue;
+      // 
+      //M20160503 : The socket() of close() calls close() itself again. It occures a infinite loop - close()->socket()->close()->socket()-> ~
+      //socket(s,Sn_MR_UDP,0x3000,0);
+      //sendto(s,destip,1,destip,0x3000); // send the dummy data to an unknown destination(0.0.0.1).
+      setSn_MR(sn,Sn_MR_UDP);
+      setSn_PORTR(sn, 0x3000);
+      setSn_CR(sn,Sn_CR_OPEN);
+      while(getSn_CR(sn) != 0);
+      while(getSn_SR(sn) != SOCK_UDP);
+      sendto(sn,destip,1,destip,0x3000); // send the dummy data to an unknown destination(0.0.0.1).
+   };   
+#endif 
 	setSn_CR(sn,Sn_CR_CLOSE);
    /* wait to process the command... */
 	while( getSn_CR(sn) );
 	/* clear all interrupt of the socket. */
 	setSn_IR(sn, 0xFF);
+	//A20150401 : Release the sock_io_mode of socket n.
+	sock_io_mode &= ~(1<<sn);
+	//
 	sock_is_sending &= ~(1<<sn);
 	sock_remained_size[sn] = 0;
 	sock_pack_info[sn] = 0;
@@ -174,11 +247,8 @@ int8_t listen(uint8_t sn)
 	while(getSn_CR(sn));
    while(getSn_SR(sn) != SOCK_LISTEN)
    {
-      if(getSn_CR(sn) == SOCK_CLOSED)
-      {
          close(sn);
          return SOCKERR_SOCKCLOSED;
-      }
    }
    return SOCK_OK;
 }
@@ -189,32 +259,39 @@ int8_t connect(uint8_t sn, uint8_t * addr, uint16_t port)
    CHECK_SOCKNUM();
    CHECK_SOCKMODE(Sn_MR_TCP);
    CHECK_SOCKINIT();
-	if( *((uint32_t*)addr) == 0xFFFFFFFF || *((uint32_t*)addr) == 0) return SOCKERR_IPINVALID;
+   //M20140501 : For avoiding fatal error on memory align mismatched
+   //if( *((uint32_t*)addr) == 0xFFFFFFFF || *((uint32_t*)addr) == 0) return SOCKERR_IPINVALID;
+   {
+      uint32_t taddr;
+      taddr = ((uint32_t)addr[0] & 0x000000FF);
+      taddr = (taddr << 8) + ((uint32_t)addr[1] & 0x000000FF);
+      taddr = (taddr << 8) + ((uint32_t)addr[2] & 0x000000FF);
+      taddr = (taddr << 8) + ((uint32_t)addr[3] & 0x000000FF);
+      if( taddr == 0xFFFFFFFF || taddr == 0) return SOCKERR_IPINVALID;
+   }
+   //
+	
 	if(port == 0) return SOCKERR_PORTZERO;
 	setSn_DIPR(sn,addr);
 	setSn_DPORT(sn,port);
-   #if _WIZCHIP_ == 5200   // for W5200 ARP errata 
-      setSUBR(0);
-   #endif
 	setSn_CR(sn,Sn_CR_CONNECT);
    while(getSn_CR(sn) && !jspIsInterrupted());
    if(sock_io_mode & (1<<sn)) return SOCK_BUSY;
    while(getSn_SR(sn) != SOCK_ESTABLISHED)
-   {   
+   {
         if (jspIsInterrupted())
           return SOCKERR_TIMEOUT;
 		if (getSn_IR(sn) & Sn_IR_TIMEOUT)
 		{
 			setSn_IR(sn, Sn_IR_TIMEOUT);
-         #if _WIZCHIP_ == 5200   // for W5200 ARP errata 
-            setSUBR((uint8_t*)"\x00\x00\x00\x00");
-         #endif
-         return SOCKERR_TIMEOUT;
+            return SOCKERR_TIMEOUT;
+		}
+
+		if (getSn_SR(sn) == SOCK_CLOSED)
+		{
+			return SOCKERR_SOCKCLOSED;
 		}
 	}
-   #if _WIZCHIP_ == 5200   // for W5200 ARP errata 
-      setSUBR((uint8_t*)"\x00\x00\x00\x00");
-   #endif
    
    return SOCK_OK;
 }
@@ -255,12 +332,14 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len)
       if(tmp & Sn_IR_SENDOK)
       {
          setSn_IR(sn, Sn_IR_SENDOK);
-         #if _WZICHIP_ == 5200
+         //M20150401 : Typing Error
+         //#if _WZICHIP_ == 5200
+         #if _WIZCHIP_ == 5200
             if(getSn_TX_RD(sn) != sock_next_rd[sn])
             {
                setSn_CR(sn,Sn_CR_SEND);
                while(getSn_CR(sn));
-               return SOCKERR_BUSY;
+               return SOCK_BUSY;
             }
          #endif
          sock_is_sending &= ~(1<<sn);         
@@ -290,11 +369,18 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len)
    #if _WIZCHIP_ == 5200
       sock_next_rd[sn] = getSn_TX_RD(sn) + len;
    #endif
+
+   #if _WIZCHIP_ == 5300
+      setSn_TX_WRSR(sn,len);
+   #endif
+   
    setSn_CR(sn,Sn_CR_SEND);
    /* wait to process the command... */
    while(getSn_CR(sn));
    sock_is_sending |= (1 << sn);
-   return len;
+   //M20150409 : Explicit Type Casting
+   //return len;
+   return (int32_t)len;
 }
 
 
@@ -302,61 +388,146 @@ int32_t recv(uint8_t sn, uint8_t * buf, uint16_t len)
 {
    uint8_t  tmp = 0;
    uint16_t recvsize = 0;
+//A20150601 : For integarating with W5300
+#if   _WIZCHIP_ == 5300
+   uint8_t head[2];
+   uint16_t mr;
+#endif
+//
    CHECK_SOCKNUM();
    CHECK_SOCKMODE(Sn_MR_TCP);
    CHECK_SOCKDATA();
    
    recvsize = getSn_RxMAX(sn);
    if(recvsize < len) len = recvsize;
-   while(1)
+      
+//A20150601 : For Integrating with W5300
+#if _WIZCHIP_ == 5300
+   //sock_pack_info[sn] = PACK_COMPLETED;    // for clear      
+   if(sock_remained_size[sn] == 0)
    {
-      recvsize = getSn_RX_RSR(sn);
-      tmp = getSn_SR(sn);
-      if (tmp != SOCK_ESTABLISHED)
+#endif
+//
+      while(1)
       {
-         if(tmp == SOCK_CLOSE_WAIT)
+         recvsize = getSn_RX_RSR(sn);
+         tmp = getSn_SR(sn);
+         if (tmp != SOCK_ESTABLISHED)
          {
-            if(recvsize != 0) break;
-            else if(getSn_TX_FSR(sn) == getSn_TxMAX(sn))
+            if(tmp == SOCK_CLOSE_WAIT)
+            {
+               if(recvsize != 0) break;
+               else if(getSn_TX_FSR(sn) == getSn_TxMAX(sn))
+               {
+                  close(sn);
+                  return SOCKERR_SOCKSTATUS;
+               }
+            }
+            else
             {
                close(sn);
                return SOCKERR_SOCKSTATUS;
             }
          }
+         if((sock_io_mode & (1<<sn)) && (recvsize == 0)) return SOCK_BUSY;
+         if(recvsize != 0) break;
+      };
+#if _WIZCHIP_ == 5300
+   }
+#endif
+
+//A20150601 : For integrating with W5300
+#if _WIZCHIP_ == 5300
+   if((sock_remained_size[sn] == 0) || (getSn_MR(sn) & Sn_MR_ALIGN))
+   {
+      mr = getMR();
+      if((getSn_MR(sn) & Sn_MR_ALIGN)==0)
+      {
+         wiz_recv_data(sn,head,2);
+         if(mr & MR_FS)
+            recvsize = (((uint16_t)head[1]) << 8) | ((uint16_t)head[0]);
          else
-         {
-            close(sn);
-            return SOCKERR_SOCKSTATUS;
-         }
+            recvsize = (((uint16_t)head[0]) << 8) | ((uint16_t)head[1]);
+         sock_pack_info[sn] = PACK_FIRST;
       }
-      if((sock_io_mode & (1<<sn)) && (recvsize == 0)) return SOCK_BUSY;
-      if(recvsize != 0) break;
-   };
-   if(recvsize < len) len = recvsize;
+      sock_remained_size[sn] = recvsize;
+   }
+   if(len > sock_remained_size[sn]) len = sock_remained_size[sn];
+   recvsize = len;   
+   if(sock_pack_info[sn] & PACK_FIFOBYTE)
+   {
+      *buf = sock_remained_byte[sn];
+      buf++;
+      sock_pack_info[sn] &= ~(PACK_FIFOBYTE);
+      recvsize -= 1;
+      sock_remained_size[sn] -= 1;
+   }
+   if(recvsize != 0)
+   {
+      wiz_recv_data(sn, buf, recvsize);
+      setSn_CR(sn,Sn_CR_RECV);
+      while(getSn_CR(sn));
+   }
+   sock_remained_size[sn] -= recvsize;
+   if(sock_remained_size[sn] != 0)
+   {
+      sock_pack_info[sn] |= PACK_REMAINED;
+      if(recvsize & 0x1) sock_pack_info[sn] |= PACK_FIFOBYTE;
+   }
+   else sock_pack_info[sn] = PACK_COMPLETED;
+   if(getSn_MR(sn) & Sn_MR_ALIGN) sock_remained_size[sn] = 0;
+   //len = recvsize;
+#else   
+   if(recvsize < len) len = recvsize;   
    wiz_recv_data(sn, buf, len);
    setSn_CR(sn,Sn_CR_RECV);
    while(getSn_CR(sn));
-   return len;
+#endif
+     
+   //M20150409 : Explicit Type Casting
+   //return len;
+   return (int32_t)len;
 }
 
 int32_t sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t port)
 {
    uint8_t tmp = 0;
    uint16_t freesize = 0;
+   uint32_t taddr;
+
    CHECK_SOCKNUM();
    switch(getSn_MR(sn) & 0x0F)
    {
       case Sn_MR_UDP:
       case Sn_MR_MACRAW:
          break;
+   #if ( _WIZCHIP_ < 5200 )
+      case Sn_MR_IPRAW:
+         break;
+   #endif
       default:
          return SOCKERR_SOCKMODE;
    }
    CHECK_SOCKDATA();
-   if(*((uint32_t*)addr) == 0) return SOCKERR_IPINVALID;
-   if(port == 0)               return SOCKERR_PORTZERO;
+   //M20140501 : For avoiding fatal error on memory align mismatched
+   //if(*((uint32_t*)addr) == 0) return SOCKERR_IPINVALID;
+   //{
+      //uint32_t taddr;
+      taddr = ((uint32_t)addr[0]) & 0x000000FF;
+      taddr = (taddr << 8) + ((uint32_t)addr[1] & 0x000000FF);
+      taddr = (taddr << 8) + ((uint32_t)addr[2] & 0x000000FF);
+      taddr = (taddr << 8) + ((uint32_t)addr[3] & 0x000000FF);
+   //}
+   //
+   //if(*((uint32_t*)addr) == 0) return SOCKERR_IPINVALID;
+   if((taddr == 0) && (getSn_MR(sn)&Sn_MR_MACRAW != Sn_MR_MACRAW)) return SOCKERR_IPINVALID;
+   if((port  == 0) && (getSn_MR(sn)&Sn_MR_MACRAW != Sn_MR_MACRAW)) return SOCKERR_PORTZERO;
    tmp = getSn_SR(sn);
+#if ( _WIZCHIP_ < 5200 )
+   if(tmp != SOCK_MACRAW && tmp != SOCK_UDP && tmp != SOCK_IPRAW) return SOCKERR_SOCKSTATUS;
+#else
    if(tmp != SOCK_MACRAW && tmp != SOCK_UDP) return SOCKERR_SOCKSTATUS;
+#endif
       
    setSn_DIPR(sn,addr);
    setSn_DPORT(sn,port);      
@@ -371,16 +542,24 @@ int32_t sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t
    };
 	wiz_send_data(sn, buf, len);
 
-   #if _WIZCHIP_ == 5200   // for W5200 ARP errata 
-      setSUBR(0);
+   #if _WIZCHIP_ < 5500   //M20150401 : for WIZCHIP Errata #4, #5 (ARP errata)
+      getSIPR((uint8_t*)&taddr);
+      if(taddr == 0)
+      {
+         getSUBR((uint8_t*)&taddr);
+         setSUBR((uint8_t*)"\x00\x00\x00\x00");
+      }
+      else taddr = 0;
    #endif
 
+//A20150601 : For W5300
+#if _WIZCHIP_ == 5300
+   setSn_TX_WRSR(sn, len);
+#endif
+//   
 	setSn_CR(sn,Sn_CR_SEND);
 	/* wait to process the command... */
 	while(getSn_CR(sn));
-   #if _WIZCHIP_ == 5200   // for W5200 ARP errata 
-      setSUBR((uint8_t*)"\x00\x00\x00\x00");
-   #endif
    while(1)
    {
       tmp = getSn_IR(sn);
@@ -394,23 +573,46 @@ int32_t sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t
       else if(tmp & Sn_IR_TIMEOUT)
       {
          setSn_IR(sn, Sn_IR_TIMEOUT);
+         //M20150409 : Fixed the lost of sign bits by type casting.
+         //len = (uint16_t)SOCKERR_TIMEOUT;
+         //break;
+         #if _WIZCHIP_ < 5500   //M20150401 : for WIZCHIP Errata #4, #5 (ARP errata)
+            if(taddr) setSUBR((uint8_t*)&taddr);
+         #endif
          return SOCKERR_TIMEOUT;
       }
       ////////////
    }
-	return len;
+   #if _WIZCHIP_ < 5500   //M20150401 : for WIZCHIP Errata #4, #5 (ARP errata)
+      if(taddr) setSUBR((uint8_t*)&taddr);
+   #endif
+   //M20150409 : Explicit Type Casting
+   //return len;
+   return (int32_t)len;
 }
 
 
 
 int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t *port)
 {
+//M20150601 : For W5300   
+#if _WIZCHIP_ == 5300
+   uint16_t mr;
+   uint16_t mr1;
+#else   
    uint8_t  mr;
+#endif
+//   
    uint8_t  head[8];
 	uint16_t pack_len=0;
 
    CHECK_SOCKNUM();
    //CHECK_SOCKMODE(Sn_MR_UDP);
+//A20150601
+#if _WIZCHIP_ == 5300
+   mr1 = getMR();
+#endif   
+
    switch((mr=getSn_MR(sn)) & 0x0F)
    {
       case Sn_MR_UDP:
@@ -435,7 +637,8 @@ int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16
          if(pack_len != 0) break;
       };
    }
-   sock_pack_info[sn] = PACK_COMPLETED;
+//D20150601 : Move it to bottom
+// sock_pack_info[sn] = PACK_COMPLETED;
 	switch (mr & 0x07)
 	{
 	   case Sn_MR_UDP :
@@ -445,18 +648,48 @@ int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16
    			setSn_CR(sn,Sn_CR_RECV);
    			while(getSn_CR(sn));
    			// read peer's IP address, port number & packet length
-    			addr[0] = head[0];
-   			addr[1] = head[1];
-   			addr[2] = head[2];
-   			addr[3] = head[3];
-   			*port = head[4];
-   			*port = (*port << 8) + head[5];
-   			sock_remained_size[sn] = head[6];
-   			sock_remained_size[sn] = (sock_remained_size[sn] << 8) + head[7];
+   	   //A20150601 : For W5300
+   		#if _WIZCHIP_ == 5300
+   		   if(mr1 & MR_FS)
+   		   {
+   		      addr[0] = head[1];
+   		      addr[1] = head[0];
+   		      addr[2] = head[3];
+   		      addr[3] = head[2];
+   		      *port = head[5];
+   		      *port = (*port << 8) + head[4];
+      			sock_remained_size[sn] = head[7];
+      			sock_remained_size[sn] = (sock_remained_size[sn] << 8) + head[6];
+   		   }
+            else
+            {
+         #endif
+               addr[0] = head[0];
+      			addr[1] = head[1];
+      			addr[2] = head[2];
+      			addr[3] = head[3];
+      			*port = head[4];
+      			*port = (*port << 8) + head[5];
+      			sock_remained_size[sn] = head[6];
+      			sock_remained_size[sn] = (sock_remained_size[sn] << 8) + head[7];
+         #if _WIZCHIP_ == 5300
+            }
+         #endif
    			sock_pack_info[sn] = PACK_FIRST;
    	   }
 			if(len < sock_remained_size[sn]) pack_len = len;
 			else pack_len = sock_remained_size[sn];
+			//A20150601 : For W5300
+			len = pack_len;
+			#if _WIZCHIP_ == 5300
+			   if(sock_pack_info[sn] & PACK_FIFOBYTE)
+			   {
+			      *buf++ = sock_remained_byte[sn];
+			      pack_len -= 1;
+			      sock_remained_size[sn] -= 1;
+			      sock_pack_info[sn] &= ~PACK_FIFOBYTE;
+			   }
+			#endif
 			//
 			// Need to packet length check (default 1472)
 			//
@@ -470,7 +703,13 @@ int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16
    			while(getSn_CR(sn));
    			// read peer's IP address, port number & packet length
     			sock_remained_size[sn] = head[0];
-   			sock_remained_size[sn] = (sock_remained_size[sn] <<8) + head[1];
+   			sock_remained_size[sn] = (sock_remained_size[sn] <<8) + head[1] -2;
+   			#if _WIZCHIP_ == W5300
+   			if(sock_remained_size[sn] & 0x01)
+   				sock_remained_size[sn] = sock_remained_size[sn] + 1 - 4;
+   			else
+   				sock_remained_size[sn] -= 4;
+			#endif
    			if(sock_remained_size[sn] > 1514) 
    			{
    			   close(sn);
@@ -494,7 +733,9 @@ int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16
    			addr[2] = head[2];
    			addr[3] = head[3];
    			sock_remained_size[sn] = head[4];
-   			sock_remaiend_size[sn] = (sock_remained_size[sn] << 8) + head[5];
+   			//M20150401 : For Typing Error
+   			//sock_remaiend_size[sn] = (sock_remained_size[sn] << 8) + head[5];
+   			sock_remained_size[sn] = (sock_remained_size[sn] << 8) + head[5];
    			sock_pack_info[sn] = PACK_FIRST;
          }
 			//
@@ -514,8 +755,23 @@ int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16
 	/* wait to process the command... */
 	while(getSn_CR(sn)) ;
 	sock_remained_size[sn] -= pack_len;
-	if(sock_remained_size[sn] != 0) sock_pack_info[sn] |= 0x01;
- 	return pack_len;
+	//M20150601 : 
+	//if(sock_remained_size[sn] != 0) sock_pack_info[sn] |= 0x01;
+	if(sock_remained_size[sn] != 0)
+	{
+	   sock_pack_info[sn] |= PACK_REMAINED;
+   #if _WIZCHIP_ == 5300	   
+	   if(pack_len & 0x01) sock_pack_info[sn] |= PACK_FIFOBYTE;
+   #endif	      
+	}
+	else sock_pack_info[sn] = PACK_COMPLETED;
+#if _WIZCHIP_ == 5300	   
+   pack_len = len;
+#endif
+   //
+   //M20150409 : Explicit Type Casting
+   //return pack_len;
+   return (int32_t)pack_len;
 }
 
 
@@ -532,7 +788,10 @@ int8_t  ctlsocket(uint8_t sn, ctlsock_type cstype, void* arg)
          else return SOCKERR_ARG;
          break;
       case CS_GET_IOMODE:   
-         *((uint8_t*)arg) = (sock_io_mode >> sn) & 0x0001;
+         //M20140501 : implict type casting -> explict type casting
+         //*((uint8_t*)arg) = (sock_io_mode >> sn) & 0x0001;
+         *((uint8_t*)arg) = (uint8_t)((sock_io_mode >> sn) & 0x0001);
+         //
          break;
       case CS_GET_MAXTXBUF:
          *((uint16_t*)arg) = getSn_TxMAX(sn);
@@ -547,12 +806,15 @@ int8_t  ctlsocket(uint8_t sn, ctlsock_type cstype, void* arg)
       case CS_GET_INTERRUPT:
          *((uint8_t*)arg) = getSn_IR(sn);
          break;
+   #if _WIZCHIP_ != 5100
       case CS_SET_INTMASK:  
          if( (*(uint8_t*)arg) > SIK_ALL) return SOCKERR_ARG;
          setSn_IMR(sn,*(uint8_t*)arg);
          break;
       case CS_GET_INTMASK:   
          *((uint8_t*)arg) = getSn_IMR(sn);
+         break;
+   #endif
       default:
          return SOCKERR_ARG;
    }
@@ -628,6 +890,7 @@ int8_t  getsockopt(uint8_t sn, sockopt_type sotype, void* arg)
          break;
       case SO_MSS:   
          *(uint8_t*) arg = getSn_MSSR(sn);
+         break;
       case SO_DESTIP:
          getSn_DIPR(sn, (uint8_t*)arg);
          break;
@@ -642,8 +905,10 @@ int8_t  getsockopt(uint8_t sn, sockopt_type sotype, void* arg)
    #endif      
       case SO_SENDBUF:
          *(uint16_t*) arg = getSn_TX_FSR(sn);
+         break;
       case SO_RECVBUF:
          *(uint16_t*) arg = getSn_RX_RSR(sn);
+         break;
       case SO_STATUS:
          *(uint8_t*) arg = getSn_SR(sn);
          break;
@@ -654,7 +919,11 @@ int8_t  getsockopt(uint8_t sn, sockopt_type sotype, void* arg)
             *(uint16_t*)arg = sock_remained_size[sn];
          break;
       case SO_PACKINFO:
-         CHECK_SOCKMODE(Sn_MR_TCP);
+         //CHECK_SOCKMODE(Sn_MR_TCP);
+#if _WIZCHIP_ != 5300
+         if((getSn_MR(sn) == Sn_MR_TCP))
+             return SOCKERR_SOCKMODE;
+#endif
          *(uint8_t*)arg = sock_pack_info[sn];
          break;
       default:

@@ -3,9 +3,16 @@
 //! \file socket.h
 //! \brief SOCKET APIs Header file.
 //! \details SOCKET APIs like as berkeley socket api. 
-//! \version 1.0.0
+//! \version 1.0.2
 //! \date 2013/10/21
 //! \par  Revision history
+//!       <2015/02/05> Notice
+//!        The version history is not updated after this point.
+//!        Download the latest version directly from GitHub. Please visit the our GitHub repository for ioLibrary.
+//!        >> https://github.com/Wiznet/ioLibrary_Driver
+//!       <2014/05/01> V1.0.2. Refer to M20140501
+//!         1. Modify the comment : SO_REMAINED -> PACK_REMAINED
+//!         2. Add the comment as zero byte udp data reception in getsockopt(). 
 //!       <2013/10/21> 1st Release
 //! \author MidnightCow
 //! \copyright
@@ -78,7 +85,7 @@
 #ifndef _SOCKET_H_
 #define _SOCKET_H_
 
-#include "Ethernet/wizchip_conf.h"
+#include "wizchip_conf.h"
 
 #define SOCKET                uint8_t  ///< SOCKET type define for legacy driver
 
@@ -89,12 +96,12 @@
 #define SOCK_ERROR            0        
 #define SOCKERR_SOCKNUM       (SOCK_ERROR - 1)     ///< Invalid socket number
 #define SOCKERR_SOCKOPT       (SOCK_ERROR - 2)     ///< Invalid socket option
-#define SOCKERR_SOCKINIT      (SOCK_ERROR - 3)     ///< Socket is not initialized
+#define SOCKERR_SOCKINIT      (SOCK_ERROR - 3)     ///< Socket is not initialized or SIPR is Zero IP address when Sn_MR_TCP
 #define SOCKERR_SOCKCLOSED    (SOCK_ERROR - 4)     ///< Socket unexpectedly closed.
 #define SOCKERR_SOCKMODE      (SOCK_ERROR - 5)     ///< Invalid socket mode for socket operation.
 #define SOCKERR_SOCKFLAG      (SOCK_ERROR - 6)     ///< Invalid socket flag
 #define SOCKERR_SOCKSTATUS    (SOCK_ERROR - 7)     ///< Invalid socket status for socket operation.
-#define SOCKERR_ARG           (SOCK_ERROR - 10)    ///< Invalid argrument.
+#define SOCKERR_ARG           (SOCK_ERROR - 10)    ///< Invalid argument.
 #define SOCKERR_PORTZERO      (SOCK_ERROR - 11)    ///< Port number is zero
 #define SOCKERR_IPINVALID     (SOCK_ERROR - 12)    ///< Invalid IP address
 #define SOCKERR_TIMEOUT       (SOCK_ERROR - 13)    ///< Timeout occurred
@@ -106,16 +113,21 @@
 /*
  * SOCKET FLAG
  */
-#define SF_ETHER_OWN           (Sn_MR_MFEN)        ///< In \ref Sn_MR_MACRAW, Receive only the packet as broadcast, multicast and own packet
-#define SF_IGMP_VER2           (Sn_MR_MC)          ///< In \ref Sn_MR_UDP with \ref SF_MULTI_ENABLE, Select IGMP version 2.   
-#define SF_TCP_NODELAY         (Sn_MR_ND)          ///< In \ref Sn_MR_TCP, Use to nodelayed ack.
-#define SF_MULTI_ENABLE        (Sn_MR_MULTI)       ///< In \ref Sn_MR_UDP, Enable multicast mode.
+#define SF_ETHER_OWN           (Sn_MR_MFEN)        ///< In @ref Sn_MR_MACRAW, Receive only the packet as broadcast, multicast and own packet
+#define SF_IGMP_VER2           (Sn_MR_MC)          ///< In @ref Sn_MR_UDP with \ref SF_MULTI_ENABLE, Select IGMP version 2.   
+#define SF_TCP_NODELAY         (Sn_MR_ND)          ///< In @ref Sn_MR_TCP, Use to nodelayed ack.
+#define SF_MULTI_ENABLE        (Sn_MR_MULTI)       ///< In @ref Sn_MR_UDP, Enable multicast mode.
 
 #if _WIZCHIP_ == 5500
-   #define SF_BROAD_BLOCK         (Sn_MR_BCASTB)   ///< In \ref Sn_MR_UDP or \ref Sn_MR_MACRAW, Block broadcast packet. Valid only in W5500
-   #define SF_MULTI_BLOCK         (Sn_MR_MMB)      ///< In \ref Sn_MR_MACRAW, Block multicast packet. Valid only in W5500
-   #define SF_IPv6_BLOCK          (Sn_MR_MIP6B)    ///< In \ref Sn_MR_MACRAW, Block IPv6 packet. Valid only in W5500
-   #define SF_UNI_BLOCK           (Sn_MR_UCASTB)   ///< In \ref Sn_MR_UDP with \ref SF_MULTI_ENABLE. Valid only in W5500
+   #define SF_BROAD_BLOCK         (Sn_MR_BCASTB)   ///< In @ref Sn_MR_UDP or @ref Sn_MR_MACRAW, Block broadcast packet. Valid only in W5500
+   #define SF_MULTI_BLOCK         (Sn_MR_MMB)      ///< In @ref Sn_MR_MACRAW, Block multicast packet. Valid only in W5500
+   #define SF_IPv6_BLOCK          (Sn_MR_MIP6B)    ///< In @ref Sn_MR_MACRAW, Block IPv6 packet. Valid only in W5500
+   #define SF_UNI_BLOCK           (Sn_MR_UCASTB)   ///< In @ref Sn_MR_UDP with \ref SF_MULTI_ENABLE. Valid only in W5500
+#endif
+
+//A201505 : For W5300
+#if _WIZCHIP_ == 5300
+   #define SF_TCP_ALIGN		     0x02			   ///< Valid only \ref Sn_MR_TCP and W5300, refer to \ref Sn_MR_ALIGN
 #endif
 
 #define SF_IO_NONBLOCK           0x01              ///< Socket nonblock io mode. It used parameter in \ref socket().
@@ -123,9 +135,12 @@
 /*
  * UDP & MACRAW Packet Infomation
  */
-#define PACK_FIRST               0x80              ///< In Non-TCP packet, It indicates to start receiving a packet.
-#define PACK_REMAINED            0x01              ///< In Non-TCP packet, It indicates to remain a packet to be received.
-#define PACK_COMPLETED           0x00              ///< In Non-TCP packet, It indicates to complete to receive a packet.
+#define PACK_FIRST               0x80              ///< In Non-TCP packet, It indicates to start receiving a packet. (When W5300, This flag can be applied)
+#define PACK_REMAINED            0x01              ///< In Non-TCP packet, It indicates to remain a packet to be received. (When W5300, This flag can be applied)
+#define PACK_COMPLETED           0x00              ///< In Non-TCP packet, It indicates to complete to receive a packet. (When W5300, This flag can be applied)
+//A20150601 : For Integrating with W5300
+#define PACK_FIFOBYTE            0x02              ///< Valid only W5300, It indicate to have read already the Sn_RX_FIFOR.
+//
 
 /**
  * @ingroup WIZnet_socket_APIs
@@ -177,7 +192,7 @@ int8_t  listen(uint8_t sn);
  * @details It requests connection to the server with destination IP address and port number passed as parameter.\n
  * @note It is valid only in TCP client mode. 
  *       In block io mode, it does not return until connection is completed.
- *       In Non-block io mode, it return @ref SOCK_BUSY immediatly.
+ *       In Non-block io mode, it return @ref SOCK_BUSY immediately.
  *
  * @param sn Socket number. It should be <b>0 ~ @ref \_WIZCHIP_SOCK_NUM_</b>.
  * @param addr Pointer variable of destination IP address. It should be allocated 4 bytes.
@@ -190,7 +205,7 @@ int8_t  listen(uint8_t sn);
  *                @ref SOCKERR_IPINVALID - Wrong server IP address\n
  *                @ref SOCKERR_PORTZERO  - Server port zero\n
  *                @ref SOCKERR_TIMEOUT   - Timeout occurred during request connection\n
- *                @ref SOCK_BUSY         - In non-block io mode, it returned immediatly\n 
+ *                @ref SOCK_BUSY         - In non-block io mode, it returned immediately\n
  */
 int8_t  connect(uint8_t sn, uint8_t * addr, uint16_t port);
 
@@ -200,7 +215,7 @@ int8_t  connect(uint8_t sn, uint8_t * addr, uint16_t port);
  * @details It sends request message to disconnect the TCP socket 'sn' passed as parameter to the server or client.
  * @note It is valid only in TCP server or client mode. \n
  *       In block io mode, it does not return until disconnection is completed. \n
- *       In Non-block io mode, it return @ref SOCK_BUSY immediatly. \n
+ *       In Non-block io mode, it return @ref SOCK_BUSY immediately. \n
 
  * @param sn Socket number. It should be <b>0 ~ @ref \_WIZCHIP_SOCK_NUM_</b>.
  * @return @b Success :   @ref SOCK_OK \n
@@ -217,7 +232,7 @@ int8_t  disconnect(uint8_t sn);
  * @details It is used to send outgoing data to the connected socket.
  * @note    It is valid only in TCP server or client mode. It can't send data greater than socket buffer size. \n
  *          In block io mode, It doesn't return until data send is completed - socket buffer size is greater than data. \n
- *          In non-block io mode, It return @ref SOCK_BUSY immediatly when socket buffer is not enough. \n
+ *          In non-block io mode, It return @ref SOCK_BUSY immediately when socket buffer is not enough. \n
  * @param sn Socket number. It should be <b>0 ~ @ref \_WIZCHIP_SOCK_NUM_</b>.
  * @param buf Pointer buffer containing data to be sent.
  * @param len The byte length of data in buf.
@@ -238,7 +253,7 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len);
  *          It waits for data as much as the application wants to receive.
  * @note    It is valid only in TCP server or client mode. It can't receive data greater than socket buffer size. \n
  *          In block io mode, it doesn't return until data reception is completed - data is filled as <I>len</I> in socket buffer. \n
- *          In non-block io mode, it return @ref SOCK_BUSY immediatly when <I>len</I> is greater than data size in socket buffer. \n
+ *          In non-block io mode, it return @ref SOCK_BUSY immediately when <I>len</I> is greater than data size in socket buffer. \n
  *
  * @param sn  Socket number. It should be <b>0 ~ @ref \_WIZCHIP_SOCK_NUM_</b>.
  * @param buf Pointer buffer to read incoming data.
@@ -260,7 +275,7 @@ int32_t recv(uint8_t sn, uint8_t * buf, uint16_t len);
  *          Even if the connectionless socket has been previously connected to a specific address,
  *          the address and port number parameters override the destination address for that particular datagram only.
  * @note    In block io mode, It doesn't return until data send is completed - socket buffer size is greater than <I>len</I>.
- *          In non-block io mode, It return @ref SOCK_BUSY immediatly when socket buffer is not enough.
+ *          In non-block io mode, It return @ref SOCK_BUSY immediately when socket buffer is not enough.
  *
  * @param sn    Socket number. It should be <b>0 ~ @ref \_WIZCHIP_SOCK_NUM_</b>.
  * @param buf   Pointer buffer to send outgoing data.
@@ -289,7 +304,7 @@ int32_t sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t
  *          This function can divide to received the packet data.
  *          On the MACRAW SOCKET, the addr and port parameters are ignored.
  * @note    In block io mode, it doesn't return until data reception is completed - data is filled as <I>len</I> in socket buffer
- *          In non-block io mode, it return @ref SOCK_BUSY immediatly when <I>len</I> is greater than data size in socket buffer.
+ *          In non-block io mode, it return @ref SOCK_BUSY immediately when <I>len</I> is greater than data size in socket buffer.
  *
  * @param sn   Socket number. It should be <b>0 ~ @ref \_WIZCHIP_SOCK_NUM_</b>.
  * @param buf  Pointer buffer to read incoming data.
@@ -329,12 +344,14 @@ int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16
  */
 typedef enum
 {
-   SIK_CONNECTED     = (1 << 0),    ///< conntected
+   SIK_CONNECTED     = (1 << 0),    ///< connected
    SIK_DISCONNECTED  = (1 << 1),    ///< disconnected
    SIK_RECEIVED      = (1 << 2),    ///< data received
-   SIK_TIMEOUT       = (1 << 3),    ///< timeout occured
+   SIK_TIMEOUT       = (1 << 3),    ///< timeout occurred
    SIK_SENT          = (1 << 4),    ///< send ok
-   SIK_ALL           = 0x1F,        ///< all interrupt
+   //M20150410 : Remove the comma of last member
+   //SIK_ALL           = 0x1F,        ///< all interrupt
+   SIK_ALL           = 0x1F         ///< all interrupt
 }sockint_kind;
 
 /**
@@ -349,8 +366,10 @@ typedef enum
    CS_GET_MAXRXBUF,        ///< get the size of socket buffer allocated in RX memory
    CS_CLR_INTERRUPT,       ///< clear the interrupt of socket with @ref sockint_kind
    CS_GET_INTERRUPT,       ///< get the socket interrupt. refer to @ref sockint_kind
-   CS_SET_INTMASK,         ///< set the interrupt mask of socket with @ref sockint_kind
-   CS_GET_INTMASK          ///< get the masked interrupt of socket. refer to @ref sockint_kind
+#if _WIZCHIP_ > 5100
+   CS_SET_INTMASK,         ///< set the interrupt mask of socket with @ref sockint_kind, Not supported in W5100
+   CS_GET_INTMASK          ///< get the masked interrupt of socket. refer to @ref sockint_kind, Not supported in W5100
+#endif
 }ctlsock_type;
 
 
@@ -361,15 +380,15 @@ typedef enum
 typedef enum
 {
    SO_FLAG,           ///< Valid only in getsockopt(), For set flag of socket refer to <I>flag</I> in @ref socket().
-   SO_TTL,              ///< Set/Get TTL. @ref Sn_TTL  ( @ref setSn_TTL(), @ref getSn_TTL() )
-   SO_TOS,              ///< Set/Get TOS. @ref Sn_TOS  ( @ref setSn_TOS(), @ref getSn_TOS() )
-   SO_MSS,              ///< Set/Get MSS. @ref Sn_MSSR ( @ref setSn_MSSR(), @ref getSn_MSSR() )
-   SO_DESTIP,           ///< Set/Get the destination IP address. @ref Sn_DIPR ( @ref setSn_DIPR(), @ref getSn_DIPR() )
-   SO_DESTPORT,         ///< Set/Get the destionation Port number. @ref Sn_DPORT ( @ref setSn_DPORT(), @ref getSn_DPORT() )
+   SO_TTL,              ///< Set TTL. @ref Sn_TTL  ( @ref setSn_TTL(), @ref getSn_TTL() )
+   SO_TOS,              ///< Set TOS. @ref Sn_TOS  ( @ref setSn_TOS(), @ref getSn_TOS() )
+   SO_MSS,              ///< Set MSS. @ref Sn_MSSR ( @ref setSn_MSSR(), @ref getSn_MSSR() )
+   SO_DESTIP,           ///< Set the destination IP address. @ref Sn_DIPR ( @ref setSn_DIPR(), @ref getSn_DIPR() )
+   SO_DESTPORT,         ///< Set the destination Port number. @ref Sn_DPORT ( @ref setSn_DPORT(), @ref getSn_DPORT() )
 #if _WIZCHIP_ != 5100   
-   SO_KEEPALIVESEND,    ///< Valid only in setsockopt. Manually send keep-alive packet in TCP mode
+   SO_KEEPALIVESEND,    ///< Valid only in setsockopt. Manually send keep-alive packet in TCP mode, Not supported in W5100
    #if _WIZCHIP_ > 5200   
-      SO_KEEPALIVEAUTO, ///< Set/Get keep-alive auto transmittion timer in TCP mode
+      SO_KEEPALIVEAUTO, ///< Set/Get keep-alive auto transmission timer in TCP mode, Not supported in W5100, W5200
    #endif      
 #endif
    SO_SENDBUF,          ///< Valid only in getsockopt. Get the free data size of Socekt TX buffer. @ref Sn_TX_FSR, @ref getSn_TX_FSR()
@@ -454,8 +473,10 @@ int8_t  setsockopt(uint8_t sn, sockopt_type sotype, void* arg);
  *  - @ref SOCKERR_SOCKOPT     - Invalid socket option or its value \n
  *  - @ref SOCKERR_SOCKMODE    - Invalid socket mode \n
  * @note
- *   The option as SO_REMAINED and SO_PACKINFO is valid only in NON-TCP mode and after call @ref recvfrom().
- */
+ *   The option as PACK_REMAINED and SO_PACKINFO is valid only in NON-TCP mode and after call @ref recvfrom(). \n
+ *   When SO_PACKINFO value is PACK_FIRST and the return value of recvfrom() is zero, 
+ *   This means the zero byte UDP data(UDP Header only) received.
+  */
 int8_t  getsockopt(uint8_t sn, sockopt_type sotype, void* arg);
 
 #endif   // _SOCKET_H_
