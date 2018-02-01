@@ -39,8 +39,8 @@ chip = {
   'part' : "BEAGLEBONEBLACK",
   'family' : "LINUX",
   'package' : "",
-  'ram' : -1,
-  'flash' : -1,
+  'ram' : 0,
+  'flash' : 256, # size of file used to fake flash memory (kb)
   'speed' : -1,
   'usart' : 0,
   'spi' : 0,

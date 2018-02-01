@@ -26,6 +26,7 @@
  #include <signal.h>
  #include <inttypes.h>
 
+#include "platform_config.h"
 #include "jshardware.h"
 #include "jsutils.h"
 #include "jsparse.h"
@@ -34,8 +35,8 @@
 #include <pthread.h>
 
 #define FAKE_FLASH_FILENAME  "espruino.flash"
-#define FAKE_FLASH_BLOCKSIZE 4096
-#define FAKE_FLASH_BLOCKS    16
+#define FAKE_FLASH_BLOCKSIZE FLASH_PAGE_SIZE
+#define FAKE_FLASH_BLOCKS    (FLASH_TOTAL/FLASH_PAGE_SIZE)
 
 #ifdef USE_WIRINGPI
 // see http://wiringpi.com/download-and-install/

@@ -21,6 +21,7 @@
             Remove un-needed DNS lookup for localhost
             Add WIZnet UDP support
             Tidying up build to avoid making un-needed bin, hex or lst files
+            Simplify flash save (and help debugging) by using the 'fake flash' implementation on Linux builds
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line
