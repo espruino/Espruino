@@ -18,6 +18,7 @@
             WIO_LTE fix SD card initialisation
             Improve SD card reliability on all boards by trying to initialise multiple times before failing
             Remove forced inlining in variable inspection functions (reduces flash usage by ~10k)
+            Remove un-needed DNS lookup for localhost
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

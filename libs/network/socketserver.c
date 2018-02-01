@@ -923,16 +923,19 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
   JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
   unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", 0));
 
-  char hostName[128];
+  uint32_t host_addr = 0;
   JsVar *hostNameVar = jsvObjectGetChild(options, "host", 0);
-  if (jsvIsUndefined(hostNameVar))
-    strncpy(hostName, "localhost", sizeof(hostName));
-  else
+  if (jsvIsUndefined(hostNameVar)) {
+    host_addr = 0x0100007F; // 127.0.0.1
+  } else {
+    char hostName[128];
     jsvGetString(hostNameVar, hostName, sizeof(hostName));
+    networkGetHostByName(net, hostName, &host_addr);
+  }
   jsvUnLock(hostNameVar);
 
-  uint32_t host_addr = 0;
-  networkGetHostByName(net, hostName, &host_addr);
+
+
 
   if(!host_addr) {
     jsExceptionHere(JSET_INTERNALERROR, "Unable to locate host\n");

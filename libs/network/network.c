@@ -52,6 +52,9 @@ JsNetworkState networkState =
 JsNetwork *networkCurrentStruct = 0;
 
 uint32_t networkParseIPAddress(const char *ip) {
+  if (!strcmp(ip,"localhost"))
+    return 0x0100007F; // 127.0.0.1
+
   int n = 0;
   uint32_t addr = 0;
   while (*ip) {
