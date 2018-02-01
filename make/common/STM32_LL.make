@@ -11,3 +11,5 @@ endif
 
 # ==============================================================
 include make/common/ARM.make
+
+proj: $(PROJ_NAME).lst $(PROJ_NAME).bin

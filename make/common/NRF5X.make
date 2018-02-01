@@ -218,3 +218,50 @@ endif
 
 # ==============================================================
 include make/common/ARM.make
+
+$(PROJ_NAME).app_hex: $(PROJ_NAME).elf
+	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
+	@$(call obj_to_bin,ihex,hex)
+	@mv $(PROJ_NAME).hex $(PROJ_NAME).app_hex
+
+$(PROJ_NAME).hex: $(PROJ_NAME).app_hex
+ ifdef USE_BOOTLOADER
+  ifdef BOOTLOADER
+	@echo Bootloader - leaving hex file as-is
+	@mv $(PROJ_NAME).app_hex $(PROJ_NAME).hex
+  else
+	@echo Merging SoftDevice and Bootloader
+	# We can build a DFU settings file we can merge in...
+	# nrfutil settings generate --family NRF52 --application $(PROJ_NAME).app_hex --application-version 0xff --bootloader-version 0xff --bl-settings-version 1 dfu_settings.hex
+	@echo FIXME - had to set --overlap=replace
+	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).app_hex -o $(PROJ_NAME).hex
+  endif
+ else
+	@echo Merging SoftDevice
+	python scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).app_hex -o $(PROJ_NAME).hex
+ endif # USE_BOOTLOADER
+
+
+$(PROJ_NAME).zip: $(PROJ_NAME).app_hex
+	@echo Not merging softdevice or bootloader, creating DFU ZIP
+	# nrfutil  pkg generate --help
+	@cp $(PROJ_NAME).app_hex $(PROJ_NAME)_app.hex
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
+	 @rm $(PROJ_NAME)_app.hex
+
+flash: all
+ifeq ($(BOARD),MICROBIT)
+	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
+	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
+else
+	if type nrfjprog 2>/dev/null; then nrfjprog --family $(FAMILY) --clockspeed 50000 --program $(PROJ_NAME).hex --chiperase --reset; \
+	elif [ -d "/media/$(USER)/JLINK" ]; then cp $(PROJ_NAME).hex /media/$(USER)/JLINK;sync; \
+	elif [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).hex /media/JLINK;sync; fi
+endif
+
+ifdef DFU_UPDATE_BUILD
+proj: $(PROJ_NAME).zip
+else
+proj: $(PROJ_NAME).hex
+endif
+

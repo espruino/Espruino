@@ -13,6 +13,11 @@
 # Set the BOARD environment variable to one of the names of the .py file in
 # the `boards` directory. Eg. PICO, PUCKJS, ESPRUINOWIFI, etc
 #
+# make               # make whatever the default binary is
+# make flash         # Try and flash using the platform's normal flash tool
+# make serialflash   # flash over USB serial bootloader (STM32)
+# make lst           # Make listing files
+#
 # Also:
 #
 # DEBUG=1                 # add debug symbols (-g)
@@ -23,7 +28,8 @@
 # CFILE=test.c            # Compile in the supplied C file
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
-# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support
+# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet W5500 support
+#   W5100=1               # Compile for WIZnet W5100 (not W5500)
 # CC3000=1                # If compiling for a non-linux target that has internet support, use CC3000 support
 # USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
@@ -62,9 +68,6 @@ LDFLAGS?=-Winline
 OPTIMIZEFLAGS?=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
 DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
-
-# Espruino flags...
-USE_MATH=1
 
 ifeq ($(shell uname),Darwin)
 MACOSX=1
@@ -338,7 +341,6 @@ endif #USE_FILESYSTEM_SDIO
 endif #!LINUX
 endif #USE_FILESYSTEM
 
-ifdef USE_MATH
 DEFINES += -DUSE_MATH
 INCLUDE += -I$(ROOT)/libs/math
 WRAPPERSOURCES += libs/math/jswrap_math.c
@@ -349,7 +351,6 @@ LDFLAGS += -L$(ROOT)/targets/esp8266
 else
 # everything else uses normal maths lib
 LIBS += -lm
-endif
 endif
 
 ifdef USE_GRAPHICS
@@ -621,6 +622,12 @@ endif
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
 # =========================================================================
+
+.PHONY:  proj
+
+all: 	 proj
+
+# =========================================================================
 ifneq ($(FAMILY),)
 include make/family/$(FAMILY).make
 endif
@@ -695,10 +702,6 @@ endif
 # =============================================================================
 # =============================================================================
 # =============================================================================
-
-.PHONY:  proj
-
-all: 	 proj
 
 boardjson: scripts/build_board_json.py $(WRAPPERSOURCES)
 	@echo Generating Board JSON
@@ -783,6 +786,9 @@ else # NO_COMPILE
 # log WRAPPERSOURCES to help Firmware creation tool
 $(info WRAPPERSOURCES=$(WRAPPERSOURCES));
 endif
+
+lst:
+	$(PROJ_NAME).lst
 
 clean:
 	@echo Cleaning targets

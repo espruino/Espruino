@@ -1,5 +1,9 @@
 # Simple checks and warnings - mainly to deal with people using old build commands
 
+ifeq ($(BOARD),PICO)
+BOARD=PICO_R1_3
+endif
+
 ifdef PUCKJS
 $(error You now need to build with 'BOARD=PUCKJS make')
 endif

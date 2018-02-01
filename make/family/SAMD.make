@@ -41,3 +41,11 @@ LIBS += $(ROOT)/targetlibs/samd/lib/libsam_sam3x8e_gcc_rel.a
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 DEFINES += -DLINK_TIME_OPTIMISATION
+
+include make/common/ARM.make
+
+proj: $(PROJ_NAME).bin $(PROJ_NAME).hex
+
+$(PROJ_NAME).hex: $(PROJ_NAME).elf
+	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
+	@$(call obj_to_bin,ihex,hex)

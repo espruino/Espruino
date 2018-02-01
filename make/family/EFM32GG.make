@@ -71,3 +71,9 @@ $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c
 # $(GECKO_SDK_PATH)/emlib/src/em_wdog.c
 
 include make/common/ARM.make
+
+proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
+
+$(PROJ_NAME).hex: $(PROJ_NAME).elf
+	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
+	@$(call obj_to_bin,ihex,hex)
