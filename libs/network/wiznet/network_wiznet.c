@@ -72,17 +72,21 @@ bool net_wiznet_checkError(JsNetwork *net) {
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
 int net_wiznet_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
   int sckt = -1;
-  if (host!=0) { // ------------------------------------------------- host (=client)
-
+  if (host!=0 || (socketType & ST_UDP)) { // ------------------------------------------------- host (=client)
     //mgg1010 - added random source port - seems to solve problem of repeated GET failing
-    
-    sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, (uint16_t)((rand() & 32767) + 2000), 0); // we set nonblocking later
-     
-    if (sckt<0) {
-      return sckt; // error
+    uint16_t srcPort = (uint16_t)((rand() & 32767) + 2000);
+
+    int res = 0;
+    if (socketType & ST_UDP) { // UDP
+      if (port) srcPort = port;
+      sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_UDP, srcPort, 0); // we set nonblocking later
+      if (sckt<0) return sckt; // error
+    } else { // TCP/IP
+      sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, srcPort, 0); // we set nonblocking later
+      if (sckt<0) return sckt; // error
+      res = connect((uint8_t)sckt,(uint8_t*)&host, port);
     }
 
-    int res = connect((uint8_t)sckt,(uint8_t*)&host, port);
     // now we set nonblocking - so that connect waited for the connection
     uint8_t ctl = SOCK_IO_NONBLOCK;
     ctlsocket((uint8_t)sckt, CS_SET_IOMODE, &ctl);
@@ -152,7 +156,20 @@ int net_wiznet_accept(JsNetwork *net, int sckt) {
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_wiznet_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
   int num = 0;
-  if (getSn_SR((uint8_t)sckt) == SOCK_LISTEN) {
+
+  if (socketType & ST_UDP) {
+    uint16_t dataAvailable;
+    getsockopt(sckt, SO_RECVBUF, &dataAvailable);
+    if (!dataAvailable) return 0;
+
+    size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
+    uint32_t *host = (uint32_t*)buf;
+    unsigned short *port = (unsigned short*)&host[1];
+    uint16_t *size = (unsigned short*)&port[1];
+    num = (int)recvfrom((uint8_t)sckt,buf+delta,len-delta,(uint8_t*)host,(uint16_t*)port);
+    *size = num;
+    if (num) num += (int)delta;
+  } else if (getSn_SR((uint8_t)sckt) == SOCK_LISTEN) {
     // socket is operating as a TCP server - something has gone wrong.
     // just return -1 to close this connection immediately
     return -1;
@@ -167,7 +184,17 @@ int net_wiznet_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, 
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_wiznet_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
-  int r = (int)send((uint8_t)sckt, buf, (uint16_t)len, MSG_NOSIGNAL);
+  int r;
+  if (socketType & ST_UDP) {
+    size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
+    uint32_t *host = (uint32_t*)buf;
+    unsigned short *port = (unsigned short*)&host[1];
+    uint16_t *size = (uint16_t*)&port[1];
+
+    r = (int)sendto((uint8_t)sckt, buf + delta, *size, (uint8_t*)host, *port) + (int)delta;
+  } else {
+    r = (int)send((uint8_t)sckt, buf, (uint16_t)len, MSG_NOSIGNAL);
+  }
   if (jspIsInterrupted()) return -1;
   return r;
 }
