@@ -3,14 +3,14 @@ How to flash Espruino esp8266
 
 *** Flash Tool
 
-Windows, Linux and  MacOSX:
+Windows, Linux and MacOSX:
 
     esptool.py - serial flash tool
     https://github.com/themadinventor/esptool 
     
-Linux and  MacOSX:
+Linux and MacOSX:
    
-    wififlash.sh - script to update flash via wifi for a 4MB esp8266 (e.g. esp-12)
+    wififlash.sh - script to update flash espruino via wifi for 4MB esp8266 (e.g. esp-12)
     ./scripts/wiflash <esp8266 hostname or ip>:88 espruino_esp8266_user1.bin espruino_esp8266_user2.bin
 
 *** Erase flash before updating to a new version 
