@@ -86,6 +86,47 @@ static char *authModeToString(wifi_auth_mode_t authMode) {
 
 
 /**
+ * Convert an wifi_cipher_type_t data type to a string value.
+ *
+static char *cipherTypeToString(wifi_cipher_type_t cipherType) {
+
+  switch(cipherType) {
+  case WIFI_CIPHER_TYPE_NONE:
+    return "NONE";
+  case WIFI_CIPHER_TYPE_WEP40:
+    return "WEP40";
+  case WIFI_CIPHER_TYPE_WEP104:
+    return "WEP104";
+  case WIFI_CIPHER_TYPE_TKIP:
+    return "TKIP";
+  case WIFI_CIPHER_TYPE_CCMP:
+    return "CCMP";
+  case WIFI_CIPHER_TYPE_TKIP_CCMP:
+    return "TKIP+CCMP";
+  }
+  return "unknown";
+} // End of authModeToString
+*/
+
+
+/**
+ * Convert an wifi_second_chan_t data type to a string value.
+ */
+static char *htModeToString(wifi_second_chan_t htMode) {
+
+  switch(htMode) {
+  case WIFI_SECOND_CHAN_NONE:
+    return "HT20";
+  case WIFI_SECOND_CHAN_ABOVE:
+    return "HT40+";
+  case WIFI_SECOND_CHAN_BELOW:
+    return "HT40-";
+  }
+  return "unknown";
+} // End of htModeToString
+
+
+/**
  * Convert a Wifi reason code to a string representation.
  */
 static char *wifiReasonToString(uint8_t reason) {
@@ -524,6 +565,7 @@ static void sendWifiCompletionCB(
   "type":"init",
   "generate":"jswrap_esp32_wifi_soft_init"
 }
+*/
 
 /**
  * Perform a soft initialization of ESP32 networking.
@@ -913,7 +955,7 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
   UNUSED(jsCallback);
   // We have to determine the following information:
   //
-  // - [    ] The status of the station interface
+  // - [done] The status of the station interface
   // - [    ] The status of the access point interface
   // - [done] The current mode of operation
   // - [    ] The physical modulation
@@ -926,25 +968,6 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
   // Get the current mode of operation.
   wifi_mode_t mode;
   esp_wifi_get_mode(&mode);
-
-  char *modeStr;
-  switch(mode) {
-  case WIFI_MODE_NULL:
-    modeStr = "off";
-    break;
-  case WIFI_MODE_AP:
-    modeStr = "ap";
-    break;
-  case WIFI_MODE_STA:
-    modeStr = "sta";
-    break;
-  case WIFI_MODE_APSTA:
-    modeStr ="sta+ap";
-    break;
-  default:
-    modeStr = "unknown";
-    break;
-  }
 
   // Get the current power save type
   wifi_ps_type_t psType;
@@ -965,12 +988,55 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
   JsVar *jsWiFiStatus = jsvNewObject();
   if (g_isStaConnected) {
     jsvObjectSetChildAndUnLock(jsWiFiStatus, "station", jsvNewFromString("connected"));
+
+    if (mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA) {
+      wifi_ap_record_t ap_info;
+      esp_wifi_sta_get_ap_info(&ap_info);
+      char buf[35];
+
+      // SSID of AP
+      strncpy(buf, ap_info.ssid, sizeof(buf));
+      buf[34] = 0;
+      jsvObjectSetChildAndUnLock(jsWiFiStatus, "ssid", jsvNewFromString(buf));
+
+      // MAC address of AP
+      sprintf(buf, MACSTR, MAC2STR(ap_info.bssid));
+      buf[18] = 0;
+      jsvObjectSetChildAndUnLock(jsWiFiStatus, "bssid", jsvNewFromString(buf));
+
+      // Channel of AP
+      jsvObjectSetChildAndUnLock(jsWiFiStatus, "channel", jsvNewFromInteger(ap_info.primary));
+
+      // RSSI
+      jsvObjectSetChildAndUnLock(jsWiFiStatus, "rssi", jsvNewFromInteger(ap_info.rssi));
+
+      // HT mode
+      jsvObjectSetChildAndUnLock(jsWiFiStatus, "htMode",
+        jsvNewFromString(htModeToString(ap_info.second)));
+
+      // Auth mode
+      jsvObjectSetChildAndUnLock(jsWiFiStatus, "authMode",
+        jsvNewFromString(authModeToString(g_lastEventStaConnected.authmode)));
+
+      /* Later version
+       * // Pairwise cipher
+       * jsvObjectSetChildAndUnLock(jsWiFiStatus, "pairwiseCipher",
+       *   jsvNewFromString(cipherTypeToString(ap_info.pairwise_cipher)));
+       *
+       * // Group cipher
+       * jsvObjectSetChildAndUnLock(jsWiFiStatus, "groupCipher",
+       *   jsvNewFromString(cipherTypeToString(ap_info.group_cipher)));
+       */
+    }
+
   } else {
     jsvObjectSetChildAndUnLock(jsWiFiStatus, "station",
         jsvNewFromString(wifiReasonToString(g_lastEventStaDisconnected.reason)));
   }
-  jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode", jsvNewFromString(modeStr));
+  jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode",
+    jsvNewFromString(wifiModeToString(mode)));
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "powersave", jsvNewFromString(psTypeStr));
+
   return jsWiFiStatus;
 } // End of jswrap_wifi_getStatus
 
