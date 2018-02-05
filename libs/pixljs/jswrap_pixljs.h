@@ -8,15 +8,15 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains JavaScript interface for the hexagonal Espruino badge
+* Contains JavaScript interface for Pixl.js (http://www.espruino.com/Pixl.js)
  * ----------------------------------------------------------------------------
  */
 #include "jspin.h"
 
-int jswrap_jslcd_getBatteryPercentage();
-void jswrap_jslcd_lcdw(JsVarInt c);
-void jswrap_jslcd_setContrast(JsVarFloat c);
+int jswrap_pixljs_getBatteryPercentage();
+void jswrap_pixljs_lcdw(JsVarInt c);
+void jswrap_pixljs_setContrast(JsVarFloat c);
 
-void jswrap_jslcd_init();
-void jswrap_jslcd_kill();
-bool jswrap_jslcd_idle();
+void jswrap_pixljs_init();
+void jswrap_pixljs_kill();
+bool jswrap_pixljs_idle();
