@@ -412,6 +412,18 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
 }
 #endif
 
+/// Draw a simple 1bpp image in foreground colour
+void graphicsDrawImage1bpp(JsGraphics *gfx, short x1, short y1, short width, short height, const unsigned char *pixelData) {
+  int pixel = 256|*(pixelData++);
+  for (int y=y1;y<y1+height;y++) {
+    for (int x=x1;x<x1+width;x++) {
+      if (pixel&128) graphicsSetPixelDevice(gfx, x, y, gfx->data.fgColor);
+      pixel = pixel<<1;
+      if (pixel&65536) pixel = 256|*(pixelData++);
+    }
+  }
+}
+
 // Splash screen
 void graphicsSplash(JsGraphics *gfx) {
   graphicsClear(gfx);
