@@ -25,7 +25,7 @@
 #ifdef USE_LCD_FSMC
 #include "lcd_fsmc.h"
 #endif
-#include "bitmap_font_4x6.h"
+
 
 /*JSON{
   "type" : "class",
@@ -1019,23 +1019,7 @@ don't support pixel reads.
 */
 void jswrap_graphics_scroll(JsVar *parent, int xdir, int ydir) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
-  // Ensure we flip coordinate system if needed
-  short x1 = 0, y1 = 0;
-  short x2 = xdir, y2 = ydir;
-  graphicsToDeviceCoordinates(&gfx, &x1, &y1);
-  graphicsToDeviceCoordinates(&gfx, &x2, &y2);
-  xdir = x2-x1;
-  ydir = y2-y1;
-  // do the scrolling
-  gfx.scroll(&gfx, xdir, ydir);
-  // fill the new area
-  unsigned int c = gfx->data.fgColor;
-  gfx->data.fgColor = gfx->data.bgColor;
-  if (xdir>0) gfx.fillRect(&gfx,0,0,xdir-1,gfx.data.height-1);
-  else if (xdir<0) gfx.fillRect(&gfx,gfx.data.width+xdir,0,gfx.data.width-1,gfx.data.height-1);
-  if (ydir>0) gfx.fillRect(&gfx,0,0,gfx.data.width-1,ydir-1);
-  else if (ydir<0) gfx.fillRect(&gfx,0,gfx.data.height+ydir,gfx.data.width-1,gfx.data.height-1);
-  gfx->data.fgColor = c;
+  graphicsScroll(&gfx, xdir, ydir);
   // update modified area
   graphicsSetVar(&gfx);
 }

@@ -63,6 +63,9 @@ typedef enum {
 #ifdef USE_TELNET
   EV_TELNET,
 #endif
+#ifdef USE_TERMINAL
+  EV_TERMINAL, // Built-in VT100 terminal
+#endif
   EV_SERIAL1, // Used for IO for UARTS
   EV_SERIAL2,
   EV_SERIAL3,

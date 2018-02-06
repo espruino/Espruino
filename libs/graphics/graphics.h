@@ -113,6 +113,9 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch); ///<
 #endif
 /// Draw a simple 1bpp image in foreground colour
 void graphicsDrawImage1bpp(JsGraphics *gfx, short x1, short y1, short width, short height, const unsigned char *pixelData);
+/// Scroll the graphics device (in user coords). X>0 = to right, Y >0 = down
+void graphicsScroll(JsGraphics *gfx, int xdir, int ydir);
+
 void graphicsSplash(JsGraphics *gfx); ///< splash screen
 
 void graphicsIdle(); ///< called when idling

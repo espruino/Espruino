@@ -16,6 +16,7 @@
 
 #include "jsvar.h"
 #include "graphics.h"
+#include "bitmap_font_4x6.h"
 
 bool jswrap_graphics_idle();
 void jswrap_graphics_init();
