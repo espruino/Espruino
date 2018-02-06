@@ -147,6 +147,24 @@ static NO_INLINE void jsiAppendToInputLine(const char *str) {
   }
 }
 
+/// If Espruino could choose right now, what would be the best console device to use?
+IOEventFlags jsiGetPreferredConsoleDevice() {
+  IOEventFlags dev = DEFAULT_CONSOLE_DEVICE;
+#ifdef USE_TERMINAL
+  if (!jshIsDeviceInitialised(dev))
+    dev = EV_TERMINAL;
+#endif
+#ifdef USB
+  if (jshIsUSBSERIALConnected())
+    consoleDevice = EV_USBSERIAL;
+#endif
+#ifdef BLUETOOTH
+  if (jsble_has_simple_connection(dev))
+    dev = EV_BLUETOOTH;
+#endif
+  return dev;
+}
+
 void jsiSetConsoleDevice(IOEventFlags device, bool force) {
   if (force)
     jsiStatus |= JSIS_CONSOLE_FORCED;
@@ -820,11 +838,7 @@ void jsiInit(bool autoLoad) {
   jsiStatus = JSIS_COMPLETELY_RESET;
 
 #if defined(LINUX) || !defined(USB)
-  consoleDevice = DEFAULT_CONSOLE_DEVICE;
-#ifdef USE_TERMINAL
-  if (!jshIsDeviceInitialised(consoleDevice))
-    consoleDevice = EV_TERMINAL;
-#endif
+  consoleDevice = jsiGetPreferredConsoleDevice();
 #else
   consoleDevice = EV_LIMBO;
 #endif
@@ -848,9 +862,7 @@ void jsiOneSecondAfterStartup() {
    */
 #ifdef USB
   if (consoleDevice == EV_LIMBO) {
-    consoleDevice = DEFAULT_CONSOLE_DEVICE;
-    if (jshIsUSBSERIALConnected())
-      consoleDevice = EV_USBSERIAL;
+    consoleDevice = jsiGetPreferredConsoleDevice();
     // now move any output that was made to Limbo to the given device
     jshTransmitMove(EV_LIMBO, consoleDevice);
     // finally, kick output - just in case

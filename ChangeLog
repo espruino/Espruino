@@ -20,6 +20,7 @@
             Added Graphics.scroll command to scroll graphics contents
             Added 'Terminal' class with built-in VT100 terminal
             Tweak Espruino logo to be exactly 32 chars wide
+            Improved coe for returning console device to the most useful place
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

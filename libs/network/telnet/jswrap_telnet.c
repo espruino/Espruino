@@ -60,7 +60,6 @@ typedef struct {
   int          cliSock;          ///< active client socket, 0=none (actual socket numbers are 1 less than this, as 0 is a valid socket)
   char         txBuf[TX_CHUNK];  ///< transmit buffer
   uint16_t     txBufLen;         ///< number of chars in tx buffer
-  IOEventFlags oldConsole;       ///< device the console was stolen from
 } TelnetServer;
 
 static TelnetServer tnSrv;        ///< the telnet server, only one right now
@@ -213,7 +212,6 @@ bool telnetAccept(JsNetwork *net) {
   // if the console is not already telnet, then change it
   IOEventFlags console = jsiGetConsoleDevice();
   if (console != EV_TELNET) {
-    tnSrv.oldConsole = console;
     if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(EV_TELNET, false);
   }
 
@@ -233,7 +231,7 @@ void telnetRelease(JsNetwork *net) {
   // console to be set to something else while connected via telnet and then not have it
   // switched again when disconnecting from telnet
   if (console == EV_TELNET && !jsiIsConsoleDeviceForced())
-    jsiSetConsoleDevice(tnSrv.oldConsole, false);
+    jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), false);
 }
 
 // Attempt to send buffer on an established client connection, returns true if it sent something

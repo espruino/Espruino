@@ -62,6 +62,8 @@ bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device);
 
+/// If Espruino could choose right now, what would be the best console device to use?
+IOEventFlags jsiGetPreferredConsoleDevice();
 /** Change the console to a new location - if force is set, this console
  * device will be 'sticky' - it will not change when the device changes
  * connection state */
