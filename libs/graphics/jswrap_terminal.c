@@ -17,6 +17,7 @@
 #include "jswrap_graphics.h"
 #include "graphics.h"
 #include "jsparse.h"
+#include "jsdevices.h"
 
 
 /*JSON{
@@ -25,7 +26,38 @@
   "instanceof" : "Serial",
   "ifdef" : "USE_TERMINAL"
 }
+A simple VT100 terminal emulator.
+
+When data is sent to this, it searches for a Graphics variable called either
+`g` or `LCD` and starts writing characters to it.
 */
+
+
+/* We can't add properties to Terminal at the moment because of build_jswrapper
+ * and the hacks used to add devices, but this would be really handy. */
+/*FIXME{
+    "type" : "method",
+    "class" : "Terminal",
+    "name" : "in",
+    "generate" : "jswrap_telnet_in",
+    "params": [
+      [ "args", "JsVarArray", "One or more items to feed into the Terminal" ]
+    ]
+}
+Send characters to the given Telnet device *as if they were received*.
+
+For instance if you had set the console to terminal with `Terminal.setConsole()`
+then you could feed keypresses in via `Terminal.in`.
+*/
+/*void jswrap_telnet_in_cb(int item, void *callbackData) {
+  NOT_USED(callbackData);
+  jshPushIOCharEvent(EV_TERMINAL, (char)item);
+}
+void jswrap_telnet_in(JsVar *parent, JsVar *args) {
+  NOT_USED(parent);
+  jsvIterateCallback(args, jswrap_telnet_in_cb, 0);
+}*/
+
 
 char terminalControlChars[4];
 unsigned char terminalX;
@@ -48,13 +80,18 @@ bool terminalGetGFX(JsGraphics *gfx) {
   if (!v) return false;
   if (graphicsGetFromVar(gfx, v))
     return true;
-  else jsvUnLock(v);
+  jsvUnLock(v);
+  return false;
+}
+
+// Actually display terminal contents
+void terminalFlip(JsGraphics *gfx) {
+  JsVar *flip = jsvObjectGetChild(gfx->graphicsVar, "flip", 0);
+  if (flip) jsvUnLock2(jspExecuteFunction(flip,gfx->graphicsVar,0,0),flip);
 }
 
 void terminalSetGFX(JsGraphics *gfx) {
-  // if we need to display terminal contents, do it now
-  JsVar *flip = jsvObjectGetChild(gfx->graphicsVar, "flip", 0);
-  if (flip) jsvUnLock2(jspExecuteFunction(flip,gfx->graphicsVar,0,0),flip);
+  terminalFlip(gfx);
   graphicsSetVar(gfx);
   jsvUnLock(gfx->graphicsVar);
 }
@@ -92,7 +129,7 @@ void terminalSendChar(char chn) {
         unsigned int c = gfx.data.fgColor;
         gfx.data.fgColor = gfx.data.bgColor;
         graphicsFillRect(&gfx, cx, cy,
-                               (short)(cx+terminalCharW-1), (short)(cy+terminalCharH-1));
+          (short)(cx+terminalCharW-1), (short)(cy+terminalCharH-1));
         gfx.data.fgColor = c;
         graphicsDrawChar4x6(&gfx, cx, cy, chn);
         terminalSetGFX(&gfx);
@@ -111,13 +148,16 @@ void terminalSendChar(char chn) {
           } else terminalControlCharsReset();
         }
       } else {
-        terminalControlCharsReset();
-        switch (chn) {
-          case 63: terminalControlChars[2] = 63; break;
-          case 65: if (terminalY > 0) terminalY--; break;
-          case 66: terminalY++; while (terminalY >= terminalHeight) terminalScroll(); break;  // down
-          case 67: if (terminalX<255) terminalX++; break; // right
-          case 68: if (terminalX > 0) terminalX--; break; // left
+        if (chn == 63) {
+          terminalControlChars[2] = 63;
+        } else {
+          terminalControlCharsReset();
+          switch (chn) {
+            case 65: if (terminalY > 0) terminalY--; break;
+            case 66: terminalY++; while (terminalY >= terminalHeight) terminalScroll(); break;  // down
+            case 67: if (terminalX<255) terminalX++; break; // right
+            case 68: if (terminalX > 0) terminalX--; break; // left
+          }
         }
       }
     } else {
@@ -140,4 +180,5 @@ void jswrap_terminal_init() {
   terminalX = 0;
   terminalY = (unsigned char)(terminalHeight-1);
 }
+
 

@@ -842,6 +842,10 @@ void jsiOneSecondAfterStartup() {
 #ifdef USB
   if (consoleDevice == EV_LIMBO) {
     consoleDevice = DEFAULT_CONSOLE_DEVICE;
+#ifdef USE_TERMINAL
+    if (!jshIsDeviceInitialised(consoleDevice))
+      consoleDevice = EV_TERMINAL;
+#endif
     if (jshIsUSBSERIALConnected())
       consoleDevice = EV_USBSERIAL;
     // now move any output that was made to Limbo to the given device

@@ -12,7 +12,11 @@
  * ----------------------------------------------------------------------------
  */
 
+#include "jsutils.h"
+#include "jsvar.h"
+
 /// Handle data sent to the VT100 terminal
 void terminalSendChar(char c);
 /// Initialise the terminal
 void jswrap_terminal_init();
+
