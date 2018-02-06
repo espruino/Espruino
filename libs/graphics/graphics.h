@@ -71,6 +71,7 @@ typedef struct JsGraphics {
   void (*setPixel)(struct JsGraphics *gfx, short x, short y, unsigned int col);
   void (*fillRect)(struct JsGraphics *gfx, short x1, short y1, short x2, short y2);
   unsigned int (*getPixel)(struct JsGraphics *gfx, short x, short y);
+  void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); // scroll - leave unscrolled area undefined
 } PACKED_FLAGS JsGraphics;
 
 static inline void graphicsStructInit(JsGraphics *gfx) {
@@ -92,6 +93,8 @@ static inline void graphicsStructInit(JsGraphics *gfx) {
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 void graphicsSetVar(JsGraphics *gfx);
 // ----------------------------------------------------------------------------------------------
+// If graphics is flipped or rotated then the coordinates need modifying
+void graphicsToDeviceCoordinates(const JsGraphics *gfx, short *x, short *y);
 // drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates
 void         graphicsSetPixel(JsGraphics *gfx, short x, short y, unsigned int col);
 unsigned int graphicsGetPixel(JsGraphics *gfx, short x, short y);

@@ -17,6 +17,7 @@
             E.toString now tries harder to allocate a Flat String, and works with no-alloc for Uint8Array/FlatStrings
             WIO_LTE fix SD card initialisation
             Improve SD card reliability on all boards by trying to initialise multiple times before failing
+            Added Graphics.scroll command to scroll graphics contents
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

@@ -49,3 +49,4 @@ void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly);
 void jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect);
 void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos);
 JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset);
+void jswrap_graphics_scroll(JsVar *parent, int x, int y);

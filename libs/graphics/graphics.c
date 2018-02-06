@@ -55,6 +55,35 @@ void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, sho
       graphicsSetPixelDevice(gfx,x,y, gfx->data.fgColor);
 }
 
+void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto) {
+  if (xdir<=0) {
+    int w = gfx->data.width+xdir;
+    for (int x=0;x<w;x++)
+      gfx->setPixel(gfx, (short)x,(short)yto,
+          gfx->getPixel(gfx, (short)(x-xdir),(short)yfrom));
+  } else { // >0
+    for (int x=gfx->data.width-xdir-1;x>=0;x--)
+      gfx->setPixel(gfx, (short)(x+xdir),(short)yto,
+          gfx->getPixel(gfx, (short)x,(short)yfrom));
+  }
+}
+
+void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
+  if (xdir==0 && ydir==0) return;
+  if (ydir<=0) {
+    int h = gfx->data.height+xdir;
+    for (int y=0;y<h;y++)
+      graphicsFallbackScrollX(gfx, xdir, y-ydir, y);
+  } else { // >0
+    for (int y=gfx->data.height-ydir-1;y>=0;y--)
+      graphicsFallbackScrollX(gfx, xdir, y, y+ydir);
+  }
+  gfx->data.modMinX=0;
+  gfx->data.modMinY=0;
+  gfx->data.modMaxX=gfx->data.width-1;
+  gfx->data.modMaxY=gfx->data.height-1;
+}
+
 // ----------------------------------------------------------------------------------------------
 
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
@@ -67,6 +96,7 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
     gfx->setPixel = graphicsFallbackSetPixel;
     gfx->getPixel = graphicsFallbackGetPixel;
     gfx->fillRect = graphicsFallbackFillRect;
+    gfx->scroll = graphicsFallbackScroll;
 #ifdef USE_LCD_SDL
     if (gfx->data.type == JSGRAPHICSTYPE_SDL) {
       lcdSetCallbacks_SDL(gfx);
