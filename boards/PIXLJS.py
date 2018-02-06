@@ -38,6 +38,7 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
+#     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Pixl.js"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
@@ -74,6 +75,16 @@ devices = {
   'BTN2' : { 'pin' : 'H2', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
   'BTN3' : { 'pin' : 'H3', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
   'BTN4' : { 'pin' : 'H4', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'LCD' : {
+            'width' : 128, 'height' : 64, 'bpp' : 1,
+            'controller' : 'st7567',
+            'pin_dc' : 'H5',
+            'pin_cs' : 'H6',
+            'pin_rst' : 'H7',
+            'pin_sck' : 'H8',
+            'pin_mosi' : 'H9',
+            'pin_backlight' : 'H0',
+          },
 };
 
 # left-right, or top-bottom order

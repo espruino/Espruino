@@ -31,12 +31,6 @@
 #include "jswrap_graphics.h"
 #include "lcd_arraybuffer.h"
 
-const Pin LCD_DC = JSH_PORTH_OFFSET+5;
-const Pin LCD_CS = JSH_PORTH_OFFSET+6;
-const Pin LCD_RST = JSH_PORTH_OFFSET+7;
-const Pin LCD_SCK = JSH_PORTH_OFFSET+8;
-const Pin LCD_MOSI = JSH_PORTH_OFFSET+9;
-
 const Pin PIXL_IO_PINS[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
 
 /*JSON{
@@ -70,9 +64,9 @@ void lcd_wr(int data) {
   int bit;
   for (bit=7;bit>=0;bit--) {
     // TODO: we could push this faster by accessing IO directly
-    jshPinSetValue(LCD_MOSI, (data>>bit)&1 );
-    jshPinSetValue(LCD_SCK, 1 );
-    jshPinSetValue(LCD_SCK, 0 );
+    jshPinSetValue(LCD_SPI_MOSI, (data>>bit)&1 );
+    jshPinSetValue(LCD_SPI_SCK, 1 );
+    jshPinSetValue(LCD_SPI_SCK, 0 );
   }
 }
 
@@ -87,7 +81,7 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   int xcoord = gfx->data.modMinX;
   int xlen = gfx->data.modMaxX+1-gfx->data.modMinX;
 
-  jshPinSetValue(LCD_CS,0);
+  jshPinSetValue(LCD_SPI_CS,0);
   for (int y=0;y<8;y++) {
     // skip any lines that don't need updating
     int ycoord = y*8;
@@ -95,11 +89,11 @@ void lcd_flip_gfx(JsGraphics *gfx) {
         ycoord+7 < gfx->data.modMinY) continue;
 
     // Send only what we need
-    jshPinSetValue(LCD_DC,0);
+    jshPinSetValue(LCD_SPI_DC,0);
     lcd_wr(0xB0|y/* page */);
     lcd_wr(0x00|(xcoord&15)/* x lower*/);
     lcd_wr(0x10|(xcoord>>4)/* x upper*/);
-    jshPinSetValue(LCD_DC,1);
+    jshPinSetValue(LCD_SPI_DC,1);
 
     char *px = &bPtr[y*128 + xcoord];
     for (int x=0;x<xlen;x++) {
@@ -116,7 +110,7 @@ void lcd_flip_gfx(JsGraphics *gfx) {
       if ((x&7) == 7) px++;
     }
   }
-  jshPinSetValue(LCD_CS,1);
+  jshPinSetValue(LCD_SPI_CS,1);
   jsvUnLock(buf);
   // Reset modified-ness
   gfx->data.modMaxX = -32768;
@@ -145,12 +139,12 @@ Set the LCD's contrast */
 void jswrap_pixljs_setContrast(JsVarFloat c) {
   if (c<0) c=0;
   if (c>1) c=1;
-  jshPinSetValue(LCD_CS,0);
-  jshPinSetValue(LCD_DC,0);
+  jshPinSetValue(LCD_SPI_CS,0);
+  jshPinSetValue(LCD_SPI_DC,0);
   lcd_wr(0x81);
   lcd_wr((int)(63*c));
   //lcd_wr(0x20|div); div = 0..7
-  jshPinSetValue(LCD_CS,1);
+  jshPinSetValue(LCD_SPI_CS,1);
 }
 
 /*JSON{
@@ -164,10 +158,10 @@ void jswrap_pixljs_setContrast(JsVarFloat c) {
 }
 Set the LCD's contrast */
 void jswrap_pixljs_lcdw(JsVarInt c) {
-  jshPinSetValue(LCD_CS,0);
-  jshPinSetValue(LCD_DC,0);
+  jshPinSetValue(LCD_SPI_CS,0);
+  jshPinSetValue(LCD_SPI_DC,0);
   lcd_wr(c);
-  jshPinSetValue(LCD_CS,1);
+  jshPinSetValue(LCD_SPI_CS,1);
 }
 
 static bool selftest_check_pin(Pin pin) {
@@ -265,11 +259,11 @@ static bool pixl_selfTest() {
 }*/
 void jswrap_pixljs_init() {
   // LCD Init 1
-  jshPinOutput(LCD_CS,0);
-  jshPinOutput(LCD_DC,0);
-  jshPinOutput(LCD_SCK,0);
-  jshPinOutput(LCD_MOSI,0);
-  jshPinOutput(LCD_RST,0);
+  jshPinOutput(LCD_SPI_CS,0);
+  jshPinOutput(LCD_SPI_DC,0);
+  jshPinOutput(LCD_SPI_SCK,0);
+  jshPinOutput(LCD_SPI_MOSI,0);
+  jshPinOutput(LCD_SPI_RST,0);
   // Create backing graphics for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
@@ -311,9 +305,9 @@ void jswrap_pixljs_init() {
   jsvObjectSetChildAndUnLock(graphics,"flip",fn);
   // LCD init 2
   jshDelayMicroseconds(10000);
-  jshPinSetValue(LCD_RST,1);
+  jshPinSetValue(LCD_SPI_RST,1);
   jshDelayMicroseconds(10000);
-  const unsigned char LCD_INIT_DATA[] = {
+  const unsigned char LCD_SPI_INIT_DATA[] = {
        //0xE2,  // soft reset
        0xA3,   // bias 1/7
        0xC8,   // reverse scan dir
@@ -324,9 +318,9 @@ void jswrap_pixljs_init() {
        0xA0,   // start at column 128
        0xAF    // disp on
   };
-  for (unsigned int i=0;i<sizeof(LCD_INIT_DATA);i++)
-    lcd_wr(LCD_INIT_DATA[i]);
-  jshPinSetValue(LCD_CS,1);
+  for (unsigned int i=0;i<sizeof(LCD_SPI_INIT_DATA);i++)
+    lcd_wr(LCD_SPI_INIT_DATA[i]);
+  jshPinSetValue(LCD_SPI_CS,1);
 
   /* If the button is pressed during reset, perform a self test.
    * With bootloader this means apply power while holding button for >3 secs */

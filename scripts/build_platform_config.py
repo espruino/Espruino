@@ -351,7 +351,7 @@ if "LCD" in board.devices:
       codeOutDevicePin("LCD", "pin_reset", "LCD_RESET")
     if "pin_bl" in board.devices["LCD"]:
       codeOutDevicePin("LCD", "pin_bl", "LCD_BL")
-  if board.devices["LCD"]["controller"]=="ssd1306":
+  if board.devices["LCD"]["controller"]=="ssd1306" or board.devices["LCD"]["controller"]=="st7567":
     codeOutDevicePin("LCD", "pin_mosi", "LCD_SPI_MOSI")
     codeOutDevicePin("LCD", "pin_sck", "LCD_SPI_SCK")
     codeOutDevicePin("LCD", "pin_cs", "LCD_SPI_CS")
