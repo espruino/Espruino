@@ -59,12 +59,15 @@ void jswrap_telnet_in(JsVar *parent, JsVar *args) {
 }*/
 
 
+#define terminalHeight (10)
+#define terminalCharW (4)
+#define terminalCharH (6)
+#define terminalOffsetX (0)
+#define terminalOffsetY (4)
+
 char terminalControlChars[4];
-unsigned char terminalX;
-unsigned char terminalY;
-const int terminalHeight = 10;
-const int terminalCharW = 4;
-const int terminalCharH = 6;
+unsigned char terminalX = 0;
+unsigned char terminalY = terminalHeight-1;
 
 static void terminalControlCharsReset() {
   terminalControlChars[0]=0;
@@ -124,8 +127,8 @@ void terminalSendChar(char chn) {
       // Else actually add character
       JsGraphics gfx;
       if (terminalGetGFX(&gfx)) {
-        short cx = (short)(terminalX*terminalCharW);
-        short cy = (short)(terminalY*terminalCharH);
+        short cx = (short)(terminalOffsetX + terminalX*terminalCharW);
+        short cy = (short)(terminalOffsetY + terminalY*terminalCharH);
         unsigned int c = gfx.data.fgColor;
         gfx.data.fgColor = gfx.data.bgColor;
         graphicsFillRect(&gfx, cx, cy,

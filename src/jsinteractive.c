@@ -781,6 +781,9 @@ void jsiSemiInit(bool autoLoad) {
 
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
     if (!loadFlash) {
+#ifdef USE_TERMINAL
+      if (consoleDevice != EV_TERMINAL) // don't spam the terminal
+#endif
       jsiConsolePrint(
 #ifndef LINUX
           // set up terminal to avoid word wrap
@@ -818,6 +821,10 @@ void jsiInit(bool autoLoad) {
 
 #if defined(LINUX) || !defined(USB)
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
+#ifdef USE_TERMINAL
+  if (!jshIsDeviceInitialised(consoleDevice))
+    consoleDevice = EV_TERMINAL;
+#endif
 #else
   consoleDevice = EV_LIMBO;
 #endif
@@ -842,10 +849,6 @@ void jsiOneSecondAfterStartup() {
 #ifdef USB
   if (consoleDevice == EV_LIMBO) {
     consoleDevice = DEFAULT_CONSOLE_DEVICE;
-#ifdef USE_TERMINAL
-    if (!jshIsDeviceInitialised(consoleDevice))
-      consoleDevice = EV_TERMINAL;
-#endif
     if (jshIsUSBSERIALConnected())
       consoleDevice = EV_USBSERIAL;
     // now move any output that was made to Limbo to the given device

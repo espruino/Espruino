@@ -37,7 +37,7 @@ const Pin LCD_RST = JSH_PORTH_OFFSET+7;
 const Pin LCD_SCK = JSH_PORTH_OFFSET+8;
 const Pin LCD_MOSI = JSH_PORTH_OFFSET+9;
 
-const Pin PUCK_IO_PINS[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
+const Pin PIXL_IO_PINS[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
 
 /*JSON{
     "type": "class",
@@ -76,22 +76,33 @@ void lcd_wr(int data) {
   }
 }
 
-void lcd_flip(JsVar *g) {
-  JsVar *buf = jsvObjectGetChild(g,"buffer",0);
+void lcd_flip_gfx(JsGraphics *gfx) {
+  if (gfx->data.modMinX > gfx->data.modMaxX) return; // nothing to do!
+
+  JsVar *buf = jsvObjectGetChild(gfx->graphicsVar,"buffer",0);
   if (!buf) return;
   JSV_GET_AS_CHAR_ARRAY(bPtr, bLen, buf);
   if (!bPtr || bLen<128*8) return;
 
+  int xcoord = gfx->data.modMinX;
+  int xlen = gfx->data.modMaxX+1-gfx->data.modMinX;
+
   jshPinSetValue(LCD_CS,0);
   for (int y=0;y<8;y++) {
+    // skip any lines that don't need updating
+    int ycoord = y*8;
+    if (ycoord > gfx->data.modMaxY ||
+        ycoord+7 < gfx->data.modMinY) continue;
+
+    // Send only what we need
     jshPinSetValue(LCD_DC,0);
     lcd_wr(0xB0|y/* page */);
-    lcd_wr(0x00/* x lower*/);
-    lcd_wr(0x10/* x upper*/);
+    lcd_wr(0x00|(xcoord&15)/* x lower*/);
+    lcd_wr(0x10|(xcoord>>4)/* x upper*/);
     jshPinSetValue(LCD_DC,1);
 
-    char *px = &bPtr[y*128];
-    for (int x=0;x<128;x++) {
+    char *px = &bPtr[y*128 + xcoord];
+    for (int x=0;x<xlen;x++) {
       int bit = 128>>(x&7);
       lcd_wr(
           ((px[  0]&bit)?1:0) |
@@ -107,8 +118,19 @@ void lcd_flip(JsVar *g) {
   }
   jshPinSetValue(LCD_CS,1);
   jsvUnLock(buf);
+  // Reset modified-ness
+  gfx->data.modMaxX = -32768;
+  gfx->data.modMaxY = -32768;
+  gfx->data.modMinX = 32767;
+  gfx->data.modMinY = 32767;
 }
 
+
+void lcd_flip(JsVar *parent) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+  lcd_flip_gfx(&gfx);
+  graphicsSetVar(&gfx);
+}
 
 /*JSON{
     "type" : "staticmethod",
@@ -148,39 +170,43 @@ void jswrap_pixljs_lcdw(JsVarInt c) {
   jshPinSetValue(LCD_CS,1);
 }
 
-static JsVar *selftest_check_pin(Pin pin) {
+static bool selftest_check_pin(Pin pin) {
   unsigned int i;
   bool ok = true;
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
   jshPinSetValue(pin, 1);
   jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLUP);
   if (!jshPinGetValue(pin)) {
-    return jsvVarPrintf("Pin %p forced low", pin);
+    jsiConsolePrintf("Pin %p forced low\n", pin);
+    ok = false;
   }
-  for (i=0;i<sizeof(PUCK_IO_PINS)/sizeof(Pin);i++)
-    if (PUCK_IO_PINS[i]!=pin)
-      jshPinOutput(PUCK_IO_PINS[i], 0);
+  for (i=0;i<sizeof(PIXL_IO_PINS)/sizeof(Pin);i++)
+    if (PIXL_IO_PINS[i]!=pin)
+      jshPinOutput(PIXL_IO_PINS[i], 0);
   if (!jshPinGetValue(pin)) {
-    return jsvVarPrintf("Pin %p shorted low\n", pin);
+    jsiConsolePrintf("Pin %p shorted low\n", pin);
+    ok = false;
   }
 
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
   jshPinSetValue(pin, 0);
   jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLDOWN);
   if (jshPinGetValue(pin)) {
-    return jsvVarPrintf("Pin %p forced high", pin);
+    jsiConsolePrintf("Pin %p forced high\n", pin);
+    ok = false;
   }
-  for (i=0;i<sizeof(PUCK_IO_PINS)/sizeof(Pin);i++)
-     if (PUCK_IO_PINS[i]!=pin)
-       jshPinOutput(PUCK_IO_PINS[i], 1);
-  if (jshPinGetValue(pin)) {
-    return jsvVarPrintf("Pin %p shorted high", pin);
-  }
+  for (i=0;i<sizeof(PIXL_IO_PINS)/sizeof(Pin);i++)
+     if (PIXL_IO_PINS[i]!=pin)
+       jshPinOutput(PIXL_IO_PINS[i], 1);
+   if (jshPinGetValue(pin)) {
+     jsiConsolePrintf("Pin %p shorted high\n", pin);
+     ok = false;
+   }
   jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-  return 0;
+  return ok;
 }
 
-static JsVar *pixl_selfTest() {
+static bool pixl_selfTest() {
   unsigned int timeout, i;
   JsVarFloat v;
   bool ok = true;
@@ -189,20 +215,26 @@ static JsVar *pixl_selfTest() {
   jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
   jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
 
+  if (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE)
+    jsiConsolePrintf("Release BTN1\n");
   timeout = 2000;
   while (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE && timeout--)
     nrf_delay_ms(1);
   if (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE) {
-    return jsvVarPrintf("BTN1 pressed?");
+    jsiConsolePrintf("BTN1 stuck down\n");
+    ok = false;
   }
   if (jshPinGetValue(BTN2_PININDEX)==BTN1_ONSTATE) {
-    return jsvVarPrintf("BTN2 pressed?");
+    jsiConsolePrintf("BTN2 stuck down\n");
+    ok = false;
   }
   if (jshPinGetValue(BTN3_PININDEX)==BTN1_ONSTATE) {
-    return jsvVarPrintf("BTN3 pressed?");
+    jsiConsolePrintf("BTN3 stuck down\n");
+    ok = false;
   }
   if (jshPinGetValue(BTN4_PININDEX)==BTN1_ONSTATE) {
-    return jsvVarPrintf("BTN4 pressed?");
+    jsiConsolePrintf("BTN4 stuck down\n");
+    ok = false;
   }
   nrf_delay_ms(100);
   jshPinInput(LED1_PININDEX);
@@ -213,19 +245,18 @@ static JsVar *pixl_selfTest() {
   v = jshPinAnalog(LED1_PININDEX);
   jshPinSetState(LED1_PININDEX, JSHPINSTATE_GPIO_IN);
   if (v<0.3 || v>0.65) {
-    return jsvVarPrintf("Backlight OOR (%f)", v);
+    jsiConsolePrintf("Backlight OOR (%f)\n", v);
+    ok = false;
   }
 
-  JsVar *reason = 0;
-  for (i=0;i<sizeof(PUCK_IO_PINS)/sizeof(Pin);i++) {
-    reason = selftest_check_pin(PUCK_IO_PINS[i]);
-     if (reason) break;
+  for (i=0;i<sizeof(PIXL_IO_PINS)/sizeof(Pin);i++) {
+    if (!selftest_check_pin(PIXL_IO_PINS[i])) ok = false;
   }
 
-  for (i=0;i<sizeof(PUCK_IO_PINS)/sizeof(Pin);i++)
-    jshPinSetState(PUCK_IO_PINS[i], JSHPINSTATE_GPIO_IN);
+  for (i=0;i<sizeof(PIXL_IO_PINS)/sizeof(Pin);i++)
+    jshPinSetState(PIXL_IO_PINS[i], JSHPINSTATE_GPIO_IN);
 
-  return reason;
+  return ok;
 }
 
 /*JSON{
@@ -297,38 +328,36 @@ void jswrap_pixljs_init() {
     lcd_wr(LCD_INIT_DATA[i]);
   jshPinSetValue(LCD_CS,1);
 
-
-  const char *selfTestResult = 0;
   /* If the button is pressed during reset, perform a self test.
    * With bootloader this means apply power while holding button for >3 secs */
   static bool firstStart = true;
+
+  if (firstStart) {
+    // animate logo in
+    for (int i=128;i>24;i-=4) {
+      graphicsClear(&gfx);
+      graphicsDrawImage1bpp(&gfx,i,15,81,34,PIXLJS_IMG);
+      lcd_flip_gfx(&gfx);
+    }
+  } else {
+    // if a standard reset, just display logo
+    graphicsClear(&gfx);
+    graphicsDrawImage1bpp(&gfx,24,15,81,34,PIXLJS_IMG);
+    lcd_flip_gfx(&gfx);
+  }
+
   if (firstStart && jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) {
     // don't do it during a software reset - only first hardware reset
-    selfTestResult = pixl_selfTest();
-    if (!selfTestResult) selfTestResult = jsvNewFromString("Passed!");
-  }
-
-  // animate logo in
-  for (int i=128;i>24;i-=4) {
-    graphicsClear(&gfx);
-    graphicsDrawImage1bpp(&gfx,i,15,81,34,PIXLJS_IMG);
-    lcd_flip(graphics);
-  }
-
-  if (selfTestResult) {
-    graphicsDrawString(&gfx, 0,52, "SELF TEST:");
-    char buf[32];
-    jsvGetString(selfTestResult,buf,sizeof(buf));
-    graphicsDrawString(&gfx,8,58,buf);
-    lcd_flip(graphics);
+    jsiConsolePrintf("SELF TEST\n");
+    if (pixl_selfTest()) jsiConsolePrintf("Test passed!\n");
   }
 
   // If the button is *still* pressed, remove all code from flash memory too!
   if (firstStart && jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) {
     jsfRemoveCodeFromFlash();
-    graphicsDrawString(&gfx, 0,0, "Removed saved code from Flash");
-    lcd_flip(graphics);
+    jsiConsolePrintf("Removed saved code from Flash\n");
   }
+  graphicsSetVar(&gfx);
 
   firstStart = false;
   jsvUnLock(graphics);
