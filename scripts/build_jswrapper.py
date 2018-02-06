@@ -530,7 +530,7 @@ codeOut('')
 
 codeOut('void *jswGetBuiltInLibrary(const char *name) {')
 for lib in libraries:
-  codeOut('if (strcmp(name, "'+lib+'")==0) return (void*)gen_jswrap_'+lib+'_'+lib+';');
+  codeOut('  if (strcmp(name, "'+lib+'")==0) return (void*)gen_jswrap_'+lib+'_'+lib+';');
 codeOut('  return 0;')
 codeOut('}')
 
