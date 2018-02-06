@@ -33,7 +33,7 @@ void heatshrink_encode(unsigned char *data, size_t dataLen, void (*callback)(uns
   size_t polled = 0;
   while (sunk < dataLen) {
     bool ok = heatshrink_encoder_sink(&hse, &data[sunk], dataLen - sunk, &count) >= 0;
-    assert(ok);
+    assert(ok);NOT_USED(ok);
     sunk += count;
     if (sunk == dataLen) {
       heatshrink_encoder_finish(&hse);
@@ -81,7 +81,7 @@ void heatshrink_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsi
         inBuf[i-count] = inBuf[i];
     }
     inBufCount -= count;
-    assert(ok);
+    assert(ok);NOT_USED(ok);
     sunk += count;
     if (lastByte < 0) {
       heatshrink_decoder_finish(&hsd);
