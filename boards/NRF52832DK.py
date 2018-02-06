@@ -36,6 +36,7 @@ info = {
      'NEOPIXEL'
    ],
    'makefile' : [
+     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DBOARD_PCA10040 -DPCA10040'
    ]
  }
