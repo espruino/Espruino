@@ -25,7 +25,7 @@
 #ifdef USE_LCD_FSMC
 #include "lcd_fsmc.h"
 #endif
-#include "bitmap_font_4x6.h"
+
 
 /*JSON{
   "type" : "class",
@@ -626,9 +626,14 @@ Draw a string of text in the current font
 void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
+  int startx = x;
   JsVar *customBitmap = 0, *customWidth = 0;
   int customHeight = 0, customFirstChar = 0;
-  if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
+  if (gfx.data.fontSize>0) {
+    customHeight = gfx.data.fontSize;
+  } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
+    customHeight = 6;
+  } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
     customBitmap = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, 0);
     customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
     customHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0));
@@ -642,6 +647,12 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   jsvStringIteratorNew(&it, str, 0);
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetChar(&it);
+    if (ch=='\n') {
+      x = startx;
+      y += customHeight;
+      jsvStringIteratorNext(&it);
+      continue;
+    }
     if (gfx.data.fontSize>0) {
 #ifndef SAVE_ON_FLASH
       int w = (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
@@ -988,4 +999,27 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
     graphicsSetVar(&gfx);
   }
   return obj;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "scroll",
+  "generate" : "jswrap_graphics_scroll",
+  "params" : [
+    ["x","int32","X direction. >0 = to right"],
+    ["y","int32","Y direction. >0 = down"]
+  ]
+}
+Scroll the contents of this graphics in a certain direction. The remaining area
+is filled with the background color.
+
+Note: This uses repeated pixel reads and writes, so will not work on platforms that
+don't support pixel reads.
+*/
+void jswrap_graphics_scroll(JsVar *parent, int xdir, int ydir) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+  graphicsScroll(&gfx, xdir, ydir);
+  // update modified area
+  graphicsSetVar(&gfx);
 }

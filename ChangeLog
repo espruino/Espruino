@@ -22,6 +22,13 @@
             Add WIZnet UDP support
             Tidying up build to avoid making un-needed bin, hex or lst files
             Simplify flash save (and help debugging) by using the 'fake flash' implementation on Linux builds
+            Added Graphics.scroll command to scroll graphics contents
+            Added 'Terminal' class with built-in VT100 terminal
+            Tweak Espruino logo to be exactly 32 chars wide
+            Improved code for returning console device to the most useful place
+            Fix pinToString for devices with port A but no port B
+            Speed improvements for ArrayBuffer Graphics
+            Tidied up bootloader - devices with one LED now flash LED when button pressed
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

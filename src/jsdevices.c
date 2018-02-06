@@ -166,6 +166,13 @@ void jshTransmit(
     return;
   }
 #endif
+#ifdef USE_TERMINAL
+  if (device==EV_TERMINAL) {
+    extern void terminalSendChar(char c);
+    terminalSendChar((char)data);
+    return;
+  }
+#endif
 #ifndef LINUX
 #ifdef USB
   if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected()) {
@@ -530,6 +537,9 @@ const char *jshGetDeviceString(
 #ifdef USE_TELNET
   case EV_TELNET: return "Telnet";
 #endif
+#ifdef USE_TERMINAL
+  case EV_TERMINAL: return "Terminal";
+#endif
   case EV_SERIAL1: return "Serial1";
   case EV_SERIAL2: return "Serial2";
   case EV_SERIAL3: return "Serial3";
@@ -585,11 +595,14 @@ IOEventFlags jshFromDeviceString(
      if (strcmp(&device[1], "luetooth")==0) return EV_BLUETOOTH;
   }
 #endif
-#ifdef USE_TELNET
   if (device[0]=='T') {
+#ifdef USE_TELNET
      if (strcmp(&device[1], "elnet")==0) return EV_TELNET;
-  }
 #endif
+#ifdef USE_TERMINAL
+     if (strcmp(&device[1], "erminal")==0) return EV_TERMINAL;
+#endif
+  }
   else if (device[0]=='S') {
     if (device[1]=='e' && device[2]=='r' && device[3]=='i' && device[4]=='a' && device[5]=='l' && device[6]!=0 && device[7]==0) {
       if (device[6]=='1') return EV_SERIAL1;

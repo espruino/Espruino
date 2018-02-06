@@ -1352,7 +1352,7 @@ void jshIdle() {
         jsiSetConsoleDevice(EV_USBSERIAL, false);
     } else {
       if (!jsiIsConsoleDeviceForced() && jsiGetConsoleDevice()==EV_USBSERIAL)
-        jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, false);
+        jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), false);
       jshTransmitClearDevice(EV_USBSERIAL); // clear the transmit queue
     }
   }

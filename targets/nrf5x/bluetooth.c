@@ -648,7 +648,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         {
           bleStatus &= ~BLE_IS_RSSI_SCANNING; // scanning will have stopped now we're disconnected
           m_conn_handle = BLE_CONN_HANDLE_INVALID;
-          if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, 0);
+          if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
           // by calling nus_transmit_string here, without a connection, we clear the Bluetooth output buffer
           nus_transmit_string();
           // restart advertising after disconnection

@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include "platform_config.h"
+#include "jspininfo.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_mbr.h"
@@ -32,10 +33,9 @@
 #include "app_error.h"
 #include "app_error_weak.h"
 #include "nrf_bootloader_info.h"
+#include "lcd.h"
+#include "dfu_status.h"
 
-#undef BOOTLOADER_BUTTON
-#define BOOTLOADER_BUTTON               BTN1_PININDEX                                            /**< Button used to enter SW update mode. */
-#define BOOTLOADER_BUTTON_ONSTATE       BTN1_ONSTATE                                            /**< Button used to enter SW update mode. */
 #ifdef LED3_PININDEX
 #define UPDATE_IN_PROGRESS_LED          LED3_PININDEX                                            /**< Led used to indicate that DFU is active. */
 #define UPDATE_IN_PROGRESS_LED_ONSTATE  LED3_ONSTATE                                            /**< Led used to indicate that DFU is active. */
@@ -66,45 +66,76 @@ void app_error_handler_bare(uint32_t error_code)
     NVIC_SystemReset();
 }
 
-
-/**@brief Function for initialization of LEDs.
- */
-static void leds_init(void)
-{
-    nrf_gpio_cfg_output(UPDATE_IN_PROGRESS_LED);
-    nrf_gpio_pin_write(UPDATE_IN_PROGRESS_LED, !UPDATE_IN_PROGRESS_LED_ONSTATE);
-    nrf_gpio_cfg_output(BOOTLOADER_BUTTON_PRESS_LED);
-    nrf_gpio_pin_write(BOOTLOADER_BUTTON_PRESS_LED, !BOOTLOADER_BUTTON_PRESS_LED_ONSTATE);
+void led_write(Pin pin, bool value) {
+  nrf_gpio_cfg_output(pinInfo[pin].pin);
+  nrf_gpio_pin_write(pinInfo[pin].pin, value ^ ((pinInfo[pin].port&JSH_PIN_NEGATED)!=0));
 }
 
-
-/**@brief Function for initializing the button module.
- */
-static void buttons_init(void)
+static void set_led_state(bool btn, bool progress)
 {
-    nrf_gpio_cfg_sense_input(BOOTLOADER_BUTTON,
-                             BOOTLOADER_BUTTON_ONSTATE ? NRF_GPIO_PIN_PULLDOWN : NRF_GPIO_PIN_PULLUP,
-                             BOOTLOADER_BUTTON_ONSTATE ? NRF_GPIO_PIN_SENSE_HIGH : NRF_GPIO_PIN_SENSE_LOW);
+#if defined(LED2_PININDEX) && defined(LED3_PININDEX)
+  led_write(LED3_PININDEX, progress);
+  led_write(LED2_PININDEX, btn);
+#elif defined(LED1_PININDEX) && !defined(PIXLJS)
+  led_write(LED1_PININDEX, progress || btn);
+#endif
+}
 
+static void hardware_init(void)
+{
+    set_led_state(false, false);
+
+    bool polarity = (BTN1_ONSTATE==1) ^ ((pinInfo[BTN1_PININDEX].port&JSH_PIN_NEGATED)!=0);
+    nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin,
+            polarity ? NRF_GPIO_PIN_PULLDOWN : NRF_GPIO_PIN_PULLUP,
+            polarity ? NRF_GPIO_PIN_SENSE_HIGH : NRF_GPIO_PIN_SENSE_LOW);
+}
+
+static bool get_btn_state()
+{
+  bool state = nrf_gpio_pin_read(pinInfo[BTN1_PININDEX].pin);
+  if (pinInfo[BTN1_PININDEX].port&JSH_PIN_NEGATED) state=!state;
+  return state == BTN1_ONSTATE;
+}
+
+extern void dfu_set_status(DFUStatus status) {
+  switch (status) {
+  case DFUS_ADVERTISING_START:
+    lcd_print("READY TO UPDATE\r\n");
+    set_led_state(true,false); break;
+  case DFUS_ADVERTISING_STOP:
+    break;
+  case DFUS_CONNECTED:
+    lcd_print("CONNECTED\r\n");
+    set_led_state(false,true); break;
+  case DFUS_DISCONNECTED:
+    lcd_print("DISCONNECTED\r\n");
+    break;
+  }
 }
 
 // Override Weak version
 bool nrf_dfu_enter_check(void) {
-    bool dfu_start = (nrf_gpio_pin_read(BOOTLOADER_BUTTON) == BOOTLOADER_BUTTON_ONSTATE) ? true: false;
+    bool dfu_start = get_btn_state();
 
     // If button is held down for 3 seconds, don't start bootloader.
     // This means that we go straight to Espruino, where the button is still
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
-      nrf_gpio_pin_write(BOOTLOADER_BUTTON_PRESS_LED, BOOTLOADER_BUTTON_PRESS_LED_ONSTATE);
+      lcd_print("RELEASE BTN FOR DFU\r\n");
+      lcd_print("<                     >\r");
       int count = 3000;
-      while (nrf_gpio_pin_read(BOOTLOADER_BUTTON) == BOOTLOADER_BUTTON_ONSTATE && count) {
+      while (get_btn_state() && count) {
         nrf_delay_us(999);
+        set_led_state((count&3)==0, false);
+        if ((count&127)==0) lcd_print("=");
         count--;
       }
       if (!count)
         dfu_start = false;
-      nrf_gpio_pin_write(BOOTLOADER_BUTTON_PRESS_LED, !BOOTLOADER_BUTTON_PRESS_LED_ONSTATE);
+      else
+        lcd_print("\r\nDFU STARTED\r\n");
+      set_led_state(true, true);
     }
 
     return dfu_start;
@@ -121,8 +152,10 @@ int main(void)
 
     NRF_LOG_INFO("Inside main\r\n");
 
-    leds_init();
-    buttons_init();
+    lcd_init();
+    lcd_print("BOOTLOADER\r\n");
+
+    hardware_init();
 
     ret_val = nrf_bootloader_init();
     APP_ERROR_CHECK(ret_val);

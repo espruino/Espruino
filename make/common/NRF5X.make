@@ -46,6 +46,7 @@ ifdef BOOTLOADER
     targets/nrf5x_dfu/dfu-cc.pb.c \
     targets/nrf5x_dfu/dfu_public_key.c \
     targets/nrf5x_dfu/dfu_req_handling.c \
+    targets/nrf5x_dfu/lcd.c \
     targets/nrf5x_dfu/main.c
 else
   SOURCES +=                              \

@@ -375,6 +375,11 @@ ifdef USE_LCD_FSMC
   SOURCES += libs/graphics/lcd_fsmc.c
 endif
 
+ifdef USE_TERMINAL
+  DEFINES += -DUSE_TERMINAL
+  WRAPPERSOURCES += libs/graphics/jswrap_terminal.c
+endif
+
 endif
 
 ifdef USE_USB_HID

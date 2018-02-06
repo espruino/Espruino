@@ -147,6 +147,24 @@ static NO_INLINE void jsiAppendToInputLine(const char *str) {
   }
 }
 
+/// If Espruino could choose right now, what would be the best console device to use?
+IOEventFlags jsiGetPreferredConsoleDevice() {
+  IOEventFlags dev = DEFAULT_CONSOLE_DEVICE;
+#ifdef USE_TERMINAL
+  if (!jshIsDeviceInitialised(dev))
+    dev = EV_TERMINAL;
+#endif
+#ifdef USB
+  if (jshIsUSBSERIALConnected())
+    consoleDevice = EV_USBSERIAL;
+#endif
+#ifdef BLUETOOTH
+  if (jsble_has_simple_connection(dev))
+    dev = EV_BLUETOOTH;
+#endif
+  return dev;
+}
+
 void jsiSetConsoleDevice(IOEventFlags device, bool force) {
   if (force)
     jsiStatus |= JSIS_CONSOLE_FORCED;
@@ -781,6 +799,9 @@ void jsiSemiInit(bool autoLoad) {
 
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
     if (!loadFlash) {
+#ifdef USE_TERMINAL
+      if (consoleDevice != EV_TERMINAL) // don't spam the terminal
+#endif
       jsiConsolePrint(
 #ifndef LINUX
           // set up terminal to avoid word wrap
@@ -788,15 +809,15 @@ void jsiSemiInit(bool autoLoad) {
 #endif
           // rectangles @ http://www.network-science.de/ascii/
           "\n"
-          " _____                 _ \n"
-          "|   __|___ ___ ___ _ _|_|___ ___ \n"
-          "|   __|_ -| . |  _| | | |   | . |\n"
-          "|_____|___|  _|_| |___|_|_|_|___|\n"
-          "          |_| http://espruino.com\n"
-          " "JS_VERSION" Copyright 2017 G.Williams\n"
+          " ____                 _ \n"
+          "|  __|___ ___ ___ _ _|_|___ ___ \n"
+          "|  __|_ -| . |  _| | | |   | . |\n"
+          "|____|___|  _|_| |___|_|_|_|___|\n"
+          "         |_| espruino.com\n"
+          " "JS_VERSION" (c) 2017 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
-#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS)
+#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS)
           "\n"
           "Espruino is Open Source. Our work is supported\n"
           "only by sales of official boards and donations:\n"
@@ -817,7 +838,7 @@ void jsiInit(bool autoLoad) {
   jsiStatus = JSIS_COMPLETELY_RESET;
 
 #if defined(LINUX) || !defined(USB)
-  consoleDevice = DEFAULT_CONSOLE_DEVICE;
+  consoleDevice = jsiGetPreferredConsoleDevice();
 #else
   consoleDevice = EV_LIMBO;
 #endif
@@ -841,9 +862,7 @@ void jsiOneSecondAfterStartup() {
    */
 #ifdef USB
   if (consoleDevice == EV_LIMBO) {
-    consoleDevice = DEFAULT_CONSOLE_DEVICE;
-    if (jshIsUSBSERIALConnected())
-      consoleDevice = EV_USBSERIAL;
+    consoleDevice = jsiGetPreferredConsoleDevice();
     // now move any output that was made to Limbo to the given device
     jshTransmitMove(EV_LIMBO, consoleDevice);
     // finally, kick output - just in case

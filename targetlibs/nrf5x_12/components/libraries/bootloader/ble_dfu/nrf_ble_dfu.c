@@ -54,8 +54,7 @@
 #include "nrf_log.h"
 #include "nrf_delay.h"
 
-#include "platform_config.h"
-#include "nrf_gpio.h"
+#include "dfu_status.h"
 
 #define DEVICE_NAME                          "DfuTarg"                                              /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME                    "NordicSemiconductor"                                  /**< Manufacturer. Will be passed to Device Information Service. */
@@ -113,31 +112,6 @@ DFU_TRANSPORT_REGISTER(nrf_dfu_transport_t const dfu_trans) =
     .close_func =       ble_dfu_transport_close
 };
 //lint -restore
-
-static void leds_init(void)
-{
-    nrf_gpio_cfg_output(LED1_PININDEX);
-    nrf_gpio_pin_write(LED1_PININDEX, !LED1_ONSTATE);
-#ifdef LED3_PININDEX
-    nrf_gpio_cfg_output(LED3_PININDEX);
-    nrf_gpio_pin_write(LED3_PININDEX, !LED3_ONSTATE);
-#endif
-}
-
-static void leds_set_advertising(bool on)
-{
-    nrf_gpio_pin_write(LED1_PININDEX, on ? LED1_ONSTATE : !LED1_ONSTATE);
-}
-
-static void leds_set_connected(bool on)
-{
-#ifdef LED3_PININDEX
-    nrf_gpio_pin_write(LED3_PININDEX, on ? LED3_ONSTATE : !LED3_ONSTATE);
-#else
-    nrf_gpio_pin_write(LED1_PININDEX, on ? LED1_ONSTATE : !LED1_ONSTATE);
-#endif
-}
-
 
 /**@brief     Function for handling a Connection Parameters error.
  *
@@ -244,8 +218,7 @@ static uint32_t advertising_start(void)
     err_code = sd_ble_gap_adv_start(&adv_params);
     VERIFY_SUCCESS(err_code);
 
-    leds_set_advertising(true);
-    leds_set_connected(false);
+    dfu_set_status(DFUS_ADVERTISING_START);
 
     m_flags |= DFU_BLE_FLAG_IS_ADVERTISING;
     return NRF_SUCCESS;
@@ -266,7 +239,7 @@ static uint32_t advertising_stop(void)
     err_code = sd_ble_gap_adv_stop();
     VERIFY_SUCCESS(err_code);
 
-    leds_set_advertising(false);
+    dfu_set_status(DFUS_ADVERTISING_STOP);
 
     m_flags |= DFU_BLE_FLAG_IS_ADVERTISING;
     return NRF_SUCCESS;
@@ -640,8 +613,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
-            leds_set_connected(true);
-            leds_set_advertising(false);
+            dfu_set_status(DFUS_ADVERTISING_STOP);
+            dfu_set_status(DFUS_CONNECTED);
 
             m_conn_handle    = p_ble_evt->evt.gap_evt.conn_handle;
             m_flags &= ~DFU_BLE_FLAG_IS_ADVERTISING;
@@ -649,6 +622,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
         case BLE_GAP_EVT_DISCONNECTED:
             // Restart advertising so that the DFU Controller can reconnect if possible.
+            dfu_set_status(DFUS_DISCONNECTED);
             err_code = advertising_start();
             APP_ERROR_CHECK(err_code);
 
@@ -975,8 +949,6 @@ uint32_t ble_dfu_transport_init(void)
     uint32_t err_code;
 
     m_flags &= ~DFU_BLE_FLAG_NONE;
-
-    leds_init();
 
     err_code = ble_stack_init(true);
     VERIFY_SUCCESS(err_code);

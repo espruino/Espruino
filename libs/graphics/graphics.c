@@ -55,6 +55,35 @@ void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, sho
       graphicsSetPixelDevice(gfx,x,y, gfx->data.fgColor);
 }
 
+void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto) {
+  if (xdir<=0) {
+    int w = gfx->data.width+xdir;
+    for (int x=0;x<w;x++)
+      gfx->setPixel(gfx, (short)x,(short)yto,
+          gfx->getPixel(gfx, (short)(x-xdir),(short)yfrom));
+  } else { // >0
+    for (int x=gfx->data.width-xdir-1;x>=0;x--)
+      gfx->setPixel(gfx, (short)(x+xdir),(short)yto,
+          gfx->getPixel(gfx, (short)x,(short)yfrom));
+  }
+}
+
+void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
+  if (xdir==0 && ydir==0) return;
+  if (ydir<=0) {
+    int h = gfx->data.height+xdir;
+    for (int y=0;y<h;y++)
+      graphicsFallbackScrollX(gfx, xdir, y-ydir, y);
+  } else { // >0
+    for (int y=gfx->data.height-ydir-1;y>=0;y--)
+      graphicsFallbackScrollX(gfx, xdir, y, y+ydir);
+  }
+  gfx->data.modMinX=0;
+  gfx->data.modMinY=0;
+  gfx->data.modMaxX=gfx->data.width-1;
+  gfx->data.modMaxY=gfx->data.height-1;
+}
+
 // ----------------------------------------------------------------------------------------------
 
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
@@ -67,6 +96,7 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
     gfx->setPixel = graphicsFallbackSetPixel;
     gfx->getPixel = graphicsFallbackGetPixel;
     gfx->fillRect = graphicsFallbackFillRect;
+    gfx->scroll = graphicsFallbackScroll;
 #ifdef USE_LCD_SDL
     if (gfx->data.type == JSGRAPHICSTYPE_SDL) {
       lcdSetCallbacks_SDL(gfx);
@@ -105,6 +135,11 @@ void graphicsSetVar(JsGraphics *gfx) {
   jsvSetString(data, (char*)&gfx->data, sizeof(JsGraphicsData));
   jsvUnLock(data);
 }
+
+/// Get the memory requires for this graphics's pixels if everything was packed as densely as possible
+size_t graphicsGetMemoryRequired(const JsGraphics *gfx) {
+  return (gfx->data.width * gfx->data.height * gfx->data.bpp + 7) >> 3;
+};
 
 // ----------------------------------------------------------------------------------------------
 
@@ -411,6 +446,39 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
   return (width * (unsigned int)size)/(VECTOR_FONT_POLY_SIZE*2);
 }
 #endif
+
+/// Draw a simple 1bpp image in foreground colour
+void graphicsDrawImage1bpp(JsGraphics *gfx, short x1, short y1, short width, short height, const unsigned char *pixelData) {
+  int pixel = 256|*(pixelData++);
+  for (int y=y1;y<y1+height;y++) {
+    for (int x=x1;x<x1+width;x++) {
+      if (pixel&128) graphicsSetPixelDevice(gfx, x, y, gfx->data.fgColor);
+      pixel = pixel<<1;
+      if (pixel&65536) pixel = 256|*(pixelData++);
+    }
+  }
+}
+
+/// Scroll the graphics device (in user coords). X>0 = to right, Y >0 = down
+void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
+  // Ensure we flip coordinate system if needed
+  short x1 = 0, y1 = 0;
+  short x2 = xdir, y2 = ydir;
+  graphicsToDeviceCoordinates(gfx, &x1, &y1);
+  graphicsToDeviceCoordinates(gfx, &x2, &y2);
+  xdir = x2-x1;
+  ydir = y2-y1;
+  // do the scrolling
+  gfx->scroll(gfx, xdir, ydir);
+  // fill the new area
+  unsigned int c = gfx->data.fgColor;
+  gfx->data.fgColor = gfx->data.bgColor;
+  if (xdir>0) gfx->fillRect(gfx,0,0,xdir-1,gfx->data.height-1);
+  else if (xdir<0) gfx->fillRect(gfx,gfx->data.width+xdir,0,gfx->data.width-1,gfx->data.height-1);
+  if (ydir>0) gfx->fillRect(gfx,0,0,gfx->data.width-1,ydir-1);
+  else if (ydir<0) gfx->fillRect(gfx,0,gfx->data.height+ydir,gfx->data.width-1,gfx->data.height-1);
+  gfx->data.fgColor = c;
+}
 
 // Splash screen
 void graphicsSplash(JsGraphics *gfx) {

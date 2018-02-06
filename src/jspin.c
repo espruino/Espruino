@@ -117,7 +117,7 @@ void jshGetPinString(char *result, Pin pin) {
     itostr(pinInfo[pin].pin-JSH_PIN0,&result[1],10);
 #else
     if (false) {
-#if JSH_PORTB_OFFSET!=-1
+#if JSH_PORTA_OFFSET!=-1
     } else if(
 #if JSH_PORTA_OFFSET!=0
         pin>=JSH_PORTA_OFFSET &&
