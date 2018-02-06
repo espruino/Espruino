@@ -335,16 +335,18 @@ void jswrap_pixljs_init() {
   if (firstStart) {
     // animate logo in
     for (int i=128;i>24;i-=4) {
+      lcd_flip_gfx(&gfx);
       graphicsClear(&gfx);
       graphicsDrawImage1bpp(&gfx,i,15,81,34,PIXLJS_IMG);
-      lcd_flip_gfx(&gfx);
     }
   } else {
     // if a standard reset, just display logo
     graphicsClear(&gfx);
     graphicsDrawImage1bpp(&gfx,24,15,81,34,PIXLJS_IMG);
-    lcd_flip_gfx(&gfx);
   }
+  graphicsDrawString(&gfx,28,39,JS_VERSION);
+  lcd_flip_gfx(&gfx);
+
 
   if (firstStart && jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) {
     // don't do it during a software reset - only first hardware reset
