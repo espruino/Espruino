@@ -67,6 +67,7 @@ typedef struct JsGraphics {
   JsVar *graphicsVar; // this won't be locked again - we just know that it is already locked by something else
   JsGraphicsData data;
   unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero
+  void *backendData; ///< Data used by the graphics backend
 
   void (*setPixel)(struct JsGraphics *gfx, short x, short y, unsigned int col);
   void (*fillRect)(struct JsGraphics *gfx, short x1, short y1, short x2, short y2);
@@ -93,6 +94,8 @@ static inline void graphicsStructInit(JsGraphics *gfx) {
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 void graphicsSetVar(JsGraphics *gfx);
 // ----------------------------------------------------------------------------------------------
+/// Get the memory requires for this graphics's pixels if everything was packed as densely as possible
+size_t graphicsGetMemoryRequired(const JsGraphics *gfx);
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates(const JsGraphics *gfx, short *x, short *y);
 // drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates

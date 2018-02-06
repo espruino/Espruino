@@ -136,6 +136,11 @@ void graphicsSetVar(JsGraphics *gfx) {
   jsvUnLock(data);
 }
 
+/// Get the memory requires for this graphics's pixels if everything was packed as densely as possible
+size_t graphicsGetMemoryRequired(const JsGraphics *gfx) {
+  return (gfx->data.width * gfx->data.height * gfx->data.bpp + 7) >> 3;
+};
+
 // ----------------------------------------------------------------------------------------------
 
 // If graphics is flipped or rotated then the coordinates need modifying

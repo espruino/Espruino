@@ -22,6 +22,7 @@
             Tweak Espruino logo to be exactly 32 chars wide
             Improved code for returning console device to the most useful place
             Fix pinToString for devices with port A but no port B
+            Speed improvements for ArrayBuffer Graphics
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

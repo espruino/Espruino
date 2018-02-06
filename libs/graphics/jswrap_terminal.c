@@ -129,11 +129,13 @@ void terminalSendChar(char chn) {
       if (terminalGetGFX(&gfx)) {
         short cx = (short)(terminalOffsetX + terminalX*terminalCharW);
         short cy = (short)(terminalOffsetY + terminalY*terminalCharH);
+        // Clear background
         unsigned int c = gfx.data.fgColor;
         gfx.data.fgColor = gfx.data.bgColor;
         graphicsFillRect(&gfx, cx, cy,
           (short)(cx+terminalCharW-1), (short)(cy+terminalCharH-1));
         gfx.data.fgColor = c;
+        // draw char
         graphicsDrawChar4x6(&gfx, cx, cy, chn);
         terminalSetGFX(&gfx);
       }
