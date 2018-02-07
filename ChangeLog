@@ -29,6 +29,8 @@
             Fix pinToString for devices with port A but no port B
             Speed improvements for ArrayBuffer Graphics
             Tidied up bootloader - devices with one LED now flash LED when button pressed
+            Simplify data returned by process.env
+            Add process.env.MODULES - to contain a list of the libraries provided in the firmware by require
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

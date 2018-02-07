@@ -537,7 +537,6 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
-
 objectChecks = {}
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="class":
@@ -598,10 +597,22 @@ for jsondata in jsondatas:
 codeOut('}')
 
 codeOut("/** If we have a built-in module with the given name, return the module's contents - or 0 */")
-codeOut('const char *jswGetBuiltinModule(const char *name) {')
+codeOut('const char *jswGetBuiltInJSLibrary(const char *name) {')
 for modulename in jsmodules:
   codeOut("  if (!strcmp(name,\""+modulename+"\")) return "+json.dumps(jsmodules[modulename])+";")
 codeOut('  return 0;')
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut('const char *jswGetBuiltInLibraryNames() {')
+librarynames = []
+for lib in libraries:
+  librarynames.append(lib);
+for lib in jsmodules:
+  librarynames.append(lib);
+codeOut('  return "'+','.join(librarynames)+'";')
 codeOut('}')
 
 codeOut('')

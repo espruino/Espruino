@@ -95,11 +95,6 @@ const JswSymList *jswGetSymbolListForObjectProto(JsVar *parent);
 /// Given the name of an Object, see if we should set it up as a builtin or not
 bool jswIsBuiltInObject(const char *name);
 
-/** If we get this in 'require', do we have the object for this
-  inside the interpreter already? If so, return the native function
-  pointer of the object's constructor */
-void *jswGetBuiltInLibrary(const char *name);
-
 /** Given a variable, return the basic object name of it */
 const char *jswGetBasicObjectName(JsVar *var);
 
@@ -118,7 +113,15 @@ void jswInit();
 /** Tasks to run on Deinitialisation */
 void jswKill();
 
-/** If we have a built-in module with the given name, return the module's contents - or 0 */
-const char *jswGetBuiltinModule(const char *name);
+/** If we get this in 'require', do we have the object for this
+  inside the interpreter already? If so, return the native function
+  pointer of the object's constructor */
+void *jswGetBuiltInLibrary(const char *name);
+
+/** If we have a built-in JS module with the given name, return the module's contents - or 0 */
+const char *jswGetBuiltInJSLibrary(const char *name);
+
+/** Return a comma-separated list of built-in libraries */
+const char *jswGetBuiltInLibraryNames();
 
 #endif // JSWRAPPER_H

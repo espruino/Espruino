@@ -17,6 +17,7 @@
 #include "jsparse.h"
 #include "jswrap_process.h"
 #include "jswrap_interactive.h"
+#include "jswrapper.h"
 #include "jsinteractive.h"
 
 /*JSON{
@@ -52,11 +53,25 @@ Returns the version of Espruino as a String
 #ifndef SAVE_ON_FLASH
 // TODO: the jspeiFindInScopes export won't be needed soon
 const void *exportPtrs[] = {
-    jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,
-    jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,
-    jsvGetFloat,jsvGetInteger,jsvGetBool,
-    jspeiFindInScopes,jspReplaceWith,jspeFunctionCall,
-    jspGetNamedVariable,jspGetNamedField,jspGetVarNamedField,
+    jsvLock,
+    jsvLockAgainSafe,
+    jsvUnLock,
+    jsvSkipName,
+    jsvMathsOp,
+    jsvMathsOpSkipNames,
+    jsvNewFromFloat,
+    jsvNewFromInteger,
+    jsvNewFromString,
+    jsvNewFromBool,
+    jsvGetFloat,
+    jsvGetInteger,
+    jsvGetBool,
+    jspeiFindInScopes,
+    jspReplaceWith,
+    jspeFunctionCall,
+    jspGetNamedVariable,
+    jspGetNamedField,
+    jspGetVarNamedField,
     jsvNewWithFlags,
 };
 const char *exportNames = 
@@ -81,21 +96,17 @@ JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
   jsvObjectSetChildAndUnLock(obj, "VERSION", jsvNewFromString(JS_VERSION));
 #if !defined(SAVE_ON_FLASH)
-  jsvObjectSetChildAndUnLock(obj, "BUILD_DATE", jsvNewFromString(__DATE__));
-  jsvObjectSetChildAndUnLock(obj, "BUILD_TIME", jsvNewFromString(__TIME__));
+  jsvObjectSetChildAndUnLock(obj, "BUILD_DATE", jsvNewFromString(__DATE__ " " __TIME__));
 #endif
 #ifdef GIT_COMMIT
   jsvObjectSetChildAndUnLock(obj, "GIT_COMMIT", jsvNewFromString(STRINGIFY(GIT_COMMIT)));
 #endif
   jsvObjectSetChildAndUnLock(obj, "BOARD", jsvNewFromString(PC_BOARD_ID));
-#if !defined(SAVE_ON_FLASH)
-  jsvObjectSetChildAndUnLock(obj, "CHIP", jsvNewFromString(PC_BOARD_CHIP));
-  jsvObjectSetChildAndUnLock(obj, "CHIP_FAMILY", jsvNewFromString(PC_BOARD_CHIP_FAMILY));
-#endif
   jsvObjectSetChildAndUnLock(obj, "FLASH", jsvNewFromInteger(FLASH_TOTAL));
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
   jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
+  jsvObjectSetChildAndUnLock(obj, "LIBS", jsvNewFromString(jswGetBuiltInLibraryNames()));
 #if !defined(SAVE_ON_FLASH) && !defined(BLUETOOTH)
   // It takes too long to send this information over BLE...
   JsVar *arr = jsvNewObject();

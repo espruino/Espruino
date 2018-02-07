@@ -72,7 +72,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
   // Ok - it's not built-in as native. We want to get the actual text and execute it
   // Look and see if it's built-in as JS
   if (!moduleExport) {
-    const char *builtInJS = jswGetBuiltinModule(moduleNameBuf);
+    const char *builtInJS = jswGetBuiltInJSLibrary(moduleNameBuf);
     if (builtInJS) {
       JsVar *fileContents = jsvNewNativeString((char*)builtInJS, strlen(builtInJS));       
       if (fileContents) {
