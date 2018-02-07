@@ -78,8 +78,8 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   JSV_GET_AS_CHAR_ARRAY(bPtr, bLen, buf);
   if (!bPtr || bLen<128*8) return;
 
-  int xcoord = gfx->data.modMinX;
-  int xlen = gfx->data.modMaxX+1-gfx->data.modMinX;
+  int xcoord = gfx->data.modMinX&~7;
+  int xlen = gfx->data.modMaxX+1-xcoord;
 
   jshPinSetValue(LCD_SPI_CS,0);
   for (int y=0;y<8;y++) {
@@ -87,7 +87,6 @@ void lcd_flip_gfx(JsGraphics *gfx) {
     int ycoord = y*8;
     if (ycoord > gfx->data.modMaxY ||
         ycoord+7 < gfx->data.modMinY) continue;
-
     // Send only what we need
     jshPinSetValue(LCD_SPI_DC,0);
     lcd_wr(0xB0|y/* page */);
@@ -95,7 +94,7 @@ void lcd_flip_gfx(JsGraphics *gfx) {
     lcd_wr(0x10|(xcoord>>4)/* x upper*/);
     jshPinSetValue(LCD_SPI_DC,1);
 
-    char *px = &bPtr[y*128 + xcoord];
+    char *px = &bPtr[y*128 + (xcoord>>3)];
     for (int x=0;x<xlen;x++) {
       int bit = 128>>(x&7);
       lcd_wr(
