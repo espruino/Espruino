@@ -375,6 +375,7 @@ def get_ifdef_description(d):
   if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino WiFi or Linux)"
   if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino WiFi, Linux or ESP8266)"
   if d=="USE_FLASHFS": return "devices with filesystem in Flash support enabled (ESP32 only)"
+  if d=="USE_TERMINAL": return "devices with VT100 terminal emulation enabled (Pixl.js only)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 
