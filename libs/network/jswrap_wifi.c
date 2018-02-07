@@ -18,27 +18,37 @@
    "type": "library",
    "class": "Wifi"
 }
-The wifi library is **an ESP8266 and ESP32-specific** library to control the Wifi interface.
-It supports functionality such as connecting to wifi networks, getting network information,
-starting and access point, etc.
+The Wifi library is designed to control the Wifi interface. It supports functionality
+such as connecting to wifi networks, getting network information, starting an access
+point, etc.
 
+It is available on these devices:
 
-Eventually all WiFi Espruino platforms will use this library as a base, however for now
-if you're not running Espruino on an ESP8266/ESP32 you will need to consult the documentation
-for that device:
+* [Espruino WiFi](http://www.espruino.com/WiFi#using-wifi)
+* [ESP8266](http://www.espruino.com/EspruinoESP8266)
+* [ESP32](http://www.espruino.com/ESP32)
 
-* Espruino WiFi [API documentation is here](http://www.espruino.com/WiFi#using-wifi)
-* ESP8266 connected to Espruino [documentation is here](http://www.espruino.com/ESP8266#software)
+**Certain features may or may not be implemented on your device** however
+we have documented what is available and what isn't.
 
-However if you do have a ESP8266/ESP32, you can use the WiFi library as follows:
+If you're not using one of the devices above, a separate WiFi library is
+provided. For instance:
+
+* An [ESP8266 connected to an Espruino board](http://www.espruino.com/ESP8266#software)
+* An [CC3000 WiFi Module](http://www.espruino.com/CC3000)
+
+[Other ways of connecting to the net](http://www.espruino.com/Internet#related-pages) such
+as GSM, Ethernet and LTE have their own libraries.
+
+You can use the WiFi library as follows:
 
 ```
 var wifi = require("Wifi");
 wifi.connect("my-ssid", {password:"my-pwd"}, function(ap){ console.log("connected:", ap); });
 ```
 
-If you want the connection to happen automatically at boot, add `wifi.save();`.
-
+On ESP32/ESP8266 if you want the connection to happen automatically at boot, add `wifi.save();`.
+On other platforms, place `wifi.connect` in a function called `onInit`.
 */
 
 /*JSON{
@@ -50,7 +60,8 @@ If you want the connection to happen automatically at boot, add `wifi.save();`.
   ]
 }
 The 'connected' event is called when an association with an access point has succeeded, i.e., a connection to the AP's network has been established.
-The details include:
+
+On ESP32/ESP8266 there is a `details` parameter which includes:
 
 * ssid - The SSID of the access point to which the association was established
 * mac - The BSSID/mac address of the access point
@@ -67,7 +78,8 @@ The details include:
   ]
 }
 The 'disconnected' event is called when an association with an access point has been lost.
-The details include:
+
+On ESP32/ESP8266 there is a `details` parameter which includes:
 
 * ssid - The SSID of the access point from which the association was lost
 * mac - The BSSID/mac address of the access point
@@ -79,6 +91,7 @@ The details include:
   "type" : "event",
   "class" : "Wifi",
   "name" : "auth_change",
+  "if" : "defined(ESP32) || defined(ESP8266)",
   "params" : [
     ["details","JsVar","An object with event details"]
   ]
@@ -94,7 +107,8 @@ The details include:
 /*JSON{
   "type" : "event",
   "class" : "Wifi",
-  "name" : "dhcp_timeout"
+  "name" : "dhcp_timeout",
+  "if" : "defined(ESP32) || defined(ESP8266)"
 }
 The 'dhcp_timeout' event is called when a DHCP request to the connected access point fails and thus no IP address could be acquired (or renewed).
 */
@@ -108,7 +122,8 @@ The 'dhcp_timeout' event is called when a DHCP request to the connected access p
   ]
 }
 The 'connected' event is called when the connection with an access point is ready for traffic. In the case of a dynamic IP address configuration this is when an IP address is obtained, in the case of static IP address allocation this happens when an association is formed (in that case the 'associated' and 'connected' events are fired in rapid succession).
-The details include:
+
+On ESP32/ESP8266 there is a `details` parameter which includes:
 
 * ip - The IP address obtained as string
 * netmask - The network's IP range mask as string
@@ -120,6 +135,7 @@ The details include:
   "type" : "event",
   "class" : "Wifi",
   "name" : "sta_joined",
+  "if" : "defined(ESP32) || defined(ESP8266)",
   "params" : [
     ["details","JsVar","An object with event details"]
   ]
@@ -135,6 +151,7 @@ The details include:
   "type" : "event",
   "class" : "Wifi",
   "name" : "sta_left",
+  "if" : "defined(ESP32) || defined(ESP8266)",
   "params" : [
     ["details","JsVar","An object with event details"]
   ]
@@ -150,6 +167,7 @@ The details include:
   "type" : "event",
   "class" : "Wifi",
   "name" : "probe_recv",
+  "if" : "defined(ESP32) || defined(ESP8266)",
   "params" : [
     ["details","JsVar","An object with event details"]
   ]
@@ -228,7 +246,7 @@ Perform a scan for access points. This will enable the station mode if it is not
 * `mac`: access point MAC address in 00:00:00:00:00:00 format.
 * `authMode`: `open`, `wep`, `wpa`, `wpa2`, or `wpa_wpa2`.
 * `channel`: wifi channel 1..13.
-* `hidden`: true if the SSID is hidden.
+* `hidden`: true if the SSID is hidden (ESP32/ESP8266 only)
 * `rssi`: signal strength in dB in the range -110..0.
 
 Notes:
@@ -270,6 +288,7 @@ Notes:
   "class"    : "Wifi",
   "name"     : "getStatus",
   "generate" : "jswrap_wifi_getStatus",
+  "if" : "defined(ESP32) || defined(ESP8266)",
   "return"   : ["JsVar", "An object representing the current WiFi status, if available immediately."],
   "params"   : [
     ["callback", "JsVar", "An optional function to be called back with the current Wifi status, i.e. the same object as returned directly. The callback function is more portable than the direct return value."]
@@ -292,6 +311,7 @@ Retrieve the current overall WiFi configuration. This call provides general info
   "class"    : "Wifi",
   "name"     : "setConfig",
   "generate" : "jswrap_wifi_setConfig",
+  "if" : "defined(ESP8266)",
   "params"   : [
     ["settings", "JsVar", "An object with the configuration settings to change."]
   ]
@@ -310,6 +330,7 @@ Note: esp8266 SDK programmers may be missing an "opmode" option to set the sta/a
   "class"    : "Wifi",
   "name"     : "getDetails",
   "generate" : "jswrap_wifi_getDetails",
+  "if" : "defined(ESP32) || defined(ESP8266)",
   "return"   : ["JsVar", "An object representing the wifi station details, if available immediately."],
   "params"   : [
     ["callback", "JsVar", "An optional function to be called back with the wifi details, i.e. the same object as returned directly. The callback function is more portable than the direct return value."]
@@ -331,6 +352,7 @@ Retrieve the wifi station configuration and status details. The details object h
   "class"    : "Wifi",
   "name"     : "getAPDetails",
   "generate" : "jswrap_wifi_getAPDetails",
+  "if" : "defined(ESP32) || defined(ESP8266)",
   "return"   : ["JsVar", "An object representing the current access point details, if available immediately."],
   "params"   : [
     ["callback", "JsVar", "An optional function to be called back with the current access point details, i.e. the same object as returned directly. The callback function is more portable than the direct return value."]
@@ -354,10 +376,13 @@ Retrieve the current access point configuration and status.  The details object 
   "class"    : "Wifi",
   "name"     : "save",
   "generate" : "jswrap_wifi_save",
+  "if" : "defined(ESP32) || defined(ESP8266)",
   "params"   : [
     ["what", "JsVar", "An optional parameter to specify what to save, on the esp8266 the two supported values are `clear` and `sta+ap`. The default is `sta+ap`"]
   ]
 }
+On boards where this is not available, just issue the `connect` commands you need to run at startup from an `onInit` function.
+
 Save the current wifi configuration (station and access point) to flash and automatically apply this configuration at boot time, unless `what=="clear"`, in which case the saved configuration is cleared such that wifi remains disabled at boot. The saved configuration includes:
 
 * mode (off/sta/ap/sta+ap)
@@ -372,7 +397,8 @@ Save the current wifi configuration (station and access point) to flash and auto
   "type"     : "staticmethod",
   "class"    : "Wifi",
   "name"     : "restore",
-  "generate" : "jswrap_wifi_restore"
+  "generate" : "jswrap_wifi_restore",
+  "if" : "defined(ESP32) || defined(ESP8266)"
 }
 Restores the saved Wifi configuration from flash. See `Wifi.save()`.
 */
@@ -382,7 +408,7 @@ Restores the saved Wifi configuration from flash. See `Wifi.save()`.
   "class"    : "Wifi",
   "name"     : "getIP",
   "generate" : "jswrap_wifi_getIP",
-  "return"   : ["JsVar", "An object representing the station IP information, if available immediately."],
+  "return"   : ["JsVar", "An object representing the station IP information, if available immediately (**ONLY** on ESP8266/ESP32)."],
   "params"   : [
     ["callback", "JsVar", "An optional function to be called back with the IP information, i.e. the same object as returned directly. The callback function is more portable than the direct return value."]
   ]
@@ -390,8 +416,8 @@ Restores the saved Wifi configuration from flash. See `Wifi.save()`.
 Return the station IP information in an object as follows:
 
 * ip - IP address as string (e.g. "192.168.1.5")
-* netmask - The interface netmask as string
-* gw - The network gateway as string
+* netmask - The interface netmask as string (ESP8266/ESP32 only)
+* gw - The network gateway as string (ESP8266/ESP32 only)
 * mac - The MAC address as string of the form 00:00:00:00:00:00
 
 Note that the `ip`, `netmask`, and `gw` fields are omitted if no connection is established:
@@ -402,7 +428,7 @@ Note that the `ip`, `netmask`, and `gw` fields are omitted if no connection is e
   "class"    : "Wifi",
   "name"     : "getAPIP",
   "generate" : "jswrap_wifi_getAPIP",
-  "return"   : ["JsVar", "An object representing the esp8266's Access Point IP information, if available immediately."],
+  "return"   : ["JsVar", "An object representing the esp8266's Access Point IP information, if available immediately (**ONLY** on ESP8266/ESP32)."],
   "params"   : [
     ["callback", "JsVar", "An optional function to be called back with the the IP information, i.e. the same object as returned directly. The callback function is more portable than the direct return value."]
   ]
@@ -421,7 +447,8 @@ Return the access point IP information in an object which contains:
   "class"    : "Wifi",
   "name"     : "getHostByName",
   "generate" : "jswrap_wifi_getHostByName",
-    "params"   : [
+  "if" : "defined(ESP8266)",
+  "params"   : [
     ["hostname", "JsVar", "The hostname to lookup."],
     ["callback", "JsVar", "The callback to invoke when the hostname is returned."]
   ]
@@ -431,25 +458,12 @@ Lookup the hostname and invoke a callback with the IP address as integer argumen
 
 */
 
-
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "Wifi",
-  "name"     : "getDHCPHostname",
-  "generate" : "jswrap_wifi_getHostname",
-  "return"   : ["JsVar", "The currently configured DHCP hostname, if available immediately."],
-  "params"   : [
-    ["callback", "JsVar", "An optional function to be called back with the hostname, i.e. the same string as returned directly. The callback function is more portable than the direct return value."]
-  ]
-}
-Deprecated, please use getHostname.
-*/
-
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "Wifi",
   "name"     : "getHostname",
   "generate" : "jswrap_wifi_getHostname",
+  "if" : "defined(ESP8266)",
   "return"   : ["JsVar", "The currently configured hostname, if available immediately."],
   "params"   : [
     ["callback", "JsVar", "An optional function to be called back with the hostname, i.e. the same string as returned directly. The callback function is more portable than the direct return value."]
@@ -461,21 +475,12 @@ Returns the hostname announced to the DHCP server and broadcast via mDNS when co
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "Wifi",
-  "name"     : "setDHCPHostname",
-  "generate" : "jswrap_wifi_setHostname",
-  "params"   : [
-    ["hostname", "JsVar", "The new DHCP hostname."]
-  ]
-}
-Deprecated, please use setHostname instead.
-*/
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "Wifi",
   "name"     : "setHostname",
   "generate" : "jswrap_wifi_setHostname",
+  "if" : "defined(ESP8266) || defined(ESPRUINOWIFI)",
   "params"   : [
-    ["hostname", "JsVar", "The new hostname."]
+    ["hostname", "JsVar", "The new hostname."],
+    ["callback", "JsVar", "An optional function to be called back when the hostname is set"]
   ]
 }
 Set the hostname. Depending on implemenation, the hostname is sent with every DHCP request and is broadcast via mDNS. The DHCP hostname may be visible in the access point and may be forwarded into DNS as hostname.local.
@@ -505,7 +510,6 @@ The interval determines how often the time server is queried and Espruino's time
   "class"    : "Wifi",
   "name"     : "setIP",
   "generate" : "jswrap_wifi_setIP",
-  "ifdef"    : "ESP8266",
   "params"   : [
     ["settings", "JsVar", "Configuration settings"],
     ["callback", "JsVar", "The callback to invoke when ip is set"]
@@ -524,7 +528,6 @@ The `settings` object must contain the following properties.
   "class"    : "Wifi",
   "name"     : "setAPIP",
   "generate" : "jswrap_wifi_setAPIP",
-  "ifdef"    : "ESP8266",
   "params"   : [
     ["settings", "JsVar", "Configuration settings"],
     ["callback", "JsVar", "The callback to invoke when ip is set"]
@@ -535,4 +538,41 @@ The `settings` object must contain the following properties.
 * `ip` IP address as string (e.g. "192.168.5.100")
 * `gw`  The network gateway as string (e.g. "192.168.5.1")
 * `netmask` The interface netmask as string (e.g. "255.255.255.0")
+*/
+
+
+//----------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "Wifi",
+  "name"     : "ping",
+  "if"    : "defined(ESPRUINOWIFI) || defined(ESP8266)",
+  "generate" : "jswrap_wifi_ping",
+  "params"   : [
+    ["hostname", "JsVar", "The host to ping"],
+    ["callback", "JsVar", "A callback(time) function to invoke when a ping is received"]
+  ]
+}
+Issues a ping to the given host, and calls a callback with the time when the ping is received.
+*/
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "Wifi",
+  "name"     : "turbo",
+  "if"    : "defined(ESPRUINOWIFI)",
+  "generate_full" : "",
+  "params"   : [
+    ["enable", "JsVar", "true (or a baud rate as a number) to enable, false to disable"],
+    ["callback", "JsVar", "A callback(time) function to invoke when a ping is received"]
+  ]
+}
+Switch to using a higher communication speed with the WiFi module.
+
+* `true` = 921600 baud
+* `false` = 115200
+* `1843200` (or any number) = use a specific baud rate.
+*
+eg. `wifi.turbo(true,callback)` or `wifi.turbo(1843200,callback)`
 */

@@ -1237,27 +1237,14 @@ JsVar *jswrap_wifi_getHostname(JsVar *jsCallback) {
 }
 
 void jswrap_wifi_setHostname(
-    JsVar *jsHostname //!< The hostname to set for device.
+    JsVar *jsHostname, //!< The hostname to set for device.
+    JsVar *jsCallback
 ) {
   UNUSED(jsHostname);
   jsError( "jswrap_wifi_setHostname - Not implemented");
 }
 
-
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP32",
-  "name"     : "ping",
-  "generate" : "jswrap_ESP32_ping",
-  "params"   : [
-    ["ipAddr", "JsVar", "A string representation of an IP address."],
-    ["pingCallback", "JsVar", "Optional callback function."]
-  ]
-}
-Perform a network ping request. The parameter can be either a String or a numeric IP address.
-**Note:** This function should probably be removed, or should it be part of the wifi library?
-*/
-void jswrap_ESP32_ping(
+void jswrap_wifi_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
 ) {

@@ -362,9 +362,13 @@ def get_prefix_name(jsondata):
 
 def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH": return "devices with low flash memory"
+  if d=="STM32": return "STM32 devices (including Espruino Original, Pico and WiFi)"
   if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
-  if d=="NRF52": return "NRF52 devices (like Puck.js)"
-  if d=="ESP8266": return "Espruino running on ESP8266"
+  if d=="NRF52": return "NRF52 devices (like Puck.js and Pixl.js)"
+  if d=="ESPRUINOWIFI": return "Espruino WiFi boards"
+  if d=="ESP8266": return "ESP8266 devices running Espruino"
+  if d=="ESP32": return "ESP32 devices"
+  if d=="EFM32": return "EFM32 devices"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico and Espruino WiFi only)"
   if d=="RELEASE": return "release builds"

@@ -143,6 +143,10 @@ def get_link(jsondata):
   s=s+jsondata["name"]
   return s
 
+def replace_with_ifdef_description(m):
+    contents = m.group(1)
+    return common.get_ifdef_description(contents)
+
 def html_escape(text):
   escaped_chars = ""
   for c in text:
@@ -324,11 +328,14 @@ for jsondata in detail:
     html("  <h4>Description</h4>")
     desc = jsondata["description"]
     if not isinstance(desc, list): desc = [ desc ]
-    if ("ifdef" in jsondata) or ("ifndef" in jsondata):
-      if "ifdef" in jsondata: 
-        desc.append("\n\n**Note:** This is only available in "+common.get_ifdef_description(jsondata["ifdef"]));
-      if "ifndef" in jsondata:
-        desc.append("\n\n**Note:** This is not available in "+common.get_ifdef_description(jsondata["ifndef"]));      
+    if "ifdef" in jsondata: 
+      desc.append("\n\n**Note:** This is only available in "+common.get_ifdef_description(jsondata["ifdef"]));
+    if "ifndef" in jsondata:
+      desc.append("\n\n**Note:** This is not available in "+common.get_ifdef_description(jsondata["ifndef"]));
+    if "if" in jsondata:
+      d = jsondata["if"].replace("||", " and ").replace("&&", " with ")
+      d = re.sub('defined\((.+?)\)', replace_with_ifdef_description, d)
+      desc.append("\n\n**Note:** This is only available in "+d);            
     html_description(desc, jsondata["name"])
   if "params" in jsondata:
     html("  <h4>Parameters</h4>")

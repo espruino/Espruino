@@ -1058,7 +1058,8 @@ JsVar *jswrap_wifi_getHostname(JsVar *jsCallback) {
 }
 
 void jswrap_wifi_setHostname(
-    JsVar *jsHostname //!< The hostname to set for device.
+    JsVar *jsHostname, //!< The hostname to set for device.
+    JsVar *jsCallback
 ) {
   char hostname[256];
   jsvGetString(jsHostname, hostname, sizeof(hostname));
@@ -1072,6 +1073,9 @@ void jswrap_wifi_setHostname(
 
   // now update mDNS
   startMDNS(hostname);
+
+  if (jsvIsFunction(jsCallback))
+    jsiQueueEvents(0, jsCallback, 0, 0);
 }
 
 //===== mDNS
@@ -1212,16 +1216,17 @@ void jswrap_ESP8266_wifi_soft_init() {
   "type"     : "staticmethod",
   "class"    : "ESP8266",
   "name"     : "ping",
-  "generate" : "jswrap_ESP8266_ping",
+  "generate" : "jswrap_wifi_ping",
   "params"   : [
     ["ipAddr", "JsVar", "A string representation of an IP address."],
     ["pingCallback", "JsVar", "Optional callback function."]
   ]
 }
+**DEPRECATED** - please use `Wifi.ping` instead.
+
 Perform a network ping request. The parameter can be either a String or a numeric IP address.
-**Note:** This function should probably be removed, or should it be part of the wifi library?
 */
-void jswrap_ESP8266_ping(
+void jswrap_wifi_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
 ) {
