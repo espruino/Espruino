@@ -23,7 +23,7 @@ INCLUDE += -I$(ROOT)/targetlibs/samd/sam/CMSIS/CMSIS/Include
 INCLUDE += -I$(ROOT)/targetlibs/samd/sam/CMSIS/Device/ATMEL
 
 CFLAGS += -Wall --param max-inline-insns-single=500 -mcpu=cortex-m3 -mthumb -mlong-calls
-CFLAGS += -ffunction-sections -fdata-sections -nostdlib
+CFLAGS += -ffunction-sections -fdata-sections -nostdlib -std=c99
 CFLAGS += -Os $(INCLUDE)
 
 LINKER_FILE=$(ROOT)/targetlibs/samd/sam/linker_scripts/gcc/flash.ld
