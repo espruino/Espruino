@@ -134,7 +134,8 @@ void lcd_flip(JsVar *parent) {
       ["c","float","Contrast between 0 and 1"]
     ]
 }
-Set the LCD's contrast */
+Set the LCD's contrast
+*/
 void jswrap_pixljs_setContrast(JsVarFloat c) {
   if (c<0) c=0;
   if (c>1) c=1;
@@ -155,7 +156,8 @@ void jswrap_pixljs_setContrast(JsVarFloat c) {
       ["c","int",""]
     ]
 }
-Set the LCD's contrast */
+Writes a command directly to the ST7567 LCD controller
+*/
 void jswrap_pixljs_lcdw(JsVarInt c) {
   jshPinSetValue(LCD_SPI_CS,0);
   jshPinSetValue(LCD_SPI_DC,0);
