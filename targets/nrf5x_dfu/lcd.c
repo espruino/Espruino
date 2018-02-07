@@ -120,7 +120,6 @@ void jshPinOutput(Pin pin, bool value) {
 void lcd_wr(int data) {
   int bit;
   for (bit=7;bit>=0;bit--) {
-    // TODO: we could push this faster by accessing IO directly
     jshPinSetValue(LCD_SPI_MOSI, (data>>bit)&1 );
     jshPinSetValue(LCD_SPI_SCK, 1 );
     jshPinSetValue(LCD_SPI_SCK, 0 );

@@ -122,7 +122,9 @@ bool nrf_dfu_enter_check(void) {
     // This means that we go straight to Espruino, where the button is still
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
-      lcd_print("RELEASE BTN FOR DFU\r\n");
+      lcd_init();
+      lcd_print("BOOTLOADER\r\n");
+      lcd_print("RELEASE BTN1 FOR DFU\r\n");
       lcd_print("<                     >\r");
       int count = 3000;
       while (get_btn_state() && count) {
@@ -151,9 +153,6 @@ int main(void)
     (void) NRF_LOG_INIT(NULL);
 
     NRF_LOG_INFO("Inside main\r\n");
-
-    lcd_init();
-    lcd_print("BOOTLOADER\r\n");
 
     hardware_init();
 
