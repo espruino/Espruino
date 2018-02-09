@@ -59,6 +59,7 @@ const void *exportPtrs[] = {
     jsvSkipName,
     jsvMathsOp,
     jsvMathsOpSkipNames,
+    jsvNewWithFlags,
     jsvNewFromFloat,
     jsvNewFromInteger,
     jsvNewFromString,
@@ -72,15 +73,15 @@ const void *exportPtrs[] = {
     jspGetNamedVariable,
     jspGetNamedField,
     jspGetVarNamedField,
-    jsvNewWithFlags,
+    0
 };
 const char *exportNames = 
     "jsvLock\0jsvLockAgainSafe\0jsvUnLock\0jsvSkipName\0jsvMathsOp\0jsvMathsOpSkipNames\0"
-    "jsvNewFromFloat\0jsvNewFromInteger\0jsvNewFromString\0jsvNewFromBool\0"
+    "jsvNewWithFlags\0jsvNewFromFloat\0jsvNewFromInteger\0jsvNewFromString\0jsvNewFromBool\0"
     "jsvGetFloat\0jsvGetInteger\0jsvGetBool\0"
     "jspeiFindInScopes\0jspReplaceWith\0jspeFunctionCall\0"
     "jspGetNamedVariable\0jspGetNamedField\0jspGetVarNamedField\0"
-    "jsvNewWithFlags\0\0";
+    "\0\0";
 #endif
 
 /*JSON{
@@ -122,7 +123,10 @@ JsVar *jswrap_process_env() {
     jsvObjectSetChildAndUnLock(obj, "EXPORTS", arr);
   }  
 #endif
-
+#ifndef SAVE_ON_FLASH
+  // Pointer to a list of predefined exports - eventually we'll get rid of the array above
+  jsvObjectSetChildAndUnLock(obj, "EXPTR", jsvNewFromInteger((JsVarInt)(size_t)exportPtrs));
+#endif
   return obj;
 }
 
