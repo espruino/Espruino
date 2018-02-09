@@ -50,9 +50,9 @@ JsVar *jswrap_require(JsVar *moduleName) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting a module name as a string, but got %t", moduleName);
     return 0;
   }
-  char moduleNameBuf[32];
+  char moduleNameBuf[128];
   if (jsvGetString(moduleName, moduleNameBuf, sizeof(moduleNameBuf))>=sizeof(moduleNameBuf)) {
-    jsExceptionHere(JSET_TYPEERROR, "Module name too long (max 32 chars)");
+    jsExceptionHere(JSET_TYPEERROR, "Module name too long (max 128 chars)");
     return 0;
   }
 #ifdef ESPRUINOWIFI
