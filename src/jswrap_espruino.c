@@ -1364,6 +1364,31 @@ void jswrap_espruino_setTimeZone(JsVarFloat zone) {
       jsvNewFromInteger((int)(zone*60)));
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "asm",
+  "generate" : "jswrap_espruino_asm",
+  "params" : [
+    ["callspec","JsVar","The arguments this assembly takes - eg `void(int)`"],
+    ["assemblycode","JsVarArray","One of more strings of assembler code"]
+  ]
+}
+Provide assembly to Espruino.
+
+**This function is not part of Espruino**. Instead, it is detected
+by the Espruino IDE (or command-line tools) at upload time and is
+replaced with machine code and an `E.nativeCall` call.
+
+See [the documentation on the Assembler](http://www.espruino.com/Assembler) for more information.
+*/
+void jswrap_espruino_asm(JsVar *callspec, JsVar *args) {
+  NOT_USED(callspec);
+  NOT_USED(args);
+  jsExceptionHere(JSET_ERROR, "'E.asm' calls should have been replaced by the Espruino tools before upload");
+}
+
 // ----------------------------------------- USB Specific Stuff
 
 #ifdef USE_USB_HID
