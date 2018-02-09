@@ -78,6 +78,8 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+// Whether a pin is negated of not (based on NRF pins)
+BITFIELD_DECL(jshNRFPinNegated, JSH_PIN_COUNT);
 // Current values used in PWM channel counters
 static uint16_t pwmValues[3][4];
 // Current values used in main PWM counters
@@ -213,12 +215,15 @@ void jshResetPeripherals() {
   // Reset all pins to their power-on state (apart from default UART :)
   // Set pin state to input disconnected - saves power
   Pin i;
+  BITFIELD_CLEAR(jshNRFPinNegated);
   for (i=0;i<JSH_PIN_COUNT;i++) {
 #if JSH_PORTV_COUNT>0
     // don't reset virtual pins
     if ((pinInfo[i].port & JSH_PORT_MASK)==JSH_PORTV)
       continue;
 #endif
+    if (pinInfo[i].port & JSH_PIN_NEGATED)
+      BITFIELD_SET(jshNRFPinNegated, pinInfo[i].pin, true);
 #ifdef DEFAULT_CONSOLE_TX_PIN
     if (i==DEFAULT_CONSOLE_TX_PIN) continue;
 #endif
@@ -846,7 +851,6 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
 
 static IOEventFlags jshGetEventFlagsForWatchedPin(nrf_drv_gpiote_pin_t pin) {
   uint32_t addr = nrf_drv_gpiote_in_event_addr_get(pin);
-
   // sigh. all because the right stuff isn't exported. All we wanted was channel_port_get
   int i;
   for (i=0;i<GPIOTE_CH_NUM;i++)
@@ -858,6 +862,8 @@ static IOEventFlags jshGetEventFlagsForWatchedPin(nrf_drv_gpiote_pin_t pin) {
 bool lastHandledPinState; ///< bit of a hack, this... Ideally get rid of WatchedPinState completely and add to jshPushIOWatchEvent
 static void jsvPinWatchHandler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
   lastHandledPinState = (bool)nrf_gpio_pin_read(pin);
+  if (BITFIELD_GET(jshNRFPinNegated, pin))
+    lastHandledPinState = !lastHandledPinState;
   IOEventFlags evt = jshGetEventFlagsForWatchedPin(pin);
   jshPushIOWatchEvent(evt);
   jshHadEvent();

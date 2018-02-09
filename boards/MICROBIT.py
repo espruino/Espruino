@@ -63,8 +63,8 @@ chip = {
 };
 
 devices = {
-  'BTN1' : { 'pin' : 'D5', 'pinstate' : 'IN_PULLUP' }, # 'P0_17' -  Pin negated in software
-  'BTN2' : { 'pin' : 'D11', 'pinstate' : 'IN_PULLUP' }, # 'P0_26' -  Pin negated in software
+  'BTN1' : { 'pin' : 'D5', 'pinstate' : 'IN_PULLDOWN' }, # 'P0_17' -  Pin negated in software
+  'BTN2' : { 'pin' : 'D11', 'pinstate' : 'IN_PULLDOWN' }, # 'P0_26' -  Pin negated in software
 };
 
 # left-right, or top-bottom order
