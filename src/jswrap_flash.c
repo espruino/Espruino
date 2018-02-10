@@ -490,3 +490,174 @@ void jsfRemoveCodeFromFlash() {
   }
   jsiConsolePrint("\nDone!\n");
 }
+
+
+
+// ----------------------------------------------------------------------------------------------
+typedef char[8] JsfFileName;
+typedef struct {
+  uint32_t size; ///< Total size
+  JsfFileName name; ///< 0-padded filename
+  uint32_t replacement; ///< pointer to a replacement
+} JsfFileHeader; // keep this
+
+#define JSF_ALIGNMENT 4
+#define JSF_START_ADDRESS FLASH_SAVED_CODE_START
+#define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
+
+bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
+  assert(header);
+  jshFlashRead(header, addr, sizeof(JsfFileHeader));
+  return size != 0xFFFFFFFF;
+}
+
+/// Erase the entire contents of the memory store
+bool jsfEraseAll() {
+  uint32_t addr, len;
+  if (!jshFlashGetPage(JSF_START_ADDRESS, &addr, &len))
+    return false;
+  while (addr<JSF_END_ADDRESS) {
+    bool pageErased = true;
+    for (uint32_t x=0;x<len;x+=4) {
+      uint32_t buf;
+      jshFlashRead(&buf, addr+x,4);
+      if (buf!=0xFFFFFFFF) {
+        pageErased = false;
+        break;
+      }
+    }
+    if (!pageErased)
+      jshFlashErasePage(addr);
+    if (!jshFlashGetPage(addr+len, &addr, &len))
+      return true;
+  }
+  return true;
+}
+
+// Given the address and a header, work out where the next one should be
+uint32_t jsfGetAddressOfNextHeader(uint32_t addr, JsfFileHeader *header) {
+  // Work out roughly where the start is
+  uint32_t newAddr = addr + header.size + sizeof(JsfFileHeader);
+  // pad out to flash write boundaries
+  addr = (addr + (JSF_ALIGNMENT-1)) & ~(JSF_ALIGNMENT-1);
+  // sanity check for bad data
+  if (newAddr<addr) return 0; // corrupt!
+  if (newAddr+sizeof(JsfFileHeader)>JSF_END_ADDRESS) return 0; // not enough space
+  return newAddr;
+}
+
+/// Create a new 'file' in the memory store. Return the address of data start, or 0 on error
+uint32_t jsfCreateFile(JsfFileName name, uint32_t size) {
+  uint32_t addr = JSF_START_ADDRESS;
+  uint32_t existingAddr = 0;
+  JsfFileHeader header;
+  while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
+    // check to see if this file is empty or not
+    if (header.size == 0xFFFFFFFF)
+      break;
+    // check for something with the same name
+    if (header.name == name)
+      existingAddr = addr;
+    addr = jsfGetAddressOfNextHeader(addr, &header);
+    if (!addr) return 0; // corrupt!
+  }
+  if (addr+size+sizeof(JsfFileHeader)>=JSF_END_ADDRESS)
+    return 0; // no space... defrag?
+  // write out the header
+  header.size = size;
+  header.name = name;
+  header.replacement = 0xFFFFFFFF;
+  jshFlashWrite(&header,addr,sizeof(JsfFileHeader));
+  // write out
+  //
+  return addr+sizeof(JsfFileHeader);
+}
+
+/// Find a 'file' in the memory store. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
+uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
+  uint32_t addr = JSF_START_ADDRESS;
+  uint32_t existingAddr = 0;
+  JsfFileHeader header;
+  while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
+    // check to see if this file is empty or not
+    if (header.size == 0xFFFFFFFF)
+      break;
+    // check for something with the same name
+    if (header.name == name) {
+      uint32_t endOfFile = addr + sizeof(JsfFileHeader) + header.size;
+      if (endOfFile<addr || endOfFile>JSF_END_ADDRESS)
+        return 0; // corrupt - file too long
+      if (returnedHeader)
+        *returnedHeader = header;
+      return addr+sizeof(JsfFileHeader);
+    }
+    addr = jsfGetAddressOfNextHeader(addr, &header);
+    if (!addr) return 0; // corrupt!
+  }
+  return 0;
+}
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Flash",
+  "name" : "eraseFiles",
+  "generate" : "jswrap_flash_eraseFiles"
+}
+ */
+void jswrap_flash_eraseFiles() {
+  jsfEraseAll();
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Flash",
+  "name" : "getFile",
+  "generate" : "jswrap_flash_getFile",
+  "params" : [
+    ["name","JsVar","The filename - max 8 characters"]
+  ],
+  "return" : ["JsVar","A string of data"]
+}
+ */
+JsVar *jswrap_flash_getFile(JsVar *name) {
+  char nameBuf[9];
+  jsvGetString(name, nameBuf, sizeof(buf));
+  JsfFileHeader *header;
+  uint32_t addr = jsfFindFile(nameBuf, &header);
+  if (!addr) return 0;
+  return jsvNewNativeString((char*)addr, header->size);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Flash",
+  "name" : "getFile",
+  "generate" : "jswrap_flash_writeFile",
+  "params" : [
+    ["name","JsVar","The filename - max 8 characters"],
+    ["data","JsVar","The data to write"],
+    ["offset","int","The offset within the file to write"],
+    ["size","int","The size of the file (if a file is to be created that is bigger than the data)"],
+  ],
+  "return" : ["bool","True on success, false on failure"]
+}
+Write/create a file.
+*/
+void jswrap_flash_writeFile(JsVar *name, JsVar *data, JsVarInt offset) {
+  // Filename
+  char nameBuf[9];
+  jsvGetString(name, nameBuf, sizeof(buf));
+  // Data length
+  int len = jsvIterateCallbackCount(data);
+  // Lookup file
+  JsfFileHeader *header;
+  uint32_t addr = jsfFindFile(nameBuf, &header);
+  if (addr) {
+
+  }
+}
+
