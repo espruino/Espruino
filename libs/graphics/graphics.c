@@ -56,7 +56,7 @@ void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, sho
 }
 
 void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto) {
-  int xl
+  int x;
   if (xdir<=0) {
     int w = gfx->data.width+xdir;
     for (x=0;x<w;x++)
