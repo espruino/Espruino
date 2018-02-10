@@ -56,13 +56,14 @@ void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, sho
 }
 
 void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto) {
+  int xl
   if (xdir<=0) {
     int w = gfx->data.width+xdir;
-    for (int x=0;x<w;x++)
+    for (x=0;x<w;x++)
       gfx->setPixel(gfx, (short)x,(short)yto,
           gfx->getPixel(gfx, (short)(x-xdir),(short)yfrom));
   } else { // >0
-    for (int x=gfx->data.width-xdir-1;x>=0;x--)
+    for (x=gfx->data.width-xdir-1;x>=0;x--)
       gfx->setPixel(gfx, (short)(x+xdir),(short)yto,
           gfx->getPixel(gfx, (short)x,(short)yfrom));
   }
@@ -70,12 +71,13 @@ void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto) {
 
 void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
   if (xdir==0 && ydir==0) return;
+  int y;
   if (ydir<=0) {
     int h = gfx->data.height+xdir;
-    for (int y=0;y<h;y++)
+    for (y=0;y<h;y++)
       graphicsFallbackScrollX(gfx, xdir, y-ydir, y);
   } else { // >0
-    for (int y=gfx->data.height-ydir-1;y>=0;y--)
+    for (y=gfx->data.height-ydir-1;y>=0;y--)
       graphicsFallbackScrollX(gfx, xdir, y, y+ydir);
   }
   gfx->data.modMinX=0;
@@ -450,8 +452,9 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
 /// Draw a simple 1bpp image in foreground colour
 void graphicsDrawImage1bpp(JsGraphics *gfx, short x1, short y1, short width, short height, const unsigned char *pixelData) {
   int pixel = 256|*(pixelData++);
-  for (int y=y1;y<y1+height;y++) {
-    for (int x=x1;x<x1+width;x++) {
+  int x,y;
+  for (y=y1;y<y1+height;y++) {
+    for (x=x1;x<x1+width;x++) {
       if (pixel&128) graphicsSetPixelDevice(gfx, x, y, gfx->data.fgColor);
       pixel = pixel<<1;
       if (pixel&65536) pixel = 256|*(pixelData++);

@@ -510,6 +510,7 @@ The interval determines how often the time server is queried and Espruino's time
   "class"    : "Wifi",
   "name"     : "setIP",
   "generate" : "jswrap_wifi_setIP",
+  "if" : "defined(ESP8266) || defined(ESPRUINOWIFI)",
   "params"   : [
     ["settings", "JsVar", "Configuration settings"],
     ["callback", "JsVar", "The callback to invoke when ip is set"]
