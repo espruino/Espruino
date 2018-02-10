@@ -527,6 +527,20 @@ bool jsfIsErased(uint32_t addr, uint32_t len) {
   return true;
 }
 
+bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
+  for (uint32_t x=0;x<len;) {
+    uint32_t bufa;
+    jshFlashRead(&bufa, addr+x,4);
+    uint32_t bufb = 0xFFFFFFFF;
+    for (int i=0;i<4;i++) {
+      if (x<len) bufb = (bufb>>8) | (data[x]<<24);
+      x++;
+    }
+    if (bufa!=bufb) return false;
+  }
+  return true;
+}
+
 /// Erase the entire contents of the memory store
 bool jsfEraseAll() {
   DBG("EraseAll\n");
@@ -573,7 +587,7 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileHeader *returnedH
   while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
     // check to see if this header has been allocated or not
     if (header.size == 0xFFFFFFFF)
-      break;
+      break; // TODO: page boundaries
     // check for something with the same name
     if (header.replacement == 0xFFFFFFFF &&
         header.name == name)
@@ -605,7 +619,7 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
   while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
     // check to see if this header has been allocated or not
     if (header.size == 0xFFFFFFFF)
-      break;
+      break; // TODO: page boundaries
     // check for something with the same name that hasn't been replaced
     if (header.replacement == 0xFFFFFFFF &&
         header.name == name) {
@@ -719,6 +733,10 @@ bool jswrap_flash_writeFile(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt 
   if ((!addr && offset==0) || // No file
       // we have a file, but it's wrong - remove it
       (addr && offset==0 && (size!=header.size || !jsfIsErased(addr, size)))) {
+    if (addr && offset==0 && size==header.size && jsfIsEqual(addr, dPtr, dLen)) {
+      DBG("Equal\n");
+      return true;
+    }
     addr = jsfCreateFile(*(JsfFileName*)nameBuf, (uint32_t)size, &header);
   }
   if (!addr) {
