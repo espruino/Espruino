@@ -46,3 +46,4 @@ void jsfRemoveCodeFromFlash();
 void jswrap_flash_eraseFiles();
 JsVar *jswrap_flash_getFile(JsVar *name);
 bool jswrap_flash_writeFile(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt size);
+void jswrap_flash_debugFiles();
