@@ -137,6 +137,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
 }
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "acos",
   "generate_full" : "jswrap_math_atan(jswrap_math_sqrt(1-x*x) / x)",
@@ -147,6 +148,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
 }*/
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "asin",
   "generate_full" : "jswrap_math_atan(x / jswrap_math_sqrt(1-x*x))",
@@ -293,6 +295,7 @@ double jswrap_math_pow(double x, double y) {
 
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "pow",
   "generate" : "jswrap_math_pow",
@@ -352,6 +355,7 @@ JsVar *jswrap_math_round(double x) {
 /* we could use the real sqrt - but re-use pow to save on code space */
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "sqrt",
   "generate" : "jswrap_math_sqrt",
@@ -388,6 +392,7 @@ double jswrap_math_sqrt(double x) {
 
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "exp",
   "generate" : "exp",
@@ -398,6 +403,7 @@ double jswrap_math_sqrt(double x) {
 }*/
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "log",
   "generate" : "log",

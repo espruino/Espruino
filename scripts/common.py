@@ -362,6 +362,7 @@ def get_prefix_name(jsondata):
 
 def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH": return "devices with low flash memory"
+  if d=="SAVE_ON_FLASH_EXTREME": return "devices with extremely low flash memory (eg. HYSTM32_28)"
   if d=="STM32": return "STM32 devices (including Espruino Original, Pico and WiFi)"
   if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
   if d=="NRF52": return "NRF52 devices (like Puck.js and Pixl.js)"

@@ -34,6 +34,7 @@
             Include WiFi and AT libraries inside Espruino WiFi builds
             Add 'E.asm' placeholder to detect E.asm calls that haven't been replaced by the IDE
             Add process.env.EXPTR to link to table of functions - will work better for compiled code over BLE
+            Added SAVE_ON_FLASH_EXTREME for HYSTM32_28, where we're now cutting out some Math.X functionality to keep builds going 
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line
