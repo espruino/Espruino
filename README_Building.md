@@ -71,9 +71,77 @@ ls -l *puckjs*
 
 ## Under MacOS
 
-* It is possible to build Espruino under MacOS with some effort.
-  * PR for an easy Espruino build under MacOS are welcome.
-* If you don't have Linux it's much easier to install it in a Virtual Machine (see below).
+#### Create a self growing sparse image and mount 
+
+```
+mkdir ~/diskimages
+
+hdiutil create -size 10g -fs "Case-sensitive HFS+" -volname Espruino ~/diskimages/Espruino.sparsebundle
+
+hdiutil attach ~/diskimages/Espruino.sparsebundle
+
+sudo ln -s /Volumes/Espruino/ /Espruino
+
+cd /Espruino
+
+```
+
+#### Resize if needed
+
+```
+hdiutil detach /Volumes/Espruino
+hdiutil resize -size 15G ~/diskimages/Espruino.sparsebundle
+hdiutil attach ~/diskimages/Espruino.sparsebundle
+```
+
+#### Create some directories on /Espruino 
+
+```
+mkdir /Espruino/{gcc,sdk,repos,tmp}
+
+/Espruino -+- gcc 		GNU Compiler Collection for different processors
+		       +- sdk 		Software Development Kits
+           +- repos   like Espruino EspruinoDocs ... 
+	     	   +- tmp 		temporary files  
+```
+
+#### Install build and flash tools
+
+```
+brew upgrade gnu-sed gawk binutils gperftools gettext wget help2man libtool autoconf automake
+
+# version 1.4.0
+brew upgrade stlink
+
+# version 2.1
+pip esptool.py 
+```
+
+#### Get GNU Compiler Collection 
+
+```
+# Espruino, Pico, PuckJS, EspruinoWifi 
+# gcc arm https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
+curl -Ls https://goo.gl/42fcKX | tar -C gcc -xvzf - 
+
+# xtensa gcc - pre buid from  https://github.com/MaBecker/esp8266
+curl -Ls https://github.com/MaBecker/esp8266/xtensa-lx106-elf-4.8.5.tgz | tar -C gcc -xvzf -
+```
+
+#### Get SDK
+
+```
+# ESP8266/esp8285 starting with 01  
+# espressif ESP8266 2.0 <- actual one 
+wget -P tmp  https://github.com/espressif/ESP8266_NONOS_SDK/archive/v2.0.0.zip
+unzip -d sdk tmp/v2.0.0.zip
+rm tmp/v2.0.0.zip
+# add esptool.py
+mkdir /Espruino/sdk/ESP8266_NONOS_SDK-2.0.0/esptool
+ln -s /usr/local/bin/esptool.py /Espruino/sdk/ESP8266_NONOS_SDK-2.0.0/esptool/
+```
+
+The other stuff is similar to Linux
 
 ## Under Windows
 
