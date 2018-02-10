@@ -528,6 +528,7 @@ The `settings` object must contain the following properties.
   "type"     : "staticmethod",
   "class"    : "Wifi",
   "name"     : "setAPIP",
+  "#if"    : "defined(ESPRUINOWIFI) || defined(ESP8266)",
   "generate" : "jswrap_wifi_setAPIP",
   "params"   : [
     ["settings", "JsVar", "Configuration settings"],
