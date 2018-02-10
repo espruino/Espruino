@@ -88,7 +88,7 @@ void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
 /*JSON{
   "type" : "function",
   "name" : "setDeepSleep",
-  "if" : "defined(EFM32) || defined(STM32)",
+  "#if" : "defined(EFM32) || defined(STM32)",
   "generate" : "jswrap_interface_setDeepSleep",
   "params" : [
     ["sleep","bool",""]

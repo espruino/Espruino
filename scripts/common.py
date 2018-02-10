@@ -191,6 +191,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
                   expr = expr.replace(dname, dkey);
               # Now replace any defined(...) we haven't heard of with false
               expr = re.sub(r"defined\([^\)]*\)", "False", expr)
+              expr = expr.replace("||","or").replace("&&","and");
               try:
                 r = eval(expr)
               except:
