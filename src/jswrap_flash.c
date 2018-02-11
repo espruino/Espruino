@@ -578,16 +578,51 @@ uint32_t jsfGetAddressOfNextHeader(uint32_t addr, JsfFileHeader *header) {
   return newAddr;
 }
 
+// Get the amount of space free in this page
+uint32_t jsfGetFreeSpaceInPage(uint32_t addr) {
+  uint32_t pageAddr,pageLen;
+  if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
+    return 0;
+  assert(addr==pageAddr);
+  uint32_t pageEndAddr = pageAddr+pageLen;
+  JsfFileHeader header;
+  while (jsfGetFileHeader(addr, &header) && addr+(uint32_t)sizeof(JsfFileHeader)<pageEndAddr) {
+    addr = jsfGetAddressOfNextHeader(addr, &header);
+    if (!addr) return 0; // corrupt!
+  }
+  return pageEndAddr-addr;
+}
+
+// Get the amount of space needed to mirror this page elsewhere
+uint32_t jsfGetAllocatedSpaceInPage(uint32_t addr) {
+  uint32_t allocated = 0;
+  uint32_t pageAddr,pageLen;
+  if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
+    return 0;
+  assert(addr==pageAddr);
+  uint32_t pageEndAddr = pageAddr+pageLen;
+  JsfFileHeader header;
+  while (jsfGetFileHeader(addr, &header) && addr+(uint32_t)sizeof(JsfFileHeader)<pageEndAddr) {
+    if (header.replacement == 0xFFFFFFFF) // if not replaced
+      allocated += header.size + (uint32_t)sizeof(JsfFileHeader);
+    addr = jsfGetAddressOfNextHeader(addr, &header);
+    if (!addr) return 0; // corrupt!
+  }
+  return allocated;
+}
+
+uint32_t jsfCompact() {
+  DBG("Compacting");
+  return 0;
+}
+
 /// Create a new 'file' in the memory store. Return the address of data start, or 0 on error
-uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileHeader *returnedHeader) {
+uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfFileHeader *returnedHeader) {
   DBG("CreateFile\n");
-  uint32_t addr = JSF_START_ADDRESS;
+  uint32_t addr = startAddr;
   uint32_t existingAddr = 0;
   JsfFileHeader header;
   while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
-    // check to see if this header has been allocated or not
-    if (header.size == 0xFFFFFFFF)
-      break; // TODO: page boundaries
     // check for something with the same name
     if (header.replacement == 0xFFFFFFFF &&
         header.name == name)
@@ -600,8 +635,18 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileHeader *returnedH
     jsfGetFileHeader(existingAddr, &header);
     jsfEraseFile(existingAddr+(uint32_t)sizeof(JsfFileHeader), &header);
   }
-  if (addr+size+(uint32_t)sizeof(JsfFileHeader)>=JSF_END_ADDRESS)
-    return 0; // no space... defrag?
+  bool compacted = false;
+  while (addr+size+(uint32_t)sizeof(JsfFileHeader)>=JSF_END_ADDRESS) {
+    if (startAddr == JSF_START_ADDRESS && !compacted) {
+      addr = jsfCompact();
+      if (!addr) {
+        DBG("Compact failed");
+        return 0;
+      }
+      compacted = true;
+    } else
+      return 0; // no space... defrag?
+  }
   // write out the header
   DBG("CreateFile new 0x%08x\n", addr);
   header.size = size;
@@ -639,8 +684,19 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
 /// Output debug info
 void jsfDebugFiles() {
   uint32_t addr = JSF_START_ADDRESS;
+  uint32_t pageAddr = 0, pageLen = 0, pageEndAddr = 0;
+
   JsfFileHeader header;
   while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
+    if (addr>=pageEndAddr) {
+      if (!jshFlashGetPage(addr, &pageAddr, &pageLen)) {
+        jsiConsolePrintf("Page not found!\n");
+        return;
+      }
+      pageEndAddr = pageAddr+pageLen;
+      jsiConsolePrintf("PAGE 0x%08x (%d bytes) - %d live %d free\n", pageAddr,pageLen,jsfGetAllocatedSpaceInPage(pageAddr),jsfGetFreeSpaceInPage(pageAddr));
+    }
+
     // check to see if this file has been allocated or not
     if (header.size == 0xFFFFFFFF)
       break;
@@ -737,7 +793,7 @@ bool jswrap_flash_writeFile(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt 
       DBG("Equal\n");
       return true;
     }
-    addr = jsfCreateFile(*(JsfFileName*)nameBuf, (uint32_t)size, &header);
+    addr = jsfCreateFile(*(JsfFileName*)nameBuf, (uint32_t)size, JSF_START_ADDRESS, &header);
   }
   if (!addr) {
     jsExceptionHere(JSET_ERROR, "Unable to find or create file");
