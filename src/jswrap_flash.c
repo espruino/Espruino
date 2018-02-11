@@ -512,7 +512,10 @@ typedef struct {
 #define JSF_START_ADDRESS FLASH_SAVED_CODE_START
 #define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
 
+uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfFileHeader *returnedHeader);
+
 bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
+  assert(addr);
   assert(header);
   jshFlashRead(header, addr, sizeof(JsfFileHeader));
   return header->size != 0xFFFFFFFF;
@@ -530,7 +533,7 @@ bool jsfIsErased(uint32_t addr, uint32_t len) {
 bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
   for (uint32_t x=0;x<len;) {
     uint32_t bufa;
-    jshFlashRead(&bufa, addr+x,4);
+    jshFlashRead(&bufa, addr+x,JSF_ALIGNMENT);
     uint32_t bufb = 0xFFFFFFFF;
     for (int i=0;i<4;i++) {
       if (x<len) bufb = (bufb>>8) | (data[x]<<24);
@@ -564,6 +567,19 @@ void jsfEraseFile(uint32_t addr, JsfFileHeader *header) {
   addr += (uint32_t)((char*)&header->replacement - (char*)header);
   header->replacement = 0;
   jshFlashWrite(&header->replacement,addr,(uint32_t)sizeof(header->replacement));
+}
+
+// if we find a page with a header in, return that - or 0
+uint32_t jsfGetAddressOfNextPage(uint32_t addr, JsfFileHeader *header) {
+  while(1) {
+    uint32_t pageAddr,pageLen;
+    if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
+      return 0;
+    addr = pageAddr+pageLen;
+    if (addr+sizeof(JsfFileHeader)>JSF_END_ADDRESS) return 0; // no pages in range
+    if (jsfGetFileHeader(addr, header)) return addr;
+  }
+  return 0;
 }
 
 // Given the address and a header, work out where the next one should be
@@ -612,7 +628,43 @@ uint32_t jsfGetAllocatedSpaceInPage(uint32_t addr) {
 }
 
 uint32_t jsfCompact() {
-  DBG("Compacting");
+  DBG("Compacting\n");
+  uint32_t pageAddr,pageLen;
+  pageAddr = JSF_START_ADDRESS;
+  if (!jshFlashGetPage(pageAddr, &pageAddr, &pageLen))
+    return 0;
+  uint32_t pageAllocated = jsfGetAllocatedSpaceInPage(pageAddr);
+  uint32_t newPageAddr,newPageLen;
+  newPageAddr = pageAddr+pageLen;
+  if (!jshFlashGetPage(newPageAddr, &newPageAddr, &newPageLen))
+    return 0;
+  uint32_t newPageFree = jsfGetFreeSpaceInPage(newPageAddr);
+  if (newPageFree > pageAllocated) {
+    // more free space in the new page than is allocated in the old one
+    // move any allocated data into the new page
+    uint32_t addr = pageAddr;
+    JsfFileHeader header;
+    while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
+      if (header.replacement == 0xFFFFFFFF) {
+        uint32_t oldFile = addr+sizeof(JsfFileHeader);
+        DBG("Moving file at 0x%08x\n", oldFile);
+        JsfFileHeader newHeader;
+        uint32_t newFile = jsfCreateFile(header.name, header.size, newPageAddr, &newHeader);
+        if (!newFile) {
+          DBG("Creating new file failed!\n");
+          return 0;
+        }
+        for (uint32_t x=0;x<header.size;x+=4) {
+          uint32_t buf;
+          jshFlashRead(&buf, oldFile+x,4);
+          jshFlashWrite(&buf, newFile+x,4);
+        }
+        jsfEraseFile(oldFile, &header);
+      }
+      addr = jsfGetAddressOfNextHeader(addr, &header);
+      if (!addr) return 0; // corrupt!
+    }
+  }
   return 0;
 }
 
@@ -661,7 +713,8 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfF
 uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
   uint32_t addr = JSF_START_ADDRESS;
   JsfFileHeader header;
-  while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
+  while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
+          addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
     // check for something with the same name that hasn't been replaced
     if (header.replacement == 0xFFFFFFFF &&
         header.name == name) {
@@ -684,7 +737,8 @@ void jsfDebugFiles() {
   uint32_t pageAddr = 0, pageLen = 0, pageEndAddr = 0;
 
   JsfFileHeader header;
-  while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
+  while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
+          addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
     if (addr>=pageEndAddr) {
       if (!jshFlashGetPage(addr, &pageAddr, &pageLen)) {
         jsiConsolePrintf("Page not found!\n");
@@ -697,7 +751,7 @@ void jsfDebugFiles() {
     char nameBuf[sizeof(JsfFileName)+1];
     memset(nameBuf,0,sizeof(nameBuf));
     memcpy(nameBuf,&header.name,sizeof(JsfFileName));
-    jsiConsolePrintf("0x%08x\t%s\t(%d bytes)\t%s\n", addr, nameBuf, header.size, (header.replacement == 0xFFFFFFFF)?"":" DELETED");
+    jsiConsolePrintf("0x%08x\t%s\t(%d bytes)\t%s\n", addr+(uint32_t)sizeof(JsfFileHeader), nameBuf, header.size, (header.replacement == 0xFFFFFFFF)?"":" DELETED");
     // TODO: print page boundaries
     addr = jsfGetAddressOfNextHeader(addr, &header);
     if (!addr) {
