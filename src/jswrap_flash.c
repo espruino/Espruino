@@ -662,9 +662,6 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
   uint32_t addr = JSF_START_ADDRESS;
   JsfFileHeader header;
   while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
-    // check to see if this header has been allocated or not
-    if (header.size == 0xFFFFFFFF)
-      break; // TODO: page boundaries
     // check for something with the same name that hasn't been replaced
     if (header.replacement == 0xFFFFFFFF &&
         header.name == name) {
@@ -697,9 +694,6 @@ void jsfDebugFiles() {
       jsiConsolePrintf("PAGE 0x%08x (%d bytes) - %d live %d free\n", pageAddr,pageLen,jsfGetAllocatedSpaceInPage(pageAddr),jsfGetFreeSpaceInPage(pageAddr));
     }
 
-    // check to see if this file has been allocated or not
-    if (header.size == 0xFFFFFFFF)
-      break;
     char nameBuf[sizeof(JsfFileName)+1];
     memset(nameBuf,0,sizeof(nameBuf));
     memcpy(nameBuf,&header.name,sizeof(JsfFileName));
