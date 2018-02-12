@@ -664,6 +664,7 @@ uint32_t jsfCompact() {
       addr = jsfGetAddressOfNextHeader(addr, &header);
       if (!addr) return 0; // corrupt!
     }
+    // TODO: Now we're done, erase the original page
   }
   return 0;
 }
@@ -860,6 +861,16 @@ bool jswrap_flash_writeFile(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt 
   return true;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Flash",
+  "name" : "compactFiles",
+  "generate" : "jswrap_flash_compactFiles"
+}
+ */
+void jswrap_flash_compactFiles() {
+  jsfCompact();
+}
 
 /*JSON{
   "type" : "staticmethod",
