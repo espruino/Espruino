@@ -510,7 +510,7 @@ typedef struct {
 
 #define JSF_ALIGNMENT 4
 #define JSF_START_ADDRESS FLASH_SAVED_CODE_START
-#define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
+#define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+8192)//(FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
 
 uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfFileHeader *returnedHeader);
 
@@ -587,7 +587,7 @@ uint32_t jsfGetAddressOfNextHeader(uint32_t addr, JsfFileHeader *header) {
   // Work out roughly where the start is
   uint32_t newAddr = addr + header->size + (uint32_t)sizeof(JsfFileHeader);
   // pad out to flash write boundaries
-  addr = (addr + (JSF_ALIGNMENT-1)) & (uint32_t)~(JSF_ALIGNMENT-1);
+  newAddr = (newAddr + (JSF_ALIGNMENT-1)) & (uint32_t)~(JSF_ALIGNMENT-1);
   // sanity check for bad data
   if (newAddr<addr) return 0; // corrupt!
   if (newAddr+sizeof(JsfFileHeader)>JSF_END_ADDRESS) return 0; // not enough space
@@ -610,15 +610,19 @@ uint32_t jsfGetFreeSpaceInPage(uint32_t addr) {
 }
 
 // Get the amount of space needed to mirror this page elsewhere
-uint32_t jsfGetAllocatedSpaceInPage(uint32_t addr) {
+uint32_t jsfGetAllocatedSpaceInPage(uint32_t addr, bool allPages) {
   uint32_t allocated = 0;
-  uint32_t pageAddr,pageLen;
-  if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
-    return 0;
-  assert(addr==pageAddr);
-  uint32_t pageEndAddr = pageAddr+pageLen;
+  uint32_t pageEndAddr = JSF_END_ADDRESS;
+  if (!allPages) {
+    uint32_t pageAddr,pageLen;
+    if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
+      return 0;
+    assert(addr==pageAddr);
+    pageEndAddr = pageAddr+pageLen;
+  }
   JsfFileHeader header;
-  while (jsfGetFileHeader(addr, &header) && addr+(uint32_t)sizeof(JsfFileHeader)<pageEndAddr) {
+  while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
+         (addr+(uint32_t)sizeof(JsfFileHeader)<pageEndAddr)) {
     if (header.replacement == 0xFFFFFFFF) // if not replaced
       allocated += header.size + (uint32_t)sizeof(JsfFileHeader);
     addr = jsfGetAddressOfNextHeader(addr, &header);
@@ -633,7 +637,7 @@ uint32_t jsfCompact() {
   pageAddr = JSF_START_ADDRESS;
   if (!jshFlashGetPage(pageAddr, &pageAddr, &pageLen))
     return 0;
-  uint32_t pageAllocated = jsfGetAllocatedSpaceInPage(pageAddr);
+  uint32_t pageAllocated = jsfGetAllocatedSpaceInPage(pageAddr, false);
   uint32_t newPageAddr,newPageLen;
   newPageAddr = pageAddr+pageLen;
   if (!jshFlashGetPage(newPageAddr, &newPageAddr, &newPageLen))
@@ -654,17 +658,18 @@ uint32_t jsfCompact() {
           DBG("Creating new file failed!\n");
           return 0;
         }
-        for (uint32_t x=0;x<header.size;x+=4) {
-          uint32_t buf;
-          jshFlashRead(&buf, oldFile+x,4);
-          jshFlashWrite(&buf, newFile+x,4);
+        for (uint32_t x=0;x<header.size;x+=JSF_ALIGNMENT) {
+          char buf[JSF_ALIGNMENT];
+          jshFlashRead(buf, oldFile+x,JSF_ALIGNMENT);
+          jshFlashWrite(buf, newFile+x,JSF_ALIGNMENT);
         }
         jsfEraseFile(oldFile, &header);
       }
       addr = jsfGetAddressOfNextHeader(addr, &header);
       if (!addr) return 0; // corrupt!
     }
-    // TODO: Now we're done, erase the original page
+    DBG("Erase original page\n");
+    jshFlashErasePage(pageAddr);
   }
   return 0;
 }
@@ -737,6 +742,8 @@ void jsfDebugFiles() {
   uint32_t addr = JSF_START_ADDRESS;
   uint32_t pageAddr = 0, pageLen = 0, pageEndAddr = 0;
 
+  jsiConsolePrintf("DEBUG FILES %d live\n", jsfGetAllocatedSpaceInPage(addr,true));
+
   JsfFileHeader header;
   while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
           addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
@@ -746,7 +753,7 @@ void jsfDebugFiles() {
         return;
       }
       pageEndAddr = pageAddr+pageLen;
-      jsiConsolePrintf("PAGE 0x%08x (%d bytes) - %d live %d free\n", pageAddr,pageLen,jsfGetAllocatedSpaceInPage(pageAddr),jsfGetFreeSpaceInPage(pageAddr));
+      jsiConsolePrintf("PAGE 0x%08x (%d bytes) - %d live %d free\n", pageAddr,pageLen,jsfGetAllocatedSpaceInPage(pageAddr,false),jsfGetFreeSpaceInPage(pageAddr));
     }
 
     char nameBuf[sizeof(JsfFileName)+1];
@@ -779,15 +786,15 @@ void jswrap_flash_eraseFiles() {
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Flash",
-  "name" : "getFile",
-  "generate" : "jswrap_flash_getFile",
+  "name" : "readFile",
+  "generate" : "jswrap_flash_readFile",
   "params" : [
     ["name","JsVar","The filename - max 8 characters"]
   ],
   "return" : ["JsVar","A string of data"]
 }
  */
-JsVar *jswrap_flash_getFile(JsVar *name) {
+JsVar *jswrap_flash_readFile(JsVar *name) {
   char nameBuf[sizeof(JsfFileName)+1];
   memset(nameBuf,0,sizeof(nameBuf));
   jsvGetString(name, nameBuf, sizeof(nameBuf));
