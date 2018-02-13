@@ -816,9 +816,11 @@ JsVarFloat jshReadVRef()  { return NAN; };
 unsigned int jshGetRandomNumber() { return rand(); }
 
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
-  if (addr > (FAKE_FLASH_BLOCKSIZE * FAKE_FLASH_BLOCKS))
+  if (addr < FLASH_START)
+    return false;
+  if (addr >= FLASH_START+(FAKE_FLASH_BLOCKSIZE * FAKE_FLASH_BLOCKS))
       return false;
-  *startAddr = (uint32_t) (floor(addr / FAKE_FLASH_BLOCKSIZE) * FAKE_FLASH_BLOCKSIZE);
+  *startAddr = (uint32_t)(floor(addr / FAKE_FLASH_BLOCKSIZE) * FAKE_FLASH_BLOCKSIZE);
   *pageSize = FAKE_FLASH_BLOCKSIZE;
   return true;
 }
@@ -828,7 +830,7 @@ JsVar *jshFlashGetFree() {
   uint32_t pAddr, pSize;
   JsVar *jsArea = jsvNewObject();
   if (!jsArea) return jsFreeFlash;
-  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger(0));
+  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger(FLASH_START));
   jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger(FAKE_FLASH_BLOCKSIZE*FAKE_FLASH_BLOCKS));
   jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
   return jsFreeFlash;
@@ -864,6 +866,12 @@ void jshFlashErasePage(uint32_t addr) {
   fclose(f);
 }
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+  if (addr<FLASH_START || addr>=FLASH_START+FLASH_TOTAL) {
+    assert(0); // out of range
+    return;
+  }
+  addr -= FLASH_START;
+
   FILE *f = jshFlashOpenFile();
   if (!f) return;
   fseek(f, addr, SEEK_SET);
@@ -871,8 +879,13 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   fclose(f);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
-  assert(addr&3); // sanity checks here to mirror real hardware
-  assert(len&3); // sanity checks here to mirror real hardware
+  assert(!(addr&3)); // sanity checks here to mirror real hardware
+  assert(!(len&3)); // sanity checks here to mirror real hardware
+  if (addr<FLASH_START || addr>=FLASH_START+FLASH_TOTAL) {
+    assert(0); // out of range
+    return;
+  }
+  addr -= FLASH_START;
 
   FILE *f = jshFlashOpenFile();
   if (!f) return;

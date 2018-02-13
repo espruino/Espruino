@@ -1516,18 +1516,13 @@ static void peer_manager_init(bool erase_bonds) {
   if (bleStatus & BLE_PM_INITIALISED) return;
   bleStatus |= BLE_PM_INITIALISED;
 
-  /* Deal with what happens if we had saved code in pages already.
-  This happens if we had a pre-1v92 firmware with saved code
-  and then updated to something with peer manager so the pages
-  got swapped around */
-  uint32_t *magicWord = ((uint32_t *)flash_end_addr())-1;
   /* If the button is pressed at boot, clear out flash
    * pages as well. Nice easy way to reset! */
   bool buttonPressed = false;
 #ifdef BTN1_PININDEX
   buttonPressed = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
 #endif
-  if (FLASH_MAGIC == *magicWord || buttonPressed) {
+  if (buttonPressed) {
     int i;
     for (i=1;i<=FDS_PHY_PAGES;i++)
       jshFlashErasePage((flash_end_addr()) - i*FDS_PHY_PAGE_SIZE);
