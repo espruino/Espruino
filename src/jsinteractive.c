@@ -22,7 +22,7 @@
 #include "jswrap_io.h"
 #include "jswrap_stream.h"
 #include "jswrap_espruino.h" // jswrap_espruino_getErrorFlagArray
-#include "jswrap_flash.h" // load and save to flash
+#include "jsflash.h" // load and save to flash
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
 #include "jsnative.h" // jsnSanityTest
 #ifdef BLUETOOTH

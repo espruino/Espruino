@@ -16,7 +16,7 @@
 #include "jswrap_espruino.h"
 #include "jswrap_math.h"
 #include "jswrap_arraybuffer.h"
-#include "jswrap_flash.h"
+#include "jsflash.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
 #include "jstimer.h"

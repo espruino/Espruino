@@ -254,6 +254,7 @@ src/jswrap_waveform.c \
 SOURCES += \
 src/jslex.c \
 src/jsflags.c \
+src/jsflash.c \
 src/jsvar.c \
 src/jsvariterator.c \
 src/jsutils.c \
