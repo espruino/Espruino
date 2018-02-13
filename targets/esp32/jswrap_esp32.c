@@ -50,6 +50,21 @@ void jswrap_ESP32_reboot() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP32",
+  "name"     : "deepsleep",
+  "generate" : "jswrap_ESP32_deepsleep",
+  "params"   : [ ["ms", "int", "Sleeptime in ms"] ]	
+}
+Put device in deepsleep state for "ms" milliseconds.
+*/
+void jswrap_ESP32_deepSleep(int us) {
+	esp_deep_sleep_enable_timer_wakeup((uint64_t)(ms));
+	esp_deep_sleep_start(); // This function does not return.
+} // End of jswrap_ESP32_deepsleep
+
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
   "name"     : "getState",
   "generate" : "jswrap_ESP32_getState",
   "return"   : ["JsVar", "The state of the ESP32"]
