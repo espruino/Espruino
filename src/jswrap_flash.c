@@ -176,10 +176,11 @@ JsVar *jswrap_flash_read(int length, int addr) {
 }
 
 
+
 // cbdata = uint32_t[end_address, address, data]
 void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
 
-#ifdef FLASH_64BITS_ALIGNEMENT
+#ifdef FLASH_64BITS_ALIGNMENT
 	static uint32_t dataToWrite[2];
 #endif
 
@@ -187,7 +188,7 @@ void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
   if (cbdata[1]<cbdata[0]) {
     // write only a word at a time
     cbdata[2]=(uint32_t)(ch<<24) | (cbdata[2]>>8);
-#ifndef FLASH_64BITS_ALIGNEMENT
+#ifndef FLASH_64BITS_ALIGNMENT
     if ((cbdata[1]&3)==3)
     jshFlashWrite(&cbdata[2], cbdata[1]&(uint32_t)~3, 4);
 #else
@@ -246,7 +247,7 @@ int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
 #define BOOT_CODE_LENGTH_MASK 0x00FFFFFF
 #define BOOT_CODE_RUN_ALWAYS  0x80000000
 
-#ifndef FLASH_64BITS_ALIGNEMENT
+#ifndef FLASH_64BITS_ALIGNMENT
 #define FLASH_UNITARY_WRITE_SIZE 4
 #else
 #define FLASH_UNITARY_WRITE_SIZE 8
