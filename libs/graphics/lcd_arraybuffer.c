@@ -189,7 +189,7 @@ void  lcdFillRect_ArrayBuffer_flat(struct JsGraphics *gfx, short x1, short y1, s
   for (y=y1;y<=y2;y++)
     lcdSetPixels_ArrayBuffer_flat(gfx, x1, y, (short)(1+x2-x1), gfx->data.fgColor);
 }
-#endif SAVE_ON_FLASH
+#endif // SAVE_ON_FLASH
 
 void lcdInit_ArrayBuffer(JsGraphics *gfx) {
   // create buffer

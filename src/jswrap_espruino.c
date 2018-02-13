@@ -16,7 +16,7 @@
 #include "jswrap_espruino.h"
 #include "jswrap_math.h"
 #include "jswrap_arraybuffer.h"
-#include "jswrap_flash.h"
+#include "jsflash.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
 #include "jstimer.h"
@@ -861,7 +861,9 @@ JsVar *jswrap_espruino_memoryArea(int addr, int len) {
     jsExceptionHere(JSET_ERROR, "Memory area too long! Max is 65535 bytes\n");
     return 0;
   }
-  return jsvNewNativeString((char*)(size_t)addr, (size_t)len);
+  // hack for ESP8266/ESP32 where the address can be different
+  size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
+  return jsvNewNativeString((char*)mappedAddr, (size_t)len);
 }
 
 /*JSON{
@@ -890,11 +892,9 @@ To remove boot code that has been saved previously, use `E.setBootCode("")`
 **Note:** this removes any code that was previously saved with `save()`
 */
 void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec) {
-  JsvSaveFlashFlags flags = 0;
-  if (alwaysExec) flags |= SFF_BOOT_CODE_ALWAYS;
   if (jsvIsString(code)) code = jsvLockAgain(code);
   else code = jsvNewFromEmptyString();
-  jsfSaveToFlash(flags, code);
+  jsfSaveBootCodeToFlash(code, alwaysExec);
   jsvUnLock(code);
 }
 

@@ -87,18 +87,20 @@ Read 32 bits of memory at the given location - DANGEROUS!
 Write 32 bits of memory at the given location - VERY DANGEROUS!
  */
 
-uint32_t _jswrap_io_peek(JsVarInt addr, int wordSize) {
-  if (wordSize==1) return READ_FLASH_UINT8((char*)(size_t)addr);
+uint32_t _jswrap_io_peek(size_t addr, int wordSize) {
+  if (wordSize==1) return READ_FLASH_UINT8((char*)addr);
   if (wordSize==2) {
-    return READ_FLASH_UINT8((char*)(size_t)addr) | (uint32_t)(READ_FLASH_UINT8((char*)(size_t)(addr+1)) << 8);
+    return READ_FLASH_UINT8((char*)addr) | (uint32_t)(READ_FLASH_UINT8((char*)(addr+1)) << 8);
   }
-  if (wordSize==4) return (uint32_t)*(unsigned int*)(size_t)addr;
+  if (wordSize==4) return (uint32_t)*(unsigned int*)addr;
   return 0;
 }
 
 JsVar *jswrap_io_peek(JsVarInt addr, JsVarInt count, int wordSize) {
+  // hack for ESP8266/ESP32 where the address can be different
+  size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
   if (count<=1) {
-    return jsvNewFromLongInteger((long long)_jswrap_io_peek(addr, wordSize));
+    return jsvNewFromLongInteger((long long)_jswrap_io_peek(mappedAddr, wordSize));
   } else {
     JsVarDataArrayBufferViewType aType;
     if (wordSize==1) aType=ARRAYBUFFERVIEW_UINT8;
@@ -109,8 +111,8 @@ JsVar *jswrap_io_peek(JsVarInt addr, JsVarInt count, int wordSize) {
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, arr, 0);
     while (jsvArrayBufferIteratorHasElement(&it)) {
-      jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)_jswrap_io_peek(addr, wordSize));
-      addr += wordSize;
+      jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)_jswrap_io_peek(mappedAddr, wordSize));
+      mappedAddr += (size_t)wordSize;
       jsvArrayBufferIteratorNext(&it);
     }
     jsvArrayBufferIteratorFree(&it);

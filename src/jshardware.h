@@ -346,6 +346,12 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len);
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len);
 
+/** On most platforms, the address of something really is that address.
+ * In ESP32/ESP8266 the flash memory is mapped up at a much higher address,
+ * so we need to tweak any pointers that we use.
+ * */
+size_t jshFlashGetMemMapAddress(size_t ptr);
+
 
 /** Utility timer handling functions
  *  ------------------------------------------

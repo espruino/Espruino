@@ -26,7 +26,7 @@
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf5x_utils.h"
-#include "jswrap_flash.h" // for jsfRemoveCodeFromFlash
+#include "jsflash.h" // for jsfRemoveCodeFromFlash
 
 #include "jswrap_graphics.h"
 #include "lcd_arraybuffer.h"

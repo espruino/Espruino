@@ -1971,28 +1971,57 @@ void jshFlashErasePage(uint32_t addr){
 
 /** Read data from flash memory into the buffer, the flash address has no alignment restrictions
   * and the len may be (and often is) 1 byte */
-void jshFlashRead(void *buf, uint32_t addr, uint32_t len){
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   memcpy(buf, (void*)addr, len);
 }
+
+static void jshFlashWrite64(void *buf, uint32_t addr) {
+  assert(!(addr&7));
+  if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, ((uint64_t*)buf)) != HAL_OK){
+    HAL_FLASH_Lock();
+    Error_Callback();
+  }
+}
+
 /** Write data to flash memory from the buffer, the buffer address and flash address are
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
-void jshFlashWrite(void *buf, uint32_t addr, uint32_t len){
-
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+  char *cbuf = (char*)buf;
   HAL_FLASH_Unlock();
 
-  unsigned int i;
+  // bodge up single 32 bit writes
+  if (addr&4) {
+    addr -= 4;
+    char buf64[8];
+    jshFlashRead(&buf64[0],addr,4);
+    memcpy(&buf64[4], cbuf, 4);
+    jshFlashWrite64(buf64, addr);
+    cbuf += 4;
+    addr += 8;
+    len -= 4;
+  }
 
-  for (i=0;i<len/8;i++){
-    if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, ((uint64_t*)buf)[i]) != HAL_OK){
-      HAL_FLASH_Lock();
-      Error_Callback();
-    }
-    addr = addr + 8;
+  // 64 bit writes
+  while (len>7) {
+    jshFlashWrite64(cbuf, addr);
+    cbuf += 8;
+    addr += 8;
+    len -= 8;
+  }
+
+  // final 32 bit write?
+  if (len>3) {
+    char buf64[8];
+    memcpy(&buf64[0], cbuf, 4);
+    jshFlashRead(&buf64[4],addr+4,4);
+    jshFlashWrite64(buf64, addr);
   }
 
   HAL_FLASH_Lock();
-
 }
+
+// Just pass data through, since we can access flash at the same address we wrote it
+size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
 
 
 /** Utility timer handling functions

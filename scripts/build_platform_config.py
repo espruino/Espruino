@@ -268,7 +268,7 @@ codeOut("");
 if LINUX:
   codeOut('#define RESIZABLE_JSVARS // Allocate variables in blocks using malloc')
   #codeOut("#define JSVAR_CACHE_SIZE                "+str(60)+" // Number of JavaScript variables in RAM")
-  codeOut("#define FLASH_START                     "+hex(0x0))
+  codeOut("#define FLASH_START                     "+hex(0x10000000))
   codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
 else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
@@ -293,11 +293,6 @@ else:
 
 codeOut("#define FLASH_SAVED_CODE_START            "+str(flash_saved_code_start))
 codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(int(flash_page_size*flash_saved_code_pages)))
-if board.chip["family"]=="STM32L4":
-  codeOut("#define FLASH_MAGIC_LOCATION              (FLASH_SAVED_CODE_START + FLASH_SAVED_CODE_LENGTH - 8)")
-else:
-  codeOut("#define FLASH_MAGIC_LOCATION              (FLASH_SAVED_CODE_START + FLASH_SAVED_CODE_LENGTH - 4)")
-codeOut("#define FLASH_MAGIC 0xDEADBEEF")
 codeOut("");
 codeOut("#define CLOCK_SPEED_MHZ                      "+str(board.chip["speed"]))
 codeOut("#define USART_COUNT                          "+str(board.chip["usart"]))
