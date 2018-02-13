@@ -554,17 +554,19 @@ void jsfSaveToFlash() {
   unsigned int varSize = jsvGetMemoryTotal() * (unsigned int)sizeof(JsVar);
   unsigned char* varPtr = (unsigned char *)_jsvGetAddressOf(1);
 
+  jsiConsolePrint("Compacting Flash...\n");
   // Ensure we get rid of any saved code we had before
   jsfEraseFile(jsfNameFromString(SAVED_CODE_VARIMAGE));
   // Try and compact, just to ensure we get the maximum amount saved
   jsfCompact();
+  jsiConsolePrint("Calculating Size...\n");
   // Work out how much data this'll take
   uint32_t compressedSize = 0;
   COMPRESS(varPtr, varSize, jsfSaveToFlash_countcb, &compressedSize);
   // How much data do we have?
   uint32_t savedCodeAddr = jsfCreateFile(jsfNameFromString(SAVED_CODE_VARIMAGE), compressedSize, JSF_START_ADDRESS, 0);
   if (!savedCodeAddr) {
-    jsiConsolePrintf("\nERROR: Too big to save to flash (%d vs %d bytes)\n", compressedSize, jsfGetFreeSpace(JSF_START_ADDRESS,true));
+    jsiConsolePrintf("ERROR: Too big to save to flash (%d vs %d bytes)\n", compressedSize, jsfGetFreeSpace(JSF_START_ADDRESS,true));
     jsvSoftInit();
     jspSoftInit();
     jsiConsolePrint("Deleting command history and trying again...\n");
@@ -582,7 +584,7 @@ void jsfSaveToFlash() {
   jsfcbData cbData;
   cbData.address = savedCodeAddr;
   cbData.endAddress = jsfAlignAddress(savedCodeAddr+compressedSize);
-  jsiConsolePrint("\nWriting...");
+  jsiConsolePrint("Writing..");
   COMPRESS(varPtr, varSize, jsfSaveToFlash_writecb, (uint32_t*)&cbData);
   // make sure we write everything in the buffer out
   int i;
