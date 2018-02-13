@@ -919,6 +919,9 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
   NVMHAL_DeInit();
 }
 
+// Just pass data through, since we can access flash at the same address we wrote it
+size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
+
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
 #ifdef USE_RTC

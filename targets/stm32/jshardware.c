@@ -2936,6 +2936,9 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 #endif
 }
 
+// Just pass data through, since we can access flash at the same address we wrote it
+size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
+
 int jshSetSystemClockPClk(JsVar *options, const char *clkName) {
   JsVar *v = jsvObjectGetChild(options, clkName, 0);
   JsVarInt i = jsvGetIntegerAndUnLock(v);

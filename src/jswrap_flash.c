@@ -439,22 +439,7 @@ const char *jsfGetBootCodeFromFlash(bool isReset) {
   // Don't execute code if we've reset and code shouldn't always be run
   if (isReset && !(bootCodeInfo & BOOT_CODE_RUN_ALWAYS)) return 0;
 
-#ifdef ESP32
-  // romdata_jscode is memory mapped address from the js_code partition in rom - targets/esp32/main.c
-  extern char* romdata_jscode;
-  if (romdata_jscode==0) {
-    jsError("Couldn't find js_code partition - update with partition_espruino.bin\n");
-    return 0;
-  }
-  code = &romdata_jscode[FLASH_DATA_LOCATION-FLASH_SAVED_CODE_START];
-#else
-  code = (char *)(FLASH_DATA_LOCATION);
-#endif  
-#ifdef ESP8266
-  // the flash address is just the offset into the flash chip, but to evaluate the code
-  // below we need to jump to the memory-mapped window onto flash, so adjust here
-  code += 0x40200000;
-#endif
+  code = (char *)(jshFlashGetMemMapAddress(FLASH_DATA_LOCATION));
   return code;
 }
 

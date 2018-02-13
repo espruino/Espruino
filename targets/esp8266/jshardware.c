@@ -1383,6 +1383,14 @@ void jshFlashErasePage(
       res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
 }
 
+size_t jshFlashGetMemMapAddress(size_t ptr) {
+  // the flash address is just the offset into the flash chip, but to evaluate the code
+  // below we need to jump to the memory-mapped window onto flash, so adjust here
+  if (ptr < FLASH_MAX) {
+    return ptr + FLASH_MMAP;
+  return ptr;
+}
+
 unsigned int jshSetSystemClock(JsVar *options) {
   int newFreq = jsvGetInteger(options);
   if (newFreq != 80 && newFreq != 160) {

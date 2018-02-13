@@ -1974,6 +1974,7 @@ void jshFlashErasePage(uint32_t addr){
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len){
   memcpy(buf, (void*)addr, len);
 }
+
 /** Write data to flash memory from the buffer, the buffer address and flash address are
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len){
@@ -1993,6 +1994,9 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len){
   HAL_FLASH_Lock();
 
 }
+
+// Just pass data through, since we can access flash at the same address we wrote it
+size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
 
 
 /** Utility timer handling functions

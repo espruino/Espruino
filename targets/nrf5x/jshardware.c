@@ -1262,6 +1262,9 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   //nrf_nvmc_write_bytes(addr, buf, len);
 }
 
+// Just pass data through, since we can access flash at the same address we wrote it
+size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
+
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
   /* Wake ourselves up if we're supposed to, otherwise if we're not waiting for

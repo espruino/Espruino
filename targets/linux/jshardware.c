@@ -886,6 +886,9 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   fclose(f);
 }
 
+// Just pass data through, since we can access flash at the same address we wrote it
+size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
+
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
 }
