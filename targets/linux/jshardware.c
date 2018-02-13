@@ -894,11 +894,14 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   fseek(f, addr, SEEK_SET);
   fread(wbuf, 1, len, f);
   uint32_t i;
-  for (i=0;i<len;i++)
+  for (i=0;i<len;i++) {
+    //jsiConsolePrintf("Write %d to 0x%08x\n", ((char*)buf)[i], FLASH_START+addr+i);
     wbuf[i] &= ((char*)buf)[i];
+  }
   fseek(f, addr, SEEK_SET);
   fwrite(wbuf, 1, len, f);
   free(wbuf);
+  //fsync(f);
   fclose(f);
 }
 
