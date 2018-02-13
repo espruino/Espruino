@@ -857,6 +857,7 @@ void jshFlashErasePage(uint32_t addr) {
   if (!f) return;
   uint32_t startAddr, pageSize;
   if (jshFlashGetPage(addr, &startAddr, &pageSize)) {
+    startAddr -= FLASH_START;
     fseek(f, startAddr, SEEK_SET);
     char *buf = malloc(pageSize);
     memset(buf, 0xFF, pageSize);
