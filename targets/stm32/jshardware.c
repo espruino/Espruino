@@ -51,7 +51,6 @@
 #define IRQ_PRIOR_LOW 15
 
 #ifdef USE_RTC
-
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion
 
 // TODO: could jshRTCPrescaler (and the hardware prescaler) be modified on SysTick, to calibrate the LSI against the HSE?
@@ -70,6 +69,8 @@ JsSysTime jshGetRTCSystemTime();
 
 static JsSysTime jshGetTimeForSecond();
 
+// The amount of systicks for one second depends on the clock speed
+#define SYSTICKS_FOR_ONE_SECOND (1+(CLOCK_SPEED_MHZ*1000000/SYSTICK_RANGE))
 
 // see jshPinWatch/jshGetWatchedPinState
 Pin watchedPins[16];
@@ -97,11 +98,11 @@ JsSysTime jshLastWokenByUSB = 0;
  * and then masking off the top bit */
 unsigned char jsh7BitUART;
 bool jshIsSerial7Bit(IOEventFlags device) {
-  assert(SERIAL_COUNT<=8);
+  assert(USART_COUNT<=8);
   return jsh7BitUART & (1<<(device-EV_SERIAL1));
 }
 void jshSetIsSerial7Bit(IOEventFlags device, bool is7Bit) {
-  assert(SERIAL_COUNT<=8);
+  assert(USART_COUNT<=8);
   if (is7Bit) jsh7BitUART |= (1<<(device-EV_SERIAL1));
   else  jsh7BitUART &= ~(1<<(device-EV_SERIAL1));
 }
@@ -836,7 +837,7 @@ void jshDoSysTick() {
 
   /* One second after start, call jsinteractive. This is used to swap
    * to USB (if connected), or the Serial port. */
-  if (ticksSinceStart == 5) {
+  if (ticksSinceStart == SYSTICKS_FOR_ONE_SECOND) {
     jsiOneSecondAfterStartup();
   }
 }

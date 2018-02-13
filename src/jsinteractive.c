@@ -156,7 +156,7 @@ IOEventFlags jsiGetPreferredConsoleDevice() {
 #endif
 #ifdef USB
   if (jshIsUSBSERIALConnected())
-    consoleDevice = EV_USBSERIAL;
+    dev = EV_USBSERIAL;
 #endif
 #ifdef BLUETOOTH
   if (jsble_has_simple_connection(dev))
@@ -861,6 +861,7 @@ void jsiOneSecondAfterStartup() {
      char or two can get corrupted.
    */
 #ifdef USB
+
   if (consoleDevice == EV_LIMBO) {
     consoleDevice = jsiGetPreferredConsoleDevice();
     // now move any output that was made to Limbo to the given device

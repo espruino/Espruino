@@ -99,10 +99,10 @@ hdiutil attach ~/diskimages/Espruino.sparsebundle
 ```
 mkdir /Espruino/{gcc,sdk,repos,tmp}
 
-/Espruino -+- gcc 		GNU Compiler Collection for different processors
-		       +- sdk 		Software Development Kits
+/Espruino -+- gcc     GNU Compiler Collection for different processors
+           +- sdk     Software Development Kits
            +- repos   like Espruino EspruinoDocs ... 
-	     	   +- tmp 		temporary files  
+	   +- tmp     temporary files  
 ```
 
 #### Install build and flash tools

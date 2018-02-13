@@ -294,6 +294,7 @@ else:
 codeOut("#define FLASH_SAVED_CODE_START            "+str(flash_saved_code_start))
 codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(int(flash_page_size*flash_saved_code_pages)))
 codeOut("");
+codeOut("#define CLOCK_SPEED_MHZ                      "+str(board.chip["speed"]))
 codeOut("#define USART_COUNT                          "+str(board.chip["usart"]))
 codeOut("#define SPI_COUNT                            "+str(board.chip["spi"]))
 codeOut("#define I2C_COUNT                            "+str(board.chip["i2c"]))
