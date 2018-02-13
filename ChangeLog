@@ -36,6 +36,7 @@
             Add process.env.EXPTR to link to table of functions - will work better for compiled code over BLE
             Added SAVE_ON_FLASH_EXTREME for HYSTM32_28, where we're now cutting out some Math.X functionality to keep builds going 
             Added `jshFlashGetMemMapAddress` to allow remapping of addresses for ESP8266/ESP32 without loads of code duplication
+            Remap peek8/16/32 addresses on ESP32/ESP8266 so it can be used on flash memory
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line
