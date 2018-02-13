@@ -18,6 +18,28 @@
 #include "jsvariterator.h"
 #include "jsinteractive.h"
 
+#define SAVED_CODE_BOOTCODE_RESET "bootrst" // bootcode that runs even after reset
+#define SAVED_CODE_BOOTCODE "bootcode" // bootcode that doesn't run after reset
+#define SAVED_CODE_VARIMAGE "varimage"
+
+
+#ifndef FLASH_64BITS_ALIGNMENT
+#define FLASH_UNITARY_WRITE_SIZE 4
+#else
+#define FLASH_UNITARY_WRITE_SIZE 8
+#endif
+
+#ifdef DEBUG
+#define DBG(...) jsiConsolePrintf("[Flash] "__VA_ARGS__)
+#else
+#define DBG(...)
+#endif
+
+#define JSF_ALIGNMENT FLASH_UNITARY_WRITE_SIZE
+#define JSF_START_ADDRESS FLASH_SAVED_CODE_START
+#define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+8192)//(FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
+
+
 #ifdef USE_HEATSHRINK
   #include "compress_heatshrink.h"
   #define COMPRESS heatshrink_encode
@@ -27,6 +49,12 @@
   #define COMPRESS rle_encode
   #define DECOMPRESS rle_decode
 #endif
+
+static uint32_t jsfAlignAddress(uint32_t addr) {
+  return (addr + (JSF_ALIGNMENT-1)) & (uint32_t)~(JSF_ALIGNMENT-1);
+}
+
+uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages);
 
 /*JSON{
   "type" : "library",
@@ -177,52 +205,52 @@ JsVar *jswrap_flash_read(int length, int addr) {
 
 
 
+// cbdata = uint32_t
+void jsfSaveToFlash_countcb(unsigned char ch, uint32_t *cbdata) {
+  NOT_USED(ch);
+  cbdata[0]++;
+}
+
+typedef struct {
+  uint32_t address;
+  uint32_t endAddress;
+  uint32_t word; // word of data to write
+#ifndef FLASH_64BITS_ALIGNMENT
+  uint32_t dataToWrite[2];
+#endif
+} jsfcbData;
 // cbdata = uint32_t[end_address, address, data]
 void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
-
-#ifdef FLASH_64BITS_ALIGNMENT
-	static uint32_t dataToWrite[2];
-#endif
-
-  // Only write if we can fit in flash
-  if (cbdata[1]<cbdata[0]) {
-    // write only a word at a time
-    cbdata[2]=(uint32_t)(ch<<24) | (cbdata[2]>>8);
+  jsfcbData *data = (jsfcbData*)cbdata;
+  // write only a word at a time
+  data->word = (uint32_t)(ch<<24) | (data->word>>8);
 #ifndef FLASH_64BITS_ALIGNMENT
-    if ((cbdata[1]&3)==3)
-    jshFlashWrite(&cbdata[2], cbdata[1]&(uint32_t)~3, 4);
+  if ((data->address&3)==3)
+    jshFlashWrite(&data->word, data->address&(uint32_t)~3, 4);
 #else
-	// We want the flash writes to be done every 64 bits.
-	// Store the first 32 bits and write on next 32 bits word.
-    if ((cbdata[1]&7)==7){
-      dataToWrite[1] = cbdata[2];
-      jshFlashWrite(dataToWrite, cbdata[1]&(uint32_t)~7, 8);
-    } else if ((cbdata[1]&3)==3){
-      dataToWrite[0] = cbdata[2];
-    }
+  // We want the flash writes to be done every 64 bits.
+  // Store the first 32 bits and write on next 32 bits word.
+  if ((data->address&7)==7){
+    data->dataToWrite[1] = data->word;
+    jshFlashWrite(data->dataToWrite, data->address&(uint32_t)~7, 8);
+  } else if ((data->address&3)==3){
+    data->dataToWrite[0] = data->word;
+  }
 #endif
-  }
   // inc address ptr
-  cbdata[1]++;
-  if ((cbdata[1]&1023)==0) jsiConsolePrint(".");
+  data->address++;
+  // output status characters
+  if ((data->address&1023)==0) jsiConsolePrint(".");
 }
 
-// cbdata = uint32_t[address, errorcount]
-void jsfSaveToFlash_checkcb(unsigned char ch, uint32_t *cbdata) {
-  unsigned char data;
-
-  jshFlashRead(&data,cbdata[0]++, 1);
-  if (data!=ch) {
-      //jsiConsolePrintf("\n checkcb error : ch=%x, cbdata: %x, %x, data = %x", ch, cbdata[0], cbdata[1], data);
-      cbdata[1]++; // error count
-  }
-}
 // cbdata = uint32_t[end_address, address]
 int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
-  if (cbdata[1]>=cbdata[0]) return -1; // at end
-  unsigned char data;
-  jshFlashRead(&data, cbdata[1]++, 1);
-  return data;
+  jsfcbData *data = (jsfcbData*)cbdata;
+
+  if (data->address >= data->endAddress) return -1; // at end
+  unsigned char d;
+  jshFlashRead(&d, data->address++, 1);
+  return d;
 }
 
 // ------------------------------------------------------------------------
@@ -231,216 +259,85 @@ int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 
-/*
- *   Code is saved starting from FLASH_SAVED_CODE_START.
- *   A magic number written to FLASH_MAGIC_LOCATION (the end of saved code)
- *     determines whether flash data has been successfully written or not
- *   The first word at FLASH_SAVED_CODE_START is the amount of Boot code
- *      that is saved
- *   The second word at FLASH_SAVED_CODE_START+4 is the end address of
- *      decompressed JS code
- *   Boot code starts at FLASH_SAVED_CODE_START+8
- *   Saved state starts at FLASH_SAVED_CODE_START+8+boot_code_length
- *
- */
 
-#define BOOT_CODE_LENGTH_MASK 0x00FFFFFF
-#define BOOT_CODE_RUN_ALWAYS  0x80000000
+void jsfSaveToFlash() {
+  unsigned int varSize = jsvGetMemoryTotal() * (unsigned int)sizeof(JsVar);
+  unsigned char* varPtr = (unsigned char *)_jsvGetAddressOf(1);
 
-#ifndef FLASH_64BITS_ALIGNMENT
-#define FLASH_UNITARY_WRITE_SIZE 4
-#else
-#define FLASH_UNITARY_WRITE_SIZE 8
-#endif
-
-#define FLASH_BOOT_CODE_INFO_LOCATION FLASH_SAVED_CODE_START
-#define FLASH_STATE_END_LOCATION (FLASH_SAVED_CODE_START+FLASH_UNITARY_WRITE_SIZE)
-#define FLASH_DATA_LOCATION (FLASH_SAVED_CODE_START+2*FLASH_UNITARY_WRITE_SIZE)
-
-void jsfSaveToFlash(JsvSaveFlashFlags flags, JsVar *bootCode) {
-  unsigned int dataSize = jsvGetMemoryTotal() * (unsigned int)sizeof(JsVar);
-  uint32_t *basePtr = (uint32_t *)_jsvGetAddressOf(1);
-  uint32_t pageStart, pageLength;
-  bool tryAgain = true;
-  bool success = false;
-  uint32_t writtenBytes;
-  uint32_t endOfData;
-  uint32_t cbData[3];
-
-  /* If we didn't specify boot code this time, but boot code was set previously,
-   * load it into RAM so we can keep it. */
-  uint32_t originalBootCodeInfo = 0;
-  char *originalBootCode = 0;
-  uint32_t bootCodeLen = 0;
-  if (!(jsvIsString(bootCode) && jsvGetStringLength(bootCode)) && jsfFlashContainsCode()) {
-    jshFlashRead(&originalBootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 4);
-    bootCodeLen = originalBootCodeInfo & BOOT_CODE_LENGTH_MASK;
-    if (bootCodeLen == BOOT_CODE_LENGTH_MASK) bootCodeLen = 0;
-    if (bootCodeLen) {
-      if (originalBootCodeInfo & BOOT_CODE_RUN_ALWAYS)
-        flags |= SFF_BOOT_CODE_ALWAYS;
-      else
-        flags &= ~SFF_BOOT_CODE_ALWAYS;
-      if (bootCodeLen+64 < jsuGetFreeStack())
-        originalBootCode = (char *)alloca(bootCodeLen);
-      if (originalBootCode) {
-        jshFlashRead(originalBootCode, FLASH_DATA_LOCATION, bootCodeLen);
-      } else {
-        // There may not be room on the stack, in which case we'll warn
-        jsWarn("Unable to keep Boot Code - not enough room on the stack\n");
-        bootCodeLen = 0;
-      }
-    }
+  // Ensure we get rid of any saved code we had before
+  jsfEraseFile(jsfNameFromString(SAVED_CODE_VARIMAGE));
+  // Try and compact, just to ensure we get the maximum amount saved
+  jsfCompact();
+  // Work out how much data this'll take
+  uint32_t compressedSize = 0;
+  COMPRESS(varPtr, varSize, jsfSaveToFlash_countcb, &compressedSize);
+  // How much data do we have?
+  uint32_t savedCodeAddr = jsfCreateFile(jsfNameFromString(SAVED_CODE_VARIMAGE), compressedSize, JSF_START_ADDRESS, 0);
+  if (!savedCodeAddr) {
+    jsiConsolePrintf("\nERROR: Too big to save to flash (%d vs %d bytes)\n", compressedSize, jsfGetFreeSpace(JSF_START_ADDRESS,true));
+    jsvSoftInit();
+    jspSoftInit();
+    jsiConsolePrint("Deleting command history and trying again...\n");
+    while (jsiFreeMoreMemory());
+    jspSoftKill();
+    jsvSoftKill();
+    savedCodeAddr = jsfCreateFile(jsfNameFromString(SAVED_CODE_VARIMAGE), compressedSize, JSF_START_ADDRESS, 0);
   }
-
-  while (tryAgain) {
-    tryAgain = false;
-    jsiConsolePrint("Erasing Flash...");
-    uint32_t addr = FLASH_SAVED_CODE_START;
-    if (jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) {
-      jshFlashErasePage(pageStart);
-      while (pageStart+pageLength < FLASH_MAGIC_LOCATION) { // until end address
-        jsiConsolePrint(".");
-        addr = pageStart+pageLength; // next page
-        if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) break;
-        jshFlashErasePage(pageStart);
-      }
-    }
-    // Now start writing
-    cbData[0] = FLASH_MAGIC_LOCATION; // end of available flash
-    cbData[1] = FLASH_DATA_LOCATION;
-    cbData[2] = 0; // word data (can only save a word ata a time)
-    jsiConsolePrint("\nWriting...");
-    // boot code....
-    if (jsvIsString(bootCode)) {
-      bootCodeLen = (uint32_t)jsvGetStringLength(bootCode);
-      if (bootCodeLen) {
-        // Only write code if we actually have any
-        originalBootCodeInfo = bootCodeLen;
-        if (flags & SFF_BOOT_CODE_ALWAYS)
-          originalBootCodeInfo |= BOOT_CODE_RUN_ALWAYS;
-        JsvStringIterator it;
-        jsvStringIteratorNew(&it, bootCode, 0);
-        while (jsvStringIteratorHasChar(&it)) {
-          jsfSaveToFlash_writecb(jsvStringIteratorGetChar(&it), cbData);
-          jsvStringIteratorNext(&it);
-        }
-        // terminate with a 0!
-        jsfSaveToFlash_writecb(0, cbData);
-        bootCodeLen++;
-      }
-
-    } else if (originalBootCode) {
-      // previously saved boot code that we want to keep
-      assert(originalBootCode && bootCodeLen);
-      size_t i;
-      for (i=0;i<bootCodeLen;i++)
-        jsfSaveToFlash_writecb(originalBootCode[i], cbData);
-    }
-    // write size of boot code to flash
-    jshFlashWrite(&originalBootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, FLASH_UNITARY_WRITE_SIZE);
-    // state....
-    if (flags & SFF_SAVE_STATE) {
-      COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
-    }
-    endOfData = cbData[1];
-    // make sure we write everything in buffer
-    int i;
-    for(i=0;i<FLASH_UNITARY_WRITE_SIZE;i++)
-      jsfSaveToFlash_writecb(0,cbData);
-
-    writtenBytes = endOfData - FLASH_SAVED_CODE_START;
-
-    if (cbData[1]>=cbData[0]) {
-      jsiConsolePrintf("\nERROR: Too big to save to flash (%d vs %d bytes)\n", writtenBytes, FLASH_MAGIC_LOCATION-FLASH_SAVED_CODE_START);
-      jsvSoftInit();
-      jspSoftInit();
-      if (jsiFreeMoreMemory()) {
-        jsiConsolePrint("Deleting command history and trying again...\n");
-        while (jsiFreeMoreMemory());
-        tryAgain = true;
-      }
-      jspSoftKill();
-      jsvSoftKill();
-    } else {
-      success = true;
-    }
+  if (!savedCodeAddr) {
+    jsiConsolePrint("Not enough free space to save.\n");
+    return;
   }
+  // Ok, we have space!
+  // Now start writing
+  jsfcbData cbData;
+  cbData.address = savedCodeAddr;
+  cbData.endAddress = jsfAlignAddress(savedCodeAddr+compressedSize);
+  jsiConsolePrint("\nWriting...");
+  COMPRESS(varPtr, varSize, jsfSaveToFlash_writecb, (uint32_t*)&cbData);
+  // make sure we write everything in the buffer out
+  int i;
+  for(i=0;i<FLASH_UNITARY_WRITE_SIZE;i++)
+    jsfSaveToFlash_writecb(0,(uint32_t*)&cbData);
 
-  if (success) {
-    jsiConsolePrintf("\nCompressed %d bytes to %d", dataSize, writtenBytes);
-    jshFlashWrite(&endOfData, FLASH_STATE_END_LOCATION, FLASH_UNITARY_WRITE_SIZE); // write position of end of data, at start of address space
-
-    uint32_t magic = FLASH_MAGIC;
-    jshFlashWrite(&magic, FLASH_MAGIC_LOCATION, FLASH_UNITARY_WRITE_SIZE);
-
-    jsiConsolePrint("\nChecking...");
-    cbData[0] = FLASH_DATA_LOCATION;
-    if (bootCodeLen) {
-      cbData[0] += bootCodeLen;
-    }
-    cbData[1] = 0; // increment if fails
-    // TODO: check boot code written ok
-    if (flags & SFF_SAVE_STATE)
-      COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_checkcb, cbData);
-    uint32_t errors = cbData[1];
-
-    if (!jsfFlashContainsCode()) {
-      jsiConsolePrint("\nFlash Magic Byte is wrong");
-
-      errors++;
-    }
-
-    if (errors)
-      jsiConsolePrintf("\nThere were %d errors!\n", errors);
-    else
-      jsiConsolePrint("\nDone!\n");
-  }
+  jsiConsolePrintf("\nCompressed %d bytes to %d\n", varSize, compressedSize);
 }
 
 
 /// Load the RAM image from flash (this is the actual interpreter state)
 void jsfLoadStateFromFlash() {
-  if (!jsfFlashContainsCode()) {
+  JsfFileHeader header;
+  uint32_t savedCode = jsfFindFile(jsfNameFromString(SAVED_CODE_VARIMAGE),&header);
+  if (!savedCode) {
     jsiConsolePrintf("No code in flash!\n");
     return;
   }
 
   //  unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
-  uint32_t *basePtr = (uint32_t *)_jsvGetAddressOf(1);
+  unsigned char* varPtr = (unsigned char *)_jsvGetAddressOf(1);
 
-  uint32_t cbData[2];
-  uint32_t bootCodeLen;
-  jshFlashRead(&bootCodeLen, FLASH_BOOT_CODE_INFO_LOCATION, 4); // length of boot code
-  bootCodeLen &= BOOT_CODE_LENGTH_MASK;
-  jshFlashRead(&cbData[0], FLASH_STATE_END_LOCATION, 4); // end address
-  cbData[1] = FLASH_DATA_LOCATION; // start address
-  if (bootCodeLen) cbData[1] += bootCodeLen;
-  uint32_t len = cbData[0]-FLASH_SAVED_CODE_START;
-  if (len>1000000) {
-    jsiConsolePrintf("Invalid saved code in flash!\n");
+  jsfcbData cbData;
+  cbData.address = savedCode;
+  cbData.endAddress = savedCode+header.size;
+  jsiConsolePrintf("Loading %d bytes from flash...\n", header.size);
+  DECOMPRESS(jsfLoadFromFlash_readcb, (uint32_t*)&cbData, varPtr);
+}
+
+/// Save contents of JsVars into Flash.
+void jsfSaveBootCodeToFlash(JsVar *code, bool runAfterReset) {
+  jsfEraseFile(jsfNameFromString(SAVED_CODE_BOOTCODE));
+  jsfEraseFile(jsfNameFromString(SAVED_CODE_BOOTCODE_RESET));
+  if (jsvIsUndefined(code) || jsvGetLength(code)==0)
     return;
-  }
-  jsiConsolePrintf("Loading %d bytes from flash...\n", len);
-  DECOMPRESS(jsfLoadFromFlash_readcb, cbData, (unsigned char*)basePtr);
+  jsfWriteFile(jsfNameFromString(runAfterReset ? SAVED_CODE_BOOTCODE_RESET : SAVED_CODE_BOOTCODE), code, 0, 0);
 }
 
 /** Get bootup code from flash (this is textual JS code). return a pointer to it if it exists, or 0.
  * isReset should be set if we're loading after a reset (eg, does the user expect this to be run or not).
  * Set isReset=false to always return the code  */
-const char *jsfGetBootCodeFromFlash(bool isReset) {
-  char *code = 0;
-  if (!jsfFlashContainsCode()) return 0;
-
-  uint32_t bootCodeInfo;
-  jshFlashRead(&bootCodeInfo, FLASH_BOOT_CODE_INFO_LOCATION, 4); // length of boot code
-  uint32_t bootCodeLen = bootCodeInfo & BOOT_CODE_LENGTH_MASK;
-  if (bootCodeLen==BOOT_CODE_LENGTH_MASK || !bootCodeLen) return 0;
-  // Don't execute code if we've reset and code shouldn't always be run
-  if (isReset && !(bootCodeInfo & BOOT_CODE_RUN_ALWAYS)) return 0;
-
-  code = (char *)(jshFlashGetMemMapAddress(FLASH_DATA_LOCATION));
-  return code;
+JsVar *jsfGetBootCodeFromFlash(bool isReset) {
+  JsVar *resetCode = jsfReadFile(jsfNameFromString(SAVED_CODE_BOOTCODE_RESET));
+  if (isReset || resetCode) return resetCode;
+  return jsfReadFile(jsfNameFromString(SAVED_CODE_BOOTCODE));
 }
 
 /** Load bootup code from flash (this is textual JS code). return true if it exists and was executed.
@@ -448,32 +345,25 @@ const char *jsfGetBootCodeFromFlash(bool isReset) {
  * Set isReset=false to always run the code
  */
 bool jsfLoadBootCodeFromFlash(bool isReset) {
-  const char *code = jsfGetBootCodeFromFlash(isReset);
-  if (code)
-    jsvUnLock(jspEvaluate(code, true /* We are expecting this ptr to hang around */));
+  JsVar *code = jsfGetBootCodeFromFlash(isReset);
+  if (!code) return false;
+  jsvUnLock2(jspEvaluateVar(code,0,0), code);
   return true;
 }
 
 bool jsfFlashContainsCode() {
-  int magic;
-  jshFlashRead(&magic, FLASH_MAGIC_LOCATION, sizeof(magic));
-  return magic == (int)FLASH_MAGIC;
+  return
+      jsfFindFile(jsfNameFromString(SAVED_CODE_VARIMAGE),0) ||
+      jsfFindFile(jsfNameFromString(SAVED_CODE_BOOTCODE),0) ||
+      jsfFindFile(jsfNameFromString(SAVED_CODE_BOOTCODE_RESET),0);
 }
 
 /** Completely clear any saved code from flash. */
 void jsfRemoveCodeFromFlash() {
   jsiConsolePrint("Erasing saved code.");
-  uint32_t pageStart, pageLength;
-  uint32_t addr = FLASH_SAVED_CODE_START;
-  if (jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) {
-    jshFlashErasePage(pageStart);
-    while (pageStart+pageLength < FLASH_MAGIC_LOCATION) { // until end address
-      jsiConsolePrint(".");
-      addr = pageStart+pageLength; // next page
-      if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) break;
-      jshFlashErasePage(pageStart);
-    }
-  }
+  jsfEraseFile(jsfNameFromString(SAVED_CODE_VARIMAGE));
+  jsfEraseFile(jsfNameFromString(SAVED_CODE_BOOTCODE));
+  jsfEraseFile(jsfNameFromString(SAVED_CODE_BOOTCODE_RESET));
   jsiConsolePrint("\nDone!\n");
 }
 
@@ -481,27 +371,19 @@ void jsfRemoveCodeFromFlash() {
 
 // ----------------------------------------------------------------------------------------------
 
-#ifdef DEBUG
-#define DBG(...) jsiConsolePrintf("[Flash] "__VA_ARGS__)
-#else
-#define DBG(...)
-#endif
+JsfFileName jsfNameFromString(const char *name) {
+  assert(strlen(name)<=8);
+  char nameBuf[sizeof(JsfFileName)+1];
+  memset(nameBuf,0,sizeof(nameBuf));
+  strcpy(nameBuf,name);
+  return *(JsfFileName*)nameBuf;
+}
 
-typedef uint64_t JsfFileName;
-typedef struct {
-  uint32_t size; ///< Total size
-  JsfFileName name; ///< 0-padded filename
-  uint32_t replacement; ///< pointer to a replacement (eventually). For now this is 0xFFFFFFFF if ok, 0 if erased
-} JsfFileHeader; // keep this
-
-#define JSF_ALIGNMENT 4
-#define JSF_START_ADDRESS FLASH_SAVED_CODE_START
-#define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+8192)//(FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
-
-uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfFileHeader *returnedHeader);
-
-static uint32_t jsfAlignAddress(uint32_t addr) {
-  return (addr + (JSF_ALIGNMENT-1)) & (uint32_t)~(JSF_ALIGNMENT-1);
+JsfFileName jsfNameFromVar(JsVar *name) {
+  char nameBuf[sizeof(JsfFileName)+1];
+  memset(nameBuf,0,sizeof(nameBuf));
+  jsvGetString(name, nameBuf, sizeof(nameBuf));
+  return *(JsfFileName*)nameBuf;
 }
 
 bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
@@ -551,13 +433,20 @@ bool jsfEraseAll() {
 }
 
 /// When a file is found in memory, erase it (by setting replacement to 0). addr=ptr to data, NOT header
-void jsfEraseFile(uint32_t addr, JsfFileHeader *header) {
+void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header) {
   DBG("EraseFile 0x%08x\n", addr);
 
   addr -= (uint32_t)sizeof(JsfFileHeader);
   addr += (uint32_t)((char*)&header->replacement - (char*)header);
   header->replacement = 0;
   jshFlashWrite(&header->replacement,addr,(uint32_t)sizeof(header->replacement));
+}
+
+void jsfEraseFile(JsfFileName name) {
+  JsfFileHeader header;
+  uint32_t addr = jsfFindFile(name, &header);
+  if (!addr) return;
+  jsfEraseFileInternal(addr, &header);
 }
 
 // if we find a page with a header in, return that - or 0
@@ -586,12 +475,15 @@ uint32_t jsfGetAddressOfNextHeader(uint32_t addr, JsfFileHeader *header) {
 }
 
 // Get the amount of space free in this page
-uint32_t jsfGetFreeSpaceInPage(uint32_t addr) {
-  uint32_t pageAddr,pageLen;
-  if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
-    return 0;
-  assert(addr==pageAddr);
-  uint32_t pageEndAddr = pageAddr+pageLen;
+uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages) {
+  uint32_t pageEndAddr = JSF_END_ADDRESS;
+  if (!allPages) {
+    uint32_t pageAddr,pageLen;
+    if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
+      return 0;
+    assert(addr==pageAddr);
+    pageEndAddr = pageAddr+pageLen;
+  }
   JsfFileHeader header;
   while (jsfGetFileHeader(addr, &header) && addr+(uint32_t)sizeof(JsfFileHeader)<pageEndAddr) {
     addr = jsfGetAddressOfNextHeader(addr, &header);
@@ -600,7 +492,7 @@ uint32_t jsfGetFreeSpaceInPage(uint32_t addr) {
 }
 
 // Get the amount of space needed to mirror this page elsewhere
-uint32_t jsfGetAllocatedSpaceInPage(uint32_t addr, bool allPages) {
+uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages) {
   uint32_t allocated = 0;
   uint32_t pageEndAddr = JSF_END_ADDRESS;
   if (!allPages) {
@@ -623,7 +515,7 @@ uint32_t jsfGetAllocatedSpaceInPage(uint32_t addr, bool allPages) {
 // Try and compact saved data so it'll fit in Flash again
 bool jsfCompact() {
   DBG("Compacting\n");
-  uint32_t allocated = jsfGetAllocatedSpaceInPage(JSF_START_ADDRESS, true);
+  uint32_t allocated = jsfGetAllocatedSpace(JSF_START_ADDRESS, true);
   if (allocated+1024 < jsuGetFreeStack()) {
     DBG("Compacting - all data fits in RAM\n");
     // All our allocated data will fit in RAM - awesome!
@@ -665,12 +557,12 @@ bool jsfCompact() {
 
   /*if (!jshFlashGetPage(pageAddr, &pageAddr, &pageLen))
     return 0;
-  uint32_t pageAllocated = jsfGetAllocatedSpaceInPage(pageAddr, false);
+  uint32_t pageAllocated = jsfGetAllocatedSpace(pageAddr, false);
   uint32_t newPageAddr,newPageLen;
   newPageAddr = pageAddr+pageLen;
   if (!jshFlashGetPage(newPageAddr, &newPageAddr, &newPageLen))
     return 0;
-  uint32_t newPageFree = jsfGetFreeSpaceInPage(newPageAddr);
+  uint32_t newPageFree = jsfGetFreeSpace(newPageAddr);
   if (newPageFree > pageAllocated) {
     // more free space in the new page than is allocated in the old one
     // move any allocated data into the new page
@@ -691,7 +583,7 @@ bool jsfCompact() {
           jshFlashRead(buf, oldFile+x,JSF_ALIGNMENT);
           jshFlashWrite(buf, newFile+x,JSF_ALIGNMENT);
         }
-        jsfEraseFile(oldFile, &header);
+        jsfEraseFileInternal(oldFile, &header);
       }
       addr = jsfGetAddressOfNextHeader(addr, &header);
       if (!addr) return 0; // corrupt!
@@ -705,6 +597,7 @@ bool jsfCompact() {
 /// Create a new 'file' in the memory store. Return the address of data start, or 0 on error
 uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfFileHeader *returnedHeader) {
   DBG("CreateFile\n");
+  assert(startAddr);
   uint32_t addr = startAddr;
   uint32_t existingAddr = 0;
   JsfFileHeader header;
@@ -718,7 +611,7 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfF
   // do we have an existing file? Erase it.
   if (existingAddr) {
     jsfGetFileHeader(existingAddr, &header);
-    jsfEraseFile(existingAddr+(uint32_t)sizeof(JsfFileHeader), &header);
+    jsfEraseFileInternal(existingAddr+(uint32_t)sizeof(JsfFileHeader), &header);
   }
 
   bool compacted = false;
@@ -776,7 +669,7 @@ void jsfDebugFiles() {
   uint32_t addr = JSF_START_ADDRESS;
   uint32_t pageAddr = 0, pageLen = 0, pageEndAddr = 0;
 
-  jsiConsolePrintf("DEBUG FILES %d live\n", jsfGetAllocatedSpaceInPage(addr,true));
+  jsiConsolePrintf("DEBUG FILES %d live\n", jsfGetAllocatedSpace(addr,true));
 
   JsfFileHeader header;
   while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
@@ -787,7 +680,8 @@ void jsfDebugFiles() {
         return;
       }
       pageEndAddr = pageAddr+pageLen;
-      jsiConsolePrintf("PAGE 0x%08x (%d bytes) - %d live %d free\n", pageAddr,pageLen,jsfGetAllocatedSpaceInPage(pageAddr,false),jsfGetFreeSpaceInPage(pageAddr));
+      jsiConsolePrintf("PAGE 0x%08x (%d bytes) - %d live %d free\n",
+          pageAddr,pageLen,jsfGetAllocatedSpace(pageAddr,false),jsfGetFreeSpace(pageAddr,false));
     }
 
     char nameBuf[sizeof(JsfFileName)+1];
@@ -802,6 +696,60 @@ void jsfDebugFiles() {
     }
   }
 }
+
+JsVar *jsfReadFile(JsfFileName name) {
+  JsfFileHeader header;
+  uint32_t addr = jsfFindFile(name, &header);
+  if (!addr) return 0;
+#ifdef LINUX
+  // linux fakes flash with a file, so we can't just return a pointer to it!
+  char *d = (char*)malloc(header.size);
+  jshFlashRead(d, addr, header.size);
+  JsVar *v = jsvNewStringOfLength(header.size, d);
+  free(d);
+  return v;
+#else
+  size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
+  return jsvNewNativeString((char*)mappedAddr, header.size);
+#endif
+}
+
+bool jsfWriteFile(JsfFileName name, JsVar *data, JsVarInt offset, JsVarInt _size) {
+  if (offset<0 || _size<0) return false;
+  uint32_t size = (uint32_t)_size;
+  // Data length
+  JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
+  if (!dPtr || !dLen) return false;
+  if (size==0) size=(uint32_t)dLen;
+  // Lookup file
+  JsfFileHeader header;
+  uint32_t addr = jsfFindFile(name, &header);
+  if ((!addr && offset==0) || // No file
+      // we have a file, but it's wrong - remove it
+      (addr && offset==0 && (size!=header.size || !jsfIsErased(addr, size)))) {
+    if (addr && offset==0 && size==header.size && jsfIsEqual(addr, (unsigned char*)dPtr, (uint32_t)dLen)) {
+      DBG("Equal\n");
+      return true;
+    }
+    addr = jsfCreateFile(name, (uint32_t)size, JSF_START_ADDRESS, &header);
+  }
+  if (!addr) {
+    jsExceptionHere(JSET_ERROR, "Unable to find or create file");
+    return false;
+  }
+  if ((uint32_t)offset+(uint32_t)dLen > header.size) {
+    jsExceptionHere(JSET_ERROR, "Too much data for file size");
+    return false;
+  }
+  addr += (uint32_t)offset;
+  if (!jsfIsErased(addr, (uint32_t)dLen)) {
+    jsExceptionHere(JSET_ERROR, "File already written with different data");
+    return false;
+  }
+  jshFlashWrite(dPtr, addr, (uint32_t)dLen);
+  return true;
+}
+
 
 
 /*JSON{
@@ -828,13 +776,7 @@ void jswrap_flash_eraseFiles() {
 }
  */
 void jswrap_flash_eraseFile(JsVar *name) {
-  char nameBuf[sizeof(JsfFileName)+1];
-  memset(nameBuf,0,sizeof(nameBuf));
-  jsvGetString(name, nameBuf, sizeof(nameBuf));
-  JsfFileHeader header;
-  uint32_t addr = jsfFindFile(*(JsfFileName*)nameBuf, &header);
-  if (!addr) return;
-  jsfEraseFile(addr, &header);
+  jsfEraseFile(jsfNameFromVar(name));
 }
 
 /*JSON{
@@ -850,22 +792,7 @@ void jswrap_flash_eraseFile(JsVar *name) {
 }
  */
 JsVar *jswrap_flash_readFile(JsVar *name) {
-  char nameBuf[sizeof(JsfFileName)+1];
-  memset(nameBuf,0,sizeof(nameBuf));
-  jsvGetString(name, nameBuf, sizeof(nameBuf));
-  JsfFileHeader header;
-  uint32_t addr = jsfFindFile(*(JsfFileName*)nameBuf, &header);
-  if (!addr) return 0;
-#ifdef LINUX
-  // linux fakes flash with a file, so we can't just return a pointer to it!
-  char *d = (char*)malloc(header.size);
-  jshFlashRead(d, addr, header.size);
-  JsVar *v = jsvNewStringOfLength(header.size, d);
-  free(d);
-  return v;
-#else
-  return jsvNewNativeString((char*)addr, header.size);
-#endif
+  return jsfReadFile(jsfNameFromVar(name));
 }
 
 /*JSON{
@@ -885,43 +812,7 @@ JsVar *jswrap_flash_readFile(JsVar *name) {
 Write/create a file.
 */
 bool jswrap_flash_writeFile(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt _size) {
-  // Filename
-  char nameBuf[sizeof(JsfFileName)+1];
-  memset(nameBuf,0,sizeof(nameBuf));
-  jsvGetString(name, nameBuf, sizeof(nameBuf));
-  if (offset<0 || _size<0) return false;
-  uint32_t size = (uint32_t)_size;
-  // Data length
-  JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
-  if (!dPtr || !dLen) return false;
-  if (size==0) size=(uint32_t)dLen;
-  // Lookup file
-  JsfFileHeader header;
-  uint32_t addr = jsfFindFile(*(JsfFileName*)nameBuf, &header);
-  if ((!addr && offset==0) || // No file
-      // we have a file, but it's wrong - remove it
-      (addr && offset==0 && (size!=header.size || !jsfIsErased(addr, size)))) {
-    if (addr && offset==0 && size==header.size && jsfIsEqual(addr, (unsigned char*)dPtr, (uint32_t)dLen)) {
-      DBG("Equal\n");
-      return true;
-    }
-    addr = jsfCreateFile(*(JsfFileName*)nameBuf, (uint32_t)size, JSF_START_ADDRESS, &header);
-  }
-  if (!addr) {
-    jsExceptionHere(JSET_ERROR, "Unable to find or create file");
-    return false;
-  }
-  if ((uint32_t)offset+(uint32_t)dLen > header.size) {
-    jsExceptionHere(JSET_ERROR, "Too much data for file size");
-    return false;
-  }
-  addr += (uint32_t)offset;
-  if (!jsfIsErased(addr, (uint32_t)dLen)) {
-    jsExceptionHere(JSET_ERROR, "File already written with different data");
-    return false;
-  }
-  jshFlashWrite(dPtr, addr, (uint32_t)dLen);
-  return true;
+  return jsfWriteFile(jsfNameFromVar(name), data, offset, _size);
 }
 
 /*JSON{

@@ -2105,7 +2105,7 @@ void jsiIdle() {
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
-      jsfSaveToFlash(SFF_SAVE_STATE, 0);
+      jsfSaveToFlash();
       jshReset();
       jsvSoftInit();
       jspSoftInit();
@@ -2290,11 +2290,10 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
   // and now the actual hardware
   jsiDumpHardwareInitialisation(user_callback, user_data, true/*human readable*/);
 
-  const char *code = jsfGetBootCodeFromFlash(false);
+  JsVar *code = jsfGetBootCodeFromFlash(false);
   if (code) {
-    user_callback("// Code saved with E.setBootCode\n", user_data);
-    user_callback(code, user_data);
-    user_callback("\n", user_data);
+    cbprintf(user_callback, user_data, "// Code saved with E.setBootCode\n%s\n", code);
+    jsvUnLock(code);
   }
 }
 
