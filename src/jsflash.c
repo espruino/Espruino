@@ -82,7 +82,8 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
 }
 
 static bool jsfIsErased(uint32_t addr, uint32_t len) {
-  for (uint32_t x=0;x<len;x++) {
+  uint32_t x;
+  for (x=0;x<len;x++) {
     unsigned char buf;
     jshFlashRead(&buf, addr+x, 1);
     if (buf!=0xFF) return false;
@@ -91,11 +92,13 @@ static bool jsfIsErased(uint32_t addr, uint32_t len) {
 }
 
 static bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
-  for (uint32_t x=0;x<len;) {
+  uint32_t x;
+  for (x=0;x<len;) {
     uint32_t bufa;
     jshFlashRead(&bufa, addr+x,JSF_ALIGNMENT);
     uint32_t bufb = 0xFFFFFFFF;
-    for (int i=0;i<4;i++) {
+    int i;
+    for (i=0;i<4;i++) {
       if (x<len) bufb = (bufb>>8) | (uint32_t)(data[x]<<24);
       x++;
     }
@@ -265,7 +268,8 @@ bool jsfCompact() {
           DBG("Creating new file failed!\n");
           return 0;
         }
-        for (uint32_t x=0;x<header.size;x+=JSF_ALIGNMENT) {
+        uint32_t x;
+        for (x=0;x<header.size;x+=JSF_ALIGNMENT) {
           char buf[JSF_ALIGNMENT];
           jshFlashRead(buf, oldFile+x,JSF_ALIGNMENT);
           jshFlashWrite(buf, newFile+x,JSF_ALIGNMENT);

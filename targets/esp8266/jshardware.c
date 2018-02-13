@@ -1386,7 +1386,7 @@ void jshFlashErasePage(
 size_t jshFlashGetMemMapAddress(size_t ptr) {
   // the flash address is just the offset into the flash chip, but to evaluate the code
   // below we need to jump to the memory-mapped window onto flash, so adjust here
-  if (ptr < FLASH_MAX) {
+  if (ptr < FLASH_MAX)
     return ptr + FLASH_MMAP;
   return ptr;
 }
