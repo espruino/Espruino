@@ -871,6 +871,9 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   fclose(f);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+  assert(addr&3); // sanity checks here to mirror real hardware
+  assert(len&3); // sanity checks here to mirror real hardware
+
   FILE *f = jshFlashOpenFile();
   if (!f) return;
 

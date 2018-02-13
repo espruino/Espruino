@@ -38,6 +38,7 @@
             Added `jshFlashGetMemMapAddress` to allow remapping of addresses for ESP8266/ESP32 without loads of code duplication
             Remap peek8/16/32 addresses on ESP32/ESP8266 so it can be used on flash memory
             Swapped save/load/E.setBootCode to use the flash library
+            Allow STM32LL port to write 32 bits to flash at a time to bring it in line with other ports
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line
