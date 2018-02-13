@@ -244,6 +244,7 @@ src/jswrap_process.c \
 src/jswrap_promise.c \
 src/jswrap_regexp.c \
 src/jswrap_serial.c \
+src/jswrap_storage.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_stream.c \
 src/jswrap_string.c \

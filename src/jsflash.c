@@ -324,7 +324,7 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfF
     }
   }
   if (!addr) {
-    DBG("Unable to scan over file blocks - corrupted?");
+    jsExceptionHere(JSET_ERROR,"Corrupted flash storage blocks. Try require('Storage').eraseAll()");
     return 0;
   }
   // write out the header
@@ -600,7 +600,6 @@ void jsfLoadStateFromFlash() {
   JsfFileHeader header;
   uint32_t savedCode = jsfFindFile(jsfNameFromString(SAVED_CODE_VARIMAGE),&header);
   if (!savedCode) {
-    jsiConsolePrintf("No code in flash!\n");
     return;
   }
 

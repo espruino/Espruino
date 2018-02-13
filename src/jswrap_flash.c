@@ -25,7 +25,10 @@
   "ifndef" : "SAVE_ON_FLASH"
 }
 
-This module allows access to read and write the STM32's flash memory.
+This module allows you to read and write the nonvolatile flash memory of your device.
+
+Also see the `Storage` library, which provides a safer file-like
+interface to nonvolatile storage.
 
 It should be used with extreme caution, as it is easy to overwrite parts of Flash
 memory belonging to Espruino or even its bootloader. If you damage the bootloader
@@ -35,6 +38,9 @@ board's reference pages.
 
 To see which areas of memory you can and can't overwrite, look at the values
 reported by `process.memory()`.
+
+**Note:** On Nordic platforms there are checks in place to help you avoid
+'bricking' your device be damaging the bootloader. You can disable these with `E.setFlags({unsafeFlash:1})`
  */
 
 /*JSON{
@@ -164,104 +170,4 @@ JsVar *jswrap_flash_read(int length, int addr) {
   }
   jsvArrayBufferIteratorFree(&it);
   return arr;
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
-  "class" : "Flash",
-  "name" : "eraseFiles",
-  "generate" : "jswrap_flash_eraseFiles"
-}
- */
-void jswrap_flash_eraseFiles() {
-  jsfEraseAll();
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
-  "class" : "Flash",
-  "name" : "eraseFile",
-  "generate" : "jswrap_flash_eraseFile",
-  "params" : [
-    ["name","JsVar","The filename - max 8 characters"]
-  ]
-}
- */
-void jswrap_flash_eraseFile(JsVar *name) {
-  jsfEraseFile(jsfNameFromVar(name));
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
-  "class" : "Flash",
-  "name" : "readFile",
-  "generate" : "jswrap_flash_readFile",
-  "params" : [
-    ["name","JsVar","The filename - max 8 characters"]
-  ],
-  "return" : ["JsVar","A string of data"]
-}
- */
-JsVar *jswrap_flash_readFile(JsVar *name) {
-  return jsfReadFile(jsfNameFromVar(name));
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
-  "class" : "Flash",
-  "name" : "writeFile",
-  "generate" : "jswrap_flash_writeFile",
-  "params" : [
-    ["name","JsVar","The filename - max 8 characters"],
-    ["data","JsVar","The data to write"],
-    ["offset","int","The offset within the file to write"],
-    ["size","int","The size of the file (if a file is to be created that is bigger than the data)"]
-  ],
-  "return" : ["bool","True on success, false on failure"]
-}
-Write/create a file.
-*/
-bool jswrap_flash_writeFile(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt _size) {
-  return jsfWriteFile(jsfNameFromVar(name), data, offset, _size);
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
-  "class" : "Flash",
-  "name" : "listFiles",
-  "generate" : "jswrap_flash_listFiles",
-  "return" : ["JsVar","An array of filenames"]
-}
-List all files in storage at the moment
- */
-JsVar *jswrap_flash_listFiles() {
-  return jsfListFiles();
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "Flash",
-  "name" : "compactFiles",
-  "generate" : "jswrap_flash_compactFiles"
-}
- */
-void jswrap_flash_compactFiles() {
-  jsfCompact();
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "ifdef" : "DEBUG",
-  "class" : "Flash",
-  "name" : "debugFiles",
-  "generate" : "jswrap_flash_debugFiles"
-}
- */
-void jswrap_flash_debugFiles() {
-  jsfDebugFiles();
 }

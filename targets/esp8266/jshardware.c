@@ -1264,15 +1264,15 @@ void jshFlashRead(
 	  uint8_t *dest = buf;
 	  uint32_t bytes = *(uint32_t*)(addr & ~3);
 	  while (len-- > 0) {
-		if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
-		*dest++ = ((uint8_t*)&bytes)[addr++ & 3];
+		  if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
+		  *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
 	  }
-   } else { // Above 1Mb read...
-	//os_printf("jshFlashRead: above 1mb!");
-	SpiFlashOpResult res;
-	res = spi_flash_read(addr, buf, len);
-    if (res != SPI_FLASH_RESULT_OK)
-      os_printf("ESP8266: jshFlashRead %s\n",
+  } else { // Above 1Mb read...
+    //os_printf("jshFlashRead: above 1mb!");
+    SpiFlashOpResult res;
+    res = spi_flash_read(addr, buf, len);
+      if (res != SPI_FLASH_RESULT_OK)
+        os_printf("ESP8266: jshFlashRead %s\n",
     res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
    }
 }
@@ -1296,9 +1296,25 @@ void jshFlashWrite(
   if (addr >= flash_max) return;
   if (addr + len > flash_max) len = flash_max - addr;
 
-  // since things are guaranteed to be aligned we can just call the SDK :-)
-  SpiFlashOpResult res;
-  res = spi_flash_write(addr, buf, len);
+  SpiFlashOpResult res = SPI_FLASH_RESULT_OK;
+  /* so about that alignment... Turns out it matters
+  about `buf` too */
+  if (((size_t)(char*)buf)&3) {
+    /* Unaligned *SOURCE* is a problem on ESP8266,
+     * so if so we are unaligned, do a whole bunch
+     * of tiny writes via a buffer */
+    while (len>=4 && res == SPI_FLASH_RESULT_OK) {
+      uint32_t alignedBuf;
+      memcpy(&alignedBuf, buf, 4);
+      res = spi_flash_write(addr, &alignedBuf, 4);
+      len -= 4;
+      addr += 4;
+      buf = (void*)(4+(char*)buf);
+    }
+  } else {
+    // since things are *now* guaranteed to be aligned we can just call the SDK :-)
+    res = spi_flash_write(addr, buf, len);
+  }
   if (res != SPI_FLASH_RESULT_OK)
     os_printf("ESP8266: jshFlashWrite %s\n",
       res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");

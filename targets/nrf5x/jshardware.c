@@ -1179,7 +1179,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 bool jshFlashWriteProtect(uint32_t addr) {
   // allow protection to be overwritten
   if (jsfGetFlag(JSF_UNSAFE_FLASH)) return false;
-#if PUCKJS
+#if defined(PUCKJS) || defined(PIXLJS)
   /* It's vital we don't let anyone screw with the softdevice or bootloader.
    * Recovering from changes would require soldering onto SWDIO and SWCLK pads!
    */
@@ -1252,14 +1252,31 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   //jsiConsolePrintf("\njshFlashWrite 0x%x addr 0x%x -> 0x%x, len %d\n", *(uint32_t*)buf, (uint32_t)buf, addr, len);
   if (jshFlashWriteProtect(addr)) return;
-  uint32_t err;
-  flashIsBusy = true;
-  while ((err = sd_flash_write((uint32_t*)addr, (uint32_t *)buf, len>>2)) == NRF_ERROR_BUSY);
-  if (err!=NRF_SUCCESS) flashIsBusy = false;
-  WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
-  /*if (err!=NRF_SUCCESS)
-    jsiConsolePrintf("jshFlashWrite got err %d (addr 0x%x -> 0x%x, len %d)\n", err, (uint32_t)buf, addr, len);*/
-  //nrf_nvmc_write_bytes(addr, buf, len);
+  uint32_t err = 0;
+
+  if (((size_t)(char*)buf)&3) {
+    /* Unaligned *SOURCE* is a problem on nRF5x,
+     * so if so we are unaligned, do a whole bunch
+     * of tiny writes via a buffer */
+    while (len>=4 && !err) {
+      flashIsBusy = true;
+      uint32_t alignedBuf;
+      memcpy(&alignedBuf, buf, 4);
+      while ((err = sd_flash_write((uint32_t*)addr, &alignedBuf, 1)) == NRF_ERROR_BUSY);
+      if (err!=NRF_SUCCESS) flashIsBusy = false;
+      WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
+      len -= 4;
+      addr += 4;
+      buf = (void*)(4+(char*)buf);
+    }
+  } else {
+    flashIsBusy = true;
+    while ((err = sd_flash_write((uint32_t*)addr, (uint32_t *)buf, len>>2)) == NRF_ERROR_BUSY);
+    if (err!=NRF_SUCCESS) flashIsBusy = false;
+    WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
+  }
+  if (err!=NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNAL,"NRF ERROR %d", err);
 }
 
 // Just pass data through, since we can access flash at the same address we wrote it

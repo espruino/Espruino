@@ -8,15 +8,15 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * JavaScript Flash IO functions
+ * JavaScript Filesystem-style Flash IO functions
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
 
-// Flash Library exports
-JsVar *jswrap_flash_getPage(int addr);
-JsVar *jswrap_flash_getFree();
-void jswrap_flash_erasePage(JsVar *addr);
-void jswrap_flash_write(JsVar *data, int addr);
-JsVar *jswrap_flash_read(int length, int addr);
-
+void jswrap_storage_eraseAll();
+JsVar *jswrap_storage_read(JsVar *name);
+bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt size);
+void jswrap_storage_erase(JsVar *name);
+void jswrap_storage_compact();
+JsVar *jswrap_storage_list();
+void jswrap_storage_debug();
