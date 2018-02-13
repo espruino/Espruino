@@ -56,8 +56,8 @@ void jswrap_ESP32_reboot() {
 }
 Put device in deepsleep state for "ms" milliseconds.
 */
-void jswrap_ESP32_deepsleep(int ms) {
-	esp_deep_sleep_enable_timer_wakeup((uint64_t)(ms * 1000));
+void jswrap_ESP32_deepSleep(int us) {
+	esp_deep_sleep_enable_timer_wakeup((uint64_t)(ms));
 	esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepsleep
 
