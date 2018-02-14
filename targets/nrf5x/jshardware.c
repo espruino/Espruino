@@ -1276,7 +1276,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
     WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
   }
   if (err!=NRF_SUCCESS)
-    jsExceptionHere(JSET_INTERNAL,"NRF ERROR %d", err);
+    jsExceptionHere(JSET_INTERNALERROR,"NRF ERROR %d", err);
 }
 
 // Just pass data through, since we can access flash at the same address we wrote it
