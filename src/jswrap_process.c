@@ -51,14 +51,13 @@ Returns the version of Espruino as a String
  */
 
 #ifndef SAVE_ON_FLASH
-// TODO: the jspeiFindInScopes export won't be needed soon
+/* NOTE: The order of these is very important, as 
+the online compiler has its own copy of this table */
 const void *exportPtrs[] = {
-    jsvLock,
     jsvLockAgainSafe,
     jsvUnLock,
     jsvSkipName,
     jsvMathsOp,
-    jsvMathsOpSkipNames,
     jsvNewWithFlags,
     jsvNewFromFloat,
     jsvNewFromInteger,
@@ -67,7 +66,6 @@ const void *exportPtrs[] = {
     jsvGetFloat,
     jsvGetInteger,
     jsvGetBool,
-    jspeiFindInScopes,
     jspReplaceWith,
     jspeFunctionCall,
     jspGetNamedVariable,
@@ -76,10 +74,10 @@ const void *exportPtrs[] = {
     0
 };
 const char *exportNames = 
-    "jsvLock\0jsvLockAgainSafe\0jsvUnLock\0jsvSkipName\0jsvMathsOp\0jsvMathsOpSkipNames\0"
+    "jsvLockAgainSafe\0jsvUnLock\0jsvSkipName\0jsvMathsOp\0"
     "jsvNewWithFlags\0jsvNewFromFloat\0jsvNewFromInteger\0jsvNewFromString\0jsvNewFromBool\0"
     "jsvGetFloat\0jsvGetInteger\0jsvGetBool\0"
-    "jspeiFindInScopes\0jspReplaceWith\0jspeFunctionCall\0"
+    "jspReplaceWith\0jspeFunctionCall\0"
     "jspGetNamedVariable\0jspGetNamedField\0jspGetVarNamedField\0"
     "\0\0";
 #endif
