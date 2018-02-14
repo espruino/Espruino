@@ -185,6 +185,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
             if ("#if" in jsondata):
               expr = jsondata["#if"]
               for defn in defines:
+                expr = expr.replace("defined("+defn+")", "True");
                 if defn.find('=')!=-1:
                   dname = defn[:defn.find('=')]
                   dkey = defn[defn.find('=')+1:]
