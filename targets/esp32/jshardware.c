@@ -718,15 +718,13 @@ void jshFlashErasePage(
 }
 
 size_t jshFlashGetMemMapAddress(size_t ptr) {
-  // if ptr is high already, assume we know what we're accessing
-  if (ptr > 0x10000000) return ptr;
-  // romdata_jscode is memory mapped address from the js_code partition in rom - targets/esp32/main.c
-  extern char* romdata_jscode;
-  if (romdata_jscode==0) {
-    jsError("Couldn't find js_code partition - update with partition_espruino.bin\n");
-    return 0;
-  }
-  return &romdata_jscode[ptr];
+  // Treat 0-based as external flash
+  // 0x3F400000 - 0x3F7FFFFF = external Flash
+  if (ptr < 0x400000)
+    return 0x3F400000 + ptr;
+
+  // Otherwise lets assume we know what we should be accessing
+  return ptr;
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {
