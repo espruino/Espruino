@@ -53,7 +53,7 @@
 include make/sanitycheck.make
 
 ifndef GENDIR
-GENDIR=$(shell pwd)/gen
+GENDIR=gen
 endif
 
 ifndef SINGLETHREAD
