@@ -188,6 +188,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
                 if defn.find('=')!=-1:
                   dname = defn[:defn.find('=')]
                   dkey = defn[defn.find('=')+1:]
+                  expr = expr.replace("defined("+dname+")", "True");
                   expr = expr.replace(dname, dkey);
               # Now replace any defined(...) we haven't heard of with false
               expr = re.sub(r"defined\([^\)]*\)", "False", expr)
