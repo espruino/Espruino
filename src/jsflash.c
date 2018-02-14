@@ -196,7 +196,7 @@ uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages) {
   while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
          (addr+(uint32_t)sizeof(JsfFileHeader)<pageEndAddr)) {
     if (header.replacement == 0xFFFFFFFF) // if not replaced
-      allocated += header.size + (uint32_t)sizeof(JsfFileHeader);
+      allocated += jsfAlignAddress(header.size) + (uint32_t)sizeof(JsfFileHeader);
     addr = jsfGetAddressOfNextHeader(addr, &header);
   }
   return allocated;
@@ -222,7 +222,8 @@ bool jsfCompact() {
         memcpy(swapBufferPtr, &header, sizeof(JsfFileHeader));
         swapBufferPtr += sizeof(JsfFileHeader);
         jshFlashRead(swapBufferPtr, addr+(uint32_t)sizeof(JsfFileHeader), header.size);
-        swapBufferPtr += header.size;
+        memset(&swapBufferPtr[header.size], 0xFF, jsfAlignAddress(header.size)-header.size);
+        swapBufferPtr += jsfAlignAddress(header.size);
       }
       addr = jsfGetAddressOfNextHeader(addr, &header);
     }
@@ -237,8 +238,8 @@ bool jsfCompact() {
       swapBufferPtr += sizeof(JsfFileHeader);
       JsfFileHeader newHeader;
       uint32_t newFile = jsfCreateFile(header.name, header.size, JSF_START_ADDRESS, &newHeader);
-      if (newFile) jshFlashWrite(swapBufferPtr, newFile, header.size);
-      swapBufferPtr += header.size;
+      if (newFile) jshFlashWrite(swapBufferPtr, newFile, jsfAlignAddress(header.size));
+      swapBufferPtr += jsfAlignAddress(header.size);
     }
     DBG("Compaction Complete\n");
     return true;
