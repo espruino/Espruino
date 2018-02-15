@@ -54,9 +54,6 @@
 #include "jshardware.h"
 #include "jstimer.h"
 
-extern void Error_Callback(void);
-
-
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/

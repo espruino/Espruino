@@ -661,23 +661,6 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
   return ptr;
 }
 
-
-/**
-  * @brief  Function called in case of error detected in USART IT Handler
-  * @param  None
-  * @retval None
-  */
-void Error_Callback(void)
-{
-  /* Set LED to Blinking mode to indicate error occurs */
-  while(1)
-  {
-    LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_5);
-    LL_mDelay(150);
-  }
-}
-
-
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
 
@@ -1961,8 +1944,9 @@ void jshFlashErasePage(uint32_t addr){
   EraseInitStruct.Page        = page;
   EraseInitStruct.NbPages     = 1;
 
-  if( HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK){
-    Error_Callback();
+  HAL_StatusTypeDef res = HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError);
+  if( res != HAL_OK){
+    jsExceptionHere(JSET_INTERNALERROR, "Flash Erase Error %d", res);
   }
 
   HAL_FLASH_Lock();
@@ -1977,9 +1961,9 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
 
 static void jshFlashWrite64(void *buf, uint32_t addr) {
   assert(!(addr&7));
-  if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, ((uint64_t*)buf)) != HAL_OK){
-    HAL_FLASH_Lock();
-    Error_Callback();
+  HAL_StatusTypeDef res = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, *((uint64_t*)buf));
+  if(res != HAL_OK){
+    jsExceptionHere(JSET_INTERNALERROR, "Flash Write Error %d (0x%08x)", res, addr);
   }
 }
 
@@ -1987,6 +1971,9 @@ static void jshFlashWrite64(void *buf, uint32_t addr) {
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   char *cbuf = (char*)buf;
+  assert(!(addr&3));
+  assert(!(len&3));
+
   HAL_FLASH_Unlock();
 
   // bodge up single 32 bit writes
@@ -2002,7 +1989,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   }
 
   // 64 bit writes
-  while (len>7) {
+  while (len>7 && !jspIsInterrupted()) {
     jshFlashWrite64(cbuf, addr);
     cbuf += 8;
     addr += 8;
@@ -2010,7 +1997,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   }
 
   // final 32 bit write?
-  if (len>3) {
+  if (len>3 && !jspIsInterrupted()) {
     char buf64[8];
     memcpy(&buf64[0], cbuf, 4);
     jshFlashRead(&buf64[4],addr+4,4);

@@ -21,7 +21,7 @@ info = {
  'link' :  [ "www.st.com/content/st_com/en/products/evaluation-tools/product-evaluation-tools/mcu-eval-tools/mcu-eval-tools/stm32-mcu-eval-tools/stm32-mcu-discovery-kits/32l496gdiscovery.html" ],
  'default_console' : "EV_USBSERIAL",
 
- 'variables' :  15359, 			# variables computes from the RAM size : (256-16)*1024/16-1
+ 'variables' :  15359, 	# variables computed from available RAM size : (256-16)*1024/16-1
  'binary_name' : 'espruino_%v_stm32l496gdiscovery.bin',
  'build' : {
    'optimizeflags' : '-O3',
@@ -30,7 +30,7 @@ info = {
      'GRAPHICS',
      'NEOPIXEL',
      'CRYPTO',
-     'TLS'
+     #'TLS'
    ],
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
@@ -53,14 +53,14 @@ chip = {
   'adc' : 3,
   'dac' : 2,
   'saved_code' : {
-    # code size 300000 = 0x493E0 starts at 0x0800 0000 ends at 0x0804 93E0
+    # code size (with debug) : 448000 ~ 0x6D800 starts at 0x0800 0000 ends at 0x0806 D800
     # so we have some left room for Espruino firmware and no risk to clear it while saving
-    'address' : 0x08050000, # flash_saved_code_start 0x080493E0 to 0x8100000
+    'address' : 0x0806D800, # flash_saved_code_start 0x0806E000 to 0x8100000
     # we have enough flash space in this single flash page to save all of the ram
-    'page_size' :  2048, # size of pages : on STM32F411, last 2 pages are 128 Kbytes
+    'page_size' :  2048, # size of pages, 256 pages on bank1, 256 pages on bank2
     # we use the last flash page only, furthermore it persists after a firmware flash of the board
-    'pages' : 352, # count of pages we're using to save RAM to Flash,
-    'flash_available' : 704 # binary will have a hole in it, so we just want to test against full size
+    'pages' : 37, # count of pages we're using to save RAM to Flash (just use bank1 for now) - we still have 512k of bank2
+    'flash_available' : 438 # kb - quantity reserved to receive the Firmware
   },
 };
 
