@@ -146,7 +146,7 @@ static uint32_t jsfGetAddressOfNextPage(uint32_t addr, JsfFileHeader *header) {
 // Given the address and a header, work out where the next one should be
 static uint32_t jsfGetAddressOfNextHeader(uint32_t addr, JsfFileHeader *header) {
   // Work out roughly where the start is
-  uint32_t newAddr = addr + header->size + (uint32_t)sizeof(JsfFileHeader);
+  uint32_t newAddr = addr + (uint32_t)header->size + (uint32_t)sizeof(JsfFileHeader);
   // pad out to flash write boundaries
   newAddr = jsfAlignAddress(newAddr);
   // sanity check for bad data
@@ -187,7 +187,7 @@ uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages) {
   while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
          (addr+(uint32_t)sizeof(JsfFileHeader)<pageEndAddr)) {
     if (header.replacement == JSF_WORD_UNSET) // if not replaced
-      allocated += jsfAlignAddress(header.size) + (uint32_t)sizeof(JsfFileHeader);
+      allocated += jsfAlignAddress((uint32_t)header.size) + (uint32_t)sizeof(JsfFileHeader);
     addr = jsfGetAddressOfNextHeader(addr, &header);
   }
   return allocated;
@@ -212,9 +212,9 @@ bool jsfCompact() {
       if (header.replacement == JSF_WORD_UNSET) { // if not replaced
         memcpy(swapBufferPtr, &header, sizeof(JsfFileHeader));
         swapBufferPtr += sizeof(JsfFileHeader);
-        uint32_t alignedSize = jsfAlignAddress(header.size);
+        uint32_t alignedSize = jsfAlignAddress((uint32_t)header.size);
         jshFlashRead(swapBufferPtr, addr+(uint32_t)sizeof(JsfFileHeader), alignedSize);
-        memset(&swapBufferPtr[header.size], 0xFF, alignedSize-header.size);
+        memset(&swapBufferPtr[(uint32_t)header.size], 0xFF, alignedSize-(uint32_t)header.size);
         swapBufferPtr += alignedSize;
       }
       addr = jsfGetAddressOfNextHeader(addr, &header);
@@ -229,9 +229,10 @@ bool jsfCompact() {
       memcpy(&header, swapBufferPtr, sizeof(JsfFileHeader));
       swapBufferPtr += sizeof(JsfFileHeader);
       JsfFileHeader newHeader;
-      uint32_t newFile = jsfCreateFile(header.name, header.size, JSF_START_ADDRESS, &newHeader);
-      if (newFile) jshFlashWrite(swapBufferPtr, newFile, jsfAlignAddress(header.size));
-      swapBufferPtr += jsfAlignAddress(header.size);
+      uint32_t newFile = jsfCreateFile(header.name, (uint32_t)header.size, JSF_START_ADDRESS, &newHeader);
+      uint32_t alignedSize = jsfAlignAddress((uint32_t)header.size);
+      if (newFile) jshFlashWrite(swapBufferPtr, newFile, alignedSize);
+      swapBufferPtr += alignedSize;
     }
     DBG("Compaction Complete\n");
     return true;
@@ -256,13 +257,13 @@ bool jsfCompact() {
         uint32_t oldFile = addr+sizeof(JsfFileHeader);
         DBG("Moving file at 0x%08x\n", oldFile);
         JsfFileHeader newHeader;
-        uint32_t newFile = jsfCreateFile(header.name, header.size, newPageAddr, &newHeader);
+        uint32_t newFile = jsfCreateFile(header.name, (uint32_t)header.size, newPageAddr, &newHeader);
         if (!newFile) {
           DBG("Creating new file failed!\n");
           return 0;
         }
         uint32_t x;
-        for (x=0;x<header.size;x+=JSF_ALIGNMENT) {
+        for (x=0;x<(uint32_t)header.size;x+=JSF_ALIGNMENT) {
           char buf[JSF_ALIGNMENT];
           jshFlashRead(buf, oldFile+x,JSF_ALIGNMENT);
           jshFlashWrite(buf, newFile+x,JSF_ALIGNMENT);
@@ -341,7 +342,7 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
     // check for something with the same name that hasn't been replaced
     if (header.replacement == JSF_WORD_UNSET &&
         header.name == name) {
-      uint32_t endOfFile = addr + (uint32_t)sizeof(JsfFileHeader) + header.size;
+      uint32_t endOfFile = addr + (uint32_t)sizeof(JsfFileHeader) + (uint32_t)header.size;
       if (endOfFile<addr || endOfFile>JSF_END_ADDRESS)
         return 0; // corrupt - file too long
       if (returnedHeader)
@@ -377,7 +378,7 @@ void jsfDebugFiles() {
     char nameBuf[sizeof(JsfFileName)+1];
     memset(nameBuf,0,sizeof(nameBuf));
     memcpy(nameBuf,&header.name,sizeof(JsfFileName));
-    jsiConsolePrintf("0x%08x\t%s\t(%d bytes)\t%s\n", addr+(uint32_t)sizeof(JsfFileHeader), nameBuf, header.size, (header.replacement == JSF_WORD_UNSET)?"":" DELETED");
+    jsiConsolePrintf("0x%08x\t%s\t(%d bytes)\t%s\n", addr+(uint32_t)sizeof(JsfFileHeader), nameBuf, (uint32_t)header.size, (header.replacement == JSF_WORD_UNSET)?"":" DELETED");
     // TODO: print page boundaries
     addr = jsfGetAddressOfNextHeader(addr, &header);
     if (!addr) {
@@ -393,15 +394,15 @@ JsVar *jsfReadFile(JsfFileName name) {
   if (!addr) return 0;
 #ifdef LINUX
   // linux fakes flash with a file, so we can't just return a pointer to it!
-  uint32_t alignedSize = jsfAlignAddress(header.size);
+  uint32_t alignedSize = jsfAlignAddress((uint32_t)header.size);
   char *d = (char*)malloc(alignedSize);
   jshFlashRead(d, addr, alignedSize);
-  JsVar *v = jsvNewStringOfLength(header.size, d);
+  JsVar *v = jsvNewStringOfLength((uint32_t)header.size, d);
   free(d);
   return v;
 #else
   size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
-  return jsvNewNativeString((char*)mappedAddr, header.size);
+  return jsvNewNativeString((char*)mappedAddr, (uint32_t)header.size);
 #endif
 }
 
@@ -417,8 +418,8 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsVarInt offset, JsVarInt _size
   uint32_t addr = jsfFindFile(name, &header);
   if ((!addr && offset==0) || // No file
       // we have a file, but it's wrong - remove it
-      (addr && offset==0 && (size!=header.size || !jsfIsErased(addr, size)))) {
-    if (addr && offset==0 && size==header.size && jsfIsEqual(addr, (unsigned char*)dPtr, (uint32_t)dLen)) {
+      (addr && offset==0 && (size!=(uint32_t)header.size || !jsfIsErased(addr, size)))) {
+    if (addr && offset==0 && size==(uint32_t)header.size && jsfIsEqual(addr, (unsigned char*)dPtr, (uint32_t)dLen)) {
       DBG("Equal\n");
       return true;
     }
@@ -428,7 +429,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsVarInt offset, JsVarInt _size
     jsExceptionHere(JSET_ERROR, "Unable to find or create file");
     return false;
   }
-  if ((uint32_t)offset+(uint32_t)dLen > header.size) {
+  if ((uint32_t)offset+(uint32_t)dLen > (uint32_t)header.size) {
     jsExceptionHere(JSET_ERROR, "Too much data for file size");
     return false;
   }
@@ -608,8 +609,8 @@ void jsfLoadStateFromFlash() {
 
   jsfcbData cbData;
   cbData.address = savedCode;
-  cbData.endAddress = savedCode+header.size;
-  jsiConsolePrintf("Loading %d bytes from flash...\n", header.size);
+  cbData.endAddress = savedCode+(uint32_t)header.size;
+  jsiConsolePrintf("Loading %d bytes from flash...\n", (uint32_t)header.size);
   DECOMPRESS(jsfLoadFromFlash_readcb, (uint32_t*)&cbData, varPtr);
 }
 
