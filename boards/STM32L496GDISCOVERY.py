@@ -30,7 +30,7 @@ info = {
      'GRAPHICS',
      'NEOPIXEL',
      'CRYPTO',
-     #'TLS'
+     'TLS'
    ],
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
