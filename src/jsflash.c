@@ -511,33 +511,27 @@ void jsfSaveToFlash_countcb(unsigned char ch, uint32_t *cbdata) {
 typedef struct {
   uint32_t address;
   uint32_t endAddress;
-  uint32_t word; // word of data to write
-#ifdef FLASH_64BITS_ALIGNMENT
-  uint32_t dataToWrite[2];
-#endif
+  int byteCount;
+  unsigned char buffer[128];
+  uint32_t bufferCnt;
 } jsfcbData;
 // cbdata = struct jsfcbData
 void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
   jsfcbData *data = (jsfcbData*)cbdata;
-  // write only a word at a time
-  data->word = (uint32_t)(ch<<24) | (data->word>>8);
-#ifndef FLASH_64BITS_ALIGNMENT
-  if ((data->address&3)==3)
-    jshFlashWrite(&data->word, data->address&(uint32_t)~3, 4);
-#else
-  // We want the flash writes to be done every 64 bits.
-  // Store the first 32 bits and write on next 32 bits word.
-  if ((data->address&7)==7){
-    data->dataToWrite[1] = data->word;
-    jshFlashWrite(data->dataToWrite, data->address&(uint32_t)~7, 8);
-  } else if ((data->address&3)==3){
-    data->dataToWrite[0] = data->word;
+  data->buffer[data->bufferCnt++] = ch;
+  if (data->bufferCnt>=(uint32_t)sizeof(data->buffer)) {
+    jshFlashWrite(data->buffer, data->address, data->bufferCnt);
+    data->address += data->bufferCnt;
+    data->bufferCnt = 0;
+    if ((data->address&1023)==0) jsiConsolePrint(".");
   }
-#endif
-  // inc address ptr
-  data->address++;
-  // output status characters
-  if ((data->address&1023)==0) jsiConsolePrint(".");
+}
+void jsfSaveToFlash_finish(jsfcbData *data) {
+  // pad to alignment
+  while (data->bufferCnt & (JSF_ALIGNMENT-1))
+    data->buffer[data->bufferCnt++] = 0xFF;
+  // write
+  jshFlashWrite(data->buffer, data->address, data->bufferCnt);
 }
 
 // cbdata = struct jsfcbData
@@ -583,15 +577,12 @@ void jsfSaveToFlash() {
   // Ok, we have space!
   // Now start writing
   jsfcbData cbData;
+  memset(&cbData, 0, sizeof(cbData));
   cbData.address = savedCodeAddr;
   cbData.endAddress = jsfAlignAddress(savedCodeAddr+compressedSize);
   jsiConsolePrint("Writing..");
   COMPRESS(varPtr, varSize, jsfSaveToFlash_writecb, (uint32_t*)&cbData);
-  // make sure we write everything in the buffer out
-  int i;
-  for(i=0;i<JSF_ALIGNMENT;i++)
-    jsfSaveToFlash_writecb(0,(uint32_t*)&cbData);
-
+  jsfSaveToFlash_finish(&cbData);
   jsiConsolePrintf("\nCompressed %d bytes to %d\n", varSize, compressedSize);
 }
 

@@ -873,8 +873,8 @@ void jshFlashErasePage(uint32_t addr) {
   fclose(f);
 }
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
-  assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
-  assert(!(len&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
+  //assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
+  //assert(!(len&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   if (addr<FLASH_START || addr>=FLASH_START+FLASH_TOTAL) {
     assert(0); // out of range
     return;
@@ -888,8 +888,14 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   fclose(f);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+  uint32_t i;
   assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   assert(!(len&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
+
+  /*jsiConsolePrintf("%08x ", addr);
+  for (i=0;i<len;i++)
+    jsiConsolePrintf("%02x ", (int)((unsigned char*)buf)[i]);
+  jsiConsolePrintf("\n");*/
 
   if (addr<FLASH_START || addr>=FLASH_START+FLASH_TOTAL) {
     assert(0); // out of range
@@ -903,7 +909,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   char *wbuf = malloc(len);
   fseek(f, addr, SEEK_SET);
   fread(wbuf, 1, len, f);
-  uint32_t i;
+
   for (i=0;i<len;i++) {
     //jsiConsolePrintf("Write %d to 0x%08x\n", ((char*)buf)[i], FLASH_START+addr+i);
     wbuf[i] &= ((char*)buf)[i];
