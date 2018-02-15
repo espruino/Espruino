@@ -173,8 +173,9 @@ uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages) {
 }
 
 // Get the amount of space needed to mirror this page elsewhere (including padding for alignment)
-uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages) {
+uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages, uint32_t *uncompactedSpace) {
   uint32_t allocated = 0;
+  if (uncompactedSpace) *uncompactedSpace=0;
   uint32_t pageEndAddr = JSF_END_ADDRESS;
   if (!allPages) {
     uint32_t pageAddr,pageLen;
@@ -186,8 +187,12 @@ uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages) {
   JsfFileHeader header;
   while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
          (addr+(uint32_t)sizeof(JsfFileHeader)<pageEndAddr)) {
-    if (header.replacement == JSF_WORD_UNSET) // if not replaced
-      allocated += jsfAlignAddress((uint32_t)header.size) + (uint32_t)sizeof(JsfFileHeader);
+    uint32_t fileSize = jsfAlignAddress((uint32_t)header.size) + (uint32_t)sizeof(JsfFileHeader);
+    if (header.replacement == JSF_WORD_UNSET) { // if not replaced
+      allocated += fileSize;
+    } else { // replaced
+      if (uncompactedSpace) *uncompactedSpace += fileSize;
+    }
     addr = jsfGetAddressOfNextHeader(addr, &header);
   }
   return allocated;
@@ -196,7 +201,12 @@ uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages) {
 // Try and compact saved data so it'll fit in Flash again
 bool jsfCompact() {
   DBG("Compacting\n");
-  uint32_t allocated = jsfGetAllocatedSpace(JSF_START_ADDRESS, true);
+  uint32_t uncompacted = 0;
+  uint32_t allocated = jsfGetAllocatedSpace(JSF_START_ADDRESS, true, &uncompacted);
+  if (!uncompacted) {
+    DBG("Already fully compacted\n");
+    return false;
+  }
   if (allocated+1024 < jsuGetFreeStack()) {
     DBG("Compacting - all data fits in RAM\n");
     // All our allocated data will fit in RAM - awesome!
@@ -241,7 +251,7 @@ bool jsfCompact() {
 
   /*if (!jshFlashGetPage(pageAddr, &pageAddr, &pageLen))
     return 0;
-  uint32_t pageAllocated = jsfGetAllocatedSpace(pageAddr, false);
+  uint32_t pageAllocated = jsfGetAllocatedSpace(pageAddr, false, 0);
   uint32_t newPageAddr,newPageLen;
   newPageAddr = pageAddr+pageLen;
   if (!jshFlashGetPage(newPageAddr, &newPageAddr, &newPageLen))
@@ -298,22 +308,23 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfF
     jsfGetFileHeader(existingAddr, &header);
     jsfEraseFileInternal(existingAddr+(uint32_t)sizeof(JsfFileHeader), &header);
   }
-
+  // check if we have space or not
   bool compacted = false;
   while (addr+size+(uint32_t)sizeof(JsfFileHeader)>=JSF_END_ADDRESS) {
     if (!compacted &&
         startAddr == JSF_START_ADDRESS) {
       if (!jsfCompact()) {
-        DBG("CreateFile - Compact failed");
+        DBG("CreateFile - Compact failed\n");
         return 0;
       }
+      compacted = true;
       // now we're compacted, try and find the end again
       addr = JSF_START_ADDRESS;
       while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
         addr = jsfGetAddressOfNextHeader(addr, &header);
       }
     } else {
-      DBG("CreateFile - Not enough space");
+      DBG("CreateFile - Not enough space\n");
       return 0;
     }
   }
@@ -360,7 +371,7 @@ void jsfDebugFiles() {
   uint32_t addr = JSF_START_ADDRESS;
   uint32_t pageAddr = 0, pageLen = 0, pageEndAddr = 0;
 
-  jsiConsolePrintf("DEBUG FILES %d live\n", jsfGetAllocatedSpace(addr,true));
+  jsiConsolePrintf("DEBUG FILES %d live\n", jsfGetAllocatedSpace(addr,true,0));
 
   JsfFileHeader header;
   while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
@@ -372,7 +383,7 @@ void jsfDebugFiles() {
       }
       pageEndAddr = pageAddr+pageLen;
       jsiConsolePrintf("PAGE 0x%08x (%d bytes) - %d live %d free\n",
-          pageAddr,pageLen,jsfGetAllocatedSpace(pageAddr,false),jsfGetFreeSpace(pageAddr,false));
+          pageAddr,pageLen,jsfGetAllocatedSpace(pageAddr,false,0),jsfGetFreeSpace(pageAddr,false));
     }
 
     char nameBuf[sizeof(JsfFileName)+1];
