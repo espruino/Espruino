@@ -65,13 +65,16 @@ JsfFileName jsfNameFromVar(JsVar *name) {
   return *(JsfFileName*)nameBuf;
 }
 
+/// Load a file header from flash, return true if it is valid
 static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
   assert(header);
   if (!addr) return false;
   jshFlashRead(header, addr, sizeof(JsfFileHeader));
-  return header->size != JSF_WORD_UNSET;
+  return (header->size != JSF_WORD_UNSET) &&
+         (addr+(uint32_t)sizeof(JsfFileHeader)+header->size < JSF_END_ADDRESS);
 }
 
+/// Is an area of flash completely erased?
 static bool jsfIsErased(uint32_t addr, uint32_t len) {
   uint32_t x;
   /* Read whole blocks at the alignment size and check
@@ -86,6 +89,7 @@ static bool jsfIsErased(uint32_t addr, uint32_t len) {
   return true;
 }
 
+/// Is an area of flash equal to something that's in RAM?
 static bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
   uint32_t x, buflen;
   unsigned char buf[JSF_ALIGNMENT];
