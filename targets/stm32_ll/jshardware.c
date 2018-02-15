@@ -63,11 +63,11 @@
  * and then masking off the top bit */
 unsigned char jsh7BitUART;
 bool jshIsSerial7Bit(IOEventFlags device) {
-  assert(SERIAL_COUNT<=8);
+  assert(USART_COUNT<=8);
   return jsh7BitUART & (1<<(device-EV_SERIAL1));
 }
 void jshSetIsSerial7Bit(IOEventFlags device, bool is7Bit) {
-  assert(SERIAL_COUNT<=8);
+  assert(USART_COUNT<=8);
   if (is7Bit) jsh7BitUART |= (1<<(device-EV_SERIAL1));
   else  jsh7BitUART &= ~(1<<(device-EV_SERIAL1));
 }
