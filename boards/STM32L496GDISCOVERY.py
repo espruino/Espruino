@@ -30,9 +30,11 @@ info = {
      'GRAPHICS',
      'NEOPIXEL',
      'CRYPTO',
-     'TLS'
+     'TLS',
+     'FILESYSTEM'
    ],
    'makefile' : [
+     'WRAPPERSOURCES+=targets/nucleo/jswrap_nucleo.c',
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'STLIB=STM32L496xx',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates/gcc/startup_stm32l496xx.o'
@@ -67,6 +69,11 @@ devices = {
             'pin_2' : 'H1' }, 	# to mic vdd
   'OSC_RTC' : { 'pin_1' : 'C14', # OSC32_IN (32kHz oscillator)
                 'pin_2' : 'C15' }, # OSC32_OUT
+  'BTN1' : { 'pin' : 'C13', 'pinstate' : 'IN_PULLDOWN' }, # joy center
+#  'BTN2' : { 'pin' : 'I9', 'pinstate' : 'IN_PULLDOWN' }, # joy l
+#  'BTN3' : { 'pin' : 'F11', 'pinstate' : 'IN_PULLDOWN' }, # joy r
+#  'BTN4' : { 'pin' : 'I8', 'pinstate' : 'IN_PULLDOWN' }, # joy u
+#  'BTN5' : { 'pin' : 'I10', 'pinstate' : 'IN_PULLDOWN' }, # joy d
   'LED2' : { 'pin' : 'B13' },
   'JTAG' : {
         'pin_MS' : 'A13', # TMS/SWDIO

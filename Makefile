@@ -615,10 +615,6 @@ ifdef USE_NFC
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 endif
 
-ifdef USE_NUCLEO
-  WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
-endif
-
 ifdef USE_WIO_LTE
   INCLUDE += -I$(ROOT)/libs/wio_lte
   WRAPPERSOURCES += libs/wio_lte/jswrap_wio_lte.c

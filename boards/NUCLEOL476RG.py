@@ -32,7 +32,7 @@ info = {
      'NEOPIXEL'
    ],
    'makefile' : [
-     'NUCLEO=1',
+     'WRAPPERSOURCES+=targets/nucleo/jswrap_nucleo.c',
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'STLIB=STM32L476xx',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32l4/lib/CMSIS/Device/ST/STM32L4xx/Source/Templates/gcc/startup_stm32l476xx.o'
