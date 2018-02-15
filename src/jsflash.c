@@ -83,26 +83,26 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
 
 static bool jsfIsErased(uint32_t addr, uint32_t len) {
   uint32_t x;
-  for (x=0;x<len;x++) {
-    unsigned char buf;
-    jshFlashRead(&buf, addr+x, 1);
-    if (buf!=0xFF) return false;
+  /* Read whole blocks at the alignment size and check
+   * everything (even slightly past the length) */
+  unsigned char buf[JSF_ALIGNMENT];
+  for (x=0;x<len;x+=JSF_ALIGNMENT) {
+    jshFlashRead(&buf, addr+x, JSF_ALIGNMENT);
+    int i;
+    for (i=0;i<JSF_ALIGNMENT;i++)
+      if (buf[i]!=0xFF) return false;
   }
   return true;
 }
 
 static bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
-  uint32_t x;
-  for (x=0;x<len;) {
-    uint32_t bufa;
-    jshFlashRead(&bufa, addr+x,JSF_ALIGNMENT);
-    uint32_t bufb = 0xFFFFFFFF;
-    int i;
-    for (i=0;i<4;i++) {
-      if (x<len) bufb = (bufb>>8) | (uint32_t)(data[x]<<24);
-      x++;
-    }
-    if (bufa!=bufb) return false;
+  uint32_t x, buflen;
+  unsigned char buf[JSF_ALIGNMENT];
+  for (x=0;x<len;x+=JSF_ALIGNMENT) {
+    jshFlashRead(&buf, addr+x,JSF_ALIGNMENT);
+
+    buflen = (x<=len-JSF_ALIGNMENT) ? JSF_ALIGNMENT : (len-x);
+    if (memcmp(buf, &data[x], buflen)) return false;
   }
   return true;
 }
@@ -181,7 +181,7 @@ uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages) {
   return pageEndAddr-addr;
 }
 
-// Get the amount of space needed to mirror this page elsewhere
+// Get the amount of space needed to mirror this page elsewhere (including padding for alignment)
 uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages) {
   uint32_t allocated = 0;
   uint32_t pageEndAddr = JSF_END_ADDRESS;
@@ -221,9 +221,10 @@ bool jsfCompact() {
       if (header.replacement == 0xFFFFFFFF) { // if not replaced
         memcpy(swapBufferPtr, &header, sizeof(JsfFileHeader));
         swapBufferPtr += sizeof(JsfFileHeader);
-        jshFlashRead(swapBufferPtr, addr+(uint32_t)sizeof(JsfFileHeader), header.size);
-        memset(&swapBufferPtr[header.size], 0xFF, jsfAlignAddress(header.size)-header.size);
-        swapBufferPtr += jsfAlignAddress(header.size);
+        uint32_t alignedSize = jsfAlignAddress(header.size);
+        jshFlashRead(swapBufferPtr, addr+(uint32_t)sizeof(JsfFileHeader), alignedSize);
+        memset(&swapBufferPtr[header.size], 0xFF, alignedSize-header.size);
+        swapBufferPtr += alignedSize;
       }
       addr = jsfGetAddressOfNextHeader(addr, &header);
     }
@@ -333,7 +334,9 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfF
   header.size = size;
   header.name = name;
   header.replacement = 0xFFFFFFFF;
+  DBG("CreateFile write header\n");
   jshFlashWrite(&header,addr,(uint32_t)sizeof(JsfFileHeader));
+  DBG("CreateFile written header\n");
   if (returnedHeader) *returnedHeader = header;
   return addr+(uint32_t)sizeof(JsfFileHeader);
 }
@@ -399,8 +402,9 @@ JsVar *jsfReadFile(JsfFileName name) {
   if (!addr) return 0;
 #ifdef LINUX
   // linux fakes flash with a file, so we can't just return a pointer to it!
-  char *d = (char*)malloc(header.size);
-  jshFlashRead(d, addr, header.size);
+  uint32_t alignedSize = jsfAlignAddress(header.size);
+  char *d = (char*)malloc(alignedSize);
+  jshFlashRead(d, addr, alignedSize);
   JsVar *v = jsvNewStringOfLength(header.size, d);
   free(d);
   return v;
@@ -442,6 +446,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsVarInt offset, JsVarInt _size
     jsExceptionHere(JSET_ERROR, "File already written with different data");
     return false;
   }
+  DBG("jsfWriteFile writing contents 1\n");
   // Cope with unaligned first write
   uint32_t alignOffset = addr & (JSF_ALIGNMENT-1);
   if (alignOffset) {
@@ -459,6 +464,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsVarInt offset, JsVarInt _size
     dLen -= alignRemainder;
   }
   // Do aligned write
+  DBG("jsfWriteFile writing contents 2\n");
   alignOffset = dLen & (JSF_ALIGNMENT-1);
   dLen -= alignOffset;
   if (dLen)
@@ -466,12 +472,14 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsVarInt offset, JsVarInt _size
   addr += (uint32_t)dLen;
   dPtr += dLen;
   // Do final unaligned write
+  DBG("jsfWriteFile writing contents 3\n");
   if (alignOffset) {
     char buf[JSF_ALIGNMENT];
     jshFlashRead(buf, addr, JSF_ALIGNMENT);
     memcpy(buf, dPtr, alignOffset);
     jshFlashWrite(buf, addr, JSF_ALIGNMENT);
   }
+  DBG("jsfWriteFile writing contents done\n");
   return true;
 }
 

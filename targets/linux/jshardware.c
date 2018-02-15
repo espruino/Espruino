@@ -38,6 +38,12 @@
 #define FAKE_FLASH_BLOCKSIZE FLASH_PAGE_SIZE
 #define FAKE_FLASH_BLOCKS    (FLASH_TOTAL/FLASH_PAGE_SIZE)
 
+#ifndef FLASH_64BITS_ALIGNMENT
+#define FLASH_UNITARY_WRITE_SIZE 4
+#else
+#define FLASH_UNITARY_WRITE_SIZE 8
+#endif
+
 #ifdef USE_WIRINGPI
 // see http://wiringpi.com/download-and-install/
 //   git clone git://git.drogon.net/wiringPi
@@ -867,6 +873,8 @@ void jshFlashErasePage(uint32_t addr) {
   fclose(f);
 }
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+  assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
+  assert(!(len&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   if (addr<FLASH_START || addr>=FLASH_START+FLASH_TOTAL) {
     assert(0); // out of range
     return;
@@ -880,8 +888,9 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   fclose(f);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
-  assert(!(addr&3)); // sanity checks here to mirror real hardware
-  assert(!(len&3)); // sanity checks here to mirror real hardware
+  assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
+  assert(!(len&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
+
   if (addr<FLASH_START || addr>=FLASH_START+FLASH_TOTAL) {
     assert(0); // out of range
     return;
