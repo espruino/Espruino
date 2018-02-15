@@ -17,6 +17,7 @@ import pinutils;
 info = {
  'name' : "DPT-Board",
  'default_console' : "EV_USBSERIAL",
+ 'variables' :  0, # 0 = resizable variables, rather than fixed
  'binary_name' : 'espruino',
  'build' : {
    'libraries' : [

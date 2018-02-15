@@ -17,6 +17,7 @@ import pinutils;
 info = {
  'name' : "Raspberry Pi",
  'default_console' : "EV_USBSERIAL",
+ 'variables' :  0, # 0 = resizable variables, rather than fixed
  'binary_name' : 'espruino_%v_raspberrypi',
  'build' : {
    'optimizeflags' : '-O3',

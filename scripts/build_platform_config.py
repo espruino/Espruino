@@ -56,38 +56,29 @@ has_bootloader = False
 if "bootloader" in board.info and board.info["bootloader"]!=0:
   has_bootloader = True
 
+variables=board.info["variables"]
+# variables from board-file can bw overwritten. Be careful with this option.
+# usually the definition in board file are already the maximum, and adding some more will corrupt firmware
+if 'VARIABLES' in os.environ:
+  variables=int(os.environ['VARIABLES'])
+if variables==0: var_size = 16
+elif variables<1023: var_size = 12   # the 'packed bits mean anything under 1023 vars gets into 12 byte JsVars
+else: var_size = 16
+var_cache_size = var_size*variables
+flash_needed = var_cache_size + 4 # for magic number
+print("Variables = "+str(variables))
+print("JsVar size = "+str(var_size))
+print("VarCache size = "+str(var_cache_size))
+
+
 if LINUX:
-  flash_page_size = 4096
-  flash_saved_code_pages = 16
-  total_flash = flash_page_size*4
-  
+  flash_page_size = 1024
+  flash_saved_code_pages = 8
+  total_flash = flash_page_size*flash_saved_code_pages  
 else: # NOT LINUX
   # 100xB and 103xB are mid-density, so have 1k page sizes
   if board.chip["part"][:7]=="STM32F1" and board.chip["part"][10]=="B": board.chip["subfamily"]="MD";
 
-  # how much room for stack (and EVERYTHING else)
-  space_for_stack = 4 #kB
-  if board.chip["ram"] > 20: space_for_stack = 5
-  variable_storage = board.chip["ram"] - space_for_stack
-  # work out # of variables
-  # We need to know if we should be using 8 or 16 bit addresses
-  #variables_8bit = (variable_storage*1024 ) / 12
-  #variables_16bit = (variable_storage*1024) / 16
-  #if variables_8bit > 254 and variables_16bit > 254:
-  #  variables = variables_16bit
-  #else:
-  #  variables = variables_8bit
-  # But in some cases we may not have enough flash memory!
-  variables=board.info["variables"]
-# variables from board-file can bw overwritten. Be careful with this option.
-# usually the definition in board file are already the maximum, and adding some more will corrupt firmware
-  if 'VARIABLES' in os.environ:
-    variables=int(os.environ['VARIABLES'])
-
-  var_size = 12 if variables<1023 else 16
-  # the 'packed bits mean anything under 1023 vars gets into 12 byte JsVars
-  var_cache_size = var_size*variables
-  flash_needed = var_cache_size + 4 # for magic number
   flash_page_size = 1024 # just a guess
   if board.chip["family"]=="STM32F1": flash_page_size = 1024 if "subfamily" in board.chip and board.chip["subfamily"]=="MD" else 2048
   if board.chip["family"]=="STM32F2":
@@ -106,9 +97,6 @@ else: # NOT LINUX
   flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be a full page, so we're rounding up
   # F4 has different page sizes in different places
   total_flash = board.chip["flash"]*1024
-  print("Variables = "+str(variables))
-  print("JsVar size = "+str(var_size))
-  print("VarCache size = "+str(var_cache_size))
 
 if "saved_code" in board.chip:
   flash_saved_code_start = board.chip["saved_code"]["address"]
@@ -265,13 +253,16 @@ codeOut("");
 codeOut("#define RAM_TOTAL ("+str(board.chip['ram'])+"*1024)")
 codeOut("#define FLASH_TOTAL ("+str(board.chip['flash'])+"*1024)")
 codeOut("");
-if LINUX:
-  codeOut('#define RESIZABLE_JSVARS // Allocate variables in blocks using malloc')
-  #codeOut("#define JSVAR_CACHE_SIZE                "+str(60)+" // Number of JavaScript variables in RAM")
-  codeOut("#define FLASH_START                     "+hex(0x10000000))
-  codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
+
+if variables==0:
+  codeOut('#define RESIZABLE_JSVARS // Allocate variables in blocks using malloc - slow, and linux-only')
 else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
+
+if LINUX:  
+  codeOut("#define FLASH_START                     "+hex(0x10000000))
+  codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
+else:  
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(int(flash_available_for_code)))
   if board.chip["class"]=="EFM32":
     codeOut("// FLASH_PAGE_SIZE defined in em_device.h");
