@@ -1959,11 +1959,13 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   memcpy(buf, (void*)addr, len);
 }
 
-static void jshFlashWrite64(void *buf, uint32_t addr) {
+static void jshFlashWrite64(uint64_t data, uint32_t addr) {
   assert(!(addr&7));
-  HAL_StatusTypeDef res = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, *((uint64_t*)buf));
+  //jsiConsolePrintf("Write 0x%08x%08x to 0x%08x\n", (uint32_t)(data>>32),(uint32_t)data, addr);
+  HAL_StatusTypeDef res = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, data);
   if(res != HAL_OK){
-    jsExceptionHere(JSET_INTERNALERROR, "Flash Write Error %d (0x%08x)", res, addr);
+    // see HAL_FLASH_GetError for info on error codes
+    jsExceptionHere(JSET_INTERNALERROR, "Flash Write Error %d,0x%x (0x%08x)", res, HAL_FLASH_GetError(), addr);
   }
 }
 
@@ -1975,14 +1977,13 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   assert(!(len&3));
 
   HAL_FLASH_Unlock();
-
   // bodge up single 32 bit writes
   if (addr&4) {
     addr -= 4;
     char buf64[8];
     jshFlashRead(&buf64[0],addr,4);
     memcpy(&buf64[4], cbuf, 4);
-    jshFlashWrite64(buf64, addr);
+    jshFlashWrite64(*((uint64_t*)buf64), addr);
     cbuf += 4;
     addr += 8;
     len -= 4;
@@ -1990,7 +1991,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 
   // 64 bit writes
   while (len>7 && !jspIsInterrupted()) {
-    jshFlashWrite64(cbuf, addr);
+    jshFlashWrite64(*((uint64_t*)cbuf), addr);
     cbuf += 8;
     addr += 8;
     len -= 8;
@@ -2001,7 +2002,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
     char buf64[8];
     memcpy(&buf64[0], cbuf, 4);
     jshFlashRead(&buf64[4],addr+4,4);
-    jshFlashWrite64(buf64, addr);
+    jshFlashWrite64(*((uint64_t*)buf64), addr);
   }
 
   HAL_FLASH_Lock();

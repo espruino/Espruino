@@ -20,23 +20,14 @@
 #define SAVED_CODE_BOOTCODE "bootcode" // bootcode that doesn't run after reset
 #define SAVED_CODE_VARIMAGE "varimage"
 
-
-#ifndef FLASH_64BITS_ALIGNMENT
-#define FLASH_UNITARY_WRITE_SIZE 4
-#else
-#define FLASH_UNITARY_WRITE_SIZE 8
-#endif
-
 #ifdef DEBUG
 #define DBG(...) jsiConsolePrintf("[Flash] "__VA_ARGS__)
 #else
 #define DBG(...)
 #endif
 
-#define JSF_ALIGNMENT FLASH_UNITARY_WRITE_SIZE
 #define JSF_START_ADDRESS FLASH_SAVED_CODE_START
 #define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
-
 
 #ifdef USE_HEATSHRINK
   #include "compress_heatshrink.h"
@@ -78,7 +69,7 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
   assert(header);
   if (!addr) return false;
   jshFlashRead(header, addr, sizeof(JsfFileHeader));
-  return header->size != 0xFFFFFFFF;
+  return header->size != JSF_WORD_UNSET;
 }
 
 static bool jsfIsErased(uint32_t addr, uint32_t len) {
@@ -129,7 +120,7 @@ static void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header) {
   addr -= (uint32_t)sizeof(JsfFileHeader);
   addr += (uint32_t)((char*)&header->replacement - (char*)header);
   header->replacement = 0;
-  jshFlashWrite(&header->replacement,addr,(uint32_t)sizeof(header->replacement));
+  jshFlashWrite(&header->replacement,addr,(uint32_t)sizeof(JsfWord));
 }
 
 void jsfEraseFile(JsfFileName name) {
@@ -195,7 +186,7 @@ uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages) {
   JsfFileHeader header;
   while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
          (addr+(uint32_t)sizeof(JsfFileHeader)<pageEndAddr)) {
-    if (header.replacement == 0xFFFFFFFF) // if not replaced
+    if (header.replacement == JSF_WORD_UNSET) // if not replaced
       allocated += jsfAlignAddress(header.size) + (uint32_t)sizeof(JsfFileHeader);
     addr = jsfGetAddressOfNextHeader(addr, &header);
   }
@@ -218,7 +209,7 @@ bool jsfCompact() {
     uint32_t addr = JSF_START_ADDRESS;
     while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
            (addr+(uint32_t)sizeof(JsfFileHeader)<JSF_END_ADDRESS)) {
-      if (header.replacement == 0xFFFFFFFF) { // if not replaced
+      if (header.replacement == JSF_WORD_UNSET) { // if not replaced
         memcpy(swapBufferPtr, &header, sizeof(JsfFileHeader));
         swapBufferPtr += sizeof(JsfFileHeader);
         uint32_t alignedSize = jsfAlignAddress(header.size);
@@ -261,7 +252,7 @@ bool jsfCompact() {
     uint32_t addr = pageAddr;
     JsfFileHeader header;
     while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
-      if (header.replacement == 0xFFFFFFFF) {
+      if (header.replacement == JSF_WORD_UNSET) {
         uint32_t oldFile = addr+sizeof(JsfFileHeader);
         DBG("Moving file at 0x%08x\n", oldFile);
         JsfFileHeader newHeader;
@@ -296,7 +287,7 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfF
   JsfFileHeader header;
   while (jsfGetFileHeader(addr, &header) && addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
     // check for something with the same name
-    if (header.replacement == 0xFFFFFFFF &&
+    if (header.replacement == JSF_WORD_UNSET &&
         header.name == name)
       existingAddr = addr;
     addr = jsfGetAddressOfNextHeader(addr, &header);
@@ -333,7 +324,7 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfF
   DBG("CreateFile new 0x%08x\n", addr+(uint32_t)sizeof(JsfFileHeader));
   header.size = size;
   header.name = name;
-  header.replacement = 0xFFFFFFFF;
+  header.replacement = JSF_WORD_UNSET;
   DBG("CreateFile write header\n");
   jshFlashWrite(&header,addr,(uint32_t)sizeof(JsfFileHeader));
   DBG("CreateFile written header\n");
@@ -348,7 +339,7 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
   while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
           addr+sizeof(JsfFileHeader)<JSF_END_ADDRESS) {
     // check for something with the same name that hasn't been replaced
-    if (header.replacement == 0xFFFFFFFF &&
+    if (header.replacement == JSF_WORD_UNSET &&
         header.name == name) {
       uint32_t endOfFile = addr + (uint32_t)sizeof(JsfFileHeader) + header.size;
       if (endOfFile<addr || endOfFile>JSF_END_ADDRESS)
@@ -386,7 +377,7 @@ void jsfDebugFiles() {
     char nameBuf[sizeof(JsfFileName)+1];
     memset(nameBuf,0,sizeof(nameBuf));
     memcpy(nameBuf,&header.name,sizeof(JsfFileName));
-    jsiConsolePrintf("0x%08x\t%s\t(%d bytes)\t%s\n", addr+(uint32_t)sizeof(JsfFileHeader), nameBuf, header.size, (header.replacement == 0xFFFFFFFF)?"":" DELETED");
+    jsiConsolePrintf("0x%08x\t%s\t(%d bytes)\t%s\n", addr+(uint32_t)sizeof(JsfFileHeader), nameBuf, header.size, (header.replacement == JSF_WORD_UNSET)?"":" DELETED");
     // TODO: print page boundaries
     addr = jsfGetAddressOfNextHeader(addr, &header);
     if (!addr) {
@@ -494,7 +485,7 @@ JsVar *jsfListFiles() {
   JsfFileHeader header;
   while ((jsfGetFileHeader(addr, &header) || (addr=jsfGetAddressOfNextPage(addr, &header))) &&
          (addr+(uint32_t)sizeof(JsfFileHeader)<pageEndAddr)) {
-    if (header.replacement == 0xFFFFFFFF) { // if not replaced
+    if (header.replacement == JSF_WORD_UNSET) { // if not replaced
       memcpy(nameBuf, &header.name, sizeof(JsfFileName));
       nameBuf[sizeof(JsfFileName)]=0;
       jsvArrayPushAndUnLock(files, jsvNewFromString(nameBuf));
@@ -597,7 +588,7 @@ void jsfSaveToFlash() {
   COMPRESS(varPtr, varSize, jsfSaveToFlash_writecb, (uint32_t*)&cbData);
   // make sure we write everything in the buffer out
   int i;
-  for(i=0;i<FLASH_UNITARY_WRITE_SIZE;i++)
+  for(i=0;i<JSF_ALIGNMENT;i++)
     jsfSaveToFlash_writecb(0,(uint32_t*)&cbData);
 
   jsiConsolePrintf("\nCompressed %d bytes to %d\n", varSize, compressedSize);

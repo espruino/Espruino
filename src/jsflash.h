@@ -16,12 +16,23 @@
 /// Simple filename used for Flash Storage. We use uint here so we don't have to memcpy/memcmp all the time
 typedef uint64_t JsfFileName;
 
+#ifdef FLASH_64BITS_ALIGNMENT
+typedef uint64_t JsfWord;
+#define JSF_ALIGNMENT 8
+#define JSF_WORD_UNSET 0xFFFFFFFFFFFFFFFFULL
+#else
+typedef uint32_t JsfWord;
+#define JSF_ALIGNMENT 4
+#define JSF_WORD_UNSET 0xFFFFFFFF
+#endif
+
 /// Structure for File Storage. It's important this is 8 byte aligned for platforms that only support 64 bit writes
 typedef struct {
-  uint32_t size; ///< Total size
-  uint32_t replacement; ///< pointer to a replacement (eventually). For now this is 0xFFFFFFFF if ok, 0 if erased
+  JsfWord size; ///< Total size
+  JsfWord replacement; ///< pointer to a replacement (eventually). For now this is 0xFFFFFFFF if ok, 0 if erased
   JsfFileName name; ///< 0-padded filename
 } JsfFileHeader;
+
 
 
 // ------------------------------------------------------------------------ Flash Storage Functionality

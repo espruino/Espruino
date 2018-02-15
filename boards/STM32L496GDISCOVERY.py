@@ -55,12 +55,10 @@ chip = {
   'saved_code' : {
     # code size (with debug) : 448000 ~ 0x6D800 starts at 0x0800 0000 ends at 0x0806 D800
     # so we have some left room for Espruino firmware and no risk to clear it while saving
-    'address' : 0x0806D800, # flash_saved_code_start 0x0806E000 to 0x8100000
-    # we have enough flash space in this single flash page to save all of the ram
+    'address' : 0x080D0000, # We have 0 -> 0xFFFFF (1MB), so this is at the end of flash
     'page_size' :  2048, # size of pages, 256 pages on bank1, 256 pages on bank2
-    # we use the last flash page only, furthermore it persists after a firmware flash of the board
-    'pages' : 37, # count of pages we're using to save RAM to Flash (just use bank1 for now) - we still have 512k of bank2
-    'flash_available' : 438 # kb - quantity reserved to receive the Firmware
+    'pages' : 64, # count of pages we're using to save RAM to Flash 
+    'flash_available' : 832 # kb - quantity reserved to receive the Firmware
   },
 };
 
