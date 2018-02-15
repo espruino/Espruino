@@ -114,7 +114,7 @@ brew upgrade gnu-sed gawk binutils gperftools gettext wget help2man libtool auto
 brew upgrade stlink
 
 # version 2.1
-pip esptool.py 
+pip install esptool
 ```
 
 #### Get GNU Compiler Collection 
