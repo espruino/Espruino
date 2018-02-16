@@ -757,7 +757,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
       JsVar *currVar = jsvGetAddressOf(curr);
       JsVarRef next = jsvGetNextSibling(currVar);
 #ifdef RESIZABLE_JSVARS
-      if (jsvGetAddressOf(next)==currVar+1) {
+      if (next && jsvGetAddressOf(next)==currVar+1) {
 #else
       if (next == curr+1) {
 #endif
