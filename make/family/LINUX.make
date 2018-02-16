@@ -10,7 +10,8 @@ export CCPREFIX=$(STAGING_DIR)/mips-openwrt-linux-
 endif
 
 ifeq ($(BOARD),RASPBERRYPI)
- ifneq ($(shell uname -m),armv6l)
+ ifeq ($(shell grep Rapsbian /etc/os-release)),)
+  # Not on a Pi at the moment
   $(info *********************************)
   $(info *         CROSS COMPILING       *)
   $(info *********************************)
