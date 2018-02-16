@@ -103,10 +103,9 @@ static bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
 }
 
 /// Erase the entire contents of the memory store
-bool jsfEraseAll() {
-  DBG("EraseAll\n");
+static bool jsfEraseFrom(uint32_t startAddr) {
   uint32_t addr, len;
-  if (!jshFlashGetPage(JSF_START_ADDRESS, &addr, &len))
+  if (!jshFlashGetPage(startAddr, &addr, &len))
     return false;
   while (addr<JSF_END_ADDRESS) {
     if (!jsfIsErased(addr,len))
@@ -115,6 +114,12 @@ bool jsfEraseAll() {
       return true;
   }
   return true;
+}
+
+/// Erase the entire contents of the memory store
+bool jsfEraseAll() {
+  DBG("EraseAll\n");
+  return jsfEraseFrom(JSF_START_ADDRESS);
 }
 
 /// When a file is found in memory, erase it (by setting replacement to 0). addr=ptr to data, NOT header
@@ -134,7 +139,7 @@ void jsfEraseFile(JsfFileName name) {
   jsfEraseFileInternal(addr, &header);
 }
 
-// Get the address of the page after the current one, or 0
+// Get the address of the page after the current one, or 0. THE NEXT PAGE MAY HAVE A PREVIOUS PAGE'S DATA SPANNING OVER IT
 static uint32_t jsfGetAddressOfNextPage(uint32_t addr) {
   uint32_t pageAddr,pageLen;
   if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
@@ -144,7 +149,7 @@ static uint32_t jsfGetAddressOfNextPage(uint32_t addr) {
   return addr;
 }
 
-/* Get the space left for a file (excluding header) between the address and the next page.
+/* Get the space left for a file (including header) between the address and the next page.
  * If the next page is empty, return the space in that as well (and so on) */
 static uint32_t jsfGetSpaceLeftInPage(uint32_t addr) {
   uint32_t pageAddr,pageLen;
@@ -159,7 +164,7 @@ static uint32_t jsfGetSpaceLeftInPage(uint32_t addr) {
         return 0;
     nextPageStart = pageAddr+pageLen;
   }
-  return nextPageStart - (addr + (uint32_t)sizeof(JsfFileHeader));
+  return nextPageStart - addr;
 }
 
 typedef enum {
@@ -192,8 +197,24 @@ static bool jsfGetNextFileHeader(uint32_t *addr, JsfFileHeader *header, jsfGetNe
   }
   return valid;
 }
+
+// Get the address of the page that starts with a header (or is clear) after the current one, or 0
+static uint32_t jsfGetAddressOfNextStartPage(uint32_t addr) {
+  uint32_t next = jsfGetAddressOfNextPage(addr);
+  if (next==0) return 0; // no next page
+  JsfFileHeader header;
+  if (jsfGetFileHeader(addr, &header)) do {
+    if (addr>next) {
+      next = jsfGetAddressOfNextPage(addr);
+      if (next==0) return 0;
+    }
+    if (addr==next) return addr; // we stumbled on a header that was right on the boundary
+  } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
+  return next;
+}
+
 // Get the amount of space free in this page
-uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages) {
+static uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages) {
   uint32_t pageEndAddr = JSF_END_ADDRESS;
   if (!allPages) {
     uint32_t pageAddr,pageLen;
@@ -212,7 +233,7 @@ uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages) {
 }
 
 // Get the amount of space needed to mirror this page elsewhere (including padding for alignment)
-uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages, uint32_t *uncompactedSpace) {
+static uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages, uint32_t *uncompactedSpace) {
   uint32_t allocated = 0;
   if (uncompactedSpace) *uncompactedSpace=0;
   JsfFileHeader header;
@@ -228,17 +249,13 @@ uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages, uint32_t *uncompacte
   return allocated;
 }
 
-// Try and compact saved data so it'll fit in Flash again
-bool jsfCompact() {
-  DBG("Compacting\n");
-  uint32_t uncompacted = 0;
-  uint32_t allocated = jsfGetAllocatedSpace(JSF_START_ADDRESS, true, &uncompacted);
-  if (!uncompacted) {
-    DBG("Already fully compacted\n");
-    return false;
-  }
-  if (allocated+1024 < jsuGetFreeStack()) {
-    DBG("Compacting - all data fits in RAM\n");
+/* Try and compact saved data so it'll fit in Flash again.
+ * TO RUN THIS, 'ALLOCATED' MUST BE CORRECT, AND THERE MUST BE ENOUGH STACK FREE
+ */
+static bool jsfCompactInternal(uint32_t startAddress, uint32_t allocated) {
+  DBG("Compacting from 0x%08x\n", startAddress);
+  if (allocated>0) {
+    // allocated = amount of RAM needed to compact all pages
     // All our allocated data will fit in RAM - awesome!
     // Allocate RAM
     char *swapBuffer = alloca(allocated);
@@ -247,7 +264,7 @@ bool jsfCompact() {
     DBG("Compacting - copy data to swap\n");
     JsfFileHeader header;
     memset(&header,0,sizeof(JsfFileHeader));
-    uint32_t addr = JSF_START_ADDRESS;
+    uint32_t addr = startAddress;
     if (jsfGetFileHeader(addr, &header)) do {
       if (header.replacement == JSF_WORD_UNSET) { // if not replaced
         memcpy(swapBufferPtr, &header, sizeof(JsfFileHeader));
@@ -259,7 +276,8 @@ bool jsfCompact() {
       }
     } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
     // Erase everything
-    jsfEraseAll();
+    DBG("Compacting - erasing pages\n");
+    jsfEraseFrom(startAddress);
     // Copy data back
     DBG("Compacting - copy data from swap\n");
     char *swapBufferEnd = swapBufferPtr;
@@ -273,18 +291,52 @@ bool jsfCompact() {
       if (newFile) jshFlashWrite(swapBufferPtr, newFile, alignedSize);
       swapBufferPtr += alignedSize;
     }
-    DBG("Compaction Complete\n");
-    return true;
+  } else {
+    DBG("Compacting - no data, just erasing page\n");
+    jsfEraseFrom(startAddress);
   }
-  DBG("Uh-oh. Data doesn't fit in RAM\n");
+  DBG("Compaction Complete\n");
+  return true;
+}
 
+
+// Try and compact saved data so it'll fit in Flash again
+bool jsfCompact() {
+  DBG("Compacting\n");
+  uint32_t addr = JSF_START_ADDRESS;
+
+  /* Try and compact the whole area first, but if that
+   * fails, keep skipping forward pages until we have
+   * enough RAM free that it's ok. */
+  while (addr) {
+    uint32_t uncompacted = 0;
+    uint32_t allocated = jsfGetAllocatedSpace(addr, true, &uncompacted);
+    if (!uncompacted) {
+      DBG("Already fully compacted\n");
+      return true;
+    }
+    if (allocated+1024 < jsuGetFreeStack()) {
+      DBG("Compacting - all data fits in RAM for 0x%08x (%d bytes)\n", addr, allocated);
+      return jsfCompactInternal(addr, allocated);
+    } else {
+      DBG("Compacting - Not enough memory for 0x%08x (%d bytes)\n", addr, allocated);
+    }
+    // move to the next available page and try from there
+    addr = jsfGetAddressOfNextStartPage(addr);
+  }
+  DBG("Compacting - not enough memory to compact anything\n");
+  /* TODO: we should try and compact pages at the start as well.
+   * Currently we just skip pages from the front until we have
+   * enough RAM. By doing both we could work either side of a
+   * massive saved code area. */
 
   return false;
 }
 
 /// Create a new 'file' in the memory store. Return the address of data start, or 0 on error
 uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfFileHeader *returnedHeader) {
-  DBG("CreateFile\n");
+  DBG("CreateFile (%d bytes)\n", size);
+  uint32_t requiredSize = jsfAlignAddress(size)+(uint32_t)sizeof(JsfFileHeader);
   assert(startAddr);
   bool compacted = false;
   uint32_t addr = 0;
@@ -301,7 +353,7 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfF
             header.name == name)
           existingAddr = addr;
       } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
-    } while (addr && (jsfGetSpaceLeftInPage(addr)<size));
+    } while (addr && (jsfGetSpaceLeftInPage(addr)<requiredSize));
     // do we have an existing file? Erase it.
     if (existingAddr) {
       jsfGetFileHeader(existingAddr, &header);
@@ -323,6 +375,18 @@ uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfF
       }
     }
   };
+  // If we were going to straddle the next page and there's enough space,
+  // push this file forwards so it starts on a clean page boundary
+  uint32_t spaceAvailable = jsfGetSpaceLeftInPage(addr);
+  uint32_t nextPage = jsfGetAddressOfNextPage(addr);
+  if (nextPage && // there is a next page
+      ((nextPage - addr) < requiredSize) && // it would straddle pages
+      (spaceAvailable > (size + nextPage - addr)) && // there is space
+      (requiredSize < 512) && // it's not too big. We should always try and put big files as near the start as possible. See note in jsfCompact
+      !jsfGetFileHeader(nextPage, &header)) { // the next page is free
+    DBG("CreateFile positioning file on page boundary (0x%08x -> 0x%08x)\n", addr, nextPage);
+    addr = nextPage;
+  }
   // write out the header
   DBG("CreateFile new 0x%08x\n", addr+(uint32_t)sizeof(JsfFileHeader));
   header.size = size;
@@ -371,8 +435,17 @@ void jsfDebugFiles() {
         return;
       }
       pageEndAddr = pageAddr+pageLen;
-      jsiConsolePrintf("PAGE 0x%08x (%d bytes) - %d live %d free\n",
-          pageAddr,pageLen,jsfGetAllocatedSpace(pageAddr,false,0),jsfGetFreeSpace(pageAddr,false));
+      uint32_t nextStartPage = jsfGetAddressOfNextStartPage(addr);
+      uint32_t alloced = jsfGetAllocatedSpace(pageAddr,false,0);
+      if (nextStartPage==pageEndAddr) {
+        jsiConsolePrintf("PAGE 0x%08x (%d bytes) - %d live %d free\n",
+            pageAddr,pageLen,alloced,pageLen - alloced);
+      } else {
+        pageLen = nextStartPage-pageAddr;
+        jsiConsolePrintf("PAGES 0x%08x -> 0x%08x (%d bytes) - %d live %d free\n",
+            pageAddr,nextStartPage,pageLen,
+            alloced,pageLen-alloced);
+      }
     }
 
     char nameBuf[sizeof(JsfFileName)+1];
@@ -562,7 +635,10 @@ void jsfSaveToFlash() {
     savedCodeAddr = jsfCreateFile(jsfNameFromString(SAVED_CODE_VARIMAGE), compressedSize, JSF_START_ADDRESS, 0);
   }
   if (!savedCodeAddr) {
-    jsiConsolePrint("Not enough free space to save.\n");
+    if (jsfGetAllocatedSpace(JSF_START_ADDRESS, true, 0))
+      jsiConsolePrint("Not enough free space to save. Try require('Storage').eraseAll()\n");
+    else
+      jsiConsolePrint("Code is too big to save to Flash.\n");
     return;
   }
   // Ok, we have space!
