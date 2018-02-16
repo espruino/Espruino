@@ -80,17 +80,7 @@ typedef enum {
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
     JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
     JSV_LOCK_SHIFT  = GET_BIT_NUMBER(JSV_LOCK_ONE), ///< The amount of bits we must shift to get the number of locks - forced to be a constant
-#ifdef JSVARREF_PACKED_BITS
-    /* When using packed bits, we put Lastchild's here, because
-     * then, when we're using STRINGEXT, we can get one more character
-     * in by overwriting 'pack'
-     */
-    JSV_LASTCHILD_BIT8 = NEXT_POWER_2(JSV_LOCK_MASK),
-    JSV_LASTCHILD_BIT9 = JSV_LASTCHILD_BIT8<<1,
-    JSV_LASTCHILD_BIT_MASK = JSV_LASTCHILD_BIT8|JSV_LASTCHILD_BIT9,
-    JSV_LASTCHILD_BIT_SHIFT = GET_BIT_NUMBER(JSV_LASTCHILD_BIT8),
-#endif
-    // 3 bits left over here on most systems, 1 on JSVARREF_PACKED_BITS
+
     JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE, // if we're copying a variable, this is all the stuff we want to copy
 } PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
 
@@ -149,9 +139,8 @@ typedef struct {
    * For STRING_EXT - extra characters
    * Not used for other stuff
    */
-#if JSVARREF_SIZE!=1
-  JsVarRef nextSibling;
-  JsVarRef prevSibling;
+  JsVarRef nextSibling : JSVARREF_BITS;
+  JsVarRef prevSibling : JSVARREF_BITS;
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the first child
@@ -160,9 +149,9 @@ typedef struct {
    * For ARRAYBUFFER - a link to a string containing the data for the array buffer
    * For CHILD_OF - a link to the variable pointed to
    */
-  JsVarRef firstChild;
+  JsVarRef firstChild : JSVARREF_BITS;
 
-  JsVarRefCounter refs; ///< The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters)
+  JsVarRefCounter refs : JSVARREFCOUNT_BITS; ///< The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters)
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the last child
@@ -170,17 +159,7 @@ typedef struct {
    * For REF - this is the 'parent' that the firstChild is a member of
    * For CHILD_OF - a link to the object that should contain the variable
    */
-  JsVarRef lastChild;
-
-#else // JSVARREF_SIZE==1
-  // see declaration of JSVARREF_PACKED_BITS in jsutils.h for more info
-  uint8_t nextSibling;
-  uint8_t prevSibling;
-  uint8_t firstChild;
-  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS - otherwise unused except when needed for data
-  uint8_t refs;
-  uint8_t lastChild;
-#endif
+  JsVarRef lastChild : JSVARREF_BITS;
 } PACKED_FLAGS JsVarDataRef;
 
 
@@ -204,7 +183,7 @@ typedef struct {
 
   /** the flags determine the type of the variable - int/double/string/etc. */
   volatile JsVarFlags flags;
-} PACKED_FLAGS __attribute__((aligned(4))) JsVar;
+} PACKED_FLAGS JsVar;
 
 /* We have a few different types:
  *
@@ -216,37 +195,25 @@ typedef struct {
  *  INT/DOUBLE - firstChild never used
  */
 
-/* For 'normal' JsVars used on Espruino Board (Linux are different to allow more storage):
- *
- * Both INT and STRING can also be names:
- *
- 16 byte JsVars (JsVars for 32 bit refs are similar)
+/* For 'normal' JsVars used on Espruino Board (Linux are different to allow more storage and 64 bit pointers):
 
- | Offset | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER |
- |--------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|
- | 0 - 3  | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
- | 4 - 5  | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
- | 6 - 7  | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
- | 8 - 9  | first   | data   | data     |  child   | child    |  -   |  -      | first          | stringPtr   |
- | 10-11  | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
- | 12-13  | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
- | 14-15  | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
+ Both INT and STRING can also be names:
 
- 12 byte JsVars ( where < 1024 variables)
+ The size of vars depends on how many variables we need to reference. The bits
+ for references are packed into a JsVarDataRef structure.
 
- 10 bit addresses are used, with the extra bits being stored in a field called `pack` and the `flags` variable
+ sizeof(JsVar) is between 10 and 16bytes.
 
- | Offset | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
- |--------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
- | 0 - 3  | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        |
- | 4      | next    | data   | data     |  next    | next     |  -   | data   | argTypes       | format      |
- | 5      | prev    | data   | data     |  prev    | prev     |  -   | data   | argTypes       | format      |
- | 6      | first   | data   | data     |  child   | child    |  -   | data   | first          | stringPtr   |
- | 7      | pack    | pack   | data     |  pack    | pack     | pack | data   | pack           | pack        |
- | 8      | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
- | 9      | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |   -    | last           | -           |
- | 10-11  | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
 
+ | Offset  | Size | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER |
+ |---------|------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|
+ | 0 - 3   | 4    | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
+ | ?4 - 5  | ?    | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
+ | ?6 - 7  | ?    | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
+ | ?8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   |  -      | first          | stringPtr   |
+ | ?10-11  | ?    | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
+ | ?12-13  | ?    | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
+ | ?14-15  | 2    | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
 
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
@@ -257,7 +224,6 @@ typedef struct {
  * contains the device number. See jsiGetDeviceFromClass/jspNewObject
  */
 
-#ifndef JSVARREF_PACKED_BITS
 static ALWAYS_INLINE JsVarRef jsvGetFirstChild(const JsVar *v) { return v->varData.ref.firstChild; }
 static ALWAYS_INLINE JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v) { return (JsVarRefSigned)v->varData.ref.firstChild; }
 static ALWAYS_INLINE JsVarRef jsvGetLastChild(const JsVar *v) { return v->varData.ref.lastChild; }
@@ -267,18 +233,6 @@ static ALWAYS_INLINE void jsvSetFirstChild(JsVar *v, JsVarRef r) { v->varData.re
 static ALWAYS_INLINE void jsvSetLastChild(JsVar *v, JsVarRef r) { v->varData.ref.lastChild = r; }
 static ALWAYS_INLINE void jsvSetNextSibling(JsVar *v, JsVarRef r) { v->varData.ref.nextSibling = r; }
 static ALWAYS_INLINE void jsvSetPrevSibling(JsVar *v, JsVarRef r) { v->varData.ref.prevSibling = r; }
-#else
-// for packed bits, functions are not inlined to save space
-JsVarRef jsvGetFirstChild(const JsVar *v);
-JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v);
-JsVarRef jsvGetLastChild(const JsVar *v);
-JsVarRef jsvGetNextSibling(const JsVar *v);
-JsVarRef jsvGetPrevSibling(const JsVar *v);
-void jsvSetFirstChild(JsVar *v, JsVarRef r);
-void jsvSetLastChild(JsVar *v, JsVarRef r);
-void jsvSetNextSibling(JsVar *v, JsVarRef r);
-void jsvSetPrevSibling(JsVar *v, JsVarRef r);
-#endif
 
 static ALWAYS_INLINE JsVarRefCounter jsvGetRefs(JsVar *v) { return v->varData.ref.refs; }
 static ALWAYS_INLINE void jsvSetRefs(JsVar *v, JsVarRefCounter refs) { v->varData.ref.refs = refs; }

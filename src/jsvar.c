@@ -124,40 +124,6 @@ JsVar *_jsvGetAddressOf(JsVarRef ref) {
   return jsvGetAddressOf(ref);
 }
 
-#ifdef JSVARREF_PACKED_BITS
-#define JSVARREF_PACKED_BIT_MASK ((1U<<JSVARREF_PACKED_BITS)-1)
-JsVarRef jsvGetFirstChild(const JsVar *v) { return (JsVarRef)(v->varData.ref.firstChild | (((v->varData.ref.pack)&JSVARREF_PACKED_BIT_MASK))<<8); }
-JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v) {
-  JsVarRefSigned r = (JsVarRefSigned)jsvGetFirstChild(v);
-  if (r & (1<<(JSVARREF_PACKED_BITS+7)))
-    r -= 1<<(JSVARREF_PACKED_BITS+8);
-  return r;
-}
-JsVarRef jsvGetNextSibling(const JsVar *v) { return (JsVarRef)(v->varData.ref.nextSibling | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*2))&JSVARREF_PACKED_BIT_MASK))<<8); }
-JsVarRef jsvGetPrevSibling(const JsVar *v) { return (JsVarRef)(v->varData.ref.prevSibling | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*3))&JSVARREF_PACKED_BIT_MASK))<<8); }
-void jsvSetFirstChild(JsVar *v, JsVarRef r) {
-  v->varData.ref.firstChild = (unsigned char)(r & 0xFF);
-  v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~JSVARREF_PACKED_BIT_MASK) | ((r >> 8) & JSVARREF_PACKED_BIT_MASK));
-}
-void jsvSetNextSibling(JsVar *v, JsVarRef r) {
-  v->varData.ref.nextSibling = (unsigned char)(r & 0xFF);
-  v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~(JSVARREF_PACKED_BIT_MASK<<(JSVARREF_PACKED_BITS*2))) | (((r >> 8) & JSVARREF_PACKED_BIT_MASK) << (JSVARREF_PACKED_BITS*2)));
-}
-void jsvSetPrevSibling(JsVar *v, JsVarRef r) {
-  v->varData.ref.prevSibling = (unsigned char)(r & 0xFF);
-  v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~(JSVARREF_PACKED_BIT_MASK<<(JSVARREF_PACKED_BITS*3))) | (((r >> 8) & JSVARREF_PACKED_BIT_MASK) << (JSVARREF_PACKED_BITS*3)));
-}
-/* lastchild stores the upper 2 bits in JsVarFlags because then STRING_EXT can use one more character! */
-JsVarRef jsvGetLastChild(const JsVar *v) {
-  return (JsVarRef)(v->varData.ref.lastChild | (((v->flags >> JSV_LASTCHILD_BIT_SHIFT)&JSVARREF_PACKED_BIT_MASK))<<8);
-}
-void jsvSetLastChild(JsVar *v, JsVarRef r) {
-  v->varData.ref.lastChild = (unsigned char)(r & 0xFF);
-  v->flags = (v->flags & ~JSV_LASTCHILD_BIT_MASK) | ((r >> 8) << JSV_LASTCHILD_BIT_SHIFT);
-}
-#endif
-
-
 // For debugging/testing ONLY - maximum # of vars we are allowed to use
 void jsvSetMaxVarsUsed(unsigned int size) {
 #ifdef RESIZABLE_JSVARS
@@ -435,9 +401,13 @@ void jsvResetVariable(JsVar *v, JsVarFlags flags) {
    * memset because that'd create a function call. This
    * should just generate a bunch of STR instructions */
   unsigned int i;
-  assert((sizeof(JsVar)&3) == 0); // must be a multiple of 4 in size
-  for (i=0;i<sizeof(JsVar)/sizeof(uint32_t);i++)
-    ((uint32_t*)v)[i] = 0;
+  if ((sizeof(JsVar)&3) == 0) {
+    for (i=0;i<sizeof(JsVar)/sizeof(uint32_t);i++)
+      ((uint32_t*)v)[i] = 0;
+  } else { // just fall back to bytes and hope it's smart enough
+    for (i=0;i<sizeof(JsVar);i++)
+      ((uint8_t*)v)[i] = 0;
+  }
   // set flags
   assert(!(flags & JSV_LOCK_MASK));
   v->flags = flags | JSV_LOCK_ONE;
@@ -587,13 +557,8 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
     }
   } else {
 #ifdef CLEAR_MEMORY_ON_FREE
-#if JSVARREF_SIZE==1
     assert(jsvIsFloat(var) || !jsvGetFirstChild(var));
     assert(jsvIsFloat(var) || !jsvGetLastChild(var));
-#else
-    assert(!jsvGetFirstChild(var)); // strings use firstchild now as well
-    assert(!jsvGetLastChild(var));
-#endif
 #endif // CLEAR_MEMORY_ON_FREE
     if (jsvIsName(var)) {
       assert(jsvGetNextSibling(var)==jsvGetPrevSibling(var)); // the case for jsvIsNewChild
@@ -698,7 +663,8 @@ NO_INLINE void jsvUnLockMany(unsigned int count, JsVar **vars) {
 /// Reference - set this variable as used by something
 JsVar *jsvRef(JsVar *var) {
   assert(var && jsvHasRef(var));
-  jsvSetRefs(var, (JsVarRefCounter)(jsvGetRefs(var)+1));
+  if (jsvGetRefs(var) < JSVARREFCOUNT_MAX) // if we hit max refcounts, just keep them - GC will fix it later
+    jsvSetRefs(var, (JsVarRefCounter)(jsvGetRefs(var)+1));
   assert(jsvGetRefs(var));
   return var;
 }
@@ -706,7 +672,8 @@ JsVar *jsvRef(JsVar *var) {
 /// Unreference - set this variable as not used by anything
 void jsvUnRef(JsVar *var) {
   assert(var && jsvGetRefs(var)>0 && jsvHasRef(var));
-  jsvSetRefs(var, (JsVarRefCounter)(jsvGetRefs(var)-1));
+  if (jsvGetRefs(var) < JSVARREFCOUNT_MAX) // if we hit max refcounts, just keep them - GC will fix it later
+    jsvSetRefs(var, (JsVarRefCounter)(jsvGetRefs(var)-1));
 }
 
 /// Helper fn, Reference - set this variable as used by something
