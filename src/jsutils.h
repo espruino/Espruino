@@ -150,6 +150,7 @@ int flash_strcmp(const char *mem, const char *flash);
   typedef uint32_t JsVarRef;
   typedef int32_t JsVarRefSigned;
   #define JSVARREF_BITS 32
+  #define JSVARREFCOUNT_BITS 8
 #else
    /** JsVerRaf stores References for variables - We treat 0 as null
    *  NOTE: we store JSVAR_DATA_STRING_* as actual values so we can do #if on them below
@@ -157,6 +158,7 @@ int flash_strcmp(const char *mem, const char *flash);
    */
   #if JSVAR_CACHE_SIZE <= 254
     #define JSVARREF_BITS 8
+    #define JSVARREFCOUNT_BITS 8 // No point going lower
     typedef uint8_t JsVarRef;
     typedef int8_t JsVarRefSigned;
   #elif JSVAR_CACHE_SIZE <= 1023
@@ -188,6 +190,13 @@ int flash_strcmp(const char *mem, const char *flash);
     #error "Assuming 16 bit refs we can't go above 65534 elements"
   #endif
 #endif
+
+#if JSVARREFCOUNT_BITS <= 8
+    typedef uint8_t JsVarRefCounter;
+#else
+#error "Assumed JSVARREFCOUNT_BITS was 8 or less"
+#endif
+
 
 #define JSVARREF_MIN (-(1<<(JSVARREF_BITS-1)))
 #define JSVARREF_MAX ((1<<(JSVARREF_BITS-1))-1)

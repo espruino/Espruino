@@ -16,13 +16,6 @@
 
 #include "jsutils.h"
 
-/** To avoid confusion - JsVarRefCounter should be big enough
- * to store as many refs as can possibly be created - so it's
- * safe just to set it to the same size as JsVarRef. However
- * it is NOT a reference itself.
- */
-typedef JsVarRef JsVarRefCounter;
-
 /** These flags are at the top of each JsVar and provide information about what it is, as
  * well as how many Locks it has. Everything is packed in as much as possible to allow us to
  * get down to within 2 bytes. */

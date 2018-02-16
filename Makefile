@@ -63,7 +63,7 @@ endif
 INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS?=
 DEFINES?=
-CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
+CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -Wno-packed-bitfield-compat
 LDFLAGS?=-Winline
 OPTIMIZEFLAGS?=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror

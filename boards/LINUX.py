@@ -30,7 +30,8 @@ info = {
      'TELNET',
    ],
    'makefile' : [
-#     'DEFINES+=-DFLASH_64BITS_ALIGNMENT=1', For testing 64 bit flash writes
+#     'DEFINES+=-DFLASH_64BITS_ALIGNMENT=1', # For testing 64 bit flash writes
+#     'CFLAGS+=-m32', 'LDFLAGS+=-m32', # For testing 32 bit builds (arg passing still broken on 32 bit x86)
      'LINUX=1',
    ]
  }
