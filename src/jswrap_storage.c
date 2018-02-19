@@ -93,6 +93,55 @@ JsVar *jswrap_storage_read(JsVar *name) {
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
+  "name" : "readJSON",
+  "generate" : "jswrap_storage_readJSON",
+  "params" : [
+    ["name","JsVar","The filename - max 8 characters (case sensitive)"]
+  ],
+  "return" : ["JsVar","An object containing parsed JSON from the file, or undefined"]
+}
+Read a file from the flash storage area that has
+been written with `require("Storage").write(...)`,
+and parse JSON in it into a JavaScript object.
+
+This is identical to `JSON.parse(require("Storage").read(...))`
+*/
+JsVar *jswrap_storage_readJSON(JsVar *name) {
+  JsVar *v = jsfReadFile(jsfNameFromVar(name));
+  if (!v) return 0;
+  return jswrap_json_parse(v);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Storage",
+  "name" : "readArrayBuffer",
+  "generate" : "jswrap_storage_readArrayBuffer",
+  "params" : [
+    ["name","JsVar","The filename - max 8 characters (case sensitive)"]
+  ],
+  "return" : ["JsVar","An ArrayBuffer containing data from the file, or undefined"]
+}
+Read a file from the flash storage area that has
+been written with `require("Storage").write(...)`,
+and return the raw binary data as an ArrayBuffer.
+
+This can be used:
+
+* In a `DataView` with `new DataView(require("Storage").readArrayBuffer("x"))`
+* In a `Uint8Array/Float32Array/etc` with `new Uint8Array(require("Storage").readArrayBuffer("x"))`
+*/
+JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
+  JsVar *v = jsfReadFile(jsfNameFromVar(name));
+  if (!v) return 0;
+  return jsvNewArrayBufferFromString(v, 0);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Storage",
   "name" : "write",
   "generate" : "jswrap_storage_write",
   "params" : [
@@ -113,7 +162,7 @@ a new file, and `require("Storage").read("MyFile")` to read it.
 If you supply:
 
 * A String, it will be written as-is
-* An array, will be written as a byte array (but read back as a String
+* An array, will be written as a byte array (but read back as a String)
 * An object, it will automatically be converted to
 a JSON string before being written.
 
@@ -133,11 +182,13 @@ have RAM available.
 */
 bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt _size) {
   JsVar *d;
-  if (jsvIsObject(data))
+  if (jsvIsObject(data)) {
     d = jswrap_json_stringify(data,0,0);
-  else
+    offset = 0;
+    _size = 0;
+  } else
     d = jsvLockAgainSafe(data);
-  bool success = jsfWriteFile(jsfNameFromVar(name), d, offset, _size);
+  bool success = jsfWriteFile(jsfNameFromVar(name), d, JSFF_NONE, offset, _size);
   jsvUnLock(d);
   return success;
 }

@@ -33,6 +33,10 @@ typedef struct {
   JsfFileName name; ///< 0-padded filename
 } JsfFileHeader;
 
+typedef enum {
+  JSFF_NONE,
+  JSFF_COMPRESSED = 128   // This file contains compressed data
+} JsfFileFlags;
 
 
 // ------------------------------------------------------------------------ Flash Storage Functionality
@@ -40,13 +44,16 @@ typedef struct {
 JsfFileName jsfNameFromString(const char *name);
 /// utility function for creating JsfFileName
 JsfFileName jsfNameFromVar(JsVar *name);
-uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfFileHeader *returnedHeader);
+/// Return the size in bytes of a file based on the header
+uint32_t jsfGetFileSize(JsfFileHeader *header);
+/// Return the flags for this file based on the header
+JsfFileFlags jsfGetFileFlags(JsfFileHeader *header);
 /// Find a 'file' in the memory store. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
 uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader);
 /// Return the contents of a file as a memory mapped var
 JsVar *jsfReadFile(JsfFileName name);
 /// Write a file. For simple stuff just leave offset and size as 0
-bool jsfWriteFile(JsfFileName name, JsVar *data, JsVarInt offset, JsVarInt _size);
+bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt offset, JsVarInt _size);
 /// Erase the given file
 void jsfEraseFile(JsfFileName name);
 /// Erase the entire contents of the memory store

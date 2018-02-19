@@ -15,6 +15,8 @@
 
 void jswrap_storage_eraseAll();
 JsVar *jswrap_storage_read(JsVar *name);
+JsVar *jswrap_storage_readJSON(JsVar *name);
+JsVar *jswrap_storage_readArrayBuffer(JsVar *name);
 bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt size);
 void jswrap_storage_erase(JsVar *name);
 void jswrap_storage_compact();
