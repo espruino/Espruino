@@ -1358,6 +1358,8 @@ void jswrap_espruino_lockConsole() {
 Set the time zone to be used with `Date` objects.
 
 For example `E.setTimeZone(1)` will be GMT+0100
+
+Time can be set with `setTime`.
 */
 void jswrap_espruino_setTimeZone(JsVarFloat zone) {
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_TIMEZONE_VAR,
