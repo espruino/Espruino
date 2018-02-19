@@ -72,7 +72,9 @@ typedef enum {
 /** @brief Parameter IDs for set/get function. */
 typedef enum {
     HAL_NFC_PARAM_ID_TESTING,         ///<  Used for unit tests.
-    HAL_NFC_PARAM_ID_UID,             ///<  Set custom UID
+    HAL_NFC_PARAM_ID_NFCID1,          /**<  NFCID1 value, data can 7 bytes long (double size).
+                                            To use default NFCID1 pass one byte containing a 7.
+                                            This parameter can be set before nfc_t2t_setup() to set initial NFCID1. */
     HAL_NFC_PARAM_ID_INTERNAL,        ///<  Get internal bytes, replaces nfc_t2t_internal_set()
     HAL_NFC_PARAM_ID_UNKNOWN
 } hal_nfc_param_id_t;
