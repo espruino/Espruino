@@ -186,7 +186,7 @@ void UART0_RX_IRQHandler(void)
     USART_IntClear(uart0, UART_IF_RXDATAV);
 
     /* Read one byte from the receive data register */
-    jshPushIOCharEvent(EV_SERIAL4, (char)USART_Rx(uart0));
+    jshPushIOCharEvent(EV_SERIAL1, (char)USART_Rx(uart0));
   }
 }
 
@@ -199,7 +199,7 @@ void UART0_TX_IRQHandler(void)
   if (uart0->IF & UART_IF_TXBL)
   {
     /* If we have other data to send, send it */
-    int c = jshGetCharToTransmit(EV_SERIAL4);
+    int c = jshGetCharToTransmit(EV_SERIAL1);
     if (c >= 0) {
       USART_Tx(uart0, (uint8_t)c);
     } else
@@ -734,19 +734,6 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
       txIRQ = USART2_TX_IRQn;
       CMU_ClockEnable(cmuClock_USART2, true);
       break;
-    case EV_SERIAL4:
-      uart = uart0;
-      rxIRQ = UART0_RX_IRQn;
-      txIRQ = UART0_TX_IRQn;
-      routeLoc = UART_ROUTE_LOCATION_LOC1;
-      CMU_ClockEnable(cmuClock_UART0, true);
-      break;
-    case EV_SERIAL5:
-      uart = uart1;
-      rxIRQ = UART1_RX_IRQn;
-      txIRQ = UART1_TX_IRQn;
-      CMU_ClockEnable(cmuClock_UART1, true);
-      break;
     default: assert(0);
   }
 
@@ -801,12 +788,6 @@ void jshUSARTKick(IOEventFlags device) {
       break;
     case EV_SERIAL3:
       uart = usart2;
-      break;
-    case EV_SERIAL4:
-      uart = uart0;
-      break;
-    case EV_SERIAL5:
-      uart = uart1;
       break;
     default: assert(0);
   }

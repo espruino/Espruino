@@ -585,16 +585,16 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SERIAL1 : return USART1;
    case EV_SERIAL2 : return USART2;
-#ifdef USART3
+#if USART_COUNT>=3
    case EV_SERIAL3 : return USART3;
 #endif
-#ifdef UART4
+#if USART_COUNT>=4
    case EV_SERIAL4 : return UART4;
 #endif
-#ifdef UART5
+#if USART_COUNT>=5
    case EV_SERIAL5 : return UART5;
 #endif
-#ifdef USART6
+#if USART_COUNT>=6
    case EV_SERIAL6 : return USART6;
 #endif
    default: return 0;
@@ -604,8 +604,12 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
 SPI_TypeDef* getSPIFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SPI1 : return SPI1;
+#if SPI_COUNT>=2
    case EV_SPI2 : return SPI2;
+#endif
+#if SPI_COUNT>=3
    case EV_SPI3 : return SPI3;
+#endif
    default: return 0;
  }
 }
@@ -614,7 +618,7 @@ I2C_TypeDef* getI2CFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_I2C1 : return I2C1;
    case EV_I2C2 : return I2C2;
-#ifdef I2C3
+#if I2C_COUNT>=3
    case EV_I2C3 : return I2C3;
 #endif
    default: return 0;
