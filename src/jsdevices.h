@@ -35,30 +35,15 @@ void jshResetDevices();
 typedef enum {
   // device type
   EV_NONE,
-  EV_EXTI0,  // External Interrupt 0
-  EV_EXTI1,  // External Interrupt 1
-  EV_EXTI2,  // External Interrupt 2
-  EV_EXTI3,  // External Interrupt 3
-  EV_EXTI4,  // External Interrupt 4
-  EV_EXTI5,  // External Interrupt 5
-  EV_EXTI6,  // External Interrupt 6
-  EV_EXTI7,  // External Interrupt 7
-  EV_EXTI8,  // External Interrupt 8
-  EV_EXTI9,  // External Interrupt 9
-  EV_EXTI10, // External Interrupt 10
-  EV_EXTI11, // External Interrupt 11
-  EV_EXTI12, // External Interrupt 12
-  EV_EXTI13, // External Interrupt 13
-  EV_EXTI14, // External Interrupt 14
-  EV_EXTI15, // External Interrupt 15
-  EV_EXTI_MAX = EV_EXTI15,
+  EV_EXTI0,  ///< External Interrupt
+  EV_EXTI_MAX = EV_EXTI0 + EXTI_COUNT - 1,
   EV_SERIAL_START,
   EV_LOOPBACKA = EV_SERIAL_START,
   EV_LOOPBACKB,
-  EV_LIMBO,     // Where console output goes right after boot - one sec later we move it to USB/Serial
-  EV_USBSERIAL,
+  EV_LIMBO,     ///< Where console output goes right after boot - one sec later we move it to USB/Serial
+  EV_USBSERIAL, ///< USB CDC Serial Data
 #ifdef BLUETOOTH
-  EV_BLUETOOTH,
+  EV_BLUETOOTH, ///< Bluetooth LE
 #endif
 #ifdef USE_TELNET
   EV_TELNET,
@@ -66,32 +51,56 @@ typedef enum {
 #ifdef USE_TERMINAL
   EV_TERMINAL, // Built-in VT100 terminal
 #endif
+#if USART_COUNT>=1
   EV_SERIAL1, // Used for IO for UARTS
+#endif
+#if USART_COUNT>=2
   EV_SERIAL2,
+#endif
+#if USART_COUNT>=3
   EV_SERIAL3,
+#endif
+#if USART_COUNT>=4
   EV_SERIAL4,
+#endif
+#if USART_COUNT>=5
   EV_SERIAL5,
+#endif
+#if USART_COUNT>=6
   EV_SERIAL6,
-  EV_SERIAL_MAX = EV_SERIAL6,
+#endif
+#if USART_COUNT>=1
+  EV_SERIAL_MAX = EV_SERIAL1 + USART_COUNT - 1,
   EV_SERIAL1_STATUS, // Used to store serial status info
-  EV_SERIAL2_STATUS,
-  EV_SERIAL3_STATUS,
-  EV_SERIAL4_STATUS,
-  EV_SERIAL5_STATUS,
-  EV_SERIAL6_STATUS,
-  EV_SERIAL_STATUS_MAX = EV_SERIAL6_STATUS,
+  EV_SERIAL_STATUS_MAX = EV_SERIAL1_STATUS + USART_COUNT - 1,
+#endif
 #ifdef BLUETOOTH
   EV_BLUETOOTH_PENDING, // Pending tasks set by
 #endif
-  EV_SPI1,
+#if SPI_COUNT>=1
+  EV_SPI1, ///< SPI Devices
+#endif
+#if SPI_COUNT>=2
   EV_SPI2,
+#endif
+#if SPI_COUNT>=3
   EV_SPI3,
-  EV_SPI_MAX = EV_SPI3,
-  EV_I2C1,
+#endif
+#if SPI_COUNT>=1
+  EV_SPI_MAX = EV_SPI1 + SPI_COUNT - 1,
+#endif
+#if I2C_COUNT>=1
+  EV_I2C1, ///< I2C Devices
+#endif
+#if I2C_COUNT>=2
   EV_I2C2,
+#endif
+#if I2C_COUNT>=3
   EV_I2C3,
-  EV_I2C_MAX = EV_I2C3,
-
+#endif
+#if I2C_COUNT>=1
+  EV_I2C_MAX = EV_I2C1 + I2C_COUNT - 1,
+#endif
   EV_DEVICE_MAX = EV_SERIAL_STATUS_MAX,
   // EV_DEVICE_MAX should not be >64 - see DEVICE_INITIALISED_FLAGS
   EV_TYPE_MASK = NEXT_POWER_2(EV_DEVICE_MAX) - 1,
@@ -107,15 +116,28 @@ typedef enum {
   EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,
 } PACKED_FLAGS IOEventFlags;
 
-#define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK!=63) jsError("DEVICE_SANITY_CHECK failed")
+#define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK>63) jsError("DEVICE_SANITY_CHECK failed")
 
 // Return true if the device is a USART
+#if USART_COUNT>=1
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))
 #define DEVICE_IS_USART_STATUS(X) (((X)>=EV_SERIAL1_STATUS) && ((X)<=EV_SERIAL_STATUS_MAX))
+#else
+#define DEVICE_IS_USART(X) (false)
+#define DEVICE_IS_USART_STATUS(X) (false)
+#endif
 
 // Return true if the device is an SPI.
+#if SPI_COUNT>=1
 #define DEVICE_IS_SPI(X) (((X)>=EV_SPI1) && ((X)<=EV_SPI_MAX))
+#else
+#define DEVICE_IS_SPI(X) (false)
+#endif
+#if I2C_COUNT>=1
 #define DEVICE_IS_I2C(X) (((X)>=EV_I2C1) && ((X)<=EV_I2C_MAX))
+#else
+#define DEVICE_IS_I2C(X) (false)
+#endif
 #define DEVICE_IS_EXTI(X) (((X)>=EV_EXTI0) && ((X)<=EV_EXTI_MAX))
 
 #define IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(X) ((X) + EV_SERIAL1_STATUS - EV_SERIAL1)

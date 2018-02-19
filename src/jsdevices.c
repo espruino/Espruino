@@ -541,8 +541,12 @@ const char *jshGetDeviceString(
   case EV_TERMINAL: return "Terminal";
 #endif
   case EV_SERIAL1: return "Serial1";
+#if USART_COUNT>=2
   case EV_SERIAL2: return "Serial2";
+#endif
+#if USART_COUNT>=3
   case EV_SERIAL3: return "Serial3";
+#endif
 #if USART_COUNT>=4
   case EV_SERIAL4: return "Serial4";
 #endif
@@ -604,43 +608,25 @@ IOEventFlags jshFromDeviceString(
 #endif
   }
   else if (device[0]=='S') {
-    if (device[1]=='e' && device[2]=='r' && device[3]=='i' && device[4]=='a' && device[5]=='l' && device[6]!=0 && device[7]==0) {
-      if (device[6]=='1') return EV_SERIAL1;
-      if (device[6]=='2') return EV_SERIAL2;
-      if (device[6]=='3') return EV_SERIAL3;
-#if USART_COUNT>=4
-      if (device[6]=='4') return EV_SERIAL4;
+#if USART_COUNT>0
+  if (device[1]=='e' && device[2]=='r' && device[3]=='i' && device[4]=='a' && device[5]=='l' &&
+      device[6]>='1' && (device[6]-'1')<USART_COUNT &&
+      device[7]==0)
+    return EV_SERIAL1+device[6]-'1';
 #endif
-#if USART_COUNT>=5
-      if (device[6]=='5') return EV_SERIAL5;
-#endif
-#if USART_COUNT>=6
-      if (device[6]=='6') return EV_SERIAL6;
-#endif
-    }
-    if (device[1]=='P' && device[2]=='I' && device[3]!=0 && device[4]==0) {
-#if SPI_COUNT>=1
-      if (device[3]=='1') return EV_SPI1;
-#endif
-#if SPI_COUNT>=2
-      if (device[3]=='2') return EV_SPI2;
-#endif
-#if SPI_COUNT>=3
-      if (device[3]=='3') return EV_SPI3;
-#endif
-    }
-  }
-  else if (device[0]=='I' && device[1]=='2' && device[2]=='C' && device[3]!=0 && device[4]==0) {
-#if I2C_COUNT>=1
-    if (device[3]=='1') return EV_I2C1;
-#endif
-#if I2C_COUNT>=2
-    if (device[3]=='2') return EV_I2C2;
-#endif
-#if I2C_COUNT>=3
-    if (device[3]=='3') return EV_I2C3;
+#if SPI_COUNT>0
+  if (device[1]=='P' && device[2]=='I' &&
+      device[3]>='1' && (device[3]-'1')<SPI_COUNT &&
+      device[4]==0)
+    return EV_SPI1+device[3]-'1';
 #endif
   }
+#if I2C_COUNT>0
+  else if (device[0]=='I' && device[1]=='2' && device[2]=='C' &&
+           device[3]>='1' && (device[3]-'1')<I2C_COUNT &&
+           device[4]==0)
+    return EV_I2C1+device[3]-'1';
+#endif
   return EV_NONE;
 }
 
