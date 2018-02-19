@@ -18,6 +18,7 @@
 #include "jsflash.h"
 #include "jsvar.h"
 #include "jsvariterator.h"
+#include "jswrap_json.h"
 
 /*JSON{
   "type" : "library",
@@ -109,6 +110,13 @@ or power is lost.
 Simply write `require("Storage").write("MyFile", "Some data")` to write
 a new file, and `require("Storage").read("MyFile")` to read it.
 
+If you supply:
+
+* A String, it will be written as-is
+* An array, will be written as a byte array (but read back as a String
+* An object, it will automatically be converted to
+a JSON string before being written.
+
 You may also create a file and then populate data later as long as you
 don't try and overwrite data that already exists. For instance:
 
@@ -124,7 +132,14 @@ This can be useful if you've got more data to write than you
 have RAM available.
 */
 bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt _size) {
-  return jsfWriteFile(jsfNameFromVar(name), data, offset, _size);
+  JsVar *d;
+  if (jsvIsObject(data))
+    d = jswrap_json_stringify(data,0,0);
+  else
+    d = jsvLockAgainSafe(data);
+  bool success = jsfWriteFile(jsfNameFromVar(name), d, offset, _size);
+  jsvUnLock(d);
+  return success;
 }
 
 /*JSON{
