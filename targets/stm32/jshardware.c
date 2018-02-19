@@ -585,13 +585,13 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SERIAL1 : return USART1;
    case EV_SERIAL2 : return USART2;
-#if USART_COUNT>=3
+#if USART_COUNT>=3 && defined(USART3)
    case EV_SERIAL3 : return USART3;
 #endif
-#if USART_COUNT>=4
+#if USART_COUNT>=4 && defined(UART4)
    case EV_SERIAL4 : return UART4;
 #endif
-#if USART_COUNT>=5
+#if USART_COUNT>=5 && defined(UART5)
    case EV_SERIAL5 : return UART5;
 #endif
 #if USART_COUNT>=6
