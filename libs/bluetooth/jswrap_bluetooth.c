@@ -2650,10 +2650,10 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
     "class" : "BluetoothRemoteGATTCharacteristic",
     "name" : "readValue",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue",
-    "return" : ["JsVar", "A Promise that is resolved (or rejected) with a DataView when the characteristic is read" ]
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) with a `DataView` when the characteristic is read" ]
 }
 
-Read a characteristic's value, return a promise containing a DataView
+Read a characteristic's value, return a promise containing a `DataView`
 
 ```
 var device;
