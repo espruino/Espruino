@@ -75,7 +75,8 @@ typedef enum {
   EV_SERIAL_STATUS_MAX = EV_SERIAL1_STATUS + USART_COUNT - 1,
 #endif
 #ifdef BLUETOOTH
-  EV_BLUETOOTH_PENDING, // Pending tasks set by
+  EV_BLUETOOTH_PENDING,      // Tasks that came from the Bluetooth Stack in an IRQ
+  EV_BLUETOOTH_PENDING_DATA, // Data for pending tasks - this comes after the EV_BLUETOOTH_PENDING task itself
 #endif
 #if SPI_COUNT>=1
   EV_SPI1, ///< SPI Devices
@@ -101,7 +102,7 @@ typedef enum {
 #if I2C_COUNT>=1
   EV_I2C_MAX = EV_I2C1 + I2C_COUNT - 1,
 #endif
-  EV_DEVICE_MAX = EV_SERIAL_STATUS_MAX,
+  EV_DEVICE_MAX,
   // EV_DEVICE_MAX should not be >64 - see DEVICE_INITIALISED_FLAGS
   EV_TYPE_MASK = NEXT_POWER_2(EV_DEVICE_MAX) - 1,
   // ----------------------------------------- CHARACTERS RECEIVED
@@ -159,16 +160,16 @@ typedef struct IOEvent {
   IOEventData data;
 } PACKED_FLAGS IOEvent;
 
+/// Push an IO event into the ioBuffer (designed to be called from IRQ)
+void jshPushEvent(IOEvent *evt);
+// Push an 'IO' even
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time);
 void jshPushIOWatchEvent(IOEventFlags channel); // push an even when a pin changes state
 /// Push a single character event (for example USART RX)
 void jshPushIOCharEvent(IOEventFlags channel, char charData);
 /// Push many character events at once (for example USB RX)
-static inline void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
-  // TODO: optimise me!
-  unsigned int i;
-  for (i=0;i<count;i++) jshPushIOCharEvent(channel, data[i]);
-}
+void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count);
+
 bool jshPopIOEvent(IOEvent *result); ///< returns true on success
 bool jshPopIOEventOfType(IOEventFlags eventType, IOEvent *result); ///< returns true on success
 /// Do we have any events pending? Will jshPopIOEvent return true?

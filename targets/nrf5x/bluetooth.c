@@ -158,30 +158,75 @@ volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
 uint16_t bleFinalHandle;
 
-/* If we're received an advertising message it's put in here and then a message
- * to process it is shoved in the queue. Not 100% ideal if we don't get around
- * to processing it in time... Could shove all the data in the queue? */
-static ble_gap_evt_adv_report_t blePendingAdvReport;
-
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
+/// Add a new bluetooth event to the queue with a buffer of data
+void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len) {
+  // Push the data for the event first
+  while (len) {
+    int evtLen = len;
+    if (evtLen > IOEVENT_MAXCHARS) evtLen=IOEVENT_MAXCHARS;
+    IOEvent evt;
+    evt.flags = EV_BLUETOOTH_PENDING_DATA;
+    IOEVENTFLAGS_SETCHARS(evt.flags, evtLen);
+    memcpy(evt.data.chars, ptr, evtLen);
+    jshPushEvent(&evt);
+    ptr += evtLen;
+    len -= evtLen;
+  }
+  // Push the actual event
+  JsSysTime d = (JsSysTime)((data<<8)|blep);
+  jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
+  jshHadEvent();
+}
+
+/// Add a new bluetooth event to the queue with 16 bits of data
 void jsble_queue_pending_d(BLEPending blep, uint16_t data) {
   JsSysTime d = (JsSysTime)((data<<8)|blep);
   jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
   jshHadEvent();
 }
 
+/// Add a new bluetooth event to the queue without data
 void jsble_queue_pending(BLEPending blep) {
   jsble_queue_pending_d(blep,0);
 }
 
-void jsble_exec_pending(IOEvent *event) {
+/// Executes a pending BLE event - returns the number of events Handled
+int jsble_exec_pending(IOEvent *event) {
+  int eventsHandled = 1;
+  // if we got event data, unpack it first into a buffer
+  unsigned char buffer[64];
+  assert(sizeof(buffer) >= sizeof(ble_gap_evt_adv_report_t));
+  assert(sizeof(buffer) >= GATT_MTU_SIZE_DEFAULT);
+  size_t bufferLen = 0;
+  while (IOEVENTFLAGS_GETTYPE(event->flags) == EV_BLUETOOTH_PENDING_DATA) {
+    int i, chars = IOEVENTFLAGS_GETCHARS(event->flags);
+    for (i=0;i<chars;i++) {
+      assert(bufferLen < sizeof(buffer));
+      if (bufferLen < sizeof(buffer))
+        buffer[bufferLen++] = event->data.chars[i];
+    }
+
+    jshPopIOEvent(event);
+    eventsHandled++;
+  }
+  assert(IOEVENTFLAGS_GETTYPE(event->flags) == EV_BLUETOOTH_PENDING);
+
+  // Now handle the actual event
   BLEPending blep = (BLEPending)event->data.time;
   uint16_t data = (uint16_t)(event->data.time>>8);
   switch (blep) {
    case BLEP_NONE: break;
+   case BLEP_CONNECTED: {
+     assert(bufferLen == sizeof(ble_gap_addr_t));
+     ble_gap_addr_t *peer_addr = (ble_gap_addr_t*)buffer;
+     bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", bleAddrToStr(*peer_addr));
+     jshHadEvent();
+     break;
+   }
    case BLEP_DISCONNECTED: {
      JsVar *reason = jsvNewFromInteger(data);
      bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
@@ -194,19 +239,40 @@ void jsble_exec_pending(IOEvent *event) {
      break;
    }
    case BLEP_ADV_REPORT: {
+     ble_gap_evt_adv_report_t *p_adv = (ble_gap_evt_adv_report_t *)buffer;
+     if (bufferLen < sizeof(ble_gap_evt_adv_report_t)) {
+       assert(0);
+       break;
+     }
      JsVar *evt = jsvNewObject();
      if (evt) {
-       jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(blePendingAdvReport.rssi));
+       jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
        //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
-       jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(blePendingAdvReport.peer_addr));
-       JsVar *data = jsvNewStringOfLength(blePendingAdvReport.dlen, (char*)blePendingAdvReport.data);
+       jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
+       JsVar *data = jsvNewStringOfLength(p_adv->dlen, (char*)p_adv->data);
        if (data) {
-         JsVar *ab = jsvNewArrayBufferFromString(data, blePendingAdvReport.dlen);
+         JsVar *ab = jsvNewArrayBufferFromString(data, p_adv->dlen);
          jsvUnLock(data);
          jsvObjectSetChildAndUnLock(evt, "data", ab);
        }
        // push onto queue
        jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
+       jsvUnLock(evt);
+     }
+     break;
+   }
+   case BLEP_WRITE: {
+     JsVar *evt = jsvNewObject();
+     if (evt) {
+       JsVar *str = jsvNewStringOfLength(bufferLen, (char*)buffer);
+       if (str) {
+         JsVar *ab = jsvNewArrayBufferFromString(str, bufferLen);
+         jsvUnLock(str);
+         jsvObjectSetChildAndUnLock(evt, "data", ab);
+       }
+       char eventName[12];
+       bleGetWriteEventName(eventName, data);
+       jsiQueueObjectCallbacks(execInfo.root, eventName, &evt, 1);
        jsvUnLock(evt);
      }
      break;
@@ -230,10 +296,17 @@ void jsble_exec_pending(IOEvent *event) {
      break;
    case BLEP_TASK_FAIL_DISCONNECTED:
      bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
+     break;
    case BLEP_TASK_CENTRAL_CONNECTED:
      jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
      bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
      break;
+   case BLEP_TASK_CHARACTERISTIC_READ: {
+     JsVar *d = jsvNewDataViewWithData(bufferLen, buffer);
+     jsvObjectSetChild(bleTaskInfo, "value", d); // set this.value
+     bleCompleteTaskSuccessAndUnLock(BLETASK_CHARACTERISTIC_READ, d);
+     break;
+   }
    case BLEP_GATT_SERVER_DISCONNECTED: {
      JsVar *gattServer = bleGetActiveBluetoothGattServer();
      if (gattServer) {
@@ -251,6 +324,26 @@ void jsble_exec_pending(IOEvent *event) {
      bleSetActiveBluetoothGattServer(0);
      break;
    }
+   case BLEP_NOTIFICATION: {
+     JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", 0);
+     if (handles) {
+       JsVar *characteristic = jsvGetArrayItem(handles, data/*the handle*/);
+       if (characteristic) {
+         // Set characteristic.value, and return {target:characteristic}
+         jsvObjectSetChildAndUnLock(characteristic, "value",
+             jsvNewDataViewWithData(bufferLen, (unsigned char*)buffer));
+         JsVar *evt = jsvNewObject();
+         if (evt) {
+           jsvObjectSetChild(evt, "target", characteristic);
+           jsiQueueObjectCallbacks(characteristic, JS_EVENT_PREFIX"characteristicvaluechanged", &evt, 1);
+           jshHadEvent();
+           jsvUnLock(evt);
+         }
+       }
+       jsvUnLock2(characteristic, handles);
+     }
+     break;
+   }
 #endif
 #ifdef USE_NFC
    case BLEP_NFC_STATUS:
@@ -260,6 +353,7 @@ void jsble_exec_pending(IOEvent *event) {
    default:
      jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
  }
+ return eventsHandled;
 }
 
 
@@ -613,10 +707,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
-          // TODO: queue connection event via jsble_queue_pending
-          JsVar *addr = bleAddrToStr(p_ble_evt->evt.gap_evt.params.connected.peer_addr);
-          bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", addr);
-          jshHadEvent();
+          jsble_queue_pending_buf(BLE_GAP_EVT_CONNECTED, 0, (char*)&p_ble_evt->evt.gap_evt.params.connected.peer_addr, sizeof(ble_gap_addr_t));
         }
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
@@ -850,32 +941,16 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
       case BLE_GAP_EVT_ADV_REPORT: {
         // Advertising data received
-        // TODO: actually push advertising data onto queue (this method can occasionally lose advertising reports)
         const ble_gap_evt_adv_report_t *p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
-        blePendingAdvReport = *p_adv;
-        jsble_queue_pending(BLEP_ADV_REPORT);
+        jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)p_adv, sizeof(ble_gap_evt_adv_report_t));
         break;
         }
 
       case BLE_GATTS_EVT_WRITE: {
         const ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
         // TODO: detect if this was a nus write. If so, DO NOT create an event for it!
-        // TODO: move to writing via event queue with jsble_queue_pending
-        // We got a param write event - add this to the object callback queue
-        JsVar *evt = jsvNewObject();
-        if (evt) {
-          JsVar *data = jsvNewStringOfLength(p_evt_write->len, (char*)p_evt_write->data);
-          if (data) {
-            JsVar *ab = jsvNewArrayBufferFromString(data, p_evt_write->len);
-            jsvUnLock(data);
-            jsvObjectSetChildAndUnLock(evt, "data", ab);
-          }
-          char eventName[12];
-          bleGetWriteEventName(eventName, p_evt_write->handle);
-          jsiQueueObjectCallbacks(execInfo.root, eventName, &evt, 1);
-          jsvUnLock(evt);
-          jshHadEvent();
-        }
+        // We got a param write event - add this to the bluetooth event queue
+        jsble_queue_pending_buf(BLEP_WRITE, p_evt_write->handle, (char*)p_evt_write->data, p_evt_write->len);
         break;
       }
 
@@ -920,6 +995,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             jsvUnLock(bleTaskInfo);
             bleTaskInfo = t;
           }
+          // TODO: move to event queue
           if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, bleTaskInfo);
           else bleCompleteTaskFailAndUnLock(BLETASK_PRIMARYSERVICE, jsvNewFromString("No Services found"));
         } // else error
@@ -981,6 +1057,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             jsvUnLock(bleTaskInfo);
             bleTaskInfo = t;
           }
+          // TODO: move to event queue
           if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, bleTaskInfo);
           else bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC, jsvNewFromString("No Characteristics found"));
         }
@@ -1010,6 +1087,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           bleSwitchTask(BLETASK_CHARACTERISTIC_NOTIFY);
           jsble_central_characteristicNotify(bleTaskInfo, true);
         } else {
+          // TODO: move to event queue
           bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, jsvNewFromString("CCCD Handle not found"));
         }
         break;
@@ -1017,14 +1095,12 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
       case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) {
         const ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
-
-        JsVar *data = jsvNewDataViewWithData(p_read->len, (unsigned char*)&p_read->data[0]);
-        jsvObjectSetChild(bleTaskInfo, "value", data); // set this.value
-        bleCompleteTaskSuccessAndUnLock(BLETASK_CHARACTERISTIC_READ, data);
+        jsble_queue_pending_buf(BLEP_TASK_CHARACTERISTIC_READ, 0, (char*)&p_read->data[0], p_read->len);
         break;
       }
 
       case BLE_GATTC_EVT_WRITE_RSP: {
+        // TODO: move to event queue
         if (bleInTask(BLETASK_CHARACTERISTIC_NOTIFY))
           bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_NOTIFY, 0);
         else if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
@@ -1035,25 +1111,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GATTC_EVT_HVX: {
         // Notification/Indication
         const ble_gattc_evt_hvx_t *p_hvx = &p_ble_evt->evt.gattc_evt.params.hvx;
-        // p_hvx>type is BLE_GATT_HVX_NOTIFICATION or BLE_GATT_HVX_INDICATION
-        JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", 0);
-        if (handles) {
-          JsVar *characteristic = jsvGetArrayItem(handles, p_hvx->handle);
-          if (characteristic) {
-            // Set characteristic.value, and return {target:characteristic}
-            jsvObjectSetChildAndUnLock(characteristic, "value",
-                jsvNewDataViewWithData(p_hvx->len, (unsigned char*)p_hvx->data));
-            // TODO: queue event with jsble_queue_pending
-            JsVar *evt = jsvNewObject();
-            if (evt) {
-              jsvObjectSetChild(evt, "target", characteristic);
-              jsiQueueObjectCallbacks(characteristic, JS_EVENT_PREFIX"characteristicvaluechanged", &evt, 1);
-              jshHadEvent();
-              jsvUnLock(evt);
-            }
-          }
-          jsvUnLock2(characteristic, handles);
-        }
+        // p_hvx->type is BLE_GATT_HVX_NOTIFICATION or BLE_GATT_HVX_INDICATION
+        jsble_queue_pending_buf(BLEP_NOTIFICATION, p_hvx->handle, (char*)p_hvx->data, p_hvx->len);
         break;
       }
 #endif
@@ -1199,6 +1258,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
         } break;
 
         case PM_EVT_CONN_SEC_START:
+          // TODO: move to event queue
           if (bleInTask(BLETASK_BONDING))
             bleCompleteTaskSuccess(BLETASK_BONDING, 0);
             break;
@@ -1244,6 +1304,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_CONN_SEC_FAILED:
         {
+          // TODO: move to event queue
           if (bleInTask(BLETASK_BONDING))
             bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Securing failed"));
             /** In some cases, when securing fails, it can be restarted directly. Sometimes it can

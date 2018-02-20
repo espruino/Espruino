@@ -1836,8 +1836,8 @@ void jsiIdle() {
       }
       jsvUnLock(usartClass);
 #ifdef BLUETOOTH
-    } else if (eventType == EV_BLUETOOTH_PENDING) {
-      jsble_exec_pending(&event);
+    } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
+      maxEvents -= jsble_exec_pending(&event);
 #endif
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...

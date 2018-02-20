@@ -92,6 +92,7 @@ typedef enum  {
 
 typedef enum {
   BLEP_NONE,
+  BLEP_CONNECTED,                 // Peripheral connected (contains address)
   BLEP_DISCONNECTED,
   BLEP_RSSI_CENTRAL,
   BLEP_RSSI_PERIPH,
@@ -99,8 +100,11 @@ typedef enum {
   BLEP_TASK_FAIL_CONN_TIMEOUT,
   BLEP_TASK_FAIL_DISCONNECTED,
   BLEP_TASK_CENTRAL_CONNECTED,
+  BLEP_TASK_CHARACTERISTIC_READ,
   BLEP_GATT_SERVER_DISCONNECTED,
   BLEP_NFC_STATUS,
+  BLEP_WRITE,                     // One of our characteristics written by someone else
+  BLEP_NOTIFICATION,              // A characteristic we were watching has changes
 } BLEPending;
 
 
@@ -117,10 +121,12 @@ void jsble_init();
 void jsble_kill();
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) */
 void jsble_queue_pending(BLEPending blep);
-/** Add a task to the queue to be executed (to be called mainly from IRQ-land) */
+/** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
+void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
+/** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with simple data */
 void jsble_queue_pending_d(BLEPending blep, uint16_t data);
-/** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land*/
-void jsble_exec_pending(IOEvent *event);
+/** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land. Returns number of events handled */
+int jsble_exec_pending(IOEvent *event);
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */

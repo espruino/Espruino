@@ -349,39 +349,8 @@ void CALLED_FROM_INTERRUPT jshIOEventOverflowed() {
   jsErrorFlags |= JSERR_RX_FIFO_FULL;
 }
 
-
-/**
- * Send a character to the specified device.
- */
-void jshPushIOCharEvent(
-    IOEventFlags channel, // !< The device to target for output.
-    char charData         // !< The character to send to the device.
-  ) {
-  // Check for a CTRL+C
-  if (charData==3 && channel==jsiGetConsoleDevice()) {
-    jsiCtrlC(); // Ctrl-C - force interrupt of execution
-    return;
-  }
-  // Check for existing buffer (we must have at least 2 in the queue to avoid dropping chars though!)
-#ifndef LINUX // no need for this on linux, and also potentially dodgy when multi-threading
-  unsigned char lastHead = (unsigned char)((ioHead+IOBUFFERMASK) & IOBUFFERMASK); // one behind head
-  if (ioHead!=ioTail && lastHead!=ioTail) {
-    // we can do this because we only read in main loop, and we're in an interrupt here
-    if (IOEVENTFLAGS_GETTYPE(ioBuffer[lastHead].flags) == channel) {
-      unsigned char c = (unsigned char)IOEVENTFLAGS_GETCHARS(ioBuffer[lastHead].flags);
-      if (c < IOEVENT_MAXCHARS) {
-        // last event was for this event type, and it has chars left
-        ioBuffer[lastHead].data.chars[c] = charData;
-        IOEVENTFLAGS_SETCHARS(ioBuffer[lastHead].flags, c+1);
-        return; // char added, job done
-      }
-    }
-  }
-#endif
-  // Set flow control (as we're going to use more data)
-  if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
-    jshSetFlowControlXON(channel, false);
-
+/// Push an IO event into the ioBuffer (designed to be called from IRQ)
+void CALLED_FROM_INTERRUPT jshPushEvent(IOEvent *evt) {
   /* Make new buffer
    *
    * We're disabling IRQs for this bit because it's actually quite likely for
@@ -394,19 +363,73 @@ void jshPushIOCharEvent(
     jshIOEventOverflowed();
     return; // queue full - dump this event!
   }
-  unsigned char oldHead = ioHead;
+  ioBuffer[ioHead] = *evt;
   ioHead = nextHead;
-  ioBuffer[oldHead].flags = channel;
-  // once channel is set we're safe - another IRQ won't touch this
   jshInterruptOn();
-  IOEVENTFLAGS_SETCHARS(ioBuffer[oldHead].flags, 1);
-  ioBuffer[oldHead].data.chars[0] = charData;
 }
 
-/**
- * Signal an IO watch event as having happened.
- */
-// on the esp8266 we need this to be loaded into static RAM because it can run at interrupt time
+/// Attempt to push characters onto an existing event
+static bool jshPushIOCharEventAppend(IOEventFlags channel, char charData) {
+  unsigned char lastHead = (unsigned char)((ioHead+IOBUFFERMASK) & IOBUFFERMASK); // one behind head
+  if (ioHead!=ioTail && lastHead!=ioTail) {
+    // we can do this because we only read in main loop, and we're in an interrupt here
+    if (IOEVENTFLAGS_GETTYPE(ioBuffer[lastHead].flags) == channel) {
+      unsigned char c = (unsigned char)IOEVENTFLAGS_GETCHARS(ioBuffer[lastHead].flags);
+      if (c < IOEVENT_MAXCHARS) {
+        // last event was for this event type, and it has chars left
+        ioBuffer[lastHead].data.chars[c] = charData;
+        IOEVENTFLAGS_SETCHARS(ioBuffer[lastHead].flags, c+1);
+        return true; // char added, job done
+      }
+    }
+  }
+  return false;
+}
+
+/// Try and handle events in the IRQ itself
+static bool jshPushIOCharEventHandler(IOEventFlags channel, char charData) {
+  // Check for a CTRL+C
+  if (charData==3 && channel==jsiGetConsoleDevice()) {
+    jsiCtrlC(); // Ctrl-C - force interrupt of execution
+    return true;
+  }
+  return false;
+}
+
+
+// Set flow control (as we're going to use more data)
+static void jshPushIOCharEventFlowControl(IOEventFlags channel) {
+  if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
+    jshSetFlowControlXON(channel, false);
+}
+
+/// Send a character to the specified device.
+void jshPushIOCharEvent(
+    IOEventFlags channel, // !< The device to target for output.
+    char charData         // !< The character to send to the device.
+  ) {
+  // See if we need to handle this in the IRQ
+  if (jshPushIOCharEventHandler(channel, charData)) return;
+  // Check if we can push into existing buffer (we must have at least 2 in the queue to avoid dropping chars though!)
+  if (jshPushIOCharEventAppend(channel, charData)) return;
+
+  IOEvent evt;
+  evt.flags = channel;
+  IOEVENTFLAGS_SETCHARS(evt.flags, 1);
+  evt.data.chars[0] = charData;
+  jshPushEvent(&evt);
+  // Set flow control (as we're going to use more data)
+  jshPushIOCharEventFlowControl(channel);
+}
+
+void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
+  // TODO: optimise me!
+  unsigned int i;
+  for (i=0;i<count;i++) jshPushIOCharEvent(channel, data[i]);
+}
+
+/* Signal an IO watch event as having happened.
+On the esp8266 we need this to be loaded into static RAM because it can run at interrupt time */
 void CALLED_FROM_INTERRUPT jshPushIOWatchEvent(
     IOEventFlags channel //!< The channel on which the IO watch event has happened.
   ) {
@@ -432,21 +455,15 @@ void CALLED_FROM_INTERRUPT jshPushIOWatchEvent(
   jshPushIOEvent(channel | (state?EV_EXTI_IS_HIGH:0), time);
 }
 
-/**
- * Add this IO event to the IO event queue.
- */
+/// Add this IO event to the IO event queue.
 void CALLED_FROM_INTERRUPT jshPushIOEvent(
     IOEventFlags channel, //!< The event to add to the queue.
     JsSysTime time        //!< The time that the event is thought to have happened.
   ) {
-  unsigned char nextHead = (unsigned char)((ioHead+1) & IOBUFFERMASK);
-  if (ioTail == nextHead) {
-    jshIOEventOverflowed();
-    return; // queue full - dump this event!
-  }
-  ioBuffer[ioHead].flags = channel;
-  ioBuffer[ioHead].data.time = (unsigned int)time;
-  ioHead = nextHead;
+  IOEvent evt;
+  evt.flags = channel;
+  evt.data.time = (unsigned int)time;
+  jshPushEvent(&evt);
 }
 
 // returns true on success
