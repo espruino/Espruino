@@ -1449,6 +1449,9 @@ NO_INLINE JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a) {
 
   bool expressionOnly = lex->tk!='{';
   jspeFunctionDefinitionInternal(funcVar, expressionOnly);
+  if (execInfo.thisVar) {
+    jsvObjectSetChild(funcVar, JSPARSE_FUNCTION_THIS_NAME, execInfo.thisVar);
+  }
   return funcVar;
 }
 

@@ -41,6 +41,7 @@
             Allow STM32LL port to write 32 bits to flash at a time to bring it in line with other ports
             Allow flash writes *from* unaligned addresses on nRF52 and ESP8266 (previously this crashed the ESP8266)
             Update process.ENV.EXPORTS to bring it in line with what the compiler uses
+            Now set 'this' correctly for Arrow Functions
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line
