@@ -393,6 +393,7 @@ void jslGetNextToken() {
       break;
       case 'c': if (jslIsToken("case", 1)) lex->tk = LEX_R_CASE;
       else if (jslIsToken("catch", 1)) lex->tk = LEX_R_CATCH;
+      else if (jslIsToken("class", 1)) lex->tk = LEX_R_CLASS;
       else if (jslIsToken("const", 1)) lex->tk = LEX_R_CONST;
       else if (jslIsToken("continue", 1)) lex->tk = LEX_R_CONTINUE;
       break;
@@ -402,6 +403,7 @@ void jslGetNextToken() {
       else if (jslIsToken("debugger", 1)) lex->tk = LEX_R_DEBUGGER;
       break;
       case 'e': if (jslIsToken("else", 1)) lex->tk = LEX_R_ELSE;
+      else if (jslIsToken("extends", 1)) lex->tk = LEX_R_EXTENDS;
       break;
       case 'f': if (jslIsToken("false", 1)) lex->tk = LEX_R_FALSE;
       else if (jslIsToken("finally", 1)) lex->tk = LEX_R_FINALLY;
@@ -419,7 +421,9 @@ void jslGetNextToken() {
       break;
       case 'r': if (jslIsToken("return", 1)) lex->tk = LEX_R_RETURN;
       break;
-      case 's': if (jslIsToken("switch", 1)) lex->tk = LEX_R_SWITCH;
+      case 's': if (jslIsToken("static", 1)) lex->tk = LEX_R_STATIC;
+      else if (jslIsToken("super", 1)) lex->tk = LEX_R_SUPER;
+      else if (jslIsToken("switch", 1)) lex->tk = LEX_R_SWITCH;
       break;
       case 't': if (jslIsToken("this", 1)) lex->tk = LEX_R_THIS;
       else if (jslIsToken("throw", 1)) lex->tk = LEX_R_THROW;
@@ -792,6 +796,10 @@ void jslTokenAsString(int token, char *str, size_t len) {
         /*LEX_R_TYPEOF :   */ "typeof\0"
         /*LEX_R_VOID :     */ "void\0"
         /*LEX_R_DEBUGGER : */ "debugger\0"
+        /*LEX_R_CLASS :    */ "class\0"
+        /*LEX_R_EXTENDS :  */ "extends\0"
+        /*LEX_R_SUPER :  */   "super\0"
+        /*LEX_R_STATIC :   */ "static\0"
         ;
     unsigned int p = 0;
     int n = token-_LEX_OPERATOR_START;

@@ -689,6 +689,13 @@ void jsvUnLock3(JsVar *var1, JsVar *var2, JsVar *var3) {
   jsvUnLock(var2);
   jsvUnLock(var3);
 }
+/// Unlock 4 variables in one go
+void jsvUnLock4(JsVar *var1, JsVar *var2, JsVar *var3, JsVar *var4) {
+  jsvUnLock(var1);
+  jsvUnLock(var2);
+  jsvUnLock(var3);
+  jsvUnLock(var4);
+}
 
 /// Unlock an array of variables
 NO_INLINE void jsvUnLockMany(unsigned int count, JsVar **vars) {
