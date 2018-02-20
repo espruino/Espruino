@@ -2189,9 +2189,9 @@ void jsble_nfc_start(const uint8_t *data, size_t len) {
 
   /* Set UID / UID Length */
   if (len)
-    ret_val = hal_nfc_parameter_set(HAL_NFC_PARAM_ID_UID, data, len);
+    ret_val = hal_nfc_parameter_set(HAL_NFC_PARAM_ID_NFCID1, data, len);
   else
-    ret_val = hal_nfc_parameter_set(HAL_NFC_PARAM_ID_UID, "\0\0\0\0\0\0\0", 7);
+    ret_val = hal_nfc_parameter_set(HAL_NFC_PARAM_ID_NFCID1, "\x07", 1);
   if (ret_val)
     return jsExceptionHere(JSET_ERROR, "nfcSetUid: Got NFC error code %d", ret_val);
 
