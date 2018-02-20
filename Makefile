@@ -63,8 +63,8 @@ endif
 INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS?=
 DEFINES?=
-CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
-LDFLAGS?=-Winline
+CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -g
+LDFLAGS?=-Winline -g
 OPTIMIZEFLAGS?=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
 DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
@@ -790,8 +790,7 @@ else # NO_COMPILE
 $(info WRAPPERSOURCES=$(WRAPPERSOURCES));
 endif
 
-lst:
-	$(PROJ_NAME).lst
+lst: $(PROJ_NAME).lst
 
 clean:
 	@echo Cleaning targets
