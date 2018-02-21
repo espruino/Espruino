@@ -183,15 +183,10 @@ void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t l
 }
 
 /// Add a new bluetooth event to the queue with 16 bits of data
-void jsble_queue_pending_d(BLEPending blep, uint16_t data) {
+void jsble_queue_pending(BLEPending blep, uint16_t data) {
   JsSysTime d = (JsSysTime)((data<<8)|blep);
   jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
   jshHadEvent();
-}
-
-/// Add a new bluetooth event to the queue without data
-void jsble_queue_pending(BLEPending blep) {
-  jsble_queue_pending_d(blep,0);
 }
 
 /// Executes a pending BLE event - returns the number of events Handled
@@ -449,6 +444,48 @@ int jsble_exec_pending(IOEvent *event) {
    case BLEP_NFC_STATUS:
      bleQueueEventAndUnLock(data ? JS_EVENT_PREFIX"NFCon" : JS_EVENT_PREFIX"NFCoff", 0);
      break;
+   case BLEP_NFC_TX:
+     bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCtx", 0);
+     break;
+   case BLEP_NFC_RX: {
+     /* try to fetch NfcData data */
+     JsVar *nfcData = jsvObjectGetChild(execInfo.hiddenRoot, "NfcData", 0);
+     if(nfcData) {
+       /* success - handle request internally */
+       JSV_GET_AS_CHAR_ARRAY(nfcDataPtr, nfcDataLen, nfcData);
+       jsvUnLock(nfcData);
+
+       /* check data, on error let request go into timeout - reader will retry. */
+       if (!nfcDataPtr || !nfcDataLen) {
+         break;
+       }
+
+       /* check rx data length and read block command code (0x30) */
+       if(bufferLen < 2 || buffer[0] != 0x30) {
+         jsble_nfc_send_rsp(0, 0); /* switch to rx */
+         break;
+       }
+
+       /* fetch block index (addressing is done in multiples of 4 byte */
+       size_t idx = buffer[1] * 4;
+
+       /* assemble 16 byte block */
+       uint8_t buf[16]; memset(buf, '\0', 16);
+       if(idx + 16 < nfcDataLen) {
+         memcpy(buf, nfcDataPtr + idx, 16);
+       } else
+       if(idx < nfcDataLen) {
+         memcpy(buf, nfcDataPtr + idx, nfcDataLen - idx);
+       }
+       /* send response */
+       jsble_nfc_send(buf, 16);
+     } else {
+       /* no NfcData available, fire js-event */
+       bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCrx",
+           jsvNewArrayBufferWithData(bufferLen, buffer));
+     }
+     break;
+   }
 #endif
 #if BLE_HIDS_ENABLED
    case BLEP_HID_SENT:
@@ -775,9 +812,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_TIMEOUT:
 #if CENTRAL_LINK_COUNT>0
         if (bleInTask(BLETASK_BONDING)) { // BLE_GAP_TIMEOUT_SRC_SECURITY_REQUEST ?
-          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT);
+          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT, 0);
         } else if (bleInTask(BLETASK_CONNECT)) {
-          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT);
+          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT, 0);
         } else
 #endif
         {
@@ -820,7 +857,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
           bleSetActiveBluetoothGattServer(bleTaskInfo);
-          jsble_queue_pending(BLEP_TASK_CENTRAL_CONNECTED);
+          jsble_queue_pending(BLEP_TASK_CENTRAL_CONNECTED, 0);
         }
 #endif
         break;
@@ -833,13 +870,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
-          jsble_queue_pending_d(BLEP_CENTRAL_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
+          jsble_queue_pending(BLEP_CENTRAL_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
 
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
 
           BleTask task = bleGetCurrentTask();
           if (BLETASK_IS_CENTRAL(task)) {
-            jsble_queue_pending(BLEP_TASK_FAIL_DISCONNECTED);
+            jsble_queue_pending(BLEP_TASK_FAIL_DISCONNECTED, 0);
           }
         } else
 #endif
@@ -852,7 +889,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
             jsble_advertising_start();
-          jsble_queue_pending_d(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
+          jsble_queue_pending(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
           jsble_restart_softdevice();
@@ -862,11 +899,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_RSSI_CHANGED: 
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
-          jsble_queue_pending_d(BLEP_RSSI_CENTRAL, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
+          jsble_queue_pending(BLEP_RSSI_CENTRAL, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
         } else
 #endif    
         {
-          jsble_queue_pending_d(BLEP_RSSI_PERIPH, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
+          jsble_queue_pending(BLEP_RSSI_PERIPH, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
         }
         break;
 
@@ -1027,7 +1064,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.common_evt.conn_handle == m_central_conn_handle) {
           if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
-            jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_WRITE);
+            jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_WRITE, 0);
         }
 #endif
         if (p_ble_evt->evt.common_evt.conn_handle == m_conn_handle) {
@@ -1039,7 +1076,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #endif
           if (bleStatus & BLE_IS_SENDING_HID) {
             bleStatus &= ~BLE_IS_SENDING_HID;
-            jsble_queue_pending(BLEP_HID_SENT);
+            jsble_queue_pending(BLEP_HID_SENT, 0);
           }
         }
         break;
@@ -1083,7 +1120,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           }
         }
         if (done)
-          jsble_queue_pending(BLEP_TASK_DISCOVER_SERVICE_COMPLETE);
+          jsble_queue_pending(BLEP_TASK_DISCOVER_SERVICE_COMPLETE, 0);
         break;
       }
       case BLE_GATTC_EVT_CHAR_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC)) {
@@ -1116,7 +1153,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
 
         if (done)
-          jsble_queue_pending(BLEP_TASK_DISCOVER_CHARACTERISTIC_COMPLETE);
+          jsble_queue_pending(BLEP_TASK_DISCOVER_CHARACTERISTIC_COMPLETE, 0);
         break;
       }
       case BLE_GATTC_EVT_DESC_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY)) {
@@ -1136,7 +1173,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           }
         }
 
-        jsble_queue_pending_d(BLEP_TASK_DISCOVER_CCCD, cccd_handle);
+        jsble_queue_pending(BLEP_TASK_DISCOVER_CCCD, cccd_handle);
 
         break;
       }
@@ -1149,9 +1186,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
       case BLE_GATTC_EVT_WRITE_RSP: {
         if (bleInTask(BLETASK_CHARACTERISTIC_NOTIFY))
-          jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_NOTIFY);
+          jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_NOTIFY, 0);
         else if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
-          jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_WRITE);
+          jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_WRITE, 0);
         break;
       }
 
@@ -1177,54 +1214,17 @@ static void nfc_callback(void * p_context, hal_nfc_event_t event, const uint8_t 
 
   switch (event) {
     case HAL_NFC_EVENT_FIELD_ON:
-      jsble_queue_pending_d(BLEP_NFC_STATUS,1);
+      jsble_queue_pending(BLEP_NFC_STATUS,1);
       break;
     case HAL_NFC_EVENT_FIELD_OFF:
-      jsble_queue_pending_d(BLEP_NFC_STATUS,0);
+      jsble_queue_pending(BLEP_NFC_STATUS,0);
       break;
     case HAL_NFC_EVENT_DATA_RECEIVED: {
-      /* try to fetch NfcData data */
-      JsVar *nfcData = jsvObjectGetChild(execInfo.hiddenRoot, "NfcData", 0);
-      if(nfcData) {
-        /* success handle request internally */
-        JSV_GET_AS_CHAR_ARRAY(nfcDataPtr, nfcDataLen, nfcData);
-        jsvUnLock(nfcData);
-
-        /* check data, on error let request go into timeout - reader will retry. */
-        if (!nfcDataPtr || !nfcDataLen) {
-          break;
-        }
-
-        /* check rx data length and read block command code (0x30) */
-        if(data_length < 2 || p_data[0] != 0x30) {
-          jsble_nfc_send_rsp(0, 0); /* switch to rx */
-          break;
-        }
-
-        /* fetch block index (addressing is done in multiples of 4 byte */
-        size_t idx = p_data[1] * 4;
-
-        /* assemble 16 byte block */
-        uint8_t buf[16]; memset(buf, '\0', 16);
-        if(idx + 16 < nfcDataLen) {
-          memcpy(buf, nfcDataPtr + idx, 16);
-        } else
-        if(idx < nfcDataLen) {
-          memcpy(buf, nfcDataPtr + idx, nfcDataLen - idx);
-        }
-        /* send response */
-        jsble_nfc_send(buf, 16);
-      } else {
-        /* no NfcData available, fire js-event */
-        char *ptr = 0;
-        JsVar *arr = jsvNewArrayBufferWithPtr((unsigned int)data_length, &ptr);
-        if (ptr) memcpy(ptr, p_data, data_length);
-        bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCrx", arr);
-      }
+      jsble_queue_pending_buf(BLEP_NFC_RX, 0, (char*)p_data, data_length);
       break;
     }
     case HAL_NFC_EVENT_DATA_TRANSMITTED:
-      bleQueueEventAndUnLock(JS_EVENT_PREFIX"NFCtx", 0);
+      jsble_queue_pending(BLEP_NFC_TX,0);
       break;
     default:
       break;
@@ -1306,7 +1306,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_CONN_SEC_START:
           if (bleInTask(BLETASK_BONDING))
-            jsble_queue_pending_d(BLEP_TASK_BONDING, true);
+            jsble_queue_pending(BLEP_TASK_BONDING, true);
             break;
 
         case PM_EVT_CONN_SEC_SUCCEEDED:
@@ -1351,7 +1351,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
         case PM_EVT_CONN_SEC_FAILED:
         {
           if (bleInTask(BLETASK_BONDING))
-            jsble_queue_pending_d(BLEP_TASK_BONDING, false);
+            jsble_queue_pending(BLEP_TASK_BONDING, false);
             /** In some cases, when securing fails, it can be restarted directly. Sometimes it can
              *  be restarted, but only after changing some Security Parameters. Sometimes, it cannot
              *  be restarted until the link is disconnected and reconnected. Sometimes it is

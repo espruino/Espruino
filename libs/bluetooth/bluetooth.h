@@ -108,9 +108,11 @@ typedef enum {
   BLEP_TASK_CHARACTERISTIC_READ,    //< Central: Characteristic read finished (as buffer)
   BLEP_TASK_CHARACTERISTIC_WRITE,   //< Central: Characteristic write finished
   BLEP_TASK_CHARACTERISTIC_NOTIFY,  //< Central: Started requesting notifications
-  BLEP_CENTRAL_DISCONNECTED,        //< Central: Disconnected
+  BLEP_CENTRAL_DISCONNECTED,        //< Central: Disconnected (reason as data)
   BLEP_TASK_BONDING,                //< Bonding negotiation complete (success in data)
   BLEP_NFC_STATUS,                  //< NFC changed state
+  BLEP_NFC_RX,                      //< NFC data received (as buffer)
+  BLEP_NFC_TX,                      //< NFC data sent
   BLEP_HID_SENT,                    //< A HID report has been sent
   BLEP_WRITE,                       //< One of our characteristics written by someone else
   BLEP_NOTIFICATION,                //< A characteristic we were watching has changes
@@ -128,12 +130,10 @@ extern volatile uint16_t                         m_central_conn_handle; /**< Han
 void jsble_init();
 /** Completely deinitialise the BLE stack */
 void jsble_kill();
-/** Add a task to the queue to be executed (to be called mainly from IRQ-land) */
-void jsble_queue_pending(BLEPending blep);
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with simple data */
-void jsble_queue_pending_d(BLEPending blep, uint16_t data);
+void jsble_queue_pending(BLEPending blep, uint16_t data);
 /** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land. Returns number of events handled */
 int jsble_exec_pending(IOEvent *event);
 
