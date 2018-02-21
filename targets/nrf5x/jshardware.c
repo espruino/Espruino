@@ -526,9 +526,11 @@ JshPinState jshPinGetState(Pin pin) {
 #endif
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   uint32_t p = NRF_GPIO->PIN_CNF[ipin];
+  bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
   if ((p&GPIO_PIN_CNF_DIR_Msk)==(GPIO_PIN_CNF_DIR_Output<<GPIO_PIN_CNF_DIR_Pos)) {
     // Output
     JshPinState hi = (NRF_GPIO->OUT & (1<<ipin)) ? JSHPINSTATE_PIN_IS_ON : 0;
+    if (negated) hi = !hi;
     if ((p&GPIO_PIN_CNF_DRIVE_Msk)==(GPIO_PIN_CNF_DRIVE_S0D1<<GPIO_PIN_CNF_DRIVE_Pos)) {
       if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos))
         return JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP|hi;
@@ -547,9 +549,9 @@ JshPinState jshPinGetState(Pin pin) {
   } else {
     // Input
     if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos)) {
-      return JSHPINSTATE_GPIO_IN_PULLUP;
+      return negated ? JSHPINSTATE_GPIO_IN_PULLDOWN : JSHPINSTATE_GPIO_IN_PULLUP;
     } else if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pulldown<<GPIO_PIN_CNF_PULL_Pos)) {
-      return JSHPINSTATE_GPIO_IN_PULLDOWN;
+      return negated ? JSHPINSTATE_GPIO_IN_PULLUP : JSHPINSTATE_GPIO_IN_PULLDOWN;
     } else {
       return JSHPINSTATE_GPIO_IN;
     }
