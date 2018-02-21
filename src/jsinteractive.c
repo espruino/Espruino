@@ -686,6 +686,18 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
       if (pin == BTN1_PININDEX &&
           statem == BTN1_PINSTATE) continue;
 #endif
+#if defined(BTN2_PININDEX) && defined(BTN2_PINSTATE)
+      if (pin == BTN2_PININDEX &&
+          statem == BTN2_PINSTATE) continue;
+#endif
+#if defined(BTN3_PININDEX) && defined(BTN3_PINSTATE)
+      if (pin == BTN3_PININDEX &&
+          statem == BTN3_PINSTATE) continue;
+#endif
+#if defined(BTN4_PININDEX) && defined(BTN4_PINSTATE)
+      if (pin == BTN4_PININDEX &&
+          statem == BTN4_PINSTATE) continue;
+#endif
 
       // don't bother with normal inputs, as they come up in this state (ish) anyway
       if (statem != JSHPINSTATE_GPIO_IN && statem != JSHPINSTATE_ADC_IN) {
