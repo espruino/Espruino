@@ -1,4 +1,4 @@
-            ESP8266: no callback if SSID is not available (fix #1297)
+     1v96 : ESP8266: no callback if SSID is not available (fix #1297)
             ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)
             ESP8266: cleanup defines WIFI_DBG and NET_DBG for RELEASE
             ESP8266: switch to single ld file eagle.app.v6.new.2048.ld for ESP8266_4MB board
