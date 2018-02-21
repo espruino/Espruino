@@ -28,6 +28,7 @@
 
 // ----------------------------------------------------------------------------
 //                                                              WATCH CALLBACKS
+#define JSEVENTCALLBACK_PIN_MASK 0xFFFFFF00
 JshEventCallbackCallback jshEventCallbacks[EV_EXTI_MAX+1-EV_EXTI0];
 
 // ----------------------------------------------------------------------------
@@ -437,22 +438,32 @@ void CALLED_FROM_INTERRUPT jshPushIOWatchEvent(
 
   bool state = jshGetWatchedPinState(channel);
 
-  // If there is a callback associated with this GPIO event then invoke
-  // it and we are done.
-  if (jshEventCallbacks[channel-EV_EXTI0]) {
-    jshEventCallbacks[channel-EV_EXTI0](state, channel);
-    return;
+  // If there is a callback or pin associated with this GPIO event
+  // the handle it
+  int evt = channel-EV_EXTI0;
+  if (jshEventCallbacks[evt]) {
+    if (((uint32_t)jshEventCallbacks[evt] & JSEVENTCALLBACK_PIN_MASK)==JSEVENTCALLBACK_PIN_MASK) {
+      // It's a pin, read the value and store it in the event channel
+      Pin pin = (Pin)((uint32_t)jshEventCallbacks[evt] &~ JSEVENTCALLBACK_PIN_MASK);
+      if (jshPinGetValue(pin)) channel |= EV_EXTI_DATA_PIN_HIGH;
+    } else {
+      // It's a callback - invoke and return
+      jshEventCallbacks[evt](state, channel);
+      return;
+    }
   }
+
+  if (state) channel |= EV_EXTI_IS_HIGH;
 
   JsSysTime time = jshGetSystemTime();
 
 #ifdef USE_TRIGGER
   // TODO: move to using jshSetEventCallback
-  if (trigHandleEXTI(channel | (state?EV_EXTI_IS_HIGH:0), time))
+  if (trigHandleEXTI(channel, time))
     return;
 #endif
   // Otherwise add this event
-  jshPushIOEvent(channel | (state?EV_EXTI_IS_HIGH:0), time);
+  jshPushIOEvent(channel, time);
 }
 
 /// Add this IO event to the IO event queue.
@@ -700,14 +711,25 @@ void jshSetFlowControlEnabled(IOEventFlags device, bool software, Pin pinCTS) {
   }
 }
 
-/// Set a callback function to be called when an event occurs
-void jshSetEventCallback(
-    IOEventFlags channel,             //!< The event that fires the callback.
-    JshEventCallbackCallback callback //!< The callback to be invoked.
-  ) {
-  // Save the callback function for this event channel.
+/// Set a callback function to be called when an event occurs. Shares same storage as jshSetEventDataPin
+void jshSetEventCallback(IOEventFlags channel, JshEventCallbackCallback callback) {
   assert(channel>=EV_EXTI0 && channel<=EV_EXTI_MAX);
   jshEventCallbacks[channel-EV_EXTI0] = callback;
+}
+
+/// Set a data pin to be read when an event occurs. Shares same storage as jshSetEventCallback
+void jshSetEventDataPin(IOEventFlags channel, Pin pin) {
+  assert(channel>=EV_EXTI0 && channel<=EV_EXTI_MAX);
+  jshEventCallbacks[channel-EV_EXTI0] = (void*)(uint32_t)(JSEVENTCALLBACK_PIN_MASK | pin);
+}
+
+/// Get a data pin to be read when an event occurs
+Pin jshGetEventDataPin(IOEventFlags channel) {
+  assert(channel>=EV_EXTI0 && channel<=EV_EXTI_MAX);
+  int evt = channel-EV_EXTI0;
+  if (((uint32_t)jshEventCallbacks[evt] & JSEVENTCALLBACK_PIN_MASK) == JSEVENTCALLBACK_PIN_MASK)
+    return (Pin)((uint32_t)jshEventCallbacks[evt] & ~JSEVENTCALLBACK_PIN_MASK);
+  return PIN_UNDEFINED;
 }
 
 void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {

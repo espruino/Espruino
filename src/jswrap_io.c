@@ -591,26 +591,47 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
   "params" : [
     ["function", "JsVar", "A Function or String to be executed"],
     ["pin", "pin", "The pin to watch"],
-    ["options", "JsVar",[ "If this is a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true)","If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `edge` is whether the function is called on the rising or falling edge of the signal, and can be a string or numeric (1='rising', -1='falling', 0='both'). `debounce` is the time in ms to wait for bounces to subside, or 0."]]
+    ["options", "JsVar","If a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true). Can be an object of the form `{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}` - see below for more information."]
   ],
   "return" : ["JsVar","An ID that can be passed to clearWatch"]
 }
 Call the function specified when the pin changes. Watches set with `setWatch` can be removed using `clearWatch`.
 
-The function may also take an argument, which is an object of type `{state:bool, time:float, lastTime:float}`.
+If the `options` parameter is an object, it can contain the following information (all optional):
+
+```
+{
+   // Whether to keep producing callbacks, or remove the watch after the first callback
+   repeat: true/false(default),
+   // Trigger on the rising or falling edge of the signal. Can be a string, or 1='rising', -1='falling', 0='both'
+   edge:'rising'/'falling'/'both'(default),
+   // Use software-debouncing to stop multiple calls if a switch bounces
+   // This is the time in milliseconds to wait for bounces to subside, or 0 to disable
+   debounce:10 (0 is default),
+   // Advanced: If the function supplied is a 'native' function (compiled or assembly)
+   // setting irq:true will call that function in the interrupt itself
+   irq : false(default)
+   // Advanced: If specified, the given pin will be read whenever the watch is called
+   // and the state will be included as a 'data' field in the callback
+   data : pin
+}
+```
+
+The `function` callback is called with an argument, which is an object of type `{state:bool, time:float, lastTime:float}`.
 
  * `state` is whether the pin is currently a `1` or a `0`
  * `time` is the time in seconds at which the pin changed state
  * `lastTime` is the time in seconds at which the **pin last changed state**. When using `edge:'rising'` or `edge:'falling'`, this is not the same as when the function was last called.
+ * `data` is included if `data:pin` was specified in the options, and can be used for reading in clocked data
 
 For instance, if you want to measure the length of a positive pulse you could use `setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });`.
 This will only be called on the falling edge of the pulse, but will be able to measure the width of the pulse because `e.lastTime` is the time of the rising edge.
 
-Internally, an interrupt writes the time of the pin's state change into a queue, and the function
-supplied to `setWatch` is executed only from the main message loop. However, if the callback is a
-native function `void (bool state)` then you can add `irq:true` to options, which will cause the
-function to be called from within the IRQ. When doing this, interrupts will happen on both edges
-and there will be no debouncing.
+Internally, an interrupt writes the time of the pin's state change into a queue with the exact
+time that it happened, and the function supplied to `setWatch` is executed only from the main
+message loop. However, if the callback is a native function `void (bool state)` then you can
+add `irq:true` to options, which will cause the function to be called from within the IRQ.
+When doing this, interrupts will happen on both edges and there will be no debouncing.
 
 **Note:** if you didn't call `pinMode` beforehand then this function will reset pin's state to `"input"`
 
@@ -637,6 +658,7 @@ JsVar *jswrap_interface_setWatch(
   JsVarFloat debounce = 0;
   int edge = 0;
   bool isIRQ = false;
+  Pin dataPin = PIN_UNDEFINED;
   if (jsvIsObject(repeatOrObject)) {
     JsVar *v;
     repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "repeat", 0));
@@ -660,6 +682,7 @@ JsVar *jswrap_interface_setWatch(
       return 0;
     }
     isIRQ = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "irq", 0));
+    dataPin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(repeatOrObject, "data", 0));
   } else
     repeat = jsvGetBool(repeatOrObject);
 
@@ -667,13 +690,6 @@ JsVar *jswrap_interface_setWatch(
   if (!jsvIsFunction(func) && !jsvIsString(func)) {
     jsExceptionHere(JSET_ERROR, "Function or String not supplied!");
   } else {
-    // Create a new watch object which may contain:
-    //
-    // o pin      - The pin being watched
-    // o recur    - ?
-    // o debounce - ?
-    // o edge     - ?
-    // o callback - The function to be invoked when the IO changes
     JsVar *watchPtr = jsvNewObject();
     if (watchPtr) {
       jsvObjectSetChildAndUnLock(watchPtr, "pin", jsvNewFromPin(pin));
@@ -690,9 +706,13 @@ JsVar *jswrap_interface_setWatch(
     // disable event callbacks by default
     if (exti) {
       jshSetEventCallback(exti, 0);
+      if (jshIsPinValid(dataPin))
+        jshSetEventDataPin(exti, dataPin);
       if (isIRQ) {
         if (jsvIsNativeFunction(func)) {
           jshSetEventCallback(exti, (JshEventCallbackCallback)jsvGetNativeFunctionPtr(func));
+        } else if (jshIsPinValid(dataPin)) {
+          jsExceptionHere(JSET_ERROR, "Can't have a data pin and irq:true");
         } else {
           jsExceptionHere(JSET_ERROR, "irq=true set, but function is not a native function");
         }

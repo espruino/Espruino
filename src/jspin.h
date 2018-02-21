@@ -15,12 +15,12 @@
 #ifndef JSPIN_H
 #define JSPIN_H
 
+typedef unsigned char Pin; ///< for specifying pins for hardware
+#define PIN_UNDEFINED ((Pin)0xFF)
+
 #include "jsutils.h"
 #include "jsvar.h"
 #include "jsdevices.h"
-
-typedef unsigned char Pin; ///< for specifying pins for hardware
-#define PIN_UNDEFINED ((Pin)0xFF)
 
 typedef enum {
   JSH_PORT_NONE,

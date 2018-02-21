@@ -1930,6 +1930,9 @@ void jsiIdle() {
                 jsvObjectSetChild(data, "time", timePtr); // no unlock
                 jsvObjectSetChildAndUnLock(data, "pin", jsvNewFromPin(pin));
                 jsvObjectSetChildAndUnLock(data, "state", jsvNewFromBool(pinIsHigh));
+                Pin dataPin = jshGetEventDataPin(eventType);
+                if (jshIsPinValid(dataPin))
+                  jsvObjectSetChildAndUnLock(data, "data", jsvNewFromBool((event.flags&EV_EXTI_DATA_PIN_HIGH)!=0));
               }
               if (!jsiExecuteEventCallback(0, watchCallback, 1, &data) && watchRecurring) {
                 jsError("Ctrl-C while processing watch - removing it.");

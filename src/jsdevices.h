@@ -113,7 +113,8 @@ typedef enum {
   EV_SERIAL_STATUS_FRAMING_ERR = EV_TYPE_MASK+1,
   EV_SERIAL_STATUS_PARITY_ERR = EV_SERIAL_STATUS_FRAMING_ERR<<1,
   // ----------------------------------------- WATCH EVENTS
-  EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,         //< if the pin we're watching is high, the handler sets this
+  EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,           //< if the pin we're watching is high, the handler sets this
+  EV_EXTI_DATA_PIN_HIGH = EV_EXTI_IS_HIGH<<1  //< If a data pin was specified, its value is high
 } PACKED_FLAGS IOEventFlags;
 
 #define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK>63) jsError("DEVICE_SANITY_CHECK failed")
@@ -158,6 +159,9 @@ typedef struct IOEvent {
   IOEventFlags flags; //!< Where this came from, and # of chars in it
   IOEventData data;
 } PACKED_FLAGS IOEvent;
+
+
+#include "jspin.h"
 
 /// Push an IO event into the ioBuffer (designed to be called from IRQ)
 void jshPushEvent(IOEvent *evt);
@@ -219,6 +223,12 @@ typedef void(*JshEventCallbackCallback)(bool state, IOEventFlags flags);
 
 /// Set a callback function to be called when an event occurs
 void jshSetEventCallback(IOEventFlags channel, JshEventCallbackCallback callback);
+
+/// Set a data pin to be read when an event occurs. Shares same storage as jshSetEventCallback
+void jshSetEventDataPin(IOEventFlags channel, Pin pin);
+
+/// Get a data pin to be read when an event occurs
+Pin jshGetEventDataPin(IOEventFlags channel);
 
 /// Set whether a Serial device puts framing/parity errors into the input queue
 void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling);
