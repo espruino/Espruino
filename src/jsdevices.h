@@ -113,8 +113,7 @@ typedef enum {
   EV_SERIAL_STATUS_FRAMING_ERR = EV_TYPE_MASK+1,
   EV_SERIAL_STATUS_PARITY_ERR = EV_SERIAL_STATUS_FRAMING_ERR<<1,
   // ----------------------------------------- WATCH EVENTS
-  // if the pin we're watching is high, the handler sets this
-  EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,
+  EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,         //< if the pin we're watching is high, the handler sets this
 } PACKED_FLAGS IOEventFlags;
 
 #define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK>63) jsError("DEVICE_SANITY_CHECK failed")
