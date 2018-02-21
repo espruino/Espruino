@@ -128,7 +128,7 @@ BASEADDRESS=0x08000000
 
 ifeq ($(BOARD),)
  # Try and guess board names
- ifneq ($(shell grep Rapsbian /etc/os-release)),)
+ ifneq ($(shell grep Raspbian /etc/os-release),)
   BOARD=RASPBERRYPI # just a guess
  else ifeq ($(shell uname -n),beaglebone)
   BOARD=BEAGLEBONE
