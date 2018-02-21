@@ -260,22 +260,22 @@ void jshPinOutput(
 // Convert an event type flag into a jshPinFunction for an actual hardware device
 JshPinFunction jshGetPinFunctionFromDevice(IOEventFlags device) {
  if (DEVICE_IS_USART(device))
-   return JSH_USART1 + device - EV_SERIAL1;
+   return JSH_USART1 + ((device - EV_SERIAL1)<<JSH_SHIFT_TYPE);
  if (DEVICE_IS_SPI(device))
-   return JSH_SPI1 + device - EV_SPI1;
+   return JSH_SPI1 + ((device - EV_SPI1)<<JSH_SHIFT_TYPE);
  if (DEVICE_IS_I2C(device))
-   return JSH_I2C1 + device - EV_I2C1;
+   return JSH_I2C1 + ((device - EV_I2C1)<<JSH_SHIFT_TYPE);
  return 0;
 }
 
 // Convert a jshPinFunction to an event type flag
 IOEventFlags jshGetFromDevicePinFunction(JshPinFunction func) {
  if (JSH_PINFUNCTION_IS_USART(func))
-   return EV_SERIAL1 + func - JSH_USART1;
+   return EV_SERIAL1 + ((func - JSH_USART1) >> JSH_SHIFT_TYPE);
  if (JSH_PINFUNCTION_IS_SPI(func))
-   return EV_SPI1 + func - JSH_SPI1;
+   return EV_SPI1 + ((func - JSH_SPI1) >> JSH_SHIFT_TYPE);
  if (JSH_PINFUNCTION_IS_I2C(func))
-   return EV_I2C1 + func - JSH_I2C1;
+   return EV_I2C1 + ((func - JSH_I2C1) >> JSH_SHIFT_TYPE);
  return 0;
 }
 
