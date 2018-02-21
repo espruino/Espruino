@@ -301,6 +301,91 @@ int jsble_exec_pending(IOEvent *event) {
      jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
      bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
      break;
+   case BLEP_TASK_DISCOVER_SERVICE: {
+     if (!bleInTask(BLETASK_PRIMARYSERVICE)) {
+       jsExceptionHere(JSET_INTERNALERROR,"Wrong task: %d vs %d", bleGetCurrentTask(), BLETASK_PRIMARYSERVICE);
+       break;
+     }
+     ble_gattc_service_t *p_srv = (ble_gattc_service_t*)buffer;
+     if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
+     if (!bleTaskInfo) break;
+     JsVar *o = jspNewObject(0, "BluetoothRemoteGATTService");
+     if (o) {
+       jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_srv->uuid));
+       jsvObjectSetChildAndUnLock(o,"isPrimary", jsvNewFromBool(true));
+       jsvObjectSetChildAndUnLock(o,"start_handle", jsvNewFromInteger(p_srv->handle_range.start_handle));
+       jsvObjectSetChildAndUnLock(o,"end_handle", jsvNewFromInteger(p_srv->handle_range.end_handle));
+       jsvArrayPushAndUnLock(bleTaskInfo, o);
+     }
+     break;
+   }
+   case BLEP_TASK_DISCOVER_SERVICE_COMPLETE: {
+     // When done, send the result to the handler
+     if (bleTaskInfo && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
+       // single item because filtering
+       JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo));
+       jsvUnLock(bleTaskInfo);
+       bleTaskInfo = t;
+     }
+     if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, bleTaskInfo);
+     else bleCompleteTaskFailAndUnLock(BLETASK_PRIMARYSERVICE, jsvNewFromString("No Services found"));
+     break;
+   }
+   case BLEP_TASK_DISCOVER_CHARACTERISTIC: {
+        if (!bleInTask(BLETASK_CHARACTERISTIC)) {
+          jsExceptionHere(JSET_INTERNALERROR,"Wrong task: %d vs %d", bleGetCurrentTask(), BLETASK_PRIMARYSERVICE);
+          break;
+        }
+        ble_gattc_char_t *p_chr = (ble_gattc_char_t*)buffer;
+        if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
+        if (!bleTaskInfo) break;
+        JsVar *o = jspNewObject(0, "BluetoothRemoteGATTCharacteristic");
+        if (o) {
+          jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_chr->uuid));
+          jsvObjectSetChildAndUnLock(o,"handle_value", jsvNewFromInteger(p_chr->handle_value));
+          jsvObjectSetChildAndUnLock(o,"handle_decl", jsvNewFromInteger(p_chr->handle_decl));
+          JsVar *p = jsvNewObject();
+          if (p) {
+            jsvObjectSetChildAndUnLock(p,"broadcast",jsvNewFromBool(p_chr->char_props.broadcast));
+            jsvObjectSetChildAndUnLock(p,"read",jsvNewFromBool(p_chr->char_props.read));
+            jsvObjectSetChildAndUnLock(p,"writeWithoutResponse",jsvNewFromBool(p_chr->char_props.write_wo_resp));
+            jsvObjectSetChildAndUnLock(p,"write",jsvNewFromBool(p_chr->char_props.write));
+            jsvObjectSetChildAndUnLock(p,"notify",jsvNewFromBool(p_chr->char_props.notify));
+            jsvObjectSetChildAndUnLock(p,"indicate",jsvNewFromBool(p_chr->char_props.indicate));
+            jsvObjectSetChildAndUnLock(p,"authenticatedSignedWrites",jsvNewFromBool(p_chr->char_props.auth_signed_wr));
+            jsvObjectSetChildAndUnLock(o,"properties", p);
+          }
+          // char_props?
+          jsvArrayPushAndUnLock(bleTaskInfo, o);
+        }
+        break;
+      }
+   case BLEP_TASK_DISCOVER_CHARACTERISTIC_COMPLETE: {
+     // When done, send the result to the handler
+     if (bleTaskInfo && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
+       // single item because filtering
+       JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo));
+       jsvUnLock(bleTaskInfo);
+       bleTaskInfo = t;
+     }
+     if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, bleTaskInfo);
+     else bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC, jsvNewFromString("No Characteristics found"));
+     break;
+   }
+   case BLEP_TASK_DISCOVER_CCCD: {
+     uint16_t cccd_handle = data;
+     if (cccd_handle) {
+       if(bleTaskInfo)
+         jsvObjectSetChildAndUnLock(bleTaskInfo, "handle_cccd", jsvNewFromInteger(cccd_handle));
+       // Switch task here rather than completing...
+       bleSwitchTask(BLETASK_CHARACTERISTIC_NOTIFY);
+       jsble_central_characteristicNotify(bleTaskInfo, true);
+     } else {
+       // Couldn't find anything - just report error
+       bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, jsvNewFromString("CCCD Handle not found"));
+     }
+     break;
+   }
    case BLEP_TASK_CHARACTERISTIC_READ: {
      JsVar *d = jsvNewDataViewWithData(bufferLen, buffer);
      jsvObjectSetChild(bleTaskInfo, "value", d); // set this.value
@@ -978,26 +1063,16 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       // For discovery....
       case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: if (bleInTask(BLETASK_PRIMARYSERVICE)) {
         bool done = true;
-        if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
         if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
             p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count!=0) {
-          if (bleTaskInfo) {
-            int i;
-            // Should actually return 'BLEService' object here
-            for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++) {
-              const ble_gattc_service_t *p_srv = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i];
-              // filter based on bleUUIDFilter if it's not invalid
-              if (bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN)
-                if (!bleUUIDEqual(p_srv->uuid, bleUUIDFilter)) continue;
-              JsVar *o = jspNewObject(0, "BluetoothRemoteGATTService");
-              if (o) {
-                jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_srv->uuid));
-                jsvObjectSetChildAndUnLock(o,"isPrimary", jsvNewFromBool(true));
-                jsvObjectSetChildAndUnLock(o,"start_handle", jsvNewFromInteger(p_srv->handle_range.start_handle));
-                jsvObjectSetChildAndUnLock(o,"end_handle", jsvNewFromInteger(p_srv->handle_range.end_handle));
-                jsvArrayPushAndUnLock(bleTaskInfo, o);
-              }
-            }
+          int i;
+          // Should actually return 'BLEService' object here
+          for (i=0;i<p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count;i++) {
+            const ble_gattc_service_t *p_srv = &p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.services[i];
+            // filter based on bleUUIDFilter if it's not invalid
+            if (bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN)
+              if (!bleUUIDEqual(p_srv->uuid, bleUUIDFilter)) continue;
+            jsble_queue_pending_buf(BLEP_TASK_DISCOVER_SERVICE, 0, (char*)p_srv, sizeof(ble_gattc_service_t));
           }
 
           uint16_t last = p_ble_evt->evt.gattc_evt.params.prim_srvc_disc_rsp.count-1;
@@ -1007,25 +1082,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             done = sd_ble_gattc_primary_services_discover(p_ble_evt->evt.gap_evt.conn_handle, start_handle, NULL) != NRF_SUCCESS;;
           }
         }
-        if (done) {
-          // When done, send the result to the handler
-          if (bleTaskInfo && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
-            // single item because filtering
-            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo));
-            jsvUnLock(bleTaskInfo);
-            bleTaskInfo = t;
-          }
-          // TODO: move to event queue
-          if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, bleTaskInfo);
-          else bleCompleteTaskFailAndUnLock(BLETASK_PRIMARYSERVICE, jsvNewFromString("No Services found"));
-        } // else error
+        if (done)
+          jsble_queue_pending(BLEP_TASK_DISCOVER_SERVICE_COMPLETE);
         break;
       }
       case BLE_GATTC_EVT_CHAR_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC)) {
         bool done = true;
-        if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
-        if (bleTaskInfo &&
-            p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
+
+        if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS &&
             p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count!=0) {
           int i;
           for (i=0;i<p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count;i++) {
@@ -1033,25 +1097,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             // filter based on bleUUIDFilter if it's not invalid
             if (bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN)
               if (!bleUUIDEqual(p_chr->uuid, bleUUIDFilter)) continue;
-            JsVar *o = jspNewObject(0, "BluetoothRemoteGATTCharacteristic");
-            if (o) {
-              jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_chr->uuid));
-              jsvObjectSetChildAndUnLock(o,"handle_value", jsvNewFromInteger(p_chr->handle_value));
-              jsvObjectSetChildAndUnLock(o,"handle_decl", jsvNewFromInteger(p_chr->handle_decl));
-              JsVar *p = jsvNewObject();
-              if (p) {
-                jsvObjectSetChildAndUnLock(p,"broadcast",jsvNewFromBool(p_chr->char_props.broadcast));
-                jsvObjectSetChildAndUnLock(p,"read",jsvNewFromBool(p_chr->char_props.read));
-                jsvObjectSetChildAndUnLock(p,"writeWithoutResponse",jsvNewFromBool(p_chr->char_props.write_wo_resp));
-                jsvObjectSetChildAndUnLock(p,"write",jsvNewFromBool(p_chr->char_props.write));
-                jsvObjectSetChildAndUnLock(p,"notify",jsvNewFromBool(p_chr->char_props.notify));
-                jsvObjectSetChildAndUnLock(p,"indicate",jsvNewFromBool(p_chr->char_props.indicate));
-                jsvObjectSetChildAndUnLock(p,"authenticatedSignedWrites",jsvNewFromBool(p_chr->char_props.auth_signed_wr));
-                jsvObjectSetChildAndUnLock(o,"properties", p);
-              }
-              // char_props?
-              jsvArrayPushAndUnLock(bleTaskInfo, o);
-            }
+            jsble_queue_pending_buf(BLEP_TASK_DISCOVER_CHARACTERISTIC, 0, (char*)p_chr, sizeof(ble_gattc_char_t));
           }
 
           uint16_t last = p_ble_evt->evt.gattc_evt.params.char_disc_rsp.count-1;
@@ -1069,18 +1115,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         }
 
 
-        if (done) {
-          // When done, send the result to the handler
-          if (bleTaskInfo && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
-            // single item because filtering
-            JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo));
-            jsvUnLock(bleTaskInfo);
-            bleTaskInfo = t;
-          }
-          // TODO: move to event queue
-          if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, bleTaskInfo);
-          else bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC, jsvNewFromString("No Characteristics found"));
-        }
+        if (done)
+          jsble_queue_pending(BLEP_TASK_DISCOVER_CHARACTERISTIC_COMPLETE);
         break;
       }
       case BLE_GATTC_EVT_DESC_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY)) {
@@ -1099,17 +1135,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             }
           }
         }
-        if (cccd_handle) {
-          if(bleTaskInfo)
-            jsvObjectSetChildAndUnLock(bleTaskInfo, "handle_cccd", jsvNewFromInteger(cccd_handle));
 
-          // FIXME: we just switch task here - this is not nice...
-          bleSwitchTask(BLETASK_CHARACTERISTIC_NOTIFY);
-          jsble_central_characteristicNotify(bleTaskInfo, true);
-        } else {
-          // TODO: move to event queue
-          bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, jsvNewFromString("CCCD Handle not found"));
-        }
+        jsble_queue_pending_d(BLEP_TASK_DISCOVER_CCCD, cccd_handle);
+
         break;
       }
 
