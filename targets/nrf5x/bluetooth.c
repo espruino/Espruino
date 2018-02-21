@@ -53,13 +53,13 @@
 #include "ble_hids.h"
 #endif
 
+
 #if PEER_MANAGER_ENABLED
 #include "peer_manager.h"
 #include "fds.h"
 #if NRF_SD_BLE_API_VERSION<5
 #include "fstorage.h"
 #include "fstorage_internal_defs.h"
-#define FDS_PHY_PAGE_SIZE FS_PAGE_SIZE
 #endif
 #include "ble_conn_state.h"
 static pm_peer_id_t   m_peer_id;                              /**< Device reference handle to the current bonded central. */
@@ -307,7 +307,15 @@ int jsble_exec_pending(IOEvent *event) {
      bleCompleteTaskSuccessAndUnLock(BLETASK_CHARACTERISTIC_READ, d);
      break;
    }
-   case BLEP_GATT_SERVER_DISCONNECTED: {
+   case BLEP_TASK_CHARACTERISTIC_WRITE: {
+     bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_WRITE, 0);
+     break;
+   }
+   case BLEP_TASK_CHARACTERISTIC_NOTIFY: {
+     bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_NOTIFY, 0);
+     break;
+   }
+   case BLEP_CENTRAL_DISCONNECTED: {
      JsVar *gattServer = bleGetActiveBluetoothGattServer();
      if (gattServer) {
        JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
@@ -345,9 +353,23 @@ int jsble_exec_pending(IOEvent *event) {
      break;
    }
 #endif
+#if PEER_MANAGER_ENABLED
+   case BLEP_TASK_BONDING: {
+     if (data) bleCompleteTaskSuccess(BLETASK_BONDING, 0);
+     else bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Securing failed"));
+     break;
+   }
+#endif
 #ifdef USE_NFC
    case BLEP_NFC_STATUS:
      bleQueueEventAndUnLock(data ? JS_EVENT_PREFIX"NFCon" : JS_EVENT_PREFIX"NFCoff", 0);
+     break;
+#endif
+#if BLE_HIDS_ENABLED
+   case BLEP_HID_SENT:
+     jsiQueueObjectCallbacks(execInfo.root, BLE_HID_SENT_EVENT, 0, 0);
+     jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, 0); // fire only once
+     jshHadEvent();
      break;
 #endif
    default:
@@ -726,7 +748,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
 #if CENTRAL_LINK_COUNT>0
         if (m_central_conn_handle == p_ble_evt->evt.gap_evt.conn_handle) {
-          jsble_queue_pending_d(BLEP_GATT_SERVER_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
+          jsble_queue_pending_d(BLEP_CENTRAL_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
 
           m_central_conn_handle = BLE_CONN_HANDLE_INVALID;
 
@@ -920,7 +942,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.common_evt.conn_handle == m_central_conn_handle) {
           if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
-            bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_WRITE, 0);
+            jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_WRITE);
         }
 #endif
         if (p_ble_evt->evt.common_evt.conn_handle == m_conn_handle) {
@@ -932,9 +954,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #endif
           if (bleStatus & BLE_IS_SENDING_HID) {
             bleStatus &= ~BLE_IS_SENDING_HID;
-            jsiQueueObjectCallbacks(execInfo.root, BLE_HID_SENT_EVENT, 0, 0);
-            jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, 0); // fire only once
-            jshHadEvent();
+            jsble_queue_pending(BLEP_HID_SENT);
           }
         }
         break;
@@ -1100,11 +1120,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       }
 
       case BLE_GATTC_EVT_WRITE_RSP: {
-        // TODO: move to event queue
         if (bleInTask(BLETASK_CHARACTERISTIC_NOTIFY))
-          bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_NOTIFY, 0);
+          jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_NOTIFY);
         else if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
-          bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_WRITE, 0);
+          jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_WRITE);
         break;
       }
 
@@ -1258,9 +1277,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
         } break;
 
         case PM_EVT_CONN_SEC_START:
-          // TODO: move to event queue
           if (bleInTask(BLETASK_BONDING))
-            bleCompleteTaskSuccess(BLETASK_BONDING, 0);
+            jsble_queue_pending_d(BLEP_TASK_BONDING, true);
             break;
 
         case PM_EVT_CONN_SEC_SUCCEEDED:
@@ -1304,9 +1322,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_CONN_SEC_FAILED:
         {
-          // TODO: move to event queue
           if (bleInTask(BLETASK_BONDING))
-            bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Securing failed"));
+            jsble_queue_pending_d(BLEP_TASK_BONDING, false);
             /** In some cases, when securing fails, it can be restarted directly. Sometimes it can
              *  be restarted, but only after changing some Security Parameters. Sometimes, it cannot
              *  be restarted until the link is disconnected and reconnected. Sometimes it is

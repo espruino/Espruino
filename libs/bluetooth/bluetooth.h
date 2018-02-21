@@ -69,20 +69,20 @@ typedef struct {
 
 typedef enum  {
   BLE_NONE = 0,
-  BLE_IS_SENDING = 1,         // sending data with jswrap_nrf_transmit_string?
-  BLE_IS_SCANNING = 2,        // scanning for BLE devices?
-  BLE_IS_ADVERTISING = 4,     // currently advertising info? stops when connected
-  BLE_NEEDS_SOFTDEVICE_RESTART = 8,  // We need to reset the services we're reporting, but we can't because we're connected
-  BLE_SERVICES_WERE_SET = 16, // setServices was called already, so we need to restart softdevice before we can call it again
+  BLE_IS_SENDING = 1,         //< sending data with jswrap_nrf_transmit_string?
+  BLE_IS_SCANNING = 2,        //< scanning for BLE devices?
+  BLE_IS_ADVERTISING = 4,     //< currently advertising info? stops when connected
+  BLE_NEEDS_SOFTDEVICE_RESTART = 8,  //< We need to reset the services we're reporting, but we can't because we're connected
+  BLE_SERVICES_WERE_SET = 16, //< setServices was called already, so we need to restart softdevice before we can call it again
 
-  BLE_NUS_INITED = 32,        // Has the Nordic UART service been initialised?
-  BLE_HID_INITED = 64,        // Has the BLE HID service been initialised?
-  BLE_IS_SENDING_HID = 128,   // Are we waiting to send data for USB HID?
-  BLE_IS_RSSI_SCANNING = 256, // Are we scanning for RSSI values
-  BLE_IS_SLEEPING = 512,      // NRF.sleep has been called
-  BLE_PM_INITIALISED = 1024,  // Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
-  BLE_IS_NOT_CONNECTABLE = 2048, // Is the device connectable?
-  BLE_WHITELIST_ON_BOND = 4096,  // Should we write to the whitelist whenever we bond to a device?
+  BLE_NUS_INITED = 32,        //< Has the Nordic UART service been initialised?
+  BLE_HID_INITED = 64,        //< Has the BLE HID service been initialised?
+  BLE_IS_SENDING_HID = 128,   //< Are we waiting to send data for USB HID?
+  BLE_IS_RSSI_SCANNING = 256, //< Are we scanning for RSSI values
+  BLE_IS_SLEEPING = 512,      //< NRF.sleep has been called
+  BLE_PM_INITIALISED = 1024,  //< Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
+  BLE_IS_NOT_CONNECTABLE = 2048, //< Is the device connectable?
+  BLE_WHITELIST_ON_BOND = 4096,  //< Should we write to the whitelist whenever we bond to a device?
 
   BLE_IS_ADVERTISING_MULTIPLE = 8192, // We have multiple different advertising packets
   BLE_ADVERTISING_MULTIPLE_ONE = 16384,
@@ -92,19 +92,23 @@ typedef enum  {
 
 typedef enum {
   BLEP_NONE,
-  BLEP_CONNECTED,                 // Peripheral connected (contains address)
-  BLEP_DISCONNECTED,
-  BLEP_RSSI_CENTRAL,
-  BLEP_RSSI_PERIPH,
-  BLEP_ADV_REPORT,
-  BLEP_TASK_FAIL_CONN_TIMEOUT,
-  BLEP_TASK_FAIL_DISCONNECTED,
-  BLEP_TASK_CENTRAL_CONNECTED,
-  BLEP_TASK_CHARACTERISTIC_READ,
-  BLEP_GATT_SERVER_DISCONNECTED,
-  BLEP_NFC_STATUS,
-  BLEP_WRITE,                     // One of our characteristics written by someone else
-  BLEP_NOTIFICATION,              // A characteristic we were watching has changes
+  BLEP_CONNECTED,                   //< Peripheral connected (contains address)
+  BLEP_DISCONNECTED,                //< Peripheral disconnected
+  BLEP_RSSI_PERIPH,                 //< RSSI data from peripheral connection
+  BLEP_ADV_REPORT,                  //< Advertising received (with data)
+  BLEP_RSSI_CENTRAL,                //< RSSI data from central connection
+  BLEP_TASK_FAIL_CONN_TIMEOUT,      //< Central: Connection timeout
+  BLEP_TASK_FAIL_DISCONNECTED,      //< Central: Task failed because disconnected
+  BLEP_TASK_CENTRAL_CONNECTED,      //< Central: Connected
+  BLEP_TASK_CHARACTERISTIC_READ,    //< Central: Characteristic read finished (with data)
+  BLEP_TASK_CHARACTERISTIC_WRITE,   //< Central: Characteristic write finished
+  BLEP_TASK_CHARACTERISTIC_NOTIFY,  //< Central: Started requesting notifications
+  BLEP_CENTRAL_DISCONNECTED,        //< Central: Disconnected
+  BLEP_TASK_BONDING,                //< Bonding negotiation complete
+  BLEP_NFC_STATUS,                  //< NFC changed state
+  BLEP_HID_SENT,                    //< A HID report has been sent
+  BLEP_WRITE,                       //< One of our characteristics written by someone else
+  BLEP_NOTIFICATION,                //< A characteristic we were watching has changes
 } BLEPending;
 
 
