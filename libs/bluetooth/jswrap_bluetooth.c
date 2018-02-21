@@ -781,7 +781,7 @@ JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
         advdata.p_manuf_specific_data = (ble_advdata_manuf_data_t*)alloca(sizeof(ble_advdata_manuf_data_t));
         advdata.p_manuf_specific_data->company_identifier = 0xFFFF; // pre-fill with test manufacturer data
         advdata.p_manuf_specific_data->data.size = dLen;
-        advdata.p_manuf_specific_data->data.p_data = dPtr;
+        advdata.p_manuf_specific_data->data.p_data = (uint8_t*)dPtr;
       }
       jsvUnLock(v);
     }
@@ -1633,8 +1633,6 @@ Enables NFC and starts advertising the given URL. For example:
 ```
 NRF.nfcURL("http://espruino.com");
 ```
-
-**Note:** This is only available on nRF52-based devices
 */
 void jswrap_nrf_nfcURL(JsVar *url) {
 #ifdef USE_NFC
@@ -1714,8 +1712,6 @@ Enables NFC and starts advertising with Raw data. For example:
 NRF.nfcRaw(new Uint8Array([193, 1, 0, 0, 0, 13, 85, 3, 101, 115, 112, 114, 117, 105, 110, 111, 46, 99, 111, 109]));
 // same as NRF.nfcURL("http://espruino.com");
 ```
-
-**Note:** This is only available on nRF52-based devices
 */
 void jswrap_nrf_nfcRaw(JsVar *payload) {
 #ifdef USE_NFC
@@ -1781,8 +1777,6 @@ fired when data is received.
 ```
 NRF.nfcStart();
 ```
-
-**Note:** This is only available on nRF52-based devices
 */
 JsVar *jswrap_nrf_nfcStart(JsVar *payload) {
 #ifdef USE_NFC
@@ -1846,8 +1840,6 @@ Disables NFC.
 ```
 NRF.nfcStop();
 ```
-
-**Note:** This is only available on nRF52-based devices
 */
 void jswrap_nrf_nfcStop() {
 #ifdef USE_NFC
@@ -1881,8 +1873,6 @@ NRF.nfcSend(0x0A);
 // or
 NRF.nfcSend();
 ```
-
-**Note:** This is only available on nRF52-based devices
 */
 void jswrap_nrf_nfcSend(JsVar *payload) {
 #ifdef USE_NFC
@@ -1995,8 +1985,6 @@ NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }]}).then(
 
 Note that you'll have to keep track of the `gatt` variable so that you can
 disconnect the Bluetooth connection when you're done.
-
-**Note:** This is only available on some devices
 */
 #if CENTRAL_LINK_COUNT>0
 
@@ -2156,8 +2144,6 @@ NRF.connect("aa:bb:cc:dd:ee").then(function(g) {
   console.log("Done!");
 });
 ```
-
-**Note:** This is only available on some devices
 */
 JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
 #if CENTRAL_LINK_COUNT>0
@@ -2204,7 +2190,26 @@ void jswrap_nrf_setWhitelist(bool whitelist) {
   "class" : "BluetoothDevice",
   "ifdef" : "NRF52"
 }
-Web Bluetooth-style device - get this using `NRF.requestDevice(address)`
+A Web Bluetooth-style device - you can request one using `NRF.requestDevice(address)`
+
+For example:
+
+```
+var gatt;
+NRF.requestDevice({ filters: [{ name: 'Puck.js abcd' }] }).then(function(device) {
+  console.log("found device");
+  return device.gatt.connect();
+}).then(function(g) {
+  gatt = g;
+  console.log("connected");
+  return gatt.startBonding();
+}).then(function() {
+  console.log("bonded", gatt.getSecurityStatus());
+  gatt.disconnect();
+}).catch(function(e) {
+  console.log("ERROR",e);
+});
+```
 */
 /*JSON{
     "type" : "property",
@@ -2214,8 +2219,6 @@ Web Bluetooth-style device - get this using `NRF.requestDevice(address)`
     "generate" : "jswrap_BluetoothDevice_gatt",
     "return" : ["JsVar", "A `BluetoothRemoteGATTServer` for this device" ]
 }
-
-**Note:** This is only available on some devices
 */
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
@@ -2245,8 +2248,6 @@ Connect to a BLE device - returns a promise,
 the argument of which is the `BluetoothRemoteGATTServer` connection.
 
 See [`NRF.requestDevice`](/Reference#l_NRF_requestDevice) for usage examples.
-
-**Note:** This is only available on some devices
 */
 #if CENTRAL_LINK_COUNT>0
 static void _jswrap_nrf_bluetooth_central_connect(JsVar *addr) {
@@ -2296,7 +2297,7 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
   "ifdef" : "NRF52"
 }
 Web Bluetooth-style GATT server - get this using `NRF.connect(address)`
-or `NRF.requestDevice(options)` then `response.gatt.connect`
+or `NRF.requestDevice(options)` and `response.gatt.connect`
 
 https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattserver
 */
@@ -2310,8 +2311,6 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattserver
 Disconnect from a previously connected BLE device connected with
 `NRF.connect` - this does not disconnect from something that has
 connected to the Espruino.
-
-**Note:** This is only available on some devices
 */
 void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
@@ -2364,8 +2363,6 @@ NRF.requestDevice({ filters: [{ name: 'Puck.js abcd' }] }).then(function(device)
 
 **This is not part of the Web Bluetooth Specification.** It has been added
 specifically for Puck.js.
-
-**Note:** This is only available on some devices
 */
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair) {
 #if CENTRAL_LINK_COUNT>0
@@ -2408,8 +2405,6 @@ negotiating a secure connection.
 
 **This is not part of the Web Bluetooth Specification.** It has been added
 specifically for Puck.js.
-
-**Note:** This is only available on some devices
 */
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
@@ -2426,10 +2421,10 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent) {
   "name" : "getPrimaryService",
   "generate" : "jswrap_BluetoothRemoteGATTServer_getPrimaryService",
   "params" : [ ["service","JsVar","The service UUID"] ],
-  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary service is found" ],
+  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary service is found (the argument contains a `BluetoothRemoteGATTService`)" ],
   "ifdef" : "NRF52"
 }
-**Note:** This is only available on some devices
+See `NRF.connect` for usage examples.
 */
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *service) {
 #if CENTRAL_LINK_COUNT>0
@@ -2458,10 +2453,9 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *
   "class" : "BluetoothRemoteGATTServer",
   "name" : "getPrimaryServices",
   "generate" : "jswrap_BluetoothRemoteGATTServer_getPrimaryServices",
-  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary services are found" ],
+  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary services are found (the argument contains an array of `BluetoothRemoteGATTService`)" ],
   "ifdef" : "NRF52"
 }
-**Note:** This is only available on some devices
 */
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
@@ -2503,7 +2497,6 @@ gattServer.setRSSIHandler();
 
 RSSI is the 'Received Signal Strength Indication' in dBm
 
-**Note:** This is only available on some devices
 */
 void jswrap_BluetoothRemoteGATTServer_setRSSIHandler(JsVar *parent, JsVar *callback) {
 #if CENTRAL_LINK_COUNT>0
@@ -2534,10 +2527,10 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattservice
   "name" : "getCharacteristic",
   "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristic",
   "params" : [ ["characteristic","JsVar","The characteristic UUID"] ],
-  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found" ],
+  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found (the argument contains a `BluetoothRemoteGATTCharacteristic`)" ],
   "ifdef" : "NRF52"
 }
-**Note:** This is only available on some devices
+See `NRF.connect` for usage examples.
 */
 JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar *characteristic) {
 #if CENTRAL_LINK_COUNT>0
@@ -2566,10 +2559,9 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar 
   "class" : "BluetoothRemoteGATTService",
   "name" : "getCharacteristics",
   "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristics",
-  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found" ],
+  "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found (the argument contains an array of `BluetoothRemoteGATTCharacteristic`)" ],
   "ifdef" : "NRF52"
 }
-**Note:** This is only available on some devices
 */
 JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
@@ -2626,8 +2618,6 @@ NRF.connect(device_address).then(function(d) {
   console.log("Something's broken.");
 });
 ```
-
-**Note:** This is only available on some devices
 */
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteristic, JsVar *data) {
 #if CENTRAL_LINK_COUNT>0
@@ -2650,7 +2640,8 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
     "class" : "BluetoothRemoteGATTCharacteristic",
     "name" : "readValue",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue",
-    "return" : ["JsVar", "A Promise that is resolved (or rejected) with a `DataView` when the characteristic is read" ]
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) with a `DataView` when the characteristic is read" ],
+    "ifdef" : "NRF52"
 }
 
 Read a characteristic's value, return a promise containing a `DataView`
@@ -2672,8 +2663,6 @@ NRF.connect(device_address).then(function(d) {
   console.log("Something's broken.");
 });
 ```
-
-**Note:** This is only available on some devices
 */
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic) {
 #if CENTRAL_LINK_COUNT>0
@@ -2694,7 +2683,8 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteris
     "class" : "BluetoothRemoteGATTCharacteristic",
     "name" : "startNotifications",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications",
-    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when notifications have been added" ]
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when notifications have been added" ],
+    "ifdef" : "NRF52"
 }
 Starts notifications - whenever this characteristic's value changes, a `characteristicvaluechanged` event is fired.
 
@@ -2737,8 +2727,6 @@ NRF.connect("pu:ck:js:ad:dr:es random").then(function(g) {
   console.log("Done!");
 });
 ```
-
-**Note:** This is only available on some devices
 */
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *characteristic) {
 #if CENTRAL_LINK_COUNT>0
@@ -2780,9 +2768,10 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
     "class" : "BluetoothRemoteGATTCharacteristic",
     "name" : "stopNotifications",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_stopNotifications",
-    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when notifications have been removed" ]
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when notifications have been removed" ],
+    "ifdef" : "NRF52"
 }
-**Note:** This is only available on some devices
+Stop notifications (that were requested with `BluetoothRemoteGATTCharacteristic.startNotifications`)
 */
 JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *characteristic) {
 #if CENTRAL_LINK_COUNT>0
