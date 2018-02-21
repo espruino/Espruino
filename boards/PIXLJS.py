@@ -118,10 +118,10 @@ def get_pins():
    { "name":"PD13", "sortingname":"D13", "port":"D", "num":"20", "functions":{}, "csv":{} },
 
    { "name":"PH0", "sortingname":"H0", "port":"H", "num":"16", "functions":{}, "csv":{} }, # LED
-   { "name":"PH1", "sortingname":"H1", "port":"H", "num":"24", "functions":{}, "csv":{} }, # BTN1
-   { "name":"PH2", "sortingname":"H2", "port":"H", "num":"23", "functions":{}, "csv":{} }, # 2
+   { "name":"PH1", "sortingname":"H1", "port":"H", "num":"23", "functions":{}, "csv":{} }, # BTN1
+   { "name":"PH2", "sortingname":"H2", "port":"H", "num":"21", "functions":{}, "csv":{} }, # 2
    { "name":"PH3", "sortingname":"H3", "port":"H", "num":"22", "functions":{}, "csv":{} }, # 3
-   { "name":"PH4", "sortingname":"H4", "port":"H", "num":"21", "functions":{}, "csv":{} }, # 4
+   { "name":"PH4", "sortingname":"H4", "port":"H", "num":"24", "functions":{}, "csv":{} }, # 4
    { "name":"PH5", "sortingname":"H5", "port":"H", "num":"13", "functions":{}, "csv":{} }, # LCD DC
    { "name":"PH6", "sortingname":"H6", "port":"H", "num":"12", "functions":{}, "csv":{} }, # LCD CS
    { "name":"PH7", "sortingname":"H7", "port":"H", "num":"11", "functions":{}, "csv":{} }, # LCD RST
