@@ -48,6 +48,7 @@
             setWatch's edge argument can also be an integer now
             Add 'data' option to setWatch to allow clocked data to be decoded easily
             nRF52: Increase flash available for stored code from 12kB for 40kB
+            Now store/display appreviated commit in process.env, remove build date
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

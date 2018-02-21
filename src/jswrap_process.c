@@ -94,9 +94,6 @@ Returns an Object containing various pre-defined variables. standard ones are BO
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
   jsvObjectSetChildAndUnLock(obj, "VERSION", jsvNewFromString(JS_VERSION));
-#if !defined(SAVE_ON_FLASH)
-  jsvObjectSetChildAndUnLock(obj, "BUILD_DATE", jsvNewFromString(__DATE__ " " __TIME__));
-#endif
 #ifdef GIT_COMMIT
   jsvObjectSetChildAndUnLock(obj, "GIT_COMMIT", jsvNewFromString(STRINGIFY(GIT_COMMIT)));
 #endif
