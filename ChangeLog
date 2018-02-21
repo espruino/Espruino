@@ -44,7 +44,8 @@
             Now set 'this' correctly for Arrow Functions
             Add ES6 classes and 'super'
             nRF5x: Move all bluetooth events to event queue (removing MEMORY_BUSY issues)
-            Fix potential issue where EV_TYPE_MASK enum could be set incorrectly 
+            Fix potential issue where EV_TYPE_MASK enum could be set incorrectly  
+            setWatch's edge argument can also be an integer now
   
      1v95 : nRF5x: Swap to UART fifo to avoid overrun errors at high baud rates
             Ensure Exceptions/errors are reported on a blank line

@@ -591,7 +591,7 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
   "params" : [
     ["function", "JsVar", "A Function or String to be executed"],
     ["pin", "pin", "The pin to watch"],
-    ["options", "JsVar",[ "If this is a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true)","If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `debounce` is the time in ms to wait for bounces to subside, or 0."]]
+    ["options", "JsVar",[ "If this is a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true)","If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `edge` is whether the function is called on the rising or falling edge of the signal, and can be a string or numeric (1='rising', -1='falling', 0='both'). `debounce` is the time in ms to wait for bounces to subside, or 0."]]
   ],
   "return" : ["JsVar","An ID that can be passed to clearWatch"]
 }
@@ -646,6 +646,9 @@ JsVar *jswrap_interface_setWatch(
     edge = -1000;
     if (jsvIsUndefined(v)) {
       edge = 0;
+    } else if (jsvIsNumeric(v)) {
+      JsVarInt i = jsvGetInteger(v);
+      edge = (i>0)?1:((i<0)?-1:0);
     } else if (jsvIsString(v)) {
       if (jsvIsStringEqual(v, "rising")) edge=1;
       else if (jsvIsStringEqual(v, "falling")) edge=-1;
