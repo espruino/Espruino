@@ -57,6 +57,9 @@ espruino_#v##_olimexino_stm32.bin
    - Olimexino-STM32 Arduino form factor board
    - Leaf Labs Maple Arduino form factor board
 
+espruino_#v##_stm32l496gdiscovery.bin
+   - STM32F496GDISCOVERY board
+
 espruino_#v##_stm32vldiscovery.bin
    - STM32VLDISCOVERY board
 

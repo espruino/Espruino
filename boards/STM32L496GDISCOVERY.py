@@ -18,7 +18,7 @@
 import pinutils;
 info = {
  'name' : "STM32L496 Discovery",
- 'link' :  [ "www.st.com/content/st_com/en/products/evaluation-tools/product-evaluation-tools/mcu-eval-tools/mcu-eval-tools/stm32-mcu-eval-tools/stm32-mcu-discovery-kits/32l496gdiscovery.html" ],
+ 'link' :  [ "http://www.st.com/content/st_com/en/products/evaluation-tools/product-evaluation-tools/mcu-eval-tools/mcu-eval-tools/stm32-mcu-eval-tools/stm32-mcu-discovery-kits/32l496gdiscovery.html" ],
  'default_console' : "EV_USBSERIAL",
 
  'variables' :  15359, 	# variables computed from available RAM size : (256-16)*1024/16-1
