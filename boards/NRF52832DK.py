@@ -81,10 +81,35 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
-  'left' : [ 'VDD', 'VDD', 'RESET', 'VDD','5V','GND','GND','PD3','PD4','PD28','PD29','PD30','PD31'],
-  'right' : [ 'PD27', 'PD26', 'PD2', 'GND', 'PD25','PD24','PD23', 'PD22','PD20','PD19','PD18','PD17','PD16','PD15','PD14','PD13','PD12','PD11','PD10','PD9','PD8','PD7','PD6','PD5','PD21','PD1','PD0'],
+  'left' : [ 'VDD', 'VDD', 'RESET', 'VDD','5V','GND','GND','','','PD3','PD4','PD28','PD29','PD30','PD31'],
+  'right' : [ 
+     'PD27', 'PD26', 'PD2', 'GND', 'PD25','PD24','PD23', 'PD22','PD20','PD19','',
+     'PD18','PD17','PD16','PD15','PD14','PD13','PD12','PD11','',
+     'PD10','PD9','PD8','PD7','PD6','PD5','PD21','PD1','PD0'],
 };
 board["_css"] = """
+#board {
+  width: 528px;
+  height: 800px;
+  top: 0px;
+  left : 200px;
+  background-image: url(img/NRF52832DK.jpg);
+}
+#boardcontainer {
+  height: 900px;
+}
+
+#left {
+    top: 219px;
+    right: 466px;
+}
+#right {
+    top: 150px;
+    left: 466px;
+}
+
+.leftpin { height: 17px; }
+.rightpin { height: 17px; }
 """;
 
 def get_pins():
