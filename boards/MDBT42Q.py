@@ -17,6 +17,7 @@ import pinutils;
 
 info = {
  'name' : "MDBT42Q Module",
+ 'link' :  [ "http://www.espruino.com/MDBT42Q" ],
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D6",
  'default_console_rx' : "D8",
@@ -83,23 +84,31 @@ board = {
 
 board["_css"] = """
 #board {
-  width: 800px;
-  height: 800px;
+  width: 359px;
+  height: 484px;
   top: 0px;
-  left : 0px;
+  left : 200px;
   background-image: url(img/MDBT42Q.jpg);
 }
 #boardcontainer {
   height: 900px;
 }
 #bottom {
-    top: 639px;
-    left: 291px;
+    top: 440px;
+    left: 56px;
+}
+#left {
+    top: 115px;
+    right: 316px;
 }
 #right {
-    top: 304px;
-    left: 640px;
+    top: 115px;
+    left: 316px;
 }
+
+.leftpin { height: 17px; }
+.rightpin { height: 17px; }
+.bottompin { width: 15px; padding:0px; }
 """;
 
 def get_pins():
