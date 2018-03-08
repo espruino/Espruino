@@ -16,8 +16,9 @@
 import pinutils;
 
 info = {
- 'name' : "nRF52 Preview Development Kit",
- 'link' :  [ "https://www.nordicsemi.com/Products/Bluetooth-Smart-Bluetooth-low-energy/nRF52832" ],
+ 'name' : "nRF52 Development Kit",
+ 'link' :  [ "https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy/nRF52-DK" ],
+ 'espruino_page_link' : 'nRF52832DK',
   # This is the PCA10036
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D6",

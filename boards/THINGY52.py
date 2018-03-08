@@ -18,6 +18,7 @@ import pinutils;
 info = {
  'name' : "Nordic Thingy:52",
  'link' :  [ "https://www.nordicsemi.com/eng/Products/Nordic-Thingy-52" ],
+ 'espruino_page_link' : 'Thingy52',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D2",
  'default_console_rx' : "D3",
@@ -163,7 +164,7 @@ def get_pins():
   pinutils.findpin(pins, "PV5", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PV6", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PV7", True)["functions"]["NEGATED"]=0;
-    
+
 
   # everything is non-5v tolerant
   for pin in pins:
