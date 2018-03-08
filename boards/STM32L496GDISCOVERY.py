@@ -105,8 +105,8 @@ board = {
   'top2' : [ 'G11', 'B6', 'G10', 'G12', 'GND','5V', 'B8', 'I3', 'D3', 'B7' ],
   'top' : [ 'H2', 'B2', 'A4', 'A0', '5V','GND', 'C7', 'C2', 'B12', 'C2' ],
   # PMOD+ connector
-  'right' : [ 'G11','B6','G10','G12','GND','3V3' ],
-  'right2' : [ 'H2','B2','NC','NC','GND','3V3' ],
+  'right' : [ 'H2','B2','NC','NC','GND','3V3' ],
+  'right2' : [ 'G11','B6','G10','G12','GND','3V3' ],
 
   # verso side
   # ARDUINO connector
