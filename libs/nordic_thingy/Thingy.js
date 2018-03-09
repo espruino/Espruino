@@ -232,6 +232,61 @@ exports.beep = function(freq, length) {
     digitalWrite(SPEAKER,0);
   }.bind(this), length);
 };
+// Record audio for the given number of samples, at 8192kHz 8 bit.
+// This can then be fed into Thingy.sound(waveform, 8192). RAM is scarce, so realistically 1 sec is a maximum.
+exports.record = function(samples, callback) {
+  var gain = 0x48; // gain ( 0 -> 0x50, 0x28 default )
+  var buf = new ArrayBuffer(2049); // 2x 1k byte sample buffers for DMA (+1 for byte shift)
+  var bufAddr = E.getAddressOf(buf,true);
+  if (!bufAddr) throw new Error("Unable to create a buffer");
+  var result = new Uint8Array(samples);
+  var resultIdx = 0;
+  var p = 0; // 1 or 0 (which buffer)
+  MIC_PWR_CTRL.set();
+  MIC_CLK.mode("output");
+  MIC_DOUT.mode("input");  
+  poke32(0x4001D504,0x08400000); // 1.032MHz clock default
+  poke32(0x4001D508,1); // mono, left on falling edge
+  poke32(0x4001D518,gain); // gain left
+  poke32(0x4001D51C,gain); // gain right
+  poke32(0x4001D540,MIC_CLK.getInfo().num); // CLK
+  poke32(0x4001D544,MIC_DOUT.getInfo().num); // DIN
+  poke32(0x4001D560,bufAddr); // PTR
+  poke32(0x4001D564,512); // MAXCNT
+  poke32(0x4001D500,1); // enable PDM
+  poke8(0x4001D100,0); // event start
+  poke8(0x4001D104,0); // event stop
+  poke8(0x4001D108,0); // event end
+  poke8(0x4001D000,1); // START TASK
+  poke32(0x4001D560,bufAddr+1024); // second pointer
+  // 16kHz output 16 bit, 32kByte/sec = will be done in 30ms
+  // Poll more often so we're more likely to catch it (no way to hook IRQs yet)
+  var i = setInterval(function() {
+    if (peek8(0x4001D108)) { // end event
+      poke8(0x4001D108,0); // clear end
+      poke32(0x4001D560,bufAddr+p*1024); // push new address in
+      // quick copy, drop every other sample, 16->8 bits
+      result.set(new Uint32Array(buf,1+(p*1024),256),resultIdx);
+      // advance and stop if required
+      p=1-p;
+      resultIdx+=256;
+      if (resultIdx>=result.length) stop();
+    }
+  },5);
+  function stop() {
+    clearInterval(i); // stop polling
+    poke8(0x4001D004,1); // STOP TASK
+    poke8(0x4001D500,0); // disable PDM
+    poke32(0x4001D540,0xFFFFFFFF); // disconnect CLK
+    poke32(0x4001D544,0xFFFFFFFF); // disconnect DIN    
+    MIC_PWR_CTRL.reset(); // mic off
+    // Now we have some time, add 128 to each item
+    E.mapInPlace(result,result,function(x){return x+128;});
+    // call the callback
+    if (callback) setTimeout(callback,0,result);
+  }
+  return result;
+};
 
 // Reinitialise any hardware that might have been set up before being saved
 E.on('init',function() {
