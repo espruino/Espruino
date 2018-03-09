@@ -24,7 +24,7 @@ info = {
  'default_console_rx' : "D3",
  'default_console_baudrate' : "9600",
  'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
-# 'bootloader' : 1,
+ 'bootloader' : 1,
  'binary_name' : 'espruino_%v_thingy52.bin',
  'build' : {
    'optimizeflags' : '-Os',
