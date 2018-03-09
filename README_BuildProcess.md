@@ -102,6 +102,20 @@ These contain:
   * `libraries` - list of libraries to include
   * `makefile` - list of commands/definitions to execute in the Makefile
 
+#### info.makefile definitions
+
+This is a partial list of definitions that can be added in a `BOARD.py` file's `info.build.makefile` array, eg: `'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\''`
+
+* `SAVE_ON_FLASH` - Remove some features (like any ES6 support) to target devices with ~128kB Flash
+* `SAVE_ON_FLASH_MATH` - Remove some less-used Maths functions that use a bunch of Flash memory
+* `SAVE_ON_FLASH_EXTREME` - Pull out as many features as possible to target devices with ~128kB Flash that also want things like Filesystem support
+* `BLUETOOTH_NAME_PREFIX="..."` - Make the Bluetooth LE device's name `BLUETOOTH_NAME_PREFIX` followed by the last 2 bytes of the MAC address.
+* `PIN_NAMES_DIRECT=1` - Package skips out some pins (maybe there's `D0`,`D1`,`D3` but no `D2`), so the code must search rather than just offsetting based on pin number.
+* `DUMP_IGNORE_VARIABLES="...\0"` - string containing zero-terminated list of global variable names to ignore when `dump()` is called. Must be explicityly zero-terminated so there are 2 trailing 0s
+* `FSMC_BITBANG` - if using a built-in FSMC Graphics LCD, don't use the hardware but instead do it in software
+* `FLASH_64BITS_ALIGNMENT=1` -  For testing 64 bit flash writes on linux
+
+
 ### chip
 
 * `part` - Chip part number (this is defined in the compiler - eg if the part is `STM32F401CDU6`, `-DSTM32F401CDU6` is put on the GCC command-line)

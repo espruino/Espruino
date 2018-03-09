@@ -80,9 +80,10 @@ var SPK_PWR_CTRL= D29;
 
 var i2c = new I2C();
 i2c.setup({sda:7,scl:8,bitrate:400000});
+exports.I2C = i2c;
 var i2ce = new I2C();
 i2ce.setup({sda:14,scl:15,bitrate:400000});
-
+exports.I2CE = i2ce;
 
 // ------------------------------------------------------------------------------------------- LIS2DH12
 // Get repeated callbacks with {x,y,z}. Call with no argument to disable
@@ -242,3 +243,28 @@ exports.sound = function(waveform, pitch, callback) {
   exports.waveform.startOutput(SPEAKER, pitch);
   SPK_PWR_CTRL.set();
 };
+
+// Reinitialise any hardware that might have been set up before being saved
+E.on('init',function() {
+  if (exports.accel && exports.accel.callback) { 
+    var c = exports.accel.callback; 
+    exports.accel = undefined; 
+    exports.onAcceleration(c); 
+  }
+  if (exports.pressureCallback) { 
+    exports.pressure = undefined; 
+    exports.onPressure(exports.pressureCallback); 
+  }
+  if (exports.humidityCallback) { 
+    exports.humidity = undefined; 
+    exports.onHumidity(exports.humidityCallback);
+  }
+  if (exports.gasCallback) { 
+    exports.gas = undefined; 
+    exports.onGas(exports.gasCallback); 
+  }
+  if (exports.colorCallback) { 
+    exports.color = undefined; 
+    exports.onColor(exports.colorCallback); 
+  }
+});
