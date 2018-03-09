@@ -9,51 +9,6 @@ Beep
 MPU9250 support - the library at the moment only works for the magnetometer
 Microphone support - will most likely need native support
 
-// Button
-BTN
-
-// R/G/B leds
-LED1/2/3  
-
-// MOSFET outputs
-MOS1/2/3/4 
-
-// External IO outputs
-IOEXT0/1/2/3 
-
-// Get repeated callbacks with {x,y,z}. Call with no argument to disable
-Thingy.onAcceleration = function(callback)
-
-// Get one callback with a new acceleration value
-Thingy.getAcceleration = function(callback)
-
-// Get repeated callbacks with {pressure,temperature}. Call with no argument to disable
-Thingy.onPressure = function(callback)
-
-// Get one callback with a new {pressure,temperature} value
-Thingy.getPressure = function(callback)
-
-// Get repeated callbacks with {humidity,temperature}. Call with no argument to disable
-Thingy.onHumidity = function(callback)
-
-// Get one callback with a new {humidity,temperature} value
-Thingy.getHumidity = function(callback)
-
-// Get repeated callbacks with air quality `{eC02,TVOC}`. Call with no argument to disable
-Thingy.onGas = function(callback)
-
-//Get one callback with a new air quality value `{eC02,TVOC}`. This may not be useful as the sensor takes a while to warm up and produce useful values
-Thingy.getGas = function(callback) 
-
-// Get repeated callbacks with color `{r,g,b,c}`. Call with no argument to disable
-Thingy.onColor = function(callback)
-
-// Get one callback with a new color value `{r,g,b,c}`
-Thingy.getColor = function(callback)
-
-// Play a sound, supply a string/uint8array/arraybuffer, samples per second, and a callback to use when done
-Thingy.sound = function(waveform, pitch, callback)
-
 */
 
 
@@ -74,7 +29,9 @@ var SENSE_LEDS = [SENSE_LEDR,SENSE_LEDG,SENSE_LEDB];
 var LPS_INT = D23;
 var HTS_INT = D24;
 var BH_INT = D31;
-var BATTERY = D28;
+var BATTERY_CHARGE = D17;
+var BATTERY_VOLTAGE = D28;
+var BATTERY_MONITOR = V4;
 var SPEAKER	= D27;
 var SPK_PWR_CTRL= D29;
 
@@ -227,8 +184,21 @@ exports.getColor = function(callback) {
     callback(this.color.read());
   }
 }
+// ------------------------------------------------------------------------------------------- Battery
+// Returns the state of the battery (immediately, or via callback) as { charging : bool, voltage : number }
+exports.getBattery = function(callback) {
+  BATTERY_MONITOR.set();
+  var result = { 
+    charging : BATTERY_CHARGE.read(),
+    voltage : E.getAnalogVRef()*analogRead(BATTERY_VOLTAGE)*1500/180
+  };
+  BATTERY_MONITOR.reset();
+  if (callback) callback(result);
+  return result;
+}
 // ------------------------------------------------------------------------------------------- Speaker
 // Play a sound, supply a string/uint8array/arraybuffer, samples per second, and a callback to use when done
+// This can play up to 3 sounds at a time (assuming ~4000 samples per second)
 exports.sound = function(waveform, pitch, callback) {  
   if (!this.sounds) this.sounds=0;
   if (this.sounds>2) throw new Error("Too many sounds playing at once");
@@ -248,6 +218,19 @@ exports.sound = function(waveform, pitch, callback) {
   }
   this.sounds++;
   w.startOutput(SPEAKER, pitch);
+};
+// Make a simple beep noise. frequency in Hz, length in milliseconds. Both are optional.
+exports.beep = function(freq, length) {
+  length = (length>0)?length:250;
+  freq = (freq>0)?freq:500;
+  analogWrite(SPEAKER, 0.5, {freq:freq});
+  SPK_PWR_CTRL.set();
+  if (this.beepTimeout) clearTimeout(this.beepTimeout);
+  this.beepTimeout = setTimeout(function() {
+    delete this.beepTimeout;
+    SPK_PWR_CTRL.reset();
+    digitalWrite(SPEAKER,0);
+  }.bind(this), length);
 };
 
 // Reinitialise any hardware that might have been set up before being saved
