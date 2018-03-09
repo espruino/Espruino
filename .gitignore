@@ -4,6 +4,7 @@
 *.o
 *.elf
 /*.hex
+/*.app_hex
 *.lst
 *.srec
 *.bin
