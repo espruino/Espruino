@@ -230,18 +230,24 @@ exports.getColor = function(callback) {
 // ------------------------------------------------------------------------------------------- Speaker
 // Play a sound, supply a string/uint8array/arraybuffer, samples per second, and a callback to use when done
 exports.sound = function(waveform, pitch, callback) {  
-  if (exports.waveform) exports.waveform.stop();
-  exports.waveform = new Waveform(waveform.length);
-  exports.waveform.buffer.set(waveform);
-  exports.waveform.on("finish", function(buf) {
-    SPK_PWR_CTRL.reset();
-    digitalWrite(SPEAKER,0);
-    exports.waveform = undefined;
-    if (callback)  callback();
-  });
-  analogWrite(SPEAKER, 0.5, {freq:40000});
-  exports.waveform.startOutput(SPEAKER, pitch);
-  SPK_PWR_CTRL.set();
+  if (!this.sounds) this.sounds=0;
+  if (this.sounds>2) throw new Error("Too many sounds playing at once");
+  var w = new Waveform(waveform.length);
+  w.buffer.set(waveform);
+  w.on("finish", function(buf) {
+    this.sounds--;
+    if (!this.sounds) {
+      SPK_PWR_CTRL.reset();
+      digitalWrite(SPEAKER,0);
+    }
+    if (callback) callback();
+  }.bind(this));
+  if (!this.sounds) {
+    analogWrite(SPEAKER, 0.5, {freq:40000});
+    SPK_PWR_CTRL.set();
+  }
+  this.sounds++;
+  w.startOutput(SPEAKER, pitch);
 };
 
 // Reinitialise any hardware that might have been set up before being saved
