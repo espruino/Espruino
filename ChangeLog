@@ -3,6 +3,7 @@
             nRF5x: Fix getPinMode, which fixes SW I2C after save()
             Thingy52: Don't report contents of 'Thingy' in 'dump()'
             Thingy52: Allow multiple sounds to play at once
+            nRF5x: Ensure Waveform triggers a finished event
 
      1v96 : ESP8266: no callback if SSID is not available (fix #1297)
             ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)
