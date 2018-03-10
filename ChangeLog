@@ -5,6 +5,7 @@
             Thingy52: Allow multiple sounds to play at once
             nRF5x: Ensure Waveform triggers a finished event
             Thingy52: Enable simple bootloader, add travis build for DFU
+            Add Serial.inject to allow data to be added as if it was received from that device
 
      1v96 : ESP8266: no callback if SSID is not available (fix #1297)
             ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)

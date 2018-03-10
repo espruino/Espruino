@@ -329,7 +329,6 @@ static void _jswrap_serial_print_cb(int data, void *userData) {
   jshTransmit(device, (unsigned char)data);
 }
 void _jswrap_serial_print(JsVar *parent, JsVar *arg, bool isPrint, bool newLine) {
-  NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_USART(device)) return;
 
@@ -394,18 +393,32 @@ void jswrap_serial_write(JsVar *parent, JsVar *args) {
 /*JSON{
   "type" : "method",
   "class" : "Serial",
-  "name" : "onData",
-  "generate" : "jswrap_serial_onData",
+  "name" : "inject",
+  "generate" : "jswrap_serial_inject",
   "params" : [
-    ["function","JsVar",""]
+    ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`."]
   ]
 }
-Serial.onData(func) has now been replaced with the event Serial.on(`data`, func)
+Add data to this device as if it came directly from the input - it will be
+returned via `serial.on('data', ...)`;
+
+```
+Serial1.on('data', function(d) { print("Got",d); });
+Serial1.inject('Hello World');
+// prints "Got Hel","Got lo World" (characters can be split over multiple callbacks)
+```
+
+This is most useful if you wish to send characters to Espruino's
+REPL (console) while it is on another device.
  */
-void jswrap_serial_onData(JsVar *parent, JsVar *func) {
-  NOT_USED(parent);
-  NOT_USED(func);
-  jsWarn("Serial.onData(func) has now been replaced with Serial.on(`data`, func).");
+static void _jswrap_serial_inject_cb(int data, void *userData) {
+  IOEventFlags device = *(IOEventFlags*)userData;
+  jshPushIOCharEvent(device, (char)data);
+}
+void jswrap_serial_inject(JsVar *parent, JsVar *args) {
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (!DEVICE_IS_USART(device)) return;
+  jsvIterateCallback(args, _jswrap_serial_inject_cb, (void*)&device);
 }
 
 /*JSON{
