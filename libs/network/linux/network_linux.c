@@ -242,6 +242,7 @@ int net_linux_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, s
   } else if (n>0) {
     // receive data
     if (socketType & ST_UDP) {
+      // TODO: Use JsNetUDPPacketHeader here to tidy this up
       size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
       uint32_t *host = (uint32_t*)buf;
       unsigned short *port = (unsigned short*)&host[1];
@@ -282,19 +283,20 @@ int net_linux_send(JsNetwork *net, SocketType socketType, int sckt, const void *
     flags |= MSG_NOSIGNAL;
 #endif
     if (socketType & ST_UDP) {
-        sockaddr_in       sin;
-        size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
-        uint32_t *host = (uint32_t*)buf;
-        unsigned short *port = (unsigned short*)&host[1];
-        uint16_t *size = (uint16_t*)&port[1];
-        sin.sin_family = AF_INET;
-        sin.sin_addr.s_addr = *(in_addr_t*)host;
-        sin.sin_port = htons(*port);
+      // TODO: Use JsNetUDPPacketHeader here to tidy this up
+      sockaddr_in       sin;
+      size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
+      uint32_t *host = (uint32_t*)buf;
+      unsigned short *port = (unsigned short*)&host[1];
+      uint16_t *size = (uint16_t*)&port[1];
+      sin.sin_family = AF_INET;
+      sin.sin_addr.s_addr = *(in_addr_t*)host;
+      sin.sin_port = htons(*port);
 
-        DBG("Send %d %x:%d", len - delta, *host, *port);
-        n = (int)sendto(sckt, buf + delta, *size, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in)) + (int)delta;
+      DBG("Send %d %x:%d", len - delta, *host, *port);
+      n = (int)sendto(sckt, buf + delta, *size, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in)) + (int)delta;
     } else {
-        n = (int)send(sckt, buf, len, flags);
+      n = (int)send(sckt, buf, len, flags);
     }
     return n;
   } else
