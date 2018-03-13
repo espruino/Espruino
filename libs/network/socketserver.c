@@ -285,22 +285,30 @@ int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData
   return 0;
 }
 
-void socketReceivedUDP(JsVar *connection, JsVar *receiveData, char *buf, int num) {
-  JsVar *address = jsvNewFromEmptyString(); // inet_ntoa replacement
+void socketReceivedUDP(JsVar *connection, JsVar **receiveData) {
+  // Get the header
+  size_t len = jsvGetStringLength(*receiveData);
+  if (len < sizeof(JsNetUDPPacketHeader)) return; // not enough data for header!
+  char buf[sizeof(JsNetUDPPacketHeader)+1]; // trailing 0 from jsvGetStringChars
+  jsvGetStringChars(*receiveData, 0, buf, sizeof(JsNetUDPPacketHeader)+1);
+  JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+  if (sizeof(JsNetUDPPacketHeader)+header->length < len) return; // not enough data yet
+
   JsVar *receiveInfo = jsvNewObject();
-  if (receiveInfo && address) { // could be out of memory
-    uint32_t delta = sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
-    uint32_t host = *(uint32_t*)buf;
-    unsigned short port = *(unsigned short*)(buf + sizeof(uint32_t));
-    buf += delta;
-    num -= (int)delta;
-    jsvAppendStringBuf(receiveData, buf, (size_t)num);
-    jsvAppendPrintf(address, "%d.%d.%d.%d", ((uint8_t*)&host)[0], ((uint8_t*)&host)[1], ((uint8_t*)&host)[2], ((uint8_t*)&host)[3]);
-    jsvObjectSetChildAndUnLock(receiveInfo, "address", address);
-    jsvObjectSetChildAndUnLock(receiveInfo, "port", jsvNewFromInteger(port));
-    jsvObjectSetChildAndUnLock(receiveInfo, "size", jsvNewFromInteger(num));
-    jswrap_dgram_messageCallback(connection, receiveData, receiveInfo);
-    jsvUnLock(receiveInfo);
+  if (receiveInfo) {
+    // split the received data string to get the data we need
+    JsVar *data = jsvNewFromStringVar(*receiveData, sizeof(JsNetUDPPacketHeader), header->length);
+    JsVar *newReceiveData = 0;
+    if (len > sizeof(JsNetUDPPacketHeader)+header->length)
+      newReceiveData = jsvNewFromStringVar(*receiveData, sizeof(JsNetUDPPacketHeader)+header->length, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    jsvUnLock(*receiveData);
+    *receiveData = newReceiveData;
+    // fire the received data event
+    jsvObjectSetChildAndUnLock(receiveInfo, "address", jsvVarPrintf("%d.%d.%d.%d", header->host[0], header->host[1], header->host[2], header->host[3]));
+    jsvObjectSetChildAndUnLock(receiveInfo, "port", jsvNewFromInteger(header->port));
+    jsvObjectSetChildAndUnLock(receiveInfo, "size", jsvNewFromInteger(header->length));
+    jswrap_dgram_messageCallback(connection, data, receiveInfo);
+    jsvUnLock2(data,receiveInfo);
   }
 }
 
@@ -379,10 +387,10 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
           JsVar *oldReceiveData = receiveData;
           if (!receiveData) receiveData = jsvNewFromEmptyString();
           if (receiveData) {
+            jsvAppendStringBuf(receiveData, buf, (size_t)num);
             if ((socketType&ST_TYPE_MASK)==ST_UDP) {
-              socketReceivedUDP(connection, receiveData, buf, num);
+              socketReceivedUDP(connection, &receiveData);
             } else {
-              jsvAppendStringBuf(receiveData, buf, (size_t)num);
               bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
               if (!hadHeaders && httpParseHeaders(&receiveData, connection, true)) {
                 hadHeaders = true;
@@ -408,10 +416,10 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
                   receiveData = 0;
                 }
               }
-              // if received data changed, update it
-              if (receiveData != oldReceiveData)
-                jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,receiveData);
             }
+            // if received data changed, update it
+            if (receiveData != oldReceiveData)
+              jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,receiveData);
             jsvUnLock(receiveData);
           }
         }
@@ -589,16 +597,13 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
             }
             // got data add it to our receive buffer
             if (num > 0) {
-              if (!receiveData) {
+              if (!receiveData)
                 receiveData = jsvNewFromEmptyString();
-              }
               if (receiveData) { // could be out of memory
+                jsvAppendStringBuf(receiveData, buf, (size_t)num);
                 if ((socketType&ST_TYPE_MASK)==ST_UDP) {
-                  socketReceivedUDP(connection, receiveData, buf, num);
+                  socketReceivedUDP(connection, &receiveData);
                 } else {
-                  jsvAppendStringBuf(receiveData, buf, (size_t)num);
-                  jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
-
                   if ((socketType&ST_TYPE_MASK)==ST_HTTP && !hadHeaders) {
                     // for HTTP see whether we now have full response headers
                     JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
@@ -608,9 +613,9 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
                       jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &resVar, 1);
                     }
                     jsvUnLock(resVar);
-                    jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
                   }
                 }
+                jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
               }
             }
           }
@@ -891,14 +896,12 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, Js
         if ((socketType&ST_TYPE_MASK) == ST_UDP) {
           char hostName[128];
           jsvGetString(host, hostName, sizeof(hostName));
-          uint32_t host_addr = 0;
-          uint16_t size = (uint16_t)jsvGetStringLength(s);
-          networkGetHostByName(net, hostName, &host_addr);
-          jsvAppendStringBuf(sendData, (const char*)&host_addr, sizeof(host_addr));
-          jsvAppendStringBuf(sendData, (const char*)&portNumber, sizeof(portNumber));
-          jsvAppendStringBuf(sendData, (const char*)&size, sizeof(size));
+          JsNetUDPPacketHeader header;
+          networkGetHostByName(net, hostName, (uint32_t*)&header.host[0]);
+          header.port = portNumber;
+          header.length = (uint16_t)jsvGetStringLength(s);
+          jsvAppendStringBuf(sendData, (const char*)&header, sizeof(header));
         }
-
         jsvAppendStringVarComplete(sendData,s);
       }
       jsvUnLock(s);
