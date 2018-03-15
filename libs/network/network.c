@@ -591,6 +591,13 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   mbedtls_ssl_conf_ca_chain( &sd->conf, &sd->cacert, NULL );
   mbedtls_ssl_conf_rng( &sd->conf, mbedtls_ctr_drbg_random, &sd->ctr_drbg );
   mbedtls_ssl_conf_dbg( &sd->conf, ssl_debug, 0 );
+  JsVar *hostVar = options?jsvObjectGetChild(options,"host",0):0;
+  if (hostVar) {
+    char hostname[64];
+    jsvGetString(hostVar, hostname, sizeof(hostname));
+    mbedtls_ssl_set_hostname( sd, hostname );
+    jsvUnLock(hostVar);
+  }
 
   if (( ret = mbedtls_ssl_setup( &sd->ssl, &sd->conf )) != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
