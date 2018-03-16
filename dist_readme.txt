@@ -63,9 +63,6 @@ espruino_#v##_stm32l496gdiscovery.bin
 espruino_#v##_stm32vldiscovery.bin
    - STM32VLDISCOVERY board
 
-espruino_#v##_stm32f3discovery.bin
-   - STM32F3DISCOVERY board
-   
 espruino_#v##_stm32f4discovery.bin
    - STM32F4DISCOVERY board
 
