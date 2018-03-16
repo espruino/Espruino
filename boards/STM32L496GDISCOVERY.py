@@ -23,7 +23,7 @@ info = {
  'default_console' : "EV_SERIAL2",
  'default_console_tx' : "A2",
  'default_console_rx' : "D6",
- 'variables' :  15359, 	# variables computed from available RAM size : (256-16)*1024/16-1
+ 'variables' :  19200, 	# variables computed from available RAM size : (256-16)*1024/16-1
  'binary_name' : 'espruino_%v_stm32l496gdiscovery.bin',
  'build' : {
    'optimizeflags' : '-O3',
