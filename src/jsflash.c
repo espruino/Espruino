@@ -505,6 +505,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
     if (addr && offset==0 &&
         size==jsfGetFileSize(&header) &&
         flags==jsfGetFileFlags(&header) &&
+        dLen==size && // setting all in one go
         jsfIsEqual(addr, (unsigned char*)dPtr, (uint32_t)dLen)) {
       DBG("Equal\n");
       return true;
