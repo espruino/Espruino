@@ -333,6 +333,7 @@ void jshPinFunctionToString(JshPinFunction pinFunc, JshPinFunctionToStringFlags 
   JshPinFunction info = JSH_MASK_INFO & pinFunc;
   JshPinFunction firstDevice = 0;
   const char *infoStr = 0;
+  char infoStrBuf[5];
   buf[0]=0;
   if (JSH_PINFUNCTION_IS_USART(pinFunc)) {
     devStr=(flags&JSPFTS_JS_NAMES)?"Serial":"USART";
@@ -359,7 +360,6 @@ void jshPinFunctionToString(JshPinFunction pinFunc, JshPinFunctionToStringFlags 
   } else if (JSH_PINFUNCTION_IS_TIMER(pinFunc)) {
      devStr="TIM";
      firstDevice=JSH_TIMER1;
-     char infoStrBuf[5];
      infoStr = &infoStrBuf[0];
      infoStrBuf[0] = 'C';
      infoStrBuf[1] = 'H';
