@@ -19,6 +19,7 @@
 
 #define JSI_WATCHES_NAME "watches"
 #define JSI_TIMERS_NAME "timers"
+#define JSI_DEBUG_HISTORY_NAME "dbghist"
 #define JSI_HISTORY_NAME "history"
 #define JSI_INIT_CODE_NAME "init"
 #define JSI_JSFLAGS_NAME "flags"

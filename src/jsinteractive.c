@@ -921,6 +921,11 @@ int jsiCountBracketsInInput() {
 
 /// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
 bool jsiFreeMoreMemory() {
+#ifdef USE_DEBUGGER
+  // remove debug history first
+  jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_DEBUG_HISTORY_NAME);
+#endif
+  // delete history one item at a time
   JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
   if (!history) return 0;
   JsVar *item = jsvArrayPopFirst(history);
@@ -932,10 +937,18 @@ bool jsiFreeMoreMemory() {
   return freed;
 }
 
+// Return the history array
+static JsVar *jsiGetHistory() {
+  return jsvObjectGetChild(
+      execInfo.hiddenRoot,
+      (jsiStatus & JSIS_IN_DEBUGGER) ? JSI_DEBUG_HISTORY_NAME : JSI_HISTORY_NAME,
+      JSV_ARRAY);
+}
+
 // Add a new line to the command history
 void jsiHistoryAddLine(JsVar *newLine) {
   if (!newLine || jsvGetStringLength(newLine)==0) return;
-  JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, JSV_ARRAY);
+  JsVar *history = jsiGetHistory();
   if (!history) return; // out of memory
   // if it was already in history, remove it - we'll put it back in front
   JsVar *alreadyInHistory = jsvGetIndexOf(history, newLine, false/*not exact*/);
@@ -949,29 +962,27 @@ void jsiHistoryAddLine(JsVar *newLine) {
 }
 
 JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
-  JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
+  JsVar *history = jsiGetHistory();
+  if (!history) return 0; // out of memory
   JsVar *historyLine = 0;
-  if (history) {
-    JsVar *idx = jsvGetIndexOf(history, inputLine, true/*exact*/); // get index of current line
-    if (idx) {
-      if (previous && jsvGetPrevSibling(idx)) {
-        historyLine = jsvSkipNameAndUnLock(jsvLock(jsvGetPrevSibling(idx)));
-      } else if (!previous && jsvGetNextSibling(idx)) {
-        historyLine = jsvSkipNameAndUnLock(jsvLock(jsvGetNextSibling(idx)));
-      }
-      jsvUnLock(idx);
-    } else {
-      if (previous) historyLine = jsvSkipNameAndUnLock(jsvGetArrayItem(history, jsvGetArrayLength(history)-1));
-      // if next, we weren't using history so couldn't go forwards
+  JsVar *idx = jsvGetIndexOf(history, inputLine, true/*exact*/); // get index of current line
+  if (idx) {
+    if (previous && jsvGetPrevSibling(idx)) {
+      historyLine = jsvSkipNameAndUnLock(jsvLock(jsvGetPrevSibling(idx)));
+    } else if (!previous && jsvGetNextSibling(idx)) {
+      historyLine = jsvSkipNameAndUnLock(jsvLock(jsvGetNextSibling(idx)));
     }
-
-    jsvUnLock(history);
+    jsvUnLock(idx);
+  } else {
+    if (previous) historyLine = jsvSkipNameAndUnLock(jsvGetArrayItem(history, jsvGetArrayLength(history)-1));
+    // if next, we weren't using history so couldn't go forwards
   }
+  jsvUnLock(history);
   return historyLine;
 }
 
 bool jsiIsInHistory(JsVar *line) {
-  JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
+  JsVar *history = jsiGetHistory();
   if (!history) return false;
   JsVar *historyFound = jsvGetIndexOf(history, line, true/*exact*/);
   bool inHistory = historyFound!=0;
@@ -992,9 +1003,6 @@ void jsiReplaceInputLine(JsVar *newLine) {
 }
 
 void jsiChangeToHistory(bool previous) {
-#ifdef USE_DEBUGGER
-  if (jsiStatus & JSIS_IN_DEBUGGER) return;
-#endif
   JsVar *nextHistory = jsiGetHistoryLine(previous);
   if (nextHistory) {
     jsiReplaceInputLine(nextHistory);
@@ -1392,6 +1400,7 @@ void jsiHandleNewLine(bool execute) {
 #ifdef USE_DEBUGGER
       if (jsiStatus & JSIS_IN_DEBUGGER) {
         jsiDebuggerLine(lineToExecute);
+        jsiHistoryAddLine(lineToExecute);
         jsvUnLock(lineToExecute);
       } else
 #endif

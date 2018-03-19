@@ -11,6 +11,7 @@
             Add a maximum time for setTimeout/setInterval (100 years)
             Fix Storage.write when writing partial file of the same length and initial contents
             Fix corrupted timer channels returned by Pin.getInfo
+            Add command history to debugger
 
      1v96 : ESP8266: no callback if SSID is not available (fix #1297)
             ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)
