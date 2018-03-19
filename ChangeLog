@@ -8,6 +8,7 @@
             Add Serial.inject to allow data to be added as if it was received from that device
             Fix UDP handling so that it copes with packets not all being received in one go
             STM32L496: increase variables - use full 320kB of RAM as it is contiguous
+            Add a maximum time for setTimeout/setInterval (100 years)
 
      1v96 : ESP8266: no callback if SSID is not available (fix #1297)
             ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)
