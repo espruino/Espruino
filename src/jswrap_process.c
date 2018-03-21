@@ -73,13 +73,6 @@ const void *exportPtrs[] = {
     jspGetVarNamedField,
     0
 };
-const char *exportNames = 
-    "jsvLockAgainSafe\0jsvUnLock\0jsvSkipName\0jsvMathsOp\0"
-    "jsvNewWithFlags\0jsvNewFromFloat\0jsvNewFromInteger\0jsvNewFromString\0jsvNewFromBool\0"
-    "jsvGetFloat\0jsvGetInteger\0jsvGetBool\0"
-    "jspReplaceWith\0jspeFunctionCall\0"
-    "jspGetNamedVariable\0jspGetNamedField\0jspGetVarNamedField\0"
-    "\0\0";
 #endif
 
 /*JSON{
@@ -103,21 +96,6 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
   jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
   jsvObjectSetChildAndUnLock(obj, "MODULES", jsvNewFromString(jswGetBuiltInLibraryNames()));
-#if !defined(SAVE_ON_FLASH) && !defined(BLUETOOTH)
-  // It takes too long to send this information over BLE...
-  JsVar *arr = jsvNewObject();
-  if (arr) {
-    const char *s = exportNames;
-    void **p = (void**)exportPtrs;
-    while (*s) {
-      jsvObjectSetChildAndUnLock(arr, s, jsvNewFromInteger((JsVarInt)(size_t)*p));
-      p++;
-      while (*s) s++; // skip until 0
-      s++; // skip over 0
-    }
-    jsvObjectSetChildAndUnLock(obj, "EXPORTS", arr);
-  }  
-#endif
 #ifndef SAVE_ON_FLASH
   // Pointer to a list of predefined exports - eventually we'll get rid of the array above
   jsvObjectSetChildAndUnLock(obj, "EXPTR", jsvNewFromInteger((JsVarInt)(size_t)exportPtrs));
