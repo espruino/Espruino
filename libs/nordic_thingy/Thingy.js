@@ -54,7 +54,7 @@ exports.onAcceleration = function(callback) {
     this.accel = undefined;
   }
 };
-// Get one callback with a new acceleration value
+// Get one callback with a new acceleration value ({x,y,z})
 exports.getAcceleration = function(callback) {
   if (!this.accel) {
     require("LIS2DH12").connectI2C(i2ce/*, { int:LIS_INT } - not used */).readXYZ(callback);
@@ -62,7 +62,40 @@ exports.getAcceleration = function(callback) {
     this.accel.readXYZ(callback);
   }
 }
-
+// ------------------------------------------------------------------------------------------- MPU9250
+// Get repeated callbacks with {accel,gyro,mag} from the MPU. Call with no argument to disable
+exports.onMPU = function(callback) {
+  if (callback) {
+    if (!this.mpu) {
+      MPU_PWR_CTRL.set(); // MPU on
+      this.mpu = require("MPU9250").connectI2C(i2c);
+      this.mpu.samplerate = 10; // Hz
+      this.mpu.callback = callback;
+      this.mpu.watch = setWatch(function(){
+        this.mpu.callback(this.mpu.read());
+      }.bind(this),MPU_INT,{repeat:1,edge:"rising"});
+      setTimeout(this.mpu.initMPU9250.bind(this.mpu), 10);
+    } else {      
+      this.mpu.callback = callback;
+    }
+  } else {
+    if (this.mpu)
+      clearWatch(this.mpu.watch);
+    MPU_PWR_CTRL.reset(); // MPU off
+    this.mpu = undefined;
+  }
+};
+// Get one callback with a {accel,gyro,mag} value from the MPU
+exports.getMPU = function(callback) {
+  if (!this.mpu) {
+    this.onMPU(function(d) {
+      this.onMPU();
+      callback(d);
+    }.bind(this));
+  } else {
+    callback(this.mpu.read());
+  }
+}
 // ------------------------------------------------------------------------------------------- LPS22HB
 // Get repeated callbacks with {pressure,temperature}. Call with no argument to disable
 exports.onPressure = function(callback) {

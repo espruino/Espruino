@@ -43,6 +43,7 @@ info = {
      'INCLUDE += -I$(ROOT)/libs/nordic_thingy',
      'WRAPPERSOURCES += libs/nordic_thingy/jswrap_thingy.c',
      'JSMODULESOURCES+=libs/nordic_thingy/LIS2DH12.min.js',
+     'JSMODULESOURCES+=libs/nordic_thingy/MPU9250.min.js',
      'JSMODULESOURCES+=libs/nordic_thingy/LPS22HB.min.js',
      'JSMODULESOURCES+=libs/nordic_thingy/HTS221.min.js',
      'JSMODULESOURCES+=libs/nordic_thingy/CCS811.min.js',

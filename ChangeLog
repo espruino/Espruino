@@ -13,6 +13,7 @@
             Fix corrupted timer channels returned by Pin.getInfo
             Add command history to debugger
             Remove process.env.EXPORTS (EXPTR does the same but takes less space)
+            Thingy52: Add 9 axis MPU support
 
      1v96 : ESP8266: no callback if SSID is not available (fix #1297)
             ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)
