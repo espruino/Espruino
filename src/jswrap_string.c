@@ -206,6 +206,72 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
 /*JSON{
   "type" : "method",
   "class" : "String",
+  "name" : "match",
+  "generate" : "jswrap_string_match",
+  "params" : [
+    ["subStr","JsVar","Substring or RegExp to match"]
+  ],
+  "return" : ["JsVar","This match array"]
+}
+Matches `subStr` occurrence in the string.
+ */
+JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
+  if (!jsvIsString(parent)) return 0;
+  if (jsvIsUndefined(subStr)) return 0;
+
+#ifndef SAVE_ON_FLASH
+  // Use RegExp if one is passed in
+  if (jsvIsInstanceOf(subStr, "RegExp")) {
+    jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
+    JsVar *match;
+    match = jswrap_regexp_exec(subStr, parent);
+    if (!jswrap_regexp_hasFlag(subStr,'g')) {
+      return match;
+    }
+
+    // global
+    JsVar *array = jsvNewEmptyArray();
+    if (!array) return 0; // out of memory
+    while (match && !jsvIsNull(match)) {
+      // get info about match
+      JsVar *matchStr = jsvGetArrayItem(match,0);
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
+      JsVarInt len = (JsVarInt)jsvGetStringLength(matchStr);
+      int last = idx+len;
+      jsvArrayPushAndUnLock(array, matchStr);
+      // search again
+      jsvUnLock(match);
+      jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(last));
+      match = jswrap_regexp_exec(subStr, parent);
+    }
+    jsvUnLock(match);
+    jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
+    return array;
+  }
+#endif
+
+  subStr = jsvAsString(subStr, false);
+
+  int idx = jswrap_string_indexOf(parent, subStr, 0, false);
+  if (idx>=0) {
+      JsVar *array = jsvNewEmptyArray();
+      if (!array) {
+        jsvUnLock(subStr);
+        return 0; // out of memory
+      }
+
+      jsvArrayPush(array, subStr);
+      jsvObjectSetChildAndUnLock(array, "index", jsvNewFromInteger(idx));
+      jsvObjectSetChildAndUnLock(array, "input", subStr);
+      return array;
+  }
+  jsvUnLock(subStr);
+  return NULL;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
   "name" : "replace",
   "generate" : "jswrap_string_replace",
   "params" : [
