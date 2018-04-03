@@ -274,7 +274,7 @@ JsVarFloat jswrap_date_getTime(JsVar *date) {
 /*JSON{
   "type" : "method",
   "class" : "Date",
-  "name" : "getTime",
+  "name" : "setTime",
   "generate" : "jswrap_date_setTime",
   "params" : [
     ["timeValue","float","the number of milliseconds since 1970"]
