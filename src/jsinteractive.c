@@ -941,7 +941,11 @@ bool jsiFreeMoreMemory() {
 static JsVar *jsiGetHistory() {
   return jsvObjectGetChild(
       execInfo.hiddenRoot,
+#ifdef USE_DEBUGGER
       (jsiStatus & JSIS_IN_DEBUGGER) ? JSI_DEBUG_HISTORY_NAME : JSI_HISTORY_NAME,
+#else
+      JSI_HISTORY_NAME,
+#endif
       JSV_ARRAY);
 }
 
