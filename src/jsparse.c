@@ -2514,11 +2514,15 @@ NO_INLINE JsVar *jspeStatementTry() {
     JSP_ASSERT_MATCH(LEX_R_CATCH);
     hadCatch = true;
     JSP_MATCH('(');
+    JsVar *scope = 0;
     JsVar *exceptionVar = 0;
-    if (hadException)
-      exceptionVar = jspeiFindOnTop(jslGetTokenValueAsString(lex), true);
-    JSP_MATCH(LEX_ID);
-    JSP_MATCH(')');
+    if (hadException) {
+      scope = jsvNewObject();
+      if (scope)
+        exceptionVar = jsvFindChildFromString(scope, jslGetTokenValueAsString(lex), true);
+    }
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock2(scope,exceptionVar),0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jsvUnLock2(scope,exceptionVar),0);
     if (exceptionVar) {
       // set the exception var up properly
       JsVar *exception = jspGetException();
@@ -2536,9 +2540,13 @@ NO_INLINE JsVar *jspeStatementTry() {
       jspSetNoExecute();
       jspeBlock();
       JSP_RESTORE_EXECUTE();
-    } else {
-      jspeBlock();
+    } else if (scope) {
+      if (jspeiAddScope(scope)) {
+        jspeBlock();
+        jspeiRemoveScope();
+      }
     }
+    jsvUnLock(scope);
   }
   if (lex->tk == LEX_R_FINALLY || (!hadCatch && ((execInfo.execute&(EXEC_ERROR|EXEC_INTERRUPTED))==0))) {
     JSP_MATCH(LEX_R_FINALLY);
