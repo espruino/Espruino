@@ -18,6 +18,7 @@
             Ensure 'in' operator checks the prototype chain (fix #1365)
             Promise.resolve now handles promises/thenables as arguments (fix #1363)
             try..catch now creates exception in its own scope (fix #1367)
+            Thingy52,Pixl.js: add default NFC URL of the Espruino IDE 
 
      1v96 : ESP8266: no callback if SSID is not available (fix #1297)
             ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)
