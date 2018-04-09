@@ -59,6 +59,25 @@ int jswrap_pixljs_getBatteryPercentage() {
 }
 
 
+/*JSON{
+  "type" : "variable",
+  "name" : "SDA",
+  "generate_full" : "4",
+  "ifdef" : "PIXLJS",
+  "return" : ["pin",""]
+}
+The pin marked SDA on the Arduino pin footprint. This is connected directly to pin A4.
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "SCL",
+  "generate_full" : "5",
+  "ifdef" : "PIXLJS",
+  "return" : ["pin",""]
+}
+The pin marked SDA on the Arduino pin footprint. This is connected directly to pin A5.
+*/
+
 
 void lcd_wr(int data) {
   int bit;
