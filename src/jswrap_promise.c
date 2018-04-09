@@ -303,7 +303,21 @@ Return a new promise that is already resolved (at idle it'll
 call `.then`)
 */
 JsVar *jswrap_promise_resolve(JsVar *data) {
-  JsVar *promise = jspromise_create();
+  JsVar *promise = 0;
+  // return the promise passed as value, if the value was a promise object.
+  if (_jswrap_promise_is_promise(data))
+    return jsvLockAgain(data);
+  // If the value is a thenable (i.e. has a "then" method), the
+  // returned promise will "follow" that thenable, adopting its eventual state
+  if (jsvIsObject(data)) {
+    JsVar *then = jsvObjectGetChild(data,"then",0);
+    if (jsvIsFunction(then))
+      promise = jswrap_promise_constructor(then);
+    jsvUnLock(then);
+    if (promise) return promise;
+  }
+  // otherwise the returned promise will be fulfilled with the value.
+  promise = jspromise_create();
   if (!promise) return 0;
   jspromise_resolve(promise, data);
   return promise;

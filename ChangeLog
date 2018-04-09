@@ -16,6 +16,7 @@
             Thingy52: Add 9 axis MPU support
             Errors now store message in 'message', not 'msg' (fix #1366)
             Ensure 'in' operator checks the prototype chain (fix #1365)
+            Promise.resolve now handles promises/thenables as arguments (fix #1363)
 
      1v96 : ESP8266: no callback if SSID is not available (fix #1297)
             ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)
