@@ -1857,7 +1857,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
           JsVar *bv = jsvSkipName(b); // haystack
           if (jsvIsArray(bv) || jsvIsObject(bv)) { // search keys, NOT values
             av = jsvAsArrayIndexAndUnLock(av);
-            JsVar *varFound = jsvFindChildFromVar( bv, av, false);
+            JsVar *varFound = jspGetVarNamedField( bv, av, true);
             jsvUnLock(a);
             a = jsvNewFromBool(varFound!=0);
             jsvUnLock(varFound);
