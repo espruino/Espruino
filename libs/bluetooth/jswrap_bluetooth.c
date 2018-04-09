@@ -141,16 +141,14 @@ void jswrap_nrf_init() {
 
 
   if (jsiStatus & JSIS_COMPLETELY_RESET) {
-#ifdef USE_NFC
-#ifdef PUCKJS
+#if defined(USE_NFC) && defined(NFC_DEFAULT_URL)
     // By default Puck.js's NFC will send you to the PuckJS website
     // address is included so Web Bluetooth can connect to the correct one
     JsVar *addr = jswrap_nrf_bluetooth_getAddress();
-    JsVar *uri = jsvVarPrintf("https://puck-js.com/go?a=%v", addr);
+    JsVar *uri = jsvVarPrintf(NFC_DEFAULT_URL"?a=%v", addr);
     jsvUnLock(addr);
     jswrap_nrf_nfcURL(uri);
     jsvUnLock(uri);
-#endif
 #endif
   } else {
 #ifdef USE_NFC
