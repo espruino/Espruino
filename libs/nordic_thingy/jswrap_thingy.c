@@ -26,7 +26,7 @@
 
 #define I2C_SDA 7
 #define I2C_SCL 8
-// SX1509 IO Expader
+// SX1509 IO Expander
 #define SX_I2C_ADDR 0x3e
 #define SX_RESET 16
 #define SX_POWER 30

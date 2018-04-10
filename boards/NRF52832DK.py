@@ -16,8 +16,9 @@
 import pinutils;
 
 info = {
- 'name' : "nRF52 Preview Development Kit",
- 'link' :  [ "https://www.nordicsemi.com/Products/Bluetooth-Smart-Bluetooth-low-energy/nRF52832" ],
+ 'name' : "nRF52 Development Kit",
+ 'link' :  [ "https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy/nRF52-DK" ],
+ 'espruino_page_link' : 'nRF52832DK',
   # This is the PCA10036
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D6",
@@ -81,10 +82,39 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
-  'left' : [ 'VDD', 'VDD', 'RESET', 'VDD','5V','GND','GND','PD3','PD4','PD28','PD29','PD30','PD31'],
-  'right' : [ 'PD27', 'PD26', 'PD2', 'GND', 'PD25','PD24','PD23', 'PD22','PD20','PD19','PD18','PD17','PD16','PD15','PD14','PD13','PD12','PD11','PD10','PD9','PD8','PD7','PD6','PD5','PD21','PD1','PD0'],
+  'left' : [ 'VDD', 'VDD', 'RESET', 'VDD','5V','GND','GND','','','D3','D4','D28','D29','D30','D31'],
+  'right' : [
+     'D27', 'D26', 'D2', 'GND', 'D25','D24','D23', 'D22','D20','D19','',
+     'D18','D17','D16','D15','D14','D13','D12','D11','',
+     'D10','D9','D8','D7','D6','D5','D21','D1','D0'],
+  '_notes' : {
+    'D6' : "Serial console RX",
+    'D8' : "Serial console TX"
+  }
 };
 board["_css"] = """
+#board {
+  width: 528px;
+  height: 800px;
+  top: 0px;
+  left : 200px;
+  background-image: url(img/NRF52832DK.jpg);
+}
+#boardcontainer {
+  height: 900px;
+}
+
+#left {
+    top: 219px;
+    right: 466px;
+}
+#right {
+    top: 150px;
+    left: 466px;
+}
+
+.leftpin { height: 17px; }
+.rightpin { height: 17px; }
 """;
 
 def get_pins():
@@ -114,7 +144,7 @@ def get_pins():
   pinutils.findpin(pins, "PD18", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PD19", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PD20", True)["functions"]["NEGATED"]=0;
-  
+
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;

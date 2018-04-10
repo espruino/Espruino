@@ -9,51 +9,6 @@ Beep
 MPU9250 support - the library at the moment only works for the magnetometer
 Microphone support - will most likely need native support
 
-// Button
-BTN
-
-// R/G/B leds
-LED1/2/3  
-
-// MOSFET outputs
-MOS1/2/3/4 
-
-// External IO outputs
-IOEXT0/1/2/3 
-
-// Get repeated callbacks with {x,y,z}. Call with no argument to disable
-Thingy.onAcceleration = function(callback)
-
-// Get one callback with a new acceleration value
-Thingy.getAcceleration = function(callback)
-
-// Get repeated callbacks with {pressure,temperature}. Call with no argument to disable
-Thingy.onPressure = function(callback)
-
-// Get one callback with a new {pressure,temperature} value
-Thingy.getPressure = function(callback)
-
-// Get repeated callbacks with {humidity,temperature}. Call with no argument to disable
-Thingy.onHumidity = function(callback)
-
-// Get one callback with a new {humidity,temperature} value
-Thingy.getHumidity = function(callback)
-
-// Get repeated callbacks with air quality `{eC02,TVOC}`. Call with no argument to disable
-Thingy.onGas = function(callback)
-
-//Get one callback with a new air quality value `{eC02,TVOC}`. This may not be useful as the sensor takes a while to warm up and produce useful values
-Thingy.getGas = function(callback) 
-
-// Get repeated callbacks with color `{r,g,b,c}`. Call with no argument to disable
-Thingy.onColor = function(callback)
-
-// Get one callback with a new color value `{r,g,b,c}`
-Thingy.getColor = function(callback)
-
-// Play a sound, supply a string/uint8array/arraybuffer, samples per second, and a callback to use when done
-Thingy.sound = function(waveform, pitch, callback)
-
 */
 
 
@@ -74,15 +29,18 @@ var SENSE_LEDS = [SENSE_LEDR,SENSE_LEDG,SENSE_LEDB];
 var LPS_INT = D23;
 var HTS_INT = D24;
 var BH_INT = D31;
-var BATTERY = D28;
+var BATTERY_CHARGE = D17;
+var BATTERY_VOLTAGE = D28;
+var BATTERY_MONITOR = V4;
 var SPEAKER	= D27;
 var SPK_PWR_CTRL= D29;
 
 var i2c = new I2C();
 i2c.setup({sda:7,scl:8,bitrate:400000});
+exports.I2C = i2c;
 var i2ce = new I2C();
 i2ce.setup({sda:14,scl:15,bitrate:400000});
-
+exports.I2CE = i2ce;
 
 // ------------------------------------------------------------------------------------------- LIS2DH12
 // Get repeated callbacks with {x,y,z}. Call with no argument to disable
@@ -96,7 +54,7 @@ exports.onAcceleration = function(callback) {
     this.accel = undefined;
   }
 };
-// Get one callback with a new acceleration value
+// Get one callback with a new acceleration value ({x,y,z})
 exports.getAcceleration = function(callback) {
   if (!this.accel) {
     require("LIS2DH12").connectI2C(i2ce/*, { int:LIS_INT } - not used */).readXYZ(callback);
@@ -104,7 +62,40 @@ exports.getAcceleration = function(callback) {
     this.accel.readXYZ(callback);
   }
 }
-
+// ------------------------------------------------------------------------------------------- MPU9250
+// Get repeated callbacks with {accel,gyro,mag} from the MPU. Call with no argument to disable
+exports.onMPU = function(callback) {
+  if (callback) {
+    if (!this.mpu) {
+      MPU_PWR_CTRL.set(); // MPU on
+      this.mpu = require("MPU9250").connectI2C(i2c);
+      this.mpu.samplerate = 10; // Hz
+      this.mpu.callback = callback;
+      this.mpu.watch = setWatch(function(){
+        this.mpu.callback(this.mpu.read());
+      }.bind(this),MPU_INT,{repeat:1,edge:"rising"});
+      setTimeout(this.mpu.initMPU9250.bind(this.mpu), 10);
+    } else {      
+      this.mpu.callback = callback;
+    }
+  } else {
+    if (this.mpu)
+      clearWatch(this.mpu.watch);
+    MPU_PWR_CTRL.reset(); // MPU off
+    this.mpu = undefined;
+  }
+};
+// Get one callback with a {accel,gyro,mag} value from the MPU
+exports.getMPU = function(callback) {
+  if (!this.mpu) {
+    this.onMPU(function(d) {
+      this.onMPU();
+      callback(d);
+    }.bind(this));
+  } else {
+    callback(this.mpu.read());
+  }
+}
 // ------------------------------------------------------------------------------------------- LPS22HB
 // Get repeated callbacks with {pressure,temperature}. Call with no argument to disable
 exports.onPressure = function(callback) {
@@ -226,19 +217,131 @@ exports.getColor = function(callback) {
     callback(this.color.read());
   }
 }
+// ------------------------------------------------------------------------------------------- Battery
+// Returns the state of the battery (immediately, or via callback) as { charging : bool, voltage : number }
+exports.getBattery = function(callback) {
+  BATTERY_MONITOR.set();
+  var result = { 
+    charging : BATTERY_CHARGE.read(),
+    voltage : E.getAnalogVRef()*analogRead(BATTERY_VOLTAGE)*1500/180
+  };
+  BATTERY_MONITOR.reset();
+  if (callback) callback(result);
+  return result;
+}
 // ------------------------------------------------------------------------------------------- Speaker
 // Play a sound, supply a string/uint8array/arraybuffer, samples per second, and a callback to use when done
+// This can play up to 3 sounds at a time (assuming ~4000 samples per second)
 exports.sound = function(waveform, pitch, callback) {  
-  if (exports.waveform) exports.waveform.stop();
-  exports.waveform = new Waveform(waveform.length);
-  exports.waveform.buffer.set(waveform);
-  exports.waveform.on("finish", function(buf) {
+  if (!this.sounds) this.sounds=0;
+  if (this.sounds>2) throw new Error("Too many sounds playing at once");
+  var w = new Waveform(waveform.length);
+  w.buffer.set(waveform);
+  w.on("finish", function(buf) {
+    this.sounds--;
+    if (!this.sounds) {
+      SPK_PWR_CTRL.reset();
+      digitalWrite(SPEAKER,0);
+    }
+    if (callback) callback();
+  }.bind(this));
+  if (!this.sounds) {
+    analogWrite(SPEAKER, 0.5, {freq:40000});
+    SPK_PWR_CTRL.set();
+  }
+  this.sounds++;
+  w.startOutput(SPEAKER, pitch);
+};
+// Make a simple beep noise. frequency in Hz, length in milliseconds. Both are optional.
+exports.beep = function(freq, length) {
+  length = (length>0)?length:250;
+  freq = (freq>0)?freq:500;
+  analogWrite(SPEAKER, 0.5, {freq:freq});
+  SPK_PWR_CTRL.set();
+  if (this.beepTimeout) clearTimeout(this.beepTimeout);
+  this.beepTimeout = setTimeout(function() {
+    delete this.beepTimeout;
     SPK_PWR_CTRL.reset();
     digitalWrite(SPEAKER,0);
-    exports.waveform = undefined;
-    if (callback)  callback();
-  });
-  analogWrite(SPEAKER, 0.5, {freq:40000});
-  exports.waveform.startOutput(SPEAKER, pitch);
-  SPK_PWR_CTRL.set();
+  }.bind(this), length);
 };
+// Record audio for the given number of samples, at 8192kHz 8 bit.
+// This can then be fed into Thingy.sound(waveform, 8192). RAM is scarce, so realistically 1 sec is a maximum.
+exports.record = function(samples, callback) {
+  var gain = 0x48; // gain ( 0 -> 0x50, 0x28 default )
+  var buf = new ArrayBuffer(2049); // 2x 1k byte sample buffers for DMA (+1 for byte shift)
+  var bufAddr = E.getAddressOf(buf,true);
+  if (!bufAddr) throw new Error("Unable to create a buffer");
+  var result = new Uint8Array(samples);
+  var resultIdx = 0;
+  var p = 0; // 1 or 0 (which buffer)
+  MIC_PWR_CTRL.set();
+  MIC_CLK.mode("output");
+  MIC_DOUT.mode("input");  
+  poke32(0x4001D504,0x08400000); // 1.032MHz clock default
+  poke32(0x4001D508,1); // mono, left on falling edge
+  poke32(0x4001D518,gain); // gain left
+  poke32(0x4001D51C,gain); // gain right
+  poke32(0x4001D540,MIC_CLK.getInfo().num); // CLK
+  poke32(0x4001D544,MIC_DOUT.getInfo().num); // DIN
+  poke32(0x4001D560,bufAddr); // PTR
+  poke32(0x4001D564,512); // MAXCNT
+  poke32(0x4001D500,1); // enable PDM
+  poke8(0x4001D100,0); // event start
+  poke8(0x4001D104,0); // event stop
+  poke8(0x4001D108,0); // event end
+  poke8(0x4001D000,1); // START TASK
+  poke32(0x4001D560,bufAddr+1024); // second pointer
+  // 16kHz output 16 bit, 32kByte/sec = will be done in 30ms
+  // Poll more often so we're more likely to catch it (no way to hook IRQs yet)
+  var i = setInterval(function() {
+    if (peek8(0x4001D108)) { // end event
+      poke8(0x4001D108,0); // clear end
+      poke32(0x4001D560,bufAddr+p*1024); // push new address in
+      // quick copy, drop every other sample, 16->8 bits
+      result.set(new Uint32Array(buf,1+(p*1024),256),resultIdx);
+      // advance and stop if required
+      p=1-p;
+      resultIdx+=256;
+      if (resultIdx>=result.length) stop();
+    }
+  },5);
+  function stop() {
+    clearInterval(i); // stop polling
+    poke8(0x4001D004,1); // STOP TASK
+    poke8(0x4001D500,0); // disable PDM
+    poke32(0x4001D540,0xFFFFFFFF); // disconnect CLK
+    poke32(0x4001D544,0xFFFFFFFF); // disconnect DIN    
+    MIC_PWR_CTRL.reset(); // mic off
+    // Now we have some time, add 128 to each item
+    E.mapInPlace(result,result,function(x){return x+128;});
+    // call the callback
+    if (callback) setTimeout(callback,0,result);
+  }
+  return result;
+};
+
+// Reinitialise any hardware that might have been set up before being saved
+E.on('init',function() {
+  if (exports.accel && exports.accel.callback) { 
+    var c = exports.accel.callback; 
+    exports.accel = undefined; 
+    exports.onAcceleration(c); 
+  }
+  if (exports.pressureCallback) { 
+    exports.pressure = undefined; 
+    exports.onPressure(exports.pressureCallback); 
+  }
+  if (exports.humidityCallback) { 
+    exports.humidity = undefined; 
+    exports.onHumidity(exports.humidityCallback);
+  }
+  if (exports.gasCallback) { 
+    exports.gas = undefined; 
+    exports.onGas(exports.gasCallback); 
+  }
+  if (exports.colorCallback) { 
+    exports.color = undefined; 
+    exports.onColor(exports.colorCallback); 
+  }
+});

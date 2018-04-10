@@ -398,7 +398,7 @@ JsVar *jswrap_interface_getSerial() {
   "generate" : "jswrap_interface_setInterval",
   "params" : [
     ["function","JsVar","A Function or String to be executed"],
-    ["timeout","float","The time between calls to the function"],
+    ["timeout","float","The time between calls to the function (max 3153600000000 = 100 years"],
     ["args","JsVarArray","Optional arguments to pass to the function when executed"]
   ],
   "return" : ["JsVar","An ID that can be passed to clearInterval"]
@@ -436,7 +436,7 @@ was returned by `setInterval` into the `clearInterval` function.
   "generate" : "jswrap_interface_setTimeout",
   "params" : [
     ["function","JsVar","A Function or String to be executed"],
-    ["timeout","float","The time until the function will be executed"],
+    ["timeout","float","The time until the function will be executed (max 3153600000000 = 100 years"],
     ["args","JsVarArray","Optional arguments to pass to the function when executed"]
   ],
   "return" : ["JsVar","An ID that can be passed to clearTimeout"]
@@ -470,27 +470,30 @@ was returned by `setTimeout` into the `clearInterval` function.
  */
 JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, JsVar *args, bool isTimeout) {
   // NOTE: The 5 sec delay mentioned in the description is handled by jshSleep
-  JsVar *itemIndex = 0;
   if (!jsvIsFunction(func) && !jsvIsString(func)) {
     jsExceptionHere(JSET_ERROR, "Function or String not supplied!");
-  } else {
-    // Create a new timer
-    JsVar *timerPtr = jsvNewObject();
-    if (isnan(interval) || interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
-    JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
-    jsvObjectSetChildAndUnLock(timerPtr, "time", jsvNewFromLongInteger((jshGetSystemTime() - jsiLastIdleTime) + intervalInt));
-    if (!isTimeout) {
-      jsvObjectSetChildAndUnLock(timerPtr, "interval", jsvNewFromLongInteger(intervalInt));
-    }
-    jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
-    if (jsvGetArrayLength(args))
-      jsvObjectSetChild(timerPtr, "args", args); // intentionally no unlock
-
-    // Add to array
-    itemIndex = jsvNewFromInteger(jsiTimerAdd(timerPtr));
-    jsvUnLock(timerPtr);
-    jsiTimersChanged(); // mark timers as changed
+    return 0;
   }
+  if (isnan(interval) || interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
+  if (interval>TIMER_MAX_INTERVAL) {
+    jsExceptionHere(JSET_ERROR, "Interval is too long (>100 years)");
+    return 0;
+  }
+  // Create a new timer
+  JsVar *timerPtr = jsvNewObject();
+  JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
+  jsvObjectSetChildAndUnLock(timerPtr, "time", jsvNewFromLongInteger((jshGetSystemTime() - jsiLastIdleTime) + intervalInt));
+  if (!isTimeout) {
+    jsvObjectSetChildAndUnLock(timerPtr, "interval", jsvNewFromLongInteger(intervalInt));
+  }
+  jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
+  if (jsvGetArrayLength(args))
+    jsvObjectSetChild(timerPtr, "args", args); // intentionally no unlock
+
+  // Add to array
+  JsVar *itemIndex = jsvNewFromInteger(jsiTimerAdd(timerPtr));
+  jsvUnLock(timerPtr);
+  jsiTimersChanged(); // mark timers as changed
   return itemIndex;
 }
 JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout, JsVar *args) {

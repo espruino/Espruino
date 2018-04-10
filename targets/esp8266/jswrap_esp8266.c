@@ -242,7 +242,7 @@ JsVar *jswrap_ESP8266_getState() {
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
 }
-**Note:** This is deprecated. Use `require("flash").getFree()`
+**Note:** This is deprecated. Use `require("Flash").getFree()`
 */
 JsVar *jswrap_ESP8266_getFreeFlash() {
   return jshFlashGetFree();

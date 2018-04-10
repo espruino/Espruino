@@ -85,6 +85,13 @@ typedef struct JsNetwork {
   int (*send)(struct JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len);
 } PACKED_FLAGS JsNetwork;
 
+/// Header applied to all UDP packets when they are received
+typedef struct {
+  uint8_t host[4];   //< host data sent from
+  uint16_t port;   //< port data sent from
+  uint16_t length; //< length in bytes of the data
+} PACKED_FLAGS JsNetUDPPacketHeader;
+
 // ---------------------------------- these are in network.c
 // Get the relevant info for JsNetwork (done from a var in root scope)
 void networkCreate(JsNetwork *net, JsNetworkType type); // create the network object (ONLY to be used by network drivers)

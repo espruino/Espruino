@@ -18,6 +18,7 @@ import pinutils;
 info = {
  'name' : "MDBT42Q Module",
  'link' :  [ "http://www.espruino.com/MDBT42Q" ],
+ 'espruino_page_link' : 'MDBT42Q', 
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D6",
  'default_console_rx' : "D8",
@@ -78,8 +79,12 @@ devices = {
 # left-right, or top-bottom order
 board = {
   'left' : [ 'GND','','','','D25','D26','D27','D28','D29','D30','D31','DEC4','DCC','VDD'],
-  'right' : [ 'GND','D22','SWDIO','SWDCLK','D21/NRST','D20','D19','D18','D17','D16','D15','D14','D13','D12','D11' ],
+  'right2' : [ 'D24', '', 'D23'],
+  'right' : [ 'GND','D22','SWDIO','SWDCLK','D21','D20','D19','D18','D17','D16','D15','D14','D13','D12','D11' ],
   'bottom' : [ 'GND','D0','D1','D2','D3','D4','D5','D6','D7','D8','D9','D10','GND' ],
+  '_notes' : {
+    'D21' : "Also NRST if configured"
+  }
 };
 
 board["_css"] = """
@@ -101,12 +106,17 @@ board["_css"] = """
     top: 115px;
     right: 316px;
 }
+#right2 {
+    top: 115px;
+    right: 110px;
+}
 #right {
     top: 115px;
     left: 316px;
 }
 
 .leftpin { height: 17px; }
+.left2pin { height: 17px; }
 .rightpin { height: 17px; }
 .bottompin { width: 15px; padding:0px; }
 """;

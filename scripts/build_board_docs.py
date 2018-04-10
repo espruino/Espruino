@@ -33,7 +33,7 @@ print("Script location "+scriptdir)
 embeddable = False
 boardname = ""
 if len(sys.argv)==3 and sys.argv[2]=="pinout":
-  embeddable = True 
+  embeddable = True
   boardname = sys.argv[1]
 if len(sys.argv)==2:
   boardname = sys.argv[1]
@@ -78,7 +78,7 @@ for pin in pins:
 def has_pinb(brd,pin):
   for pinstrip in brd:
     if pinstrip[0]!='_':
-      for p in brd[pinstrip]: 
+      for p in brd[pinstrip]:
         if p==pin: return True
   return False
 
@@ -99,15 +99,15 @@ def dump_pin(brd, pin, pinstrip):
         pinmap = brd['_pinmap'];
 
       if pin in pinmap:
-        pin = pinmap[pin];      
+        pin = pinmap[pin];
       pininfo = pinutils.findpin(pins, pin, False)
 
 
       not_five_volt = False
 #      print(json.dumps(pininfo))
-      if ("csv" in pininfo) and ("IO" in pininfo["csv"]) and  ("Type" in pininfo["csv"]) and (pininfo["csv"]["Type"]=="I/O") and (pininfo["csv"]["IO"]!="FT") : 
+      if ("csv" in pininfo) and ("IO" in pininfo["csv"]) and  ("Type" in pininfo["csv"]) and (pininfo["csv"]["Type"]=="I/O") and (pininfo["csv"]["IO"]!="FT") :
          not_five_volt = True
-      if "3.3" in pininfo["functions"]: 
+      if "3.3" in pininfo["functions"]:
          not_five_volt = True
 
       writeHTML('    <DIV class="'+pinstrip+'pin pin pin'+pin+'">');
@@ -127,14 +127,14 @@ def dump_pin(brd, pin, pinstrip):
       pinfuncs = {}
 
       for func in sorted(pininfo["functions"]):
-#       writeHTML('     '+func)    
-        if func in pinutils.CLASSES:       
+#       writeHTML('     '+func)
+        if func in pinutils.CLASSES:
           funcdata = str(pininfo["functions"][func])
           cls = pinutils.CLASSES[func]
           name = cls
           title = func
           if cls=="I2C" or cls=="SPI" or cls=="USART": name=func.replace("_"," ")
-          
+
           if cls=="DEVICE" and funcdata[:4]=="pin_":
             title = title + " ("+funcdata[4:]+")";
 #            print title
@@ -150,49 +150,54 @@ def dump_pin(brd, pin, pinstrip):
         url = False
         if pf["cls"] in pinutils.URLS: url = pinutils.URLS[pf["cls"]]
         if pf["func"] in pinutils.URLS: url = pinutils.URLS[pf["func"]]
-        
+
         if url != False: writeHTML('     <A href="'+url+'" class="pinfunctionlink">');
         writeHTML('     <SPAN class="pinfunction '+pf["cls"]+'" title="'+pf["title"]+'" onMouseOver="showTT(\''+pf["id"]+'\')" onMouseOut="hideTT(\''+pf["id"]+'\')">'+pf["name"]+'</SPAN>')
         if url != False: writeHTML('     </A>');
-        writeHTML('     <SPAN class="pintooltip" id="'+pf["id"]+'" style="display:none;">'+pf["title"]+'</SPAN>')        
-          
+        writeHTML('     <SPAN class="pintooltip" id="'+pf["id"]+'" style="display:none;">'+pf["title"]+'</SPAN>')
+
       if reverse: writeHTML(pinHTML2+"\n"+pinHTML)
-      writeHTML('    </DIV>')    
+      writeHTML('    </DIV>')
 
 if not embeddable:
   writeHTML("""<HTML>
  <HEAD>
 """);
 writeHTML("""  <STYLE>
-   .boardcontainer { position: relative; }
-   .board { 
-     position: absolute; 
+   .boardcontainer {
+     position: relative;
+    }
+   .boardcontainer * { /* bootstrap screws up all the sizing by GLOBALLY changing the way sizes are calculated! */
+     -webkit-box-sizing:content-box; -moz-box-sizing: content-box;  box-sizing: content-box;
+   }
+   .board {
+     position: absolute;
      background-size: 100% auto; # width and height, can be %, px or whatever.
    }
    .pin { padding: 1px; height: 20px;  }
-   .pinname { 
+   .pinname {
       background-color: #FFF;
-      border:1px solid black; 
+      border:1px solid black;
       padding-left: 2px;
-      padding-right: 2px; 
-      font-weight: bold;      
+      padding-right: 2px;
+      font-weight: bold;
     }
-   .pinfunction { 
-     border:1px solid black; 
-     border-radius:3px; 
+   .pinfunction {
+     border:1px solid black;
+     border-radius:3px;
      padding-left: 2px;
-     padding-right: 2px; 
+     padding-right: 2px;
    }
-   .pinfunctionlink { 
+   .pinfunctionlink {
       color : black;
       text-decoration: none;
-   } 
+   }
    .pintooltip {
       background-color: #FFD;
-      border:1px solid black; 
+      border:1px solid black;
       padding-left: 2px;
-      padding-right: 2px; 
-      font-weight: bold;  
+      padding-right: 2px;
+      font-weight: bold;
       position: absolute;
       z-index: 100;
    }
@@ -262,12 +267,12 @@ writeHTML("""  <STYLE>
 """);
 writeHTML("  </STYLE>"+'<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>')
 writeHTML("""
-  <SCRIPT type="text/javascript"> 
-    function showTT(ttid) { 
+  <SCRIPT type="text/javascript">
+    function showTT(ttid) {
       var e = document.getElementById(ttid);
       e.style.display = 'block';
     }
-    function hideTT(ttid) { 
+    function hideTT(ttid) {
       var e = document.getElementById(ttid);
       e.style.display = 'none';
     }
@@ -299,7 +304,7 @@ if not embeddable:
   writeHTML('  <!-- '+boardname+' -->')
   if "link" in board.info:
     for link in board.info["link"]:
-      writeHTML('  <P><a href=\"'+link+'\"" target="_blank">'+link+'</a></P>')    
+      writeHTML('  <P><a href=\"'+link+'\"" target="_blank">'+link+'</a></P>')
   writeHTML('  <H2>Specifications</H2>')
   writeHTML('  <TABLE style="margin-left:100px;">')
   writeHTML('   <TR><TH width="256">Chip</TH><TD>'+board.chip['part']+'</TD></TR>')
@@ -358,17 +363,17 @@ def writeBoard(brd, brdnum):
   for pinstrip in brd:
     if pinstrip[0]!='_':
       writeHTML('   <DIV id="'+pinstrip+'">')
-      for pin in brd[pinstrip]:  
+      for pin in brd[pinstrip]:
         usedpins.append(pin)
         dump_pin(brd, pin, pinstrip)
-      writeHTML('   </DIV>')    
-    
+      writeHTML('   </DIV>')
+
   otherpins=0
   for pinstruct in pins:
     pin = pinstruct["name"]
-    if not pin in usedpins: 
+    if not pin in usedpins:
       otherpins = otherpins + 1
-    
+
   writeHTML('  </DIV>')
   writeHTML('  </DIV>')
 
@@ -376,8 +381,8 @@ def writeBoard(brd, brdnum):
     writeHTML('  <DIV id="otherpins">')
     writeHTML('   <H2>Pins not on connectors</H2>')
     for pinstruct in pins:
-      pin = pinstruct["name"]        
-      if not pin in usedpins:    
+      pin = pinstruct["name"]
+      if not pin in usedpins:
         dump_pin(brd, pin, "otherpins")
     writeHTML('  </DIV>')
   writeHTML('  <P></P>')
@@ -399,12 +404,12 @@ else:
 #writeHTML('var p;');
 #for pinstrip in board.board:
 #  if pinstrip[0]!='_':
-#    for pin in board.board[pinstrip]:       
+#    for pin in board.board[pinstrip]:
 #      if pin in pinmap:
-#        pin = pinmap[pin];      
+#        pin = pinmap[pin];
 #      pininfo = pinutils.findpin(pins, pin, False)
 #      if "UQFN48" in pininfo["csv"]:
-#        n = int(pininfo["csv"]["UQFN48"])-1        
+#        n = int(pininfo["csv"]["UQFN48"])-1
 #        n = (n+12) % 48
 #        if n<12:
 #          px = (n-6)*d

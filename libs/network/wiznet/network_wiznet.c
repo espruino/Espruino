@@ -162,6 +162,7 @@ int net_wiznet_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, 
     getsockopt(sckt, SO_RECVBUF, &dataAvailable);
     if (!dataAvailable) return 0;
 
+    // TODO: Use JsNetUDPPacketHeader here to tidy this up
     size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
     uint32_t *host = (uint32_t*)buf;
     unsigned short *port = (unsigned short*)&host[1];
@@ -186,6 +187,7 @@ int net_wiznet_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, 
 int net_wiznet_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
   int r;
   if (socketType & ST_UDP) {
+    // TODO: Use JsNetUDPPacketHeader here to tidy this up
     size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
     uint32_t *host = (uint32_t*)buf;
     unsigned short *port = (unsigned short*)&host[1];

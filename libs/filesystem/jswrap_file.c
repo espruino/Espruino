@@ -18,7 +18,7 @@
 #include "jsflags.h"
 
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSd" // the data in each file
-#define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSo" // the list of open files
+#define JS_FS_OPEN_FILES_NAME "FSopen" // the list of open files
 #if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO) && !defined(USE_FLASHFS)
 #define SD_CARD_ANYWHERE
 #endif
@@ -603,9 +603,11 @@ Before first use the media needs to be formatted.
 
 ```
 fs=require("fs");
-if ( typeof(fs.readdirSync())==="undefined" ) {
-  console.log("Formatting FS");
-  E.flashFatFS({format:true});
+try {
+  fs.readdirSync();
+ } catch (e) { //'Uncaught Error: Unable to mount media : NO_FILESYSTEM'
+  console.log('Formatting FS - only need to do once');
+  E.flashFatFS({ format: true });
 }
 fs.writeFileSync("bang.txt", "This is the way the world ends\nnot with a bang but a whimper.\n");
 fs.readdirSync();

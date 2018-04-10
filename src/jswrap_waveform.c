@@ -20,7 +20,7 @@
 #include "jsinteractive.h"
 #include "jstimer.h"
 
-#define JSI_WAVEFORM_NAME JS_HIDDEN_CHAR_STR"wave"
+#define JSI_WAVEFORM_NAME "wave"
 
 #ifndef SAVE_ON_FLASH
 

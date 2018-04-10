@@ -59,6 +59,25 @@ int jswrap_pixljs_getBatteryPercentage() {
 }
 
 
+/*JSON{
+  "type" : "variable",
+  "name" : "SDA",
+  "generate_full" : "4",
+  "ifdef" : "PIXLJS",
+  "return" : ["pin",""]
+}
+The pin marked SDA on the Arduino pin footprint. This is connected directly to pin A4.
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "SCL",
+  "generate_full" : "5",
+  "ifdef" : "PIXLJS",
+  "return" : ["pin",""]
+}
+The pin marked SDA on the Arduino pin footprint. This is connected directly to pin A5.
+*/
+
 
 void lcd_wr(int data) {
   int bit;
@@ -119,8 +138,16 @@ void lcd_flip_gfx(JsGraphics *gfx) {
 }
 
 
-void lcd_flip(JsVar *parent) {
-  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+/// Send buffer contents to the screen. Usually only the modified data will be output, but if all=true then the whole screen contents is sent
+void lcd_flip(JsVar *parent, bool all) {
+  JsGraphics gfx; 
+  if (!graphicsGetFromVar(&gfx, parent)) return;
+  if (all) {
+    gfx.data.modMinX = 0;
+    gfx.data.modMinY = 0;
+    gfx.data.modMaxX = 127;
+    gfx.data.modMaxY = 63;
+  }
   lcd_flip_gfx(&gfx);
   graphicsSetVar(&gfx);
 }
@@ -302,7 +329,7 @@ void jswrap_pixljs_init() {
   };
 
   // Create 'flip' fn
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG);
+  JsVar *fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
   jsvObjectSetChildAndUnLock(graphics,"flip",fn);
   // LCD init 2
   jshDelayMicroseconds(10000);

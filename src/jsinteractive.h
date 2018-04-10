@@ -19,6 +19,7 @@
 
 #define JSI_WATCHES_NAME "watches"
 #define JSI_TIMERS_NAME "timers"
+#define JSI_DEBUG_HISTORY_NAME "dbghist"
 #define JSI_HISTORY_NAME "history"
 #define JSI_INIT_CODE_NAME "init"
 #define JSI_JSFLAGS_NAME "flags"
@@ -163,6 +164,7 @@ extern JsSysTime jsiLastIdleTime; ///< The last time we went around the idle loo
 void jsiDumpJSON(vcbprintf_callback user_callback, void *user_data, JsVar *data, JsVar *existing);
 void jsiDumpState(vcbprintf_callback user_callback, void *user_data);
 #define TIMER_MIN_INTERVAL 0.1 // in milliseconds
+#define TIMER_MAX_INTERVAL 31536000001000ULL // in milliseconds
 extern JsVarRef timerArray; // Linked List of timers to check and run
 extern JsVarRef watchArray; // Linked List of input watches to check and run
 
