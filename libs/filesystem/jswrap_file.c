@@ -603,9 +603,11 @@ Before first use the media needs to be formatted.
 
 ```
 fs=require("fs");
-if ( typeof(fs.readdirSync())==="undefined" ) {
-  console.log("Formatting FS");
-  E.flashFatFS({format:true});
+try {
+  fs.readdirSync();
+ } catch (e) { //'Uncaught Error: Unable to mount media : NO_FILESYSTEM'
+  console.log('Formatting FS - only need to do once');
+  E.flashFatFS({ format: true });
 }
 fs.writeFileSync("bang.txt", "This is the way the world ends\nnot with a bang but a whimper.\n");
 fs.readdirSync();
