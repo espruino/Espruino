@@ -265,7 +265,7 @@ exports.beep = function(freq, length) {
     digitalWrite(SPEAKER,0);
   }.bind(this), length);
 };
-// Record audio for the given number of samples, at 8192kHz 8 bit.
+// Record audio for the given number of samples, at 8192 Hz 8 bit.
 // This can then be fed into Thingy.sound(waveform, 8192). RAM is scarce, so realistically 1 sec is a maximum.
 exports.record = function(samples, callback) {
   var gain = 0x48; // gain ( 0 -> 0x50, 0x28 default )
