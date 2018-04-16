@@ -170,6 +170,16 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
   return v;
 }
 
+/*JSON{
+  "type" : "property",
+  "class" : "ArrayBuffer",
+  "name" : "byteLength",
+  "generate_full" : "(JsVarInt)(parent->varData.arraybuffer.length)",
+  "return" : ["int","The Length in bytes"]
+}
+The length, in bytes, of the ArrayBuffer
+ */
+
 
 /*
  * Potential invocations:

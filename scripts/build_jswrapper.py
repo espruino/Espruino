@@ -78,6 +78,7 @@ def getTestFor(className, static):
     if className=="Number": return "jsvIsNumeric(parent)"
     if className=="Object": return "parent" # we assume all are objects
     if className=="Array": return "jsvIsArray(parent)"
+    if className=="ArrayBuffer": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type==ARRAYBUFFERVIEW_ARRAYBUFFER"
     if className=="ArrayBufferView": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type!=ARRAYBUFFERVIEW_ARRAYBUFFER"
     if className=="Function": return "jsvIsFunction(parent)"
     return getConstructorTestFor(className, "constructorPtr");
