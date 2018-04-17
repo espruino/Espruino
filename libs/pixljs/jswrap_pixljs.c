@@ -44,19 +44,14 @@ Class containing utility functions for [Pixl.js](http://www.espruino.com/Pixl.js
     "type" : "staticmethod",
     "class" : "Pixl",
     "name" : "getBatteryPercentage",
-    "generate" : "jswrap_pixljs_getBatteryPercentage",
+    "generate" : "jswrap_espruino_getBattery",
     "return" : ["int", "A percentage between 0 and 100" ]
 }
+DEPRECATED - Please use `E.getBattery()` instead.
+
 Return an approximate battery percentage remaining based on
 a normal CR2032 battery (2.8 - 2.2v)
 */
-int jswrap_pixljs_getBatteryPercentage() {
-  JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
-  int pc = (v-2.2)*100/0.6;
-  if (pc>100) pc=100;
-  if (pc<0) pc=0;
-  return pc;
-}
 
 /*JSON{
     "type" : "staticmethod",

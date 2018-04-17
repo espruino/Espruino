@@ -13,7 +13,6 @@
  */
 #include "jspin.h"
 
-int jswrap_pixljs_getBatteryPercentage();
 JsVar *jswrap_pixljs_menu(JsVar *menu);
 void jswrap_pixljs_lcdw(JsVarInt c);
 void jswrap_pixljs_setContrast(JsVarFloat c);

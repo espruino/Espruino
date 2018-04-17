@@ -537,21 +537,14 @@ JsVarFloat jswrap_puck_light() {
     "type" : "staticmethod",
     "class" : "Puck",
     "name" : "getBatteryPercentage",
-    "generate" : "jswrap_puck_getBatteryPercentage",
+    "generate" : "jswrap_espruino_getBattery",
     "return" : ["int", "A percentage between 0 and 100" ]
 }
+DEPRECATED - Please use `E.getBattery()` instead.
+
 Return an approximate battery percentage remaining based on
-a normal CR2032 battery (2.8 - 2.2v)
+a normal CR2032 battery (2.8 - 2.2v).
 */
-int jswrap_puck_getBatteryPercentage() {
-  JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
-  int pc = (v-2.2)*100/0.6;
-  if (pc>100) pc=100;
-  if (pc<0) pc=0;
-  return pc;
-}
-
-
 
 
 static bool selftest_check_pin(Pin pin) {

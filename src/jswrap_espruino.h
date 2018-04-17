@@ -54,3 +54,5 @@ void jswrap_espruino_asm(JsVar *callspec, JsVar *args);
 
 void jswrap_espruino_setUSBHID(JsVar *arr);
 bool jswrap_espruino_sendUSBHID(JsVar *arr);
+
+JsVarInt jswrap_espruino_getBattery();

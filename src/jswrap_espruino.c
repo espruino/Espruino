@@ -1454,3 +1454,32 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 }
 
 #endif
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "#if" : "defined(PUCKJS) || defined(PIXLJS)",
+  "class" : "E",
+  "name" : "getBattery",
+  "generate" : "jswrap_espruino_getBattery",
+  "return" : ["int","A percentage between 0 and 100"]
+}
+In devices that come with batteries, this function returns
+the battery charge percentage as an integer between 0 and 100.
+
+**Note:** this is an estimation only, based on battery voltage.
+The temperature of the battery (as well as the load being drawn
+from it at the time `E.getBattery` is called) will affect the
+readings.
+*/
+JsVarInt jswrap_espruino_getBattery() {
+#if defined(PUCKJS) || defined(PIXLJS)
+  JsVarFloat v = jshReadVRef();
+  int pc = (v-2.2)*100/0.6;
+  if (pc>100) pc=100;
+  if (pc<0) pc=0;
+  return pc;
+#else
+  return 0;
+#endif
+}
