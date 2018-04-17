@@ -93,18 +93,20 @@ void terminalFlip(JsGraphics *gfx) {
   if (flip) jsvUnLock2(jspExecuteFunction(flip,gfx->graphicsVar,0,0),flip);
 }
 
+/// Setup the graphics var state and flip the screen
 void terminalSetGFX(JsGraphics *gfx) {
-  terminalFlip(gfx);
   graphicsSetVar(gfx);
+  terminalFlip(gfx); // this will read from/save to graphicsVar
   jsvUnLock(gfx->graphicsVar);
 }
 
+/// Scroll up to leave one more line free at the bottom
 void terminalScroll() {
   terminalY--;
   JsGraphics gfx;
   if (terminalGetGFX(&gfx)) {
     graphicsScroll(&gfx, 0, -terminalCharH);
-    terminalSetGFX(&gfx);
+    terminalSetGFX(&gfx); // save and flip
   }
 }
 
@@ -117,7 +119,6 @@ void terminalSendChar(char chn) {
       terminalX = 0; terminalY++;
       while (terminalY >= terminalHeight)
         terminalScroll();
-      // TODO: scroll!
     } else if (chn==13) { // carriage return
       terminalX = 0;
     } else if (chn==27) {
