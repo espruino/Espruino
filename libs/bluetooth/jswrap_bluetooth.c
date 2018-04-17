@@ -2642,7 +2642,8 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
     "ifdef" : "NRF52"
 }
 
-Read a characteristic's value, return a promise containing a `DataView`
+Read a characteristic's value, return a promise containing a `DataView` with the data in it
+
 
 ```
 var device;
