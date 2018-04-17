@@ -115,6 +115,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `DUMP_IGNORE_VARIABLES="...\0"` - string containing zero-terminated list of global variable names to ignore when `dump()` is called. Must be explicityly zero-terminated so there are 2 trailing 0s
 * `FSMC_BITBANG` - if using a built-in FSMC Graphics LCD, don't use the hardware but instead do it in software
 * `FLASH_64BITS_ALIGNMENT=1` -  For testing 64 bit flash writes on linux
+* `JSMODULESOURCES+=libs/.../foo.min.js` - include the given JS file as a module that can be used via `require("foo")`
 
 
 ### chip

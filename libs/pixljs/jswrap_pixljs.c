@@ -58,6 +58,128 @@ int jswrap_pixljs_getBatteryPercentage() {
   return pc;
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Pixl",
+    "name" : "menu",
+    "generate" : "jswrap_pixljs_menu",
+    "params" : [
+      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
+    ],
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+}
+Display a menu on Pixl.js's screen, and set up the buttons to navigate through it.
+
+Supply an object containing menu items. When an item is selected, the
+function it references will be executed. For example:
+
+```
+// First menu
+var mainmenu = {
+  "" : {
+    "title" : "-- Main Menu --"
+  },
+  "Backlight On" : function() { LED1.set(); },
+  "Backlight Off" : function() { LED1.reset(); },
+  "Submenu" : function() { Pixl.menu(submenu); },
+  "Exit" : function() { Pixl.menu(); },
+};
+
+// Submenu
+var submenu = {
+  "" : {
+    "title" : "-- SubMenu --"
+  },
+  "One" : undefined, // do nothing
+  "Two" : undefined, // do nothing
+  "< Back" : function() { Pixl.menu(mainmenu); },
+};
+
+Pixl.menu(mainmenu);
+```
+
+See http://www.espruino.com/graphical_menu for more detailed information.
+*/
+JsVar *jswrap_pixljs_menu(JsVar *menu) {
+  /* Unminified JS code is:
+
+Pixl.show = function(menudata) {
+  if (Pixl.btnWatches) {
+    Pixl.btnWatches.forEach(clearWatch);
+    Pixl.btnWatches = undefined;
+  }
+  g.clear();g.flip(); // clear screen if no menu supplied
+  if (!menudata) return;
+  function im(b) {
+    return {
+      width:8,height:b.length,bpp:1,buffer:new Uint8Array(b).buffer
+    };
+  }
+  if (!menudata[""]) menudata[""]={};
+  var w = g.getWidth()-9;
+  var h = g.getHeight();
+  menudata[""].x=9;
+  menudata[""].x2=w-2;
+  menudata[""].preflip=function() {
+    g.drawImage(im([
+      0b00010000,
+      0b00111000,
+      0b01111100,
+      0b11111110,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+    ]),0,4);
+    g.drawImage(im([
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b11111111,
+      0b01111100,
+      0b00111000,
+      0b00010000,
+    ]),0,h-12);
+    g.drawImage(im([
+      0b00000000,
+      0b00001000,
+      0b00001100,
+      0b00001110,
+      0b11111111,
+      0b00001110,
+      0b00001100,
+      0b00001000,
+    ]),w+1,h-12);
+    //g.drawLine(7,0,7,h);
+    //g.drawLine(w,0,w,h);
+  };
+  var m = require("graphical_menu").list(g, menudata);
+  Pixl.btnWatches = [
+    setWatch(function() { m.move(-1); }, BTN1, {repeat:1}),
+    setWatch(function() { m.move(1); }, BTN4, {repeat:1}),
+    setWatch(function() { m.select(); }, BTN3, {repeat:1})
+  ];
+  return m;
+};
+*/
+
+  /* TODO: handle this better. Something in build_js_wrapper.py?
+   * We want the function to be defined in the docs so using JSMODULESOURCES
+   * isn't a great idea - ideally there would be some nice way of including it
+   * here.
+   */
+  JsVar *fn = jspEvaluate("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Pixl.btnWatches&&(Pixl.btnWatches.forEach(clearWatch),Pixl.btnWatches=void 0);"
+      "g.clear();g.flip();"
+      "if(a){a['']||(a['']={});var d=g.getWidth()-9,e=g.getHeight();a[''].x=9;a[''].x2=d-2;a[''].preflip=function(){"
+      "g.drawImage(c([16,56,124,254,16,16,16,16]),0,4);g.drawImage(c([16,16,16,16,255,124,56,16]),0,e-12);g.drawImage(c([0,8,12,14,255,14,12,8]),d+1,e-12)};"
+      "var b=require('graphical_menu').list(g,a);Pixl.btnWatches=[setWatch(function(){b.move(-1)},BTN1,{repeat:1}),setWatch(function(){b.move(1)},BTN4,{repeat:1}),"
+      "setWatch(function(){b.select()},BTN3,{repeat:1})];return b}})",true);
+  JsVar *result = jspExecuteFunction(fn,0,1,&menu);
+  jsvUnLock(fn);
+  return result;
+}
+
 
 /*JSON{
   "type" : "variable",

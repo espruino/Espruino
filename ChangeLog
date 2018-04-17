@@ -21,6 +21,7 @@
             Thingy52,Pixl.js: add default NFC URL of the Espruino IDE 
             Add ArrayBuffer.byteLength property (fix #1374)
             setWatch(..., {edge:"rising",debounce:25}) is now default for built-in buttons
+            Pixl.js: add Pixl.menu function for easy menus, build in graphical_menu.js
 
      1v96 : ESP8266: no callback if SSID is not available (fix #1297)
             ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)

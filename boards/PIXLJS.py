@@ -48,7 +48,8 @@ info = {
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
      'INCLUDE += -I$(ROOT)/libs/pixljs',
-     'WRAPPERSOURCES += libs/pixljs/jswrap_pixljs.c'
+     'WRAPPERSOURCES += libs/pixljs/jswrap_pixljs.c',
+     'JSMODULESOURCES+=libs/pixljs/graphical_menu.min.js'
    ]
  }
 };
