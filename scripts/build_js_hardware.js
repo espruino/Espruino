@@ -1,12 +1,23 @@
 #!/bin/node
 /* This builds a js file containing the addresses of a chip's peripherals and
  the values of the bits in each register. Can be used for quickly building
- ways to access the underlying hardware from JS */
+ ways to access the underlying hardware from JS.
 
+This has only been tested with STM32 boards so far
+*/
+
+// ===================================================================================
+// These files are the source of information for the JS files - change depending on STM32F1/F4 chip
 //var INPUTFILE = "targetlibs/stm32f1/lib/stm32f10x.h";
 //var definitions =  {"STM32F10X_XL":true};
 var INPUTFILE = "targetlibs/stm32f4/lib/stm32f411xe.h";
 var definitions =  {"STM32F401xx":true};
+
+// The peripherals you need to output code for
+//var peripherals = ["RCC","RTC","PWR"];
+var peripherals = ["TIM1"];
+// ===================================================================================
+
 var fs = require('fs');
 
 var structContents = undefined;
@@ -110,9 +121,6 @@ for (var def in definitions) {
   }
 }
 
-var peripherals = ["RCC","RTC","PWR"];
-
-
 function out(s) {
   console.log(s);
 }
@@ -120,10 +128,13 @@ function out(s) {
 peripherals.forEach(function(periph) { 
   var base = bases[periph+"_BASE"];
   var data = { a : {}, f : {} };
-  for (var key in structs[periph]) {
+  var periphType = periph.replace(/[0-9]/g,"");
+  var periphStruct = structs[periphType];
+
+  for (var key in periphStruct) {
     if (key.substr(0,8)=="RESERVED") continue;
     // address
-    data.a[key] = base+structs[periph][key].offset;
+    data.a[key] = base+periphStruct[key].offset;
     // flags
     var pref = periph+"_"+key+"_";
     for (var d in definitions) {
