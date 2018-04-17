@@ -24,6 +24,7 @@
             Pixl.js: add Pixl.menu function for easy menus, build in graphical_menu.js
             Fix regression in MDBT42Q advertised name
             nRF52: Add E.getBattery as a more global battery percentage function, deprecate `Puck.getBatteryPercentage`
+            Fix '.buffer' regression in 'JSON.stringify(new Uint8Array([1,2,3,4]).buffer)'
 
      1v96 : ESP8266: no callback if SSID is not available (fix #1297)
             ESP8266: esp8266 wifi getStatus doesn't show savedMode (fix #752)

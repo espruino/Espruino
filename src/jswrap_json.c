@@ -413,7 +413,7 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
         if (flags&JSON_ALL_NEWLINES) jsonNewLine(flags, whitespace, user_callback, user_data);
         jsvArrayBufferIteratorFree(&it);
         cbprintf(user_callback, user_data, asArray?"]":"])");
-        if (isBasicArrayBuffer) cbprintf(user_callback, user_data, ".buffer");
+        if (isBasicArrayBuffer && !asArray) cbprintf(user_callback, user_data, ".buffer");
       }
     } else if (jsvIsObject(var)) {
       IOEventFlags device = (flags & JSON_SHOW_DEVICES) ? jsiGetDeviceFromClass(var) : EV_NONE;
