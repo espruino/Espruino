@@ -604,10 +604,10 @@ If the `options` parameter is an object, it can contain the following informatio
    // Whether to keep producing callbacks, or remove the watch after the first callback
    repeat: true/false(default),
    // Trigger on the rising or falling edge of the signal. Can be a string, or 1='rising', -1='falling', 0='both'
-   edge:'rising'/'falling'/'both'(default),
+   edge:'rising'(default for built-in buttons)/'falling'/'both'(default for pins),
    // Use software-debouncing to stop multiple calls if a switch bounces
    // This is the time in milliseconds to wait for bounces to subside, or 0 to disable
-   debounce:10 (0 is default),
+   debounce:10 (0 is default for pins, 25 is default for built-in buttons),
    // Advanced: If the function supplied is a 'native' function (compiled or assembly)
    // setting irq:true will call that function in the interrupt itself
    irq : false(default)
@@ -659,26 +659,34 @@ JsVar *jswrap_interface_setWatch(
   int edge = 0;
   bool isIRQ = false;
   Pin dataPin = PIN_UNDEFINED;
+  if (IS_PIN_A_BUTTON(pin)) {
+    edge = 1;
+    debounce = 25;
+  }
   if (jsvIsObject(repeatOrObject)) {
     JsVar *v;
-    repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "repeat", 0));
-    debounce = jsvGetFloatAndUnLock(jsvObjectGetChild(repeatOrObject, "debounce", 0));
+    v = jsvObjectGetChild(repeatOrObject, "repeat", 0);
+    if (v) repeat = jsvGetBoolAndUnLock(v);
+    v = jsvObjectGetChild(repeatOrObject, "debounce", 0);
+    if (v) debounce = jsvGetFloatAndUnLock(v);
     if (isnan(debounce) || debounce<0) debounce=0;
     v = jsvObjectGetChild(repeatOrObject, "edge", 0);
-    edge = -1000;
     if (jsvIsUndefined(v)) {
-      edge = 0;
+      // do nothing - use default
     } else if (jsvIsNumeric(v)) {
       JsVarInt i = jsvGetInteger(v);
       edge = (i>0)?1:((i<0)?-1:0);
-    } else if (jsvIsString(v)) {
-      if (jsvIsStringEqual(v, "rising")) edge=1;
-      else if (jsvIsStringEqual(v, "falling")) edge=-1;
-      else if (jsvIsStringEqual(v, "both")) edge=0;
+    } else {
+      edge = -1000; // force error unless checks below work
+      if (jsvIsString(v)) {
+        if (jsvIsStringEqual(v, "rising")) edge=1;
+        else if (jsvIsStringEqual(v, "falling")) edge=-1;
+        else if (jsvIsStringEqual(v, "both")) edge=0;
+      }
     }
     jsvUnLock(v);
     if (edge < -1 || edge > 1) {
-      jsExceptionHere(JSET_TYPEERROR, "'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
+      jsExceptionHere(JSET_TYPEERROR, "'edge' in setWatch should be 1, -1, 0, 'rising', 'falling' or 'both'");
       return 0;
     }
     isIRQ = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "irq", 0));
