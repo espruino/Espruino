@@ -106,14 +106,17 @@ void jspReplaceWith(JsVar *dst, JsVar *src) {
     if (!jsvIsString(parent)) {
       // if we can't find a char in a string we still return a NewChild,
       // but we can't add character back in
-      assert(jsvHasChildren(parent));
-      // Remove the 'new child' flagging
-      jsvUnRef(parent);
-      jsvSetNextSibling(dst, 0);
-      jsvUnRef(parent);
-      jsvSetPrevSibling(dst, 0);
-      // Add to the parent
-      jsvAddName(parent, dst);
+      if (!jsvHasChildren(parent)) {
+        jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", dst, parent);
+      } else {
+        // Remove the 'new child' flagging
+        jsvUnRef(parent);
+        jsvSetNextSibling(dst, 0);
+        jsvUnRef(parent);
+        jsvSetPrevSibling(dst, 0);
+        // Add to the parent
+        jsvAddName(parent, dst);
+      }
     }
     jsvUnLock(parent);
   }
@@ -1081,7 +1084,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
           if (aVar)
             child = jspGetNamedField(aVar, name, true);
           if (!child) {
-            if (jsvHasChildren(aVar)) {
+            if (!jsvIsUndefined(aVar)) {
               // if no child found, create a pointer to where it could be
               // as we don't want to allocate it until it's written
               JsVar *nameVar = jslGetTokenValueAsVar(lex);
@@ -1089,7 +1092,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               jsvUnLock(nameVar);
             } else {
               // could have been a string...
-              jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", name, aVar);
+              jsExceptionHere(JSET_ERROR, "Cannot read property '%s' of undefined", name);
             }
           }
           jsvUnLock(parent);
