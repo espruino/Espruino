@@ -42,7 +42,7 @@ info = {
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"MQBT42Q"\'',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"MDBT42Q"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C'
    ]
