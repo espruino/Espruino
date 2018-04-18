@@ -100,8 +100,8 @@ board = {
   'bottom2' : [ '3.3V','SWIO','SWCK','GND'],
 
   '_notes' : {
-    'D0' : "Serial Console TX when Bluetooth disconnected",
-    'D1' : "Serial Console RX when Bluetooth disconnected",
+    'D0' : "Serial Console RX when Bluetooth disconnected",
+    'D1' : "Serial Console TX when Bluetooth disconnected",
     'A4' : "Also used for the pin marked SDA",
     'A5' : "Also used for the pin marked SCL",
     '5V' : "Pixl.js has no 5v rail so this is not connected by default. A solder jumper can be used to connect it to Vin or 3.3v"
