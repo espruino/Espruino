@@ -95,8 +95,46 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
+  'top' : [ 'D0','D1','D2','D3','D4','D5','D6','D7','','D8','D9','D10','D11','D12','D13','GND','','A4','A5' ],
+  'bottom' : [ 'A5','A4','A3','A2','A1','A0','','Vin','GND','GND','5V','3.3V','RST','3.3V','','','GND','Vin'],
+  'bottom2' : [ '3.3V','SWIO','SWCK','GND'],
+
+  '_notes' : {
+    'D0' : "Serial Console TX when Bluetooth disconnected",
+    'D1' : "Serial Console RX when Bluetooth disconnected",
+    'A4' : "Also used for the pin marked SDA",
+    'A5' : "Also used for the pin marked SCL",
+    '5V' : "Pixl.js has no 5v rail so this is not connected by default. A solder jumper can be used to connect it to Vin or 3.3v"
+  }
 };
 board["_css"] = """
+#board {
+  width: 650px;
+  height: 568px;
+  top: 100px;
+  left : 100px;
+  background-image: url(img/PIXLJS.png);
+}
+#boardcontainer {
+  height: 800px;
+}
+#top {
+  bottom: 553px;
+  left: 74px;
+}
+#bottom {
+  top: 555px;
+  left: 74px;
+}
+#bottom2 {
+  top: 374px;
+  left: 64px;
+}
+
+.toppin { width: 21px; }
+.bottompin { width: 21px; }
+.bottom2pin { width: 21px; }
+
 """;
 
 def get_pins():
