@@ -25,7 +25,7 @@ info = {
  'default_console_baudrate' : "9600",
  'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_thingy52.bin',
+ 'binary_name' : 'espruino_%v_thingy52.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
