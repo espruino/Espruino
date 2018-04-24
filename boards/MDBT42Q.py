@@ -33,6 +33,7 @@ info = {
      'NET',
      'GRAPHICS',
      'CRYPTO',
+     'AES',
      'NFC',
      'NEOPIXEL'
      #'HASHLIB'

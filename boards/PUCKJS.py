@@ -32,8 +32,9 @@ info = {
      'NET',
      'GRAPHICS',
      'CRYPTO',
+     'AES',
      'NFC',
-     'NEOPIXEL'
+     'NEOPIXEL',
      #'HASHLIB'
      #'FILESYSTEM'
      #'TLS'

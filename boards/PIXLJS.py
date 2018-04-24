@@ -35,6 +35,7 @@ info = {
      'NEOPIXEL',
      'PIXLJS',
      'CRYPTO',
+     'AES',
      'FILESYSTEM',
      'TERMINAL'
    ],

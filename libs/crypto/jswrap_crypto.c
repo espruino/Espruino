@@ -46,7 +46,7 @@ Cryptographic functions
   "type" : "class",
   "library" : "crypto",
   "class" : "AES",
-  "ifdef" : "USE_TLS"
+  "ifdef" : "USE_AES"
 }
 Class containing AES encryption/decryption
 
@@ -299,8 +299,9 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
     return 0;
   }
 }
+#endif
 
-
+#ifdef USE_AES
 static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar *options, bool encrypt) {
   int err;
 
@@ -411,8 +412,6 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
     return 0;
   }
 }
-#endif
-#ifdef USE_AES
 
 /*JSON{
   "type" : "staticmethod",
