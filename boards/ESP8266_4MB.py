@@ -34,7 +34,9 @@ info = {
    'makefile' : [
      'FLASH_4MB=1',
      'ESP_FLASH_MAX=962560',
-     'FLASH_BAUD=460800'    
+     'FLASH_BAUD=460800',
+     'JSMODULESOURCES+=libs/js/ESP8266_4MB/tinyMQTT.min.js',   
+     'JSMODULESOURCES+=libs/js/ESP8266_4MB/SSD1306_I2C.min.js',  
     ]
  }
 };
