@@ -28,7 +28,10 @@ info = {
      #'GRAPHICS',
      'CRYPTO',
      'NEOPIXEL',
-   ]
+   ],
+   'makefile' : [
+     'USE_ONLY_SHA1=1'    
+    ]
  }
 };
 chip = {

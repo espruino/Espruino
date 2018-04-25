@@ -34,7 +34,8 @@ info = {
    'makefile' : [
      'FLASH_4MB=1',
      'ESP_FLASH_MAX=962560',
-     'FLASH_BAUD=460800'    
+     'FLASH_BAUD=460800',
+     'USE_ONLY_SHA1=1'    
     ]
  }
 };

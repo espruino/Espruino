@@ -17,13 +17,18 @@
 #include "jsvariterator.h"
 #include "jswrap_crypto.h"
 
-#ifdef USE_AES
 #include "mbedtls/include/mbedtls/aes.h"
+
+#ifdef USE_ONLY_SHA1
+  #include "mbedtls/include/mbedtls/sha1.h"
+  #include "mbedtls/include/mbedtls/pkcs5.h"
+#else
+  #include "mbedtls/include/mbedtls/sha1.h"
+  #include "mbedtls/include/mbedtls/sha256.h"
+  #include "mbedtls/include/mbedtls/sha512.h"
+  #include "mbedtls/include/mbedtls/pkcs5.h"
 #endif
-#include "mbedtls/include/mbedtls/sha1.h"
-#include "mbedtls/include/mbedtls/sha256.h"
-#include "mbedtls/include/mbedtls/sha512.h"
-#include "mbedtls/include/mbedtls/pkcs5.h"
+
 #ifdef USE_TLS
 #include "mbedtls/include/mbedtls/pk.h"
 #include "mbedtls/include/mbedtls/x509.h"
@@ -118,11 +123,17 @@ CryptoMode jswrap_crypto_getMode(JsVar *mode) {
 }
 
 mbedtls_md_type_t jswrap_crypto_getHasher(JsVar *hasher) {
+
+#ifdef USE_ONLY_SHA1
+  if (jsvIsStringEqual(hasher, "SHA1")) return MBEDTLS_MD_SHA1;
+#else
   if (jsvIsStringEqual(hasher, "SHA1")) return MBEDTLS_MD_SHA1;
   if (jsvIsStringEqual(hasher, "SHA224")) return MBEDTLS_MD_SHA224;
   if (jsvIsStringEqual(hasher, "SHA256")) return MBEDTLS_MD_SHA256;
   if (jsvIsStringEqual(hasher, "SHA384")) return MBEDTLS_MD_SHA384;
   if (jsvIsStringEqual(hasher, "SHA512")) return MBEDTLS_MD_SHA512;
+#endif
+
   jsExceptionHere(JSET_ERROR, "Unknown Hasher %q", hasher);
   return MBEDTLS_MD_NONE;
 }
@@ -141,14 +152,20 @@ JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
     return 0;
   }
 
+#ifdef USE_ONLY_SHA1
+  if (shaNum==1) mbedtls_sha1((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr);
+#else
   if (shaNum==1) mbedtls_sha1((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr);
   else if (shaNum==224) mbedtls_sha256((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, true/*224*/);
   else if (shaNum==256) mbedtls_sha256((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, false/*256*/);
   else if (shaNum==384) mbedtls_sha512((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, true/*384*/);
   else if (shaNum==512) mbedtls_sha512((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, false/*512*/);
+#endif
+
   return outArr;
 }
 
+#ifdef USE_ONLY_SHA1
 /*JSON{
   "type" : "staticmethod",
   "class" : "crypto",
@@ -164,6 +181,8 @@ JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
 
 Performs a SHA1 hash and returns the result as a 20 byte ArrayBuffer
 */
+#else
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "crypto",
@@ -224,6 +243,7 @@ Performs a SHA384 hash and returns the result as a 48 byte ArrayBuffer
 
 Performs a SHA512 hash and returns the result as a 64 byte ArrayBuffer
 */
+#endif
 
 #ifdef USE_TLS
 /*JSON{

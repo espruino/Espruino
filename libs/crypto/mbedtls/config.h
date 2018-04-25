@@ -33,8 +33,9 @@
 #define MBEDTLS_PLATFORM_SNPRINTF_MACRO espruino_snprintf
 
 // See aes.c. Do we want 10kB of data full of constants? no.
-#define MBEDTLS_AES_ROM_TABLES
-
+#ifdef USE_AES
+#define MBDTLS_AES_ROM_TABLES
+#endif
 
 #ifdef USE_TLS
 
@@ -89,23 +90,25 @@
 #define MBEDTLS_ECP_DP_CURVE25519_ENABLED
 
 #else // !USE_TLS
+	#ifdef USE_ONLY_SHA1
+		#define MBEDTLS_SHA1_C
+	#else
+		/* mbed TLS feature support */
+		#define MBEDTLS_CIPHER_MODE_CBC
+		#define MBEDTLS_CIPHER_MODE_CFB
+		#define MBEDTLS_CIPHER_MODE_CTR
 
-/* mbed TLS feature support */
-#define MBEDTLS_CIPHER_MODE_CBC
-#define MBEDTLS_CIPHER_MODE_CFB
-#define MBEDTLS_CIPHER_MODE_CTR
-
-/* mbed TLS modules */
-#define MBEDTLS_AES_C
-#define MBEDTLS_ASN1_PARSE_C
-#define MBEDTLS_CIPHER_C
-#define MBEDTLS_MD_C
-#define MBEDTLS_OID_C
-#define MBEDTLS_PKCS5_C
-#define MBEDTLS_SHA1_C
-#define MBEDTLS_SHA256_C
-#define MBEDTLS_SHA512_C
-
+		/* mbed TLS modules */
+		#define MBEDTLS_AES_C
+		#define MBEDTLS_ASN1_PARSE_C
+		#define MBEDTLS_CIPHER_C
+		#define MBEDTLS_MD_C
+		#define MBEDTLS_OID_C
+		#define MBEDTLS_PKCS5_C
+		#define MBEDTLS_SHA1_C
+		#define MBEDTLS_SHA256_C
+		#define MBEDTLS_SHA512_C
+	#endif
 #endif
 
 #include "jsvar.h"
