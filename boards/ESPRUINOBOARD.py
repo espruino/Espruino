@@ -36,6 +36,7 @@ info = {
      'GRAPHICS',
      'NEOPIXEL',
      'HASHLIB',
+     'CRYPTO',
 #     'TV', # TV had to be removed because of flash usage
      'FILESYSTEM'
    ],

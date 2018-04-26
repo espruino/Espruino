@@ -34,7 +34,7 @@ info = {
      'NFC',
      'NEOPIXEL',
      'PIXLJS',
-     'CRYPTO',
+     'CRYPTO','SHA256','SHA512',
      'AES',
      'FILESYSTEM',
      'TERMINAL'

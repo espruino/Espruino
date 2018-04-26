@@ -386,7 +386,9 @@ def get_ifdef_description(d):
   if d=="USB": return "devices with USB"
   if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico and Espruino WiFi)"
   if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino WiFi or Linux)"
-  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino WiFi, Linux or ESP8266)"
+  if d=="USE_SHA256": return "devices that support SHA256 (Espruino Pico, Espruino WiFi, Espruino BLE devices or Linux)"
+  if d=="USE_SHA512": return "devices that support SHA512 (Espruino Pico, Espruino WiFi, Espruino BLE devices or Linux)"
+  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Original, Espruino WiFi, Espruino BLE devices, Linux or ESP8266)"
   if d=="USE_FLASHFS": return "devices with filesystem in Flash support enabled (ESP32 only)"
   if d=="USE_TERMINAL": return "devices with VT100 terminal emulation enabled (Pixl.js only)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")

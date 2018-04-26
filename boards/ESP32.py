@@ -27,7 +27,7 @@ info = {
      'ESP32',
      'NET',
      'GRAPHICS',
-     'CRYPTO',
+     'CRYPTO','SHA256','SHA512',
      'TLS',
      'TELNET',
      'NEOPIXEL',
