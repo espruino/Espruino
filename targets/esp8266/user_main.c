@@ -241,8 +241,10 @@ static void initDone() {
   os_printf("> initDone\n");
   otaInit(88);
 
-  extern void gdbstub_init();
-  gdbstub_init();
+#ifdef DEBUG
+   extern void gdbstub_init();
+   gdbstub_init();
+#endif
 
   // Discard any junk data in the input as this is a boot.
   //uart_rx_discard();
