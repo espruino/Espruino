@@ -672,7 +672,8 @@ int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsign
   if (sckt<0) return sckt;
 
 #ifdef USE_TLS
-  assert(sckt>=0 && sckt<32);
+  // NEED TO FIX - as socket is assumed to be < 32
+  //assert(sckt>=0 && sckt<32);
   if (socketType & ST_TLS) {
     if (ssl_newSocketData(sckt, options)) {
     } else {

@@ -17,7 +17,7 @@
 #include "jshardwareAnalog.h"
 
 #include "esp_system.h"
-#include "app_update/include/esp_ota_ops.h"
+#include "esp_sleep.h"
 
 /*JSON{
  "type"     : "staticmethod",
@@ -57,7 +57,7 @@ void jswrap_ESP32_reboot() {
 Put device in deepsleep state for "us" microseconds.
 */
 void jswrap_ESP32_deepSleep(int us) {
-  esp_deep_sleep_enable_timer_wakeup((uint64_t)(us));
+  esp_sleep_enable_timer_wakeup((uint64_t)(us));
   esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepSleep
 
@@ -81,45 +81,5 @@ JsVar *jswrap_ESP32_getState() {
   JsVar *esp32State = jsvNewObject();
   jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString(esp_get_idf_version()));
   jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(esp_get_free_heap_size()));
-  esp_partition_t * partition=esp_ota_get_boot_partition();
-  jsvObjectSetChildAndUnLock(esp32State, "addr",     jsvNewFromInteger(partition->address));
-  jsvObjectSetChildAndUnLock(esp32State, "partitionBoot", jsvNewFromString( partition->label));
-  //jsvObjectSetChildAndUnLock(esp32State, "partitionRunning",   jsvNewFromString( esp_ota_get_running_partition()->label));
-  //jsvObjectSetChildAndUnLock(esp32State, "partitionNext",   jsvNewFromString( esp_ota_get_next_update_partition(NULL)->label));
   return esp32State;
 } // End of jswrap_ESP32_getState
-
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP32",
-  "name"     : "setBoot",
-  "generate" : "jswrap_ESP32_setBoot",
- "params"   : [
-    ["jsPartitionName", "JsVar", "Name of ota partition to boot into next boot"]
- ],
-  "return"   : ["JsVar", "Change boot partition after ota update"]
-}
-*/
-JsVar *jswrap_ESP32_setBoot(JsVar *jsPartitionName) {
-  JsVar *esp32State = jsvNewObject();  
-  esp_err_t err;
-  char partitionNameStr[20];
-
-  jsvGetString(jsPartitionName, partitionNameStr, sizeof(partitionNameStr));
-  esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partitionNameStr);
-  if (it==0) {
-    jsError("Couldn't find partition with name %s\n", partitionNameStr);
-  }
-  else {
-    const esp_partition_t *p = esp_partition_get(it);
-    err= ESP_OK; //esp_ota_set_boot_partition(p);
-    if (err!=ESP_OK) {
-      jsError("Couldn't set boot partition %d!\n",err);
-    } else {
-      jsvObjectSetChildAndUnLock(esp32State, "addr",     jsvNewFromInteger(p->address));
-      jsvObjectSetChildAndUnLock(esp32State, "nextPartitionBoot", jsvNewFromString( p->label));
-    }
-  }
-  esp_partition_iterator_release(it);  
-  return esp32State;
-} // End of jswrap_ESP32_setBoot
