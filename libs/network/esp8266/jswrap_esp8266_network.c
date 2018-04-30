@@ -966,9 +966,11 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
-    JsVar *params[1];
-    params[0] = jsIpInfo;
-    jsiQueueEvents(NULL, jsCallback, params, 1);
+    JsVar *params[2];
+    params[0] = jsvNewWithFlags(JSV_NULL);
+    params[1] = jsIpInfo;
+    jsiQueueEvents(NULL, jsCallback, params, 2);
+    jsvUnLock(params[0]);
   }
 
   return jsIpInfo;
@@ -1390,15 +1392,12 @@ static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
 
   DBG(">> rc: %s\n", rc ? "true" : "false");
 
-// Schedule callback
+  // Schedule callback
   if (jsvIsFunction(jsCallback)) {
-    JsVar *jsRC = jsvNewObject();
-    jsvObjectSetChildAndUnLock(jsRC, "success",jsvNewFromBool(rc));
     JsVar *params[1];
-    params[0] = jsRC;
+    params[0] = rc ? jsvNewWithFlags(JSV_NULL) : jsvNewFromString("Failure");
     jsiQueueEvents(NULL, jsCallback, params, 1); 
     jsvUnLock(params[0]);
-    jsvUnLock(jsRC);
   }
   else {
     jsExceptionHere(JSET_ERROR, "Callback is not a function.");

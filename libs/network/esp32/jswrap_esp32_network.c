@@ -1200,9 +1200,11 @@ static JsVar *getIPInfo(JsVar *jsCallback, tcpip_adapter_if_t interface) {
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
-    JsVar *params[1];
-    params[0] = jsIpInfo;
-    jsiQueueEvents(NULL, jsCallback, params, 1);
+    JsVar *params[2];
+    params[0] = jsvNewWithFlags(JSV_NULL);
+    params[1] = jsIpInfo;
+    jsiQueueEvents(NULL, jsCallback, params, 2);
+    jsvUnLock(params[0]);
   }
 
   return jsIpInfo;
