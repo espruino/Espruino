@@ -62,12 +62,16 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex) {
   info.startIndex = startIndex;
   info.groups = 0;
 
+  JsVar *rmatch;
   JsvStringIterator txtIt;
   jsvStringIteratorNew(&txtIt, str, startIndex);
-  if (regexp[0] == '^')
-    return matchhere(regexp+1, &txtIt, info);
+  if (regexp[0] == '^') {
+    rmatch = matchhere(regexp+1, &txtIt, info);
+    jsvStringIteratorFree(&txtIt);
+    return rmatch;
+  }
   /* must look even if string is empty */
-  JsVar *rmatch = matchhere(regexp, &txtIt, info);
+  rmatch = matchhere(regexp, &txtIt, info);
   while (!rmatch && jsvStringIteratorHasChar(&txtIt)) {
     jsvStringIteratorNext(&txtIt);
     info.startIndex++;
