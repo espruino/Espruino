@@ -36,7 +36,7 @@ var options = {
   method: 'POST',
   protocol: 'http:',
   headers: {
-    'Transfer-Encoding': 'chunked'
+    'Transfer-Encoding': 'Chunked'
   }
 };
 var req = http.request(options, function(res) {

@@ -63,6 +63,15 @@ static char DBG_LIB[] = "socketserver"; // library name
 
 // -----------------------------
 
+bool compareTransferEncodingAndUnlock(JsVar *encoding, char *value) {
+    if (encoding) {
+        JsVar *encodingLc = jswrap_string_toUpperLowerCase(encoding, false);
+        jsvUnLock(encoding);
+        encoding = encodingLc;
+    }
+    return jsvIsStringEqualAndUnLock(encoding, value);
+}
+
 static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
   // append headers
   JsvObjectIterator it;
@@ -157,7 +166,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
     jsvStringIteratorFree(&it);
   // flag the req/response if Transfer-Encoding:chunked was set
   JsVarInt contentToReceive;
-  if (jsvIsStringEqualAndUnLock(jsvObjectGetChild(vHeaders, "Transfer-Encoding", 0), "chunked")) {
+  if (compareTransferEncodingAndUnlock(jsvObjectGetChild(vHeaders, "Transfer-Encoding", 0), "chunked")) {
     jsvObjectSetChildAndUnLock(objectForData, HTTP_NAME_CHUNKED, jsvNewFromBool(true));
     contentToReceive = 1;
   } else {
@@ -938,7 +947,7 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, Js
         jsvUnLock(hostHeader);
         httpAppendHeaders(sendData, headers);
         // if Transfer-Encoding:chunked was set, subsequent writes need to 'chunk' the data that is sent
-        if (jsvIsStringEqualAndUnLock(jsvObjectGetChild(headers, "Transfer-Encoding", 0), "chunked")) {
+        if (compareTransferEncodingAndUnlock(jsvObjectGetChild(headers, "Transfer-Encoding", 0), "chunked")) {
           jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CHUNKED, jsvNewFromBool(true));
         }
       }
@@ -1095,7 +1104,7 @@ void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar
   if (headers) {
     httpAppendHeaders(sendData, headers);
     // if Transfer-Encoding:chunked was set, subsequent writes need to 'chunk' the data that is sent
-    if (jsvIsStringEqualAndUnLock(jsvObjectGetChild(headers, "Transfer-Encoding", 0), "chunked")) {
+    if (compareTransferEncodingAndUnlock(jsvObjectGetChild(headers, "Transfer-Encoding", 0), "chunked")) {
       jsvObjectSetChildAndUnLock(httpServerResponseVar, HTTP_NAME_CHUNKED, jsvNewFromBool(true));
     }
   }
