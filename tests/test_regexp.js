@@ -24,6 +24,9 @@ testreg(/a(b)c/.exec("abc"),"abc,b",0);
 testreg(/\sWorld/.exec("Hello World")," World",5);
 testreg(/a*b/.exec("Helloaaabc"),"aaab", 5);
 testreg(/[bac]*d/.exec("Hello abcd"),"abcd", 6);
+testreg(/X[\/\?\-]+/.exec('==X/?/-X'), "X/?/-", 2);
+testreg(/^X[^X]+/.exec('X-------X'), "X-------", 0);
+testreg(/^X[^X]+/.exec('X---------------------------------------X'), "X---------------------------------------", 0);
 
 var re = /\s*;\s*/g
 var names = 'Harry Trump ;Fred Barney; Helen Rigby ; Bill Abel ;Chris Hand ';
