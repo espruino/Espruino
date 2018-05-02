@@ -62,12 +62,16 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex) {
   info.startIndex = startIndex;
   info.groups = 0;
 
+  JsVar *rmatch;
   JsvStringIterator txtIt;
   jsvStringIteratorNew(&txtIt, str, startIndex);
-  if (regexp[0] == '^')
-    return matchhere(regexp+1, &txtIt, info);
+  if (regexp[0] == '^') {
+    rmatch = matchhere(regexp+1, &txtIt, info);
+    jsvStringIteratorFree(&txtIt);
+    return rmatch;
+  }
   /* must look even if string is empty */
-  JsVar *rmatch = matchhere(regexp, &txtIt, info);
+  rmatch = matchhere(regexp, &txtIt, info);
   while (!rmatch && jsvStringIteratorHasChar(&txtIt)) {
     jsvStringIteratorNext(&txtIt);
     info.startIndex++;
@@ -104,8 +108,6 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length) {
     *length = 2;
     // missing quite a few here
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
-    if (regexp[1]=='\\') return ch=='\\';
-    if (regexp[1]=='/') return ch=='/';
     if (regexp[1]=='d') return isNumeric(ch);
     if (regexp[1]=='D') return !isNumeric(ch);
     if (regexp[1]=='f') return ch==0x0C;
@@ -123,8 +125,8 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length) {
       char code = (char)((chtod(regexp[2])<<4) | chtod(regexp[3]));
       return ch==code;
     }
-    jsExceptionHere(JSET_ERROR, "Unknown escape character %d in RegEx", (int)regexp[1]);
-    return false;
+    // fallback to the quoted character (e.g. /,-,? etc.)
+    return regexp[1]==ch;
   }
   return regexp[0]==ch;
 }
