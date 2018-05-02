@@ -531,8 +531,10 @@ JshPinState jshPinGetState(Pin pin) {
     uint32_t pinDrive = (p&GPIO_PIN_CNF_DRIVE_Msk)>>GPIO_PIN_CNF_DRIVE_Pos;
     uint32_t pinPull = (p&GPIO_PIN_CNF_PULL_Msk)>>GPIO_PIN_CNF_PULL_Pos;
     // Output
-    JshPinState hi = (NRF_GPIO->OUT & (1<<ipin)) ? JSHPINSTATE_PIN_IS_ON : 0;
-    if (negated) hi = !hi;
+    bool pinIsHigh = NRF_GPIO->OUT & (1<<ipin);
+    if (negated) pinIsHigh = !pinIsHigh;
+    JshPinState hi = pinIsHigh ? JSHPINSTATE_PIN_IS_ON : 0;
+
     if (pinDrive==GPIO_PIN_CNF_DRIVE_S0D1 || pinDrive==GPIO_PIN_CNF_DRIVE_H0D1) {
       if (pinPull==GPIO_PIN_CNF_PULL_Pullup)
         return JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP|hi;
