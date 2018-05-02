@@ -499,11 +499,7 @@ JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
 
   while (jsvStringIteratorHasChar(&itsrc)) {
     char ch = jsvStringIteratorGetChar(&itsrc);
-    if (upper) {
-      if (ch >= 97 && ch <= 122) ch = (char)(ch - 32);
-    } else {
-      if (ch >= 65 && ch <= 90) ch = (char)(ch + 32); // A-Z
-    }
+    ch = upper ? jsvStringCharToUpper(ch) : jsvStringCharToLower(ch);
     jsvStringIteratorAppend(&itdst, ch);
     jsvStringIteratorNext(&itsrc);
   }

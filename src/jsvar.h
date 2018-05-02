@@ -515,6 +515,8 @@ JsVarFloat jsvGetFloatAndUnLock(JsVar *v);
 bool jsvGetBoolAndUnLock(JsVar *v);
 long long jsvGetLongIntegerAndUnLock(JsVar *v);
 
+static ALWAYS_INLINE char jsvStringCharToUpper(char ch) { return (ch >= 97 && ch <= 122) ? ch - 32 : ch; } // a-z
+static ALWAYS_INLINE char jsvStringCharToLower(char ch) { return (ch >= 65 && ch <= 90)  ? ch + 32 : ch; } // A-Z
 
 
 
