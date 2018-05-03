@@ -63,13 +63,9 @@ static char DBG_LIB[] = "socketserver"; // library name
 
 // -----------------------------
 
-bool compareTransferEncodingAndUnlock(JsVar *encoding, char *value) {
-    if (encoding) {
-        JsVar *encodingLc = jswrap_string_toUpperLowerCase(encoding, false);
-        jsvUnLock(encoding);
-        encoding = encodingLc;
-    }
-    return jsvIsStringEqualAndUnLock(encoding, value);
+static ALWAYS_INLINE bool compareTransferEncodingAndUnlock(JsVar *encoding, char *value) {
+    // RFC 2616: All transfer-coding values are case-insensitive.
+    return jsvIsStringIEqualAndUnLock(encoding, value);
 }
 
 static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
