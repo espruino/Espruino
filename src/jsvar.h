@@ -474,7 +474,7 @@ size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col); ///<  IN A 
 
 
 /// Like jsvIsStringEqualOrStartsWith, but starts comparing at some offset (not the beginning of the string)
-bool jsvIsStringEqualOrStartsWithOffset(JsVar *var, const char *str, bool isStartsWith, size_t startIdx);
+bool jsvIsStringEqualOrStartsWithOffset(JsVar *var, const char *str, bool isStartsWith, size_t startIdx, bool ignoreCase);
 /**
   Compare a string with a C string. Returns 0 if A is not a string.
 
@@ -483,7 +483,7 @@ bool jsvIsStringEqualOrStartsWithOffset(JsVar *var, const char *str, bool isStar
 */
 bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith);
 bool jsvIsStringEqual(JsVar *var, const char *str); ///< see jsvIsStringEqualOrStartsWith
-bool jsvIsStringEqualAndUnLock(JsVar *var, const char *str); ///< see jsvIsStringEqualOrStartsWith
+bool jsvIsStringIEqualAndUnLock(JsVar *var, const char *str); ///< see jsvIsStringEqualOrStartsWithOffset
 int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 /// Return a new string containing just the characters that are shared between two strings.
 JsVar *jsvGetCommonCharacters(JsVar *va, JsVar *vb);
@@ -515,6 +515,8 @@ JsVarFloat jsvGetFloatAndUnLock(JsVar *v);
 bool jsvGetBoolAndUnLock(JsVar *v);
 long long jsvGetLongIntegerAndUnLock(JsVar *v);
 
+static ALWAYS_INLINE char jsvStringCharToUpper(char ch) { return (ch >= 97 && ch <= 122) ? ch - 32 : ch; } // a-z
+static ALWAYS_INLINE char jsvStringCharToLower(char ch) { return (ch >= 65 && ch <= 90)  ? ch + 32 : ch; } // A-Z
 
 
 
