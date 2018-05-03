@@ -34,7 +34,15 @@ make clean
 make || { echo 'Build failed' ; exit 1; }
 
 BOOTLOADERSIZE=`python scripts/get_board_info.py $BOARDNAME "common.get_bootloader_size(board)"`
-IMGSIZE=$(expr $BOOTLOADERSIZE + $(stat -c%s "$ESPRUINOFILE"))
+
+# Detecting MacOS or proceeding normally.
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  IMGSIZE=$(expr $BOOTLOADERSIZE + $(du "$ESPRUINOFILE" | cut -f1))
+  echo ---------------------
+  echo MacOS Detected
+else
+  IMGSIZE=$(expr $BOOTLOADERSIZE + $(stat -c%s "$ESPRUINOFILE"))
+fi
 
 echo ---------------------
 echo Image Size = $IMGSIZE
