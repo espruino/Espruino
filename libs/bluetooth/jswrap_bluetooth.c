@@ -2130,7 +2130,7 @@ You can use it as follows - this would connect to another Puck device and turn i
 
 ```
 var gatt;
-NRF.connect("aa:bb:cc:dd:ee").then(function(g) {
+NRF.connect("aa:bb:cc:dd:ee random").then(function(g) {
   gatt = g;
   return gatt.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
 }).then(function(service) {
@@ -2142,6 +2142,12 @@ NRF.connect("aa:bb:cc:dd:ee").then(function(g) {
   console.log("Done!");
 });
 ```
+
+**Note:** Espruino Bluetooth devices use a type of BLE address known as 'random static',
+which is different to a 'public' address. To connect to an Espruino device you'll need 
+to use an address string of the form `"aa:bb:cc:dd:ee random"` rather than just 
+`"aa:bb:cc:dd:ee"`. If you scan for devices with `NRF.findDevices`/`NRF.setScan` then
+addresses are already reported in the correct format.
 */
 JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
 #if CENTRAL_LINK_COUNT>0
