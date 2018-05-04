@@ -2,6 +2,7 @@
             Add better docs for the form of Wifi callback functions
             Modify ESP8266/ESP32 callbacks to match the node.js style used elsewhere
             nRF52: fix pin.toggle() on software-negated pins
+            Pixl.js: Reorder pins so 0..13 are also D0..13 for better Arduino compatibility
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()
