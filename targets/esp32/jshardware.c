@@ -702,6 +702,7 @@ JsVar *jshFlashGetFree() {
   if (!jsFreeFlash) return 0;
   // Space should be reserved here in the parition table - assume 4Mb EEPROM
   // Set just after programme save area 
+  // This should be read from the partition table - need to define area
   addFlashArea(jsFreeFlash, 0x100000 + FLASH_PAGE * 16, 0x300000-FLASH_PAGE * 16-1);
   
   return jsFreeFlash;
