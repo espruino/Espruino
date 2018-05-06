@@ -727,7 +727,7 @@ size_t jshFlashGetMemMapAddress(size_t ptr) {
     return 0;
   }
   // Flash memory access is offset to 0, so remove starting location as already accounted for
-  return &romdata_jscode[ptr - 0x100000 ];
+  return &romdata_jscode[ptr - FLASH_SAVED_CODE_START ];
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {
