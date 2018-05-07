@@ -314,9 +314,17 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
   if (isHttp) {
     size_t len = (size_t)jsvGetStringLength(*receiveData);
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(reader, HTTP_NAME_CHUNKED, 0))) {
+      JsVar *crlf = jsvNewFromString("\r\n");
+      JsVar *zero = jsvNewFromInteger(0);
+      size_t startIdx = (size_t)jswrap_string_indexOf(*receiveData, crlf, zero, false);
+      jsvUnLock2(crlf, zero);
+
+      JsVar *lenString = jsvNewFromEmptyString();
+      if (!lenString) return; // out of memory
+      jsvAppendStringVar(lenString, *receiveData, 0, startIdx);
       JsVar *sixteen = jsvNewFromInteger(16);
-      int chunkLen = jsvGetIntegerAndUnLock(jswrap_parseInt(*receiveData, sixteen));
-      jsvUnLock(sixteen);
+      int chunkLen = jsvGetIntegerAndUnLock(jswrap_parseInt(lenString, sixteen));
+      jsvUnLock2(sixteen, lenString);
       DBG("D:%d\n", chunkLen);
 
       // for 'chunked' set the counter to 1 to read on or 0 if at last chunk
@@ -327,11 +335,9 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
         *receiveData = 0;
         return;
       }
-      JsVar *crlf = jsvNewFromString("\r\n");
-      JsVar *zero = jsvNewFromInteger(0);
-      size_t startIdx = (size_t)jswrap_string_indexOf(*receiveData, crlf, zero, false) + 2;
-      size_t nextIdx = startIdx + chunkLen + 2;
-      jsvUnLock2(crlf, zero);
+
+      startIdx += 2; // skip the CRLF
+      size_t nextIdx = startIdx + chunkLen + 2; // CRLF at the end
       if (nextIdx > len) { // not enough data, wait for more to receive
           return;
       }
