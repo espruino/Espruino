@@ -642,11 +642,11 @@ JsVar *jswrap_date_toISOString(JsVar *parent) {
 }
 
 static JsVarInt _parse_int() {
-  return (int)stringToIntWithRadix(jslGetTokenValueAsString(), 10, 0);
+  return (int)stringToIntWithRadix(jslGetTokenValueAsString(), 10, NULL, NULL);
 }
 
 static bool _parse_time(TimeInDay *time, int initialChars) {
-  time->hour = (int)stringToIntWithRadix(&jslGetTokenValueAsString()[initialChars], 10, 0);
+  time->hour = (int)stringToIntWithRadix(&jslGetTokenValueAsString()[initialChars], 10, NULL, NULL);
   jslGetNextToken();
   if (lex->tk==':') {
     jslGetNextToken();
