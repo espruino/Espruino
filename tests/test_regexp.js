@@ -27,6 +27,8 @@ testreg(/a*b/.exec("Helloaaabc"),"aaab", 5);
 testreg(/[bac]*d/.exec("Hello abcd"),"abcd", 6);
 testreg(/[bac]*d/i.exec("Hello aBcD"),"aBcD", 6);
 testreg(/X[\/\?\-]+/.exec('==X/?/-X'), "X/?/-", 2);
+testreg(/[a-z\-0-5]+/.exec('==ab-1289=='), "ab-12", 2);
+testreg(/[a-d]+/i.exec('=ybC-='), "bC", 2);
 testreg(/^X[^X]+/.exec('X-------X'), "X-------", 0);
 testreg(/^X[^X]+/.exec('X---------------------------------------X'), "X---------------------------------------", 0);
 
