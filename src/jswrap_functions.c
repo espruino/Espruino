@@ -147,15 +147,20 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
 
   // otherwise convert to string
   char buffer[JS_NUMBER_BUFFER_SIZE];
-  if (jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE)==JS_NUMBER_BUFFER_SIZE) {
-    jsExceptionHere(JSET_ERROR, "String too big to convert to integer\n");
-    return jsvNewFromFloat(NAN);
-  }
+  jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
   bool hasError = false;
   if (!radix && buffer[0]=='0' && isNumeric(buffer[1]))
     radix = 10; // DON'T assume a number is octal if it starts with 0
-  long long i = stringToIntWithRadix(buffer, radix, &hasError);
+  const char *endOfInteger;
+  long long i = stringToIntWithRadix(buffer, radix, &hasError, &endOfInteger);
   if (hasError) return jsvNewFromFloat(NAN);
+  // If the integer went right to the end of our buffer then we
+  // probably had to miss some stuff off the end of the string
+  // in jsvGetString
+  if (endOfInteger == &buffer[sizeof(buffer)-1]) {
+    jsExceptionHere(JSET_ERROR, "String too big to convert to integer\n");
+    return jsvNewFromFloat(NAN);
+  }
   return jsvNewFromLongInteger(i);
 }
 
@@ -172,13 +177,19 @@ Convert a string representing a number into an float
  */
 JsVarFloat jswrap_parseFloat(JsVar *v) {
   char buffer[JS_NUMBER_BUFFER_SIZE];
-  if (jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE)==JS_NUMBER_BUFFER_SIZE) {
+  jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
+  if (!strcmp(buffer, "Infinity")) return INFINITY;
+  if (!strcmp(buffer, "-Infinity")) return -INFINITY;
+  const char *endOfFloat;
+  JsVarFloat f = stringToFloatWithRadix(buffer,0,&endOfFloat);
+  // If the float went right to the end of our buffer then we
+  // probably had to miss some stuff off the end of the string
+  // in jsvGetString
+  if (endOfFloat == &buffer[sizeof(buffer)-1]) {
     jsExceptionHere(JSET_ERROR, "String too big to convert to float\n");
     return NAN;
   }
-  if (!strcmp(buffer, "Infinity")) return INFINITY;
-  if (!strcmp(buffer, "-Infinity")) return -INFINITY;
-  return stringToFloat(buffer);
+  return f;
 }
 
 /*JSON{

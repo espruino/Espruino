@@ -10,6 +10,7 @@ var a = [
          parseInt("0x100",16), 256,
          parseInt("a",16), 10,
          parseInt("A",16), 10,
+         parseInt("7 plus a string longer than 66chars which is the jsvGetString() size limit"), 7,
          parseInt(NaN), NaN,
          parseInt(NaN,16), NaN,
          parseInt(Infinity), NaN,
@@ -20,6 +21,8 @@ var a = [
          parseFloat("1.e+1"), 10.0,
          parseFloat("1.2e+2"), 120.0,
          parseFloat("1200e-3"), 1.2,
+         parseFloat("123 with a further non-numeric string"), 123,
+         parseFloat("456 plus a string longer than 66chars which is the jsvGetString() size limit"), 456,
 ];
 
 var result = 1;

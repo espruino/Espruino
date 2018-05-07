@@ -4,6 +4,7 @@
             nRF52: fix pin.toggle() on software-negated pins
             Pixl.js: Reorder pins so 0..13 are also D0..13 for better Arduino compatibility
             Fix dump() when used with code written using E.setBootCode(..), (fix #1398)
+            Allow parseInt/parseFloat to be used on very large strings if the number doesn't extend right to the end (fix #1397)
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()
