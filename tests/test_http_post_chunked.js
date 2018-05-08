@@ -29,6 +29,8 @@ var server = http.createServer(function (req, res) {
 });
 server.listen(8080);
 
+// payload longer than 66 chars (parseInt limit)
+var payload = '-0123456789abcdef--0123456789abcdef--0123456789abcdef--0123456789abcdef-';
 var options = {
   host: 'localhost',
   port: 8080,
@@ -49,7 +51,8 @@ var req = http.request(options, function(res) {
   res.on('end', function() {
     console.log(">END");
     server.close();
-    result = body=="42-0123456789abcdef-24";
+    result = body==("42"+payload+"24");
+    console.log(">END ", result, body);
   });
   res.on('close', function() {
     console.log(">CLOSE");
@@ -60,7 +63,7 @@ req.on('error', function(e) {
   console.log(">ERROR: " + e.message);
 });
 
-req.write('-0123456789abcdef-'); // longer than 15 chars
+req.write(payload);
 setTimeout(() => {
   req.write('24');
   req.end();
