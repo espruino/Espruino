@@ -274,6 +274,7 @@ The `options` object can contain the following properties.
 * `authMode` - The authentication mode to use.  Can be one of "open", "wpa2", "wpa", "wpa_wpa2". The default is open (but open access points are not recommended).
 * `password` - The password for connecting stations if authMode is not open.
 * `channel` - The channel to be used for the access point in the range 1..13. If the device is also connected to an access point as a station then that access point determines the channel.
+* `hidden` - The flag if visible or not (0:visible, 1:hidden), default is visiable.
 
 Notes:
 

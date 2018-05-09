@@ -1360,9 +1360,6 @@ JsVar *jshFlashGetFree() {
     return jsFreeFlash;
   }
 
-  // Area reserved for EEPROM
-  addFlashArea(jsFreeFlash, 0x77000, 0x1000);
-
   // need 1MB of flash to have more space...
   extern uint16_t espFlashKB; // in user_main,c
   if (espFlashKB > 512) {

@@ -42,7 +42,7 @@ ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0xFE000  # where to flash blank.bin
 ET_DEFAULTS         ?= 0xFC000  # where to flash esp_init_data_default.bin to default SDK settings
 else # 512KB
-ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
+ESP_FLASH_MAX       ?= 483328   # max bin file: 472KB
 ESP_FLASH_SIZE      ?= 0        # 0->512KB
 ESP_FLASH_MODE      ?= 0        # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0        # 0->40Mhz

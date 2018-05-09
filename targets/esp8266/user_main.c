@@ -259,6 +259,8 @@ static void initDone() {
 
   // At this point, our JavaScript environment should be up and running.
 
+  jswrap_wifi_restore();
+
   // Register the idle callback handler to run the main loop
   //ets_set_idle_cb(idle_cb, NULL); //
   queueTaskMainLoop(); // get things going without idle callback
