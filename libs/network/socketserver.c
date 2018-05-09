@@ -319,12 +319,9 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
       size_t startIdx = (size_t)jswrap_string_indexOf(*receiveData, crlf, zero, false);
       jsvUnLock2(crlf, zero);
 
-      JsVar *lenString = jsvNewFromEmptyString();
-      if (!lenString) return; // out of memory
-      jsvAppendStringVar(lenString, *receiveData, 0, startIdx);
       JsVar *sixteen = jsvNewFromInteger(16);
-      int chunkLen = jsvGetIntegerAndUnLock(jswrap_parseInt(lenString, sixteen));
-      jsvUnLock2(sixteen, lenString);
+      int chunkLen = jsvGetIntegerAndUnLock(jswrap_parseInt(*receiveData, sixteen));
+      jsvUnLock(sixteen);
       DBG("D:%d\n", chunkLen);
 
       // for 'chunked' set the counter to 1 to read on or 0 if at last chunk
