@@ -470,7 +470,9 @@ void jswrap_wifi_scan(JsVar *jsCallback) {
   wifi_set_opmode_current(wifi_get_opmode() | STATION_MODE);
 
   // Request a scan of the network calling "scanCB" on completion
-  wifi_station_scan(NULL, scanCB);
+  struct scan_config config = {0};
+  config.show_hidden = true;
+  wifi_station_scan(&config, scanCB);
 
   DBG("Wifi.scan starting: mode=%s\n", wifiMode[wifi_get_opmode()]);
   DBGV("< Wifi.scan\n");
@@ -514,6 +516,14 @@ void jswrap_wifi_startAP(
 
   // Handle any options that may have been supplied.
   if (jsvIsObject(jsOptions)) {
+    // Handle hidden
+    JsVar *jsHidden = jsvObjectGetChild(jsOptions, "hidden", 0); 
+    if (jsvIsInt(jsHidden)) {
+      int hidden = jsvGetInteger(jsHidden);
+      if (hidden >= 0 && hidden <= 1) softApConfig.ssid_hidden = hidden;
+    }
+    jsvUnLock(jsHidden);
+
     // Handle channel
     JsVar *jsChan = jsvObjectGetChild(jsOptions, "channel", 0);
     if (jsvIsInt(jsChan)) {
