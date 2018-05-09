@@ -983,7 +983,7 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, Js
           char hostName[128];
           jsvGetString(host, hostName, sizeof(hostName));
           JsNetUDPPacketHeader header;
-          networkGetHostByName(net, hostName, (uint32_t*)&header.host[0]);
+          networkGetHostByName(net, hostName, (uint32_t*)&header.host);
           header.port = portNumber;
           header.length = (uint16_t)jsvGetStringLength(s);
           jsvAppendStringBuf(sendData, (const char*)&header, sizeof(header));
