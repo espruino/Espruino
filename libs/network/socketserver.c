@@ -42,6 +42,8 @@
 #define HTTP_NAME_ON_DRAIN JS_EVENT_PREFIX"drain"
 #define HTTP_NAME_ON_ERROR JS_EVENT_PREFIX"error"
 
+#define DGRAM_NAME_ON_MESSAGE JS_EVENT_PREFIX"message"
+
 #define HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS "HttpCC"
 #define HTTP_ARRAY_HTTP_SERVERS "HttpS"
 #define HTTP_ARRAY_HTTP_SERVER_CONNECTIONS "HttpSC"
@@ -334,13 +336,13 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
       }
 
       startIdx += 2; // skip the CRLF
-      size_t nextIdx = startIdx + chunkLen + 2; // CRLF at the end
+      size_t nextIdx = startIdx + (size_t)chunkLen + 2; // CRLF at the end
       if (nextIdx > len) { // not enough data, wait for more to receive
           return;
       }
       JsVar *chunkData = jsvNewFromEmptyString();
       if (!chunkData) return; // out of memory
-      jsvAppendStringVar(chunkData, *receiveData, startIdx, chunkLen);
+      jsvAppendStringVar(chunkData, *receiveData, startIdx, (size_t)chunkLen);
 
       if (nextIdx < len) { // there is another chunk in the buffer
         DBG("D:nextIdx %d %d\n", nextIdx, len);
@@ -371,7 +373,39 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
   }
 }
 
+void socketReceivedUDP(JsVar *connection, JsVar **receiveData) {
+  // Get the header
+  size_t len = jsvGetStringLength(*receiveData);
+  if (len < sizeof(JsNetUDPPacketHeader)) return; // not enough data for header!
+  char buf[sizeof(JsNetUDPPacketHeader)+1]; // trailing 0 from jsvGetStringChars
+  jsvGetStringChars(*receiveData, 0, buf, sizeof(JsNetUDPPacketHeader)+1);
+  JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+  if (sizeof(JsNetUDPPacketHeader)+header->length < len) return; // not enough data yet
+
+  JsVar *rinfo = jsvNewObject();
+  if (rinfo) {
+    // split the received data string to get the data we need
+    JsVar *data = jsvNewFromStringVar(*receiveData, sizeof(JsNetUDPPacketHeader), header->length);
+    JsVar *newReceiveData = 0;
+    if (len > sizeof(JsNetUDPPacketHeader)+header->length)
+      newReceiveData = jsvNewFromStringVar(*receiveData, sizeof(JsNetUDPPacketHeader)+header->length, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    jsvUnLock(*receiveData);
+    *receiveData = newReceiveData;
+    // fire the received data event
+    jsvObjectSetChildAndUnLock(rinfo, "address", jsvVarPrintf("%d.%d.%d.%d", header->host[0], header->host[1], header->host[2], header->host[3]));
+    jsvObjectSetChildAndUnLock(rinfo, "port", jsvNewFromInteger(header->port));
+    jsvObjectSetChildAndUnLock(rinfo, "size", jsvNewFromInteger(header->length));
+    JsVar *args[2] = { data, rinfo };
+    jsiQueueObjectCallbacks(connection, DGRAM_NAME_ON_MESSAGE, args, 2);
+    jsvUnLock2(data,rinfo);
+  }
+}
+
 void socketReceived(JsVar *connection, JsVar *socket, SocketType socketType, JsVar **receiveData, bool isServer) {
+  if ((socketType&ST_TYPE_MASK)==ST_UDP) {
+    socketReceivedUDP(connection, receiveData);
+    return;
+  }
   JsVar *reader = isServer ? connection : socket;
   bool isHttp = (socketType&ST_TYPE_MASK)==ST_HTTP;
   bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(reader,HTTP_NAME_HAD_HEADERS,0));
@@ -393,33 +427,6 @@ void socketReceived(JsVar *connection, JsVar *socket, SocketType socketType, JsV
     return;
   }
   socketPushReceiveData(reader, receiveData, isHttp, false);
-}
-
-void socketReceivedUDP(JsVar *connection, JsVar **receiveData) {
-  // Get the header
-  size_t len = jsvGetStringLength(*receiveData);
-  if (len < sizeof(JsNetUDPPacketHeader)) return; // not enough data for header!
-  char buf[sizeof(JsNetUDPPacketHeader)+1]; // trailing 0 from jsvGetStringChars
-  jsvGetStringChars(*receiveData, 0, buf, sizeof(JsNetUDPPacketHeader)+1);
-  JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
-  if (sizeof(JsNetUDPPacketHeader)+header->length < len) return; // not enough data yet
-
-  JsVar *receiveInfo = jsvNewObject();
-  if (receiveInfo) {
-    // split the received data string to get the data we need
-    JsVar *data = jsvNewFromStringVar(*receiveData, sizeof(JsNetUDPPacketHeader), header->length);
-    JsVar *newReceiveData = 0;
-    if (len > sizeof(JsNetUDPPacketHeader)+header->length)
-      newReceiveData = jsvNewFromStringVar(*receiveData, sizeof(JsNetUDPPacketHeader)+header->length, JSVAPPENDSTRINGVAR_MAXLENGTH);
-    jsvUnLock(*receiveData);
-    *receiveData = newReceiveData;
-    // fire the received data event
-    jsvObjectSetChildAndUnLock(receiveInfo, "address", jsvVarPrintf("%d.%d.%d.%d", header->host[0], header->host[1], header->host[2], header->host[3]));
-    jsvObjectSetChildAndUnLock(receiveInfo, "port", jsvNewFromInteger(header->port));
-    jsvObjectSetChildAndUnLock(receiveInfo, "size", jsvNewFromInteger(header->length));
-    jswrap_dgram_messageCallback(connection, data, receiveInfo);
-    jsvUnLock2(data,receiveInfo);
-  }
 }
 
 
@@ -495,18 +502,11 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       } else {
         if (num>0) {
           JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
-          JsVar *oldReceiveData = receiveData;
           if (!receiveData) receiveData = jsvNewFromEmptyString();
           if (receiveData) {
             jsvAppendStringBuf(receiveData, buf, (size_t)num);
-            if ((socketType&ST_TYPE_MASK)==ST_UDP) {
-              socketReceivedUDP(connection, &receiveData);
-            } else {
-              socketReceived(connection, socket, socketType, &receiveData, true);
-            }
-            // if received data changed, update it
-            if (receiveData != oldReceiveData)
-              jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,receiveData);
+            socketReceived(connection, socket, socketType, &receiveData, true);
+            jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,receiveData);
             jsvUnLock(receiveData);
           }
         }
@@ -692,11 +692,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
                 receiveData = jsvNewFromEmptyString();
               if (receiveData) { // could be out of memory
                 jsvAppendStringBuf(receiveData, buf, (size_t)num);
-                if ((socketType&ST_TYPE_MASK)==ST_UDP) {
-                  socketReceivedUDP(connection, &receiveData);
-                } else {
-                  socketReceived(connection, socket, socketType, &receiveData, false);
-                }
+                socketReceived(connection, socket, socketType, &receiveData, false);
                 jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
               }
             }
