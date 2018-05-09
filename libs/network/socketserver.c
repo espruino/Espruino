@@ -375,18 +375,23 @@ void socketReceived(JsVar *connection, JsVar *socket, SocketType socketType, JsV
   JsVar *reader = isServer ? connection : socket;
   bool isHttp = (socketType&ST_TYPE_MASK)==ST_HTTP;
   bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(reader,HTTP_NAME_HAD_HEADERS,0));
-  if (!hadHeaders && (!isHttp || httpParseHeaders(receiveData, reader, isServer))) {
-    hadHeaders = true;
-    jsvObjectSetChildAndUnLock(reader, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders));
+  if (!hadHeaders) {
+    if (isHttp && httpParseHeaders(receiveData, reader, isServer)) {
+      hadHeaders = true;
 
-    if (isServer) {
-      JsVar *server = jsvObjectGetChild(connection,HTTP_NAME_SERVER_VAR,0);
-      JsVar *args[2] = { connection, socket };
-      jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, args, isHttp ? 2 : 1);
-      jsvUnLock(server);
+      // on connect only when just parsed the HTTP headers
+      if (isServer) {
+        JsVar *server = jsvObjectGetChild(connection,HTTP_NAME_SERVER_VAR,0);
+        JsVar *args[2] = { connection, socket };
+        jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, args, isHttp ? 2 : 1);
+        jsvUnLock(server);
+      } else {
+        jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &socket, 1);
+      }
     } else {
-      jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &socket, 1);
+      hadHeaders = true;
     }
+    jsvObjectSetChildAndUnLock(reader, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders));
   }
   if (!hadHeaders) {
     // no headers yet, no 'data' callback
