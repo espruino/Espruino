@@ -1820,6 +1820,8 @@ JsVar *jswrap_nrf_nfcStart(JsVar *payload) {
   JsVar *arr = jsvNewArrayBufferWithPtr(size, &ptr);
   if (ptr) jsble_nfc_get_internal((uint8_t *)ptr, &size);
   return arr;
+#else
+  return 0;
 #endif
 }
 
@@ -2155,8 +2157,11 @@ JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
   if (!device) return 0;
   jsvObjectSetChild(device, "id", mac);
   JsVar *gatt = jswrap_BluetoothDevice_gatt(device);
+  jsvUnLock(device);
   if (!gatt) return 0;
-  return jswrap_nrf_BluetoothRemoteGATTServer_connect(gatt);
+  JsVar *promise = jswrap_nrf_BluetoothRemoteGATTServer_connect(gatt);
+  jsvUnLock(gatt);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
