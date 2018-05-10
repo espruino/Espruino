@@ -263,6 +263,18 @@ void jswrap_nrf_dumpBluetoothInitialisation(vcbprintf_callback user_callback, vo
 // ------------------------------------------------------------------------------
 
 /*JSON{
+    "type": "class",
+    "class" : "NRF"
+}
+The NRF class is for controlling functionality of the Nordic nRF51/nRF52 chips. This is used in [Puck.js](http://puck-js.com), [Pixl.js](http://espruino.com/Pixl.js), [MDBT42Q](http://espruino.com/MDBT42Q), and a variety of other Bluetooth-based boards.
+
+Most functionality is related to Bluetooth Low Energy, however there are also some functions related to NFC that apply to NRF52-based devices.
+*/
+
+// ------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
+
+/*JSON{
   "type" : "event",
   "class" : "NRF",
   "name" : "connect",
@@ -367,14 +379,6 @@ The first argument is of the form `{target : BluetoothRemoteGATTCharacteristic}`
 `BluetoothRemoteGATTCharacteristic.value` will then contain the new value.
  */
 
-/*JSON{
-    "type": "class",
-    "class" : "NRF"
-}
-The NRF class is for controlling functionality of the Nordic nRF51/nRF52 chips. Currently these only used in [Puck.js](http://puck-js.com) and the [BBC micro:bit](/MicroBit).
-
-The main part of this is control of Bluetooth Low Energy - both searching for devices, and changing advertising data.
-*/
 /*JSON{
   "type" : "object",
   "name" : "Bluetooth",
