@@ -306,18 +306,35 @@ void user_rf_pre_init() {
 /**
  * user_rf_cal_sector_set is a required function that is called by the SDK to get a flash
  * sector number where it can store RF calibration data. This was introduced with SDK 1.5.4.1
- * and is necessary because Espressif ran out of pre-reserved flash sectors. Ooops...
- */
-uint32
-user_rf_cal_sector_set(void) {
-  uint32_t sect = 0;
+ *
+ * sector map for last 5 sectors for flash: ABCCC
+ *   A : rf cal
+ *   B : rf init data
+ *   C : sdk parameters
+*/
+uint32 user_rf_cal_sector_set(void) {
+  uint32_t rf_cal_sec = 0;
   switch (system_get_flash_size_map()) {
-  case FLASH_SIZE_4M_MAP_256_256: // 512KB
-    sect = 128 - 10; // 0x76000
-  default:
-    sect = 128; // 0x80000
+    case FLASH_SIZE_4M_MAP_256_256: 
+      rf_cal_sec = 128 - 5; 
+      break;
+    case FLASH_SIZE_8M_MAP_512_512:
+      rf_cal_sec = 256 - 5;
+      break;
+    case FLASH_SIZE_16M_MAP_512_512:
+    case FLASH_SIZE_16M_MAP_1024_1024:
+        rf_cal_sec = 512 - 5;
+        break;
+    case FLASH_SIZE_32M_MAP_512_512:
+    case FLASH_SIZE_32M_MAP_1024_1024:
+      rf_cal_sec = 1024 - 5;
+      break;
+
+    default:
+      rf_cal_sec = 0;
+      break;
   }
-  return sect;
+  return rf_cal_sec;
 }
 
 /**

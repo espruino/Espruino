@@ -870,7 +870,6 @@ void jswrap_wifi_restore(void) {
   JsVar *o = jswrap_storage_readJSON(name);
   if (!o) { // no data 
     jsvUnLock2(name,o);
-    jsWarn("NO DATA\n");
     return; 
   }
 
