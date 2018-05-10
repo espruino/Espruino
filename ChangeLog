@@ -9,6 +9,7 @@
             Fix memory leak if an exception is thrown within a rejected promise
             ESP8266: rewrite wifi.save and restore to use the storage lib (imp #1380)
 	    ESP8266: Add missing option ssid_hidden for Wifi.startAP() (imp #1358)
+            Fixed double-connect issue for TCP sockets
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()
