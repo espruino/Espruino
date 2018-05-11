@@ -1472,7 +1472,7 @@ static void scanCB(void *arg, STATUS status) {
     if (bssInfo->rssi > 0) bssInfo->rssi = 0;
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));
-    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromInteger(bssInfo->authmode));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromString(wifiAuth[bssInfo->authmode]));
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "isHidden", jsvNewFromBool(bssInfo->is_hidden));
 
     // The SSID may **NOT** be NULL terminated ... so handle that.
