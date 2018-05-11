@@ -53,7 +53,7 @@ chip = {
   'adc'     : 2,
   'dac'     : 0,
   'saved_code' : {
-    'address' : 0x100000,
+    'address' : 0x2C0000,
     'page_size' : 4096,
     'pages' : 64,
     'flash_available' : 1344, # firmware can be up to this size - see paritions_espruino.csv
