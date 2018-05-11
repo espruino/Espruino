@@ -24,14 +24,30 @@
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
 This is the built-in JavaScript class for array buffers.
+
+If you want to access arrays of differing types of data
+you may also find [/Reference#DataView](DataView) useful.
  */
 
 /*JSON{
   "type" : "class",
   "class" : "ArrayBufferView"
 }
-This is the built-in JavaScript class that is the prototype for Uint8Array / Float32Array / etc
- */
+This is the built-in JavaScript class that is the prototype for:
+
+* [Uint8Array](/Reference#Uint8Array)
+* [UintClamped8Array](/Reference#UintClamped8Array)
+* [Int8Array](/Reference#Int8Array)
+* [Uint16Array](/Reference#Uint16Array)
+* [Int16Array](/Reference#Int16Array)
+* [Uint32Array](/Reference#Uint32Array)
+* [Int32Array](/Reference#Int32Array)
+* [Float32Array](/Reference#Float32Array)
+* [Float64Array](/Reference#Float64Array)
+
+If you want to access arrays of differing types of data
+you may also find [DataView](/Reference#DataView) useful.
+*/
 
 /*JSON{
   "type" : "class",
@@ -40,9 +56,11 @@ This is the built-in JavaScript class that is the prototype for Uint8Array / Flo
   "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT8",
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
-This is the built-in JavaScript class for a typed array.
+This is the built-in JavaScript class for a typed array of 8 bit unsigned integers.
 
-Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
+Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+
+Arrays of this type include all the methods from [ArrayBufferView](/Reference#ArrayBufferView)
  */
 /*JSON{
   "type" : "class",
@@ -51,9 +69,11 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
   "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==(ARRAYBUFFERVIEW_UINT8|ARRAYBUFFERVIEW_CLAMPED)",
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
-This is the built-in JavaScript class for a typed array.
+This is the built-in JavaScript class for a typed array of 8 bit unsigned integers that are automatically clamped to the range 0 to 255.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+
+Arrays of this type include all the methods from [ArrayBufferView](/Reference#ArrayBufferView)
  */
 /*JSON{
   "type" : "class",
@@ -62,9 +82,11 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
   "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==ARRAYBUFFERVIEW_INT8",
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
-This is the built-in JavaScript class for a typed array.
+This is the built-in JavaScript class for a typed array of 8 bit signed integers.
 
-Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
+Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+
+Arrays of this type include all the methods from [ArrayBufferView](/Reference#ArrayBufferView)
  */
 /*JSON{
   "type" : "class",
@@ -73,9 +95,11 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
   "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16",
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
-This is the built-in JavaScript class for a typed array.
+This is the built-in JavaScript class for a typed array of 16 bit unsigned integers.
 
-Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
+Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+
+Arrays of this type include all the methods from [ArrayBufferView](/Reference#ArrayBufferView)
  */
 /*JSON{
   "type" : "class",
@@ -84,9 +108,11 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
   "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==ARRAYBUFFERVIEW_INT16",
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
-This is the built-in JavaScript class for a typed array.
+This is the built-in JavaScript class for a typed array of 16 bit signed integers.
 
-Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
+Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+
+Arrays of this type include all the methods from [ArrayBufferView](/Reference#ArrayBufferView)
  */
 /*JSON{
   "type" : "class",
@@ -95,9 +121,11 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
   "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT32",
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
-This is the built-in JavaScript class for a typed array.
+This is the built-in JavaScript class for a typed array of 32 bit unsigned integers.
 
-Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
+Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+
+Arrays of this type include all the methods from [ArrayBufferView](/Reference#ArrayBufferView)
  */
 /*JSON{
   "type" : "class",
@@ -106,9 +134,11 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
   "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==ARRAYBUFFERVIEW_INT32",
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
-This is the built-in JavaScript class for a typed array.
+This is the built-in JavaScript class for a typed array of 32 bit signed integers.
 
-Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
+Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+
+Arrays of this type include all the methods from [ArrayBufferView](/Reference#ArrayBufferView)
  */
 /*JSON{
   "type" : "class",
@@ -117,9 +147,11 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
   "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==ARRAYBUFFERVIEW_FLOAT32",
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
-This is the built-in JavaScript class for a typed array.
+This is the built-in JavaScript class for a typed array of 32 bit floating point values.
 
-Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
+Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+
+Arrays of this type include all the methods from [ArrayBufferView](/Reference#ArrayBufferView)
  */
 /*JSON{
   "type" : "class",
@@ -128,9 +160,11 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
   "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==ARRAYBUFFERVIEW_FLOAT64",
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
-This is the built-in JavaScript class for a typed array.
+This is the built-in JavaScript class for a typed array of 64 bit floating point values.
 
-Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
+Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+
+Arrays of this type include all the methods from [ArrayBufferView](/Reference#ArrayBufferView)
  */
 
 
