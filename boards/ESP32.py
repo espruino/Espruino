@@ -55,8 +55,8 @@ chip = {
   'saved_code' : {
     'address' : 0x100000,
     'page_size' : 4096,
-    'pages' : 16,
-    'flash_available' : 960, # firmware can be up to this size
+    'pages' : 64,
+    'flash_available' : 91344, # firmware can be up to this size - see paritions_espruino.csv
   },
 };
 devices = {
