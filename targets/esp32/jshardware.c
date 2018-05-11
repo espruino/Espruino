@@ -700,11 +700,11 @@ void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
 JsVar *jshFlashGetFree() {
   JsVar *jsFreeFlash = jsvNewEmptyArray();
   if (!jsFreeFlash) return 0;
-  // Space should be reserved here in the parition table - assume 4Mb EEPROM
-  // Set just after programme save area 
-  // This should be read from the partition table - need to define area
-  addFlashArea(jsFreeFlash, 0x100000 + FLASH_PAGE * 16, 0x300000-FLASH_PAGE * 16-1);
-  
+  // Space reserved here in the parition table -  using sub type 0x40
+  // This should be read from the partition table
+  addFlashArea(jsFreeFlash, 0xE000,  0x2000);
+  addFlashArea(jsFreeFlash, 0x2B0000, 0x10000);
+
   return jsFreeFlash;
 }
 
@@ -728,7 +728,7 @@ size_t jshFlashGetMemMapAddress(size_t ptr) {
     return 0;
   }
   // Flash memory access is offset to 0, so remove starting location as already accounted for
-  return &romdata_jscode[ptr - FLASH_SAVED_CODE_START ];
+  return (size_t)&romdata_jscode[ptr - FLASH_SAVED_CODE_START ];
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {
@@ -741,7 +741,7 @@ unsigned int jshSetSystemClock(JsVar *options) {
  * Convert an Espruino pin id to a native ESP32 pin id.
  */
 gpio_num_t pinToESP32Pin(Pin pin) {
-  if ( pin < 40 ) 
+  if ( pin < 40 )
     return pin + GPIO_NUM_0;
   jsError( "pinToESP32Pin: Unknown pin: %d", pin);
   return -1;
