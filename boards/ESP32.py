@@ -56,7 +56,7 @@ chip = {
     'address' : 0x100000,
     'page_size' : 4096,
     'pages' : 64,
-    'flash_available' : 91344, # firmware can be up to this size - see paritions_espruino.csv
+    'flash_available' : 1344, # firmware can be up to this size - see paritions_espruino.csv
   },
 };
 devices = {
