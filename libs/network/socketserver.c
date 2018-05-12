@@ -311,11 +311,15 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
   }
 
   JsVar *nextChunk = 0;
+  JsVar *partialChunk = 0;
 
   // Keep track of how much we received (so we can close once we have it)
   if (isHttp) {
     size_t len = (size_t)jsvGetStringLength(*receiveData);
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(reader, HTTP_NAME_CHUNKED, 0))) {
+      // check for incomplete chunk, at least "0\r\n\r\n"
+      if (len < 5) return; // incomplete, wait for more data
+
       JsVar *crlf = jsvNewFromString("\r\n");
       JsVar *zero = jsvNewFromInteger(0);
       size_t startIdx = (size_t)jswrap_string_indexOf(*receiveData, crlf, zero, false);
@@ -337,20 +341,23 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
 
       startIdx += 2; // skip the CRLF
       size_t nextIdx = startIdx + (size_t)chunkLen + 2; // CRLF at the end
-      if (nextIdx > len) { // not enough data, wait for more to receive
-          return;
-      }
-      JsVar *chunkData = jsvNewFromEmptyString();
-      if (!chunkData) return; // out of memory
-      jsvAppendStringVar(chunkData, *receiveData, startIdx, (size_t)chunkLen);
-
       if (nextIdx < len) { // there is another chunk in the buffer
         DBG("D:nextIdx %d %d\n", nextIdx, len);
         nextChunk = jsvNewFromEmptyString();
         if (!nextChunk) return; // out of memory
         jsvAppendStringVar(nextChunk, *receiveData, nextIdx, len-nextIdx);
+      } else if (nextIdx > len) { // chunk not complete
+        DBG("D:partialIdx %d %d %d\n", len - startIdx, nextIdx - len - 2, len);
+        if (nextIdx - len < 3) return; // just CRLF missing, wait
+        // use the data available, write remaining length, wait
+        partialChunk = jsvNewFromEmptyString();
+        if (!partialChunk) return; // out of memory
+        jsvAppendPrintf(partialChunk, "%x\r\n", nextIdx - len - 2);
       }
 
+      JsVar *chunkData = jsvNewFromEmptyString();
+      if (!chunkData) return; // out of memory
+      jsvAppendStringVar(chunkData, *receiveData, startIdx, (size_t)chunkLen);
       jsvUnLock(*receiveData);
       *receiveData = chunkData;
     } else {
@@ -362,14 +369,17 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
   }
 
   // execute 'data' callback or save data
-  if (jswrap_stream_pushData(reader, *receiveData, force)) {
-    // clear received data
-    jsvUnLock(*receiveData);
-    *receiveData = nextChunk;
+  if (!jswrap_stream_pushData(reader, *receiveData, force)) {
+    jsvUnLock2(nextChunk, partialChunk);
+    return;
+  }
 
-    if (nextChunk) { // process following chunks if any
-      socketPushReceiveData(reader, receiveData, isHttp, force);
-    }
+  // clear received data
+  jsvUnLock(*receiveData);
+  *receiveData = nextChunk ? nextChunk : partialChunk;
+
+  if (nextChunk) { // process following chunks if any
+    socketPushReceiveData(reader, receiveData, isHttp, force);
   }
 }
 
@@ -664,42 +674,40 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
           }
         }
         // Now read data if possible (and we have space for it)
-        if (!receiveData || !hadHeaders) {
-          int num = netRecv(net, socketType, sckt, buf, (size_t)net->chunkSize);
-          if (!alreadyConnected && num == SOCKET_ERR_NO_CONN) {
-            ; // ignore... it's just telling us we're not connected yet
-          } else if (num < 0) {
-            closeConnectionNow = true;
-            // only error out when the response was not completely received
-            if (num == SOCKET_ERR_CLOSED) {
-              JsVarInt contentToReceive = jsvGetIntegerAndUnLock(jsvObjectGetChild(socket, HTTP_NAME_RECEIVE_COUNT, 0));
-              if (!isHttp || contentToReceive > 0 || !hadHeaders) {
-                error = num;
-                // disconnected without headers? error.
-                if (!hadHeaders) error = SOCKET_ERR_NO_RESP;
-              }
-            } else {
+        int num = netRecv(net, socketType, sckt, buf, (size_t)net->chunkSize);
+        if (!alreadyConnected && num == SOCKET_ERR_NO_CONN) {
+          ; // ignore... it's just telling us we're not connected yet
+        } else if (num < 0) {
+          closeConnectionNow = true;
+          // only error out when the response was not completely received
+          if (num == SOCKET_ERR_CLOSED) {
+            JsVarInt contentToReceive = jsvGetIntegerAndUnLock(jsvObjectGetChild(socket, HTTP_NAME_RECEIVE_COUNT, 0));
+            if (!isHttp || contentToReceive > 0 || !hadHeaders) {
               error = num;
+              // disconnected without headers? error.
+              if (!hadHeaders) error = SOCKET_ERR_NO_RESP;
             }
           } else {
-            // did we just get connected?
-            if (!alreadyConnected && !isHttp) {
-              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &connection, 1);
-              jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(true));
-              alreadyConnected = true;
-              // if we do not have any data to send, issue a drain event
-              if (!sendData || (int)jsvGetStringLength(sendData) == 0)
-                jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DRAIN, &connection, 1);
-            }
-            // got data add it to our receive buffer
-            if (num > 0) {
-              if (!receiveData)
-                receiveData = jsvNewFromEmptyString();
-              if (receiveData) { // could be out of memory
-                jsvAppendStringBuf(receiveData, buf, (size_t)num);
-                socketReceived(connection, socket, socketType, &receiveData, false);
-                jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
-              }
+            error = num;
+          }
+        } else {
+          // did we just get connected?
+          if (!alreadyConnected && !isHttp) {
+            jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &connection, 1);
+            jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(true));
+            alreadyConnected = true;
+            // if we do not have any data to send, issue a drain event
+            if (!sendData || (int)jsvGetStringLength(sendData) == 0)
+              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DRAIN, &connection, 1);
+          }
+          // got data add it to our receive buffer
+          if (num > 0) {
+            if (!receiveData)
+              receiveData = jsvNewFromEmptyString();
+            if (receiveData) { // could be out of memory
+              jsvAppendStringBuf(receiveData, buf, (size_t)num);
+              socketReceived(connection, socket, socketType, &receiveData, false);
+              jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
             }
           }
         }

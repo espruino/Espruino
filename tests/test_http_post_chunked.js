@@ -30,7 +30,8 @@ var server = http.createServer(function (req, res) {
 server.listen(8080);
 
 // payload longer than 66 chars (parseInt limit)
-var payload = '-0123456789abcdef--0123456789abcdef--0123456789abcdef--0123456789abcdef-';
+//                and MSS (536) for partialChunk testing
+var payload = new Array(40).fill('-0123456789abcdef-').join('');
 var options = {
   host: 'localhost',
   port: 8080,
