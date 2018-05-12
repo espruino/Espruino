@@ -410,7 +410,9 @@ void socketReceived(JsVar *connection, JsVar *socket, SocketType socketType, JsV
   bool isHttp = (socketType&ST_TYPE_MASK)==ST_HTTP;
   bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(reader,HTTP_NAME_HAD_HEADERS,0));
   if (!hadHeaders) {
-    if (isHttp && httpParseHeaders(receiveData, reader, isServer)) {
+    if (!isHttp) {
+      hadHeaders = true;
+    } else if (httpParseHeaders(receiveData, reader, isServer)) {
       hadHeaders = true;
 
       // on connect only when just parsed the HTTP headers
@@ -422,8 +424,6 @@ void socketReceived(JsVar *connection, JsVar *socket, SocketType socketType, JsV
       } else {
         jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &socket, 1);
       }
-    } else {
-      hadHeaders = true;
     }
     jsvObjectSetChildAndUnLock(reader, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders));
   }
