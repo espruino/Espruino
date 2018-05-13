@@ -900,7 +900,7 @@ void jswrap_wifi_restore(void) {
     ap_config.ssid_hidden = jsvGetInteger(v);
     jsvUnLock(v);
 
-    v = jsvObjectGetChild(o,"ssid",0);
+    v = jsvObjectGetChild(o,"ssidAP",0);
     jsvGetString(v, (char *)ap_config.ssid, sizeof(ap_config.ssid));
 
     ap_config.ssid_len = jsvGetStringLength(v);
