@@ -49,17 +49,13 @@ typedef struct {
 #define MSEC_TO_UNITS(MS,MEH) MS
 #endif
 
-#ifdef NRF52
+#if defined(NRF52) || defined(ESP32)
 // nRF52 gets the ability to connect to other
 #define CENTRAL_LINK_COUNT              1                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
 #else
 #define CENTRAL_LINK_COUNT              0                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
-#endif
-
-#ifdef ESP32
-#define CENTRAL_LINK_COUNT				1
 #endif
 
 #define APP_TIMER_OP_QUEUE_SIZE         2                                           /**< Size of timer operation queues. */
