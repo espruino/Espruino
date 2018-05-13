@@ -12,7 +12,7 @@ var server = http.createServer(function (req, res) {
   });
   req.on('end', function() {
     console.log("<end");
-    console.log("<req ", req.headers, body);
+    console.log("<req", req.headers, body);
     res.writeHead(200, {'Content-Type': 'text/plain', 'Transfer-Encoding': 'chunked' });
     res.write('42');
     setTimeout(() => {
@@ -24,7 +24,7 @@ var server = http.createServer(function (req, res) {
     console.log("<close");
   });
   req.on('error', function(e) {
-    console.log("<error: " + e.message);
+    console.log("<error" + e.message);
   });
 });
 server.listen(8080);
@@ -43,17 +43,16 @@ var options = {
   }
 };
 var req = http.request(options, function(res) {
-  console.log(">RES ", res.headers);
+  console.log(">RES", res.headers);
   var body = '';
   res.on('data', function(data) {
     console.log(">" + data);
     body += data;
   });
   res.on('end', function() {
-    console.log(">END");
     server.close();
     result = body==("42"+payload+"24");
-    console.log(">END ", result, body);
+    console.log(">END", result);
   });
   res.on('close', function() {
     console.log(">CLOSE");
@@ -61,7 +60,7 @@ var req = http.request(options, function(res) {
 })
 
 req.on('error', function(e) {
-  console.log(">ERROR: " + e.message);
+  console.log(">ERROR" + e.message);
 });
 
 req.write(payload);
