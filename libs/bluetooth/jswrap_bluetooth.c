@@ -152,7 +152,7 @@ void jswrap_nrf_init() {
     // By default Puck.js's NFC will send you to the PuckJS website
     // address is included so Web Bluetooth can connect to the correct one
     JsVar *addr = jswrap_nrf_bluetooth_getAddress();
-    JsVar *uri = jsvVarPrintf("https://puck-js.com/go?a=%v", addr);
+    JsVar *uri = jsvVarPrintf(NFC_DEFAULT_URL"?a=%v", addr);
     jsvUnLock(addr);
     jswrap_nrf_nfcURL(uri);
     jsvUnLock(uri);
@@ -739,9 +739,9 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
     jsble_advertising_stop();
 #ifdef NRF5X
   err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
-//#else
-//  err_code = 0xDEAD;
-//  jsiConsolePrintf("FIXME\n");
+#else
+  err_code = 0xDEAD;
+  jsiConsolePrintf("FIXME\n");
 #endif
 #ifdef ESP32
   err_code = bluetooth_gap_setAdvertizing(advArray);
