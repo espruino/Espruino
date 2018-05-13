@@ -176,14 +176,13 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
             if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
               print(dropped_prefix+" because of #ifndef "+jsondata["ifndef"])
               drop = True
-            if ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
-              print(dropped_prefix+" because of #ifdef "+jsondata["ifdef"])
-              drop = True
+            if ("ifdef" in jsondata):
+              ifdefs = jsondata["ifdef"].encode('ascii','ignore').split(",")
+              if(not [val for val in defines if val in ifdefs]):
+                print(dropped_prefix+" because of #ifdef "+jsondata["ifdef"])
+                drop = True
             if ("#ifdef" in jsondata) or ("#ifndef" in jsondata):
               sys.stderr.write( "'#ifdef' where 'ifdef' should be used in " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
-              exit(1)
-            if ("if" in jsondata):
-              sys.stderr.write( "'if' where '#if' should be used in " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
               exit(1)
             if ("#if" in jsondata):
               expr = jsondata["#if"]
@@ -371,8 +370,7 @@ def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH_EXTREME": return "devices with extremely low flash memory (eg. HYSTM32_28)"
   if d=="STM32": return "STM32 devices (including Espruino Original, Pico and WiFi)"
   if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
-  if d=="NRF52": return "NRF52 devices (like Puck.js, Pixl.js and MDBT42Q)"
-  if d=="PIXLJS": return "Pixl.js boards"
+  if d=="NRF52": return "NRF52 devices (like Puck.js and Pixl.js)"
   if d=="ESPRUINOWIFI": return "Espruino WiFi boards"
   if d=="ESP8266": return "ESP8266 devices running Espruino"
   if d=="ESP32": return "ESP32 devices"
@@ -380,15 +378,12 @@ def get_ifdef_description(d):
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico and Espruino WiFi only)"
   if d=="RELEASE": return "release builds"
-  if d=="DEBUG": return "debug builds"
   if d=="LINUX": return "Linux-based builds"
   if d=="BLUETOOTH": return "devices with Bluetooth LE capability"
   if d=="USB": return "devices with USB"
   if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico and Espruino WiFi)"
   if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino WiFi or Linux)"
-  if d=="USE_SHA256": return "devices that support SHA256 (Espruino Pico, Espruino WiFi, Espruino BLE devices or Linux)"
-  if d=="USE_SHA512": return "devices that support SHA512 (Espruino Pico, Espruino WiFi, Espruino BLE devices or Linux)"
-  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Original, Espruino WiFi, Espruino BLE devices, Linux or ESP8266)"
+  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino WiFi, Linux or ESP8266)"
   if d=="USE_FLASHFS": return "devices with filesystem in Flash support enabled (ESP32 only)"
   if d=="USE_TERMINAL": return "devices with VT100 terminal emulation enabled (Pixl.js only)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")

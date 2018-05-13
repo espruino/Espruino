@@ -12,12 +12,23 @@
  * ----------------------------------------------------------------------------
  */
 #include <stdio.h>
- 
+
 #include "jswrap_esp32.h"
 #include "jshardwareAnalog.h"
+#include "jsutils.h"
+#include "jsinteractive.h"
+#include "jsparse.h"
 
 #include "esp_system.h"
 #include "esp_sleep.h"
+
+#ifdef BLUETOOTH
+#include "BLE/esp32_bluetooth_utils.h"
+#endif
+
+#include "jsutils.h"
+#include "jsinteractive.h"
+#include "jsparse.h"
 
 /*JSON{
  "type"     : "staticmethod",
@@ -27,7 +38,7 @@
  "params"   : [
    ["pin", "pin", "Pin for Analog read"],
    ["atten", "int", "Attenuate factor"]
- ]	
+ ]
 }*/
 void jswrap_ESP32_setAtten(Pin pin,int atten){
   printf("Atten:%d\n",atten);
@@ -52,7 +63,7 @@ void jswrap_ESP32_reboot() {
   "class"    : "ESP32",
   "name"     : "deepSleep",
   "generate" : "jswrap_ESP32_deepSleep",
-  "params"   : [ ["us", "int", "Sleeptime in us"] ]	
+  "params"   : [ ["us", "int", "Sleeptime in us"] ]
 }
 Put device in deepsleep state for "us" microseconds.
 */
@@ -83,3 +94,20 @@ JsVar *jswrap_ESP32_getState() {
   jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(esp_get_free_heap_size()));
   return esp32State;
 } // End of jswrap_ESP32_getState
+
+#ifdef BLUETOOTH
+/*JSON{
+ "type"     : "staticmethod",
+ "class"    : "ESP32",
+ "name"     : "setBLE_Debug",
+ "generate" : "jswrap_ESP32_setBLE_Debug",
+ "params"   : [
+   ["level", "int", "which events should be shown (GATTS, GATTC, GAP)"]
+ ],
+ "ifdef"	: "BLUETOOTH"
+}
+*/
+void jswrap_ESP32_setBLE_Debug(int level){
+	ESP32_setBLE_Debug(level);
+}
+#endif

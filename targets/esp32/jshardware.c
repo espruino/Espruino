@@ -32,6 +32,12 @@
 #include "jshardwarePWM.h"
 #include "jshardwarePulse.h"
 
+#ifdef BLUETOOTH
+#include "BLE/esp32_gap_func.h"
+#include "BLE/esp32_gattc_func.h"
+#include "BLE/esp32_gatts_func.h"
+#endif
+
 #include "jsutils.h"
 #include "jstimer.h"
 #include "jsparse.h"
@@ -126,6 +132,9 @@ void jshPinDefaultPullup() {
  */
 void jshInit() {
   esp32_wifi_init();
+#ifdef BLUETOOTH
+  gattc_init();
+#endif
   jshInitDevices();
   BITFIELD_CLEAR(jshPinSoftPWM);
   if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
@@ -147,11 +156,14 @@ void jshInit() {
 void jshReset() {
   jshResetDevices();
   jshPinDefaultPullup() ;
-  UartReset();
+//  UartReset();
   RMTReset();
   ADCReset();
   SPIReset();
   I2CReset();
+#ifdef BLUETOOTH
+  gatts_reset(false);
+#endif
 }
 
 /**
@@ -505,12 +517,12 @@ bool jshIsEventForPin(
 
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
-  
+
   if (inf->errorHandling) {
     jsExceptionHere(JSET_ERROR, "ESP32 Espruino builds can't handle framing/parity errors (errors:true)");
     return;
-  }  
-  
+  }
+
   initSerial(device,inf);
 }
 
@@ -527,8 +539,21 @@ void jshUSARTKick(
 ) {
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
-    if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c); 
-    else writeSerial(device,(uint8_t)c);
+	switch(device){
+#ifdef BLUETOOTH
+		case EV_BLUETOOTH:
+			gatts_sendNotification(c);
+			break; 
+#endif
+		case EV_SERIAL1:
+			uart_tx_one_char((uint8_t)c);
+			break;
+		default:
+			writeSerial(device,(uint8_t)c);
+			break;
+    //if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c); 
+    //else writeSerial(device,(uint8_t)c);
+	}
     c = jshGetCharToTransmit(device);
   }
 }

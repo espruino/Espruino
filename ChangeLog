@@ -1,4 +1,15 @@
+            ESP32: update esp-idf to v3.0. BLE support - thanks to @jumjum. Erase flash before flashing
             Allow Crypto SHA1 without SHA256/512 (for Original & ESP8266 where flash is scarce)
+            Add better docs for the form of Wifi callback functions
+            Modify ESP8266/ESP32 callbacks to match the node.js style used elsewhere
+            nRF52: fix pin.toggle() on software-negated pins
+            Pixl.js: Reorder pins so 0..13 are also D0..13 for better Arduino compatibility
+            Fix dump() when used with code written using E.setBootCode(..), (fix #1398)
+            Allow parseInt/parseFloat to be used on very large strings if the number doesn't extend right to the end (fix #1397)
+            nRF5x: Fix memory leak on NRF.connect
+            Fix memory leak if an exception is thrown within a rejected promise
+            ESP8266: rewrite wifi.save and restore to use the storage lib (imp #1380)
+	    ESP8266: Add missing option ssid_hidden for Wifi.startAP() (imp #1358)
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()

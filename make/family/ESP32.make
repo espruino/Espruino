@@ -121,3 +121,23 @@ $(ESP_IDF_PATH)/components/esp32/libhal.a  \
 -lapp_update \
 -lstdc++ \
 -lgcc
+
+#needed for using ifdef in wrapper JSON
+DEFINES += -DESP32
+
+ifdef USE_BLUETOOTH
+SOURCES+= targets/esp32/bluetooth.c \
+targets/esp32/BLE/esp32_bluetooth_utils.c \
+targets/esp32/BLE/esp32_gap_func.c \
+targets/esp32/BLE/esp32_gatts_func.c \
+targets/esp32/BLE/esp32_gattc_func.c 
+INCLUDE+= -I$(ESP_IDF_PATH)/components/bt/bluedroid/include \
+-I$(ESP_IDF_PATH)/components/bt/bluedroid/api/include \
+-I$(ESP_IDF_PATH)/components/bt/bluedroid/bta/include \
+-I$(ESP_IDF_PATH)/components/bt/bluedroid/stack/include \
+-I$(ESP_IDF_PATH)/components/bt/bluedroid/stack/gatt/include \
+-I$(ESP_IDF_PATH)/components/bt/bluedroid/osi/include 
+LDFLAGS+= -L$(ESP_APP_TEMPLATE_PATH)/build/components/bt/bluedroid/api \
+-L$(ESP_APP_TEMPLATE_PATH)/build/components/bt/bluedroid/bta 
+endif
+
