@@ -850,6 +850,7 @@ void jswrap_wifi_save(JsVar *what) {
   jsvObjectSetChildAndUnLock(o, "passwordAP", jsvNewFromString((char *) ap_config.password));
   jsvObjectSetChildAndUnLock(o, "authmodeAP", jsvNewFromInteger(ap_config.authmode));
   jsvObjectSetChildAndUnLock(o, "hiddenAP", jsvNewFromInteger(ap_config.ssid_hidden));
+  jsvObjectSetChildAndUnLock(o, "channelAP", jsvNewFromInteger(ap_config.channel));
   
   savedMode = wifi_get_opmode();
 
@@ -910,7 +911,10 @@ void jswrap_wifi_restore(void) {
     jsvGetString(v, (char *)ap_config.password, sizeof(ap_config.password));
     jsvUnLock(v); 
 
-    ap_config.channel = 1;
+    v = jsvObjectGetChild(o,"channelAP",0);
+    ap_config.channel = jsvGetInteger(v);
+    jsvUnLock(v);
+
     ap_config.max_connection = 4;
     ap_config.beacon_interval = 100;
     wifi_softap_set_config_current(&ap_config);
