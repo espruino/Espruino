@@ -73,7 +73,7 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   JsVar *exception = jspGetException();
   if (exception) {
     _jswrap_promise_queuereject(chainedPromise, exception);
-    jsvUnLock2(result, chainedPromise);
+    jsvUnLock3(exception, result, chainedPromise);
     return;
   }
 

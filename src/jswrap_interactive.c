@@ -88,13 +88,13 @@ void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
 /*JSON{
   "type" : "function",
   "name" : "setDeepSleep",
-  "#if" : "defined(EFM32) || defined(STM32)",
+  "#if" : "defined(STM32) || defined(EFM32)",
   "generate" : "jswrap_interface_setDeepSleep",
   "params" : [
     ["sleep","bool",""]
   ]
 }
-Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on STM32 Espruino Boards.
+Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on STM32 Espruino Boards (nRF52 boards sleep automatically).
 
 Please see http://www.espruino.com/Power+Consumption for more details on this.
  */

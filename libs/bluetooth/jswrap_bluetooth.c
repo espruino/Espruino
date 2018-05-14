@@ -269,6 +269,18 @@ void jswrap_nrf_dumpBluetoothInitialisation(vcbprintf_callback user_callback, vo
 // ------------------------------------------------------------------------------
 
 /*JSON{
+    "type": "class",
+    "class" : "NRF"
+}
+The NRF class is for controlling functionality of the Nordic nRF51/nRF52 chips. This is used in [Puck.js](http://puck-js.com), [Pixl.js](http://espruino.com/Pixl.js), [MDBT42Q](http://espruino.com/MDBT42Q), and a variety of other Bluetooth-based boards.
+
+Most functionality is related to Bluetooth Low Energy, however there are also some functions related to NFC that apply to NRF52-based devices.
+*/
+
+// ------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
+
+/*JSON{
   "type" : "event",
   "class" : "NRF",
   "name" : "connect",
@@ -373,14 +385,6 @@ The first argument is of the form `{target : BluetoothRemoteGATTCharacteristic}`
 `BluetoothRemoteGATTCharacteristic.value` will then contain the new value.
  */
 
-/*JSON{
-    "type": "class",
-    "class" : "NRF"
-}
-The NRF class is for controlling functionality of the Nordic nRF51/nRF52 chips. Currently these only used in [Puck.js](http://puck-js.com) and the [BBC micro:bit](/MicroBit).
-
-The main part of this is control of Bluetooth Low Energy - both searching for devices, and changing advertising data.
-*/
 /*JSON{
   "type" : "object",
   "name" : "Bluetooth",
@@ -1837,6 +1841,8 @@ JsVar *jswrap_nrf_nfcStart(JsVar *payload) {
   JsVar *arr = jsvNewArrayBufferWithPtr(size, &ptr);
   if (ptr) jsble_nfc_get_internal((uint8_t *)ptr, &size);
   return arr;
+#else
+  return 0;
 #endif
 }
 
@@ -2147,7 +2153,7 @@ You can use it as follows - this would connect to another Puck device and turn i
 
 ```
 var gatt;
-NRF.connect("aa:bb:cc:dd:ee").then(function(g) {
+NRF.connect("aa:bb:cc:dd:ee random").then(function(g) {
   gatt = g;
   return gatt.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
 }).then(function(service) {
@@ -2159,6 +2165,12 @@ NRF.connect("aa:bb:cc:dd:ee").then(function(g) {
   console.log("Done!");
 });
 ```
+
+**Note:** Espruino Bluetooth devices use a type of BLE address known as 'random static',
+which is different to a 'public' address. To connect to an Espruino device you'll need 
+to use an address string of the form `"aa:bb:cc:dd:ee random"` rather than just 
+`"aa:bb:cc:dd:ee"`. If you scan for devices with `NRF.findDevices`/`NRF.setScan` then
+addresses are already reported in the correct format.
 */
 JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
 #if CENTRAL_LINK_COUNT>0
@@ -2166,8 +2178,11 @@ JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
   if (!device) return 0;
   jsvObjectSetChild(device, "id", mac);
   JsVar *gatt = jswrap_BluetoothDevice_gatt(device);
+  jsvUnLock(device);
   if (!gatt) return 0;
-  return jswrap_nrf_BluetoothRemoteGATTServer_connect(gatt);
+  JsVar *promise = jswrap_nrf_BluetoothRemoteGATTServer_connect(gatt);
+  jsvUnLock(gatt);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;

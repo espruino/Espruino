@@ -101,7 +101,7 @@ void sysfs_read(const char *path, char *data, unsigned int len) {
 JsVarInt sysfs_read_int(const char *path) {
   char buf[20];
   sysfs_read(path, buf, sizeof(buf));
-  return stringToIntWithRadix(buf, 10, 0);
+  return stringToIntWithRadix(buf, 10, NULL, NULL);
 }
 #endif
 // ----------------------------------------------------------------------------
@@ -393,7 +393,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
       if (strncmp(line, "Serial", 6) == 0) {
         char serial_string[16 + 1];
         strcpy(serial_string, strchr(line, ':') + 2);
-        serial = stringToIntWithRadix(serial_string, 16, 0);
+        serial = stringToIntWithRadix(serial_string, 16, NULL, NULL);
       }
     }
     fclose(f);

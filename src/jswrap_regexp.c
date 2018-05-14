@@ -30,6 +30,8 @@
 typedef struct {
   JsVar *sourceStr;
   size_t startIndex;
+  bool ignoreCase;
+  char rangeFirstChar;
   int groups;
   size_t groupStart[MAX_GROUPS];
   size_t groupEnd[MAX_GROUPS];
@@ -56,18 +58,24 @@ JsVar *matchfound(JsvStringIterator *txtIt, matchInfo info) {
 }
 
 /* match: search for regexp anywhere in text */
-JsVar *match(char *regexp, JsVar *str, size_t startIndex) {
+JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
   matchInfo info;
   info.sourceStr = str;
   info.startIndex = startIndex;
+  info.ignoreCase = ignoreCase;
+  info.rangeFirstChar = 0;
   info.groups = 0;
 
+  JsVar *rmatch;
   JsvStringIterator txtIt;
   jsvStringIteratorNew(&txtIt, str, startIndex);
-  if (regexp[0] == '^')
-    return matchhere(regexp+1, &txtIt, info);
+  if (regexp[0] == '^') {
+    rmatch = matchhere(regexp+1, &txtIt, info);
+    jsvStringIteratorFree(&txtIt);
+    return rmatch;
+  }
   /* must look even if string is empty */
-  JsVar *rmatch = matchhere(regexp, &txtIt, info);
+  rmatch = matchhere(regexp, &txtIt, info);
   while (!rmatch && jsvStringIteratorHasChar(&txtIt)) {
     jsvStringIteratorNext(&txtIt);
     info.startIndex++;
@@ -79,7 +87,7 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex) {
   return rmatch;
 }
 
-bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length) {
+bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchInfo info) {
   *length = 1;
   char ch = jsvStringIteratorGetChar(txtIt);
   if (regexp[0]=='.') return true;
@@ -89,8 +97,13 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length) {
     bool matchAny = false;
     while (regexp[*length] && regexp[*length]!=']') {
       int matchLen;
-      matchAny |= matchcharacter(&regexp[*length], txtIt, &matchLen);
+      if (regexp[*length]=='-') {
+          info.rangeFirstChar = regexp[(*length)-1]; // FIXME: quoted?
+          (*length)++;
+      }
+      matchAny |= matchcharacter(&regexp[*length], txtIt, &matchLen, info);
       (*length) += matchLen;
+      info.rangeFirstChar = 0;
     }
     if (regexp[*length]==']') {
       (*length)++;
@@ -104,8 +117,6 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length) {
     *length = 2;
     // missing quite a few here
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
-    if (regexp[1]=='\\') return ch=='\\';
-    if (regexp[1]=='/') return ch=='/';
     if (regexp[1]=='d') return isNumeric(ch);
     if (regexp[1]=='D') return !isNumeric(ch);
     if (regexp[1]=='f') return ch==0x0C;
@@ -123,10 +134,23 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length) {
       char code = (char)((chtod(regexp[2])<<4) | chtod(regexp[3]));
       return ch==code;
     }
-    jsExceptionHere(JSET_ERROR, "Unknown escape character %d in RegEx", (int)regexp[1]);
-    return false;
+    // fallback to the quoted character (e.g. /,-,? etc.)
+    return regexp[1]==ch;
   }
-  return regexp[0]==ch;
+
+  char cH = regexp[0];
+  if (info.ignoreCase) {
+    ch = jsvStringCharToLower(ch);
+    cH = jsvStringCharToLower(cH);
+  }
+  if (info.rangeFirstChar) { // Character set range
+    char cL = info.rangeFirstChar;
+    if (info.ignoreCase) {
+      cL = jsvStringCharToLower(cL);
+    }
+    return (ch >= cL && ch <= cH && cL < cH);
+  }
+  return cH==ch;
 }
 
 /* matchhere: search for regexp at beginning of text */
@@ -145,23 +169,24 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
     return matchhere(regexp+1, txtIt, info);
   }
   int charLength;
-  bool charMatched = matchcharacter(regexp, txtIt, &charLength);
+  bool charMatched = matchcharacter(regexp, txtIt, &charLength, info);
   if (regexp[charLength] == '*' || regexp[charLength] == '+') {
     bool starOperator = regexp[charLength] == '*';
+    if (!charMatched && !starOperator) {
+      // has to match at least once, when not a star operator
+      return 0;
+    }
     char *regexpAfterStar = regexp+charLength+1;
     JsvStringIterator txtIt2;
     // Try and match everything after right now
     txtIt2 = jsvStringIteratorClone(txtIt);
     JsVar *lastrmatch = matchhere(regexpAfterStar, &txtIt2, info);
     jsvStringIteratorFree(&txtIt2);
-    // For star - nothing matched - so push straight through with whatever we had
-    if (starOperator && !charMatched)
-      return lastrmatch;
     // Otherwise try and match more than one
     while (jsvStringIteratorHasChar(txtIt) && charMatched) {
       // We had this character matched, so move on and see if we can match with the new one
       jsvStringIteratorNext(txtIt);
-      charMatched = matchcharacter(regexp, txtIt, &charLength);
+      charMatched = matchcharacter(regexp, txtIt, &charLength, info);
       // See if we can match after the character...
       txtIt2 = jsvStringIteratorClone(txtIt);
       JsVar *rmatch = matchhere(regexpAfterStar, &txtIt2, info);
@@ -282,7 +307,7 @@ JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *str) {
   }
   jsvGetString(regex, regexPtr, regexLen+1);
   jsvUnLock(regex);
-  JsVar *rmatch = match(regexPtr, str, (size_t)lastIndex);
+  JsVar *rmatch = match(regexPtr, str, (size_t)lastIndex, jswrap_regexp_hasFlag(parent,'i'));
   if (!rmatch) {
     rmatch = jsvNewWithFlags(JSV_NULL);
     lastIndex = 0;

@@ -145,8 +145,12 @@ int chtod(char ch) {
   else return -1;
 }
 
-/* convert a number in the given radix to an int. if radix=0, autodetect */
-long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
+/* convert a number in the given radix to an int */
+long long stringToIntWithRadix(const char *s,
+               int forceRadix, //!< if radix=0, autodetect
+               bool *hasError, //!< If nonzero, set to whether there was an error or not
+               const char **endOfInteger //!<  If nonzero, this is set to the point at which the integer finished in the string
+               ) {
   // skip whitespace (strange parseInt behaviour)
   while (isWhitespace(*s)) s++;
 
@@ -160,6 +164,7 @@ long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   }
 
   const char *numberStart = s;
+  if (endOfInteger) (*endOfInteger)=s;
 
   int radix = getRadix(&s, forceRadix, hasError);
   if (!radix) return 0;
@@ -174,6 +179,7 @@ long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
 
   if (hasError)
     *hasError = s==numberStart; // we had an error if we didn't manage to parse any chars at all
+  if (endOfInteger) (*endOfInteger)=s;
 
   if (isNegated) return -v;
   return v;
@@ -183,7 +189,7 @@ long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
  * Convert hex, binary, octal or decimal string into an int.
  */
 long long stringToInt(const char *s) {
-  return stringToIntWithRadix(s,0,0);
+  return stringToIntWithRadix(s,0,NULL,NULL);
 }
 
 #ifndef USE_FLASH_MEMORY
@@ -474,13 +480,11 @@ unsigned char *flash_memcpy(unsigned char *dst, const unsigned char *src, size_t
 #endif
 
 
-/**
- * Convert a string to a JS float variable where the string is of a specific radix.
- * \return A JS float variable.
- */
+/** Convert a string to a JS float variable where the string is of a specific radix. */
 JsVarFloat stringToFloatWithRadix(
-    const char *s, //!< The string to be converted to a float.
-	int forceRadix //!< The radix of the string data.
+    const char *s, //!< The string to be converted to a float
+  	int forceRadix, //!< The radix of the string data, or 0 to guess
+  	const char **endOfFloat //!<  If nonzero, this is set to the point at which the float finished in the string
   ) {
   // skip whitespace (strange parseFloat behaviour)
   while (isWhitespace(*s)) s++;
@@ -494,6 +498,7 @@ JsVarFloat stringToFloatWithRadix(
   }
 
   const char *numberStart = s;
+  if (endOfFloat) (*endOfFloat)=s;
 
   int radix = getRadix(&s, forceRadix, 0);
   if (!radix) return NAN;
@@ -552,6 +557,8 @@ JsVarFloat stringToFloatWithRadix(
       }
     }
   }
+
+  if (endOfFloat) (*endOfFloat)=s;
   // check that we managed to parse something at least
   if (numberStart==s || (numberStart[0]=='.' && numberStart[1]==0)) return NAN;
 
@@ -560,14 +567,9 @@ JsVarFloat stringToFloatWithRadix(
 }
 
 
-/**
- * convert a string to a floating point JS variable.
- * \return a JS float variable.
- */
-JsVarFloat stringToFloat(
-    const char *s //!< The string to convert to a float.
-  ) {
-  return stringToFloatWithRadix(s,0); // don't force the radix to anything in particular
+/** convert a string to a floating point JS variable. */
+JsVarFloat stringToFloat(const char *s) {
+  return stringToFloatWithRadix(s, 0, NULL); // don't force the radix to anything in particular
 }
 
 

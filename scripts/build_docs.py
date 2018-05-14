@@ -332,9 +332,10 @@ for jsondata in detail:
       desc.append("\n\n**Note:** This is only available in "+common.get_ifdef_description(jsondata["ifdef"]));
     if "ifndef" in jsondata:
       desc.append("\n\n**Note:** This is not available in "+common.get_ifdef_description(jsondata["ifndef"]));
-    if "if" in jsondata:
-      d = jsondata["if"].replace("||", " and ").replace("&&", " with ")
+    if "#if" in jsondata:
+      d = jsondata["#if"].replace("||", " and ").replace("&&", " with ")
       d = re.sub('defined\((.+?)\)', replace_with_ifdef_description, d)
+      d = re.sub('(.*)_COUNT>=(.*)', "devices with more than \\2 \\1 peripherals", d)
       desc.append("\n\n**Note:** This is only available in "+d);            
     html_description(desc, jsondata["name"])
   if "params" in jsondata:

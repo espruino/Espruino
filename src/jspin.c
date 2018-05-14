@@ -45,8 +45,10 @@ Pin jshGetPinFromString(const char *s) {
       } else if (s[2]>='0' && s[2]<='9') {
         if (!s[3]) {
           pin = ((s[1]-'0')*10 + (s[2]-'0'));
+#ifdef LINUX
         } else if (!s[4] && s[3]>='0' && s[3]<='9') {
           pin = ((s[1]-'0')*100 + (s[2]-'0')*10 + (s[3]-'0'));
+#endif
         }
       }
     }

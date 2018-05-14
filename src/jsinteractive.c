@@ -2333,7 +2333,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 
   JsVar *code = jsfGetBootCodeFromFlash(false);
   if (code) {
-    cbprintf(user_callback, user_data, "// Code saved with E.setBootCode\n%s\n", code);
+    cbprintf(user_callback, user_data, "// Code saved with E.setBootCode\n%v\n", code);
     jsvUnLock(code);
   }
 }
