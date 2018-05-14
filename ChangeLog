@@ -1,4 +1,3 @@
-            ESP32: update esp-idf to v3.0. BLE support - thanks to @jumjum. Erase flash before flashing. vars now 2500
             Allow Crypto SHA1 without SHA256/512 (for Original & ESP8266 where flash is scarce)
             Add better docs for the form of Wifi callback functions
             Modify ESP8266/ESP32 callbacks to match the node.js style used elsewhere
@@ -13,6 +12,7 @@
             Fixed double-connect issue for TCP sockets
             Pixl.js: Ensure Pixl.menu changes to bitmap fonts
             Pixl.js: tweaked bias/contrast to improve display quality
+            ESP32: update esp-idf to v3.0. BLE support - thanks to @jumjum. Erase flash before flashing. vars now 2500
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()
