@@ -40,6 +40,7 @@ void UartReset(){
 }
 
 void initSerial(IOEventFlags device,JshUSARTInfo *inf){
+  // NOTE: we can get called for bluetooth and telnet, so this may not be a serial device!
   uart_config_t uart_config = {
 	.baud_rate = inf->baudRate,
 	.data_bits = (inf->bytesize == 7)? UART_DATA_7_BITS : UART_DATA_8_BITS,
@@ -54,22 +55,20 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
 	case 1: uart_config.parity = UART_PARITY_ODD; break;
 	case 2: uart_config.parity = UART_PARITY_EVEN; break;
   }
-  if(device == EV_SERIAL1) initUart(uart_console,uart_config,-1,-1);
-  else{
-	if(device == EV_SERIAL2){
-	  if(inf->pinTX == 0xff) inf->pinTX = 4;
-	  if(inf->pinRX == 0xff) inf->pinRX = 5;
-	  if(serial2_initialized) uart_driver_delete(uart_Serial2);
+  if(device == EV_SERIAL1) {
+    initUart(uart_console,uart_config,-1,-1);
+  } else if(device == EV_SERIAL2){
+    if(inf->pinTX == 0xff) inf->pinTX = 4;
+    if(inf->pinRX == 0xff) inf->pinRX = 5;
+    if(serial2_initialized) uart_driver_delete(uart_Serial2);
       initUart(uart_Serial2,uart_config,inf->pinTX,inf->pinRX);
-	  serial2_initialized = true;
-	}
-	else{
-	  if(inf->pinTX == 0xff) inf->pinTX = 17;
-	  if(inf->pinRX == 0xff) inf->pinRX = 16;
-	  if(serial3_initialized)   uart_driver_delete(uart_Serial3);
-      initUart(uart_Serial3,uart_config,inf->pinTX,inf->pinRX);
-	  serial3_initialized = true;
-	}
+    serial2_initialized = true;
+  } else if(device == EV_SERIAL3){
+    if(inf->pinTX == 0xff) inf->pinTX = 17;
+    if(inf->pinRX == 0xff) inf->pinRX = 16;
+    if(serial3_initialized) uart_driver_delete(uart_Serial3);
+    initUart(uart_Serial3,uart_config,inf->pinTX,inf->pinRX);
+    serial3_initialized = true;
   }
 }
 
