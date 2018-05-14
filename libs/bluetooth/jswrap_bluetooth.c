@@ -44,6 +44,12 @@
 #endif
 #endif
 
+#ifdef ESP32
+#include "BLE/esp32_gap_func.h"
+#include "BLE/esp32_gatts_func.h"
+#include "BLE/esp32_gattc_func.h"
+#define BLE_CONN_HANDLE_INVALID -1
+#endif
 
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
@@ -300,7 +306,7 @@ Called when a host device disconnects from Espruino.
   "type" : "event",
   "class" : "NRF",
   "name" : "servicesDiscover",
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Called with discovered services when discovery is finished
  */
@@ -308,7 +314,7 @@ Called with discovered services when discovery is finished
   "type" : "event",
   "class" : "NRF",
   "name" : "characteristicsDiscover",
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Called with discovered characteristics when discovery is finished
  */
@@ -648,9 +654,12 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
         err_code = sd_ble_gap_device_name_set(&sec_mode,
                                               (const uint8_t *)namePtr,
                                               nameLen);
-#else
-        err_code = 0xDEAD;
-        jsiConsolePrintf("FIXME\n");
+//#else
+//        err_code = 0xDEAD;
+//        jsiConsolePrintf("FIXME\n");
+#endif
+#ifdef ESP32
+		bluetooth_setDeviceName(v);
 #endif
         jsble_check_error(err_code);
         bleChanged = true;
@@ -736,6 +745,9 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   err_code = 0xDEAD;
   jsiConsolePrintf("FIXME\n");
 #endif
+#ifdef ESP32
+  err_code = bluetooth_gap_setAdvertizing(advArray);
+#endif
   jsvUnLock(initialArray);
   jsble_check_error(err_code);
   if (bleChanged && isAdvertising)
@@ -758,6 +770,11 @@ the data, it returns the packet that would be advertised as an array.
 */
 JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   uint32_t err_code;
+#ifdef ESP32
+  JsVar *r;
+  r = bluetooth_gap_getAdvertisingData(data,options);
+  return r;
+#endif
 #ifdef NRF5X
   ble_advdata_t advdata;
   jsble_setup_advdata(&advdata);
@@ -1928,7 +1945,7 @@ void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "requestDevice",
-    "ifdef" : "NRF52",
+    "#if" : "defined(NRF52) || defined(ESP32)",
     "generate" : "jswrap_nrf_bluetooth_requestDevice",
     "params" : [
       ["options","JsVar","Options used to filter the device to use"]
@@ -2116,7 +2133,7 @@ JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "connect",
-    "ifdef" : "NRF52",
+    "#if" : "defined(NRF52) || defined(ESP32)",
     "generate" : "jswrap_nrf_bluetooth_connect",
     "params" : [
       ["mac","JsVar","The MAC address to connect to"]
@@ -2228,7 +2245,7 @@ NRF.requestDevice({ filters: [{ name: 'Puck.js abcd' }] }).then(function(device)
     "type" : "property",
     "class" : "BluetoothDevice",
     "name" : "gatt",
-    "ifdef" : "NRF52",
+    "#if" : "defined(NRF52) || defined(ESP32)",
     "generate" : "jswrap_BluetoothDevice_gatt",
     "return" : ["JsVar", "A `BluetoothRemoteGATTServer` for this device" ]
 }
@@ -2253,7 +2270,7 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
     "type" : "method",
     "class" : "BluetoothRemoteGATTServer",
     "name" : "connect",
-    "ifdef" : "NRF52",
+    "#if" : "defined(NRF52) || defined(ESP32)",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTServer_connect",
     "return" : ["JsVar", "A Promise that is resolved (or rejected) when the connection is complete" ]
 }
@@ -2307,7 +2324,7 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
 /*JSON{
   "type" : "class",
   "class" : "BluetoothRemoteGATTServer",
-  "ifdef" : "NRF52"
+    "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Web Bluetooth-style GATT server - get this using `NRF.connect(address)`
 or `NRF.requestDevice(options)` and `response.gatt.connect`
@@ -2319,7 +2336,7 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattserver
     "class" : "BluetoothRemoteGATTServer",
     "name" : "disconnect",
     "generate" : "jswrap_BluetoothRemoteGATTServer_disconnect",
-    "ifdef" : "NRF52"
+    "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Disconnect from a previously connected BLE device connected with
 `NRF.connect` - this does not disconnect from something that has
@@ -2335,7 +2352,12 @@ void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
     jsble_check_error(err_code);
   } else {
     // no connection - try and cancel the connect attempt (assume we have one)
+#ifdef NRF52
     err_code = sd_ble_gap_connect_cancel();
+#endif
+#ifdef ESP32
+    jsWarn("connect cancel not implemented yet\n");
+#endif
     // maybe we don't, in which case we don't care about the error code
   }
 #else
@@ -2435,7 +2457,7 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent) {
   "generate" : "jswrap_BluetoothRemoteGATTServer_getPrimaryService",
   "params" : [ ["service","JsVar","The service UUID"] ],
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary service is found (the argument contains a `BluetoothRemoteGATTService`)" ],
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 See `NRF.connect` for usage examples.
 */
@@ -2467,7 +2489,7 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *
   "name" : "getPrimaryServices",
   "generate" : "jswrap_BluetoothRemoteGATTServer_getPrimaryServices",
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary services are found (the argument contains an array of `BluetoothRemoteGATTService`)" ],
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 */
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
@@ -2494,7 +2516,7 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
   "params" : [
     ["callback","JsVar","The callback to call with the RSSI value, or undefined to stop"]
   ],
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 
 Start/stop listening for RSSI values on the active GATT connection
@@ -2528,7 +2550,7 @@ void jswrap_BluetoothRemoteGATTServer_setRSSIHandler(JsVar *parent, JsVar *callb
 /*JSON{
   "type" : "class",
   "class" : "BluetoothRemoteGATTService",
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Web Bluetooth-style GATT service - get this using `BluetoothRemoteGATTServer.getPrimaryService(s)`
 
@@ -2541,7 +2563,7 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattservice
   "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristic",
   "params" : [ ["characteristic","JsVar","The characteristic UUID"] ],
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found (the argument contains a `BluetoothRemoteGATTCharacteristic`)" ],
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 See `NRF.connect` for usage examples.
 */
@@ -2573,7 +2595,7 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar 
   "name" : "getCharacteristics",
   "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristics",
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found (the argument contains an array of `BluetoothRemoteGATTCharacteristic`)" ],
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 */
 JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent) {
@@ -2596,7 +2618,7 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent) {
 /*JSON{
   "type" : "class",
   "class" : "BluetoothRemoteGATTCharacteristic",
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Web Bluetooth-style GATT characteristic - get this using `BluetoothRemoteGATTService.getCharacteristic(s)`
 
@@ -2654,11 +2676,10 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
     "name" : "readValue",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue",
     "return" : ["JsVar", "A Promise that is resolved (or rejected) with a `DataView` when the characteristic is read" ],
-    "ifdef" : "NRF52"
+    "#if" : "defined(NRF52) || defined(ESP32)"
 }
 
-Read a characteristic's value, return a promise containing a `DataView` with the data in it
-
+Read a characteristic's value, return a promise containing a `DataView`
 
 ```
 var device;

@@ -32,6 +32,12 @@
 #include "jshardwarePWM.h"
 #include "jshardwarePulse.h"
 
+#ifdef BLUETOOTH
+#include "BLE/esp32_gap_func.h"
+#include "BLE/esp32_gattc_func.h"
+#include "BLE/esp32_gatts_func.h"
+#endif
+
 #include "jsutils.h"
 #include "jstimer.h"
 #include "jsparse.h"
@@ -126,6 +132,9 @@ void jshPinDefaultPullup() {
  */
 void jshInit() {
   esp32_wifi_init();
+#ifdef BLUETOOTH
+  gattc_init();
+#endif
   jshInitDevices();
   BITFIELD_CLEAR(jshPinSoftPWM);
   if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
@@ -147,11 +156,14 @@ void jshInit() {
 void jshReset() {
   jshResetDevices();
   jshPinDefaultPullup() ;
-  UartReset();
+//  UartReset();
   RMTReset();
   ADCReset();
   SPIReset();
   I2CReset();
+#ifdef BLUETOOTH
+  gatts_reset(false);
+#endif
 }
 
 /**
@@ -505,12 +517,12 @@ bool jshIsEventForPin(
 
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
-  
+
   if (inf->errorHandling) {
     jsExceptionHere(JSET_ERROR, "ESP32 Espruino builds can't handle framing/parity errors (errors:true)");
     return;
-  }  
-  
+  }
+
   initSerial(device,inf);
 }
 
@@ -527,8 +539,21 @@ void jshUSARTKick(
 ) {
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
-    if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c); 
-    else writeSerial(device,(uint8_t)c);
+	switch(device){
+#ifdef BLUETOOTH
+		case EV_BLUETOOTH:
+			gatts_sendNotification(c);
+			break; 
+#endif
+		case EV_SERIAL1:
+			uart_tx_one_char((uint8_t)c);
+			break;
+		default:
+			writeSerial(device,(uint8_t)c);
+			break;
+    //if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c); 
+    //else writeSerial(device,(uint8_t)c);
+	}
     c = jshGetCharToTransmit(device);
   }
 }
@@ -700,10 +725,11 @@ void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
 JsVar *jshFlashGetFree() {
   JsVar *jsFreeFlash = jsvNewEmptyArray();
   if (!jsFreeFlash) return 0;
-  // Space should be reserved here in the parition table - assume 4Mb EEPROM
-  // Set just after programme save area 
-  addFlashArea(jsFreeFlash, 0x100000 + FLASH_PAGE * 16, 0x300000-FLASH_PAGE * 16-1);
-  
+  // Space reserved here in the parition table -  using sub type 0x40
+  // This should be read from the partition table
+  addFlashArea(jsFreeFlash, 0xE000,  0x2000);
+  addFlashArea(jsFreeFlash, 0x2B0000, 0x10000);
+
   return jsFreeFlash;
 }
 
@@ -727,7 +753,7 @@ size_t jshFlashGetMemMapAddress(size_t ptr) {
     return 0;
   }
   // Flash memory access is offset to 0, so remove starting location as already accounted for
-  return &romdata_jscode[ptr - 0x100000 ];
+  return (size_t)&romdata_jscode[ptr - FLASH_SAVED_CODE_START ];
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {
@@ -740,7 +766,7 @@ unsigned int jshSetSystemClock(JsVar *options) {
  * Convert an Espruino pin id to a native ESP32 pin id.
  */
 gpio_num_t pinToESP32Pin(Pin pin) {
-  if ( pin < 40 ) 
+  if ( pin < 40 )
     return pin + GPIO_NUM_0;
   jsError( "pinToESP32Pin: Unknown pin: %d", pin);
   return -1;

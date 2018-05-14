@@ -12,8 +12,9 @@
             Fixed double-connect issue for TCP sockets
             Pixl.js: Ensure Pixl.menu changes to bitmap fonts
             Pixl.js: tweaked bias/contrast to improve display quality
-	     ESP8266: rearange rf_cal_sector (fix #1294)
-	     ESP8266: Wifi.scan() now return authmode as text 
+            ESP32: update esp-idf to v3.0. BLE support - thanks to @jumjum. Erase flash before flashing. vars now 2500
+            ESP8266: rearange rf_cal_sector (fix #1294)
+            ESP8266: Wifi.scan() now return authmode as text 
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()

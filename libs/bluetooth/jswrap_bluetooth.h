@@ -33,6 +33,7 @@ typedef enum {
 #define BLETASK_IS_CENTRAL(x) ((x)>=BLETASK_CENTRAL_START && ((x)<=BLETASK_CENTRAL_END))
 
 extern JsVar *bleTaskInfo; // info related to the current task
+
 bool bleInTask(BleTask task);
 BleTask bleGetCurrentTask();
 bool bleNewTask(BleTask task, JsVar *taskInfo);
