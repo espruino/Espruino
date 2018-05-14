@@ -173,9 +173,9 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
           drop = False
           if not is_for_document:
-            if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
-              print(dropped_prefix+" because of #ifndef "+jsondata["ifndef"])
-              drop = True
+            if ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
+              print(dropped_prefix+" because of #ifdef "+jsondata["ifdef"])
+              drop = True            
             if ("ifdef" in jsondata):
               ifdefs = jsondata["ifdef"].encode('ascii','ignore').split(",")
               if(not [val for val in defines if val in ifdefs]):
@@ -374,11 +374,10 @@ def get_ifdef_description(d):
   if d=="STM32": return "STM32 devices (including Espruino Original, Pico and WiFi)"
   if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
   if d=="NRF52": return "NRF52 devices (like Puck.js, Pixl.js and MDBT42Q)"
-  if d=="PUCKJS": return "Puck.js devices"
   if d=="PIXLJS": return "Pixl.js boards"
   if d=="ESPRUINOWIFI": return "Espruino WiFi boards"
-  if d=="ESP8266": return "ESP8266 boards running Espruino"
-  if d=="ESP32": return "ESP32 boards"
+  if d=="ESP8266": return "ESP8266 devices running Espruino"
+  if d=="ESP32": return "ESP32 devices"
   if d=="EFM32": return "EFM32 devices"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico and Espruino WiFi only)"
