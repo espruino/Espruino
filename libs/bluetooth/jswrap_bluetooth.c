@@ -29,6 +29,7 @@
 #include "nrf5x_utils.h"
 #include "nordic_common.h"
 #include "nrf.h"
+#include "ble_gap.h"
 #include "ble_hci.h"
 #include "ble_advdata.h"
 #include "ble_conn_params.h"
@@ -483,7 +484,7 @@ void jswrap_nrf_bluetooth_restart() {
     "generate" : "jswrap_nrf_bluetooth_getAddress",
     "return" : ["JsVar", "MAC address - a string of the form 'aa:bb:cc:dd:ee:ff'" ]
 }
-Get this device's Bluetooth MAC address.
+Get this device's default Bluetooth MAC address.
 
 For Puck.js, the last 5 characters of this (eg. `ee:ff`)
 are used in the device's advertised Bluetooth name.
@@ -503,6 +504,45 @@ JsVar *jswrap_nrf_bluetooth_getAddress() {
       ((addr0>>16)&0xFF),
       ((addr0>>8 )&0xFF),
       ((addr0    )&0xFF));
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setAddress",
+    "#if" : "defined(NRF52)",
+    "generate" : "jswrap_nrf_bluetooth_setAddress",
+    "params" : [
+      ["addr","JsVar","The address to use (as a string)"]
+    ]
+}
+Set this device's default Bluetooth MAC address:
+
+```
+NRF.setAddress("ff:ee:dd:cc:bb:aa random");
+```
+
+Addresses take the form:
+
+* `"ff:ee:dd:cc:bb:aa"` or `"ff:ee:dd:cc:bb:aa public"` for a public address
+* `"ff:ee:dd:cc:bb:aa random"` for a random static address (the default for Espruino)
+
+This may throw a `INVALID_BLE_ADDR` error if the upper two bits
+of the address don't match the address type.
+
+*/
+void jswrap_nrf_bluetooth_setAddress(JsVar *address) {
+#ifdef NRF5X
+  ble_gap_addr_t p_addr;
+  if (!bleVarToAddr(address, &p_addr)) {
+    jsExceptionHere(JSET_ERROR, "Expecting a mac address of the form aa:bb:cc:dd:ee:ff");
+    return;
+  }
+  uint32_t err_code = sd_ble_gap_addr_set(&p_addr);
+  jsble_check_error(err_code);
+#else
+  jsExceptionHere(JSET_ERROR, "Not implemented");
+#endif
 }
 
 /*JSON{
