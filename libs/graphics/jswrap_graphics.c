@@ -608,7 +608,32 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
   gfx.data.fontSize = JSGRAPHICS_FONTSIZE_CUSTOM;
   graphicsSetVar(&gfx);
 }
-
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setFontAlign",
+  "generate" : "jswrap_graphics_setFontAlign",
+  "params" : [
+    ["x","int32","X alignment. -1=left (default), 0=center, 1=right"],
+    ["y","int32","Y alignment. -1=top (default), 0=center, 1=bottom"],
+    ["rotation","int32","Rotation of the text. 0=normal, 1=90 degrees clockwise, 2=180, 3=270"]
+  ]
+}
+Set the alignment for subsequent calls to `drawString`
+*/
+void jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+  if (x<-1) x=-1;
+  if (x>1) x=1;
+  if (y<-1) y=-1;
+  if (y>1) y=1;
+  if (r<0) r=0;
+  if (r>3) r=3;
+  gfx.data.fontAlignX = x;
+  gfx.data.fontAlignY = y;
+  gfx.data.fontRotate = r;
+  graphicsSetVar(&gfx);
+}
 
 /*JSON{
   "type" : "method",
@@ -626,7 +651,6 @@ Draw a string of text in the current font
 void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
-  int startx = x;
   JsVar *customBitmap = 0, *customWidth = 0;
   int customHeight = 0, customFirstChar = 0;
   if (gfx.data.fontSize>0) {
@@ -640,8 +664,32 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   }
 
+  // Handle text rotation
+  JsGraphicsFlags oldFlags = gfx.data.flags;
+  if (gfx.data.fontRotate==1) {
+    gfx.data.flags ^= JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_X;
+    int t = gfx.data.width - (x+1);
+    x = y;
+    y = t;
+  } else if (gfx.data.fontRotate==2) {
+    gfx.data.flags ^= JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
+    x = gfx.data.width - (x+1);
+    y = gfx.data.height - (y+1);
+  } else if (gfx.data.fontRotate==3) {
+    gfx.data.flags ^= JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_Y;
+    int t = gfx.data.height - (y+1);
+    y = x;
+    x = t;
+  }
+  // Handle font alignment
+  if (gfx.data.fontAlignX>=0)
+    x -= jswrap_graphics_stringWidth(parent, var) * (gfx.data.fontAlignX+1)/2;
+  if (gfx.data.fontAlignY>=0)
+    y -= customHeight * (gfx.data.fontAlignX+1)/2;
+
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
   int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
+  int startx = x;
   JsVar *str = jsvAsString(var, false);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
@@ -709,6 +757,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   }
   jsvStringIteratorFree(&it);
   jsvUnLock3(str, customBitmap, customWidth);
+  gfx.data.flags = oldFlags; // restore flags because of text rotation
   graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 

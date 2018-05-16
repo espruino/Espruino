@@ -59,6 +59,9 @@ typedef struct {
   unsigned char bpp;
   unsigned int fgColor, bgColor; ///< current foreground and background colors
   short fontSize; ///< See JSGRAPHICS_FONTSIZE_ constants
+  char fontAlignX : 2;
+  char fontAlignY : 2;
+  unsigned char fontRotate : 2;
   short cursorX, cursorY; ///< current cursor positions
   short modMinX, modMinY, modMaxX, modMaxY; ///< area that has been modified
 } PACKED_FLAGS JsGraphicsData;
@@ -81,6 +84,9 @@ static inline void graphicsStructInit(JsGraphics *gfx) {
   gfx->data.fgColor = 0xFFFFFFFF;
   gfx->data.bgColor = 0;
   gfx->data.fontSize = JSGRAPHICS_FONTSIZE_4X6;
+  gfx->data.fontAlignX = -1;
+  gfx->data.fontAlignY = -1;
+  gfx->data.fontRotate = 0;
   gfx->data.cursorX = 0;
   gfx->data.cursorY = 0;
   gfx->data.modMaxX = -32768;

@@ -17,6 +17,7 @@
             ESP8266: Wifi.scan() now return authmode as text 
             ESP32: Fix accidental initialisation of UART3 when switching to Telnet (fix #1362)
             nRF52: Added `NRF.setAddress` to allow the MAC address to be changed
+            Added Graphics.setFontAlign for font alignment and rotation
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()
