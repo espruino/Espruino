@@ -18,6 +18,8 @@
             ESP32: Fix accidental initialisation of UART3 when switching to Telnet (fix #1362)
             nRF52: Added `NRF.setAddress` to allow the MAC address to be changed
             Added Graphics.setFontAlign for font alignment and rotation
+            Make software I2C bitrate and waveform more accurate
+            Move default I2C bitrate to 100kbit/sec
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()

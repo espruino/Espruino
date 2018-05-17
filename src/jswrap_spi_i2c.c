@@ -91,6 +91,8 @@ May return undefined if no device can be found.
   ]
 }
 Set up this SPI port as an SPI Master.
+
+**Note:** When using Software SPI, the baud rate will be ignored - data is sent as fast as possible.
  */
 void jswrap_spi_setup(
     JsVar *parent, //!< The variable that is the class instance of this function.
