@@ -246,19 +246,16 @@ static void scanCB() {
       jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromString(authModeToString(list[i].authmode)));
 
       // The SSID may **NOT** be NULL terminated ... so handle that.
-      char ssid[32 + 1];
-      strncpy((char *)ssid, list[i].ssid, 32);
-      ssid[32] = '\0';
-      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "ssid", jsvNewFromString(ssid));
-
-          /*
-          char macAddrString[6*3 + 1];
-          os_sprintf(macAddrString, macFmt,
-            bssInfo->bssid[0], bssInfo->bssid[1], bssInfo->bssid[2],
-            bssInfo->bssid[3], bssInfo->bssid[4], bssInfo->bssid[5]);
-          jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "mac", jsvNewFromString(macAddrString));
-          */
-
+      char temp[32 + 1];
+      strncpy((char *)temp, list[i].ssid, 32);
+      temp[32] = '\0';
+      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "ssid", jsvNewFromString(temp));
+      sprintf(temp, MACSTR, MAC2STR(list[i].bssid));
+      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "mac", jsvNewFromString(temp));
+      sprintf(temp, "%d", list[i].primary);
+      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromString(temp));
+      // Can't find a flag for this?  http://esp-idf.readthedocs.io/en/latest/api-reference/wifi/esp_wifi.html?highlight=wifi_ap_record_t
+      //jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "isHidden", jsvNewFromBool(list[i].ssid_hidden));
       // Add the new record to the array
       jsvArrayPush(jsAccessPointArray, jsCurrentAccessPoint);
       jsvUnLock(jsCurrentAccessPoint);
