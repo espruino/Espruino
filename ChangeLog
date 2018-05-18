@@ -25,6 +25,7 @@
             Add sanity check for debug trace print statement (fix #1420)
             Fix handling of exceptions in switch statements (fix #1352)
             Fix 'return when not in function' regression when returning inside a catch block (fix #1422)
+            Don't load saved firmware images from different firmware versions - saved JS code still loaded (fix #1174)
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()
