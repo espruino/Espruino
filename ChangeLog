@@ -1,4 +1,4 @@
-            Allow Crypto SHA1 without SHA256/512 (for Original & ESP8266 where flash is scarce)
+            Allow Crypto SHA1 without SHA256/512 (for ESP8266 where flash is scarce)
             Add better docs for the form of Wifi callback functions
             Modify ESP8266/ESP32 callbacks to match the node.js style used elsewhere
             nRF52: fix pin.toggle() on software-negated pins
@@ -26,6 +26,7 @@
             Fix handling of exceptions in switch statements (fix #1352)
             Fix 'return when not in function' regression when returning inside a catch block (fix #1422)
             Don't load saved firmware images from different firmware versions - saved JS code still loaded (fix #1174)
+            Remove Graphics.setFontAlign and Graphics.getModified on devices with low flash memory
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()

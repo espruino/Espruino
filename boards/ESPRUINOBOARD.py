@@ -36,7 +36,7 @@ info = {
      'GRAPHICS',
      'NEOPIXEL',
      'HASHLIB',
-     'CRYPTO',
+#     'CRYPTO', # not enough flash memory with WIZnet included
 #     'TV', # TV had to be removed because of flash usage
      'FILESYSTEM'
    ],
