@@ -2568,7 +2568,7 @@ NO_INLINE JsVar *jspeStatementReturn() {
     result = jsvSkipNameAndUnLock(jspeExpression());
   }
   if (JSP_SHOULD_EXECUTE) {
-    JsVar *resultVar = jspeiFindOnTop(JSPARSE_RETURN_VAR, false);
+    JsVar *resultVar = jspeiFindInScopes(JSPARSE_RETURN_VAR);
     if (resultVar) {
       jspReplaceWith(resultVar, result);
       jsvUnLock(resultVar);
