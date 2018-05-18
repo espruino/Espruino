@@ -129,8 +129,14 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "vertical_byte", 0))) {
       if (gfx.data.bpp==1)
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);
-      else
-        jsWarn("vertical_byte only works for 1bpp ArrayBuffers\n");
+      else {
+        jsExceptionHere(JSET_ERROR, "vertical_byte only works for 1bpp ArrayBuffers\n");
+        return 0;
+      }
+      if (gfx.data.height&7) {
+        jsExceptionHere(JSET_ERROR, "height must be a multiple of 8 when using vertical_byte\n");
+        return 0;
+      }
     }
     JsVar *colorv = jsvObjectGetChild(options, "color_order", 0);
     if (colorv) {

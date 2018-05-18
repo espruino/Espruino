@@ -21,6 +21,7 @@
             Make software I2C bitrate and waveform more accurate
             Move default I2C bitrate to 100kbit/sec
             Linux: don't create a espruino.flash file if we're not writing to flash
+            Add height check for Graphics.createArrayBuffer(...vertical_byte:true) (fix #1421)
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()
