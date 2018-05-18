@@ -72,7 +72,6 @@ bool net_linux_checkError(JsNetwork *net) {
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
 int net_linux_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
-  NOT_USED(net);
   int ippProto = socketType & ST_UDP ? IPPROTO_UDP : IPPROTO_TCP;
   int scktType = socketType & ST_UDP ? SOCK_DGRAM : SOCK_STREAM;
   int sckt = -1;
@@ -96,28 +95,27 @@ int net_linux_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
       int optval = 1;
       if (setsockopt(sckt,SOL_SOCKET,SO_BROADCAST,(const char *)&optval,sizeof(optval))<0)
         jsWarn("setsockopt(SO_BROADCAST) failed\n");
-      return sckt;
-    }
+    } else {
+      sockaddr_in       sin;
+      sin.sin_family = AF_INET;
+      sin.sin_addr.s_addr = (in_addr_t)host;
+      sin.sin_port = htons( port );
 
-    sockaddr_in       sin;
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = (in_addr_t)host;
-    sin.sin_port = htons( port );
+      int res = connect(sckt,(struct sockaddr *)&sin, sizeof(sockaddr_in) );
 
-    int res = connect(sckt,(struct sockaddr *)&sin, sizeof(sockaddr_in) );
-
-    if (res == SOCKET_ERROR) {
-    #ifdef WIN_OS
-     int err = WSAGetLastError();
-    #else
-     int err = errno;
-    #endif
-     if (err != EINPROGRESS &&
-         err != EWOULDBLOCK) {
-       jsError("Connect failed (err %d)", err);
-       closesocket(sckt);
-       return -1;
-     }
+      if (res == SOCKET_ERROR) {
+      #ifdef WIN_OS
+       int err = WSAGetLastError();
+      #else
+       int err = errno;
+      #endif
+       if (err != EINPROGRESS &&
+           err != EWOULDBLOCK) {
+         jsError("Connect failed (err %d)", err);
+         closesocket(sckt);
+         return -1;
+       }
+      }
     }
 
   } else { // ------------------------------------------------- no host (=server)
@@ -186,6 +184,13 @@ int net_linux_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
     }
   }
 
+#ifdef SO_RCVBUF
+  int rcvBufSize = net->data.recvBufferSize;
+  if (rcvBufSize > 0) {
+    if (setsockopt(sckt,SOL_SOCKET,SO_RCVBUF,(const char *)&rcvBufSize,sizeof(rcvBufSize))<0)
+      jsWarn("setsockopt(SO_RCVBUF) failed\n");
+  }
+#endif
 #ifdef SO_NOSIGPIPE
   // disable SIGPIPE
   int optval = 1;
