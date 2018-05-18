@@ -80,10 +80,12 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
     for (y=gfx->data.height-ydir-1;y>=0;y--)
       graphicsFallbackScrollX(gfx, xdir, y, y+ydir);
   }
+#ifndef SAVE_ON_FLASH
   gfx->data.modMinX=0;
   gfx->data.modMinY=0;
   gfx->data.modMaxX=gfx->data.width-1;
   gfx->data.modMaxY=gfx->data.height-1;
+#endif
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -160,10 +162,12 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, short *x, short *y) {
 
 static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int col) {
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
+#ifndef SAVE_ON_FLASH
   if (x < gfx->data.modMinX) gfx->data.modMinX=(short)x;
   if (x > gfx->data.modMaxX) gfx->data.modMaxX=(short)x;
   if (y < gfx->data.modMinY) gfx->data.modMinY=(short)y;
   if (y > gfx->data.modMaxY) gfx->data.modMaxY=(short)y;
+#endif
   gfx->setPixel(gfx,(short)x,(short)y,col & (unsigned int)((1L<<gfx->data.bpp)-1));
 }
 
@@ -188,12 +192,12 @@ static void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int 
   if (x2>=gfx->data.width) x2 = gfx->data.width - 1;
   if (y2>=gfx->data.height) y2 = gfx->data.height - 1;
   if (x2<x1 || y2<y1) return; // nope
-
+#ifndef SAVE_ON_FLASH
   if (x1 < gfx->data.modMinX) gfx->data.modMinX=(short)x1;
   if (x2 > gfx->data.modMaxX) gfx->data.modMaxX=(short)x2;
   if (y1 < gfx->data.modMinY) gfx->data.modMinY=(short)y1;
   if (y2 > gfx->data.modMaxY) gfx->data.modMaxY=(short)y2;
-
+#endif
   if (x1==x2 && y1==y2) {
     gfx->setPixel(gfx,(short)x1,(short)y1,gfx->data.fgColor);
     return;

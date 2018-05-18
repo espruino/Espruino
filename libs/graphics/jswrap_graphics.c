@@ -618,6 +618,7 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
   "type" : "method",
   "class" : "Graphics",
   "name" : "setFontAlign",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_setFontAlign",
   "params" : [
     ["x","int32","X alignment. -1=left (default), 0=center, 1=right"],
@@ -628,6 +629,7 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
 Set the alignment for subsequent calls to `drawString`
 */
 void jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
+#ifndef SAVE_ON_FLASH
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   if (x<-1) x=-1;
   if (x>1) x=1;
@@ -639,6 +641,7 @@ void jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
   gfx.data.fontAlignY = y;
   gfx.data.fontRotate = r;
   graphicsSetVar(&gfx);
+#endif
 }
 
 /*JSON{
@@ -669,7 +672,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     customHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0));
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   }
-
+#ifndef SAVE_ON_FLASH
   // Handle text rotation
   JsGraphicsFlags oldFlags = gfx.data.flags;
   if (gfx.data.fontRotate==1) {
@@ -692,6 +695,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     x -= jswrap_graphics_stringWidth(parent, var) * (gfx.data.fontAlignX+1)/2;
   if (gfx.data.fontAlignY>=0)
     y -= customHeight * (gfx.data.fontAlignX+1)/2;
+#endif
 
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
   int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
@@ -763,8 +767,10 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   }
   jsvStringIteratorFree(&it);
   jsvUnLock3(str, customBitmap, customWidth);
+#ifndef SAVE_ON_FLASH
   gfx.data.flags = oldFlags; // restore flags because of text rotation
   graphicsSetVar(&gfx); // gfx data changed because modified area
+#endif
 }
 
 /*JSON{
@@ -1023,6 +1029,7 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
   "type" : "method",
   "class" : "Graphics",
   "name" : "getModified",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_getModified",
   "params" : [
     ["reset","bool","Whether to reset the modified area or not"]
@@ -1035,6 +1042,7 @@ the modified area to 0.
 For instance if `g.setPixel(10,20)` was called, this would return `{x1:10, y1:20, x2:10, y2:20}`
 */
 JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
+#ifndef SAVE_ON_FLASH
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   JsVar *obj = 0;
   if (gfx.data.modMinX <= gfx.data.modMaxX) { // do we have a rect?
@@ -1054,6 +1062,7 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
     graphicsSetVar(&gfx);
   }
   return obj;
+#endif
 }
 
 /*JSON{
