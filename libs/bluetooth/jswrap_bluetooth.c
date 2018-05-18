@@ -532,7 +532,7 @@ of the address don't match the address type.
 
 */
 void jswrap_nrf_bluetooth_setAddress(JsVar *address) {
-#ifdef NRF5X
+#ifdef NRF52
   ble_gap_addr_t p_addr;
   if (!bleVarToAddr(address, &p_addr)) {
     jsExceptionHere(JSET_ERROR, "Expecting a mac address of the form aa:bb:cc:dd:ee:ff");

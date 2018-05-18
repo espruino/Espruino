@@ -681,7 +681,8 @@ void jsfSaveToFlash() {
   jsiConsolePrint("Writing..");
   // write the hash
   uint32_t hash = getBuildHash();
-  for (int i=0;i<4;i++)
+  int i;
+  for (i=0;i<4;i++)
     jsfSaveToFlash_writecb(((char*)&hash)[i], (uint32_t*)&cbData);
   // write compressed data
   COMPRESS(varPtr, varSize, jsfSaveToFlash_writecb, (uint32_t*)&cbData);
@@ -706,7 +707,8 @@ void jsfLoadStateFromFlash() {
   cbData.endAddress = savedCode+jsfGetFileSize(&header);
 
   uint32_t hash;
-  for (int i=0;i<4;i++)
+  int i;
+  for (i=0;i<4;i++)
     ((char*)&hash)[i] = jsfLoadFromFlash_readcb((uint32_t*)&cbData);
   if (hash != getBuildHash()) {
     jsiConsolePrintf("Not loading saved code from different Espruino firmware.\n");
