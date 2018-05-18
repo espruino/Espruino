@@ -842,8 +842,9 @@ JsVar *jshFlashGetFree() {
   return jsFreeFlash;
 }
 
-static FILE *jshFlashOpenFile() {
+static FILE *jshFlashOpenFile(bool dontCreate) {
   FILE *f = fopen(FAKE_FLASH_FILENAME, "r+b");
+  if (!f && dontCreate) return 0;
   if (!f) f = fopen(FAKE_FLASH_FILENAME, "wb");
   if (!f) return 0;
   int len = FAKE_FLASH_BLOCKSIZE*FAKE_FLASH_BLOCKS;
@@ -859,8 +860,8 @@ static FILE *jshFlashOpenFile() {
   return f;
 }
 void jshFlashErasePage(uint32_t addr) {
-  FILE *f = jshFlashOpenFile();
-  if (!f) return;
+  FILE *f = jshFlashOpenFile(true);
+  if (!f) return; // if no file and we're erasing, we don't have to do anything
   uint32_t startAddr, pageSize;
   if (jshFlashGetPage(addr, &startAddr, &pageSize)) {
     startAddr -= FLASH_START;
@@ -881,8 +882,11 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   }
   addr -= FLASH_START;
 
-  FILE *f = jshFlashOpenFile();
-  if (!f) return;
+  FILE *f = jshFlashOpenFile(true);
+  if (!f) { // no file, so it's all 0xFF
+    memset(buf, 0xFF, len);
+    return;
+  }
   fseek(f, addr, SEEK_SET);
   fread(buf, 1, len, f);
   fclose(f);
@@ -903,7 +907,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   }
   addr -= FLASH_START;
 
-  FILE *f = jshFlashOpenFile();
+  FILE *f = jshFlashOpenFile(false);
   if (!f) return;
 
   char *wbuf = malloc(len);
