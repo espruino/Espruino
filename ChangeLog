@@ -1,3 +1,5 @@
+            Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
+
      1v98 : Allow Crypto SHA1 without SHA256/512 (for ESP8266 where flash is scarce)
             Add better docs for the form of Wifi callback functions
             Modify ESP8266/ESP32 callbacks to match the node.js style used elsewhere

@@ -856,20 +856,25 @@ bool jslIsIDOrReservedWord() {
          (lex->tk >= _LEX_R_LIST_START && lex->tk <= _LEX_R_LIST_END);
 }
 
+/* Match failed - report error message */
+static void jslMatchError(int expected_tk) {
+  char gotStr[30];
+  char expStr[30];
+  jslGetTokenString(gotStr, sizeof(gotStr));
+  jslTokenAsString(expected_tk, expStr, sizeof(expStr));
+
+  size_t oldPos = lex->tokenLastStart;
+  lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
+  jsExceptionHere(JSET_SYNTAXERROR, "Got %s expected %s", gotStr, expStr);
+  lex->tokenLastStart = oldPos;
+  // Sod it, skip this token anyway - stops us looping
+  jslGetNextToken();
+}
+
 /// Match, and return true on success, false on failure
 bool jslMatch(int expected_tk) {
   if (lex->tk != expected_tk) {
-    char gotStr[20];
-    char expStr[20];
-    jslGetTokenString(gotStr, sizeof(gotStr));
-    jslTokenAsString(expected_tk, expStr, sizeof(expStr));
-
-    size_t oldPos = lex->tokenLastStart;
-    lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
-    jsExceptionHere(JSET_SYNTAXERROR, "Got %s expected %s", gotStr, expStr);
-    lex->tokenLastStart = oldPos;
-    // Sod it, skip this token anyway - stops us looping
-    jslGetNextToken();
+    jslMatchError(expected_tk);
     return false;
   }
   jslGetNextToken();
