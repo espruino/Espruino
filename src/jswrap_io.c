@@ -447,6 +447,7 @@ typedef struct {
   volatile uint32_t *clkAddr;
 #endif
   bool clkPol; // clock polarity
+  bool clkPinsClk; // clock pin clock ordering
 
   int cnt; // number of pins
   int repeat; // iterations to perform per array item
@@ -456,6 +457,15 @@ void jswrap_io_shiftOutCallback(int val, void *data) {
   jswrap_io_shiftOutData *d = (jswrap_io_shiftOutData*)data;
   int n, i;
   for (i=0;i<d->repeat;i++) {
+#ifdef STM32
+    if (d->clkPinsClk && d->clkAddr) {
+      *d->clkAddr = d->clkPol;
+    }
+#else
+    if (d->clkPinsClk && jshIsPinValid(d->clk)) {
+      jshPinSetValue(d->clk, d->clkPol);
+    }
+#endif
     for (n=d->cnt-1; n>=0; n--) {
   #ifdef STM32
       if (d->addrs[n])
@@ -468,12 +478,12 @@ void jswrap_io_shiftOutCallback(int val, void *data) {
     }
 #ifdef STM32
     if (d->clkAddr) {
-        *d->clkAddr = d->clkPol;
+        if (!d->clkPinsClk) *d->clkAddr = d->clkPol;
         *d->clkAddr = !d->clkPol;
     }
 #else
     if (jshIsPinValid(d->clk)) {
-      jshPinSetValue(d->clk, d->clkPol);
+      if (!d->clkPinsClk) jshPinSetValue(d->clk, d->clkPol);
       jshPinSetValue(d->clk, !d->clkPol);
     }
 #endif
@@ -514,6 +524,7 @@ shiftOut([A3,A2,A1,A0], { clk : A4 }, [1,2,3,4]);
 {
   clk : pin, // a pin to use as the clock (undefined = no pin)
   clkPol : bool, // clock polarity - default is 0 (so 1 normally, pulsing to 0 to clock data in)
+  clkPinsClk : bool, // clock pin ordering - default is 0 (normally the order is pins, clk, clk, if 1 the order is clk, pins, clk)
   repeat : int, // number of clocks per array item
 }
 ```
@@ -531,11 +542,13 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
   d.cnt = 0;
   d.clk = PIN_UNDEFINED;
   d.clkPol = 0;
+  d.clkPinsClk = 0;
   d.repeat = 1;
 
   jsvConfigObject configs[] = {
       {"clk", JSV_PIN, &d.clk},
       {"clkPol", JSV_BOOLEAN, &d.clkPol},
+      {"clkPinsClk", JSV_BOOLEAN, &d.clkPinsClk},
       {"repeat", JSV_INTEGER, &d.repeat}
   };
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
