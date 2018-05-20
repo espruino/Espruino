@@ -447,6 +447,7 @@ typedef struct {
   volatile uint32_t *clkAddr;
 #endif
   bool clkPol; // clock polarity
+  char pattern[64]; // pin ordering pattern
 
   int cnt; // number of pins
   int repeat; // iterations to perform per array item
@@ -454,6 +455,48 @@ typedef struct {
 
 void jswrap_io_shiftOutCallback(int val, void *data) {
   jswrap_io_shiftOutData *d = (jswrap_io_shiftOutData*)data;
+
+  if (d->pattern[0]) {
+    int v, n;
+    int msb = 1<<(d->cnt-1);
+    char *curr = &d->pattern[0];
+    while(*curr) {
+      switch(*curr++) {
+        // clk pin
+        case '*':
+        case 'c':
+          v = *curr++ - '0';
+   //jsWarn("shiftOut c=%c", v+'0');
+#ifdef STM32
+          if (d->clkAddr) *d->clkAddr = v;
+#else
+          if (jshIsPinValid(d->clk)) jshPinSetValue(d->clk, v);
+#endif
+          break;
+
+        // data pin
+        case '-':
+        case 'd':
+          n = *curr++ - '0';
+          v = val & 1;
+          val >>= 1;
+   //jsWarn("shiftOut d=%c = %d (%x)", n+'0', v, val);
+  #ifdef STM32
+          if (d->addrs[n]) *d->addrs[n] = v;
+  #else
+          if (jshIsPinValid(d->pins[n])) jshPinSetValue(d->pins[n], v);
+  #endif
+          break;
+
+        // noop
+        default:
+          break;
+      }
+    }
+
+    return;
+  }
+
   int n, i;
   for (i=0;i<d->repeat;i++) {
     for (n=d->cnt-1; n>=0; n--) {
@@ -514,6 +557,7 @@ shiftOut([A3,A2,A1,A0], { clk : A4 }, [1,2,3,4]);
 {
   clk : pin, // a pin to use as the clock (undefined = no pin)
   clkPol : bool, // clock polarity - default is 0 (so 1 normally, pulsing to 0 to clock data in)
+  pattern : string, // pin ordering - FIXME
   repeat : int, // number of clocks per array item
 }
 ```
@@ -531,16 +575,24 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
   d.cnt = 0;
   d.clk = PIN_UNDEFINED;
   d.clkPol = 0;
+  d.pattern[0] = 0;
   d.repeat = 1;
 
+  JsVar *pattern;
   jsvConfigObject configs[] = {
       {"clk", JSV_PIN, &d.clk},
       {"clkPol", JSV_BOOLEAN, &d.clkPol},
+      {"pattern", JSV_STRING_0, &pattern},
       {"repeat", JSV_INTEGER, &d.repeat}
   };
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
     return; // do nothing - error already displayed by jsvReadConfigObject
   }
+  if (jsvIsString(pattern)) {
+    jsvGetString(pattern, d.pattern, sizeof(d.pattern));
+    jsvUnLock(pattern);
+  }
+
   d.clkPol = d.clkPol?1:0;
   if (d.repeat<1) d.repeat=1;
 
