@@ -1186,6 +1186,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
   const char *s = jsvGetConstString(v);
   if (s) {
     strncpy(str, s, len);
+    str[len-1] = 0;
     return strlen(s);
   } else if (jsvIsInt(v)) {
     itostr(v->varData.integer, str, 10);
@@ -1218,7 +1219,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
       jsvUnLock(stringVar);
       return l;
     } else {
-      strncpy(str, "", len);
+      str[0] = 0;
       jsExceptionHere(JSET_INTERNALERROR, "Variable type cannot be converted to string");
       return 0;
     }
