@@ -3,6 +3,7 @@
             Increase max size of native strings on platforms that support it - 16 bit to 32 bit (#1432)
             Fix stack size detection on Linux (fix #1427)
             Fix strncat/cpy bounding issues (fix #1425)
+            Promises now ignore a second resolve/reject (fix #1433)
 
      1v98 : Allow Crypto SHA1 without SHA256/512 (for ESP8266 where flash is scarce)
             Add better docs for the form of Wifi callback functions
