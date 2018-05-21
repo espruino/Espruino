@@ -136,7 +136,13 @@ typedef struct {
 /// Data for native strings
 typedef struct {
   char *ptr;
+#if JSVARREF_SIZE==1
   uint16_t len;
+#define JSV_NATIVE_STR_MAX_LENGTH 65535
+#else
+  uint32_t len;
+#define JSV_NATIVE_STR_MAX_LENGTH 0xFFFFFFFF
+#endif
 } PACKED_FLAGS JsVarDataNativeStr;
 
 /// References

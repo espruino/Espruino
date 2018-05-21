@@ -857,10 +857,6 @@ and Espruino Pico) at the moment.
 */
 JsVar *jswrap_espruino_memoryArea(int addr, int len) {
   if (len<0) return 0;
-  if (len>65535) {
-    jsExceptionHere(JSET_ERROR, "Memory area too long! Max is 65535 bytes\n");
-    return 0;
-  }
   // hack for ESP8266/ESP32 where the address can be different
   size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
   return jsvNewNativeString((char*)mappedAddr, (size_t)len);
