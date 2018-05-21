@@ -1183,11 +1183,19 @@ JsVar *jsvGetValueOf(JsVar *v) {
 /** Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
 If the buffer length is exceeded, the returned value will == len */
 size_t jsvGetString(const JsVar *v, char *str, size_t len) {
+  assert(len>0);
   const char *s = jsvGetConstString(v);
   if (s) {
-    strncpy(str, s, len);
-    str[len-1] = 0;
-    return strlen(s);
+    /* don't use strncpy here because we don't
+     * want to pad the entire buffer with zeros */
+    len--;
+    int l = 0;
+    while (*s && l<len) {
+      str[l] = s[l];
+      l++;
+    }
+    str[l] = 0;
+    return l;
   } else if (jsvIsInt(v)) {
     itostr(v->varData.integer, str, 10);
     return strlen(str);
