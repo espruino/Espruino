@@ -844,7 +844,9 @@ size_t jsuGetFreeStack() {
   char ptr; // this is on the stack
   extern void *STACK_BASE;
   uint32_t count =  (uint32_t)((size_t)STACK_BASE - (size_t)&ptr);
-  return 1000000 - count; // give it 1 megabyte of stack
+  const uint32_t max_stack = 1000000; // give it 1 megabyte of stack
+  if (count>max_stack) return 0;
+  return max_stack - count;
 #else
   // stack depth seems pretty platform-specific :( Default to a value that disables it
   return 1000000; // no stack depth check on this platform
