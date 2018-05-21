@@ -1716,6 +1716,7 @@ NO_INLINE JsVar *jspeFactor() {
     if (!jspCheckStackPosition()) return 0;
     return jspeFactorTypeOf();
   } else if (lex->tk==LEX_R_VOID) {
+    if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_VOID);
     jsvUnLock(jspeUnaryExpression());
     return 0;
