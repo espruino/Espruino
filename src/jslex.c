@@ -713,6 +713,7 @@ void jslFunctionCharAsString(unsigned char ch, char *str, size_t len) {
 }
 
 void jslTokenAsString(int token, char *str, size_t len) {
+  assert(len>28); // size of largest string
   // see JS_ERROR_TOKEN_BUF_SIZE
   if (token>32 && token<128) {
     assert(len>=4);
@@ -723,18 +724,19 @@ void jslTokenAsString(int token, char *str, size_t len) {
     return;
   }
 
+
   switch (token) {
-  case LEX_EOF : strncpy(str, "EOF", len); return;
-  case LEX_ID : strncpy(str, "ID", len); return;
-  case LEX_INT : strncpy(str, "INT", len); return;
-  case LEX_FLOAT : strncpy(str, "FLOAT", len); return;
-  case LEX_STR : strncpy(str, "STRING", len); return;
-  case LEX_UNFINISHED_STR : strncpy(str, "UNFINISHED STRING", len); return;
-  case LEX_TEMPLATE_LITERAL : strncpy(str, "TEMPLATE LITERAL", len); return;
-  case LEX_UNFINISHED_TEMPLATE_LITERAL : strncpy(str, "UNFINISHED TEMPLATE LITERAL", len); return;
-  case LEX_REGEX : strncpy(str, "REGEX", len); return;
-  case LEX_UNFINISHED_REGEX : strncpy(str, "UNFINISHED REGEX", len); return;
-  case LEX_UNFINISHED_COMMENT : strncpy(str, "UNFINISHED COMMENT", len); return;
+  case LEX_EOF : strcpy(str, "EOF"); return;
+  case LEX_ID : strcpy(str, "ID"); return;
+  case LEX_INT : strcpy(str, "INT"); return;
+  case LEX_FLOAT : strcpy(str, "FLOAT"); return;
+  case LEX_STR : strcpy(str, "STRING"); return;
+  case LEX_UNFINISHED_STR : strcpy(str, "UNFINISHED STRING"); return;
+  case LEX_TEMPLATE_LITERAL : strcpy(str, "TEMPLATE LITERAL"); return;
+  case LEX_UNFINISHED_TEMPLATE_LITERAL : strcpy(str, "UNFINISHED TEMPLATE LITERAL"); return;
+  case LEX_REGEX : strcpy(str, "REGEX"); return;
+  case LEX_UNFINISHED_REGEX : strcpy(str, "UNFINISHED REGEX"); return;
+  case LEX_UNFINISHED_COMMENT : strcpy(str, "UNFINISHED COMMENT"); return;
   }
   if (token>=_LEX_OPERATOR_START && token<_LEX_R_LIST_END) {
     const char tokenNames[] =
@@ -809,11 +811,10 @@ void jslTokenAsString(int token, char *str, size_t len) {
       n--; // next token
     }
     assert(n==0);
-    strncpy(str, &tokenNames[p], len);
+    strcpy(str, &tokenNames[p]);
     return;
   }
 
-  assert(len>=10);
   espruino_snprintf(str, len, "?[%d]", token);
 }
 
