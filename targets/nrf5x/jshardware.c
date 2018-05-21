@@ -1277,7 +1277,16 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
     }
   } else {
     flashIsBusy = true;
-    while ((err = sd_flash_write((uint32_t*)addr, (uint32_t *)buf, len>>2)) == NRF_ERROR_BUSY);
+    while (len>0 && !jspIsInterrupted()) {
+      uint32_t l = len;
+#ifdef NRF51
+      if (l>1024) l=1024; // max write size
+#else
+      if (l>4096) l=4096; // max write size
+#endif
+      len -= l;
+      while ((err = sd_flash_write((uint32_t*)addr, (uint32_t *)buf, l>>2)) == NRF_ERROR_BUSY && !jspIsInterrupted());
+    }
     if (err!=NRF_SUCCESS) flashIsBusy = false;
     WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
   }
