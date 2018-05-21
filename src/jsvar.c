@@ -1190,7 +1190,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
      * want to pad the entire buffer with zeros */
     len--;
     int l = 0;
-    while (*s && l<len) {
+    while (s[l] && l<len) {
       str[l] = s[l];
       l++;
     }
