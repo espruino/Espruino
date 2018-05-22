@@ -60,8 +60,8 @@ typedef struct {
   unsigned int fgColor, bgColor; ///< current foreground and background colors
   short fontSize; ///< See JSGRAPHICS_FONTSIZE_ constants
 #ifndef SAVE_ON_FLASH
-  char fontAlignX : 2;
-  char fontAlignY : 2;
+  unsigned char fontAlignX : 2;
+  unsigned char fontAlignY : 2;
   unsigned char fontRotate : 2;
 #endif
   short cursorX, cursorY; ///< current cursor positions

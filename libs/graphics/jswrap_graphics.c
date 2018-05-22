@@ -691,9 +691,9 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     x = t;
   }
   // Handle font alignment
-  if (gfx.data.fontAlignX>=0)
+  if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
     x -= jswrap_graphics_stringWidth(parent, var) * (gfx.data.fontAlignX+1)/2;
-  if (gfx.data.fontAlignY>=0)
+  if (gfx.data.fontAlignY<2)  // 0=center, 1=bottom, 2=undefined, 3=top
     y -= customHeight * (gfx.data.fontAlignX+1)/2;
 #endif
 
