@@ -423,7 +423,8 @@ void jswrap_pixljs_init() {
   gfx.data.bpp = 1;
   lcdInit_ArrayBuffer(&gfx);
   graphicsSetVar(&gfx);
-  jsvObjectSetChild(execInfo.root,"g",graphics);
+  jsvObjectSetChild(execInfo.root, "g", graphics);
+  jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);
   graphicsGetFromVar(&gfx, graphics);
   // Set initial image
   const unsigned char PIXLJS_IMG[] = {

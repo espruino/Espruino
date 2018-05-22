@@ -56,6 +56,7 @@ void jswrap_graphics_init() {
   JsVar *parent = jspNewObject("LCD", "Graphics");
   if (parent) {
     JsVar *parentObj = jsvSkipName(parent);
+    jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, parentObj);
     JsGraphics gfx;
     graphicsStructInit(&gfx);
     gfx.data.type = JSGRAPHICSTYPE_FSMC;
@@ -72,6 +73,22 @@ void jswrap_graphics_init() {
 #endif
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Graphics",
+  "name" : "getInstance",
+  "generate" : "jswrap_graphics_getInstance",
+  "return" : ["JsVar","An instance of `Graphics` or undefined"]
+}
+On devices like Pixl.js or HYSTM boards that contain a built-in display
+this will return an instance of the graphics class that can be used to
+access that display.
+
+Internally, this is stored as a member called `gfx` inside the 'hiddenRoot'.
+*/
+JsVar *jswrap_graphics_getInstance() {
+  return jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
+}
 
 static bool isValidBPP(int bpp) {
   return bpp==1 || bpp==2 || bpp==4 || bpp==8 || bpp==16 || bpp==24 || bpp==32; // currently one colour can't ever be spread across multiple bytes
