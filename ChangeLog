@@ -9,6 +9,7 @@
             Added E.reboot() to allow hard reboots from software (fix #1429)
             Added 'Graphics.getInstance()' for more platform independent graphics
             Added VT100 'erase in Display' to Terminal
+            In REPL, use x.toString() for objects if we know their name and it is available
 
      1v98 : Allow Crypto SHA1 without SHA256/512 (for ESP8266 where flash is scarce)
             Add better docs for the form of Wifi callback functions

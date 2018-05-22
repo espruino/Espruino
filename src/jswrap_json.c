@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_json.h"
+#include "jswrap_object.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
@@ -420,26 +421,39 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
       if (device!=EV_NONE) {
         cbprintf(user_callback, user_data, "%s", jshGetDeviceString(device));
       } else {
+        bool showContents = true;
         if (flags & JSON_SHOW_OBJECT_NAMES) {
           JsVar *proto = jsvObjectGetChild(var, JSPARSE_INHERITS_VAR, 0);
           if (jsvHasChildren(proto)) {
             JsVar *constr = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
             if (constr) {
               JsVar *p = jsvGetIndexOf(execInfo.root, constr, true);
-              if (p) cbprintf(user_callback, user_data, "%v ", p);
+              if (p) cbprintf(user_callback, user_data, "%v: ", p);
               jsvUnLock2(p,constr);
+              /* We had the constructor - now if there was a non-default toString function
+               * we'll execute it and print the result */
+              JsVar *toStringFn = jspGetNamedField(var, "toString", false);
+              if (toStringFn && toStringFn->varData.native.ptr != (void (*)(void))jswrap_object_toString) {
+                // Function found and it's not the default one - execute it
+                JsVar *result = jspExecuteFunction(toStringFn,var,0,0);
+                cbprintf(user_callback, user_data, "%v", result);
+                jsvUnLock(result);
+                showContents = false; // we already printed something
+              }
+              jsvUnLock(toStringFn);
             }
           }
           jsvUnLock(proto);
         }
-
-        JsvObjectIterator it;
-        jsvObjectIteratorNew(&it, var);
-        cbprintf(user_callback, user_data, (flags&JSON_PRETTY)?"{ ":"{");
-        bool needNewLine = jsfGetJSONForObjectItWithCallback(&it, flags, whitespace, nflags, user_callback, user_data, true);
-        jsvObjectIteratorFree(&it);
-        if (needNewLine) jsonNewLine(flags, whitespace, user_callback, user_data);
-        cbprintf(user_callback, user_data, (flags&JSON_PRETTY)?" }":"}");
+        if (showContents) {
+          JsvObjectIterator it;
+          jsvObjectIteratorNew(&it, var);
+          cbprintf(user_callback, user_data, (flags&JSON_PRETTY)?"{ ":"{");
+          bool needNewLine = jsfGetJSONForObjectItWithCallback(&it, flags, whitespace, nflags, user_callback, user_data, true);
+          jsvObjectIteratorFree(&it);
+          if (needNewLine) jsonNewLine(flags, whitespace, user_callback, user_data);
+          cbprintf(user_callback, user_data, (flags&JSON_PRETTY)?" }":"}");
+        }
       }
     } else if (jsvIsFunction(var)) {
       if (flags & JSON_IGNORE_FUNCTIONS) {
