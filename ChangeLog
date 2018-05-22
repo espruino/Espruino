@@ -10,6 +10,7 @@
             Added 'Graphics.getInstance()' for more platform independent graphics
             Added VT100 'erase in Display' to Terminal
             In REPL, use x.toString() for objects if we know their name and it is available
+            Pixl.js add BLE aerial test to self-test, now also start immediately on BTN4 at boot
 
      1v98 : Allow Crypto SHA1 without SHA256/512 (for ESP8266 where flash is scarce)
             Add better docs for the form of Wifi callback functions
