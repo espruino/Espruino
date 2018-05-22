@@ -1,6 +1,6 @@
-https://github.com/espruino/Espruino/issues/1433
+// https://github.com/espruino/Espruino/issues/1433
 
-Promise(function(resolve, reject) {
+new Promise(function(resolve, reject) {
   setTimeout(resolve, 100);
   setTimeout(reject, 200);
 }).then(function() {
