@@ -2177,3 +2177,8 @@ unsigned int jshGetRandomNumber(){
 unsigned int jshSetSystemClock(JsVar *options){
         return 0;
 }
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  NVIC_SystemReset();
+}

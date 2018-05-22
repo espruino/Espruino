@@ -43,6 +43,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_gpiote.h"
 #include "nrf_timer.h"
 #include "nrf_delay.h"
+#include "nrf_nvic.h"
 #ifdef NRF52
 #include "nrf_saadc.h"
 #include "nrf_pwm.h"
@@ -1437,4 +1438,9 @@ unsigned int jshGetRandomNumber() {
 
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
+}
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  NVIC_SystemReset();
 }

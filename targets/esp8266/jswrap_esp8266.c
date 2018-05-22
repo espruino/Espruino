@@ -46,9 +46,7 @@ typedef long long int64_t;
 Perform a hardware reset/reboot of the esp8266.
 */
 void jswrap_ESP8266_reboot() {
-  os_printf("Espruino resetting the esp8266\n");
-  os_delay_us(1000); // time for os_printf to drain
-  system_restart();
+  jshReboot();
 }
 
 //===== ESP8266.getResetInfo

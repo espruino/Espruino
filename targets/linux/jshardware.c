@@ -931,3 +931,8 @@ size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
 }
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  jsExceptionHere(JSET_ERROR, "Not implemented");
+}

@@ -1421,3 +1421,10 @@ unsigned int jshSetSystemClock(JsVar *options) {
  */
 void _exit(int status) {
 }
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  os_printf("Espruino resetting the esp8266\n");
+  os_delay_us(1000); // time for os_printf to drain
+  system_restart();
+}

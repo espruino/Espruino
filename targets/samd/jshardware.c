@@ -446,3 +446,8 @@ void jshUtilTimerDisable() {
 unsigned int jshGetRandomNumber() {
 	return 1234;
 }
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  jsExceptionHere(JSET_ERROR, "Not implemented");
+}

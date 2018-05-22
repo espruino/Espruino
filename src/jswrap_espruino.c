@@ -1387,6 +1387,24 @@ void jswrap_espruino_asm(JsVar *callspec, JsVar *args) {
   jsExceptionHere(JSET_ERROR, "'E.asm' calls should have been replaced by the Espruino tools before upload");
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "reboot",
+  "generate" : "jswrap_espruino_reboot"
+}
+Forces a hard reboot of the microcontroller - as close as possible
+to if the reset pin had been toggled.
+
+**Note:** This is different to `reset()`, which performs a software
+reset of Espruino (resetting the interpreter and pin states, but not
+all the hardware)
+*/
+void jswrap_espruino_reboot() {
+  jshReboot();
+}
+
+
 // ----------------------------------------- USB Specific Stuff
 
 #ifdef USE_USB_HID
