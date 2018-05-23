@@ -2542,10 +2542,10 @@ NO_INLINE JsVar *jspeStatementTry() {
       jspSetNoExecute();
       jspeBlock();
       JSP_RESTORE_EXECUTE();
-    } else if (scope) {
-      if (jspeiAddScope(scope)) {
+    } else {
+      if (!scope || jspeiAddScope(scope)) {
         jspeBlock();
-        jspeiRemoveScope();
+        if (scope) jspeiRemoveScope();
       }
     }
     jsvUnLock(scope);
