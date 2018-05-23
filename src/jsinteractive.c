@@ -2073,7 +2073,7 @@ void jsiIdle() {
       // Load interval *after* executing code, in case it has changed
       JsVar *interval = jsvObjectGetChild(timerPtr, "interval", 0);
       if (!removeTimer && interval) {
-        timeUntilNext = timeUntilNext + jsvGetLongIntegerAndUnLock(interval);
+        timeUntilNext = timeUntilNext + jsvGetLongInteger(interval);
       } else {
         // free
         // Beware... may have already been removed!
@@ -2081,7 +2081,7 @@ void jsiIdle() {
         hasDeletedTimer = true;
         timeUntilNext = -1;
       }
-      jsvUnLock(timerCallback);
+      jsvUnLock2(timerCallback,interval);
 
     }
     // update the time until the next timer
