@@ -601,11 +601,10 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   if (timerName) {
     JsVar *timer = jsvSkipNameAndUnLock(timerName);
     JsVar *v;
-    JsVarInt intervalInt = (JsVarInt)jshGetTimeFromMilliseconds(interval);
-    v = jsvNewFromInteger(intervalInt);
-    jsvUnLock2(jsvSetNamedChild(timer, v, "interval"), v);
-    v = jsvNewFromInteger((JsVarInt)(jshGetSystemTime()-jsiLastIdleTime) + intervalInt);
-    jsvUnLock3(jsvSetNamedChild(timer, v, "time"), v, timer);
+    JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
+    jsvObjectSetChildAndUnLock(timer, "interval", jsvNewFromLongInteger(intervalInt));
+    jsvObjectSetChildAndUnLock(timer, "time", jsvNewFromLongInteger((jshGetSystemTime()-jsiLastIdleTime) + intervalInt));
+    jsvUnLock(timer);
     // timerName already unlocked
     jsiTimersChanged(); // mark timers as changed
   } else {

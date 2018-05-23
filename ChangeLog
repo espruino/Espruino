@@ -1,3 +1,5 @@
+            Allow changeInterval with large (>32 bit) intervals (fix #1438)
+
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
             Increase max size of native strings on platforms that support it - 16 bit to 32 bit (#1432)
