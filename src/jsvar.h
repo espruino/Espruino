@@ -546,6 +546,9 @@ JsVar *jsvGetFunctionArgumentLength(JsVar *function);
  * if ok, but has the value `undefined`. */
 bool jsvIsVariableDefined(JsVar *a);
 
+/* Check for and trigger a ReferenceError on a variable if it's a name that doesn't exist */
+void jsvCheckReferenceError(JsVar *a);
+
 /** If a is a name skip it and go to what it points to - and so on.
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0. Throws a ReferenceError if variable is not defined,

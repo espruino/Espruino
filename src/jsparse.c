@@ -2027,6 +2027,7 @@ NO_INLINE JsVar *jspeExpression() {
     JsVar *a = jspeAssignmentExpression();
     if (lex->tk!=',') return a;
     // if we get a comma, we just forget this data and parse the next bit...
+    jsvCheckReferenceError(a);
     jsvUnLock(a);
     JSP_ASSERT_MATCH(',');
   }
@@ -2037,7 +2038,9 @@ NO_INLINE JsVar *jspeExpression() {
 NO_INLINE void jspeBlockNoBrackets() {
   if (JSP_SHOULD_EXECUTE) {
     while (lex->tk && lex->tk!='}') {
-      jsvUnLock(jspeStatement());
+      JsVar *a = jspeStatement();
+      jsvCheckReferenceError(a);
+      jsvUnLock(a);
       if (JSP_HAS_ERROR) {
         if (lex && !(execInfo.execute&EXEC_ERROR_LINE_REPORTED)) {
           execInfo.execute = (JsExecFlags)(execInfo.execute | EXEC_ERROR_LINE_REPORTED);
