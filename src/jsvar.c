@@ -1938,6 +1938,13 @@ bool jsvIsVariableDefined(JsVar *a) {
          (jsvGetFirstChild(a)!=0);
 }
 
+/** Call this if the given name has no child, and a reference error
+ * will be made if required */
+static void jsvReferenceErrorCheck(JsVar *a) {
+  if (jsvGetRefs(a)==0 && !jsvIsNewChild(a))
+    jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
+}
+
 /** If a is a name skip it and go to what it points to - and so on.
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0. Throws a ReferenceError if variable is not defined,
@@ -1952,9 +1959,7 @@ JsVar *jsvSkipName(JsVar *a) {
     JsVarRef n = jsvGetFirstChild(pa);
     jsvUnLock(pa);
     if (!n) {
-      if (pa==a && jsvGetRefs(a)==0 && !jsvIsNewChild(a)) {
-        jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
-      }
+      if (pa==a) jsvReferenceErrorCheck(a);
       return 0;
     }
     pa = jsvLock(n);
@@ -1977,9 +1982,7 @@ JsVar *jsvSkipOneName(JsVar *a) {
     JsVarRef n = jsvGetFirstChild(pa);
     jsvUnLock(pa);
     if (!n) {
-      if (pa==a && jsvGetRefs(a)==0 && !jsvIsNewChild(a)) {
-        jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
-      }
+      if (pa==a) jsvReferenceErrorCheck(a);
       return 0;
     }
     pa = jsvLock(n);
