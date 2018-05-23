@@ -113,9 +113,11 @@ bool jsvIsIterable(const JsVar *v) {
 static ALWAYS_INLINE JsVar *jsvGetAddressOf(JsVarRef ref) {
   assert(ref);
 #ifdef RESIZABLE_JSVARS
+  assert(ref <= jsVarsSize);
   JsVarRef t = ref-1;
   return &jsVarBlocks[t>>JSVAR_BLOCK_SHIFT][t&(JSVAR_BLOCK_SIZE-1)];
 #else
+  assert(ref <= JSVAR_CACHE_SIZE);
   return &jsVars[ref-1];
 #endif
 }
