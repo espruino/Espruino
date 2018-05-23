@@ -2252,9 +2252,9 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
 
   if (execInfo.execute & EXEC_CONTINUE)
-    execInfo.execute = EXEC_YES;
+    execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
   else if (execInfo.execute & EXEC_BREAK) {
-    execInfo.execute = EXEC_YES;
+    execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
     hasHadBreak = true; // fail loop condition, so we exit
   }
   if (!loopCond) JSP_RESTORE_EXECUTE();
@@ -2288,9 +2288,9 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
       jsvUnLock(jspeBlockOrStatement());
       if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
       if (execInfo.execute & EXEC_CONTINUE)
-        execInfo.execute = EXEC_YES;
+        execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
       else if (execInfo.execute & EXEC_BREAK) {
-        execInfo.execute = EXEC_YES;
+        execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
         hasHadBreak = true;
       }
     }
