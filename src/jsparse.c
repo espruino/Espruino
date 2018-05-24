@@ -172,7 +172,13 @@ JsVar *jspeiFindNameOnTop(JsVar *childName, bool createIfNotFound) {
   return jsvFindChildFromVar(execInfo.root, childName, createIfNotFound);
 }
 
-
+JsVar *jspFindPrototypeFor(const char *className) {
+  JsVar *obj = jsvObjectGetChild(execInfo.root, className, 0);
+  if (!obj) return 0;
+  JsVar *proto = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
+  jsvUnLock(obj);
+  return proto;
+}
 
 /** Here we assume that we have already looked in the parent itself -
  * and are now going down looking at the stuff it inherited */
@@ -182,13 +188,8 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
     JsVar *inheritsFrom = jsvObjectGetChild(parent, JSPARSE_INHERITS_VAR, 0);
 
     // if there's no inheritsFrom, just default to 'Object.prototype'
-    if (!inheritsFrom) {
-      JsVar *obj = jsvObjectGetChild(execInfo.root, "Object", 0);
-      if (obj) {
-        inheritsFrom = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
-        jsvUnLock(obj);
-      }
-    }
+    if (!inheritsFrom)
+      inheritsFrom = jspFindPrototypeFor("Object");
 
     if (inheritsFrom && inheritsFrom!=parent) {
       // we have what it inherits from (this is ACTUALLY the prototype var)
@@ -2311,6 +2312,22 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   return 0;
 }
 
+NO_INLINE JsVar *jspGetBuiltinPrototype(JsVar *obj) {
+  if (jsvIsArray(obj)) {
+    JsVar *v = jspFindPrototypeFor("Array");
+    if (v) return v;
+  }
+  if (jsvIsObject(obj) || jsvIsArray(obj)) {
+    JsVar *v = jspFindPrototypeFor("Object");
+    if (v==obj) { // don't return ourselves
+      jsvUnLock(v);
+      v = 0;
+    }
+    return v;
+  }
+  return 0;
+}
+
 NO_INLINE JsVar *jspeStatementFor() {
   JSP_ASSERT_MATCH(LEX_R_FOR);
   JSP_MATCH('(');
@@ -2326,18 +2343,22 @@ NO_INLINE JsVar *jspeStatementFor() {
     return 0;
   }
   execInfo.execute &= (JsExecFlags)~EXEC_FOR_INIT;
-  if (lex->tk == LEX_R_IN) {
-    // for (i in array)
-    // where i = jsvUnLock(forStatement);
+  if (lex->tk == LEX_R_IN || lex->tk == LEX_R_OF) {
+    bool isForOf = lex->tk == LEX_R_OF;
+    // for (i in array)  or   for (i of array)
+    // where i = forStatement
     if (JSP_SHOULD_EXECUTE && !jsvIsName(forStatement)) {
       jsvUnLock(forStatement);
-      jsExceptionHere(JSET_ERROR, "FOR a IN b - 'a' must be a variable name, not %t", forStatement);
+      jsExceptionHere(JSET_ERROR, "for(a %s b) - 'a' must be a variable name, not %t", isForOf?"of":"in", forStatement);
       return 0;
     }
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_IN, jsvUnLock(forStatement), 0);
+
+    JSP_ASSERT_MATCH(lex->tk); // skip over in/of
     JsVar *array = jsvSkipNameAndUnLock(jspeExpression());
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(forStatement, array), 0);
     JslCharPos forBodyStart = jslCharPosClone(&lex->tokenStart);
+    // Simply scan over the loop the first time without executing to figure out where it ends
+    // OPT: we could skip the first parse and actually execute the first time
     JSP_SAVE_EXECUTE();
     jspSetNoExecute();
     execInfo.execute |= EXEC_IN_LOOP;
@@ -2345,14 +2366,18 @@ NO_INLINE JsVar *jspeStatementFor() {
     JslCharPos forBodyEnd = jslCharPosClone(&lex->tokenStart);
     if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
     JSP_RESTORE_EXECUTE();
-
+    // Now start executing properly
     if (JSP_SHOULD_EXECUTE) {
       if (jsvIsIterable(array)) {
         JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(array);
         JsVar *foundPrototype = 0;
+        if (!isForOf) // for..in
+          foundPrototype = jspGetBuiltinPrototype(array);
 
         JsvIterator it;
-        jsvIteratorNew(&it, array, JSIF_DEFINED_ARRAY_ElEMENTS);
+        jsvIteratorNew(&it, array, isForOf ?
+            /* for of */ JSIF_EVERY_ARRAY_ELEMENT :
+            /* for in */ JSIF_DEFINED_ARRAY_ElEMENTS);
         bool hasHadBreak = false;
         while (JSP_SHOULD_EXECUTE && jsvIteratorHasElement(&it) && !hasHadBreak) {
           JsVar *loopIndexVar = jsvIteratorGetKey(&it);
@@ -2364,15 +2389,19 @@ NO_INLINE JsVar *jspeStatementFor() {
               foundPrototype = jsvSkipName(loopIndexVar);
           }
           if (!ignore) {
-            JsVar *indexValue = jsvIsName(loopIndexVar) ?
-                jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/) :
-                loopIndexVar;
-            if (indexValue) { // could be out of memory
-              assert(!jsvIsName(indexValue) && jsvGetRefs(indexValue)==0);
-              jspReplaceWithOrAddToRoot(forStatement, indexValue);
-              if (indexValue!=loopIndexVar) jsvUnLock(indexValue);
-
-              jsvIteratorNext(&it);
+            JsVar *iteratorValue;
+            if (isForOf) { // for (... of ...)
+              iteratorValue = jsvIteratorGetValue(&it);
+            } else { // for (... in ...)
+              iteratorValue = jsvIsName(loopIndexVar) ?
+                  jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/) :
+                  loopIndexVar;
+              assert(jsvGetRefs(iteratorValue)==0);
+            }
+            if (isForOf || iteratorValue) { // could be out of memory
+              assert(!jsvIsName(iteratorValue));
+              jspReplaceWithOrAddToRoot(forStatement, iteratorValue);
+              if (iteratorValue!=loopIndexVar) jsvUnLock(iteratorValue);
 
               jslSeekToP(&forBodyStart);
               execInfo.execute |= EXEC_IN_LOOP;
@@ -2387,15 +2416,17 @@ NO_INLINE JsVar *jspeStatementFor() {
                 hasHadBreak = true;
               }
             }
-          } else
-            jsvIteratorNext(&it);
+          }
+          jsvIteratorNext(&it);
           jsvUnLock(loopIndexVar);
-
-          if (!jsvIteratorHasElement(&it) && foundPrototype) {
+          // if using for..in we'll skip down the prototype chain when we reach the end of the current one
+          if (!jsvIteratorHasElement(&it) && !isForOf && foundPrototype) {
             jsvIteratorFree(&it);
-            jsvIteratorNew(&it, foundPrototype, JSIF_DEFINED_ARRAY_ElEMENTS);
-            jsvUnLock(foundPrototype);
-            foundPrototype = 0;
+            JsVar *iterable = foundPrototype;
+            jsvIteratorNew(&it, iterable, JSIF_DEFINED_ARRAY_ElEMENTS);
+            checkerFunction = jsvGetInternalFunctionCheckerFor(iterable);
+            foundPrototype = jspGetBuiltinPrototype(iterable);
+            jsvUnLock(iterable);
           }
         }
         assert(!foundPrototype);

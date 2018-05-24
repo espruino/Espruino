@@ -419,6 +419,8 @@ void jslGetNextToken() {
       case 'n': if (jslIsToken("new", 1)) lex->tk = LEX_R_NEW;
       else if (jslIsToken("null", 1)) lex->tk = LEX_R_NULL;
       break;
+      case 'o': if (jslIsToken("of", 1)) lex->tk = LEX_R_OF;
+      break;
       case 'r': if (jslIsToken("return", 1)) lex->tk = LEX_R_RETURN;
       break;
       case 's': if (jslIsToken("static", 1)) lex->tk = LEX_R_STATIC;
