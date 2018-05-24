@@ -6,6 +6,7 @@
             Fix bug if using an undefined member of an object for for..in (fix #1437)
             Allow for..in to iterate over prototype chains down from Array and Object
             Add for(var i of array) to iterate over elements
+            Added getter and setter support
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

@@ -81,57 +81,6 @@ bool jspHasError() {
   return JSP_HAS_ERROR;
 }
 
-void jspReplaceWith(JsVar *dst, JsVar *src) {
-  // If this is an index in an array buffer, write directly into the array buffer
-  if (jsvIsArrayBufferName(dst)) {
-    size_t idx = (size_t)jsvGetInteger(dst);
-    JsVar *arrayBuffer = jsvLock(jsvGetFirstChild(dst));
-    jsvArrayBufferSet(arrayBuffer, idx, src);
-    jsvUnLock(arrayBuffer);
-    return;
-  }
-  // if destination isn't there, isn't a 'name', or is used, give an error
-  if (!jsvIsName(dst)) {
-    jsExceptionHere(JSET_ERROR, "Unable to assign value to non-reference %t", dst);
-    return;
-  }
-  jsvSetValueOfName(dst, src);
-  /* If dst is flagged as a new child, it means that
-   * it was previously undefined, and we need to add it to
-   * the given object when it is set.
-   */
-  if (jsvIsNewChild(dst)) {
-    // Get what it should have been a child of
-    JsVar *parent = jsvLock(jsvGetNextSibling(dst));
-    if (!jsvIsString(parent)) {
-      // if we can't find a char in a string we still return a NewChild,
-      // but we can't add character back in
-      if (!jsvHasChildren(parent)) {
-        jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", dst, parent);
-      } else {
-        // Remove the 'new child' flagging
-        jsvUnRef(parent);
-        jsvSetNextSibling(dst, 0);
-        jsvUnRef(parent);
-        jsvSetPrevSibling(dst, 0);
-        // Add to the parent
-        jsvAddName(parent, dst);
-      }
-    }
-    jsvUnLock(parent);
-  }
-}
-
-void jspReplaceWithOrAddToRoot(JsVar *dst, JsVar *src) {
-  /* If we're assigning to this and we don't have a parent,
-   * add it to the symbol table root */
-  if (!jsvGetRefs(dst) && jsvIsName(dst)) {
-    if (!jsvIsArrayBufferName(dst) && !jsvIsNewChild(dst))
-      jsvAddName(execInfo.root, dst);
-  }
-  jspReplaceWith(dst, src);
-}
-
 bool jspeiAddScope(JsVar *scope) {
   if (execInfo.scopeCount >= JSPARSE_MAX_SCOPES) {
     jsExceptionHere(JSET_ERROR, "Maximum number of scopes exceeded");
@@ -1273,13 +1222,30 @@ NO_INLINE JsVar *jspeFactorObject() {
       } else {
         JSP_MATCH_WITH_RETURN(LEX_ID, contents);
       }
-      JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(varName), contents);
-      if (JSP_SHOULD_EXECUTE) {
-        varName = jsvAsArrayIndexAndUnLock(varName);
-        JsVar *contentsName = jsvFindChildFromVar(contents, varName, true);
-        if (contentsName) {
-          JsVar *value = jsvSkipNameAndUnLock(jspeAssignmentExpression()); // value can be 0 (could be undefined!)
-          jsvUnLock2(jsvSetValueOfName(contentsName, value), value);
+#ifndef SAVE_ON_FLASH
+      bool isGetter, isSetter;
+      if (lex->tk==LEX_ID && jsvIsString(varName)) {
+        isGetter = jsvIsStringEqual(varName, "get");
+        isSetter = jsvIsStringEqual(varName, "set");
+        if (isGetter || isSetter) {
+          jsvUnLock(varName);
+          varName = jslGetTokenValueAsVar(lex);
+          JSP_ASSERT_MATCH(LEX_ID);
+          JsVar *method = jspeFunctionDefinition(false);
+          jsvAddGetterOrSetter(contents, varName, isGetter, method);
+          jsvUnLock(method);
+        }
+      } else
+#endif
+      {
+        JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(varName), contents);
+        if (JSP_SHOULD_EXECUTE) {
+          varName = jsvAsArrayIndexAndUnLock(varName);
+          JsVar *contentsName = jsvFindChildFromVar(contents, varName, true);
+          if (contentsName) {
+            JsVar *value = jsvSkipNameAndUnLock(jspeAssignmentExpression()); // value can be 0 (could be undefined!)
+            jsvUnLock2(jsvSetValueOfName(contentsName, value), value);
+          }
         }
       }
       jsvUnLock(varName);
@@ -1551,18 +1517,35 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
     if (isStatic) JSP_ASSERT_MATCH(LEX_R_STATIC);
 
     JsVar *funcName = jslGetTokenValueAsVar(lex);
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock3(classFunction,classInternalName,classPrototype),0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(funcName,classFunction,classInternalName,classPrototype),0);
+#ifndef SAVE_ON_FLASH
+    bool isGetter, isSetter;
+    if (lex->tk==LEX_ID) {
+      isGetter = jsvIsStringEqual(funcName, "get");
+      isSetter = jsvIsStringEqual(funcName, "set");
+      if (isGetter || isSetter) {
+        jsvUnLock(funcName);
+        funcName = jslGetTokenValueAsVar(lex);
+        JSP_ASSERT_MATCH(LEX_ID);
+      }
+    }
+#endif
+
     JsVar *method = jspeFunctionDefinition(false);
     if (classFunction && classPrototype) {
-      if (jsvIsStringEqual(funcName, "get") || jsvIsStringEqual(funcName, "set")) {
-        jsExceptionHere(JSET_SYNTAXERROR, "'get' and 'set' and not supported in Espruino");
-      } else if (jsvIsStringEqual(funcName, "constructor")) {
+      JsVar *obj = isStatic ? classFunction : classPrototype;
+      if (jsvIsStringEqual(funcName, "constructor")) {
         jswrap_function_replaceWith(classFunction, method);
+#ifndef SAVE_ON_FLASH
+      } else if (isGetter || isSetter) {
+        jsvAddGetterOrSetter(obj, funcName, isGetter, method);
+#endif
       } else {
         funcName = jsvMakeIntoVariableName(funcName, 0);
         jsvSetValueOfName(funcName, method);
-        jsvAddName(isStatic ? classFunction : classPrototype, funcName);
+        jsvAddName(obj, funcName);
       }
+
     }
     jsvUnLock2(method,funcName);
   }
@@ -1748,7 +1731,7 @@ NO_INLINE JsVar *__jspePostfixExpression(JsVar *a) {
       jsvUnLock(one);
 
       // in-place add/subtract
-      jspReplaceWith(a, res);
+      jsvReplaceWith(a, res);
       jsvUnLock(res);
       // but then use the old value
       jsvUnLock(a);
@@ -1770,7 +1753,7 @@ NO_INLINE JsVar *jspePostfixExpression() {
       JsVar *res = jsvMathsOpSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
       jsvUnLock(one);
       // in-place add/subtract
-      jspReplaceWith(a, res);
+      jsvReplaceWith(a, res);
       jsvUnLock(res);
     }
   } else
@@ -1982,7 +1965,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
 
     if (JSP_SHOULD_EXECUTE && lhs) {
       if (op=='=') {
-        jspReplaceWithOrAddToRoot(lhs, rhs);
+        jsvReplaceWithOrAddToRoot(lhs, rhs);
       } else {
         if (op==LEX_PLUSEQUAL) op='+';
         else if (op==LEX_MINUSEQUAL) op='-';
@@ -2011,7 +1994,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
         if (op) {
           /* Fallback which does a proper add */
           JsVar *res = jsvMathsOpSkipNames(lhs,rhs,op);
-          jspReplaceWith(lhs, res);
+          jsvReplaceWith(lhs, res);
           jsvUnLock(res);
         }
       }
@@ -2127,7 +2110,7 @@ NO_INLINE JsVar *jspeStatementVar() {
       JSP_MATCH_WITH_CLEANUP_AND_RETURN('=', jsvUnLock(a), lastDefined);
       var = jsvSkipNameAndUnLock(jspeAssignmentExpression());
       if (JSP_SHOULD_EXECUTE)
-        jspReplaceWith(a, var);
+        jsvReplaceWith(a, var);
       jsvUnLock(var);
     }
     jsvUnLock(lastDefined);
@@ -2400,7 +2383,7 @@ NO_INLINE JsVar *jspeStatementFor() {
             }
             if (isForOf || iteratorValue) { // could be out of memory
               assert(!jsvIsName(iteratorValue));
-              jspReplaceWithOrAddToRoot(forStatement, iteratorValue);
+              jsvReplaceWithOrAddToRoot(forStatement, iteratorValue);
               if (iteratorValue!=loopIndexVar) jsvUnLock(iteratorValue);
 
               jslSeekToP(&forBodyStart);
@@ -2600,7 +2583,7 @@ NO_INLINE JsVar *jspeStatementReturn() {
   if (JSP_SHOULD_EXECUTE) {
     JsVar *resultVar = jspeiFindInScopes(JSPARSE_RETURN_VAR);
     if (resultVar) {
-      jspReplaceWith(resultVar, result);
+      jsvReplaceWith(resultVar, result);
       jsvUnLock(resultVar);
       execInfo.execute |= EXEC_RETURN; // Stop anything else in this function executing
     } else {
@@ -2655,7 +2638,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
       funcVar = jsvSkipNameAndUnLock(funcVar);
       jswrap_function_replaceWith(existingFunc, funcVar);
     } else {
-      jspReplaceWith(existingName, funcVar);
+      jsvReplaceWith(existingName, funcVar);
     }
     jsvUnLock(funcName);
     funcName = existingName;

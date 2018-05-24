@@ -275,10 +275,11 @@ static bool jsfGetJSONForObjectItWithCallback(JsvObjectIterator *it, JSONFlags f
   size_t sinceNewLine = 0;
   while (jsvObjectIteratorHasValue(it) && !jspIsInterrupted()) {
     JsVar *index = jsvObjectIteratorGetKey(it);
-    JsVar *item = jsvObjectIteratorGetValue(it);
+    JsVar *item = jsvGetValueOfName(index);
     bool hidden = jsvIsInternalObjectKey(index) ||
         ((flags & JSON_IGNORE_FUNCTIONS) && jsvIsFunction(item)) ||
-        ((flags&JSON_NO_UNDEFINED) && jsvIsUndefined(item));
+        ((flags&JSON_NO_UNDEFINED) && jsvIsUndefined(item)) ||
+        jsvIsGetterOrSetter(item);
     if (!hidden) {
       sinceNewLine++;
       if (!first) cbprintf(user_callback, user_data, (flags&JSON_PRETTY)?", ":",");

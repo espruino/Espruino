@@ -356,18 +356,27 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
     return 0;
   }
 
-  //jsvTrace(varName, 5);
-  JsVar *var = jsvSkipName(varName);
-
   bool isBuiltIn = jsvIsNewChild(varName);
   JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(parent);
 
-  jsvObjectSetChild(obj, "value", var);
+
   jsvObjectSetChildAndUnLock(obj, "writable", jsvNewFromBool(true));
   jsvObjectSetChildAndUnLock(obj, "enumerable", jsvNewFromBool(!checkerFunction || !checkerFunction(varName)));
   jsvObjectSetChildAndUnLock(obj, "configurable", jsvNewFromBool(!isBuiltIn));
+#ifndef SAVE_ON_FLASH
+  JsVar *getset = jsvGetValueOfName(varName);
+  if (jsvIsGetterOrSetter(getset)) {
+    jsvObjectSetChildAndUnLock(obj, "get", jsvObjectGetChild(getset,"get",0));
+    jsvObjectSetChildAndUnLock(obj, "set", jsvObjectGetChild(getset,"set",0));
+  } else {
+#endif
+    jsvObjectSetChildAndUnLock(obj, "value", jsvSkipName(varName));
+#ifndef SAVE_ON_FLASH
+  }
+  jsvUnLock(getset);
+#endif
 
-  jsvUnLock2(var, varName);
+  jsvUnLock(varName);
   return obj;
 }
 
@@ -434,8 +443,8 @@ Add a new property to the Object. 'Desc' is an object with the following fields:
 * `enumerable` (bool = false) - can this property be enumerated
 * `value` (anything) - the value of this property
 * `writable` (bool = false) - can the value be changed with the assignment operator?
-* `get` (function) - the getter function, or undefined if no getter
-* `set` (function) - the setter function, or undefined if no setter
+* `get` (function) - the getter function, or undefined if no getter (only supported on some platforms)
+* `set` (function) - the setter function, or undefined if no setter (only supported on some platforms)
 *
 **Note:** `configurable`, `enumerable`, `writable`, `get`, and `set` are not implemented and will be ignored.
  */
@@ -450,7 +459,26 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
   }
 
   JsVar *name = jsvAsArrayIndex(propName);
-  JsVar *value = jsvObjectGetChild(desc, "value", 0);
+  JsVar *value = 0;
+
+  JsVar *getter = jsvObjectGetChild(desc, "get", 0);
+  JsVar *setter = jsvObjectGetChild(desc, "set", 0);
+  if (getter || setter) {
+#ifdef SAVE_ON_FLASH
+    jsExceptionHere(JSET_ERROR, "get/set unsupported in this build");
+#else
+    // also see jsvAddGetterOrSetter(contents, varName, isGetter, method);
+    value = jsvNewWithFlags(JSV_GET_SET);
+    if (value) {
+      if (getter) jsvObjectSetChild(value, "get", getter);
+      if (setter) jsvObjectSetChild(value, "set", setter);
+      jsvObjectSetChild(value, "this", parent);
+    }
+#endif
+    jsvUnLock2(getter,setter);
+  }
+  if (!value) value = jsvObjectGetChild(desc, "value", 0);
+
   jsvObjectSetChildVar(parent, name, value);
   jsvUnLock2(name, value);
 

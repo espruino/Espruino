@@ -263,8 +263,8 @@ void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str, size_t sta
 // --------------------------------------------------------------------------------------------
 
 void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
-  assert(jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj));
-  it->var = jsvGetFirstChild(obj) ? jsvLock(jsvGetFirstChild(obj)) : 0;
+  assert(jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj) || jsvIsGetterOrSetter(obj));
+  it->var = jsvLockSafe(jsvGetFirstChild(obj));
 }
 
 /// Clone the iterator
@@ -279,7 +279,7 @@ void jsvObjectIteratorNext(JsvObjectIterator *it) {
   if (it->var) {
     JsVarRef next = jsvGetNextSibling(it->var);
     jsvUnLock(it->var);
-    it->var = next ? jsvLock(next) : 0;
+    it->var = jsvLockSafe(next);
   }
 }
 
@@ -293,7 +293,7 @@ void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsVar *parent) {
     JsVarRef next = jsvGetNextSibling(it->var);
     jsvRemoveChild(parent, it->var);
     jsvUnLock(it->var);
-    it->var = next ? jsvLock(next) : 0;
+    it->var = jsvLockSafe(next);
   }
 }
 
@@ -521,7 +521,7 @@ void   jsvArrayBufferIteratorFree(JsvArrayBufferIterator *it) {
 /* General Purpose iterator, for Strings, Arrays, Objects, Typed Arrays */
 
 void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags) {
-  if (jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj)) {
+  if (jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj) || jsvIsGetterOrSetter(obj)) {
     it->type = JSVI_OBJECT;
     if (jsvIsArray(obj) && (flags&JSIF_EVERY_ARRAY_ELEMENT)) {
       it->type = JSVI_FULLARRAY;

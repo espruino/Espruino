@@ -32,12 +32,15 @@ typedef enum {
     // UNDEFINED is now just stored using '0' as the variable Ref
     JSV_NULL        = JSV_ROOT+1, ///< it seems null is its own data type
 
-    JSV_ARRAY = JSV_NULL+1, ///< A JavaScript Array Buffer - Implemented just like a String at the moment
-    JSV_ARRAYBUFFER  = JSV_ARRAY+1,
-    JSV_OBJECT      = JSV_ARRAYBUFFER+1,
-    JSV_FUNCTION    = JSV_OBJECT+1,
-    JSV_FUNCTION_RETURN    = JSV_FUNCTION+1, ///< A simple function that starts with `return` (which is implicit)
-    JSV_INTEGER     = JSV_FUNCTION_RETURN+1, ///< integer number (note JSV_NUMERICMASK)
+    JSV_ARRAY,           ///< A JavaScript Array Buffer - Implemented just like a String at the moment
+    JSV_ARRAYBUFFER,     ///< An arraybuffer (see varData.arraybuffer)
+    JSV_OBJECT,
+#ifndef SAVE_ON_FLASH
+    JSV_GET_SET,         ///< Getter/setter (an object with get/set fields)
+#endif
+    JSV_FUNCTION,
+    JSV_FUNCTION_RETURN, ///< A simple function that starts with `return` (which is implicit)
+    JSV_INTEGER,         ///< integer number (note JSV_NUMERICMASK)
   _JSV_NUMERIC_START = JSV_INTEGER, ///< --------- Start of numeric variable types
     JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
@@ -344,6 +347,9 @@ ALWAYS_INLINE JsVar *_jsvGetAddressOf(JsVarRef ref);
 /// Lock this reference and return a pointer - UNSAFE for null refs
 ALWAYS_INLINE JsVar *jsvLock(JsVarRef ref);
 
+/// Lock this reference and return a pointer, or 0
+JsVar *jsvLockSafe(JsVarRef ref);
+
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
 ALWAYS_INLINE JsVar *jsvLockAgain(JsVar *var);
 
@@ -407,6 +413,8 @@ extern bool jsvIsNameIntInt(const JsVar *v);
 extern bool jsvIsNameIntBool(const JsVar *v);
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
 extern bool jsvIsNewChild(const JsVar *v);
+/// Returns true if v is a getter/setter
+extern bool jsvIsGetterOrSetter(const JsVar *v);
 
 /// Are var.varData.ref.* (excl pad) used for data (so we expect them not to be empty)
 extern bool jsvIsRefUsedForData(const JsVar *v);
@@ -524,7 +532,26 @@ long long jsvGetLongIntegerAndUnLock(JsVar *v);
 static ALWAYS_INLINE char jsvStringCharToUpper(char ch) { return (char)((ch >= 97 && ch <= 122) ? ch - 32 : ch); } // a-z
 static ALWAYS_INLINE char jsvStringCharToLower(char ch) { return (char)((ch >= 65 && ch <= 90)  ? ch + 32 : ch); } // A-Z
 
+#ifndef SAVE_ON_FLASH
+// Executes the given getter, or if there are problems returns undefined
+JsVar *jsvExecuteGetter(JsVar *getset);
+// Executes the given setter
+void jsvExecuteSetter(JsVar *getset, JsVar *value);
+/// Add a named getter or setter to an object
+void jsvAddGetterOrSetter(JsVar *obj, JsVar *varName, bool isGetter, JsVar *method);
+#endif
 
+/* Set the value of the given variable. This is sort of like
+ * jsvSetValueOfName except it deals with all the non-standard
+ * stuff like ArrayBuffers, variables that haven't been allocated
+ * yet, setters, etc.
+ */
+void jsvReplaceWith(JsVar *dst, JsVar *src);
+
+/* See jsvReplaceWith - this does the same but will
+ * shove the variable in execInfo.root if it hasn't
+ * been defined yet */
+void jsvReplaceWithOrAddToRoot(JsVar *dst, JsVar *src);
 
 /** Get the item at the given location in the array buffer and return the result */
 size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer);
@@ -545,6 +572,10 @@ JsVar *jsvGetFunctionArgumentLength(JsVar *function);
  * without getting a ReferenceError? This also returns false if the variable
  * if ok, but has the value `undefined`. */
 bool jsvIsVariableDefined(JsVar *a);
+
+/* If this is a simple name (that links to another var) the
+ * return that var, else 0. */
+JsVar *jsvGetValueOfName(JsVar *name);
 
 /* Check for and trigger a ReferenceError on a variable if it's a name that doesn't exist */
 void jsvCheckReferenceError(JsVar *a);
