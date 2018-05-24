@@ -1,0 +1,37 @@
+From 0335d26662fefbd505bacb2b2b10197f141bc5ed Mon Sep 17 00:00:00 2001
+From: AntiCat <github@anticat.ch>
+Date: Fri, 26 May 2017 02:48:56 +0200
+Subject: [PATCH 5/7] NFC: Fixed integer over-/underflow
+
+---
+ targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+index 8beb2d12..5aa8bca8 100755
+--- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
++++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+@@ -709,14 +709,18 @@ void NFCT_IRQHandler(void)
+     {
+         /* Take into account only number of whole bytes */
+         uint32_t rx_data_size = ((NRF_NFCT->RXD.AMOUNT & NFCT_RXD_AMOUNT_RXDATABYTES_Msk) >>
+-                                 NFCT_RXD_AMOUNT_RXDATABYTES_Pos) - NFC_CRC_SIZE;
++                                 NFCT_RXD_AMOUNT_RXDATABYTES_Pos);
++
++        /* Prevent integer underflow */
++        if(rx_data_size >= NFC_CRC_SIZE) rx_data_size -= NFC_CRC_SIZE;
++
+         nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXFRAMEEND);
+ 
+         /* Use default FRAMEDELAY, for all cases but callback */
+         NRF_NFCT->FRAMEDELAYMAX = 0x1000UL; //302us, taken from datasheet
+ 
+         /* Frame is garbage, wait for next frame reception */
+-        if(rx_data_size == 0)
++        if((rx_data_size == 0) || (rx_data_size > NFC_RX_BUFFER_SIZE))
+         {
+             NRF_NFCT->TASKS_ENABLERXDATA = 1;
+         } else
+-- 
+2.16.0
+
