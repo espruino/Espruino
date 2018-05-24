@@ -91,7 +91,6 @@ bool jsvIsNameIntInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==J
 bool jsvIsNameIntBool(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL; }
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
 bool jsvIsNewChild(const JsVar *v) { return jsvIsName(v) && jsvGetNextSibling(v) && jsvGetNextSibling(v)==jsvGetPrevSibling(v); }
-
 /// Are var.varData.ref.* (excl pad) used for data (so we expect them not to be empty)
 bool jsvIsRefUsedForData(const JsVar *v) { return jsvIsStringExt(v) || (jsvIsString(v)&&!jsvIsName(v)) ||  jsvIsFloat(v) || jsvIsNativeFunction(v) || jsvIsArrayBuffer(v) || jsvIsArrayBufferName(v); }
 
@@ -1946,11 +1945,11 @@ void jsvCheckReferenceError(JsVar *a) {
     jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
 }
 
-/** If a is a name skip it and go to what it points to - and so on.
+/** If a is a name skip it and go to what it points to - and so on (if repeat=true).
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0. Throws a ReferenceError if variable is not defined,
  * but you can check if it will with jsvIsReferenceError */
-JsVar *jsvSkipName(JsVar *a) {
+static JsVar *jsvSkipNameInternal(JsVar *a, bool repeat) {
   if (!a) return 0;
   if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
   if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
@@ -1966,8 +1965,17 @@ JsVar *jsvSkipName(JsVar *a) {
     }
     pa = jsvLock(n);
     assert(pa!=a);
+    if (!repeat) return pa;
   }
   return pa;
+}
+
+/** If a is a name skip it and go to what it points to - and so on
+ * ALWAYS locks - so must unlock what it returns. It MAY
+ * return 0. Throws a ReferenceError if variable is not defined,
+ * but you can check if it will with jsvIsReferenceError */
+JsVar *jsvSkipName(JsVar *a) {
+  return jsvSkipNameInternal(a, true);
 }
 
 /** If a is a name skip it and go to what it points to.
@@ -1975,23 +1983,7 @@ JsVar *jsvSkipName(JsVar *a) {
  * return 0. Throws a ReferenceError if variable is not defined,
  * but you can check if it will with jsvIsReferenceError */
 JsVar *jsvSkipOneName(JsVar *a) {
-  if (!a) return 0;
-  if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
-  if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
-  if (jsvIsNameIntBool(a)) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
-  JsVar *pa = jsvLockAgain(a);
-  if (jsvIsName(pa)) {
-    JsVarRef n = jsvGetFirstChild(pa);
-    jsvUnLock(pa);
-    if (!n) {
-      // check here as it's less likely we get here (=faster)
-      if (pa==a) jsvCheckReferenceError(a);
-      return 0;
-    }
-    pa = jsvLock(n);
-    assert(pa!=a);
-  }
-  return pa;
+  return jsvSkipNameInternal(a, false);
 }
 
 /** If a is a's child is a name skip it and go to what it points to.
