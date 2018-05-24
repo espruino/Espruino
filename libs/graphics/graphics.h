@@ -89,8 +89,8 @@ static inline void graphicsStructInit(JsGraphics *gfx) {
   gfx->data.bgColor = 0;
   gfx->data.fontSize = JSGRAPHICS_FONTSIZE_4X6;
 #ifndef SAVE_ON_FLASH
-  gfx->data.fontAlignX = -1;
-  gfx->data.fontAlignY = -1;
+  gfx->data.fontAlignX = 3;
+  gfx->data.fontAlignY = 3;
   gfx->data.fontRotate = 0;
 #endif
   gfx->data.cursorX = 0;
