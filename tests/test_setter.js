@@ -39,5 +39,17 @@ Object.defineProperty(o, 'b', { set: function(x) { this.a = x / 2; } });
 o.b = 10; // Runs the setter, which assigns 10 / 2 (5) to the 'a' property
 results.push(o.a) // 5
 
+
+class Example {
+  set hello(x) {
+    console.log("Setting"+x);
+    this.inner = x;
+  }
+}
+const obj = new Example();
+trace(obj);
+obj.hello = "world"
+results.push(obj.inner); // "world"
+
 print(results+"");
-result = results=='["EN","FA"],["EN"],["EN","FA"],["EN","FA"],5';
+result = results=='["EN","FA"],["EN"],["EN","FA"],["EN","FA"],5,world';

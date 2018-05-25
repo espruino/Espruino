@@ -1,7 +1,7 @@
 break jsAssertFail
 break jsError
 define jsvTrace
-  print jsvTrace(execInfo.root, 0)
+  print jsvTrace($arg0, 0)
 end   
 define whereami
  print jslPrintPosition(jsiConsolePrintString, 0, lex->tokenLastStart)

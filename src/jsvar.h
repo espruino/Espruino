@@ -534,9 +534,9 @@ static ALWAYS_INLINE char jsvStringCharToLower(char ch) { return (char)((ch >= 6
 
 #ifndef SAVE_ON_FLASH
 // Executes the given getter, or if there are problems returns undefined
-JsVar *jsvExecuteGetter(JsVar *getset);
+JsVar *jsvExecuteGetter(JsVar *parent, JsVar *getset);
 // Executes the given setter
-void jsvExecuteSetter(JsVar *getset, JsVar *value);
+void jsvExecuteSetter(JsVar *parent, JsVar *getset, JsVar *value);
 /// Add a named getter or setter to an object
 void jsvAddGetterOrSetter(JsVar *obj, JsVar *varName, bool isGetter, JsVar *method);
 #endif

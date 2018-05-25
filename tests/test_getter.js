@@ -33,4 +33,13 @@ Object.defineProperty(o, 'b', { get: function() { return this.a + 1; } });
 
 results.push(o.b) // Runs the getter, which yields a + 1 (which is 1)
 
-result = results=="c,test,,1";
+class Example {
+  get hello() {
+    return this.foobar;
+  }
+}
+const obj = new Example();
+obj.foobar = "world";
+results.push(obj.hello); // "world"
+
+result = results=="c,test,,1,world";

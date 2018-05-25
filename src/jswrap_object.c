@@ -472,7 +472,6 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
     if (value) {
       if (getter) jsvObjectSetChild(value, "get", getter);
       if (setter) jsvObjectSetChild(value, "set", setter);
-      jsvObjectSetChild(value, "this", parent);
     }
 #endif
     jsvUnLock2(getter,setter);

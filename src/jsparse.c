@@ -914,11 +914,16 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
    *
    * Also we might have got a built-in, which wouldn't have a name on it
    * anyway - so in both cases, strip the name if it is there, and create
-   * a new name.
+   * a new name that references the object we actually requested the
+   * member from..
    */
   if (child && returnName) {
     // Get rid of existing name
-    child = jsvSkipNameAndUnLock(child);
+    if (jsvIsName(child)) {
+      JsVar *t = jsvGetValueOfName(child);
+      jsvUnLock(child);
+      child = t;
+    }
     // create a new name
     JsVar *nameVar = jsvNewFromString(name);
     JsVar *newChild = jsvCreateNewChild(object, nameVar, child);
@@ -1187,7 +1192,24 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
     parent=0;
     a = jspeFactorMember(a, &parent);
   }
-
+#ifndef SAVE_ON_FLASH
+  /* If we've got something that we care about the parent of (eg. a getter/setter)
+   * then we repackage it into a 'NewChild' name that references the parent before
+   * we leave. Note: You can't do this on everything because normally NewChild
+   * forces a new child to be blindly created. It works on Getters/Setters because
+   * we *always* run those rather than adding them.
+   */
+  if (parent && jsvIsName(a) && !jsvIsNewChild(a)) {
+    JsVar *value = jsvGetValueOfName(a);
+    if (jsvIsGetterOrSetter(value)) { // no need to do this for functions since we've just executed whatever we needed to
+      JsVar *nameVar = jsvCopyNameOnly(a,false,true);
+      JsVar *newChild = jsvCreateNewChild(parent, nameVar, value);
+      jsvUnLock2(nameVar, a);
+      a = newChild;
+    }
+    jsvUnLock(value);
+  }
+#endif
   jsvUnLock(parent);
   return a;
 }
