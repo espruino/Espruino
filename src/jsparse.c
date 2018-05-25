@@ -2044,6 +2044,20 @@ NO_INLINE JsVar *jspeExpression() {
   return 0;
 }
 
+/** Parse a block `{ ... }` */
+NO_INLINE void jspeSkipBlock() {
+  // fast skip of blocks
+  int brackets = 1;
+  while (lex->tk && brackets) {
+    if (lex->tk == '{') brackets++;
+    else if (lex->tk == '}') {
+      brackets--;
+      if (!brackets) return;
+    }
+    JSP_ASSERT_MATCH(lex->tk);
+  }
+}
+
 /** Parse a block `{ ... }` but assume brackets are already parsed */
 NO_INLINE void jspeBlockNoBrackets() {
   if (JSP_SHOULD_EXECUTE) {
@@ -2064,15 +2078,13 @@ NO_INLINE void jspeBlockNoBrackets() {
       }
       if (JSP_SHOULDNT_PARSE)
         return;
+      if (!JSP_SHOULD_EXECUTE) {
+        jspeSkipBlock();
+        return;
+      }
     }
   } else {
-    // fast skip of blocks
-    int brackets = 0;
-    while (lex->tk && (brackets || lex->tk != '}')) {
-      if (lex->tk == '{') brackets++;
-      if (lex->tk == '}') brackets--;
-      JSP_ASSERT_MATCH(lex->tk);
-    }
+    jspeSkipBlock();
   }
   return;
 }

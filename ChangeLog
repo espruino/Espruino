@@ -7,6 +7,7 @@
             Allow for..in to iterate over prototype chains down from Array and Object
             Add for(var i of array) to iterate over elements
             Added getter and setter support
+            Stop parsing blocks if not executing (fix #572)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
