@@ -26,6 +26,7 @@
  */
 
 #define MAX_GROUPS 9
+#define NO_RANGE  -1
 
 typedef struct {
   JsVar *sourceStr;
@@ -63,7 +64,7 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
   info.sourceStr = str;
   info.startIndex = startIndex;
   info.ignoreCase = ignoreCase;
-  info.rangeFirstChar = 0;
+  info.rangeFirstChar = NO_RANGE;
   info.groups = 0;
 
   JsVar *rmatch;
@@ -87,7 +88,7 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
   return rmatch;
 }
 
-bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchInfo info) {
+bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchInfo *info) {
   *length = 1;
   char ch = jsvStringIteratorGetChar(txtIt);
   if (regexp[0]=='.') return true;
@@ -97,13 +98,8 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
     bool matchAny = false;
     while (regexp[*length] && regexp[*length]!=']') {
       int matchLen;
-      if (regexp[*length]=='-') {
-          info.rangeFirstChar = regexp[(*length)-1]; // FIXME: quoted?
-          (*length)++;
-      }
       matchAny |= matchcharacter(&regexp[*length], txtIt, &matchLen, info);
       (*length) += matchLen;
-      info.rangeFirstChar = 0;
     }
     if (regexp[*length]==']') {
       (*length)++;
@@ -113,41 +109,47 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
     }
     return matchAny != inverted;
   }
-  if (regexp[0]=='\\') { // escape character
+  char cH = regexp[0];
+  if (cH=='\\') { // escape character
     *length = 2;
+    // fallback to the quoted character (e.g. /,-,? etc.)
+    cH = regexp[1];
     // missing quite a few here
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
-    if (regexp[1]=='d') return isNumeric(ch);
-    if (regexp[1]=='D') return !isNumeric(ch);
-    if (regexp[1]=='f') return ch==0x0C;
-    if (regexp[1]=='n') return ch==0x0A;
-    if (regexp[1]=='r') return ch==0x0D;
-    if (regexp[1]=='s') return isWhitespace(ch);
-    if (regexp[1]=='S') return !isWhitespace(ch);
-    if (regexp[1]=='t') return ch==0x09;
-    if (regexp[1]=='v') return ch==0x0B;
-    if (regexp[1]=='w') return isNumeric(ch) || isAlpha(ch) || ch=='_';
-    if (regexp[1]=='W') return !(isNumeric(ch) || isAlpha(ch) || ch=='_');
-    if (regexp[1]=='0') return ch==0x00;
-    if (regexp[1]=='x' && regexp[2] && regexp[3]) {
+    if (cH=='d') return isNumeric(ch);
+    if (cH=='D') return !isNumeric(ch);
+    if (cH=='f') { cH=0x0C; goto haveCode; }
+    if (cH=='n') { cH=0x0A; goto haveCode; }
+    if (cH=='r') { cH=0x0D; goto haveCode; }
+    if (cH=='s') return isWhitespace(ch);
+    if (cH=='S') return !isWhitespace(ch);
+    if (cH=='t') { cH=0x09; goto haveCode; }
+    if (cH=='v') { cH=0x0B; goto haveCode; }
+    if (cH=='w') return isNumeric(ch) || isAlpha(ch) || ch=='_';
+    if (cH=='W') return !(isNumeric(ch) || isAlpha(ch) || ch=='_');
+    if (cH=='0') { cH=0x00; goto haveCode; }
+    if (cH=='x' && regexp[2] && regexp[3]) {
       *length = 4;
-      char code = (char)((chtod(regexp[2])<<4) | chtod(regexp[3]));
-      return ch==code;
+      cH = (char)((chtod(regexp[2])<<4) | chtod(regexp[3]));
+      goto haveCode;
     }
-    // fallback to the quoted character (e.g. /,-,? etc.)
-    return regexp[1]==ch;
   }
-
-  char cH = regexp[0];
-  if (info.ignoreCase) {
+haveCode:
+  if (regexp[*length] == '-') { // Character set range start
+    info->rangeFirstChar = cH;
+    (*length)++;
+    return false;
+  }
+  if (info->ignoreCase) {
     ch = jsvStringCharToLower(ch);
     cH = jsvStringCharToLower(cH);
   }
-  if (info.rangeFirstChar) { // Character set range
-    char cL = info.rangeFirstChar;
-    if (info.ignoreCase) {
+  if (info->rangeFirstChar != NO_RANGE) { // Character set range
+    char cL = info->rangeFirstChar;
+    if (info->ignoreCase) {
       cL = jsvStringCharToLower(cL);
     }
+    info->rangeFirstChar = NO_RANGE;
     return (ch >= cL && ch <= cH && cL < cH);
   }
   return cH==ch;
@@ -169,7 +171,7 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
     return matchhere(regexp+1, txtIt, info);
   }
   int charLength;
-  bool charMatched = matchcharacter(regexp, txtIt, &charLength, info);
+  bool charMatched = matchcharacter(regexp, txtIt, &charLength, &info);
   if (regexp[charLength] == '*' || regexp[charLength] == '+') {
     bool starOperator = regexp[charLength] == '*';
     if (!charMatched && !starOperator) {
@@ -186,7 +188,7 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
     while (jsvStringIteratorHasChar(txtIt) && charMatched) {
       // We had this character matched, so move on and see if we can match with the new one
       jsvStringIteratorNext(txtIt);
-      charMatched = matchcharacter(regexp, txtIt, &charLength, info);
+      charMatched = matchcharacter(regexp, txtIt, &charLength, &info);
       // See if we can match after the character...
       txtIt2 = jsvStringIteratorClone(txtIt);
       JsVar *rmatch = matchhere(regexpAfterStar, &txtIt2, info);
