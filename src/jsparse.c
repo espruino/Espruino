@@ -2720,6 +2720,7 @@ NO_INLINE JsVar *jspeStatement() {
     return jspeExpression();
   } else if (lex->tk=='{') {
     /* A block of code */
+    if (!jspCheckStackPosition()) return 0;
     jspeBlock();
     return 0;
   } else if (lex->tk==';') {
