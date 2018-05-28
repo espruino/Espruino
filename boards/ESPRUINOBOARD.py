@@ -16,7 +16,7 @@
 import pinutils;
 info = {
  'name' : "Original Espruino Board rev 1.3/1.4",
- 'link' : [ "http://www.espruino.com/EspruinoBoard" ],
+ 'link' : [ "http://www.espruino.com/Original" ],
  'espruino_page_link' : "EspruinoBoard",
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "A9",
