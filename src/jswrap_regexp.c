@@ -32,6 +32,7 @@ typedef struct {
   JsVar *sourceStr;
   size_t startIndex;
   bool ignoreCase;
+  bool rangeMatch;
   char rangeFirstChar;
   int groups;
   size_t groupStart[MAX_GROUPS];
@@ -64,6 +65,7 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
   info.sourceStr = str;
   info.startIndex = startIndex;
   info.ignoreCase = ignoreCase;
+  info.rangeMatch = false;
   info.rangeFirstChar = NO_RANGE;
   info.groups = 0;
 
@@ -93,6 +95,7 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
   char ch = jsvStringIteratorGetChar(txtIt);
   if (regexp[0]=='.') return true;
   if (regexp[0]=='[') { // Character set (any char inside '[]')
+    info->rangeMatch = true;
     bool inverted = regexp[1]=='^';
     if (inverted) (*length)++;
     bool matchAny = false;
@@ -107,6 +110,7 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
       jsExceptionHere(JSET_ERROR, "Unfinished character set in RegEx");
       return false;
     }
+    info->rangeMatch = false;
     return matchAny != inverted;
   }
   char cH = regexp[0];
@@ -135,10 +139,13 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
     }
   }
 haveCode:
-  if (regexp[*length] == '-') { // Character set range start
+  if (info->rangeMatch && regexp[*length] == '-') { // Character set range start
     info->rangeFirstChar = cH;
     (*length)++;
-    return false;
+    int matchLen;
+    bool match = matchcharacter(&regexp[*length], txtIt, &matchLen, info);
+    (*length)+=matchLen;
+    return match;
   }
   if (info->ignoreCase) {
     ch = jsvStringCharToLower(ch);
