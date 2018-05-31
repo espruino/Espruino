@@ -2396,15 +2396,30 @@ JsVar *jsvCopy(JsVar *src, bool copyChildren) {
 
   if (jsvHasStringExt(src)) {
     // copy extra bits of string if there were any
-    if (jsvGetLastChild(src)) {
+    src = jsvLockAgain(src);
+    JsVar *dstChild = jsvLockAgain(dst);
+    while (jsvGetLastChild(src)) {
       JsVar *child = jsvLock(jsvGetLastChild(src));
-      JsVar *childCopy = jsvCopy(child, true);
-      if (childCopy) {// could be out of memory
-        jsvSetLastChild(dst, jsvGetRef(childCopy)); // no ref for stringext
-        jsvUnLock(childCopy);
+      if (jsvIsStringExt(child)) {
+        JsVar *childCopy = jsvNewWithFlags(child->flags & JSV_VARIABLEINFOMASK);
+        if (childCopy) {// could be out of memory
+          memcpy(&childCopy->varData, &child->varData, JSVAR_DATA_STRING_MAX_LEN);
+          jsvSetLastChild(dstChild, jsvGetRef(childCopy)); // no ref for stringext
+        }
+        jsvUnLock2(src,dstChild);
+        src = child;
+        dstChild = childCopy;
+      } else {
+        JsVar *childCopy = jsvCopy(child, true);
+        if (childCopy) {// could be out of memory
+          jsvSetLastChild(dstChild, jsvGetRef(childCopy)); // no ref for stringext
+          jsvUnLock(childCopy);
+        }
+        jsvUnLock2(src, dstChild);
+        return dst;
       }
-      jsvUnLock(child);
     }
+    jsvUnLock2(src,dstChild);
   } else if (jsvHasChildren(src)) {
     if (copyChildren) {
       // Copy children..
