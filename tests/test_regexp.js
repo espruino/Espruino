@@ -20,6 +20,7 @@ function test(a, b) {
 testreg(new RegExp("a").exec("bc"), null);
 testreg(/a/.exec("abcdef"),"a",0);
 testreg(/a/.exec("bcdaef"),"a",3);
+testreg(/a-c/.exec('=abc='), null); // no range set
 testreg(/a(b)c/.exec("abc"),"abc,b",0);
 testreg(/\sWorld/.exec("Hello World")," World",5);
 testreg(/world/i.exec("Hello World"),"World",6);
