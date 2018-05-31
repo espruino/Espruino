@@ -42,4 +42,13 @@ const obj = new Example();
 obj.foobar = "world";
 results.push(obj.hello); // "world"
 
-result = results=="c,test,,1,world";
+// https://github.com/espruino/Espruino/issues/1454
+var jsobj = {
+  _prop : {a:'astring',b:1234},
+  get prop() { return this._prop; }
+};
+// accessing jsobj.prop works, jsobj.prop.a doesn't!
+results.push(jsobj.prop.a);
+
+
+result = results=="c,test,,1,world,astring";
