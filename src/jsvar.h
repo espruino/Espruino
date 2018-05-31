@@ -580,6 +580,12 @@ JsVar *jsvGetValueOfName(JsVar *name);
 /* Check for and trigger a ReferenceError on a variable if it's a name that doesn't exist */
 void jsvCheckReferenceError(JsVar *a);
 
+/** If a is a name skip it and go to what it points to - and so on (if repeat=true).
+ * ALWAYS locks - so must unlock what it returns. It MAY
+ * return 0. Throws a ReferenceError if variable is not defined,
+ * but you can check if it will with jsvIsReferenceError */
+JsVar *jsvSkipNameWithParent(JsVar *a, bool repeat, JsVar *parent);
+
 /** If a is a name skip it and go to what it points to - and so on.
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0. Throws a ReferenceError if variable is not defined,

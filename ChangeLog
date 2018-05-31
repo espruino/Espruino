@@ -9,6 +9,7 @@
             Added getter and setter support
             Stop parsing blocks if not executing (fix #572)
             Fix stack overflow if interpreting a file full of '{' (fix #1448)
+            Fix exception when performing record access on object from getter (fix #1454)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

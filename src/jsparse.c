@@ -1044,7 +1044,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
           // Note: name will go away when we parse something else!
           const char *name = jslGetTokenValueAsString(lex);
 
-          JsVar *aVar = jsvSkipName(a);
+          JsVar *aVar = jsvSkipNameWithParent(a,true,parent);
           JsVar *child = 0;
           if (aVar)
             child = jspGetNamedField(aVar, name, true);
@@ -1079,7 +1079,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
       JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock2(parent, index);, a);
       if (JSP_SHOULD_EXECUTE) {
         index = jsvAsArrayIndexAndUnLock(index);
-        JsVar *aVar = jsvSkipName(a);
+        JsVar *aVar = jsvSkipNameWithParent(a,true,parent);
         JsVar *child = 0;
         if (aVar)
           child = jspGetVarNamedField(aVar, index, true);

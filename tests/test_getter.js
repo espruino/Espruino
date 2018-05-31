@@ -49,6 +49,7 @@ var jsobj = {
 };
 // accessing jsobj.prop works, jsobj.prop.a doesn't!
 results.push(jsobj.prop.a);
+results.push(jsobj["prop"]["b"]);
 
 
-result = results=="c,test,,1,world,astring";
+result = results=="c,test,,1,world,astring,1234";
