@@ -1,4 +1,33 @@
-            Allow Crypto SHA1 without SHA256/512 (for Original & ESP8266 where flash is scarce)
+            Allow changeInterval with large (>32 bit) intervals (fix #1438)
+            changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
+            Fix parsing of try..catch when not executing (fix #1439)
+            Add extra ReferenceError checks, even if variable is not used
+            Allow Ctrl-C out of while...continue loop (fix #1441)
+            Fix bug if using an undefined member of an object for for..in (fix #1437)
+            Allow for..in to iterate over prototype chains down from Array and Object
+            Add for(var i of array) to iterate over elements
+            Added getter and setter support
+            Stop parsing blocks if not executing (fix #572)
+            Fix stack overflow if interpreting a file full of '{' (fix #1448)
+            Fix exception when performing record access on object from getter (fix #1454)
+            Switch to non-recursive StringExt copy (fix #1451)
+            Fix rounding errors in fillPoly -> improve vector font rendering
+
+     1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
+            nRF5x: Make FlashWrite cope with flash writes > 4k
+            Increase max size of native strings on platforms that support it - 16 bit to 32 bit (#1432)
+            Fix stack size detection on Linux (fix #1427)
+            Fix strncat/cpy bounding issues (fix #1425)
+            Promises now ignore a second resolve/reject (fix #1433)
+            Fix stack overflow if void void void... is repeated many times (fix #1434)
+            Fix font rendering issue caused by signed bit field handling by GCC on non-x86 platforms (fix #1436)
+            Added E.reboot() to allow hard reboots from software (fix #1429)
+            Added 'Graphics.getInstance()' for more platform independent graphics
+            Added VT100 'erase in Display' to Terminal
+            In REPL, use x.toString() for objects if we know their name and it is available
+            Pixl.js add BLE aerial test to self-test, now also start immediately on BTN4 at boot
+
+     1v98 : Allow Crypto SHA1 without SHA256/512 (for ESP8266 where flash is scarce)
             Add better docs for the form of Wifi callback functions
             Modify ESP8266/ESP32 callbacks to match the node.js style used elsewhere
             nRF52: fix pin.toggle() on software-negated pins
@@ -16,6 +45,17 @@
             ESP8266: rearange rf_cal_sector (fix #1294)
             ESP8266: Wifi.scan() now return authmode as text 
             ESP32: Fix accidental initialisation of UART3 when switching to Telnet (fix #1362)
+            nRF52: Added `NRF.setAddress` to allow the MAC address to be changed
+            Added Graphics.setFontAlign for font alignment and rotation
+            Make software I2C bitrate and waveform more accurate
+            Move default I2C bitrate to 100kbit/sec
+            Linux: don't create a espruino.flash file if we're not writing to flash
+            Add height check for Graphics.createArrayBuffer(...vertical_byte:true) (fix #1421)
+            Add sanity check for debug trace print statement (fix #1420)
+            Fix handling of exceptions in switch statements (fix #1352)
+            Fix 'return when not in function' regression when returning inside a catch block (fix #1422)
+            Don't load saved firmware images from different firmware versions - saved JS code still loaded (fix #1174)
+            Remove Graphics.setFontAlign and Graphics.getModified on devices with low flash memory
 
      1v97 : nRF52: fix NRF.on('connect',...) issue
             STM32: Fix setDeviceClockCmd error for USB.setConsole()

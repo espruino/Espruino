@@ -192,6 +192,5 @@ JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **arg
 
 // These are exported for the Web IDE's compiler. See exportPtrs in jswrap_process.c
 JsVar *jspeiFindInScopes(const char *name);
-void jspReplaceWith(JsVar *dst, JsVar *src);
 
 #endif /* JSPARSE_H_ */

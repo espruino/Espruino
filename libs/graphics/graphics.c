@@ -80,10 +80,12 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
     for (y=gfx->data.height-ydir-1;y>=0;y--)
       graphicsFallbackScrollX(gfx, xdir, y, y+ydir);
   }
+#ifndef SAVE_ON_FLASH
   gfx->data.modMinX=0;
   gfx->data.modMinY=0;
   gfx->data.modMaxX=gfx->data.width-1;
   gfx->data.modMaxY=gfx->data.height-1;
+#endif
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -160,10 +162,12 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, short *x, short *y) {
 
 static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int col) {
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
+#ifndef SAVE_ON_FLASH
   if (x < gfx->data.modMinX) gfx->data.modMinX=(short)x;
   if (x > gfx->data.modMaxX) gfx->data.modMaxX=(short)x;
   if (y < gfx->data.modMinY) gfx->data.modMinY=(short)y;
   if (y > gfx->data.modMaxY) gfx->data.modMaxY=(short)y;
+#endif
   gfx->setPixel(gfx,(short)x,(short)y,col & (unsigned int)((1L<<gfx->data.bpp)-1));
 }
 
@@ -188,12 +192,12 @@ static void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int 
   if (x2>=gfx->data.width) x2 = gfx->data.width - 1;
   if (y2>=gfx->data.height) y2 = gfx->data.height - 1;
   if (x2<x1 || y2<y1) return; // nope
-
+#ifndef SAVE_ON_FLASH
   if (x1 < gfx->data.modMinX) gfx->data.modMinX=(short)x1;
   if (x2 > gfx->data.modMaxX) gfx->data.modMaxX=(short)x2;
   if (y1 < gfx->data.modMinY) gfx->data.modMinY=(short)y1;
   if (y2 > gfx->data.modMaxY) gfx->data.modMaxY=(short)y2;
-
+#endif
   if (x1==x2 && y1==y2) {
     gfx->setPixel(gfx,(short)x1,(short)y1,gfx->data.fgColor);
     return;
@@ -340,30 +344,31 @@ void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
 }
 
 static inline void graphicsFillPolyCreateScanLines(JsGraphics *gfx, short *minx, short *maxx, short x1, short y1,short x2, short y2) {
-    if (y2 < y1) {
-        short t;
-        t=x1;x1=x2;x2=t;
-        t=y1;y1=y2;y2=t;
+  if (y2 < y1) {
+    short t;
+    t=x1;x1=x2;x2=t;
+    t=y1;y1=y2;y2=t;
+  }
+  int xh = x1*256 + 128/*do rounding here rather than when we >>8*/;
+  int yl = (1+y2)-y1;
+  int stepx = ((x2-x1)*256 + (yl/2)/*rounding*/) / yl;
+  short y;
+  int x = xh>>8;
+  if (x<-32768) x=-32768;
+  if (x>32767) x=32767;
+  for (y=y1;y<=y2;y++) {
+    int oldx = x;
+    xh += stepx;
+    x = xh>>8;
+    if (x<-32768) x=-32768;
+    if (x>32767) x=32767;
+    if (y>=0 && y<gfx->data.height) {
+      if (oldx<minx[y]) minx[y] = (short)oldx;
+      if (oldx>maxx[y]) maxx[y] = (short)oldx;
+      if (x<minx[y]) minx[y] = (short)x;
+      if (x>maxx[y]) maxx[y] = (short)x;
     }
-    int xh = x1*256;
-    int yl = y2-y1;
-    if (yl==0) yl=1;
-    int stepx = (x2-x1)*256 / yl;
-    short y;
-    for (y=y1;y<=y2;y++) {
-        int x = xh>>8;
-        if (x<-32768) x=-32768;
-        if (x>32767) x=32767;
-        if (y>=0 && y<gfx->data.height) {
-            if (x<minx[y]) {
-                minx[y] = (short)x;
-            }
-            if (x>maxx[y]) {
-                maxx[y] = (short)x;
-            }
-        }
-        xh += stepx;
-    }
+  }
 }
 
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {

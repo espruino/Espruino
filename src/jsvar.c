@@ -96,7 +96,14 @@ bool jsvIsNameIntInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==J
 bool jsvIsNameIntBool(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL; }
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
 bool jsvIsNewChild(const JsVar *v) { return jsvIsName(v) && jsvGetNextSibling(v) && jsvGetNextSibling(v)==jsvGetPrevSibling(v); }
-
+/// Returns true if v is a getter/setter
+bool jsvIsGetterOrSetter(const JsVar *v) {
+#ifdef SAVE_ON_FLASH
+  return false;
+#else
+  return v && (v->flags&JSV_VARTYPEMASK)==JSV_GET_SET;
+#endif
+}
 /// Are var.varData.ref.* (excl pad) used for data (so we expect them not to be empty)
 bool jsvIsRefUsedForData(const JsVar *v) { return jsvIsStringExt(v) || (jsvIsString(v)&&!jsvIsName(v)) ||  jsvIsFloat(v) || jsvIsNativeFunction(v) || jsvIsArrayBuffer(v) || jsvIsArrayBufferName(v); }
 
@@ -118,9 +125,11 @@ bool jsvIsIterable(const JsVar *v) {
 static ALWAYS_INLINE JsVar *jsvGetAddressOf(JsVarRef ref) {
   assert(ref);
 #ifdef RESIZABLE_JSVARS
+  assert(ref <= jsVarsSize);
   JsVarRef t = ref-1;
   return &jsVarBlocks[t>>JSVAR_BLOCK_SHIFT][t&(JSVAR_BLOCK_SIZE-1)];
 #else
+  assert(ref <= JSVAR_CACHE_SIZE);
   return &jsVars[ref-1];
 #endif
 }
@@ -369,7 +378,7 @@ bool jsvHasStringExt(const JsVar *v) {
 }
 
 bool jsvHasChildren(const JsVar *v) {
-  return jsvIsFunction(v) || jsvIsObject(v) || jsvIsArray(v) || jsvIsRoot(v);
+  return jsvIsFunction(v) || jsvIsObject(v) || jsvIsArray(v) || jsvIsRoot(v) || jsvIsGetterOrSetter(v);
 }
 
 /// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
@@ -527,7 +536,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
    * we were, we'd have been freed by jsvGarbageCollect */
   assert((!jsvGetNextSibling(var) && !jsvGetPrevSibling(var)) || // check that next/prevSibling are not set
       jsvIsRefUsedForData(var) ||  // UNLESS we're part of a string and nextSibling/prevSibling are used for string data
-      (jsvIsName(var) && (jsvGetNextSibling(var)==jsvGetPrevSibling(var)))); // UNLESS we're signalling that we're jsvIsNewChild
+      (jsvIsName(var) && (jsvGetNextSibling(var)==jsvGetPrevSibling(var)))); // UNLESS we're signalling that we're jsvild
 
   // Names that Link to other things
   if (jsvIsNameWithValue(var)) {
@@ -649,6 +658,12 @@ ALWAYS_INLINE JsVar *jsvLock(JsVarRef ref) {
   }
 #endif
   return var;
+}
+
+/// Lock this reference and return a pointer - UNSAFE for null refs
+JsVar *jsvLockSafe(JsVarRef ref) {
+  if (!ref) return 0;
+  return jsvLock(ref);
 }
 
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
@@ -1064,7 +1079,7 @@ JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
 }
 
 JsVar *jsvNewNativeString(char *ptr, size_t len) {
-  if (len>65535) len=65535; // crop string to 65535 characters because that's all be can store in nativeStr.len
+  if (len>JSV_NATIVE_STR_MAX_LENGTH) len=JSV_NATIVE_STR_MAX_LENGTH; // crop string to what we can store in nativeStr.len
   JsVar *str = jsvNewWithFlags(JSV_NATIVE_STRING);
   if (!str) return 0;
   str->varData.nativeStr.ptr = ptr;
@@ -1194,10 +1209,19 @@ JsVar *jsvGetValueOf(JsVar *v) {
 /** Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
 If the buffer length is exceeded, the returned value will == len */
 size_t jsvGetString(const JsVar *v, char *str, size_t len) {
+  assert(len>0);
   const char *s = jsvGetConstString(v);
   if (s) {
-    strncpy(str, s, len);
-    return strlen(s);
+    /* don't use strncpy here because we don't
+     * want to pad the entire buffer with zeros */
+    len--;
+    size_t l = 0;
+    while (s[l] && l<len) {
+      str[l] = s[l];
+      l++;
+    }
+    str[l] = 0;
+    return l;
   } else if (jsvIsInt(v)) {
     itostr(v->varData.integer, str, 10);
     return strlen(str);
@@ -1229,7 +1253,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
       jsvUnLock(stringVar);
       return l;
     } else {
-      strncpy(str, "", len);
+      str[0] = 0;
       jsExceptionHere(JSET_INTERNALERROR, "Variable type cannot be converted to string");
       return 0;
     }
@@ -1409,7 +1433,7 @@ size_t jsvGetStringLength(const JsVar *v) {
 
     // Go to next
     jsvUnLock(newVar); // note use of if (ref), not var
-    var = newVar = ref ? jsvLock(ref) : 0;
+    var = newVar = jsvLockSafe(ref);
   }
   jsvUnLock(newVar); // note use of if (ref), not var
   return strLength;
@@ -1864,6 +1888,124 @@ JsVarInt jsvGetIntegerAndUnLock(JsVar *v) { return _jsvGetIntegerAndUnLock(v); }
 JsVarFloat jsvGetFloatAndUnLock(JsVar *v) { return _jsvGetFloatAndUnLock(v); }
 bool jsvGetBoolAndUnLock(JsVar *v) { return _jsvGetBoolAndUnLock(v); }
 
+
+#ifndef SAVE_ON_FLASH
+// Executes the given getter, or if there are problems returns undefined
+JsVar *jsvExecuteGetter(JsVar *parent, JsVar *getset) {
+  assert(jsvIsGetterOrSetter(getset));
+  if (!jsvIsGetterOrSetter(getset)) return 0; // wasn't an object?
+  JsVar *fn = jsvObjectGetChild(getset, "get", 0);
+  if (!jsvIsFunction(fn)) {
+    jsvUnLock(fn);
+    return 0;
+  }
+  JsVar *result = jspExecuteFunction(fn, parent, 0, NULL);
+  jsvUnLock(fn);
+  return result;
+}
+
+// Executes the given setter
+void jsvExecuteSetter(JsVar *parent, JsVar *getset, JsVar *value) {
+  assert(jsvIsGetterOrSetter(getset));
+  if (!jsvIsGetterOrSetter(getset)) return; // wasn't an object?
+  JsVar *fn = jsvObjectGetChild(getset, "set", 0);
+  if (!jsvIsFunction(fn)) {
+    jsvUnLock(fn);
+    return;
+  }
+  if (!fn) return;
+  jsvUnLock2(jspExecuteFunction(fn, parent, 1, &value), fn);
+}
+
+/// Add a named getter or setter to an object
+void jsvAddGetterOrSetter(JsVar *obj, JsVar *varName, bool isGetter, JsVar *method) {
+  // check for existing getter/setter, make one if needed
+  JsVar *getsetName = jsvFindChildFromVar(obj, varName, true);
+  if (jsvIsName(getsetName)) {
+    JsVar *getset = jsvGetValueOfName(getsetName);
+    if (!jsvIsGetterOrSetter(getset)) {
+      jsvUnLock(getset);
+      getset = jsvNewWithFlags(JSV_GET_SET);
+      jsvSetValueOfName(getsetName, getset);
+    }
+    if (jsvIsGetterOrSetter(getset))
+      jsvObjectSetChild(getset, isGetter?"get":"set", method);
+    jsvUnLock(getset);
+  }
+  jsvUnLock(getsetName);
+}
+#endif
+
+
+/* Set the value of the given variable. This is sort of like
+ * jsvSetValueOfName except it deals with all the non-standard
+ * stuff like ArrayBuffers, variables that haven't been allocated
+ * yet, setters, etc.
+ */
+void jsvReplaceWith(JsVar *dst, JsVar *src) {
+  // If this is an index in an array buffer, write directly into the array buffer
+  if (jsvIsArrayBufferName(dst)) {
+    size_t idx = (size_t)jsvGetInteger(dst);
+    JsVar *arrayBuffer = jsvLock(jsvGetFirstChild(dst));
+    jsvArrayBufferSet(arrayBuffer, idx, src);
+    jsvUnLock(arrayBuffer);
+    return;
+  }
+  // if destination isn't there, isn't a 'name', or is used, give an error
+  if (!jsvIsName(dst)) {
+    jsExceptionHere(JSET_ERROR, "Unable to assign value to non-reference %t", dst);
+    return;
+  }
+#ifndef SAVE_ON_FLASH
+  JsVar *v = jsvGetValueOfName(dst);
+  if (jsvIsGetterOrSetter(v)) {
+    JsVar *parent = jsvIsNewChild(dst)?jsvLock(jsvGetNextSibling(dst)):0;
+    jsvExecuteSetter(parent,v,src);
+    jsvUnLock2(v,parent);
+    return;
+  }
+  jsvUnLock(v);
+#endif
+  jsvSetValueOfName(dst, src);
+  /* If dst is flagged as a new child, it means that
+   * it was previously undefined, and we need to add it to
+   * the given object when it is set.
+   */
+  if (jsvIsNewChild(dst)) {
+    // Get what it should have been a child of
+    JsVar *parent = jsvLock(jsvGetNextSibling(dst));
+    if (!jsvIsString(parent)) {
+      // if we can't find a char in a string we still return a NewChild,
+      // but we can't add character back in
+      if (!jsvHasChildren(parent)) {
+        jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", dst, parent);
+      } else {
+        // Remove the 'new child' flagging
+        jsvUnRef(parent);
+        jsvSetNextSibling(dst, 0);
+        jsvUnRef(parent);
+        jsvSetPrevSibling(dst, 0);
+        // Add to the parent
+        jsvAddName(parent, dst);
+      }
+    }
+    jsvUnLock(parent);
+  }
+}
+
+/* See jsvReplaceWith - this does the same but will
+ * shove the variable in execInfo.root if it hasn't
+ * been defined yet */
+void jsvReplaceWithOrAddToRoot(JsVar *dst, JsVar *src) {
+  /* If we're assigning to this and we don't have a parent,
+   * add it to the symbol table root */
+  if (!jsvGetRefs(dst) && jsvIsName(dst)) {
+    if (!jsvIsArrayBufferName(dst) && !jsvIsNewChild(dst))
+      jsvAddName(execInfo.root, dst);
+  }
+  jsvReplaceWith(dst, src);
+}
+
 /** Get the item at the given location in the array buffer and return the result */
 size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer) {
   assert(jsvIsArrayBuffer(arrayBuffer));
@@ -1940,11 +2082,35 @@ bool jsvIsVariableDefined(JsVar *a) {
          (jsvGetFirstChild(a)!=0);
 }
 
-/** If a is a name skip it and go to what it points to - and so on.
+/* If this is a simple name (that links to another var) the
+ * return that var, else 0. Unlike jsvSkipName this doesn't
+ * repeatedly get the name, or evaluate getters. */
+JsVar *jsvGetValueOfName(JsVar *a) {
+  if (!a) return 0;
+  if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
+  if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
+  if (jsvIsNameIntBool(a)) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
+  assert(!jsvIsNameWithValue(a));
+  if (jsvIsName(a))
+    return jsvLockSafe(jsvGetFirstChild(a));
+  return 0;
+}
+
+/* Check for and trigger a ReferenceError on a variable if it's a name that doesn't exist */
+void jsvCheckReferenceError(JsVar *a) {
+  if (jsvIsName(a) && jsvGetRefs(a)==0 && !jsvIsNewChild(a) && !jsvGetFirstChild(a))
+    jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
+}
+
+
+
+/** If a is a name skip it and go to what it points to - and so on (if repeat=true).
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0. Throws a ReferenceError if variable is not defined,
- * but you can check if it will with jsvIsReferenceError */
-JsVar *jsvSkipName(JsVar *a) {
+ * but you can check if it will with jsvIsReferenceError.
+ * If a 'getter' needs to be executed, 'parent' is the object that
+ * gets used unless a NewChild overwrites it */
+JsVar *jsvSkipNameWithParent(JsVar *a, bool repeat, JsVar *parent) {
   if (!a) return 0;
   if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
   if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
@@ -1954,15 +2120,31 @@ JsVar *jsvSkipName(JsVar *a) {
     JsVarRef n = jsvGetFirstChild(pa);
     jsvUnLock(pa);
     if (!n) {
-      if (pa==a && jsvGetRefs(a)==0 && !jsvIsNewChild(a)) {
-        jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
-      }
+      // check here as it's less likely we get here (=faster)
+      if (pa==a) jsvCheckReferenceError(a);
       return 0;
     }
     pa = jsvLock(n);
     assert(pa!=a);
+    if (!repeat) break;
   }
+#ifndef SAVE_ON_FLASH
+  if (jsvIsGetterOrSetter(pa)) {
+    JsVar *getterParent = jsvIsNewChild(a)?jsvLock(jsvGetNextSibling(a)):0;
+    JsVar *v = jsvExecuteGetter(getterParent?getterParent:parent, pa);
+    jsvUnLock2(getterParent,pa);
+    pa = v;
+  }
+#endif
   return pa;
+}
+
+/** If a is a name skip it and go to what it points to - and so on
+ * ALWAYS locks - so must unlock what it returns. It MAY
+ * return 0. Throws a ReferenceError if variable is not defined,
+ * but you can check if it will with jsvIsReferenceError */
+JsVar *jsvSkipName(JsVar *a) {
+  return jsvSkipNameWithParent(a, true, 0);
 }
 
 /** If a is a name skip it and go to what it points to.
@@ -1970,24 +2152,7 @@ JsVar *jsvSkipName(JsVar *a) {
  * return 0. Throws a ReferenceError if variable is not defined,
  * but you can check if it will with jsvIsReferenceError */
 JsVar *jsvSkipOneName(JsVar *a) {
-  if (!a) return 0;
-  if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
-  if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
-  if (jsvIsNameIntBool(a)) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
-  JsVar *pa = jsvLockAgain(a);
-  if (jsvIsName(pa)) {
-    JsVarRef n = jsvGetFirstChild(pa);
-    jsvUnLock(pa);
-    if (!n) {
-      if (pa==a && jsvGetRefs(a)==0 && !jsvIsNewChild(a)) {
-        jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
-      }
-      return 0;
-    }
-    pa = jsvLock(n);
-    assert(pa!=a);
-  }
-  return pa;
+  return jsvSkipNameWithParent(a, false, 0);
 }
 
 /** If a is a's child is a name skip it and go to what it points to.
@@ -2242,15 +2407,30 @@ JsVar *jsvCopy(JsVar *src, bool copyChildren) {
 
   if (jsvHasStringExt(src)) {
     // copy extra bits of string if there were any
-    if (jsvGetLastChild(src)) {
+    src = jsvLockAgain(src);
+    JsVar *dstChild = jsvLockAgain(dst);
+    while (jsvGetLastChild(src)) {
       JsVar *child = jsvLock(jsvGetLastChild(src));
-      JsVar *childCopy = jsvCopy(child, true);
-      if (childCopy) {// could be out of memory
-        jsvSetLastChild(dst, jsvGetRef(childCopy)); // no ref for stringext
-        jsvUnLock(childCopy);
+      if (jsvIsStringExt(child)) {
+        JsVar *childCopy = jsvNewWithFlags(child->flags & JSV_VARIABLEINFOMASK);
+        if (childCopy) {// could be out of memory
+          memcpy(&childCopy->varData, &child->varData, JSVAR_DATA_STRING_MAX_LEN);
+          jsvSetLastChild(dstChild, jsvGetRef(childCopy)); // no ref for stringext
+        }
+        jsvUnLock2(src,dstChild);
+        src = child;
+        dstChild = childCopy;
+      } else {
+        JsVar *childCopy = jsvCopy(child, true);
+        if (childCopy) {// could be out of memory
+          jsvSetLastChild(dstChild, jsvGetRef(childCopy)); // no ref for stringext
+          jsvUnLock(childCopy);
+        }
+        jsvUnLock2(src, dstChild);
+        return dst;
       }
-      jsvUnLock(child);
     }
+    jsvUnLock2(src,dstChild);
   } else if (jsvHasChildren(src)) {
     if (copyChildren) {
       // Copy children..
@@ -2293,7 +2473,7 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
       while (insertAfter && jsvCompareInteger(namedChild, insertAfter)<0) {
         JsVarRef prev = jsvGetPrevSibling(insertAfter);
         jsvUnLock(insertAfter);
-        insertAfter = prev ? jsvLock(prev) : 0;
+        insertAfter = jsvLockSafe(prev);
       }
     }
 
@@ -3309,10 +3489,16 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
     return;
   }
 
-  if (jsvIsName(var)) jsiConsolePrint("Name ");
+  if (jsvIsNewChild(var)) {
+    jsiConsolePrint("NewChild PARENT:");
+    JsVar *parent = jsvGetAddressOf(jsvGetNextSibling(var));
+    _jsvTrace(parent, indent+2, baseVar, level+1);
+    jsiConsolePrint("CHILD: ");
+  } else if (jsvIsName(var)) jsiConsolePrint("Name ");
 
   char endBracket = ' ';
   if (jsvIsObject(var)) { jsiConsolePrint("Object { "); endBracket = '}'; }
+  else if (jsvIsGetterOrSetter(var)) { jsiConsolePrint("Getter/Setter { "); endBracket = '}'; }
   else if (jsvIsArray(var)) { jsiConsolePrintf("Array(%d) [ ", var->varData.integer); endBracket = ']'; }
   else if (jsvIsNativeFunction(var)) { jsiConsolePrintf("NativeFunction 0x%x (%d) { ", var->varData.native.ptr, var->varData.native.argTypes); endBracket = '}'; }
   else if (jsvIsFunction(var)) {
@@ -3325,13 +3511,12 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   else if (jsvIsFloat(var)) jsiConsolePrintf("Double %f", jsvGetFloat(var));
   else if (jsvIsFunctionParameter(var)) jsiConsolePrintf("Param %q ", var);
   else if (jsvIsArrayBufferName(var)) jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
-  else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s ", jswGetBasicObjectName(var)); // way to get nice name
+  else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s ", jswGetBasicObjectName(var)?jswGetBasicObjectName(var):"unknown ArrayBuffer"); // way to get nice name
   else if (jsvIsString(var)) {
     size_t blocks = 1;
     if (jsvGetLastChild(var)) {
-      JsVar *v = jsvLock(jsvGetLastChild(var));
+      JsVar *v = jsvGetAddressOf(jsvGetLastChild(var));
       blocks += jsvCountJsVarsUsed(v);
-      jsvUnLock(v);
     }
     if (jsvIsFlatString(var)) {
       blocks += jsvGetFlatStringBlocks(var);
@@ -3351,9 +3536,8 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   }
 
   if (jsvHasSingleChild(var)) {
-    JsVar *child = jsvGetFirstChild(var) ? jsvLock(jsvGetFirstChild(var)) : 0;
+    JsVar *child = jsvGetFirstChild(var) ? jsvGetAddressOf(jsvGetFirstChild(var)) : 0;
     _jsvTrace(child, indent+2, baseVar, level+1);
-    jsvUnLock(child);
   } else if (jsvHasChildren(var)) {
     JsvIterator it;
     jsvIteratorNew(&it, var, JSIF_DEFINED_ARRAY_ElEMENTS);
@@ -3377,7 +3561,12 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVar *var, int indent) {
+  /* Clear memory busy flags. If we're calling
+   * trace then we really care about getting an answer */
+  MemBusyType t = isMemoryBusy;
+  isMemoryBusy = 0;
   _jsvTrace(var,indent,var,0);
+  isMemoryBusy = t;
   jsiConsolePrintf("\n");
 }
 
@@ -3490,15 +3679,19 @@ int jsvGarbageCollect() {
          * linked from this one have either already been garbage collected or
          * are marked for GC */
         assert(!jsvHasChildren(var) || !jsvGetFirstChild(var) ||
+            jsvGetLocks(jsvGetAddressOf(jsvGetFirstChild(var))) ||
             jsvGetAddressOf(jsvGetFirstChild(var))->flags==JSV_UNUSED ||
             (jsvGetAddressOf(jsvGetFirstChild(var))->flags&JSV_GARBAGE_COLLECT));
         assert(!jsvHasChildren(var) || !jsvGetLastChild(var) ||
+            jsvGetLocks(jsvGetAddressOf(jsvGetLastChild(var))) ||
             jsvGetAddressOf(jsvGetLastChild(var))->flags==JSV_UNUSED ||
             (jsvGetAddressOf(jsvGetLastChild(var))->flags&JSV_GARBAGE_COLLECT));
         assert(!jsvIsName(var) || !jsvGetPrevSibling(var) ||
+            jsvGetLocks(jsvGetAddressOf(jsvGetPrevSibling(var))) ||
             jsvGetAddressOf(jsvGetPrevSibling(var))->flags==JSV_UNUSED ||
             (jsvGetAddressOf(jsvGetPrevSibling(var))->flags&JSV_GARBAGE_COLLECT));
         assert(!jsvIsName(var) || !jsvGetNextSibling(var) ||
+            jsvGetLocks(jsvGetAddressOf(jsvGetNextSibling(var))) ||
             jsvGetAddressOf(jsvGetNextSibling(var))->flags==JSV_UNUSED ||
             (jsvGetAddressOf(jsvGetNextSibling(var))->flags&JSV_GARBAGE_COLLECT));
         // free!

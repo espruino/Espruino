@@ -66,6 +66,7 @@ void jswrap_nrf_bluetooth_sleep();
 void jswrap_nrf_bluetooth_wake();
 void jswrap_nrf_bluetooth_restart();
 JsVar *jswrap_nrf_bluetooth_getAddress();
+void jswrap_nrf_bluetooth_setAddress(JsVar *address);
 
 JsVarFloat jswrap_nrf_bluetooth_getBattery();
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options);

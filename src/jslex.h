@@ -98,7 +98,8 @@ _LEX_R_LIST_START,
     LEX_R_EXTENDS,
     LEX_R_SUPER,
     LEX_R_STATIC,
-_LEX_R_LIST_END = LEX_R_CLASS /* always the last entry */
+    LEX_R_OF,
+_LEX_R_LIST_END = LEX_R_OF /* always the last entry */
 } LEX_TYPES;
 
 

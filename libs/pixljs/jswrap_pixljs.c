@@ -27,6 +27,7 @@
 #include "nrf_delay.h"
 #include "nrf5x_utils.h"
 #include "jsflash.h" // for jsfRemoveCodeFromFlash
+#include "bluetooth.h" // for self-test
 
 #include "jswrap_graphics.h"
 #include "lcd_arraybuffer.h"
@@ -357,8 +358,11 @@ static bool pixl_selfTest() {
 
   if (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE)
     jsiConsolePrintf("Release BTN1\n");
+  if (jshPinGetValue(BTN4_PININDEX)==BTN4_ONSTATE)
+    jsiConsolePrintf("Release BTN4\n");
   timeout = 2000;
-  while (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE && timeout--)
+  while ((jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE ||
+          jshPinGetValue(BTN4_PININDEX)==BTN4_ONSTATE) && timeout--)
     nrf_delay_ms(1);
   if (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE) {
     jsiConsolePrintf("BTN1 stuck down\n");
@@ -396,6 +400,25 @@ static bool pixl_selfTest() {
   for (i=0;i<sizeof(PIXL_IO_PINS)/sizeof(Pin);i++)
     jshPinSetState(PIXL_IO_PINS[i], JSHPINSTATE_GPIO_IN);
 
+  if (jshHasEvents()) {
+    jsiConsolePrintf("Have events - no BLE test\n");
+  } else {
+    bool bleWorking = false;
+    uint32_t err_code;
+    err_code = jsble_set_scanning(true);
+    jsble_check_error(err_code);
+    int timeout = 20;
+    while (timeout-- && !jshHasEvents()) {
+      nrf_delay_ms(100);
+    }
+    err_code = jsble_set_scanning(false);
+    jsble_check_error(err_code);
+    if (!jshHasEvents()) {
+      jsiConsolePrintf("No BLE adverts found in 2s\n");
+      ok = false;
+    }
+  }
+
   return ok;
 }
 
@@ -423,7 +446,8 @@ void jswrap_pixljs_init() {
   gfx.data.bpp = 1;
   lcdInit_ArrayBuffer(&gfx);
   graphicsSetVar(&gfx);
-  jsvObjectSetChild(execInfo.root,"g",graphics);
+  jsvObjectSetChild(execInfo.root, "g", graphics);
+  jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);
   graphicsGetFromVar(&gfx, graphics);
   // Set initial image
   const unsigned char PIXLJS_IMG[] = {
@@ -495,7 +519,7 @@ void jswrap_pixljs_init() {
   lcd_flip_gfx(&gfx);
 
 
-  if (firstStart && jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) {
+  if (firstStart && (jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE || jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE)) {
     // don't do it during a software reset - only first hardware reset
     jsiConsolePrintf("SELF TEST\n");
     if (pixl_selfTest()) jsiConsolePrintf("Test passed!\n");

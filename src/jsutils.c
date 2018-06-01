@@ -604,11 +604,12 @@ void itostr_extra(JsVarInt vals,char *str,bool signedVal, unsigned int base) {
 }
 
 void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fractionalDigits) {
+  assert(len>9); // in case if strcpy
   const JsVarFloat stopAtError = 0.0000001;
-  if (isnan(val)) strncpy(str,"NaN",len);
+  if (isnan(val)) strcpy(str,"NaN");
   else if (!isfinite(val)) {
-    if (val<0) strncpy(str,"-Infinity",len);
-    else strncpy(str,"Infinity",len);
+    if (val<0) strcpy(str,"-Infinity");
+    else strcpy(str,"Infinity");
   } else {
     if (val<0) {
       if (--len <= 0) { *str=0; return; } // bounds check
@@ -844,7 +845,9 @@ size_t jsuGetFreeStack() {
   char ptr; // this is on the stack
   extern void *STACK_BASE;
   uint32_t count =  (uint32_t)((size_t)STACK_BASE - (size_t)&ptr);
-  return 1000000 - count; // give it 1 megabyte of stack
+  const uint32_t max_stack = 1000000; // give it 1 megabyte of stack
+  if (count>max_stack) return 0;
+  return max_stack - count;
 #else
   // stack depth seems pretty platform-specific :( Default to a value that disables it
   return 1000000; // no stack depth check on this platform

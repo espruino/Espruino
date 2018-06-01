@@ -161,6 +161,7 @@ void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, short x, short y, short pixe
       unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
       unsigned int existing = (unsigned int)*ptr;
       unsigned int bitIdx = (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) ? 8-(idx+gfx->data.bpp) : idx;
+      assert(ptr>=gfx->backendData && ptr<((char*)gfx->backendData + graphicsGetMemoryRequired(gfx)));
       *ptr = (char)((existing&~(mask<<bitIdx)) | ((col&mask)<<bitIdx));
       if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
         ptr++;

@@ -56,7 +56,7 @@ void jswrap_ESP32_setAtten(Pin pin,int atten){
 Perform a hardware reset/reboot of the ESP32.
 */
 void jswrap_ESP32_reboot() {
-  esp_restart(); // Call the ESP-IDF to restart the ESP32.
+  jshReboot();
 } // End of jswrap_ESP32_reboot
 
 

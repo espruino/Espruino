@@ -179,7 +179,7 @@ void jshGetPinString(char *result, Pin pin) {
 #endif
 #endif
     } else {
-      strncpy(result, "undefined", 10);
+      strcpy(result, "undefined");
     }
   }
 
@@ -379,10 +379,10 @@ void jshPinFunctionToString(JshPinFunction pinFunc, JshPinFunctionToStringFlags 
     jsiConsolePrintf("Couldn't convert pin function %d\n", pinFunc);
     return;
   }
-  if (flags & JSPFTS_DEVICE) strncat(buf, devStr, bufSize);
+  if (flags & JSPFTS_DEVICE) strncat(buf, devStr, bufSize-1);
   if (flags & JSPFTS_DEVICE_NUMBER) itostr(devIdx, &buf[strlen(buf)], 10);
-  if (flags & JSPFTS_SPACE) strncat(buf, " ", bufSize);
-  if (infoStr && (flags & JSPFTS_TYPE)) strncat(buf, infoStr, bufSize);
+  if (flags & JSPFTS_SPACE) strncat(buf, " ", bufSize-(strlen(buf)+1));
+  if (infoStr && (flags & JSPFTS_TYPE)) strncat(buf, infoStr, bufSize-(strlen(buf)+1));
 }
 
 /** Prints a list of capable pins, eg:

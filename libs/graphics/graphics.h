@@ -59,8 +59,15 @@ typedef struct {
   unsigned char bpp;
   unsigned int fgColor, bgColor; ///< current foreground and background colors
   short fontSize; ///< See JSGRAPHICS_FONTSIZE_ constants
+#ifndef SAVE_ON_FLASH
+  unsigned char fontAlignX : 2;
+  unsigned char fontAlignY : 2;
+  unsigned char fontRotate : 2;
+#endif
   short cursorX, cursorY; ///< current cursor positions
+#ifndef SAVE_ON_FLASH
   short modMinX, modMinY, modMaxX, modMaxY; ///< area that has been modified
+#endif
 } PACKED_FLAGS JsGraphicsData;
 
 typedef struct JsGraphics {
@@ -81,12 +88,19 @@ static inline void graphicsStructInit(JsGraphics *gfx) {
   gfx->data.fgColor = 0xFFFFFFFF;
   gfx->data.bgColor = 0;
   gfx->data.fontSize = JSGRAPHICS_FONTSIZE_4X6;
+#ifndef SAVE_ON_FLASH
+  gfx->data.fontAlignX = 3;
+  gfx->data.fontAlignY = 3;
+  gfx->data.fontRotate = 0;
+#endif
   gfx->data.cursorX = 0;
   gfx->data.cursorY = 0;
+#ifndef SAVE_ON_FLASH
   gfx->data.modMaxX = -32768;
   gfx->data.modMaxY = -32768;
   gfx->data.modMinX = 32767;
   gfx->data.modMinY = 32767;
+#endif
 }
 
 // ---------------------------------- these are in graphics.c

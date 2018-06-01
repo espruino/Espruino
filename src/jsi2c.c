@@ -45,8 +45,7 @@ bool jsi2cPopulateI2CInfo(
 const int I2C_TIMEOUT = 100000;
 
 static void dly(i2cInfo *inf) {
-  volatile int i;
-  for (i=inf->delay;i>0;i--);
+  if (inf->delay) jshDelayMicroseconds(inf->delay);
 }
 
 static void err(const char *s) {
@@ -92,6 +91,7 @@ static void i2c_wr_bit(i2cInfo *inf, bool b) {
   dly(inf);
   jshPinSetValue(inf->pinSCL, 1); // stop forcing SCL
   dly(inf);
+  dly(inf);
   int timeout = I2C_TIMEOUT;
   while (!jshPinGetValue(inf->pinSCL) && --timeout); // clock stretch
   if (!timeout) err("Timeout (wr)");
@@ -103,6 +103,7 @@ static bool i2c_rd_bit(i2cInfo *inf) {
   jshPinSetValue(inf->pinSDA, 1); // stop forcing SDA
   dly(inf);
   jshPinSetValue(inf->pinSCL, 1); // stop forcing SCL
+  dly(inf);
   int timeout = I2C_TIMEOUT;
   while (!jshPinGetValue(inf->pinSCL) && --timeout); // clock stretch
   if (!timeout) err("Timeout (rd)");
@@ -138,7 +139,8 @@ static void i2c_initstruct(i2cInfo *inf, JshI2CInfo *i) {
   inf->pinSDA = i->pinSDA;
   inf->pinSCL = i->pinSCL;
   inf->started = i->started;
-  inf->delay = 4000000/i->bitrate;
+  inf->delay = 250000/i->bitrate;
+  if (inf->delay<2) inf->delay=0;
 }
 
 // ----------------------------------------------------------------------------

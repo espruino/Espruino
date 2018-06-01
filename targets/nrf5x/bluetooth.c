@@ -544,6 +544,8 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
    case NRF_ERROR_BUSY          : name="BUSY"; break;
    case BLE_ERROR_INVALID_CONN_HANDLE
                                 : name="INVALID_CONN_HANDLE"; break;
+   case BLE_ERROR_GAP_INVALID_BLE_ADDR
+                                : name="INVALID_BLE_ADDR"; break;
   }
   if (name) return jsvVarPrintf("Got BLE error 0x%x (%s)", err_code, name);
   else return jsvVarPrintf("Got BLE error code %d", err_code);
