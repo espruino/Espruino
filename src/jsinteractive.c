@@ -2125,7 +2125,7 @@ void jsiIdle() {
       jsiKill();
       jsvKill();
       jshReset();
-      jsvInit();
+      jsvInit(0);
       jsiSemiInit(false); // don't autoload
     }
     if ((s&JSIS_TODO_FLASH_SAVE) == JSIS_TODO_FLASH_SAVE) {
@@ -2147,7 +2147,7 @@ void jsiIdle() {
       jsvSoftKill();
       jsvKill();
       jshReset();
-      jsvInit();
+      jsvInit(0);
       jsfLoadStateFromFlash();
       jsvSoftInit();
       jspSoftInit();

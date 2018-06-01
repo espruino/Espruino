@@ -250,7 +250,7 @@ static void initDone() {
   //uart_rx_discard();
 
   jshInit(); // Initialize the hardware
-  jsvInit(); // Initialize the variables
+  jsvInit(0); // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
   // note: the wifi gets hooked-up via wifi_soft_init called from jsiInit
 

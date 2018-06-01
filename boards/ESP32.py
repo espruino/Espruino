@@ -19,8 +19,7 @@ info = {
  'espruino_page_link'       : 'ESP32',
  'default_console'          : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
- 'variables'                : 2500,
- 'variables_mode'           : "malloc",
+ 'variables'                : 2500, # JSVAR_MALLOC is defined below - so this can vary depending on what is initialised
  'binary_name'              : 'espruino_%v_esp32.bin',
  'build' : {
    'optimizeflags' : '-Og',
@@ -37,7 +36,8 @@ info = {
      'BLUETOOTH'	 
    ],
    'makefile' : [
-     'DEFINES+=-DESP_PLATFORM -DESP32=1'
+     'DEFINES+=-DESP_PLATFORM -DESP32=1',
+     'DEFINES+=-DJSVAR_MALLOC' # Allocate space for variables at jsvInit time
    ]
  }
 };
