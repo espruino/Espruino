@@ -344,30 +344,31 @@ void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
 }
 
 static inline void graphicsFillPolyCreateScanLines(JsGraphics *gfx, short *minx, short *maxx, short x1, short y1,short x2, short y2) {
-    if (y2 < y1) {
-        short t;
-        t=x1;x1=x2;x2=t;
-        t=y1;y1=y2;y2=t;
+  if (y2 < y1) {
+    short t;
+    t=x1;x1=x2;x2=t;
+    t=y1;y1=y2;y2=t;
+  }
+  int xh = x1*256 + 128/*do rounding here rather than when we >>8*/;
+  int yl = (1+y2)-y1;
+  int stepx = ((x2-x1)*256 + (yl/2)/*rounding*/) / yl;
+  short y;
+  int x = xh>>8;
+  if (x<-32768) x=-32768;
+  if (x>32767) x=32767;
+  for (y=y1;y<=y2;y++) {
+    int oldx = x;
+    xh += stepx;
+    x = xh>>8;
+    if (x<-32768) x=-32768;
+    if (x>32767) x=32767;
+    if (y>=0 && y<gfx->data.height) {
+      if (oldx<minx[y]) minx[y] = (short)oldx;
+      if (oldx>maxx[y]) maxx[y] = (short)oldx;
+      if (x<minx[y]) minx[y] = (short)x;
+      if (x>maxx[y]) maxx[y] = (short)x;
     }
-    int xh = x1*256;
-    int yl = y2-y1;
-    if (yl==0) yl=1;
-    int stepx = (x2-x1)*256 / yl;
-    short y;
-    for (y=y1;y<=y2;y++) {
-        int x = xh>>8;
-        if (x<-32768) x=-32768;
-        if (x>32767) x=32767;
-        if (y>=0 && y<gfx->data.height) {
-            if (x<minx[y]) {
-                minx[y] = (short)x;
-            }
-            if (x>maxx[y]) {
-                maxx[y] = (short)x;
-            }
-        }
-        xh += stepx;
-    }
+  }
 }
 
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
