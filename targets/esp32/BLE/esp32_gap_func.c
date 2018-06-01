@@ -268,7 +268,7 @@ void bluetooth_initDeviceName(){
 	char deviceName[14];
 	strcpy(deviceName,"ESP32.js 0123");
 	uint8_t macnr[6];
-	esp_wifi_get_mac(WIFI_IF_STA, macnr);
+	esp_efuse_mac_get_default(macnr);
 	deviceName[9] = itoch((macnr[4]>>4)&15);
 	deviceName[10] = itoch(macnr[4]&15);
 	deviceName[11] = itoch((macnr[5]>>4)&15);

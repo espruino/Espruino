@@ -27,6 +27,7 @@
 #include "BLE/esp32_gatts_func.h"
 #include "BLE/esp32_gattc_func.h"
 #include "BLE/esp32_bluetooth_utils.h"
+#include "jshardwareESP32.h"
 
 #define UNUSED(x) (void)(x)
  
@@ -37,14 +38,20 @@ volatile uint16_t m_central_conn_handle; /**< Handle of central mode connection 
 
 /** Initialise the BLE stack */
 void jsble_init(){
-	esp_err_t ret;  	
-	ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
-	if(ret) {jsWarn("mem release failed:%x\n",ret); return;}
+	esp_err_t ret;
+	if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)){
+		ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+		if(ret) {jsWarn("mem release failed:%x\n",ret); return;}
 	
-	if(initController()) return;
-	if(initBluedroid()) return;
-	if(registerCallbacks()) return;
-	setMtu();
+		if(initController()) return;
+		if(initBluedroid()) return;
+		if(registerCallbacks()) return;
+		setMtu();
+	}
+	else{
+		ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT); 
+		jsWarn("Bluetooth is disabled per ESP32.enableBLE(false)\n");		
+	}
 }
 /** Completely deinitialise the BLE stack */
 void jsble_kill(){
@@ -80,7 +87,6 @@ void jsble_restart_softdevice(){
 }
 
 void jsble_advertising_start(){
-//jsWarn("advertising start\n");
 	esp_err_t status;
 	if (bleStatus & BLE_IS_ADVERTISING) return;
 	status = bluetooth_gap_startAdvertizing(true);

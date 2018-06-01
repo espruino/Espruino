@@ -130,7 +130,8 @@ SOURCES+= targets/esp32/bluetooth.c \
 targets/esp32/BLE/esp32_bluetooth_utils.c \
 targets/esp32/BLE/esp32_gap_func.c \
 targets/esp32/BLE/esp32_gatts_func.c \
-targets/esp32/BLE/esp32_gattc_func.c 
+targets/esp32/BLE/esp32_gattc_func.c \
+targets/esp32/jshardwareESP32.c
 INCLUDE+= -I$(ESP_IDF_PATH)/components/bt/bluedroid/include \
 -I$(ESP_IDF_PATH)/components/bt/bluedroid/api/include \
 -I$(ESP_IDF_PATH)/components/bt/bluedroid/bta/include \

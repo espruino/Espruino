@@ -18,6 +18,7 @@
 #include "jsutils.h"
 #include "jsinteractive.h"
 #include "jsparse.h"
+#include "jsflash.h"
 
 #include "esp_system.h"
 #include "esp_sleep.h"
@@ -25,6 +26,7 @@
 #ifdef BLUETOOTH
 #include "BLE/esp32_bluetooth_utils.h"
 #endif
+#include "jshardwareESP32.h"
 
 #include "jsutils.h"
 #include "jsinteractive.h"
@@ -84,6 +86,8 @@ Returns an object that contains details about the state of the ESP32 with the fo
 
 * `sdkVersion`   - Version of the SDK.
 * `freeHeap`     - Amount of free heap in bytes.
+* `BLE`			 - Status of BLE, enabled if true.
+* `Wifi`		 - Status of Wifi, enabled if true.
 
 */
 JsVar *jswrap_ESP32_getState() {
@@ -92,6 +96,8 @@ JsVar *jswrap_ESP32_getState() {
   JsVar *esp32State = jsvNewObject();
   jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString(esp_get_idf_version()));
   jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(esp_get_free_heap_size()));
+  jsvObjectSetChildAndUnLock(esp32State, "BLE",          jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)));
+  jsvObjectSetChildAndUnLock(esp32State, "Wifi",         jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)));  
   return esp32State;
 } // End of jswrap_ESP32_getState
 
@@ -110,4 +116,40 @@ JsVar *jswrap_ESP32_getState() {
 void jswrap_ESP32_setBLE_Debug(int level){
 	ESP32_setBLE_Debug(level);
 }
+
+/*JSON{
+ "type"	: "staticmethod",
+ "class"	: "ESP32",
+ "name"		: "enableBLE",
+ "generate"	: "jswrap_ESP32_enableBLE",
+ "params"	: [
+   ["enable", "bool", "switches Bluetooth on or off" ]
+ ],
+ "ifdef"	: "BLUETOOTH" 
+}
+Switches Bluetooth off/on, removes saved code from Flash, resets the board, 
+and on restart creates jsVars depending on available heap (actual additional 1800)
+*/
+void jswrap_ESP32_enableBLE(bool enable){ //may be later, we will support BLEenable(ALL/SERVER/CLIENT)
+  ESP32_Set_NVS_Status(ESP_NETWORK_BLE,enable);
+  jsfRemoveCodeFromFlash();
+  esp_restart();
+}
 #endif
+/*JSON{
+ "type"	: "staticmethod",
+ "class"	: "ESP32",
+ "name"		: "enableWifi",
+ "generate"	: "jswrap_ESP32_enableWifi",
+ "params"	: [
+   ["enable", "bool", "switches Wifi on or off" ]
+ ] 
+}
+Switches Wifi off/on, removes saved code from Flash, resets the board, 
+and on restart creates jsVars depending on available heap (actual additional 3900)
+*/
+void jswrap_ESP32_enableWifi(bool enable){ //may be later, we will support BLEenable(ALL/SERVER/CLIENT)
+  ESP32_Set_NVS_Status(ESP_NETWORK_WIFI,enable);
+  jsfRemoveCodeFromFlash();
+  esp_restart();
+}

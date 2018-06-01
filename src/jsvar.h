@@ -183,6 +183,7 @@ typedef struct {
 #endif
 } PACKED_FLAGS JsVarDataRef;
 
+extern unsigned int jsVarsSize;  //size of jsVars for option malloc
 
 /// Union that contains all the different types of data
 typedef union {
