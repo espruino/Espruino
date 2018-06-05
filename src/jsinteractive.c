@@ -2230,19 +2230,20 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
     char childName[JSLEX_MAX_TOKEN_LENGTH];
     jsvGetString(child, childName, JSLEX_MAX_TOKEN_LENGTH);
 
+    bool shouldIgnore = false;
 #if defined(DUMP_IGNORE_VARIABLES)
     /* We may want to ignore some variables when dumping
      * so that we get a nice clean output. */
-    bool shouldIgnore = false;
     const char *v = DUMP_IGNORE_VARIABLES;
     while (*v) {
       if (strcmp(v,childName)==0) shouldIgnore=true;
       v += strlen(v)+1;
     }
-    if (shouldIgnore) break;
 #endif
 
-    if (jswIsBuiltInObject(childName)) {
+    if (shouldIgnore) {
+      // Do nothing
+    } else if (jswIsBuiltInObject(childName)) {
       jsiDumpObjectState(user_callback, user_data, child, data);
     } else if (jsvIsStringEqualOrStartsWith(child, JS_EVENT_PREFIX, true)) {
       // event on global object - skip it, as it'll be internal
