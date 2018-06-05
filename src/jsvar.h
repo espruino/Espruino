@@ -296,8 +296,8 @@ static ALWAYS_INLINE unsigned char jsvGetLocks(JsVar *v) { return (unsigned char
 // For debugging/testing ONLY - maximum # of vars we are allowed to use
 void jsvSetMaxVarsUsed(unsigned int size);
 
-// Init/kill vars as a whole
-void jsvInit();
+// Init/kill vars as a whole. If JSVAR_MALLOC is defined, a size can be specified (or 0 uses the old size)
+void jsvInit(unsigned int size);
 void jsvKill();
 void jsvSoftInit(); ///< called when loading from flash
 void jsvSoftKill(); ///< called when saving to flash

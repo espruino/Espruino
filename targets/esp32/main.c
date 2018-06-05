@@ -16,6 +16,7 @@
 #include "jshardwarePWM.h"
 #include "jshardwarePulse.h"
 #include "jshardwareSpi.h"
+#include "jshardwareESP32.h"
 #include "jswrap_wifi.h" // jswrap_wifi_restore
 
 #ifdef BLUETOOTH
@@ -26,6 +27,9 @@
 #include "esp_spi_flash.h"
 #include "spi_flash/include/esp_partition.h"
 #include "esp_log.h"
+
+#include "jsvar.h"
+
 
 extern void initialise_wifi(void);
 
@@ -38,13 +42,17 @@ static void uartTask(void *data) {
 }
 
 static void espruinoTask(void *data) {
+  int heapVars;
   PWMInit();
   RMTInit();
   SPIChannelsInit();
   initADC(1);
   jshInit();     // Initialize the hardware
-  jswrap_wifi_restore();
-  jsvInit();     // Initialize the variables
+  if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_wifi_restore();
+  heapVars = (esp_get_free_heap_size() - 40000) / 16;  //calculate space for jsVars
+  heapVars = heapVars - heapVars % 100; //round to 100
+  if(heapVars > 20000) heapVars = 20000;  //WROVER boards have much more RAM, so we set a limit
+  jsvInit(heapVars);     // Initialize the variables
   // not sure why this delay is needed?
   vTaskDelay(200 / portTICK_PERIOD_MS);
   jsiInit(true); // Initialize the interactive subsystem
