@@ -37,6 +37,7 @@
 #include "BLE/esp32_gattc_func.h"
 #include "BLE/esp32_gatts_func.h"
 #endif
+#include "jshardwareESP32.h"
 
 #include "jsutils.h"
 #include "jstimer.h"
@@ -82,6 +83,17 @@ static uint8_t g_pinState[JSH_PIN_COUNT];
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 
+static uint64_t DEVICE_INITIALISED_FLAGS = 0L;
+
+void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
+  uint64_t mask = 1ULL << (int)device;
+  if (isInit) {
+    DEVICE_INITIALISED_FLAGS |= mask;
+  } else {
+    DEVICE_INITIALISED_FLAGS &= ~mask;
+  }
+}
+
 /**
 * interrupt handler for gpio interrupts
 */
@@ -119,8 +131,10 @@ void jshPinSetStateRange( Pin start, Pin end, JshPinState state ) {
 void jshPinDefaultPullup() {
   // 6-11 are used by Flash chip
   // 32-33 are routed to rtc for xtal
+  // 16-17 are used for PSRAM (future use)
   jshPinSetStateRange(0,0,JSHPINSTATE_GPIO_IN_PULLUP);
-  jshPinSetStateRange(12,19,JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetStateRange(12,15,JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetStateRange(18,19,JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetStateRange(21,22,JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetStateRange(25,27,JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetStateRange(34,39,JSHPINSTATE_GPIO_IN_PULLUP);
@@ -131,9 +145,9 @@ void jshPinDefaultPullup() {
  * Initialize the JavaScript hardware interface.
  */
 void jshInit() {
-  esp32_wifi_init();
+  if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) esp32_wifi_init();
 #ifdef BLUETOOTH
-  gattc_init();
+  if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) gattc_init();
 #endif
   jshInitDevices();
   BITFIELD_CLEAR(jshPinSoftPWM);
@@ -162,7 +176,7 @@ void jshReset() {
   SPIReset();
   I2CReset();
 #ifdef BLUETOOTH
-  gatts_reset(false);
+  if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) gatts_reset(false);
 #endif
 }
 
@@ -170,7 +184,7 @@ void jshReset() {
  * Re-init the ESP32 after a soft-reset
  */
 void jshSoftInit() {
-  jswrap_esp32_wifi_soft_init();
+  if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_esp32_wifi_soft_init();
 }
 
 /**
@@ -185,7 +199,7 @@ void jshIdle() {
 // ESP32 chips don't have a serial number but they do have a MAC address
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
   assert(maxChars >= 6); // it's 32
-  esp_wifi_get_mac(WIFI_IF_STA, data);
+  esp_efuse_mac_get_default(data);
   return 6;
 }
 
@@ -617,7 +631,6 @@ void jshUtilTimerReschedule(JsSysTime period) {
 
 //===== Miscellaneous =====
 
-static uint64_t DEVICE_INITIALISED_FLAGS = 0L;
 bool jshIsDeviceInitialised(IOEventFlags device) {
   uint64_t mask = 1ULL << (int)device;
   return (DEVICE_INITIALISED_FLAGS & mask) != 0L;
@@ -627,14 +640,6 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 // return 0;
 } // End of jshIsDeviceInitialised
 
-void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
-  uint64_t mask = 1ULL << (int)device;
-  if (isInit) {
-    DEVICE_INITIALISED_FLAGS |= mask;
-  } else {
-    DEVICE_INITIALISED_FLAGS &= ~mask;
-  }
-}
 
 // the esp32 temperature sensor - undocumented library function call. Unsure of values returned.
 JsVarFloat jshReadTemperature() {

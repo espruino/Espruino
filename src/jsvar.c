@@ -42,8 +42,13 @@ unsigned int jsVarsSize = 0;
 #define JSVAR_BLOCK_SIZE 4096
 #define JSVAR_BLOCK_SHIFT 12
 #else
+#ifdef JSVAR_MALLOC
+unsigned int jsVarsSize = 0;
+JsVar *jsVars = NULL;
+#else
 JsVar jsVars[JSVAR_CACHE_SIZE];
 unsigned int jsVarsSize = JSVAR_CACHE_SIZE;
+#endif
 #endif
 
 typedef enum {
@@ -246,11 +251,17 @@ static JsVarRef jsvInitJsVars(JsVarRef start, unsigned int count) {
   return start;
 }
 
-void jsvInit() {
+void jsvInit(unsigned int size) {
 #ifdef RESIZABLE_JSVARS
+  assert(size==0);
   jsVarsSize = JSVAR_BLOCK_SIZE;
   jsVarBlocks = malloc(sizeof(JsVar*)); // just 1
   jsVarBlocks[0] = malloc(sizeof(JsVar) * JSVAR_BLOCK_SIZE);
+#elif defined(JSVAR_MALLOC)
+  if (size) jsVarsSize = size;
+  if(!jsVars) jsVars = (JsVar *)malloc(sizeof(JsVar) * jsVarsSize);
+#else
+  assert(size==0);
 #endif
 
   jsVarFirstEmpty = jsvInitJsVars(1/*first*/, jsVarsSize);

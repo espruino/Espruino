@@ -33,7 +33,7 @@ int main(void){
 #ifdef BTN1_PININDEX
   buttonState = jshPinInput(BTN1_PININDEX) == BTN1_ONSTATE;
 #endif
-  jsvInit();
+  jsvInit(0);
   jsiInit(!buttonState); // pressing USER button skips autoload
 
   while (1) {

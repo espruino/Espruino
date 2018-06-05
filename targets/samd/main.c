@@ -19,7 +19,7 @@
 int main() {
   jshInit();
   
-  jsvInit();
+  jsvInit(0);
 
   bool buttonState = false;
 

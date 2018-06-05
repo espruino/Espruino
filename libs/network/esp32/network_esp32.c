@@ -132,8 +132,8 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
       if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
         jsWarn("setsockopt(SO_REUSADDR) failed\n");
 #ifdef SO_REUSEPORT
-//    if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
-//      jsWarn("setsockopt(SO_REUSPORT) failed\n");
+    if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
+      jsWarn("setsockopt(SO_REUSPORT) failed\n");
 #endif
     }
 

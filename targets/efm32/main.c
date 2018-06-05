@@ -23,7 +23,7 @@ int main() {
 
   jshInit();
   
-  jsvInit();
+  jsvInit(0);
 
   bool buttonState = false;
   buttonState = jshPinInput(BTN1_PININDEX) == BTN1_ONSTATE;
