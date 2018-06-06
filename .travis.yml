@@ -7,8 +7,8 @@ before_script:
  - python --version
 
 after_script:
-  - "if [[ -n \"$UPLOADKEY\" ]]; then
-       ls *.bin *.hex *.tgz *.zip | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT&branch=$TRAVIS_BRANCH&key=$UPLOADKEY
+  - "if [[ -n \"$UPLOADTOKEN\" ]]; then
+       ls *.bin *.hex *.tgz *.zip | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT&branch=$TRAVIS_BRANCH&token=$UPLOADTOKEN
      fi"
   # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
   # in environment using travis' repository settings
