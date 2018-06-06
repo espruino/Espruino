@@ -1422,7 +1422,7 @@ JsVar *jspeTemplateLiteral() {
             jsvStringIteratorFree(&eit);
             JsVar *result = jspEvaluateExpressionVar(expr);
             jsvUnLock(expr);
-            result = jsvAsString(result, true);
+            result = jsvAsStringAndUnLock(result);
             jsvStringIteratorAppendString(&dit, result, 0);
             jsvUnLock(result);
           } else {
@@ -2006,7 +2006,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
             /* A special case for string += where this is the only use of the string
              * and we're not appending to ourselves. In this case we can do a
              * simple append (rather than clone + append)*/
-            JsVar *str = jsvAsString(rhs, false);
+            JsVar *str = jsvAsString(rhs);
             jsvAppendStringVarComplete(currentValue, str);
             jsvUnLock(str);
             op = 0;

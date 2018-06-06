@@ -75,8 +75,8 @@ static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, headerObject);
   while (jsvObjectIteratorHasValue(&it)) {
-    JsVar *k = jsvAsString(jsvObjectIteratorGetKey(&it), true);
-    JsVar *v = jsvAsString(jsvObjectIteratorGetValue(&it), true);
+    JsVar *k = jsvAsStringAndUnLock(jsvObjectIteratorGetKey(&it));
+    JsVar *v = jsvAsStringAndUnLock(jsvObjectIteratorGetValue(&it));
     jsvAppendStringVarComplete(string, k);
     jsvAppendString(string, ": ");
     jsvAppendStringVarComplete(string, v);
@@ -981,7 +981,7 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, Js
   // We have data and aren't out of memory...
   if (data && sendData) {
     // append the data to what we want to send
-    JsVar *s = jsvAsString(data, false);
+    JsVar *s = jsvAsString(data);
     if (s) {
       if (jsvGetBoolAndUnLock(jsvObjectGetChild(httpClientReqVar, HTTP_NAME_CHUNKED, 0))) {
         // If we asked to send 'chunked' data, we need to wrap it up,
@@ -1138,7 +1138,7 @@ void serverResponseWrite(JsVar *httpServerResponseVar, JsVar *data) {
   }
   // check, just in case!
   if (sendData && !jsvIsUndefined(data)) {
-    JsVar *s = jsvAsString(data, false);
+    JsVar *s = jsvAsString(data);
     if (s) {
       if (jsvGetBoolAndUnLock(jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_CHUNKED, 0))) {
         // If we asked to send 'chunked' data, we need to wrap it up,

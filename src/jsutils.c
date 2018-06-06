@@ -743,7 +743,7 @@ void vcbprintf(
       case 'v': {
         bool quoted = fmtChar=='q';
         if (quoted) user_callback("\"",user_data);
-        JsVar *v = jsvAsString(va_arg(argp, JsVar*), false/*no unlock*/);
+        JsVar *v = jsvAsString(va_arg(argp, JsVar*));
         buf[1] = 0;
         if (jsvIsString(v)) {
           JsvStringIterator it;

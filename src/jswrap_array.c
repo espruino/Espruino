@@ -129,7 +129,7 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
   if (jsvIsUndefined(filler))
     filler = jsvNewFromString(","); // the default it seems
   else
-    filler = jsvAsString(filler, false);
+    filler = jsvAsString(filler);
   if (!filler) return 0; // out of memory
   JsVar *str = jsvArrayJoin(parent, filler);
   jsvUnLock(filler);
@@ -616,8 +616,8 @@ NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *
     JsVar *args[2] = {a,b};
     return jsvGetIntegerAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
   } else {
-    JsVar *sa = jsvAsString(a, false);
-    JsVar *sb = jsvAsString(b, false);
+    JsVar *sa = jsvAsString(a);
+    JsVar *sb = jsvAsString(b);
     JsVarInt r = jsvCompareString(sa,sb, 0, 0, false);
     jsvUnLock2(sa, sb);
     return r;

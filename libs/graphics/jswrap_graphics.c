@@ -717,7 +717,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
   int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
   int startx = x;
-  JsVar *str = jsvAsString(var, false);
+  JsVar *str = jsvAsString(var);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
   while (jsvStringIteratorHasChar(&it)) {
@@ -812,7 +812,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   }
 
-  JsVar *str = jsvAsString(var, false);
+  JsVar *str = jsvAsString(var);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
   int width = 0;

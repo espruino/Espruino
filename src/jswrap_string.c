@@ -45,7 +45,7 @@ Create a new String
 JsVar *jswrap_string_constructor(JsVar *args) {
   if (jsvGetArrayLength(args)==0)
     return jsvNewFromEmptyString(); // no argument - return an empty string
-  return jsvAsString(jsvGetArrayItem(args, 0), true);
+  return jsvAsStringAndUnLock(jsvGetArrayItem(args, 0));
 }
 
 /*JSON{
@@ -163,7 +163,7 @@ Return the last index of substring in this string, or -1 if not found
 int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, bool lastIndexOf) {
   if (!jsvIsString(parent)) return 0;
   // slow, but simple!
-  substring = jsvAsString(substring, false);
+  substring = jsvAsString(substring);
   if (!substring) return 0; // out of memory
   int parentLength = (int)jsvGetStringLength(parent);
   int subStringLength = (int)jsvGetStringLength(substring);
@@ -250,7 +250,7 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
   }
 #endif
 
-  subStr = jsvAsString(subStr, false);
+  subStr = jsvAsString(subStr);
 
   int idx = jswrap_string_indexOf(parent, subStr, 0, false);
   if (idx>=0) {
@@ -283,7 +283,7 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
 Search and replace ONE occurrance of `subStr` with `newSubStr` and return the result. This doesn't alter the original string. Regular expressions not supported.
  */
 JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
-  JsVar *str = jsvAsString(parent, false);
+  JsVar *str = jsvAsString(parent);
 #ifndef SAVE_ON_FLASH
   // Use RegExp if one is passed in
   if (jsvIsInstanceOf(subStr, "RegExp")) {
@@ -291,7 +291,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
     if (jsvIsFunction(newSubStr) || jsvIsString(newSubStr))
       replace = jsvLockAgain(newSubStr);
     else
-      replace = jsvAsString(newSubStr, false);
+      replace = jsvAsString(newSubStr);
     jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
     bool global = jswrap_regexp_hasFlag(subStr,'g');
     JsVar *match;
@@ -315,7 +315,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
           args[argCount++] = v;
         args[argCount++] = jsvObjectGetChild(match,"index",0);
         args[argCount++] = jsvObjectGetChild(match,"input",0);
-        JsVar *result = jsvAsString(jspeFunctionCall(replace, 0, 0, false, (JsVarInt)argCount, args), true);
+        JsVar *result = jsvAsStringAndUnLock(jspeFunctionCall(replace, 0, 0, false, (JsVarInt)argCount, args));
         jsvUnLockMany(argCount, args);
         jsvStringIteratorAppendString(&dst, result, 0);
         jsvUnLock(result);
@@ -366,8 +366,8 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
   }
 #endif
 
-  newSubStr = jsvAsString(newSubStr, false);
-  subStr = jsvAsString(subStr, false);
+  newSubStr = jsvAsString(newSubStr);
+  subStr = jsvAsString(subStr);
 
 
   int idx = jswrap_string_indexOf(parent, subStr, 0, false);
@@ -510,7 +510,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   }
 #endif
 
-  split = jsvAsString(split, false);
+  split = jsvAsString(split);
 
   int idx, last = 0;
   int splitlen = jsvIsUndefined(split) ? 0 : (int)jsvGetStringLength(split);
@@ -558,7 +558,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
   JsVar *res = jsvNewFromEmptyString();
   if (!res) return 0; // out of memory
-  JsVar *parentStr = jsvAsString(parent, true);
+  JsVar *parentStr = jsvAsString(parent);
 
   JsvStringIterator itsrc, itdst;
   jsvStringIteratorNew(&itsrc, parentStr, 0);
@@ -590,7 +590,7 @@ Return a new string with any whitespace (tabs, space, form feed, newline,
 carriage return, etc) removed from the beginning and end.
  */
 JsVar *jswrap_string_trim(JsVar *parent) {
-  JsVar *s = jsvAsString(parent, false);
+  JsVar *s = jsvAsString(parent);
   if (!s) return s;
   unsigned int start = 0;
   int end = -1;

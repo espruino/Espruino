@@ -1079,7 +1079,7 @@ JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
       JsVar *val = jsvSkipName(key);
       JsVar *item = jsvNewObject();
       if (item) {
-        jsvObjectSetChildAndUnLock(item, "name", jsvAsString(key, false));
+        jsvObjectSetChildAndUnLock(item, "name", jsvAsString(key));
         jsvObjectSetChildAndUnLock(item, "size", jswrap_espruino_getSizeOf(key, 0));
         if (depth>1 && jsvHasChildren(val))
           jsvObjectSetChildAndUnLock(item, "more", jswrap_espruino_getSizeOf(val, depth-1));
@@ -1216,11 +1216,7 @@ JsVar *jswrap_espruino_lookupNoCase(JsVar *haystack, JsVar *needle, bool returnK
 
   if (returnKey) {
     JsVar *key = jsvFindChildFromStringI(haystack, needleBuf);
-    if (key) { // convert name to a string
-      JsVar *n = jsvCopyNameOnly(key,false,false);
-      jsvUnLock(key);
-      return n;
-    }
+    if (key) return jsvAsStringAndUnLock(key);
     return 0;
   } else return jsvObjectGetChildI(haystack, needleBuf);
 }
@@ -1366,7 +1362,7 @@ obtain it.
  */
 void jswrap_espruino_setPassword(JsVar *pwd) {
   if (pwd)
-    pwd = jsvAsString(pwd, false);
+    pwd = jsvAsString(pwd);
   jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, pwd));
 }
 

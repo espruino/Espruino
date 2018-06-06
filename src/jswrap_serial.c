@@ -332,7 +332,7 @@ void _jswrap_serial_print(JsVar *parent, JsVar *arg, bool isPrint, bool newLine)
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_USART(device)) return;
 
-  if (isPrint) arg = jsvAsString(arg, false);
+  if (isPrint) arg = jsvAsString(arg);
   jsvIterateCallback(arg, _jswrap_serial_print_cb, (void*)&device);
   if (isPrint) jsvUnLock(arg);
   if (newLine) {

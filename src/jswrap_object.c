@@ -129,7 +129,7 @@ JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
       return jsvNewFromString(buf);
     }
   }
-  return jsvAsString(parent, false);
+  return jsvAsString(parent);
 }
 
 /*JSON{

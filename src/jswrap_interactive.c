@@ -293,7 +293,7 @@ void jswrap_interface_edit(JsVar *funcName) {
          * foo.replaceWith(function() { ... });
          *
          */
-        JsVar *funcData = jsvAsString(func, false);
+        JsVar *funcData = jsvAsString(func);
 
         if (normalDecl) {
           jsvAppendString(newLine, "function ");

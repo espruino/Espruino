@@ -1247,7 +1247,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
     return len-l;
   } else {
     // Try and get as a JsVar string, and try again
-    JsVar *stringVar = jsvAsString((JsVar*)v, false); // we know we're casting to non-const here
+    JsVar *stringVar = jsvAsString((JsVar*)v); // we know we're casting to non-const here
     if (stringVar) {
       size_t l = jsvGetString(stringVar, str, len); // call again - but this time with converted var
       jsvUnLock(stringVar);
@@ -1298,7 +1298,7 @@ void jsvSetString(JsVar *v, const char *str, size_t len) {
 
 /** If var is a string, lock and return it, else
  * create a new string. unlockVar means this will auto-unlock 'var'  */
-JsVar *jsvAsString(JsVar *v, bool unlockVar) {
+JsVar *jsvAsString(JsVar *v) {
   JsVar *str = 0;
   // If it is string-ish, but not quite a string, copy it
   if (jsvHasCharacterData(v) && jsvIsName(v)) {
@@ -1311,7 +1311,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       // Function found and it's not the default one - execute it
       JsVar *result = jspExecuteFunction(toStringFn,v,0,0);
       jsvUnLock(toStringFn);
-      str = jsvAsString(result, true);
+      str = jsvAsStringAndUnLock(result);
     } else {
       jsvUnLock(toStringFn);
       str = jsvNewFromString("[object Object]");
@@ -1341,17 +1341,20 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       if (str) jsfGetJSON(v, str, JSON_NONE);
     } else {
       jsExceptionHere(JSET_INTERNALERROR, "Variable type cannot be converted to string");
-      str = 0;
     }
   }
-
-  if (unlockVar) jsvUnLock(v);
   return str;
+}
+
+JsVar *jsvAsStringAndUnLock(JsVar *var) {
+  JsVar *s = jsvAsString(var);
+  jsvUnLock(var);
+  return s;
 }
 
 JsVar *jsvAsFlatString(JsVar *var) {
   if (jsvIsFlatString(var)) return jsvLockAgain(var);
-  JsVar *str = jsvAsString(var, false);
+  JsVar *str = jsvAsString(var);
   size_t len = jsvGetStringLength(str);
   JsVar *flat = jsvNewFlatStringOfLength((unsigned int)len);
   if (flat) {
@@ -1387,7 +1390,7 @@ JsVar *jsvAsArrayIndex(JsVar *index) {
      as we only do this when accessing an array with a string */
     if (jsvIsStringNumericStrict(index)) {
       JsVar *i = jsvNewFromInteger(jsvGetInteger(index));
-      JsVar *is = jsvAsString(i, false);
+      JsVar *is = jsvAsString(i);
       if (jsvCompareString(index,is,0,0,false)==0) {
         // two items are identical - use the integer
         jsvUnLock(is);
@@ -1405,7 +1408,7 @@ JsVar *jsvAsArrayIndex(JsVar *index) {
   }
 
   // else if it's not a simple numeric type, convert it to a string
-  return jsvAsString(index, false);
+  return jsvAsString(index);
 }
 
 /** Same as jsvAsArrayIndex, but ensures that 'index' is unlocked */
@@ -3200,7 +3203,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
       if (value && !jsvIsNull(value)) {
-        JsVar *valueStr = jsvAsString(value, false);
+        JsVar *valueStr = jsvAsString(value);
         if (valueStr) { // could be out of memory
           jsvAppendStringVarComplete(str, valueStr);
           jsvUnLock(valueStr);
@@ -3386,8 +3389,8 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     default: return jsvMathsOpError(op, jsvIsArray(a)?"Array":"Object");
     }
   } else {
-    JsVar *da = jsvAsString(a, false);
-    JsVar *db = jsvAsString(b, false);
+    JsVar *da = jsvAsString(a);
+    JsVar *db = jsvAsString(b);
     if (!da || !db) { // out of memory
       jsvUnLock2(da, db);
       return 0;
@@ -3434,7 +3437,7 @@ JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignorePare
     JsVar *el = jsvIteratorGetValue(&it);
     if (el == element && root != ignoreParent) {
       // if we found it - send the key name back!
-      JsVar *name = jsvAsString(jsvIteratorGetKey(&it), true);
+      JsVar *name = jsvAsStringAndUnLock(jsvIteratorGetKey(&it));
       jsvIteratorFree(&it);
       return name;
     } else if (jsvIsObject(el) || jsvIsArray(el) || jsvIsFunction(el)) {

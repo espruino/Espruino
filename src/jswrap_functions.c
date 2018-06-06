@@ -83,7 +83,7 @@ JsVar *jswrap_function_constructor(JsVar *args) {
   JsVar *v = jsvObjectIteratorGetValue(&it);
   jsvObjectIteratorNext(&it);
   while (jsvObjectIteratorHasValue(&it)) {
-    JsVar *s = jsvAsString(v, false);
+    JsVar *s = jsvAsString(v);
     if (s) {
       // copy the string - if a string was supplied already we want to make
       // sure we have a new (unreferenced) string
@@ -119,7 +119,7 @@ Evaluate a string containing JavaScript code
  */
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
-  JsVar *s = jsvAsString(v, false); // get as a string
+  JsVar *s = jsvAsString(v); // get as a string
   JsVar *result = jspEvaluateVar(s, execInfo.thisVar, 0);
   jsvUnLock(s);
   return result;
@@ -372,7 +372,7 @@ JsVar *jswrap_atob(JsVar *base64Data) {
 Convert a string with any character not alphanumeric or `- _ . ! ~ * ' ( )` converted to the form `%XY` where `XY` is its hexadecimal representation
  */
 JsVar *jswrap_encodeURIComponent(JsVar *arg) {
-  JsVar *v = jsvAsString(arg, false);
+  JsVar *v = jsvAsString(arg);
   if (!v) return 0;
   JsVar *result = jsvNewFromEmptyString();
   if (result) {
@@ -421,7 +421,7 @@ JsVar *jswrap_encodeURIComponent(JsVar *arg) {
 Convert any groups of characters of the form '%ZZ', into characters with hex code '0xZZ'
  */
 JsVar *jswrap_decodeURIComponent(JsVar *arg) {
-  JsVar *v = jsvAsString(arg, false);
+  JsVar *v = jsvAsString(arg);
   if (!v) return 0;
   JsVar *result = jsvNewFromEmptyString();
   if (result) {
