@@ -2611,6 +2611,24 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFoun
   return child;
 }
 
+/// Find a child with a matching name using a case insensitive search
+JsVar *jsvFindChildFromStringI(JsVar *parent, const char *name) {
+  assert(jsvHasChildren(parent));
+  JsVarRef childref = jsvGetFirstChild(parent);
+  while (childref) {
+    // Don't Lock here, just use GetAddressOf - to try and speed up the finding
+    // TODO: We can do this now, but when/if we move to cacheing vars, it'll break
+    JsVar *child = jsvGetAddressOf(childref);
+    if (jsvHasCharacterData(child) &&
+        jsvIsStringEqualOrStartsWithOffset(child, name, false, 0, true)) {
+      // found it! unlock parent but leave child locked
+      return jsvLockAgain(child);
+    }
+    childref = jsvGetNextSibling(child);
+  }
+  return 0;
+}
+
 /// See jsvIsNewChild - for fields that don't exist yet
 JsVar *jsvCreateNewChild(JsVar *parent, JsVar *index, JsVar *child) {
   JsVar *newChild = jsvAsName(index);
@@ -2749,6 +2767,13 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
   }
   jsvUnLock(childName);
   return child;
+}
+
+/// Get the named child of an object using a case-insensitive search
+JsVar *jsvObjectGetChildI(JsVar *obj, const char *name) {
+  if (!obj) return 0;
+  assert(jsvHasChildren(obj));
+  return jsvSkipNameAndUnLock(jsvFindChildFromStringI(obj, name));
 }
 
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)

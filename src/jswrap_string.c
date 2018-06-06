@@ -558,9 +558,10 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
   JsVar *res = jsvNewFromEmptyString();
   if (!res) return 0; // out of memory
+  JsVar *parentStr = jsvAsString(parent, true);
 
   JsvStringIterator itsrc, itdst;
-  jsvStringIteratorNew(&itsrc, parent, 0);
+  jsvStringIteratorNew(&itsrc, parentStr, 0);
   jsvStringIteratorNew(&itdst, res, 0);
 
   while (jsvStringIteratorHasChar(&itsrc)) {
@@ -572,6 +573,7 @@ JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
 
   jsvStringIteratorFree(&itsrc);
   jsvStringIteratorFree(&itdst);
+  jsvUnLock(parentStr);
 
   return res;
 }

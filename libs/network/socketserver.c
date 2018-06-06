@@ -164,11 +164,11 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
     jsvStringIteratorFree(&it);
   // flag the req/response if Transfer-Encoding:chunked was set
   JsVarInt contentToReceive;
-  if (compareTransferEncodingAndUnlock(jsvObjectGetChild(vHeaders, "Transfer-Encoding", 0), "chunked")) {
+  if (compareTransferEncodingAndUnlock(jsvObjectGetChildI(vHeaders, "Transfer-Encoding"), "chunked")) {
     jsvObjectSetChildAndUnLock(objectForData, HTTP_NAME_CHUNKED, jsvNewFromBool(true));
     contentToReceive = 1;
   } else {
-    contentToReceive = jsvGetIntegerAndUnLock(jsvObjectGetChild(vHeaders,"Content-Length",0));
+    contentToReceive = jsvGetIntegerAndUnLock(jsvObjectGetChildI(vHeaders,"Content-Length"));
   }
   jsvObjectSetChildAndUnLock(objectForData, HTTP_NAME_RECEIVE_COUNT, jsvNewFromInteger(contentToReceive));
   jsvUnLock(vHeaders);
@@ -950,7 +950,7 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, Js
       JsVar *headers = jsvObjectGetChild(options, "headers", 0);
       bool hasHostHeader = false;
       if (jsvIsObject(headers)) {
-        JsVar *hostHeader = jsvObjectGetChild(headers, "Host", 0);
+        JsVar *hostHeader = jsvObjectGetChildI(headers, "Host");
         hasHostHeader = hostHeader!=0;
         jsvUnLock(hostHeader);
         httpAppendHeaders(sendData, headers);
@@ -1018,7 +1018,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
 
   SocketType socketType = socketGetType(httpClientReqVar);
 
-  JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
+  JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, 0);
   unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", 0));
 
   uint32_t host_addr = 0;
@@ -1112,7 +1112,7 @@ void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar
   if (headers) {
     httpAppendHeaders(sendData, headers);
     // if Transfer-Encoding:chunked was set, subsequent writes need to 'chunk' the data that is sent
-    if (compareTransferEncodingAndUnlock(jsvObjectGetChild(headers, "Transfer-Encoding", 0), "chunked")) {
+    if (compareTransferEncodingAndUnlock(jsvObjectGetChildI(headers, "Transfer-Encoding"), "chunked")) {
       jsvObjectSetChildAndUnLock(httpServerResponseVar, HTTP_NAME_CHUNKED, jsvNewFromBool(true));
     }
   }

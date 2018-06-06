@@ -643,7 +643,8 @@ JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a
 JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. Returns a LOCKED name var. CHECKS FOR DUPLICATES
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild. Returns the UNLOCKED name argument
 JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
-JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+JsVar *jsvFindChildFromStringI(JsVar *parent, const char *name); ///< Find a child with a matching name using a case insensitive search
+JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound); ///< Non-recursive finding of child with name. Returns a LOCKED var
 
 /// Remove a child - note that the child MUST ACTUALLY BE A CHILD! and should be a name, not a value.
 void jsvRemoveChild(JsVar *parent, JsVar *child);
@@ -651,6 +652,8 @@ void jsvRemoveAllChildren(JsVar *parent);
 
 /// Get the named child of an object. If createChild!=0 then create the child
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
+/// Get the named child of an object using a case-insensitive search
+JsVar *jsvObjectGetChildI(JsVar *obj, const char *name);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)

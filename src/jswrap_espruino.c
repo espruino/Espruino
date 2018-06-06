@@ -1195,6 +1195,38 @@ void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bit
 
 /*JSON{
   "type" : "staticmethod",
+  "class" : "E",
+  "name" : "lookupNoCase",
+  "generate" : "jswrap_espruino_lookupNoCase",
+  "params" : [
+    ["haystack","JsVar","The Array/Object/Function to search"],
+    ["needle","JsVar","The key to search for"],
+    ["returnKey","bool","If true, return the key, else return the value itself"]
+  ],
+  "return" : ["JsVar","The value in the Object matching 'needle', or if `returnKey==true` the key's name - or undefined"]
+}
+Search in an Object, Array, or Function
+ */
+JsVar *jswrap_espruino_lookupNoCase(JsVar *haystack, JsVar *needle, bool returnKey) {
+  if (!jsvHasChildren(haystack)) return 0;
+  char needleBuf[64];
+  if (jsvGetString(needle, needleBuf, sizeof(needleBuf))==sizeof(needleBuf)) {
+    jsExceptionHere(JSET_ERROR, "Search string is too long (>=%d chars)", sizeof(needleBuf));
+  }
+
+  if (returnKey) {
+    JsVar *key = jsvFindChildFromStringI(haystack, needleBuf);
+    if (key) { // convert name to a string
+      JsVar *n = jsvCopyNameOnly(key,false,false);
+      jsvUnLock(key);
+      return n;
+    }
+    return 0;
+  } else return jsvObjectGetChildI(haystack, needleBuf);
+}
+
+/*JSON{
+  "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "dumpStr",

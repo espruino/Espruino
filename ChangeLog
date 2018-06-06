@@ -13,6 +13,8 @@
             Switch to non-recursive StringExt copy (fix #1451)
             Fix rounding errors in fillPoly -> improve vector font rendering
             Fix issue that caused 'dump()' not to report variables/functions on Pixl.js
+            Add E.lookupNoCase to allow searching case-insensitively for Object keys
+            Fix HTTP Chunked transfers when the server uses lowercase headers (fix #1458)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
