@@ -47,6 +47,7 @@ void jsble_init(){
 		if(initBluedroid()) return;
 		if(registerCallbacks()) return;
 		setMtu();
+		gap_init_security();
 	}
 	else{
 		ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT); 
@@ -99,19 +100,26 @@ void jsble_advertising_stop(){
 }
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection(){
-	jsWarn("has connected not implemented yet\n");
-	return false;
+#if CENTRAL_LINK_COUNT>0
+  return (m_central_conn_handle != BLE_GATT_HANDLE_INVALID) ||
+         (m_conn_handle != BLE_GATT_HANDLE_INVALID);
+#else
+  return m_conn_handle != BLE_GATT_HANDLE_INVALID;
+#endif
 }
 
 /** Is BLE connected to a central device at all? */
 bool jsble_has_central_connection(){
-	jsWarn("has central connection not implemented yet\n");
-	return false;
+#if CENTRAL_LINK_COUNT>0
+  return (m_central_conn_handle != BLE_GATT_HANDLE_INVALID);
+#else
+  return false;
+#endif
 }
+
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
 bool jsble_has_simple_connection(){
-	jsWarn("has simple connection not implemented yet\n");
-	return false;
+  return (m_conn_handle != BLE_GATT_HANDLE_INVALID);
 }
 
 /// Checks for error and reports an exception if there was one. Return true on error

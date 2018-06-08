@@ -15,14 +15,14 @@
 #define GAP_FUNC_H_
 
 #include "esp_gap_ble_api.h"
-
 #include "jsvar.h"
 
 #define BLE_DEVICE_NAME "BLE_DEV_N"
 
 void bluetooth_gap_setScan(bool enabled);
 
-//esp_err_t bluetooth_setDeviceName(uint8_t *deviceName);
+void gap_init_security();
+
 esp_err_t bluetooth_setDeviceName(JsVar *deviceName);
 void bluetooth_initDeviceName();
 
