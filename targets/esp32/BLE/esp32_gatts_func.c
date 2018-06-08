@@ -28,6 +28,7 @@
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jstimer.h"
 
 ble_uuid_t uart_service_uuid = {
 	.type = BLE_UUID_TYPE_128,
@@ -64,16 +65,37 @@ esp_gatt_if_t uart_gatts_if;
 uint16_t uart_tx_handle;
 bool uart_gatts_connected = false;
 
-uint8_t *getUartAdvice(){
-	return uart_advice;
+#define notifBufferSize BLE_NUS_MAX_DATA_LEN
+uint8_t notifBuffer[notifBufferSize];
+uint8_t notifBufferPnt = 0;
+bool inNotif = false;
+
+void sendNotifBuffer(){
+	if(uart_gatts_if != ESP_GATT_IF_NONE){
+		esp_ble_gatts_send_indicate(uart_gatts_if,0,uart_tx_handle,notifBufferPnt,notifBuffer,false);
+	}
+	notifBufferPnt = 0;
+}
+void notifTimerCB(){
+	if(notifBufferPnt > 0) sendNotifBuffer();
+	jstStopExecuteFn(notifTimerCB,NULL);
+	inNotif = false;
+}
+void startNotifTimer(){
+	inNotif = true;
+	JsSysTime period = jshGetTimeFromMilliseconds(10);
+	JsSysTime time = jshGetSystemTime();
+	jstExecuteFn(notifTimerCB, NULL, time + period, period);
 }
 void gatts_sendNotification(int c){
-	uint8_t data[2];
-	data[0] = (uint8_t)c;
-	data[1] = 0;
-	if(uart_gatts_if != ESP_GATT_IF_NONE){
-		esp_ble_gatts_send_indicate(uart_gatts_if, 0, uart_tx_handle, 1, data, false);	
-	}
+	notifBuffer[notifBufferPnt] = (uint8_t)c;
+	notifBufferPnt++;
+	if(notifBufferPnt >= notifBufferSize) sendNotifBuffer();
+	if(!inNotif) startNotifTimer();
+}
+
+uint8_t *getUartAdvice(){
+	return uart_advice;
 }
 
 void emitNRFEvent(char *event,JsVar *args,int argCnt){
