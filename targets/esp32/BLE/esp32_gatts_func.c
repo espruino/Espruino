@@ -170,8 +170,18 @@ static void gatts_write_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t 
 			bleGetHiddenName(hiddenName,BLE_WRITE_EVENT,pos);
 			JsVar *writeCB = jsvObjectGetChild(execInfo.hiddenRoot,hiddenName,0);
 			if(writeCB){
-				JsVar *tmp = jspExecuteFunction(writeCB,0,0,0);
+				JsVar *evt = jsvNewObject();
+				if (evt) {
+					JsVar *str = jsvNewStringOfLength(param->write.len, (char*)param->write.value);
+					if (str) {
+						JsVar *ab = jsvNewArrayBufferFromString(str, param->write.len);
+						jsvUnLock(str);
+						jsvObjectSetChildAndUnLock(evt, "data", ab);
+					}
+				}
+				JsVar *tmp = jspExecuteFunction(writeCB,0,1,&evt);
 				if(tmp) jsvUnLock(tmp);
+				if(evt) jsvUnLock(evt);
 			}
 			break;
 		}
