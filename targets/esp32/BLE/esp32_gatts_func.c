@@ -394,6 +394,7 @@ void add_ble_uart(){
 	gatts_descr[ble_descr_pos].char_pos = ble_char_pos;
 	gatts_descr[ble_descr_pos].descr_uuid = uart_tx_descr;
 	gatts_descr[ble_descr_pos].descr_handle = 0;
+	gatts_descr[ble_descr_pos].descr_perm = ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE;
 	handles +=2;
 	gatts_service[ble_service_pos].gatts_if = ESP_GATT_IF_NONE;
 	gatts_service[ble_service_pos].num_handles = handles;
