@@ -25,6 +25,8 @@
 bool serial2_initialized = false;
 bool serial3_initialized = false;
 
+void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
+
 void initUart(int uart_num,uart_config_t uart_config,int txpin,int rxpin){
   int r;
   r = uart_param_config(uart_num, &uart_config);   //Configure UART1 parameters
@@ -82,6 +84,7 @@ void initConsole(){
     .rx_flow_ctrl_thresh = 122,
   }; 
   initUart(uart_console,uart_config,-1,-1);  
+  jshSetDeviceInitialised(EV_SERIAL1,true);  
 }
 
 uint8_t rxbuf[256];
