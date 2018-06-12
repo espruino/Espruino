@@ -195,7 +195,7 @@ int jsble_exec_pending(IOEvent *event) {
   // if we got event data, unpack it first into a buffer
   unsigned char buffer[64];
   assert(sizeof(buffer) >= sizeof(ble_gap_evt_adv_report_t));
-  assert(sizeof(buffer) >= GATT_MTU_SIZE_DEFAULT);
+  assert(sizeof(buffer) >= NRF_BLE_MAX_MTU_SIZE);
   size_t bufferLen = 0;
   while (IOEVENTFLAGS_GETTYPE(event->flags) == EV_BLUETOOTH_PENDING_DATA) {
     int i, chars = IOEVENTFLAGS_GETCHARS(event->flags);

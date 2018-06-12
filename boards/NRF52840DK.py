@@ -39,6 +39,7 @@ info = {
    'makefile' : [
      'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DBOARD_PCA10056',
+     'DEFINES += -DNRF_USB=1 -DUSB',
      'NRF_SDK14=1'
    ]
  }

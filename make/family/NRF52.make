@@ -45,6 +45,19 @@ ifeq ($(CHIP),NRF52840)
 DEFINES += -DNRF52 -DNRF52840_XXAA
 LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52840_ble_espruino.ld
 INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/usbd
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/power
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/systick
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_core.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_string_desc.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm/app_usbd_cdc_acm.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/usbd/nrf_drv_usbd.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/power/nrf_drv_power.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/systick/nrf_drv_systick.c
 else # NRF52832
 DEFINES += -DNRF52 -DNRF52832_XXAA -DNRF52_PAN_74 
 
