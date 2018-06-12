@@ -1284,7 +1284,7 @@
 
 // <o> RNG_CONFIG_POOL_SIZE - Pool size
 #ifndef RNG_CONFIG_POOL_SIZE
-#define RNG_CONFIG_POOL_SIZE 64
+#define RNG_CONFIG_POOL_SIZE 32
 #endif
 
 // <o> RNG_CONFIG_IRQ_PRIORITY  - Interrupt priority

@@ -1035,6 +1035,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           }
 #endif
 #if (NRF_SD_BLE_API_VERSION >= 5)
+#ifndef S140
           case BLE_GAP_EVT_PHY_UPDATE_REQUEST: {
             /* The PHYs requested by the peer can be read from the event parameters:
             p_ble_evt->evt.gap_evt.params.phy_update_request.peer_preferred_phys.
@@ -1044,6 +1045,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             sd_ble_gap_phy_update(p_ble_evt->evt.gap_evt.conn_handle, &phys);
             break;
           }
+#endif
           case BLE_GAP_EVT_PHY_UPDATE: {
             if (p_ble_evt->evt.gap_evt.params.phy_update.status == BLE_HCI_STATUS_CODE_SUCCESS) {
               /* PHY Update Procedure completed, see
