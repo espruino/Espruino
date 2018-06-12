@@ -829,7 +829,7 @@ int espruino_snprintf( char * s, size_t n, const char * fmt, ... ) {
 }
 
 #ifdef ARM
-extern int LINKER_END_VAR; // should be 'void', but 'int' avoids warnings
+extern uint32_t LINKER_END_VAR; // should be 'void', but 'int' avoids warnings
 #endif
 
 /** get the amount of free stack we have, in bytes */

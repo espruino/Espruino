@@ -780,7 +780,16 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   if (bleChanged && isAdvertising)
     jsble_advertising_stop();
 #ifdef NRF5X
+  #if NRF_SD_BLE_API_VERSION>5
+  ble_gap_adv_data_t d;
+  memset(&d,0,sizeof(d));
+  d.adv_data.p_data = dPtr;
+  d.adv_data.len = dLen;
+  // TODO: scan_rsp_data? Does not setting this remove it?
+//FIXME  err_code = sd_ble_gap_adv_set_configure(mp_adv_handle, &d, NULL);
+  #else
   err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
+  #endif
 #else
   err_code = 0xDEAD;
   jsiConsolePrintf("FIXME\n");
@@ -940,7 +949,7 @@ void jswrap_nrf_bluetooth_setScanResponse(JsVar *data) {
       return;
     }
 #ifdef NRF5X
-    err_code = sd_ble_gap_adv_data_set(NULL, 0, (uint8_t *)dPtr, dLen);
+//FIXME    err_code = sd_ble_gap_adv_data_set(NULL, 0, (uint8_t *)dPtr, dLen);
 #else
     err_code = 0xDEAD;
     jsiConsolePrintf("FIXME\n");
@@ -1631,7 +1640,12 @@ Set the BLE radio transmit power. The default TX power is 0 dBm.
 void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
   uint32_t              err_code;
 #ifdef NRF5X
+#if NRF_SD_BLE_API_VERSION > 5
+  // TODO: what about BLE_GAP_TX_POWER_ROLE_ADV and BLE_GAP_TX_POWER_ROLE_CONN
+  err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_SCAN_INIT, 0/*ignored*/, pwr);
+#else
   err_code = sd_ble_gap_tx_power_set(pwr);
+#endif
 #else
   err_code = 0xDEAD;
   jsiConsolePrintf("FIXME\n");

@@ -121,6 +121,7 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #define HID_INPUT_REPORT_KEYS_INDEX          0                                           /**< Index of Input Report. */
 #define HID_INPUT_REP_REF_ID                 0                                           /**< Id of reference to Keyboard Input Report. */
 #define HID_OUTPUT_REP_REF_ID                0                                           /**< Id of reference to Keyboard Output Report. */
+#define HID_INPUT_REPORT_KEYS_MAX_LEN        8
 
 #define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2        /**< Reply when unsupported features are requested. */
 
@@ -131,17 +132,28 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 
 #if NRF_SD_BLE_API_VERSION < 5
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
-#else
+#elif NRF_SD_BLE_API_VERSION < 6
 BLE_NUS_DEF(m_nus);                                                                 /**< Structure to identify the Nordic UART Service. */
+#else
+BLE_NUS_DEF(m_nus,NRF_SDH_BLE_TOTAL_LINK_COUNT);                                    /**< Structure to identify the Nordic UART Service. */
 #endif
 
 #if BLE_HIDS_ENABLED
 #if NRF_SD_BLE_API_VERSION < 5
 static ble_hids_t                       m_hids;                                   /**< Structure used to identify the HID service. */
-#else
+#elif NRF_SD_BLE_API_VERSION < 6
 BLE_HIDS_DEF(m_hids);
+#else
+BLE_HIDS_DEF(m_hids,
+             NRF_SDH_BLE_TOTAL_LINK_COUNT,
+             HID_INPUT_REPORT_KEYS_MAX_LEN,
+             HID_OUTPUT_REPORT_MAX_LEN);
 #endif
 static bool                             m_in_boot_mode = false;
+#endif
+
+#if NRF_SD_BLE_API_VERSION > 5
+static uint8_t  *mp_adv_handle;                                                   //!< Pointer to the advertising handle.
 #endif
 
 volatile uint16_t                       m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
@@ -195,7 +207,7 @@ int jsble_exec_pending(IOEvent *event) {
   // if we got event data, unpack it first into a buffer
   unsigned char buffer[64];
   assert(sizeof(buffer) >= sizeof(ble_gap_evt_adv_report_t));
-  assert(sizeof(buffer) >= GATT_MTU_SIZE_DEFAULT);
+  assert(sizeof(buffer) >= NRF_BLE_MAX_MTU_SIZE);
   size_t bufferLen = 0;
   while (IOEVENTFLAGS_GETTYPE(event->flags) == EV_BLUETOOTH_PENDING_DATA) {
     int i, chars = IOEVENTFLAGS_GETCHARS(event->flags);
@@ -244,9 +256,16 @@ int jsble_exec_pending(IOEvent *event) {
        jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
        //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
        jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
-       JsVar *data = jsvNewStringOfLength(p_adv->dlen, (char*)p_adv->data);
+#if NRF_SD_BLE_API_VERSION<6
+       int dataLen = p_adv->dlen;
+       char *dataPtr = (char*)p_adv->data;
+#else
+       int dataLen = p_adv->data.len;
+       char *dataPtr = (char*)p_adv->data.p_data;
+#endif
+       JsVar *data = jsvNewStringOfLength(dataLen, dataPtr);
        if (data) {
-         JsVar *ab = jsvNewArrayBufferFromString(data, p_adv->dlen);
+         JsVar *ab = jsvNewArrayBufferFromString(data, dataLen);
          jsvUnLock(data);
          jsvObjectSetChildAndUnLock(evt, "data", ab);
        }
@@ -719,7 +738,7 @@ bool nus_transmit_string() {
   }
   if (bleStatus & BLE_IS_SENDING) return false;
   static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
-  int idx = 0;
+  static uint16_t idx = 0;
   int ch = jshGetCharToTransmit(EV_BLUETOOTH);
   while (ch>=0) {
     buf[idx++] = ch;
@@ -727,7 +746,9 @@ bool nus_transmit_string() {
     ch = jshGetCharToTransmit(EV_BLUETOOTH);
   }
   if (idx>0) {
-#if NRF_SD_BLE_API_VERSION<5
+#if NRF_SD_BLE_API_VERSION>5
+    uint32_t err_code = ble_nus_data_send(&m_nus, buf, &idx, m_conn_handle);
+#elif NRF_SD_BLE_API_VERSION<5
     uint32_t err_code = ble_nus_string_send(&m_nus, buf, idx);
 #else
     uint16_t len = idx;
@@ -755,7 +776,17 @@ void SWI1_IRQHandler(bool radio_evt) {
       bleStatus = (bleStatus&~BLE_ADVERTISING_MULTIPLE_MASK) | (idx<<BLE_ADVERTISING_MULTIPLE_SHIFT);
       JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
       if (dPtr && dLen) {
-        uint32_t err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
+        uint32_t err_code;
+        #if NRF_SD_BLE_API_VERSION>5
+        ble_gap_adv_data_t d;
+        memset(&d,0,sizeof(d));
+        d.adv_data.p_data = (char*)dPtr;
+        d.adv_data.len = dLen;
+        // TODO: scan_rsp_data? Does not setting this remove it?
+        err_code = sd_ble_gap_adv_set_configure(mp_adv_handle, &d, NULL);
+        #else
+        err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
+        #endif
         if (err_code)
           ok = false; // error setting BLE - disable
       } else {
@@ -1284,7 +1315,7 @@ static void fds_evt_handler(fds_evt_t const * const p_evt)
 {
     if (p_evt->id == FDS_EVT_GC)
     {
-        NRF_LOG_DEBUG("GC completed\n");
+        //NRF_LOG_DEBUG("GC completed\n");
     }
 }
 
@@ -1297,7 +1328,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
     {
         case PM_EVT_BONDED_PEER_CONNECTED:
         {
-            NRF_LOG_DEBUG("Connected to previously bonded device\r\n");
+            //NRF_LOG_DEBUG("Connected to previously bonded device\r\n");
             m_peer_id = p_evt->peer_id;
             err_code  = pm_peer_rank_highest(p_evt->peer_id);
             if (err_code != NRF_ERROR_BUSY)
@@ -1313,23 +1344,28 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_CONN_SEC_SUCCEEDED:
         {
-            NRF_LOG_DEBUG("Link secured. Role: %d. conn_handle: %d, Procedure: %d\r\n",
-                                 -1/*ble_conn_state_role(p_evt->conn_handle)*/,
+            /*NRF_LOG_DEBUG("Link secured. Role: %d. conn_handle: %d, Procedure: %d\r\n",
+                                 -1, // ble_conn_state_role(p_evt->conn_handle)
                                  p_evt->conn_handle,
-                                 p_evt->params.conn_sec_succeeded.procedure);
+                                 p_evt->params.conn_sec_succeeded.procedure);*/
             m_peer_id = p_evt->peer_id;
             err_code  = pm_peer_rank_highest(p_evt->peer_id);
             if (err_code != NRF_ERROR_BUSY)
             {
                 APP_ERROR_CHECK(err_code);
             }
-            if (p_evt->params.conn_sec_succeeded.procedure == PM_LINK_SECURED_PROCEDURE_BONDING &&
+            if (
+#if NRF_SD_BLE_API_VERSION>5
+                p_evt->params.conn_sec_succeeded.procedure == PM_CONN_SEC_PROCEDURE_ENCRYPTION &&
+#else
+                p_evt->params.conn_sec_succeeded.procedure == PM_LINK_SECURED_PROCEDURE_BONDING &&
+#endif
                 bleStatus & BLE_WHITELIST_ON_BOND)
             {
-                NRF_LOG_DEBUG("New Bond, add the peer to the whitelist if possible\r\n");
+                /*NRF_LOG_DEBUG("New Bond, add the peer to the whitelist if possible\r\n");
                 NRF_LOG_DEBUG("\tm_whitelist_peer_cnt %d, MAX_PEERS_WLIST %d\r\n",
                                m_whitelist_peer_cnt + 1,
-                               BLE_GAP_WHITELIST_ADDR_MAX_COUNT);
+                               BLE_GAP_WHITELIST_ADDR_MAX_COUNT);*/
                 if (m_whitelist_peer_cnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT)
                 {
                     //bonded to a new peer, add it to the whitelist.
@@ -1468,6 +1504,9 @@ static void on_hid_rep_char_write(ble_hids_evt_t * p_evt) {
                                              report_index,
                                              HID_OUTPUT_REPORT_MAX_LEN,
                                              0,
+#if NRF_SD_BLE_API_VERSION>5
+                                             m_conn_handle,
+#endif
                                              &report_val);
             APP_ERROR_CHECK(err_code);
             // (report_val & 2) is caps lock
@@ -1959,7 +1998,26 @@ static void advertising_init() {
     scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
     scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
 
-    ble_advdata_set(&advdata, &scanrsp);
+    uint32_t err_code;
+#if NRF_SD_BLE_API_VERSION>5
+    uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
+    uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
+    ble_gap_adv_data_t d;
+    d.adv_data.p_data = m_enc_advdata;
+    d.adv_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
+    d.scan_rsp_data.p_data = m_enc_scan_response_data;
+    d.scan_rsp_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
+    err_code = ble_advdata_encode(&advdata, d.adv_data.p_data, &d.adv_data.len);
+    if (jsble_check_error(err_code)) return;
+    err_code = ble_advdata_encode(&scanrsp, d.scan_rsp_data.p_data, &d.scan_rsp_data.len);
+    if (jsble_check_error(err_code)) return;
+
+    err_code = sd_ble_gap_adv_set_configure(mp_adv_handle, &d, NULL);
+    if (jsble_check_error(err_code)) return;
+#else
+    err_code = ble_advdata_set(&advdata, &scanrsp);
+    if (jsble_check_error(err_code)) return;
+#endif
 }
 
 // -----------------------------------------------------------------------------------
@@ -1969,13 +2027,27 @@ void jsble_advertising_start() {
   if (bleStatus & BLE_IS_ADVERTISING) return;
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
-  adv_params.type        = (bleStatus & BLE_IS_NOT_CONNECTABLE) ? BLE_GAP_ADV_TYPE_ADV_NONCONN_IND : BLE_GAP_ADV_TYPE_ADV_IND;
-  adv_params.p_peer_addr = NULL;
+  bool non_connectable = bleStatus & BLE_IS_NOT_CONNECTABLE;
+#if NRF_SD_BLE_API_VERSION>5
+  adv_params.properties.type = non_connectable
+                                    ? BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED
+                                    : BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
+  adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
+  adv_params.duration  = BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED;
+#else
+  adv_params.type        = non_connectable ? BLE_GAP_ADV_TYPE_ADV_NONCONN_IND : BLE_GAP_ADV_TYPE_ADV_IND;
   adv_params.fp          = BLE_GAP_ADV_FP_ANY;
   adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
+#endif
+  adv_params.p_peer_addr = NULL;
   adv_params.interval = bleAdvertisingInterval;
 
-#if NRF_SD_BLE_API_VERSION<5
+  uint32_t err_code;
+#if NRF_SD_BLE_API_VERSION>5
+  err_code = sd_ble_gap_adv_set_configure(mp_adv_handle, 0, &adv_params);
+  APP_ERROR_CHECK(err_code);
+  sd_ble_gap_adv_start(*mp_adv_handle, APP_BLE_CONN_CFG_TAG);
+#elif NRF_SD_BLE_API_VERSION<5
   sd_ble_gap_adv_start(&adv_params);
 #else
   sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
@@ -1985,7 +2057,7 @@ void jsble_advertising_start() {
 
 void jsble_advertising_stop() {
   if (!(bleStatus & BLE_IS_ADVERTISING)) return;
-  sd_ble_gap_adv_stop();
+  sd_ble_gap_adv_stop(*mp_adv_handle);
   bleStatus &= ~BLE_IS_ADVERTISING;
 }
 
@@ -2051,14 +2123,25 @@ uint32_t jsble_set_scanning(bool enabled) {
   if (enabled) {
      if (bleStatus & BLE_IS_SCANNING) return 0;
      bleStatus |= BLE_IS_SCANNING;
+#if NRF_SD_BLE_API_VERSION>5
      ble_gap_scan_params_t     m_scan_param;
+     static uint8_t m_scan_buffer_data[BLE_GAP_SCAN_BUFFER_EXTENDED_MIN]; /**< buffer where advertising reports will be stored by the SoftDevice. */
+     static ble_data_t m_scan_buffer = {
+         m_scan_buffer_data,
+         BLE_GAP_SCAN_BUFFER_EXTENDED_MIN
+     };
+#endif
      // non-selective scan
      m_scan_param.active       = 0;            // Active scanning set.
      m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
      m_scan_param.window       = SCAN_WINDOW;  // Scan window.
      m_scan_param.timeout      = 0x0000;       // No timeout.
 
-     err_code = sd_ble_gap_scan_start(&m_scan_param);
+     err_code = sd_ble_gap_scan_start(&m_scan_param
+#if NRF_SD_BLE_API_VERSION>5
+         , &m_scan_buffer
+#endif
+         );
    } else {
      if (!(bleStatus & BLE_IS_SCANNING)) return 0;
      bleStatus &= ~BLE_IS_SCANNING;
@@ -2263,11 +2346,19 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
       err_code = ble_hids_inp_rep_send(&m_hids,
                                        HID_INPUT_REPORT_KEYS_INDEX,
                                        length,
-                                       data);
+                                       data
+#if NRF_SD_BLE_API_VERSION>5
+                                       ,m_conn_handle
+#endif
+                                       );
   } else {
       err_code = ble_hids_boot_kb_inp_rep_send(&m_hids,
                                                length,
-                                               data);
+                                               data
+#if NRF_SD_BLE_API_VERSION>5
+                                       ,m_conn_handle
+#endif
+                                               );
   }
   if (!jsble_check_error(err_code))
     bleStatus |= BLE_IS_SENDING_HID;

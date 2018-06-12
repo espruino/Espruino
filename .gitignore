@@ -40,8 +40,17 @@ gcc-arm-none-eabi*
 targetlibs/nrf5x_12/examples
 targetlibs/nrf5x_12/documentation/
 targetlibs/nrf5x_14
+targetlibs/nrf5x_15/components
+targetlibs/nrf5x_15/config
+targetlibs/nrf5x_15/example_config
+targetlibs/nrf5x_15/examples
+targetlibs/nrf5x_15/external
+targetlibs/nrf5x_15/external_tools
+targetlibs/nrf5x_15/integration
+targetlibs/nrf5x_15/modules
 targetlibs/nrf5x_mesh
 /.vscode
 /CURRENT_BOARD.make
 /topreadonly
 /topstrings
+

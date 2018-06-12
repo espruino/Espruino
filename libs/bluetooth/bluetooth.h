@@ -18,7 +18,12 @@
 #include "jsdevices.h"
 
 #ifdef NRF5X
+#if NRF_SD_BLE_API_VERSION>5
+#include "nrf_sdh_ble.h"
+#define BLE_GAP_ADV_MAX_SIZE BLE_GAP_ADV_SET_DATA_SIZE_MAX
+#else
 #include "ble.h"
+#endif
 #include "ble_advdata.h"
 #else
 typedef struct {
