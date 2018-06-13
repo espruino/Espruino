@@ -3,23 +3,24 @@ var PINS = {
   BME_SDI : D3,
   BME_SCK : D4,
   BME_SDO : D5,
-  PWR_GPRS_ON : D6,
-  GPS_STANDBY : D7,
-  GPS_RXD : D8,
-  GPS_TXD : D9,
-  PWR_GPS_ON : D10,
+  PWR_GPRS_ON : D6, // 1=on, 0=off
+  GPS_STANDBY : D7, // 1=powered, 0=standby (OK to leave open)
+  GPS_RXD : D8, // 9600 baud
+  GPS_TXD : D9, // 9600 baud
+  PWR_GPS_ON : D10, // 1=on, 0=off
   LIS2MDL_SCL : D11,
   GPRS_TXD : D12,
   LIS2MDL_SDA : D13,
-  GPRS_RESET : D14,
+  GPRS_RESET : D14, 
   GPRS_PWRKEY : D15,
   LIS2MDL_INT : D16,
   BQ_EN : D17,
   LIS3DH_SCL : D18,
   LIS3DH_SDA : D19,
   GPRS_RXD : D20,
-  OPT_SDA : D21,
-  OPT_SINT : D22,
+  // D21 is reset
+  OPT_SDA : D26,
+  OPT_INT : D22,
   OPT_SCL : D23,
   LIS3DH_INT1 : D25,
   LIS3DH_RES : D26,
@@ -27,7 +28,7 @@ var PINS = {
   SENSOR_DOUT1 : D28,
   SENSOR_DOUT2 : D29,
   TILT_DOUT : D30,
-  GPS_RESET : D31
+  GPS_RESET : D31 // 1=normal, 0=reset (internal pullup)
 };
 
 exports.GPS = function(callback) {
@@ -44,6 +45,7 @@ exports.GPS = function(callback) {
   }
 };
 
+/// Returns BME280 instance. Call 'getData' to get the information
 exports.BME = function() {
   var spi = new SPI();
   spi.setup({miso : PINS.BME_SDO, mosi : PINS.BME_SDI, sck: PINS.BME_SCK });
@@ -54,7 +56,9 @@ exports.mag = function() {
   var i2c = new I2C();
   i2c.setup({sda:PINS.LIS2MDL_SDA, scl:PINS.LIS2MDL_SCL});
   var m = require("LIS2MDL").connectI2C(i2c, {});
-  return m.read(); // FIXME - m.off() when done
+  var v = m.read(); 
+  m.off();
+  return v;
 };
 
 exports.accel = function() {
@@ -62,14 +66,19 @@ exports.accel = function() {
   var i2c = new I2C();
   i2c.setup({sda:PINS.LIS3DH_SDA, scl:PINS.LIS3DH_SCL});
   var m = require("LIS3DH").connectI2C(i2c, {});
-  return m.read(); // FIXME - m.off() when done
+  var v = m.read(); 
+  m.off();
+  return v;
 };
 
 exports.light = function() {
-  //var i2c = new I2C();
-  var i2c = I2C1;
-  i2c.setup({sda:PINS.OPT_SCL, scl:PINS.OPT_SDA,bitrate:400000});
+  var i2c = new I2C();
+  i2c.setup({sda:PINS.OPT_SDA, scl:PINS.OPT_SCL,bitrate:400000});
   var o = require("OPT3001").connectI2C(i2c);
+  // need a delay here before reading - use OPT_INT?
+  var v = o.read();
+  o.off();
+  return v;
 };
 
 // turn GSM on - returns a promise

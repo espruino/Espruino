@@ -15,16 +15,21 @@
 
 import pinutils;
 
+# Schematic http://docs.rakwireless.com/en/RAK8211/Hardware%20Design/RAK8211_iTRACKER_M35_V20_20171203.pdf
+# GPS HW    https://www.quectel.com/UploadImage/Downlad/L70_Hardware_Design_V2.0.pdf
+# GPS SW    http://docs-europe.electrocomponents.com/webdocs/147d/0900766b8147dbdd.pdf
+
 info = {
- 'name' : "iTracker",
- 'link' :  [ "https://github.com/RAKWireless/ITRACKER-Arduino-SDK" ],
+ 'name' : "iTracker RAK8211",
+ #https://github.com/RAKWireless/ITRACKER-Arduino-SDK
+ 'link' :  [ "http://docs.rakwireless.com/en/RAK8211/Hardware%20Design/RAK8211-G%20Datasheet%20V1.0.pdf" ],
  'default_console' : "EV_SERIAL1",
- 'default_console_tx' : "D28",
- 'default_console_rx' : "D29",
+ 'default_console_tx' : "D29",
+ 'default_console_rx' : "D28",
  'default_console_baudrate' : "9600",
  'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_iTracker.hex',
+ 'binary_name' : 'espruino_%v_RAK8211.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
@@ -32,6 +37,8 @@ info = {
      'NET'
    ],
    'makefile' : [
+     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
+     'DEFINES+=-DCONFIG_NFCT_PINS_AS_GPIOS', # Don't use NFC - the pins are used for GPS
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"iTracker"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
@@ -39,6 +46,9 @@ info = {
      'JSMODULESOURCES += libs/js/AT.min.js',
      'JSMODULESOURCES += libs/js/GPS.min.js',
      'JSMODULESOURCES += libs/js/BME280.min.js',
+     'JSMODULESOURCES += libs/js/LIS2MDL.min.js',
+     'JSMODULESOURCES += libs/js/LIS3DH.min.js',
+     'JSMODULESOURCES += libs/js/OPT3001.min.js',
      'JSMODULESOURCES += libs/js/rak/iTracker.min.js'
    ]
  }
@@ -65,8 +75,7 @@ chip = {
 };
 
 devices = {
-'LED1' : { 'pin' : 'D5' },
-'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
+  'BTN1' : { 'pin' : 'D30', 'pinstate' : 'IN_PULLDOWN' },
   'GPRS' : {'pin_tx' : 'D12', 'pin_rx' : 'D20', 'pin_reset' : 'D14', 'pin_pwrkey' : 'D15', 'pin_pwron' : 'D6'},
   'GPS' : {'pin_tx' : 'D9', 'pin_rx' : 'D8', 'pin_standby' : 'D7', 'pin_pwron' : 'D10', 'pin_reset' : 'D31'},
   'BME' : {'pin_cs' : 'D2', 'pin_sdi' : 'D3', 'pin_sck': 'D4', 'pin_sdo' : 'D5'},
