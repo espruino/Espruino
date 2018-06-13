@@ -166,8 +166,8 @@ If you supply:
 * An object, it will automatically be converted to
 a JSON string before being written.
 
-You may also create a file and then populate data later as long as you
-don't try and overwrite data that already exists. For instance:
+You may also create a file and then populate data later **as long as you
+don't try and overwrite data that already exists**. For instance:
 
 ```
 var f = require("Storage");

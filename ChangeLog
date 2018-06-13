@@ -16,6 +16,7 @@
             Add E.lookupNoCase to allow searching case-insensitively for Object keys
             Fix HTTP Chunked transfers when the server uses lowercase headers (fix #1458)
             Fix TypedArray.indexOf (fix #1468)
+            Allow require('Storage').write('a','',0,15) (zero length data) (fix #1465)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

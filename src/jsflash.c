@@ -491,7 +491,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
   uint32_t size = (uint32_t)_size;
   // Data length
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
-  if (!dPtr || !dLen) return false;
+  if (!dPtr) return false;
   if (size==0) size=(uint32_t)dLen;
   // Lookup file
   JsfFileHeader header;
