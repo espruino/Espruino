@@ -82,7 +82,9 @@ const void *exportPtrs[] = {
   "generate" : "jswrap_process_env",
   "return" : ["JsVar","An object"]
 }
-Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION
+Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION, FLASH, RAM, MODULES.
+
+For example, to get a list of built-in modules, you can use `process.env.MODULES.split(',')`
  */
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
