@@ -107,9 +107,7 @@ JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value, JsVarInt startIdx) {
   JsVar *idxName = jsvGetIndexOfFull(parent, value, false/*not exact*/, true/*integer indices only*/, startIdx);
   // but this is the name - we must turn it into a var
   if (idxName == 0) return jsvNewFromInteger(-1); // not found!
-  JsVar *idx = jsvCopyNameOnly(idxName, false/* no children */, false/* Make sure this is not a name*/);
-  jsvUnLock(idxName);
-  return idx;
+  return jsvNewFromInteger(jsvGetIntegerAndUnLock(idxName));
 }
 
 /*JSON{

@@ -3025,27 +3025,28 @@ void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr) {
     itemPtr[i++] = 0; // just ensure we don't end up with bad data
 }
 
-/// Get the index of the value in the array (matchExact==use pointer not equality check, matchIntegerIndices = don't check non-integers)
+/// Get the index of the value in the iterable var (matchExact==use pointer not equality check, matchIntegerIndices = don't check non-integers)
 JsVar *jsvGetIndexOfFull(JsVar *arr, JsVar *value, bool matchExact, bool matchIntegerIndices, int startIdx) {
-  JsVarRef indexref;
-  assert(jsvIsArray(arr) || jsvIsObject(arr));
-  indexref = jsvGetFirstChild(arr);
-  while (indexref) {
-    JsVar *childIndex = jsvLock(indexref);
+  if (!jsvIsIterable(arr)) return 0;
+  JsvIterator it;
+  jsvIteratorNew(&it, arr, JSIF_DEFINED_ARRAY_ElEMENTS);
+  while (jsvIteratorHasElement(&it)) {
+    JsVar *childIndex = jsvIteratorGetKey(&it);
     if (!matchIntegerIndices ||
         (jsvIsInt(childIndex) && jsvGetInteger(childIndex)>=startIdx)) {
-      assert(jsvIsName(childIndex));
-      JsVar *childValue = jsvSkipName(childIndex);
+      JsVar *childValue = jsvIteratorGetValue(&it);
       if (childValue==value ||
           (!matchExact && jsvMathsOpTypeEqual(childValue, value))) {
         jsvUnLock(childValue);
+        jsvIteratorFree(&it);
         return childIndex;
       }
       jsvUnLock(childValue);
     }
-    indexref = jsvGetNextSibling(childIndex);
     jsvUnLock(childIndex);
+    jsvIteratorNext(&it);
   }
+  jsvIteratorFree(&it);
   return 0; // undefined
 }
 
