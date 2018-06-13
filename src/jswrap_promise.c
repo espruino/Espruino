@@ -73,7 +73,7 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   JsVar *exception = jspGetException();
   if (exception) {
     _jswrap_promise_queuereject(chainedPromise, exception);
-    jsvUnLock2(result, chainedPromise);
+    jsvUnLock3(exception, result, chainedPromise);
     return;
   }
 
@@ -97,8 +97,16 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
 }
 void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool resolve) {
   const char *eventName = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
-  JsVar *fn = jsvObjectGetChild(promise, eventName, 0);
+  // if we've already had _jswrap_promise_resolve_or_reject_chain called on this
+  // promise, do nothing.
+  JsVar *t = jsvObjectGetChild(promise, "done", 0);
+  if (t) {
+    jsvUnLock(t);
+    return;
+  }
+  jsvObjectSetChildAndUnLock(promise, "done", jsvNewFromBool(true));
   // if we didn't have a catch, traverse the chain looking for one
+  JsVar *fn = jsvObjectGetChild(promise, eventName, 0);
   if (!fn) {
     JsVar *chainedPromise = jsvObjectGetChild(promise, "chain", 0);
     while (chainedPromise) {

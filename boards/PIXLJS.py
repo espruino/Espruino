@@ -34,7 +34,8 @@ info = {
      'NFC',
      'NEOPIXEL',
      'PIXLJS',
-     'CRYPTO',
+     'CRYPTO','SHA256','SHA512',
+     'AES',
      'FILESYSTEM',
      'TERMINAL'
    ],
@@ -139,13 +140,6 @@ board["_css"] = """
 
 def get_pins():
   pins = [
-   { "name":"PA0", "sortingname":"A00", "port":"A", "num":"2", "functions":{ "ADC1_IN0":0 }, "csv":{} },
-   { "name":"PA1", "sortingname":"A01", "port":"A", "num":"3", "functions":{ "ADC1_IN1":0 }, "csv":{} },
-   { "name":"PA2", "sortingname":"A02", "port":"A", "num":"4", "functions":{ "ADC1_IN2":0 }, "csv":{} },
-   { "name":"PA3", "sortingname":"A03", "port":"A", "num":"5", "functions":{ "ADC1_IN3":0 }, "csv":{} },
-   { "name":"PA4", "sortingname":"A04", "port":"A", "num":"28", "functions":{ "ADC1_IN4":0 }, "csv":{} },
-   { "name":"PA5", "sortingname":"A05", "port":"A", "num":"29", "functions":{ "ADC1_IN5":0 }, "csv":{} },
-   
    { "name":"PD0",  "sortingname":"D00", "port":"D", "num":"25", "functions":{}, "csv":{} },
    { "name":"PD1",  "sortingname":"D01", "port":"D", "num":"26", "functions":{}, "csv":{} },
    { "name":"PD2",  "sortingname":"D02", "port":"D", "num":"27", "functions":{}, "csv":{} },
@@ -160,6 +154,13 @@ def get_pins():
    { "name":"PD11", "sortingname":"D11", "port":"D", "num":"18", "functions":{}, "csv":{} },
    { "name":"PD12", "sortingname":"D12", "port":"D", "num":"19", "functions":{}, "csv":{} },
    { "name":"PD13", "sortingname":"D13", "port":"D", "num":"20", "functions":{}, "csv":{} },
+
+   { "name":"PA0", "sortingname":"A00", "port":"A", "num":"2", "functions":{ "ADC1_IN0":0 }, "csv":{} },
+   { "name":"PA1", "sortingname":"A01", "port":"A", "num":"3", "functions":{ "ADC1_IN1":0 }, "csv":{} },
+   { "name":"PA2", "sortingname":"A02", "port":"A", "num":"4", "functions":{ "ADC1_IN2":0 }, "csv":{} },
+   { "name":"PA3", "sortingname":"A03", "port":"A", "num":"5", "functions":{ "ADC1_IN3":0 }, "csv":{} },
+   { "name":"PA4", "sortingname":"A04", "port":"A", "num":"28", "functions":{ "ADC1_IN4":0 }, "csv":{} },
+   { "name":"PA5", "sortingname":"A05", "port":"A", "num":"29", "functions":{ "ADC1_IN5":0 }, "csv":{} },
 
    { "name":"PH0", "sortingname":"H0", "port":"H", "num":"16", "functions":{}, "csv":{} }, # LED
    { "name":"PH1", "sortingname":"H1", "port":"H", "num":"23", "functions":{}, "csv":{} }, # BTN1

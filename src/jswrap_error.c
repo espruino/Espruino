@@ -53,7 +53,7 @@ JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {
   if (!d) return 0;
 
   if (msg) {
-    msg = jsvAsString(msg, false);
+    msg = jsvAsString(msg);
     jsvObjectSetChildAndUnLock(d, "message", msg);
   }
   jsvObjectSetChildAndUnLock(d, "type", jsvNewFromString(type));

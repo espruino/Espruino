@@ -66,7 +66,7 @@ const void *exportPtrs[] = {
     jsvGetFloat,
     jsvGetInteger,
     jsvGetBool,
-    jspReplaceWith,
+    jsvReplaceWith,
     jspeFunctionCall,
     jspGetNamedVariable,
     jspGetNamedField,

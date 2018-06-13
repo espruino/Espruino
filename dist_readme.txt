@@ -39,6 +39,10 @@ espruino_#v##_pixljs.zip
    - The firmware image for Espruino Pixl.js Devices
      See http://www.espruino.com/Pixl.js#firmware-updates for more information
 
+espruino_#v##_mdbt42q.zip
+   - The firmware image for Espruino MDBT42Q modules
+     See http://www.espruino.com/MDBT42Q#firmware-updates for more information
+
 espruino_#v##_hystm32_24_ve.bin 
    - 'HY'STM32F103VET6 ARM with 2.4" LCD display
      This is available from eBay
@@ -90,6 +94,17 @@ espruino_#v##_Wio_LTE.zip
    - The firmware image for Seed Wio LTE Devices
      See http://www.espruino.com/WioLTE for more information
 
+espruino_#v##_thingy52.hex
+   - The firmware image for Nordic Thing:52 Devices
+     See http://www.espruino.com/Thingy52 for more information
+
+espruino_#v##nrf52832.hex
+   - The firmware image for Nordic Thing:52 Devices
+     See http://www.espruino.com/nRF52832DK for more information
+
+espruino_#v##stm32l496gdiscovery.bin
+   - The firmware image for the STM32L496G Discovery Board
+     See http://www.espruino.com/STM32L496GDISCOVERY for more information
 
 
 ESP8266 / ESP32

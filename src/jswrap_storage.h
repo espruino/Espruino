@@ -13,6 +13,8 @@
  */
 #include "jsvar.h"
 
+#define WIFI_CONFIG_STORAGE_NAME ".wificfg"
+
 void jswrap_storage_eraseAll();
 JsVar *jswrap_storage_read(JsVar *name);
 JsVar *jswrap_storage_readJSON(JsVar *name);

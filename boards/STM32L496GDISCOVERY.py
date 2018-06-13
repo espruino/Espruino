@@ -31,7 +31,7 @@ info = {
      'NET',
      'GRAPHICS',
      'NEOPIXEL',
-     'CRYPTO',
+     'CRYPTO','SHA256','SHA512',
      'TLS',
      'FILESYSTEM'
    ],

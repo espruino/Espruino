@@ -29,6 +29,7 @@
 #include "nrf5x_utils.h"
 #include "nordic_common.h"
 #include "nrf.h"
+#include "ble_gap.h"
 #include "ble_hci.h"
 #include "ble_advdata.h"
 #include "ble_conn_params.h"
@@ -44,6 +45,12 @@
 #endif
 #endif
 
+#ifdef ESP32
+#include "BLE/esp32_gap_func.h"
+#include "BLE/esp32_gatts_func.h"
+#include "BLE/esp32_gattc_func.h"
+#define BLE_CONN_HANDLE_INVALID -1
+#endif
 
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
@@ -263,6 +270,18 @@ void jswrap_nrf_dumpBluetoothInitialisation(vcbprintf_callback user_callback, vo
 // ------------------------------------------------------------------------------
 
 /*JSON{
+    "type": "class",
+    "class" : "NRF"
+}
+The NRF class is for controlling functionality of the Nordic nRF51/nRF52 chips. This is used in [Puck.js](http://puck-js.com), [Pixl.js](http://espruino.com/Pixl.js), [MDBT42Q](http://espruino.com/MDBT42Q), and a variety of other Bluetooth-based boards.
+
+Most functionality is related to Bluetooth Low Energy, however there are also some functions related to NFC that apply to NRF52-based devices.
+*/
+
+// ------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
+
+/*JSON{
   "type" : "event",
   "class" : "NRF",
   "name" : "connect",
@@ -288,7 +307,7 @@ Called when a host device disconnects from Espruino.
   "type" : "event",
   "class" : "NRF",
   "name" : "servicesDiscover",
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Called with discovered services when discovery is finished
  */
@@ -296,7 +315,7 @@ Called with discovered services when discovery is finished
   "type" : "event",
   "class" : "NRF",
   "name" : "characteristicsDiscover",
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Called with discovered characteristics when discovery is finished
  */
@@ -367,14 +386,6 @@ The first argument is of the form `{target : BluetoothRemoteGATTCharacteristic}`
 `BluetoothRemoteGATTCharacteristic.value` will then contain the new value.
  */
 
-/*JSON{
-    "type": "class",
-    "class" : "NRF"
-}
-The NRF class is for controlling functionality of the Nordic nRF51/nRF52 chips. Currently these only used in [Puck.js](http://puck-js.com) and the [BBC micro:bit](/MicroBit).
-
-The main part of this is control of Bluetooth Low Energy - both searching for devices, and changing advertising data.
-*/
 /*JSON{
   "type" : "object",
   "name" : "Bluetooth",
@@ -473,7 +484,7 @@ void jswrap_nrf_bluetooth_restart() {
     "generate" : "jswrap_nrf_bluetooth_getAddress",
     "return" : ["JsVar", "MAC address - a string of the form 'aa:bb:cc:dd:ee:ff'" ]
 }
-Get this device's Bluetooth MAC address.
+Get this device's default Bluetooth MAC address.
 
 For Puck.js, the last 5 characters of this (eg. `ee:ff`)
 are used in the device's advertised Bluetooth name.
@@ -493,6 +504,45 @@ JsVar *jswrap_nrf_bluetooth_getAddress() {
       ((addr0>>16)&0xFF),
       ((addr0>>8 )&0xFF),
       ((addr0    )&0xFF));
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setAddress",
+    "#if" : "defined(NRF52)",
+    "generate" : "jswrap_nrf_bluetooth_setAddress",
+    "params" : [
+      ["addr","JsVar","The address to use (as a string)"]
+    ]
+}
+Set this device's default Bluetooth MAC address:
+
+```
+NRF.setAddress("ff:ee:dd:cc:bb:aa random");
+```
+
+Addresses take the form:
+
+* `"ff:ee:dd:cc:bb:aa"` or `"ff:ee:dd:cc:bb:aa public"` for a public address
+* `"ff:ee:dd:cc:bb:aa random"` for a random static address (the default for Espruino)
+
+This may throw a `INVALID_BLE_ADDR` error if the upper two bits
+of the address don't match the address type.
+
+*/
+void jswrap_nrf_bluetooth_setAddress(JsVar *address) {
+#ifdef NRF52
+  ble_gap_addr_t p_addr;
+  if (!bleVarToAddr(address, &p_addr)) {
+    jsExceptionHere(JSET_ERROR, "Expecting a mac address of the form aa:bb:cc:dd:ee:ff");
+    return;
+  }
+  uint32_t err_code = sd_ble_gap_addr_set(&p_addr);
+  jsble_check_error(err_code);
+#else
+  jsExceptionHere(JSET_ERROR, "Not implemented");
+#endif
 }
 
 /*JSON{
@@ -644,9 +694,12 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
         err_code = sd_ble_gap_device_name_set(&sec_mode,
                                               (const uint8_t *)namePtr,
                                               nameLen);
-#else
-        err_code = 0xDEAD;
-        jsiConsolePrintf("FIXME\n");
+//#else
+//        err_code = 0xDEAD;
+//        jsiConsolePrintf("FIXME\n");
+#endif
+#ifdef ESP32
+		bluetooth_setDeviceName(v);
 #endif
         jsble_check_error(err_code);
         bleChanged = true;
@@ -732,6 +785,9 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   err_code = 0xDEAD;
   jsiConsolePrintf("FIXME\n");
 #endif
+#ifdef ESP32
+  err_code = bluetooth_gap_setAdvertizing(advArray);
+#endif
   jsvUnLock(initialArray);
   jsble_check_error(err_code);
   if (bleChanged && isAdvertising)
@@ -754,6 +810,11 @@ the data, it returns the packet that would be advertised as an array.
 */
 JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options) {
   uint32_t err_code;
+#ifdef ESP32
+  JsVar *r;
+  r = bluetooth_gap_getAdvertisingData(data,options);
+  return r;
+#endif
 #ifdef NRF5X
   ble_advdata_t advdata;
   jsble_setup_advdata(&advdata);
@@ -1820,6 +1881,8 @@ JsVar *jswrap_nrf_nfcStart(JsVar *payload) {
   JsVar *arr = jsvNewArrayBufferWithPtr(size, &ptr);
   if (ptr) jsble_nfc_get_internal((uint8_t *)ptr, &size);
   return arr;
+#else
+  return 0;
 #endif
 }
 
@@ -1922,7 +1985,7 @@ void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "requestDevice",
-    "ifdef" : "NRF52",
+    "#if" : "defined(NRF52) || defined(ESP32)",
     "generate" : "jswrap_nrf_bluetooth_requestDevice",
     "params" : [
       ["options","JsVar","Options used to filter the device to use"]
@@ -2110,7 +2173,7 @@ JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "connect",
-    "ifdef" : "NRF52",
+    "#if" : "defined(NRF52) || defined(ESP32)",
     "generate" : "jswrap_nrf_bluetooth_connect",
     "params" : [
       ["mac","JsVar","The MAC address to connect to"]
@@ -2130,7 +2193,7 @@ You can use it as follows - this would connect to another Puck device and turn i
 
 ```
 var gatt;
-NRF.connect("aa:bb:cc:dd:ee").then(function(g) {
+NRF.connect("aa:bb:cc:dd:ee random").then(function(g) {
   gatt = g;
   return gatt.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
 }).then(function(service) {
@@ -2142,6 +2205,12 @@ NRF.connect("aa:bb:cc:dd:ee").then(function(g) {
   console.log("Done!");
 });
 ```
+
+**Note:** Espruino Bluetooth devices use a type of BLE address known as 'random static',
+which is different to a 'public' address. To connect to an Espruino device you'll need 
+to use an address string of the form `"aa:bb:cc:dd:ee random"` rather than just 
+`"aa:bb:cc:dd:ee"`. If you scan for devices with `NRF.findDevices`/`NRF.setScan` then
+addresses are already reported in the correct format.
 */
 JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
 #if CENTRAL_LINK_COUNT>0
@@ -2149,8 +2218,11 @@ JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
   if (!device) return 0;
   jsvObjectSetChild(device, "id", mac);
   JsVar *gatt = jswrap_BluetoothDevice_gatt(device);
+  jsvUnLock(device);
   if (!gatt) return 0;
-  return jswrap_nrf_BluetoothRemoteGATTServer_connect(gatt);
+  JsVar *promise = jswrap_nrf_BluetoothRemoteGATTServer_connect(gatt);
+  jsvUnLock(gatt);
+  return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
@@ -2213,7 +2285,7 @@ NRF.requestDevice({ filters: [{ name: 'Puck.js abcd' }] }).then(function(device)
     "type" : "property",
     "class" : "BluetoothDevice",
     "name" : "gatt",
-    "ifdef" : "NRF52",
+    "#if" : "defined(NRF52) || defined(ESP32)",
     "generate" : "jswrap_BluetoothDevice_gatt",
     "return" : ["JsVar", "A `BluetoothRemoteGATTServer` for this device" ]
 }
@@ -2238,7 +2310,7 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
     "type" : "method",
     "class" : "BluetoothRemoteGATTServer",
     "name" : "connect",
-    "ifdef" : "NRF52",
+    "#if" : "defined(NRF52) || defined(ESP32)",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTServer_connect",
     "return" : ["JsVar", "A Promise that is resolved (or rejected) when the connection is complete" ]
 }
@@ -2292,7 +2364,7 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
 /*JSON{
   "type" : "class",
   "class" : "BluetoothRemoteGATTServer",
-  "ifdef" : "NRF52"
+    "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Web Bluetooth-style GATT server - get this using `NRF.connect(address)`
 or `NRF.requestDevice(options)` and `response.gatt.connect`
@@ -2304,7 +2376,7 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattserver
     "class" : "BluetoothRemoteGATTServer",
     "name" : "disconnect",
     "generate" : "jswrap_BluetoothRemoteGATTServer_disconnect",
-    "ifdef" : "NRF52"
+    "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Disconnect from a previously connected BLE device connected with
 `NRF.connect` - this does not disconnect from something that has
@@ -2320,7 +2392,12 @@ void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
     jsble_check_error(err_code);
   } else {
     // no connection - try and cancel the connect attempt (assume we have one)
+#ifdef NRF52
     err_code = sd_ble_gap_connect_cancel();
+#endif
+#ifdef ESP32
+    jsWarn("connect cancel not implemented yet\n");
+#endif
     // maybe we don't, in which case we don't care about the error code
   }
 #else
@@ -2420,7 +2497,7 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent) {
   "generate" : "jswrap_BluetoothRemoteGATTServer_getPrimaryService",
   "params" : [ ["service","JsVar","The service UUID"] ],
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary service is found (the argument contains a `BluetoothRemoteGATTService`)" ],
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 See `NRF.connect` for usage examples.
 */
@@ -2452,7 +2529,7 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *
   "name" : "getPrimaryServices",
   "generate" : "jswrap_BluetoothRemoteGATTServer_getPrimaryServices",
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the primary services are found (the argument contains an array of `BluetoothRemoteGATTService`)" ],
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 */
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
@@ -2479,7 +2556,7 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
   "params" : [
     ["callback","JsVar","The callback to call with the RSSI value, or undefined to stop"]
   ],
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 
 Start/stop listening for RSSI values on the active GATT connection
@@ -2513,7 +2590,7 @@ void jswrap_BluetoothRemoteGATTServer_setRSSIHandler(JsVar *parent, JsVar *callb
 /*JSON{
   "type" : "class",
   "class" : "BluetoothRemoteGATTService",
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Web Bluetooth-style GATT service - get this using `BluetoothRemoteGATTServer.getPrimaryService(s)`
 
@@ -2526,7 +2603,7 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattservice
   "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristic",
   "params" : [ ["characteristic","JsVar","The characteristic UUID"] ],
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found (the argument contains a `BluetoothRemoteGATTCharacteristic`)" ],
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 See `NRF.connect` for usage examples.
 */
@@ -2558,7 +2635,7 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar 
   "name" : "getCharacteristics",
   "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristics",
   "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is found (the argument contains an array of `BluetoothRemoteGATTCharacteristic`)" ],
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 */
 JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent) {
@@ -2581,7 +2658,7 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent) {
 /*JSON{
   "type" : "class",
   "class" : "BluetoothRemoteGATTCharacteristic",
-  "ifdef" : "NRF52"
+  "#if" : "defined(NRF52) || defined(ESP32)"
 }
 Web Bluetooth-style GATT characteristic - get this using `BluetoothRemoteGATTService.getCharacteristic(s)`
 
@@ -2639,11 +2716,10 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
     "name" : "readValue",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue",
     "return" : ["JsVar", "A Promise that is resolved (or rejected) with a `DataView` when the characteristic is read" ],
-    "ifdef" : "NRF52"
+    "#if" : "defined(NRF52) || defined(ESP32)"
 }
 
-Read a characteristic's value, return a promise containing a `DataView` with the data in it
-
+Read a characteristic's value, return a promise containing a `DataView`
 
 ```
 var device;

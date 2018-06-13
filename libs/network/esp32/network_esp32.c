@@ -132,8 +132,8 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
       if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
         jsWarn("setsockopt(SO_REUSADDR) failed\n");
 #ifdef SO_REUSEPORT
-//    if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
-//      jsWarn("setsockopt(SO_REUSPORT) failed\n");
+    if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
+      jsWarn("setsockopt(SO_REUSPORT) failed\n");
 #endif
     }
 
@@ -241,19 +241,16 @@ int net_esp32_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, s
   } else if (n>0) {
     // receive data
     if (socketType & ST_UDP) {
-      // TODO: Use JsNetUDPPacketHeader here to tidy this up
-      size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
-      uint32_t *host = (uint32_t*)buf;
-      unsigned short *port = (unsigned short*)&host[1];
-      uint16_t *size = (unsigned short*)&port[1];
-      num = (int)recvfrom(sckt,buf+delta,len-delta,0,&fromAddr,&fromAddrLen);
-      *host = fromAddr.sin_addr.s_addr;
-      *port = ntohs(fromAddr.sin_port);
-      *size = num;
+      num = (int)recvfrom(sckt,buf+sizeof(JsNetUDPPacketHeader),len-sizeof(JsNetUDPPacketHeader),0,&fromAddr,&fromAddrLen);
 
-      DBG("Recv %d %x:%d", num, *host, *port);
+      JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+      *(in_addr_t*)&header->host = fromAddr.sin_addr.s_addr;
+      header->port = ntohs(fromAddr.sin_port);
+      header->length = num;
+
+      DBG("Recv %d %x:%d", num, *(uint32_t*)&header->host, header->port);
       if (num==0) return -1; // select says data, but recv says 0 means connection is closed
-      num += delta;
+      num += sizeof(JsNetUDPPacketHeader);
     } else {
       num = (int)recvfrom(sckt,buf,len,0,&fromAddr,&fromAddrLen);
       if (num==0) return -1; // select says data, but recv says 0 means connection is closed
@@ -282,18 +279,14 @@ int net_esp32_send(JsNetwork *net, SocketType socketType, int sckt, const void *
     flags |= MSG_NOSIGNAL;
 #endif
     if (socketType & ST_UDP) {
-      // TODO: Use JsNetUDPPacketHeader here to tidy this up
-      sockaddr_in       sin;
-      size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
-      uint32_t *host = (uint32_t*)buf;
-      unsigned short *port = (unsigned short*)&host[1];
-      uint16_t *size = (uint16_t*)&port[1];
+      JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+      sockaddr_in sin;
       sin.sin_family = AF_INET;
-      sin.sin_addr.s_addr = *(in_addr_t*)host;
-      sin.sin_port = htons(*port);
+      sin.sin_addr.s_addr = *(in_addr_t*)&header->host;
+      sin.sin_port = htons(header->port);
 
-      DBG("Send %d %x:%d", len - delta, *host, *port);
-      n = (int)sendto(sckt, buf + delta, *size, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in)) + delta;
+      DBG("Send %d %x:%d", len - sizeof(JsNetUDPPacketHeader), *(uint32_t*)&header->host, header->port);
+      n = (int)sendto(sckt, buf + sizeof(JsNetUDPPacketHeader), header->length, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in)) + sizeof(JsNetUDPPacketHeader);
       DBG("Send bytes %d",  n);
     } else {
       n = (int)send(sckt, buf, len, flags);

@@ -174,8 +174,8 @@ Set the analog Value of a pin. It will be output using PWM.
 Objects can contain:
 
 * `freq` - pulse frequency in Hz, eg. ```analogWrite(A0,0.5,{ freq : 10 });``` - specifying a frequency will force PWM output, even if the pin has a DAC
-* `soft` - boolean, If true software PWM is used if available.
-* `forceSoft` - boolean, If true software PWM is used even
+* `soft` - boolean, If true software PWM is used if hardware is not available.
+* `forceSoft` - boolean, If true software PWM is used even if hardware PWM or a DAC is available
 
  **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
  */

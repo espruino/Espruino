@@ -21,8 +21,12 @@
 #include "mbedtls/include/mbedtls/aes.h"
 #endif
 #include "mbedtls/include/mbedtls/sha1.h"
+#ifdef USE_SHA256
 #include "mbedtls/include/mbedtls/sha256.h"
+#endif
+#ifdef USE_SHA512
 #include "mbedtls/include/mbedtls/sha512.h"
+#endif
 #include "mbedtls/include/mbedtls/pkcs5.h"
 #ifdef USE_TLS
 #include "mbedtls/include/mbedtls/pk.h"
@@ -46,7 +50,7 @@ Cryptographic functions
   "type" : "class",
   "library" : "crypto",
   "class" : "AES",
-  "ifdef" : "USE_TLS"
+  "ifdef" : "USE_AES"
 }
 Class containing AES encryption/decryption
 
@@ -119,10 +123,14 @@ CryptoMode jswrap_crypto_getMode(JsVar *mode) {
 
 mbedtls_md_type_t jswrap_crypto_getHasher(JsVar *hasher) {
   if (jsvIsStringEqual(hasher, "SHA1")) return MBEDTLS_MD_SHA1;
+#ifdef USE_SHA256
   if (jsvIsStringEqual(hasher, "SHA224")) return MBEDTLS_MD_SHA224;
   if (jsvIsStringEqual(hasher, "SHA256")) return MBEDTLS_MD_SHA256;
+#endif
+#ifdef USE_SHA512
   if (jsvIsStringEqual(hasher, "SHA384")) return MBEDTLS_MD_SHA384;
   if (jsvIsStringEqual(hasher, "SHA512")) return MBEDTLS_MD_SHA512;
+#endif
   jsExceptionHere(JSET_ERROR, "Unknown Hasher %q", hasher);
   return MBEDTLS_MD_NONE;
 }
@@ -142,10 +150,14 @@ JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
   }
 
   if (shaNum==1) mbedtls_sha1((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr);
+#ifdef USE_SHA256
   else if (shaNum==224) mbedtls_sha256((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, true/*224*/);
   else if (shaNum==256) mbedtls_sha256((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, false/*256*/);
+#endif
+#ifdef USE_SHA512
   else if (shaNum==384) mbedtls_sha512((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, true/*384*/);
   else if (shaNum==512) mbedtls_sha512((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, false/*512*/);
+#endif
   return outArr;
 }
 
@@ -174,7 +186,7 @@ Performs a SHA1 hash and returns the result as a 20 byte ArrayBuffer
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "ifdef" : "USE_CRYPTO"
+  "ifdef" : "USE_SHA256"
 }
 
 Performs a SHA224 hash and returns the result as a 28 byte ArrayBuffer
@@ -189,7 +201,7 @@ Performs a SHA224 hash and returns the result as a 28 byte ArrayBuffer
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "ifdef" : "USE_CRYPTO"
+  "ifdef" : "USE_SHA256"
 }
 
 Performs a SHA256 hash and returns the result as a 32 byte ArrayBuffer
@@ -204,7 +216,7 @@ Performs a SHA256 hash and returns the result as a 32 byte ArrayBuffer
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "ifdef" : "USE_CRYPTO"
+  "ifdef" : "USE_SHA512"
 }
 
 Performs a SHA384 hash and returns the result as a 48 byte ArrayBuffer
@@ -219,7 +231,7 @@ Performs a SHA384 hash and returns the result as a 48 byte ArrayBuffer
   ],
   "return" : ["JsVar","Returns a 32 byte ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "ifdef" : "USE_CRYPTO"
+  "ifdef" : "USE_SHA512"
 }
 
 Performs a SHA512 hash and returns the result as a 64 byte ArrayBuffer
@@ -299,8 +311,9 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
     return 0;
   }
 }
+#endif
 
-
+#ifdef USE_AES
 static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar *options, bool encrypt) {
   int err;
 
@@ -411,8 +424,6 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
     return 0;
   }
 }
-#endif
-#ifdef USE_AES
 
 /*JSON{
   "type" : "staticmethod",

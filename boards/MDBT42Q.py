@@ -32,7 +32,8 @@ info = {
      'BLUETOOTH',
      'NET',
      'GRAPHICS',
-     'CRYPTO',
+     'CRYPTO','SHA256','SHA512',
+     'AES',
      'NFC',
      'NEOPIXEL'
      #'HASHLIB'

@@ -56,6 +56,7 @@ void jswrap_graphics_init() {
   JsVar *parent = jspNewObject("LCD", "Graphics");
   if (parent) {
     JsVar *parentObj = jsvSkipName(parent);
+    jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, parentObj);
     JsGraphics gfx;
     graphicsStructInit(&gfx);
     gfx.data.type = JSGRAPHICSTYPE_FSMC;
@@ -72,6 +73,22 @@ void jswrap_graphics_init() {
 #endif
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Graphics",
+  "name" : "getInstance",
+  "generate" : "jswrap_graphics_getInstance",
+  "return" : ["JsVar","An instance of `Graphics` or undefined"]
+}
+On devices like Pixl.js or HYSTM boards that contain a built-in display
+this will return an instance of the graphics class that can be used to
+access that display.
+
+Internally, this is stored as a member called `gfx` inside the 'hiddenRoot'.
+*/
+JsVar *jswrap_graphics_getInstance() {
+  return jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
+}
 
 static bool isValidBPP(int bpp) {
   return bpp==1 || bpp==2 || bpp==4 || bpp==8 || bpp==16 || bpp==24 || bpp==32; // currently one colour can't ever be spread across multiple bytes
@@ -129,8 +146,14 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "vertical_byte", 0))) {
       if (gfx.data.bpp==1)
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);
-      else
-        jsWarn("vertical_byte only works for 1bpp ArrayBuffers\n");
+      else {
+        jsExceptionHere(JSET_ERROR, "vertical_byte only works for 1bpp ArrayBuffers\n");
+        return 0;
+      }
+      if (gfx.data.height&7) {
+        jsExceptionHere(JSET_ERROR, "height must be a multiple of 8 when using vertical_byte\n");
+        return 0;
+      }
     }
     JsVar *colorv = jsvObjectGetChild(options, "color_order", 0);
     if (colorv) {
@@ -608,7 +631,35 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
   gfx.data.fontSize = JSGRAPHICS_FONTSIZE_CUSTOM;
   graphicsSetVar(&gfx);
 }
-
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setFontAlign",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_setFontAlign",
+  "params" : [
+    ["x","int32","X alignment. -1=left (default), 0=center, 1=right"],
+    ["y","int32","Y alignment. -1=top (default), 0=center, 1=bottom"],
+    ["rotation","int32","Rotation of the text. 0=normal, 1=90 degrees clockwise, 2=180, 3=270"]
+  ]
+}
+Set the alignment for subsequent calls to `drawString`
+*/
+void jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
+#ifndef SAVE_ON_FLASH
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+  if (x<-1) x=-1;
+  if (x>1) x=1;
+  if (y<-1) y=-1;
+  if (y>1) y=1;
+  if (r<0) r=0;
+  if (r>3) r=3;
+  gfx.data.fontAlignX = x;
+  gfx.data.fontAlignY = y;
+  gfx.data.fontRotate = r;
+  graphicsSetVar(&gfx);
+#endif
+}
 
 /*JSON{
   "type" : "method",
@@ -626,7 +677,6 @@ Draw a string of text in the current font
 void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
-  int startx = x;
   JsVar *customBitmap = 0, *customWidth = 0;
   int customHeight = 0, customFirstChar = 0;
   if (gfx.data.fontSize>0) {
@@ -639,10 +689,35 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     customHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0));
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   }
+#ifndef SAVE_ON_FLASH
+  // Handle text rotation
+  JsGraphicsFlags oldFlags = gfx.data.flags;
+  if (gfx.data.fontRotate==1) {
+    gfx.data.flags ^= JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_X;
+    int t = gfx.data.width - (x+1);
+    x = y;
+    y = t;
+  } else if (gfx.data.fontRotate==2) {
+    gfx.data.flags ^= JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
+    x = gfx.data.width - (x+1);
+    y = gfx.data.height - (y+1);
+  } else if (gfx.data.fontRotate==3) {
+    gfx.data.flags ^= JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_Y;
+    int t = gfx.data.height - (y+1);
+    y = x;
+    x = t;
+  }
+  // Handle font alignment
+  if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
+    x -= jswrap_graphics_stringWidth(parent, var) * (gfx.data.fontAlignX+1)/2;
+  if (gfx.data.fontAlignY<2)  // 0=center, 1=bottom, 2=undefined, 3=top
+    y -= customHeight * (gfx.data.fontAlignX+1)/2;
+#endif
 
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
   int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
-  JsVar *str = jsvAsString(var, false);
+  int startx = x;
+  JsVar *str = jsvAsString(var);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
   while (jsvStringIteratorHasChar(&it)) {
@@ -709,7 +784,10 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   }
   jsvStringIteratorFree(&it);
   jsvUnLock3(str, customBitmap, customWidth);
+#ifndef SAVE_ON_FLASH
+  gfx.data.flags = oldFlags; // restore flags because of text rotation
   graphicsSetVar(&gfx); // gfx data changed because modified area
+#endif
 }
 
 /*JSON{
@@ -734,7 +812,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   }
 
-  JsVar *str = jsvAsString(var, false);
+  JsVar *str = jsvAsString(var);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
   int width = 0;
@@ -968,6 +1046,7 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
   "type" : "method",
   "class" : "Graphics",
   "name" : "getModified",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_getModified",
   "params" : [
     ["reset","bool","Whether to reset the modified area or not"]
@@ -980,6 +1059,7 @@ the modified area to 0.
 For instance if `g.setPixel(10,20)` was called, this would return `{x1:10, y1:20, x2:10, y2:20}`
 */
 JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
+#ifndef SAVE_ON_FLASH
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   JsVar *obj = 0;
   if (gfx.data.modMinX <= gfx.data.modMaxX) { // do we have a rect?
@@ -999,6 +1079,7 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
     graphicsSetVar(&gfx);
   }
   return obj;
+#endif
 }
 
 /*JSON{

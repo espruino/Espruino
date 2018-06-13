@@ -554,10 +554,15 @@ ifdef USE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
-  SOURCES += \
-libs/crypto/mbedtls/library/sha1.c \
-libs/crypto/mbedtls/library/sha256.c \
-libs/crypto/mbedtls/library/sha512.c
+  SOURCES += libs/crypto/mbedtls/library/sha1.c 
+ifdef USE_SHA256
+  DEFINES += -DUSE_SHA256
+  SOURCES += libs/crypto/mbedtls/library/sha256.c
+endif
+ifdef USE_SHA512
+  DEFINES += -DUSE_SHA512
+  SOURCES += libs/crypto/mbedtls/library/sha512.c
+endif
 
 ifdef USE_TLS
   USE_AES=1

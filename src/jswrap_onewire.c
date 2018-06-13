@@ -157,7 +157,7 @@ void jswrap_onewire_select(JsVar *parent, JsVar *rom) {
     b[1] = jsvStringIteratorGetChar(&it);
     jsvStringIteratorNext(&it);
     b[2] = 0;
-    romdata = romdata | (((unsigned long long)stringToIntWithRadix(b,16,0)) << (i*8));
+    romdata = romdata | (((unsigned long long)stringToIntWithRadix(b,16,NULL,NULL)) << (i*8));
 
   }
   jsvStringIteratorFree(&it);

@@ -3021,3 +3021,8 @@ unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
 #endif
 }
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  NVIC_SystemReset();
+}

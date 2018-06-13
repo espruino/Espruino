@@ -720,6 +720,19 @@ Run `E.getFlags()` and check its description for a list of available flags and t
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",
+  "name" : "pipe",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_pipe",
+  "params" : [
+    ["source","JsVar","The source file/stream that will send content."],
+    ["destination","JsVar","The destination file/stream that will receive content from the source."],
+    ["options","JsVar",["An optional object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+  ]
+}*/
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
   "name" : "toArrayBuffer",
   "generate" : "jswrap_espruino_toArrayBuffer",
   "params" : [
@@ -857,10 +870,6 @@ and Espruino Pico) at the moment.
 */
 JsVar *jswrap_espruino_memoryArea(int addr, int len) {
   if (len<0) return 0;
-  if (len>65535) {
-    jsExceptionHere(JSET_ERROR, "Memory area too long! Max is 65535 bytes\n");
-    return 0;
-  }
   // hack for ESP8266/ESP32 where the address can be different
   size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
   return jsvNewNativeString((char*)mappedAddr, (size_t)len);
@@ -1070,7 +1079,7 @@ JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
       JsVar *val = jsvSkipName(key);
       JsVar *item = jsvNewObject();
       if (item) {
-        jsvObjectSetChildAndUnLock(item, "name", jsvAsString(key, false));
+        jsvObjectSetChildAndUnLock(item, "name", jsvAsString(key));
         jsvObjectSetChildAndUnLock(item, "size", jswrap_espruino_getSizeOf(key, 0));
         if (depth>1 && jsvHasChildren(val))
           jsvObjectSetChildAndUnLock(item, "more", jswrap_espruino_getSizeOf(val, depth-1));
@@ -1182,6 +1191,34 @@ void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bit
   }
   jsvArrayBufferIteratorFree(&itFrom);
   jsvArrayBufferIteratorFree(&itTo);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "lookupNoCase",
+  "generate" : "jswrap_espruino_lookupNoCase",
+  "params" : [
+    ["haystack","JsVar","The Array/Object/Function to search"],
+    ["needle","JsVar","The key to search for"],
+    ["returnKey","bool","If true, return the key, else return the value itself"]
+  ],
+  "return" : ["JsVar","The value in the Object matching 'needle', or if `returnKey==true` the key's name - or undefined"]
+}
+Search in an Object, Array, or Function
+ */
+JsVar *jswrap_espruino_lookupNoCase(JsVar *haystack, JsVar *needle, bool returnKey) {
+  if (!jsvHasChildren(haystack)) return 0;
+  char needleBuf[64];
+  if (jsvGetString(needle, needleBuf, sizeof(needleBuf))==sizeof(needleBuf)) {
+    jsExceptionHere(JSET_ERROR, "Search string is too long (>=%d chars)", sizeof(needleBuf));
+  }
+
+  if (returnKey) {
+    JsVar *key = jsvFindChildFromStringI(haystack, needleBuf);
+    if (key) return jsvAsStringAndUnLock(key);
+    return 0;
+  } else return jsvObjectGetChildI(haystack, needleBuf);
 }
 
 /*JSON{
@@ -1325,7 +1362,7 @@ obtain it.
  */
 void jswrap_espruino_setPassword(JsVar *pwd) {
   if (pwd)
-    pwd = jsvAsString(pwd, false);
+    pwd = jsvAsString(pwd);
   jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, pwd));
 }
 
@@ -1390,6 +1427,24 @@ void jswrap_espruino_asm(JsVar *callspec, JsVar *args) {
   NOT_USED(args);
   jsExceptionHere(JSET_ERROR, "'E.asm' calls should have been replaced by the Espruino tools before upload");
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "reboot",
+  "generate" : "jswrap_espruino_reboot"
+}
+Forces a hard reboot of the microcontroller - as close as possible
+to if the reset pin had been toggled.
+
+**Note:** This is different to `reset()`, which performs a software
+reset of Espruino (resetting the interpreter and pin states, but not
+all the hardware)
+*/
+void jswrap_espruino_reboot() {
+  jshReboot();
+}
+
 
 // ----------------------------------------- USB Specific Stuff
 

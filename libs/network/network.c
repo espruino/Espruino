@@ -508,7 +508,6 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
    * Also see https://tls.mbed.org/kb/how-to/reduce-mbedtls-memory-and-storage-footprint
    * */
 
-  assert(sckt>=0 && sckt<32);
   // Create a new socketData using the variable
   JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", JSV_OBJECT);
   if (!ssl) return false; // out of memory?
@@ -672,7 +671,6 @@ int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsign
   if (sckt<0) return sckt;
 
 #ifdef USE_TLS
-  assert(sckt>=0 && sckt<32);
   if (socketType & ST_TLS) {
     if (ssl_newSocketData(sckt, options)) {
     } else {

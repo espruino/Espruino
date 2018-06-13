@@ -88,13 +88,13 @@ void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
 /*JSON{
   "type" : "function",
   "name" : "setDeepSleep",
-  "#if" : "defined(EFM32) || defined(STM32)",
+  "#if" : "defined(STM32) || defined(EFM32)",
   "generate" : "jswrap_interface_setDeepSleep",
   "params" : [
     ["sleep","bool",""]
   ]
 }
-Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on STM32 Espruino Boards.
+Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on STM32 Espruino Boards (nRF52 boards sleep automatically).
 
 Please see http://www.espruino.com/Power+Consumption for more details on this.
  */
@@ -293,7 +293,7 @@ void jswrap_interface_edit(JsVar *funcName) {
          * foo.replaceWith(function() { ... });
          *
          */
-        JsVar *funcData = jsvAsString(func, false);
+        JsVar *funcData = jsvAsString(func);
 
         if (normalDecl) {
           jsvAppendString(newLine, "function ");
@@ -601,11 +601,10 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   if (timerName) {
     JsVar *timer = jsvSkipNameAndUnLock(timerName);
     JsVar *v;
-    JsVarInt intervalInt = (JsVarInt)jshGetTimeFromMilliseconds(interval);
-    v = jsvNewFromInteger(intervalInt);
-    jsvUnLock2(jsvSetNamedChild(timer, v, "interval"), v);
-    v = jsvNewFromInteger((JsVarInt)(jshGetSystemTime()-jsiLastIdleTime) + intervalInt);
-    jsvUnLock3(jsvSetNamedChild(timer, v, "time"), v, timer);
+    JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
+    jsvObjectSetChildAndUnLock(timer, "interval", jsvNewFromLongInteger(intervalInt));
+    jsvObjectSetChildAndUnLock(timer, "time", jsvNewFromLongInteger((jshGetSystemTime()-jsiLastIdleTime) + intervalInt));
+    jsvUnLock(timer);
     // timerName already unlocked
     jsiTimersChanged(); // mark timers as changed
   } else {

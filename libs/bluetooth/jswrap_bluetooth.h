@@ -33,6 +33,7 @@ typedef enum {
 #define BLETASK_IS_CENTRAL(x) ((x)>=BLETASK_CENTRAL_START && ((x)<=BLETASK_CENTRAL_END))
 
 extern JsVar *bleTaskInfo; // info related to the current task
+
 bool bleInTask(BleTask task);
 BleTask bleGetCurrentTask();
 bool bleNewTask(BleTask task, JsVar *taskInfo);
@@ -65,6 +66,7 @@ void jswrap_nrf_bluetooth_sleep();
 void jswrap_nrf_bluetooth_wake();
 void jswrap_nrf_bluetooth_restart();
 JsVar *jswrap_nrf_bluetooth_getAddress();
+void jswrap_nrf_bluetooth_setAddress(JsVar *address);
 
 JsVarFloat jswrap_nrf_bluetooth_getBattery();
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options);

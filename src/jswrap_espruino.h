@@ -45,12 +45,14 @@ void jswrap_espruino_dumpFreeList();
 JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth);
 JsVarInt jswrap_espruino_getAddressOf(JsVar *v, bool flatAddress);
 void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bits);
+JsVar *jswrap_espruino_lookupNoCase(JsVar *haystack, JsVar *needle, bool returnKey);
 JsVar *jswrap_e_dumpStr();
 JsVar *jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri, bool asArray);
 void jswrap_espruino_setPassword(JsVar *pwd);
 void jswrap_espruino_lockConsole();
 void jswrap_espruino_setTimeZone(JsVarFloat zone);
 void jswrap_espruino_asm(JsVar *callspec, JsVar *args);
+void jswrap_espruino_reboot();
 
 void jswrap_espruino_setUSBHID(JsVar *arr);
 bool jswrap_espruino_sendUSBHID(JsVar *arr);

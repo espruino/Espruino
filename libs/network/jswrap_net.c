@@ -518,22 +518,6 @@ void jswrap_dgram_socket_send(JsVar *parent, JsVar *buffer, JsVar *offset, JsVar
 }
 The 'message' event is called when a datagram message is received. If a handler is defined with `X.on('message', function(msg) { ... })` then it will be called`
 */
-void jswrap_dgram_messageCallback(JsVar *parent, JsVar *msg, JsVar *rinfo) {
-  assert(jsvIsObject(parent));
-  assert(jsvIsString(msg));
-  assert(jsvIsObject(rinfo));
-
-  JsVar *callback = jsvFindChildFromString(parent, DGRAM_MESSAGE_CALLBACK_NAME, false);
-  if (callback) {
-    JsVar *args[] = { msg, rinfo };
-    if (!jsiExecuteEventCallback(parent, callback, 2, args)) {
-      jsError("Error processing Datagram message handler - removing it.");
-      jsErrorFlags |= JSERR_CALLBACK;
-      jsvObjectRemoveChild(parent, DGRAM_MESSAGE_CALLBACK_NAME);
-    }
-    jsvUnLock(callback);
-  }
-}
 
 /*JSON{
   "type" : "method",

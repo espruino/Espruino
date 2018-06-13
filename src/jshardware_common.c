@@ -39,6 +39,6 @@ void jshSPIInitInfo(JshSPIInfo *inf) {
 void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->pinSCL = PIN_UNDEFINED;
   inf->pinSDA = PIN_UNDEFINED;
-  inf->bitrate = 50000; // Is what we used - shouldn't it be 100k?
+  inf->bitrate = 100000;
   inf->started = false;
 }

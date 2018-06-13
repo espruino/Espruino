@@ -107,9 +107,7 @@ JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value, JsVarInt startIdx) {
   JsVar *idxName = jsvGetIndexOfFull(parent, value, false/*not exact*/, true/*integer indices only*/, startIdx);
   // but this is the name - we must turn it into a var
   if (idxName == 0) return jsvNewFromInteger(-1); // not found!
-  JsVar *idx = jsvCopyNameOnly(idxName, false/* no children */, false/* Make sure this is not a name*/);
-  jsvUnLock(idxName);
-  return idx;
+  return jsvNewFromInteger(jsvGetIntegerAndUnLock(idxName));
 }
 
 /*JSON{
@@ -129,7 +127,7 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
   if (jsvIsUndefined(filler))
     filler = jsvNewFromString(","); // the default it seems
   else
-    filler = jsvAsString(filler, false);
+    filler = jsvAsString(filler);
   if (!filler) return 0; // out of memory
   JsVar *str = jsvArrayJoin(parent, filler);
   jsvUnLock(filler);
@@ -616,8 +614,8 @@ NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *
     JsVar *args[2] = {a,b};
     return jsvGetIntegerAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
   } else {
-    JsVar *sa = jsvAsString(a, false);
-    JsVar *sb = jsvAsString(b, false);
+    JsVar *sa = jsvAsString(a);
+    JsVar *sb = jsvAsString(b);
     JsVarInt r = jsvCompareString(sa,sb, 0, 0, false);
     jsvUnLock2(sa, sb);
     return r;
