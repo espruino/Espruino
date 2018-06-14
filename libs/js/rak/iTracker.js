@@ -1,3 +1,8 @@
+/*
+http://www.discoverytelecom.eu/upload/iblock/7c7/m35_at_command.pdf
+https://www.hobbielektronika.hu/forum/getfile.php?id=203810
+
+*/
 var PINS = {
   BME_CS : D2,
   BME_SDI : D3,
@@ -31,84 +36,96 @@ var PINS = {
   GPS_RESET : D31 // 1=normal, 0=reset (internal pullup)
 };
 
-exports.GPS = function(callback) {
-  if (callback) { 
+// Return GPS instance, callback is called whenever data is available!
+exports.setGPSOn = function(isOn, callback) {
+  Serial1.removeAllListeners();
+  delete this.GPS;
+  if (isOn) { 
     // Set up GPS    
-    Serial1.removeAllListeners();
     Serial1.setup(9600,{tx:PINS.GPS_RXD,rx:PINS.GPS_TXD});
     PINS.PWR_GPS_ON.set();
-    return require("GPS").connect(Serial1, callback);
+    return this.GPS = require("GPS").connect(Serial1, callback);
   } else {
-    // remove GPS
-    Serial1.removeAllListeners();
+    // Power off GPS
     PINS.PWR_GPS_ON.reset();
   }
 };
 
-/// Returns BME280 instance. Call 'getData' to get the information
-exports.BME = function() {
-  var spi = new SPI();
-  spi.setup({miso : PINS.BME_SDO, mosi : PINS.BME_SDI, sck: PINS.BME_SCK });
-  return require("BME280").connectSPI(spi, PINS.BME_CS);
+/// Returns BME280 instance, callback when initialised. Call 'getData' to get the information
+exports.setEnvOn = function(isOn, callback) {
+  if (this.BME280) this.BME280.setPower(false);
+  delete this.BME280;
+  if (isOn) {
+    var spi = new SPI();
+    spi.setup({miso : PINS.BME_SDO, mosi : PINS.BME_SDI, sck: PINS.BME_SCK });
+    if (callback) setTimeout(callback, 100, this.BME280); // wait for first reading
+    return this.BME280 = require("BME280").connectSPI(spi, PINS.BME_CS);    
+  }
 };
 
-exports.mag = function() {
-  var i2c = new I2C();
-  i2c.setup({sda:PINS.LIS2MDL_SDA, scl:PINS.LIS2MDL_SCL});
-  var m = require("LIS2MDL").connectI2C(i2c, {});
-  var v = m.read(); 
-  m.off();
-  return v;
+/// Returns a LIS2MDL instance, callback when initialised. Then use 'read' to get data
+exports.setMagOn = function(isOn, callback) {
+  if (this.LIS2MDL) this.LIS2MDL.off();
+  delete this.LIS2MDL;
+  if (isOn) {
+    var i2c = new I2C();
+    i2c.setup({sda:PINS.LIS2MDL_SDA, scl:PINS.LIS2MDL_SCL});
+    if (callback) setTimeout(callback, 100, this.LIS2MDL); // wait for first reading
+    return this.LIS2MDL = require("LIS2MDL").connectI2C(i2c, {});
+  }
 };
 
-exports.accel = function() {
-  // we could do tap detection/similar if supported by the module
-  var i2c = new I2C();
-  i2c.setup({sda:PINS.LIS3DH_SDA, scl:PINS.LIS3DH_SCL});
-  var m = require("LIS3DH").connectI2C(i2c, {});
-  var v = m.read(); 
-  m.off();
-  return v;
+/// Returns a LIS3DH instance, callback when initialised. Then use 'read' to get data
+exports.setAccelOn = function(isOn, callback) {
+  if (this.LIS3DH) this.LIS3DH.off();
+  delete this.LIS3DH;
+  if (isOn) {
+    var i2c = new I2C();
+    i2c.setup({sda:PINS.LIS3DH_SDA, scl:PINS.LIS3DH_SCL});
+    if (callback) setTimeout(callback, 100, this.LIS3DH); // wait for first reading
+    return this.LIS3DH = require("LIS3DH").connectI2C(i2c, {});
+  }
 };
 
-exports.light = function() {
-  var i2c = new I2C();
-  i2c.setup({sda:PINS.OPT_SDA, scl:PINS.OPT_SCL,bitrate:400000});
-  var o = require("OPT3001").connectI2C(i2c);
-  // need a delay here before reading - use OPT_INT?
-  var v = o.read();
-  o.off();
-  return v;
+/// Returns a OPT3001 instance, callback when initialised. Then use 'read' to get data
+exports.setOptoOn = function(isOn, callback) {
+  if (this.OPT3001) this.OPT3001.off();
+  delete this.OPT3001;
+  if (isOn) {
+    var i2c = new I2C();
+    i2c.setup({sda:PINS.OPT_SDA, scl:PINS.OPT_SCL,bitrate:400000});
+    if (callback) setTimeout(callback, 1000, this.OPT3001); // wait for first reading
+    return this.OPT3001 = require("OPT3001").connectI2C(i2c);
+  }
 };
 
-// turn GSM on - returns a promise
-exports.GSMon = function() {
-  return new Promise(function(resolve) {
-    Serial1.removeAllListeners();
-    Serial1.on('data',x=>print(JSON.stringify(x)));
-    Serial1.setup(115200,{tx:PINS.GPRS_TXD,rx:PINS.GPRS_RXD});
-    PINS.PWR_GPRS_ON.reset();
-    setTimeout(resolve,200);
-  }).then(function() {
-    PINS.PWR_GPRS_ON.set();
-    return new Promise(function(resolve){setTimeout(resolve,200);});
-  }).then(function() {
-    PINS.GPRS_PWRKEY.set();
-    return new Promise(function(resolve){setTimeout(resolve,2000);});
-  }).then(function() {
-    PINS.GPRS_PWRKEY.reset();
-    return new Promise(function(resolve){setTimeout(resolve,1000);});
-  }).then(function() {
-    console.log("GSM on");
-  });
-}
-
-// turn GSM off - returns a promise
-exports.gsmoff = function() {
-  return new Promise(function(resolve) {
+// turn cell connectivity on - calls the callback when done
+exports.setCellOn = function(isOn, callback) {
+  if (isOn) {
+    var that=this;
+    return new Promise(function(resolve) {
+      Serial1.removeAllListeners();
+      //Serial1.on('data',x=>print(JSON.stringify(x)));
+      Serial1.setup(115200,{tx:PINS.GPRS_TXD,rx:PINS.GPRS_RXD});
+      PINS.PWR_GPRS_ON.reset();
+      setTimeout(resolve,200);
+    }).then(function() {
+      PINS.PWR_GPRS_ON.set();
+      return new Promise(function(resolve){setTimeout(resolve,200);});
+    }).then(function() {
+      PINS.GPRS_PWRKEY.set();
+      return new Promise(function(resolve){setTimeout(resolve,2000);});
+    }).then(function() {
+      PINS.GPRS_PWRKEY.reset();
+      return new Promise(function(resolve){setTimeout(resolve,5000);});
+    }).then(function() {
+      if (callback) callback();
+    });
+  } else {
+    delete this.GSM;
     PINS.PWR_GPRS_ON.reset(); // turn power off.
-    setTimeout(resolve,1000);
-  }).then(function() {
-    console.log("GSM off");
-  });
+    if (callback) setTimeout(callback,1000);
+  }
 }
+
+

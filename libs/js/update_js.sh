@@ -1,8 +1,11 @@
 #!/bin/bash
 
+cd `dirname $0`
+
 # Get all JS modules we're using
 wget https://www.espruino.com/modules/AT.min.js -O AT.min.js
 wget https://www.espruino.com/modules/GPS.min.js -O GPS.min.js
+wget https://www.espruino.com/modules/QuectelM35.min.js -O QuectelM35.min.js
 wget https://www.espruino.com/modules/graphical_menu.min.js -O graphical_menu.min.js
 wget https://www.espruino.com/modules/BME280.min.js -O BME280.min.js
 wget https://www.espruino.com/modules/LIS2DH12.min.js  -O LIS2DH12.min.js
