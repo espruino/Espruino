@@ -23,6 +23,7 @@ info = {
  'name' : "iTracker RAK8211",
  #https://github.com/RAKWireless/ITRACKER-Arduino-SDK
  'link' :  [ "http://docs.rakwireless.com/en/RAK8211/Hardware%20Design/RAK8211-G%20Datasheet%20V1.0.pdf" ],
+ 'espruino_page_link' : 'RAK8211',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D29",
  'default_console_rx' : "D28",
