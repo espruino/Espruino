@@ -49,8 +49,9 @@ info = {
      'JSMODULESOURCES += libs/js/LIS2MDL.min.js',
      'JSMODULESOURCES += libs/js/LIS3DH.min.js',
      'JSMODULESOURCES += libs/js/OPT3001.min.js',
-     'JSMODULESOURCES += libs/js/QuectelM35.min.js',
-     'JSMODULESOURCES += libs/js/rak/iTracker.min.js'
+#     'JSMODULESOURCES += libs/js/ATSMS.min.js',
+#     'JSMODULESOURCES += libs/js/QuectelM35.min.js',
+     'JSMODULESOURCES += iTracker:libs/js/rak/RAK8211.min.js'
    ]
  }
 };
@@ -88,28 +89,36 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
-  'right' : [ 'GND', '3V', 'D2', 'D1' ],
+  'right' : [ 'D21', '3V', 'GND', 'D30', '',
+              'GND', '3V', 'D29', 'D28', '',
+              '3V', 'SWDIO', 'SWDCLK', 'GND' ],
+  '_hide_not_on_connectors' : True,
   '_notes' : {
-
+    'D21' : "Also RESET if configured",
+    'D30' : "Labelled TILT_DOUT",
+    'D29' : "Labelled SENSOR_DOUT2",
+    'D28' : "Labelled SENSOR_DOUT1"
   }
 };
 
 board["_css"] = """
 #board {
-  width: 800px;
-  height: 800px;
+  width: 400px;
+  height: 506px;
   top: 0px;
   left : 0px;
-  background-image: url(img/ITRACKER.jpg);
+  background-image: url(img/RAK8211.png);
 }
 #boardcontainer {
-  height: 900px;
+  height: 506px;
 }
 #right {
-    top: 304px;
-    left: 640px;
+  top: 73px;
+  left: 405px;
 }
-
+.rightpin {
+  height: 18px;
+}
 """;
 
 def get_pins():

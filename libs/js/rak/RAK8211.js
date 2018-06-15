@@ -36,7 +36,7 @@ var PINS = {
   GPS_RESET : D31 // 1=normal, 0=reset (internal pullup)
 };
 
-// Return GPS instance, callback is called whenever data is available!
+// Return GPS instance. callback is called whenever data is available!
 exports.setGPSOn = function(isOn, callback) {
   Serial1.removeAllListeners();
   delete this.GPS;
@@ -51,7 +51,7 @@ exports.setGPSOn = function(isOn, callback) {
   }
 };
 
-/// Returns BME280 instance, callback when initialised. Call 'getData' to get the information
+/// Returns BME280 instance. callback when initialised. Call 'getData' to get the information
 exports.setEnvOn = function(isOn, callback) {
   if (this.BME280) this.BME280.setPower(false);
   delete this.BME280;
@@ -63,7 +63,7 @@ exports.setEnvOn = function(isOn, callback) {
   }
 };
 
-/// Returns a LIS2MDL instance, callback when initialised. Then use 'read' to get data
+/// Returns a LIS2MDL instance. callback when initialised. Then use 'read' to get data
 exports.setMagOn = function(isOn, callback) {
   if (this.LIS2MDL) this.LIS2MDL.off();
   delete this.LIS2MDL;
@@ -71,11 +71,12 @@ exports.setMagOn = function(isOn, callback) {
     var i2c = new I2C();
     i2c.setup({sda:PINS.LIS2MDL_SDA, scl:PINS.LIS2MDL_SCL});
     if (callback) setTimeout(callback, 100, this.LIS2MDL); // wait for first reading
-    return this.LIS2MDL = require("LIS2MDL").connectI2C(i2c, {});
+    // {int:pin} isn't used yet, but at some point the module might include support
+    return this.LIS2MDL = require("LIS2MDL").connectI2C(i2c, { int : PINS.LIS2MDL_INT });
   }
 };
 
-/// Returns a LIS3DH instance, callback when initialised. Then use 'read' to get data
+/// Returns a LIS3DH instance. callback when initialised. Then use 'read' to get data
 exports.setAccelOn = function(isOn, callback) {
   if (this.LIS3DH) this.LIS3DH.off();
   delete this.LIS3DH;
@@ -83,11 +84,12 @@ exports.setAccelOn = function(isOn, callback) {
     var i2c = new I2C();
     i2c.setup({sda:PINS.LIS3DH_SDA, scl:PINS.LIS3DH_SCL});
     if (callback) setTimeout(callback, 100, this.LIS3DH); // wait for first reading
-    return this.LIS3DH = require("LIS3DH").connectI2C(i2c, {});
+    // {int:pin} isn't used yet, but at some point the module might include support
+    return this.LIS3DH = require("LIS3DH").connectI2C(i2c, { int : PINS.LIS3DH_INT1});  
   }
 };
 
-/// Returns a OPT3001 instance, callback when initialised. Then use 'read' to get data
+/// Returns a OPT3001 instance. callback when initialised. Then use 'read' to get data
 exports.setOptoOn = function(isOn, callback) {
   if (this.OPT3001) this.OPT3001.off();
   delete this.OPT3001;
@@ -95,17 +97,18 @@ exports.setOptoOn = function(isOn, callback) {
     var i2c = new I2C();
     i2c.setup({sda:PINS.OPT_SDA, scl:PINS.OPT_SCL,bitrate:400000});
     if (callback) setTimeout(callback, 1000, this.OPT3001); // wait for first reading
-    return this.OPT3001 = require("OPT3001").connectI2C(i2c);
+    // {int:pin} isn't used yet, but at some point the module might include support
+    return this.OPT3001 = require("OPT3001").connectI2C(i2c, { int : PINS.OPT_INT });
   }
 };
 
-// turn cell connectivity on - calls the callback when done
+// Turn cell connectivity on - will take around 8 seconds. Calls the `callback(usart)` when done. You then need to connect either SMS or QuectelM35 to the serial device `usart`
 exports.setCellOn = function(isOn, callback) {
   if (isOn) {
     var that=this;
     return new Promise(function(resolve) {
       Serial1.removeAllListeners();
-      //Serial1.on('data',x=>print(JSON.stringify(x)));
+      Serial1.on('data', function(x) {}); // suck up any data that gets transmitted from the modem as it boots (RDY, etc)
       Serial1.setup(115200,{tx:PINS.GPRS_TXD,rx:PINS.GPRS_RXD});
       PINS.PWR_GPRS_ON.reset();
       setTimeout(resolve,200);
@@ -119,10 +122,10 @@ exports.setCellOn = function(isOn, callback) {
       PINS.GPRS_PWRKEY.reset();
       return new Promise(function(resolve){setTimeout(resolve,5000);});
     }).then(function() {
-      if (callback) callback();
+      Serial1.removeAllListeners();
+      if (callback) setTimeout(callback,10,Serial1);
     });
   } else {
-    delete this.GSM;
     PINS.PWR_GPRS_ON.reset(); // turn power off.
     if (callback) setTimeout(callback,1000);
   }
