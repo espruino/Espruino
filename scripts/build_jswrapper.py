@@ -41,8 +41,13 @@ jsmodules = {}
 for i in range(1,len(sys.argv)):
   arg = sys.argv[i]
   if arg[0]!="-" and arg[-3:]==".js": 
-    modulename = arg.rsplit('/',1)[1][:-3]
-    if modulename[-4:]==".min": modulename=modulename[:-4]
+    if arg.find(":")>=0:
+      colon = arg.find(":")
+      modulename = arg[:colon]
+      arg = arg[colon+1:]
+    else:
+      modulename = arg.rsplit('/',1)[1][:-3]
+      if modulename[-4:]==".min": modulename=modulename[:-4]
     print("Loading JS module: "+arg+" -> "+modulename)
     jscode = open(arg, "r").read()
     jsmodules[modulename] = jscode
