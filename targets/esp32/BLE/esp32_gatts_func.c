@@ -17,6 +17,7 @@
 #include "esp_system.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_gap_ble_api.h"
 
 #include "BLE/esp32_gatts_func.h"
 #include "BLE/esp32_gap_func.h"
@@ -28,6 +29,7 @@
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jstimer.h"
 
 ble_uuid_t uart_service_uuid = {
 	.type = BLE_UUID_TYPE_128,
@@ -64,16 +66,37 @@ esp_gatt_if_t uart_gatts_if;
 uint16_t uart_tx_handle;
 bool uart_gatts_connected = false;
 
-uint8_t *getUartAdvice(){
-	return uart_advice;
+#define notifBufferSize BLE_NUS_MAX_DATA_LEN
+uint8_t notifBuffer[notifBufferSize];
+uint8_t notifBufferPnt = 0;
+bool inNotif = false;
+
+void sendNotifBuffer(){
+	if(uart_gatts_if != ESP_GATT_IF_NONE){
+		esp_ble_gatts_send_indicate(uart_gatts_if,0,uart_tx_handle,notifBufferPnt,notifBuffer,false);
+	}
+	notifBufferPnt = 0;
+}
+void notifTimerCB(){
+	if(notifBufferPnt > 0) sendNotifBuffer();
+	jstStopExecuteFn(notifTimerCB,NULL);
+	inNotif = false;
+}
+void startNotifTimer(){
+	inNotif = true;
+	JsSysTime period = jshGetTimeFromMilliseconds(10);
+	JsSysTime time = jshGetSystemTime();
+	jstExecuteFn(notifTimerCB, NULL, time + period, period);
 }
 void gatts_sendNotification(int c){
-	uint8_t data[2];
-	data[0] = (uint8_t)c;
-	data[1] = 0;
-	if(uart_gatts_if != ESP_GATT_IF_NONE){
-		esp_ble_gatts_send_indicate(uart_gatts_if, 0, uart_tx_handle, 1, data, false);	
-	}
+	notifBuffer[notifBufferPnt] = (uint8_t)c;
+	notifBufferPnt++;
+	if(notifBufferPnt >= notifBufferSize) sendNotifBuffer();
+	if(!inNotif) startNotifTimer();
+}
+
+uint8_t *getUartAdvice(){
+	return uart_advice;
 }
 
 void emitNRFEvent(char *event,JsVar *args,int argCnt){
@@ -95,6 +118,13 @@ int getIndexFromGatts_if(esp_gatt_if_t gatts_if){
 		if(gatts_service[i].gatts_if == gatts_if) return i;
 	}
 	return -1;
+}
+bool gatts_if_connected(){
+	bool r = false;
+	for(int i = 0; i < ble_service_cnt; i++){
+		if(gatts_service[i].connected) r = true;
+	}
+	return r;
 }
 
 static void gatts_read_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
@@ -148,8 +178,18 @@ static void gatts_write_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t 
 			bleGetHiddenName(hiddenName,BLE_WRITE_EVENT,pos);
 			JsVar *writeCB = jsvObjectGetChild(execInfo.hiddenRoot,hiddenName,0);
 			if(writeCB){
-				JsVar *tmp = jspExecuteFunction(writeCB,0,0,0);
+				JsVar *evt = jsvNewObject();
+				if (evt) {
+					JsVar *str = jsvNewStringOfLength(param->write.len, (char*)param->write.value);
+					if (str) {
+						JsVar *ab = jsvNewArrayBufferFromString(str, param->write.len);
+						jsvUnLock(str);
+						jsvObjectSetChildAndUnLock(evt, "data", ab);
+					}
+				}
+				JsVar *tmp = jspExecuteFunction(writeCB,0,1,&evt);
 				if(tmp) jsvUnLock(tmp);
+				if(evt) jsvUnLock(evt);
 			}
 			break;
 		}
@@ -169,9 +209,11 @@ static void gatts_write_nus_value_handler(esp_gatts_cb_event_t event, esp_gatt_i
 }
 static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
 	int g = getIndexFromGatts_if(gatts_if);
+	esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
 	if(g >= 0){
 		JsVar *args[1];
 		gatts_service[g].conn_id = param->connect.conn_id;
+		gatts_service[g].connected = true;
 		args[0] = bda2JsVarString(param->connect.remote_bda);
 		m_conn_handle = 0x01;
 		emitNRFEvent(BLE_CONNECT_EVENT,args,1);
@@ -180,10 +222,13 @@ static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt
 }
 static void gatts_disconnect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
 	int g = getIndexFromGatts_if(gatts_if);
+	esp_err_t r;
 	if(g >= 0){
 		JsVar *args[1];
-		gatts_service[g].gatts_if = ESP_GATT_IF_NONE;
-		bluetooth_gap_startAdvertizing(true);
+		gatts_service[g].connected = false;
+		if(!gatts_if_connected()){
+			r = bluetooth_gap_startAdvertizing(true);
+		}
 		args[0] = bda2JsVarString(param->disconnect.remote_bda);
 		m_conn_handle = BLE_GATT_HANDLE_INVALID;
 		emitNRFEvent(BLE_DISCONNECT_EVENT,args,1);
@@ -362,6 +407,7 @@ void add_ble_uart(){
 	gatts_descr[ble_descr_pos].char_pos = ble_char_pos;
 	gatts_descr[ble_descr_pos].descr_uuid = uart_tx_descr;
 	gatts_descr[ble_descr_pos].descr_handle = 0;
+	gatts_descr[ble_descr_pos].descr_perm = ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE;
 	handles +=2;
 	gatts_service[ble_service_pos].gatts_if = ESP_GATT_IF_NONE;
 	gatts_service[ble_service_pos].num_handles = handles;
@@ -466,6 +512,7 @@ void gatts_structs_init(JsVar *options){
 		gatts_service[i].gatts_if = ESP_GATT_IF_NONE;
 		gatts_service[i].num_handles = 0;
 		gatts_service[i].serviceFlag = BLE_SERVICE_GENERAL;
+		gatts_service[i].connected = false;
 	}
 	for(int i = 0; i < ble_char_cnt;i++){
 		gatts_char[i].service_pos = -1;

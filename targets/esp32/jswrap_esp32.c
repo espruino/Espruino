@@ -22,6 +22,7 @@
 
 #include "esp_system.h"
 #include "esp_sleep.h"
+#include "esp_heap_caps.h"
 
 #ifdef BLUETOOTH
 #include "BLE/esp32_bluetooth_utils.h"
@@ -88,6 +89,7 @@ Returns an object that contains details about the state of the ESP32 with the fo
 * `freeHeap`     - Amount of free heap in bytes.
 * `BLE`			 - Status of BLE, enabled if true.
 * `Wifi`		 - Status of Wifi, enabled if true.
+* `minHeap`      - Minimum heap, calculated by heap_caps_get_minimum_free_size
 
 */
 JsVar *jswrap_ESP32_getState() {
@@ -98,6 +100,7 @@ JsVar *jswrap_ESP32_getState() {
   jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(esp_get_free_heap_size()));
   jsvObjectSetChildAndUnLock(esp32State, "BLE",          jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)));
   jsvObjectSetChildAndUnLock(esp32State, "Wifi",         jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)));  
+  jsvObjectSetChildAndUnLock(esp32State, "minHeap",      jsvNewFromInteger(heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT)));
   return esp32State;
 } // End of jswrap_ESP32_getState
 

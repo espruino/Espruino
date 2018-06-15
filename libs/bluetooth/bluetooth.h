@@ -47,6 +47,8 @@ typedef struct {
 #define BLE_UUID_TYPE_BLE (1)
 #define BLE_UUID_TYPE_128 2
 #define MSEC_TO_UNITS(MS,MEH) MS
+#define GATT_MTU_SIZE_DEFAULT 23
+#define BLE_NUS_MAX_DATA_LEN 20 //GATT_MTU_SIZE_DEFAULT - 3
 #endif
 
 #if defined(NRF52) || defined(ESP32)
