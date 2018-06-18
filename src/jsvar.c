@@ -3430,11 +3430,13 @@ JsVar *jsvNegateAndUnLock(JsVar *v) {
   return res;
 }
 
-/** If the given element is found, return the path to it as a string of
- * the form 'foo.bar', else return 0. If we would have returned a.b and
- * ignoreParent is a, don't! */
-JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent) {
+/// see jsvGetPathTo
+static JsVar *jsvGetPathTo_int(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent, int *depth) {
   if (maxDepth<=0) return 0;
+
+  int bestDepth = maxDepth+1;
+  JsVar *found = 0;
+
   JsvIterator it;
   jsvIteratorNew(&it, root, JSIF_DEFINED_ARRAY_ElEMENTS);
   while (jsvIteratorHasElement(&it)) {
@@ -3446,20 +3448,31 @@ JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignorePare
       return name;
     } else if (jsvIsObject(el) || jsvIsArray(el) || jsvIsFunction(el)) {
       // recursively search
-      JsVar *n = jsvGetPathTo(el, element, maxDepth-1, ignoreParent);
-      if (n) {
+      int d;
+      JsVar *n = jsvGetPathTo_int(el, element, maxDepth-1, ignoreParent, &d);
+      if (n && d<bestDepth) {
+        bestDepth = d;
         // we found it! Append our name onto it as well
         JsVar *keyName = jsvIteratorGetKey(&it);
-        JsVar *name = jsvVarPrintf(jsvIsObject(el) ? "%v.%v" : "%v[%q]",keyName,n);
-        jsvUnLock2(keyName, n);
-        jsvIteratorFree(&it);
-        return name;
+        jsvUnLock(found);
+        found = jsvVarPrintf(jsvIsObject(el) ? "%v.%v" : "%v[%q]",keyName,n);
+        jsvUnLock(keyName);
       }
+      jsvUnLock(n);
     }
     jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
-  return 0;
+  *depth = bestDepth;
+  return found;
+}
+
+/** If the given element is found, return the path to it as a string of
+ * the form 'foo.bar', else return 0. If we would have returned a.b and
+ * ignoreParent is a, don't! */
+JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent) {
+  int depth = 0;
+  return jsvGetPathTo_int(root, element, maxDepth, ignoreParent, &depth);
 }
 
 void jsvTraceLockInfo(JsVar *v) {
