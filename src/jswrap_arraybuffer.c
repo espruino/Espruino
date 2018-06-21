@@ -639,6 +639,46 @@ Fill this array with the given value, for every index `>= start` and `< end`
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",
+  "name" : "filter",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_array_filter",
+  "params" : [
+    ["function","JsVar","Function to be executed"],
+    ["thisArg","JsVar","if specified, the function is called with 'this' set to thisArg (optional)"]
+  ],
+  "return" : ["JsVar","An array containing the results"]
+}
+Return an array which contains only those elements for which the callback function returns 'true'
+ */
+/*JSON{
+  "type" : "method",
+  "class" : "ArrayBufferView",
+  "name" : "find",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_array_find",
+  "params" : [
+    ["function","JsVar","Function to be executed"]
+  ],
+  "return" : ["JsVar","The array element where `function` returns `true`, or `undefined`"]
+}
+Return the array element where `function` returns `true`, or `undefined` if it doesn't returns `true` for any element.
+ */
+/*JSON{
+  "type" : "method",
+  "class" : "ArrayBufferView",
+  "name" : "findIndex",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_array_findIndex",
+  "params" : [
+    ["function","JsVar","Function to be executed"]
+  ],
+  "return" : ["JsVar","The array element's index where `function` returns `true`, or `-1`"]
+}
+Return the array element's index where `function` returns `true`, or `-1` if it doesn't returns `true` for any element.
+ */
+/*JSON{
+  "type" : "method",
+  "class" : "ArrayBufferView",
   "name" : "reverse",
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_array_reverse",

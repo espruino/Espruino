@@ -20,6 +20,8 @@
             edit() now chooses the shortest way to describe the function
             Fixed bug when RegExp.match/test called on non-strings
             Added Global isFinite
+            Add missing ArrayBufferView.filter
+            Added Array.find and findIndex (also for ArrayBufferViews)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
