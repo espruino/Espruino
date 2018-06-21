@@ -194,6 +194,22 @@ JsVarFloat jswrap_parseFloat(JsVar *v) {
 
 /*JSON{
   "type" : "function",
+  "name" : "isFinite",
+  "generate" : "jswrap_isFinite",
+  "params" : [
+    ["x","JsVar",""]
+  ],
+  "return" : ["bool","True is the value is a Finite number, false if not."]
+}
+Is the parameter a finite num,ber or not? If needed, the parameter is first converted to a number.
+ */
+bool jswrap_isFinite(JsVar *v) {
+  JsVarFloat f = jsvGetFloat(v);
+  return !isnan(f) && f!=INFINITY && f!=-INFINITY;
+}
+
+/*JSON{
+  "type" : "function",
   "name" : "isNaN",
   "generate" : "jswrap_isNaN",
   "params" : [
