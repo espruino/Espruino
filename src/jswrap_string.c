@@ -614,3 +614,67 @@ JsVar *jswrap_string_trim(JsVar *parent) {
   jsvUnLock(s);
   return res;
 }
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "startsWith",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_string_startsWith",
+  "params" : [
+    ["searchString","JsVar","The string to search for"],
+    ["position","int","The start character index (or 0 if not defined)"]
+  ],
+  "return" : ["bool","`true` if the given characters are found at the beginning of the string, otherwise, `false`."]
+}
+*/
+bool jswrap_string_startsWith(JsVar *parent, JsVar *search, int position) {
+  if (!jsvIsString(parent)) return false;
+  JsVar *searchStr = jsvAsString(search);
+  bool match = false;
+  if (position >= 0 &&
+      jsvGetStringLength(searchStr)+position <= jsvGetStringLength(parent))
+   match = jsvCompareString(parent, searchStr, position,0,true)==0;
+  jsvUnLock(searchStr);
+  return match;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "endsWith",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_string_endsWith",
+  "params" : [
+    ["searchString","JsVar","The string to search for"],
+    ["length","JsVar","The 'end' of the string - if left off the actual length of the string is used"]
+  ],
+  "return" : ["bool","`true` if the given characters are found at the end of the string, otherwise, `false`."]
+}
+*/
+bool jswrap_string_endsWith(JsVar *parent, JsVar *search, JsVar *length) {
+  if (!jsvIsString(parent)) return false;
+  int position = jsvIsNumeric(length) ? jsvGetInteger(length) : jsvGetStringLength(parent);
+  JsVar *searchStr = jsvAsString(search);
+  position -= jsvGetStringLength(searchStr);
+  bool match = false;
+  if (position >= 0 &&
+      jsvGetStringLength(searchStr)+position <= jsvGetStringLength(parent))
+    match = jsvCompareString(parent, searchStr, position,0,true)==0;
+  jsvUnLock(searchStr);
+  return match;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "includes",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, false)>=0",
+  "params" : [
+    ["substring","JsVar","The string to search for"],
+    ["fromIndex","JsVar","The start character index (or 0 if not defined)"]
+  ],
+  "return" : ["bool","`true` if the given characters are in the string, otherwise, `false`."]
+}
+*/
