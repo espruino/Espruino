@@ -562,7 +562,8 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
   "name" : "indexOf",
   "generate" : "jswrap_array_indexOf",
   "params" : [
-    ["value","JsVar","The value to check for"]
+    ["value","JsVar","The value to check for"],
+    ["startIndex","int","(optional) the index to search from, or 0 if not specified"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"]
 }

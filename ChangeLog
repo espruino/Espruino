@@ -22,6 +22,7 @@
             Added Global isFinite
             Add missing ArrayBufferView.filter
             Added Array.find and findIndex (also for ArrayBufferViews)
+            Fix unreliable ArrayBufferView.indexOf (#1468)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
