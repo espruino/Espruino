@@ -18,6 +18,7 @@
             Fix TypedArray.indexOf (fix #1468)
             Allow require('Storage').write('a','',0,15) (zero length data) (fix #1465)
             edit() now chooses the shortest way to describe the function
+            Fixed bug when RegExp.match/test called on non-strings
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

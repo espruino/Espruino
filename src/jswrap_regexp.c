@@ -301,22 +301,24 @@ Or with groups `/W(o)rld/.exec("Hello World")` returns:
 ```
 
  */
-JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *str) {
+JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *arg) {
+  JsVar *str = jsvAsString(arg);
   JsVarInt lastIndex = jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, "lastIndex", 0));
   JsVar *regex = jsvObjectGetChild(parent, "source", 0);
   if (!jsvIsString(regex)) {
-    jsvUnLock(regex);
+    jsvUnLock2(str,regex);
     return 0;
   }
   size_t regexLen = jsvGetStringLength(regex);
   char *regexPtr = (char *)alloca(regexLen+1);
   if (!regexPtr) {
-    jsvUnLock(regex);
+    jsvUnLock2(str,regex);
     return 0;
   }
   jsvGetString(regex, regexPtr, regexLen+1);
   jsvUnLock(regex);
   JsVar *rmatch = match(regexPtr, str, (size_t)lastIndex, jswrap_regexp_hasFlag(parent,'i'));
+  jsvUnLock(str);
   if (!rmatch) {
     rmatch = jsvNewWithFlags(JSV_NULL);
     lastIndex = 0;
