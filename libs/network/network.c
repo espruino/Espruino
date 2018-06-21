@@ -195,6 +195,7 @@ void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->data.pinCS = PIN_UNDEFINED;
   net->data.pinIRQ = PIN_UNDEFINED;
   net->data.pinEN = PIN_UNDEFINED;
+  net->data.recvBufferSize = 0; // use net->chunkLen
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, NETWORK_VAR_NAME, net->networkVar);
   networkSet(net);
   networkGetFromVar(net);
@@ -252,6 +253,11 @@ bool networkGetFromVar(JsNetwork *net) {
     jsExceptionHere(JSET_INTERNALERROR, "Unknown network device %d", net->data.type);
     networkFree(net);
     return false;
+  }
+
+  // Adjust for SO_RCVBUF
+  if (net->data.recvBufferSize > net->chunkSize) {
+    net->chunkSize = net->data.recvBufferSize;
   }
 
   // Save the current network as a global.
