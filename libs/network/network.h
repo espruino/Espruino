@@ -55,6 +55,7 @@ typedef struct {
   // Info for accessing specific devices
   IOEventFlags device;
   Pin pinCS, pinIRQ, pinEN;
+  int recvBufferSize; ///< Amount of memory to allocate for recv (sockopt SO_RCVBUF), by default net->chunkSize
 } PACKED_FLAGS JsNetworkData;
 
 
