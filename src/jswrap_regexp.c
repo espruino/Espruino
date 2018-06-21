@@ -79,12 +79,13 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
   }
   /* must look even if string is empty */
   rmatch = matchhere(regexp, &txtIt, info);
+  jsvStringIteratorNext(&txtIt);
   while (!rmatch && jsvStringIteratorHasChar(&txtIt)) {
-    jsvStringIteratorNext(&txtIt);
     info.startIndex++;
     JsvStringIterator txtIt2 = jsvStringIteratorClone(&txtIt);
     rmatch = matchhere(regexp, &txtIt2, info);
     jsvStringIteratorFree(&txtIt2);
+    jsvStringIteratorNext(&txtIt);
   }
   jsvStringIteratorFree(&txtIt);
   return rmatch;
@@ -180,9 +181,9 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
   int charLength;
   bool charMatched = matchcharacter(regexp, txtIt, &charLength, &info);
   if (regexp[charLength] == '*' || regexp[charLength] == '+') {
-    bool starOperator = regexp[charLength] == '*';
-    if (!charMatched && !starOperator) {
-      // has to match at least once, when not a star operator
+    char op = regexp[charLength];
+    if (!charMatched && op=='+') {
+      // with '+' operator it has to match at least once
       return 0;
     }
     char *regexpAfterStar = regexp+charLength+1;

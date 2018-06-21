@@ -25,6 +25,7 @@
             Fix unreliable ArrayBufferView.indexOf (#1468)
             Added String.startsWith/endsWith/includes (#1302)
             parseFloat(".s") now returns NaN
+            Fixed /\S+/.test(" ")
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
