@@ -225,8 +225,9 @@ static uint32_t jsfGetAddressOfNextStartPage(uint32_t addr) {
   return next;
 }
 
-// Get the amount of space free in this page
-static uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages) {
+// Get the amount of space free in this page (or all pages). addr=0 uses start page
+uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages) {
+  if (!addr) addr=JSF_START_ADDRESS;
   uint32_t pageEndAddr = JSF_END_ADDRESS;
   if (!allPages) {
     uint32_t pageAddr,pageLen;
@@ -579,6 +580,7 @@ JsVar *jsfListFiles() {
   return files;
 }
 
+
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------ For loading/saving code to flash
@@ -656,7 +658,7 @@ void jsfSaveToFlash() {
   // How much data do we have?
   uint32_t savedCodeAddr = jsfCreateFile(jsfNameFromString(SAVED_CODE_VARIMAGE), compressedSize, JSFF_COMPRESSED, JSF_START_ADDRESS, 0);
   if (!savedCodeAddr) {
-    jsiConsolePrintf("ERROR: Too big to save to flash (%d vs %d bytes)\n", compressedSize, jsfGetFreeSpace(JSF_START_ADDRESS,true));
+    jsiConsolePrintf("ERROR: Too big to save to flash (%d vs %d bytes)\n", compressedSize, jsfGetFreeSpace(0,true));
     jsvSoftInit();
     jspSoftInit();
     jsiConsolePrint("Deleting command history and trying again...\n");

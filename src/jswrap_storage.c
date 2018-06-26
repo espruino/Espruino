@@ -251,3 +251,20 @@ flash storage.
 void jswrap_storage_debug() {
   jsfDebugFiles();
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Storage",
+  "name" : "getFree",
+  "generate" : "jswrap_storage_getFree",
+  "return" : ["int","The amount of free bytes"]
+}
+Return the amount of free bytes available in
+Storage. Due to fragmentation there may be more
+bytes available, but this represents the maximum
+size of file that can be written.
+ */
+int jswrap_storage_getFree() {
+  return (int)jsfGetFreeSpace(0,true);
+}
