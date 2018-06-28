@@ -31,11 +31,7 @@ const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
 /// return time zone in minutes
 static int getTimeZone() {
-#ifdef SAVE_ON_FLASH
-  return 0;
-#else
   return jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR, 0));
-#endif
 }
 
 /* NOTE: we use / and % here because the compiler is smart enough to

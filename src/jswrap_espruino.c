@@ -1384,7 +1384,6 @@ void jswrap_espruino_lockConsole() {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "setTimeZone",
   "generate" : "jswrap_espruino_setTimeZone",

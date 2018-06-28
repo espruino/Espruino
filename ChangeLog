@@ -27,6 +27,7 @@
             parseFloat(".s") now returns NaN
             Fixed /\S+/.test(" ")
             Added Storage.getFree() to return available space
+            Enable E.setTimeZone on boards with very little flash memory
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
