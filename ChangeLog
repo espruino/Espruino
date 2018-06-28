@@ -28,6 +28,8 @@
             Fixed /\S+/.test(" ")
             Added Storage.getFree() to return available space
             Enable E.setTimeZone on boards with very little flash memory
+            Lower saved code area to 2k on micro:bit (from 3)
+            Remove RGB colour handling in setColor on devices with low flash
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

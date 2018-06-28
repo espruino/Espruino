@@ -448,6 +448,9 @@ void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   ]
 }
 Set the color to use for subsequent drawing operations
+
+**Note:** On devices with low flash memory, `r` **must** be an integer representing the color in the current bit depth. It cannot
+be a floating point value, and `g` and `b` are ignored.
 */
 /*JSON{
   "type" : "method",
@@ -461,10 +464,16 @@ Set the color to use for subsequent drawing operations
   ]
 }
 Set the background color to use for subsequent drawing operations
+
+**Note:** On devices with low flash memory, `r` **must** be an integer representing the color in the current bit depth. It cannot
+be a floating point value, and `g` and `b` are ignored.
 */
 void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   unsigned int color = 0;
+#ifdef SAVE_ON_FLASH
+  if (false) {
+#else
   JsVarFloat rf, gf, bf;
   rf = jsvGetFloat(r);
   gf = jsvGetFloat(g);
@@ -520,6 +529,7 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
       color = (unsigned int)(bi | (gi<<8) | (ri<<16));
     } else
       color = (unsigned int)(((ri+gi+bi)>=384) ? 0xFFFFFFFF : 0);
+#endif
   } else {
     // just rgb
     color = (unsigned int)jsvGetInteger(r);
@@ -901,6 +911,7 @@ void jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "fillPoly",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_fillPoly",
   "params" : [
     ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
