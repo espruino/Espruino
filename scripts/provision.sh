@@ -38,13 +38,13 @@ if [ "$FAMILY" = "ESP32" ]; then
     # SDK
     if [ ! -d "app" ]; then
         echo installing app folder
-        #curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/app.tgz | tar xfz - --no-same-owner
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/ESP32-v3.0/esp32/deploy/app.tgz | tar xfz - --no-same-owner
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/app.tgz | tar xfz - --no-same-owner
+        #curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/ESP32-v3.0/esp32/deploy/app.tgz | tar xfz - --no-same-owner
     fi
     if [ ! -d "esp-idf" ]; then
         echo installing esp-idf folder
-        #curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/ESP32-v3.0/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
+        #curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/ESP32-v3.0/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
     fi
     if ! type xtensa-esp32-elf-gcc 2> /dev/null > /dev/null; then
         echo installing xtensa-esp32-elf-gcc
