@@ -30,6 +30,7 @@
             Enable E.setTimeZone on boards with very little flash memory
             Lower saved code area to 2k on micro:bit (from 3)
             Remove RGB colour handling in setColor on devices with low flash
+            Reduce available variable count on STM32VL - we were too low on RAM
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
