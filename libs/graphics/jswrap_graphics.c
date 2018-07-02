@@ -1214,7 +1214,7 @@ JsVar *jswrap_graphics_asURL(JsVar *parent) {
 }
 Output this image as a bitmap URL. The Espruino Web IDE can detect the data on the console and render the image inline automatically.
 
-This is identical to `console.log(g.asURL)` - it's just easier to write.
+This is identical to `console.log(g.asURL())` - it is just a convenient function for easy debugging.
 */
 void jswrap_graphics_dump(JsVar *parent) {
   JsVar *url = jswrap_graphics_asURL(parent);
