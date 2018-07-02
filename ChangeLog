@@ -1,4 +1,5 @@
-            Allow changeInterval with large (>32 bit) intervals (fix #1438)
+            ESP32: update sdk to esp-idf 3.0.1, set Espruino build tools back to master branch
+	    Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
             Fix parsing of try..catch when not executing (fix #1439)
             Add extra ReferenceError checks, even if variable is not used
