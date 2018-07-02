@@ -1136,7 +1136,7 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   }
   int rowstride = (((gfx.data.width*gfx.data.bpp)+31) >> 5) << 2; // padded to 32 bits
   bool hasPalette = gfx.data.bpp==1;
-  int headerLen = 14+12+ (hasPalette?6:0);
+  int headerLen = 14+ 12+ (hasPalette?6:0);
   int l = headerLen + gfx.data.height*rowstride;
   JsVar *imgData = jsvNewFlatStringOfLength(l);
   if (!imgData) return 0; // not enough memory
@@ -1167,7 +1167,7 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
         for (int i=0;i<8;i++) {
           b = (b<<1)|(graphicsGetPixel(&gfx, (short)(x++), (short)y)&1);
         }
-        imgPtr[headerLen + (yi*rowstride) + (x>>3)] = b;
+        imgPtr[headerLen + (yi*rowstride) + (x>>3) - 1] = b;
       }
     } else {
       for (int x=0;x<gfx.data.width;x++) {
