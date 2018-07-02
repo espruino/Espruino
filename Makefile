@@ -661,6 +661,7 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
+# --specs=nano.specs uses newlib-nano
 ifdef NRF5X
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
 else ifdef STM32
