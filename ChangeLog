@@ -32,6 +32,7 @@
             Lower saved code area to 2k on micro:bit (from 3)
             Remove RGB colour handling in setColor on devices with low flash
             Reduce available variable count on STM32VL - we were too low on RAM
+            Added Graphics.asBMP/asURL/dump - allowing easy debugging of Graphics via IDE
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

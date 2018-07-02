@@ -26,6 +26,8 @@
 #include "lcd_fsmc.h"
 #endif
 
+#include "jswrap_functions.h" // for asURL
+
 
 /*JSON{
   "type" : "class",
@@ -1114,4 +1116,109 @@ void jswrap_graphics_scroll(JsVar *parent, int xdir, int ydir) {
   graphicsScroll(&gfx, xdir, ydir);
   // update modified area
   graphicsSetVar(&gfx);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "asBMP",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_asBMP",
+  "return" : ["JsVar","A String representing the Graphics as a Windows BMP file (or 'undefined' if not possible)"]
+}
+Create a Windows BMP file from this Graphics instance, and return it as a String.
+*/
+JsVar *jswrap_graphics_asBMP(JsVar *parent) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  if (gfx.data.bpp!=1 && gfx.data.bpp!=24) {
+    jsExceptionHere(JSET_ERROR, "asBMP/asURL only works on 1bpp/24bpp Graphics");
+    return 0;
+  }
+  int rowstride = (((gfx.data.width*gfx.data.bpp)+31) >> 5) << 2; // padded to 32 bits
+  bool hasPalette = gfx.data.bpp==1;
+  int headerLen = 14+12+ (hasPalette?6:0);
+  int l = headerLen + gfx.data.height*rowstride;
+  JsVar *imgData = jsvNewFlatStringOfLength(l);
+  if (!imgData) return 0; // not enough memory
+  unsigned char *imgPtr = (unsigned char *)jsvGetFlatStringPointer(imgData);
+  imgPtr[0]=66;
+  imgPtr[1]=77;
+  imgPtr[2]=l&255;
+  imgPtr[3]=(l>>8)&255;  // plus 2 more bytes for size
+  imgPtr[10]=headerLen;
+  // BITMAPCOREHEADER
+  imgPtr[14]=12; // sizeof(BITMAPCOREHEADER)
+  imgPtr[18]=gfx.data.width;
+  imgPtr[19]=gfx.data.width>>8;
+  imgPtr[20]=gfx.data.height;
+  imgPtr[21]=gfx.data.height>>8;
+  imgPtr[22]=1;
+  imgPtr[24]=gfx.data.bpp; // bpp
+  if (hasPalette) {
+    imgPtr[26]=255;
+    imgPtr[27]=255;
+    imgPtr[28]=255;
+  }
+  for (int y=0;y<gfx.data.height;y++) {
+    int yi = gfx.data.height-(y+1);
+    if (gfx.data.bpp==1) {
+      for (int x=0;x<gfx.data.width;) {
+        int b = 0;
+        for (int i=0;i<8;i++) {
+          b = (b<<1)|(graphicsGetPixel(&gfx, (short)(x++), (short)y)&1);
+        }
+        imgPtr[headerLen + (yi*rowstride) + (x>>3)] = b;
+      }
+    } else {
+      for (int x=0;x<gfx.data.width;x++) {
+        int c = graphicsGetPixel(&gfx, (short)x, (short)y);
+        int i = headerLen + (yi*rowstride) + (x*(gfx.data.bpp>>3));
+        imgPtr[i++] = c & 255;
+        imgPtr[i++] = (c>>8) & 255;
+        imgPtr[i++] = (c>>16) & 255;
+      }
+    }
+  }
+  return imgData;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "asURL",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_asURL",
+  "return" : ["JsVar","A String representing the Graphics as a URL (or 'undefined' if not possible)"]
+}
+Create a URL of the form `data:image/bmp;base64,...` that can be pasted into the browser.
+
+The Espruino Web IDE can detect this data on the console and render the image inline automatically.
+*/
+JsVar *jswrap_graphics_asURL(JsVar *parent) {
+  JsVar *imgData = jswrap_graphics_asBMP(parent);
+  if (!imgData) return 0; // not enough memory
+  JsVar *b64 = jswrap_btoa(imgData);
+  jsvUnLock(imgData);
+  if (!b64) return 0; // not enough memory
+  JsVar *r = jsvVarPrintf("data:image/bmp;base64,%v",b64);
+  jsvUnLock(b64);
+  return r;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "dump",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_dump"
+}
+Output this image as a bitmap URL. The Espruino Web IDE can detect the data on the console and render the image inline automatically.
+
+This is identical to `console.log(g.asURL)` - it's just easier to write.
+*/
+void jswrap_graphics_dump(JsVar *parent) {
+  JsVar *url = jswrap_graphics_asURL(parent);
+  if (url) jsiConsolePrintStringVar(url);
+  jsvUnLock(url);
+  jsiConsolePrint("\n");
 }

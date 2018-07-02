@@ -313,7 +313,7 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount);
 
 // Note that jsvNew* don't REF a variable for you, but the do LOCK it
 JsVar *jsvNewWithFlags(JsVarFlags flags); ///< Create a new variable with the given flags
-JsVar *jsvNewFlatStringOfLength(unsigned int byteLength); ///< Try and create a special flat string
+JsVar *jsvNewFlatStringOfLength(unsigned int byteLength); ///< Try and create a special flat string, return 0 on failure
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData); ///< Create a new string of the given length - full of 0s (or initialData if specified)
 static ALWAYS_INLINE JsVar *jsvNewFromEmptyString() { JsVar *v = jsvNewWithFlags(JSV_STRING_0); return v; } ;///< Create a new empty string
