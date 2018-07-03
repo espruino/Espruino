@@ -217,7 +217,8 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
       if (flags & JSON_LIMIT) {
         cbprintf(user_callback, user_data, "{%s}", JSON_LIMIT_TEXT);
       } else {
-        user_callback("{", user_data);
+        bool hasNewLine = jsvGetStringIndexOf(codeVar,'\n')>=0;
+        user_callback(hasNewLine?"{\n  ":"{", user_data);
         if (jsvIsFunctionReturn(var))
           user_callback("return ", user_data);
         // reconstruct the tokenised output into something more readable
@@ -225,7 +226,6 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
         unsigned char lastch = 0;
         JsvStringIterator it;
         jsvStringIteratorNew(&it, codeVar, 0);
-
         while (jsvStringIteratorHasChar(&it)) {
           unsigned char ch = (unsigned char)jsvStringIteratorGetChar(&it);
           if (jslNeedSpaceBetween(lastch, ch))
@@ -237,7 +237,7 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
         }
         jsvStringIteratorFree(&it);
 
-        user_callback("}", user_data);
+        user_callback(hasNewLine?"\n}":"}", user_data);
       }
     } else cbprintf(user_callback, user_data, "{}");
   }
