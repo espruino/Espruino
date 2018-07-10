@@ -654,7 +654,7 @@ bool jswrap_string_startsWith(JsVar *parent, JsVar *search, int position) {
 */
 bool jswrap_string_endsWith(JsVar *parent, JsVar *search, JsVar *length) {
   if (!jsvIsString(parent)) return false;
-  int position = jsvIsNumeric(length) ? jsvGetInteger(length) : jsvGetStringLength(parent);
+  int position = jsvIsNumeric(length) ? jsvGetInteger(length) : (int)jsvGetStringLength(parent);
   JsVar *searchStr = jsvAsString(search);
   position -= jsvGetStringLength(searchStr);
   bool match = false;

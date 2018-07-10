@@ -331,7 +331,7 @@ int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
 int ssl_entropy(void *data, unsigned char *output, size_t len ) {
   NOT_USED(data);
   size_t i;
-  unsigned int r;
+  unsigned int r = 0;
   for (i=0;i<len;i++) {
     if (!(i&3)) r = jshGetRandomNumber();
     output[i] = (unsigned char)r;

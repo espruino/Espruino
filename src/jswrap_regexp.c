@@ -26,14 +26,14 @@
  */
 
 #define MAX_GROUPS 9
-#define NO_RANGE  -1
+#define NO_RANGE  256
 
 typedef struct {
   JsVar *sourceStr;
   size_t startIndex;
   bool ignoreCase;
   bool rangeMatch;
-  char rangeFirstChar;
+  short rangeFirstChar;
   int groups;
   size_t groupStart[MAX_GROUPS];
   size_t groupEnd[MAX_GROUPS];
@@ -153,7 +153,7 @@ haveCode:
     cH = jsvStringCharToLower(cH);
   }
   if (info->rangeFirstChar != NO_RANGE) { // Character set range
-    char cL = info->rangeFirstChar;
+    char cL = (char)info->rangeFirstChar;
     if (info->ignoreCase) {
       cL = jsvStringCharToLower(cL);
     }
