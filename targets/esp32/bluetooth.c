@@ -33,7 +33,7 @@
  
 volatile BLEStatus bleStatus;
 uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
-volatile uint16_t  m_conn_handle;    /**< Handle of the current connection. */
+volatile uint16_t  m_peripheral_conn_handle;    /**< Handle of the current connection. */
 volatile uint16_t m_central_conn_handle; /**< Handle of central mode connection */
 
 /** Initialise the BLE stack */
@@ -102,9 +102,9 @@ void jsble_advertising_stop(){
 bool jsble_has_connection(){
 #if CENTRAL_LINK_COUNT>0
   return (m_central_conn_handle != BLE_GATT_HANDLE_INVALID) ||
-         (m_conn_handle != BLE_GATT_HANDLE_INVALID);
+         (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
 #else
-  return m_conn_handle != BLE_GATT_HANDLE_INVALID;
+  return m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID;
 #endif
 }
 
@@ -118,8 +118,8 @@ bool jsble_has_central_connection(){
 }
 
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
-bool jsble_has_simple_connection(){
-  return (m_conn_handle != BLE_GATT_HANDLE_INVALID);
+bool jsble_has_peripheral_connection(){
+  return (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
 }
 
 /// Checks for error and reports an exception if there was one. Return true on error

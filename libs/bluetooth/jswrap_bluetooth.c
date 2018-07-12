@@ -405,8 +405,8 @@ If a device is connected to Espruino, disconnect from it.
 */
 void jswrap_nrf_bluetooth_disconnect() {
   uint32_t err_code;
-  if (jsble_has_simple_connection()) {
-    err_code = jsble_disconnect(m_conn_handle);
+  if (jsble_has_peripheral_connection()) {
+    err_code = jsble_disconnect(m_peripheral_conn_handle);
     jsble_check_error(err_code);
   }
 }
@@ -1261,10 +1261,10 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
               gatts_value.len = vLen;
               gatts_value.offset = 0;
               gatts_value.p_value = (uint8_t*)vPtr;
-              err_code = sd_ble_gatts_value_set(m_conn_handle, char_handle, &gatts_value);
+              err_code = sd_ble_gatts_value_set(m_peripheral_conn_handle, char_handle, &gatts_value);
               if (jsble_check_error(err_code)) {
                 ok = false;
-              } if ((notification_requested || indication_requested) && jsble_has_simple_connection()) {
+              } if ((notification_requested || indication_requested) && jsble_has_peripheral_connection()) {
                 // Notify/indicate connected clients if necessary
                 memset(&hvx_params, 0, sizeof(hvx_params));
                 uint16_t len = (uint16_t)vLen;
@@ -1274,7 +1274,7 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
                 hvx_params.p_len = &len;
                 hvx_params.p_data = (uint8_t*)vPtr;
 
-                err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
+                err_code = sd_ble_gatts_hvx(m_peripheral_conn_handle, &hvx_params);
                 if ((err_code != NRF_SUCCESS)
                   && (err_code != NRF_ERROR_INVALID_STATE)
 #if NRF_SD_BLE_API_VERSION<5

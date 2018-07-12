@@ -215,7 +215,7 @@ static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt
 		gatts_service[g].conn_id = param->connect.conn_id;
 		gatts_service[g].connected = true;
 		args[0] = bda2JsVarString(param->connect.remote_bda);
-		m_conn_handle = 0x01;
+		m_peripheral_conn_handle = 0x01;
 		emitNRFEvent(BLE_CONNECT_EVENT,args,1);
 		if(gatts_service[g].serviceFlag == BLE_SERVICE_NUS) uart_gatts_connected = true;
 	}
@@ -230,7 +230,7 @@ static void gatts_disconnect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
 			r = bluetooth_gap_startAdvertizing(true);
 		}
 		args[0] = bda2JsVarString(param->disconnect.remote_bda);
-		m_conn_handle = BLE_GATT_HANDLE_INVALID;
+		m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID;
 		emitNRFEvent(BLE_DISCONNECT_EVENT,args,1);
 		if(gatts_service[g].serviceFlag == BLE_SERVICE_NUS) uart_gatts_connected = true;
 	}

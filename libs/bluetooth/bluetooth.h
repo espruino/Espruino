@@ -127,7 +127,7 @@ typedef enum {
 
 extern volatile BLEStatus bleStatus;
 extern uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
-extern volatile uint16_t                         m_conn_handle;    /**< Handle of the current connection. */
+extern volatile uint16_t                         m_peripheral_conn_handle;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
 extern volatile uint16_t                         m_central_conn_handle; /**< Handle for central mode connection */
 #endif
@@ -158,7 +158,7 @@ bool jsble_has_connection();
 bool jsble_has_central_connection();
 
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
-bool jsble_has_simple_connection();
+bool jsble_has_peripheral_connection();
 
 /** Call this when something happens on BLE with this as
  * a peripheral - used with Dynamic Interval Adjustment  */

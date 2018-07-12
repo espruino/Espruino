@@ -159,7 +159,7 @@ IOEventFlags jsiGetPreferredConsoleDevice() {
     dev = EV_USBSERIAL;
 #endif
 #ifdef BLUETOOTH
-  if (jsble_has_simple_connection(dev))
+  if (jsble_has_peripheral_connection(dev))
     dev = EV_BLUETOOTH;
 #endif
   return dev;
