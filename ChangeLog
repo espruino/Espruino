@@ -37,6 +37,7 @@
             Stop atob adding trailing 0s when strings are not a multiple of 3 long
             Reconstruct start and end newlines when dumping multi-line functions  
             Fix regression parsing methods in classes on embedded (fix #1479)
+            Add options argument to NRF.connect and BluetoothDevice.gatt.connect, allowing a connection interval to be specified
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

@@ -2338,7 +2338,7 @@ void jsble_nfc_send_rsp(const uint8_t data, size_t len) {
 
 
 #if CENTRAL_LINK_COUNT>0
-void jsble_central_connect(ble_gap_addr_t peer_addr) {
+void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
   uint32_t              err_code;
 
   ble_gap_scan_params_t     m_scan_param;
@@ -2360,6 +2360,14 @@ void jsble_central_connect(ble_gap_addr_t peer_addr) {
   }
   gap_conn_params.slave_latency     = 0;
   gap_conn_params.conn_sup_timeout  = MSEC_TO_UNITS(4000, UNIT_10_MS);
+  // handle options
+  if (jsvIsObject(options)) {
+    JsVarFloat v;
+    v = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"minInterval",0));
+    if (!isnan(v)) gap_conn_params.min_conn_interval = (uint16_t)(MSEC_TO_UNITS(v, UNIT_1_25_MS)+0.5);
+    v = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"maxInterval",0));
+    if (!isnan(v)) gap_conn_params.max_conn_interval = (uint16_t)(MSEC_TO_UNITS(v, UNIT_1_25_MS)+0.5);
+  }
 
   ble_gap_addr_t addr;
   addr = peer_addr;

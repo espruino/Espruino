@@ -218,8 +218,14 @@ void jsble_nfc_send_rsp(const uint8_t data, size_t len);
 #endif
 
 #if CENTRAL_LINK_COUNT>0
-/// Connect to the given peer address. When done call bleCompleteTask
-void jsble_central_connect(ble_gap_addr_t peer_addr);
+/** Connect to the given peer address. When done call bleCompleteTask.
+ options is an optional object containing optional fields:
+ {
+   minInterval // min connection interval in milliseconds, 7.5 ms to 4 s
+   maxInterval // max connection interval in milliseconds, 7.5 ms to 4 s
+ }
+ See BluetoothRemoteGATTServer.connect docs for more docs */
+void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options);
 /// Get primary services. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
 void jsble_central_getPrimaryServices(ble_uuid_t uuid);
 /// Get characteristics. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask

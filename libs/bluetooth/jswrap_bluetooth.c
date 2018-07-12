@@ -2176,7 +2176,8 @@ JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options) {
     "#if" : "defined(NRF52) || defined(ESP32)",
     "generate" : "jswrap_nrf_bluetooth_connect",
     "params" : [
-      ["mac","JsVar","The MAC address to connect to"]
+      ["mac","JsVar","The MAC address to connect to"],
+      ["options","JsVar","(Espruino-specific) An object of connection options (see `BluetoothRemoteGATTServer.connect` for full details)"]
     ],
     "return" : ["JsVar", "A Promise that is resolved (or rejected) when the connection is complete" ]
 }
@@ -2188,6 +2189,9 @@ NRF.connect("aa:bb:cc:dd:ee").then(function(server) {
   // ...
 });
 ```
+
+This has the same effect as calling `BluetoothDevice.gatt.connect` on a `BluetoothDevice` requested
+using `NRF.requestDevice`. It just allows you to specify the address directly (without having to scan).
 
 You can use it as follows - this would connect to another Puck device and turn its LED on:
 
@@ -2212,7 +2216,7 @@ to use an address string of the form `"aa:bb:cc:dd:ee random"` rather than just
 `"aa:bb:cc:dd:ee"`. If you scan for devices with `NRF.findDevices`/`NRF.setScan` then
 addresses are already reported in the correct format.
 */
-JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
+JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac, JsVar *options) {
 #if CENTRAL_LINK_COUNT>0
   JsVar *device = jspNewObject(0, "BluetoothDevice");
   if (!device) return 0;
@@ -2220,7 +2224,7 @@ JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac) {
   JsVar *gatt = jswrap_BluetoothDevice_gatt(device);
   jsvUnLock(device);
   if (!gatt) return 0;
-  JsVar *promise = jswrap_nrf_BluetoothRemoteGATTServer_connect(gatt);
+  JsVar *promise = jswrap_nrf_BluetoothRemoteGATTServer_connect(gatt, options);
   jsvUnLock(gatt);
   return promise;
 #else
@@ -2312,25 +2316,52 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
     "name" : "connect",
     "#if" : "defined(NRF52) || defined(ESP32)",
     "generate" : "jswrap_nrf_BluetoothRemoteGATTServer_connect",
+    "params" : [
+      ["options","JsVar","(Espruino-specific) An object of connection options (see below)"]
+    ],
     "return" : ["JsVar", "A Promise that is resolved (or rejected) when the connection is complete" ]
 }
 Connect to a BLE device - returns a promise,
 the argument of which is the `BluetoothRemoteGATTServer` connection.
 
 See [`NRF.requestDevice`](/Reference#l_NRF_requestDevice) for usage examples.
+
+`options` is an optional object containing:
+
+```
+{
+   minInterval // min connection interval in milliseconds, 7.5 ms to 4 s
+   maxInterval // max connection interval in milliseconds, 7.5 ms to 4 s
+}
+```
+
+By default the interval is 20-200ms (or 500-1000ms if `NRF.setLowPowerConnection(true)` was called.
+During connection Espruino negotiates with the other device to find a common interval that can be
+used.
+
+For instance calling:
+
+```
+NRF.requestDevice({ filters: [{ namePrefix: 'Pixl.js' }] }).then(function(device) {
+  return device.gatt.connect({minInterval:7.5, maxInterval:7.5});
+}).then(function(g) {
+```
+
+will force the connection to use the fastest connection interval possible (as long as the device
+at the other end supports it).
 */
 #if CENTRAL_LINK_COUNT>0
-static void _jswrap_nrf_bluetooth_central_connect(JsVar *addr) {
+static void _jswrap_nrf_bluetooth_central_connect(JsVar *addr, JsVar *options) {
   // this function gets called on idle - just to make it less
   // likely we get connected while in the middle of executing stuff
   ble_gap_addr_t peer_addr;
   // this should be ok since we checked in jswrap_nrf_BluetoothRemoteGATTServer_connect
   if (!bleVarToAddr(addr, &peer_addr)) return;
-  jsble_central_connect(peer_addr);
+  jsble_central_connect(peer_addr, options);
 }
 #endif
 
-JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
+JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *options) {
 #if CENTRAL_LINK_COUNT>0
 
   JsVar *device = jsvObjectGetChild(parent, "device", 0);
@@ -2346,9 +2377,10 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent) {
 
   JsVar *promise = 0;
   if (bleNewTask(BLETASK_CONNECT, parent/*BluetoothRemoteGATTServer*/)) {
-    JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_nrf_bluetooth_central_connect, JSWAT_VOID|(JSWAT_JSVAR<<JSWAT_BITS));
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_nrf_bluetooth_central_connect, JSWAT_VOID|(JSWAT_JSVAR<<JSWAT_BITS)|(JSWAT_JSVAR<<(2*JSWAT_BITS)));
     if (fn) {
-      jsiQueueEvents(0, fn, &addr, 1);
+      JsVar *args[] = {addr, options};
+      jsiQueueEvents(0, fn, args, 2);
       jsvUnLock(fn);
       promise = jsvLockAgainSafe(blePromise);
     }
