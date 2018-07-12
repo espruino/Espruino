@@ -39,7 +39,7 @@
             Fix regression parsing methods in classes on embedded (fix #1479)
             nRF5x: Add options argument to NRF.connect and BluetoothDevice.gatt.connect, allowing a connection interval to be specified
             nRF5x: Start renegotiating speed after 0.1ms, not 5s. Massively improves connect speed.
-            nRF5x: Now queue up to 6 UART TX packets per transmit interval (was 1 previously)
+            nRF5x: Now queue up to 5 UART TX packets per transmit interval (was 1 previously)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

@@ -158,6 +158,10 @@ volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
 uint16_t bleFinalHandle;
 
+/// Array of data waiting to be sent over Bluetooth NUS
+uint8_t nusTxBuf[BLE_NUS_MAX_DATA_LEN];
+/// Number of bytes ready to send inside nusTxBuf
+uint16_t nuxTxBufLength = 0;
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
@@ -714,40 +718,50 @@ void nus_transmit_string() {
       !(bleStatus & BLE_NUS_INITED) ||
       (bleStatus & BLE_IS_SLEEPING)) {
     // If no connection, drain the output buffer
+    nuxTxBufLength = 0;
     while (jshGetCharToTransmit(EV_BLUETOOTH)>=0);
     return;
   }
   if (bleStatus & BLE_IS_SENDING) return;
-  static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
-  static uint16_t bufLen;
-  static bool isBufFull = false;
-  // 6 is the max number of packets we can send
-  for (int i=0;i<6;i++) {
-    if (!isBufFull) {
-      bufLen = 0;
+  /* 6 is the max number of packets we can send
+   * in one connection interval on nRF52. Try and
+   * send 5 just to allow an extra TX from user
+   * code if needed. */
+  for (int packet=0;packet<5;packet++) {
+    // No data? try and get some from our queue
+    if (!nuxTxBufLength) {
+      nuxTxBufLength = 0;
       int ch = jshGetCharToTransmit(EV_BLUETOOTH);
       while (ch>=0) {
-        buf[bufLen++] = ch;
-        if (bufLen>=BLE_NUS_MAX_DATA_LEN) break;
+        nusTxBuf[nuxTxBufLength++] = ch;
+        if (nuxTxBufLength>=BLE_NUS_MAX_DATA_LEN) break;
         ch = jshGetCharToTransmit(EV_BLUETOOTH);
       }
-      isBufFull = bufLen>0;
     }
-    if (bufLen>0) {
-  #if NRF_SD_BLE_API_VERSION<5
-      uint32_t err_code = ble_nus_string_send(&m_nus, buf, bufLen);
-  #else
-      uint32_t err_code = ble_nus_string_send(&m_nus, buf, &bufLen);
-  #endif
-      if (err_code == NRF_SUCCESS) {
-        bleStatus |= BLE_IS_SENDING;
-        isBufFull = false;
-      }
-      /* if it failed, we keep 'buf' around because it
-       * still contains data we want to send. */
+    // If there's no data in the queue, nothing to do - leave
+    if (!nuxTxBufLength) return;
+    // We have data - try and send it
+#if NRF_SD_BLE_API_VERSION<5
+    uint32_t err_code = ble_nus_string_send(&m_nus, nusTxBuf, nuxTxBufLength);
+    if (err_code == NRF_SUCCESS) nuxTxBufLength=0; // everything sent Ok
+#else
+    uint16_t bytesSent = nuxTxBufLength;
+    uint32_t err_code = ble_nus_string_send(&m_nus, nusTxBuf, &bytesSent);
+    if (nuxTxBufLength==bytesSent) {
+      nuxTxBufLength = 0;
+    } else if (bytesSent) {}
+      for (uint16_t n=bytesSent;n<nuxTxBufLength;n++)
+        nusTxBuf[n-bytesSent] = nusTxBuf[n];
+      nuxTxBufLength -= bytesSent;
     }
+#endif
+    if (err_code == NRF_SUCCESS) {
+      bleStatus |= BLE_IS_SENDING;
+    }
+    /* if it failed to send all or any data we keep it around in
+     * nusTxBuf (with count in nuxTxBufLength) so next time around
+     * we can try again. */
   }
-  return;
 }
 
 /// Radio Notification handler
