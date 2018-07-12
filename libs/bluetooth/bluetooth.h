@@ -88,8 +88,10 @@ typedef enum  {
   BLE_IS_NOT_CONNECTABLE = 2048, //< Is the device connectable?
   BLE_WHITELIST_ON_BOND = 4096,  //< Should we write to the whitelist whenever we bond to a device?
 
-  BLE_IS_ADVERTISING_MULTIPLE = 8192, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 16384,
+  BLE_DISABLE_DYNAMIC_INTERVAL = 8192, //< Disable automatically changing interval based on BLE peripheral activity
+
+  BLE_IS_ADVERTISING_MULTIPLE = 16384, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 32768,
   BLE_ADVERTISING_MULTIPLE_SHIFT = GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;
@@ -158,10 +160,17 @@ bool jsble_has_central_connection();
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
 bool jsble_has_simple_connection();
 
+/** Call this when something happens on BLE with this as
+ * a peripheral - used with Dynamic Interval Adjustment  */
+void jsble_peripheral_activity();
+
 /// Checks for error and reports an exception if there was one. Return true on error
 bool jsble_check_error(uint32_t err_code);
 
-/// Scanning for advertisign packets
+/** Set the connection interval of the peripheral connection. Returns an error code */
+uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max);
+
+/// Scanning for advertising packets
 uint32_t jsble_set_scanning(bool enabled);
 
 /// returning RSSI values for current connection

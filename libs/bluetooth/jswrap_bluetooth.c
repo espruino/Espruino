@@ -1210,6 +1210,10 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
   uint32_t err_code;
   bool ok = true;
 
+#ifdef NRF5X
+  jsble_peripheral_activity(); // flag that we've been busy
+#endif
+
   if (jsvIsObject(data)) {
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, data);
@@ -2255,6 +2259,58 @@ remembered after power-on (you'll have to add it to `onInit()`.
 void jswrap_nrf_setWhitelist(bool whitelist) {
 #if PEER_MANAGER_ENABLED
   jsble_central_setWhitelist(whitelist);
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setConnectionInterval",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nrf_setConnectionInterval",
+    "params" : [
+      ["interval","JsVar","The connection interval to use (see below)"]
+    ]
+}
+When connected, Bluetooth LE devices communicate at a set interval.
+Lowering the interval (eg. more packets/second) means a lower delay when
+sending data, higher bandwidth, but also more power consumption.
+
+By default, when connected as a peripheral Espruino automatically adjusts the
+connection interval. When connected it's as fast as possible (7.5ms) but when idle
+for over a minute it drops to 200ms. On continued activity (>1 BLE operation) the
+interval is raised to 7.5ms again.
+
+The options for `interval` are:
+
+* `undefined` / `"auto"` : (default) automatically adjust connection interval
+* `100` : set min and max connection interval to the same number (between 7.5ms and 4000ms)
+* `{minInterval:20, maxInterval:100}` : set min and max connection interval as a range
+
+This configuration is not remembered during a `save()` - you will have to
+re-set it via `onInit`.
+
+**Note:** If connecting to another device (as Central), you can use
+an extra argument to `NRF.connect` or `BluetoothRemoteGATTServer.connect`
+to specify a connection interval.
+*/
+void jswrap_nrf_setConnectionInterval(JsVar *interval) {
+#if NRF52
+  if (jsvIsUndefined(interval) || jsvIsStringEqual(interval,"auto")) {
+    // allow automatic interval setting
+    bleStatus &= ~BLE_DISABLE_DYNAMIC_INTERVAL;
+  } else if (jsvIsNumeric(interval)) {
+    // disable auto interval
+    bleStatus |= BLE_DISABLE_DYNAMIC_INTERVAL;
+    JsVarFloat f = jsvGetFloat(interval);
+    jsble_check_error(jsble_set_periph_connection_interval(f,f));
+  } else if (jsvIsObject(interval)) {
+    // disable auto interval
+    bleStatus |= BLE_DISABLE_DYNAMIC_INTERVAL;
+    JsVarFloat min = jsvGetFloatAndUnLock(jsvObjectGetChild(interval,"minInterval",0));
+    JsVarFloat max = jsvGetFloatAndUnLock(jsvObjectGetChild(interval,"maxInterval",0));
+    jsble_check_error(jsble_set_periph_connection_interval(min, max));
+  }
 #endif
 }
 
