@@ -1654,6 +1654,10 @@ void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr) {
     ]
 }
 
+**THIS IS DEPRECATED** - please use `NRF.setConnectionInterval` for
+peripheral and `NRF.connect(addr, options)`/`BluetoothRemoteGATTServer.connect(options)`
+for central connections.
+
 This sets the connection parameters - these affect the transfer speed and
 power usage when the device is connected.
 
@@ -2293,6 +2297,8 @@ re-set it via `onInit`.
 **Note:** If connecting to another device (as Central), you can use
 an extra argument to `NRF.connect` or `BluetoothRemoteGATTServer.connect`
 to specify a connection interval.
+
+**Note:** This overwrites any changes imposed by the deprecated `NRF.setLowPowerConnection`
 */
 void jswrap_nrf_setConnectionInterval(JsVar *interval) {
 #if NRF52
