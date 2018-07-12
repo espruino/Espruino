@@ -94,13 +94,13 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 
 #if NRF_SD_BLE_API_VERSION < 5
 #define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                        /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(100, APP_TIMER_PRESCALER)   /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(10000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 #else
 #define NRF_BLE_MAX_MTU_SIZE            NRF_SDH_BLE_GATT_MAX_MTU_SIZE               /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(100)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(10000) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 #endif
 
@@ -709,35 +709,45 @@ static void nus_data_handler(ble_nus_evt_t * p_evt) {
 }
 #endif
 
-bool nus_transmit_string() {
+void nus_transmit_string() {
   if (!jsble_has_simple_connection() ||
       !(bleStatus & BLE_NUS_INITED) ||
       (bleStatus & BLE_IS_SLEEPING)) {
     // If no connection, drain the output buffer
     while (jshGetCharToTransmit(EV_BLUETOOTH)>=0);
-    return false;
+    return;
   }
-  if (bleStatus & BLE_IS_SENDING) return false;
+  if (bleStatus & BLE_IS_SENDING) return;
   static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
-  int idx = 0;
-  int ch = jshGetCharToTransmit(EV_BLUETOOTH);
-  while (ch>=0) {
-    buf[idx++] = ch;
-    if (idx>=BLE_NUS_MAX_DATA_LEN) break;
-    ch = jshGetCharToTransmit(EV_BLUETOOTH);
+  static uint16_t bufLen;
+  static bool isBufFull = false;
+  // 6 is the max number of packets we can send
+  for (int i=0;i<6;i++) {
+    if (!isBufFull) {
+      bufLen = 0;
+      int ch = jshGetCharToTransmit(EV_BLUETOOTH);
+      while (ch>=0) {
+        buf[bufLen++] = ch;
+        if (bufLen>=BLE_NUS_MAX_DATA_LEN) break;
+        ch = jshGetCharToTransmit(EV_BLUETOOTH);
+      }
+      isBufFull = bufLen>0;
+    }
+    if (bufLen>0) {
+  #if NRF_SD_BLE_API_VERSION<5
+      uint32_t err_code = ble_nus_string_send(&m_nus, buf, bufLen);
+  #else
+      uint32_t err_code = ble_nus_string_send(&m_nus, buf, &bufLen);
+  #endif
+      if (err_code == NRF_SUCCESS) {
+        bleStatus |= BLE_IS_SENDING;
+        isBufFull = false;
+      }
+      /* if it failed, we keep 'buf' around because it
+       * still contains data we want to send. */
+    }
   }
-  if (idx>0) {
-#if NRF_SD_BLE_API_VERSION<5
-    uint32_t err_code = ble_nus_string_send(&m_nus, buf, idx);
-#else
-    uint16_t len = idx;
-    uint32_t err_code = ble_nus_string_send(&m_nus, buf, &len);
-    assert(len==idx);
-#endif
-    if (err_code == NRF_SUCCESS)
-      bleStatus |= BLE_IS_SENDING;
-  }
-  return idx>0;
+  return;
 }
 
 /// Radio Notification handler
