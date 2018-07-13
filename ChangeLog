@@ -42,6 +42,7 @@
             nRF5x: Now queue up to 5 UART TX packets per transmit interval (was 1 previously)
             nRF52: Add Dynamic Interval Adjustment - default to 2x connection speed, but idle at 10x slower if not used for 1 minute
             nRF5x: Add NRF.setConnectionInterval() to allow connection speed to be set manually
+            RuuviTag: invert LED1, LED2 & BTN in software so LED.set() does what you'd expect
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

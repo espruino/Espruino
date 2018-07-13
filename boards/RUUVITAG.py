@@ -70,9 +70,9 @@ chip = {
 };
 
 devices = {
-  'LED1' : { 'pin' : 'D17', 'inverted' : True },
-  'LED2' : { 'pin' : 'D19', 'inverted' : True },
-  'BTN1' : { 'pin' : 'D13', 'inverted' : True, 'pinstate' : 'IN_PULLUP' },
+  'LED1' : { 'pin' : 'D17' }, # Pin negated in software (see below)
+  'LED2' : { 'pin' : 'D19' },  # Pin negated in software (see below)
+  'BTN1' : { 'pin' : 'D13', 'pinstate' : 'IN_PULLDOWN' },  # Pin negated in software (see below)
   'CSBME' : { 'pin' : 'D3', 'inverted' : True, 'pinstate' : 'IN_PULLUP' },
   'CSLIS' : { 'pin' : 'D8', 'inverted' : True, 'pinstate' : 'IN_PULLUP' },
   'RX_PIN_NUMBER' : { 'pin' : 'D5'},
@@ -117,5 +117,11 @@ def get_pins():
   pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN5"]=0;
   pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
-  #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
+  # The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
+
+  # Make buttons and LEDs negated
+  pinutils.findpin(pins, "PD17", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD19", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD13", True)["functions"]["NEGATED"]=0;
+  
   return pins
