@@ -379,11 +379,20 @@ NRF.connect("aa:bb:cc:dd:ee:ff").then(function(gatt) {
   "ifdef" : "NRF52"
 }
 Called when a characteristic's value changes, *after* `BluetoothRemoteGATTCharacteristic.startNotifications` has been called.
-See that for an example.
 
-The first argument is of the form `{target : BluetoothRemoteGATTCharacteristic}`
+```
+  ...
+  return service.getCharacteristic("characteristic_uuid");
+}).then(function(c) {
+  c.on('characteristicvaluechanged', function(event) {
+    console.log("-> "+event.target.value);
+  });
+  return c.startNotifications();
+}).then(...
+```
 
-`BluetoothRemoteGATTCharacteristic.value` will then contain the new value.
+The first argument is of the form `{target : BluetoothRemoteGATTCharacteristic}`, and `BluetoothRemoteGATTCharacteristic.value`
+will then contain the new value (as a DataView).
  */
 
 /*JSON{
@@ -2855,7 +2864,8 @@ JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteris
     "return" : ["JsVar", "A Promise that is resolved (or rejected) with data when notifications have been added" ],
     "ifdef" : "NRF52"
 }
-Starts notifications - whenever this characteristic's value changes, a `characteristicvaluechanged` event is fired.
+Starts notifications - whenever this characteristic's value changes, a `characteristicvaluechanged` event is fired
+and `characteristic.value` will then contain the new value as a `DataView`.
 
 ```
 var device;
