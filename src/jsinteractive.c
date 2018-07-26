@@ -1418,7 +1418,7 @@ void jsiHandleNewLine(bool execute) {
         // print result (but NOT if we had an error)
         if (jsiEcho() && !jspHasError()) {
           jsiConsolePrintChar('=');
-          jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES);
+          jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES | JSON_DROP_QUOTES);
           jsiConsolePrint("\n");
         }
         jsvUnLock(v);

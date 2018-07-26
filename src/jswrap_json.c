@@ -295,7 +295,16 @@ static bool jsfGetJSONForObjectItWithCallback(JsvObjectIterator *it, JSONFlags f
         needNewLine = false;
         sinceNewLine = 0;
       }
-      cbprintf(user_callback, user_data, (flags&JSON_PRETTY)?"%q: ":"%q:", index);
+      bool addQuotes = true;
+      if (flags&JSON_DROP_QUOTES) {
+        if (jsvIsIntegerish(index)) addQuotes = false;
+        else if (jsvIsString(index) && jsvGetStringLength(index)<15) {
+          char buf[16];
+          jsvGetString(index,buf,sizeof(buf));
+          if (isIDString(buf)) addQuotes=false;
+        }
+      }
+      cbprintf(user_callback, user_data, addQuotes?"%q%s":"%v%s", index, (flags&JSON_PRETTY)?": ":":");
       if (first)
         first = false;
       jsfGetJSONWithCallback(item, nflags, whitespace, user_callback, user_data);
