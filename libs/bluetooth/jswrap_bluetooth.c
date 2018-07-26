@@ -665,7 +665,30 @@ NRF.setAdvertising({},{name:"Hello"});
 You can also specify 'manufacturer data', which is another form of advertising data.
 We've registered the Manufacturer ID 0x0590 (as Pur3 Ltd) for use with *Official
 Espruino devices* - use it to advertise whatever data you'd like, but we'd recommend
-using JSON.
+using JSON. 
+
+For example by not advertising a device name you can send up to 24 bytes of JSON on
+Espruino's manufacturer ID:
+
+```
+var data = {a:1,b:2};
+NRF.setAdvertising({},{
+  showName:false,
+  manufacturer:0x0590,
+  manufacturerData:JSON.stringify(data)
+});
+```
+
+If you're using [EspruinoHub](https://github.com/espruino/EspruinoHub) then it will
+automatically decode this into the folling MQTT topics:
+
+* `/ble/advertise/ma:c_:_a:dd:re:ss/espruino` -> `{"a":10,"b":15}`
+* `/ble/advertise/ma:c_:_a:dd:re:ss/a` -> `1`
+* `/ble/advertise/ma:c_:_a:dd:re:ss/b` -> `2`
+
+Note that **you only have 24 characters available for JSON**, so try to use
+the shortest field names possible and avoid floating point values that can
+be very long when converted to a String.
 */
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options) {
   uint32_t err_code;
