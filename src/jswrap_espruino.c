@@ -876,6 +876,9 @@ For example:
 reliably parsed by `JSON.parse` - however they are
 valid JS so will work with `eval` (but this has security
 implications if you don't trust the source of the string).
+
+On the desktop [JSON5 parsers](https://github.com/json5/json5)
+will parse the strings produced by `E.toJS` without trouble.
  */
 JsVar *jswrap_espruino_toJS(JsVar *v) {
   JSONFlags flags = JSON_DROP_QUOTES|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY;
