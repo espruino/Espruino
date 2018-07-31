@@ -1412,11 +1412,13 @@ void jsiHandleNewLine(bool execute) {
         // execute!
         JsVar *v = jspEvaluateVar(lineToExecute, 0, jsiLineNumberOffset);
         // add input line to history
-        jsiHistoryAddLine(lineToExecute);
+        bool isEmpty = jsvIsEmptyString(lineToExecute);
+        if (!isEmpty)
+          jsiHistoryAddLine(lineToExecute);
         jsvUnLock(lineToExecute);
         jsiLineNumberOffset = 0; // forget the current line number now
         // print result (but NOT if we had an error)
-        if (jsiEcho() && !jspHasError()) {
+        if (jsiEcho() && !jspHasError() && !isEmpty) {
           jsiConsolePrintChar('=');
           jsfPrintJSON(v, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_SHOW_OBJECT_NAMES | JSON_DROP_QUOTES);
           jsiConsolePrint("\n");

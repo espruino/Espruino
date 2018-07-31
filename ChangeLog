@@ -46,6 +46,7 @@
             Console now doesn't print quotes around object keys if it's not needed
             Added `E.toJS` to allow very compact JS data stringification (similar to `JSON.stringify`)
             Output the current timer number as a comment in `dump()`
+            Don't print `=undefined` to console if line is empty
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
