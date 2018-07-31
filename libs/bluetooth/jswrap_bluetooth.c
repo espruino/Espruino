@@ -1659,7 +1659,7 @@ void jswrap_nrf_bluetooth_setRSSIHandler(JsVar *callback) {
     "name" : "setTxPower",
     "generate" : "jswrap_nrf_bluetooth_setTxPower",
     "params" : [
-      ["power","int","Transmit power. Accepted values are -40, -30, -20, -16, -12, -8, -4, 0, and 4 dBm. Others will give an error code."]
+      ["power","int","Transmit power. Accepted values are -40(nRF52 only), -30(nRF51 only), -20, -16, -12, -8, -4, 0, and 4 dBm. Others will give an error code."]
     ]
 }
 Set the BLE radio transmit power. The default TX power is 0 dBm.
