@@ -9,12 +9,11 @@ var PINS = {
   BME_SCK : D4,
   BME_SDO : D5,
   PWR_GPRS_ON : D6, // 1=on, 0=off
-  GPS_STANDBY : D7, // 1=powered, 0=standby (OK to leave open)
-  GPS_RXD : D8, // 9600 baud
-  GPS_TXD : D9, // 9600 baud
-  PWR_GPS_ON : D10, // 1=on, 0=off
+  LTE_RXD : D7,
+  LTE_CTS : D8,
+  LTE_TXD : D9,
+  LTE_RTS : D10,
   LIS2MDL_SCL : D11,
-  GPRS_TXD : D12,
   LIS2MDL_SDA : D13,
   GPRS_RESET : D14, 
   GPRS_PWRKEY : D15,
@@ -22,7 +21,7 @@ var PINS = {
   BQ_EN : D17,
   LIS3DH_SCL : D18,
   LIS3DH_SDA : D19,
-  GPRS_RXD : D20,
+  TP5 : D20, // test point
   // D21 is reset
   OPT_SDA : D26,
   OPT_INT : D22,
@@ -34,21 +33,6 @@ var PINS = {
   SENSOR_DOUT2 : D29,
   TILT_DOUT : D30,
   GPS_RESET : D31 // 1=normal, 0=reset (internal pullup)
-};
-
-// Return GPS instance. callback is called whenever data is available!
-exports.setGPSOn = function(isOn, callback) {
-  Serial1.removeAllListeners();
-  delete this.GPS;
-  if (isOn) { 
-    // Set up GPS    
-    Serial1.setup(9600,{tx:PINS.GPS_RXD,rx:PINS.GPS_TXD});
-    PINS.PWR_GPS_ON.set();
-    return this.GPS = require("GPS").connect(Serial1, callback);
-  } else {
-    // Power off GPS
-    PINS.PWR_GPS_ON.reset();
-  }
 };
 
 /// Returns BME280 instance. callback when initialised. Call 'getData' to get the information
@@ -109,7 +93,7 @@ exports.setCellOn = function(isOn, callback) {
     return new Promise(function(resolve) {
       Serial1.removeAllListeners();
       Serial1.on('data', function(x) {}); // suck up any data that gets transmitted from the modem as it boots (RDY, etc)
-      Serial1.setup(115200,{tx:PINS.GPRS_TXD,rx:PINS.GPRS_RXD});
+      Serial1.setup(115200,{tx:PINS.LTE_TXD, rx:PINS.LTE_RXD, cts:PINS.LTE_RTS});
       PINS.PWR_GPRS_ON.reset();
       setTimeout(resolve,200);
     }).then(function() {

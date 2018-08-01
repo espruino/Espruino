@@ -15,22 +15,20 @@
 
 import pinutils;
 
-# Schematic http://docs.rakwireless.com/en/RAK8211/Hardware%20Design/RAK8211_iTRACKER_M35_V20_20171203.pdf
-# GPS HW    https://www.quectel.com/UploadImage/Downlad/L70_Hardware_Design_V2.0.pdf
-# GPS SW    http://docs-europe.electrocomponents.com/webdocs/147d/0900766b8147dbdd.pdf
+# Schematic http://docs.rakwireless.com/en/Cellular/RAK8212/Hardware%20Specification/RAK8212_iTRACKER_BG96_V30_20180322.pdf
 
 info = {
- 'name' : "iTracker RAK8211",
+ 'name' : "iTracker RAK8212",
  #https://github.com/RAKWireless/ITRACKER-Arduino-SDK
- 'link' :  [ "http://www.rakwireless.com/en/download/Cellular/RAK8211" ],
- 'espruino_page_link' : 'RAK8211',
+ 'link' :  [ "http://www.rakwireless.com/en/download/Cellular/RAK8212" ],
+ 'espruino_page_link' : 'RAK8212',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D29",
  'default_console_rx' : "D28",
  'default_console_baudrate' : "9600",
  'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_RAK8211.hex',
+ 'binary_name' : 'espruino_%v_RAK8212.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
@@ -50,9 +48,10 @@ info = {
      'JSMODULESOURCES += libs/js/LIS2MDL.min.js',
      'JSMODULESOURCES += libs/js/LIS3DH.min.js',
      'JSMODULESOURCES += libs/js/OPT3001.min.js',
+#     'JSMODULESOURCES += libs/js/UG96.min.js',
 #     'JSMODULESOURCES += libs/js/ATSMS.min.js',
 #     'JSMODULESOURCES += libs/js/QuectelM35.min.js',
-     'JSMODULESOURCES += iTracker:libs/js/rak/RAK8211.min.js'
+     'JSMODULESOURCES += iTracker:libs/js/rak/RAK8212.min.js'
    ]
  }
 };
@@ -78,13 +77,14 @@ chip = {
 };
 
 devices = {
+  'LED1' : { 'pin' : 'D12' }, # Pin negated in software
   'BTN1' : { 'pin' : 'D30', 'pinstate' : 'IN_PULLDOWN' },
   'GPRS' : {'pin_tx' : 'D12', 'pin_rx' : 'D20', 'pin_reset' : 'D14', 'pin_pwrkey' : 'D15', 'pin_pwron' : 'D6'},
   'GPS' : {'pin_tx' : 'D9', 'pin_rx' : 'D8', 'pin_standby' : 'D7', 'pin_pwron' : 'D10', 'pin_reset' : 'D31'},
   'BME' : {'pin_cs' : 'D2', 'pin_sdi' : 'D3', 'pin_sck': 'D4', 'pin_sdo' : 'D5'},
   'LIS2MDL' : {'pin_scl' : 'D11', 'pin_sda': 'D13', 'pin_int' : 'D16'},
   'LIS3DH' : {'pin_scl' : 'D18', 'pin_sda' : 'D19', 'pin_int1' : 'D25', 'pin_res' : 'D26', 'pin_int2' : 'D27'},
-  'OPT'  : {'pin_sda' : '21', 'pin_scl' : 'D23', 'pin_int' : 'D22'}
+  'OPT'  : {'pin_sda' : '21', 'pin_scl' : 'D23', 'pin_int' : 'D22'},
   # Pin D22 is used for clock when driving neopixels - as not specifying a pin seems to break things
 };
 
@@ -104,40 +104,41 @@ board = {
 
 board["_css"] = """
 #board {
-  width: 400px;
-  height: 506px;
+  width: 480px;
+  height: 526px;
   top: 0px;
   left : 0px;
-  background-image: url(img/RAK8211.png);
+  background-image: url(img/RAK8212.png);
 }
 #boardcontainer {
   height: 506px;
 }
 #right {
-  top: 73px;
-  left: 405px;
+  top: 59px;
+  left: 480px;
 }
 .rightpin {
-  height: 18px;
+  height: 26px;
 }
 """;
 
 def get_pins():
   pins = pinutils.generate_pins(0,31) # 32 General Purpose I/O Pins.
+  # Software negation LED1
+  pinutils.findpin(pins, "PD12", True)["functions"]["NEGATED"]=0;
+  # Add pin functions
   pinutils.findpin(pins, "PD0", True)["functions"]["XL1"]=0;
   pinutils.findpin(pins, "PD1", True)["functions"]["XL2"]=0;
   pinutils.findpin(pins, "PD28", True)["functions"]["ADC1_IN4"]=0;
+  pinutils.findpin(pins, "PD7", True)["functions"]["LTE_RX"]=0;
+  pinutils.findpin(pins, "PD8", True)["functions"]["LTE_CTS"]=0;
+  pinutils.findpin(pins, "PD9", True)["functions"]["LTE_TX"]=0;
+  pinutils.findpin(pins, "PD10", True)["functions"]["LTE_RTS"]=0;
   pinutils.findpin(pins, "PD28", True)["functions"]["USART1_TX"]=0;
   pinutils.findpin(pins, "PD29", True)["functions"]["USART1_RX"]=0;
-  pinutils.findpin(pins, "PD12", True)["functions"]["GPRS_TX"]=0;
-  pinutils.findpin(pins, "PD20", True)["functions"]["GPRS_RX"]=0;
   pinutils.findpin(pins, "PD14", True)["functions"]["GPRS_RESET"]=0;
   pinutils.findpin(pins, "PD15", True)["functions"]["GPRS_PWRKEY"]=0;
   pinutils.findpin(pins, "PD6", True)["functions"]["GPRS_PWN_ON"]=0;
-  pinutils.findpin(pins, "PD9", True)["functions"]["GPS_TX"]=0;
-  pinutils.findpin(pins, "PD8", True)["functions"]["GPS_RX"]=0;
-  pinutils.findpin(pins, "PD7", True)["functions"]["GPS_STANDBY"]=0;
-  pinutils.findpin(pins, "PD10", True)["functions"]["GPS_PWR_ON"]=0;
   pinutils.findpin(pins, "PD31", True)["functions"]["GPS_RESET"]=0;
   pinutils.findpin(pins, "PD2", True)["functions"]["BME_CS"]=0;
   pinutils.findpin(pins, "PD3", True)["functions"]["BME_SDI"]=0;
