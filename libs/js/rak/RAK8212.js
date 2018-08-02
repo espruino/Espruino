@@ -1,8 +1,3 @@
-/*
-http://www.discoverytelecom.eu/upload/iblock/7c7/m35_at_command.pdf
-https://www.hobbielektronika.hu/forum/getfile.php?id=203810
-
-*/
 var PINS = {
   BME_CS : D2,
   BME_SDI : D3,
