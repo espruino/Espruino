@@ -50,8 +50,8 @@ info = {
      'JSMODULESOURCES += libs/js/LIS2MDL.min.js',
      'JSMODULESOURCES += libs/js/LIS3DH.min.js',
      'JSMODULESOURCES += libs/js/OPT3001.min.js',
-#     'JSMODULESOURCES += libs/js/ATSMS.min.js',
-#     'JSMODULESOURCES += libs/js/QuectelM35.min.js',
+     'JSMODULESOURCES += libs/js/ATSMS.min.js',
+     'JSMODULESOURCES += libs/js/QuectelM35.min.js',
      'JSMODULESOURCES += iTracker:libs/js/rak/RAK8211.min.js'
    ]
  }

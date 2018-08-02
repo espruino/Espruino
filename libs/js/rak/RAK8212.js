@@ -84,6 +84,10 @@ exports.setOptoOn = function(isOn, callback) {
 // Turn cell connectivity on - will take around 8 seconds. Calls the `callback(usart)` when done. You then need to connect either SMS or QuectelM35 to the serial device `usart`
 exports.setCellOn = function(isOn, callback) {
   if (isOn) {
+    if (this.cellOn) {
+      setTimeout(callback,10,Serial1);
+      return;
+    }
     var that=this;
     return new Promise(function(resolve) {
       Serial1.removeAllListeners();
@@ -101,10 +105,12 @@ exports.setCellOn = function(isOn, callback) {
       PINS.GPRS_PWRKEY.reset();
       return new Promise(function(resolve){setTimeout(resolve,5000);});
     }).then(function() {
-      Serial1.removeAllListeners();
+      this.cellOn = true;
+      Serial1.removeAllListeners();      
       if (callback) setTimeout(callback,10,Serial1);
     });
   } else {
+    this.cellOn = false;
     PINS.PWR_GPRS_ON.reset(); // turn power off.
     if (callback) setTimeout(callback,1000);
   }
@@ -115,4 +121,48 @@ exports.setCharging = function(isCharging) {
   PINS.BQ_EN.write(!isCharging);
 };
 
+/// Set whether the BQ24210 should charge the battery (default is yes)
+exports.setCharging = function(isCharging) {
+  PINS.BQ_EN.write(!isCharging);
+};
+
+// Return GPS instance. callback is called whenever data is available!
+exports.setGPSOn = function(isOn, callback) {
+  if (!isOn) this.setCellOn(false,callback);
+  else this.setCellOn(isOn, function(usart) {
+    var at = require("AT").connect(usart);
+    var gps = { at:at,on:function(callback) {
+      callback=callback||function(){};
+      at.cmd("AT+QGPS=4\r\n",1000,function cb(d) { // speed-optimal
+        if (d.startsWith("AT+")) return cb; // echo
+        callback(d=="OK"?null:d);
+      });
+    },off:function(callback) {
+      callback=callback||function(){};
+      at.cmd("AT+QGPSEND\r\n",1000,function cb(d) {
+        if (d.startsWith("AT+")) return cb; // echo
+        callback(d=="OK"?null:d);
+      });
+    },get:function(callback) {
+      // ERROR: 516 means 'no fix'
+      callback=callback||function(){};
+      at.cmd("AT+QGPSLOC=2\r\n",1000,function cb(d) {
+        if (d.startsWith("AT+")) return cb; // echo
+        if (d.startsWith("+CME ERROR:")) callback({error:d.substr(5)});
+        else if (d.startsWith("+QGPSLOC:")) {
+          //+QGPSLOC: <UTC>,<latitude>,<longitude>,<hdop>,<altitude>,<fix>,<cog>,<spkm>,<spkn>,<date>,<nsat>
+          d = d.substr(9).trim();
+          var a = d.split(",");
+          callback({
+            raw : d,
+          UTC:a[0],lat:+a[1],lon:+a[2],alt:+a[4]
+        });
+       } else callback({error:d});
+      });
+    }};
+    gps.on(function(err) {
+      callback(err, err?undefined:gps);
+    });
+  });
+};
 

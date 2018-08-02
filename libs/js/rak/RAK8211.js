@@ -100,6 +100,10 @@ exports.setOptoOn = function(isOn, callback) {
 // Turn cell connectivity on - will take around 8 seconds. Calls the `callback(usart)` when done. You then need to connect either SMS or QuectelM35 to the serial device `usart`
 exports.setCellOn = function(isOn, callback) {
   if (isOn) {
+    if (this.cellOn) {
+      setTimeout(callback,10,Serial1);
+      return;
+    }
     var that=this;
     return new Promise(function(resolve) {
       Serial1.removeAllListeners();
@@ -117,10 +121,12 @@ exports.setCellOn = function(isOn, callback) {
       PINS.GPRS_PWRKEY.reset();
       return new Promise(function(resolve){setTimeout(resolve,5000);});
     }).then(function() {
+      this.cellOn = true;
       Serial1.removeAllListeners();
       if (callback) setTimeout(callback,10,Serial1);
     });
   } else {
+    this.cellOn = false;
     PINS.PWR_GPRS_ON.reset(); // turn power off.
     if (callback) setTimeout(callback,1000);
   }
