@@ -828,8 +828,13 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
   int width = 0;
+  int maxWidth = 0;
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetChar(&it);
+    if (ch=='\n') {
+      if (width>maxWidth) maxWidth=width;
+      width = 0;
+    }
     if (gfx.data.fontSize>0) {
 #ifndef SAVE_ON_FLASH
       width += (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
@@ -847,7 +852,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   }
   jsvStringIteratorFree(&it);
   jsvUnLock2(str, customWidth);
-  return width;
+  return width>maxWidth ? width : maxWidth;
 }
 
 /*JSON{

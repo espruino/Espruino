@@ -48,6 +48,7 @@
             Output the current timer number as a comment in `dump()`
             Don't print `=undefined` to console if line is empty
             Added RAK8212 (and include SMS/GPRS code in RAK8211/2 builds)
+            Graphics.stringWidth now takes account of newlines
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
