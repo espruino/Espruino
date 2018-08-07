@@ -52,6 +52,7 @@
             nRF52: NRF.requestDevice now resolves as soon as a device is found. Faster and better in congested areas
             Replace use of obsolete 'usleep' function in Linux builds (fix #1455)
             Add Ethernet.getIP/setIP callbacks for Wiznet to bring them in line with WiFi (fix #1482)
+            Fix Math.round for numbers > 32 bit (fix #1485)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
