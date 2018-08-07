@@ -40,7 +40,7 @@
             nRF5x: Add options argument to NRF.connect and BluetoothDevice.gatt.connect, allowing a connection interval to be specified
             nRF5x: Start renegotiating speed after 0.1ms, not 5s. Massively improves connect speed.
             nRF5x: Now queue up to 5 UART TX packets per transmit interval (was 1 previously)
-            nRF52: Add Dynamic Interval Adjustment - default to 2x connection speed, but idle at 10x slower if not used for 1 minute
+            nRF52: Add Dynamic Interval Adjustment - default to 2x connection speed, but idle at 10x slower if not used for 2 minutes
             nRF5x: Add NRF.setConnectionInterval() to allow connection speed to be set manually
             RuuviTag: invert LED1, LED2 & BTN in software so LED.set() does what you'd expect
             Console now doesn't print quotes around object keys if it's not needed

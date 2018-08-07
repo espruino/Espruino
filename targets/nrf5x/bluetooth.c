@@ -179,7 +179,7 @@ uint16_t nuxTxBufLength = 0;
 #define BLE_DYNAMIC_INTERVAL_LOW_RATE 200 // connection interval when idle (milliseconds)
 #define BLE_DYNAMIC_INTERVAL_HIGH_RATE 7.5 // connection interval when not idle (milliseconds) - 7.5ms is fastest possible
 #define DEFAULT_PERIPH_MAX_CONN_INTERVAL BLE_DYNAMIC_INTERVAL_HIGH_RATE // highest possible on connect
-#define BLE_DYNAMIC_INTERVAL_IDLE_TIME (int)(60000 / BLE_DYNAMIC_INTERVAL_HIGH_RATE) // time in milliseconds at which we enter idle
+#define BLE_DYNAMIC_INTERVAL_IDLE_TIME (int)(120000 / BLE_DYNAMIC_INTERVAL_HIGH_RATE) // time in milliseconds at which we enter idle
 /// How many connection intervals has BLE been idle for? Use for dynamic interval adjustment
 uint16_t bleIdleCounter = 0;
 /// Are we using a high speed or low speed interval at the moment?
