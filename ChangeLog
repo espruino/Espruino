@@ -50,6 +50,7 @@
             Added RAK8212 (and include SMS/GPRS code in RAK8211/2 builds)
             Graphics.stringWidth now takes account of newlines
             nRF52: NRF.requestDevice now resolves as soon as a device is found. Faster and better in congested areas
+            Replace use of obsolete 'usleep' function in Linux builds (fix #1455)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
