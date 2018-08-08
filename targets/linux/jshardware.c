@@ -362,7 +362,10 @@ void jshReset() {
 void jshKill() {
   int i;
 
+  // Request that the input thread finishes
   isInitialised = false;
+  // wait for thread to finish
+  pthread_join(inputThread, NULL);
 
   for (i=0;i<=EV_DEVICE_MAX;i++)
     if (ioDevices[i]) {
