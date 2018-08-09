@@ -54,6 +54,7 @@
             Add Ethernet.getIP/setIP callbacks for Wiznet to bring them in line with WiFi (fix #1482)
             Fix Math.round for numbers > 32 bit (fix #1485)
             Pixl.js menu now resets font alignment, and down arrow icon is fixed
+            Now check for ReferenceErrors in global scope
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
