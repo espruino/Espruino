@@ -563,7 +563,11 @@ uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max) {
   gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
   if (jsble_has_peripheral_connection()) {
     // Connected - initiate dynamic change
-    return ble_conn_params_change_conn_params(&gap_conn_params);
+    return ble_conn_params_change_conn_params(
+#if NRF_SD_BLE_API_VERSION>=5
+        m_peripheral_conn_handle,
+#endif
+        &gap_conn_params);
   } else {
     // Not connected, just tell the stack
     ble_gap_conn_params_t   gap_conn_params;
@@ -824,7 +828,7 @@ void nus_transmit_string() {
     // We have data - try and send it
 
 #if NRF_SD_BLE_API_VERSION>5
-    uint32_t err_code = ble_nus_data_send(&m_nus, nusTxBuf, &nuxTxBufLength, m_conn_handle);
+    uint32_t err_code = ble_nus_data_send(&m_nus, nusTxBuf, &nuxTxBufLength, m_peripheral_conn_handle);
 #elif NRF_SD_BLE_API_VERSION<5
     uint32_t err_code = ble_nus_string_send(&m_nus, nusTxBuf, nuxTxBufLength);
     if (err_code == NRF_SUCCESS) nuxTxBufLength=0; // everything sent Ok
@@ -1611,7 +1615,7 @@ static void on_hid_rep_char_write(ble_hids_evt_t * p_evt) {
                                              HID_OUTPUT_REPORT_MAX_LEN,
                                              0,
 #if NRF_SD_BLE_API_VERSION>5
-                                             m_conn_handle,
+                                             m_peripheral_conn_handle,
 #endif
                                              &report_val);
             APP_ERROR_CHECK(err_code);
@@ -2458,7 +2462,7 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
                                        length,
                                        data
 #if NRF_SD_BLE_API_VERSION>5
-                                       ,m_conn_handle
+                                       ,m_peripheral_conn_handle
 #endif
                                        );
   } else {
@@ -2466,7 +2470,7 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
                                                length,
                                                data
 #if NRF_SD_BLE_API_VERSION>5
-                                       ,m_conn_handle
+                                       ,m_peripheral_conn_handle
 #endif
                                                );
   }
