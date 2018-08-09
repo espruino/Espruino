@@ -393,6 +393,8 @@ void jshResetPeripherals() {
 }
 
 void jshInit() {
+  ret_code_t err_code;
+
   memset(pinStates, 0, sizeof(pinStates));
 
   jshInitDevices();
@@ -403,9 +405,6 @@ void jshInit() {
 #endif
 
   nrf_utils_lfclk_config_and_start();
-
-  ret_code_t err_code = app_timer_init();
-   APP_ERROR_CHECK(err_code);
 
 #ifdef DEFAULT_CONSOLE_RX_PIN
   // Only init UART if something is connected and RX is pulled up on boot...
