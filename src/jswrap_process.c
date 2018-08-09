@@ -82,7 +82,9 @@ const void *exportPtrs[] = {
   "generate" : "jswrap_process_env",
   "return" : ["JsVar","An object"]
 }
-Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION
+Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION, FLASH, RAM, MODULES.
+
+For example, to get a list of built-in modules, you can use `process.env.MODULES.split(',')`
  */
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
@@ -151,8 +153,8 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "gctime", jsvNewFromFloat(jshGetMillisecondsFromTime(time2-time1)));
 
 #ifdef ARM
-    extern int LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings
-    extern int LINKER_ETEXT_VAR; // end of flash text (binary) section - should be 'void', but 'int' avoids warnings
+    extern uint32_t LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings
+    extern uint32_t LINKER_ETEXT_VAR; // end of flash text (binary) section - should be 'void', but 'int' avoids warnings
     jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));
     jsvObjectSetChildAndUnLock(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START));
     jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_ETEXT_VAR));

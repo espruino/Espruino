@@ -149,6 +149,10 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
                   param->update_conn_params.timeout);
 			break;
 		}
+		case ESP_GAP_BLE_SEC_REQ_EVT:{
+		    esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
+			break;
+		}
 		default:{
 			gap_event_scan_handler(event,param);
 			break;
@@ -157,7 +161,6 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 }
 
 void bluetooth_gap_setScan(bool enable){
-jsWarn("--- gap_setScan %x\n",enable);
 	esp_err_t status;
 	status = esp_ble_gap_set_scan_params(&ble_scan_params);
 	if (status){ jsWarn("gap set scan error code = %x", status);return;}
@@ -194,21 +197,32 @@ int addAdvertisingData(uint8_t *advData,int pnt,int idx,JsVar *value){
 int addAdvertisingDeviceName(uint8_t *advData,int pnt){
 	JsVar *deviceName;
 	deviceName = jsvObjectGetChild(execInfo.hiddenRoot, BLE_DEVICE_NAME, 0);
-	JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
-	if(nameLen > 0){
-		if((nameLen + pnt + 2) > BLE_GAP_ADV_MAX_SIZE){
-			nameLen = BLE_GAP_ADV_MAX_SIZE - 2 - pnt;
-			advData[pnt] = nameLen + 1;
-			advData[pnt + 1] = 8;
+	if(deviceName){
+		JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
+		if(nameLen > 0){
+			if((nameLen + pnt + 2) > BLE_GAP_ADV_MAX_SIZE){
+				nameLen = BLE_GAP_ADV_MAX_SIZE - 2 - pnt;
+				advData[pnt] = nameLen + 1;
+				advData[pnt + 1] = 8;
+			}
+			else{
+				advData[pnt] = nameLen + 1;
+				advData[pnt + 1] = 9;
+			}
+			for(int i = 0; i < nameLen; i++) advData[pnt + i + 2] = namePtr[i];
+			nameLen += 2;
 		}
-		else{
-			advData[pnt] = nameLen + 1;
-			advData[pnt + 1] = 9;
-		}
-		for(int i = 0; i < nameLen; i++) advData[pnt + i + 2] = namePtr[i];
+		jsvUnLock(deviceName);
+		return nameLen + 2;
 	}
-	jsvUnLock(deviceName);
-	return nameLen + 2;
+	else return 0;
+}
+
+int addAdvertisingUart(uint8_t *advData,int pnt){
+	uint8_t *uart_adv;
+	uart_adv = getUartAdvice();
+	for(int i = 0; i < 18; i++){ advData[pnt + i] = uart_adv[i];}
+	return 18;
 }
 
 JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
@@ -232,6 +246,9 @@ JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
 		jsvObjectIteratorFree(&it);
 		//todo add support of manufacturerData
 		i = i + addAdvertisingDeviceName(&encoded_advdata,i);
+		if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "uart", 0))){
+			i = i + addAdvertisingUart(&encoded_advdata,i);
+		}
 	}
 	else if (!jsvIsUndefined(data)){
 		jsExceptionHere(JSET_TYPEERROR, "Expecting object array or undefined, got %t",data);
@@ -277,3 +294,20 @@ void bluetooth_initDeviceName(){
 	jsvObjectSetChild(execInfo.hiddenRoot, BLE_DEVICE_NAME,jsvNewFromString(deviceName));
 }
 
+void gap_init_security(){
+	/* set the security iocap & auth_req & key size & init key response key parameters to the stack*/
+    esp_ble_auth_req_t auth_req = ESP_LE_AUTH_BOND;     //bonding with peer device after authentication
+    esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;           //set the IO capability to No output No input
+    uint8_t key_size = 16;      //the key size should be 7~16 bytes
+    uint8_t init_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
+    uint8_t rsp_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
+    esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
+    esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
+    esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
+    /* If your BLE device act as a Slave, the init_key means you hope which types of key of the master should distribut to you,
+    and the response key means which key you can distribut to the Master;
+    If your BLE device act as a master, the response key means you hope which types of key of the slave should distribut to you,
+    and the init key means which key you can distribut to the slave. */
+    esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
+    esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
+}

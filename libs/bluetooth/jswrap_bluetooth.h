@@ -88,11 +88,12 @@ void jswrap_nrf_nfcSend(JsVar *payload);
 void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback);
 
 JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options);
-JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac);
+JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac, JsVar *options);
 void jswrap_nrf_setWhitelist(bool whitelist);
+void jswrap_nrf_setConnectionInterval(JsVar *interval);
 
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
-JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent);
+JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *options);
 void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent);
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair);
 JsVar *jswrap_nrf_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent);

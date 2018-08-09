@@ -43,13 +43,13 @@ info = {
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
      'INCLUDE += -I$(ROOT)/libs/nordic_thingy',
      'WRAPPERSOURCES += libs/nordic_thingy/jswrap_thingy.c',
-     'JSMODULESOURCES+=libs/nordic_thingy/LIS2DH12.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/MPU9250.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/LPS22HB.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/HTS221.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/CCS811.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/BH1745.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/Thingy.min.js'
+     'JSMODULESOURCES+=libs/js/LIS2DH12.min.js',
+     'JSMODULESOURCES+=libs/js/MPU9250.min.js',
+     'JSMODULESOURCES+=libs/js/LPS22HB.min.js',
+     'JSMODULESOURCES+=libs/js/HTS221.min.js',
+     'JSMODULESOURCES+=libs/js/CCS811.min.js',
+     'JSMODULESOURCES+=libs/js/BH1745.min.js',
+     'JSMODULESOURCES+=libs/js/nordic/Thingy.min.js'
    ]
  }
 };

@@ -34,6 +34,7 @@ JsVar *jswrap_espruino_getErrorFlags();
 JsVar *jswrap_espruino_toArrayBuffer(JsVar *str);
 JsVar *jswrap_espruino_toUint8Array(JsVar *args);
 JsVar *jswrap_espruino_toString(JsVar *args);
+JsVar *jswrap_espruino_toJS(JsVar *v);
 JsVar *jswrap_espruino_memoryArea(int addr, int len);
 void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec);
 int jswrap_espruino_setClock(JsVar *options);

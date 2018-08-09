@@ -94,15 +94,18 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 
 #if NRF_SD_BLE_API_VERSION < 5
 #define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                        /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(100, APP_TIMER_PRESCALER)   /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(10000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 #else
 #define NRF_BLE_MAX_MTU_SIZE            NRF_SDH_BLE_GATT_MAX_MTU_SIZE               /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(100)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(10000) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 #endif
+#define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS) /**< Connection Supervision Timeout in 10 ms units, see @ref BLE_GAP_CP_LIMITS.*/
+#define SLAVE_LATENCY                   0 /**< Slave Latency in number of connection events, see @ref BLE_GAP_CP_LIMITS.*/
+
 
 #define APP_BLE_CONN_CFG_TAG                1                                       /**< A tag identifying the SoftDevice BLE configuration. */
 #define APP_BLE_OBSERVER_PRIO               2                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
@@ -121,6 +124,7 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #define HID_INPUT_REPORT_KEYS_INDEX          0                                           /**< Index of Input Report. */
 #define HID_INPUT_REP_REF_ID                 0                                           /**< Id of reference to Keyboard Input Report. */
 #define HID_OUTPUT_REP_REF_ID                0                                           /**< Id of reference to Keyboard Output Report. */
+#define HID_INPUT_REPORT_KEYS_MAX_LEN        8
 
 #define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2        /**< Reply when unsupported features are requested. */
 
@@ -131,20 +135,31 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 
 #if NRF_SD_BLE_API_VERSION < 5
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
-#else
+#elif NRF_SD_BLE_API_VERSION < 6
 BLE_NUS_DEF(m_nus);                                                                 /**< Structure to identify the Nordic UART Service. */
+#else
+BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);                                    /**< Structure to identify the Nordic UART Service. */
 #endif
 
 #if BLE_HIDS_ENABLED
 #if NRF_SD_BLE_API_VERSION < 5
 static ble_hids_t                       m_hids;                                   /**< Structure used to identify the HID service. */
-#else
+#elif NRF_SD_BLE_API_VERSION < 6
 BLE_HIDS_DEF(m_hids);
+#else
+BLE_HIDS_DEF(m_hids,
+             NRF_SDH_BLE_TOTAL_LINK_COUNT,
+             HID_INPUT_REPORT_KEYS_MAX_LEN,
+             HID_OUTPUT_REPORT_MAX_LEN);
 #endif
 static bool                             m_in_boot_mode = false;
 #endif
 
-volatile uint16_t                       m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
+#if NRF_SD_BLE_API_VERSION > 5
+static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
+#endif
+
+volatile uint16_t                       m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
 volatile uint16_t                       m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
 #endif
@@ -156,8 +171,35 @@ uint16_t bleAdvertisingInterval = DEFAULT_ADVERTISING_INTERVAL;
 
 volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
+/// When doing service discovery, this is the last handle we'll need to discover with
 uint16_t bleFinalHandle;
 
+/// Array of data waiting to be sent over Bluetooth NUS
+uint8_t nusTxBuf[BLE_NUS_MAX_DATA_LEN];
+/// Number of bytes ready to send inside nusTxBuf
+uint16_t nuxTxBufLength = 0;
+
+#ifdef NRF52
+#define DYNAMIC_INTERVAL_ADJUSTMENT
+#endif
+/* Dynamic interval adjustment kicks Espruino into a low power mode after
+ * a certain amount of time of being connected with nothing happening. The next time
+ * stuff happens it renegotiates back to the high rate, but this could take a second
+ * or two.
+ */
+#ifdef DYNAMIC_INTERVAL_ADJUSTMENT
+#define BLE_DYNAMIC_INTERVAL_LOW_RATE 200 // connection interval when idle (milliseconds)
+#define BLE_DYNAMIC_INTERVAL_HIGH_RATE 7.5 // connection interval when not idle (milliseconds) - 7.5ms is fastest possible
+#define DEFAULT_PERIPH_MAX_CONN_INTERVAL BLE_DYNAMIC_INTERVAL_HIGH_RATE // highest possible on connect
+#define BLE_DYNAMIC_INTERVAL_IDLE_TIME (int)(120000 / BLE_DYNAMIC_INTERVAL_HIGH_RATE) // time in milliseconds at which we enter idle
+/// How many connection intervals has BLE been idle for? Use for dynamic interval adjustment
+uint16_t bleIdleCounter = 0;
+/// Are we using a high speed or low speed interval at the moment?
+bool bleHighInterval;
+#else
+// No interval adjustment - allow us to enter a slightly lower power connection state
+#define DEFAULT_PERIPH_MAX_CONN_INTERVAL 20
+#endif
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
@@ -244,9 +286,16 @@ int jsble_exec_pending(IOEvent *event) {
        jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
        //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
        jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
-       JsVar *data = jsvNewStringOfLength(p_adv->dlen, (char*)p_adv->data);
+#if NRF_SD_BLE_API_VERSION<6
+       int dataLen = p_adv->dlen;
+       char *dataPtr = (char*)p_adv->data;
+#else
+       int dataLen = p_adv->data.len;
+       char *dataPtr = (char*)p_adv->data.p_data;
+#endif
+       JsVar *data = jsvNewStringOfLength(dataLen, dataPtr);
        if (data) {
-         JsVar *ab = jsvNewArrayBufferFromString(data, p_adv->dlen);
+         JsVar *ab = jsvNewArrayBufferFromString(data, dataLen);
          jsvUnLock(data);
          jsvObjectSetChildAndUnLock(evt, "data", ab);
        }
@@ -504,14 +553,35 @@ int jsble_exec_pending(IOEvent *event) {
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
+/** Set the connection interval of the peripheral connection. Returns an error code. */
+uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max) {
+  ble_gap_conn_params_t   gap_conn_params;
+  memset(&gap_conn_params, 0, sizeof(gap_conn_params));
+  gap_conn_params.min_conn_interval = (uint16_t)(0.5+MSEC_TO_UNITS(min, UNIT_1_25_MS));   // Minimum acceptable connection interval
+  gap_conn_params.max_conn_interval = (uint16_t)(0.5+MSEC_TO_UNITS(max, UNIT_1_25_MS));    // Maximum acceptable connection interval
+  gap_conn_params.slave_latency     = SLAVE_LATENCY;
+  gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
+  if (jsble_has_peripheral_connection()) {
+    // Connected - initiate dynamic change
+    return ble_conn_params_change_conn_params(
+#if NRF_SD_BLE_API_VERSION>=5
+        m_peripheral_conn_handle,
+#endif
+        &gap_conn_params);
+  } else {
+    // Not connected, just tell the stack
+    ble_gap_conn_params_t   gap_conn_params;
+    return sd_ble_gap_ppcp_set(&gap_conn_params);
+  }
+}
 
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection() {
 #if CENTRAL_LINK_COUNT>0
   return (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) ||
-         (m_conn_handle != BLE_CONN_HANDLE_INVALID);
+         (m_peripheral_conn_handle != BLE_CONN_HANDLE_INVALID);
 #else
-  return m_conn_handle != BLE_CONN_HANDLE_INVALID;
+  return m_peripheral_conn_handle != BLE_CONN_HANDLE_INVALID;
 #endif
 }
 
@@ -525,8 +595,25 @@ bool jsble_has_central_connection() {
 }
 
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
-bool jsble_has_simple_connection() {
-  return (m_conn_handle != BLE_CONN_HANDLE_INVALID);
+bool jsble_has_peripheral_connection() {
+  return (m_peripheral_conn_handle != BLE_CONN_HANDLE_INVALID);
+}
+
+/** Call this when something happens on BLE with this as
+ * a peripheral - used with Dynamic Interval Adjustment  */
+void jsble_peripheral_activity() {
+#ifdef DYNAMIC_INTERVAL_ADJUSTMENT
+  if (jsble_has_peripheral_connection() &&
+      !(bleStatus & BLE_DISABLE_DYNAMIC_INTERVAL) &&
+      bleIdleCounter < 5) {
+    // so we must have been called once before
+    if (!bleHighInterval) {
+      bleHighInterval = true;
+      jsble_set_periph_connection_interval(BLE_DYNAMIC_INTERVAL_HIGH_RATE, BLE_DYNAMIC_INTERVAL_HIGH_RATE);
+    }
+  }
+  bleIdleCounter = 0;
+#endif
 }
 
 /// Checks for error and reports an exception string if there was one, else 0 if no error
@@ -697,47 +784,72 @@ void log_uart_printf(const char * format_msg, ...) {
 
 #if NRF_SD_BLE_API_VERSION<5
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length) {
+  jsble_peripheral_activity(); // flag that we've been busy
   jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_data, length);
   jshHadEvent();
 }
 #else
 static void nus_data_handler(ble_nus_evt_t * p_evt) {
   if (p_evt->type == BLE_NUS_EVT_RX_DATA) {
+    jsble_peripheral_activity(); // flag that we've been busy
     jshPushIOCharEvents(EV_BLUETOOTH, (char*)p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
     jshHadEvent();
   }
 }
 #endif
 
-bool nus_transmit_string() {
-  if (!jsble_has_simple_connection() ||
+void nus_transmit_string() {
+  if (!jsble_has_peripheral_connection() ||
       !(bleStatus & BLE_NUS_INITED) ||
       (bleStatus & BLE_IS_SLEEPING)) {
     // If no connection, drain the output buffer
+    nuxTxBufLength = 0;
     while (jshGetCharToTransmit(EV_BLUETOOTH)>=0);
-    return false;
+    return;
   }
-  if (bleStatus & BLE_IS_SENDING) return false;
-  static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
-  int idx = 0;
-  int ch = jshGetCharToTransmit(EV_BLUETOOTH);
-  while (ch>=0) {
-    buf[idx++] = ch;
-    if (idx>=BLE_NUS_MAX_DATA_LEN) break;
-    ch = jshGetCharToTransmit(EV_BLUETOOTH);
-  }
-  if (idx>0) {
-#if NRF_SD_BLE_API_VERSION<5
-    uint32_t err_code = ble_nus_string_send(&m_nus, buf, idx);
+  /* 6 is the max number of packets we can send
+   * in one connection interval on nRF52. Try and
+   * send 5 just to allow an extra TX from user
+   * code if needed. */
+  for (int packet=0;packet<5;packet++) {
+    // No data? try and get some from our queue
+    if (!nuxTxBufLength) {
+      nuxTxBufLength = 0;
+      int ch = jshGetCharToTransmit(EV_BLUETOOTH);
+      while (ch>=0) {
+        nusTxBuf[nuxTxBufLength++] = ch;
+        if (nuxTxBufLength>=BLE_NUS_MAX_DATA_LEN) break;
+        ch = jshGetCharToTransmit(EV_BLUETOOTH);
+      }
+    }
+    // If there's no data in the queue, nothing to do - leave
+    if (!nuxTxBufLength) return;
+    jsble_peripheral_activity(); // flag that we've been busy
+    // We have data - try and send it
+
+#if NRF_SD_BLE_API_VERSION>5
+    uint32_t err_code = ble_nus_data_send(&m_nus, nusTxBuf, &nuxTxBufLength, m_peripheral_conn_handle);
+#elif NRF_SD_BLE_API_VERSION<5
+    uint32_t err_code = ble_nus_string_send(&m_nus, nusTxBuf, nuxTxBufLength);
+    if (err_code == NRF_SUCCESS) nuxTxBufLength=0; // everything sent Ok
 #else
-    uint16_t len = idx;
-    uint32_t err_code = ble_nus_string_send(&m_nus, buf, &len);
-    assert(len==idx);
+    uint16_t bytesSent = nuxTxBufLength;
+    uint32_t err_code = ble_nus_string_send(&m_nus, nusTxBuf, &bytesSent);
+    if (nuxTxBufLength==bytesSent) {
+      nuxTxBufLength = 0;
+    } else if (bytesSent) {
+      for (uint16_t n=bytesSent;n<nuxTxBufLength;n++)
+        nusTxBuf[n-bytesSent] = nusTxBuf[n];
+      nuxTxBufLength -= bytesSent;
+    }
 #endif
-    if (err_code == NRF_SUCCESS)
+    if (err_code == NRF_SUCCESS) {
       bleStatus |= BLE_IS_SENDING;
+    }
+    /* if it failed to send all or any data we keep it around in
+     * nusTxBuf (with count in nuxTxBufLength) so next time around
+     * we can try again. */
   }
-  return idx>0;
 }
 
 /// Radio Notification handler
@@ -755,7 +867,17 @@ void SWI1_IRQHandler(bool radio_evt) {
       bleStatus = (bleStatus&~BLE_ADVERTISING_MULTIPLE_MASK) | (idx<<BLE_ADVERTISING_MULTIPLE_SHIFT);
       JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
       if (dPtr && dLen) {
-        uint32_t err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
+        uint32_t err_code;
+        #if NRF_SD_BLE_API_VERSION>5
+        ble_gap_adv_data_t d;
+        memset(&d,0,sizeof(d));
+        d.adv_data.p_data = (char*)dPtr;
+        d.adv_data.len = dLen;
+        // TODO: scan_rsp_data? Does not setting this remove it?
+        err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
+        #else
+        err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
+        #endif
         if (err_code)
           ok = false; // error setting BLE - disable
       } else {
@@ -772,7 +894,19 @@ void SWI1_IRQHandler(bool radio_evt) {
     }
     jsvUnLock(advData);
   }
-
+#ifdef DYNAMIC_INTERVAL_ADJUSTMENT
+ // Handle Dynamic Interval Adjustment
+ if (bleIdleCounter<BLE_DYNAMIC_INTERVAL_IDLE_TIME) {
+   bleIdleCounter++;
+ } else {
+   if (jsble_has_peripheral_connection() &&
+       !(bleStatus & BLE_DISABLE_DYNAMIC_INTERVAL) &&
+       bleHighInterval) {
+     bleHighInterval = false;
+     jsble_set_periph_connection_interval(BLE_DYNAMIC_INTERVAL_LOW_RATE, BLE_DYNAMIC_INTERVAL_LOW_RATE);
+   }
+ }
+#endif
 
 #ifndef NRF52
   /* NRF52 has a systick. On nRF51 we just hook on
@@ -843,9 +977,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
       case BLE_GAP_EVT_CONNECTED:
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
-          m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+          m_peripheral_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+#ifdef DYNAMIC_INTERVAL_ADJUSTMENT
+          bleHighInterval = true;
+          bleIdleCounter = 0;
+#endif
           if (bleStatus & BLE_IS_RSSI_SCANNING) // attempt to restart RSSI scan
-            sd_ble_gap_rssi_start(m_conn_handle, 0, 0);
+            sd_ble_gap_rssi_start(m_peripheral_conn_handle, 0, 0);
           bleStatus &= ~BLE_IS_SENDING; // reset state - just in case
 #if BLE_HIDS_ENABLED
           bleStatus &= ~BLE_IS_SENDING_HID;
@@ -884,7 +1022,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #endif
         {
           bleStatus &= ~BLE_IS_RSSI_SCANNING; // scanning will have stopped now we're disconnected
-          m_conn_handle = BLE_CONN_HANDLE_INVALID;
+          m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;
           if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
           // by calling nus_transmit_string here, without a connection, we clear the Bluetooth output buffer
           nus_transmit_string();
@@ -921,14 +1059,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         sec_param.oob          = 0; // Out Of Band data not available.
         sec_param.min_key_size = 7;
         sec_param.max_key_size = 16;
-        err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_SUCCESS, &sec_param, NULL);
+        err_code = sd_ble_gap_sec_params_reply(m_peripheral_conn_handle, BLE_GAP_SEC_STATUS_SUCCESS, &sec_param, NULL);
         // or BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP to disable pairing
         APP_ERROR_CHECK(err_code);
       } break; // BLE_GAP_EVT_SEC_PARAMS_REQUEST
 
       case BLE_GATTS_EVT_SYS_ATTR_MISSING:
         // No system attributes have been stored.
-        err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
+        err_code = sd_ble_gatts_sys_attr_set(m_peripheral_conn_handle, NULL, 0, 0);
         APP_ERROR_CHECK(err_code);
         break;
 #endif
@@ -1071,7 +1209,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_WRITE, 0);
         }
 #endif
-        if (p_ble_evt->evt.common_evt.conn_handle == m_conn_handle) {
+        if (p_ble_evt->evt.common_evt.conn_handle == m_peripheral_conn_handle) {
+          jsble_peripheral_activity(); // flag that we've been busy
           //TODO: probably want to figure out *which write* finished?
           bleStatus &= ~BLE_IS_SENDING;
 #if NRF_SD_BLE_API_VERSION>=5
@@ -1093,10 +1232,12 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         }
 
       case BLE_GATTS_EVT_WRITE: {
+        // Peripheral's Characteristic was written to
         const ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
         // TODO: detect if this was a nus write. If so, DO NOT create an event for it!
         // We got a param write event - add this to the bluetooth event queue
         jsble_queue_pending_buf(BLEP_WRITE, p_evt_write->handle, (char*)p_evt_write->data, p_evt_write->len);
+        jsble_peripheral_activity(); // flag that we've been busy
         break;
       }
 
@@ -1247,7 +1388,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
   if (!((p_ble_evt->header.evt_id==BLE_GAP_EVT_CONNECTED) &&
         (p_ble_evt->evt.gap_evt.params.connected.role != BLE_GAP_ROLE_PERIPH)) &&
       !((p_ble_evt->header.evt_id==BLE_GAP_EVT_DISCONNECTED) &&
-         m_conn_handle != p_ble_evt->evt.gap_evt.conn_handle)) {
+         m_peripheral_conn_handle != p_ble_evt->evt.gap_evt.conn_handle)) {
     // Stuff in here should ONLY get called for Peripheral events (not central)
     ble_conn_params_on_ble_evt(p_ble_evt);
     if (bleStatus & BLE_NUS_INITED)
@@ -1286,7 +1427,7 @@ static void fds_evt_handler(fds_evt_t const * const p_evt)
 {
     if (p_evt->id == FDS_EVT_GC)
     {
-        NRF_LOG_DEBUG("GC completed\n");
+        //NRF_LOG_DEBUG("GC completed\n");
     }
 }
 
@@ -1299,7 +1440,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
     {
         case PM_EVT_BONDED_PEER_CONNECTED:
         {
-            NRF_LOG_DEBUG("Connected to previously bonded device\r\n");
+            //NRF_LOG_DEBUG("Connected to previously bonded device\r\n");
             m_peer_id = p_evt->peer_id;
             err_code  = pm_peer_rank_highest(p_evt->peer_id);
             if (err_code != NRF_ERROR_BUSY)
@@ -1315,23 +1456,28 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_CONN_SEC_SUCCEEDED:
         {
-            NRF_LOG_DEBUG("Link secured. Role: %d. conn_handle: %d, Procedure: %d\r\n",
-                                 -1/*ble_conn_state_role(p_evt->conn_handle)*/,
+            /*NRF_LOG_DEBUG("Link secured. Role: %d. conn_handle: %d, Procedure: %d\r\n",
+                                 -1, // ble_conn_state_role(p_evt->conn_handle)
                                  p_evt->conn_handle,
-                                 p_evt->params.conn_sec_succeeded.procedure);
+                                 p_evt->params.conn_sec_succeeded.procedure);*/
             m_peer_id = p_evt->peer_id;
             err_code  = pm_peer_rank_highest(p_evt->peer_id);
             if (err_code != NRF_ERROR_BUSY)
             {
                 APP_ERROR_CHECK(err_code);
             }
-            if (p_evt->params.conn_sec_succeeded.procedure == PM_LINK_SECURED_PROCEDURE_BONDING &&
+            if (
+#if NRF_SD_BLE_API_VERSION>5
+                p_evt->params.conn_sec_succeeded.procedure == PM_CONN_SEC_PROCEDURE_ENCRYPTION &&
+#else
+                p_evt->params.conn_sec_succeeded.procedure == PM_LINK_SECURED_PROCEDURE_BONDING &&
+#endif
                 bleStatus & BLE_WHITELIST_ON_BOND)
             {
-                NRF_LOG_DEBUG("New Bond, add the peer to the whitelist if possible\r\n");
+                /*NRF_LOG_DEBUG("New Bond, add the peer to the whitelist if possible\r\n");
                 NRF_LOG_DEBUG("\tm_whitelist_peer_cnt %d, MAX_PEERS_WLIST %d\r\n",
                                m_whitelist_peer_cnt + 1,
-                               BLE_GAP_WHITELIST_ADDR_MAX_COUNT);
+                               BLE_GAP_WHITELIST_ADDR_MAX_COUNT);*/
                 if (m_whitelist_peer_cnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT)
                 {
                     //bonded to a new peer, add it to the whitelist.
@@ -1470,6 +1616,9 @@ static void on_hid_rep_char_write(ble_hids_evt_t * p_evt) {
                                              report_index,
                                              HID_OUTPUT_REPORT_MAX_LEN,
                                              0,
+#if NRF_SD_BLE_API_VERSION>5
+                                             m_peripheral_conn_handle,
+#endif
                                              &report_val);
             APP_ERROR_CHECK(err_code);
             // (report_val & 2) is caps lock
@@ -1545,10 +1694,10 @@ static void gap_params_init() {
       gap_conn_params.max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS);    // Maximum acceptable connection interval (1000 ms)
     } else {
       gap_conn_params.min_conn_interval = MSEC_TO_UNITS(7.5, UNIT_1_25_MS);   // Minimum acceptable connection interval (7.5 ms)
-      gap_conn_params.max_conn_interval = MSEC_TO_UNITS(20, UNIT_1_25_MS);    // Maximum acceptable connection interval (20 ms)
+      gap_conn_params.max_conn_interval = MSEC_TO_UNITS(DEFAULT_PERIPH_MAX_CONN_INTERVAL, UNIT_1_25_MS);    // Maximum acceptable connection interval (20 ms)
     }
-    gap_conn_params.slave_latency     = 0;  // Slave Latency in number of connection events
-    gap_conn_params.conn_sup_timeout  = MSEC_TO_UNITS(4000, UNIT_10_MS);    // Connection supervisory timeout (4 seconds)
+    gap_conn_params.slave_latency     = SLAVE_LATENCY;
+    gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
 
     err_code = sd_ble_gap_ppcp_set(&gap_conn_params);
     APP_ERROR_CHECK(err_code);
@@ -1708,9 +1857,9 @@ static void peer_manager_init(bool erase_bonds) {
 static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     uint32_t                   err_code;
     ble_hids_init_t            hids_init_obj;
-    ble_hids_inp_rep_init_t    input_report_array[1];
+    static ble_hids_inp_rep_init_t    input_report_array[1];
     ble_hids_inp_rep_init_t  * p_input_report;
-    ble_hids_outp_rep_init_t   output_report_array[1];
+    static ble_hids_outp_rep_init_t   output_report_array[1];
     ble_hids_outp_rep_init_t * p_output_report;
     uint8_t                    hid_info_flags;
 
@@ -1916,7 +2065,7 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
   memset(advdata, 0, sizeof(*advdata));
   advdata->name_type          = BLE_ADVDATA_FULL_NAME;
   advdata->include_appearance = false;
-  advdata->flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+  advdata->flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
 }
 
 
@@ -1961,7 +2110,36 @@ static void advertising_init() {
     scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
     scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
 
-    ble_advdata_set(&advdata, &scanrsp);
+    uint32_t err_code;
+#if NRF_SD_BLE_API_VERSION>5
+    uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
+    uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
+    ble_gap_adv_data_t d;
+    d.adv_data.p_data = m_enc_advdata;
+    d.adv_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
+    d.scan_rsp_data.p_data = m_enc_scan_response_data;
+    d.scan_rsp_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
+    err_code = ble_advdata_encode(&advdata, d.adv_data.p_data, &d.adv_data.len);
+    if (jsble_check_error(err_code)) return;
+    err_code = ble_advdata_encode(&scanrsp, d.scan_rsp_data.p_data, &d.scan_rsp_data.len);
+    if (jsble_check_error(err_code)) return;
+
+    // FIXME We should just use jsble_advertising_start and remove duplicate code
+    ble_gap_adv_params_t adv_params;
+    // Set advertising parameters.
+    memset(&adv_params, 0, sizeof(adv_params));
+    adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
+    adv_params.duration        = BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED;
+    adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
+    adv_params.p_peer_addr     = NULL;
+    adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
+    adv_params.interval        = bleAdvertisingInterval;
+
+    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
+#else
+    err_code = ble_advdata_set(&advdata, &scanrsp);
+#endif
+    APP_ERROR_CHECK(err_code);
 }
 
 // -----------------------------------------------------------------------------------
@@ -1971,13 +2149,29 @@ void jsble_advertising_start() {
   if (bleStatus & BLE_IS_ADVERTISING) return;
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
-  adv_params.type        = (bleStatus & BLE_IS_NOT_CONNECTABLE) ? BLE_GAP_ADV_TYPE_ADV_NONCONN_IND : BLE_GAP_ADV_TYPE_ADV_IND;
-  adv_params.p_peer_addr = NULL;
+  bool non_connectable = bleStatus & BLE_IS_NOT_CONNECTABLE;
+#if NRF_SD_BLE_API_VERSION>5
+  adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
+  adv_params.p_peer_addr     = NULL;
+  adv_params.properties.type = non_connectable
+                                    ? BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED
+                                    : BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
+  adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
+  adv_params.duration  = BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED;
+#else
+  adv_params.type        = non_connectable ? BLE_GAP_ADV_TYPE_ADV_NONCONN_IND : BLE_GAP_ADV_TYPE_ADV_IND;
   adv_params.fp          = BLE_GAP_ADV_FP_ANY;
   adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
+#endif
+  adv_params.p_peer_addr = NULL;
   adv_params.interval = bleAdvertisingInterval;
 
-#if NRF_SD_BLE_API_VERSION<5
+  uint32_t err_code;
+#if NRF_SD_BLE_API_VERSION>5
+  err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, 0, &adv_params);
+  APP_ERROR_CHECK(err_code);
+  sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
+#elif NRF_SD_BLE_API_VERSION<5
   sd_ble_gap_adv_start(&adv_params);
 #else
   sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
@@ -1987,7 +2181,11 @@ void jsble_advertising_start() {
 
 void jsble_advertising_stop() {
   if (!(bleStatus & BLE_IS_ADVERTISING)) return;
+#if NRF_SD_BLE_API_VERSION > 5
+  sd_ble_gap_adv_stop(m_adv_handle);
+#else
   sd_ble_gap_adv_stop();
+#endif
   bleStatus &= ~BLE_IS_ADVERTISING;
 }
 
@@ -2054,13 +2252,24 @@ uint32_t jsble_set_scanning(bool enabled) {
      if (bleStatus & BLE_IS_SCANNING) return 0;
      bleStatus |= BLE_IS_SCANNING;
      ble_gap_scan_params_t     m_scan_param;
+#if NRF_SD_BLE_API_VERSION>5
+     static uint8_t m_scan_buffer_data[BLE_GAP_SCAN_BUFFER_EXTENDED_MIN]; /**< buffer where advertising reports will be stored by the SoftDevice. */
+     static ble_data_t m_scan_buffer = {
+         m_scan_buffer_data,
+         BLE_GAP_SCAN_BUFFER_EXTENDED_MIN
+     };
+#endif
      // non-selective scan
      m_scan_param.active       = 0;            // Active scanning set.
      m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
      m_scan_param.window       = SCAN_WINDOW;  // Scan window.
      m_scan_param.timeout      = 0x0000;       // No timeout.
 
-     err_code = sd_ble_gap_scan_start(&m_scan_param);
+     err_code = sd_ble_gap_scan_start(&m_scan_param
+#if NRF_SD_BLE_API_VERSION>5
+         , &m_scan_buffer
+#endif
+         );
    } else {
      if (!(bleStatus & BLE_IS_SCANNING)) return 0;
      bleStatus &= ~BLE_IS_SCANNING;
@@ -2074,13 +2283,13 @@ uint32_t jsble_set_rssi_scan(bool enabled) {
   if (enabled) {
      if (bleStatus & BLE_IS_RSSI_SCANNING) return 0;
      bleStatus |= BLE_IS_RSSI_SCANNING;
-     if (jsble_has_simple_connection())
-       err_code = sd_ble_gap_rssi_start(m_conn_handle, 0, 0);
+     if (jsble_has_peripheral_connection())
+       err_code = sd_ble_gap_rssi_start(m_peripheral_conn_handle, 0, 0);
    } else {
      if (!(bleStatus & BLE_IS_RSSI_SCANNING)) return 0;
      bleStatus &= ~BLE_IS_RSSI_SCANNING;
-     if (jsble_has_simple_connection())
-       err_code = sd_ble_gap_rssi_stop(m_conn_handle);
+     if (jsble_has_peripheral_connection())
+       err_code = sd_ble_gap_rssi_stop(m_peripheral_conn_handle);
    }
   return err_code;
 }
@@ -2247,7 +2456,7 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
     jsExceptionHere(JSET_ERROR, "BLE HID not enabled");
     return;
   }
-  if (!jsble_has_simple_connection()) {
+  if (!jsble_has_peripheral_connection()) {
     jsExceptionHere(JSET_ERROR, "Not connected!");
     return;
   }
@@ -2265,11 +2474,19 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
       err_code = ble_hids_inp_rep_send(&m_hids,
                                        HID_INPUT_REPORT_KEYS_INDEX,
                                        length,
-                                       data);
+                                       data
+#if NRF_SD_BLE_API_VERSION>5
+                                       ,m_peripheral_conn_handle
+#endif
+                                       );
   } else {
       err_code = ble_hids_boot_kb_inp_rep_send(&m_hids,
                                                length,
-                                               data);
+                                               data
+#if NRF_SD_BLE_API_VERSION>5
+                                       ,m_peripheral_conn_handle
+#endif
+                                               );
   }
   if (!jsble_check_error(err_code))
     bleStatus |= BLE_IS_SENDING_HID;
@@ -2340,7 +2557,7 @@ void jsble_nfc_send_rsp(const uint8_t data, size_t len) {
 
 
 #if CENTRAL_LINK_COUNT>0
-void jsble_central_connect(ble_gap_addr_t peer_addr) {
+void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
   uint32_t              err_code;
 
   ble_gap_scan_params_t     m_scan_param;
@@ -2360,8 +2577,16 @@ void jsble_central_connect(ble_gap_addr_t peer_addr) {
     gap_conn_params.min_conn_interval = MSEC_TO_UNITS(20, UNIT_1_25_MS);   // Minimum acceptable connection interval (20 ms)
     gap_conn_params.max_conn_interval = MSEC_TO_UNITS(200, UNIT_1_25_MS);    // Maximum acceptable connection interval (200 ms)
   }
-  gap_conn_params.slave_latency     = 0;
-  gap_conn_params.conn_sup_timeout  = MSEC_TO_UNITS(4000, UNIT_10_MS);
+  gap_conn_params.slave_latency     = SLAVE_LATENCY;
+  gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
+  // handle options
+  if (jsvIsObject(options)) {
+    JsVarFloat v;
+    v = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"minInterval",0));
+    if (!isnan(v)) gap_conn_params.min_conn_interval = (uint16_t)(MSEC_TO_UNITS(v, UNIT_1_25_MS)+0.5);
+    v = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"maxInterval",0));
+    if (!isnan(v)) gap_conn_params.max_conn_interval = (uint16_t)(MSEC_TO_UNITS(v, UNIT_1_25_MS)+0.5);
+  }
 
   ble_gap_addr_t addr;
   addr = peer_addr;

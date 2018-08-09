@@ -16,6 +16,7 @@
 #include "jswrap_espruino.h"
 #include "jswrap_math.h"
 #include "jswrap_arraybuffer.h"
+#include "jswrap_json.h"
 #include "jsflash.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
@@ -851,6 +852,46 @@ JsVar *jswrap_espruino_toUint8Array(JsVar *args) {
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",
+  "name" : "toJS",
+  "generate" : "jswrap_espruino_toJS",
+  "params" : [
+    ["arg","JsVar","The JS variable to convert to a string"]
+  ],
+  "return" : ["JsVar","A String"],
+  "return_object" : "String"
+}
+This performs the same basic function as `JSON.stringify`,
+however `JSON.stringify` adds extra characters to conform
+to the JSON spec which aren't required if outputting JS.
+
+`E.toJS` will also stringify JS functions, whereas
+`JSON.stringify` ignores them.
+
+For example:
+
+* `JSON.stringify({a:1,b:2}) == '{"a":1,"b":2}'`
+* `E.toJS({a:1,b:2}) == '{a:1,b:2}'`
+
+**Note:** Strings generated with `E.toJS` can't be
+reliably parsed by `JSON.parse` - however they are
+valid JS so will work with `eval` (but this has security
+implications if you don't trust the source of the string).
+
+On the desktop [JSON5 parsers](https://github.com/json5/json5)
+will parse the strings produced by `E.toJS` without trouble.
+ */
+JsVar *jswrap_espruino_toJS(JsVar *v) {
+  JSONFlags flags = JSON_DROP_QUOTES|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY;
+  JsVar *result = jsvNewFromEmptyString();
+  if (result) {// could be out of memory
+    jsfGetJSON(v, result, flags);
+  }
+  return result;
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
   "name" : "memoryArea",
   "generate" : "jswrap_espruino_memoryArea",
   "params" : [
@@ -1384,7 +1425,6 @@ void jswrap_espruino_lockConsole() {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "setTimeZone",
   "generate" : "jswrap_espruino_setTimeZone",

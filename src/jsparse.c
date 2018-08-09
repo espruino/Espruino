@@ -582,6 +582,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
       if (nativePtr && !JSP_HAS_ERROR) {
         returnVar = jsnCallFunction(nativePtr, function->varData.native.argTypes, thisVar, argPtr, argCount);
+        assert(!jsvIsName(returnVar));
       } else {
         returnVar = 0;
       }
@@ -1245,10 +1246,9 @@ NO_INLINE JsVar *jspeFactorObject() {
         JSP_MATCH_WITH_RETURN(LEX_ID, contents);
       }
 #ifndef SAVE_ON_FLASH
-      bool isGetter, isSetter;
       if (lex->tk==LEX_ID && jsvIsString(varName)) {
-        isGetter = jsvIsStringEqual(varName, "get");
-        isSetter = jsvIsStringEqual(varName, "set");
+        bool isGetter = jsvIsStringEqual(varName, "get");
+        bool isSetter = jsvIsStringEqual(varName, "set");
         if (isGetter || isSetter) {
           jsvUnLock(varName);
           varName = jslGetTokenValueAsVar(lex);
@@ -1541,7 +1541,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
     JsVar *funcName = jslGetTokenValueAsVar(lex);
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(funcName,classFunction,classInternalName,classPrototype),0);
 #ifndef SAVE_ON_FLASH
-    bool isGetter, isSetter;
+    bool isGetter = false, isSetter = false;
     if (lex->tk==LEX_ID) {
       isGetter = jsvIsStringEqual(funcName, "get");
       isSetter = jsvIsStringEqual(funcName, "set");
@@ -1552,7 +1552,6 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
       }
     }
 #endif
-
     JsVar *method = jspeFunctionDefinition(false);
     if (classFunction && classPrototype) {
       JsVar *obj = isStatic ? classFunction : classPrototype;
@@ -2115,6 +2114,7 @@ NO_INLINE JsVar *jspParse() {
   while (!JSP_SHOULDNT_PARSE && lex->tk != LEX_EOF) {
     jsvUnLock(v);
     v = jspeBlockOrStatement();
+    jsvCheckReferenceError(v);
   }
   return v;
 }

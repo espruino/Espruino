@@ -162,7 +162,9 @@ bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
   jshSPISetReceive(device, false);
   jshInterruptOff();
   for (i=0;i<rgbSize;i++)
-    jsspiSend4bit(device, rgbData[i], 1, 3);
+    jsspiSend4bit(device, rgbData[i], 8, 12);
+  // make sure all useful data has been flushed from 32-bit fifo
+  jsspiSend4bit(device, 0, 0, 0);
   jshInterruptOn();
   jshSPIWait(device); // wait until SPI send finished and clear the RX buffer
   jshSPISet16(device, false); // back to 8 bit

@@ -194,6 +194,22 @@ JsVarFloat jswrap_parseFloat(JsVar *v) {
 
 /*JSON{
   "type" : "function",
+  "name" : "isFinite",
+  "generate" : "jswrap_isFinite",
+  "params" : [
+    ["x","JsVar",""]
+  ],
+  "return" : ["bool","True is the value is a Finite number, false if not."]
+}
+Is the parameter a finite num,ber or not? If needed, the parameter is first converted to a number.
+ */
+bool jswrap_isFinite(JsVar *v) {
+  JsVarFloat f = jsvGetFloat(v);
+  return !isnan(f) && f!=INFINITY && f!=-INFINITY;
+}
+
+/*JSON{
+  "type" : "function",
   "name" : "isNaN",
   "generate" : "jswrap_isNaN",
   "params" : [
@@ -323,6 +339,8 @@ JsVar *jswrap_atob(JsVar *base64Data) {
   }
   size_t inputLength = jsvGetStringLength(base64Data);
   size_t outputLength = inputLength*3/4;
+  if (jsvGetCharInString(base64Data,inputLength-1)=='=') outputLength--;
+  if (jsvGetCharInString(base64Data,inputLength-2)=='=') outputLength--;
   JsVar* binaryData = jsvNewStringOfLength((unsigned int)outputLength, NULL);
   if (!binaryData) return 0;
   JsvStringIterator itsrc;

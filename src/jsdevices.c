@@ -182,7 +182,7 @@ void jshTransmit(
   }
 #endif
 #ifdef BLUETOOTH
-  if (device==EV_BLUETOOTH && !jsble_has_simple_connection()) {
+  if (device==EV_BLUETOOTH && !jsble_has_peripheral_connection()) {
     jshTransmitClearDevice(EV_BLUETOOTH); // clear out stuff already waiting
     return;
   }

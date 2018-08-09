@@ -661,6 +661,7 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
+# --specs=nano.specs uses newlib-nano
 ifdef NRF5X
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
 else ifdef STM32
@@ -800,6 +801,7 @@ lst: $(PROJ_NAME).lst
 clean:
 	@echo Cleaning targets
 	$(Q)find . -name \*.o | grep -v "./arm-bcm2708\|./gcc-arm-none-eabi" | xargs rm -f
+	$(Q)find . -name \*.d | grep -v "./arm-bcm2708\|./gcc-arm-none-eabi" | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
 	$(Q)rm -f $(ROOT)/scripts/*.pyc $(ROOT)/boards/*.pyc
 	$(Q)rm -f $(PROJ_NAME).elf

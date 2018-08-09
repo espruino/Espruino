@@ -18,7 +18,12 @@
 #include "jsdevices.h"
 
 #ifdef NRF5X
+#if NRF_SD_BLE_API_VERSION>5
+#include "nrf_sdh_ble.h"
+#define BLE_GAP_ADV_MAX_SIZE BLE_GAP_ADV_SET_DATA_SIZE_MAX
+#else
 #include "ble.h"
+#endif
 #include "ble_advdata.h"
 #else
 typedef struct {
@@ -47,6 +52,8 @@ typedef struct {
 #define BLE_UUID_TYPE_BLE (1)
 #define BLE_UUID_TYPE_128 2
 #define MSEC_TO_UNITS(MS,MEH) MS
+#define GATT_MTU_SIZE_DEFAULT 23
+#define BLE_NUS_MAX_DATA_LEN 20 //GATT_MTU_SIZE_DEFAULT - 3
 #endif
 
 #if defined(NRF52) || defined(ESP32)
@@ -86,8 +93,10 @@ typedef enum  {
   BLE_IS_NOT_CONNECTABLE = 2048, //< Is the device connectable?
   BLE_WHITELIST_ON_BOND = 4096,  //< Should we write to the whitelist whenever we bond to a device?
 
-  BLE_IS_ADVERTISING_MULTIPLE = 8192, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 16384,
+  BLE_DISABLE_DYNAMIC_INTERVAL = 8192, //< Disable automatically changing interval based on BLE peripheral activity
+
+  BLE_IS_ADVERTISING_MULTIPLE = 16384, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 32768,
   BLE_ADVERTISING_MULTIPLE_SHIFT = GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;
@@ -123,7 +132,7 @@ typedef enum {
 
 extern volatile BLEStatus bleStatus;
 extern uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
-extern volatile uint16_t                         m_conn_handle;    /**< Handle of the current connection. */
+extern volatile uint16_t                         m_peripheral_conn_handle;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
 extern volatile uint16_t                         m_central_conn_handle; /**< Handle for central mode connection */
 #endif
@@ -154,12 +163,19 @@ bool jsble_has_connection();
 bool jsble_has_central_connection();
 
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
-bool jsble_has_simple_connection();
+bool jsble_has_peripheral_connection();
+
+/** Call this when something happens on BLE with this as
+ * a peripheral - used with Dynamic Interval Adjustment  */
+void jsble_peripheral_activity();
 
 /// Checks for error and reports an exception if there was one. Return true on error
 bool jsble_check_error(uint32_t err_code);
 
-/// Scanning for advertisign packets
+/** Set the connection interval of the peripheral connection. Returns an error code */
+uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max);
+
+/// Scanning for advertising packets
 uint32_t jsble_set_scanning(bool enabled);
 
 /// returning RSSI values for current connection
@@ -216,8 +232,14 @@ void jsble_nfc_send_rsp(const uint8_t data, size_t len);
 #endif
 
 #if CENTRAL_LINK_COUNT>0
-/// Connect to the given peer address. When done call bleCompleteTask
-void jsble_central_connect(ble_gap_addr_t peer_addr);
+/** Connect to the given peer address. When done call bleCompleteTask.
+ options is an optional object containing optional fields:
+ {
+   minInterval // min connection interval in milliseconds, 7.5 ms to 4 s
+   maxInterval // max connection interval in milliseconds, 7.5 ms to 4 s
+ }
+ See BluetoothRemoteGATTServer.connect docs for more docs */
+void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options);
 /// Get primary services. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
 void jsble_central_getPrimaryServices(ble_uuid_t uuid);
 /// Get characteristics. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask

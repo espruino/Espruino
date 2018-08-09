@@ -27,10 +27,15 @@ ARM = 1
 ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
 INCLUDE += -I$(NRF5X_SDK_PATH)
 
+# This is where the common linker for both nRF51 & nRF52 is stored.
 ifdef NRF5X_SDK_12
-LDFLAGS += -L$(NRF5X_SDK_PATH)/nrf5x_linkers # This is where the common linker for both nRF51 & nRF52 is stored.
-else
-LDFLAGS += -L$(NRF5X_SDK_PATH)/components/toolchain/gcc # This is where the common linker for both nRF51 & nRF52 is stored.
+LDFLAGS += -L$(NRF5X_SDK_PATH)/nrf5x_linkers 
+endif
+ifdef NRF5X_SDK_14
+LDFLAGS += -L$(NRF5X_SDK_PATH)/components/toolchain/gcc
+endif
+ifdef NRF5X_SDK_15
+LDFLAGS += -L$(NRF5X_SDK_PATH)/modules/nrfx/mdk
 endif
 
 # These files are the Espruino HAL implementation.
@@ -103,8 +108,36 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/strerror
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/experimental_memobj
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/balloc
 endif
+ifdef NRF5X_SDK_15
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/mdk
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/hal
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/legacy
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/drivers/include
+INCLUDE += -I$(NRF5X_SDK_PATH)/integration/nrfx
+INCLUDE += -I$(NRF5X_SDK_PATH)/integration/nrfx/legacy
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/delay
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_link_ctx_manager
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/atomic_flags
+endif
 
 
+ifdef NRF5X_SDK_15
+TARGETSOURCES += \
+$(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_gpiote.c \
+$(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_spi.c \
+$(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_twi.c \
+$(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_uart.c \
+$(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_ppi.c \
+$(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_rng.c \
+$(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_twi.c \
+$(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_uart.c \
+$(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_spi.c \
+$(NRF5X_SDK_PATH)/components/libraries/atomic/nrf_atomic.c \
+$(NRF5X_SDK_PATH)/components/libraries/atomic_flags/nrf_atflags.c \
+$(NRF5X_SDK_PATH)/components/ble/ble_link_ctx_manager/ble_link_ctx_manager.c \
+$(NRF5X_SDK_PATH)/components/libraries/util/app_error_handler_gcc.c
+else
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
@@ -114,6 +147,10 @@ $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master/nrf_drv_spi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
+$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c 
+endif
+
+TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
@@ -148,7 +185,6 @@ else
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh.c \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_ble.c \
-$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c \
 $(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars/nrf_section_iter.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage_sd.c \
@@ -158,6 +194,7 @@ $(NRF5X_SDK_PATH)/components/libraries/strerror/nrf_strerror.c \
 $(NRF5X_SDK_PATH)/components/libraries/experimental_memobj/nrf_memobj.c \
 $(NRF5X_SDK_PATH)/components/libraries/balloc/nrf_balloc.c
 endif
+
 
 
 # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c

@@ -1,5 +1,30 @@
 NRF5X=1
 
+ifeq ($(CHIP),NRF52840)
+SOFTDEVICE_PATH = $(NRF5X_SDK_PATH)/components/softdevice/s140
+DEFINES += -DS140
+else  # NRF52832
+SOFTDEVICE_PATH = $(NRF5X_SDK_PATH)/components/softdevice/s132
+DEFINES += -DS132
+endif
+
+ifdef NRF_SDK15
+# Use SDK15
+NRF5X_SDK=15
+NRF5X_SDK_15=1
+NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_15
+DEFINES += -DNRF_SD_BLE_API_VERSION=6
+DEFINES += -D__HEAP_SIZE=0
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
+ifeq ($(CHIP),NRF52840)
+SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_6.0.0_softdevice.hex
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.S
+else  # NRF52832
+SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_6.0.0_softdevice.hex
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.S
+endif
+else
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 ifdef NRF_SDK14
 # Use SDK14
 NRF5X_SDK=14
@@ -8,13 +33,9 @@ NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_14
 DEFINES += -DNRF_SD_BLE_API_VERSION=5
 DEFINES += -D__HEAP_SIZE=0
 ifeq ($(CHIP),NRF52840)
-SOFTDEVICE_PATH = $(NRF5X_SDK_PATH)/components/softdevice/s140
 SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52840_5.0.0-2.alpha_softdevice.hex
-DEFINES += -DS140
 else  # NRF52832
-SOFTDEVICE_PATH = $(NRF5X_SDK_PATH)/components/softdevice/s140
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_5.0.0_softdevice.hex
-DEFINES += -DS132
 endif
 else
 # Use SDK12
@@ -22,10 +43,10 @@ NRF5X_SDK=12
 NRF5X_SDK_12=1
 NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_12
 DEFINES += -DNRF_SD_BLE_API_VERSION=3
-SOFTDEVICE_PATH = $(NRF5X_SDK_PATH)/components/softdevice/s140
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_3.0.0_softdevice.hex
-DEFINES += -DS132
 endif
+endif
+
 
 # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
 ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
@@ -33,9 +54,8 @@ ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d
 # nRF52 specific.
 INCLUDE          += -I$(SOFTDEVICE_PATH)/headers
 INCLUDE          += -I$(SOFTDEVICE_PATH)/headers/nrf52
-TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
-                    $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c
-PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
+TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
+
 
 DEFINES += -DBLE_STACK_SUPPORT_REQD
 DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DFLOAT_ABI_HARD 
@@ -74,9 +94,8 @@ endif
 else # not USE_BOOTLOADER
 LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino.ld
 INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
-endif
-
-endif
+endif # USE_BOOTLOADER
+endif # NRF52832 / NRF52840
 
 
 
@@ -84,15 +103,27 @@ ifndef BOOTLOADER
 # BLE HID Support (only NRF52)
 INCLUDE          += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids
 TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_hids.c
-# Neopixel support (only NRF52)
+# Random hardware requirements (only NRF52)
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
+ifdef NRF5X_SDK_12
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
-# Secure connection support
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
+endif
+ifdef NRF5X_SDK_14
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c 
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
+endif
+ifdef NRF5X_SDK_15
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_i2s.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_saadc.c 
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_rng.c
+endif
 
+# Secure connection support
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/ecc
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
-TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
 INCLUDE += -I$(NRF5X_SDK_PATH)/external/micro-ecc
 TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
 endif
