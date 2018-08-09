@@ -26,14 +26,14 @@
  */
 
 #define MAX_GROUPS 9
-#define NO_RANGE  -1
+#define NO_RANGE  256
 
 typedef struct {
   JsVar *sourceStr;
   size_t startIndex;
   bool ignoreCase;
   bool rangeMatch;
-  char rangeFirstChar;
+  short rangeFirstChar;
   int groups;
   size_t groupStart[MAX_GROUPS];
   size_t groupEnd[MAX_GROUPS];
@@ -79,12 +79,13 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
   }
   /* must look even if string is empty */
   rmatch = matchhere(regexp, &txtIt, info);
+  jsvStringIteratorNext(&txtIt);
   while (!rmatch && jsvStringIteratorHasChar(&txtIt)) {
-    jsvStringIteratorNext(&txtIt);
     info.startIndex++;
     JsvStringIterator txtIt2 = jsvStringIteratorClone(&txtIt);
     rmatch = matchhere(regexp, &txtIt2, info);
     jsvStringIteratorFree(&txtIt2);
+    jsvStringIteratorNext(&txtIt);
   }
   jsvStringIteratorFree(&txtIt);
   return rmatch;
@@ -152,7 +153,7 @@ haveCode:
     cH = jsvStringCharToLower(cH);
   }
   if (info->rangeFirstChar != NO_RANGE) { // Character set range
-    char cL = info->rangeFirstChar;
+    char cL = (char)info->rangeFirstChar;
     if (info->ignoreCase) {
       cL = jsvStringCharToLower(cL);
     }
@@ -180,9 +181,9 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
   int charLength;
   bool charMatched = matchcharacter(regexp, txtIt, &charLength, &info);
   if (regexp[charLength] == '*' || regexp[charLength] == '+') {
-    bool starOperator = regexp[charLength] == '*';
-    if (!charMatched && !starOperator) {
-      // has to match at least once, when not a star operator
+    char op = regexp[charLength];
+    if (!charMatched && op=='+') {
+      // with '+' operator it has to match at least once
       return 0;
     }
     char *regexpAfterStar = regexp+charLength+1;
@@ -301,22 +302,24 @@ Or with groups `/W(o)rld/.exec("Hello World")` returns:
 ```
 
  */
-JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *str) {
+JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *arg) {
+  JsVar *str = jsvAsString(arg);
   JsVarInt lastIndex = jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, "lastIndex", 0));
   JsVar *regex = jsvObjectGetChild(parent, "source", 0);
   if (!jsvIsString(regex)) {
-    jsvUnLock(regex);
+    jsvUnLock2(str,regex);
     return 0;
   }
   size_t regexLen = jsvGetStringLength(regex);
   char *regexPtr = (char *)alloca(regexLen+1);
   if (!regexPtr) {
-    jsvUnLock(regex);
+    jsvUnLock2(str,regex);
     return 0;
   }
   jsvGetString(regex, regexPtr, regexLen+1);
   jsvUnLock(regex);
   JsVar *rmatch = match(regexPtr, str, (size_t)lastIndex, jswrap_regexp_hasFlag(parent,'i'));
+  jsvUnLock(str);
   if (!rmatch) {
     rmatch = jsvNewWithFlags(JSV_NULL);
     lastIndex = 0;

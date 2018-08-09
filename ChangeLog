@@ -1,4 +1,5 @@
-            Allow changeInterval with large (>32 bit) intervals (fix #1438)
+            ESP32: update sdk to esp-idf 3.0.1, set Espruino build tools back to master branch
+	    Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
             Fix parsing of try..catch when not executing (fix #1439)
             Add extra ReferenceError checks, even if variable is not used
@@ -15,6 +16,47 @@
             Fix issue that caused 'dump()' not to report variables/functions on Pixl.js
             Add E.lookupNoCase to allow searching case-insensitively for Object keys
             Fix HTTP Chunked transfers when the server uses lowercase headers (fix #1458)
+            Fix TypedArray.indexOf (fix #1468)
+            Allow require('Storage').write('a','',0,15) (zero length data) (fix #1465)
+            edit() now chooses the shortest way to describe the function
+            Fixed bug when RegExp.match/test called on non-strings
+            Added Global isFinite
+            Add missing ArrayBufferView.filter
+            Added Array.find and findIndex (also for ArrayBufferViews)
+            Fix unreliable ArrayBufferView.indexOf (#1468)
+            Added String.startsWith/endsWith/includes (#1302)
+            parseFloat(".s") now returns NaN
+            Fixed /\S+/.test(" ")
+            Added Storage.getFree() to return available space
+            Enable E.setTimeZone on boards with very little flash memory
+            Lower saved code area to 2k on micro:bit (from 3)
+            Remove RGB colour handling in setColor on devices with low flash
+            Reduce available variable count on STM32VL - we were too low on RAM
+            Added Graphics.asBMP/asURL/dump - allowing easy debugging of Graphics via IDE
+            Allow '.then' on already-resolved promise (fix #1476)
+            Stop atob adding trailing 0s when strings are not a multiple of 3 long
+            Reconstruct start and end newlines when dumping multi-line functions  
+            Fix regression parsing methods in classes on embedded (fix #1479)
+            nRF5x: Add options argument to NRF.connect and BluetoothDevice.gatt.connect, allowing a connection interval to be specified
+            nRF5x: Start renegotiating speed after 0.1ms, not 5s. Massively improves connect speed.
+            nRF5x: Now queue up to 5 UART TX packets per transmit interval (was 1 previously)
+            nRF52: Add Dynamic Interval Adjustment - default to 2x connection speed, but idle at 10x slower if not used for 2 minutes
+            nRF5x: Add NRF.setConnectionInterval() to allow connection speed to be set manually
+            RuuviTag: invert LED1, LED2 & BTN in software so LED.set() does what you'd expect
+            Console now doesn't print quotes around object keys if it's not needed
+            Added `E.toJS` to allow very compact JS data stringification (similar to `JSON.stringify`)
+            Output the current timer number as a comment in `dump()`
+            Don't print `=undefined` to console if line is empty
+            Added RAK8212 (and include SMS/GPRS code in RAK8211/2 builds)
+            Graphics.stringWidth now takes account of newlines
+            nRF52: NRF.requestDevice now resolves as soon as a device is found. Faster and better in congested areas
+            Replace use of obsolete 'usleep' function in Linux builds (fix #1455)
+            Add Ethernet.getIP/setIP callbacks for Wiznet to bring them in line with WiFi (fix #1482)
+            Fix Math.round for numbers > 32 bit (fix #1485)
+            Pixl.js menu now resets font alignment, and down arrow icon is fixed
+            Now check for ReferenceErrors in global scope
+            Fix Array.shift (returned a NAME, rather than the value)
+            Add sanity check for names returned from Functions and fix Array.pop
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

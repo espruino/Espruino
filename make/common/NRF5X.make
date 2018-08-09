@@ -146,7 +146,8 @@ $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master/nrf_drv_spi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
-$(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c 
+$(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
+$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c 
 endif
 
 TARGETSOURCES += \
@@ -193,7 +194,6 @@ $(NRF5X_SDK_PATH)/components/libraries/strerror/nrf_strerror.c \
 $(NRF5X_SDK_PATH)/components/libraries/experimental_memobj/nrf_memobj.c \
 $(NRF5X_SDK_PATH)/components/libraries/balloc/nrf_balloc.c
 endif
-
 
 
 

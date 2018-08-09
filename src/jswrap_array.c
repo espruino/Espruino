@@ -107,9 +107,7 @@ JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value, JsVarInt startIdx) {
   JsVar *idxName = jsvGetIndexOfFull(parent, value, false/*not exact*/, true/*integer indices only*/, startIdx);
   // but this is the name - we must turn it into a var
   if (idxName == 0) return jsvNewFromInteger(-1); // not found!
-  JsVar *idx = jsvCopyNameOnly(idxName, false/* no children */, false/* Make sure this is not a name*/);
-  jsvUnLock(idxName);
-  return idx;
+  return jsvNewFromInteger(jsvGetIntegerAndUnLock(idxName));
 }
 
 /*JSON{
@@ -172,7 +170,7 @@ JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
   "type" : "method",
   "class" : "Array",
   "name" : "pop",
-  "generate_full" : "jsvArrayPop(parent)",
+  "generate_full" : "jsvSkipNameAndUnLock(jsvArrayPop(parent))",
   "return" : ["JsVar","The value that is popped off"]
 }
 Remove and return the value on the end of this array.
@@ -180,7 +178,24 @@ Remove and return the value on the end of this array.
 This is the opposite of `[1,2,3].shift()`, which removes an element from the beginning of the array.
  */
 
-JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool wantArray, bool isBoolCallback, bool expectedValue) {
+/// return types for _jswrap_array_iterate_with_callback
+typedef enum {
+  RETURN_BOOL,
+  RETURN_ARRAY,  // an array of elements
+  RETURN_ARRAY_ELEMENT,
+  RETURN_ARRAY_INDEX
+} AIWCReturnType;
+
+/// General purpose looping function - re-use as much as possible
+static JsVar *_jswrap_array_iterate_with_callback(
+    const char *name,  //< use this in error messages
+    JsVar *parent,     //< stuff to iterate over
+    JsVar *funcVar,    //< function to be called for each array element
+    JsVar *thisVar,    //< 'this' when executing funcVar
+    AIWCReturnType returnType, // what does this fn return?
+    bool isBoolCallback, //< the callback function returns a boolean
+    bool expectedValue   //< the expected value returned by the callback
+    ) {
   if (!jsvIsIterable(parent)) {
     jsExceptionHere(JSET_ERROR, "Array.%s can only be called on something iterable", name);
     return 0;
@@ -194,10 +209,10 @@ JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVa
     return 0;
   }
   JsVar *result = 0;
-  if (wantArray)
+  if (returnType == RETURN_ARRAY)
     result = jsvNewEmptyArray();
   bool isDone = false;
-  if (result || !wantArray) {
+  if (result || returnType!=RETURN_ARRAY) {
     JsvIterator it;
     jsvIteratorNew(&it, parent, JSIF_DEFINED_ARRAY_ElEMENTS);
     while (jsvIteratorHasElement(&it) && !isDone) {
@@ -215,7 +230,7 @@ JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVa
           bool matched;
           if (isBoolCallback)
             matched = (jsvGetBool(cb_result) == expectedValue);
-          if (wantArray) {
+          if (returnType == RETURN_ARRAY) {
             if (isBoolCallback) { // filter
               if (matched) {
                 jsvArrayPushAndUnLock(result, jsvIteratorGetValue(&it));
@@ -228,9 +243,16 @@ JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVa
                 jsvUnLock(name);
               }
             }
-          } else {
-            // break the loop early if expecting a particular value and didn't get it
-            if (isBoolCallback && !matched)
+          } else if (isBoolCallback) {
+            if (returnType == RETURN_ARRAY_ELEMENT ||
+                returnType == RETURN_ARRAY_INDEX) {
+              if (matched) {
+                result = (returnType == RETURN_ARRAY_ELEMENT) ?
+                    jsvIteratorGetValue(&it) :
+                    jsvNewFromInteger(jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it)));
+                isDone = true;
+              }
+            } else if (!matched) // eg for .some
               isDone = true;
           }
           jsvUnLock(cb_result);
@@ -243,7 +265,7 @@ JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVa
   }
   /* boolean result depends on whether the loop terminated
      early for 'some' or completed for 'every' */
-  if (!wantArray && isBoolCallback) {
+  if (returnType == RETURN_BOOL && isBoolCallback) {
     result = jsvNewFromBool(isDone != expectedValue);
   }
   return result;
@@ -263,7 +285,7 @@ JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVa
 Return an array which is made from the following: ```A.map(function) = [function(A[0]), function(A[1]), ...]```
  */
 JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  return _jswrap_array_iterate_with_callback("map", parent, funcVar, thisVar, true, false, false);
+  return _jswrap_array_iterate_with_callback("map", parent, funcVar, thisVar, RETURN_ARRAY, false, false);
 }
 
 /*JSON{
@@ -279,7 +301,7 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 Executes a provided function once per array element.
  */
 void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  _jswrap_array_iterate_with_callback("forEach", parent, funcVar, thisVar, false, false, false);
+  _jswrap_array_iterate_with_callback("forEach", parent, funcVar, thisVar, RETURN_BOOL, false, false);
 }
 
 /*JSON{
@@ -296,7 +318,53 @@ void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 Return an array which contains only those elements for which the callback function returns 'true'
  */
 JsVar *jswrap_array_filter(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  return _jswrap_array_iterate_with_callback("filter", parent, funcVar, thisVar, true, true, true);
+  return _jswrap_array_iterate_with_callback("filter", parent, funcVar, thisVar, RETURN_ARRAY, true, true);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Array",
+  "name" : "find",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_array_find",
+  "params" : [
+    ["function","JsVar","Function to be executed"]
+  ],
+  "return" : ["JsVar","The array element where `function` returns `true`, or `undefined`"]
+}
+Return the array element where `function` returns `true`, or `undefined` if it doesn't returns `true` for any element.
+
+```
+["Hello","There","World"].find(a=>a[0]=="T")
+// returns "There"
+```
+ */
+JsVar *jswrap_array_find(JsVar *parent, JsVar *funcVar) {
+  return _jswrap_array_iterate_with_callback("find", parent, funcVar, 0, RETURN_ARRAY_ELEMENT, true, true);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Array",
+  "name" : "findIndex",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_array_findIndex",
+  "params" : [
+    ["function","JsVar","Function to be executed"]
+  ],
+  "return" : ["JsVar","The array element's index where `function` returns `true`, or `-1`"]
+}
+Return the array element's index where `function` returns `true`, or `-1` if it doesn't returns `true` for any element.
+
+```
+["Hello","There","World"].findIndex(a=>a[0]=="T")
+// returns 1
+```
+ */
+JsVar *jswrap_array_findIndex(JsVar *parent, JsVar *funcVar) {
+  JsVar *v = _jswrap_array_iterate_with_callback("findIndex", parent, funcVar, 0, RETURN_ARRAY_INDEX, true, true);
+  if (v) return v;
+  return jsvNewFromInteger(-1);
 }
 
 /*JSON{
@@ -313,7 +381,7 @@ JsVar *jswrap_array_filter(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 Return 'true' if the callback returns 'true' for any of the elements in the array
  */
 JsVar *jswrap_array_some(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  return _jswrap_array_iterate_with_callback("some", parent, funcVar, thisVar, false, true, false);
+  return _jswrap_array_iterate_with_callback("some", parent, funcVar, thisVar, RETURN_BOOL, true, false);
 }
 
 /*JSON{
@@ -330,7 +398,7 @@ JsVar *jswrap_array_some(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 Return 'true' if the callback returns 'true' for every element in the array
  */
 JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  return _jswrap_array_iterate_with_callback("every", parent, funcVar, thisVar, false, true, true);
+  return _jswrap_array_iterate_with_callback("every", parent, funcVar, thisVar, RETURN_BOOL, true, true);
 }
 
 /*JSON{
@@ -508,7 +576,7 @@ JsVar *jswrap_array_shift(JsVar *parent) {
   // unpack element from the array
   JsVar *el = 0;
   if (jsvIsArray(arr))
-    el = jsvArrayPop(arr);
+    el = jsvSkipNameAndUnLock(jsvArrayPop(arr));
   jsvUnLock(arr);
   return el;
 }

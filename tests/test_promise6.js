@@ -2,6 +2,7 @@
 var p = new Promise( function(resolve,reject) { resolve(42); });
 setTimeout(function() {
   p.then( function(value) {
+    console.log("Resolved "+value);
     result = value==42;
   });
 },1);

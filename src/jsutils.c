@@ -560,7 +560,9 @@ JsVarFloat stringToFloatWithRadix(
 
   if (endOfFloat) (*endOfFloat)=s;
   // check that we managed to parse something at least
-  if (numberStart==s || (numberStart[0]=='.' && numberStart[1]==0)) return NAN;
+  if (numberStart==s || // nothing
+      (numberStart[0]=='.' && s==&numberStart[1]) // just a '.'
+      ) return NAN;
 
   if (isNegated) return -v;
   return v;

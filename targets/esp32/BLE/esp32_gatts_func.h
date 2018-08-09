@@ -35,6 +35,7 @@ struct gatts_service_inst {
 	uint16_t gatts_if;
 	uint16_t app_id;
 	uint16_t conn_id;
+	bool connected;
 	uint16_t service_handle;
 	esp_gatt_srvc_id_t service_id;
 	uint16_t num_handles;

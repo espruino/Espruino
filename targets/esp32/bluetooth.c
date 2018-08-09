@@ -33,7 +33,7 @@
  
 volatile BLEStatus bleStatus;
 uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
-volatile uint16_t  m_conn_handle;    /**< Handle of the current connection. */
+volatile uint16_t  m_peripheral_conn_handle;    /**< Handle of the current connection. */
 volatile uint16_t m_central_conn_handle; /**< Handle of central mode connection */
 
 /** Initialise the BLE stack */
@@ -47,6 +47,7 @@ void jsble_init(){
 		if(initBluedroid()) return;
 		if(registerCallbacks()) return;
 		setMtu();
+		gap_init_security();
 	}
 	else{
 		ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT); 
@@ -99,19 +100,26 @@ void jsble_advertising_stop(){
 }
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection(){
-	jsWarn("has connected not implemented yet\n");
-	return false;
+#if CENTRAL_LINK_COUNT>0
+  return (m_central_conn_handle != BLE_GATT_HANDLE_INVALID) ||
+         (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
+#else
+  return m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID;
+#endif
 }
 
 /** Is BLE connected to a central device at all? */
 bool jsble_has_central_connection(){
-	jsWarn("has central connection not implemented yet\n");
-	return false;
+#if CENTRAL_LINK_COUNT>0
+  return (m_central_conn_handle != BLE_GATT_HANDLE_INVALID);
+#else
+  return false;
+#endif
 }
+
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
-bool jsble_has_simple_connection(){
-	jsWarn("has simple connection not implemented yet\n");
-	return false;
+bool jsble_has_peripheral_connection(){
+  return (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
 }
 
 /// Checks for error and reports an exception if there was one. Return true on error
@@ -154,7 +162,8 @@ void jsble_send_hid_input_report(uint8_t *data, int length){
 }
 
 /// Connect to the given peer address. When done call bleCompleteTask
-void jsble_central_connect(ble_gap_addr_t peer_addr){
+void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options){
+  // Ignore options for now
 	gattc_connect(peer_addr.addr);
 }
 /// Get primary services. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask

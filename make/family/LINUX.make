@@ -25,6 +25,7 @@ ifeq ($(BOARD),RASPBERRYPI)
  endif
 endif
 
+CFLAGS += -std=gnu99
 DEFINES += -DLINUX
 INCLUDE += -I$(ROOT)/targets/linux
 SOURCES +=                              \

@@ -1331,6 +1331,7 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
     JsVar *params[1];
     params[0] = jsPingResponse;
     jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
+    jsvUnLock(jsPingResponse);
   }
 }
 

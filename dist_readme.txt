@@ -106,6 +106,15 @@ espruino_#v##stm32l496gdiscovery.bin
    - The firmware image for the STM32L496G Discovery Board
      See http://www.espruino.com/STM32L496GDISCOVERY for more information
 
+espruino_#v##rak8211.hex
+   - The firmware image for the RAK8211 iTracker
+     See http://www.espruino.com/RAK8211 for more information
+
+espruino_#v##rak8212.hex
+   - The firmware image for the RAK8212 iTracker
+     See http://www.espruino.com/RAK8212 for more information
+
+
 
 ESP8266 / ESP32
 ---------------

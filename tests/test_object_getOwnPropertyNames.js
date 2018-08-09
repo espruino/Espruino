@@ -30,6 +30,8 @@ cmp("Object.getOwnPropertyNames(Array.prototype)",
   'splice',
   'sort',
   'filter',
+  'find', // ES6
+  'findIndex', // ES6
   'forEach',
   'some',
   'every',

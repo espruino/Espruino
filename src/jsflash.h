@@ -28,7 +28,7 @@ typedef uint32_t JsfWord;
 
 /// Structure for File Storage. It's important this is 8 byte aligned for platforms that only support 64 bit writes
 typedef struct {
-  JsfWord size; ///< Total size
+  JsfWord size; ///< Total size (and flags in the top 8 bits)
   JsfWord replacement; ///< pointer to a replacement (eventually). For now this is 0xFFFFFFFF if ok, 0 if erased
   JsfFileName name; ///< 0-padded filename
 } JsfFileHeader;
@@ -36,7 +36,7 @@ typedef struct {
 typedef enum {
   JSFF_NONE,
   JSFF_COMPRESSED = 128   // This file contains compressed data
-} JsfFileFlags;
+} JsfFileFlags; // these are stored in the top 8 bits of JsfFileHeader.size
 
 
 // ------------------------------------------------------------------------ Flash Storage Functionality
@@ -64,6 +64,8 @@ bool jsfCompact();
 JsVar *jsfListFiles();
 /// Output debug info for files stored in flash storage
 void jsfDebugFiles();
+// Get the amount of space free in this page (or all pages). addr=0 uses start page
+uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages);
 
 // ------------------------------------------------------------------------ For loading/saving code to flash
 /// Save contents of JsVars into Flash.

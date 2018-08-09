@@ -128,6 +128,9 @@ static ALWAYS_INLINE JsVar *jsvGetAddressOf(JsVarRef ref) {
   assert(ref <= jsVarsSize);
   JsVarRef t = ref-1;
   return &jsVarBlocks[t>>JSVAR_BLOCK_SHIFT][t&(JSVAR_BLOCK_SIZE-1)];
+#elif defined(JSVAR_MALLOC)
+  assert(ref <= jsVarsSize);
+  return &jsVars[ref-1];
 #else
   assert(ref <= JSVAR_CACHE_SIZE);
   return &jsVars[ref-1];
@@ -3025,27 +3028,28 @@ void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr) {
     itemPtr[i++] = 0; // just ensure we don't end up with bad data
 }
 
-/// Get the index of the value in the array (matchExact==use pointer not equality check, matchIntegerIndices = don't check non-integers)
+/// Get the index of the value in the iterable var (matchExact==use pointer not equality check, matchIntegerIndices = don't check non-integers)
 JsVar *jsvGetIndexOfFull(JsVar *arr, JsVar *value, bool matchExact, bool matchIntegerIndices, int startIdx) {
-  JsVarRef indexref;
-  assert(jsvIsArray(arr) || jsvIsObject(arr));
-  indexref = jsvGetFirstChild(arr);
-  while (indexref) {
-    JsVar *childIndex = jsvLock(indexref);
+  if (!jsvIsIterable(arr)) return 0;
+  JsvIterator it;
+  jsvIteratorNew(&it, arr, JSIF_DEFINED_ARRAY_ElEMENTS);
+  while (jsvIteratorHasElement(&it)) {
+    JsVar *childIndex = jsvIteratorGetKey(&it);
     if (!matchIntegerIndices ||
         (jsvIsInt(childIndex) && jsvGetInteger(childIndex)>=startIdx)) {
-      assert(jsvIsName(childIndex));
-      JsVar *childValue = jsvSkipName(childIndex);
+      JsVar *childValue = jsvIteratorGetValue(&it);
       if (childValue==value ||
           (!matchExact && jsvMathsOpTypeEqual(childValue, value))) {
         jsvUnLock(childValue);
+        jsvIteratorFree(&it);
         return childIndex;
       }
       jsvUnLock(childValue);
     }
-    indexref = jsvGetNextSibling(childIndex);
     jsvUnLock(childIndex);
+    jsvIteratorNext(&it);
   }
+  jsvIteratorFree(&it);
   return 0; // undefined
 }
 
@@ -3426,11 +3430,13 @@ JsVar *jsvNegateAndUnLock(JsVar *v) {
   return res;
 }
 
-/** If the given element is found, return the path to it as a string of
- * the form 'foo.bar', else return 0. If we would have returned a.b and
- * ignoreParent is a, don't! */
-JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent) {
+/// see jsvGetPathTo
+static JsVar *jsvGetPathTo_int(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent, int *depth) {
   if (maxDepth<=0) return 0;
+
+  int bestDepth = maxDepth+1;
+  JsVar *found = 0;
+
   JsvIterator it;
   jsvIteratorNew(&it, root, JSIF_DEFINED_ARRAY_ElEMENTS);
   while (jsvIteratorHasElement(&it)) {
@@ -3442,20 +3448,31 @@ JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignorePare
       return name;
     } else if (jsvIsObject(el) || jsvIsArray(el) || jsvIsFunction(el)) {
       // recursively search
-      JsVar *n = jsvGetPathTo(el, element, maxDepth-1, ignoreParent);
-      if (n) {
+      int d;
+      JsVar *n = jsvGetPathTo_int(el, element, maxDepth-1, ignoreParent, &d);
+      if (n && d<bestDepth) {
+        bestDepth = d;
         // we found it! Append our name onto it as well
         JsVar *keyName = jsvIteratorGetKey(&it);
-        JsVar *name = jsvVarPrintf(jsvIsObject(el) ? "%v.%v" : "%v[%q]",keyName,n);
-        jsvUnLock2(keyName, n);
-        jsvIteratorFree(&it);
-        return name;
+        jsvUnLock(found);
+        found = jsvVarPrintf(jsvIsObject(el) ? "%v.%v" : "%v[%q]",keyName,n);
+        jsvUnLock(keyName);
       }
+      jsvUnLock(n);
     }
     jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
-  return 0;
+  *depth = bestDepth;
+  return found;
+}
+
+/** If the given element is found, return the path to it as a string of
+ * the form 'foo.bar', else return 0. If we would have returned a.b and
+ * ignoreParent is a, don't! */
+JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent) {
+  int depth = 0;
+  return jsvGetPathTo_int(root, element, maxDepth, ignoreParent, &depth);
 }
 
 void jsvTraceLockInfo(JsVar *v) {

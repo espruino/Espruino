@@ -66,5 +66,8 @@ test("dddd".replace(/d/g, x=>"dd"), "dddddddd");
 
 test("5c6F".replace(/(\d+)([^\d])/g, (m, r, c) => new Array(+r + 1).join(c)), "cccccFFFFFF")
 
+test(/\s+/.test(" "), true);
+test(/\S+/.test(" "), false);
+
 result = tests==testPass;
 console.log(result?"Pass":"Fail",":",tests,"tests total");
