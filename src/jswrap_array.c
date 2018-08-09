@@ -576,7 +576,7 @@ JsVar *jswrap_array_shift(JsVar *parent) {
   // unpack element from the array
   JsVar *el = 0;
   if (jsvIsArray(arr))
-    el = jsvArrayPop(arr);
+    el = jsvSkipNameAndUnLock(jsvArrayPop(arr));
   jsvUnLock(arr);
   return el;
 }
