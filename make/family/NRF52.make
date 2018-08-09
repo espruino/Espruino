@@ -15,16 +15,18 @@ NRF5X_SDK_15=1
 NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_15
 DEFINES += -DNRF_SD_BLE_API_VERSION=6
 DEFINES += -D__HEAP_SIZE=0
-TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
 ifeq ($(CHIP),NRF52840)
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52840.c
 SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_6.0.0_softdevice.hex
 PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.S
 else  # NRF52832
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_6.0.0_softdevice.hex
 PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.S
 endif
-else
+else # not SDK15
 PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
+TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
 ifdef NRF_SDK14
 # Use SDK14
 NRF5X_SDK=14
@@ -54,8 +56,6 @@ ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d
 # nRF52 specific.
 INCLUDE          += -I$(SOFTDEVICE_PATH)/headers
 INCLUDE          += -I$(SOFTDEVICE_PATH)/headers/nrf52
-TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
-
 
 DEFINES += -DBLE_STACK_SUPPORT_REQD
 DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DFLOAT_ABI_HARD 
@@ -76,8 +76,11 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_core.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_string_desc.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm/app_usbd_cdc_acm.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/usbd/nrf_drv_usbd.c
-TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/power/nrf_drv_power.c
-TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/systick/nrf_drv_systick.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_serial_num.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_clock.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_power.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_clock.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_power.c
 else # NRF52832
 DEFINES += -DNRF52 -DNRF52832_XXAA -DNRF52_PAN_74 
 
