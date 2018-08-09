@@ -56,6 +56,7 @@
             Pixl.js menu now resets font alignment, and down arrow icon is fixed
             Now check for ReferenceErrors in global scope
             Fix Array.shift (returned a NAME, rather than the value)
+            Add sanity check for names returned from Functions and fix Array.pop
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
