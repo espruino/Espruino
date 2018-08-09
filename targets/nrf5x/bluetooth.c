@@ -138,7 +138,7 @@ static ble_nus_t                        m_nus;                                  
 #elif NRF_SD_BLE_API_VERSION < 6
 BLE_NUS_DEF(m_nus);                                                                 /**< Structure to identify the Nordic UART Service. */
 #else
-BLE_NUS_DEF(m_nus,NRF_SDH_BLE_TOTAL_LINK_COUNT);                                    /**< Structure to identify the Nordic UART Service. */
+BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);                                    /**< Structure to identify the Nordic UART Service. */
 #endif
 
 #if BLE_HIDS_ENABLED
@@ -156,7 +156,7 @@ static bool                             m_in_boot_mode = false;
 #endif
 
 #if NRF_SD_BLE_API_VERSION > 5
-static uint8_t  *mp_adv_handle;                                                   //!< Pointer to the advertising handle.
+static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
 #endif
 
 volatile uint16_t                       m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
@@ -874,7 +874,7 @@ void SWI1_IRQHandler(bool radio_evt) {
         d.adv_data.p_data = (char*)dPtr;
         d.adv_data.len = dLen;
         // TODO: scan_rsp_data? Does not setting this remove it?
-        err_code = sd_ble_gap_adv_set_configure(mp_adv_handle, &d, NULL);
+        err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
         #else
         err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
         #endif
@@ -1855,9 +1855,9 @@ static void peer_manager_init(bool erase_bonds) {
 static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     uint32_t                   err_code;
     ble_hids_init_t            hids_init_obj;
-    ble_hids_inp_rep_init_t    input_report_array[1];
+    static ble_hids_inp_rep_init_t    input_report_array[1];
     ble_hids_inp_rep_init_t  * p_input_report;
-    ble_hids_outp_rep_init_t   output_report_array[1];
+    static ble_hids_outp_rep_init_t   output_report_array[1];
     ble_hids_outp_rep_init_t * p_output_report;
     uint8_t                    hid_info_flags;
 
@@ -2063,7 +2063,7 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
   memset(advdata, 0, sizeof(*advdata));
   advdata->name_type          = BLE_ADVDATA_FULL_NAME;
   advdata->include_appearance = false;
-  advdata->flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+  advdata->flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
 }
 
 
@@ -2122,12 +2122,22 @@ static void advertising_init() {
     err_code = ble_advdata_encode(&scanrsp, d.scan_rsp_data.p_data, &d.scan_rsp_data.len);
     if (jsble_check_error(err_code)) return;
 
-    err_code = sd_ble_gap_adv_set_configure(mp_adv_handle, &d, NULL);
-    if (jsble_check_error(err_code)) return;
+    // FIXME We should just use jsble_advertising_start and remove duplicate code
+    ble_gap_adv_params_t adv_params;
+    // Set advertising parameters.
+    memset(&adv_params, 0, sizeof(adv_params));
+    adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
+    adv_params.duration        = BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED;
+    adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
+    adv_params.p_peer_addr     = NULL;
+    adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
+    adv_params.interval        = bleAdvertisingInterval;
+
+    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
 #else
     err_code = ble_advdata_set(&advdata, &scanrsp);
-    if (jsble_check_error(err_code)) return;
 #endif
+    APP_ERROR_CHECK(err_code);
 }
 
 // -----------------------------------------------------------------------------------
@@ -2139,6 +2149,8 @@ void jsble_advertising_start() {
   memset(&adv_params, 0, sizeof(adv_params));
   bool non_connectable = bleStatus & BLE_IS_NOT_CONNECTABLE;
 #if NRF_SD_BLE_API_VERSION>5
+  adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
+  adv_params.p_peer_addr     = NULL;
   adv_params.properties.type = non_connectable
                                     ? BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED
                                     : BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
@@ -2154,9 +2166,9 @@ void jsble_advertising_start() {
 
   uint32_t err_code;
 #if NRF_SD_BLE_API_VERSION>5
-  err_code = sd_ble_gap_adv_set_configure(mp_adv_handle, 0, &adv_params);
+  err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, 0, &adv_params);
   APP_ERROR_CHECK(err_code);
-  sd_ble_gap_adv_start(*mp_adv_handle, APP_BLE_CONN_CFG_TAG);
+  sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
 #elif NRF_SD_BLE_API_VERSION<5
   sd_ble_gap_adv_start(&adv_params);
 #else
@@ -2168,7 +2180,7 @@ void jsble_advertising_start() {
 void jsble_advertising_stop() {
   if (!(bleStatus & BLE_IS_ADVERTISING)) return;
 #if NRF_SD_BLE_API_VERSION > 5
-  sd_ble_gap_adv_stop(*mp_adv_handle);
+  sd_ble_gap_adv_stop(m_adv_handle);
 #else
   sd_ble_gap_adv_stop();
 #endif
