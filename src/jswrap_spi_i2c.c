@@ -109,9 +109,6 @@ void jswrap_spi_setup(
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshSPIInfo inf;
 
-  // Debug
-  // jsiConsolePrintf("jswrap_spi_setup called parent=%v, options=%v\n", parent, options);
-
   if (!jsspiPopulateSPIInfo(&inf, options)) return;
 
   if (DEVICE_IS_SPI(device)) {
