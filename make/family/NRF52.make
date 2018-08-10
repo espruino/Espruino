@@ -73,6 +73,7 @@ TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_hids/ble_h
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/i2s
 ifdef NRF5X_SDK_12
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/i2s/nrf_drv_i2s.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c 
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
 endif
 ifdef NRF5X_SDK_14
@@ -92,6 +93,6 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
 INCLUDE += -I$(NRF5X_SDK_PATH)/external/micro-ecc
 TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
-endif
+endif # BOOTLOADER
 
 include make/common/NRF5X.make
