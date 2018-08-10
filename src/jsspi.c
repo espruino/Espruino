@@ -232,7 +232,7 @@ bool jsspiSend(JsVar *spiDevice, JsSpiSendFlags flags, char *buf, size_t len) {
     IOEventFlags device = jsiGetDeviceFromClass(spiDevice);
     if (DEVICE_IS_SPI(device)) jshSPIWait(device);
   }
-  return true;
+  return !jspIsInterrupted();
 }
 
 
