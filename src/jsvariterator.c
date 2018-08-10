@@ -22,9 +22,9 @@
  * object -> call itself object.count times, on object.data
  */
 bool jsvIterateCallback(
-    JsVar *data,                                    // The data to iterate over.
-	void (*callback)(int item, void *callbackData), // The callback function invoke.
-	void *callbackData                              // Data to be passed to the callback function
+    JsVar *data,
+    jsvIterateCallbackFn callback,
+    void *callbackData
   ) {
   bool ok = true;
   // Handle the data being a single numeric.
