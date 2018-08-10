@@ -57,6 +57,7 @@
             Now check for ReferenceErrors in global scope
             Fix Array.shift (returned a NAME, rather than the value)
             Add sanity check for names returned from Functions and fix Array.pop
+            Stop characters getting dropped when pasting large amounts of data into Linux build
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
