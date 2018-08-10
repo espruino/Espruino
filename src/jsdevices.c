@@ -60,10 +60,11 @@ typedef enum {
   SDS_FLOW_CONTROL_XON_XOFF = 8, // flow control enabled
   SDS_ERROR_HANDLING = 16
 } PACKED_FLAGS JshSerialDeviceState;
-JshSerialDeviceState jshSerialDeviceStates[EV_SERIAL1+USART_COUNT-EV_SERIAL_START];
+
+JshSerialDeviceState jshSerialDeviceStates[1+EV_SERIAL_MAX-EV_SERIAL_DEVICE_STATE_START];
 /// Device clear to send hardware flow control pins (PIN_UNDEFINED if not used)
-Pin jshSerialDeviceCTSPins[EV_SERIAL1+USART_COUNT-EV_SERIAL_START];
-#define TO_SERIAL_DEVICE_STATE(X) ((X)-EV_SERIAL_START)
+Pin jshSerialDeviceCTSPins[EV_SERIAL_MAX-EV_SERIAL_DEVICE_STATE_START];
+#define TO_SERIAL_DEVICE_STATE(X) ((X)-EV_SERIAL_DEVICE_STATE_START)
 
 // ----------------------------------------------------------------------------
 //                                                              IO EVENT BUFFER
@@ -91,6 +92,7 @@ void jshResetDevices() {
     jshSerialDeviceStates[i] = SDS_NONE;
     jshSerialDeviceCTSPins[i] = PIN_UNDEFINED;
   }
+  assert(EV_USBSERIAL>=EV_SERIAL_DEVICE_STATE_START);
   jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_FLOW_CONTROL_XON_XOFF;
   // reset callbacks for events
   for (i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
@@ -260,7 +262,7 @@ IOEventFlags jshGetDeviceToTransmit() {
 int jshGetCharToTransmit(
     IOEventFlags device // The device being looked at for a transmission.
   ) {
-  if (DEVICE_IS_USART(device)) {
+  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
     if ((*deviceState)&SDS_XOFF_PENDING) {
       (*deviceState) = ((*deviceState)&(~SDS_XOFF_PENDING)) | SDS_XOFF_SENT;
@@ -660,7 +662,7 @@ IOEventFlags jshFromDeviceString(
 
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
-  if (DEVICE_IS_USART(device)) {
+  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if ((*deviceState) & SDS_FLOW_CONTROL_XON_XOFF) {
@@ -695,19 +697,20 @@ JsVar *jshGetDeviceObject(IOEventFlags device) {
 
 /// Set whether to use flow control on the given device or not. CTS is low when ready, high when not.
 void jshSetFlowControlEnabled(IOEventFlags device, bool software, Pin pinCTS) {
-  if (!DEVICE_IS_USART(device)) return;
-  int devIdx = TO_SERIAL_DEVICE_STATE(device);
-  JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
-  if (software)
-    (*deviceState) |= SDS_FLOW_CONTROL_XON_XOFF;
-  else
-    (*deviceState) &= ~SDS_FLOW_CONTROL_XON_XOFF;
-
-  jshSerialDeviceCTSPins[devIdx] = PIN_UNDEFINED;
-  if (jshIsPinValid(pinCTS)) {
-    jshPinSetState(pinCTS, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pinCTS, 0); // CTS ready
-    jshSerialDeviceCTSPins[devIdx] = pinCTS;
+  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+    int devIdx = TO_SERIAL_DEVICE_STATE(device);
+    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    if (software)
+      (*deviceState) |= SDS_FLOW_CONTROL_XON_XOFF;
+    else
+      (*deviceState) &= ~SDS_FLOW_CONTROL_XON_XOFF;
+  
+    jshSerialDeviceCTSPins[devIdx] = PIN_UNDEFINED;
+    if (jshIsPinValid(pinCTS)) {
+      jshPinSetState(pinCTS, JSHPINSTATE_GPIO_OUT);
+      jshPinSetValue(pinCTS, 0); // CTS ready
+      jshSerialDeviceCTSPins[devIdx] = pinCTS;
+    }
   }
 }
 
@@ -733,16 +736,21 @@ Pin jshGetEventDataPin(IOEventFlags channel) {
 }
 
 void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {
-  int devIdx = TO_SERIAL_DEVICE_STATE(device);
-  JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
-  if (errorHandling)
-    (*deviceState) |= SDS_ERROR_HANDLING;
-  else
-    (*deviceState) &= ~SDS_ERROR_HANDLING;
+  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+    int devIdx = TO_SERIAL_DEVICE_STATE(device);
+    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    if (errorHandling)
+      (*deviceState) |= SDS_ERROR_HANDLING;
+    else
+      (*deviceState) &= ~SDS_ERROR_HANDLING;
+  }
 }
 
 bool jshGetErrorHandlingEnabled(IOEventFlags device) {
-  int devIdx = TO_SERIAL_DEVICE_STATE(device);
-  JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
-  return (SDS_ERROR_HANDLING & *deviceState)!=0;
+  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+    int devIdx = TO_SERIAL_DEVICE_STATE(device);
+    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    return (SDS_ERROR_HANDLING & *deviceState)!=0;
+  } else
+    return false;
 }

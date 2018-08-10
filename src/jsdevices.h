@@ -41,7 +41,6 @@ typedef enum {
   EV_LOOPBACKA = EV_SERIAL_START,
   EV_LOOPBACKB,
   EV_LIMBO,     ///< Where console output goes right after boot - one sec later we move it to USB/Serial
-  EV_USBSERIAL, ///< USB CDC Serial Data
 #ifdef BLUETOOTH
   EV_BLUETOOTH, ///< Bluetooth LE
 #endif
@@ -51,6 +50,8 @@ typedef enum {
 #ifdef USE_TERMINAL
   EV_TERMINAL, // Built-in VT100 terminal
 #endif
+  EV_SERIAL_DEVICE_STATE_START, // The point at which we start storing device state (jshSerialDevice*)
+  EV_USBSERIAL = EV_SERIAL_DEVICE_STATE_START, ///< USB CDC Serial Data
 #if USART_COUNT>=1
   EV_SERIAL1, // Used for IO for UARTS
 #endif
@@ -119,9 +120,9 @@ typedef enum {
 
 #define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK>63) jsError("DEVICE_SANITY_CHECK failed")
 
-// Return true if the device is a USART
 #if USART_COUNT>=1
-#define DEVICE_IS_USART(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))
+/// Return true if the device is a USART
+#define DEVICE_IS_USART(X) (((X)>=EV_SERIAL1) && ((X)<=EV_SERIAL_MAX))
 #define DEVICE_IS_USART_STATUS(X) (((X)>=EV_SERIAL1_STATUS) && ((X)<=EV_SERIAL_STATUS_MAX))
 #else
 #define DEVICE_IS_USART(X) (false)
