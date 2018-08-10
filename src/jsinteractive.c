@@ -107,6 +107,7 @@ IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
 
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device) {
   const char *deviceName = jshGetDeviceString(device);
+  if (!deviceName[0]) return 0; // could be empty string
   return jsvFindChildFromString(execInfo.root, deviceName, false);
 }
 
