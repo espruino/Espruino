@@ -62,7 +62,8 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "softdevice_handler.h"
 #endif
 
-#define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
+#define SYSCLK_FREQ 1048576 // 1 << 20
+#define RTC_SHIFT 5 // to get 32768 up to SYSCLK_FREQ
 
 /*  S110_SoftDevice_Specification_2.0.pdf
 
@@ -368,10 +369,10 @@ JsSysTime jshGetSystemTime() {
   // Detect RTC overflows
   uint32_t systemTime = NRF_RTC0->COUNTER;
   if ((lastSystemTime & 0x800000) && !(systemTime & 0x800000))
-    baseSystemTime += 0x1000000; // it's a 24 bit counter
+    baseSystemTime += (0x1000000 << RTC_SHIFT); // it's a 24 bit counter
   lastSystemTime = systemTime;
   // Use RTC0 (also used by BLE stack) - as app_timer starts/stops RTC1
-  return baseSystemTime + (JsSysTime)systemTime;
+  return baseSystemTime + (JsSysTime)(systemTime << RTC_SHIFT);
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
