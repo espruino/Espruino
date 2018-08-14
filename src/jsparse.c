@@ -2951,9 +2951,8 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   jslKill();
   jslSetLex(oldLex);
 
-  // restore state and execInfo
-  JsExecFlags mask = EXEC_FOR_INIT|EXEC_IN_LOOP|EXEC_IN_SWITCH;
-  oldExecInfo.execute = (oldExecInfo.execute & mask) | (execInfo.execute & ~mask); 
+  // restore state and execInfo (keep error flags & ctrl-c)
+  oldExecInfo.execute |= execInfo.execute & EXEC_PERSIST;
   execInfo = oldExecInfo;
 
   // It may have returned a reference, but we just want the value...
@@ -2991,8 +2990,8 @@ JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **arg
   JsVar *result = jspeFunctionCall(func, 0, thisArg, false, argCount, argPtr);
   // clean up
   assert(execInfo.scopeCount==0);
-  // restore state
-  oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
+  // restore state and execInfo (keep error flags & ctrl-c)
+  oldExecInfo.execute |= execInfo.execute&EXEC_PERSIST;
   execInfo = oldExecInfo;
 
   return result;
