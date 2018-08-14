@@ -230,6 +230,7 @@ bool jsserialEventCallbackInit(JsVar *parent, JshUSARTInfo *inf) {
 }
 
 void jsserialEventCallbackKill(JsVar *parent, JshUSARTInfo *inf) {
+  NOT_USED(inf);
   JsVar *v = jsvObjectGetChild(parent, "exti", 0);
   if (v) {
     IOEventFlags exti = (IOEventFlags)jsvGetIntegerAndUnLock(v);
@@ -248,6 +249,7 @@ void jsserialEventCallbackKill(JsVar *parent, JshUSARTInfo *inf) {
 bool jsserialEventCallbackIdle() {
   bool busy = false;
   JsVar *list = jsserialGetSerialList(false);
+  if (!list) return false;
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, list);
   while (jsvObjectIteratorHasValue(&it)) {
