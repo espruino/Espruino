@@ -917,6 +917,52 @@ void jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "drawPoly",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_drawPoly",
+  "params" : [
+    ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"],
+    ["closed","bool","Draw another line between the last element of the array and the first"]
+  ]
+}
+Draw a polyline (lines between each of the points in `poly`) in the current foreground color
+*/
+void jswrap_graphics_drawPoly(JsVar *parent, JsVar *poly, bool closed) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+  if (!jsvIsIterable(poly)) return;
+  int x,y;
+  int startx, starty;
+  int idx = 0;
+  JsvIterator it;
+  jsvIteratorNew(&it, poly, JSIF_EVERY_ARRAY_ELEMENT);
+  while (jsvIteratorHasElement(&it)) {
+    int el = jsvIteratorGetIntegerValue(&it);
+    if (idx&1) {
+      y = el;
+      if (idx==1) { // save xy positions of first point
+        startx = x;
+        starty = y;
+      } else {
+        // only start drawing between the first 2 points
+        graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, (short)x, (short)y);
+      }
+      gfx.data.cursorX = (short)x;
+      gfx.data.cursorY = (short)y;
+    } else x = el;
+    idx++;
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+  // if closed, draw between first and last points
+  if (closed)
+    graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, (short)startx, (short)starty);
+
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "fillPoly",
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_fillPoly",
@@ -943,6 +989,8 @@ void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
     jsWarn("Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   }
   graphicsFillPoly(&gfx, idx/2, verts);
+
+
   graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 

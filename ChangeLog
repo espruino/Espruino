@@ -61,6 +61,7 @@
             nRF5x increase JsSysTime accuracy to 2^-20 from 2^-16 - drastically improves Util Timer accuracy
             Added support for Software Serial ports (for low baud rates, eg. 9600)
             Fix JS state restoration issue (eg. Pixl.menu inside switch would cause errors)
+            Added Graphics.drawPoly
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
