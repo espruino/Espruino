@@ -325,6 +325,8 @@ JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
   return conv;
 }
 
+#define FFTDATATYPE float
+
 // http://paulbourke.net/miscellaneous/dft/
 /*
    This computes an in-place complex-to-complex FFT
@@ -332,10 +334,10 @@ JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
    dir =  1 gives forward transform
    dir = -1 gives reverse transform
  */
-short FFT(short int dir,long m,double *x,double *y)
+short FFT(short int dir,long m,FFTDATATYPE *x,FFTDATATYPE *y)
 {
   long n,i,i1,j,k,i2,l,l1,l2;
-  double c1,c2,tx,ty,t1,t2,u1,u2,z;
+  FFTDATATYPE c1,c2,tx,ty,t1,t2,u1,u2,z;
 
   /* Calculate the number of points */
   n = 1;
@@ -385,17 +387,17 @@ short FFT(short int dir,long m,double *x,double *y)
       u2 = u1 * c2 + u2 * c1;
       u1 = z;
     }
-    c2 = jswrap_math_sqrt((1.0 - c1) / 2.0);
+    c2 = (FFTDATATYPE)jswrap_math_sqrt((1.0 - c1) / 2.0);
     if (dir == 1)
       c2 = -c2;
-    c1 = jswrap_math_sqrt((1.0 + c1) / 2.0);
+    c1 = (FFTDATATYPE)jswrap_math_sqrt((1.0 + c1) / 2.0);
   }
 
   /* Scaling for forward transform */
   if (dir == 1) {
     for (i=0;i<n;i++) {
-      x[i] /= (double)n;
-      y[i] /= (double)n;
+      x[i] /= (FFTDATATYPE)n;
+      y[i] /= (FFTDATATYPE)n;
     }
   }
 
@@ -414,7 +416,13 @@ short FFT(short int dir,long m,double *x,double *y)
     ["inverse","bool","Set this to true if you want an inverse FFT - otherwise leave as 0"]
   ]
 }
-Performs a Fast Fourier Transform (fft) on the supplied data and writes it back into the original arrays. Note that if only one array is supplied, the data written back is the modulus of the complex result `sqrt(r*r+i*i)`.
+Performs a Fast Fourier Transform (FFT) in 32 bit floats on the supplied data and writes it back into the
+original arrays. Note that if only one array is supplied, the data written back is the modulus of the complex
+result `sqrt(r*r+i*i)`.
+
+In order to perform the FFT, there has to be enough room on the stack to allocate two arrays of 32 bit
+floating point numbers - this will limit the maximum size of FFT possible to around 1024 items on
+most platforms.
  */
 void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   if (!(jsvIsIterable(arrReal)) ||
@@ -432,13 +440,13 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
     order++;
   }
 
-  if (jsuGetFreeStack() < 256+sizeof(double)*pow2*2) {
+  if (jsuGetFreeStack() < 256+sizeof(FFTDATATYPE)*pow2*2) {
     jsExceptionHere(JSET_ERROR, "Insufficient stack for computing FFT");
     return;
   }
 
-  double *vReal = (double*)alloca(sizeof(double)*pow2);
-  double *vImag = (double*)alloca(sizeof(double)*pow2);
+  FFTDATATYPE *vReal = (FFTDATATYPE*)alloca(sizeof(FFTDATATYPE)*pow2);
+  FFTDATATYPE *vImag = (FFTDATATYPE*)alloca(sizeof(FFTDATATYPE)*pow2);
 
   unsigned int i;
   // load data
@@ -446,7 +454,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   jsvIteratorNew(&it, arrReal, JSIF_EVERY_ARRAY_ELEMENT);
   i=0;
   while (jsvIteratorHasElement(&it)) {
-    vReal[i++] = jsvIteratorGetFloatValue(&it);
+    vReal[i++] = (FFTDATATYPE)jsvIteratorGetFloatValue(&it);
     jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
@@ -457,7 +465,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   if (jsvIsIterable(arrImag)) {
     jsvIteratorNew(&it, arrImag, JSIF_EVERY_ARRAY_ELEMENT);
     while (i<pow2 && jsvIteratorHasElement(&it)) {
-      vImag[i++] = jsvIteratorGetFloatValue(&it);
+      vImag[i++] = (FFTDATATYPE)jsvIteratorGetFloatValue(&it);
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
