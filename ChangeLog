@@ -62,6 +62,8 @@
             Added support for Software Serial ports (for low baud rates, eg. 9600)
             Fix JS state restoration issue (eg. Pixl.menu inside switch would cause errors)
             Added Graphics.drawPoly
+            Add Graphics.asImage to turn a Graphics instance into an Image that can be used with drawImage
+            Add Graphics.createImage to allow creation of a 1 bit image direct from a string
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

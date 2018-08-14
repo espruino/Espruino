@@ -511,7 +511,8 @@ static ALWAYS_INLINE void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStr
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)
 void jsvAppendStringVarComplete(JsVar *var, const JsVar *str); ///< Append all of str to var. Both must be strings.
-char jsvGetCharInString(JsVar *v, size_t idx);
+char jsvGetCharInString(JsVar *v, size_t idx); ///< Get a character at the given index in the String
+void jsvSetCharInString(JsVar *v, size_t idx, char ch, bool bitwiseOR); ///< Set a character at the given index in the String. If bitwiseOR, ch will be ORed with the character already at that position.
 int jsvGetStringIndexOf(JsVar *str, char ch); ///< Get the index of a character in a string, or -1
 
 JsVarInt jsvGetInteger(const JsVar *v);
@@ -556,7 +557,7 @@ void jsvReplaceWithOrAddToRoot(JsVar *dst, JsVar *src);
 
 /** Get the item at the given location in the array buffer and return the result */
 size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer);
-/** Get the String the contains the data for this arrayBuffer */
+/** Get the String the contains the data for this arrayBuffer. Is ok with being passed a String in the first place. */
 JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer);
 /** Get the item at the given location in the array buffer and return the result */
 JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, size_t index);

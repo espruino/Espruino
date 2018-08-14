@@ -279,6 +279,100 @@ JsVar *jswrap_graphics_createSDL(int width, int height) {
 }
 #endif
 
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Graphics",
+  "name" : "createImage",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_createImage",
+  "params" : [
+    ["str","JsVar","A String containing newline-separated "]
+  ],
+  "return" : ["JsVar","An Image object that can be used with `Graphics.drawImage`"]
+}
+Create a simple Black and White image for use with `Graphics.drawImage`.
+
+Use as follows:
+
+```
+var img = Graphics.createImage(`
+#########
+#       #
+#   #   #
+#   #   #
+#       #
+#########
+`);
+g.drawImage(img, x,y);
+```
+
+If the characters at the beginning and end of the string are newlines, they
+will be ignored. Spaces are treated as `0`, and any other character is a `1`
+*/
+JsVar *jswrap_graphics_createImage(JsVar *data) {
+  if (!jsvIsString(data)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting a String");
+    return 0;
+  }
+  int x=0,y=0;
+  int width=0, height=0;
+  size_t startCharacter = 0;
+  JsvStringIterator it;
+  // First iterate and work out width and height
+  jsvStringIteratorNew(&it,data,0);
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    if (ch=='\n') {
+      if (x==0 && y==0) startCharacter = 1; // ignore first character
+      x=0;
+      y++;
+    } else {
+      if (y>=height) height=y+1;
+      x++;
+      if (x>width) width=x;
+    }
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  // Sorted - now create the object, set it up and create the buffer
+  JsVar *img = jsvNewObject();
+  if (!img) return 0;
+  jsvObjectSetChildAndUnLock(img,"width",jsvNewFromInteger(width));
+  jsvObjectSetChildAndUnLock(img,"height",jsvNewFromInteger(height));
+  // bpp is 1, no need to set it
+  int len = (width*height+7)>>3;
+  JsVar *buffer = jsvNewStringOfLength((unsigned)len, NULL);
+  if (!buffer) { // not enough memory
+    jsvUnLock(img);
+    return 0;
+  }
+  // Now set the characters!
+  x=0;
+  y=0;
+  jsvStringIteratorNew(&it,data,startCharacter);
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    if (ch=='\n') {
+      x=0;
+      y++;
+    } else {
+      if (ch!=' ') {
+        /* a pixel to set. This'll be slowish for non-flat strings,
+         * but this is here for relatively small bitmaps
+         * anyway so it's not a big deal */
+        size_t idx = (size_t)(y*width + x);
+        jsvSetCharInString(buffer, idx>>3, (char)(128>>(idx&7)), true/*OR*/);
+      }
+      x++;
+    }
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  jsvObjectSetChildAndUnLock(img, "buffer", buffer);
+  return img;
+}
+
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
@@ -1042,7 +1136,7 @@ void jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
   "name" : "drawImage",
   "generate" : "jswrap_graphics_drawImage",
   "params" : [
-    ["image","JsVar","An object with the following fields `{ width : int, height : int, bpp : int, buffer : ArrayBuffer, transparent: optional int }`. bpp = bits per pixel, transparent (if defined) is the colour that will be treated as transparent"],
+    ["image","JsVar","An object with the following fields `{ width : int, height : int, bpp : optional int, buffer : ArrayBuffer/String, transparent: optional int }`. bpp = bits per pixel (default is 1), transparent (if defined) is the colour that will be treated as transparent"],
     ["x","int32","The X offset to draw the image"],
     ["y","int32","The Y offset to draw the image"]
   ]
@@ -1058,20 +1152,24 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
   int imageWidth = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
   int imageHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
   int imageBpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
+  if (imageBpp<=0) imageBpp=1;
   unsigned int imageBitMask = (unsigned int)((1L<<imageBpp)-1L);
   JsVar *transpVar = jsvObjectGetChild(image, "transparent", 0);
   bool imageIsTransparent = transpVar!=0;
   unsigned int imageTransparentCol = (unsigned int)jsvGetInteger(transpVar);
   jsvUnLock(transpVar);
   JsVar *imageBuffer = jsvObjectGetChild(image, "buffer", 0);
-  if (!(jsvIsArrayBuffer(imageBuffer) && imageWidth>0 && imageHeight>0 && imageBpp>0 && imageBpp<=32)) {
+  if (!(jsvIsArrayBuffer(imageBuffer) || jsvIsString(imageBuffer)) ||
+      imageWidth<=0 ||
+      imageHeight<=0 ||
+      imageBpp>32) {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to a valid Image");
     jsvUnLock(imageBuffer);
     return;
   }
+  // jsvGetArrayBufferBackingString is fine to be passed a string
   JsVar *imageBufferString = jsvGetArrayBufferBackingString(imageBuffer);
   jsvUnLock(imageBuffer);
-
 
   int x=0, y=0;
   int bits=0;
@@ -1106,6 +1204,58 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
   jsvStringIteratorFree(&it);
   jsvUnLock(imageBufferString);
   graphicsSetVar(&gfx); // gfx data changed because modified area
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "asImage",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_asImage",
+  "return" : ["JsVar","An Image that can be used with `Graphics.drawImage`"]
+}
+Return this Graphics object as an Image that can be used with `Graphics.drawImage`.
+Will return undefined if data can't be allocated for it.
+*/
+JsVar *jswrap_graphics_asImage(JsVar *parent) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  JsVar *img = jsvNewObject();
+  if (!img) return 0;
+  int w = jswrap_graphics_getWidthOrHeight(parent,false);
+  int h = jswrap_graphics_getWidthOrHeight(parent,true);
+  int bpp = gfx.data.bpp;
+  jsvObjectSetChildAndUnLock(img,"width",jsvNewFromInteger(w));
+  jsvObjectSetChildAndUnLock(img,"height",jsvNewFromInteger(h));
+  if (bpp!=1) jsvObjectSetChildAndUnLock(img,"bpp",jsvNewFromInteger(bpp));
+  int len = (w*h*bpp+7)>>3;
+  JsVar *buffer = jsvNewStringOfLength((unsigned)len, NULL);
+  if (!buffer) { // not enough memory
+    jsvUnLock(img);
+    return 0;
+  }
+
+  int x=0, y=0;
+  unsigned int pixelBits = 0;
+  unsigned int pixelBitCnt = 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, buffer, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    pixelBits = (pixelBits<<bpp) | graphicsGetPixel(&gfx, (short)x, (short)y);
+    pixelBitCnt += (unsigned)bpp;
+    x++;
+    if (x>=w) {
+      x=0;
+      y++;
+    }
+    while (pixelBitCnt>=8) {
+      jsvStringIteratorSetCharAndNext(&it, (char)(pixelBits>>(pixelBitCnt-8)));
+      pixelBits = pixelBits>>8;
+      pixelBitCnt -= 8;
+    }
+  }
+  jsvStringIteratorFree(&it);
+  jsvObjectSetChildAndUnLock(img,"buffer",buffer);
+  return img;
 }
 
 /*JSON{
@@ -1191,22 +1341,22 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   bool hasPalette = gfx.data.bpp==1;
   int headerLen = 14+ 12+ (hasPalette?6:0);
   int l = headerLen + gfx.data.height*rowstride;
-  JsVar *imgData = jsvNewFlatStringOfLength(l);
+  JsVar *imgData = jsvNewFlatStringOfLength((unsigned)l);
   if (!imgData) return 0; // not enough memory
   unsigned char *imgPtr = (unsigned char *)jsvGetFlatStringPointer(imgData);
   imgPtr[0]=66;
   imgPtr[1]=77;
-  imgPtr[2]=l&255;
-  imgPtr[3]=(l>>8)&255;  // plus 2 more bytes for size
-  imgPtr[10]=headerLen;
+  imgPtr[2]=(unsigned char)l;
+  imgPtr[3]=(unsigned char)(l>>8);  // plus 2 more bytes for size
+  imgPtr[10]=(unsigned char)headerLen;
   // BITMAPCOREHEADER
   imgPtr[14]=12; // sizeof(BITMAPCOREHEADER)
-  imgPtr[18]=gfx.data.width;
-  imgPtr[19]=gfx.data.width>>8;
-  imgPtr[20]=gfx.data.height;
-  imgPtr[21]=gfx.data.height>>8;
+  imgPtr[18]=(unsigned char)gfx.data.width;
+  imgPtr[19]=(unsigned char)(gfx.data.width>>8);
+  imgPtr[20]=(unsigned char)gfx.data.height;
+  imgPtr[21]=(unsigned char)(gfx.data.height>>8);
   imgPtr[22]=1;
-  imgPtr[24]=gfx.data.bpp; // bpp
+  imgPtr[24]=(unsigned char)gfx.data.bpp; // bpp
   if (hasPalette) {
     imgPtr[26]=255;
     imgPtr[27]=255;
@@ -1216,19 +1366,19 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
     int yi = gfx.data.height-(y+1);
     if (gfx.data.bpp==1) {
       for (int x=0;x<gfx.data.width;) {
-        int b = 0;
+        unsigned int b = 0;
         for (int i=0;i<8;i++) {
           b = (b<<1)|(graphicsGetPixel(&gfx, (short)(x++), (short)y)&1);
         }
-        imgPtr[headerLen + (yi*rowstride) + (x>>3) - 1] = b;
+        imgPtr[headerLen + (yi*rowstride) + (x>>3) - 1] = (unsigned char)b;
       }
     } else {
       for (int x=0;x<gfx.data.width;x++) {
-        int c = graphicsGetPixel(&gfx, (short)x, (short)y);
+        unsigned int c = graphicsGetPixel(&gfx, (short)x, (short)y);
         int i = headerLen + (yi*rowstride) + (x*(gfx.data.bpp>>3));
-        imgPtr[i++] = c & 255;
-        imgPtr[i++] = (c>>8) & 255;
-        imgPtr[i++] = (c>>16) & 255;
+        imgPtr[i++] = (unsigned char)(c);
+        imgPtr[i++] = (unsigned char)(c>>8);
+        imgPtr[i++] = (unsigned char)(c>>16);
       }
     }
   }

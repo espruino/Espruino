@@ -1681,6 +1681,15 @@ char jsvGetCharInString(JsVar *v, size_t idx) {
   return ch;
 }
 
+void jsvSetCharInString(JsVar *v, size_t idx, char ch, bool bitwiseOR) {
+  if (!jsvIsString(v)) return;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, idx);
+  if (bitwiseOR) ch |= jsvStringIteratorGetChar(&it);
+  jsvStringIteratorSetChar(&it, ch);
+  jsvStringIteratorFree(&it);
+}
+
 /// Get the index of a character in a string, or -1
 int jsvGetStringIndexOf(JsVar *str, char ch) {
   JsvStringIterator it;
@@ -2018,7 +2027,7 @@ size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer) {
   return arrayBuffer->varData.arraybuffer.length;
 }
 
-/** Get the String the contains the data for this arrayBuffer */
+/** Get the String the contains the data for this arrayBuffer. Is ok with being passed a String in the first place. */
 JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer) {
   jsvLockAgain(arrayBuffer);
   while (jsvIsArrayBuffer(arrayBuffer)) {
