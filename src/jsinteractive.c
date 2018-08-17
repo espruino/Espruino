@@ -1190,6 +1190,12 @@ void jsiCheckErrors() {
       jsiConsolePrintStringVar(stackTrace);
     jsvUnLock(stackTrace);
   }
+  if (jspHasError()) {
+    if (!reportedError)
+      jsiConsolePrint("Error.\n");
+    // remove any error flags
+    execInfo.execute &= ~EXEC_ERROR_MASK;
+  }
   if (lastJsErrorFlags != jsErrorFlags) {
     JsErrorFlags newErrors = jsErrorFlags & ~lastJsErrorFlags;
     if (newErrors & ~JSERR_WARNINGS_MASK) {
