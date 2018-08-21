@@ -108,6 +108,8 @@ static uint8_t uart0txBuffer[1];
 bool uartIsSending = false;
 bool uartInitialised = false;
 
+void jshUSARTUnSetup(IOEventFlags device);
+
 const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
   return 0;
@@ -177,9 +179,13 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
       break;
     }
 #endif
-  case JSH_USART1: if (fInfo==JSH_USART_RX) NRF_UART0->PSELRXD = pin;
-                   else NRF_UART0->PSELTXD = pin;
-                   // TODO: do we need to disable the UART driver if both pins are undefined?
+  case JSH_USART1: if (fInfo==JSH_USART_RX) {
+                     NRF_UART0->PSELRXD = pin;
+                     if (pin==0xFFFFFFFF) nrf_drv_uart_rx_disable(&UART0);
+                   } else NRF_UART0->PSELTXD = pin;
+                   // if both pins are disabled, shut down the UART
+                   if (NRF_UART0->PSELRXD==0xFFFFFFFF && NRF_UART0->PSELTXD==0xFFFFFFFF)
+                     jshUSARTUnSetup(EV_SERIAL1);
                    break;
 #if SPI_ENABLED
   case JSH_SPI1: if (fInfo==JSH_SPI_MISO) NRF_SPI0->PSELMISO = pin;
@@ -977,6 +983,21 @@ static void uart0_event_handle(nrf_drv_uart_event_t * p_event, void* p_context) 
       uart0_starttx();
     }
 }
+
+void jshUSARTUnSetup(IOEventFlags device) {
+  if (device != EV_SERIAL1)
+    return;
+  if (!uartInitialised)
+    return;
+  uartInitialised = false;
+  jshTransmitClearDevice(device);
+  nrf_drv_uart_rx_disable(&UART0);
+  nrf_drv_uart_tx_abort(&UART0);
+
+  jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
+  nrf_drv_uart_uninit(&UART0);
+}
+
 
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
