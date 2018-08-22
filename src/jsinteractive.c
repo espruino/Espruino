@@ -174,7 +174,7 @@ void jsiSetConsoleDevice(IOEventFlags device, bool force) {
 
   if (device == consoleDevice) return;
 
-  if (!jshIsDeviceInitialised(device)) {
+  if (DEVICE_IS_USART(device) && !jshIsDeviceInitialised(device)) {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
     jshUSARTSetup(device, &inf);
