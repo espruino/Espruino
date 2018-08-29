@@ -278,9 +278,10 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   else
     jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
 
-  if (DEVICE_IS_USART(device)) {
+  if (DEVICE_IS_SERIAL(device)) {
     // Hardware
-    jshUSARTSetup(device, &inf);
+    if (DEVICE_IS_USART(device))
+      jshUSARTSetup(device, &inf);
   } else if (device == EV_NONE) {
     // Software
     if (inf.pinTX != PIN_UNDEFINED) {
@@ -322,7 +323,7 @@ void jswrap_serial_unsetup(JsVar *parent) {
   jsvObjectRemoveChild(parent, USART_BAUDRATE_NAME);
   jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
 
-  if (!DEVICE_IS_USART(device)) {
+  if (!DEVICE_IS_SERIAL(device)) {
     // It's software. Only thing we care about is RX as that uses watches
     jsserialEventCallbackKill(parent, &inf);
   } else {
@@ -436,7 +437,7 @@ static void _jswrap_serial_inject_cb(int data, void *userData) {
 }
 void jswrap_serial_inject(JsVar *parent, JsVar *args) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
-  if (!DEVICE_IS_USART(device)) return;
+  if (!DEVICE_IS_SERIAL(device)) return;
   jsvIterateCallback(args, _jswrap_serial_inject_cb, (void*)&device);
 }
 

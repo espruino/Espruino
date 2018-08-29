@@ -120,8 +120,11 @@ typedef enum {
 
 #define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK>63) jsError("DEVICE_SANITY_CHECK failed")
 
+
+/// True is the device is a serial device (could be a USART, Bluetooth, USB, etc)
+#define DEVICE_IS_SERIAL(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))
 #if USART_COUNT>=1
-/// Return true if the device is a USART
+/// Return true if the device is a USART (hardware serial)
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL1) && ((X)<=EV_SERIAL_MAX))
 #define DEVICE_IS_USART_STATUS(X) (((X)>=EV_SERIAL1_STATUS) && ((X)<=EV_SERIAL_STATUS_MAX))
 #else

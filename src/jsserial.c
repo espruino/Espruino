@@ -154,10 +154,10 @@ bool jsserialGetSendFunction(JsVar *serialDevice, serial_sender *serialSend, ser
   IOEventFlags device = jsiGetDeviceFromClass(serialDevice);
   JshUSARTInfo inf;
 
-  // See if the device is hardware or software.
-  if (DEVICE_IS_USART(device)) {
-    // Hardware
-    if (!jshIsDeviceInitialised(device)) {
+  // See if the device is a real device, or software USART
+  if (DEVICE_IS_SERIAL(device)) { // real device
+    // If it's hardware, should it be initialised?
+    if (DEVICE_IS_USART(device) && !jshIsDeviceInitialised(device)) {
       jshUSARTInitInfo(&inf);
       jshUSARTSetup(device, &inf);
     }
