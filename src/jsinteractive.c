@@ -1191,8 +1191,8 @@ void jsiCheckErrors() {
     jsvUnLock(stackTrace);
   }
   if (jspHasError()) {
-    if (!reportedError)
-      jsiConsolePrint("Error.\n");
+    // don't report an issue - we get unreported errors is process.on('unhandledException',)/etc is used
+    //if (!reportedError) jsiConsolePrint("Error.\n");
     // remove any error flags
     execInfo.execute &= ~EXEC_ERROR_MASK;
   }
