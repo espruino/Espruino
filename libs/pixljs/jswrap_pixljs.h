@@ -16,6 +16,7 @@
 JsVar *jswrap_pixljs_menu(JsVar *menu);
 void jswrap_pixljs_lcdw(JsVarInt c);
 void jswrap_pixljs_setContrast(JsVarFloat c);
+void jswrap_pixljs_setLCDPower(bool isOn);
 
 void jswrap_pixljs_init();
 void jswrap_pixljs_kill();

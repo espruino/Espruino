@@ -296,6 +296,33 @@ void jswrap_pixljs_setContrast(JsVarFloat c) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Pixl",
+    "name" : "setLCDPower",
+    "generate" : "jswrap_pixljs_setLCDPower",
+    "params" : [
+      ["isOn","bool","True if the LCD should be on, false if not"]
+    ]
+}
+This function can be used to turn Pixl.js's LCD off or on.
+
+* With the LCD off, Pixl.js draws around 0.1mA
+* With the LCD on, Pixl.js draws around 0.25mA
+*/
+void jswrap_pixljs_setLCDPower(bool isOn) {
+  jshPinSetValue(LCD_SPI_CS,0);
+  jshPinSetValue(LCD_SPI_DC,0);
+  if (isOn) {
+    lcd_wr(0xA4); // cancel pixel on
+    lcd_wr(0xAF); // display on
+  } else {
+    lcd_wr(0xAE); // display off
+    lcd_wr(0xA5); // all pixels on
+  }
+  jshPinSetValue(LCD_SPI_CS,1);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Pixl",
     "name" : "lcdw",
     "generate" : "jswrap_pixljs_lcdw",
     "params" : [
@@ -471,7 +498,8 @@ void jswrap_pixljs_init() {
   };
 
   // Create 'flip' fn
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
+  JsVar *fn;
+  fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
   jsvObjectSetChildAndUnLock(graphics,"flip",fn);
   // LCD init 2
   jshDelayMicroseconds(10000);
@@ -486,6 +514,7 @@ void jswrap_pixljs_init() {
        35,     // actual contrast (0..63)
        0x25,   // regulation resistor ratio (0..7)
        0x2F,   // control power circuits - last 3 bits = VB/VR/VF
+       0xF8, 1, // Set boost level to 5x - draws maybe 0.04mA more, but much better blacks
        0xA0,   // start at column 128
        0xAF    // disp on
   };
