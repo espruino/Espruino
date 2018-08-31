@@ -67,7 +67,9 @@
             Use 32 bit floats for E.FFT, not 64 (fix #1443)
             Automatically shut down UART if both pin states are changed
             Fix `setDeviceClockCmd: Unknown Device` when using `LoopbackB.setConsole()` on WiFi board
-	    ESP32: Update esp-idf sdk 3.03, set CONFIG_ESP32_XTAL_FREQ_AUTO.
+            Fix non-UART serial regressions (after software serial additions)
+            Pixl.js: Add Pixl.setLCDPower to allow the LCD to be powered off, more than halving power consumption	    
+	    ESP32: Update esp-idf sdk 3.03, set CONFIG_ESP32_XTAL_FREQ_AUTO
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
