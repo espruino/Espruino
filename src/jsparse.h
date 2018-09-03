@@ -29,6 +29,9 @@ bool jspIsConstructor(JsVar *constructor, const char *constructorName);
 /** Get the constructor of the given object, or return 0 if ot found, or not a function */
 JsVar *jspGetConstructor(JsVar *object);
 
+/// Check that we have enough stack to recurse. Return true if all ok, error if not.
+bool jspCheckStackPosition();
+
 /// Create a new built-in object that jswrapper can use to check for built-in functions
 JsVar *jspNewBuiltin(const char *name);
 

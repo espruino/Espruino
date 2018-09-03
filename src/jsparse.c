@@ -215,6 +215,7 @@ void jspeiLoadScopesFromVar(JsVar *arr) {
     execInfo.scopes[execInfo.scopeCount++] = jsvLockAgain(arr);
 }
 // -----------------------------------------------
+/// Check that we have enough stack to recurse. Return true if all ok, error if not.
 bool jspCheckStackPosition() {
   if (jsuGetFreeStack() < 512) { // giving us 512 bytes leeway
     jsExceptionHere(JSET_ERROR, "Too much recursion - the stack is about to overflow");

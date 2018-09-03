@@ -172,10 +172,13 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
     info.groupStart[info.groups] = jsvStringIteratorGetIndex(txtIt);
     info.groupEnd[info.groups] = info.groupStart[info.groups];
     if (info.groups<MAX_GROUPS) info.groups++;
+    if (!jspCheckStackPosition()) return 0;
     return matchhere(regexp+1, txtIt, info);
   }
   if (regexp[0] == ')') {
-    info.groupEnd[info.groups-1] = jsvStringIteratorGetIndex(txtIt);
+    if (info.groups>0)
+      info.groupEnd[info.groups-1] = jsvStringIteratorGetIndex(txtIt);
+    if (!jspCheckStackPosition()) return 0;
     return matchhere(regexp+1, txtIt, info);
   }
   int charLength;
@@ -219,6 +222,7 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
   //
   if (jsvStringIteratorHasChar(txtIt) && charMatched) {
     jsvStringIteratorNext(txtIt);
+    if (!jspCheckStackPosition()) return 0;
     return matchhere(regexp+charLength, txtIt, info);
   }
   return 0;
