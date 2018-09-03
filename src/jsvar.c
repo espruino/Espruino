@@ -961,6 +961,60 @@ JsVar *jsvNewFromLongInteger(long long value) {
     return jsvNewFromFloat((JsVarFloat)value);
 }
 
+JsVar *jsvNewFromPin(int pin) {
+  JsVar *v = jsvNewFromInteger((JsVarInt)pin);
+  if (v) {
+    v->flags = (JsVarFlags)((v->flags & ~JSV_VARTYPEMASK) | JSV_PIN);
+  }
+  return v;
+}
+
+JsVar *jsvNewObject() {
+  return jsvNewWithFlags(JSV_OBJECT);
+}
+
+JsVar *jsvNewEmptyArray() {
+  return jsvNewWithFlags(JSV_ARRAY);
+}
+
+/// Create an array containing the given elements
+JsVar *jsvNewArray(JsVar **elements, int elementCount) {
+  JsVar *arr = jsvNewEmptyArray();
+  if (!arr) return 0;
+  int i;
+  for (i=0;i<elementCount;i++)
+    jsvArrayPush(arr, elements[i]);
+  return arr;
+}
+
+JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
+  JsVar *func = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
+  if (!func) return 0;
+  func->varData.native.ptr = ptr;
+  func->varData.native.argTypes = argTypes;
+  return func;
+}
+
+JsVar *jsvNewNativeString(char *ptr, size_t len) {
+  if (len>JSV_NATIVE_STR_MAX_LENGTH) len=JSV_NATIVE_STR_MAX_LENGTH; // crop string to what we can store in nativeStr.len
+  JsVar *str = jsvNewWithFlags(JSV_NATIVE_STRING);
+  if (!str) return 0;
+  str->varData.nativeStr.ptr = ptr;
+  str->varData.nativeStr.len = (uint16_t)len;
+  return str;
+}
+
+/// Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
+JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero) {
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAYBUFFER);
+  if (!arr) return 0;
+  jsvSetFirstChild(arr, jsvGetRef(jsvRef(str)));
+  arr->varData.arraybuffer.type = ARRAYBUFFERVIEW_ARRAYBUFFER;
+  assert(arr->varData.arraybuffer.byteOffset == 0);
+  if (lengthOrZero==0) lengthOrZero = (unsigned int)jsvGetStringLength(str);
+  arr->varData.arraybuffer.length = (unsigned short)lengthOrZero;
+  return arr;
+}
 
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   if (!var) return 0;
@@ -1047,47 +1101,17 @@ void jsvMakeFunctionParameter(JsVar *v) {
   v->flags = (JsVarFlags)(v->flags | JSV_NATIVE);
 }
 
-JsVar *jsvNewFromPin(int pin) {
-  JsVar *v = jsvNewFromInteger((JsVarInt)pin);
-  if (v) {
-    v->flags = (JsVarFlags)((v->flags & ~JSV_VARTYPEMASK) | JSV_PIN);
+/// Add a new unnamed function parameter to a function - use this when binding function arguments. This unlocks paramName if specified, but not value.
+void jsvAddFunctionParameter(JsVar *fn, JsVar *paramName, JsVar *value) {
+  assert(jsvIsFunction(fn));
+  if (!paramName) paramName = jsvNewFromEmptyString();
+  assert(jsvIsString(paramName));
+  if (paramName) {
+    jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+    jsvSetValueOfName(paramName, value);
+    jsvAddName(fn, paramName);
+    jsvUnLock(paramName);
   }
-  return v;
-}
-
-JsVar *jsvNewObject() {
-  return jsvNewWithFlags(JSV_OBJECT);
-}
-
-JsVar *jsvNewEmptyArray() {
-  return jsvNewWithFlags(JSV_ARRAY);
-}
-
-/// Create an array containing the given elements
-JsVar *jsvNewArray(JsVar **elements, int elementCount) {
-  JsVar *arr = jsvNewEmptyArray();
-  if (!arr) return 0;
-  int i;
-  for (i=0;i<elementCount;i++)
-    jsvArrayPush(arr, elements[i]);
-  return arr;
-}
-
-JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
-  JsVar *func = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
-  if (!func) return 0;
-  func->varData.native.ptr = ptr;
-  func->varData.native.argTypes = argTypes;
-  return func;
-}
-
-JsVar *jsvNewNativeString(char *ptr, size_t len) {
-  if (len>JSV_NATIVE_STR_MAX_LENGTH) len=JSV_NATIVE_STR_MAX_LENGTH; // crop string to what we can store in nativeStr.len
-  JsVar *str = jsvNewWithFlags(JSV_NATIVE_STRING);
-  if (!str) return 0;
-  str->varData.nativeStr.ptr = ptr;
-  str->varData.nativeStr.len = (uint16_t)len;
-  return str;
 }
 
 void *jsvGetNativeFunctionPtr(const JsVar *function) {
@@ -1103,17 +1127,6 @@ void *jsvGetNativeFunctionPtr(const JsVar *function) {
     return (void *)function->varData.native.ptr;
 }
 
-/// Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
-JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero) {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAYBUFFER);
-  if (!arr) return 0;
-  jsvSetFirstChild(arr, jsvGetRef(jsvRef(str)));
-  arr->varData.arraybuffer.type = ARRAYBUFFERVIEW_ARRAYBUFFER;
-  assert(arr->varData.arraybuffer.byteOffset == 0);
-  if (lengthOrZero==0) lengthOrZero = (unsigned int)jsvGetStringLength(str);
-  arr->varData.arraybuffer.length = (unsigned short)lengthOrZero;
-  return arr;
-}
 
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   // quick checks

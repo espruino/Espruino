@@ -323,11 +323,8 @@ JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength);
 JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
 JsVar *jsvNewFromFloat(JsVarFloat value);
-// Create an integer (or float) from this value, depending on whether it'll fit in 32 bits or not.
+/// Create an integer (or float) from this value, depending on whether it'll fit in 32 bits or not.
 JsVar *jsvNewFromLongInteger(long long value);
-// Turns var into a Variable name that links to the given value... No locking so no need to unlock var
-JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
-void jsvMakeFunctionParameter(JsVar *v);
 JsVar *jsvNewFromPin(int pin);
 JsVar *jsvNewObject(); ///< Create a new object
 JsVar *jsvNewEmptyArray(); ///< Create a new array
@@ -335,6 +332,13 @@ JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array con
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes); ///< Create an array containing the given elements
 JsVar *jsvNewNativeString(char *ptr, size_t len); ///< Create a Native String pointing to the given memory area
 JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
+
+/// Turns var into a Variable name that links to the given value... No locking so no need to unlock var
+JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
+/// Turns var into a 'function parameter' that the parser recognises when parsing a function
+void jsvMakeFunctionParameter(JsVar *v);
+/// Add a new function parameter to a function (name may be 0) - use this when binding function arguments This unlocks paramName if specified, but not value.
+void jsvAddFunctionParameter(JsVar *fn, JsVar *name, JsVar *value);
 
 void *jsvGetNativeFunctionPtr(const JsVar *function); ///< Get the actual pointer from a native function - this may not be the contents of varData.native.ptr
 

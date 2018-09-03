@@ -268,14 +268,9 @@ JsVar *jswrap_promise_all(JsVar *arr) {
       if (_jswrap_promise_is_promise(p)) {
         JsVar *resolve = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_JSVAR<<(JSWAT_BITS*2)));
         // bind the index variable
-        JsVar *paramName = jsvNewFromEmptyString();
-        if (paramName) {
-          jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-          JsVar *indexVar = jsvNewFromInteger(promiseIndex);
-          jsvSetValueOfName(paramName, indexVar);
-          jsvAddName(resolve, paramName);
-          jsvUnLock2(indexVar, paramName);
-        }
+        JsVar *indexVar = jsvNewFromInteger(promiseIndex);
+        jsvAddFunctionParameter(resolve, 0, indexVar);
+        jsvUnLock(indexVar);
         jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promise); // bind 'this'
         jsvUnLock2(jswrap_promise_then(p, resolve, reject), resolve);
       } else {

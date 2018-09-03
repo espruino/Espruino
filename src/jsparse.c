@@ -623,14 +623,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       JsVar *param = jsvObjectIteratorGetKey(&it);
       JsVar *value = jsvObjectIteratorGetValue(&it);
       while (jsvIsFunctionParameter(param) && value) {
-        JsVar *paramName = jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH);
-        if (paramName) { // could be out of memory
-          jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-          jsvSetValueOfName(paramName, value);
-          jsvAddName(functionRoot, paramName);
-          jsvUnLock(paramName);
-        } else
-          jspSetError(false);
+        jsvAddFunctionParameter(functionRoot, jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH), value);
         jsvUnLock2(value, param);
         jsvObjectIteratorNext(&it);
         param = jsvObjectIteratorGetKey(&it);
@@ -652,14 +645,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
               value = jspeAssignmentExpression();
             // and if execute, copy it over
             value = jsvSkipNameAndUnLock(value);
-            JsVar *paramName = paramDefined ? jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH) : jsvNewFromEmptyString();
-            if (paramName) { // could be out of memory
-              jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-              jsvSetValueOfName(paramName, value);
-              jsvAddName(functionRoot, paramName);
-              jsvUnLock(paramName);
-            } else
-              jspSetError(false);
+            jsvAddFunctionParameter(functionRoot, paramDefined?jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH):0, value);
             jsvUnLock(value);
             if (lex->tk!=')') JSP_MATCH(',');
           }
@@ -672,14 +658,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         while (args<argCount) {
           JsVar *param = jsvObjectIteratorGetKey(&it);
           bool paramDefined = jsvIsFunctionParameter(param);
-          JsVar *paramName = paramDefined ? jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH) : jsvNewFromEmptyString();
-          if (paramName) {
-            jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-            jsvSetValueOfName(paramName, argPtr[args]);
-            jsvAddName(functionRoot, paramName);
-            jsvUnLock(paramName);
-          } else
-            jspSetError(false);
+          jsvAddFunctionParameter(functionRoot, paramDefined?jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH):0, argPtr[args]);
           args++;
           jsvUnLock(param);
           if (paramDefined) jsvObjectIteratorNext(&it);
@@ -697,15 +676,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             thisVar = jsvSkipName(param);
           } else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
           else if (jsvIsFunctionParameter(param)) {
-            JsVar *paramName = jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH);
-            // paramName is already a name (it's a function parameter)
-            if (paramName) {// could be out of memory - or maybe just not supplied!
-              jsvMakeFunctionParameter(paramName);
-              JsVar *defaultVal = jsvSkipName(param);
-              if (defaultVal) jsvUnLock(jsvSetValueOfName(paramName, defaultVal));
-              jsvAddName(functionRoot, paramName);
-              jsvUnLock(paramName);
-            }
+            JsVar *defaultVal = jsvSkipName(param);
+            jsvAddFunctionParameter(functionRoot, jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH), defaultVal);
+            jsvUnLock(defaultVal);
           }
         }
         jsvUnLock(param);

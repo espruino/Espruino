@@ -1049,13 +1049,7 @@ JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
       }
 
       if (!addedParam) {
-        JsVar *paramName = jsvNewFromEmptyString();
-        if (paramName) {
-          jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-          jsvSetValueOfName(paramName, defaultValue);
-          jsvAddName(fn, paramName);
-          jsvUnLock(paramName);
-        }
+        jsvAddFunctionParameter(fn, 0, defaultValue);
       }
       jsvUnLock(defaultValue);
       jsvObjectIteratorNext(&argIt);
