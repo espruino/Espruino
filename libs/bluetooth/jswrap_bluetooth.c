@@ -1354,13 +1354,121 @@ void jswrap_nrf_bluetooth_updateServices(JsVar *data) {
   }
 }
 
+
+/// Filter device based on a list of filters (like .requestDevice. Return true if it matches
+bool jswrap_nrf_bluetooth_filter_device(JsVar *filters, JsVar *device) {
+  bool matches = false;
+  JsvObjectIterator fit;
+  jsvObjectIteratorNew(&fit, filters);
+  while (!matches && jsvObjectIteratorHasValue(&fit)) {
+    JsVar *filter = jsvObjectIteratorGetValue(&fit);
+    matches = true;
+    JsVar *v;
+    if ((v = jsvObjectGetChild(filter, "services", 0))) {
+      // Find one service in the device's service
+      JsVar *deviceServices = jsvObjectGetChild(device, "services", 0);
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, v);
+      while (jsvObjectIteratorHasValue(&it)) {
+        bool foundService = false;
+        JsVar *uservice = jsvObjectIteratorGetValue(&it);
+        ble_uuid_t userviceUuid;
+        bleVarToUUIDAndUnLock(&userviceUuid, uservice);
+        JsvObjectIterator dit;
+        jsvObjectIteratorNew(&dit, deviceServices);
+        while (jsvObjectIteratorHasValue(&dit)) {
+          JsVar *deviceService = jsvObjectIteratorGetValue(&dit);
+          ble_uuid_t deviceServiceUuid;
+          bleVarToUUIDAndUnLock(&deviceServiceUuid, deviceService);
+          if (bleUUIDEqual(userviceUuid, deviceServiceUuid))
+            foundService = true;
+          jsvObjectIteratorNext(&dit);
+        }
+        jsvObjectIteratorFree(&dit);
+        if (!foundService) matches = false;
+        jsvObjectIteratorNext(&it);
+      }
+      jsvObjectIteratorFree(&it);
+      jsvUnLock2(v, deviceServices);
+    }
+    if ((v = jsvObjectGetChild(filter, "name", 0))) {
+      // match name exactly
+      JsVar *deviceName = jsvObjectGetChild(device, "name", 0);
+      if (!jsvIsEqual(v, deviceName))
+        matches = false;
+      jsvUnLock2(v, deviceName);
+    }
+    if ((v = jsvObjectGetChild(filter, "namePrefix", 0))) {
+      // match start of name
+      JsVar *deviceName = jsvObjectGetChild(device, "name", 0);
+      if (!jsvIsString(v) ||
+          !jsvIsString(deviceName) ||
+          jsvGetStringLength(v)>jsvGetStringLength(deviceName) ||
+          jsvCompareString(v, deviceName,0,0,true)!=0)
+        matches = false;
+      jsvUnLock2(v, deviceName);
+    }
+    // Non-standard 'id' element
+    if ((v = jsvObjectGetChild(filter, "id", 0))) {
+      JsVar *w = jsvObjectGetChild(device, "id", 0);
+      if (!jsvIsBasicVarEqual(v,w))
+        matches = false;
+      jsvUnLock2(v,w);
+    }
+    // match service data
+    if ((v = jsvObjectGetChild(filter, "serviceData", 0))) {
+      if (jsvIsObject(v)) {
+        JsvObjectIterator it;
+        jsvObjectIteratorNew(&it,v);
+        while (jsvObjectIteratorHasValue(&it)) {
+          JsVar *childName = jsvObjectIteratorGetKey(&it);
+          JsVar *serviceData = jsvObjectGetChild(device, "serviceData", 0);
+          if (!serviceData) matches = false;
+          else {
+            JsVar *child = jsvFindChildFromVar(serviceData, childName, false);
+            if (!child) matches = false;
+            jsvUnLock(child);
+          }
+          jsvUnLock2(childName, serviceData);
+          jsvObjectIteratorNext(&it);
+        }
+        jsvObjectIteratorFree(&it);
+      }
+      jsvUnLock(v);
+    }
+    // match manufacturer data
+    if ((v = jsvObjectGetChild(filter, "manufacturerData", 0))) {
+      if (jsvIsObject(v)) {
+        JsvObjectIterator it;
+        jsvObjectIteratorNew(&it,v);
+        while (jsvObjectIteratorHasValue(&it)) {
+          JsVar* manfacturera = jsvObjectIteratorGetKey(&it);
+          JsVar* manfacturerb = jsvObjectGetChild(device, "manufacturer", 0);
+          if (!jsvIsBasicVarEqual(manfacturera, manfacturerb))
+            matches = false;
+          jsvUnLock2(manfacturera, manfacturerb);
+          jsvObjectIteratorNext(&it);
+        }
+        jsvObjectIteratorFree(&it);
+      }
+      jsvUnLock(v);
+    }
+    // check if all ok
+    jsvUnLock(filter);
+    jsvObjectIteratorNext(&fit);
+  }
+  jsvObjectIteratorFree(&fit);
+  return matches;
+}
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "setScan",
     "generate" : "jswrap_nrf_bluetooth_setScan",
     "params" : [
-      ["callback","JsVar","The callback to call with received advertising packets, or undefined to stop"]
+      ["callback","JsVar","The callback to call with received advertising packets, or undefined to stop"],
+      ["options","JsVar","An optional object `{filters: ...}` (as would be passed to `NRF.requestDevice`) to filter devices by"]
     ]
 }
 
@@ -1395,6 +1503,18 @@ BluetoothDevice {
  }
 ```
 
+You can also supply a set of filters as a second argument, which will
+allow you to filter the devices you get a callback for. This really helps
+to cut down on the time spent processing JavaScript code in areas with
+a lot of Bluetooth advertisements. For example to find only devices
+with the manufacturer data 0x590 (Espruino's ID) you could do:
+
+```
+NRF.setScan(function(d) {
+  console.log(d.manufacturerData);
+}, { filters: [{ manufacturerData:{0x0590:{}} }] });
+```
+
 **Note:** BLE advertising packets can arrive quickly - faster than you'll
 be able to print them to the console. It's best only to print a few, or
 to use a function like `NRF.findDevices(..)` which will collate a list
@@ -1404,7 +1524,7 @@ of available devices.
 can draw a *lot* of power (12mA or so), so you should use it sparingly or
 you can run your battery down quickly.
 */
-void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
+void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
   /* This is called when we get data - do some processing here in the main loop
   then call the callback with it (it avoids us doing more allocations than
   needed inside the IRQ) */
@@ -1465,25 +1585,40 @@ void jswrap_nrf_bluetooth_setScan_cb(JsVar *callback, JsVar *adv) {
   if (jsvGetLength(serviceData))
     jsvObjectSetChild(device, "serviceData", serviceData);
   jsvUnLock3(data, services, serviceData);
-  jspExecuteFunction(callback, 0, 1, &device);
+
+  if (!filters || jswrap_nrf_bluetooth_filter_device(filters, device))
+    jspExecuteFunction(callback, 0, 1, &device);
   jsvUnLock(device);
 }
 
-void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
+void jswrap_nrf_bluetooth_setScan(JsVar *callback, JsVar *options) {
+  JsVar *filters = 0;
+  if (jsvIsObject(options)) {
+    filters = jsvObjectGetChild(options, "filters", 0);
+    if (filters && !jsvIsArray(filters)) {
+      jsvUnLock(filters);
+      jsExceptionHere(JSET_TYPEERROR, "requestDevice expecting an array of filters, got %t", filters);
+      return;
+    }
+  } else if (options)
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object got %t\n", options);
   // set the callback event variable
   if (!jsvIsFunction(callback)) callback=0;
   if (callback) {
-    JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_setScan_cb, JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_setScan_cb, JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS)|(JSWAT_JSVAR<<(JSWAT_BITS*2)));
     if (fn) {
+      jsvAddFunctionParameter(fn, 0, filters); // bind param 1
       jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, callback); // bind 'this'
       jsvObjectSetChild(execInfo.root, BLE_SCAN_EVENT, fn);
       jsvUnLock(fn);
     }
-  } else
+  } else {
     jsvObjectRemoveChild(execInfo.root, BLE_SCAN_EVENT);
+  }
   // either start or stop scanning
   uint32_t err_code = jsble_set_scanning(callback != 0);
   jsble_check_error(err_code);
+  jsvUnLock(filters);
 }
 
 
@@ -1494,7 +1629,7 @@ void jswrap_nrf_bluetooth_setScan(JsVar *callback) {
     "generate" : "jswrap_nrf_bluetooth_findDevices",
     "params" : [
       ["callback","JsVar","The callback to call with received advertising packets, or undefined to stop"],
-      ["time","JsVar","The time in milliseconds to scan for (defaults to 2000)"]
+      ["options","JsVar","A time in milliseconds to scan for (defaults to 2000), Or an optional object `{filters: ..., timeout : ...}` (as would be passed to `NRF.requestDevice`) to filter devices by"]
     ]
 }
 Utility function to return a list of BLE devices detected in range. Behind the scenes,
@@ -1589,7 +1724,7 @@ void jswrap_nrf_bluetooth_findDevices_found_cb(JsVar *device) {
   jsvUnLock3(found, deviceAddr, arr);
 }
 void jswrap_nrf_bluetooth_findDevices_timeout_cb() {
-  jswrap_nrf_bluetooth_setScan(0);
+  jswrap_nrf_bluetooth_setScan(0,0);
   JsVar *arr = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADV", JSV_ARRAY);
   JsVar *cb = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADVCB", 0);
   jsvObjectRemoveChild(execInfo.hiddenRoot, "BLEADV");
@@ -1599,26 +1734,33 @@ void jswrap_nrf_bluetooth_findDevices_timeout_cb() {
   }
   jsvUnLock2(arr,cb);
 }
-void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *timeout) {
+void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *options) {
+  JsVarFloat time = 2000;
   if (!jsvIsFunction(callback)) {
     jsExceptionHere(JSET_ERROR, "Expecting function for first argument, got %t", callback);
     return;
   }
-  // utility fn that uses setScan
-  JsVarFloat time = 2000;
-  if (!jsvIsUndefined(timeout)) {
-    time = jsvGetFloat(timeout);
-    if (!jsvIsNumeric(timeout) || time < 10) {
-      jsExceptionHere(JSET_ERROR, "Invalid timeout");
-      return;
-    }
+  if (jsvIsNumeric(options)) {
+    time = jsvGetFloat(options);
+    options = 0;
+  } else if (jsvIsObject(options)) {
+    JsVar *v = jsvObjectGetChild(options,"timeout",0);
+    if (v) time = jsvGetFloatAndUnLock(v);
+  } else if (options) {
+    jsExceptionHere(JSET_ERROR, "Expecting number or object, got %t", options);
+    return;
   }
+  if (isnan(time) || time < 10) {
+    jsExceptionHere(JSET_ERROR, "Invalid timeout");
+    return;
+  }
+
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "BLEADV", jsvNewEmptyArray());
   jsvObjectSetChild(execInfo.hiddenRoot, "BLEADVCB", callback);
   JsVar *fn;
   fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_findDevices_found_cb, JSWAT_VOID|(JSWAT_JSVAR<<JSWAT_BITS));
   if (fn) {
-    jswrap_nrf_bluetooth_setScan(fn);
+    jswrap_nrf_bluetooth_setScan(fn, options);
     jsvUnLock(fn);
   }
   fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_findDevices_timeout_cb, JSWAT_VOID);
@@ -2054,11 +2196,16 @@ The following filter types are implemented:
 * `services` - list of services as strings (all of which must match). 128 bit services must be in the form '01230123-0123-0123-0123-012301230123'
 * `name` - exact device name
 * `namePrefix` - starting characters of device name
+* `id` - exact device address (`id:"e9:53:86:09:89:99 random"`) (this is Espruino-specific, and is not part of the Web Bluetooth spec)
+* `serviceData` - an object containing service characteristics which must all match (`serviceData:{"1809":{}}`). Matching of actual service data is not supported yet.
+* `manufacturerData` - an object containing manufacturer UUIDs which must all match (`manufacturerData:{0x0590:{}}`). Matching of actual manufacturer data is not supported yet.
 
 ```
 NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }] }).then(function(device) { ... });
 // or
 NRF.requestDevice({ filters: [{ services: ['1823'] }] }).then(function(device) { ... });
+// or
+NRF.requestDevice({ filters: [{ manufacturerData:{0x0590:{}} }] }).then(function(device) { ... });
 ```
 
 You can also specify a timeout to wait for devices in milliseconds. The default is 2 seconds (2000):
@@ -2102,93 +2249,22 @@ Note that you'll have to keep track of the `gatt` variable so that you can
 disconnect the Bluetooth connection when you're done.
 */
 #if CENTRAL_LINK_COUNT>0
-
-/// Filter device based on a single filter
-bool jswrap_nrf_bluetooth_requestDevice_filter_device(JsVar *filter, JsVar *device) {
-  bool matches = true;
-  JsVar *v;
-  if ((v = jsvObjectGetChild(filter, "services", 0))) {
-    // Find one service in the device's service
-    JsVar *deviceServices = jsvObjectGetChild(device, "services", 0);
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, v);
-    while (jsvObjectIteratorHasValue(&it)) {
-      bool foundService = false;
-      JsVar *uservice = jsvObjectIteratorGetValue(&it);
-      ble_uuid_t userviceUuid;
-      bleVarToUUIDAndUnLock(&userviceUuid, uservice);
-      JsvObjectIterator dit;
-      jsvObjectIteratorNew(&dit, deviceServices);
-      while (jsvObjectIteratorHasValue(&dit)) {
-        JsVar *deviceService = jsvObjectIteratorGetValue(&dit);
-        ble_uuid_t deviceServiceUuid;
-        bleVarToUUIDAndUnLock(&deviceServiceUuid, deviceService);
-        if (bleUUIDEqual(userviceUuid, deviceServiceUuid))
-          foundService = true;
-        jsvObjectIteratorNext(&dit);
-      }
-      jsvObjectIteratorFree(&dit);
-      if (!foundService) matches = false;
-      jsvObjectIteratorNext(&it);
-    }
-    jsvObjectIteratorFree(&it);
-    jsvUnLock2(v, deviceServices);
-  }
-  if ((v = jsvObjectGetChild(filter, "name", 0))) {
-    // match name exactly
-    JsVar *deviceName = jsvObjectGetChild(device, "name", 0);
-    if (!jsvIsEqual(v, deviceName))
-      matches = false;
-    jsvUnLock2(v, deviceName);
-  }
-  if ((v = jsvObjectGetChild(filter, "namePrefix", 0))) {
-    // match start of name
-    JsVar *deviceName = jsvObjectGetChild(device, "name", 0);
-    if (!jsvIsString(v) ||
-        !jsvIsString(deviceName) ||
-        jsvGetStringLength(v)>jsvGetStringLength(deviceName) ||
-        jsvCompareString(v, deviceName,0,0,true)!=0)
-      matches = false;
-    jsvUnLock2(v, deviceName);
-  }
-  return matches;
-}
-
-/// Check one device against many filters
-bool jswrap_nrf_bluetooth_requestDevice_check_device(JsVar *filters, JsVar *device) {
-  bool matches = false;
-  JsvObjectIterator fit;
-  jsvObjectIteratorNew(&fit, filters);
-  while (!matches && jsvObjectIteratorHasValue(&fit)) {
-    JsVar *filter = jsvObjectIteratorGetValue(&fit);
-    matches = jswrap_nrf_bluetooth_requestDevice_filter_device(filter, device);
-    jsvUnLock(filter);
-    jsvObjectIteratorNext(&fit);
-  }
-  jsvObjectIteratorFree(&fit);
-  return matches;
-}
-
 /// Called when we timeout waiting for a device
 void jswrap_nrf_bluetooth_requestDevice_finish() {
   if (!bleInTask(BLETASK_REQUEST_DEVICE))
     return;
-  jswrap_nrf_bluetooth_setScan(0);  // stop scanning
+  jswrap_nrf_bluetooth_setScan(0,0);  // stop scanning
   bleCompleteTaskFailAndUnLock(BLETASK_REQUEST_DEVICE, jsvNewFromString("No device found matching filters"));
 }
 
 /// Called when a device is found
-void jswrap_nrf_bluetooth_requestDevice_scan(JsVar *filters, JsVar *device) {
+void jswrap_nrf_bluetooth_requestDevice_scan(JsVar *device) {
   if (!bleInTask(BLETASK_REQUEST_DEVICE))
     return;
-  // Check the device matches
-  if (jswrap_nrf_bluetooth_requestDevice_check_device(filters, device)) {
-    // Yep, it matches - we're done!
-    jswrap_nrf_bluetooth_setScan(0); // stop scanning
-    jswrap_interface_clearTimeout(bleTaskInfo /*the timeout*/); // cancel the timeout
-    bleCompleteTaskSuccess(BLETASK_REQUEST_DEVICE, device);
-  }
-  // Otherwise do nothing - keep going
+  // We know the device matches because setScan would have checked for us
+  jswrap_nrf_bluetooth_setScan(0,0); // stop scanning
+  jswrap_interface_clearTimeout(bleTaskInfo /*the timeout*/); // cancel the timeout
+  bleCompleteTaskSuccess(BLETASK_REQUEST_DEVICE, device);
 }
 #endif
 
@@ -2204,6 +2280,7 @@ JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options) {
     jsExceptionHere(JSET_TYPEERROR, "requestDevice expecting an array of filters, got %t", filters);
     return 0;
   }
+  jsvUnLock(filters);
 
   JsVarFloat timeout = jsvGetFloatAndUnLock(jsvObjectGetChild(options, "timeout", 0));
   if (isnan(timeout) || timeout<=0) timeout = 2000;
@@ -2220,10 +2297,9 @@ JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options) {
   // Now create a promise, and pass in the timeout index so we can cancel the timeout if we find something
   if (bleNewTask(BLETASK_REQUEST_DEVICE, timeoutIndex)) {
     // Start scanning
-    fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_requestDevice_scan, JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+    fn = jsvNewNativeFunction((void (*)(void))jswrap_nrf_bluetooth_requestDevice_scan, (JSWAT_JSVAR<<JSWAT_BITS));
     if (fn) {
-      jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, filters); // bind 'this'
-      jswrap_nrf_bluetooth_setScan(fn);
+      jswrap_nrf_bluetooth_setScan(fn, options);
       jsvUnLock(fn);
     }
     promise = jsvLockAgainSafe(blePromise);

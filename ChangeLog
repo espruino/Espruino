@@ -69,6 +69,7 @@
             Fix `setDeviceClockCmd: Unknown Device` when using `LoopbackB.setConsole()` on WiFi board
             Fix non-UART serial regressions (after software serial additions)
             Pixl.js: Add Pixl.setLCDPower to allow the LCD to be powered off, more than halving power consumption
+            nRF5x: Allow NRF.setScan and NRF.findDevices to take the same search filters NRF.requestDevice does (fix #1496)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
