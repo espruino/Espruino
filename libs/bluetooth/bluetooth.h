@@ -78,7 +78,7 @@ typedef struct {
 
 typedef enum  {
   BLE_NONE = 0,
-  BLE_IS_SENDING = 1,         //< sending data with jswrap_nrf_transmit_string?
+  BLE_IS_SENDING = 1,         //< sending data with jswrap_ble_transmit_string?
   BLE_IS_SCANNING = 2,        //< scanning for BLE devices?
   BLE_IS_ADVERTISING = 4,     //< currently advertising info? stops when connected
   BLE_NEEDS_SOFTDEVICE_RESTART = 8,  //< We need to reset the services we're reporting, but we can't because we're connected

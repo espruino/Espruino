@@ -711,7 +711,7 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
   }
 #ifdef BLUETOOTH
   if (humanReadableDump)
-    jswrap_nrf_dumpBluetoothInitialisation(user_callback, user_data);
+    jswrap_ble_dumpBluetoothInitialisation(user_callback, user_data);
 #endif
 }
 

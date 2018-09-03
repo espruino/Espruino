@@ -2208,12 +2208,12 @@ void jsble_advertising_stop() {
    advertising_init();
    conn_params_init();
 
-   jswrap_nrf_bluetooth_wake();
+   jswrap_ble_wake();
 }
 
 /** Completely deinitialise the BLE stack */
 void jsble_kill() {
-  jswrap_nrf_bluetooth_sleep();
+  jswrap_ble_sleep();
 
   // BLE NUS doesn't need deinitialising (no ble_nus_kill)
   bleStatus &= ~BLE_NUS_INITED;
@@ -2241,7 +2241,7 @@ void jsble_restart_softdevice() {
   jsble_kill();
   jsble_init();
   // reinitialise everything
-  jswrap_nrf_reconfigure_softdevice();
+  jswrap_ble_reconfigure_softdevice();
 }
 
 uint32_t jsble_set_scanning(bool enabled) {

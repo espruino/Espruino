@@ -540,7 +540,7 @@ void jswrap_pixljs_init() {
   }
   graphicsDrawString(&gfx,28,39,JS_VERSION);
   // Write MAC address in bottom right
-  JsVar *addr = jswrap_nrf_bluetooth_getAddress();
+  JsVar *addr = jswrap_ble_getAddress();
   char buf[20];
   jsvGetString(addr, buf, sizeof(buf));
   jsvUnLock(addr);

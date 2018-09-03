@@ -51,58 +51,58 @@ JsVar *bleGetActiveBluetoothGattServer();
 #endif
 
 // ------------------------------------------------------------------------------
-void jswrap_nrf_init();
-bool jswrap_nrf_idle();
-void jswrap_nrf_kill();
+void jswrap_ble_init();
+bool jswrap_ble_idle();
+void jswrap_ble_kill();
 // Used to dump bluetooth initialisation info for 'dump'
-void jswrap_nrf_dumpBluetoothInitialisation(vcbprintf_callback user_callback, void *user_data);
+void jswrap_ble_dumpBluetoothInitialisation(vcbprintf_callback user_callback, void *user_data);
 /** Reconfigure the softdevice (on init or after restart) to have all the services/advertising we need */
-void jswrap_nrf_reconfigure_softdevice();
+void jswrap_ble_reconfigure_softdevice();
 // ------------------------------------------------------------------------------
 
 
-void jswrap_nrf_bluetooth_disconnect();
-void jswrap_nrf_bluetooth_sleep();
-void jswrap_nrf_bluetooth_wake();
-void jswrap_nrf_bluetooth_restart();
-JsVar *jswrap_nrf_bluetooth_getAddress();
-void jswrap_nrf_bluetooth_setAddress(JsVar *address);
+void jswrap_ble_disconnect();
+void jswrap_ble_sleep();
+void jswrap_ble_wake();
+void jswrap_ble_restart();
+JsVar *jswrap_ble_getAddress();
+void jswrap_ble_setAddress(JsVar *address);
 
-JsVarFloat jswrap_nrf_bluetooth_getBattery();
-void jswrap_nrf_bluetooth_setAdvertising(JsVar *data, JsVar *options);
-JsVar *jswrap_nrf_bluetooth_getAdvertisingData(JsVar *data, JsVar *options);
-void jswrap_nrf_bluetooth_setScanResponse(JsVar *data);
-void jswrap_nrf_bluetooth_setServices(JsVar *data, JsVar *options);
-void jswrap_nrf_bluetooth_updateServices(JsVar *data);
-void jswrap_nrf_bluetooth_setScan(JsVar *callback, JsVar *options);
-void jswrap_nrf_bluetooth_findDevices(JsVar *callback, JsVar *options);
-void jswrap_nrf_bluetooth_setRSSIHandler(JsVar *callback);
-void jswrap_nrf_bluetooth_setTxPower(JsVarInt pwr);
-void jswrap_nrf_bluetooth_setLowPowerConnection(bool lowPower);
+JsVarFloat jswrap_ble_getBattery();
+void jswrap_ble_setAdvertising(JsVar *data, JsVar *options);
+JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options);
+void jswrap_ble_setScanResponse(JsVar *data);
+void jswrap_ble_setServices(JsVar *data, JsVar *options);
+void jswrap_ble_updateServices(JsVar *data);
+void jswrap_ble_setScan(JsVar *callback, JsVar *options);
+void jswrap_ble_findDevices(JsVar *callback, JsVar *options);
+void jswrap_ble_setRSSIHandler(JsVar *callback);
+void jswrap_ble_setTxPower(JsVarInt pwr);
+void jswrap_ble_setLowPowerConnection(bool lowPower);
 
-void jswrap_nrf_nfcURL(JsVar *url);
-void jswrap_nrf_nfcRaw(JsVar *payload);
-JsVar *jswrap_nrf_nfcStart(JsVar *payload);
-void jswrap_nrf_nfcStop();
-void jswrap_nrf_nfcSend(JsVar *payload);
-void jswrap_nrf_sendHIDReport(JsVar *data, JsVar *callback);
+void jswrap_nfc_URL(JsVar *url);
+void jswrap_nfc_raw(JsVar *payload);
+JsVar *jswrap_nfc_start(JsVar *payload);
+void jswrap_nfc_stop();
+void jswrap_nfc_send(JsVar *payload);
+void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback);
 
-JsVar *jswrap_nrf_bluetooth_requestDevice(JsVar *options);
-JsVar *jswrap_nrf_bluetooth_connect(JsVar *mac, JsVar *options);
-void jswrap_nrf_setWhitelist(bool whitelist);
-void jswrap_nrf_setConnectionInterval(JsVar *interval);
+JsVar *jswrap_ble_requestDevice(JsVar *options);
+JsVar *jswrap_ble_connect(JsVar *mac, JsVar *options);
+void jswrap_ble_setWhitelist(bool whitelist);
+void jswrap_ble_setConnectionInterval(JsVar *interval);
 
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
-JsVar *jswrap_nrf_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *options);
+JsVar *jswrap_ble_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *options);
 void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent);
-JsVar *jswrap_nrf_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair);
-JsVar *jswrap_nrf_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent);
+JsVar *jswrap_ble_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair);
+JsVar *jswrap_ble_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *service);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent);
 void jswrap_BluetoothRemoteGATTServer_setRSSIHandler(JsVar *parent, JsVar *callback);
 JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar *characteristic);
 JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent);
-JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteristic, JsVar *data);
-JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic);
-JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *characteristic);
-JsVar *jswrap_nrf_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *characteristic);
+JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteristic, JsVar *data);
+JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic);
+JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *characteristic);
+JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *characteristic);

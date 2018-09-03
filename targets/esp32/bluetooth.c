@@ -84,7 +84,7 @@ void jsble_restart_softdevice(){
 	if (bleStatus & BLE_IS_SCANNING) {
 		bluetooth_gap_setScan(false);
 	}
-	jswrap_nrf_reconfigure_softdevice();
+	jswrap_ble_reconfigure_softdevice();
 }
 
 void jsble_advertising_start(){
