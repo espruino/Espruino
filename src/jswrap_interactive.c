@@ -328,7 +328,7 @@ void jswrap_interface_edit(JsVar *funcName) {
     ["echoOn","bool",""]
   ]
 }
-Should TinyJS echo what you type back to you? true = yes (Default), false = no. When echo is off, the result of executing a command is not returned. Instead, you must use 'print' to send output.
+Should Espruino echo what you type back to you? true = yes (Default), false = no. When echo is off, the result of executing a command is not returned. Instead, you must use 'print' to send output.
  */
 void jswrap_interface_echo(bool echoOn) {
   if (echoOn)
@@ -511,7 +511,7 @@ JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout, JsVar *args)
     ["id","JsVar","The id returned by a previous call to setInterval"]
   ]
 }
-Clear the Interval that was created with setInterval, for example:
+Clear the Interval that was created with `setInterval`, for example:
 
 ```var id = setInterval(function () { print('foo'); }, 1000);```
 
@@ -527,7 +527,7 @@ If no argument is supplied, all timers and intervals are stopped
     ["id","JsVar","The id returned by a previous call to setTimeout"]
   ]
 }
-Clear the Timeout that was created with setTimeout, for example:
+Clear the Timeout that was created with `setTimeout`, for example:
 
 ```var id = setTimeout(function () { print('foo'); }, 1000);```
 
@@ -584,7 +584,7 @@ void jswrap_interface_clearTimeout(JsVar *idVar) {
     ["time","float","The new time period in ms"]
   ]
 }
-Change the Interval on a callback created with setInterval, for example:
+Change the Interval on a callback created with `setInterval`, for example:
 
 ```var id = setInterval(function () { print('foo'); }, 1000); // every second```
 

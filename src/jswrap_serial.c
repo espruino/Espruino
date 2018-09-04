@@ -162,14 +162,14 @@ The sixth Serial (USART) port
   "name" : "LoopbackA",
   "instanceof" : "Serial"
 }
-A loopback serial device. Data sent to LoopbackA comes out of LoopbackB and vice versa
+A loopback serial device. Data sent to `LoopbackA` comes out of `LoopbackB` and vice versa
  */
 /*JSON{
   "type" : "object",
   "name" : "LoopbackB",
   "instanceof" : "Serial"
 }
-A loopback serial device. Data sent to LoopbackA comes out of LoopbackB and vice versa
+A loopback serial device. Data sent to `LoopbackA` comes out of `LoopbackB` and vice versa
  */
 /*JSON{
   "type" : "object",
@@ -245,7 +245,7 @@ pin's value will be 0 when Espruino is ready for data and 1 when it isn't.
 By default, framing or parity errors don't create `framing` or `parity` events
 on the `Serial` object because storing these errors uses up additional
 storage in the queue. If you're intending to receive a lot of malformed
-data then the queue mioght overflow `E.getErrorFlags()` would return `FIFO_FULL`.
+data then the queue might overflow `E.getErrorFlags()` would return `FIFO_FULL`.
 However if you need to respond to `framing` or `parity` errors then 
 you'll need to use `errors:true` when initialising serial.
 */
