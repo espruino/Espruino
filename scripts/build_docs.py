@@ -262,6 +262,7 @@ for jsondata in jsondatas:
     detail.append(jsondata)
 for className in sorted(classes, key=lambda s: s.lower()):
   html("  <li><a class=\"blush\" name=\"t_"+className+"\" href=\"#"+className+"\" onclick=\"place('"+className+"');\">"+className+"</a></li>")
+  links[className] = className
   for jsondata in jsondatas:
     if "name" in jsondata and "class" in jsondata and jsondata["class"]==className:
       add_link(jsondata)
