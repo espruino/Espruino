@@ -40,6 +40,7 @@ This is the built-in JavaScript class that is the prototype for:
 * [Int8Array](/Reference#Int8Array)
 * [Uint16Array](/Reference#Uint16Array)
 * [Int16Array](/Reference#Int16Array)
+* [Uint24Array](/Reference#Uint24Array) (Espruino-specific - not standard JS)
 * [Uint32Array](/Reference#Uint32Array)
 * [Int32Array](/Reference#Int32Array)
 * [Float32Array](/Reference#Float32Array)
@@ -109,6 +110,20 @@ Arrays of this type include all the methods from [ArrayBufferView](/Reference#Ar
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
 This is the built-in JavaScript class for a typed array of 16 bit signed integers.
+
+Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+
+Arrays of this type include all the methods from [ArrayBufferView](/Reference#ArrayBufferView)
+ */
+/*JSON{
+  "type" : "class",
+  "class" : "Uint24Array",
+  "ifndef" : "SAVE_ON_FLASH",
+  "prototype" : "ArrayBufferView",
+  "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT24",
+  "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
+}
+This is the built-in JavaScript class for a typed array of 24 bit unsigned integers.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
 
@@ -302,8 +317,24 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
  */
 /*JSON{
   "type" : "constructor",
+  "class" : "Uint24Array",
+  "name" : "Uint24Array",
+  "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT24, arr, byteOffset, length)",
+  "params" : [
+    ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
+    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+  ],
+  "return" : ["JsVar","A typed array"],
+  "return_object" : "ArrayBufferView"
+}
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
+ */
+/*JSON{
+  "type" : "constructor",
   "class" : "Uint32Array",
   "name" : "Uint32Array",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT32, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
