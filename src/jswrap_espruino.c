@@ -1183,20 +1183,40 @@ JsVarInt jswrap_espruino_getAddressOf(JsVar *v, bool flatAddress) {
   "params" : [
     ["from","JsVar","An ArrayBuffer to read elements from"],
     ["to","JsVar","An ArrayBuffer to write elements too"],
-    ["map","JsVar","An array or function to use to map one element to another"],
-    ["bits","int","If specified, the number of bits per element"]
+    ["map","JsVar","An array or function to use to map one element to another, or undefined to provide no mapping"],
+    ["bits","int","If specified, the number of bits per element - otherwise use a 1:1 mapping"]
   ]
 }
 Take each element of the `from` array, look it up in `map` (or call the
 function with it as a first argument), and write it into the corresponding
 element in the `to` array.
+
+You can use an array to map:
+
+```
+var a = new Uint8Array([1,2,3,1,2,3]);
+var lut = new Uint8Array([128,129,130,131]);
+E.mapInPlace(a, a, lut);
+// a = [129, 130, 131, 129, 130, 131]
+```
+
+Or `undefined` to pass straight through, or a function to do a normal 'mapping':
+
+```
+var a = new Uint8Array([0x12,0x34,0x56,0x78]);
+var b = new Uint8Array(8);
+E.mapInPlace(a, b, undefined, 4); // 4 bits from 8 bit input -> 2x as many outputs
+// b = [1, 2, 3, 4, 5, 6, 7, 8]
+E.mapInPlace(a, b, a=>a+2, 4);
+// b = [3, 4, 5, 6, 7, 8, 9, 10]
+```
  */
 void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bits) {
   if (!jsvIsArrayBuffer(from) || !jsvIsArrayBuffer(to)) {
     jsExceptionHere(JSET_ERROR, "First 2 arguments should be array buffers");
     return;
   }
-  if (!jsvIsArray(map) && !jsvIsArrayBuffer(map) && !jsvIsFunction(map)) {
+  if (map && !jsvIsArray(map) && !jsvIsArrayBuffer(map) && !jsvIsFunction(map)) {
     jsExceptionHere(JSET_ERROR, "Third argument should be a function or array");
     return;
   }
@@ -1221,21 +1241,25 @@ void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bit
       el = jsvArrayBufferIteratorGetIntegerValue(&itFrom);
     }
 
-    JsVar *v2 = 0;
-    if (isFn) {
-      JsVar *args[2];
-      args[0] = jsvNewFromInteger(v);
-      args[1] = jsvArrayBufferIteratorGetIndex(&itFrom); // child is a variable name, create a new variable for the index
-      v2 = jspeFunctionCall(map, 0, 0, false, 2, args);
-      jsvUnLockMany(2,args);
-    } else if (jsvIsArray(map)) {
-      v2 = jsvGetArrayItem(map, v);
-    } else {
-      assert(jsvIsArrayBuffer(map));
-      v2 = jsvArrayBufferGet(map, (size_t)v);
+    if (map) {
+      JsVar *v2 = 0;
+      if (isFn) {
+        JsVar *args[2];
+        args[0] = jsvNewFromInteger(v);
+        args[1] = jsvArrayBufferIteratorGetIndex(&itFrom); // child is a variable name, create a new variable for the index
+        v2 = jspeFunctionCall(map, 0, 0, false, 2, args);
+        jsvUnLockMany(2,args);
+      } else if (jsvIsArray(map)) {
+        v2 = jsvGetArrayItem(map, v);
+      } else {
+        assert(jsvIsArrayBuffer(map));
+        v2 = jsvArrayBufferGet(map, (size_t)v);
+      }
+      jsvArrayBufferIteratorSetValue(&itTo, v2);
+      jsvUnLock(v2);
+    } else { // no map - push right through
+      jsvArrayBufferIteratorSetIntegerValue(&itTo, v);
     }
-    jsvArrayBufferIteratorSetValue(&itTo, v2);
-    jsvUnLock(v2);
     jsvArrayBufferIteratorNext(&itTo);
   }
   jsvArrayBufferIteratorFree(&itFrom);

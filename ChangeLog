@@ -73,6 +73,7 @@
             Fix buffer overrun if we have to reallocate a pointer to argument lists when calling a function (fix #1491)
             Fix stack overflow if executing regex full of hundreds of open brackets (fix #1487)
             Fix issue where STM32F4 USB could lock up if TX during heavy RX
+            Improve `E.mapInPlace` docs, and allow it to work with no map (eg pass straight through)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
