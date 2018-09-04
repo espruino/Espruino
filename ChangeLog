@@ -72,6 +72,7 @@
             nRF5x: Allow NRF.setScan and NRF.findDevices to take the same search filters NRF.requestDevice does (fix #1496)
             Fix buffer overrun if we have to reallocate a pointer to argument lists when calling a function (fix #1491)
             Fix stack overflow if executing regex full of hundreds of open brackets (fix #1487)
+            Fix issue where STM32F4 USB could lock up if TX during heavy RX
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
