@@ -74,8 +74,8 @@
             Fix issue where STM32F4 USB could lock up if TX during heavy RX
             Improve `E.mapInPlace` docs, and allow it to work with no map (eg pass straight through)
             Added non-standard Uint24Array, because it's very useful for RGB
-            ES8266: add CFLAGs to shrink binaray files (fix #1499)
-            ESP8266 fully integration of analog pin A0 (fix #1495)
+            ESP8266: add CFLAGs to shrink binaray files (fix #1499)
+            ESP8266: fully integration of analog pin A0 (fix #1495)
             ESP32: update sdk to esp-idf 3.0.1, set Espruino build tools back to master branch
 
 
