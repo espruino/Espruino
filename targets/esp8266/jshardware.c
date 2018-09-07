@@ -474,7 +474,7 @@ JshPinState jshPinGetState(Pin pin) {
       pin, g_pinState[pin], (GPIO_REG_READ(GPIO_OUT_W1TS_ADDRESS)>>pin)&1,
       (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, GPIO_INPUT_GET(pin));
   */  
-  /* reject non dialog ports */
+  /* reject non digital ports */
   if ((pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA) { 
     return JSHPINSTATE_ADC_IN;
   }
@@ -501,7 +501,7 @@ void jshPinSetValue(
     bool value //!< The new value of the pin.
   ) {
   //os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
-  /* reject non dialog ports */
+  /* reject non digital ports */
   if ((pinInfo[pin].port & JSH_PORT_MASK) != JSH_PORTD) { 
     return;
   }
@@ -528,6 +528,9 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
 
+  if ((pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA) { 
+    return NAN;
+  }
   /* handle D16 */
   if (pin == 16) {
     return (READ_PERI_REG(RTC_GPIO_IN_DATA) & 1);
@@ -535,7 +538,6 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     return GPIO_INPUT_GET(pin);
   }
 }
-
 
 JsVarFloat jshPinAnalog(Pin pin) {
   //os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
@@ -545,12 +547,15 @@ JsVarFloat jshPinAnalog(Pin pin) {
   } else {
    return NAN;
   }
-  
 }
 
 int jshPinAnalogFast(Pin pin) {
   //os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
-  return (int)system_adc_read() << 6; // left-align to 16 bits
+  if ( pin == 255 || ( pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA ) {	
+    return (int)system_adc_read() << 6; // left-align to 16 bits
+  } else {
+   return NAN;
+  }	  
 }
 
 
