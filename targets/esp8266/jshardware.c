@@ -529,7 +529,7 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
   ) {
 
   if ((pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA) { 
-    return NAN;
+    return false;
   }
   /* handle D16 */
   if (pin == 16) {
@@ -554,7 +554,7 @@ int jshPinAnalogFast(Pin pin) {
   if ( pin == 255 || ( pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA ) {	
     return (int)system_adc_read() << 6; // left-align to 16 bits
   } else {
-   return NAN;
+   return 0;
   }	  
 }
 
