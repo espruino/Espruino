@@ -507,7 +507,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       while (jsvIsFunctionParameter(param)) {
         if ((unsigned)argCount>=argPtrSize) {
           // allocate more space on stack if needed
-          unsigned int newArgPtrSize = (argPtrSize?argPtrSize:argCount)*4;
+          unsigned int newArgPtrSize = (argPtrSize?argPtrSize:(unsigned int)argCount)*4;
           size_t newArgPtrByteSize = sizeof(JsVar*)*newArgPtrSize;
           if (jsuGetFreeStack() < 256+newArgPtrByteSize) {
             jsExceptionHere(JSET_ERROR, "Insufficient stack for this many arguments");
