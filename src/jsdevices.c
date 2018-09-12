@@ -63,7 +63,7 @@ typedef enum {
 
 JshSerialDeviceState jshSerialDeviceStates[1+EV_SERIAL_MAX-EV_SERIAL_DEVICE_STATE_START];
 /// Device clear to send hardware flow control pins (PIN_UNDEFINED if not used)
-Pin jshSerialDeviceCTSPins[EV_SERIAL_MAX-EV_SERIAL_DEVICE_STATE_START];
+Pin jshSerialDeviceCTSPins[1+EV_SERIAL_MAX-EV_SERIAL_DEVICE_STATE_START];
 #define TO_SERIAL_DEVICE_STATE(X) ((X)-EV_SERIAL_DEVICE_STATE_START)
 
 // ----------------------------------------------------------------------------
