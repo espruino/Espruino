@@ -2004,6 +2004,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   assert(DEVICE_IS_USART(device));
 
   jshSetDeviceInitialised(device, true);
+  if (!DEVICE_IS_USART(device)) return;
 #ifdef USB
   if (device==EV_USBSERIAL) return;
 #endif

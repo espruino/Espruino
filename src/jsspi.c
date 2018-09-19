@@ -151,8 +151,7 @@ bool jsspiPopulateSPIInfo(
  * Select the SPI send function.
  * Get the correct SPI send function (and the data to send to it).  We do this
  * by examining the device and determining if it is hardware, software fast
- * or software regular.
- * \return True on success, false otherwise.
+ * or software regular. Return True on success, false otherwise.
  */
 bool jsspiGetSendFunction(
     JsVar           *spiDevice,  //!< The device that we want to get the SPI drivers for.
@@ -164,13 +163,13 @@ bool jsspiGetSendFunction(
   // it is a device id.
 
   IOEventFlags device = jsiGetDeviceFromClass(spiDevice);
+  JshSPIInfo inf;
 
   // See if the device is hardware or software.
   if (DEVICE_IS_SPI(device)) {
     //
     // jsiConsolePrintf("SPI is hardware\n");
     if (!jshIsDeviceInitialised(device)) {
-      JshSPIInfo inf;
       jshSPIInitInfo(&inf);
       jshSPISetup(device, &inf);
     }
@@ -181,7 +180,6 @@ bool jsspiGetSendFunction(
     // Debug
     // jsiConsolePrintf("SPI is software\n");
     JsVar *options = jsvObjectGetChild(spiDevice, DEVICE_OPTIONS_NAME, 0);
-    static JshSPIInfo inf;
     jsspiPopulateSPIInfo(&inf, options);
     jsvUnLock(options);
 
@@ -232,7 +230,7 @@ bool jsspiSend(JsVar *spiDevice, JsSpiSendFlags flags, char *buf, size_t len) {
     IOEventFlags device = jsiGetDeviceFromClass(spiDevice);
     if (DEVICE_IS_SPI(device)) jshSPIWait(device);
   }
-  return true;
+  return !jspIsInterrupted();
 }
 
 

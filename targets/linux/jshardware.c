@@ -253,8 +253,8 @@ void jshInputThread() {
       execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_INTERRUPTED;
     if (execInfo.execute & EXEC_CTRL_C)
       execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C) | EXEC_CTRL_C_WAIT;
-    // Read from the console
-    while (kbhit()) {
+    // Read from the console if we have space
+    while (kbhit() && (jshGetEventsUsed()<IOBUFFERMASK/2)) {
       int ch = getch();
       if (ch<0) break;
       jshPushIOCharEvent(EV_USBSERIAL, (char)ch);

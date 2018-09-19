@@ -659,7 +659,7 @@ static uint8_t  USBD_CDC_HID_SOF (struct _USBD_HandleTypeDef *pdev) {
                            CDC_DATA_FS_OUT_PACKET_SIZE);
   }
 
-  if (!handle->cdcState & CDC_WRITE_TX_WAIT) {
+  if (!(handle->cdcState & CDC_WRITE_TX_WAIT)) {
     // try and fill the buffer
     unsigned int len = 0;
     int c;

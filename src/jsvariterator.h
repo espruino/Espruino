@@ -16,13 +16,16 @@
 
 #include "jsvar.h"
 
+/// Callback function to be used with jsvIterateCallback
+typedef void (*jsvIterateCallbackFn)(int item, void *callbackData);
+
 /** Iterate over the contents of var, calling callback for each. Contents may be:
  *   * numeric -> output
  *   * a string -> output each character
  *   * array/arraybuffer -> call itself on each element
  *   * object -> call itself object.count times, on object.data
  */
-bool jsvIterateCallback(JsVar *var, void (*callback)(int item, void *callbackData), void *callbackData);
+bool jsvIterateCallback(JsVar *var, jsvIterateCallbackFn callback, void *callbackData);
 
 /** If jsvIterateCallback is called, how many times will it call the callback function? */
 int jsvIterateCallbackCount(JsVar *var);

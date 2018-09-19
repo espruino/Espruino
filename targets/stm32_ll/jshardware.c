@@ -667,6 +667,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
   assert(DEVICE_IS_USART(device));
 
   jshSetDeviceInitialised(device, true);
+  if (!DEVICE_IS_USART(device)) return;
 
   jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
   jshSetErrorHandlingEnabled(device, inf->errorHandling);

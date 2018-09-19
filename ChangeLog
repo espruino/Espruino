@@ -1,4 +1,3 @@
-            ESP32: update sdk to esp-idf 3.0.1, set Espruino build tools back to master branch
 	    Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
             Fix parsing of try..catch when not executing (fix #1439)
@@ -57,6 +56,29 @@
             Now check for ReferenceErrors in global scope
             Fix Array.shift (returned a NAME, rather than the value)
             Add sanity check for names returned from Functions and fix Array.pop
+            Stop characters getting dropped when pasting large amounts of data into Linux build
+            nRF5x increase JsSysTime accuracy to 2^-20 from 2^-16 - drastically improves Util Timer accuracy
+            Added support for Software Serial ports (for low baud rates, eg. 9600)
+            Fix JS state restoration issue (eg. Pixl.menu inside switch would cause errors)
+            Added Graphics.drawPoly
+            Add Graphics.asImage to turn a Graphics instance into an Image that can be used with drawImage
+            Add Graphics.createImage to allow creation of a 1 bit image direct from a string
+            Use 32 bit floats for E.FFT, not 64 (fix #1443)
+            Automatically shut down UART if both pin states are changed
+            Fix `setDeviceClockCmd: Unknown Device` when using `LoopbackB.setConsole()` on WiFi board
+            Fix non-UART serial regressions (after software serial additions)
+            Pixl.js: Add Pixl.setLCDPower to allow the LCD to be powered off, more than halving power consumption
+            nRF5x: Allow NRF.setScan and NRF.findDevices to take the same search filters NRF.requestDevice does (fix #1496)
+            Fix buffer overrun if we have to reallocate a pointer to argument lists when calling a function (fix #1491)
+            Fix stack overflow if executing regex full of hundreds of open brackets (fix #1487)
+            Fix issue where STM32F4 USB could lock up if TX during heavy RX
+            Improve `E.mapInPlace` docs, and allow it to work with no map (eg pass straight through)
+            Added non-standard Uint24Array, because it's very useful for RGB
+            ESP8266: add CFLAGs to shrink binaray files (fix #1499)
+            ESP8266: fully integration of analog pin A0 (fix #1495)
+            ESP32: update sdk to esp-idf 3.0.1, set Espruino build tools back to master branch
+            Allow btoa to work for arrays as well as Strings (fix #1509)
+
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

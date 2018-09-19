@@ -365,7 +365,10 @@ void jshPinSetState(
   ) {
   
   os_printf("> ESP8266: jshPinSetState state: %s\n",pinStateToString(state));
-
+  /* reject analog port */
+  if ((pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA) { 
+    return ;
+  }
   /* handle D16 */
   if (pin == 16) {
     switch(state){
@@ -470,7 +473,11 @@ JshPinState jshPinGetState(Pin pin) {
     os_printf("> ESP8266: pin %d, pinState %d, reg_read %d, out_addr: %d input get %d\n", 
       pin, g_pinState[pin], (GPIO_REG_READ(GPIO_OUT_W1TS_ADDRESS)>>pin)&1,
       (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, GPIO_INPUT_GET(pin));
-  */
+  */  
+  /* reject non digital ports */
+  if ((pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA) { 
+    return JSHPINSTATE_ADC_IN;
+  }
   int rc = g_pinState[pin];
   if (pin == 16) {
     if ((uint8)(READ_PERI_REG(RTC_GPIO_IN_DATA) & 1) &1) {
@@ -494,6 +501,10 @@ void jshPinSetValue(
     bool value //!< The new value of the pin.
   ) {
   //os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
+  /* reject non digital ports */
+  if ((pinInfo[pin].port & JSH_PORT_MASK) != JSH_PORTD) { 
+    return;
+  }
   /* handle GPIO16 */
   if (pin == 16) {
     WRITE_PERI_REG(RTC_GPIO_OUT,(READ_PERI_REG(RTC_GPIO_OUT) & (uint32)0xfffffffe) | (uint32)(value & 1));
@@ -516,6 +527,10 @@ void jshPinSetValue(
 bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
+
+  if ((pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA) { 
+    return false;
+  }
   /* handle D16 */
   if (pin == 16) {
     return (READ_PERI_REG(RTC_GPIO_IN_DATA) & 1);
@@ -524,15 +539,23 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
   }
 }
 
-
 JsVarFloat jshPinAnalog(Pin pin) {
   //os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
-  return (JsVarFloat)system_adc_read() / 1023.0;
+
+  if ( pin == 255 || ( pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA ) {
+    return (JsVarFloat)system_adc_read() / 1024.0;    
+  } else {
+   return NAN;
+  }
 }
 
 int jshPinAnalogFast(Pin pin) {
   //os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
-  return (int)system_adc_read() << 6; // left-align to 16 bits
+  if ( pin == 255 || ( pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA ) {	
+    return (int)system_adc_read() << 6; // left-align to 16 bits
+  } else {
+   return 0;
+  }	  
 }
 
 

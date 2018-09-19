@@ -22,9 +22,9 @@
  * object -> call itself object.count times, on object.data
  */
 bool jsvIterateCallback(
-    JsVar *data,                                    // The data to iterate over.
-	void (*callback)(int item, void *callbackData), // The callback function invoke.
-	void *callbackData                              // Data to be passed to the callback function
+    JsVar *data,
+    jsvIterateCallbackFn callback,
+    void *callbackData
   ) {
   bool ok = true;
   // Handle the data being a single numeric.
@@ -345,13 +345,12 @@ static void jsvArrayBufferIteratorGetValueData(JsvArrayBufferIterator *it, char 
 
 static JsVarInt jsvArrayBufferIteratorDataToInt(JsvArrayBufferIterator *it, char *data) {
   unsigned int dataLen = JSV_ARRAYBUFFER_GET_SIZE(it->type);
-  JsVarInt v = 0;
-  if (dataLen==1) v = *(int8_t*)data;
-  else if (dataLen==2) v = *(short*)data;
-  else if (dataLen==4) return *(int*)data;
-  else assert(0);
-  if ((!JSV_ARRAYBUFFER_IS_SIGNED(it->type)))
-    v = v & (JsVarInt)((1UL << (8*dataLen))-1);
+  unsigned int bits = 8*dataLen;
+  JsVarInt mask = (JsVarInt)((1UL << bits)-1);
+  JsVarInt v = *(int*)data;
+  v = v & mask;
+  if (JSV_ARRAYBUFFER_IS_SIGNED(it->type) && (v&(JsVarInt)(1UL<<(bits-1))))
+    v |= ~mask;
   return v;
 }
 
@@ -415,12 +414,9 @@ static void jsvArrayBufferIteratorIntToData(char *data, unsigned int dataLen, in
     if (v<0) v=0;
     if (v>255) v=255;
   }
-  // we don't care about sign when writing - as it gets truncated
-  if (dataLen==1) { data[0] = (char)v; }
-  else if (dataLen==2) { *(short*)data = (short)v; }
-  else if (dataLen==4) { *(int*)data = (int)v; }
-  else if (dataLen==8) { *(long long*)data = (long long)v; }
-  else assert(0);
+  // we don't care about sign when writing (or any extra bytes!) - as it gets truncated
+  if (dataLen==8) *(long long*)data = (long long)v;
+  else *(int*)data = (int)v;
 }
 
 static void jsvArrayBufferIteratorFloatToData(char *data,  unsigned int dataLen, int type, JsVarFloat v) {

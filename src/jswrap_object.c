@@ -445,8 +445,9 @@ Add a new property to the Object. 'Desc' is an object with the following fields:
 * `writable` (bool = false) - can the value be changed with the assignment operator?
 * `get` (function) - the getter function, or undefined if no getter (only supported on some platforms)
 * `set` (function) - the setter function, or undefined if no setter (only supported on some platforms)
-*
+
 **Note:** `configurable`, `enumerable`, `writable`, `get`, and `set` are not implemented and will be ignored.
+
  */
 JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc) {
   if (!jsvIsObject(parent)) {
@@ -1048,13 +1049,7 @@ JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
       }
 
       if (!addedParam) {
-        JsVar *paramName = jsvNewFromEmptyString();
-        if (paramName) {
-          jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-          jsvSetValueOfName(paramName, defaultValue);
-          jsvAddName(fn, paramName);
-          jsvUnLock(paramName);
-        }
+        jsvAddFunctionParameter(fn, 0, defaultValue);
       }
       jsvUnLock(defaultValue);
       jsvObjectIteratorNext(&argIt);

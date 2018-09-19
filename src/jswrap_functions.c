@@ -90,9 +90,7 @@ JsVar *jswrap_function_constructor(JsVar *args) {
       JsVar *paramName = jsvNewFromString("\xFF");
       if (paramName) {
         jsvAppendStringVarComplete(paramName, s);
-        jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-        jsvAddName(fn, paramName);
-        jsvUnLock(paramName);
+        jsvAddFunctionParameter(fn, paramName, 0);
       }
       jsvUnLock(s);
     }
@@ -279,7 +277,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
     jsExceptionHere(JSET_ERROR, "Expecting a string or array, got %t", binaryData);
     return 0;
   }
-  size_t inputLength = jsvGetStringLength(binaryData);
+  size_t inputLength = jsvGetLength(binaryData);
   size_t outputLength = ((inputLength+2)/3)*4;
   JsVar* base64Data = jsvNewStringOfLength((unsigned int)outputLength, NULL);
   if (!base64Data) return 0;

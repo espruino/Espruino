@@ -523,7 +523,7 @@ JsVarFloat jswrap_puck_light() {
       delay = 50000;
     jshDelayMicroseconds(delay);
   }
-  JsVarFloat v = jswrap_nrf_bluetooth_getBattery();
+  JsVarFloat v = jswrap_ble_getBattery();
   JsVarFloat f = jshPinAnalog(LED1_PININDEX)*v/(3*0.45);
   if (f>1) f=1;
   // turn the red LED back on if it was on before
