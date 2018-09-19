@@ -1,0 +1,124 @@
+From 9724dce991a85c39326908fdba988c7c58e453f5 Mon Sep 17 00:00:00 2001
+From: AntiCat <github@anticat.ch>
+Date: Fri, 26 May 2017 02:48:47 +0200
+Subject: [PATCH 7/7] NFC: Removed superfluous dynamic output buffer
+
+The static buffer can be used for input as well as
+output. Hence there is no need to waste JVars
+---
+ .../components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c   | 25 ++++++++++++----------
+ .../components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h   |  5 ++---
+ 2 files changed, 16 insertions(+), 14 deletions(-)
+
+diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+index aa560152..77a6d252 100755
+--- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
++++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+@@ -118,7 +118,7 @@ NRF_LOG_MODULE_REGISTER();
+ #define NFCID1_DEFAULT_LENGHT       NFCID1_DOUBLE_SIZE                          /**< Length of NFCID1 if user does not provide one */
+ #define NFCID1_MAX_LENGHT           NFCID1_TRIPLE_SIZE                          /**< Maximum length of NFCID1 */
+ 
+-#define NFC_RX_BUFFER_SIZE          64u                                         /**< NFC Rx data buffer size */
++#define NFC_BUFFER_SIZE             255u                                        /**< NFC data buffer size */
+ #define NFC_SLP_REQ_CMD             0x50u                                       /**< NFC SLP_REQ command identifier */
+ #define NFC_CRC_SIZE                2u                                          /**< CRC size in bytes */
+ 
+@@ -156,7 +156,7 @@ static void hal_nfc_internal_bytes_setup(void);
+ static uint8_t                      m_nfc_internal[T2T_INTERNAL_BYTES_NR] = {0};       /**< Cache of internal tag memory (first 10 bytes) */
+ static hal_nfc_callback_t           m_nfc_lib_callback = (hal_nfc_callback_t) NULL;    /**< Callback to nfc_lib layer */
+ static void *                       m_nfc_lib_context;                                 /**< Callback execution context */
+-static volatile uint8_t             m_nfc_rx_buffer[NFC_RX_BUFFER_SIZE]   = {0};       /**< Buffer for NFC Rx data */
++static volatile uint8_t             m_nfc_buffer[NFC_BUFFER_SIZE]         = {0};       /**< Buffer for NFC Rx data */
+ static volatile bool                m_slp_req_received                    = false;     /**< Flag indicating that SLP_REQ Command was received */
+ static volatile bool                m_field_on                            = false;     /**< Flag indicating that NFC Tag field is present */
+ static nrf_drv_clock_handler_item_t m_clock_handler_item;                              /**< Clock event handler item structure */
+@@ -607,11 +607,14 @@ ret_code_t hal_nfc_send(const uint8_t * p_data, size_t data_length)
+     {
+         return NRF_ERROR_INVALID_STATE;
+     }
+-    if (data_length == 0)
++    if ((data_length == 0) || (data_length > NFC_BUFFER_SIZE))
+     {
+         return NRF_ERROR_DATA_SIZE;
+     }
+ 
++    /* Copy data into input and output buffer */
++    memcpy(m_nfc_buffer, p_data, NFC_BUFFER_SIZE);
++
+     /* Ignore previous TX END events, SW takes care only for data frames which tranmission is triggered in this function */
+     nrf_nfct_event_clear(&NRF_NFCT->EVENTS_TXFRAMEEND);
+ 
+@@ -621,7 +624,7 @@ ret_code_t hal_nfc_send(const uint8_t * p_data, size_t data_length)
+                                 | (NFCT_TXD_FRAMECONFIG_SOF_SoF << NFCT_TXD_FRAMECONFIG_SOF_Pos)
+                                 | (NFCT_TXD_FRAMECONFIG_CRCMODETX_CRC16TX << NFCT_TXD_FRAMECONFIG_CRCMODETX_Pos);
+ 
+-    NRF_NFCT->PACKETPTR       = (uint32_t) p_data;
++    NRF_NFCT->PACKETPTR       = (uint32_t) m_nfc_buffer;
+     NRF_NFCT->TXD.AMOUNT      = (data_length << NFCT_TXD_AMOUNT_TXDATABYTES_Pos) & NFCT_TXD_AMOUNT_TXDATABYTES_Msk;
+     NRF_NFCT->INTENSET        = (NFCT_INTENSET_TXFRAMEEND_Enabled << NFCT_INTENSET_TXFRAMEEND_Pos);
+     NRF_NFCT->TASKS_STARTTX   = 1;
+@@ -729,12 +732,12 @@ void NFCT_IRQHandler(void)
+         NRF_NFCT->FRAMEDELAYMAX = 0x1000UL; //302us, taken from datasheet
+ 
+         /* Frame is garbage, wait for next frame reception */
+-        if((rx_data_size == 0) || (rx_data_size > NFC_RX_BUFFER_SIZE))
++        if((rx_data_size == 0) || (rx_data_size > NFC_BUFFER_SIZE))
+         {
+             NRF_NFCT->TASKS_ENABLERXDATA = 1;
+         } else
+         /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
+-        if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
++        if(m_nfc_buffer[0] == NFC_SLP_REQ_CMD)
+         {
+             m_slp_req_received = true;
+ 
+@@ -750,7 +753,7 @@ void NFCT_IRQHandler(void)
+             /* This callback should trigger transmission of a Response */
+             m_nfc_lib_callback(m_nfc_lib_context,
+                                HAL_NFC_EVENT_DATA_RECEIVED,
+-                               (void*)m_nfc_rx_buffer,
++                               (void*)m_nfc_buffer,
+                                rx_data_size);
+         }
+ 
+@@ -765,8 +768,8 @@ void NFCT_IRQHandler(void)
+         NRF_NFCT->INTENCLR = (NFCT_INTENCLR_TXFRAMEEND_Clear << NFCT_INTENCLR_TXFRAMEEND_Pos);
+ 
+         /* Set up for reception */
+-        NRF_NFCT->PACKETPTR          = (uint32_t) m_nfc_rx_buffer;
+-        NRF_NFCT->MAXLEN             = NFC_RX_BUFFER_SIZE;
++        NRF_NFCT->PACKETPTR          = (uint32_t) m_nfc_buffer;
++        NRF_NFCT->MAXLEN             = NFC_BUFFER_SIZE;
+         NRF_NFCT->TASKS_ENABLERXDATA = 1;
+ 
+         if (m_nfc_lib_callback != NULL)
+@@ -785,8 +788,8 @@ void NFCT_IRQHandler(void)
+         nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXERROR);
+ 
+         /* Set up registers for EasyDMA and start receiving packets */
+-        NRF_NFCT->PACKETPTR          = (uint32_t) m_nfc_rx_buffer;
+-        NRF_NFCT->MAXLEN             = NFC_RX_BUFFER_SIZE;
++        NRF_NFCT->PACKETPTR          = (uint32_t) m_nfc_buffer;
++        NRF_NFCT->MAXLEN             = NFC_BUFFER_SIZE;
+         NRF_NFCT->TASKS_ENABLERXDATA = 1;
+ 
+         NRF_NFCT->INTENSET = (NFCT_INTENSET_RXFRAMEEND_Enabled << NFCT_INTENSET_RXFRAMEEND_Pos) |
+diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
+index 64ff3172..bce26cf6 100644
+--- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
++++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
+@@ -161,9 +161,8 @@ ret_code_t hal_nfc_start(void);
+ 
+ /** @brief Function for sending a packet to the connected NFC reader.
+   *
+-  * The provided data buffer belongs to the caller and is guaranteed to be
+-  * valid until the HAL_NFC_EVENT_DATA_TRANSMITTED event is received by the
+-  * callback.
++  * The provided data buffer belongs to the caller and may be freed after this
++  * function completes.
+   *
+   * @note Provided pointer must point to RAM region.
+   *
+-- 
+2.16.0
+
