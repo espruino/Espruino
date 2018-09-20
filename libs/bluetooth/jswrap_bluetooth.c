@@ -2903,7 +2903,8 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattcharacteristi
     "params" : [
       ["data","JsVar","The data to write"]
     ],
-    "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is written" ]
+    "return" : ["JsVar", "A Promise that is resolved (or rejected) when the characteristic is written" ],
+    "#if" : "defined(NRF52) || defined(ESP32)"
 }
 
 Write a characteristic's value

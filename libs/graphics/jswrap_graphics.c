@@ -456,6 +456,7 @@ void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "fillCircle",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_fillCircle",
   "params" : [
     ["x","int32","The X axis"],
@@ -475,6 +476,7 @@ Draw a filled circle in the Foreground Color
   "type" : "method",
   "class" : "Graphics",
   "name" : "drawCircle",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_drawCircle",
   "params" : [
     ["x","int32","The X axis"],
@@ -1302,6 +1304,7 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "scroll",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_scroll",
   "params" : [
     ["x","int32","X direction. >0 = to right"],
