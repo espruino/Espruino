@@ -1184,7 +1184,7 @@ JsVarInt jswrap_espruino_getAddressOf(JsVar *v, bool flatAddress) {
     ["from","JsVar","An ArrayBuffer to read elements from"],
     ["to","JsVar","An ArrayBuffer to write elements too"],
     ["map","JsVar","An array or function to use to map one element to another, or undefined to provide no mapping"],
-    ["bits","int","If specified, the number of bits per element - otherwise use a 1:1 mapping"]
+    ["bits","int","If specified, the number of bits per element (MSB first) - otherwise use a 1:1 mapping. If negative, use LSB first."]
   ]
 }
 Take each element of the `from` array, look it up in `map` (or call the
@@ -1205,10 +1205,19 @@ Or `undefined` to pass straight through, or a function to do a normal 'mapping':
 ```
 var a = new Uint8Array([0x12,0x34,0x56,0x78]);
 var b = new Uint8Array(8);
-E.mapInPlace(a, b, undefined, 4); // 4 bits from 8 bit input -> 2x as many outputs
+E.mapInPlace(a, b, undefined); // straight through
+// b = [0x12,0x34,0x56,0x78,0,0,0,0]
+E.mapInPlace(a, b, undefined, 4); // 4 bits from 8 bit input -> 2x as many outputs, msb-first
 // b = [1, 2, 3, 4, 5, 6, 7, 8]
+ E.mapInPlace(a, b, undefined, -4); // 4 bits from 8 bit input -> 2x as many outputs, lsb-first
+// b = [2, 1, 4, 3, 6, 5, 8, 7]
 E.mapInPlace(a, b, a=>a+2, 4);
 // b = [3, 4, 5, 6, 7, 8, 9, 10]
+var b = new Uint16Array(4);
+E.mapInPlace(a, b, undefined, 12); // 12 bits from 8 bit input, msb-first
+// b = [0x123, 0x456, 0x780, 0]
+E.mapInPlace(a, b, undefined, -12); // 12 bits from 8 bit input, lsb-first
+// b = [0x412, 0x563, 0x078, 0]
 ```
  */
 void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bits) {
@@ -1222,24 +1231,38 @@ void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bit
   }
   bool isFn = jsvIsFunction(map);
   int bitsFrom = 8*(int)JSV_ARRAYBUFFER_GET_SIZE(from->varData.arraybuffer.type);
-  if (bits<=0 || bits>bitsFrom) bits = bitsFrom;
-  int b = 0;
-  JsVarInt el;
+  bool msbFirst = true;
+  if (bits<0) {
+    bits=-bits;
+    msbFirst = false;
+  }
+  if (bits==0) bits = bitsFrom;
 
   JsvArrayBufferIterator itFrom,itTo;
   jsvArrayBufferIteratorNew(&itFrom, from, 0);
-  el = jsvArrayBufferIteratorGetIntegerValue(&itFrom);
+  JsVarInt el = 0;
+  int b = 0;
+
   jsvArrayBufferIteratorNew(&itTo, to, 0);
-  while (jsvArrayBufferIteratorHasElement(&itFrom) &&
-      jsvArrayBufferIteratorHasElement(&itTo)) {
-    JsVarInt v = (el>>(bitsFrom-bits)) & ((1<<bits)-1);
-    el <<= bits;
-    b += bits;
-    if (b >= bitsFrom) {
-      b = 0;
+  while ((jsvArrayBufferIteratorHasElement(&itFrom) || b>=bits) &&
+         jsvArrayBufferIteratorHasElement(&itTo)) {
+
+    while (b < bits) {
+      if (msbFirst) el = (el<<bitsFrom) | jsvArrayBufferIteratorGetIntegerValue(&itFrom);
+      else el |= jsvArrayBufferIteratorGetIntegerValue(&itFrom) << b;
       jsvArrayBufferIteratorNext(&itFrom);
-      el = jsvArrayBufferIteratorGetIntegerValue(&itFrom);
+      b += bitsFrom;
     }
+
+    JsVarInt v;
+    if (msbFirst) {
+      v = (el>>(b-bits)) & ((1<<bits)-1);
+    } else {
+      v = el & ((1<<bits)-1);
+      el >>= bits;
+    }
+    b -= bits;
+
 
     if (map) {
       JsVar *v2 = 0;

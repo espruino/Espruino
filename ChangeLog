@@ -78,7 +78,7 @@
             ESP8266: fully integration of analog pin A0 (fix #1495)
             ESP32: update sdk to esp-idf 3.0.1, set Espruino build tools back to master branch
             Allow btoa to work for arrays as well as Strings (fix #1509)
-
+            Allow E.mapInPlace to merge bits from multiple source elements, also add option for msb/lsb first
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
