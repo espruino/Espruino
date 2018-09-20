@@ -81,6 +81,7 @@
             Allow E.mapInPlace to merge bits from multiple source elements, also add option for msb/lsb first
             Remove Graphics.scroll/drawCircle/fillCircle on devices with low flash to allow builds to fit again
             Remove BluetoothRemoteGATTCharacteristic.writeValue on NRF51 (accidental inclusion - it's not required)
+            Double IO buffer size to 256 (1k bytes) on boards with 96k of RAM or more (or NRF52)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

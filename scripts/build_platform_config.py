@@ -316,8 +316,15 @@ if LINUX:
   bufferSizeTX = 256
   bufferSizeTimer = 16
 else:
-  bufferSizeIO = 64 if board.chip["ram"]<20 else 128
-  bufferSizeTX = 32 if board.chip["ram"]<20 else 128
+  # IO buffer - for received chars, setWatch, etc
+  bufferSizeIO = 64
+  if board.chip["ram"]>=20: bufferSizeIO = 128
+  if board.chip["ram"]>=96: bufferSizeIO = 256
+  # NRF52 needs this as Bluetooth traffic is funnelled through the buffer
+  if board.chip["family"]=="NRF52": bufferSizeIO = 256
+  # TX buffer - for print/write/etc
+  bufferSizeTX = 32 
+  if board.chip["ram"]>=20: bufferSizeTX = 128
   bufferSizeTimer = 4 if board.chip["ram"]<20 else 16
 
 if 'util_timer_tasks' in board.info:
