@@ -30,25 +30,10 @@
 #include "jsparse.h"
 
 unsigned int nrf_utils_get_baud_enum(int baud) {
-  switch (baud) {
-    case 1200: return UART_BAUDRATE_BAUDRATE_Baud1200;
-    case 2400: return UART_BAUDRATE_BAUDRATE_Baud2400;
-    case 4800: return UART_BAUDRATE_BAUDRATE_Baud4800;
-    case 9600: return UART_BAUDRATE_BAUDRATE_Baud9600;
-    case 14400: return UART_BAUDRATE_BAUDRATE_Baud14400;
-    case 19200: return UART_BAUDRATE_BAUDRATE_Baud19200;
-    case 28800: return UART_BAUDRATE_BAUDRATE_Baud28800;
-    case 38400: return UART_BAUDRATE_BAUDRATE_Baud38400;
-    case 57600: return UART_BAUDRATE_BAUDRATE_Baud57600;
-    case 76800: return UART_BAUDRATE_BAUDRATE_Baud76800;
-    case 115200: return UART_BAUDRATE_BAUDRATE_Baud115200;
-    case 230400: return UART_BAUDRATE_BAUDRATE_Baud230400;
-    case 250000: return UART_BAUDRATE_BAUDRATE_Baud250000;
-    case 460800: return UART_BAUDRATE_BAUDRATE_Baud460800;
-    case 921600: return UART_BAUDRATE_BAUDRATE_Baud921600;
-    case 1000000: return UART_BAUDRATE_BAUDRATE_Baud1M;
-    default: return 0; // error
-  }
+  // https://devzone.nordicsemi.com/f/nordic-q-a/391/uart-baudrate-register-values#post-id-1194
+  uint64_t br = (((uint64_t)baud) * (1<<25)) / 125000;
+  if (br > 0xFFFFFFFF) return 0;
+  return ((uint32_t)br + 0x800) & 0xFFFFF000;
 }
 
 // Configure the low frequency clock to use the external 32.768 kHz crystal as a source. Start this clock.
