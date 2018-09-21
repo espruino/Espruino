@@ -1180,8 +1180,8 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
    * forces a new child to be blindly created. It works on Getters/Setters because
    * we *always* run those rather than adding them.
    */
-  if (parent && jsvIsName(a) && !jsvIsNewChild(a)) {
-    JsVar *value = jsvGetValueOfName(a);
+  if (parent && jsvIsBasicName(a) && !jsvIsNewChild(a)) {
+    JsVar *value = jsvLockSafe(jsvGetFirstChild(a));
     if (jsvIsGetterOrSetter(value)) { // no need to do this for functions since we've just executed whatever we needed to
       JsVar *nameVar = jsvCopyNameOnly(a,false,true);
       JsVar *newChild = jsvCreateNewChild(parent, nameVar, value);

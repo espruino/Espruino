@@ -411,6 +411,7 @@ extern bool jsvIsUndefined(const JsVar *v);
 extern bool jsvIsNull(const JsVar *v);
 extern bool jsvIsBasic(const JsVar *v); ///< Is this *not* an array/object/etc
 extern bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
+bool jsvIsBasicName(const JsVar *v); ///< Simple NAME that links to a variable via firstChild
 /// Names with values have firstChild set to a value - AND NOT A REFERENCE
 extern bool jsvIsNameWithValue(const JsVar *v);
 extern bool jsvIsNameInt(const JsVar *v);
