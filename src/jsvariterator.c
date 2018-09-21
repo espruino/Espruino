@@ -346,7 +346,7 @@ static void jsvArrayBufferIteratorGetValueData(JsvArrayBufferIterator *it, char 
 static JsVarInt jsvArrayBufferIteratorDataToInt(JsvArrayBufferIterator *it, char *data) {
   unsigned int dataLen = JSV_ARRAYBUFFER_GET_SIZE(it->type);
   unsigned int bits = 8*dataLen;
-  JsVarInt mask = (JsVarInt)((1UL << bits)-1);
+  JsVarInt mask = (JsVarInt)((1ULL << bits)-1);
   JsVarInt v = *(int*)data;
   v = v & mask;
   if (JSV_ARRAYBUFFER_IS_SIGNED(it->type) && (v&(JsVarInt)(1UL<<(bits-1))))
