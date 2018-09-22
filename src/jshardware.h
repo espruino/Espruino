@@ -288,6 +288,7 @@ typedef struct {
   Pin pinMOSI;               //!< Pin to use for Master Out/Slave In.
   unsigned char spiMode;     //!< \see JshSPIFlags
   bool spiMSB;               //!< MSB first?
+  int numBits;               //!< Number of bits per send, default 8
 } PACKED_FLAGS JshSPIInfo;
 
 
