@@ -325,7 +325,11 @@ JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
   return conv;
 }
 
+#ifdef SAVE_ON_FLASH_MATH
+#define FFTDATATYPE double
+#else
 #define FFTDATATYPE float
+#endif
 
 // http://paulbourke.net/miscellaneous/dft/
 /*
@@ -423,7 +427,39 @@ result `sqrt(r*r+i*i)`.
 In order to perform the FFT, there has to be enough room on the stack to allocate two arrays of 32 bit
 floating point numbers - this will limit the maximum size of FFT possible to around 1024 items on
 most platforms.
+
+**Note:** on the Original Espruino board, FFTs are performed in 64bit arithmetic as there isn't
+space to include the 32 bit maths routines (2x more RAM is required).
  */
+void _jswrap_espruino_FFT_getData(double *dst, JsVar *src, size_t length) {
+  JsvIterator it;
+  jsvIteratorNew(&it, src, JSIF_EVERY_ARRAY_ELEMENT);
+  size_t i=0;
+  while (i<length && jsvIteratorHasElement(&it)) {
+    dst[i++] = (FFTDATATYPE)jsvIteratorGetFloatValue(&it);
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+  while (i<length)
+    dst[i++]=0;
+}
+void _jswrap_espruino_FFT_setData(JsVar *dst, double *src, double *srcModulus, size_t length) {
+  JsvIterator it;
+  jsvIteratorNew(&it, dst, JSIF_EVERY_ARRAY_ELEMENT);
+  size_t i=0;
+  while (i<length && jsvIteratorHasElement(&it)) {
+    JsVarFloat f;
+    if (srcModulus)
+      f = jswrap_math_sqrt(src[i]*src[i] + srcModulus[i]*srcModulus[i]);
+    else
+      f = src[i];
+
+    jsvUnLock(jsvIteratorSetValue(&it, jsvNewFromFloat(f)));
+    i++;
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+}
 void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   if (!(jsvIsIterable(arrReal)) ||
       !(jsvIsUndefined(arrImag) || jsvIsIterable(arrImag))) {
@@ -445,64 +481,23 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
     return;
   }
 
-  FFTDATATYPE *vReal = (FFTDATATYPE*)alloca(sizeof(FFTDATATYPE)*pow2);
-  FFTDATATYPE *vImag = (FFTDATATYPE*)alloca(sizeof(FFTDATATYPE)*pow2);
+  FFTDATATYPE *vReal = (FFTDATATYPE*)alloca(sizeof(FFTDATATYPE)*pow2*2);
+  FFTDATATYPE *vImag = &vReal[pow2];
 
   unsigned int i;
   // load data
-  JsvIterator it;
-  jsvIteratorNew(&it, arrReal, JSIF_EVERY_ARRAY_ELEMENT);
-  i=0;
-  while (jsvIteratorHasElement(&it)) {
-    vReal[i++] = (FFTDATATYPE)jsvIteratorGetFloatValue(&it);
-    jsvIteratorNext(&it);
-  }
-  jsvIteratorFree(&it);
-  while (i<pow2)
-    vReal[i++]=0;
-
-  i=0;
-  if (jsvIsIterable(arrImag)) {
-    jsvIteratorNew(&it, arrImag, JSIF_EVERY_ARRAY_ELEMENT);
-    while (i<pow2 && jsvIteratorHasElement(&it)) {
-      vImag[i++] = (FFTDATATYPE)jsvIteratorGetFloatValue(&it);
-      jsvIteratorNext(&it);
-    }
-    jsvIteratorFree(&it);
-  }
-  while (i<pow2)
-    vImag[i++]=0;
+  _jswrap_espruino_FFT_getData(vReal, arrReal, pow2);
+  _jswrap_espruino_FFT_getData(vImag, arrImag, pow2);
 
   // do FFT
   FFT(inverse ? -1 : 1, order, vReal, vImag);
 
   // Put the results back
   // If we had imaginary data then DON'T modulus the result
-  bool useModulus = !jsvIsIterable(arrImag);
-
-  jsvIteratorNew(&it, arrReal, JSIF_EVERY_ARRAY_ELEMENT);
-  i=0;
-  while (jsvIteratorHasElement(&it)) {
-    JsVarFloat f;
-    if (useModulus)
-      f = jswrap_math_sqrt(vReal[i]*vReal[i] + vImag[i]*vImag[i]);
-    else
-      f = vReal[i];
-
-    jsvUnLock(jsvIteratorSetValue(&it, jsvNewFromFloat(f)));
-    i++;
-    jsvIteratorNext(&it);
-  }
-  jsvIteratorFree(&it);
-  if (jsvIsIterable(arrImag)) {
-    jsvIteratorNew(&it, arrImag, JSIF_EVERY_ARRAY_ELEMENT);
-    i=0;
-    while (jsvIteratorHasElement(&it)) {
-      jsvUnLock(jsvIteratorSetValue(&it, jsvNewFromFloat(vImag[i++])));
-      jsvIteratorNext(&it);
-    }
-    jsvIteratorFree(&it);
-  }
+  bool hasImagResult = jsvIsIterable(arrImag);
+  _jswrap_espruino_FFT_setData(arrReal, vReal, hasImagResult?0:vImag, pow2);
+  if (hasImagResult)
+    _jswrap_espruino_FFT_setData(arrImag, vImag, 0, pow2);
 }
 
 /*JSON{

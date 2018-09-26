@@ -84,6 +84,7 @@
             Double IO buffer size to 256 (1k bytes) on boards with 96k of RAM or more (or NRF52)
             nRF5x: allow arbirtary baud rates to be specified for UART
             On devices with low flash, ensure atan2 uses the slower/smaller atan implementation
+            Move FFT back to 64 bit if low flash (it uses less memory!) and optimise for flash space
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
