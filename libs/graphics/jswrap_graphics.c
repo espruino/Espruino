@@ -284,7 +284,7 @@ JsVar *jswrap_graphics_createSDL(int width, int height) {
   "type" : "staticmethod",
   "class" : "Graphics",
   "name" : "createImage",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_createImage",
   "params" : [
     ["str","JsVar","A String containing newline-separated "]
@@ -1341,7 +1341,7 @@ void jswrap_graphics_scroll(JsVar *parent, int xdir, int ydir) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "asBMP",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_asBMP",
   "return" : ["JsVar","A String representing the Graphics as a Windows BMP file (or 'undefined' if not possible)"]
 }
@@ -1405,7 +1405,7 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "asURL",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_asURL",
   "return" : ["JsVar","A String representing the Graphics as a URL (or 'undefined' if not possible)"]
 }
@@ -1428,7 +1428,7 @@ JsVar *jswrap_graphics_asURL(JsVar *parent) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "dump",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_dump"
 }
 Output this image as a bitmap URL. The Espruino Web IDE can detect the data on the console and render the image inline automatically.
