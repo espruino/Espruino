@@ -283,6 +283,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
     if (DEVICE_IS_USART(device))
       jshUSARTSetup(device, &inf);
   } else if (device == EV_NONE) {
+#ifndef SAVE_ON_FLASH
     // Software
     if (inf.pinTX != PIN_UNDEFINED) {
       jshPinSetState(inf.pinTX,  JSHPINSTATE_GPIO_OUT);
@@ -294,11 +295,15 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
     }
     if (inf.pinCK != PIN_UNDEFINED)
       jsExceptionHere(JSET_ERROR, "Software Serial CK not implemented yet\n");
+#else
+    jsExceptionHere(JSET_ERROR, "No Software Serial in this build\n");
+#endif
   }
 }
 
 /*JSON{
   "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
   "class" : "Serial",
   "name" : "unsetup",
   "generate" : "jswrap_serial_unsetup"
@@ -306,6 +311,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
 If the serial (or software serial) device was set up,
 uninitialise it.
 */
+#ifndef SAVE_ON_FLASH
 void jswrap_serial_unsetup(JsVar *parent) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
@@ -335,6 +341,7 @@ void jswrap_serial_unsetup(JsVar *parent) {
   if (inf.pinRX!=PIN_UNDEFINED) jshPinSetState(inf.pinRX, JSHPINSTATE_GPIO_IN);
   if (inf.pinTX!=PIN_UNDEFINED) jshPinSetState(inf.pinTX, JSHPINSTATE_GPIO_IN);
 }
+#endif
 
 
 /*JSON{
@@ -342,7 +349,11 @@ void jswrap_serial_unsetup(JsVar *parent) {
   "generate" : "jswrap_serial_idle"
 }*/
 bool jswrap_serial_idle() {
+#ifndef SAVE_ON_FLASH
   return jsserialEventCallbackIdle();
+#else
+  return false;
+#endif
 }
 
 void _jswrap_serial_print(JsVar *parent, JsVar *arg, bool isPrint, bool newLine) {

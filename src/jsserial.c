@@ -22,6 +22,7 @@ void jsserialHardwareFunc(unsigned char data, serial_sender_data *info) {
   jshTransmit(device, data);
 }
 
+#ifndef SAVE_ON_FLASH
 /**
  * Send a single byte through Serial.
  */
@@ -85,6 +86,7 @@ void jsserialSoftwareFunc(
   // we do this even if we are high, because we want to ensure that the next char is properly spaced
   // Ideally we'd be able to store the last bit time when sending so we could just go straight on from it
 }
+#endif
 
 bool jsserialPopulateUSARTInfo(
     JshUSARTInfo *inf,
@@ -165,6 +167,7 @@ bool jsserialGetSendFunction(JsVar *serialDevice, serial_sender *serialSend, ser
     *(IOEventFlags*)serialSendData = device;
     return true;
   } else if (device == EV_NONE) {
+#ifndef SAVE_ON_FLASH
     // Software Serial
     JsVar *baud = jsvObjectGetChild(serialDevice, USART_BAUDRATE_NAME, 0);
     JsVar *options = jsvObjectGetChild(serialDevice, DEVICE_OPTIONS_NAME, 0);
@@ -175,11 +178,12 @@ bool jsserialGetSendFunction(JsVar *serialDevice, serial_sender *serialSend, ser
     *serialSend = jsserialSoftwareFunc;
     *serialSendData = inf;
     return true;
+#endif
   }
   return false;
 }
 
-
+#ifndef SAVE_ON_FLASH
 typedef struct {
   char buf[7]; ///< received data
   unsigned char bufLen; ///< amount of received characters
@@ -326,3 +330,4 @@ void jsserialEventCallback(bool state, IOEventFlags channel) {
   }
   jshHasEvents();
 }
+#endif

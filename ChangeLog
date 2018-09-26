@@ -87,6 +87,7 @@
             Move FFT back to 64 bit if low flash (it uses less memory!) and optimise for flash space
             Remove new Graphics.createImage/asBML/asURL/dump on Original Espruino Board (not enough space) 
             Remove Olimexino from build (too difficult to slim down build and very low usage)
+            Remove Software Serial from boards where we're low on flash
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
