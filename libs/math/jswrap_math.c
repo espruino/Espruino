@@ -208,13 +208,28 @@ double jswrap_math_atan(double x) {
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Math",
   "name" : "atan2",
-  "generate" : "atan2",
+  "generate" : "jswrap_math_atan2",
   "params" : [
     ["y","float","The Y-part of the angle to get the arc tangent of"],
     ["x","float","The X-part of the angle to get the arc tangent of"]
   ],
   "return" : ["float","The arctangent of Y/X, between -PI and PI"]
 }*/
+double jswrap_math_atan2(double y, double x) {
+#ifdef SAVE_ON_FLASH_MATH
+  if (x>0) return jswrap_math_atan(y/x);
+  if (x<0) {
+    if (y>=0) return jswrap_math_atan(y/x)+PI;
+    else return jswrap_math_atan(y/x)-PI;
+  } else { // X==0
+    if (y>0) return PI/2;
+    else if (y<0) return -PI/2;
+    else return NAN;
+  }
+#else
+  return atan2(y, x);
+#endif
+}
 
 /* we use sin here, not cos, to try and save a bit of code space */
 /*JSON{
