@@ -105,12 +105,16 @@ int net_wiznet_createsocket(JsNetwork *net, SocketType socketType, uint32_t host
 
 /// destroys the given socket
 void net_wiznet_closesocket(JsNetwork *net, int sckt) {
+  uint8_t status;
+#if _WIZCHIP_ == 5500
   // try and close gracefully
   disconnect((uint8_t)sckt);
   JsSysTime timeout = jshGetSystemTime()+jshGetTimeFromMilliseconds(1000);
-  uint8_t status;
   while ((status=getSn_SR((uint8_t)sckt)) != SOCK_CLOSED &&
          jshGetSystemTime()<timeout) ;
+#else // W5100 hangs for 30s on disconnect - https://github.com/espruino/Espruino/issues/1306
+  status=getSn_SR((uint8_t)sckt);
+#endif
   // if that didn't work, force it
   if (status != SOCK_CLOSED)
     closesocket((uint8_t)sckt);
