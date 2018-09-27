@@ -302,7 +302,17 @@ Called when a host device connects to Espruino. The first argument contains the 
 }
 Called when a host device disconnects from Espruino.
  */
-
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "HID",
+  "#if" : "defined(NRF52)"
+}
+Called with a single byte value when Espruino is set up as
+a HID device and the computer it is connected to sends a
+HID report back to Espruino. This is usually used for handling
+indications such as the Caps Lock LED.
+ */
 
 /*JSON{
   "type" : "event",
