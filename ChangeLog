@@ -92,6 +92,7 @@
             Fix 'Can't extend undefined' when using Object.setPrototypeOf on a function
             nRF52: Added NRF.HID event for two-way BLE HID communications
             nRF5x: Remove multiple writes per connection interval (more trouble than the speed improvement is worth)
+            Fixed hang if trying to allocate Storage greater than total storage size in a fully erased Storage area.
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

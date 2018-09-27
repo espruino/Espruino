@@ -359,13 +359,15 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
     uint32_t existingAddr = 0;
     // Find a hole that's big enough for our file
     do {
-      if (addr!=startAddr) addr = jsfGetAddressOfNextPage(addr);
       if (jsfGetFileHeader(addr, &header)) do {
         // check for something with the same name
         if (header.replacement == JSF_WORD_UNSET &&
             header.name == name)
           existingAddr = addr;
       } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
+      // If not enough space, skip to next page
+      if (jsfGetSpaceLeftInPage(addr)<requiredSize)
+        addr = jsfGetAddressOfNextPage(addr);
     } while (addr && (jsfGetSpaceLeftInPage(addr)<requiredSize));
     // do we have an existing file? Erase it.
     if (existingAddr) {
