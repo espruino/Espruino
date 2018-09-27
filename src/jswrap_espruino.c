@@ -431,7 +431,7 @@ most platforms.
 **Note:** on the Original Espruino board, FFTs are performed in 64bit arithmetic as there isn't
 space to include the 32 bit maths routines (2x more RAM is required).
  */
-void _jswrap_espruino_FFT_getData(double *dst, JsVar *src, size_t length) {
+void _jswrap_espruino_FFT_getData(FFTDATATYPE *dst, JsVar *src, size_t length) {
   JsvIterator it;
   jsvIteratorNew(&it, src, JSIF_EVERY_ARRAY_ELEMENT);
   size_t i=0;
@@ -443,7 +443,7 @@ void _jswrap_espruino_FFT_getData(double *dst, JsVar *src, size_t length) {
   while (i<length)
     dst[i++]=0;
 }
-void _jswrap_espruino_FFT_setData(JsVar *dst, double *src, double *srcModulus, size_t length) {
+void _jswrap_espruino_FFT_setData(JsVar *dst, FFTDATATYPE *src, FFTDATATYPE *srcModulus, size_t length) {
   JsvIterator it;
   jsvIteratorNew(&it, dst, JSIF_EVERY_ARRAY_ELEMENT);
   size_t i=0;
@@ -484,7 +484,6 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   FFTDATATYPE *vReal = (FFTDATATYPE*)alloca(sizeof(FFTDATATYPE)*pow2*2);
   FFTDATATYPE *vImag = &vReal[pow2];
 
-  unsigned int i;
   // load data
   _jswrap_espruino_FFT_getData(vReal, arrReal, pow2);
   _jswrap_espruino_FFT_getData(vImag, arrImag, pow2);
