@@ -14,8 +14,8 @@
 
 #include "jsutils.h"
 
-/** gets data from array, writes to callback */
-void rle_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned char ch, uint32_t *cbdata), uint32_t *cbdata);
+/** gets data from array, writes to callback if nonzero. Returns total length. */
+uint32_t rle_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned char ch, uint32_t *cbdata), uint32_t *cbdata);
 
-/** gets data from callback, writes it into array */
-void rle_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsigned char *data);
+/** gets data from callback, writes it into array if nonzero. Returns total length */
+uint32_t rle_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsigned char *data);

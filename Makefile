@@ -308,7 +308,8 @@ SOURCES += \
 libs/compression/heatshrink/heatshrink_encoder.c \
 libs/compression/heatshrink/heatshrink_decoder.c \
 libs/compression/compress_heatshrink.c
-
+WRAPPERSOURCES += \
+libs/compression/jswrap_heatshrink.c
 endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER
