@@ -88,6 +88,7 @@
             Remove new Graphics.createImage/asBML/asURL/dump on Original Espruino Board (not enough space) 
             Remove Olimexino from build (too difficult to slim down build and very low usage)
             Remove Software Serial from boards where we're low on flash
+            Increase size of saved code area from 3*4k to 10*4k on RAK821x boards
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
