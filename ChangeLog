@@ -97,6 +97,7 @@
             Remove HASH/hashlib from all builds as it was confusingly in some and not others. Now use 'crypto'
             require('crypto').SHA1 is now JS in Espruino Original to cut down on the flash required
             Added 'heatshrink' library to expose built-in heatshrink compression to users
+            Fix assert fail when calling Function.apply with an Object with non-numeric keys
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

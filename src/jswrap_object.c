@@ -964,11 +964,15 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
     JsvIterator it;
     jsvIteratorNew(&it, argsArray, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
-      if (idx>=0 && idx<(int)argC) {
-        assert(!args[idx]); // just in case there were dups
-        args[idx] = jsvIteratorGetValue(&it);
+      JsVar *idxVar = jsvIteratorGetKey(&it);
+      if (jsvIsIntegerish(idxVar)) {
+        JsVarInt idx = jsvGetInteger(idxVar);
+        if (idx>=0 && idx<(int)argC) {
+          assert(!args[idx]); // just in case there were dups
+          args[idx] = jsvIteratorGetValue(&it);
+        }
       }
+      jsvUnLock(idxVar);
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
