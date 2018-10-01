@@ -1519,6 +1519,30 @@ void jswrap_espruino_asm(JsVar *callspec, JsVar *args) {
 
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "compiledC",
+  "generate" : "jswrap_espruino_compiledC",
+  "params" : [
+    ["code","JsVar","A Templated string of C code"]
+  ]
+}
+Provides the ability to write C code inside your JavaScript file.
+
+**This function is not part of Espruino**. Instead, it is detected
+by the Espruino IDE (or command-line tools) at upload time, is sent
+to our web service to be compiled, and is replaced with machine code
+and an `E.nativeCall` call.
+
+See [the documentation on Inline C](http://www.espruino.com/InlineC) for more information and examples.
+*/
+void jswrap_espruino_compiledC(JsVar *code) {
+  NOT_USED(code);
+  jsExceptionHere(JSET_ERROR, "'E.InlineC' calls should have been replaced by the Espruino tools before upload");
+}
+
+/*JSON{
+  "type" : "staticmethod",
   "class" : "E",
   "name" : "reboot",
   "generate" : "jswrap_espruino_reboot"
