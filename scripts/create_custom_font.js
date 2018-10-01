@@ -1,3 +1,4 @@
+#!/usr/bin/node
 /*
  This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 
@@ -18,19 +19,27 @@
 */
 
 // npm install btoa
-pixels = require("fs").readFileSync("charset_8x12.raw");
-// image width and height
+
+
+var FIXEDWIDTH = false;
+var FIRSTCHAR = 32;
+var MAXCHARS = 189; // excludes FIRSTCHAR offset
+
+// image width and height, character width and height
 var W = 128;
 var H = 72;
-// character width and height
 var CW = 8;
 var CH = 12;
+var FILENAME = "charset_8x12.raw";
 /*
-pixels = require("fs").readFileSync("charset_6x8.raw");
 var W = 192;
 var H = 24;
 var CW = 6;
-var CH = 8;*/
+var CH = 8;
+var FILENAME = "charset_6x8.raw";
+*/
+
+pixels = require("fs").readFileSync(FILENAME);
 
 
 var bits = [];
@@ -38,38 +47,51 @@ var charWidths = [];
 
 function genChar(xo,yo) {
  // work out widths
- var xStart = CW;
- var xEnd = 0;
- for (var x=0;x<CW;x++) {
-   var set = false;
-   for (var y=0;y<CH;y++) {
-     var idx = x+xo+((y+yo)*W);
-     set |= pixels[idx]<=128;
-   }
-   if (set) {
-     if (x<xStart) xStart = x;
-     xEnd = x;
-   }
- } 
- if (xStart>xEnd) {
-   xStart=0;
-   xEnd = CW/2; // treat space as half-width
- } else if (xEnd<CW-1)
-   xEnd++; // if not full width, add a space after
+ if (FIXEDWIDTH) {
+   xStart = 0;
+   xEnd = CW-1;
+ } else {
+   var xStart = CW;
+   var xEnd = 0;
+   for (var x=0;x<CW;x++) {
+     var set = false;
+     for (var y=0;y<CH;y++) {
+       var idx = x+xo+((y+yo)*W);
+       set |= pixels[idx]<=128;
+     }
+     if (set) {
+       if (x<xStart) xStart = x;
+       xEnd = x;
+     }
+   } 
+   if (xStart>xEnd) {
+     xStart=0;
+     xEnd = CW/2; // treat space as half-width
+   } else if (xEnd<CW-1)
+     xEnd++; // if not full width, add a space after
+ }   
  charWidths.push(xEnd+1-xStart);
+
+ var debugText = [];
+ for (var y=0;y<CH;y++) debugText.push("");
 
   for (var x=xStart;x<=xEnd;x++) {
     for (var y=0;y<CH;y++) {
       var idx = x+xo+((y+yo)*W);
-      bits.push((pixels[idx]>128) ? 0 : 1);
+      var col = pixels[idx]>128;
+      debugText[y] += col?" ":"#";
+      bits.push(col ? 0 : 1);
     }
   }
+  console.log("charcode ",FIRSTCHAR+charWidths.length-1,":",xo,",",yo);
+  console.log(debugText.join("\n"));
+  console.log();
 }
 
 
 // get an array of bits
 var x=0,y=0;
-while (y < H) {
+while (y < H && charWidths.length<MAXCHARS) {
   genChar(x,y);
   x += CW;
   if (x>=W) {
@@ -94,6 +116,6 @@ for (i in charWidths)
 
 console.log("var font = atob(\""+require('btoa')(bytes)+"\");");
 console.log("var widths = atob(\""+require('btoa')(widthBytes)+"\");");
-console.log("g.setFontCustom(font, 32, widths, "+CH+");");
+console.log("g.setFontCustom(font, "+FIRSTCHAR+", widths, "+CH+");");
 
 
