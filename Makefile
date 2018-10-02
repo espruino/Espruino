@@ -89,7 +89,7 @@ endif
 ifndef ALT_RELEASE
 # Default release labeling.  (This may fail and give inconsistent results due to the fact that
 # travis does a shallow clone.)
-LATEST_RELEASE=$(shell git tag | grep RELEASE_ | sort -n -t V -k 2,2 | tail -1)
+LATEST_RELEASE=$(shell git tag | grep RELEASE_ | sort | tail -1)
 # use egrep to count lines instead of wc to avoid whitespace error on Mac
 COMMITS_SINCE_RELEASE=$(shell git log --oneline $(LATEST_RELEASE)..HEAD | egrep -c .)
 ifneq ($(COMMITS_SINCE_RELEASE),0)

@@ -408,7 +408,7 @@ def get_version():
         alt_release = os.getenv("ALT_RELEASE")
         if alt_release == None:
           # Default release labeling based on commits since last release tag
-          latest_release = subprocess.check_output('git tag | grep RELEASE_ | sort -n -t V -k 2,2 | tail -1', shell=True).strip()
+          latest_release = subprocess.check_output('git tag | grep RELEASE_ | sort | tail -1', shell=True).strip()
           commits_since_release = subprocess.check_output('git log --oneline '+latest_release.decode("utf-8")+'..HEAD | wc -l', shell=True).decode("utf-8").strip()
         else:
           # Alternate release labeling with fork name (in ALT_RELEASE env var) plus branch
