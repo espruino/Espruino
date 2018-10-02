@@ -101,6 +101,7 @@
             Fix issue when AT lib has to process multiple custom line handers in one packet
             Espruino WiFi: Fix unreliable send when receiving lots of data on another socket
             Espruino WiFi: Only rename `EspruinoWiFi` to `WiFi` if not found (allows easier debug)
+            Check Flash Storage for modules when using `require`
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

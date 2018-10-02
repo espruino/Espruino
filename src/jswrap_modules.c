@@ -19,6 +19,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
+#include "jsflash.h" // look in flash for modules
 #ifdef USE_FILESYSTEM
 #include "jswrap_fs.h"
 #endif
@@ -43,7 +44,19 @@ static JsVar *jswrap_modules_getModuleList() {
   ],
   "return" : ["JsVar","The result of evaluating the string"]
 }
-Load the given module, and return the exported functions
+Load the given module, and return the exported functions and variables.
+
+For example:
+
+```
+var s = require("Storage");
+s.write("test", "hello world");
+print(s.read("test"));
+// prints "hello world"
+```
+
+Check out [the page on Modules](/Modules) for an explanation
+of what modules are and how you can use them.
  */
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {
@@ -71,9 +84,23 @@ JsVar *jswrap_require(JsVar *moduleName) {
   if (builtInLib) {
     // create a 'fake' module that Espruino can use to map its built-in functions against
     moduleExport = jsvNewNativeFunction(builtInLib, 0);
-  } 
-  // Ok - it's not built-in as native. We want to get the actual text and execute it
-  // Look and see if it's built-in as JS
+  }
+
+#ifndef SAVE_ON_FLASH
+  // Has it been manually saved to Flash Storage? Use Storage support.
+  if ((!moduleExport) && (strlen(moduleNameBuf) <= JSF_MAX_FILENAME_LENGTH)) {
+    JsfFileName storageName = jsfNameFromString(moduleNameBuf);
+    JsVar *storageFile = jsfReadFile(storageName);
+    if (storageFile) {
+      moduleExport = jspEvaluateModule(storageFile);
+      jsvUnLock(storageFile);
+    }
+  }
+#endif
+
+
+  // Ok - it's not built-in as native or storage.
+  // Look and see if it's compiled-in as a C-String of JS - if so get the actual text and execute it
   if (!moduleExport) {
     const char *builtInJS = jswGetBuiltInJSLibrary(moduleNameBuf);
     if (builtInJS) {
@@ -84,6 +111,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
       }
     }
   }
+
   // If we have filesystem support, look on the filesystem
 #ifdef USE_FILESYSTEM
   if (!moduleExport) {
