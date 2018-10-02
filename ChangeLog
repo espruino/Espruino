@@ -98,6 +98,9 @@
             require('crypto').SHA1 is now JS in Espruino Original to cut down on the flash required
             Added 'heatshrink' library to expose built-in heatshrink compression to users
             Fix assert fail when calling Function.apply with an Object with non-numeric keys
+            Fix issue when AT lib has to process multiple custom line handers in one packet
+            Espruino WiFi: Fix unreliable send when receiving lots of data on another socket
+            Espruino WiFi: Only rename `EspruinoWiFi` to `WiFi` if not found (allows easier debug)
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

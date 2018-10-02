@@ -55,12 +55,6 @@ JsVar *jswrap_require(JsVar *moduleName) {
     jsExceptionHere(JSET_TYPEERROR, "Module name too long (max 128 chars)");
     return 0;
   }
-#ifdef ESPRUINOWIFI
-  // Big hack to work around module renaming
-  if (!strcmp(moduleNameBuf,"EspruinoWiFi"))
-    strcpy(moduleNameBuf,"Wifi");
-#endif
-
 
   // Search to see if we have already loaded this module
   JsVar *moduleList = jswrap_modules_getModuleList();
@@ -113,13 +107,22 @@ JsVar *jswrap_require(JsVar *moduleName) {
   }
 #endif    
    
-  // Now save module
-  if (moduleExport) { // could have been out of memory
+
+  if (moduleExport) { // Found - now save module
     JsVar *moduleList = jswrap_modules_getModuleList();
     if (moduleList)
       jsvObjectSetChild(moduleList, moduleNameBuf, moduleExport);
     jsvUnLock(moduleList);
-  } else {
+  } else { // module not found...
+#ifdef ESPRUINOWIFI
+    // Big hack to work around module renaming. IF EspruinoWiFi wasn't found, rename it
+    if (!strcmp(moduleNameBuf,"EspruinoWiFi")) {
+      JsVar *n = jsvNewFromString("Wifi");
+      JsVar *r = jswrap_require(n);
+      jsvUnLock(n);
+      return r;
+    }
+#endif
     // nope. no module
     jsExceptionHere(JSET_ERROR, "Module %s not found", moduleNameBuf);
   }
