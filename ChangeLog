@@ -83,6 +83,25 @@
             Remove BluetoothRemoteGATTCharacteristic.writeValue on NRF51 (accidental inclusion - it's not required)
             Double IO buffer size to 256 (1k bytes) on boards with 96k of RAM or more (or NRF52)
             nRF5x: allow arbirtary baud rates to be specified for UART
+            On devices with low flash, ensure atan2 uses the slower/smaller atan implementation
+            Move FFT back to 64 bit if low flash (it uses less memory!) and optimise for flash space
+            Remove new Graphics.createImage/asBML/asURL/dump on Original Espruino Board (not enough space) 
+            Remove Olimexino from build (too difficult to slim down build and very low usage)
+            Remove Software Serial from boards where we're low on flash
+            Increase size of saved code area from 3*4k to 10*4k on RAK821x boards
+            Fix 'Can't extend undefined' when using Object.setPrototypeOf on a function
+            nRF52: Added NRF.HID event for two-way BLE HID communications
+            nRF5x: Remove multiple writes per connection interval (more trouble than the speed improvement is worth)
+            Fixed hang if trying to allocate Storage greater than total storage size in a fully erased Storage area.
+            Pixl.js: Fix 30s pause when closing sockets on WIZnet W5100 (fix #1306)
+            Remove HASH/hashlib from all builds as it was confusingly in some and not others. Now use 'crypto'
+            require('crypto').SHA1 is now JS in Espruino Original to cut down on the flash required
+            Added 'heatshrink' library to expose built-in heatshrink compression to users
+            Fix assert fail when calling Function.apply with an Object with non-numeric keys
+            Fix issue when AT lib has to process multiple custom line handers in one packet
+            Espruino WiFi: Fix unreliable send when receiving lots of data on another socket
+            Espruino WiFi: Only rename `EspruinoWiFi` to `WiFi` if not found (allows easier debug)
+            Check Flash Storage for modules when using `require`
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

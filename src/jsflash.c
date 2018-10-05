@@ -359,13 +359,15 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
     uint32_t existingAddr = 0;
     // Find a hole that's big enough for our file
     do {
-      if (addr!=startAddr) addr = jsfGetAddressOfNextPage(addr);
       if (jsfGetFileHeader(addr, &header)) do {
         // check for something with the same name
         if (header.replacement == JSF_WORD_UNSET &&
             header.name == name)
           existingAddr = addr;
       } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
+      // If not enough space, skip to next page
+      if (jsfGetSpaceLeftInPage(addr)<requiredSize)
+        addr = jsfGetAddressOfNextPage(addr);
     } while (addr && (jsfGetSpaceLeftInPage(addr)<requiredSize));
     // do we have an existing file? Erase it.
     if (existingAddr) {
@@ -590,7 +592,7 @@ JsVar *jsfListFiles() {
 // Get a hash of the current Git commit, so new builds won't load saved code
 static uint32_t getBuildHash() {
 #ifdef GIT_COMMIT
-  const char *s = STRINGIFY(GIT_COMMIT);
+  const unsigned char *s = (unsigned char*)STRINGIFY(GIT_COMMIT);
   uint32_t hash = 0;
   while (*s)
     hash = (hash<<1) ^ *(s++);
@@ -598,11 +600,6 @@ static uint32_t getBuildHash() {
 #else
   return 0;
 #endif
-}
-// cbdata = uint32_t
-void jsfSaveToFlash_countcb(unsigned char ch, uint32_t *cbdata) {
-  NOT_USED(ch);
-  cbdata[0]++;
 }
 
 typedef struct {
@@ -652,9 +649,8 @@ void jsfSaveToFlash() {
   // Try and compact, just to ensure we get the maximum amount saved
   jsfCompact();
   jsiConsolePrint("Calculating Size...\n");
-  // Work out how much data this'll take
-  uint32_t compressedSize = 4; /* 4 bytes for build hash */
-  COMPRESS(varPtr, varSize, jsfSaveToFlash_countcb, &compressedSize);
+  // Work out how much data this'll take, plus 4 bytes for build hash
+  uint32_t compressedSize = 4 + COMPRESS(varPtr, varSize, NULL, NULL);
   // How much data do we have?
   uint32_t savedCodeAddr = jsfCreateFile(jsfNameFromString(SAVED_CODE_VARIMAGE), compressedSize, JSFF_COMPRESSED, JSF_START_ADDRESS, 0);
   if (!savedCodeAddr) {
@@ -685,7 +681,7 @@ void jsfSaveToFlash() {
   uint32_t hash = getBuildHash();
   int i;
   for (i=0;i<4;i++)
-    jsfSaveToFlash_writecb(((char*)&hash)[i], (uint32_t*)&cbData);
+    jsfSaveToFlash_writecb(((unsigned char*)&hash)[i], (uint32_t*)&cbData);
   // write compressed data
   COMPRESS(varPtr, varSize, jsfSaveToFlash_writecb, (uint32_t*)&cbData);
   jsfSaveToFlash_finish(&cbData);
@@ -711,7 +707,7 @@ void jsfLoadStateFromFlash() {
   uint32_t hash;
   int i;
   for (i=0;i<4;i++)
-    ((char*)&hash)[i] = jsfLoadFromFlash_readcb((uint32_t*)&cbData);
+    ((char*)&hash)[i] = (char)jsfLoadFromFlash_readcb((uint32_t*)&cbData);
   if (hash != getBuildHash()) {
     jsiConsolePrintf("Not loading saved code from different Espruino firmware.\n");
     return;

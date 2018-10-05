@@ -553,7 +553,7 @@ Set the prototype of the given object - this is like writing
 `object.__proto__ = prototype` but is the 'proper' ES6 way of doing it
  */
 JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
-  JsVar *v = jsvIsObject(object) ? jspGetNamedField(object, "__proto__", true) : 0;
+  JsVar *v = (jsvIsFunction(object)||jsvIsObject(object)) ? jspGetNamedField(object, "__proto__", true) : 0;
   if (!jsvIsName(v)) {
     jsExceptionHere(JSET_TYPEERROR, "Can't extend %t\n", v);
   } else {
@@ -964,11 +964,15 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
     JsvIterator it;
     jsvIteratorNew(&it, argsArray, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
-      if (idx>=0 && idx<(int)argC) {
-        assert(!args[idx]); // just in case there were dups
-        args[idx] = jsvIteratorGetValue(&it);
+      JsVar *idxVar = jsvIteratorGetKey(&it);
+      if (jsvIsIntegerish(idxVar)) {
+        JsVarInt idx = jsvGetInteger(idxVar);
+        if (idx>=0 && idx<(int)argC) {
+          assert(!args[idx]); // just in case there were dups
+          args[idx] = jsvIteratorGetValue(&it);
+        }
       }
+      jsvUnLock(idxVar);
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);

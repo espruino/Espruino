@@ -161,20 +161,12 @@ Pixl.show = function(menudata) {
 };
 */
 
-  /* TODO: handle this better. Something in build_js_wrapper.py?
-   * We want the function to be defined in the docs so using JSMODULESOURCES
-   * isn't a great idea - ideally there would be some nice way of including it
-   * here.
-   */
-  JsVar *fn = jspEvaluate("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Pixl.btnWatches&&(Pixl.btnWatches.forEach(clearWatch),Pixl.btnWatches=void 0);"
+  return jspExecuteJSFunction("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Pixl.btnWatches&&(Pixl.btnWatches.forEach(clearWatch),Pixl.btnWatches=void 0);"
       "g.clear();g.flip();"
       "if(a){a['']||(a['']={});g.setFontBitmap();g.setFontAlign(-1,-1,0);var d=g.getWidth()-9,e=g.getHeight();a[''].x=9;a[''].x2=d-2;a[''].preflip=function(){"
       "g.drawImage(c([16,56,124,254,16,16,16,16]),0,4);g.drawImage(c([16,16,16,16,254,124,56,16]),0,e-12);g.drawImage(c([0,8,12,14,255,14,12,8]),d+1,e-12)};"
       "var b=require('graphical_menu').list(g,a);Pixl.btnWatches=[setWatch(function(){b.move(-1)},BTN1,{repeat:1}),setWatch(function(){b.move(1)},BTN4,{repeat:1}),"
-      "setWatch(function(){b.select()},BTN3,{repeat:1})];return b}})",true);
-  JsVar *result = jspExecuteFunction(fn,0,1,&menu);
-  jsvUnLock(fn);
-  return result;
+      "setWatch(function(){b.select()},BTN3,{repeat:1})];return b}})",0,1,&menu);
 }
 
 

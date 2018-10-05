@@ -308,7 +308,8 @@ SOURCES += \
 libs/compression/heatshrink/heatshrink_encoder.c \
 libs/compression/heatshrink/heatshrink_decoder.c \
 libs/compression/compress_heatshrink.c
-
+WRAPPERSOURCES += \
+libs/compression/jswrap_heatshrink.c
 endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER
@@ -528,14 +529,6 @@ ifdef USE_TRIGGER
   libs/trigger/trigger.c
 endif
 
-ifdef USE_HASHLIB
-  INCLUDE += -I$(ROOT)/libs/hashlib
-  WRAPPERSOURCES += \
-  libs/hashlib/jswrap_hashlib.c
-  SOURCES += \
-  libs/hashlib/sha2.c
-endif
-
 ifdef USE_WIRINGPI
   DEFINES += -DUSE_WIRINGPI
   LIBS += -lwiringPi
@@ -555,7 +548,12 @@ ifdef USE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
+ifdef USE_SHA1_JS
+  DEFINES += -DUSE_SHA1_JS
+  SOURCES += libs/crypto/mbedtls/library/sha512.c
+else
   SOURCES += libs/crypto/mbedtls/library/sha1.c 
+endif
 ifdef USE_SHA256
   DEFINES += -DUSE_SHA256
   SOURCES += libs/crypto/mbedtls/library/sha256.c

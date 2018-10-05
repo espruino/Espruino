@@ -53,6 +53,7 @@ void jswrap_espruino_setPassword(JsVar *pwd);
 void jswrap_espruino_lockConsole();
 void jswrap_espruino_setTimeZone(JsVarFloat zone);
 void jswrap_espruino_asm(JsVar *callspec, JsVar *args);
+void jswrap_espruino_compiledC(JsVar *code);
 void jswrap_espruino_reboot();
 
 void jswrap_espruino_setUSBHID(JsVar *arr);

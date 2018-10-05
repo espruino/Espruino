@@ -133,7 +133,7 @@ exports.setGPSOn = function(isOn, callback) {
     var at = require("AT").connect(usart);
     var gps = { at:at,on:function(callback) {
       callback=callback||function(){};
-      at.cmd("AT+QGPS=4\r\n",1000,function cb(d) { // speed-optimal
+      at.cmd("AT+QGPS=1\r\n",1000,function cb(d) { // speed-optimal
         if (d.startsWith("AT+")) return cb; // echo
         callback(d=="OK"?null:d);
       });

@@ -16,11 +16,14 @@
 #include "jsvar.h"
 #include "jsvariterator.h"
 #include "jswrap_crypto.h"
+#include "jsparse.h"
 
 #ifdef USE_AES
 #include "mbedtls/include/mbedtls/aes.h"
 #endif
+#ifndef USE_SHA1_JS
 #include "mbedtls/include/mbedtls/sha1.h"
+#endif
 #ifdef USE_SHA256
 #include "mbedtls/include/mbedtls/sha256.h"
 #endif
@@ -42,7 +45,7 @@
 }
 Cryptographic functions
 
-**Note:** This library is currently only included in builds for the Espruino Pico and Espruino WiFi. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
+**Note:** This library is currently only included in builds for boards where there is space. For other boards there is `crypto.js` which implements SHA1 in JS.
 */
 
 
@@ -54,7 +57,7 @@ Cryptographic functions
 }
 Class containing AES encryption/decryption
 
-**Note:** This library is currently only included in builds for the Espruino Pico and Espruino WiFi. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
+**Note:** This library is currently only included in builds for boards where there is space. For other boards there is `crypto.js` which implements SHA1 in JS.
 */
 /*JSON{
   "type" : "staticproperty",
@@ -122,7 +125,9 @@ CryptoMode jswrap_crypto_getMode(JsVar *mode) {
 }
 
 mbedtls_md_type_t jswrap_crypto_getHasher(JsVar *hasher) {
+#ifndef USE_SHA1_JS
   if (jsvIsStringEqual(hasher, "SHA1")) return MBEDTLS_MD_SHA1;
+#endif
 #ifdef USE_SHA256
   if (jsvIsStringEqual(hasher, "SHA224")) return MBEDTLS_MD_SHA224;
   if (jsvIsStringEqual(hasher, "SHA256")) return MBEDTLS_MD_SHA256;
@@ -136,6 +141,13 @@ mbedtls_md_type_t jswrap_crypto_getHasher(JsVar *hasher) {
 }
 
 JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
+#ifdef USE_SHA1_JS
+  if (shaNum==1) {
+    // (c) 2016 Rhys Williams, @jumjum. https://github.com/espruino/EspruinoDocs/blob/master/modules/crypto.js
+    return jspExecuteJSFunction("(function(b){function n(a){for(d=3;0<=d;d--)g.push(a>>8*d&255)}var d,a;b=E.toString(b)+'\\x80';var v=new Int32Array([1518500249,1859775393,2400959708,3395469782]);var k=Math.ceil((b.length/4+2)/16);var g=Array(k);b=E.toUint8Array(b);for(d=0;d<k;d++){var f=d<<6;var e=new Int32Array(16);for(a=0;16>a;a++){var c=f+(a<<2);e[a]=b[c]<<24|b[c+1]<<16|b[c+2]<<8|b[c+3]}g[d]=e}g[k-1][14]=8*(b.length-1)/Math.pow(2,32);g[k-1][14]=Math.floor(g[k-1][14]);g[k-1][15]=8*(b.length-1)&4294967295;b=1732584193;var p=4023233417;var q=2562383102;var r=271733878;var t=3285377520;var l=new Int32Array(80);for(d=0;d<k;d++){for(a=0;16>a;a++)l[a]=g[d][a];for(a=16;80>a;a++)f=l[a-3]^l[a-8]^l[a-14]^l[a-16],l[a]=f<<1|f>>>31;f=b;c=p;e=q;var h=r;var u=t;for(a=0;80>a;a++){var m=Math.floor(a/20);var w=f<<5|f>>>27;var x=0===m?c&e^~c&h:1===m?c^e^h:2===m?c&e^c&h^e&h:c^e^h;m=w+x+u+v[m]+l[a]&4294967295;u=h;h=e;e=c<<30|c>>>2;c=f;f=m}b=b+f&4294967295;p=p+c&4294967295;q=q+e&4294967295;r=r+h&4294967295;t=t+u&4294967295}g=[];n(b);n(p);n(q);n(r);n(t);return E.toUint8Array(g).buffer})",0,1,&message);
+  }
+#endif
+
   JSV_GET_AS_CHAR_ARRAY(msgPtr, msgLen, message);
   if (!msgPtr) return 0;
 
@@ -149,7 +161,9 @@ JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
     return 0;
   }
 
+#ifndef USE_SHA1_JS
   if (shaNum==1) mbedtls_sha1((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr);
+#endif
 #ifdef USE_SHA256
   else if (shaNum==224) mbedtls_sha256((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, true/*224*/);
   else if (shaNum==256) mbedtls_sha256((unsigned char *)msgPtr, msgLen, (unsigned char *)outPtr, false/*256*/);
@@ -174,7 +188,11 @@ JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
   "ifdef" : "USE_CRYPTO"
 }
 
-Performs a SHA1 hash and returns the result as a 20 byte ArrayBuffer
+Performs a SHA1 hash and returns the result as a 20 byte ArrayBuffer.
+
+**Note:** On some boards (currently only Espruino Original) there
+isn't space for a fully unrolled SHA1 implementation so a slower
+all-JS implementation is used instead.
 */
 /*JSON{
   "type" : "staticmethod",

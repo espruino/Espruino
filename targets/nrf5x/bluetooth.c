@@ -542,6 +542,9 @@ int jsble_exec_pending(IOEvent *event) {
      jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, 0); // fire only once
      jshHadEvent();
      break;
+   case BLEP_HID_VALUE:
+     bleQueueEventAndUnLock(JS_EVENT_PREFIX"HID", jsvNewFromInteger(data));
+     break;
 #endif
    default:
      jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
@@ -809,10 +812,11 @@ void nus_transmit_string() {
     return;
   }
   /* 6 is the max number of packets we can send
-   * in one connection interval on nRF52. Try and
-   * send 5 just to allow an extra TX from user
-   * code if needed. */
-  for (int packet=0;packet<5;packet++) {
+   * in one connection interval on nRF52. We could
+   * do 5, but it seems some things have issues with
+   * this (eg nRF cloud gateways) so only send 1 packet
+   * for now. */
+  for (int packet=0;packet<1;packet++) {
     // No data? try and get some from our queue
     if (!nuxTxBufLength) {
       nuxTxBufLength = 0;
@@ -1216,10 +1220,16 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           if (bleStatus & BLE_NUS_INITED) // push more UART data out if we can
             nus_transmit_string();
 #endif
+
+#if BLE_HIDS_ENABLED
           if (bleStatus & BLE_IS_SENDING_HID) {
+            // If we could tell which characteristic this was for
+            // then we could check m_hids.inp_rep_array[HID_INPUT_REPORT_KEYS_INDEX].char_handles.value_handle
+            // ... but it seems we can't!
             bleStatus &= ~BLE_IS_SENDING_HID;
             jsble_queue_pending(BLEP_HID_SENT, 0);
           }
+#endif
         }
         break;
 
@@ -1607,7 +1617,7 @@ static void on_hid_rep_char_write(ble_hids_evt_t * p_evt) {
         uint8_t  report_index = p_evt->params.char_write.char_id.rep_index;
 
         if (report_index == HID_OUTPUT_REPORT_INDEX) {
-            // This code assumes that the outptu report is one byte long. Hence the following
+            // This code assumes that the output report is one byte long. Hence the following
             // static assert is made.
             STATIC_ASSERT(HID_OUTPUT_REPORT_MAX_LEN == 1);
 
@@ -1621,7 +1631,7 @@ static void on_hid_rep_char_write(ble_hids_evt_t * p_evt) {
                                              &report_val);
             APP_ERROR_CHECK(err_code);
             // (report_val & 2) is caps lock
-            // FIXME: Create an event for each HID output report
+            jsble_queue_pending(BLEP_HID_VALUE, report_val);
         }
     }
 }

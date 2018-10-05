@@ -10,4 +10,4 @@ then
   exit 1
 fi
 
-grep "^0[08]...... [^<]" $1 |  sort --key=4 
+grep "^0[08]...... [^<]" $1 |  sort -u -k1,1 | sort --key=4 

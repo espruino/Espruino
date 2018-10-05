@@ -284,7 +284,7 @@ JsVar *jswrap_graphics_createSDL(int width, int height) {
   "type" : "staticmethod",
   "class" : "Graphics",
   "name" : "createImage",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_createImage",
   "params" : [
     ["str","JsVar","A String containing newline-separated "]
@@ -545,7 +545,18 @@ void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
     ["b","JsVar","Blue (between 0 and 1)"]
   ]
 }
-Set the color to use for subsequent drawing operations
+Set the color to use for subsequent drawing operations.
+
+If just `r` is specified as an integer, the numeric value will be written directly into a pixel. eg. On a 24 bit `Graphics` instance you set bright blue with either `g.setColor(0,0,1)` or `g.setColor(0x0000FF)`.
+
+The mapping is as follows:
+
+* 32 bit: `r,g,b` => `0xFFrrggbb`
+* 24 bit: `r,g,b` => `0xrrggbb`
+* 16 bit: `r,g,b` => `0brrrrrggggggbbbbb` (RGB565)
+* Other bpp: `r,g,b` => white if `r+g+b > 50%`, otherwise black (use `r` on its own as an integer)
+
+If you specified `color_order` when creating the `Graphics` instance, `r`,`g` and `b` will be swapped as you specified.
 
 **Note:** On devices with low flash memory, `r` **must** be an integer representing the color in the current bit depth. It cannot
 be a floating point value, and `g` and `b` are ignored.
@@ -561,7 +572,9 @@ be a floating point value, and `g` and `b` are ignored.
     ["b","JsVar","Blue (between 0 and 1)"]
   ]
 }
-Set the background color to use for subsequent drawing operations
+Set the background color to use for subsequent drawing operations. 
+
+See `Graphics.setColor` for more information on the mapping of `r`, `g`, and `b` to pixel values.
 
 **Note:** On devices with low flash memory, `r` **must** be an integer representing the color in the current bit depth. It cannot
 be a floating point value, and `g` and `b` are ignored.
@@ -1328,7 +1341,7 @@ void jswrap_graphics_scroll(JsVar *parent, int xdir, int ydir) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "asBMP",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_asBMP",
   "return" : ["JsVar","A String representing the Graphics as a Windows BMP file (or 'undefined' if not possible)"]
 }
@@ -1392,7 +1405,7 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "asURL",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_asURL",
   "return" : ["JsVar","A String representing the Graphics as a URL (or 'undefined' if not possible)"]
 }
@@ -1415,7 +1428,7 @@ JsVar *jswrap_graphics_asURL(JsVar *parent) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "dump",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_dump"
 }
 Output this image as a bitmap URL. The Espruino Web IDE can detect the data on the console and render the image inline automatically.

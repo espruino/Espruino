@@ -2961,6 +2961,13 @@ JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
   return v;
 }
 
+JsVar *jspExecuteJSFunction(const char *jsCode, JsVar *thisArg, int argCount, JsVar **argPtr) {
+  JsVar *fn = jspEvaluate(jsCode,true);
+  JsVar *result = jspExecuteFunction(fn,thisArg,argCount,argPtr);
+  jsvUnLock(fn);
+  return result;
+}
+
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr) {
   JsExecInfo oldExecInfo = execInfo;
 

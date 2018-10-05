@@ -68,6 +68,9 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset);
  * the life of the interpreter, as then the interpreter will use a pointer
  * to this data, which could hang around inside the code. */
 JsVar *jspEvaluate(const char *str, bool stringIsStatic);
+/// Execute a JS function with the given arguments. usage: jspExecuteJSFunction("(function() { print('hi'); })",0,0,0)
+JsVar *jspExecuteJSFunction(const char *jsCode, JsVar *thisArg, int argCount, JsVar **argPtr);
+/// Execute a function with the given arguments
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports

@@ -125,6 +125,7 @@ typedef enum {
   BLEP_NFC_RX,                      //< NFC data received (as buffer)
   BLEP_NFC_TX,                      //< NFC data sent
   BLEP_HID_SENT,                    //< A HID report has been sent
+  BLEP_HID_VALUE,                   //< A HID value was received (eg caps lock)
   BLEP_WRITE,                       //< One of our characteristics written by someone else
   BLEP_NOTIFICATION,                //< A characteristic we were watching has changes
 } BLEPending;
