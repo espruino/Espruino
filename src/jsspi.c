@@ -19,8 +19,8 @@
  * This is an internal debugging function.
  */
 void jsspiDumpSPIInfo(JshSPIInfo *inf) {
-	jsiConsolePrintf("baudRate=%d, baudRateSpec=%d, pinSCK=%d, pinMISO=%d, pinMOSI=%d, spiMode=%d, spiMSB=%d\n",
-		inf->baudRate, inf->baudRateSpec, inf->pinSCK, inf->pinMISO, inf->pinMOSI, inf->spiMode, inf->spiMSB);
+	jsiConsolePrintf("baudRate=%d, baudRateSpec=%d, pinSCK=%d, pinMISO=%d, pinMOSI=%d, spiMode=%d, spiMSB=%d, numBits=%d\n",
+		inf->baudRate, inf->baudRateSpec, inf->pinSCK, inf->pinMISO, inf->pinMOSI, inf->spiMode, inf->spiMSB, inf->numBits);
 }
 
 
@@ -46,7 +46,7 @@ int jsspiFastSoftwareFunc(
   JshSPIInfo *inf = (JshSPIInfo*)info;
   // fast path for common case
   int bit;
-  for (bit=7;bit>=0;bit--) {
+  for (bit=inf->numBits - 1;bit>=0;bit--) {
     jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
     jshPinSetValue(inf->pinSCK, 1 );
     jshPinSetValue(inf->pinSCK, 0 );
@@ -76,9 +76,9 @@ int jsspiSoftwareFunc(
   bool CPOL = (inf->spiMode & SPIF_CPOL)!=0;
 
   int result = 0;
-  int bit = inf->spiMSB ? 7 : 0;
+  int bit = inf->spiMSB ? (inf->numBits-1) : 0;
   int bitDir = inf->spiMSB ? -1 : 1;
-  int endBit = inf->spiMSB ? -1 : 8;
+  int endBit = inf->spiMSB ? -1 : inf->numBits;
   for (;bit!=endBit;bit+=bitDir) {
     if (!CPHA) { // 'Normal' SPI, CPHA=0
       if (inf->pinMOSI != PIN_UNDEFINED)
@@ -113,6 +113,7 @@ int jsspiSoftwareFunc(
  * * `baud` - The baud rate value.
  * * `mode` - The SPI mode.
  * * `order` - The bit order (one of "msb" or "lsb")
+ * * `bits` - number of bits per send.
  */
 bool jsspiPopulateSPIInfo(
     JshSPIInfo *inf,    //!< The JshSPIInfo structure to populate.
@@ -129,6 +130,7 @@ bool jsspiPopulateSPIInfo(
       {"baud", JSV_INTEGER, &inf->baudRate},
       {"mode", JSV_INTEGER, &spiMode}, // don't reference direct as this is just a char, not unsigned integer
       {"order", JSV_OBJECT /* a variable */, &order},
+      {"bits", JSV_INTEGER, &inf->numBits},
   };
   bool ok = true;
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
