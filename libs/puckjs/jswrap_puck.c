@@ -239,7 +239,8 @@ JsVar *mag_to_xyz(int16_t d[3]) {
 
 /*JSON{
     "type": "class",
-    "class" : "Puck"
+    "class" : "Puck",
+    "ifdef" : "PUCKJS"
 }
 Class containing [Puck.js's](http://www.puck-js.com) utility functions.
 */
@@ -248,6 +249,7 @@ Class containing [Puck.js's](http://www.puck-js.com) utility functions.
   "type" : "staticmethod",
   "class" : "Puck",
   "name" : "mag",
+  "ifdef" : "PUCKJS",
   "generate" : "jswrap_puck_mag",
   "return" : ["JsVar", "An Object `{x,y,z}` of magnetometer readings as integers" ]
 }
@@ -285,6 +287,7 @@ JsVar *jswrap_puck_mag() {
   "type" : "staticmethod",
   "class" : "Puck",
   "name" : "magTemp",
+  "ifdef" : "PUCKJS",
   "generate" : "jswrap_puck_magTemp",
   "return" : ["int", "Temperature in degrees C" ]
 }
@@ -312,7 +315,8 @@ JsVarInt jswrap_puck_magTemp() {
 /*JSON{
   "type" : "event",
   "class" : "Puck",
-  "name" : "mag"
+  "name" : "mag",
+  "ifdef" : "PUCKJS"
 }
 Called after `Puck.magOn()` every time magnetometer data
 is sampled. There is one argument which is an object
@@ -324,6 +328,7 @@ as integers (for more information see `Puck.mag()`).
   "type" : "staticmethod",
   "class" : "Puck",
   "name" : "magOn",
+  "ifdef" : "PUCKJS",
   "generate" : "jswrap_puck_magOn",
   "params" : [
       ["samplerate","float","The sample rate in Hz, or undefined"]
@@ -381,6 +386,7 @@ void jswrap_puck_magOn(JsVarFloat hz) {
   "type" : "staticmethod",
   "class" : "Puck",
   "name" : "magOff",
+  "ifdef" : "PUCKJS",
   "generate" : "jswrap_puck_magOff"
 }
 Turn the magnetometer off
@@ -409,6 +415,7 @@ void _jswrap_puck_IR_done(JsSysTime t, void *data) {
   "type" : "staticmethod",
   "class" : "Puck",
   "name" : "IR",
+  "ifdef" : "PUCKJS",
   "generate" : "jswrap_puck_IR",
   "params" : [
       ["data","JsVar","An array of pulse lengths, in milliseconds"],
@@ -466,7 +473,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
     "type" : "staticmethod",
     "class" : "Puck",
     "name" : "capSense",
-    "ifdef" : "NRF52",
+    "ifdef" : "PUCKJS",
     "generate" : "jswrap_puck_capSense",
     "params" : [
       ["tx","pin",""],
@@ -499,7 +506,7 @@ int jswrap_puck_capSense(Pin tx, Pin rx) {
     "type" : "staticmethod",
     "class" : "Puck",
     "name" : "light",
-    "ifdef" : "NRF52",
+    "ifdef" : "PUCKJS",
     "generate" : "jswrap_puck_light",
     "return" : ["float", "A light value from 0 to 1" ]
 }
@@ -536,6 +543,7 @@ JsVarFloat jswrap_puck_light() {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Puck",
+    "ifdef" : "PUCKJS",
     "name" : "getBatteryPercentage",
     "generate" : "jswrap_espruino_getBattery",
     "return" : ["int", "A percentage between 0 and 100" ]
@@ -587,6 +595,7 @@ static bool selftest_check_pin(Pin pin) {
     "type" : "staticmethod",
     "class" : "Puck",
     "name" : "selfTest",
+    "ifdef" : "PUCKJS",
     "generate" : "jswrap_puck_selfTest",
     "return" : ["bool", "True if the self-test passed" ]
 }
