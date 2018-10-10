@@ -103,6 +103,7 @@
             Espruino WiFi: Only rename `EspruinoWiFi` to `WiFi` if not found (allows easier debug)
             Check Flash Storage for modules when using `require`
             Add 'bits' option for Software SPI
+            STM32 reset pin IRQs before storing the state - makes lost setWatches far less likely
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
