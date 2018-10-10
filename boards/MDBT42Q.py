@@ -71,6 +71,7 @@ chip = {
 
 devices = {
   'LED1' : { 'pin' : 'D1' },
+  'LED2' : { 'pin' : 'D2', 'no_bootloader':True }, # don't use LED2 in the bootloader since we may be using a bare module
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
   'NFC': { 'pin_a':'D9', 'pin_b':'D10' },
   # Pin D22 is used for clock when driving neopixels - as not specifying a pin seems to break things
