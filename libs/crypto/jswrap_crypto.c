@@ -19,6 +19,11 @@
 #include "jsparse.h"
 
 #ifdef USE_AES
+#ifdef ESP32
+#define MBEDTLS_CIPHER_MODE_CTR
+#define MBEDTLS_CIPHER_MODE_CBC
+#define MBEDTLS_CIPHER_MODE_CFB
+#endif
 #include "mbedtls/include/mbedtls/aes.h"
 #endif
 #ifndef USE_SHA1_JS
