@@ -4,6 +4,10 @@ INCLUDE += -I$(ROOT)/libs/crypto
 INCLUDE += -I$(ESP_IDF_PATH)/components/mbedtls
 INCLUDE += -I$(ESP_IDF_PATH)/components/mbedtls/mbedtls/include
 
+DEFINES += -DMBEDTLS_CIPHER_MODE_CTR \
+-DMBEDTLS_CIPHER_MODE_CBC \
+-DMBEDTLS_CIPHER_MODE_CFB
+
 WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
  
 ifdef USE_SHA256
