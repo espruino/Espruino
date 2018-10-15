@@ -238,7 +238,12 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
     return 0;
   }
   jsvUnLock(skippedCallback);
-  return serverNew(ST_HTTP, callback);
+
+  JsVar *options = jsvNewObject();
+  jsvObjectSetChildAndUnLock(options, "reuseAddr", jsvNewFromBool(true));
+  JsVar *server = serverNew(ST_HTTP, options, callback);
+  jsvUnLock(options);
+  return server;
 }
 
 /*JSON{

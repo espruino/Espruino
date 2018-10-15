@@ -833,11 +833,12 @@ bool socketIdle(JsNetwork *net) {
 
 // -----------------------------
 
-JsVar *serverNew(SocketType socketType, JsVar *callback) {
+JsVar *serverNew(SocketType socketType, JsVar *options, JsVar *callback) {
   JsVar *server = jspNewObject(0, ((socketType&ST_TYPE_MASK)==ST_HTTP) ? "httpSrv" : "Server");
   if (!server) return 0; // out of memory
   socketSetType(server, socketType);
   jsvObjectSetChild(server, HTTP_NAME_ON_CONNECT, callback); // no unlock needed
+  jsvObjectSetChild(server, HTTP_NAME_OPTIONS_VAR, options);
   return server;
 }
 
