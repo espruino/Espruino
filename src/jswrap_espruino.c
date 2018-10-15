@@ -1146,7 +1146,7 @@ JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
   "generate" : "jswrap_espruino_getAddressOf",
   "params" : [
     ["v","JsVar","A variable to get the address of"],
-    ["flatAddress","bool","If a flat String or flat ArrayBuffer is supplied, return the address of the data inside it - otherwise 0"]
+    ["flatAddress","bool","(boolean) If `true` and a Flat String or Flat ArrayBuffer is supplied, return the address of the data inside it - otherwise 0. If `false` (the default) return the address of the JsVar itself."]
   ],
   "return" : ["int","The address of the given variable"]
 }
