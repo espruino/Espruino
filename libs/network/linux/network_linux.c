@@ -197,18 +197,6 @@ int net_linux_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
   if (setsockopt(sckt,SOL_SOCKET,SO_NOSIGPIPE,(const char *)&optval,sizeof(optval))<0)
     jsWarn("setsockopt(SO_NOSIGPIPE) failed\n");
 #endif
-#ifdef SO_LINGER
-  if (host) { 
-    /* Doing this to a server breaks it if Espruino
-       is sleeping even for a little while, so only
-       do it to client sockets */
-    struct linger lngr;
-    lngr.l_onoff = 1;
-    lngr.l_linger = 0;
-    if (setsockopt(sckt, SOL_SOCKET, SO_LINGER, (const char *)&lngr, sizeof(lngr))<0)
-      jsWarn("setsockopt(SO_LINGER) failed\n");
-  }
-#endif
 
   return sckt;
 }

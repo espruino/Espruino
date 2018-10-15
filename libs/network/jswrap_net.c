@@ -359,7 +359,12 @@ JsVar *jswrap_net_createServer(JsVar *callback) {
     return 0;
   }
   jsvUnLock(skippedCallback);
-  return serverNew(ST_NORMAL, callback);
+
+  JsVar *options = jsvNewObject();
+  jsvObjectSetChildAndUnLock(options, "reuseAddr", jsvNewFromBool(true));
+  JsVar *server = serverNew(ST_NORMAL, options, callback);
+  jsvUnLock(options);
+  return server;
 }
 
 
