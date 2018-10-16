@@ -63,7 +63,7 @@ elif [ "$FAMILY" = "ESP8266" ]; then
     echo ESP8266
     if [ ! -d "ESP8266_NONOS_SDK-2.2.1" ]; then
         echo ESP8266_NONOS_SDK-2.2.1
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp8266/ESP8266_NONOS_SDK-2.2.1.tgz| tar Jxf - --no-same-owner
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp8266/ESP8266_NONOS_SDK-2.2.1.tar.gz| tar Jxf - --no-same-owner
     fi
     if ! type xtensa-lx106-elf-gcc 2> /dev/null > /dev/null; then
         echo installing xtensa-lx106-elf-gcc
