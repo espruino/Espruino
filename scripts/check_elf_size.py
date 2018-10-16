@@ -29,17 +29,20 @@ print("Testing "+ELF+" for "+BOARD)
 board = importlib.import_module(BOARD)
 # Call the included board_specific file - it sets up 'pins' and 'fill_gaps'
 storageStart = board.chip['saved_code']['address']
-print("Start of Storage: "+str(storageStart));
+storageEnd = storageStart + board.chip['saved_code']['page_size'] * board.chip['saved_code']['pages']
+print("STORAGE: "+str(storageStart)+" -> "+str(storageEnd));
 
 text = subprocess.check_output('arm-none-eabi-objdump -h '+ELF+' | grep "\\.text"', shell=True).strip().split()
 codeSize = int(text[2], 16)
-codeOffset = int(text[3], 16)
-codeEnd = codeSize + codeOffset
+codeStart = int(text[3], 16)
+codeEnd = codeSize + codeStart
 
-print("End of code: "+str(codeEnd));
+print("CODE: "+str(codeStart)+" -> "+str(codeEnd));
 
-if codeEnd<storageStart:
+if codeEnd<storageStart and codeStart<storageStart:
   print("Code area Fits before Storage Area")
+elif codeEnd>storageEnd and codeStart>storageEnd:
+  print("Code area Fits after Storage Area")
 else:
   print("CODE AND STORAGE OVERLAP")
   exit(1)
