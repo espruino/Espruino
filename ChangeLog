@@ -109,6 +109,7 @@
             ESP8266: release heap used by logDebug(true) (fix #1508)
 	    ESP8266: remove SHA256 SHA512 (fix #1517)
             Ensure `Date.getTimezoneOffset()` returns the correct timezone offset (fix #1515)
+            Search for and execute files '.boot0'/1/2/3 in Storage at boot time if they exist
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

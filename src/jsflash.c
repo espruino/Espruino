@@ -731,6 +731,15 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset) {
 }
 
 bool jsfLoadBootCodeFromFlash(bool isReset) {
+  // Load code in .boot0/1/2/3
+  char filename[6] = ".bootX";
+  for (int i=0;i<4;i++) {
+    filename[5] = (char)('0'+i);
+    JsVar *code = jsfReadFile(jsfNameFromString(filename));
+    if (code)
+      jsvUnLock2(jspEvaluateVar(code,0,0), code);
+  }
+  // Load normal boot code
   JsVar *code = jsfGetBootCodeFromFlash(isReset);
   if (!code) return false;
   jsvUnLock2(jspEvaluateVar(code,0,0), code);
