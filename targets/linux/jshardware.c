@@ -107,21 +107,21 @@ JsVarInt sysfs_read_int(const char *path) {
 // ----------------------------------------------------------------------------
 #ifdef USE_WIRINGPI
 void irqEXTI0() { jshPushIOWatchEvent(EV_EXTI0); }
-void irqEXTI1() { jshPushIOWatchEvent(EV_EXTI1); }
-void irqEXTI2() { jshPushIOWatchEvent(EV_EXTI2); }
-void irqEXTI3() { jshPushIOWatchEvent(EV_EXTI3); }
-void irqEXTI4() { jshPushIOWatchEvent(EV_EXTI4); }
-void irqEXTI5() { jshPushIOWatchEvent(EV_EXTI5); }
-void irqEXTI6() { jshPushIOWatchEvent(EV_EXTI6); }
-void irqEXTI7() { jshPushIOWatchEvent(EV_EXTI7); }
-void irqEXTI8() { jshPushIOWatchEvent(EV_EXTI8); }
-void irqEXTI9() { jshPushIOWatchEvent(EV_EXTI9); }
-void irqEXTI10() { jshPushIOWatchEvent(EV_EXTI10); }
-void irqEXTI11() { jshPushIOWatchEvent(EV_EXTI11); }
-void irqEXTI12() { jshPushIOWatchEvent(EV_EXTI12); }
-void irqEXTI13() { jshPushIOWatchEvent(EV_EXTI13); }
-void irqEXTI14() { jshPushIOWatchEvent(EV_EXTI14); }
-void irqEXTI15() { jshPushIOWatchEvent(EV_EXTI15); }
+void irqEXTI1() { jshPushIOWatchEvent(EV_EXTI0+1); }
+void irqEXTI2() { jshPushIOWatchEvent(EV_EXTI0+2); }
+void irqEXTI3() { jshPushIOWatchEvent(EV_EXTI0+3); }
+void irqEXTI4() { jshPushIOWatchEvent(EV_EXTI0+4); }
+void irqEXTI5() { jshPushIOWatchEvent(EV_EXTI0+5); }
+void irqEXTI6() { jshPushIOWatchEvent(EV_EXTI0+6); }
+void irqEXTI7() { jshPushIOWatchEvent(EV_EXTI0+7); }
+void irqEXTI8() { jshPushIOWatchEvent(EV_EXTI0+8); }
+void irqEXTI9() { jshPushIOWatchEvent(EV_EXTI0+9); }
+void irqEXTI10() { jshPushIOWatchEvent(EV_EXTI0+10); }
+void irqEXTI11() { jshPushIOWatchEvent(EV_EXTI0+11); }
+void irqEXTI12() { jshPushIOWatchEvent(EV_EXTI0+12); }
+void irqEXTI13() { jshPushIOWatchEvent(EV_EXTI0+13); }
+void irqEXTI14() { jshPushIOWatchEvent(EV_EXTI0+14); }
+void irqEXTI15() { jshPushIOWatchEvent(EV_EXTI0+15); }
 void irqEXTIDoNothing() { }
 
 void (*irqEXTIs[16])(void) = {
