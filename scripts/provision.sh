@@ -68,7 +68,7 @@ elif [ "$FAMILY" = "ESP8266" ]; then
     if ! type xtensa-lx106-elf-gcc 2> /dev/null > /dev/null; then
         echo installing xtensa-lx106-elf-gcc
         if [ ! -d "xtensa-lx106-elf" ]; then
-            curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf - --no-same-owner
+            curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp8266/xtensa-lx106-elf-20160330.tgx | tar Jxf - --no-same-owner
         else
             echo "Folder found"
         fi
