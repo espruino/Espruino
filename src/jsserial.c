@@ -104,6 +104,9 @@ bool jsserialPopulateUSARTInfo(
       {"cts", JSV_PIN, &inf->pinCTS},
       {"bytesize", JSV_INTEGER, &inf->bytesize},
       {"stopbits", JSV_INTEGER, &inf->stopbits},
+#ifdef LINUX
+      {"path", JSV_STRING_0, 0}, // not used - just here to avoid errors
+#endif
       {"parity", JSV_OBJECT /* a variable */, &parity},
       {"flow", JSV_OBJECT /* a variable */, &flow},
       {"errors", JSV_BOOLEAN, &inf->errorHandling},
@@ -147,7 +150,6 @@ bool jsserialPopulateUSARTInfo(
   }
   jsvUnLock(parity);
   jsvUnLock(flow);
-
   return ok;
 }
 
