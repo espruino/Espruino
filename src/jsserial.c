@@ -30,7 +30,7 @@ void jsserialSoftwareFunc(
     unsigned char data,
     serial_sender_data *info
   ) {
-  // jsiConsolePrintf("jsserialSoftwareFunc: data=%x\n", data);
+  jsiConsolePrintf("jsserialSoftwareFunc: data=%x\n", data);
   JshUSARTInfo *inf = (JshUSARTInfo*)info;
   if (!jshIsPinValid(inf->pinTX)) return;
 
@@ -76,12 +76,12 @@ void jsserialSoftwareFunc(
     }*/
     // hacky - but seems like we may have some timing problems otherwise
     jstPinOutputAtTime(time, &inf->pinTX, 1, bit);
-    //jsiConsolePrintf("-> %d\n",bit);
+    jsiConsolePrintf("-> %d\n",bit);
     time += bitTime;
   }
   // And finish off by raising...
   time += bitTime*outCount;
-  //jsiConsolePrintf("-> 1 (final)\n");
+  jsiConsolePrintf("-> 1 (final)\n");
   jstPinOutputAtTime(time, &inf->pinTX, 1, 1);
   // we do this even if we are high, because we want to ensure that the next char is properly spaced
   // Ideally we'd be able to store the last bit time when sending so we could just go straight on from it
@@ -270,9 +270,9 @@ bool jsserialEventCallbackIdle() {
             while (data->bits < data->bitMax)
               data->bits=(data->bits<<1)|1;
             int ch = jswrap_espruino_reverseByte((data->bits>>1)&255);
-            /*char buf[20];
+            char buf[20];
             itostr(data->bits, buf, 2);
-            jsiConsolePrintf("=]%d %s %d\n", data->bits, buf, ch);*/
+            jsiConsolePrintf("=]%d %s %d\n", data->bits, buf, ch);
             if (data->bufLen < sizeof(data->buf))
               data->buf[data->bufLen++] = (char)ch;
             data->bits = 1;
