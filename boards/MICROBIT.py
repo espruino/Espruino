@@ -34,7 +34,7 @@ info = {
    'makefile' : [
      'SAVE_ON_FLASH=1',
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
-     'DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE',
+     'DEFINES+=-DUSE_TAB_COMPLETE', # Removed -DUSE_DEBUGGER due to firmware size issues
      'INCLUDE += -I$(ROOT)/libs/microbit',
      'WRAPPERSOURCES += libs/microbit/jswrap_microbit.c'
    ]

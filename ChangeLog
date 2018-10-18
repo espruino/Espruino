@@ -113,6 +113,7 @@
             Pixl.js: reduce saved code area to 9 x 4kb to allow for extra features
             ESP8266: switch to SDK 2.2.1 (fix #1207)
             Fix Serial port path regression on Linux, and add docs
+            microbit: remove line-by-line debug capability to free up some space
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
