@@ -1,4 +1,4 @@
-	    Allow changeInterval with large (>32 bit) intervals (fix #1438)
+     2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
             Fix parsing of try..catch when not executing (fix #1439)
             Add extra ReferenceError checks, even if variable is not used
