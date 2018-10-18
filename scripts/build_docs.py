@@ -255,7 +255,7 @@ jsondatas = sorted(jsondatas, key=lambda s: common.get_name_or_space(s).lower())
 html('  <div id="contents">')
 html("  <h2><a name=\"contents\"></a>Contents</h2>")
 html("  <ul>")
-html("  <li><a class=\"blush\" name=\"t__global\" href=\"#_global\" onclick=\"place('_global');\">Globals</A></li>")
+html("  <li><a class=\"blush\" name=\"t__global\" href=\"#_global\" onclick=\"place('_global');\">Globals</a></li>")
 for jsondata in jsondatas:
   if "name" in jsondata and not "class" in jsondata:
     add_link(jsondata)
@@ -289,6 +289,7 @@ for jsondata in detail:
     niceName="Globals"
     linkName="_global"
 
+  # If we're on to a different class now, put up the heading for it
   if className!=lastClass:
     lastClass=className
     html("<h2 class=\"class\"><a class=\"blush\" name=\""+linkName+"\" href=\"#t_"+linkName+"\" onclick=\"place('t_"+linkName+"');\">"+niceName+"</a></h2>")
@@ -313,10 +314,12 @@ for jsondata in detail:
     html("  <h4>Methods and Fields</h4>")
     html("  <ul>")
     for j in jsondatas:
-      if ("name" in j) and (className!="" or not "instanceof" in j) and ((className=="" and not "class" in j) or ("class" in j and j["class"]==className)):
+      if ("name" in j) and ((className=="" and not "class" in j) or ("class" in j and j["class"]==className)):
         link = get_link(j)
         html("    <li><a name=\"t_"+link+"\" href=\"#"+link+"\">"+get_surround(j)+"</a></li>")
     html("  </ul>")
+
+  # Otherwise just output detail
   link = get_link(jsondata)
   html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a>")
   #html("<!-- "+json.dumps(jsondata, sort_keys=True, indent=2)+"-->");
