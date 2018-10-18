@@ -1504,9 +1504,13 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(extendsFrom,classFunction,classInternalName,classPrototype),0);
     if (classPrototype) {
       if (jsvIsFunction(extendsFrom)) {
-        jsvObjectSetChild(classPrototype, JSPARSE_INHERITS_VAR, extendsFrom);
-        // link in default constructor if ours isn't supplied
-        jsvObjectSetChildAndUnLock(classFunction, JSPARSE_FUNCTION_CODE_NAME, jsvNewFromString("if(this.__proto__.__proto__)this.__proto__.__proto__.apply(this,arguments)"));
+        JsVar *extendsFromProto = jsvObjectGetChild(extendsFrom, JSPARSE_PROTOTYPE_VAR, 0);
+        if (extendsFromProto) {
+          jsvObjectSetChild(classPrototype, JSPARSE_INHERITS_VAR, extendsFromProto);
+          // link in default constructor if ours isn't supplied
+          jsvObjectSetChildAndUnLock(classFunction, JSPARSE_FUNCTION_CODE_NAME, jsvNewFromString("if(this.__proto__.__proto__.constructor)this.__proto__.__proto__.constructor.apply(this,arguments)"));
+          jsvUnLock(extendsFromProto);
+        }
       } else
         jsExceptionHere(JSET_SYNTAXERROR, "'extends' argument should be a function, got %t", extendsFrom);
     }
@@ -1682,11 +1686,14 @@ NO_INLINE JsVar *jspeFactor() {
         jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
         return 0;
       }
-      if (lex->tk=='(') return proto2; // eg. used in a constructor
-      // But if we're doing something else - eg '.' or '[' then it needs to reference the prototype
-      JsVar *proto3 = jsvIsFunction(proto2) ? jsvObjectGetChild(proto2, JSPARSE_PROTOTYPE_VAR, 0) : 0;
-      jsvUnLock(proto2);
-      return proto3;
+      // If we're doing super() we want the constructor
+      if (lex->tk=='(') {
+        JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
+        jsvUnLock(proto2);
+        return constr;
+      }
+      // But if we're doing something else - eg 'super.' or 'super[' then it needs to reference the prototype
+      return proto2;
     } else if (jsvIsFunction(execInfo.thisVar)) {
       // 'this' is a function - must be calling a static method
       JsVar *proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_PROTOTYPE_VAR, 0);
@@ -1696,7 +1703,9 @@ NO_INLINE JsVar *jspeFactor() {
         jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
         return 0;
       }
-      return proto2;
+      JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
+      jsvUnLock(proto2);
+      return constr;
     }
     jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
     return 0;
