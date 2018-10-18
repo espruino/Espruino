@@ -678,3 +678,29 @@ bool jswrap_string_endsWith(JsVar *parent, JsVar *search, JsVar *length) {
   "return" : ["bool","`true` if the given characters are in the string, otherwise, `false`."]
 }
 */
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "repeat",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_string_repeat",
+  "params" : [
+    ["count","int","An integer with the amount of times to repeat this String"]
+  ],
+  "return" : ["JsVar","A string containing repetitions of this string"],
+  "return_object" : "String"
+}
+Repeat this string the given number of times.
+*/
+JsVar *jswrap_string_repeat(JsVar *parent, int count) {
+  if (count<0) {
+    jsExceptionHere(JSET_ERROR, "Invalid count value");
+    return 0;
+  }
+  JsVar *result = jsvNewFromEmptyString();
+  while (count-- && !jspIsInterrupted())
+    jsvAppendStringVarComplete(result, parent);
+  return result;
+}

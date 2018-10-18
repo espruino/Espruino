@@ -114,6 +114,7 @@
             ESP8266: switch to SDK 2.2.1 (fix #1207)
             Fix Serial port path regression on Linux, and add docs
             microbit: remove line-by-line debug capability to free up some space
+            Added ES6 String.prototype.repeat
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
