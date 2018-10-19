@@ -511,6 +511,12 @@ ifdef USE_NET
   WRAPPERSOURCES += libs/network/telnet/jswrap_telnet.c
   INCLUDE += -I$(ROOT)/libs/network/telnet
  endif
+
+ ifdef USE_MQTT
+  DEFINES += -DUSE_MQTT
+  WRAPPERSOURCES += libs/network/mqtt/jswrap_mqtt.c
+  INCLUDE += -I$(ROOT)/libs/network/mqtt
+ endif
 endif # USE_NET
 
 ifdef USE_TV
