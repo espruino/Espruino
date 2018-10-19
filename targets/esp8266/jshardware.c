@@ -675,7 +675,7 @@ void jshPinPulse(
     bool pulsePolarity,   //!< The value to be pulsed into the pin.
     JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
 ) {
-#if 0
+#if 1
   // Implementation using the utility timer. This doesn't work well on the esp8266, because the
   // utility timer uses tasks and these are not pre-emptible. So the timer won't actually fire
   // until the main espruino task becomes idle, which messes up timings. It also locks-up things
@@ -702,7 +702,7 @@ void jshPinPulse(
   }
 #endif
 
-#if 1
+#if 0
   // Implementation using busy-waiting. Ugly and if the pulse train exceeds 10ms one risks WDT
   // resets, but it actually works...
   jshPinOutput(pin, pulsePolarity);
@@ -1198,26 +1198,27 @@ static void systemTimeInit(void) {
 //===== Hardware timer =====
 // this is a copy of hw_timer.c from ESP8266_NONOS_SDK-2.2.1
 
-#define US_TO_RTC_TIMER_TICKS(t)          \
-    ((t) ?                                   \
-     (((t) > 0x35A) ?                   \
-      (((t)>>2) * ((APB_CLK_FREQ>>4)/250000) + ((t)&0x3) * ((APB_CLK_FREQ>>4)/1000000))  :    \
-      (((t) *(APB_CLK_FREQ>>4)) / 1000000)) :    \
-     0)
+static uint32_t CPU_CLK_FREQ;
 
+#define US_TO_RTC_TIMER_TICKS(t) \
+    ((t) ? \
+     (((t) > 0x35A) ? \
+      (((t)>>2) * ((CPU_CLK_FREQ>>4)/250000) + ((t)&0x3) * ((CPU_CLK_FREQ>>4)/1000000))  : \
+      (((t) *(CPU_CLK_FREQ>>4)) / 1000000)) : \
+     0)
 #define FRC1_ENABLE_TIMER  BIT7
-#define FRC1_AUTO_LOAD  BIT6
+#define FRC1_AUTO_LOAD     BIT6
 
 //TIMER PREDIVED MODE
 typedef enum {
     DIVDED_BY_1 = 0,    //timer clock
-    DIVDED_BY_16 = 4, //divided by 16
+    DIVDED_BY_16 = 4,   //divided by 16
     DIVDED_BY_256 = 8,  //divided by 256
 } TIMER_PREDIVED_MODE;
 
-typedef enum {      //timer interrupt mode
-    TM_LEVEL_INT = 1, // level interrupt
-    TM_EDGE_INT   = 0,  //edge interrupt
+typedef enum {          //timer interrupt mode
+    TM_LEVEL_INT = 1,   // level interrupt
+    TM_EDGE_INT = 0,    //edge interrupt
 } TIMER_INT_MODE;
 
 typedef enum {
@@ -1287,6 +1288,8 @@ u8 req:
 *******************************************************************************/
 void ICACHE_FLASH_ATTR hw_timer_init(FRC1_TIMER_SOURCE_TYPE source_type, u8 req)
 {
+    CPU_CLK_FREQ = system_get_cpu_freq() * 1000000 ; // returns 80 or 160 * 1000000
+
     if (req == 1) {
         RTC_REG_WRITE(FRC1_CTRL_ADDRESS,
                       FRC1_AUTO_LOAD | DIVDED_BY_16 | FRC1_ENABLE_TIMER | TM_EDGE_INT);
@@ -1304,22 +1307,22 @@ void ICACHE_FLASH_ATTR hw_timer_init(FRC1_TIMER_SOURCE_TYPE source_type, u8 req)
 }
 
 static void utilTimerInit(void) {
-  jsiConsolePrintf("utilTimerInit\n");
+  //jsiConsolePrintf("utilTimerInit\n");
   hw_timer_init(FRC1_SOURCE, 0);
 }
 
 void jshUtilTimerStart(JsSysTime period) {
   //if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
   if (period<1) period=1; {
-    utilTimerInit()
-    //hw_timer_set_func(hw_test_timer_cb);
+    utilTimerInit();
+    hw_timer_set_func(jstUtilTimerInterruptHandler);
     hw_timer_arm((uint32_t) period);
   }
 }
 
 void jshUtilTimerDisable() {
   hw_timer_stop();
-  jsiConsolePrintf("utilTimer disarm\n");
+  //jsiConsolePrintf("utilTimer disarm\n");
 }
 
 void jshUtilTimerReschedule(JsSysTime period) {
