@@ -74,16 +74,19 @@ JsVar *jswrap_require(JsVar *moduleName) {
   if (!moduleList) return 0; // out of memory
   JsVar *moduleExport = jsvSkipNameAndUnLock(jsvFindChildFromString(moduleList, moduleNameBuf, false));
   jsvUnLock(moduleList);
-  if (moduleExport) {
+  if (moduleExport&&!jsvIsNativeFunction(moduleExport)) {
     // Found the module!
     return moduleExport;
   }
 
   // Now check if it is built-in (as an actual native function)
   void *builtInLib = jswGetBuiltInLibrary(moduleNameBuf);
-  if (builtInLib) {
+  if (builtInLib&&!moduleExport) {
     // create a 'fake' module that Espruino can use to map its built-in functions against
     moduleExport = jsvNewNativeFunction(builtInLib, 0);
+  }else if(builtInLib&&jsvIsNativeFunction(moduleExport)){
+    moduleExport->varData.native.ptr=builtInLib;
+    moduleExport->varData.native.argTypes=0;
   }
 
 #ifndef SAVE_ON_FLASH

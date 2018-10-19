@@ -589,19 +589,6 @@ JsVar *jsfListFiles() {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// Get a hash of the current Git commit, so new builds won't load saved code
-static uint32_t getBuildHash() {
-#ifdef GIT_COMMIT
-  const unsigned char *s = (unsigned char*)STRINGIFY(GIT_COMMIT);
-  uint32_t hash = 0;
-  while (*s)
-    hash = (hash<<1) ^ *(s++);
-  return hash;
-#else
-  return 0;
-#endif
-}
-
 typedef struct {
   uint32_t address;
   uint32_t endAddress;
@@ -650,7 +637,7 @@ void jsfSaveToFlash() {
   jsfCompact();
   jsiConsolePrint("Calculating Size...\n");
   // Work out how much data this'll take, plus 4 bytes for build hash
-  uint32_t compressedSize = 4 + COMPRESS(varPtr, varSize, NULL, NULL);
+  uint32_t compressedSize = COMPRESS(varPtr, varSize, NULL, NULL);
   // How much data do we have?
   uint32_t savedCodeAddr = jsfCreateFile(jsfNameFromString(SAVED_CODE_VARIMAGE), compressedSize, JSFF_COMPRESSED, JSF_START_ADDRESS, 0);
   if (!savedCodeAddr) {
@@ -677,11 +664,6 @@ void jsfSaveToFlash() {
   cbData.address = savedCodeAddr;
   cbData.endAddress = jsfAlignAddress(savedCodeAddr+compressedSize);
   jsiConsolePrint("Writing..");
-  // write the hash
-  uint32_t hash = getBuildHash();
-  int i;
-  for (i=0;i<4;i++)
-    jsfSaveToFlash_writecb(((unsigned char*)&hash)[i], (uint32_t*)&cbData);
   // write compressed data
   COMPRESS(varPtr, varSize, jsfSaveToFlash_writecb, (uint32_t*)&cbData);
   jsfSaveToFlash_finish(&cbData);
@@ -703,15 +685,7 @@ void jsfLoadStateFromFlash() {
   jsfcbData cbData;
   cbData.address = savedCode;
   cbData.endAddress = savedCode+jsfGetFileSize(&header);
-
-  uint32_t hash;
-  int i;
-  for (i=0;i<4;i++)
-    ((char*)&hash)[i] = (char)jsfLoadFromFlash_readcb((uint32_t*)&cbData);
-  if (hash != getBuildHash()) {
-    jsiConsolePrintf("Not loading saved code from different Espruino firmware.\n");
-    return;
-  }
+  
   jsiConsolePrintf("Loading %d bytes from flash...\n", jsfGetFileSize(&header));
   DECOMPRESS(jsfLoadFromFlash_readcb, (uint32_t*)&cbData, varPtr);
 }
