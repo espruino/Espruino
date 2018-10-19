@@ -1196,15 +1196,16 @@ static void systemTimeInit(void) {
 
 
 //===== Hardware timer =====
+
 // this is a copy of hw_timer.c from ESP8266_NONOS_SDK-2.2.1
 
-static uint32_t CPU_CLK_FREQ;
+static int32_t CPU_CLK_FREQ_FACTOR;
 
 #define US_TO_RTC_TIMER_TICKS(t) \
     ((t) ? \
      (((t) > 0x35A) ? \
-      (((t)>>2) * ((CPU_CLK_FREQ>>4)/250000) + ((t)&0x3) * ((CPU_CLK_FREQ>>4)/1000000))  : \
-      (((t) *(CPU_CLK_FREQ>>4)) / 1000000)) : \
+      (((t)>>2) * ((APB_CLK_FREQ>>4)/250000) + ((t)&0x3) * ((APB_CLK_FREQ>4)/1000000))  : \
+      (((t) *(APB_CLK_FREQ>>4)) / 1000000)) : \
      0)
 #define FRC1_ENABLE_TIMER  BIT7
 #define FRC1_AUTO_LOAD     BIT6
@@ -1239,7 +1240,7 @@ in non autoload mode:
 *******************************************************************************/
 void  hw_timer_arm(u32 val)
 {
-    RTC_REG_WRITE(FRC1_LOAD_ADDRESS, US_TO_RTC_TIMER_TICKS(val));
+    RTC_REG_WRITE(FRC1_LOAD_ADDRESS, (US_TO_RTC_TIMER_TICKS(val)/CPU_CLK_FREQ_FACTOR));
 }
 
 void  hw_timer_stop()
@@ -1288,7 +1289,8 @@ u8 req:
 *******************************************************************************/
 void ICACHE_FLASH_ATTR hw_timer_init(FRC1_TIMER_SOURCE_TYPE source_type, u8 req)
 {
-    CPU_CLK_FREQ = system_get_cpu_freq() * 1000000 ; // returns 80 or 160 * 1000000
+    CPU_CLK_FREQ_FACTOR = 1;
+    if (system_get_cpu_freq() > 100 ) CPU_CLK_FREQ_FACTOR = 2;
 
     if (req == 1) {
         RTC_REG_WRITE(FRC1_CTRL_ADDRESS,
@@ -1314,6 +1316,7 @@ static void utilTimerInit(void) {
 void jshUtilTimerStart(JsSysTime period) {
   //if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
   if (period<1) period=1; {
+    //jsiConsolePrintf("jshUtilTimerStart %d, %d\n",period, (US_TO_RTC_TIMER_TICKS(period))/CPU_CLK_FREQ_FACTOR);
     utilTimerInit();
     hw_timer_set_func(jstUtilTimerInterruptHandler);
     hw_timer_arm((uint32_t) period);
