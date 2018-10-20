@@ -257,6 +257,7 @@ endif
 include make/common/ARM.make
 
 $(PROJ_NAME).app_hex: $(PROJ_NAME).elf
+	python scripts/check_elf_size.py $(BOARD) $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
 	@$(call obj_to_bin,ihex,hex)
 	@mv $(PROJ_NAME).hex $(PROJ_NAME).app_hex

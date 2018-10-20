@@ -171,7 +171,7 @@ Returns an array of all properties (enumerable or not) found directly on a given
 */
 
 
-void _jswrap_object_keys_or_property_names_iterator(
+static void _jswrap_object_keys_or_property_names_iterator(
     const JswSymList *symbols,
     void (*callback)(void *data, JsVar *name),
     void *data) {
@@ -204,6 +204,7 @@ void jswrap_object_keys_or_property_names_cb(
     void (*callback)(void *data, JsVar *name),
     void *data
 ) {
+  // add the keys that are on this object itself
   // strings are iterable, but we shouldn't try and show keys for them
   if (jsvIsIterable(obj)) {
     JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(obj);
@@ -232,6 +233,8 @@ void jswrap_object_keys_or_property_names_cb(
      Assume that ALL builtins are non-enumerable. This isn't great but
      seems to work quite well right now! */
   if (includeNonEnumerable) {
+    const JswSymList *objSymbols = jswGetSymbolListForObjectProto(0);
+
     JsVar *protoOwner = jspGetPrototypeOwner(obj);
     if (protoOwner) {
       // If protoOwner then this is the prototype (protoOwner is the object)
@@ -245,23 +248,22 @@ void jswrap_object_keys_or_property_names_cb(
     }
 
     if (includePrototype) {
+      JsVar *proto = 0;
       if (jsvIsObject(obj) || jsvIsFunction(obj)) {
-        JsVar *proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
-        while (jsvIsObject(proto)) {
-          const JswSymList *symbols = jswGetSymbolListForObjectProto(proto);
-          _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
-          JsVar *p2 = jsvObjectGetChild(proto, JSPARSE_INHERITS_VAR, 0);
-          jsvUnLock(proto);
-          proto = p2;
-        }
+        proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
       }
-      // include Object/String/etc
-      const JswSymList *symbols = jswGetSymbolListForObjectProto(obj);
-      _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
-      // if the last call wasn't an Object, add the object proto as well
-      const JswSymList *objSymbols = jswGetSymbolListForObjectProto(0);
-      if (objSymbols!=symbols)
-        _jswrap_object_keys_or_property_names_iterator(objSymbols, callback, data);
+
+      if (jsvIsObject(proto)) {
+        jswrap_object_keys_or_property_names_cb(proto, includeNonEnumerable, includePrototype, callback, data);
+      } else {
+        // include Object/String/etc
+        const JswSymList *symbols = jswGetSymbolListForObjectProto(obj);
+        _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
+        // if the last call wasn't an Object, add the object proto as well
+        if (objSymbols!=symbols)
+          _jswrap_object_keys_or_property_names_iterator(objSymbols, callback, data);
+      }
+      jsvUnLock(proto);
     }
 
     if (jsvIsArray(obj) || jsvIsString(obj)) {

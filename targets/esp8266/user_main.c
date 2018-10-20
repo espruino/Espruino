@@ -261,6 +261,10 @@ static void initDone() {
 
   jswrap_wifi_restore();
 
+#ifdef RELEASE
+  jswrap_ESP8266_logDebug(false);
+#endif
+
   // Register the idle callback handler to run the main loop
   //ets_set_idle_cb(idle_cb, NULL); //
   queueTaskMainLoop(); // get things going without idle callback

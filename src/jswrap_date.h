@@ -36,7 +36,7 @@ JsVarFloat jswrap_date_now();
 JsVar *jswrap_date_from_milliseconds(JsVarFloat time);
 JsVar *jswrap_date_constructor(JsVar *args);
 
-JsVarFloat jswrap_date_getTimezoneOffset(JsVar *parent);
+int jswrap_date_getTimezoneOffset(JsVar *parent);
 JsVarFloat jswrap_date_getTime(JsVar *parent);
 JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue);
 int jswrap_date_getHours(JsVar *parent);

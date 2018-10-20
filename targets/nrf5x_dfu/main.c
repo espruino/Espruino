@@ -43,7 +43,7 @@
 #define UPDATE_IN_PROGRESS_LED          LED1_PININDEX                                            /**< Led used to indicate that DFU is active. */
 #define UPDATE_IN_PROGRESS_LED_ONSTATE  LED1_ONSTATE                                            /**< Led used to indicate that DFU is active. */
 #endif
-#ifdef LED2_PININDEX
+#if defined(LED2_PININDEX) && !defined(LED2_NO_BOOTLOADER)
 #define BOOTLOADER_BUTTON_PRESS_LED          LED2_PININDEX                                            /**< Led used to indicate that DFU is active. */
 #define BOOTLOADER_BUTTON_PRESS_LED_ONSTATE  LED2_ONSTATE                                            /**< Led used to indicate that DFU is active. */
 #else

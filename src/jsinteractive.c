@@ -861,6 +861,8 @@ void jsiInit(bool autoLoad) {
 #endif
 
   jsiSemiInit(autoLoad);
+  // just in case, update the busy indicator
+  jsiSetBusy(BUSY_INTERACTIVE, false);
 }
 
 #ifndef LINUX

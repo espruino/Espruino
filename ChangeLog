@@ -1,4 +1,7 @@
-	    Allow changeInterval with large (>32 bit) intervals (fix #1438)
+            Fix issues with Class Extends
+            Improve Tab Completions for extended classes
+
+     2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
             Fix parsing of try..catch when not executing (fix #1439)
             Add extra ReferenceError checks, even if variable is not used
@@ -103,6 +106,18 @@
             Espruino WiFi: Only rename `EspruinoWiFi` to `WiFi` if not found (allows easier debug)
             Check Flash Storage for modules when using `require`
             Add 'bits' option for Software SPI
+            STM32 reset pin IRQs before storing the state - makes lost setWatches far less likely
+            Ensure that setBusyIndicator updates output state after the very first initialisation.
+            MDBT42Q: Add LED2 var in the Espruino interpreter, but don't use it for the bootloader
+            ESP8266: release heap used by logDebug(true) (fix #1508)
+            ESP8266: remove SHA256 SHA512 (fix #1517)
+            Ensure `Date.getTimezoneOffset()` returns the correct timezone offset (fix #1515)
+            Search for and execute files '.boot0'/1/2/3 in Storage at boot time if they exist
+            Pixl.js: reduce saved code area to 9 x 4kb to allow for extra features
+            ESP8266: switch to SDK 2.2.1 (fix #1207)
+            Fix Serial port path regression on Linux, and add docs
+            microbit: remove line-by-line debug capability to free up some space
+            Added ES6 String.prototype.repeat
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k
