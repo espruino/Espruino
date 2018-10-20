@@ -542,13 +542,13 @@ ifdef USE_BLUETOOTH
   SOURCES += libs/bluetooth/bluetooth_utils.c
 endif
 
-ifdef USE_CRYPTO
-  CRYPTOFILE = make/crypto/$(FAMILY).make
-  ifeq (,wildcard $(CRYPTOFILE))
+ifdef USE_CRYPTO 
+  cryptofound:=$(shell if test -f make/crypto/$(FAMILY).make; then echo yes;fi)
+  ifeq ($(cryptofound),yes)
     include make/crypto/$(FAMILY).make
   else
     include make/crypto/default.make
-  endif
+  endif 
 endif
 
 ifdef USE_NEOPIXEL
