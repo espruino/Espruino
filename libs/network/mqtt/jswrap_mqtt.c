@@ -123,7 +123,7 @@ bool jswrap_mqtt_idle(){
             networkFree(&net);
         }
     }
-    return is_busy!=0;
+    return is_busy;
 }
 
 /*JSON{
