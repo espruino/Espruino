@@ -1315,12 +1315,12 @@ static void utilTimerInit(void) {
 
 void jshUtilTimerStart(JsSysTime period) {
   //if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
-  if (period<1) period=1; {
+  //if (period<1) period=1; {
     //jsiConsolePrintf("jshUtilTimerStart %d, %d\n",period, (US_TO_RTC_TIMER_TICKS(period))/CPU_CLK_FREQ_FACTOR);
     utilTimerInit();
     hw_timer_set_func(jstUtilTimerInterruptHandler);
     hw_timer_arm((uint32_t) period);
-  }
+  //}
 }
 
 void jshUtilTimerDisable() {
