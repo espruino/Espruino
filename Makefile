@@ -543,8 +543,8 @@ ifdef USE_BLUETOOTH
 endif
 
 ifdef USE_CRYPTO
-  CRYPTOFILE = make/crypto/$(FAMILIY).make
-  ifeq ($(wildcard $(CRYPTOFILE)),)
+  CRYPTOFILE = make/crypto/$(FAMILY).make
+  ifeq (,wildcard $(CRYPTOFILE))
     include make/crypto/$(FAMILY).make
   else
     include make/crypto/default.make
