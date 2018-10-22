@@ -73,7 +73,7 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
   if (xdir==0 && ydir==0) return;
   int y;
   if (ydir<=0) {
-    int h = gfx->data.height+xdir;
+    int h = gfx->data.height+ydir;
     for (y=0;y<h;y++)
       graphicsFallbackScrollX(gfx, xdir, y-ydir, y);
   } else { // >0
