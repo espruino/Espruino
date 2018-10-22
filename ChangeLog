@@ -1,4 +1,4 @@
-            ESP32: update to esp-idf V3.1
+            ESP32: update to esp-idf V3.1.
             Fix issues with Class Extends
             Improve Tab Completions for extended classes
 
