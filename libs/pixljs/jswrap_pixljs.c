@@ -80,7 +80,6 @@ var mainmenu = {
   "Submenu" : function() { Pixl.menu(submenu); },
   "Exit" : function() { Pixl.menu(); },
 };
-
 // Submenu
 var submenu = {
   "" : {
@@ -90,7 +89,7 @@ var submenu = {
   "Two" : undefined, // do nothing
   "< Back" : function() { Pixl.menu(mainmenu); },
 };
-
+// Actually display the menu
 Pixl.menu(mainmenu);
 ```
 
