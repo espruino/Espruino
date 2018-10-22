@@ -109,7 +109,9 @@ This is identical to `JSON.parse(require("Storage").read(...))`
 JsVar *jswrap_storage_readJSON(JsVar *name) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name));
   if (!v) return 0;
-  return jswrap_json_parse(v);
+  JsVar *r = jswrap_json_parse(v);
+  jsvUnLock(v);
+  return r;
 }
 
 /*JSON{
@@ -135,7 +137,9 @@ This can be used:
 JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name));
   if (!v) return 0;
-  return jsvNewArrayBufferFromString(v, 0);
+  JsVar *r = jsvNewArrayBufferFromString(v, 0);
+  jsvUnLock(v);
+  return r;
 }
 
 /*JSON{
