@@ -92,7 +92,7 @@ static IOEventFlags pinToEV_EXTI(
 
 // forward declaration
 static void systemTimeInit(void);
-static void utilTimerInit(void);
+//static void utilTimerInit(void);
 static void intrHandlerCB(uint32 interruptMask, void *arg);
 
 /**
@@ -108,7 +108,6 @@ void jshInit() {
   gpio_init();
 
   systemTimeInit();
-  utilTimerInit();
   jshInitDevices();
 
   // sanity check for pin function enum to catch ordering changes
@@ -675,12 +674,7 @@ void jshPinPulse(
     bool pulsePolarity,   //!< The value to be pulsed into the pin.
     JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
 ) {
-#if 0
-  // Implementation using the utility timer. This doesn't work well on the esp8266, because the
-  // utility timer uses tasks and these are not pre-emptible. So the timer won't actually fire
-  // until the main espruino task becomes idle, which messes up timings. It also locks-up things
-  // when someone defines a pulse train that is longer than the timer queue, because then the
-  // main task busy-waits for the timer queue to drain a bit, which never happens.
+
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Invalid pin!");
     return;
@@ -700,17 +694,7 @@ void jshPinPulse(
     // Now set the end of the pulse to happen on a timer
     jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
   }
-#endif
-
-#if 1
-  // Implementation using busy-waiting. Ugly and if the pulse train exceeds 10ms one risks WDT
-  // resets, but it actually works...
-  jshPinOutput(pin, pulsePolarity);
-  jshDelayMicroseconds(jshGetTimeFromMilliseconds(pulseTime)-6);  // -6 adjustment is for overhead
-  jshPinSetValue(pin, !pulsePolarity);
-#endif
 }
-
 
 /**
  * Determine whether the pin can be watchable.
@@ -786,8 +770,6 @@ bool jshIsEventForPin(
 }
 
 //===== USART and Serial =====
-
-
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   uint8 uart_no;
@@ -1194,27 +1176,85 @@ static void systemTimeInit(void) {
   saveTime(&rtcTimeStamp);
 }
 
-//===== Utility timer =====
 
-// The utility timer uses the SDK timer in microsecond mode.
+//===== Hardware timer =====
+// this is a copy of hw_timer.c from ESP8266_NONOS_SDK-2.2.1
+// check the original file for details
 
-os_timer_t utilTimer;
+static int32_t CPU_CLK_FREQ_FACTOR;
 
-static void utilTimerInit(void) {
-  //os_printf("UStimer init\n");
-  os_timer_disarm(&utilTimer);
-  os_timer_setfn(&utilTimer, jstUtilTimerInterruptHandler, NULL);
+#define US_TO_RTC_TIMER_TICKS(t) \
+    ((t) ? \
+     (((t) > 0x35A) ? \
+      (((t)>>2) * ((APB_CLK_FREQ>>4)/250000) + ((t)&0x3) * ((APB_CLK_FREQ>4)/1000000))  : \
+      (((t) *(APB_CLK_FREQ>>4)) / 1000000)) : \
+     0)
+#define FRC1_ENABLE_TIMER  BIT7
+#define FRC1_AUTO_LOAD     BIT6
+
+//TIMER PREDIVED MODE
+typedef enum {
+    DIVDED_BY_1 = 0,    //timer clock
+    DIVDED_BY_16 = 4,   //divided by 16
+    DIVDED_BY_256 = 8,  //divided by 256
+} TIMER_PREDIVED_MODE;
+
+typedef enum {          //timer interrupt mode
+    TM_LEVEL_INT = 1,   // level interrupt
+    TM_EDGE_INT = 0,    //edge interrupt
+} TIMER_INT_MODE;
+
+typedef enum {
+    FRC1_SOURCE = 0,
+    NMI_SOURCE = 1,
+} FRC1_TIMER_SOURCE_TYPE;
+
+static void (* user_hw_timer_cb)(void) = NULL;
+
+static void hw_timer_isr_cb(void *arg)
+{
+    if (user_hw_timer_cb != NULL) {
+        (*(user_hw_timer_cb))();
+    }
 }
 
-void jshUtilTimerDisable() {
-  //os_printf("UStimer disarm\n");
-  os_timer_disarm(&utilTimer);
+static void hw_timer_nmi_cb(void)
+{
+    if (user_hw_timer_cb != NULL) {
+        (*(user_hw_timer_cb))();
+    }
+}
+
+void ICACHE_FLASH_ATTR hw_timer_init(FRC1_TIMER_SOURCE_TYPE source_type, u8 req)
+{
+    CPU_CLK_FREQ_FACTOR = 1;
+    if (system_get_cpu_freq() > 100 ) CPU_CLK_FREQ_FACTOR = 2;
+
+    if (req == 1) {
+        RTC_REG_WRITE(FRC1_CTRL_ADDRESS,
+                      FRC1_AUTO_LOAD | DIVDED_BY_16 | FRC1_ENABLE_TIMER | TM_EDGE_INT);
+    } else {
+        RTC_REG_WRITE(FRC1_CTRL_ADDRESS,
+                      DIVDED_BY_16 | FRC1_ENABLE_TIMER | TM_EDGE_INT);
+    }
+    if (source_type == NMI_SOURCE) {
+        ETS_FRC_TIMER1_NMI_INTR_ATTACH(hw_timer_nmi_cb);
+    } else {
+        ETS_FRC_TIMER1_INTR_ATTACH(hw_timer_isr_cb, NULL);
+    }
+    TM1_EDGE_INT_ENABLE();
+    ETS_FRC1_INTR_ENABLE();
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-  //if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
-  if (period<1) period=1;
-  os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
+    hw_timer_init(FRC1_SOURCE, 0);
+    user_hw_timer_cb = jstUtilTimerInterruptHandler;
+    RTC_REG_WRITE(FRC1_LOAD_ADDRESS, (US_TO_RTC_TIMER_TICKS(period)/CPU_CLK_FREQ_FACTOR));
+}
+
+void jshUtilTimerDisable() {
+  RTC_CLR_REG_MASK(FRC1_CTRL_ADDRESS,FRC1_ENABLE_TIMER); 
+  //jsiConsolePrintf("utilTimer disarm\n");
 }
 
 void jshUtilTimerReschedule(JsSysTime period) {

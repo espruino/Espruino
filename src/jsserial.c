@@ -30,7 +30,7 @@ void jsserialSoftwareFunc(
     unsigned char data,
     serial_sender_data *info
   ) {
-  // jsiConsolePrintf("jsserialSoftwareFunc: data=%x\n", data);
+  //jsiConsolePrintf("jsserialSoftwareFunc: data=%x\n", data);
   JshUSARTInfo *inf = (JshUSARTInfo*)info;
   if (!jshIsPinValid(inf->pinTX)) return;
 
