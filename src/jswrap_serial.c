@@ -187,7 +187,7 @@ built-in wifi only).
   "type" : "method",
   "class" : "Serial",
   "name" : "setConsole",
-  "generate_full" : "jsiSetConsoleDevice(jsiGetDeviceFromClass(parent), force)",
+  "generate" : "jswrap_serial_setConsole",
   "params" : [
     ["force","bool","Whether to force the console to this port"]
   ]
@@ -197,6 +197,14 @@ Set this Serial port as the port for the JavaScript console (REPL).
 Unless `force` is set to true, changes in the connection state of the board
 (for instance plugging in USB) will cause the console to change.
  */
+void jswrap_serial_setConsole(JsVar *parent, bool force) {
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (DEVICE_IS_SERIAL(device)) {
+    jsiSetConsoleDevice(device, force);
+  } else {
+    jsExceptionHere(JSET_ERROR, "setConsole can't be used on 'soft' devices");
+  }
+}
 
 /*JSON{
   "type" : "method",
