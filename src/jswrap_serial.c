@@ -248,6 +248,9 @@ storage in the queue. If you're intending to receive a lot of malformed
 data then the queue might overflow `E.getErrorFlags()` would return `FIFO_FULL`.
 However if you need to respond to `framing` or `parity` errors then 
 you'll need to use `errors:true` when initialising serial.
+
+On Linux builds there is no default Serial device, so you must specify
+a path to a device - for instance: `Serial1.setup(9600,{path:"/dev/ttyACM0"})`
 */
 void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
@@ -259,7 +262,6 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
     jsvLockAgain(options);
 
   bool ok = jsserialPopulateUSARTInfo(&inf, baud, options);
-
 #ifdef LINUX
   if (ok && jsvIsObject(options))
     jsvObjectSetChildAndUnLock(parent, "path", jsvObjectGetChild(options, "path", 0));

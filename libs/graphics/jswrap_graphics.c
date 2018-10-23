@@ -287,7 +287,7 @@ JsVar *jswrap_graphics_createSDL(int width, int height) {
   "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_createImage",
   "params" : [
-    ["str","JsVar","A String containing newline-separated "]
+    ["str","JsVar","A String containing a newline-separated image - space is 0, anything else is 1"]
   ],
   "return" : ["JsVar","An Image object that can be used with `Graphics.drawImage`"]
 }
@@ -297,12 +297,12 @@ Use as follows:
 
 ```
 var img = Graphics.createImage(`
-#########
-#       #
-#   #   #
-#   #   #
-#       #
-#########
+XXXXXXXXX
+X       X
+X   X   X
+X   X   X
+X       X
+XXXXXXXXX
 `);
 g.drawImage(img, x,y);
 ```

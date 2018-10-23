@@ -38,13 +38,13 @@ if [ "$FAMILY" = "ESP32" ]; then
     # SDK
     if [ ! -d "app" ]; then
         echo installing app folder
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/app.tgz | tar xfz - --no-same-owner
-        #curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/ESP32-v3.0/esp32/deploy/app.tgz | tar xfz - --no-same-owner
+        #curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/app.tgz | tar xfz - --no-same-owner
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/ESP32-V3.1/esp32/deploy/app.tgz | tar xfz - --no-same-owner
     fi
     if [ ! -d "esp-idf" ]; then
         echo installing esp-idf folder
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
-        #curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/ESP32-v3.0/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
+        #curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/ESP32-V3.1/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
     fi
     if ! type xtensa-esp32-elf-gcc 2> /dev/null > /dev/null; then
         echo installing xtensa-esp32-elf-gcc
@@ -61,21 +61,21 @@ if [ "$FAMILY" = "ESP32" ]; then
     return 0
 elif [ "$FAMILY" = "ESP8266" ]; then
     echo ESP8266
-    if [ ! -d "esp_iot_sdk_v2.0.0.p1" ]; then
-        echo esp_iot_sdk_v2.0.0.p1
-        curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf - --no-same-owner
+    if [ ! -d "ESP8266_NONOS_SDK-2.2.1" ]; then
+        echo ESP8266_NONOS_SDK-2.2.1
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp8266/ESP8266_NONOS_SDK-2.2.1.tar.gz | tar xfz - --no-same-owner
     fi
     if ! type xtensa-lx106-elf-gcc 2> /dev/null > /dev/null; then
         echo installing xtensa-lx106-elf-gcc
         if [ ! -d "xtensa-lx106-elf" ]; then
-            curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf - --no-same-owner
+            curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp8266/xtensa-lx106-elf-20160330.tgx | tar Jxf - --no-same-owner
         else
             echo "Folder found"
         fi
 
     fi
     which xtensa-lx106-elf-gcc
-    export ESP8266_SDK_ROOT=`pwd`/esp_iot_sdk_v2.0.0.p1
+    export ESP8266_SDK_ROOT=`pwd`/ESP8266_NONOS_SDK-2.2.1
     export PATH=$PATH:`pwd`/xtensa-lx106-elf/bin/
     return 0
 elif [ "$FAMILY" = "LINUX" ]; then

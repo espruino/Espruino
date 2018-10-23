@@ -375,6 +375,12 @@ static bool pixl_selfTest() {
   jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
   jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
 
+  v = jshReadVRef();
+  if (v<3.2 || v>3.4) {
+    jsiConsolePrintf("VCC out of range 3.2-3.4 (%f)\n", v);
+    ok = false;
+  }
+
   if (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE)
     jsiConsolePrintf("Release BTN1\n");
   if (jshPinGetValue(BTN4_PININDEX)==BTN4_ONSTATE)
@@ -422,7 +428,6 @@ static bool pixl_selfTest() {
   if (jshHasEvents()) {
     jsiConsolePrintf("Have events - no BLE test\n");
   } else {
-    bool bleWorking = false;
     uint32_t err_code;
     err_code = jsble_set_scanning(true);
     jsble_check_error(err_code);
