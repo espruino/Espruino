@@ -737,7 +737,7 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset) {
 
 bool jsfLoadBootCodeFromFlash(bool isReset) {
   // Load code in .boot0/1/2/3
-  char filename[6] = ".bootX";
+  char filename[7] = ".bootX";
   for (int i=0;i<4;i++) {
     filename[5] = (char)('0'+i);
     JsVar *code = jsfReadFile(jsfNameFromString(filename));
