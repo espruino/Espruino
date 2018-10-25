@@ -152,7 +152,7 @@ static void CALLED_FROM_INTERRUPT intrHandlerCB(
   // Once we have handled the interrupt flags, we need to acknowledge the interrupts so
   // that the ESP8266 will once again cause future interrupts to be processed.
 
-  //os_printf_plus(">> intrHandlerCB\n");
+  os_printf_plus(">> intrHandlerCB\n");
   gpio_intr_ack(interruptMask);
   // We have a mask of interrupts that have happened.  Go through each bit in the mask
   // and, if it is on, then an interrupt has occurred on the corresponding pin.
@@ -164,7 +164,7 @@ static void CALLED_FROM_INTERRUPT intrHandlerCB(
       gpio_pin_intr_state_set(GPIO_ID_PIN(pin), GPIO_PIN_INTR_ANYEDGE);
     }
   }
-  //os_printf_plus("<< intrHandlerCB\n");
+  os_printf_plus("<< intrHandlerCB\n");
 }
 
 /**
@@ -229,7 +229,7 @@ bool jshIsInInterrupt() {
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
   int time = (int) timeUntilWake;
-  //os_printf("jshSleep %lld\n", timeUntilWake);
+  os_printf("jshSleep %lld\n", timeUntilWake);
   // **** TODO: fix this, this is garbage, we need to tell the idle loop to suspend
   //jshDelayMicroseconds(time);
   return true;
@@ -243,7 +243,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
 void jshDelayMicroseconds(int microsec) {
   // Keep things simple and make the user responsible if they sleep for too long...
   if (microsec > 0) {
-    //os_printf("Delay %d us\n", microsec);
+    os_printf("Delay %d us\n", microsec);
     os_delay_us(microsec);
   }
 } // End of jshDelayMicroseconds
@@ -402,8 +402,8 @@ void jshPinSetState(
     jstPinPWM(0,0,pin);
   }
 
-  //os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
-  //    pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
+  os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
+      pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
 
   assert(pin < JSH_PIN_COUNT);
   if (pin >= 6 && pin <= 11) {
@@ -467,12 +467,12 @@ void jshPinSetState(
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
-  //os_printf("> ESP8266: jshPinGetState %d\n", pin);
-  /*
+  os_printf("> ESP8266: jshPinGetState %d\n", pin);
+  
     os_printf("> ESP8266: pin %d, pinState %d, reg_read %d, out_addr: %d input get %d\n", 
       pin, g_pinState[pin], (GPIO_REG_READ(GPIO_OUT_W1TS_ADDRESS)>>pin)&1,
       (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, GPIO_INPUT_GET(pin));
-  */  
+    
   /* reject non digital ports */
   if ((pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA) { 
     return JSHPINSTATE_ADC_IN;
@@ -499,7 +499,7 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
-  //os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
+  os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
   /* reject non digital ports */
   if ((pinInfo[pin].port & JSH_PORT_MASK) != JSH_PORTD) { 
     return;
@@ -539,7 +539,7 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
 }
 
 JsVarFloat jshPinAnalog(Pin pin) {
-  //os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
+  os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
 
   if ( pin == 255 || ( pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA ) {
     return (JsVarFloat)system_adc_read() / 1024.0;    
@@ -549,7 +549,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
 }
 
 int jshPinAnalogFast(Pin pin) {
-  //os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
+  os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
   if ( pin == 255 || ( pinInfo[pin].port & JSH_PORT_MASK) == JSH_PORTA ) {	
     return (int)system_adc_read() << 6; // left-align to 16 bits
   } else {
@@ -650,17 +650,17 @@ void jshKickWatchDog() {
  * Get the state of the pin associated with the event flag.
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
-  //os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
+  os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
 
   if (eventFlag > EV_EXTI_MAX || eventFlag < EV_EXTI0) {
     os_printf(" - Error ... eventFlag out of range\n");
     jsError("eventFlag out of range");
-    //os_printf("< jshGetWatchedPinState\n");
+    os_printf("< jshGetWatchedPinState\n");
     return false;
   }
 
   bool currentPinValue = jshPinGetValue((Pin)(eventFlag-EV_EXTI0));
-  //os_printf("< jshGetWatchedPinState = %d\n", currentPinValue);
+  os_printf("< jshGetWatchedPinState = %d\n", currentPinValue);
   return currentPinValue;
 }
 
@@ -705,14 +705,14 @@ bool jshCanWatch(
   ) {
   // As of right now, let us assume that all pins on an ESP8266 are watchable.
   bool rc;
-  //os_printf("> jshCanWatch: pin=%d\n", pin);
+  os_printf("> jshCanWatch: pin=%d\n", pin);
   // exclude pin 16
   if ( pin == 16 ) {
     rc = false;
   } else {
     rc = true;
   }
-  //os_printf("< jshCanWatch = %d (0:false,1:true)\n",rc);
+  os_printf("< jshCanWatch = %d (0:false,1:true)\n",rc);
   return rc;
 }
 
@@ -724,7 +724,7 @@ IOEventFlags jshPinWatch(
     Pin pin,         //!< The pin to be watched.
     bool shouldWatch //!< True for watching and false for unwatching.
   ) {
-  //os_printf("> jshPinWatch: pin=%d, shouldWatch=%d\n", pin, shouldWatch);
+  os_printf("> jshPinWatch: pin=%d, shouldWatch=%d\n", pin, shouldWatch);
   if (jshIsPinValid(pin)) {
     ETS_GPIO_INTR_DISABLE();
     if (shouldWatch) {
@@ -742,10 +742,10 @@ IOEventFlags jshPinWatch(
     ETS_GPIO_INTR_ENABLE();
   } else {
     jsError("Invalid pin");
-    //os_printf("< jshPinWatch: Invalid pin\n");
+    os_printf("< jshPinWatch: Invalid pin\n");
     return EV_NONE;
   }
-  //os_printf("< jshPinWatch\n");
+  os_printf("< jshPinWatch\n");
   return pinToEV_EXTI(pin);
 }
 
@@ -754,7 +754,7 @@ IOEventFlags jshPinWatch(
  *
  */
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
-  //os_printf("jshGetCurrentPinFunction %d\n", pin);
+  os_printf("jshGetCurrentPinFunction %d\n", pin);
   return JSH_NOTHING;
 }
 
@@ -871,7 +871,7 @@ void jshSPISetup(
     return;
   }
 
-  //os_printf("jshSPISetup - jshSPISetup: device=%d\n", device);
+  os_printf("jshSPISetup - jshSPISetup: device=%d\n", device);
   spi_init(HSPI, inf->baudRate); // Initialize the hardware SPI components.
   g_spiInitialized = true;
   g_lastSPIRead = -1;
@@ -892,14 +892,14 @@ int jshSPISend(
   if (device != EV_SPI1) {
     return -1;
   }
-  //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
+  os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
   int retData = g_lastSPIRead;
   if (data >=0) {
     g_lastSPIRead = spi_transaction(HSPI, 8, (uint32)data);
   } else {
     g_lastSPIRead = -1;
   }
-  //os_printf("< jshSPISend\n");
+  os_printf("< jshSPISend\n");
   return retData;
 }
 
@@ -911,7 +911,7 @@ void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
 ) {
-  //os_printf("> jshSPISend16 - device=%d, data=%x\n", device, data);
+  os_printf("> jshSPISend16 - device=%d, data=%x\n", device, data);
   //jshSPISend(device, data >> 8);
   //jshSPISend(device, data & 255);
   if (device != EV_SPI1) {
@@ -919,7 +919,7 @@ void jshSPISend16(
   }
 
   spi_transaction(HSPI, 16, (uint32)data);
-  //os_printf("< jshSPISend16\n");
+  os_printf("< jshSPISend16\n");
 }
 
 
@@ -948,8 +948,8 @@ void jshSPIWait(
 
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive) {
-  //os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
-  //os_printf("< jshSPISetReceive\n");
+  os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
+  os_printf("< jshSPISetReceive\n");
 }
 
 //===== I2C =====
@@ -973,7 +973,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
 
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
     const unsigned char *data, bool sendStop) {
-  //os_printf("ESP8266: jshI2CWrite 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
+  os_printf("ESP8266: jshI2CWrite 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
   if (device != EV_I2C1) return;     // we only support one i2c device
 
   uint8 ack;
@@ -981,7 +981,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
   i2c_master_start();                   // start the transaction
   i2c_master_writeByte((address<<1)|0); // send address and r/w
   ack = i2c_master_getAck();            // get ack bit from slave
-  //os_printf("I2C: ack=%d\n", ack);
+  os_printf("I2C: ack=%d\n", ack);
   if (!ack) goto error;
   while (nBytes--) {
     i2c_master_writeByte(*data++);      // send data byte
@@ -997,7 +997,7 @@ error:
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
     unsigned char *data, bool sendStop) {
-  //os_printf("ESP8266: jshI2CRead 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
+  os_printf("ESP8266: jshI2CRead 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
   if (device != EV_I2C1) return;     // we only support one i2c device
 
   uint8 ack;
@@ -1041,7 +1041,7 @@ error:
  * Given a time in milliseconds as float, get us the value in microsecond
  */
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-  //  os_printf("jshGetTimeFromMilliseconds %d, %f\n", (JsSysTime)(ms * 1000.0), ms);
+  os_printf("jshGetTimeFromMilliseconds %lld, %f\n", (JsSysTime)(ms * 1000.0), ms);
   return (JsSysTime) (ms * 1000.0 + 0.5);
 }
 
@@ -1049,7 +1049,7 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
  * Given a time in microseconds, get us the value in milliseconds (float)
  */
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-  //  os_printf("jshGetMillisecondsFromTime %d, %f\n", time, (JsVarFloat)time / 1000.0);
+  os_printf("jshGetMillisecondsFromTime %lld, %f\n", time, (JsVarFloat)time / 1000.0);
   return (JsVarFloat) time / 1000.0;
 }
 
@@ -1079,8 +1079,8 @@ static void saveTime() {
     (uint32_t)(rtcTimeStamp.timeStamp >> 32);
   system_rtc_mem_write(RTC_TIME_ADDR, &rtcTimeStamp, sizeof(rtcTimeStamp));
   // Debug
-  //os_printf("RTC write: %lu %lu 0x%08x\n", (uint32_t)(rtcTimeStamp.timeStamp/1000000),
-  //  rtcTimeStamp.hwTimeStamp, (int)rtcTimeStamp.cksum);
+  os_printf("RTC write: %u %u 0x%08x\n", (uint32_t)(rtcTimeStamp.timeStamp/1000000),
+            rtcTimeStamp.hwTimeStamp, (int)rtcTimeStamp.cksum);
 }
 
 /**
@@ -1095,7 +1095,7 @@ JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called a
  * Set the current time in microseconds.
  */
 void jshSetSystemTime(JsSysTime newTime) {
-  //os_printf("ESP8266: jshSetSystemTime: %d\n", time);
+  os_printf("ESP8266: jshSetSystemTime: %llu\n", newTime);
   uint32_t sysTime = system_get_time();
   uint32_t rtcTime = system_get_rtc_time();
 
@@ -1122,7 +1122,7 @@ static void systemTimeCb(void *arg) {
   rtcTimeStamp.timeStamp = sysTimeStamp.timeStamp;
   rtcTimeStamp.hwTimeStamp = rtc;
   // Debug
-  // os_printf("RTC sys=%lu rtc=%lu\n", sysTime, rtc);
+  os_printf("RTC sys=%u rtc=%u\n", sysTime, rtc);
 
   saveTime(&rtcTimeStamp);
 }
@@ -1314,7 +1314,7 @@ void jshFlashRead(
     uint32_t addr, //!< Flash address to read from
     uint32_t len   //!< Length of data to read
   ) {
-  //os_printf("jshFlashRead: dest=%p, len=%ld flash=0x%lx\n", buf, len, addr);
+  os_printf("jshFlashRead: dest=%p, len=%u flash=0x%x\n", buf, len, addr);
 
   // make sure we stay with the flash address space
   uint32_t flash_max=jshFlashMax();
@@ -1331,7 +1331,7 @@ void jshFlashRead(
 		  *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
 	  }
   } else { // Above 1Mb read...
-    //os_printf("jshFlashRead: above 1mb!");
+    os_printf("jshFlashRead: above 1mb!");
     SpiFlashOpResult res;
     res = spi_flash_read(addr, buf, len);
       if (res != SPI_FLASH_RESULT_OK)
@@ -1352,8 +1352,8 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-  //os_printf("jshFlashWrite: src=%p, len=%ld flash=0x%lx\n", buf, len, addr);
-
+  os_printf("jshFlashWrite: src=%p, len=%d flash=0x%x\n", buf, len, addr);
+  
   // make sure we stay with the flash address space
   uint32_t flash_max=jshFlashMax();
   if (addr >= flash_max) return;
@@ -1393,7 +1393,7 @@ bool jshFlashGetPage(
     uint32_t *startAddr, //!<
     uint32_t *pageSize   //!<
   ) {
-  //os_printf("ESP8266: jshFlashGetPage: addr=0x%lx, startAddr=%p, pageSize=%p\n", addr, startAddr, pageSize);
+  os_printf("ESP8266: jshFlashGetPage: addr=0x%x, startAddr=%p, pageSize=%p\n", addr, startAddr, pageSize);
 
   if (addr >= jshFlashMax()) return false;
   *startAddr = addr & ~(FLASH_PAGE-1);
@@ -1450,7 +1450,7 @@ JsVar *jshFlashGetFree() {
 void jshFlashErasePage(
     uint32_t addr //!<
   ) {
-  //os_printf("jshFlashErasePage: addr=0x%lx\n", addr);
+  os_printf("jshFlashErasePage: addr=0x%x\n", addr);
 
   SpiFlashOpResult res;
   res = spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);
