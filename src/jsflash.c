@@ -358,7 +358,9 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
     addr = startAddr;
     uint32_t existingAddr = 0;
     // Find a hole that's big enough for our file
+    bool newPage = false;
     do {
+      newPage = false;
       if (jsfGetFileHeader(addr, &header)) do {
         // check for something with the same name
         if (header.replacement == JSF_WORD_UNSET &&
@@ -366,9 +368,11 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
           existingAddr = addr;
       } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
       // If not enough space, skip to next page
-      if (jsfGetSpaceLeftInPage(addr)<requiredSize)
+      if (jsfGetSpaceLeftInPage(addr)<requiredSize) {
         addr = jsfGetAddressOfNextPage(addr);
-    } while (addr && (jsfGetSpaceLeftInPage(addr)<requiredSize));
+        newPage = true; // check again to see if there is anything in that new page...
+      }
+    } while (addr && (newPage || jsfGetSpaceLeftInPage(addr)<requiredSize));
     // do we have an existing file? Erase it.
     if (existingAddr) {
       jsfGetFileHeader(existingAddr, &header);
@@ -513,6 +517,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
       DBG("Equal\n");
       return true;
     }
+    DBG("jsfWriteFile create file\n");
     addr = jsfCreateFile(name, (uint32_t)size, flags, JSF_START_ADDRESS, &header);
   }
   if (!addr) {
