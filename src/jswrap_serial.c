@@ -218,6 +218,14 @@ void jswrap_serial_setConsole(JsVar *parent, bool force) {
 }
 Setup this Serial port with the given baud rate and options.
 
+eg.
+
+```
+Serial1.setup(9600,{rx:a_pin, tx:a_pin});
+```
+
+The second argument can contain:
+
 ```
 {
   rx:pin,                           // Receive pin (data in to Espruino)
@@ -259,6 +267,15 @@ you'll need to use `errors:true` when initialising serial.
 
 On Linux builds there is no default Serial device, so you must specify
 a path to a device - for instance: `Serial1.setup(9600,{path:"/dev/ttyACM0"})`
+
+You can also set up 'software serial' using code like:
+
+```
+var s = new Serial();
+s.setup(9600,{rx:a_pin, tx:a_pin});
+```
+
+However software serial doesn't use `ck`, `cts`, `parity`, `flow` or `errors` parts of the initialisation object.
 */
 void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
