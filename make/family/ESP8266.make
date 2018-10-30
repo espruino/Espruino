@@ -23,6 +23,7 @@ ET_FS               ?= 4MB-c1   # 32Mbit (4MB) flash size in esptool flash comma
 ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin
 ET_DEFAULTS         ?= 0x3FC000 # where to flash esp_init_data_default.bin to default SDK settings
+CFLAGS              += -mforce-l32
 else ifdef 2MB
 ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 ESP_FLASH_SIZE      ?= 3        # 3->2MB (512KB+512KB)
@@ -66,12 +67,7 @@ CFLAGS+= -fno-builtin \
 -Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals \
 -fno-guess-branch-probability -freorder-blocks-and-partition -fno-cse-follow-jumps
 
-# only use mfore-l32 if 4MB board for now
-ifdef FLASH_4MB 
-CFLAGS += -mforce-l32
-endif
 
-#
 # The Root of the ESP8266_SDK distributed by Espressif
 # This must be supplied as a Make environment variable.
 ifndef ESP8266_SDK_ROOT

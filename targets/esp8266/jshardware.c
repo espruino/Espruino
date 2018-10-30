@@ -1313,32 +1313,37 @@ void jshFlashRead(
     uint32_t addr, //!< Flash address to read from
     uint32_t len   //!< Length of data to read
   ) {
-  //os_printf("jshFlashRead: dest=%p, len=%u flash=0x%x\n", buf, len, addr);
+  //os_printf("jshFlashRead: len=%u addr=0x%08x\n", len, addr);
 
   // make sure we stay with the flash address space
   uint32_t flash_max=jshFlashMax();
   if (addr >= flash_max) return;
+  
   if (addr + len > flash_max) len = flash_max - addr;
 
-  if (addr < FLASH_MAX) {
-	  addr += FLASH_MMAP; // Direct fast read if < 1Mb
-	  // copy the bytes reading a word from flash at a time
-	  uint8_t *dest = buf;
-	  uint32_t bytes = *(uint32_t*)(addr & ~3);
-	  while (len-- > 0) {
-		  if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
-		  *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
-	  }
-  } else { // Above 1Mb read...
-    os_printf("jshFlashRead: above 1mb!");
+  if (addr < FLASH_MAX && system_get_userbin_addr() < FLASH_MAX ) {
+
+    addr += FLASH_MMAP; // Direct fast read if < 1Mb
+
+    os_printf("jshFlashRead: len=%u addr=0x%08x\n", len, addr);
+
+    // copy the bytes reading a word from flash at a time
+    uint8_t *dest = buf;
+    uint32_t bytes = *(uint32_t*)(addr & ~3);
+    while (len-- > 0) {
+      if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
+      *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
+    }
+  } else { // not in mapped area
+
+    os_printf("jshFlashRead: len=%u addr=0x%08x\n", len, addr);
+
     SpiFlashOpResult res;
     res = spi_flash_read(addr, buf, len);
       if (res != SPI_FLASH_RESULT_OK)
-        os_printf("jshFlashRead %s\n",
-    res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
-   }
+        os_printf("jshFlashRead %s\n", res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
+  }
 }
-
 
 /**
  * Write data to flash memory from the buffer.
@@ -1351,7 +1356,7 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-  os_printf("jshFlashWrite: src=%p, len=%d flash=0x%x\n", buf, len, addr);
+  os_printf("jshFlashWrite: src=%p, len=%d flash=0x%08x\n", buf, len, addr);
   
   // make sure we stay with the flash address space
   uint32_t flash_max=jshFlashMax();
@@ -1423,7 +1428,6 @@ JsVar *jshFlashGetFree() {
     addFlashArea(jsFreeFlash, 0x3C0000, 0x40000-0x5000);
     return jsFreeFlash;
   }
-
   // need 1MB of flash to have more space...
   extern uint16_t espFlashKB; // in user_main,c
   if (espFlashKB > 512) {
@@ -1451,7 +1455,7 @@ JsVar *jshFlashGetFree() {
 void jshFlashErasePage(
     uint32_t addr //!<
   ) {
-  os_printf("jshFlashErasePage: addr=0x%x\n", addr);
+  os_printf("jshFlashErasePage: addr=0x%08x\n", addr);
 
   SpiFlashOpResult res;
   res = spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);
@@ -1463,8 +1467,13 @@ void jshFlashErasePage(
 size_t jshFlashGetMemMapAddress(size_t ptr) {
   // the flash address is just the offset into the flash chip, but to evaluate the code
   // below we need to jump to the memory-mapped window onto flash, so adjust here
-  if (ptr < FLASH_MAX)
+
+  // if (ptr < FLASH_MAX) {
+  if (ptr < FLASH_MAX && system_get_userbin_addr() < FLASH_MAX) {  
+    os_printf("jshFlashGetMemMapAddress: addr=0x%08x\n", ptr + FLASH_MMAP);
     return ptr + FLASH_MMAP;
+  }
+  os_printf("jshFlashGetMemMapAddress: addr=0x%08x\n", ptr);
   return ptr;
 }
 
