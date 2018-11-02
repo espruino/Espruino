@@ -1033,8 +1033,7 @@ NRF.setServices({
 ```
 
 Or to allow the 3 LEDs to be controlled by writing numbers 0 to 7 to a
-characteristic, you can do the following. `evt.data` is an array of
-bytes.
+characteristic, you can do the following. `evt.data` is an ArrayBuffer.
 
 ```
 NRF.setServices({
@@ -1064,7 +1063,7 @@ NRF.setServices({
       indicate : true,   // optional, default is false
       description: "My Characteristic",  // optional, default is null
       onWrite : function(evt) { // optional
-        console.log("Got ", evt.data);
+        console.log("Got ", evt.data); // an ArrayBuffer
       }
     }
     // more characteristics allowed
