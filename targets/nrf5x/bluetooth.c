@@ -282,7 +282,8 @@ int jsble_exec_pending(IOEvent *event) {
    }
    case BLEP_ADV_REPORT: {
      ble_gap_evt_adv_report_t *p_adv = (ble_gap_evt_adv_report_t *)buffer;
-     if (bufferLen < sizeof(ble_gap_evt_adv_report_t)) {
+     size_t len = sizeof(ble_gap_evt_adv_report_t) + p_adv->dlen - BLE_GAP_ADV_MAX_SIZE;
+     if (bufferLen != len) {
        assert(0);
        break;
      }
