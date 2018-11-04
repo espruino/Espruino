@@ -206,6 +206,11 @@ bool bleHighInterval;
 
 /// Add a new bluetooth event to the queue with a buffer of data
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len) {
+  // check to ensure we have space for the data we're adding
+  if (!jshHasEventSpaceForChars(len+IOEVENT_MAXCHARS)) {
+    jsErrorFlags |= JSERR_RX_FIFO_FULL;
+    return;
+  }
   // Push the data for the event first
   while (len) {
     int evtLen = len;
@@ -1236,7 +1241,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_ADV_REPORT: {
         // Advertising data received
         const ble_gap_evt_adv_report_t *p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
-        jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)p_adv, sizeof(ble_gap_evt_adv_report_t));
+        size_t len = sizeof(ble_gap_evt_adv_report_t) + p_adv->dlen - BLE_GAP_ADV_MAX_SIZE;
+        jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)p_adv, len);
         break;
         }
 
