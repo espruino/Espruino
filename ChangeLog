@@ -7,6 +7,7 @@
             Fix Storage write error when skipping pages (fix #1539)
             nRF5x: When scanning, only use as much of IO queue as is needed
             nRF5x: If BLE/NFC/etc data won't fit in IO queue, drop whole packet
+            Allow `a in b` to search 'fake' objects (#1534)
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)

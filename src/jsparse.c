@@ -1863,16 +1863,25 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
         if (op==LEX_R_IN) {
           JsVar *av = jsvSkipName(a); // needle
           JsVar *bv = jsvSkipName(b); // haystack
-          if (jsvIsArray(bv) || jsvIsObject(bv)) { // search keys, NOT values
+          if (jsvHasChildren(bv)) { // search keys, NOT values
             av = jsvAsArrayIndexAndUnLock(av);
             JsVar *varFound = jspGetVarNamedField( bv, av, true);
-            jsvUnLock(a);
+            jsvUnLock2(a,varFound);
             a = jsvNewFromBool(varFound!=0);
-            jsvUnLock(varFound);
-          } else {// else it will be undefined
-            jsExceptionHere(JSET_ERROR, "Cannot use 'in' operator to search a %t", bv);
-            jsvUnLock(a);
-            a = 0;
+          } else { // else maybe it's a fake object...
+            JswSymList *syms = jswGetSymbolListForObjectProto(bv);
+            if (syms) {
+              JsVar *varFound = 0;
+              char nameBuf[JSLEX_MAX_TOKEN_LENGTH];
+              if (jsvGetString(av, nameBuf, sizeof(nameBuf)) < sizeof(nameBuf))
+                varFound = jswBinarySearch(syms, bv, nameBuf);
+              jsvUnLock2(a, varFound);
+              a = jsvNewFromBool(varFound!=0);
+            } else { // not built-in, just assume we can't do it
+              jsExceptionHere(JSET_ERROR, "Cannot use 'in' operator to search a %t", bv);
+              jsvUnLock(a);
+              a = 0;
+            }
           }
           jsvUnLock2(av, bv);
         } else if (op==LEX_R_INSTANCEOF) {
