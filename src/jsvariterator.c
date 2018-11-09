@@ -61,10 +61,11 @@ bool jsvIterateCallback(
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, data, 0);
     if (JSV_ARRAYBUFFER_GET_SIZE(it.type) == 1 && !JSV_ARRAYBUFFER_IS_SIGNED(it.type)) {
-      // faster for single byte arrays.
-      while (jsvArrayBufferIteratorHasElement(&it)) {
-        callback((int)(unsigned char)jsvStringIteratorGetChar(&it.it), callbackData);
-        jsvArrayBufferIteratorNext(&it);
+      JsvStringIterator *sit = &it.it;
+      // faster for single byte arrays - read using the string iterator.
+      while (jsvStringIteratorHasChar(sit)) {
+        callback((int)(unsigned char)jsvStringIteratorGetChar(sit), callbackData);
+        jsvStringIteratorNextInline(sit);
       }
     } else {
       while (jsvArrayBufferIteratorHasElement(&it)) {
