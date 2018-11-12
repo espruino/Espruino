@@ -4,7 +4,7 @@
             Fix Storage.readJSON/readArrayBuffer memory leak (fix #1532)
             Fix potential out of bounds Graphics.scroll
             Serial.setConsole now warns if not used on hardware Serial
-	    ESP8266: implement hw_timer (fix #1511) to make soft serial and pwm work
+            ESP8266: implement hw_timer (fix #1511) to make soft serial and pwm work
             Fix Storage write error when skipping pages (fix #1539)
             nRF5x: When scanning, only use as much of IO queue as is needed
             nRF5x: If BLE/NFC/etc data won't fit in IO queue, drop whole packet
@@ -12,6 +12,8 @@
             Improve fast path when iterating over Uint8Array/ArrayBuffer
             Allow deletion of function properties (fix #1549)
             Add `{callback:...}` option for `.write` style functions - improve docs.
+            ESP8266: deepSleep invalid microseconds (fix #1547)
+            ESP8266: ESP_FLASH_MAX for ESP8266_4MB is wrong (fix #1551, #1553)
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
