@@ -15,7 +15,7 @@ endif
 
 
 ifdef FLASH_4MB
-ESP_FLASH_MAX       ?= 962560   # max bin file: 940KB
+ESP_FLASH_MAX       ?= 831488   # max bin file: 940KB
 ESP_FLASH_SIZE      ?= 6        # 6->4MB (1024KB+1024KB)       
 ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz

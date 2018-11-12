@@ -1869,7 +1869,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
             jsvUnLock2(a,varFound);
             a = jsvNewFromBool(varFound!=0);
           } else { // else maybe it's a fake object...
-            JswSymList *syms = jswGetSymbolListForObjectProto(bv);
+            const JswSymList *syms = jswGetSymbolListForObjectProto(bv);
             if (syms) {
               JsVar *varFound = 0;
               char nameBuf[JSLEX_MAX_TOKEN_LENGTH];
