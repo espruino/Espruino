@@ -124,8 +124,8 @@ bool jsserialPopulateUSARTInfo(
 
   bool ok = true;
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
-    inf->bytesize = byteSize;
-    inf->stopbits = stopBits;
+    inf->bytesize = (unsigned char)byteSize;
+    inf->stopbits = (unsigned char)stopBits;
     // sort out parity
     inf->parity = 0;
     if(jsvIsString(parity)) {
