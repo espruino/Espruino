@@ -769,82 +769,81 @@ JsVarRef jsvUnRefRef(JsVarRef ref) {
 }
 
 JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
+  bool firstRun = true;
+  // Work out how many blocks we need. One for the header, plus some for the characters
+  size_t requiredBlocks = 1 + ((byteLength+sizeof(JsVar)-1) / sizeof(JsVar));
+  JsVar *flatString = 0;
   if (isMemoryBusy) {
     jsErrorFlags |= JSERR_MEMORY_BUSY;
     return 0;
   }
-  // Work out how many blocks we need. One for the header, plus some for the characters
-  size_t requiredBlocks = 1 + ((byteLength+sizeof(JsVar)-1) / sizeof(JsVar));
-
-  JsVar *flatString = 0;
-
-  /* Now try and find a contiguous set of 'requiredBlocks' blocks by
-  searching the free list. This can be done as long as nobody's
-  messed with the free list in the mean time (which we check for with
-  touchedFreeList). If someone has messed with it, we restart.*/
-  bool memoryTouched = true;
-  while (memoryTouched) {
-    memoryTouched = false;
-    touchedFreeList = false;
-    JsVarRef beforeStartBlock = 0;
-    JsVarRef curr = jsVarFirstEmpty;
-    JsVarRef startBlock = curr;
-    unsigned int blockCount = 1;
-    while (curr && !touchedFreeList) {
-      JsVar *currVar = jsvGetAddressOf(curr);
-      JsVarRef next = jsvGetNextSibling(currVar);
-#ifdef RESIZABLE_JSVARS
-      if (next && jsvGetAddressOf(next)==currVar+1) {
-#else
-      if (next == curr+1) {
-#endif
-        blockCount++;
-        if (blockCount>=requiredBlocks) {
-          JsVar *nextVar = jsvGetAddressOf(next);
-          JsVarRef nextFree = jsvGetNextSibling(nextVar);
-          jshInterruptOff();
-          if (!touchedFreeList) {
-            // we're there! Quickly re-link free list
-            if (beforeStartBlock) {
-              jsvSetNextSibling(jsvGetAddressOf(beforeStartBlock),nextFree);
-            } else {
-              jsVarFirstEmpty = nextFree;
+  while (true) {
+    /* Now try and find a contiguous set of 'requiredBlocks' blocks by
+    searching the free list. This can be done as long as nobody's
+    messed with the free list in the mean time (which we check for with
+    touchedFreeList). If someone has messed with it, we restart.*/
+    bool memoryTouched = true;
+    while (memoryTouched) {
+      memoryTouched = false;
+      touchedFreeList = false;
+      JsVarRef beforeStartBlock = 0;
+      JsVarRef curr = jsVarFirstEmpty;
+      JsVarRef startBlock = curr;
+      unsigned int blockCount = 1;
+      while (curr && !touchedFreeList) {
+        JsVar *currVar = jsvGetAddressOf(curr);
+        JsVarRef next = jsvGetNextSibling(currVar);
+  #ifdef RESIZABLE_JSVARS
+        if (next && jsvGetAddressOf(next)==currVar+1) {
+  #else
+        if (next == curr+1) {
+  #endif
+          blockCount++;
+          if (blockCount>=requiredBlocks) {
+            JsVar *nextVar = jsvGetAddressOf(next);
+            JsVarRef nextFree = jsvGetNextSibling(nextVar);
+            jshInterruptOff();
+            if (!touchedFreeList) {
+              // we're there! Quickly re-link free list
+              if (beforeStartBlock) {
+                jsvSetNextSibling(jsvGetAddressOf(beforeStartBlock),nextFree);
+              } else {
+                jsVarFirstEmpty = nextFree;
+              }
+              flatString = jsvGetAddressOf(startBlock);
+              // Set up the header block (including one lock)
+              jsvResetVariable(flatString, JSV_FLAT_STRING);
+              flatString->varData.integer = (JsVarInt)byteLength;
             }
-            flatString = jsvGetAddressOf(startBlock);
-            // Set up the header block (including one lock)
-            jsvResetVariable(flatString, JSV_FLAT_STRING);
-            flatString->varData.integer = (JsVarInt)byteLength;
+            jshInterruptOn();
+            // if success, break out!
+            if (flatString) break;
           }
-          jshInterruptOn();
-          // if success, break out!
-          if (flatString) break;
+        } else {
+          // this block is not immediately after the last - restart run
+          blockCount = 1;
+          beforeStartBlock = curr;
+          startBlock = next;
         }
-      } else {
-        // this block is not immediately after the last - restart run
-        blockCount = 1;
-        beforeStartBlock = curr;
-        startBlock = next;
+        // move to next!
+        curr = next;
       }
-      // move to next!
-      curr = next;
+      // memory list has been touched - restart!
+      if (touchedFreeList) {
+        memoryTouched = true;
+      }
     }
-    // memory list has been touched - restart!
-    if (touchedFreeList) {
-      memoryTouched = true;
-    }
-  }
 
-  /* Nope... we couldn't find a free string. It could be because
-   * the free list is fragmented, so GCing might well fix it - which
-   * we'll try. */
-  if (!flatString) {
-    if (jsvGarbageCollect())
-      return jsvNewFlatStringOfLength(byteLength);
-    return 0;
-  }
-
-  /* We now have the string! All that's left is to clear it,
-   * which we can do outside of an IRQ */
+    // all good
+    if (flatString || !firstRun)
+      break;
+    /* Nope... we couldn't find a free string. It could be because
+     * the free list is fragmented, so GCing might well fix it - which
+     * we'll try - but only ONCE */
+    firstRun = false;
+    jsvGarbageCollect();
+  };
+  /* We now have the string! All that's left is to clear it */
   // clear data
   memset((char*)&flatString[1], 0, sizeof(JsVar)*(requiredBlocks-1));
   /* We did mess with the free list - set it here in case we
