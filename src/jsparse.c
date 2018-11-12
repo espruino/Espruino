@@ -1346,7 +1346,7 @@ NO_INLINE JsVar *jspeFactorDelete() {
       if (!parent && jsvIsChild(execInfo.root, a))
         parent = jsvLockAgain(execInfo.root);
 
-      if (parent && !jsvIsFunction(parent)) {
+      if (jsvHasChildren(parent)) {
         // else remove properly.
         if (jsvIsArray(parent)) {
           // For arrays, we must make sure we don't change the length
