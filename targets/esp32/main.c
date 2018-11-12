@@ -25,7 +25,7 @@
 #endif
 
 #include "esp_spi_flash.h"
-#include "spi_flash/include/esp_partition.h"
+#include "esp_partition.h"
 #include "esp_log.h"
 
 #include "jsvar.h"
