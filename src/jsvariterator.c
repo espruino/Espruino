@@ -12,14 +12,16 @@
  * ----------------------------------------------------------------------------
  */
 #include "jsvariterator.h"
+#include "jsparse.h"
 
 /**
- * Iterate over the contents of the content of a variable, calling callback for each.
- * Contents may be:
- * * numeric -> output
- * * a string -> output each character
- * * array/arraybuffer -> call itself on each element
- * object -> call itself object.count times, on object.data
+ Iterate over the contents of the content of a variable, calling callback for each.
+ Contents may be:
+ * numeric -> output
+ * a string -> output each character
+ * array/arraybuffer -> call itself on each element
+ * {data:..., count:...} -> call itself object.count times, on object.data
+ * {callback:...} -> call the given function, call itself on return value
  */
 bool jsvIterateCallback(
     JsVar *data,
@@ -33,6 +35,18 @@ bool jsvIterateCallback(
   }
   // Handle the data being an object.
   else if (jsvIsObject(data)) {
+    JsVar *callbackVar = jsvObjectGetChild(data, "callback", 0);
+    if (jsvIsFunction(callbackVar)) {
+      JsVar *result = jspExecuteFunction(callbackVar,0,0,NULL);
+      jsvUnLock(callbackVar);
+      if (result) {
+        bool r = jsvIterateCallback(result, callback, callbackData);
+        jsvUnLock(result);
+        return r;
+      }
+      return true;
+    }
+    jsvUnLock(callbackVar);
     JsVar *countVar = jsvObjectGetChild(data, "count", 0);
     JsVar *dataVar = jsvObjectGetChild(data, "data", 0);
     if (countVar && dataVar && jsvIsNumeric(countVar)) {
@@ -41,7 +55,8 @@ bool jsvIterateCallback(
         ok = jsvIterateCallback(dataVar, callback, callbackData);
       }
     } else {
-      jsExceptionHere(JSET_TYPEERROR, "If specifying an object, it must be of the form {data : ..., count : N} - got %j", data);
+      jsExceptionHere(JSET_TYPEERROR, "If specifying an object, it must be of the form {data : ..., count : N} or {callback : fn} - got %j", data);
+      ok = false;
     }
     jsvUnLock2(countVar, dataVar);
   }

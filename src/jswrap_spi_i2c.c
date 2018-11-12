@@ -292,7 +292,7 @@ JsVar *jswrap_spi_send(
   "name" : "write",
   "generate" : "jswrap_spi_write",
   "params" : [
-    ["data","JsVarArray",["One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`.","If the last argument is a pin, it is taken to be the NSS pin"]]
+    ["data","JsVarArray",["One or more items to write. May be ints, strings, arrays, or special objects (see `E.toUint8Array` for more info).","If the last argument is a pin, it is taken to be the NSS pin"]]
   ]
 }
 Write a character or array of characters to SPI - without reading the result back.
@@ -598,7 +598,7 @@ static NO_INLINE int i2c_get_address(JsVar *address, bool *sendStop) {
   "generate" : "jswrap_i2c_writeTo",
   "params" : [
     ["address","JsVar","The 7 bit address of the device to transmit to, or an object of the form `{address:12, stop:false}` to send this data without a STOP signal."],
-    ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`."]
+    ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or special objects (see `E.toUint8Array` for more info)."]
   ]
 }
 Transmit to the slave device with the given address. This is like Arduino's beginTransmission, write, and endTransmission rolled up into one.

@@ -830,10 +830,29 @@ JsVar *jswrap_espruino_toString(JsVar *args) {
   "return" : ["JsVar","A Uint8Array"],
   "return_object" : "Uint8Array"
 }
-This creates a Uint8Array from the given arguments. If an argument is a String or an Array,
-each element is traversed and added as if it were an 8 bit value. If it is anything else, it is
-converted to an 8 bit value directly.
- */
+This creates a Uint8Array from the given arguments. These are handled as follows:
+
+ * `Number` -> read as an integer, using the lowest 8 bits
+ * `String` -> use each character's numeric value (eg. `String.charCodeAt(...)`)
+ * `Array` -> Call itself on each element
+ * `ArrayBuffer` or Typed Array -> use the lowest 8 bits of each element
+ * `Object`:
+   * `{data:..., count: int}` -> call itself `object.count` times, on `object.data`
+   * `{callback : function}` -> call the given function, call itself on return value
+
+For example:
+
+```
+>E.toUint8Array([1,2,3])
+=new Uint8Array([1, 2, 3])
+>E.toUint8Array([1,{data:2,count:3},3])
+=new Uint8Array([1, 2, 2, 2, 3])
+>E.toUint8Array("Hello")
+=new Uint8Array([72, 101, 108, 108, 111])
+>E.toUint8Array(["hi",{callback:function() { return [1,2,3] }}])
+=new Uint8Array([104, 105, 1, 2, 3])
+```
+*/
 void (_jswrap_espruino_toUint8Array_char)(int ch,  JsvArrayBufferIterator *it) {
   jsvArrayBufferIteratorSetByteValue(it, (char)ch);
   jsvArrayBufferIteratorNext(it);

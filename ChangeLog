@@ -10,6 +10,7 @@
             Allow `a in b` to search 'fake' objects (#1534)
             Improve fast path when iterating over Uint8Array/ArrayBuffer
             Allow deletion of function properties (fix #1549)
+            Add `{callback:...}` option for `.write` style functions - improve docs.
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)

@@ -436,7 +436,7 @@ void jswrap_serial_println(JsVar *parent,  JsVar *str) {
   "name" : "write",
   "generate" : "jswrap_serial_write",
   "params" : [
-    ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`."]
+    ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or special objects (see `E.toUint8Array` for more info)."]
   ]
 }
 Write a character or array of data to the serial port
@@ -454,7 +454,7 @@ void jswrap_serial_write(JsVar *parent, JsVar *args) {
   "name" : "inject",
   "generate" : "jswrap_serial_inject",
   "params" : [
-    ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`."]
+    ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or special objects (see `E.toUint8Array` for more info)."]
   ]
 }
 Add data to this device as if it came directly from the input - it will be
