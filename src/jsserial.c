@@ -97,13 +97,15 @@ bool jsserialPopulateUSARTInfo(
 
   JsVar *parity = 0;
   JsVar *flow = 0;
+  int byteSize = inf->bytesize;
+  int stopBits = inf->stopbits;
   jsvConfigObject configs[] = {
       {"rx", JSV_PIN, &inf->pinRX},
       {"tx", JSV_PIN, &inf->pinTX},
       {"ck", JSV_PIN, &inf->pinCK},
       {"cts", JSV_PIN, &inf->pinCTS},
-      {"bytesize", JSV_INTEGER, &inf->bytesize},
-      {"stopbits", JSV_INTEGER, &inf->stopbits},
+      {"bytesize", JSV_INTEGER, &byteSize}, // don't reference direct as this is just a char, not unsigned integer
+      {"stopbits", JSV_INTEGER, &stopBits}, // don't reference direct as this is just a char, not unsigned integer
 #ifdef LINUX
       {"path", JSV_STRING_0, 0}, // not used - just here to avoid errors
 #endif
@@ -122,6 +124,8 @@ bool jsserialPopulateUSARTInfo(
 
   bool ok = true;
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    inf->bytesize = byteSize;
+    inf->stopbits = stopBits;
     // sort out parity
     inf->parity = 0;
     if(jsvIsString(parity)) {

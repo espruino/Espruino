@@ -14,6 +14,7 @@
             Add `{callback:...}` option for `.write` style functions - improve docs.
             ESP8266: deepSleep invalid microseconds (fix #1547)
             ESP8266: ESP_FLASH_MAX for ESP8266_4MB is wrong (fix #1551, #1553)
+            Fix buffer overflow if bytesize/stopbits used in `Serial.setup` (fix #1510)
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)

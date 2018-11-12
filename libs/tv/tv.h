@@ -15,17 +15,17 @@
 typedef struct {
   Pin pinVideo;
   Pin pinSync;
-  int width;
-  int height;
+  int width;      // (must be int because of jsvReadConfigObject)
+  int height;     // (must be int because of jsvReadConfigObject)
 } tv_info_pal;
 
 typedef struct {
   Pin pinVideo;
   Pin pinSync;
   Pin pinSyncV;
-  int width;
-  int height;
-  int lineRepeat;
+  int width;      // (must be int because of jsvReadConfigObject)
+  int height;     // (must be int because of jsvReadConfigObject)
+  int lineRepeat; // (must be int because of jsvReadConfigObject)
 } tv_info_vga;
 
 void tv_info_pal_init(tv_info_pal *inf);
