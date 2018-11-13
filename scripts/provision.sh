@@ -32,24 +32,28 @@ BOARDNAME=$1
 
 if [ "$BOARDNAME" = "ALL" ]; then
   echo "Installing dev tools for all boards"
-  ESP32=1
-  ESP8266=1
-  LINUX=1
-  NRF52=1
-  NRF51=1
-  STM32F1=1
-  STM32F4=1
-  STM32L4=1 
+  PROVISION_ESP32=1
+  PROVISION_ESP8266=1
+  PROVISION_LINUX=1
+  PROVISION_NRF52=1
+  PROVISION_NRF51=1
+  PROVISION_STM32F1=1
+  PROVISION_STM32F4=1
+  PROVISION_STM32L4=1 
+  PROVISION_RASPBERRYPI=1 
 else
   FAMILY=`scripts/get_board_info.py $BOARDNAME 'board.chip["family"]'`
   if [ "$FAMILY" = "" ]; then
     echo "UNKNOWN BOARD ($BOARDNAME)"
     return 1
   fi  
-  export $FAMILY=1
+  export PROVISION_$FAMILY=1
+  export PROVISION_$BOARDNAME=1
 fi
+echo Provision BOARDNAME = $BOARDNAME
+echo Provision FAMILY = $FAMILY
 
-if [ "$ESP32" = "1" ]; then
+if [ "$PROVISION_ESP32" = "1" ]; then
     echo ===== ESP32
     # needed for esptool for merging binaries
     if pip --version 2>/dev/null; then 
@@ -89,7 +93,7 @@ if [ "$ESP32" = "1" ]; then
     echo GCC is $(which xtensa-esp32-elf-gcc)
 fi
 #--------------------------------------------------------------------------------
-if [ "$ESP8266" = "1" ]; then
+if [ "$PROVISION_ESP8266" = "1" ]; then
     echo ===== ESP8266
     if [ ! -d "ESP8266_NONOS_SDK-2.2.1" ]; then
         echo ESP8266_NONOS_SDK-2.2.1
@@ -109,12 +113,23 @@ if [ "$ESP8266" = "1" ]; then
     echo GCC is $(which xtensa-lx106-elf-gcc)
 fi
 #--------------------------------------------------------------------------------
-if [ "$LINUX" = "1" ]; then
+if [ "$PROVISION_LINUX" = "1" ]; then
     echo ===== LINUX
-    # Raspberry Pi?
 fi
 #--------------------------------------------------------------------------------
-if [ "$NRF52" = "1" ]; then
+if [ "$PROVISION_RASPBERRYPI" = "1" ]; then
+    echo ===== RASPBERRYPI
+    if [ ! -d "targetlibs/raspberrypi" ]; then
+        echo Installing Raspberry pi tools
+        mkdir targetlibs/raspberrypi        
+        cd targetlibs/raspberrypi
+        git clone --depth=1 https://github.com/raspberrypi/tools
+        # wiringpi?
+        cd ../..
+    fi    
+fi
+#--------------------------------------------------------------------------------
+if [ "$PROVISION_NRF52" = "1" ]; then
     echo ===== NRF52
     if ! type nrfutil 2> /dev/null > /dev/null; then
       echo Installing nrfutil
@@ -124,36 +139,34 @@ if [ "$NRF52" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
-if [ "$NRF51" = "1" ]; then
+if [ "$PROVISION_NRF51" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
-if [ "$STM32F1" = "1" ]; then
+if [ "$PROVISION_STM32F1" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
-if [ "$STM32F3" = "1" ]; then
+if [ "$PROVISION_STM32F3" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
-if [ "$STM32F4" = "1" ]; then
+if [ "$PROVISION_STM32F4" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
-if [ "$STM32L4" = "1" ]; then
+if [ "$PROVISION_STM32L4" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
-if [ "$EFM32GG" = "1" ]; then
+if [ "$PROVISION_EFM32GG" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
-if [ "$SAMD" = "1" ]; then
+if [ "$PROVISION_SAMD" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
-
-
 
 
 if [ "$ARM" = "1" ]; then
