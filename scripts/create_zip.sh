@@ -23,20 +23,16 @@ ZIPFILE=$DIR/archives/espruino_${VERSION}.zip
 rm -rf $ZIPDIR
 mkdir $ZIPDIR
 
-# Setup ESP8266
-#export ESP8266_SDK_ROOT=$DIR/esp_iot_sdk_v2.0.0.p1
-#export PATH=$PATH:$DIR/xtensa-lx106-elf/bin/
+# Tidy up
+# ESP8266
 rm -rf esp_iot_sdk_v2.0.0*
 rm -rf xtensa-lx106-elf
-source scripts/provision.sh ESP8266_BOARD
 # ESP32
-#export ESP_IDF_PATH=$DIR/esp-idf
-#export ESP_APP_TEMPLATE_PATH=$DIR/app
-#export PATH=$PATH:$DIR/xtensa-esp32-elf/bin/
 rm -rf esp-idf
 rm -rf app
 rm -rf xtensa-esp32-elf
-source scripts/provision.sh ESP32
+# Install everything
+source scripts/provision.sh ALL
 
 
 
