@@ -13,6 +13,7 @@
  */
 #include "jsvariterator.h"
 #include "jsparse.h"
+#include "jsinteractive.h"
 
 /**
  Iterate over the contents of the content of a variable, calling callback for each.
@@ -78,7 +79,8 @@ bool jsvIterateCallback(
     if (JSV_ARRAYBUFFER_GET_SIZE(it.type) == 1 && !JSV_ARRAYBUFFER_IS_SIGNED(it.type)) {
       JsvStringIterator *sit = &it.it;
       // faster for single byte arrays - read using the string iterator.
-      while (jsvStringIteratorHasChar(sit)) {
+      size_t len = jsvGetArrayBufferLength(data);
+      while (len--) {
         callback((int)(unsigned char)jsvStringIteratorGetChar(sit), callbackData);
         jsvStringIteratorNextInline(sit);
       }
