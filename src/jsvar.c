@@ -843,6 +843,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
     firstRun = false;
     jsvGarbageCollect();
   };
+  if (!flatString) return 0;
   /* We now have the string! All that's left is to clear it */
   // clear data
   memset((char*)&flatString[1], 0, sizeof(JsVar)*(requiredBlocks-1));
