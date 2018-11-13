@@ -30,6 +30,7 @@ WORKDIR /espruino
 RUN apt-get update
 RUN apt-get install -qq -y python3-pip
 RUN pip install pyserial
+RUN pip install nrfutil
 
 # This ensures ALL dependencies are installed beforehand
 RUN bash -c "source scripts/provision.sh ALL"
