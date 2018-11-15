@@ -17,6 +17,7 @@
             Fix buffer overflow if bytesize/stopbits used in `Serial.setup` (fix #1510)
             Ensure jsvNewFlatStringOfLength tries twice (even if GC doesn't release memory, it reorders the free list) (#1559)
             ESP8266: Missing variable Flash Mode (--flash_mode, -fm) in ESP8266.make files (fix #1563)
+            ESP8266: Remove HACK to get around SDK 1.4 bug (fix #1568)
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
