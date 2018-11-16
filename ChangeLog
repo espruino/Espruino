@@ -16,6 +16,8 @@
             ESP8266: ESP_FLASH_MAX for ESP8266_4MB is wrong (fix #1551, #1553)
             Fix buffer overflow if bytesize/stopbits used in `Serial.setup` (fix #1510)
             Ensure jsvNewFlatStringOfLength tries twice (even if GC doesn't release memory, it reorders the free list) (#1559)
+            ESP8266: Missing variable Flash Mode (--flash_mode, -fm) in ESP8266.make files (fix #1563)
+            ESP8266: Remove hack added to get around SDK 1.4 bug (fix #1568)
             Reduce available hardware SPI/I2C instances to 1 on nRF52 (since this is all we implement atm)
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
