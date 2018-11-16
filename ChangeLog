@@ -16,6 +16,7 @@
             ESP8266: ESP_FLASH_MAX for ESP8266_4MB is wrong (fix #1551, #1553)
             Fix buffer overflow if bytesize/stopbits used in `Serial.setup` (fix #1510)
             Ensure jsvNewFlatStringOfLength tries twice (even if GC doesn't release memory, it reorders the free list) (#1559)
+            Reduce available hardware SPI/I2C instances to 1 on nRF52 (since this is all we implement atm)
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)

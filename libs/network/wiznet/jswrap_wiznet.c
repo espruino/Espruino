@@ -25,11 +25,13 @@
 #include "DHCP/dhcp.h"
 
 // -------------------- defaults...
+#ifdef STM32
 #define ETH_SPI          EV_SPI3
 #define ETH_CS_PIN       (Pin)(JSH_PORTB_OFFSET + 2) // active low
 #define ETH_CLK_PIN      (Pin)(JSH_PORTB_OFFSET + 3)
 #define ETH_MISO_PIN     (Pin)(JSH_PORTB_OFFSET + 4)
 #define ETH_MOSI_PIN     (Pin)(JSH_PORTB_OFFSET + 5)
+#endif
 // -------------------------------
 
 void  wizchip_select(void) {
@@ -88,6 +90,7 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
       return 0;
     }
   } else {
+#ifdef ETH_SPI
     // SPI config
     JshSPIInfo inf;
     jshSPIInitInfo(&inf);
@@ -98,9 +101,15 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
     inf.spiMode = SPIF_SPI_MODE_0;
     jshSPISetup(ETH_SPI, &inf);
     spiDevice = ETH_SPI;
+#else
+    jsExceptionHere(JSET_ERROR, "No default SPI on this platform - you must specify one.");
+    return 0;
+#endif
   }
+#ifdef ETH_CS_PIN
   if (!jshIsPinValid(cs))
     cs = ETH_CS_PIN;
+#endif
 
   JsNetwork net;
   networkCreate(&net, JSNETWORKTYPE_W5500);
