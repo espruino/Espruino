@@ -1088,6 +1088,39 @@ void jswrap_espruino_dumpFreeList() {
 
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "RELEASE",
+  "class" : "E",
+  "name" : "dumpFragmentation",
+  "generate" : "jswrap_e_dumpFragmentation"
+}
+Show fragmentation
+ */
+#ifndef RELEASE
+void jswrap_e_dumpFragmentation() {
+  int l = 0;
+  for (int i=0;i<jsvGetMemoryTotal();i++) {
+    JsVar *v = _jsvGetAddressOf(i+1);
+    if ((v->flags&JSV_VARTYPEMASK)==JSV_UNUSED) {
+      jsiConsolePrint(" ");
+      if (l++>80) { jsiConsolePrint("\n");l=0; }
+    } else {
+      jsiConsolePrint("#");
+      if (l++>80) { jsiConsolePrint("\n");l=0; }
+      if (jsvIsFlatString(v)) {
+        int b = jsvGetFlatStringBlocks(v);
+        while (b--) {
+          jsiConsolePrint("-");
+          if (l++>80) { jsiConsolePrint("\n");l=0; }
+        }
+      }
+    }
+  }
+  jsiConsolePrint("\n");
+}
+#endif
+
+/*JSON{
+  "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "getSizeOf",
