@@ -1381,20 +1381,22 @@ bool jswrap_ble_filter_device(JsVar *filters, JsVar *device) {
       jsvObjectIteratorNew(&it, v);
       while (jsvObjectIteratorHasValue(&it)) {
         bool foundService = false;
-        JsVar *uservice = jsvObjectIteratorGetValue(&it);
-        ble_uuid_t userviceUuid;
-        bleVarToUUIDAndUnLock(&userviceUuid, uservice);
-        JsvObjectIterator dit;
-        jsvObjectIteratorNew(&dit, deviceServices);
-        while (jsvObjectIteratorHasValue(&dit)) {
-          JsVar *deviceService = jsvObjectIteratorGetValue(&dit);
-          ble_uuid_t deviceServiceUuid;
-          bleVarToUUIDAndUnLock(&deviceServiceUuid, deviceService);
-          if (bleUUIDEqual(userviceUuid, deviceServiceUuid))
-            foundService = true;
-          jsvObjectIteratorNext(&dit);
+        if (deviceServices) {
+          JsVar *uservice = jsvObjectIteratorGetValue(&it);
+          ble_uuid_t userviceUuid;
+          bleVarToUUIDAndUnLock(&userviceUuid, uservice);
+          JsvObjectIterator dit;
+          jsvObjectIteratorNew(&dit, deviceServices);
+          while (jsvObjectIteratorHasValue(&dit)) {
+            JsVar *deviceService = jsvObjectIteratorGetValue(&dit);
+            ble_uuid_t deviceServiceUuid;
+            bleVarToUUIDAndUnLock(&deviceServiceUuid, deviceService);
+            if (bleUUIDEqual(userviceUuid, deviceServiceUuid))
+              foundService = true;
+            jsvObjectIteratorNext(&dit);
+          }
+          jsvObjectIteratorFree(&dit);
         }
-        jsvObjectIteratorFree(&dit);
         if (!foundService) matches = false;
         jsvObjectIteratorNext(&it);
       }
@@ -2314,7 +2316,7 @@ JsVar *jswrap_ble_requestDevice(JsVar *options) {
     }
     promise = jsvLockAgainSafe(blePromise);
   }
-  jsvUnLock2(timeoutIndex, filters);
+  jsvUnLock(timeoutIndex);
   return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");

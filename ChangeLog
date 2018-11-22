@@ -21,6 +21,7 @@
             Reduce available hardware SPI/I2C instances to 1 on nRF52 (since this is all we implement atm)
             Add E.dumpFragmentation to show memory fragmentation (only for debug builds)
             Fix parsing of dates from before 1970
+            nRF52: Fix some regressions in requestDevice (flagged up by asserts in debug build)
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
