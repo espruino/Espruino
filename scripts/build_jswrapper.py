@@ -244,7 +244,7 @@ for className in classes:
   if not className in constructors:
     jsondatas.append({
         "type":"constructor", "class": className,  "name": className,
-        "generate_full" : "jsvNewWithFlags(JSV_OBJECT)",
+        "generate_full" : "NULL", # return undefined means 'new X' uses the object that was returned, which is correct
         "filename" : "jswrapper.c",
         "return" : [ "JsVar", "" ]
     });
