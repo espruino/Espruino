@@ -23,6 +23,8 @@
             Fix parsing of dates from before 1970
             nRF52: Fix some regressions in requestDevice (flagged up by asserts in debug build)
             Allow built-in objects to be created with `new X()`
+            nRF52: Ensure Bluetooth stack doesn't do a reboot for non-fatal errors (just report them to console)
+            BluetoothRemoteGATTServer.disconnect now returns a Promise
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
