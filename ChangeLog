@@ -26,6 +26,7 @@
             nRF52: Ensure Bluetooth stack doesn't do a reboot for non-fatal errors (just report them to console)
             BluetoothRemoteGATTServer.disconnect now returns a Promise
             nRF52: Jump out of low power mode after less BLE activity (2 reads/writes in 10 radio packets) (#1546)
+            nRF5x: Fix NRF.setConnectionInterval when there's no connection (fix #1546)
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)

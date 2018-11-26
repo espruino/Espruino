@@ -618,7 +618,6 @@ uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max) {
         &gap_conn_params);
   } else {
     // Not connected, just tell the stack
-    ble_gap_conn_params_t   gap_conn_params;
     return sd_ble_gap_ppcp_set(&gap_conn_params);
   }
 }
