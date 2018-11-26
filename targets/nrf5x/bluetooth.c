@@ -653,7 +653,7 @@ void jsble_peripheral_activity() {
 #ifdef DYNAMIC_INTERVAL_ADJUSTMENT
   if (jsble_has_peripheral_connection() &&
       !(bleStatus & BLE_DISABLE_DYNAMIC_INTERVAL) &&
-      bleIdleCounter < 5) {
+      bleIdleCounter < 10) {
     // so we must have been called once before
     if (!bleHighInterval) {
       bleHighInterval = true;
