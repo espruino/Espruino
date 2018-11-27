@@ -2233,11 +2233,15 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     JSP_SAVE_EXECUTE();
     if (!executeDefault) jspSetNoExecute();
     else execInfo.execute |= EXEC_IN_SWITCH;
-    while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!='}')
+    while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!='}' && lex->tk!=LEX_R_CASE)
       jsvUnLock(jspeBlockOrStatement());
     oldExecute |= execInfo.execute & (EXEC_ERROR_MASK|EXEC_RETURN); // copy across any errors/exceptions/returns
     execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_BREAK;
     JSP_RESTORE_EXECUTE();
+  }
+  if (lex->tk==LEX_R_CASE) {
+    jsExceptionHere(JSET_SYNTAXERROR, "Espruino doesn't support CASE after DEFAULT");
+    return 0;
   }
   JSP_MATCH('}');
   return 0;
