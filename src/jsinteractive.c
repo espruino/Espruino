@@ -832,7 +832,9 @@ void jsiSemiInit(bool autoLoad) {
         // who bought boards that helped Espruino
 #if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS)
           "\n"
-          "JBG test version (donate some time)"
+          "Espruino is Open Source. Our work is supported\n"
+          "only by sales of official boards and donations:\n"
+          "http://espruino.com/Donate\n"
 #endif
         );
 #ifdef ESP8266
