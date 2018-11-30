@@ -1484,8 +1484,12 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
   JsVar *classInternalName = 0;
 
   bool actuallyCreateClass = JSP_SHOULD_EXECUTE;
-  if (actuallyCreateClass)
+  if (actuallyCreateClass) {
     classFunction = jsvNewWithFlags(JSV_FUNCTION);
+    JsVar *scopeVar = jspeiGetScopesAsVar();
+    if (scopeVar)
+      jsvUnLock2(jsvAddNamedChild(classFunction, scopeVar, JSPARSE_FUNCTION_SCOPE_NAME), scopeVar);
+  }
 
   if (parseNamedClass && lex->tk==LEX_ID) {
     if (classFunction)

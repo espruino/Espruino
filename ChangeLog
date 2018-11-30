@@ -28,6 +28,7 @@
             nRF52: Jump out of low power mode after less BLE activity (2 reads/writes in 10 radio packets) (#1546)
             nRF5x: Fix NRF.setConnectionInterval when there's no connection (fix #1546)
             Explicitly mention Espruino not supporting CASE after DEFAULT in error (fix #1570)
+            Ensure scope is saved for Class constructors (fix #1576)
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
