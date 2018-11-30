@@ -28,13 +28,13 @@ fi
 
 # set the current board
 BOARDNAME=$1
-FAMILY=`scripts/get_board_info.py $BOARDNAME 'board.chip["family"]'`
+FAMILY=`python ~jbgagnon/EspruinoBuildTools/esp32/build/Espruino/scripts/get_board_info.py $BOARDNAME 'board.chip["family"]'`
 
 if [ "$FAMILY" = "ESP32" ]; then
     echo ESP32
     # needed for esptool for merging binaries
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python-pip
-    sudo pip -q install pyserial
+    # JBG apt-get install -qq -y python python-pip
+    # JBG pip -q install pyserial
     # SDK
     if [ ! -d "app" ]; then
         echo installing app folder
