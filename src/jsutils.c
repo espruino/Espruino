@@ -685,6 +685,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
         fractionalDigits--;
       }
     }
+    // write exponent if enougth buffer len (> 5)
     if (exponent > 0 && len > 5) {
         *str++ = 'e';
         *str++ = '+';
