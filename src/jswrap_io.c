@@ -487,7 +487,7 @@ void jswrap_io_shiftOutCallback(int val, void *data) {
   "params" : [
     ["pins","JsVar","A pin, or an array of pins to use"],
     ["options","JsVar","Options, for instance the clock (see below)"],
-    ["data","JsVar","The data to shift out"]
+    ["data","JsVar","The data to shift out (see `E.toUint8Array` for info on the forms this can take)"]
   ]
 }
 Shift an array of data out using the pins supplied *least significant bit first*,

@@ -1,10 +1,34 @@
+            ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
             Improve Tab Completions for extended classes
             Fix Storage.readJSON/readArrayBuffer memory leak (fix #1532)
             Fix potential out of bounds Graphics.scroll
             Serial.setConsole now warns if not used on hardware Serial
-	    ESP8266: implement hw_timer (fix #1511) to make soft serial and pwm work
+            ESP8266: implement hw_timer (fix #1511) to make soft serial and pwm work
             Fix Storage write error when skipping pages (fix #1539)
+            nRF5x: When scanning, only use as much of IO queue as is needed
+            nRF5x: If BLE/NFC/etc data won't fit in IO queue, drop whole packet
+            Allow `a in b` to search 'fake' objects (#1534)
+            Improve fast path when iterating over Uint8Array/ArrayBuffer
+            Allow deletion of function properties (fix #1549)
+            Add `{callback:...}` option for `.write` style functions - improve docs.
+            ESP8266: deepSleep invalid microseconds (fix #1547)
+            ESP8266: ESP_FLASH_MAX for ESP8266_4MB is wrong (fix #1551, #1553)
+            Fix buffer overflow if bytesize/stopbits used in `Serial.setup` (fix #1510)
+            Ensure jsvNewFlatStringOfLength tries twice (even if GC doesn't release memory, it reorders the free list) (#1559)
+            ESP8266: Missing variable Flash Mode (--flash_mode, -fm) in ESP8266.make files (fix #1563)
+            ESP8266: Remove hack added to get around SDK 1.4 bug (fix #1568)
+            Reduce available hardware SPI/I2C instances to 1 on nRF52 (since this is all we implement atm)
+            Add E.dumpFragmentation to show memory fragmentation (only for debug builds)
+            Fix parsing of dates from before 1970
+            nRF52: Fix some regressions in requestDevice (flagged up by asserts in debug build)
+            Allow built-in objects to be created with `new X()`
+            nRF52: Ensure Bluetooth stack doesn't do a reboot for non-fatal errors (just report them to console)
+            BluetoothRemoteGATTServer.disconnect now returns a Promise
+            nRF52: Jump out of low power mode after less BLE activity (2 reads/writes in 10 radio packets) (#1546)
+            nRF5x: Fix NRF.setConnectionInterval when there's no connection (fix #1546)
+            Explicitly mention Espruino not supporting CASE after DEFAULT in error (fix #1570)
+            Ensure scope is saved for Class constructors (fix #1576)
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)

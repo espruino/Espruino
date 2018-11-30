@@ -1346,7 +1346,7 @@ NO_INLINE JsVar *jspeFactorDelete() {
       if (!parent && jsvIsChild(execInfo.root, a))
         parent = jsvLockAgain(execInfo.root);
 
-      if (parent && !jsvIsFunction(parent)) {
+      if (jsvHasChildren(parent)) {
         // else remove properly.
         if (jsvIsArray(parent)) {
           // For arrays, we must make sure we don't change the length
@@ -1484,8 +1484,12 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
   JsVar *classInternalName = 0;
 
   bool actuallyCreateClass = JSP_SHOULD_EXECUTE;
-  if (actuallyCreateClass)
+  if (actuallyCreateClass) {
     classFunction = jsvNewWithFlags(JSV_FUNCTION);
+    JsVar *scopeVar = jspeiGetScopesAsVar();
+    if (scopeVar)
+      jsvUnLock2(jsvAddNamedChild(classFunction, scopeVar, JSPARSE_FUNCTION_SCOPE_NAME), scopeVar);
+  }
 
   if (parseNamedClass && lex->tk==LEX_ID) {
     if (classFunction)
@@ -1863,16 +1867,25 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
         if (op==LEX_R_IN) {
           JsVar *av = jsvSkipName(a); // needle
           JsVar *bv = jsvSkipName(b); // haystack
-          if (jsvIsArray(bv) || jsvIsObject(bv)) { // search keys, NOT values
+          if (jsvHasChildren(bv)) { // search keys, NOT values
             av = jsvAsArrayIndexAndUnLock(av);
             JsVar *varFound = jspGetVarNamedField( bv, av, true);
-            jsvUnLock(a);
+            jsvUnLock2(a,varFound);
             a = jsvNewFromBool(varFound!=0);
-            jsvUnLock(varFound);
-          } else {// else it will be undefined
-            jsExceptionHere(JSET_ERROR, "Cannot use 'in' operator to search a %t", bv);
-            jsvUnLock(a);
-            a = 0;
+          } else { // else maybe it's a fake object...
+            const JswSymList *syms = jswGetSymbolListForObjectProto(bv);
+            if (syms) {
+              JsVar *varFound = 0;
+              char nameBuf[JSLEX_MAX_TOKEN_LENGTH];
+              if (jsvGetString(av, nameBuf, sizeof(nameBuf)) < sizeof(nameBuf))
+                varFound = jswBinarySearch(syms, bv, nameBuf);
+              jsvUnLock2(a, varFound);
+              a = jsvNewFromBool(varFound!=0);
+            } else { // not built-in, just assume we can't do it
+              jsExceptionHere(JSET_ERROR, "Cannot use 'in' operator to search a %t", bv);
+              jsvUnLock(a);
+              a = 0;
+            }
           }
           jsvUnLock2(av, bv);
         } else if (op==LEX_R_INSTANCEOF) {
@@ -2224,11 +2237,15 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     JSP_SAVE_EXECUTE();
     if (!executeDefault) jspSetNoExecute();
     else execInfo.execute |= EXEC_IN_SWITCH;
-    while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!='}')
+    while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!='}' && lex->tk!=LEX_R_CASE)
       jsvUnLock(jspeBlockOrStatement());
     oldExecute |= execInfo.execute & (EXEC_ERROR_MASK|EXEC_RETURN); // copy across any errors/exceptions/returns
     execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_BREAK;
     JSP_RESTORE_EXECUTE();
+  }
+  if (lex->tk==LEX_R_CASE) {
+    jsExceptionHere(JSET_SYNTAXERROR, "Espruino doesn't support CASE after DEFAULT");
+    return 0;
   }
   JSP_MATCH('}');
   return 0;

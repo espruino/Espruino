@@ -604,6 +604,26 @@ void itostr_extra(JsVarInt vals,char *str,bool signedVal, unsigned int base) {
   }
   str[digits] = 0;
 }
+// fast function for 10^int 
+static JsVarFloat pow10int(int num) {
+  JsVarFloat val = 1;   // initial value 10^0 = 1
+  int mask = 1;         // bit mask for scanning num
+  JsVarFloat acc = 10;  // accumulate power of 10 (10, 10^2, 10^4, 10^8, ...)
+  bool bNeg;            // boolean for negative power
+  if (num < 0) { bNeg = false; num = -num; }
+  else bNeg = true;
+  while (num != 0) {   // while existing bits in the number
+    if ((num & mask) != 0) {  // if mask match
+      val *= acc;      // multiply val by that power of 10 (acc = 10^mask)
+      num &= ~mask;    // turn that bit off
+    }
+    acc *= acc;        // square the power of 10
+    mask <<= 1;        // mask to next bit
+  }
+   // it't more precise to result 1 / 10^n than to result 0.1^n 
+   // because 0.1 have an approximative representation in IEEE 754 (double or float)
+  return bNeg ? val : 1.0 / val;
+}
 
 void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fractionalDigits) {
   assert(len>9); // in case if strcpy
@@ -618,7 +638,22 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
       *(str++) = '-';
       val = -val;
     }
-
+#ifndef USE_NO_FLOATS
+    int exponent = 0;
+    // don't know how todo if radix is 16 or other
+    if (radix == 10 && val >= 1E20) {
+        // WARNING, WARNING, WARNNG : THIS IS ONLY GOOD FOR LITTLE ENDIAN PROCESSOR and DOUBLE value !!!! (but can also be done for big endian)
+        int p2 = (((unsigned short *)& val)[3] << 1 >> 5) - 0x3ff;
+        exponent = (p2 * 19728) >> 16; // like multiply by 0.30102999566398119521373889472449 (log(2)) but faster
+        val *= pow10int(-exponent);
+        // round ajustement
+        if (val >= (10 - stopAtError)) {
+            val *= 0.1;
+            exponent++;
+        }
+    }
+ #endif
+        
     // what if we're really close to an integer? Just use that...
     if (((JsVarInt)(val+stopAtError)) == (1+(JsVarInt)val))
       val = (JsVarFloat)(1+(JsVarInt)val);
@@ -650,8 +685,23 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
         fractionalDigits--;
       }
     }
+    if (exponent > 0 && len > 5) {
+        *str++ = 'e';
+        *str++ = '+';
+        int x;
+        if (exponent >= 10 ){
+            if (exponent >= 100) {
+                x = exponent / 100;
+                exponent -= 100 *x;
+                * str++ = (char)('0'+x);
+            }
+            x = exponent / 10;
+            exponent -= 10 * x;
+            * str++ = (char)('0'+x);
+         }
+         * str++ = (char)('0'+exponent);
+    }
 #endif
-
     *(str++)=0;
   }
 }

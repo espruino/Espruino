@@ -281,14 +281,14 @@ typedef enum {
 
 /// Settings passed to jshSPISetup to set SPI up
 typedef struct {
-  int baudRate;              //!< Baud rate
+  int baudRate;              //!< Baud rate (must be int because of jsvReadConfigObject)
   JshBaudFlags baudRateSpec; //!< How we choose a real baud rate based on `baudRate` (on STM32 we can only set it +/- 50%)
   Pin pinSCK;                //!< Pin to use for clock.
   Pin pinMISO;               //!< Pin to use for Master In/Slave Out.
   Pin pinMOSI;               //!< Pin to use for Master Out/Slave In.
   unsigned char spiMode;     //!< \see JshSPIFlags
   bool spiMSB;               //!< MSB first?
-  int numBits;               //!< Number of bits per send, default 8
+  int numBits;               //!< Number of bits per send, default 8 (must be int because of jsvReadConfigObject)
 } PACKED_FLAGS JshSPIInfo;
 
 
@@ -312,7 +312,7 @@ void jshSPIWait(IOEventFlags device);
 
 /// Settings passed to jshI2CSetup to set I2C up
 typedef struct {
-  int bitrate;
+  int bitrate; // (must be int because of jsvReadConfigObject)
   Pin pinSCL;
   Pin pinSDA;
   bool started; ///< Has I2C 'start' condition been sent so far?
