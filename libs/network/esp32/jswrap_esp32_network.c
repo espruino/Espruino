@@ -307,6 +307,9 @@ static JsVar *getWifiModule() {
  * * event_handler()
  *
  */
+
+static int s_retry_num = 0;
+
 static char *wifiGetEvent(uint32_t event) {
   switch(event) {
   case SYSTEM_EVENT_AP_PROBEREQRECVED:
@@ -326,10 +329,28 @@ static char *wifiGetEvent(uint32_t event) {
   case SYSTEM_EVENT_STA_CONNECTED:
     return "#onassociated";
   case SYSTEM_EVENT_STA_DISCONNECTED:
+  {
+    if (s_retry_num < 6 ) {
+      esp_wifi_connect();
+      //xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+      s_retry_num++;
+      jsError("retry to connect to the AP");
+      }
+    jsError("connect to the AP fail\n");
+  }
     return "#ondisconnected";
   case SYSTEM_EVENT_STA_GOT_IP:
+    s_retry_num = 0;
     return "#onconnected";
   case SYSTEM_EVENT_STA_START:
+    {
+      // Perform an esp_wifi_connect
+      esp_err_t err = esp_wifi_connect();
+      if (err != ESP_OK) {
+        jsError( "jswrap_wifi_connect: esp_wifi_connect: %d", err);
+        return NULL;
+      }
+    }
     break;
   case SYSTEM_EVENT_STA_STOP:
     break;
@@ -715,6 +736,7 @@ void jswrap_wifi_connect(
 
   // Perform a an esp_wifi_set_config
   wifi_config_t staConfig;
+  memset(&staConfig, 0, sizeof(staConfig));
   memcpy(staConfig.sta.ssid, ssid, sizeof(staConfig.sta.ssid));
   memcpy(staConfig.sta.password, password, sizeof(staConfig.sta.password));
   staConfig.sta.bssid_set = false;
@@ -735,12 +757,6 @@ void jswrap_wifi_connect(
   // Save the callback for later execution.
   g_jsGotIpCallback = jsvLockAgainSafe(jsCallback);
 
-  // Perform an esp_wifi_connect
-  err = esp_wifi_connect();
-  if (err != ESP_OK) {
-    jsError( "jswrap_wifi_connect: esp_wifi_connect: %d", err);
-    return;
-  }
 }
 
 void jswrap_wifi_scan(JsVar *jsCallback) {
