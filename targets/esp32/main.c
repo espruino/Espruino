@@ -73,7 +73,11 @@ char* romdata_jscode=0;
 int app_main(void)
 {
   esp_log_level_set("*", ESP_LOG_ERROR); // set all components to ERROR level - suppress Wifi Info 
-  nvs_flash_init();
+  esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      err = nvs_flash_init();
+    }
 #ifdef BLUETOOTH
   jsble_init();
 #endif
@@ -84,18 +88,17 @@ int app_main(void)
 
   // Map the js_code partition into memory so can be accessed by E.setBootCode("")
   const esp_partition_t* part;
-  spi_flash_mmap_handle_t hrom;  
-  esp_err_t err;  
+  spi_flash_mmap_handle_t hrom;
   esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "js_code");
   if (it==0) jsError("Couldn't find js_code partition - update with partition_espruino.bin\n");
   else {
     const esp_partition_t *p = esp_partition_get(it);
     err=esp_partition_mmap(p, 0, p->size, SPI_FLASH_MMAP_DATA, (const void**)&romdata_jscode, &hrom);
     if (err!=ESP_OK) jsError("Couldn't map js_code!\n");
-    // The mapping in hrom is never released - as js code can be called at anytime      
+    // The mapping in hrom is never released - as js code can be called at anytime
   }
   esp_partition_iterator_release(it);
-  
+
 #ifdef RTOS
   queues_init();
   tasks_init();
