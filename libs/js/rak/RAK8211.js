@@ -9,7 +9,8 @@ var PINS = {
   GPS_TXD : D9, // 9600 baud
   PWR_GPS_ON : D10, // 1=on, 0=off
   LIS2MDL_SCL : D11,
-  GPRS_TXD : D12,
+  // GPRS_TXD : D12, Note: Quectel BC95-G TX/RX pins are inverted i.e. swap D12 and D20
+  GPRS_RXD : D12,
   LIS2MDL_SDA : D13,
   GPRS_RESET : D14, 
   GPRS_PWRKEY : D15,
@@ -17,7 +18,8 @@ var PINS = {
   BQ_EN : D17,
   LIS3DH_SCL : D18,
   LIS3DH_SDA : D19,
-  GPRS_RXD : D20,
+  //GPRS_RXD : D20,
+  GPRS_TXD : D20,
   // D21 is reset
   OPT_SDA : D26,
   OPT_INT : D22,
