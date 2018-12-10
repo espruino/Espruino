@@ -82,7 +82,6 @@ int app_main(void)
   jsble_init();
 #endif
   spi_flash_init();
-  tcpip_adapter_init();
   timers_Init();
   timer_Init("EspruinoTimer",0,0,0);
 
