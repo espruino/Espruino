@@ -217,6 +217,63 @@ static char *wifiModeToString(wifi_mode_t mode) {
   return "UNKNOWN";
 } // End of wifiModeToString
 
+/**
+ * Convert an wifi event to a string value.
+ */
+static char *wifiEventToString(uint32_t event){
+  switch(event){
+  case SYSTEM_EVENT_STA_CONNECTED:return "STA_CONNECTED";
+  case SYSTEM_EVENT_STA_DISCONNECTED:return "STA_DISCONNECTED";
+  case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:return "STA_AUTHMODE_CHANGE";
+  case SYSTEM_EVENT_STA_GOT_IP:return "STA_GOT_IP";
+  case SYSTEM_EVENT_AP_STACONNECTED:return "AP_STACONNECTED";
+  case SYSTEM_EVENT_AP_STADISCONNECTED: return "AP_STADISCONNECTED";
+  case SYSTEM_EVENT_AP_PROBEREQRECVED:return "AP_PROBEREQRECVED";		
+  case SYSTEM_EVENT_WIFI_READY: return "WIFI_READY";
+  case SYSTEM_EVENT_SCAN_DONE: return "SCAN_DONE";
+  case SYSTEM_EVENT_STA_START: return "STA_START";
+  case SYSTEM_EVENT_STA_STOP: return "STA_STOP";
+  case SYSTEM_EVENT_STA_LOST_IP: return "LOST_IP";
+  case SYSTEM_EVENT_STA_WPS_ER_SUCCESS: return "STA_WPS_ER_SUCCESS";
+  case SYSTEM_EVENT_STA_WPS_ER_FAILED: return "STA_WPS_ER_FAILED";
+  case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT: return "STA_WPS_ER_TIMEOUT";
+  case SYSTEM_EVENT_STA_WPS_ER_PIN: return "STA_WPS_ER_PIN";
+  case SYSTEM_EVENT_AP_START: return "AP_START";
+  case SYSTEM_EVENT_AP_STOP: return "AP_STOP";
+  case SYSTEM_EVENT_GOT_IP6: return "GOT_IP6";
+  case SYSTEM_EVENT_ETH_START: return "ETH_START";
+  case SYSTEM_EVENT_ETH_STOP: return "ETH_STOP";
+  case SYSTEM_EVENT_ETH_CONNECTED: return "ETH_CONNECTED";
+  case SYSTEM_EVENT_ETH_DISCONNECTED: return "ETH_DISCONNECTED";
+  case SYSTEM_EVENT_ETH_GOT_IP: return "ETH_GOT_IP";
+  case SYSTEM_EVENT_MAX: return "MAX";
+  default: return "unknown event";  
+  }
+}
+
+/**
+ * convert WiFi error to a string value.
+ */ 
+static char *wifiErrorToString(esp_err_t err){
+  switch(err){
+	case 0x3001: return"WiFi driver was not installed by esp_wifi_init";
+	case 0x3002: return"WiFi driver was not started by esp_wifi_start";
+	case 0x3003: return"WiFi driver was not stopped by esp_wifi_stop";
+	case 0x3004: return"WiFi interface error";
+	case 0x3005: return"WiFi mode error";
+	case 0x3006: return"WiFi internal state error";
+	case 0x3007: return"WiFi internal control block of station or soft-AP error";
+	case 0x3008: return"WiFi internal NVS module error";
+	case 0x3009: return"MAC address is invalid";
+	case 0x300A: return"SSID is invalid";
+	case 0x300B: return"Password is invalid";
+	case 0x300C: return"Timeout error";
+	case 0x300D: return"WiFi is in sleep state(RF closed) and wakeup fail";
+	case 0x300E: return"The caller would block";
+	case 0x300F: return"Station still in disconnect status";
+	default: return "no WiFi error, see esp_err_to_name.c";
+  }
+}
 
 /**
  * Callback function that is invoked at the culmination of a scan.
@@ -394,10 +451,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * * bssid
    * * reason
    */
-  jsDebug("Wifi: event_handler - Entry -> event_id %d", event->event_id );
+  jsDebug("Wifi: Event(%d):SYSTEM_EVENT_%s\n",event->event_id,wifiEventToString(event->event_id));
 
   if (event->event_id == SYSTEM_EVENT_STA_DISCONNECTED) {
-    jsDebug("Wifi: event_handler -> SYSTEM_EVENT_STA_DISCONNECTED");
     if (--s_retry_num > 0 ) {
       esp_wifi_connect();
       jsDebug("retry to connect to the AP");
@@ -436,7 +492,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * * authmode
    */
   if (event->event_id == SYSTEM_EVENT_STA_CONNECTED) {
-    jsDebug("Wifi: event_handler -> SYSTEM_EVENT_STA_CONNECTED");
     g_isStaConnected = true; // Flag us as connected.
     g_lastEventStaConnected = event->event_info.connected; // Save the last connected info
 
@@ -456,14 +511,12 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_CONNECTED
 
-
   if (event->event_id == SYSTEM_EVENT_STA_START) {
     s_retry_num = 5; // Try to connect 5 times
-    jsDebug("Wifi: event_handler -> SYSTEM_EVENT_STA_START - retry up to 5 times");
       // Perform an esp_wifi_connect
       esp_err_t err = esp_wifi_connect();
       if (err != ESP_OK) {
-        jsError( "Wifi: event_handler STA_START: esp_wifi_connect: %d", err);
+        jsError( "Wifi: event_handler STA_START: esp_wifi_connect: %d(%s)", err,wifiErrorToString(err));
         return NULL;
       }
     return ESP_OK;      
@@ -477,7 +530,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    */
 
   if (event->event_id == SYSTEM_EVENT_STA_GOT_IP) {
-    jsDebug("Wifi: event_handler -> SYSTEM_EVENT_STA_GOT_IP");
     sendWifiCompletionCB(&g_jsGotIpCallback, NULL);
     JsVar *jsDetails = jsvNewObject();
 
@@ -495,7 +547,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_GOT_IP
 
-
   /**
    * SYSTEM_EVENT_AP_STACONNECTED
    * Structure contains:
@@ -503,7 +554,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * * aid
    */
   if (event->event_id == SYSTEM_EVENT_AP_STACONNECTED) {
-    jsDebug("Wifi: event_handler -> SYSTEM_EVENT_AP_STACONNECTED");  
     JsVar *jsDetails = jsvNewObject();
     // 12345678901234567_8
     // xx:xx:xx:xx:xx:xx\0
@@ -521,7 +571,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * * aid
    */
   if (event->event_id == SYSTEM_EVENT_AP_STADISCONNECTED) {
-    jsDebug("Wifi: event_handler -> SYSTEM_EVENT_AP_STADISCONNECTED");   
     JsVar *jsDetails = jsvNewObject();
     // 12345678901234567_8
     // xx:xx:xx:xx:xx:xx\0
@@ -539,7 +588,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * and, if we do, we build the parameters for that callback and then invoke it.
    */
   if (event->event_id == SYSTEM_EVENT_SCAN_DONE) {
-    jsDebug("Wifi: event_handler -> SYSTEM_EVENT_SCAN_DONE");
     scanCB();
     return ESP_OK;
   }
@@ -549,11 +597,10 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * Called when we have started being an access point.
    */
   if (event->event_id == SYSTEM_EVENT_AP_START) {
-    jsDebug("Wifi: event_handler -> SYSTEM_EVENT_SCAN_DONE");
     sendWifiCompletionCB(&g_jsAPStartedCallback, NULL);
     return ESP_OK;
   }
-   jsDebug("Wifi: event_handler -> NOT HANDLED EVENT: %d", event->event_id );
+  jsDebug("Wifi: event_handler -> NOT HANDLED EVENT: %d", event->event_id );
   return ESP_OK;
 } // End of event_handler
 
@@ -681,7 +728,7 @@ void jswrap_wifi_stopAP(JsVar *jsCallback) {
   }
   err = esp_wifi_set_mode(mode);
   if (err != ESP_OK) {
-    jsDebug("jswrap_wifi_stopAP: esp_wifi_set_mode rc=%d", err);
+    jsDebug("jswrap_wifi_stopAP: esp_wifi_set_mode rc=%d(%s)", err,wifiErrorToString(err));
   }
 
   if (jsvIsFunction(jsCallback)) {
@@ -745,13 +792,15 @@ void jswrap_wifi_connect(
     jsvUnLock(jsPassword);
   } // End of we had options
 
+  jsDebug("jswrap_wifi_connect: SSID, password, Callback done");
+  
   // At this point, we have the ssid in "ssid" and the password in "password".
   // Perform an esp_wifi_set_mode
   wifi_mode_t mode;
   esp_err_t err;
   err = esp_wifi_get_mode(&mode);
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_connect: esp_wifi_get_mode: %d", err);
+    jsError( "jswrap_wifi_connect: esp_wifi_get_mode: %d(%s)", err,wifiErrorToString(err));
     return;
   }
   switch(mode) {
@@ -770,10 +819,12 @@ void jswrap_wifi_connect(
 
   err = esp_wifi_set_mode(mode);
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_connect: esp_wifi_set_mode: %d, mode=%d", err, mode);
+    jsError( "jswrap_wifi_connect: esp_wifi_set_mode: %d(%s), mode=%d", err,wifiErrorToString(err), mode);
     return;
   }
-
+  
+  jsDebug("jswrap_wifi_connect: esi_wifi_set_mode done");
+  
   // Perform a an esp_wifi_set_config
   wifi_config_t staConfig;
 
@@ -782,9 +833,15 @@ void jswrap_wifi_connect(
   memcpy(staConfig.sta.password, password, sizeof(staConfig.sta.password));
   staConfig.sta.bssid_set = false;
   esp_wifi_set_auto_connect(true);
+  
+  jsDebug("jswrap_wifi_connect: esp_wifi_set_autoconnect done");
+  
   err = esp_wifi_set_config(ESP_IF_WIFI_STA,  &staConfig);
+  
+  jsDebug("jswrap_wifi_connect: esp_wifi_set_config done");
+  
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_connect: esp_wifi_set_config: %d", err);
+    jsError( "jswrap_wifi_connect: esp_wifi_set_config: %d(%s)", err,wifiErrorToString(err));
     return;
   }
 
@@ -792,7 +849,7 @@ void jswrap_wifi_connect(
   jsDebug("jswrap_wifi_connect: esp_wifi_start %s",ssid);
   err = esp_wifi_start();
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_connect: esp_wifi_start: %d", err);
+    jsError( "jswrap_wifi_connect: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
     return;
   }
 
@@ -824,7 +881,7 @@ void jswrap_wifi_scan(JsVar *jsCallback) {
   wifi_mode_t mode;
   esp_err_t err = esp_wifi_get_mode(&mode);
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_scan: esp_wifi_get_mode: %d", err);
+    jsError( "jswrap_wifi_scan: esp_wifi_get_mode: %d(%s)", err,wifiErrorToString(err));
     return;
   }
 
@@ -846,14 +903,14 @@ void jswrap_wifi_scan(JsVar *jsCallback) {
 
   err = esp_wifi_set_mode(mode);
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_scan: esp_wifi_set_mode: %d", err);
+    jsError( "jswrap_wifi_scan: esp_wifi_set_mode: %d(%s)", err,wifiErrorToString(err));
     return;
   }
 
   // Perform an esp_wifi_start
   err = esp_wifi_start();
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_connect: esp_wifi_start: %d", err);
+    jsError( "jswrap_wifi_connect: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
     return;
   }
 
@@ -986,7 +1043,7 @@ void jswrap_wifi_startAP(
 
   err = esp_wifi_set_mode(WIFI_MODE_AP);
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_startAP: esp_wifi_set_mode: %d", err);
+    jsError( "jswrap_wifi_startAP: esp_wifi_set_mode: %d(%s)", err,wifiErrorToString(err));
     return;
   }
 
@@ -1000,7 +1057,7 @@ void jswrap_wifi_startAP(
   // Perform an esp_wifi_start
   err = esp_wifi_start();
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_startAP: esp_wifi_start: %d", err);
+    jsError( "jswrap_wifi_startAP: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
     return;
   }
 } // End of jswrap_wifi_startAP
@@ -1203,7 +1260,7 @@ void jswrap_wifi_restore(void) {
     jsDebug( "jswrap_wifi_restore: Starting Wifi");
     err = esp_wifi_start();
     if (err != ESP_OK) {
-      jsError( "jswrap_wifi_restore: esp_wifi_start: %d", err);
+      jsError( "jswrap_wifi_restore: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
     }
 
   if ( auto_connect ) {
@@ -1213,7 +1270,7 @@ void jswrap_wifi_restore(void) {
       // Perform an esp_wifi_start
       err = esp_wifi_connect();
       if (err != ESP_OK) {
-        jsError( "jswrap_wifi_restore: esp_wifi_connect: %d", err - ESP_ERR_WIFI_BASE);
+        jsError( "jswrap_wifi_restore: esp_wifi_connect: %d(%s)", err - ESP_ERR_WIFI_BASE,wifiErrorToString(err));
         return;
       }
     }
