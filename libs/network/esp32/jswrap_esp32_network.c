@@ -116,6 +116,9 @@ static char *cipherTypeToString(wifi_cipher_type_t cipherType) {
 } // End of authModeToString
 */
 
+/**
+ * check esp function 
+*/ 
 
 /**
  * Convert an wifi_second_chan_t data type to a string value.
@@ -742,7 +745,7 @@ void jswrap_wifi_connect(
     JsVar *jsCallback
   ) {
   
-  jsDebug("jswrap_wifi_connect: entry");
+jsDebug("jswrap_wifi_connect: entry");
 
   // Check that the ssid value isn't obviously in error.
   if (!jsvIsString(jsSsid)) {
@@ -791,8 +794,7 @@ void jswrap_wifi_connect(
     }
     jsvUnLock(jsPassword);
   } // End of we had options
-
-  jsDebug("jswrap_wifi_connect: SSID, password, Callback done");
+jsDebug("jswrap_wifi_connect: SSID, password, Callback done");
   
   // At this point, we have the ssid in "ssid" and the password in "password".
   // Perform an esp_wifi_set_mode
@@ -822,8 +824,7 @@ void jswrap_wifi_connect(
     jsError( "jswrap_wifi_connect: esp_wifi_set_mode: %d(%s), mode=%d", err,wifiErrorToString(err), mode);
     return;
   }
-  
-  jsDebug("jswrap_wifi_connect: esi_wifi_set_mode done");
+jsDebug("jswrap_wifi_connect: esi_wifi_set_mode done");
   
   // Perform a an esp_wifi_set_config
   wifi_config_t staConfig;
@@ -833,20 +834,17 @@ void jswrap_wifi_connect(
   memcpy(staConfig.sta.password, password, sizeof(staConfig.sta.password));
   staConfig.sta.bssid_set = false;
   esp_wifi_set_auto_connect(true);
+jsDebug("jswrap_wifi_connect: esp_wifi_set_autoconnect done");
   
-  jsDebug("jswrap_wifi_connect: esp_wifi_set_autoconnect done");
-  
-  err = esp_wifi_set_config(ESP_IF_WIFI_STA,  &staConfig);
-  
-  jsDebug("jswrap_wifi_connect: esp_wifi_set_config done");
-  
+  err = esp_wifi_set_config(ESP_IF_WIFI_STA,  &staConfig); 
   if (err != ESP_OK) {
     jsError( "jswrap_wifi_connect: esp_wifi_set_config: %d(%s)", err,wifiErrorToString(err));
     return;
   }
+jsDebug("jswrap_wifi_connect: esp_wifi_set_config done");
 
   // Perform an esp_wifi_start
-  jsDebug("jswrap_wifi_connect: esp_wifi_start %s",ssid);
+jsDebug("jswrap_wifi_connect: esp_wifi_start %s",ssid);
   err = esp_wifi_start();
   if (err != ESP_OK) {
     jsError( "jswrap_wifi_connect: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
@@ -855,6 +853,8 @@ void jswrap_wifi_connect(
 
   // Save the callback for later execution.
   g_jsGotIpCallback = jsvLockAgainSafe(jsCallback);
+  
+  err = esp_wifi_connect();
 
 }
 
