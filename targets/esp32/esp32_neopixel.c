@@ -22,6 +22,7 @@ This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #include <driver/gpio.h>
 #include <soc/gpio_sig_map.h>
 #include <esp_intr.h>
+#include <driver/rmt.h>
 
 #include "esp32_neopixel.h"
 
@@ -110,10 +111,10 @@ void neopixel_handleInterrupt(void *arg){
 void neopixel_init(int gpioNum){
   DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_RMT_CLK_EN);
   DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_RMT_RST);
-
-  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[gpioNum], 2);
-  gpio_matrix_out(gpioNum, RMT_SIG_OUT0_IDX + RMTCHANNEL, 0, 0);
-  gpio_set_direction(gpioNum, GPIO_MODE_OUTPUT);
+//  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[gpioNum], 2);
+//  gpio_matrix_out(gpioNum, RMT_SIG_OUT0_IDX + RMTCHANNEL, 0, 0);
+//  gpio_set_direction(gpioNum, GPIO_MODE_OUTPUT);
+  rmt_set_pin((rmt_channel_t)RMTCHANNEL, RMT_MODE_TX, (gpio_num_t)gpioNum);
 
   neopixel_initRMTChannel(RMTCHANNEL);
 
