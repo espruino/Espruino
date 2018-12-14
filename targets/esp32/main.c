@@ -48,7 +48,6 @@ static void espruinoTask(void *data) {
   SPIChannelsInit();
   initADC(1);
   jshInit();     // Initialize the hardware
-  if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_wifi_restore();
   heapVars = (esp_get_free_heap_size() - 40000) / 16;  //calculate space for jsVars
   heapVars = heapVars - heapVars % 100; //round to 100
   if(heapVars > 20000) heapVars = 20000;  //WROVER boards have much more RAM, so we set a limit
@@ -56,6 +55,7 @@ static void espruinoTask(void *data) {
   // not sure why this delay is needed?
   vTaskDelay(200 / portTICK_PERIOD_MS);
   jsiInit(true); // Initialize the interactive subsystem
+  if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_wifi_restore();  
 #ifdef BLUETOOTH
   bluetooth_initDeviceName();
 #endif
