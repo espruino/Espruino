@@ -31,6 +31,7 @@
 #include "network.h"
 #include "jswrap_modules.h"
 #include "jswrap_esp32_network.h"
+#include "jswrap_storage.h"
 
 #include "jsutils.h"
 
@@ -617,7 +618,7 @@ void esp32_wifi_init() {
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
+  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
   /*
 wifi_config_t wifi_config = {
         .sta = {
@@ -1241,23 +1242,61 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
   return jsDetails;
 } // End of jswrap_wifi_getAPDetails
 
-
 void jswrap_wifi_save(JsVar *what) {
-  if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
-    jsDebug("Wifi:save - clear saved info");
-    esp_wifi_set_auto_connect(false);
-  } else {
-    jsDebug("Wifi:save - auto connecting");
-    esp_wifi_set_auto_connect(true);
-  }
-} // End of jswrap_wifi_save
+  jsDebug("Wifi.save");  
+  JsVar *o = jsvNewObject();
+  if (!o) return;
 
+  if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
+    JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
+    jswrap_storage_erase(name);
+    jsvUnLock(name);
+    jsDebug("Wifi.save(clear)");
+    return;
+  }
+
+  // station stuff
+  wifi_sta_config_t sta_config;
+  esp_wifi_get_config(WIFI_IF_STA, (wifi_config_t *)&sta_config);  
+  jsvObjectSetChildAndUnLock(o, "ssid", jsvNewFromString((char *)sta_config.ssid));
+  jsvObjectSetChildAndUnLock(o, "password", jsvNewFromString((char *)sta_config.password));
+  
+  wifi_mode_t wifi_mode;
+  esp_wifi_get_mode(&wifi_mode);
+  jsvObjectSetChildAndUnLock(o, "mode", jsvNewFromInteger(wifi_mode));
+
+  //jsvObjectSetChildAndUnLock(o, "phyMode", jsvNewFromInteger(wifi_get_phy_mode()));
+  wifi_ps_type_t psType;
+  esp_wifi_get_ps(&psType);
+  jsvObjectSetChildAndUnLock(o, "sleepType", jsvNewFromInteger(psType));
+
+  wifi_ap_config_t ap_config;
+  esp_wifi_get_config(WIFI_IF_AP, (wifi_config_t *)&ap_config);
+
+  jsvObjectSetChildAndUnLock(o, "ssidAP", jsvNewFromString((char *)ap_config.ssid));
+  jsvObjectSetChildAndUnLock(o, "passwordAP", jsvNewFromString((char *) ap_config.password));
+  jsvObjectSetChildAndUnLock(o, "authmodeAP", jsvNewFromInteger(ap_config.authmode));
+  jsvObjectSetChildAndUnLock(o, "hiddenAP", jsvNewFromInteger(ap_config.ssid_hidden));
+  jsvObjectSetChildAndUnLock(o, "channelAP", jsvNewFromInteger(ap_config.channel));  
+  /*
+  char *hostname = wifi_station_get_hostname();
+  if (hostname) jsvObjectSetChildAndUnLock(o, "hostname", jsvNewFromString((char *) hostname));
+  */
+
+  // save object
+  JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
+  jswrap_storage_erase(name);
+  jswrap_storage_write(name,o,0,0); 
+  jsvUnLock2(name,o);
+
+  jsDebug("Wifi.save: write completed\n");
+}
 
 void jswrap_wifi_restore(void) {
   bool auto_connect;
   int err=esp_wifi_get_auto_connect(&auto_connect);
 
-    jsDebug( "jswrap_wifi_restore: Starting Wifi");
+    jsDebug( "jswrap_wifi_restore: Starting Wifi - state %d",auto_connect);
     err = esp_wifi_start();
     if (err != ESP_OK) {
       jsError( "jswrap_wifi_restore: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
@@ -1266,6 +1305,8 @@ void jswrap_wifi_restore(void) {
   if ( auto_connect ) {
     wifi_mode_t mode;
     err = esp_wifi_get_mode(&mode);
+    jsDebug( "jswrap_wifi_restore: Starting Wifi - esp_wifi_get_mode %d",mode);
+        
     if ( (  mode == WIFI_MODE_STA ) || (  mode == WIFI_MODE_APSTA ) ) {
       // Perform an esp_wifi_start
       err = esp_wifi_connect();
