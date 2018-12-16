@@ -312,7 +312,7 @@ Retrieve the current overall WiFi configuration. This call provides general info
   "class"    : "Wifi",
   "name"     : "setConfig",
   "generate" : "jswrap_wifi_setConfig",
-  "#if" : "defined(ESP8266)",
+  "#if" : "defined(ESP32) || defined(ESP8266)",
   "params"   : [
     ["settings", "JsVar", "An object with the configuration settings to change."]
   ]
@@ -448,7 +448,7 @@ Return the access point IP information in an object which contains:
   "class"    : "Wifi",
   "name"     : "getHostByName",
   "generate" : "jswrap_wifi_getHostByName",
-  "#if" : "defined(ESP8266)",
+  "#if" : "defined(ESP8266)  || defined(ESP32)",
   "params"   : [
     ["hostname", "JsVar", "The hostname to lookup."],
     ["callback", "JsVar", "The `callback(ip)` to invoke when the IP is returned. `ip==null` on failure."]

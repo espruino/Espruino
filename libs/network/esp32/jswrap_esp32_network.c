@@ -1,6 +1,7 @@
 /*
 /*
 /*
+/*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
  * Copyright (C) 2015 Gordon Williams <gw@pur3.co.uk>
@@ -31,6 +32,7 @@
 #include "lwip/apps/ping/ping.h"
 #include "lwip/apps/ping/esp_ping.h"
 #include "apps/sntp/sntp.h"
+#include "lwip/dns.h"
 
 #include "jsinteractive.h"
 #include "network.h"
@@ -61,6 +63,9 @@ static JsVar *g_jsGotIpCallback;
 
 // A callback function to be invoked on ping responses.
 static JsVar *g_jsPingCallback;
+
+// A callback function to be invoked on gethostbyname responses.
+static JsVar *g_jsHostByNameCallback;
 
 // A callback function to be invoked when we complete an access point scan.
 static JsVar *g_jsScanCallback;
@@ -1149,12 +1154,50 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
 } // End of jswrap_wifi_getStatus
 
 
-
 void jswrap_wifi_setConfig(JsVar *jsSettings) {
-  UNUSED(jsSettings);
-  jsError( "jswrap_wifi_setConfig - Not implemented");
-} // End of jswrap_wifi_setConfig
+  // Make sure jsSetings an object
+  if (!jsvIsObject(jsSettings)) {
+    EXPECT_OPT_EXCEPTION(jsSettings);
+    return;
+  }
 
+  // phy setting
+  JsVar *jsPhy = jsvObjectGetChild(jsSettings, "phy", 0);
+  if (jsvIsString(jsPhy)) {
+    if (jsvIsStringEqual(jsPhy, "11b")) {
+      esp_wifi_set_protocol(WIFI_IF_AP,WIFI_PROTOCOL_11B);
+    } else if (jsvIsStringEqual(jsPhy, "11g")) {
+      esp_wifi_set_protocol(WIFI_IF_AP,WIFI_PROTOCOL_11B| WIFI_PROTOCOL_11G);
+    } else if (jsvIsStringEqual(jsPhy, "11n")) {
+      esp_wifi_set_protocol(WIFI_IF_AP,WIFI_PROTOCOL_11B| WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N);
+    } else {
+      jsvUnLock(jsPhy);
+      jsExceptionHere(JSET_ERROR, "Unknown phy mode.");
+      return;
+    }
+  }
+  if (jsPhy != NULL) jsvUnLock(jsPhy);
+
+  // powersave setting
+  // Call esp_wifi_set_ps(WIFI_PS_MIN_MODEM) to enable Modem-sleep minimum power save mode or esp_wifi_set_ps(WIFI_PS_MAX_MODEM)
+  JsVar *jsPowerSave = jsvObjectGetChild(jsSettings, "powersave", 0);
+  if (jsvIsString(jsPowerSave)) {
+    if (jsvIsStringEqual(jsPowerSave, "none")) {
+      esp_wifi_set_ps(WIFI_PS_NONE);
+    } else if (jsvIsStringEqual(jsPowerSave, "ps-poll")) {
+      esp_wifi_set_ps(WIFI_PS_MODEM);
+    } else if (jsvIsStringEqual(jsPowerSave, "min")) {
+      esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+    } else if (jsvIsStringEqual(jsPowerSave, "max")) {
+      esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+    } else {
+      jsvUnLock(jsPowerSave);
+      jsExceptionHere(JSET_ERROR, "Unknown powersave mode.");
+      return;
+    }
+  }
+  if (jsPowerSave != NULL) jsvUnLock(jsPowerSave);
+}
 
 JsVar *jswrap_wifi_getDetails(JsVar *jsCallback) {
   // Check callback
@@ -1448,16 +1491,6 @@ JsVar *jswrap_wifi_getAPIP(JsVar *jsCallback) {
   return jsIpInfo;
 }
 
-void jswrap_wifi_getHostByName(
-    JsVar *jsHostname,
-    JsVar *jsCallback
-) {
-  UNUSED(jsHostname);
-  UNUSED(jsCallback);
-  jsError( "jswrap_wifi_getHostByName - Not implemented - no api in esp-idf");
-  // Could use net_esp32_gethostbyname in network_esp32.c
-}
-
 JsVar *jswrap_wifi_getHostname(JsVar *jsCallback) {
   const char * hostname;
   esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
@@ -1612,4 +1645,63 @@ void jswrap_wifi_setSNTP(JsVar *jsServer, JsVar *jsZone) {
   sntp_setservername(0, server);
   sntp_init();
   jsWarn("SNTP: %s %s", server, zone);
+}
+
+/**
+ * Handle a response from esp_gethostbyname.
+ * Invoke the callback function to inform the caller that a hostname has been converted to
+ * an IP address.  The callback function should take a parameter that is the IP address.
+ */
+static void dnsFoundCallback(
+    const char *hostname, //!< The hostname that was converted to an IP address.
+    ip_addr_t *ipAddr,    //!< The ip address retrieved.  This may be 0.
+    void *arg             //!< Parameter passed in from espconn_gethostbyname.
+  ) {
+  jsWarn("Wifi.getHostByName CB - %s %x", hostname, ipAddr );
+  if (g_jsHostByNameCallback != NULL) {
+    JsVar *params[1];
+    if (ipAddr == NULL) {
+      params[0] = jsvNewNull();
+    } else {
+      params[0] = networkGetAddressAsString((uint8_t *)&ipAddr, 4, 10, '.');
+    }
+    jsiQueueEvents(NULL, g_jsHostByNameCallback, params, 1);
+    jsvUnLock(params[0]);
+    jsvUnLock(g_jsHostByNameCallback);
+    g_jsHostByNameCallback = NULL;
+  }
+}
+
+void jswrap_wifi_getHostByName(
+    JsVar *jsHostname,
+    JsVar *jsCallback
+) {
+  ip_addr_t ipAddr;
+  char hostname[256];
+
+  jsWarn("Wifi.getHostByName");
+
+  if (!jsvIsString(jsHostname)) {
+    jsExceptionHere(JSET_ERROR, "Hostname parameter is not a string");
+    return;
+  }
+  if (!jsvIsFunction(jsCallback)) {
+    jsExceptionHere(JSET_ERROR, "Callback is not a function");
+    return;
+  }
+  // Save the callback unlocking an old callback if needed.
+  if (g_jsHostByNameCallback != NULL) jsvUnLock(g_jsHostByNameCallback);
+  g_jsHostByNameCallback = jsCallback;
+  jsvLockAgainSafe(g_jsHostByNameCallback);
+
+  jsvGetString(jsHostname, hostname, sizeof(hostname));
+  jsWarn("Wifi.getHostByName: %s\n", hostname);
+  esp_err_t err = dns_gethostbyname(hostname, &ipAddr, dnsFoundCallback, NULL);
+  if (err == ESP_OK) {
+    jsWarn("Already resolved\n");
+    dnsFoundCallback(hostname, &ipAddr, NULL);
+  } else {
+    jsWarn("Error: %d from dns_gethostbyname", err);
+    dnsFoundCallback(hostname, NULL, NULL);
+  }
 }
