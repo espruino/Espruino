@@ -494,7 +494,7 @@ The mDNS announcement also includes an announcement for the "espruino" service.
   "class"    : "Wifi",
   "name"     : "setSNTP",
   "generate" : "jswrap_wifi_setSNTP",
-  "ifdef"    : "ESP8266",
+  "#if" : "defined(ESP8266) || defined(ESP32)",  
   "params"   : [
     ["server", "JsVar", "The NTP server to query, for example, `us.pool.ntp.org`"],
     ["tz_offset", "JsVar", "Local time zone offset in the range -11..13."]

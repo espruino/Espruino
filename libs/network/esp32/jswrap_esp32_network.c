@@ -30,6 +30,7 @@
 
 #include "lwip/apps/ping/ping.h"
 #include "lwip/apps/ping/esp_ping.h"
+#include "apps/sntp/sntp.h"
 
 #include "jsinteractive.h"
 #include "network.h"
@@ -1587,4 +1588,28 @@ void jswrap_wifi_ping(
   esp_ping_set_target(PING_TARGET_RES_FN, &pingResults, sizeof(pingResults));
   seq_no=0;
   ping_init();
+}
+
+void jswrap_wifi_setSNTP(JsVar *jsServer, JsVar *jsZone) {
+  if (!jsvIsString(jsZone)) {
+    jsExceptionHere(JSET_ERROR, "Zone is not a string");
+    return;
+  }
+
+  if (!jsvIsString(jsServer)) {
+    jsExceptionHere(JSET_ERROR, "Server is not a string");
+    return;
+  }
+  char zone[64];
+  jsvGetString(jsZone, zone, 64);
+  
+  char server[64];
+  jsvGetString(jsServer, server, 64);
+  
+  setenv("TZ", zone, 1);
+  tzset();
+  sntp_setoperatingmode(SNTP_OPMODE_POLL);
+  sntp_setservername(0, server);
+  sntp_init();
+  jsWarn("SNTP: %s %s", server, zone);
 }
