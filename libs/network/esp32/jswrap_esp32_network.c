@@ -26,6 +26,10 @@
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
 #include "tcpip_adapter.h"
+#include "mdns/include/mdns.h"
+
+#include "lwip/apps/ping/ping.h"
+#include "lwip/apps/ping/esp_ping.h"
 
 #include "jsinteractive.h"
 #include "network.h"
@@ -53,6 +57,9 @@ static JsVar *g_jsDisconnectCallback;
 
 // A callback function to be invoked when we have an IP address.
 static JsVar *g_jsGotIpCallback;
+
+// A callback function to be invoked on ping responses.
+static JsVar *g_jsPingCallback;
 
 // A callback function to be invoked when we complete an access point scan.
 static JsVar *g_jsScanCallback;
@@ -1451,24 +1458,133 @@ void jswrap_wifi_getHostByName(
 }
 
 JsVar *jswrap_wifi_getHostname(JsVar *jsCallback) {
-  UNUSED(jsCallback);
-  jsError( "jswrap_wifi_getHostname - Not implemented");
-  return NULL;
+  const char * hostname;
+  esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
+  if (hostname == NULL) {
+    hostname = "";
+  }
+  return jsvNewFromString(hostname);
 }
+
+//===== mDNS
+static bool mdns_started = 0;
+
+void stopMDNS() {
+  mdns_free();
+  mdns_started = false;
+}
+
+void startMDNS(char *hostname) {
+
+  if (mdns_started) stopMDNS();
+
+  // start mDNS
+    ESP_ERROR_CHECK( mdns_init() );
+    //set mDNS hostname (required if you want to advertise services)
+    ESP_ERROR_CHECK( mdns_hostname_set(hostname) );
+    mdns_service_add(NULL, "_telnet", "_tcp", 23, NULL, 0);
+
+  mdns_started = true;
+}
+
+
 
 void jswrap_wifi_setHostname(
     JsVar *jsHostname, //!< The hostname to set for device.
     JsVar *jsCallback
 ) {
-  UNUSED(jsHostname);
-  jsError( "jswrap_wifi_setHostname - Not implemented");
+  char hostname[256];
+  jsvGetString(jsHostname, hostname, sizeof(hostname));
+  jsDebug("Wifi.setHostname: %s\n", hostname);
+  tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA,hostname);
+
+  // now update mDNS
+  startMDNS(hostname);
+  
+  if (jsvIsFunction(jsCallback))
+    jsiQueueEvents(0, jsCallback, 0, 0);
+}
+
+static uint8_t seq_no;
+
+esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
+	//printf("AvgTime:%.1fmS Sent:%d Rec:%d Err:%d min(mS):%d max(mS):%d ", 
+  //(float)pf->total_time/pf->recv_count, pf->send_count, pf->recv_count, pf->err_count, pf->min_time, pf->max_time );
+	//printf("Resp(mS):%d Timeouts:%d Total Time:%d\n",pf->resp_time, pf->timeout_count, pf->total_time);
+  if (g_jsPingCallback != NULL) {
+    JsVar *jsPingResponse = jsvNewObject();
+    jsvObjectSetChildAndUnLock(jsPingResponse, "totalCount",   jsvNewFromInteger(pingResp->send_count));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "totalBytes",   jsvNewFromInteger(pingResp->total_bytes));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "totalTime",    jsvNewFromInteger(pingResp->total_time));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "respTime",     jsvNewFromInteger(pingResp->resp_time));
+    // don't have a sequence
+    jsvObjectSetChildAndUnLock(jsPingResponse, "seqNo",        jsvNewFromInteger(++seq_no));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "timeoutCount", jsvNewFromInteger(pingResp->timeout_count));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "bytes",        jsvNewFromInteger(pingResp->bytes));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "error",        jsvNewFromInteger(pingResp->err_count));
+    JsVar *params[1];
+    params[0] = jsPingResponse;
+    jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
+    jsvUnLock(jsPingResponse);
+  }
+	return ESP_OK;
 }
 
 void jswrap_wifi_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
 ) {
-  UNUSED(ipAddr);
-  UNUSED(pingCallback);
-  jsError( "jswrap_ESP32_ping - Not implemented");  
+  // If the parameter is a string, get the IP address from the string
+  // representation.
+  ip4_addr_t ip;
+  if (jsvIsString(ipAddr)) {
+    char ipString[20];
+    int len = jsvGetString(ipAddr, ipString, sizeof(ipString)-1);
+    ipString[len] = '\0';
+    ip.addr = networkParseIPAddress(ipString);
+    if (ip.addr == 0) {
+        jsExceptionHere(JSET_ERROR, "Not a valid IP address.");
+      return;
+    }
+  } else
+  // If the parameter is an integer, treat it as an IP address.
+  if (jsvIsInt(ipAddr)) {
+    ip.addr = jsvGetInteger(ipAddr);
+  } else
+  // The parameter was neither a string nor an IP address and hence we don't
+  // know how to get the IP address of the partner to ping so throw an
+  // exception.
+  {
+      jsExceptionHere(JSET_ERROR, "IP address must be string or integer.");
+    return;
+  }
+
+  if (jsvIsUndefined(pingCallback) || jsvIsNull(pingCallback)) {
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
+    }
+    g_jsPingCallback = NULL;
+  } else if (!jsvIsFunction(pingCallback)) {
+      jsExceptionHere(JSET_ERROR, "Callback is not a function.");
+    return;
+  } else {
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
+    }
+    g_jsPingCallback = pingCallback;
+    jsvLockAgainSafe(g_jsPingCallback);
+  }
+
+  // We now have an IP address to ping ... so ping.
+
+  uint32_t ping_count = 5;  //how many pings per report
+  uint32_t ping_timeout = 1000; //mS till we consider it timed out
+  uint32_t ping_delay = 500; //mS between pings  
+  esp_ping_set_target(PING_TARGET_IP_ADDRESS_COUNT, &ping_count, sizeof(uint32_t));
+  esp_ping_set_target(PING_TARGET_RCV_TIMEO, &ping_timeout, sizeof(uint32_t));
+  esp_ping_set_target(PING_TARGET_DELAY_TIME, &ping_delay, sizeof(uint32_t));
+  esp_ping_set_target(PING_TARGET_IP_ADDRESS, &ip.addr, sizeof(uint32_t));
+  esp_ping_set_target(PING_TARGET_RES_FN, &pingResults, sizeof(pingResults));
+  seq_no=0;
+  ping_init();
 }

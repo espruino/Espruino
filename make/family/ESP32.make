@@ -37,6 +37,7 @@ LDFLAGS += -L$(ESP_IDF_PATH)/ld \
 -L$(ESP_APP_TEMPLATE_PATH)/build/log \
 -L$(ESP_APP_TEMPLATE_PATH)/build/lwip \
 -L$(ESP_APP_TEMPLATE_PATH)/build/mbedtls \
+-L$(ESP_APP_TEMPLATE_PATH)/build/mdns \
 -L$(ESP_APP_TEMPLATE_PATH)/build/newlib \
 -L$(ESP_APP_TEMPLATE_PATH)/build/nghttp \
 -L$(ESP_APP_TEMPLATE_PATH)/build/nvs_flash \
@@ -108,6 +109,7 @@ $(ESP_IDF_PATH)/components/esp32/libhal.a  \
 -llog \
 -llwip \
 -lmbedtls \
+-lmdns \
 -lmesh \
 -lnghttp \
 -lnvs_flash \
