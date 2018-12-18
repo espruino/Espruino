@@ -1,7 +1,5 @@
 /*
 /*
-/*
-/*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
  * Copyright (C) 2015 Gordon Williams <gw@pur3.co.uk>
@@ -85,6 +83,28 @@ static bool g_isStaConnected = false;
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting options object but got %t", jsOPT)
 
+
+//===== mDNS
+static bool mdns_started = 0;
+
+void stopMDNS() {
+  jsWarn( "Wifi:stopMDNS");
+  mdns_free();
+  mdns_started = false;
+}
+
+void startMDNS(char *hostname) {
+  jsWarn( "Wifi:startMDNS - %s", hostname);
+  if (mdns_started) stopMDNS();
+
+  // start mDNS
+    ESP_ERROR_CHECK( mdns_init() );
+    //set mDNS hostname (required if you want to advertise services)
+    ESP_ERROR_CHECK( mdns_hostname_set(hostname) );
+    mdns_service_add(NULL, "_telnet", "_tcp", 23, NULL, 0);
+
+  mdns_started = true;
+}
 
 /**
  * Convert an wifi_auth_mode_t data type to a string value.
@@ -560,6 +580,12 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     jsvObjectSetChildAndUnLock(jsDetails, "gw", jsvNewFromString(temp));
     jsDebug("Wifi: About to emit connect!");
     sendWifiEvent(event->event_id, jsDetails);
+    // start mDNS
+    const char * hostname;
+    esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
+    if (hostname && hostname[0] != 0) {
+      startMDNS(hostname);
+    }
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_GOT_IP
 
@@ -1315,11 +1341,11 @@ void jswrap_wifi_save(JsVar *what) {
   jsvObjectSetChildAndUnLock(o, "passwordAP", jsvNewFromString((char *) ap_config.password));
   jsvObjectSetChildAndUnLock(o, "authmodeAP", jsvNewFromInteger(ap_config.authmode));
   jsvObjectSetChildAndUnLock(o, "hiddenAP", jsvNewFromInteger(ap_config.ssid_hidden));
-  jsvObjectSetChildAndUnLock(o, "channelAP", jsvNewFromInteger(ap_config.channel));  
-  /*
-  char *hostname = wifi_station_get_hostname();
+  jsvObjectSetChildAndUnLock(o, "channelAP", jsvNewFromInteger(ap_config.channel));
+
+  const char * hostname;
+  esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);  
   if (hostname) jsvObjectSetChildAndUnLock(o, "hostname", jsvNewFromString((char *) hostname));
-  */
 
   // save object
   JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
@@ -1393,17 +1419,8 @@ void jswrap_wifi_restore(void) {
     jsWarn("jswrap_wifi_restore: AP=%s", ap_config.ssid);
   }  
   
-  if (savedMode & WIFI_MODE_STA) {
-    /*
-    v = jsvObjectGetChild(o,"hostname",0);
-    if (v) {
-      char hostname[64];
-      jsvGetString(v, hostname, sizeof(hostname));
-      jsWarn("Wifi.restore: hostname=%s", hostname);
-      wifi_station_set_hostname(hostname);
-    }
-    jsvUnLock(v); 
-    */
+  if (savedMode & WIFI_MODE_STA) {  
+
     wifi_sta_config_t sta_config;
     bzero(&sta_config, sizeof(sta_config));
 
@@ -1423,6 +1440,16 @@ void jswrap_wifi_restore(void) {
   if (err != ESP_OK) {
     jsError( "jswrap_wifi_restore: esp_wifi_start: %d(%s)", err - ESP_ERR_WIFI_BASE,wifiErrorToString(err));
     return;
+  }
+  if (savedMode & WIFI_MODE_STA) {
+    v = jsvObjectGetChild(o,"hostname",0);
+    if (v) {
+      char hostname[64];
+      jsvGetString(v, hostname, sizeof(hostname));
+      jsWarn("Wifi.restore: hostname=%s", hostname);
+      tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA,hostname);
+    }
+    jsvUnLock(v); 
   }
   if ( ( savedMode == WIFI_MODE_STA ) || ( savedMode == WIFI_MODE_APSTA ) ) {
       err = esp_wifi_connect();
@@ -1499,29 +1526,6 @@ JsVar *jswrap_wifi_getHostname(JsVar *jsCallback) {
   }
   return jsvNewFromString(hostname);
 }
-
-//===== mDNS
-static bool mdns_started = 0;
-
-void stopMDNS() {
-  mdns_free();
-  mdns_started = false;
-}
-
-void startMDNS(char *hostname) {
-
-  if (mdns_started) stopMDNS();
-
-  // start mDNS
-    ESP_ERROR_CHECK( mdns_init() );
-    //set mDNS hostname (required if you want to advertise services)
-    ESP_ERROR_CHECK( mdns_hostname_set(hostname) );
-    mdns_service_add(NULL, "_telnet", "_tcp", 23, NULL, 0);
-
-  mdns_started = true;
-}
-
-
 
 void jswrap_wifi_setHostname(
     JsVar *jsHostname, //!< The hostname to set for device.
