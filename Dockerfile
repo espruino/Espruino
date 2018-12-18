@@ -22,8 +22,8 @@
 
 FROM python:3
 
-COPY . /espruino
-WORKDIR /espruino
+COPY ./scripts/provision.sh provision.sh
+COPY ./targetlibs /targetlibs
 
 # Workaround add some stuff that the provision script uses
 # in here so it doesn't have to use sudo
@@ -33,8 +33,11 @@ RUN pip install pyserial
 RUN pip install nrfutil
 
 # This ensures ALL dependencies are installed beforehand
-RUN bash -c "source scripts/provision.sh ALL"
+RUN bash -c "source provision.sh ALL"
+
+COPY . /espruino
+RUN bash -c "mv targetlibs espruino/targetlibs"
+WORKDIR /espruino
 
 ENV RELEASE 1
-CMD ["bash", "-c", "source scripts/provision.sh ALL && make"]
-
+CMD "make"
