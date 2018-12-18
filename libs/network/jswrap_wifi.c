@@ -312,7 +312,7 @@ Retrieve the current overall WiFi configuration. This call provides general info
   "class"    : "Wifi",
   "name"     : "setConfig",
   "generate" : "jswrap_wifi_setConfig",
-  "#if" : "defined(ESP8266)",
+  "#if" : "defined(ESP32) || defined(ESP8266)",
   "params"   : [
     ["settings", "JsVar", "An object with the configuration settings to change."]
   ]
@@ -448,7 +448,7 @@ Return the access point IP information in an object which contains:
   "class"    : "Wifi",
   "name"     : "getHostByName",
   "generate" : "jswrap_wifi_getHostByName",
-  "#if" : "defined(ESP8266)",
+  "#if" : "defined(ESP8266)  || defined(ESP32)",
   "params"   : [
     ["hostname", "JsVar", "The hostname to lookup."],
     ["callback", "JsVar", "The `callback(ip)` to invoke when the IP is returned. `ip==null` on failure."]
@@ -464,7 +464,7 @@ Lookup the hostname and invoke a callback with the IP address as integer argumen
   "class"    : "Wifi",
   "name"     : "getHostname",
   "generate" : "jswrap_wifi_getHostname",
-  "#if" : "defined(ESP8266)",
+  "#if" : "defined(ESP8266)  || defined(ESP32)",
   "return"   : ["JsVar", "The currently configured hostname, if available immediately."],
   "params"   : [
     ["callback", "JsVar", "An optional `callback(hostname)` function to be called back with the hostname."]
@@ -478,7 +478,7 @@ Returns the hostname announced to the DHCP server and broadcast via mDNS when co
   "class"    : "Wifi",
   "name"     : "setHostname",
   "generate" : "jswrap_wifi_setHostname",
-  "#if" : "defined(ESP8266) || defined(ESPRUINOWIFI)",
+  "#if" : "defined(ESP8266) || defined(ESPRUINOWIFI) || defined(ESP32)",
   "params"   : [
     ["hostname", "JsVar", "The new hostname."],
     ["callback", "JsVar", "An optional `callback()` function to be called back when the hostname is set"]
@@ -494,7 +494,7 @@ The mDNS announcement also includes an announcement for the "espruino" service.
   "class"    : "Wifi",
   "name"     : "setSNTP",
   "generate" : "jswrap_wifi_setSNTP",
-  "ifdef"    : "ESP8266",
+  "#if" : "defined(ESP8266) || defined(ESP32)",  
   "params"   : [
     ["server", "JsVar", "The NTP server to query, for example, `us.pool.ntp.org`"],
     ["tz_offset", "JsVar", "Local time zone offset in the range -11..13."]
@@ -550,7 +550,7 @@ The `settings` object must contain the following properties.
   "type"     : "staticmethod",
   "class"    : "Wifi",
   "name"     : "ping",
-  "#if"    : "defined(ESPRUINOWIFI) || defined(ESP8266)",
+  "#if"    : "defined(ESPRUINOWIFI) || defined(ESP8266) || defined(ESP32)",
   "generate" : "jswrap_wifi_ping",
   "params"   : [
     ["hostname", "JsVar", "The host to ping"],
