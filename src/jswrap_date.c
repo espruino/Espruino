@@ -111,9 +111,8 @@ CalendarDate getCalendarDate(int d) {
 
 int fromCalenderDate(CalendarDate *date) {
   int y=date->year - 1970;
-  int f=y/4;
-  int yf=y%4;
-  if (yf<0) yf+=4;
+  int f=y>>2;
+  int yf=y&3;
   const short *mdays;
 
   int ydays=yf*YDAY;

@@ -23,20 +23,16 @@ ZIPFILE=$DIR/archives/espruino_${VERSION}.zip
 rm -rf $ZIPDIR
 mkdir $ZIPDIR
 
-# Setup ESP8266
-#export ESP8266_SDK_ROOT=$DIR/esp_iot_sdk_v2.0.0.p1
-#export PATH=$PATH:$DIR/xtensa-lx106-elf/bin/
+# Tidy up
+# ESP8266
 rm -rf esp_iot_sdk_v2.0.0*
 rm -rf xtensa-lx106-elf
-source scripts/provision.sh ESP8266_BOARD
 # ESP32
-#export ESP_IDF_PATH=$DIR/esp-idf
-#export ESP_APP_TEMPLATE_PATH=$DIR/app
-#export PATH=$PATH:$DIR/xtensa-esp32-elf/bin/
 rm -rf esp-idf
 rm -rf app
 rm -rf xtensa-esp32-elf
-source scripts/provision.sh ESP32
+# Install everything
+source scripts/provision.sh ALL
 
 
 
@@ -44,7 +40,7 @@ echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 # The following have been removed because it's too hard to keep the build going:
-# OLIMEXINO_STM32 
+# STM32F3DISCOVERY OLIMEXINO_STM32 
 
 for BOARDNAME in PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINOWIFI PUCKJS PIXLJS MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI MICROBIT ESP8266_BOARD ESP8266_4MB RUUVITAG ESP32 WIO_LTE NRF52832DK THINGY52 RAK8211 RAK8212
 do

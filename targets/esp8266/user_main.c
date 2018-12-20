@@ -227,8 +227,7 @@ static void mainLoop() {
 #endif
 
   // Setup for another callback
-  //queueTaskMainLoop();
-  suspendMainLoop(0); // HACK to get around SDK 1.4 bug
+  queueTaskMainLoop();
 }
 
 

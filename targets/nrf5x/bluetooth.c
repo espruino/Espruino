@@ -128,6 +128,12 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 
 #define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2        /**< Reply when unsupported features are requested. */
 
+
+/* Check for errors when in an IRQ, when we're pretty sure an error won't
+ * cause a hard reset. Error is then reported outside of the IRQ without
+ * rebooting Espruino. */
+#define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) jsble_queue_pending(BLEP_ERROR, ERR_CODE);
+
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
@@ -204,6 +210,32 @@ bool bleHighInterval;
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
+/// Checks for error and reports an exception string if there was one, else 0 if no error
+JsVar *jsble_get_error_string(uint32_t err_code) {
+  if (!err_code) return 0;
+  const char *name = 0;
+  switch (err_code) {
+   case NRF_ERROR_NO_MEM        : name="NO_MEM"; break;
+   case NRF_ERROR_INVALID_PARAM : name="INVALID_PARAM"; break;
+   case NRF_ERROR_INVALID_STATE : name="INVALID_STATE"; break;
+   case NRF_ERROR_INVALID_LENGTH: name="INVALID_LENGTH"; break;
+   case NRF_ERROR_INVALID_FLAGS : name="INVALID_FLAGS"; break;
+   case NRF_ERROR_DATA_SIZE     : name="DATA_SIZE"; break;
+   case NRF_ERROR_FORBIDDEN     : name="FORBIDDEN"; break;
+   case NRF_ERROR_BUSY          : name="BUSY"; break;
+   case BLE_ERROR_INVALID_CONN_HANDLE
+                                : name="INVALID_CONN_HANDLE"; break;
+   case BLE_ERROR_GAP_INVALID_BLE_ADDR
+                                : name="INVALID_BLE_ADDR"; break;
+   case BLE_ERROR_NO_TX_PACKETS : name="NO_TX_PACKETS"; break;
+  }
+  if (name) return jsvVarPrintf("Got BLE error 0x%x (%s)", err_code, name);
+  else return jsvVarPrintf("Got BLE error code %d", err_code);
+}
+
+// -----------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------
+
 /// Add a new bluetooth event to the queue with a buffer of data
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len) {
   // check to ensure we have space for the data we're adding
@@ -262,6 +294,12 @@ int jsble_exec_pending(IOEvent *event) {
   uint16_t data = (uint16_t)(event->data.time>>8);
   switch (blep) {
    case BLEP_NONE: break;
+   case BLEP_ERROR: {
+     JsVar *v = jsble_get_error_string(data);
+     jsWarn("Softdevice error %v",v);
+     jsvUnLock(v);
+     break;
+   }
    case BLEP_CONNECTED: {
      assert(bufferLen == sizeof(ble_gap_addr_t));
      ble_gap_addr_t *peer_addr = (ble_gap_addr_t*)buffer;
@@ -451,6 +489,7 @@ int jsble_exec_pending(IOEvent *event) {
      break;
    }
    case BLEP_CENTRAL_DISCONNECTED: {
+     bleCompleteTaskSuccess(BLETASK_DISCONNECT, bleTaskInfo);
      JsVar *gattServer = bleGetActiveBluetoothGattServer();
      if (gattServer) {
        JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
@@ -579,7 +618,6 @@ uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max) {
         &gap_conn_params);
   } else {
     // Not connected, just tell the stack
-    ble_gap_conn_params_t   gap_conn_params;
     return sd_ble_gap_ppcp_set(&gap_conn_params);
   }
 }
@@ -614,7 +652,7 @@ void jsble_peripheral_activity() {
 #ifdef DYNAMIC_INTERVAL_ADJUSTMENT
   if (jsble_has_peripheral_connection() &&
       !(bleStatus & BLE_DISABLE_DYNAMIC_INTERVAL) &&
-      bleIdleCounter < 5) {
+      bleIdleCounter < 10) {
     // so we must have been called once before
     if (!bleHighInterval) {
       bleHighInterval = true;
@@ -623,29 +661,6 @@ void jsble_peripheral_activity() {
   }
   bleIdleCounter = 0;
 #endif
-}
-
-/// Checks for error and reports an exception string if there was one, else 0 if no error
-JsVar *jsble_get_error_string(uint32_t err_code) {
-  if (!err_code) return 0;
-  const char *name = 0;
-  switch (err_code) {
-   case NRF_ERROR_NO_MEM        : name="NO_MEM"; break;
-   case NRF_ERROR_INVALID_PARAM : name="INVALID_PARAM"; break;
-   case NRF_ERROR_INVALID_STATE : name="INVALID_STATE"; break;
-   case NRF_ERROR_INVALID_LENGTH: name="INVALID_LENGTH"; break;
-   case NRF_ERROR_INVALID_FLAGS : name="INVALID_FLAGS"; break;
-   case NRF_ERROR_DATA_SIZE     : name="DATA_SIZE"; break;
-   case NRF_ERROR_FORBIDDEN     : name="FORBIDDEN"; break;
-   case NRF_ERROR_BUSY          : name="BUSY"; break;
-   case BLE_ERROR_INVALID_CONN_HANDLE
-                                : name="INVALID_CONN_HANDLE"; break;
-   case BLE_ERROR_GAP_INVALID_BLE_ADDR
-                                : name="INVALID_BLE_ADDR"; break;
-   case BLE_ERROR_NO_TX_PACKETS : name="NO_TX_PACKETS"; break;
-  }
-  if (name) return jsvVarPrintf("Got BLE error 0x%x (%s)", err_code, name);
-  else return jsvVarPrintf("Got BLE error code %d", err_code);
 }
 
 /// Checks for error and reports an exception if there was one. Return true on error
@@ -700,12 +715,12 @@ static void conn_params_error_handler(uint32_t nrf_error) {
   if (nrf_error == NRF_ERROR_INVALID_STATE)
     return;
 
-  APP_ERROR_HANDLER(nrf_error);
+  APP_ERROR_CHECK_NOT_URGENT(nrf_error);
 }
 
 #if BLE_HIDS_ENABLED
 static void service_error_handler(uint32_t nrf_error) {
-    APP_ERROR_HANDLER(nrf_error);
+  APP_ERROR_CHECK_NOT_URGENT(nrf_error);
 }
 #endif
 
@@ -933,13 +948,11 @@ static void ble_update_whitelist() {
   if (m_is_wl_changed) {
     // The whitelist has been modified, update it in the Peer Manager.
     err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_NOT_URGENT(err_code);
 
     err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
     if (err_code != NRF_ERROR_NOT_SUPPORTED)
-    {
-        APP_ERROR_CHECK(err_code);
-    }
+      APP_ERROR_CHECK_NOT_URGENT(err_code);
 
     m_is_wl_changed = false;
   }
@@ -978,7 +991,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           // Accept parameters requested by peer.
           err_code = sd_ble_gap_conn_param_update(p_gap_evt->conn_handle,
                                       &p_gap_evt->params.conn_param_update_request.conn_params);
-          if (err_code!=NRF_ERROR_INVALID_STATE) APP_ERROR_CHECK(err_code);
+          //if (err_code!=NRF_ERROR_INVALID_STATE) APP_ERROR_CHECK_NOT_URGENT(err_code);
           // This sometimes fails with NRF_ERROR_INVALID_STATE if this request
           // comes in between sd_ble_gap_disconnect being called and the DISCONNECT
           // event being received. The SD obviously does the checks for us, so lets
@@ -1072,13 +1085,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         sec_param.max_key_size = 16;
         err_code = sd_ble_gap_sec_params_reply(m_peripheral_conn_handle, BLE_GAP_SEC_STATUS_SUCCESS, &sec_param, NULL);
         // or BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP to disable pairing
-        APP_ERROR_CHECK(err_code);
+        APP_ERROR_CHECK_NOT_URGENT(err_code);
       } break; // BLE_GAP_EVT_SEC_PARAMS_REQUEST
 
       case BLE_GATTS_EVT_SYS_ATTR_MISSING:
         // No system attributes have been stored.
         err_code = sd_ble_gatts_sys_attr_set(m_peripheral_conn_handle, NULL, 0, 0);
-        APP_ERROR_CHECK(err_code);
+        APP_ERROR_CHECK_NOT_URGENT(err_code);
         break;
 #endif
 #ifdef LINK_SECURITY
@@ -1092,9 +1105,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_LESC_DHKEY_REQUEST:
           //jsiConsolePrintf("BLE_GAP_EVT_LESC_DHKEY_REQUEST\n");
           err_code = ecc_p256_shared_secret_compute(&m_lesc_sk.sk[0], &p_ble_evt->evt.gap_evt.params.lesc_dhkey_request.p_pk_peer->pk[0], &m_lesc_dhkey.key[0]);
-          APP_ERROR_CHECK(err_code);
+          APP_ERROR_CHECK_NOT_URGENT(err_code);
           err_code = sd_ble_gap_lesc_dhkey_reply(p_ble_evt->evt.gap_evt.conn_handle, &m_lesc_dhkey);
-          APP_ERROR_CHECK(err_code);
+          APP_ERROR_CHECK_NOT_URGENT(err_code);
           break;
        case BLE_GAP_EVT_AUTH_STATUS:
          /*jsiConsolePrintf("BLE_GAP_EVT_AUTH_STATUS: status=0x%x bond=0x%x lv4: %d kdist_own:0x%x kdist_peer:0x%x\r\n",
@@ -1110,19 +1123,19 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           // Disconnect on GATT Client timeout event.
           err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gattc_evt.conn_handle,
                                            BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-          APP_ERROR_CHECK(err_code);
+          APP_ERROR_CHECK_NOT_URGENT(err_code);
           break; // BLE_GATTC_EVT_TIMEOUT
 
       case BLE_GATTS_EVT_TIMEOUT:
           // Disconnect on GATT Server timeout event.
           err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gatts_evt.conn_handle,
                                            BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-          APP_ERROR_CHECK(err_code);
+          APP_ERROR_CHECK_NOT_URGENT(err_code);
           break; // BLE_GATTS_EVT_TIMEOUT
 
       case BLE_EVT_USER_MEM_REQUEST:
           err_code = sd_ble_user_mem_reply(p_ble_evt->evt.gattc_evt.conn_handle, NULL);
-          APP_ERROR_CHECK(err_code);
+          APP_ERROR_CHECK_NOT_URGENT(err_code);
           break; // BLE_EVT_USER_MEM_REQUEST
 
       case BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST:
@@ -1157,17 +1170,20 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
                   }
                   err_code = sd_ble_gatts_rw_authorize_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                              &auth_reply);
-                  APP_ERROR_CHECK(err_code);
+                  // This can return an error when connecting to EQ3 CC-RT-BLE
+                  APP_ERROR_CHECK_NOT_URGENT(err_code);
               }
           }
       } break; // BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST
 
 #if (NRF_SD_BLE_API_VERSION >= 3)
-      case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST:
-          err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
-                                                     NRF_BLE_MAX_MTU_SIZE);
-          APP_ERROR_CHECK(err_code);
-          break; // BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST
+      case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST: {
+        err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
+                                                   NRF_BLE_MAX_MTU_SIZE);
+        // This can return an error when connecting to EQ3 CC-RT-BLE (which requests an MTU of 0!!)
+        // Ignore this error as it's non-fatal, just some negotiation.
+        APP_ERROR_CHECK_NOT_URGENT(err_code);
+      } break; // BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST
 #endif
 #if (NRF_SD_BLE_API_VERSION >= 4)
           case BLE_GAP_EVT_DATA_LENGTH_UPDATE_REQUEST:{
@@ -1461,7 +1477,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             err_code  = pm_peer_rank_highest(p_evt->peer_id);
             if (err_code != NRF_ERROR_BUSY)
             {
-                APP_ERROR_CHECK(err_code);
+              APP_ERROR_CHECK_NOT_URGENT(err_code);
             }
         } break;
 
@@ -1480,7 +1496,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             err_code  = pm_peer_rank_highest(p_evt->peer_id);
             if (err_code != NRF_ERROR_BUSY)
             {
-                APP_ERROR_CHECK(err_code);
+              APP_ERROR_CHECK_NOT_URGENT(err_code);
             }
             if (
 #if NRF_SD_BLE_API_VERSION>5
@@ -1530,7 +1546,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
                     err_code = pm_conn_secure(p_evt->conn_handle, true);
                     if (err_code != NRF_ERROR_INVALID_STATE)
                     {
-                        APP_ERROR_CHECK(err_code);
+                      APP_ERROR_CHECK_NOT_URGENT(err_code);
                     }
                     break; // PM_CONN_SEC_ERROR_PIN_OR_KEY_MISSING
 
@@ -1559,7 +1575,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             }
             else
             {
-                APP_ERROR_CHECK(err_code);
+              APP_ERROR_CHECK_NOT_URGENT(err_code);
             }
         } break;
 
@@ -1636,7 +1652,7 @@ static void on_hid_rep_char_write(ble_hids_evt_t * p_evt) {
                                              m_peripheral_conn_handle,
 #endif
                                              &report_val);
-            APP_ERROR_CHECK(err_code);
+            APP_ERROR_CHECK_NOT_URGENT(err_code);
             // (report_val & 2) is caps lock
             jsble_queue_pending(BLEP_HID_VALUE, report_val);
         }
@@ -1813,7 +1829,7 @@ static void peer_manager_init(bool erase_bonds) {
   if (erase_bonds)
   {
       err_code = pm_peers_delete();
-      APP_ERROR_CHECK(err_code);
+      APP_ERROR_CHECK_NOT_URGENT(err_code);
   }
 
   memset(&sec_param, 0, sizeof(ble_gap_sec_params_t));
@@ -2185,7 +2201,7 @@ void jsble_advertising_start() {
   uint32_t err_code;
 #if NRF_SD_BLE_API_VERSION>5
   err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, 0, &adv_params);
-  APP_ERROR_CHECK(err_code);
+  APP_ERROR_CHECK_NOT_URGENT(err_code);
   sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
 #elif NRF_SD_BLE_API_VERSION<5
   sd_ble_gap_adv_start(&adv_params);

@@ -103,6 +103,7 @@ typedef enum  {
 
 typedef enum {
   BLEP_NONE,
+  BLEP_ERROR,                       //< Softdevice threw some error (code in data)
   BLEP_CONNECTED,                   //< Peripheral connected (address as buffer)
   BLEP_DISCONNECTED,                //< Peripheral disconnected
   BLEP_RSSI_PERIPH,                 //< RSSI data from peripheral connection (rssi as data)

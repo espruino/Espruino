@@ -17,6 +17,11 @@
 #include "jsvar.h"
 #include "jswrap_arraybuffer.h" // for jswrap_io_peek
 
+#ifdef ESP32
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#endif
+
 /*JSON{
   "type"          : "function",
   "name"          : "peek8",
@@ -487,7 +492,7 @@ void jswrap_io_shiftOutCallback(int val, void *data) {
   "params" : [
     ["pins","JsVar","A pin, or an array of pins to use"],
     ["options","JsVar","Options, for instance the clock (see below)"],
-    ["data","JsVar","The data to shift out"]
+    ["data","JsVar","The data to shift out (see `E.toUint8Array` for info on the forms this can take)"]
   ]
 }
 Shift an array of data out using the pins supplied *least significant bit first*,
@@ -581,7 +586,13 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
     jshPinSetState(d.clk, JSHPINSTATE_GPIO_OUT);
 
   // Now run through the data, pushing it out
+#ifdef ESP32
+  vTaskSuspendAll();
+#endif
   jsvIterateCallback(data, jswrap_io_shiftOutCallback, &d);
+#ifdef ESP32
+  xTaskResumeAll();
+#endif
 }
 
 /*JSON{

@@ -97,7 +97,7 @@ exports.setOptoOn = function(isOn, callback) {
   }
 };
 
-// Turn cell connectivity on - will take around 8 seconds. Calls the `callback(usart)` when done. You then need to connect either SMS or QuectelM35 to the serial device `usart`
+// Turn cell connectivity on for 8211-G - will take around 8 seconds. Calls the `callback(usart)` when done. You then need to connect either SMS or QuectelM35 to the serial device `usart`
 exports.setCellOn = function(isOn, callback) {
   if (isOn) {
     if (this.cellOn) {
@@ -109,6 +109,41 @@ exports.setCellOn = function(isOn, callback) {
       Serial1.removeAllListeners();
       Serial1.on('data', function(x) {}); // suck up any data that gets transmitted from the modem as it boots (RDY, etc)
       Serial1.setup(115200,{tx:PINS.GPRS_TXD,rx:PINS.GPRS_RXD});
+      PINS.PWR_GPRS_ON.reset();
+      setTimeout(resolve,200);
+    }).then(function() {
+      PINS.PWR_GPRS_ON.set();
+      return new Promise(function(resolve){setTimeout(resolve,200);});
+    }).then(function() {
+      PINS.GPRS_PWRKEY.set();
+      return new Promise(function(resolve){setTimeout(resolve,2000);});
+    }).then(function() {
+      PINS.GPRS_PWRKEY.reset();
+      return new Promise(function(resolve){setTimeout(resolve,5000);});
+    }).then(function() {
+      this.cellOn = true;
+      Serial1.removeAllListeners();
+      if (callback) setTimeout(callback,10,Serial1);
+    });
+  } else {
+    this.cellOn = false;
+    PINS.PWR_GPRS_ON.reset(); // turn power off.
+    if (callback) setTimeout(callback,1000);
+  }
+};
+
+// Turn cell connectivity on for 8211-NB - will take around 8 seconds. Calls the `callback(usart)` when done. You then need to connect to the serial device `usart`
+exports.setNBCellOn = function(isOn, callback) {
+  if (isOn) {
+    if (this.cellOn) {
+      setTimeout(callback,10,Serial1);
+      return;
+    }
+    var that=this;
+    return new Promise(function(resolve) {
+      Serial1.removeAllListeners();
+      Serial1.on('data', function(x) {}); // suck up any data that gets transmitted from the modem as it boots (RDY, etc)
+      Serial1.setup(9600,{tx:PINS.GPRS_RXD,rx:PINS.GPRS_TXD});
       PINS.PWR_GPRS_ON.reset();
       setTimeout(resolve,200);
     }).then(function() {
