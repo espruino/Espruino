@@ -32,6 +32,7 @@
             Add setNBCellOn for RAK8211-NB (fix #1581)
             Now escape chars <8 as octal, and add escape of vertical tab 
             Add Graphics.createArrayBuffer(... {interleavex:true}) to allow faster support for P3 LED panels
+            Add Graphics.fill/drawEllipse and move fill/drawCircle to use the same code
 
      2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)

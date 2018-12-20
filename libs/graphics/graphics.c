@@ -244,57 +244,68 @@ void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
   graphicsFillRectDevice(gfx,x1,y2,x1,y1);
 }
 
-void graphicsDrawCircle(JsGraphics *gfx, short posX, short posY, short rad) {
-  graphicsToDeviceCoordinates(gfx, &posX, &posY);
-
-  int radY = 0,
-      radX = rad;
-  // Decision criterion divided by 2 evaluated at radX=radX, radY=0
-  int decisionOver2 = 1 - radX;
-
-  while (radX >= radY) {
-    graphicsSetPixelDevice(gfx, radX + posX,  radY + posY, gfx->data.fgColor);
-    graphicsSetPixelDevice(gfx, radY + posX,  radX + posY, gfx->data.fgColor);
-    graphicsSetPixelDevice(gfx, -radX + posX,  radY + posY, gfx->data.fgColor);
-    graphicsSetPixelDevice(gfx, -radY + posX,  radX + posY, gfx->data.fgColor);
-    graphicsSetPixelDevice(gfx, -radX + posX, -radY + posY, gfx->data.fgColor);
-    graphicsSetPixelDevice(gfx, -radY + posX, -radX + posY, gfx->data.fgColor);
-    graphicsSetPixelDevice(gfx, radX + posX, -radY + posY, gfx->data.fgColor);
-    graphicsSetPixelDevice(gfx, radY + posX, -radX + posY, gfx->data.fgColor);
-    radY++;
-
-    if (decisionOver2 <= 0) {
-      // Change in decision criterion for radY -> radY+1
-      decisionOver2 += 2 * radY + 1;
-    }
-    else {
-      radX--;
-      // Change for radY -> radY+1, radX -> radX-1
-      decisionOver2 += 2 * (radY - radX) + 1;
+void graphicsDrawEllipse(JsGraphics *gfx, short posX1, short posY1, short posX2, short posY2){
+  graphicsToDeviceCoordinates(gfx, &posX1, &posY1);
+  graphicsToDeviceCoordinates(gfx, &posX2, &posY2);
+  int posX = (posX1+posX2)/2;
+  int posY = (posY1+posY2)/2;
+  int width = (posX2-posX1)/2;
+  int height = (posY2-posY1)/2;
+  if (width<0) width=-width;
+  if (height<0) height=-height;
+  int hh = height * height;
+  int ww = width * width;
+  int hhww = hh * ww;
+  int x0 = width;
+  int dx = 0;
+  int y;
+  graphicsSetPixelDevice(gfx,posX - width,posY,gfx->data.fgColor);
+  graphicsSetPixelDevice(gfx,posX + width,posY,gfx->data.fgColor);
+  for (y = 1; y <= height; y++) {
+    int x1 = x0 - (dx - 1);
+    for(; x1> 0; x1--)
+      if (x1 * x1 * hh + y * y * ww <= hhww)
+        break;
+    dx = x0 - x1;
+    x0 = x1;
+    if(dx<2){
+      graphicsSetPixelDevice(gfx,posX - x0, posY - y,gfx->data.fgColor);
+      graphicsSetPixelDevice(gfx,posX + x0, posY - y,gfx->data.fgColor);
+      graphicsSetPixelDevice(gfx,posX - x0, posY + y,gfx->data.fgColor);
+      graphicsSetPixelDevice(gfx,posX + x0, posY + y,gfx->data.fgColor);
+    } else {
+      graphicsFillRectDevice(gfx,posX - x0, posY - y, posX - x0 - dx + 1, posY - y);
+      graphicsFillRectDevice(gfx,posX + x0, posY - y, posX + x0 + dx - 1, posY	- y);
+      graphicsFillRectDevice(gfx,posX - x0, posY + y, posX - x0 - dx + 1, posY + y);
+      graphicsFillRectDevice(gfx,posX + x0, posY + y, posX + x0 + dx - 1, posY + y); 
     }
   }
 }
 
-void graphicsFillCircle(JsGraphics *gfx, short x, short y, short rad) {
-  graphicsToDeviceCoordinates(gfx, &x, &y);
-
-  int radY = 0;
-  int decisionOver2 = 1 - rad;
-
-  while (rad >= radY) {
-    graphicsFillRectDevice(gfx, rad + x, radY + y, -rad + x, -radY + y);
-    graphicsFillRectDevice(gfx, radY + x, rad + y, -radY + x, -rad + y);
-    graphicsFillRectDevice(gfx, -rad + x, radY + y, rad + x, -radY + y);
-    graphicsFillRectDevice(gfx, -radY + x, rad + y, radY + x, -rad + y);
-    radY++;
-    if (decisionOver2 <= 0){
-      // Change in decision criterion for radY -> radY+1
-      decisionOver2 += 2 * radY + 1;
-    }else{
-      rad--;
-      // Change for radY -> radY+1, rad -> rad-1
-      decisionOver2 += 2 * (radY - rad) + 1;
-    }
+void graphicsFillEllipse(JsGraphics *gfx, short posX1, short posY1, short posX2, short posY2){
+  graphicsToDeviceCoordinates(gfx, &posX1, &posY1);
+  graphicsToDeviceCoordinates(gfx, &posX2, &posY2);
+  int posX = (posX1+posX2)/2;
+  int posY = (posY1+posY2)/2;
+  int width = (posX2-posX1)/2;
+  int height = (posY2-posY1)/2;
+  if (width<0) width=-width;
+  if (height<0) height=-height;
+  int hh = height * height;
+  int ww = width * width;
+  int hhww = hh * ww;
+  int x0 = width;
+  int dx = 0;
+  graphicsFillRectDevice(gfx, posX - width, posY, posX + width, posY);  
+  for (int y = 1; y <= height; y++) {
+    int x1 = x0 - (dx - 1);
+    for ( ; x1 > 0; x1--)
+      if (x1*x1*hh + y*y*ww <= hhww)
+        break;
+    dx = x0 - x1;  
+    x0 = x1;
+	  graphicsFillRectDevice(gfx, posX - x0, posY - y, posX + x0, posY - y);
+	  graphicsFillRectDevice(gfx, posX - x0, posY + y, posX + x0, posY + y);
   }
 }
 

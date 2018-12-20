@@ -421,10 +421,10 @@ void jswrap_graphics_clear(JsVar *parent) {
   "name" : "fillRect",
   "generate" : "jswrap_graphics_fillRect",
   "params" : [
-    ["x1","int32","The left"],
-    ["y1","int32","The top"],
-    ["x2","int32","The right"],
-    ["y2","int32","The bottom"]
+    ["x1","int32","The left X coordinate"],
+    ["y1","int32","The top Y coordinate"],
+    ["x2","int32","The right X coordinate"],
+    ["y2","int32","The bottom Y coordinate"]
   ]
 }
 Fill a rectangular area in the Foreground Color
@@ -441,10 +441,10 @@ void jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   "name" : "drawRect",
   "generate" : "jswrap_graphics_drawRect",
   "params" : [
-    ["x1","int32","The left"],
-    ["y1","int32","The top"],
-    ["x2","int32","The right"],
-    ["y2","int32","The bottom"]
+    ["x1","int32","The left X coordinate"],
+    ["y1","int32","The top Y coordinate"],
+    ["x2","int32","The right X coordinate"],
+    ["y2","int32","The bottom Y coordinate"]
   ]
 }
 Draw an unfilled rectangle 1px wide in the Foreground Color
@@ -470,9 +470,7 @@ void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 Draw a filled circle in the Foreground Color
 */
  void jswrap_graphics_fillCircle(JsVar *parent, int x, int y, int rad) {
-   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
-   graphicsFillCircle(&gfx, (short)x,(short)y,(short)rad);
-   graphicsSetVar(&gfx); // gfx data changed because modified area
+   jswrap_graphics_fillEllipse(parent, x-rad, y-rad, x+rad, y+rad);
  }
 
 /*JSON{
@@ -490,12 +488,52 @@ Draw a filled circle in the Foreground Color
 Draw an unfilled circle 1px wide in the Foreground Color
 */
 void jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad) {
-  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
-  graphicsDrawCircle(&gfx, (short)x,(short)y,(short)rad);
-  graphicsSetVar(&gfx); // gfx data changed because modified area
+  jswrap_graphics_drawEllipse(parent, x-rad, y-rad, x+rad, y+rad);
 }
 
 /*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "fillEllipse",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_fillEllipse",
+  "params" : [
+    ["x1","int32","The left X coordinate"],
+    ["y1","int32","The top Y coordinate"],
+    ["x2","int32","The right X coordinate"],
+    ["y2","int32","The bottom Y coordinate"]
+  ]
+}
+Draw a filled ellipse in the Foreground Color
+*/
+ void jswrap_graphics_fillEllipse(JsVar *parent, int x, int y, int x2, int y2) {
+   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+   graphicsFillEllipse(&gfx, (short)x,(short)y,(short)x2,(short)y2);
+   graphicsSetVar(&gfx); // gfx data changed because modified area
+ }
+ 
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "drawEllipse",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_drawEllipse",
+  "params" : [
+    ["x1","int32","The left X coordinate"],
+    ["y1","int32","The top Y coordinate"],
+    ["x2","int32","The right X coordinate"],
+    ["y2","int32","The bottom Y coordinate"]
+  ]
+}
+Draw an ellipse in the Foreground Color
+*/
+ void jswrap_graphics_drawEllipse(JsVar *parent, int x, int y, int x2, int y2) {
+   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+   graphicsDrawEllipse(&gfx, (short)x,(short)y,(short)x2,(short)y2);
+   graphicsSetVar(&gfx); // gfx data changed because modified area
+ }
+
+ /*JSON{
   "type" : "method",
   "class" : "Graphics",
   "name" : "getPixel",
