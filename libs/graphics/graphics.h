@@ -30,17 +30,19 @@ typedef enum {
   JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG = 1, ///< ArrayBuffer: zig-zag (even rows reversed)
   JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE = 2, ///< ArrayBuffer: if 1 bpp, treat bytes as stacked vertically
   JSGRAPHICSFLAGS_ARRAYBUFFER_MSB = 4, ///< ArrayBuffer: store pixels MSB first
-  JSGRAPHICSFLAGS_SWAP_XY = 8, //< All devices: swap X and Y over
-  JSGRAPHICSFLAGS_INVERT_X = 16, //< All devices: x = getWidth() - (x+1) - where x is DEVICE X
-  JSGRAPHICSFLAGS_INVERT_Y = 32, //< All devices: y = getHeight() - (y+1) - where y is DEVICE Y
+  JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX = 8, //< ArrayBuffer:  Pixels 0,2,4,etc are from the top half of the image, 1,3,5,etc from the bottom half. Used for P3 LED panels
+  JSGRAPHICSFLAGS_SWAP_XY = 16, //< All devices: swap X and Y over
+  JSGRAPHICSFLAGS_INVERT_X = 32, //< All devices: x = getWidth() - (x+1) - where x is DEVICE X
+  JSGRAPHICSFLAGS_INVERT_Y = 64, //< All devices: y = getHeight() - (y+1) - where y is DEVICE Y
+  JSGRAPHICSFLAGS_COLOR_BASE = 128,
 
   JSGRAPHICSFLAGS_COLOR_RGB = 0,
-  JSGRAPHICSFLAGS_COLOR_BRG = 64, //< All devices: color order is BRG
-  JSGRAPHICSFLAGS_COLOR_BGR = 128, //< All devices: color order is BGR
-  JSGRAPHICSFLAGS_COLOR_GBR = 64+128, //< All devices: color order is GBR
-  JSGRAPHICSFLAGS_COLOR_GRB = 256, //< All devices: color order is GRB
-  JSGRAPHICSFLAGS_COLOR_RBG = 256+64, //< All devices: color order is RBG
-  JSGRAPHICSFLAGS_COLOR_MASK = 64+128+256, //< All devices: color order is BRG
+  JSGRAPHICSFLAGS_COLOR_BRG = JSGRAPHICSFLAGS_COLOR_BASE, //< All devices: color order is BRG
+  JSGRAPHICSFLAGS_COLOR_BGR = JSGRAPHICSFLAGS_COLOR_BASE*2, //< All devices: color order is BGR
+  JSGRAPHICSFLAGS_COLOR_GBR = JSGRAPHICSFLAGS_COLOR_BASE*3, //< All devices: color order is GBR
+  JSGRAPHICSFLAGS_COLOR_GRB = JSGRAPHICSFLAGS_COLOR_BASE*4, //< All devices: color order is GRB
+  JSGRAPHICSFLAGS_COLOR_RBG = JSGRAPHICSFLAGS_COLOR_BASE*5, //< All devices: color order is RBG
+  JSGRAPHICSFLAGS_COLOR_MASK = JSGRAPHICSFLAGS_COLOR_BASE*7, //< All devices: color order is BRG
 } JsGraphicsFlags;
 
 #define JSGRAPHICS_FONTSIZE_4X6 (-1) // a bitmap font

@@ -110,6 +110,7 @@ static bool isValidBPP(int bpp) {
       "zigzag = whether to alternate the direction of scanlines for rows",
       "vertical_byte = whether to align bits in a byte vertically or not",
       "msb = when bits<8, store pixels msb first",
+      "interleavex = Pixels 0,2,4,etc are from the top half of the image, 1,3,5,etc from the bottom half. Used for P3 LED panels.",
       "color_order = re-orders the colour values that are supplied via setColor"
     ]]
   ],
@@ -145,6 +146,8 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG);
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "msb", 0)))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_MSB);
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "interleavex", 0)))
+      gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX);
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "vertical_byte", 0))) {
       if (gfx.data.bpp==1)
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);

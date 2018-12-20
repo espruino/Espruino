@@ -21,6 +21,15 @@ unsigned int lcdGetPixelIndex_ArrayBuffer(JsGraphics *gfx, int x, int y, int pix
   if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG) {
     if (y&1) x = gfx->data.width - (x+pixelCount);
   }
+  if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX) {
+    int h = gfx->data.height>>1;
+    unsigned int idx = 0;
+    if (y >= h) {
+      y-=h;
+      idx=gfx->data.bpp;
+    }
+    return idx + (unsigned int)((x + y*gfx->data.width)*(gfx->data.bpp<<1));
+  }
   if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE)
     return (unsigned int)(((x + (y>>3)*gfx->data.width)<<3) | (y&7));
   else
