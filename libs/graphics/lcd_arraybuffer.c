@@ -68,6 +68,11 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
 
   unsigned int whiteMask = (1U<<gfx->data.bpp)-1;
   bool shortCut = (col==0 || (col&whiteMask)==whiteMask) && (!(gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE)); // simple black or white fill
+  int bppStride = gfx->data.bpp;
+  if (gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX) {
+    bppStride <<= 1;
+    shortCut = false;
+  }
 
   while (pixelCount--) { // writing individual bits
     if (gfx->data.bpp&7/*not a multiple of one byte*/) {
@@ -93,7 +98,7 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
       if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
         jsvArrayBufferIteratorNext(&it);
       } else {
-        idx += gfx->data.bpp;
+        idx += bppStride;
         if (idx>=8) jsvArrayBufferIteratorNext(&it);
       }
     } else { // we're writing whole bytes
@@ -149,6 +154,11 @@ void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, short x, short y, short pixe
 
   unsigned int whiteMask = (1U<<gfx->data.bpp)-1;
   bool shortCut = (col==0 || (col&whiteMask)==whiteMask) && (!(gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE)); // simple black or white fill
+  int bppStride = gfx->data.bpp;
+  if (gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX) {
+    bppStride <<= 1;
+    shortCut = false;
+  }
 
   while (pixelCount--) { // writing individual bits
     if (gfx->data.bpp&7/*not a multiple of one byte*/) {
@@ -175,7 +185,7 @@ void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, short x, short y, short pixe
       if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
         ptr++;
       } else {
-        idx += gfx->data.bpp;
+        idx += bppStride;
         if (idx>=8) ptr++;
       }
     } else { // we're writing whole bytes
