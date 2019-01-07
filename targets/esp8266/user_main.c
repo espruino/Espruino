@@ -294,7 +294,7 @@ void user_uart_init() {
  * before user_init() is called.
  */
 void user_rf_pre_init() {
-  system_update_cpu_freq(160);
+  system_update_cpu_freq(CLOCK_SPEED_MHZ);
 // RF calibration: 0=do what byte 114 of esp_init_data_default says, 1=calibrate VDD33 and TX
   // power (18ms); 2=calibrate VDD33 only (2ms); 3=full calibration (200ms). The default value of
   // byte 114 is 0, which has the same effect as option 2 here. We're using option 3 'cause it's
