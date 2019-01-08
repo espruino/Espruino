@@ -314,7 +314,7 @@ endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER
 
-ifdef USE_FILESYSTEM
+ifeq ($(USE_FILESYSTEM),1)
 DEFINES += -DUSE_FILESYSTEM
 INCLUDE += -I$(ROOT)/libs/filesystem
 WRAPPERSOURCES += \
@@ -327,7 +327,7 @@ libs/filesystem/fat_sd/fattime.c \
 libs/filesystem/fat_sd/ff.c \
 libs/filesystem/fat_sd/option/unicode.c # for LFN support (see _USE_LFN in ff.h)
 
-ifdef USE_FILESYSTEM_SDIO
+ifeq ($(USE_FILESYSTEM_SDIO),1)
 DEFINES += -DUSE_FILESYSTEM_SDIO
 SOURCES += \
 libs/filesystem/fat_sd/sdio_diskio.c \
@@ -357,7 +357,7 @@ else
 LIBS += -lm
 endif
 
-ifdef USE_GRAPHICS
+ifeq ($(USE_GRAPHICS),1)
 DEFINES += -DUSE_GRAPHICS
 INCLUDE += -I$(ROOT)/libs/graphics
 WRAPPERSOURCES += libs/graphics/jswrap_graphics.c
@@ -367,7 +367,7 @@ libs/graphics/graphics.c \
 libs/graphics/lcd_arraybuffer.c \
 libs/graphics/lcd_js.c
 
-ifdef USE_LCD_SDL
+ifeq ($(USE_LCD_SDL),1)
   DEFINES += -DUSE_LCD_SDL
   SOURCES += libs/graphics/lcd_sdl.c
   LIBS += -lSDL
@@ -379,18 +379,19 @@ ifdef USE_LCD_FSMC
   SOURCES += libs/graphics/lcd_fsmc.c
 endif
 
-ifdef USE_TERMINAL
+
+ifeq ($(USE_TERMINAL),1)
   DEFINES += -DUSE_TERMINAL
   WRAPPERSOURCES += libs/graphics/jswrap_terminal.c
 endif
 
 endif
 
-ifdef USE_USB_HID
+ifeq ($(USE_USB_HID),1)
   DEFINES += -DUSE_USB_HID
 endif
 
-ifdef USE_NET
+ifeq ($(USE_NET),1)
  DEFINES += -DUSE_NET
  INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
  WRAPPERSOURCES += \
@@ -513,7 +514,7 @@ ifdef USE_NET
  endif
 endif # USE_NET
 
-ifdef USE_TV
+ifeq ($(USE_TV),1)
   DEFINES += -DUSE_TV
   WRAPPERSOURCES += libs/tv/jswrap_tv.c
   INCLUDE += -I$(ROOT)/libs/tv
@@ -521,7 +522,7 @@ ifdef USE_TV
   libs/tv/tv.c
 endif
 
-ifdef USE_TRIGGER
+ifeq ($(USE_TRIGGER),1)
   DEFINES += -DUSE_TRIGGER
   WRAPPERSOURCES += libs/trigger/jswrap_trigger.c
   INCLUDE += -I$(ROOT)/libs/trigger
@@ -529,20 +530,20 @@ ifdef USE_TRIGGER
   libs/trigger/trigger.c
 endif
 
-ifdef USE_WIRINGPI
+ifeq ($(USE_WIRINGPI),1)
   DEFINES += -DUSE_WIRINGPI
   LIBS += -lwiringPi
   INCLUDE += -I/usr/local/include -L/usr/local/lib
 endif
 
-ifdef USE_BLUETOOTH
+ifeq ($(USE_BLUETOOTH),1)
   DEFINES += -DBLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
   SOURCES += libs/bluetooth/bluetooth_utils.c
 endif
 
-ifdef USE_CRYPTO 
+ifeq ($(USE_CRYPTO),1)
   cryptofound:=$(shell if test -f make/crypto/$(FAMILY).make; then echo yes;fi)
   ifeq ($(cryptofound),yes)
     include make/crypto/$(FAMILY).make
@@ -551,13 +552,13 @@ ifdef USE_CRYPTO
   endif 
 endif
 
-ifdef USE_NEOPIXEL
+ifeq ($(USE_NEOPIXEL),1)
   DEFINES += -DUSE_NEOPIXEL
   INCLUDE += -I$(ROOT)/libs/neopixel
   WRAPPERSOURCES += libs/neopixel/jswrap_neopixel.c
 endif
 
-ifdef USE_NFC
+ifeq ($(USE_NFC),1)
   DEFINES += -DUSE_NFC -DNFC_HAL_ENABLED=1
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/t2t_lib
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/uri
@@ -570,7 +571,7 @@ ifdef USE_NFC
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 endif
 
-ifdef USE_WIO_LTE
+ifeq ($(USE_WIO_LTE),1)
   INCLUDE += -I$(ROOT)/libs/wio_lte
   WRAPPERSOURCES += libs/wio_lte/jswrap_wio_lte.c
   SOURCES += targets/stm32/stm32_ws2812b_driver.c

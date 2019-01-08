@@ -51,10 +51,6 @@ espruino_#v##_hystm32_28_rb.bin
    - 'HY'STM32F103RBT6 ARM with 2.8" LCD display
      This is available from eBay
 
-espruino_#v##_hystm32_32_vc.bin 
-   - 'HY'STM32F103VCT6 ARM with 3.2" LCD display
-     This is available from eBay
-
 espruino_#v##_stm32l496gdiscovery.bin
    - STM32F496GDISCOVERY board
 

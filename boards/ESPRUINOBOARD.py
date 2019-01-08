@@ -26,8 +26,8 @@ info = {
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_espruino_1r3.bin',
  'binaries' : [
-  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking"},
-  { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "TI CC3000 WiFi Networking"},
+  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking (no crypto lib)"},
+  { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "AT Command Networking only"},
  ],
  'build' : {
    'optimizeflags' : '-Os',
