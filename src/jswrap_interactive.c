@@ -164,22 +164,23 @@ executed by Espruino every time it starts.
   "name" : "save",
   "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;"
 }
-Save program memory into flash. It will then be loaded automatically every time
-Espruino powers on or is hard-reset.
+Save the state of the interpreter into flash (including the results of calling
+`setWatch`, `setInterval`, and `pinMode`). The state will then be loaded automatically
+ every time Espruino powers on or is hard-reset.
+
+For more information, please see the [Saving code on Espruino](https://www.espruino.com/Saving) page.
 
 This command only executes when the Interpreter returns to the Idle state - for
 instance ```a=1;save();a=2;``` will save 'a' as 2.
 
 When Espruino powers on, it will resume from where it was when you typed `save()`.
 If you want code to be executed right after loading (for instance to initialise
-devices connected to Espruino), add an `init` event handler to `E` with
-`E.on('init', function() { ... your_code ... });`. This will then be automatically
-executed by Espruino every time it starts.
+devices connected to Espruino), add a function called `onInit`, or add a `init`
+event handler to `E` with `E.on('init', function() { ... your_code ... });`.
+This will then be automatically executed by Espruino every time it starts.
 
 In order to stop the program saved with this command being loaded automatically,
-hold down Button 1 while also pressing reset. On some boards, Button 1 enters
-bootloader mode, so you will need to press Reset with Button 1 raised, and then
-hold Button 1 down a fraction of a second later.
+check out [the Troubleshooting guide](https://www.espruino.com/Troubleshooting#espruino-stopped-working-after-i-typed-save-)
  */
 /*JSON{
   "type" : "function",
