@@ -761,7 +761,7 @@ JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   "params" : [
     ["args","JsVarArray","The arguments to convert to a String"]
   ],
-  "return" : ["JsVar","A String"],
+  "return" : ["JsVar","A String (or `undefined` if a Flat String cannot be created)"],
   "return_object" : "String"
 }
 Returns a 'flat' string representing the data in the arguments, or return `undefined`
@@ -843,13 +843,13 @@ This creates a Uint8Array from the given arguments. These are handled as follows
 For example:
 
 ```
->E.toUint8Array([1,2,3])
+E.toUint8Array([1,2,3])
 =new Uint8Array([1, 2, 3])
->E.toUint8Array([1,{data:2,count:3},3])
+E.toUint8Array([1,{data:2,count:3},3])
 =new Uint8Array([1, 2, 2, 2, 3])
->E.toUint8Array("Hello")
+E.toUint8Array("Hello")
 =new Uint8Array([72, 101, 108, 108, 111])
->E.toUint8Array(["hi",{callback:function() { return [1,2,3] }}])
+E.toUint8Array(["hi",{callback:function() { return [1,2,3] }}])
 =new Uint8Array([104, 105, 1, 2, 3])
 ```
 */
