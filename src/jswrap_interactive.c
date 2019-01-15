@@ -165,10 +165,15 @@ executed by Espruino every time it starts.
   "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;"
 }
 Save the state of the interpreter into flash (including the results of calling
-`setWatch`, `setInterval`, and `pinMode`). The state will then be loaded automatically
- every time Espruino powers on or is hard-reset.
+`setWatch`, `setInterval`, `pinMode`, and any listeners). The state will then be loaded automatically
+ every time Espruino powers on or is hard-reset. To see what will get saved you can call `dump()`.
 
-For more information, please see the [Saving code on Espruino](https://www.espruino.com/Saving) page.
+**Note:** If you set up intervals/etc in `onInit()` and you have already called `onInit`
+before running `save()`, when Espruino resumes there will be two copies of your intervals -
+the ones from before the save, and the ones from after - which may cause you problems.
+
+For more information about this and other options for saving, please see
+the [Saving code on Espruino](https://www.espruino.com/Saving) page.
 
 This command only executes when the Interpreter returns to the Idle state - for
 instance ```a=1;save();a=2;``` will save 'a' as 2.
