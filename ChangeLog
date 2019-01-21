@@ -1,4 +1,6 @@
-            ESP32: update to esp-idf V3.1
+            Fix string index calculation when using some regexes (fix #1602)
+
+     2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
             Improve Tab Completions for extended classes
             Fix Storage.readJSON/readArrayBuffer memory leak (fix #1532)

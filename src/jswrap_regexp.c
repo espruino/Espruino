@@ -78,11 +78,13 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
     return rmatch;
   }
   /* must look even if string is empty */
-  rmatch = matchhere(regexp, &txtIt, info);
+  JsvStringIterator txtIt2 = jsvStringIteratorClone(&txtIt);
+  rmatch = matchhere(regexp, &txtIt2, info);
+  jsvStringIteratorFree(&txtIt2);
   jsvStringIteratorNext(&txtIt);
   while (!rmatch && jsvStringIteratorHasChar(&txtIt)) {
     info.startIndex++;
-    JsvStringIterator txtIt2 = jsvStringIteratorClone(&txtIt);
+    txtIt2 = jsvStringIteratorClone(&txtIt);
     rmatch = matchhere(regexp, &txtIt2, info);
     jsvStringIteratorFree(&txtIt2);
     jsvStringIteratorNext(&txtIt);
