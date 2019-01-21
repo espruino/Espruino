@@ -1,5 +1,6 @@
             Fix string index calculation when using some regexes (fix #1602)
             Ensure Function.replaceWith puts scope after parameters (fix #1601)
+            Ensure Graphics.* return the Graphics instance, to allow call chaining (fix #1580)
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
