@@ -408,9 +408,34 @@ void jswrap_httpSRs_end(JsVar *parent, JsVar *data) {
     ["statusCode","int32","The HTTP status code"],
     ["headers","JsVar","An object containing the headers"]
   ]
-}*/
+}
+Send the given status code and headers. If not explicitly called
+this will be done automatically the first time data is written
+to the response.
+
+This cannot be called twice, or after data has already been sent
+in the response.
+*/
 void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
   serverResponseWriteHead(parent, statusCode, headers);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "httpSRs",
+  "name" : "setHeader",
+  "generate" : "jswrap_httpSRs_setHeader",
+  "params" : [
+    ["name","JsVar","The name of the header as a String"],
+    ["value","JsVar","The value of the header as a String"]
+  ]
+}
+Set a value to send in the header of this HTTP response
+
+Any headers supplied to `writeHead` will overwrite similarly named headers
+*/
+void jswrap_httpSRs_setHeader(JsVar *parent, JsVar *name, JsVar *value) {
+  serverResponseSetHeader(parent, name, value);
 }
 
 // ---------------------------------------------------------------------------------

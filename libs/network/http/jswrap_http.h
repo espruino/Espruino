@@ -18,6 +18,8 @@ JsVar *jswrap_http_createServer(JsVar *callback);
 JsVar *jswrap_http_request(JsVar *options, JsVar *callback);
 JsVar *jswrap_http_get(JsVar *options, JsVar *callback);
 
+// for HTTP
+void jswrap_httpSRs_setHeader(JsVar *parent, JsVar *name, JsVar *value);
 void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers);
 bool jswrap_httpSRs_write(JsVar *parent, JsVar *data);
 void jswrap_httpSRs_end(JsVar *parent, JsVar *data);
