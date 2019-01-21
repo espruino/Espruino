@@ -895,9 +895,6 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   JsVar *prototype = jsvFindChildFromString(oldFunc, JSPARSE_PROTOTYPE_VAR, false);
   // so now remove all existing entries
   jsvRemoveAllChildren(oldFunc);
-  // now re-add scope
-  if (scope) jsvAddName(oldFunc, scope);
-  jsvUnLock(scope);
   // now re-add other entries
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, newFunc);
@@ -915,6 +912,9 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
     jsvUnLock(el);
   }
   jsvObjectIteratorFree(&it);
+  // now re-add scope
+  if (scope) jsvAddName(oldFunc, scope);
+  jsvUnLock(scope);
   // re-add prototype (it needs to come after other hidden vars)
   if (prototype) jsvAddName(oldFunc, prototype);
   jsvUnLock(prototype);
