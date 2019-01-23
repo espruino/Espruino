@@ -63,7 +63,7 @@ JsVar *jswrap_dataview_constructor(JsVar *buffer, int byteOffset, int byteLength
     jsvObjectSetChild(dataview, "buffer", buffer);
     jsvObjectSetChildAndUnLock(dataview, "byteOffset", jsvNewFromInteger(byteOffset));
     jsvObjectSetChildAndUnLock(dataview, "byteLength", jsvNewFromInteger(
-        byteLength?byteLength:jsvGetArrayBufferLength(buffer)));
+        byteLength?(unsigned int)byteLength:jsvGetArrayBufferLength(buffer)));
   }
   return dataview;
 }
