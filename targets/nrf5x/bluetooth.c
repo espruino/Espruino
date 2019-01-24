@@ -313,7 +313,7 @@ int jsble_exec_pending(IOEvent *event) {
      break;
    }
    case BLEP_RSSI_PERIPH: {
-     JsVar *evt = jsvNewFromInteger((char)data);
+     JsVar *evt = jsvNewFromInteger((signed char)data);
      if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
      jsvUnLock(evt);
      break;
@@ -369,7 +369,7 @@ int jsble_exec_pending(IOEvent *event) {
    case BLEP_RSSI_CENTRAL: {
      JsVar *gattServer = bleGetActiveBluetoothGattServer();
      if (gattServer) {
-       JsVar *rssi = jsvNewFromInteger((char)data);
+       JsVar *rssi = jsvNewFromInteger((signed char)data);
        JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
        if (bluetoothDevice) {
          jsvObjectSetChild(bluetoothDevice, "rssi", rssi);
