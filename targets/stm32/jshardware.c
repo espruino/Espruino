@@ -701,17 +701,22 @@ static bool jshIsRTCAlreadySetup(bool andRunning) {
 }
 
 #ifdef USE_RTC
+
+void jshSetupRTCPrescalerValue(unsigned int prescale) {
+  jshRTCPrescaler = (unsigned short)prescale;
+  jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
+}
+
 void jshSetupRTCPrescaler(bool isUsingLSI) {
   if (isUsingLSI) {
 #ifdef STM32F1
-    jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
+    jshSetupRTCPrescalerValue(40000); // 40kHz for LSI on F1 parts
 #else
-    jshRTCPrescaler = 32000; // 32kHz for LSI on F4
+    jshSetupRTCPrescalerValue(32000); // 32kHz for LSI on F4
 #endif
   } else {
-    jshRTCPrescaler = 32768; // 32.768kHz for LSE
+    jshSetupRTCPrescalerValue(32768); // 32.768kHz for LSE
   }
-  jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
 }
 
 void jshSetupRTC(bool isUsingLSI) {

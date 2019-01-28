@@ -1703,3 +1703,23 @@ JsVarInt jswrap_espruino_getBattery() {
   return 0;
 #endif
 }
+
+//#if defined(USE_RTC) && defined(STM32F4)
+//  "#if" : "defined(USE_RTC) && defined(STM32F4)",
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "setRTCPrescaler",
+  "generate" : "jswrap_espruino_setRTCPrescaler",
+  "params" : [
+    ["prescaler","int",""]
+  ]
+}
+ */
+void jswrap_espruino_setRTCPrescaler(int prescale) {
+  extern void jshSetupRTCPrescalerValue(unsigned int prescale);
+  extern void jshResetRTCTimer();
+  jshSetupRTCPrescalerValue((unsigned)prescale);
+  jshResetRTCTimer();
+}
+//#endif
