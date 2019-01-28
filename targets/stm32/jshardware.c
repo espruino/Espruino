@@ -705,6 +705,18 @@ static bool jshIsRTCAlreadySetup(bool andRunning) {
 void jshSetupRTCPrescalerValue(unsigned int prescale) {
   jshRTCPrescaler = (unsigned short)prescale;
   jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
+#ifdef STM32F1
+  RTC_SetPrescaler(jshRTCPrescaler - 1U);
+  RTC_WaitForLastTask();
+#else
+  RTC_InitTypeDef RTC_InitStructure;
+  RTC_StructInit(&RTC_InitStructure);
+  RTC_InitStructure.RTC_AsynchPrediv = 0;
+  RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1);
+  RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
+  RTC_Init(&RTC_InitStructure);
+#endif
+  RTC_WaitForSynchro();
 }
 
 void jshSetupRTCPrescaler(bool isUsingLSI) {
@@ -721,23 +733,9 @@ void jshSetupRTCPrescaler(bool isUsingLSI) {
 
 void jshSetupRTC(bool isUsingLSI) {
   RCC_RTCCLKConfig(isUsingLSI ? RCC_RTCCLKSource_LSI : RCC_RTCCLKSource_LSE); // set clock source to low speed internal
-  jshSetupRTCPrescaler(isUsingLSI);
   RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
   RTC_WaitForSynchro();
-#ifdef STM32F1
-  RTC_SetPrescaler(jshRTCPrescaler - 1U);
-  RTC_WaitForLastTask();
-#else
-  RTC_InitTypeDef RTC_InitStructure;
-  RTC_StructInit(&RTC_InitStructure);
-  //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
-  //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
-  RTC_InitStructure.RTC_AsynchPrediv = 0;
-  RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
-  RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
-  RTC_Init(&RTC_InitStructure);
-#endif
-  RTC_WaitForSynchro();
+  jshSetupRTCPrescaler(isUsingLSI);  
 }
 
 void jshResetRTCTimer() {
