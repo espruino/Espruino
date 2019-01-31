@@ -207,6 +207,8 @@ bool bleHighInterval;
 #define DEFAULT_PERIPH_MAX_CONN_INTERVAL 20
 #endif
 
+static ble_gap_sec_params_t get_gap_sec_params();
+
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 

@@ -847,6 +847,7 @@ JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar
 Set the alignment for subsequent calls to `drawString`
 */
 JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
+#ifndef SAVE_ON_FLASH
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   if (x<-1) x=-1;
   if (x>1) x=1;
@@ -859,6 +860,9 @@ JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
   gfx.data.fontRotate = r;
   graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
+#else
+  return 0;
+#endif
 }
 
 /*JSON{
@@ -1412,6 +1416,8 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
     graphicsSetVar(&gfx);
   }
   return obj;
+#else
+  return 0;
 #endif
 }
 
