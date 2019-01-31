@@ -129,6 +129,8 @@ typedef enum {
   BLEP_HID_VALUE,                   //< A HID value was received (eg caps lock)
   BLEP_WRITE,                       //< One of our characteristics written by someone else
   BLEP_NOTIFICATION,                //< A characteristic we were watching has changes
+  BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display
+  BLEP_TASK_PASSKEY_REQUEST,        //< We're pairing and the device wants a passkey from us
 } BLEPending;
 
 
@@ -193,6 +195,9 @@ uint32_t jsble_disconnect(uint16_t conn_handle);
 
 /// For BLE HID, send an input report to the receiver. Must be <= HID_KEYS_MAX_LEN
 void jsble_send_hid_input_report(uint8_t *data, int length);
+
+/// Update the current security settings from the info in hiddenRoot.BLE_NAME_SECURITY
+void jsble_update_security();
 
 // ------------------------------------------------- lower-level utility fns
 
@@ -260,8 +265,10 @@ void jsble_central_startBonding(bool forceRePair);
 JsVar *jsble_central_getSecurityStatus();
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(bool enabled);
-// Set whether or not the whitelist is enabled
+/// Set whether or not the whitelist is enabled
 void jsble_central_setWhitelist(bool whitelist);
+/// Send a passkey if one was requested (passkey = 6 bytes long)
+uint32_t jsble_central_send_passkey(char *passkey);
 #endif
 
 #endif // BLUETOOTH_H

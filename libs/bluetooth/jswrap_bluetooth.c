@@ -2470,6 +2470,40 @@ void jswrap_ble_setConnectionInterval(JsVar *interval) {
 #endif
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setSecurity",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_ble_setSecurity",
+    "params" : [
+      ["options","JsVar","An object containing security-related options (see below)"]
+    ]
+}
+Sets the security options used when connecting/pairing. This applies to both central
+*and* peripheral mode.
+
+```
+NRF.setSecurity({
+  display : bool  // default false, can this device display a passkey
+                  // - sent via the `BluetoothDevice.passkey` event
+  keyboard : bool // default false, can this device enter a passkey
+                  // - request sent via the `BluetoothDevice.passkeyRequest` event
+  bond : bool // default true, Perform bonding
+  mitm : bool // default false, Man In The Middle protection
+  lesc : bool // default false, LE Secure Connections
+});
+```
+*/
+void jswrap_ble_setSecurity(JsVar *options) {
+  if (!jsvIsObject(options) && !jsvIsUndefined(options))
+    jsExceptionHere(JSET_TYPEERROR, "Expecting an object or undefined, got %t", options);
+  else {
+    jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, options);
+    jsble_update_security();
+  }
+}
+
 
 /*JSON{
   "type" : "class",
@@ -2521,6 +2555,70 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
   return 0;
 #endif
 }
+/*JSON{
+    "type" : "property",
+    "class" : "BluetoothDevice",
+    "name" : "rssi",
+    "ifdef" : "NRF52",
+    "generate" : false,
+    "return" : ["bool", "The last received RSSI (signal strength) for this device" ]
+}
+*//*Documentation only*/
+/*JSON{
+    "type" : "event",
+    "class" : "BluetoothDevice",
+    "name" : "passkey",
+    "ifdef" : "NRF52",
+    "params" : [
+      ["passkey","JsVar","A 6 character numeric String to be displayed"]
+    ]
+}
+Called when the device pairs and sends a passkey that Espruino should display.
+
+For this to be used, you'll have to specify that there's a display using `NRF.setSecurity`
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Espruino.
+*/
+/*JSON{
+    "type" : "event",
+    "class" : "BluetoothDevice",
+    "name" : "passkeyRequest",
+    "ifdef" : "NRF52"
+}
+Called when the device pairs, displays a passkey, and wants Espruino to tell it what the passkey was.
+
+Respond with `BluetoothDevice.sendPasskey()` with a 6 character string containing only `0..9`.
+
+For this to be used, you'll have to specify that there's a keyboard using `NRF.setSecurity`
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Espruino.
+*/
+/*JSON{
+    "type" : "method",
+    "class" : "BluetoothDevice",
+    "name" : "sendPasskey",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_ble_BluetoothDevice_sendPasskey",
+    "params" : [
+      ["passkey","JsVar","A 6 character numeric String to be returned to the device"]
+    ]
+}
+To be used as a response when the event `BluetoothDevice.sendPasskey` has been received.
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Espruino.
+*/
+#if NRF52
+void jswrap_ble_BluetoothDevice_sendPasskey(JsVar *passkeyVar) {
+  char passkey[BLE_GAP_PASSKEY_LEN+1];
+  memset(passkey, 0, sizeof(passkey));
+  jsvGetString(passkeyVar, passkey, sizeof(passkey));
+  uint32_t err_code = jsble_central_send_passkey( passkey);
+  jsble_check_error(err_code);
+}
+#endif
 
 /*JSON{
     "type" : "method",
@@ -2617,6 +2715,14 @@ or `NRF.requestDevice(options)` and `response.gatt.connect`
 https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattserver
 */
 /*JSON{
+    "type" : "property",
+    "class" : "BluetoothDevice",
+    "name" : "connected",
+    "#if" : "0", "generate" : "",
+    "return" : ["bool", "Whether the device is connected or not" ]
+}
+*//*Documentation only*/
+/*JSON{
     "type" : "method",
     "class" : "BluetoothRemoteGATTServer",
     "name" : "disconnect",
@@ -2696,7 +2802,7 @@ NRF.requestDevice({ filters: [{ name: 'Puck.js abcd' }] }).then(function(device)
 ```
 
 **This is not part of the Web Bluetooth Specification.** It has been added
-specifically for Puck.js.
+specifically for Espruino.
 */
 JsVar *jswrap_ble_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair) {
 #if CENTRAL_LINK_COUNT>0

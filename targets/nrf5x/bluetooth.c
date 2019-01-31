@@ -591,6 +591,42 @@ int jsble_exec_pending(IOEvent *event) {
      bleQueueEventAndUnLock(JS_EVENT_PREFIX"HID", jsvNewFromInteger(data));
      break;
 #endif
+#ifdef LINK_SECURITY
+      case BLEP_TASK_PASSKEY_DISPLAY: {
+        /* TODO: yes/no passkey
+uint8_t match_request : 1;               If 1 requires the application to report the match using @ref sd_ble_gap_auth_key_reply
+                                         with either @ref BLE_GAP_AUTH_KEY_TYPE_NONE if there is no match or
+                                         @ref BLE_GAP_AUTH_KEY_TYPE_PASSKEY if there is a match. */
+        if (bufferLen==BLE_GAP_PASSKEY_LEN) {
+          buffer[BLE_GAP_PASSKEY_LEN] = 0;
+          JsVar *gattServer = bleGetActiveBluetoothGattServer();
+          if (gattServer) {
+            JsVar *passkey = jsvNewFromString((char*)buffer);
+            JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+            if (bluetoothDevice) {
+              jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"passkey", &passkey, 1);
+              jshHadEvent();
+            }
+            jsvUnLock3(passkey, bluetoothDevice, gattServer);
+          }
+        }
+        break;
+      }
+      case BLEP_TASK_PASSKEY_REQUEST: {
+         JsVar *gattServer = bleGetActiveBluetoothGattServer();
+         if (gattServer) {
+           JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+           jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
+           if (bluetoothDevice) {
+             // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
+             jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"passkeyRequest", 0, 0);
+             jshHadEvent();
+           }
+           jsvUnLock2(gattServer, bluetoothDevice);
+         }
+         break;
+       }
+#endif
    default:
      jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
  }
@@ -1074,15 +1110,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #if PEER_MANAGER_ENABLED==0
       case BLE_GAP_EVT_SEC_PARAMS_REQUEST:{
         //jsiConsolePrintf("BLE_GAP_EVT_SEC_PARAMS_REQUEST\n");
-        ble_gap_sec_params_t sec_param;
-        memset(&sec_param, 0, sizeof(ble_gap_sec_params_t));
-        sec_param.bond         = 1;
-        sec_param.mitm         = 0;
-        sec_param.lesc         = 1;
-        sec_param.io_caps      = BLE_GAP_IO_CAPS_NONE;
-        sec_param.oob          = 0; // Out Of Band data not available.
-        sec_param.min_key_size = 7;
-        sec_param.max_key_size = 16;
+        ble_gap_sec_params_t sec_param = get_gap_sec_params();
         err_code = sd_ble_gap_sec_params_reply(m_peripheral_conn_handle, BLE_GAP_SEC_STATUS_SUCCESS, &sec_param, NULL);
         // or BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP to disable pairing
         APP_ERROR_CHECK_NOT_URGENT(err_code);
@@ -1096,11 +1124,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #endif
 #ifdef LINK_SECURITY
       case BLE_GAP_EVT_PASSKEY_DISPLAY:
-        //jsiConsolePrintf("BLE_GAP_EVT_PASSKEY_DISPLAY\n");
-          // display p_ble_evt->evt.gap_evt.params.passkey_display.passkey
+          jsble_queue_pending_buf(
+              BLEP_TASK_PASSKEY_DISPLAY,
+              p_ble_evt->evt.gap_evt.conn_handle,
+              (char*)p_ble_evt->evt.gap_evt.params.passkey_display.passkey,
+              BLE_GAP_PASSKEY_LEN);
           break;
       case BLE_GAP_EVT_AUTH_KEY_REQUEST:
-        //jsiConsolePrintf("BLE_GAP_EVT_AUTH_KEY_REQUEST\n");
+          jsble_queue_pending(BLEP_TASK_PASSKEY_REQUEST, p_ble_evt->evt.gap_evt.conn_handle);
           break;
       case BLE_GAP_EVT_LESC_DHKEY_REQUEST:
           //jsiConsolePrintf("BLE_GAP_EVT_LESC_DHKEY_REQUEST\n");
@@ -1760,6 +1791,57 @@ static uint32_t radio_notification_init(uint32_t irq_priority, uint8_t notificat
     return sd_radio_notification_cfg_set(notification_type, notification_distance);
 }
 
+static ble_gap_sec_params_t get_gap_sec_params() {
+  ble_gap_sec_params_t sec_param;
+  memset(&sec_param, 0, sizeof(ble_gap_sec_params_t));
+
+  // Security parameters to be used for all security procedures.
+  // All set to 0 beforehand, so
+  sec_param.bond           = 1;                     /**< Perform bonding. */
+  //sec_param.mitm           = 0;                     /**< Man In The Middle protection not required. */
+  //sec_param.lesc           = 0;                     /**< LE Secure Connections not enabled. */
+  //sec_param.keypress       = 0;                     /**< Keypress notifications not enabled. */
+  sec_param.io_caps        = BLE_GAP_IO_CAPS_NONE;  /**< No I/O capabilities. */
+  //sec_param.oob            = 0;                     /**< Out Of Band data not available. */
+  sec_param.min_key_size   = 7;                     /**< Minimum encryption key size. */
+  sec_param.max_key_size   = 16;                    /**< Maximum encryption key size. */
+#if PEER_MANAGER_ENABLED
+  sec_param.kdist_own.enc  = 1;
+  sec_param.kdist_own.id   = 1;
+  sec_param.kdist_peer.enc = 1;
+  sec_param.kdist_peer.id  = 1;
+#else
+  // LE Secure Connections were enabled if we didn't have peer manager
+  // Don't think this is valid, and it only would have appeared on Micro:bit
+  // sec_param.lesc           = 1;
+#endif
+
+  JsVar *options = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
+  if (jsvIsObject(options)) {
+    bool display = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "display", 0));
+    bool keyboard = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "keyboard", 0));
+    if (display && keyboard) sec_param.io_caps = BLE_GAP_IO_CAPS_KEYBOARD_DISPLAY;
+    else if (display) sec_param.io_caps = BLE_GAP_IO_CAPS_DISPLAY_ONLY;
+    else if (keyboard) sec_param.io_caps = BLE_GAP_IO_CAPS_KEYBOARD_ONLY;
+    JsVar *v;
+    v = jsvObjectGetChild(options, "bond", 0);
+    if (!jsvIsUndefined(v) && !jsvGetBool(v)) sec_param.bond=0;
+    jsvUnLock(v);
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "mitm", 0))) sec_param.mitm=1;
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "lesc", 0))) sec_param.lesc=1;
+  }
+  return sec_param;
+}
+
+void jsble_update_security() {
+#if PEER_MANAGER_ENABLED
+  ble_gap_sec_params_t sec_param = get_gap_sec_params();
+
+  uint32_t err_code = pm_sec_params_set(&sec_param);
+  APP_ERROR_CHECK(err_code);
+#endif
+}
+
 #if PEER_MANAGER_ENABLED
 
 /**@brief Fetch the list of peer manager peer IDs.
@@ -1799,7 +1881,6 @@ static uint32_t flash_end_addr(void)
 #endif
 }
 
-
 static void peer_manager_init(bool erase_bonds) {
 
   /* Only initialise the peer manager once. This stops
@@ -1820,7 +1901,6 @@ static void peer_manager_init(bool erase_bonds) {
   }
 
 
-  ble_gap_sec_params_t sec_param;
   ret_code_t           err_code;
 
   err_code = pm_init();
@@ -1832,24 +1912,7 @@ static void peer_manager_init(bool erase_bonds) {
       APP_ERROR_CHECK_NOT_URGENT(err_code);
   }
 
-  memset(&sec_param, 0, sizeof(ble_gap_sec_params_t));
-
-  // Security parameters to be used for all security procedures.
-  sec_param.bond           = 1;                     /**< Perform bonding. */
-  sec_param.mitm           = 0;                     /**< Man In The Middle protection not required. */
-  sec_param.lesc           = 0;                     /**< LE Secure Connections not enabled. */
-  sec_param.keypress       = 0;                     /**< Keypress notifications not enabled. */
-  sec_param.io_caps        = BLE_GAP_IO_CAPS_NONE;  /**< No I/O capabilities. */
-  sec_param.oob            = 0;                     /**< Out Of Band data not available. */
-  sec_param.min_key_size   = 7;                     /**< Minimum encryption key size. */
-  sec_param.max_key_size   = 16;                    /**< Maximum encryption key size. */
-  sec_param.kdist_own.enc  = 1;
-  sec_param.kdist_own.id   = 1;
-  sec_param.kdist_peer.enc = 1;
-  sec_param.kdist_peer.id  = 1;
-
-  err_code = pm_sec_params_set(&sec_param);
-  APP_ERROR_CHECK(err_code);
+  jsble_update_security(); // pm_sec_params_set
 
   err_code = pm_register(pm_evt_handler);
   APP_ERROR_CHECK(err_code);
@@ -2198,8 +2261,8 @@ void jsble_advertising_start() {
   adv_params.p_peer_addr = NULL;
   adv_params.interval = bleAdvertisingInterval;
 
-  uint32_t err_code;
 #if NRF_SD_BLE_API_VERSION>5
+  uint32_t err_code;
   err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, 0, &adv_params);
   APP_ERROR_CHECK_NOT_URGENT(err_code);
   sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
@@ -2823,7 +2886,17 @@ void jsble_central_setWhitelist(bool whitelist) {
 #endif
 }
 
+uint32_t jsble_central_send_passkey(char *passkey) {
+#ifdef LINK_SECURITY
+  if (!jsble_has_central_connection())
+      return BLE_ERROR_INVALID_CONN_HANDLE;
+  return sd_ble_gap_auth_key_reply(m_central_conn_handle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, (uint8_t*)passkey);
+#endif
+}
+
 #endif // CENTRAL_LINK_COUNT>0
+
+
 
 #endif // BLUETOOTH
 

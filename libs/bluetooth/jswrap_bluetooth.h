@@ -92,8 +92,10 @@ JsVar *jswrap_ble_requestDevice(JsVar *options);
 JsVar *jswrap_ble_connect(JsVar *mac, JsVar *options);
 void jswrap_ble_setWhitelist(bool whitelist);
 void jswrap_ble_setConnectionInterval(JsVar *interval);
+void jswrap_ble_setSecurity(JsVar *options);
 
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
+void jswrap_ble_BluetoothDevice_sendPasskey(JsVar *passkeyVar);
 JsVar *jswrap_ble_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *options);
 JsVar *jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent);
 JsVar *jswrap_ble_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair);

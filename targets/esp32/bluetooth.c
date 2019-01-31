@@ -216,3 +216,11 @@ void jsble_central_setWhitelist(bool whitelist){
 	jsWarn("central set Whitelist not implemented yet\n");
 	return 0;
 }
+
+void jsble_update_security() {
+}
+
+uint32_t jsble_central_send_passkey(char *passkey) {
+  jsWarn("central set Whitelist not implemented yet\n");
+  return 0;
+}
