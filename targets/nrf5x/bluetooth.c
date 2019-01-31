@@ -2812,8 +2812,22 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
     return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("handle_cccd not set"));
 
   uint8_t buf[BLE_CCCD_VALUE_LEN];
-  buf[0] = enable ? BLE_GATT_HVX_NOTIFICATION : 0;
+  buf[0] = 0;
   buf[1] = 0;
+
+  if (enable) {
+    JsVar *properties = jsvObjectGetChild(characteristic,"properties", 0);
+    if (properties && jsvGetBoolAndUnLock(jsvObjectGetChild(properties,"notify",0))) {
+      // use notification if it exists
+      buf[0] = BLE_GATT_HVX_NOTIFICATION;
+    } else if (properties && jsvGetBoolAndUnLock(jsvObjectGetChild(properties,"indicate",0))) {
+      // otherwise default to indication
+      buf[0] = BLE_GATT_HVX_INDICATION;
+    } else {
+      // no properties, or no notification or indication bit set
+    }
+    jsvUnLock(properties);
+  }
 
   const ble_gattc_write_params_t write_params = {
       .write_op = BLE_GATT_OP_WRITE_REQ,
