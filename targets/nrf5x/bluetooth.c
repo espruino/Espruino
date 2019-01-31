@@ -1840,8 +1840,23 @@ void jsble_update_security() {
   ble_gap_sec_params_t sec_param = get_gap_sec_params();
 
   uint32_t err_code = pm_sec_params_set(&sec_param);
-  APP_ERROR_CHECK(err_code);
+  jsble_check_error(err_code);
 #endif
+
+  JsVar *options = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
+  if (jsvIsObject(options)) {
+    JsVar *v;
+    char passkey[BLE_GAP_PASSKEY_LEN+1];
+    memset(passkey, 0, sizeof(passkey));
+    v = jsvObjectGetChild(options, "passkey", 0);
+    if (v) jsvGetString(v, passkey, sizeof(passkey));
+    jsvUnLock(v);
+
+    ble_opt_t pin_option;
+    pin_option.gap_opt.passkey.p_passkey = passkey;
+    uint32_t err_code =  sd_ble_opt_set(BLE_GAP_OPT_PASSKEY, passkey[0] ? &pin_option : NULL);
+    jsble_check_error(err_code);
+  }
 }
 
 #if PEER_MANAGER_ENABLED

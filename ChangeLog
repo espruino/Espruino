@@ -8,6 +8,7 @@
             nRF52: Add docs for properties that weren't documented before
             nRF52: Add ability to connect to device with passkey authentication
             nRF52: Allow startNotifications to use Indicate if Notify doesn't exist (as per spec)
+            nRF52: Add option for static passkey pairing with NRF.setSecurity
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends

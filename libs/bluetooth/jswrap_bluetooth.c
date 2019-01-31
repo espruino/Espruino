@@ -2492,7 +2492,14 @@ NRF.setSecurity({
   bond : bool // default true, Perform bonding
   mitm : bool // default false, Man In The Middle protection
   lesc : bool // default false, LE Secure Connections
+  passkey : // default "", or a 6 digit passkey to use
 });
+```
+
+For instance, to require pairing and to specify a passkey:
+
+```
+NRF.setSecurity({passkey:"123456", mitm:1, display:1});
 ```
 */
 void jswrap_ble_setSecurity(JsVar *options) {
