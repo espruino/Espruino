@@ -10,6 +10,7 @@
             nRF52: Allow startNotifications to use Indicate if Notify doesn't exist (as per spec)
             nRF52: Add option for static passkey pairing with NRF.setSecurity
 	    ESP32: update EspruinoBuildTools to esp-idf V3.1.2 - fix Wifi connect issues (multiple ssid)
+            Revert PR #1459 as it broke neopixel functionality that worked previously
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
