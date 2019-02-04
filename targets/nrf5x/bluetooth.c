@@ -225,6 +225,7 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
    case NRF_ERROR_DATA_SIZE     : name="DATA_SIZE"; break;
    case NRF_ERROR_FORBIDDEN     : name="FORBIDDEN"; break;
    case NRF_ERROR_BUSY          : name="BUSY"; break;
+   case NRF_ERROR_INVALID_ADDR  : name="INVALID ADDR"; break;
    case BLE_ERROR_INVALID_CONN_HANDLE
                                 : name="INVALID_CONN_HANDLE"; break;
    case BLE_ERROR_GAP_INVALID_BLE_ADDR
@@ -1846,15 +1847,15 @@ void jsble_update_security() {
   JsVar *options = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
   if (jsvIsObject(options)) {
     JsVar *v;
-    char passkey[BLE_GAP_PASSKEY_LEN+1];
+    uint8_t passkey[BLE_GAP_PASSKEY_LEN+1];
     memset(passkey, 0, sizeof(passkey));
     v = jsvObjectGetChild(options, "passkey", 0);
-    if (v) jsvGetString(v, passkey, sizeof(passkey));
+    if (jsvIsString(v)) jsvGetString(v, (char*)passkey, sizeof(passkey));
     jsvUnLock(v);
 
     ble_opt_t pin_option;
-    pin_option.gap_opt.passkey.p_passkey = passkey;
-    uint32_t err_code =  sd_ble_opt_set(BLE_GAP_OPT_PASSKEY, passkey[0] ? &pin_option : NULL);
+    pin_option.gap_opt.passkey.p_passkey = passkey[0] ? passkey : NULL;
+    uint32_t err_code =  sd_ble_opt_set(BLE_GAP_OPT_PASSKEY, &pin_option);
     jsble_check_error(err_code);
   }
 }
