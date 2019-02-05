@@ -278,6 +278,9 @@ void jshInit() {
     inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
     inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
     jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
+  } else {
+    // If there's no UART, 'disconnect' the IO pin - this saves power when in deep sleep in noisy electrical environments
+    jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_UNDEFINED);
   }
 #endif
 

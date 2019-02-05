@@ -363,10 +363,10 @@ void jswrap_serial_unsetup(JsVar *parent) {
     jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
   }
   // Reset pin states. On hardware this should disable the UART anyway
-  if (inf.pinCK!=PIN_UNDEFINED) jshPinSetState(inf.pinCK, JSHPINSTATE_GPIO_IN);
-  if (inf.pinCTS!=PIN_UNDEFINED) jshPinSetState(inf.pinCTS, JSHPINSTATE_GPIO_IN);
-  if (inf.pinRX!=PIN_UNDEFINED) jshPinSetState(inf.pinRX, JSHPINSTATE_GPIO_IN);
-  if (inf.pinTX!=PIN_UNDEFINED) jshPinSetState(inf.pinTX, JSHPINSTATE_GPIO_IN);
+  if (inf.pinCK!=PIN_UNDEFINED) jshPinSetState(inf.pinCK, JSHPINSTATE_UNDEFINED);
+  if (inf.pinCTS!=PIN_UNDEFINED) jshPinSetState(inf.pinCTS, JSHPINSTATE_UNDEFINED);
+  if (inf.pinRX!=PIN_UNDEFINED) jshPinSetState(inf.pinRX, JSHPINSTATE_UNDEFINED);
+  if (inf.pinTX!=PIN_UNDEFINED) jshPinSetState(inf.pinTX, JSHPINSTATE_UNDEFINED);
 }
 #endif
 
