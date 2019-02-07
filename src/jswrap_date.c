@@ -227,10 +227,10 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     date.day = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 2)));
     TimeInDay td;
     td.daysSinceEpoch = fromCalenderDate(&date);
-    td.hour = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 3)) % 24);
-    td.min = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4)) % 60);
-    td.sec = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5)) % 60);
-    td.ms = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6)) % 1000);
+    td.hour = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 3)));
+    td.min = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4)));
+    td.sec = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5)));
+    td.ms = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6)));
     td.zone = getTimeZone();
     time = fromTimeInDay(&td);
   }
