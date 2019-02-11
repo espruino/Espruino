@@ -333,20 +333,6 @@ for jsondata in detail:
     html("   <div class=\"call\"><code>"+get_code(jsondata)+"</code></div>")
   elif "instanceof" in jsondata:
     html("   <h4>Instance of <a href=\"#"+jsondata["instanceof"]+"\"><code>"+jsondata["instanceof"]+"</code></a>")
-  if "description" in jsondata:
-    html("  <h4>Description</h4>")
-    desc = jsondata["description"]
-    if not isinstance(desc, list): desc = [ desc ]
-    if "ifdef" in jsondata: 
-      desc.append("\n\n**Note:** This is only available in "+common.get_ifdef_description(jsondata["ifdef"]));
-    if "ifndef" in jsondata:
-      desc.append("\n\n**Note:** This is not available in "+common.get_ifdef_description(jsondata["ifndef"]));
-    if "#if" in jsondata:
-      d = jsondata["#if"].replace("||", " and ").replace("&&", " with ")
-      d = re.sub('defined\((.+?)\)', replace_with_ifdef_description, d)
-      d = re.sub('(.*)_COUNT>=(.*)', "devices with more than \\2 \\1 peripherals", d)
-      desc.append("\n\n**Note:** This is only available in "+d);            
-    html_description(desc, jsondata["name"])
   if "params" in jsondata:
     html("  <h4>Parameters</h4>")
     for param in jsondata["params"]:
@@ -362,6 +348,21 @@ for jsondata in detail:
     if len(jsondata["return"])>1: desc=jsondata["return"][1]
     if desc=="": desc="See description above"
     html("   <div class=\"return\">"+htmlify(desc,"")+"</div>")
+  if "description" in jsondata:
+    html("  <h4>Description</h4>")
+    desc = jsondata["description"]
+    if not isinstance(desc, list): desc = [ desc ]
+    if "ifdef" in jsondata: 
+      desc.append("\n\n**Note:** This is only available in "+common.get_ifdef_description(jsondata["ifdef"]));
+    if "ifndef" in jsondata:
+      desc.append("\n\n**Note:** This is not available in "+common.get_ifdef_description(jsondata["ifndef"]));
+    if "#if" in jsondata:
+      d = jsondata["#if"].replace("||", " and ").replace("&&", " with ")
+      d = re.sub('defined\((.+?)\)', replace_with_ifdef_description, d)
+      d = re.sub('(.*)_COUNT>=(.*)', "devices with more than \\2 \\1 peripherals", d)
+      desc.append("\n\n**Note:** This is only available in "+d);            
+    html_description(desc, jsondata["name"])
+
 
   url = "http://www.espruino.com/Reference#"+get_link(jsondata)
   if url in code_uses:
