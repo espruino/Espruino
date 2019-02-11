@@ -129,7 +129,8 @@ bool jsble_check_error(uint32_t err_code){
 	return false;
 }
 /// Scanning for advertisign packets
-uint32_t jsble_set_scanning(bool enabled){
+uint32_t jsble_set_scanning(bool enabled, bool activeScan){
+  if (activeScan) jsWarn("active scan not implemented\n");
 	bluetooth_gap_setScan(enabled);
 	return 0;
 }

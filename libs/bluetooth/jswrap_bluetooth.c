@@ -179,7 +179,7 @@ void jswrap_ble_reconfigure_softdevice() {
   // restart various
   JsVar *v,*o;
   v = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT,0);
-  if (v) jsble_set_scanning(true);
+  if (v) jsble_set_scanning(true, false);
   jsvUnLock(v);
   v = jsvObjectGetChild(execInfo.root, BLE_RSSI_EVENT,0);
   if (v) jsble_set_rssi_scan(true);
@@ -223,7 +223,7 @@ void jswrap_ble_kill() {
   if (bleTaskInfo) jsvUnLock(bleTaskInfo);
   bleTaskInfo = 0;
   // if we were scanning, make sure we stop
-  jsble_set_scanning(false);
+  jsble_set_scanning(false, false);
   jsble_set_rssi_scan(false);
 
 #if CENTRAL_LINK_COUNT>0
@@ -1527,6 +1527,10 @@ NRF.setScan(function(d) {
 }, { filters: [{ manufacturerData:{0x0590:{}} }] });
 ```
 
+You can also specify `active:true` in the second argument to perform
+active scanning (this requests scan response packets) from any
+devices it finds.
+
 **Note:** BLE advertising packets can arrive quickly - faster than you'll
 be able to print them to the console. It's best only to print a few, or
 to use a function like `NRF.findDevices(..)` which will collate a list
@@ -1605,7 +1609,9 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
 
 void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
   JsVar *filters = 0;
+  bool activeScan = false;
   if (jsvIsObject(options)) {
+    activeScan = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "active", 0));
     filters = jsvObjectGetChild(options, "filters", 0);
     if (filters && !jsvIsArray(filters)) {
       jsvUnLock(filters);
@@ -1628,7 +1634,7 @@ void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
     jsvObjectRemoveChild(execInfo.root, BLE_SCAN_EVENT);
   }
   // either start or stop scanning
-  uint32_t err_code = jsble_set_scanning(callback != 0);
+  uint32_t err_code = jsble_set_scanning(callback != 0, activeScan);
   jsble_check_error(err_code);
   jsvUnLock(filters);
 }
@@ -1641,7 +1647,7 @@ void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
     "generate" : "jswrap_ble_findDevices",
     "params" : [
       ["callback","JsVar","The callback to call with received advertising packets, or undefined to stop"],
-      ["options","JsVar","A time in milliseconds to scan for (defaults to 2000), Or an optional object `{filters: ..., timeout : ...}` (as would be passed to `NRF.requestDevice`) to filter devices by"]
+      ["options","JsVar","A time in milliseconds to scan for (defaults to 2000), Or an optional object `{filters: ..., timeout : ..., active: bool}` (as would be passed to `NRF.requestDevice`) to filter devices by"]
     ]
 }
 Utility function to return a list of BLE devices detected in range. Behind the scenes,
@@ -2204,6 +2210,16 @@ void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback) {
 Search for available devices matching the given filters. Since we have no UI here,
 Espruino will pick the FIRST device it finds, or it'll call `catch`.
 
+`options` can have the following fields:
+
+* `filters` - a list of filters that a device must match before it is returned (see below)
+* `timeout` - the maximum time to scan for in milliseconds (scanning stops when a match
+is found. eg. `NRF.requestDevice({ timeout:2000, filters: [ ... ] })`
+* `active` - whether to perform active scanning (requesting 'scan response' packets from any
+devices that are found). eg. `NRF.requestDevice({ active:true, filters: [ ... ] })`
+
+**NOTE:** `timeout` and `active` are not part of the Web Bluetooth standard.
+
 The following filter types are implemented:
 
 * `services` - list of services as strings (all of which must match). 128 bit services must be in the form '01230123-0123-0123-0123-012301230123'
@@ -2219,12 +2235,6 @@ NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }] }).then(function(device
 NRF.requestDevice({ filters: [{ services: ['1823'] }] }).then(function(device) { ... });
 // or
 NRF.requestDevice({ filters: [{ manufacturerData:{0x0590:{}} }] }).then(function(device) { ... });
-```
-
-You can also specify a timeout to wait for devices in milliseconds. The default is 2 seconds (2000):
-
-```
-NRF.requestDevice({ timeout:2000, filters: [ ... ] })
 ```
 
 As a full example, to send data to another Puck.js to turn an LED on:
@@ -2258,7 +2268,7 @@ NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }]}).then(
   () => { gatt.disconnect(); console.log("Done!"); } );
 ```
 
-Note that you'll have to keep track of the `gatt` variable so that you can
+Note that you have to keep track of the `gatt` variable so that you can
 disconnect the Bluetooth connection when you're done.
 */
 #if CENTRAL_LINK_COUNT>0

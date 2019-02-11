@@ -440,13 +440,13 @@ static bool pixl_selfTest() {
     jsiConsolePrintf("Have events - no BLE test\n");
   } else {
     uint32_t err_code;
-    err_code = jsble_set_scanning(true);
+    err_code = jsble_set_scanning(true, false);
     jsble_check_error(err_code);
     int timeout = 20;
     while (timeout-- && !jshHasEvents()) {
       nrf_delay_ms(100);
     }
-    err_code = jsble_set_scanning(false);
+    err_code = jsble_set_scanning(false, false);
     jsble_check_error(err_code);
     if (!jshHasEvents()) {
       jsiConsolePrintf("No BLE adverts found in 2s\n");

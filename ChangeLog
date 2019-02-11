@@ -14,6 +14,7 @@
             nRF52: Disconnect RX pin after UART test at boot (saves power when in deep sleep)
             Serial.unsetup now sets pin state to STATE_UNDEFINED, which disconnects the pins internally
             Removed modulo on `new Date` h/m/s/ms arguments as it seems desktop JS is fine with out of range values
+            Added `active` option to NRF.setScan/findDevices/requestDevices to allow scan response packets to be requested
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends

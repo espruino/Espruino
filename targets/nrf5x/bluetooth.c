@@ -2359,7 +2359,7 @@ void jsble_restart_softdevice() {
   jswrap_ble_reconfigure_softdevice();
 }
 
-uint32_t jsble_set_scanning(bool enabled) {
+uint32_t jsble_set_scanning(bool enabled, bool activeScan) {
   uint32_t err_code = 0;
   if (enabled) {
      if (bleStatus & BLE_IS_SCANNING) return 0;
@@ -2373,7 +2373,7 @@ uint32_t jsble_set_scanning(bool enabled) {
      };
 #endif
      // non-selective scan
-     m_scan_param.active       = 0;            // Active scanning set.
+     m_scan_param.active       = activeScan;   // Active scanning set.
      m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
      m_scan_param.window       = SCAN_WINDOW;  // Scan window.
      m_scan_param.timeout      = 0x0000;       // No timeout.

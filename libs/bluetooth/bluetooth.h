@@ -180,7 +180,7 @@ bool jsble_check_error(uint32_t err_code);
 uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max);
 
 /// Scanning for advertising packets
-uint32_t jsble_set_scanning(bool enabled);
+uint32_t jsble_set_scanning(bool enabled, bool activeScan);
 
 /// returning RSSI values for current connection
 uint32_t jsble_set_rssi_scan(bool enabled);
