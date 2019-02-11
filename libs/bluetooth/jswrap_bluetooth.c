@@ -3168,7 +3168,7 @@ NRF.connect(device_address).then(function(d) {
   });
   return c.startNotifications();
 }).then(function(d) {
-  console.log("Waiting for notifications"));
+  console.log("Waiting for notifications");
 }).catch(function() {
   console.log("Something's broken.");
 });
