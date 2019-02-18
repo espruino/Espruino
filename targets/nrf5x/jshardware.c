@@ -1397,6 +1397,7 @@ void jshUtilTimerStart(JsSysTime period) {
 void jshUtilTimerDisable() {
   utilTimerActive = false;
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_SHUTDOWN);
 }
 
 // the temperature from the internal temperature sensor
