@@ -33,7 +33,12 @@ bool jsi2cPopulateI2CInfo(
       {"bitrate", JSV_INTEGER, &inf->bitrate}
   };
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
-    return true;
+    bool ok = true;
+    if (inf->bitrate < 100) {
+      jsExceptionHere(JSET_ERROR, "Invalid I2C bitrate");
+      ok = false;
+    }
+    return ok;
   } else
     return false;
 }

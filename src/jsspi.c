@@ -144,6 +144,11 @@ bool jsspiPopulateSPIInfo(
       jsExceptionHere(JSET_ERROR, "SPI order should be 'msb' or 'lsb'");
       ok = false;
     }
+
+    if (inf->baudRate < 100) {
+      jsExceptionHere(JSET_ERROR, "Invalid SPI baud rate");
+      ok = false;
+    }
   }
   jsvUnLock(order);
   return ok;
