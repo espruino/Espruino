@@ -1042,7 +1042,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_peripheral_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
 #ifdef DYNAMIC_INTERVAL_ADJUSTMENT
-          bleHighInterval = true;
           bleIdleCounter = 0;
 #endif
           if (bleStatus & BLE_IS_RSSI_SCANNING) // attempt to restart RSSI scan
@@ -1066,6 +1065,19 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         break;
 
       case BLE_GAP_EVT_DISCONNECTED:
+
+#ifdef DYNAMIC_INTERVAL_ADJUSTMENT
+        // set to high interval ready for next connection
+        if (!bleHighInterval) {
+          bleHighInterval = true;
+          /* On NRF_SD_BLE_API_VERSION<5 the interval is remembered between connections, so when we
+           * disconnect we need to set it back to default. On later versions it always goes back to
+           * what was used with ble_conn_params_init so we don't have to worry. */
+#if NRF_SD_BLE_API_VERSION<5
+          jsble_set_periph_connection_interval(BLE_DYNAMIC_INTERVAL_HIGH_RATE, BLE_DYNAMIC_INTERVAL_HIGH_RATE);
+#endif
+        }
+#endif
 
 #if PEER_MANAGER_ENABLED
         ble_update_whitelist();
