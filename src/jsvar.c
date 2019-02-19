@@ -3997,6 +3997,7 @@ JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr) {
 
 JsVar *jsvNewArrayBufferWithData(JsVarInt length, unsigned char *data) {
   assert(data);
+  assert(length>0);
   JsVar *dst = 0;
   JsVar *arr = jsvNewArrayBufferWithPtr((unsigned int)length, (char**)&dst);
   if (!dst) {
@@ -4008,6 +4009,7 @@ JsVar *jsvNewArrayBufferWithData(JsVarInt length, unsigned char *data) {
 }
 
 void *jsvMalloc(size_t size) {
+  assert(size>0);
   /** Allocate flat string, return pointer to its first element.
    * As we drop the pointer here, it's left locked. jsvGetFlatStringPointer
    * is also safe if 0 is passed in.  */

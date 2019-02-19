@@ -668,6 +668,7 @@ void ftoa_bounded(JsVarFloat val,char *str, size_t len) {
 
 /// Wrap a value so it is always between 0 and size (eg. wrapAround(angle, 360))
 JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
+  if (size<0.0) return 0.0;
   val = val / size;
   val = val - (int)val;
   return val * size;

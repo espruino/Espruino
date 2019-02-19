@@ -461,6 +461,8 @@ JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
   ],
   "return" : ["float","The value of x, wrapped so as not to be below min or above max."]
 }
+DEPRECATED - This is not part of standard JavaScript libraries
+
 Wrap a number around if it is less than 0 or greater than or equal to max. For instance you might do: ```Math.wrap(angleInDegrees, 360)```
 */
 
