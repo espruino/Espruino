@@ -365,6 +365,13 @@ Set the current system time in seconds (to the nearest second).
 This is used with `getTime`, the time reported from `setWatch`, as
 well as when using `new Date()`.
 
+`Date.prototype.getTime()` reports the time in milliseconds, so
+you can set the time to a `Date` object using:
+
+```
+setTime((new Date("Tue, 19 Feb 2019 10:57")).getTime()/1000)
+```
+
 To set the timezone for all new Dates, use `E.setTimeZone(hours)`.
  */
 void jswrap_interactive_setTime(JsVarFloat time) {
