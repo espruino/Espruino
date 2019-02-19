@@ -62,3 +62,4 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr);
 
 JsVarInt jswrap_espruino_getBattery();
 void jswrap_espruino_setRTCPrescaler(int prescale);
+int jswrap_espruino_getRTCPrescaler(bool calibrate);

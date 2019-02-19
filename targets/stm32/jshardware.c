@@ -700,9 +700,9 @@ static bool jshIsRTCAlreadySetup(bool andRunning) {
     return RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET;
 }
 
-#ifdef USE_RTC
 
 void jshSetupRTCPrescalerValue(unsigned int prescale) {
+#ifdef USE_RTC
   jshRTCPrescaler = (unsigned short)prescale;
   jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
 #ifdef STM32F1
@@ -717,7 +717,28 @@ void jshSetupRTCPrescalerValue(unsigned int prescale) {
   RTC_Init(&RTC_InitStructure);
 #endif
   RTC_WaitForSynchro();
+#endif
 }
+
+
+#ifdef USE_RTC
+static uint32_t jshGetDefaultSysTickTime() {
+  return (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
+}
+#endif
+
+
+int jshGetRTCPrescalerValue(bool calibrate) {
+#ifdef USE_RTC
+  if (calibrate)
+    return (int)((long long)averageSysTickTime * (long long)jshRTCPrescaler / (long long)jshGetDefaultSysTickTime());
+  return jshRTCPrescaler;
+#else
+  return 0;
+#endif
+}
+
+#ifdef USE_RTC
 
 void jshSetupRTCPrescaler(bool isUsingLSI) {
   if (isUsingLSI) {
@@ -737,13 +758,16 @@ void jshSetupRTC(bool isUsingLSI) {
   RTC_WaitForSynchro();
   jshSetupRTCPrescaler(isUsingLSI);  
 }
+#endif
 
 void jshResetRTCTimer() {
+#ifdef USE_RTC
   // work out initial values for RTC
-  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
+  averageSysTickTime = smoothAverageSysTickTime = jshGetDefaultSysTickTime();
   lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
-}
 #endif
+}
+
 
 void jshDoSysTick() {
   /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */

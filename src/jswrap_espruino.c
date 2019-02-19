@@ -1707,22 +1707,81 @@ JsVarInt jswrap_espruino_getBattery() {
 #endif
 }
 
-//#if defined(USE_RTC) && defined(STM32F4)
-//  "#if" : "defined(USE_RTC) && defined(STM32F4)",
 /*JSON{
   "type" : "staticmethod",
+  "#if" : "defined(PICO) || defined(ESPRUINOWIFI) || defined(ESPRUINOBOARD)",
   "class" : "E",
   "name" : "setRTCPrescaler",
   "generate" : "jswrap_espruino_setRTCPrescaler",
   "params" : [
-    ["prescaler","int",""]
+    ["prescaler","int","The amount of counts for one second of the RTC - this is a 15 bit integer value (0..32767)"]
   ]
 }
+Sets the RTC's prescaler's maximum value. This is the counter that counts up on each oscillation of the low
+speed oscillator. When the prescaler counts to the value supplied, one second is deemed to have passed.
+
+By default this is set to the oscillator's average speed as specified in the datasheet, and usually that is
+fine. However on early [Espruino Pico](/Pico) boards the STM32F4's internal oscillator could vary by as
+much as 15% from the value in the datasheet. In that case you may want to alter this value to reflect the
+true RTC speed for more accurate timekeeping.
+
+To change the RTC's prescaler value to a computed value based on comparing against the high speed oscillator,
+just run the following command, making sure it's done a few seconds after the board starts up:
+
+```
+E.setRTCPrescaler(E.getRTCPrescaler(1));
+```
+
+When changing the RTC prescaler, the RTC 'follower' counters are reset and it can take a second or two before
+readings from getTime are stable again.
+
+To test, you can connect an input pin to a known frequency square wave and then use `setWatch`. If you don't
+have a frequency source handy, you can check against the high speed oscillator:
+
+```
+// connect pin B3 to B4
+analogWrite(B3, 0.5, {freq:0.5});
+setWatch(function(e) {
+  print(e.time - e.lastTime);
+}, B4, {repeat:true});
+```
+
+**Note:** This is only used on official Espruino boards containing an STM32 microcontroller. Other boards
+(even those using an STM32) don't use the RTC and so this has no effect.
  */
 void jswrap_espruino_setRTCPrescaler(int prescale) {
-  extern void jshSetupRTCPrescalerValue(unsigned int prescale);
-  extern void jshResetRTCTimer();
+#ifdef STM32
+  if (prescale<0 || prescale>32767) {
+    jsExceptionHere(JSET_ERROR, "Out of range");
+    return;
+  }
   jshSetupRTCPrescalerValue((unsigned)prescale);
   jshResetRTCTimer();
+#endif
 }
-//#endif
+
+/*JSON{
+  "type" : "staticmethod",
+  "#if" : "defined(PICO) || defined(ESPRUINOWIFI) || defined(ESPRUINOBOARD)",
+  "class" : "E",
+  "name" : "getRTCPrescaler",
+  "generate" : "jswrap_espruino_getRTCPrescaler",
+  "params" : [
+    ["calibrate","bool","If `false`, the current value. If `true`, the calculated 'correct' value"]
+  ],
+  "return" : ["int","The RTC prescaler's current value"]
+}
+Gets the RTC's current prescaler value if `calibrate` is undefined or false.
+
+If `calibrate` is true, the low speed oscillator's speed is calibrated against the high speed
+oscillator (usually +/- 20 ppm) and a suggested value to be fed into `E.setRTCPrescaler(...)` is returned.
+
+See `E.setRTCPrescaler` for more information.
+ */
+int jswrap_espruino_getRTCPrescaler(bool calibrate) {
+#ifdef STM32
+  return jshGetRTCPrescalerValue(calibrate);
+#else
+  return 0;
+#endif
+}
