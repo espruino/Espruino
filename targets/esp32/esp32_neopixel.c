@@ -48,7 +48,7 @@ typedef union {
 } rmtPulsePair;
 
 static uint8_t *neopixel_buffer = NULL;
-static unsigned int neopixel_pos, neopixel_len, neopixel_half;
+static unsigned int neopixel_pos, neopixel_len, neopixel_bufpart;
 static xSemaphoreHandle neopixel_sem = NULL;
 static intr_handle_t rmt_intr_handle = NULL;
 static rmtPulsePair neopixel_bits[2];
@@ -74,8 +74,8 @@ void neopixel_initRMTChannel(int rmtChannel){
 
 void neopixel_copy(){
   unsigned int i, j, offset, len, bit;
-  offset = neopixel_half * MAX_PULSES;
-  neopixel_half = !neopixel_half;
+  offset = neopixel_bufpart * MAX_PULSES;
+  neopixel_bufpart = !neopixel_bufpart;
   len = neopixel_len - neopixel_pos;
   if (len > (MAX_PULSES / 8)) len = (MAX_PULSES / 8);
   if (!len) {
@@ -141,7 +141,7 @@ bool esp32_neopixelWrite(Pin pin,unsigned char *rgbData, size_t rgbSize){
   neopixel_buffer = rgbData;
   neopixel_len = rgbSize;
   neopixel_pos = 0;
-  neopixel_half = 0;
+  neopixel_bufpart = 0;
   neopixel_copy();
   if (neopixel_pos < neopixel_len) neopixel_copy();
   neopixel_sem = xSemaphoreCreateBinary();
