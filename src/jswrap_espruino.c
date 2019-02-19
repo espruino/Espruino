@@ -1729,7 +1729,7 @@ To change the RTC's prescaler value to a computed value based on comparing again
 just run the following command, making sure it's done a few seconds after the board starts up:
 
 ```
-E.setRTCPrescaler(E.getRTCPrescaler(1));
+E.setRTCPrescaler(E.getRTCPrescaler(true));
 ```
 
 When changing the RTC prescaler, the RTC 'follower' counters are reset and it can take a second or two before
