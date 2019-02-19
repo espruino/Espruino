@@ -701,38 +701,41 @@ static bool jshIsRTCAlreadySetup(bool andRunning) {
 }
 
 #ifdef USE_RTC
-void jshSetupRTCPrescaler(bool isUsingLSI) {
-  if (isUsingLSI) {
-#ifdef STM32F1
-    jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
-#else
-    jshRTCPrescaler = 32000; // 32kHz for LSI on F4
-#endif
-  } else {
-    jshRTCPrescaler = 32768; // 32.768kHz for LSE
-  }
-  jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
-}
 
-void jshSetupRTC(bool isUsingLSI) {
-  RCC_RTCCLKConfig(isUsingLSI ? RCC_RTCCLKSource_LSI : RCC_RTCCLKSource_LSE); // set clock source to low speed internal
-  jshSetupRTCPrescaler(isUsingLSI);
-  RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
-  RTC_WaitForSynchro();
+void jshSetupRTCPrescalerValue(unsigned int prescale) {
+  jshRTCPrescaler = (unsigned short)prescale;
+  jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
 #ifdef STM32F1
   RTC_SetPrescaler(jshRTCPrescaler - 1U);
   RTC_WaitForLastTask();
 #else
   RTC_InitTypeDef RTC_InitStructure;
   RTC_StructInit(&RTC_InitStructure);
-  //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
-  //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
   RTC_InitStructure.RTC_AsynchPrediv = 0;
-  RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
+  RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1);
   RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
   RTC_Init(&RTC_InitStructure);
 #endif
   RTC_WaitForSynchro();
+}
+
+void jshSetupRTCPrescaler(bool isUsingLSI) {
+  if (isUsingLSI) {
+#ifdef STM32F1
+    jshSetupRTCPrescalerValue(40000); // 40kHz for LSI on F1 parts
+#else
+    jshSetupRTCPrescalerValue(32000); // 32kHz for LSI on F4
+#endif
+  } else {
+    jshSetupRTCPrescalerValue(32768); // 32.768kHz for LSE
+  }
+}
+
+void jshSetupRTC(bool isUsingLSI) {
+  RCC_RTCCLKConfig(isUsingLSI ? RCC_RTCCLKSource_LSI : RCC_RTCCLKSource_LSE); // set clock source to low speed internal
+  RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
+  RTC_WaitForSynchro();
+  jshSetupRTCPrescaler(isUsingLSI);  
 }
 
 void jshResetRTCTimer() {
