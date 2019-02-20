@@ -61,12 +61,12 @@ typedef struct {
   unsigned char bpp;
   unsigned int fgColor, bgColor; ///< current foreground and background colors
   short fontSize; ///< See JSGRAPHICS_FONTSIZE_ constants
+  short cursorX, cursorY; ///< current cursor positions
 #ifndef SAVE_ON_FLASH
   unsigned char fontAlignX : 2;
   unsigned char fontAlignY : 2;
   unsigned char fontRotate : 2;
 #endif
-  short cursorX, cursorY; ///< current cursor positions
 #ifndef SAVE_ON_FLASH
   short modMinX, modMinY, modMaxX, modMaxY; ///< area that has been modified
 #endif
@@ -84,30 +84,14 @@ typedef struct JsGraphics {
   void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); // scroll - leave unscrolled area undefined
 } PACKED_FLAGS JsGraphics;
 
-static inline void graphicsStructInit(JsGraphics *gfx) {
-  // type/width/height/bpp should be set elsewhere...
-  gfx->data.flags = JSGRAPHICSFLAGS_NONE;
-  gfx->data.fgColor = 0xFFFFFFFF;
-  gfx->data.bgColor = 0;
-  gfx->data.fontSize = JSGRAPHICS_FONTSIZE_4X6;
-#ifndef SAVE_ON_FLASH
-  gfx->data.fontAlignX = 3;
-  gfx->data.fontAlignY = 3;
-  gfx->data.fontRotate = 0;
-#endif
-  gfx->data.cursorX = 0;
-  gfx->data.cursorY = 0;
-#ifndef SAVE_ON_FLASH
-  gfx->data.modMaxX = -32768;
-  gfx->data.modMaxY = -32768;
-  gfx->data.modMinX = 32767;
-  gfx->data.modMinY = 32767;
-#endif
-}
-
 // ---------------------------------- these are in graphics.c
-// Access a JsVar and get/set the relevant info in JsGraphics
+/// Reset graphics structure state (eg font size, color, etc)
+void graphicsStructResetState(JsGraphics *gfx);
+/// Completely reset graphics structure including flags
+void graphicsStructInit(JsGraphics *gfx);
+/// Access the Graphics Instance JsVar and get the relevant info in a JsGraphics structure
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
+/// Access the Graphics Instance JsVar and set the relevant info from JsGraphics structure
 void graphicsSetVar(JsGraphics *gfx);
 // ----------------------------------------------------------------------------------------------
 /// Get the memory requires for this graphics's pixels if everything was packed as densely as possible

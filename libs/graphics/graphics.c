@@ -90,6 +90,31 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
 
 // ----------------------------------------------------------------------------------------------
 
+void graphicsStructResetState(JsGraphics *gfx) {
+  gfx->data.fgColor = 0xFFFFFFFF;
+  gfx->data.bgColor = 0;
+  gfx->data.fontSize = JSGRAPHICS_FONTSIZE_4X6;
+#ifndef SAVE_ON_FLASH
+  gfx->data.fontAlignX = 3;
+  gfx->data.fontAlignY = 3;
+  gfx->data.fontRotate = 0;
+#endif
+  gfx->data.cursorX = 0;
+  gfx->data.cursorY = 0;
+}
+
+void graphicsStructInit(JsGraphics *gfx) {
+  // type/width/height/bpp should be set elsewhere...
+  gfx->data.flags = JSGRAPHICSFLAGS_NONE;
+  graphicsStructResetState(gfx);
+#ifndef SAVE_ON_FLASH
+  gfx->data.modMaxX = -32768;
+  gfx->data.modMaxY = -32768;
+  gfx->data.modMinX = 32767;
+  gfx->data.modMinY = 32767;
+#endif
+}
+
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
   gfx->graphicsVar = parent;
   JsVar *data = jsvObjectGetChild(parent, JS_HIDDEN_CHAR_STR"gfx", 0);

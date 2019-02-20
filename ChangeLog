@@ -18,6 +18,7 @@
             Add I2C/SPI baud rate checks (#1619)
             STM32: Add `E.setRTCPrescaler` to allow the RTC to be calibrated on Espruino Pico (fix #1607)
             nRF52: Fix slow Bluetooth connection if previously disconnected while using low power connection interval (fix #1605)
+            Allow `Graphics.clear(true)` to reset state (font, color, etc) to default as well as clearing the screen (fix #1615)
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends

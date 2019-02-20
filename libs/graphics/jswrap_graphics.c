@@ -406,13 +406,17 @@ int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
   "class" : "Graphics",
   "name" : "clear",
   "generate" : "jswrap_graphics_clear",
+  "params" : [
+    ["reset","bool","If `true`, resets the state of Graphics to the default (eg. Color, Font, etc)"]
+  ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
 Clear the LCD with the Background Color
 */
-JsVar *jswrap_graphics_clear(JsVar *parent) {
+JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  if (resetState) graphicsStructResetState(&gfx);
   graphicsClear(&gfx);
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);

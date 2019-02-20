@@ -32,7 +32,7 @@ JsVar *jswrap_graphics_createImage(JsVar *data);
 
 
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height);
-JsVar *jswrap_graphics_clear(JsVar *parent);
+JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState);
 JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2);
 JsVar *jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2);
 JsVar *jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad);
