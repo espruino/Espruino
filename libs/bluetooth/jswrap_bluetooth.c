@@ -992,7 +992,11 @@ void jswrap_ble_setScanResponse(JsVar *data) {
       return;
     }
 #ifdef NRF5X
-//FIXME    err_code = sd_ble_gap_adv_data_set(NULL, 0, (uint8_t *)dPtr, dLen);
+#if NRF_SD_BLE_API_VERSION<5
+    err_code = sd_ble_gap_adv_data_set(NULL, 0, (uint8_t *)dPtr, dLen);
+#else
+    jsWarn("setScanResponse not working on SDK15\n");
+#endif
 #else
     err_code = 0xDEAD;
     jsiConsolePrintf("FIXME\n");
