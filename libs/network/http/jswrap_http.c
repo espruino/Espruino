@@ -521,9 +521,9 @@ void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
     ["value","JsVar","The value of the header as a String"]
   ]
 }
-Set a value to send in the header of this HTTP response
+Set a value to send in the header of this HTTP response. This updates the `httpSRs.headers` property.
 
-Any headers supplied to `writeHead` will overwrite similarly named headers
+Any headers supplied to `writeHead` will overwrite any headers with the same name.
 */
 void jswrap_httpSRs_setHeader(JsVar *parent, JsVar *name, JsVar *value) {
   serverResponseSetHeader(parent, name, value);
