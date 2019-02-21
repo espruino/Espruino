@@ -2324,8 +2324,8 @@ void jsble_advertising_stop() {
  #else
                            3, /* IRQ Priority -  nRF51 has different IRQ structure */
  #endif
-                           NRF_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH,
-                           NRF_RADIO_NOTIFICATION_DISTANCE_5500US);
+                           NRF_RADIO_NOTIFICATION_TYPE_INT_ON_INACTIVE,
+                           NRF_RADIO_NOTIFICATION_DISTANCE_NONE);
    APP_ERROR_CHECK(err_code);
 #if PEER_MANAGER_ENABLED
    peer_manager_init(false /*don't erase_bonds*/);
