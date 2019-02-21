@@ -641,15 +641,15 @@ you want to advertise more data, consider using an array for `data` (See below),
 `NRF.setScanResponse`.
 
 You can even specify an array of arrays or objects, in which case each advertising packet
-will be used in turn - for instance to make your device advertise
-both Eddystone and iBeacon:
+will be used in turn - for instance to make your device advertise battery level and its name
+as well as both Eddystone and iBeacon :
 
 ```
 NRF.setAdvertising([
   {0x180F : [Puck.getBatteryPercentage()]}, // normal advertising, with battery %
   require("ble_ibeacon").get(...), // iBeacon
   require("ble_eddystone").get(...), // eddystone
-],{interval:500});
+], {interval:300});
 ```
 
 `options` is an object, which can contain:
