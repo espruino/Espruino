@@ -64,6 +64,39 @@ The 'data' event is called when data is received. If a handler is defined with `
 }
 Called when the connection closes.
 */
+
+
+/*JSON{
+    "type" : "property",
+    "class" : "httpSRq",
+    "name" : "headers",
+    "generate" : false,
+    "return" : ["JsVar", "An object mapping header name to value" ]
+}
+The headers to sent to the server with this HTTP request.
+*//*Documentation only*/
+/*JSON{
+    "type" : "property",
+    "class" : "httpSRq",
+    "name" : "method",
+    "generate" : false,
+    "return" : ["JsVar", "A string" ]
+}
+The HTTP method used with this request. Often `"GET"`.
+*//*Documentation only*/
+/*JSON{
+    "type" : "property",
+    "class" : "httpSRq",
+    "name" : "url",
+    "generate" : false,
+    "return" : ["JsVar", "A string representing the URL" ]
+}
+The URL requested in this HTTP request, for instance:
+
+* `"/"` - the main page
+* `"/favicon.ico"` - the web page's icon
+*//*Documentation only*/
+
 /*JSON{
   "type" : "method",
   "class" : "httpSRq",
@@ -175,6 +208,42 @@ Called when the connection closes with one `hadError` boolean parameter, which i
 An event that is fired if there is an error receiving the response. The error event function receives an error object as parameter with a `code` field and a `message` field. After the error event the close even will also be triggered to conclude the HTTP request/response.
 */
 /*JSON{
+    "type" : "property",
+    "class" : "httpCRs",
+    "name" : "headers",
+    "generate" : false,
+    "return" : ["JsVar", "An object mapping header name to value" ]
+}
+The headers received along with the HTTP response
+*//*Documentation only*/
+/*JSON{
+    "type" : "property",
+    "class" : "httpCRs",
+    "name" : "statusCode",
+    "generate" : false,
+    "return" : ["JsVar", "The status code as a String" ]
+}
+The HTTP response's status code - usually `"200"` if all went well
+*//*Documentation only*/
+/*JSON{
+    "type" : "property",
+    "class" : "httpCRs",
+    "name" : "statusMessage",
+    "generate" : false,
+    "return" : ["JsVar", "An String Status Message" ]
+}
+The HTTP response's status message - Usually `"OK"` if all went well
+*//*Documentation only*/
+/*JSON{
+    "type" : "property",
+    "class" : "httpCRs",
+    "name" : "httpVersion",
+    "generate" : false,
+    "return" : ["JsVar", "Th" ]
+}
+The HTTP version reported back by the server - usually `"1.1"`
+*//*Documentation only*/
+/*JSON{
   "type" : "method",
   "class" : "httpCRs",
   "name" : "available",
@@ -210,6 +279,10 @@ Pipe this to a stream (an object with a 'write' method)
 */
 
 
+
+
+
+
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
@@ -227,7 +300,7 @@ Pipe this to a stream (an object with a 'write' method)
 }
 Create an HTTP Server
 
-When a request to the server is made, the callback is called. In the callback you can use the methods on the response (httpSRs) to send data. You can also add `request.on('data',function() { ... })` to listen for POSTed data
+When a request to the server is made, the callback is called. In the callback you can use the methods on the response (`httpSRs`) to send data. You can also add `request.on('data',function() { ... })` to listen for POSTed data
 */
 
 JsVar *jswrap_http_createServer(JsVar *callback) {
@@ -363,6 +436,24 @@ Stop listening for new HTTP connections
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
+/*JSON{
+    "type" : "property",
+    "class" : "httpSRs",
+    "name" : "headers",
+    "generate" : false,
+    "return" : ["JsVar", "An object mapping header name to value" ]
+}
+The headers to send back along with the HTTP response.
+
+The default contents are:
+
+```
+{
+  "Connection": "close"
+ }
+```
+*//*Documentation only*/
+
 /*JSON{
   "type" : "method",
   "class" : "httpSRs",
