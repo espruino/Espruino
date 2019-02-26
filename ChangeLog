@@ -21,6 +21,7 @@
             Allow `Graphics.clear(true)` to reset state (font, color, etc) to default as well as clearing the screen (fix #1615)
             nRF52: Fix setScanResponse regression from 2v00
             nRF5x: Execute SWI1_IRQHandler when radio turns off instead of on+off. More efficient, fixed multiple advertising.
+            Smartibot build added
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
