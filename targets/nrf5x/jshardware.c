@@ -715,6 +715,8 @@ JshPinFunction jshGetFreeTimer(JsVarFloat freq) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+  if (value>1) value=1;
+  if (value<0) value=0;
 #ifdef NRF52
   // Try and use existing pin function
   JshPinFunction func = pinStates[pin];
