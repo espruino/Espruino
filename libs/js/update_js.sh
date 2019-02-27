@@ -19,8 +19,8 @@ wget https://www.espruino.com/modules/LPS22HB.min.js  -O LPS22HB.min.js
 wget https://www.espruino.com/modules/HTS221.min.js  -O HTS221.min.js
 wget https://www.espruino.com/modules/CCS811.min.js  -O CCS811.min.js
 wget https://www.espruino.com/modules/BH1745.min.js  -O BH1745.min.js 
-wget https://www.espruino.com/modules/PCA9685.min.js  -O PCA9685.min.js 
-wget https://www.espruino.com/modules/Smartibot.min.js  -O Smartibot.min.js 
+#wget https://www.espruino.com/modules/PCA9685.min.js  -O PCA9685.min.js 
+#wget https://www.espruino.com/modules/Smartibot.min.js  -O Smartibot.min.js 
 
 # Other libs
 wget https://www.espruino.com/modules/EspruinoWiFi.min.js -O espruino_wifi/Wifi.min.js
