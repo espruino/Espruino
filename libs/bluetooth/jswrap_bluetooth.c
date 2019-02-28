@@ -1119,6 +1119,12 @@ UART, however you then be unable to connect to Puck.js's console via Bluetooth.
 If you absolutely require two or more 128 bit UUIDs then you will have to
 specify your own raw advertising data packets with `NRF.setAdvertising`
 
+**Note:** The services on Espruino can only be modified when there is
+no device connected to it as it requires a restart of the Bluetooth stack.
+**iOS devices will 'cache' the list of services** so apps like
+NRF Connect may incorrectly display the old services even after you 
+have modified them. To fix this, disable and re-enable Bluetooth on your
+iOS device, or use an Android device to run NRF Connect.
 */
 void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   if (!(jsvIsObject(data) || jsvIsUndefined(data))) {
