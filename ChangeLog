@@ -22,6 +22,7 @@
             nRF52: Fix setScanResponse regression from 2v00
             nRF5x: Execute SWI1_IRQHandler when radio turns off instead of on+off. More efficient, fixed multiple advertising.
             Smartibot build added
+	    ESP32: update EspruinoBuildTools to esp-idf V3.1.3
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
