@@ -22,6 +22,7 @@
             nRF52: Fix setScanResponse regression from 2v00
             nRF5x: Execute SWI1_IRQHandler when radio turns off instead of on+off. More efficient, fixed multiple advertising.
             Smartibot build added
+            nRF52: Add FAT Filesystem support to MDBT42Q module
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
