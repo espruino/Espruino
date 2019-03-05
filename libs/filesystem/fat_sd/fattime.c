@@ -1,23 +1,23 @@
-/* Martin Thomas 4/2009 */
+/* Martin Thomas 4/2009
+ * Gordon Williams 2019 */
 
 #include "integer.h"
 #include "fattime.h"
-//#include "rtc.h"
+#include "jswrap_date.h"
 
 DWORD get_fattime (void)
 {
+  JsVarFloat time = jswrap_date_now();
+  TimeInDay tid = getTimeFromMilliSeconds(time, false);
+  CalendarDate date = getCalendarDate(tid.daysSinceEpoch);
+
 	DWORD res;
-	/*RTC_t rtc;
-
-	rtc_gettime( &rtc );*/
-	
-	res =  (((DWORD)2012/*rtc.year*/ - 1980) << 25)
-			| ((DWORD)1/*rtc.month*/ << 21)
-			| ((DWORD)1/*rtc.mday*/ << 16)
-			| (WORD)(0/*rtc.hour*/ << 11)
-			| (WORD)(0/*rtc.min*/ << 5)
-			| (WORD)(0/*rtc.sec*/ >> 1);
-
+	res =  (((DWORD)date.year - 1980) << 25)
+			| ((DWORD)(date.month+1) << 21)
+			| ((DWORD)date.day << 16)
+			| (WORD)(tid.hour << 11)
+			| (WORD)(tid.min << 5)
+			| (WORD)(tid.sec >> 1);
 	return res;
 }
 
