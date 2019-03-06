@@ -305,6 +305,11 @@ bool jswrap_fs_unlink(JsVar *path) {
   return true;
 }
 
+/// return time zone in minutes  TomWS: copied from jswrap_date.c to correct TZ offset in file date below
+static int getTimeZone() {
+  return jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR, 0));
+}
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "fs",
@@ -342,7 +347,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
 
       CalendarDate date;
       date.year = 1980+(int)((info.fdate>>9)&127);
-      date.month = (int)((info.fdate>>5)&15);
+      date.month = (int)(((info.fdate>>5)&15)-1);  // TomWS: Month is 0 based.
       date.day = (int)((info.fdate)&31);
       TimeInDay td;
       td.daysSinceEpoch = fromCalenderDate(&date);
@@ -350,7 +355,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
       td.min = (int)((info.ftime>>5)&63);
       td.sec = (int)((info.ftime)&63);
       td.ms = 0;
-      td.zone = 0;
+      td.zone = getTimeZone();  // TomWS: add adjustment for timezone offset introduced in date_from_milliseconds 
       jsvObjectSetChildAndUnLock(obj, "mtime", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
       return obj;
     }
