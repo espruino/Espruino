@@ -101,27 +101,32 @@ void sysfs_read(const char *path, char *data, unsigned int len) {
 JsVarInt sysfs_read_int(const char *path) {
   char buf[20];
   sysfs_read(path, buf, sizeof(buf));
-  return stringToIntWithRadix(buf, 10, 0);
+  return stringToIntWithRadix(buf, 10, NULL, NULL);
 }
 #endif
+
 // ----------------------------------------------------------------------------
 #ifdef USE_WIRINGPI
+#if EXTI_COUNT < 16
+#error EXTI_COUNT needs to be 16 or above for WiringPi
+#endif
+
 void irqEXTI0() { jshPushIOWatchEvent(EV_EXTI0); }
-void irqEXTI1() { jshPushIOWatchEvent(EV_EXTI1); }
-void irqEXTI2() { jshPushIOWatchEvent(EV_EXTI2); }
-void irqEXTI3() { jshPushIOWatchEvent(EV_EXTI3); }
-void irqEXTI4() { jshPushIOWatchEvent(EV_EXTI4); }
-void irqEXTI5() { jshPushIOWatchEvent(EV_EXTI5); }
-void irqEXTI6() { jshPushIOWatchEvent(EV_EXTI6); }
-void irqEXTI7() { jshPushIOWatchEvent(EV_EXTI7); }
-void irqEXTI8() { jshPushIOWatchEvent(EV_EXTI8); }
-void irqEXTI9() { jshPushIOWatchEvent(EV_EXTI9); }
-void irqEXTI10() { jshPushIOWatchEvent(EV_EXTI10); }
-void irqEXTI11() { jshPushIOWatchEvent(EV_EXTI11); }
-void irqEXTI12() { jshPushIOWatchEvent(EV_EXTI12); }
-void irqEXTI13() { jshPushIOWatchEvent(EV_EXTI13); }
-void irqEXTI14() { jshPushIOWatchEvent(EV_EXTI14); }
-void irqEXTI15() { jshPushIOWatchEvent(EV_EXTI15); }
+void irqEXTI1() { jshPushIOWatchEvent(EV_EXTI0+1); }
+void irqEXTI2() { jshPushIOWatchEvent(EV_EXTI0+2); }
+void irqEXTI3() { jshPushIOWatchEvent(EV_EXTI0+3); }
+void irqEXTI4() { jshPushIOWatchEvent(EV_EXTI0+4); }
+void irqEXTI5() { jshPushIOWatchEvent(EV_EXTI0+5); }
+void irqEXTI6() { jshPushIOWatchEvent(EV_EXTI0+6); }
+void irqEXTI7() { jshPushIOWatchEvent(EV_EXTI0+7); }
+void irqEXTI8() { jshPushIOWatchEvent(EV_EXTI0+8); }
+void irqEXTI9() { jshPushIOWatchEvent(EV_EXTI0+9); }
+void irqEXTI10() { jshPushIOWatchEvent(EV_EXTI0+10); }
+void irqEXTI11() { jshPushIOWatchEvent(EV_EXTI0+11); }
+void irqEXTI12() { jshPushIOWatchEvent(EV_EXTI0+12); }
+void irqEXTI13() { jshPushIOWatchEvent(EV_EXTI0+13); }
+void irqEXTI14() { jshPushIOWatchEvent(EV_EXTI0+14); }
+void irqEXTI15() { jshPushIOWatchEvent(EV_EXTI0+15); }
 void irqEXTIDoNothing() { }
 
 void (*irqEXTIs[16])(void) = {
@@ -179,6 +184,8 @@ bool jshGetDevicePath(IOEventFlags device, char *buf, size_t bufSize) {
   jsvUnLock2(str, obj);
   return success;
 }
+
+
 
 // ----------------------------------------------------------------------------
 // for non-blocking IO
@@ -251,8 +258,8 @@ void jshInputThread() {
       execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_INTERRUPTED;
     if (execInfo.execute & EXEC_CTRL_C)
       execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C) | EXEC_CTRL_C_WAIT;
-    // Read from the console
-    while (kbhit()) {
+    // Read from the console if we have space
+    while (kbhit() && (jshGetEventsUsed()<IOBUFFERMASK/2)) {
       int ch = getch();
       if (ch<0) break;
       jshPushIOCharEvent(EV_USBSERIAL, (char)ch);
@@ -299,7 +306,7 @@ void jshInputThread() {
       }
 #endif
 
-    usleep(shortSleep ? 1000 : 50000);
+    jshDelayMicroseconds(shortSleep ? 1000 : 50000);
   }
 }
 
@@ -360,7 +367,10 @@ void jshReset() {
 void jshKill() {
   int i;
 
+  // Request that the input thread finishes
   isInitialised = false;
+  // wait for thread to finish
+  pthread_join(inputThread, NULL);
 
   for (i=0;i<=EV_DEVICE_MAX;i++)
     if (ioDevices[i]) {
@@ -393,7 +403,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
       if (strncmp(line, "Serial", 6) == 0) {
         char serial_string[16 + 1];
         strcpy(serial_string, strchr(line, ':') + 2);
-        serial = stringToIntWithRadix(serial_string, 16, 0);
+        serial = stringToIntWithRadix(serial_string, 16, NULL, NULL);
       }
     }
     fclose(f);
@@ -435,7 +445,10 @@ bool jshIsInInterrupt() {
 }
 
 void jshDelayMicroseconds(int microsec) {
-  usleep(microsec);
+  struct timeval tv;
+  tv.tv_sec  = microsec / 1000000;
+  tv.tv_usec = (suseconds_t) microsec % 1000000;
+  select( 0, NULL, NULL, NULL, &tv );
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
@@ -567,7 +580,7 @@ void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
   if (jshIsPinValid(pin)) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(pin, value);
-    usleep(time*1000000);
+    jshDelayMicroseconds(time*1000000);
     jshPinSetValue(pin, !value);
   } else jsError("Invalid pin!");
 }
@@ -791,7 +804,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
   if (usecs > 50000)
     usecs = 50000; // don't want to sleep too much (user input/HTTP/etc)
   if (usecs >= 1000)  
-    usleep(usecs); 
+    jshDelayMicroseconds(usecs);
   return true;
 }
 
@@ -842,8 +855,9 @@ JsVar *jshFlashGetFree() {
   return jsFreeFlash;
 }
 
-static FILE *jshFlashOpenFile() {
+static FILE *jshFlashOpenFile(bool dontCreate) {
   FILE *f = fopen(FAKE_FLASH_FILENAME, "r+b");
+  if (!f && dontCreate) return 0;
   if (!f) f = fopen(FAKE_FLASH_FILENAME, "wb");
   if (!f) return 0;
   int len = FAKE_FLASH_BLOCKSIZE*FAKE_FLASH_BLOCKS;
@@ -859,8 +873,8 @@ static FILE *jshFlashOpenFile() {
   return f;
 }
 void jshFlashErasePage(uint32_t addr) {
-  FILE *f = jshFlashOpenFile();
-  if (!f) return;
+  FILE *f = jshFlashOpenFile(true);
+  if (!f) return; // if no file and we're erasing, we don't have to do anything
   uint32_t startAddr, pageSize;
   if (jshFlashGetPage(addr, &startAddr, &pageSize)) {
     startAddr -= FLASH_START;
@@ -881,8 +895,11 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   }
   addr -= FLASH_START;
 
-  FILE *f = jshFlashOpenFile();
-  if (!f) return;
+  FILE *f = jshFlashOpenFile(true);
+  if (!f) { // no file, so it's all 0xFF
+    memset(buf, 0xFF, len);
+    return;
+  }
   fseek(f, addr, SEEK_SET);
   fread(buf, 1, len, f);
   fclose(f);
@@ -903,7 +920,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   }
   addr -= FLASH_START;
 
-  FILE *f = jshFlashOpenFile();
+  FILE *f = jshFlashOpenFile(false);
   if (!f) return;
 
   char *wbuf = malloc(len);
@@ -926,4 +943,9 @@ size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
 
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
+}
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  jsExceptionHere(JSET_ERROR, "Not implemented");
 }

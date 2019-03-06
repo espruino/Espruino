@@ -29,6 +29,9 @@ bool jspIsConstructor(JsVar *constructor, const char *constructorName);
 /** Get the constructor of the given object, or return 0 if ot found, or not a function */
 JsVar *jspGetConstructor(JsVar *object);
 
+/// Check that we have enough stack to recurse. Return true if all ok, error if not.
+bool jspCheckStackPosition();
+
 /// Create a new built-in object that jswrapper can use to check for built-in functions
 JsVar *jspNewBuiltin(const char *name);
 
@@ -65,6 +68,9 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset);
  * the life of the interpreter, as then the interpreter will use a pointer
  * to this data, which could hang around inside the code. */
 JsVar *jspEvaluate(const char *str, bool stringIsStatic);
+/// Execute a JS function with the given arguments. usage: jspExecuteJSFunction("(function() { print('hi'); })",0,0,0)
+JsVar *jspExecuteJSFunction(const char *jsCode, JsVar *thisArg, int argCount, JsVar **argPtr);
+/// Execute a function with the given arguments
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports
@@ -81,25 +87,25 @@ JsVar *jspGetPrototypeOwner(JsVar *proto);
 typedef enum  {
   EXEC_NO = 0,
   EXEC_YES = 1,
-  EXEC_BREAK = 2,     // Have we had a 'break' keyword (so should skip to end of loop and exit)
-  EXEC_CONTINUE = 4,  // Have we had a 'continue' keywrord (so should skip to end of loop and restart)
-  EXEC_RETURN = 8,    // Have we had a 'return' keyword (so should skip to end of the function)
+  EXEC_BREAK = 2,     ///< Have we had a 'break' keyword (so should skip to end of loop and exit)
+  EXEC_CONTINUE = 4,  ///< Have we had a 'continue' keywrord (so should skip to end of loop and restart)
+  EXEC_RETURN = 8,    ///< Have we had a 'return' keyword (so should skip to end of the function)
 
-  EXEC_INTERRUPTED = 16, // true if execution has been interrupted
-  EXEC_EXCEPTION = 32, // we had an exception, so don't execute until we hit a try/catch block
+  EXEC_INTERRUPTED = 16, ///< true if execution has been interrupted
+  EXEC_EXCEPTION = 32, ///< we had an exception, so don't execute until we hit a try/catch block
   EXEC_ERROR = 64,
-  EXEC_ERROR_LINE_REPORTED = 128, // if an error has been reported, set this so we don't do it too much (EXEC_ERROR will STILL be set)
+  EXEC_ERROR_LINE_REPORTED = 128, ///< if an error has been reported, set this so we don't do it too much (EXEC_ERROR will STILL be set)
 
-  EXEC_FOR_INIT = 256, // when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
-  EXEC_IN_LOOP = 512, // when in a loop, set this - we can then block break/continue outside it
-  EXEC_IN_SWITCH = 1024, // when in a switch, set this - we can then block break outside it/loops
+  EXEC_FOR_INIT = 256, ///< when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
+  EXEC_IN_LOOP = 512, ///< when in a loop, set this - we can then block break/continue outside it
+  EXEC_IN_SWITCH = 1024, ///< when in a switch, set this - we can then block break outside it/loops
 
   /** If Ctrl-C is pressed, the EXEC_CTRL_C flag is set on an interrupt. The next time a SysTick
    * happens, it sets EXEC_CTRL_C_WAIT, and if we get ANOTHER SysTick and it hasn't been handled,
    * we go to a full-on EXEC_INTERRUPTED. That means we only interrupt code if we're actually stuck
    * in something, and otherwise the console just clears the line. */
-  EXEC_CTRL_C = 2048, // If Ctrl-C was pressed, set this
-  EXEC_CTRL_C_WAIT = 4096, // If Ctrl-C was set and SysTick happens then this is set instead
+  EXEC_CTRL_C = 2048, ///< If Ctrl-C was pressed, set this
+  EXEC_CTRL_C_WAIT = 4096, ///< If Ctrl-C was set and SysTick happens then this is set instead
 
 #ifdef USE_DEBUGGER
   /** When the lexer hits a newline character, it'll then drop right
@@ -113,11 +119,11 @@ typedef enum  {
 #endif
 
   EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_RETURN|EXEC_INTERRUPTED|EXEC_EXCEPTION,
-  EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR|EXEC_EXCEPTION, // here, we have an error, but unless EXEC_NO_PARSE, we should continue parsing but not executing
-  EXEC_NO_PARSE_MASK = EXEC_INTERRUPTED|EXEC_ERROR, // in these cases we should exit as fast as possible - skipping out of parsing
-  EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH|EXEC_CONTINUE|EXEC_BREAK|EXEC_RETURN|EXEC_ERROR_MASK, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
-  EXEC_CTRL_C_MASK = EXEC_CTRL_C | EXEC_CTRL_C_WAIT, // Ctrl-C was pressed at some point
-
+  EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR|EXEC_EXCEPTION, ///< here, we have an error, but unless EXEC_NO_PARSE, we should continue parsing but not executing
+  EXEC_NO_PARSE_MASK = EXEC_INTERRUPTED|EXEC_ERROR, ///< in these cases we should exit as fast as possible - skipping out of parsing
+  EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_RETURN|EXEC_IN_LOOP|EXEC_IN_SWITCH|EXEC_ERROR_MASK, ///< the things JSP_SAVE/RESTORE_EXECUTE should keep track of
+  EXEC_CTRL_C_MASK = EXEC_CTRL_C | EXEC_CTRL_C_WAIT, ///< Ctrl-C was pressed at some point
+  EXEC_PERSIST = EXEC_ERROR_MASK|EXEC_CTRL_C_MASK, ///< Things we should keep track of even after executing
 } JsExecFlags;
 
 /** This structure is used when parsing the JavaScript. It contains
@@ -192,6 +198,5 @@ JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **arg
 
 // These are exported for the Web IDE's compiler. See exportPtrs in jswrap_process.c
 JsVar *jspeiFindInScopes(const char *name);
-void jspReplaceWith(JsVar *dst, JsVar *src);
 
 #endif /* JSPARSE_H_ */

@@ -62,7 +62,7 @@ if "check_output" not in dir( subprocess ):
 #                      // kill = function to run on deinitialisation
 #         "class" : "Double", "name" : "doubleToIntBits",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
-#         "generate_full|generate|wrap" : "*(JsVarInt*)&x",
+#         "generate_full|generate|wrap" : "*(JsVarInt*)&x", // if generate=false, it'll only be used for docs
 #         "description" : " Convert the floating point value given into an integer representing the bits contained in it",
 #         "params" : [ [ "x" , "float|int|int32|bool|pin|JsVar|JsVarName|JsVarArray", "A floating point number"] ],
 #                               // float - parses into a JsVarFloat which is passed to the function
@@ -173,6 +173,9 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
           drop = False
           if not is_for_document:
+            if ("generate" in jsondata) and jsondata["generate"]==False:
+              print(dropped_prefix+" because of generate=false")
+              drop = True
             if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
               print(dropped_prefix+" because of #ifndef "+jsondata["ifndef"])
               drop = True
@@ -181,6 +184,9 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
               drop = True
             if ("#ifdef" in jsondata) or ("#ifndef" in jsondata):
               sys.stderr.write( "'#ifdef' where 'ifdef' should be used in " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
+              exit(1)
+            if ("if" in jsondata):
+              sys.stderr.write( "'if' where '#if' should be used in " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
               exit(1)
             if ("#if" in jsondata):
               expr = jsondata["#if"]
@@ -194,6 +200,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
               # Now replace any defined(...) we haven't heard of with false
               expr = re.sub(r"defined\([^\)]*\)", "False", expr)
               expr = expr.replace("||","or").replace("&&","and");
+              expr = expr.replace("!","not ");
               try:
                 r = eval(expr)
               except:
@@ -368,22 +375,29 @@ def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH_EXTREME": return "devices with extremely low flash memory (eg. HYSTM32_28)"
   if d=="STM32": return "STM32 devices (including Espruino Original, Pico and WiFi)"
   if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
-  if d=="NRF52": return "NRF52 devices (like Puck.js and Pixl.js)"
+  if d=="NRF52": return "NRF52 devices (like Puck.js, Pixl.js and MDBT42Q)"
+  if d=="PUCKJS": return "Puck.js devices"
+  if d=="PIXLJS": return "Pixl.js boards"
   if d=="ESPRUINOWIFI": return "Espruino WiFi boards"
-  if d=="ESP8266": return "ESP8266 devices running Espruino"
-  if d=="ESP32": return "ESP32 devices"
+  if d=="ESPRUINOBOARD": return "'Original' Espruino boards"
+  if d=="ESP8266": return "ESP8266 boards running Espruino"
+  if d=="ESP32": return "ESP32 boards"
   if d=="EFM32": return "EFM32 devices"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico and Espruino WiFi only)"
   if d=="RELEASE": return "release builds"
+  if d=="DEBUG": return "debug builds"
   if d=="LINUX": return "Linux-based builds"
   if d=="BLUETOOTH": return "devices with Bluetooth LE capability"
   if d=="USB": return "devices with USB"
   if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico and Espruino WiFi)"
   if d=="USE_AES": return "devices that support AES (Espruino Pico, Espruino WiFi or Linux)"
-  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Espruino WiFi, Linux or ESP8266)"
+  if d=="USE_SHA256": return "devices that support SHA256 (Espruino Pico, Espruino WiFi, Espruino BLE devices or Linux)"
+  if d=="USE_SHA512": return "devices that support SHA512 (Espruino Pico, Espruino WiFi, Espruino BLE devices or Linux)"
+  if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Original, Espruino WiFi, Espruino BLE devices, Linux or ESP8266)"
   if d=="USE_FLASHFS": return "devices with filesystem in Flash support enabled (ESP32 only)"
   if d=="USE_TERMINAL": return "devices with VT100 terminal emulation enabled (Pixl.js only)"
+  if d=="USE_TELNET": return "devices with Telnet enabled (Linux, ESP8266 and ESP32)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 

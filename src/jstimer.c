@@ -66,6 +66,7 @@ static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
         // No more data - make sure we don't repeat!
         task->repeatInterval = 0;
       }
+      jshHadEvent(); // make sure we properly trigger a run around the idle loop now
     }
   }
 }

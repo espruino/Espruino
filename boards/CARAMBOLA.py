@@ -24,9 +24,8 @@ info = {
      'NET',
      'GRAPHICS',
      'FILESYSTEM',
-     'CRYPTO',
+     'CRYPTO','SHA256','SHA512',
      'TLS',
-     'HASHLIB',
      'TELNET',
    ],
    'makefile' : [

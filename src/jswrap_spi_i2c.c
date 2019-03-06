@@ -87,11 +87,33 @@ May return undefined if no device can be found.
   "name" : "setup",
   "generate" : "jswrap_spi_setup",
   "params" : [
-    ["options","JsVar",["An optional structure containing extra information on initialising the SPI port","Please note that baud rate is set to the nearest that can be managed - which may be -+ 50%","```{sck:pin, miso:pin, mosi:pin, baud:integer=100000, mode:integer=0, order:'msb'/'lsb'='msb' }```","If sck,miso and mosi are left out, they will automatically be chosen. However if one or more is specified then the unspecified pins will not be set up.","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `SPI` marker.","The SPI ```mode``` is between 0 and 3 - see http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Clock_polarity_and_phase","On STM32F1-based parts, you cannot mix AF and non-AF pins (SPI pins are usually grouped on the chip - and you can't mix pins from two groups). Espruino will not warn you about this."]]
+    ["options","JsVar","An Object containing extra information on initialising the SPI port"]
   ]
 }
 Set up this SPI port as an SPI Master.
- */
+
+Options can contain the following (defaults are shown where relevant):
+
+```
+{
+  sck:pin, 
+  miso:pin, 
+  mosi:pin, 
+  baud:integer=100000, // ignored on software SPI
+  mode:integer=0, // between 0 and 3
+  order:string='msb' // can be 'msb' or 'lsb' 
+  bits:8 // only available for software SPI
+}
+```
+
+If `sck`,`miso` and `mosi` are left out, they will automatically be chosen. However if one or more is specified then the unspecified pins will not be set up.
+
+You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `SPI` marker. Some boards such as those based on `nRF52` chips can have SPI on any pins, so don't have specific markings.
+
+The SPI `mode` is between 0 and 3 - see http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Clock_polarity_and_phase
+
+On STM32F1-based parts, you cannot mix AF and non-AF pins (SPI pins are usually grouped on the chip - and you can't mix pins from two groups). Espruino will not warn you about this.
+*/
 void jswrap_spi_setup(
     JsVar *parent, //!< The variable that is the class instance of this function.
     JsVar *options //!< The options controlling SPI.
@@ -106,9 +128,6 @@ void jswrap_spi_setup(
   //
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshSPIInfo inf;
-
-  // Debug
-  // jsiConsolePrintf("jswrap_spi_setup called parent=%v, options=%v\n", parent, options);
 
   if (!jsspiPopulateSPIInfo(&inf, options)) return;
 
@@ -273,7 +292,7 @@ JsVar *jswrap_spi_send(
   "name" : "write",
   "generate" : "jswrap_spi_write",
   "params" : [
-    ["data","JsVarArray",["One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`.","If the last argument is a pin, it is taken to be the NSS pin"]]
+    ["data","JsVarArray",["One or more items to write. May be ints, strings, arrays, or special objects (see `E.toUint8Array` for more info).","If the last argument is a pin, it is taken to be the NSS pin"]]
   ]
 }
 Write a character or array of characters to SPI - without reading the result back.
@@ -579,7 +598,7 @@ static NO_INLINE int i2c_get_address(JsVar *address, bool *sendStop) {
   "generate" : "jswrap_i2c_writeTo",
   "params" : [
     ["address","JsVar","The 7 bit address of the device to transmit to, or an object of the form `{address:12, stop:false}` to send this data without a STOP signal."],
-    ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`."]
+    ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or special objects (see `E.toUint8Array` for more info)."]
   ]
 }
 Transmit to the slave device with the given address. This is like Arduino's beginTransmission, write, and endTransmission rolled up into one.

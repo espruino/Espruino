@@ -63,11 +63,11 @@ endif
 INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS?=
 DEFINES?=
-CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -Wno-packed-bitfield-compat
-LDFLAGS?=-Winline
+CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -Wno-packed-bitfield-compat -g
+LDFLAGS?=-Winline -g
 OPTIMIZEFLAGS?=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
-DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
+DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%h")
 
 ifeq ($(shell uname),Darwin)
 MACOSX=1
@@ -128,7 +128,7 @@ BASEADDRESS=0x08000000
 
 ifeq ($(BOARD),)
  # Try and guess board names
- ifeq ($(shell uname -m),armv6l)
+ ifneq ($(shell grep Raspbian /etc/os-release),)
   BOARD=RASPBERRYPI # just a guess
  else ifeq ($(shell uname -n),beaglebone)
   BOARD=BEAGLEBONE
@@ -266,6 +266,7 @@ src/jsinteractive.c \
 src/jsdevices.c \
 src/jstimer.c \
 src/jsi2c.c \
+src/jsserial.c \
 src/jsspi.c \
 src/jshardware_common.c \
 $(WRAPPERFILE)
@@ -307,12 +308,13 @@ SOURCES += \
 libs/compression/heatshrink/heatshrink_encoder.c \
 libs/compression/heatshrink/heatshrink_decoder.c \
 libs/compression/compress_heatshrink.c
-
+WRAPPERSOURCES += \
+libs/compression/jswrap_heatshrink.c
 endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER
 
-ifdef USE_FILESYSTEM
+ifeq ($(USE_FILESYSTEM),1)
 DEFINES += -DUSE_FILESYSTEM
 INCLUDE += -I$(ROOT)/libs/filesystem
 WRAPPERSOURCES += \
@@ -325,7 +327,7 @@ libs/filesystem/fat_sd/fattime.c \
 libs/filesystem/fat_sd/ff.c \
 libs/filesystem/fat_sd/option/unicode.c # for LFN support (see _USE_LFN in ff.h)
 
-ifdef USE_FILESYSTEM_SDIO
+ifeq ($(USE_FILESYSTEM_SDIO),1)
 DEFINES += -DUSE_FILESYSTEM_SDIO
 SOURCES += \
 libs/filesystem/fat_sd/sdio_diskio.c \
@@ -355,7 +357,7 @@ else
 LIBS += -lm
 endif
 
-ifdef USE_GRAPHICS
+ifeq ($(USE_GRAPHICS),1)
 DEFINES += -DUSE_GRAPHICS
 INCLUDE += -I$(ROOT)/libs/graphics
 WRAPPERSOURCES += libs/graphics/jswrap_graphics.c
@@ -365,7 +367,7 @@ libs/graphics/graphics.c \
 libs/graphics/lcd_arraybuffer.c \
 libs/graphics/lcd_js.c
 
-ifdef USE_LCD_SDL
+ifeq ($(USE_LCD_SDL),1)
   DEFINES += -DUSE_LCD_SDL
   SOURCES += libs/graphics/lcd_sdl.c
   LIBS += -lSDL
@@ -377,18 +379,19 @@ ifdef USE_LCD_FSMC
   SOURCES += libs/graphics/lcd_fsmc.c
 endif
 
-ifdef USE_TERMINAL
+
+ifeq ($(USE_TERMINAL),1)
   DEFINES += -DUSE_TERMINAL
   WRAPPERSOURCES += libs/graphics/jswrap_terminal.c
 endif
 
 endif
 
-ifdef USE_USB_HID
+ifeq ($(USE_USB_HID),1)
   DEFINES += -DUSE_USB_HID
 endif
 
-ifdef USE_NET
+ifeq ($(USE_NET),1)
  DEFINES += -DUSE_NET
  INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
  WRAPPERSOURCES += \
@@ -511,7 +514,7 @@ ifdef USE_NET
  endif
 endif # USE_NET
 
-ifdef USE_TV
+ifeq ($(USE_TV),1)
   DEFINES += -DUSE_TV
   WRAPPERSOURCES += libs/tv/jswrap_tv.c
   INCLUDE += -I$(ROOT)/libs/tv
@@ -519,7 +522,7 @@ ifdef USE_TV
   libs/tv/tv.c
 endif
 
-ifdef USE_TRIGGER
+ifeq ($(USE_TRIGGER),1)
   DEFINES += -DUSE_TRIGGER
   WRAPPERSOURCES += libs/trigger/jswrap_trigger.c
   INCLUDE += -I$(ROOT)/libs/trigger
@@ -527,82 +530,35 @@ ifdef USE_TRIGGER
   libs/trigger/trigger.c
 endif
 
-ifdef USE_HASHLIB
-  INCLUDE += -I$(ROOT)/libs/hashlib
-  WRAPPERSOURCES += \
-  libs/hashlib/jswrap_hashlib.c
-  SOURCES += \
-  libs/hashlib/sha2.c
-endif
-
-ifdef USE_WIRINGPI
+ifeq ($(USE_WIRINGPI),1)
   DEFINES += -DUSE_WIRINGPI
   LIBS += -lwiringPi
   INCLUDE += -I/usr/local/include -L/usr/local/lib
 endif
 
-ifdef USE_BLUETOOTH
+ifeq ($(USE_BLUETOOTH),1)
   DEFINES += -DBLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
   SOURCES += libs/bluetooth/bluetooth_utils.c
 endif
 
-ifdef USE_CRYPTO
-  DEFINES += -DUSE_CRYPTO
-  INCLUDE += -I$(ROOT)/libs/crypto
-  INCLUDE += -I$(ROOT)/libs/crypto/mbedtls
-  INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
-  WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
-  SOURCES += \
-libs/crypto/mbedtls/library/sha1.c \
-libs/crypto/mbedtls/library/sha256.c \
-libs/crypto/mbedtls/library/sha512.c
-
-ifdef USE_TLS
-  USE_AES=1
-  DEFINES += -DUSE_TLS
-  SOURCES += \
-libs/crypto/mbedtls/library/bignum.c \
-libs/crypto/mbedtls/library/ctr_drbg.c \
-libs/crypto/mbedtls/library/debug.c \
-libs/crypto/mbedtls/library/ecp.c \
-libs/crypto/mbedtls/library/ecp_curves.c \
-libs/crypto/mbedtls/library/entropy.c \
-libs/crypto/mbedtls/library/entropy_poll.c \
-libs/crypto/mbedtls/library/md5.c \
-libs/crypto/mbedtls/library/pk.c \
-libs/crypto/mbedtls/library/pkparse.c \
-libs/crypto/mbedtls/library/pk_wrap.c \
-libs/crypto/mbedtls/library/rsa.c \
-libs/crypto/mbedtls/library/ssl_ciphersuites.c \
-libs/crypto/mbedtls/library/ssl_cli.c \
-libs/crypto/mbedtls/library/ssl_tls.c \
-libs/crypto/mbedtls/library/ssl_srv.c \
-libs/crypto/mbedtls/library/x509.c \
-libs/crypto/mbedtls/library/x509_crt.c
-endif
-ifdef USE_AES
-  DEFINES += -DUSE_AES
-  SOURCES += \
-libs/crypto/mbedtls/library/aes.c \
-libs/crypto/mbedtls/library/asn1parse.c \
-libs/crypto/mbedtls/library/cipher.c \
-libs/crypto/mbedtls/library/cipher_wrap.c \
-libs/crypto/mbedtls/library/md.c \
-libs/crypto/mbedtls/library/md_wrap.c \
-libs/crypto/mbedtls/library/oid.c \
-libs/crypto/mbedtls/library/pkcs5.c
-endif
+ifeq ($(USE_CRYPTO),1)
+  cryptofound:=$(shell if test -f make/crypto/$(FAMILY).make; then echo yes;fi)
+  ifeq ($(cryptofound),yes)
+    include make/crypto/$(FAMILY).make
+  else
+    include make/crypto/default.make
+  endif 
 endif
 
-ifdef USE_NEOPIXEL
+ifeq ($(USE_NEOPIXEL),1)
   DEFINES += -DUSE_NEOPIXEL
   INCLUDE += -I$(ROOT)/libs/neopixel
   WRAPPERSOURCES += libs/neopixel/jswrap_neopixel.c
 endif
 
-ifdef USE_NFC
+ifeq ($(USE_NFC),1)
   DEFINES += -DUSE_NFC -DNFC_HAL_ENABLED=1
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/t2t_lib
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/uri
@@ -615,7 +571,7 @@ ifdef USE_NFC
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 endif
 
-ifdef USE_WIO_LTE
+ifeq ($(USE_WIO_LTE),1)
   INCLUDE += -I$(ROOT)/libs/wio_lte
   WRAPPERSOURCES += libs/wio_lte/jswrap_wio_lte.c
   SOURCES += targets/stm32/stm32_ws2812b_driver.c
@@ -656,6 +612,7 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
+# --specs=nano.specs uses newlib-nano
 ifdef NRF5X
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
 else ifdef STM32
@@ -790,12 +747,12 @@ else # NO_COMPILE
 $(info WRAPPERSOURCES=$(WRAPPERSOURCES));
 endif
 
-lst:
-	$(PROJ_NAME).lst
+lst: $(PROJ_NAME).lst
 
 clean:
 	@echo Cleaning targets
 	$(Q)find . -name \*.o | grep -v "./arm-bcm2708\|./gcc-arm-none-eabi" | xargs rm -f
+	$(Q)find . -name \*.d | grep -v "./arm-bcm2708\|./gcc-arm-none-eabi" | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
 	$(Q)rm -f $(ROOT)/scripts/*.pyc $(ROOT)/boards/*.pyc
 	$(Q)rm -f $(PROJ_NAME).elf

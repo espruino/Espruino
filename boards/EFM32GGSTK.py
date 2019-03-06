@@ -7,7 +7,7 @@ info = {
   'link': [ "https://www.silabs.com/products/mcu/lowpower/Pages/efm32gg-stk3700.aspx" ],
   'variables': 1720,
   'binary_name': 'espruino_%v_efm32ggstk.bin',
-  'default_console' : "EV_SERIAL4",
+  'default_console' : "EV_SERIAL1",
   'default_console_tx' : "E0",
   'default_console_rx' : "E1",
   'default_console_baudrate' : "115200",

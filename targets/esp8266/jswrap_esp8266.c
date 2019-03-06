@@ -46,9 +46,7 @@ typedef long long int64_t;
 Perform a hardware reset/reboot of the esp8266.
 */
 void jswrap_ESP8266_reboot() {
-  os_printf("Espruino resetting the esp8266\n");
-  os_delay_us(1000); // time for os_printf to drain
-  system_restart();
+  jshReboot();
 }
 
 //===== ESP8266.getResetInfo
@@ -242,7 +240,7 @@ JsVar *jswrap_ESP8266_getState() {
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
 }
-**Note:** This is deprecated. Use `require("flash").getFree()`
+**Note:** This is deprecated. Use `require("Flash").getFree()`
 */
 JsVar *jswrap_ESP8266_getFreeFlash() {
   return jshFlashGetFree();
@@ -355,7 +353,7 @@ void   jswrap_ESP8266_deepSleep(JsVar *jsMicros, JsVar *jsOption) {
   uint8_t option = jsvGetInteger(jsOption);
   system_deep_sleep_set_option(option);
 
-  int sleepTime = jsvGetInteger(jsMicros);
+  uint64_t sleepTime = jsvGetLongInteger(jsMicros);
   system_deep_sleep(sleepTime);
 }
 

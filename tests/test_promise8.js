@@ -2,10 +2,10 @@
 function test() {
   if (busy) return;
   (new Promise(function(go){go(1)})).then(function(x) {
-    console("Ok");
+    console.log("Ok");
     result = x;
   }).catch(function() {
-    console("Fail");
+    console.log("Fail");
   });
 }
 var busy = true;

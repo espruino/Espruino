@@ -442,12 +442,19 @@ ret_code_t hal_nfc_parameter_set(hal_nfc_param_id_t id, const void * p_data, siz
 {
     switch(id)
     {
-        case HAL_NFC_PARAM_ID_UID:
-            if(data_length != NFC_UID_SIZE)
+        case HAL_NFC_PARAM_ID_NFCID1:
+            if(data_length == NFC_UID_SIZE)
+            {
+                memcpy((void *)m_nfc_uid, p_data, NFC_UID_SIZE);
+            } 
+            else if (data_length == 1 && ((char*)p_data)[0] == NFC_UID_SIZE)
+            {
+                memset((void *)m_nfc_uid, '\0', NFC_UID_SIZE);
+            } 
+            else
             {
                 return NRF_ERROR_INVALID_LENGTH;
-            }
-            memcpy((void *)m_nfc_uid, p_data, NFC_UID_SIZE);
+            } 
             break;
         default:
             break;

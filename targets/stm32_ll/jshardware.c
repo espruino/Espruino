@@ -323,16 +323,16 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SERIAL1 : return USART1;
    case EV_SERIAL2 : return USART2;
-#ifdef USART3
+#if USART_COUNT>=3
    case EV_SERIAL3 : return USART3;
 #endif
-#ifdef UART4
+#if USART_COUNT>=4
    case EV_SERIAL4 : return UART4;
 #endif
-#ifdef UART5
+#if USART_COUNT>=5
    case EV_SERIAL5 : return UART5;
 #endif
-#ifdef USART6
+#if USART_COUNT>=6
    case EV_SERIAL6 : return USART6;
 #endif
    default: return 0;
@@ -667,6 +667,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
   assert(DEVICE_IS_USART(device));
 
   jshSetDeviceInitialised(device, true);
+  if (!DEVICE_IS_USART(device)) return;
 
   jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
   jshSetErrorHandlingEnabled(device, inf->errorHandling);
@@ -2176,4 +2177,9 @@ unsigned int jshGetRandomNumber(){
  * speed in Hz though. */
 unsigned int jshSetSystemClock(JsVar *options){
         return 0;
+}
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  NVIC_SystemReset();
 }

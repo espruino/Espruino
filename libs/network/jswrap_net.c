@@ -404,6 +404,18 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
     return 0;
   }
 
+  if ((socketType&ST_TYPE_MASK) == ST_UDP) {
+    JsNetwork net;
+    if (networkGetFromVar(&net)) {
+      int recvBufferSize = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "recvBufferSize", 0));
+      if (recvBufferSize > net.data.recvBufferSize) {
+        net.data.recvBufferSize = recvBufferSize;
+        networkSet(&net);
+      }
+      networkFree(&net);
+    }
+  }
+
   JsVar *rq = clientRequestNew(socketType, options, callback);
   if (unlockOptions) jsvUnLock(options);
 
@@ -435,7 +447,7 @@ This is designed to be a cut-down version of the [node.js library](http://nodejs
   "name" : "createSocket",
   "generate_full" : "jswrap_dgram_createSocket(type, callback)",
   "params" : [
-    ["type","JsVar","Socket type to create e.g. 'udp4'"],
+    ["type","JsVar","Socket type to create e.g. 'udp4'. Or options object { type: 'udp4', reuseAddr: true, recvBufferSize: 1024 }"],
     ["callback","JsVar","A `function(sckt)` that will be called  with the socket when a connection is made. You can then call `sckt.send(...)` to send data, and `sckt.on('message', function(data) { ... })` and `sckt.on('close', function() { ... })` to deal with the response."]
   ],
   "return" : ["JsVar","Returns a new dgram.Socket object"],
@@ -518,22 +530,6 @@ void jswrap_dgram_socket_send(JsVar *parent, JsVar *buffer, JsVar *offset, JsVar
 }
 The 'message' event is called when a datagram message is received. If a handler is defined with `X.on('message', function(msg) { ... })` then it will be called`
 */
-void jswrap_dgram_messageCallback(JsVar *parent, JsVar *msg, JsVar *rinfo) {
-  assert(jsvIsObject(parent));
-  assert(jsvIsString(msg));
-  assert(jsvIsObject(rinfo));
-
-  JsVar *callback = jsvFindChildFromString(parent, DGRAM_MESSAGE_CALLBACK_NAME, false);
-  if (callback) {
-    JsVar *args[] = { msg, rinfo };
-    if (!jsiExecuteEventCallback(parent, callback, 2, args)) {
-      jsError("Error processing Datagram message handler - removing it.");
-      jsErrorFlags |= JSERR_CALLBACK;
-      jsvObjectRemoveChild(parent, DGRAM_MESSAGE_CALLBACK_NAME);
-    }
-    jsvUnLock(callback);
-  }
-}
 
 /*JSON{
   "type" : "method",

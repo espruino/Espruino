@@ -94,7 +94,12 @@ _LEX_R_LIST_START,
     LEX_R_TYPEOF,
     LEX_R_VOID,
     LEX_R_DEBUGGER,
-_LEX_R_LIST_END = LEX_R_DEBUGGER /* always the last entry */
+    LEX_R_CLASS,
+    LEX_R_EXTENDS,
+    LEX_R_SUPER,
+    LEX_R_STATIC,
+    LEX_R_OF,
+_LEX_R_LIST_END = LEX_R_OF /* always the last entry */
 } LEX_TYPES;
 
 

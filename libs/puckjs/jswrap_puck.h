@@ -20,7 +20,6 @@ JsVarInt jswrap_puck_magTemp();
 void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode);
 int jswrap_puck_capSense(Pin tx, Pin rx);
 JsVarFloat jswrap_puck_light();
-int jswrap_puck_getBatteryPercentage();
 bool jswrap_puck_selfTest();
 
 void jswrap_puck_init();

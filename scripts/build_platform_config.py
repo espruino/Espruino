@@ -70,20 +70,21 @@ print("Variables = "+str(variables))
 print("JsVar size = "+str(var_size))
 print("VarCache size = "+str(var_cache_size))
 
+flash_page_size = 1024
 
 if LINUX:
-  flash_page_size = 1024
   flash_saved_code_pages = 8
   total_flash = flash_page_size*flash_saved_code_pages  
 else: # NOT LINUX
   # 100xB and 103xB are mid-density, so have 1k page sizes
   if board.chip["part"][:7]=="STM32F1" and board.chip["part"][10]=="B": board.chip["subfamily"]="MD";
 
-  flash_page_size = 1024 # just a guess
-  if board.chip["family"]=="STM32F1": flash_page_size = 1024 if "subfamily" in board.chip and board.chip["subfamily"]=="MD" else 2048
+  if board.chip["family"]=="STM32F1": 
+    flash_page_size = 1024 if "subfamily" in board.chip and board.chip["subfamily"]=="MD" else 2048
   if board.chip["family"]=="STM32F2":
     flash_page_size = 128*1024
-  if board.chip["family"]=="STM32F3": flash_page_size = 2*1024
+  if board.chip["family"]=="STM32F3": 
+    flash_page_size = 2*1024
   if board.chip["family"]=="STM32F4":
     flash_page_size = 128*1024
   if board.chip["family"]=="NRF51":
@@ -139,6 +140,8 @@ def codeOutDevice(device):
         codeOut("#define "+device+"_PINSTATE JSHPINSTATE_GPIO_"+board.devices[device]["pinstate"]);
     if device[0:3]=="LED":
       codeOut("#define "+device+"_ONSTATE "+("0" if "inverted" in board.devices[device] else "1"))
+    if "no_bootloader" in board.devices[device]:
+      codeOut("#define "+device+"_NO_BOOTLOADER 1 // don't use this in the bootloader");
 
 def codeOutDevicePin(device, pin, definition_name):
   if device in board.devices:
@@ -161,8 +164,11 @@ codeOut("#define PC_BOARD_CHIP_FAMILY \""+board.chip["family"]+"\"")
 
 codeOut("")
 
-linker_end_var = "_end";
-linker_etext_var = "_etext";
+# Linker vars used for:
+linker_end_var = "_end";     # End of RAM (eg top of stack)
+linker_etext_var = "_etext"; # End of text (function) section
+# External interrupt count
+exti_count = 16 
 
 if board.chip["family"]=="LINUX":
   board.chip["class"]="LINUX"
@@ -192,12 +198,14 @@ elif board.chip["family"]=="NRF51":
   board.chip["class"]="NRF51"
   linker_etext_var = "__etext";
   linker_end_var = "end";
+  exti_count = 4
   codeOut('#include "nrf.h"')
 elif board.chip["family"]=="NRF52":
   board.chip["class"]="NRF52"
   linker_etext_var = "__etext";
   linker_end_var = "end";
-  codeOut('#include "nrf.h"') # TRY THIS BUT NOT SURE~!
+  exti_count = 8
+  codeOut('#include "nrf.h"')
 elif board.chip["family"]=="EFM32GG":
   board.chip["class"]="EFM32"
   linker_etext_var = "__etext";
@@ -210,6 +218,7 @@ elif board.chip["family"]=="ESP8266":
   board.chip["class"]="ESP8266"
 elif board.chip["family"]=="ESP32":
   board.chip["class"]="ESP32"
+  exti_count = 40
 elif board.chip["family"]=="SAMD":
   board.chip["class"]="SAMD"
   codeOut('#include "targetlibs/samd/include/due_sam3x.init.h"')
@@ -285,12 +294,14 @@ else:
 codeOut("#define FLASH_SAVED_CODE_START            "+str(flash_saved_code_start))
 codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(int(flash_page_size*flash_saved_code_pages)))
 codeOut("");
+
 codeOut("#define CLOCK_SPEED_MHZ                      "+str(board.chip["speed"]))
 codeOut("#define USART_COUNT                          "+str(board.chip["usart"]))
 codeOut("#define SPI_COUNT                            "+str(board.chip["spi"]))
 codeOut("#define I2C_COUNT                            "+str(board.chip["i2c"]))
 codeOut("#define ADC_COUNT                            "+str(board.chip["adc"]))
 codeOut("#define DAC_COUNT                            "+str(board.chip["dac"]))
+codeOut("#define EXTI_COUNT                           "+str(exti_count))
 codeOut("");
 codeOut("#define DEFAULT_CONSOLE_DEVICE              "+board.info["default_console"]);
 if "default_console_tx" in board.info:
@@ -307,15 +318,22 @@ if LINUX:
   bufferSizeTX = 256
   bufferSizeTimer = 16
 else:
-  bufferSizeIO = 64 if board.chip["ram"]<20 else 128
-  bufferSizeTX = 32 if board.chip["ram"]<20 else 128
+  # IO buffer - for received chars, setWatch, etc
+  bufferSizeIO = 64
+  if board.chip["ram"]>=20: bufferSizeIO = 128
+  if board.chip["ram"]>=96: bufferSizeIO = 256
+  # NRF52 needs this as Bluetooth traffic is funnelled through the buffer
+  if board.chip["family"]=="NRF52": bufferSizeIO = 256
+  # TX buffer - for print/write/etc
+  bufferSizeTX = 32 
+  if board.chip["ram"]>=20: bufferSizeTX = 128
   bufferSizeTimer = 4 if board.chip["ram"]<20 else 16
 
 if 'util_timer_tasks' in board.info:
   bufferSizeTimer = board.info['util_timer_tasks']
 
-codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255) amount of items in event buffer - events take ~9 bytes each")
-codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255)")
+codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255) amount of items in event buffer - events take 5 bytes each")
+codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255) amount of items in the transmit buffer - 2 bytes each")
 codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer)+") // Must be power of 2 - and max 256")
 
 codeOut("");

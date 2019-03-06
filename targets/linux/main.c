@@ -60,7 +60,7 @@ bool run_test(const char *filename) {
   if (!buffer) exit(1);
 
   jshInit();
-  jsvInit();
+  jsvInit(0);
   jsiInit(false /* do not autoload!!! */);
 
   addNativeFunction("quit", nativeQuit);
@@ -206,7 +206,7 @@ void sig_handler(int sig)
 
 void show_help() {
     printf("Usage:\n");
-    printf("   ./espruino                           : JavaScript immdeiate mode (REPL)\n");
+    printf("   ./espruino                           : JavaScript immediate mode (REPL)\n");
     printf("   ./espruino script.js                 : Load and run script.js\n");
     printf("   ./espruino -e \"print('Hello World')\" : Print 'Hello World'\n");
     printf("\n");
@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
       } else if (!strcmp(a,"-e") || !strcmp(a,"--eval")) {
         if (i+1>=argc) die("Expecting an extra argument\n");
         jshInit();
-        jsvInit();
+        jsvInit(0);
         jsiInit(true);
         addNativeFunction("quit", nativeQuit);
         jsvUnLock(jspEvaluate(argv[i+1], false));
@@ -324,7 +324,7 @@ int main(int argc, char **argv) {
       if (cmd[0]=='\n') cmd++;
     }
     jshInit();
-    jsvInit();
+    jsvInit(0);
     jsiInit(false /* do not autoload!!! */);
     addNativeFunction("quit", nativeQuit);
     jsvUnLock(jspEvaluate(cmd, false));
@@ -367,7 +367,7 @@ int main(int argc, char **argv) {
 #endif//!__MINGW32__
 
   jshInit();
-  jsvInit();
+  jsvInit(0);
   jsiInit(true);
 
   addNativeFunction("quit", nativeQuit);

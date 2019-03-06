@@ -179,73 +179,73 @@ void EXTI0_IRQHandler(void) {
 }
 void EXTI1_IRQHandler(void) {
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1) == SET) {
-      jshPushIOWatchEvent(EV_EXTI1);
+      jshPushIOWatchEvent(EV_EXTI0+1);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_1);
     }
 }
 void EXTI2_IRQHandler(void) {
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_2) == SET) {
-      jshPushIOWatchEvent(EV_EXTI2);
+      jshPushIOWatchEvent(EV_EXTI0+2);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_2);
     }
 }
 void EXTI3_IRQHandler(void) {
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_3) == SET) {
-      jshPushIOWatchEvent(EV_EXTI3);
+      jshPushIOWatchEvent(EV_EXTI0+3);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_3);
     }
 }
 void EXTI4_IRQHandler(void) {
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_4) == SET) {
-      jshPushIOWatchEvent(EV_EXTI4);
+      jshPushIOWatchEvent(EV_EXTI0+4);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_4);
     }
 }
 void EXTI9_5_IRQHandler(void) {
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_5) == SET) {
-      jshPushIOWatchEvent(EV_EXTI5);
+      jshPushIOWatchEvent(EV_EXTI0+5);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_5);
     }
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_6) == SET) {
-      jshPushIOWatchEvent(EV_EXTI6);
+      jshPushIOWatchEvent(EV_EXTI0+6);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_6);
     }
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_7) == SET) {
-      jshPushIOWatchEvent(EV_EXTI7);
+      jshPushIOWatchEvent(EV_EXTI0+7);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_7);
     }
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_8) == SET) {
-      jshPushIOWatchEvent(EV_EXTI8);
+      jshPushIOWatchEvent(EV_EXTI0+8);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_8);
     }
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_9) == SET) {
-      jshPushIOWatchEvent(EV_EXTI9);
+      jshPushIOWatchEvent(EV_EXTI0+9);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_9);
     }
 }
 void EXTI15_10_IRQHandler(void) {
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_10) == SET) {
-      jshPushIOWatchEvent(EV_EXTI10);
+      jshPushIOWatchEvent(EV_EXTI0+10);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_10);
     }
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_11) == SET) {
-      jshPushIOWatchEvent(EV_EXTI11);
+      jshPushIOWatchEvent(EV_EXTI0+11);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_11);
     }
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_12) == SET) {
-      jshPushIOWatchEvent(EV_EXTI12);
+      jshPushIOWatchEvent(EV_EXTI0+12);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_12);
     }
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_13) == SET) {
-      jshPushIOWatchEvent(EV_EXTI13);
+      jshPushIOWatchEvent(EV_EXTI0+13);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_13);
     }
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_14) == SET) {
-      jshPushIOWatchEvent(EV_EXTI14);
+      jshPushIOWatchEvent(EV_EXTI0+14);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_14);
     }
     if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_15) == SET) {
-      jshPushIOWatchEvent(EV_EXTI15);
+      jshPushIOWatchEvent(EV_EXTI0+15);
       LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_15);
     }
 }

@@ -66,20 +66,13 @@ const void *exportPtrs[] = {
     jsvGetFloat,
     jsvGetInteger,
     jsvGetBool,
-    jspReplaceWith,
+    jsvReplaceWith,
     jspeFunctionCall,
     jspGetNamedVariable,
     jspGetNamedField,
     jspGetVarNamedField,
     0
 };
-const char *exportNames = 
-    "jsvLockAgainSafe\0jsvUnLock\0jsvSkipName\0jsvMathsOp\0"
-    "jsvNewWithFlags\0jsvNewFromFloat\0jsvNewFromInteger\0jsvNewFromString\0jsvNewFromBool\0"
-    "jsvGetFloat\0jsvGetInteger\0jsvGetBool\0"
-    "jspReplaceWith\0jspeFunctionCall\0"
-    "jspGetNamedVariable\0jspGetNamedField\0jspGetVarNamedField\0"
-    "\0\0";
 #endif
 
 /*JSON{
@@ -89,14 +82,13 @@ const char *exportNames =
   "generate" : "jswrap_process_env",
   "return" : ["JsVar","An object"]
 }
-Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION
+Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION, FLASH, RAM, MODULES.
+
+For example, to get a list of built-in modules, you can use `process.env.MODULES.split(',')`
  */
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
   jsvObjectSetChildAndUnLock(obj, "VERSION", jsvNewFromString(JS_VERSION));
-#if !defined(SAVE_ON_FLASH)
-  jsvObjectSetChildAndUnLock(obj, "BUILD_DATE", jsvNewFromString(__DATE__ " " __TIME__));
-#endif
 #ifdef GIT_COMMIT
   jsvObjectSetChildAndUnLock(obj, "GIT_COMMIT", jsvNewFromString(STRINGIFY(GIT_COMMIT)));
 #endif
@@ -106,21 +98,6 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
   jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
   jsvObjectSetChildAndUnLock(obj, "MODULES", jsvNewFromString(jswGetBuiltInLibraryNames()));
-#if !defined(SAVE_ON_FLASH) && !defined(BLUETOOTH)
-  // It takes too long to send this information over BLE...
-  JsVar *arr = jsvNewObject();
-  if (arr) {
-    const char *s = exportNames;
-    void **p = (void**)exportPtrs;
-    while (*s) {
-      jsvObjectSetChildAndUnLock(arr, s, jsvNewFromInteger((JsVarInt)(size_t)*p));
-      p++;
-      while (*s) s++; // skip until 0
-      s++; // skip over 0
-    }
-    jsvObjectSetChildAndUnLock(obj, "EXPORTS", arr);
-  }  
-#endif
 #ifndef SAVE_ON_FLASH
   // Pointer to a list of predefined exports - eventually we'll get rid of the array above
   jsvObjectSetChildAndUnLock(obj, "EXPTR", jsvNewFromInteger((JsVarInt)(size_t)exportPtrs));
@@ -176,8 +153,8 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "gctime", jsvNewFromFloat(jshGetMillisecondsFromTime(time2-time1)));
 
 #ifdef ARM
-    extern int LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings
-    extern int LINKER_ETEXT_VAR; // end of flash text (binary) section - should be 'void', but 'int' avoids warnings
+    extern uint32_t LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings
+    extern uint32_t LINKER_ETEXT_VAR; // end of flash text (binary) section - should be 'void', but 'int' avoids warnings
     jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));
     jsvObjectSetChildAndUnLock(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START));
     jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_ETEXT_VAR));

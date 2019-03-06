@@ -32,10 +32,9 @@ info = {
      'BLUETOOTH',
      'NET',
      'GRAPHICS',
-     'CRYPTO',
+     'CRYPTO','SHA256','SHA512',
      'NFC',
      'NEOPIXEL'
-     #'HASHLIB'
      #'FILESYSTEM'
      #'TLS'
    ],
@@ -57,22 +56,22 @@ chip = {
   'flash' : 512,
   'speed' : 64,
   'usart' : 1,
-  'spi' : 3,
-  'i2c' : 2,
+  'spi' : 1,
+  'i2c' : 1,
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((115 - 3) * 4096), # Bootloader takes pages 117-127 on RuuviTag, FS takes 115-116
+    'address' : ((115 - 10) * 4096), # Bootloader takes pages 117-127 on RuuviTag, FS takes 115-116
     'page_size' : 4096,
-    'pages' : 3,
-    'flash_available' : 512 - ((31 + 11 + 1 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 11, code 3. Each page is 4 kb.
+    'pages' : 10,
+    'flash_available' : 512 - ((31 + 11 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 11, fs 2, code 10. Each page is 4 kb.
   },
 };
 
 devices = {
-  'LED1' : { 'pin' : 'D17', 'inverted' : True },
-  'LED2' : { 'pin' : 'D19', 'inverted' : True },
-  'BTN1' : { 'pin' : 'D13', 'inverted' : True, 'pinstate' : 'IN_PULLUP' },
+  'LED1' : { 'pin' : 'D17' }, # Pin negated in software (see below)
+  'LED2' : { 'pin' : 'D19' },  # Pin negated in software (see below)
+  'BTN1' : { 'pin' : 'D13', 'pinstate' : 'IN_PULLDOWN' },  # Pin negated in software (see below)
   'CSBME' : { 'pin' : 'D3', 'inverted' : True, 'pinstate' : 'IN_PULLUP' },
   'CSLIS' : { 'pin' : 'D8', 'inverted' : True, 'pinstate' : 'IN_PULLUP' },
   'RX_PIN_NUMBER' : { 'pin' : 'D5'},
@@ -117,5 +116,11 @@ def get_pins():
   pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN5"]=0;
   pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
-  #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
+  # The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
+
+  # Make buttons and LEDs negated
+  pinutils.findpin(pins, "PD17", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD19", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD13", True)["functions"]["NEGATED"]=0;
+  
   return pins

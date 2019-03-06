@@ -134,6 +134,15 @@ board["_css"] = """
   top: 320px;
   left: 530px;
 }
+/* prevent pins overlay legends from overlapping when hovering */
+#boardcontainer:hover #left { opacity: 0.1; }
+#boardcontainer:hover #left2 { opacity: 0.1; }
+#boardcontainer:hover #right { opacity: 0.1; }
+#boardcontainer:hover #right2 { opacity: 0.1; }
+#boardcontainer:hover #left:hover { opacity: 1; z-index: 10; }
+#boardcontainer:hover #left2:hover { opacity: 1; z-index: 10; }
+#boardcontainer:hover #right2:hover { opacity: 1; z-index: 10; }
+#boardcontainer:hover #right:hover { opacity: 1; z-index: 10; }
 """;
 
 def get_pins():

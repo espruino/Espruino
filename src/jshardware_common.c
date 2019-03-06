@@ -34,11 +34,12 @@ void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->pinMOSI      = PIN_UNDEFINED;
   inf->spiMode      = SPIF_SPI_MODE_0;
   inf->spiMSB       = true; // MSB first is default
+  inf->numBits      = 8;
 }
 
 void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->pinSCL = PIN_UNDEFINED;
   inf->pinSDA = PIN_UNDEFINED;
-  inf->bitrate = 50000; // Is what we used - shouldn't it be 100k?
+  inf->bitrate = 100000;
   inf->started = false;
 }

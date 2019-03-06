@@ -105,12 +105,16 @@ int net_wiznet_createsocket(JsNetwork *net, SocketType socketType, uint32_t host
 
 /// destroys the given socket
 void net_wiznet_closesocket(JsNetwork *net, int sckt) {
+  uint8_t status;
+#if _WIZCHIP_ == 5500
   // try and close gracefully
   disconnect((uint8_t)sckt);
   JsSysTime timeout = jshGetSystemTime()+jshGetTimeFromMilliseconds(1000);
-  uint8_t status;
   while ((status=getSn_SR((uint8_t)sckt)) != SOCK_CLOSED &&
          jshGetSystemTime()<timeout) ;
+#else // W5100 hangs for 30s on disconnect - https://github.com/espruino/Espruino/issues/1306
+  status=getSn_SR((uint8_t)sckt);
+#endif
   // if that didn't work, force it
   if (status != SOCK_CLOSED)
     closesocket((uint8_t)sckt);
@@ -162,13 +166,10 @@ int net_wiznet_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, 
     getsockopt(sckt, SO_RECVBUF, &dataAvailable);
     if (!dataAvailable) return 0;
 
-    size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
-    uint32_t *host = (uint32_t*)buf;
-    unsigned short *port = (unsigned short*)&host[1];
-    uint16_t *size = (unsigned short*)&port[1];
-    num = (int)recvfrom((uint8_t)sckt,buf+delta,len-delta,(uint8_t*)host,(uint16_t*)port);
-    *size = num;
-    if (num) num += (int)delta;
+    JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+    num = (int)recvfrom((uint8_t)sckt,buf+sizeof(JsNetUDPPacketHeader),len-sizeof(JsNetUDPPacketHeader),(uint8_t*)&header->host,(uint16_t*)&header->port);
+    header->length = num;
+    if (num) num += sizeof(JsNetUDPPacketHeader);
   } else if (getSn_SR((uint8_t)sckt) == SOCK_LISTEN) {
     // socket is operating as a TCP server - something has gone wrong.
     // just return -1 to close this connection immediately
@@ -186,12 +187,8 @@ int net_wiznet_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, 
 int net_wiznet_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
   int r;
   if (socketType & ST_UDP) {
-    size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
-    uint32_t *host = (uint32_t*)buf;
-    unsigned short *port = (unsigned short*)&host[1];
-    uint16_t *size = (uint16_t*)&port[1];
-
-    r = (int)sendto((uint8_t)sckt, buf + delta, *size, (uint8_t*)host, *port) + (int)delta;
+    JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+    r = (int)sendto((uint8_t)sckt, buf + sizeof(JsNetUDPPacketHeader), header->length, (uint8_t*)&header->host, header->port) + sizeof(JsNetUDPPacketHeader);
   } else {
     r = (int)send((uint8_t)sckt, buf, (uint16_t)len, MSG_NOSIGNAL);
   }

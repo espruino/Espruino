@@ -208,6 +208,7 @@
 / System Configurations
 /---------------------------------------------------------------------------*/
 
+#ifdef SAVE_ON_FLASH
 #define _FS_NORTC	1
 #define _NORTC_MON	1
 #define _NORTC_MDAY	1
@@ -220,6 +221,10 @@
 /  to be added to the project to read current time from RTC. _NORTC_MON,
 /  _NORTC_MDAY and _NORTC_YEAR have no effect. 
 /  These options have no effect at read-only configuration (_FS_READONLY == 1). */
+#else
+#define _FS_NORTC 0
+// we have time!
+#endif
 
 
 #define	_FS_LOCK	0

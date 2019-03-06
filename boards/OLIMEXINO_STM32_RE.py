@@ -27,7 +27,6 @@ info = {
      'GRAPHICS',
      'FILESYSTEM',
      'TV',
-     'HASHLIB'
    ],
    'makefile' : [
      'STLIB=STM32F10X_HD',

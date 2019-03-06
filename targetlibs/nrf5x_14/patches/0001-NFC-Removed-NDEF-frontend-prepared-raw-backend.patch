@@ -1,0 +1,82 @@
+From 97718ae8b320e9be84e533bb60c617d4c440d688 Mon Sep 17 00:00:00 2001
+From: AntiCat <github@anticat.ch>
+Date: Fri, 26 May 2017 02:48:29 +0200
+Subject: [PATCH 1/7] NFC: Removed NDEF frontend, prepared raw backend.
+
+Implementing NDEF in JS requires access to 10 byte
+tag header, holding UID and BCC.
+---
+ .../nrf5x/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c   | 16 +++++++++++++---
+ .../nrf5x/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h   |  1 +
+ 2 files changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+index 1235e1d6..ca8b5cbf 100644
+--- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
++++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+@@ -44,7 +44,6 @@
+ #include "hal_nfc_t2t.h"
+ #include <stdint.h>
+ #include <stdbool.h>
+-#include "nfc_t2t_lib.h"
+ #include "nfc_fixes.h"
+ #include "nrf.h"
+ #include "app_util_platform.h"
+@@ -155,6 +154,7 @@ static void hal_nfc_nfcid1_registers_setup(void);
+ static void hal_nfc_internal_bytes_setup(void);
+ 
+ /* Static data */
++static uint8_t                      m_nfc_internal[T2T_INTERNAL_BYTES_NR] = {0};       /**< Cache of internal tag memory (first 10 bytes) */
+ static hal_nfc_callback_t           m_nfc_lib_callback = (hal_nfc_callback_t) NULL;    /**< Callback to nfc_lib layer */
+ static void *                       m_nfc_lib_context;                                 /**< Callback execution context */
+ static volatile uint8_t             m_nfc_rx_buffer[NFC_RX_BUFFER_SIZE]   = {0};       /**< Buffer for NFC Rx data */
+@@ -302,7 +302,7 @@ static void hal_nfc_internal_bytes_setup(void)
+ {
+     if (m_nfcid1_length == NFCID1_TRIPLE_SIZE)
+     {
+-        (void) nfc_t2t_internal_set(m_nfcid1_data, T2T_INTERNAL_BYTES_NR);
++        memcpy(m_nfc_internal, m_nfcid1_data, T2T_INTERNAL_BYTES_NR);
+     }
+     else
+     {
+@@ -336,7 +336,7 @@ static void hal_nfc_internal_bytes_setup(void)
+             nfc_internal[9] = NFC_LIB_VERSION;                    // For internal use
+         }
+ 
+-        (void) nfc_t2t_internal_set(nfc_internal, T2T_INTERNAL_BYTES_NR);
++        memcpy(m_nfc_internal, nfc_internal, T2T_INTERNAL_BYTES_NR);
+     }
+ }
+ 
+@@ -574,6 +574,16 @@ ret_code_t hal_nfc_parameter_get(hal_nfc_param_id_t id, void * p_data, size_t *
+         *p_max_data_length = (size_t) m_nfcid1_length;
+         memcpy(p_data, m_nfcid1_data, m_nfcid1_length);
+     }
++    else if (id == HAL_NFC_PARAM_ID_INTERNAL)
++    {
++        if(*p_max_data_length < T2T_INTERNAL_BYTES_NR)
++        {
++            *p_max_data_length = T2T_INTERNAL_BYTES_NR;
++            return NRF_ERROR_INVALID_LENGTH;
++        }
++        *p_max_data_length = T2T_INTERNAL_BYTES_NR;
++        memcpy(p_data, (void *)m_nfc_internal, T2T_INTERNAL_BYTES_NR);
++    }
+ 
+     return NRF_SUCCESS;
+ }
+diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
+index 9f6fc527..3ee968aa 100644
+--- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
++++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
+@@ -76,6 +76,7 @@ typedef enum {
+                                             To use default NFCID1 of specific length pass one byte containing requested length.
+                                             Default 7-byte NFCID1 will be used if this parameter was not set. This parameter can be
+                                             set before nfc_t2t_setup() to set initial NFCID1 and it can be changed later. */
++    HAL_NFC_PARAM_ID_INTERNAL,        ///<  Get internal bytes, replaces nfc_t2t_internal_set()
+     HAL_NFC_PARAM_ID_UNKNOWN
+ } hal_nfc_param_id_t;
+ 
+-- 
+2.16.0
+

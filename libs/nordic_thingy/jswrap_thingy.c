@@ -26,7 +26,7 @@
 
 #define I2C_SDA 7
 #define I2C_SCL 8
-// SX1509 IO Expader
+// SX1509 IO Expander
 #define SX_I2C_ADDR 0x3e
 #define SX_RESET 16
 #define SX_POWER 30
@@ -60,7 +60,7 @@ unsigned char sxReadReg(unsigned reg) {
 
 void jshVirtualPinInitialise() {
   jshPinOutput(SX_POWER, 1); // enable IO expander power
-  jshPinSetValue(i2cInfo.pinSDA, 1);
+  jshPinSetValue(i2cInfo.pinSCL, 1);
   jshPinSetState(i2cInfo.pinSCL,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   jshPinSetValue(i2cInfo.pinSDA, 1);
   jshPinSetState(i2cInfo.pinSDA,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);

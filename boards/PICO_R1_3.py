@@ -35,9 +35,8 @@ info = {
      'NET',
      'GRAPHICS',
      'TV',
-     'HASHLIB',
      'FILESYSTEM',
-     'CRYPTO',
+     'CRYPTO','SHA256','SHA512',
      'TLS',
      'NEOPIXEL'
    ],

@@ -43,6 +43,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_gpiote.h"
 #include "nrf_timer.h"
 #include "nrf_delay.h"
+#include "nrf_nvic.h"
 #ifdef NRF52
 #include "nrf_saadc.h"
 #include "nrf_pwm.h"
@@ -61,7 +62,8 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "softdevice_handler.h"
 #endif
 
-#define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
+#define SYSCLK_FREQ 1048576 // 1 << 20
+#define RTC_SHIFT 5 // to get 32768 up to SYSCLK_FREQ
 
 /*  S110_SoftDevice_Specification_2.0.pdf
 
@@ -105,6 +107,8 @@ static uint8_t uart0rxBuffer[2]; // 2 char buffer
 static uint8_t uart0txBuffer[1];
 bool uartIsSending = false;
 bool uartInitialised = false;
+
+void jshUSARTUnSetup(IOEventFlags device);
 
 const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
@@ -175,9 +179,13 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
       break;
     }
 #endif
-  case JSH_USART1: if (fInfo==JSH_USART_RX) NRF_UART0->PSELRXD = pin;
-                   else NRF_UART0->PSELTXD = pin;
-                   // TODO: do we need to disable the UART driver if both pins are undefined?
+  case JSH_USART1: if (fInfo==JSH_USART_RX) {
+                     NRF_UART0->PSELRXD = pin;
+                     if (pin==0xFFFFFFFF) nrf_drv_uart_rx_disable(&UART0);
+                   } else NRF_UART0->PSELTXD = pin;
+                   // if both pins are disabled, shut down the UART
+                   if (NRF_UART0->PSELRXD==0xFFFFFFFF && NRF_UART0->PSELTXD==0xFFFFFFFF)
+                     jshUSARTUnSetup(EV_SERIAL1);
                    break;
 #if SPI_ENABLED
   case JSH_SPI1: if (fInfo==JSH_SPI_MISO) NRF_SPI0->PSELMISO = pin;
@@ -270,6 +278,9 @@ void jshInit() {
     inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
     inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
     jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
+  } else {
+    // If there's no UART, 'disconnect' the IO pin - this saves power when in deep sleep in noisy electrical environments
+    jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_UNDEFINED);
   }
 #endif
 
@@ -367,10 +378,10 @@ JsSysTime jshGetSystemTime() {
   // Detect RTC overflows
   uint32_t systemTime = NRF_RTC0->COUNTER;
   if ((lastSystemTime & 0x800000) && !(systemTime & 0x800000))
-    baseSystemTime += 0x1000000; // it's a 24 bit counter
+    baseSystemTime += (0x1000000 << RTC_SHIFT); // it's a 24 bit counter
   lastSystemTime = systemTime;
   // Use RTC0 (also used by BLE stack) - as app_timer starts/stops RTC1
-  return baseSystemTime + (JsSysTime)systemTime;
+  return baseSystemTime + (JsSysTime)(systemTime << RTC_SHIFT);
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
@@ -526,11 +537,17 @@ JshPinState jshPinGetState(Pin pin) {
 #endif
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   uint32_t p = NRF_GPIO->PIN_CNF[ipin];
+  bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
   if ((p&GPIO_PIN_CNF_DIR_Msk)==(GPIO_PIN_CNF_DIR_Output<<GPIO_PIN_CNF_DIR_Pos)) {
+    uint32_t pinDrive = (p&GPIO_PIN_CNF_DRIVE_Msk)>>GPIO_PIN_CNF_DRIVE_Pos;
+    uint32_t pinPull = (p&GPIO_PIN_CNF_PULL_Msk)>>GPIO_PIN_CNF_PULL_Pos;
     // Output
-    JshPinState hi = (NRF_GPIO->OUT & (1<<ipin)) ? JSHPINSTATE_PIN_IS_ON : 0;
-    if ((p&GPIO_PIN_CNF_DRIVE_Msk)==(GPIO_PIN_CNF_DRIVE_S0D1<<GPIO_PIN_CNF_DRIVE_Pos)) {
-      if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos))
+    bool pinIsHigh = NRF_GPIO->OUT & (1<<ipin);
+    if (negated) pinIsHigh = !pinIsHigh;
+    JshPinState hi = pinIsHigh ? JSHPINSTATE_PIN_IS_ON : 0;
+
+    if (pinDrive==GPIO_PIN_CNF_DRIVE_S0D1 || pinDrive==GPIO_PIN_CNF_DRIVE_H0D1) {
+      if (pinPull==GPIO_PIN_CNF_PULL_Pullup)
         return JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP|hi;
       else {
         if (pinStates[pin])
@@ -547,9 +564,9 @@ JshPinState jshPinGetState(Pin pin) {
   } else {
     // Input
     if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos)) {
-      return JSHPINSTATE_GPIO_IN_PULLUP;
+      return negated ? JSHPINSTATE_GPIO_IN_PULLDOWN : JSHPINSTATE_GPIO_IN_PULLUP;
     } else if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pulldown<<GPIO_PIN_CNF_PULL_Pos)) {
-      return JSHPINSTATE_GPIO_IN_PULLDOWN;
+      return negated ? JSHPINSTATE_GPIO_IN_PULLUP : JSHPINSTATE_GPIO_IN_PULLDOWN;
     } else {
       return JSHPINSTATE_GPIO_IN;
     }
@@ -698,6 +715,8 @@ JshPinFunction jshGetFreeTimer(JsVarFloat freq) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+  if (value>1) value=1;
+  if (value<0) value=0;
 #ifdef NRF52
   // Try and use existing pin function
   JshPinFunction func = pinStates[pin];
@@ -970,6 +989,21 @@ static void uart0_event_handle(nrf_drv_uart_event_t * p_event, void* p_context) 
     }
 }
 
+void jshUSARTUnSetup(IOEventFlags device) {
+  if (device != EV_SERIAL1)
+    return;
+  if (!uartInitialised)
+    return;
+  uartInitialised = false;
+  jshTransmitClearDevice(device);
+  nrf_drv_uart_rx_disable(&UART0);
+  nrf_drv_uart_tx_abort(&UART0);
+
+  jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
+  nrf_drv_uart_uninit(&UART0);
+}
+
+
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (device != EV_SERIAL1)
@@ -1210,7 +1244,7 @@ JsVar *jshFlashGetFree() {
   JsVar *jsFreeFlash = jsvNewEmptyArray();
   if (!jsFreeFlash) return 0;
   /* Try and find pages after the end of firmware but before saved code */
-  extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
+  extern uint32_t LINKER_ETEXT_VAR; // end of flash text (binary) section
   uint32_t firmwareEnd = (uint32_t)&LINKER_ETEXT_VAR;
   uint32_t pAddr, pSize;
   jshFlashGetPage(firmwareEnd, &pAddr, &pSize);
@@ -1271,7 +1305,18 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
     }
   } else {
     flashIsBusy = true;
-    while ((err = sd_flash_write((uint32_t*)addr, (uint32_t *)buf, len>>2)) == NRF_ERROR_BUSY);
+    uint32_t wordOffset = 0;
+    while (len>0 && !jspIsInterrupted()) {
+      uint32_t l = len;
+#ifdef NRF51
+      if (l>1024) l=1024; // max write size
+#else
+      if (l>4096) l=4096; // max write size
+#endif
+      len -= l;
+      while ((err = sd_flash_write(((uint32_t*)addr)+wordOffset, ((uint32_t *)buf)+wordOffset, l>>2)) == NRF_ERROR_BUSY && !jspIsInterrupted());
+      wordOffset += l>>2;
+    }
     if (err!=NRF_SUCCESS) flashIsBusy = false;
     WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
   }
@@ -1354,6 +1399,7 @@ void jshUtilTimerStart(JsSysTime period) {
 void jshUtilTimerDisable() {
   utilTimerActive = false;
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_SHUTDOWN);
 }
 
 // the temperature from the internal temperature sensor
@@ -1420,4 +1466,9 @@ unsigned int jshGetRandomNumber() {
 
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;
+}
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  NVIC_SystemReset();
 }

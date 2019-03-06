@@ -27,8 +27,9 @@ typedef enum {
   JSON_NO_UNDEFINED      = 64, //< don't output undefined keys in objects, and use null for undefined in arrays
   JSON_ARRAYBUFFER_AS_ARRAY = 128, //< dump arraybuffers as arrays
   JSON_SHOW_OBJECT_NAMES    = 256, //< Show 'Promise {}'/etc for objects if the type is global
+  JSON_DROP_QUOTES       = 512, //< When outputting objects, drop quotes for alphanumeric field names
   // ...
-  JSON_INDENT            = 512, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
+  JSON_INDENT            = 1024, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
 } JSONFlags;
 
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */

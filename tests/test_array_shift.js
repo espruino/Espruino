@@ -13,6 +13,10 @@ var r  = [
   a[3]==8
 ];
 
+// used to cause a referenceerror when shift (brokenly) returned a name
+a = [0];
+a.shift()
+
 var pass = 0;
 r.forEach(function(n) { if (n) pass++; });
 result = pass==r.length;

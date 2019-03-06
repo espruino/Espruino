@@ -61,16 +61,21 @@ bool isIDString(const char *s) {
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again. */
 const char *escapeCharacter(char ch) {
-  if (ch=='\b') return "\\b";
-  if (ch=='\f') return "\\f";
-  if (ch=='\n') return "\\n";
-  if (ch=='\a') return "\\a";
-  if (ch=='\r') return "\\r";
-  if (ch=='\t') return "\\t";
+  if (ch=='\b') return "\\b"; // 8
+  if (ch=='\t') return "\\t"; // 9
+  if (ch=='\n') return "\\n"; // A
+  if (ch=='\v') return "\\v"; // B
+  if (ch=='\f') return "\\f"; // C
+  if (ch=='\r') return "\\r"; // D
   if (ch=='\\') return "\\\\";
   if (ch=='"') return "\\\"";
   static char buf[5];
-  if (ch<32 || ch>=127) {
+  if (ch<8) {
+    // encode less than 8 as \#
+    buf[0]='\\';
+    buf[1] = (char)('0'+ch);
+    return buf;
+  } else if (ch<32 || ch>=127) {
     /** just encode as hex - it's more understandable
      * and doesn't have the issue of "\16"+"1" != "\161" */
     buf[0]='\\';
@@ -145,8 +150,12 @@ int chtod(char ch) {
   else return -1;
 }
 
-/* convert a number in the given radix to an int. if radix=0, autodetect */
-long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
+/* convert a number in the given radix to an int */
+long long stringToIntWithRadix(const char *s,
+               int forceRadix, //!< if radix=0, autodetect
+               bool *hasError, //!< If nonzero, set to whether there was an error or not
+               const char **endOfInteger //!<  If nonzero, this is set to the point at which the integer finished in the string
+               ) {
   // skip whitespace (strange parseInt behaviour)
   while (isWhitespace(*s)) s++;
 
@@ -160,6 +169,7 @@ long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   }
 
   const char *numberStart = s;
+  if (endOfInteger) (*endOfInteger)=s;
 
   int radix = getRadix(&s, forceRadix, hasError);
   if (!radix) return 0;
@@ -174,6 +184,7 @@ long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
 
   if (hasError)
     *hasError = s==numberStart; // we had an error if we didn't manage to parse any chars at all
+  if (endOfInteger) (*endOfInteger)=s;
 
   if (isNegated) return -v;
   return v;
@@ -183,7 +194,7 @@ long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
  * Convert hex, binary, octal or decimal string into an int.
  */
 long long stringToInt(const char *s) {
-  return stringToIntWithRadix(s,0,0);
+  return stringToIntWithRadix(s,0,NULL,NULL);
 }
 
 #ifndef USE_FLASH_MEMORY
@@ -474,13 +485,11 @@ unsigned char *flash_memcpy(unsigned char *dst, const unsigned char *src, size_t
 #endif
 
 
-/**
- * Convert a string to a JS float variable where the string is of a specific radix.
- * \return A JS float variable.
- */
+/** Convert a string to a JS float variable where the string is of a specific radix. */
 JsVarFloat stringToFloatWithRadix(
-    const char *s, //!< The string to be converted to a float.
-	int forceRadix //!< The radix of the string data.
+    const char *s, //!< The string to be converted to a float
+  	int forceRadix, //!< The radix of the string data, or 0 to guess
+  	const char **endOfFloat //!<  If nonzero, this is set to the point at which the float finished in the string
   ) {
   // skip whitespace (strange parseFloat behaviour)
   while (isWhitespace(*s)) s++;
@@ -494,6 +503,7 @@ JsVarFloat stringToFloatWithRadix(
   }
 
   const char *numberStart = s;
+  if (endOfFloat) (*endOfFloat)=s;
 
   int radix = getRadix(&s, forceRadix, 0);
   if (!radix) return NAN;
@@ -552,22 +562,21 @@ JsVarFloat stringToFloatWithRadix(
       }
     }
   }
+
+  if (endOfFloat) (*endOfFloat)=s;
   // check that we managed to parse something at least
-  if (numberStart==s || (numberStart[0]=='.' && numberStart[1]==0)) return NAN;
+  if (numberStart==s || // nothing
+      (numberStart[0]=='.' && s==&numberStart[1]) // just a '.'
+      ) return NAN;
 
   if (isNegated) return -v;
   return v;
 }
 
 
-/**
- * convert a string to a floating point JS variable.
- * \return a JS float variable.
- */
-JsVarFloat stringToFloat(
-    const char *s //!< The string to convert to a float.
-  ) {
-  return stringToFloatWithRadix(s,0); // don't force the radix to anything in particular
+/** convert a string to a floating point JS variable. */
+JsVarFloat stringToFloat(const char *s) {
+  return stringToFloatWithRadix(s, 0, NULL); // don't force the radix to anything in particular
 }
 
 
@@ -602,11 +611,12 @@ void itostr_extra(JsVarInt vals,char *str,bool signedVal, unsigned int base) {
 }
 
 void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fractionalDigits) {
+  assert(len>9); // in case if strcpy
   const JsVarFloat stopAtError = 0.0000001;
-  if (isnan(val)) strncpy(str,"NaN",len);
+  if (isnan(val)) strcpy(str,"NaN");
   else if (!isfinite(val)) {
-    if (val<0) strncpy(str,"-Infinity",len);
-    else strncpy(str,"Infinity",len);
+    if (val<0) strcpy(str,"-Infinity");
+    else strcpy(str,"Infinity");
   } else {
     if (val<0) {
       if (--len <= 0) { *str=0; return; } // bounds check
@@ -658,6 +668,7 @@ void ftoa_bounded(JsVarFloat val,char *str, size_t len) {
 
 /// Wrap a value so it is always between 0 and size (eg. wrapAround(angle, 360))
 JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
+  if (size<0.0) return 0.0;
   val = val / size;
   val = val - (int)val;
   return val * size;
@@ -740,7 +751,7 @@ void vcbprintf(
       case 'v': {
         bool quoted = fmtChar=='q';
         if (quoted) user_callback("\"",user_data);
-        JsVar *v = jsvAsString(va_arg(argp, JsVar*), false/*no unlock*/);
+        JsVar *v = jsvAsString(va_arg(argp, JsVar*));
         buf[1] = 0;
         if (jsvIsString(v)) {
           JsvStringIterator it;
@@ -826,7 +837,7 @@ int espruino_snprintf( char * s, size_t n, const char * fmt, ... ) {
 }
 
 #ifdef ARM
-extern int LINKER_END_VAR; // should be 'void', but 'int' avoids warnings
+extern uint32_t LINKER_END_VAR; // should be 'void', but 'int' avoids warnings
 #endif
 
 /** get the amount of free stack we have, in bytes */
@@ -842,7 +853,9 @@ size_t jsuGetFreeStack() {
   char ptr; // this is on the stack
   extern void *STACK_BASE;
   uint32_t count =  (uint32_t)((size_t)STACK_BASE - (size_t)&ptr);
-  return 1000000 - count; // give it 1 megabyte of stack
+  const uint32_t max_stack = 1000000; // give it 1 megabyte of stack
+  if (count>max_stack) return 0;
+  return max_stack - count;
 #else
   // stack depth seems pretty platform-specific :( Default to a value that disables it
   return 1000000; // no stack depth check on this platform

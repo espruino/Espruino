@@ -264,6 +264,9 @@ int32_t sanity_int_flt_int(int32_t a, JsVarFloat b, int32_t c) {
 
 /** Perform sanity tests to ensure that  jsnCallFunction is working as expected */
 void jsnSanityTest() {
+  if (sizeof(JsVarFlags)!=2)
+    jsiConsolePrintf("WARNING: jsnative.c sanity check failed (sizeof(JsVarFlags)==2) %d\n", sizeof(JsVarFlags));
+
   if (sizeof(JsnArgumentType)!=2)
     jsiConsolePrintf("WARNING: jsnative.c sanity check failed (sizeof(JsnArgumentType)==2) %d\n", sizeof(JsnArgumentType));
 

@@ -33,15 +33,24 @@ This class helps
   "name" : "DataView",
   "generate" : "jswrap_dataview_constructor",
   "params" : [
-    ["buffer","JsVar","The ArrayBuffer to base this on"],
+    ["buffer","JsVar","The `ArrayBuffer` to base this on"],
     ["byteOffset","int","(optional) The offset of this view in bytes"],
     ["byteLength","int","(optional) The length in bytes"]
   ],
-  "return" : ["JsVar","A DataView object"],
+  "return" : ["JsVar","A `DataView` object"],
   "return_object" : "DataView",
   "ifndef" : "SAVE_ON_FLASH"
 }
-Create a DataView object
+Create a `DataView` object that can be used to access the data in an `ArrayBuffer`.
+
+```
+var b = new ArrayBuffer(8)
+var v = new DataView(b)
+v.setUint16(0,"0x1234")
+v.setUint8(3,"0x56")
+console.log("0x"+v.getUint32(0).toString(16))
+// prints 0x12340056
+```
  */
 JsVar *jswrap_dataview_constructor(JsVar *buffer, int byteOffset, int byteLength) {
   if (!jsvIsArrayBuffer(buffer) ||
@@ -52,10 +61,9 @@ JsVar *jswrap_dataview_constructor(JsVar *buffer, int byteOffset, int byteLength
   JsVar *dataview = jspNewObject(0,"DataView");
   if (dataview) {
     jsvObjectSetChild(dataview, "buffer", buffer);
-    if (byteOffset)
-      jsvObjectSetChildAndUnLock(dataview, "byteOffset", jsvNewFromInteger(byteOffset));
-    if (byteLength)
-      jsvObjectSetChildAndUnLock(dataview, "byteLength", jsvNewFromInteger(byteLength));
+    jsvObjectSetChildAndUnLock(dataview, "byteOffset", jsvNewFromInteger(byteOffset));
+    jsvObjectSetChildAndUnLock(dataview, "byteLength", jsvNewFromInteger(
+        byteLength?(unsigned int)byteLength:jsvGetArrayBufferLength(buffer)));
   }
   return dataview;
 }

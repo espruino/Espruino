@@ -18,34 +18,39 @@ import pinutils;
 info = {
  'name' : "Nordic Thingy:52",
  'link' :  [ "https://www.nordicsemi.com/eng/Products/Nordic-Thingy-52" ],
+ 'espruino_page_link' : 'Thingy52',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D2",
  'default_console_rx' : "D3",
  'default_console_baudrate' : "9600",
  'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
-# 'bootloader' : 1,
- 'binary_name' : 'espruino_%v_thingy52.bin',
+ 'bootloader' : 1,
+ 'binary_name' : 'espruino_%v_thingy52.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
 #     'NET',
      'GRAPHICS',
-     'NFC'
+     'NFC',
+     'NEOPIXEL'
    ],
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Thingy"\'',
+     'DEFINES+=-DNFC_DEFAULT_URL=\'"https://www.espruino.com/ide"\'',
+     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"Thingy\\0"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
      'INCLUDE += -I$(ROOT)/libs/nordic_thingy',
      'WRAPPERSOURCES += libs/nordic_thingy/jswrap_thingy.c',
-     'JSMODULESOURCES+=libs/nordic_thingy/LIS2DH12.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/LPS22HB.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/HTS221.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/CCS811.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/BH1745.min.js',
-     'JSMODULESOURCES+=libs/nordic_thingy/Thingy.min.js'
+     'JSMODULESOURCES+=libs/js/LIS2DH12.min.js',
+     'JSMODULESOURCES+=libs/js/MPU9250.min.js',
+     'JSMODULESOURCES+=libs/js/LPS22HB.min.js',
+     'JSMODULESOURCES+=libs/js/HTS221.min.js',
+     'JSMODULESOURCES+=libs/js/CCS811.min.js',
+     'JSMODULESOURCES+=libs/js/BH1745.min.js',
+     'JSMODULESOURCES+=libs/js/nordic/Thingy.min.js'
    ]
  }
 };
@@ -59,15 +64,15 @@ chip = {
   'flash' : 512,
   'speed' : 64,
   'usart' : 1,
-  'spi' : 3,
-  'i2c' : 2,
+  'spi' : 1,
+  'i2c' : 1,
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((118 - 3) * 4096), # Bootloader takes pages 120-127, FS takes 118-119
+    'address' : ((118 - 10) * 4096), # Bootloader takes pages 120-127, FS takes 118-119
     'page_size' : 4096,
-    'pages' : 3,
-    'flash_available' : 512 - ((31 + 8 + 1 + 3)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 1, code 3. Each page is 4 kb.
+    'pages' : 10,
+    'flash_available' : 512 - ((31 + 8 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
   },
 };
 
@@ -163,7 +168,7 @@ def get_pins():
   pinutils.findpin(pins, "PV5", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PV6", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PV7", True)["functions"]["NEGATED"]=0;
-    
+
 
   # everything is non-5v tolerant
   for pin in pins:

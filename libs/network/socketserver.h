@@ -35,7 +35,8 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, Js
 void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar);
 void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar);
 
-void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar *headers);
+void serverResponseSetHeader(JsVar *parent, JsVar *name, JsVar *value); // for HTTP
+void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar *headers); // for HTTP
 void serverResponseWrite(JsVar *httpServerResponseVar, JsVar *data);
 void serverResponseEnd(JsVar *httpServerResponseVar);
 

@@ -585,16 +585,16 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SERIAL1 : return USART1;
    case EV_SERIAL2 : return USART2;
-#ifdef USART3
+#if USART_COUNT>=3 && defined(USART3)
    case EV_SERIAL3 : return USART3;
 #endif
-#ifdef UART4
+#if USART_COUNT>=4 && defined(UART4)
    case EV_SERIAL4 : return UART4;
 #endif
-#ifdef UART5
+#if USART_COUNT>=5 && defined(UART5)
    case EV_SERIAL5 : return UART5;
 #endif
-#ifdef USART6
+#if USART_COUNT>=6
    case EV_SERIAL6 : return USART6;
 #endif
    default: return 0;
@@ -604,8 +604,12 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
 SPI_TypeDef* getSPIFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SPI1 : return SPI1;
+#if SPI_COUNT>=2
    case EV_SPI2 : return SPI2;
+#endif
+#if SPI_COUNT>=3
    case EV_SPI3 : return SPI3;
+#endif
    default: return 0;
  }
 }
@@ -614,7 +618,7 @@ I2C_TypeDef* getI2CFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_I2C1 : return I2C1;
    case EV_I2C2 : return I2C2;
-#ifdef I2C3
+#if I2C_COUNT>=3
    case EV_I2C3 : return I2C3;
 #endif
    default: return 0;
@@ -696,47 +700,74 @@ static bool jshIsRTCAlreadySetup(bool andRunning) {
     return RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET;
 }
 
-#ifdef USE_RTC
-void jshSetupRTCPrescaler(bool isUsingLSI) {
-  if (isUsingLSI) {
-#ifdef STM32F1
-    jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
-#else
-    jshRTCPrescaler = 32000; // 32kHz for LSI on F4
-#endif
-  } else {
-    jshRTCPrescaler = 32768; // 32.768kHz for LSE
-  }
-  jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
-}
 
-void jshSetupRTC(bool isUsingLSI) {
-  RCC_RTCCLKConfig(isUsingLSI ? RCC_RTCCLKSource_LSI : RCC_RTCCLKSource_LSE); // set clock source to low speed internal
-  jshSetupRTCPrescaler(isUsingLSI);
-  RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
-  RTC_WaitForSynchro();
+void jshSetupRTCPrescalerValue(unsigned int prescale) {
+#ifdef USE_RTC
+  jshRTCPrescaler = (unsigned short)prescale;
+  jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
 #ifdef STM32F1
   RTC_SetPrescaler(jshRTCPrescaler - 1U);
   RTC_WaitForLastTask();
 #else
   RTC_InitTypeDef RTC_InitStructure;
   RTC_StructInit(&RTC_InitStructure);
-  //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
-  //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
   RTC_InitStructure.RTC_AsynchPrediv = 0;
-  RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
+  RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1);
   RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
   RTC_Init(&RTC_InitStructure);
 #endif
   RTC_WaitForSynchro();
+#endif
 }
 
-void jshResetRTCTimer() {
-  // work out initial values for RTC
-  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
-  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
+
+#ifdef USE_RTC
+static uint32_t jshGetDefaultSysTickTime() {
+  return (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
 }
 #endif
+
+
+int jshGetRTCPrescalerValue(bool calibrate) {
+#ifdef USE_RTC
+  if (calibrate)
+    return (int)((long long)averageSysTickTime * (long long)jshRTCPrescaler / (long long)jshGetDefaultSysTickTime());
+  return jshRTCPrescaler;
+#else
+  return 0;
+#endif
+}
+
+#ifdef USE_RTC
+
+void jshSetupRTCPrescaler(bool isUsingLSI) {
+  if (isUsingLSI) {
+#ifdef STM32F1
+    jshSetupRTCPrescalerValue(40000); // 40kHz for LSI on F1 parts
+#else
+    jshSetupRTCPrescalerValue(32000); // 32kHz for LSI on F4
+#endif
+  } else {
+    jshSetupRTCPrescalerValue(32768); // 32.768kHz for LSE
+  }
+}
+
+void jshSetupRTC(bool isUsingLSI) {
+  RCC_RTCCLKConfig(isUsingLSI ? RCC_RTCCLKSource_LSI : RCC_RTCCLKSource_LSE); // set clock source to low speed internal
+  RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
+  RTC_WaitForSynchro();
+  jshSetupRTCPrescaler(isUsingLSI);  
+}
+#endif
+
+void jshResetRTCTimer() {
+#ifdef USE_RTC
+  // work out initial values for RTC
+  averageSysTickTime = smoothAverageSysTickTime = jshGetDefaultSysTickTime();
+  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
+#endif
+}
+
 
 void jshDoSysTick() {
   /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
@@ -2000,7 +2031,10 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   assert(DEVICE_IS_USART(device));
 
   jshSetDeviceInitialised(device, true);
-
+  if (!DEVICE_IS_USART(device)) return;
+#ifdef USB
+  if (device==EV_USBSERIAL) return;
+#endif
   jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
   jshSetErrorHandlingEnabled(device, inf->errorHandling);
 
@@ -3014,4 +3048,9 @@ unsigned int jshSetSystemClock(JsVar *options) {
 #else
   return 0;
 #endif
+}
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  NVIC_SystemReset();
 }

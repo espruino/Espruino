@@ -28,36 +28,10 @@
 }
 A simple VT100 terminal emulator.
 
-When data is sent to this, it searches for a Graphics variable called either
-`g` or `LCD` and starts writing characters to it.
+When data is sent to the `Terminal` object, `Graphics.getInstance()`
+is called and if an instance of `Graphics` is found then characters
+are written to it.
 */
-
-
-/* We can't add properties to Terminal at the moment because of build_jswrapper
- * and the hacks used to add devices, but this would be really handy. */
-/*FIXME{
-    "type" : "method",
-    "class" : "Terminal",
-    "name" : "in",
-    "generate" : "jswrap_telnet_in",
-    "params": [
-      [ "args", "JsVarArray", "One or more items to feed into the Terminal" ]
-    ]
-}
-Send characters to the given Telnet device *as if they were received*.
-
-For instance if you had set the console to terminal with `Terminal.setConsole()`
-then you could feed keypresses in via `Terminal.in`.
-*/
-/*void jswrap_telnet_in_cb(int item, void *callbackData) {
-  NOT_USED(callbackData);
-  jshPushIOCharEvent(EV_TERMINAL, (char)item);
-}
-void jswrap_telnet_in(JsVar *parent, JsVar *args) {
-  NOT_USED(parent);
-  jsvIterateCallback(args, jswrap_telnet_in_cb, 0);
-}*/
-
 
 #define terminalHeight (10)
 #define terminalCharW (4)
@@ -78,8 +52,7 @@ static void terminalControlCharsReset() {
 
 // Try and find something to use for Graphics - MUST call terminalSetGFX after if this returns true
 bool terminalGetGFX(JsGraphics *gfx) {
-  JsVar *v = jsvObjectGetChild(execInfo.root, "g", 0);
-  if (!v) v = jsvObjectGetChild(execInfo.root, "LCD", 0);
+  JsVar *v = jswrap_graphics_getInstance();
   if (!v) return false;
   if (graphicsGetFromVar(gfx, v))
     return true;
@@ -93,18 +66,20 @@ void terminalFlip(JsGraphics *gfx) {
   if (flip) jsvUnLock2(jspExecuteFunction(flip,gfx->graphicsVar,0,0),flip);
 }
 
+/// Setup the graphics var state and flip the screen
 void terminalSetGFX(JsGraphics *gfx) {
-  terminalFlip(gfx);
   graphicsSetVar(gfx);
+  terminalFlip(gfx); // this will read from/save to graphicsVar
   jsvUnLock(gfx->graphicsVar);
 }
 
+/// Scroll up to leave one more line free at the bottom
 void terminalScroll() {
   terminalY--;
   JsGraphics gfx;
   if (terminalGetGFX(&gfx)) {
     graphicsScroll(&gfx, 0, -terminalCharH);
-    terminalSetGFX(&gfx);
+    terminalSetGFX(&gfx); // save and flip
   }
 }
 
@@ -117,7 +92,6 @@ void terminalSendChar(char chn) {
       terminalX = 0; terminalY++;
       while (terminalY >= terminalHeight)
         terminalScroll();
-      // TODO: scroll!
     } else if (chn==13) { // carriage return
       terminalX = 0;
     } else if (chn==27) {
@@ -162,6 +136,22 @@ void terminalSendChar(char chn) {
             case 66: terminalY++; while (terminalY >= terminalHeight) terminalScroll(); break;  // down
             case 67: if (terminalX<255) terminalX++; break; // right
             case 68: if (terminalX > 0) terminalX--; break; // left
+            case 74: { // delete all to right and down
+              JsGraphics gfx;
+              if (terminalGetGFX(&gfx)) {
+                short cx = (short)(terminalOffsetX + terminalX*terminalCharW);
+                short cy = (short)(terminalOffsetY + terminalY*terminalCharH);
+                short w = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
+                short h = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
+                // Clear to right and down
+                unsigned int c = gfx.data.fgColor;
+                gfx.data.fgColor = gfx.data.bgColor;
+                graphicsFillRect(&gfx, cx, cy, w-1, cy+terminalCharH-1); // current line
+                graphicsFillRect(&gfx, terminalOffsetX, cy+terminalCharH, w-1, h-1); // everything under
+                gfx.data.fgColor = c;
+                terminalSetGFX(&gfx);
+              }
+            } break;
           }
         }
       }

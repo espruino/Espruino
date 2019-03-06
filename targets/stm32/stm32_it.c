@@ -178,80 +178,80 @@ void SysTick_Handler(void)
 
 void EXTI0_IRQHandler(void) {
     if (EXTI_GetITStatus(EXTI_Line0) == SET) {
-      jshPushIOWatchEvent(EV_EXTI0);
       EXTI_ClearITPendingBit(EXTI_Line0);
+      jshPushIOWatchEvent(EV_EXTI0);
     }
 }
 void EXTI1_IRQHandler(void) {
     if (EXTI_GetITStatus(EXTI_Line1) == SET) {
-      jshPushIOWatchEvent(EV_EXTI1);
       EXTI_ClearITPendingBit(EXTI_Line1);
+      jshPushIOWatchEvent(EV_EXTI0+1);
     }
 }
 void EXTI2_IRQHandler(void) {
     if (EXTI_GetITStatus(EXTI_Line2) == SET) {
-      jshPushIOWatchEvent(EV_EXTI2);
       EXTI_ClearITPendingBit(EXTI_Line2);
+      jshPushIOWatchEvent(EV_EXTI0+2);
     }
 }
 void EXTI3_IRQHandler(void) {
     if (EXTI_GetITStatus(EXTI_Line3) == SET) {
-      jshPushIOWatchEvent(EV_EXTI3);
       EXTI_ClearITPendingBit(EXTI_Line3);
+      jshPushIOWatchEvent(EV_EXTI0+3);
     }
 }
 void EXTI4_IRQHandler(void) {
     if (EXTI_GetITStatus(EXTI_Line4) == SET) {
-      jshPushIOWatchEvent(EV_EXTI4);
       EXTI_ClearITPendingBit(EXTI_Line4);
+      jshPushIOWatchEvent(EV_EXTI0+4);
     }
 }
 void EXTI9_5_IRQHandler(void) {
     if (EXTI_GetITStatus(EXTI_Line5) == SET) {
-      jshPushIOWatchEvent(EV_EXTI5);
       EXTI_ClearITPendingBit(EXTI_Line5);
+      jshPushIOWatchEvent(EV_EXTI0+5);
     }
     if (EXTI_GetITStatus(EXTI_Line6) == SET) {
-      jshPushIOWatchEvent(EV_EXTI6);
       EXTI_ClearITPendingBit(EXTI_Line6);
+      jshPushIOWatchEvent(EV_EXTI0+6);
     }
     if (EXTI_GetITStatus(EXTI_Line7) == SET) {
-      jshPushIOWatchEvent(EV_EXTI7);
       EXTI_ClearITPendingBit(EXTI_Line7);
+      jshPushIOWatchEvent(EV_EXTI0+7);
     }
     if (EXTI_GetITStatus(EXTI_Line8) == SET) {
-      jshPushIOWatchEvent(EV_EXTI8);
       EXTI_ClearITPendingBit(EXTI_Line8);
+      jshPushIOWatchEvent(EV_EXTI0+8);
     }
     if (EXTI_GetITStatus(EXTI_Line9) == SET) {
-      jshPushIOWatchEvent(EV_EXTI9);
       EXTI_ClearITPendingBit(EXTI_Line9);
+      jshPushIOWatchEvent(EV_EXTI0+9);
     }
 }
 void EXTI15_10_IRQHandler(void) {
     if (EXTI_GetITStatus(EXTI_Line10) == SET) {
-      jshPushIOWatchEvent(EV_EXTI10);
       EXTI_ClearITPendingBit(EXTI_Line10);
+      jshPushIOWatchEvent(EV_EXTI0+10);
     }
     if (EXTI_GetITStatus(EXTI_Line11) == SET) {
-      jshPushIOWatchEvent(EV_EXTI11);
       EXTI_ClearITPendingBit(EXTI_Line11);
+      jshPushIOWatchEvent(EV_EXTI0+11);
     }
     if (EXTI_GetITStatus(EXTI_Line12) == SET) {
-      jshPushIOWatchEvent(EV_EXTI12);
       EXTI_ClearITPendingBit(EXTI_Line12);
+      jshPushIOWatchEvent(EV_EXTI0+12);
     }
     if (EXTI_GetITStatus(EXTI_Line13) == SET) {
-      jshPushIOWatchEvent(EV_EXTI13);
       EXTI_ClearITPendingBit(EXTI_Line13);
+      jshPushIOWatchEvent(EV_EXTI0+13);
     }
     if (EXTI_GetITStatus(EXTI_Line14) == SET) {
-      jshPushIOWatchEvent(EV_EXTI14);
       EXTI_ClearITPendingBit(EXTI_Line14);
+      jshPushIOWatchEvent(EV_EXTI0+14);
     }
     if (EXTI_GetITStatus(EXTI_Line15) == SET) {
-      jshPushIOWatchEvent(EV_EXTI15);
       EXTI_ClearITPendingBit(EXTI_Line15);
+      jshPushIOWatchEvent(EV_EXTI0+15);
     }
 }
 

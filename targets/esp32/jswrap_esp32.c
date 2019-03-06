@@ -12,12 +12,26 @@
  * ----------------------------------------------------------------------------
  */
 #include <stdio.h>
- 
+
 #include "jswrap_esp32.h"
 #include "jshardwareAnalog.h"
+#include "jsutils.h"
+#include "jsinteractive.h"
+#include "jsparse.h"
+#include "jsflash.h"
 
 #include "esp_system.h"
-#include "app_update/include/esp_ota_ops.h"
+#include "esp_sleep.h"
+#include "esp_heap_caps.h"
+
+#ifdef BLUETOOTH
+#include "BLE/esp32_bluetooth_utils.h"
+#endif
+#include "jshardwareESP32.h"
+
+#include "jsutils.h"
+#include "jsinteractive.h"
+#include "jsparse.h"
 
 /*JSON{
  "type"     : "staticmethod",
@@ -27,7 +41,7 @@
  "params"   : [
    ["pin", "pin", "Pin for Analog read"],
    ["atten", "int", "Attenuate factor"]
- ]	
+ ]
 }*/
 void jswrap_ESP32_setAtten(Pin pin,int atten){
   printf("Atten:%d\n",atten);
@@ -43,7 +57,7 @@ void jswrap_ESP32_setAtten(Pin pin,int atten){
 Perform a hardware reset/reboot of the ESP32.
 */
 void jswrap_ESP32_reboot() {
-  esp_restart(); // Call the ESP-IDF to restart the ESP32.
+  jshReboot();
 } // End of jswrap_ESP32_reboot
 
 
@@ -52,12 +66,12 @@ void jswrap_ESP32_reboot() {
   "class"    : "ESP32",
   "name"     : "deepSleep",
   "generate" : "jswrap_ESP32_deepSleep",
-  "params"   : [ ["us", "int", "Sleeptime in us"] ]	
+  "params"   : [ ["us", "int", "Sleeptime in us"] ]
 }
 Put device in deepsleep state for "us" microseconds.
 */
 void jswrap_ESP32_deepSleep(int us) {
-  esp_deep_sleep_enable_timer_wakeup((uint64_t)(us));
+  esp_sleep_enable_timer_wakeup((uint64_t)(us));
   esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepSleep
 
@@ -73,6 +87,9 @@ Returns an object that contains details about the state of the ESP32 with the fo
 
 * `sdkVersion`   - Version of the SDK.
 * `freeHeap`     - Amount of free heap in bytes.
+* `BLE`			 - Status of BLE, enabled if true.
+* `Wifi`		 - Status of Wifi, enabled if true.
+* `minHeap`      - Minimum heap, calculated by heap_caps_get_minimum_free_size
 
 */
 JsVar *jswrap_ESP32_getState() {
@@ -81,45 +98,61 @@ JsVar *jswrap_ESP32_getState() {
   JsVar *esp32State = jsvNewObject();
   jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString(esp_get_idf_version()));
   jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(esp_get_free_heap_size()));
-  esp_partition_t * partition=esp_ota_get_boot_partition();
-  jsvObjectSetChildAndUnLock(esp32State, "addr",     jsvNewFromInteger(partition->address));
-  jsvObjectSetChildAndUnLock(esp32State, "partitionBoot", jsvNewFromString( partition->label));
-  //jsvObjectSetChildAndUnLock(esp32State, "partitionRunning",   jsvNewFromString( esp_ota_get_running_partition()->label));
-  //jsvObjectSetChildAndUnLock(esp32State, "partitionNext",   jsvNewFromString( esp_ota_get_next_update_partition(NULL)->label));
+  jsvObjectSetChildAndUnLock(esp32State, "BLE",          jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)));
+  jsvObjectSetChildAndUnLock(esp32State, "Wifi",         jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)));  
+  jsvObjectSetChildAndUnLock(esp32State, "minHeap",      jsvNewFromInteger(heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT)));
   return esp32State;
 } // End of jswrap_ESP32_getState
 
+#ifdef BLUETOOTH
 /*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP32",
-  "name"     : "setBoot",
-  "generate" : "jswrap_ESP32_setBoot",
+ "type"     : "staticmethod",
+ "class"    : "ESP32",
+ "name"     : "setBLE_Debug",
+ "generate" : "jswrap_ESP32_setBLE_Debug",
  "params"   : [
-    ["jsPartitionName", "JsVar", "Name of ota partition to boot into next boot"]
+   ["level", "int", "which events should be shown (GATTS, GATTC, GAP)"]
  ],
-  "return"   : ["JsVar", "Change boot partition after ota update"]
+ "ifdef"	: "BLUETOOTH"
 }
 */
-JsVar *jswrap_ESP32_setBoot(JsVar *jsPartitionName) {
-  JsVar *esp32State = jsvNewObject();  
-  esp_err_t err;
-  char partitionNameStr[20];
+void jswrap_ESP32_setBLE_Debug(int level){
+	ESP32_setBLE_Debug(level);
+}
 
-  jsvGetString(jsPartitionName, partitionNameStr, sizeof(partitionNameStr));
-  esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partitionNameStr);
-  if (it==0) {
-    jsError("Couldn't find partition with name %s\n", partitionNameStr);
-  }
-  else {
-    const esp_partition_t *p = esp_partition_get(it);
-    err= ESP_OK; //esp_ota_set_boot_partition(p);
-    if (err!=ESP_OK) {
-      jsError("Couldn't set boot partition %d!\n",err);
-    } else {
-      jsvObjectSetChildAndUnLock(esp32State, "addr",     jsvNewFromInteger(p->address));
-      jsvObjectSetChildAndUnLock(esp32State, "nextPartitionBoot", jsvNewFromString( p->label));
-    }
-  }
-  esp_partition_iterator_release(it);  
-  return esp32State;
-} // End of jswrap_ESP32_setBoot
+/*JSON{
+ "type"	: "staticmethod",
+ "class"	: "ESP32",
+ "name"		: "enableBLE",
+ "generate"	: "jswrap_ESP32_enableBLE",
+ "params"	: [
+   ["enable", "bool", "switches Bluetooth on or off" ]
+ ],
+ "ifdef"	: "BLUETOOTH" 
+}
+Switches Bluetooth off/on, removes saved code from Flash, resets the board, 
+and on restart creates jsVars depending on available heap (actual additional 1800)
+*/
+void jswrap_ESP32_enableBLE(bool enable){ //may be later, we will support BLEenable(ALL/SERVER/CLIENT)
+  ESP32_Set_NVS_Status(ESP_NETWORK_BLE,enable);
+  jsfRemoveCodeFromFlash();
+  esp_restart();
+}
+#endif
+/*JSON{
+ "type"	: "staticmethod",
+ "class"	: "ESP32",
+ "name"		: "enableWifi",
+ "generate"	: "jswrap_ESP32_enableWifi",
+ "params"	: [
+   ["enable", "bool", "switches Wifi on or off" ]
+ ] 
+}
+Switches Wifi off/on, removes saved code from Flash, resets the board, 
+and on restart creates jsVars depending on available heap (actual additional 3900)
+*/
+void jswrap_ESP32_enableWifi(bool enable){ //may be later, we will support BLEenable(ALL/SERVER/CLIENT)
+  ESP32_Set_NVS_Status(ESP_NETWORK_WIFI,enable);
+  jsfRemoveCodeFromFlash();
+  esp_restart();
+}

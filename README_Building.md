@@ -214,16 +214,19 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 * USB
   * the board appears as a drive to drop a hex on
 
-#### for [Puck.js](http://www.espruino.com/Puck.js)
+#### for [Puck.js](http://www.espruino.com/Puck.js) and [Pixl.js](http://www.espruino.com/Pixl.js)
 
-The Puck.js is based on the nRF52
+The Puck.js and Pixl.js are based on the nRF52
 
 ```bash
+# Puck.js
 make clean && DFU_UPDATE_BUILD=1 BOARD=PUCKJS RELEASE=1 make
+# Pixl.js
+make clean && DFU_UPDATE_BUILD=1 BOARD=PIXLJS RELEASE=1 make
 ```
 
-The resulting file is a zip that has to be transferred to the puck.js via a Bluetooth low energy device.
-See <https://www.espruino.com/Puck.js+Quick+Start> for information concerning transferring the zip to the puck.js.
+The resulting file is a zip that has to be transferred via Bluetooth Low Energy.
+See the [Puck.js](http://www.espruino.com/Puck.js#firmware-updates) and [Pixl.js](http://www.espruino.com/Pixl.js#firmware-updates) pages for information concerning transferring the ZIP.
 
 #### for [NRF52-DK](https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy/nRF52-DK)
 

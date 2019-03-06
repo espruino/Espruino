@@ -17,7 +17,8 @@
 import pinutils;
 info = {
  'name' : "WIO TRACKER LTE",
- 'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1199/PF252419" ],
+ 'link' :  [ "http://www.espruino.com/WioLTE" ],
+ 'espruino_page_link' : 'WioLTE', 
  'default_console' : "EV_SERIAL2", # FIXME: This was S2 because of pin conflict. Not sure if it's really an issue?
  'variables' : 5450,
  'binary_name' : 'espruino_%v_Wio_LTE.bin',
@@ -93,24 +94,24 @@ board = {
 };
 board["_css"] = """
 #board {
-  width: 457px;
-  height: 480px;
+  width: 500px;
+  height: 588px;
   left: 200px;
   background-image: url(img/WIO_LTE.jpg);
 }
 #boardcontainer {
-  height: 468px;
+  height: 588px;
 }
 #left {
-  top: 98px;
-  right: 352px;
+  top: 123px;
+  right: 412px;
 }
 #right  {
-  top: 98px;
-  left: 352px;
+  top: 123px;
+  left: 412px;
 }
-.leftpin { height: 18px; padding:0px; }
-.rightpin { height: 18px; padding:0px; }
+.leftpin { height: 23px; padding:0px; }
+.rightpin { height: 23px; padding:0px; }
 """;
 
 def get_pins():

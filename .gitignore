@@ -4,6 +4,7 @@
 *.o
 *.elf
 /*.hex
+/*.app_hex
 *.lst
 *.srec
 *.bin
@@ -28,6 +29,7 @@ node_modules
 /build/
 esp_iot_sdk_v1.5.0
 esp_iot_sdk_v2.0.0.p1
+ESP8266_NONOS_SDK-2.2.1
 xtensa-lx106-elf
 app
 esp-idf
@@ -39,7 +41,18 @@ gcc-arm-none-eabi*
 targetlibs/nrf5x_12/examples
 targetlibs/nrf5x_12/documentation/
 targetlibs/nrf5x_14
+targetlibs/nrf5x_15/components
+targetlibs/nrf5x_15/config
+targetlibs/nrf5x_15/example_config
+targetlibs/nrf5x_15/examples
+targetlibs/nrf5x_15/external
+targetlibs/nrf5x_15/external_tools
+targetlibs/nrf5x_15/integration
+targetlibs/nrf5x_15/modules
+targetlibs/nrf5x_mesh
+targetlibs/raspberrypi
 /.vscode
 /CURRENT_BOARD.make
 /topreadonly
 /topstrings
+

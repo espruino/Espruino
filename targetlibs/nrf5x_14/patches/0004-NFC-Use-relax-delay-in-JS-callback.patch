@@ -1,0 +1,43 @@
+From e5808962c2e42b49d3b6be55f379b087a0e5e53b Mon Sep 17 00:00:00 2001
+From: AntiCat <github@anticat.ch>
+Date: Fri, 26 May 2017 02:48:45 +0200
+Subject: [PATCH 4/7] NFC: Use relax delay in JS callback
+
+Added long, 4.8ms frame delay for read and
+write operations.
+
+The spec allows for long delays on application
+commands but requires timely responses on link
+layer requests. This should be guarantied with
+this selective timing configuration.
+---
+ targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+index 81883b0a..8beb2d12 100755
+--- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
++++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+@@ -712,6 +712,9 @@ void NFCT_IRQHandler(void)
+                                  NFCT_RXD_AMOUNT_RXDATABYTES_Pos) - NFC_CRC_SIZE;
+         nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXFRAMEEND);
+ 
++        /* Use default FRAMEDELAY, for all cases but callback */
++        NRF_NFCT->FRAMEDELAYMAX = 0x1000UL; //302us, taken from datasheet
++
+         /* Frame is garbage, wait for next frame reception */
+         if(rx_data_size == 0)
+         {
+@@ -728,6 +731,9 @@ void NFCT_IRQHandler(void)
+         } else
+         if(m_nfc_lib_callback != NULL)
+         {
++            /* JS-has a high latency, set relaxed FRAMEDELAY and hope for a forgiving reader */
++            NRF_NFCT->FRAMEDELAYMAX = 0xFFFFUL; //4.8ms
++
+             /* This callback should trigger transmission of a Response */
+             m_nfc_lib_callback(m_nfc_lib_context,
+                                HAL_NFC_EVENT_DATA_RECEIVED,
+-- 
+2.16.0
+

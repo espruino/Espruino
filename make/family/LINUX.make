@@ -10,17 +10,22 @@ export CCPREFIX=$(STAGING_DIR)/mips-openwrt-linux-
 endif
 
 ifeq ($(BOARD),RASPBERRYPI)
- ifneq ($(shell uname -m),armv6l)
+ ifeq ($(shell grep Raspbian /etc/os-release),)
+  # Not on a Pi at the moment
   $(info *********************************)
   $(info *         CROSS COMPILING       *)
   $(info *********************************)
   export CCPREFIX=targetlibs/raspberrypi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-
  else
+  $(info *********************************)
+  $(info *         COMPILING ON PI       *)
+  $(info *********************************)
   # compiling in-place, so give it a normal name
   PROJ_NAME=espruino
  endif
 endif
 
+CFLAGS += -std=gnu99
 DEFINES += -DLINUX
 INCLUDE += -I$(ROOT)/targets/linux
 SOURCES +=                              \

@@ -393,6 +393,7 @@ void jslGetNextToken() {
       break;
       case 'c': if (jslIsToken("case", 1)) lex->tk = LEX_R_CASE;
       else if (jslIsToken("catch", 1)) lex->tk = LEX_R_CATCH;
+      else if (jslIsToken("class", 1)) lex->tk = LEX_R_CLASS;
       else if (jslIsToken("const", 1)) lex->tk = LEX_R_CONST;
       else if (jslIsToken("continue", 1)) lex->tk = LEX_R_CONTINUE;
       break;
@@ -402,6 +403,7 @@ void jslGetNextToken() {
       else if (jslIsToken("debugger", 1)) lex->tk = LEX_R_DEBUGGER;
       break;
       case 'e': if (jslIsToken("else", 1)) lex->tk = LEX_R_ELSE;
+      else if (jslIsToken("extends", 1)) lex->tk = LEX_R_EXTENDS;
       break;
       case 'f': if (jslIsToken("false", 1)) lex->tk = LEX_R_FALSE;
       else if (jslIsToken("finally", 1)) lex->tk = LEX_R_FINALLY;
@@ -417,9 +419,13 @@ void jslGetNextToken() {
       case 'n': if (jslIsToken("new", 1)) lex->tk = LEX_R_NEW;
       else if (jslIsToken("null", 1)) lex->tk = LEX_R_NULL;
       break;
+      case 'o': if (jslIsToken("of", 1)) lex->tk = LEX_R_OF;
+      break;
       case 'r': if (jslIsToken("return", 1)) lex->tk = LEX_R_RETURN;
       break;
-      case 's': if (jslIsToken("switch", 1)) lex->tk = LEX_R_SWITCH;
+      case 's': if (jslIsToken("static", 1)) lex->tk = LEX_R_STATIC;
+      else if (jslIsToken("super", 1)) lex->tk = LEX_R_SUPER;
+      else if (jslIsToken("switch", 1)) lex->tk = LEX_R_SWITCH;
       break;
       case 't': if (jslIsToken("this", 1)) lex->tk = LEX_R_THIS;
       else if (jslIsToken("throw", 1)) lex->tk = LEX_R_THROW;
@@ -709,6 +715,7 @@ void jslFunctionCharAsString(unsigned char ch, char *str, size_t len) {
 }
 
 void jslTokenAsString(int token, char *str, size_t len) {
+  assert(len>28); // size of largest string
   // see JS_ERROR_TOKEN_BUF_SIZE
   if (token>32 && token<128) {
     assert(len>=4);
@@ -719,18 +726,19 @@ void jslTokenAsString(int token, char *str, size_t len) {
     return;
   }
 
+
   switch (token) {
-  case LEX_EOF : strncpy(str, "EOF", len); return;
-  case LEX_ID : strncpy(str, "ID", len); return;
-  case LEX_INT : strncpy(str, "INT", len); return;
-  case LEX_FLOAT : strncpy(str, "FLOAT", len); return;
-  case LEX_STR : strncpy(str, "STRING", len); return;
-  case LEX_UNFINISHED_STR : strncpy(str, "UNFINISHED STRING", len); return;
-  case LEX_TEMPLATE_LITERAL : strncpy(str, "TEMPLATE LITERAL", len); return;
-  case LEX_UNFINISHED_TEMPLATE_LITERAL : strncpy(str, "UNFINISHED TEMPLATE LITERAL", len); return;
-  case LEX_REGEX : strncpy(str, "REGEX", len); return;
-  case LEX_UNFINISHED_REGEX : strncpy(str, "UNFINISHED REGEX", len); return;
-  case LEX_UNFINISHED_COMMENT : strncpy(str, "UNFINISHED COMMENT", len); return;
+  case LEX_EOF : strcpy(str, "EOF"); return;
+  case LEX_ID : strcpy(str, "ID"); return;
+  case LEX_INT : strcpy(str, "INT"); return;
+  case LEX_FLOAT : strcpy(str, "FLOAT"); return;
+  case LEX_STR : strcpy(str, "STRING"); return;
+  case LEX_UNFINISHED_STR : strcpy(str, "UNFINISHED STRING"); return;
+  case LEX_TEMPLATE_LITERAL : strcpy(str, "TEMPLATE LITERAL"); return;
+  case LEX_UNFINISHED_TEMPLATE_LITERAL : strcpy(str, "UNFINISHED TEMPLATE LITERAL"); return;
+  case LEX_REGEX : strcpy(str, "REGEX"); return;
+  case LEX_UNFINISHED_REGEX : strcpy(str, "UNFINISHED REGEX"); return;
+  case LEX_UNFINISHED_COMMENT : strcpy(str, "UNFINISHED COMMENT"); return;
   }
   if (token>=_LEX_OPERATOR_START && token<_LEX_R_LIST_END) {
     const char tokenNames[] =
@@ -792,6 +800,10 @@ void jslTokenAsString(int token, char *str, size_t len) {
         /*LEX_R_TYPEOF :   */ "typeof\0"
         /*LEX_R_VOID :     */ "void\0"
         /*LEX_R_DEBUGGER : */ "debugger\0"
+        /*LEX_R_CLASS :    */ "class\0"
+        /*LEX_R_EXTENDS :  */ "extends\0"
+        /*LEX_R_SUPER :  */   "super\0"
+        /*LEX_R_STATIC :   */ "static\0"
         ;
     unsigned int p = 0;
     int n = token-_LEX_OPERATOR_START;
@@ -801,24 +813,18 @@ void jslTokenAsString(int token, char *str, size_t len) {
       n--; // next token
     }
     assert(n==0);
-    strncpy(str, &tokenNames[p], len);
+    strcpy(str, &tokenNames[p]);
     return;
   }
 
-  assert(len>=10);
-  strncpy(str, "?[",len);
-  itostr(token, &str[2], 10);
-  strncat(str, "]",len);
+  espruino_snprintf(str, len, "?[%d]", token);
 }
 
 void jslGetTokenString(char *str, size_t len) {
   if (lex->tk == LEX_ID) {
-    strncpy(str, "ID:", len);
-    strncat(str, jslGetTokenValueAsString(), len);
+    espruino_snprintf(str, len, "ID:%s", jslGetTokenValueAsString());
   } else if (lex->tk == LEX_STR) {
-    strncpy(str, "String:'", len);
-    strncat(str, jslGetTokenValueAsString(), len);
-    strncat(str, "'", len);
+    espruino_snprintf(str, len, "String:'%s'", jslGetTokenValueAsString());
   } else
     jslTokenAsString(lex->tk, str, len);
 }
@@ -848,20 +854,25 @@ bool jslIsIDOrReservedWord() {
          (lex->tk >= _LEX_R_LIST_START && lex->tk <= _LEX_R_LIST_END);
 }
 
+/* Match failed - report error message */
+static void jslMatchError(int expected_tk) {
+  char gotStr[30];
+  char expStr[30];
+  jslGetTokenString(gotStr, sizeof(gotStr));
+  jslTokenAsString(expected_tk, expStr, sizeof(expStr));
+
+  size_t oldPos = lex->tokenLastStart;
+  lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
+  jsExceptionHere(JSET_SYNTAXERROR, "Got %s expected %s", gotStr, expStr);
+  lex->tokenLastStart = oldPos;
+  // Sod it, skip this token anyway - stops us looping
+  jslGetNextToken();
+}
+
 /// Match, and return true on success, false on failure
 bool jslMatch(int expected_tk) {
   if (lex->tk != expected_tk) {
-    char gotStr[20];
-    char expStr[20];
-    jslGetTokenString(gotStr, sizeof(gotStr));
-    jslTokenAsString(expected_tk, expStr, sizeof(expStr));
-
-    size_t oldPos = lex->tokenLastStart;
-    lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
-    jsExceptionHere(JSET_SYNTAXERROR, "Got %s expected %s", gotStr, expStr);
-    lex->tokenLastStart = oldPos;
-    // Sod it, skip this token anyway - stops us looping
-    jslGetNextToken();
+    jslMatchError(expected_tk);
     return false;
   }
   jslGetNextToken();

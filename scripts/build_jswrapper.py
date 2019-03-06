@@ -41,8 +41,13 @@ jsmodules = {}
 for i in range(1,len(sys.argv)):
   arg = sys.argv[i]
   if arg[0]!="-" and arg[-3:]==".js": 
-    modulename = arg.rsplit('/',1)[1][:-3]
-    if modulename[-4:]==".min": modulename=modulename[:-4]
+    if arg.find(":")>=0:
+      colon = arg.find(":")
+      modulename = arg[:colon]
+      arg = arg[colon+1:]
+    else:
+      modulename = arg.rsplit('/',1)[1][:-3]
+      if modulename[-4:]==".min": modulename=modulename[:-4]
     print("Loading JS module: "+arg+" -> "+modulename)
     jscode = open(arg, "r").read()
     jsmodules[modulename] = jscode
@@ -78,6 +83,7 @@ def getTestFor(className, static):
     if className=="Number": return "jsvIsNumeric(parent)"
     if className=="Object": return "parent" # we assume all are objects
     if className=="Array": return "jsvIsArray(parent)"
+    if className=="ArrayBuffer": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type==ARRAYBUFFERVIEW_ARRAYBUFFER"
     if className=="ArrayBufferView": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type!=ARRAYBUFFERVIEW_ARRAYBUFFER"
     if className=="Function": return "jsvIsFunction(parent)"
     return getConstructorTestFor(className, "constructorPtr");
@@ -238,7 +244,7 @@ for className in classes:
   if not className in constructors:
     jsondatas.append({
         "type":"constructor", "class": className,  "name": className,
-        "generate_full" : "jsvNewWithFlags(JSV_OBJECT)",
+        "generate_full" : "NULL", # return undefined means 'new X' uses the object that was returned, which is correct
         "filename" : "jswrapper.c",
         "return" : [ "JsVar", "" ]
     });

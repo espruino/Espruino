@@ -25,11 +25,13 @@
 #include "DHCP/dhcp.h"
 
 // -------------------- defaults...
+#ifdef STM32
 #define ETH_SPI          EV_SPI3
 #define ETH_CS_PIN       (Pin)(JSH_PORTB_OFFSET + 2) // active low
 #define ETH_CLK_PIN      (Pin)(JSH_PORTB_OFFSET + 3)
 #define ETH_MISO_PIN     (Pin)(JSH_PORTB_OFFSET + 4)
 #define ETH_MOSI_PIN     (Pin)(JSH_PORTB_OFFSET + 5)
+#endif
 // -------------------------------
 
 void  wizchip_select(void) {
@@ -88,6 +90,7 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
       return 0;
     }
   } else {
+#ifdef ETH_SPI
     // SPI config
     JshSPIInfo inf;
     jshSPIInitInfo(&inf);
@@ -98,9 +101,15 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
     inf.spiMode = SPIF_SPI_MODE_0;
     jshSPISetup(ETH_SPI, &inf);
     spiDevice = ETH_SPI;
+#else
+    jsExceptionHere(JSET_ERROR, "No default SPI on this platform - you must specify one.");
+    return 0;
+#endif
   }
+#ifdef ETH_CS_PIN
   if (!jshIsPinValid(cs))
     cs = ETH_CS_PIN;
+#endif
 
   JsNetwork net;
   networkCreate(&net, JSNETWORKTYPE_W5500);
@@ -159,15 +168,18 @@ An instantiation of an Ethernet network adaptor
   "class" : "Ethernet",
   "name" : "getIP",
   "generate" : "jswrap_ethernet_getIP",
+  "params" : [
+    ["options","JsVar","An optional `callback(err, ipinfo)` function to be called back with the IP information."]
+  ],
   "return" : ["JsVar",""]
 }
 Get the current IP address, subnet, gateway and mac address.
 */
-JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
+JsVar *jswrap_ethernet_getIP(JsVar *wlanObj, JsVar *callback) {
   NOT_USED(wlanObj);
 
   if (networkState != NETWORKSTATE_ONLINE) {
-    jsError("Not connected to the internet");
+    jsExceptionHere(JSET_ERROR, "Not connected to the internet");
     return 0;
   }
 
@@ -186,6 +198,16 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   networkPutAddressAsString(data, "mac", &gWIZNETINFO.mac[0], 6, 16, ':');
 
   networkFree(&net);
+
+  // Schedule callback if a function was provided
+  if (jsvIsFunction(callback)) {
+    JsVar *params[2];
+    params[0] = jsvNewWithFlags(JSV_NULL);
+    params[1] = data;
+    jsiQueueEvents(NULL, callback, params, 2);
+    jsvUnLock(params[0]);
+  }
+
 
   return data;
 }
@@ -207,7 +229,8 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
   "name" : "setIP",
   "generate" : "jswrap_ethernet_setIP",
   "params" : [
-    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns, mac  }`, or do not supply an object in order to force DHCP."]
+    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns, mac  }`, or do not supply an object in order to force DHCP."],
+    ["options","JsVar","An optional `callback(err)` function to invoke when ip is set. `err==null` on success, or a string on failure."]
   ],
   "return" : ["bool","True on success"]
 }
@@ -215,18 +238,18 @@ Set the current IP address or get an IP from DHCP (if no options object is speci
 
 If 'mac' is specified as an option, it must be a string of the form `"00:01:02:03:04:05"`
 */
-bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
+bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options, JsVar *callback) {
   NOT_USED(wlanObj);
 
   if (networkState != NETWORKSTATE_ONLINE) {
-    jsError("Not connected to the internet");
+    jsExceptionHere(JSET_ERROR, "Not connected to the internet");
     return false;
   }
 
   JsNetwork net;
   if (!networkGetFromVar(&net)) return false;
 
-  bool success = false;
+  const char *errorMessage = 0;
   wiz_NetInfo gWIZNETINFO;
 
   ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
@@ -259,16 +282,16 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
     }
 
     gWIZNETINFO.dhcp = NETINFO_STATIC;
-    success = true;
+    errorMessage = 0; // all ok
   } else {
     // DHCP
     uint8_t DHCPisSuccess = getIP_DHCPS(net_wiznet_getFreeSocket(), &gWIZNETINFO);
     if (DHCPisSuccess == 1) {
       // info in lease_time.lVal
-      success = true;
+      errorMessage = 0; // all ok
     } else {
-      jsWarn("DHCP failed");
-      success = false;
+      errorMessage = "DHCP failed";
+      jsWarn(errorMessage);
     }
   }
 
@@ -276,6 +299,14 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
 
   networkFree(&net);
 
-  return success;
+  // Schedule callback if a function was provided
+  if (jsvIsFunction(callback)) {
+    JsVar *params[1];
+    params[0] = errorMessage ? jsvNewFromString(errorMessage) : jsvNewWithFlags(JSV_NULL);
+    jsiQueueEvents(NULL, callback, params, 1);
+    jsvUnLock(params[0]);
+  }
+
+  return errorMessage==0;
 }
 

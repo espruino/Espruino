@@ -26,13 +26,20 @@ typedef uint32_t JsfWord;
 #define JSF_WORD_UNSET 0xFFFFFFFF
 #endif
 
+/// Max length of filename in chars
+#define JSF_MAX_FILENAME_LENGTH (sizeof(JsfFileName))
+
 /// Structure for File Storage. It's important this is 8 byte aligned for platforms that only support 64 bit writes
 typedef struct {
-  JsfWord size; ///< Total size
+  JsfWord size; ///< Total size (and flags in the top 8 bits)
   JsfWord replacement; ///< pointer to a replacement (eventually). For now this is 0xFFFFFFFF if ok, 0 if erased
   JsfFileName name; ///< 0-padded filename
 } JsfFileHeader;
 
+typedef enum {
+  JSFF_NONE,
+  JSFF_COMPRESSED = 128   // This file contains compressed data
+} JsfFileFlags; // these are stored in the top 8 bits of JsfFileHeader.size
 
 
 // ------------------------------------------------------------------------ Flash Storage Functionality
@@ -40,13 +47,16 @@ typedef struct {
 JsfFileName jsfNameFromString(const char *name);
 /// utility function for creating JsfFileName
 JsfFileName jsfNameFromVar(JsVar *name);
-uint32_t jsfCreateFile(JsfFileName name, uint32_t size, uint32_t startAddr, JsfFileHeader *returnedHeader);
+/// Return the size in bytes of a file based on the header
+uint32_t jsfGetFileSize(JsfFileHeader *header);
+/// Return the flags for this file based on the header
+JsfFileFlags jsfGetFileFlags(JsfFileHeader *header);
 /// Find a 'file' in the memory store. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
 uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader);
 /// Return the contents of a file as a memory mapped var
 JsVar *jsfReadFile(JsfFileName name);
 /// Write a file. For simple stuff just leave offset and size as 0
-bool jsfWriteFile(JsfFileName name, JsVar *data, JsVarInt offset, JsVarInt _size);
+bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt offset, JsVarInt _size);
 /// Erase the given file
 void jsfEraseFile(JsfFileName name);
 /// Erase the entire contents of the memory store
@@ -57,6 +67,8 @@ bool jsfCompact();
 JsVar *jsfListFiles();
 /// Output debug info for files stored in flash storage
 void jsfDebugFiles();
+// Get the amount of space free in this page (or all pages). addr=0 uses start page
+uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages);
 
 // ------------------------------------------------------------------------ For loading/saving code to flash
 /// Save contents of JsVars into Flash.
