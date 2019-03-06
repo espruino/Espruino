@@ -30,7 +30,7 @@ const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
 /// return time zone in minutes
-static int getTimeZone() {
+int jsdGetTimeZone() {
   return jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR, 0));
 }
 
@@ -38,7 +38,7 @@ static int getTimeZone() {
  * condense them into one op. */
 TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT) {
   TimeInDay t;
-  t.zone = forceGMT ? 0 : getTimeZone();
+  t.zone = forceGMT ? 0 : jsdGetTimeZone();
   ms_in += t.zone*60000;
   t.daysSinceEpoch = (int)(ms_in / MSDAY);
 
@@ -231,7 +231,7 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     td.min = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4)));
     td.sec = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5)));
     td.ms = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6)));
-    td.zone = getTimeZone();
+    td.zone = jsdGetTimeZone();
     time = fromTimeInDay(&td);
   }
 
@@ -714,7 +714,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
     date.dow = getDay(jslGetTokenValueAsString());
     if (date.month>=0) {
       // Aug 9, 1995
-      time.zone = getTimeZone();
+      time.zone = jsdGetTimeZone();
       jslGetNextToken();
       if (lex.tk == LEX_INT) {
         date.day = _parse_int();
@@ -731,7 +731,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
         }
       }
     } else if (date.dow>=0) {
-      time.zone = getTimeZone();
+      time.zone = jsdGetTimeZone();
       date.month = 0;
       jslGetNextToken();
       if (lex.tk==',') {
@@ -771,7 +771,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
             date.day = _parse_int();
             jslGetNextToken();
             if (lex.tk == LEX_ID && jslGetTokenValueAsString()[0]=='T') {
-              time.zone = getTimeZone();
+              time.zone = jsdGetTimeZone();
               _parse_time(&time, 1);
             }
           }
