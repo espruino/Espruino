@@ -27,6 +27,8 @@ typedef struct {
   int dow; // 0..6, Sunday is 0
 } CalendarDate;
 
+/// return time zone in minutes
+int jsdGetTimeZone();
 TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT);
 JsVarFloat fromTimeInDay(TimeInDay *td);
 CalendarDate getCalendarDate(int d);
