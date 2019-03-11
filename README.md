@@ -86,6 +86,8 @@ You can download binaries from http://www.espruino.com/Download
 
 If you are a board manufacturer interested in getting your board officially supported, please [check out this page](http://www.espruino.com/Business).
 
+**Note:** This list is out of date.
+
 * [Original Espruino Board](http://www.espruino.com/EspruinoBoard) - great support.
 * [Espruino Pico Board](http://www.espruino.com/Pico) - great support.
 * [Puck.js](http://www.espruino.com/Puck.js) - great support.
