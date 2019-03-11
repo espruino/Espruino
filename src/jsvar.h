@@ -228,7 +228,11 @@ typedef struct {
  */
 
 static ALWAYS_INLINE JsVarRef jsvGetFirstChild(const JsVar *v) { return v->varData.ref.firstChild; }
-static ALWAYS_INLINE JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v) { return (JsVarRefSigned)v->varData.ref.firstChild; }
+static ALWAYS_INLINE JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v) { 
+  if (v->varData.ref.firstChild > JSVARREF_MAX)
+    return ((JsVarRefSigned)v->varData.ref.firstChild) + JSVARREF_MIN*2; 
+  return (JsVarRefSigned)v->varData.ref.firstChild; 
+}
 static ALWAYS_INLINE JsVarRef jsvGetLastChild(const JsVar *v) { return v->varData.ref.lastChild; }
 static ALWAYS_INLINE JsVarRef jsvGetNextSibling(const JsVar *v) { return v->varData.ref.nextSibling; }
 static ALWAYS_INLINE JsVarRef jsvGetPrevSibling(const JsVar *v) { return v->varData.ref.prevSibling; }
