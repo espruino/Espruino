@@ -601,7 +601,7 @@ SOURCES += $(PININFOFILE).c
 
 SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
 SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o)
-OBJS = $(SOURCEOBJS) $(PRECOMPILED_OBJS)
+OBJS = $(PRECOMPILED_OBJS) $(SOURCEOBJS)
 
 
 # -ffreestanding -nodefaultlibs -nostdlib -fno-common
