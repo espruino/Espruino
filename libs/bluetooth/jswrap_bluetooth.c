@@ -1271,6 +1271,14 @@ void jswrap_ble_updateServices(JsVar *data) {
   uint32_t err_code;
   bool ok = true;
 
+  if (bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) {
+    jsExceptionHere(JSET_ERROR, "Can't update services until BLE restart");
+    /* TODO: We could conceivably update hiddenRoot->BLE_NAME_SERVICE_DATA so that
+    when the softdevice restarts it contains the updated data, but this seems like
+    overkill and potentially could cause nasty hidden bugs. */
+    return;
+  }
+
 #ifdef NRF5X
   jsble_peripheral_activity(); // flag that we've been busy
 #endif
@@ -1369,8 +1377,7 @@ void jswrap_ble_updateServices(JsVar *data) {
     jsvObjectIteratorFree(&it);
 
   } else if (!jsvIsUndefined(data)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting object or undefined, got %t",
-        data);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting object or undefined, got %t", data);
   }
 }
 
