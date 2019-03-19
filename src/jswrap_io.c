@@ -649,6 +649,10 @@ When doing this, interrupts will happen on both edges and there will be no debou
 **Note:** The STM32 chip (used in the [Espruino Board](/EspruinoBoard) and [Pico](/Pico)) cannot
 watch two pins with the same number - eg `A0` and `B0`.
 
+**Note:** On nRF52 chips (used in Puck.js, Pixl.js, MDBT42Q) `setWatch` disables the GPIO
+output on that pin. In order to be able to write to the pin again you need to disable
+the watch with `clearWatch`.
+
  */
 JsVar *jswrap_interface_setWatch(
     JsVar *func,           //!< A callback function to be invoked when the pin state changes.
