@@ -23,6 +23,7 @@ info = {
  'build' : {
    'optimizeflags' : '-O3',
    'libraries' : [
+     'USB_HID',
      'NET',
      'GRAPHICS',
      'NEOPIXEL'
