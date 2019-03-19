@@ -29,6 +29,7 @@
             Fix segfault if `.clone` is called with `this==undefined` (fix #1628)
             Fix issue outputting char codes <8 after outputting hex char codes
             nRF52: Don't allow NRF.updateServices while a BLE restart for setServices is queued
+            nRF5x: Don't sleep if we received any events since last sleep (fix #1572)
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends

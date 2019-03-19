@@ -1353,12 +1353,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jstSetWakeUp(timeUntilWake);
 #endif
   }
-  hadEvent = false;
   jsiSetSleep(JSI_SLEEP_ASLEEP);
   while (!hadEvent) {
     sd_app_evt_wait(); // Go to sleep, wait to be woken up
     jshGetSystemTime(); // check for RTC overflows
   }
+  hadEvent = false;
   jsiSetSleep(JSI_SLEEP_AWAKE);
 #ifdef BLUETOOTH
   // we don't care about the return codes...
