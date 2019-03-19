@@ -74,6 +74,7 @@ const char *escapeCharacter(char ch) {
     // encode less than 8 as \#
     buf[0]='\\';
     buf[1] = (char)('0'+ch);
+    buf[2] = 0;
     return buf;
   } else if (ch<32 || ch>=127) {
     /** just encode as hex - it's more understandable
