@@ -47,8 +47,7 @@ testreg(re.exec(names)," ;",49);
 test(re.lastIndex, 51);
 testreg(re.exec(names),null);
 test(re.lastIndex, 0);
-test(names.split(re), "Harry Trump,Fred Barney,Helen Rigby,Bill Abel");
-
+test(names.split(re), "Harry Trump,Fred Barney,Helen Rigby,Bill Abel,Chris Hand ");
 
 test("Hellowa worldssaaa a a a".replace(/a/,""),"Hellow worldssaaa a a a");
 test("Hellowa worldssaaa a a a".replace(/a/g,""),"Hellow worldss   ");
@@ -67,6 +66,8 @@ test("dddd".replace(/d/g, x=>"dd"), "dddddddd");
 test("5c6F".replace(/(\d+)([^\d])/g, (m, r, c) => new Array(+r + 1).join(c)), "cccccFFFFFF")
 
 test(/\s+/.test(" "), true);
+test(/\S+/.test(" "), false);
+
 test(/\S+/.test(" "), false);
 
 result = tests==testPass;
