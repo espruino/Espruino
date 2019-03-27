@@ -33,6 +33,7 @@
             Remove limit on the number of scopes that can be searched (fix #948)
             String.split - improve docs, split with RegExp now inserts the text after the final match
             RegExp: Add '|' operator (fix #1503)
+            Switch ARM toolchain to gcc-arm-none-eabi-8-2018-q4-major
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
