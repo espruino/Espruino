@@ -433,13 +433,15 @@ space to include the 32 bit maths routines (2x more RAM is required).
  */
 void _jswrap_espruino_FFT_getData(FFTDATATYPE *dst, JsVar *src, size_t length) {
   JsvIterator it;
-  jsvIteratorNew(&it, src, JSIF_EVERY_ARRAY_ELEMENT);
   size_t i=0;
-  while (i<length && jsvIteratorHasElement(&it)) {
-    dst[i++] = (FFTDATATYPE)jsvIteratorGetFloatValue(&it);
-    jsvIteratorNext(&it);
+  if (jsvIsIterable(src)) {
+    jsvIteratorNew(&it, src, JSIF_EVERY_ARRAY_ELEMENT);
+    while (i<length && jsvIteratorHasElement(&it)) {
+      dst[i++] = (FFTDATATYPE)jsvIteratorGetFloatValue(&it);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
   }
-  jsvIteratorFree(&it);
   while (i<length)
     dst[i++]=0;
 }
