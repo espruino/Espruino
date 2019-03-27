@@ -70,6 +70,9 @@ test(/\S+/.test(" "), false);
 
 test(/\S+/.test(" "), false);
 
+
+test("abcde".split(/d|b/).join(","), "a,c,e");
+test("abcde|f".split(/d|\||b/).join(","), "a,c,e,f");
 test('Some text\nAnd some more\r\nAnd yet\rThis is the end'.split(/\r\n|\r|\n/).join(","),
      "Some text,And some more,And yet,This is the end");
 
