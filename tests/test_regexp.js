@@ -70,5 +70,8 @@ test(/\S+/.test(" "), false);
 
 test(/\S+/.test(" "), false);
 
+test('Some text\nAnd some more\r\nAnd yet\rThis is the end'.split(/\r\n|\r|\n/).join(","),
+     "Some text,And some more,And yet,This is the end");
+
 result = tests==testPass;
 console.log(result?"Pass":"Fail",":",tests,"tests total");

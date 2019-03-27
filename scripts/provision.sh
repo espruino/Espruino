@@ -185,6 +185,6 @@ if [ "$ARM" = "1" ]; then
         else
             echo "Folder found"
         fi
-	export PATH=$PATH:`pwd`/gcc-arm-none-eabi-6-2017-q1-update/bin
+	export PATH=$PATH:`pwd`/gcc-arm-none-eabi-8-2018-q4-major/bin
     fi
 fi
