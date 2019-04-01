@@ -488,7 +488,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 #ifndef SAVE_ON_FLASH
   // Use RegExp if one is passed in
   if (jsvIsInstanceOf(split, "RegExp")) {
-    int last = 0;
+    unsigned int last = 0;
     JsVar *match;
     jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
     match = jswrap_regexp_exec(split, parent);
