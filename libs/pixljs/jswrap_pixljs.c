@@ -74,9 +74,7 @@ var boolean = false;
 var number = 50;
 // First menu
 var mainmenu = {
-  "" : {
-    "title" : "-- Main Menu --"
-  },
+  "" : { "title" : "-- Main Menu --" },
   "Backlight On" : function() { LED1.set(); },
   "Backlight Off" : function() { LED1.reset(); },
   "Submenu" : function() { Pixl.menu(submenu); },
@@ -89,14 +87,12 @@ var mainmenu = {
     value : number,
     min:0,max:100,step:10,
     onchange : v => { number=v; }
-  }
+  },
   "Exit" : function() { Pixl.menu(); },
 };
 // Submenu
 var submenu = {
-  "" : {
-    "title" : "-- SubMenu --"
-  },
+  "" : { "title" : "-- SubMenu --" },
   "One" : undefined, // do nothing
   "Two" : undefined, // do nothing
   "< Back" : function() { Pixl.menu(mainmenu); },
