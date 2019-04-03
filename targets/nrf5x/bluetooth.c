@@ -132,7 +132,7 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 /* Check for errors when in an IRQ, when we're pretty sure an error won't
  * cause a hard reset. Error is then reported outside of the IRQ without
  * rebooting Espruino. */
-#define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) jsble_queue_pending(BLEP_ERROR, ERR_CODE);
+#define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) { uint32_t line = __LINE__; jsble_queue_pending_buf(BLEP_ERROR, ERR_CODE, &line, 4); }
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
@@ -196,6 +196,7 @@ uint16_t nuxTxBufLength = 0;
 #ifdef DYNAMIC_INTERVAL_ADJUSTMENT
 #define BLE_DYNAMIC_INTERVAL_LOW_RATE 200 // connection interval when idle (milliseconds)
 #define BLE_DYNAMIC_INTERVAL_HIGH_RATE 7.5 // connection interval when not idle (milliseconds) - 7.5ms is fastest possible
+#define BLE_DEFAULT_HIGH_INTERVAL true
 #define DEFAULT_PERIPH_MAX_CONN_INTERVAL BLE_DYNAMIC_INTERVAL_HIGH_RATE // highest possible on connect
 #define BLE_DYNAMIC_INTERVAL_IDLE_TIME (int)(120000 / BLE_DYNAMIC_INTERVAL_HIGH_RATE) // time in milliseconds at which we enter idle
 /// How many connection intervals has BLE been idle for? Use for dynamic interval adjustment
@@ -299,7 +300,7 @@ int jsble_exec_pending(IOEvent *event) {
    case BLEP_NONE: break;
    case BLEP_ERROR: {
      JsVar *v = jsble_get_error_string(data);
-     jsWarn("Softdevice error %v",v);
+     jsWarn("Softdevice error %v (bluetooth.c:%d)",v, *(uint32_t*)buffer);
      jsvUnLock(v);
      break;
    }
@@ -753,7 +754,6 @@ static void conn_params_error_handler(uint32_t nrf_error) {
    */
   if (nrf_error == NRF_ERROR_INVALID_STATE)
     return;
-
   APP_ERROR_CHECK_NOT_URGENT(nrf_error);
 }
 
@@ -1776,6 +1776,9 @@ static void gap_params_init() {
     }
     gap_conn_params.slave_latency     = SLAVE_LATENCY;
     gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
+#ifdef DYNAMIC_INTERVAL_ADJUSTMENT
+    bleHighInterval = BLE_DEFAULT_HIGH_INTERVAL; // set default speed
+#endif
 
     err_code = sd_ble_gap_ppcp_set(&gap_conn_params);
     APP_ERROR_CHECK(err_code);
