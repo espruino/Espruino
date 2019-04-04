@@ -87,11 +87,11 @@ void jsble_restart_softdevice(){
 	jswrap_ble_reconfigure_softdevice();
 }
 
-void jsble_advertising_start(){
+uint32_t jsble_advertising_start(){
 	esp_err_t status;
 	if (bleStatus & BLE_IS_ADVERTISING) return;
 	status = bluetooth_gap_startAdvertizing(true);
-	if(status) jsWarn("advertizing start problem:0X%x\n",status);
+	return status;
 }
 void jsble_advertising_stop(){
 	esp_err_t status;

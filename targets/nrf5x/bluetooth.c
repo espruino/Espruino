@@ -1019,7 +1019,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         {
           // the timeout for sd_ble_gap_adv_start expired - kick it off again
           bleStatus &= ~BLE_IS_ADVERTISING; // we still think we're advertising, but we stopped
-          jsble_advertising_start();
+          jsble_advertising_start(); // ignore return code
         }
         break;
 
@@ -1103,7 +1103,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           nus_transmit_string();
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
-            jsble_advertising_start();
+            jsble_advertising_start(); // ignore return code
           jsble_queue_pending(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
@@ -1648,7 +1648,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             break;
 
         case PM_EVT_PEERS_DELETE_SUCCEEDED:
-          jsble_advertising_start();
+          jsble_advertising_start(); // ignore return code
             break;
 
         case PM_EVT_PEERS_DELETE_FAILED:
@@ -2273,38 +2273,42 @@ static void advertising_init() {
 // -----------------------------------------------------------------------------------
 // -------------------------------------------------------------------- OTHER
 
-void jsble_advertising_start() {
-  if (bleStatus & BLE_IS_ADVERTISING) return;
+uint32_t jsble_advertising_start() {
+  if (bleStatus & BLE_IS_ADVERTISING) return 0;
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
   bool non_connectable = bleStatus & BLE_IS_NOT_CONNECTABLE;
+  bool non_scannable = bleStatus & BLE_IS_NOT_SCANNABLE;
 #if NRF_SD_BLE_API_VERSION>5
   adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
   adv_params.p_peer_addr     = NULL;
   adv_params.properties.type = non_connectable
-                                    ? BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED
-                                    : BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
+      ? (non_scannable ? BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED : BLE_GAP_ADV_TYPE_NONCONNECTABLE_SCANNABLE_UNDIRECTED)
+      : (non_scannable ? BLE_GAP_ADV_TYPE_CONNECTABLE_NONSCANNABLE_UNDIRECTED : BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED);
   adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
   adv_params.duration  = BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED;
 #else
-  adv_params.type        = non_connectable ? BLE_GAP_ADV_TYPE_ADV_NONCONN_IND : BLE_GAP_ADV_TYPE_ADV_IND;
+  adv_params.type        = non_connectable
+      ? (non_scannable ? BLE_GAP_ADV_TYPE_ADV_NONCONN_IND : BLE_GAP_ADV_TYPE_ADV_SCAN_IND)
+      : (non_scannable ? BLE_GAP_ADV_TYPE_ADV_DIRECT_IND : BLE_GAP_ADV_TYPE_ADV_IND);
   adv_params.fp          = BLE_GAP_ADV_FP_ANY;
   adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
 #endif
   adv_params.p_peer_addr = NULL;
   adv_params.interval = bleAdvertisingInterval;
 
-#if NRF_SD_BLE_API_VERSION>5
   uint32_t err_code;
+#if NRF_SD_BLE_API_VERSION>5
   err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, 0, &adv_params);
-  APP_ERROR_CHECK_NOT_URGENT(err_code);
-  sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
+  if (!err_code)
+    err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
 #elif NRF_SD_BLE_API_VERSION<5
-  sd_ble_gap_adv_start(&adv_params);
+  err_code = sd_ble_gap_adv_start(&adv_params);
 #else
-  sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
+  err_code = sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
 #endif
   bleStatus |= BLE_IS_ADVERTISING;
+  return err_code;
 }
 
 void jsble_advertising_stop() {

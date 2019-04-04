@@ -34,6 +34,9 @@
             String.split - improve docs, split with RegExp now inserts the text after the final match
             RegExp: Add '|' operator (fix #1503)
             Switch ARM toolchain to gcc-arm-none-eabi-8-2018-q4-major
+            nRF52: Now create exception if advertising calls fail (but ignore when in IRQ)
+            nRF52: Add setAdvertising({},{scannable:false}) for disabling scan response
+            nRF52: Add note about connectable:false requiring >=100ms intervals
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends

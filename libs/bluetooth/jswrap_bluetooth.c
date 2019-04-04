@@ -468,7 +468,7 @@ Use `NRF.sleep()` to disable advertising.
 */
 void jswrap_ble_wake() {
   bleStatus &= ~BLE_IS_SLEEPING;
-  jsble_advertising_start();
+  jsble_check_error(jsble_advertising_start());
 }
 
 /*JSON{
@@ -660,11 +660,18 @@ NRF.setAdvertising([
   showName: true/false // include full name, or nothing
   discoverable: true/false // general discoverable, or limited - default is limited
   connectable: true/false // whether device is connectable - default is true
+  scannable : true/false // whether device can be scanned for scan response packets - default is true
   interval: 600 // Advertising interval in msec, between 20 and 10000 (default is 375ms)
   manufacturer: 0x0590 // IF sending manufacturer data, this is the manufacturer ID
   manufacturerData: [...] // IF sending manufacturer data, this is an array of data
 }
 ```
+
+Setting `connectable` and `scannable` to false gives the lowest power consumption
+as the BLE radio doesn't have to listen after sending advertising.
+
+**NOTE:** Non-`connectable` advertising can't have an advertising interval less than 100ms
+according to the BLE spec.
 
 So for instance to set the name of Puck.js without advertising any
 other data you can just use the command:
@@ -724,6 +731,12 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
     if (v) {
       if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_CONNECTABLE;
       else bleStatus |= BLE_IS_NOT_CONNECTABLE;
+      bleChanged = true;
+    }
+    v = jsvObjectGetChild(options, "scannable", 0);
+    if (v) {
+      if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_SCANNABLE;
+      else bleStatus |= BLE_IS_NOT_SCANNABLE;
       bleChanged = true;
     }
 
@@ -843,7 +856,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
   jsvUnLock(initialArray);
   jsble_check_error(err_code);
   if (bleChanged && isAdvertising)
-    jsble_advertising_start();
+    jsble_check_error(jsble_advertising_start());
 }
 
 /*JSON{
