@@ -84,14 +84,6 @@ espruino_#v##_Wio_LTE.zip
    - The firmware image for Seed Wio LTE Devices
      See http://www.espruino.com/WioLTE for more information
 
-espruino_#v##_thingy52.hex
-   - The firmware image for Nordic Thing:52 Devices
-     See http://www.espruino.com/Thingy52 for more information
-
-espruino_#v##nrf52832.hex
-   - The firmware image for Nordic Thing:52 Devices
-     See http://www.espruino.com/nRF52832DK for more information
-
 espruino_#v##stm32l496gdiscovery.bin
    - The firmware image for the STM32L496G Discovery Board
      See http://www.espruino.com/STM32L496GDISCOVERY for more information
