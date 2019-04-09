@@ -38,6 +38,7 @@
             nRF52: Now create exception if advertising calls fail (but ignore when in IRQ)
             nRF52: Add setAdvertising({},{scannable:false}) for disabling scan response
             nRF52: Add note about connectable:false requiring >=100ms intervals
+            STM32: Fix issue where occasionally STM32 would be ~0.2s late waking from light sleep
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends

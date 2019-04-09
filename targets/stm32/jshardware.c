@@ -675,7 +675,7 @@ static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
 volatile unsigned int ticksSinceStart = 0;
 #ifdef USE_RTC
 // Average time between SysTicks
-volatile unsigned int averageSysTickTime=0, smoothAverageSysTickTime=0;
+volatile unsigned int expectedSysTickTime=0,averageSysTickTime=0, smoothAverageSysTickTime=0;
 // last system time there was a systick
 volatile JsSysTime lastSysTickTime=0, smoothLastSysTickTime=0;
 // whether we have slept since the last SysTick
@@ -763,7 +763,8 @@ void jshSetupRTC(bool isUsingLSI) {
 void jshResetRTCTimer() {
 #ifdef USE_RTC
   // work out initial values for RTC
-  averageSysTickTime = smoothAverageSysTickTime = jshGetDefaultSysTickTime();
+  expectedSysTickTime = jshGetDefaultSysTickTime();
+  averageSysTickTime = smoothAverageSysTickTime = expectedSysTickTime;
   lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
 #endif
 }
@@ -2606,10 +2607,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jsiSetSleep(JSI_SLEEP_AWAKE);
   } else
 #endif
-  {
+  if (timeUntilWake > jshGetTimeFromMilliseconds(0.1)) {
+    /* don't bother sleeping if the time period is so low we
+     * might miss the timer */
     JsSysTime sysTickTime;
 #ifdef USE_RTC
-    sysTickTime = averageSysTickTime*5/4;
+    sysTickTime = expectedSysTickTime*5/4;
 #else
     sysTickTime = SYSTICK_RANGE*5/4;
 #endif
