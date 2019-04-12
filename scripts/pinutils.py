@@ -239,9 +239,10 @@ def only_from_package(pins, package):
   newpins = []
   for pin in pins:
 #    print json.dumps(pin)
-    pinnumber =  pin["csv"][package]
-    if pinnumber!="" and pinnumber!="0":
-      newpins.append(pin)
+    if "csv" in pin:
+      pinnumber =  pin["csv"][package]
+      if pinnumber!="" and pinnumber!="0":
+        newpins.append(pin)
   return newpins
 
 def get_device_pins(board):
