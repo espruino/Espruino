@@ -59,7 +59,7 @@ On other platforms, place `wifi.connect` in a function called `onInit`.
     ["details","JsVar","An object with event details"]
   ]
 }
-The 'connected' event is called when an association with an access point has succeeded, i.e., a connection to the AP's network has been established.
+The 'associated' event is called when an association with an access point has succeeded, i.e., a connection to the AP's network has been established.
 
 On ESP32/ESP8266 there is a `details` parameter which includes:
 
@@ -222,6 +222,8 @@ The options properties may contain:
 
 * `password` - Password string to be used to access the network.
 * `dnsServers` (array of String) - An array of up to two DNS servers in dotted decimal format string.
+* `channel`  - Wifi channel of the access point  (integer, typ 0..14, 0 means any channel).
+* `bssid`   -  Mac address of the access point (string, type "00:00:00:00:00:00").
 
 Notes:
 
