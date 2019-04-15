@@ -222,8 +222,8 @@ The options properties may contain:
 
 * `password` - Password string to be used to access the network.
 * `dnsServers` (array of String) - An array of up to two DNS servers in dotted decimal format string.
-* `channel`  - Wifi channel of the access point  (integer, typ 0..14, 0 means any channel).
-* `bssid`   -  Mac address of the access point (string, type "00:00:00:00:00:00").
+* `channel`  - Wifi channel of the access point  (integer, typ 0..14, 0 means any channel), only on ESP8266. 
+* `bssid`   -  Mac address of the access point (string, type "00:00:00:00:00:00"), only on ESP8266.
 
 Notes:
 
