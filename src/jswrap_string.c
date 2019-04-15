@@ -466,11 +466,13 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   "name" : "split",
   "generate" : "jswrap_string_split",
   "params" : [
-    ["separator","JsVar","The start character index"]
+    ["separator","JsVar","The separator `String` or `RegExp` to use"]
   ],
   "return" : ["JsVar","Part of this string from start for len characters"]
 }
-Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==[1,2,3]```
+Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==['1', '2', '3']```
+
+Regular Expressions can also be used to split strings, eg. `'1a2b3 4'.split(/[^0-9]/)==['1', '2', '3', '4']`.
  */
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   if (!jsvIsString(parent)) return 0;
@@ -486,7 +488,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 #ifndef SAVE_ON_FLASH
   // Use RegExp if one is passed in
   if (jsvIsInstanceOf(split, "RegExp")) {
-    int last = 0;
+    unsigned int last = 0;
     JsVar *match;
     jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
     match = jswrap_regexp_exec(split, parent);
@@ -506,6 +508,9 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
     }
     jsvUnLock(match);
     jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
+    // add remaining string after last match
+    if (last<=jsvGetStringLength(parent))
+      jsvArrayPushAndUnLock(array, jsvNewFromStringVar(parent, (size_t)last, JSVAPPENDSTRINGVAR_MAXLENGTH));
     return array;
   }
 #endif
@@ -678,3 +683,29 @@ bool jswrap_string_endsWith(JsVar *parent, JsVar *search, JsVar *length) {
   "return" : ["bool","`true` if the given characters are in the string, otherwise, `false`."]
 }
 */
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "repeat",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_string_repeat",
+  "params" : [
+    ["count","int","An integer with the amount of times to repeat this String"]
+  ],
+  "return" : ["JsVar","A string containing repetitions of this string"],
+  "return_object" : "String"
+}
+Repeat this string the given number of times.
+*/
+JsVar *jswrap_string_repeat(JsVar *parent, int count) {
+  if (count<0) {
+    jsExceptionHere(JSET_ERROR, "Invalid count value");
+    return 0;
+  }
+  JsVar *result = jsvNewFromEmptyString();
+  while (count-- && !jspIsInterrupted())
+    jsvAppendStringVarComplete(result, parent);
+  return result;
+}

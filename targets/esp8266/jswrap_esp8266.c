@@ -353,7 +353,7 @@ void   jswrap_ESP8266_deepSleep(JsVar *jsMicros, JsVar *jsOption) {
   uint8_t option = jsvGetInteger(jsOption);
   system_deep_sleep_set_option(option);
 
-  int sleepTime = jsvGetInteger(jsMicros);
+  uint64_t sleepTime = jsvGetLongInteger(jsMicros);
   system_deep_sleep(sleepTime);
 }
 

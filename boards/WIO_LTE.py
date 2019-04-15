@@ -94,24 +94,24 @@ board = {
 };
 board["_css"] = """
 #board {
-  width: 457px;
-  height: 480px;
+  width: 500px;
+  height: 588px;
   left: 200px;
   background-image: url(img/WIO_LTE.jpg);
 }
 #boardcontainer {
-  height: 468px;
+  height: 588px;
 }
 #left {
-  top: 98px;
-  right: 352px;
+  top: 123px;
+  right: 412px;
 }
 #right  {
-  top: 98px;
-  left: 352px;
+  top: 123px;
+  left: 412px;
 }
-.leftpin { height: 18px; padding:0px; }
-.rightpin { height: 18px; padding:0px; }
+.leftpin { height: 23px; padding:0px; }
+.rightpin { height: 23px; padding:0px; }
 """;
 
 def get_pins():

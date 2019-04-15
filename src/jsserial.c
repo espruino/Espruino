@@ -22,6 +22,7 @@ void jsserialHardwareFunc(unsigned char data, serial_sender_data *info) {
   jshTransmit(device, data);
 }
 
+#ifndef SAVE_ON_FLASH
 /**
  * Send a single byte through Serial.
  */
@@ -29,7 +30,7 @@ void jsserialSoftwareFunc(
     unsigned char data,
     serial_sender_data *info
   ) {
-  // jsiConsolePrintf("jsserialSoftwareFunc: data=%x\n", data);
+  //jsiConsolePrintf("jsserialSoftwareFunc: data=%x\n", data);
   JshUSARTInfo *inf = (JshUSARTInfo*)info;
   if (!jshIsPinValid(inf->pinTX)) return;
 
@@ -85,6 +86,7 @@ void jsserialSoftwareFunc(
   // we do this even if we are high, because we want to ensure that the next char is properly spaced
   // Ideally we'd be able to store the last bit time when sending so we could just go straight on from it
 }
+#endif
 
 bool jsserialPopulateUSARTInfo(
     JshUSARTInfo *inf,
@@ -95,13 +97,18 @@ bool jsserialPopulateUSARTInfo(
 
   JsVar *parity = 0;
   JsVar *flow = 0;
+  int byteSize = inf->bytesize;
+  int stopBits = inf->stopbits;
   jsvConfigObject configs[] = {
       {"rx", JSV_PIN, &inf->pinRX},
       {"tx", JSV_PIN, &inf->pinTX},
       {"ck", JSV_PIN, &inf->pinCK},
       {"cts", JSV_PIN, &inf->pinCTS},
-      {"bytesize", JSV_INTEGER, &inf->bytesize},
-      {"stopbits", JSV_INTEGER, &inf->stopbits},
+      {"bytesize", JSV_INTEGER, &byteSize}, // don't reference direct as this is just a char, not unsigned integer
+      {"stopbits", JSV_INTEGER, &stopBits}, // don't reference direct as this is just a char, not unsigned integer
+#ifdef LINUX
+      {"path", JSV_STRING_0, 0}, // not used - just here to avoid errors
+#endif
       {"parity", JSV_OBJECT /* a variable */, &parity},
       {"flow", JSV_OBJECT /* a variable */, &flow},
       {"errors", JSV_BOOLEAN, &inf->errorHandling},
@@ -117,6 +124,8 @@ bool jsserialPopulateUSARTInfo(
 
   bool ok = true;
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    inf->bytesize = (unsigned char)byteSize;
+    inf->stopbits = (unsigned char)stopBits;
     // sort out parity
     inf->parity = 0;
     if(jsvIsString(parity)) {
@@ -145,7 +154,6 @@ bool jsserialPopulateUSARTInfo(
   }
   jsvUnLock(parity);
   jsvUnLock(flow);
-
   return ok;
 }
 
@@ -165,6 +173,7 @@ bool jsserialGetSendFunction(JsVar *serialDevice, serial_sender *serialSend, ser
     *(IOEventFlags*)serialSendData = device;
     return true;
   } else if (device == EV_NONE) {
+#ifndef SAVE_ON_FLASH
     // Software Serial
     JsVar *baud = jsvObjectGetChild(serialDevice, USART_BAUDRATE_NAME, 0);
     JsVar *options = jsvObjectGetChild(serialDevice, DEVICE_OPTIONS_NAME, 0);
@@ -175,11 +184,12 @@ bool jsserialGetSendFunction(JsVar *serialDevice, serial_sender *serialSend, ser
     *serialSend = jsserialSoftwareFunc;
     *serialSendData = inf;
     return true;
+#endif
   }
   return false;
 }
 
-
+#ifndef SAVE_ON_FLASH
 typedef struct {
   char buf[7]; ///< received data
   unsigned char bufLen; ///< amount of received characters
@@ -326,3 +336,4 @@ void jsserialEventCallback(bool state, IOEventFlags channel) {
   }
   jshHasEvents();
 }
+#endif

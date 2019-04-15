@@ -255,7 +255,7 @@ jsondatas = sorted(jsondatas, key=lambda s: common.get_name_or_space(s).lower())
 html('  <div id="contents">')
 html("  <h2><a name=\"contents\"></a>Contents</h2>")
 html("  <ul>")
-html("  <li><a class=\"blush\" name=\"t__global\" href=\"#_global\" onclick=\"place('_global');\">Globals</A></li>")
+html("  <li><a class=\"blush\" name=\"t__global\" href=\"#_global\" onclick=\"place('_global');\">Globals</a></li>")
 for jsondata in jsondatas:
   if "name" in jsondata and not "class" in jsondata:
     add_link(jsondata)
@@ -289,6 +289,7 @@ for jsondata in detail:
     niceName="Globals"
     linkName="_global"
 
+  # If we're on to a different class now, put up the heading for it
   if className!=lastClass:
     lastClass=className
     html("<h2 class=\"class\"><a class=\"blush\" name=\""+linkName+"\" href=\"#t_"+linkName+"\" onclick=\"place('t_"+linkName+"');\">"+niceName+"</a></h2>")
@@ -313,10 +314,12 @@ for jsondata in detail:
     html("  <h4>Methods and Fields</h4>")
     html("  <ul>")
     for j in jsondatas:
-      if ("name" in j) and (className!="" or not "instanceof" in j) and ((className=="" and not "class" in j) or ("class" in j and j["class"]==className)):
+      if ("name" in j) and ((className=="" and not "class" in j) or ("class" in j and j["class"]==className)):
         link = get_link(j)
         html("    <li><a name=\"t_"+link+"\" href=\"#"+link+"\">"+get_surround(j)+"</a></li>")
     html("  </ul>")
+
+  # Otherwise just output detail
   link = get_link(jsondata)
   html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a>")
   #html("<!-- "+json.dumps(jsondata, sort_keys=True, indent=2)+"-->");
@@ -330,20 +333,6 @@ for jsondata in detail:
     html("   <div class=\"call\"><code>"+get_code(jsondata)+"</code></div>")
   elif "instanceof" in jsondata:
     html("   <h4>Instance of <a href=\"#"+jsondata["instanceof"]+"\"><code>"+jsondata["instanceof"]+"</code></a>")
-  if "description" in jsondata:
-    html("  <h4>Description</h4>")
-    desc = jsondata["description"]
-    if not isinstance(desc, list): desc = [ desc ]
-    if "ifdef" in jsondata: 
-      desc.append("\n\n**Note:** This is only available in "+common.get_ifdef_description(jsondata["ifdef"]));
-    if "ifndef" in jsondata:
-      desc.append("\n\n**Note:** This is not available in "+common.get_ifdef_description(jsondata["ifndef"]));
-    if "#if" in jsondata:
-      d = jsondata["#if"].replace("||", " and ").replace("&&", " with ")
-      d = re.sub('defined\((.+?)\)', replace_with_ifdef_description, d)
-      d = re.sub('(.*)_COUNT>=(.*)', "devices with more than \\2 \\1 peripherals", d)
-      desc.append("\n\n**Note:** This is only available in "+d);            
-    html_description(desc, jsondata["name"])
   if "params" in jsondata:
     html("  <h4>Parameters</h4>")
     for param in jsondata["params"]:
@@ -359,6 +348,21 @@ for jsondata in detail:
     if len(jsondata["return"])>1: desc=jsondata["return"][1]
     if desc=="": desc="See description above"
     html("   <div class=\"return\">"+htmlify(desc,"")+"</div>")
+  if "description" in jsondata:
+    html("  <h4>Description</h4>")
+    desc = jsondata["description"]
+    if not isinstance(desc, list): desc = [ desc ]
+    if "ifdef" in jsondata: 
+      desc.append("\n\n**Note:** This is only available in "+common.get_ifdef_description(jsondata["ifdef"]));
+    if "ifndef" in jsondata:
+      desc.append("\n\n**Note:** This is not available in "+common.get_ifdef_description(jsondata["ifndef"]));
+    if "#if" in jsondata:
+      d = jsondata["#if"].replace("||", " and ").replace("&&", " with ")
+      d = re.sub('defined\((.+?)\)', replace_with_ifdef_description, d)
+      d = re.sub('(.*)_COUNT>=(.*)', "devices with more than \\2 \\1 peripherals", d)
+      desc.append("\n\n**Note:** This is only available in "+d);            
+    html_description(desc, jsondata["name"])
+
 
   url = "http://www.espruino.com/Reference#"+get_link(jsondata)
   if url in code_uses:

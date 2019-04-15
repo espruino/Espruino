@@ -1,4 +1,83 @@
-	    Allow changeInterval with large (>32 bit) intervals (fix #1438)
+            Fix string index calculation when using some regexes (fix #1602)
+            Ensure Function.replaceWith puts scope after parameters (fix #1601)
+            Ensure Graphics.* return the Graphics instance, to allow call chaining (fix #1580)
+            Ensure DataView.byteOffset/byteLength is always set even if not specified (fix #1567)
+            Added HttpServerResponse.setHeader
+            HttpServerResponse now automatically sends `Connection:close` unless overridden (fix #1596)
+            Fix sign of RSSI reporting with setRSSIHandler
+            nRF52: Add docs for properties that weren't documented before
+            nRF52: Add ability to connect to device with passkey authentication
+            nRF52: Allow startNotifications to use Indicate if Notify doesn't exist (as per spec)
+            nRF52: Add option for static passkey pairing with NRF.setSecurity
+	    ESP32: update EspruinoBuildTools to esp-idf V3.1.2 - fix Wifi connect issues (multiple ssid)
+            Revert PR #1459 as it broke neopixel functionality that worked previously
+            nRF52: Disconnect RX pin after UART test at boot (saves power when in deep sleep)
+            Serial.unsetup now sets pin state to STATE_UNDEFINED, which disconnects the pins internally
+            Removed modulo on `new Date` h/m/s/ms arguments as it seems desktop JS is fine with out of range values
+            Added `active` option to NRF.setScan/findDevices/requestDevices to allow scan response packets to be requested
+            Add I2C/SPI baud rate checks (#1619)
+            STM32: Add `E.setRTCPrescaler` to allow the RTC to be calibrated on Espruino Pico (fix #1607)
+            nRF52: Fix slow Bluetooth connection if previously disconnected while using low power connection interval (fix #1605)
+            Allow `Graphics.clear(true)` to reset state (font, color, etc) to default as well as clearing the screen (fix #1615)
+            nRF52: Fix setScanResponse regression from 2v00
+            nRF5x: Execute SWI1_IRQHandler when radio turns off instead of on+off. More efficient, fixed multiple advertising.
+            Smartibot build added
+            ESP8266: add CFLAGs to shrink build size (fix #1622)
+            ESP32: update EspruinoBuildTools to esp-idf V3.1.3
+            nRF52: Add FAT Filesystem support to MDBT42Q module
+            Now save file modification time with FAT
+            Fix segfault if `.clone` is called with `this==undefined` (fix #1628)
+            Fix issue outputting char codes <8 after outputting hex char codes
+            nRF52: Don't allow NRF.updateServices while a BLE restart for setServices is queued
+            nRF5x: Don't sleep if we received any events since last sleep (fix #1572)
+            Remove limit on the number of scopes that can be searched (fix #948)
+            String.split - improve docs, split with RegExp now inserts the text after the final match
+            RegExp: Add '|' operator (fix #1503)
+            Switch ARM toolchain to gcc-arm-none-eabi-8-2018-q4-major
+            Improve handling of timeouts for RAK8212 GPS
+            nRF52: Now create exception if advertising calls fail (but ignore when in IRQ)
+            nRF52: Add setAdvertising({},{scannable:false}) for disabling scan response
+            nRF52: Add note about connectable:false requiring >=100ms intervals
+            STM32: Fix issue where occasionally STM32 would be ~0.2s late waking from light sleep
+
+     2v01 : ESP32: update to esp-idf V3.1
+            Fix issues with Class Extends
+            Improve Tab Completions for extended classes
+            Fix Storage.readJSON/readArrayBuffer memory leak (fix #1532)
+            Fix potential out of bounds Graphics.scroll
+            Serial.setConsole now warns if not used on hardware Serial
+            ESP8266: implement hw_timer (fix #1511) to make soft serial and pwm work
+            Fix Storage write error when skipping pages (fix #1539)
+            nRF5x: When scanning, only use as much of IO queue as is needed
+            nRF5x: If BLE/NFC/etc data won't fit in IO queue, drop whole packet
+            Allow `a in b` to search 'fake' objects (#1534)
+            Improve fast path when iterating over Uint8Array/ArrayBuffer
+            Allow deletion of function properties (fix #1549)
+            Add `{callback:...}` option for `.write` style functions - improve docs.
+            ESP8266: deepSleep invalid microseconds (fix #1547)
+            ESP8266: ESP_FLASH_MAX for ESP8266_4MB is wrong (fix #1551, #1553)
+            Fix buffer overflow if bytesize/stopbits used in `Serial.setup` (fix #1510)
+            Ensure jsvNewFlatStringOfLength tries twice (even if GC doesn't release memory, it reorders the free list) (#1559)
+            ESP8266: Missing variable Flash Mode (--flash_mode, -fm) in ESP8266.make files (fix #1563)
+            ESP8266: Remove hack added to get around SDK 1.4 bug (fix #1568)
+            Reduce available hardware SPI/I2C instances to 1 on nRF52 (since this is all we implement atm)
+            Add E.dumpFragmentation to show memory fragmentation (only for debug builds)
+            Fix parsing of dates from before 1970
+            nRF52: Fix some regressions in requestDevice (flagged up by asserts in debug build)
+            Allow built-in objects to be created with `new X()`
+            nRF52: Ensure Bluetooth stack doesn't do a reboot for non-fatal errors (just report them to console)
+            BluetoothRemoteGATTServer.disconnect now returns a Promise
+            nRF52: Jump out of low power mode after less BLE activity (2 reads/writes in 10 radio packets) (#1546)
+            nRF5x: Fix NRF.setConnectionInterval when there's no connection (fix #1546)
+            Explicitly mention Espruino not supporting CASE after DEFAULT in error (fix #1570)
+            Ensure scope is saved for Class constructors (fix #1576)
+            Add setNBCellOn for RAK8211-NB (fix #1581)
+            Now escape chars <8 as octal, and add escape of vertical tab 
+            Add Graphics.createArrayBuffer(... {interleavex:true}) to allow faster support for P3 LED panels
+            Add Graphics.fill/drawEllipse and move fill/drawCircle to use the same code
+            CC3000-specific build removed on Original Espruino board (lack of space)
+
+     2v00 : Allow changeInterval with large (>32 bit) intervals (fix #1438)
             changeInterval now changes the interval immediately when it's called inside the interval it is changing (fix #1440)
             Fix parsing of try..catch when not executing (fix #1439)
             Add extra ReferenceError checks, even if variable is not used
@@ -78,7 +157,43 @@
             ESP8266: fully integration of analog pin A0 (fix #1495)
             ESP32: update sdk to esp-idf 3.0.1, set Espruino build tools back to master branch
             Allow btoa to work for arrays as well as Strings (fix #1509)
-
+            Allow E.mapInPlace to merge bits from multiple source elements, also add option for msb/lsb first
+            Remove Graphics.scroll/drawCircle/fillCircle on devices with low flash to allow builds to fit again
+            Remove BluetoothRemoteGATTCharacteristic.writeValue on NRF51 (accidental inclusion - it's not required)
+            Double IO buffer size to 256 (1k bytes) on boards with 96k of RAM or more (or NRF52)
+            nRF5x: allow arbirtary baud rates to be specified for UART
+            On devices with low flash, ensure atan2 uses the slower/smaller atan implementation
+            Move FFT back to 64 bit if low flash (it uses less memory!) and optimise for flash space
+            Remove new Graphics.createImage/asBML/asURL/dump on Original Espruino Board (not enough space) 
+            Remove Olimexino from build (too difficult to slim down build and very low usage)
+            Remove Software Serial from boards where we're low on flash
+            Increase size of saved code area from 3*4k to 10*4k on RAK821x boards
+            Fix 'Can't extend undefined' when using Object.setPrototypeOf on a function
+            nRF52: Added NRF.HID event for two-way BLE HID communications
+            nRF5x: Remove multiple writes per connection interval (more trouble than the speed improvement is worth)
+            Fixed hang if trying to allocate Storage greater than total storage size in a fully erased Storage area.
+            Pixl.js: Fix 30s pause when closing sockets on WIZnet W5100 (fix #1306)
+            Remove HASH/hashlib from all builds as it was confusingly in some and not others. Now use 'crypto'
+            require('crypto').SHA1 is now JS in Espruino Original to cut down on the flash required
+            Added 'heatshrink' library to expose built-in heatshrink compression to users
+            Fix assert fail when calling Function.apply with an Object with non-numeric keys
+            Fix issue when AT lib has to process multiple custom line handers in one packet
+            Espruino WiFi: Fix unreliable send when receiving lots of data on another socket
+            Espruino WiFi: Only rename `EspruinoWiFi` to `WiFi` if not found (allows easier debug)
+            Check Flash Storage for modules when using `require`
+            Add 'bits' option for Software SPI
+            STM32 reset pin IRQs before storing the state - makes lost setWatches far less likely
+            Ensure that setBusyIndicator updates output state after the very first initialisation.
+            MDBT42Q: Add LED2 var in the Espruino interpreter, but don't use it for the bootloader
+            ESP8266: release heap used by logDebug(true) (fix #1508)
+            ESP8266: remove SHA256 SHA512 (fix #1517)
+            Ensure `Date.getTimezoneOffset()` returns the correct timezone offset (fix #1515)
+            Search for and execute files '.boot0'/1/2/3 in Storage at boot time if they exist
+            Pixl.js: reduce saved code area to 9 x 4kb to allow for extra features
+            ESP8266: switch to SDK 2.2.1 (fix #1207)
+            Fix Serial port path regression on Linux, and add docs
+            microbit: remove line-by-line debug capability to free up some space
+            Added ES6 String.prototype.repeat
 
      1v99 : Increase jslMatch error buffer size to handle "UNFINISHED TEMPLATE LITERAL" string (#1426)
             nRF5x: Make FlashWrite cope with flash writes > 4k

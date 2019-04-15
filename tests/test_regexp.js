@@ -47,8 +47,7 @@ testreg(re.exec(names)," ;",49);
 test(re.lastIndex, 51);
 testreg(re.exec(names),null);
 test(re.lastIndex, 0);
-test(names.split(re), "Harry Trump,Fred Barney,Helen Rigby,Bill Abel");
-
+test(names.split(re), "Harry Trump,Fred Barney,Helen Rigby,Bill Abel,Chris Hand ");
 
 test("Hellowa worldssaaa a a a".replace(/a/,""),"Hellow worldssaaa a a a");
 test("Hellowa worldssaaa a a a".replace(/a/g,""),"Hellow worldss   ");
@@ -68,6 +67,14 @@ test("5c6F".replace(/(\d+)([^\d])/g, (m, r, c) => new Array(+r + 1).join(c)), "c
 
 test(/\s+/.test(" "), true);
 test(/\S+/.test(" "), false);
+
+test(/\S+/.test(" "), false);
+
+
+test("abcde".split(/d|b/).join(","), "a,c,e");
+test("abcde|f".split(/d|\||b/).join(","), "a,c,e,f");
+test('Some text\nAnd some more\r\nAnd yet\rThis is the end'.split(/\r\n|\r|\n/).join(","),
+     "Some text,And some more,And yet,This is the end");
 
 result = tests==testPass;
 console.log(result?"Pass":"Fail",":",tests,"tests total");

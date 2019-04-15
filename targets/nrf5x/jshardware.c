@@ -431,6 +431,9 @@ void jshInit() {
     inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
     inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
     jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
+  } else {
+    // If there's no UART, 'disconnect' the IO pin - this saves power when in deep sleep in noisy electrical environments
+    jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_UNDEFINED);
   }
 #endif
 
@@ -923,6 +926,8 @@ JshPinFunction jshGetFreeTimer(JsVarFloat freq) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+  if (value>1) value=1;
+  if (value<0) value=0;
 #ifdef NRF52
   // Try and use existing pin function
   JshPinFunction func = pinStates[pin];
@@ -1559,7 +1564,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jstSetWakeUp(timeUntilWake);
 #endif
   }
-  hadEvent = false;
   jsiSetSleep(JSI_SLEEP_ASLEEP);
   while (!hadEvent) {
     sd_app_evt_wait(); // Go to sleep, wait to be woken up
@@ -1568,6 +1572,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     while (app_usbd_event_queue_process()); /* Nothing to do */
     #endif
   }
+  hadEvent = false;
   jsiSetSleep(JSI_SLEEP_AWAKE);
 #ifdef BLUETOOTH
   // we don't care about the return codes...
@@ -1608,6 +1613,7 @@ void jshUtilTimerStart(JsSysTime period) {
 void jshUtilTimerDisable() {
   utilTimerActive = false;
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_SHUTDOWN);
 }
 
 // the temperature from the internal temperature sensor

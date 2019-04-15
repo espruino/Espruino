@@ -675,7 +675,7 @@ static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
 volatile unsigned int ticksSinceStart = 0;
 #ifdef USE_RTC
 // Average time between SysTicks
-volatile unsigned int averageSysTickTime=0, smoothAverageSysTickTime=0;
+volatile unsigned int expectedSysTickTime=0,averageSysTickTime=0, smoothAverageSysTickTime=0;
 // last system time there was a systick
 volatile JsSysTime lastSysTickTime=0, smoothLastSysTickTime=0;
 // whether we have slept since the last SysTick
@@ -700,47 +700,75 @@ static bool jshIsRTCAlreadySetup(bool andRunning) {
     return RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET;
 }
 
-#ifdef USE_RTC
-void jshSetupRTCPrescaler(bool isUsingLSI) {
-  if (isUsingLSI) {
-#ifdef STM32F1
-    jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
-#else
-    jshRTCPrescaler = 32000; // 32kHz for LSI on F4
-#endif
-  } else {
-    jshRTCPrescaler = 32768; // 32.768kHz for LSE
-  }
-  jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
-}
 
-void jshSetupRTC(bool isUsingLSI) {
-  RCC_RTCCLKConfig(isUsingLSI ? RCC_RTCCLKSource_LSI : RCC_RTCCLKSource_LSE); // set clock source to low speed internal
-  jshSetupRTCPrescaler(isUsingLSI);
-  RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
-  RTC_WaitForSynchro();
+void jshSetupRTCPrescalerValue(unsigned int prescale) {
+#ifdef USE_RTC
+  jshRTCPrescaler = (unsigned short)prescale;
+  jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
 #ifdef STM32F1
   RTC_SetPrescaler(jshRTCPrescaler - 1U);
   RTC_WaitForLastTask();
 #else
   RTC_InitTypeDef RTC_InitStructure;
   RTC_StructInit(&RTC_InitStructure);
-  //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
-  //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
   RTC_InitStructure.RTC_AsynchPrediv = 0;
-  RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
+  RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1);
   RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
   RTC_Init(&RTC_InitStructure);
 #endif
   RTC_WaitForSynchro();
+#endif
 }
 
-void jshResetRTCTimer() {
-  // work out initial values for RTC
-  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
-  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
+
+#ifdef USE_RTC
+static uint32_t jshGetDefaultSysTickTime() {
+  return (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
 }
 #endif
+
+
+int jshGetRTCPrescalerValue(bool calibrate) {
+#ifdef USE_RTC
+  if (calibrate)
+    return (int)((long long)averageSysTickTime * (long long)jshRTCPrescaler / (long long)jshGetDefaultSysTickTime());
+  return jshRTCPrescaler;
+#else
+  return 0;
+#endif
+}
+
+#ifdef USE_RTC
+
+void jshSetupRTCPrescaler(bool isUsingLSI) {
+  if (isUsingLSI) {
+#ifdef STM32F1
+    jshSetupRTCPrescalerValue(40000); // 40kHz for LSI on F1 parts
+#else
+    jshSetupRTCPrescalerValue(32000); // 32kHz for LSI on F4
+#endif
+  } else {
+    jshSetupRTCPrescalerValue(32768); // 32.768kHz for LSE
+  }
+}
+
+void jshSetupRTC(bool isUsingLSI) {
+  RCC_RTCCLKConfig(isUsingLSI ? RCC_RTCCLKSource_LSI : RCC_RTCCLKSource_LSE); // set clock source to low speed internal
+  RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
+  RTC_WaitForSynchro();
+  jshSetupRTCPrescaler(isUsingLSI);  
+}
+#endif
+
+void jshResetRTCTimer() {
+#ifdef USE_RTC
+  // work out initial values for RTC
+  expectedSysTickTime = jshGetDefaultSysTickTime();
+  averageSysTickTime = smoothAverageSysTickTime = expectedSysTickTime;
+  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
+#endif
+}
+
 
 void jshDoSysTick() {
   /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
@@ -2579,10 +2607,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jsiSetSleep(JSI_SLEEP_AWAKE);
   } else
 #endif
-  {
+  if (timeUntilWake > jshGetTimeFromMilliseconds(0.1)) {
+    /* don't bother sleeping if the time period is so low we
+     * might miss the timer */
     JsSysTime sysTickTime;
 #ifdef USE_RTC
-    sysTickTime = averageSysTickTime*5/4;
+    sysTickTime = expectedSysTickTime*5/4;
 #else
     sysTickTime = SYSTICK_RANGE*5/4;
 #endif

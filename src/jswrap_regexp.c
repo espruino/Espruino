@@ -39,9 +39,9 @@ typedef struct {
   size_t groupEnd[MAX_GROUPS];
 } matchInfo;
 
-JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info);
+static JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info);
 
-JsVar *matchfound(JsvStringIterator *txtIt, matchInfo info) {
+static JsVar *matchfound(JsvStringIterator *txtIt, matchInfo info) {
   JsVar *rmatch = jsvNewEmptyArray();
   size_t endIndex = jsvStringIteratorGetIndex(txtIt);
   JsVar *matchStr = jsvNewFromStringVar(info.sourceStr, info.startIndex, endIndex-info.startIndex);
@@ -59,8 +59,29 @@ JsVar *matchfound(JsvStringIterator *txtIt, matchInfo info) {
   return rmatch;
 }
 
+// No match found, so search to end of regex to see if there's an '|'
+static JsVar *nomatchfound(char *regexp, matchInfo info) {
+  if (!jspCheckStackPosition()) return 0;
+  // TODO: | inside a group?
+  while (*regexp && *regexp!='|') {
+    if (*regexp=='\\') {
+      regexp++; // end of regex after escape char!
+      if (!*regexp) return 0;
+    }
+    regexp++;
+  }
+  if (*regexp != '|') return 0;
+  regexp++;
+
+  JsvStringIterator txtIt;
+  jsvStringIteratorNew(&txtIt,  info.sourceStr, info.startIndex);
+  JsVar *rmatch = matchhere(regexp, &txtIt, info);
+  jsvStringIteratorFree(&txtIt);
+  return rmatch;
+}
+
 /* match: search for regexp anywhere in text */
-JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
+static JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
   matchInfo info;
   info.sourceStr = str;
   info.startIndex = startIndex;
@@ -70,19 +91,16 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
   info.groups = 0;
 
   JsVar *rmatch;
-  JsvStringIterator txtIt;
+  JsvStringIterator txtIt, txtIt2;
   jsvStringIteratorNew(&txtIt, str, startIndex);
-  if (regexp[0] == '^') {
-    rmatch = matchhere(regexp+1, &txtIt, info);
-    jsvStringIteratorFree(&txtIt);
-    return rmatch;
-  }
   /* must look even if string is empty */
-  rmatch = matchhere(regexp, &txtIt, info);
+  txtIt2 = jsvStringIteratorClone(&txtIt);
+  rmatch = matchhere(regexp, &txtIt2, info);
+  jsvStringIteratorFree(&txtIt2);
   jsvStringIteratorNext(&txtIt);
   while (!rmatch && jsvStringIteratorHasChar(&txtIt)) {
     info.startIndex++;
-    JsvStringIterator txtIt2 = jsvStringIteratorClone(&txtIt);
+    txtIt2 = jsvStringIteratorClone(&txtIt);
     rmatch = matchhere(regexp, &txtIt2, info);
     jsvStringIteratorFree(&txtIt2);
     jsvStringIteratorNext(&txtIt);
@@ -91,6 +109,7 @@ JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase) {
   return rmatch;
 }
 
+/* Match one character. Doesn't modify txtIt, returns length of regexp char in *length  */
 bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchInfo *info) {
   *length = 1;
   char ch = jsvStringIteratorGetChar(txtIt);
@@ -163,11 +182,25 @@ haveCode:
   return cH==ch;
 }
 
-/* matchhere: search for regexp at beginning of text */
-JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
+/* matchhere: search for regexp at beginning of text. Only handles up to '|' character. Modifies txtIt */
+static JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
   if (jspIsInterrupted()) return 0;
-  if (regexp[0] == '\0')
+  if (regexp[0] == '\0' || // end of regex
+      regexp[0] == '|') // end of this 'or' section of regex
     return matchfound(txtIt, info);
+  if (regexp[0] == '^') { // must be beginning of String
+    if (jsvStringIteratorGetIndex(txtIt)!=0)
+      return 0; // no match
+    if (!jspCheckStackPosition()) return 0;
+    return matchhere(regexp+1, txtIt, info);
+  }
+  // Marker for end of String
+  if (regexp[0] == '$') {
+    if (!jsvStringIteratorHasChar(txtIt))
+      return matchhere(regexp+1, txtIt, info);
+    else
+      return nomatchfound(regexp+1, info); // not the end, it's a fail
+  }
   if (regexp[0] == '(') {
     info.groupStart[info.groups] = jsvStringIteratorGetIndex(txtIt);
     info.groupEnd[info.groups] = info.groupStart[info.groups];
@@ -187,7 +220,7 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
     char op = regexp[charLength];
     if (!charMatched && op=='+') {
       // with '+' operator it has to match at least once
-      return 0;
+      return nomatchfound(&regexp[charLength+1], info);
     }
     char *regexpAfterStar = regexp+charLength+1;
     JsvStringIterator txtIt2;
@@ -212,20 +245,15 @@ JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) {
     }
     return lastrmatch;
   }
-  // End of regex
-  if (regexp[0] == '$' && regexp[1] == '\0') {
-    if (!jsvStringIteratorHasChar(txtIt))
-      return matchfound(txtIt, info);
-    else
-      return 0;
-  }
-  //
+
+  // This character is matched
   if (jsvStringIteratorHasChar(txtIt) && charMatched) {
     jsvStringIteratorNext(txtIt);
     if (!jspCheckStackPosition()) return 0;
     return matchhere(regexp+charLength, txtIt, info);
   }
-  return 0;
+  // No match
+  return nomatchfound(&regexp[charLength], info);
 }
 
 /*JSON{

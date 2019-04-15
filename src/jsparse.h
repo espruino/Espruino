@@ -68,6 +68,9 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset);
  * the life of the interpreter, as then the interpreter will use a pointer
  * to this data, which could hang around inside the code. */
 JsVar *jspEvaluate(const char *str, bool stringIsStatic);
+/// Execute a JS function with the given arguments. usage: jspExecuteJSFunction("(function() { print('hi'); })",0,0,0)
+JsVar *jspExecuteJSFunction(const char *jsCode, JsVar *thisArg, int argCount, JsVar **argPtr);
+/// Execute a function with the given arguments
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports
@@ -129,9 +132,8 @@ typedef struct {
   JsVar  *root;       //!< root of symbol table
   JsVar  *hiddenRoot; //!< root of the symbol table that's hidden
 
-  // TODO: could store scopes as JsVar array for speed
-  JsVar *scopes[JSPARSE_MAX_SCOPES];
-  int scopeCount;
+  /// JsVar array of scopes
+  JsVar *scopesVar;
   /// Value of 'this' reserved word
   JsVar *thisVar;
 
@@ -195,5 +197,8 @@ JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **arg
 
 // These are exported for the Web IDE's compiler. See exportPtrs in jswrap_process.c
 JsVar *jspeiFindInScopes(const char *name);
+
+/// Return the topmost scope (and lock it)
+JsVar *jspeiGetTopScope();
 
 #endif /* JSPARSE_H_ */

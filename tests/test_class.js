@@ -28,33 +28,31 @@ class Cat {
   speak() {
     return this.name + ' makes a noise.';
   }  
+  getLegs() {
+    return 4;
+  }  
   static isDog() {
     return false;
   }
 }
 
 class Lion extends Cat {
-  speak() {
+  speak() {    
     return super.speak()+this.name + ' roars.';
   }
   static isReallyADog() {
+    trace(super);
     return super.isDog();
   }
 }
 
-class Lion2 extends Cat {
-  constructor(name) {
-    super(name);
-  }
-  speak() {
-    return super.speak()+this.name + ' roars.';
-  }
+class Lion2 extends Lion {
 }
 
 var c = new Cat("Tiddles");
 var l = new Lion("Alan");
-var l2 = new Lion("Nigel");
-var rb = c.speak()=="Tiddles makes a noise." && l.speak()=="Alan makes a noise.Alan roars." && l2.speak()=="Nigel makes a noise.Nigel roars." && Lion.isReallyADog()===false;
+var l2 = new Lion("Nigel"); // NOTE: making this an instance of Lion2 breaks things
+var rb = l.getLegs()==4 && c.speak()=="Tiddles makes a noise." && l.speak()=="Alan makes a noise.Alan roars." && l2.speak()=="Nigel makes a noise.Nigel roars." && Lion.isReallyADog()===false;
 
 // --------------------------------------------
 

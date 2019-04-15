@@ -70,27 +70,34 @@ Supply an object containing menu items. When an item is selected, the
 function it references will be executed. For example:
 
 ```
+var boolean = false;
+var number = 50;
 // First menu
 var mainmenu = {
-  "" : {
-    "title" : "-- Main Menu --"
-  },
+  "" : { "title" : "-- Main Menu --" },
   "Backlight On" : function() { LED1.set(); },
   "Backlight Off" : function() { LED1.reset(); },
   "Submenu" : function() { Pixl.menu(submenu); },
+  "A Boolean" : {
+    value : boolean,
+    format : v => v?"On":"Off",
+    onchange : v => { boolean=v; }
+  },
+  "A Number" : {
+    value : number,
+    min:0,max:100,step:10,
+    onchange : v => { number=v; }
+  },
   "Exit" : function() { Pixl.menu(); },
 };
-
 // Submenu
 var submenu = {
-  "" : {
-    "title" : "-- SubMenu --"
-  },
+  "" : { "title" : "-- SubMenu --" },
   "One" : undefined, // do nothing
   "Two" : undefined, // do nothing
   "< Back" : function() { Pixl.menu(mainmenu); },
 };
-
+// Actually display the menu
 Pixl.menu(mainmenu);
 ```
 
@@ -161,20 +168,12 @@ Pixl.show = function(menudata) {
 };
 */
 
-  /* TODO: handle this better. Something in build_js_wrapper.py?
-   * We want the function to be defined in the docs so using JSMODULESOURCES
-   * isn't a great idea - ideally there would be some nice way of including it
-   * here.
-   */
-  JsVar *fn = jspEvaluate("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Pixl.btnWatches&&(Pixl.btnWatches.forEach(clearWatch),Pixl.btnWatches=void 0);"
+  return jspExecuteJSFunction("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Pixl.btnWatches&&(Pixl.btnWatches.forEach(clearWatch),Pixl.btnWatches=void 0);"
       "g.clear();g.flip();"
       "if(a){a['']||(a['']={});g.setFontBitmap();g.setFontAlign(-1,-1,0);var d=g.getWidth()-9,e=g.getHeight();a[''].x=9;a[''].x2=d-2;a[''].preflip=function(){"
       "g.drawImage(c([16,56,124,254,16,16,16,16]),0,4);g.drawImage(c([16,16,16,16,254,124,56,16]),0,e-12);g.drawImage(c([0,8,12,14,255,14,12,8]),d+1,e-12)};"
       "var b=require('graphical_menu').list(g,a);Pixl.btnWatches=[setWatch(function(){b.move(-1)},BTN1,{repeat:1}),setWatch(function(){b.move(1)},BTN4,{repeat:1}),"
-      "setWatch(function(){b.select()},BTN3,{repeat:1})];return b}})",true);
-  JsVar *result = jspExecuteFunction(fn,0,1,&menu);
-  jsvUnLock(fn);
-  return result;
+      "setWatch(function(){b.select()},BTN3,{repeat:1})];return b}})",0,1,&menu);
 }
 
 
@@ -383,6 +382,12 @@ static bool pixl_selfTest() {
   jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
   jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
 
+  v = jshReadVRef();
+  if (v<3.2 || v>3.4) {
+    jsiConsolePrintf("VCC out of range 3.2-3.4 (%f)\n", v);
+    ok = false;
+  }
+
   if (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE)
     jsiConsolePrintf("Release BTN1\n");
   if (jshPinGetValue(BTN4_PININDEX)==BTN4_ONSTATE)
@@ -430,15 +435,14 @@ static bool pixl_selfTest() {
   if (jshHasEvents()) {
     jsiConsolePrintf("Have events - no BLE test\n");
   } else {
-    bool bleWorking = false;
     uint32_t err_code;
-    err_code = jsble_set_scanning(true);
+    err_code = jsble_set_scanning(true, false);
     jsble_check_error(err_code);
     int timeout = 20;
     while (timeout-- && !jshHasEvents()) {
       nrf_delay_ms(100);
     }
-    err_code = jsble_set_scanning(false);
+    err_code = jsble_set_scanning(false, false);
     jsble_check_error(err_code);
     if (!jshHasEvents()) {
       jsiConsolePrintf("No BLE adverts found in 2s\n");

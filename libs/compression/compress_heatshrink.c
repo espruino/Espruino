@@ -21,8 +21,8 @@
 
 #define BUFFERSIZE 128
 
-/** gets data from array, writes to callback */
-void heatshrink_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned char ch, uint32_t *cbdata), uint32_t *cbdata) {
+/** gets data from array, writes to callback if nonzero. Returns total length. */
+uint32_t heatshrink_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned char ch, uint32_t *cbdata), uint32_t *cbdata) {
   heatshrink_encoder hse;
   uint8_t outBuf[BUFFERSIZE];
   heatshrink_encoder_reset(&hse);
@@ -43,8 +43,9 @@ void heatshrink_encode(unsigned char *data, size_t dataLen, void (*callback)(uns
     do {
       pres = heatshrink_encoder_poll(&hse, outBuf, sizeof(outBuf), &count);
       assert(pres >= 0);
-      for (i=0;i<count;i++)
-        callback(outBuf[i], cbdata);
+      if (callback)
+        for (i=0;i<count;i++)
+          callback(outBuf[i], cbdata);
       polled += count;
     } while (pres == HSER_POLL_MORE);
     assert(pres == HSER_POLL_EMPTY);
@@ -52,12 +53,14 @@ void heatshrink_encode(unsigned char *data, size_t dataLen, void (*callback)(uns
       heatshrink_encoder_finish(&hse);
     }
   }
+  return (uint32_t)polled;
 }
 
-/** gets data from callback, writes it into array */
-void heatshrink_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsigned char *data) {
+/** gets data from callback, writes it into array if nonzero. Returns total length */
+uint32_t heatshrink_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsigned char *data) {
   heatshrink_decoder hsd;
   uint8_t inBuf[BUFFERSIZE];
+  uint8_t outBuf[BUFFERSIZE];
   heatshrink_decoder_reset(&hsd);
 
   size_t count = 0;
@@ -89,8 +92,9 @@ void heatshrink_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsi
 
     HSE_poll_res pres;
     do {
-      pres = heatshrink_decoder_poll(&hsd, &data[polled], 0xFFFFFF/*bad!*/, &count); // TODO: range check?
+      pres = heatshrink_decoder_poll(&hsd, outBuf, sizeof(outBuf), &count);
       assert(pres >= 0);
+      if (data) memcpy(&data[polled], outBuf, count);
       polled += count;
     } while (pres == HSER_POLL_MORE);
     assert(pres == HSER_POLL_EMPTY);
@@ -98,4 +102,6 @@ void heatshrink_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsi
       heatshrink_decoder_finish(&hsd);
     }
   }
+  return (uint32_t)polled;
 }
+

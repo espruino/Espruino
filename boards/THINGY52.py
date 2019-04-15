@@ -32,7 +32,8 @@ info = {
      'BLUETOOTH',
 #     'NET',
      'GRAPHICS',
-     'NFC'
+     'NFC',
+     'NEOPIXEL'
    ],
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
@@ -63,8 +64,8 @@ chip = {
   'flash' : 512,
   'speed' : 64,
   'usart' : 1,
-  'spi' : 3,
-  'i2c' : 2,
+  'spi' : 1,
+  'i2c' : 1,
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {

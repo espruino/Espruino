@@ -151,7 +151,6 @@ typedef enum {
 0)
 /// Should a pin of this state have an internal pullup?
 #define JSHPINSTATE_IS_PULLUP(state) ( \
-            (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||      \
             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
             (state)==JSHPINSTATE_GPIO_IN_PULLUP ||          \
             (state)==JSHPINSTATE_USART_IN ||                \
@@ -281,13 +280,14 @@ typedef enum {
 
 /// Settings passed to jshSPISetup to set SPI up
 typedef struct {
-  int baudRate;              //!< Baud rate
+  int baudRate;              //!< Baud rate (must be int because of jsvReadConfigObject)
   JshBaudFlags baudRateSpec; //!< How we choose a real baud rate based on `baudRate` (on STM32 we can only set it +/- 50%)
   Pin pinSCK;                //!< Pin to use for clock.
   Pin pinMISO;               //!< Pin to use for Master In/Slave Out.
   Pin pinMOSI;               //!< Pin to use for Master Out/Slave In.
   unsigned char spiMode;     //!< \see JshSPIFlags
   bool spiMSB;               //!< MSB first?
+  int numBits;               //!< Number of bits per send, default 8 (must be int because of jsvReadConfigObject)
 } PACKED_FLAGS JshSPIInfo;
 
 
@@ -311,7 +311,7 @@ void jshSPIWait(IOEventFlags device);
 
 /// Settings passed to jshI2CSetup to set I2C up
 typedef struct {
-  int bitrate;
+  int bitrate; // (must be int because of jsvReadConfigObject)
   Pin pinSCL;
   Pin pinSDA;
   bool started; ///< Has I2C 'start' condition been sent so far?
@@ -388,6 +388,13 @@ typedef enum {
 } JshGetPinAddressFlags;
 // Get the address to read/write to in order to change the state of this pin. Or 0.
 volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags);
+
+/// Set the prescaler used for the RTC - can be used for course RTC adjustment
+void jshSetupRTCPrescalerValue(unsigned int prescale);
+/// Get the current prescaler value, or the calculated correct value if calibrate=true
+int jshGetRTCPrescalerValue(bool calibrate);
+// Reset timers and average systick duration counters for RTC - when coming out of sleep or changing prescaler
+void jshResetRTCTimer();
 #endif
 
 #if defined(NRF51) || defined(NRF52)

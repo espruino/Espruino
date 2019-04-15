@@ -87,11 +87,11 @@ void jsble_restart_softdevice(){
 	jswrap_ble_reconfigure_softdevice();
 }
 
-void jsble_advertising_start(){
+uint32_t jsble_advertising_start(){
 	esp_err_t status;
 	if (bleStatus & BLE_IS_ADVERTISING) return;
 	status = bluetooth_gap_startAdvertizing(true);
-	if(status) jsWarn("advertizing start problem:0X%x\n",status);
+	return status;
 }
 void jsble_advertising_stop(){
 	esp_err_t status;
@@ -129,7 +129,8 @@ bool jsble_check_error(uint32_t err_code){
 	return false;
 }
 /// Scanning for advertisign packets
-uint32_t jsble_set_scanning(bool enabled){
+uint32_t jsble_set_scanning(bool enabled, bool activeScan){
+  if (activeScan) jsWarn("active scan not implemented\n");
 	bluetooth_gap_setScan(enabled);
 	return 0;
 }
@@ -215,4 +216,12 @@ uint32_t jsble_set_central_rssi_scan(bool enabled){
 void jsble_central_setWhitelist(bool whitelist){
 	jsWarn("central set Whitelist not implemented yet\n");
 	return 0;
+}
+
+void jsble_update_security() {
+}
+
+uint32_t jsble_central_send_passkey(char *passkey) {
+  jsWarn("central set Whitelist not implemented yet\n");
+  return 0;
 }

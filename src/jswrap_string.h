@@ -28,3 +28,4 @@ JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper);
 JsVar *jswrap_string_trim(JsVar *parent);
 bool jswrap_string_startsWith(JsVar *parent, JsVar *search, int position);
 bool jswrap_string_endsWith(JsVar *parent, JsVar *search, JsVar *length);
+JsVar *jswrap_string_repeat(JsVar *parent, int count);

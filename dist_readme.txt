@@ -51,16 +51,6 @@ espruino_#v##_hystm32_28_rb.bin
    - 'HY'STM32F103RBT6 ARM with 2.8" LCD display
      This is available from eBay
 
-espruino_#v##_hystm32_32_vc.bin 
-   - 'HY'STM32F103VCT6 ARM with 3.2" LCD display
-     This is available from eBay
-      
-espruino_#v##_olimexino_stm32.bin
-   - You will need to overwrite the Maple bootloader to install this.
-     Espruino is now too large to fit in flash alongside it.
-   - Olimexino-STM32 Arduino form factor board
-   - Leaf Labs Maple Arduino form factor board
-
 espruino_#v##_stm32l496gdiscovery.bin
    - STM32F496GDISCOVERY board
 
@@ -94,14 +84,6 @@ espruino_#v##_Wio_LTE.zip
    - The firmware image for Seed Wio LTE Devices
      See http://www.espruino.com/WioLTE for more information
 
-espruino_#v##_thingy52.hex
-   - The firmware image for Nordic Thing:52 Devices
-     See http://www.espruino.com/Thingy52 for more information
-
-espruino_#v##nrf52832.hex
-   - The firmware image for Nordic Thing:52 Devices
-     See http://www.espruino.com/nRF52832DK for more information
-
 espruino_#v##stm32l496gdiscovery.bin
    - The firmware image for the STM32L496G Discovery Board
      See http://www.espruino.com/STM32L496GDISCOVERY for more information
@@ -113,6 +95,10 @@ espruino_#v##rak8211.hex
 espruino_#v##rak8212.hex
    - The firmware image for the RAK8212 iTracker
      See http://www.espruino.com/RAK8212 for more information
+
+espruino_#v##smartibot.zip
+   - The firmware image for the Smartibot robot board
+     See http://www.espruino.com/Smartibot for more information
 
 
 

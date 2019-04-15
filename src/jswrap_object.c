@@ -142,6 +142,7 @@ JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
 Copy this object completely
  */
 JsVar *jswrap_object_clone(JsVar *parent) {
+  if (!parent) return 0;
   return jsvCopy(parent, true);
 }
 
@@ -171,7 +172,7 @@ Returns an array of all properties (enumerable or not) found directly on a given
 */
 
 
-void _jswrap_object_keys_or_property_names_iterator(
+static void _jswrap_object_keys_or_property_names_iterator(
     const JswSymList *symbols,
     void (*callback)(void *data, JsVar *name),
     void *data) {
@@ -204,6 +205,7 @@ void jswrap_object_keys_or_property_names_cb(
     void (*callback)(void *data, JsVar *name),
     void *data
 ) {
+  // add the keys that are on this object itself
   // strings are iterable, but we shouldn't try and show keys for them
   if (jsvIsIterable(obj)) {
     JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(obj);
@@ -232,6 +234,8 @@ void jswrap_object_keys_or_property_names_cb(
      Assume that ALL builtins are non-enumerable. This isn't great but
      seems to work quite well right now! */
   if (includeNonEnumerable) {
+    const JswSymList *objSymbols = jswGetSymbolListForObjectProto(0);
+
     JsVar *protoOwner = jspGetPrototypeOwner(obj);
     if (protoOwner) {
       // If protoOwner then this is the prototype (protoOwner is the object)
@@ -245,23 +249,22 @@ void jswrap_object_keys_or_property_names_cb(
     }
 
     if (includePrototype) {
+      JsVar *proto = 0;
       if (jsvIsObject(obj) || jsvIsFunction(obj)) {
-        JsVar *proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
-        while (jsvIsObject(proto)) {
-          const JswSymList *symbols = jswGetSymbolListForObjectProto(proto);
-          _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
-          JsVar *p2 = jsvObjectGetChild(proto, JSPARSE_INHERITS_VAR, 0);
-          jsvUnLock(proto);
-          proto = p2;
-        }
+        proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
       }
-      // include Object/String/etc
-      const JswSymList *symbols = jswGetSymbolListForObjectProto(obj);
-      _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
-      // if the last call wasn't an Object, add the object proto as well
-      const JswSymList *objSymbols = jswGetSymbolListForObjectProto(0);
-      if (objSymbols!=symbols)
-        _jswrap_object_keys_or_property_names_iterator(objSymbols, callback, data);
+
+      if (jsvIsObject(proto)) {
+        jswrap_object_keys_or_property_names_cb(proto, includeNonEnumerable, includePrototype, callback, data);
+      } else {
+        // include Object/String/etc
+        const JswSymList *symbols = jswGetSymbolListForObjectProto(obj);
+        _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
+        // if the last call wasn't an Object, add the object proto as well
+        if (objSymbols!=symbols)
+          _jswrap_object_keys_or_property_names_iterator(objSymbols, callback, data);
+      }
+      jsvUnLock(proto);
     }
 
     if (jsvIsArray(obj) || jsvIsString(obj)) {
@@ -553,7 +556,7 @@ Set the prototype of the given object - this is like writing
 `object.__proto__ = prototype` but is the 'proper' ES6 way of doing it
  */
 JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
-  JsVar *v = jsvIsObject(object) ? jspGetNamedField(object, "__proto__", true) : 0;
+  JsVar *v = (jsvIsFunction(object)||jsvIsObject(object)) ? jspGetNamedField(object, "__proto__", true) : 0;
   if (!jsvIsName(v)) {
     jsExceptionHere(JSET_TYPEERROR, "Can't extend %t\n", v);
   } else {
@@ -893,9 +896,6 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   JsVar *prototype = jsvFindChildFromString(oldFunc, JSPARSE_PROTOTYPE_VAR, false);
   // so now remove all existing entries
   jsvRemoveAllChildren(oldFunc);
-  // now re-add scope
-  if (scope) jsvAddName(oldFunc, scope);
-  jsvUnLock(scope);
   // now re-add other entries
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, newFunc);
@@ -913,6 +913,9 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
     jsvUnLock(el);
   }
   jsvObjectIteratorFree(&it);
+  // now re-add scope
+  if (scope) jsvAddName(oldFunc, scope);
+  jsvUnLock(scope);
   // re-add prototype (it needs to come after other hidden vars)
   if (prototype) jsvAddName(oldFunc, prototype);
   jsvUnLock(prototype);
@@ -964,11 +967,15 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
     JsvIterator it;
     jsvIteratorNew(&it, argsArray, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
-      if (idx>=0 && idx<(int)argC) {
-        assert(!args[idx]); // just in case there were dups
-        args[idx] = jsvIteratorGetValue(&it);
+      JsVar *idxVar = jsvIteratorGetKey(&it);
+      if (jsvIsIntegerish(idxVar)) {
+        JsVarInt idx = jsvGetInteger(idxVar);
+        if (idx>=0 && idx<(int)argC) {
+          assert(!args[idx]); // just in case there were dups
+          args[idx] = jsvIteratorGetValue(&it);
+        }
       }
+      jsvUnLock(idxVar);
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);

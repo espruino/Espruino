@@ -27,5 +27,6 @@ JsVar *jswrap_math_round(double x);
 double jswrap_math_sqrt(double x);
 double jswrap_math_sin(double x);
 double jswrap_math_atan(double x);
+double jswrap_math_atan2(double y, double x);
 JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max);
 JsVarFloat jswrap_math_minmax(JsVar *args, bool isMax);

@@ -27,6 +27,8 @@ typedef struct {
   int dow; // 0..6, Sunday is 0
 } CalendarDate;
 
+/// return time zone in minutes
+int jsdGetTimeZone();
 TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT);
 JsVarFloat fromTimeInDay(TimeInDay *td);
 CalendarDate getCalendarDate(int d);
@@ -36,7 +38,7 @@ JsVarFloat jswrap_date_now();
 JsVar *jswrap_date_from_milliseconds(JsVarFloat time);
 JsVar *jswrap_date_constructor(JsVar *args);
 
-JsVarFloat jswrap_date_getTimezoneOffset(JsVar *parent);
+int jswrap_date_getTimezoneOffset(JsVar *parent);
 JsVarFloat jswrap_date_getTime(JsVar *parent);
 JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue);
 int jswrap_date_getHours(JsVar *parent);

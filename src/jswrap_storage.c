@@ -109,7 +109,9 @@ This is identical to `JSON.parse(require("Storage").read(...))`
 JsVar *jswrap_storage_readJSON(JsVar *name) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name));
   if (!v) return 0;
-  return jswrap_json_parse(v);
+  JsVar *r = jswrap_json_parse(v);
+  jsvUnLock(v);
+  return r;
 }
 
 /*JSON{
@@ -135,7 +137,9 @@ This can be used:
 JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name));
   if (!v) return 0;
-  return jsvNewArrayBufferFromString(v, 0);
+  JsVar *r = jsvNewArrayBufferFromString(v, 0);
+  jsvUnLock(v);
+  return r;
 }
 
 /*JSON{
@@ -221,12 +225,12 @@ The Flash Storage system is journaling. To make the most of the limited
 write cycles of Flash memory, Espruino marks deleted/replaced files as
 garbage and moves on to a fresh part of flash memory. Espruino only
 fully erases those files when it is running low on flash, or when
-`compactFiles` is called.
+`compact` is called.
 
-`compactFiles` may fail if there isn't enough RAM free on the stack to
+`compact` may fail if there isn't enough RAM free on the stack to
 use as swap space, however in this case it will not lose data.
 
-**Note:** `compactFiles` rearranges the contents of memory. If code is
+**Note:** `compact` rearranges the contents of memory. If code is
 referencing that memory (eg. functions that have their code stored in flash)
 then they may become garbled when compaction happens. To avoid this,
 call `eraseFiles` before uploading data that you intend to reference to

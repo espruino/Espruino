@@ -62,7 +62,7 @@ if "check_output" not in dir( subprocess ):
 #                      // kill = function to run on deinitialisation
 #         "class" : "Double", "name" : "doubleToIntBits",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
-#         "generate_full|generate|wrap" : "*(JsVarInt*)&x",
+#         "generate_full|generate|wrap" : "*(JsVarInt*)&x", // if generate=false, it'll only be used for docs
 #         "description" : " Convert the floating point value given into an integer representing the bits contained in it",
 #         "params" : [ [ "x" , "float|int|int32|bool|pin|JsVar|JsVarName|JsVarArray", "A floating point number"] ],
 #                               // float - parses into a JsVarFloat which is passed to the function
@@ -173,6 +173,9 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
           drop = False
           if not is_for_document:
+            if ("generate" in jsondata) and jsondata["generate"]==False:
+              print(dropped_prefix+" because of generate=false")
+              drop = True
             if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
               print(dropped_prefix+" because of #ifndef "+jsondata["ifndef"])
               drop = True
@@ -197,6 +200,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
               # Now replace any defined(...) we haven't heard of with false
               expr = re.sub(r"defined\([^\)]*\)", "False", expr)
               expr = expr.replace("||","or").replace("&&","and");
+              expr = expr.replace("!","not ");
               try:
                 r = eval(expr)
               except:
@@ -375,6 +379,8 @@ def get_ifdef_description(d):
   if d=="PUCKJS": return "Puck.js devices"
   if d=="PIXLJS": return "Pixl.js boards"
   if d=="ESPRUINOWIFI": return "Espruino WiFi boards"
+  if d=="ESPRUINOBOARD": return "'Original' Espruino boards"
+  if d=="PICO": return "Espruino Pico boards"
   if d=="ESP8266": return "ESP8266 boards running Espruino"
   if d=="ESP32": return "ESP32 boards"
   if d=="EFM32": return "EFM32 devices"

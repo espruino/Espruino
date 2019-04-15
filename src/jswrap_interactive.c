@@ -164,22 +164,28 @@ executed by Espruino every time it starts.
   "name" : "save",
   "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;"
 }
-Save program memory into flash. It will then be loaded automatically every time
-Espruino powers on or is hard-reset.
+Save the state of the interpreter into flash (including the results of calling
+`setWatch`, `setInterval`, `pinMode`, and any listeners). The state will then be loaded automatically
+ every time Espruino powers on or is hard-reset. To see what will get saved you can call `dump()`.
+
+**Note:** If you set up intervals/etc in `onInit()` and you have already called `onInit`
+before running `save()`, when Espruino resumes there will be two copies of your intervals -
+the ones from before the save, and the ones from after - which may cause you problems.
+
+For more information about this and other options for saving, please see
+the [Saving code on Espruino](https://www.espruino.com/Saving) page.
 
 This command only executes when the Interpreter returns to the Idle state - for
 instance ```a=1;save();a=2;``` will save 'a' as 2.
 
 When Espruino powers on, it will resume from where it was when you typed `save()`.
 If you want code to be executed right after loading (for instance to initialise
-devices connected to Espruino), add an `init` event handler to `E` with
-`E.on('init', function() { ... your_code ... });`. This will then be automatically
-executed by Espruino every time it starts.
+devices connected to Espruino), add a function called `onInit`, or add a `init`
+event handler to `E` with `E.on('init', function() { ... your_code ... });`.
+This will then be automatically executed by Espruino every time it starts.
 
 In order to stop the program saved with this command being loaded automatically,
-hold down Button 1 while also pressing reset. On some boards, Button 1 enters
-bootloader mode, so you will need to press Reset with Button 1 raised, and then
-hold Button 1 down a fraction of a second later.
+check out [the Troubleshooting guide](https://www.espruino.com/Troubleshooting#espruino-stopped-working-after-i-typed-save-)
  */
 /*JSON{
   "type" : "function",
@@ -358,6 +364,13 @@ Set the current system time in seconds (to the nearest second).
 
 This is used with `getTime`, the time reported from `setWatch`, as
 well as when using `new Date()`.
+
+`Date.prototype.getTime()` reports the time in milliseconds, so
+you can set the time to a `Date` object using:
+
+```
+setTime((new Date("Tue, 19 Feb 2019 10:57")).getTime()/1000)
+```
 
 To set the timezone for all new Dates, use `E.setTimeZone(hours)`.
  */
@@ -555,14 +568,8 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
   } else {
     JsVar *child = jsvIsBasic(idVar) ? jsvFindChildFromVar(timerArrayPtr, idVar, false) : 0;
     if (child) {
-      JsVar *timerArrayPtr = jsvLock(timerArray);
       jsvRemoveChild(timerArrayPtr, child);
-      jsvUnLock2(child, timerArrayPtr);
-    } else {
-      if (isTimeout)
-        jsExceptionHere(JSET_ERROR, "Unknown Timeout");
-      else
-        jsExceptionHere(JSET_ERROR, "Unknown Interval");
+      jsvUnLock(child);
     }
   }
   jsvUnLock(timerArrayPtr);

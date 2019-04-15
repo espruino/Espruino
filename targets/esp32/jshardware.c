@@ -609,7 +609,7 @@ void jshSetSystemTime(JsSysTime newTime) {
   struct timezone tz;
   
   tm.tv_sec=(time_t)(newTime/1000000L);
-  tm.tv_usec=0;
+  tm.tv_usec=(suseconds_t) (newTime - tm.tv_sec * 1000000L);
   tz.tz_minuteswest=0;
   tz.tz_dsttime=0;
   settimeofday(&tm, &tz);

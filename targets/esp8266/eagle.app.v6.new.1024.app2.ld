@@ -5,7 +5,7 @@ MEMORY
   dport0_0_seg :                        org = 0x3FF00000, len = 0x10
   dram0_0_seg :                         org = 0x3FFE8000, len = 0x14000
   iram1_0_seg :                         org = 0x40100000, len = 0x8000
-  irom0_0_seg :                         org = 0x40281010, len = 0x7C000
+  irom0_0_seg :                         org = 0x40201010, len = 0x7C000
 }
 
 PHDRS
@@ -119,7 +119,7 @@ SECTIONS
     *(.xt_except_desc_end)
     *(.dynamic)
     *(.gnu.version_d)
-    . = ALIGN(4);		/* this table MUST be 4-byte aligned */
+    . = ALIGN(4);   /* this table MUST be 4-byte aligned */
     _bss_table_start = ABSOLUTE(.);
     LONG(_bss_start)
     LONG(_bss_end)
@@ -151,6 +151,31 @@ SECTIONS
   } >dram0_0_seg :dram0_0_bss_phdr
 /* __stack = 0x3ffc8000; */
 
+  .irom0.text : ALIGN(4)
+  {
+    _irom0_text_start = ABSOLUTE(.);
+
+    *libat.a:(.literal.* .text.*)
+    *libcrypto.a:(.literal.* .text.*)
+    *libespnow.a:(.literal.* .text.*)
+    *libjson.a:(.literal.* .text.*)
+    *liblwip.a:(.literal.* .text.*)
+    *libnet80211.a:(.literal.* .text.*)
+    *libsmartconfig.a:(.literal.* .text.*)
+    *libssl.a:(.literal.* .text.*)
+    *libupgrade.a:(.literal.* .text.*)
+    *libwpa.a:(.literal.* .text.*)
+    *libwpa2.a:(.literal.* .text.*)
+    *libwps.a:(.literal.* .text.*)
+
+    *libmbedtls.a:(.literal.* .text.*)
+
+    *libm.a:(.literal .text .literal.* .text.*)
+
+    *(.irom0.literal .irom.literal .irom.literal2 .irom.text.literal .irom0.text .irom.text)
+    _irom0_text_end = ABSOLUTE(.);
+  } >irom0_0_seg :irom0_0_phdr
+  
   .text : ALIGN(4)
   {
     _stext = .;
@@ -199,12 +224,8 @@ SECTIONS
     _lit4_end = ABSOLUTE(.);
   } >iram1_0_seg :iram1_0_phdr
 
-  .irom0.text : ALIGN(4)
-  {
-    _irom0_text_start = ABSOLUTE(.);
-    *(.irom0.literal .irom.literal .irom.literal2 .irom.text.literal .irom0.text .irom.text)
-    _irom0_text_end = ABSOLUTE(.);
-  } >irom0_0_seg :irom0_0_phdr
+
+
 }
 
 /* get ROM code address */

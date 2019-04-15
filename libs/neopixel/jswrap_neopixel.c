@@ -42,7 +42,7 @@ bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize);
   "type" : "library",
   "class" : "neopixel"
 }
-This library allows you to write to Neopixel/WS281x/APA10x LED strips
+This library allows you to write to Neopixel/WS281x/APA10x/SK6812 LED strips
 
 These use a high speed single-wire protocol which needs platform-specific
 implementation on some devices - hence this library to simplify things.
@@ -55,7 +55,7 @@ implementation on some devices - hence this library to simplify things.
   "generate" : "jswrap_neopixel_write",
   "params" : [
     ["pin", "pin", "The Pin the LEDs are connected to"],
-    ["data","JsVar","The data to write to the LED strip"]
+    ["data","JsVar","The data to write to the LED strip (must be a multiple of 3 bytes long)"]
   ]
 }
 Write to a strip of NeoPixel/WS281x/APA104/APA106/SK6812-style LEDs
@@ -88,6 +88,10 @@ setInterval(function() {
 
 * Different types of LED have the data in different orders - so don't
 be surprised by RGB or BGR orderings!
+
+* Some LED strips (SK6812) actually take 4 bytes per LED (red, green, blue and white).
+These are still supported but the array of data supplied must still be a multiple of 3
+bytes long. Just round the size up - it won't cause any problems.
 
 * On some platforms like STM32, pins capable of hardware SPI MOSI
 are required.
@@ -162,9 +166,7 @@ bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
   jshSPISetReceive(device, false);
   jshInterruptOff();
   for (i=0;i<rgbSize;i++)
-    jsspiSend4bit(device, rgbData[i], 8, 12);
-  // make sure all useful data has been flushed from 32-bit fifo
-  jsspiSend4bit(device, 0, 0, 0);
+    jsspiSend4bit(device, rgbData[i], 1, 3);
   jshInterruptOn();
   jshSPIWait(device); // wait until SPI send finished and clear the RX buffer
   jshSPISet16(device, false); // back to 8 bit

@@ -17,6 +17,11 @@
 #include "jsvar.h"
 #include "jswrap_arraybuffer.h" // for jswrap_io_peek
 
+#ifdef ESP32
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#endif
+
 /*JSON{
   "type"          : "function",
   "name"          : "peek8",
@@ -487,7 +492,7 @@ void jswrap_io_shiftOutCallback(int val, void *data) {
   "params" : [
     ["pins","JsVar","A pin, or an array of pins to use"],
     ["options","JsVar","Options, for instance the clock (see below)"],
-    ["data","JsVar","The data to shift out"]
+    ["data","JsVar","The data to shift out (see `E.toUint8Array` for info on the forms this can take)"]
   ]
 }
 Shift an array of data out using the pins supplied *least significant bit first*,
@@ -581,7 +586,13 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
     jshPinSetState(d.clk, JSHPINSTATE_GPIO_OUT);
 
   // Now run through the data, pushing it out
+#ifdef ESP32
+  vTaskSuspendAll();
+#endif
   jsvIterateCallback(data, jswrap_io_shiftOutCallback, &d);
+#ifdef ESP32
+  xTaskResumeAll();
+#endif
 }
 
 /*JSON{
@@ -637,6 +648,10 @@ When doing this, interrupts will happen on both edges and there will be no debou
 
 **Note:** The STM32 chip (used in the [Espruino Board](/EspruinoBoard) and [Pico](/Pico)) cannot
 watch two pins with the same number - eg `A0` and `B0`.
+
+**Note:** On nRF52 chips (used in Puck.js, Pixl.js, MDBT42Q) `setWatch` disables the GPIO
+output on that pin. In order to be able to write to the pin again you need to disable
+the watch with `clearWatch`.
 
  */
 JsVar *jswrap_interface_setWatch(

@@ -99,7 +99,7 @@ These contain:
 * `binaries` - available binaries - this is used by the Web IDE to allow the user to choose which binary to upload
 * `build` - controls what gets build via the Makefile:
   * `optimizeflags` - flags like `-O3` to give to the compiler
-  * `libraries` - list of libraries to include
+  * `libraries` - list of libraries to include - these get transformed into `USE_LIBNAME` defines
   * `makefile` - list of commands/definitions to execute in the Makefile
 
 #### info.makefile definitions

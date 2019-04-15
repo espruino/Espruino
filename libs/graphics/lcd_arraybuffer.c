@@ -21,6 +21,15 @@ unsigned int lcdGetPixelIndex_ArrayBuffer(JsGraphics *gfx, int x, int y, int pix
   if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG) {
     if (y&1) x = gfx->data.width - (x+pixelCount);
   }
+  if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX) {
+    int h = gfx->data.height>>1;
+    unsigned int idx = 0;
+    if (y >= h) {
+      y-=h;
+      idx=gfx->data.bpp;
+    }
+    return idx + (unsigned int)((x + y*gfx->data.width)*(gfx->data.bpp<<1));
+  }
   if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE)
     return (unsigned int)(((x + (y>>3)*gfx->data.width)<<3) | (y&7));
   else
@@ -59,6 +68,11 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
 
   unsigned int whiteMask = (1U<<gfx->data.bpp)-1;
   bool shortCut = (col==0 || (col&whiteMask)==whiteMask) && (!(gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE)); // simple black or white fill
+  int bppStride = gfx->data.bpp;
+  if (gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX) {
+    bppStride <<= 1;
+    shortCut = false;
+  }
 
   while (pixelCount--) { // writing individual bits
     if (gfx->data.bpp&7/*not a multiple of one byte*/) {
@@ -84,7 +98,7 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
       if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
         jsvArrayBufferIteratorNext(&it);
       } else {
-        idx += gfx->data.bpp;
+        idx += bppStride;
         if (idx>=8) jsvArrayBufferIteratorNext(&it);
       }
     } else { // we're writing whole bytes
@@ -140,6 +154,11 @@ void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, short x, short y, short pixe
 
   unsigned int whiteMask = (1U<<gfx->data.bpp)-1;
   bool shortCut = (col==0 || (col&whiteMask)==whiteMask) && (!(gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE)); // simple black or white fill
+  int bppStride = gfx->data.bpp;
+  if (gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX) {
+    bppStride <<= 1;
+    shortCut = false;
+  }
 
   while (pixelCount--) { // writing individual bits
     if (gfx->data.bpp&7/*not a multiple of one byte*/) {
@@ -161,12 +180,12 @@ void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, short x, short y, short pixe
       unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
       unsigned int existing = (unsigned int)*ptr;
       unsigned int bitIdx = (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) ? 8-(idx+gfx->data.bpp) : idx;
-      assert(ptr>=gfx->backendData && ptr<((char*)gfx->backendData + graphicsGetMemoryRequired(gfx)));
+      assert(ptr>=(unsigned char*)gfx->backendData && ptr<((unsigned char*)gfx->backendData + graphicsGetMemoryRequired(gfx)));
       *ptr = (char)((existing&~(mask<<bitIdx)) | ((col&mask)<<bitIdx));
       if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
         ptr++;
       } else {
-        idx += gfx->data.bpp;
+        idx += bppStride;
         if (idx>=8) ptr++;
       }
     } else { // we're writing whole bytes

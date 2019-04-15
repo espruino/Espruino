@@ -35,7 +35,6 @@ info = {
      'CRYPTO','SHA256','SHA512',
      'NFC',
      'NEOPIXEL'
-     #'HASHLIB'
      #'FILESYSTEM'
      #'TLS'
    ],
@@ -57,8 +56,8 @@ chip = {
   'flash' : 512,
   'speed' : 64,
   'usart' : 1,
-  'spi' : 3,
-  'i2c' : 2,
+  'spi' : 1,
+  'i2c' : 1,
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {

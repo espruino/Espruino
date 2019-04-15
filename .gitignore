@@ -29,6 +29,7 @@ node_modules
 /build/
 esp_iot_sdk_v1.5.0
 esp_iot_sdk_v2.0.0.p1
+ESP8266_NONOS_SDK-2.2.1
 xtensa-lx106-elf
 app
 esp-idf
@@ -49,6 +50,7 @@ targetlibs/nrf5x_15/external_tools
 targetlibs/nrf5x_15/integration
 targetlibs/nrf5x_15/modules
 targetlibs/nrf5x_mesh
+targetlibs/raspberrypi
 /.vscode
 /CURRENT_BOARD.make
 /topreadonly

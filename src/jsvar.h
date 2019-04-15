@@ -411,6 +411,7 @@ extern bool jsvIsUndefined(const JsVar *v);
 extern bool jsvIsNull(const JsVar *v);
 extern bool jsvIsBasic(const JsVar *v); ///< Is this *not* an array/object/etc
 extern bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
+bool jsvIsBasicName(const JsVar *v); ///< Simple NAME that links to a variable via firstChild
 /// Names with values have firstChild set to a value - AND NOT A REFERENCE
 extern bool jsvIsNameWithValue(const JsVar *v);
 extern bool jsvIsNameInt(const JsVar *v);
@@ -685,6 +686,7 @@ JsVarInt jsvGetLength(const JsVar *src); ///< General purpose length function. D
 size_t jsvCountJsVarsUsed(JsVar *v); ///< Count the amount of JsVars used. Mostly useful for debugging
 JsVar *jsvGetArrayIndex(const JsVar *arr, JsVarInt index); ///< Get a 'name' at the specified index in the array if it exists (and lock it)
 JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array if it exists (and lock it)
+JsVar *jsvGetLastArrayItem(const JsVar *arr); ///< Returns the last item in the given array (with string OR numeric index)
 void jsvSetArrayItem(JsVar *arr, JsVarInt index, JsVar *item); ///< Set an array item at the specified index in the array
 void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr); ///< Get all elements from arr and put them in itemPtr (unless it'd overflow). Makes sure all of itemPtr either contains a JsVar or 0
 JsVar *jsvGetIndexOfFull(JsVar *arr, JsVar *value, bool matchExact, bool matchIntegerIndices, int startIdx); ///< Get the index of the value in the array (matchExact==use pointer not equality check, matchIntegerIndices = don't check non-integers)

@@ -47,14 +47,15 @@ Normal JavaScript interpreters would return `0` in the above case.
 extern JsExecInfo execInfo;
 JsVar *jswrap_arguments() {
   JsVar *scope = 0;
-  if (execInfo.scopeCount>0)
-    scope = execInfo.scopes[execInfo.scopeCount-1];
+  if (execInfo.scopesVar)
+    scope = jsvGetLastArrayItem(execInfo.scopesVar);
   if (!jsvIsFunction(scope)) {
     jsExceptionHere(JSET_ERROR, "Can only use 'arguments' variable inside a function");
     return 0;
   }
-
-  return jsvGetFunctionArgumentLength(scope);
+  JsVar *result = jsvGetFunctionArgumentLength(scope);
+  jsvUnLock(scope);
+  return result;
 }
 
 

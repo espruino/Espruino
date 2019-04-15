@@ -61,16 +61,22 @@ bool isIDString(const char *s) {
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again. */
 const char *escapeCharacter(char ch) {
-  if (ch=='\b') return "\\b";
-  if (ch=='\f') return "\\f";
-  if (ch=='\n') return "\\n";
-  if (ch=='\a') return "\\a";
-  if (ch=='\r') return "\\r";
-  if (ch=='\t') return "\\t";
+  if (ch=='\b') return "\\b"; // 8
+  if (ch=='\t') return "\\t"; // 9
+  if (ch=='\n') return "\\n"; // A
+  if (ch=='\v') return "\\v"; // B
+  if (ch=='\f') return "\\f"; // C
+  if (ch=='\r') return "\\r"; // D
   if (ch=='\\') return "\\\\";
   if (ch=='"') return "\\\"";
   static char buf[5];
-  if (ch<32 || ch>=127) {
+  if (ch<8) {
+    // encode less than 8 as \#
+    buf[0]='\\';
+    buf[1] = (char)('0'+ch);
+    buf[2] = 0;
+    return buf;
+  } else if (ch<32 || ch>=127) {
     /** just encode as hex - it's more understandable
      * and doesn't have the issue of "\16"+"1" != "\161" */
     buf[0]='\\';
@@ -663,6 +669,7 @@ void ftoa_bounded(JsVarFloat val,char *str, size_t len) {
 
 /// Wrap a value so it is always between 0 and size (eg. wrapAround(angle, 360))
 JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
+  if (size<0.0) return 0.0;
   val = val / size;
   val = val - (int)val;
   return val * size;

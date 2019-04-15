@@ -1,15 +1,5 @@
-
 /* Copyright (c) 2018 Gordon Williams, Pur3 Ltd. See the file LICENSE for copying permission. */
-/* 
-Nordic Thingy Support Library
-
-TODO:
-
-Beep
-MPU9250 support - the library at the moment only works for the magnetometer
-Microphone support - will most likely need native support
-
-*/
+/* Nordic Thingy Support Library */
 
 
 var MPU_PWR_CTRL = V8;

@@ -43,6 +43,7 @@ int jswrap_espruino_reverseByte(int v);
 void jswrap_espruino_dumpTimers();
 void jswrap_espruino_dumpLockedVars();
 void jswrap_espruino_dumpFreeList();
+void jswrap_e_dumpFragmentation();
 JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth);
 JsVarInt jswrap_espruino_getAddressOf(JsVar *v, bool flatAddress);
 void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bits);
@@ -53,9 +54,12 @@ void jswrap_espruino_setPassword(JsVar *pwd);
 void jswrap_espruino_lockConsole();
 void jswrap_espruino_setTimeZone(JsVarFloat zone);
 void jswrap_espruino_asm(JsVar *callspec, JsVar *args);
+void jswrap_espruino_compiledC(JsVar *code);
 void jswrap_espruino_reboot();
 
 void jswrap_espruino_setUSBHID(JsVar *arr);
 bool jswrap_espruino_sendUSBHID(JsVar *arr);
 
 JsVarInt jswrap_espruino_getBattery();
+void jswrap_espruino_setRTCPrescaler(int prescale);
+int jswrap_espruino_getRTCPrescaler(bool calibrate);

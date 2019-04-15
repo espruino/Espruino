@@ -60,7 +60,7 @@ unsigned char sxReadReg(unsigned reg) {
 
 void jshVirtualPinInitialise() {
   jshPinOutput(SX_POWER, 1); // enable IO expander power
-  jshPinSetValue(i2cInfo.pinSDA, 1);
+  jshPinSetValue(i2cInfo.pinSCL, 1);
   jshPinSetState(i2cInfo.pinSCL,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   jshPinSetValue(i2cInfo.pinSDA, 1);
   jshPinSetState(i2cInfo.pinSDA,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);

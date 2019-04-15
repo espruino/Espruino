@@ -34,6 +34,7 @@ void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->pinMOSI      = PIN_UNDEFINED;
   inf->spiMode      = SPIF_SPI_MODE_0;
   inf->spiMSB       = true; // MSB first is default
+  inf->numBits      = 8;
 }
 
 void jshI2CInitInfo(JshI2CInfo *inf) {

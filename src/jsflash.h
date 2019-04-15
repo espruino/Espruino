@@ -26,6 +26,9 @@ typedef uint32_t JsfWord;
 #define JSF_WORD_UNSET 0xFFFFFFFF
 #endif
 
+/// Max length of filename in chars
+#define JSF_MAX_FILENAME_LENGTH (sizeof(JsfFileName))
+
 /// Structure for File Storage. It's important this is 8 byte aligned for platforms that only support 64 bit writes
 typedef struct {
   JsfWord size; ///< Total size (and flags in the top 8 bits)

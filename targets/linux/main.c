@@ -206,7 +206,7 @@ void sig_handler(int sig)
 
 void show_help() {
     printf("Usage:\n");
-    printf("   ./espruino                           : JavaScript immdeiate mode (REPL)\n");
+    printf("   ./espruino                           : JavaScript immediate mode (REPL)\n");
     printf("   ./espruino script.js                 : Load and run script.js\n");
     printf("   ./espruino -e \"print('Hello World')\" : Print 'Hello World'\n");
     printf("\n");

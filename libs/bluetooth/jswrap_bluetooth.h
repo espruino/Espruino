@@ -19,6 +19,7 @@ typedef enum {
   BLETASK_REQUEST_DEVICE, ///< Waiting for requestDevice to finish
   BLETASK_CENTRAL_START, // =========================================== Start of central tasks
   BLETASK_CONNECT = BLETASK_CENTRAL_START, ///< Connect in central mode
+  BLETASK_DISCONNECT, ///< Disconnect from Central
   BLETASK_PRIMARYSERVICE, ///< Find primary service
   BLETASK_CHARACTERISTIC,  ///< Find characteristics
   BLETASK_CHARACTERISTIC_WRITE, ///< Write to a characteristic
@@ -91,10 +92,12 @@ JsVar *jswrap_ble_requestDevice(JsVar *options);
 JsVar *jswrap_ble_connect(JsVar *mac, JsVar *options);
 void jswrap_ble_setWhitelist(bool whitelist);
 void jswrap_ble_setConnectionInterval(JsVar *interval);
+void jswrap_ble_setSecurity(JsVar *options);
 
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
+void jswrap_ble_BluetoothDevice_sendPasskey(JsVar *parent, JsVar *passkeyVar);
 JsVar *jswrap_ble_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *options);
-void jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent);
+JsVar *jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent);
 JsVar *jswrap_ble_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool forceRePair);
 JsVar *jswrap_ble_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent);
 JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *service);

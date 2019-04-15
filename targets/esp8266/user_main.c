@@ -227,8 +227,7 @@ static void mainLoop() {
 #endif
 
   // Setup for another callback
-  //queueTaskMainLoop();
-  suspendMainLoop(0); // HACK to get around SDK 1.4 bug
+  queueTaskMainLoop();
 }
 
 
@@ -261,6 +260,10 @@ static void initDone() {
 
   jswrap_wifi_restore();
 
+#ifdef RELEASE
+  jswrap_ESP8266_logDebug(false);
+#endif
+
   // Register the idle callback handler to run the main loop
   //ets_set_idle_cb(idle_cb, NULL); //
   queueTaskMainLoop(); // get things going without idle callback
@@ -291,7 +294,7 @@ void user_uart_init() {
  * before user_init() is called.
  */
 void user_rf_pre_init() {
-  system_update_cpu_freq(160);
+  system_update_cpu_freq(CLOCK_SPEED_MHZ);
 // RF calibration: 0=do what byte 114 of esp_init_data_default says, 1=calibrate VDD33 and TX
   // power (18ms); 2=calibrate VDD33 only (2ms); 3=full calibration (200ms). The default value of
   // byte 114 is 0, which has the same effect as option 2 here. We're using option 3 'cause it's

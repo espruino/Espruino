@@ -25,7 +25,7 @@
 #endif
 
 #include "esp_spi_flash.h"
-#include "spi_flash/include/esp_partition.h"
+#include "esp_partition.h"
 #include "esp_log.h"
 
 #include "jsvar.h"
@@ -48,7 +48,6 @@ static void espruinoTask(void *data) {
   SPIChannelsInit();
   initADC(1);
   jshInit();     // Initialize the hardware
-  if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_wifi_restore();
   heapVars = (esp_get_free_heap_size() - 40000) / 16;  //calculate space for jsVars
   heapVars = heapVars - heapVars % 100; //round to 100
   if(heapVars > 20000) heapVars = 20000;  //WROVER boards have much more RAM, so we set a limit
@@ -56,6 +55,7 @@ static void espruinoTask(void *data) {
   // not sure why this delay is needed?
   vTaskDelay(200 / portTICK_PERIOD_MS);
   jsiInit(true); // Initialize the interactive subsystem
+  if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_wifi_restore();  
 #ifdef BLUETOOTH
   bluetooth_initDeviceName();
 #endif
@@ -73,29 +73,31 @@ char* romdata_jscode=0;
 int app_main(void)
 {
   esp_log_level_set("*", ESP_LOG_ERROR); // set all components to ERROR level - suppress Wifi Info 
-  nvs_flash_init();
+  esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      err = nvs_flash_init();
+    }
 #ifdef BLUETOOTH
   jsble_init();
 #endif
   spi_flash_init();
-  tcpip_adapter_init();
   timers_Init();
   timer_Init("EspruinoTimer",0,0,0);
 
   // Map the js_code partition into memory so can be accessed by E.setBootCode("")
   const esp_partition_t* part;
-  spi_flash_mmap_handle_t hrom;  
-  esp_err_t err;  
+  spi_flash_mmap_handle_t hrom;
   esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "js_code");
   if (it==0) jsError("Couldn't find js_code partition - update with partition_espruino.bin\n");
   else {
     const esp_partition_t *p = esp_partition_get(it);
     err=esp_partition_mmap(p, 0, p->size, SPI_FLASH_MMAP_DATA, (const void**)&romdata_jscode, &hrom);
     if (err!=ESP_OK) jsError("Couldn't map js_code!\n");
-    // The mapping in hrom is never released - as js code can be called at anytime      
+    // The mapping in hrom is never released - as js code can be called at anytime
   }
   esp_partition_iterator_release(it);
-  
+
 #ifdef RTOS
   queues_init();
   tasks_init();

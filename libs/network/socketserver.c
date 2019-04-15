@@ -33,6 +33,7 @@
 #define HTTP_NAME_OPTIONS_VAR "opt"
 #define HTTP_NAME_SERVER_VAR "svr"
 #define HTTP_NAME_CHUNKED "chunked"
+#define HTTP_NAME_HEADERS "headers"
 #define HTTP_NAME_CLOSENOW "clsNow"  // boolean: gotta close
 #define HTTP_NAME_CONNECTED "conn"     // boolean: we are connected
 #define HTTP_NAME_CLOSE "cls"        // close after sending
@@ -119,7 +120,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   // Now parse the header
   JsVar *vHeaders = jsvNewObject();
   if (!vHeaders) return true;
-  jsvUnLock(jsvAddNamedChild(objectForData, vHeaders, "headers"));
+  jsvUnLock(jsvAddNamedChild(objectForData, vHeaders, HTTP_NAME_HEADERS));
   strIdx = 0;
   int firstSpace = -1;
   int secondSpace = -1;
@@ -363,7 +364,7 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
     } else {
       jsvObjectSetChildAndUnLock(reader, HTTP_NAME_RECEIVE_COUNT,
         jsvNewFromInteger(
-          jsvGetIntegerAndUnLock(jsvObjectGetChild(reader, HTTP_NAME_RECEIVE_COUNT, JSV_INTEGER)) - len)
+          jsvGetIntegerAndUnLock(jsvObjectGetChild(reader, HTTP_NAME_RECEIVE_COUNT, JSV_INTEGER)) - (JsVarInt)len)
         );
     }
   }
@@ -776,16 +777,16 @@ bool socketIdle(JsNetwork *net) {
     while (jsvObjectIteratorHasValue(&it)) {
       hadSockets = true;
 
-
       JsVar *server = jsvObjectIteratorGetValue(&it);
       SocketType socketType = socketGetType(server);
 
       int theClient = -1;
+      // Check for new connections
       if ((socketType&ST_TYPE_MASK)!=ST_UDP) {
           int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
           theClient = netAccept(net, sckt);
       }
-      if (theClient >= 0) {
+      if (theClient >= 0) { // We have a new connection
         if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
           JsVar *req = jspNewObject(0, "httpSRq");
           JsVar *res = jspNewObject(0, "httpSRs");
@@ -799,6 +800,13 @@ bool socketIdle(JsNetwork *net) {
             jsvObjectSetChild(req, HTTP_NAME_RESPONSE_VAR, res);
             jsvObjectSetChild(req, HTTP_NAME_SERVER_VAR, server);
             jsvObjectSetChildAndUnLock(req, HTTP_NAME_SOCKET, jsvNewFromInteger(theClient+1));
+            jsvObjectSetChildAndUnLock(res, HTTP_NAME_SOCKET, jsvNewFromInteger(theClient+1));
+            // Auto-add connection close header (in HTTP/1.0 this seemed implicit, now it must be explicit)
+            // This can always be overwritten with setHeader or writeHead
+            JsVar *name = jsvNewFromString("Connection");
+            JsVar *value = jsvNewFromString("close");
+            serverResponseSetHeader(res, name, value);
+            jsvUnLock2(name, value);
           }
           jsvUnLock2(req, res);
         } else {
@@ -947,7 +955,7 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, Js
       JsVar *path = jsvObjectGetChild(options, "path", 0);
       sendData = jsvVarPrintf("%v %v HTTP/1.1\r\nUser-Agent: Espruino "JS_VERSION"\r\nConnection: close\r\n", method, path);
       jsvUnLock2(method, path);
-      JsVar *headers = jsvObjectGetChild(options, "headers", 0);
+      JsVar *headers = jsvObjectGetChild(options, HTTP_NAME_HEADERS, 0);
       bool hasHostHeader = false;
       if (jsvIsObject(headers)) {
         JsVar *hostHeader = jsvObjectGetChildI(headers, "Host");
@@ -1092,10 +1100,19 @@ void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
   jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSE, jsvNewFromBool(true));
 }
 
+void serverResponseSetHeader(JsVar *httpServerResponseVar, JsVar *name, JsVar *value) {
+  name = jsvAsString(name);
+  value = jsvAsString(value);
+  JsVar *headers = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_HEADERS, JSV_OBJECT);
+  if (jsvIsObject(headers))
+    jsvObjectSetChildVar(headers, name, value);
+  jsvUnLock3(headers,name,value);
+}
 
-void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar *headers) {
+
+void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar *explicitHeaders) {
   DBG("serverResponseWriteHead %d\n", statusCode);
-  if (!jsvIsUndefined(headers) && !jsvIsObject(headers)) {
+  if (!jsvIsUndefined(explicitHeaders) && !jsvIsObject(explicitHeaders)) {
     jsError("Headers sent to writeHead should be an object");
     return;
   }
@@ -1108,6 +1125,13 @@ void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar
     return;
   }
 
+  JsVar *headers = jsvNewObject();
+  JsVar *implicitHeaders = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
+  if (jsvIsObject(implicitHeaders)) jsvObjectAppendAll(headers, implicitHeaders);
+  jsvUnLock(implicitHeaders);
+  if (jsvIsObject(explicitHeaders)) jsvObjectAppendAll(headers, explicitHeaders);
+
+
   sendData = jsvVarPrintf("HTTP/1.1 %d OK\r\nServer: Espruino "JS_VERSION"\r\n", statusCode);
   if (headers) {
     httpAppendHeaders(sendData, headers);
@@ -1116,6 +1140,7 @@ void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar
       jsvObjectSetChildAndUnLock(httpServerResponseVar, HTTP_NAME_CHUNKED, jsvNewFromBool(true));
     }
   }
+  jsvUnLock(headers);
   // finally add ending newline
   jsvAppendString(sendData, "\r\n");
   jsvObjectSetChildAndUnLock(httpServerResponseVar, HTTP_NAME_SEND_DATA, sendData);
