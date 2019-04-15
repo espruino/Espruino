@@ -829,6 +829,7 @@ void nus_transmit_string() {
 
 #if NRF_SD_BLE_API_VERSION>5
     uint32_t err_code = ble_nus_data_send(&m_nus, nusTxBuf, &nuxTxBufLength, m_peripheral_conn_handle);
+    if (err_code == NRF_SUCCESS) nuxTxBufLength=0; // everything sent Ok
 #elif NRF_SD_BLE_API_VERSION<5
     uint32_t err_code = ble_nus_string_send(&m_nus, nusTxBuf, nuxTxBufLength);
     if (err_code == NRF_SUCCESS) nuxTxBufLength=0; // everything sent Ok
