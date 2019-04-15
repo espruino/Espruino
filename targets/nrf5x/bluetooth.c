@@ -231,7 +231,9 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
                                 : name="INVALID_CONN_HANDLE"; break;
    case BLE_ERROR_GAP_INVALID_BLE_ADDR
                                 : name="INVALID_BLE_ADDR"; break;
+#if NRF_SD_BLE_API_VERSION<5
    case BLE_ERROR_NO_TX_PACKETS : name="NO_TX_PACKETS"; break;
+#endif
   }
   if (name) return jsvVarPrintf("Got BLE error 0x%x (%s)", err_code, name);
   else return jsvVarPrintf("Got BLE error code %d", err_code);
@@ -324,7 +326,14 @@ int jsble_exec_pending(IOEvent *event) {
    }
    case BLEP_ADV_REPORT: {
      ble_gap_evt_adv_report_t *p_adv = (ble_gap_evt_adv_report_t *)buffer;
-     size_t len = sizeof(ble_gap_evt_adv_report_t) + p_adv->dlen - BLE_GAP_ADV_MAX_SIZE;
+#if NRF_SD_BLE_API_VERSION<6
+     int dataLen = p_adv->dlen;
+     char *dataPtr = (char*)p_adv->data;
+#else
+     int dataLen = p_adv->data.len;
+     char *dataPtr = (char*)p_adv->data.p_data;
+#endif
+     size_t len = sizeof(ble_gap_evt_adv_report_t) + dataLen - BLE_GAP_ADV_MAX_SIZE;
      if (bufferLen != len) {
        assert(0);
        break;
@@ -334,13 +343,6 @@ int jsble_exec_pending(IOEvent *event) {
        jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
        //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
        jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
-#if NRF_SD_BLE_API_VERSION<6
-       int dataLen = p_adv->dlen;
-       char *dataPtr = (char*)p_adv->data;
-#else
-       int dataLen = p_adv->data.len;
-       char *dataPtr = (char*)p_adv->data.p_data;
-#endif
        JsVar *data = jsvNewStringOfLength(dataLen, dataPtr);
        if (data) {
          JsVar *ab = jsvNewArrayBufferFromString(data, dataLen);
@@ -1307,7 +1309,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_ADV_REPORT: {
         // Advertising data received
         const ble_gap_evt_adv_report_t *p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
-        size_t len = sizeof(ble_gap_evt_adv_report_t) + p_adv->dlen - BLE_GAP_ADV_MAX_SIZE;
+#if NRF_SD_BLE_API_VERSION<6
+        size_t dlen = p_adv->dlen;
+#else
+        // FIXME - we're no longer including the actual advertising data in the packet, just a pointer!
+        size_t dlen = p_adv->data.len;
+#endif
+        size_t len = sizeof(ble_gap_evt_adv_report_t) + dlen - BLE_GAP_ADV_MAX_SIZE;
         jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)p_adv, len);
         break;
         }
@@ -2287,7 +2295,7 @@ uint32_t jsble_advertising_start() {
   adv_params.p_peer_addr     = NULL;
   adv_params.properties.type = non_connectable
       ? (non_scannable ? BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED : BLE_GAP_ADV_TYPE_NONCONNECTABLE_SCANNABLE_UNDIRECTED)
-      : (non_scannable ? BLE_GAP_ADV_TYPE_CONNECTABLE_NONSCANNABLE_UNDIRECTED : BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED);
+      : (non_scannable ? BLE_GAP_ADV_TYPE_EXTENDED_CONNECTABLE_NONSCANNABLE_UNDIRECTED/*experimental*/ : BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED);
   adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
   adv_params.duration  = BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED;
 #else
