@@ -235,8 +235,8 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
    case BLE_ERROR_NO_TX_PACKETS : name="NO_TX_PACKETS"; break;
 #endif
   }
-  if (name) return jsvVarPrintf("Got BLE error 0x%x (%s)", err_code, name);
-  else return jsvVarPrintf("Got BLE error code %d", err_code);
+  if (name) return jsvVarPrintf("BLE error 0x%x (%s)", err_code, name);
+  else return jsvVarPrintf("BLE error 0x%x", err_code);
 }
 
 // -----------------------------------------------------------------------------------
