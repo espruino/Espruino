@@ -39,6 +39,7 @@
             nRF52: Add setAdvertising({},{scannable:false}) for disabling scan response
             nRF52: Add note about connectable:false requiring >=100ms intervals
             STM32: Fix issue where occasionally STM32 would be ~0.2s late waking from light sleep
+            ESP8266: add Wifi.connect options channel and bssid for faster AP connects (fix #1595, #1640)
             Fix index in E.mapInPlace and improve docs
 
      2v01 : ESP32: update to esp-idf V3.1

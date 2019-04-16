@@ -293,31 +293,26 @@ void jswrap_wifi_connect(
     JsVar *jsCallback
   ) {
 
-  // Notes:
-  // The callback function is saved in the file local variable called g_jsGotIpCallback.  The
-  // callback will be made when the WiFi callback found in the function called wifiEventHandler.
-
   DBGV("> Wifi.connect\n");
 
-  // Check that the ssid value isn't obviously in error.
+  struct station_config stationConfig;
+  memset(&stationConfig, 0, sizeof(stationConfig));
+
+  // Handle parameter ssid
+  char ssid[33];
   if (!jsvIsString(jsSsid)) {
     jsExceptionHere(JSET_ERROR, "No SSID provided");
     return;
-  }
-
-  // Create SSID string
-  char ssid[33];
-  int len = jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
-  ssid[len]='\0';
-
-  // Make sure jsOptions is NULL or an object
-  if (jsOptions != NULL && !jsvIsObject(jsOptions)) {
-    EXPECT_OPT_EXCEPTION(jsOptions);
-    return;
+  } else {
+    int len = jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
+    ssid[len]='\0';
+    os_strncpy((char *)stationConfig.ssid, ssid, 32);
   }
 
   // Check callback
-  if (g_jsGotIpCallback != NULL) jsvUnLock(g_jsGotIpCallback);
+  if (g_jsGotIpCallback != NULL) {
+    jsvUnLock(g_jsGotIpCallback);
+  }
   g_jsGotIpCallback = NULL;
   if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
     EXPECT_CB_EXCEPTION(jsCallback);
@@ -329,32 +324,111 @@ void jswrap_wifi_connect(
   g_jsDisconnectCallback = NULL;
   g_disconnecting = false; // we're gonna be connecting...
 
-  // Get the optional password
-  char password[65];
-  os_memset(password, 0, sizeof(password));
+  // Check for jsOptions
   if (jsOptions != NULL) {
-    JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
-    if (jsPassword != NULL && !jsvIsString(jsPassword)) {
-      jsExceptionHere(JSET_ERROR, "Expecting options.password to be a string but got %t", jsPassword);
-      jsvUnLock(jsPassword);
+    if (!jsvIsObject(jsOptions)) {
+      jsExceptionHere(JSET_ERROR, "Expecting an Object");
       return;
-    }
-    if (jsPassword != NULL) {
-      len = jsvGetString(jsPassword, password, sizeof(password)-1);
-      password[len]='\0';
     } else {
-      password[0] = '\0';
-    }
-    jsvUnLock(jsPassword);
-  }
 
-  // structure for SDK call, it's a shame we need to copy ssid and password but if we placed
-  // them straight into the stationConfig struct we wouldn't be able to printf them for debug
-  struct station_config stationConfig;
-  memset(&stationConfig, 0, sizeof(stationConfig));
-  os_strncpy((char *)stationConfig.ssid, ssid, 32);
-  os_strncpy((char *)stationConfig.password, password, 64);
-  DBGV(" - ssid:%s passwordLen:%d\n", ssid, strlen(password));
+      // Handle password
+      char password[65];
+      os_memset(password, 0, sizeof(password));
+
+      JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
+      if (jsPassword != NULL && !jsvIsString(jsPassword)) {
+        jsExceptionHere(JSET_ERROR, "Expecting options.password to be a string but got %t", jsPassword);
+        jsvUnLock(jsPassword);
+        return;
+      }
+      if (jsPassword != NULL) {
+        int len = jsvGetString(jsPassword, password, sizeof(password)-1);
+        password[len]='\0';
+      } else {
+        password[0] = '\0';
+      }
+      os_strncpy((char *)stationConfig.password, password, 64);
+      DBGV(" - ssid:%s passwordLen:%d\n", ssid, strlen(password));
+      jsvUnLock(jsPassword);
+
+      // Handle bssid
+      JsVar *jsBssid= jsvObjectGetChild(jsOptions, "bssid", 0);
+      if (jsBssid != NULL && jsvIsString(jsBssid)) {
+        char macAddrString[6 * 3 + 1 ];
+        int len = jsvGetString(jsBssid, macAddrString, sizeof(macAddrString)-1);
+        macAddrString[len] ='\0';
+        DBGV("bssid %s, len: %d\n",macAddrString,len);
+        bool isMAC = networkParseMACAddress((unsigned char*) stationConfig.bssid, (char *) macAddrString);
+        if ( isMAC ) {
+           stationConfig.bssid_set = 1;
+           DBGV("stationConfig.bssid_set = 1, %d %d %d %d %d %d\n", 
+             stationConfig.bssid[0], stationConfig.bssid[1], stationConfig.bssid[2],
+             stationConfig.bssid[3], stationConfig.bssid[4], stationConfig.bssid[5]
+            );
+        } else { 
+          jsExceptionHere(JSET_ERROR, "Expecting bssid as \"aa:bb:cc:dd:cc:ff\"");
+          jsvUnLock(jsBssid);
+          return;
+        }
+      } 
+      jsvUnLock(jsBssid);
+
+      //Handle channel
+      JsVar *jsChannel = jsvObjectGetChild(jsOptions, "channel", 0);
+      if(jsChannel != NULL && jsvIsInt(jsChannel)){
+        uint8 channel = jsvGetInteger(jsChannel);
+        if ( channel >= 0 && channel <= 14) {
+          DBGV("channel %d\n", channel);
+          wifi_set_channel(channel);
+        } else  {
+          jsExceptionHere(JSET_ERROR, "Expecting options.channel to be a integer between 0 and  14, but got %t", jsChannel);
+          jsvUnLock(jsChannel); 
+          return;   
+        }
+      }
+      jsvUnLock(jsChannel);
+
+      // Handle  dnsServers
+      JsVar *jsDNSServers = jsvObjectGetChild(jsOptions, "dnsServers", 0);
+      if (jsvIsArray(jsDNSServers) != false) {
+        int count = 0;
+        DBGV(" - We have DNS servers!!\n");
+        JsVarInt numDNSServers = jsvGetArrayLength(jsDNSServers);
+        ip_addr_t dnsAddresses[2];
+        if (numDNSServers == 0) {
+          DBGV("No servers!!");
+          count = 0;
+        }
+        if (numDNSServers > 0) {
+          // One server
+          count = 1;
+          JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 0);
+          char buffer[50];
+          size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
+          buffer[size] = '\0';
+          jsvUnLock(jsCurrentDNSServer);
+          dnsAddresses[0].addr = networkParseIPAddress(buffer);
+        }
+        if (numDNSServers > 1) {
+          // Two servers
+          count = 2;
+          JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 1);
+          char buffer[50];
+          size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
+          buffer[size] = '\0';
+          jsvUnLock(jsCurrentDNSServer);
+          dnsAddresses[1].addr = networkParseIPAddress(buffer);
+        }
+        if (numDNSServers > 2) {
+          DBG("Ignoring DNS servers after first 2.");
+        }
+        if (count > 0) {
+          espconn_dns_setserver((char)count, dnsAddresses);
+        }
+      }
+      jsvUnLock(jsDNSServers);
+    }
+  }
 
   int8 wifiConnectStatus = wifi_station_get_connect_status();
   if (wifiConnectStatus < 0) wifiConnectStatus = 0;
@@ -389,46 +463,6 @@ void jswrap_wifi_connect(
 
   // Set the station configuration
   int8 ok = wifi_station_set_config_current(&stationConfig);
-
-  // Do we have a child property called dnsServers?
-  JsVar *jsDNSServers = jsvObjectGetChild(jsOptions, "dnsServers", 0);
-  int count = 0;
-  if (jsvIsArray(jsDNSServers) != false) {
-    DBGV(" - We have DNS servers!!\n");
-    JsVarInt numDNSServers = jsvGetArrayLength(jsDNSServers);
-    ip_addr_t dnsAddresses[2];
-    if (numDNSServers == 0) {
-      DBGV("No servers!!");
-      count = 0;
-    }
-    if (numDNSServers > 0) {
-      // One server
-      count = 1;
-      JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 0);
-      char buffer[50];
-      size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
-      buffer[size] = '\0';
-      jsvUnLock(jsCurrentDNSServer);
-      dnsAddresses[0].addr = networkParseIPAddress(buffer);
-    }
-    if (numDNSServers > 1) {
-      // Two servers
-      count = 2;
-      JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 1);
-      char buffer[50];
-      size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
-      buffer[size] = '\0';
-      jsvUnLock(jsCurrentDNSServer);
-      dnsAddresses[1].addr = networkParseIPAddress(buffer);
-    }
-    if (numDNSServers > 2) {
-      DBG("Ignoring DNS servers after first 2.");
-    }
-    if (count > 0) {
-      espconn_dns_setserver((char)count, dnsAddresses);
-    }
-  }
-  jsvUnLock(jsDNSServers);
 
   // ensure we have a default DHCP hostname
   char *old_hostname = wifi_station_get_hostname();
