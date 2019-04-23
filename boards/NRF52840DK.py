@@ -120,7 +120,7 @@ board["_css"] = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(0,31) # 32 General Purpose I/O Pins.
+  pins = pinutils.generate_pins(0,47) # 48 General Purpose I/O Pins.
   pinutils.findpin(pins, "PD0", True)["functions"]["XL1"]=0;
   pinutils.findpin(pins, "PD1", True)["functions"]["XL2"]=0;
   pinutils.findpin(pins, "PD5", True)["functions"]["RTS"]=0;
