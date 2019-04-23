@@ -63,13 +63,15 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
     if(inf->pinTX == 0xff) inf->pinTX = 4;
     if(inf->pinRX == 0xff) inf->pinRX = 5;
     if(serial2_initialized) uart_driver_delete(uart_Serial2);
-      initUart(uart_Serial2,uart_config,inf->pinTX,inf->pinRX);
+    initUart(uart_Serial2,uart_config,inf->pinTX,inf->pinRX);
+    jshSetDeviceInitialised(EV_SERIAL2,true);
     serial2_initialized = true;
   } else if(device == EV_SERIAL3){
     if(inf->pinTX == 0xff) inf->pinTX = 17;
     if(inf->pinRX == 0xff) inf->pinRX = 16;
     if(serial3_initialized) uart_driver_delete(uart_Serial3);
     initUart(uart_Serial3,uart_config,inf->pinTX,inf->pinRX);
+    jshSetDeviceInitialised(EV_SERIAL3,true);
     serial3_initialized = true;
   }
 }
