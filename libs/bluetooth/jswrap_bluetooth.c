@@ -2551,6 +2551,33 @@ void jswrap_ble_setSecurity(JsVar *options) {
   }
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "getSecurityStatus",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_ble_getSecurityStatus",
+    "return" : ["JsVar", "An object" ]
+}
+Return an object with information about the security
+state of the current peripheral connection:
+
+```
+{
+  connected       // The connection is active (not disconnected).
+  encrypted       // Communication on this link is encrypted.
+  mitm_protected  // The encrypted communication is also protected against man-in-the-middle attacks.
+  bonded          // The peer is bonded with us
+}
+```
+
+If there is no active connection, `{connected:false}` will be returned.
+
+See `NRF.setSecurity` for information about negotiating a secure connection.
+*/
+JsVar *jswrap_ble_getSecurityStatus(JsVar *parent) {
+  return jsble_get_security_status(m_peripheral_conn_handle);
+}
 
 /*JSON{
   "type" : "class",
@@ -2895,7 +2922,7 @@ specifically for Puck.js.
 */
 JsVar *jswrap_ble_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
-  return jsble_central_getSecurityStatus();
+  return jsble_get_security_status(m_central_conn_handle);
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;

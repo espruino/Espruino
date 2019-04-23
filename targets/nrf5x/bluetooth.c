@@ -2698,6 +2698,31 @@ void jsble_nfc_send_rsp(const uint8_t data, size_t len) {
 }
 #endif
 
+JsVar *jsble_get_security_status(uint16_t conn_handle) {
+#if PEER_MANAGER_ENABLED
+  JsVar *result = jsvNewWithFlags(JSV_OBJECT);
+  if (!result) return 0;
+
+  if (conn_handle == BLE_CONN_HANDLE_INVALID) {
+    jsvObjectSetChildAndUnLock(result, "connected", jsvNewFromBool(false));
+    return result;
+  }
+  pm_conn_sec_status_t status;
+  uint32_t err_code = pm_conn_sec_status_get(conn_handle, &status);
+  if (!jsble_check_error(err_code)) {
+    jsvObjectSetChildAndUnLock(result, "connected", jsvNewFromBool(status.connected));
+    jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
+    jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
+    jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
+    return result;
+  }
+  return 0;
+#else
+  jsExceptionHere(JSET_ERROR,"Peer Manager not compiled in");
+  return 0;
+#endif
+}
+
 
 #if CENTRAL_LINK_COUNT>0
 void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
@@ -2908,30 +2933,6 @@ void jsble_central_startBonding(bool forceRePair) {
   }
 #else
   return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Peer Manager not compiled in"));
-#endif
-}
-
-JsVar *jsble_central_getSecurityStatus() {
-#if PEER_MANAGER_ENABLED
-  if (!jsble_has_central_connection())
-    return 0;
-  pm_conn_sec_status_t status;
-
-  uint32_t err_code = pm_conn_sec_status_get(m_central_conn_handle, &status);
-  if (!jsble_check_error(err_code)) {
-    JsVar *result = jsvNewWithFlags(JSV_OBJECT);
-    if (result) {
-      jsvObjectSetChildAndUnLock(result, "connected", jsvNewFromBool(status.connected));
-      jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
-      jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
-      jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
-    }
-    return result;
-  }
-  return 0;
-#else
-  jsExceptionHere(JSET_ERROR,"Peer Manager not compiled in");
-  return 0;
 #endif
 }
 

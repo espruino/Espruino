@@ -200,6 +200,9 @@ void jsble_send_hid_input_report(uint8_t *data, int length);
 /// Update the current security settings from the info in hiddenRoot.BLE_NAME_SECURITY
 void jsble_update_security();
 
+/// Return an object showing the security status of the given connection
+JsVar *jsble_get_security_status(uint16_t conn_handle);
+
 // ------------------------------------------------- lower-level utility fns
 
 #ifdef NRF5X
