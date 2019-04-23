@@ -688,9 +688,14 @@ void jshPinSetState(Pin pin, JshPinState state) {
 #endif
 
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
+#if NRF_SD_BLE_API_VERSION>5
+  NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&ipin);
+#else
+  NRF_GPIO_Type *reg = NRF_GPIO;
+#endif
   switch (state) {
     case JSHPINSTATE_UNDEFINED :
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
@@ -699,7 +704,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
     case JSHPINSTATE_AF_OUT :
     case JSHPINSTATE_GPIO_OUT :
     case JSHPINSTATE_USART_OUT :
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0H1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
@@ -707,7 +712,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_AF_OUT_OPENDRAIN :
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN :
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
@@ -715,7 +720,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_I2C :
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
@@ -747,13 +752,18 @@ JshPinState jshPinGetState(Pin pin) {
     return JSHPINSTATE_UNDEFINED;
 #endif
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
-  uint32_t p = NRF_GPIO->PIN_CNF[ipin];
+#if NRF_SD_BLE_API_VERSION>5
+  NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&ipin);
+#else
+  NRF_GPIO_Type *reg = NRF_GPIO;
+#endif
+  uint32_t p = reg->PIN_CNF[ipin];
   bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
   if ((p&GPIO_PIN_CNF_DIR_Msk)==(GPIO_PIN_CNF_DIR_Output<<GPIO_PIN_CNF_DIR_Pos)) {
     uint32_t pinDrive = (p&GPIO_PIN_CNF_DRIVE_Msk)>>GPIO_PIN_CNF_DRIVE_Pos;
     uint32_t pinPull = (p&GPIO_PIN_CNF_PULL_Msk)>>GPIO_PIN_CNF_PULL_Pos;
     // Output
-    bool pinIsHigh = NRF_GPIO->OUT & (1<<ipin);
+    bool pinIsHigh = reg->OUT & (1<<ipin);
     if (negated) pinIsHigh = !pinIsHigh;
     JshPinState hi = pinIsHigh ? JSHPINSTATE_PIN_IS_ON : 0;
 

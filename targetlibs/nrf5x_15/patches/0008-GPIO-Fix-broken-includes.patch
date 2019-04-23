@@ -1,0 +1,11 @@
+--- a/targetlibs/nrf5x_15/modules/nrfx/mdk/nrf.h
++++ b/targetlibs/nrf5x_15/modules/nrfx/mdk/nrf.h
+@@ -49,7 +49,7 @@
+ 
+ /* Redefine "old" too-generic name NRF52 to NRF52832_XXAA to keep backwards compatibility. */
+ #if defined (NRF52)
+-    #ifndef NRF52832_XXAA
++    #if !defined(NRF52832_XXAA) && !defined(NRF52840)
+         #define NRF52832_XXAA
+     #endif
+ #endif
