@@ -163,6 +163,8 @@ static bool                             m_in_boot_mode = false;
 
 #if NRF_SD_BLE_API_VERSION > 5
 static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
+static ble_advdata_t advdata;
+static ble_advdata_t scanrsp;
 #endif
 
 volatile uint16_t                       m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
@@ -2209,10 +2211,12 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
 
 
 /// Function for initializing the Advertising functionality.
-static void advertising_init() {
-    ble_advdata_t advdata;
-    ble_advdata_t scanrsp;
 
+static void advertising_init() {
+#if NRF_SD_BLE_API_VERSION<=5
+    static ble_advdata_t advdata;
+    static ble_advdata_t scanrsp;
+#endif
     // Build advertising data struct to pass into @ref ble_advertising_init.
     jsble_setup_advdata(&advdata);
 
@@ -2250,32 +2254,7 @@ static void advertising_init() {
     scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
 
     uint32_t err_code;
-#if NRF_SD_BLE_API_VERSION>5
-    uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
-    uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
-    ble_gap_adv_data_t d;
-    d.adv_data.p_data = m_enc_advdata;
-    d.adv_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
-    d.scan_rsp_data.p_data = m_enc_scan_response_data;
-    d.scan_rsp_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
-    err_code = ble_advdata_encode(&advdata, d.adv_data.p_data, &d.adv_data.len);
-    if (jsble_check_error(err_code)) return;
-    err_code = ble_advdata_encode(&scanrsp, d.scan_rsp_data.p_data, &d.scan_rsp_data.len);
-    if (jsble_check_error(err_code)) return;
-
-    // FIXME We should just use jsble_advertising_start and remove duplicate code
-    ble_gap_adv_params_t adv_params;
-    // Set advertising parameters.
-    memset(&adv_params, 0, sizeof(adv_params));
-    adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
-    adv_params.duration        = BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED;
-    adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
-    adv_params.p_peer_addr     = NULL;
-    adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
-    adv_params.interval        = bleAdvertisingInterval;
-
-    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
-#else
+#if NRF_SD_BLE_API_VERSION<=5
     err_code = ble_advdata_set(&advdata, &scanrsp);
 #endif
     APP_ERROR_CHECK(err_code);
@@ -2310,7 +2289,19 @@ uint32_t jsble_advertising_start() {
 
   uint32_t err_code;
 #if NRF_SD_BLE_API_VERSION>5
-  err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, 0, &adv_params);
+  uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
+  uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
+  ble_gap_adv_data_t d;
+  d.adv_data.p_data = m_enc_advdata;
+  d.adv_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
+  d.scan_rsp_data.p_data = m_enc_scan_response_data;
+  d.scan_rsp_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
+  err_code = ble_advdata_encode(&advdata, d.adv_data.p_data, &d.adv_data.len);
+  if (jsble_check_error(err_code)) return err_code;
+  err_code = ble_advdata_encode(&scanrsp, d.scan_rsp_data.p_data, &d.scan_rsp_data.len);
+  if (jsble_check_error(err_code)) return err_code;
+
+  err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
   if (!err_code)
     err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
 #elif NRF_SD_BLE_API_VERSION<5
