@@ -132,7 +132,7 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 /* Check for errors when in an IRQ, when we're pretty sure an error won't
  * cause a hard reset. Error is then reported outside of the IRQ without
  * rebooting Espruino. */
-#define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) { uint32_t line = __LINE__; jsble_queue_pending_buf(BLEP_ERROR, ERR_CODE, &line, 4); }
+#define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) { uint32_t line = __LINE__; jsble_queue_pending_buf(BLEP_ERROR, ERR_CODE, (char*)&line, 4); }
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
@@ -1345,8 +1345,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         }
         if (done)
           jsble_queue_pending(BLEP_TASK_DISCOVER_SERVICE_COMPLETE, 0);
-        break;
-      }
+      } break;
       case BLE_GATTC_EVT_CHAR_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC)) {
         bool done = true;
 
@@ -1378,8 +1377,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
         if (done)
           jsble_queue_pending(BLEP_TASK_DISCOVER_CHARACTERISTIC_COMPLETE, 0);
-        break;
-      }
+      } break;
       case BLE_GATTC_EVT_DESC_DISC_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY)) {
         // trigger this with sd_ble_gattc_descriptors_discover(conn_handle, &handle_range);
         uint16_t cccd_handle = 0;
@@ -1398,31 +1396,26 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         }
 
         jsble_queue_pending(BLEP_TASK_DISCOVER_CCCD, cccd_handle);
-
-        break;
-      }
+      } break;
 
       case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) {
         const ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
         jsble_queue_pending_buf(BLEP_TASK_CHARACTERISTIC_READ, 0, (char*)&p_read->data[0], p_read->len);
-        break;
-      }
+      } break;
 
       case BLE_GATTC_EVT_WRITE_RSP: {
         if (bleInTask(BLETASK_CHARACTERISTIC_NOTIFY))
           jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_NOTIFY, 0);
         else if (bleInTask(BLETASK_CHARACTERISTIC_WRITE))
           jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_WRITE, 0);
-        break;
-      }
+      } break;
 
       case BLE_GATTC_EVT_HVX: {
         // Notification/Indication
         const ble_gattc_evt_hvx_t *p_hvx = &p_ble_evt->evt.gattc_evt.params.hvx;
         // p_hvx->type is BLE_GATT_HVX_NOTIFICATION or BLE_GATT_HVX_INDICATION
         jsble_queue_pending_buf(BLEP_NOTIFICATION, p_hvx->handle, (char*)p_hvx->data, p_hvx->len);
-        break;
-      }
+      } break;
 #endif
 
       default:
@@ -1430,6 +1423,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           break;
     }
 }
+
 
 #ifdef USE_NFC
 /// Callback function for handling NFC events.
@@ -1528,10 +1522,10 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             }
         } break;
 
-        case PM_EVT_CONN_SEC_START:
+        case PM_EVT_CONN_SEC_START: {
           if (bleInTask(BLETASK_BONDING))
             jsble_queue_pending(BLEP_TASK_BONDING, true);
-            break;
+        } break;
 
         case PM_EVT_CONN_SEC_SUCCEEDED:
         {
@@ -1581,25 +1575,25 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
         {
           if (bleInTask(BLETASK_BONDING))
             jsble_queue_pending(BLEP_TASK_BONDING, false);
-            /** In some cases, when securing fails, it can be restarted directly. Sometimes it can
-             *  be restarted, but only after changing some Security Parameters. Sometimes, it cannot
-             *  be restarted until the link is disconnected and reconnected. Sometimes it is
-             *  impossible, to secure the link, or the peer device does not support it. How to
-             *  handle this error is highly application dependent. */
-            switch (p_evt->params.conn_sec_failed.error)
-            {
-                case PM_CONN_SEC_ERROR_PIN_OR_KEY_MISSING:
-                    // Rebond if one party has lost its keys.
-                    err_code = pm_conn_secure(p_evt->conn_handle, true);
-                    if (err_code != NRF_ERROR_INVALID_STATE)
-                    {
-                      APP_ERROR_CHECK_NOT_URGENT(err_code);
-                    }
-                    break; // PM_CONN_SEC_ERROR_PIN_OR_KEY_MISSING
+          /** In some cases, when securing fails, it can be restarted directly. Sometimes it can
+           *  be restarted, but only after changing some Security Parameters. Sometimes, it cannot
+           *  be restarted until the link is disconnected and reconnected. Sometimes it is
+           *  impossible, to secure the link, or the peer device does not support it. How to
+           *  handle this error is highly application dependent. */
+          switch (p_evt->params.conn_sec_failed.error)
+          {
+              case PM_CONN_SEC_ERROR_PIN_OR_KEY_MISSING:
+                  // Rebond if one party has lost its keys.
+                  err_code = pm_conn_secure(p_evt->conn_handle, true);
+                  if (err_code != NRF_ERROR_INVALID_STATE)
+                  {
+                    APP_ERROR_CHECK_NOT_URGENT(err_code);
+                  }
+                  break; // PM_CONN_SEC_ERROR_PIN_OR_KEY_MISSING
 
-                default:
-                    break;
-            }
+              default:
+                  break;
+          }
         } break;
 
         case PM_EVT_CONN_SEC_CONFIG_REQ:
@@ -2275,9 +2269,9 @@ uint32_t jsble_advertising_start() {
   d.scan_rsp_data.p_data = m_enc_scan_response_data;
   d.scan_rsp_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
   err_code = ble_advdata_encode(&advdata, d.adv_data.p_data, &d.adv_data.len);
-  if (jsble_check_error(err_code)) return;
+  if (jsble_check_error(err_code)) return err_code;
   err_code = ble_advdata_encode(&scanrsp, d.scan_rsp_data.p_data, &d.scan_rsp_data.len);
-  if (jsble_check_error(err_code)) return;
+  if (jsble_check_error(err_code)) return err_code;
 
   err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
   if (!err_code)
@@ -2296,7 +2290,7 @@ uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen) {
 #if NRF_SD_BLE_API_VERSION>5
   ble_gap_adv_data_t d;
   memset(&d,0,sizeof(d));
-  d.adv_data.p_data = dPtr;
+  d.adv_data.p_data = (uint8_t *)dPtr;
   d.adv_data.len = dLen;
   // TODO: scan_rsp_data? Does not setting this remove it?
   return sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
