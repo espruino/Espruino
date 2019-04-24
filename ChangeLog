@@ -45,6 +45,7 @@
             STM32F4: Add Filesystem module
             STM32F3: Fix broken build
             nRF52: Fix nRF52840 advertising and remove duplicated advertising code
+            Fix Software Serial receive when the frame has to be decoded inside the IRQ (fix #1654)
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends

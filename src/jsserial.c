@@ -200,7 +200,7 @@ typedef struct {
    * as well as the data itself.
    */
   int bits;
-  int bitMax;
+  int bitMax; ///< 1 << number_of_bits_in_a_frame
 } SerialEventCallbackData;
 
 
@@ -329,7 +329,7 @@ void jsserialEventCallback(bool state, IOEventFlags channel) {
   data->bits <<= bitCnt;
   if (!state) data->bits |= (1<<bitCnt)-1; // add 1s if we need to
   if (data->bits >= data->bitMax) {
-    int ch = jswrap_espruino_reverseByte((data->bits>>1)&255);
+    int ch = jswrap_espruino_reverseByte((data->bits>>2)&255);
     if (data->bufLen < sizeof(data->buf))
       data->buf[data->bufLen++] = (char)ch;
     data->bits = 1;
