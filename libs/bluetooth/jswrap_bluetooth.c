@@ -709,7 +709,7 @@ the shortest field names possible and avoid floating point values that can
 be very long when converted to a String.
 */
 void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
-  uint32_t err_code;
+  uint32_t err_code = 0;
   bool bleChanged = false;
   bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
 
@@ -836,16 +836,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
   if (bleChanged && isAdvertising)
     jsble_advertising_stop();
 #ifdef NRF5X
-  #if NRF_SD_BLE_API_VERSION>5
-  ble_gap_adv_data_t d;
-  memset(&d,0,sizeof(d));
-  d.adv_data.p_data = dPtr;
-  d.adv_data.len = dLen;
-  // TODO: scan_rsp_data? Does not setting this remove it?
-//FIXME  err_code = sd_ble_gap_adv_set_configure(mp_adv_handle, &d, NULL);
-  #else
-  err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
-  #endif
+  jsble_advertising_update_advdata(dPtr, dLen);
 #else
   err_code = 0xDEAD;
   jsiConsolePrintf("FIXME\n");

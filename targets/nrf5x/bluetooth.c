@@ -935,17 +935,7 @@ void SWI1_IRQHandler(bool radio_evt) {
       bleStatus = (bleStatus&~BLE_ADVERTISING_MULTIPLE_MASK) | (idx<<BLE_ADVERTISING_MULTIPLE_SHIFT);
       JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
       if (dPtr && dLen) {
-        uint32_t err_code;
-        #if NRF_SD_BLE_API_VERSION>5
-        ble_gap_adv_data_t d;
-        memset(&d,0,sizeof(d));
-        d.adv_data.p_data = (char*)dPtr;
-        d.adv_data.len = dLen;
-        // TODO: scan_rsp_data? Does not setting this remove it?
-        err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
-        #else
-        err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
-        #endif
+        uint32_t err_code = jsble_advertising_update_advdata(dPtr, dLen);
         if (err_code)
           ok = false; // error setting BLE - disable
       } else {
@@ -2199,6 +2189,10 @@ static void ble_stack_init() {
 #endif
 }
 
+// -----------------------------------------------------------------------------------
+// -------------------------------------------------------------------- OTHER
+
+
 /// Build advertising data struct to pass into @ref ble_advertising_init.
 void jsble_setup_advdata(ble_advdata_t *advdata) {
   memset(advdata, 0, sizeof(*advdata));
@@ -2207,85 +2201,48 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
   advdata->flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
 }
 
-
-/// Function for initializing the Advertising functionality.
-static void advertising_init() {
-    ble_advdata_t advdata;
-    ble_advdata_t scanrsp;
-
-    // Build advertising data struct to pass into @ref ble_advertising_init.
-    jsble_setup_advdata(&advdata);
-
-    static ble_uuid_t adv_uuids[ADVERTISE_MAX_UUIDS];
-    int adv_uuid_count = 0;
-    if (bleStatus & BLE_HID_INITED) {
-      adv_uuids[adv_uuid_count].uuid = BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE;
-      adv_uuids[adv_uuid_count].type = BLE_UUID_TYPE_BLE;
-      adv_uuid_count++;
-    }
-    if (bleStatus & BLE_NUS_INITED) {
-      adv_uuids[adv_uuid_count].uuid = BLE_UUID_NUS_SERVICE;
-      adv_uuids[adv_uuid_count].type = BLE_UUID_TYPE_VENDOR_BEGIN; ///< We just assume we're the first 128 bit UUID in the list!
-      adv_uuid_count++;
-    }
-    // add any user-defined services
-    JsVar *advServices = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_ADVERTISE, 0);
-    if (jsvIsArray(advServices)) {
-      JsvObjectIterator it;
-      jsvObjectIteratorNew(&it, advServices);
-      while (jsvObjectIteratorHasValue(&it)) {
-        ble_uuid_t ble_uuid;
-        if (adv_uuid_count < ADVERTISE_MAX_UUIDS &&
-            !bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetValue(&it))) {
-          adv_uuids[adv_uuid_count++] = ble_uuid;
-        }
-        jsvObjectIteratorNext(&it);
-      }
-      jsvObjectIteratorFree(&it);
-    }
-    jsvUnLock(advServices);
-
-    memset(&scanrsp, 0, sizeof(scanrsp));
-    scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
-    scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
-
-    uint32_t err_code;
-#if NRF_SD_BLE_API_VERSION>5
-    uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];                    /**< Buffer for storing an encoded advertising set. */
-    uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
-    ble_gap_adv_data_t d;
-    d.adv_data.p_data = m_enc_advdata;
-    d.adv_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
-    d.scan_rsp_data.p_data = m_enc_scan_response_data;
-    d.scan_rsp_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
-    err_code = ble_advdata_encode(&advdata, d.adv_data.p_data, &d.adv_data.len);
-    if (jsble_check_error(err_code)) return;
-    err_code = ble_advdata_encode(&scanrsp, d.scan_rsp_data.p_data, &d.scan_rsp_data.len);
-    if (jsble_check_error(err_code)) return;
-
-    // FIXME We should just use jsble_advertising_start and remove duplicate code
-    ble_gap_adv_params_t adv_params;
-    // Set advertising parameters.
-    memset(&adv_params, 0, sizeof(adv_params));
-    adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
-    adv_params.duration        = BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED;
-    adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
-    adv_params.p_peer_addr     = NULL;
-    adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
-    adv_params.interval        = bleAdvertisingInterval;
-
-    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
-#else
-    err_code = ble_advdata_set(&advdata, &scanrsp);
-#endif
-    APP_ERROR_CHECK(err_code);
-}
-
-// -----------------------------------------------------------------------------------
-// -------------------------------------------------------------------- OTHER
-
 uint32_t jsble_advertising_start() {
   if (bleStatus & BLE_IS_ADVERTISING) return 0;
+  ble_advdata_t advdata;
+  ble_advdata_t scanrsp;
+
+  jsble_setup_advdata(&advdata);
+
+  // Set up scan response packet's contents
+  ble_uuid_t adv_uuids[ADVERTISE_MAX_UUIDS];
+  int adv_uuid_count = 0;
+  if (bleStatus & BLE_HID_INITED) {
+    adv_uuids[adv_uuid_count].uuid = BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE;
+    adv_uuids[adv_uuid_count].type = BLE_UUID_TYPE_BLE;
+    adv_uuid_count++;
+  }
+  if (bleStatus & BLE_NUS_INITED) {
+    adv_uuids[adv_uuid_count].uuid = BLE_UUID_NUS_SERVICE;
+    adv_uuids[adv_uuid_count].type = BLE_UUID_TYPE_VENDOR_BEGIN; ///< We just assume we're the first 128 bit UUID in the list!
+    adv_uuid_count++;
+  }
+  // add any user-defined services
+  JsVar *advServices = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_ADVERTISE, 0);
+  if (jsvIsArray(advServices)) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, advServices);
+    while (jsvObjectIteratorHasValue(&it)) {
+      ble_uuid_t ble_uuid;
+      if (adv_uuid_count < ADVERTISE_MAX_UUIDS &&
+          !bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetValue(&it))) {
+        adv_uuids[adv_uuid_count++] = ble_uuid;
+      }
+      jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+  }
+  jsvUnLock(advServices);
+  // update scan response packet
+  memset(&scanrsp, 0, sizeof(scanrsp));
+  scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
+  scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
+
+
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
   bool non_connectable = bleStatus & BLE_IS_NOT_CONNECTABLE;
@@ -2308,18 +2265,44 @@ uint32_t jsble_advertising_start() {
   adv_params.p_peer_addr = NULL;
   adv_params.interval = bleAdvertisingInterval;
 
-  uint32_t err_code;
+  uint32_t err_code = 0;
 #if NRF_SD_BLE_API_VERSION>5
-  err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, 0, &adv_params);
+  uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
+  uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
+  ble_gap_adv_data_t d;
+  d.adv_data.p_data = m_enc_advdata;
+  d.adv_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
+  d.scan_rsp_data.p_data = m_enc_scan_response_data;
+  d.scan_rsp_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
+  err_code = ble_advdata_encode(&advdata, d.adv_data.p_data, &d.adv_data.len);
+  if (jsble_check_error(err_code)) return;
+  err_code = ble_advdata_encode(&scanrsp, d.scan_rsp_data.p_data, &d.scan_rsp_data.len);
+  if (jsble_check_error(err_code)) return;
+
+  err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
   if (!err_code)
     err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
 #elif NRF_SD_BLE_API_VERSION<5
+  err_code = ble_advdata_set(&advdata, &scanrsp);
   err_code = sd_ble_gap_adv_start(&adv_params);
 #else
   err_code = sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
 #endif
   bleStatus |= BLE_IS_ADVERTISING;
   return err_code;
+}
+
+uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen) {
+#if NRF_SD_BLE_API_VERSION>5
+  ble_gap_adv_data_t d;
+  memset(&d,0,sizeof(d));
+  d.adv_data.p_data = dPtr;
+  d.adv_data.len = dLen;
+  // TODO: scan_rsp_data? Does not setting this remove it?
+  return sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
+#else
+  return sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
+#endif
 }
 
 void jsble_advertising_stop() {
@@ -2350,7 +2333,6 @@ void jsble_advertising_stop() {
 #endif
    gap_params_init();
    services_init();
-   advertising_init();
    conn_params_init();
 
    jswrap_ble_wake();

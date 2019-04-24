@@ -158,8 +158,8 @@ int jsble_exec_pending(IOEvent *event);
 void jsble_restart_softdevice();
 
 uint32_t jsble_advertising_start();
+uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen);
 void jsble_advertising_stop();
-
 
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection();

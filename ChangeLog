@@ -44,6 +44,7 @@
             nRF52: Add NRF.getSecurityStatus to allow devices to detect the current state of the connection
             STM32F4: Add Filesystem module
             STM32F3: Fix broken build
+            nRF52: Fix nRF52840 advertising and remove duplicated advertising code
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
