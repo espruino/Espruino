@@ -191,7 +191,7 @@ bool jsserialGetSendFunction(JsVar *serialDevice, serial_sender *serialSend, ser
 
 #ifndef SAVE_ON_FLASH
 typedef struct {
-  char buf[7]; ///< received data
+  char buf[64]; ///< received data
   unsigned char bufLen; ///< amount of received characters
   JsSysTime lastTime;
   int baudRate;
