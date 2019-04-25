@@ -195,12 +195,9 @@ typedef struct {
   unsigned char bufLen; ///< amount of received characters
   JsSysTime lastTime;
   int baudRate;
-  /** We shift left for each bit, and always reset this with a '1' in it,
-   * so that we can use the variable to mark how many bit we've received
-   * as well as the data itself.
-   */
-  int bits;
-  int bitMax; ///< 1 << number_of_bits_in_a_frame
+  uint32_t bitData; ///< Actual received data
+  unsigned char bitCnt; ///< How many bits do we have in bitData
+  unsigned char frameSize; ///< How many bits in one frame of serial data
 } SerialEventCallbackData;
 
 
@@ -219,9 +216,9 @@ bool jsserialEventCallbackInit(JsVar *parent, JshUSARTInfo *inf) {
   data->bufLen = 0;
   data->lastTime = jshGetSystemTime();
   data->baudRate = inf->baudRate;
-  data->bits = 1;
-  data->bitMax = 1 << (1+inf->bytesize+inf->stopbits);
-  if (inf->parity) data->bitMax<<=1;
+  data->bitData = 0;
+  data->bitCnt = 0;
+  data->frameSize = inf->bytesize + inf->stopbits + (inf->parity?1:0);
 
   IOEventFlags exti = jshPinWatch(inf->pinRX, true);
   if (exti) {
@@ -256,6 +253,22 @@ void jsserialEventCallbackKill(JsVar *parent, JshUSARTInfo *inf) {
   }
 }
 
+void jsserialCheckForCharacter(SerialEventCallbackData *data) {
+  if (data->bitCnt >= data->frameSize) {
+    int ch = (data->bitData>>1)&255; // skip start bit
+    /*char buf[20];
+    itostr(data->bitData, buf, 2);
+    jsiConsolePrintf("=]%d %s %d\n", data->bitCnt, buf, ch);*/
+
+    if (data->bufLen < sizeof(data->buf)) {
+      data->buf[data->bufLen++] = (char)ch;
+      jshHasEvents();
+    }
+    data->bitCnt = 0;
+    data->bitData = 0;
+  }
+}
+
 bool jsserialEventCallbackIdle() {
   bool busy = false;
   JsVar *list = jsserialGetSerialList(false);
@@ -267,22 +280,15 @@ bool jsserialEventCallbackIdle() {
     JsVar *dataVar = jsvObjectGetChild(parent, "irqData", 0);
     SerialEventCallbackData *data = (SerialEventCallbackData *)jsvGetFlatStringPointer(dataVar);
     if (data) {
-      if (data->bits!=1) {
+      if (data->bitCnt) {
         JsSysTime time = jshGetSystemTime();
         JsSysTime timeDiff = time - data->lastTime;
         int bitCnt = (int)((jshGetMillisecondsFromTime(timeDiff) * data->baudRate / 1000)+0.5);
-        if (bitCnt>2) {
-          if ((data->bits<<bitCnt) >= data->bitMax) {
-            while (data->bits < data->bitMax)
-              data->bits=(data->bits<<1)|1;
-            int ch = jswrap_espruino_reverseByte((data->bits>>1)&255);
-            /*char buf[20];
-            itostr(data->bits, buf, 2);
-            jsiConsolePrintf("=]%d %s %d\n", data->bits, buf, ch);*/
-            if (data->bufLen < sizeof(data->buf))
-              data->buf[data->bufLen++] = (char)ch;
-            data->bits = 1;
-          }
+        if (bitCnt>10) {
+          data->bitData |= ((1<<bitCnt)-1) << data->bitCnt;
+          data->bitCnt += bitCnt;
+          jsserialCheckForCharacter(data);
+          data->bitCnt = 0;
         } else
           busy = true; // waiting for this byte to finish
       }
@@ -318,22 +324,19 @@ void jsserialEventCallback(bool state, IOEventFlags channel) {
   JsSysTime time = jshGetSystemTime();
   JsSysTime timeDiff = time - data->lastTime;
   data->lastTime = time;
+  bool bitValue = !state; // we can a call on change, so the last state was the opposite of what it is now
   int bitCnt = (int)((jshGetMillisecondsFromTime(timeDiff) * data->baudRate / 1000)+0.5);
-  if (bitCnt<0 || bitCnt>=10) {
-    // We're starting again - reset
-    bitCnt = 0;
-    if (data->bits != 1)
-      while (data->bits < data->bitMax)
-        data->bits=(data->bits<<1)|1;
+  //jsiConsolePrintf("v %d %d\n", bitValue, bitCnt);
+  if (bitValue && data->bitCnt==0) {
+    // high pulse, but no data so far
+    // ignore this as we're waiting for the start bit
+    return;
   }
-  data->bits <<= bitCnt;
-  if (!state) data->bits |= (1<<bitCnt)-1; // add 1s if we need to
-  if (data->bits >= data->bitMax) {
-    int ch = jswrap_espruino_reverseByte((data->bits>>2)&255);
-    if (data->bufLen < sizeof(data->buf))
-      data->buf[data->bufLen++] = (char)ch;
-    data->bits = 1;
-  }
-  jshHasEvents();
+  if (bitCnt>12) return;
+
+  if (bitValue) data->bitData |= ((1<<bitCnt)-1) << data->bitCnt; // add 1s if we need to
+  data->bitCnt += bitCnt;
+  jsserialCheckForCharacter(data);
+
 }
 #endif
