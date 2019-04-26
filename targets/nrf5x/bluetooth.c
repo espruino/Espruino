@@ -2456,6 +2456,31 @@ uint32_t jsble_set_central_rssi_scan(bool enabled) {
 }
 #endif
 
+/** Sets security mode for a characteristic configuration */
+void set_security_mode(ble_gap_conn_sec_mode_t *perm, JsVar *configVar) {
+  if (jsvGetBoolAndUnLock(jsvObjectGetChild(configVar, "signed", 0))) {
+    perm->sm = 2; // signed
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(configVar, "mitm", 0))) {
+      perm->lv = 2; // signed with mitm
+    } else {
+      perm->lv = 1; // signed without mitm
+    }
+  } else {
+    perm->sm = 1; // not signed; default
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(configVar, "lesc", 0))) {
+      perm->lv = 4; // lesc
+    } else if (jsvGetBoolAndUnLock(jsvObjectGetChild(configVar, "encrypted", 0))) {
+      if (jsvGetBoolAndUnLock(jsvObjectGetChild(configVar, "mitm", 0))) {
+        perm->lv = 3; // encrypted with mitm
+      } else {
+        perm->lv = 2; // encrypted without mitm
+      }
+    } else {
+      perm->lv = 1; // open; default
+    }
+  }
+}
+
 /** Actually set the services defined in the 'data' object. Note: we can
  * only do this *once* - so to change it we must reset the softdevice and
  * then call this again */
@@ -2532,8 +2557,22 @@ void jsble_set_services(JsVar *data) {
         jsvUnLock(charDescriptionVar);
 
         memset(&attr_md, 0, sizeof(attr_md));
-        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
-        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+
+        JsVar *securityVar = jsvObjectGetChild(charVar, "security", 0);
+        if (securityVar) {
+          JsVar *readVar = jsvObjectGetChild(securityVar, "read", 0);
+          set_security_mode(&attr_md.read_perm, readVar);
+          jsvUnLock(readVar);
+
+          JsVar *writeVar = jsvObjectGetChild(securityVar, "write", 0);
+          set_security_mode(&attr_md.write_perm, writeVar);
+          jsvUnLock(writeVar);
+        } else {
+          BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+          BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+        }
+        jsvUnLock(securityVar);
+
         attr_md.vloc       = BLE_GATTS_VLOC_STACK;
         attr_md.rd_auth    = 0;
         attr_md.wr_auth    = 0;
