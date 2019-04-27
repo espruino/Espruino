@@ -1078,7 +1078,21 @@ NRF.setServices({
       writable : true,   // optional, default is false
       notify : true,   // optional, default is false
       indicate : true,   // optional, default is false
-      description: "My Characteristic",  // optional, default is null
+      description: "My Characteristic",  // optional, default is null,
+      security: { // optional
+        read: { // optional
+          encrypted: false, // optional, default is false
+          mitm: false, // optional, default is false
+          lesc: false, // optional, default is false
+          signed: false // optional, default is false
+        },
+        write: { // optional
+          encrypted: true, // optional, default is false
+          mitm: false, // optional, default is false
+          lesc: false, // optional, default is false
+          signed: false // optional, default is false
+        }
+      },
       onWrite : function(evt) { // optional
         console.log("Got ", evt.data); // an ArrayBuffer
       }
@@ -1138,6 +1152,9 @@ no device connected to it as it requires a restart of the Bluetooth stack.
 NRF Connect may incorrectly display the old services even after you 
 have modified them. To fix this, disable and re-enable Bluetooth on your
 iOS device, or use an Android device to run NRF Connect.
+
+**Note:** Not all combinations of security configuration values are valid, the valid combinations are: encrypted,
+encrypted + mitm, lesc, signed, signed + mitm.
 */
 void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   if (!(jsvIsObject(data) || jsvIsUndefined(data))) {

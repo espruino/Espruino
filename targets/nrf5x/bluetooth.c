@@ -2459,24 +2459,20 @@ uint32_t jsble_set_central_rssi_scan(bool enabled) {
 /** Sets security mode for a characteristic configuration */
 void set_security_mode(ble_gap_conn_sec_mode_t *perm, JsVar *configVar) {
   if (jsvGetBoolAndUnLock(jsvObjectGetChild(configVar, "signed", 0))) {
-    perm->sm = 2; // signed
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(configVar, "mitm", 0))) {
-      perm->lv = 2; // signed with mitm
+      BLE_GAP_CONN_SEC_MODE_SET_SIGNED_WITH_MITM(perm);
     } else {
-      perm->lv = 1; // signed without mitm
+      BLE_GAP_CONN_SEC_MODE_SET_SIGNED_NO_MITM(perm);
     }
   } else {
-    perm->sm = 1; // not signed; default
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(configVar, "lesc", 0))) {
-      perm->lv = 4; // lesc
+      BLE_GAP_CONN_SEC_MODE_SET_LESC_ENC_WITH_MITM(perm);
     } else if (jsvGetBoolAndUnLock(jsvObjectGetChild(configVar, "encrypted", 0))) {
       if (jsvGetBoolAndUnLock(jsvObjectGetChild(configVar, "mitm", 0))) {
-        perm->lv = 3; // encrypted with mitm
+        BLE_GAP_CONN_SEC_MODE_SET_ENC_WITH_MITM(perm);
       } else {
-        perm->lv = 2; // encrypted without mitm
+        BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(perm);
       }
-    } else {
-      perm->lv = 1; // open; default
     }
   }
 }
@@ -2557,19 +2553,22 @@ void jsble_set_services(JsVar *data) {
         jsvUnLock(charDescriptionVar);
 
         memset(&attr_md, 0, sizeof(attr_md));
-
+        // init access with default values
+        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+        // set up access with user configs
         JsVar *securityVar = jsvObjectGetChild(charVar, "security", 0);
-        if (securityVar) {
+        if (securityVar != NULL) {
           JsVar *readVar = jsvObjectGetChild(securityVar, "read", 0);
-          set_security_mode(&attr_md.read_perm, readVar);
-          jsvUnLock(readVar);
-
+          if (readVar != NULL) {
+            set_security_mode(&attr_md.read_perm, readVar);
+            jsvUnLock(readVar);
+          }
           JsVar *writeVar = jsvObjectGetChild(securityVar, "write", 0);
-          set_security_mode(&attr_md.write_perm, writeVar);
-          jsvUnLock(writeVar);
-        } else {
-          BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
-          BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+          if (writeVar != NULL) {
+            set_security_mode(&attr_md.write_perm, writeVar);
+            jsvUnLock(writeVar);
+          }
         }
         jsvUnLock(securityVar);
 
