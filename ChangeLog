@@ -47,6 +47,7 @@
             nRF52: Fix nRF52840 advertising and remove duplicated advertising code
             Fix Software Serial receive when the frame has to be decoded inside the IRQ (fix #1654)
             Raise software serial receive buffer to 64 bytes (from 7)
+            nRF5x: Add security options to NRF.setSecurity (courtesy of @vkolotov)
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
