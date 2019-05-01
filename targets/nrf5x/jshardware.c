@@ -1236,7 +1236,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   nrf_uart_baudrate_t baud = (nrf_uart_baudrate_t)nrf_utils_get_baud_enum(inf->baudRate);
   if (baud==0)
     return jsError("Invalid baud rate %d", inf->baudRate);
-  if (!jshIsPinValid(inf->pinRX) || !jshIsPinValid(inf->pinTX))
+  if (!jshIsPinValid(inf->pinRX) && !jshIsPinValid(inf->pinTX))
     return jsError("Invalid RX or TX pins");
 
   if (uartInitialised) {
@@ -1246,8 +1246,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   uartIsSending = false;
 
   // APP_UART_INIT will set pins, but this ensures we know so can reset state later
-  jshPinSetFunction(inf->pinRX, JSH_USART1|JSH_USART_RX);
-  jshPinSetFunction(inf->pinTX, JSH_USART1|JSH_USART_TX);
+  if (jshIsPinValid(inf->pinRX)) jshPinSetFunction(inf->pinRX, JSH_USART1|JSH_USART_RX);
+  if (jshIsPinValid(inf->pinTX)) jshPinSetFunction(inf->pinTX, JSH_USART1|JSH_USART_TX);
 
   nrf_drv_uart_config_t config = NRF_DRV_UART_DEFAULT_CONFIG;
   config.baudrate = baud;
@@ -1256,8 +1256,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   config.parity = inf->parity ? NRF_UART_PARITY_INCLUDED : NRF_UART_PARITY_EXCLUDED;
   config.pselcts = 0xFFFFFFFF;
   config.pselrts = 0xFFFFFFFF;
-  config.pselrxd = pinInfo[inf->pinRX].pin;
-  config.pseltxd = pinInfo[inf->pinTX].pin;
+  config.pselrxd = jshIsPinValid(inf->pinRX) ? pinInfo[inf->pinRX].pin : NRF_UART_PSEL_DISCONNECTED;
+  config.pseltxd = jshIsPinValid(inf->pinTX) ? pinInfo[inf->pinTX].pin : NRF_UART_PSEL_DISCONNECTED;
   /* TODO: could check and allow *just* RX or TX. Could make sense as
    * TX won't draw any extra power when not in use */
 
@@ -1266,7 +1266,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     jsWarn("nrf_drv_uart_init failed, error %d", err_code);
   } else {
     // Turn on receiver if RX pin is connected
-    if (config.pselrxd != 0xFFFFFFFF) {
+    if (config.pselrxd != NRF_UART_PSEL_DISCONNECTED) {
       nrf_drv_uart_rx_enable(&UART0);
       uart0_startrx();
     }

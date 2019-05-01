@@ -1,4 +1,4 @@
-            Fix string index calculation when using some regexes (fix #1602)
+     2v02 : Fix string index calculation when using some regexes (fix #1602)
             Ensure Function.replaceWith puts scope after parameters (fix #1601)
             Ensure Graphics.* return the Graphics instance, to allow call chaining (fix #1580)
             Ensure DataView.byteOffset/byteLength is always set even if not specified (fix #1567)
@@ -48,6 +48,7 @@
             Fix Software Serial receive when the frame has to be decoded inside the IRQ (fix #1654)
             Raise software serial receive buffer to 64 bytes (from 7)
             nRF5x: Add security options to NRF.setSecurity (courtesy of @vkolotov)
+            nRF5x: Allow Serial1.setup(...) with only TX or RX pins
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends
