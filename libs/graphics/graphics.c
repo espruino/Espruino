@@ -14,7 +14,9 @@
 
 #include "graphics.h"
 #include "bitmap_font_4x6.h"
-#ifndef SAVE_ON_FLASH
+
+
+#ifndef NO_VECTOR_FONT
 #include "vector_font.h"
 #endif
 #include "jsutils.h"
@@ -448,7 +450,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
   }
 }
 
-#ifndef SAVE_ON_FLASH
+#ifndef NO_VECTOR_FONT
 // prints character, returns width
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short size, char ch) {
   // no need to modify coordinates as graphicsFillPoly does that

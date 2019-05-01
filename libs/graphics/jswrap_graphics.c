@@ -775,7 +775,9 @@ Make subsequent calls to `drawString` use a Vector Font of the given height
 */
 JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-
+#ifdef NO_VECTOR_FONT
+  jsExceptionHere(JSET_ERROR, "No vector font in this build");
+#else
   if (checkValid) {
     if (size<1) size=1;
     if (size>1023) size=1023;
@@ -788,6 +790,7 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
   }
   gfx.data.fontSize = (short)size;
   graphicsSetVar(&gfx);
+#endif
   return jsvLockAgain(parent);
 }
 /*JSON{
@@ -939,7 +942,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
       continue;
     }
     if (gfx.data.fontSize>0) {
-#ifndef SAVE_ON_FLASH
+#ifndef NO_VECTOR_FONT
       int w = (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
       if (x>-w && x<maxX  && y>-gfx.data.fontSize && y<maxY)
         graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
@@ -1035,7 +1038,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
       width = 0;
     }
     if (gfx.data.fontSize>0) {
-#ifndef SAVE_ON_FLASH
+#ifndef NO_VECTOR_FONT
       width += (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
 #endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
