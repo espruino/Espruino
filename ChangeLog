@@ -49,6 +49,7 @@
             Raise software serial receive buffer to 64 bytes (from 7)
             nRF5x: Add security options to NRF.setSecurity (courtesy of @vkolotov)
             nRF5x: Allow Serial1.setup(...) with only TX or RX pins
+            Vector font removed from Espruino Original WIZnet build due to lack of spare flash
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends

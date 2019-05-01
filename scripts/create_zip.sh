@@ -55,7 +55,7 @@ do
   fi
   if [ "$BOARDNAME" == "ESPRUINO_1V3_WIZ" ]; then
     BOARDNAME=ESPRUINOBOARD
-    EXTRADEFS="WIZNET=1 USE_CRYPTO=0"
+    EXTRADEFS="WIZNET=1 USE_CRYPTO=0 DEFINES=-DNO_VECTOR_FONT=1"
     # we must now disable crypto in order to get WIZnet support in on the Original board
     EXTRANAME=_wiznet
   fi
