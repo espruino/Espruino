@@ -710,7 +710,6 @@ be very long when converted to a String.
 */
 void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
   uint32_t err_code = 0;
-  bool bleChanged = false;
   bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
 
   if (jsvIsObject(options)) {
@@ -723,7 +722,6 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
       if (new_advertising_interval>0x4000) new_advertising_interval=0x4000;
       if (new_advertising_interval != bleAdvertisingInterval) {
         bleAdvertisingInterval = new_advertising_interval;
-        bleChanged = true;
       }
     }
 
@@ -731,13 +729,11 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
     if (v) {
       if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_CONNECTABLE;
       else bleStatus |= BLE_IS_NOT_CONNECTABLE;
-      bleChanged = true;
     }
     v = jsvObjectGetChild(options, "scannable", 0);
     if (v) {
       if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_SCANNABLE;
       else bleStatus |= BLE_IS_NOT_SCANNABLE;
-      bleChanged = true;
     }
 
     v = jsvObjectGetChild(options, "name", 0);
@@ -758,7 +754,6 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
 		bluetooth_setDeviceName(v);
 #endif
         jsble_check_error(err_code);
-        bleChanged = true;
       }
       jsvUnLock(v);
     }
@@ -768,14 +763,12 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
   }
 
   JsVar *advArray = 0;
-  JsVar *initialArray = 0;
 
   if (jsvIsObject(data) || jsvIsUndefined(data)) {
     // if it's an object, work out what the advertising data for it is
     advArray = jswrap_ble_getAdvertisingData(data, options);
     // if undefined, make sure we *save* undefined
     if (jsvIsUndefined(data)) {
-      initialArray = advArray;
       advArray = 0;
     }
   } else if (jsvIsArray(data)) {
@@ -807,47 +800,39 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
       // nested - enable multiple advertising - start at index 0
       if (elements>1)
         bleStatus |= BLE_IS_ADVERTISING_MULTIPLE;
-      // start with the first element
-      initialArray = jsvGetArrayItem(advArray, 0);
     }
   } else if (jsvIsArrayBuffer(data)) {
     // it's just data - no multiple advertising
     advArray = jsvLockAgain(data);
     bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
   }
-  if (!initialArray) initialArray = jsvLockAgain(advArray);
-  // failure check
-  if (!(jsvIsArray(initialArray) || jsvIsArrayBuffer(initialArray))) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
-    jsvUnLock2(advArray, initialArray);
-    return;
-  }
-  JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, initialArray);
-  if (!dPtr) {
-    jsvUnLock2(advArray, initialArray);
-    jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
-    return;
-  }
   // Save the current service data
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, advArray);
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, options);
   jsvUnLock(advArray);
   // now actually update advertising
-  if (bleChanged && isAdvertising)
+  if (isAdvertising)
     jsble_advertising_stop();
-#ifdef NRF5X
-  jsble_advertising_update_advdata(dPtr, dLen);
-#else
-  err_code = 0xDEAD;
-  jsiConsolePrintf("FIXME\n");
-#endif
 #ifdef ESP32
   err_code = bluetooth_gap_setAdvertizing(advArray);
 #endif
-  jsvUnLock(initialArray);
   jsble_check_error(err_code);
-  if (bleChanged && isAdvertising)
-    jsble_check_error(jsble_advertising_start());
+  if (isAdvertising)
+    jsble_check_error(jsble_advertising_start()); // sets up advertising data again
+}
+
+/// Used by bluetooth.c internally when it needs to set up advertising at first
+JsVar *jswrap_ble_getCurrentAdvertisingData() {
+  JsVar *adv = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
+  if (!adv) adv = jswrap_ble_getAdvertisingData(NULL, NULL); // use the defaults
+  else {
+    if (bleStatus&BLE_IS_ADVERTISING_MULTIPLE) {
+      JsVar *v = jsvGetArrayItem(adv, 0);
+      jsvUnLock(adv);
+      adv = v;
+    }
+  }
+  return adv;
 }
 
 /*JSON{

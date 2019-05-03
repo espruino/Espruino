@@ -2197,10 +2197,10 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
 
 uint32_t jsble_advertising_start() {
   if (bleStatus & BLE_IS_ADVERTISING) return 0;
-  ble_advdata_t advdata;
   ble_advdata_t scanrsp;
 
-  jsble_setup_advdata(&advdata);
+  JsVar *advDataVar = jswrap_ble_getCurrentAdvertisingData();
+  JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advDataVar);
 
   // Set up scan response packet's contents
   ble_uuid_t adv_uuids[ADVERTISE_MAX_UUIDS];
@@ -2260,29 +2260,47 @@ uint32_t jsble_advertising_start() {
   adv_params.interval = bleAdvertisingInterval;
 
   uint32_t err_code = 0;
+  uint8_t m_enc_scan_response_data[31]; // BLE_GAP_ADV_SET_DATA_SIZE_MAX
+  uint16_t m_enc_scan_response_data_len = sizeof(m_enc_scan_response_data);
+#if NRF_SD_BLE_API_VERSION<5
+  err_code = adv_data_encode(&scanrsp, m_enc_scan_response_data, &m_enc_scan_response_data_len);
+#else
+  err_code = ble_advdata_encode(&scanrsp, m_enc_scan_response_data, &m_enc_scan_response_data_len);
+#endif
+  if (jsble_check_error(err_code)) {
+    jsvUnLock(advDataVar);
+    return err_code;
+  }
+
+
+  //jsiConsolePrintf("adv_data_set %d %d\n", advPtr, advLen);
 #if NRF_SD_BLE_API_VERSION>5
   uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
-  uint8_t m_enc_scan_response_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
   ble_gap_adv_data_t d;
-  d.adv_data.p_data = m_enc_advdata;
-  d.adv_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
+  d.adv_data.p_data = advPtr;
+  d.adv_data.len = advLen;
   d.scan_rsp_data.p_data = m_enc_scan_response_data;
-  d.scan_rsp_data.len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
-  err_code = ble_advdata_encode(&advdata, d.adv_data.p_data, &d.adv_data.len);
-  if (jsble_check_error(err_code)) return err_code;
-  err_code = ble_advdata_encode(&scanrsp, d.scan_rsp_data.p_data, &d.scan_rsp_data.len);
-  if (jsble_check_error(err_code)) return err_code;
+  d.scan_rsp_data.len = m_enc_scan_response_data_len;
 
   err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
   if (!err_code)
     err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
 #elif NRF_SD_BLE_API_VERSION<5
-  err_code = ble_advdata_set(&advdata, &scanrsp);
-  err_code = sd_ble_gap_adv_start(&adv_params);
+  err_code = sd_ble_gap_adv_data_set(
+      (uint8_t *)advPtr, advLen,
+      m_enc_scan_response_data, m_enc_scan_response_data_len);
+  if (!err_code)
+    err_code = sd_ble_gap_adv_start(&adv_params);
 #else
-  err_code = sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
+  // do we care about SDK14?
+  err_code = sd_ble_gap_adv_data_set(
+      (uint8_t *)advPtr, advLen,
+      m_enc_scan_response_data, m_enc_scan_response_data_len);
+  if (!err_code)
+    err_code = sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
 #endif
   bleStatus |= BLE_IS_ADVERTISING;
+  jsvUnLock(advDataVar);
   return err_code;
 }
 
