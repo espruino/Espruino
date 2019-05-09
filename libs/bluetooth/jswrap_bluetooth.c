@@ -264,6 +264,11 @@ void jswrap_ble_dumpBluetoothInitialisation(vcbprintf_callback user_callback, vo
   if (v || o)
     cbprintf(user_callback, user_data, "NRF.setServices(%j, %j);\n",v,o);
   jsvUnLock2(v,o);
+  // security
+  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
+  if (v)
+    cbprintf(user_callback, user_data, "NRF.setSecurity(%j);\n",v);
+  jsvUnLock(v);
 }
 
 // ------------------------------------------------------------------------------
