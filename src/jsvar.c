@@ -1853,6 +1853,8 @@ void jsvSetInteger(JsVar *v, JsVarInt value) {
 bool jsvGetBool(const JsVar *v) {
   if (jsvIsString(v))
     return jsvGetStringLength((JsVar*)v)!=0;
+  if (jsvIsPin(v))
+    return jshIsPinValid(jshGetPinFromVar(v));
   if (jsvIsFunction(v) || jsvIsArray(v) || jsvIsObject(v) || jsvIsArrayBuffer(v))
     return true;
   if (jsvIsFloat(v)) {
