@@ -1,6 +1,8 @@
             nRF5x: Fix issue when calling NRF.setAdvertising while connected via BLE (fix #1659)
             nRF5x: 'dump()' not outputs `NRF.setSecurity` line if it has been called.
             Ensure that converting a valid pin to a boolean always returns true
+            clearInterval/clearTimeout/clearWatch(undefined) now throw an error asking for just clearX()
+              - this stops code accidentally clearing all timers/etc if it uses a variable that is undefined
 
      2v02 : Fix string index calculation when using some regexes (fix #1602)
             Ensure Function.replaceWith puts scope after parameters (fix #1601)
