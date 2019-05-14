@@ -31,6 +31,7 @@
 #define BLE_NAME_FLAGS                  "BLE_FLAGS"
 #define BLE_NAME_GATT_SERVER            "BLE_GATTS"
 #define BLE_NAME_SECURITY               "BLE_SEC"
+#define BLE_NAME_MAC_ADDRESS            "BLE_MAC"
 
 typedef enum {
   BLE_FLAGS_NONE = 0,

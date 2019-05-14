@@ -176,8 +176,8 @@ void jswrap_ble_init() {
 
 /** Reconfigure the softdevice (on init or after restart) to have all the services/advertising we need */
 void jswrap_ble_reconfigure_softdevice() {
-  // restart various
   JsVar *v,*o;
+  // restart various
   v = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT,0);
   if (v) jsble_set_scanning(true, false);
   jsvUnLock(v);
@@ -268,6 +268,11 @@ void jswrap_ble_dumpBluetoothInitialisation(vcbprintf_callback user_callback, vo
   v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
   if (v)
     cbprintf(user_callback, user_data, "NRF.setSecurity(%j);\n",v);
+  jsvUnLock(v);
+  // mac address
+  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS, 0);
+  if (v)
+    cbprintf(user_callback, user_data, "NRF.setAddress(%j);\n",v);
   jsvUnLock(v);
 }
 
@@ -555,6 +560,8 @@ Addresses take the form:
 This may throw a `INVALID_BLE_ADDR` error if the upper two bits
 of the address don't match the address type.
 
+To change the address, Espruino must restart the softdevice. It will only do
+so when it is disconnected from other devices.
 */
 void jswrap_ble_setAddress(JsVar *address) {
 #ifdef NRF52
@@ -563,8 +570,8 @@ void jswrap_ble_setAddress(JsVar *address) {
     jsExceptionHere(JSET_ERROR, "Expecting a mac address of the form aa:bb:cc:dd:ee:ff");
     return;
   }
-  uint32_t err_code = sd_ble_gap_addr_set(&p_addr);
-  jsble_check_error(err_code);
+  jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS, address);
+  jswrap_ble_restart();
 #else
   jsExceptionHere(JSET_ERROR, "Not implemented");
 #endif

@@ -2340,6 +2340,18 @@ void jsble_advertising_stop() {
                            NRF_RADIO_NOTIFICATION_TYPE_INT_ON_INACTIVE,
                            NRF_RADIO_NOTIFICATION_DISTANCE_NONE);
    APP_ERROR_CHECK(err_code);
+
+   // Set MAC address
+   JsVar *v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS,0);
+   if (v) {
+     ble_gap_addr_t p_addr;
+     if (bleVarToAddr(v, &p_addr)) {
+       err_code = sd_ble_gap_addr_set(&p_addr);
+       if (err_code) jsiConsolePrintf("sd_ble_gap_addr_set failed: 0x%x\n", err_code);
+     }
+   }
+   jsvUnLock(v);
+
 #if PEER_MANAGER_ENABLED
    peer_manager_init(false /*don't erase_bonds*/);
 #endif
