@@ -24,6 +24,8 @@ rm -rf $ZIPDIR
 mkdir $ZIPDIR
 
 # Tidy up
+# Binaries
+rm -f bootloader_espruino_$VERSION* espruino_$VERSION*
 # ESP8266
 rm -rf esp_iot_sdk_v2.0.0*
 rm -rf xtensa-lx106-elf
