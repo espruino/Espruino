@@ -2341,6 +2341,7 @@ void jsble_advertising_stop() {
                            NRF_RADIO_NOTIFICATION_DISTANCE_NONE);
    APP_ERROR_CHECK(err_code);
 
+#ifdef NRF52
    // Set MAC address
    JsVar *v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS,0);
    if (v) {
@@ -2351,6 +2352,7 @@ void jsble_advertising_stop() {
      }
    }
    jsvUnLock(v);
+#endif
 
 #if PEER_MANAGER_ENABLED
    peer_manager_init(false /*don't erase_bonds*/);

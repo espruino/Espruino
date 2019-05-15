@@ -11,6 +11,21 @@
  * Platform Specific part of Hardware interface Layer
  * ----------------------------------------------------------------------------
  */
+
+/*  S110_SoftDevice_Specification_2.0.pdf
+
+  RTC0 not usable (SoftDevice)
+  RTC1 used by app_timer.c
+  TIMER0 (32 bit) not usable (softdevice)
+  TIMER1 (16 bit on nRF51, 32 bit on nRF52) used by jshardware util timer
+  TIMER2 (16 bit) free
+  TIMER4 used for NFCT library on nRF52
+  SPI0 / TWI0 -> Espruino's SPI1 (only nRF52 - not enough flash on 51)
+  SPI1 / TWI1 -> Espruino's I2C1
+  SPI2 -> free
+
+ */
+
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -213,20 +228,6 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
 
 #define SYSCLK_FREQ 1048576 // 1 << 20
 #define RTC_SHIFT 5 // to get 32768 up to SYSCLK_FREQ
-
-
-/*  S110_SoftDevice_Specification_2.0.pdf
-
-  RTC0 not usable (SoftDevice)
-  RTC1 used by app_timer.c
-  TIMER0 (32 bit) not usable (softdevice)
-  TIMER1 (16 bit on nRF51, 32 bit on nRF52) used by jshardware util timer
-  TIMER2 (16 bit) free
-  SPI0 / TWI0 -> Espruino's SPI1 (only nRF52 - not enough flash on 51)
-  SPI1 / TWI1 -> Espruino's I2C1
-  SPI2 -> free
-
- */
 
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
