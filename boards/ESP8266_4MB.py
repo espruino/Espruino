@@ -19,7 +19,7 @@ info = {
  'espruino_page_link' : 'EspruinoESP8266',
  'default_console' : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
- 'variables'       : 1600,
+ 'variables'       : 1700,
  'binary_name'     : 'espruino_%v_esp8266_4mb',
  'build' : {
    'libraries' : [
