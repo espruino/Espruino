@@ -1,3 +1,5 @@
+            Allow \1..\9 escape codes in RegExp
+
      2v03 : nRF5x: Fix issue when calling NRF.setAdvertising while connected via BLE (fix #1659)
             nRF5x: 'dump()' not outputs `NRF.setSecurity` line if it has been called.
             Ensure that converting a valid pin to a boolean always returns true
