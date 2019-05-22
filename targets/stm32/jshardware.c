@@ -1213,8 +1213,13 @@ void jshInit() {
   // PREEMPTION
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   // Slow the IO clocks down - we don't need them going so fast!
+#ifdef STM32F407VGT6
+  RCC_PCLK1Config(RCC_HCLK_Div4);
+  RCC_PCLK2Config(RCC_HCLK_Div2);
+#else
   RCC_PCLK1Config(RCC_HCLK_Div2); // PCLK1 must be >13 Mhz for USB to work (see STM32F103 C/D/E errata)
   RCC_PCLK2Config(RCC_HCLK_Div4);
+#endif
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
 #ifdef USE_RTC
