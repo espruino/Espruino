@@ -82,13 +82,21 @@ do
     ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
     EXTRADEFS=DFU_UPDATE_BUILD=1
   fi
+  if [ "$BOARDNAME" == "SMARTIBOT" ]; then
+    ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+    EXTRADEFS=DFU_UPDATE_BUILD=1
+  fi
   if [ "$BOARDNAME" == "MDBT42Q" ]; then
     ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
     EXTRADEFS=DFU_UPDATE_BUILD=1
   fi
   if [ "$BOARDNAME" == "RUUVITAG" ]; then
-    ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
-    EXTRADEFS=DFU_UPDATE_BUILD=1
+    ESP_BINARY2_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+    EXTRADEFS=DFU_UPDATE_BUILD_WITH_HEX=1
+  fi
+  if [ "$BOARDNAME" == "THINGY52" ]; then
+    ESP_BINARY2_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+    EXTRADEFS=DFU_UPDATE_BUILD_WITH_HEX=1
   fi
 
   echo "Building $ESP_BINARY_NAME"
@@ -128,6 +136,11 @@ do
       tar -C $ZIPDIR -xzf  `basename $ESP_BINARY_NAME .bin`.tgz || { echo "Build of $BOARDNAME failed" ; exit 1; }
     fi
   fi
+  # Copy second binary
+  if [ -n "$ESP_BINARY2_NAME" ]; then
+    cp ${ESP_BINARY2_NAME} $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+  fi
+
 done
 
 
