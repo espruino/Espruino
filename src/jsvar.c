@@ -3038,7 +3038,8 @@ void jsvSetArrayItem(JsVar *arr, JsVarInt index, JsVar *item) {
     jsvSetValueOfName(indexVar, item);
   } else {
     indexVar = jsvMakeIntoVariableName(jsvNewFromInteger(index), item);
-    jsvAddName(arr, indexVar);
+    if (indexVar) // could be out of memory
+      jsvAddName(arr, indexVar);
   }
   jsvUnLock(indexVar);
 }
