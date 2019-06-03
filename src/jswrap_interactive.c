@@ -586,11 +586,11 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVarArr, bool isTimeout) {
   jsvUnLock(timerArrayPtr);
   jsiTimersChanged(); // mark timers as changed
 }
-void jswrap_interface_clearInterval(JsVar *idVar) {
-  _jswrap_interface_clearTimeoutOrInterval(idVar, false);
+void jswrap_interface_clearInterval(JsVar *idVarArr) {
+  _jswrap_interface_clearTimeoutOrInterval(idVarArr, false);
 }
-void jswrap_interface_clearTimeout(JsVar *idVar) {
-  _jswrap_interface_clearTimeoutOrInterval(idVar, true);
+void jswrap_interface_clearTimeout(JsVar *idVarArr) {
+  _jswrap_interface_clearTimeoutOrInterval(idVarArr, true);
 }
 
 /*JSON{
