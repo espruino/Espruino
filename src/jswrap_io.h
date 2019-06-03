@@ -26,4 +26,4 @@ JsVar *jswrap_io_getPinMode(Pin pin);
 void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data);
 
 JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject);
-void jswrap_interface_clearWatch(JsVar *idVar);
+void jswrap_interface_clearWatch(JsVar *idVarArr);
