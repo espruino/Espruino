@@ -38,6 +38,7 @@ info = {
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
      'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS=1', # Use NFC for GPIOs
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Smartibot"\'',
 #     'JSMODULESOURCES+=libs/js/PCA9685.min.js',
 #     'JSMODULESOURCES+=libs/js/Smartibot.min.js'
    ]
