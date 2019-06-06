@@ -34,7 +34,9 @@
 #include "app_error_weak.h"
 #include "nrf_bootloader_info.h"
 #include "lcd.h"
+#if NRF_SD_BLE_API_VERSION < 5
 #include "dfu_status.h"
+#endif
 
 #ifdef LED3_PININDEX
 #define UPDATE_IN_PROGRESS_LED          LED3_PININDEX                                            /**< Led used to indicate that DFU is active. */
@@ -98,22 +100,6 @@ static bool get_btn_state()
   return state == BTN1_ONSTATE;
 }
 
-extern void dfu_set_status(DFUStatus status) {
-  switch (status) {
-  case DFUS_ADVERTISING_START:
-    lcd_print("READY TO UPDATE\r\n");
-    set_led_state(true,false); break;
-  case DFUS_ADVERTISING_STOP:
-    break;
-  case DFUS_CONNECTED:
-    lcd_print("CONNECTED\r\n");
-    set_led_state(false,true); break;
-  case DFUS_DISCONNECTED:
-    lcd_print("DISCONNECTED\r\n");
-    break;
-  }
-}
-
 // Override Weak version
 bool nrf_dfu_enter_check(void) {
     bool dfu_start = get_btn_state();
@@ -143,6 +129,42 @@ bool nrf_dfu_enter_check(void) {
     return dfu_start;
 }
 
+#if NRF_SD_BLE_API_VERSION < 5
+extern void dfu_set_status(DFUStatus status) {
+  switch (status) {
+  case DFUS_ADVERTISING_START:
+    lcd_print("READY TO UPDATE\r\n");
+    set_led_state(true,false); break;
+  case DFUS_ADVERTISING_STOP:
+    break;
+  case DFUS_CONNECTED:
+    lcd_print("CONNECTED\r\n");
+    set_led_state(false,true); break;
+  case DFUS_DISCONNECTED:
+    lcd_print("DISCONNECTED\r\n");
+    break;
+  }
+}
+#else
+static void dfu_observer(nrf_dfu_evt_type_t evt_type)
+{
+    switch (evt_type)
+    {
+        case NRF_DFU_EVT_DFU_FAILED:
+        case NRF_DFU_EVT_DFU_ABORTED:
+        case NRF_DFU_EVT_DFU_INITIALIZED:
+          set_led_state(true,false);
+          break;
+        case NRF_DFU_EVT_TRANSPORT_ACTIVATED:
+          set_led_state(false,true);
+          break;
+        case NRF_DFU_EVT_DFU_STARTED:
+            break;
+        default:
+            break;
+    }
+}
+#endif
 
 /**@brief Function for application main entry.
  */
@@ -156,13 +178,22 @@ int main(void)
 
     hardware_init();
 
+#if NRF_SD_BLE_API_VERSION < 5
     ret_val = nrf_bootloader_init();
     APP_ERROR_CHECK(ret_val);
-
     // Either there was no DFU functionality enabled in this project or the DFU module detected
     // no ongoing DFU operation and found a valid main application.
     // Boot the main application.
     nrf_bootloader_app_start(MAIN_APPLICATION_START_ADDR);
+#else
+    ret_val = nrf_bootloader_init(dfu_observer);
+    APP_ERROR_CHECK(ret_val);
+    // Either there was no DFU functionality enabled in this project or the DFU module detected
+    // no ongoing DFU operation and found a valid main application.
+    // Boot the main application.
+    nrf_bootloader_app_start();
+#endif
+
 
     // Should never be reached.
     NRF_LOG_INFO("After main\r\n");

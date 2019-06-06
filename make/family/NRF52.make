@@ -63,8 +63,13 @@ DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DFLOAT_ABI_HARD
 # NOTE: nrf.h needs tweaking as Nordic randomly changed NRF52 to NRF52_SERIES
 ifeq ($(CHIP),NRF52840)
 DEFINES += -DNRF52 -DNRF52840_XXAA
+ifdef BOOTLOADER
+LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_bootloader_gcc_nrf52.ld
+# bootloader has its own config
+else
 LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52840_ble_espruino.ld
 INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
+endif
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm
