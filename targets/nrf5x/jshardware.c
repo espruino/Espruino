@@ -1309,8 +1309,17 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M2;
   else if (inf->baudRate<((4000000+8000000)/2))
     freq = SPI_FREQUENCY_FREQUENCY_M4;
+#ifndef NRF52840
   else
     freq = SPI_FREQUENCY_FREQUENCY_M8;
+#else
+  else if (inf->baudRate<((8000000+16000000)/2))
+    freq = SPI_FREQUENCY_FREQUENCY_M8;
+  else if (inf->baudRate<((16000000+32000000)/2))
+    freq = 0x0A000000;//SPI_FREQUENCY_FREQUENCY_M16;
+  else
+    freq = 0x14000000;//SPI_FREQUENCY_FREQUENCY_M32;
+#endif
   spi_config.frequency =  freq;
   spi_config.mode = inf->spiMode;
   spi_config.bit_order = inf->spiMSB ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST;
