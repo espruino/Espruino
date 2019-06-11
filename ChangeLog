@@ -3,6 +3,8 @@
             Fix Array.fill crash if used to fill up all available memory (fix #1668)
             Fix NRF.requestDevice regression (clearInterval error) (fix #1669)
             Smartibot devices now advertise on BLE as 'Smartibot abcd'
+            nRF5x: Leave digital input disconnected for analog read (saves power)
+            nRF5x: Return 'analog' as pin mode for any pin where input is disconnected
             
      2v03 : nRF5x: Fix issue when calling NRF.setAdvertising while connected via BLE (fix #1659)
             nRF5x: 'dump()' not outputs `NRF.setSecurity` line if it has been called.

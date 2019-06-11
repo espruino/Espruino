@@ -696,6 +696,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
 #endif
   switch (state) {
     case JSHPINSTATE_UNDEFINED :
+    case JSHPINSTATE_ADC_IN :
       reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
@@ -728,7 +729,6 @@ void jshPinSetState(Pin pin, JshPinState state) {
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN :
-    case JSHPINSTATE_ADC_IN :
     case JSHPINSTATE_USART_IN :
       nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
       break;
@@ -784,13 +784,14 @@ JshPinState jshPinGetState(Pin pin) {
         return JSHPINSTATE_GPIO_OUT|hi;
     }
   } else {
+    bool pinConnected = ((p&GPIO_PIN_CNF_INPUT_Msk)>>GPIO_PIN_CNF_INPUT_Pos) == GPIO_PIN_CNF_INPUT_Connect;
     // Input
     if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos)) {
       return negated ? JSHPINSTATE_GPIO_IN_PULLDOWN : JSHPINSTATE_GPIO_IN_PULLUP;
     } else if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pulldown<<GPIO_PIN_CNF_PULL_Pos)) {
       return negated ? JSHPINSTATE_GPIO_IN_PULLUP : JSHPINSTATE_GPIO_IN_PULLDOWN;
     } else {
-      return JSHPINSTATE_GPIO_IN;
+      return pinConnected ? JSHPINSTATE_GPIO_IN : JSHPINSTATE_ADC_IN;
     }
   }
 }
