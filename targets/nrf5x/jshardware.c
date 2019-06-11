@@ -750,7 +750,7 @@ JshPinState jshPinGetState(Pin pin) {
 #if JSH_PORTV_COUNT>0
   // handle virtual ports (eg. pins on an IO Expander)
   if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
-    return JSHPINSTATE_UNDEFINED;
+    return jshVirtualPinGetState(pin);
 #endif
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
 #if NRF_SD_BLE_API_VERSION>5
@@ -818,39 +818,48 @@ nrf_saadc_value_t nrf_analog_read() {
 
   return result;
 }
+
+JsVarFloat nrf_analog_read_pin(int channel /*0..7*/) {
+  // sanity checks for channel
+    assert(NRF_SAADC_INPUT_AIN0 == 1);
+    assert(NRF_SAADC_INPUT_AIN1 == 2);
+    assert(NRF_SAADC_INPUT_AIN2 == 3);
+
+    nrf_saadc_input_t ain = channel+1;
+    nrf_saadc_channel_config_t config;
+    config.acq_time = NRF_SAADC_ACQTIME_3US;
+    config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
+    config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
+    config.pin_p = ain;
+    config.pin_n = ain;
+    config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
+    config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
+    config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+
+    // make reading
+    nrf_saadc_enable();
+    nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
+    nrf_saadc_channel_init(0, &config);
+
+    JsVarFloat f = nrf_analog_read() / 16384.0;
+    nrf_saadc_channel_input_set(0, NRF_SAADC_INPUT_DISABLED, NRF_SAADC_INPUT_DISABLED); // give us back our pin!
+    nrf_saadc_disable();
+    return f;
+}
 #endif
 
 // Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin) {
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinGetAnalogValue(pin);
+#endif
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
   if (!jshGetPinStateIsManual(pin))
     jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 #ifdef NRF52
-  // sanity checks for channel
-  assert(NRF_SAADC_INPUT_AIN0 == 1);
-  assert(NRF_SAADC_INPUT_AIN1 == 2);
-  assert(NRF_SAADC_INPUT_AIN2 == 3);
-  nrf_saadc_input_t ain = 1 + (pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
-
-  nrf_saadc_channel_config_t config;
-  config.acq_time = NRF_SAADC_ACQTIME_3US;
-  config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
-  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
-  config.pin_p = ain;
-  config.pin_n = ain;
-  config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
-  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
-  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
-
-  // make reading
-  nrf_saadc_enable();
-  nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
-  nrf_saadc_channel_init(0, &config);
-
-  JsVarFloat f = nrf_analog_read() / 16384.0;
-  nrf_saadc_channel_input_set(0, NRF_SAADC_INPUT_DISABLED, NRF_SAADC_INPUT_DISABLED); // give us back our pin!
-  nrf_saadc_disable();
-  return f;
+  return nrf_analog_read_pin(pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
 #else
   const nrf_adc_config_t nrf_adc_config =  {
       NRF_ADC_CONFIG_RES_10BIT,
