@@ -1390,6 +1390,18 @@ void jshSPISend16(IOEventFlags device, int data) {
 #endif
 }
 
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success */
+/*bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count) {
+#if SPI_ENABLED
+  if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return false;
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, count, rx, rx?count:0);
+  if (err_code != NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+  return true;
+#endif
+}*/
+
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16) {
 }

@@ -86,6 +86,8 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   JSV_GET_AS_CHAR_ARRAY(bPtr, bLen, buf);
   if (!bPtr || bLen<128*8) return;
 
+  unsigned char buffer[LCD_WIDTH*3 >> 1];
+
   // use nearest 2 pixels as we're sending 12 bits
   gfx->data.modMinX = gfx->data.modMinX&~1;
   gfx->data.modMaxX = (gfx->data.modMaxX+1)&~1;
@@ -95,31 +97,33 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   jshPinSetValue(LCD_SPI_DC, 0); // command
   jshSPISend(LCD_SPI, 0x2A);
   jshPinSetValue(LCD_SPI_DC, 1); // data
-  jshSPISend(LCD_SPI, 0);
-  jshSPISend(LCD_SPI, gfx->data.modMinX);
-  jshSPISend(LCD_SPI, 0);
-  jshSPISend(LCD_SPI, gfx->data.modMaxX+1);
+  buffer[0] = 0;
+  buffer[1] = gfx->data.modMinX;
+  buffer[2] = 0;
+  buffer[3] = gfx->data.modMaxX+1;
+  jshSPISendMany(LCD_SPI, buffer, 0, 4);
   jshPinSetValue(LCD_SPI_DC, 0); // command
   jshSPISend(LCD_SPI, 0x2B);
   jshPinSetValue(LCD_SPI_DC, 1); // data
-  jshSPISend(LCD_SPI, 0);
-  jshSPISend(LCD_SPI, gfx->data.modMinY);
-  jshSPISend(LCD_SPI, 0);
-  jshSPISend(LCD_SPI, gfx->data.modMaxY+1);
+  buffer[1] = gfx->data.modMinY;
+  buffer[3] = gfx->data.modMaxY+1;
+  jshSPISendMany(LCD_SPI, buffer, 0, 4);
   jshPinSetValue(LCD_SPI_DC, 0); // command
   jshSPISend(LCD_SPI, 0x2C);
   jshPinSetValue(LCD_SPI_DC, 1); // data
 
   for (int y=gfx->data.modMinY;y<=gfx->data.modMaxY;y++) {
     // skip any lines that don't need updating
-    char *px = &bPtr[y*LCD_WIDTH + gfx->data.modMinX];
+    unsigned char *px = (unsigned char *)&bPtr[y*LCD_WIDTH + gfx->data.modMinX];
+    unsigned char *bufPtr = buffer;
     for (int x=0;x<xlen;x+=2) {
-      int a = PALETTE[(unsigned int)*(px++)];
-      int b = PALETTE[(unsigned int)*(px++)];
-      jshSPISend(LCD_SPI, a>>4);
-      jshSPISend(LCD_SPI, (a<<4) | (b>>8));
-      jshSPISend(LCD_SPI, b);
+      unsigned int a = PALETTE[*(px++)];
+      unsigned int b = PALETTE[*(px++)];
+      *(bufPtr++) = a>>4;
+      *(bufPtr++) = (a<<4) | (b>>8);
+      *(bufPtr++) = b;
     }
+    jshSPISendMany(LCD_SPI, buffer, 0, (xlen*3) >> 1);
   }
 
   jshPinSetValue(LCD_SPI_CS,1);

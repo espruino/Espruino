@@ -302,6 +302,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf);
 int jshSPISend(IOEventFlags device, int data);
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data);
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success. A weak version of this function is provided in jshardware_common.c */
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count);
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16);
 /** Set whether to use the receive interrupt or not */
