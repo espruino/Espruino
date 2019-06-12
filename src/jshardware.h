@@ -431,8 +431,12 @@ void jshVirtualPinInitialise();
 void jshVirtualPinSetValue(Pin pin, bool state);
 /// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
 bool jshVirtualPinGetValue(Pin pin);
+/// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used. Return NaN if not implemented
+JsVarFloat jshVirtualPinGetAnalogValue(Pin pin);
 /// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
 void jshVirtualPinSetState(Pin pin, JshPinState state);
+/// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used. Return JSHPINSTATE_UNDEFINED if not implemented
+JshPinState jshVirtualPinGetState(Pin pin);
 #endif
 
 /** Hacky definition of wait cycles used for WAIT_UNTIL.

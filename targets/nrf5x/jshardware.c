@@ -696,6 +696,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
 #endif
   switch (state) {
     case JSHPINSTATE_UNDEFINED :
+    case JSHPINSTATE_ADC_IN :
       reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
@@ -728,7 +729,6 @@ void jshPinSetState(Pin pin, JshPinState state) {
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN :
-    case JSHPINSTATE_ADC_IN :
     case JSHPINSTATE_USART_IN :
       nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
       break;
@@ -750,7 +750,7 @@ JshPinState jshPinGetState(Pin pin) {
 #if JSH_PORTV_COUNT>0
   // handle virtual ports (eg. pins on an IO Expander)
   if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
-    return JSHPINSTATE_UNDEFINED;
+    return jshVirtualPinGetState(pin);
 #endif
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
 #if NRF_SD_BLE_API_VERSION>5
@@ -784,13 +784,14 @@ JshPinState jshPinGetState(Pin pin) {
         return JSHPINSTATE_GPIO_OUT|hi;
     }
   } else {
+    bool pinConnected = ((p&GPIO_PIN_CNF_INPUT_Msk)>>GPIO_PIN_CNF_INPUT_Pos) == GPIO_PIN_CNF_INPUT_Connect;
     // Input
     if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos)) {
       return negated ? JSHPINSTATE_GPIO_IN_PULLDOWN : JSHPINSTATE_GPIO_IN_PULLUP;
     } else if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pulldown<<GPIO_PIN_CNF_PULL_Pos)) {
       return negated ? JSHPINSTATE_GPIO_IN_PULLUP : JSHPINSTATE_GPIO_IN_PULLDOWN;
     } else {
-      return JSHPINSTATE_GPIO_IN;
+      return pinConnected ? JSHPINSTATE_GPIO_IN : JSHPINSTATE_ADC_IN;
     }
   }
 }
@@ -817,39 +818,48 @@ nrf_saadc_value_t nrf_analog_read() {
 
   return result;
 }
+
+JsVarFloat nrf_analog_read_pin(int channel /*0..7*/) {
+  // sanity checks for channel
+    assert(NRF_SAADC_INPUT_AIN0 == 1);
+    assert(NRF_SAADC_INPUT_AIN1 == 2);
+    assert(NRF_SAADC_INPUT_AIN2 == 3);
+
+    nrf_saadc_input_t ain = channel+1;
+    nrf_saadc_channel_config_t config;
+    config.acq_time = NRF_SAADC_ACQTIME_3US;
+    config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
+    config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
+    config.pin_p = ain;
+    config.pin_n = ain;
+    config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
+    config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
+    config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+
+    // make reading
+    nrf_saadc_enable();
+    nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
+    nrf_saadc_channel_init(0, &config);
+
+    JsVarFloat f = nrf_analog_read() / 16384.0;
+    nrf_saadc_channel_input_set(0, NRF_SAADC_INPUT_DISABLED, NRF_SAADC_INPUT_DISABLED); // give us back our pin!
+    nrf_saadc_disable();
+    return f;
+}
 #endif
 
 // Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin) {
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinGetAnalogValue(pin);
+#endif
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
   if (!jshGetPinStateIsManual(pin))
     jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 #ifdef NRF52
-  // sanity checks for channel
-  assert(NRF_SAADC_INPUT_AIN0 == 1);
-  assert(NRF_SAADC_INPUT_AIN1 == 2);
-  assert(NRF_SAADC_INPUT_AIN2 == 3);
-  nrf_saadc_input_t ain = 1 + (pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
-
-  nrf_saadc_channel_config_t config;
-  config.acq_time = NRF_SAADC_ACQTIME_3US;
-  config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
-  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
-  config.pin_p = ain;
-  config.pin_n = ain;
-  config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
-  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
-  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
-
-  // make reading
-  nrf_saadc_enable();
-  nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
-  nrf_saadc_channel_init(0, &config);
-
-  JsVarFloat f = nrf_analog_read() / 16384.0;
-  nrf_saadc_channel_input_set(0, NRF_SAADC_INPUT_DISABLED, NRF_SAADC_INPUT_DISABLED); // give us back our pin!
-  nrf_saadc_disable();
-  return f;
+  return nrf_analog_read_pin(pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
 #else
   const nrf_adc_config_t nrf_adc_config =  {
       NRF_ADC_CONFIG_RES_10BIT,
@@ -1309,8 +1319,17 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M2;
   else if (inf->baudRate<((4000000+8000000)/2))
     freq = SPI_FREQUENCY_FREQUENCY_M4;
+#ifndef NRF52840
   else
     freq = SPI_FREQUENCY_FREQUENCY_M8;
+#else
+  else if (inf->baudRate<((8000000+16000000)/2))
+    freq = SPI_FREQUENCY_FREQUENCY_M8;
+  else if (inf->baudRate<((16000000+32000000)/2))
+    freq = 0x0A000000;//SPI_FREQUENCY_FREQUENCY_M16;
+  else
+    freq = 0x14000000;//SPI_FREQUENCY_FREQUENCY_M32;
+#endif
   spi_config.frequency =  freq;
   spi_config.mode = inf->spiMode;
   spi_config.bit_order = inf->spiMSB ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST;
