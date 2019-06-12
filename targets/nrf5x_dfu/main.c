@@ -68,6 +68,12 @@ void app_error_handler_bare(uint32_t error_code)
     NVIC_SystemReset();
 }
 
+void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
+  lcd_print("NRF ERROR\r\n");
+  nrf_delay_ms(10000);
+  NVIC_SystemReset();
+}
+
 void led_write(Pin pin, bool value) {
   nrf_gpio_cfg_output(pinInfo[pin].pin);
   nrf_gpio_pin_write(pinInfo[pin].pin, value ^ ((pinInfo[pin].port&JSH_PIN_NEGATED)!=0));
@@ -101,7 +107,12 @@ static bool get_btn_state()
 }
 
 // Override Weak version
+#if NRF_SD_BLE_API_VERSION < 5
 bool nrf_dfu_enter_check(void) {
+#else
+// dfu_enter_check must be modified to add the __WEAK keyword
+bool dfu_enter_check(void) {
+#endif
     bool dfu_start = get_btn_state();
 
     // If button is held down for 3 seconds, don't start bootloader.
@@ -119,10 +130,12 @@ bool nrf_dfu_enter_check(void) {
         if ((count&127)==0) lcd_print("=");
         count--;
       }
-      if (!count)
+      if (!count) {
+        lcd_print("\r\nRESUMING BOOT...\r\n");
         dfu_start = false;
-      else
+      } else {
         lcd_print("\r\nDFU STARTED\r\n");
+      }
       set_led_state(true, true);
     }
 
@@ -177,6 +190,40 @@ int main(void)
     NRF_LOG_INFO("Inside main\r\n");
 
     hardware_init();
+
+
+#ifdef ID205
+    lcd_init();
+    bool wait = false;
+    if (NRF_POWER->RESETREAS & POWER_RESETREAS_LOCKUP_Msk) {
+      lcd_print("LOCKUP DETECTED\r\n");
+      wait = true;
+    }
+    if (NRF_POWER->RESETREAS & POWER_RESETREAS_SREQ_Msk) {
+      lcd_print("SOFTWARE RESET\r\n");
+      wait = true;
+    }
+    if (NRF_POWER->RESETREAS & POWER_RESETREAS_DOG_Msk) {
+      lcd_print("WATCHDOG TIMEOUT\r\n");
+      wait = true;
+    }
+    if (NRF_POWER->RESETREAS & POWER_RESETREAS_RESETPIN_Msk) {
+      lcd_print("RESET BY PIN\r\n");
+      wait = true;
+    }
+    // Clear reset reason flags
+    NRF_POWER->RESETREAS = 0xFFFFFFFF;
+    if (wait)
+      nrf_delay_us(2000000);
+    // turn on watchdog - bootloader should override this if it starts,
+    // but if we go straight through to run code then if the code fails to boot
+    // we'll restart.
+    NRF_WDT->CONFIG = (WDT_CONFIG_HALT_Pause << WDT_CONFIG_HALT_Pos) | ( WDT_CONFIG_SLEEP_Run << WDT_CONFIG_SLEEP_Pos);
+    NRF_WDT->CRV = (int)(10*32768); // 10 seconds
+    NRF_WDT->RREN |= WDT_RREN_RR0_Msk;  // Enable reload register 0
+    NRF_WDT->TASKS_START = 1;
+    NRF_WDT->RR[0] = 0x6E524635;
+#endif
 
 #if NRF_SD_BLE_API_VERSION < 5
     ret_val = nrf_bootloader_init();

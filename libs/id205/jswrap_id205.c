@@ -246,18 +246,30 @@ void jswrap_id205_init() {
   //lcd_cmd(0x3A, 1, "\x55"); // COLMOD - 16bpp
   lcd_cmd(0x3A, 1, "\x03"); // COLMOD - 12bpp
   // 0x03 -> 12bpp!
-  jshDelayMicroseconds(10000);
+  jshDelayMicroseconds(1000);
   lcd_cmd(0x36, 1, "\x08"); // MADCTL
-  jshDelayMicroseconds(10000);
+  jshDelayMicroseconds(1000);
+  lcd_cmd(0xE0, 14, "\xD0\x00\x05\x0E\x15\x0D\x37\x43\x47\x09\x15\x12\x16\x09"); //+ voltage gamma control
+  jshDelayMicroseconds(1000);
+  lcd_cmd(0xE1, 14, "\xD0\x00\x05\x0D\x0C\x06\x2D\x44\x40\x0E\x1C\x18\x16\x19"); //- voltage gamma control
+  jshDelayMicroseconds(1000);
   lcd_cmd(0x21, 0, NULL); // INVON
-  jshDelayMicroseconds(10000);
+  jshDelayMicroseconds(1000);
   lcd_cmd(0x13, 0, NULL); // NORON
-  jshDelayMicroseconds(10000);
+  jshDelayMicroseconds(1000);
   lcd_cmd(0x36, 1, "\xC0"); // MADCTL
-  jshDelayMicroseconds(10000);
+  jshDelayMicroseconds(1000);
   lcd_cmd(0x37, 2, "\0\x50"); // VSCRSADD - vertical scroll
-  jshDelayMicroseconds(10000);
+  jshDelayMicroseconds(1000);
   lcd_cmd(0x29, 0, NULL); // DISPON
+  jshDelayMicroseconds(1000);
+
+  /* Interesting stuff:
+
+    IDMON (39h): Idle mode on - reduce to 1 bit per pixel
+     WRDISBV (51h): Write Display Brightness  - 1 byte as data
+     FRCTRL2 (C6h): Frame Rate Control in Normal Mode - 60fps defualt
+   */
 
 
   /* If the button is pressed during reset, perform a self test.
