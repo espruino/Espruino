@@ -149,7 +149,8 @@ typedef enum {
   JSIS_COMPLETELY_RESET   = 1<<11, ///< Has the board powered on, having not loaded anything from flash
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE,
-  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED // stuff that DOESN'T get reset on softinit
+  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED|JSIS_WATCHDOG_AUTO // stuff that DOESN'T get reset on softinit
+    // watchdog can't be reset without a reboot so if it's set to auto we must keep it as auto
 } PACKED_FLAGS JsiStatus;
 
 extern JsiStatus jsiStatus;

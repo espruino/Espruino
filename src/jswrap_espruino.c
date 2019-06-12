@@ -623,10 +623,9 @@ setInterval(function() {
 
 **NOTE:** This is only implemented on STM32 and nRF5x devices (all official Espruino boards).
 
-**NOTE:** On STM32 (Pico, WiFi, Original) with `setDeepSleep(1)`, or nRF52 (Puck, Pixl, MDBT42) you need to
+**NOTE:** On STM32 (Pico, WiFi, Original) with `setDeepSleep(1)` you need to
 explicitly wake Espruino up with an interval of less than the watchdog timeout or the watchdog will fire and
-the board will reboot.
-
+the board will reboot. You can do this with `setInterval("", time_in_milliseconds)`.
  */
 void jswrap_espruino_enableWatchdog(JsVarFloat time, JsVar *isAuto) {
   if (time<0 || isnan(time)) time=1;

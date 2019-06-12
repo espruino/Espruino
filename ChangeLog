@@ -5,6 +5,10 @@
             Smartibot devices now advertise on BLE as 'Smartibot abcd'
             nRF5x: Leave digital input disconnected for analog read (saves power)
             nRF5x: Return 'analog' as pin mode for any pin where input is disconnected
+            If watchdog is on and automatic, ensure that `reset()` keeps the automatic kicking going
+            Ensure that a console stays locked even after 
+            Ensure interpreter flags (eg echo) are cleared after a `reset()`
+            nRF5x: When watchdog is on and automatic, automatically wake up often enough to service it
             
      2v03 : nRF5x: Fix issue when calling NRF.setAdvertising while connected via BLE (fix #1659)
             nRF5x: 'dump()' not outputs `NRF.setSecurity` line if it has been called.
