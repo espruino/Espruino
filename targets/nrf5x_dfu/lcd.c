@@ -111,10 +111,13 @@ void jshPinOutput(Pin pin, bool value) {
 }
 
 #ifdef LCD_CONTROLLER_ST7567
-char lcd_data[128*8];
+#define LCD_DATA_WIDTH 128
+#define LCD_DATA_HEIGHT 64
+#define LCD_ROWSTRIDE (LCD_DATA_WIDTH>>3)
+char lcd_data[LCD_ROWSTRIDE*LCD_DATA_HEIGHT];
 
 void lcd_pixel(int x, int y) {
-  lcd_data[x+((y>>3)<<7)] |= 1<<(y&7);
+  lcd_data[x+((y>>3)<<7)] |= 1<<(y&7); // each byte is vertical
 }
 
 void lcd_wr(int data) {
@@ -127,12 +130,14 @@ void lcd_wr(int data) {
 }
 #endif
 #ifdef LCD_CONTROLLER_ST7789V
-#define LCD_ROWSTRIDE (120>>3)
-char lcd_data[LCD_ROWSTRIDE*120];
-int ymin=0,ymax=119;
+#define LCD_DATA_WIDTH 120
+#define LCD_DATA_HEIGHT 120
+#define LCD_ROWSTRIDE (LCD_DATA_WIDTH>>3)
+char lcd_data[LCD_ROWSTRIDE*LCD_DATA_HEIGHT];
+int ymin=0,ymax=LCD_DATA_HEIGHT-1;
 
 void lcd_pixel(int x, int y) {
-  lcd_data[(x>>3)+(y*LCD_ROWSTRIDE)] |= 1<<(x&7);
+  lcd_data[(x>>3)+(y*LCD_ROWSTRIDE)] |= 1<<(x&7); // each byte is horizontal
   if (y<ymin) ymin=y;
   if (y>ymax) ymax=y;
 }
@@ -146,6 +151,8 @@ void lcd_wr(int data) {
   }
 }
 #endif
+
+void lcd_flip();
 
 void lcd_char(int x1, int y1, char ch) {
   if (ch=='.') ch='\\';
@@ -162,23 +169,19 @@ void lcd_char(int x1, int y1, char ch) {
   }
 }
 
-
-
-
-void lcd_flip();
-
 void lcd_print(char *ch) {
   while (*ch) {
     lcd_char(lcdx,lcdy,*ch);
     if ('\n'==*ch) {
       lcdy += 6;
       if (lcdy>=60) {
-        // scroll - FIXME FOR OTHER LCDs
-        memcpy(lcd_data,&lcd_data[128],128*7);
-        memset(&lcd_data[128*7],0,128);
+        memcpy(lcd_data,&lcd_data[LCD_ROWSTRIDE*8],LCD_ROWSTRIDE*(LCD_HEIGHT-8)); // shift up 8 pixels
+        memset(&lcd_data[LCD_ROWSTRIDE*(LCD_HEIGHT-8)],0,LCD_ROWSTRIDE*8); // fill bottom 8 rows
         lcdy-=8;
+#ifdef LCD_CONTROLLER_ST7789V
         ymin=0;
         ymax=LCD_HEIGHT-1;
+#endif
       }
     } else if ('\r'==*ch) {
       lcdx = 0;
