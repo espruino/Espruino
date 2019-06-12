@@ -360,6 +360,42 @@ Compiling Espruino:
 
 ```
 
+### for W60x
+
+In order to compile for the w60x (arm-none-eabi-gcc 4.9 only) on Linux several pre-requisites have to be installed:
+
+* the w600-sdk from <https://github.com/w600/sdk> 
+
+Change `makeimg_all`,`makeimg` Permission
+
+```
+chmod +x <Path to w600 SDK>/tools/makeimg
+chmod +x <Path to w600 SDK>/tools/makeimg_all
+```
+
+
+To run make you need to pass a couple of environment variables to `make`.  These include:
+
+* `BOARD=W600TAG`
+* `FLASH_1MB=1` or `FLASH_2MB=1`
+* `SDK_ROOT=<Path to w600 SDK>`
+
+The easiest is to place the following lines into a script, adapt it to your needs and then run it.
+
+```bash
+
+#! /bin/bash
+export BOARD=W600TAG
+export FLASH_1MB=1
+export SDK_ROOT=<Path to w600 SDK>
+make clean && make $*
+
+```
+
+* You will also get an `espruino_2v0x_*_w600.fls` archive, which contains everything you
+  need to flash a module (except for `<path to w600 sdk>/tools/py_scripts/download.py`), including a README_flash.txt
+
+
 ## Documentation
 
 ```bash

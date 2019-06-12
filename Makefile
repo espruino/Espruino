@@ -192,6 +192,8 @@ else ifdef EMW3165
 USE_WICED=1
 else ifdef CC3000
 USE_CC3000=1
+else ifeq ($(FAMILY),W600)
+USE_W600=1
 endif
 endif
 endif
@@ -296,8 +298,10 @@ else
 
 ifneq ($(FAMILY),ESP8266)
 # If we have enough flash, include the debugger
-# ESP8266 can't do it because it expects tasks to finish within set time
+# ESP8266,W600 can't do it because it expects tasks to finish within set time
+ifneq ($(FAMILY),W600)
 DEFINES+=-DUSE_DEBUGGER
+endif
 endif
 # Use use tab complete
 DEFINES+=-DUSE_TAB_COMPLETE
@@ -506,6 +510,15 @@ ifeq ($(USE_NET),1)
  libs/network/esp8266/network_esp8266.c\
  libs/network/esp8266/pktbuf.c\
  libs/network/esp8266/ota.c
+ endif
+
+ ifdef USE_W600
+  DEFINES += -DUSE_W600
+  INCLUDE += -I$(ROOT)/libs/network/W600
+  WRAPPERSOURCES += libs/network/jswrap_wifi.c \
+                    libs/network/w600/jswrap_w600_network.c
+  
+  SOURCES += libs/network/w600/network_w600.c
  endif
 
  ifdef USE_TELNET
@@ -739,6 +752,8 @@ else ifdef ESP32
 include make/targets/ESP32.make
 else ifdef ESP8266
 include make/targets/ESP8266.make
+else ifdef W600
+include make/targets/W600.make
 else # ARM/etc, so generate bin, etc ---------------------------
 include make/targets/ARM.make
 endif	    # ---------------------------------------------------

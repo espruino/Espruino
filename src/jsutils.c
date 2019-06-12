@@ -837,13 +837,13 @@ int espruino_snprintf( char * s, size_t n, const char * fmt, ... ) {
   return (int)d.idx;
 }
 
-#ifdef ARM
+#if defined(ARM)&&!defined(USE_OS)
 extern uint32_t LINKER_END_VAR; // should be 'void', but 'int' avoids warnings
 #endif
 
 /** get the amount of free stack we have, in bytes */
 size_t jsuGetFreeStack() {
-#ifdef ARM
+#if defined(ARM)&&!defined(USE_OS)
   void *frame = __builtin_frame_address(0);
   size_t stackPos = (size_t)((char*)frame);
   size_t stackEnd = (size_t)((char*)&LINKER_END_VAR);

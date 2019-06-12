@@ -95,6 +95,7 @@ Main supported platforms are:
 * ESP8266
 * ESP32
 * Linux
+* W600
 
 Espruino has been ported to other boards and platforms (such as EFM32 and SAMD), but these have a habit of being contributed and then never maintained. All boards that this has happened to reside in the [UNMAINTAINED_BOARDS](https://github.com/espruino/Espruino/tree/UNMAINTAINED_BOARDS) branch.
 
