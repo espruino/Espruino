@@ -362,6 +362,17 @@ Compiling Espruino:
 
 ### for W60x
 
+* Feature
+
+- [x] GPIO
+- [x] UART
+- [ ] SPI
+- [ ] I2C
+- [ ] wifi
+- [ ] netwotk
+
+
+
 In order to compile for the w60x (arm-none-eabi-gcc 4.9 only) on Linux several pre-requisites have to be installed:
 
 * the w600-sdk from <https://github.com/w600/sdk> 

@@ -497,6 +497,13 @@ void jsiSoftInit(bool hasBeenReset) {
     jsvUnLock(watchArrayPtr);
   }
 
+  // Console Setup
+  #if defined(W600)
+    if(consoleDevice==DEFAULT_CONSOLE_DEVICE){
+      jshConsoleSetup();
+    }
+  #endif
+
   // Timers are stored by time in the future now, so no need
   // to fiddle with them.
 
