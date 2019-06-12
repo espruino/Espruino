@@ -777,7 +777,7 @@ void jsiSemiInit(bool autoLoad) {
   // Set state
   interruptedDuringEvent = false;
   // Set defaults
-  jsiStatus &= ~JSIS_SOFTINIT_MASK;
+  jsiStatus &= JSIS_SOFTINIT_MASK;
 #ifndef SAVE_ON_FLASH
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 #endif

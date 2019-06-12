@@ -1580,6 +1580,18 @@ bool jshSleep(JsSysTime timeUntilWake) {
    */
   if (timeUntilWake > jshGetTimeFromMilliseconds(240*1000))
     timeUntilWake = jshGetTimeFromMilliseconds(240*1000);
+
+  /* Are we set to ping the watchdog automatically? If so ensure
+   * that we always wake up often enough to ping it by ensuring
+   * we don't sleep for more than half the WDT time. */
+  if (jsiStatus&JSIS_WATCHDOG_AUTO) {
+    // actual time is CRV / 32768 seconds
+    // we just kicked watchdog (in jsinteractive.c) so aim to wake up just a little before it fires
+    JsSysTime max = jshGetTimeFromMilliseconds(NRF_WDT->CRV/34.000);
+    if (timeUntilWake > max) timeUntilWake = max;
+  }
+
+
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
 #if NRF_SD_BLE_API_VERSION<5
