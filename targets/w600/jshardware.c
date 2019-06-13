@@ -61,10 +61,6 @@ void util_timer_irq(uint8_t *arg){
   jstUtilTimerInterruptHandler();
 }
 
-uint16_t hspi_rx_callback(char *data){
-
-}
-
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
   uint64_t mask = 1ULL << (int)device;
   if (isInit) {
@@ -505,7 +501,7 @@ int jshSPISend(IOEventFlags device, int data){
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data){
   if (device != EV_SPI1) {
-    return -1;
+    return;
   }
 
   uint16_t u16_data=(uint16_t)data;
@@ -545,7 +541,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf){
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop){
   if (device != EV_I2C1) return;     // we only support one i2c device
 
-  uint8_t ack;
+  int8_t ack;
 
   tls_i2c_write_byte((address<<1)|0,true);
   ack = tls_i2c_wait_ack();            // get ack bit from slave
@@ -565,7 +561,7 @@ error:
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop){
   if (device != EV_I2C1) return;     // we only support one i2c device
 
-  uint8_t ack;
+  int8_t ack;
   
   tls_i2c_write_byte((address<<1)|1,true);
   ack = tls_i2c_wait_ack();            // get ack bit from slave
