@@ -5,6 +5,8 @@
 #include "wm_uart.h"
 #include "wm_internal_flash.h"
 #include "wm_timer.h"
+#include "wm_cpu.h"
+#include "wm_i2c.h"
 
 #include "jshardware.h"
 #include "jsinteractive.h"
@@ -333,6 +335,15 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch){
 
 /// Given a Pin, return the current pin function associated with it
 JshPinFunction jshGetCurrentPinFunction(Pin pin){
+  if (jshIsPinValid(pin)) {
+    int i;
+    for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
+      JshPinFunction func = pinInfo[pin].functions[i];
+      if (JSH_PINFUNCTION_IS_TIMER(func)){
+        return func;
+      }
+    }
+  }
   return JSH_NOTHING;
 }
 
@@ -470,17 +481,28 @@ void jshSPIWait(IOEventFlags device){
 
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf){
-  jsWarn("jshI2CSetup not impl\n");
+  if (device != EV_I2C1) {
+    jsError("Only I2C1 supported"); return; 
+  }
+
+  wm_i2c_scl_config(WM_IO_PB_13);
+  wm_i2c_sda_config(WM_IO_PB_14);
+
+  tls_i2c_init(inf->bitrate);
 }
 
 /** Write a number of btes to the I2C device. Addresses are 7 bit - that is, between 0 and 0x7F.
  *  sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop){
-  jsWarn("jshI2CWrite not impl\n");
+  if (device != EV_I2C1) return;
+
+  wm_i2c_start_write_it((address<<1)|0,sendStop,data,nBytes);
 }
 /** Read a number of bytes from the I2C device. */
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop){
-  jsWarn("jshI2CRead not impl\n");
+  if (device != EV_I2C1) return;
+
+  wm_i2c_start_read_it((address<<1)|1,sendStop,data,nBytes);
 }
 
 /** Return start address and size of the flash page the given address resides in. Returns false if
@@ -594,7 +616,33 @@ unsigned int jshGetRandomNumber(){
  * to match what gets implemented here. The return value is the clock
  * speed in Hz though. */
 unsigned int jshSetSystemClock(JsVar *options){
-  return 0;
+  int newFreq = jsvGetInteger(options);
+
+  switch (newFreq)
+  {
+  case 40:
+    tls_sys_clk_set(CPU_CLK_40M);
+    break;
+  case 80:
+    tls_sys_clk_set(CPU_CLK_80M);
+    break;
+  default:
+    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 40.");
+    return 0;
+  }
+
+  tls_sys_clk sys_clk;
+  tls_sys_clk_get(&sys_clk);
+
+  switch (sys_clk.cpuclk)
+  {
+  case CPU_CLK_40M:
+    return 40;
+  case CPU_CLK_80M:
+    return 80;
+  default:
+    return 0;
+  }
 }
 
 /// Perform a proper hard-reboot of the device
