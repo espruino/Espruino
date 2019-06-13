@@ -543,15 +543,41 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf){
 /** Write a number of btes to the I2C device. Addresses are 7 bit - that is, between 0 and 0x7F.
  *  sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop){
-  if (device != EV_I2C1) return;
+  if (device != EV_I2C1) return;     // we only support one i2c device
 
-  wm_i2c_start_write_it((address<<1)|0,sendStop,data,nBytes);
+  uint8_t ack;
+
+  tls_i2c_write_byte((address<<1)|0,true);
+  ack = tls_i2c_wait_ack();            // get ack bit from slave
+  if (ack==WM_FAILED) goto error;
+  while (nBytes--) {
+    tls_i2c_write_byte(*data++,false);      // send data byte
+    ack = tls_i2c_wait_ack();          // get ack bit from slave
+    if (ack==WM_FAILED) goto error;
+  }
+  if (sendStop) tls_i2c_stop();
+  return;
+error:
+  tls_i2c_stop();
+  jsExceptionHere(JSET_INTERNALERROR, "I2CWrite: No ACK %d\n", ack);
 }
 /** Read a number of bytes from the I2C device. */
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop){
-  if (device != EV_I2C1) return;
+  if (device != EV_I2C1) return;     // we only support one i2c device
 
-  wm_i2c_start_read_it((address<<1)|1,sendStop,data,nBytes);
+  uint8_t ack;
+  
+  tls_i2c_write_byte((address<<1)|1,true);
+  ack = tls_i2c_wait_ack();            // get ack bit from slave
+  if (ack==WM_FAILED) goto error;
+  while (nBytes--) {
+    *data++ = tls_i2c_read_byte(nBytes==0,false);    // recv data byte
+  }
+  if (sendStop) tls_i2c_stop();
+  return;
+error:
+  tls_i2c_stop();
+  jsExceptionHere(JSET_INTERNALERROR, "I2CRead: No ACK %d\n", ack);
 }
 
 /** Return start address and size of the flash page the given address resides in. Returns false if
