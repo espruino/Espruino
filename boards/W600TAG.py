@@ -86,5 +86,28 @@ devices = {
 };
 
 def get_pins():
-  pins = pinutils.generate_pins(0,15,"A") + pinutils.generate_pins(0,31,"B");
+  pins = []
+  pinutils.findpin(pins,"PA0",False)["functions"]["TIM1_CH1"]=0
+  pinutils.findpin(pins,"PA1",False)["functions"]["TIM1_CH2"]=0
+  pinutils.findpin(pins,"PA4",False)["functions"]["UART1_TX"]=0
+  pinutils.findpin(pins,"PA5",False)["functions"]["UART1_RX"]=0
+
+  pinutils.findpin(pins,"PB6",False)["functions"]["TIM1_CH4"]=0
+  pinutils.findpin(pins,"PB7",False)
+  pinutils.findpin(pins,"PB8",False)["functions"]["TIM1_CH5"]=0
+  pinutils.findpin(pins,"PB9",False)
+  pinutils.findpin(pins,"PB10",False)
+  pinutils.findpin(pins,"PB11",False)["functions"]["UART2_RX"]=0
+  pinutils.findpin(pins,"PB12",False)["functions"]["UART2_TX"]=0
+
+  pinutils.findpin(pins,"PB13",False)["functions"]["I2C1_SCL"]=0
+  pinutils.findpin(pins,"PB14",False)["functions"]["I2C1_SDA"]=0
+  pinutils.findpin(pins,"PB15",False)
+  pinutils.findpin(pins,"PB16",False)["functions"]["SPI1_SCK"]=0
+  pinutils.findpin(pins,"PB17",False)["functions"]["SPI1_MISO"]=0
+  pinutils.findpin(pins,"PB18",False)["functions"]["SPI1_MOSI"]=0
+
+
+
+  # pins = pinutils.generate_pins(0,15,"A") + pinutils.generate_pins(0,31,"B");
   return pins
