@@ -9,6 +9,7 @@
             Ensure that a console stays locked even after 
             Ensure interpreter flags (eg echo) are cleared after a `reset()`
             nRF5x: When watchdog is on and automatic, automatically wake up often enough to service it
+            Fix Graphics.setFontBitmap on builds with no vector font (fix #1671)
             
      2v03 : nRF5x: Fix issue when calling NRF.setAdvertising while connected via BLE (fix #1659)
             nRF5x: 'dump()' not outputs `NRF.setSecurity` line if it has been called.

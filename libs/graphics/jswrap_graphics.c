@@ -773,12 +773,13 @@ Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmapped Font
 }
 Make subsequent calls to `drawString` use a Vector Font of the given height
 */
-JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
+JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 #ifdef NO_VECTOR_FONT
-  jsExceptionHere(JSET_ERROR, "No vector font in this build");
+  if (isVectorFont)
+    jsExceptionHere(JSET_ERROR, "No vector font in this build");
 #else
-  if (checkValid) {
+  if (isVectorFont) {
     if (size<1) size=1;
     if (size>1023) size=1023;
   }
