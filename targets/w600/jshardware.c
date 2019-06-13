@@ -7,6 +7,7 @@
 #include "wm_timer.h"
 #include "wm_cpu.h"
 #include "wm_i2c.h"
+#include "wm_hostspi.h"
 
 #include "jshardware.h"
 #include "jsinteractive.h"
@@ -60,6 +61,10 @@ void util_timer_irq(uint8_t *arg){
   jstUtilTimerInterruptHandler();
 }
 
+uint16_t hspi_rx_callback(char *data){
+
+}
+
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
   uint64_t mask = 1ULL << (int)device;
   if (isInit) {
@@ -83,6 +88,7 @@ void jshInit(){
 /// jshReset is called from JS 'reset()' - try to put peripherals back to their power-on state
 void jshReset(){
   jshResetDevices();
+  DEVICE_INITIALISED_FLAGS=0;
 }
 
 /** Code that is executed each time around the idle loop. Prod watchdog timers here,
@@ -452,31 +458,74 @@ void jshUSARTKick(IOEventFlags device){
 }
 
 /** Set up SPI, if pins are -1 they will be guessed */
+/**
+ * Initialize the hardware SPI device.
+ * On the W600, hardware SPI is implemented via a set of pins defined
+ * as follows:
+ *
+ * | GPIO   | Name  | Function |
+ * |--------|-------|----------|
+ * | B17    | HMISO | MISO     |
+ * | B18    | HMOSI | MOSI     |
+ * | B16    | HSCLK | CLK      |
+ * | B15    | HCS   | CS       |
+ *
+ */
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf){
-  jsWarn("jshSPISetup not impl\n");
+  if (device != EV_SPI1) {
+    jsExceptionHere(JSET_ERROR, "Only SPI1 supported");
+    return;
+  }
+
+  jshSetDeviceInitialised(device,true);
+  
+  wm_spi_di_config(WM_IO_PB_17);
+  wm_spi_do_config(WM_IO_PB_18);
+  wm_spi_ck_config(WM_IO_PB_16);
+  wm_spi_cs_config(WM_IO_PB_15);
+
+  tls_spi_init();
+  tls_spi_setup(inf->spiMode,TLS_SPI_CS_LOW,inf->baudRate);
+
 }
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(IOEventFlags device, int data){
-  jsWarn("jshSPISend not impl\n");
-  return 0;
+  if (device != EV_SPI1) {
+    return -1;
+  }
+
+  uint8_t u8_data=(uint8_t)data;
+  tls_spi_write(&u8_data,1);
+  tls_spi_read(&u8_data,1);
+
+  return u8_data;
 }
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data){
-  jsWarn("jshSPISend16 not impl\n");
+  if (device != EV_SPI1) {
+    return -1;
+  }
+
+  uint16_t u16_data=(uint16_t)data;
+  tls_spi_write((uint8_t *)&u16_data,2);
 }
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16){
-  jsWarn("jshSPISet16 not impl\n");
+  if(is16){
+    tls_spi_trans_type(SPI_WORD_TRANSFER);
+  }else{
+    tls_spi_trans_type(SPI_BYTE_TRANSFER);
+  }
 }
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive){
-  jsWarn("jshSPISetReceive not impl\n");
+  return;
 }
 /** Wait until SPI send is finished, and flush all received data */
 void jshSPIWait(IOEventFlags device){
-  jsWarn("jshSPIWait not impl\n");
+  return;
 }
 
 /** Set up I2C, if pins are -1 they will be guessed */
