@@ -25,5 +25,6 @@
 
 void   jswrap_wifi_init();
 void   jswrap_wifi_soft_init();
+void   jswrap_wifi_reset();
 
 #endif /* __JSWRAP_W600_NETWORK_H__ */

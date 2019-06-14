@@ -88,6 +88,7 @@ void jshInit(){
 void jshReset(){
   jshResetDevices();
   DEVICE_INITIALISED_FLAGS=0;
+  jswrap_wifi_reset();
 }
 
 /** Code that is executed each time around the idle loop. Prod watchdog timers here,
