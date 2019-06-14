@@ -513,6 +513,7 @@ ifeq ($(USE_NET),1)
  endif
 
  ifdef USE_W600
+  DEFINES += -DUSE_W600
   INCLUDE += -I$(ROOT)/libs/network/W600
   WRAPPERSOURCES += libs/network/jswrap_wifi.c \
                     libs/network/w600/jswrap_w600_network.c
