@@ -25,6 +25,53 @@ static char macFmt[] = "%02x:%02x:%02x:%02x:%02x:%02x";
 static char *wifi_auths[]={"open","wep40","wep104","wpa_tkip","wpa_ccmp","wpa2_tkip","wpa2_ccmp","wpa_auto","wpa2_auto"};
 static char *wifi_mode[] = { "off", "sta", "adhoc","sta+adhoc","ap", "sta+ap","ap+adhoc","sta+ap+adhoc" };
 static char *wifi_conn[]={"disconnected","scanning","connecting","connected"};
+
+static  char *scan_privacy_string(u8 privacy){
+	char *sec;
+
+	switch (privacy) 
+	{
+		case WM_WIFI_AUTH_MODE_OPEN:
+			sec = "NONE";
+			break;
+		case WM_WIFI_AUTH_MODE_WEP_AUTO:
+			sec = "WEP/AUTO";
+			break;
+		case WM_WIFI_AUTH_MODE_WPA_PSK_TKIP:
+			sec = "WPA_PSK/TKIP";
+			break;
+		case WM_WIFI_AUTH_MODE_WPA_PSK_CCMP:
+			sec = "WPA_PSK/CCMP";
+			break;
+		case WM_WIFI_AUTH_MODE_WPA_PSK_AUTO:
+			sec = "WPA_PSK/AUTO";
+			break;
+		case WM_WIFI_AUTH_MODE_WPA2_PSK_TKIP:
+			sec = "WPA2_PSK/TKIP";
+			break;
+		case WM_WIFI_AUTH_MODE_WPA2_PSK_CCMP:
+			sec = "WPA2_PSK/CCMP";
+			break;
+		case WM_WIFI_AUTH_MODE_WPA2_PSK_AUTO:
+			sec = "WPA2_PSK/AUTO";
+			break;
+		case WM_WIFI_AUTH_MODE_WPA_WPA2_PSK_TKIP:
+			sec = "WPA_PSK/WPA2_PSK/TKIP";
+			break;
+		case WM_WIFI_AUTH_MODE_WPA_WPA2_PSK_CCMP:
+			sec = "WPA_PSK/WPA2_PSK/CCMP";
+			break;
+		case WM_WIFI_AUTH_MODE_WPA_WPA2_PSK_AUTO:
+			sec = "WPA_PSK/WPA2_PSK/AUTO";
+			break;
+			
+		default:
+			sec = "Unknown";
+			break;
+	}
+	return sec;
+}
+
 // A callback function to be invoked when we have an IP address.
 static JsVar *g_jsGotIpCallback;
 
@@ -83,21 +130,22 @@ static void send_wifi_event(
 
 static wifi_softap_client_t softap_clients[ETH_ALEN];
 static wifi_softap_client_t* find_client(uint8_t *mac){
-  if(mac==0){
-    for(int i=0;i<ETH_ALEN;i++){
-      if(!softap_clients[i].used){
-        return &softap_clients[i];
-      }
+  wifi_softap_client_t *client=0;
+
+  for(int i=0;i<ETH_ALEN;i++){
+    if(memcmp(mac,softap_clients[i].mac,ETH_ALEN)==0){
+      return &softap_clients[i];
     }
-    return 0;
-  }else{
-    for(int i=0;i<ETH_ALEN;i++){
-      if(memcmp(mac,softap_clients[i].mac,ETH_ALEN)==0){
-        return &softap_clients[i];
-      }
-    }
-    return 0;
   }
+  
+  for(int i=0;i<ETH_ALEN;i++){
+    if(!softap_clients[i].used){
+      memcpy(softap_clients[i].mac,mac,ETH_ALEN);
+      return &softap_clients[i];
+    }
+  }
+
+  return 0;
 }
 /**
  * W600 WiFi Event handler.
@@ -154,7 +202,6 @@ void wifi_softap_client_callback(uint8_t *mac,enum tls_wifi_client_event_type st
 
   if(status==WM_WIFI_CLIENT_EVENT_ONLINE&&client){
     client->used=true;
-    memcpy(client->mac,mac,ETH_ALEN);
     send_wifi_event(2, jsDetails);
   }else if(status==WM_WIFI_CLIENT_EVENT_OFFLINE&&client){
     client->used=false;
@@ -209,7 +256,7 @@ void wifi_scan_result_callback(){
 
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(_rssi));
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromInteger(bss_info->channel));
-    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromString(wifi_auths[bss_info->privacy]));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromString(scan_privacy_string(bss_info->privacy)));
 
     // The SSID may **NOT** be NULL terminated ... so handle that.
     char ssid[sizeof(bss_info->ssid) + 1];
@@ -434,7 +481,7 @@ void jswrap_wifi_connect(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback){
   memset(&original_pwd,0,sizeof(struct tls_param_original_key));
 
   tls_param_get(TLS_PARAM_ID_ORIGIN_SSID,&original_ssid,false);
-  tls_param_get(TLS_PARAM_ID_ORIGIN_KEY,&original_ssid,false);
+  tls_param_get(TLS_PARAM_ID_ORIGIN_KEY,&original_pwd,false);
 
 
   if (wifiConnectStatus ==  WM_WIFI_JOINED&&
@@ -761,7 +808,7 @@ JsVar *jswrap_wifi_getDetails(JsVar *jsCallback){
   memset(&original_pwd,0,sizeof(struct tls_param_original_key));
 
   tls_param_get(TLS_PARAM_ID_ORIGIN_SSID,&original_ssid,false);
-  tls_param_get(TLS_PARAM_ID_ORIGIN_KEY,&original_ssid,false);
+  tls_param_get(TLS_PARAM_ID_ORIGIN_KEY,&original_pwd,false);
 
   char buf[65];
   // ssid
