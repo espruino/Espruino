@@ -317,7 +317,7 @@ void jshInit() {
 #ifdef USE_WIRINGPI
   if (geteuid() == 0) {
     printf("RUNNING AS SUDO - awesome. You'll get proper IRQ support\n");
-    wiringPiSetup();
+    wiringPiSetupGpio();
   } else {
     printf("NOT RUNNING AS SUDO - sorry, you'll get rubbish realtime IO. You also need to export the pins you want to use first.\n");
     wiringPiSetupSys() ;
