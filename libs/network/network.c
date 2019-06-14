@@ -31,6 +31,9 @@
 #if defined(USE_ESP32)
   #include "network_esp32.h"
 #endif
+#if defined(USE_W600)
+  #include "network_w600.h"
+#endif
 #if defined(LINUX)
   #include "network_linux.h"
 #endif
@@ -244,6 +247,9 @@ bool networkGetFromVar(JsNetwork *net) {
 #endif
 #if defined(USE_ESP32)
   case JSNETWORKTYPE_ESP32 : netSetCallbacks_esp32(net); break;
+#endif
+#if defined(USE_W600)
+  case JSNETWORKTYPE_W600 : netSetCallbacks_w600(net); break;
 #endif
 #if defined(LINUX)
   case JSNETWORKTYPE_SOCKET : netSetCallbacks_linux(net); break;

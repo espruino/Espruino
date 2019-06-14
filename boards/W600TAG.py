@@ -26,7 +26,7 @@ info = {
  'binary_name' : 'espruino_%v_w600.bin',
  'build' : {
    'libraries' : [
-     #'NET'
+     'NET'
    ],
    'makefile' : [
    ]

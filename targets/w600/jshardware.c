@@ -13,6 +13,8 @@
 #include "jsinteractive.h"
 #include "jstimer.h"
 
+#include "jswrap_w600_network.h"
+
 #define JSH_MAX_SLEEP_MS    100
 #define JSH_CLOCKS_PER_MSEC 0.5 //(500/1000)
 
@@ -79,6 +81,7 @@ void jshInit(){
     g_pinState[i] = 0;
   }
 
+  jswrap_wifi_init();
 }
 
 /// jshReset is called from JS 'reset()' - try to put peripherals back to their power-on state
