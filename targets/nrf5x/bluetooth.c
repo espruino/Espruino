@@ -1954,24 +1954,24 @@ static void peer_manager_init(bool erase_bonds) {
   peer_list_get(m_whitelist_peers, &m_whitelist_peer_cnt);
 
   err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
-  APP_ERROR_CHECK(err_code);
+  APP_ERROR_CHECK_NOT_URGENT(err_code);
 
   // Setup the device identies list.
   // Some SoftDevices do not support this feature.
   err_code = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
   if (err_code != NRF_ERROR_NOT_SUPPORTED) {
-     APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK_NOT_URGENT(err_code);
   }
 
 #ifdef LINK_SECURITY
   ecc_init(true);
 
   err_code = ecc_p256_keypair_gen(m_lesc_sk.sk, m_lesc_pk.pk);
-  APP_ERROR_CHECK(err_code);
+  APP_ERROR_CHECK_NOT_URGENT(err_code);
 
   /* Set the public key */
   err_code = pm_lesc_public_key_set(&m_lesc_pk);
-  APP_ERROR_CHECK(err_code);
+  APP_ERROR_CHECK_NOT_URGENT(err_code);
 #endif
 }
 #endif
