@@ -10,10 +10,10 @@ output. Hence there is no need to waste JVars
  .../components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h   |  5 ++---
  2 files changed, 16 insertions(+), 14 deletions(-)
 
-diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+diff --git a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 index aa560152..77a6d252 100755
---- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
-+++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+--- a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
++++ b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 @@ -118,7 +118,7 @@ NRF_LOG_MODULE_REGISTER();
  #define NFCID1_DEFAULT_LENGHT       NFCID1_DOUBLE_SIZE                          /**< Length of NFCID1 if user does not provide one */
  #define NFCID1_MAX_LENGHT           NFCID1_TRIPLE_SIZE                          /**< Maximum length of NFCID1 */
@@ -103,10 +103,10 @@ index aa560152..77a6d252 100755
          NRF_NFCT->TASKS_ENABLERXDATA = 1;
  
          NRF_NFCT->INTENSET = (NFCT_INTENSET_RXFRAMEEND_Enabled << NFCT_INTENSET_RXFRAMEEND_Pos) |
-diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
+diff --git a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
 index 64ff3172..bce26cf6 100644
---- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
-+++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
+--- a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
++++ b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
 @@ -161,9 +161,8 @@ ret_code_t hal_nfc_start(void);
  
  /** @brief Function for sending a packet to the connected NFC reader.
