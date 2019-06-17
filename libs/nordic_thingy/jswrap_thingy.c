@@ -87,7 +87,7 @@ bool jshVirtualPinGetValue(Pin pin) {
 }
 
 JsVarFloat jshVirtualPinGetAnalogValue(Pin pin) {
-  return NaN;
+  return NAN;
 }
 
 void jshVirtualPinSetState(Pin pin, JshPinState state) {
