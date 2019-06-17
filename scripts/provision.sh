@@ -137,7 +137,9 @@ if [ "$PROVISION_NRF52" = "1" ]; then
     fi
     if ! type nrfutil 2> /dev/null > /dev/null; then
       echo Installing nrfutil
-      sudo pip install nrfutil
+      sudo pip install --ignore-installed nrfutil
+      # --ignore-installed is used because pip 10 fails because PyYAML was already installed by the system
+      # -q can be used to silence the above
     fi
     ARM=1
 fi
