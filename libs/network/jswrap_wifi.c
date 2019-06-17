@@ -291,7 +291,7 @@ Notes:
   "class"    : "Wifi",
   "name"     : "getStatus",
   "generate" : "jswrap_wifi_getStatus",
-  "#if" : "defined(ESP32) || defined(ESP8266)",
+  "#if" : "defined(ESP32) || defined(ESP8266) || defined(W600)",
   "return"   : ["JsVar", "An object representing the current WiFi status, if available immediately."],
   "params"   : [
     ["callback", "JsVar", "Optional `callback(status)` function to be called back with the current Wifi status, i.e. the same object as returned directly."]
@@ -333,7 +333,7 @@ Note: esp8266 SDK programmers may be missing an "opmode" option to set the sta/a
   "class"    : "Wifi",
   "name"     : "getDetails",
   "generate" : "jswrap_wifi_getDetails",
-  "#if" : "defined(ESP32) || defined(ESP8266)",
+  "#if" : "defined(ESP32) || defined(ESP8266) || defined(W600)",
   "return"   : ["JsVar", "An object representing the wifi station details, if available immediately."],
   "params"   : [
     ["callback", "JsVar", "An optional `callback(details)` function to be called back with the wifi details, i.e. the same object as returned directly."]
@@ -355,7 +355,7 @@ Retrieve the wifi station configuration and status details. The details object h
   "class"    : "Wifi",
   "name"     : "getAPDetails",
   "generate" : "jswrap_wifi_getAPDetails",
-  "#if" : "defined(ESP32) || defined(ESP8266)",
+  "#if" : "defined(ESP32) || defined(ESP8266) || defined(W600)",
   "return"   : ["JsVar", "An object representing the current access point details, if available immediately."],
   "params"   : [
     ["callback", "JsVar", "An optional `callback(details)` function to be called back with the current access point details, i.e. the same object as returned directly."]
@@ -513,7 +513,7 @@ The interval determines how often the time server is queried and Espruino's time
   "class"    : "Wifi",
   "name"     : "setIP",
   "generate" : "jswrap_wifi_setIP",
-  "#if" : "defined(ESP8266) || defined(ESPRUINOWIFI)",
+  "#if" : "defined(ESP8266) || defined(ESPRUINOWIFI) || defined(W600)",
   "params"   : [
     ["settings", "JsVar", "Configuration settings"],
     ["callback", "JsVar", "A `callback(err)` function to invoke when ip is set. `err==null` on success, or a string on failure."]
@@ -531,7 +531,7 @@ The `settings` object must contain the following properties.
   "type"     : "staticmethod",
   "class"    : "Wifi",
   "name"     : "setAPIP",
-  "#if"    : "defined(ESPRUINOWIFI) || defined(ESP8266)",
+  "#if"    : "defined(ESPRUINOWIFI) || defined(ESP8266) || defined(W600)",
   "generate" : "jswrap_wifi_setAPIP",
   "params"   : [
     ["settings", "JsVar", "Configuration settings"],

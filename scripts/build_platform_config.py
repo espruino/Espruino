@@ -95,6 +95,8 @@ else: # NOT LINUX
     flash_page_size = 4*1024
   if board.chip["family"]=="STM32L4":
     flash_page_size = 128*1024
+  if board.chip["family"]=="W600":
+    flash_page_size = 4*1024
   flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be a full page, so we're rounding up
   # F4 has different page sizes in different places
   total_flash = board.chip["flash"]*1024
@@ -222,6 +224,10 @@ elif board.chip["family"]=="ESP32":
 elif board.chip["family"]=="SAMD":
   board.chip["class"]="SAMD"
   codeOut('#include "targetlibs/samd/include/due_sam3x.init.h"')
+elif board.chip["family"]=="W600":
+  board.chip["class"]="W600"
+  codeOut('#include "wm_regs.h"')
+  exti_count = 16+32
 else:
   die('Unknown chip family '+board.chip["family"])
 

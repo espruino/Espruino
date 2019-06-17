@@ -424,6 +424,9 @@ unsigned int jshSetSystemClock(JsVar *options);
 /// Perform a proper hard-reboot of the device
 void jshReboot();
 
+/// Console setup
+void jshConsoleSetup();
+
 #if JSH_PORTV_COUNT>0
 /// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
 void jshVirtualPinInitialise();
