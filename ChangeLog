@@ -1,4 +1,27 @@
-            Fix string index calculation when using some regexes (fix #1602)
+            Allow \1..\9 escape codes in RegExp
+            ESP8266: reading storage is not working for boot from user2 (fix #1507)
+            Fix Array.fill crash if used to fill up all available memory (fix #1668)
+            Fix NRF.requestDevice regression (clearInterval error) (fix #1669)
+            Smartibot devices now advertise on BLE as 'Smartibot abcd'
+            nRF5x: Leave digital input disconnected for analog read (saves power)
+            nRF5x: Return 'analog' as pin mode for any pin where input is disconnected
+            If watchdog is on and automatic, ensure that `reset()` keeps the automatic kicking going
+            Ensure that a console stays locked even after 
+            Ensure interpreter flags (eg echo) are cleared after a `reset()`
+            nRF5x: When watchdog is on and automatic, automatically wake up often enough to service it
+            Fix Graphics.setFontBitmap on builds with no vector font (fix #1671)
+            Graphics.asBMP now takes account of bitmap rotation (fix #1672)
+            Raspberry pi pin numbering the same if using wiringPi or filesystem GPIO (fix #1673)
+            nRF52: Peer manager init errors from Nordic libs now not fatal 
+            
+     2v03 : nRF5x: Fix issue when calling NRF.setAdvertising while connected via BLE (fix #1659)
+            nRF5x: 'dump()' not outputs `NRF.setSecurity` line if it has been called.
+            Ensure that converting a valid pin to a boolean always returns true
+            clearInterval/clearTimeout/clearWatch(undefined) now throw an error asking for just clearX()
+              - this stops code accidentally clearing all timers/etc if it uses a variable that is undefined
+            Allow NRF.setAddress to work even with services defined and a connection in progress
+
+     2v02 : Fix string index calculation when using some regexes (fix #1602)
             Ensure Function.replaceWith puts scope after parameters (fix #1601)
             Ensure Graphics.* return the Graphics instance, to allow call chaining (fix #1580)
             Ensure DataView.byteOffset/byteLength is always set even if not specified (fix #1567)
@@ -39,6 +62,17 @@
             nRF52: Add setAdvertising({},{scannable:false}) for disabling scan response
             nRF52: Add note about connectable:false requiring >=100ms intervals
             STM32: Fix issue where occasionally STM32 would be ~0.2s late waking from light sleep
+            ESP8266: add Wifi.connect options channel and bssid for faster AP connects (fix #1595, #1640)
+            Fix index in E.mapInPlace and improve docs
+            nRF52: Add NRF.getSecurityStatus to allow devices to detect the current state of the connection
+            STM32F4: Add Filesystem module
+            STM32F3: Fix broken build
+            nRF52: Fix nRF52840 advertising and remove duplicated advertising code
+            Fix Software Serial receive when the frame has to be decoded inside the IRQ (fix #1654)
+            Raise software serial receive buffer to 64 bytes (from 7)
+            nRF5x: Add security options to NRF.setSecurity (courtesy of @vkolotov)
+            nRF5x: Allow Serial1.setup(...) with only TX or RX pins
+            Vector font removed from Espruino Original WIZnet build due to lack of spare flash
 
      2v01 : ESP32: update to esp-idf V3.1
             Fix issues with Class Extends

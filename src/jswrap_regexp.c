@@ -151,7 +151,7 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
     if (cH=='v') { cH=0x0B; goto haveCode; }
     if (cH=='w') return isNumeric(ch) || isAlpha(ch) || ch=='_';
     if (cH=='W') return !(isNumeric(ch) || isAlpha(ch) || ch=='_');
-    if (cH=='0') { cH=0x00; goto haveCode; }
+    if (cH>='0' && cH<='9') { cH-='0'; goto haveCode; }
     if (cH=='x' && regexp[2] && regexp[3]) {
       *length = 4;
       cH = (char)((chtod(regexp[2])<<4) | chtod(regexp[3]));

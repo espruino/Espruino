@@ -18,6 +18,10 @@
 #include "jsutils.h"
 #include "jsvar.h"
 
+#ifdef SAVE_ON_FLASH
+#define NO_VECTOR_FONT
+#endif
+
 typedef enum {
   JSGRAPHICSTYPE_ARRAYBUFFER, ///< Write everything into an ArrayBuffer
   JSGRAPHICSTYPE_JS,          ///< Call JavaScript when we want to write something
@@ -110,7 +114,7 @@ void graphicsFillEllipse(JsGraphics *gfx, short x, short y, short x2, short y2);
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str);
 void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); // may overwrite vertices...
-#ifndef SAVE_ON_FLASH
+#ifndef NO_VECTOR_FONT
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short size, char ch); ///< prints character, returns width
 unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch); ///< returns the width of a character
 #endif

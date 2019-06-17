@@ -11,6 +11,21 @@
  * Platform Specific part of Hardware interface Layer
  * ----------------------------------------------------------------------------
  */
+
+/*  S110_SoftDevice_Specification_2.0.pdf
+
+  RTC0 not usable (SoftDevice)
+  RTC1 used by app_timer.c
+  TIMER0 (32 bit) not usable (softdevice)
+  TIMER1 (16 bit on nRF51, 32 bit on nRF52) used by jshardware util timer
+  TIMER2 (16 bit) free
+  TIMER4 used for NFCT library on nRF52
+  SPI0 / TWI0 -> Espruino's SPI1 (only nRF52 - not enough flash on 51)
+  SPI1 / TWI1 -> Espruino's I2C1
+  SPI2 -> free
+
+ */
+
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -62,21 +77,157 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "softdevice_handler.h"
 #endif
 
+void WDT_IRQHandler() {
+}
+
+#ifdef NRF_USB
+#include "app_usbd_core.h"
+#include "app_usbd.h"
+#include "app_usbd_string_desc.h"
+#include "app_usbd_cdc_acm.h"
+#include "app_usbd_serial_num.h"
+#include "nrf_drv_clock.h"
+#include "nrf_drv_power.h"
+
+/**
+ * @brief Enable power USB detection
+ *
+ * Configure if example supports USB port connection
+ */
+#ifndef USBD_POWER_DETECTION
+#define USBD_POWER_DETECTION false // power detection true doesn't seem to work
+#endif
+
+static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
+                                    app_usbd_cdc_acm_user_event_t event);
+
+#define CDC_ACM_COMM_INTERFACE  0
+#define CDC_ACM_COMM_EPIN       NRF_DRV_USBD_EPIN2
+
+#define CDC_ACM_DATA_INTERFACE  1
+#define CDC_ACM_DATA_EPIN       NRF_DRV_USBD_EPIN1
+#define CDC_ACM_DATA_EPOUT      NRF_DRV_USBD_EPOUT1
+
+
+/**
+ * @brief CDC_ACM class instance
+ * */
+APP_USBD_CDC_ACM_GLOBAL_DEF(m_app_cdc_acm,
+                            cdc_acm_user_ev_handler,
+                            CDC_ACM_COMM_INTERFACE,
+                            CDC_ACM_DATA_INTERFACE,
+                            CDC_ACM_COMM_EPIN,
+                            CDC_ACM_DATA_EPIN,
+                            CDC_ACM_DATA_EPOUT,
+                            APP_USBD_CDC_COMM_PROTOCOL_AT_V250
+);
+
+static char m_rx_buffer[1]; // only seems to work with 1 at the moment
+static char m_tx_buffer[NRF_DRV_USBD_EPSIZE];
+
+/**
+ * @brief  USB connection status
+ * */
+static bool m_usb_connected = false;
+static bool m_usb_open = false;
+
+/**
+ * @brief User event handler @ref app_usbd_cdc_acm_user_ev_handler_t (headphones)
+ * */
+static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
+                                    app_usbd_cdc_acm_user_event_t event)
+{
+    app_usbd_cdc_acm_t const * p_cdc_acm = app_usbd_cdc_acm_class_get(p_inst);
+    jshHadEvent();
+
+    switch (event)
+    {
+        case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN:
+        {
+          jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN\n");
+            m_usb_open = true;
+            /*Setup first transfer*/
+            ret_code_t ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
+                                                   m_rx_buffer,
+                                                   sizeof(m_rx_buffer));
+            UNUSED_VARIABLE(ret);
+            break;
+        }
+        case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE:
+          jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE\n");
+            m_usb_open = false;
+            break;
+        case APP_USBD_CDC_ACM_USER_EVT_TX_DONE:
+            // TODO: queue extra transmit here
+            break;
+        case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
+        {
+            ret_code_t ret;
+            do
+            {
+	      /*Get amount of data transfered*/
+	      size_t size = app_usbd_cdc_acm_rx_size(p_cdc_acm);
+	      jshPushIOCharEvents(EV_USBSERIAL,  m_rx_buffer, size);
+
+
+	      /*Setup next transfer*/
+	      ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
+	                                           m_rx_buffer,
+	                                           sizeof(m_rx_buffer));
+            } while (ret == NRF_SUCCESS);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+static void usbd_user_ev_handler(app_usbd_event_type_t event)
+{
+  jshHadEvent();
+    switch (event)
+    {
+        case APP_USBD_EVT_DRV_SUSPEND:
+          jsiConsolePrintf("APP_USBD_EVT_DRV_SUSPEND\n");
+            break;
+        case APP_USBD_EVT_DRV_RESUME:
+          jsiConsolePrintf("APP_USBD_EVT_DRV_RESUME\n");
+            break;
+        case APP_USBD_EVT_STARTED:
+          jsiConsolePrintf("APP_USBD_EVT_STARTED\n");
+            break;
+        case APP_USBD_EVT_STOPPED:
+          jsiConsolePrintf("APP_USBD_EVT_STOPPED\n");
+            app_usbd_disable();
+            break;
+        case APP_USBD_EVT_POWER_DETECTED:
+            jsiConsolePrintf("APP_USBD_EVT_POWER_DETECTED\n");
+
+            if (!nrf_drv_usbd_is_enabled())
+            {
+                app_usbd_enable();
+            }
+            break;
+        case APP_USBD_EVT_POWER_REMOVED:
+            jsiConsolePrintf("APP_USBD_EVT_POWER_REMOVED\n");
+            m_usb_connected = false;
+            app_usbd_stop();            
+            break;
+        case APP_USBD_EVT_POWER_READY:
+            jsiConsolePrintf("APP_USBD_EVT_POWER_READY\n");
+            app_usbd_start();
+            m_usb_connected = true;
+            break;
+        default:
+            break;
+    }
+}
+
+#endif
+
+
 #define SYSCLK_FREQ 1048576 // 1 << 20
 #define RTC_SHIFT 5 // to get 32768 up to SYSCLK_FREQ
-
-/*  S110_SoftDevice_Specification_2.0.pdf
-
-  RTC0 not usable (SoftDevice)
-  RTC1 used by app_timer.c
-  TIMER0 (32 bit) not usable (softdevice)
-  TIMER1 (16 bit on nRF51, 32 bit on nRF52) used by jshardware util timer
-  TIMER2 (16 bit) free
-  SPI0 / TWI0 -> Espruino's SPI1 (only nRF52 - not enough flash on 51)
-  SPI1 / TWI1 -> Espruino's I2C1
-  SPI2 -> free
-
- */
 
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
@@ -135,6 +286,7 @@ void jsh_sys_evt_handler(uint32_t sys_evt) {
 
 /* SysTick interrupt Handler. */
 void SysTick_Handler(void)  {
+  // TODO: When using USB it seems this isn't called
   /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
   if (execInfo.execute & EXEC_CTRL_C_WAIT)
     execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_INTERRUPTED;
@@ -250,6 +402,8 @@ void jshResetPeripherals() {
 }
 
 void jshInit() {
+  ret_code_t err_code;
+
   memset(pinStates, 0, sizeof(pinStates));
 
   jshInitDevices();
@@ -306,14 +460,36 @@ void jshInit() {
   nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
 
   // Pin change
-  uint32_t err_code;
   nrf_drv_gpiote_init();
 #ifdef BLUETOOTH
 #if NRF_SD_BLE_API_VERSION<5
   APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
 #else
-  app_timer_init();
+  err_code = app_timer_init();
+  APP_ERROR_CHECK(err_code);
 #endif
+#ifdef NRF_USB
+  uint32_t ret;
+
+  static const app_usbd_config_t usbd_config = {
+      .ev_state_proc = usbd_user_ev_handler
+  };
+
+  app_usbd_serial_num_generate();
+
+  ret = nrf_drv_clock_init();
+  APP_ERROR_CHECK(ret);
+
+  jsiConsolePrintf("USBD init\n");
+  ret = app_usbd_init(&usbd_config);
+  APP_ERROR_CHECK(ret);
+  jsiConsolePrintf("ok\n");
+  app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&m_app_cdc_acm);
+  ret = app_usbd_class_append(class_cdc_acm);
+  APP_ERROR_CHECK(ret);
+  jsiConsolePrintf("cdc ok\n");
+#endif
+
   jsble_init();
 
   err_code = app_timer_create(&m_wakeup_timer_id,
@@ -339,6 +515,25 @@ void jshInit() {
   srand(jshGetRandomNumber());
 #endif
 
+#ifdef NRF_USB
+    if (USBD_POWER_DETECTION)
+    {
+      jsiConsolePrintf("app_usbd_power_events_enable\n");
+        ret = app_usbd_power_events_enable();
+        APP_ERROR_CHECK(ret);
+    }
+    else
+    {
+        jsiConsolePrintf("No USB power detection enabled\nStarting USB now\n");
+
+        app_usbd_enable();
+        app_usbd_start();
+    }
+
+  jsiConsolePrintf("USB init done\n");
+#endif
+
+
 #ifdef LED1_PININDEX
   jshPinOutput(LED1_PININDEX, !LED1_ONSTATE);
 #endif
@@ -356,6 +551,19 @@ void jshKill() {
 
 // stuff to do on idle
 void jshIdle() {
+#ifdef NRF_USB
+  while (app_usbd_event_queue_process()); /* Nothing to do */
+
+  int l = 0;
+  int c;
+  while ((l<sizeof(m_tx_buffer)) && ((c = jshGetCharToTransmit(EV_USBSERIAL))>=0))
+    m_tx_buffer[l++] = c;
+  if (l) {
+    // TODO: check return value?
+    // This is asynchronous call. User should wait for @ref APP_USBD_CDC_ACM_USER_EVT_TX_DONE event
+    uint32_t ret = app_usbd_cdc_acm_write(&m_app_cdc_acm, m_tx_buffer, l);
+  }
+#endif
 }
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
@@ -366,7 +574,11 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 
 // is the serial device connected?
 bool jshIsUSBSERIALConnected() {
-  return true;
+#ifdef NRF_USB
+  return m_usb_open;
+#else
+  return false;
+#endif
 }
 
 /// Hack because we *really* don't want to mess with RTC0 :)
@@ -477,9 +689,15 @@ void jshPinSetState(Pin pin, JshPinState state) {
 #endif
 
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
+#if NRF_SD_BLE_API_VERSION>5
+  NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&ipin);
+#else
+  NRF_GPIO_Type *reg = NRF_GPIO;
+#endif
   switch (state) {
     case JSHPINSTATE_UNDEFINED :
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+    case JSHPINSTATE_ADC_IN :
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
@@ -488,7 +706,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
     case JSHPINSTATE_AF_OUT :
     case JSHPINSTATE_GPIO_OUT :
     case JSHPINSTATE_USART_OUT :
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0H1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
@@ -496,7 +714,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_AF_OUT_OPENDRAIN :
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN :
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
@@ -504,14 +722,13 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_I2C :
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
-      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN :
-    case JSHPINSTATE_ADC_IN :
     case JSHPINSTATE_USART_IN :
       nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
       break;
@@ -533,16 +750,21 @@ JshPinState jshPinGetState(Pin pin) {
 #if JSH_PORTV_COUNT>0
   // handle virtual ports (eg. pins on an IO Expander)
   if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
-    return JSHPINSTATE_UNDEFINED;
+    return jshVirtualPinGetState(pin);
 #endif
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
-  uint32_t p = NRF_GPIO->PIN_CNF[ipin];
+#if NRF_SD_BLE_API_VERSION>5
+  NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&ipin);
+#else
+  NRF_GPIO_Type *reg = NRF_GPIO;
+#endif
+  uint32_t p = reg->PIN_CNF[ipin];
   bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
   if ((p&GPIO_PIN_CNF_DIR_Msk)==(GPIO_PIN_CNF_DIR_Output<<GPIO_PIN_CNF_DIR_Pos)) {
     uint32_t pinDrive = (p&GPIO_PIN_CNF_DRIVE_Msk)>>GPIO_PIN_CNF_DRIVE_Pos;
     uint32_t pinPull = (p&GPIO_PIN_CNF_PULL_Msk)>>GPIO_PIN_CNF_PULL_Pos;
     // Output
-    bool pinIsHigh = NRF_GPIO->OUT & (1<<ipin);
+    bool pinIsHigh = reg->OUT & (1<<ipin);
     if (negated) pinIsHigh = !pinIsHigh;
     JshPinState hi = pinIsHigh ? JSHPINSTATE_PIN_IS_ON : 0;
 
@@ -562,13 +784,14 @@ JshPinState jshPinGetState(Pin pin) {
         return JSHPINSTATE_GPIO_OUT|hi;
     }
   } else {
+    bool pinConnected = ((p&GPIO_PIN_CNF_INPUT_Msk)>>GPIO_PIN_CNF_INPUT_Pos) == GPIO_PIN_CNF_INPUT_Connect;
     // Input
     if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pullup<<GPIO_PIN_CNF_PULL_Pos)) {
       return negated ? JSHPINSTATE_GPIO_IN_PULLDOWN : JSHPINSTATE_GPIO_IN_PULLUP;
     } else if ((p&GPIO_PIN_CNF_PULL_Msk)==(GPIO_PIN_CNF_PULL_Pulldown<<GPIO_PIN_CNF_PULL_Pos)) {
       return negated ? JSHPINSTATE_GPIO_IN_PULLUP : JSHPINSTATE_GPIO_IN_PULLDOWN;
     } else {
-      return JSHPINSTATE_GPIO_IN;
+      return pinConnected ? JSHPINSTATE_GPIO_IN : JSHPINSTATE_ADC_IN;
     }
   }
 }
@@ -595,39 +818,48 @@ nrf_saadc_value_t nrf_analog_read() {
 
   return result;
 }
+
+JsVarFloat nrf_analog_read_pin(int channel /*0..7*/) {
+  // sanity checks for channel
+    assert(NRF_SAADC_INPUT_AIN0 == 1);
+    assert(NRF_SAADC_INPUT_AIN1 == 2);
+    assert(NRF_SAADC_INPUT_AIN2 == 3);
+
+    nrf_saadc_input_t ain = channel+1;
+    nrf_saadc_channel_config_t config;
+    config.acq_time = NRF_SAADC_ACQTIME_3US;
+    config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
+    config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
+    config.pin_p = ain;
+    config.pin_n = ain;
+    config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
+    config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
+    config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+
+    // make reading
+    nrf_saadc_enable();
+    nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
+    nrf_saadc_channel_init(0, &config);
+
+    JsVarFloat f = nrf_analog_read() / 16384.0;
+    nrf_saadc_channel_input_set(0, NRF_SAADC_INPUT_DISABLED, NRF_SAADC_INPUT_DISABLED); // give us back our pin!
+    nrf_saadc_disable();
+    return f;
+}
 #endif
 
 // Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin) {
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinGetAnalogValue(pin);
+#endif
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
   if (!jshGetPinStateIsManual(pin))
     jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 #ifdef NRF52
-  // sanity checks for channel
-  assert(NRF_SAADC_INPUT_AIN0 == 1);
-  assert(NRF_SAADC_INPUT_AIN1 == 2);
-  assert(NRF_SAADC_INPUT_AIN2 == 3);
-  nrf_saadc_input_t ain = 1 + (pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
-
-  nrf_saadc_channel_config_t config;
-  config.acq_time = NRF_SAADC_ACQTIME_3US;
-  config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
-  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
-  config.pin_p = ain;
-  config.pin_n = ain;
-  config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
-  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
-  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
-
-  // make reading
-  nrf_saadc_enable();
-  nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
-  nrf_saadc_channel_init(0, &config);
-
-  JsVarFloat f = nrf_analog_read() / 16384.0;
-  nrf_saadc_channel_input_set(0, NRF_SAADC_INPUT_DISABLED, NRF_SAADC_INPUT_DISABLED); // give us back our pin!
-  nrf_saadc_disable();
-  return f;
+  return nrf_analog_read_pin(pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
 #else
   const nrf_adc_config_t nrf_adc_config =  {
       NRF_ADC_CONFIG_RES_10BIT,
@@ -1015,7 +1247,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   nrf_uart_baudrate_t baud = (nrf_uart_baudrate_t)nrf_utils_get_baud_enum(inf->baudRate);
   if (baud==0)
     return jsError("Invalid baud rate %d", inf->baudRate);
-  if (!jshIsPinValid(inf->pinRX) || !jshIsPinValid(inf->pinTX))
+  if (!jshIsPinValid(inf->pinRX) && !jshIsPinValid(inf->pinTX))
     return jsError("Invalid RX or TX pins");
 
   if (uartInitialised) {
@@ -1025,8 +1257,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   uartIsSending = false;
 
   // APP_UART_INIT will set pins, but this ensures we know so can reset state later
-  jshPinSetFunction(inf->pinRX, JSH_USART1|JSH_USART_RX);
-  jshPinSetFunction(inf->pinTX, JSH_USART1|JSH_USART_TX);
+  if (jshIsPinValid(inf->pinRX)) jshPinSetFunction(inf->pinRX, JSH_USART1|JSH_USART_RX);
+  if (jshIsPinValid(inf->pinTX)) jshPinSetFunction(inf->pinTX, JSH_USART1|JSH_USART_TX);
 
   nrf_drv_uart_config_t config = NRF_DRV_UART_DEFAULT_CONFIG;
   config.baudrate = baud;
@@ -1035,8 +1267,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   config.parity = inf->parity ? NRF_UART_PARITY_INCLUDED : NRF_UART_PARITY_EXCLUDED;
   config.pselcts = 0xFFFFFFFF;
   config.pselrts = 0xFFFFFFFF;
-  config.pselrxd = pinInfo[inf->pinRX].pin;
-  config.pseltxd = pinInfo[inf->pinTX].pin;
+  config.pselrxd = jshIsPinValid(inf->pinRX) ? pinInfo[inf->pinRX].pin : NRF_UART_PSEL_DISCONNECTED;
+  config.pseltxd = jshIsPinValid(inf->pinTX) ? pinInfo[inf->pinTX].pin : NRF_UART_PSEL_DISCONNECTED;
   /* TODO: could check and allow *just* RX or TX. Could make sense as
    * TX won't draw any extra power when not in use */
 
@@ -1045,7 +1277,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     jsWarn("nrf_drv_uart_init failed, error %d", err_code);
   } else {
     // Turn on receiver if RX pin is connected
-    if (config.pselrxd != 0xFFFFFFFF) {
+    if (config.pselrxd != NRF_UART_PSEL_DISCONNECTED) {
       nrf_drv_uart_rx_enable(&UART0);
       uart0_startrx();
     }
@@ -1087,8 +1319,17 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M2;
   else if (inf->baudRate<((4000000+8000000)/2))
     freq = SPI_FREQUENCY_FREQUENCY_M4;
+#ifndef NRF52840
   else
     freq = SPI_FREQUENCY_FREQUENCY_M8;
+#else
+  else if (inf->baudRate<((8000000+16000000)/2))
+    freq = SPI_FREQUENCY_FREQUENCY_M8;
+  else if (inf->baudRate<((16000000+32000000)/2))
+    freq = 0x0A000000;//SPI_FREQUENCY_FREQUENCY_M16;
+  else
+    freq = 0x14000000;//SPI_FREQUENCY_FREQUENCY_M32;
+#endif
   spi_config.frequency =  freq;
   spi_config.mode = inf->spiMode;
   spi_config.bit_order = inf->spiMSB ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST;
@@ -1339,6 +1580,18 @@ bool jshSleep(JsSysTime timeUntilWake) {
    */
   if (timeUntilWake > jshGetTimeFromMilliseconds(240*1000))
     timeUntilWake = jshGetTimeFromMilliseconds(240*1000);
+
+  /* Are we set to ping the watchdog automatically? If so ensure
+   * that we always wake up often enough to ping it by ensuring
+   * we don't sleep for more than half the WDT time. */
+  if (jsiStatus&JSIS_WATCHDOG_AUTO) {
+    // actual time is CRV / 32768 seconds
+    // we just kicked watchdog (in jsinteractive.c) so aim to wake up just a little before it fires
+    JsSysTime max = jshGetTimeFromMilliseconds(NRF_WDT->CRV/34.000);
+    if (timeUntilWake > max) timeUntilWake = max;
+  }
+
+
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
 #if NRF_SD_BLE_API_VERSION<5
@@ -1357,6 +1610,9 @@ bool jshSleep(JsSysTime timeUntilWake) {
   while (!hadEvent) {
     sd_app_evt_wait(); // Go to sleep, wait to be woken up
     jshGetSystemTime(); // check for RTC overflows
+    #ifdef NRF_USB
+    while (app_usbd_event_queue_process()); /* Nothing to do */
+    #endif
   }
   hadEvent = false;
   jsiSetSleep(JSI_SLEEP_AWAKE);

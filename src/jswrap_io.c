@@ -760,14 +760,15 @@ JsVar *jswrap_interface_setWatch(
   "name" : "clearWatch",
   "generate" : "jswrap_interface_clearWatch",
   "params" : [
-    ["id","JsVar","The id returned by a previous call to setWatch"]
+    ["id","JsVarArray","The id returned by a previous call to setWatch"]
   ]
 }
 Clear the Watch that was created with setWatch. If no parameter is supplied, all watches will be removed.
- */
-void jswrap_interface_clearWatch(JsVar *idVar) {
 
-  if (jsvIsUndefined(idVar)) {
+To avoid accidentally deleting all Watches, if a parameter is supplied but is `undefined` then an Exception will be thrown.
+ */
+void jswrap_interface_clearWatch(JsVar *idVarArr) {
+  if (jsvIsUndefined(idVarArr) || jsvGetArrayLength(idVarArr)==0) {
     JsVar *watchArrayPtr = jsvLock(watchArray);
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, watchArrayPtr);
@@ -783,6 +784,11 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
     jsvRemoveAllChildren(watchArrayPtr);
     jsvUnLock(watchArrayPtr);
   } else {
+    JsVar *idVar = jsvGetArrayItem(idVarArr, 0);
+    if (jsvIsUndefined(idVar)) {
+      jsExceptionHere(JSET_ERROR, "clearWatch(undefined) not allowed. Use clearWatch() instead.");
+      return;
+    }
     JsVar *watchArrayPtr = jsvLock(watchArray);
     JsVar *watchNamePtr = jsvFindChildFromVar(watchArrayPtr, idVar, false);
     jsvUnLock(watchArrayPtr);
@@ -799,7 +805,8 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
       if (!jsiIsWatchingPin(pin))
         jshPinWatch(pin, false); // 'unwatch' pin
     } else {
-      jsExceptionHere(JSET_ERROR, "Unknown Watch");
+      jsExceptionHere(JSET_ERROR, "Unknown Watch %v", idVar);
     }
+    jsvUnLock(idVar);
   }
 }

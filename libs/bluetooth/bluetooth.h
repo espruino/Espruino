@@ -98,7 +98,7 @@ typedef enum  {
 
   BLE_IS_ADVERTISING_MULTIPLE = 32768, // We have multiple different advertising packets
   BLE_ADVERTISING_MULTIPLE_ONE = 65536,
-  BLE_ADVERTISING_MULTIPLE_SHIFT = GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_ADVERTISING_MULTIPLE_SHIFT = 16,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;
 
@@ -158,8 +158,8 @@ int jsble_exec_pending(IOEvent *event);
 void jsble_restart_softdevice();
 
 uint32_t jsble_advertising_start();
+uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen);
 void jsble_advertising_stop();
-
 
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection();
@@ -199,6 +199,9 @@ void jsble_send_hid_input_report(uint8_t *data, int length);
 
 /// Update the current security settings from the info in hiddenRoot.BLE_NAME_SECURITY
 void jsble_update_security();
+
+/// Return an object showing the security status of the given connection
+JsVar *jsble_get_security_status(uint16_t conn_handle);
 
 // ------------------------------------------------- lower-level utility fns
 

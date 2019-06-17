@@ -30,11 +30,26 @@ This class contains information about Espruino itself
 /*JSON{
   "type" : "event",
   "class" : "process",
-  "name" : "uncaughtException"
+  "name" : "uncaughtException",
+  "params" : [["exception","JsVar","The uncaught exception"]]
 }
 This event is called when an exception gets thrown and isn't caught (eg. it gets all the way back to the event loop).
 
-You can use this for logging potential problems that might occur during execution.
+You can use this for logging potential problems that might occur during execution when you
+might not be able to see what is written to the console, for example:
+
+```
+var lastError;
+process.on('uncaughtException', function(e) {
+  lastError=e;
+  print(e,e.stack?"\n"+e.stack:"")
+});
+
+function checkError() {
+  if (!lastError) return print("No Error");
+  print(lastError,lastError.stack?"\n"+lastError.stack:"")
+}
+```
 
 **Note:** When this is used, exceptions will cease to be reported on the console - which
 may make debugging difficult!
@@ -152,7 +167,7 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "gc", jsvNewFromInteger((JsVarInt)gc));
     jsvObjectSetChildAndUnLock(obj, "gctime", jsvNewFromFloat(jshGetMillisecondsFromTime(time2-time1)));
 
-#ifdef ARM
+#if defined(ARM)&&!defined(USE_OS)
     extern uint32_t LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings
     extern uint32_t LINKER_ETEXT_VAR; // end of flash text (binary) section - should be 'void', but 'int' avoids warnings
     jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));

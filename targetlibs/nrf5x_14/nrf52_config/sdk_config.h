@@ -46,6 +46,23 @@
 #ifdef USE_APP_CONFIG
 #include "app_config.h"
 #endif
+
+
+// Board-specific changes
+#ifdef NRF_USB
+#define APP_USBD_ENABLED 1
+#define APP_USBD_VID 0x1915
+#define APP_USBD_PID 0x520F
+#define APP_USBD_DEVICE_VER_MAJOR 1
+#define APP_USBD_DEVICE_VER_MINOR 0
+#define APP_USBD_EVENT_QUEUE_ENABLE 1
+#define APP_USBD_EVENT_QUEUE_SIZE 32
+#define APP_USBD_CLASS_CDC_ACM_ENABLED 1
+#define USBD_ENABLED 1
+#define POWER_ENABLED 1 
+#define SYSTICK_ENABLED 1 // for USB errata
+#endif
+
 // <h> Board Support
 
 //==========================================================
@@ -1284,7 +1301,7 @@
 
 // <o> RNG_CONFIG_POOL_SIZE - Pool size
 #ifndef RNG_CONFIG_POOL_SIZE
-#define RNG_CONFIG_POOL_SIZE 64
+#define RNG_CONFIG_POOL_SIZE 32
 #endif
 
 // <o> RNG_CONFIG_IRQ_PRIORITY  - Interrupt priority

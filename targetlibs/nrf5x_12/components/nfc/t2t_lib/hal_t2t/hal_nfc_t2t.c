@@ -153,7 +153,7 @@ static uint8_t                      m_nfc_uid[7] = {0};                         
 static uint8_t                      m_nfc_internal[T2T_INTERNAL_BYTES_NR] = {0};                  /**< Cache of internal tag memory (first 10 bytes) */
 static hal_nfc_callback_t           m_nfc_lib_callback = (hal_nfc_callback_t) NULL;               /**< Callback to nfc_lib layer */
 static void *                       m_nfc_lib_context;                                            /**< Callback execution context */
-static volatile uint8_t             m_nfc_buffer[NFC_BUFFER_SIZE]         = {0};                  /**< Buffer for NFC Rx data */
+static volatile uint8_t             m_nfc_buffer[NFC_BUFFER_SIZE] __attribute__ ((aligned(32))) = {0};                  /**< Buffer for NFC Rx data */
 static volatile bool                m_slp_req_received                    = false;                /**< Flag indicating that SLP_REQ Command was received */
 static volatile bool                m_field_on                            = false;                /**< Flag indicating that NFC Tag field is present */
 static nrf_drv_clock_handler_item_t m_clock_handler_item;                                         /**< Clock event handler item structure */
@@ -542,7 +542,7 @@ ret_code_t hal_nfc_send_rsp(const uint8_t data, size_t data_length)
     }
 
     /* Data is sent asynchronously using DMA. */
-    static uint8_t buffer[1];
+    static uint8_t buffer[1] __attribute__ ((aligned(32)));
     buffer[0] = data;
 
     /* Ignore previous TX END events, SW takes care only for data frames which tranmission is triggered in this function */

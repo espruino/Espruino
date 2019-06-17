@@ -100,6 +100,9 @@ espruino_#v##smartibot.zip
    - The firmware image for the Smartibot robot board
      See http://www.espruino.com/Smartibot for more information
 
+espruino_#v##_thingy52.hex
+   - The firmware image for Nordic Thing:52 Devices
+     See http://www.espruino.com/Thingy52 for more information
 
 
 ESP8266 / ESP32

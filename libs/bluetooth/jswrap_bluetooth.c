@@ -176,8 +176,8 @@ void jswrap_ble_init() {
 
 /** Reconfigure the softdevice (on init or after restart) to have all the services/advertising we need */
 void jswrap_ble_reconfigure_softdevice() {
-  // restart various
   JsVar *v,*o;
+  // restart various
   v = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT,0);
   if (v) jsble_set_scanning(true, false);
   jsvUnLock(v);
@@ -264,6 +264,16 @@ void jswrap_ble_dumpBluetoothInitialisation(vcbprintf_callback user_callback, vo
   if (v || o)
     cbprintf(user_callback, user_data, "NRF.setServices(%j, %j);\n",v,o);
   jsvUnLock2(v,o);
+  // security
+  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
+  if (v)
+    cbprintf(user_callback, user_data, "NRF.setSecurity(%j);\n",v);
+  jsvUnLock(v);
+  // mac address
+  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS, 0);
+  if (v)
+    cbprintf(user_callback, user_data, "NRF.setAddress(%j);\n",v);
+  jsvUnLock(v);
 }
 
 // ------------------------------------------------------------------------------
@@ -550,6 +560,8 @@ Addresses take the form:
 This may throw a `INVALID_BLE_ADDR` error if the upper two bits
 of the address don't match the address type.
 
+To change the address, Espruino must restart the softdevice. It will only do
+so when it is disconnected from other devices.
 */
 void jswrap_ble_setAddress(JsVar *address) {
 #ifdef NRF52
@@ -558,8 +570,8 @@ void jswrap_ble_setAddress(JsVar *address) {
     jsExceptionHere(JSET_ERROR, "Expecting a mac address of the form aa:bb:cc:dd:ee:ff");
     return;
   }
-  uint32_t err_code = sd_ble_gap_addr_set(&p_addr);
-  jsble_check_error(err_code);
+  jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS, address);
+  jswrap_ble_restart();
 #else
   jsExceptionHere(JSET_ERROR, "Not implemented");
 #endif
@@ -709,8 +721,7 @@ the shortest field names possible and avoid floating point values that can
 be very long when converted to a String.
 */
 void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
-  uint32_t err_code;
-  bool bleChanged = false;
+  uint32_t err_code = 0;
   bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
 
   if (jsvIsObject(options)) {
@@ -723,7 +734,6 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
       if (new_advertising_interval>0x4000) new_advertising_interval=0x4000;
       if (new_advertising_interval != bleAdvertisingInterval) {
         bleAdvertisingInterval = new_advertising_interval;
-        bleChanged = true;
       }
     }
 
@@ -731,13 +741,11 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
     if (v) {
       if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_CONNECTABLE;
       else bleStatus |= BLE_IS_NOT_CONNECTABLE;
-      bleChanged = true;
     }
     v = jsvObjectGetChild(options, "scannable", 0);
     if (v) {
       if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_SCANNABLE;
       else bleStatus |= BLE_IS_NOT_SCANNABLE;
-      bleChanged = true;
     }
 
     v = jsvObjectGetChild(options, "name", 0);
@@ -758,7 +766,6 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
 		bluetooth_setDeviceName(v);
 #endif
         jsble_check_error(err_code);
-        bleChanged = true;
       }
       jsvUnLock(v);
     }
@@ -768,14 +775,12 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
   }
 
   JsVar *advArray = 0;
-  JsVar *initialArray = 0;
 
   if (jsvIsObject(data) || jsvIsUndefined(data)) {
     // if it's an object, work out what the advertising data for it is
     advArray = jswrap_ble_getAdvertisingData(data, options);
     // if undefined, make sure we *save* undefined
     if (jsvIsUndefined(data)) {
-      initialArray = advArray;
       advArray = 0;
     }
   } else if (jsvIsArray(data)) {
@@ -807,56 +812,39 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
       // nested - enable multiple advertising - start at index 0
       if (elements>1)
         bleStatus |= BLE_IS_ADVERTISING_MULTIPLE;
-      // start with the first element
-      initialArray = jsvGetArrayItem(advArray, 0);
     }
   } else if (jsvIsArrayBuffer(data)) {
     // it's just data - no multiple advertising
     advArray = jsvLockAgain(data);
     bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
   }
-  if (!initialArray) initialArray = jsvLockAgain(advArray);
-  // failure check
-  if (!(jsvIsArray(initialArray) || jsvIsArrayBuffer(initialArray))) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
-    jsvUnLock2(advArray, initialArray);
-    return;
-  }
-  JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, initialArray);
-  if (!dPtr) {
-    jsvUnLock2(advArray, initialArray);
-    jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
-    return;
-  }
   // Save the current service data
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, advArray);
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, options);
   jsvUnLock(advArray);
   // now actually update advertising
-  if (bleChanged && isAdvertising)
+  if (isAdvertising)
     jsble_advertising_stop();
-#ifdef NRF5X
-  #if NRF_SD_BLE_API_VERSION>5
-  ble_gap_adv_data_t d;
-  memset(&d,0,sizeof(d));
-  d.adv_data.p_data = dPtr;
-  d.adv_data.len = dLen;
-  // TODO: scan_rsp_data? Does not setting this remove it?
-//FIXME  err_code = sd_ble_gap_adv_set_configure(mp_adv_handle, &d, NULL);
-  #else
-  err_code = sd_ble_gap_adv_data_set((uint8_t *)dPtr, dLen, NULL, 0);
-  #endif
-#else
-  err_code = 0xDEAD;
-  jsiConsolePrintf("FIXME\n");
-#endif
 #ifdef ESP32
   err_code = bluetooth_gap_setAdvertizing(advArray);
 #endif
-  jsvUnLock(initialArray);
   jsble_check_error(err_code);
-  if (bleChanged && isAdvertising)
-    jsble_check_error(jsble_advertising_start());
+  if (isAdvertising)
+    jsble_check_error(jsble_advertising_start()); // sets up advertising data again
+}
+
+/// Used by bluetooth.c internally when it needs to set up advertising at first
+JsVar *jswrap_ble_getCurrentAdvertisingData() {
+  JsVar *adv = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
+  if (!adv) adv = jswrap_ble_getAdvertisingData(NULL, NULL); // use the defaults
+  else {
+    if (bleStatus&BLE_IS_ADVERTISING_MULTIPLE) {
+      JsVar *v = jsvGetArrayItem(adv, 0);
+      jsvUnLock(adv);
+      adv = v;
+    }
+  }
+  return adv;
 }
 
 /*JSON{
@@ -1078,7 +1066,21 @@ NRF.setServices({
       writable : true,   // optional, default is false
       notify : true,   // optional, default is false
       indicate : true,   // optional, default is false
-      description: "My Characteristic",  // optional, default is null
+      description: "My Characteristic",  // optional, default is null,
+      security: { // optional
+        read: { // optional
+          encrypted: false, // optional, default is false
+          mitm: false, // optional, default is false
+          lesc: false, // optional, default is false
+          signed: false // optional, default is false
+        },
+        write: { // optional
+          encrypted: true, // optional, default is false
+          mitm: false, // optional, default is false
+          lesc: false, // optional, default is false
+          signed: false // optional, default is false
+        }
+      },
       onWrite : function(evt) { // optional
         console.log("Got ", evt.data); // an ArrayBuffer
       }
@@ -1138,6 +1140,9 @@ no device connected to it as it requires a restart of the Bluetooth stack.
 NRF Connect may incorrectly display the old services even after you 
 have modified them. To fix this, disable and re-enable Bluetooth on your
 iOS device, or use an Android device to run NRF Connect.
+
+**Note:** Not all combinations of security configuration values are valid, the valid combinations are: encrypted,
+encrypted + mitm, lesc, signed, signed + mitm.
 */
 void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   if (!(jsvIsObject(data) || jsvIsUndefined(data))) {
@@ -2316,7 +2321,9 @@ void jswrap_ble_requestDevice_scan(JsVar *device) {
     return;
   // We know the device matches because setScan would have checked for us
   jswrap_ble_setScan(0,0); // stop scanning
-  jswrap_interface_clearTimeout(bleTaskInfo /*the timeout*/); // cancel the timeout
+  JsVar *argArr = jsvNewArray(&bleTaskInfo, 1);
+  jswrap_interface_clearTimeout(argArr /*the timeout*/); // cancel the timeout
+  jsvUnLock(argArr);
   bleCompleteTaskSuccess(BLETASK_REQUEST_DEVICE, device);
 }
 #endif
@@ -2551,6 +2558,33 @@ void jswrap_ble_setSecurity(JsVar *options) {
   }
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "getSecurityStatus",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_ble_getSecurityStatus",
+    "return" : ["JsVar", "An object" ]
+}
+Return an object with information about the security
+state of the current peripheral connection:
+
+```
+{
+  connected       // The connection is active (not disconnected).
+  encrypted       // Communication on this link is encrypted.
+  mitm_protected  // The encrypted communication is also protected against man-in-the-middle attacks.
+  bonded          // The peer is bonded with us
+}
+```
+
+If there is no active connection, `{connected:false}` will be returned.
+
+See `NRF.setSecurity` for information about negotiating a secure connection.
+*/
+JsVar *jswrap_ble_getSecurityStatus(JsVar *parent) {
+  return jsble_get_security_status(m_peripheral_conn_handle);
+}
 
 /*JSON{
   "type" : "class",
@@ -2895,7 +2929,7 @@ specifically for Puck.js.
 */
 JsVar *jswrap_ble_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
-  return jsble_central_getSecurityStatus();
+  return jsble_get_security_status(m_central_conn_handle);
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;

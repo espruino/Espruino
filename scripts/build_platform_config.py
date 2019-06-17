@@ -95,6 +95,8 @@ else: # NOT LINUX
     flash_page_size = 4*1024
   if board.chip["family"]=="STM32L4":
     flash_page_size = 128*1024
+  if board.chip["family"]=="W600":
+    flash_page_size = 4*1024
   flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be a full page, so we're rounding up
   # F4 has different page sizes in different places
   total_flash = board.chip["flash"]*1024
@@ -222,6 +224,10 @@ elif board.chip["family"]=="ESP32":
 elif board.chip["family"]=="SAMD":
   board.chip["class"]="SAMD"
   codeOut('#include "targetlibs/samd/include/due_sam3x.init.h"')
+elif board.chip["family"]=="W600":
+  board.chip["class"]="W600"
+  codeOut('#include "wm_regs.h"')
+  exti_count = 16+32
 else:
   die('Unknown chip family '+board.chip["family"])
 
@@ -355,6 +361,15 @@ if "USB" in board.devices:
   if "pin_vsense" in board.devices["USB"]: codeOutDevicePin("USB", "pin_vsense", "USB_VSENSE_PIN")
 
 if "LCD" in board.devices:
+  codeOut("#define LCD_CONTROLLER_"+board.devices["LCD"]["controller"].upper())
+  if "width" in board.devices["LCD"]:
+    codeOut("#define LCD_WIDTH "+str(board.devices["LCD"]["width"]))
+  if "height" in board.devices["LCD"]:
+    codeOut("#define LCD_HEIGHT "+str(board.devices["LCD"]["height"]))
+  if "bpp" in board.devices["LCD"]:
+    codeOut("#define LCD_BPP "+str(board.devices["LCD"]["bpp"]))
+  if "pin_bl" in board.devices["LCD"]:
+    codeOutDevicePin("LCD", "pin_bl", "LCD_BL")
   if board.devices["LCD"]["controller"]=="fsmc":
     for i in range(0,16):
       codeOutDevicePin("LCD", "pin_d"+str(i), "LCD_FSMC_D"+str(i))
@@ -365,14 +380,14 @@ if "LCD" in board.devices:
       codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
     if "pin_reset" in board.devices["LCD"]:
       codeOutDevicePin("LCD", "pin_reset", "LCD_RESET")
-    if "pin_bl" in board.devices["LCD"]:
-      codeOutDevicePin("LCD", "pin_bl", "LCD_BL")
-  if board.devices["LCD"]["controller"]=="ssd1306" or board.devices["LCD"]["controller"]=="st7567":
+  if board.devices["LCD"]["controller"]=="ssd1306" or board.devices["LCD"]["controller"]=="st7567" or board.devices["LCD"]["controller"]=="st7789v":
     codeOutDevicePin("LCD", "pin_mosi", "LCD_SPI_MOSI")
     codeOutDevicePin("LCD", "pin_sck", "LCD_SPI_SCK")
     codeOutDevicePin("LCD", "pin_cs", "LCD_SPI_CS")
     codeOutDevicePin("LCD", "pin_dc", "LCD_SPI_DC")
     codeOutDevicePin("LCD", "pin_rst", "LCD_SPI_RST")
+  if "pin_bl" in board.devices["LCD"]:
+    codeOutDevicePin("LCD", "pin_bl", "LCD_BL")
 
 if "SD" in board.devices:
   if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD

@@ -1853,6 +1853,8 @@ void jsvSetInteger(JsVar *v, JsVarInt value) {
 bool jsvGetBool(const JsVar *v) {
   if (jsvIsString(v))
     return jsvGetStringLength((JsVar*)v)!=0;
+  if (jsvIsPin(v))
+    return jshIsPinValid(jshGetPinFromVar((JsVar*)v));
   if (jsvIsFunction(v) || jsvIsArray(v) || jsvIsObject(v) || jsvIsArrayBuffer(v))
     return true;
   if (jsvIsFloat(v)) {
@@ -3036,7 +3038,8 @@ void jsvSetArrayItem(JsVar *arr, JsVarInt index, JsVar *item) {
     jsvSetValueOfName(indexVar, item);
   } else {
     indexVar = jsvMakeIntoVariableName(jsvNewFromInteger(index), item);
-    jsvAddName(arr, indexVar);
+    if (indexVar) // could be out of memory
+      jsvAddName(arr, indexVar);
   }
   jsvUnLock(indexVar);
 }

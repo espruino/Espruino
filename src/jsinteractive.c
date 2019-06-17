@@ -497,6 +497,13 @@ void jsiSoftInit(bool hasBeenReset) {
     jsvUnLock(watchArrayPtr);
   }
 
+  // Console Setup
+  #if defined(W600)
+    if(consoleDevice==DEFAULT_CONSOLE_DEVICE){
+      jshConsoleSetup();
+    }
+  #endif
+
   // Timers are stored by time in the future now, so no need
   // to fiddle with them.
 
@@ -777,7 +784,7 @@ void jsiSemiInit(bool autoLoad) {
   // Set state
   interruptedDuringEvent = false;
   // Set defaults
-  jsiStatus &= ~JSIS_SOFTINIT_MASK;
+  jsiStatus &= JSIS_SOFTINIT_MASK;
 #ifndef SAVE_ON_FLASH
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 #endif
@@ -827,7 +834,7 @@ void jsiSemiInit(bool autoLoad) {
           "|  __|_ -| . |  _| | | |   | . |\n"
           "|____|___|  _|_| |___|_|_|_|___|\n"
           "         |_| espruino.com\n"
-          " "JS_VERSION" (c) 2018 G.Williams\n"
+          " "JS_VERSION" (c) 2019 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
 #if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS)

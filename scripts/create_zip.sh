@@ -24,6 +24,8 @@ rm -rf $ZIPDIR
 mkdir $ZIPDIR
 
 # Tidy up
+# Binaries
+rm -f bootloader_espruino_$VERSION* espruino_$VERSION*
 # ESP8266
 rm -rf esp_iot_sdk_v2.0.0*
 rm -rf xtensa-lx106-elf
@@ -42,7 +44,7 @@ echo ------------------------------------------------------
 # The following have been removed because it's too hard to keep the build going:
 # STM32F3DISCOVERY OLIMEXINO_STM32 HYSTM32_32
 # 
-for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_WIZ  PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINOWIFI PUCKJS PIXLJS MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY HYSTM32_24 HYSTM32_28  RASPBERRYPI MICROBIT ESP8266_BOARD ESP8266_4MB RUUVITAG ESP32 WIO_LTE RAK8211 RAK8212 SMARTIBOT
+for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_WIZ  PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINOWIFI PUCKJS PIXLJS MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY HYSTM32_24 HYSTM32_28  RASPBERRYPI MICROBIT ESP8266_BOARD ESP8266_4MB RUUVITAG ESP32 WIO_LTE RAK8211 RAK8212 SMARTIBOT THINGY52
 do
   echo ------------------------------
   echo                  $BOARDNAME
@@ -55,7 +57,7 @@ do
   fi
   if [ "$BOARDNAME" == "ESPRUINO_1V3_WIZ" ]; then
     BOARDNAME=ESPRUINOBOARD
-    EXTRADEFS="WIZNET=1 USE_CRYPTO=0"
+    EXTRADEFS="WIZNET=1 USE_CRYPTO=0 DEFINES=-DNO_VECTOR_FONT=1"
     # we must now disable crypto in order to get WIZnet support in on the Original board
     EXTRANAME=_wiznet
   fi
@@ -80,13 +82,21 @@ do
     ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
     EXTRADEFS=DFU_UPDATE_BUILD=1
   fi
+  if [ "$BOARDNAME" == "SMARTIBOT" ]; then
+    ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+    EXTRADEFS=DFU_UPDATE_BUILD=1
+  fi
   if [ "$BOARDNAME" == "MDBT42Q" ]; then
     ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
     EXTRADEFS=DFU_UPDATE_BUILD=1
   fi
   if [ "$BOARDNAME" == "RUUVITAG" ]; then
-    ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
-    EXTRADEFS=DFU_UPDATE_BUILD=1
+    ESP_BINARY2_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+    EXTRADEFS=DFU_UPDATE_BUILD_WITH_HEX=1
+  fi
+  if [ "$BOARDNAME" == "THINGY52" ]; then
+    ESP_BINARY2_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+    EXTRADEFS=DFU_UPDATE_BUILD_WITH_HEX=1
   fi
 
   echo "Building $ESP_BINARY_NAME"
@@ -126,6 +136,11 @@ do
       tar -C $ZIPDIR -xzf  `basename $ESP_BINARY_NAME .bin`.tgz || { echo "Build of $BOARDNAME failed" ; exit 1; }
     fi
   fi
+  # Copy second binary
+  if [ -n "$ESP_BINARY2_NAME" ]; then
+    cp ${ESP_BINARY2_NAME} $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+  fi
+
 done
 
 

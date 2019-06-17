@@ -64,6 +64,7 @@ INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS?=
 DEFINES?=
 CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -g
+CFLAGS+=-Wno-expansion-to-defined # remove warnings created by Nordic's libs
 LDFLAGS?=-Winline -g
 OPTIMIZEFLAGS?=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
@@ -144,7 +145,7 @@ ifeq ($(BOARD),)
 endif
 
 ifeq ($(BOARD),RASPBERRYPI)
- ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
+ ifneq ("$(wildcard /usr/include/wiringPi.h)","")
  USE_WIRINGPI=1
  else
  DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
@@ -191,6 +192,8 @@ else ifdef EMW3165
 USE_WICED=1
 else ifdef CC3000
 USE_CC3000=1
+else ifeq ($(FAMILY),W600)
+USE_W600=1
 endif
 endif
 endif
@@ -295,8 +298,10 @@ else
 
 ifneq ($(FAMILY),ESP8266)
 # If we have enough flash, include the debugger
-# ESP8266 can't do it because it expects tasks to finish within set time
+# ESP8266,W600 can't do it because it expects tasks to finish within set time
+ifneq ($(FAMILY),W600)
 DEFINES+=-DUSE_DEBUGGER
+endif
 endif
 # Use use tab complete
 DEFINES+=-DUSE_TAB_COMPLETE
@@ -507,6 +512,15 @@ ifeq ($(USE_NET),1)
  libs/network/esp8266/ota.c
  endif
 
+ ifdef USE_W600
+  DEFINES += -DUSE_W600
+  INCLUDE += -I$(ROOT)/libs/network/W600
+  WRAPPERSOURCES += libs/network/jswrap_wifi.c \
+                    libs/network/w600/jswrap_w600_network.c
+  
+  SOURCES += libs/network/w600/network_w600.c
+ endif
+
  ifdef USE_TELNET
   DEFINES += -DUSE_TELNET
   WRAPPERSOURCES += libs/network/telnet/jswrap_telnet.c
@@ -533,7 +547,6 @@ endif
 ifeq ($(USE_WIRINGPI),1)
   DEFINES += -DUSE_WIRINGPI
   LIBS += -lwiringPi
-  INCLUDE += -I/usr/local/include -L/usr/local/lib
 endif
 
 ifeq ($(USE_BLUETOOTH),1)
@@ -738,6 +751,8 @@ else ifdef ESP32
 include make/targets/ESP32.make
 else ifdef ESP8266
 include make/targets/ESP8266.make
+else ifdef W600
+include make/targets/W600.make
 else # ARM/etc, so generate bin, etc ---------------------------
 include make/targets/ARM.make
 endif	    # ---------------------------------------------------
