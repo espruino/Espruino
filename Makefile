@@ -145,7 +145,7 @@ ifeq ($(BOARD),)
 endif
 
 ifeq ($(BOARD),RASPBERRYPI)
- ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
+ ifneq ("$(wildcard /usr/include/wiringPi.h)","")
  USE_WIRINGPI=1
  else
  DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
@@ -534,7 +534,6 @@ endif
 ifeq ($(USE_WIRINGPI),1)
   DEFINES += -DUSE_WIRINGPI
   LIBS += -lwiringPi
-  INCLUDE += -I/usr/local/include -L/usr/local/lib
 endif
 
 ifeq ($(USE_BLUETOOTH),1)
