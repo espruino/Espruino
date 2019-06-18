@@ -119,7 +119,7 @@ SECTIONS
     *(.xt_except_desc_end)
     *(.dynamic)
     *(.gnu.version_d)
-    . = ALIGN(4);		/* this table MUST be 4-byte aligned */
+    . = ALIGN(4);   /* this table MUST be 4-byte aligned */
     _bss_table_start = ABSOLUTE(.);
     LONG(_bss_start)
     LONG(_bss_end)
@@ -150,6 +150,31 @@ SECTIONS
 /*    _stack_sentry = ALIGN(0x8); */
   } >dram0_0_seg :dram0_0_bss_phdr
 /* __stack = 0x3ffc8000; */
+
+  .irom0.text : ALIGN(4)
+  {
+    _irom0_text_start = ABSOLUTE(.);
+
+    *libat.a:(.literal.* .text.*)
+    *libcrypto.a:(.literal.* .text.*)
+    *libespnow.a:(.literal.* .text.*)
+    *libjson.a:(.literal.* .text.*)
+    *liblwip.a:(.literal.* .text.*)
+    *libnet80211.a:(.literal.* .text.*)
+    *libsmartconfig.a:(.literal.* .text.*)
+    *libssl.a:(.literal.* .text.*)
+    *libupgrade.a:(.literal.* .text.*)
+    *libwpa.a:(.literal.* .text.*)
+    *libwpa2.a:(.literal.* .text.*)
+    *libwps.a:(.literal.* .text.*)
+
+    *libmbedtls.a:(.literal.* .text.*)
+
+    *libm.a:(.literal .text .literal.* .text.*)
+
+    *(.irom0.literal .irom.literal .irom.literal2 .irom.text.literal .irom0.text .irom.text)
+    _irom0_text_end = ABSOLUTE(.);
+  } >irom0_0_seg :irom0_0_phdr
 
   .text : ALIGN(4)
   {
@@ -199,18 +224,8 @@ SECTIONS
     _lit4_end = ABSOLUTE(.);
   } >iram1_0_seg :iram1_0_phdr
 
-  .irom0.text : ALIGN(4)
-  {
-    _irom0_text_start = ABSOLUTE(.);
-    *(.irom0.literal .irom.literal .irom.literal2 .irom.text.literal .irom0.text .irom.text)
-    _irom0_text_end = ABSOLUTE(.);
-  } >irom0_0_seg :irom0_0_phdr
-
-  bigflash_free_size = (0x100000 - 0x1010 - SIZEOF(.irom0.text) - 8 - SIZEOF(.data) - 8 - SIZEOF(.rodata) - 8 - SIZEOF(.text) - 32) & 0xff000;
-  _bigflash_free_start = 0x100000 - bigflash_free_size;
-  _bigflash_free_end = _bigflash_free_start + bigflash_free_size;
-
 }
 
 /* get ROM code address */
 INCLUDE "../ld/eagle.rom.addr.v6.ld"
+
