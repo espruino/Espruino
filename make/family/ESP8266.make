@@ -82,12 +82,14 @@ LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
 -nostdlib \
 -Wl,--no-check-sections \
 -u call_user_start \
--Wl,-static
+-Wl,-static \
+-Wl,--wrap=_xtos_set_exception_handler
 
 # Extra source files specific to the ESP8266
 SOURCES += targets/esp8266/uart.c \
 	targets/esp8266/spi.c \
 	targets/esp8266/user_main.c \
+	targets/esp8266/user_exceptions.c \
 	targets/esp8266/log.c \
 	targets/esp8266/jshardware.c \
 	targets/esp8266/i2c_master.c \

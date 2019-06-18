@@ -30,6 +30,7 @@ typedef long long int64_t;
 #include <ota.h>
 #include <log.h>
 #include "ESP8266_board.h"
+#include "user_exceptions.h"
 
 // --- Constants
 // The size of the task queue
@@ -293,7 +294,10 @@ user_rf_cal_sector_set(void) {
  * The main entry point in an ESP8266 application.
  * It is where the logic of ESP8266 starts.
  */
-void user_init() {
+void CALLED_FROM_INTERRUPT user_init() {
+
+  __real__xtos_set_exception_handler( EXCCAUSE_LOAD_STORE_ERROR, load_non_32_wide_handler );
+  
   system_timer_reinit(); // use microsecond os_timer_*
 
   user_uart_init();
