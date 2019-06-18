@@ -10,10 +10,10 @@ tag header, holding UID and BCC.
  .../nrf5x/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h   |  1 +
  2 files changed, 14 insertions(+), 3 deletions(-)
 
-diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+diff --git a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 index 1235e1d6..ca8b5cbf 100644
---- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
-+++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+--- a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
++++ b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 @@ -44,7 +44,6 @@
  #include "hal_nfc_t2t.h"
  #include <stdint.h>
@@ -65,10 +65,10 @@ index 1235e1d6..ca8b5cbf 100644
  
      return NRF_SUCCESS;
  }
-diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
+diff --git a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
 index 9f6fc527..3ee968aa 100644
---- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
-+++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
+--- a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
++++ b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
 @@ -76,6 +76,7 @@ typedef enum {
                                              To use default NFCID1 of specific length pass one byte containing requested length.
                                              Default 7-byte NFCID1 will be used if this parameter was not set. This parameter can be

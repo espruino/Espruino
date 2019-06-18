@@ -773,12 +773,13 @@ Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmapped Font
 }
 Make subsequent calls to `drawString` use a Vector Font of the given height
 */
-JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
+JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 #ifdef NO_VECTOR_FONT
-  jsExceptionHere(JSET_ERROR, "No vector font in this build");
+  if (isVectorFont)
+    jsExceptionHere(JSET_ERROR, "No vector font in this build");
 #else
-  if (checkValid) {
+  if (isVectorFont) {
     if (size<1) size=1;
     if (size>1023) size=1023;
   }
@@ -1471,10 +1472,12 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
     jsExceptionHere(JSET_ERROR, "asBMP/asURL only works on 1bpp/24bpp Graphics");
     return 0;
   }
-  int rowstride = (((gfx.data.width*gfx.data.bpp)+31) >> 5) << 2; // padded to 32 bits
+  int width = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
+  int height = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
+  int rowstride = (((width*gfx.data.bpp)+31) >> 5) << 2; // padded to 32 bits
   bool hasPalette = gfx.data.bpp==1;
   int headerLen = 14+ 12+ (hasPalette?6:0);
-  int l = headerLen + gfx.data.height*rowstride;
+  int l = headerLen + height*rowstride;
   JsVar *imgData = jsvNewFlatStringOfLength((unsigned)l);
   if (!imgData) return 0; // not enough memory
   unsigned char *imgPtr = (unsigned char *)jsvGetFlatStringPointer(imgData);
@@ -1485,10 +1488,10 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   imgPtr[10]=(unsigned char)headerLen;
   // BITMAPCOREHEADER
   imgPtr[14]=12; // sizeof(BITMAPCOREHEADER)
-  imgPtr[18]=(unsigned char)gfx.data.width;
-  imgPtr[19]=(unsigned char)(gfx.data.width>>8);
-  imgPtr[20]=(unsigned char)gfx.data.height;
-  imgPtr[21]=(unsigned char)(gfx.data.height>>8);
+  imgPtr[18]=(unsigned char)width;
+  imgPtr[19]=(unsigned char)(width>>8);
+  imgPtr[20]=(unsigned char)height;
+  imgPtr[21]=(unsigned char)(height>>8);
   imgPtr[22]=1;
   imgPtr[24]=(unsigned char)gfx.data.bpp; // bpp
   if (hasPalette) {
@@ -1496,10 +1499,10 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
     imgPtr[27]=255;
     imgPtr[28]=255;
   }
-  for (int y=0;y<gfx.data.height;y++) {
-    int yi = gfx.data.height-(y+1);
+  for (int y=0;y<height;y++) {
+    int yi = height-(y+1);
     if (gfx.data.bpp==1) {
-      for (int x=0;x<gfx.data.width;) {
+      for (int x=0;x<width;) {
         unsigned int b = 0;
         for (int i=0;i<8;i++) {
           b = (b<<1)|(graphicsGetPixel(&gfx, (short)(x++), (short)y)&1);
@@ -1507,7 +1510,7 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
         imgPtr[headerLen + (yi*rowstride) + (x>>3) - 1] = (unsigned char)b;
       }
     } else {
-      for (int x=0;x<gfx.data.width;x++) {
+      for (int x=0;x<width;x++) {
         unsigned int c = graphicsGetPixel(&gfx, (short)x, (short)y);
         int i = headerLen + (yi*rowstride) + (x*(gfx.data.bpp>>3));
         imgPtr[i++] = (unsigned char)(c);

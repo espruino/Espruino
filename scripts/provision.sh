@@ -131,10 +131,15 @@ fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_NRF52" = "1" ]; then
     echo ===== NRF52
+    if ! type pip 2> /dev/null > /dev/null; then
+      echo Installing python and pip
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python-pip
+    fi
     if ! type nrfutil 2> /dev/null > /dev/null; then
       echo Installing nrfutil
-      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python-pip
-      sudo pip -q install nrfutil
+      sudo pip install --ignore-installed nrfutil
+      # --ignore-installed is used because pip 10 fails because PyYAML was already installed by the system
+      # -q can be used to silence the above
     fi
     ARM=1
 fi

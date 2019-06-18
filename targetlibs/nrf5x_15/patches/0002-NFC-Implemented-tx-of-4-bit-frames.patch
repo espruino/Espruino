@@ -10,10 +10,10 @@ commands require support for 4 bit frames w/o CRC
  .../components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h   | 10 +++++
  2 files changed, 51 insertions(+), 5 deletions(-)
 
-diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+diff --git a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 index ca8b5cbf..350577e9 100644
---- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
-+++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+--- a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
++++ b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 @@ -612,11 +612,47 @@ ret_code_t hal_nfc_send(const uint8_t * p_data, size_t data_length)
      /* Ignore previous TX END events, SW takes care only for data frames which tranmission is triggered in this function */
      nrf_nfct_event_clear(&NRF_NFCT->EVENTS_TXFRAMEEND);
@@ -67,10 +67,10 @@ index ca8b5cbf..350577e9 100644
  
      NRF_LOG_INFO("Send");
      return NRF_SUCCESS;
-diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
+diff --git a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
 index 3ee968aa..64ff3172 100644
---- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
-+++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
+--- a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
++++ b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
 @@ -175,6 +175,16 @@ ret_code_t hal_nfc_start(void);
  ret_code_t hal_nfc_send(const uint8_t * p_data, size_t data_length);
  
