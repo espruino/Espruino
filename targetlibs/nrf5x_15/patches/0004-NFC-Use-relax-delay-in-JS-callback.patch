@@ -11,13 +11,13 @@ commands but requires timely responses on link
 layer requests. This should be guarantied with
 this selective timing configuration.
 ---
- targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c | 6 ++++++
+ targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c | 6 ++++++
  1 file changed, 6 insertions(+)
 
-diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+diff --git a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 index 81883b0a..8beb2d12 100755
---- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
-+++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+--- a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
++++ b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 @@ -712,6 +712,9 @@ void NFCT_IRQHandler(void)
                                   NFCT_RXD_AMOUNT_RXDATABYTES_Pos) - NFC_CRC_SIZE;
          nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXFRAMEEND);

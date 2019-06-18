@@ -6,14 +6,14 @@ Subject: [PATCH 3/7] NFC: Whitelist all commands
 ---
  .../components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c   | 39 +++++++++++-----------
  1 file changed, 19 insertions(+), 20 deletions(-)
- mode change 100644 => 100755 targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+ mode change 100644 => 100755 targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 
-diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+diff --git a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 old mode 100644
 new mode 100755
 index 350577e9..81883b0a
---- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
-+++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+--- a/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
++++ b/targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 @@ -118,8 +118,7 @@ NRF_LOG_MODULE_REGISTER();
  #define NFCID1_DEFAULT_LENGHT       NFCID1_DOUBLE_SIZE                          /**< Length of NFCID1 if user does not provide one */
  #define NFCID1_MAX_LENGHT           NFCID1_TRIPLE_SIZE                          /**< Maximum length of NFCID1 */
