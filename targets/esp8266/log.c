@@ -74,7 +74,8 @@ static void log_write_char(char c) {
   // log timestamp
   if (log_newline) {
     char buff[16];
-    int l = os_sprintf(buff, "%6d> ", (system_get_time()/1000)%1000000);
+    FLASH_STR(fmt,"%6d> ");
+    int l = espruino_snprintf(buff, sizeof(buff), fmt, (system_get_time()/1000)%1000000);
     if (log_mode > LOG_MODE_MEM)
       for (int i=0; i<l; i++) uart_write_char(buff[i]);
 #if LOG_TS

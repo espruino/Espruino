@@ -70,6 +70,7 @@ typedef long long int64_t;
 #include "network_esp8266.h"
 #include "jswrap_net.h"
 #include "jswrap_storage.h"
+#include "jsutils.h"
 
 //#define jsvUnLock(v) do { os_printf("Unlock %s @%d\n", __STRING(v), __LINE__); jsvUnLock(v); } while(0)
 
@@ -210,7 +211,7 @@ static char *wifiConn[] = {
   "off", "connecting", "bad_password", "no_ap_found", "connect_failed", "connected"
 };
 
-static char macFmt[] = "%02x:%02x:%02x:%02x:%02x:%02x";
+FLASH_STR(macFmt,"%02x:%02x:%02x:%02x:%02x:%02x");
 
 //===== This file contains definitions for two classes: ESP8266 and wifi
 
@@ -829,9 +830,7 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
       jsvObjectSetChildAndUnLock(jsSta, "ip",
         networkGetAddressAsString((uint8_t *)&station->ip.addr, 4, 10, '.'));
       char macAddrString[6*3 + 1];
-      os_sprintf(macAddrString, macFmt,
-        station->bssid[0], station->bssid[1], station->bssid[2],
-        station->bssid[3], station->bssid[4], station->bssid[5]);
+      espruino_snprintf(macAddrString, sizeof(macAddrString), macFmt, MAC2STR(station->bssid));
       jsvObjectSetChildAndUnLock(jsSta, "mac", jsvNewFromString(macAddrString));
       jsvArrayPush(jsArray, jsSta);
       jsvUnLock(jsSta);
@@ -1018,8 +1017,7 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
   uint8 macAddr[6];
   wifi_get_macaddr(interface, macAddr);
   char macAddrString[6*3 + 1];
-  os_sprintf(macAddrString, macFmt,
-    macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
+  espruino_snprintf(macAddrString, sizeof(macAddrString), macFmt, MAC2STR(macAddr));
   jsvObjectSetChildAndUnLock(jsIpInfo, "mac", jsvNewFromString(macAddrString));
 
   // Schedule callback if a function was provided
@@ -1521,9 +1519,7 @@ static void scanCB(void *arg, STATUS status) {
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "ssid", jsvNewFromString(ssid));
 
     char macAddrString[6*3 + 1];
-    os_sprintf(macAddrString, macFmt,
-      bssInfo->bssid[0], bssInfo->bssid[1], bssInfo->bssid[2],
-      bssInfo->bssid[3], bssInfo->bssid[4], bssInfo->bssid[5]);
+    espruino_snprintf(macAddrString, sizeof(macAddrString), macFmt, MAC2STR(bssInfo->bssid));
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "mac", jsvNewFromString(macAddrString));
 
     // Add the new record to the array
@@ -1611,7 +1607,7 @@ static void wifiEventHandler(System_Event_t *evt) {
     jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
     // bssid = mac address
     mac = evt->event_info.connected.bssid;
-    os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    espruino_snprintf(macAddrString, sizeof(macAddrString), macFmt, MAC2STR(mac));
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
     // channel
     jsvObjectSetChildAndUnLock(jsDetails, "channel",
@@ -1669,7 +1665,7 @@ static void wifiEventHandler(System_Event_t *evt) {
     jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
     // bssid = mac address
     mac = evt->event_info.connected.bssid;
-    os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    espruino_snprintf(macAddrString, sizeof(macAddrString), macFmt, MAC2STR(mac));
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
     jsvObjectSetChildAndUnLock(jsDetails, "reason", jsvNewFromString(reason));
     sendWifiEvent(evt->event, jsDetails);
@@ -1726,7 +1722,7 @@ static void wifiEventHandler(System_Event_t *evt) {
       MAC2STR(evt->event_info.sta_connected.mac), evt->event_info.sta_connected.aid);
     // "on" event callback
     mac = evt->event_info.sta_connected.mac;
-    os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    espruino_snprintf(macAddrString, sizeof(macAddrString), macFmt, MAC2STR(mac));
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
     sendWifiEvent(evt->event, jsDetails);
     break;
@@ -1736,7 +1732,7 @@ static void wifiEventHandler(System_Event_t *evt) {
       MAC2STR(evt->event_info.sta_disconnected.mac), evt->event_info.sta_disconnected.aid);
     // "on" event callback
     mac = evt->event_info.sta_disconnected.mac;
-    os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    espruino_snprintf(macAddrString, sizeof(macAddrString), macFmt, MAC2STR(mac));
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
     sendWifiEvent(evt->event, jsDetails);
     break;
@@ -1749,7 +1745,7 @@ static void wifiEventHandler(System_Event_t *evt) {
     if (rssi > 0) rssi = 0;
     jsvObjectSetChildAndUnLock(jsDetails, "rssi", jsvNewFromInteger(rssi));
     mac = evt->event_info.ap_probereqrecved.mac;
-    os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    espruino_snprintf(macAddrString, sizeof(macAddrString), macFmt, MAC2STR(mac));
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
     sendWifiEvent(evt->event, jsDetails);
     break;

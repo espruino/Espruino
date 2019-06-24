@@ -820,6 +820,7 @@ void espruino_snprintf_cb(const char *str, void *userdata) {
 }
 
 /// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
+#ifndef USE_FLASH_MEMORY
 int espruino_snprintf( char * s, size_t n, const char * fmt, ... ) {
   espruino_snprintf_data d;
   d.outPtr = s;
@@ -836,6 +837,28 @@ int espruino_snprintf( char * s, size_t n, const char * fmt, ... ) {
 
   return (int)d.idx;
 }
+#else
+int espruino_snprintf_flash( char * s, size_t n, const char * fmt, ... ) {
+  espruino_snprintf_data d;
+  d.outPtr = s;
+  d.idx = 0;
+  d.len = n;
+
+  size_t len = flash_strlen(fmt);
+  char _fmt[len+1];
+  flash_strncpy(_fmt, fmt, len+1);
+
+  va_list argp;
+  va_start(argp, _fmt);
+  vcbprintf(espruino_snprintf_cb,&d, _fmt, argp);
+  va_end(argp);
+
+  if (d.idx < d.len) d.outPtr[d.idx] = 0;
+  else d.outPtr[d.len-1] = 0;
+
+  return (int)d.idx;
+}
+#endif
 
 #ifdef ARM
 extern uint32_t LINKER_END_VAR; // should be 'void', but 'int' avoids warnings

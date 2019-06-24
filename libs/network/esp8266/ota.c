@@ -9,6 +9,7 @@
 #include <espconn.h>
 #include <espmissingincludes.h>
 #include "ota.h"
+#include "jsutils.h"
 
 #define OTA_BUFF_SZ 512
 #define OTA_CHUNK_SZ 512
@@ -29,13 +30,13 @@ typedef struct OtaConn {
 } OtaConn;
 
 // Format for the response we send
-static char *responseFmt =
+FLASH_STR( responseFmt,
       "HTTP/1.1 %d %s\r\n"
       "Content-Type: text/plain\r\n"
       "Content-Length: %d\r\n"
       "Connection: close\r\n"
       "Cache-Control: no-store, no-cache, must-revalidate\r\n"
-      "\r\n%s";
+      "\r\n%s");
 
 /*
  * \brief: releaseConn deallocates everything held by a connection.
@@ -68,11 +69,11 @@ static void sendResponse(OtaConn *oc, uint16_t code, char *text) {
   char *status = code < 400 ? "OK" : "ERROR"; // hacky but it works
 
   // allocate buffer to print the response into
-  uint16_t len = os_strlen(responseFmt)+os_strlen(status)+os_strlen(text);
+  uint16_t len = flash_strlen(responseFmt)+os_strlen(status)+os_strlen(text);
   char buf[len];
 
   // print the response and send it
-  len = os_sprintf(buf, responseFmt, code, status, os_strlen(text), text);
+  len = espruino_snprintf(buf, sizeof(buf), responseFmt, code, status, os_strlen(text), text);
   if (code < 400) os_printf("OTA: %d %s\n", code, status);
   else os_printf("OTA: %d %s <<%s>>\n", code, status, text);
   int8_t err;

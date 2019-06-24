@@ -59,14 +59,15 @@ FLASH_BAUD ?= 115200 # The flash baud rate
 DEFINES += -DUSE_OPTIMIZE_PRINTF
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_US_TIMER
 LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain -lpwm -lcrypto
-CFLAGS+= -fno-builtin \
+CFLAGS += -fno-builtin \
 -Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
 -Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
 -Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
 -Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals \
 -fno-guess-branch-probability -freorder-blocks-and-partition -fno-cse-follow-jumps \
 -fno-tree-fre -fno-ipa-sra -fno-signed-zeros -fno-trapping-math -fassociative-math \
--fno-caller-saves -fno-move-loop-invariants -fno-tree-tail-merge -fno-tree-copy-prop 
+-fno-caller-saves -fno-move-loop-invariants -fno-tree-tail-merge -fno-tree-copy-prop \
+-Wno-varargs
 
 # only use mfore-l32 if 4MB board for now
 ifdef FLASH_4MB 

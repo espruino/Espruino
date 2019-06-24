@@ -33,6 +33,7 @@ typedef long long int64_t;
 #include "jsinteractive.h" // Pull in the jsiConsolePrint function
 #include <log.h>
 #include <jswrap_neopixel.h>
+#include <jsutils.h>
 
 
 // ESP8266.reboot
@@ -225,7 +226,8 @@ JsVar *jswrap_ESP8266_getState() {
   uint32_t fid = spi_flash_get_id();
   uint32_t chip = (fid&0xff00)|((fid>>16)&0xff);
   char buff[16];
-  os_sprintf(buff, "0x%02lx 0x%04lx", (long unsigned int) (fid & 0xff), (long unsigned int) chip);
+  FLASH_STR(fmt,"0x%02x 0x%04x");
+  espruino_snprintf(buff, sizeof(buff),fmt, (unsigned int) (fid & 0xff), (unsigned int) chip);
   jsvObjectSetChildAndUnLock(esp8266State, "flashChip",   jsvNewFromString(buff));
 
   return esp8266State;

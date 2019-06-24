@@ -486,7 +486,15 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
 void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, ...);
 
 /// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
+#ifndef USE_FLASH_MEMORY
 int espruino_snprintf( char * s, size_t n, const char * fmt, ... );
+#else
+#define espruino_snprintf(s ,n, fmt, ...) (__extension__({ \
+    int __i = 0; \
+    __i = espruino_snprintf_flash(s, n, fmt, ##__VA_ARGS__); \
+    __i; }))
+int espruino_snprintf_flash( char * s, size_t n, const char * fmt, ... );
+#endif
 
 //#define RAND_MAX (0x7FFFFFFFU) // needs to be unsigned!
 
