@@ -86,7 +86,7 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   JSV_GET_AS_CHAR_ARRAY(bPtr, bLen, buf);
   if (!bPtr || bLen<128*8) return;
 
-  unsigned char buffer[LCD_WIDTH*3 >> 1];
+  unsigned char buffer[(LCD_WIDTH*3) >> 1]; // 12 bits per pixel
 
   // use nearest 2 pixels as we're sending 12 bits
   gfx->data.modMinX = gfx->data.modMinX&~1;
@@ -101,13 +101,15 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   buffer[1] = gfx->data.modMinX;
   buffer[2] = 0;
   buffer[3] = gfx->data.modMaxX+1;
-  jshSPISendMany(LCD_SPI, buffer, 0, 4);
+  jshSPISendMany(LCD_SPI, buffer, NULL, 4);
   jshPinSetValue(LCD_SPI_DC, 0); // command
   jshSPISend(LCD_SPI, 0x2B);
   jshPinSetValue(LCD_SPI_DC, 1); // data
+  buffer[0] = 0;
   buffer[1] = gfx->data.modMinY;
+  buffer[2] = 0;
   buffer[3] = gfx->data.modMaxY+1;
-  jshSPISendMany(LCD_SPI, buffer, 0, 4);
+  jshSPISendMany(LCD_SPI, buffer, NULL, 4);
   jshPinSetValue(LCD_SPI_DC, 0); // command
   jshSPISend(LCD_SPI, 0x2C);
   jshPinSetValue(LCD_SPI_DC, 1); // data
@@ -122,8 +124,17 @@ void lcd_flip_gfx(JsGraphics *gfx) {
       *(bufPtr++) = a>>4;
       *(bufPtr++) = (a<<4) | (b>>8);
       *(bufPtr++) = b;
+      // why can't we just move this down and send the whole line?
+
+      /*jshSPISend(LCD_SPI, a>>4);
+      jshSPISend(LCD_SPI, (a<<4) | (b>>8));
+      jshSPISend(LCD_SPI, b);*/
+      if ((x&7)==0) {
+        if (bufPtr!=buffer) jshSPISendMany(LCD_SPI, buffer, 0, bufPtr-buffer);
+        bufPtr = buffer;
+      }
     }
-    jshSPISendMany(LCD_SPI, buffer, 0, (xlen*3) >> 1);
+    if (bufPtr!=buffer) jshSPISendMany(LCD_SPI, buffer, 0, bufPtr-buffer);
   }
 
   jshPinSetValue(LCD_SPI_CS,1);
@@ -239,7 +250,7 @@ void jswrap_id205_init() {
 
   JshSPIInfo inf;
   jshSPIInitInfo(&inf);
-  inf.baudRate = 8000000;
+  inf.baudRate = 16000000;
   inf.pinMOSI = LCD_SPI_MOSI;
   inf.pinSCK = LCD_SPI_SCK;
   jshSPISetup(LCD_SPI, &inf);

@@ -18,6 +18,10 @@
 
 /// Callback function to be used with jsvIterateCallback
 typedef void (*jsvIterateCallbackFn)(int item, void *callbackData);
+/// Callback function to be used with jsvIterateBufferCallback
+typedef void (*jsvIterateBufferCallbackFn)(unsigned char *data, unsigned int len, void *callbackData);
+
+
 
 /** Iterate over the contents of var, calling callback for each. Contents may be:
  *   * numeric -> output
@@ -26,6 +30,13 @@ typedef void (*jsvIterateCallbackFn)(int item, void *callbackData);
  *   * object -> call itself object.count times, on object.data
  */
 bool jsvIterateCallback(JsVar *var, jsvIterateCallbackFn callback, void *callbackData);
+
+// Like jsvIterateCallback, but iterates over just bytes and calls with a pointer and length wherever it can
+bool jsvIterateBufferCallback(
+    JsVar *data,
+    jsvIterateBufferCallbackFn callback,
+    void *callbackData
+  );
 
 /** If jsvIterateCallback is called, how many times will it call the callback function? */
 int jsvIterateCallbackCount(JsVar *var);
@@ -78,6 +89,9 @@ static ALWAYS_INLINE size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
 
 /// Move to next character
 void jsvStringIteratorNext(JsvStringIterator *it);
+
+/// Returns a pointer to the next block of data and its length, and moves on to the data after
+void jsvStringIteratorGetPtrAndNext(JsvStringIterator *it, unsigned char **data, unsigned int *len);
 
 /// Move to next character (this one is inlined where speed is needed)
 static ALWAYS_INLINE void jsvStringIteratorNextInline(JsvStringIterator *it) {
