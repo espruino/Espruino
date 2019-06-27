@@ -2151,7 +2151,7 @@ static void ble_stack_init() {
     APP_ERROR_CHECK(err_code);
 
 
-#else
+#else // NRF_SD_BLE_API_VERSION>=5
     ret_code_t err_code;
 
     err_code = nrf_sdh_enable_request();

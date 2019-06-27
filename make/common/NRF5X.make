@@ -186,6 +186,7 @@ else
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh.c \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_ble.c \
+$(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_soc.c \
 $(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars/nrf_section_iter.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage_sd.c \
