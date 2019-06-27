@@ -14,6 +14,7 @@
             Raspberry pi pin numbering the same if using wiringPi or filesystem GPIO (fix #1673)
             nRF52: Peer manager init errors from Nordic libs now not fatal 
             SDK15: Writing to flash now works
+            nRF52840: USB Serial works even for big sends, and device swaps to USB automatically
             
      2v03 : nRF5x: Fix issue when calling NRF.setAdvertising while connected via BLE (fix #1659)
             nRF5x: 'dump()' not outputs `NRF.setSecurity` line if it has been called.

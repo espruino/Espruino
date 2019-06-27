@@ -3,5 +3,7 @@
 ATTRS{idProduct}=="5740", ATTRS{idVendor}=="0483", ENV{ID_MM_DEVICE_IGNORE}="1", MODE="0666", GROUP="plugdev"
 # Nordic kits
 ATTRS{idProduct}=="1015", ATTRS{idVendor}=="1366", ENV{ID_MM_DEVICE_IGNORE}="1", MODE="0666", GROUP="plugdev"
+# Nordic nRF52840 USB UART
+ATTRS{idProduct}=="1915", ATTRS{idVendor}=="520f", ENV{ID_MM_DEVICE_IGNORE}="1", MODE="0666", GROUP="plugdev"
 # Microbit
 ATTRS{idProduct}=="0204", ATTRS{idVendor}=="0d28", ENV{ID_MM_DEVICE_IGNORE}="1", MODE="0666", GROUP="plugdev"

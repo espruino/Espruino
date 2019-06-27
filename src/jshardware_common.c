@@ -43,3 +43,7 @@ void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->bitrate = 100000;
   inf->started = false;
 }
+
+// Only define this if it's not used elsewhere
+__attribute__((weak)) void jshBusyIdle() {
+}
