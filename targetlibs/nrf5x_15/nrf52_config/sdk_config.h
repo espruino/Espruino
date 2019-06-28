@@ -76,6 +76,7 @@
 
 #define NRFX_UARTE_ENABLED 0
 #define NRFX_UARTE0_ENABLED 0
+#define NRFX_UARTE1_ENABLED 0
 
 // <h> Board Support
 
@@ -2002,7 +2003,7 @@
 
 
 #ifndef UART_LEGACY_SUPPORT
-#define UART_LEGACY_SUPPORT 1
+#define UART_LEGACY_SUPPORT 0
 #endif
 
 // <e> UART0_ENABLED - Enable UART0 instance
@@ -2014,7 +2015,7 @@
 
 
 #ifndef UART0_CONFIG_USE_EASY_DMA
-#define UART0_CONFIG_USE_EASY_DMA 0
+#define UART0_CONFIG_USE_EASY_DMA 1
 #endif
 
 // </e>
@@ -2022,13 +2023,13 @@
 // <e> UART1_ENABLED - Enable UART1 instance
 //==========================================================
 #ifndef UART1_ENABLED
-#define UART1_ENABLED 0
+#define UART1_ENABLED 1
 #endif
 // <q> UART1_CONFIG_USE_EASY_DMA  - Default setting for using EasyDMA
 
 
 #ifndef UART1_CONFIG_USE_EASY_DMA
-#define UART1_CONFIG_USE_EASY_DMA 0
+#define UART1_CONFIG_USE_EASY_DMA 1
 #endif
 
 // </e>
