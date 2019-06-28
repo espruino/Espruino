@@ -16,6 +16,7 @@
             SDK15: Writing to flash now works
             nRF52840: USB Serial works even for big sends, and device swaps to USB automatically
             nRF52840: Allow Serial2 to be used
+            ESP8266: optimize rename-section for ESP8266_4MB board, freeHeap +2064 byte (fix #1679)
             
      2v03 : nRF5x: Fix issue when calling NRF.setAdvertising while connected via BLE (fix #1659)
             nRF5x: 'dump()' not outputs `NRF.setSecurity` line if it has been called.
