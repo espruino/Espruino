@@ -65,3 +65,7 @@ __WEAK bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char
     rxPtr++;
   }
 }
+
+// Only define this if it's not used elsewhere
+__attribute__((weak)) void jshBusyIdle() {
+}

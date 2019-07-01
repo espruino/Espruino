@@ -132,6 +132,7 @@ $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_gpiote.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_spi.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_twi.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_uart.c \
+$(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_uarte.c \
 $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_ppi.c \
 $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_rng.c \
 $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_twi.c \
@@ -188,6 +189,7 @@ else
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh.c \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_ble.c \
+$(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_soc.c \
 $(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars/nrf_section_iter.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage_sd.c \

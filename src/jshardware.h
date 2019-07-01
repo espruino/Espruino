@@ -40,6 +40,10 @@ void jshReset();
 /** Code that is executed each time around the idle loop. Prod watchdog timers here,
  * and on platforms without GPIO interrupts you can check watched Pins for changes. */
 void jshIdle();
+
+/// Called when Espruino is busy waiting (eg for data to send)
+void jshBusyIdle();
+
 /** Enter sleep mode for the given period of time. Can be woken up by interrupts.
  * If time is 0xFFFFFFFFFFFFFFFF then go to sleep without setting a timer to wake
  * up.
