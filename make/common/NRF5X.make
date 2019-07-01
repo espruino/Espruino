@@ -11,6 +11,8 @@ $(info RUNNING MAKE CLEAN)
 $(info $(shell BOARD=$(BOARD) RELEASE=1 BOOTLOADER=1 make clean))
 $(info RUNNING MAKE TO CREATE BOOTLOADER)
 $(info $(shell BOARD=$(BOARD) RELEASE=1 BOOTLOADER=1 make))
+$(info RUNNING MAKE CLEAN)
+$(info $(shell BOARD=$(BOARD) RELEASE=1 make clean))
 $(info *************************************************************)
 $(info BOOTLOADER BUILD COMPLETE)  
 $(info *************************************************************)
@@ -128,6 +130,7 @@ $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_gpiote.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_spi.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_twi.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_uart.c \
+$(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_uarte.c \
 $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_ppi.c \
 $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_rng.c \
 $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_twi.c \
@@ -184,6 +187,7 @@ else
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh.c \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_ble.c \
+$(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_soc.c \
 $(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars/nrf_section_iter.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage_sd.c \
@@ -281,7 +285,7 @@ $(PROJ_NAME).hex: $(PROJ_NAME).app_hex
 
 
 $(PROJ_NAME).zip: $(PROJ_NAME).app_hex
-	@echo Not merging softdevice or bootloader, creating DFU ZIP
+	@echo Creating DFU ZIP
 	# nrfutil  pkg generate --help
 	@cp $(PROJ_NAME).app_hex $(PROJ_NAME)_app.hex
 	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
@@ -297,9 +301,13 @@ else
 	elif [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).hex /media/JLINK;sync; fi
 endif
 
+ifdef DFU_UPDATE_BUILD_WITH_HEX
+proj: $(PROJ_NAME).hex $(PROJ_NAME).zip
+else
 ifdef DFU_UPDATE_BUILD
 proj: $(PROJ_NAME).zip
 else
 proj: $(PROJ_NAME).hex
+endif
 endif
 

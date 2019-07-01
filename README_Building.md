@@ -262,13 +262,13 @@ make clean && BOARD=NRF51822DK RELEASE=1 make
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
 
 * the esp-open-sdk from <https://github.com/pfalcon/esp-open-sdk>, use make STANDALONE=n
-* the Espressif SDK (version 1.5.0 with lwip patch as of this writing) from <http://bbs.espressif.com/viewforum.php?f=46> and <http://bbs.espressif.com/viewtopic.php?f=7&t=1528>
+* the Espressif NONOS SDK (version 2.2.1) from <https://github.com/espruino/EspruinoBuildTools/blob/master/esp8266/ESP8266_NONOS_SDK-2.2.1.tgz>
 
 To run make you need to pass a couple of environment variables to `make`.  These include:
 
 * `BOARD=ESP8266_BOARD`
 * `FLASH_4MB=1` if you have an esp-12
-* `ESP8266_SDK_ROOT=<Path to the 1.4 SDK>`
+* `ESP8266_SDK_ROOT=<Path to the 2.21 SDK>`
 * `PATH=<Path to esp-open-sdk/xtensa-lx106-elf/bin/>`
 * `COMPORT=</dev/ttyUSB0|COM1|...>`
 
@@ -279,8 +279,8 @@ The easiest is to place the following lines into a script, adapt it to your need
 #! /bin/bash
 export BOARD=ESP8266_BOARD
 export FLASH_4MB=1
-export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.5.0
-export PATH=$PATH:/esp8266/esp-open-sdk/xtensa-lx106-elf/bin/
+export ESP8266_SDK_ROOT=/esp8266/sdk/ESP8266_NONOS_SDK-2.2.1
+export PATH=$PATH:/esp8266/gcc/xtensa-lx106-elf/bin/
 export COMPORT=/dev/ttyUSB0
 make clean && make $*
 
@@ -289,7 +289,7 @@ make clean && make $*
 * If you do `make flash` it will try to flash your esp8266 module over serial
 * If you do `make wiflash` it will try to flash you esp8266 module over wifi, which assumes
   that it's already running Espruino
-* You will also get an `espruino_1v00_*_esp8266.tgz` archive, which contains everything you
+* You will also get an `espruino_2v0x_*_esp8266.tgz` archive, which contains everything you
   need to flash a module (except for esptool.py), including a README_flash.txt
   
 ### for esp32

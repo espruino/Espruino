@@ -43,7 +43,7 @@ int jswrap_graphics_getPixel(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color);
 JsVar *jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground);
 JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground);
-JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid);
+JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont);
 JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height);
 JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r);
 JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *str, int x, int y);

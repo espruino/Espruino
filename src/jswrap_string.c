@@ -466,11 +466,13 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   "name" : "split",
   "generate" : "jswrap_string_split",
   "params" : [
-    ["separator","JsVar","The start character index"]
+    ["separator","JsVar","The separator `String` or `RegExp` to use"]
   ],
   "return" : ["JsVar","Part of this string from start for len characters"]
 }
-Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==[1,2,3]```
+Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==['1', '2', '3']```
+
+Regular Expressions can also be used to split strings, eg. `'1a2b3 4'.split(/[^0-9]/)==['1', '2', '3', '4']`.
  */
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   if (!jsvIsString(parent)) return 0;
@@ -486,7 +488,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 #ifndef SAVE_ON_FLASH
   // Use RegExp if one is passed in
   if (jsvIsInstanceOf(split, "RegExp")) {
-    int last = 0;
+    unsigned int last = 0;
     JsVar *match;
     jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
     match = jswrap_regexp_exec(split, parent);
@@ -506,6 +508,9 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
     }
     jsvUnLock(match);
     jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
+    // add remaining string after last match
+    if (last<=jsvGetStringLength(parent))
+      jsvArrayPushAndUnLock(array, jsvNewFromStringVar(parent, (size_t)last, JSVAPPENDSTRINGVAR_MAXLENGTH));
     return array;
   }
 #endif

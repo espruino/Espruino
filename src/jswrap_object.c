@@ -142,6 +142,7 @@ JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
 Copy this object completely
  */
 JsVar *jswrap_object_clone(JsVar *parent) {
+  if (!parent) return 0;
   return jsvCopy(parent, true);
 }
 

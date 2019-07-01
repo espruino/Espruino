@@ -64,7 +64,9 @@ CFLAGS+= -fno-builtin \
 -Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
 -Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
 -Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals \
--fno-guess-branch-probability -freorder-blocks-and-partition -fno-cse-follow-jumps
+-fno-guess-branch-probability -freorder-blocks-and-partition -fno-cse-follow-jumps \
+-fno-tree-fre -fno-ipa-sra -fno-signed-zeros -fno-trapping-math -fassociative-math \
+-fno-caller-saves -fno-move-loop-invariants -fno-tree-tail-merge -fno-tree-copy-prop 
 
 # only use mfore-l32 if 4MB board for now
 ifdef FLASH_4MB 

@@ -91,13 +91,14 @@ typedef enum  {
   BLE_IS_SLEEPING = 512,      //< NRF.sleep has been called
   BLE_PM_INITIALISED = 1024,  //< Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
   BLE_IS_NOT_CONNECTABLE = 2048, //< Is the device connectable?
-  BLE_WHITELIST_ON_BOND = 4096,  //< Should we write to the whitelist whenever we bond to a device?
+  BLE_IS_NOT_SCANNABLE = 4096, //< Is the device scannable? eg, scan response
+  BLE_WHITELIST_ON_BOND = 8192,  //< Should we write to the whitelist whenever we bond to a device?
 
-  BLE_DISABLE_DYNAMIC_INTERVAL = 8192, //< Disable automatically changing interval based on BLE peripheral activity
+  BLE_DISABLE_DYNAMIC_INTERVAL = 16384, //< Disable automatically changing interval based on BLE peripheral activity
 
-  BLE_IS_ADVERTISING_MULTIPLE = 16384, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 32768,
-  BLE_ADVERTISING_MULTIPLE_SHIFT = GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_IS_ADVERTISING_MULTIPLE = 32768, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 65536,
+  BLE_ADVERTISING_MULTIPLE_SHIFT = 16,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 } BLEStatus;
 
@@ -156,9 +157,9 @@ int jsble_exec_pending(IOEvent *event);
  * both user-defined as well as UART/HID */
 void jsble_restart_softdevice();
 
-void jsble_advertising_start();
+uint32_t jsble_advertising_start();
+uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen);
 void jsble_advertising_stop();
-
 
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection();
@@ -198,6 +199,9 @@ void jsble_send_hid_input_report(uint8_t *data, int length);
 
 /// Update the current security settings from the info in hiddenRoot.BLE_NAME_SECURITY
 void jsble_update_security();
+
+/// Return an object showing the security status of the given connection
+JsVar *jsble_get_security_status(uint16_t conn_handle);
 
 // ------------------------------------------------- lower-level utility fns
 

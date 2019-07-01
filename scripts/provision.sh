@@ -131,10 +131,15 @@ fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_NRF52" = "1" ]; then
     echo ===== NRF52
+    if ! type pip 2> /dev/null > /dev/null; then
+      echo Installing python and pip
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python-pip
+    fi
     if ! type nrfutil 2> /dev/null > /dev/null; then
       echo Installing nrfutil
-      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python-pip
-      sudo pip -q install nrfutil
+      sudo pip install --ignore-installed nrfutil
+      # --ignore-installed is used because pip 10 fails because PyYAML was already installed by the system
+      # -q can be used to silence the above
     fi
     ARM=1
 fi
@@ -180,11 +185,11 @@ if [ "$ARM" = "1" ]; then
         #sudo apt-get update
         #sudo DEBIAN_FRONTEND=noninteractive apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
         # Unpack - newer, and much faster
-        if [ ! -d "gcc-arm-none-eabi-6-2017-q1-update" ]; then
-          curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/arm/gcc-arm-none-eabi-6-2017-q1-update-linux.tar.bz2 | tar xfj - --no-same-owner
+        if [ ! -d "gcc-arm-none-eabi-8-2018-q4-major" ]; then
+          curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/arm/gcc-arm-none-eabi-8-2018-q4-major-linux.tar.bz2 | tar xfj - --no-same-owner
         else
             echo "Folder found"
         fi
-	export PATH=$PATH:`pwd`/gcc-arm-none-eabi-6-2017-q1-update/bin
+	export PATH=$PATH:`pwd`/gcc-arm-none-eabi-8-2018-q4-major/bin
     fi
 fi

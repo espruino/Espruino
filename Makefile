@@ -63,7 +63,9 @@ endif
 INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS?=
 DEFINES?=
-CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -Wno-packed-bitfield-compat -g
+CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -g
+CFLAGS+=-Wno-packed-bitfield-compat # remove warnings from packed var usage
+CFLAGS+=-Wno-expansion-to-defined # remove warnings created by Nordic's libs
 LDFLAGS?=-Winline -g
 OPTIMIZEFLAGS?=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
@@ -144,7 +146,7 @@ ifeq ($(BOARD),)
 endif
 
 ifeq ($(BOARD),RASPBERRYPI)
- ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
+ ifneq ("$(wildcard /usr/include/wiringPi.h)","")
  USE_WIRINGPI=1
  else
  DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
@@ -533,7 +535,6 @@ endif
 ifeq ($(USE_WIRINGPI),1)
   DEFINES += -DUSE_WIRINGPI
   LIBS += -lwiringPi
-  INCLUDE += -I/usr/local/include -L/usr/local/lib
 endif
 
 ifeq ($(USE_BLUETOOTH),1)
@@ -601,7 +602,7 @@ SOURCES += $(PININFOFILE).c
 
 SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
 SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o)
-OBJS = $(SOURCEOBJS) $(PRECOMPILED_OBJS)
+OBJS = $(PRECOMPILED_OBJS) $(SOURCEOBJS)
 
 
 # -ffreestanding -nodefaultlibs -nostdlib -fno-common

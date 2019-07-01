@@ -134,19 +134,20 @@ exports.setGPSOn = function(isOn, callback) {
     var gps = { at:at,on:function(callback) {
       callback=callback||function(){};
       at.cmd("AT+QGPS=1\r\n",1000,function cb(d) { // speed-optimal
-        if (d.startsWith("AT+")) return cb; // echo
+        if (d&&d.startsWith("AT+")) return cb; // echo
         callback(d=="OK"?null:d);
       });
     },off:function(callback) {
       callback=callback||function(){};
       at.cmd("AT+QGPSEND\r\n",1000,function cb(d) {
-        if (d.startsWith("AT+")) return cb; // echo
+        if (d&&d.startsWith("AT+")) return cb; // echo
         callback(d=="OK"?null:d);
       });
     },get:function(callback) {
       // ERROR: 516 means 'no fix'
       callback=callback||function(){};
       at.cmd("AT+QGPSLOC=2\r\n",1000,function cb(d) {
+        if (!d) { callback({error:"Timeout"}); return; }
         if (d.startsWith("AT+")) return cb; // echo
         if (d.startsWith("+CME ERROR:")) callback({error:d.substr(5)});
         else if (d.startsWith("+QGPSLOC:")) {

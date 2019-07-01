@@ -74,9 +74,6 @@ BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 
 static uint8 g_pinState[JSH_PIN_COUNT];
 
-
-
-
 /**
  * Convert a pin id to the corresponding Pin Event id.
  */
@@ -95,6 +92,8 @@ static void systemTimeInit(void);
 //static void utilTimerInit(void);
 static void intrHandlerCB(uint32 interruptMask, void *arg);
 
+uint32_t userbin_segment;
+
 /**
  * Initialize the ESP8266 hardware environment.
  *
@@ -103,6 +102,8 @@ static void intrHandlerCB(uint32 interruptMask, void *arg);
 void jshInit() {
   // A call to jshInitDevices is architected as something we have to do.
   os_printf("> jshInit\n");
+
+  userbin_segment = system_get_userbin_addr() ^ 0x1000;
 
   // Initialize the ESP8266 GPIO subsystem.
   gpio_init();
@@ -1314,30 +1315,21 @@ void jshFlashRead(
     uint32_t addr, //!< Flash address to read from
     uint32_t len   //!< Length of data to read
   ) {
-  //os_printf("jshFlashRead: dest=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
-  // make sure we stay with the flash address space
-  uint32_t flash_max=jshFlashMax();
-  if (addr >= flash_max) return;
-  if (addr + len > flash_max) len = flash_max - addr;
-
-  if (addr < FLASH_MAX) {
-	  addr += FLASH_MMAP; // Direct fast read if < 1Mb
-	  // copy the bytes reading a word from flash at a time
-	  uint8_t *dest = buf;
-	  uint32_t bytes = *(uint32_t*)(addr & ~3);
-	  while (len-- > 0) {
-		  if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
-		  *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
-	  }
-  } else { // Above 1Mb read...
-    //os_printf("jshFlashRead: above 1mb!");
+  if (addr < FLASH_MAX) { // move to memory mapped flash
+    addr += FLASH_MMAP;
+    uint8_t *dest = buf;
+    uint32_t bytes = *(uint32_t*)(addr & ~3);
+    while (len-- > 0) {
+      if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
+      *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
+    }
+  } else { // else read via spi
     SpiFlashOpResult res;
     res = spi_flash_read(addr, buf, len);
       if (res != SPI_FLASH_RESULT_OK)
-        os_printf("ESP8266: jshFlashRead %s\n",
-    res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
-   }
+        os_printf("ESP8266: jshFlashRead %s\n", res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
+  }
 }
 
 
@@ -1352,12 +1344,14 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-  //os_printf("jshFlashWrite: src=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
   uint32_t flash_max=jshFlashMax();
   if (addr >= flash_max) return;
   if (addr + len > flash_max) len = flash_max - addr;
+
+  if (addr < flash_max)   // map to active userbin_segment
+    addr |= userbin_segment; 
 
   SpiFlashOpResult res = SPI_FLASH_RESULT_OK;
   /* so about that alignment... Turns out it matters
@@ -1451,6 +1445,11 @@ void jshFlashErasePage(
     uint32_t addr //!<
   ) {
   //os_printf("jshFlashErasePage: addr=0x%lx\n", addr);
+  
+  // map to active segment as needed
+  uint32_t flash_max=jshFlashMax();
+  if (addr < flash_max) 
+    addr |= userbin_segment; 
 
   SpiFlashOpResult res;
   res = spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);
@@ -1462,8 +1461,9 @@ void jshFlashErasePage(
 size_t jshFlashGetMemMapAddress(size_t ptr) {
   // the flash address is just the offset into the flash chip, but to evaluate the code
   // below we need to jump to the memory-mapped window onto flash, so adjust here
-  if (ptr < FLASH_MAX)
+  if (ptr < FLASH_MAX) {
     return ptr + FLASH_MMAP;
+  }
   return ptr;
 }
 

@@ -649,6 +649,10 @@ When doing this, interrupts will happen on both edges and there will be no debou
 **Note:** The STM32 chip (used in the [Espruino Board](/EspruinoBoard) and [Pico](/Pico)) cannot
 watch two pins with the same number - eg `A0` and `B0`.
 
+**Note:** On nRF52 chips (used in Puck.js, Pixl.js, MDBT42Q) `setWatch` disables the GPIO
+output on that pin. In order to be able to write to the pin again you need to disable
+the watch with `clearWatch`.
+
  */
 JsVar *jswrap_interface_setWatch(
     JsVar *func,           //!< A callback function to be invoked when the pin state changes.
@@ -756,14 +760,15 @@ JsVar *jswrap_interface_setWatch(
   "name" : "clearWatch",
   "generate" : "jswrap_interface_clearWatch",
   "params" : [
-    ["id","JsVar","The id returned by a previous call to setWatch"]
+    ["id","JsVarArray","The id returned by a previous call to setWatch"]
   ]
 }
 Clear the Watch that was created with setWatch. If no parameter is supplied, all watches will be removed.
- */
-void jswrap_interface_clearWatch(JsVar *idVar) {
 
-  if (jsvIsUndefined(idVar)) {
+To avoid accidentally deleting all Watches, if a parameter is supplied but is `undefined` then an Exception will be thrown.
+ */
+void jswrap_interface_clearWatch(JsVar *idVarArr) {
+  if (jsvIsUndefined(idVarArr) || jsvGetArrayLength(idVarArr)==0) {
     JsVar *watchArrayPtr = jsvLock(watchArray);
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, watchArrayPtr);
@@ -779,6 +784,11 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
     jsvRemoveAllChildren(watchArrayPtr);
     jsvUnLock(watchArrayPtr);
   } else {
+    JsVar *idVar = jsvGetArrayItem(idVarArr, 0);
+    if (jsvIsUndefined(idVar)) {
+      jsExceptionHere(JSET_ERROR, "clearWatch(undefined) not allowed. Use clearWatch() instead.");
+      return;
+    }
     JsVar *watchArrayPtr = jsvLock(watchArray);
     JsVar *watchNamePtr = jsvFindChildFromVar(watchArrayPtr, idVar, false);
     jsvUnLock(watchArrayPtr);
@@ -795,7 +805,8 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
       if (!jsiIsWatchingPin(pin))
         jshPinWatch(pin, false); // 'unwatch' pin
     } else {
-      jsExceptionHere(JSET_ERROR, "Unknown Watch");
+      jsExceptionHere(JSET_ERROR, "Unknown Watch %v", idVar);
     }
+    jsvUnLock(idVar);
   }
 }

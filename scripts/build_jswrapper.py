@@ -40,7 +40,7 @@ wrapperFileName = wrapperFileName[2:]
 jsmodules = {}
 for i in range(1,len(sys.argv)):
   arg = sys.argv[i]
-  if arg[0]!="-" and arg[-3:]==".js": 
+  if arg[0]!="-" and arg[-3:]==".js":
     if arg.find(":")>=0:
       colon = arg.find(":")
       modulename = arg[:colon]
@@ -201,7 +201,7 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 			if "name" in jsondata:
 				for black in blacklist:
 					if jsondata["class"] == black["class"]:
-						if jsondata["name"] == black["name"]:
+						if(jsondata["name"] == black["name"] or black["name"] == "*"):
 							toremove.append(idx)
 # extension by jumjum
 		else:

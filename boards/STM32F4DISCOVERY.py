@@ -23,9 +23,11 @@ info = {
  'build' : {
    'optimizeflags' : '-O3',
    'libraries' : [
+     'USB_HID',
      'NET',
      'GRAPHICS',
-     'NEOPIXEL'
+     'NEOPIXEL',
+     'FILESYSTEM'
    ],
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',

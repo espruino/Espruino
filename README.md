@@ -83,36 +83,20 @@ While Espruino can run on other boards, we make no money from them and so cannot
 
 You can download binaries from http://www.espruino.com/Download
 
-
 If you are a board manufacturer interested in getting your board officially supported, please [check out this page](http://www.espruino.com/Business).
 
-* [Original Espruino Board](http://www.espruino.com/EspruinoBoard) - great support.
-* [Espruino Pico Board](http://www.espruino.com/Pico) - great support.
-* [Puck.js](http://www.espruino.com/Puck.js) - great support.
-* [MDBT42Q module and breakout board](http://www.espruino.com/MDBT42Q) - great support.
-* [Espruino WiFi Board](http://www.espruino.com/WiFi) - great support.
-* Linux - WORKING
-* [BBC micro:bit](http://www.espruino.com/MicroBit) - WORKING, builds available
-* [STM32VLDISCOVERY](http://www.espruino.com/ReferenceSTM32VLDISCOVERY) - WORKING, builds available - limited memory so some features removed
-* [STM32F3DISCOVERY](http://www.espruino.com/ReferenceSTM32F3DISCOVERY) - NO LONGER SUPPORTED
-* [STM32F4DISCOVERY](http://www.espruino.com/ReferenceSTM32F4DISCOVERY) - WORKING, builds available
-* STM32F401CDISCOVERY - appears WORKING, but very little testing done
-* STM32F429IDISCOVERY - WORKING over serial (A9/A10). No USB and no LCD support
-* NRF51822 Development Kit - WORKING
-* NRF52832 Development Kit - WORKING, builds available
-* [HY STM32 2.4"](http://www.espruino.com/ReferenceHYSTM32_24) - WORKING
-* [HY STM32 2.8"](http://www.espruino.com/ReferenceHYSTM32_28) - WORKING - limited memory so some features removed
-* Carambola - WORKING - GPIO via filesystem (no I2C)
-* Raspberry Pi - WORKING - GPIO via filesystem or wiringPi (no I2C)
-* Sony SmartWatch - NOT WORKING - USB VCP support for F2 still needed
-* LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
-* [ST NUCLEO-F401RE](http://www.espruino.com/ReferenceNUCLEOF401RE) - WORKING
-* ST NUCLEO-F411RE - WORKING
-* [ESP8266](http://www.espruino.com/EspruinoESP8266) - WORKING 
-* [ESP32](http://www.espruino.com/ESP32) - WORKING - Reasonably stable, but expect to find issues
-* [HY STM32 3.2"](http://www.espruino.com/ReferenceHYSTM32_32) - NO LONGER SUPPORTED
-* [Olimexino STM32 / Leaflabs Maple](http://www.espruino.com/ReferenceOLIMEXINO_STM32) - NO LONGER SUPPORTED
-* Arduino (AVR) - NOT POSSIBLE due to the Hardward architecture of AVRs, even though it would fit into an ATMEGA2560. If `avr-gcc` ever gains an easy way to emulate Von Neumann architecture then it might be portable, but for now it isn't.
+For a list of supported boards, please see the [boards folder](https://github.com/espruino/Espruino/tree/master/boards).
+
+Main supported platforms are:
+
+* STM32 (F1, F3, F4, L4)
+* nRF52
+* nRF51
+* ESP8266
+* ESP32
+* Linux
+
+Espruino has been ported to other boards and platforms (such as EFM32 and SAMD), but these have a habit of being contributed and then never maintained. All boards that this has happened to reside in the [UNMAINTAINED_BOARDS](https://github.com/espruino/Espruino/tree/UNMAINTAINED_BOARDS) branch.
 
 
 Modification

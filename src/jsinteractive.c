@@ -777,7 +777,7 @@ void jsiSemiInit(bool autoLoad) {
   // Set state
   interruptedDuringEvent = false;
   // Set defaults
-  jsiStatus &= ~JSIS_SOFTINIT_MASK;
+  jsiStatus &= JSIS_SOFTINIT_MASK;
 #ifndef SAVE_ON_FLASH
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 #endif
@@ -827,7 +827,7 @@ void jsiSemiInit(bool autoLoad) {
           "|  __|_ -| . |  _| | | |   | . |\n"
           "|____|___|  _|_| |___|_|_|_|___|\n"
           "         |_| espruino.com\n"
-          " "JS_VERSION" (c) 2018 G.Williams\n"
+          " "JS_VERSION" (c) 2019 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
 #if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS)
@@ -2484,7 +2484,8 @@ void jsiDebuggerLine(JsVar *line) {
                       "step / s           - execute to next line, or step into function call\n"
                       "finish / f         - finish execution of the function call\n"
                       "print ... / p ...  - evaluate and print the next argument\n"
-                      "info ... / i ...   - print information. Type 'info' for help \n");
+                      "info locals / i l)    - output local variables\n"
+                      "info scopechain / i s - output all variables in all scopes\n");
     } else if (!strcmp(id,"quit") || !strcmp(id,"q")) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
       execInfo.execute |= EXEC_INTERRUPTED;
@@ -2516,25 +2517,29 @@ void jsiDebuggerLine(JsVar *line) {
        jslGetNextToken(&lex);
        id = jslGetTokenValueAsString(&lex);
        if (!strcmp(id,"locals") || !strcmp(id,"l")) {
-         if (execInfo.scopeCount==0)
+         JsVar *scope = jspeiGetTopScope();
+         if (scope == execInfo.root)
            jsiConsolePrint("No locals found\n");
          else {
            jsiConsolePrintf("Locals:\n--------------------------------\n");
-           jsiDebuggerPrintScope(execInfo.scopes[execInfo.scopeCount-1]);
+           jsiDebuggerPrintScope(scope);
            jsiConsolePrint("\n\n");
          }
+         jsvUnLock(scope);
        } else if (!strcmp(id,"scopechain") || !strcmp(id,"s")) {
-         if (execInfo.scopeCount==0) jsiConsolePrint("No scopes found\n");
-         int i;
-         for (i=0;i<execInfo.scopeCount;i++) {
+         JsVar *scope = jspeiGetTopScope();
+         if (scope == execInfo.root) jsiConsolePrint("No scopes found\n");
+         jsvUnLock(scope);
+         int i, l = jsvGetArrayLength(execInfo.scopesVar);
+         for (i=0;i<l;i++) {
+           scope = jsvGetArrayItem(execInfo.scopesVar, i);
            jsiConsolePrintf("Scope %d:\n--------------------------------\n", i);
-           jsiDebuggerPrintScope(execInfo.scopes[i]);
+           jsiDebuggerPrintScope(scope);
            jsiConsolePrint("\n\n");
+           jsvUnLock(scope);
          }
        } else {
-         jsiConsolePrint("Unknown command:\n"
-                         "info locals     (l) - output local variables\n"
-                         "info scopechain (s) - output all variables in all scopes\n");
+         jsiConsolePrint("Unknown command\n");
        }
     } else
       handled = false;

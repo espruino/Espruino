@@ -69,6 +69,9 @@ void jswrap_ble_restart();
 JsVar *jswrap_ble_getAddress();
 void jswrap_ble_setAddress(JsVar *address);
 
+/// Used by bluetooth.c internally when it needs to set up advertising at first
+JsVar *jswrap_ble_getCurrentAdvertisingData();
+
 JsVarFloat jswrap_ble_getBattery();
 void jswrap_ble_setAdvertising(JsVar *data, JsVar *options);
 JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options);
@@ -93,6 +96,7 @@ JsVar *jswrap_ble_connect(JsVar *mac, JsVar *options);
 void jswrap_ble_setWhitelist(bool whitelist);
 void jswrap_ble_setConnectionInterval(JsVar *interval);
 void jswrap_ble_setSecurity(JsVar *options);
+JsVar *jswrap_ble_getSecurityStatus(JsVar *parent);
 
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
 void jswrap_ble_BluetoothDevice_sendPasskey(JsVar *parent, JsVar *passkeyVar);

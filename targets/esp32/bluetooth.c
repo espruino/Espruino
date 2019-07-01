@@ -87,11 +87,11 @@ void jsble_restart_softdevice(){
 	jswrap_ble_reconfigure_softdevice();
 }
 
-void jsble_advertising_start(){
+uint32_t jsble_advertising_start(){
 	esp_err_t status;
 	if (bleStatus & BLE_IS_ADVERTISING) return;
 	status = bluetooth_gap_startAdvertizing(true);
-	if(status) jsWarn("advertizing start problem:0X%x\n",status);
+	return status;
 }
 void jsble_advertising_stop(){
 	esp_err_t status;
@@ -202,11 +202,6 @@ void jsble_central_startBonding(bool forceRePair){
 	jsWarn("central start bonding not implemented yet\n");
 	UNUSED(forceRePair);
 }
-/// Get the security status of the current link
-JsVar *jsble_central_getSecurityStatus(){
-	jsWarn("central getSecurityStatus not implemented yet\n");
-	return 0;
-}
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(bool enabled){
 	jsWarn("central set rssi scan not implemented yet\n");
@@ -219,6 +214,11 @@ void jsble_central_setWhitelist(bool whitelist){
 }
 
 void jsble_update_security() {
+}
+
+/// Return an object showing the security status of the given connection
+JsVar *jsble_get_security_status(uint16_t conn_handle) {
+  return 0;
 }
 
 uint32_t jsble_central_send_passkey(char *passkey) {

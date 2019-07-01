@@ -40,6 +40,10 @@ void jshReset();
 /** Code that is executed each time around the idle loop. Prod watchdog timers here,
  * and on platforms without GPIO interrupts you can check watched Pins for changes. */
 void jshIdle();
+
+/// Called when Espruino is busy waiting (eg for data to send)
+void jshBusyIdle();
+
 /** Enter sleep mode for the given period of time. Can be woken up by interrupts.
  * If time is 0xFFFFFFFFFFFFFFFF then go to sleep without setting a timer to wake
  * up.
@@ -151,7 +155,6 @@ typedef enum {
 0)
 /// Should a pin of this state have an internal pullup?
 #define JSHPINSTATE_IS_PULLUP(state) ( \
-            (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||      \
             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
             (state)==JSHPINSTATE_GPIO_IN_PULLUP ||          \
             (state)==JSHPINSTATE_USART_IN ||                \
@@ -432,8 +435,12 @@ void jshVirtualPinInitialise();
 void jshVirtualPinSetValue(Pin pin, bool state);
 /// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
 bool jshVirtualPinGetValue(Pin pin);
+/// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used. Return NaN if not implemented
+JsVarFloat jshVirtualPinGetAnalogValue(Pin pin);
 /// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
 void jshVirtualPinSetState(Pin pin, JshPinState state);
+/// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used. Return JSHPINSTATE_UNDEFINED if not implemented
+JshPinState jshVirtualPinGetState(Pin pin);
 #endif
 
 /** Hacky definition of wait cycles used for WAIT_UNTIL.
