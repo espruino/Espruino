@@ -82,7 +82,7 @@ port 23 on the ESP8266 and port 2323 on Linux.
   "name"     : "setOptions",
   "generate" : "jswrap_telnet_setOptions",
   "params": [
-    [ "options", "JsVar", "Options controlling the telnet console server" ]
+    [ "options", "JsVar", "Options controlling the telnet console server `{ mode : 'on|off'}`" ]
   ]
 }
 */
