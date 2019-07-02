@@ -19,6 +19,7 @@
             ESP8266: optimize rename-section for ESP8266_4MB board, freeHeap +2064 byte (fix #1679)
             Fix corruption if Function.replaceWith called manually on something not a function (fix #1684)
             Fix bug where '.clone' on a native function didn't copy arguments (fix #1685)
+            nRF52840: Fix input/pullup/pulldown pin modes on IO bank 2
 
      2v03 : nRF5x: Fix issue when calling NRF.setAdvertising while connected via BLE (fix #1659)
             nRF5x: 'dump()' not outputs `NRF.setSecurity` line if it has been called.
