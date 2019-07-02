@@ -872,8 +872,8 @@ This replaces the function with the one in the argument - while keeping the old 
 This allows inner functions to be edited, and is used when edit() is called on an inner function.
  */
 void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
-  if (!jsvIsFunction(newFunc)) {
-    jsExceptionHere(JSET_TYPEERROR, "First argument of replaceWith should be a function - ignoring");
+  if ((!jsvIsFunction(oldFunc)) || (!jsvIsFunction(newFunc))) {
+    jsExceptionHere(JSET_TYPEERROR, "Argument should be a function");
     return;
   }
   // If old was native or vice versa...
