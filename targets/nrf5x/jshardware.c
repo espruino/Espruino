@@ -362,13 +362,13 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
                    if (NRF_UART0->PSELRXD==0xFFFFFFFF && NRF_UART0->PSELTXD==0xFFFFFFFF)
                      jshUSARTUnSetup(EV_SERIAL1);
                    break;
-#if UASRT_COUNT>1
+#if USART_COUNT>1
   case JSH_USART2: if (fInfo==JSH_USART_RX) {
-                     NRF_UART1->PSELRXD = pin;
+                     NRF_UARTE1->PSELRXD = pin;
                      if (pin==0xFFFFFFFF) nrf_drv_uart_rx_disable(&UART[1]);
-                   } else NRF_UART1->PSELTXD = pin;
+                   } else NRF_UARTE1->PSELTXD = pin;
                    // if both pins are disabled, shut down the UART
-                   if (NRF_UART1->PSELRXD==0xFFFFFFFF && NRF_UART1->PSELTXD==0xFFFFFFFF)
+                   if (NRF_UARTE1->PSELRXD==0xFFFFFFFF && NRF_UARTE1->PSELTXD==0xFFFFFFFF)
                      jshUSARTUnSetup(EV_SERIAL2);
                    break;
 #endif
@@ -1223,7 +1223,8 @@ void uart_starttx(int num) {
   if (ch >= 0) {
     uart[num].isSending = true;
     uart[num].txBuffer[0] = ch;
-    nrf_drv_uart_tx(&UART[num], uart[num].txBuffer, 1);
+    ret_code_t err_code = nrf_drv_uart_tx(&UART[num], uart[num].txBuffer, 1);
+    if (err_code) jsWarn("nrf_drv_uart_tx failed, error %d", err_code);
   } else
     uart[num].isSending = false;
 }
@@ -1281,6 +1282,7 @@ void jshUSARTUnSetup(IOEventFlags device) {
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (!DEVICE_IS_USART(device))
     return;
+
   unsigned int num = device-EV_SERIAL1;
   jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
   jshSetErrorHandlingEnabled(device, inf->errorHandling);
@@ -1296,7 +1298,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     nrf_drv_uart_uninit(&UART[num]);
   }
   uart[num].isInitialised = false;
-  JshPinFunction JSH_USART = JSH_USART1+num;
+  JshPinFunction JSH_USART = JSH_USART1+(num<<JSH_SHIFT_TYPE);
 
   // APP_UART_INIT will set pins, but this ensures we know so can reset state later
   if (jshIsPinValid(inf->pinRX)) jshPinSetFunction(inf->pinRX, JSH_USART|JSH_USART_RX);
@@ -1314,9 +1316,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   uint32_t err_code;
 #if USART_COUNT>1
   if (num==1) err_code = nrf_drv_uart_init(&UART[num], &config, uart1_event_handle);
-  else
 #endif
-  err_code = nrf_drv_uart_init(&UART[num], &config, uart0_event_handle);
+  if (num==0) err_code = nrf_drv_uart_init(&UART[num], &config, uart0_event_handle);
   if (err_code) {
     jsWarn("nrf_drv_uart_init failed, error %d", err_code);
   } else {
