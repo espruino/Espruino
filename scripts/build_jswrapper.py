@@ -210,7 +210,18 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 					if black["class"] == "__":
 						if jsondata["name"] == black["name"]:
 							toremove.append(idx)
-#  end extensioin by jumjum
+		if "type" in jsondata:
+			if "class" in jsondata:
+				for black in blacklist:
+					if jsondata["class"] == black["class"]:
+						if black["name"] == "*":
+							toremove.append(idx)
+			if "instanceof" in jsondata:
+				for black in blacklist:
+					if jsondata["instanceof"] == black["class"]:
+						if black["name"] == "*":
+							toremove.append(idx)
+#  end extension by jumjum
 	return delete_by_indices( datas, toremove)
 # ------------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------------
