@@ -603,6 +603,20 @@ Return the index of the value in the array, or `-1`
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",
+  "name" : "includes",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_array_includes",
+  "params" : [
+    ["value","JsVar","The value to check for"],
+    ["startIndex","int","(optional) the index to search from, or 0 if not specified"]
+  ],
+  "return" : ["bool","`true` if the array includes the value, `false` otherwise"]
+}
+Return `true` if the array includes the value, `false` otherwise
+ */
+/*JSON{
+  "type" : "method",
+  "class" : "ArrayBufferView",
   "name" : "join",
   "generate" : "jswrap_array_join",
   "params" : [

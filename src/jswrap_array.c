@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_array.h"
+#include "jswrap_functions.h" // jswrap_isNaN
 #include "jsparse.h"
 
 #define min(a,b) (((a)<(b))?(a):(b))
@@ -108,6 +109,47 @@ JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value, JsVarInt startIdx) {
   // but this is the name - we must turn it into a var
   if (idxName == 0) return jsvNewFromInteger(-1); // not found!
   return jsvNewFromInteger(jsvGetIntegerAndUnLock(idxName));
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Array",
+  "name" : "includes",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_array_includes",
+  "params" : [
+    ["value","JsVar","The value to check for"],
+    ["startIndex","int","(optional) the index to search from, or 0 if not specified"]
+  ],
+  "return" : ["bool","`true` if the array includes the value, `false` otherwise"]
+}
+Return `true` if the array includes the value, `false` otherwise
+ */
+bool jswrap_array_includes(JsVar *arr, JsVar *value, JsVarInt startIdx) {
+  if (startIdx<0) startIdx+=jsvGetLength(arr);
+  if (startIdx<0) startIdx=0;
+  bool isNaN = jsvIsFloat(value) && isnan(jsvGetFloat(value));
+  if (!jsvIsIterable(arr)) return 0;
+  JsvIterator it;
+  jsvIteratorNew(&it, arr, JSIF_DEFINED_ARRAY_ElEMENTS);
+  while (jsvIteratorHasElement(&it)) {
+    JsVar *childIndex = jsvIteratorGetKey(&it);
+    if (jsvIsInt(childIndex) && jsvGetInteger(childIndex)>=startIdx) {
+      JsVar *childValue = jsvIteratorGetValue(&it);
+      if (childValue==value ||
+          jsvMathsOpTypeEqual(childValue, value) ||
+          (isNaN && jsvIsFloat(childValue) && isnan(jsvGetFloat(childValue)))) {
+        jsvUnLock2(childIndex,childValue);
+        jsvIteratorFree(&it);
+        return true;
+      }
+      jsvUnLock(childValue);
+    }
+    jsvUnLock(childIndex);
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+  return false;
 }
 
 /*JSON{

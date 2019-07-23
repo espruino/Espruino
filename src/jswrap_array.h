@@ -16,6 +16,7 @@
 JsVar *jswrap_array_constructor(JsVar *args);
 bool jswrap_array_contains(JsVar *parent, JsVar *value);
 JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value, JsVarInt startIdx);
+bool jswrap_array_includes(JsVar *parent, JsVar *value, JsVarInt startIdx);
 JsVar *jswrap_array_join(JsVar *parent, JsVar *filler);
 JsVarInt jswrap_array_push(JsVar *parent, JsVar *args);
 JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar);

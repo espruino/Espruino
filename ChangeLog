@@ -1,3 +1,5 @@
+            Add Array.includes
+
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
             Fix Array.fill crash if used to fill up all available memory (fix #1668)
