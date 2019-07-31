@@ -137,7 +137,12 @@ char lcd_data[LCD_ROWSTRIDE*LCD_DATA_HEIGHT];
 int ymin=0,ymax=LCD_DATA_HEIGHT-1;
 
 void lcd_pixel(int x, int y) {
-  lcd_data[(x>>3)+(y*LCD_ROWSTRIDE)] |= 1<<(x&7); // each byte is horizontal
+  // flip 180
+  x = LCD_DATA_WIDTH - (x+1);
+  y = LCD_DATA_HEIGHT - (y+1);
+  // each byte is horizontal
+  lcd_data[(x>>3)+(y*LCD_ROWSTRIDE)] |= 1<<(x&7);
+  // update changed area
   if (y<ymin) ymin=y;
   if (y>ymax) ymax=y;
 }
