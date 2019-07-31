@@ -53,6 +53,7 @@ JsVar *jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri, 
 void jswrap_espruino_setPassword(JsVar *pwd);
 void jswrap_espruino_lockConsole();
 void jswrap_espruino_setTimeZone(JsVarFloat zone);
+JsVar *jswrap_espruino_memoryMap(JsVar *baseAddress, JsVar *registers);
 void jswrap_espruino_asm(JsVar *callspec, JsVar *args);
 void jswrap_espruino_compiledC(JsVar *code);
 void jswrap_espruino_reboot();

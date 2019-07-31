@@ -1,4 +1,6 @@
-            Allow \1..\9 escape codes in RegExp
+            Add Array.includes
+
+     2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
             Fix Array.fill crash if used to fill up all available memory (fix #1668)
             Fix NRF.requestDevice regression (clearInterval error) (fix #1669)
@@ -20,6 +22,7 @@
             Fix corruption if Function.replaceWith called manually on something not a function (fix #1684)
             Fix bug where '.clone' on a native function didn't copy arguments (fix #1685)
             nRF52840: Fix input/pullup/pulldown pin modes on IO bank 2
+            Added `E.memoryMap` to allow on-chip registers to be mapped direct to variables (fix #1500)
 
      2v03 : nRF5x: Fix issue when calling NRF.setAdvertising while connected via BLE (fix #1659)
             nRF5x: 'dump()' not outputs `NRF.setSecurity` line if it has been called.
