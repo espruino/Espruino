@@ -252,13 +252,14 @@ void LCD_SPI_DATA(int d) {
 void touchCallback(bool state, IOEventFlags flags) {
   if (state) return;
   unsigned char buf[16];
-  int timeout = 200;
+  /*int timeout = 200;
   // Wait for busy? May not be required
   do {
     buf[0]=0x80;
     jsi2cWrite(&touchI2C, 0x46, 1, buf, true);
     jsi2cRead(&touchI2C, 0x46, 1, buf, true);
   } while ((buf[0]&1) && timeout--);
+  if (timeout<=0) return;*/
   // Get touch data
   buf[0]=0xE0;
   jsi2cWrite(&touchI2C, 0x46, 1, buf, true);
@@ -479,7 +480,6 @@ void jswrap_id205_init() {
   jsvUnLock(graphics);
 
   // Setup touchscreen I2C
-  jsi2cPopulateI2CInfo(&touchI2C, 0);
   jshI2CInitInfo(&touchI2C);
   touchI2C.pinSCL = 23;
   touchI2C.pinSDA = 21;
@@ -489,6 +489,7 @@ void jswrap_id205_init() {
   jshPinSetState(touchI2C.pinSDA,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   // Set touchscreen watch
   touchWatchChannel = jshPinWatch(32, true);
+  jshPinSetState(32,  JSHPINSTATE_GPIO_IN_PULLUP);
   if (touchWatchChannel!=EV_NONE)
     jshSetEventCallback(touchWatchChannel, touchCallback);
   else
