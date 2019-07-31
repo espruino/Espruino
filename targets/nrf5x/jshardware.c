@@ -260,6 +260,21 @@ JshPinFunction pinStates[JSH_PIN_COUNT];
 #if SPI_ENABLED
 static const nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
 bool spi0Initialised = false;
+
+// Handler for async SPI transfers
+volatile bool spi0Sending = false;
+void (*volatile spi0Callback)() = NULL;
+void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event,
+#if NRF_SD_BLE_API_VERSION>=5
+                      void *                    p_context
+#endif
+                      ) {
+  spi0Sending = false;
+  if (spi0Callback) {
+    spi0Callback();
+    spi0Callback=NULL;
+  }
+}
 #endif
 
 static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
@@ -432,6 +447,8 @@ void jshResetPeripherals() {
 #if JSH_PORTV_COUNT>0
   jshVirtualPinInitialise();
 #endif
+  spi0Sending = false;
+  spi0Callback = NULL;
 }
 
 void jshInit() {
@@ -750,13 +767,25 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_GPIO_IN :
     case JSHPINSTATE_USART_IN :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLUP);
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                                    | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                                    | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
+                                    | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                                    | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN_PULLDOWN :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLDOWN);
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                                    | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                                    | (GPIO_PIN_CNF_PULL_Pulldown << GPIO_PIN_CNF_PULL_Pos)
+                                    | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                                    | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     default : jsiConsolePrintf("Unimplemented pin state %d\n", state);
       break;
@@ -1366,17 +1395,11 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M2;
   else if (inf->baudRate<((4000000+8000000)/2))
     freq = SPI_FREQUENCY_FREQUENCY_M4;
-#ifndef NRF52840
   else
     freq = SPI_FREQUENCY_FREQUENCY_M8;
-#else
-  else if (inf->baudRate<((8000000+16000000)/2))
-    freq = SPI_FREQUENCY_FREQUENCY_M8;
-  else if (inf->baudRate<((16000000+32000000)/2))
-    freq = 0x0A000000;//SPI_FREQUENCY_FREQUENCY_M16;
-  else
-    freq = 0x14000000;//SPI_FREQUENCY_FREQUENCY_M32;
-#endif
+  /* Numbers for SPI_FREQUENCY_FREQUENCY_M16/SPI_FREQUENCY_FREQUENCY_M32
+  are in the nRF52 datasheet but they don't appear to actually work (and
+  aren't in the header files either). */
   spi_config.frequency =  freq;
   spi_config.mode = inf->spiMode;
   spi_config.bit_order = inf->spiMSB ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST;
@@ -1391,9 +1414,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   spi0Initialised = true;
   // No event handler means SPI transfers are blocking
 #if NRF_SD_BLE_API_VERSION<5
-  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL);
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, spi0EvtHandler);
 #else
-  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL, NULL);
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, spi0EvtHandler, NULL);
 #endif
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "SPI Initialisation Error %d\n", err_code);
@@ -1417,11 +1440,16 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
+  jshSPIWait(device);
   uint8_t tx = (uint8_t)data;
   uint8_t rx = 0;
+  spi0Sending = true;
   uint32_t err_code = nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
-  if (err_code != NRF_SUCCESS)
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+  }
+  jshSPIWait(device);
   return rx;
 #endif
 }
@@ -1430,11 +1458,35 @@ int jshSPISend(IOEventFlags device, int data) {
 void jshSPISend16(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return;
+  jshSPIWait(device);
   uint16_t tx = (uint16_t)data;
-  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 1, 0, 0);
-  if (err_code != NRF_SUCCESS)
+  spi0Sending = true;
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 2, 0, 0);
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+  }
+  jshSPIWait(device);
 #endif
+}
+
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success. if callback is nonzero this call
+ * will be async */
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+#if SPI_ENABLED
+  if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return false;
+  jshSPIWait(device);
+  if (callback) spi0Callback = callback;
+  spi0Sending = true;
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, count, rx, rx?count:0);
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
+    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+  }
+  if (!callback) jshSPIWait(device);
+#endif
+  return true;
 }
 
 /** Set whether to send 16 bits or 8 over SPI */
@@ -1447,6 +1499,7 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 
 /** Wait until SPI send is finished, and flush all received data */
 void jshSPIWait(IOEventFlags device) {
+  WAIT_UNTIL(!spi0Sending, "SPI0");
 }
 
 /** Set up I2C, if pins are -1 they will be guessed */

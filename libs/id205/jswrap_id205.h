@@ -13,7 +13,7 @@
  */
 #include "jspin.h"
 
-void jswrap_id205_lcdw(JsVarInt c);
+void jswrap_id205_lcdw(JsVarInt cmd, JsVar *data);
 void jswrap_id205_setContrast(JsVarFloat c);
 void jswrap_id205_setLCDPower(bool isOn);
 

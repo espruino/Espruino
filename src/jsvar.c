@@ -2404,8 +2404,12 @@ JsVar *jsvCopy(JsVar *src, bool copyChildren) {
   JsVar *dst = jsvNewWithFlags(src->flags & JSV_VARIABLEINFOMASK);
   if (!dst) return 0; // out of memory
   if (!jsvIsStringExt(src)) {
-      memcpy(&dst->varData, &src->varData, (jsvIsBasicString(src)||jsvIsNativeString(src)) ? JSVAR_DATA_STRING_LEN : JSVAR_DATA_STRING_NAME_LEN);
-      if (!(jsvIsBasicString(src)||jsvIsNativeString(src))) {
+      bool refsAsData = jsvIsBasicString(src)||jsvIsNativeString(src)||jsvIsNativeFunction(src);
+      memcpy(&dst->varData, &src->varData, refsAsData ? JSVAR_DATA_STRING_LEN : JSVAR_DATA_STRING_NAME_LEN);
+      if (jsvIsNativeFunction(src)) {
+        jsvSetFirstChild(dst,0);
+      }
+      if (!refsAsData) {
         assert(jsvGetPrevSibling(dst) == 0);
         assert(jsvGetNextSibling(dst) == 0);
         assert(jsvGetFirstChild(dst) == 0);

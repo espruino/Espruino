@@ -15,7 +15,7 @@
 #include "jshardware.h"
 
 typedef JshSPIInfo spi_sender_data; // the larger of JshSPIInfo or IOEventFlags
-typedef int (*spi_sender)(int data, spi_sender_data *info);
+typedef void (*spi_sender)(unsigned char *tx, unsigned char *rx, unsigned int len, spi_sender_data *info);
 
 bool jsspiPopulateSPIInfo(JshSPIInfo *inf, JsVar *options);
 
