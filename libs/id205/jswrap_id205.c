@@ -273,6 +273,7 @@ void touchCallback(bool state, IOEventFlags flags) {
     if (touchDown) touchHadEvent = true;
     touchDown = false;
   }
+  jshHadEvent();
 }
 
 /*JSON{
@@ -286,6 +287,7 @@ void jswrap_id205_init() {
   jstExecuteFn(watchdogHandler, NULL, jshGetSystemTime()+t, t);
 
   jshPinOutput(3,1); // general VDD power?
+  jshPinOutput(46,0); // What's this? Who knows! But it stops screen flicker and makes the touchscreen work nicely
 
   jshPinOutput(LCD_BL,1); // backlight
   // LCD Init 1
@@ -322,7 +324,7 @@ void jswrap_id205_init() {
 
   JshSPIInfo inf;
   jshSPIInitInfo(&inf);
-  inf.baudRate = 4000000; // at 8MHz the LCD stops refreshing!
+  inf.baudRate = 8000000;
   inf.pinMOSI = LCD_SPI_MOSI;
   inf.pinSCK = LCD_SPI_SCK;
   jshSPISetup(LCD_SPI, &inf);
@@ -528,9 +530,10 @@ bool jswrap_id205_idle() {
       jsvObjectSetChildAndUnLock(xy, "x", jsvNewFromInteger(touchX));
       jsvObjectSetChildAndUnLock(xy, "y", jsvNewFromInteger(touchY));
       if (touchDown) {
-        jsiQueueObjectCallbacks(id, JS_EVENT_PREFIX"touchDown", &xy, 1);
         if (touchWasDown)
           jsiQueueObjectCallbacks(id, JS_EVENT_PREFIX"touchMove", &xy, 1);
+        else
+          jsiQueueObjectCallbacks(id, JS_EVENT_PREFIX"touchDown", &xy, 1);
       } else
         jsiQueueObjectCallbacks(id, JS_EVENT_PREFIX"touchUp", &xy, 1);
       touchWasDown = touchDown;
