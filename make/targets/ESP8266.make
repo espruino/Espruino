@@ -24,7 +24,7 @@ ESP_COMBINED_SIZE = 4096
 ESP_FLASH_ADDONS  = $(ET_DEFAULTS) $(INIT_DATA) $(ET_BLANK) $(BLANK)
 LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.2048.ld
 LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.2048.ld
-LD_RENAME    = --rename-section .rodata=.irom.literal --rename-section .text=.irom.text --rename-section .literal=.irom.literal
+LD_RENAME    = --rename-section .text=.irom.text --rename-section .literal=.irom.literal
 else
 ESP_COMBINED_SIZE = 512
 LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
