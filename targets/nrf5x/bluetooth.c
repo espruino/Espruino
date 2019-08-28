@@ -867,8 +867,11 @@ static void nus_data_handler(ble_nus_evt_t * p_evt) {
 void nus_transmit_string() {
   if (!jsble_has_peripheral_connection() ||
       !(bleStatus & BLE_NUS_INITED) ||
-      (bleStatus & BLE_IS_SLEEPING)) {
+      (bleStatus & BLE_IS_SLEEPING) ||
+      (!m_nus.is_notification_enabled)) {
     // If no connection, drain the output buffer
+    // if no notifications, we are connected but the central isn't reading, so sends will fail
+    //  - in this case, also ditch any data we're due to send
     nuxTxBufLength = 0;
     while (jshGetCharToTransmit(EV_BLUETOOTH)>=0);
     return;
