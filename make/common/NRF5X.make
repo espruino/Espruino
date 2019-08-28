@@ -130,6 +130,7 @@ ifdef NRF5X_SDK_15
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_gpiote.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_spi.c \
+$(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_spim.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_twi.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_uart.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_uarte.c \
