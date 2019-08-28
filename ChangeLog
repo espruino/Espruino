@@ -1,6 +1,7 @@
             Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
             nRF52: If a central is connected to Espruino but isn't reading from UART, don't block waiting to send data
+            ESP8266: reverse fix #1679
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
