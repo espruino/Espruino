@@ -40,6 +40,7 @@ info = {
 #     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
 #     'DEFINES += -DBOARD_PCA10056',
 #     'DEFINES += -DNRF_USB=1 -DUSB',
+     'DEFINES+=-DUSE_FONT_6X8',
      'NRF_SDK15=1',
      'INCLUDE += -I$(ROOT)/libs/id205',
      'WRAPPERSOURCES += libs/id205/jswrap_id205.c',

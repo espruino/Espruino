@@ -123,7 +123,8 @@ void lcd_flip_gfx(JsGraphics *gfx) {
 
   jshPinSetValue(LCD_SPI_CS, 0);
   jshPinSetValue(LCD_SPI_DC, 0); // command
-  jshSPISend(LCD_SPI, 0x2A);
+  buffer1[0] = 0x2A;
+  jshSPISendMany(LCD_SPI, buffer1, NULL, 1, NULL);
   jshPinSetValue(LCD_SPI_DC, 1); // data
   buffer1[0] = 0;
   buffer1[1] = gfx->data.modMinX;
@@ -131,7 +132,8 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   buffer1[3] = gfx->data.modMaxX-1;
   jshSPISendMany(LCD_SPI, buffer1, NULL, 4, NULL);
   jshPinSetValue(LCD_SPI_DC, 0); // command
-  jshSPISend(LCD_SPI, 0x2B);
+  buffer1[0] = 0x2B;
+  jshSPISendMany(LCD_SPI, buffer1, NULL, 1, NULL);
   jshPinSetValue(LCD_SPI_DC, 1); // data
   buffer1[0] = 0;
   buffer1[1] = gfx->data.modMinY;
@@ -139,7 +141,8 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   buffer1[3] = gfx->data.modMaxY+1;
   jshSPISendMany(LCD_SPI, buffer1, NULL, 4, NULL);
   jshPinSetValue(LCD_SPI_DC, 0); // command
-  jshSPISend(LCD_SPI, 0x2C);
+  buffer1[0] = 0x2C;
+  jshSPISendMany(LCD_SPI, buffer1, NULL, 1, NULL);
   jshPinSetValue(LCD_SPI_DC, 1); // data
 
   for (int y=gfx->data.modMinY;y<=gfx->data.modMaxY;y++) {
@@ -310,6 +313,7 @@ void jswrap_id205_init() {
   gfx.data.width = LCD_WIDTH;
   gfx.data.height = LCD_HEIGHT;
   gfx.data.bpp = LCD_BPP;
+  gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
   lcdInit_ArrayBuffer(&gfx);
   graphicsSetVar(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
@@ -450,18 +454,19 @@ void jswrap_id205_init() {
   static bool firstStart = true;
 
   graphicsClear(&gfx);
-  graphicsDrawString(&gfx,0, 6," ____                 _ ");
-  graphicsDrawString(&gfx,0,12,"|  __|___ ___ ___ _ _|_|___ ___ ");
-  graphicsDrawString(&gfx,0,18,"|  __|_ -| . |  _| | | |   | . |");
-  graphicsDrawString(&gfx,0,24,"|____|___|  _|_| |___|_|_|_|___|");
-  graphicsDrawString(&gfx,0,30,"         |_| espruino.com");
-  graphicsDrawString(&gfx,0,36," "JS_VERSION" (c) 2019 G.Williams");
+  int h=8;
+  jswrap_graphics_drawCString(&gfx,0,h*1," ____                 _ ");
+  jswrap_graphics_drawCString(&gfx,0,h*2,"|  __|___ ___ ___ _ _|_|___ ___ ");
+  jswrap_graphics_drawCString(&gfx,0,h*3,"|  __|_ -| . |  _| | | |   | . |");
+  jswrap_graphics_drawCString(&gfx,0,h*4,"|____|___|  _|_| |___|_|_|_|___|");
+  jswrap_graphics_drawCString(&gfx,0,h*5,"         |_| espruino.com");
+  jswrap_graphics_drawCString(&gfx,0,h*6," "JS_VERSION" (c) 2019 G.Williams");
   // Write MAC address in bottom right
   JsVar *addr = jswrap_ble_getAddress();
   char buf[20];
   jsvGetString(addr, buf, sizeof(buf));
   jsvUnLock(addr);
-  graphicsDrawString(&gfx,(LCD_WIDTH-1)-strlen(buf)*4,50,buf);
+  jswrap_graphics_drawCString(&gfx,(LCD_WIDTH-1)-strlen(buf)*6,h*8,buf);
   lcd_flip_gfx(&gfx);
 
 /*

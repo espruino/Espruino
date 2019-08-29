@@ -542,13 +542,13 @@ void jswrap_pixljs_init() {
     graphicsClear(&gfx);
     graphicsDrawImage1bpp(&gfx,24,15,81,34,PIXLJS_IMG);
   }
-  graphicsDrawString(&gfx,28,39,JS_VERSION);
+  jswrap_graphics_drawCString(&gfx,28,39,JS_VERSION);
   // Write MAC address in bottom right
   JsVar *addr = jswrap_ble_getAddress();
   char buf[20];
   jsvGetString(addr, buf, sizeof(buf));
   jsvUnLock(addr);
-  graphicsDrawString(&gfx,127-strlen(buf)*4,59,buf);
+  jswrap_graphics_drawCString(&gfx,127-strlen(buf)*4,59,buf);
   lcd_flip_gfx(&gfx);
 
 
