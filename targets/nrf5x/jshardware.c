@@ -260,6 +260,9 @@ JshPinFunction pinStates[JSH_PIN_COUNT];
 #if SPI_ENABLED
 static const nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
 bool spi0Initialised = false;
+unsigned char *spi0RxPtr;
+unsigned char *spi0TxPtr;
+size_t spi0Cnt;
 
 // Handler for async SPI transfers
 volatile bool spi0Sending = false;
@@ -269,6 +272,21 @@ void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event,
                       void *                    p_context
 #endif
                       ) {
+  /* SPI can only send max 255 bytes at once, so we
+   * have to use the IRQ to fire off the next send */
+  if (spi0Cnt>0) {
+    size_t c = spi0Cnt;
+    if (c>255) c=255;
+    unsigned char *tx = spi0TxPtr;
+    unsigned char *rx = spi0RxPtr;
+    spi0Cnt -= c;
+    if (spi0TxPtr) spi0TxPtr += c;
+    if (spi0RxPtr) spi0RxPtr += c;
+    uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+    if (err_code == NRF_SUCCESS)
+      return;
+    // if fails, we drop through as if we succeeded
+  }
   spi0Sending = false;
   if (spi0Callback) {
     spi0Callback();
@@ -1478,16 +1496,28 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return false;
   jshSPIWait(device);
-  if (callback) spi0Callback = callback;
   spi0Sending = true;
-  uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, count, rx, rx?count:0);
+
+  size_t c = count;
+  if (c>255)
+    c=255;
+
+  spi0TxPtr = tx ? tx+c : 0;
+  spi0RxPtr = rx ? rx+c : 0;
+  spi0Cnt = count-c;
+  if (callback) spi0Callback = callback;
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
   if (err_code != NRF_SUCCESS) {
     spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+    return false;
   }
   if (!callback) jshSPIWait(device);
-#endif
   return true;
+#else
+  return false;
+#endif
+
 }
 
 /** Set whether to send 16 bits or 8 over SPI */

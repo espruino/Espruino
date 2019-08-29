@@ -47,7 +47,7 @@ void jshI2CInitInfo(JshI2CInfo *inf) {
 
 /** Send data in tx through the given SPI device and return the response in
  * rx (if supplied). Returns true on success */
-__WEAK bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+__attribute__((weak)) bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
   size_t txPtr = 0;
   size_t rxPtr = 0;
   // transmit the data
