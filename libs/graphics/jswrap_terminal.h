@@ -19,4 +19,5 @@
 void terminalSendChar(char c);
 /// Initialise the terminal
 void jswrap_terminal_init();
-
+/// If needed, queue flip for graphics object
+bool jswrap_terminal_idle();

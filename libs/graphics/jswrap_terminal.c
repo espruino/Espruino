@@ -19,6 +19,8 @@
 #include "jsparse.h"
 #include "jsdevices.h"
 
+#include "bitmap_font_4x6.h"
+#include "bitmap_font_6x8.h"
 
 /*JSON{
   "type" : "object",
@@ -33,15 +35,30 @@ is called and if an instance of `Graphics` is found then characters
 are written to it.
 */
 
-#define terminalHeight (10)
-#define terminalCharW (4)
-#define terminalCharH (6)
-#define terminalOffsetX (0)
-#define terminalOffsetY (4)
+#ifdef USE_FONT_6X8
+#define TERMINAL_CHAR_W (6)
+#define TERMINAL_CHAR_H (8)
+#define TERMINAL_CHAR_CMD graphicsDrawChar6x8
+#else
+#define TERMINAL_CHAR_W (4)
+#define TERMINAL_CHAR_H (6)
+#define TERMINAL_CHAR_CMD graphicsDrawChar4x6
+#endif
+
+#ifdef LCD_HEIGHT
+#define TERMINAL_HEIGHT (LCD_HEIGHT/TERMINAL_CHAR_H)
+#define TERMINAL_OFFSET_Y (LCD_HEIGHT-(TERMINAL_HEIGHT*TERMINAL_CHAR_H))
+#else
+#define TERMINAL_HEIGHT (10)
+#define TERMINAL_OFFSET_Y (4)
+#endif
+#define TERMINAL_OFFSET_X (0)
+
 
 char terminalControlChars[4];
 unsigned char terminalX = 0;
-unsigned char terminalY = terminalHeight-1;
+unsigned char terminalY = TERMINAL_HEIGHT-1;
+bool terminalNeedsFlip = false;
 
 static void terminalControlCharsReset() {
   terminalControlChars[0]=0;
@@ -60,16 +77,10 @@ bool terminalGetGFX(JsGraphics *gfx) {
   return false;
 }
 
-// Actually display terminal contents
-void terminalFlip(JsGraphics *gfx) {
-  JsVar *flip = jsvObjectGetChild(gfx->graphicsVar, "flip", 0);
-  if (flip) jsvUnLock2(jspExecuteFunction(flip,gfx->graphicsVar,0,0),flip);
-}
-
 /// Setup the graphics var state and flip the screen
 void terminalSetGFX(JsGraphics *gfx) {
   graphicsSetVar(gfx);
-  terminalFlip(gfx); // this will read from/save to graphicsVar
+  terminalNeedsFlip = true; // force a flip to the screen next idle
   jsvUnLock(gfx->graphicsVar);
 }
 
@@ -78,7 +89,7 @@ void terminalScroll() {
   terminalY--;
   JsGraphics gfx;
   if (terminalGetGFX(&gfx)) {
-    graphicsScroll(&gfx, 0, -terminalCharH);
+    graphicsScroll(&gfx, 0, -TERMINAL_CHAR_H);
     terminalSetGFX(&gfx); // save and flip
   }
 }
@@ -90,7 +101,7 @@ void terminalSendChar(char chn) {
       if (terminalX>0) terminalX--;
     } else if (chn==10) { // line feed
       terminalX = 0; terminalY++;
-      while (terminalY >= terminalHeight)
+      while (terminalY >= TERMINAL_HEIGHT)
         terminalScroll();
     } else if (chn==13) { // carriage return
       terminalX = 0;
@@ -101,16 +112,16 @@ void terminalSendChar(char chn) {
       // Else actually add character
       JsGraphics gfx;
       if (terminalGetGFX(&gfx)) {
-        short cx = (short)(terminalOffsetX + terminalX*terminalCharW);
-        short cy = (short)(terminalOffsetY + terminalY*terminalCharH);
+        short cx = (short)(TERMINAL_OFFSET_X + terminalX*TERMINAL_CHAR_W);
+        short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H);
         // Clear background
         unsigned int c = gfx.data.fgColor;
         gfx.data.fgColor = gfx.data.bgColor;
         graphicsFillRect(&gfx, cx, cy,
-          (short)(cx+terminalCharW-1), (short)(cy+terminalCharH-1));
+          (short)(cx+TERMINAL_CHAR_W-1), (short)(cy+TERMINAL_CHAR_H-1));
         gfx.data.fgColor = c;
         // draw char
-        graphicsDrawChar4x6(&gfx, cx, cy, chn);
+        TERMINAL_CHAR_CMD(&gfx, cx, cy, chn);
         terminalSetGFX(&gfx);
       }
       if (terminalX<255) terminalX++;
@@ -133,21 +144,21 @@ void terminalSendChar(char chn) {
           terminalControlCharsReset();
           switch (chn) {
             case 65: if (terminalY > 0) terminalY--; break;
-            case 66: terminalY++; while (terminalY >= terminalHeight) terminalScroll(); break;  // down
+            case 66: terminalY++; while (terminalY >= TERMINAL_HEIGHT) terminalScroll(); break;  // down
             case 67: if (terminalX<255) terminalX++; break; // right
             case 68: if (terminalX > 0) terminalX--; break; // left
             case 74: { // delete all to right and down
               JsGraphics gfx;
               if (terminalGetGFX(&gfx)) {
-                short cx = (short)(terminalOffsetX + terminalX*terminalCharW);
-                short cy = (short)(terminalOffsetY + terminalY*terminalCharH);
+                short cx = (short)(TERMINAL_OFFSET_X + terminalX*TERMINAL_CHAR_W);
+                short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H);
                 short w = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
                 short h = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
                 // Clear to right and down
                 unsigned int c = gfx.data.fgColor;
                 gfx.data.fgColor = gfx.data.bgColor;
-                graphicsFillRect(&gfx, cx, cy, w-1, cy+terminalCharH-1); // current line
-                graphicsFillRect(&gfx, terminalOffsetX, cy+terminalCharH, w-1, h-1); // everything under
+                graphicsFillRect(&gfx, cx, cy, w-1, cy+TERMINAL_CHAR_H-1); // current line
+                graphicsFillRect(&gfx, TERMINAL_OFFSET_X, cy+TERMINAL_CHAR_H, w-1, h-1); // everything under
                 gfx.data.fgColor = c;
                 terminalSetGFX(&gfx);
               }
@@ -173,7 +184,24 @@ void terminalSendChar(char chn) {
 void jswrap_terminal_init() {
   terminalControlCharsReset();
   terminalX = 0;
-  terminalY = (unsigned char)(terminalHeight-1);
+  terminalY = (unsigned char)(TERMINAL_HEIGHT-1);
+}
+
+/*JSON{
+  "type" : "idle",
+  "generate" : "jswrap_terminal_idle"
+}*/
+bool jswrap_terminal_idle() {
+  if (terminalNeedsFlip) {
+    JsGraphics gfx;
+    if (terminalGetGFX(&gfx)) {
+      JsVar *flip = jsvObjectGetChild(gfx.graphicsVar, "flip", 0);
+      if (flip) jsvUnLock2(jspExecuteFunction(flip,gfx.graphicsVar,0,0),flip);
+      jsvUnLock(gfx.graphicsVar);
+      terminalNeedsFlip = false;
+    }
+  }
+  return false;
 }
 
 
