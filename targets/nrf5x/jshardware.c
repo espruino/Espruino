@@ -267,9 +267,9 @@ size_t spi0Cnt;
 // Handler for async SPI transfers
 volatile bool spi0Sending = false;
 void (*volatile spi0Callback)() = NULL;
-void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event,
+void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event
 #if NRF_SD_BLE_API_VERSION>=5
-                      void *                    p_context
+                      ,void *                    p_context
 #endif
                       ) {
   /* SPI can only send max 255 bytes at once, so we
