@@ -63,8 +63,20 @@ DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DFLOAT_ABI_HARD
 # NOTE: nrf.h needs tweaking as Nordic randomly changed NRF52 to NRF52_SERIES
 ifeq ($(CHIP),NRF52840)
 DEFINES += -DNRF52 -DNRF52840_XXAA
+ifdef USE_BOOTLOADER
+NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
+ifdef BOOTLOADER
+  # we're trying to compile the bootloader itself
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_bootloader_gcc_nrf52.ld
+else # not BOOTLOADER - compiling something to run under a bootloader
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52840_ble_espruino.ld
+  INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
+endif
+# bootloader has its own config
+else # not USE_BOOTLOADER
 LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52840_ble_espruino.ld
 INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
+endif # USE_BOOTLOADER
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm
@@ -90,7 +102,7 @@ ifdef BOOTLOADER
   # we're trying to compile the bootloader itself
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_dfu_gcc_nrf52.ld
   OPTIMIZEFLAGS=-Os # try to reduce bootloader size
-else
+else # not BOOTLOADER - compiling something to run under a bootloader
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
   INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
 endif

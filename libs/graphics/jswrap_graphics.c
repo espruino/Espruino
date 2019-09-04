@@ -28,6 +28,9 @@
 
 #include "jswrap_functions.h" // for asURL
 
+#include "bitmap_font_4x6.h"
+#include "bitmap_font_6x8.h"
+
 
 /*JSON{
   "type" : "class",
@@ -762,6 +765,27 @@ Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmapped Font
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "setFont4x6",
+  "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)",
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmapped Font
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setFont6x8",
+  "ifdef" : "USE_FONT_6X8",
+  "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_6X8, false)",
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmapped Font
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "setFontVector",
   "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
@@ -876,6 +900,152 @@ JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "setFont",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_setFont",
+  "params" : [
+    ["name","JsVar","The name of the current font"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Set the font by name
+*/
+JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name) {
+#ifndef SAVE_ON_FLASH
+  if (!jsvIsString(name)) return 0;
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+#ifndef NO_VECTOR_FONT
+  if (jsvIsStringEqualOrStartsWith(name, "Vector", true))
+    gfx.data.fontSize = jsvGetIntegerAndUnLock(jsvNewFromStringVar(name, 6, JSVAPPENDSTRINGVAR_MAXLENGTH));
+#endif
+  if (jsvIsStringEqual(name, "4x6"))
+    gfx.data.fontSize = JSGRAPHICS_FONTSIZE_4X6;
+#ifdef USE_FONT_6X8
+  if (jsvIsStringEqual(name, "6x8"))
+    gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
+#endif
+  // TODO: if function named 'setFontXYZ' exists, run it
+  graphicsSetVar(&gfx);
+  return jsvLockAgain(parent);
+#else
+  return 0;
+#endif
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getFont",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_getFont",
+  "return" : ["JsVar","Get the name of the current font"],
+  "return_object" : "String"
+}
+Get the font by name - can be saved and used with `Graphics.setFont`
+*/
+JsVar *jswrap_graphics_getFont(JsVar *parent) {
+#ifndef SAVE_ON_FLASH
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+#ifndef NO_VECTOR_FONT
+  if (gfx.data.fontSize>0)
+    return jsvVarPrintf("Vector%d",gfx.data.fontSize);
+#endif
+  if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6)
+    return jsvNewFromString("4x6");
+#ifdef USE_FONT_6X8
+  if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_6X8)
+      return jsvNewFromString("6x8");
+#endif
+  if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
+    // not implemented yet because it's painful trying to pass 5 arguments into setFontCustom
+    /*JsVar *n = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_NAME, 0);
+    if (n) return n;*/
+    return jsvNewFromString("Custom");
+  }
+#endif
+  return 0;
+}
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getFonts",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_getFonts",
+  "return" : ["JsVar","And array of font names"],
+  "return_object" : "Array"
+}
+Return an array of all fonts currently in the Graphics library.
+
+**Note:** Vector fonts are specified as `Vector#` where `#` is the font height. As there
+are effectively infinite fonts, just `Vector` is included in the list.
+*/
+JsVar *jswrap_graphics_getFonts(JsVar *parent) {
+#ifndef SAVE_ON_FLASH
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  JsVar *arr = jsvNewEmptyArray();
+  if (!arr) return 0;
+  jsvArrayPushAndUnLock(arr, jsvNewFromString("4x6"));
+#ifdef USE_FONT_6X8
+  jsvArrayPushAndUnLock(arr, jsvNewFromString("6x8"));
+#endif
+#ifndef NO_VECTOR_FONT
+  jsvArrayPushAndUnLock(arr, jsvNewFromString("Vector"));
+#endif
+  JsVar *c = jspGetPrototype(parent);
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, c);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *k = jsvObjectIteratorGetKey(&it);
+    if (jsvIsStringEqualOrStartsWith(k,"setFont",true))
+      jsvArrayPushAndUnLock(arr, jsvNewFromStringVar(k,7,JSVAPPENDSTRINGVAR_MAXLENGTH));
+    jsvUnLock(k);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  jsvUnLock(c);
+  return arr;
+#else
+  return 0;
+#endif
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getFontHeight",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_getFontHeight",
+  "return" : ["int","The height in pixels of the current font"]
+}
+Return the height in pixels of the current font
+*/
+static int jswrap_graphics_getFontHeightInternal(JsGraphics *gfx) {
+  if (gfx->data.fontSize>0) {
+    return gfx->data.fontSize;
+  } else if (gfx->data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
+    return 6;
+#ifdef USE_FONT_6X8
+  } else if (gfx->data.fontSize == JSGRAPHICS_FONTSIZE_6X8) {
+    return 8;
+#endif
+  } else if (gfx->data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
+    return (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0));
+  }
+}
+int jswrap_graphics_getFontHeight(JsVar *parent) {
+#ifndef SAVE_ON_FLASH
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  return jswrap_graphics_getFontHeightInternal(&gfx);
+#else
+  return 0;
+#endif
+}
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "drawString",
   "generate" : "jswrap_graphics_drawString",
   "params" : [
@@ -892,15 +1062,11 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
   JsVar *customBitmap = 0, *customWidth = 0;
-  int customHeight = 0, customFirstChar = 0;
-  if (gfx.data.fontSize>0) {
-    customHeight = gfx.data.fontSize;
-  } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
-    customHeight = 6;
-  } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
+  int customHeight = jswrap_graphics_getFontHeightInternal(&gfx);
+  int customFirstChar = 0;
+  if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
     customBitmap = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, 0);
     customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
-    customHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0));
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   }
 #ifndef SAVE_ON_FLASH
@@ -953,6 +1119,12 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
       if (x>-4 && x<maxX && y>-6 && y<maxY)
         graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
       x+=4;
+#ifdef USE_FONT_6X8
+    } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_6X8) {
+      if (x>-6 && x<maxX && y>-8 && y<maxY)
+        graphicsDrawChar6x8(&gfx, (short)x, (short)y, ch);
+      x+=6;
+#endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
       // get char width and offset in string
       int width = 0, bmpOffset = 0;
@@ -1005,6 +1177,12 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   return jsvLockAgain(parent);
 }
 
+/// Convenience function for using drawString from C code
+void jswrap_graphics_drawCString(JsGraphics *gfx, int x, int y, char *str) {
+  JsVar *s = jsvNewFromString(str);
+  jsvUnLock2(jswrap_graphics_drawString(gfx->graphicsVar, s, x, y),s);
+}
+
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
@@ -1044,6 +1222,10 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
 #endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
       width += 4;
+#ifdef USE_FONT_6X8
+    } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_6X8) {
+      width += 6;
+#endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
       if (jsvIsString(customWidth)) {
         if (ch>=customFirstChar)

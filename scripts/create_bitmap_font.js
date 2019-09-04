@@ -13,13 +13,26 @@
 */
 
 // convert charset.png -depth 8 gray:charset.raw
-pixels = require("fs").readFileSync("charset.raw");
+/*pixels = require("fs").readFileSync("charset.raw");
 var W=128;
 var H=18;
 var CW = 4;
 var CWX = 3; // 1 of spaces
 var CH = 6;
+var PACK_DEFINE = "PACK_3_TO_16";
+var packedChars = 5;*/
+
+//convert Sebasic_charset_192w.png -depth 8 gray:sebastic.raw
+pixels = require("fs").readFileSync("sebastic.raw");
+var W=192;
+var H=24;
+var CW = 6;
+var CWX = 6;
+var CH = 8;
+var PACK_DEFINE = "PACK_5_TO_32";
 var packedChars = 5;
+
+
 
 function genChar(xo,yo) {
   var r = [];
@@ -45,18 +58,16 @@ while (y < H) {
     if (x>=W) {
       x = 0;
       y += CH;
-    } 
+    }
   }
   for (var cy=0;cy<CH;cy++) {
-    var s = " PACK_5_TO_16( ";
+    var s = " "+PACK_DEFINE+"( ";
     for (i=0;i<packedChars;i++) {
       if (i>0) s+=" , ";
-      s += chars[i][cy];      
+      s += chars[i][cy];
     }
     s += " ),";
     console.log(s);
   }
   console.log("");
 }
-
-

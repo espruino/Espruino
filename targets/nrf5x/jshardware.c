@@ -260,6 +260,39 @@ JshPinFunction pinStates[JSH_PIN_COUNT];
 #if SPI_ENABLED
 static const nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
 bool spi0Initialised = false;
+unsigned char *spi0RxPtr;
+unsigned char *spi0TxPtr;
+size_t spi0Cnt;
+
+// Handler for async SPI transfers
+volatile bool spi0Sending = false;
+void (*volatile spi0Callback)() = NULL;
+void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event,
+#if NRF_SD_BLE_API_VERSION>=5
+                      void *                    p_context
+#endif
+                      ) {
+  /* SPI can only send max 255 bytes at once, so we
+   * have to use the IRQ to fire off the next send */
+  if (spi0Cnt>0) {
+    size_t c = spi0Cnt;
+    if (c>255) c=255;
+    unsigned char *tx = spi0TxPtr;
+    unsigned char *rx = spi0RxPtr;
+    spi0Cnt -= c;
+    if (spi0TxPtr) spi0TxPtr += c;
+    if (spi0RxPtr) spi0RxPtr += c;
+    uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+    if (err_code == NRF_SUCCESS)
+      return;
+    // if fails, we drop through as if we succeeded
+  }
+  spi0Sending = false;
+  if (spi0Callback) {
+    spi0Callback();
+    spi0Callback=NULL;
+  }
+}
 #endif
 
 static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
@@ -432,6 +465,8 @@ void jshResetPeripherals() {
 #if JSH_PORTV_COUNT>0
   jshVirtualPinInitialise();
 #endif
+  spi0Sending = false;
+  spi0Callback = NULL;
 }
 
 void jshInit() {
@@ -1379,17 +1414,11 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M2;
   else if (inf->baudRate<((4000000+8000000)/2))
     freq = SPI_FREQUENCY_FREQUENCY_M4;
-#ifndef NRF52840
   else
     freq = SPI_FREQUENCY_FREQUENCY_M8;
-#else
-  else if (inf->baudRate<((8000000+16000000)/2))
-    freq = SPI_FREQUENCY_FREQUENCY_M8;
-  else if (inf->baudRate<((16000000+32000000)/2))
-    freq = 0x0A000000;//SPI_FREQUENCY_FREQUENCY_M16;
-  else
-    freq = 0x14000000;//SPI_FREQUENCY_FREQUENCY_M32;
-#endif
+  /* Numbers for SPI_FREQUENCY_FREQUENCY_M16/SPI_FREQUENCY_FREQUENCY_M32
+  are in the nRF52 datasheet but they don't appear to actually work (and
+  aren't in the header files either). */
   spi_config.frequency =  freq;
   spi_config.mode = inf->spiMode;
   spi_config.bit_order = inf->spiMSB ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST;
@@ -1404,9 +1433,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   spi0Initialised = true;
   // No event handler means SPI transfers are blocking
 #if NRF_SD_BLE_API_VERSION<5
-  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL);
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, spi0EvtHandler);
 #else
-  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL, NULL);
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, spi0EvtHandler, NULL);
 #endif
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "SPI Initialisation Error %d\n", err_code);
@@ -1430,11 +1459,16 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
+  jshSPIWait(device);
   uint8_t tx = (uint8_t)data;
   uint8_t rx = 0;
+  spi0Sending = true;
   uint32_t err_code = nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
-  if (err_code != NRF_SUCCESS)
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+  }
+  jshSPIWait(device);
   return rx;
 #endif
 }
@@ -1443,11 +1477,47 @@ int jshSPISend(IOEventFlags device, int data) {
 void jshSPISend16(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return;
+  jshSPIWait(device);
   uint16_t tx = (uint16_t)data;
-  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 1, 0, 0);
-  if (err_code != NRF_SUCCESS)
+  spi0Sending = true;
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 2, 0, 0);
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+  }
+  jshSPIWait(device);
 #endif
+}
+
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success. if callback is nonzero this call
+ * will be async */
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+#if SPI_ENABLED
+  if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return false;
+  jshSPIWait(device);
+  spi0Sending = true;
+
+  size_t c = count;
+  if (c>255)
+    c=255;
+
+  spi0TxPtr = tx ? tx+c : 0;
+  spi0RxPtr = rx ? rx+c : 0;
+  spi0Cnt = count-c;
+  if (callback) spi0Callback = callback;
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
+    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+    return false;
+  }
+  if (!callback) jshSPIWait(device);
+  return true;
+#else
+  return false;
+#endif
+
 }
 
 /** Set whether to send 16 bits or 8 over SPI */
@@ -1460,6 +1530,7 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 
 /** Wait until SPI send is finished, and flush all received data */
 void jshSPIWait(IOEventFlags device) {
+  WAIT_UNTIL(!spi0Sending, "SPI0");
 }
 
 /** Set up I2C, if pins are -1 they will be guessed */

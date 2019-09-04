@@ -12,6 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jshardware.h"
+#include "jsinteractive.h"
 
 void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->baudRate = DEFAULT_BAUD_RATE;
@@ -42,6 +43,29 @@ void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->pinSDA = PIN_UNDEFINED;
   inf->bitrate = 100000;
   inf->started = false;
+}
+
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success */
+__attribute__((weak)) bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+  size_t txPtr = 0;
+  size_t rxPtr = 0;
+  // transmit the data
+  while (txPtr<count && !jspIsInterrupted()) {
+    int data = jshSPISend(device, tx[txPtr++]);
+    if (data>=0) {
+      if (rx) rx[rxPtr] = (char)data;
+      rxPtr++;
+    }
+  }
+  // clear the rx buffer
+  while (rxPtr<count && !jspIsInterrupted()) {
+    int data = jshSPISend(device, -1);
+    if (rx) rx[rxPtr] = (char)data;
+    rxPtr++;
+  }
+  // call the callback
+  if (callback) callback();
 }
 
 // Only define this if it's not used elsewhere

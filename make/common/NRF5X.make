@@ -48,13 +48,15 @@ ifdef BOOTLOADER
   WRAPPERSOURCES =
   INCLUDE += -I$(ROOT)/targets/nrf5x_dfu
   DEFINES += -DSVC_INTERFACE_CALL_AS_NORMAL_FUNCTION
-  DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
   SOURCES = \
-    targets/nrf5x_dfu/dfu-cc.pb.c \
     targets/nrf5x_dfu/dfu_public_key.c \
-    targets/nrf5x_dfu/dfu_req_handling.c \
     targets/nrf5x_dfu/lcd.c \
     targets/nrf5x_dfu/main.c
+ifdef NRF5X_SDK_12
+  SOURCES += \
+    targets/nrf5x_dfu/sdk12/dfu-cc.pb.c \
+    targets/nrf5x_dfu/sdk12/dfu_req_handling.c 
+endif
 else
   SOURCES +=                              \
     targets/nrf5x/main.c                    \
@@ -128,6 +130,7 @@ ifdef NRF5X_SDK_15
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_gpiote.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_spi.c \
+$(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_spim.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_twi.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_uart.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_uarte.c \
@@ -205,6 +208,11 @@ endif
 ifdef USE_BOOTLOADER
 ifdef BOOTLOADER
   DEFINES += -DBOOTLOADER -DNRF_DFU_SETTINGS_VERSION=1
+  TARGETSOURCES =
+ifdef NRF5X_SDK_12
+  DEFINES += -DuECC_ENABLE_VLI_API -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1 -DuECC_SQUARE_FUNC=1 -DuECC_SUPPORTS_secp256r1=1 -DuECC_SUPPORT_COMPRESSED_POINT=0 -DuECC_OPTIMIZATION_LEVEL=3
+
+  INCLUDE += -I$(ROOT)/targets/nrf5x_dfu/sdk12
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/ble_transport
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crc32
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader
@@ -217,31 +225,33 @@ ifdef BOOTLOADER
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/sha256
   INCLUDE += -I$(NRF5X_SDK_PATH)/external/nano-pb
   INCLUDE += -I$(NRF5X_SDK_PATH)/external/micro-ecc
-  TARGETSOURCES =
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_error_weak.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/fifo/app_fifo.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/scheduler/app_scheduler.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crc32/crc32.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c 
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/ble_dfu/nrf_ble_dfu.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_common.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_decode.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/ble_dfu/nrf_ble_dfu.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_app_start.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_info.c
@@ -251,9 +261,129 @@ ifdef BOOTLOADER
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_settings.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_transport.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_utils.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_common.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_decode.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
+else
+  DEFINES += -DAPP_TIMER_V2
+  DEFINES += -DAPP_TIMER_V2_RTC1_ENABLED
+  DEFINES += -DNRF_DFU_SETTINGS_VERSION=1
+  DEFINES += -DNRF_DFU_SVCI_ENABLED
+  INCLUDE = \
+    -I$(ROOT)/gen \
+    -I$(ROOT)/src \
+    -I$(ROOT)/targets/nrf5x_dfu \
+    -I$(ROOT)/targets/nrf5x_dfu/sdk15 \
+    -I$(NRF5X_SDK_PATH)/external/micro-ecc \
+    -I$(NRF5X_SDK_PATH)/components/libraries/sha256 \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/micro_ecc \
+    -I$(NRF5X_SDK_PATH)/modules/nrfx/hal \
+    -I$(NRF5X_SDK_PATH)/components/softdevice/s140/headers/nrf52 \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crc32 \
+    -I$(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars \
+    -I$(NRF5X_SDK_PATH)/components/libraries/mem_manager \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/nrf_sw \
+    -I$(NRF5X_SDK_PATH)/components/libraries/util \
+    -I$(NRF5X_SDK_PATH)/modules/nrfx \
+    -I$(NRF5X_SDK_PATH)/components/libraries/timer/experimental \
+    -I$(NRF5X_SDK_PATH)/components/libraries/timer \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/oberon \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/cifra \
+    -I$(NRF5X_SDK_PATH)/components/libraries/atomic \
+    -I$(NRF5X_SDK_PATH)/integration/nrfx \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/cc310_bl \
+    -I$(NRF5X_SDK_PATH)/external/nrf_cc310/include \
+    -I$(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu \
+    -I$(NRF5X_SDK_PATH)/components/ble/common \
+    -I$(NRF5X_SDK_PATH)/components/libraries/delay \
+    -I$(NRF5X_SDK_PATH)/components/libraries/svc \
+    -I$(NRF5X_SDK_PATH)/components/libraries/stack_info \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/nrf_hw \
+    -I$(NRF5X_SDK_PATH)/components/libraries/strerror \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/mbedtls \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/cc310 \
+    -I$(NRF5X_SDK_PATH)/components/libraries/bootloader \
+    -I$(NRF5X_SDK_PATH)/components/softdevice/s140/headers \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto \
+    -I$(NRF5X_SDK_PATH)/components/libraries/scheduler \
+    -I$(NRF5X_SDK_PATH)/external/nrf_cc310_bl/include \
+    -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log/src \
+    -I$(NRF5X_SDK_PATH)/components/toolchain/cmsis/include \
+    -I$(NRF5X_SDK_PATH)/components/libraries/balloc \
+    -I$(NRF5X_SDK_PATH)/components/libraries/atomic_fifo \
+    -I$(NRF5X_SDK_PATH)/components/libraries/sortlist \
+    -I$(NRF5X_SDK_PATH)/components/libraries/fstorage \
+    -I$(NRF5X_SDK_PATH)/modules/nrfx/mdk \
+    -I$(NRF5X_SDK_PATH)/components/libraries/mutex \
+    -I$(NRF5X_SDK_PATH)/components/libraries/bootloader/ble_dfu \
+    -I$(NRF5X_SDK_PATH)/components/softdevice/common \
+    -I$(NRF5X_SDK_PATH)/external/nano-pb \
+    -I$(NRF5X_SDK_PATH)/components/libraries/queue \
+    -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log \
+    -I$(NRF5X_SDK_PATH)/components/libraries/experimental_memobj
+  TARGETSOURCES += \
+  $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c \
+  $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/backend/nrf_sw/nrf_sw_backend_hash.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/app_error_weak.c \
+  $(NRF5X_SDK_PATH)/components/libraries/scheduler/app_scheduler.c \
+  $(NRF5X_SDK_PATH)/components/libraries/timer/experimental/app_timer2.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crc32/crc32.c \
+  $(NRF5X_SDK_PATH)/components/libraries/timer/experimental/drv_rtc.c \
+  $(NRF5X_SDK_PATH)/components/libraries/mem_manager/mem_manager.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
+  $(NRF5X_SDK_PATH)/components/libraries/atomic_fifo/nrf_atfifo.c \
+  $(NRF5X_SDK_PATH)/components/libraries/atomic/nrf_atomic.c \
+  $(NRF5X_SDK_PATH)/components/libraries/balloc/nrf_balloc.c \
+  $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage.c \
+  $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage_nvmc.c \
+  $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage_sd.c \
+  $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c \
+  $(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars/nrf_section_iter.c \
+  $(NRF5X_SDK_PATH)/components/libraries/sortlist/nrf_sortlist.c \
+  $(NRF5X_SDK_PATH)/components/libraries/strerror/nrf_strerror.c \
+  $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52840.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/backend/cc310_bl/cc310_bl_backend_ecc.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/backend/cc310_bl/cc310_bl_backend_ecdsa.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/backend/cc310_bl/cc310_bl_backend_hash.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/backend/cc310_bl/cc310_bl_backend_init.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/backend/cc310_bl/cc310_bl_backend_shared.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/backend/micro_ecc/micro_ecc_backend_ecc.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/backend/micro_ecc/micro_ecc_backend_ecdsa.c \
+  $(NRF5X_SDK_PATH)/modules/nrfx/hal/nrf_nvmc.c \
+  $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh.c \
+  $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_ble.c \
+  $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh_soc.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto_ecc.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto_ecdsa.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto_hash.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto_init.c \
+  $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto_shared.c \
+  $(NRF5X_SDK_PATH)/components/libraries/svc/nrf_svc_handler.c \
+  $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
+  $(NRF5X_SDK_PATH)/external/nano-pb/pb_common.c \
+  $(NRF5X_SDK_PATH)/external/nano-pb/pb_decode.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/dfu-cc.pb.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/ble_dfu/nrf_dfu_ble.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_svci.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_svci_handler.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_flash.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_handling_error.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_mbr.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_req_handler.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_settings.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_settings_svci.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_transport.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_utils.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_validation.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_ver_validation.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_app_start.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_app_start_final.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_dfu_timers.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_fw_activation.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_info.c \
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_wdt.c 
+endif
 endif
 endif
 
@@ -296,7 +426,7 @@ ifeq ($(BOARD),MICROBIT)
 	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
 	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
 else
-	if type nrfjprog 2>/dev/null; then nrfjprog --family $(FAMILY) --clockspeed 50000 --program $(PROJ_NAME).hex --chiperase --reset; \
+	if type nrfjprog 2>/dev/null; then nrfjprog --family NRF52 --clockspeed 50000 --recover;nrfjprog --family $(FAMILY) --clockspeed 50000 --program $(PROJ_NAME).hex --chiperase --reset; \
 	elif [ -d "/media/$(USER)/JLINK" ]; then cp $(PROJ_NAME).hex /media/$(USER)/JLINK;sync; \
 	elif [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).hex /media/JLINK;sync; fi
 endif

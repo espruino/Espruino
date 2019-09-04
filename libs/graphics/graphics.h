@@ -52,6 +52,9 @@ typedef enum {
 #define JSGRAPHICS_FONTSIZE_4X6 (-1) // a bitmap font
 #define JSGRAPHICS_FONTSIZE_CUSTOM (-2) // a custom bitmap font made from fields in the graphics object (See below)
 // Positive font sizes are Vector fonts
+#ifdef USE_FONT_6X8
+#define JSGRAPHICS_FONTSIZE_6X8 (-3) // a bitmap font
+#endif
 
 #define JSGRAPHICS_CUSTOMFONT_BMP JS_HIDDEN_CHAR_STR"fnB"
 #define JSGRAPHICS_CUSTOMFONT_WIDTH JS_HIDDEN_CHAR_STR"fnW"
@@ -111,7 +114,6 @@ void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, sho
 void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsDrawEllipse(JsGraphics *gfx, short x, short y, short x2, short y2);
 void graphicsFillEllipse(JsGraphics *gfx, short x, short y, short x2, short y2);
-void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str);
 void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); // may overwrite vertices...
 #ifndef NO_VECTOR_FONT

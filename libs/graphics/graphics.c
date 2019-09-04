@@ -336,7 +336,7 @@ void graphicsFillEllipse(JsGraphics *gfx, short posX1, short posY1, short posX2,
   }
 }
 
-void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str) {
+static void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str) {
   // no need to modify coordinates as setPixel does that
   while (*str) {
     graphicsDrawChar4x6(gfx,x1,y1,*(str++));

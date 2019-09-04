@@ -34,7 +34,9 @@
 #include "app_error_weak.h"
 #include "nrf_bootloader_info.h"
 #include "lcd.h"
+#if NRF_SD_BLE_API_VERSION < 5
 #include "dfu_status.h"
+#endif
 
 #ifdef LED3_PININDEX
 #define UPDATE_IN_PROGRESS_LED          LED3_PININDEX                                            /**< Led used to indicate that DFU is active. */
@@ -64,6 +66,12 @@ void app_error_handler_bare(uint32_t error_code)
     (void)error_code;
     NRF_LOG_ERROR("received an error: 0x%08x!\r\n", error_code);
     NVIC_SystemReset();
+}
+
+void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
+  lcd_print("NRF ERROR\r\n");
+  nrf_delay_ms(10000);
+  NVIC_SystemReset();
 }
 
 void led_write(Pin pin, bool value) {
@@ -98,24 +106,13 @@ static bool get_btn_state()
   return state == BTN1_ONSTATE;
 }
 
-extern void dfu_set_status(DFUStatus status) {
-  switch (status) {
-  case DFUS_ADVERTISING_START:
-    lcd_print("READY TO UPDATE\r\n");
-    set_led_state(true,false); break;
-  case DFUS_ADVERTISING_STOP:
-    break;
-  case DFUS_CONNECTED:
-    lcd_print("CONNECTED\r\n");
-    set_led_state(false,true); break;
-  case DFUS_DISCONNECTED:
-    lcd_print("DISCONNECTED\r\n");
-    break;
-  }
-}
-
 // Override Weak version
+#if NRF_SD_BLE_API_VERSION < 5
 bool nrf_dfu_enter_check(void) {
+#else
+// dfu_enter_check must be modified to add the __WEAK keyword
+bool dfu_enter_check(void) {
+#endif
     bool dfu_start = get_btn_state();
 
     // If button is held down for 3 seconds, don't start bootloader.
@@ -133,16 +130,54 @@ bool nrf_dfu_enter_check(void) {
         if ((count&127)==0) lcd_print("=");
         count--;
       }
-      if (!count)
+      if (!count) {
+        lcd_print("\r\nRESUMING BOOT...\r\n");
         dfu_start = false;
-      else
+      } else {
         lcd_print("\r\nDFU STARTED\r\n");
+      }
       set_led_state(true, true);
     }
 
     return dfu_start;
 }
 
+#if NRF_SD_BLE_API_VERSION < 5
+extern void dfu_set_status(DFUStatus status) {
+  switch (status) {
+  case DFUS_ADVERTISING_START:
+    lcd_print("READY TO UPDATE\r\n");
+    set_led_state(true,false); break;
+  case DFUS_ADVERTISING_STOP:
+    break;
+  case DFUS_CONNECTED:
+    lcd_print("CONNECTED\r\n");
+    set_led_state(false,true); break;
+  case DFUS_DISCONNECTED:
+    lcd_print("DISCONNECTED\r\n");
+    break;
+  }
+}
+#else
+static void dfu_observer(nrf_dfu_evt_type_t evt_type)
+{
+    switch (evt_type)
+    {
+        case NRF_DFU_EVT_DFU_FAILED:
+        case NRF_DFU_EVT_DFU_ABORTED:
+        case NRF_DFU_EVT_DFU_INITIALIZED:
+          set_led_state(true,false);
+          break;
+        case NRF_DFU_EVT_TRANSPORT_ACTIVATED:
+          set_led_state(false,true);
+          break;
+        case NRF_DFU_EVT_DFU_STARTED:
+            break;
+        default:
+            break;
+    }
+}
+#endif
 
 /**@brief Function for application main entry.
  */
@@ -156,13 +191,56 @@ int main(void)
 
     hardware_init();
 
+
+#ifdef ID205
+    lcd_init();
+    bool wait = false;
+    if (NRF_POWER->RESETREAS & POWER_RESETREAS_LOCKUP_Msk) {
+      lcd_print("LOCKUP DETECTED\r\n");
+      wait = true;
+    }
+    if (NRF_POWER->RESETREAS & POWER_RESETREAS_SREQ_Msk) {
+      lcd_print("SOFTWARE RESET\r\n");
+      wait = true;
+    }
+    if (NRF_POWER->RESETREAS & POWER_RESETREAS_DOG_Msk) {
+      lcd_print("WATCHDOG TIMEOUT\r\n");
+      wait = true;
+    }
+    if (NRF_POWER->RESETREAS & POWER_RESETREAS_RESETPIN_Msk) {
+      lcd_print("RESET BY PIN\r\n");
+      wait = true;
+    }
+    // Clear reset reason flags
+    NRF_POWER->RESETREAS = 0xFFFFFFFF;
+    if (wait)
+      nrf_delay_us(2000000);
+    // turn on watchdog - bootloader should override this if it starts,
+    // but if we go straight through to run code then if the code fails to boot
+    // we'll restart.
+    NRF_WDT->CONFIG = (WDT_CONFIG_HALT_Pause << WDT_CONFIG_HALT_Pos) | ( WDT_CONFIG_SLEEP_Run << WDT_CONFIG_SLEEP_Pos);
+    NRF_WDT->CRV = (int)(10*32768); // 10 seconds
+    NRF_WDT->RREN |= WDT_RREN_RR0_Msk;  // Enable reload register 0
+    NRF_WDT->TASKS_START = 1;
+    NRF_WDT->RR[0] = 0x6E524635;
+#endif
+
+#if NRF_SD_BLE_API_VERSION < 5
     ret_val = nrf_bootloader_init();
     APP_ERROR_CHECK(ret_val);
-
     // Either there was no DFU functionality enabled in this project or the DFU module detected
     // no ongoing DFU operation and found a valid main application.
     // Boot the main application.
     nrf_bootloader_app_start(MAIN_APPLICATION_START_ADDR);
+#else
+    ret_val = nrf_bootloader_init(dfu_observer);
+    APP_ERROR_CHECK(ret_val);
+    // Either there was no DFU functionality enabled in this project or the DFU module detected
+    // no ongoing DFU operation and found a valid main application.
+    // Boot the main application.
+    nrf_bootloader_app_start();
+#endif
+
 
     // Should never be reached.
     NRF_LOG_INFO("After main\r\n");
