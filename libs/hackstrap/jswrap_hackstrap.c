@@ -290,8 +290,17 @@ void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data) {
 
 // Holding down both buttons will reboot
 void watchdogHandler() {
+  // Handle watchdog
   if (!(jshPinGetValue(BTN1_PININDEX) && jshPinGetValue(BTN2_PININDEX)))
     jshKickWatchDog();
+  // poll accelerometer (no other way!)
+  unsigned char buf[6];
+  buf[0]=6;
+  jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
+  int accx = (buf[1]<<8)|buf[0];
+  int accy = (buf[3]<<8)|buf[2];
+  int accz = (buf[5]<<8)|buf[4];
 }
 
 /*JSON{
@@ -299,14 +308,11 @@ void watchdogHandler() {
   "generate" : "jswrap_hackstrap_init"
 }*/
 void jswrap_hackstrap_init() {
-  // Add watchdog timer to ensure watch always stays usable (hopefully!)
-  jshEnableWatchDog(10); // 10 second watchdog
-  JsSysTime t = jshGetTimeFromMilliseconds(4000);
-  jstExecuteFn(watchdogHandler, NULL, jshGetSystemTime()+t, t);
-
   jshPinOutput(GPS_PIN_EN,1); // GPS off
 
-  jshPinOutput(LCD_BL,0); // backlight
+  jshPinOutput(LCD_BL,0); // backlight on
+  jshPinOutput(VIBRATE_PIN,0); // vibrate off
+
   // LCD Init 1
   jshPinOutput(LCD_SPI_CS,1);
   jshPinOutput(LCD_SPI_DC,1);
@@ -389,6 +395,7 @@ void jswrap_hackstrap_init() {
 
   // Setup touchscreen I2C
   jshI2CInitInfo(&internalI2C);
+  internalI2C.bitrate = 0x7FFFFFFF;
   internalI2C.pinSDA = ACCEL_PIN_SDA;
   internalI2C.pinSCL = ACCEL_PIN_SCL;
   jshPinSetValue(internalI2C.pinSCL, 1);
@@ -396,24 +403,32 @@ void jswrap_hackstrap_init() {
   jshPinSetValue(internalI2C.pinSDA, 1);
   jshPinSetState(internalI2C.pinSDA,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   // accelerometer init
-  jswrap_hackstrap_accelWr(0x18,10);
-  jswrap_hackstrap_accelWr(0x19,0x80);
+  jswrap_hackstrap_accelWr(0x18,0x0a); // CNTL1 Off, 4g range, Wakeup
+  jswrap_hackstrap_accelWr(0x19,0x80); // CNTL2 Software reset
   jshDelayMicroseconds(2000);
-  jswrap_hackstrap_accelWr(0x1b,2);
-  jswrap_hackstrap_accelWr(0x1a,0xc6);
-  jswrap_hackstrap_accelWr(0x1c,0);
-  jswrap_hackstrap_accelWr(0x1d,0);
-  jswrap_hackstrap_accelWr(0x1e,0);
-  jswrap_hackstrap_accelWr(0x1f,0);
-  jswrap_hackstrap_accelWr(0x20,0);
-  jswrap_hackstrap_accelWr(0x21,0);
-  jswrap_hackstrap_accelWr(0x23,3);
-  jswrap_hackstrap_accelWr(0x30,1);
-  jswrap_hackstrap_accelWr(0x35,0);
-  jswrap_hackstrap_accelWr(0x3e,0xe0);
-  jswrap_hackstrap_accelWr(0x18,0xca);
+  jswrap_hackstrap_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
+  jswrap_hackstrap_accelWr(0x1a,0xc6); // CNTL3
+  // 50Hz tilt
+  // 50Hz directional tap
+  // 50Hz general motion detection and the high-pass filtered outputs
+  jswrap_hackstrap_accelWr(0x1c,0); // INC1 disabled
+  jswrap_hackstrap_accelWr(0x1d,0); // INC2 disabled
+  jswrap_hackstrap_accelWr(0x1e,0); // INC3 disabled
+  jswrap_hackstrap_accelWr(0x1f,0); // INC4 disabled
+  jswrap_hackstrap_accelWr(0x20,0); // INC5 disabled
+  jswrap_hackstrap_accelWr(0x21,0); // INC6 disabled
+  jswrap_hackstrap_accelWr(0x23,3); // WUFC wakeupi detect counter
+  jswrap_hackstrap_accelWr(0x30,1); // ATH low wakeup detect threshold
+  jswrap_hackstrap_accelWr(0x35,0); // LP_CNTL no averaging of samples
+  jswrap_hackstrap_accelWr(0x3e,0); // clear the buffer
+  jswrap_hackstrap_accelWr(0x18,0xca);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup
   // pressure init
   buf[0]=0x06; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
+  // Add watchdog timer to ensure watch always stays usable (hopefully!)
+  jshEnableWatchDog(10); // 10 second watchdog
+  JsSysTime t = jshGetTimeFromMilliseconds(100);
+  jstExecuteFn(watchdogHandler, NULL, jshGetSystemTime()+t, t);
+
 }
 
 /*JSON{
@@ -466,6 +481,7 @@ void jswrap_hackstrap_getPressure_callback() {
     buf[0] = 0x10; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true);
     jsi2cRead(&internalI2C, PRESSURE_ADDR, 6, buf, true);
     int temperature = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+    if (temperature&0x800000) temperature-=0x1000000;
     int pressure = (buf[3]<<16)|(buf[4]<<8)|buf[5];
     jsvObjectSetChildAndUnLock(o,"temperature", jsvNewFromFloat(temperature/100.0));
     jsvObjectSetChildAndUnLock(o,"pressure", jsvNewFromFloat(pressure/100.0));
@@ -473,6 +489,7 @@ void jswrap_hackstrap_getPressure_callback() {
     buf[0] = 0x31; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true); // READ_A
     jsi2cRead(&internalI2C, PRESSURE_ADDR, 3, buf, true);
     int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+    if (altitude&0x800000) altitude-=0x1000000;
     jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(altitude/100.0));
     jspromise_resolve(promisePressure, o);
   }

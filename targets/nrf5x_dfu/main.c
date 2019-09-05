@@ -76,7 +76,7 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
   NVIC_SystemReset();
 }
 
-void led_write(Pin pin, bool value) {
+void pin_write(Pin pin, bool value) {
   nrf_gpio_cfg_output(pinInfo[pin].pin);
   nrf_gpio_pin_write(pinInfo[pin].pin, value ^ ((pinInfo[pin].port&JSH_PIN_NEGATED)!=0));
 }
@@ -84,21 +84,24 @@ void led_write(Pin pin, bool value) {
 static void set_led_state(bool btn, bool progress)
 {
 #if defined(LED2_PININDEX) && defined(LED3_PININDEX)
-  led_write(LED3_PININDEX, progress);
-  led_write(LED2_PININDEX, btn);
+  pin_write(LED3_PININDEX, progress);
+  pin_write(LED2_PININDEX, btn);
 #elif defined(LED1_PININDEX) && !defined(PIXLJS)
-  led_write(LED1_PININDEX, progress || btn);
+  pin_write(LED1_PININDEX, progress || btn);
 #endif
 }
 
-static void hardware_init(void)
-{
-    set_led_state(false, false);
+static void hardware_init(void) {
+  set_led_state(false, false);
 
-    bool polarity = (BTN1_ONSTATE==1) ^ ((pinInfo[BTN1_PININDEX].port&JSH_PIN_NEGATED)!=0);
-    nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin,
-            polarity ? NRF_GPIO_PIN_PULLDOWN : NRF_GPIO_PIN_PULLUP,
-            polarity ? NRF_GPIO_PIN_SENSE_HIGH : NRF_GPIO_PIN_SENSE_LOW);
+  bool polarity = (BTN1_ONSTATE==1) ^ ((pinInfo[BTN1_PININDEX].port&JSH_PIN_NEGATED)!=0);
+  nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin,
+          polarity ? NRF_GPIO_PIN_PULLDOWN : NRF_GPIO_PIN_PULLUP,
+          polarity ? NRF_GPIO_PIN_SENSE_HIGH : NRF_GPIO_PIN_SENSE_LOW);
+
+#ifdef VIBRATE_PIN
+  pin_write(VIBRATE_PIN,0); // vibrate off
+#endif
 }
 
 static bool get_btn_state()
@@ -228,7 +231,6 @@ int main(void)
     NRF_LOG_INFO("Inside main\r\n");
 
     hardware_init();
-
 
 #ifdef LCD
     lcd_init();
