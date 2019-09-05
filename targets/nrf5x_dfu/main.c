@@ -32,11 +32,13 @@
 #include "nrf_log_ctrl.h"
 #include "app_error.h"
 #include "app_error_weak.h"
+#include "app_timer.h"
 #include "nrf_bootloader_info.h"
 #include "lcd.h"
 #if NRF_SD_BLE_API_VERSION < 5
 #include "dfu_status.h"
 #endif
+
 
 #ifdef LED3_PININDEX
 #define UPDATE_IN_PROGRESS_LED          LED3_PININDEX                                            /**< Led used to indicate that DFU is active. */
@@ -106,6 +108,7 @@ static bool get_btn_state()
   return state == BTN1_ONSTATE;
 }
 
+
 // Override Weak version
 #if NRF_SD_BLE_API_VERSION < 5
 bool nrf_dfu_enter_check(void) {
@@ -119,10 +122,7 @@ bool dfu_enter_check(void) {
     // This means that we go straight to Espruino, where the button is still
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
-      lcd_init();
-      lcd_print("BOOTLOADER\r\n");
-      lcd_print("RELEASE BTN1 FOR DFU\r\n");
-      lcd_print("<                     >\r");
+      lcd_print("BOOTLOADER\r\n==========\r\n\nRELEASE BTN1 FOR DFU\r\n<                     >\r");
       int count = 3000;
       while (get_btn_state() && count) {
         nrf_delay_us(999);
@@ -131,7 +131,6 @@ bool dfu_enter_check(void) {
         count--;
       }
       if (!count) {
-        lcd_print("\r\nRESUMING BOOT...\r\n");
         dfu_start = false;
       } else {
         lcd_print("\r\nDFU STARTED\r\n");
@@ -139,15 +138,54 @@ bool dfu_enter_check(void) {
       set_led_state(true, true);
     }
 
+    if (!dfu_start) {
+#ifdef LCD
+      lcd_print("\r\nRESUMING BOOT...\r\n");
+      nrf_delay_us(500000);
+#endif
+#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+      // turn on watchdog - bootloader should override this if it starts,
+      // but if we go straight through to run code then if the code fails to boot
+      // we'll restart.
+      NRF_WDT->CONFIG = (WDT_CONFIG_HALT_Pause << WDT_CONFIG_HALT_Pos) | ( WDT_CONFIG_SLEEP_Run << WDT_CONFIG_SLEEP_Pos);
+      NRF_WDT->CRV = (int)(10*32768); // 10 seconds
+      NRF_WDT->RREN |= WDT_RREN_RR0_Msk;  // Enable reload register 0
+      NRF_WDT->TASKS_START = 1;
+      NRF_WDT->RR[0] = 0x6E524635;
+#endif
+    }
+
     return dfu_start;
 }
+
+#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+APP_TIMER_DEF(m_reboot_timer_id);
+int rebootCounter = 0;
+
+void reboot_check_handler() {
+  if (get_btn_state()) rebootCounter++;
+  else rebootCounter=0;
+  if (rebootCounter>10) NVIC_SystemReset();
+  // We enabled the watchdog, so we must kick it (as it stays set even after restart)
+  NRF_WDT->RR[0] = 0x6E524635;
+}
+#endif
 
 #if NRF_SD_BLE_API_VERSION < 5
 extern void dfu_set_status(DFUStatus status) {
   switch (status) {
   case DFUS_ADVERTISING_START:
     lcd_print("READY TO UPDATE\r\n");
-    set_led_state(true,false); break;
+    set_led_state(true,false);
+#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+    uint32_t err_code;
+    err_code = app_timer_create(&m_reboot_timer_id,
+                        APP_TIMER_MODE_REPEATED,
+                        reboot_check_handler);
+    err_code = app_timer_start(m_reboot_timer_id, APP_TIMER_TICKS(100, 0), NULL);
+    lcd_print("HOLD BTN1 TO REBOOT\r\n");
+#endif
+    break;
   case DFUS_ADVERTISING_STOP:
     break;
   case DFUS_CONNECTED:
@@ -192,7 +230,7 @@ int main(void)
     hardware_init();
 
 
-#ifdef ID205
+#ifdef LCD
     lcd_init();
     bool wait = false;
     if (NRF_POWER->RESETREAS & POWER_RESETREAS_LOCKUP_Msk) {
@@ -213,16 +251,10 @@ int main(void)
     }
     // Clear reset reason flags
     NRF_POWER->RESETREAS = 0xFFFFFFFF;
-    if (wait)
-      nrf_delay_us(2000000);
-    // turn on watchdog - bootloader should override this if it starts,
-    // but if we go straight through to run code then if the code fails to boot
-    // we'll restart.
-    NRF_WDT->CONFIG = (WDT_CONFIG_HALT_Pause << WDT_CONFIG_HALT_Pos) | ( WDT_CONFIG_SLEEP_Run << WDT_CONFIG_SLEEP_Pos);
-    NRF_WDT->CRV = (int)(10*32768); // 10 seconds
-    NRF_WDT->RREN |= WDT_RREN_RR0_Msk;  // Enable reload register 0
-    NRF_WDT->TASKS_START = 1;
-    NRF_WDT->RR[0] = 0x6E524635;
+    if (wait) {
+      lcd_print("\nHOLD BTN1 FOR DFU\r\n\n\n");
+      nrf_delay_us(1000000); // 1 sec delay
+    }
 #endif
 
 #if NRF_SD_BLE_API_VERSION < 5
