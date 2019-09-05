@@ -13,9 +13,11 @@
  */
 #include "jspin.h"
 
-void jswrap_hackstrap_lcdw(JsVarInt cmd, JsVar *data);
-void jswrap_hackstrap_setContrast(JsVarFloat c);
+void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data);
 void jswrap_hackstrap_setLCDPower(bool isOn);
+
+void jswrap_hackstrap_accelWr(JsVarInt cmd, JsVarInt data);
+JsVar *jswrap_hackstrap_getPressure();
 
 void jswrap_hackstrap_init();
 void jswrap_hackstrap_kill();

@@ -1826,9 +1826,7 @@ void jswrap_ble_findDevices(JsVar *callback, JsVar *options) {
     jswrap_ble_setScan(fn, options);
     jsvUnLock(fn);
   }
-  fn = jsvNewNativeFunction((void (*)(void))jswrap_ble_findDevices_timeout_cb, JSWAT_VOID);
-  if (fn)
-    jsvUnLock2(jswrap_interface_setTimeout(fn, time, 0), fn);
+  jsvUnLock(jsiSetTimeout(jswrap_ble_findDevices_timeout_cb, time));
 }
 
 /*JSON{
@@ -2358,16 +2356,11 @@ JsVar *jswrap_ble_requestDevice(JsVar *options) {
   JsVar *promise = 0;
 
   // Set a timeout for when we finish if we didn't find anything
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_ble_requestDevice_finish, JSWAT_VOID);
-  JsVar *timeoutIndex = 0;
-  if (fn) {
-    timeoutIndex = jswrap_interface_setTimeout(fn, timeout, 0);
-    jsvUnLock(fn);
-  }
+  JsVar *timeoutIndex = jsiSetTimeout(jswrap_ble_requestDevice_finish, timeout);
   // Now create a promise, and pass in the timeout index so we can cancel the timeout if we find something
   if (bleNewTask(BLETASK_REQUEST_DEVICE, timeoutIndex)) {
     // Start scanning
-    fn = jsvNewNativeFunction((void (*)(void))jswrap_ble_requestDevice_scan, (JSWAT_JSVAR<<JSWAT_BITS));
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_ble_requestDevice_scan, (JSWAT_JSVAR<<JSWAT_BITS));
     if (fn) {
       jswrap_ble_setScan(fn, options);
       jsvUnLock(fn);

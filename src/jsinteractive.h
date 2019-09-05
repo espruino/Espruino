@@ -59,6 +59,8 @@ bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int ar
 /// Same as above, but with a JsVarArray (this calls jsiExecuteEventCallback, so use jsiExecuteEventCallback where possible)
 bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray);
 
+/// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
+JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds);
 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device);

@@ -22,7 +22,7 @@ info = {
   # This is the PCA10036
  'default_console' : "EV_BLUETOOTH",
  'variables' : 2250, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
-# 'bootloader' : 1,
+ 'bootloader' : 1,
  'binary_name' : 'espruino_%v_hackstrap.hex',
  'build' : {
    'optimizeflags' : '-Os',
@@ -32,8 +32,8 @@ info = {
      'GRAPHICS'
    ],
    'makefile' : [
-     'DEFINES+=-DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
-     'DEFINES += -DBOARD_PCA10040 -DPCA10040',
+     'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
+     'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
 #     'DEFINES+=-DUSE_FONT_6X8',
      'INCLUDE += -I$(ROOT)/libs/hackstrap',
      'WRAPPERSOURCES += libs/hackstrap/jswrap_hackstrap.c',
@@ -86,6 +86,7 @@ devices = {
             'pin_bl' : 'D21',
           },
   'GPS' : {
+            'device' : 'M8130-KT',
             'pin_en' : 'D0', # inverted
             'pin_rx' : 'D5',
             'pin_tx' : 'D6'
@@ -94,6 +95,12 @@ devices = {
             'pin_charging' : 'D7', # inverted
           },
   'ACCEL' : {
+            'device' : 'KX023', 'addr' : 0x1e,
+            'pin_sda' : 'D1',
+            'pin_scl' : 'D2'
+          },
+  'PRESSURE' : {
+            'device' : 'HP203', 'addr' : 0x76,
             'pin_sda' : 'D1',
             'pin_scl' : 'D2'
           },

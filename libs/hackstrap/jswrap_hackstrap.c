@@ -22,6 +22,7 @@
 #include "jsdevices.h"
 #include "jspin.h"
 #include "jstimer.h"
+#include "jswrap_promise.h"
 #include "jswrap_bluetooth.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
@@ -63,30 +64,51 @@ print(a.map(function(rgb) {
 // 12 bit
 const uint16_t PALETTE[256] = { 0x0,0xa,0xa0,0xaa,0xa00,0xa0a,0xa50,0xaaa,0x555,0x55f,0x5f5,0x5ff,0xf55,0xf5f,0xff5,0xfff,0x0,0x111,0x222,0x222,0x333,0x444,0x555,0x666,0x777,0x888,0x999,0xaaa,0xbbb,0xccc,0xeee,0xfff,0xf,0x40f,0x70f,0xb0f,0xf0f,0xf0b,0xf07,0xf04,0xf00,0xf40,0xf70,0xfb0,0xff0,0xbf0,0x7f0,0x4f0,0xf0,0xf4,0xf7,0xfb,0xff,0xbf,0x7f,0x4f,0x77f,0x97f,0xb7f,0xd7f,0xf7f,0xf7d,0xf7b,0xf79,0xf77,0xf97,0xfb7,0xfd7,0xff7,0xdf7,0xbf7,0x9f7,0x7f7,0x7f9,0x7fb,0x7fd,0x7ff,0x7df,0x7bf,0x79f,0xbbf,0xcbf,0xdbf,0xebf,0xfbf,0xfbe,0xfbd,0xfbc,0xfbb,0xfcb,0xfdb,0xfeb,0xffb,0xefb,0xdfb,0xcfb,0xbfb,0xbfc,0xbfd,0xbfe,0xbff,0xbef,0xbdf,0xbcf,0x7,0x107,0x307,0x507,0x707,0x705,0x703,0x701,0x700,0x710,0x730,0x750,0x770,0x570,0x370,0x170,0x70,0x71,0x73,0x75,0x77,0x57,0x37,0x17,0x337,0x437,0x537,0x637,0x737,0x736,0x735,0x734,0x733,0x743,0x753,0x763,0x773,0x673,0x573,0x473,0x373,0x374,0x375,0x376,0x377,0x367,0x357,0x347,0x557,0x557,0x657,0x657,0x757,0x756,0x756,0x755,0x755,0x755,0x765,0x765,0x775,0x675,0x675,0x575,0x575,0x575,0x576,0x576,0x577,0x567,0x567,0x557,0x4,0x104,0x204,0x304,0x404,0x403,0x402,0x401,0x400,0x410,0x420,0x430,0x440,0x340,0x240,0x140,0x40,0x41,0x42,0x43,0x44,0x34,0x24,0x14,0x224,0x224,0x324,0x324,0x424,0x423,0x423,0x422,0x422,0x422,0x432,0x432,0x442,0x342,0x342,0x242,0x242,0x242,0x243,0x243,0x244,0x234,0x234,0x224,0x224,0x324,0x324,0x324,0x424,0x423,0x423,0x423,0x422,0x432,0x432,0x432,0x442,0x342,0x342,0x342,0x242,0x243,0x243,0x243,0x244,0x234,0x234,0x234,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xfff};
 
-/*JSON{
-    "type": "class",
-    "class" : "ID"
-}
-Class containing utility functions for [ID205](http://www.espruino.com/ID205)
-*/
-
-
-/*JSON{
-  "type" : "variable",
-  "name" : "VIBRATE",
-  "generate_full" : "8",
-  "ifdef" : "Strap",
-  "return" : ["pin",""]
-}
-The ID205's vibration motor.
-*/
-
-IOEventFlags touchWatchChannel;
-JshI2CInfo internalI2C;
-uint8_t touchX, touchY;
-bool touchDown, touchWasDown, touchHadEvent;
-
-
+#define CMDINDEX_CMD   0
+#define CMDINDEX_DELAY 1
+#define CMDINDEX_DATALEN  2
+static const char ST7735_INIT_CODE[] = {
+  // CMD,DELAY,DATA_LEN,D0,D1,D2...
+  // SWRESET Software reset
+  0x01, 150, 0,
+  // SLPOUT Leave sleep mode
+  0x11, 150, 0,
+  // FRMCTR1 , FRMCTR2 Frame Rate configuration -- Normal mode, idle
+  // frame rate = fosc / (1 x 2 + 40) * (LINE + 2C + 2D)
+  0xB1, 0, 3,  /*data*/0x01, 0x2C, 0x2D ,
+  0xB2, 0, 3,  /*data*/0x01, 0x2C, 0x2D ,
+  // FRMCTR3 Frame Rate configureation -- partial mode
+  0xB3, 0, 6, /*data*/0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D ,
+  // INVCTR Display inversion (no inversion)
+   0xB4, 0, 1, /*data*/0x07 ,
+  // PWCTR1 Power control -4.6V, Auto mode
+   0xC0, 0, 3,  /*data*/0xA2, 0x02, 0x84,
+  // PWCTR2 Power control VGH25 2.4C, VGSEL -10, VGH = 3 * AVDD
+   0xC1, 0, 1,  /*data*/0xC5,
+  // PWCTR3 Power control , opamp current smal, boost frequency
+   0xC2, 0, 2,  /*data*/0x0A, 0x00 ,
+  // PWCTR4 Power control , BLK/2, opamp current small and medium low
+   0xC3, 0, 2,  /*data*/0x8A, 0x2A,
+  // PWRCTR5 , VMCTR1 Power control
+   0xC4, 0, 2,  /*data*/0x8A, 0xEE,
+   0xC5, 0, 1,  /*data*/0x0E ,
+  // INVOFF Don't invert display
+   0x20, 0, 0,
+  // MADCTL row address/col address, bottom to top refesh (10.1.27)
+   0x36, 0, 1, /*data*/0xC8,
+  // COLMOD, Color mode 12 bit
+   0x3A, 0, 1, /*data*/0x03,
+  // GMCTRP1 Gamma correction
+   0xE0, 0, 16, /*data*/0x02, 0x1C, 0x07, 0x12, 0x37, 0x32, 0x29, 0x2D, 0x29, 0x25, 0x2B, 0x39, 0x00, 0x01, 0x03, 0x10 ,
+  // GMCTRP2 Gamma Polarity correction
+   0xE1, 0, 16, /*data*/0x03, 0x1d, 0x07, 0x06, 0x2E, 0x2C, 0x29, 0x2D, 0x2E, 0x2E, 0x37, 0x3F, 0x00, 0x00, 0x02, 0x10 ,
+  // DISPON Display on
+   0x29, 100, 0,
+  // NORON Normal on
+   0x13, 10, 0,
+  // End
+   0, 0, 255/*DATA_LEN = 255 => END*/
+};
 void lcd_cmd(int cmd, int dataLen, const char *data) {
   jshPinSetValue(LCD_SPI_CS, 0);
   jshPinSetValue(LCD_SPI_DC, 0); // command
@@ -100,6 +122,42 @@ void lcd_cmd(int cmd, int dataLen, const char *data) {
   }
   jshPinSetValue(LCD_SPI_CS, 1);
 }
+void lcd_init() {
+  // Send initialization commands to ST7735
+  const char *cmd = ST7735_INIT_CODE;
+  while(cmd[CMDINDEX_DATALEN]!=255) {
+    lcd_cmd(cmd[CMDINDEX_CMD], cmd[CMDINDEX_DATALEN], &cmd[3]);
+    if (cmd[CMDINDEX_DELAY])
+      jshDelayMicroseconds(1000*cmd[CMDINDEX_DELAY]);
+    cmd += 3 + cmd[CMDINDEX_DATALEN];
+  }
+}
+
+/*JSON{
+    "type": "class",
+    "class" : "Strap"
+}
+Class containing utility functions for the [HackStrap Smart Watch](http://www.espruino.com/HackStrap)
+*/
+
+
+/*JSON{
+  "type" : "variable",
+  "name" : "VIBRATE",
+  "generate_full" : "VIBRATE_PIN",
+  "ifdef" : "Strap",
+  "return" : ["pin",""]
+}
+The HackStrap's vibration motor.
+*/
+
+JshI2CInfo internalI2C;
+
+
+JsVar *promisePressure;
+
+
+
 
 void lcd_flip_spi_callback() {
   // just an empty stub - we'll just push data as fast as we can
@@ -194,7 +252,7 @@ void lcd_flip(JsVar *parent, bool all) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "ID",
+    "class" : "Strap",
     "name" : "setLCDPower",
     "generate" : "jswrap_hackstrap_setLCDPower",
     "params" : [
@@ -205,27 +263,27 @@ This function can be used to turn ID205's LCD off or on.
 */
 void jswrap_hackstrap_setLCDPower(bool isOn) {
   if (isOn) {
-    lcd_cmd(0x11,0, NULL); // SLPOUT
+    lcd_cmd(0x11, 0, NULL); // SLPOUT
     jshPinOutput(LCD_BL,0); // backlight
   } else {
-    lcd_cmd(0x10,0, NULL); // SLPIN
+    lcd_cmd(0x10, 0, NULL); // SLPIN
     jshPinOutput(LCD_BL,1); // backlight
   }
 }
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "ID",
-    "name" : "lcdw",
-    "generate" : "jswrap_hackstrap_lcdw",
+    "class" : "Strap",
+    "name" : "lcdWr",
+    "generate" : "jswrap_hackstrap_lcdWr",
     "params" : [
       ["cmd","int",""],
       ["data","JsVar",""]
     ]
 }
-Writes a command directly to the ST7567 LCD controller
+Writes a command directly to the ST7735 LCD controller
 */
-void jswrap_hackstrap_lcdw(JsVarInt cmd, JsVar *data) {
+void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data) {
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
   lcd_cmd(cmd, dLen, dPtr);
 }
@@ -235,81 +293,6 @@ void watchdogHandler() {
   if (!(jshPinGetValue(BTN1_PININDEX) && jshPinGetValue(BTN2_PININDEX)))
     jshKickWatchDog();
 }
-
-void DELAY_MS(int d) {
-  jshDelayMicroseconds(1000*d);
-}
-void LCD_SPI_CMD(int d) {
-  jshPinSetValue(LCD_SPI_CS, 0);
-  jshPinSetValue(LCD_SPI_DC, 0); // command
-  jshSPISend(LCD_SPI, d);
-  jshPinSetValue(LCD_SPI_CS, 1);
-}
-void LCD_SPI_DATA(int d) {
-  jshPinSetValue(LCD_SPI_CS, 0);
-  jshPinSetValue(LCD_SPI_DC, 1); // data
-  jshSPISend(LCD_SPI, d);
-  jshPinSetValue(LCD_SPI_CS, 1);
-}
-
-typedef struct  {
-  uint8_t command; // ST7735 command byte
-  uint8_t delay; // ms delay after
-  uint8_t len; // length of parameter data
-  uint8_t data[16]; // parameter data
-} ST7735_cmdBuf;
-
-#define ST7735_CASET 0x2A
-#define ST7735_RASET 0x2B
-#define ST7735_MADCTL 0x36
-#define ST7735_RAMWR 0x2C
-#define ST7735_RAMRD 0x2E
-#define ST7735_COLMOD 0x3A
-static const ST7735_cmdBuf ST7735_init[] = {
-  // SWRESET Software reset
-  { 0x01, 150, 0, {0}},
-  // SLPOUT Leave sleep mode
-  { 0x11, 150, 0, {0}},
-  // FRMCTR1 , FRMCTR2 Frame Rate configuration -- Normal mode, idle
-  // frame rate = fosc / (1 x 2 + 40) * (LINE + 2C + 2D)
-  { 0xB1, 0, 3, { 0x01, 0x2C, 0x2D }},
-  { 0xB2, 0, 3, { 0x01, 0x2C, 0x2D }},
-  // FRMCTR3 Frame Rate configureation -- partial mode
-  { 0xB3, 0, 6, { 0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D }},
-  // INVCTR Display inversion (no inversion)
-  { 0xB4, 0, 1, { 0x07 }},
-  // PWCTR1 Power control -4.6V, Auto mode
-  { 0xC0, 0, 3, { 0xA2, 0x02, 0x84}},
-  // PWCTR2 Power control VGH25 2.4C, VGSEL -10, VGH = 3 * AVDD
-  { 0xC1, 0, 1, { 0xC5}},
-  // PWCTR3 Power control , opamp current smal, boost frequency
-  { 0xC2, 0, 2, { 0x0A, 0x00 }},
-  // PWCTR4 Power control , BLK/2, opamp current small and medium low
-  { 0xC3, 0, 2, { 0x8A, 0x2A}},
-  // PWRCTR5 , VMCTR1 Power control
-  { 0xC4, 0, 2, { 0x8A, 0xEE}},
-  { 0xC5, 0, 1, { 0x0E }},
-  // INVOFF Don't invert display
-  { 0x20, 0, 0, {0}},
-  // Memory access directions. row address/col address , bottom to top refesh (10.1.27)
-  { ST7735_MADCTL , 0, 1, {0xC8}},
-  // Color mode 12 bit
-  { ST7735_COLMOD , 0, 1, {0x03}},
-  // Column address set 0..127
-  { ST7735_CASET , 0, 4, {0x00, 0x00, 0x00, 0x7F }},
-  // Row address set 0..159
-  { ST7735_RASET , 0, 4, {0x00, 0x00, 0x00, 0x9F }},
-  // GMCTRP1 Gamma correction
-  { 0xE0, 0, 16, {0x02, 0x1C, 0x07, 0x12, 0x37, 0x32, 0x29, 0x2D, 0x29, 0x25, 0x2B, 0x39, 0x00, 0x01, 0x03, 0x10 }},
-  // GMCTRP2 Gamma Polarity corrction
-  { 0xE1, 0, 16, {0x03, 0x1d, 0x07, 0x06, 0x2E, 0x2C, 0x29, 0x2D, 0x2E, 0x2E, 0x37, 0x3F, 0x00, 0x00, 0x02, 0x10 }},
-  // DISPON Display on
-  { 0x29, 100, 0, {0}},
-  // NORON Normal on
-  { 0x13, 10, 0, {0}},
-  // End
-  { 0, 0, 0, {0}}
-};
 
 /*JSON{
   "type" : "init",
@@ -321,7 +304,7 @@ void jswrap_hackstrap_init() {
   JsSysTime t = jshGetTimeFromMilliseconds(4000);
   jstExecuteFn(watchdogHandler, NULL, jshGetSystemTime()+t, t);
 
-  jshPinOutput(0,1); // GPS off
+  jshPinOutput(GPS_PIN_EN,1); // GPS off
 
   jshPinOutput(LCD_BL,0); // backlight
   // LCD Init 1
@@ -365,11 +348,7 @@ void jswrap_hackstrap_init() {
   inf.pinSCK = LCD_SPI_SCK;
   jshSPISetup(LCD_SPI, &inf);
 
-  // Send initialization commands to ST7735
-  const ST7735_cmdBuf *cmd;
-  for (cmd = ST7735_init; cmd->command; cmd++) {
-    lcd_cmd(cmd->command, cmd->len, cmd->data);
-  }
+  lcd_init(); // Send initialization commands to ST7735
 
   /* If the button is pressed during reset, perform a self test.
    * With bootloader this means apply power while holding button for >3 secs */
@@ -410,13 +389,107 @@ void jswrap_hackstrap_init() {
 
   // Setup touchscreen I2C
   jshI2CInitInfo(&internalI2C);
-  internalI2C.pinSDA = 1;
-  internalI2C.pinSCL = 2;
+  internalI2C.pinSDA = ACCEL_PIN_SDA;
+  internalI2C.pinSCL = ACCEL_PIN_SCL;
   jshPinSetValue(internalI2C.pinSCL, 1);
   jshPinSetState(internalI2C.pinSCL,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   jshPinSetValue(internalI2C.pinSDA, 1);
   jshPinSetState(internalI2C.pinSDA,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  // accelerometer init
+  jswrap_hackstrap_accelWr(0x18,10);
+  jswrap_hackstrap_accelWr(0x19,0x80);
+  jshDelayMicroseconds(2000);
+  jswrap_hackstrap_accelWr(0x1b,2);
+  jswrap_hackstrap_accelWr(0x1a,0xc6);
+  jswrap_hackstrap_accelWr(0x1c,0);
+  jswrap_hackstrap_accelWr(0x1d,0);
+  jswrap_hackstrap_accelWr(0x1e,0);
+  jswrap_hackstrap_accelWr(0x1f,0);
+  jswrap_hackstrap_accelWr(0x20,0);
+  jswrap_hackstrap_accelWr(0x21,0);
+  jswrap_hackstrap_accelWr(0x23,3);
+  jswrap_hackstrap_accelWr(0x30,1);
+  jswrap_hackstrap_accelWr(0x35,0);
+  jswrap_hackstrap_accelWr(0x3e,0xe0);
+  jswrap_hackstrap_accelWr(0x18,0xca);
+  // pressure init
+  buf[0]=0x06; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
+}
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "accelWr",
+    "generate" : "jswrap_hackstrap_accelWr",
+    "params" : [
+      ["cmd","int",""],
+      ["data","int",""]
+    ]
+}
+Writes a command directly to the KX023 Accelerometer
+*/
+void jswrap_hackstrap_accelWr(JsVarInt cmd, JsVarInt data) {
+  unsigned char *buf[2];
+  buf[0] = cmd;
+  buf[1] = data;
+  jsi2cWrite(&internalI2C, ACCEL_ADDR, 2, buf, true);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "getPressure",
+    "generate" : "jswrap_hackstrap_getPressure",
+    "return" : ["JsVar","A promise that will be resolved with `{temperature, pressure, altitude}`"]
+}
+Read temperature, pressure and altitude data. A promise is returned
+which will be resolved with `{temperature, pressure, altitude}`.
+
+Conversions take roughly 100ms.
+
+```
+Strap.getPressure().then(d=>{
+  console.log(d);
+  // {temperature, pressure, altitude}
+});
+```
+*/
+void jswrap_hackstrap_getPressure_callback() {
+  JsVar *o = jsvNewObject();
+  if (o) {
+    unsigned char buf[6];
+    // ADC_CVT - 0b010 01 000  - pressure and temperature channel, OSR = 4096
+    buf[0] = 0x48; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true);
+    // wait 100ms
+    jshDelayMicroseconds(100*1000); // we should really have a callback
+    // READ_PT
+    buf[0] = 0x10; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true);
+    jsi2cRead(&internalI2C, PRESSURE_ADDR, 6, buf, true);
+    int temperature = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+    int pressure = (buf[3]<<16)|(buf[4]<<8)|buf[5];
+    jsvObjectSetChildAndUnLock(o,"temperature", jsvNewFromFloat(temperature/100.0));
+    jsvObjectSetChildAndUnLock(o,"pressure", jsvNewFromFloat(pressure/100.0));
+
+    buf[0] = 0x31; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true); // READ_A
+    jsi2cRead(&internalI2C, PRESSURE_ADDR, 3, buf, true);
+    int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+    jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(altitude/100.0));
+    jspromise_resolve(promisePressure, o);
+  }
+  jsvUnLock2(promisePressure,o);
+  promisePressure = 0;
+}
+
+JsVar *jswrap_hackstrap_getPressure() {
+  if (promisePressure) {
+    jsExceptionHere(JSET_ERROR, "Conversion in progress");
+    return 0;
+  }
+  promisePressure = jspromise_create();
+  if (!promisePressure) return 0;
+
+  jsiSetTimeout(jswrap_hackstrap_getPressure_callback, 100);
+  return jsvLockAgain(promisePressure);
 }
 
 /*JSON{
@@ -424,7 +497,8 @@ void jswrap_hackstrap_init() {
   "generate" : "jswrap_hackstrap_kill"
 }*/
 void jswrap_hackstrap_kill() {
-
+  jsvUnLock(promisePressure);
+  promisePressure = 0;
 }
 
 /*JSON{
@@ -438,21 +512,21 @@ bool jswrap_hackstrap_idle() {
 
 /*JSON{
   "type" : "event",
-  "class" : "ID",
+  "class" : "Strap",
   "name" : "touchDown",
   "ifdef" : "Strap"
 }
  */
 /*JSON{
   "type" : "event",
-  "class" : "ID",
+  "class" : "Strap",
   "name" : "touchUp",
   "ifdef" : "Strap"
 }
  */
 /*JSON{
   "type" : "event",
-  "class" : "ID",
+  "class" : "Strap",
   "name" : "touchMove",
   "ifdef" : "Strap"
 }
