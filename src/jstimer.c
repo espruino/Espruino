@@ -552,6 +552,16 @@ void jstReset() {
   utilTimerTasksTail = utilTimerTasksHead = 0;
 }
 
+/** when system time is changed, also change the time in the timers.
+This should be done with interrupts off */
+void jstSystemTimeChanged(JsSysTime diff) {
+  unsigned char t = utilTimerTasksTail;
+  while (t!=utilTimerTasksHead) {
+    utilTimerTasks[t].time += diff;
+    t = (t+1) & (UTILTIMERTASK_TASKS-1);
+  }
+}
+
 void jstDumpUtilityTimers() {
   int i;
   UtilTimerTask uTimerTasks[UTILTIMERTASK_TASKS];

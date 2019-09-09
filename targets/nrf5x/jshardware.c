@@ -653,7 +653,9 @@ JsSysTime jshGetSystemTime() {
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
 void jshSetSystemTime(JsSysTime time) {
+  // Set baseSystemTime to 0 so 'jshGetSystemTime' isn't affected
   baseSystemTime = 0;
+  // now set baseSystemTime based on the value from jshGetSystemTime()
   baseSystemTime = time - jshGetSystemTime();
 }
 

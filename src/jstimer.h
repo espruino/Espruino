@@ -138,6 +138,10 @@ bool jstStopBufferTimerTask(JsVar *var);
 /// Stop ALL timer tasks (including digitalPulse - use this when resetting the VM)
 void jstReset();
 
+/** when system time is changed, also change the time in the timers.
+This should be done with interrupts off */
+void jstSystemTimeChanged(JsSysTime diff);
+
 /// Dump the current list of timers
 void jstDumpUtilityTimers();
 
