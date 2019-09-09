@@ -35,7 +35,10 @@ info = {
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"HackStrap"\'',
+     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
 #     'DEFINES+=-DUSE_FONT_6X8',
+     'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
      'INCLUDE += -I$(ROOT)/libs/hackstrap',
      'WRAPPERSOURCES += libs/hackstrap/jswrap_hackstrap.c',
      'JSMODULESOURCES += libs/js/graphical_menu.min.js',
