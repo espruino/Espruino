@@ -1268,7 +1268,7 @@
 
 
 #ifndef SPI0_USE_EASY_DMA
-#define SPI0_USE_EASY_DMA 0 // FIXME: This breaks SPI send on Espruino (just returns 0)
+#define SPI0_USE_EASY_DMA 1
 #endif
 
 #endif //SPI0_ENABLED
