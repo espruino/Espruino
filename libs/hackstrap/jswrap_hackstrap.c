@@ -69,10 +69,10 @@ const uint16_t PALETTE[256] = { 0x0,0xa,0xa0,0xaa,0xa00,0xa0a,0xa50,0xaaa,0x555,
 #define CMDINDEX_DATALEN  2
 static const char ST7735_INIT_CODE[] = {
   // CMD,DELAY,DATA_LEN,D0,D1,D2...
-  // SWRESET Software reset
-  0x01, 150, 0,
+  // SWRESET Software reset - but we have hardware reset
+  // 0x01, 20, 0,
   // SLPOUT Leave sleep mode
-  0x11, 150, 0,
+  0x11, 100, 0,
   // FRMCTR1 , FRMCTR2 Frame Rate configuration -- Normal mode, idle
   // frame rate = fosc / (1 x 2 + 40) * (LINE + 2C + 2D)
   0xB1, 0, 3,  /*data*/0x01, 0x2C, 0x2D ,
@@ -103,7 +103,7 @@ static const char ST7735_INIT_CODE[] = {
   // GMCTRP2 Gamma Polarity correction
    0xE1, 0, 16, /*data*/0x03, 0x1d, 0x07, 0x06, 0x2E, 0x2C, 0x29, 0x2D, 0x2E, 0x2E, 0x37, 0x3F, 0x00, 0x00, 0x02, 0x10 ,
   // DISPON Display on
-   0x29, 100, 0,
+   0x29, 10, 0,
   // NORON Normal on
    0x13, 10, 0,
   // End
@@ -151,9 +151,12 @@ Class containing utility functions for the [HackStrap Smart Watch](http://www.es
 The HackStrap's vibration motor.
 */
 
+/// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo internalI2C;
+// Is I2C busy? if so we'll skip one reading in our interrupt so we don't overlap
+bool i2cBusy;
 
-
+/// Promise when pressure is requested
 JsVar *promisePressure;
 
 
@@ -207,7 +210,7 @@ void lcd_flip_gfx(JsGraphics *gfx) {
     unsigned char *buffer = (y&1)?buffer1:buffer2;
     // skip any lines that don't need updating
     unsigned char *px = (unsigned char *)&bPtr[y*LCD_WIDTH + gfx->data.modMinX];
-    unsigned char *bufPtr = (uint16_t*)buffer;
+    unsigned char *bufPtr = (unsigned char*)buffer;
     for (int x=0;x<xlen;x+=2) {
       unsigned int a = PALETTE[*(px++)];
       unsigned int b = PALETTE[*(px++)];
@@ -290,17 +293,21 @@ void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data) {
 
 // Holding down both buttons will reboot
 void watchdogHandler() {
+  //jshPinOutput(LED1_PININDEX, 1);
   // Handle watchdog
   if (!(jshPinGetValue(BTN1_PININDEX) && jshPinGetValue(BTN2_PININDEX)))
     jshKickWatchDog();
-  // poll accelerometer (no other way!)
-  unsigned char buf[6];
-  buf[0]=6;
-  jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
-  jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
-  int accx = (buf[1]<<8)|buf[0];
-  int accy = (buf[3]<<8)|buf[2];
-  int accz = (buf[5]<<8)|buf[4];
+  if (!i2cBusy) {
+    // poll accelerometer (no other way!)
+    unsigned char buf[6];
+    buf[0]=6;
+    jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
+    jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
+    int accx = (buf[1]<<8)|buf[0];
+    int accy = (buf[3]<<8)|buf[2];
+    int accz = (buf[5]<<8)|buf[4];
+  }
+  //jshPinOutput(LED1_PININDEX, 0);
 }
 
 /*JSON{
@@ -309,9 +316,10 @@ void watchdogHandler() {
 }*/
 void jswrap_hackstrap_init() {
   jshPinOutput(GPS_PIN_EN,1); // GPS off
+  jshPinOutput(VIBRATE_PIN,0); // vibrate off
 
   jshPinOutput(LCD_BL,0); // backlight on
-  jshPinOutput(VIBRATE_PIN,0); // vibrate off
+
 
   // LCD Init 1
   jshPinOutput(LCD_SPI_CS,1);
@@ -394,6 +402,7 @@ void jswrap_hackstrap_init() {
   jsvUnLock(graphics);
 
   // Setup touchscreen I2C
+  i2cBusy = true;
   jshI2CInitInfo(&internalI2C);
   internalI2C.bitrate = 0x7FFFFFFF;
   internalI2C.pinSDA = ACCEL_PIN_SDA;
@@ -424,11 +433,32 @@ void jswrap_hackstrap_init() {
   jswrap_hackstrap_accelWr(0x18,0xca);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup
   // pressure init
   buf[0]=0x06; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
+  i2cBusy = false;
+
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
+  // This gets killed when _kill / _init happens
   jshEnableWatchDog(10); // 10 second watchdog
   JsSysTime t = jshGetTimeFromMilliseconds(100);
   jstExecuteFn(watchdogHandler, NULL, jshGetSystemTime()+t, t);
+}
 
+/*JSON{
+  "type" : "kill",
+  "generate" : "jswrap_hackstrap_kill"
+}*/
+void jswrap_hackstrap_kill() {
+  jstStopExecuteFn(watchdogHandler, 0);
+  jsvUnLock(promisePressure);
+  promisePressure = 0;
+}
+
+/*JSON{
+  "type" : "idle",
+  "generate" : "jswrap_hackstrap_idle"
+}*/
+bool jswrap_hackstrap_idle() {
+
+  return false;
 }
 
 /*JSON{
@@ -444,10 +474,12 @@ void jswrap_hackstrap_init() {
 Writes a command directly to the KX023 Accelerometer
 */
 void jswrap_hackstrap_accelWr(JsVarInt cmd, JsVarInt data) {
-  unsigned char *buf[2];
-  buf[0] = cmd;
-  buf[1] = data;
+  unsigned char buf[2];
+  buf[0] = (unsigned char)cmd;
+  buf[1] = (unsigned char)data;
+  i2cBusy = true;
   jsi2cWrite(&internalI2C, ACCEL_ADDR, 2, buf, true);
+  i2cBusy = false;
 }
 
 /*JSON{
@@ -472,6 +504,7 @@ Strap.getPressure().then(d=>{
 void jswrap_hackstrap_getPressure_callback() {
   JsVar *o = jsvNewObject();
   if (o) {
+    i2cBusy = true;
     unsigned char buf[6];
     // ADC_CVT - 0b010 01 000  - pressure and temperature channel, OSR = 4096
     buf[0] = 0x48; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true);
@@ -491,6 +524,8 @@ void jswrap_hackstrap_getPressure_callback() {
     int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
     if (altitude&0x800000) altitude-=0x1000000;
     jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(altitude/100.0));
+    i2cBusy = false;
+
     jspromise_resolve(promisePressure, o);
   }
   jsvUnLock2(promisePressure,o);
@@ -509,23 +544,6 @@ JsVar *jswrap_hackstrap_getPressure() {
   return jsvLockAgain(promisePressure);
 }
 
-/*JSON{
-  "type" : "kill",
-  "generate" : "jswrap_hackstrap_kill"
-}*/
-void jswrap_hackstrap_kill() {
-  jsvUnLock(promisePressure);
-  promisePressure = 0;
-}
-
-/*JSON{
-  "type" : "idle",
-  "generate" : "jswrap_hackstrap_idle"
-}*/
-bool jswrap_hackstrap_idle() {
-
-  return false;
-}
 
 /*JSON{
   "type" : "event",

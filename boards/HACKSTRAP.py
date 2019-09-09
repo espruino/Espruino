@@ -34,6 +34,7 @@ info = {
    'makefile' : [
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"HackStrap"\'',
 #     'DEFINES+=-DUSE_FONT_6X8',
      'INCLUDE += -I$(ROOT)/libs/hackstrap',
      'WRAPPERSOURCES += libs/hackstrap/jswrap_hackstrap.c',
