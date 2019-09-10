@@ -590,19 +590,41 @@ bool jswrap_hackstrap_idle() {
     "name" : "accelWr",
     "generate" : "jswrap_hackstrap_accelWr",
     "params" : [
-      ["cmd","int",""],
+      ["reg","int",""],
       ["data","int",""]
     ]
 }
-Writes a command directly to the KX023 Accelerometer
+Writes a register on the KX023 Accelerometer
 */
-void jswrap_hackstrap_accelWr(JsVarInt cmd, JsVarInt data) {
+void jswrap_hackstrap_accelWr(JsVarInt reg, JsVarInt data) {
   unsigned char buf[2];
-  buf[0] = (unsigned char)cmd;
+  buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
   i2cBusy = true;
   jsi2cWrite(&internalI2C, ACCEL_ADDR, 2, buf, true);
   i2cBusy = false;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "accelRd",
+    "generate" : "jswrap_hackstrap_accelRd",
+    "params" : [
+      ["reg","int",""]
+    ],
+    "return" : ["int",""]
+}
+Reads a register from the KX023 Accelerometer
+*/
+int jswrap_hackstrap_accelRd(JsVarInt reg) {
+  unsigned char buf[1];
+  buf[0] = (unsigned char)reg;
+  i2cBusy = true;
+  jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cRead(&internalI2C, ACCEL_ADDR, 1, buf, true);
+  i2cBusy = false;
+  return buf[0];
 }
 
 /*JSON{
