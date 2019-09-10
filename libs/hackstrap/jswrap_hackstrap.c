@@ -171,12 +171,15 @@ int lcdPowerTimeout = 100;
 bool lcdPowerOn;
 /// accelerometer data
 int accx,accy,accz;
+/// data on how watch was tapped
+unsigned char tapInfo;
 
 typedef enum {
   JSS_NONE,
   JSS_LCD_ON = 1,
   JSS_LCD_OFF = 2,
-  JSS_ACCEL_DATA = 4,
+  JSS_ACCEL_DATA = 4, // need to push xyz data to JS
+  JSS_ACCEL_TAPPED = 8, // tap event detected
 } JsStrapTasks;
 JsStrapTasks strapTasks;
 
@@ -382,7 +385,7 @@ void watchdogHandler() {
 
 
   if (i2cBusy) return;
-  // poll accelerometer (no other way!) KX023
+  // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
   unsigned char buf[6];
   buf[0]=6;
   jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
@@ -394,6 +397,23 @@ void watchdogHandler() {
   if (accy&0x8000) accy-=0x10000;
   if (accz&0x8000) accz-=0x10000;
   strapTasks |= JSS_ACCEL_DATA;
+  // read interrupt source data
+  buf[0]=0x12;
+  jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cRead(&internalI2C, ACCEL_ADDR, 2, buf, true);
+  // 0 -> 0x12 INS1 - tap event
+  // 1 -> 0x13 INS2 - what kind of event
+  int tapType = (buf[1]>>2)&3;
+  if (tapType) {
+    // report tap
+    tapInfo = buf[0] | (tapType<<6);
+    strapTasks |= JSS_ACCEL_TAPPED;
+    // clear the IRQ flags
+    buf[0]=0x17;
+    jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
+    jsi2cRead(&internalI2C, ACCEL_ADDR, 1, buf, true);
+  }
+
   //jshPinOutput(LED1_PININDEX, 0);
 }
 
@@ -503,8 +523,8 @@ void jswrap_hackstrap_init() {
   jswrap_hackstrap_accelWr(0x18,0x0a); // CNTL1 Off, 4g range, Wakeup
   jswrap_hackstrap_accelWr(0x19,0x80); // CNTL2 Software reset
   jshDelayMicroseconds(2000);
-  jswrap_hackstrap_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
-  jswrap_hackstrap_accelWr(0x1a,0xc6); // CNTL3
+  /*jswrap_hackstrap_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
+  jswrap_hackstrap_accelWr(0x1a,0xb11011110); // CNTL3
   // 50Hz tilt
   // 50Hz directional tap
   // 50Hz general motion detection and the high-pass filtered outputs
@@ -515,10 +535,14 @@ void jswrap_hackstrap_init() {
   jswrap_hackstrap_accelWr(0x20,0); // INC5 disabled
   jswrap_hackstrap_accelWr(0x21,0); // INC6 disabled
   jswrap_hackstrap_accelWr(0x23,3); // WUFC wakeupi detect counter
+  //jswrap_hackstrap_accelWr(0x24,3); // TDTRC Tap detect enable
+  //jswrap_hackstrap_accelWr(0x25, 0x78); // TDTC Tap detect double tap
+  //jswrap_hackstrap_accelWr(0x26, 0x20); // TTH Tap detect threshold high (0xCB recommended)
+  //jswrap_hackstrap_accelWr(0x27, 0x10); // TTH Tap detect threshold low (0x1A recommended)
   jswrap_hackstrap_accelWr(0x30,1); // ATH low wakeup detect threshold
   jswrap_hackstrap_accelWr(0x35,0); // LP_CNTL no averaging of samples
-  jswrap_hackstrap_accelWr(0x3e,0); // clear the buffer
-  jswrap_hackstrap_accelWr(0x18,0xca);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup
+  jswrap_hackstrap_accelWr(0x3e,0); // clear the buffer*/
+  jswrap_hackstrap_accelWr(0x18,0b10001100);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup, tap
   // pressure init
   buf[0]=0x06; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
   i2cBusy = false;
@@ -577,6 +601,26 @@ bool jswrap_hackstrap_idle() {
         jswrap_hackstrap_setLCDPower(1);
         flipCounter = 0;
       }
+    }
+  }
+  if (strap && (strapTasks & JSS_ACCEL_TAPPED)) {
+    JsVar *o = jsvNewObject();
+    if (o) {
+      const char *string="";
+      if (tapInfo&1) string="front";
+      if (tapInfo&2) string="back";
+      if (tapInfo&4) string="bottom";
+      if (tapInfo&8) string="top";
+      if (tapInfo&16) string="right";
+      if (tapInfo&32) string="left";
+      int n = (tapInfo&0x80)?2:1;
+      jsvObjectSetChildAndUnLock(o, "dir", jsvNewFromString(string));
+      jsvObjectSetChildAndUnLock(o, "double", jsvNewFromBool(tapInfo&0x80));
+      jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger((tapInfo&16)?-n:(tapInfo&32)?n:0));
+      jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger((tapInfo&4)?-n:(tapInfo&8)?n:0));
+      jsvObjectSetChildAndUnLock(o, "z", jsvNewFromInteger((tapInfo&1)?-n:(tapInfo&2)?n:0));
+      jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"tap", &o, 1);
+      jsvUnLock(o);
     }
   }
   jsvUnLock(strap);
@@ -717,4 +761,24 @@ Has the watch been moved so that it is face-up, or not face up?
 }
 Has the screen been turned on or off? Can be used to stop tasks that are no longer useful if nothing is displayed.
 */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "faceUp",
+  "params" : [["data","JsVar","`{dir, double, x, y, z}`"]],
+  "ifdef" : "HACKSTRAP"
+}
+If the watch is tapped, this event contains information on the way it was tapped.
+
+`dir` reports the side of the watch that was tapped (not the direction it was tapped in).
+
+```
+{
+  dir : "left/right/top/bottom/front/back",
+  double : true/false // was this a double-tap?
+  x : -2 .. 2, // the axis of the tap
+  y : -2 .. 2, // the axis of the tap
+  z : -2 .. 2 // the axis of the tap
+```
+ */
 
