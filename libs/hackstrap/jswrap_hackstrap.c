@@ -134,8 +134,9 @@ void lcd_init() {
 }
 
 /*JSON{
-    "type": "class",
-    "class" : "Strap"
+  "type": "class",
+  "class" : "Strap",
+  "ifdef" : "HACKSTRAP"
 }
 Class containing utility functions for the [HackStrap Smart Watch](http://www.espruino.com/HackStrap)
 */
@@ -145,21 +146,39 @@ Class containing utility functions for the [HackStrap Smart Watch](http://www.es
   "type" : "variable",
   "name" : "VIBRATE",
   "generate_full" : "VIBRATE_PIN",
-  "ifdef" : "Strap",
+  "ifdef" : "HACKSTRAP",
   "return" : ["pin",""]
 }
 The HackStrap's vibration motor.
 */
 
+#define ACCEL_POLL_INTERVAL 100 // in msec
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo internalI2C;
-// Is I2C busy? if so we'll skip one reading in our interrupt so we don't overlap
+/// Is I2C busy? if so we'll skip one reading in our interrupt so we don't overlap
 bool i2cBusy;
-
 /// Promise when pressure is requested
 JsVar *promisePressure;
+/// counter that counts up if watch has stayed face up or down
+unsigned char faceUpCounter;
+/// Was the watch face-up? we use this when firing events
+bool wasFaceUp;
+/// time since LCD contents were last modified
+volatile unsigned char flipCounter;
+/// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
+int lcdPowerTimeout = 100;
+/// Is the LCD on?
+bool lcdPowerOn;
+/// accelerometer data
+int accx,accy,accz;
 
-
+typedef enum {
+  JSS_NONE,
+  JSS_LCD_ON = 1,
+  JSS_LCD_OFF = 2,
+  JSS_ACCEL_DATA = 4,
+} JsStrapTasks;
+JsStrapTasks strapTasks;
 
 
 void lcd_flip_spi_callback() {
@@ -173,6 +192,12 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   if (!buf) return;
   JSV_GET_AS_CHAR_ARRAY(bPtr, bLen, buf);
   if (!bPtr || bLen<128*8) return;
+
+  if (lcdPowerTimeout && !lcdPowerOn) {
+    // LCD was turned off, turn it back on
+    jswrap_hackstrap_setLCDPower(1);
+    flipCounter = 0;
+  }
 
   unsigned char buffer1[LCD_WIDTH*2]; // 16 bits per pixel
   unsigned char buffer2[LCD_WIDTH*2]; // 16 bits per pixel
@@ -262,7 +287,7 @@ void lcd_flip(JsVar *parent, bool all) {
       ["isOn","bool","True if the LCD should be on, false if not"]
     ]
 }
-This function can be used to turn ID205's LCD off or on.
+This function can be used to turn HackStrap's LCD off or on.
 */
 void jswrap_hackstrap_setLCDPower(bool isOn) {
   if (isOn) {
@@ -272,6 +297,49 @@ void jswrap_hackstrap_setLCDPower(bool isOn) {
     lcd_cmd(0x10, 0, NULL); // SLPIN
     jshPinOutput(LCD_BL,1); // backlight
   }
+  if (lcdPowerOn != isOn) {
+    JsVar *strap =jsvObjectGetChild(execInfo.root, "Strap", 0);
+    if (strap) {
+      JsVar *v = jsvNewFromBool(isOn);
+      jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"lcdPower", &v, 1);
+      jsvUnLock(v);
+    }
+    jsvUnLock(strap);
+  }
+  lcdPowerOn = isOn;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "setLCDTimeout",
+    "generate" : "jswrap_hackstrap_setLCDTimeout",
+    "params" : [
+      ["isOn","float","The timeout of the display in seconds, or `0`/`undefined` to turn power saving off. Default is 10 seconds."]
+    ]
+}
+This function can be used to turn HackStrap's LCD power saving on or off.
+
+With power saving off, the display will remain in the state you set it with `Strap.setLCDPower`.
+
+With power saving on, the display will turn on if a button is pressed, the watch is turned face up, or the screen is updated. It'll turn off automatically after the given timeout.
+*/
+void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout) {
+  if (!isfinite(timeout)) lcdPowerTimeout=0;
+  else lcdPowerTimeout = timeout*(1000.0/ACCEL_POLL_INTERVAL);
+  if (lcdPowerTimeout<0) lcdPowerTimeout=0;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "isLCDOn",
+    "generate" : "jswrap_hackstrap_isLCDOn",
+    "return" : ["bool","Is the display on or not?"]
+}
+*/
+bool jswrap_hackstrap_isLCDOn() {
+  return lcdPowerOn;
 }
 
 /*JSON{
@@ -297,16 +365,35 @@ void watchdogHandler() {
   // Handle watchdog
   if (!(jshPinGetValue(BTN1_PININDEX) && jshPinGetValue(BTN2_PININDEX)))
     jshKickWatchDog();
-  if (!i2cBusy) {
-    // poll accelerometer (no other way!)
-    unsigned char buf[6];
-    buf[0]=6;
-    jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
-    jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
-    int accx = (buf[1]<<8)|buf[0];
-    int accy = (buf[3]<<8)|buf[2];
-    int accz = (buf[5]<<8)|buf[4];
+  // power on display if a button is pressed
+  if (lcdPowerTimeout &&
+      (jshPinGetValue(BTN1_PININDEX) || jshPinGetValue(BTN2_PININDEX) ||
+       jshPinGetValue(BTN3_PININDEX))) {
+    flipCounter = 0;
+    if (!lcdPowerOn)
+      strapTasks |= JSS_LCD_ON;
   }
+  if (flipCounter<255) flipCounter++;
+
+  if (lcdPowerTimeout && lcdPowerOn && flipCounter>=lcdPowerTimeout) {
+    // 10 seconds of inactivity, turn off display
+    strapTasks |= JSS_LCD_OFF;
+  }
+
+
+  if (i2cBusy) return;
+  // poll accelerometer (no other way!) KX023
+  unsigned char buf[6];
+  buf[0]=6;
+  jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
+  accx = (buf[1]<<8)|buf[0];
+  accy = (buf[3]<<8)|buf[2];
+  accz = (buf[5]<<8)|buf[4];
+  if (accx&0x8000) accx-=0x10000;
+  if (accy&0x8000) accy-=0x10000;
+  if (accz&0x8000) accz-=0x10000;
+  strapTasks |= JSS_ACCEL_DATA;
   //jshPinOutput(LED1_PININDEX, 0);
 }
 
@@ -322,6 +409,7 @@ void jswrap_hackstrap_init() {
 
 
   // LCD Init 1
+  lcdPowerOn = true;
   jshPinOutput(LCD_SPI_CS,1);
   jshPinOutput(LCD_SPI_DC,1);
   jshPinOutput(LCD_SPI_SCK,1);
@@ -438,7 +526,7 @@ void jswrap_hackstrap_init() {
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens
   jshEnableWatchDog(10); // 10 second watchdog
-  JsSysTime t = jshGetTimeFromMilliseconds(100);
+  JsSysTime t = jshGetTimeFromMilliseconds(ACCEL_POLL_INTERVAL);
   jstExecuteFn(watchdogHandler, NULL, jshGetSystemTime()+t, t);
 }
 
@@ -457,7 +545,42 @@ void jswrap_hackstrap_kill() {
   "generate" : "jswrap_hackstrap_idle"
 }*/
 bool jswrap_hackstrap_idle() {
-
+  if (strapTasks == JSS_NONE) return false;
+  JsVar *strap =jsvObjectGetChild(execInfo.root, "Strap", 0);
+  if (strapTasks & JSS_LCD_OFF) jswrap_hackstrap_setLCDPower(0);
+  if (strapTasks & JSS_LCD_ON) jswrap_hackstrap_setLCDPower(1);
+  if (strapTasks & JSS_ACCEL_DATA) {
+    if (strap && jsiObjectHasCallbacks(strap, JS_EVENT_PREFIX"accel")) {
+      JsVar *o = jsvNewObject();
+      if (o) {
+        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(accx/8192.0));
+        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(accy/8192.0));
+        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(accz/8192.0));
+        jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"accel", &o, 1);
+        jsvUnLock(o);
+      }
+    }
+    bool faceUp = (accz<7000) && abs(accx)<4096 && abs(accy)<4096;
+    if (faceUp!=wasFaceUp) {
+      faceUpCounter=0;
+      wasFaceUp = faceUp;
+    }
+    if (faceUpCounter<255) faceUpCounter++;
+    if (faceUpCounter==2) {
+      if (strap) {
+        JsVar *v = jsvNewFromBool(faceUp);
+        jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"faceUp", &v, 1);
+        jsvUnLock(v);
+      }
+      if (lcdPowerTimeout && !lcdPowerOn) {
+        // LCD was turned off, turn it back on
+        jswrap_hackstrap_setLCDPower(1);
+        flipCounter = 0;
+      }
+    }
+  }
+  jsvUnLock(strap);
+  strapTasks = JSS_NONE;
   return false;
 }
 
@@ -548,21 +671,28 @@ JsVar *jswrap_hackstrap_getPressure() {
 /*JSON{
   "type" : "event",
   "class" : "Strap",
-  "name" : "touchDown",
-  "ifdef" : "Strap"
+  "name" : "accel",
+  "params" : [["xyz","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
 }
+Accelerometer data available with `{x,y,z}` object as a parameter
  */
 /*JSON{
   "type" : "event",
   "class" : "Strap",
-  "name" : "touchUp",
-  "ifdef" : "Strap"
+  "name" : "faceUp",
+  "params" : [["up","bool","`true` if face-up"]],
+  "ifdef" : "HACKSTRAP"
 }
+Has the watch been moved so that it is face-up, or not face up?
  */
 /*JSON{
   "type" : "event",
   "class" : "Strap",
-  "name" : "touchMove",
-  "ifdef" : "Strap"
+  "name" : "lcdPower",
+  "params" : [["on","bool","`true` if screen is on"]],
+  "ifdef" : "HACKSTRAP"
 }
- */
+Has the screen been turned on or off? Can be used to stop tasks that are no longer useful if nothing is displayed.
+*/
+
