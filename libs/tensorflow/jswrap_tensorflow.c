@@ -19,14 +19,14 @@
 
 
 /*JSON{
-  "type" : "library",
-  "class" : "tensorflow"
+  "type" : "class",
+  "class" : "tf"
 }
 */
 
 /*JSON{
   "type" : "staticmethod",
-  "class" : "tensorflow",
+  "class" : "tf",
   "name" : "test",
   "generate" : "jswrap_tensorflow_test",
   "params" : [

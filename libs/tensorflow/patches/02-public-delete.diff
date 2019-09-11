@@ -1,0 +1,25 @@
+--- a/tensorflow/lite/experimental/micro/kernels/all_ops_resolver.h	2019-09-11 08:48:03.171950502 +0100
++++ b/tensorflow/lite/experimental/micro/kernels/all_ops_resolver.h	2019-09-11 10:47:28.818528375 +0100
+@@ -22,9 +22,8 @@
+ class AllOpsResolver : public MicroMutableOpResolver {
+  public:
+   AllOpsResolver();
+-
+- private:
+   TF_LITE_REMOVE_VIRTUAL_DELETE
++
+ };
+ 
+ }  // namespace micro
+--- a/tensorflow/lite/experimental/micro/micro_error_reporter.h	2019-09-11 08:48:03.155950292 +0100
++++ b/tensorflow/lite/experimental/micro/micro_error_reporter.h	2019-09-11 10:47:45.290747773 +0100
+@@ -26,8 +26,6 @@
+  public:
+   ~MicroErrorReporter() {}
+   int Report(const char* format, va_list args) override;
+-
+- private:
+   TF_LITE_REMOVE_VIRTUAL_DELETE
+ };
+ 
+

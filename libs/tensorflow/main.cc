@@ -1,4 +1,4 @@
-/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+/* Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,76 +14,36 @@ limitations under the License.
 ==============================================================================*/
 
 #include "sine_model_data.h"
-#include "tensorflow/lite/core/api/error_reporter.h"
 #include "tensorflow/lite/experimental/micro/kernels/all_ops_resolver.h"
+#include "tensorflow/lite/experimental/micro/micro_error_reporter.h"
 #include "tensorflow/lite/experimental/micro/micro_interpreter.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 extern "C" {
-#include <jsinteractive.h>
+#include "jsinteractive.h"
+void DebugLog(const char* s) { jsiConsolePrint(s); }
 }
 
-namespace tflite {
-namespace {
-void DebugLogPrintf(const char* format, va_list args) {
-  const int output_cache_size = 64;
-  char output_cache[output_cache_size + 1];
-  int output_cache_index = 0;
-  const char* current = format;
-  while (*current != 0) {
-    if (*current == '%') {
-      const char next = *(current + 1);
-      if ((next == 'd') || (next == 's')) {
-        current += 1;
-        if (output_cache_index > 0) {
-          output_cache[output_cache_index] = 0;
-          jsiConsolePrint(output_cache);
-          output_cache_index = 0;
-        }
-        if (next == 'd') {
-          jsiConsolePrintf("%d",va_arg(args, int));
-        } else if (next == 's') {
-          jsiConsolePrint(va_arg(args, char*));
-        }
-      }
-    } else {
-      output_cache[output_cache_index] = *current;
-      output_cache_index += 1;
-    }
-    if (output_cache_index >= output_cache_size) {
-      output_cache[output_cache_index] = 0;
-      jsiConsolePrint(output_cache);
-      output_cache_index = 0;
-    }
-    current += 1;
-  }
-  if (output_cache_index > 0) {
-    output_cache[output_cache_index] = 0;
-    jsiConsolePrint(output_cache);
-    output_cache_index = 0;
-  }
-  jsiConsolePrint("\n");
-}
-}  // namespace
+const int tensor_arena_size = 2 * 1024;
 
-class MicroErrorReporter : public ErrorReporter {
- public:
-  ~MicroErrorReporter() {}
-  int Report(const char* format, va_list args) override {
-    DebugLogPrintf(format, args);
-    return 0;
-  }
+typedef struct {
+  // logging
+  tflite::MicroErrorReporter micro_error_reporter;
+  // This pulls in all the operation implementations we need
+  tflite::ops::micro::AllOpsResolver resolver;
+  // Build an interpreter to run the model with
+  tflite::MicroInterpreter interpreter;
+  // Create an area of memory to use for input, output, and intermediate arrays.
+  // Finding the minimum value for your model may require some trial and error.
+  uint8_t tensor_arena[tensor_arena_size];
+} TFData;
+char tfDataPtr[sizeof(TFData)];
 
- private:
-  TF_LITE_REMOVE_VIRTUAL_DELETE
-};
-
-}// namespace tflite
 
 float testtensorx(float x_val) {
-  // Set up logging.
-  tflite::MicroErrorReporter micro_error_reporter;
-  tflite::ErrorReporter* error_reporter = &micro_error_reporter;
+  TFData *tf = (TFData*)tfDataPtr;
+  // Set up logging
+  tflite::ErrorReporter* error_reporter = new (&tf->micro_error_reporter)tflite::MicroErrorReporter();;
 
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
@@ -96,45 +56,34 @@ float testtensorx(float x_val) {
     return 1;
   }
 
-  // This pulls in all the operation implementations we need
-  tflite::ops::micro::AllOpsResolver resolver;
+  new (&tf->resolver)tflite::ops::micro::AllOpsResolver();
 
+  // Build an interpreter to run the model with
+  new (&tf->interpreter)tflite::MicroInterpreter(model, tf->resolver, tf->tensor_arena,
+                                          tensor_arena_size, error_reporter);
 
-  // Create an area of memory to use for input, output, and intermediate arrays.
-  // The size of this will depend on the model you're using, and may need to be
-  // determined by experimentation.
-  const int tensor_arena_size = 4 * 1024;
-  uint8_t tensor_arena[tensor_arena_size];
-
-  // Build an interpreter to run the model with.
-  tflite::MicroInterpreter interpreter(model, resolver, tensor_arena,
-                                       tensor_arena_size, error_reporter);
+  // Allocate memory from the tensor_arena for the model's tensors
+  tf->interpreter.AllocateTensors();
 
   // Obtain pointers to the model's input and output tensors
-  TfLiteTensor* input = interpreter.input(0);
-  TfLiteTensor* output = interpreter.output(0);
+  TfLiteTensor* input = tf->interpreter.input(0);
+  TfLiteTensor* output = tf->interpreter.output(0);
 
+  // Place our calculated x value in the model's input tensor
+  input->data.f[0] = x_val;
 
-    // Place our calculated x value in the model's input tensor
-    input->data.f[0] = x_val;
+  // Run inference, and report any error
+  TfLiteStatus invoke_status = tf->interpreter.Invoke();
+  if (invoke_status != kTfLiteOk) {
+    error_reporter->Report("Invoke failed on x_val: %f",
+                           static_cast<double>(x_val));
+    return NAN;
+  }
 
-    // Run inference, and report any error
-    TfLiteStatus invoke_status = interpreter.Invoke();
-    if (invoke_status != kTfLiteOk) {
-      error_reporter->Report("Invoke failed on x_val: %f",
-                             static_cast<double>(x_val));
-      return 42;
-    }
+  // Read the predicted y value from the model's output tensor
+  float y_val = output->data.f[0];
 
-    // Read the predicted y value from the model's output tensor
-    float y_val = output->data.f[0];
-
-    // Output the results. A custom HandleOutput function can be implemented
-    // for each supported hardware target.
-    //HandleOutput(error_reporter, x_val, y_val);
-
-  
-  return x_val;
+  return y_val;
 }
 
 extern "C" {
