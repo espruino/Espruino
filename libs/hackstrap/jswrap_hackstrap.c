@@ -170,7 +170,7 @@ int lcdPowerTimeout = 100;
 /// Is the LCD on?
 bool lcdPowerOn;
 /// accelerometer data
-int accx,accy,accz;
+int accx,accy,accz,accdiff;
 /// data on how watch was tapped
 unsigned char tapInfo;
 
@@ -390,12 +390,19 @@ void watchdogHandler() {
   buf[0]=6;
   jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
   jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
-  accx = (buf[1]<<8)|buf[0];
-  accy = (buf[3]<<8)|buf[2];
-  accz = (buf[5]<<8)|buf[4];
-  if (accx&0x8000) accx-=0x10000;
-  if (accy&0x8000) accy-=0x10000;
-  if (accz&0x8000) accz-=0x10000;
+  int newx = (buf[1]<<8)|buf[0];
+  int newy = (buf[3]<<8)|buf[2];
+  int newz = (buf[5]<<8)|buf[4];
+  if (newx&0x8000) newx-=0x10000;
+  if (newy&0x8000) newy-=0x10000;
+  if (newz&0x8000) newz-=0x10000;
+  int dx = newx-accx;
+  int dy = newy-accy;
+  int dz = newz-accz;
+  accx = newx;
+  accy = newy;
+  accz = newz;
+  accdiff = dx*dx + dy*dy + dz*dz;
   strapTasks |= JSS_ACCEL_DATA;
   // read interrupt source data
   buf[0]=0x12;
@@ -580,6 +587,8 @@ bool jswrap_hackstrap_idle() {
         jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(accx/8192.0));
         jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(accy/8192.0));
         jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(accz/8192.0));
+        jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(accx*accx + accy*accy + accz*accz)/8192.0));
+        jsvObjectSetChildAndUnLock(o, "diff", jsvNewFromFloat(sqrt(accdiff)/8192.0));
         jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"accel", &o, 1);
         jsvUnLock(o);
       }
@@ -741,7 +750,13 @@ JsVar *jswrap_hackstrap_getPressure() {
   "params" : [["xyz","JsVar",""]],
   "ifdef" : "HACKSTRAP"
 }
-Accelerometer data available with `{x,y,z}` object as a parameter
+Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter
+
+* `x` is X axis (left-right) in `g`
+* `y` is Y axis (up-down) in `g`
+* `z` is Z axis (in-out) in `g`
+* `diff` is difference between this and the last reading in `g`
+* `mag` is the magnitude of the acceleration in `g`
  */
 /*JSON{
   "type" : "event",
