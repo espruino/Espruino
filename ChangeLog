@@ -7,6 +7,7 @@
             Added option to compile in 6x8 fixed-width fonts
             Fix issue where Util Timer timers could break after a call to setTime
             nRF52: Enable DMA for SPI send
+            Added option to build in TensorFlow Lite for AI
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
