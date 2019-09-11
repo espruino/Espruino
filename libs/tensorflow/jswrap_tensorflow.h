@@ -15,4 +15,7 @@
 #include "jspin.h"
 #include "jsvar.h"
 
-JsVarFloat jswrap_tensorflow_test(JsVarFloat x);
+JsVar *jswrap_tensorflow_create(int arena_size, JsVar *model);
+JsVar *jswrap_tfmicrointerpreter_getInput(JsVar *parent);
+JsVar *jswrap_tfmicrointerpreter_getOutput(JsVar *parent);
+void jswrap_tfmicrointerpreter_invoke(JsVar *parent);

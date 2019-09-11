@@ -94,7 +94,9 @@ bool tf_invoke(void *dataPtr) {
   TFData *tf = (TFData*)dataPtr;
   tflite::ErrorReporter* error_reporter = &tf->micro_error_reporter;
   // Run inference, and report any error
+  //jsiConsolePrintf("in %f\n",tf->interpreter.input(0)->data.f[0]);
   TfLiteStatus invoke_status = tf->interpreter.Invoke();
+  //jsiConsolePrintf("out %f\n",tf->interpreter.output(0)->data.f[0]);
   if (invoke_status != kTfLiteOk) {
     error_reporter->Report("Invoke failed");
     return false;
