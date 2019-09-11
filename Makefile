@@ -65,6 +65,7 @@ LIBS?=
 DEFINES?=
 CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -g
 CFLAGS+=-Wno-expansion-to-defined # remove warnings created by Nordic's libs
+CCFLAGS?= # specific flags when compiling cc files
 LDFLAGS?=-Winline -g
 OPTIMIZEFLAGS?=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
@@ -272,6 +273,7 @@ src/jsspi.c \
 src/jshardware_common.c \
 $(WRAPPERFILE)
 CPPSOURCES =
+CCSOURCES =
 
 ifdef CFILE
 WRAPPERSOURCES += $(CFILE)
@@ -577,6 +579,10 @@ ifeq ($(USE_WIO_LTE),1)
   SOURCES += targets/stm32/stm32_ws2812b_driver.c
 endif
 
+ifeq ($(USE_TENSORFLOW),1) 
+include make/misc/tensorflow.make
+endif
+
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
@@ -592,6 +598,7 @@ include make/family/$(FAMILY).make
 endif
 # =========================================================================
 
+
 ifdef USB
 DEFINES += -DUSB
 endif
@@ -600,7 +607,7 @@ PININFOFILE=$(GENDIR)/jspininfo
 SOURCES += $(PININFOFILE).c
 
 SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
-SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o)
+SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o) $(CCSOURCES:.cc=.o)
 OBJS = $(PRECOMPILED_OBJS) $(SOURCEOBJS)
 
 
@@ -718,6 +725,10 @@ quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 %.o: %.c $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
 	@echo $($(quiet_)compile)
 	@$(call compile)
+
+.cc.o: %.cc $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
+	@echo $($(quiet_)compile)
+	@$(CC) $(CCFLAGS) $(CFLAGS) $< -o $@
 
 .cpp.o: $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
 	@echo $($(quiet_)compile)
