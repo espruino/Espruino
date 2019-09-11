@@ -579,6 +579,10 @@ ifeq ($(USE_WIO_LTE),1)
   SOURCES += targets/stm32/stm32_ws2812b_driver.c
 endif
 
+ifeq ($(USE_TENSORFLOW),1) 
+include make/misc/tensorflow.make
+endif
+
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
@@ -594,7 +598,6 @@ include make/family/$(FAMILY).make
 endif
 # =========================================================================
 
-include libs/tensorflow/tensorflow.make
 
 ifdef USB
 DEFINES += -DUSB

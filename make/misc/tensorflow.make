@@ -39,8 +39,7 @@ $(TENSOR_ROOT)/tensorflow/lite/core/api/op_resolver.cc \
 $(TENSOR_ROOT)/tensorflow/lite/core/api/tensor_utils.cc \
 $(TENSOR_ROOT)/tensorflow/lite/kernels/kernel_util.cc \
 $(TENSOR_ROOT)/tensorflow/lite/kernels/internal/quantization_util.cc \
-$(TENSOR_ROOT)/main.cc \
-$(TENSOR_ROOT)/sine_model_data.cc 
+$(TENSOR_ROOT)/tensorflow.cc
 
 #$(TENSOR_ROOT)/tensorflow/lite/experimental/micro/debug_log.cc 
 

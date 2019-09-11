@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "sine_model_data.h"
 #include "tensorflow/lite/experimental/micro/kernels/all_ops_resolver.h"
 #include "tensorflow/lite/experimental/micro/micro_error_reporter.h"
 #include "tensorflow/lite/experimental/micro/micro_interpreter.h"
@@ -21,10 +20,9 @@ limitations under the License.
 #include "tensorflow/lite/version.h"
 extern "C" {
 #include "jsinteractive.h"
-void DebugLog(const char* s) { jsiConsolePrint(s); }
-}
+#include "tensorflow.h"
 
-const int tensor_arena_size = 2 * 1024;
+void DebugLog(const char* s) { jsiConsolePrint(s); }
 
 typedef struct {
   // logging
@@ -35,59 +33,85 @@ typedef struct {
   tflite::MicroInterpreter interpreter;
   // Create an area of memory to use for input, output, and intermediate arrays.
   // Finding the minimum value for your model may require some trial and error.
-  uint8_t tensor_arena[tensor_arena_size];
+  uint8_t tensor_arena[0];
 } TFData;
 char tfDataPtr[sizeof(TFData)];
 
+size_t tf_get_size(size_t arena_size, const char *model_data) {
+  return sizeof(TFData) + arena_size;
+}
 
-float testtensorx(float x_val) {
-  TFData *tf = (TFData*)tfDataPtr;
+bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
+  TFData *tf = (TFData*)dataPtr;
+  new (&tf->micro_error_reporter)tflite::MicroErrorReporter();
   // Set up logging
-  tflite::ErrorReporter* error_reporter = new (&tf->micro_error_reporter)tflite::MicroErrorReporter();;
+  tflite::ErrorReporter* error_reporter = &tf->micro_error_reporter;
 
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
-  const tflite::Model* model = ::tflite::GetModel(g_sine_model_data);
+  const tflite::Model* model = ::tflite::GetModel(model_data);
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     error_reporter->Report(
         "Model provided is schema version %d not equal "
         "to supported version %d.",
         model->version(), TFLITE_SCHEMA_VERSION);
-    return 1;
+    return false;
   }
 
   new (&tf->resolver)tflite::ops::micro::AllOpsResolver();
 
   // Build an interpreter to run the model with
-  new (&tf->interpreter)tflite::MicroInterpreter(model, tf->resolver, tf->tensor_arena,
-                                          tensor_arena_size, error_reporter);
+  new (&tf->interpreter)tflite::MicroInterpreter(
+      model, tf->resolver, tf->tensor_arena,
+      arena_size, error_reporter);
 
   // Allocate memory from the tensor_arena for the model's tensors
   tf->interpreter.AllocateTensors();
 
-  // Obtain pointers to the model's input and output tensors
-  TfLiteTensor* input = tf->interpreter.input(0);
-  TfLiteTensor* output = tf->interpreter.output(0);
+
+  /*
+   TfLiteTensor* input = tf->interpreter.input(0);
+   TfLiteTensor* output = tf->interpreter.output(0);
 
   // Place our calculated x value in the model's input tensor
   input->data.f[0] = x_val;
 
+
+
+  // Read the predicted y value from the model's output tensor
+  float y_val = output->data.f[0];*/
+
+  return true;
+}
+
+void tf_destroy(void *dataPtr) {
+  TFData *tf = (TFData*)dataPtr;
+
+  tf->interpreter.~MicroInterpreter();
+}
+
+bool tf_invoke(void *dataPtr) {
+  TFData *tf = (TFData*)dataPtr;
+  tflite::ErrorReporter* error_reporter = &tf->micro_error_reporter;
   // Run inference, and report any error
   TfLiteStatus invoke_status = tf->interpreter.Invoke();
   if (invoke_status != kTfLiteOk) {
-    error_reporter->Report("Invoke failed on x_val: %f",
-                           static_cast<double>(x_val));
-    return NAN;
+    error_reporter->Report("Invoke failed");
+    return false;
   }
-
-  // Read the predicted y value from the model's output tensor
-  float y_val = output->data.f[0];
-
-  return y_val;
+  return true;
 }
 
-extern "C" {
-float testtensor(float x) {
-  return testtensorx(x);
+TfLiteTensor *tf_get_input(void *dataPtr, int n) {
+  TFData *tf = (TFData*)dataPtr;
+  // Obtain pointers to the model's input and output tensors
+  return tf->interpreter.input(0);
 }
+
+TfLiteTensor *tf_get_output(void *dataPtr, int n) {
+  TFData *tf = (TFData*)dataPtr;
+  // Obtain pointers to the model's input and output tensors
+  return tf->interpreter.output(0);
 }
+
+} // extern "C"

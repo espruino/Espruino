@@ -22,6 +22,7 @@ info = {
  'build' : {
    'libraries' : [
      'NET',
+     'TENSORFLOW',
      'GRAPHICS',
      'FILESYSTEM',
      'CRYPTO','SHA256','SHA512',
