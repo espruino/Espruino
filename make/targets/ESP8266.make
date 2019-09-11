@@ -73,7 +73,6 @@ $(USER2_ELF): $(PARTIAL) $(LINKER_FILE)
 # generate binary image for user1, i.e. first OTA partition
 $(USER1_BIN): $(USER1_ELF)
 	$(Q)$(OBJCOPY) --only-section .text -O binary $(USER1_ELF) eagle.app.v6.text.bin
-	$(Q)$(OBJCOPY) --only-section .text $(USER1_ELF) eagle.app.v6.text.o
 	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER1_ELF) eagle.app.v6.data.bin
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER1_ELF) eagle.app.v6.rodata.bin
 	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER1_ELF) eagle.app.v6.irom0text.bin
