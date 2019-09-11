@@ -3592,7 +3592,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   else if (jsvIsFloat(var)) jsiConsolePrintf("Double %f", jsvGetFloat(var));
   else if (jsvIsFunctionParameter(var)) jsiConsolePrintf("Param %q ", var);
   else if (jsvIsArrayBufferName(var)) jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
-  else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s ", jswGetBasicObjectName(var)?jswGetBasicObjectName(var):"unknown ArrayBuffer"); // way to get nice name
+  else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s (offs %d, len %d)", jswGetBasicObjectName(var)?jswGetBasicObjectName(var):"unknown ArrayBuffer", var->varData.arraybuffer.byteOffset, var->varData.arraybuffer.length); // way to get nice name
   else if (jsvIsString(var)) {
     size_t blocks = 1;
     if (jsvGetLastChild(var)) {
