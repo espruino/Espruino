@@ -82,6 +82,7 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
   assert(header);
   if (!addr) return false;
   jshFlashRead(header, addr, sizeof(JsfFileHeader));
+  //DBG("Header 0x%x size 0x%x repl 0x%x\n", addr, header->size, header->replacement);
   return (header->size != JSF_WORD_UNSET) &&
          (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) < JSF_END_ADDRESS);
 }
@@ -375,6 +376,7 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
     } while (addr && (newPage || jsfGetSpaceLeftInPage(addr)<requiredSize));
     // do we have an existing file? Erase it.
     if (existingAddr) {
+      DBG("Erase existing file at 0x%x\n", existingAddr);
       jsfGetFileHeader(existingAddr, &header);
       jsfEraseFileInternal(existingAddr+(uint32_t)sizeof(JsfFileHeader), &header);
     }
@@ -489,7 +491,16 @@ JsVar *jsfReadFile(JsfFileName name) {
   return v;
 #else
   size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
-  return jsvNewNativeString((char*)mappedAddr, jsfGetFileSize(&header));
+  uint32_t len = jsfGetFileSize(&header);
+#ifdef SPIFLASH_BASE // if using SPI flash it can't be memory-mapped
+  if (!mappedAddr) {
+    unsigned char *d = alloca(len);
+    jshFlashRead(d, addr, len);
+    JsVar *v = jsvNewStringOfLength(len, d);
+    return v;
+  }
+#endif
+  return jsvNewNativeString((char*)mappedAddr, len);
 #endif
 }
 

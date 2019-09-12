@@ -428,6 +428,13 @@ if "PRESSURE" in board.devices:
   codeOutDevicePin("PRESSURE", "pin_sda", "PRESSURE_PIN_SDA")
   codeOutDevicePin("PRESSURE", "pin_scl", "PRESSURE_PIN_SCL")
 
+if "SPIFLASH" in board.devices:
+  codeOut("#define SPIFLASH_BASE 0x40000000UL")
+  codeOut("#define SPIFLASH_PAGESIZE 4096")
+  codeOutDevicePin("SPIFLASH", "pin_cs", "SPIFLASH_PIN_CS")
+  codeOutDevicePin("SPIFLASH", "pin_sck", "SPIFLASH_PIN_SCK")
+  codeOutDevicePin("SPIFLASH", "pin_mosi", "SPIFLASH_PIN_MOSI")
+  codeOutDevicePin("SPIFLASH", "pin_miso", "SPIFLASH_PIN_MISO")
 
 for device in ["USB","SD","LCD","JTAG","ESP8266","IR"]:
   if device in board.devices:

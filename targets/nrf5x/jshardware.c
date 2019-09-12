@@ -40,6 +40,7 @@
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 #include "jsflags.h"
+#include "jsspi.h"
 
 #include "app_util_platform.h"
 #ifdef BLUETOOTH
@@ -317,6 +318,31 @@ static jshUARTState uart[USART_COUNT];
 
 void jshUSARTUnSetup(IOEventFlags device);
 
+#ifdef SPIFLASH_BASE
+JshSPIInfo spiFlash = {
+    .baudRate = 100000,
+    .baudRateSpec = SPIB_DEFAULT,
+    .pinSCK = SPIFLASH_PIN_SCK,
+    .pinMISO = SPIFLASH_PIN_MISO,
+    .pinMOSI = SPIFLASH_PIN_MOSI,
+    .spiMode = SPIF_SPI_MODE_0,
+    .spiMSB = true,
+    .numBits = 8
+};
+void spiFlashWrite(unsigned char *tx, unsigned char *rx, unsigned int len) {
+  jshPinSetValue(SPIFLASH_PIN_CS,0);
+  jsspiSoftwareFunc(tx,rx,len,&spiFlash);
+  jshPinSetValue(SPIFLASH_PIN_CS,1);
+}
+unsigned char spiFlashStatus() {
+  unsigned char buf[2] = {5,0};
+  spiFlashWrite(buf,buf,2);
+  return buf[1];
+}
+#endif
+
+
+
 const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
   return 0;
@@ -467,6 +493,19 @@ void jshResetPeripherals() {
 #endif
   spi0Sending = false;
   spi0Callback = NULL;
+
+#ifdef SPIFLASH_BASE
+  // set CS to default
+  jshPinSetValue(SPIFLASH_PIN_CS, 1);
+  jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_OUT);
+  jshDelayMicroseconds(100);
+  // disable lock bits
+  unsigned char buf[] = {1,0};
+  spiFlashWrite(buf,0,2);
+#endif
 }
 
 void jshInit() {
@@ -590,6 +629,7 @@ void jshInit() {
     app_usbd_start();
   }
 #endif
+
 
 
 #ifdef LED1_PININDEX
@@ -1587,21 +1627,28 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 bool jshFlashWriteProtect(uint32_t addr) {
   // allow protection to be overwritten
   if (jsfGetFlag(JSF_UNSAFE_FLASH)) return false;
-#if defined(PUCKJS) || defined(PIXLJS)
+#if defined(PUCKJS) || defined(PIXLJS) || defined(MDBT42Q) || defined(HACKSTRAP)
   /* It's vital we don't let anyone screw with the softdevice or bootloader.
    * Recovering from changes would require soldering onto SWDIO and SWCLK pads!
    */
   if (addr<0x1f000) return true; // softdevice
-  if (addr>=0x78000) return true; // bootloader
+  if (addr>=0x78000 && addr<0x80000) return true; // bootloader
 #endif
   return false;
 }
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    *startAddr = (uint32_t)(addr & ~(SPIFLASH_PAGESIZE-1));
+    *pageSize = SPIFLASH_PAGESIZE;
+    return true;
+  }
+#endif
   if (addr > (NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE))
     return false;
-  *startAddr = (uint32_t) (floor(addr / NRF_FICR->CODEPAGESIZE) * NRF_FICR->CODEPAGESIZE);
+  *startAddr = (uint32_t)(addr & ~(NRF_FICR->CODEPAGESIZE-1));
   *pageSize = NRF_FICR->CODEPAGESIZE;
   return true;
 }
@@ -1630,6 +1677,25 @@ JsVar *jshFlashGetFree() {
 
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr) {
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    addr &= 0xFFFFFF;
+    //jsiConsolePrintf("SPI Erase %d\n",addr);
+    unsigned char b[4];
+    // WREN
+    b[0] = 0x06;
+    spiFlashWrite(b,0,1);
+    // Erase
+    b[0] = 0x20;
+    b[1] = addr>>16;
+    b[2] = addr>>8;
+    b[3] = addr;
+    spiFlashWrite(b,0,4);
+    // Check busy
+    WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage");
+    return;
+  }
+#endif
   uint32_t startAddr;
   uint32_t pageSize;
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
@@ -1651,6 +1717,24 @@ void jshFlashErasePage(uint32_t addr) {
  * Reads a byte from memory. Addr doesn't need to be word aligned and len doesn't need to be a multiple of 4.
  */
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    addr &= 0xFFFFFF;
+    //jsiConsolePrintf("SPI Read %d %d\n",addr,len);
+    unsigned char b[4];
+    // Read
+    b[0] = 0x03;
+    b[1] = addr>>16;
+    b[2] = addr>>8;
+    b[3] = addr;
+    jshPinSetValue(SPIFLASH_PIN_CS,0);
+    jsspiSoftwareFunc(b,0,4,&spiFlash);
+    memset(buf,0,len); // ensure we just send 0
+    jsspiSoftwareFunc((unsigned char*)buf,(unsigned char*)buf,len,&spiFlash);
+    jshPinSetValue(SPIFLASH_PIN_CS,1);
+    return;
+  }
+#endif
   memcpy(buf, (void*)addr, len);
 }
 
@@ -1659,6 +1743,31 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
  */
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   //jsiConsolePrintf("\njshFlashWrite 0x%x addr 0x%x -> 0x%x, len %d\n", *(uint32_t*)buf, (uint32_t)buf, addr, len);
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    addr &= 0xFFFFFF;
+    //jsiConsolePrintf("SPI Write %d %d\n",addr, len);
+    unsigned char b[5];
+    /* hack for now - some SPI flash don't seem to like writing >1 byte
+     * quickly. Also this way works around paging issues */
+    for (unsigned int i=0;i<len;i++) {
+      // WREN
+      b[0] = 0x06;
+      spiFlashWrite(b,0,1);
+      // Write
+      b[0] = 0x02;
+      b[1] = addr>>16;
+      b[2] = addr>>8;
+      b[3] = addr;
+      b[4] = ((unsigned char*)buf)[i];
+      spiFlashWrite(b,0,5);
+      // Check busy
+      WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashWrite");
+      addr++;
+    }
+    return;
+  }
+#endif
   if (jshFlashWriteProtect(addr)) return;
   uint32_t err = 0;
 
@@ -1699,7 +1808,12 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 }
 
 // Just pass data through, since we can access flash at the same address we wrote it
-size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
+size_t jshFlashGetMemMapAddress(size_t ptr) {
+#ifdef SPIFLASH_BASE
+  if (ptr > SPIFLASH_BASE) return 0;
+#endif
+  return ptr;
+}
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {

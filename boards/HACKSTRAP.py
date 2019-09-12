@@ -29,7 +29,8 @@ info = {
    'libraries' : [
      'BLUETOOTH',
      'TERMINAL',
-     'GRAPHICS'
+     'GRAPHICS',
+     'TENSORFLOW'
    ],
    'makefile' : [
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
@@ -61,10 +62,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((118 - 10) * 4096), # Bootloader takes pages 120-127, FS takes 118-119
+    'address' : 0x40000000, # put this in external flash
     'page_size' : 4096,
-    'pages' : 10,
-    'flash_available' : 512 - ((31 + 8 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
+    'pages' : 64, # 256kb - still loads left
+    'flash_available' : 512 - ((31 + 8 + 2)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2. Each page is 4 kb.
   },
 };
 
@@ -102,6 +103,13 @@ devices = {
             'device' : 'KX023', 'addr' : 0x1e,
             'pin_sda' : 'D1',
             'pin_scl' : 'D2'
+          },
+  'SPIFLASH' : {
+            'pin_cs' : 'D18',
+            'pin_sck' : 'D19',
+            'pin_mosi' : 'D20',
+            'pin_miso' : 'D17',
+            'size' : 2097152
           },
   'PRESSURE' : {
             'device' : 'HP203', 'addr' : 0x76,
