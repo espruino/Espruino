@@ -35,7 +35,7 @@ void jsspiFastSoftwareFunc(
   ) {
   JshSPIInfo *inf = (JshSPIInfo*)info;
   // fast path for common case
-  for (int i=0;i<len;i++) {
+  for (unsigned int i=0;i<len;i++) {
     int data = tx[i];
     int bit;
     for (bit=inf->numBits - 1;bit>=0;bit--) {
@@ -53,17 +53,17 @@ void jsspiSoftwareFunc(
   ) {
   JshSPIInfo *inf = (JshSPIInfo*)info;
   // Debug
-  // jsspiDumpSPIInfo(inf);
+  //jsspiDumpSPIInfo(inf);
 
   bool CPHA = (inf->spiMode & SPIF_CPHA)!=0;
   bool CPOL = (inf->spiMode & SPIF_CPOL)!=0;
 
-  int result = 0;
-  int bit = inf->spiMSB ? (inf->numBits-1) : 0;
-  int bitDir = inf->spiMSB ? -1 : 1;
-  int endBit = inf->spiMSB ? -1 : inf->numBits;
-  for (int i=0;i<len;i++) {
+  const int bitDir = inf->spiMSB ? -1 : 1;
+  const int endBit = inf->spiMSB ? -1 : inf->numBits;
+  for (unsigned int i=0;i<len;i++) {
     int data = tx[i];
+    int result = 0;
+    int bit = inf->spiMSB ? (inf->numBits-1) : 0;
     for (;bit!=endBit;bit+=bitDir) {
       if (!CPHA) { // 'Normal' SPI, CPHA=0
         if (inf->pinMOSI != PIN_UNDEFINED)
@@ -199,7 +199,7 @@ bool jsspiSend(JsVar *spiDevice, JsSpiSendFlags flags, char *buf, size_t len) {
   if (!jsspiGetSendFunction(spiDevice, &spiSend, &spiSendData))
     return false;
 
-  spiSend(buf, (flags&JSSPI_NO_RECEIVE)?0:buf, len , &spiSendData);
+  spiSend((unsigned char*)buf, (flags&JSSPI_NO_RECEIVE)?0:(unsigned char*)buf, len , &spiSendData);
   // wait if we need to
   if (flags & JSSPI_WAIT) {
     IOEventFlags device = jsiGetDeviceFromClass(spiDevice);
