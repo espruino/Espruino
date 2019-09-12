@@ -4,6 +4,7 @@
             ESP8266: reverse fix #1679
             Added option to build in TensorFlow Lite for AI
             Documentation for modules now includes require('...') in the call type to be less confusing
+            ESP8266: warning: Empty loadable segment detected (fix #1690) 
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
