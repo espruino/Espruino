@@ -3,6 +3,7 @@
             nRF52: If a central is connected to Espruino but isn't reading from UART, don't block waiting to send data
             ESP8266: reverse fix #1679
             Added option to build in TensorFlow Lite for AI
+            Documentation for modules now includes require('...') in the call type to be less confusing
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

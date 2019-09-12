@@ -125,7 +125,9 @@ def get_surround(jsondata):
   s = common.get_prefix_name(jsondata)
   if s!="": s = s + " "
   if jsondata["type"]!="constructor":
-    if "class" in jsondata: s=s+jsondata["class"]+"."
+    if "class" in jsondata: 
+      if jsondata["class"] in libraries: s=s+"require(\""+jsondata["class"]+"\")."
+      else: s=s+jsondata["class"]+"."
   s=s+jsondata["name"]
   if jsondata["type"]!="object":
     s=s+get_arguments(jsondata)
