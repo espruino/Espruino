@@ -30,6 +30,9 @@ ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up
 INCLUDE += -I$(NRF5X_SDK_PATH)
 
 # This is where the common linker for both nRF51 & nRF52 is stored.
+ifdef NRF5X_SDK_11
+LDFLAGS += -L$(NRF5X_SDK_PATH)/nrf5x_linkers 
+endif
 ifdef NRF5X_SDK_12
 LDFLAGS += -L$(NRF5X_SDK_PATH)/nrf5x_linkers 
 endif
@@ -71,8 +74,12 @@ else
 endif
 
 # Careful here.. All these includes and sources assume a SoftDevice. Not efficient/clean if softdevice (ble) is not enabled...
-INCLUDE += -I$(NRF5X_SDK_PATH)/components
+ifdef NRF5X_SDK_11
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/CMSIS/Include
+else
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/cmsis/include
+endif
+INCLUDE += -I$(NRF5X_SDK_PATH)/components
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/gcc
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
@@ -80,11 +87,13 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fds
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fds/config
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/timer
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fstorage
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fstorage/config
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/queue
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/experimental_section_vars
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote
@@ -99,7 +108,7 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/ppi
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/clock
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
-ifdef NRF5X_SDK_12
+ifneq ($(or $(NRF5X_SDK_12),$(NRF5X_SDK_11)),)
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
 else
@@ -180,8 +189,13 @@ $(NRF5X_SDK_PATH)/components/libraries/util/sdk_mapped_flags.c \
 $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
 $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c 
 
+ifdef NRF5X_SDK_11
+TARGETSOURCES += \
+$(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
+$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c
+endif
 
-ifdef NRF5X_SDK_12
+ifneq ($(or $(NRF5X_SDK_12),$(NRF5X_SDK_11)),)
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c \
@@ -417,11 +431,19 @@ $(PROJ_NAME).hex: $(PROJ_NAME).app_hex
 
 
 $(PROJ_NAME).zip: $(PROJ_NAME).app_hex
+ifdef NRF5X_SDK_11 # SDK11 requires non-secure DFU that the adafruit tools support
+	@echo Creating DFU ZIP
+	# adafruit-nrfutil dfu genpkg --help
+	@cp $(PROJ_NAME).app_hex $(PROJ_NAME)_app.hex
+	adafruit-nrfutil dfu genpkg --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) $(PROJ_NAME).zip 
+	@rm $(PROJ_NAME)_app.hex
+else
 	@echo Creating DFU ZIP
 	# nrfutil  pkg generate --help
 	@cp $(PROJ_NAME).app_hex $(PROJ_NAME)_app.hex
 	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
-	 @rm $(PROJ_NAME)_app.hex
+	@rm $(PROJ_NAME)_app.hex
+endif
 
 flash: all
 ifeq ($(BOARD),MICROBIT)

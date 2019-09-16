@@ -40,6 +40,14 @@ else  # NRF52832
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_5.0.0_softdevice.hex
 endif
 else
+ifdef NRF_SDK11
+# Use SDK11
+NRF5X_SDK=11
+NRF5X_SDK_11=1
+NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_11
+DEFINES += -DNRF_SD_BLE_API_VERSION=2
+SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_2.0.0_softdevice.hex
+else
 # Use SDK12
 NRF5X_SDK=12
 NRF5X_SDK_12=1
@@ -48,7 +56,7 @@ DEFINES += -DNRF_SD_BLE_API_VERSION=3
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_3.0.0_softdevice.hex
 endif
 endif
-
+endif
 
 # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
 ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16

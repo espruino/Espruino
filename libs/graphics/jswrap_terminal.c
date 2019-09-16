@@ -19,9 +19,6 @@
 #include "jsparse.h"
 #include "jsdevices.h"
 
-#include "bitmap_font_4x6.h"
-#include "bitmap_font_6x8.h"
-
 /*JSON{
   "type" : "object",
   "name" : "Terminal",
@@ -38,10 +35,12 @@ are written to it.
 #ifdef USE_FONT_6X8
 #define TERMINAL_CHAR_W (6)
 #define TERMINAL_CHAR_H (8)
+#include "bitmap_font_6x8.h"
 #define TERMINAL_CHAR_CMD graphicsDrawChar6x8
 #else
 #define TERMINAL_CHAR_W (4)
 #define TERMINAL_CHAR_H (6)
+#include "bitmap_font_4x6.h"
 #define TERMINAL_CHAR_CMD graphicsDrawChar4x6
 #endif
 

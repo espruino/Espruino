@@ -7,12 +7,14 @@ Created with:
 
 ```Bash
 # https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/experimental/micro
+# Assuming Espruino is in /workspace/Espruino
+cd ~/workspace
 git clone https://github.com/tensorflow/tensorflow --depth=1
-mv tensorflow git-tensorflow
-cd git-tensorflow
+cd tensorflow
 make -f tensorflow/lite/experimental/micro/tools/make/Makefile
 make -f tensorflow/lite/experimental/micro/tools/make/Makefile TARGET=make TAGS="disco_f746ng" generate_projects
-cp -R tensorflow/lite/experimental/micro/tools/make/gen/make_x86_64/prj/hello_world/make/* ..
+cp -R tensorflow/lite/experimental/micro/tools/make/gen/make_x86_64/prj/hello_world/make/* ~/workspace/Espruino/libs/tensorflow
+#
 cd ..
 mv tensorflow/tensorflow/lite/experimental/micro/examples/hello_world/* .
 ```
