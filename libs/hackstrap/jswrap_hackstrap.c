@@ -35,6 +35,7 @@
 #include "lcd_arraybuffer.h"
 
 #define LCD_SPI EV_SPI1
+#define GPS_UART EV_SERIAL1
 /*
 Full screen refresh is:
 
@@ -362,6 +363,35 @@ void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data) {
   lcd_cmd(cmd, dLen, dPtr);
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "setGPSPower",
+    "generate" : "jswrap_hackstrap_setGPSPower",
+    "params" : [
+      ["isOn","bool","True if the GPS should be on, false if not"]
+    ]
+}
+Set the power to the GPS.
+*/
+void jswrap_hackstrap_setGPSPower(bool isOn) {
+  if (isOn) {
+    JshUSARTInfo inf;
+    jshUSARTInitInfo(&inf);
+    inf.baudRate = 9600;
+    inf.pinRX = GPS_PIN_RX;
+    inf.pinTX = GPS_PIN_TX;
+    jshUSARTSetup(GPS_UART, &inf);
+    jshPinOutput(GPS_PIN_EN,1); // GPS on
+  } else {
+    jshPinOutput(GPS_PIN_EN,0); // GPS off
+    // setting pins to pullup will cause jshardware.c to disable the UART, saving power
+    jshPinSetState(GPS_PIN_RX, JSHPINSTATE_GPIO_IN_PULLUP);
+    jshPinSetState(GPS_PIN_TX, JSHPINSTATE_GPIO_IN_PULLUP);
+  }
+}
+
+
 // Holding down both buttons will reboot
 void watchdogHandler() {
   //jshPinOutput(LED1_PININDEX, 1);
@@ -429,7 +459,7 @@ void watchdogHandler() {
   "generate" : "jswrap_hackstrap_init"
 }*/
 void jswrap_hackstrap_init() {
-  jshPinOutput(GPS_PIN_EN,1); // GPS off
+  jshPinOutput(GPS_PIN_EN,0); // GPS off
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
 
   jshPinOutput(LCD_BL,0); // backlight on
@@ -559,6 +589,12 @@ void jswrap_hackstrap_init() {
   jshEnableWatchDog(10); // 10 second watchdog
   JsSysTime t = jshGetTimeFromMilliseconds(ACCEL_POLL_INTERVAL);
   jstExecuteFn(watchdogHandler, NULL, jshGetSystemTime()+t, t);
+
+  /*JsVar *gpsUart = jshGetDeviceObject(GPS_UART);
+  if (gpsUart) {
+    jswrap_object_addEventListener(gpsUart,"data",gpsDataCallback,JSWAT_JSVAR << (JSWAT_BITS*1));
+    jsvUnLock(gpsUart);
+  }*/
 }
 
 /*JSON{
@@ -569,6 +605,11 @@ void jswrap_hackstrap_kill() {
   jstStopExecuteFn(watchdogHandler, 0);
   jsvUnLock(promisePressure);
   promisePressure = 0;
+  /*JsVar *gpsUart = jshGetDeviceObject(GPS_UART);
+  if (gpsUart) {
+    jswrap_object_removeAllListeners_cstr(gpsUart,"data");
+    jsvUnLock(gpsUart);
+  }*/
 }
 
 /*JSON{

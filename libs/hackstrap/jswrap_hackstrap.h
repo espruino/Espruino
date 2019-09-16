@@ -18,6 +18,8 @@ void jswrap_hackstrap_setLCDPower(bool isOn);
 void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout);
 bool jswrap_hackstrap_isLCDOn();
 
+void jswrap_hackstrap_setGPSPower(bool isOn);
+
 void jswrap_hackstrap_accelWr(JsVarInt reg, JsVarInt data);
 int jswrap_hackstrap_accelRd(JsVarInt reg);
 JsVar *jswrap_hackstrap_getPressure();
