@@ -229,14 +229,12 @@ ifdef NRF5X_SDK_12
   INCLUDE += -I$(ROOT)/targets/nrf5x_dfu/sdk12
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader_dfu/ble_transport
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crc32
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crypto
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/bootloader/ble_dfu
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/crypto
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/svc
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/scheduler
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/ecc
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/sha256
   INCLUDE += -I$(NRF5X_SDK_PATH)/external/nano-pb
   INCLUDE += -I$(NRF5X_SDK_PATH)/external/micro-ecc
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/app_error_weak.c
@@ -248,17 +246,12 @@ ifdef NRF5X_SDK_12
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c 
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_common.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_decode.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
@@ -275,6 +268,17 @@ ifdef NRF5X_SDK_12
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_settings.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_transport.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/bootloader/dfu/nrf_dfu_utils.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_common.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/nano-pb/pb_decode.c
+ifdef NRF_BL_DFU_INSECURE
+  DEFINES += -DNRF_BL_DFU_INSECURE
+else # NRF_BL_DFU_INSECURE
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/ecc
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/sha256
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c
+endif
 else
   DEFINES += -DAPP_TIMER_V2
   DEFINES += -DAPP_TIMER_V2_RTC1_ENABLED

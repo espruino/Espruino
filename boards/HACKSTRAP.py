@@ -43,7 +43,8 @@ info = {
      'INCLUDE += -I$(ROOT)/libs/hackstrap',
      'WRAPPERSOURCES += libs/hackstrap/jswrap_hackstrap.c',
      'JSMODULESOURCES += libs/js/graphical_menu.min.js',
-     'DEFINES += -DNRF_BL_DFU_ENTER_METHOD_BUTTON=1 -DNRF_BL_DFU_ENTER_METHOD_BUTTON_PIN=5'
+     'DEFINES += -DNRF_BL_DFU_ENTER_METHOD_BUTTON=1 -DNRF_BL_DFU_ENTER_METHOD_BUTTON_PIN=5',
+     'NRF_BL_DFU_INSECURE=1'
    ]
  }
 };

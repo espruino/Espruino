@@ -109,7 +109,7 @@ NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
 ifdef BOOTLOADER
   # we're trying to compile the bootloader itself
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_dfu_gcc_nrf52.ld
-  OPTIMIZEFLAGS=-Os # try to reduce bootloader size
+  OPTIMIZEFLAGS=-Os -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition # try to reduce bootloader size
 else # not BOOTLOADER - compiling something to run under a bootloader
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
   INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
@@ -143,7 +143,6 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_i2s.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_saadc.c 
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_rng.c
 endif
-
 # Secure connection support
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/ecc
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c

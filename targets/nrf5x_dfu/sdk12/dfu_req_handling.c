@@ -72,9 +72,6 @@ static uint32_t             m_firmware_size_req;        /**< The size of the ent
 
 static bool m_valid_init_packet_present;                /**< Global variable holding the current flags indicating the state of the DFU process. */
 
-
-
-
 static const nrf_crypto_key_t crypto_key_pk =
 {
     .p_le_data = (uint8_t *) pk,
@@ -108,7 +105,6 @@ static void dfu_data_write_handler(fs_evt_t const * const evt, fs_ret_t result)
     --m_flash_operations_pending;
 }
 
-
 static void pb_decoding_callback(pb_istream_t *str, uint32_t tag, pb_wire_type_t wire_type, void *iter)
 {
     pb_field_iter_t* p_iter = (pb_field_iter_t *) iter;
@@ -130,7 +126,6 @@ static void pb_decoding_callback(pb_istream_t *str, uint32_t tag, pb_wire_type_t
         NRF_LOG_INFO("PB: Init data len: %d\r\n", hash_data.len);
     }
 }
-
 
 static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_command, pb_istream_t * p_stream, uint8_t * p_init_cmd, uint32_t init_cmd_len)
 {
@@ -241,7 +236,7 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
 #ifdef NRF_DFU_DEBUG_VERSION
     }
 #endif
-
+#ifndef NRF_BL_DFU_INSECURE
     // Check the signature
     switch (p_command->signature_type)
     {
@@ -291,7 +286,7 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
         default:
             return NRF_DFU_RES_CODE_OPERATION_FAILED;
     }
-
+#endif
     // Get the update size
     m_firmware_size_req = 0;
 
@@ -357,8 +352,10 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
             return NRF_DFU_RES_CODE_OPERATION_FAILED;
     }
 
+#ifndef NRF_BL_DFU_INSECURE
     // SHA256 is the only supported hash
     memcpy(&hash[0], &p_init->hash.hash.bytes[0], 32);
+#endif
 
     // Instead of checking each type with has-check, check the result of the size_req to
     // Validate its content.
@@ -390,7 +387,7 @@ static nrf_dfu_res_code_t nrf_dfu_postvalidate(dfu_init_command_t * p_init)
     uint32_t                   err_code;
     nrf_dfu_res_code_t         res_code = NRF_DFU_RES_CODE_SUCCESS;
     nrf_dfu_bank_t           * p_bank;
-
+#ifndef NRF_BL_DFU_INSECURE
     switch (p_init->hash.hash_type)
     {
         case DFU_HASH_TYPE_SHA256:
@@ -411,10 +408,11 @@ static nrf_dfu_res_code_t nrf_dfu_postvalidate(dfu_init_command_t * p_init)
             break;
 
         default:
+
             res_code = NRF_DFU_RES_CODE_OPERATION_FAILED;
             break;
     }
-
+#endif
     if (s_dfu_settings.bank_current == NRF_DFU_CURRENT_BANK_0)
     {
         NRF_LOG_INFO("Current bank is bank 0\r\n");
@@ -511,6 +509,7 @@ static nrf_dfu_res_code_t nrf_dfu_postvalidate(dfu_init_command_t * p_init)
 
 /** @brief Function to handle signed command
  *
+
  * @param[in]   p_command   Signed
  */
 static nrf_dfu_res_code_t dfu_handle_signed_command(dfu_signed_command_t const * p_command, pb_istream_t * p_stream)
@@ -522,7 +521,6 @@ static nrf_dfu_res_code_t dfu_handle_signed_command(dfu_signed_command_t const *
     {
         return NRF_DFU_RES_CODE_INVALID_OBJECT;
     }
-
     ret_val = dfu_handle_prevalidate(p_command, p_stream, hash_data.p_le_data, hash_data.len);
     if(ret_val == NRF_DFU_RES_CODE_SUCCESS)
     {
@@ -990,6 +988,7 @@ uint32_t nrf_dfu_req_handler_init(void)
 
         // Setting valid init command to true to
         m_valid_init_packet_present = true;
+
     }
 
     return NRF_SUCCESS;
