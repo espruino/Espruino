@@ -52,8 +52,9 @@
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 }
 #endif
-
+#ifndef NRF5X_SDK_11
 #include "nrf_peripherals.h"
+#endif
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
 #include "nrf_timer.h"
@@ -265,6 +266,37 @@ bool spi0Initialised = false;
 static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
 bool twi1Initialised = false;
 
+#ifdef NRF5X_SDK_11
+#include <nrf_drv_config.h>
+// UART in SDK11 does not support instance numbers
+#define nrf_drv_uart_rx(u,b,l) nrf_drv_uart_rx(b,l)
+#define nrf_drv_uart_tx(u,b,l) nrf_drv_uart_tx(b,l)
+#define nrf_drv_uart_rx_disable(u) nrf_drv_uart_rx_disable()
+#define nrf_drv_uart_rx_enable(u) nrf_drv_uart_rx_enable()
+#define nrf_drv_uart_tx_abort(u) nrf_drv_uart_tx_abort()
+#define nrf_drv_uart_uninit(u) nrf_drv_uart_uninit()
+#define nrf_drv_uart_init(u,c,h) nrf_drv_uart_init(c,h)
+
+// different name in SDK11
+#define GPIOTE_CH_NUM NUMBER_OF_GPIO_TE
+
+//this macro in SDK11 needs instance id and contains useless pin defaults so just copy generic version from SDK12
+#undef NRF_DRV_SPI_DEFAULT_CONFIG
+#define NRF_DRV_SPI_DEFAULT_CONFIG                           \
+{                                                            \
+    .sck_pin      = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .mosi_pin     = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .miso_pin     = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .ss_pin       = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .irq_priority = SPI0_CONFIG_IRQ_PRIORITY,         \
+    .orc          = 0xFF,                                    \
+    .frequency    = NRF_DRV_SPI_FREQ_4M,                     \
+    .mode         = NRF_DRV_SPI_MODE_0,                      \
+    .bit_order    = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST,         \
+}
+
+#else // NRF5X_SDK_11
+static const nrf_drv_uart_t UART0 = NRF_DRV_UART_INSTANCE(0);
 static const nrf_drv_uart_t UART[] = {
     NRF_DRV_UART_INSTANCE(0),
 #if USART_COUNT>1
@@ -273,6 +305,7 @@ static const nrf_drv_uart_t UART[] = {
     NRF_DRV_UART_INSTANCE(1)
 #endif
 };
+#endif // NRF5X_SDK_11
 
 typedef struct {
   uint8_t rxBuffer[2]; // 2 char buffer

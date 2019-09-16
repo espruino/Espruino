@@ -2353,7 +2353,11 @@ void jsble_advertising_stop() {
    if (v) {
      ble_gap_addr_t p_addr;
      if (bleVarToAddr(v, &p_addr)) {
+#if NRF_SD_BLE_API_VERSION < 3
+       err_code = sd_ble_gap_address_set(BLE_GAP_ADDR_CYCLE_MODE_NONE,&p_addr);
+#else
        err_code = sd_ble_gap_addr_set(&p_addr);
+#endif
        if (err_code) jsiConsolePrintf("sd_ble_gap_addr_set failed: 0x%x\n", err_code);
      }
    }
