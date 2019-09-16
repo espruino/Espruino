@@ -52,8 +52,9 @@
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 }
 #endif
-
+#ifndef NRF5X_SDK_11
 #include "nrf_peripherals.h"
+#endif
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
 #include "nrf_timer.h"
@@ -265,6 +266,37 @@ bool spi0Initialised = false;
 static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
 bool twi1Initialised = false;
 
+#ifdef NRF5X_SDK_11
+#include <nrf_drv_config.h>
+// UART in SDK11 does not support instance numbers
+#define nrf_drv_uart_rx(u,b,l) nrf_drv_uart_rx(b,l)
+#define nrf_drv_uart_tx(u,b,l) nrf_drv_uart_tx(b,l)
+#define nrf_drv_uart_rx_disable(u) nrf_drv_uart_rx_disable()
+#define nrf_drv_uart_rx_enable(u) nrf_drv_uart_rx_enable()
+#define nrf_drv_uart_tx_abort(u) nrf_drv_uart_tx_abort()
+#define nrf_drv_uart_uninit(u) nrf_drv_uart_uninit()
+#define nrf_drv_uart_init(u,c,h) nrf_drv_uart_init(c,h)
+
+// different name in SDK11
+#define GPIOTE_CH_NUM NUMBER_OF_GPIO_TE
+
+//this macro in SDK11 needs instance id and contains useless pin defaults so just copy generic version from SDK12
+#undef NRF_DRV_SPI_DEFAULT_CONFIG
+#define NRF_DRV_SPI_DEFAULT_CONFIG                           \
+{                                                            \
+    .sck_pin      = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .mosi_pin     = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .miso_pin     = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .ss_pin       = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .irq_priority = SPI0_CONFIG_IRQ_PRIORITY,         \
+    .orc          = 0xFF,                                    \
+    .frequency    = NRF_DRV_SPI_FREQ_4M,                     \
+    .mode         = NRF_DRV_SPI_MODE_0,                      \
+    .bit_order    = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST,         \
+}
+
+#else // NRF5X_SDK_11
+static const nrf_drv_uart_t UART0 = NRF_DRV_UART_INSTANCE(0);
 static const nrf_drv_uart_t UART[] = {
     NRF_DRV_UART_INSTANCE(0),
 #if USART_COUNT>1
@@ -273,6 +305,7 @@ static const nrf_drv_uart_t UART[] = {
     NRF_DRV_UART_INSTANCE(1)
 #endif
 };
+#endif // NRF5X_SDK_11
 
 typedef struct {
   uint8_t rxBuffer[2]; // 2 char buffer
@@ -362,13 +395,13 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
                    if (NRF_UART0->PSELRXD==0xFFFFFFFF && NRF_UART0->PSELTXD==0xFFFFFFFF)
                      jshUSARTUnSetup(EV_SERIAL1);
                    break;
-#if UASRT_COUNT>1
+#if USART_COUNT>1
   case JSH_USART2: if (fInfo==JSH_USART_RX) {
-                     NRF_UART1->PSELRXD = pin;
+                     NRF_UARTE1->PSELRXD = pin;
                      if (pin==0xFFFFFFFF) nrf_drv_uart_rx_disable(&UART[1]);
-                   } else NRF_UART1->PSELTXD = pin;
+                   } else NRF_UARTE1->PSELTXD = pin;
                    // if both pins are disabled, shut down the UART
-                   if (NRF_UART1->PSELRXD==0xFFFFFFFF && NRF_UART1->PSELTXD==0xFFFFFFFF)
+                   if (NRF_UARTE1->PSELRXD==0xFFFFFFFF && NRF_UARTE1->PSELTXD==0xFFFFFFFF)
                      jshUSARTUnSetup(EV_SERIAL2);
                    break;
 #endif
@@ -750,13 +783,25 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_GPIO_IN :
     case JSHPINSTATE_USART_IN :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLUP);
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                                    | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                                    | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
+                                    | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                                    | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN_PULLDOWN :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLDOWN);
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                                    | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                                    | (GPIO_PIN_CNF_PULL_Pulldown << GPIO_PIN_CNF_PULL_Pos)
+                                    | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                                    | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     default : jsiConsolePrintf("Unimplemented pin state %d\n", state);
       break;
@@ -1211,7 +1256,8 @@ void uart_starttx(int num) {
   if (ch >= 0) {
     uart[num].isSending = true;
     uart[num].txBuffer[0] = ch;
-    nrf_drv_uart_tx(&UART[num], uart[num].txBuffer, 1);
+    ret_code_t err_code = nrf_drv_uart_tx(&UART[num], uart[num].txBuffer, 1);
+    if (err_code) jsWarn("nrf_drv_uart_tx failed, error %d", err_code);
   } else
     uart[num].isSending = false;
 }
@@ -1269,6 +1315,7 @@ void jshUSARTUnSetup(IOEventFlags device) {
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (!DEVICE_IS_USART(device))
     return;
+
   unsigned int num = device-EV_SERIAL1;
   jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
   jshSetErrorHandlingEnabled(device, inf->errorHandling);
@@ -1284,7 +1331,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     nrf_drv_uart_uninit(&UART[num]);
   }
   uart[num].isInitialised = false;
-  JshPinFunction JSH_USART = JSH_USART1+num;
+  JshPinFunction JSH_USART = JSH_USART1+(num<<JSH_SHIFT_TYPE);
 
   // APP_UART_INIT will set pins, but this ensures we know so can reset state later
   if (jshIsPinValid(inf->pinRX)) jshPinSetFunction(inf->pinRX, JSH_USART|JSH_USART_RX);
@@ -1302,9 +1349,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   uint32_t err_code;
 #if USART_COUNT>1
   if (num==1) err_code = nrf_drv_uart_init(&UART[num], &config, uart1_event_handle);
-  else
 #endif
-  err_code = nrf_drv_uart_init(&UART[num], &config, uart0_event_handle);
+  if (num==0) err_code = nrf_drv_uart_init(&UART[num], &config, uart0_event_handle);
   if (err_code) {
     jsWarn("nrf_drv_uart_init failed, error %d", err_code);
   } else {

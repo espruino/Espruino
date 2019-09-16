@@ -24,7 +24,7 @@ ESP_COMBINED_SIZE = 4096
 ESP_FLASH_ADDONS  = $(ET_DEFAULTS) $(INIT_DATA) $(ET_BLANK) $(BLANK)
 LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.2048.ld
 LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.2048.ld
-LD_RENAME    = --rename-section .rodata=.irom.literal --rename-section .text=.irom.text --rename-section .literal=.irom.literal
+LD_RENAME    = --rename-section .text=.irom.text --rename-section .literal=.irom.literal
 else
 ESP_COMBINED_SIZE = 512
 LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
@@ -73,7 +73,6 @@ $(USER2_ELF): $(PARTIAL) $(LINKER_FILE)
 # generate binary image for user1, i.e. first OTA partition
 $(USER1_BIN): $(USER1_ELF)
 	$(Q)$(OBJCOPY) --only-section .text -O binary $(USER1_ELF) eagle.app.v6.text.bin
-	$(Q)$(OBJCOPY) --only-section .text $(USER1_ELF) eagle.app.v6.text.o
 	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER1_ELF) eagle.app.v6.data.bin
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER1_ELF) eagle.app.v6.rodata.bin
 	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER1_ELF) eagle.app.v6.irom0text.bin

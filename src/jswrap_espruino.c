@@ -1556,6 +1556,45 @@ void jswrap_espruino_setTimeZone(JsVarFloat zone) {
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
+  "name" : "memoryMap",
+  "generate" : "jswrap_espruino_memoryMap",
+  "params" : [
+    ["baseAddress","JsVar","The base address (added to every address in `registers`)"],
+    ["registers","JsVar","An object containing `{name:address}`"]
+  ],
+  "return" : ["JsVar","An object where each field is memory-mapped to a register."]
+}
+Create an object where every field accesses a specific 32 bit address in the microcontroller's memory. This
+is perfect for accessing on-chip peripherals.
+
+```
+// for NRF52 based chips
+var GPIO = E.memoryMap(0x50000000,{OUT:0x504, OUTSET:0x508, OUTCLR:0x50C, IN:0x510, DIR:0x514, DIRSET:0x518, DIRCLR:0x51C});
+GPIO.DIRSET = 1; // set GPIO0 to output
+GPIO.OUT ^= 1; // toggle the output state of GPIO0
+```
+*/
+JsVar *jswrap_espruino_memoryMap(JsVar *baseAddress, JsVar *registers) {
+  /* Do this in JS - it's safer and more readable, and doesn't
+   * have to be super fast. */
+  JsVar *args[2] = {baseAddress, registers};
+  return jspExecuteJSFunction("(function(base,j) {"
+    "var o={},addr;"
+    "for (var reg in j) {"
+      "addr=base+j[reg];"
+      "Object.defineProperty(o,reg,{"
+        "get:peek32.bind(undefined,addr),"
+        "set:poke32.bind(undefined,addr)"
+      "});"
+    "}"
+    "return o;"
+  "})",0,2,args);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
   "name" : "asm",
   "generate" : "jswrap_espruino_asm",
   "params" : [
