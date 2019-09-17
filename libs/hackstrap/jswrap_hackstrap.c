@@ -200,15 +200,15 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   if (lcdPowerTimeout && !lcdPowerOn) {
     // LCD was turned off, turn it back on
     jswrap_hackstrap_setLCDPower(1);
-    flipCounter = 0;
   }
+  flipCounter = 0;
 
   unsigned char buffer1[LCD_WIDTH*2]; // 16 bits per pixel
   unsigned char buffer2[LCD_WIDTH*2]; // 16 bits per pixel
 
   // use nearest 2 pixels as we're sending 12 bits
-  gfx->data.modMinX = gfx->data.modMinX&~1;
-  gfx->data.modMaxX = (gfx->data.modMaxX+1)&~1;
+  gfx->data.modMinX = (gfx->data.modMinX)&~1;
+  gfx->data.modMaxX = (gfx->data.modMaxX+2)&~1;
   int xlen = gfx->data.modMaxX - gfx->data.modMinX;
 
   jshPinSetValue(LCD_SPI_CS, 0);
@@ -219,7 +219,7 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   buffer1[0] = 0;
   buffer1[1] = gfx->data.modMinX;
   buffer1[2] = 0;
-  buffer1[3] = gfx->data.modMaxX-1;
+  buffer1[3] = gfx->data.modMaxX;
   jshSPISendMany(LCD_SPI, buffer1, NULL, 4, NULL);
   jshPinSetValue(LCD_SPI_DC, 0); // command
   buffer1[0] = 0x2B;
