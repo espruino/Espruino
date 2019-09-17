@@ -108,10 +108,18 @@ ifdef USE_BOOTLOADER
 NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
 ifdef BOOTLOADER
   # we're trying to compile the bootloader itself
+  ifdef LINKER_BOOTLOADER
+  LINKER_FILE = $(LINKER_BOOTLOADER)
+  else
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_dfu_gcc_nrf52.ld
+  endif
   OPTIMIZEFLAGS=-Os -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition # try to reduce bootloader size
 else # not BOOTLOADER - compiling something to run under a bootloader
+  ifdef LINKER_ESPRUINO
+  LINKER_FILE = $(LINKER_ESPRUINO)  
+  else
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
+  endif
   INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
 endif
 else # not USE_BOOTLOADER

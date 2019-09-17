@@ -44,7 +44,9 @@ info = {
      'WRAPPERSOURCES += libs/hackstrap/jswrap_hackstrap.c',
      'JSMODULESOURCES += libs/js/graphical_menu.min.js',
      'DEFINES += -DNRF_BL_DFU_ENTER_METHOD_BUTTON=1 -DNRF_BL_DFU_ENTER_METHOD_BUTTON_PIN=5',
-     'NRF_BL_DFU_INSECURE=1'
+     'NRF_BL_DFU_INSECURE=1',
+     'LINKER_BOOTLOADER=targetlibs/nrf5x_12/nrf5x_linkers/hackstrap_dfu.ld',
+     'LINKER_ESPRUINO=targetlibs/nrf5x_12/nrf5x_linkers/hackstrap_espruino.ld'
    ]
  }
 };
