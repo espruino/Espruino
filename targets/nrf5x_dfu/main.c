@@ -178,7 +178,7 @@ void reboot_check_handler() {
 extern void dfu_set_status(DFUStatus status) {
   switch (status) {
   case DFUS_ADVERTISING_START:
-    lcd_print("READY TO UPDATE\r\n");
+    lcd_print("READY.\r\n");
     set_led_state(true,false);
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
     uint32_t err_code;
@@ -234,6 +234,7 @@ int main(void)
 
 #ifdef LCD
     lcd_init();
+#ifndef HACKSTRAP // FIXME - removed due to lack of flash
     bool wait = false;
     if (NRF_POWER->RESETREAS & POWER_RESETREAS_LOCKUP_Msk) {
       lcd_print("LOCKUP DETECTED\r\n");
@@ -257,6 +258,7 @@ int main(void)
       lcd_print("\nHOLD BTN1 FOR DFU\r\n\n\n");
       nrf_delay_us(1000000); // 1 sec delay
     }
+#endif
 #endif
 
 #if NRF_SD_BLE_API_VERSION < 5
