@@ -101,6 +101,11 @@ devices = {
           },
   'BAT' : {
             'pin_charging' : 'D7', # inverted
+            'pin_voltage' : 'D4'
+          },
+  'HEARTRATE' : {
+            'pin_led' : 'D14',
+            'pin_analog' : 'D3'
           },
   'ACCEL' : {
             'device' : 'KX023', 'addr' : 0x1e,
