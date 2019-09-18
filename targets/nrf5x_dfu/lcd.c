@@ -317,9 +317,14 @@ void lcd_init() {
   lcd_cmd(0x37, 2, "\0\x50"); // VSCRSADD - vertical scroll
   nrf_delay_us(10000);
   lcd_cmd(0x35, 0, NULL); // Tear on
-    nrf_delay_us(10000);
+  nrf_delay_us(10000);
   lcd_cmd(0x29, 0, NULL); // DISPON
   nrf_delay_us(10000);
+}
+
+void lcd_kill() {
+  jshPinOutput(LCD_BL,0);
+  lcd_cmd(0xAE, 0, NULL); // DISPOFF
 }
 #endif
 
@@ -447,11 +452,20 @@ void lcd_init() {
     cmd += 3 + cmd[CMDINDEX_DATALEN];
   }
 }
+void lcd_kill() {
+  jshPinOutput(LCD_BL,1); // backlight off
+  lcd_cmd(0x28, 0, NULL); // display off
+}
 
 #endif
 
 #else
 // No LCD
 void lcd_init() {}
+void lcd_kill() {}
 void lcd_print(char *ch) {}
 #endif
+void lcd_println(char *ch) {
+  lcd_print(ch);
+  lcd_print("\r\n");
+}

@@ -28,6 +28,8 @@
 #include "nrf_bootloader.h"
 #include "nrf_bootloader_app_start.h"
 #include "nrf_dfu.h"
+#include "nrf_dfu_types.h"
+#include "nrf_dfu_settings.h"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "app_error.h"
@@ -71,7 +73,7 @@ void app_error_handler_bare(uint32_t error_code)
 }
 
 void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
-  lcd_print("NRF ERROR\r\n");
+  lcd_println("NRF ERROR");
   nrf_delay_ms(10000);
   NVIC_SystemReset();
 }
@@ -119,13 +121,20 @@ bool nrf_dfu_enter_check(void) {
 // dfu_enter_check must be modified to add the __WEAK keyword
 bool dfu_enter_check(void) {
 #endif
-    bool dfu_start = get_btn_state();
+  bool dfu_start = get_btn_state();
+#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+    // if DFU looks invalid, go straight to bootloader
+    if (s_dfu_settings.bank_0.bank_code == NRF_DFU_BANK_INVALID) {
+      lcd_println("BANK0 INVALID");
+      if (!dfu_start) return true;
+    }
+#endif
 
     // If button is held down for 3 seconds, don't start bootloader.
     // This means that we go straight to Espruino, where the button is still
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
-      lcd_print("BOOTLOADER\r\n==========\r\n\nRELEASE BTN1 FOR DFU\r\n<                     >\r");
+      lcd_print("RELEASE BTN1 FOR DFU\r\n<                     >\r");
       int count = 3000;
       while (get_btn_state() && count) {
         nrf_delay_us(999);
@@ -136,14 +145,14 @@ bool dfu_enter_check(void) {
       if (!count) {
         dfu_start = false;
       } else {
-        lcd_print("\r\nDFU STARTED\r\n");
+        lcd_println("\r\nDFU STARTED");
       }
       set_led_state(true, true);
     }
 
     if (!dfu_start) {
 #ifdef LCD
-      lcd_print("\r\nRESUMING BOOT...\r\n");
+      lcd_println("\r\nRESUMING BOOT...");
       nrf_delay_us(500000);
 #endif
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
@@ -168,7 +177,9 @@ int rebootCounter = 0;
 void reboot_check_handler() {
   if (get_btn_state()) rebootCounter++;
   else rebootCounter=0;
-  if (rebootCounter>10) NVIC_SystemReset();
+  if (rebootCounter>10) {
+    NVIC_SystemReset();
+  }
   // We enabled the watchdog, so we must kick it (as it stays set even after restart)
   NRF_WDT->RR[0] = 0x6E524635;
 }
@@ -178,7 +189,7 @@ void reboot_check_handler() {
 extern void dfu_set_status(DFUStatus status) {
   switch (status) {
   case DFUS_ADVERTISING_START:
-    lcd_print("READY.\r\n");
+    lcd_println("\nBOOTLOADER\r\n==========\n");
     set_led_state(true,false);
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
     uint32_t err_code;
@@ -186,16 +197,16 @@ extern void dfu_set_status(DFUStatus status) {
                         APP_TIMER_MODE_REPEATED,
                         reboot_check_handler);
     err_code = app_timer_start(m_reboot_timer_id, APP_TIMER_TICKS(100, 0), NULL);
-    lcd_print("HOLD BTN1 TO REBOOT\r\n");
+    lcd_println("BTN1 = REBOOT");
 #endif
     break;
-  case DFUS_ADVERTISING_STOP:
-    break;
+/*  case DFUS_ADVERTISING_STOP:
+    break;*/
   case DFUS_CONNECTED:
-    lcd_print("CONNECTED\r\n");
+    lcd_println("CONNECTED");
     set_led_state(false,true); break;
   case DFUS_DISCONNECTED:
-    lcd_print("DISCONNECTED\r\n");
+    lcd_println("DISCONNECTED");
     break;
   }
 }
@@ -234,31 +245,23 @@ int main(void)
 
 #ifdef LCD
     lcd_init();
-#ifndef HACKSTRAP // FIXME - removed due to lack of flash
     bool wait = false;
-    if (NRF_POWER->RESETREAS & POWER_RESETREAS_LOCKUP_Msk) {
-      lcd_print("LOCKUP DETECTED\r\n");
-      wait = true;
-    }
-    if (NRF_POWER->RESETREAS & POWER_RESETREAS_SREQ_Msk) {
-      lcd_print("SOFTWARE RESET\r\n");
-      wait = true;
-    }
-    if (NRF_POWER->RESETREAS & POWER_RESETREAS_DOG_Msk) {
-      lcd_print("WATCHDOG TIMEOUT\r\n");
-      wait = true;
-    }
-    if (NRF_POWER->RESETREAS & POWER_RESETREAS_RESETPIN_Msk) {
-      lcd_print("RESET BY PIN\r\n");
-      wait = true;
+    int r = NRF_POWER->RESETREAS;
+    const char *reasons = "PIN\0WATCHDOG\0SW RESET\0LOCKUP\0OFF\0";
+    while (*reasons) {
+      if (r&1) {
+        lcd_println(reasons);
+        wait=true;
+      }
+      r>>=1;
+      while (*reasons) reasons++;
+      reasons++;
     }
     // Clear reset reason flags
     NRF_POWER->RESETREAS = 0xFFFFFFFF;
     if (wait) {
-      lcd_print("\nHOLD BTN1 FOR DFU\r\n\n\n");
       nrf_delay_us(1000000); // 1 sec delay
     }
-#endif
 #endif
 
 #if NRF_SD_BLE_API_VERSION < 5
