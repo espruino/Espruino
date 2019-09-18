@@ -26,6 +26,7 @@
 #include "jswrap_bluetooth.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
+#include "nrf_soc.h"
 #include "nrf5x_utils.h"
 #include "jsflash.h" // for jsfRemoveCodeFromFlash
 #include "bluetooth.h" // for self-test
@@ -782,7 +783,29 @@ JsVar *jswrap_hackstrap_getPressure() {
   jsiSetTimeout(jswrap_hackstrap_getPressure_callback, 100);
   return jsvLockAgain(promisePressure);
 }
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "off",
+    "generate" : "jswrap_hackstrap_off"
+}
+Turn HackStrap off. It can only be woken by pressing BTN1.
+*/
+void jswrap_hackstrap_off() {
+  jsiKill();
+  jsvKill();
+  jshKill();
+  jshPinOutput(GPS_PIN_EN,0); // GPS off
+  jshPinOutput(VIBRATE_PIN,0); // vibrate off
+  jshPinOutput(LCD_BL,1); // backlight off
+  lcd_cmd(0x28, 0, NULL); // display off
 
+
+  nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
+  nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
+  nrf_gpio_cfg_sense_set(BTN1_PININDEX, NRF_GPIO_PIN_SENSE_LOW);
+  sd_power_system_off();
+}
 
 /*JSON{
   "type" : "event",

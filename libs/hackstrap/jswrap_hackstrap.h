@@ -23,6 +23,7 @@ void jswrap_hackstrap_setGPSPower(bool isOn);
 void jswrap_hackstrap_accelWr(JsVarInt reg, JsVarInt data);
 int jswrap_hackstrap_accelRd(JsVarInt reg);
 JsVar *jswrap_hackstrap_getPressure();
+void jswrap_hackstrap_off();
 
 void jswrap_hackstrap_init();
 void jswrap_hackstrap_kill();
