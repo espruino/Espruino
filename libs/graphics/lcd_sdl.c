@@ -27,7 +27,7 @@ unsigned int lcdGetPixel_SDL(JsGraphics *gfx, short x, short y) {
   if (!screen) return 0;
   if(SDL_MUSTLOCK(screen))
       if(SDL_LockSurface(screen) < 0) return 0;
-  unsigned int *pixmem32 = ((unsigned int*)screen->pixels) + y + x;
+  unsigned int *pixmem32 = ((unsigned int*)screen->pixels) + y*gfx->data.width + x;
   unsigned int col = *pixmem32;
   if(SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
   return col;

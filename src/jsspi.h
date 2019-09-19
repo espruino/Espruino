@@ -15,11 +15,17 @@
 #include "jshardware.h"
 
 typedef JshSPIInfo spi_sender_data; // the larger of JshSPIInfo or IOEventFlags
-typedef int (*spi_sender)(int data, spi_sender_data *info);
+typedef void (*spi_sender)(unsigned char *tx, unsigned char *rx, unsigned int len, spi_sender_data *info);
 
 bool jsspiPopulateSPIInfo(JshSPIInfo *inf, JsVar *options);
 
-// Get the correct SPI send function (and the data to send to it)
+/// Basic software SPI send function
+void jsspiSoftwareFunc(
+  unsigned char *tx, unsigned char *rx, unsigned int len,
+  spi_sender_data *info
+);
+
+/// Get the correct SPI send function (and the data to send to it)
 bool jsspiGetSendFunction(JsVar *spiDevice, spi_sender *spiSend, spi_sender_data *spiSendData);
 
 typedef enum {
@@ -27,11 +33,11 @@ typedef enum {
   JSSPI_WAIT = 2,
 } JsSpiSendFlags;
 
-// Send data over SPI. If andReceive is true, write it back into the same buffer
+/// Send data over SPI. If andReceive is true, write it back into the same buffer
 bool jsspiSend(JsVar *spiDevice, JsSpiSendFlags flags, char *buf, size_t len);
 
-// Send 8 bits, but with a nibble for each bit - used by jswrap_spi_send4bit. Expects SPI in 16 bit mode
+/// Send 8 bits, but with a nibble for each bit - used by jswrap_spi_send4bit. Expects SPI in 16 bit mode
 void jsspiSend4bit(IOEventFlags device, unsigned char data, int bit0, int bit1);
 
-// Send 8 bits, but with a byte for each bit - used by jswrap_spi_send8bit. Expects SPI in 16 bit mode
+/// Send 8 bits, but with a byte for each bit - used by jswrap_spi_send8bit. Expects SPI in 16 bit mode
 void jsspiSend8bit(IOEventFlags device, unsigned char data, int bit0, int bit1);

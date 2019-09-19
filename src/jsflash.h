@@ -11,6 +11,9 @@
  * JavaScript Flash IO functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSFLASH_H_
+#define JSFLASH_H_
+
 #include "jsvar.h"
 
 /// Simple filename used for Flash Storage. We use uint here so we don't have to memcpy/memcmp all the time
@@ -88,3 +91,5 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset);
 bool jsfFlashContainsCode();
 /** Completely clear any saved code from flash. */
 void jsfRemoveCodeFromFlash();
+
+#endif //JSFLASH_H_

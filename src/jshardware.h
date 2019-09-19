@@ -40,6 +40,10 @@ void jshReset();
 /** Code that is executed each time around the idle loop. Prod watchdog timers here,
  * and on platforms without GPIO interrupts you can check watched Pins for changes. */
 void jshIdle();
+
+/// Called when Espruino is busy waiting (eg for data to send)
+void jshBusyIdle();
+
 /** Enter sleep mode for the given period of time. Can be woken up by interrupts.
  * If time is 0xFFFFFFFFFFFFFFFF then go to sleep without setting a timer to wake
  * up.
@@ -302,6 +306,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf);
 int jshSPISend(IOEventFlags device, int data);
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data);
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success. A weak version of this function is provided in jshardware_common.c */
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)());
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16);
 /** Set whether to use the receive interrupt or not */

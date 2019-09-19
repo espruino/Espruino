@@ -1520,8 +1520,8 @@ bool jswrap_ble_filter_device(JsVar *filters, JsVar *device) {
 }
 
 Start/stop listening for BLE advertising packets within range. Returns a
-`BluetoothDevice` for each advertsing packet. **This is not an active scan, so
-Scan Response advertising data is not included**
+`BluetoothDevice` for each advertsing packet. **By default this is not an active scan, so
+Scan Response advertising data is not included (see below)**
 
 ```
 // Start scanning
@@ -1550,11 +1550,11 @@ BluetoothDevice {
  }
 ```
 
-You can also supply a set of filters as a second argument, which will
-allow you to filter the devices you get a callback for. This really helps
+You can also supply a set of filters (as decribed in `NRF.requestDevice`) as a second argument, which will
+allow you to filter the devices you get a callback for. This helps
 to cut down on the time spent processing JavaScript code in areas with
 a lot of Bluetooth advertisements. For example to find only devices
-with the manufacturer data 0x590 (Espruino's ID) you could do:
+with the manufacturer data `0x0590` (Espruino's ID) you could do:
 
 ```
 NRF.setScan(function(d) {
@@ -1716,10 +1716,20 @@ prints something like:
  ]
 ```
 
-For more information on the structure, see `NRF.setScan`.
+For more information on the structure returned, see `NRF.setScan`.
+
+If you want to scan only for specific devices you can replace the timeout with an object
+of the form `{filters: ..., timeout : ..., active: bool}` using the filters
+described in `NRF.requestDevice`. For example to search for devices with Espruino's `manufacturerData`:
+
+```
+NRF.findDevices(function(devices) {
+  ...
+}, {timeout : 2000, filters : [{ manufacturerData:{0x0590:{}} }] });
+```
 
 You could then use [`BluetoothDevice.gatt.connect(...)`](/Reference#l_BluetoothRemoteGATTServer_connect) on
-the device returned, to make a connection.
+the device returned to make a connection.
 
 You can also use [`NRF.connect(...)`](/Reference#l_NRF_connect) on just the `id` string returned, which
 may be useful if you always want to connect to a specific device.
@@ -1816,9 +1826,7 @@ void jswrap_ble_findDevices(JsVar *callback, JsVar *options) {
     jswrap_ble_setScan(fn, options);
     jsvUnLock(fn);
   }
-  fn = jsvNewNativeFunction((void (*)(void))jswrap_ble_findDevices_timeout_cb, JSWAT_VOID);
-  if (fn)
-    jsvUnLock2(jswrap_interface_setTimeout(fn, time, 0), fn);
+  jsvUnLock(jsiSetTimeout(jswrap_ble_findDevices_timeout_cb, time));
 }
 
 /*JSON{
@@ -2348,16 +2356,11 @@ JsVar *jswrap_ble_requestDevice(JsVar *options) {
   JsVar *promise = 0;
 
   // Set a timeout for when we finish if we didn't find anything
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_ble_requestDevice_finish, JSWAT_VOID);
-  JsVar *timeoutIndex = 0;
-  if (fn) {
-    timeoutIndex = jswrap_interface_setTimeout(fn, timeout, 0);
-    jsvUnLock(fn);
-  }
+  JsVar *timeoutIndex = jsiSetTimeout(jswrap_ble_requestDevice_finish, timeout);
   // Now create a promise, and pass in the timeout index so we can cancel the timeout if we find something
   if (bleNewTask(BLETASK_REQUEST_DEVICE, timeoutIndex)) {
     // Start scanning
-    fn = jsvNewNativeFunction((void (*)(void))jswrap_ble_requestDevice_scan, (JSWAT_JSVAR<<JSWAT_BITS));
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_ble_requestDevice_scan, (JSWAT_JSVAR<<JSWAT_BITS));
     if (fn) {
       jswrap_ble_setScan(fn, options);
       jsvUnLock(fn);

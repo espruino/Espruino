@@ -40,6 +40,7 @@
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 #include "jsflags.h"
+#include "jsspi.h"
 
 #include "app_util_platform.h"
 #ifdef BLUETOOTH
@@ -52,8 +53,9 @@
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 }
 #endif
-
+#ifndef NRF5X_SDK_11
 #include "nrf_peripherals.h"
+#endif
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
 #include "nrf_timer.h"
@@ -88,6 +90,8 @@ void WDT_IRQHandler() {
 #include "app_usbd_serial_num.h"
 #include "nrf_drv_clock.h"
 #include "nrf_drv_power.h"
+
+// TODO: It'd be nice if APP_USBD_CONFIG_EVENT_QUEUE_ENABLE could be 0 but it seems cdc_acm_user_ev_handler isn't called if it is
 
 /**
  * @brief Enable power USB detection
@@ -130,6 +134,7 @@ static char m_tx_buffer[NRF_DRV_USBD_EPSIZE];
  * */
 static bool m_usb_connected = false;
 static bool m_usb_open = false;
+static bool m_usb_transmitting = false;
 
 /**
  * @brief User event handler @ref app_usbd_cdc_acm_user_ev_handler_t (headphones)
@@ -142,38 +147,50 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
 
     switch (event)
     {
-        case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN:
-        {
-          jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN\n");
+        case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN: {
+            //jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN\n");
             m_usb_open = true;
+            m_usb_transmitting = false;
             /*Setup first transfer*/
             ret_code_t ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
                                                    m_rx_buffer,
                                                    sizeof(m_rx_buffer));
             UNUSED_VARIABLE(ret);
+            // USB connected - so move console device over to it
+            if (jsiGetConsoleDevice()!=EV_LIMBO) {
+              if (!jsiIsConsoleDeviceForced())
+                jsiSetConsoleDevice(EV_USBSERIAL, false);
+            }
             break;
         }
-        case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE:
-          jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE\n");
+        case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE: {
+            //jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE\n");
             m_usb_open = false;
+            m_usb_transmitting = false;
+            // USB disconnected, move device back to the default
+            if (!jsiIsConsoleDeviceForced() && jsiGetConsoleDevice()==EV_USBSERIAL)
+              jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), false);
+            jshTransmitClearDevice(EV_USBSERIAL); // clear the transmit queue
             break;
-        case APP_USBD_CDC_ACM_USER_EVT_TX_DONE:
-            // TODO: queue extra transmit here
+        }
+        case APP_USBD_CDC_ACM_USER_EVT_TX_DONE: {
+            // TX finished - queue extra transmit here
+            m_usb_transmitting = false;
+            jshUSARTKick(EV_USBSERIAL);
             break;
-        case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
-        {
+        }
+        case APP_USBD_CDC_ACM_USER_EVT_RX_DONE: {
             ret_code_t ret;
-            do
-            {
-	      /*Get amount of data transfered*/
-	      size_t size = app_usbd_cdc_acm_rx_size(p_cdc_acm);
-	      jshPushIOCharEvents(EV_USBSERIAL,  m_rx_buffer, size);
+            do {
+              /*Get amount of data transfered*/
+              size_t size = app_usbd_cdc_acm_rx_size(p_cdc_acm);
+              jshPushIOCharEvents(EV_USBSERIAL,  m_rx_buffer, size);
 
 
-	      /*Setup next transfer*/
-	      ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
-	                                           m_rx_buffer,
-	                                           sizeof(m_rx_buffer));
+              /*Setup next transfer*/
+              ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
+                                                   m_rx_buffer,
+                                                   sizeof(m_rx_buffer));
             } while (ret == NRF_SUCCESS);
             break;
         }
@@ -185,42 +202,39 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
 static void usbd_user_ev_handler(app_usbd_event_type_t event)
 {
   jshHadEvent();
-    switch (event)
-    {
-        case APP_USBD_EVT_DRV_SUSPEND:
-          jsiConsolePrintf("APP_USBD_EVT_DRV_SUSPEND\n");
-            break;
-        case APP_USBD_EVT_DRV_RESUME:
-          jsiConsolePrintf("APP_USBD_EVT_DRV_RESUME\n");
-            break;
-        case APP_USBD_EVT_STARTED:
-          jsiConsolePrintf("APP_USBD_EVT_STARTED\n");
-            break;
-        case APP_USBD_EVT_STOPPED:
-          jsiConsolePrintf("APP_USBD_EVT_STOPPED\n");
-            app_usbd_disable();
-            break;
-        case APP_USBD_EVT_POWER_DETECTED:
-            jsiConsolePrintf("APP_USBD_EVT_POWER_DETECTED\n");
-
-            if (!nrf_drv_usbd_is_enabled())
-            {
-                app_usbd_enable();
-            }
-            break;
-        case APP_USBD_EVT_POWER_REMOVED:
-            jsiConsolePrintf("APP_USBD_EVT_POWER_REMOVED\n");
-            m_usb_connected = false;
-            app_usbd_stop();            
-            break;
-        case APP_USBD_EVT_POWER_READY:
-            jsiConsolePrintf("APP_USBD_EVT_POWER_READY\n");
-            app_usbd_start();
-            m_usb_connected = true;
-            break;
-        default:
-            break;
-    }
+  switch (event)
+  {
+    case APP_USBD_EVT_DRV_SUSPEND:
+      //jsiConsolePrintf("APP_USBD_EVT_DRV_SUSPEND\n");
+        break;
+    case APP_USBD_EVT_DRV_RESUME:
+      //jsiConsolePrintf("APP_USBD_EVT_DRV_RESUME\n");
+        break;
+    case APP_USBD_EVT_STARTED:
+      //jsiConsolePrintf("APP_USBD_EVT_STARTED\n");
+        break;
+    case APP_USBD_EVT_STOPPED:
+      //jsiConsolePrintf("APP_USBD_EVT_STOPPED\n");
+        app_usbd_disable();
+        break;
+    case APP_USBD_EVT_POWER_DETECTED:
+        //jsiConsolePrintf("APP_USBD_EVT_POWER_DETECTED\n");
+        if (!nrf_drv_usbd_is_enabled())
+          app_usbd_enable();
+        break;
+    case APP_USBD_EVT_POWER_REMOVED:
+        //jsiConsolePrintf("APP_USBD_EVT_POWER_REMOVED\n");
+        m_usb_connected = false;
+        app_usbd_stop();
+        break;
+    case APP_USBD_EVT_POWER_READY:
+        //jsiConsolePrintf("APP_USBD_EVT_POWER_READY\n");
+        app_usbd_start();
+        m_usb_connected = true;
+        break;
+    default:
+        break;
+  }
 }
 
 #endif
@@ -248,18 +262,119 @@ JshPinFunction pinStates[JSH_PIN_COUNT];
 #if SPI_ENABLED
 static const nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
 bool spi0Initialised = false;
+unsigned char *spi0RxPtr;
+unsigned char *spi0TxPtr;
+size_t spi0Cnt;
+
+// Handler for async SPI transfers
+volatile bool spi0Sending = false;
+void (*volatile spi0Callback)() = NULL;
+void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event
+#if NRF_SD_BLE_API_VERSION>=5
+                      ,void *                    p_context
+#endif
+                      ) {
+  /* SPI can only send max 255 bytes at once, so we
+   * have to use the IRQ to fire off the next send */
+  if (spi0Cnt>0) {
+    size_t c = spi0Cnt;
+    if (c>255) c=255;
+    unsigned char *tx = spi0TxPtr;
+    unsigned char *rx = spi0RxPtr;
+    spi0Cnt -= c;
+    if (spi0TxPtr) spi0TxPtr += c;
+    if (spi0RxPtr) spi0RxPtr += c;
+    uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+    if (err_code == NRF_SUCCESS)
+      return;
+    // if fails, we drop through as if we succeeded
+  }
+  spi0Sending = false;
+  if (spi0Callback) {
+    spi0Callback();
+    spi0Callback=NULL;
+  }
+}
 #endif
 
 static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
 bool twi1Initialised = false;
 
+#ifdef NRF5X_SDK_11
+#include <nrf_drv_config.h>
+// UART in SDK11 does not support instance numbers
+#define nrf_drv_uart_rx(u,b,l) nrf_drv_uart_rx(b,l)
+#define nrf_drv_uart_tx(u,b,l) nrf_drv_uart_tx(b,l)
+#define nrf_drv_uart_rx_disable(u) nrf_drv_uart_rx_disable()
+#define nrf_drv_uart_rx_enable(u) nrf_drv_uart_rx_enable()
+#define nrf_drv_uart_tx_abort(u) nrf_drv_uart_tx_abort()
+#define nrf_drv_uart_uninit(u) nrf_drv_uart_uninit()
+#define nrf_drv_uart_init(u,c,h) nrf_drv_uart_init(c,h)
+
+// different name in SDK11
+#define GPIOTE_CH_NUM NUMBER_OF_GPIO_TE
+
+//this macro in SDK11 needs instance id and contains useless pin defaults so just copy generic version from SDK12
+#undef NRF_DRV_SPI_DEFAULT_CONFIG
+#define NRF_DRV_SPI_DEFAULT_CONFIG                           \
+{                                                            \
+    .sck_pin      = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .mosi_pin     = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .miso_pin     = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .ss_pin       = NRF_DRV_SPI_PIN_NOT_USED,                \
+    .irq_priority = SPI0_CONFIG_IRQ_PRIORITY,         \
+    .orc          = 0xFF,                                    \
+    .frequency    = NRF_DRV_SPI_FREQ_4M,                     \
+    .mode         = NRF_DRV_SPI_MODE_0,                      \
+    .bit_order    = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST,         \
+}
+
+#else // NRF5X_SDK_11
 static const nrf_drv_uart_t UART0 = NRF_DRV_UART_INSTANCE(0);
-static uint8_t uart0rxBuffer[2]; // 2 char buffer
-static uint8_t uart0txBuffer[1];
-bool uartIsSending = false;
-bool uartInitialised = false;
+static const nrf_drv_uart_t UART[] = {
+    NRF_DRV_UART_INSTANCE(0),
+#if USART_COUNT>1
+//#define NRFX_UART1_INST_IDX 1
+//#define NRF_UART1                       ((NRF_UART_Type           *) NRF_UARTE1_BASE)
+    NRF_DRV_UART_INSTANCE(1)
+#endif
+};
+#endif // NRF5X_SDK_11
+
+typedef struct {
+  uint8_t rxBuffer[2]; // 2 char buffer
+  bool isSending;
+  bool isInitialised;
+  uint8_t txBuffer[1];
+} PACKED_FLAGS jshUARTState;
+static jshUARTState uart[USART_COUNT];
 
 void jshUSARTUnSetup(IOEventFlags device);
+
+#ifdef SPIFLASH_BASE
+JshSPIInfo spiFlash = {
+    .baudRate = 100000,
+    .baudRateSpec = SPIB_DEFAULT,
+    .pinSCK = SPIFLASH_PIN_SCK,
+    .pinMISO = SPIFLASH_PIN_MISO,
+    .pinMOSI = SPIFLASH_PIN_MOSI,
+    .spiMode = SPIF_SPI_MODE_0,
+    .spiMSB = true,
+    .numBits = 8
+};
+void spiFlashWrite(unsigned char *tx, unsigned char *rx, unsigned int len) {
+  jshPinSetValue(SPIFLASH_PIN_CS,0);
+  jsspiSoftwareFunc(tx,rx,len,&spiFlash);
+  jshPinSetValue(SPIFLASH_PIN_CS,1);
+}
+unsigned char spiFlashStatus() {
+  unsigned char buf[2] = {5,0};
+  spiFlashWrite(buf,buf,2);
+  return buf[1];
+}
+#endif
+
+
 
 const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
@@ -296,7 +411,7 @@ void SysTick_Handler(void)  {
   ticksSinceStart++;
   /* One second after start, call jsinteractive. This is used to swap
    * to USB (if connected), or the Serial port. */
-  if (ticksSinceStart == 5) {
+  if (ticksSinceStart == 6) {
     jsiOneSecondAfterStartup();
   }
 }
@@ -333,12 +448,22 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
 #endif
   case JSH_USART1: if (fInfo==JSH_USART_RX) {
                      NRF_UART0->PSELRXD = pin;
-                     if (pin==0xFFFFFFFF) nrf_drv_uart_rx_disable(&UART0);
+                     if (pin==0xFFFFFFFF) nrf_drv_uart_rx_disable(&UART[0]);
                    } else NRF_UART0->PSELTXD = pin;
                    // if both pins are disabled, shut down the UART
                    if (NRF_UART0->PSELRXD==0xFFFFFFFF && NRF_UART0->PSELTXD==0xFFFFFFFF)
                      jshUSARTUnSetup(EV_SERIAL1);
                    break;
+#if USART_COUNT>1
+  case JSH_USART2: if (fInfo==JSH_USART_RX) {
+                     NRF_UARTE1->PSELRXD = pin;
+                     if (pin==0xFFFFFFFF) nrf_drv_uart_rx_disable(&UART[1]);
+                   } else NRF_UARTE1->PSELTXD = pin;
+                   // if both pins are disabled, shut down the UART
+                   if (NRF_UARTE1->PSELRXD==0xFFFFFFFF && NRF_UARTE1->PSELTXD==0xFFFFFFFF)
+                     jshUSARTUnSetup(EV_SERIAL2);
+                   break;
+#endif
 #if SPI_ENABLED
   case JSH_SPI1: if (fInfo==JSH_SPI_MISO) NRF_SPI0->PSELMISO = pin;
                  else if (fInfo==JSH_SPI_MOSI) NRF_SPI0->PSELMOSI = pin;
@@ -398,6 +523,21 @@ void jshResetPeripherals() {
 
 #if JSH_PORTV_COUNT>0
   jshVirtualPinInitialise();
+#endif
+  spi0Sending = false;
+  spi0Callback = NULL;
+
+#ifdef SPIFLASH_BASE
+  // set CS to default
+  jshPinSetValue(SPIFLASH_PIN_CS, 1);
+  jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_OUT);
+  jshDelayMicroseconds(100);
+  // disable lock bits
+  unsigned char buf[] = {1,0};
+  spiFlashWrite(buf,0,2);
 #endif
 }
 
@@ -479,15 +619,11 @@ void jshInit() {
 
   ret = nrf_drv_clock_init();
   APP_ERROR_CHECK(ret);
-
-  jsiConsolePrintf("USBD init\n");
   ret = app_usbd_init(&usbd_config);
   APP_ERROR_CHECK(ret);
-  jsiConsolePrintf("ok\n");
   app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&m_app_cdc_acm);
   ret = app_usbd_class_append(class_cdc_acm);
   APP_ERROR_CHECK(ret);
-  jsiConsolePrintf("cdc ok\n");
 #endif
 
   jsble_init();
@@ -516,22 +652,17 @@ void jshInit() {
 #endif
 
 #ifdef NRF_USB
-    if (USBD_POWER_DETECTION)
-    {
-      jsiConsolePrintf("app_usbd_power_events_enable\n");
-        ret = app_usbd_power_events_enable();
-        APP_ERROR_CHECK(ret);
-    }
-    else
-    {
-        jsiConsolePrintf("No USB power detection enabled\nStarting USB now\n");
-
-        app_usbd_enable();
-        app_usbd_start();
-    }
-
-  jsiConsolePrintf("USB init done\n");
+  if (USBD_POWER_DETECTION) {
+    //jsiConsolePrintf("app_usbd_power_events_enable\n");
+    ret = app_usbd_power_events_enable();
+    APP_ERROR_CHECK(ret);
+  } else {
+    //jsiConsolePrintf("No USB power detection enabled\nStarting USB now\n");
+    app_usbd_enable();
+    app_usbd_start();
+  }
 #endif
+
 
 
 #ifdef LED1_PININDEX
@@ -551,18 +682,15 @@ void jshKill() {
 
 // stuff to do on idle
 void jshIdle() {
-#ifdef NRF_USB
+#if defined(NRF_USB)
   while (app_usbd_event_queue_process()); /* Nothing to do */
+#endif
+}
 
-  int l = 0;
-  int c;
-  while ((l<sizeof(m_tx_buffer)) && ((c = jshGetCharToTransmit(EV_USBSERIAL))>=0))
-    m_tx_buffer[l++] = c;
-  if (l) {
-    // TODO: check return value?
-    // This is asynchronous call. User should wait for @ref APP_USBD_CDC_ACM_USER_EVT_TX_DONE event
-    uint32_t ret = app_usbd_cdc_acm_write(&m_app_cdc_acm, m_tx_buffer, l);
-  }
+void jshBusyIdle() {
+  // When busy waiting for USB data to send we still have to poll USB :(
+#if defined(NRF_USB)
+  while (app_usbd_event_queue_process()); /* Nothing to do */
 #endif
 }
 
@@ -598,7 +726,9 @@ JsSysTime jshGetSystemTime() {
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
 void jshSetSystemTime(JsSysTime time) {
+  // Set baseSystemTime to 0 so 'jshGetSystemTime' isn't affected
   baseSystemTime = 0;
+  // now set baseSystemTime based on the value from jshGetSystemTime()
   baseSystemTime = time - jshGetSystemTime();
 }
 
@@ -730,13 +860,25 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_GPIO_IN :
     case JSHPINSTATE_USART_IN :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLUP);
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                                    | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                                    | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
+                                    | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                                    | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN_PULLDOWN :
-      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLDOWN);
+      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                                    | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                                    | (GPIO_PIN_CNF_PULL_Pulldown << GPIO_PIN_CNF_PULL_Pos)
+                                    | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                                    | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     default : jsiConsolePrintf("Unimplemented pin state %d\n", state);
       break;
@@ -1174,73 +1316,84 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   if (device==EV_SPI1) return spi0Initialised;
 #endif
   if (device==EV_I2C1) return twi1Initialised;
-  if (device==EV_SERIAL1) return uartInitialised;
+  if (DEVICE_IS_USART(device)) return uart[device-EV_SERIAL1].isInitialised;
   return false;
 }
 
-void uart0_startrx() {
+void uart_startrx(int num) {
   uint32_t err_code;
-  err_code = nrf_drv_uart_rx(&UART0, &uart0rxBuffer[0],1);
+  err_code = nrf_drv_uart_rx(&UART[num], &uart[num].rxBuffer[0],1);
   if (err_code) jsWarn("nrf_drv_uart_rx 1 failed, error %d", err_code);
-  err_code = nrf_drv_uart_rx(&UART0, &uart0rxBuffer[1],1);
+  err_code = nrf_drv_uart_rx(&UART[num], &uart[num].rxBuffer[1],1);
   if (err_code) jsWarn("nrf_drv_uart_rx 2 failed, error %d", err_code);
 }
 
-void uart0_starttx() {
-  int ch = jshGetCharToTransmit(EV_SERIAL1);
+void uart_starttx(int num) {
+  int ch = jshGetCharToTransmit(EV_SERIAL1+num);
   if (ch >= 0) {
-    uartIsSending = true;
-    uart0txBuffer[0] = ch;
-    nrf_drv_uart_tx(&UART0, uart0txBuffer, 1);
+    uart[num].isSending = true;
+    uart[num].txBuffer[0] = ch;
+    ret_code_t err_code = nrf_drv_uart_tx(&UART[num], uart[num].txBuffer, 1);
+    if (err_code) jsWarn("nrf_drv_uart_tx failed, error %d", err_code);
   } else
-    uartIsSending = false;
+    uart[num].isSending = false;
 }
 
-
-static void uart0_event_handle(nrf_drv_uart_event_t * p_event, void* p_context) {
+static void uart_event_handle(int num, nrf_drv_uart_event_t * p_event, void* p_context) {
     if (p_event->type == NRF_DRV_UART_EVT_RX_DONE) {
       // Char received
       uint8_t ch = p_event->data.rxtx.p_data[0];
-      nrf_drv_uart_rx(&UART0, p_event->data.rxtx.p_data, 1);
-      jshPushIOCharEvent(EV_SERIAL1, (char)ch);
+      nrf_drv_uart_rx(&UART[num], p_event->data.rxtx.p_data, 1);
+      jshPushIOCharEvent(EV_SERIAL1+num, (char)ch);
       jshHadEvent();
     } else if (p_event->type == NRF_DRV_UART_EVT_ERROR) {
       // error
-      if (p_event->data.error.error_mask & (UART_ERRORSRC_BREAK_Msk|UART_ERRORSRC_FRAMING_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1))
-        jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
-      if (p_event->data.error.error_mask & (UART_ERRORSRC_PARITY_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1))
-        jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_PARITY_ERR, 0);
+      if (p_event->data.error.error_mask & (UART_ERRORSRC_BREAK_Msk|UART_ERRORSRC_FRAMING_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1+num))
+        jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1+num) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
+      if (p_event->data.error.error_mask & (UART_ERRORSRC_PARITY_Msk) && jshGetErrorHandlingEnabled(EV_SERIAL1+num))
+        jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1+num) | EV_SERIAL_STATUS_PARITY_ERR, 0);
       if (p_event->data.error.error_mask & (UART_ERRORSRC_OVERRUN_Msk))
         jsErrorFlags |= JSERR_UART_OVERFLOW;
       // restart RX on both buffers
-      uart0_startrx();
+      uart_startrx(num);
       jshHadEvent();
     } else if (p_event->type == NRF_DRV_UART_EVT_TX_DONE) {
       // ready to transmit another character...
-      uart0_starttx();
+      uart_starttx(num);
     }
 }
 
+static void uart0_event_handle(nrf_drv_uart_event_t * p_event, void* p_context) {
+  uart_event_handle(0, p_event, p_context);
+}
+#if USART_COUNT>1
+static void uart1_event_handle(nrf_drv_uart_event_t * p_event, void* p_context) {
+  uart_event_handle(1, p_event, p_context);
+}
+#endif
+
 void jshUSARTUnSetup(IOEventFlags device) {
-  if (device != EV_SERIAL1)
+  if (!DEVICE_IS_USART(device))
     return;
-  if (!uartInitialised)
+  unsigned int num = device-EV_SERIAL1;
+  if (!uart[num].isInitialised)
     return;
-  uartInitialised = false;
+  uart[num].isInitialised = false;
   jshTransmitClearDevice(device);
-  nrf_drv_uart_rx_disable(&UART0);
-  nrf_drv_uart_tx_abort(&UART0);
+  nrf_drv_uart_rx_disable(&UART[num]);
+  nrf_drv_uart_tx_abort(&UART[num]);
 
   jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
-  nrf_drv_uart_uninit(&UART0);
+  nrf_drv_uart_uninit(&UART[num]);
 }
 
 
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
-  if (device != EV_SERIAL1)
+  if (!DEVICE_IS_USART(device))
     return;
 
+  unsigned int num = device-EV_SERIAL1;
   jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
   jshSetErrorHandlingEnabled(device, inf->errorHandling);
 
@@ -1250,15 +1403,16 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   if (!jshIsPinValid(inf->pinRX) && !jshIsPinValid(inf->pinTX))
     return jsError("Invalid RX or TX pins");
 
-  if (uartInitialised) {
-    uartInitialised = false;
-    nrf_drv_uart_uninit(&UART0);
+  if (uart[num].isInitialised) {
+    uart[num].isInitialised = false;
+    nrf_drv_uart_uninit(&UART[num]);
   }
-  uartIsSending = false;
+  uart[num].isInitialised = false;
+  JshPinFunction JSH_USART = JSH_USART1+(num<<JSH_SHIFT_TYPE);
 
   // APP_UART_INIT will set pins, but this ensures we know so can reset state later
-  if (jshIsPinValid(inf->pinRX)) jshPinSetFunction(inf->pinRX, JSH_USART1|JSH_USART_RX);
-  if (jshIsPinValid(inf->pinTX)) jshPinSetFunction(inf->pinTX, JSH_USART1|JSH_USART_TX);
+  if (jshIsPinValid(inf->pinRX)) jshPinSetFunction(inf->pinRX, JSH_USART|JSH_USART_RX);
+  if (jshIsPinValid(inf->pinTX)) jshPinSetFunction(inf->pinTX, JSH_USART|JSH_USART_TX);
 
   nrf_drv_uart_config_t config = NRF_DRV_UART_DEFAULT_CONFIG;
   config.baudrate = baud;
@@ -1269,33 +1423,49 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   config.pselrts = 0xFFFFFFFF;
   config.pselrxd = jshIsPinValid(inf->pinRX) ? pinInfo[inf->pinRX].pin : NRF_UART_PSEL_DISCONNECTED;
   config.pseltxd = jshIsPinValid(inf->pinTX) ? pinInfo[inf->pinTX].pin : NRF_UART_PSEL_DISCONNECTED;
-  /* TODO: could check and allow *just* RX or TX. Could make sense as
-   * TX won't draw any extra power when not in use */
-
-  uint32_t err_code = nrf_drv_uart_init(&UART0, &config, uart0_event_handle);
+  uint32_t err_code;
+#if USART_COUNT>1
+  if (num==1) err_code = nrf_drv_uart_init(&UART[num], &config, uart1_event_handle);
+#endif
+  if (num==0) err_code = nrf_drv_uart_init(&UART[num], &config, uart0_event_handle);
   if (err_code) {
     jsWarn("nrf_drv_uart_init failed, error %d", err_code);
   } else {
     // Turn on receiver if RX pin is connected
     if (config.pselrxd != NRF_UART_PSEL_DISCONNECTED) {
-      nrf_drv_uart_rx_enable(&UART0);
-      uart0_startrx();
+      nrf_drv_uart_rx_enable(&UART[num]);
+      uart_startrx(num);
     }
   }
-  uartInitialised = true;
+  uart[num].isInitialised = true;
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
-  if (device == EV_SERIAL1) {
-    if (uartInitialised) {
-      if (!uartIsSending)
-        uart0_starttx();
+  if (DEVICE_IS_USART(device)) {
+    unsigned int num = device-EV_SERIAL1;
+    if (uart[num].isInitialised) {
+      if (!uart[num].isSending)
+        uart_starttx(num);
     } else {
       // UART not initialised yet - just drain
-      while (jshGetCharToTransmit(EV_SERIAL1)>=0);
+      while (jshGetCharToTransmit(device)>=0);
     }
   }
+#ifdef USB
+  if (device == EV_USBSERIAL && m_usb_open && !m_usb_transmitting) {
+    unsigned int l = 0;
+    int c;
+    while ((l<sizeof(m_tx_buffer)) && ((c = jshGetCharToTransmit(EV_USBSERIAL))>=0))
+      m_tx_buffer[l++] = c;
+    if (l) {
+      // This is asynchronous call. We wait for @ref APP_USBD_CDC_ACM_USER_EVT_TX_DONE event
+      uint32_t ret = app_usbd_cdc_acm_write(&m_app_cdc_acm, m_tx_buffer, l);
+      APP_ERROR_CHECK(ret);
+      m_usb_transmitting = true;
+    }
+  }
+#endif
 }
 
 
@@ -1319,17 +1489,11 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M2;
   else if (inf->baudRate<((4000000+8000000)/2))
     freq = SPI_FREQUENCY_FREQUENCY_M4;
-#ifndef NRF52840
   else
     freq = SPI_FREQUENCY_FREQUENCY_M8;
-#else
-  else if (inf->baudRate<((8000000+16000000)/2))
-    freq = SPI_FREQUENCY_FREQUENCY_M8;
-  else if (inf->baudRate<((16000000+32000000)/2))
-    freq = 0x0A000000;//SPI_FREQUENCY_FREQUENCY_M16;
-  else
-    freq = 0x14000000;//SPI_FREQUENCY_FREQUENCY_M32;
-#endif
+  /* Numbers for SPI_FREQUENCY_FREQUENCY_M16/SPI_FREQUENCY_FREQUENCY_M32
+  are in the nRF52 datasheet but they don't appear to actually work (and
+  aren't in the header files either). */
   spi_config.frequency =  freq;
   spi_config.mode = inf->spiMode;
   spi_config.bit_order = inf->spiMSB ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST;
@@ -1344,9 +1508,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   spi0Initialised = true;
   // No event handler means SPI transfers are blocking
 #if NRF_SD_BLE_API_VERSION<5
-  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL);
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, spi0EvtHandler);
 #else
-  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL, NULL);
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, spi0EvtHandler, NULL);
 #endif
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "SPI Initialisation Error %d\n", err_code);
@@ -1370,11 +1534,16 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
+  jshSPIWait(device);
   uint8_t tx = (uint8_t)data;
   uint8_t rx = 0;
+  spi0Sending = true;
   uint32_t err_code = nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
-  if (err_code != NRF_SUCCESS)
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+  }
+  jshSPIWait(device);
   return rx;
 #endif
 }
@@ -1383,11 +1552,47 @@ int jshSPISend(IOEventFlags device, int data) {
 void jshSPISend16(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return;
+  jshSPIWait(device);
   uint16_t tx = (uint16_t)data;
-  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 1, 0, 0);
-  if (err_code != NRF_SUCCESS)
+  spi0Sending = true;
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 2, 0, 0);
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+  }
+  jshSPIWait(device);
 #endif
+}
+
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success. if callback is nonzero this call
+ * will be async */
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+#if SPI_ENABLED
+  if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return false;
+  jshSPIWait(device);
+  spi0Sending = true;
+
+  size_t c = count;
+  if (c>255)
+    c=255;
+
+  spi0TxPtr = tx ? tx+c : 0;
+  spi0RxPtr = rx ? rx+c : 0;
+  spi0Cnt = count-c;
+  if (callback) spi0Callback = callback;
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
+    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+    return false;
+  }
+  if (!callback) jshSPIWait(device);
+  return true;
+#else
+  return false;
+#endif
+
 }
 
 /** Set whether to send 16 bits or 8 over SPI */
@@ -1400,6 +1605,7 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 
 /** Wait until SPI send is finished, and flush all received data */
 void jshSPIWait(IOEventFlags device) {
+  WAIT_UNTIL(!spi0Sending, "SPI0");
 }
 
 /** Set up I2C, if pins are -1 they will be guessed */
@@ -1454,21 +1660,28 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 bool jshFlashWriteProtect(uint32_t addr) {
   // allow protection to be overwritten
   if (jsfGetFlag(JSF_UNSAFE_FLASH)) return false;
-#if defined(PUCKJS) || defined(PIXLJS)
+#if defined(PUCKJS) || defined(PIXLJS) || defined(MDBT42Q) || defined(HACKSTRAP)
   /* It's vital we don't let anyone screw with the softdevice or bootloader.
    * Recovering from changes would require soldering onto SWDIO and SWCLK pads!
    */
   if (addr<0x1f000) return true; // softdevice
-  if (addr>=0x78000) return true; // bootloader
+  if (addr>=0x78000 && addr<0x80000) return true; // bootloader
 #endif
   return false;
 }
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    *startAddr = (uint32_t)(addr & ~(SPIFLASH_PAGESIZE-1));
+    *pageSize = SPIFLASH_PAGESIZE;
+    return true;
+  }
+#endif
   if (addr > (NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE))
     return false;
-  *startAddr = (uint32_t) (floor(addr / NRF_FICR->CODEPAGESIZE) * NRF_FICR->CODEPAGESIZE);
+  *startAddr = (uint32_t)(addr & ~(NRF_FICR->CODEPAGESIZE-1));
   *pageSize = NRF_FICR->CODEPAGESIZE;
   return true;
 }
@@ -1497,6 +1710,25 @@ JsVar *jshFlashGetFree() {
 
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr) {
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    addr &= 0xFFFFFF;
+    //jsiConsolePrintf("SPI Erase %d\n",addr);
+    unsigned char b[4];
+    // WREN
+    b[0] = 0x06;
+    spiFlashWrite(b,0,1);
+    // Erase
+    b[0] = 0x20;
+    b[1] = addr>>16;
+    b[2] = addr>>8;
+    b[3] = addr;
+    spiFlashWrite(b,0,4);
+    // Check busy
+    WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage");
+    return;
+  }
+#endif
   uint32_t startAddr;
   uint32_t pageSize;
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
@@ -1518,6 +1750,24 @@ void jshFlashErasePage(uint32_t addr) {
  * Reads a byte from memory. Addr doesn't need to be word aligned and len doesn't need to be a multiple of 4.
  */
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    addr &= 0xFFFFFF;
+    //jsiConsolePrintf("SPI Read %d %d\n",addr,len);
+    unsigned char b[4];
+    // Read
+    b[0] = 0x03;
+    b[1] = addr>>16;
+    b[2] = addr>>8;
+    b[3] = addr;
+    jshPinSetValue(SPIFLASH_PIN_CS,0);
+    jsspiSoftwareFunc(b,0,4,&spiFlash);
+    memset(buf,0,len); // ensure we just send 0
+    jsspiSoftwareFunc((unsigned char*)buf,(unsigned char*)buf,len,&spiFlash);
+    jshPinSetValue(SPIFLASH_PIN_CS,1);
+    return;
+  }
+#endif
   memcpy(buf, (void*)addr, len);
 }
 
@@ -1526,6 +1776,31 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
  */
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   //jsiConsolePrintf("\njshFlashWrite 0x%x addr 0x%x -> 0x%x, len %d\n", *(uint32_t*)buf, (uint32_t)buf, addr, len);
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    addr &= 0xFFFFFF;
+    //jsiConsolePrintf("SPI Write %d %d\n",addr, len);
+    unsigned char b[5];
+    /* hack for now - some SPI flash don't seem to like writing >1 byte
+     * quickly. Also this way works around paging issues */
+    for (unsigned int i=0;i<len;i++) {
+      // WREN
+      b[0] = 0x06;
+      spiFlashWrite(b,0,1);
+      // Write
+      b[0] = 0x02;
+      b[1] = addr>>16;
+      b[2] = addr>>8;
+      b[3] = addr;
+      b[4] = ((unsigned char*)buf)[i];
+      spiFlashWrite(b,0,5);
+      // Check busy
+      WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashWrite");
+      addr++;
+    }
+    return;
+  }
+#endif
   if (jshFlashWriteProtect(addr)) return;
   uint32_t err = 0;
 
@@ -1566,7 +1841,12 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 }
 
 // Just pass data through, since we can access flash at the same address we wrote it
-size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
+size_t jshFlashGetMemMapAddress(size_t ptr) {
+#ifdef SPIFLASH_BASE
+  if (ptr > SPIFLASH_BASE) return 0;
+#endif
+  return ptr;
+}
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
@@ -1610,7 +1890,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
   while (!hadEvent) {
     sd_app_evt_wait(); // Go to sleep, wait to be woken up
     jshGetSystemTime(); // check for RTC overflows
-    #ifdef NRF_USB
+    #if defined(NRF_USB)
     while (app_usbd_event_queue_process()); /* Nothing to do */
     #endif
   }

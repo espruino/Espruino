@@ -16,6 +16,7 @@
 #include "jswrap_interactive.h"
 #include "jswrap_json.h" // for print/console.log
 #include "jswrap_flash.h" // for jsfRemoveCodeFromFlash
+#include "jstimer.h" // for jstSystemTimeChanged
 #include "jsvar.h"
 #include "jsflags.h"
 #include "jsinteractive.h"
@@ -375,9 +376,15 @@ setTime((new Date("Tue, 19 Feb 2019 10:57")).getTime()/1000)
 To set the timezone for all new Dates, use `E.setTimeZone(hours)`.
  */
 void jswrap_interactive_setTime(JsVarFloat time) {
+  jshInterruptOff();
   JsSysTime stime = jshGetTimeFromMilliseconds(time*1000);
   jsiLastIdleTime = stime;
+  JsSysTime oldtime = jshGetSystemTime();
+  // set system time
   jshSetSystemTime(stime);
+  // update any currently running timers so they don't get broken
+  jstSystemTimeChanged(stime - oldtime);
+  jshInterruptOn();
 }
 
 

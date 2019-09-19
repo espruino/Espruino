@@ -870,7 +870,7 @@ void nus_transmit_string() {
       (bleStatus & BLE_IS_SLEEPING)) {
     // If no connection, drain the output buffer
     nuxTxBufLength = 0;
-    while (jshGetCharToTransmit(EV_BLUETOOTH)>=0);
+    jshTransmitClearDevice(EV_BLUETOOTH);
     return;
   }
   /* 6 is the max number of packets we can send
@@ -913,6 +913,12 @@ void nus_transmit_string() {
 #endif
     if (err_code == NRF_SUCCESS) {
       bleStatus |= BLE_IS_SENDING;
+    } else if (err_code==NRF_ERROR_INVALID_STATE) {
+      // If no notifications we are connected but the central isn't reading, so sends will fail.
+      // Ideally we check m_nus.is_notification_enabled but SDK15 changed this, so lets just see if
+      // the send creates a NRF_ERROR_INVALID_STATE error
+      nuxTxBufLength = 0; // clear tx buffer
+      jshTransmitClearDevice(EV_BLUETOOTH); // clear all tx data in queue
     }
     /* if it failed to send all or any data we keep it around in
      * nusTxBuf (with count in nuxTxBufLength) so next time around
@@ -2151,7 +2157,7 @@ static void ble_stack_init() {
     APP_ERROR_CHECK(err_code);
 
 
-#else
+#else // NRF_SD_BLE_API_VERSION>=5
     ret_code_t err_code;
 
     err_code = nrf_sdh_enable_request();
@@ -2347,7 +2353,11 @@ void jsble_advertising_stop() {
    if (v) {
      ble_gap_addr_t p_addr;
      if (bleVarToAddr(v, &p_addr)) {
+#if NRF_SD_BLE_API_VERSION < 3
+       err_code = sd_ble_gap_address_set(BLE_GAP_ADDR_CYCLE_MODE_NONE,&p_addr);
+#else
        err_code = sd_ble_gap_addr_set(&p_addr);
+#endif
        if (err_code) jsiConsolePrintf("sd_ble_gap_addr_set failed: 0x%x\n", err_code);
      }
    }

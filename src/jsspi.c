@@ -1,4 +1,4 @@
-/*
+ /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
  * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
@@ -24,83 +24,69 @@ void jsspiDumpSPIInfo(JshSPIInfo *inf) {
 }
 
 
-int jsspiHardwareFunc(int data, spi_sender_data *info) {
+void jsspiHardwareFunc(unsigned char *tx, unsigned char *rx, unsigned int len, spi_sender_data *info) {
   IOEventFlags device = *(IOEventFlags*)info;
-  return jshSPISend(device, data);
+  jshSPISendMany(device, tx, rx, len, NULL/*no callback - sync*/);
 }
 
-
-/**
- * Send a single byte through SPI.
- * \return The received byte.
- */
-int jsspiFastSoftwareFunc(
-    int data,             //!< The byte to send through SPI.
-	spi_sender_data *info //!< The configuration of how to send through SPI.
+void jsspiFastSoftwareFunc(
+  unsigned char *tx, unsigned char *rx, unsigned int len,
+	spi_sender_data *info
   ) {
-  // Debug
-  // jsiConsolePrintf("jsspiFastSoftwareFunc: data=%x\n", data);
-  if (data<0) {
-    return -1;
-  }
   JshSPIInfo *inf = (JshSPIInfo*)info;
   // fast path for common case
-  int bit;
-  for (bit=inf->numBits - 1;bit>=0;bit--) {
-    jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
-    jshPinSetValue(inf->pinSCK, 1 );
-    jshPinSetValue(inf->pinSCK, 0 );
+  for (unsigned int i=0;i<len;i++) {
+    int data = tx[i];
+    int bit;
+    for (bit=inf->numBits - 1;bit>=0;bit--) {
+      jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
+      jshPinSetValue(inf->pinSCK, 1 );
+      jshPinSetValue(inf->pinSCK, 0 );
+    }
   }
-  return 0xFF;
 }
 
 
-/**
- * Send a single byte through SPI.
- * \return The received byte.
- */
-int jsspiSoftwareFunc(
-    int data,             //!< The byte to send through SPI.
-	spi_sender_data *info //!< The configuration of how to send through SPI.
+void jsspiSoftwareFunc(
+    unsigned char *tx, unsigned char *rx, unsigned int len,
+    spi_sender_data *info
   ) {
-  // Debug
-  // jsiConsolePrintf("jsspiSoftwareFunc: data=%x\n", data);
-  if (data < 0) {
-    return -1;
-  }
   JshSPIInfo *inf = (JshSPIInfo*)info;
   // Debug
-  // jsspiDumpSPIInfo(inf);
+  //jsspiDumpSPIInfo(inf);
 
   bool CPHA = (inf->spiMode & SPIF_CPHA)!=0;
   bool CPOL = (inf->spiMode & SPIF_CPOL)!=0;
 
-  int result = 0;
-  int bit = inf->spiMSB ? (inf->numBits-1) : 0;
-  int bitDir = inf->spiMSB ? -1 : 1;
-  int endBit = inf->spiMSB ? -1 : inf->numBits;
-  for (;bit!=endBit;bit+=bitDir) {
-    if (!CPHA) { // 'Normal' SPI, CPHA=0
-      if (inf->pinMOSI != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
-      if (inf->pinSCK != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinSCK, !CPOL );
-      if (inf->pinMISO != PIN_UNDEFINED)
-        result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
-      if (inf->pinSCK != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinSCK, CPOL );
-    } else { // CPHA=1
-      if (inf->pinSCK != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinSCK, !CPOL );
-      if (inf->pinMOSI != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
-      if (inf->pinSCK != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinSCK, CPOL );
-      if (inf->pinMISO != PIN_UNDEFINED)
-        result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
+  const int bitDir = inf->spiMSB ? -1 : 1;
+  const int endBit = inf->spiMSB ? -1 : inf->numBits;
+  for (unsigned int i=0;i<len;i++) {
+    int data = tx[i];
+    int result = 0;
+    int bit = inf->spiMSB ? (inf->numBits-1) : 0;
+    for (;bit!=endBit;bit+=bitDir) {
+      if (!CPHA) { // 'Normal' SPI, CPHA=0
+        if (inf->pinMOSI != PIN_UNDEFINED)
+          jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
+        if (inf->pinSCK != PIN_UNDEFINED)
+          jshPinSetValue(inf->pinSCK, !CPOL );
+        if (inf->pinMISO != PIN_UNDEFINED)
+          result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
+        if (inf->pinSCK != PIN_UNDEFINED)
+          jshPinSetValue(inf->pinSCK, CPOL );
+      } else { // CPHA=1
+        if (inf->pinSCK != PIN_UNDEFINED)
+          jshPinSetValue(inf->pinSCK, !CPOL );
+        if (inf->pinMOSI != PIN_UNDEFINED)
+          jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
+        if (inf->pinSCK != PIN_UNDEFINED)
+          jshPinSetValue(inf->pinSCK, CPOL );
+        if (inf->pinMISO != PIN_UNDEFINED)
+          result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
+      }
     }
+    if (rx) rx[i] = result;
   }
-  return result;
 }
 
 
@@ -212,26 +198,8 @@ bool jsspiSend(JsVar *spiDevice, JsSpiSendFlags flags, char *buf, size_t len) {
   spi_sender_data spiSendData;
   if (!jsspiGetSendFunction(spiDevice, &spiSend, &spiSendData))
     return false;
-  // TODO: we could go faster if JSSPI_NO_RECEIVE is set
 
-  size_t txPtr = 0;
-  size_t rxPtr = 0;
-  // transmit the data
-  while (txPtr<len && !jspIsInterrupted()) {
-    int data = spiSend(buf[txPtr++], &spiSendData);
-    if (data>=0) {
-      if (!(flags&JSSPI_NO_RECEIVE))
-        buf[rxPtr] = (char)data;
-      rxPtr++;
-    }
-  }
-  // clear the rx buffer
-  while (rxPtr<len && !jspIsInterrupted()) {
-    int data = spiSend(-1, &spiSendData);
-    if (!(flags&JSSPI_NO_RECEIVE))
-      buf[rxPtr] = (char)data;
-    rxPtr++;
-  }
+  spiSend((unsigned char*)buf, (flags&JSSPI_NO_RECEIVE)?0:(unsigned char*)buf, len , &spiSendData);
   // wait if we need to
   if (flags & JSSPI_WAIT) {
     IOEventFlags device = jsiGetDeviceFromClass(spiDevice);

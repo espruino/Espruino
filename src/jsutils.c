@@ -643,7 +643,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
       bool hasPt = false;
       val*=radix;
       while (((fractionalDigits<0) && (fractionalDigits>-12) && (val > stopAtError)) || (fractionalDigits > 0)) {
-        int v = (int)(val+((fractionalDigits==1) ? 0.4 : 0.00000001) );
+        int v = (int)(val+((fractionalDigits==1) ? 0.5 : 0.00000001) );
         val = (val-v)*radix;
 	if (v==radix) v=radix-1;
         if (!hasPt) {	

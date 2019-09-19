@@ -2854,19 +2854,27 @@ bool jspIsConstructor(JsVar *constructor, const char *constructorName) {
   return isConstructor;
 }
 
-/** Get the constructor of the given object, or return 0 if ot found, or not a function */
-JsVar *jspGetConstructor(JsVar *object) {
+/** Get the prototype of the given object, or return 0 if not found, or not an object */
+JsVar *jspGetPrototype(JsVar *object) {
   if (!jsvIsObject(object)) return 0;
   JsVar *proto = jsvObjectGetChild(object, JSPARSE_INHERITS_VAR, 0);
-  if (jsvIsObject(proto)) {
+  if (jsvIsObject(proto))
+    return proto;
+  jsvUnLock(proto);
+  return 0;
+}
+
+/** Get the constructor of the given object, or return 0 if not found, or not a function */
+JsVar *jspGetConstructor(JsVar *object) {
+  JsVar *proto = jspGetPrototype(object);
+  if (proto) {
     JsVar *constr = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
     if (jsvIsFunction(constr)) {
       jsvUnLock(proto);
       return constr;
     }
-    jsvUnLock(constr);
+    jsvUnLock2(constr, proto);
   }
-  jsvUnLock(proto);
   return 0;
 }
 

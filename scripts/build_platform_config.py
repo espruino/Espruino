@@ -380,7 +380,7 @@ if "LCD" in board.devices:
       codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
     if "pin_reset" in board.devices["LCD"]:
       codeOutDevicePin("LCD", "pin_reset", "LCD_RESET")
-  if board.devices["LCD"]["controller"]=="ssd1306" or board.devices["LCD"]["controller"]=="st7567" or board.devices["LCD"]["controller"]=="st7789v":
+  if board.devices["LCD"]["controller"]=="ssd1306" or board.devices["LCD"]["controller"]=="st7567" or board.devices["LCD"]["controller"]=="st7789v" or board.devices["LCD"]["controller"]=="st7735":
     codeOutDevicePin("LCD", "pin_mosi", "LCD_SPI_MOSI")
     codeOutDevicePin("LCD", "pin_sck", "LCD_SPI_SCK")
     codeOutDevicePin("LCD", "pin_cs", "LCD_SPI_CS")
@@ -410,6 +410,37 @@ if "IR" in board.devices:
 if "CAPSENSE" in board.devices:
   codeOutDevicePin("CAPSENSE", "pin_rx", "CAPSENSE_RX_PIN")
   codeOutDevicePin("CAPSENSE", "pin_tx", "CAPSENSE_TX_PIN")
+
+if "VIBRATE" in board.devices:
+  codeOutDevicePin("VIBRATE", "pin", "VIBRATE_PIN")
+
+if "BAT" in board.devices:
+  codeOutDevicePin("BAT", "pin_charging", "BAT_CHARGING_PIN")
+
+if "GPS" in board.devices:
+  codeOutDevicePin("GPS", "pin_en", "GPS_PIN_EN")
+  codeOutDevicePin("GPS", "pin_rx", "GPS_PIN_RX")
+  codeOutDevicePin("GPS", "pin_tx", "GPS_PIN_TX")
+
+if "ACCEL" in board.devices:
+  codeOut("#define ACCEL_DEVICE \""+board.devices["ACCEL"]["device"].upper()+"\"")
+  codeOut("#define ACCEL_ADDR "+str(board.devices["ACCEL"]["addr"]))
+  codeOutDevicePin("ACCEL", "pin_sda", "ACCEL_PIN_SDA")
+  codeOutDevicePin("ACCEL", "pin_scl", "ACCEL_PIN_SCL")
+
+if "PRESSURE" in board.devices:
+  codeOut("#define PRESSURE_DEVICE \""+board.devices["PRESSURE"]["device"].upper()+"\"")
+  codeOut("#define PRESSURE_ADDR "+str(board.devices["PRESSURE"]["addr"]))
+  codeOutDevicePin("PRESSURE", "pin_sda", "PRESSURE_PIN_SDA")
+  codeOutDevicePin("PRESSURE", "pin_scl", "PRESSURE_PIN_SCL")
+
+if "SPIFLASH" in board.devices:
+  codeOut("#define SPIFLASH_BASE 0x40000000UL")
+  codeOut("#define SPIFLASH_PAGESIZE 4096")
+  codeOutDevicePin("SPIFLASH", "pin_cs", "SPIFLASH_PIN_CS")
+  codeOutDevicePin("SPIFLASH", "pin_sck", "SPIFLASH_PIN_SCK")
+  codeOutDevicePin("SPIFLASH", "pin_mosi", "SPIFLASH_PIN_MOSI")
+  codeOutDevicePin("SPIFLASH", "pin_miso", "SPIFLASH_PIN_MISO")
 
 for device in ["USB","SD","LCD","JTAG","ESP8266","IR"]:
   if device in board.devices:

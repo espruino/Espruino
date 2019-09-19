@@ -16,7 +16,6 @@
 
 #include "jsvar.h"
 #include "graphics.h"
-#include "bitmap_font_4x6.h"
 
 bool jswrap_graphics_idle();
 void jswrap_graphics_init();
@@ -46,7 +45,12 @@ JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground);
 JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont);
 JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height);
 JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r);
+JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name);
+JsVar *jswrap_graphics_getFont(JsVar *parent);
+JsVar *jswrap_graphics_getFonts(JsVar *parent);
+int jswrap_graphics_getFontHeight(JsVar *parent);
 JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *str, int x, int y);
+void jswrap_graphics_drawCString(JsGraphics *gfx, int x, int y, char *str); /// Convenience function for using drawString from C code
 JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var);
 JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2);
 JsVar *jswrap_graphics_lineTo(JsVar *parent, int x, int y);

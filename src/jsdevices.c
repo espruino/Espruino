@@ -213,6 +213,7 @@ void jshTransmit(
         jsErrorFlags |= JSERR_BUFFER_FULL;
         return;
       }
+      jshBusyIdle();
 #ifdef USB
       // just in case USB was unplugged while we were waiting!
       if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);

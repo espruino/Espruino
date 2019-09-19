@@ -24,10 +24,12 @@ ESP_COMBINED_SIZE = 4096
 ESP_FLASH_ADDONS  = $(ET_DEFAULTS) $(INIT_DATA) $(ET_BLANK) $(BLANK)
 LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.2048.ld
 LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.2048.ld
+LD_RENAME    = --rename-section .text=.irom.text --rename-section .literal=.irom.literal
 else
 ESP_COMBINED_SIZE = 512
 LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
+LD_RENAME    = --rename-section .text=.irom.text --rename-section .literal=.irom.literal
 endif
 ESP_COMBINED = $(PROJ_NAME)_combined_$(ESP_COMBINED_SIZE).bin
 APPGEN_TOOL  = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
@@ -52,13 +54,13 @@ ifdef USE_SHA512
 endif
 endif
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
-	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal $@
+	$(Q)$(OBJCOPY) $(LD_RENAME) $@
 
 # generate fully linked 'user1' .elf using linker script for first OTA partition
 $(USER1_ELF): $(PARTIAL) $(LINKER_FILE)
 	@echo LD $@
 	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT1) -o $@ $(PARTIAL) -Wl,--start-group $(LIBS) -Wl,--end-group
-	$(Q)$(OBJDUMP) --headers -j .irom0.text -j .text $@ | tail -n +4
+	$(Q)$(OBJDUMP) --headers -j .data -j .rodata -j .bss -j .irom0.text -j .text $@ | tail -n +4
 	@echo To disassemble: $(OBJDUMP) -d -l -x $@
 	$(OBJDUMP) -d -l -x $@ >espruino_esp8266_user1.lst
 

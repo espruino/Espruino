@@ -40,6 +40,14 @@ else  # NRF52832
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_5.0.0_softdevice.hex
 endif
 else
+ifdef NRF_SDK11
+# Use SDK11
+NRF5X_SDK=11
+NRF5X_SDK_11=1
+NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_11
+DEFINES += -DNRF_SD_BLE_API_VERSION=2
+SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_2.0.0_softdevice.hex
+else
 # Use SDK12
 NRF5X_SDK=12
 NRF5X_SDK_12=1
@@ -48,7 +56,7 @@ DEFINES += -DNRF_SD_BLE_API_VERSION=3
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_3.0.0_softdevice.hex
 endif
 endif
-
+endif
 
 # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
 ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
@@ -63,8 +71,20 @@ DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DFLOAT_ABI_HARD
 # NOTE: nrf.h needs tweaking as Nordic randomly changed NRF52 to NRF52_SERIES
 ifeq ($(CHIP),NRF52840)
 DEFINES += -DNRF52 -DNRF52840_XXAA
+ifdef USE_BOOTLOADER
+NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
+ifdef BOOTLOADER
+  # we're trying to compile the bootloader itself
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_bootloader_gcc_nrf52.ld
+else # not BOOTLOADER - compiling something to run under a bootloader
+  LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52840_ble_espruino.ld
+  INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
+endif
+# bootloader has its own config
+else # not USE_BOOTLOADER
 LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52840_ble_espruino.ld
 INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
+endif # USE_BOOTLOADER
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm
@@ -88,10 +108,18 @@ ifdef USE_BOOTLOADER
 NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
 ifdef BOOTLOADER
   # we're trying to compile the bootloader itself
+  ifdef LINKER_BOOTLOADER
+  LINKER_FILE = $(LINKER_BOOTLOADER)
+  else
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/secure_dfu_gcc_nrf52.ld
-  OPTIMIZEFLAGS=-Os # try to reduce bootloader size
-else
+  endif
+  OPTIMIZEFLAGS=-Os -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition # try to reduce bootloader size
+else # not BOOTLOADER - compiling something to run under a bootloader
+  ifdef LINKER_ESPRUINO
+  LINKER_FILE = $(LINKER_ESPRUINO)  
+  else
   LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52_ble_espruino_bootloader.ld
+  endif
   INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
 endif
 else # not USE_BOOTLOADER
@@ -123,7 +151,6 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_i2s.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_saadc.c 
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_rng.c
 endif
-
 # Secure connection support
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/ecc
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c

@@ -37,7 +37,7 @@ codeSize = int(text[2], 16)
 codeStart = int(text[3], 16)
 codeEnd = codeSize + codeStart
 
-print("CODE: "+str(codeStart)+" -> "+str(codeEnd));
+print("CODE: "+str(codeStart)+" -> "+str(codeEnd)+" ("+str(codeSize)+" bytes)");
 
 if codeEnd<storageStart and codeStart<storageStart:
   print("Code area Fits before Storage Area")
