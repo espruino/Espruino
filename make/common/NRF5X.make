@@ -425,10 +425,10 @@ $(PROJ_NAME).hex: $(PROJ_NAME).app_hex
 	#python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(PROJ_NAME).app_hex -o $(PROJ_NAME).hex
   else
 	@echo Merging SoftDevice and Bootloader
-	# We can build a DFU settings file we can merge in...
-	# nrfutil settings generate --family NRF52 --application $(PROJ_NAME).app_hex --application-version 0xff --bootloader-version 0xff --bl-settings-version 1 dfu_settings.hex
+	@# build a DFU settings file we can merge in...
+	nrfutil settings generate --family NRF52 --application $(PROJ_NAME).app_hex --app-boot-validation VALIDATE_GENERATED_CRC --application-version 0xff --bootloader-version 0xff --bl-settings-version 2 dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
-	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).app_hex -o $(PROJ_NAME).hex
+	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).app_hex dfu_settings.hex -o $(PROJ_NAME).hex
   endif
  else
 	@echo Merging SoftDevice
