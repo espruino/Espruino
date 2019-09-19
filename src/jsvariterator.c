@@ -207,7 +207,8 @@ static void jsvIterateCallbackCountCb(
     unsigned char *data, unsigned int len,
     void *callbackData //!< A pointer to an int that counts how many times we were called.
   ) {
-  int *count = (int*)callbackData;
+  NOT_USED(data);
+  uint32_t *count = (uint32_t*)callbackData;
   (*count) += len;
 }
 
@@ -215,11 +216,11 @@ static void jsvIterateCallbackCountCb(
  * Determine how many items are in this variable that will be iterated over.
  * \return The number of iterations we will call for this variable.
  */
-int jsvIterateCallbackCount(JsVar *var) {
+uint32_t jsvIterateCallbackCount(JsVar *var) {
   // Actually iterate over the variable where the callback function merely increments a counter
   // that is initially zero.  The result will be the number of times the callback for iteration
   // was invoked and hence the iteration count of the variable.
-  int count = 0;
+  uint32_t count = 0;
   jsvIterateBufferCallback(var, jsvIterateCallbackCountCb, (void *)&count);
   return count;
 }
@@ -312,7 +313,7 @@ void jsvStringIteratorGetPtrAndNext(JsvStringIterator *it, unsigned char **data,
   assert(jsvStringIteratorHasChar(it));
   *data = (unsigned char *)&it->ptr[it->charIdx];
   *len = it->charsInVar - it->charIdx;
-  it->charIdx = it->charsInVar;
+  it->charIdx = it->charsInVar - 1; // jsvStringIteratorNextInline will increment
   jsvStringIteratorNextInline(it);
 }
 

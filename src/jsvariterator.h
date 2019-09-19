@@ -39,7 +39,7 @@ bool jsvIterateBufferCallback(
   );
 
 /** If jsvIterateCallback is called, how many times will it call the callback function? */
-int jsvIterateCallbackCount(JsVar *var);
+uint32_t jsvIterateCallbackCount(JsVar *var);
 
 /** Write all data in array to the data pointer (of size dataSize bytes) */
 unsigned int jsvIterateCallbackToBytes(JsVar *var, unsigned char *data, unsigned int dataSize);
