@@ -17,6 +17,7 @@
 
 #include "jsutils.h"
 #include "jsvar.h"
+#include "jsdevices.h"
 
 /** This is the enum used to store how functions should be called
  * by jsnative.c.
@@ -112,6 +113,9 @@ void jswInit();
 
 /** Tasks to run on Deinitialisation */
 void jswKill();
+
+/** Tasks to run when a character is received on a certain event channel. True if handled and shouldn't go to IRQ */
+bool jswOnCharEvent(IOEventFlags channel, char charData);
 
 /** If we get this in 'require', do we have the object for this
   inside the interpreter already? If so, return the native function

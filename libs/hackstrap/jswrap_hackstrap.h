@@ -28,3 +28,4 @@ void jswrap_hackstrap_off();
 void jswrap_hackstrap_init();
 void jswrap_hackstrap_kill();
 bool jswrap_hackstrap_idle();
+bool jswrap_hackstrap_gps_character(char ch);

@@ -613,6 +613,14 @@ for jsondata in jsondatas:
     codeOut("  "+jsondata["generate"]+"();")
 codeOut('}')
 
+codeOut("/** Tasks to run on Deinitialisation */")
+codeOut('bool jswOnCharEvent(IOEventFlags channel, char charData) {')
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"].startswith("EV_"):
+    codeOut("  if (channel=="+jsondata["type"]+") return "+jsondata["generate"]+"(charData);")
+codeOut('  return false;')
+codeOut('}')
+
 codeOut("/** If we have a built-in module with the given name, return the module's contents - or 0 */")
 codeOut('const char *jswGetBuiltInJSLibrary(const char *name) {')
 for modulename in jsmodules:

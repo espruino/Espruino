@@ -14,6 +14,7 @@
 #include "jsdevices.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jswrapper.h"
 #ifdef BLUETOOTH
 #include "bluetooth.h"
 #endif
@@ -390,14 +391,14 @@ static bool jshPushIOCharEventAppend(IOEventFlags channel, char charData) {
   return false;
 }
 
-/// Try and handle events in the IRQ itself
+/// Try and handle events in the IRQ itself. true if handled and shouldn't go in queue
 static bool jshPushIOCharEventHandler(IOEventFlags channel, char charData) {
   // Check for a CTRL+C
   if (charData==3 && channel==jsiGetConsoleDevice()) {
     jsiCtrlC(); // Ctrl-C - force interrupt of execution
     return true;
   }
-  return false;
+  return jswOnCharEvent(channel, charData);
 }
 
 
