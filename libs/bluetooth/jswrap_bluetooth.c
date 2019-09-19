@@ -42,6 +42,7 @@
 
 #ifdef USE_NFC
 #include "nfc_uri_msg.h"
+#include "nfc_ble_pair_msg.h"
 #endif
 #endif
 
@@ -315,6 +316,18 @@ Called when a host device disconnects from Espruino.
 /*JSON{
   "type" : "event",
   "class" : "NRF",
+  "name" : "security",
+  "params" : [
+    ["status","JsVar","An object containing `{auth_status,bonded,lv4,kdist_own,kdist_peer}"]
+  ]
+}
+Contains updates on the security of the current Bluetooth link.
+
+See Nordic's `ble_gap_evt_auth_status_t` structure for more information.
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
   "name" : "HID",
   "#if" : "defined(NRF52)"
 }
@@ -340,6 +353,7 @@ Called with discovered services when discovery is finished
 }
 Called with discovered characteristics when discovery is finished
  */
+
 
 /*JSON{
   "type" : "event",
@@ -2015,6 +2029,64 @@ void jswrap_nfc_URL(JsVar *url) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
+    "name" : "nfcPair",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nfc_pair",
+    "params" : [
+      ["key","JsVar","16 byte out of band key"]
+    ]
+}
+Enables NFC and starts advertising an out of band 16 byte pairing key. For example:
+
+```
+var bleKey = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00];
+NRF.on('security',s=>print("security",JSON.stringify(s)));
+NRF.nfcPair(bleKey);
+NRF.setSecurity({oob:bleKey, mitm:true});
+```
+*/
+void jswrap_nfc_pair(JsVar *key) {
+#ifdef USE_NFC
+  // Check for disabling NFC
+  if (jsvIsUndefined(key)) {
+    jsvObjectRemoveChild(execInfo.hiddenRoot, "NfcData");
+    jswrap_nfc_stop();
+    return;
+  }
+
+  JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, key);
+  if (!keyPtr || keyLen!=BLE_GAP_SEC_KEY_LEN)
+    return jsExceptionHere(JSET_ERROR, "Unable to get key data or key isn't 16 bytes long");
+
+  /* assemble NDEF Message */
+  /* Encode BLE pairing message into the buffer. */
+  uint8_t buf[256];
+  uint32_t ndef_msg_len = sizeof(buf);
+  uint32_t err_code = nfc_ble_pair_default_msg_encode(NFC_BLE_PAIR_MSG_FULL,
+                                             (ble_advdata_tk_value_t *)keyPtr,
+                                             NULL,
+                                             buf,
+                                             &ndef_msg_len);
+  if (jsble_check_error(err_code)) return;
+
+  /* Encode NDEF message into a flat string - we need this to store the
+   * data so it hangs around. Avoid having a static var so we have RAM
+   * available if not using NFC. NFC data is read by nfc_callback */
+
+  JsVar *flatStr = jsvNewFlatStringOfLength(ndef_msg_len);
+  if (!flatStr)
+    return jsExceptionHere(JSET_ERROR, "Unable to create string with pairing data in");
+  uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
+  memcpy(flatStrPtr, buf, ndef_msg_len);
+
+  jswrap_nfc_raw(flatStr);
+  jsvUnLock(flatStr);
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
     "name" : "nfcRaw",
     "ifdef" : "NRF52",
     "generate" : "jswrap_nfc_raw",
@@ -2543,6 +2615,8 @@ NRF.setSecurity({
   mitm : bool // default false, Man In The Middle protection
   lesc : bool // default false, LE Secure Connections
   passkey : // default "", or a 6 digit passkey to use
+  oob : [0..15] // if specified, Out Of Band pairing is enabled and
+                // the 16 byte pairing code supplied here is used
 });
 ```
 

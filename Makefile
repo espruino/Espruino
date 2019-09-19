@@ -567,10 +567,25 @@ ifeq ($(USE_NFC),1)
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/uri
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_pair_msg
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ac_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/le_oob_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_oob_advdata
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ep_oob_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/common
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_msg.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_rec.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message/nfc_ndef_msg.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record/nfc_ndef_record.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_pair_msg/nfc_ble_pair_msg.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec/nfc_hs_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/le_oob_rec/nfc_le_oob_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ep_oob_rec/nfc_ep_oob_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ac_rec/nfc_ac_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec/nfc_hs_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_oob_advdata/nfc_ble_oob_advdata.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/common/nfc_ble_pair_common.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 endif
 
