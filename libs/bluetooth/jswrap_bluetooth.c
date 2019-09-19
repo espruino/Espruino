@@ -43,6 +43,7 @@
 #ifdef USE_NFC
 #include "nfc_uri_msg.h"
 #include "nfc_ble_pair_msg.h"
+#include "nfc_launchapp_msg.h"
 #endif
 #endif
 
@@ -2036,7 +2037,10 @@ void jswrap_nfc_URL(JsVar *url) {
       ["key","JsVar","16 byte out of band key"]
     ]
 }
-Enables NFC and starts advertising an out of band 16 byte pairing key. For example:
+Enables NFC and with an out of band 16 byte pairing key.
+
+For example the following will enable out of band pairing on BLE
+such that the device will pair when you tap the phone against it:
 
 ```
 var bleKey = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00];
@@ -2067,6 +2071,65 @@ void jswrap_nfc_pair(JsVar *key) {
                                              NULL,
                                              buf,
                                              &ndef_msg_len);
+  if (jsble_check_error(err_code)) return;
+
+  /* Encode NDEF message into a flat string - we need this to store the
+   * data so it hangs around. Avoid having a static var so we have RAM
+   * available if not using NFC. NFC data is read by nfc_callback */
+
+  JsVar *flatStr = jsvNewFlatStringOfLength(ndef_msg_len);
+  if (!flatStr)
+    return jsExceptionHere(JSET_ERROR, "Unable to create string with pairing data in");
+  uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
+  memcpy(flatStrPtr, buf, ndef_msg_len);
+
+  jswrap_nfc_raw(flatStr);
+  jsvUnLock(flatStr);
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "nfcAndroidApp",
+    "ifdef" : "NRF52",
+    "generate" : "jswrap_nfc_androidApp",
+    "params" : [
+      ["app","JsVar","The unique identifier of the given Android App"]
+    ]
+}
+Enables NFC with a record that will launch the given android app.
+
+For example:
+
+```
+NRF.nfcAndroidApp("no.nordicsemi.android.nrftoolbox")
+```
+*/
+void jswrap_nfc_androidApp(JsVar *appName) {
+#ifdef USE_NFC
+  // Check for disabling NFC
+  if (jsvIsUndefined(appName)) {
+    jsvObjectRemoveChild(execInfo.hiddenRoot, "NfcData");
+    jswrap_nfc_stop();
+    return;
+  }
+
+  JSV_GET_AS_CHAR_ARRAY(appNamePtr, appNameLen, appName);
+  if (!appNamePtr || !appNameLen)
+    return jsExceptionHere(JSET_ERROR, "Unable to get app name");
+
+  /* assemble NDEF Message */
+  /* Encode BLE pairing message into the buffer. */
+  uint8_t buf[512];
+  uint32_t ndef_msg_len = sizeof(buf);
+  /* Encode launchapp message into the buffer. */
+  uint32_t err_code = nfc_launchapp_msg_encode((uint8_t*)appNamePtr,
+                                      appNameLen,
+                                      0,
+                                      0,
+                                      buf,
+                                      &ndef_msg_len);
   if (jsble_check_error(err_code)) return;
 
   /* Encode NDEF message into a flat string - we need this to store the

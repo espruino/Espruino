@@ -86,6 +86,7 @@ void jswrap_ble_setLowPowerConnection(bool lowPower);
 
 void jswrap_nfc_URL(JsVar *url);
 void jswrap_nfc_pair(JsVar *key);
+void jswrap_nfc_androidApp(JsVar *appName);
 void jswrap_nfc_raw(JsVar *payload);
 JsVar *jswrap_nfc_start(JsVar *payload);
 void jswrap_nfc_stop();
