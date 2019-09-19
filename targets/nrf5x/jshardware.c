@@ -524,8 +524,10 @@ void jshResetPeripherals() {
 #if JSH_PORTV_COUNT>0
   jshVirtualPinInitialise();
 #endif
+#if SPI_ENABLED
   spi0Sending = false;
   spi0Callback = NULL;
+#endif
 
 #ifdef SPIFLASH_BASE
   // set CS to default
@@ -1605,7 +1607,9 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 
 /** Wait until SPI send is finished, and flush all received data */
 void jshSPIWait(IOEventFlags device) {
+#if SPI_ENABLED
   WAIT_UNTIL(!spi0Sending, "SPI0");
+#endif
 }
 
 /** Set up I2C, if pins are -1 they will be guessed */
