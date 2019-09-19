@@ -3,6 +3,7 @@
 ifndef DFU_UPDATE_BUILD
 ifdef USE_BOOTLOADER
 ifndef BOOTLOADER
+ifneq ("$(MAKECMDGOALS)","boardjson")
 ifeq ("$(wildcard $(NRF_BOOTLOADER))","")
 $(info *************************************************************)
 $(info NO BOOTLOADER $(NRF_BOOTLOADER) FOUND)
@@ -17,6 +18,7 @@ $(info *************************************************************)
 $(info BOOTLOADER BUILD COMPLETE)  
 $(info *************************************************************)
 endif 
+endif
 endif #BOOTLOADER
 endif #USE_BOOTLOADER
 endif #DFU_UPDATE_BUILD
