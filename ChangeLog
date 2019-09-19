@@ -12,6 +12,7 @@
             ESP8266: warning: Empty loadable segment detected (fix #1690) 
             nRF52: Add NRF.nfcPair(...) and OOB pairing to allow tap to pair over BLE
             nRF52: Add NRF.nfcAndroidApp(...) to launch an Android app on touch
+            Pixl.js remove SHA512 to make room for new NFC functionality
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
