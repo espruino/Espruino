@@ -95,7 +95,7 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
 void graphicsStructResetState(JsGraphics *gfx) {
   gfx->data.fgColor = 0xFFFFFFFF;
   gfx->data.bgColor = 0;
-  gfx->data.fontSize = JSGRAPHICS_FONTSIZE_4X6;
+  gfx->data.fontSize = 1+JSGRAPHICS_FONTSIZE_4X6;
 #ifndef SAVE_ON_FLASH
   gfx->data.fontAlignX = 3;
   gfx->data.fontAlignY = 3;
@@ -339,7 +339,7 @@ void graphicsFillEllipse(JsGraphics *gfx, short posX1, short posY1, short posX2,
 static void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str) {
   // no need to modify coordinates as setPixel does that
   while (*str) {
-    graphicsDrawChar4x6(gfx,x1,y1,*(str++));
+    graphicsDrawChar4x6(gfx,x1,y1,*(str++),1);
     x1 = (short)(x1 + 4);
   }
 }
@@ -483,7 +483,7 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short s
 }
 
 // returns the width of a character
-unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
+unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned short size, char ch) {
   NOT_USED(gfx);
   if (size<0) return 0;
   if (ch<vectorFontOffset || ch-vectorFontOffset>=vectorFontCount) return 0;

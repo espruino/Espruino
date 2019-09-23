@@ -259,20 +259,22 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up to 128
 };
 
 
-void graphicsDrawChar6x8(JsGraphics *gfx, short x1, short y1, char ch) {
+void graphicsDrawChar6x8(JsGraphics *gfx, short x1, short y1, char ch, unsigned short size) {
   int idx = ((unsigned char)ch) - 33;
   if (idx<0 || idx>=LCD_FONT_6X8_CHARS) return; // no char for this - just return
   int cidx = idx % 5;
   idx = (idx/5)*8;
   int y;
+  short s = size-1;
   for (y=0;y<8;y++) {
     unsigned int line = LCD_FONT_6X8[idx + y] >> (cidx*6);
-    if (line&32) graphicsSetPixel(gfx, (short)(x1+0), (short)(y+y1), gfx->data.fgColor);
-    if (line&16) graphicsSetPixel(gfx, (short)(x1+1), (short)(y+y1), gfx->data.fgColor);
-    if (line&8) graphicsSetPixel(gfx, (short)(x1+2), (short)(y+y1), gfx->data.fgColor);
-    if (line&4) graphicsSetPixel(gfx, (short)(x1+3), (short)(y+y1), gfx->data.fgColor);
-    if (line&2) graphicsSetPixel(gfx, (short)(x1+4), (short)(y+y1), gfx->data.fgColor);
-    if (line&1) graphicsSetPixel(gfx, (short)(x1+5), (short)(y+y1), gfx->data.fgColor);
+    short ly = y*size + y1;
+    if (line&32) graphicsFillRect(gfx, (short)(x1+0*size), ly, (short)(x1+s+0*size), ly+s);
+    if (line&16) graphicsFillRect(gfx, (short)(x1+1*size), ly, (short)(x1+s+1*size), ly+s);
+    if (line&8) graphicsFillRect(gfx, (short)(x1+2*size), ly, (short)(x1+s+2*size), ly+s);
+    if (line&4) graphicsFillRect(gfx, (short)(x1+3*size), ly, (short)(x1+s+3*size), ly+s);
+    if (line&2) graphicsFillRect(gfx, (short)(x1+4*size), ly, (short)(x1+s+4*size), ly+s);
+    if (line&1) graphicsFillRect(gfx, (short)(x1+5*size), ly, (short)(x1+s+5*size), ly+s);
   }
 }
 

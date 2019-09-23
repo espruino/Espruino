@@ -120,7 +120,7 @@ void terminalSendChar(char chn) {
           (short)(cx+TERMINAL_CHAR_W-1), (short)(cy+TERMINAL_CHAR_H-1));
         gfx.data.fgColor = c;
         // draw char
-        TERMINAL_CHAR_CMD(&gfx, cx, cy, chn);
+        TERMINAL_CHAR_CMD(&gfx, cx, cy, chn, 1);
         terminalSetGFX(&gfx);
       }
       if (terminalX<255) terminalX++;
