@@ -532,13 +532,19 @@ void jshResetPeripherals() {
 #ifdef SPIFLASH_BASE
   // set CS to default
   jshPinSetValue(SPIFLASH_PIN_CS, 1);
+  jshPinSetValue(SPIFLASH_PIN_MOSI, 1);
+  jshPinSetValue(SPIFLASH_PIN_SCK, 1);
   jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN);
   jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_OUT);
   jshDelayMicroseconds(100);
   // disable lock bits
-  unsigned char buf[] = {1,0};
+  unsigned char buf[2];
+  buf[0] = 6; // write enable
+  spiFlashWrite(buf,0,1);
+  buf[0] = 1; // write status register
+  buf[1] = 0;
   spiFlashWrite(buf,0,2);
 #endif
 }
