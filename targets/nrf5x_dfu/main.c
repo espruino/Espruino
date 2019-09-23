@@ -59,17 +59,21 @@
 // Other LED is set in targetlibs/nrf5x/nrf5_sdk/components/libraries/bootloader_dfu/dfu_transport_ble.c (currently LED1)
 
 
-void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
-{
-    NRF_LOG_ERROR("received a fault! id: 0x%08x, pc: 0x&08x\r\n", id, pc);
-    NVIC_SystemReset();
+void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
+  NRF_LOG_ERROR("received a fault! id: 0x%08x, pc: 0x&08x\r\n", id, pc);
+  NVIC_SystemReset();
 }
 
-void app_error_handler_bare(uint32_t error_code)
-{
-    (void)error_code;
-    NRF_LOG_ERROR("received an error: 0x%08x!\r\n", error_code);
-    NVIC_SystemReset();
+void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
+  (void)error_code;
+  NRF_LOG_ERROR("received an error: 0x%08x at %s:%d!\r\n", error_code, p_file_name?p_file_name:"?", line_num);
+  NVIC_SystemReset();
+}
+
+void app_error_handler_bare(uint32_t error_code) {
+  (void)error_code;
+  NRF_LOG_ERROR("received an error: 0x%08x!\r\n", error_code);
+  NVIC_SystemReset();
 }
 
 void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
