@@ -21,7 +21,7 @@ info = {
  'espruino_page_link' : 'HackStrap',
   # This is the PCA10036
  'default_console' : "EV_BLUETOOTH",
- 'variables' : 2250, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 1250, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_hackstrap.hex',
  'build' : {
@@ -29,8 +29,8 @@ info = {
    'libraries' : [
      'BLUETOOTH',
      'TERMINAL',
-     'GRAPHICS',
-     'TENSORFLOW'
+     'GRAPHICS', 'LCD_SPI',
+     'TENSORFLOW'     
    ],
    'makefile' : [
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work

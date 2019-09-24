@@ -27,6 +27,7 @@ typedef enum {
   JSGRAPHICSTYPE_JS,          ///< Call JavaScript when we want to write something
   JSGRAPHICSTYPE_FSMC,        ///< FSMC (or fake FSMC) ILI9325 16bit-wide LCDs
   JSGRAPHICSTYPE_SDL,         ///< SDL graphics library for linux
+  JSGRAPHICSTYPE_SPILCD,      ///< SPI LCD library
 } JsGraphicsType;
 
 typedef enum {

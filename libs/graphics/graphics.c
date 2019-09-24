@@ -31,6 +31,9 @@
 #ifdef USE_LCD_FSMC
 #include "lcd_fsmc.h"
 #endif
+#ifdef USE_LCD_SPI
+#include "lcd_spilcd.h"
+#endif
 
 // ----------------------------------------------------------------------------------------------
 
@@ -143,6 +146,10 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
 #ifndef SAVE_ON_FLASH
     } else if (gfx->data.type == JSGRAPHICSTYPE_JS) {
       lcdSetCallbacks_JS(gfx);
+#endif
+#ifdef USE_LCD_SPI
+    } else if (gfx->data.type == JSGRAPHICSTYPE_SPILCD) {
+      lcdSetCallbacks_SPILCD(gfx);
 #endif
     } else {
       jsExceptionHere(JSET_INTERNALERROR, "Unknown graphics type\n");
