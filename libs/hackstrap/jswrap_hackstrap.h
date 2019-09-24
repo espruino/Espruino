@@ -16,6 +16,7 @@
 void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data);
 void jswrap_hackstrap_setLCDPower(bool isOn);
 void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout);
+void jswrap_hackstrap_setLCDPalette(JsVar *palette);
 bool jswrap_hackstrap_isLCDOn();
 
 void jswrap_hackstrap_setGPSPower(bool isOn);

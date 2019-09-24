@@ -21,7 +21,7 @@ info = {
  'espruino_page_link' : 'HackStrap',
   # This is the PCA10036
  'default_console' : "EV_BLUETOOTH",
- 'variables' : 1250, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2100, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_hackstrap.hex',
  'build' : {
@@ -84,7 +84,7 @@ devices = {
 #  'LED4' : { 'pin' : 'D20' }, # Pin negated in software
   'VIBRATE' : { 'pin' : 'D11' }, # Pin negated in software
   'LCD' : {
-            'width' : 128, 'height' : 96, 'bpp' : 8,
+            'width' : 128, 'height' : 96, 'bpp' : 4,
             'controller' : 'st7735',
             'pin_dc' : 'D22',
             'pin_cs' : 'D10',

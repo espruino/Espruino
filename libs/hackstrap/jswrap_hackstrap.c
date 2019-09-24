@@ -169,6 +169,40 @@ void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Strap",
+    "name" : "setLCDPalette",
+    "generate" : "jswrap_hackstrap_setLCDPalette",
+    "params" : [
+      ["palette","JsVar","An array of 24 bit 0xRRGGBB values"]
+    ]
+}
+HackStrap's LCD can display colours in 12 bit, but to keep the offscreen
+buffer to a reasonable size it uses a 4 bit paletted buffer.
+
+With this, you can change the colour palette that is used.
+*/
+void jswrap_hackstrap_setLCDPalette(JsVar *palette) {
+  if (jsvIsIterable(palette)) {
+    uint16_t pal[16];
+    JsvIterator it;
+    jsvIteratorNew(&it, palette, JSIF_EVERY_ARRAY_ELEMENT);
+    int idx = 0;
+    while (idx<16 && jsvIteratorHasElement(&it)) {
+      unsigned int rgb = jsvIteratorGetIntegerValue(&it);
+      unsigned int r = rgb>>16;
+      unsigned int g = (rgb>>8)&0xFF;
+      unsigned int b = rgb&0xFF;
+      pal[idx++] = ((r&0xF0)<<4) | (g&0xF0) | (b>>4);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+    lcdSetPalette_SPILCD(pal);
+  } else
+    lcdSetPalette_SPILCD(0);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
     "name" : "isLCDOn",
     "generate" : "jswrap_hackstrap_isLCDOn",
     "return" : ["bool","Is the display on or not?"]
@@ -397,7 +431,7 @@ void jswrap_hackstrap_init() {
 
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens
-  jshEnableWatchDog(10); // 10 second watchdog
+  jshEnableWatchDog(6); // 6 second watchdog
   JsSysTime t = jshGetTimeFromMilliseconds(ACCEL_POLL_INTERVAL);
   jstExecuteFn(watchdogHandler, NULL, jshGetSystemTime()+t, t);
 
