@@ -958,8 +958,10 @@ JsVar *jswrap_graphics_getFont(JsVar *parent) {
     if (n) return n;*/
     return jsvNewFromString("Custom");
   }
-#endif
   return jsvNewFromInteger(gfx.data.fontSize);
+#else
+  return 0;
+#endif
 }
 /*JSON{
   "type" : "method",
