@@ -412,7 +412,7 @@ if "BAT" in board.devices:
   codeOutDevicePin("BAT", "pin_charging", "BAT_CHARGING_PIN")
 
 if "GPS" in board.devices:
-  codeOutDevicePin("GPS", "pin_en", "GPS_PIN_EN")
+  if "pin_en" in board.devices["GPS"]: codeOutDevicePin("GPS", "pin_en", "GPS_PIN_EN")
   codeOutDevicePin("GPS", "pin_rx", "GPS_PIN_RX")
   codeOutDevicePin("GPS", "pin_tx", "GPS_PIN_TX")
 
