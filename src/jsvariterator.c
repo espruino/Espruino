@@ -168,7 +168,7 @@ bool jsvIterateBufferCallback(
       JsvStringIterator *sit = &it.it;
       // faster for single byte arrays - read using the string iterator.
       size_t len = jsvGetArrayBufferLength(data);
-      while (len--) {
+      while (len) {
         unsigned char *data;
         unsigned int dataLen;
         jsvStringIteratorGetPtrAndNext(sit,&data,&dataLen);
