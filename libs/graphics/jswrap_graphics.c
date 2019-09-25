@@ -900,21 +900,26 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size) {
 #ifndef SAVE_ON_FLASH
   if (!jsvIsString(name)) return 0;
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  unsigned short sz = 0xFFFF;
 #ifndef NO_VECTOR_FONT
   if (jsvIsStringEqualOrStartsWith(name, "Vector", true)) {
-    gfx.data.fontSize = (unsigned short)jsvGetIntegerAndUnLock(jsvNewFromStringVar(name, 6, JSVAPPENDSTRINGVAR_MAXLENGTH));
-    if (size>0) gfx.data.fontSize = (unsigned short)size;
+    sz = (unsigned short)jsvGetIntegerAndUnLock(jsvNewFromStringVar(name, 6, JSVAPPENDSTRINGVAR_MAXLENGTH));
+    if (size>0) sz = (unsigned short)size;
   }
 #endif
   if (size<=0) size=1;
   if (size>JSGRAPHICS_FONTSIZE_SCALE_MASK) size=JSGRAPHICS_FONTSIZE_SCALE_MASK;
   if (jsvIsStringEqual(name, "4x6"))
-    gfx.data.fontSize = (unsigned short)(size + JSGRAPHICS_FONTSIZE_4X6);
+    sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_4X6);
 #ifdef USE_FONT_6X8
   if (jsvIsStringEqual(name, "6x8"))
-    gfx.data.fontSize = (unsigned short)(size + JSGRAPHICS_FONTSIZE_6X8);
+    sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_6X8);
 #endif
   // TODO: if function named 'setFontXYZ' exists, run it
+  if (sz==0xFFFF) {
+    jsExceptionHere(JSET_ERROR, "Unknown font %j", name);
+  }
+  gfx.data.fontSize=sz;
   graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
 #else
@@ -945,7 +950,7 @@ JsVar *jswrap_graphics_getFont(JsVar *parent) {
     return jsvNewFromString("4x6");
 #ifdef USE_FONT_6X8
   if (f == JSGRAPHICS_FONTSIZE_6X8)
-      return jsvNewFromString("6x8");
+    return jsvNewFromString("6x8");
 #endif
   if (f == JSGRAPHICS_FONTSIZE_CUSTOM) {
     // not implemented yet because it's painful trying to pass 5 arguments into setFontCustom
@@ -954,7 +959,7 @@ JsVar *jswrap_graphics_getFont(JsVar *parent) {
     return jsvNewFromString("Custom");
   }
 #endif
-  return 0;
+  return jsvNewFromInteger(gfx.data.fontSize);
 }
 /*JSON{
   "type" : "method",
@@ -1447,31 +1452,64 @@ JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
   "name" : "drawImage",
   "generate" : "jswrap_graphics_drawImage",
   "params" : [
-    ["image","JsVar","An object with the following fields `{ width : int, height : int, bpp : optional int, buffer : ArrayBuffer/String, transparent: optional int }`. bpp = bits per pixel (default is 1), transparent (if defined) is the colour that will be treated as transparent"],
+    ["image","JsVar","An image to draw, either a String or an Object (see below)"],
     ["x","int32","The X offset to draw the image"],
     ["y","int32","The Y offset to draw the image"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
+Image can be:
+
+* An object with the following fields `{ width : int, height : int, bpp : optional int, buffer : ArrayBuffer/String, transparent: optional int }`. bpp = bits per pixel (default is 1), transparent (if defined) is the colour that will be treated as transparent
+* A String where the the first few bytes are: `width,height,bpp,[transparent,]image_bytes...`. If a transparent colour is specified the top bit of `bpp` should be set.
+
 Draw an image at the specified position. If the image is 1 bit, the graphics foreground/background colours will be used. Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first
 */
 JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  if (!jsvIsObject(image)) {
-    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object");
+  int imageWidth, imageHeight, imageBpp;
+  bool imageIsTransparent = false;
+  unsigned int imageTransparentCol;
+  JsVar *imageBuffer;
+  int imageBufferOffset;
+  if (jsvIsObject(image)) {
+    imageWidth = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
+    imageHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
+    imageBpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
+    if (imageBpp<=0) imageBpp=1;
+    JsVar *transpVar = jsvObjectGetChild(image, "transparent", 0);
+    imageIsTransparent = transpVar!=0;
+    imageTransparentCol = (unsigned int)jsvGetInteger(transpVar);
+    jsvUnLock(transpVar);
+    imageBuffer = jsvObjectGetChild(image, "buffer", 0);
+    imageBufferOffset = 0;
+  } else if (jsvIsString(image) || jsvIsArrayBuffer(image)) {
+    if (jsvIsArrayBuffer(image)) {
+      imageBuffer = jsvGetArrayBufferBackingString(image);
+    } else {
+      imageBuffer = jsvLockAgain(image);
+    }
+    if (!jsvIsString(imageBuffer)) {
+      jsvUnLock(imageBuffer);
+      return 0;
+    }
+    imageWidth = (unsigned char)jsvGetCharInString(imageBuffer,0);
+    imageHeight = (unsigned char)jsvGetCharInString(imageBuffer,1);
+    imageBpp = (unsigned char)jsvGetCharInString(imageBuffer,2);
+    if (imageBpp & 128) {
+      imageBpp = imageBpp&127;
+      imageTransparentCol = (unsigned char)jsvGetCharInString(imageBuffer,3);
+      imageBufferOffset = 4;
+    } else {
+      imageBufferOffset = 3;
+    }
+  } else {
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
     return 0;
   }
-  int imageWidth = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
-  int imageHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
-  int imageBpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
-  if (imageBpp<=0) imageBpp=1;
+
   unsigned int imageBitMask = (unsigned int)((1L<<imageBpp)-1L);
-  JsVar *transpVar = jsvObjectGetChild(image, "transparent", 0);
-  bool imageIsTransparent = transpVar!=0;
-  unsigned int imageTransparentCol = (unsigned int)jsvGetInteger(transpVar);
-  jsvUnLock(transpVar);
-  JsVar *imageBuffer = jsvObjectGetChild(image, "buffer", 0);
   if (!(jsvIsArrayBuffer(imageBuffer) || jsvIsString(imageBuffer)) ||
       imageWidth<=0 ||
       imageHeight<=0 ||
@@ -1488,7 +1526,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   int bits=0;
   unsigned int colData = 0;
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, imageBufferString, 0);
+  jsvStringIteratorNew(&it, imageBufferString, imageBufferOffset);
   while ((bits>=imageBpp || jsvStringIteratorHasChar(&it)) && y<imageHeight) {
     // Get the data we need...
     while (bits < imageBpp) {

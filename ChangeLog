@@ -14,6 +14,7 @@
             nRF52: Add NRF.nfcAndroidApp(...) to launch an Android app on touch
             Pixl.js remove SHA512 to make room for new NFC functionality
             Graphics.setFont("4x6",2) will now double the size of a bitmap font
+            Graphics.drawImage can now take a String of data for an image (eg. direct from Storage)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
