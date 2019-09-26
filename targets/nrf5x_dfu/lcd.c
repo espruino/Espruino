@@ -12,12 +12,10 @@
  * ----------------------------------------------------------------------------
  */
 #include "platform_config.h"
+#include "hardware.h"
 #include "lcd.h"
 
 #ifdef LCD
-#include "nrf_gpio.h"
-#include "nrf_delay.h"
-#include "jspininfo.h"
 
 #define ___ 0
 #define __X 1
@@ -94,19 +92,8 @@ char lcd_data[LCD_ROWSTRIDE*LCD_DATA_HEIGHT];
 int ymin=0,ymax=LCD_DATA_HEIGHT-1;
 #endif
 
-void jshPinSetValue(Pin pin, bool value) {
-  nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
-}
-void jshPinOutput(Pin pin, bool value) {
-  nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
-  nrf_gpio_cfg(
-      (uint32_t)pinInfo[pin].pin,
-      NRF_GPIO_PIN_DIR_OUTPUT,
-      NRF_GPIO_PIN_INPUT_DISCONNECT,
-      NRF_GPIO_PIN_NOPULL,
-      NRF_GPIO_PIN_H0H1,
-      NRF_GPIO_PIN_NOSENSE);
-}
+
+
 
 #ifdef LCD_CONTROLLER_ST7567
 void lcd_pixel(int x, int y) {
@@ -213,9 +200,9 @@ void lcd_init() {
   jshPinOutput(LCD_SPI_MOSI,0);
   jshPinOutput(LCD_SPI_RST,0);
   // LCD init 2
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   jshPinSetValue(LCD_SPI_RST,1);
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   const unsigned char LCD_INIT_DATA[] = {
        //0xE2,  // soft reset
        0xA3,   // bias 1/7
@@ -295,31 +282,31 @@ void lcd_init() {
   jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
   jshPinOutput(LCD_SPI_RST,0);
-  nrf_delay_us(100000);
+  jshDelayMicroseconds(100000);
   jshPinOutput(LCD_SPI_RST,1);
-  nrf_delay_us(150000);
+  jshDelayMicroseconds(150000);
   // LCD init 2
   lcd_cmd(0x11, 0, NULL); // SLPOUT
-  nrf_delay_us(150000);
+  jshDelayMicroseconds(150000);
   //lcd_cmd(0x3A, 1, "\x55"); // COLMOD - 16bpp
   lcd_cmd(0x3A, 1, "\x03"); // COLMOD - 12bpp
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   lcd_cmd(0xC6, 1, "\x01"); // Frame rate control in normal mode, 111Hz
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   lcd_cmd(0x36, 1, "\x08"); // MADCTL
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   lcd_cmd(0x21, 0, NULL); // INVON
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   lcd_cmd(0x13, 0, NULL); // NORON
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   lcd_cmd(0x36, 1, "\xC0"); // MADCTL
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   lcd_cmd(0x37, 2, "\0\x50"); // VSCRSADD - vertical scroll
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   lcd_cmd(0x35, 0, NULL); // Tear on
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   lcd_cmd(0x29, 0, NULL); // DISPON
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
 }
 
 void lcd_kill() {
@@ -439,16 +426,16 @@ void lcd_init() {
   jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
   jshPinOutput(LCD_SPI_RST,0);
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
   jshPinOutput(LCD_SPI_RST, 1);
-  nrf_delay_us(10000);
+  jshDelayMicroseconds(10000);
 
   // Send initialization commands to ST7735
   const char *cmd = ST7735_INIT_CODE;
   while(cmd[CMDINDEX_DATALEN]!=255) {
     lcd_cmd(cmd[CMDINDEX_CMD], cmd[CMDINDEX_DATALEN], &cmd[3]);
     if (cmd[CMDINDEX_DELAY])
-      nrf_delay_us(1000*cmd[CMDINDEX_DELAY]);
+      jshDelayMicroseconds(1000*cmd[CMDINDEX_DELAY]);
     cmd += 3 + cmd[CMDINDEX_DATALEN];
   }
 }

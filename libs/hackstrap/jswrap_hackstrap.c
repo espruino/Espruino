@@ -328,6 +328,7 @@ void watchdogHandler() {
 void jswrap_hackstrap_init() {
   jshPinOutput(GPS_PIN_EN,0); // GPS off
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
+  jshPinOutput(LED1_PININDEX,0); // LED off
   lcdPowerOn = true;
 
   // Create backing graphics for LCD
@@ -431,11 +432,12 @@ void jswrap_hackstrap_init() {
 
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens
-  jshEnableWatchDog(6); // 6 second watchdog
+  //  - the bootloader probably already set this up so the
+  //    enable will do nothing - but good to try anyway
+  jshEnableWatchDog(5); // 5 second watchdog
+  // This timer kicks the watchdog, and does some other stuff as well
   JsSysTime t = jshGetTimeFromMilliseconds(ACCEL_POLL_INTERVAL);
   jstExecuteFn(watchdogHandler, NULL, jshGetSystemTime()+t, t);
-
-
 }
 
 /*JSON{
@@ -667,6 +669,7 @@ void jswrap_hackstrap_off() {
   jshPinOutput(GPS_PIN_EN,0); // GPS off
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   jshPinOutput(LCD_BL,1); // backlight off
+  jshPinOutput(LED1_PININDEX,0); // LED off
   lcdCmd_SPILCD(0x28, 0, NULL); // display off
 
 

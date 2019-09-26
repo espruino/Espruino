@@ -21,7 +21,7 @@
 
 #include <stdint.h>
 #include "platform_config.h"
-#include "jspininfo.h"
+#include "hardware.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_mbr.h"
@@ -82,42 +82,6 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
   NVIC_SystemReset();
 }
 
-void pin_write(Pin pin, bool value) {
-  nrf_gpio_cfg_output(pinInfo[pin].pin);
-  nrf_gpio_pin_write(pinInfo[pin].pin, value ^ ((pinInfo[pin].port&JSH_PIN_NEGATED)!=0));
-}
-
-static void set_led_state(bool btn, bool progress)
-{
-#if defined(LED2_PININDEX) && defined(LED3_PININDEX)
-  pin_write(LED3_PININDEX, progress);
-  pin_write(LED2_PININDEX, btn);
-#elif defined(LED1_PININDEX) && !defined(PIXLJS)
-  pin_write(LED1_PININDEX, progress || btn);
-#endif
-}
-
-static void hardware_init(void) {
-  set_led_state(false, false);
-
-  bool polarity = (BTN1_ONSTATE==1) ^ ((pinInfo[BTN1_PININDEX].port&JSH_PIN_NEGATED)!=0);
-  nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin,
-          polarity ? NRF_GPIO_PIN_PULLDOWN : NRF_GPIO_PIN_PULLUP,
-          polarity ? NRF_GPIO_PIN_SENSE_HIGH : NRF_GPIO_PIN_SENSE_LOW);
-
-#ifdef VIBRATE_PIN
-  pin_write(VIBRATE_PIN,0); // vibrate off
-#endif
-}
-
-static bool get_btn_state()
-{
-  bool state = nrf_gpio_pin_read(pinInfo[BTN1_PININDEX].pin);
-  if (pinInfo[BTN1_PININDEX].port&JSH_PIN_NEGATED) state=!state;
-  return state == BTN1_ONSTATE;
-}
-
-
 // Override Weak version
 #if NRF_SD_BLE_API_VERSION < 5
 bool nrf_dfu_enter_check(void) {
@@ -125,7 +89,7 @@ bool nrf_dfu_enter_check(void) {
 // dfu_enter_check must be modified to add the __WEAK keyword
 bool dfu_enter_check(void) {
 #endif
-  bool dfu_start = get_btn_state();
+  bool dfu_start = get_btn1_state();
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
     // if DFU looks invalid, go straight to bootloader
     if (s_dfu_settings.bank_0.bank_code == NRF_DFU_BANK_INVALID) {
@@ -138,9 +102,9 @@ bool dfu_enter_check(void) {
     // This means that we go straight to Espruino, where the button is still
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
-      lcd_print("RELEASE BTN1 FOR DFU\r\n<                     >\r");
+      lcd_print("RELEASE BTN1 FOR DFU\r\nHOLD BTN1 TO BOOT\r\nHOLD BTN1+2 TO TURN OFF\r\n\r\n<                     >\r");
       int count = 3000;
-      while (get_btn_state() && count) {
+      while (get_btn1_state() && count) {
         nrf_delay_us(999);
         set_led_state((count&3)==0, false);
         if ((count&127)==0) lcd_print("=");
@@ -148,6 +112,18 @@ bool dfu_enter_check(void) {
       }
       if (!count) {
         dfu_start = false;
+#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+        if (jshPinGetValue(BTN2_PININDEX)) {
+          lcd_kill();
+          while (get_btn1_state()) {};
+          set_led_state(0,0);
+          nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+          nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
+          NRF_POWER->SYSTEMOFF = 1;
+          while (true) {};
+          //NVIC_SystemReset(); // just in case!
+        }
+#endif
       } else {
         lcd_println("\r\nDFU STARTED");
       }
@@ -164,7 +140,7 @@ bool dfu_enter_check(void) {
       // but if we go straight through to run code then if the code fails to boot
       // we'll restart.
       NRF_WDT->CONFIG = (WDT_CONFIG_HALT_Pause << WDT_CONFIG_HALT_Pos) | ( WDT_CONFIG_SLEEP_Run << WDT_CONFIG_SLEEP_Pos);
-      NRF_WDT->CRV = (int)(10*32768); // 10 seconds
+      NRF_WDT->CRV = (int)(5*32768); // 5 seconds
       NRF_WDT->RREN |= WDT_RREN_RR0_Msk;  // Enable reload register 0
       NRF_WDT->TASKS_START = 1;
       NRF_WDT->RR[0] = 0x6E524635;
@@ -179,7 +155,7 @@ APP_TIMER_DEF(m_reboot_timer_id);
 int rebootCounter = 0;
 
 void reboot_check_handler() {
-  if (get_btn_state()) rebootCounter++;
+  if (get_btn1_state()) rebootCounter++;
   else rebootCounter=0;
   if (rebootCounter>10) {
     NVIC_SystemReset();
@@ -264,6 +240,7 @@ int main(void)
     // Clear reset reason flags
     NRF_POWER->RESETREAS = 0xFFFFFFFF;
     if (wait) {
+      lcd_println("");
       nrf_delay_us(1000000); // 1 sec delay
     }
 #endif
