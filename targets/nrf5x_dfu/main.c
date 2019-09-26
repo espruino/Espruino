@@ -102,7 +102,7 @@ bool dfu_enter_check(void) {
     // This means that we go straight to Espruino, where the button is still
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
-      lcd_print("RELEASE BTN1 FOR DFU\r\nHOLD BTN1 TO BOOT\r\nHOLD BTN1+2 TO TURN OFF\r\n\r\n<                     >\r");
+      lcd_print("RELEASE BTN1 FOR DFU\r\nHOLD BTN1 TO BOOT\r\nHOLD BTN1 + BTN2 TO TURN OFF\r\n\r\n<                      >\r");
       int count = 3000;
       while (get_btn1_state() && count) {
         nrf_delay_us(999);
@@ -115,7 +115,9 @@ bool dfu_enter_check(void) {
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
         if (jshPinGetValue(BTN2_PININDEX)) {
           lcd_kill();
+          jshPinOutput(VIBRATE_PIN,1); // vibrate on
           while (get_btn1_state()) {};
+          jshPinOutput(VIBRATE_PIN,0); // vibrate off
           set_led_state(0,0);
           nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
           nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);

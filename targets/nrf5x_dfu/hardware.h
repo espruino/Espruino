@@ -36,11 +36,15 @@
 
 static void set_led_state(bool btn, bool progress)
 {
+#if defined(PIXLJS) || defined(HACKSTRAP)
+  // LED1 is backlight/HRM - don't use it!
+#else
 #if defined(LED2_PININDEX) && defined(LED3_PININDEX)
   jshPinOutput(LED3_PININDEX, progress);
   jshPinOutput(LED2_PININDEX, btn);
-#elif defined(LED1_PININDEX) && !defined(PIXLJS)
+#elif defined(LED1_PININDEX)
   jshPinOutput(LED1_PININDEX, progress || btn);
+#endif
 #endif
 }
 
@@ -54,6 +58,10 @@ static bool get_btn2_state() {
 #endif
 
 static void hardware_init(void) {
+#if defined(PIXLJS) || defined(HACKSTRAP)
+  // LED1 is backlight/HRM - don't use it, but ensure it's off
+  jshPinOutput(LED1_PININDEX, 0);
+#endif
   set_led_state(false, false);
 
   bool polarity = (BTN1_ONSTATE==1) ^ ((pinInfo[BTN1_PININDEX].port&JSH_PIN_NEGATED)!=0);

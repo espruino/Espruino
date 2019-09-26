@@ -447,7 +447,11 @@ else
 	@echo Creating DFU ZIP
 	# nrfutil  pkg generate --help
 	@cp $(PROJ_NAME).app_hex $(PROJ_NAME)_app.hex
-	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
+ifndef BOOTLOADER
+	nrfutil pkg generate $(PROJ_NAME).zip --bootloader $(PROJ_NAME)_app.hex --bootloader-version 0x00 --hw-version 52 --sd-req 0x8C --key-file $(DFU_PRIVATE_KEY)
+else
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)  
+endif
 	@rm $(PROJ_NAME)_app.hex
 endif
 

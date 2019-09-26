@@ -383,6 +383,11 @@ ifdef USE_LCD_FSMC
   SOURCES += libs/graphics/lcd_fsmc.c
 endif
 
+ifdef USE_LCD_SPI
+  DEFINES += -DUSE_LCD_SPI
+  SOURCES += libs/graphics/lcd_spilcd.c
+endif
+
 
 ifeq ($(USE_TERMINAL),1)
   DEFINES += -DUSE_TERMINAL
