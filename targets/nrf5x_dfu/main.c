@@ -102,7 +102,11 @@ bool dfu_enter_check(void) {
     // This means that we go straight to Espruino, where the button is still
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
+#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
       lcd_print("RELEASE BTN1 FOR DFU\r\nHOLD BTN1 TO BOOT\r\nHOLD BTN1 + BTN2 TO TURN OFF\r\n\r\n<                      >\r");
+#else
+      lcd_print("RELEASE BTN1 FOR DFU\r\nHOLD BTN1 TO BOOT\r\n\r\n<                      >\r");
+#endif
       int count = 3000;
       while (get_btn1_state() && count) {
         nrf_delay_us(999);
