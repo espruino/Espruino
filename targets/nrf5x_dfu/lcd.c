@@ -451,4 +451,5 @@ void lcd_println(char *ch) {
 void lcd_init() {}
 void lcd_kill() {}
 void lcd_print(char *ch) {}
+void lcd_println(char *ch) {}
 #endif
