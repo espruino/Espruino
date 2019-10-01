@@ -23,8 +23,13 @@
 #define CMDINDEX_DATALEN  2
 static const char ST7789_INIT_CODE[] = {
   // CMD,DELAY,DATA_LEN,D0,D1,D2...
-    0x11,0x78,0,
+    0x11,0,0,
+    // This is an unrotated screen
     0x36,0,1,0, // MADCTL
+    // These 2 rotate the screen by 180 degrees
+    //0x36,0,1,0xC0, // MADCTL
+    //0x37,0,2,0,80, // Vertical scroll
+
     0x3A,0,1,0x55, // COLMOD - interface pixel format - 16bpp
     0xB2,0,5,0xC,0xC,0,0x33,0x33,
     0xB7,0,1,0,
@@ -43,6 +48,8 @@ static const char ST7789_INIT_CODE[] = {
 };
 int lcdNextX, lcdNextY;
 
+/* We have to be careful about this since we can
+write faster than the LCD is happy about
 /*
 #define LCD_SCK_CLR() NRF_P0->OUTCLR = 1<<LCD_PIN_SCK
 #define LCD_SCK_SET() NRF_P0->OUTSET = 1<<LCD_PIN_SCK

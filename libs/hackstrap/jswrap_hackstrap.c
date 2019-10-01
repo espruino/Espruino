@@ -360,7 +360,7 @@ void jswrap_hackstrap_init() {
   // Set up I2C
   i2cBusy = true;
   jshI2CInitInfo(&internalI2C);
-  internalI2C.bitrate = 0x7FFFFFFF;
+  internalI2C.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   internalI2C.pinSDA = ACCEL_PIN_SDA;
   internalI2C.pinSCL = ACCEL_PIN_SCL;
   jshPinSetValue(internalI2C.pinSCL, 1);
@@ -393,7 +393,7 @@ void jswrap_hackstrap_init() {
   JsGraphics gfx;
   graphicsStructInit(&gfx);
   gfx.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
-  gfx.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
+  gfx.data.flags = 0;
   gfx.graphicsVar = graphics;
   gfx.data.width = LCD_WIDTH;
   gfx.data.height = LCD_HEIGHT;
@@ -882,7 +882,11 @@ Has the watch been moved so that it is face-up, or not face up?
   "params" : [["xyz","JsVar",""]],
   "ifdef" : "HACKSTRAP"
 }
-Magnetometer/Compass data available with `{x,y,z}` object as a parameter
+Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a parameter
+
+* `x/y/z` raw x,y,z magnetometer readings
+* `dx/dy/dz` readings based on calibration since magnetometer turned on
+* `heading` in degrees based on calibrated readings
  */
 /*JSON{
   "type" : "event",
