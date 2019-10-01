@@ -33,14 +33,16 @@
 #include "jsi2c.h" // accelerometer/etc
 
 #include "jswrap_graphics.h"
-#include "lcd_spilcd.h"
+#include "lcd_st7789_8bit.h"
 
 #define GPS_UART EV_SERIAL1
+#define IOEXP_LCD_BACKLIGHT 0x20
+#define IOEXP_LCD_RESET 0x40
+#define IOEXP_HRM 0x80
 
 uint8_t nmeaCount = 0; // how many characters of NMEA data do we have?
 char nmea[82]; //  82 is the max for NMEA
 char nmeaLine[82]; // A line of received NMEA data
-
 
 /*JSON{
   "type": "class",
@@ -75,7 +77,7 @@ bool wasFaceUp;
 /// time since LCD contents were last modified
 volatile unsigned char flipCounter;
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
-int lcdPowerTimeout = 100;
+int lcdPowerTimeout = 0;
 /// Is the LCD on?
 bool lcdPowerOn;
 /// accelerometer data
@@ -93,27 +95,6 @@ typedef enum {
 } JsStrapTasks;
 JsStrapTasks strapTasks;
 
-
-
-/// Send buffer contents to the screen. Usually only the modified data will be output, but if all=true then the whole screen contents is sent
-void lcd_flip(JsVar *parent, bool all) {
-  JsGraphics gfx; 
-  if (!graphicsGetFromVar(&gfx, parent)) return;
-  if (all) {
-    gfx.data.modMinX = 0;
-    gfx.data.modMinY = 0;
-    gfx.data.modMaxX = LCD_WIDTH-1;
-    gfx.data.modMaxY = LCD_HEIGHT-1;
-  }
-  if (lcdPowerTimeout && !lcdPowerOn) {
-    // LCD was turned off, turn it back on
-    jswrap_hackstrap_setLCDPower(1);
-  }
-  flipCounter = 0;
-  lcdFlip_SPILCD(&gfx);
-  graphicsSetVar(&gfx);
-}
-
 /*JSON{
     "type" : "staticmethod",
     "class" : "Strap",
@@ -126,12 +107,16 @@ void lcd_flip(JsVar *parent, bool all) {
 This function can be used to turn HackStrap's LCD off or on.
 */
 void jswrap_hackstrap_setLCDPower(bool isOn) {
-  if (isOn) {
-    lcdCmd_SPILCD(0x11, 0, NULL); // SLPOUT
-    jshPinOutput(LCD_BL,0); // backlight
-  } else {
-    lcdCmd_SPILCD(0x10, 0, NULL); // SLPIN
-    jshPinOutput(LCD_BL,1); // backlight
+  if (isOn) { // wake
+    lcdCmd_ST7789(0x11, 0, NULL); // SLPOUT
+    jshDelayMicroseconds(20);
+    lcdCmd_ST7789(0x29, 0, NULL);
+    jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT,0); // backlight
+  } else { // sleep
+    lcdCmd_ST7789(0x28, 0, NULL);
+    jshDelayMicroseconds(20);
+    lcdCmd_ST7789(0x10, 0, NULL); // SLPIN
+    jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT,1); // backlight
   }
   if (lcdPowerOn != isOn) {
     JsVar *strap =jsvObjectGetChild(execInfo.root, "Strap", 0);
@@ -169,40 +154,6 @@ void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Strap",
-    "name" : "setLCDPalette",
-    "generate" : "jswrap_hackstrap_setLCDPalette",
-    "params" : [
-      ["palette","JsVar","An array of 24 bit 0xRRGGBB values"]
-    ]
-}
-HackStrap's LCD can display colours in 12 bit, but to keep the offscreen
-buffer to a reasonable size it uses a 4 bit paletted buffer.
-
-With this, you can change the colour palette that is used.
-*/
-void jswrap_hackstrap_setLCDPalette(JsVar *palette) {
-  if (jsvIsIterable(palette)) {
-    uint16_t pal[16];
-    JsvIterator it;
-    jsvIteratorNew(&it, palette, JSIF_EVERY_ARRAY_ELEMENT);
-    int idx = 0;
-    while (idx<16 && jsvIteratorHasElement(&it)) {
-      unsigned int rgb = jsvIteratorGetIntegerValue(&it);
-      unsigned int r = rgb>>16;
-      unsigned int g = (rgb>>8)&0xFF;
-      unsigned int b = rgb&0xFF;
-      pal[idx++] = ((r&0xF0)<<4) | (g&0xF0) | (b>>4);
-      jsvIteratorNext(&it);
-    }
-    jsvIteratorFree(&it);
-    lcdSetPalette_SPILCD(pal);
-  } else
-    lcdSetPalette_SPILCD(0);
-}
-
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "Strap",
     "name" : "isLCDOn",
     "generate" : "jswrap_hackstrap_isLCDOn",
     "return" : ["bool","Is the display on or not?"]
@@ -226,7 +177,7 @@ Writes a command directly to the ST7735 LCD controller
 */
 void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data) {
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
-  lcdCmd_SPILCD(cmd, dLen, dPtr);
+  lcdCmd_ST7789(cmd, dLen, dPtr);
 }
 
 /*JSON{
@@ -248,10 +199,10 @@ void jswrap_hackstrap_setGPSPower(bool isOn) {
     inf.pinRX = GPS_PIN_RX;
     inf.pinTX = GPS_PIN_TX;
     jshUSARTSetup(GPS_UART, &inf);
-    jshPinOutput(GPS_PIN_EN,1); // GPS on
+    //jshPinOutput(GPS_PIN_EN,1); // GPS on
     nmeaCount = 0;
   } else {
-    jshPinOutput(GPS_PIN_EN,0); // GPS off
+    //jshPinOutput(GPS_PIN_EN,0); // GPS off
     // setting pins to pullup will cause jshardware.c to disable the UART, saving power
     jshPinSetState(GPS_PIN_RX, JSHPINSTATE_GPIO_IN_PULLUP);
     jshPinSetState(GPS_PIN_TX, JSHPINSTATE_GPIO_IN_PULLUP);
@@ -283,7 +234,7 @@ void watchdogHandler() {
 
   if (i2cBusy) return;
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
-  unsigned char buf[6];
+  /*unsigned char buf[6];
   buf[0]=6;
   jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
   jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
@@ -316,7 +267,7 @@ void watchdogHandler() {
     buf[0]=0x17;
     jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
     jsi2cRead(&internalI2C, ACCEL_ADDR, 1, buf, true);
-  }
+  }*/
 
   //jshPinOutput(LED1_PININDEX, 0);
 }
@@ -326,17 +277,45 @@ void watchdogHandler() {
   "generate" : "jswrap_hackstrap_init"
 }*/
 void jswrap_hackstrap_init() {
-  jshPinOutput(GPS_PIN_EN,0); // GPS off
+  jshPinOutput(18,0); // what's this?
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
-  jshPinOutput(LED1_PININDEX,0); // LED off
-  lcdPowerOn = true;
 
+  // Set up I2C
+  i2cBusy = true;
+  jshI2CInitInfo(&internalI2C);
+  //internalI2C.bitrate = 0x7FFFFFFF;
+  internalI2C.pinSDA = ACCEL_PIN_SDA;
+  internalI2C.pinSCL = ACCEL_PIN_SCL;
+  jshPinSetValue(internalI2C.pinSCL, 1);
+  jshPinSetState(internalI2C.pinSCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  jshPinSetValue(internalI2C.pinSDA, 1);
+  jshPinSetState(internalI2C.pinSDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  // LCD pin init
+  jshPinOutput(LCD_PIN_CS, 1);
+  jshPinOutput(LCD_PIN_DC, 1);
+  jshPinOutput(LCD_PIN_SCK, 1);
+  for (int i=0;i<8;i++) jshPinOutput(i, 0);
+  // IO expander reset
+  jshPinOutput(28,0);
+  jshDelayMicroseconds(10000);
+  jshPinOutput(28,1);
+  jshDelayMicroseconds(50000);
+  jswrap_hackstrap_ioWr(0,0);
+  jswrap_hackstrap_ioWr(IOEXP_HRM,1); // HRM off
+  jswrap_hackstrap_ioWr(1,0); // ?
+  jswrap_hackstrap_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
+  jshDelayMicroseconds(100000);
+  jswrap_hackstrap_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
+  jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT,0); // backlight on
+  jshDelayMicroseconds(10000);
+
+  lcdPowerOn = true;
   // Create backing graphics for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
   JsGraphics gfx;
   graphicsStructInit(&gfx);
-  gfx.data.type = JSGRAPHICSTYPE_SPILCD;
+  gfx.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
   gfx.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
   gfx.graphicsVar = graphics;
   gfx.data.width = LCD_WIDTH;
@@ -344,19 +323,14 @@ void jswrap_hackstrap_init() {
   gfx.data.bpp = LCD_BPP;
 
   //gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
-  lcdInit_SPILCD(&gfx);
+  lcdInit_ST7789(&gfx);
   graphicsSetVar(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
   jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);
   graphicsGetFromVar(&gfx, graphics);
 
-  // Create 'flip' fn
-  JsVar *fn;
-  fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
-  jsvObjectSetChildAndUnLock(graphics,"flip",fn);
-
-  /* If the button is pressed during reset, perform a self test.
-   * With bootloader this means apply power while holding button for >3 secs */
+  // If the button is pressed during reset, perform a self test.
+  // With bootloader this means apply power while holding button for >3 secs
   static bool firstStart = true;
 
   graphicsClear(&gfx);
@@ -373,7 +347,7 @@ void jswrap_hackstrap_init() {
   jsvGetString(addr, buf, sizeof(buf));
   jsvUnLock(addr);
   jswrap_graphics_drawCString(&gfx,(LCD_WIDTH-1)-strlen(buf)*6,h*8,buf);
-  lcdFlip_SPILCD(&gfx);
+
 
 /*
   if (firstStart && (jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE || jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE)) {
@@ -393,15 +367,7 @@ void jswrap_hackstrap_init() {
   jsvUnLock(graphics);
 
   // Setup touchscreen I2C
-  i2cBusy = true;
-  jshI2CInitInfo(&internalI2C);
-  internalI2C.bitrate = 0x7FFFFFFF;
-  internalI2C.pinSDA = ACCEL_PIN_SDA;
-  internalI2C.pinSCL = ACCEL_PIN_SCL;
-  jshPinSetValue(internalI2C.pinSCL, 1);
-  jshPinSetState(internalI2C.pinSCL,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
-  jshPinSetValue(internalI2C.pinSDA, 1);
-  jshPinSetState(internalI2C.pinSDA,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+
   // accelerometer init
   jswrap_hackstrap_accelWr(0x18,0x0a); // CNTL1 Off, 4g range, Wakeup
   jswrap_hackstrap_accelWr(0x19,0x80); // CNTL2 Software reset
@@ -427,7 +393,7 @@ void jswrap_hackstrap_init() {
   jswrap_hackstrap_accelWr(0x3e,0); // clear the buffer*/
   jswrap_hackstrap_accelWr(0x18,0b10001100);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup, tap
   // pressure init
-  buf[0]=0x06; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, (uint8_t)*buf, true); // SOFT_RST
+
   i2cBusy = false;
 
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
@@ -596,6 +562,27 @@ int jswrap_hackstrap_accelRd(JsVarInt reg) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Strap",
+    "name" : "ioWr",
+    "generate" : "jswrap_hackstrap_ioWr",
+    "params" : [
+      ["mask","int",""],
+      ["isOn","int",""]
+    ]
+}
+Changes a pin state on the IO expander
+*/
+void jswrap_hackstrap_ioWr(JsVarInt mask, bool on) {
+  static unsigned char state;
+  if (on) state |= mask;
+  else state &= ~mask;
+  i2cBusy = true;
+  jsi2cWrite(&internalI2C, 0x20, 1, &state, true);
+  i2cBusy = false;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
     "name" : "getPressure",
     "generate" : "jswrap_hackstrap_getPressure",
     "return" : ["JsVar","A promise that will be resolved with `{temperature, pressure, altitude}`"]
@@ -612,7 +599,7 @@ Strap.getPressure().then(d=>{
 });
 ```
 */
-void jswrap_hackstrap_getPressure_callback() {
+/*void jswrap_hackstrap_getPressure_callback() {
   JsVar *o = jsvNewObject();
   if (o) {
     i2cBusy = true;
@@ -642,9 +629,9 @@ void jswrap_hackstrap_getPressure_callback() {
   jsvUnLock2(promisePressure,o);
   promisePressure = 0;
 }
-
+*/
 JsVar *jswrap_hackstrap_getPressure() {
-  if (promisePressure) {
+ /* if (promisePressure) {
     jsExceptionHere(JSET_ERROR, "Conversion in progress");
     return 0;
   }
@@ -652,7 +639,8 @@ JsVar *jswrap_hackstrap_getPressure() {
   if (!promisePressure) return 0;
 
   jsiSetTimeout(jswrap_hackstrap_getPressure_callback, 100);
-  return jsvLockAgain(promisePressure);
+  return jsvLockAgain(promisePressure);*/
+  return 0;
 }
 /*JSON{
     "type" : "staticmethod",
@@ -666,11 +654,9 @@ void jswrap_hackstrap_off() {
   jsiKill();
   jsvKill();
   jshKill();
-  jshPinOutput(GPS_PIN_EN,0); // GPS off
+  //jshPinOutput(GPS_PIN_EN,0); // GPS off FIXME
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
-  jshPinOutput(LCD_BL,1); // backlight off
-  jshPinOutput(LED1_PININDEX,0); // LED off
-  lcdCmd_SPILCD(0x28, 0, NULL); // display off
+  jswrap_hackstrap_setLCDPower(0);
 
 
   nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);

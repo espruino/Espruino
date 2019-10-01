@@ -34,6 +34,9 @@
 #ifdef USE_LCD_SPI
 #include "lcd_spilcd.h"
 #endif
+#ifdef USE_LCD_ST7789_8BIT
+#include "lcd_st7789_8bit.h"
+#endif
 
 // ----------------------------------------------------------------------------------------------
 
@@ -150,6 +153,10 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
 #ifdef USE_LCD_SPI
     } else if (gfx->data.type == JSGRAPHICSTYPE_SPILCD) {
       lcdSetCallbacks_SPILCD(gfx);
+#endif
+#ifdef USE_LCD_ST7789_8BIT
+    } else if (gfx->data.type == JSGRAPHICSTYPE_ST7789_8BIT) {
+      lcdSetCallbacks_ST7789(gfx);
 #endif
     } else {
       jsExceptionHere(JSET_INTERNALERROR, "Unknown graphics type\n");

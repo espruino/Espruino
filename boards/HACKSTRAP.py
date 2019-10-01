@@ -22,15 +22,16 @@ info = {
   # This is the PCA10036
  'default_console' : "EV_BLUETOOTH",
  'variables' : 2100, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
- 'bootloader' : 1,
+# 'bootloader' : 1,
  'binary_name' : 'espruino_%v_hackstrap.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
      'TERMINAL',
-     'GRAPHICS', 'LCD_SPI',
-     'TENSORFLOW'     
+     'GRAPHICS', 
+     'LCD_ST7789_8BIT',
+     #'TENSORFLOW'     
    ],
    'makefile' : [
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
@@ -43,7 +44,6 @@ info = {
      'INCLUDE += -I$(ROOT)/libs/hackstrap',
      'WRAPPERSOURCES += libs/hackstrap/jswrap_hackstrap.c',
      'JSMODULESOURCES += libs/js/graphical_menu.min.js',
-     'DEFINES += -DNRF_BL_DFU_ENTER_METHOD_BUTTON=1 -DNRF_BL_DFU_ENTER_METHOD_BUTTON_PIN=5',
      'NRF_BL_DFU_INSECURE=1',
      'LINKER_BOOTLOADER=targetlibs/nrf5x_12/nrf5x_linkers/hackstrap_dfu.ld',
      'LINKER_ESPRUINO=targetlibs/nrf5x_12/nrf5x_linkers/hackstrap_espruino.ld'
@@ -74,56 +74,55 @@ chip = {
 
 devices = {
 
-  'BTN1' : { 'pin' : 'D12', 'pinstate' : 'IN_PULLDOWN' }, # Top right -  Pin negated in software
-  'BTN2' : { 'pin' : 'D13', 'pinstate' : 'IN_PULLDOWN' }, # Bottom right -  Pin negated in software
-  'BTN3' : { 'pin' : 'D16' }, # Touch
-#  'BTN4' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
-  'LED1' : { 'pin' : 'D14' }, # Pin negated in software
-#  'LED2' : { 'pin' : 'D18' }, # Pin negated in software
-#  'LED3' : { 'pin' : 'D19' }, # Pin negated in software
-#  'LED4' : { 'pin' : 'D20' }, # Pin negated in software
-  'VIBRATE' : { 'pin' : 'D11' }, # Pin negated in software
+  'BTN1' : { 'pin' : 'D23', 'pinstate' : 'IN_PULLDOWN' }, # top
+  'BTN2' : { 'pin' : 'D22', 'pinstate' : 'IN_PULLDOWN' }, # middle
+  'BTN3' : { 'pin' : 'D24', 'pinstate' : 'IN_PULLDOWN' }, # bottom
+  'VIBRATE' : { 'pin' : 'D13' },
   'LCD' : {
-            'width' : 128, 'height' : 96, 'bpp' : 4,
-            'controller' : 'st7735',
-            'pin_dc' : 'D22',
+            'width' : 240, 'height' : 240, 'bpp' : 16,
+            'controller' : 'st7789_8bit', # 8 bit parallel mode
+            'pin_dc' : 'D8',
             'pin_cs' : 'D10',
-            'pin_rst' : 'D23',
+#            'pin_rst' : 'D23', # IO expander P7
             'pin_sck' : 'D9',
-            'pin_mosi' : 'D8',
-            'pin_bl' : 'D21',
+            'pin_d0' : 'D0',
+            'pin_d1' : 'D1',
+            'pin_d2' : 'D2',
+            'pin_d3' : 'D3',
+            'pin_d4' : 'D4',
+            'pin_d5' : 'D5',
+            'pin_d6' : 'D6',
+            'pin_d7' : 'D7',
+#            'pin_bl' : 'D21', # IO expander P6
           },
   'GPS' : {
             'device' : 'M8130-KT',
-            'pin_en' : 'D0', # inverted
-            'pin_rx' : 'D5',
-            'pin_tx' : 'D6'
+#            'pin_en' : 'D0', # IO expander P0
+            'pin_rx' : 'D25', 
+            'pin_tx' : 'D26'
           },
-  'BAT' : {
-            'pin_charging' : 'D7', # inverted
-            'pin_voltage' : 'D4'
-          },
-  'HEARTRATE' : {
-            'pin_led' : 'D14',
-            'pin_analog' : 'D3'
-          },
+#  'BAT' : {
+#            'pin_charging' : 'D7', # inverted
+#            'pin_voltage' : 'D4'
+#          },
+#  'HEARTRATE' : {
+#            'pin_led' : 'D14',
+#            'pin_analog' : 'D3'
+#          },
   'ACCEL' : {
             'device' : 'KX023', 'addr' : 0x1e,
-            'pin_sda' : 'D1',
-            'pin_scl' : 'D2'
+            'pin_sda' : 'D15',
+            'pin_scl' : 'D14'
           },
   'SPIFLASH' : {
-            'pin_cs' : 'D18',
+            'pin_cs' : 'D21',
             'pin_sck' : 'D19',
-            'pin_mosi' : 'D20',
-            'pin_miso' : 'D17',
+            'pin_mosi' : 'D27', # D0
+            'pin_miso' : 'D20', # D1
+            'pin_wp' : 'D31', # D2
+            'pin_rst' : 'D17', # D3
             'size' : 2097152
-          },
-  'PRESSURE' : {
-            'device' : 'HP203', 'addr' : 0x76,
-            'pin_sda' : 'D1',
-            'pin_scl' : 'D2'
-          },
+          }
 };
 
 # left-right, or top-bottom order
@@ -131,8 +130,6 @@ board = {
   'left' : [],
   'right' : [],
   '_notes' : {
-#    'D6' : "Serial console RX",
-#    'D8' : "Serial console TX"
   }
 };
 board["_css"] = """
@@ -173,10 +170,9 @@ def get_pins():
   pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
   # negate buttons
-  pinutils.findpin(pins, "PD12", True)["functions"]["NEGATED"]=0; # btn1
-  pinutils.findpin(pins, "PD13", True)["functions"]["NEGATED"]=0; # btn2
-  pinutils.findpin(pins, "PD11", True)["functions"]["NEGATED"]=0; # vibrate
-  pinutils.findpin(pins, "PD14", True)["functions"]["NEGATED"]=0; # HRM LED
+  pinutils.findpin(pins, "PD22", True)["functions"]["NEGATED"]=0; # btn
+  pinutils.findpin(pins, "PD23", True)["functions"]["NEGATED"]=0; # btn
+  pinutils.findpin(pins, "PD24", True)["functions"]["NEGATED"]=0; # btn
 
 
   # everything is non-5v tolerant
