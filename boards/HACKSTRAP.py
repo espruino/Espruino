@@ -77,6 +77,8 @@ devices = {
   'BTN1' : { 'pin' : 'D23', 'pinstate' : 'IN_PULLDOWN' }, # top
   'BTN2' : { 'pin' : 'D22', 'pinstate' : 'IN_PULLDOWN' }, # middle
   'BTN3' : { 'pin' : 'D24', 'pinstate' : 'IN_PULLDOWN' }, # bottom
+  'BTN4' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' }, # touch left
+  'BTN5' : { 'pin' : 'D11', 'pinstate' : 'IN_PULLDOWN' }, # touch right
   'VIBRATE' : { 'pin' : 'D13' },
   'LCD' : {
             'width' : 240, 'height' : 240, 'bpp' : 16,
@@ -111,6 +113,12 @@ devices = {
 #          },
   'ACCEL' : {
             'device' : 'KX023', 'addr' : 0x1e,
+            'pin_sda' : 'D15',
+            'pin_scl' : 'D14'
+          },
+  'MAG' : { # Magnetometer/compass
+            'device' : 'unknown', 
+            'addr' : 0x0C,
             'pin_sda' : 'D15',
             'pin_scl' : 'D14'
           },
@@ -170,10 +178,12 @@ def get_pins():
   pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
   # negate buttons
+  pinutils.findpin(pins, "PD11", True)["functions"]["NEGATED"]=0; # btn
+  pinutils.findpin(pins, "PD16", True)["functions"]["NEGATED"]=0; # btn
   pinutils.findpin(pins, "PD22", True)["functions"]["NEGATED"]=0; # btn
   pinutils.findpin(pins, "PD23", True)["functions"]["NEGATED"]=0; # btn
   pinutils.findpin(pins, "PD24", True)["functions"]["NEGATED"]=0; # btn
-
+  
 
   # everything is non-5v tolerant
   for pin in pins:

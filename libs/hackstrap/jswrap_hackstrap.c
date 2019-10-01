@@ -24,6 +24,8 @@
 #include "jstimer.h"
 #include "jswrap_promise.h"
 #include "jswrap_bluetooth.h"
+#include "jswrap_date.h"
+#include "jswrap_math.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_soc.h"
@@ -36,13 +38,23 @@
 #include "lcd_st7789_8bit.h"
 
 #define GPS_UART EV_SERIAL1
+#define IOEXP_GPS 0x01
 #define IOEXP_LCD_BACKLIGHT 0x20
 #define IOEXP_LCD_RESET 0x40
 #define IOEXP_HRM 0x80
 
+typedef struct {
+  double lat,lon,alt;
+  double speed, course;
+  int hour,min,sec,ms;
+  uint8_t day,month,year;
+} NMEAFixInfo;
+
+#define NMEA_MAX_SIZE 82  //  82 is the max for NMEA
 uint8_t nmeaCount = 0; // how many characters of NMEA data do we have?
-char nmea[82]; //  82 is the max for NMEA
-char nmeaLine[82]; // A line of received NMEA data
+char nmeaIn[NMEA_MAX_SIZE]; //  NMEA line being received right now
+char nmeaLine[NMEA_MAX_SIZE]; // A line of received NMEA data
+NMEAFixInfo gpsFix;
 
 /*JSON{
   "type": "class",
@@ -63,6 +75,10 @@ Class containing utility functions for the [HackStrap Smart Watch](http://www.es
 The HackStrap's vibration motor.
 */
 
+typedef struct {
+  short x,y,z;
+} Vector3;
+
 #define ACCEL_POLL_INTERVAL 100 // in msec
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo internalI2C;
@@ -80,8 +96,14 @@ volatile unsigned char flipCounter;
 int lcdPowerTimeout = 0;
 /// Is the LCD on?
 bool lcdPowerOn;
+/// Is the compass on?
+bool compassPowerOn;
+// compass data
+Vector3 mag, magmin, magmax;
 /// accelerometer data
-int accx,accy,accz,accdiff;
+Vector3 acc;
+/// accelerometer difference since last reading
+int accdiff;
 /// data on how watch was tapped
 unsigned char tapInfo;
 
@@ -89,9 +111,11 @@ typedef enum {
   JSS_NONE,
   JSS_LCD_ON = 1,
   JSS_LCD_OFF = 2,
-  JSS_ACCEL_DATA = 4, // need to push xyz data to JS
-  JSS_ACCEL_TAPPED = 8, // tap event detected
-  JSS_GPS_DATA = 16, // we got a line of GPS data
+  JSS_ACCEL_DATA = 4, ///< need to push xyz data to JS
+  JSS_ACCEL_TAPPED = 8, ///< tap event detected
+  JSS_GPS_DATA = 16, ///< we got a complete set of GPS data in 'gpsFix'
+  JSS_GPS_DATA_LINE = 32, ///< we got a line of GPS data
+  JSS_MAG_DATA = 64, ///< need to push magnetometer data to JS
 } JsStrapTasks;
 JsStrapTasks strapTasks;
 
@@ -111,12 +135,12 @@ void jswrap_hackstrap_setLCDPower(bool isOn) {
     lcdCmd_ST7789(0x11, 0, NULL); // SLPOUT
     jshDelayMicroseconds(20);
     lcdCmd_ST7789(0x29, 0, NULL);
-    jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT,0); // backlight
+    jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight
   } else { // sleep
     lcdCmd_ST7789(0x28, 0, NULL);
     jshDelayMicroseconds(20);
     lcdCmd_ST7789(0x10, 0, NULL); // SLPIN
-    jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT,1); // backlight
+    jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight
   }
   if (lcdPowerOn != isOn) {
     JsVar *strap =jsvObjectGetChild(execInfo.root, "Strap", 0);
@@ -190,6 +214,13 @@ void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data) {
     ]
 }
 Set the power to the GPS.
+
+When on, data is output via the `GPS` event on `Strap`:
+
+```
+Strap.setGPSPower(1);
+Strap.on('GPS',print);
+```
 */
 void jswrap_hackstrap_setGPSPower(bool isOn) {
   if (isOn) {
@@ -199,14 +230,46 @@ void jswrap_hackstrap_setGPSPower(bool isOn) {
     inf.pinRX = GPS_PIN_RX;
     inf.pinTX = GPS_PIN_TX;
     jshUSARTSetup(GPS_UART, &inf);
-    //jshPinOutput(GPS_PIN_EN,1); // GPS on
+    jswrap_hackstrap_ioWr(IOEXP_GPS, 1); // GPS on
     nmeaCount = 0;
   } else {
-    //jshPinOutput(GPS_PIN_EN,0); // GPS off
+    jswrap_hackstrap_ioWr(IOEXP_GPS, 0); // GPS off
     // setting pins to pullup will cause jshardware.c to disable the UART, saving power
     jshPinSetState(GPS_PIN_RX, JSHPINSTATE_GPIO_IN_PULLUP);
     jshPinSetState(GPS_PIN_TX, JSHPINSTATE_GPIO_IN_PULLUP);
   }
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "setCompassPower",
+    "generate" : "jswrap_hackstrap_setCompassPower",
+    "params" : [
+      ["isOn","bool","True if the Compass should be on, false if not"]
+    ]
+}
+Set the power to the Compass
+
+When on, data is output via the `mag` event on `Strap`:
+
+```
+Strap.setCompassPower(1);
+Strap.on('mag',print);
+```
+*/
+void jswrap_hackstrap_setCompassPower(bool isOn) {
+  compassPowerOn = isOn;
+  jswrap_hackstrap_compassWr(0x31,isOn ? 8 : 0);
+  mag.x = 0;
+  mag.y = 0;
+  mag.z = 0;
+  magmin.x = 0;
+  magmin.y = 0;
+  magmin.z = 0;
+  magmax.x = 0;
+  magmax.y = 0;
+  magmax.z = 0;
 }
 
 
@@ -233,23 +296,37 @@ void watchdogHandler() {
 
 
   if (i2cBusy) return;
+  // check the magnetometer if we had it on
+  unsigned char buf[6];
+  if (compassPowerOn) {
+    buf[0]=0x11;
+    jsi2cWrite(&internalI2C, MAG_ADDR, 1, buf, true);
+    jsi2cRead(&internalI2C, MAG_ADDR, 6, buf, true);
+    mag.y = buf[0] | (buf[1]<<8);
+    mag.x = buf[2] | (buf[3]<<8);
+    mag.z = buf[4] | (buf[5]<<8);
+    if (mag.x<magmin.x) magmin.x=mag.x;
+    if (mag.y<magmin.y) magmin.y=mag.y;
+    if (mag.z<magmin.z) magmin.z=mag.z;
+    if (mag.x>magmax.x) magmax.x=mag.x;
+    if (mag.y>magmax.y) magmax.y=mag.y;
+    if (mag.z>magmax.z) magmax.z=mag.z;
+    strapTasks |= JSS_MAG_DATA;
+  }
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
-  /*unsigned char buf[6];
+  /*
   buf[0]=6;
   jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
   jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
-  int newx = (buf[1]<<8)|buf[0];
-  int newy = (buf[3]<<8)|buf[2];
-  int newz = (buf[5]<<8)|buf[4];
-  if (newx&0x8000) newx-=0x10000;
-  if (newy&0x8000) newy-=0x10000;
-  if (newz&0x8000) newz-=0x10000;
-  int dx = newx-accx;
-  int dy = newy-accy;
-  int dz = newz-accz;
-  accx = newx;
-  accy = newy;
-  accz = newz;
+  short newx = (buf[1]<<8)|buf[0];
+  short newy = (buf[3]<<8)|buf[2];
+  short newz = (buf[5]<<8)|buf[4];
+  int dx = newx-acc.x;
+  int dy = newy-acc.y;
+  int dz = newz-acc.z;
+  acc.x = newx;
+  acc.y = newy;
+  acc.z = newz;
   accdiff = dx*dx + dy*dy + dz*dz;
   strapTasks |= JSS_ACCEL_DATA;
   // read interrupt source data
@@ -283,7 +360,7 @@ void jswrap_hackstrap_init() {
   // Set up I2C
   i2cBusy = true;
   jshI2CInitInfo(&internalI2C);
-  //internalI2C.bitrate = 0x7FFFFFFF;
+  internalI2C.bitrate = 0x7FFFFFFF;
   internalI2C.pinSDA = ACCEL_PIN_SDA;
   internalI2C.pinSCL = ACCEL_PIN_SCL;
   jshPinSetValue(internalI2C.pinSCL, 1);
@@ -392,7 +469,10 @@ void jswrap_hackstrap_init() {
   jswrap_hackstrap_accelWr(0x35,0); // LP_CNTL no averaging of samples
   jswrap_hackstrap_accelWr(0x3e,0); // clear the buffer*/
   jswrap_hackstrap_accelWr(0x18,0b10001100);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup, tap
-  // pressure init
+  // compass init
+  jswrap_hackstrap_compassWr(0x32,1);
+  jswrap_hackstrap_compassWr(0x31,0);
+  compassPowerOn = false;
 
   i2cBusy = false;
 
@@ -429,16 +509,16 @@ bool jswrap_hackstrap_idle() {
     if (strap && jsiObjectHasCallbacks(strap, JS_EVENT_PREFIX"accel")) {
       JsVar *o = jsvNewObject();
       if (o) {
-        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(accx/8192.0));
-        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(accy/8192.0));
-        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(accz/8192.0));
-        jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(accx*accx + accy*accy + accz*accz)/8192.0));
+        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(acc.x/8192.0));
+        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(acc.y/8192.0));
+        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(acc.z/8192.0));
+        jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z)/8192.0));
         jsvObjectSetChildAndUnLock(o, "diff", jsvNewFromFloat(sqrt(accdiff)/8192.0));
         jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"accel", &o, 1);
         jsvUnLock(o);
       }
     }
-    bool faceUp = (accz<7000) && abs(accx)<4096 && abs(accy)<4096;
+    bool faceUp = (acc.z<7000) && abs(acc.x)<4096 && abs(acc.y)<4096;
     if (faceUp!=wasFaceUp) {
       faceUpCounter=0;
       wasFaceUp = faceUp;
@@ -478,12 +558,156 @@ bool jswrap_hackstrap_idle() {
     }
   }
   if (strap && (strapTasks & JSS_GPS_DATA)) {
+    JsVar *o = jsvNewObject();
+    if (o) {
+      jsvObjectSetChildAndUnLock(o, "lat", jsvNewFromFloat(gpsFix.lat));
+      jsvObjectSetChildAndUnLock(o, "lon", jsvNewFromFloat(gpsFix.lon));
+      jsvObjectSetChildAndUnLock(o, "alt", jsvNewFromFloat(gpsFix.alt));
+      jsvObjectSetChildAndUnLock(o, "speed", jsvNewFromFloat(gpsFix.speed));
+      jsvObjectSetChildAndUnLock(o, "course", jsvNewFromFloat(gpsFix.course));
+      CalendarDate date;
+      date.day = gpsFix.day;
+      date.month = gpsFix.month;
+      date.year = 2000+gpsFix.year;
+      TimeInDay td;
+      td.daysSinceEpoch = fromCalenderDate(&date);
+      td.hour = gpsFix.hour;
+      td.min = gpsFix.min;
+      td.sec = gpsFix.sec;
+      td.ms = gpsFix.ms;
+      td.zone = jsdGetTimeZone();
+      jsvObjectSetChildAndUnLock(o, "time", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
+      jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"GPS", &o, 1);
+      jsvUnLock(o);
+    }
+  }
+  if (strap && (strapTasks & JSS_GPS_DATA_LINE)) {
     JsVar *line = jsvNewFromString(nmeaLine);
-    if (line) jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"GPS", &line, 1);
+    if (line) {
+      jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"GPS-raw", &line, 1);
+
+    }
     jsvUnLock(line);
+  }
+  if (strap && (strapTasks & JSS_MAG_DATA)) {
+    if (strap && jsiObjectHasCallbacks(strap, JS_EVENT_PREFIX"mag")) {
+      JsVar *o = jsvNewObject();
+      if (o) {
+        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger(mag.x));
+        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger(mag.y));
+        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromInteger(mag.z));
+        int dx = mag.x - ((magmin.x+magmax.x)/2);
+        int dy = mag.y - ((magmin.y+magmax.y)/2);
+        int dz = mag.z - ((magmin.z+magmax.z)/2);
+        jsvObjectSetChildAndUnLock(o, "dx", jsvNewFromInteger(dx));
+        jsvObjectSetChildAndUnLock(o, "dy", jsvNewFromInteger(dy));
+        jsvObjectSetChildAndUnLock(o, "dz", jsvNewFromInteger(dz));
+        jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(180+(jswrap_math_atan2(dy,dx)*(180/3.141592))));
+        jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"mag", &o, 1);
+        jsvUnLock(o);
+      }
+    }
   }
   jsvUnLock(strap);
   strapTasks = JSS_NONE;
+  return false;
+}
+
+
+char *nmea_next_comma(char *nmea) {
+  while (*nmea && *nmea!=',') nmea++; // find the comma
+  return nmea;
+}
+double nmea_decode_latlon(char *nmea, char *comma) {
+  char *dp = nmea;
+  while (*dp && *dp!='.') dp++; // find decimal pt
+  *comma = 0;
+  double minutes = stringToFloat(&dp[-2]);
+  *comma = ',';
+  dp[-2] = 0;
+  int x = stringToInt(nmea);
+  return x+(minutes/60);
+}
+double nmea_decode_float(char *nmea, char *comma) {
+  *comma = 0;
+  double r = stringToFloat(nmea);
+  *comma = ',';
+  return r;
+}
+uint8_t nmea_decode_2(char *nmea) {
+  return chtod(nmea[0])*10 + chtod(nmea[1]);
+}
+bool nmea_decode(const char *nmeaLine) {
+  char buf[NMEA_MAX_SIZE];
+  strcpy(buf, nmeaLine);
+  char *nmea = buf, *nextComma;
+
+
+  if (nmea[0]!='$' || nmea[1]!='G') return false; // not valid
+  if (nmea[3]=='R' && nmea[4]=='M' && nmea[5]=='C') {
+    // $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
+    nmea = nmea_next_comma(nmea)+1;
+    nextComma = nmea_next_comma(nmea);
+    // time
+    gpsFix.hour = nmea_decode_2(&nmea[0]);
+    gpsFix.min = nmea_decode_2(&nmea[2]);
+    gpsFix.sec = nmea_decode_2(&nmea[4]);
+    gpsFix.ms = nmea_decode_2(&nmea[7]);
+    // status
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);//?
+    // lat + NS
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // lon + EW
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // speed
+    gpsFix.speed = nmea_decode_float(nmea, nextComma);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // course
+    gpsFix.course = nmea_decode_float(nmea, nextComma);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // date
+    gpsFix.day = nmea_decode_2(&nmea[0]);
+    gpsFix.month = nmea_decode_2(&nmea[2]);
+    gpsFix.year = nmea_decode_2(&nmea[4]);
+    // ....
+  }
+  if (nmea[3]=='G' && nmea[4]=='G' && nmea[5]=='A') {
+    // $GNGGA,161945.00,5139.11397,N,00116.07202,W,1,06,1.29,71.1,M,47.0,M,,*64
+    nmea = nmea_next_comma(nmea)+1;
+    nextComma = nmea_next_comma(nmea);
+    // time
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // LAT
+    gpsFix.lat = nmea_decode_latlon(nmea, nextComma);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    if (*nmea=="S") gpsFix.lat=-gpsFix.lat;
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // LON
+    gpsFix.lon = nmea_decode_latlon(nmea, nextComma);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    if (*nmea=="W") gpsFix.lon=-gpsFix.lon;
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // quality
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // num satellites
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // dilution of precision
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // altitude
+    gpsFix.alt = nmea_decode_float(nmea, nextComma);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // ....
+  }
+  if (nmea[3]=='G' && nmea[4]=='S' && nmea[5]=='V') {
+    // loads of cool data about what satellites we have
+  }
+  if (nmea[3]=='G' && nmea[4]=='L' && nmea[5]=='L') {
+    // Complete set of data received
+    return true;
+  }
   return false;
 }
 
@@ -494,8 +718,8 @@ bool jswrap_hackstrap_idle() {
 bool jswrap_hackstrap_gps_character(char ch) {
   if (ch=='\r') return true; // we don't care
   // if too many chars, roll over since it's probably because we skipped a newline
-  if (nmeaCount>=sizeof(nmea)) nmeaCount=0;
-  nmea[nmeaCount++]=ch;
+  if (nmeaCount>=sizeof(nmeaIn)) nmeaCount=0;
+  nmeaIn[nmeaCount++]=ch;
   if (ch!='\n') return true; // now handled
   // Now we have a line of GPS data...
 /*  $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
@@ -508,11 +732,13 @@ bool jswrap_hackstrap_gps_character(char ch) {
     $GNGLL,5139.11397,N,00116.07202,W,161945.00,A,A*69 */
   // Let's just chuck it over into JS-land for now
   if (nmeaCount>1) {
-    memcpy(nmeaLine, nmea, nmeaCount);
+    memcpy(nmeaLine, nmeaIn, nmeaCount);
     nmeaLine[nmeaCount-1]=0; // just overwriting \n
+    strapTasks |= JSS_GPS_DATA_LINE;
+    if (nmea_decode(nmeaLine))
+      strapTasks |= JSS_GPS_DATA;
   }
   nmeaCount = 0;
-  strapTasks |= JSS_GPS_DATA;
   return true; // handled
 }
 
@@ -562,6 +788,27 @@ int jswrap_hackstrap_accelRd(JsVarInt reg) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Strap",
+    "name" : "compassWr",
+    "generate" : "jswrap_hackstrap_compassWr",
+    "params" : [
+      ["reg","int",""],
+      ["data","int",""]
+    ]
+}
+Writes a register on the Magnetometer/Compass
+*/
+void jswrap_hackstrap_compassWr(JsVarInt reg, JsVarInt data) {
+  unsigned char buf[2];
+  buf[0] = (unsigned char)reg;
+  buf[1] = (unsigned char)data;
+  i2cBusy = true;
+  jsi2cWrite(&internalI2C, MAG_ADDR, 2, buf, true);
+  i2cBusy = false;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
     "name" : "ioWr",
     "generate" : "jswrap_hackstrap_ioWr",
     "params" : [
@@ -580,68 +827,7 @@ void jswrap_hackstrap_ioWr(JsVarInt mask, bool on) {
   i2cBusy = false;
 }
 
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "Strap",
-    "name" : "getPressure",
-    "generate" : "jswrap_hackstrap_getPressure",
-    "return" : ["JsVar","A promise that will be resolved with `{temperature, pressure, altitude}`"]
-}
-Read temperature, pressure and altitude data. A promise is returned
-which will be resolved with `{temperature, pressure, altitude}`.
 
-Conversions take roughly 100ms.
-
-```
-Strap.getPressure().then(d=>{
-  console.log(d);
-  // {temperature, pressure, altitude}
-});
-```
-*/
-/*void jswrap_hackstrap_getPressure_callback() {
-  JsVar *o = jsvNewObject();
-  if (o) {
-    i2cBusy = true;
-    unsigned char buf[6];
-    // ADC_CVT - 0b010 01 000  - pressure and temperature channel, OSR = 4096
-    buf[0] = 0x48; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true);
-    // wait 100ms
-    jshDelayMicroseconds(100*1000); // we should really have a callback
-    // READ_PT
-    buf[0] = 0x10; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true);
-    jsi2cRead(&internalI2C, PRESSURE_ADDR, 6, buf, true);
-    int temperature = (buf[0]<<16)|(buf[1]<<8)|buf[2];
-    if (temperature&0x800000) temperature-=0x1000000;
-    int pressure = (buf[3]<<16)|(buf[4]<<8)|buf[5];
-    jsvObjectSetChildAndUnLock(o,"temperature", jsvNewFromFloat(temperature/100.0));
-    jsvObjectSetChildAndUnLock(o,"pressure", jsvNewFromFloat(pressure/100.0));
-
-    buf[0] = 0x31; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true); // READ_A
-    jsi2cRead(&internalI2C, PRESSURE_ADDR, 3, buf, true);
-    int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
-    if (altitude&0x800000) altitude-=0x1000000;
-    jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(altitude/100.0));
-    i2cBusy = false;
-
-    jspromise_resolve(promisePressure, o);
-  }
-  jsvUnLock2(promisePressure,o);
-  promisePressure = 0;
-}
-*/
-JsVar *jswrap_hackstrap_getPressure() {
- /* if (promisePressure) {
-    jsExceptionHere(JSET_ERROR, "Conversion in progress");
-    return 0;
-  }
-  promisePressure = jspromise_create();
-  if (!promisePressure) return 0;
-
-  jsiSetTimeout(jswrap_hackstrap_getPressure_callback, 100);
-  return jsvLockAgain(promisePressure);*/
-  return 0;
-}
 /*JSON{
     "type" : "staticmethod",
     "class" : "Strap",
@@ -688,6 +874,33 @@ Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter
   "ifdef" : "HACKSTRAP"
 }
 Has the watch been moved so that it is face-up, or not face up?
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "mag",
+  "params" : [["xyz","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+Magnetometer/Compass data available with `{x,y,z}` object as a parameter
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "GPS-raw",
+  "params" : [["nmea","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+Raw NMEA GPS data lines received as a string
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "GPS",
+  "params" : [["fix","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+GPS data, as an object
  */
 /*JSON{
   "type" : "event",

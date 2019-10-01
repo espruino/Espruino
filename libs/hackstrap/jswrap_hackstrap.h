@@ -19,11 +19,12 @@ void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout);
 bool jswrap_hackstrap_isLCDOn();
 
 void jswrap_hackstrap_setGPSPower(bool isOn);
+void jswrap_hackstrap_setCompassPower(bool isOn);
 
 void jswrap_hackstrap_accelWr(JsVarInt reg, JsVarInt data);
 int jswrap_hackstrap_accelRd(JsVarInt reg);
+void jswrap_hackstrap_compassWr(JsVarInt reg, JsVarInt data);
 void jswrap_hackstrap_ioWr(JsVarInt mask, bool on);
-JsVar *jswrap_hackstrap_getPressure();
 void jswrap_hackstrap_off();
 
 void jswrap_hackstrap_init();

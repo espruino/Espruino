@@ -427,6 +427,12 @@ if "ACCEL" in board.devices:
   codeOut("#define ACCEL_ADDR "+str(board.devices["ACCEL"]["addr"]))
   codeOutDevicePins("ACCEL", "ACCEL")
 
+if "MAG" in board.devices:
+  codeOut("#define MAG_DEVICE \""+board.devices["MAG"]["device"].upper()+"\"")
+  if "addr" in board.devices["MAG"]:
+    codeOut("#define MAG_ADDR "+str(board.devices["MAG"]["addr"]))
+  codeOutDevicePins("MAG", "MAG")
+
 if "PRESSURE" in board.devices:
   codeOut("#define PRESSURE_DEVICE \""+board.devices["PRESSURE"]["device"].upper()+"\"")
   codeOut("#define PRESSURE_ADDR "+str(board.devices["PRESSURE"]["addr"]))
