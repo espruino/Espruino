@@ -74,11 +74,11 @@ chip = {
 
 devices = {
 
-  'BTN1' : { 'pin' : 'D23', 'pinstate' : 'IN_PULLDOWN' }, # top
+  'BTN1' : { 'pin' : 'D24', 'pinstate' : 'IN_PULLDOWN' }, # top
   'BTN2' : { 'pin' : 'D22', 'pinstate' : 'IN_PULLDOWN' }, # middle
-  'BTN3' : { 'pin' : 'D24', 'pinstate' : 'IN_PULLDOWN' }, # bottom
-  'BTN4' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' }, # touch left
-  'BTN5' : { 'pin' : 'D11', 'pinstate' : 'IN_PULLDOWN' }, # touch right
+  'BTN3' : { 'pin' : 'D23', 'pinstate' : 'IN_PULLDOWN' }, # bottom
+  'BTN4' : { 'pin' : 'D11', 'pinstate' : 'IN_PULLDOWN' }, # touch left
+  'BTN5' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' }, # touch right
   'VIBRATE' : { 'pin' : 'D13' },
   'LCD' : {
             'width' : 240, 'height' : 240, 'bpp' : 16,

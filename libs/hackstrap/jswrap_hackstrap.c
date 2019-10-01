@@ -314,7 +314,6 @@ void watchdogHandler() {
     strapTasks |= JSS_MAG_DATA;
   }
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
-  /*
   buf[0]=6;
   jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
   jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
@@ -344,7 +343,7 @@ void watchdogHandler() {
     buf[0]=0x17;
     jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
     jsi2cRead(&internalI2C, ACCEL_ADDR, 1, buf, true);
-  }*/
+  }
 
   //jshPinOutput(LED1_PININDEX, 0);
 }
@@ -449,7 +448,7 @@ void jswrap_hackstrap_init() {
   jswrap_hackstrap_accelWr(0x18,0x0a); // CNTL1 Off, 4g range, Wakeup
   jswrap_hackstrap_accelWr(0x19,0x80); // CNTL2 Software reset
   jshDelayMicroseconds(2000);
-  /*jswrap_hackstrap_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
+  jswrap_hackstrap_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
   jswrap_hackstrap_accelWr(0x1a,0xb11011110); // CNTL3
   // 50Hz tilt
   // 50Hz directional tap
@@ -467,7 +466,7 @@ void jswrap_hackstrap_init() {
   //jswrap_hackstrap_accelWr(0x27, 0x10); // TTH Tap detect threshold low (0x1A recommended)
   jswrap_hackstrap_accelWr(0x30,1); // ATH low wakeup detect threshold
   jswrap_hackstrap_accelWr(0x35,0); // LP_CNTL no averaging of samples
-  jswrap_hackstrap_accelWr(0x3e,0); // clear the buffer*/
+  jswrap_hackstrap_accelWr(0x3e,0); // clear the buffer
   jswrap_hackstrap_accelWr(0x18,0b10001100);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup, tap
   // compass init
   jswrap_hackstrap_compassWr(0x32,1);
