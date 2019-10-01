@@ -351,28 +351,26 @@ void lcd_kill() {
 #ifdef LCD_CONTROLLER_ST7789_8BIT
 
 #define CMDINDEX_CMD   0
-#define CMDINDEX_DELAY 1
-#define CMDINDEX_DATALEN  2
+#define CMDINDEX_DATALEN  1
 static const char ST7789_INIT_CODE[] = {
-  // CMD,DELAY,DATA_LEN,D0,D1,D2...
-    0x11,0x78,0,
-    0x36,0,1,0xC0, // MADCTL
-    0x37,0,2,0,80, // Vertical scroll
-    0x3A,0,1,0x55, // COLMOD - interface pixel format - 16bpp
-    0xB2,0,5,0xC,0xC,0,0x33,0x33,
-    0xB7,0,1,0,
-    0xBB,0,1,0x3E,
-    0xC2,0,1,1,
-    0xC3,0,1,0x19,
-    0xC4,0,1,0x20,
-    0xC5,0,1,0xF,
-    0xD0,0,2,0xA4,0xA1,
-    0xe0,0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
-    0xe1,0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
-    0x29,0,0,
-    0x21,0,0,
+  // CMD,DATA_LEN,D0,D1,D2...
+    0x11,0,
+    0x36,1,0, // MADCTL
+    0x3A,1,0x55, // COLMOD - interface pixel format - 16bpp
+    0xB2,5,0xC,0xC,0,0x33,0x33,
+    0xB7,1,0,
+    0xBB,1,0x3E,
+    0xC2,1,1,
+    0xC3,1,0x19,
+    0xC4,1,0x20,
+    0xC5,1,0xF,
+    0xD0,2,0xA4,0xA1,
+    0xe0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
+    0xe1,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
+    0x29,0,
+    0x21,0,
     // End
-    0, 0, 255/*DATA_LEN = 255 => END*/
+    0, 255/*DATA_LEN = 255 => END*/
 };
 
 void lcd_cmd(int cmd, int dataLen, char *data) {
@@ -468,22 +466,16 @@ void lcd_init() {
   ioexpander_write(0,1);
   ioexpander_write(0,0);
   ioexpander_write(0x80,1);
-  ioexpander_write(1,0);
-  ioexpander_write(0x20,1);
-  ioexpander_write(0x40,0); // reset
   nrf_delay_ms(100);
   ioexpander_write(0x40,1);
-
-  ioexpander_write(0x20,0); // backlight on
+  // ioexpander_write(0x20,0); // backlight on (default)
   nrf_delay_ms(0x78);
 
   // Send initialization commands to ST7789
   const char *cmd = ST7789_INIT_CODE;
   while(cmd[CMDINDEX_DATALEN]!=255) {
-    lcd_cmd(cmd[CMDINDEX_CMD], cmd[CMDINDEX_DATALEN], &cmd[3]);
-    if (cmd[CMDINDEX_DELAY])
-      jshDelayMicroseconds(1000*cmd[CMDINDEX_DELAY]);
-    cmd += 3 + cmd[CMDINDEX_DATALEN];
+    lcd_cmd(cmd[CMDINDEX_CMD], cmd[CMDINDEX_DATALEN], &cmd[2]);
+    cmd += 2 + cmd[CMDINDEX_DATALEN];
   }
 
   jshPinOutput(13,0); // Vibrate
