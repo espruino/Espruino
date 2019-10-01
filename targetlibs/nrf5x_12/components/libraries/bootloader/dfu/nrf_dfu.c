@@ -108,7 +108,8 @@ void nrf_dfu_wait()
 uint32_t nrf_dfu_init()
 {
     uint32_t ret_val = NRF_SUCCESS;
-    uint32_t enter_bootloader_mode = 0;
+    bool enter_bootloader_mode = false;
+    bool dfu_app_valid = true;
 
     NRF_LOG_INFO("In real nrf_dfu_init\r\n");
 
@@ -128,10 +129,11 @@ uint32_t nrf_dfu_init()
     if (nrf_dfu_enter_check())
     {
         NRF_LOG_INFO("Application sent bootloader request\n");
-        enter_bootloader_mode = 1;
-    }
+        enter_bootloader_mode = true;
+    } else
+      dfu_app_valid = nrf_dfu_app_is_valid();
 
-    if(enter_bootloader_mode != 0 || !nrf_dfu_app_is_valid())
+    if(enter_bootloader_mode || !dfu_app_valid)
     {
         timers_init();
         scheduler_init();
@@ -150,9 +152,10 @@ uint32_t nrf_dfu_init()
         NRF_LOG_INFO("Waiting for events\r\n");
         wait_for_event();
         NRF_LOG_INFO("After waiting for events\r\n");
+        dfu_app_valid = nrf_dfu_app_is_valid();
     }
 
-    if (nrf_dfu_app_is_valid())
+    if (dfu_app_valid)
     {
         NRF_LOG_INFO("Jumping to: 0x%08x\r\n", MAIN_APPLICATION_START_ADDR);
         nrf_bootloader_app_start(MAIN_APPLICATION_START_ADDR);
