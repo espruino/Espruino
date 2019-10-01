@@ -130,6 +130,83 @@ void lcd_wr(int data) {
   }
 }
 #endif
+#if defined(LCD_CONTROLLER_ST7789_8BIT)
+
+void lcd_pixel(int x, int y) {
+  // each byte is horizontal
+  lcd_data[(x>>3)+(y*LCD_ROWSTRIDE)] |= 1<<(x&7);
+#ifdef LCD_STORE_MODIFIED
+  // update changed area
+  if (y<ymin) ymin=y;
+  if (y>ymax) ymax=y;
+#endif
+}
+
+void lcd_wr(int data) {
+  *((uint8_t*)&NRF_P0->OUT) = data;
+  asm("nop");asm("nop");asm("nop");asm("nop");
+  jshPinSetValue(LCD_PIN_SCK, 0 );
+  asm("nop");asm("nop");asm("nop");asm("nop");
+  jshPinSetValue(LCD_PIN_SCK, 1 );
+}
+
+// very tiny I2C implementation
+// for IO expander
+void dly() {
+  volatile int i;
+  for (i=0;i<10;i++);
+}
+void sda1() {
+  nrf_gpio_pin_set(I2C_SDA);
+  nrf_gpio_cfg_output(I2C_SDA);
+  dly();
+}
+void sda0() {
+  nrf_gpio_pin_clear(I2C_SDA);
+  nrf_gpio_cfg_output(I2C_SDA);
+  dly();
+}
+void scl1() {
+  nrf_gpio_pin_set(I2C_SCL);
+  nrf_gpio_cfg_output(I2C_SCL);
+  dly();
+}
+void scl0() {
+  nrf_gpio_pin_clear(I2C_SCL);
+  nrf_gpio_cfg_output(I2C_SCL);
+  dly();
+}
+void i2c_wr_bit(bool b) {
+  if (b) sda1(); else sda0();
+  scl1();
+  scl0();
+}
+
+void i2c_wr(uint8_t data) {
+  int i;
+  for (i=0;i<8;i++) {
+    i2c_wr_bit(data&128);
+    data <<= 1;
+  }
+  scl1();
+  scl0();
+}
+void ioexpander_write(int mask, bool value) {
+  static uint8_t state = 0;
+  if (value) state|=mask;
+  else state&=~mask;
+  // start
+  sda0();
+  scl0();
+  // write
+  i2c_wr(0x40);
+  i2c_wr(state);
+  // stop
+  sda0();
+  scl1();
+  sda1();
+}
+#endif
 
 #ifdef LCD_CONTROLLER_ST7567
 
@@ -206,7 +283,7 @@ void lcd_flip() {
     lcd_wr(0);
     lcd_wr(0);
     lcd_wr(0);
-    lcd_wr(LCD_WIDTH);
+    lcd_wr(LCD_DATA_WIDTH*2);
     jshPinSetValue(LCD_SPI_DC, 0); // command
     lcd_wr(0x2B);
     jshPinSetValue(LCD_SPI_DC, 1); // data
@@ -218,7 +295,7 @@ void lcd_flip() {
     lcd_wr(0x2C);
     jshPinSetValue(LCD_SPI_DC, 1); // data
     for (int y=ymin;y<=ymax;y++) {
-      for (int x=0;x<LCD_WIDTH>>1;x++) { // send 2 pixels at once
+      for (int x=0;x<LCD_DATA_WIDTH;x++) { // send 2 pixels at once
         int c = (lcd_data[(x>>3)+((y>>1)*LCD_ROWSTRIDE)]&1<<(x&7)) ? 0xFF:0;
         lcd_wr(c);
         lcd_wr(c);
@@ -271,7 +348,153 @@ void lcd_kill() {
   lcd_cmd(0xAE, 0, NULL); // DISPOFF
 }
 #endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
 
+#define CMDINDEX_CMD   0
+#define CMDINDEX_DELAY 1
+#define CMDINDEX_DATALEN  2
+static const char ST7789_INIT_CODE[] = {
+  // CMD,DELAY,DATA_LEN,D0,D1,D2...
+    0x11,0x78,0,
+    0x36,0,1,0xC0, // MADCTL
+    0x37,0,2,0,80, // Vertical scroll
+    0x3A,0,1,0x55, // COLMOD - interface pixel format - 16bpp
+    0xB2,0,5,0xC,0xC,0,0x33,0x33,
+    0xB7,0,1,0,
+    0xBB,0,1,0x3E,
+    0xC2,0,1,1,
+    0xC3,0,1,0x19,
+    0xC4,0,1,0x20,
+    0xC5,0,1,0xF,
+    0xD0,0,2,0xA4,0xA1,
+    0xe0,0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
+    0xe1,0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
+    0x29,0,0,
+    0x21,0,0,
+    // End
+    0, 0, 255/*DATA_LEN = 255 => END*/
+};
+
+void lcd_cmd(int cmd, int dataLen, char *data) {
+  jshPinSetValue(LCD_PIN_CS, 0);
+  jshPinSetValue(LCD_PIN_DC, 0); // command
+  lcd_wr(cmd);
+  if (dataLen) {
+    jshPinSetValue(LCD_PIN_DC, 1); // data
+    while (dataLen) {
+      lcd_wr(*(data++));
+      dataLen--;
+    }
+  }
+  jshPinSetValue(LCD_PIN_CS, 1);
+}
+
+void lcd_flip() {
+#if LCD_STORE_MODIFIED
+  if (ymin<=ymax) {
+    ymin=ymin*2;
+    ymax=ymax*2+1;
+#else
+    const int ymin = 0;
+    const int ymax = LCD_DATA_HEIGHT-1;
+#endif
+    jshPinSetValue(LCD_PIN_CS, 0);
+    jshPinSetValue(LCD_PIN_DC, 0); // command
+    lcd_wr(0x2A);
+    jshPinSetValue(LCD_PIN_DC, 1); // data
+    lcd_wr(0);
+    lcd_wr(0);
+    lcd_wr(0);
+    lcd_wr(LCD_DATA_WIDTH*2);
+    jshPinSetValue(LCD_PIN_DC, 0); // command
+    lcd_wr(0x2B);
+    jshPinSetValue(LCD_PIN_DC, 1); // data
+    lcd_wr(0);
+    lcd_wr(ymin);
+    lcd_wr(0);
+    lcd_wr(ymax+1);
+    jshPinSetValue(LCD_PIN_DC, 0); // command
+    lcd_wr(0x2C);
+    jshPinSetValue(LCD_PIN_DC, 1); // data
+    for (int y=ymin;y<=ymax;y++) {
+      for (int x=0;x<LCD_DATA_WIDTH;x++) { // send 2 pixels at once
+        int c = (lcd_data[(x>>3)+((y>>1)*LCD_ROWSTRIDE)]&1<<(x&7)) ? 0xFF:0;
+        lcd_wr(c);
+        lcd_wr(c);
+        lcd_wr(c);
+        lcd_wr(c);
+      }
+    }
+    jshPinSetValue(LCD_PIN_CS,1);
+#if LCD_STORE_MODIFIED
+  }
+  ymin=LCD_HEIGHT;
+  ymax=0;
+#endif
+}
+#define nrf_delay_ms(X) jshDelayMicroseconds(X*1000)
+#define digitalWrite(X,Y) jshPinOutput(X,Y)
+
+void lcd_send_cmd(uint8_t cmd) {
+  jshPinSetValue(LCD_PIN_CS, 0);
+  jshPinSetValue(LCD_PIN_DC, 0); // command
+  lcd_wr(cmd);
+  jshPinSetValue(LCD_PIN_CS, 1);
+}
+void lcd_send_data(uint8_t cmd) {
+  jshPinSetValue(LCD_PIN_CS, 0);
+  jshPinSetValue(LCD_PIN_DC, 1); // data
+  lcd_wr(cmd);
+  jshPinSetValue(LCD_PIN_CS, 1);
+}
+
+void lcd_init() {
+  //jshPinOutput(13,1); // Vibrate
+  nrf_gpio_cfg_input(I2C_SDA, NRF_GPIO_PIN_PULLUP);
+  nrf_gpio_cfg_input(I2C_SCL, NRF_GPIO_PIN_PULLUP);
+
+  jshPinOutput(LCD_PIN_CS,1);
+  jshPinOutput(LCD_PIN_DC,1);
+  jshPinOutput(LCD_PIN_SCK,1);
+  for (int i=0;i<8;i++)
+    jshPinOutput(i,0);
+
+  digitalWrite(18,0); // not needed?
+  digitalWrite(28,0); // IO expander reset
+  nrf_delay_ms(10);
+  digitalWrite(28,1);
+  nrf_delay_ms(0x32);
+
+  ioexpander_write(0,1);
+  ioexpander_write(0,0);
+  ioexpander_write(0x80,1);
+  ioexpander_write(1,0);
+  ioexpander_write(0x20,1);
+  ioexpander_write(0x40,0); // reset
+  nrf_delay_ms(100);
+  ioexpander_write(0x40,1);
+
+  ioexpander_write(0x20,0); // backlight on
+  nrf_delay_ms(0x78);
+
+  // Send initialization commands to ST7789
+  const char *cmd = ST7789_INIT_CODE;
+  while(cmd[CMDINDEX_DATALEN]!=255) {
+    lcd_cmd(cmd[CMDINDEX_CMD], cmd[CMDINDEX_DATALEN], &cmd[3]);
+    if (cmd[CMDINDEX_DELAY])
+      jshDelayMicroseconds(1000*cmd[CMDINDEX_DELAY]);
+    cmd += 3 + cmd[CMDINDEX_DATALEN];
+  }
+
+  jshPinOutput(13,0); // Vibrate
+}
+
+void lcd_kill() {
+  ioexpander_write(0x20,1); // backlight off
+  lcd_send_cmd(0x28);
+  lcd_send_cmd(0x10);
+}
+#endif
 
 #ifdef LCD_CONTROLLER_ST7735
 
@@ -336,7 +559,6 @@ void lcd_cmd(int cmd, int dataLen, const char *data) {
 
 void lcd_flip() {
   if (ymin<=ymax) {
-    jshPinOutput(LCD_BL,0); // testing
     jshPinSetValue(LCD_SPI_CS, 0);
     jshPinSetValue(LCD_SPI_DC, 0); // command
     lcd_wr(0x2A);

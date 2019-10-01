@@ -22,7 +22,7 @@ info = {
   # This is the PCA10036
  'default_console' : "EV_BLUETOOTH",
  'variables' : 2100, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
-# 'bootloader' : 1,
+ 'bootloader' : 1,
  'binary_name' : 'espruino_%v_hackstrap.hex',
  'build' : {
    'optimizeflags' : '-Os',
