@@ -25,7 +25,7 @@ JsVar *jswrap_graphics_getInstance();
 JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp,  JsVar *options);
 JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *callback);
 #ifdef USE_LCD_SDL
-JsVar *jswrap_graphics_createSDL(int width, int height);
+JsVar *jswrap_graphics_createSDL(int width, int height, int bpp);
 #endif
 JsVar *jswrap_graphics_createImage(JsVar *data);
 
@@ -58,7 +58,7 @@ JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_drawPoly(JsVar *parent, JsVar *poly, bool closed);
 JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly);
 JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect);
-JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos);
+JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos, JsVar *options);
 JsVar *jswrap_graphics_asImage(JsVar *parent);
 JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset);
 JsVar *jswrap_graphics_scroll(JsVar *parent, int x, int y);

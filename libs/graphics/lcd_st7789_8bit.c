@@ -50,7 +50,7 @@ int lcdNextX, lcdNextY;
 
 /* We have to be careful about this since we can
 write faster than the LCD is happy about
-/*
+
 #define LCD_SCK_CLR() NRF_P0->OUTCLR = 1<<LCD_PIN_SCK
 #define LCD_SCK_SET() NRF_P0->OUTSET = 1<<LCD_PIN_SCK
 #define LCD_CS_CLR() nrf_gpio_pin_clear(LCD_PIN_CS);
@@ -127,11 +127,11 @@ void lcdSetPixel_ST7789(JsGraphics *gfx, short x, short y, unsigned int col) {
   } else
     lcdNextX++;
   LCD_DC_DATA(); // data
-  LCD_DATA(col);
+  LCD_DATA(col>>8);
   asm("nop");asm("nop");
   LCD_SCK_CLR_FAST();
   LCD_SCK_SET_FAST();
-  LCD_DATA(col>>8);
+  LCD_DATA(col);
   asm("nop");asm("nop");
   LCD_SCK_CLR_FAST();
   LCD_SCK_SET_FAST();
@@ -183,10 +183,10 @@ void lcdFillRect_ST7789(JsGraphics *gfx, short x1, short y1, short x2, short y2)
   } else {
     // colors different, send manually
     while (i--) {
-      LCD_DATA(col);
+      LCD_DATA(col>>8);
       asm("nop");asm("nop");
       LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
-      LCD_DATA(col>>8);
+      LCD_DATA(col);
       asm("nop");asm("nop");
       LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
     }
