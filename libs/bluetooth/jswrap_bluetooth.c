@@ -2688,6 +2688,11 @@ For instance, to require pairing and to specify a passkey:
 ```
 NRF.setSecurity({passkey:"123456", mitm:1, display:1});
 ```
+
+**NOTE:** Some combinations of arguments will cause an error. For example
+supplying a passkey without `display:1` is not allowed. If `display:1` is set
+you do not require a physical display, the user just needs to know
+the passkey you supplied.
 */
 void jswrap_ble_setSecurity(JsVar *options) {
   if (!jsvIsObject(options) && !jsvIsUndefined(options))
