@@ -1574,7 +1574,6 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #endif
   }
 
-  unsigned int imageBitMask = (unsigned int)((1L<<imageBpp)-1L);
   if (!(jsvIsArrayBuffer(imageBuffer) || jsvIsString(imageBuffer)) ||
       imageWidth<=0 ||
       imageHeight<=0 ||
@@ -1583,6 +1582,8 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     jsvUnLock(imageBuffer);
     return 0;
   }
+  unsigned int imageBitMask = (unsigned int)((1L<<imageBpp)-1L);
+  unsigned int imagePixelsPerByteMask = (imageBpp<8)?(8/imageBpp)-1:0;
   // jsvGetArrayBufferBackingString is fine to be passed a string
   JsVar *imageBufferString = jsvGetArrayBufferBackingString(imageBuffer);
   jsvUnLock(imageBuffer);
@@ -1595,7 +1596,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 
   if (jsvIsUndefined(options)) {
     // Standard 1:1 blitting
-    while ((bits>=imageBpp || jsvStringIteratorHasChar(&it)) && y<imageHeight) {
+    while (y<imageHeight) {
       // Get the data we need...
       while (bits < imageBpp) {
         colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
@@ -1658,12 +1659,23 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         int imagex = (qx+128)>>8;
         int imagey = (qy+128)>>8;
         if (imagex>=0 && imagey>=0 && imagex<imageWidth && imagey<imageHeight) {
-          jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+imagex+(imagey*imageStride));
-          unsigned int col = (unsigned char)jsvStringIteratorGetChar(&it);
-
-          if (!imageIsTransparent || imageTransparentCol!=col) {
-            if (palettePtr) col = palettePtr[col&paletteMask];
-            graphicsSetPixel(&gfx, (short)(x+xPos), (short)(y+yPos), col);
+          if (imageBpp==8) { // fast path for 8 bits
+            jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+imagex+(imagey*imageStride));
+            colData = (unsigned char)jsvStringIteratorGetChar(&it);
+          } else {
+            int bitOffset = (imagex+(imagey*imageWidth))*imageBpp;
+            jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+(bitOffset>>3));
+            colData = (unsigned char)jsvStringIteratorGetChar(&it);
+            for (int b=8;b<imageBpp;b+=8) {
+              jsvStringIteratorNext(&it);
+              colData = (colData<<8) | (unsigned char)jsvStringIteratorGetChar(&it);
+            }
+            //jsiConsolePrintf("%d %d %d\n", bitOffset, imagePixelsPerByteMask, (imagePixelsPerByteMask-(bitOffset&imagePixelsPerByteMask))*imageBpp);
+            colData = (colData>>((imagePixelsPerByteMask-(bitOffset&imagePixelsPerByteMask))*imageBpp)) & imageBitMask;
+          }
+          if (!imageIsTransparent || imageTransparentCol!=colData) {
+            if (palettePtr) colData = palettePtr[colData&paletteMask];
+            graphicsSetPixel(&gfx, (short)(x+xPos), (short)(y+yPos), colData);
           }
         }
         qx += sx;
