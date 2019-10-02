@@ -249,22 +249,20 @@ unsigned int jsvIterateCallbackToBytes(JsVar *var, unsigned char *data, unsigned
 // If charIdx doesn't fit in the current stringext, go forward along the string
 static void jsvStringIteratorCatchUp(JsvStringIterator *it) {
   while (it->charIdx>0 && it->charIdx >= it->charsInVar) {
-   it->charIdx -= it->charsInVar;
-   it->varIndex += it->charsInVar;
-   if (it->var) {
-     if (jsvGetLastChild(it->var)) {
-       JsVar *next = jsvLock(jsvGetLastChild(it->var));
-       jsvUnLock(it->var);
-       it->var = next;
-       it->ptr = &next->varData.str[0];
-       it->charsInVar = jsvGetCharactersInVar(it->var);
-     } else {
-       jsvUnLock(it->var);
-       it->var = 0;
-       it->ptr = 0;
-       it->charsInVar = 0;
-       return; // at end of string - get out of loop
-     }
+    it->charIdx -= it->charsInVar;
+    it->varIndex += it->charsInVar;
+    if (it->var && jsvGetLastChild(it->var)) {
+      JsVar *next = jsvLock(jsvGetLastChild(it->var));
+      jsvUnLock(it->var);
+      it->var = next;
+      it->ptr = &next->varData.str[0];
+      it->charsInVar = jsvGetCharactersInVar(it->var);
+    } else {
+      jsvUnLock(it->var);
+      it->var = 0;
+      it->ptr = 0;
+      it->charsInVar = 0;
+      return; // at end of string - get out of loop
     }
   }
 }
