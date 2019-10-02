@@ -38,7 +38,7 @@ info = {
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"HackStrap"\'',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
-#     'DEFINES+=-DUSE_FONT_6X8',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
      'INCLUDE += -I$(ROOT)/libs/hackstrap',
