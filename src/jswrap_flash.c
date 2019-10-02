@@ -160,15 +160,20 @@ JsVar *jswrap_flash_read(int length, int addr) {
   if (length<=0) return 0;
   JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, length);
   if (!arr) return 0;
-  // TODO: why not read in one chunk?
-  JsvArrayBufferIterator it;
-  jsvArrayBufferIteratorNew(&it, arr, 0);
-  while (jsvArrayBufferIteratorHasElement(&it)) {
-    char c;
-    jshFlashRead(&c, (uint32_t)(addr++), 1);
-    jsvArrayBufferIteratorSetByteValue(&it, c);
-    jsvArrayBufferIteratorNext(&it);
+  JsVar *str = jsvGetArrayBufferBackingString(arr);
+  if (str) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, str, 0);
+    while (length>0 && jsvStringIteratorHasChar(&it)) {
+      unsigned char *data;
+      unsigned int l = 0;
+      jsvStringIteratorGetPtrAndNext(&it, &data, &l);
+      jshFlashRead(data, (uint32_t)addr, l);
+      addr += l;
+      length -= l;
+    }
+    jsvStringIteratorFree(&it);
+    jsvUnLock(str);
   }
-  jsvArrayBufferIteratorFree(&it);
   return arr;
 }

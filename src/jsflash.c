@@ -494,9 +494,20 @@ JsVar *jsfReadFile(JsfFileName name) {
   uint32_t len = jsfGetFileSize(&header);
 #ifdef SPIFLASH_BASE // if using SPI flash it can't be memory-mapped
   if (!mappedAddr) {
-    unsigned char *d = alloca(len);
-    jshFlashRead(d, addr, len);
-    JsVar *v = jsvNewStringOfLength(len, d);
+    JsVar *v = jsvNewStringOfLength(len, NULL);
+    if (v) {
+      JsvStringIterator it;
+      jsvStringIteratorNew(&it, v, 0);
+      while (len && jsvStringIteratorHasChar(&it)) {
+        unsigned char *data;
+        unsigned int l = 0;
+        jsvStringIteratorGetPtrAndNext(&it, &data, &l);
+        jshFlashRead(data, addr, l);
+        addr += l;
+        len -= l;
+      }
+      jsvStringIteratorFree(&it);
+    }
     return v;
   }
 #endif

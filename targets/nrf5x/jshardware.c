@@ -352,24 +352,27 @@ static jshUARTState uart[USART_COUNT];
 void jshUSARTUnSetup(IOEventFlags device);
 
 #ifdef SPIFLASH_BASE
-JshSPIInfo spiFlash = {
-    .baudRate = 100000,
-    .baudRateSpec = SPIB_DEFAULT,
-    .pinSCK = SPIFLASH_PIN_SCK,
-    .pinMISO = SPIFLASH_PIN_MISO,
-    .pinMOSI = SPIFLASH_PIN_MOSI,
-    .spiMode = SPIF_SPI_MODE_0,
-    .spiMSB = true,
-    .numBits = 8
-};
 void spiFlashWrite(unsigned char *tx, unsigned char *rx, unsigned int len) {
-  jshPinSetValue(SPIFLASH_PIN_CS,0);
-  jsspiSoftwareFunc(tx,rx,len,&spiFlash);
-  jshPinSetValue(SPIFLASH_PIN_CS,1);
+  for (unsigned int i=0;i<len;i++) {
+    int data = tx[i];
+    int result = 0;
+    for (int bit=7;bit>=0;bit--) {
+      nrf_gpio_pin_write((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, (data>>bit)&1 );
+      nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+      result = (result<<1) | nrf_gpio_pin_read((uint32_t)pinInfo[SPIFLASH_PIN_MISO].pin);
+      nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+    }
+    if (rx) rx[i] = result;
+  }
+}
+void spiFlashWriteCS(unsigned char *tx, unsigned char *rx, unsigned int len) {
+  nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  spiFlashWrite(tx,rx,len);
+  nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
 }
 unsigned char spiFlashStatus() {
   unsigned char buf[2] = {5,0};
-  spiFlashWrite(buf,buf,2);
+  spiFlashWriteCS(buf,buf,2);
   return buf[1];
 }
 #endif
@@ -543,10 +546,10 @@ void jshResetPeripherals() {
   jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_OUT);
 #ifdef SPIFLASH_PIN_RST
-  jshPinSetValue(SPIFLASH_PIN_WP, 0);
-  jshPinSetState(SPIFLASH_PIN_WP, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(SPIFLASH_PIN_RST, 0);
+  jshPinSetState(SPIFLASH_PIN_RST, JSHPINSTATE_GPIO_OUT);
   jshDelayMicroseconds(100);
-  jshPinSetValue(SPIFLASH_PIN_WP, 1); // reset off
+  jshPinSetValue(SPIFLASH_PIN_RST, 1); // reset off
 #endif
   jshDelayMicroseconds(100);
   // disable lock bits
@@ -555,11 +558,11 @@ void jshResetPeripherals() {
   int timeout = 1000;
   while (timeout-- && !(spiFlashStatus()&2)) {
     buf[0] = 6; // write enable
-    spiFlashWrite(buf,0,1);
+    spiFlashWriteCS(buf,0,1);
   }
   buf[0] = 1; // write status register
   buf[1] = 0;
-  spiFlashWrite(buf,0,2);
+  spiFlashWriteCS(buf,0,2);
 #endif
 }
 
@@ -1741,13 +1744,13 @@ void jshFlashErasePage(uint32_t addr) {
     unsigned char b[4];
     // WREN
     b[0] = 0x06;
-    spiFlashWrite(b,0,1);
+    spiFlashWriteCS(b,0,1);
     // Erase
     b[0] = 0x20;
     b[1] = addr>>16;
     b[2] = addr>>8;
     b[3] = addr;
-    spiFlashWrite(b,0,4);
+    spiFlashWriteCS(b,0,4);
     // Check busy
     WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage");
     return;
@@ -1785,9 +1788,9 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
     b[2] = addr>>8;
     b[3] = addr;
     jshPinSetValue(SPIFLASH_PIN_CS,0);
-    jsspiSoftwareFunc(b,0,4,&spiFlash);
+    spiFlashWrite(b,0,4);
     memset(buf,0,len); // ensure we just send 0
-    jsspiSoftwareFunc((unsigned char*)buf,(unsigned char*)buf,len,&spiFlash);
+    spiFlashWrite((unsigned char*)buf,(unsigned char*)buf,len);
     jshPinSetValue(SPIFLASH_PIN_CS,1);
     return;
   }
@@ -1810,14 +1813,14 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
     for (unsigned int i=0;i<len;i++) {
       // WREN
       b[0] = 0x06;
-      spiFlashWrite(b,0,1);
+      spiFlashWriteCS(b,0,1);
       // Write
       b[0] = 0x02;
       b[1] = addr>>16;
       b[2] = addr>>8;
       b[3] = addr;
       b[4] = ((unsigned char*)buf)[i];
-      spiFlashWrite(b,0,5);
+      spiFlashWriteCS(b,0,5);
       // Check busy
       WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashWrite");
       addr++;
