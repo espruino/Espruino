@@ -250,7 +250,10 @@ void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
   while (lcdScrollY<0) lcdScrollY+=LCD_BUFFER_HEIGHT;
   while (lcdScrollY>=LCD_BUFFER_HEIGHT) lcdScrollY-=LCD_BUFFER_HEIGHT;
 
-  lcdST7789_cmd(0x37, 2, (uint8_t*)&lcdScrollY);
+  unsigned char buf[2];
+  buf[0] = lcdScrollY>>8;
+  buf[1] = lcdScrollY;
+  lcdST7789_cmd(0x37, 2, buf);
 }
 
 void lcdST7789_init(JsGraphics *gfx) {
