@@ -476,6 +476,33 @@ JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "clearRect",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_clearRect",
+  "params" : [
+    ["x1","int32","The left X coordinate"],
+    ["y1","int32","The top Y coordinate"],
+    ["x2","int32","The right X coordinate"],
+    ["y2","int32","The bottom Y coordinate"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Fill a rectangular area in the Background Color
+*/
+JsVar *jswrap_graphics_clearRect(JsVar *parent, int x1, int y1, int x2, int y2) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  unsigned int c = gfx.data.fgColor;
+  gfx.data.fgColor = gfx.data.bgColor;
+  graphicsFillRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  gfx.data.fgColor = c;
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+  return jsvLockAgain(parent);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "drawRect",
   "generate" : "jswrap_graphics_drawRect",
   "params" : [
