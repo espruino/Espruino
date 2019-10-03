@@ -165,6 +165,7 @@ typedef struct {
 } Vector3;
 
 #define ACCEL_POLL_INTERVAL 100 // in msec
+#define BTN1_LOAD_TIMEOUT 20 // 2s - in poll intervals
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo internalI2C;
 /// Is I2C busy? if so we'll skip one reading in our interrupt so we don't overlap
@@ -177,6 +178,8 @@ unsigned char faceUpCounter;
 bool wasFaceUp;
 /// time since LCD contents were last modified
 volatile unsigned char flipCounter;
+/// How long has BTN1 been held down for
+unsigned char btn1Counter;
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
 int lcdPowerTimeout = (5*1000)/ACCEL_POLL_INTERVAL;
 /// Is the LCD on?
@@ -201,6 +204,7 @@ typedef enum {
   JSS_GPS_DATA = 16, ///< we got a complete set of GPS data in 'gpsFix'
   JSS_GPS_DATA_LINE = 32, ///< we got a line of GPS data
   JSS_MAG_DATA = 64, ///< need to push magnetometer data to JS
+  JSS_RESET = 128, ///< reset the watch and reload code from flash
 } JsStrapTasks;
 JsStrapTasks strapTasks;
 
@@ -249,6 +253,7 @@ void jswrap_hackstrap_setLCDPower(bool isOn) {
     }
     jsvUnLock(strap);
   }
+  flipCounter = 0;
   lcdPowerOn = isOn;
 }
 
@@ -435,6 +440,16 @@ void watchdogHandler() {
       strapTasks |= JSS_LCD_ON;
   }
   if (flipCounter<255) flipCounter++;
+  // If BTN1 is held down, trigger a reset
+  if (jshPinGetValue(BTN1_PININDEX)) {
+    if (btn1Counter<255) btn1Counter++;
+  } else {
+    if (btn1Counter > BTN1_LOAD_TIMEOUT) {
+      strapTasks |= JSS_RESET;
+      // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
+    }
+    btn1Counter = 0;
+  }
 
   if (lcdPowerTimeout && lcdPowerOn && flipCounter>=lcdPowerTimeout) {
     // 10 seconds of inactivity, turn off display
@@ -773,6 +788,8 @@ bool jswrap_hackstrap_idle() {
       }
     }
   }
+  if (strapTasks & JSS_RESET)
+    jsiStatus |= JSIS_TODO_FLASH_LOAD;
   jsvUnLock(strap);
   strapTasks = JSS_NONE;
   return false;
