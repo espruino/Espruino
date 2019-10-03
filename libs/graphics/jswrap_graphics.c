@@ -1146,7 +1146,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
     x -= jswrap_graphics_stringWidth(parent, var) * (gfx.data.fontAlignX+1)/2;
   if (gfx.data.fontAlignY<2)  // 0=center, 1=bottom, 2=undefined, 3=top
-    y -= customHeight * (gfx.data.fontAlignX+1)/2;
+    y -= customHeight * (gfx.data.fontAlignY+1)/2;
 #endif
 
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
@@ -1283,17 +1283,17 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
       width += (int)graphicsVectorCharWidth(&gfx, scale, ch);
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_4X6) {
-      width += 4;
+      width += 4*scale;
 #ifdef USE_FONT_6X8
     } else if (font == JSGRAPHICS_FONTSIZE_6X8) {
-      width += 6;
+      width += 6*scale;
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_CUSTOM) {
       if (jsvIsString(customWidth)) {
         if (ch>=customFirstChar)
-          width += (unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-customFirstChar));
+          width += scale*(unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-customFirstChar));
       } else
-        width += (int)jsvGetInteger(customWidth);
+        width += scale*(int)jsvGetInteger(customWidth);
     }
     jsvStringIteratorNext(&it);
   }
