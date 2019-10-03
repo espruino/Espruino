@@ -99,23 +99,26 @@ static bool jsfIsErased(uint32_t addr, uint32_t len) {
     uint32_t l = len;
     if (l>sizeof(buf)) l=sizeof(buf);
     jshFlashRead(&buf, addr, l);
-    addr += l;
-    len -= l;
     for (int i=0;i<l;i++)
       if (buf[i]!=0xFF) return false;
+    addr += l;
+    len -= l;
   }
   return true;
 }
 
 /// Is an area of flash equal to something that's in RAM?
 static bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
-  uint32_t x, buflen;
-  unsigned char buf[JSF_ALIGNMENT];
-  for (x=0;x<len;x+=JSF_ALIGNMENT) {
-    jshFlashRead(&buf, addr+x,JSF_ALIGNMENT);
-
-    buflen = (x<=len-JSF_ALIGNMENT) ? JSF_ALIGNMENT : (len-x);
-    if (memcmp(buf, &data[x], buflen)) return false;
+  unsigned char buf[128];
+  assert((sizeof(buf)&(JSF_ALIGNMENT-1))==0);
+  uint32_t x=0;
+  while (len) {
+    uint32_t l = len;
+    if (l>sizeof(buf)) l=sizeof(buf);
+    jshFlashRead(&buf, addr+x, l);
+    if (memcmp(buf, &data[x], l)) return false;
+    x += l;
+    len -= l;
   }
   return true;
 }
