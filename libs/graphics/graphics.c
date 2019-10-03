@@ -156,7 +156,7 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
 #endif
 #ifdef USE_LCD_ST7789_8BIT
     } else if (gfx->data.type == JSGRAPHICSTYPE_ST7789_8BIT) {
-      lcdSetCallbacks_ST7789(gfx);
+      lcdST7789_setCallbacks(gfx);
 #endif
     } else {
       jsExceptionHere(JSET_INTERNALERROR, "Unknown graphics type\n");

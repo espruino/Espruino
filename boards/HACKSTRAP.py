@@ -80,12 +80,13 @@ devices = {
   'BTN4' : { 'pin' : 'D11', 'pinstate' : 'IN_PULLDOWN' }, # touch left
   'BTN5' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' }, # touch right
   'VIBRATE' : { 'pin' : 'D13' },
+  'SPEAKER' : { 'pin' : 'D18' },
   'LCD' : {
             'width' : 240, 'height' : 240, 'bpp' : 16,
             'controller' : 'st7789_8bit', # 8 bit parallel mode
             'pin_dc' : 'D8',
             'pin_cs' : 'D10',
-#            'pin_rst' : 'D23', # IO expander P7
+#            'pin_rst' : '', # IO expander P7
             'pin_sck' : 'D9',
             'pin_d0' : 'D0',
             'pin_d1' : 'D1',
@@ -95,22 +96,22 @@ devices = {
             'pin_d5' : 'D5',
             'pin_d6' : 'D6',
             'pin_d7' : 'D7',
-#            'pin_bl' : 'D21', # IO expander P6
+#            'pin_bl' : '', # IO expander P6
           },
   'GPS' : {
             'device' : 'M8130-KT',
-#            'pin_en' : 'D0', # IO expander P0
+#            'pin_en' : '', # IO expander P0
             'pin_rx' : 'D25', 
             'pin_tx' : 'D26'
           },
-#  'BAT' : {
-#            'pin_charging' : 'D7', # inverted
-#            'pin_voltage' : 'D4'
-#          },
-#  'HEARTRATE' : {
-#            'pin_led' : 'D14',
-#            'pin_analog' : 'D3'
-#          },
+  'BAT' : {
+#            'pin_charging' : '?',
+            'pin_voltage' : 'D30'
+          },
+  'HEARTRATE' : {
+           # 'pin_led' : '', on IO expander
+            'pin_analog' : 'D29'
+          },
   'ACCEL' : {
             'device' : 'KX023', 'addr' : 0x1e,
             'pin_sda' : 'D15',

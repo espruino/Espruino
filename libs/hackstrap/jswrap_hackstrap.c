@@ -1,7 +1,7 @@
 /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
- * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
+ * Copyright (C) 2019 Gordon Williams <gw@pur3.co.uk>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains JavaScript interface for Pixl.js (http://www.espruino.com/Pixl.js)
+ * Contains JavaScript interface for HackStrap (http://www.espruino.com/HackStrap)
  * ----------------------------------------------------------------------------
  */
 
@@ -75,6 +75,91 @@ Class containing utility functions for the [HackStrap Smart Watch](http://www.es
 The HackStrap's vibration motor.
 */
 
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "accel",
+  "params" : [["xyz","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter
+
+* `x` is X axis (left-right) in `g`
+* `y` is Y axis (up-down) in `g`
+* `z` is Z axis (in-out) in `g`
+* `diff` is difference between this and the last reading in `g`
+* `mag` is the magnitude of the acceleration in `g`
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "faceUp",
+  "params" : [["up","bool","`true` if face-up"]],
+  "ifdef" : "HACKSTRAP"
+}
+Has the watch been moved so that it is face-up, or not face up?
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "mag",
+  "params" : [["xyz","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a parameter
+
+* `x/y/z` raw x,y,z magnetometer readings
+* `dx/dy/dz` readings based on calibration since magnetometer turned on
+* `heading` in degrees based on calibrated readings
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "GPS-raw",
+  "params" : [["nmea","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+Raw NMEA GPS data lines received as a string
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "GPS",
+  "params" : [["fix","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+GPS data, as an object
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "lcdPower",
+  "params" : [["on","bool","`true` if screen is on"]],
+  "ifdef" : "HACKSTRAP"
+}
+Has the screen been turned on or off? Can be used to stop tasks that are no longer useful if nothing is displayed.
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "faceUp",
+  "params" : [["data","JsVar","`{dir, double, x, y, z}`"]],
+  "ifdef" : "HACKSTRAP"
+}
+If the watch is tapped, this event contains information on the way it was tapped.
+
+`dir` reports the side of the watch that was tapped (not the direction it was tapped in).
+
+```
+{
+  dir : "left/right/top/bottom/front/back",
+  double : true/false // was this a double-tap?
+  x : -2 .. 2, // the axis of the tap
+  y : -2 .. 2, // the axis of the tap
+  z : -2 .. 2 // the axis of the tap
+```
+ */
+
 typedef struct {
   short x,y,z;
 } Vector3;
@@ -93,7 +178,7 @@ bool wasFaceUp;
 /// time since LCD contents were last modified
 volatile unsigned char flipCounter;
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
-int lcdPowerTimeout = 0;
+int lcdPowerTimeout = (4*1000)/ACCEL_POLL_INTERVAL;
 /// Is the LCD on?
 bool lcdPowerOn;
 /// Is the compass on?
@@ -119,6 +204,11 @@ typedef enum {
 } JsStrapTasks;
 JsStrapTasks strapTasks;
 
+/// Flip buffer contents with the screen.
+void lcd_flip(JsVar *parent) {
+  lcdST7789_flip();
+}
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "Strap",
@@ -129,17 +219,20 @@ JsStrapTasks strapTasks;
     ]
 }
 This function can be used to turn HackStrap's LCD off or on.
+
+*When on, the LCD draws roughly 40mA*
 */
 void jswrap_hackstrap_setLCDPower(bool isOn) {
+  // Note: LCD without backlight draws ~5mA
   if (isOn) { // wake
-    lcdCmd_ST7789(0x11, 0, NULL); // SLPOUT
+    lcdST7789_cmd(0x11, 0, NULL); // SLPOUT
     jshDelayMicroseconds(20);
-    lcdCmd_ST7789(0x29, 0, NULL);
+    lcdST7789_cmd(0x29, 0, NULL);
     jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight
   } else { // sleep
-    lcdCmd_ST7789(0x28, 0, NULL);
+    lcdST7789_cmd(0x28, 0, NULL);
     jshDelayMicroseconds(20);
-    lcdCmd_ST7789(0x10, 0, NULL); // SLPIN
+    lcdST7789_cmd(0x10, 0, NULL); // SLPIN
     jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight
   }
   if (lcdPowerOn != isOn) {
@@ -152,6 +245,39 @@ void jswrap_hackstrap_setLCDPower(bool isOn) {
     jsvUnLock(strap);
   }
   lcdPowerOn = isOn;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "setLCDMode",
+    "generate" : "jswrap_hackstrap_setLCDMode",
+    "params" : [
+      ["mode","JsVar","The LCD mode (See below)"]
+    ]
+}
+This function can be used to turn double-buffering on HackStrap's LCD on or off (the default).
+
+* `undefined`/`"direct"` (the default) - The drawable area is 240x240, terminal and vertical scrolling will work. Draw calls take effect immediately so there may be flickering unless you're careful.
+* `"doublebuffered" - The drawable area is 240x160, terminal and vertical scrolling will not work. Draw calls only take effect when `g.flip()` is called and there is no flicker.
+*/
+void jswrap_hackstrap_setLCDMode(JsVar *mode) {
+  LCDST7789Mode lcdMode = LCDST7789_MODE_UNBUFFERED;
+  if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
+    lcdMode = LCDST7789_MODE_UNBUFFERED;
+  else if (jsvIsStringEqual(mode,"doublebuffered"))
+    lcdMode = LCDST7789_MODE_DOUBLEBUFFERED;
+  else
+    jsExceptionHere(JSET_ERROR,"Unknown LCD Mode %j",mode);
+
+  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
+  if (!graphics) return;
+  JsGraphics gfx;
+  if (!graphicsGetFromVar(&gfx, graphics)) return;
+  gfx.data.height = (lcdMode==LCDST7789_MODE_DOUBLEBUFFERED) ? 160 : LCD_HEIGHT;
+  graphicsSetVar(&gfx);
+  jsvUnLock(graphics);
+  lcdST7789_setMode( lcdMode );
 }
 
 /*JSON{
@@ -201,7 +327,7 @@ Writes a command directly to the ST7735 LCD controller
 */
 void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data) {
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
-  lcdCmd_ST7789(cmd, dLen, dPtr);
+  lcdST7789_cmd(cmd, dLen, (const uint8_t *)dPtr);
 }
 
 /*JSON{
@@ -221,6 +347,8 @@ When on, data is output via the `GPS` event on `Strap`:
 Strap.setGPSPower(1);
 Strap.on('GPS',print);
 ```
+
+*When on, the GPS draws roughly 20mA*
 */
 void jswrap_hackstrap_setGPSPower(bool isOn) {
   if (isOn) {
@@ -257,6 +385,8 @@ When on, data is output via the `mag` event on `Strap`:
 Strap.setCompassPower(1);
 Strap.on('mag',print);
 ```
+
+*When on, the compass draws roughly 2mA*
 */
 void jswrap_hackstrap_setCompassPower(bool isOn) {
   compassPowerOn = isOn;
@@ -399,11 +529,16 @@ void jswrap_hackstrap_init() {
   gfx.data.bpp = LCD_BPP;
 
   //gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
-  lcdInit_ST7789(&gfx);
+  lcdST7789_init(&gfx);
   graphicsSetVar(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
   jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);
   graphicsGetFromVar(&gfx, graphics);
+
+  // Create 'flip' fn
+  JsVar *fn;
+  fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG);
+  jsvObjectSetChildAndUnLock(graphics,"flip",fn);
 
   // If the button is pressed during reset, perform a self test.
   // With bootloader this means apply power while holding button for >3 secs
@@ -449,7 +584,7 @@ void jswrap_hackstrap_init() {
   jswrap_hackstrap_accelWr(0x19,0x80); // CNTL2 Software reset
   jshDelayMicroseconds(2000);
   jswrap_hackstrap_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
-  jswrap_hackstrap_accelWr(0x1a,0xb11011110); // CNTL3
+  jswrap_hackstrap_accelWr(0x1a,0b11011110); // CNTL3
   // 50Hz tilt
   // 50Hz directional tap
   // 50Hz general motion detection and the high-pass filtered outputs
@@ -682,12 +817,12 @@ bool nmea_decode(const char *nmeaLine) {
     // LAT
     gpsFix.lat = nmea_decode_latlon(nmea, nextComma);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    if (*nmea=="S") gpsFix.lat=-gpsFix.lat;
+    if (*nmea=='S') gpsFix.lat=-gpsFix.lat;
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // LON
     gpsFix.lon = nmea_decode_latlon(nmea, nextComma);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    if (*nmea=="W") gpsFix.lon=-gpsFix.lon;
+    if (*nmea=='W') gpsFix.lon=-gpsFix.lon;
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // quality
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
@@ -851,87 +986,129 @@ void jswrap_hackstrap_off() {
 }
 
 /*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "accel",
-  "params" : [["xyz","JsVar",""]],
-  "ifdef" : "HACKSTRAP"
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "menu",
+    "generate" : "jswrap_strap_menu",
+    "params" : [
+      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
+    ],
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
 }
-Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter
+Display a menu on HackStrap's screen, and set up the buttons to navigate through it.
 
-* `x` is X axis (left-right) in `g`
-* `y` is Y axis (up-down) in `g`
-* `z` is Z axis (in-out) in `g`
-* `diff` is difference between this and the last reading in `g`
-* `mag` is the magnitude of the acceleration in `g`
- */
-/*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "faceUp",
-  "params" : [["up","bool","`true` if face-up"]],
-  "ifdef" : "HACKSTRAP"
-}
-Has the watch been moved so that it is face-up, or not face up?
- */
-/*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "mag",
-  "params" : [["xyz","JsVar",""]],
-  "ifdef" : "HACKSTRAP"
-}
-Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a parameter
+Supply an object containing menu items. When an item is selected, the
+function it references will be executed. For example:
 
-* `x/y/z` raw x,y,z magnetometer readings
-* `dx/dy/dz` readings based on calibration since magnetometer turned on
-* `heading` in degrees based on calibrated readings
- */
-/*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "GPS-raw",
-  "params" : [["nmea","JsVar",""]],
-  "ifdef" : "HACKSTRAP"
-}
-Raw NMEA GPS data lines received as a string
- */
-/*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "GPS",
-  "params" : [["fix","JsVar",""]],
-  "ifdef" : "HACKSTRAP"
-}
-GPS data, as an object
- */
-/*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "lcdPower",
-  "params" : [["on","bool","`true` if screen is on"]],
-  "ifdef" : "HACKSTRAP"
-}
-Has the screen been turned on or off? Can be used to stop tasks that are no longer useful if nothing is displayed.
+```
+var boolean = false;
+var number = 50;
+// First menu
+var mainmenu = {
+  "" : { "title" : "-- Main Menu --" },
+  "Backlight On" : function() { LED1.set(); },
+  "Backlight Off" : function() { LED1.reset(); },
+  "Submenu" : function() { Strap.menu(submenu); },
+  "A Boolean" : {
+    value : boolean,
+    format : v => v?"On":"Off",
+    onchange : v => { boolean=v; }
+  },
+  "A Number" : {
+    value : number,
+    min:0,max:100,step:10,
+    onchange : v => { number=v; }
+  },
+  "Exit" : function() { Strap.menu(); },
+};
+// Submenu
+var submenu = {
+  "" : { "title" : "-- SubMenu --" },
+  "One" : undefined, // do nothing
+  "Two" : undefined, // do nothing
+  "< Back" : function() { Strap.menu(mainmenu); },
+};
+// Actually display the menu
+Strap.menu(mainmenu);
+```
+
+See http://www.espruino.com/graphical_menu for more detailed information.
 */
-/*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "faceUp",
-  "params" : [["data","JsVar","`{dir, double, x, y, z}`"]],
-  "ifdef" : "HACKSTRAP"
+JsVar *jswrap_strap_menu(JsVar *menu) {
+  /* Unminified JS code is:
+
+Strap.menu = function(menudata) {
+  if (Strap.btnWatches) {
+    Strap.btnWatches.forEach(clearWatch);
+    Strap.btnWatches = undefined;
+  }
+  g.clear();g.flip(); // clear screen if no menu supplied
+  if (!menudata) return;
+  function im(b) {
+    return {
+      width:8,height:b.length,bpp:1,buffer:new Uint8Array(b).buffer
+    };
+  }
+  if (!menudata[""]) menudata[""]={};
+  g.setFont('6x8');g.setFontAlign(-1,-1,0);
+  var w = g.getWidth()-9;
+  var h = g.getHeight();
+  menudata[""].fontHeight=8;
+  menudata[""].x=0;
+  menudata[""].x2=w-2;
+  menudata[""].y=40;
+  menudata[""].y2=200;
+  menudata[""].preflip=function() {
+    g.drawImage(im([
+      0b00010000,
+      0b00111000,
+      0b01111100,
+      0b11111110,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+    ]),w,40);
+    g.drawImage(im([
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b11111110,
+      0b01111100,
+      0b00111000,
+      0b00010000,
+    ]),w,194);
+    g.drawImage(im([
+      0b00000000,
+      0b00001000,
+      0b00001100,
+      0b00001110,
+      0b11111111,
+      0b00001110,
+      0b00001100,
+      0b00001000,
+    ]),w,116);
+    //g.drawLine(7,0,7,h);
+    //g.drawLine(w,0,w,h);
+  };
+  var m = require("graphical_menu").list(g, menudata);
+  Strap.btnWatches = [
+    setWatch(function() { m.move(-1); }, BTN1, {repeat:1}),
+    setWatch(function() { m.move(1); }, BTN3, {repeat:1}),
+    setWatch(function() { m.select(); }, BTN2, {repeat:1})
+  ];
+  return m;
+};
+*/
+
+  return jspExecuteJSFunction("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Strap.btnWatches&&(Strap.btnWatches.forEach(clearWatch),Strap.btnWatches=void 0);"
+      "g.clear();g.flip();"
+      "if(a){a['']||(a['']={});g.setFont('6x8');g.setFontAlign(-1,-1,0);var d=g.getWidth()-18,e=g.getHeight();a[''].fontHeight=8;a[''].x=0;a[''].x2=d-2;a[''].y=40;a[''].y2=200;a[''].preflip=function(){"
+      "g.drawImage(c([16,56,124,254,16,16,16,16]),d,40);g.drawImage(c([16,16,16,16,254,124,56,16]),d,194);g.drawImage(c([0,8,12,14,255,14,12,8]),d,116)};"
+      "var b=require('graphical_menu').list(g,a);Strap.btnWatches=[setWatch(function(){b.move(-1)},BTN1,{repeat:1}),setWatch(function(){b.move(1)},BTN3,{repeat:1}),"
+      "setWatch(function(){b.select()},BTN2,{repeat:1})];return b}})",0,1,&menu);
 }
-If the watch is tapped, this event contains information on the way it was tapped.
 
-`dir` reports the side of the watch that was tapped (not the direction it was tapped in).
 
-```
-{
-  dir : "left/right/top/bottom/front/back",
-  double : true/false // was this a double-tap?
-  x : -2 .. 2, // the axis of the tap
-  y : -2 .. 2, // the axis of the tap
-  z : -2 .. 2 // the axis of the tap
-```
- */
 

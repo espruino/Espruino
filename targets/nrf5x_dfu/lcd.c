@@ -85,7 +85,7 @@ const unsigned short LCD_FONT_3X5[] = { // from 33 up to 127
     PACK_5_TO_16( X_X , _X_ , XXX , _XX , _X_ ),
 };
 
-int lcdx = 0, lcdy = 0;
+int lcdx = 0, lcdy = LCD_START_Y;
 #define LCD_ROWSTRIDE (LCD_DATA_WIDTH>>3)
 char lcd_data[LCD_ROWSTRIDE*LCD_DATA_HEIGHT];
 #ifdef LCD_STORE_MODIFIED
@@ -394,7 +394,7 @@ void lcd_flip() {
     ymax=ymax*2+1;
 #else
     const int ymin = 0;
-    const int ymax = LCD_DATA_HEIGHT-1;
+    const int ymax = (LCD_DATA_HEIGHT*2)-1;
 #endif
     jshPinSetValue(LCD_PIN_CS, 0);
     jshPinSetValue(LCD_PIN_DC, 0); // command

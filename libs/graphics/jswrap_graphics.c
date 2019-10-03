@@ -1557,9 +1557,9 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   }
   const uint16_t *palettePtr = 0;
   uint32_t paletteMask = 0;
+  uint16_t simplePalette[2];
 
   if (imageBpp==1) {
-    uint16_t simplePalette[2];
     simplePalette[0] = gfx.data.bgColor;
     simplePalette[1] = gfx.data.fgColor;
     palettePtr = simplePalette;

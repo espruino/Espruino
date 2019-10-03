@@ -103,7 +103,7 @@ typedef struct JsGraphics {
 void graphicsStructResetState(JsGraphics *gfx);
 /// Completely reset graphics structure including flags
 void graphicsStructInit(JsGraphics *gfx);
-/// Access the Graphics Instance JsVar and get the relevant info in a JsGraphics structure
+/// Access the Graphics Instance JsVar and get the relevant info in a JsGraphics structure. True on success
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 /// Access the Graphics Instance JsVar and set the relevant info from JsGraphics structure
 void graphicsSetVar(JsGraphics *gfx);
