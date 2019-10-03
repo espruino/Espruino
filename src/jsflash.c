@@ -170,13 +170,11 @@ static uint32_t jsfGetSpaceLeftInPage(uint32_t addr) {
   if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
     return 0;
   uint32_t nextPageStart = pageAddr+pageLen;
-  // if the next page is empty, skip forward
+  // if the next page is empty, assume it's empty until the end of flash
   JsfFileHeader header;
-  while (nextPageStart<JSF_END_ADDRESS &&
-         !jsfGetFileHeader(nextPageStart, &header)) {
-    if (!jshFlashGetPage(nextPageStart, &pageAddr, &pageLen))
-        return 0;
-    nextPageStart = pageAddr+pageLen;
+  if (nextPageStart<JSF_END_ADDRESS &&
+      !jsfGetFileHeader(nextPageStart, &header)) {
+    nextPageStart = JSF_END_ADDRESS;
   }
   return nextPageStart - addr;
 }
@@ -203,11 +201,13 @@ static bool jsfGetNextFileHeader(uint32_t *addr, JsfFileHeader *header, jsfGetNe
   if (newAddr+sizeof(JsfFileHeader)>JSF_END_ADDRESS) return 0; // not enough space
   *addr = newAddr;
   bool valid = jsfGetFileHeader(newAddr, header);
-  while ((type==GNFH_GET_ALL) && !valid) {
+  if ((type==GNFH_GET_ALL) && !valid) {
+    // there wasn't another header in this page - check the next page
     newAddr = jsfGetAddressOfNextPage(newAddr);
     *addr = newAddr;
     if (!newAddr) return false; // no valid address
     valid = jsfGetFileHeader(newAddr, header);
+    // we can't have a blank page and then a header, so stop our search
   }
   return valid;
 }
