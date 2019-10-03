@@ -105,7 +105,7 @@ devices = {
             'pin_tx' : 'D26'
           },
   'BAT' : {
-#            'pin_charging' : '?',
+            'pin_charging' : 'D12', # active low, input pullup
             'pin_voltage' : 'D30'
           },
   'HEARTRATE' : {

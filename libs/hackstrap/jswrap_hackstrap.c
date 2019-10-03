@@ -37,25 +37,6 @@
 #include "jswrap_graphics.h"
 #include "lcd_st7789_8bit.h"
 
-#define GPS_UART EV_SERIAL1
-#define IOEXP_GPS 0x01
-#define IOEXP_LCD_BACKLIGHT 0x20
-#define IOEXP_LCD_RESET 0x40
-#define IOEXP_HRM 0x80
-
-typedef struct {
-  double lat,lon,alt;
-  double speed, course;
-  int hour,min,sec,ms;
-  uint8_t day,month,year;
-} NMEAFixInfo;
-
-#define NMEA_MAX_SIZE 82  //  82 is the max for NMEA
-uint8_t nmeaCount = 0; // how many characters of NMEA data do we have?
-char nmeaIn[NMEA_MAX_SIZE]; //  NMEA line being received right now
-char nmeaLine[NMEA_MAX_SIZE]; // A line of received NMEA data
-NMEAFixInfo gpsFix;
-
 /*JSON{
   "type": "class",
   "class" : "Strap",
@@ -160,6 +141,25 @@ If the watch is tapped, this event contains information on the way it was tapped
 ```
  */
 
+#define GPS_UART EV_SERIAL1
+#define IOEXP_GPS 0x01
+#define IOEXP_LCD_BACKLIGHT 0x20
+#define IOEXP_LCD_RESET 0x40
+#define IOEXP_HRM 0x80
+
+typedef struct {
+  double lat,lon,alt;
+  double speed, course;
+  int hour,min,sec,ms;
+  uint8_t day,month,year;
+} NMEAFixInfo;
+
+#define NMEA_MAX_SIZE 82  //  82 is the max for NMEA
+uint8_t nmeaCount = 0; // how many characters of NMEA data do we have?
+char nmeaIn[NMEA_MAX_SIZE]; //  NMEA line being received right now
+char nmeaLine[NMEA_MAX_SIZE]; // A line of received NMEA data
+NMEAFixInfo gpsFix;
+
 typedef struct {
   short x,y,z;
 } Vector3;
@@ -178,7 +178,7 @@ bool wasFaceUp;
 /// time since LCD contents were last modified
 volatile unsigned char flipCounter;
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
-int lcdPowerTimeout = (4*1000)/ACCEL_POLL_INTERVAL;
+int lcdPowerTimeout = (5*1000)/ACCEL_POLL_INTERVAL;
 /// Is the LCD on?
 bool lcdPowerOn;
 /// Is the compass on?
@@ -206,6 +206,11 @@ JsStrapTasks strapTasks;
 
 /// Flip buffer contents with the screen.
 void lcd_flip(JsVar *parent) {
+  if (lcdPowerTimeout && !lcdPowerOn) {
+    // LCD was turned off, turn it back on
+    jswrap_hackstrap_setLCDPower(1);
+  }
+  flipCounter = 0;
   lcdST7789_flip();
 }
 
@@ -311,6 +316,18 @@ void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout) {
 */
 bool jswrap_hackstrap_isLCDOn() {
   return lcdPowerOn;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "isCharging",
+    "generate" : "jswrap_hackstrap_isCharging",
+    "return" : ["bool","Is the battery charging or not?"]
+}
+*/
+bool jswrap_hackstrap_isCharging() {
+  return !jshPinGetValue(BAT_PIN_CHARGING);
 }
 
 /*JSON{
@@ -545,19 +562,19 @@ void jswrap_hackstrap_init() {
   static bool firstStart = true;
 
   graphicsClear(&gfx);
-  int h=6;
-  jswrap_graphics_drawCString(&gfx,0,h*1," ____                 _ ");
-  jswrap_graphics_drawCString(&gfx,0,h*2,"|  __|___ ___ ___ _ _|_|___ ___ ");
-  jswrap_graphics_drawCString(&gfx,0,h*3,"|  __|_ -| . |  _| | | |   | . |");
-  jswrap_graphics_drawCString(&gfx,0,h*4,"|____|___|  _|_| |___|_|_|_|___|");
-  jswrap_graphics_drawCString(&gfx,0,h*5,"         |_| espruino.com");
-  jswrap_graphics_drawCString(&gfx,0,h*6," "JS_VERSION" (c) 2019 G.Williams");
+  int h=6,y=20;
+  jswrap_graphics_drawCString(&gfx,0,y+h*1," ____                 _ ");
+  jswrap_graphics_drawCString(&gfx,0,y+h*2,"|  __|___ ___ ___ _ _|_|___ ___ ");
+  jswrap_graphics_drawCString(&gfx,0,y+h*3,"|  __|_ -| . |  _| | | |   | . |");
+  jswrap_graphics_drawCString(&gfx,0,y+h*4,"|____|___|  _|_| |___|_|_|_|___|");
+  jswrap_graphics_drawCString(&gfx,0,y+h*5,"         |_| espruino.com");
+  jswrap_graphics_drawCString(&gfx,0,y+h*6," "JS_VERSION" (c) 2019 G.Williams");
   // Write MAC address in bottom right
   JsVar *addr = jswrap_ble_getAddress();
   char buf[20];
   jsvGetString(addr, buf, sizeof(buf));
   jsvUnLock(addr);
-  jswrap_graphics_drawCString(&gfx,(LCD_WIDTH-1)-strlen(buf)*6,h*8,buf);
+  jswrap_graphics_drawCString(&gfx,(LCD_WIDTH-1)-strlen(buf)*6,y+h*8,buf);
 
 
 /*
@@ -607,8 +624,20 @@ void jswrap_hackstrap_init() {
   jswrap_hackstrap_compassWr(0x32,1);
   jswrap_hackstrap_compassWr(0x31,0);
   compassPowerOn = false;
-
   i2cBusy = false;
+  // Other IO
+  jshPinSetState(BAT_PIN_CHARGING, JSHPINSTATE_GPIO_IN_PULLUP);
+  // Flash memory - on first boot we might need to erase it
+
+  assert(sizeof(buf)>=sizeof(JsfFileHeader));
+  jshFlashRead(buf, FLASH_SAVED_CODE_START, sizeof(JsfFileHeader));
+  bool allZero = true;
+  for (unsigned int i=0;i<sizeof(JsfFileHeader);i++)
+    if (buf[i]) allZero=false;
+  if (allZero) {
+    jsiConsolePrintf("Erasing Storage Area\n");
+    jsfEraseAll();
+  }
 
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens

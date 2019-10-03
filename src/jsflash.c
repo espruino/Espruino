@@ -84,6 +84,7 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
   jshFlashRead(header, addr, sizeof(JsfFileHeader));
   //DBG("Header 0x%x size 0x%x repl 0x%x\n", addr, header->size, header->replacement);
   return (header->size != JSF_WORD_UNSET) &&
+         (header->size < FLASH_SAVED_CODE_LENGTH) &&
          (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) < JSF_END_ADDRESS);
 }
 

@@ -18,6 +18,7 @@ void jswrap_hackstrap_setLCDPower(bool isOn);
 void jswrap_hackstrap_setLCDMode(JsVar *mode);
 void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout);
 bool jswrap_hackstrap_isLCDOn();
+bool jswrap_hackstrap_isCharging();
 
 void jswrap_hackstrap_setGPSPower(bool isOn);
 void jswrap_hackstrap_setCompassPower(bool isOn);
