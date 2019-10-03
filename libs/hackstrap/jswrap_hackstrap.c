@@ -765,7 +765,9 @@ bool jswrap_hackstrap_idle() {
         jsvObjectSetChildAndUnLock(o, "dx", jsvNewFromInteger(dx));
         jsvObjectSetChildAndUnLock(o, "dy", jsvNewFromInteger(dy));
         jsvObjectSetChildAndUnLock(o, "dz", jsvNewFromInteger(dz));
-        jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(180+(jswrap_math_atan2(dy,dx)*(180/3.141592))));
+        double h = jswrap_math_atan2(dx,dy)*(-180/PI);
+        if (h<0) h+=360;
+        jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
         jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"mag", &o, 1);
         jsvUnLock(o);
       }
