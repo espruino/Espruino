@@ -93,11 +93,15 @@ static bool jsfIsErased(uint32_t addr, uint32_t len) {
   uint32_t x;
   /* Read whole blocks at the alignment size and check
    * everything (even slightly past the length) */
-  unsigned char buf[JSF_ALIGNMENT];
-  for (x=0;x<len;x+=JSF_ALIGNMENT) {
-    jshFlashRead(&buf, addr+x, JSF_ALIGNMENT);
-    int i;
-    for (i=0;i<JSF_ALIGNMENT;i++)
+  unsigned char buf[128];
+  assert((sizeof(buf)&(JSF_ALIGNMENT-1))==0);
+  while (len) {
+    uint32_t l = len;
+    if (l>sizeof(buf)) l=sizeof(buf);
+    jshFlashRead(&buf, addr, l);
+    addr += l;
+    len -= l;
+    for (int i=0;i<l;i++)
       if (buf[i]!=0xFF) return false;
   }
   return true;
