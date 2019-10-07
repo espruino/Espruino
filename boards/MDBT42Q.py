@@ -84,7 +84,8 @@ board_module = {
   'right' : [ 'GND','D22','SWDIO','SWDCLK','D21','D20','D19','D18','D17','D16','D15','D14','D13','D12','D11' ],
   'bottom' : [ 'GND','D0','D1','D2','D3','D4','D5','D6','D7','D8','D9','D10','GND' ],
   '_notes' : {
-    'D21' : "Also NRST if configured"
+    'D21' : "Also NRST if configured",
+    'D22' : "This is used as SCK when driving Neopixels with 'require('neopixel').write'. If not driving neopixels this behaves like any other pin.",
   }
 };
 

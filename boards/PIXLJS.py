@@ -46,6 +46,7 @@ info = {
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Pixl.js"\'',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://www.espruino.com/ide"\'',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
+     'DEFINES+=-DNEOPIXEL_SCK_PIN=14',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
      'INCLUDE += -I$(ROOT)/libs/pixljs',
@@ -105,6 +106,7 @@ board = {
     'D1' : "Serial Console TX when Bluetooth disconnected",
     'A4' : "Also used for the pin marked SDA",
     'A5' : "Also used for the pin marked SCL",
+    'H8' : "This is used as SCK when driving Neopixels with 'require('neopixel').write'. It will not affect the LCD as CS won't be asserted.",
     '5V' : "Pixl.js has no 5v rail so this is not connected by default. A solder jumper can be used to connect it to Vin or 3.3v"
   }
 };

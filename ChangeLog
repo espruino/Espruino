@@ -16,6 +16,7 @@
             Graphics.setFont("4x6",2) will now double the size of a bitmap font
             Graphics.drawImage can now take a String of data for an image (eg. direct from Storage)
             nRF5x: Support connection to devices with RANDOM_PRIVATE_RESOLVABLE and RANDOM_PRIVATE_NON_RESOLVABLE addresses
+            Pixl.js: Move SCK pin used during Neopixel writes to ensure it doesn't interfere with BTN3
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
