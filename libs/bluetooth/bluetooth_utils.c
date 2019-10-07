@@ -89,6 +89,10 @@ bool bleVarToAddr(JsVar *mac, ble_gap_addr_t *addr) {
       addr->addr_type = BLE_GAP_ADDR_TYPE_PUBLIC; // default
     else if (jsvIsStringEqualOrStartsWithOffset(mac, " random", false, 17, false))
       addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC;
+    else if (jsvIsStringEqualOrStartsWithOffset(mac, " private-resolvable", false, 17, false))
+      addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE;
+    else if (jsvIsStringEqualOrStartsWithOffset(mac, " private-nonresolvable", false, 17, false))
+      addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE;
     else return false;
   }
   return true;
@@ -101,6 +105,11 @@ JsVar *bleAddrToStr(ble_gap_addr_t addr) {
     typeStr = " public";
   else if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_STATIC)
     typeStr = " random";
+  else if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE)
+    typeStr = " private-resolvable";
+  else if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE)
+    typeStr = " private-nonresolvable";
+  else typeStr = "";
   return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x%s",
       addr.addr[5],
       addr.addr[4],
