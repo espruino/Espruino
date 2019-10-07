@@ -103,9 +103,9 @@ bool dfu_enter_check(void) {
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
-      lcd_print("RELEASE BTN1 FOR DFU\r\nHOLD BTN1 TO BOOT\r\nHOLD BTN1 + BTN2 TO TURN OFF\r\n\r\n<                      >\r");
+      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\BTN1 + BTN2 TO TURN OFF\r\n\r\n<                      >\r");
 #else
-      lcd_print("RELEASE BTN1 FOR DFU\r\nHOLD BTN1 TO BOOT\r\n\r\n<                      >\r");
+      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                      >\r");
 #endif
       int count = 3000;
       while (get_btn1_state() && count) {
@@ -138,7 +138,7 @@ bool dfu_enter_check(void) {
 
     if (!dfu_start) {
 #ifdef LCD
-      lcd_println("\r\nRESUMING BOOT...");
+      lcd_println("\r\nBOOTING...");
       nrf_delay_us(500000);
 #endif
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
@@ -175,7 +175,6 @@ void reboot_check_handler() {
 extern void dfu_set_status(DFUStatus status) {
   switch (status) {
   case DFUS_ADVERTISING_START:
-    lcd_println("\nBOOTLOADER\r\n==========\n");
     set_led_state(true,false);
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
     uint32_t err_code;
