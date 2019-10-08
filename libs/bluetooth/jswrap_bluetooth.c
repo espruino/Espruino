@@ -1082,7 +1082,7 @@ NRF.setServices({
       notify : true,   // optional, default is false
       indicate : true,   // optional, default is false
       description: "My Characteristic",  // optional, default is null,
-      security: { // optional
+      security: { // optional - see NRF.setSecurity
         read: { // optional
           encrypted: false, // optional, default is false
           mitm: false, // optional, default is false
@@ -1235,7 +1235,7 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
 }
 
 Update values for the services and characteristics Espruino advertises.
-Only services and characteristics previously declared using `setServices` are affected.
+Only services and characteristics previously declared using `NRF.setServices` are affected.
 
 To update the '0xABCD' characteristic in the '0xBCDE' service:
 
@@ -1276,7 +1276,7 @@ setWatch(function() {
 }, BTN, { repeat:true, edge:"rising", debounce: 50 });
 ```
 
-This only works if the characteristic was created with `notify: true` using `setServices`,
+This only works if the characteristic was created with `notify: true` using `NRF.setServices`,
 otherwise the characteristic will be updated but no notification will be sent.
 
 Also note that `maxLen` was specified. If it wasn't then the maximum length of
@@ -1295,7 +1295,7 @@ NRF.updateServices({
 });
 ```
 
-This only works if the characteristic was created with `indicate: true` using `setServices`,
+This only works if the characteristic was created with `indicate: true` using `NRF.setServices`,
 otherwise the characteristic will be updated but no notification will be sent.
 
 **Note:** See `NRF.setServices` for more information
@@ -2683,10 +2683,38 @@ NRF.setSecurity({
 });
 ```
 
-For instance, to require pairing and to specify a passkey:
+For instance, to require pairing and to specify a passkey, use:
 
 ```
 NRF.setSecurity({passkey:"123456", mitm:1, display:1});
+```
+
+However, while most devices will request a passkey for pairing at
+this point it is still possible for a device to connect without
+requiring one (eg. using the 'NRF Connect' app).
+
+To force a passkey you need to protect each characteristic
+you define with `NRF.setSecurity`. For instance the following
+code will *require* that the passkey `123456` is entered
+before the characteristic `9d020002-bf5f-1d1a-b52a-fe52091d5b12`
+can be read.
+
+```
+NRF.setSecurity({passkey:"123456", mitm:1, display:1});
+NRF.setServices({
+  "9d020001-bf5f-1d1a-b52a-fe52091d5b12" : {
+    "9d020002-bf5f-1d1a-b52a-fe52091d5b12" : {
+      value : "Secret",
+      readable : true,
+      security: {
+        read: {
+          mitm: true,
+          lesc: true,
+        }
+      }
+    }
+  }
+});
 ```
 */
 void jswrap_ble_setSecurity(JsVar *options) {
