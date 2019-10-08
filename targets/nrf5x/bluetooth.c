@@ -1203,13 +1203,18 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_AUTH_KEY_REQUEST:
           jsble_queue_pending(BLEP_TASK_AUTH_KEY_REQUEST, p_ble_evt->evt.gap_evt.conn_handle);
           break;
-      case BLE_GAP_EVT_LESC_DHKEY_REQUEST:
-          //jsiConsolePrintf("BLE_GAP_EVT_LESC_DHKEY_REQUEST\n");
-          err_code = ecc_p256_shared_secret_compute(&m_lesc_sk.sk[0], &p_ble_evt->evt.gap_evt.params.lesc_dhkey_request.p_pk_peer->pk[0], &m_lesc_dhkey.key[0]);
+      case BLE_GAP_EVT_LESC_DHKEY_REQUEST: {
+        /* Nordic SDK gives us request.p_pk_peer, but it's UNALIGNED! Then the next command
+           (taken straight from their SDK) fails with an error because it isn't aligned.
+           We have to manually copy the key to a new, aligned value.  */
+          ble_gap_lesc_p256_pk_t key;
+          memcpy(&key.pk[0], &p_ble_evt->evt.gap_evt.params.lesc_dhkey_request.p_pk_peer->pk[0], sizeof(ble_gap_lesc_p256_pk_t));
+          err_code = ecc_p256_shared_secret_compute(&m_lesc_sk.sk[0], &key.pk[0], &m_lesc_dhkey.key[0]);
           APP_ERROR_CHECK_NOT_URGENT(err_code);
           err_code = sd_ble_gap_lesc_dhkey_reply(p_ble_evt->evt.gap_evt.conn_handle, &m_lesc_dhkey);
           APP_ERROR_CHECK_NOT_URGENT(err_code);
           break;
+      }
        case BLE_GAP_EVT_AUTH_STATUS:
           jsble_queue_pending_buf(
               BLEP_TASK_AUTH_STATUS,
