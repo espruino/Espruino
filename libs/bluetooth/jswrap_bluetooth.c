@@ -2683,6 +2683,11 @@ NRF.setSecurity({
 });
 ```
 
+**NOTE:** Some combinations of arguments will cause an error. For example
+supplying a passkey without `display:1` is not allowed. If `display:1` is set
+you do not require a physical display, the user just needs to know
+the passkey you supplied.
+
 For instance, to require pairing and to specify a passkey, use:
 
 ```

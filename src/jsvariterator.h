@@ -53,7 +53,7 @@ typedef struct JsvStringIterator {
   char  *ptr; ///< a pointer to string data
 } JsvStringIterator;
 
-// slight hack to enure we can use string iterator with const JsVars
+// slight hack to ensure we can use string iterator with const JsVars
 #define jsvStringIteratorNewConst(it,str,startIdx) jsvStringIteratorNew(it, (JsVar*)str, startIdx)
 
 /// Create a new String iterator from a string, starting from a specific character. NOTE: This does not keep a lock to the first element, so make sure you do or the string will be freed!
@@ -118,6 +118,9 @@ static ALWAYS_INLINE void jsvStringIteratorNextInline(JsvStringIterator *it) {
 
 /// Go to the end of the string iterator - for use with jsvStringIteratorAppend
 void jsvStringIteratorGotoEnd(JsvStringIterator *it);
+
+/// Go to the given position in the string iterator. Needs the string again in case we're going back and need to start from the beginning
+void jsvStringIteratorGoto(JsvStringIterator *it, JsVar *str, size_t startIdx);
 
 /// Append a character TO THE END of a string iterator
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch);

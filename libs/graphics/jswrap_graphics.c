@@ -31,6 +31,30 @@
 #include "bitmap_font_4x6.h"
 #include "bitmap_font_6x8.h"
 
+#ifdef GRAPHICS_PALETTED_IMAGES
+// 16 color MAC OS palette
+const uint16_t PALETTE_4BIT[16] = { 0x0,0x4228,0x8c51,0xbdd7,0x9b26,0x6180,0x320,0x540,0x4df,0x19,0x3013,0xf813,0xd800,0xfb20,0xffe0,0xffff };
+// 256 color 16 bit Web-safe palette
+const uint16_t PALETTE_8BIT[256] = {
+    0x0,0x6,0xc,0x13,0x19,0x1f,0x180,0x186,0x18c,0x193,0x199,0x19f,0x320,0x326,0x32c,0x333,0x339,0x33f,0x4c0,
+    0x4c6,0x4cc,0x4d3,0x4d9,0x4df,0x660,0x666,0x66c,0x673,0x679,0x67f,0x7e0,0x7e6,0x7ec,0x7f3,0x7f9,0x7ff,
+    0x3000,0x3006,0x300c,0x3013,0x3019,0x301f,0x3180,0x3186,0x318c,0x3193,0x3199,0x319f,0x3320,0x3326,0x332c,
+    0x3333,0x3339,0x333f,0x34c0,0x34c6,0x34cc,0x34d3,0x34d9,0x34df,0x3660,0x3666,0x366c,0x3673,0x3679,0x367f,
+    0x37e0,0x37e6,0x37ec,0x37f3,0x37f9,0x37ff,0x6000,0x6006,0x600c,0x6013,0x6019,0x601f,0x6180,0x6186,0x618c,
+    0x6193,0x6199,0x619f,0x6320,0x6326,0x632c,0x6333,0x6339,0x633f,0x64c0,0x64c6,0x64cc,0x64d3,0x64d9,0x64df,
+    0x6660,0x6666,0x666c,0x6673,0x6679,0x667f,0x67e0,0x67e6,0x67ec,0x67f3,0x67f9,0x67ff,0x9800,0x9806,0x980c,
+    0x9813,0x9819,0x981f,0x9980,0x9986,0x998c,0x9993,0x9999,0x999f,0x9b20,0x9b26,0x9b2c,0x9b33,0x9b39,0x9b3f,
+    0x9cc0,0x9cc6,0x9ccc,0x9cd3,0x9cd9,0x9cdf,0x9e60,0x9e66,0x9e6c,0x9e73,0x9e79,0x9e7f,0x9fe0,0x9fe6,0x9fec,
+    0x9ff3,0x9ff9,0x9fff,0xc800,0xc806,0xc80c,0xc813,0xc819,0xc81f,0xc980,0xc986,0xc98c,0xc993,0xc999,0xc99f,
+    0xcb20,0xcb26,0xcb2c,0xcb33,0xcb39,0xcb3f,0xccc0,0xccc6,0xcccc,0xccd3,0xccd9,0xccdf,0xce60,0xce66,0xce6c,
+    0xce73,0xce79,0xce7f,0xcfe0,0xcfe6,0xcfec,0xcff3,0xcff9,0xcfff,0xf800,0xf806,0xf80c,0xf813,0xf819,0xf81f,
+    0xf980,0xf986,0xf98c,0xf993,0xf999,0xf99f,0xfb20,0xfb26,0xfb2c,0xfb33,0xfb39,0xfb3f,0xfcc0,0xfcc6,0xfccc,
+    0xfcd3,0xfcd9,0xfcdf,0xfe60,0xfe66,0xfe6c,0xfe73,0xfe79,0xfe7f,0xffe0,0xffe6,0xffec,0xfff3,0xfff9,0xffff,
+    0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+    0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xffff
+ };
+#endif
+
 
 /*JSON{
   "type" : "class",
@@ -257,14 +281,15 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   "generate" : "jswrap_graphics_createSDL",
   "params" : [
     ["width","int32","Pixels wide"],
-    ["height","int32","Pixels high"]
+    ["height","int32","Pixels high"],
+    ["bpp","int32","Bits per pixel (8,16,24 or 32 supported)"]
   ],
   "return" : ["JsVar","The new Graphics object"],
   "return_object" : "Graphics"
 }
 Create a Graphics object that renders to SDL window (Linux-based devices only)
 */
-JsVar *jswrap_graphics_createSDL(int width, int height) {
+JsVar *jswrap_graphics_createSDL(int width, int height, int bpp) {
   if (width<=0 || height<=0 || width>32767 || height>32767) {
     jsExceptionHere(JSET_ERROR, "Invalid Size");
     return 0;
@@ -278,7 +303,7 @@ JsVar *jswrap_graphics_createSDL(int width, int height) {
   gfx.graphicsVar = parent;
   gfx.data.width = (unsigned short)width;
   gfx.data.height = (unsigned short)height;
-  gfx.data.bpp = 32;
+  gfx.data.bpp = bpp;
   lcdInit_SDL(&gfx);
   graphicsSetVar(&gfx);
   return parent;
@@ -444,6 +469,33 @@ Fill a rectangular area in the Foreground Color
 JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsFillRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+  return jsvLockAgain(parent);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "clearRect",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_clearRect",
+  "params" : [
+    ["x1","int32","The left X coordinate"],
+    ["y1","int32","The top Y coordinate"],
+    ["x2","int32","The right X coordinate"],
+    ["y2","int32","The bottom Y coordinate"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Fill a rectangular area in the Background Color
+*/
+JsVar *jswrap_graphics_clearRect(JsVar *parent, int x1, int y1, int x2, int y2) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  unsigned int c = gfx.data.fgColor;
+  gfx.data.fgColor = gfx.data.bgColor;
+  graphicsFillRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  gfx.data.fgColor = c;
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
@@ -1094,7 +1146,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
     x -= jswrap_graphics_stringWidth(parent, var) * (gfx.data.fontAlignX+1)/2;
   if (gfx.data.fontAlignY<2)  // 0=center, 1=bottom, 2=undefined, 3=top
-    y -= customHeight * (gfx.data.fontAlignX+1)/2;
+    y -= customHeight * (gfx.data.fontAlignY+1)/2;
 #endif
 
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
@@ -1231,17 +1283,17 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
       width += (int)graphicsVectorCharWidth(&gfx, scale, ch);
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_4X6) {
-      width += 4;
+      width += 4*scale;
 #ifdef USE_FONT_6X8
     } else if (font == JSGRAPHICS_FONTSIZE_6X8) {
-      width += 6;
+      width += 6*scale;
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_CUSTOM) {
       if (jsvIsString(customWidth)) {
         if (ch>=customFirstChar)
-          width += (unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-customFirstChar));
+          width += scale*(unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-customFirstChar));
       } else
-        width += (int)jsvGetInteger(customWidth);
+        width += scale*(int)jsvGetInteger(customWidth);
     }
     jsvStringIteratorNext(&it);
   }
@@ -1456,7 +1508,8 @@ JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
   "params" : [
     ["image","JsVar","An image to draw, either a String or an Object (see below)"],
     ["x","int32","The X offset to draw the image"],
-    ["y","int32","The Y offset to draw the image"]
+    ["y","int32","The Y offset to draw the image"],
+    ["options","JsVar","options for scaling,rotation,etc (see below)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
@@ -1466,24 +1519,43 @@ Image can be:
 * An object with the following fields `{ width : int, height : int, bpp : optional int, buffer : ArrayBuffer/String, transparent: optional int }`. bpp = bits per pixel (default is 1), transparent (if defined) is the colour that will be treated as transparent
 * A String where the the first few bytes are: `width,height,bpp,[transparent,]image_bytes...`. If a transparent colour is specified the top bit of `bpp` should be set.
 
-Draw an image at the specified position. If the image is 1 bit, the graphics foreground/background colours will be used. Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first
+Draw an image at the specified position.
+
+* If the image is 1 bit, the graphics foreground/background colours will be used.
+* On HackStrap, 4 bit images use the Apple Mac 16 color palette
+* On HackStrap, 8 bit images use the Web Safe 216 color palette
+* Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first
+
+If `options` is supplied, `drawImage` will allow images to be rendered at any scale or angle, and will
+center them at `x,y`. `options` must be an object of the form:
+
+```
+{
+  rotate : float, // the amount to rotate the image in radians (default 0)
+  scale : float, // the amount to scale the image in radians (default 1)
+  centerx : int, // the center to rotate around (default image width/2)
+  centery : int  // the center to rotate around (default image height/2)
+}
+```
 */
-JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) {
+JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos, JsVar *options) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+
   int imageWidth, imageHeight, imageBpp;
   bool imageIsTransparent = false;
   unsigned int imageTransparentCol;
   JsVar *imageBuffer;
   int imageBufferOffset;
+
   if (jsvIsObject(image)) {
     imageWidth = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
     imageHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
     imageBpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
     if (imageBpp<=0) imageBpp=1;
-    JsVar *transpVar = jsvObjectGetChild(image, "transparent", 0);
-    imageIsTransparent = transpVar!=0;
-    imageTransparentCol = (unsigned int)jsvGetInteger(transpVar);
-    jsvUnLock(transpVar);
+    JsVar *v;
+    v = jsvObjectGetChild(image, "transparent", 0);
+    imageIsTransparent = v!=0;
+    imageTransparentCol = (unsigned int)jsvGetIntegerAndUnLock(v);
     imageBuffer = jsvObjectGetChild(image, "buffer", 0);
     imageBufferOffset = 0;
   } else if (jsvIsString(image) || jsvIsArrayBuffer(image)) {
@@ -1510,8 +1582,25 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
     return 0;
   }
+  const uint16_t *palettePtr = 0;
+  uint32_t paletteMask = 0;
+  uint16_t simplePalette[2];
 
-  unsigned int imageBitMask = (unsigned int)((1L<<imageBpp)-1L);
+  if (imageBpp==1) {
+    simplePalette[0] = gfx.data.bgColor;
+    simplePalette[1] = gfx.data.fgColor;
+    palettePtr = simplePalette;
+    paletteMask = 1;
+#ifdef GRAPHICS_PALETTED_IMAGES
+  } else if (imageBpp==4) {
+    palettePtr = PALETTE_4BIT;
+    paletteMask = 15;
+  } else if (imageBpp==8) {
+    palettePtr = PALETTE_8BIT;
+    paletteMask = 255;
+#endif
+  }
+
   if (!(jsvIsArrayBuffer(imageBuffer) || jsvIsString(imageBuffer)) ||
       imageWidth<=0 ||
       imageHeight<=0 ||
@@ -1520,6 +1609,8 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     jsvUnLock(imageBuffer);
     return 0;
   }
+  unsigned int imageBitMask = (unsigned int)((1L<<imageBpp)-1L);
+  unsigned int imagePixelsPerByteMask = (imageBpp<8)?(8/imageBpp)-1:0;
   // jsvGetArrayBufferBackingString is fine to be passed a string
   JsVar *imageBufferString = jsvGetArrayBufferBackingString(imageBuffer);
   jsvUnLock(imageBuffer);
@@ -1529,30 +1620,98 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   unsigned int colData = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, imageBufferString, imageBufferOffset);
-  while ((bits>=imageBpp || jsvStringIteratorHasChar(&it)) && y<imageHeight) {
-    // Get the data we need...
-    while (bits < imageBpp) {
-      colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
-      jsvStringIteratorNext(&it);
-      bits += 8;
-    }
-    // extract just the bits we want
-    unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
-    bits -= imageBpp;
-    // Try and write pixel!
-    if (!imageIsTransparent || imageTransparentCol!=col) {
-      if (imageBpp==1)
-        col = col ? gfx.data.fgColor : gfx.data.bgColor;
-      graphicsSetPixel(&gfx, (short)(x+xPos), (short)(y+yPos), col);
-    }
-    // Go to next pixel
-    x++;
-    if (x>=imageWidth) {
-      x=0;
-      y++;
-      // we don't care about image height - we'll stop next time...
-    }
 
+  if (jsvIsUndefined(options)) {
+    // Standard 1:1 blitting
+    while (y<imageHeight) {
+      // Get the data we need...
+      while (bits < imageBpp) {
+        colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
+        jsvStringIteratorNext(&it);
+        bits += 8;
+      }
+      // extract just the bits we want
+      unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
+      bits -= imageBpp;
+      // Try and write pixel!
+      if (!imageIsTransparent || imageTransparentCol!=col) {
+        if (palettePtr) col = palettePtr[col&paletteMask];
+        graphicsSetPixel(&gfx, (short)(x+xPos), (short)(y+yPos), col);
+      }
+      // Go to next pixel
+      x++;
+      if (x>=imageWidth) {
+        x=0;
+        y++;
+        // we don't care about image height - we'll stop next time...
+      }
+    }
+  } else if (jsvIsObject(options)) {
+#ifdef SAVE_ON_FLASH
+    jsExceptionHere(JSET_ERROR,"Image rotation not implemented on devices with low flash");
+#else
+    // fancy rotation/scaling
+    int imageStride = (imageWidth*imageBpp + 7)>>3;
+    // rotate, scale, centerx, centery
+    double rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"rotate",0));
+    if (!isfinite(rotate))  rotate=0;
+    double scale = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"scale",0));
+    if (!isfinite(scale) || scale<=0) scale=1;
+    int centerx = imageWidth*128;
+    int centery = imageHeight*128;
+    JsVar *v;
+    v = jsvObjectGetChild(options,"centerx",0);
+    if (v) centerx = jsvGetIntegerAndUnLock(v)*256;
+    v = jsvObjectGetChild(options,"centery",0);
+    if (v) centery = jsvGetIntegerAndUnLock(v)*256;
+    // step values for blitting rotated image
+    double vcos = cos(rotate);
+    double vsin = sin(rotate);
+    int sx = (vcos/scale)*256 + 0.5;
+    int sy = (vsin/scale)*256 + 0.5;
+    // work out actual image width and height
+    int iw = (int)(0.5+scale*(imageWidth*fabs(vcos) + imageHeight*fabs(vsin)));
+    int ih = (int)(0.5+scale*(imageWidth*fabs(vsin) + imageHeight*fabs(vcos)));
+    // offset our start position from center
+    xPos -= iw/2;
+    yPos -= ih/2;
+    // work out start position in the image
+    int px = centerx - ((sx*iw) + (sy*ih)) / 2;
+    int py = centery - ((sx*ih) - (sy*iw)) / 2;
+    // scan across image
+    for (y=0;y<ih;y++) {
+      int qx = px;
+      int qy = py;
+      for (x=0;x<iw;x++) {
+        int imagex = (qx+128)>>8;
+        int imagey = (qy+128)>>8;
+        if (imagex>=0 && imagey>=0 && imagex<imageWidth && imagey<imageHeight) {
+          if (imageBpp==8) { // fast path for 8 bits
+            jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+imagex+(imagey*imageStride));
+            colData = (unsigned char)jsvStringIteratorGetChar(&it);
+          } else {
+            int bitOffset = (imagex+(imagey*imageWidth))*imageBpp;
+            jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+(bitOffset>>3));
+            colData = (unsigned char)jsvStringIteratorGetChar(&it);
+            for (int b=8;b<imageBpp;b+=8) {
+              jsvStringIteratorNext(&it);
+              colData = (colData<<8) | (unsigned char)jsvStringIteratorGetChar(&it);
+            }
+            //jsiConsolePrintf("%d %d %d\n", bitOffset, imagePixelsPerByteMask, (imagePixelsPerByteMask-(bitOffset&imagePixelsPerByteMask))*imageBpp);
+            colData = (colData>>((imagePixelsPerByteMask-(bitOffset&imagePixelsPerByteMask))*imageBpp)) & imageBitMask;
+          }
+          if (!imageIsTransparent || imageTransparentCol!=colData) {
+            if (palettePtr) colData = palettePtr[colData&paletteMask];
+            graphicsSetPixel(&gfx, (short)(x+xPos), (short)(y+yPos), colData);
+          }
+        }
+        qx += sx;
+        qy -= sy;
+      }
+      px += sy;
+      py += sx;
+    }
+#endif
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(imageBufferString);

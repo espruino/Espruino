@@ -58,8 +58,8 @@ static bool get_btn2_state() {
 #endif
 
 static void hardware_init(void) {
-#if defined(PIXLJS) || defined(HACKSTRAP)
-  // LED1 is backlight/HRM - don't use it, but ensure it's off
+#if defined(PIXLJS)
+  // LED1 is backlight - don't use it, but ensure it's off
   jshPinOutput(LED1_PININDEX, 0);
 #endif
   set_led_state(false, false);

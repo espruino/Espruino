@@ -1,7 +1,7 @@
 /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
- * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
+ * Copyright (C) 2019 Gordon Williams <gw@pur3.co.uk>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains JavaScript interface for Pixl.js (http://www.espruino.com/Pixl.js)
+ * Contains JavaScript interface for HackStrap (http://www.espruino.com/HackStrap)
  * ----------------------------------------------------------------------------
  */
 
@@ -24,6 +24,8 @@
 #include "jstimer.h"
 #include "jswrap_promise.h"
 #include "jswrap_bluetooth.h"
+#include "jswrap_date.h"
+#include "jswrap_math.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_soc.h"
@@ -33,14 +35,7 @@
 #include "jsi2c.h" // accelerometer/etc
 
 #include "jswrap_graphics.h"
-#include "lcd_spilcd.h"
-
-#define GPS_UART EV_SERIAL1
-
-uint8_t nmeaCount = 0; // how many characters of NMEA data do we have?
-char nmea[82]; //  82 is the max for NMEA
-char nmeaLine[82]; // A line of received NMEA data
-
+#include "lcd_st7789_8bit.h"
 
 /*JSON{
   "type": "class",
@@ -61,7 +56,116 @@ Class containing utility functions for the [HackStrap Smart Watch](http://www.es
 The HackStrap's vibration motor.
 */
 
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "accel",
+  "params" : [["xyz","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter
+
+* `x` is X axis (left-right) in `g`
+* `y` is Y axis (up-down) in `g`
+* `z` is Z axis (in-out) in `g`
+* `diff` is difference between this and the last reading in `g`
+* `mag` is the magnitude of the acceleration in `g`
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "faceUp",
+  "params" : [["up","bool","`true` if face-up"]],
+  "ifdef" : "HACKSTRAP"
+}
+Has the watch been moved so that it is face-up, or not face up?
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "mag",
+  "params" : [["xyz","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a parameter
+
+* `x/y/z` raw x,y,z magnetometer readings
+* `dx/dy/dz` readings based on calibration since magnetometer turned on
+* `heading` in degrees based on calibrated readings
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "GPS-raw",
+  "params" : [["nmea","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+Raw NMEA GPS data lines received as a string
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "GPS",
+  "params" : [["fix","JsVar",""]],
+  "ifdef" : "HACKSTRAP"
+}
+GPS data, as an object
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "lcdPower",
+  "params" : [["on","bool","`true` if screen is on"]],
+  "ifdef" : "HACKSTRAP"
+}
+Has the screen been turned on or off? Can be used to stop tasks that are no longer useful if nothing is displayed.
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Strap",
+  "name" : "faceUp",
+  "params" : [["data","JsVar","`{dir, double, x, y, z}`"]],
+  "ifdef" : "HACKSTRAP"
+}
+If the watch is tapped, this event contains information on the way it was tapped.
+
+`dir` reports the side of the watch that was tapped (not the direction it was tapped in).
+
+```
+{
+  dir : "left/right/top/bottom/front/back",
+  double : true/false // was this a double-tap?
+  x : -2 .. 2, // the axis of the tap
+  y : -2 .. 2, // the axis of the tap
+  z : -2 .. 2 // the axis of the tap
+```
+ */
+
+#define GPS_UART EV_SERIAL1
+#define IOEXP_GPS 0x01
+#define IOEXP_LCD_BACKLIGHT 0x20
+#define IOEXP_LCD_RESET 0x40
+#define IOEXP_HRM 0x80
+
+typedef struct {
+  double lat,lon,alt;
+  double speed, course;
+  int hour,min,sec,ms;
+  uint8_t day,month,year;
+} NMEAFixInfo;
+
+#define NMEA_MAX_SIZE 82  //  82 is the max for NMEA
+uint8_t nmeaCount = 0; // how many characters of NMEA data do we have?
+char nmeaIn[NMEA_MAX_SIZE]; //  NMEA line being received right now
+char nmeaLine[NMEA_MAX_SIZE]; // A line of received NMEA data
+NMEAFixInfo gpsFix;
+
+typedef struct {
+  short x,y,z;
+} Vector3;
+
 #define ACCEL_POLL_INTERVAL 100 // in msec
+#define BTN1_LOAD_TIMEOUT 20 // 2s - in poll intervals
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo internalI2C;
 /// Is I2C busy? if so we'll skip one reading in our interrupt so we don't overlap
@@ -74,12 +178,20 @@ unsigned char faceUpCounter;
 bool wasFaceUp;
 /// time since LCD contents were last modified
 volatile unsigned char flipCounter;
+/// How long has BTN1 been held down for
+unsigned char btn1Counter;
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
-int lcdPowerTimeout = 100;
+int lcdPowerTimeout = (5*1000)/ACCEL_POLL_INTERVAL;
 /// Is the LCD on?
 bool lcdPowerOn;
+/// Is the compass on?
+bool compassPowerOn;
+// compass data
+Vector3 mag, magmin, magmax;
 /// accelerometer data
-int accx,accy,accz,accdiff;
+Vector3 acc;
+/// accelerometer difference since last reading
+int accdiff;
 /// data on how watch was tapped
 unsigned char tapInfo;
 
@@ -87,31 +199,23 @@ typedef enum {
   JSS_NONE,
   JSS_LCD_ON = 1,
   JSS_LCD_OFF = 2,
-  JSS_ACCEL_DATA = 4, // need to push xyz data to JS
-  JSS_ACCEL_TAPPED = 8, // tap event detected
-  JSS_GPS_DATA = 16, // we got a line of GPS data
+  JSS_ACCEL_DATA = 4, ///< need to push xyz data to JS
+  JSS_ACCEL_TAPPED = 8, ///< tap event detected
+  JSS_GPS_DATA = 16, ///< we got a complete set of GPS data in 'gpsFix'
+  JSS_GPS_DATA_LINE = 32, ///< we got a line of GPS data
+  JSS_MAG_DATA = 64, ///< need to push magnetometer data to JS
+  JSS_RESET = 128, ///< reset the watch and reload code from flash
 } JsStrapTasks;
 JsStrapTasks strapTasks;
 
-
-
-/// Send buffer contents to the screen. Usually only the modified data will be output, but if all=true then the whole screen contents is sent
-void lcd_flip(JsVar *parent, bool all) {
-  JsGraphics gfx; 
-  if (!graphicsGetFromVar(&gfx, parent)) return;
-  if (all) {
-    gfx.data.modMinX = 0;
-    gfx.data.modMinY = 0;
-    gfx.data.modMaxX = LCD_WIDTH-1;
-    gfx.data.modMaxY = LCD_HEIGHT-1;
-  }
+/// Flip buffer contents with the screen.
+void lcd_flip(JsVar *parent) {
   if (lcdPowerTimeout && !lcdPowerOn) {
     // LCD was turned off, turn it back on
     jswrap_hackstrap_setLCDPower(1);
   }
   flipCounter = 0;
-  lcdFlip_SPILCD(&gfx);
-  graphicsSetVar(&gfx);
+  lcdST7789_flip();
 }
 
 /*JSON{
@@ -124,14 +228,21 @@ void lcd_flip(JsVar *parent, bool all) {
     ]
 }
 This function can be used to turn HackStrap's LCD off or on.
+
+*When on, the LCD draws roughly 40mA*
 */
 void jswrap_hackstrap_setLCDPower(bool isOn) {
-  if (isOn) {
-    lcdCmd_SPILCD(0x11, 0, NULL); // SLPOUT
-    jshPinOutput(LCD_BL,0); // backlight
-  } else {
-    lcdCmd_SPILCD(0x10, 0, NULL); // SLPIN
-    jshPinOutput(LCD_BL,1); // backlight
+  // Note: LCD without backlight draws ~5mA
+  if (isOn) { // wake
+    lcdST7789_cmd(0x11, 0, NULL); // SLPOUT
+    jshDelayMicroseconds(20);
+    lcdST7789_cmd(0x29, 0, NULL);
+    jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight
+  } else { // sleep
+    lcdST7789_cmd(0x28, 0, NULL);
+    jshDelayMicroseconds(20);
+    lcdST7789_cmd(0x10, 0, NULL); // SLPIN
+    jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight
   }
   if (lcdPowerOn != isOn) {
     JsVar *strap =jsvObjectGetChild(execInfo.root, "Strap", 0);
@@ -142,7 +253,41 @@ void jswrap_hackstrap_setLCDPower(bool isOn) {
     }
     jsvUnLock(strap);
   }
+  flipCounter = 0;
   lcdPowerOn = isOn;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "setLCDMode",
+    "generate" : "jswrap_hackstrap_setLCDMode",
+    "params" : [
+      ["mode","JsVar","The LCD mode (See below)"]
+    ]
+}
+This function can be used to turn double-buffering on HackStrap's LCD on or off (the default).
+
+* `undefined`/`"direct"` (the default) - The drawable area is 240x240, terminal and vertical scrolling will work. Draw calls take effect immediately so there may be flickering unless you're careful.
+* `"doublebuffered" - The drawable area is 240x160, terminal and vertical scrolling will not work. Draw calls only take effect when `g.flip()` is called and there is no flicker.
+*/
+void jswrap_hackstrap_setLCDMode(JsVar *mode) {
+  LCDST7789Mode lcdMode = LCDST7789_MODE_UNBUFFERED;
+  if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
+    lcdMode = LCDST7789_MODE_UNBUFFERED;
+  else if (jsvIsStringEqual(mode,"doublebuffered"))
+    lcdMode = LCDST7789_MODE_DOUBLEBUFFERED;
+  else
+    jsExceptionHere(JSET_ERROR,"Unknown LCD Mode %j",mode);
+
+  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
+  if (!graphics) return;
+  JsGraphics gfx;
+  if (!graphicsGetFromVar(&gfx, graphics)) return;
+  gfx.data.height = (lcdMode==LCDST7789_MODE_DOUBLEBUFFERED) ? 160 : LCD_HEIGHT;
+  graphicsSetVar(&gfx);
+  jsvUnLock(graphics);
+  lcdST7789_setMode( lcdMode );
 }
 
 /*JSON{
@@ -169,40 +314,6 @@ void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Strap",
-    "name" : "setLCDPalette",
-    "generate" : "jswrap_hackstrap_setLCDPalette",
-    "params" : [
-      ["palette","JsVar","An array of 24 bit 0xRRGGBB values"]
-    ]
-}
-HackStrap's LCD can display colours in 12 bit, but to keep the offscreen
-buffer to a reasonable size it uses a 4 bit paletted buffer.
-
-With this, you can change the colour palette that is used.
-*/
-void jswrap_hackstrap_setLCDPalette(JsVar *palette) {
-  if (jsvIsIterable(palette)) {
-    uint16_t pal[16];
-    JsvIterator it;
-    jsvIteratorNew(&it, palette, JSIF_EVERY_ARRAY_ELEMENT);
-    int idx = 0;
-    while (idx<16 && jsvIteratorHasElement(&it)) {
-      unsigned int rgb = jsvIteratorGetIntegerValue(&it);
-      unsigned int r = rgb>>16;
-      unsigned int g = (rgb>>8)&0xFF;
-      unsigned int b = rgb&0xFF;
-      pal[idx++] = ((r&0xF0)<<4) | (g&0xF0) | (b>>4);
-      jsvIteratorNext(&it);
-    }
-    jsvIteratorFree(&it);
-    lcdSetPalette_SPILCD(pal);
-  } else
-    lcdSetPalette_SPILCD(0);
-}
-
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "Strap",
     "name" : "isLCDOn",
     "generate" : "jswrap_hackstrap_isLCDOn",
     "return" : ["bool","Is the display on or not?"]
@@ -210,6 +321,18 @@ void jswrap_hackstrap_setLCDPalette(JsVar *palette) {
 */
 bool jswrap_hackstrap_isLCDOn() {
   return lcdPowerOn;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "isCharging",
+    "generate" : "jswrap_hackstrap_isCharging",
+    "return" : ["bool","Is the battery charging or not?"]
+}
+*/
+bool jswrap_hackstrap_isCharging() {
+  return !jshPinGetValue(BAT_PIN_CHARGING);
 }
 
 /*JSON{
@@ -226,7 +349,7 @@ Writes a command directly to the ST7735 LCD controller
 */
 void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data) {
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
-  lcdCmd_SPILCD(cmd, dLen, dPtr);
+  lcdST7789_cmd(cmd, dLen, (const uint8_t *)dPtr);
 }
 
 /*JSON{
@@ -239,6 +362,15 @@ void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data) {
     ]
 }
 Set the power to the GPS.
+
+When on, data is output via the `GPS` event on `Strap`:
+
+```
+Strap.setGPSPower(1);
+Strap.on('GPS',print);
+```
+
+*When on, the GPS draws roughly 20mA*
 */
 void jswrap_hackstrap_setGPSPower(bool isOn) {
   if (isOn) {
@@ -248,14 +380,48 @@ void jswrap_hackstrap_setGPSPower(bool isOn) {
     inf.pinRX = GPS_PIN_RX;
     inf.pinTX = GPS_PIN_TX;
     jshUSARTSetup(GPS_UART, &inf);
-    jshPinOutput(GPS_PIN_EN,1); // GPS on
+    jswrap_hackstrap_ioWr(IOEXP_GPS, 1); // GPS on
     nmeaCount = 0;
   } else {
-    jshPinOutput(GPS_PIN_EN,0); // GPS off
+    jswrap_hackstrap_ioWr(IOEXP_GPS, 0); // GPS off
     // setting pins to pullup will cause jshardware.c to disable the UART, saving power
     jshPinSetState(GPS_PIN_RX, JSHPINSTATE_GPIO_IN_PULLUP);
     jshPinSetState(GPS_PIN_TX, JSHPINSTATE_GPIO_IN_PULLUP);
   }
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "setCompassPower",
+    "generate" : "jswrap_hackstrap_setCompassPower",
+    "params" : [
+      ["isOn","bool","True if the Compass should be on, false if not"]
+    ]
+}
+Set the power to the Compass
+
+When on, data is output via the `mag` event on `Strap`:
+
+```
+Strap.setCompassPower(1);
+Strap.on('mag',print);
+```
+
+*When on, the compass draws roughly 2mA*
+*/
+void jswrap_hackstrap_setCompassPower(bool isOn) {
+  compassPowerOn = isOn;
+  jswrap_hackstrap_compassWr(0x31,isOn ? 8 : 0);
+  mag.x = 0;
+  mag.y = 0;
+  mag.z = 0;
+  magmin.x = 0;
+  magmin.y = 0;
+  magmin.z = 0;
+  magmax.x = 0;
+  magmax.y = 0;
+  magmax.z = 0;
 }
 
 
@@ -274,6 +440,16 @@ void watchdogHandler() {
       strapTasks |= JSS_LCD_ON;
   }
   if (flipCounter<255) flipCounter++;
+  // If BTN1 is held down, trigger a reset
+  if (jshPinGetValue(BTN1_PININDEX)) {
+    if (btn1Counter<255) btn1Counter++;
+  } else {
+    if (btn1Counter > BTN1_LOAD_TIMEOUT) {
+      strapTasks |= JSS_RESET;
+      // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
+    }
+    btn1Counter = 0;
+  }
 
   if (lcdPowerTimeout && lcdPowerOn && flipCounter>=lcdPowerTimeout) {
     // 10 seconds of inactivity, turn off display
@@ -282,23 +458,36 @@ void watchdogHandler() {
 
 
   if (i2cBusy) return;
-  // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
+  // check the magnetometer if we had it on
   unsigned char buf[6];
+  if (compassPowerOn) {
+    buf[0]=0x11;
+    jsi2cWrite(&internalI2C, MAG_ADDR, 1, buf, true);
+    jsi2cRead(&internalI2C, MAG_ADDR, 6, buf, true);
+    mag.y = buf[0] | (buf[1]<<8);
+    mag.x = buf[2] | (buf[3]<<8);
+    mag.z = buf[4] | (buf[5]<<8);
+    if (mag.x<magmin.x) magmin.x=mag.x;
+    if (mag.y<magmin.y) magmin.y=mag.y;
+    if (mag.z<magmin.z) magmin.z=mag.z;
+    if (mag.x>magmax.x) magmax.x=mag.x;
+    if (mag.y>magmax.y) magmax.y=mag.y;
+    if (mag.z>magmax.z) magmax.z=mag.z;
+    strapTasks |= JSS_MAG_DATA;
+  }
+  // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
   buf[0]=6;
   jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
   jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
-  int newx = (buf[1]<<8)|buf[0];
-  int newy = (buf[3]<<8)|buf[2];
-  int newz = (buf[5]<<8)|buf[4];
-  if (newx&0x8000) newx-=0x10000;
-  if (newy&0x8000) newy-=0x10000;
-  if (newz&0x8000) newz-=0x10000;
-  int dx = newx-accx;
-  int dy = newy-accy;
-  int dz = newz-accz;
-  accx = newx;
-  accy = newy;
-  accz = newz;
+  short newx = (buf[1]<<8)|buf[0];
+  short newy = (buf[3]<<8)|buf[2];
+  short newz = (buf[5]<<8)|buf[4];
+  int dx = newx-acc.x;
+  int dy = newy-acc.y;
+  int dz = newz-acc.z;
+  acc.x = newx;
+  acc.y = newy;
+  acc.z = newz;
   accdiff = dx*dx + dy*dy + dz*dz;
   strapTasks |= JSS_ACCEL_DATA;
   // read interrupt source data
@@ -326,25 +515,53 @@ void watchdogHandler() {
   "generate" : "jswrap_hackstrap_init"
 }*/
 void jswrap_hackstrap_init() {
-  jshPinOutput(GPS_PIN_EN,0); // GPS off
+  jshPinOutput(18,0); // what's this?
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
-  jshPinOutput(LED1_PININDEX,0); // LED off
-  lcdPowerOn = true;
 
+  // Set up I2C
+  i2cBusy = true;
+  jshI2CInitInfo(&internalI2C);
+  internalI2C.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  internalI2C.pinSDA = ACCEL_PIN_SDA;
+  internalI2C.pinSCL = ACCEL_PIN_SCL;
+  jshPinSetValue(internalI2C.pinSCL, 1);
+  jshPinSetState(internalI2C.pinSCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  jshPinSetValue(internalI2C.pinSDA, 1);
+  jshPinSetState(internalI2C.pinSDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  // LCD pin init
+  jshPinOutput(LCD_PIN_CS, 1);
+  jshPinOutput(LCD_PIN_DC, 1);
+  jshPinOutput(LCD_PIN_SCK, 1);
+  for (int i=0;i<8;i++) jshPinOutput(i, 0);
+  // IO expander reset
+  jshPinOutput(28,0);
+  jshDelayMicroseconds(10000);
+  jshPinOutput(28,1);
+  jshDelayMicroseconds(50000);
+  jswrap_hackstrap_ioWr(0,0);
+  jswrap_hackstrap_ioWr(IOEXP_HRM,1); // HRM off
+  jswrap_hackstrap_ioWr(1,0); // ?
+  jswrap_hackstrap_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
+  jshDelayMicroseconds(100000);
+  jswrap_hackstrap_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
+  jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT,0); // backlight on
+  jshDelayMicroseconds(10000);
+
+  lcdPowerOn = true;
   // Create backing graphics for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
   JsGraphics gfx;
   graphicsStructInit(&gfx);
-  gfx.data.type = JSGRAPHICSTYPE_SPILCD;
-  gfx.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
+  gfx.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
+  gfx.data.flags = 0;
   gfx.graphicsVar = graphics;
   gfx.data.width = LCD_WIDTH;
   gfx.data.height = LCD_HEIGHT;
   gfx.data.bpp = LCD_BPP;
 
   //gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
-  lcdInit_SPILCD(&gfx);
+  lcdST7789_init(&gfx);
   graphicsSetVar(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
   jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);
@@ -352,28 +569,28 @@ void jswrap_hackstrap_init() {
 
   // Create 'flip' fn
   JsVar *fn;
-  fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
+  fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG);
   jsvObjectSetChildAndUnLock(graphics,"flip",fn);
 
-  /* If the button is pressed during reset, perform a self test.
-   * With bootloader this means apply power while holding button for >3 secs */
+  // If the button is pressed during reset, perform a self test.
+  // With bootloader this means apply power while holding button for >3 secs
   static bool firstStart = true;
 
   graphicsClear(&gfx);
-  int h=6;
-  jswrap_graphics_drawCString(&gfx,0,h*1," ____                 _ ");
-  jswrap_graphics_drawCString(&gfx,0,h*2,"|  __|___ ___ ___ _ _|_|___ ___ ");
-  jswrap_graphics_drawCString(&gfx,0,h*3,"|  __|_ -| . |  _| | | |   | . |");
-  jswrap_graphics_drawCString(&gfx,0,h*4,"|____|___|  _|_| |___|_|_|_|___|");
-  jswrap_graphics_drawCString(&gfx,0,h*5,"         |_| espruino.com");
-  jswrap_graphics_drawCString(&gfx,0,h*6," "JS_VERSION" (c) 2019 G.Williams");
+  int h=6,y=20;
+  jswrap_graphics_drawCString(&gfx,0,y+h*1," ____                 _ ");
+  jswrap_graphics_drawCString(&gfx,0,y+h*2,"|  __|___ ___ ___ _ _|_|___ ___ ");
+  jswrap_graphics_drawCString(&gfx,0,y+h*3,"|  __|_ -| . |  _| | | |   | . |");
+  jswrap_graphics_drawCString(&gfx,0,y+h*4,"|____|___|  _|_| |___|_|_|_|___|");
+  jswrap_graphics_drawCString(&gfx,0,y+h*5,"         |_| espruino.com");
+  jswrap_graphics_drawCString(&gfx,0,y+h*6," "JS_VERSION" (c) 2019 G.Williams");
   // Write MAC address in bottom right
   JsVar *addr = jswrap_ble_getAddress();
   char buf[20];
   jsvGetString(addr, buf, sizeof(buf));
   jsvUnLock(addr);
-  jswrap_graphics_drawCString(&gfx,(LCD_WIDTH-1)-strlen(buf)*6,h*8,buf);
-  lcdFlip_SPILCD(&gfx);
+  jswrap_graphics_drawCString(&gfx,(LCD_WIDTH-1)-strlen(buf)*6,y+h*8,buf);
+
 
 /*
   if (firstStart && (jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE || jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE)) {
@@ -393,21 +610,13 @@ void jswrap_hackstrap_init() {
   jsvUnLock(graphics);
 
   // Setup touchscreen I2C
-  i2cBusy = true;
-  jshI2CInitInfo(&internalI2C);
-  internalI2C.bitrate = 0x7FFFFFFF;
-  internalI2C.pinSDA = ACCEL_PIN_SDA;
-  internalI2C.pinSCL = ACCEL_PIN_SCL;
-  jshPinSetValue(internalI2C.pinSCL, 1);
-  jshPinSetState(internalI2C.pinSCL,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
-  jshPinSetValue(internalI2C.pinSDA, 1);
-  jshPinSetState(internalI2C.pinSDA,  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+
   // accelerometer init
   jswrap_hackstrap_accelWr(0x18,0x0a); // CNTL1 Off, 4g range, Wakeup
   jswrap_hackstrap_accelWr(0x19,0x80); // CNTL2 Software reset
   jshDelayMicroseconds(2000);
-  /*jswrap_hackstrap_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
-  jswrap_hackstrap_accelWr(0x1a,0xb11011110); // CNTL3
+  jswrap_hackstrap_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
+  jswrap_hackstrap_accelWr(0x1a,0b11011110); // CNTL3
   // 50Hz tilt
   // 50Hz directional tap
   // 50Hz general motion detection and the high-pass filtered outputs
@@ -424,11 +633,26 @@ void jswrap_hackstrap_init() {
   //jswrap_hackstrap_accelWr(0x27, 0x10); // TTH Tap detect threshold low (0x1A recommended)
   jswrap_hackstrap_accelWr(0x30,1); // ATH low wakeup detect threshold
   jswrap_hackstrap_accelWr(0x35,0); // LP_CNTL no averaging of samples
-  jswrap_hackstrap_accelWr(0x3e,0); // clear the buffer*/
+  jswrap_hackstrap_accelWr(0x3e,0); // clear the buffer
   jswrap_hackstrap_accelWr(0x18,0b10001100);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup, tap
-  // pressure init
-  buf[0]=0x06; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, (uint8_t)*buf, true); // SOFT_RST
+  // compass init
+  jswrap_hackstrap_compassWr(0x32,1);
+  jswrap_hackstrap_compassWr(0x31,0);
+  compassPowerOn = false;
   i2cBusy = false;
+  // Other IO
+  jshPinSetState(BAT_PIN_CHARGING, JSHPINSTATE_GPIO_IN_PULLUP);
+  // Flash memory - on first boot we might need to erase it
+
+  assert(sizeof(buf)>=sizeof(JsfFileHeader));
+  jshFlashRead(buf, FLASH_SAVED_CODE_START, sizeof(JsfFileHeader));
+  bool allZero = true;
+  for (unsigned int i=0;i<sizeof(JsfFileHeader);i++)
+    if (buf[i]) allZero=false;
+  if (allZero) {
+    jsiConsolePrintf("Erasing Storage Area\n");
+    jsfEraseAll();
+  }
 
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens
@@ -463,16 +687,16 @@ bool jswrap_hackstrap_idle() {
     if (strap && jsiObjectHasCallbacks(strap, JS_EVENT_PREFIX"accel")) {
       JsVar *o = jsvNewObject();
       if (o) {
-        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(accx/8192.0));
-        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(accy/8192.0));
-        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(accz/8192.0));
-        jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(accx*accx + accy*accy + accz*accz)/8192.0));
+        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(acc.x/8192.0));
+        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(acc.y/8192.0));
+        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(acc.z/8192.0));
+        jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z)/8192.0));
         jsvObjectSetChildAndUnLock(o, "diff", jsvNewFromFloat(sqrt(accdiff)/8192.0));
         jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"accel", &o, 1);
         jsvUnLock(o);
       }
     }
-    bool faceUp = (accz<7000) && abs(accx)<4096 && abs(accy)<4096;
+    bool faceUp = (acc.z<7000) && abs(acc.x)<4096 && abs(acc.y)<4096;
     if (faceUp!=wasFaceUp) {
       faceUpCounter=0;
       wasFaceUp = faceUp;
@@ -512,12 +736,160 @@ bool jswrap_hackstrap_idle() {
     }
   }
   if (strap && (strapTasks & JSS_GPS_DATA)) {
+    JsVar *o = jsvNewObject();
+    if (o) {
+      jsvObjectSetChildAndUnLock(o, "lat", jsvNewFromFloat(gpsFix.lat));
+      jsvObjectSetChildAndUnLock(o, "lon", jsvNewFromFloat(gpsFix.lon));
+      jsvObjectSetChildAndUnLock(o, "alt", jsvNewFromFloat(gpsFix.alt));
+      jsvObjectSetChildAndUnLock(o, "speed", jsvNewFromFloat(gpsFix.speed));
+      jsvObjectSetChildAndUnLock(o, "course", jsvNewFromFloat(gpsFix.course));
+      CalendarDate date;
+      date.day = gpsFix.day;
+      date.month = gpsFix.month;
+      date.year = 2000+gpsFix.year;
+      TimeInDay td;
+      td.daysSinceEpoch = fromCalenderDate(&date);
+      td.hour = gpsFix.hour;
+      td.min = gpsFix.min;
+      td.sec = gpsFix.sec;
+      td.ms = gpsFix.ms;
+      td.zone = jsdGetTimeZone();
+      jsvObjectSetChildAndUnLock(o, "time", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
+      jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"GPS", &o, 1);
+      jsvUnLock(o);
+    }
+  }
+  if (strap && (strapTasks & JSS_GPS_DATA_LINE)) {
     JsVar *line = jsvNewFromString(nmeaLine);
-    if (line) jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"GPS", &line, 1);
+    if (line) {
+      jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"GPS-raw", &line, 1);
+
+    }
     jsvUnLock(line);
   }
+  if (strap && (strapTasks & JSS_MAG_DATA)) {
+    if (strap && jsiObjectHasCallbacks(strap, JS_EVENT_PREFIX"mag")) {
+      JsVar *o = jsvNewObject();
+      if (o) {
+        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger(mag.x));
+        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger(mag.y));
+        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromInteger(mag.z));
+        int dx = mag.x - ((magmin.x+magmax.x)/2);
+        int dy = mag.y - ((magmin.y+magmax.y)/2);
+        int dz = mag.z - ((magmin.z+magmax.z)/2);
+        jsvObjectSetChildAndUnLock(o, "dx", jsvNewFromInteger(dx));
+        jsvObjectSetChildAndUnLock(o, "dy", jsvNewFromInteger(dy));
+        jsvObjectSetChildAndUnLock(o, "dz", jsvNewFromInteger(dz));
+        double h = jswrap_math_atan2(dx,dy)*(-180/PI);
+        if (h<0) h+=360;
+        jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
+        jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"mag", &o, 1);
+        jsvUnLock(o);
+      }
+    }
+  }
+  if (strapTasks & JSS_RESET)
+    jsiStatus |= JSIS_TODO_FLASH_LOAD;
   jsvUnLock(strap);
   strapTasks = JSS_NONE;
+  return false;
+}
+
+
+char *nmea_next_comma(char *nmea) {
+  while (*nmea && *nmea!=',') nmea++; // find the comma
+  return nmea;
+}
+double nmea_decode_latlon(char *nmea, char *comma) {
+  char *dp = nmea;
+  while (*dp && *dp!='.') dp++; // find decimal pt
+  *comma = 0;
+  double minutes = stringToFloat(&dp[-2]);
+  *comma = ',';
+  dp[-2] = 0;
+  int x = stringToInt(nmea);
+  return x+(minutes/60);
+}
+double nmea_decode_float(char *nmea, char *comma) {
+  *comma = 0;
+  double r = stringToFloat(nmea);
+  *comma = ',';
+  return r;
+}
+uint8_t nmea_decode_2(char *nmea) {
+  return chtod(nmea[0])*10 + chtod(nmea[1]);
+}
+bool nmea_decode(const char *nmeaLine) {
+  char buf[NMEA_MAX_SIZE];
+  strcpy(buf, nmeaLine);
+  char *nmea = buf, *nextComma;
+
+
+  if (nmea[0]!='$' || nmea[1]!='G') return false; // not valid
+  if (nmea[3]=='R' && nmea[4]=='M' && nmea[5]=='C') {
+    // $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
+    nmea = nmea_next_comma(nmea)+1;
+    nextComma = nmea_next_comma(nmea);
+    // time
+    gpsFix.hour = nmea_decode_2(&nmea[0]);
+    gpsFix.min = nmea_decode_2(&nmea[2]);
+    gpsFix.sec = nmea_decode_2(&nmea[4]);
+    gpsFix.ms = nmea_decode_2(&nmea[7]);
+    // status
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);//?
+    // lat + NS
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // lon + EW
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // speed
+    gpsFix.speed = nmea_decode_float(nmea, nextComma);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // course
+    gpsFix.course = nmea_decode_float(nmea, nextComma);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // date
+    gpsFix.day = nmea_decode_2(&nmea[0]);
+    gpsFix.month = nmea_decode_2(&nmea[2]);
+    gpsFix.year = nmea_decode_2(&nmea[4]);
+    // ....
+  }
+  if (nmea[3]=='G' && nmea[4]=='G' && nmea[5]=='A') {
+    // $GNGGA,161945.00,5139.11397,N,00116.07202,W,1,06,1.29,71.1,M,47.0,M,,*64
+    nmea = nmea_next_comma(nmea)+1;
+    nextComma = nmea_next_comma(nmea);
+    // time
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // LAT
+    gpsFix.lat = nmea_decode_latlon(nmea, nextComma);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    if (*nmea=='S') gpsFix.lat=-gpsFix.lat;
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // LON
+    gpsFix.lon = nmea_decode_latlon(nmea, nextComma);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    if (*nmea=='W') gpsFix.lon=-gpsFix.lon;
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // quality
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // num satellites
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // dilution of precision
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // altitude
+    gpsFix.alt = nmea_decode_float(nmea, nextComma);
+    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+    // ....
+  }
+  if (nmea[3]=='G' && nmea[4]=='S' && nmea[5]=='V') {
+    // loads of cool data about what satellites we have
+  }
+  if (nmea[3]=='G' && nmea[4]=='L' && nmea[5]=='L') {
+    // Complete set of data received
+    return true;
+  }
   return false;
 }
 
@@ -528,8 +900,8 @@ bool jswrap_hackstrap_idle() {
 bool jswrap_hackstrap_gps_character(char ch) {
   if (ch=='\r') return true; // we don't care
   // if too many chars, roll over since it's probably because we skipped a newline
-  if (nmeaCount>=sizeof(nmea)) nmeaCount=0;
-  nmea[nmeaCount++]=ch;
+  if (nmeaCount>=sizeof(nmeaIn)) nmeaCount=0;
+  nmeaIn[nmeaCount++]=ch;
   if (ch!='\n') return true; // now handled
   // Now we have a line of GPS data...
 /*  $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
@@ -542,11 +914,13 @@ bool jswrap_hackstrap_gps_character(char ch) {
     $GNGLL,5139.11397,N,00116.07202,W,161945.00,A,A*69 */
   // Let's just chuck it over into JS-land for now
   if (nmeaCount>1) {
-    memcpy(nmeaLine, nmea, nmeaCount);
+    memcpy(nmeaLine, nmeaIn, nmeaCount);
     nmeaLine[nmeaCount-1]=0; // just overwriting \n
+    strapTasks |= JSS_GPS_DATA_LINE;
+    if (nmea_decode(nmeaLine))
+      strapTasks |= JSS_GPS_DATA;
   }
   nmeaCount = 0;
-  strapTasks |= JSS_GPS_DATA;
   return true; // handled
 }
 
@@ -596,64 +970,46 @@ int jswrap_hackstrap_accelRd(JsVarInt reg) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Strap",
-    "name" : "getPressure",
-    "generate" : "jswrap_hackstrap_getPressure",
-    "return" : ["JsVar","A promise that will be resolved with `{temperature, pressure, altitude}`"]
+    "name" : "compassWr",
+    "generate" : "jswrap_hackstrap_compassWr",
+    "params" : [
+      ["reg","int",""],
+      ["data","int",""]
+    ]
 }
-Read temperature, pressure and altitude data. A promise is returned
-which will be resolved with `{temperature, pressure, altitude}`.
-
-Conversions take roughly 100ms.
-
-```
-Strap.getPressure().then(d=>{
-  console.log(d);
-  // {temperature, pressure, altitude}
-});
-```
+Writes a register on the Magnetometer/Compass
 */
-void jswrap_hackstrap_getPressure_callback() {
-  JsVar *o = jsvNewObject();
-  if (o) {
-    i2cBusy = true;
-    unsigned char buf[6];
-    // ADC_CVT - 0b010 01 000  - pressure and temperature channel, OSR = 4096
-    buf[0] = 0x48; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true);
-    // wait 100ms
-    jshDelayMicroseconds(100*1000); // we should really have a callback
-    // READ_PT
-    buf[0] = 0x10; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true);
-    jsi2cRead(&internalI2C, PRESSURE_ADDR, 6, buf, true);
-    int temperature = (buf[0]<<16)|(buf[1]<<8)|buf[2];
-    if (temperature&0x800000) temperature-=0x1000000;
-    int pressure = (buf[3]<<16)|(buf[4]<<8)|buf[5];
-    jsvObjectSetChildAndUnLock(o,"temperature", jsvNewFromFloat(temperature/100.0));
-    jsvObjectSetChildAndUnLock(o,"pressure", jsvNewFromFloat(pressure/100.0));
-
-    buf[0] = 0x31; jsi2cWrite(&internalI2C, PRESSURE_ADDR, 1, buf, true); // READ_A
-    jsi2cRead(&internalI2C, PRESSURE_ADDR, 3, buf, true);
-    int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
-    if (altitude&0x800000) altitude-=0x1000000;
-    jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(altitude/100.0));
-    i2cBusy = false;
-
-    jspromise_resolve(promisePressure, o);
-  }
-  jsvUnLock2(promisePressure,o);
-  promisePressure = 0;
+void jswrap_hackstrap_compassWr(JsVarInt reg, JsVarInt data) {
+  unsigned char buf[2];
+  buf[0] = (unsigned char)reg;
+  buf[1] = (unsigned char)data;
+  i2cBusy = true;
+  jsi2cWrite(&internalI2C, MAG_ADDR, 2, buf, true);
+  i2cBusy = false;
 }
 
-JsVar *jswrap_hackstrap_getPressure() {
-  if (promisePressure) {
-    jsExceptionHere(JSET_ERROR, "Conversion in progress");
-    return 0;
-  }
-  promisePressure = jspromise_create();
-  if (!promisePressure) return 0;
-
-  jsiSetTimeout(jswrap_hackstrap_getPressure_callback, 100);
-  return jsvLockAgain(promisePressure);
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "ioWr",
+    "generate" : "jswrap_hackstrap_ioWr",
+    "params" : [
+      ["mask","int",""],
+      ["isOn","int",""]
+    ]
 }
+Changes a pin state on the IO expander
+*/
+void jswrap_hackstrap_ioWr(JsVarInt mask, bool on) {
+  static unsigned char state;
+  if (on) state |= mask;
+  else state &= ~mask;
+  i2cBusy = true;
+  jsi2cWrite(&internalI2C, 0x20, 1, &state, true);
+  i2cBusy = false;
+}
+
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "Strap",
@@ -666,11 +1022,9 @@ void jswrap_hackstrap_off() {
   jsiKill();
   jsvKill();
   jshKill();
-  jshPinOutput(GPS_PIN_EN,0); // GPS off
+  //jshPinOutput(GPS_PIN_EN,0); // GPS off FIXME
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
-  jshPinOutput(LCD_BL,1); // backlight off
-  jshPinOutput(LED1_PININDEX,0); // LED off
-  lcdCmd_SPILCD(0x28, 0, NULL); // display off
+  jswrap_hackstrap_setLCDPower(0);
 
 
   nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
@@ -680,56 +1034,129 @@ void jswrap_hackstrap_off() {
 }
 
 /*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "accel",
-  "params" : [["xyz","JsVar",""]],
-  "ifdef" : "HACKSTRAP"
+    "type" : "staticmethod",
+    "class" : "Strap",
+    "name" : "menu",
+    "generate" : "jswrap_strap_menu",
+    "params" : [
+      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
+    ],
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
 }
-Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter
+Display a menu on HackStrap's screen, and set up the buttons to navigate through it.
 
-* `x` is X axis (left-right) in `g`
-* `y` is Y axis (up-down) in `g`
-* `z` is Z axis (in-out) in `g`
-* `diff` is difference between this and the last reading in `g`
-* `mag` is the magnitude of the acceleration in `g`
- */
-/*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "faceUp",
-  "params" : [["up","bool","`true` if face-up"]],
-  "ifdef" : "HACKSTRAP"
-}
-Has the watch been moved so that it is face-up, or not face up?
- */
-/*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "lcdPower",
-  "params" : [["on","bool","`true` if screen is on"]],
-  "ifdef" : "HACKSTRAP"
-}
-Has the screen been turned on or off? Can be used to stop tasks that are no longer useful if nothing is displayed.
+Supply an object containing menu items. When an item is selected, the
+function it references will be executed. For example:
+
+```
+var boolean = false;
+var number = 50;
+// First menu
+var mainmenu = {
+  "" : { "title" : "-- Main Menu --" },
+  "Backlight On" : function() { LED1.set(); },
+  "Backlight Off" : function() { LED1.reset(); },
+  "Submenu" : function() { Strap.menu(submenu); },
+  "A Boolean" : {
+    value : boolean,
+    format : v => v?"On":"Off",
+    onchange : v => { boolean=v; }
+  },
+  "A Number" : {
+    value : number,
+    min:0,max:100,step:10,
+    onchange : v => { number=v; }
+  },
+  "Exit" : function() { Strap.menu(); },
+};
+// Submenu
+var submenu = {
+  "" : { "title" : "-- SubMenu --" },
+  "One" : undefined, // do nothing
+  "Two" : undefined, // do nothing
+  "< Back" : function() { Strap.menu(mainmenu); },
+};
+// Actually display the menu
+Strap.menu(mainmenu);
+```
+
+See http://www.espruino.com/graphical_menu for more detailed information.
 */
-/*JSON{
-  "type" : "event",
-  "class" : "Strap",
-  "name" : "faceUp",
-  "params" : [["data","JsVar","`{dir, double, x, y, z}`"]],
-  "ifdef" : "HACKSTRAP"
+JsVar *jswrap_strap_menu(JsVar *menu) {
+  /* Unminified JS code is:
+
+Strap.menu = function(menudata) {
+  if (Strap.btnWatches) {
+    Strap.btnWatches.forEach(clearWatch);
+    Strap.btnWatches = undefined;
+  }
+  g.clear();g.flip(); // clear screen if no menu supplied
+  if (!menudata) return;
+  function im(b) {
+    return {
+      width:8,height:b.length,bpp:1,buffer:new Uint8Array(b).buffer
+    };
+  }
+  if (!menudata[""]) menudata[""]={};
+  g.setFont('6x8');g.setFontAlign(-1,-1,0);
+  var w = g.getWidth()-9;
+  var h = g.getHeight();
+  menudata[""].fontHeight=8;
+  menudata[""].x=0;
+  menudata[""].x2=w-2;
+  menudata[""].y=40;
+  menudata[""].y2=200;
+  menudata[""].preflip=function() {
+    g.drawImage(im([
+      0b00010000,
+      0b00111000,
+      0b01111100,
+      0b11111110,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+    ]),w,40);
+    g.drawImage(im([
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b11111110,
+      0b01111100,
+      0b00111000,
+      0b00010000,
+    ]),w,194);
+    g.drawImage(im([
+      0b00000000,
+      0b00001000,
+      0b00001100,
+      0b00001110,
+      0b11111111,
+      0b00001110,
+      0b00001100,
+      0b00001000,
+    ]),w,116);
+    //g.drawLine(7,0,7,h);
+    //g.drawLine(w,0,w,h);
+  };
+  var m = require("graphical_menu").list(g, menudata);
+  Strap.btnWatches = [
+    setWatch(function() { m.move(-1); }, BTN1, {repeat:1}),
+    setWatch(function() { m.move(1); }, BTN3, {repeat:1}),
+    setWatch(function() { m.select(); }, BTN2, {repeat:1})
+  ];
+  return m;
+};
+*/
+
+  return jspExecuteJSFunction("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Strap.btnWatches&&(Strap.btnWatches.forEach(clearWatch),Strap.btnWatches=void 0);"
+      "g.clear();g.flip();"
+      "if(a){a['']||(a['']={});g.setFont('6x8');g.setFontAlign(-1,-1,0);var d=g.getWidth()-18,e=g.getHeight();a[''].fontHeight=8;a[''].x=0;a[''].x2=d-2;a[''].y=40;a[''].y2=200;a[''].preflip=function(){"
+      "g.drawImage(c([16,56,124,254,16,16,16,16]),d,40);g.drawImage(c([16,16,16,16,254,124,56,16]),d,194);g.drawImage(c([0,8,12,14,255,14,12,8]),d,116)};"
+      "var b=require('graphical_menu').list(g,a);Strap.btnWatches=[setWatch(function(){b.move(-1)},BTN1,{repeat:1}),setWatch(function(){b.move(1)},BTN3,{repeat:1}),"
+      "setWatch(function(){b.select()},BTN2,{repeat:1})];return b}})",0,1,&menu);
 }
-If the watch is tapped, this event contains information on the way it was tapped.
 
-`dir` reports the side of the watch that was tapped (not the direction it was tapped in).
 
-```
-{
-  dir : "left/right/top/bottom/front/back",
-  double : true/false // was this a double-tap?
-  x : -2 .. 2, // the axis of the tap
-  y : -2 .. 2, // the axis of the tap
-  z : -2 .. 2 // the axis of the tap
-```
- */
 

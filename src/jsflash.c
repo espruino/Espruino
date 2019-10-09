@@ -84,6 +84,7 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
   jshFlashRead(header, addr, sizeof(JsfFileHeader));
   //DBG("Header 0x%x size 0x%x repl 0x%x\n", addr, header->size, header->replacement);
   return (header->size != JSF_WORD_UNSET) &&
+         (header->size < FLASH_SAVED_CODE_LENGTH) &&
          (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) < JSF_END_ADDRESS);
 }
 
@@ -92,25 +93,32 @@ static bool jsfIsErased(uint32_t addr, uint32_t len) {
   uint32_t x;
   /* Read whole blocks at the alignment size and check
    * everything (even slightly past the length) */
-  unsigned char buf[JSF_ALIGNMENT];
-  for (x=0;x<len;x+=JSF_ALIGNMENT) {
-    jshFlashRead(&buf, addr+x, JSF_ALIGNMENT);
-    int i;
-    for (i=0;i<JSF_ALIGNMENT;i++)
+  unsigned char buf[128];
+  assert((sizeof(buf)&(JSF_ALIGNMENT-1))==0);
+  while (len) {
+    uint32_t l = len;
+    if (l>sizeof(buf)) l=sizeof(buf);
+    jshFlashRead(&buf, addr, l);
+    for (int i=0;i<l;i++)
       if (buf[i]!=0xFF) return false;
+    addr += l;
+    len -= l;
   }
   return true;
 }
 
 /// Is an area of flash equal to something that's in RAM?
 static bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
-  uint32_t x, buflen;
-  unsigned char buf[JSF_ALIGNMENT];
-  for (x=0;x<len;x+=JSF_ALIGNMENT) {
-    jshFlashRead(&buf, addr+x,JSF_ALIGNMENT);
-
-    buflen = (x<=len-JSF_ALIGNMENT) ? JSF_ALIGNMENT : (len-x);
-    if (memcmp(buf, &data[x], buflen)) return false;
+  unsigned char buf[128];
+  assert((sizeof(buf)&(JSF_ALIGNMENT-1))==0);
+  uint32_t x=0;
+  while (len) {
+    uint32_t l = len;
+    if (l>sizeof(buf)) l=sizeof(buf);
+    jshFlashRead(&buf, addr+x, l);
+    if (memcmp(buf, &data[x], l)) return false;
+    x += l;
+    len -= l;
   }
   return true;
 }
@@ -169,13 +177,11 @@ static uint32_t jsfGetSpaceLeftInPage(uint32_t addr) {
   if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
     return 0;
   uint32_t nextPageStart = pageAddr+pageLen;
-  // if the next page is empty, skip forward
+  // if the next page is empty, assume it's empty until the end of flash
   JsfFileHeader header;
-  while (nextPageStart<JSF_END_ADDRESS &&
-         !jsfGetFileHeader(nextPageStart, &header)) {
-    if (!jshFlashGetPage(nextPageStart, &pageAddr, &pageLen))
-        return 0;
-    nextPageStart = pageAddr+pageLen;
+  if (nextPageStart<JSF_END_ADDRESS &&
+      !jsfGetFileHeader(nextPageStart, &header)) {
+    nextPageStart = JSF_END_ADDRESS;
   }
   return nextPageStart - addr;
 }
@@ -202,11 +208,13 @@ static bool jsfGetNextFileHeader(uint32_t *addr, JsfFileHeader *header, jsfGetNe
   if (newAddr+sizeof(JsfFileHeader)>JSF_END_ADDRESS) return 0; // not enough space
   *addr = newAddr;
   bool valid = jsfGetFileHeader(newAddr, header);
-  while ((type==GNFH_GET_ALL) && !valid) {
+  if ((type==GNFH_GET_ALL) && !valid) {
+    // there wasn't another header in this page - check the next page
     newAddr = jsfGetAddressOfNextPage(newAddr);
     *addr = newAddr;
     if (!newAddr) return false; // no valid address
     valid = jsfGetFileHeader(newAddr, header);
+    // we can't have a blank page and then a header, so stop our search
   }
   return valid;
 }
@@ -494,9 +502,20 @@ JsVar *jsfReadFile(JsfFileName name) {
   uint32_t len = jsfGetFileSize(&header);
 #ifdef SPIFLASH_BASE // if using SPI flash it can't be memory-mapped
   if (!mappedAddr) {
-    unsigned char *d = alloca(len);
-    jshFlashRead(d, addr, len);
-    JsVar *v = jsvNewStringOfLength(len, d);
+    JsVar *v = jsvNewStringOfLength(len, NULL);
+    if (v) {
+      JsvStringIterator it;
+      jsvStringIteratorNew(&it, v, 0);
+      while (len && jsvStringIteratorHasChar(&it)) {
+        unsigned char *data;
+        unsigned int l = 0;
+        jsvStringIteratorGetPtrAndNext(&it, &data, &l);
+        jshFlashRead(data, addr, l);
+        addr += l;
+        len -= l;
+      }
+      jsvStringIteratorFree(&it);
+    }
     return v;
   }
 #endif

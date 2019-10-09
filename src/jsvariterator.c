@@ -246,6 +246,27 @@ unsigned int jsvIterateCallbackToBytes(JsVar *var, unsigned char *data, unsigned
 
 // --------------------------------------------------------------------------------------------
 
+// If charIdx doesn't fit in the current stringext, go forward along the string
+static void jsvStringIteratorCatchUp(JsvStringIterator *it) {
+  while (it->charIdx>0 && it->charIdx >= it->charsInVar) {
+    it->charIdx -= it->charsInVar;
+    it->varIndex += it->charsInVar;
+    if (it->var && jsvGetLastChild(it->var)) {
+      JsVar *next = jsvLock(jsvGetLastChild(it->var));
+      jsvUnLock(it->var);
+      it->var = next;
+      it->ptr = &next->varData.str[0];
+      it->charsInVar = jsvGetCharactersInVar(it->var);
+    } else {
+      jsvUnLock(it->var);
+      it->var = 0;
+      it->ptr = 0;
+      it->charsInVar = 0;
+      return; // at end of string - get out of loop
+    }
+  }
+}
+
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   assert(jsvHasCharacterData(str));
   it->var = jsvLockAgain(str);
@@ -259,26 +280,7 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   } else{
     it->ptr = &it->var->varData.str[0];
   }
-  while (it->charIdx>0 && it->charIdx >= it->charsInVar) {
-    it->charIdx -= it->charsInVar;
-    it->varIndex += it->charsInVar;
-    if (it->var) {
-      if (jsvGetLastChild(it->var)) {
-        JsVar *next = jsvLock(jsvGetLastChild(it->var));
-        jsvUnLock(it->var);
-        it->var = next;
-        it->ptr = &next->varData.str[0];
-        it->charsInVar = jsvGetCharactersInVar(it->var);
-      } else {
-        jsvUnLock(it->var);
-        it->var = 0;
-        it->ptr = 0;
-        it->charsInVar = 0;
-        it->varIndex = startIdx - it->charIdx;
-        return; // at end of string - get out of loop
-      }
-    }
-  }
+  jsvStringIteratorCatchUp(it);
 }
 
 JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
@@ -329,6 +331,17 @@ void jsvStringIteratorGotoEnd(JsvStringIterator *it) {
   it->ptr = &it->var->varData.str[0];
   if (it->charsInVar) it->charIdx = it->charsInVar-1;
   else it->charIdx = 0;
+}
+
+/// Go to the given position in the string iterator. Needs the string again in case we're going back and need to start from the beginning
+void jsvStringIteratorGoto(JsvStringIterator *it, JsVar *str, size_t idx) {
+  if (idx>=it->varIndex) {
+    it->charIdx = idx - it->varIndex;
+    jsvStringIteratorCatchUp(it);
+  } else {
+    jsvStringIteratorFree(it);
+    jsvStringIteratorNew(it, str, idx);
+  }
 }
 
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {

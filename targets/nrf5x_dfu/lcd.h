@@ -19,15 +19,28 @@
 #endif
 #ifdef LCD_CONTROLLER_ST7789V // iD205
 #define LCD
-#define LCD_DATA_WIDTH 120
-#define LCD_DATA_HEIGHT 120
+#define LCD_DATA_WIDTH 120 // pixel doubled
+#define LCD_DATA_HEIGHT 120 // pixel doubled
 #define LCD_STORE_MODIFIED
 #endif
-#ifdef LCD_CONTROLLER_ST7735 // HackStrap
+#ifdef LCD_CONTROLLER_ST7735 // F5
 #define LCD
 #define LCD_DATA_WIDTH 128
 #define LCD_DATA_HEIGHT 96
 #define LCD_STORE_MODIFIED
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT // HackStrap
+#define LCD
+#define LCD_DATA_WIDTH 120 // pixel doubled
+#define LCD_DATA_HEIGHT 120 // pixel doubled
+//#define LCD_STORE_MODIFIED // removed just to try and scrape a few extra bytes!
+#define I2C_SDA 15
+#define I2C_SCL 14
+#define LCD_START_Y 12
+#endif
+
+#ifndef LCD_START_Y
+#define LCD_START_Y 0
 #endif
 
 void lcd_init();

@@ -28,6 +28,7 @@ typedef enum {
   JSGRAPHICSTYPE_FSMC,        ///< FSMC (or fake FSMC) ILI9325 16bit-wide LCDs
   JSGRAPHICSTYPE_SDL,         ///< SDL graphics library for linux
   JSGRAPHICSTYPE_SPILCD,      ///< SPI LCD library
+  JSGRAPHICSTYPE_ST7789_8BIT  ///< ST7789 in 8 bit mode
 } JsGraphicsType;
 
 typedef enum {
@@ -102,7 +103,7 @@ typedef struct JsGraphics {
 void graphicsStructResetState(JsGraphics *gfx);
 /// Completely reset graphics structure including flags
 void graphicsStructInit(JsGraphics *gfx);
-/// Access the Graphics Instance JsVar and get the relevant info in a JsGraphics structure
+/// Access the Graphics Instance JsVar and get the relevant info in a JsGraphics structure. True on success
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 /// Access the Graphics Instance JsVar and set the relevant info from JsGraphics structure
 void graphicsSetVar(JsGraphics *gfx);

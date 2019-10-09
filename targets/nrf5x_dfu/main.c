@@ -60,26 +60,26 @@
 
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
-  NRF_LOG_ERROR("received a fault! id: 0x%08x, pc: 0x&08x\r\n", id, pc);
-  NVIC_SystemReset();
+/*  NRF_LOG_ERROR("received a fault! id: 0x%08x, pc: 0x&08x\r\n", id, pc);
+  NVIC_SystemReset();*/
 }
 
 void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
-  (void)error_code;
+  /*(void)error_code;
   NRF_LOG_ERROR("received an error: 0x%08x at %s:%d!\r\n", error_code, p_file_name?p_file_name:"?", line_num);
-  NVIC_SystemReset();
+  NVIC_SystemReset();*/
 }
 
 void app_error_handler_bare(uint32_t error_code) {
-  (void)error_code;
+/*  (void)error_code;
   NRF_LOG_ERROR("received an error: 0x%08x!\r\n", error_code);
-  NVIC_SystemReset();
+  NVIC_SystemReset();*/
 }
 
 void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
-  lcd_println("NRF ERROR");
+  /*lcd_println("NRF ERROR");
   nrf_delay_ms(10000);
-  NVIC_SystemReset();
+  NVIC_SystemReset();*/
 }
 
 // Override Weak version
@@ -103,9 +103,9 @@ bool dfu_enter_check(void) {
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
-      lcd_print("RELEASE BTN1 FOR DFU\r\nHOLD BTN1 TO BOOT\r\nHOLD BTN1 + BTN2 TO TURN OFF\r\n\r\n<                      >\r");
+      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\BTN1 + BTN2 TO TURN OFF\r\n\r\n<                      >\r");
 #else
-      lcd_print("RELEASE BTN1 FOR DFU\r\nHOLD BTN1 TO BOOT\r\n\r\n<                      >\r");
+      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                      >\r");
 #endif
       int count = 3000;
       while (get_btn1_state() && count) {
@@ -138,7 +138,7 @@ bool dfu_enter_check(void) {
 
     if (!dfu_start) {
 #ifdef LCD
-      lcd_println("\r\nRESUMING BOOT...");
+      lcd_println("\r\nBOOTING...");
       nrf_delay_us(500000);
 #endif
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
@@ -175,7 +175,6 @@ void reboot_check_handler() {
 extern void dfu_set_status(DFUStatus status) {
   switch (status) {
   case DFUS_ADVERTISING_START:
-    lcd_println("\nBOOTLOADER\r\n==========\n");
     set_led_state(true,false);
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
     uint32_t err_code;

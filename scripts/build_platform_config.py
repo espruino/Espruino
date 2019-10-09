@@ -146,6 +146,11 @@ def codeOutDevice(device):
 def codeOutDevicePin(device, pin, definition_name):
   if device in board.devices:
     codeOut("#define "+definition_name+" "+toPinDef(board.devices[device][pin]))
+
+def codeOutDevicePins(device, definition_name):
+  for entry in board.devices[device]:
+    if entry.startswith("pin_") or entry=="pin":
+      codeOut("#define "+definition_name+"_"+entry.upper()+" "+toPinDef(board.devices[device][entry]))
 # -----------------------------------------------------------------------------------------
 
 
@@ -382,6 +387,8 @@ if "LCD" in board.devices:
     codeOutDevicePin("LCD", "pin_rst", "LCD_SPI_RST")
   if "pin_bl" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_bl", "LCD_BL")
+  if board.devices["LCD"]["controller"]=="st7789_8bit":
+    codeOutDevicePins("LCD","LCD");
 
 if "SD" in board.devices:
   if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
@@ -406,35 +413,35 @@ if "CAPSENSE" in board.devices:
   codeOutDevicePin("CAPSENSE", "pin_tx", "CAPSENSE_TX_PIN")
 
 if "VIBRATE" in board.devices:
-  codeOutDevicePin("VIBRATE", "pin", "VIBRATE_PIN")
+  codeOutDevicePins("VIBRATE", "VIBRATE")
 
 if "BAT" in board.devices:
-  codeOutDevicePin("BAT", "pin_charging", "BAT_CHARGING_PIN")
+  codeOutDevicePins("BAT", "BAT")
 
 if "GPS" in board.devices:
   if "pin_en" in board.devices["GPS"]: codeOutDevicePin("GPS", "pin_en", "GPS_PIN_EN")
-  codeOutDevicePin("GPS", "pin_rx", "GPS_PIN_RX")
-  codeOutDevicePin("GPS", "pin_tx", "GPS_PIN_TX")
+  codeOutDevicePins("GPS", "GPS")
 
 if "ACCEL" in board.devices:
   codeOut("#define ACCEL_DEVICE \""+board.devices["ACCEL"]["device"].upper()+"\"")
   codeOut("#define ACCEL_ADDR "+str(board.devices["ACCEL"]["addr"]))
-  codeOutDevicePin("ACCEL", "pin_sda", "ACCEL_PIN_SDA")
-  codeOutDevicePin("ACCEL", "pin_scl", "ACCEL_PIN_SCL")
+  codeOutDevicePins("ACCEL", "ACCEL")
+
+if "MAG" in board.devices:
+  codeOut("#define MAG_DEVICE \""+board.devices["MAG"]["device"].upper()+"\"")
+  if "addr" in board.devices["MAG"]:
+    codeOut("#define MAG_ADDR "+str(board.devices["MAG"]["addr"]))
+  codeOutDevicePins("MAG", "MAG")
 
 if "PRESSURE" in board.devices:
   codeOut("#define PRESSURE_DEVICE \""+board.devices["PRESSURE"]["device"].upper()+"\"")
   codeOut("#define PRESSURE_ADDR "+str(board.devices["PRESSURE"]["addr"]))
-  codeOutDevicePin("PRESSURE", "pin_sda", "PRESSURE_PIN_SDA")
-  codeOutDevicePin("PRESSURE", "pin_scl", "PRESSURE_PIN_SCL")
+  codeOutDevicePins("PRESSURE", "PRESSURE")
 
 if "SPIFLASH" in board.devices:
   codeOut("#define SPIFLASH_BASE 0x40000000UL")
   codeOut("#define SPIFLASH_PAGESIZE 4096")
-  codeOutDevicePin("SPIFLASH", "pin_cs", "SPIFLASH_PIN_CS")
-  codeOutDevicePin("SPIFLASH", "pin_sck", "SPIFLASH_PIN_SCK")
-  codeOutDevicePin("SPIFLASH", "pin_mosi", "SPIFLASH_PIN_MOSI")
-  codeOutDevicePin("SPIFLASH", "pin_miso", "SPIFLASH_PIN_MISO")
+  codeOutDevicePins("SPIFLASH", "SPIFLASH")
 
 for device in ["USB","SD","LCD","JTAG","ESP8266","IR"]:
   if device in board.devices:
