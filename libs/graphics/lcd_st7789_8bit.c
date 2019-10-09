@@ -258,7 +258,7 @@ void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
 
 void lcdST7789_init(JsGraphics *gfx) {
   assert(gfx->data.bpp == 16);
-  // LCD pins need initialising and LCD needs reset beforehand - done in jswrap_hackstrap.c
+  // LCD pins need initialising and LCD needs reset beforehand - done in jswrap_bangle.c
 
   // Send initialization commands to ST7789
   const uint8_t *cmd = ST7789_INIT_CODE;

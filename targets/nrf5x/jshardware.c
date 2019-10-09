@@ -1687,7 +1687,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 bool jshFlashWriteProtect(uint32_t addr) {
   // allow protection to be overwritten
   if (jsfGetFlag(JSF_UNSAFE_FLASH)) return false;
-#if defined(PUCKJS) || defined(PIXLJS) || defined(MDBT42Q) || defined(HACKSTRAP)
+#if defined(PUCKJS) || defined(PIXLJS) || defined(MDBT42Q) || defined(BANGLEJS)
   /* It's vital we don't let anyone screw with the softdevice or bootloader.
    * Recovering from changes would require soldering onto SWDIO and SWCLK pads!
    */

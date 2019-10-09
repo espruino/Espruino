@@ -1522,8 +1522,8 @@ Image can be:
 Draw an image at the specified position.
 
 * If the image is 1 bit, the graphics foreground/background colours will be used.
-* On HackStrap, 4 bit images use the Apple Mac 16 color palette
-* On HackStrap, 8 bit images use the Web Safe 216 color palette
+* On Bangle.js, 4 bit images use the Apple Mac 16 color palette
+* On Bangle.js, 8 bit images use the Web Safe 216 color palette
 * Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first
 
 If `options` is supplied, `drawImage` will allow images to be rendered at any scale or angle, and will

@@ -16,14 +16,13 @@
 import pinutils;
 
 info = {
- 'name' : "Espruino Hackstrap",
- 'link' :  [ "http://www.espruino.com/HackStrap" ],
- 'espruino_page_link' : 'HackStrap',
-  # This is the PCA10036
+ 'name' : "Espruino Bangle.js",
+ 'link' :  [ "http://www.espruino.com/Bangle.js" ],
+ 'espruino_page_link' : 'Bangle.js',
  'default_console' : "EV_BLUETOOTH",
  'variables' : 2100, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_hackstrap.hex',
+ 'binary_name' : 'espruino_%v_banglejs.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
@@ -36,17 +35,17 @@ info = {
    'makefile' : [
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"HackStrap"\'',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
-     'INCLUDE += -I$(ROOT)/libs/hackstrap',
-     'WRAPPERSOURCES += libs/hackstrap/jswrap_hackstrap.c',
+     'INCLUDE += -I$(ROOT)/libs/banglejs',
+     'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'JSMODULESOURCES += libs/js/graphical_menu.min.js',
      'NRF_BL_DFU_INSECURE=1',
-     'LINKER_BOOTLOADER=targetlibs/nrf5x_12/nrf5x_linkers/hackstrap_dfu.ld',
-     'LINKER_ESPRUINO=targetlibs/nrf5x_12/nrf5x_linkers/hackstrap_espruino.ld'
+     'LINKER_BOOTLOADER=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_dfu.ld',
+     'LINKER_ESPRUINO=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_espruino.ld'
    ]
  }
 };
@@ -147,7 +146,7 @@ board["_css"] = """
   height: 800px;
   top: 0px;
   left : 200px;
-  background-image: url(img/HACKSTRAP.jpg);
+  background-image: url(img/BANGLEJS.jpg);
 }
 #boardcontainer {
   height: 900px;

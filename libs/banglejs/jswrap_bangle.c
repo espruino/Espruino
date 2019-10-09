@@ -10,11 +10,11 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains JavaScript interface for HackStrap (http://www.espruino.com/HackStrap)
+ * Contains JavaScript interface for Bangle.js (http://www.espruino.com/Bangle.js)
  * ----------------------------------------------------------------------------
  */
 
-#include <jswrap_hackstrap.h>
+#include <jswrap_bangle.h>
 #include "jsinteractive.h"
 #include "jsdevices.h"
 #include "jsnative.h"
@@ -39,10 +39,10 @@
 
 /*JSON{
   "type": "class",
-  "class" : "Strap",
-  "ifdef" : "HACKSTRAP"
+  "class" : "Bangle",
+  "ifdef" : "BANGLEJS"
 }
-Class containing utility functions for the [HackStrap Smart Watch](http://www.espruino.com/HackStrap)
+Class containing utility functions for the [Bangle.js Smart Watch](http://www.espruino.com/Bangle.js)
 */
 
 
@@ -50,18 +50,18 @@ Class containing utility functions for the [HackStrap Smart Watch](http://www.es
   "type" : "variable",
   "name" : "VIBRATE",
   "generate_full" : "VIBRATE_PIN",
-  "ifdef" : "HACKSTRAP",
+  "ifdef" : "BANGLEJS",
   "return" : ["pin",""]
 }
-The HackStrap's vibration motor.
+The Bangle.js's vibration motor.
 */
 
 /*JSON{
   "type" : "event",
-  "class" : "Strap",
+  "class" : "Bangle",
   "name" : "accel",
   "params" : [["xyz","JsVar",""]],
-  "ifdef" : "HACKSTRAP"
+  "ifdef" : "BANGLEJS"
 }
 Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter
 
@@ -73,19 +73,19 @@ Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter
  */
 /*JSON{
   "type" : "event",
-  "class" : "Strap",
+  "class" : "Bangle",
   "name" : "faceUp",
   "params" : [["up","bool","`true` if face-up"]],
-  "ifdef" : "HACKSTRAP"
+  "ifdef" : "BANGLEJS"
 }
 Has the watch been moved so that it is face-up, or not face up?
  */
 /*JSON{
   "type" : "event",
-  "class" : "Strap",
+  "class" : "Bangle",
   "name" : "mag",
   "params" : [["xyz","JsVar",""]],
-  "ifdef" : "HACKSTRAP"
+  "ifdef" : "BANGLEJS"
 }
 Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a parameter
 
@@ -95,37 +95,37 @@ Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a 
  */
 /*JSON{
   "type" : "event",
-  "class" : "Strap",
+  "class" : "Bangle",
   "name" : "GPS-raw",
   "params" : [["nmea","JsVar",""]],
-  "ifdef" : "HACKSTRAP"
+  "ifdef" : "BANGLEJS"
 }
 Raw NMEA GPS data lines received as a string
  */
 /*JSON{
   "type" : "event",
-  "class" : "Strap",
+  "class" : "Bangle",
   "name" : "GPS",
   "params" : [["fix","JsVar",""]],
-  "ifdef" : "HACKSTRAP"
+  "ifdef" : "BANGLEJS"
 }
 GPS data, as an object
  */
 /*JSON{
   "type" : "event",
-  "class" : "Strap",
+  "class" : "Bangle",
   "name" : "lcdPower",
   "params" : [["on","bool","`true` if screen is on"]],
-  "ifdef" : "HACKSTRAP"
+  "ifdef" : "BANGLEJS"
 }
 Has the screen been turned on or off? Can be used to stop tasks that are no longer useful if nothing is displayed.
 */
 /*JSON{
   "type" : "event",
-  "class" : "Strap",
+  "class" : "Bangle",
   "name" : "faceUp",
   "params" : [["data","JsVar","`{dir, double, x, y, z}`"]],
-  "ifdef" : "HACKSTRAP"
+  "ifdef" : "BANGLEJS"
 }
 If the watch is tapped, this event contains information on the way it was tapped.
 
@@ -196,23 +196,23 @@ int accdiff;
 unsigned char tapInfo;
 
 typedef enum {
-  JSS_NONE,
-  JSS_LCD_ON = 1,
-  JSS_LCD_OFF = 2,
-  JSS_ACCEL_DATA = 4, ///< need to push xyz data to JS
-  JSS_ACCEL_TAPPED = 8, ///< tap event detected
-  JSS_GPS_DATA = 16, ///< we got a complete set of GPS data in 'gpsFix'
-  JSS_GPS_DATA_LINE = 32, ///< we got a line of GPS data
-  JSS_MAG_DATA = 64, ///< need to push magnetometer data to JS
-  JSS_RESET = 128, ///< reset the watch and reload code from flash
-} JsStrapTasks;
-JsStrapTasks strapTasks;
+  JSBT_NONE,
+  JSBT_LCD_ON = 1,
+  JSBT_LCD_OFF = 2,
+  JSBT_ACCEL_DATA = 4, ///< need to push xyz data to JS
+  JSBT_ACCEL_TAPPED = 8, ///< tap event detected
+  JSBT_GPS_DATA = 16, ///< we got a complete set of GPS data in 'gpsFix'
+  JSBT_GPS_DATA_LINE = 32, ///< we got a line of GPS data
+  JSBT_MAG_DATA = 64, ///< need to push magnetometer data to JS
+  JSBT_RESET = 128, ///< reset the watch and reload code from flash
+} JsBangleTasks;
+JsBangleTasks bangleTasks;
 
 /// Flip buffer contents with the screen.
 void lcd_flip(JsVar *parent) {
   if (lcdPowerTimeout && !lcdPowerOn) {
     // LCD was turned off, turn it back on
-    jswrap_hackstrap_setLCDPower(1);
+    jswrap_banglejs_setLCDPower(1);
   }
   flipCounter = 0;
   lcdST7789_flip();
@@ -220,38 +220,38 @@ void lcd_flip(JsVar *parent) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "setLCDPower",
-    "generate" : "jswrap_hackstrap_setLCDPower",
+    "generate" : "jswrap_banglejs_setLCDPower",
     "params" : [
       ["isOn","bool","True if the LCD should be on, false if not"]
     ]
 }
-This function can be used to turn HackStrap's LCD off or on.
+This function can be used to turn Bangle.js's LCD off or on.
 
 *When on, the LCD draws roughly 40mA*
 */
-void jswrap_hackstrap_setLCDPower(bool isOn) {
+void jswrap_banglejs_setLCDPower(bool isOn) {
   // Note: LCD without backlight draws ~5mA
   if (isOn) { // wake
     lcdST7789_cmd(0x11, 0, NULL); // SLPOUT
     jshDelayMicroseconds(20);
     lcdST7789_cmd(0x29, 0, NULL);
-    jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight
+    jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight
   } else { // sleep
     lcdST7789_cmd(0x28, 0, NULL);
     jshDelayMicroseconds(20);
     lcdST7789_cmd(0x10, 0, NULL); // SLPIN
-    jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight
+    jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight
   }
   if (lcdPowerOn != isOn) {
-    JsVar *strap =jsvObjectGetChild(execInfo.root, "Strap", 0);
-    if (strap) {
+    JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
+    if (bangle) {
       JsVar *v = jsvNewFromBool(isOn);
-      jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"lcdPower", &v, 1);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"lcdPower", &v, 1);
       jsvUnLock(v);
     }
-    jsvUnLock(strap);
+    jsvUnLock(bangle);
   }
   flipCounter = 0;
   lcdPowerOn = isOn;
@@ -259,19 +259,19 @@ void jswrap_hackstrap_setLCDPower(bool isOn) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "setLCDMode",
-    "generate" : "jswrap_hackstrap_setLCDMode",
+    "generate" : "jswrap_banglejs_setLCDMode",
     "params" : [
       ["mode","JsVar","The LCD mode (See below)"]
     ]
 }
-This function can be used to turn double-buffering on HackStrap's LCD on or off (the default).
+This function can be used to turn double-buffering on Bangle.js's LCD on or off (the default).
 
 * `undefined`/`"direct"` (the default) - The drawable area is 240x240, terminal and vertical scrolling will work. Draw calls take effect immediately so there may be flickering unless you're careful.
 * `"doublebuffered" - The drawable area is 240x160, terminal and vertical scrolling will not work. Draw calls only take effect when `g.flip()` is called and there is no flicker.
 */
-void jswrap_hackstrap_setLCDMode(JsVar *mode) {
+void jswrap_banglejs_setLCDMode(JsVar *mode) {
   LCDST7789Mode lcdMode = LCDST7789_MODE_UNBUFFERED;
   if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
     lcdMode = LCDST7789_MODE_UNBUFFERED;
@@ -292,20 +292,20 @@ void jswrap_hackstrap_setLCDMode(JsVar *mode) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "setLCDTimeout",
-    "generate" : "jswrap_hackstrap_setLCDTimeout",
+    "generate" : "jswrap_banglejs_setLCDTimeout",
     "params" : [
       ["isOn","float","The timeout of the display in seconds, or `0`/`undefined` to turn power saving off. Default is 10 seconds."]
     ]
 }
-This function can be used to turn HackStrap's LCD power saving on or off.
+This function can be used to turn Bangle.js's LCD power saving on or off.
 
-With power saving off, the display will remain in the state you set it with `Strap.setLCDPower`.
+With power saving off, the display will remain in the state you set it with `Bangle.setLCDPower`.
 
 With power saving on, the display will turn on if a button is pressed, the watch is turned face up, or the screen is updated. It'll turn off automatically after the given timeout.
 */
-void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout) {
+void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
   if (!isfinite(timeout)) lcdPowerTimeout=0;
   else lcdPowerTimeout = timeout*(1000.0/ACCEL_POLL_INTERVAL);
   if (lcdPowerTimeout<0) lcdPowerTimeout=0;
@@ -313,33 +313,33 @@ void jswrap_hackstrap_setLCDTimeout(JsVarFloat timeout) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "isLCDOn",
-    "generate" : "jswrap_hackstrap_isLCDOn",
+    "generate" : "jswrap_banglejs_isLCDOn",
     "return" : ["bool","Is the display on or not?"]
 }
 */
-bool jswrap_hackstrap_isLCDOn() {
+bool jswrap_banglejs_isLCDOn() {
   return lcdPowerOn;
 }
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "isCharging",
-    "generate" : "jswrap_hackstrap_isCharging",
+    "generate" : "jswrap_banglejs_isCharging",
     "return" : ["bool","Is the battery charging or not?"]
 }
 */
-bool jswrap_hackstrap_isCharging() {
+bool jswrap_banglejs_isCharging() {
   return !jshPinGetValue(BAT_PIN_CHARGING);
 }
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "lcdWr",
-    "generate" : "jswrap_hackstrap_lcdWr",
+    "generate" : "jswrap_banglejs_lcdWr",
     "params" : [
       ["cmd","int",""],
       ["data","JsVar",""]
@@ -347,32 +347,32 @@ bool jswrap_hackstrap_isCharging() {
 }
 Writes a command directly to the ST7735 LCD controller
 */
-void jswrap_hackstrap_lcdWr(JsVarInt cmd, JsVar *data) {
+void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
   lcdST7789_cmd(cmd, dLen, (const uint8_t *)dPtr);
 }
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "setGPSPower",
-    "generate" : "jswrap_hackstrap_setGPSPower",
+    "generate" : "jswrap_banglejs_setGPSPower",
     "params" : [
       ["isOn","bool","True if the GPS should be on, false if not"]
     ]
 }
 Set the power to the GPS.
 
-When on, data is output via the `GPS` event on `Strap`:
+When on, data is output via the `GPS` event on `Bangle`:
 
 ```
-Strap.setGPSPower(1);
-Strap.on('GPS',print);
+Bangle.setGPSPower(1);
+Bangle.on('GPS',print);
 ```
 
 *When on, the GPS draws roughly 20mA*
 */
-void jswrap_hackstrap_setGPSPower(bool isOn) {
+void jswrap_banglejs_setGPSPower(bool isOn) {
   if (isOn) {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
@@ -380,10 +380,10 @@ void jswrap_hackstrap_setGPSPower(bool isOn) {
     inf.pinRX = GPS_PIN_RX;
     inf.pinTX = GPS_PIN_TX;
     jshUSARTSetup(GPS_UART, &inf);
-    jswrap_hackstrap_ioWr(IOEXP_GPS, 1); // GPS on
+    jswrap_banglejs_ioWr(IOEXP_GPS, 1); // GPS on
     nmeaCount = 0;
   } else {
-    jswrap_hackstrap_ioWr(IOEXP_GPS, 0); // GPS off
+    jswrap_banglejs_ioWr(IOEXP_GPS, 0); // GPS off
     // setting pins to pullup will cause jshardware.c to disable the UART, saving power
     jshPinSetState(GPS_PIN_RX, JSHPINSTATE_GPIO_IN_PULLUP);
     jshPinSetState(GPS_PIN_TX, JSHPINSTATE_GPIO_IN_PULLUP);
@@ -392,27 +392,27 @@ void jswrap_hackstrap_setGPSPower(bool isOn) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "setCompassPower",
-    "generate" : "jswrap_hackstrap_setCompassPower",
+    "generate" : "jswrap_banglejs_setCompassPower",
     "params" : [
       ["isOn","bool","True if the Compass should be on, false if not"]
     ]
 }
 Set the power to the Compass
 
-When on, data is output via the `mag` event on `Strap`:
+When on, data is output via the `mag` event on `Bangle`:
 
 ```
-Strap.setCompassPower(1);
-Strap.on('mag',print);
+Bangle.setCompassPower(1);
+Bangle.on('mag',print);
 ```
 
 *When on, the compass draws roughly 2mA*
 */
-void jswrap_hackstrap_setCompassPower(bool isOn) {
+void jswrap_banglejs_setCompassPower(bool isOn) {
   compassPowerOn = isOn;
-  jswrap_hackstrap_compassWr(0x31,isOn ? 8 : 0);
+  jswrap_banglejs_compassWr(0x31,isOn ? 8 : 0);
   mag.x = 0;
   mag.y = 0;
   mag.z = 0;
@@ -437,7 +437,7 @@ void watchdogHandler() {
        jshPinGetValue(BTN3_PININDEX))) {
     flipCounter = 0;
     if (!lcdPowerOn)
-      strapTasks |= JSS_LCD_ON;
+      bangleTasks |= JSBT_LCD_ON;
   }
   if (flipCounter<255) flipCounter++;
   // If BTN1 is held down, trigger a reset
@@ -445,7 +445,7 @@ void watchdogHandler() {
     if (btn1Counter<255) btn1Counter++;
   } else {
     if (btn1Counter > BTN1_LOAD_TIMEOUT) {
-      strapTasks |= JSS_RESET;
+      bangleTasks |= JSBT_RESET;
       // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
     }
     btn1Counter = 0;
@@ -453,7 +453,7 @@ void watchdogHandler() {
 
   if (lcdPowerTimeout && lcdPowerOn && flipCounter>=lcdPowerTimeout) {
     // 10 seconds of inactivity, turn off display
-    strapTasks |= JSS_LCD_OFF;
+    bangleTasks |= JSBT_LCD_OFF;
   }
 
 
@@ -473,7 +473,7 @@ void watchdogHandler() {
     if (mag.x>magmax.x) magmax.x=mag.x;
     if (mag.y>magmax.y) magmax.y=mag.y;
     if (mag.z>magmax.z) magmax.z=mag.z;
-    strapTasks |= JSS_MAG_DATA;
+    bangleTasks |= JSBT_MAG_DATA;
   }
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
   buf[0]=6;
@@ -489,7 +489,7 @@ void watchdogHandler() {
   acc.y = newy;
   acc.z = newz;
   accdiff = dx*dx + dy*dy + dz*dz;
-  strapTasks |= JSS_ACCEL_DATA;
+  bangleTasks |= JSBT_ACCEL_DATA;
   // read interrupt source data
   buf[0]=0x12;
   jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
@@ -500,7 +500,7 @@ void watchdogHandler() {
   if (tapType) {
     // report tap
     tapInfo = buf[0] | (tapType<<6);
-    strapTasks |= JSS_ACCEL_TAPPED;
+    bangleTasks |= JSBT_ACCEL_TAPPED;
     // clear the IRQ flags
     buf[0]=0x17;
     jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
@@ -512,9 +512,9 @@ void watchdogHandler() {
 
 /*JSON{
   "type" : "init",
-  "generate" : "jswrap_hackstrap_init"
+  "generate" : "jswrap_banglejs_init"
 }*/
-void jswrap_hackstrap_init() {
+void jswrap_banglejs_init() {
   jshPinOutput(18,0); // what's this?
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
 
@@ -538,13 +538,13 @@ void jswrap_hackstrap_init() {
   jshDelayMicroseconds(10000);
   jshPinOutput(28,1);
   jshDelayMicroseconds(50000);
-  jswrap_hackstrap_ioWr(0,0);
-  jswrap_hackstrap_ioWr(IOEXP_HRM,1); // HRM off
-  jswrap_hackstrap_ioWr(1,0); // ?
-  jswrap_hackstrap_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
+  jswrap_banglejs_ioWr(0,0);
+  jswrap_banglejs_ioWr(IOEXP_HRM,1); // HRM off
+  jswrap_banglejs_ioWr(1,0); // ?
+  jswrap_banglejs_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
   jshDelayMicroseconds(100000);
-  jswrap_hackstrap_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
-  jswrap_hackstrap_ioWr(IOEXP_LCD_BACKLIGHT,0); // backlight on
+  jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
+  jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT,0); // backlight on
   jshDelayMicroseconds(10000);
 
   lcdPowerOn = true;
@@ -612,32 +612,32 @@ void jswrap_hackstrap_init() {
   // Setup touchscreen I2C
 
   // accelerometer init
-  jswrap_hackstrap_accelWr(0x18,0x0a); // CNTL1 Off, 4g range, Wakeup
-  jswrap_hackstrap_accelWr(0x19,0x80); // CNTL2 Software reset
+  jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off, 4g range, Wakeup
+  jswrap_banglejs_accelWr(0x19,0x80); // CNTL2 Software reset
   jshDelayMicroseconds(2000);
-  jswrap_hackstrap_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
-  jswrap_hackstrap_accelWr(0x1a,0b11011110); // CNTL3
+  jswrap_banglejs_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
+  jswrap_banglejs_accelWr(0x1a,0b11011110); // CNTL3
   // 50Hz tilt
   // 50Hz directional tap
   // 50Hz general motion detection and the high-pass filtered outputs
-  jswrap_hackstrap_accelWr(0x1c,0); // INC1 disabled
-  jswrap_hackstrap_accelWr(0x1d,0); // INC2 disabled
-  jswrap_hackstrap_accelWr(0x1e,0); // INC3 disabled
-  jswrap_hackstrap_accelWr(0x1f,0); // INC4 disabled
-  jswrap_hackstrap_accelWr(0x20,0); // INC5 disabled
-  jswrap_hackstrap_accelWr(0x21,0); // INC6 disabled
-  jswrap_hackstrap_accelWr(0x23,3); // WUFC wakeupi detect counter
-  //jswrap_hackstrap_accelWr(0x24,3); // TDTRC Tap detect enable
-  //jswrap_hackstrap_accelWr(0x25, 0x78); // TDTC Tap detect double tap
-  //jswrap_hackstrap_accelWr(0x26, 0x20); // TTH Tap detect threshold high (0xCB recommended)
-  //jswrap_hackstrap_accelWr(0x27, 0x10); // TTH Tap detect threshold low (0x1A recommended)
-  jswrap_hackstrap_accelWr(0x30,1); // ATH low wakeup detect threshold
-  jswrap_hackstrap_accelWr(0x35,0); // LP_CNTL no averaging of samples
-  jswrap_hackstrap_accelWr(0x3e,0); // clear the buffer
-  jswrap_hackstrap_accelWr(0x18,0b10001100);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup, tap
+  jswrap_banglejs_accelWr(0x1c,0); // INC1 disabled
+  jswrap_banglejs_accelWr(0x1d,0); // INC2 disabled
+  jswrap_banglejs_accelWr(0x1e,0); // INC3 disabled
+  jswrap_banglejs_accelWr(0x1f,0); // INC4 disabled
+  jswrap_banglejs_accelWr(0x20,0); // INC5 disabled
+  jswrap_banglejs_accelWr(0x21,0); // INC6 disabled
+  jswrap_banglejs_accelWr(0x23,3); // WUFC wakeupi detect counter
+  //jswrap_banglejs_accelWr(0x24,3); // TDTRC Tap detect enable
+  //jswrap_banglejs_accelWr(0x25, 0x78); // TDTC Tap detect double tap
+  //jswrap_banglejs_accelWr(0x26, 0x20); // TTH Tap detect threshold high (0xCB recommended)
+  //jswrap_banglejs_accelWr(0x27, 0x10); // TTH Tap detect threshold low (0x1A recommended)
+  jswrap_banglejs_accelWr(0x30,1); // ATH low wakeup detect threshold
+  jswrap_banglejs_accelWr(0x35,0); // LP_CNTL no averaging of samples
+  jswrap_banglejs_accelWr(0x3e,0); // clear the buffer
+  jswrap_banglejs_accelWr(0x18,0b10001100);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup, tap
   // compass init
-  jswrap_hackstrap_compassWr(0x32,1);
-  jswrap_hackstrap_compassWr(0x31,0);
+  jswrap_banglejs_compassWr(0x32,1);
+  jswrap_banglejs_compassWr(0x31,0);
   compassPowerOn = false;
   i2cBusy = false;
   // Other IO
@@ -666,9 +666,9 @@ void jswrap_hackstrap_init() {
 
 /*JSON{
   "type" : "kill",
-  "generate" : "jswrap_hackstrap_kill"
+  "generate" : "jswrap_banglejs_kill"
 }*/
-void jswrap_hackstrap_kill() {
+void jswrap_banglejs_kill() {
   jstStopExecuteFn(watchdogHandler, 0);
   jsvUnLock(promisePressure);
   promisePressure = 0;
@@ -676,15 +676,15 @@ void jswrap_hackstrap_kill() {
 
 /*JSON{
   "type" : "idle",
-  "generate" : "jswrap_hackstrap_idle"
+  "generate" : "jswrap_banglejs_idle"
 }*/
-bool jswrap_hackstrap_idle() {
-  if (strapTasks == JSS_NONE) return false;
-  JsVar *strap =jsvObjectGetChild(execInfo.root, "Strap", 0);
-  if (strapTasks & JSS_LCD_OFF) jswrap_hackstrap_setLCDPower(0);
-  if (strapTasks & JSS_LCD_ON) jswrap_hackstrap_setLCDPower(1);
-  if (strapTasks & JSS_ACCEL_DATA) {
-    if (strap && jsiObjectHasCallbacks(strap, JS_EVENT_PREFIX"accel")) {
+bool jswrap_banglejs_idle() {
+  if (bangleTasks == JSBT_NONE) return false;
+  JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
+  if (bangleTasks & JSBT_LCD_OFF) jswrap_banglejs_setLCDPower(0);
+  if (bangleTasks & JSBT_LCD_ON) jswrap_banglejs_setLCDPower(1);
+  if (bangleTasks & JSBT_ACCEL_DATA) {
+    if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"accel")) {
       JsVar *o = jsvNewObject();
       if (o) {
         jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(acc.x/8192.0));
@@ -692,7 +692,7 @@ bool jswrap_hackstrap_idle() {
         jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(acc.z/8192.0));
         jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z)/8192.0));
         jsvObjectSetChildAndUnLock(o, "diff", jsvNewFromFloat(sqrt(accdiff)/8192.0));
-        jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"accel", &o, 1);
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"accel", &o, 1);
         jsvUnLock(o);
       }
     }
@@ -703,19 +703,19 @@ bool jswrap_hackstrap_idle() {
     }
     if (faceUpCounter<255) faceUpCounter++;
     if (faceUpCounter==2) {
-      if (strap) {
+      if (bangle) {
         JsVar *v = jsvNewFromBool(faceUp);
-        jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"faceUp", &v, 1);
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"faceUp", &v, 1);
         jsvUnLock(v);
       }
       if (lcdPowerTimeout && !lcdPowerOn) {
         // LCD was turned off, turn it back on
-        jswrap_hackstrap_setLCDPower(1);
+        jswrap_banglejs_setLCDPower(1);
         flipCounter = 0;
       }
     }
   }
-  if (strap && (strapTasks & JSS_ACCEL_TAPPED)) {
+  if (bangle && (bangleTasks & JSBT_ACCEL_TAPPED)) {
     JsVar *o = jsvNewObject();
     if (o) {
       const char *string="";
@@ -731,11 +731,11 @@ bool jswrap_hackstrap_idle() {
       jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger((tapInfo&16)?-n:(tapInfo&32)?n:0));
       jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger((tapInfo&4)?-n:(tapInfo&8)?n:0));
       jsvObjectSetChildAndUnLock(o, "z", jsvNewFromInteger((tapInfo&1)?-n:(tapInfo&2)?n:0));
-      jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"tap", &o, 1);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"tap", &o, 1);
       jsvUnLock(o);
     }
   }
-  if (strap && (strapTasks & JSS_GPS_DATA)) {
+  if (bangle && (bangleTasks & JSBT_GPS_DATA)) {
     JsVar *o = jsvNewObject();
     if (o) {
       jsvObjectSetChildAndUnLock(o, "lat", jsvNewFromFloat(gpsFix.lat));
@@ -755,20 +755,20 @@ bool jswrap_hackstrap_idle() {
       td.ms = gpsFix.ms;
       td.zone = jsdGetTimeZone();
       jsvObjectSetChildAndUnLock(o, "time", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
-      jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"GPS", &o, 1);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS", &o, 1);
       jsvUnLock(o);
     }
   }
-  if (strap && (strapTasks & JSS_GPS_DATA_LINE)) {
+  if (bangle && (bangleTasks & JSBT_GPS_DATA_LINE)) {
     JsVar *line = jsvNewFromString(nmeaLine);
     if (line) {
-      jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"GPS-raw", &line, 1);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw", &line, 1);
 
     }
     jsvUnLock(line);
   }
-  if (strap && (strapTasks & JSS_MAG_DATA)) {
-    if (strap && jsiObjectHasCallbacks(strap, JS_EVENT_PREFIX"mag")) {
+  if (bangle && (bangleTasks & JSBT_MAG_DATA)) {
+    if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"mag")) {
       JsVar *o = jsvNewObject();
       if (o) {
         jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger(mag.x));
@@ -783,15 +783,15 @@ bool jswrap_hackstrap_idle() {
         double h = jswrap_math_atan2(dx,dy)*(-180/PI);
         if (h<0) h+=360;
         jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
-        jsiQueueObjectCallbacks(strap, JS_EVENT_PREFIX"mag", &o, 1);
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"mag", &o, 1);
         jsvUnLock(o);
       }
     }
   }
-  if (strapTasks & JSS_RESET)
+  if (bangleTasks & JSBT_RESET)
     jsiStatus |= JSIS_TODO_FLASH_LOAD;
-  jsvUnLock(strap);
-  strapTasks = JSS_NONE;
+  jsvUnLock(bangle);
+  bangleTasks = JSBT_NONE;
   return false;
 }
 
@@ -895,9 +895,9 @@ bool nmea_decode(const char *nmeaLine) {
 
 /*JSON{
   "type" : "EV_SERIAL1",
-  "generate" : "jswrap_hackstrap_gps_character"
+  "generate" : "jswrap_banglejs_gps_character"
 }*/
-bool jswrap_hackstrap_gps_character(char ch) {
+bool jswrap_banglejs_gps_character(char ch) {
   if (ch=='\r') return true; // we don't care
   // if too many chars, roll over since it's probably because we skipped a newline
   if (nmeaCount>=sizeof(nmeaIn)) nmeaCount=0;
@@ -916,9 +916,9 @@ bool jswrap_hackstrap_gps_character(char ch) {
   if (nmeaCount>1) {
     memcpy(nmeaLine, nmeaIn, nmeaCount);
     nmeaLine[nmeaCount-1]=0; // just overwriting \n
-    strapTasks |= JSS_GPS_DATA_LINE;
+    bangleTasks |= JSBT_GPS_DATA_LINE;
     if (nmea_decode(nmeaLine))
-      strapTasks |= JSS_GPS_DATA;
+      bangleTasks |= JSBT_GPS_DATA;
   }
   nmeaCount = 0;
   return true; // handled
@@ -926,9 +926,9 @@ bool jswrap_hackstrap_gps_character(char ch) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "accelWr",
-    "generate" : "jswrap_hackstrap_accelWr",
+    "generate" : "jswrap_banglejs_accelWr",
     "params" : [
       ["reg","int",""],
       ["data","int",""]
@@ -936,7 +936,7 @@ bool jswrap_hackstrap_gps_character(char ch) {
 }
 Writes a register on the KX023 Accelerometer
 */
-void jswrap_hackstrap_accelWr(JsVarInt reg, JsVarInt data) {
+void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
   unsigned char buf[2];
   buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
@@ -947,9 +947,9 @@ void jswrap_hackstrap_accelWr(JsVarInt reg, JsVarInt data) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "accelRd",
-    "generate" : "jswrap_hackstrap_accelRd",
+    "generate" : "jswrap_banglejs_accelRd",
     "params" : [
       ["reg","int",""]
     ],
@@ -957,7 +957,7 @@ void jswrap_hackstrap_accelWr(JsVarInt reg, JsVarInt data) {
 }
 Reads a register from the KX023 Accelerometer
 */
-int jswrap_hackstrap_accelRd(JsVarInt reg) {
+int jswrap_banglejs_accelRd(JsVarInt reg) {
   unsigned char buf[1];
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
@@ -969,9 +969,9 @@ int jswrap_hackstrap_accelRd(JsVarInt reg) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "compassWr",
-    "generate" : "jswrap_hackstrap_compassWr",
+    "generate" : "jswrap_banglejs_compassWr",
     "params" : [
       ["reg","int",""],
       ["data","int",""]
@@ -979,7 +979,7 @@ int jswrap_hackstrap_accelRd(JsVarInt reg) {
 }
 Writes a register on the Magnetometer/Compass
 */
-void jswrap_hackstrap_compassWr(JsVarInt reg, JsVarInt data) {
+void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
   unsigned char buf[2];
   buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
@@ -990,9 +990,9 @@ void jswrap_hackstrap_compassWr(JsVarInt reg, JsVarInt data) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "ioWr",
-    "generate" : "jswrap_hackstrap_ioWr",
+    "generate" : "jswrap_banglejs_ioWr",
     "params" : [
       ["mask","int",""],
       ["isOn","int",""]
@@ -1000,7 +1000,7 @@ void jswrap_hackstrap_compassWr(JsVarInt reg, JsVarInt data) {
 }
 Changes a pin state on the IO expander
 */
-void jswrap_hackstrap_ioWr(JsVarInt mask, bool on) {
+void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
   static unsigned char state;
   if (on) state |= mask;
   else state &= ~mask;
@@ -1012,19 +1012,19 @@ void jswrap_hackstrap_ioWr(JsVarInt mask, bool on) {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "off",
-    "generate" : "jswrap_hackstrap_off"
+    "generate" : "jswrap_banglejs_off"
 }
-Turn HackStrap off. It can only be woken by pressing BTN1.
+Turn Bangle.js off. It can only be woken by pressing BTN1.
 */
-void jswrap_hackstrap_off() {
+void jswrap_banglejs_off() {
   jsiKill();
   jsvKill();
   jshKill();
   //jshPinOutput(GPS_PIN_EN,0); // GPS off FIXME
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
-  jswrap_hackstrap_setLCDPower(0);
+  jswrap_banglejs_setLCDPower(0);
 
 
   nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
@@ -1035,15 +1035,15 @@ void jswrap_hackstrap_off() {
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Strap",
+    "class" : "Bangle",
     "name" : "menu",
-    "generate" : "jswrap_strap_menu",
+    "generate" : "jswrap_banglejs_menu",
     "params" : [
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
     "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
 }
-Display a menu on HackStrap's screen, and set up the buttons to navigate through it.
+Display a menu on Bangle.js's screen, and set up the buttons to navigate through it.
 
 Supply an object containing menu items. When an item is selected, the
 function it references will be executed. For example:
@@ -1056,7 +1056,7 @@ var mainmenu = {
   "" : { "title" : "-- Main Menu --" },
   "Backlight On" : function() { LED1.set(); },
   "Backlight Off" : function() { LED1.reset(); },
-  "Submenu" : function() { Strap.menu(submenu); },
+  "Submenu" : function() { Bangle.menu(submenu); },
   "A Boolean" : {
     value : boolean,
     format : v => v?"On":"Off",
@@ -1067,28 +1067,28 @@ var mainmenu = {
     min:0,max:100,step:10,
     onchange : v => { number=v; }
   },
-  "Exit" : function() { Strap.menu(); },
+  "Exit" : function() { Bangle.menu(); },
 };
 // Submenu
 var submenu = {
   "" : { "title" : "-- SubMenu --" },
   "One" : undefined, // do nothing
   "Two" : undefined, // do nothing
-  "< Back" : function() { Strap.menu(mainmenu); },
+  "< Back" : function() { Bangle.menu(mainmenu); },
 };
 // Actually display the menu
-Strap.menu(mainmenu);
+Bangle.menu(mainmenu);
 ```
 
 See http://www.espruino.com/graphical_menu for more detailed information.
 */
-JsVar *jswrap_strap_menu(JsVar *menu) {
+JsVar *jswrap_banglejs_menu(JsVar *menu) {
   /* Unminified JS code is:
 
-Strap.menu = function(menudata) {
-  if (Strap.btnWatches) {
-    Strap.btnWatches.forEach(clearWatch);
-    Strap.btnWatches = undefined;
+Bangle.menu = function(menudata) {
+  if (Bangle.btnWatches) {
+    Bangle.btnWatches.forEach(clearWatch);
+    Bangle.btnWatches = undefined;
   }
   g.clear();g.flip(); // clear screen if no menu supplied
   if (!menudata) return;
@@ -1141,7 +1141,7 @@ Strap.menu = function(menudata) {
     //g.drawLine(w,0,w,h);
   };
   var m = require("graphical_menu").list(g, menudata);
-  Strap.btnWatches = [
+  Bangle.btnWatches = [
     setWatch(function() { m.move(-1); }, BTN1, {repeat:1}),
     setWatch(function() { m.move(1); }, BTN3, {repeat:1}),
     setWatch(function() { m.select(); }, BTN2, {repeat:1})
@@ -1150,11 +1150,11 @@ Strap.menu = function(menudata) {
 };
 */
 
-  return jspExecuteJSFunction("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Strap.btnWatches&&(Strap.btnWatches.forEach(clearWatch),Strap.btnWatches=void 0);"
+  return jspExecuteJSFunction("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Bangle.btnWatches&&(Bangle.btnWatches.forEach(clearWatch),Bangle.btnWatches=void 0);"
       "g.clear();g.flip();"
       "if(a){a['']||(a['']={});g.setFont('6x8');g.setFontAlign(-1,-1,0);var d=g.getWidth()-18,e=g.getHeight();a[''].fontHeight=8;a[''].x=0;a[''].x2=d-2;a[''].y=40;a[''].y2=200;a[''].preflip=function(){"
       "g.drawImage(c([16,56,124,254,16,16,16,16]),d,40);g.drawImage(c([16,16,16,16,254,124,56,16]),d,194);g.drawImage(c([0,8,12,14,255,14,12,8]),d,116)};"
-      "var b=require('graphical_menu').list(g,a);Strap.btnWatches=[setWatch(function(){b.move(-1)},BTN1,{repeat:1}),setWatch(function(){b.move(1)},BTN3,{repeat:1}),"
+      "var b=require('graphical_menu').list(g,a);Bangle.btnWatches=[setWatch(function(){b.move(-1)},BTN1,{repeat:1}),setWatch(function(){b.move(1)},BTN3,{repeat:1}),"
       "setWatch(function(){b.select()},BTN2,{repeat:1})];return b}})",0,1,&menu);
 }
 

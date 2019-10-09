@@ -36,7 +36,7 @@
 
 static void set_led_state(bool btn, bool progress)
 {
-#if defined(PIXLJS) || defined(HACKSTRAP)
+#if defined(PIXLJS) || defined(BANGLEJS)
   // LED1 is backlight/HRM - don't use it!
 #else
 #if defined(LED2_PININDEX) && defined(LED3_PININDEX)

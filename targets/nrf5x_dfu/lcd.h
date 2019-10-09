@@ -29,7 +29,7 @@
 #define LCD_DATA_HEIGHT 96
 #define LCD_STORE_MODIFIED
 #endif
-#ifdef LCD_CONTROLLER_ST7789_8BIT // HackStrap
+#ifdef LCD_CONTROLLER_ST7789_8BIT // Bangle.js
 #define LCD
 #define LCD_DATA_WIDTH 120 // pixel doubled
 #define LCD_DATA_HEIGHT 120 // pixel doubled
