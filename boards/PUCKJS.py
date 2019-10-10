@@ -79,7 +79,8 @@ devices = {
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
   'CAPSENSE' : { 'pin_rx' : 'D11', 'pin_tx' : 'D12' },
   'NFC': { 'pin_a':'D9', 'pin_b':'D10' },
-  'MAG': { 'pin_pwr':'D18',
+  'MAG': { 'device': 'MAG3110',
+           'pin_pwr':'D18',
            'pin_int':'D17',
            'pin_sda':'D20',
            'pin_scl':'D19' }
