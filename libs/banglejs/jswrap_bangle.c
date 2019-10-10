@@ -180,15 +180,16 @@ typedef struct {
   short x,y,z;
 } Vector3;
 
-#define ACCEL_POLL_INTERVAL 100 // in msec
+#define DEFAULT_ACCEL_POLL_INTERVAL 100 // in msec
+#define ACCEL_POLL_INTERVAL_MAX 5000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
 #define BTN1_LOAD_TIMEOUT 1500 // in msec
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo internalI2C;
 /// Is I2C busy? if so we'll skip one reading in our interrupt so we don't overlap
 bool i2cBusy;
-/// Promise when pressure is requested
-JsVar *promisePressure;
+/// How often should be poll for accelerometer/compass data?
+volatile uint16_t pollInterval; // in ms
 /// counter that counts up if watch has stayed face up or down
 volatile unsigned char faceUpCounter;
 /// Was the watch face-up? we use this when firing events
@@ -233,6 +234,99 @@ void lcd_flip(JsVar *parent) {
   }
   flipTimer = 0;
   lcdST7789_flip();
+}
+
+/* Scan peripherals for any data that's needed
+ * Also, holding down both buttons will reboot */
+void peripheralPollHandler() {
+  //jshPinOutput(LED1_PININDEX, 1);
+  // Handle watchdog
+  if (!(jshPinGetValue(BTN1_PININDEX) && jshPinGetValue(BTN2_PININDEX)))
+    jshKickWatchDog();
+  // power on display if a button is pressed
+  if (lcdPowerTimeout &&
+      (jshPinGetValue(BTN1_PININDEX) || jshPinGetValue(BTN2_PININDEX) ||
+       jshPinGetValue(BTN3_PININDEX))) {
+    flipTimer = 0;
+    if (!lcdPowerOn)
+      bangleTasks |= JSBT_LCD_ON;
+  }
+  if (flipTimer < TIMER_MAX)
+    flipTimer += pollInterval;
+  // If BTN1 is held down, trigger a reset
+  if (jshPinGetValue(BTN1_PININDEX)) {
+    if (btn1Timer < TIMER_MAX)
+      btn1Timer += pollInterval;
+  } else {
+    if (btn1Timer > BTN1_LOAD_TIMEOUT) {
+      bangleTasks |= JSBT_RESET;
+      // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
+    }
+    btn1Timer = 0;
+  }
+
+  if (lcdPowerTimeout && lcdPowerOn && flipTimer>=lcdPowerTimeout) {
+    // 10 seconds of inactivity, turn off display
+    bangleTasks |= JSBT_LCD_OFF;
+  }
+
+  if (i2cBusy) return;
+  // check the magnetometer if we had it on
+  unsigned char buf[7];
+  if (compassPowerOn) {
+    buf[0]=0x10;
+    jsi2cWrite(&internalI2C, MAG_ADDR, 1, buf, true);
+    jsi2cRead(&internalI2C, MAG_ADDR, 7, buf, true);
+    if (buf[0]&1) { // then we have data (hopefully? No datasheet)
+      mag.y = buf[1] | (buf[2]<<8);
+      mag.x = buf[3] | (buf[4]<<8);
+      mag.z = buf[5] | (buf[6]<<8);
+      if (mag.x<magmin.x) magmin.x=mag.x;
+      if (mag.y<magmin.y) magmin.y=mag.y;
+      if (mag.z<magmin.z) magmin.z=mag.z;
+      if (mag.x>magmax.x) magmax.x=mag.x;
+      if (mag.y>magmax.y) magmax.y=mag.y;
+      if (mag.z>magmax.z) magmax.z=mag.z;
+      bangleTasks |= JSBT_MAG_DATA;
+    }
+  }
+  // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
+  // read interrupt source data
+  buf[0]=0x12; // INS1
+  jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cRead(&internalI2C, ACCEL_ADDR, 2, buf, true);
+  // 0 -> 0x12 INS1 - tap event
+  // 1 -> 0x13 INS2 - what kind of event
+  bool hasAccelData = (buf[1]&16)!=0; // DRDY
+  int tapType = (buf[1]>>2)&3; // TDTS0/1
+  if (tapType) {
+    // report tap
+    tapInfo = buf[0] | (tapType<<6);
+    bangleTasks |= JSBT_ACCEL_TAPPED;
+    // clear the IRQ flags
+    buf[0]=0x17;
+    jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
+    jsi2cRead(&internalI2C, ACCEL_ADDR, 1, buf, true);
+  }
+  if (hasAccelData) {
+    buf[0]=6;
+    jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
+    jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
+    short newx = (buf[1]<<8)|buf[0];
+    short newy = (buf[3]<<8)|buf[2];
+    short newz = (buf[5]<<8)|buf[4];
+    int dx = newx-acc.x;
+    int dy = newy-acc.y;
+    int dz = newz-acc.z;
+    acc.x = newx;
+    acc.y = newy;
+    acc.z = newz;
+
+    accdiff = dx*dx + dy*dy + dz*dz;
+    bangleTasks |= JSBT_ACCEL_DATA;
+  }
+
+  //jshPinOutput(LED1_PININDEX, 0);
 }
 
 /*JSON{
@@ -326,6 +420,28 @@ void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
   if (!isfinite(timeout)) lcdPowerTimeout=0;
   else lcdPowerTimeout = timeout*1000;
   if (lcdPowerTimeout<0) lcdPowerTimeout=0;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setPollInterval",
+    "generate" : "jswrap_banglejs_setPollInterval",
+    "params" : [
+      ["interval","float","Polling interval in milliseconds"]
+    ]
+}
+Set how often the watch should poll for new acceleration/gyro data
+*/
+void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
+  if (!isfinite(interval) || interval<10 || interval>ACCEL_POLL_INTERVAL_MAX) {
+    jsExceptionHere(JSET_ERROR, "Invalid interval");
+    return;
+  }
+  pollInterval = (uint16_t)interval;
+  JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
+  jstStopExecuteFn(peripheralPollHandler, 0);
+  jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
 }
 
 /*JSON{
@@ -442,93 +558,6 @@ void jswrap_banglejs_setCompassPower(bool isOn) {
 }
 
 
-// Holding down both buttons will reboot
-void watchdogHandler() {
-  //jshPinOutput(LED1_PININDEX, 1);
-  // Handle watchdog
-  if (!(jshPinGetValue(BTN1_PININDEX) && jshPinGetValue(BTN2_PININDEX)))
-    jshKickWatchDog();
-  // power on display if a button is pressed
-  if (lcdPowerTimeout &&
-      (jshPinGetValue(BTN1_PININDEX) || jshPinGetValue(BTN2_PININDEX) ||
-       jshPinGetValue(BTN3_PININDEX))) {
-    flipTimer = 0;
-    if (!lcdPowerOn)
-      bangleTasks |= JSBT_LCD_ON;
-  }
-  if (flipTimer < TIMER_MAX)
-    flipTimer += ACCEL_POLL_INTERVAL;
-  // If BTN1 is held down, trigger a reset
-  if (jshPinGetValue(BTN1_PININDEX)) {
-    if (btn1Timer < TIMER_MAX)
-      btn1Timer += ACCEL_POLL_INTERVAL;
-  } else {
-    if (btn1Timer > BTN1_LOAD_TIMEOUT) {
-      bangleTasks |= JSBT_RESET;
-      // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
-    }
-    btn1Timer = 0;
-  }
-
-  if (lcdPowerTimeout && lcdPowerOn && flipTimer>=lcdPowerTimeout) {
-    // 10 seconds of inactivity, turn off display
-    bangleTasks |= JSBT_LCD_OFF;
-  }
-
-
-  if (i2cBusy) return;
-  // check the magnetometer if we had it on
-  unsigned char buf[6];
-  if (compassPowerOn) {
-    buf[0]=0x11;
-    jsi2cWrite(&internalI2C, MAG_ADDR, 1, buf, true);
-    jsi2cRead(&internalI2C, MAG_ADDR, 6, buf, true);
-    mag.y = buf[0] | (buf[1]<<8);
-    mag.x = buf[2] | (buf[3]<<8);
-    mag.z = buf[4] | (buf[5]<<8);
-    if (mag.x<magmin.x) magmin.x=mag.x;
-    if (mag.y<magmin.y) magmin.y=mag.y;
-    if (mag.z<magmin.z) magmin.z=mag.z;
-    if (mag.x>magmax.x) magmax.x=mag.x;
-    if (mag.y>magmax.y) magmax.y=mag.y;
-    if (mag.z>magmax.z) magmax.z=mag.z;
-    bangleTasks |= JSBT_MAG_DATA;
-  }
-  // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
-  buf[0]=6;
-  jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
-  jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
-  short newx = (buf[1]<<8)|buf[0];
-  short newy = (buf[3]<<8)|buf[2];
-  short newz = (buf[5]<<8)|buf[4];
-  int dx = newx-acc.x;
-  int dy = newy-acc.y;
-  int dz = newz-acc.z;
-  acc.x = newx;
-  acc.y = newy;
-  acc.z = newz;
-  accdiff = dx*dx + dy*dy + dz*dz;
-  bangleTasks |= JSBT_ACCEL_DATA;
-  // read interrupt source data
-  buf[0]=0x12;
-  jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
-  jsi2cRead(&internalI2C, ACCEL_ADDR, 2, buf, true);
-  // 0 -> 0x12 INS1 - tap event
-  // 1 -> 0x13 INS2 - what kind of event
-  int tapType = (buf[1]>>2)&3;
-  if (tapType) {
-    // report tap
-    tapInfo = buf[0] | (tapType<<6);
-    bangleTasks |= JSBT_ACCEL_TAPPED;
-    // clear the IRQ flags
-    buf[0]=0x17;
-    jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
-    jsi2cRead(&internalI2C, ACCEL_ADDR, 1, buf, true);
-  }
-
-  //jshPinOutput(LED1_PININDEX, 0);
-}
-
 /*JSON{
   "type" : "init",
   "generate" : "jswrap_banglejs_init"
@@ -634,8 +663,8 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off, 4g range, Wakeup
   jswrap_banglejs_accelWr(0x19,0x80); // CNTL2 Software reset
   jshDelayMicroseconds(2000);
-  jswrap_banglejs_accelWr(0x1b,0x02); // ODCNTL - 50Hz acceleration output data rate, filteringlow-pass  ODR/9
-  jswrap_banglejs_accelWr(0x1a,0b11011110); // CNTL3
+  jswrap_banglejs_accelWr(0x1a,0b10011000); // CNTL3 12.5Hz tilt, 400Hz tap, 0.781Hz motion detection
+  jswrap_banglejs_accelWr(0x1b,0b00000001); // ODCNTL - 25Hz acceleration output data rate, filteringlow-pass  ODR/9
   // 50Hz tilt
   // 50Hz directional tap
   // 50Hz general motion detection and the high-pass filtered outputs
@@ -653,7 +682,7 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_accelWr(0x30,1); // ATH low wakeup detect threshold
   jswrap_banglejs_accelWr(0x35,0); // LP_CNTL no averaging of samples
   jswrap_banglejs_accelWr(0x3e,0); // clear the buffer
-  jswrap_banglejs_accelWr(0x18,0b10001100);  // CNTL1 On, ODR/2(high res), 4g range, Wakeup, tap
+  jswrap_banglejs_accelWr(0x18,0b10101100);  // CNTL1 On, DRDYE, ODR/2(high res), 4g range, Wakeup, TDTE (tap enable)
   // compass init
   jswrap_banglejs_compassWr(0x32,1);
   jswrap_banglejs_compassWr(0x31,0);
@@ -679,8 +708,9 @@ void jswrap_banglejs_init() {
   //    enable will do nothing - but good to try anyway
   jshEnableWatchDog(5); // 5 second watchdog
   // This timer kicks the watchdog, and does some other stuff as well
-  JsSysTime t = jshGetTimeFromMilliseconds(ACCEL_POLL_INTERVAL);
-  jstExecuteFn(watchdogHandler, NULL, jshGetSystemTime()+t, t);
+  pollInterval = DEFAULT_ACCEL_POLL_INTERVAL;
+  JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
+  jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
 }
 
 /*JSON{
@@ -688,9 +718,7 @@ void jswrap_banglejs_init() {
   "generate" : "jswrap_banglejs_kill"
 }*/
 void jswrap_banglejs_kill() {
-  jstStopExecuteFn(watchdogHandler, 0);
-  jsvUnLock(promisePressure);
-  promisePressure = 0;
+  jstStopExecuteFn(peripheralPollHandler, 0);
 }
 
 /*JSON{
@@ -1041,6 +1069,41 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
   i2cBusy = true;
   jsi2cWrite(&internalI2C, 0x20, 1, &state, true);
   i2cBusy = false;
+}
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "project",
+    "generate" : "jswrap_banglejs_project",
+    "params" : [
+      ["latlong","JsVar","`{lat:..., lon:...}`"]
+    ],
+    "return" : ["JsVar","{x:..., y:...}"]
+}
+Perform a Spherical [Web Mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection)
+of latitude and longitude into `x` and `y` coordinates, which are roughly
+equivalent to meters from `{lat:0,lon:0}`.
+
+This is the formula used for most online mapping and is a good way
+to compare GPS coordinates to work out the distance between them.
+*/
+JsVar *jswrap_banglejs_project(JsVar *latlong) {
+  const double degToRad = PI / 180; // degree to radian conversion
+  const double latMax = 85.0511287798; // clip latitude to sane values
+  const double R = 6378137; // earth radius in m
+  double lat = jsvGetFloatAndUnLock(jsvObjectGetChild(latlong,"lat",0));
+  double lon = jsvGetFloatAndUnLock(jsvObjectGetChild(latlong,"lon",0));
+  if (lat > latMax) lat=latMax;
+  if (lat < -latMax) lat=-latMax;
+  double s = sin(lat * degToRad);
+  JsVar *o = jsvNewObject();
+  if (o) {
+    jsvObjectSetChildAndUnLock(o,"x", jsvNewFromFloat(R * lon * degToRad));
+    jsvObjectSetChildAndUnLock(o,"y", jsvNewFromFloat(R * log((1 + s) / (1 - s)) / 2));
+  }
+  return o;
 }
 
 
