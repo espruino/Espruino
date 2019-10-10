@@ -91,7 +91,7 @@ Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a 
 
 * `x/y/z` raw x,y,z magnetometer readings
 * `dx/dy/dz` readings based on calibration since magnetometer turned on
-* `heading` in degrees based on calibrated readings
+* `heading` in degrees based on calibrated readings (will be NaN if magnetometer hasn't been rotated around 360 degrees)
  */
 /*JSON{
   "type" : "event",
@@ -109,7 +109,21 @@ Raw NMEA GPS data lines received as a string
   "params" : [["fix","JsVar",""]],
   "ifdef" : "BANGLEJS"
 }
-GPS data, as an object
+GPS data, as an object. Contains:
+
+```
+{ "lat": number,      // Latitude in degrees
+  "lon": number,      // Longitude in degrees
+  "alt": number,      // altitude in M
+  "speed": number,    // Speed in kph
+  "course": number,   // Course in degrees
+  "time": Date,       // Current Time
+  "satellites": 7,    // Number of satellites
+  "fix": 1            // NMEA Fix state - 0 is no fix
+}
+```
+
+If a value such as `lat` is not known because there is no fix, it'll be `NaN`.
  */
 /*JSON{
   "type" : "event",
@@ -152,6 +166,8 @@ typedef struct {
   double speed, course;
   int hour,min,sec,ms;
   uint8_t day,month,year;
+  uint8_t quality; // from GGA packet, 0 = no fix
+  uint8_t satellites; // how many satellites
 } NMEAFixInfo;
 
 #define NMEA_MAX_SIZE 82  //  82 is the max for NMEA
@@ -165,7 +181,8 @@ typedef struct {
 } Vector3;
 
 #define ACCEL_POLL_INTERVAL 100 // in msec
-#define BTN1_LOAD_TIMEOUT 20 // 2s - in poll intervals
+#define BTN1_LOAD_TIMEOUT 1500 // in msec
+#define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo internalI2C;
 /// Is I2C busy? if so we'll skip one reading in our interrupt so we don't overlap
@@ -173,15 +190,15 @@ bool i2cBusy;
 /// Promise when pressure is requested
 JsVar *promisePressure;
 /// counter that counts up if watch has stayed face up or down
-unsigned char faceUpCounter;
+volatile unsigned char faceUpCounter;
 /// Was the watch face-up? we use this when firing events
-bool wasFaceUp;
+volatile bool wasFaceUp;
 /// time since LCD contents were last modified
-volatile unsigned char flipCounter;
+volatile uint16_t flipTimer; // in ms
 /// How long has BTN1 been held down for
-unsigned char btn1Counter;
+volatile uint16_t btn1Timer; // in ms
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
-int lcdPowerTimeout = (5*1000)/ACCEL_POLL_INTERVAL;
+int lcdPowerTimeout = 5*1000; // in ms
 /// Is the LCD on?
 bool lcdPowerOn;
 /// Is the compass on?
@@ -214,7 +231,7 @@ void lcd_flip(JsVar *parent) {
     // LCD was turned off, turn it back on
     jswrap_banglejs_setLCDPower(1);
   }
-  flipCounter = 0;
+  flipTimer = 0;
   lcdST7789_flip();
 }
 
@@ -253,7 +270,7 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
     }
     jsvUnLock(bangle);
   }
-  flipCounter = 0;
+  flipTimer = 0;
   lcdPowerOn = isOn;
 }
 
@@ -307,7 +324,7 @@ With power saving on, the display will turn on if a button is pressed, the watch
 */
 void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
   if (!isfinite(timeout)) lcdPowerTimeout=0;
-  else lcdPowerTimeout = timeout*(1000.0/ACCEL_POLL_INTERVAL);
+  else lcdPowerTimeout = timeout*1000;
   if (lcdPowerTimeout<0) lcdPowerTimeout=0;
 }
 
@@ -435,23 +452,25 @@ void watchdogHandler() {
   if (lcdPowerTimeout &&
       (jshPinGetValue(BTN1_PININDEX) || jshPinGetValue(BTN2_PININDEX) ||
        jshPinGetValue(BTN3_PININDEX))) {
-    flipCounter = 0;
+    flipTimer = 0;
     if (!lcdPowerOn)
       bangleTasks |= JSBT_LCD_ON;
   }
-  if (flipCounter<255) flipCounter++;
+  if (flipTimer < TIMER_MAX)
+    flipTimer += ACCEL_POLL_INTERVAL;
   // If BTN1 is held down, trigger a reset
   if (jshPinGetValue(BTN1_PININDEX)) {
-    if (btn1Counter<255) btn1Counter++;
+    if (btn1Timer < TIMER_MAX)
+      btn1Timer += ACCEL_POLL_INTERVAL;
   } else {
-    if (btn1Counter > BTN1_LOAD_TIMEOUT) {
+    if (btn1Timer > BTN1_LOAD_TIMEOUT) {
       bangleTasks |= JSBT_RESET;
       // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
     }
-    btn1Counter = 0;
+    btn1Timer = 0;
   }
 
-  if (lcdPowerTimeout && lcdPowerOn && flipCounter>=lcdPowerTimeout) {
+  if (lcdPowerTimeout && lcdPowerOn && flipTimer>=lcdPowerTimeout) {
     // 10 seconds of inactivity, turn off display
     bangleTasks |= JSBT_LCD_OFF;
   }
@@ -711,7 +730,7 @@ bool jswrap_banglejs_idle() {
       if (lcdPowerTimeout && !lcdPowerOn) {
         // LCD was turned off, turn it back on
         jswrap_banglejs_setLCDPower(1);
-        flipCounter = 0;
+        flipTimer = 0;
       }
     }
   }
@@ -755,6 +774,8 @@ bool jswrap_banglejs_idle() {
       td.ms = gpsFix.ms;
       td.zone = jsdGetTimeZone();
       jsvObjectSetChildAndUnLock(o, "time", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
+      jsvObjectSetChildAndUnLock(o, "satellites", jsvNewFromInteger(gpsFix.satellites));
+      jsvObjectSetChildAndUnLock(o, "fix", jsvNewFromInteger(gpsFix.quality));
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS", &o, 1);
       jsvUnLock(o);
     }
@@ -780,9 +801,16 @@ bool jswrap_banglejs_idle() {
         jsvObjectSetChildAndUnLock(o, "dx", jsvNewFromInteger(dx));
         jsvObjectSetChildAndUnLock(o, "dy", jsvNewFromInteger(dy));
         jsvObjectSetChildAndUnLock(o, "dz", jsvNewFromInteger(dz));
-        double h = jswrap_math_atan2(dx,dy)*(-180/PI);
-        if (h<0) h+=360;
+        int cx = magmax.x-magmin.x;
+        int cy = magmax.y-magmin.y;
+        int c = cx*cx+cy*cy;
+        double h = NAN;
+        if (c>3000) { // only give a heading if we think we have valid data (eg enough magnetic field difference in min/max
+          h = jswrap_math_atan2(dx,dy)*(-180/PI);
+          if (h<0) h+=360;
+        }
         jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
+
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"mag", &o, 1);
         jsvUnLock(o);
       }
@@ -801,8 +829,9 @@ char *nmea_next_comma(char *nmea) {
   return nmea;
 }
 double nmea_decode_latlon(char *nmea, char *comma) {
+  if (*nmea==',') return NAN; // no reading
   char *dp = nmea;
-  while (*dp && *dp!='.') dp++; // find decimal pt
+  while (*dp && *dp!='.' && *dp!=',') dp++; // find decimal pt
   *comma = 0;
   double minutes = stringToFloat(&dp[-2]);
   *comma = ',';
@@ -815,6 +844,9 @@ double nmea_decode_float(char *nmea, char *comma) {
   double r = stringToFloat(nmea);
   *comma = ',';
   return r;
+}
+uint8_t nmea_decode_1(char *nmea) {
+  return chtod(nmea[0]);
 }
 uint8_t nmea_decode_2(char *nmea) {
   return chtod(nmea[0])*10 + chtod(nmea[1]);
@@ -873,8 +905,10 @@ bool nmea_decode(const char *nmeaLine) {
     if (*nmea=='W') gpsFix.lon=-gpsFix.lon;
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // quality
+    gpsFix.quality = nmea_decode_1(nmea);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // num satellites
+    gpsFix.satellites = nmea_decode_2(nmea);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // dilution of precision
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
