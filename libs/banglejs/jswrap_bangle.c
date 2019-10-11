@@ -800,7 +800,7 @@ bool jswrap_banglejs_idle() {
       td.min = gpsFix.min;
       td.sec = gpsFix.sec;
       td.ms = gpsFix.ms;
-      td.zone = jsdGetTimeZone();
+      td.zone = 0; // jsdGetTimeZone(); - no! GPS time is always in UTC :)
       jsvObjectSetChildAndUnLock(o, "time", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
       jsvObjectSetChildAndUnLock(o, "satellites", jsvNewFromInteger(gpsFix.satellites));
       jsvObjectSetChildAndUnLock(o, "fix", jsvNewFromInteger(gpsFix.quality));
