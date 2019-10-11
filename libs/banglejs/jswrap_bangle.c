@@ -36,6 +36,7 @@
 
 #include "jswrap_graphics.h"
 #include "lcd_st7789_8bit.h"
+#include "nmea.h"
 
 /*JSON{
   "type": "class",
@@ -161,18 +162,8 @@ If the watch is tapped, this event contains information on the way it was tapped
 #define IOEXP_LCD_RESET 0x40
 #define IOEXP_HRM 0x80
 
-typedef struct {
-  double lat,lon,alt;
-  double speed, course;
-  int hour,min,sec,ms;
-  uint8_t day,month,year;
-  uint8_t quality; // from GGA packet, 0 = no fix
-  uint8_t satellites; // how many satellites
-} NMEAFixInfo;
-
-#define NMEA_MAX_SIZE 82  //  82 is the max for NMEA
 uint8_t nmeaCount = 0; // how many characters of NMEA data do we have?
-char nmeaIn[NMEA_MAX_SIZE]; //  NMEA line being received right now
+char nmeaIn[NMEA_MAX_SIZE]; //  82 is the max for NMEA
 char nmeaLine[NMEA_MAX_SIZE]; // A line of received NMEA data
 NMEAFixInfo gpsFix;
 
@@ -783,27 +774,8 @@ bool jswrap_banglejs_idle() {
     }
   }
   if (bangle && (bangleTasks & JSBT_GPS_DATA)) {
-    JsVar *o = jsvNewObject();
+    JsVar *o = nmea_to_jsVar(&gpsFix);
     if (o) {
-      jsvObjectSetChildAndUnLock(o, "lat", jsvNewFromFloat(gpsFix.lat));
-      jsvObjectSetChildAndUnLock(o, "lon", jsvNewFromFloat(gpsFix.lon));
-      jsvObjectSetChildAndUnLock(o, "alt", jsvNewFromFloat(gpsFix.alt));
-      jsvObjectSetChildAndUnLock(o, "speed", jsvNewFromFloat(gpsFix.speed));
-      jsvObjectSetChildAndUnLock(o, "course", jsvNewFromFloat(gpsFix.course));
-      CalendarDate date;
-      date.day = gpsFix.day;
-      date.month = gpsFix.month;
-      date.year = 2000+gpsFix.year;
-      TimeInDay td;
-      td.daysSinceEpoch = fromCalenderDate(&date);
-      td.hour = gpsFix.hour;
-      td.min = gpsFix.min;
-      td.sec = gpsFix.sec;
-      td.ms = gpsFix.ms;
-      td.zone = 0; // jsdGetTimeZone(); - no! GPS time is always in UTC :)
-      jsvObjectSetChildAndUnLock(o, "time", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
-      jsvObjectSetChildAndUnLock(o, "satellites", jsvNewFromInteger(gpsFix.satellites));
-      jsvObjectSetChildAndUnLock(o, "fix", jsvNewFromInteger(gpsFix.quality));
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS", &o, 1);
       jsvUnLock(o);
     }
@@ -812,7 +784,6 @@ bool jswrap_banglejs_idle() {
     JsVar *line = jsvNewFromString(nmeaLine);
     if (line) {
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw", &line, 1);
-
     }
     jsvUnLock(line);
   }
@@ -852,109 +823,6 @@ bool jswrap_banglejs_idle() {
 }
 
 
-char *nmea_next_comma(char *nmea) {
-  while (*nmea && *nmea!=',') nmea++; // find the comma
-  return nmea;
-}
-double nmea_decode_latlon(char *nmea, char *comma) {
-  if (*nmea==',') return NAN; // no reading
-  char *dp = nmea;
-  while (*dp && *dp!='.' && *dp!=',') dp++; // find decimal pt
-  *comma = 0;
-  double minutes = stringToFloat(&dp[-2]);
-  *comma = ',';
-  dp[-2] = 0;
-  int x = stringToInt(nmea);
-  return x+(minutes/60);
-}
-double nmea_decode_float(char *nmea, char *comma) {
-  *comma = 0;
-  double r = stringToFloat(nmea);
-  *comma = ',';
-  return r;
-}
-uint8_t nmea_decode_1(char *nmea) {
-  return chtod(nmea[0]);
-}
-uint8_t nmea_decode_2(char *nmea) {
-  return chtod(nmea[0])*10 + chtod(nmea[1]);
-}
-bool nmea_decode(const char *nmeaLine) {
-  char buf[NMEA_MAX_SIZE];
-  strcpy(buf, nmeaLine);
-  char *nmea = buf, *nextComma;
-
-
-  if (nmea[0]!='$' || nmea[1]!='G') return false; // not valid
-  if (nmea[3]=='R' && nmea[4]=='M' && nmea[5]=='C') {
-    // $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
-    nmea = nmea_next_comma(nmea)+1;
-    nextComma = nmea_next_comma(nmea);
-    // time
-    gpsFix.hour = nmea_decode_2(&nmea[0]);
-    gpsFix.min = nmea_decode_2(&nmea[2]);
-    gpsFix.sec = nmea_decode_2(&nmea[4]);
-    gpsFix.ms = nmea_decode_2(&nmea[7]);
-    // status
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);//?
-    // lat + NS
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // lon + EW
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // speed
-    gpsFix.speed = nmea_decode_float(nmea, nextComma);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // course
-    gpsFix.course = nmea_decode_float(nmea, nextComma);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // date
-    gpsFix.day = nmea_decode_2(&nmea[0]);
-    gpsFix.month = nmea_decode_2(&nmea[2]);
-    gpsFix.year = nmea_decode_2(&nmea[4]);
-    // ....
-  }
-  if (nmea[3]=='G' && nmea[4]=='G' && nmea[5]=='A') {
-    // $GNGGA,161945.00,5139.11397,N,00116.07202,W,1,06,1.29,71.1,M,47.0,M,,*64
-    nmea = nmea_next_comma(nmea)+1;
-    nextComma = nmea_next_comma(nmea);
-    // time
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // LAT
-    gpsFix.lat = nmea_decode_latlon(nmea, nextComma);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    if (*nmea=='S') gpsFix.lat=-gpsFix.lat;
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // LON
-    gpsFix.lon = nmea_decode_latlon(nmea, nextComma);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    if (*nmea=='W') gpsFix.lon=-gpsFix.lon;
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // quality
-    gpsFix.quality = nmea_decode_1(nmea);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // num satellites
-    gpsFix.satellites = nmea_decode_2(nmea);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // dilution of precision
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // altitude
-    gpsFix.alt = nmea_decode_float(nmea, nextComma);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // ....
-  }
-  if (nmea[3]=='G' && nmea[4]=='S' && nmea[5]=='V') {
-    // loads of cool data about what satellites we have
-  }
-  if (nmea[3]=='G' && nmea[4]=='L' && nmea[5]=='L') {
-    // Complete set of data received
-    return true;
-  }
-  return false;
-}
-
 /*JSON{
   "type" : "EV_SERIAL1",
   "generate" : "jswrap_banglejs_gps_character"
@@ -979,7 +847,7 @@ bool jswrap_banglejs_gps_character(char ch) {
     memcpy(nmeaLine, nmeaIn, nmeaCount);
     nmeaLine[nmeaCount-1]=0; // just overwriting \n
     bangleTasks |= JSBT_GPS_DATA_LINE;
-    if (nmea_decode(nmeaLine))
+    if (nmea_decode(&gpsFix, nmeaLine))
       bangleTasks |= JSBT_GPS_DATA;
   }
   nmeaCount = 0;
