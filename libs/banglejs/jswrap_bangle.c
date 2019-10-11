@@ -262,8 +262,8 @@ void peripheralPollHandler() {
   }
 
   if (i2cBusy) return;
-  // check the magnetometer if we had it on
   unsigned char buf[7];
+  // check the magnetometer if we had it on
   if (compassPowerOn) {
     buf[0]=0x10;
     jsi2cWrite(&internalI2C, MAG_ADDR, 1, buf, true);
@@ -648,8 +648,6 @@ void jswrap_banglejs_init() {
   firstStart = false;
   jsvUnLock(graphics);
 
-  // Setup touchscreen I2C
-
   // accelerometer init
   jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off, 4g range, Wakeup
   jswrap_banglejs_accelWr(0x19,0x80); // CNTL2 Software reset
@@ -987,10 +985,9 @@ void jswrap_banglejs_off() {
   jsiKill();
   jsvKill();
   jshKill();
-  //jshPinOutput(GPS_PIN_EN,0); // GPS off FIXME
+  jswrap_banglejs_ioWr(IOEXP_GPS, 0); // GPS off
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   jswrap_banglejs_setLCDPower(0);
-
 
   nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
   nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
