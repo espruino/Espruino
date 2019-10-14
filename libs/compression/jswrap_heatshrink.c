@@ -31,21 +31,7 @@ Espruino uses heatshrink internally to compress RAM down to fit in Flash memory 
 
 Functions here take and return buffers of data. There is no support for streaming, so both the compressed and decompressed data must be able to fit in memory at the same time.
 */
-typedef struct {
-  char *ptr;
-  size_t len;
-} DecompressInfo;
 
-static void _jswrap_heatshrink_compress_output(unsigned char ch, uint32_t *cbdata) {
-  unsigned char **outPtr = (unsigned char**)cbdata;
-  *((*outPtr)++) = ch;
-}
-static int _jswrap_heatshrink_decompress_input(uint32_t *cbdata) {
-  DecompressInfo *decompressInfo = (DecompressInfo *)cbdata;
-  if (!decompressInfo->len) return -1;
-  decompressInfo->len--;
-  return (unsigned char)*(decompressInfo->ptr++);
-}
 
 /*JSON{
   "type" : "staticmethod",
@@ -61,19 +47,30 @@ static int _jswrap_heatshrink_decompress_input(uint32_t *cbdata) {
 }
 */
 JsVar *jswrap_heatshrink_compress(JsVar *data) {
-  JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, data);
-  if (!dataPtr) return 0;
-  uint32_t compressedSize = heatshrink_encode((unsigned char*)dataPtr, dataLen, NULL, NULL);
+  JsvIterator in_it;
+  JsvStringIterator out_it;
 
-  char *outPtr = 0;
-  JsVar *outArr = jsvNewArrayBufferWithPtr((unsigned int)compressedSize, &outPtr);
-  if (!outPtr) {
+  jsvIteratorNew(&in_it, data, JSIF_EVERY_ARRAY_ELEMENT);
+  uint32_t compressedSize = heatshrink_encode_cb(heatshrink_var_input_cb, (uint32_t*)&in_it, NULL, NULL);
+  jsvIteratorFree(&in_it);
+
+  JsVar *outVar = jsvNewStringOfLength((unsigned int)compressedSize, NULL);
+  if (!outVar) {
     jsError("Not enough memory for result");
     return 0;
   }
-  heatshrink_encode((unsigned char*)dataPtr, dataLen, _jswrap_heatshrink_compress_output, (uint32_t*)&outPtr);
-  return outArr;
+
+  jsvIteratorNew(&in_it, data, JSIF_EVERY_ARRAY_ELEMENT);
+  jsvStringIteratorNew(&out_it,outVar,0);
+  heatshrink_encode_cb(heatshrink_var_input_cb, (uint32_t*)&in_it, heatshrink_var_output_cb, (uint32_t*)&out_it);
+  jsvStringIteratorFree(&out_it);
+  jsvIteratorFree(&in_it);
+
+  JsVar *ab = jsvNewArrayBufferFromString(outVar, 0);
+  jsvUnLock(outVar);
+  return ab;
 }
+
 
 /*JSON{
   "type" : "staticmethod",
@@ -89,21 +86,26 @@ JsVar *jswrap_heatshrink_compress(JsVar *data) {
 }
 */
 JsVar *jswrap_heatshrink_decompress(JsVar *data) {
-  JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, data);
-  if (!dataPtr) return 0;
-  DecompressInfo decompressInfo;
-  decompressInfo.ptr = dataPtr;
-  decompressInfo.len = dataLen;
-  uint32_t decompressedSize = heatshrink_decode(_jswrap_heatshrink_decompress_input, (uint32_t*)&decompressInfo, NULL);
+  JsvIterator in_it;
+  JsvStringIterator out_it;
 
-  char *outPtr = 0;
-  JsVar *outArr = jsvNewArrayBufferWithPtr((unsigned int)decompressedSize, &outPtr);
-  if (!outPtr) {
+  jsvIteratorNew(&in_it, data, JSIF_EVERY_ARRAY_ELEMENT);
+  uint32_t decompressedSize = heatshrink_decode(heatshrink_var_input_cb, (uint32_t*)&in_it, NULL);
+  jsvIteratorFree(&in_it);
+
+  JsVar *outVar = jsvNewStringOfLength((unsigned int)decompressedSize, NULL);
+  if (!outVar) {
     jsError("Not enough memory for result");
     return 0;
   }
-  decompressInfo.ptr = dataPtr;
-  decompressInfo.len = dataLen;
-  heatshrink_decode(_jswrap_heatshrink_decompress_input, (uint32_t*)&decompressInfo, (unsigned char*)outPtr);
-  return outArr;
+
+  jsvIteratorNew(&in_it, data, JSIF_EVERY_ARRAY_ELEMENT);
+  jsvStringIteratorNew(&out_it,outVar,0);
+  heatshrink_decode_cb(heatshrink_var_input_cb, (uint32_t*)&in_it, heatshrink_var_output_cb, (uint32_t*)&out_it);
+  jsvStringIteratorFree(&out_it);
+  jsvIteratorFree(&in_it);
+
+  JsVar *ab = jsvNewArrayBufferFromString(outVar, 0);
+  jsvUnLock(outVar);
+  return ab;
 }

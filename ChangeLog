@@ -19,6 +19,7 @@
             Pixl.js: Move SCK pin used during Neopixel writes to ensure it doesn't interfere with BTN3
             nRF52: Fix alignment issue with Nordic's SDK12 code that stopped passkey pairing from working sometimes
             Storage lib now doesn't bother reading to end of flash to ensure pages are clear
+            Allow heatshrink compress/decompress to work even if flat buffers can't be allocated
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

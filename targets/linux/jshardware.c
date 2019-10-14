@@ -877,6 +877,8 @@ static FILE *jshFlashOpenFile(bool dontCreate) {
     memset(buf,0xFF, pad);
     fwrite(buf, 1, pad, f);
     free(buf);
+    fclose(f);
+    f = fopen(FAKE_FLASH_FILENAME, "r+b");
   }
   return f;
 }
@@ -911,7 +913,8 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
     return;
   }
   fseek(f, addr, SEEK_SET);
-  fread(buf, 1, len, f);
+  size_t r = fread(buf, 1, len, f);
+  assert(r==len);
   fclose(f);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
@@ -935,8 +938,10 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   if (!f) return;
 
   char *wbuf = malloc(len);
-  fseek(f, addr, SEEK_SET);
-  fread(wbuf, 1, len, f);
+  int err = fseek(f, addr, SEEK_SET);
+  assert(err==0);
+  size_t r = fread(wbuf, 1, len, f);
+  assert(r==len);
 
   for (i=0;i<len;i++) {
     //jsiConsolePrintf("Write %d to 0x%08x\n", ((char*)buf)[i], FLASH_START+addr+i);
