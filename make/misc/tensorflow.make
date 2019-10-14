@@ -7,11 +7,15 @@ $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/micro_mutable_op_resolver.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/debug_log_numbers.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/test_helpers.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/micro_interpreter.cc \
+$(TENSOR_ROOT)/tensorflow/lite/experimental/micro/micro_utils.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/micro_allocator.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/kernels/pack.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/kernels/logical.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/kernels/reshape.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/kernels/depthwise_conv.cc \
+$(TENSOR_ROOT)/tensorflow/lite/experimental/micro/kernels/quantize.cc \
+$(TENSOR_ROOT)/tensorflow/lite/experimental/micro/kernels/dequantize.cc \
+$(TENSOR_ROOT)/tensorflow/lite/experimental/micro/kernels/logistic.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/kernels/conv.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/kernels/pooling.cc \
 $(TENSOR_ROOT)/tensorflow/lite/experimental/micro/kernels/softmax.cc \
