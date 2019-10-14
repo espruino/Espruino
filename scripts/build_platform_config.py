@@ -73,7 +73,7 @@ print("VarCache size = "+str(var_cache_size))
 flash_page_size = 1024
 
 if LINUX:
-  flash_saved_code_pages = 8
+  flash_saved_code_pages = board.chip['flash']*1024 / flash_page_size
   total_flash = flash_page_size*flash_saved_code_pages  
 else: # NOT LINUX
   # 100xB and 103xB are mid-density, so have 1k page sizes

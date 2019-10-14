@@ -84,13 +84,12 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
   jshFlashRead(header, addr, sizeof(JsfFileHeader));
   //DBG("Header 0x%x size 0x%x repl 0x%x\n", addr, header->size, header->replacement);
   return (header->size != JSF_WORD_UNSET) &&
-         (header->size < FLASH_SAVED_CODE_LENGTH) &&
+         (jsfGetFileSize(header) < FLASH_SAVED_CODE_LENGTH) && // flags are stored in top byte of length
          (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) < JSF_END_ADDRESS);
 }
 
 /// Is an area of flash completely erased?
 static bool jsfIsErased(uint32_t addr, uint32_t len) {
-  uint32_t x;
   /* Read whole blocks at the alignment size and check
    * everything (even slightly past the length) */
   unsigned char buf[128];
@@ -99,7 +98,7 @@ static bool jsfIsErased(uint32_t addr, uint32_t len) {
     uint32_t l = len;
     if (l>sizeof(buf)) l=sizeof(buf);
     jshFlashRead(&buf, addr, l);
-    for (int i=0;i<l;i++)
+    for (uint32_t i=0;i<l;i++)
       if (buf[i]!=0xFF) return false;
     addr += l;
     len -= l;
