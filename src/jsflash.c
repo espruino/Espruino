@@ -637,11 +637,11 @@ static uint32_t getBuildHash() {
 }
 
 typedef struct {
-  uint32_t address;
-  uint32_t endAddress;
+  uint32_t address;          // current address in memory
+  uint32_t endAddress;       // address at which to end
   int byteCount;
-  unsigned char buffer[128];
-  uint32_t bufferCnt;
+  unsigned char buffer[128]; // buffer for read/written data
+  uint32_t bufferCnt;        // where are we in the buffer?
 } jsfcbData;
 // cbdata = struct jsfcbData
 void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
@@ -667,9 +667,15 @@ int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
   jsfcbData *data = (jsfcbData*)cbdata;
 
   if (data->address >= data->endAddress) return -1; // at end
-  unsigned char d;
-  jshFlashRead(&d, data->address++, 1);
-  return d;
+  if (data->byteCount==0 || data->bufferCnt>=data->byteCount) {
+    data->byteCount = data->endAddress - data->address;
+    if (data->byteCount > sizeof(data->buffer))
+      data->byteCount = sizeof(data->buffer);
+    jshFlashRead(data->buffer, data->address, data->byteCount);
+    data->bufferCnt = 0;
+  }
+  data->address++;
+  return data->buffer[data->bufferCnt++];
 }
 
 /// Save the RAM image to flash (this is the actual interpreter state)
@@ -735,6 +741,7 @@ void jsfLoadStateFromFlash() {
   unsigned char* varPtr = (unsigned char *)_jsvGetAddressOf(1);
 
   jsfcbData cbData;
+  memset(&cbData, 0, sizeof(cbData));
   cbData.address = savedCode;
   cbData.endAddress = savedCode+jsfGetFileSize(&header);
 

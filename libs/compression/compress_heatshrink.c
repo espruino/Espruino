@@ -22,11 +22,11 @@
 
 #define BUFFERSIZE 128
 
-void heatshrink_output_cb(unsigned char ch, uint32_t *cbdata) {
+void heatshrink_ptr_output_cb(unsigned char ch, uint32_t *cbdata) {
   unsigned char **outPtr = (unsigned char**)cbdata;
   *((*outPtr)++) = ch;
 }
-int heatshrink_input_cb(uint32_t *cbdata) {
+int heatshrink_ptr_input_cb(uint32_t *cbdata) {
   HeatShrinkPtrInputCallbackInfo *info = (HeatShrinkPtrInputCallbackInfo *)cbdata;
   if (!info->len) return -1;
   info->len--;
@@ -60,9 +60,11 @@ uint32_t heatshrink_encode_cb(int (*in_callback)(uint32_t *cbdata), uint32_t *in
   size_t polled = 0;
   int lastByte = 0;
   size_t inBufCount = 0;
+  size_t inBufOffset = 0;
   while (lastByte >= 0 || inBufCount>0) {
     // Read data from input
     if (inBufCount==0) {
+      inBufOffset = 0;
       while (inBufCount<BUFFERSIZE && lastByte>=0) {
         lastByte = in_callback(in_cbdata);
         if (lastByte >= 0)
@@ -70,9 +72,10 @@ uint32_t heatshrink_encode_cb(int (*in_callback)(uint32_t *cbdata), uint32_t *in
       }
     }
     // encode
-    bool ok = heatshrink_encoder_sink(&hse, inBuf, inBufCount, &count) >= 0;
+    bool ok = heatshrink_encoder_sink(&hse, &inBuf[inBufOffset], inBufCount, &count) >= 0;
     assert(ok);NOT_USED(ok);
     inBufCount -= count;
+    inBufOffset += count;
     sunk += count;
     if ((inBufCount==0) && (lastByte < 0)) {
       heatshrink_encoder_finish(&hse);
@@ -108,9 +111,11 @@ uint32_t heatshrink_decode_cb(int (*in_callback)(uint32_t *cbdata), uint32_t *in
   size_t polled = 0;
   int lastByte = 0;
   size_t inBufCount = 0;
+  size_t inBufOffset = 0;
   while (lastByte >= 0 || inBufCount>0) {
     // Read data from input
     if (inBufCount==0) {
+      inBufOffset = 0;
       while (inBufCount<BUFFERSIZE && lastByte>=0) {
         lastByte = in_callback(in_cbdata);
         if (lastByte >= 0)
@@ -118,9 +123,10 @@ uint32_t heatshrink_decode_cb(int (*in_callback)(uint32_t *cbdata), uint32_t *in
       }
     }
     // decode
-    bool ok = heatshrink_decoder_sink(&hsd, inBuf, inBufCount, &count) >= 0;
+    bool ok = heatshrink_decoder_sink(&hsd, &inBuf[inBufOffset], inBufCount, &count) >= 0;
     assert(ok);NOT_USED(ok);
     inBufCount -= count;
+    inBufOffset += count;
     sunk += count;
     if ((inBufCount==0) && (lastByte < 0)) {
       heatshrink_decoder_finish(&hsd);
@@ -150,10 +156,11 @@ uint32_t heatshrink_encode(unsigned char *in_data, size_t in_len, void (*out_cal
   HeatShrinkPtrInputCallbackInfo cbi;
   cbi.ptr = in_data;
   cbi.len = in_len;
-  return heatshrink_encode_cb(heatshrink_input_cb, (uint32_t*)&cbi, out_callback, out_cbdata);
+  return heatshrink_encode_cb(heatshrink_ptr_input_cb, (uint32_t*)&cbi, out_callback, out_cbdata);
 }
 
 /** gets data from callback, writes it into array if nonzero. Returns total length */
 uint32_t heatshrink_decode(int (*in_callback)(uint32_t *cbdata), uint32_t *in_cbdata, unsigned char *out_data) {
-  return heatshrink_decode_cb(in_callback, in_cbdata, out_data?heatshrink_output_cb:NULL, out_data?(uint32_t*)&out_data:NULL);
+  unsigned char *dataptr = out_data;
+  return heatshrink_decode_cb(in_callback, in_cbdata, out_data?heatshrink_ptr_output_cb:NULL, out_data?(uint32_t*)&dataptr:NULL);
 }
