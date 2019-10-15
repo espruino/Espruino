@@ -66,7 +66,9 @@ AllOpsResolver::AllOpsResolver() {
   AddBuiltin(BuiltinOperator_SOFTMAX, Register_SOFTMAX());
   AddBuiltin(BuiltinOperator_LOGISTIC, Register_LOGISTIC());
   AddBuiltin(BuiltinOperator_SVDF, Register_SVDF());
-  AddBuiltin(BuiltinOperator_CONV_2D, Register_CONV_2D());
+  AddBuiltin(BuiltinOperator_CONV_2D, Register_CONV_2D(),
+             /* min_version */ 1,
+             /* max_version */ 2);
   AddBuiltin(BuiltinOperator_AVERAGE_POOL_2D, Register_AVERAGE_POOL_2D());
   AddBuiltin(BuiltinOperator_ABS, Register_ABS());
   AddBuiltin(BuiltinOperator_SIN, Register_SIN());
