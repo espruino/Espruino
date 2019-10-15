@@ -142,5 +142,5 @@ JsVar *nmea_to_jsVar(NMEAFixInfo *gpsFix) {
     jsvObjectSetChildAndUnLock(o, "satellites", jsvNewFromInteger(gpsFix->satellites));
     jsvObjectSetChildAndUnLock(o, "fix", jsvNewFromInteger(gpsFix->quality));
   }
-  return 0;
+  return o;
 }
