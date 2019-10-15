@@ -171,7 +171,7 @@ typedef struct {
   short x,y,z;
 } Vector3;
 
-#define DEFAULT_ACCEL_POLL_INTERVAL 100 // in msec
+#define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 to match accelerometer
 #define ACCEL_POLL_INTERVAL_MAX 5000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
 #define BTN1_LOAD_TIMEOUT 1500 // in msec
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
@@ -556,6 +556,8 @@ void jswrap_banglejs_setCompassPower(bool isOn) {
 void jswrap_banglejs_init() {
   jshPinOutput(18,0); // what's this?
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
+
+  jswrap_ble_setTxPower(4);
 
   // Set up I2C
   i2cBusy = true;
