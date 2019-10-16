@@ -234,7 +234,10 @@ int accelGestureEndThresh = 2000*2000;
 int accelGestureInactiveCount = 4;
 /// how many samples must a gesture have before we notify about it?
 int accelGestureMinLength = 10;
-
+/// Promise when beep is finished
+JsVar *promiseBeep;
+/// Promise when buzz is finished
+JsVar *promiseBuzz;
 
 typedef enum {
   JSBT_NONE,
@@ -800,6 +803,10 @@ void jswrap_banglejs_init() {
 }*/
 void jswrap_banglejs_kill() {
   jstStopExecuteFn(peripheralPollHandler, 0);
+  jsvUnLock(promiseBeep);
+  promiseBeep = 0;
+  jsvUnLock(promiseBuzz);
+  promiseBuzz = 0;
 }
 
 /*JSON{
@@ -1100,6 +1107,92 @@ JsVar *jswrap_banglejs_project(JsVar *latlong) {
   return o;
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "beep",
+    "generate" : "jswrap_banglejs_beep",
+    "params" : [
+      ["freq","int","Frequency in hz (default 4000)"],
+      ["time","int","Time in ms (default 200)"]
+    ],
+    "return" : ["JsVar","A promise, completed when beep is finished"],
+    "return_object":"Promise"
+}
+Perform a Spherical [Web Mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection)
+of latitude and longitude into `x` and `y` coordinates, which are roughly
+equivalent to meters from `{lat:0,lon:0}`.
+
+This is the formula used for most online mapping and is a good way
+to compare GPS coordinates to work out the distance between them.
+*/
+void jswrap_banglejs_beep_callback() {
+  jshPinSetState(SPEAKER_PIN, JSHPINSTATE_GPIO_IN);
+
+  jspromise_resolve(promiseBeep, 0);
+  jsvUnLock(promiseBeep);
+  promiseBeep = 0;
+}
+
+JsVar *jswrap_banglejs_beep(int time, int freq) {
+  if (freq<=0) freq=4000;
+  if (time<=0) time=200;
+  if (time>5000) time=5000;
+  if (promiseBeep) {
+    jsExceptionHere(JSET_ERROR, "Beep in progress");
+    return 0;
+  }
+  promiseBeep = jspromise_create();
+  if (!promiseBeep) return 0;
+
+  jshPinAnalogOutput(SPEAKER_PIN, 0.5, freq, JSAOF_NONE);
+  jsiSetTimeout(jswrap_banglejs_beep_callback, time);
+  return jsvLockAgain(promiseBeep);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "buzz",
+    "generate" : "jswrap_banglejs_buzz",
+    "params" : [
+      ["time","int","Time in ms (default 200)"],
+      ["strength","float","Power of vibration from 0 to 1 (Default 1)"]
+    ],
+    "return" : ["JsVar","A promise, completed when beep is finished"],
+    "return_object":"Promise"
+}
+Perform a Spherical [Web Mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection)
+of latitude and longitude into `x` and `y` coordinates, which are roughly
+equivalent to meters from `{lat:0,lon:0}`.
+
+This is the formula used for most online mapping and is a good way
+to compare GPS coordinates to work out the distance between them.
+*/
+void jswrap_banglejs_buzz_callback() {
+  jshPinOutput(VIBRATE_PIN,0); // vibrate off
+
+  jspromise_resolve(promiseBuzz, 0);
+  jsvUnLock(promiseBuzz);
+  promiseBuzz = 0;
+}
+
+JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
+  if (!isfinite(amt)|| amt>1) amt=1;
+  if (amt<0) amt=0;
+  if (time<=0) time=200;
+  if (time>5000) time=5000;
+  if (promiseBuzz) {
+    jsExceptionHere(JSET_ERROR, "Buzz in progress");
+    return 0;
+  }
+  promiseBuzz = jspromise_create();
+  if (!promiseBuzz) return 0;
+
+  jshPinAnalogOutput(VIBRATE_PIN, 0.4 + amt*0.6, 1000, JSAOF_NONE);
+  jsiSetTimeout(jswrap_banglejs_buzz_callback, time);
+  return jsvLockAgain(promiseBuzz);
+}
 
 /*JSON{
     "type" : "staticmethod",

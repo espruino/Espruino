@@ -31,6 +31,8 @@ int jswrap_banglejs_accelRd(JsVarInt reg);
 void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data);
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on);
 JsVar *jswrap_banglejs_project(JsVar *latlong);
+JsVar *jswrap_banglejs_beep(int time, int freq);
+JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt);
 void jswrap_banglejs_off();
 JsVar *jswrap_banglejs_menu(JsVar *menu);
 

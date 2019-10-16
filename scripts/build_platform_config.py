@@ -415,6 +415,9 @@ if "CAPSENSE" in board.devices:
 if "VIBRATE" in board.devices:
   codeOutDevicePins("VIBRATE", "VIBRATE")
 
+if "SPEAKER" in board.devices:
+  codeOutDevicePins("SPEAKER", "SPEAKER")
+
 if "BAT" in board.devices:
   codeOutDevicePins("BAT", "BAT")
 
