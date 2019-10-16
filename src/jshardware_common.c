@@ -66,6 +66,7 @@ __attribute__((weak)) bool jshSPISendMany(IOEventFlags device, unsigned char *tx
   }
   // call the callback
   if (callback) callback();
+  return true;
 }
 
 // Only define this if it's not used elsewhere
