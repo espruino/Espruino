@@ -103,7 +103,7 @@ bool dfu_enter_check(void) {
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
-      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\BTN1 + BTN2 TO TURN OFF\r\n\r\n<                      >\r");
+      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\nBTN1 + BTN2 TO TURN OFF\r\n\r\n<                      >\r");
 #else
       lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                      >\r");
 #endif
