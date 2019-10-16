@@ -17,7 +17,10 @@
 #include "jsvar.h"
 
 /// Simple filename used for Flash Storage. We use uint here so we don't have to memcpy/memcmp all the time
-typedef uint64_t JsfFileName;
+typedef union {
+  uint64_t n;
+  char c[8];
+} JsfFileName;
 
 #ifdef FLASH_64BITS_ALIGNMENT
 typedef uint64_t JsfWord;
@@ -50,6 +53,7 @@ typedef enum {
 JsfFileName jsfNameFromString(const char *name);
 /// utility function for creating JsfFileName
 JsfFileName jsfNameFromVar(JsVar *name);
+JsfFileName jsfNameFromVarAndUnLock(JsVar *name);
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header);
 /// Return the flags for this file based on the header

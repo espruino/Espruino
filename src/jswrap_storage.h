@@ -25,3 +25,6 @@ void jswrap_storage_compact();
 JsVar *jswrap_storage_list();
 void jswrap_storage_debug();
 int jswrap_storage_getFree();
+
+JsVar *jswrap_storage_open(JsVar *name);
+void jswrap_storagefile_write(JsVar *parent, JsVar *_data);

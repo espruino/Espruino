@@ -67,6 +67,12 @@ JsfFileName jsfNameFromVar(JsVar *name) {
   return *(JsfFileName*)nameBuf;
 }
 
+JsfFileName jsfNameFromVarAndUnLock(JsVar *name) {
+  JsfFileName n = jsfNameFromVar(name);
+  jsvUnLock(name);
+  return n;
+}
+
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header) {
   return (uint32_t)(header->size & 0x00FFFFFF);
@@ -372,7 +378,7 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
       if (jsfGetFileHeader(addr, &header)) do {
         // check for something with the same name
         if (header.replacement == JSF_WORD_UNSET &&
-            header.name == name)
+            header.name.n == name.n)
           existingAddr = addr;
       } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
       // If not enough space, skip to next page
@@ -435,7 +441,7 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
   if (jsfGetFileHeader(addr, &header)) do {
     // check for something with the same name that hasn't been replaced
     if (header.replacement == JSF_WORD_UNSET &&
-        header.name == name) {
+        header.name.n == name.n) {
       uint32_t endOfFile = addr + (uint32_t)sizeof(JsfFileHeader) + jsfGetFileSize(&header);
       if (endOfFile<addr || endOfFile>JSF_END_ADDRESS)
         return 0; // corrupt - file too long
