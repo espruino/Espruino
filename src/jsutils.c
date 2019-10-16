@@ -70,20 +70,21 @@ const char *escapeCharacter(char ch) {
   if (ch=='\\') return "\\\\";
   if (ch=='"') return "\\\"";
   static char buf[5];
-  if (ch<8) {
+  unsigned char uch = (unsigned char)ch;
+  if (uch<8) {
     // encode less than 8 as \#
     buf[0]='\\';
-    buf[1] = (char)('0'+ch);
+    buf[1] = (char)('0'+uch);
     buf[2] = 0;
     return buf;
-  } else if (ch<32 || ch>=127) {
+  } else if (uch<32 || uch>=127) {
     /** just encode as hex - it's more understandable
      * and doesn't have the issue of "\16"+"1" != "\161" */
     buf[0]='\\';
     buf[1]='x';
-    int n = (ch>>4)&15;
+    int n = (uch>>4)&15;
     buf[2] = (char)((n<10)?('0'+n):('A'+n-10));
-    n=ch&15;
+    n=uch&15;
     buf[3] = (char)((n<10)?('0'+n):('A'+n-10));
     buf[4] = 0;
     return buf;
