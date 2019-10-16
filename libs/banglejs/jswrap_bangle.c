@@ -155,12 +155,23 @@ If the watch is tapped, this event contains information on the way it was tapped
   z : -2 .. 2 // the axis of the tap
 ```
  */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "gesture",
+  "params" : [["xyz","JsVar","An Int8Array of XYZXYZXYZ data"]],
+  "ifdef" : "BANGLEJS"
+}
+Called when a 'gesture' (fast movement) is detected
+*/
 
 #define GPS_UART EV_SERIAL1
 #define IOEXP_GPS 0x01
 #define IOEXP_LCD_BACKLIGHT 0x20
 #define IOEXP_LCD_RESET 0x40
 #define IOEXP_HRM 0x80
+
+#define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
 
 uint8_t nmeaCount = 0; // how many characters of NMEA data do we have?
 char nmeaIn[NMEA_MAX_SIZE]; //  82 is the max for NMEA
@@ -201,8 +212,29 @@ Vector3 mag, magmin, magmax;
 Vector3 acc;
 /// accelerometer difference since last reading
 int accdiff;
+/// History of accelerometer readings
+int8_t accHistory[ACCEL_HISTORY_LEN*3];
+/// Index in accelerometer history of the last sample
+volatile uint8_t accHistoryIdx;
+/// How many samples have we been recording a gesture for? If 0, we're not recoding a gesture
+volatile uint8_t accGestureCount;
+/// How many samples have been recorded? Used when putting data into an array
+volatile uint8_t accGestureRecordedCount;
+/// How many samples has the accelerometer movement been less than accelGestureEndThresh for?
+volatile uint8_t accIdleCount;
 /// data on how watch was tapped
 unsigned char tapInfo;
+
+// Gesture settings
+/// how big a difference before we consider a gesture started?
+int accelGestureStartThresh = 800*800;
+/// how small a difference before we consider a gesture ended?
+int accelGestureEndThresh = 2000*2000;
+/// how many samples do we keep after a gesture has ended
+int accelGestureInactiveCount = 4;
+/// how many samples must a gesture have before we notify about it?
+int accelGestureMinLength = 10;
+
 
 typedef enum {
   JSBT_NONE,
@@ -214,6 +246,7 @@ typedef enum {
   JSBT_GPS_DATA_LINE = 32, ///< we got a line of GPS data
   JSBT_MAG_DATA = 64, ///< need to push magnetometer data to JS
   JSBT_RESET = 128, ///< reset the watch and reload code from flash
+  JSBT_GESTURE_DATA = 256, ///< we have data from a gesture
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -225,6 +258,12 @@ void lcd_flip(JsVar *parent) {
   }
   flipTimer = 0;
   lcdST7789_flip();
+}
+
+char clipi8(int x) {
+  if (x<-128) return -128;
+  if (x>127) return 127;
+  return x;
 }
 
 /* Scan peripherals for any data that's needed
@@ -303,6 +342,7 @@ void peripheralPollHandler() {
     buf[0]=6;
     jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
     jsi2cRead(&internalI2C, ACCEL_ADDR, 6, buf, true);
+    // work out current reading in 16 bit
     short newx = (buf[1]<<8)|buf[0];
     short newy = (buf[3]<<8)|buf[2];
     short newz = (buf[5]<<8)|buf[4];
@@ -312,9 +352,39 @@ void peripheralPollHandler() {
     acc.x = newx;
     acc.y = newy;
     acc.z = newz;
-
     accdiff = dx*dx + dy*dy + dz*dz;
+    // save history
+    accHistoryIdx = (accHistoryIdx+3) % sizeof(accHistory);
+    accHistory[accHistoryIdx  ] = clipi8(newx>>7);
+    accHistory[accHistoryIdx+1] = clipi8(newy>>7);
+    accHistory[accHistoryIdx+2] = clipi8(newz>>7);
+    // trigger accelerometer data task
     bangleTasks |= JSBT_ACCEL_DATA;
+    // checking for gestures
+    if (accGestureCount==0) { // no gesture yet
+      // if movement is eniugh, start one
+      if (accdiff > accelGestureStartThresh) {
+        accIdleCount = 0;
+        accGestureCount = 1;
+      }
+    } else { // we're recording a gesture
+      // keep incrementing gesture size
+      if (accGestureCount < 255)
+        accGestureCount++;
+      // if idle for long enough...
+      if (accdiff < accelGestureEndThresh) {
+        if (accIdleCount<255) accIdleCount++;
+        if (accIdleCount==accelGestureInactiveCount) {
+          // inactive for long enough for a gesture, but not too long
+          accGestureRecordedCount = accGestureCount;
+          if ((accGestureCount >= accelGestureMinLength) &&
+              (accGestureCount < ACCEL_HISTORY_LEN))
+            bangleTasks |= JSBT_GESTURE_DATA; // trigger a gesture task
+          accGestureCount = 0; // stop the gesture
+        }
+      } else if (accIdleCount < accelGestureInactiveCount)
+        accIdleCount = 0; // it was inactive but not long enough to trigger a gesture
+    }
   }
 
   //jshPinOutput(LED1_PININDEX, 0);
@@ -433,6 +503,26 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
   JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
   jstStopExecuteFn(peripheralPollHandler, 0);
   jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setGestureOptions",
+    "generate" : "jswrap_banglejs_setGestureOptions",
+    "params" : [
+      ["options","JsVar",""]
+    ]
+}
+*/
+void jswrap_banglejs_setGestureOptions(JsVar *options) {
+  jsvConfigObject configs[] = {
+      {"startThresh", JSV_INTEGER, &accelGestureStartThresh},
+      {"endThresh", JSV_INTEGER, &accelGestureEndThresh},
+      {"inactiveCount", JSV_INTEGER, &accelGestureInactiveCount},
+      {"minLength", JSV_INTEGER, &accelGestureMinLength}
+  };
+  jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject));
 }
 
 /*JSON{
@@ -651,14 +741,13 @@ void jswrap_banglejs_init() {
   jsvUnLock(graphics);
 
   // accelerometer init
-  jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off, 4g range, Wakeup
+  jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off, low power, 4g range, Wakeup
   jswrap_banglejs_accelWr(0x19,0x80); // CNTL2 Software reset
   jshDelayMicroseconds(2000);
   jswrap_banglejs_accelWr(0x1a,0b10011000); // CNTL3 12.5Hz tilt, 400Hz tap, 0.781Hz motion detection
-  jswrap_banglejs_accelWr(0x1b,0b00000001); // ODCNTL - 25Hz acceleration output data rate, filteringlow-pass  ODR/9
-  // 50Hz tilt
-  // 50Hz directional tap
-  // 50Hz general motion detection and the high-pass filtered outputs
+  //jswrap_banglejs_accelWr(0x1b,0b00000001); // ODCNTL - 25Hz acceleration output data rate, filtering low-pass ODR/9
+  jswrap_banglejs_accelWr(0x1b,0b00000000); // ODCNTL - 12.5Hz acceleration output data rate, filtering low-pass ODR/9
+
   jswrap_banglejs_accelWr(0x1c,0); // INC1 disabled
   jswrap_banglejs_accelWr(0x1d,0); // INC2 disabled
   jswrap_banglejs_accelWr(0x1e,0); // INC3 disabled
@@ -666,14 +755,15 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_accelWr(0x20,0); // INC5 disabled
   jswrap_banglejs_accelWr(0x21,0); // INC6 disabled
   jswrap_banglejs_accelWr(0x23,3); // WUFC wakeupi detect counter
-  //jswrap_banglejs_accelWr(0x24,3); // TDTRC Tap detect enable
-  //jswrap_banglejs_accelWr(0x25, 0x78); // TDTC Tap detect double tap
-  //jswrap_banglejs_accelWr(0x26, 0x20); // TTH Tap detect threshold high (0xCB recommended)
-  //jswrap_banglejs_accelWr(0x27, 0x10); // TTH Tap detect threshold low (0x1A recommended)
+  jswrap_banglejs_accelWr(0x24,3); // TDTRC Tap detect enable
+  jswrap_banglejs_accelWr(0x25, 0x78); // TDTC Tap detect double tap
+  jswrap_banglejs_accelWr(0x26, 0x20); // TTH Tap detect threshold high (0xCB recommended)
+  jswrap_banglejs_accelWr(0x27, 0x10); // TTH Tap detect threshold low (0x1A recommended)
   jswrap_banglejs_accelWr(0x30,1); // ATH low wakeup detect threshold
   jswrap_banglejs_accelWr(0x35,0); // LP_CNTL no averaging of samples
+  //jswrap_banglejs_accelWr(0x35,2); // LP_CNTL 4x averaging of samples
   jswrap_banglejs_accelWr(0x3e,0); // clear the buffer
-  jswrap_banglejs_accelWr(0x18,0b10101100);  // CNTL1 On, DRDYE, ODR/2(high res), 4g range, Wakeup, TDTE (tap enable)
+  jswrap_banglejs_accelWr(0x18,0b10101100);  // CNTL1 On, low power, DRDYE, ODR/2(high res), 4g range, Wakeup, TDTE (tap enable)
   // compass init
   jswrap_banglejs_compassWr(0x32,1);
   jswrap_banglejs_compassWr(0x31,0);
@@ -809,9 +899,27 @@ bool jswrap_banglejs_idle() {
           if (h<0) h+=360;
         }
         jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
-
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"mag", &o, 1);
         jsvUnLock(o);
+      }
+    }
+  }
+  if (bangle && (bangleTasks & JSBT_GESTURE_DATA)) {
+    if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"gesture")) {
+      JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_INT8, accGestureRecordedCount*3);
+      if (arr) {
+        int idx = accHistoryIdx - (accGestureRecordedCount*3);
+        while (idx<0) idx+=sizeof(accHistory);
+        JsvArrayBufferIterator it;
+        jsvArrayBufferIteratorNew(&it, arr, 0);
+        for (int i=0;i<accGestureRecordedCount*3;i++) {
+          jsvArrayBufferIteratorSetByteValue(&it, accHistory[idx++]);
+          jsvArrayBufferIteratorNext(&it);
+          if (idx>=sizeof(accHistory)) idx-=sizeof(accHistory);
+        }
+        jsvArrayBufferIteratorFree(&it);
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"gesture", &arr, 1);
+        jsvUnLock(arr);
       }
     }
   }
@@ -852,6 +960,24 @@ bool jswrap_banglejs_gps_character(char ch) {
   }
   nmeaCount = 0;
   return true; // handled
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "dbg",
+    "generate" : "jswrap_banglejs_dbg",
+    "return" : ["JsVar",""]
+}
+Reads debug info
+*/
+JsVar *jswrap_banglejs_dbg() {
+  JsVar *o = jsvNewObject();
+  if (!o) return 0;
+  jsvObjectSetChildAndUnLock(o,"accHistoryIdx",jsvNewFromInteger(accHistoryIdx));
+  jsvObjectSetChildAndUnLock(o,"accGestureCount",jsvNewFromInteger(accGestureCount));
+  jsvObjectSetChildAndUnLock(o,"accIdleCount",jsvNewFromInteger(accIdleCount));
+  return o;
 }
 
 /*JSON{
