@@ -13,6 +13,7 @@
  * JavaScript Filesystem-style Flash IO functions
  * ----------------------------------------------------------------------------
  */
+#include "jswrap_storage.h"
 #include "jswrap_flash.h"
 #include "jshardware.h"
 #include "jsflash.h"
@@ -27,6 +28,8 @@
 #else
 #define DBG(...)
 #endif
+
+const int STORAGEFILE_CHUNKSIZE = FLASH_PAGE_SIZE - sizeof(JsfFileHeader); // use 32 for testing
 
 /*JSON{
   "type" : "library",
@@ -288,44 +291,93 @@ int jswrap_storage_getFree() {
   "name" : "open",
   "generate" : "jswrap_storage_open",
   "params" : [
-    ["name","JsVar","The filename - max **7** characters (case sensitive)"]
+    ["name","JsVar","The filename - max **7** characters (case sensitive)"],
+    ["mode","JsVar","The open mode - must be either `'r'` for read,`'w'` for write , or `'a'` for append"]
   ],
-  "return" : ["JsVar","An object containing {read,write,erase,close}"],
+  "return" : ["JsVar","An object containing {read,write,erase}"],
   "return_object" : "StorageFile"
 }
-Open a file in the Storage area. This can be used for appending data to (normal read/write operations
-ony write the entire file).
+Open a file in the Storage area. This can be used for appending data
+(normal read/write operations only write the entire file).
+
+**Note:** These files write through immediately - they do not need closing.
+
 */
-// TODO: add seek
-const int STORAGEFILE_CHUNKSIZE = 32;//FLASH_PAGE_SIZE - sizeof(JsfFileHeader);
-JsVar *jswrap_storage_open(JsVar *name) {
+JsVar *jswrap_storage_open(JsVar *name, JsVar *modeVar) {
+  char mode = 0;
+  if (jsvIsStringEqual(modeVar,"r")) mode='r';
+  else if (jsvIsStringEqual(modeVar,"w")) mode='w';
+  else if (jsvIsStringEqual(modeVar,"a")) mode='a';
+  else {
+    jsExceptionHere(JSET_ERROR, "Invalid mode %j", modeVar);
+    return 0;
+  }
+
   JsVar *f = jspNewObject(0, "StorageFile");
   if (!f) return 0;
 
+  int chunk = 1;
+
   JsVar *n = jsvNewFromStringVar(name,0,8);
   JsfFileName fname = jsfNameFromVar(n);
+  int fnamei = sizeof(fname)-1;
+  while (fnamei && fname.c[fnamei-1]==0) fnamei--;
+  fname.c[fnamei]=chunk;
   jsvObjectSetChildAndUnLock(f,"name",n);
 
-  int chunk = 1;
+  int offset = 0; // offset in file
   JsfFileHeader header;
-  fname.c[sizeof(fname)-1]=chunk;
-  unsigned char lastCh = 255;
-
   uint32_t addr = jsfFindFile(fname, &header);
-  if (addr) jshFlashRead(&lastCh, addr+jsfGetFileSize(&header)-1, 1);
-  while (addr && lastCh!=255) {
-    chunk++;
-    fname.c[sizeof(fname)-1]=chunk;
-    addr = jsfFindFile(fname, &header);
-    if (addr) jshFlashRead(&lastCh, addr+jsfGetFileSize(&header)-1, 1);
+  if (mode=='w') { // write,
+    if (addr) { // we had a file - erase it
+      jswrap_storagefile_erase(f);
+      addr = 0;
+    }
   }
-  // Now 'chunk' points to the last (or a free) page
-  int offset = 0;
+  if (mode=='a') { // append
+    // Find the last free page
+    unsigned char lastCh = 255;
+    if (addr) jshFlashRead(&lastCh, addr+jsfGetFileSize(&header)-1, 1);
+    while (addr && lastCh!=255 && chunk<255) {
+      chunk++;
+      fname.c[fnamei]=chunk;
+      addr = jsfFindFile(fname, &header);
+      if (addr) jshFlashRead(&lastCh, addr+jsfGetFileSize(&header)-1, 1);
+    }
+    if (addr) {
+      // if we have a page, try and find the end of it
+      char buf[64];
+      bool foundEnd = false;
+      while (!foundEnd) {
+        int l = STORAGEFILE_CHUNKSIZE-offset;
+        if (l<=0) {
+          foundEnd = true;
+          break;
+        }
+        if (l>sizeof(buf)) l=sizeof(buf);
+        jshFlashRead(buf, addr+offset, l);
+        for (int i=0;i<l;i++) {
+          if (buf[i]==(char)255) {
+            l = i;
+            foundEnd = true;
+            break;
+          }
+        }
+        offset += l;
+      }
+    }
+    // Now 'chunk' and offset points to the last (or a free) page
+  }
+  if (mode=='r') {
+    // read - do nothing, we're good.
+  }
+
   // TODO: Look through a pre-opened file to find the end
   DBG("Open %j Chunk %d Offset %d addr 0x%08x\n",name,chunk,offset,addr);
   jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(chunk));
   jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(offset));
   jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger(addr));
+  jsvObjectSetChildAndUnLock(f,"mode",jsvNewFromInteger(mode));
 
   return f;
 }
@@ -338,7 +390,123 @@ JsVar *jswrap_storage_open(JsVar *name) {
 
 These objects are created from `require("Storage").open`
 and allow Storage items to be read/written.
+
+**Note:** `StorageFile` uses the fact that all bits of erased flash memory
+are 1 to detect the end of a file. As such you should not write character
+code 255 (`"\xFF"`) to these files.
 */
+
+JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
+  bool isReadLine = len<0;
+  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"mode",0));
+  if (mode!='r') {
+    jsExceptionHere(JSET_ERROR, "Can't read in this mode");
+    return 0;
+  }
+
+  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"addr",0));
+  if (!addr) return 0; // end of file
+  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"offset",0));
+  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"chunk",0));
+  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChild(f,"name",0));
+  int fnamei = sizeof(fname)-1;
+  while (fnamei && fname.c[fnamei-1]==0) fnamei--;
+  fname.c[fnamei]=chunk;
+
+  JsVar *result = 0;
+  char buf[32];
+  if (isReadLine) len = sizeof(buf);
+  while (len) {
+    int remaining = STORAGEFILE_CHUNKSIZE-offset;
+    if (remaining<=0) { // next page
+      offset = 0;
+      if (chunk==255) {
+        addr=0;
+      } else {
+        chunk++;
+        fname.c[fnamei]=chunk;
+        JsfFileHeader header;
+        addr = jsfFindFile(fname, &header);
+      }
+      jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger(addr));
+      jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(offset));
+      jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(chunk));
+      remaining = STORAGEFILE_CHUNKSIZE;
+      if (!addr) {
+        // end of file!
+        return result;
+      }
+    }
+    int l = len;
+    if (l>sizeof(buf)) l=sizeof(buf);
+    if (l>remaining) l=remaining;
+    jshFlashRead(buf, addr+offset, l);
+    for (int i=0;i<l;i++) {
+      if (buf[i]==(char)255) {
+        // end of file!
+        l = i;
+        len = l;
+        break;
+      }
+      if (isReadLine && buf[i]=='\n') {
+        l = i+1;
+        len = l;
+        isReadLine = false; // done
+        break;
+      }
+    }
+
+    if (!l) break;
+    if (!result)
+      result = jsvNewFromEmptyString();
+    if (result)
+      jsvAppendStringBuf(result,buf,l);
+
+    len -= l;
+    offset += l;
+    // if we're still reading lines, set the length to buffer size
+    if (isReadLine)
+      len = sizeof(buf);
+  }
+  jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(offset));
+  return result;
+}
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "StorageFile",
+  "name" : "read",
+  "generate" : "jswrap_storagefile_read",
+  "params" : [
+    ["len","int","How many bytes to read"]
+  ],
+  "return" : ["JsVar","A String"],
+  "return_object" : "StorageFile"
+}
+Read data from the file
+*/
+JsVar *jswrap_storagefile_read(JsVar *f, int len) {
+  if (len<0) len=0;
+  return jswrap_storagefile_read_internal(f,len);
+}
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "StorageFile",
+  "name" : "readLine",
+  "generate" : "jswrap_storagefile_readLine",
+  "return" : ["JsVar","A line of data"],
+  "return_object" : "StorageFile"
+}
+Read a line of data from the file (up to and including `"\n"`)
+*/
+JsVar *jswrap_storagefile_readLine(JsVar *f) {
+  return jswrap_storagefile_read_internal(f,-1);
+}
+
+
+
+
 /*JSON{
   "type" : "method",
   "ifndef" : "SAVE_ON_FLASH",
@@ -352,13 +520,23 @@ and allow Storage items to be read/written.
 Append the given data to a file
 */
 void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
+  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"mode",0));
+  if (mode!='w' && mode!='a') {
+    jsExceptionHere(JSET_ERROR, "Can't write in this mode");
+    return;
+  }
+
   JsVar *data = jsvAsString(_data);
   if (!data) return;
   size_t len = jsvGetStringLength(data);
   if (len==0) return;
-  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChild(f,"name",0));
   int offset = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"offset",0));
   int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"chunk",0));
+  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChild(f,"name",0));
+  int fnamei = sizeof(fname)-1;
+  while (fnamei && fname.c[fnamei-1]==0) fnamei--;
+  //DBG("Filename[%d]=%d\n",fnamei,chunk);
+  fname.c[fnamei]=chunk;
   uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"addr",0));
   DBG("Write Chunk %d Offset %d addr 0x%08x\n",chunk,offset,addr);
   int remaining = STORAGEFILE_CHUNKSIZE - offset;
@@ -390,9 +568,15 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
     jswrap_flash_write(part, addr+offset);
     jsvUnLock(part);
     // Next page
-    chunk++;
-    fname.c[sizeof(fname)-1]=chunk;
-    jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(chunk));
+    if (chunk==255) {
+      jsExceptionHere(JSET_ERROR, "File too big!");
+      jsvUnLock(data);
+      return;
+    } else {
+      chunk++;
+      fname.c[fnamei]=chunk;
+      jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(chunk));
+    }
     // Write Next page
     part = jsvNewFromStringVar(data,remaining,JSVAPPENDSTRINGVAR_MAXLENGTH);
     if (jsfWriteFile(fname, part, JSFF_NONE, 0, STORAGEFILE_CHUNKSIZE)) {
@@ -405,9 +589,37 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
       jsvUnLock(data);
       return; // there would already have been an exception
     }
-    offset = jsvGetStringLength(jsvGetStringLength(data));
+    offset = jsvGetStringLength(part);
     jsvUnLock(part);
     jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(offset));
   }
   jsvUnLock(data);
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "StorageFile",
+  "name" : "erase",
+  "generate" : "jswrap_storagefile_erase"
+}
+Erase this file
+*/
+void jswrap_storagefile_erase(JsVar *f) {
+  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChild(f,"name",0));
+  int fnamei = sizeof(fname)-1;
+  while (fnamei && fname.c[fnamei-1]==0) fnamei--;
+  // erase all numbered files
+  int chunk = 1;
+  bool ok = true;
+  while (ok) {
+    fname.c[fnamei]=chunk;
+    ok = jsfEraseFile(fname);
+    chunk++;
+  }
+  // reset everything
+  jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(1));
+  jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(0));
+  jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger(0));
+  jsvObjectSetChildAndUnLock(f,"mode",jsvNewFromInteger(0));
 }

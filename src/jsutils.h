@@ -103,6 +103,16 @@ int flash_strcmp(const char *mem, const char *flash);
 
 #endif
 
+#ifdef FLASH_64BITS_ALIGNMENT
+typedef uint64_t JsfWord;
+#define JSF_ALIGNMENT 8
+#define JSF_WORD_UNSET 0xFFFFFFFFFFFFFFFFULL
+#else
+typedef uint32_t JsfWord;
+#define JSF_ALIGNMENT 4
+#define JSF_WORD_UNSET 0xFFFFFFFF
+#endif
+
 
 #if defined(ESP8266)
 /** For the esp8266 we need to add CALLED_FROM_INTERRUPT to all functions that may execute at

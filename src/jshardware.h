@@ -352,6 +352,8 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len);
 /** Write data to flash memory from the buffer, the buffer address and flash address are
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len);
+/** Like FlashWrite but can be unaligned (it uses a read first). This is in jshardware_common.c */
+void jshFlashWriteAligned(void *buf, uint32_t addr, uint32_t len);
 
 /** On most platforms, the address of something really is that address.
  * In ESP32/ESP8266 the flash memory is mapped up at a much higher address,

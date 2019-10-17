@@ -158,11 +158,12 @@ static void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header) {
   jshFlashWrite(&header->replacement,addr,(uint32_t)sizeof(JsfWord));
 }
 
-void jsfEraseFile(JsfFileName name) {
+bool jsfEraseFile(JsfFileName name) {
   JsfFileHeader header;
   uint32_t addr = jsfFindFile(name, &header);
-  if (!addr) return;
+  if (!addr) return false;
   jsfEraseFileInternal(addr, &header);
+  return true;
 }
 
 // Get the address of the page after the current one, or 0. THE NEXT PAGE MAY HAVE A PREVIOUS PAGE'S DATA SPANNING OVER IT
@@ -569,36 +570,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
     return false;
   }
   DBG("jsfWriteFile write contents\n");
-  // Cope with unaligned first write
-  uint32_t alignOffset = addr & (JSF_ALIGNMENT-1);
-  if (alignOffset) {
-    char buf[JSF_ALIGNMENT];
-    jshFlashRead(buf, addr-alignOffset, JSF_ALIGNMENT);
-    uint32_t alignRemainder = JSF_ALIGNMENT-alignOffset;
-    if (alignRemainder > dLen)
-      alignRemainder = (uint32_t)dLen;
-    memcpy(&buf[alignOffset], dPtr, alignRemainder);
-    dPtr += alignRemainder;
-    jshFlashWrite(buf, addr-alignOffset, JSF_ALIGNMENT);
-    addr += alignRemainder;
-    if (alignRemainder >= dLen)
-      return true; // we're done!
-    dLen -= alignRemainder;
-  }
-  // Do aligned write
-  alignOffset = dLen & (JSF_ALIGNMENT-1);
-  dLen -= alignOffset;
-  if (dLen)
-    jshFlashWrite(dPtr, addr, (uint32_t)dLen);
-  addr += (uint32_t)dLen;
-  dPtr += dLen;
-  // Do final unaligned write
-  if (alignOffset) {
-    char buf[JSF_ALIGNMENT];
-    jshFlashRead(buf, addr, JSF_ALIGNMENT);
-    memcpy(buf, dPtr, alignOffset);
-    jshFlashWrite(buf, addr, JSF_ALIGNMENT);
-  }
+  jshFlashWriteAligned(dPtr, addr, (uint32_t)dLen);
   DBG("jsfWriteFile written contents\n");
   return true;
 }

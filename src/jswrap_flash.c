@@ -115,11 +115,11 @@ void jswrap_flash_erasePage(JsVar *addr) {
   "name" : "write",
   "generate" : "jswrap_flash_write",
   "params" : [
-    ["data","JsVar","The data to write. This must be a multiple of 4 bytes."],
-    ["addr","int","The address to start writing from, this must be on a word boundary (a multiple of 4)"]
+    ["data","JsVar","The data to write"],
+    ["addr","int","The address to start writing from"]
   ]
 }
-Write data into memory at the given address - IN MULTIPLES OF 4 BYTES.
+Write data into memory at the given address
 
 In flash memory you may only turn bits that are 1 into bits that are 0. If
 you're writing data into an area that you have already written (so `read`
@@ -133,13 +133,9 @@ void jswrap_flash_write(JsVar *data, int addr) {
   }
 
   JSV_GET_AS_CHAR_ARRAY(flashData, flashDataLen, data);
-  if ((addr&3) || (flashDataLen&3)) {
-    jsExceptionHere(JSET_ERROR, "Data and address must be multiples of 4");
-    return;
-  }
 
   if (flashData && flashDataLen)
-    jshFlashWrite(flashData, (unsigned int)addr, (unsigned int)flashDataLen);
+    jshFlashWriteAligned(flashData, (unsigned int)addr, (unsigned int)flashDataLen);
 }
 
 /*JSON{
