@@ -201,7 +201,7 @@ volatile uint16_t flipTimer; // in ms
 /// How long has BTN1 been held down for
 volatile uint16_t btn1Timer; // in ms
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
-int lcdPowerTimeout = 5*1000; // in ms
+int lcdPowerTimeout = 8*1000; // in ms
 /// Is the LCD on?
 bool lcdPowerOn;
 /// Is the compass on?
@@ -831,19 +831,19 @@ bool jswrap_banglejs_idle() {
         jsvUnLock(o);
       }
     }
-    bool faceUp = (acc.z<7000) && abs(acc.x)<4096 && abs(acc.y)<4096;
+    bool faceUp = (acc.z<-6700) && (acc.z>-9000) && abs(acc.x)<2048 && abs(acc.y)<2048;
     if (faceUp!=wasFaceUp) {
       faceUpCounter=0;
       wasFaceUp = faceUp;
     }
     if (faceUpCounter<255) faceUpCounter++;
-    if (faceUpCounter==2) {
+    if (faceUpCounter==3) {
       if (bangle) {
         JsVar *v = jsvNewFromBool(faceUp);
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"faceUp", &v, 1);
         jsvUnLock(v);
       }
-      if (lcdPowerTimeout && !lcdPowerOn) {
+      if (faceUp && lcdPowerTimeout && !lcdPowerOn) {
         // LCD was turned off, turn it back on
         jswrap_banglejs_setLCDPower(1);
         flipTimer = 0;
