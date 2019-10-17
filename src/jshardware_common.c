@@ -13,6 +13,7 @@
  */
 #include "jshardware.h"
 #include "jsinteractive.h"
+#include "platform_config.h"
 
 void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->baudRate = DEFAULT_BAUD_RATE;
@@ -45,6 +46,45 @@ void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->started = false;
 }
 
+void jshFlashWriteAligned(void *buf, uint32_t addr, uint32_t len) {
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    // If using external flash it doesn't care about alignment, so don't bother
+    jshFlashWriteAligned(buf, addr, len);
+    return;
+  }
+#endif
+  unsigned char *dPtr = (unsigned char *)buf;
+  uint32_t alignOffset = addr & (JSF_ALIGNMENT-1);
+  if (alignOffset) {
+    char buf[JSF_ALIGNMENT];
+    jshFlashRead(buf, addr-alignOffset, JSF_ALIGNMENT);
+    uint32_t alignRemainder = JSF_ALIGNMENT-alignOffset;
+    if (alignRemainder > len)
+      alignRemainder = len;
+    memcpy(&buf[alignOffset], dPtr, alignRemainder);
+    dPtr += alignRemainder;
+    jshFlashWrite(buf, addr-alignOffset, JSF_ALIGNMENT);
+    addr += alignRemainder;
+    if (alignRemainder >= len)
+      return; // we're done!
+    len -= alignRemainder;
+  }
+  // Do aligned write
+  alignOffset = len & (JSF_ALIGNMENT-1);
+  len -= alignOffset;
+  if (len)
+    jshFlashWrite(dPtr, addr, len);
+  addr += len;
+  dPtr += len;
+  // Do final unaligned write
+  if (alignOffset) {
+    char buf[JSF_ALIGNMENT];
+    jshFlashRead(buf, addr, JSF_ALIGNMENT);
+    memcpy(buf, dPtr, alignOffset);
+    jshFlashWrite(buf, addr, JSF_ALIGNMENT);
+  }
+}
 /** Send data in tx through the given SPI device and return the response in
  * rx (if supplied). Returns true on success */
 __attribute__((weak)) bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {

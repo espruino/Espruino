@@ -67,6 +67,12 @@ JsfFileName jsfNameFromVar(JsVar *name) {
   return *(JsfFileName*)nameBuf;
 }
 
+JsfFileName jsfNameFromVarAndUnLock(JsVar *name) {
+  JsfFileName n = jsfNameFromVar(name);
+  jsvUnLock(name);
+  return n;
+}
+
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header) {
   return (uint32_t)(header->size & 0x00FFFFFF);
@@ -152,11 +158,12 @@ static void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header) {
   jshFlashWrite(&header->replacement,addr,(uint32_t)sizeof(JsfWord));
 }
 
-void jsfEraseFile(JsfFileName name) {
+bool jsfEraseFile(JsfFileName name) {
   JsfFileHeader header;
   uint32_t addr = jsfFindFile(name, &header);
-  if (!addr) return;
+  if (!addr) return false;
   jsfEraseFileInternal(addr, &header);
+  return true;
 }
 
 // Get the address of the page after the current one, or 0. THE NEXT PAGE MAY HAVE A PREVIOUS PAGE'S DATA SPANNING OVER IT
@@ -372,7 +379,7 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
       if (jsfGetFileHeader(addr, &header)) do {
         // check for something with the same name
         if (header.replacement == JSF_WORD_UNSET &&
-            header.name == name)
+            header.name.n == name.n)
           existingAddr = addr;
       } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
       // If not enough space, skip to next page
@@ -435,7 +442,7 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
   if (jsfGetFileHeader(addr, &header)) do {
     // check for something with the same name that hasn't been replaced
     if (header.replacement == JSF_WORD_UNSET &&
-        header.name == name) {
+        header.name.n == name.n) {
       uint32_t endOfFile = addr + (uint32_t)sizeof(JsfFileHeader) + jsfGetFileSize(&header);
       if (endOfFile<addr || endOfFile>JSF_END_ADDRESS)
         return 0; // corrupt - file too long
@@ -563,36 +570,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
     return false;
   }
   DBG("jsfWriteFile write contents\n");
-  // Cope with unaligned first write
-  uint32_t alignOffset = addr & (JSF_ALIGNMENT-1);
-  if (alignOffset) {
-    char buf[JSF_ALIGNMENT];
-    jshFlashRead(buf, addr-alignOffset, JSF_ALIGNMENT);
-    uint32_t alignRemainder = JSF_ALIGNMENT-alignOffset;
-    if (alignRemainder > dLen)
-      alignRemainder = (uint32_t)dLen;
-    memcpy(&buf[alignOffset], dPtr, alignRemainder);
-    dPtr += alignRemainder;
-    jshFlashWrite(buf, addr-alignOffset, JSF_ALIGNMENT);
-    addr += alignRemainder;
-    if (alignRemainder >= dLen)
-      return true; // we're done!
-    dLen -= alignRemainder;
-  }
-  // Do aligned write
-  alignOffset = dLen & (JSF_ALIGNMENT-1);
-  dLen -= alignOffset;
-  if (dLen)
-    jshFlashWrite(dPtr, addr, (uint32_t)dLen);
-  addr += (uint32_t)dLen;
-  dPtr += dLen;
-  // Do final unaligned write
-  if (alignOffset) {
-    char buf[JSF_ALIGNMENT];
-    jshFlashRead(buf, addr, JSF_ALIGNMENT);
-    memcpy(buf, dPtr, alignOffset);
-    jshFlashWrite(buf, addr, JSF_ALIGNMENT);
-  }
+  jshFlashWriteAligned(dPtr, addr, (uint32_t)dLen);
   DBG("jsfWriteFile written contents\n");
   return true;
 }
