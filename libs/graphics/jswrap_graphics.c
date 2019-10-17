@@ -31,6 +31,12 @@
 #include "bitmap_font_4x6.h"
 #include "bitmap_font_6x8.h"
 
+#ifndef SAVE_ON_FLASH
+#ifndef ESPRUINOBOARD
+#define GRAPHICS_DRAWIMAGE_ROTATED
+#endif
+#endif
+
 #ifdef GRAPHICS_PALETTED_IMAGES
 // 16 color MAC OS palette
 const uint16_t PALETTE_4BIT[16] = { 0x0,0x4228,0x8c51,0xbdd7,0x9b26,0x6180,0x320,0x540,0x4df,0x19,0x3013,0xf813,0xd800,0xfb20,0xffe0,0xffff };
@@ -1647,8 +1653,8 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       }
     }
   } else if (jsvIsObject(options)) {
-#ifdef SAVE_ON_FLASH
-    jsExceptionHere(JSET_ERROR,"Image rotation not implemented on devices with low flash");
+#ifndef GRAPHICS_DRAWIMAGE_ROTATED
+    jsExceptionHere(JSET_ERROR,"Image rotation not implemented on this device");
 #else
     // fancy rotation/scaling
     int imageStride = (imageWidth*imageBpp + 7)>>3;
@@ -1817,7 +1823,7 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "scroll",
-  "ifndef" : "SAVE_ON_FLASH",
+  "ifndef" : "SAVE_ON_FLASH && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_scroll",
   "params" : [
     ["x","int32","X direction. >0 = to right"],

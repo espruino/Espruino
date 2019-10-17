@@ -22,6 +22,8 @@
             Allow heatshrink compress/decompress to work even if flat buffers can't be allocated
             require("Flash").write operations no longer need to be aligned
             require("Storage").open added - for appendable files
+            Pixl.js: Removed AES functionality - unfortunately we're running low on space for it
+            Original Espruino Board: Removed Vector font and don't add rotated drawImage to save flash
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
