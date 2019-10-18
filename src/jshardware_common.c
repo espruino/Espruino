@@ -50,7 +50,7 @@ void jshFlashWriteAligned(void *buf, uint32_t addr, uint32_t len) {
 #ifdef SPIFLASH_BASE
   if (addr >= SPIFLASH_BASE) {
     // If using external flash it doesn't care about alignment, so don't bother
-    jshFlashWriteAligned(buf, addr, len);
+    jshFlashWrite(buf, addr, len);
     return;
   }
 #endif
