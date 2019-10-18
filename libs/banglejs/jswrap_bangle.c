@@ -336,8 +336,6 @@ void peripheralPollHandler() {
     // report tap
     tapInfo = buf[0] | (tapType<<6);
     bangleTasks |= JSBT_ACCEL_TAPPED;
-  }
-  if (tapType || hasAccelData) {
     // clear the IRQ flags
     buf[0]=0x17;
     jsi2cWrite(&internalI2C, ACCEL_ADDR, 1, buf, true);
