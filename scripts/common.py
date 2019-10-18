@@ -382,6 +382,7 @@ def get_ifdef_description(d):
   if d=="ESPRUINOWIFI": return "Espruino WiFi boards"
   if d=="ESPRUINOBOARD": return "'Original' Espruino boards"
   if d=="PICO": return "Espruino Pico boards"
+  if d=="BANGLEJS": return "Bangle.js smartwatches"
   if d=="ESP8266": return "ESP8266 boards running Espruino"
   if d=="ESP32": return "ESP32 boards"
   if d=="EFM32": return "EFM32 devices"

@@ -30,7 +30,7 @@ info = {
      'TERMINAL',
      'GRAPHICS', 
      'LCD_SPI',
-    # 'TENSORFLOW'     
+     'TENSORFLOW'     
    ],
    'makefile' : [
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
