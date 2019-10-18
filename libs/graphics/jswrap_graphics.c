@@ -772,6 +772,29 @@ JsVar *jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bo
       color = 0xFF000000 | (unsigned int)(bi | (gi<<8) | (ri<<16));
     } else if (gfx.data.bpp==24) {
       color = (unsigned int)(bi | (gi<<8) | (ri<<16));
+#if defined(GRAPHICS_PALETTED_IMAGES) && LCD_BPP==4
+    } else if (gfx.data.bpp==4) {
+      // LCD is paletted - look up in our palette to find the best match
+      int d = 0x7FFFFFFF;
+      color = 0;
+      for (int i=0;i<16;i++) {
+        int p = PALETTE_4BIT[i];
+        int pr = (p>>8)&0xF8;
+        int pg = (p>>3)&0xFC;
+        int pb = (p<<3)&0xF8;
+        pr |= pr>>5;
+        pg |= pb>>6;
+        pb |= pb>>5;
+        int dr = pr-ri;
+        int dg = pg-gi;
+        int db = pb-bi;
+        int dd = dr*dr+dg*dg+db*db;
+        if (dd<d) {
+          d=dd;
+          color=i;
+        }
+      }
+#endif
     } else
       color = (unsigned int)(((ri+gi+bi)>=384) ? 0xFFFFFFFF : 0);
 #endif
@@ -1598,10 +1621,10 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     palettePtr = simplePalette;
     paletteMask = 1;
 #ifdef GRAPHICS_PALETTED_IMAGES
-  } else if (imageBpp==4) {
+  } else if (gfx.data.bpp==16 && imageBpp==4) { // palette is 16 bits, so don't use it for other things
     palettePtr = PALETTE_4BIT;
     paletteMask = 15;
-  } else if (imageBpp==8) {
+  } else if (gfx.data.bpp==16 && imageBpp==8) { // palette is 16 bits, so don't use it for other things
     palettePtr = PALETTE_8BIT;
     paletteMask = 255;
 #endif
