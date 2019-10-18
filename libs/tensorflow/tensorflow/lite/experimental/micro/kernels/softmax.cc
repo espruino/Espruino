@@ -194,8 +194,8 @@ TfLiteStatus SoftmaxEval(TfLiteContext* context, TfLiteNode* node) {
     }
     default:
       context->ReportError(
-          context, "Only float32 and uint8_t supported currently, got %d.",
-          input->type);
+          context, "Only float32, int8_t and uint8_t supported currently, got %s.",
+          TfLiteTypeGetName(input->type));
       return kTfLiteError;
   }
 }
