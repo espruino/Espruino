@@ -1,29 +1,15 @@
 # Usage:
 #
-# Note: if you're in Linux you need to run socker with 'sudo'.
-#   But honestly if you're on linux you should just save yourself
-#   gigabytes of downloads and disk space and build Espruino directly.
+# Note: if you're in Linux you need to run docker with 'sudo' (unless
+#   your user is added to docker group).
 #
-# 1: Build the container image 
+# 1: Specify board in ENV in docker-compose.yml file
 #
-#   docker build . -t img_name
+# 2: docker-compose up --build
 #
-# 2: Run container image so it builds espruino
-#
-#   docker run -e BOARD='PICO_R1_3' --name container_name img_name
-#
-# This will run the container and save build results into the container's filesystem.
-# Near the end of the build the filename will be displayed, for example espruino_2v00_pico_1r3.bin 
-#
-# 3: Copy build results from the container into your filesystem
-#
-#   docker cp container_name:espruino/espruino_2v00_pico_1r3.bin ./
-#
+# Note: This will run the container and save build results into mounted build directory.
 
-FROM python:3
-
-COPY . /espruino
-WORKDIR /espruino
+FROM python:2
 
 # Workaround add some stuff that the provision script uses
 # in here so it doesn't have to use sudo
@@ -32,9 +18,12 @@ RUN apt-get install -qq -y python3-pip
 RUN pip install pyserial
 RUN pip install nrfutil
 
+COPY . /espruino
+WORKDIR /espruino
+
 # This ensures ALL dependencies are installed beforehand
 RUN bash -c "source scripts/provision.sh ALL"
 
-ENV RELEASE 1
-CMD ["bash", "-c", "source scripts/provision.sh ALL && make"]
+ENV BOARD=ALL
+CMD ["bash", "-c", "source scripts/provision.sh ${BOARD} && make"]
 

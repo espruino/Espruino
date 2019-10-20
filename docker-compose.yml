@@ -1,0 +1,10 @@
+version: '3.1'
+services:
+  firmware_builder:
+    build: .
+    restart: always
+    volumes:
+      - ./build:/espruino/build
+    environment:
+      BOARD: 'ALL'
+      RELEASE: 1
