@@ -183,6 +183,7 @@ typedef struct {
 } Vector3;
 
 #define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 to match accelerometer
+#define DEFAULT_LCD_POWER_TIMEOUT 8000 // in msec - default for lcdPowerTimeout
 #define ACCEL_POLL_INTERVAL_MAX 5000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
 #define BTN1_LOAD_TIMEOUT 1500 // in msec
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
@@ -201,7 +202,7 @@ volatile uint16_t flipTimer; // in ms
 /// How long has BTN1 been held down for
 volatile uint16_t btn1Timer; // in ms
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
-int lcdPowerTimeout = 8*1000; // in ms
+int lcdPowerTimeout; // in ms
 /// Is the LCD on?
 bool lcdPowerOn;
 /// Is the compass on?
@@ -682,6 +683,7 @@ void jswrap_banglejs_init() {
   jshDelayMicroseconds(10000);
 
   lcdPowerOn = true;
+  lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
   // Create backing graphics for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
