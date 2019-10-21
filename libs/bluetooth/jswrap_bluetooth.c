@@ -1415,7 +1415,7 @@ void jswrap_ble_updateServices(JsVar *data) {
 }
 
 
-/// Filter device based on a list of filters (like .requestDevice. Return true if it matches
+/// Filter device based on a list of filters (like .requestDevice. Return true if it matches ANY of the filters
 bool jswrap_ble_filter_device(JsVar *filters, JsVar *device) {
   bool matches = false;
   JsvObjectIterator fit;
@@ -1689,6 +1689,57 @@ void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
   jsvUnLock(filters);
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "filterDevices",
+    "generate" : "jswrap_ble_filterDevices",
+    "params" : [
+      ["devices","JsVar","An array of `BluetoothDevice` objects, from `NRF.findDevices` or similar"],
+      ["filters","JsVar","A list of filters (as would be passed to `NRF.requestDevice`) to filter devices by"]
+    ],
+    "return" : ["JsVar","An array of `BluetoothDevice` objects that match the given filters"]
+}
+This function can be used to quickly filter through Bluetooth devices.
+
+For instance if you wish to scan for multiple different types of device at the same time
+then you could use `NRF.findDevices` with all the filters you're interested in. When scanning
+is finished you can then use `NRF.filterDevices` to pick out just the devices of interest.
+
+```
+// the two types of device we're interested in
+var filter1 = [{serviceData:{"fe95":{}}}];
+var filter2 = [{namePrefix:"Pixl.js"}];
+// the following filter will return both types of device
+var allFilters = filter1.concat(filter2);
+// now scan for both types of device, and filter them out afterwards
+NRF.findDevices(function(devices) {
+  var devices1 = NRF.filterDevices(devices, filter1);
+  var devices2 = NRF.filterDevices(devices, filter2);
+  // ...
+}, {filters : allFilters});
+```
+
+*/
+JsVar *jswrap_ble_filterDevices(JsVar *devices, JsVar *filters) {
+  if (!jsvIsArray(devices) || !jsvIsArray(filters)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting both arguments to be arrays");
+    return 0;
+  }
+  JsVar *result = jsvNewEmptyArray();
+  if (!result) return 0;
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, devices);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *device = jsvObjectIteratorGetValue(&it);
+    if (jswrap_ble_filter_device(filters, device))
+      jsvArrayPush(result, device);
+    jsvUnLock(device);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  return result;
+}
 
 /*JSON{
     "type" : "staticmethod",
@@ -1696,7 +1747,7 @@ void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
     "name" : "findDevices",
     "generate" : "jswrap_ble_findDevices",
     "params" : [
-      ["callback","JsVar","The callback to call with received advertising packets, or undefined to stop"],
+      ["callback","JsVar","The callback to call with received advertising packets (as `BluetoothDevice`), or undefined to stop"],
       ["options","JsVar","A time in milliseconds to scan for (defaults to 2000), Or an optional object `{filters: ..., timeout : ..., active: bool}` (as would be passed to `NRF.requestDevice`) to filter devices by"]
     ]
 }

@@ -79,6 +79,7 @@ void jswrap_ble_setScanResponse(JsVar *data);
 void jswrap_ble_setServices(JsVar *data, JsVar *options);
 void jswrap_ble_updateServices(JsVar *data);
 void jswrap_ble_setScan(JsVar *callback, JsVar *options);
+JsVar *jswrap_ble_filterDevices(JsVar *devices, JsVar *filters);
 void jswrap_ble_findDevices(JsVar *callback, JsVar *options);
 void jswrap_ble_setRSSIHandler(JsVar *callback);
 void jswrap_ble_setTxPower(JsVarInt pwr);

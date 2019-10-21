@@ -24,6 +24,7 @@
             require("Storage").open added - for appendable files
             Pixl.js: Removed AES functionality - unfortunately we're running low on space for it
             Original Espruino Board: Removed Vector font and don't add rotated drawImage to save flash
+            nRF5x: Add NRF.filterDevices to allow scanned devices to be easily filtered after scanning
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
