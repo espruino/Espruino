@@ -25,6 +25,7 @@
             Pixl.js: Removed AES functionality - unfortunately we're running low on space for it
             Original Espruino Board: Removed Vector font and don't add rotated drawImage to save flash
             nRF5x: Add NRF.filterDevices to allow scanned devices to be easily filtered after scanning
+            nRF52: Fix 'BLE task completed that wasn't scheduled' warning regression (peripheral disconnect)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

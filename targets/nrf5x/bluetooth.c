@@ -495,7 +495,8 @@ int jsble_exec_pending(IOEvent *event) {
      break;
    }
    case BLEP_CENTRAL_DISCONNECTED: {
-     bleCompleteTaskSuccess(BLETASK_DISCONNECT, bleTaskInfo);
+     if (bleInTask(BLETASK_DISCONNECT))
+       bleCompleteTaskSuccess(BLETASK_DISCONNECT, bleTaskInfo);
      JsVar *gattServer = bleGetActiveBluetoothGattServer();
      if (gattServer) {
        JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
