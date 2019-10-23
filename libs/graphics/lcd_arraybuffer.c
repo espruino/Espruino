@@ -123,10 +123,10 @@ void lcdSetPixel_ArrayBuffer(JsGraphics *gfx, int x, int y, unsigned int col) {
   lcdSetPixels_ArrayBuffer(gfx, x, y, 1, col);
 }
 
-void  lcdFillRect_ArrayBuffer(struct JsGraphics *gfx, int x1, int y1, int x2, int y2) {
+void  lcdFillRect_ArrayBuffer(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   int y;
   for (y=y1;y<=y2;y++)
-    lcdSetPixels_ArrayBuffer(gfx, x1, y, 1+x2-x1, gfx->data.fgColor);
+    lcdSetPixels_ArrayBuffer(gfx, x1, y, 1+x2-x1, col);
 }
 
 #ifndef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
@@ -211,10 +211,10 @@ void lcdSetPixel_ArrayBuffer_flat(JsGraphics *gfx, int x, int y, unsigned int co
 }
 
 // Faster implementation for where we have a flat memory area
-void  lcdFillRect_ArrayBuffer_flat(struct JsGraphics *gfx, int x1, int y1, int x2, int y2) {
+void  lcdFillRect_ArrayBuffer_flat(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   int y;
   for (y=y1;y<=y2;y++)
-    lcdSetPixels_ArrayBuffer_flat(gfx, x1, y, 1+x2-x1, gfx->data.fgColor);
+    lcdSetPixels_ArrayBuffer_flat(gfx, x1, y, 1+x2-x1, col);
 }
 #endif // GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
 

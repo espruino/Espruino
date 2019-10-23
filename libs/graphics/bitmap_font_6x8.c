@@ -259,9 +259,15 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up to 128
 };
 
 
-void graphicsDrawChar6x8(JsGraphics *gfx, short x1, short y1, char ch, unsigned short size) {
+void graphicsDrawChar6x8(JsGraphics *gfx, short x1, short y1, char ch, unsigned short size, bool solidBackground) {
   int idx = ((unsigned char)ch) - 33;
-  if (idx<0 || idx>=LCD_FONT_6X8_CHARS) return; // no char for this - just return
+  if (idx<0 || idx>=LCD_FONT_6X8_CHARS) {
+    // no char for this
+    if (solidBackground)
+      graphicsFillRect(gfx, x1, y1, x1+5*size, y1+7*size, gfx->data.bgColor);
+    return;
+  }
+
   int cidx = idx % 5;
   idx = (idx/5)*8;
   int y;
@@ -269,12 +275,12 @@ void graphicsDrawChar6x8(JsGraphics *gfx, short x1, short y1, char ch, unsigned 
   for (y=0;y<8;y++) {
     unsigned int line = LCD_FONT_6X8[idx + y] >> (cidx*6);
     short ly = y*size + y1;
-    if (line&32) graphicsFillRect(gfx, (short)(x1+0*size), ly, (short)(x1+s+0*size), ly+s);
-    if (line&16) graphicsFillRect(gfx, (short)(x1+1*size), ly, (short)(x1+s+1*size), ly+s);
-    if (line&8) graphicsFillRect(gfx, (short)(x1+2*size), ly, (short)(x1+s+2*size), ly+s);
-    if (line&4) graphicsFillRect(gfx, (short)(x1+3*size), ly, (short)(x1+s+3*size), ly+s);
-    if (line&2) graphicsFillRect(gfx, (short)(x1+4*size), ly, (short)(x1+s+4*size), ly+s);
-    if (line&1) graphicsFillRect(gfx, (short)(x1+5*size), ly, (short)(x1+s+5*size), ly+s);
+    if (solidBackground || (line&32)) graphicsFillRect(gfx, (short)(x1+0*size), ly, (short)(x1+s+0*size), ly+s, (line&32) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || (line&16)) graphicsFillRect(gfx, (short)(x1+1*size), ly, (short)(x1+s+1*size), ly+s, (line&16) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || (line&8)) graphicsFillRect(gfx, (short)(x1+2*size), ly, (short)(x1+s+2*size), ly+s, (line&8) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || (line&4)) graphicsFillRect(gfx, (short)(x1+3*size), ly, (short)(x1+s+3*size), ly+s, (line&4) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || (line&2)) graphicsFillRect(gfx, (short)(x1+4*size), ly, (short)(x1+s+4*size), ly+s, (line&2) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || (line&1)) graphicsFillRect(gfx, (short)(x1+5*size), ly, (short)(x1+s+5*size), ly+s, (line&1) ? gfx->data.fgColor : gfx->data.bgColor);
   }
 }
 

@@ -36,7 +36,7 @@ void lcdSetPixel_JS(JsGraphics *gfx, int x, int y, unsigned int col) {
 //  }
 }
 
-void  lcdFillRect_JS(struct JsGraphics *gfx, int x1, int y1, int x2, int y2) {
+void  lcdFillRect_JS(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   JsVar *fillRect = jsvObjectGetChild(gfx->graphicsVar/*lcdProto*/, "iFillRect", 0);
   if (fillRect) {
     JsVar *args[5];
@@ -44,12 +44,12 @@ void  lcdFillRect_JS(struct JsGraphics *gfx, int x1, int y1, int x2, int y2) {
     args[1] = jsvNewFromInteger(y1);
     args[2] = jsvNewFromInteger(x2);
     args[3] = jsvNewFromInteger(y2);
-    args[4] = jsvNewFromInteger((JsVarInt)gfx->data.fgColor);
+    args[4] = jsvNewFromInteger((JsVarInt)col);
     jsvUnLock(jspExecuteFunction(fillRect, gfx->graphicsVar, 5, args));
     jsvUnLockMany(5, args);
     jsvUnLock(fillRect);
   } else
-    graphicsFallbackFillRect(gfx, x1,y1,x2,y2);
+    graphicsFallbackFillRect(gfx, x1,y1,x2,y2,col);
 }
 
 void lcdInit_JS(JsGraphics *gfx, JsVar *setPixelCallback, JsVar *fillRectCallback) {

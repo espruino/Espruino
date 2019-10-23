@@ -1347,19 +1347,19 @@ static inline void lcdSetFullWindow(JsGraphics *gfx) {
 
 
 
-void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
+void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   // finally!
   if (x1==x2) { // special case for single vertical line - no window needed
     lcdSetCursor(gfx,x2,y1);
     LCD_WR_REG(0x22); // start data tx
     unsigned int i=0, l=(1+y2-y1);
-    LCD_WR_Data_multi(gfx->data.fgColor, l);
+    LCD_WR_Data_multi(col, l);
   } else {
     lcdSetWindow(gfx,x1,y1,x2,y2);
     lcdSetCursor(gfx,x2,y1);
     LCD_WR_REG(0x22); // start data tx
     unsigned int i=0, l=(1+x2-x1)*(1+y2-y1);
-    LCD_WR_Data_multi(gfx->data.fgColor, l);
+    LCD_WR_Data_multi(col, l);
     lcdSetFullWindow(gfx);
   }
 }

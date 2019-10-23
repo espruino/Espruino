@@ -161,9 +161,14 @@ const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 127
     PACK_5_TO_16( ___ , ___ , ___ , ___ , XXX )
 };
 
-void graphicsDrawChar4x6(JsGraphics *gfx, short x1, short y1, char ch, unsigned short size) {
+void graphicsDrawChar4x6(JsGraphics *gfx, short x1, short y1, char ch, unsigned short size, bool solidBackground) {
   int idx = ((unsigned char)ch) - 33;
-  if (idx<0 || idx>=LCD_FONT_4X6_CHARS) return; // no char for this - just return
+  if (idx<0 || idx>=LCD_FONT_4X6_CHARS) {
+    // no char for this
+    if (solidBackground)
+      graphicsFillRect(gfx, x1, y1, x1+2*size, y1+5*size, gfx->data.bgColor);
+    return;
+  }
   int cidx = idx % 5;
   idx = (idx/5)*6;
   int y;
@@ -171,9 +176,9 @@ void graphicsDrawChar4x6(JsGraphics *gfx, short x1, short y1, char ch, unsigned 
   for (y=0;y<6;y++) {
     unsigned int line = READ_FLASH_UINT16(&LCD_FONT_4X6[idx + y]) >> (cidx*3);
     short ly = y*size + y1;
-    if (line&4) graphicsFillRect(gfx, (short)(x1+0*size), ly, (short)(x1+s+0*size), ly+s);
-    if (line&2) graphicsFillRect(gfx, (short)(x1+1*size), ly, (short)(x1+s+1*size), ly+s);
-    if (line&1) graphicsFillRect(gfx, (short)(x1+2*size), ly, (short)(x1+s+2*size), ly+s);
+    if (line&4) graphicsFillRect(gfx, (short)(x1+0*size), ly, (short)(x1+s+0*size), ly+s, (line&4) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (line&2) graphicsFillRect(gfx, (short)(x1+1*size), ly, (short)(x1+s+1*size), ly+s, (line&2) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (line&1) graphicsFillRect(gfx, (short)(x1+2*size), ly, (short)(x1+s+2*size), ly+s, (line&1) ? gfx->data.fgColor : gfx->data.bgColor);
   }
 }
 

@@ -93,7 +93,7 @@ typedef struct JsGraphics {
   void *backendData; ///< Data used by the graphics backend
 
   void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col);
-  void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2);
+  void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
   unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y);
   void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); // scroll - leave unscrolled area undefined
 } PACKED_FLAGS JsGraphics;
@@ -116,8 +116,8 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y);
 void         graphicsSetPixel(JsGraphics *gfx, int x, int y, unsigned int col);
 unsigned int graphicsGetPixel(JsGraphics *gfx, int x, int y);
 void         graphicsClear(JsGraphics *gfx);
-void         graphicsFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2);
-void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2); // Simple fillrect - doesn't call device-specific FR
+void         graphicsFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
+void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); // Simple fillrect - doesn't call device-specific FR
 void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsFillEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);

@@ -474,7 +474,7 @@ Fill a rectangular area in the Foreground Color
 */
 JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  graphicsFillRect(&gfx, x1,y1,x2,y2);
+  graphicsFillRect(&gfx, x1,y1,x2,y2,gfx.data.fgColor);
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
@@ -498,10 +498,7 @@ Fill a rectangular area in the Background Color
 */
 JsVar *jswrap_graphics_clearRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  unsigned int c = gfx.data.fgColor;
-  gfx.data.fgColor = gfx.data.bgColor;
-  graphicsFillRect(&gfx, x1,y1,x2,y2);
-  gfx.data.fgColor = c;
+  graphicsFillRect(&gfx, x1,y1,x2,y2,gfx.data.bgColor);
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
@@ -1132,14 +1129,15 @@ int jswrap_graphics_getFontHeight(JsVar *parent) {
   "params" : [
     ["str","JsVar","The string"],
     ["x","int32","The X position of the leftmost pixel"],
-    ["y","int32","The Y position of the topmost pixel"]
+    ["y","int32","The Y position of the topmost pixel"],
+    ["solid","bool","For bitmap fonts, should empty pixels be filled with the background color?"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
 Draw a string of text in the current font
 */
-JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
+JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool solidBackground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
   JsVar *customBitmap = 0, *customWidth = 0;
@@ -1201,12 +1199,12 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_4X6) {
       if (x>-4 && x<maxX && y>-6 && y<maxY)
-        graphicsDrawChar4x6(&gfx, x, y, ch, scale);
+        graphicsDrawChar4x6(&gfx, x, y, ch, scale, solidBackground);
       x+=4*scale;
 #ifdef USE_FONT_6X8
     } else if (font == JSGRAPHICS_FONTSIZE_6X8) {
       if (x>-6 && x<maxX && y>-8 && y<maxY)
-        graphicsDrawChar6x8(&gfx, x, y, ch, scale);
+        graphicsDrawChar6x8(&gfx, x, y, ch, scale, solidBackground);
       x+=6*scale;
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_CUSTOM) {
@@ -1237,12 +1235,14 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
         int cx,cy;
         for (cx=0;cx<width;cx++) {
           for (cy=0;cy<ch;cy++) {
-            if ((jsvStringIteratorGetChar(&cit)<<bmpOffset)&128)
+            bool set = (jsvStringIteratorGetChar(&cit)<<bmpOffset)&128;
+            if (solidBackground || set)
               graphicsFillRect(&gfx,
                   (x + cx*scale),
                   (y + cy*scale),
                   (x + cx*scale + scale-1),
-                  (y + cy*scale + scale-1));
+                  (y + cy*scale + scale-1),
+                  set ? gfx.data.fgColor : gfx.data.bgColor);
             bmpOffset++;
             if (bmpOffset==8) {
               bmpOffset=0;
@@ -1269,7 +1269,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
 /// Convenience function for using drawString from C code
 void jswrap_graphics_drawCString(JsGraphics *gfx, int x, int y, char *str) {
   JsVar *s = jsvNewFromString(str);
-  jsvUnLock2(jswrap_graphics_drawString(gfx->graphicsVar, s, x, y),s);
+  jsvUnLock2(jswrap_graphics_drawString(gfx->graphicsVar, s, x, y, false),s);
 }
 
 /*JSON{
@@ -1593,7 +1593,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     if (v) {
       if (jsvIsArrayBuffer(v) && v->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
         size_t l = 0;
-        palettePtr = jsvGetDataPointer(v, &l);
+        palettePtr = (uint16_t *)jsvGetDataPointer(v, &l);
         jsvUnLock(v);
         if (l==2 || l==4 || l==16)
           paletteMask = l-1;

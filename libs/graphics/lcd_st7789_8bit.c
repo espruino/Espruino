@@ -188,7 +188,7 @@ void lcdST7789_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
   LCD_CS_SET();
 }
 
-void lcdST7789_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
+void lcdST7789_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   int pixels = (1+x2-x1)*(1+y2-y1);
   y1 += lcdScrollY;
   if (y1>=LCD_BUFFER_HEIGHT) y1-=LCD_BUFFER_HEIGHT;
@@ -214,7 +214,6 @@ void lcdST7789_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
   LCD_DC_DATA(); // data
   lcdNextY=-1;
   lcdNextX=-1;
-  unsigned int col = gfx->data.fgColor & 0xFFFF;
   if ((col&255) == (col>>8)) {
     // top and bottom bits are the same, we can just mash SCK
     LCD_DATA(col);

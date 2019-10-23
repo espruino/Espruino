@@ -56,11 +56,11 @@ unsigned int graphicsFallbackGetPixel(JsGraphics *gfx, int x, int y) {
   return 0;
 }
 
-void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
+void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   int x,y;
   for (y=y1;y<=y2;y++)
     for (x=x1;x<=x2;x++)
-      graphicsSetPixelDevice(gfx,x,y, gfx->data.fgColor);
+      graphicsSetPixelDevice(gfx,x,y, col);
 }
 
 void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto) {
@@ -217,7 +217,7 @@ static unsigned int graphicsGetPixelDevice(JsGraphics *gfx, int x, int y) {
   return gfx->getPixel(gfx, x, y);
 }
 
-static void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
+static void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   if (x1>x2) {
     int t = x1;
     x1 = x2;
@@ -240,11 +240,11 @@ static void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int 
   if (y2 > gfx->data.modMaxY) gfx->data.modMaxY=(short)y2;
 #endif
   if (x1==x2 && y1==y2) {
-    gfx->setPixel(gfx,(int)x1,(int)y1,gfx->data.fgColor);
+    gfx->setPixel(gfx,(int)x1,(int)y1,col);
     return;
   }
 
-  return gfx->fillRect(gfx, (int)x1, (int)y1, (int)x2, (int)y2);
+  return gfx->fillRect(gfx, (int)x1, (int)y1, (int)x2, (int)y2, col);
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -259,17 +259,14 @@ unsigned int graphicsGetPixel(JsGraphics *gfx, int x, int y) {
   return graphicsGetPixelDevice(gfx, x, y);
 }
 
-void graphicsFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
+void graphicsFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   graphicsToDeviceCoordinates(gfx, &x1, &y1);
   graphicsToDeviceCoordinates(gfx, &x2, &y2);
-  graphicsFillRectDevice(gfx, x1, y1, x2, y2);
+  graphicsFillRectDevice(gfx, x1, y1, x2, y2, col);
 }
 
 void graphicsClear(JsGraphics *gfx) {
-  unsigned int c = gfx->data.fgColor;
-  gfx->data.fgColor = gfx->data.bgColor;
-  graphicsFillRectDevice(gfx,0,0,(int)(gfx->data.width-1),(int)(gfx->data.height-1));
-  gfx->data.fgColor = c;
+  graphicsFillRectDevice(gfx,0,0,(int)(gfx->data.width-1),(int)(gfx->data.height-1), gfx->data.bgColor);
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -279,10 +276,10 @@ void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
   graphicsToDeviceCoordinates(gfx, &x1, &y1);
   graphicsToDeviceCoordinates(gfx, &x2, &y2);
   // rather than writing pixels, we use fillrect - as it is faster
-  graphicsFillRectDevice(gfx,x1,y1,x2,y1);
-  graphicsFillRectDevice(gfx,x2,y1,x2,y2);
-  graphicsFillRectDevice(gfx,x1,y2,x2,y2);
-  graphicsFillRectDevice(gfx,x1,y2,x1,y1);
+  graphicsFillRectDevice(gfx,x1,y1,x2,y1,gfx->data.fgColor);
+  graphicsFillRectDevice(gfx,x2,y1,x2,y2,gfx->data.fgColor);
+  graphicsFillRectDevice(gfx,x1,y2,x2,y2,gfx->data.fgColor);
+  graphicsFillRectDevice(gfx,x1,y2,x1,y1,gfx->data.fgColor);
 }
 
 void graphicsDrawEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int posY2){
@@ -315,10 +312,10 @@ void graphicsDrawEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
       graphicsSetPixelDevice(gfx,posX - x0, posY + y,gfx->data.fgColor);
       graphicsSetPixelDevice(gfx,posX + x0, posY + y,gfx->data.fgColor);
     } else {
-      graphicsFillRectDevice(gfx,posX - x0, posY - y, posX - x0 - dx + 1, posY - y);
-      graphicsFillRectDevice(gfx,posX + x0, posY - y, posX + x0 + dx - 1, posY	- y);
-      graphicsFillRectDevice(gfx,posX - x0, posY + y, posX - x0 - dx + 1, posY + y);
-      graphicsFillRectDevice(gfx,posX + x0, posY + y, posX + x0 + dx - 1, posY + y); 
+      graphicsFillRectDevice(gfx,posX - x0, posY - y, posX - x0 - dx + 1, posY - y,gfx->data.fgColor);
+      graphicsFillRectDevice(gfx,posX + x0, posY - y, posX + x0 + dx - 1, posY	- y,gfx->data.fgColor);
+      graphicsFillRectDevice(gfx,posX - x0, posY + y, posX - x0 - dx + 1, posY + y,gfx->data.fgColor);
+      graphicsFillRectDevice(gfx,posX + x0, posY + y, posX + x0 + dx - 1, posY + y,gfx->data.fgColor);
     }
   }
 }
@@ -337,7 +334,7 @@ void graphicsFillEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
   int hhww = hh * ww;
   int x0 = width;
   int dx = 0;
-  graphicsFillRectDevice(gfx, posX - width, posY, posX + width, posY);  
+  graphicsFillRectDevice(gfx, posX - width, posY, posX + width, posY,gfx->data.fgColor);
   for (int y = 1; y <= height; y++) {
     int x1 = x0 - (dx - 1);
     for ( ; x1 > 0; x1--)
@@ -345,16 +342,8 @@ void graphicsFillEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
         break;
     dx = x0 - x1;  
     x0 = x1;
-	  graphicsFillRectDevice(gfx, posX - x0, posY - y, posX + x0, posY - y);
-	  graphicsFillRectDevice(gfx, posX - x0, posY + y, posX + x0, posY + y);
-  }
-}
-
-static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {
-  // no need to modify coordinates as setPixel does that
-  while (*str) {
-    graphicsDrawChar4x6(gfx,x1,y1,*(str++),1);
-    x1 = (int)(x1 + 4);
+	  graphicsFillRectDevice(gfx, posX - x0, posY - y, posX + x0, posY - y,gfx->data.fgColor);
+	  graphicsFillRectDevice(gfx, posX - x0, posY + y, posX + x0, posY + y,gfx->data.fgColor);
   }
 }
 
@@ -458,7 +447,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
       while (y<maxy && minx[y+1]==minx[oldy] && maxx[y+1]==maxx[oldy])
         y++;
       // actually fill
-      graphicsFillRectDevice(gfx,minx[y],oldy,maxx[y],y);
+      graphicsFillRectDevice(gfx,minx[y],oldy,maxx[y],y,gfx->data.fgColor);
       if (jspIsInterrupted()) break;
     }
   }
@@ -531,13 +520,18 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
   // do the scrolling
   gfx->scroll(gfx, xdir, ydir);
   // fill the new area
-  unsigned int c = gfx->data.fgColor;
-  gfx->data.fgColor = gfx->data.bgColor;
-  if (xdir>0) gfx->fillRect(gfx,0,0,xdir-1,gfx->data.height-1);
-  else if (xdir<0) gfx->fillRect(gfx,gfx->data.width+xdir,0,gfx->data.width-1,gfx->data.height-1);
-  if (ydir>0) gfx->fillRect(gfx,0,0,gfx->data.width-1,ydir-1);
-  else if (ydir<0) gfx->fillRect(gfx,0,gfx->data.height+ydir,gfx->data.width-1,gfx->data.height-1);
-  gfx->data.fgColor = c;
+  if (xdir>0) gfx->fillRect(gfx,0,0,xdir-1,gfx->data.height-1, gfx->data.bgColor);
+  else if (xdir<0) gfx->fillRect(gfx,gfx->data.width+xdir,0,gfx->data.width-1,gfx->data.height-1, gfx->data.bgColor);
+  if (ydir>0) gfx->fillRect(gfx,0,0,gfx->data.width-1,ydir-1, gfx->data.bgColor);
+  else if (ydir<0) gfx->fillRect(gfx,0,gfx->data.height+ydir,gfx->data.width-1,gfx->data.height-1, gfx->data.bgColor);
+}
+
+static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {
+  // no need to modify coordinates as setPixel does that
+  while (*str) {
+    graphicsDrawChar4x6(gfx,x1,y1,*(str++),1,false);
+    x1 = (int)(x1 + 4);
+  }
 }
 
 // Splash screen
