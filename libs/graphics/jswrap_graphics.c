@@ -474,7 +474,7 @@ Fill a rectangular area in the Foreground Color
 */
 JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  graphicsFillRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsFillRect(&gfx, x1,y1,x2,y2);
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
@@ -500,7 +500,7 @@ JsVar *jswrap_graphics_clearRect(JsVar *parent, int x1, int y1, int x2, int y2) 
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   unsigned int c = gfx.data.fgColor;
   gfx.data.fgColor = gfx.data.bgColor;
-  graphicsFillRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsFillRect(&gfx, x1,y1,x2,y2);
   gfx.data.fgColor = c;
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
@@ -524,7 +524,7 @@ Draw an unfilled rectangle 1px wide in the Foreground Color
 */
 JsVar *jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  graphicsDrawRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsDrawRect(&gfx, x1,y1,x2,y2);
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
@@ -590,7 +590,7 @@ Draw a filled ellipse in the Foreground Color
 */
 JsVar *jswrap_graphics_fillEllipse(JsVar *parent, int x, int y, int x2, int y2) {
    JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-   graphicsFillEllipse(&gfx, (short)x,(short)y,(short)x2,(short)y2);
+   graphicsFillEllipse(&gfx, x,y,x2,y2);
    graphicsSetVar(&gfx); // gfx data changed because modified area
    return jsvLockAgain(parent);
  }
@@ -614,7 +614,7 @@ Draw an ellipse in the Foreground Color
 */
 JsVar *jswrap_graphics_drawEllipse(JsVar *parent, int x, int y, int x2, int y2) {
    JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-   graphicsDrawEllipse(&gfx, (short)x,(short)y,(short)x2,(short)y2);
+   graphicsDrawEllipse(&gfx, x,y,x2,y2);
    graphicsSetVar(&gfx); // gfx data changed because modified area
    return jsvLockAgain(parent);
  }
@@ -634,7 +634,7 @@ Get a pixel's color
 */
 int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  return (int)graphicsGetPixel(&gfx, (short)x, (short)y);
+  return (int)graphicsGetPixel(&gfx, x, y);
 }
 
 /*JSON{
@@ -657,7 +657,7 @@ JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   unsigned int col = gfx.data.fgColor;
   if (!jsvIsUndefined(color))
     col = (unsigned int)jsvGetInteger(color);
-  graphicsSetPixel(&gfx, (short)x, (short)y, col);
+  graphicsSetPixel(&gfx, x, y, col);
   gfx.data.cursorX = (short)x;
   gfx.data.cursorY = (short)y;
   graphicsSetVar(&gfx); // gfx data changed because modified area
@@ -1196,17 +1196,17 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
 #ifndef NO_VECTOR_FONT
       int w = (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
       if (x>-w && x<maxX  && y>-gfx.data.fontSize && y<maxY)
-        graphicsFillVectorChar(&gfx, (short)x, (short)y, (short)gfx.data.fontSize, ch);
+        graphicsFillVectorChar(&gfx, x, y, gfx.data.fontSize, ch);
       x+=w;
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_4X6) {
       if (x>-4 && x<maxX && y>-6 && y<maxY)
-        graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch, scale);
+        graphicsDrawChar4x6(&gfx, x, y, ch, scale);
       x+=4*scale;
 #ifdef USE_FONT_6X8
     } else if (font == JSGRAPHICS_FONTSIZE_6X8) {
       if (x>-6 && x<maxX && y>-8 && y<maxY)
-        graphicsDrawChar6x8(&gfx, (short)x, (short)y, ch, scale);
+        graphicsDrawChar6x8(&gfx, x, y, ch, scale);
       x+=6*scale;
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_CUSTOM) {
@@ -1239,10 +1239,10 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
           for (cy=0;cy<ch;cy++) {
             if ((jsvStringIteratorGetChar(&cit)<<bmpOffset)&128)
               graphicsFillRect(&gfx,
-                  (short)(x + cx*scale),
-                  (short)(y + cy*scale),
-                  (short)(x + cx*scale + scale-1),
-                  (short)(y + cy*scale + scale-1));
+                  (x + cx*scale),
+                  (y + cy*scale),
+                  (x + cx*scale + scale-1),
+                  (y + cy*scale + scale-1));
             bmpOffset++;
             if (bmpOffset==8) {
               bmpOffset=0;
@@ -1349,7 +1349,7 @@ Draw a line between x1,y1 and x2,y2 in the current foreground color
 */
 JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  graphicsDrawLine(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsDrawLine(&gfx, x1,y1,x2,y2);
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
@@ -1370,7 +1370,7 @@ Draw a line from the last position of lineTo or moveTo to this position
 */
 JsVar *jswrap_graphics_lineTo(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, (short)x, (short)y);
+  graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, x, y);
   gfx.data.cursorX = (short)x;
   gfx.data.cursorY = (short)y;
   graphicsSetVar(&gfx);
@@ -1431,7 +1431,7 @@ JsVar *jswrap_graphics_drawPoly(JsVar *parent, JsVar *poly, bool closed) {
         starty = y;
       } else {
         // only start drawing between the first 2 points
-        graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, (short)x, (short)y);
+        graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, x, y);
       }
       gfx.data.cursorX = (short)x;
       gfx.data.cursorY = (short)y;
@@ -1442,7 +1442,7 @@ JsVar *jswrap_graphics_drawPoly(JsVar *parent, JsVar *poly, bool closed) {
   jsvIteratorFree(&it);
   // if closed, draw between first and last points
   if (closed)
-    graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, (short)startx, (short)starty);
+    graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, startx, starty);
 
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
@@ -1674,27 +1674,22 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 
   if (jsvIsUndefined(options)) {
     // Standard 1:1 blitting
-    while (y<imageHeight) {
-      // Get the data we need...
-      while (bits < imageBpp) {
-        colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
-        jsvStringIteratorNext(&it);
-        bits += 8;
-      }
-      // extract just the bits we want
-      unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
-      bits -= imageBpp;
-      // Try and write pixel!
-      if (!imageIsTransparent || imageTransparentCol!=col) {
-        if (palettePtr) col = palettePtr[col&paletteMask];
-        graphicsSetPixel(&gfx, (short)(x+xPos), (short)(y+yPos), col);
-      }
-      // Go to next pixel
-      x++;
-      if (x>=imageWidth) {
-        x=0;
-        y++;
-        // we don't care about image height - we'll stop next time...
+    for (y=0;y<imageHeight;y++) {
+      for (x=0;x<imageWidth;x++) {
+        // Get the data we need...
+        while (bits < imageBpp) {
+          colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
+          jsvStringIteratorNext(&it);
+          bits += 8;
+        }
+        // extract just the bits we want
+        unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
+        bits -= imageBpp;
+        // Try and write pixel!
+        if (!imageIsTransparent || imageTransparentCol!=col) {
+          if (palettePtr) col = palettePtr[col&paletteMask];
+          graphicsSetPixel(&gfx, x+xPos, y+yPos, col);
+        }
       }
     }
   } else if (jsvIsObject(options)) {
@@ -1753,7 +1748,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
           }
           if (!imageIsTransparent || imageTransparentCol!=colData) {
             if (palettePtr) colData = palettePtr[colData&paletteMask];
-            graphicsSetPixel(&gfx, (short)(x+xPos), (short)(y+yPos), colData);
+            graphicsSetPixel(&gfx, x+xPos, y+yPos, colData);
           }
         }
         qx += sx;
@@ -1804,7 +1799,7 @@ JsVar *jswrap_graphics_asImage(JsVar *parent) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, buffer, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    pixelBits = (pixelBits<<bpp) | graphicsGetPixel(&gfx, (short)x, (short)y);
+    pixelBits = (pixelBits<<bpp) | graphicsGetPixel(&gfx, x, y);
     pixelBitCnt += (unsigned)bpp;
     x++;
     if (x>=w) {
@@ -1940,13 +1935,13 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
       for (int x=0;x<width;) {
         unsigned int b = 0;
         for (int i=0;i<8;i++) {
-          b = (b<<1)|(graphicsGetPixel(&gfx, (short)(x++), (short)y)&1);
+          b = (b<<1)|(graphicsGetPixel(&gfx, x++, y)&1);
         }
         imgPtr[headerLen + (yi*rowstride) + (x>>3) - 1] = (unsigned char)b;
       }
     } else {
       for (int x=0;x<width;x++) {
-        unsigned int c = graphicsGetPixel(&gfx, (short)x, (short)y);
+        unsigned int c = graphicsGetPixel(&gfx, x, y);
         int i = headerLen + (yi*rowstride) + (x*(gfx.data.bpp>>3));
         imgPtr[i++] = (unsigned char)(c);
         imgPtr[i++] = (unsigned char)(c>>8);

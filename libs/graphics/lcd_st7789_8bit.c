@@ -48,8 +48,8 @@ static const uint8_t ST7789_INIT_CODE[] = {
 };
 const int LCD_BUFFER_HEIGHT = 320;
 LCDST7789Mode lcdMode;
-short lcdNextX, lcdNextY;
-short lcdScrollY;
+int lcdNextX, lcdNextY;
+int lcdScrollY;
 
 
 /* We have to be careful about this since we can
@@ -151,7 +151,7 @@ void lcdST7789_flip() {
 }
 
 
-void lcdST7789_setPixel(JsGraphics *gfx, short x, short y, unsigned int col) {
+void lcdST7789_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
   LCD_CS_CLR();
   if ((y!=lcdNextY) || (x!=lcdNextX)) {
     lcdNextY=y;
@@ -188,7 +188,7 @@ void lcdST7789_setPixel(JsGraphics *gfx, short x, short y, unsigned int col) {
   LCD_CS_SET();
 }
 
-void lcdST7789_fillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
+void lcdST7789_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
   int pixels = (1+x2-x1)*(1+y2-y1);
   y1 += lcdScrollY;
   if (y1>=LCD_BUFFER_HEIGHT) y1-=LCD_BUFFER_HEIGHT;
