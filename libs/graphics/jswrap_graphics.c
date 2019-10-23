@@ -1545,12 +1545,13 @@ JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
 }
 Image can be:
 
-* An object with the following fields `{ width : int, height : int, bpp : optional int, buffer : ArrayBuffer/String, transparent: optional int }`. bpp = bits per pixel (default is 1), transparent (if defined) is the colour that will be treated as transparent
+* An object with the following fields `{ width : int, height : int, bpp : optional int, buffer : ArrayBuffer/String, transparent: optional int, palette : optional Uint16Array(2/4/16) }`. bpp = bits per pixel (default is 1), transparent (if defined) is the colour that will be treated as transparent, and palette is a color palette that each pixel will be looked up in first
 * A String where the the first few bytes are: `width,height,bpp,[transparent,]image_bytes...`. If a transparent colour is specified the top bit of `bpp` should be set.
 
 Draw an image at the specified position.
 
 * If the image is 1 bit, the graphics foreground/background colours will be used.
+* If `img.palette` is a Uint16Array or 2/4/16 elements, color data will be looked from the supplied palette
 * On Bangle.js, 4 bit images use the Apple Mac 16 color palette
 * On Bangle.js, 8 bit images use the Web Safe 216 color palette
 * Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first
@@ -1575,6 +1576,9 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   unsigned int imageTransparentCol;
   JsVar *imageBuffer;
   int imageBufferOffset;
+  const uint16_t *palettePtr = 0;
+  uint32_t paletteMask = 0;
+  uint16_t simplePalette[2];
 
   if (jsvIsObject(image)) {
     imageWidth = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
@@ -1585,6 +1589,25 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     v = jsvObjectGetChild(image, "transparent", 0);
     imageIsTransparent = v!=0;
     imageTransparentCol = (unsigned int)jsvGetIntegerAndUnLock(v);
+    v = jsvObjectGetChild(image, "palette", 0);
+    if (v) {
+      if (jsvIsArrayBuffer(v) && v->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
+        size_t l = 0;
+        palettePtr = jsvGetDataPointer(v, &l);
+        jsvUnLock(v);
+        if (l==2 || l==4 || l==16)
+          paletteMask = l-1;
+        else {
+          palettePtr = 0;
+        }
+      } else
+        jsvUnLock(v);
+      if (!palettePtr) {
+        jsExceptionHere(JSET_ERROR, "palette specified, but must be a flat Uint16Array of 2,4, or 16 elements");
+        return 0;
+      }
+    }
+
     imageBuffer = jsvObjectGetChild(image, "buffer", 0);
     imageBufferOffset = 0;
   } else if (jsvIsString(image) || jsvIsArrayBuffer(image)) {
@@ -1611,23 +1634,22 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
     return 0;
   }
-  const uint16_t *palettePtr = 0;
-  uint32_t paletteMask = 0;
-  uint16_t simplePalette[2];
 
-  if (imageBpp==1) {
-    simplePalette[0] = gfx.data.bgColor;
-    simplePalette[1] = gfx.data.fgColor;
-    palettePtr = simplePalette;
-    paletteMask = 1;
-#ifdef GRAPHICS_PALETTED_IMAGES
-  } else if (gfx.data.bpp==16 && imageBpp==4) { // palette is 16 bits, so don't use it for other things
-    palettePtr = PALETTE_4BIT;
-    paletteMask = 15;
-  } else if (gfx.data.bpp==16 && imageBpp==8) { // palette is 16 bits, so don't use it for other things
-    palettePtr = PALETTE_8BIT;
-    paletteMask = 255;
-#endif
+  if (palettePtr==0) {
+    if (imageBpp==1) {
+      simplePalette[0] = gfx.data.bgColor;
+      simplePalette[1] = gfx.data.fgColor;
+      palettePtr = simplePalette;
+      paletteMask = 1;
+  #ifdef GRAPHICS_PALETTED_IMAGES
+    } else if (gfx.data.bpp==16 && imageBpp==4) { // palette is 16 bits, so don't use it for other things
+      palettePtr = PALETTE_4BIT;
+      paletteMask = 15;
+    } else if (gfx.data.bpp==16 && imageBpp==8) { // palette is 16 bits, so don't use it for other things
+      palettePtr = PALETTE_8BIT;
+      paletteMask = 255;
+  #endif
+    }
   }
 
   if (!(jsvIsArrayBuffer(imageBuffer) || jsvIsString(imageBuffer)) ||
@@ -1683,7 +1705,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     int imageStride = (imageWidth*imageBpp + 7)>>3;
     // rotate, scale, centerx, centery
     double rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"rotate",0));
-    if (!isfinite(rotate))  rotate=0;
+    if (!isfinite(rotate)) rotate=0;
     double scale = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"scale",0));
     if (!isfinite(scale) || scale<=0) scale=1;
     int centerx = imageWidth*128;
