@@ -1556,8 +1556,8 @@ Draw an image at the specified position.
 * On Bangle.js, 8 bit images use the Web Safe 216 color palette
 * Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first
 
-If `options` is supplied, `drawImage` will allow images to be rendered at any scale or angle, and will
-center them at `x,y`. `options` must be an object of the form:
+If `options` is supplied, `drawImage` will allow images to be rendered at any scale or angle. If `options.rotate` is set it will
+center images at `x,y` unless centerx/centery are specified. `options` must be an object of the form:
 
 ```
 {
@@ -1634,6 +1634,8 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
     return 0;
   }
+  if (!imageIsTransparent)
+    imageTransparentCol = 0xFFFFFFFF;
 
   if (palettePtr==0) {
     if (imageBpp==1) {
@@ -1686,7 +1688,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
         bits -= imageBpp;
         // Try and write pixel!
-        if (!imageIsTransparent || imageTransparentCol!=col) {
+        if (imageTransparentCol!=col) {
           if (palettePtr) col = palettePtr[col&paletteMask];
           graphicsSetPixel(&gfx, x+xPos, y+yPos, col);
         }
@@ -1699,63 +1701,128 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     // fancy rotation/scaling
     int imageStride = (imageWidth*imageBpp + 7)>>3;
     // rotate, scale, centerx, centery
-    double rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"rotate",0));
-    if (!isfinite(rotate)) rotate=0;
     double scale = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"scale",0));
     if (!isfinite(scale) || scale<=0) scale=1;
-    int centerx = imageWidth*128;
-    int centery = imageHeight*128;
-    JsVar *v;
-    v = jsvObjectGetChild(options,"centerx",0);
-    if (v) centerx = jsvGetIntegerAndUnLock(v)*256;
-    v = jsvObjectGetChild(options,"centery",0);
-    if (v) centery = jsvGetIntegerAndUnLock(v)*256;
-    // step values for blitting rotated image
-    double vcos = cos(rotate);
-    double vsin = sin(rotate);
-    int sx = (vcos/scale)*256 + 0.5;
-    int sy = (vsin/scale)*256 + 0.5;
-    // work out actual image width and height
-    int iw = (int)(0.5+scale*(imageWidth*fabs(vcos) + imageHeight*fabs(vsin)));
-    int ih = (int)(0.5+scale*(imageWidth*fabs(vsin) + imageHeight*fabs(vcos)));
-    // offset our start position from center
-    xPos -= iw/2;
-    yPos -= ih/2;
-    // work out start position in the image
-    int px = centerx - ((sx*iw) + (sy*ih)) / 2;
-    int py = centery - ((sx*ih) - (sy*iw)) / 2;
-    // scan across image
-    for (y=0;y<ih;y++) {
-      int qx = px;
-      int qy = py;
-      for (x=0;x<iw;x++) {
-        int imagex = (qx+128)>>8;
-        int imagey = (qy+128)>>8;
-        if (imagex>=0 && imagey>=0 && imagex<imageWidth && imagey<imageHeight) {
-          if (imageBpp==8) { // fast path for 8 bits
-            jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+imagex+(imagey*imageStride));
-            colData = (unsigned char)jsvStringIteratorGetChar(&it);
-          } else {
-            int bitOffset = (imagex+(imagey*imageWidth))*imageBpp;
-            jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+(bitOffset>>3));
-            colData = (unsigned char)jsvStringIteratorGetChar(&it);
-            for (int b=8;b<imageBpp;b+=8) {
+    double rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"rotate",0));
+    bool rotateIsSet = isfinite(rotate);
+    bool fastPath =
+        (!rotateIsSet) &&  // not rotating
+        (scale-floor(scale))==0 && // integer scale
+        (gfx.data.flags & (JSGRAPHICSFLAGS_SWAP_XY|JSGRAPHICSFLAGS_INVERT_X|JSGRAPHICSFLAGS_INVERT_Y))==0; // no messing with coordinates
+    if (!rotateIsSet) rotate = 0;
+    if (fastPath) { // fast path for non-rotated, integer scale
+      int s = (int)scale;
+      // Scaled blitting
+      /* Output as scanlines rather than small fillrects so
+       * that on direct-coupled displays we can optimise away
+       * coordinate setting
+       */
+
+      int yp = yPos;
+      for (y=0;y<imageHeight;y++) {
+        // Store current pos as we need to rewind
+        size_t lastIt = jsvStringIteratorGetIndex(&it);
+        int lastBits = bits;
+        unsigned int lastColData = colData;
+        // do a new iteration for each line we're scaling
+        for (int iy=0;iy<s;iy++) {
+          if (iy) { // rewind for all but the first line of scaling
+            jsvStringIteratorGoto(&it, imageBufferString, lastIt);
+            bits = lastBits;
+            colData = lastColData;
+          }
+          // iterate over x
+          int xp = xPos;
+          for (x=0;x<imageWidth;x++) {
+            // Get the data we need...
+            while (bits < imageBpp) {
+              colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
               jsvStringIteratorNext(&it);
-              colData = (colData<<8) | (unsigned char)jsvStringIteratorGetChar(&it);
+              bits += 8;
             }
-            //jsiConsolePrintf("%d %d %d\n", bitOffset, imagePixelsPerByteMask, (imagePixelsPerByteMask-(bitOffset&imagePixelsPerByteMask))*imageBpp);
-            colData = (colData>>((imagePixelsPerByteMask-(bitOffset&imagePixelsPerByteMask))*imageBpp)) & imageBitMask;
+            // extract just the bits we want
+            unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
+            bits -= imageBpp;
+            // Try and write pixel!
+            if (imageTransparentCol!=col && yp>=0 && yp<gfx.data.height) {
+              if (palettePtr) col = palettePtr[col&paletteMask];
+              for (int ix=0;ix<s;ix++) {
+                if (xp>=0 && xp<gfx.data.width)
+                  gfx.setPixel(&gfx, xp, yp, col);
+                xp++;
+              }
+            } else xp += s;
           }
-          if (!imageIsTransparent || imageTransparentCol!=colData) {
-            if (palettePtr) colData = palettePtr[colData&paletteMask];
-            graphicsSetPixel(&gfx, x+xPos, y+yPos, colData);
-          }
+          yp++;
         }
-        qx += sx;
-        qy -= sy;
       }
-      px += sy;
-      py += sx;
+      // update modified area since we went direct
+      int x1=xPos, y1=yPos, x2=xPos+s*imageWidth, y2=yPos+s*imageHeight;
+      if (x1<0) x1=0;
+      if (y1<0) y1=0;
+      if (x2>=gfx.data.width) x2 = gfx.data.width - 1;
+      if (y2>=gfx.data.height) y2 = gfx.data.height - 1;
+      if (x1 < gfx.data.modMinX) gfx.data.modMinX=(short)x1;
+      if (x2 > gfx.data.modMaxX) gfx.data.modMaxX=(short)x2;
+      if (y1 < gfx.data.modMinY) gfx.data.modMinY=(short)y1;
+      if (y2 > gfx.data.modMaxY) gfx.data.modMaxY=(short)y2;
+    } else { // handle rotation, and default to center the image
+      int centerx = imageWidth*128;
+      int centery = imageHeight*128;
+      JsVar *v;
+      v = jsvObjectGetChild(options,"centerx",0);
+      if (v) centerx = jsvGetIntegerAndUnLock(v)*256;
+      v = jsvObjectGetChild(options,"centery",0);
+      if (v) centery = jsvGetIntegerAndUnLock(v)*256;
+      // step values for blitting rotated image
+      double vcos = cos(rotate);
+      double vsin = sin(rotate);
+      int sx = (int)((vcos/scale)*256 + 0.5);
+      int sy = (int)((vsin/scale)*256 + 0.5);
+      // work out actual image width and height
+      int iw = (int)(0.5 + scale*(imageWidth*fabs(vcos) + imageHeight*fabs(vsin)));
+      int ih = (int)(0.5 + scale*(imageWidth*fabs(vsin) + imageHeight*fabs(vcos)));
+      // if rotating, offset our start position from center
+      if (rotateIsSet) {
+        xPos -= iw/2;
+        yPos -= ih/2;
+      }
+      // work out start position in the image
+      int px = centerx - (1 + (sx*iw) + (sy*ih)) / 2;
+      int py = centery - (1 + (sx*ih) - (sy*iw)) / 2;
+      // scan across image
+      for (y=0;y<ih;y++) {
+        int qx = px;
+        int qy = py;
+        for (x=0;x<iw;x++) {
+          int imagex = (qx+127)>>8;
+          int imagey = (qy+127)>>8;
+          if (imagex>=0 && imagey>=0 && imagex<imageWidth && imagey<imageHeight) {
+            if (imageBpp==8) { // fast path for 8 bits
+              jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+imagex+(imagey*imageStride));
+              colData = (unsigned char)jsvStringIteratorGetChar(&it);
+            } else {
+              int bitOffset = (imagex+(imagey*imageWidth))*imageBpp;
+              jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+(bitOffset>>3));
+              colData = (unsigned char)jsvStringIteratorGetChar(&it);
+              for (int b=8;b<imageBpp;b+=8) {
+                jsvStringIteratorNext(&it);
+                colData = (colData<<8) | (unsigned char)jsvStringIteratorGetChar(&it);
+              }
+              //jsiConsolePrintf("%d %d %d\n", bitOffset, imagePixelsPerByteMask, (imagePixelsPerByteMask-(bitOffset&imagePixelsPerByteMask))*imageBpp);
+              colData = (colData>>((imagePixelsPerByteMask-(bitOffset&imagePixelsPerByteMask))*imageBpp)) & imageBitMask;
+            }
+            if (imageTransparentCol!=colData) {
+              if (palettePtr) colData = palettePtr[colData&paletteMask];
+              graphicsSetPixel(&gfx, x+xPos, y+yPos, colData);
+            }
+          }
+          qx += sx;
+          qy -= sy;
+        }
+        px += sy;
+        py += sx;
+      }
     }
 #endif
   }

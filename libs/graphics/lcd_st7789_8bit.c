@@ -174,9 +174,9 @@ void lcdST7789_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
     LCD_WR8(y);
     LCD_DC_COMMAND(); // command
     LCD_WR8(0x2C);
+    LCD_DC_DATA(); // data
   } else
     lcdNextX++;
-  LCD_DC_DATA(); // data
   LCD_DATA(col>>8);
   asm("nop");asm("nop");
   LCD_SCK_CLR_FAST();
