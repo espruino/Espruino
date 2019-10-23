@@ -65,7 +65,7 @@ typedef enum {
 JshSerialDeviceState jshSerialDeviceStates[1+EV_SERIAL_MAX-EV_SERIAL_DEVICE_STATE_START];
 /// Device clear to send hardware flow control pins (PIN_UNDEFINED if not used)
 Pin jshSerialDeviceCTSPins[1+EV_SERIAL_MAX-EV_SERIAL_DEVICE_STATE_START];
-#define TO_SERIAL_DEVICE_STATE(X) ((X)-EV_SERIAL_DEVICE_STATE_START)
+
 
 // ----------------------------------------------------------------------------
 //                                                              IO EVENT BUFFER
@@ -264,7 +264,7 @@ IOEventFlags jshGetDeviceToTransmit() {
 int jshGetCharToTransmit(
     IOEventFlags device // The device being looked at for a transmission.
   ) {
-  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+  if (DEVICE_HAS_DEVICE_STATE(device)) {
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
     if ((*deviceState)&SDS_XOFF_PENDING) {
       (*deviceState) = ((*deviceState)&(~SDS_XOFF_PENDING)) | SDS_XOFF_SENT;
@@ -404,7 +404,7 @@ static bool jshPushIOCharEventHandler(IOEventFlags channel, char charData) {
 
 // Set flow control (as we're going to use more data)
 static void jshPushIOCharEventFlowControl(IOEventFlags channel) {
-  if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
+  if (DEVICE_HAS_DEVICE_STATE(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
     jshSetFlowControlXON(channel, false);
 }
 
@@ -664,7 +664,7 @@ IOEventFlags jshFromDeviceString(
 
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
-  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+  if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if ((*deviceState) & SDS_FLOW_CONTROL_XON_XOFF) {
@@ -699,7 +699,7 @@ JsVar *jshGetDeviceObject(IOEventFlags device) {
 
 /// Set whether to use flow control on the given device or not. CTS is low when ready, high when not.
 void jshSetFlowControlEnabled(IOEventFlags device, bool software, Pin pinCTS) {
-  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+  if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if (software)
@@ -738,7 +738,7 @@ Pin jshGetEventDataPin(IOEventFlags channel) {
 }
 
 void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {
-  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+  if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if (errorHandling)
@@ -749,7 +749,7 @@ void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {
 }
 
 bool jshGetErrorHandlingEnabled(IOEventFlags device) {
-  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+  if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     return (SDS_ERROR_HANDLING & *deviceState)!=0;

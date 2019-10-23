@@ -41,9 +41,6 @@ typedef enum {
   EV_LOOPBACKA = EV_SERIAL_START,
   EV_LOOPBACKB,
   EV_LIMBO,     ///< Where console output goes right after boot - one sec later we move it to USB/Serial
-#ifdef BLUETOOTH
-  EV_BLUETOOTH, ///< Bluetooth LE
-#endif
 #ifdef USE_TELNET
   EV_TELNET,
 #endif
@@ -52,6 +49,9 @@ typedef enum {
 #endif
   EV_SERIAL_DEVICE_STATE_START, // The point at which we start storing device state (jshSerialDevice*)
   EV_USBSERIAL = EV_SERIAL_DEVICE_STATE_START, ///< USB CDC Serial Data
+#ifdef BLUETOOTH
+  EV_BLUETOOTH, ///< Bluetooth LE
+#endif
 #if USART_COUNT>=1
   EV_SERIAL1, // Used for IO for UARTS
 #endif
@@ -123,6 +123,11 @@ typedef enum {
 
 /// True is the device is a serial device (could be a USART, Bluetooth, USB, etc)
 #define DEVICE_IS_SERIAL(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))
+/// True if the device has device state stored for it (eg. flow control state)
+#define DEVICE_HAS_DEVICE_STATE(X) (((X)>=EV_SERIAL_DEVICE_STATE_START) && ((X)<=EV_SERIAL_MAX))
+/// If DEVICE_HAS_DEVICE_STATE, this is the index where device state is stored
+#define TO_SERIAL_DEVICE_STATE(X) ((X)-EV_SERIAL_DEVICE_STATE_START)
+
 #if USART_COUNT>=1
 /// Return true if the device is a USART (hardware serial)
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL1) && ((X)<=EV_SERIAL_MAX))
