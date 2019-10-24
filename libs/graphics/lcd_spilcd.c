@@ -67,7 +67,7 @@ void lcdSetPalette_SPILCD(const char *pal) {
 // ======================================================================
 
 
-unsigned int lcdGetPixel_SPILCD(JsGraphics *gfx, short x, short y) {
+unsigned int lcdGetPixel_SPILCD(JsGraphics *gfx, int x, int y) {
 #if LCD_BPP==4
   int addr = (x + (y*LCD_WIDTH)) >> 1;
   unsigned char b = lcdBuffer[addr];
@@ -80,7 +80,7 @@ unsigned int lcdGetPixel_SPILCD(JsGraphics *gfx, short x, short y) {
 }
 
 
-void lcdSetPixel_SPILCD(JsGraphics *gfx, short x, short y, unsigned int col) {
+void lcdSetPixel_SPILCD(JsGraphics *gfx, int x, int y, unsigned int col) {
 #if LCD_BPP==4
   int addr = (x + (y*LCD_WIDTH)) >> 1;
   if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (col&0x0F);

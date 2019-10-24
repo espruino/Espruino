@@ -197,7 +197,7 @@ volatile uint16_t flipTimer; // in ms
 /// How long has BTN1 been held down for
 volatile uint16_t btn1Timer; // in ms
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
-int lcdPowerTimeout = 8*1000; // in ms
+int lcdPowerTimeout = 30*1000; // in ms
 /// Is the LCD on?
 bool lcdPowerOn;
 /// accelerometer data
@@ -529,6 +529,17 @@ bool jswrap_banglejs_isLCDOn() {
 */
 bool jswrap_banglejs_isCharging() {
   return !jshPinGetValue(BAT_PIN_CHARGING);
+}
+
+/// get battery percentage
+JsVarInt jswrap_banglejs_getBattery() {
+  JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
+  const JsVarFloat vlo = 0.51;
+  const JsVarFloat vhi = 0.62;
+  int pc = (v-vlo)*100/(vhi-vlo);
+  if (pc>100) pc=100;
+  if (pc<0) pc=0;
+  return pc;
 }
 
 /*JSON{

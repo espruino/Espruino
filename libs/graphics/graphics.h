@@ -92,9 +92,9 @@ typedef struct JsGraphics {
   unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero
   void *backendData; ///< Data used by the graphics backend
 
-  void (*setPixel)(struct JsGraphics *gfx, short x, short y, unsigned int col);
-  void (*fillRect)(struct JsGraphics *gfx, short x1, short y1, short x2, short y2);
-  unsigned int (*getPixel)(struct JsGraphics *gfx, short x, short y);
+  void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col);
+  void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
+  unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y);
   void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); // scroll - leave unscrolled area undefined
 } PACKED_FLAGS JsGraphics;
 
@@ -111,24 +111,24 @@ void graphicsSetVar(JsGraphics *gfx);
 /// Get the memory requires for this graphics's pixels if everything was packed as densely as possible
 size_t graphicsGetMemoryRequired(const JsGraphics *gfx);
 // If graphics is flipped or rotated then the coordinates need modifying
-void graphicsToDeviceCoordinates(const JsGraphics *gfx, short *x, short *y);
+void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y);
 // drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates
-void         graphicsSetPixel(JsGraphics *gfx, short x, short y, unsigned int col);
-unsigned int graphicsGetPixel(JsGraphics *gfx, short x, short y);
+void         graphicsSetPixel(JsGraphics *gfx, int x, int y, unsigned int col);
+unsigned int graphicsGetPixel(JsGraphics *gfx, int x, int y);
 void         graphicsClear(JsGraphics *gfx);
-void         graphicsFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
-void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2); // Simple fillrect - doesn't call device-specific FR
-void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
-void graphicsDrawEllipse(JsGraphics *gfx, short x, short y, short x2, short y2);
-void graphicsFillEllipse(JsGraphics *gfx, short x, short y, short x2, short y2);
-void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2);
+void         graphicsFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
+void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); // Simple fillrect - doesn't call device-specific FR
+void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2);
+void graphicsDrawEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
+void graphicsFillEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
+void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); // may overwrite vertices...
 #ifndef NO_VECTOR_FONT
-unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short size, char ch); ///< prints character, returns width
-unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned short size, char ch); ///< returns the width of a character
+unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, char ch); ///< prints character, returns width
+unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch); ///< returns the width of a character
 #endif
 /// Draw a simple 1bpp image in foreground colour
-void graphicsDrawImage1bpp(JsGraphics *gfx, short x1, short y1, short width, short height, const unsigned char *pixelData);
+void graphicsDrawImage1bpp(JsGraphics *gfx, int x1, int y1, int width, int height, const unsigned char *pixelData);
 /// Scroll the graphics device (in user coords). X>0 = to right, Y >0 = down
 void graphicsScroll(JsGraphics *gfx, int xdir, int ydir);
 

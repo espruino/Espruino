@@ -44,6 +44,7 @@ info = {
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
 #     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Pixl.js"\'',
+     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_pixljs_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://www.espruino.com/ide"\'',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=14',

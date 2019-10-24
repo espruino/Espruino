@@ -183,7 +183,7 @@ typedef struct {
 } Vector3;
 
 #define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 to match accelerometer
-#define DEFAULT_LCD_POWER_TIMEOUT 8000 // in msec - default for lcdPowerTimeout
+#define DEFAULT_LCD_POWER_TIMEOUT 30000 // in msec - default for lcdPowerTimeout
 #define ACCEL_POLL_INTERVAL_MAX 5000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
 #define BTN1_LOAD_TIMEOUT 1500 // in msec
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
@@ -551,6 +551,17 @@ bool jswrap_banglejs_isLCDOn() {
 */
 bool jswrap_banglejs_isCharging() {
   return !jshPinGetValue(BAT_PIN_CHARGING);
+}
+
+/// get battery percentage
+JsVarInt jswrap_banglejs_getBattery() {
+  JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
+  const JsVarFloat vlo = 0.51;
+  const JsVarFloat vhi = 0.62;
+  int pc = (v-vlo)*100/(vhi-vlo);
+  if (pc>100) pc=100;
+  if (pc<0) pc=0;
+  return pc;
 }
 
 /*JSON{

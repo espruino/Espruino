@@ -53,6 +53,15 @@ DEPRECATED - Please use `E.getBattery()` instead.
 Return an approximate battery percentage remaining based on
 a normal CR2032 battery (2.8 - 2.2v)
 */
+JsVarInt jswrap_pixljs_getBattery() {
+  JsVarFloat v = jshReadVRef();
+  int pc = (v-2.2)*100/0.6;
+  if (pc>100) pc=100;
+  if (pc<0) pc=0;
+  return pc;
+}
+
+
 
 /*JSON{
     "type" : "staticmethod",

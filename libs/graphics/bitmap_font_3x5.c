@@ -142,16 +142,20 @@ const unsigned short LCD_FONT_3X5[] IN_FLASH_MEMORY = { // from 33 up to 127
     PACK_5_TO_16( __X , _X_ , X__ , ___ , XXX ),
 };
 
-void graphicsDrawChar4x6(JsGraphics *gfx, short x1, short y1, char ch) {
+void graphicsDrawChar4x6(JsGraphics *gfx, short x1, short y1, char ch, bool solidBackground) {
   int idx = ((unsigned char)ch) - 33;
-  if (idx<0 || idx>=LCD_FONT_3X5_CHARS) return; // no char for this - just return
+  if (idx<0 || idx>=LCD_FONT_3X5_CHARS) { // no char for this
+    if (solidBackground)
+      graphicsFillRect(gfx, x1, y1, x1+2, y1+5, gfx->data.bgColor);
+    return;
+  }
   int cidx = idx % 5;
   idx -= cidx;
   int y;
   for (y=0;y<6;y++) {
     unsigned short line = LCD_FONT_3X5[idx + y] >> (cidx*3);
-    if (line&1) graphicsSetPixel(gfx, x1+0, y+y1, gfx->data.fgColor);
-    if (line&2) graphicsSetPixel(gfx, x1+1, y+y1, gfx->data.fgColor);
-    if (line&4) graphicsSetPixel(gfx, x1+2, y+y1, gfx->data.fgColor);
+    if (solidBackground || (line&1)) graphicsSetPixel(gfx, x1+0, y+y1, (line&1) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || (line&2)) graphicsSetPixel(gfx, x1+1, y+y1, (line&2) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || (line&4)) graphicsSetPixel(gfx, x1+2, y+y1, (line&4) ? gfx->data.fgColor : gfx->data.bgColor);
   }
 }

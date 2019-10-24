@@ -45,7 +45,7 @@ uint32_t palette_web[256] = {
     0xff9900,0xff9933,0xff9966,0xff9999,0xff99cc,0xff99ff,0xffcc00,0xffcc33,0xffcc66,0xffcc99,0xffcccc,
     0xffccff,0xffff00,0xffff33,0xffff66,0xffff99,0xffffcc,0xffffff};
 
-unsigned int lcdGetPixel_SDL(JsGraphics *gfx, short x, short y) {
+unsigned int lcdGetPixel_SDL(JsGraphics *gfx, int x, int y) {
   if (!screen) return 0;
   if(SDL_MUSTLOCK(screen))
       if(SDL_LockSurface(screen) < 0) return 0;
@@ -56,7 +56,7 @@ unsigned int lcdGetPixel_SDL(JsGraphics *gfx, short x, short y) {
 }
 
 
-void lcdSetPixel_SDL(JsGraphics *gfx, short x, short y, unsigned int col) {
+void lcdSetPixel_SDL(JsGraphics *gfx, int x, int y, unsigned int col) {
   if (!screen) return;
 
   if(SDL_MUSTLOCK(screen))
