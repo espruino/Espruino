@@ -28,6 +28,8 @@
             nRF52: Fix 'BLE task completed that wasn't scheduled' warning regression (peripheral disconnect)
             Can now get a data pointer even from a single JsVar string (it doesn't have to be flat)
             Add option to specify a palette when drawing images with drawImage
+            Add XON/XOFF flow control to Bluetooth LE UART (on by default)
+            Lower thresholds for XON/XOFF to give more headroom with devices that are slow to respond
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

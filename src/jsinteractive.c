@@ -1998,10 +1998,7 @@ void jsiIdle() {
 
   // Reset Flow control if it was set...
   if (jshGetEventsUsed() < IOBUFFER_XON) {
-    jshSetFlowControlXON(EV_USBSERIAL, true);
-    int i;
-    for (i=0;i<USART_COUNT;i++)
-      jshSetFlowControlXON(EV_SERIAL1+i, true);
+    jshSetFlowControlAllReady();
   }
 
   // Check timers

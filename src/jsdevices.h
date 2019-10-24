@@ -224,6 +224,9 @@ int jshGetCharToTransmit(IOEventFlags device);
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit);
 
+/// To be called on idle when the input queue has enough space
+void jshSetFlowControlAllReady();
+
 /// Set whether to use flow control on the given device or not. Whether to use software, and if hardware, the pin to use for RTS
 void jshSetFlowControlEnabled(IOEventFlags device, bool software, unsigned char/*Pin*/ pinCTS);
 
