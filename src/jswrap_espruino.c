@@ -1725,7 +1725,7 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 
 /*JSON{
   "type" : "staticmethod",
-  "#if" : "defined(PUCKJS) || defined(PIXLJS)",
+  "#if" : "defined(PUCKJS) || defined(PIXLJS) || defined(BANGLEJS)",
   "class" : "E",
   "name" : "getBattery",
   "generate" : "jswrap_espruino_getBattery",
@@ -1740,12 +1740,9 @@ from it at the time `E.getBattery` is called) will affect the
 readings.
 */
 JsVarInt jswrap_espruino_getBattery() {
-#if defined(PUCKJS) || defined(PIXLJS)
-  JsVarFloat v = jshReadVRef();
-  int pc = (v-2.2)*100/0.6;
-  if (pc>100) pc=100;
-  if (pc<0) pc=0;
-  return pc;
+#if defined(CUSTOM_GETBATTERY)
+  JsVarInt CUSTOM_GETBATTERY();
+  return CUSTOM_GETBATTERY();
 #else
   return 0;
 #endif
