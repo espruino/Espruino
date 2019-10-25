@@ -27,3 +27,8 @@ void lcdST7789_cmd(int cmd, int dataLen, const uint8_t *data);
 void lcdST7789_setMode(LCDST7789Mode mode);
 /// When in double-buffered mode, flip the screen
 void lcdST7789_flip();
+
+/// Starts a blit operation - call this, then blitPixel (a lot) then blitEnd. No bounds checking
+void lcdST7789_blitStart(int x, int y, int w, int h);
+void lcdST7789_blitPixel(unsigned int col);
+void lcdST7789_blitEnd();

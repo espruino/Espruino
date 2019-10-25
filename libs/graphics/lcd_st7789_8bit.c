@@ -150,6 +150,50 @@ void lcdST7789_flip() {
   lcdST7789_cmd(0x37,2,buf);
 }
 
+/// Starts a blit operation - call this, then blitPixel (a lot) then blitEnd. No bounds checking
+void lcdST7789_blitStart(int x, int y, int w, int h) {
+  lcdNextY=-1;
+  lcdNextX=-1;
+  int x1 = x;
+  int y1 = y+lcdScrollY;
+  if (y1>=LCD_BUFFER_HEIGHT) y1-=LCD_BUFFER_HEIGHT;
+  int x2 = x+w;
+  int y2 = y+h+lcdScrollY;
+  if (y2>=LCD_BUFFER_HEIGHT) y2-=LCD_BUFFER_HEIGHT;
+  y += lcdScrollY;
+  LCD_CS_CLR();
+  LCD_DC_COMMAND(); // command
+  LCD_WR8(0x2A);
+  LCD_DC_DATA(); // data
+  LCD_WR8(0);
+  LCD_WR8(x1);
+  LCD_WR8(0);
+  LCD_WR8(x2);
+  LCD_DC_COMMAND(); // command
+  LCD_WR8(0x2B);
+  LCD_DC_DATA(); // data
+  LCD_WR8(y1 >> 8);
+  LCD_WR8(y1);
+  LCD_WR8(y2 >> 8);
+  LCD_WR8(y2);
+  LCD_DC_COMMAND(); // command
+  LCD_WR8(0x2C);
+  LCD_DC_DATA(); // data
+}
+void lcdST7789_blitPixel(unsigned int col) {
+  LCD_DATA(col>>8);
+  asm("nop");asm("nop");
+  LCD_SCK_CLR_FAST();
+  LCD_SCK_SET_FAST();
+  LCD_DATA(col);
+  asm("nop");asm("nop");
+  LCD_SCK_CLR_FAST();
+  LCD_SCK_SET_FAST();
+}
+void lcdST7789_blitEnd() {
+  LCD_CS_SET();
+}
+
 
 void lcdST7789_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
   LCD_CS_CLR();
