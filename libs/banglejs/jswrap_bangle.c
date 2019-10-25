@@ -84,6 +84,15 @@ Has the watch been moved so that it is face-up, or not face up?
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
+  "name" : "charging",
+  "params" : [["up","bool","`true` if charging"]],
+  "ifdef" : "BANGLEJS"
+}
+Has the watch been moved so that it is face-up, or not face up?
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
   "name" : "mag",
   "params" : [["xyz","JsVar",""]],
   "ifdef" : "BANGLEJS"
@@ -197,6 +206,8 @@ volatile uint16_t pollInterval; // in ms
 volatile unsigned char faceUpCounter;
 /// Was the watch face-up? we use this when firing events
 volatile bool wasFaceUp;
+/// Was the watch charging? we use this when firing events
+volatile bool wasCharging;
 /// time since LCD contents were last modified
 volatile uint16_t flipTimer; // in ms
 /// How long has BTN1 been held down for
@@ -251,6 +262,7 @@ typedef enum {
   JSBT_MAG_DATA = 64, ///< need to push magnetometer data to JS
   JSBT_RESET = 128, ///< reset the watch and reload code from flash
   JSBT_GESTURE_DATA = 256, ///< we have data from a gesture
+  JSBT_CHARGE_EVENT = 512, ///< we need to fire a charging event
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -302,6 +314,13 @@ void peripheralPollHandler() {
   if (lcdPowerTimeout && lcdPowerOn && flipTimer>=lcdPowerTimeout) {
     // 10 seconds of inactivity, turn off display
     bangleTasks |= JSBT_LCD_OFF;
+  }
+
+  // check charge status
+  bool isCharging = jswrap_banglejs_isCharging();
+  if (isCharging != wasCharging) {
+    wasCharging = isCharging;
+    bangleTasks |= JSBT_CHARGE_EVENT;
   }
 
   if (i2cBusy) return;
@@ -943,6 +962,11 @@ bool jswrap_banglejs_idle() {
         jsvUnLock(arr);
       }
     }
+  }
+  if (bangle && (bangleTasks & JSBT_CHARGE_EVENT)) {
+    JsVar *charging = jsvNewFromBool(wasCharging);
+    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"charging", &charging, 1);
+    jsvUnLock(charging);
   }
   if (bangleTasks & JSBT_RESET)
     jsiStatus |= JSIS_TODO_FLASH_LOAD;
