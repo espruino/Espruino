@@ -955,7 +955,9 @@ static JsVar *jsiGetHistory() {
 
 // Add a new line to the command history
 void jsiHistoryAddLine(JsVar *newLine) {
-  if (!newLine || jsvGetStringLength(newLine)==0) return;
+  if (!newLine) return;
+  size_t len = jsvGetStringLength(newLine);
+  if (len==0 || len>500) return; // don't store history for lines of text over 500 chars
   JsVar *history = jsiGetHistory();
   if (!history) return; // out of memory
   // if it was already in history, remove it - we'll put it back in front
