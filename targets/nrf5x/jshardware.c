@@ -352,7 +352,7 @@ static jshUARTState uart[USART_COUNT];
 void jshUSARTUnSetup(IOEventFlags device);
 
 #ifdef SPIFLASH_BASE
-void spiFlashWrite(unsigned char *tx, unsigned char *rx, unsigned int len) {
+static void spiFlashReadWrite(unsigned char *tx, unsigned char *rx, unsigned int len) {
   for (unsigned int i=0;i<len;i++) {
     int data = tx[i];
     int result = 0;
@@ -365,14 +365,26 @@ void spiFlashWrite(unsigned char *tx, unsigned char *rx, unsigned int len) {
     if (rx) rx[i] = result;
   }
 }
-void spiFlashWriteCS(unsigned char *tx, unsigned char *rx, unsigned int len) {
+static void spiFlashWrite(unsigned char *tx, unsigned int len) {
+  for (unsigned int i=0;i<len;i++) {
+    int data = tx[i];
+    for (int bit=7;bit>=0;bit--) {
+      nrf_gpio_pin_write((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, (data>>bit)&1 );
+      nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+      nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+    }
+  }
+}
+static void spiFlashWriteCS(unsigned char *tx, unsigned int len) {
   nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
-  spiFlashWrite(tx,rx,len);
+  spiFlashWrite(tx,len);
   nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
 }
-unsigned char spiFlashStatus() {
+static unsigned char spiFlashStatus() {
   unsigned char buf[2] = {5,0};
-  spiFlashWriteCS(buf,buf,2);
+  nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  spiFlashReadWrite(buf, buf, 2);
+  nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
   return buf[1];
 }
 #endif
@@ -558,11 +570,11 @@ void jshResetPeripherals() {
   int timeout = 1000;
   while (timeout-- && !(spiFlashStatus()&2)) {
     buf[0] = 6; // write enable
-    spiFlashWriteCS(buf,0,1);
+    spiFlashWriteCS(buf,1);
   }
   buf[0] = 1; // write status register
   buf[1] = 0;
-  spiFlashWriteCS(buf,0,2);
+  spiFlashWriteCS(buf,2);
 #endif
 }
 
@@ -1744,13 +1756,13 @@ void jshFlashErasePage(uint32_t addr) {
     unsigned char b[4];
     // WREN
     b[0] = 0x06;
-    spiFlashWriteCS(b,0,1);
+    spiFlashWriteCS(b,1);
     // Erase
     b[0] = 0x20;
     b[1] = addr>>16;
     b[2] = addr>>8;
     b[3] = addr;
-    spiFlashWriteCS(b,0,4);
+    spiFlashWriteCS(b,4);
     // Check busy
     WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage");
     return;
@@ -1788,9 +1800,9 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
     b[2] = addr>>8;
     b[3] = addr;
     jshPinSetValue(SPIFLASH_PIN_CS,0);
-    spiFlashWrite(b,0,4);
+    spiFlashWrite(b,4);
     memset(buf,0,len); // ensure we just send 0
-    spiFlashWrite((unsigned char*)buf,(unsigned char*)buf,len);
+    spiFlashReadWrite((unsigned char*)buf,(unsigned char*)buf,len);
     jshPinSetValue(SPIFLASH_PIN_CS,1);
     return;
   }
@@ -1808,23 +1820,54 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
     addr &= 0xFFFFFF;
     //jsiConsolePrintf("SPI Write %d %d\n",addr, len);
     unsigned char b[5];
-    /* hack for now - some SPI flash don't seem to like writing >1 byte
-     * quickly. Also this way works around paging issues */
+#if defined(BANGLEF5)
+    /* Hack - for some reason the F5 doesn't seem to like writing >1 byte
+     * quickly. Also this way works around paging issues. */
     for (unsigned int i=0;i<len;i++) {
       // WREN
       b[0] = 0x06;
-      spiFlashWriteCS(b,0,1);
+      spiFlashWriteCS(b,1);
       // Write
       b[0] = 0x02;
       b[1] = addr>>16;
       b[2] = addr>>8;
       b[3] = addr;
       b[4] = ((unsigned char*)buf)[i];
-      spiFlashWriteCS(b,0,5);
+      spiFlashWriteCS(b,5);
       // Check busy
       WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashWrite");
       addr++;
     }
+#else // Bangle.js is fine though - write quickly
+    /* we need to split on 256 byte boundaries. We can
+     * start halfway but don't want to write past the end
+     * of the page */
+    unsigned char *bufPtr = (unsigned char *)buf;
+    while (len) {
+      uint32_t l = len;
+      uint32_t pageOffset = addr & 255;
+      uint32_t bytesLeftInPage = 256-pageOffset;
+      if (l>bytesLeftInPage) l=bytesLeftInPage;
+      // WREN
+      b[0] = 0x06;
+      spiFlashWriteCS(b,1);
+      // Write
+      b[0] = 0x02;
+      b[1] = addr>>16;
+      b[2] = addr>>8;
+      b[3] = addr;
+      jshPinSetValue(SPIFLASH_PIN_CS,0);
+      spiFlashWrite(b,4);
+      spiFlashWrite(bufPtr,l);
+      jshPinSetValue(SPIFLASH_PIN_CS,1);
+      // Check busy
+      WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashWrite");
+      // go to next chunk
+      len -= l;
+      addr += l;
+      bufPtr += l;
+    }
+#endif
     return;
   }
 #endif
