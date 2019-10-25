@@ -66,7 +66,7 @@ typedef enum {
 /// Was flow control ever set? Allows us to save time if it wasn't
 bool jshSerialFlowControlWasSet;
 /// Info about the current device - eg. is flow control enabled?
-JshSerialDeviceState jshSerialDeviceStates[JSHSERIALDEVICESTATUSES];
+volatile JshSerialDeviceState jshSerialDeviceStates[JSHSERIALDEVICESTATUSES];
 /// Device clear to send hardware flow control pins (PIN_UNDEFINED if not used)
 Pin jshSerialDeviceCTSPins[JSHSERIALDEVICESTATUSES];
 
