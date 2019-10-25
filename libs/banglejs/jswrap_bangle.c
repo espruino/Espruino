@@ -301,13 +301,15 @@ void peripheralPollHandler() {
     flipTimer += pollInterval;
   // If BTN1 is held down, trigger a reset
   if (jshPinGetValue(BTN1_PININDEX)) {
-    if (btn1Timer < TIMER_MAX)
+    if (btn1Timer < TIMER_MAX) {
       btn1Timer += pollInterval;
-  } else {
-    if (btn1Timer > BTN1_LOAD_TIMEOUT) {
-      bangleTasks |= JSBT_RESET;
-      // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
+      if (btn1Timer >= BTN1_LOAD_TIMEOUT) {
+        bangleTasks |= JSBT_RESET;
+        btn1Timer = TIMER_MAX;
+        // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
+      }
     }
+  } else {
     btn1Timer = 0;
   }
 
