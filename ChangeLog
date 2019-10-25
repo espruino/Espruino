@@ -30,6 +30,7 @@
             Add option to specify a palette when drawing images with drawImage
             Add XON/XOFF flow control to Bluetooth LE UART (on by default)
             Lower thresholds for XON/XOFF to give more headroom with devices that are slow to respond
+            Add a fast path for non-rotated non-scaled Graphics.drawImage
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

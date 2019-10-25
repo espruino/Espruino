@@ -36,6 +36,9 @@
 #define GRAPHICS_DRAWIMAGE_ROTATED
 #endif
 #endif
+#if defined(LINUX) || defined(BANGLEJS)
+#define GRAPHICS_FAST_PATHS // execute more optimised code when no rotation/etc
+#endif
 
 #ifdef GRAPHICS_PALETTED_IMAGES
 // 16 color MAC OS palette
@@ -1676,21 +1679,63 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 
   if (jsvIsUndefined(options)) {
     // Standard 1:1 blitting
-    for (y=0;y<imageHeight;y++) {
-      for (x=0;x<imageWidth;x++) {
-        // Get the data we need...
-        while (bits < imageBpp) {
-          colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
-          jsvStringIteratorNext(&it);
-          bits += 8;
+#ifdef GRAPHICS_FAST_PATHS
+    bool fastPath =
+        (gfx.data.flags & (JSGRAPHICSFLAGS_SWAP_XY|JSGRAPHICSFLAGS_INVERT_X|JSGRAPHICSFLAGS_INVERT_Y))==0; // no messing with coordinates
+    if (fastPath) { // fast path for standard blit
+      int yp = yPos;
+      for (y=0;y<imageHeight;y++) {
+        int xp = xPos;
+        for (x=0;x<imageWidth;x++) {
+          // Get the data we need...
+          while (bits < imageBpp) {
+            colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
+            jsvStringIteratorNext(&it);
+            bits += 8;
+          }
+          // extract just the bits we want
+          unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
+          bits -= imageBpp;
+          // Try and write pixel!
+          if (imageTransparentCol!=col) {
+            if (palettePtr) col = palettePtr[col&paletteMask];
+            if (xp>=0 && xp<gfx.data.width && yp>=0 && yp<gfx.data.height)
+              gfx.setPixel(&gfx, xp, yp, col);
+          }
+          xp++;
         }
-        // extract just the bits we want
-        unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
-        bits -= imageBpp;
-        // Try and write pixel!
-        if (imageTransparentCol!=col) {
-          if (palettePtr) col = palettePtr[col&paletteMask];
-          graphicsSetPixel(&gfx, x+xPos, y+yPos, col);
+        yp++;
+      }
+      // update modified area since we went direct
+      int x1=xPos, y1=yPos, x2=xPos+imageWidth, y2=yPos+imageHeight;
+      if (x1<0) x1=0;
+      if (y1<0) y1=0;
+      if (x2>=gfx.data.width) x2 = gfx.data.width - 1;
+      if (y2>=gfx.data.height) y2 = gfx.data.height - 1;
+      if (x1 < gfx.data.modMinX) gfx.data.modMinX=(short)x1;
+      if (x2 > gfx.data.modMaxX) gfx.data.modMaxX=(short)x2;
+      if (y1 < gfx.data.modMinY) gfx.data.modMinY=(short)y1;
+      if (y2 > gfx.data.modMaxY) gfx.data.modMaxY=(short)y2;
+    } else { // handle rotation, and default to center the image
+#else
+    if (true) {
+#endif
+      for (y=0;y<imageHeight;y++) {
+        for (x=0;x<imageWidth;x++) {
+          // Get the data we need...
+          while (bits < imageBpp) {
+            colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
+            jsvStringIteratorNext(&it);
+            bits += 8;
+          }
+          // extract just the bits we want
+          unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
+          bits -= imageBpp;
+          // Try and write pixel!
+          if (imageTransparentCol!=col) {
+            if (palettePtr) col = palettePtr[col&paletteMask];
+            graphicsSetPixel(&gfx, x+xPos, y+yPos, col);
+          }
         }
       }
     }
@@ -1705,11 +1750,12 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     if (!isfinite(scale) || scale<=0) scale=1;
     double rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"rotate",0));
     bool rotateIsSet = isfinite(rotate);
+    if (!rotateIsSet) rotate = 0;
+#ifdef GRAPHICS_FAST_PATHS
     bool fastPath =
         (!rotateIsSet) &&  // not rotating
         (scale-floor(scale))==0 && // integer scale
         (gfx.data.flags & (JSGRAPHICSFLAGS_SWAP_XY|JSGRAPHICSFLAGS_INVERT_X|JSGRAPHICSFLAGS_INVERT_Y))==0; // no messing with coordinates
-    if (!rotateIsSet) rotate = 0;
     if (fastPath) { // fast path for non-rotated, integer scale
       int s = (int)scale;
       // Scaled blitting
@@ -1767,6 +1813,9 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       if (y1 < gfx.data.modMinY) gfx.data.modMinY=(short)y1;
       if (y2 > gfx.data.modMaxY) gfx.data.modMaxY=(short)y2;
     } else { // handle rotation, and default to center the image
+#else
+    if (true) {
+#endif
       int centerx = imageWidth*128;
       int centery = imageHeight*128;
       JsVar *v;
