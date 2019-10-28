@@ -68,7 +68,7 @@ chip = {
   'saved_code' : {
     'address' : 0x40000000, # put this in external flash
     'page_size' : 4096,
-    'pages' : 64, # 256kb - still loads left
+    'pages' : 256, # 1024kb - still loads left
     'flash_available' : 512 - ((31 + 8 + 2)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2. Each page is 4 kb.
   },
 };
