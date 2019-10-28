@@ -47,6 +47,10 @@ Functions here take and return buffers of data. There is no support for streamin
 }
 */
 JsVar *jswrap_heatshrink_compress(JsVar *data) {
+  if (!jsvIsIterable(data)) {
+    jsExceptionHere(JSET_TYPEERROR,"Expecting something iterable, got %t",data);
+    return 0;
+  }
   JsvIterator in_it;
   JsvStringIterator out_it;
 
@@ -86,6 +90,10 @@ JsVar *jswrap_heatshrink_compress(JsVar *data) {
 }
 */
 JsVar *jswrap_heatshrink_decompress(JsVar *data) {
+  if (!jsvIsIterable(data)) {
+    jsExceptionHere(JSET_TYPEERROR,"Expecting something iterable, got %t",data);
+    return 0;
+  }
   JsvIterator in_it;
   JsvStringIterator out_it;
 
