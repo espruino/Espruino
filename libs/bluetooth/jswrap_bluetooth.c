@@ -2991,6 +2991,11 @@ JsVar *jswrap_ble_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *option
   }
   jsvUnLock(device);
 
+  // we're already connected - just return a resolved promise
+  if (jsvGetBoolAndUnLock(jsvObjectGetChild(parent,"connected",0))) {
+    return jswrap_promise_resolve(parent);
+  }
+
   JsVar *promise = 0;
   if (bleNewTask(BLETASK_CONNECT, parent/*BluetoothRemoteGATTServer*/)) {
     JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_ble_central_connect, JSWAT_VOID|(JSWAT_JSVAR<<JSWAT_BITS)|(JSWAT_JSVAR<<(2*JSWAT_BITS)));

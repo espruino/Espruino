@@ -32,6 +32,7 @@
             Lower thresholds for XON/XOFF to give more headroom with devices that are slow to respond
             Add a fast path for non-rotated non-scaled Graphics.drawImage
             Add argument check for heatshrink compress/decompress
+            nRF5x: Ensure gatt.connect silently succeeds if we're already connected to the device
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
