@@ -181,6 +181,9 @@ void lcdST7789_blitStart(int x, int y, int w, int h) {
   LCD_DC_DATA(); // data
 }
 void lcdST7789_blitPixel(unsigned int col) {
+  /* FIXME: Handle case where scrolling means
+   * we wrap around the memory area - see what
+   * lcdST7789_fillRect does */
   LCD_DATA(col>>8);
   asm("nop");asm("nop");
   LCD_SCK_CLR_FAST();
@@ -233,52 +236,66 @@ void lcdST7789_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 }
 
 void lcdST7789_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
-  int pixels = (1+x2-x1)*(1+y2-y1);
   y1 += lcdScrollY;
   if (y1>=LCD_BUFFER_HEIGHT) y1-=LCD_BUFFER_HEIGHT;
   y2 += lcdScrollY;
   if (y2>=LCD_BUFFER_HEIGHT) y2-=LCD_BUFFER_HEIGHT;
-  LCD_DC_COMMAND(); // command
-  LCD_CS_CLR();
-  LCD_WR8(0x2A);
-  LCD_DC_DATA(); // data
-  LCD_WR8(0);
-  LCD_WR8(x1);
-  LCD_WR8(0);
-  LCD_WR8(x2);
-  LCD_DC_COMMAND(); // command
-  LCD_WR8(0x2B);
-  LCD_DC_DATA(); // data
-  LCD_WR8(y1>>8);
-  LCD_WR8(y1);
-  LCD_WR8(y2>>8);
-  LCD_WR8(y2);
-  LCD_DC_COMMAND(); // command
-  LCD_WR8(0x2C);
-  LCD_DC_DATA(); // data
-  lcdNextY=-1;
-  lcdNextX=-1;
-  if ((col&255) == (col>>8)) {
-    // top and bottom bits are the same, we can just mash SCK
-    LCD_DATA(col);
-    asm("nop");asm("nop");
-    while (pixels--) {
-      LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
-      asm("nop");
-      LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
-    }
-  } else {
-    // colors different, send manually
-    while (pixels--) {
-      LCD_DATA(col>>8);
-      asm("nop");asm("nop");
-      LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
+  // if scrolling meant we wrapped, we have to write it two separate calls
+  int nexty = -1;
+  if (y2<y1) {
+    nexty = y2;
+    y2 = LCD_BUFFER_HEIGHT-1;
+  }
+  // Output to the screen
+  while (true) {
+    int pixels = (1+x2-x1)*(1+y2-y1);
+    LCD_DC_COMMAND(); // command
+    LCD_CS_CLR();
+    LCD_WR8(0x2A);
+    LCD_DC_DATA(); // data
+    LCD_WR8(0);
+    LCD_WR8(x1);
+    LCD_WR8(0);
+    LCD_WR8(x2);
+    LCD_DC_COMMAND(); // command
+    LCD_WR8(0x2B);
+    LCD_DC_DATA(); // data
+    LCD_WR8(y1>>8);
+    LCD_WR8(y1);
+    LCD_WR8(y2>>8);
+    LCD_WR8(y2);
+    LCD_DC_COMMAND(); // command
+    LCD_WR8(0x2C);
+    LCD_DC_DATA(); // data
+    lcdNextY=-1;
+    lcdNextX=-1;
+    if ((col&255) == (col>>8)) {
+      // top and bottom bits are the same, we can just mash SCK
       LCD_DATA(col);
       asm("nop");asm("nop");
-      LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
+      while (pixels--) {
+        LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
+        asm("nop");
+        LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
+      }
+    } else {
+      // colors different, send manually
+      while (pixels--) {
+        LCD_DATA(col>>8);
+        asm("nop");asm("nop");
+        LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
+        LCD_DATA(col);
+        asm("nop");asm("nop");
+        LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
+      }
     }
+    LCD_CS_SET();
+    // We might have to wrap over and start again
+    if (nexty<0) return;
+    y1 = 0;
+    y2 = nexty;
+    nexty = -1;
   }
-  LCD_CS_SET();
 }
 
 void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
