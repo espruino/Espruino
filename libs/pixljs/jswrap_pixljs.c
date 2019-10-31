@@ -63,128 +63,6 @@ JsVarInt jswrap_pixljs_getBattery() {
 
 
 
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "Pixl",
-    "name" : "menu",
-    "generate" : "jswrap_pixljs_menu",
-    "params" : [
-      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
-    ],
-    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
-}
-Display a menu on Pixl.js's screen, and set up the buttons to navigate through it.
-
-Supply an object containing menu items. When an item is selected, the
-function it references will be executed. For example:
-
-```
-var boolean = false;
-var number = 50;
-// First menu
-var mainmenu = {
-  "" : { "title" : "-- Main Menu --" },
-  "Backlight On" : function() { LED1.set(); },
-  "Backlight Off" : function() { LED1.reset(); },
-  "Submenu" : function() { Pixl.menu(submenu); },
-  "A Boolean" : {
-    value : boolean,
-    format : v => v?"On":"Off",
-    onchange : v => { boolean=v; }
-  },
-  "A Number" : {
-    value : number,
-    min:0,max:100,step:10,
-    onchange : v => { number=v; }
-  },
-  "Exit" : function() { Pixl.menu(); },
-};
-// Submenu
-var submenu = {
-  "" : { "title" : "-- SubMenu --" },
-  "One" : undefined, // do nothing
-  "Two" : undefined, // do nothing
-  "< Back" : function() { Pixl.menu(mainmenu); },
-};
-// Actually display the menu
-Pixl.menu(mainmenu);
-```
-
-See http://www.espruino.com/graphical_menu for more detailed information.
-*/
-JsVar *jswrap_pixljs_menu(JsVar *menu) {
-  /* Unminified JS code is:
-
-Pixl.show = function(menudata) {
-  if (Pixl.btnWatches) {
-    Pixl.btnWatches.forEach(clearWatch);
-    Pixl.btnWatches = undefined;
-  }
-  g.clear();g.flip(); // clear screen if no menu supplied
-  if (!menudata) return;
-  function im(b) {
-    return {
-      width:8,height:b.length,bpp:1,buffer:new Uint8Array(b).buffer
-    };
-  }
-  if (!menudata[""]) menudata[""]={};
-  g.setFontBitmap();g.setFontAlign(-1,-1,0);
-  var w = g.getWidth()-9;
-  var h = g.getHeight();
-  menudata[""].x=9;
-  menudata[""].x2=w-2;
-  menudata[""].preflip=function() {
-    g.drawImage(im([
-      0b00010000,
-      0b00111000,
-      0b01111100,
-      0b11111110,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-    ]),0,4);
-    g.drawImage(im([
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b11111110,
-      0b01111100,
-      0b00111000,
-      0b00010000,
-    ]),0,h-12);
-    g.drawImage(im([
-      0b00000000,
-      0b00001000,
-      0b00001100,
-      0b00001110,
-      0b11111111,
-      0b00001110,
-      0b00001100,
-      0b00001000,
-    ]),w+1,h-12);
-    //g.drawLine(7,0,7,h);
-    //g.drawLine(w,0,w,h);
-  };
-  var m = require("graphical_menu").list(g, menudata);
-  Pixl.btnWatches = [
-    setWatch(function() { m.move(-1); }, BTN1, {repeat:1}),
-    setWatch(function() { m.move(1); }, BTN4, {repeat:1}),
-    setWatch(function() { m.select(); }, BTN3, {repeat:1})
-  ];
-  return m;
-};
-*/
-
-  return jspExecuteJSFunction("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Pixl.btnWatches&&(Pixl.btnWatches.forEach(clearWatch),Pixl.btnWatches=void 0);"
-      "g.clear();g.flip();"
-      "if(a){a['']||(a['']={});g.setFontBitmap();g.setFontAlign(-1,-1,0);var d=g.getWidth()-9,e=g.getHeight();a[''].x=9;a[''].x2=d-2;a[''].preflip=function(){"
-      "g.drawImage(c([16,56,124,254,16,16,16,16]),0,4);g.drawImage(c([16,16,16,16,254,124,56,16]),0,e-12);g.drawImage(c([0,8,12,14,255,14,12,8]),d+1,e-12)};"
-      "var b=require('graphical_menu').list(g,a);Pixl.btnWatches=[setWatch(function(){b.move(-1)},BTN1,{repeat:1}),setWatch(function(){b.move(1)},BTN4,{repeat:1}),"
-      "setWatch(function(){b.select()},BTN3,{repeat:1})];return b}})",0,1,&menu);
-}
-
 
 /*JSON{
   "type" : "variable",
@@ -593,3 +471,88 @@ void jswrap_pixljs_kill() {
 bool jswrap_pixljs_idle() {
   return false;
 }
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Pixl",
+    "name" : "menu",
+    "generate" : "gen_jswrap_E_showMenu",
+    "params" : [
+      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
+    ],
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+}
+Display a menu on Pixl.js's screen, and set up the buttons to navigate through it.
+
+DEPRECATED: Use `E.showMenu`
+*/
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showMenu",
+    "generate_js" : "libs/js/pixljs/E_showMenu.min.js",
+    "params" : [
+      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
+    ],
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+}
+Display a menu on Pixl.js's screen, and set up the buttons to navigate through it.
+
+Supply an object containing menu items. When an item is selected, the
+function it references will be executed. For example:
+
+```
+var boolean = false;
+var number = 50;
+// First menu
+var mainmenu = {
+  "" : { "title" : "-- Main Menu --" },
+  "Backlight On" : function() { LED1.set(); },
+  "Backlight Off" : function() { LED1.reset(); },
+  "Submenu" : function() { E.showMenu(submenu); },
+  "A Boolean" : {
+    value : boolean,
+    format : v => v?"On":"Off",
+    onchange : v => { boolean=v; }
+  },
+  "A Number" : {
+    value : number,
+    min:0,max:100,step:10,
+    onchange : v => { number=v; }
+  },
+  "Exit" : function() { E.showMenu(); },
+};
+// Submenu
+var submenu = {
+  "" : { "title" : "-- SubMenu --" },
+  "One" : undefined, // do nothing
+  "Two" : undefined, // do nothing
+  "< Back" : function() { E.showMenu(mainmenu); },
+};
+// Actually display the menu
+Pixl.menu(mainmenu);
+```
+
+See http://www.espruino.com/graphical_menu for more detailed information.
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showMessage",
+    "generate_js" : "libs/banglejs/bangle_message.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["title","JsVar","(optional) a title for the message"]
+    ]
+}
+
+A utility function for displaying a full screen message on the screen
+
+```
+E.showMessage("These are\nLots of\nLines","My Title")
+```
+*/

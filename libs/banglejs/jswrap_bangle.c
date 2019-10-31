@@ -1260,13 +1260,28 @@ void jswrap_banglejs_off() {
     "type" : "staticmethod",
     "class" : "Bangle",
     "name" : "menu",
-    "generate" : "jswrap_banglejs_menu",
+    "generate" : "gen_jswrap_E_showMenu",
     "params" : [
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
     "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
 }
-Display a menu on Bangle.js's screen, and set up the buttons to navigate through it.
+Display a menu on the screen, and set up the buttons to navigate through it.
+
+DEPRECATED: Use `E.showMenu`
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showMenu",
+    "generate_js" : "libs/js/banglejs/E_showMenu.min.js",
+    "params" : [
+      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
+    ],
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+}
+Display a menu on the screen, and set up the buttons to navigate through it.
 
 Supply an object containing menu items. When an item is selected, the
 function it references will be executed. For example:
@@ -1279,7 +1294,7 @@ var mainmenu = {
   "" : { "title" : "-- Main Menu --" },
   "Backlight On" : function() { LED1.set(); },
   "Backlight Off" : function() { LED1.reset(); },
-  "Submenu" : function() { Bangle.menu(submenu); },
+  "Submenu" : function() { E.showMenu(submenu); },
   "A Boolean" : {
     value : boolean,
     format : v => v?"On":"Off",
@@ -1290,96 +1305,38 @@ var mainmenu = {
     min:0,max:100,step:10,
     onchange : v => { number=v; }
   },
-  "Exit" : function() { Bangle.menu(); },
+  "Exit" : function() { E.showMenu(); },
 };
 // Submenu
 var submenu = {
   "" : { "title" : "-- SubMenu --" },
   "One" : undefined, // do nothing
   "Two" : undefined, // do nothing
-  "< Back" : function() { Bangle.menu(mainmenu); },
+  "< Back" : function() { E.showMenu(mainmenu); },
 };
 // Actually display the menu
-Bangle.menu(mainmenu);
+E.showMenu(mainmenu);
 ```
 
 See http://www.espruino.com/graphical_menu for more detailed information.
 */
-JsVar *jswrap_banglejs_menu(JsVar *menu) {
-  /* Unminified JS code is:
 
-Bangle.menu = function(menudata) {
-  if (Bangle.btnWatches) {
-    Bangle.btnWatches.forEach(clearWatch);
-    Bangle.btnWatches = undefined;
-  }
-  g.clear();g.flip(); // clear screen if no menu supplied
-  if (!menudata) return;
-  function im(b) {
-    return {
-      width:8,height:b.length,bpp:1,buffer:new Uint8Array(b).buffer
-    };
-  }
-  if (!menudata[""]) menudata[""]={};
-  g.setFont('6x8',2);g.setFontAlign(-1,-1,0);
-  var w = g.getWidth()-9;
-  var h = g.getHeight();
-  menudata[""].fontHeight=16;
-  menudata[""].x=0;
-  menudata[""].x2=w-2;
-  menudata[""].y=40;
-  menudata[""].y2=200;
-  menudata[""].preflip=function() {
-    g.drawImage(im([
-      0b00010000,
-      0b00111000,
-      0b01111100,
-      0b11111110,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-    ]),w,40);
-    g.drawImage(im([
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b11111110,
-      0b01111100,
-      0b00111000,
-      0b00010000,
-    ]),w,194);
-    g.drawImage(im([
-      0b00000000,
-      0b00001000,
-      0b00001100,
-      0b00001110,
-      0b11111111,
-      0b00001110,
-      0b00001100,
-      0b00001000,
-    ]),w,116);
-    //g.drawLine(7,0,7,h);
-    //g.drawLine(w,0,w,h);
-  };
-  var m = require("graphical_menu").list(g, menudata);
-  Bangle.btnWatches = [
-    setWatch(function() { m.move(-1); }, BTN1, {repeat:1}),
-    setWatch(function() { m.move(1); }, BTN3, {repeat:1}),
-    setWatch(function() { m.select(); }, BTN2, {repeat:1})
-  ];
-  return m;
-};
-*/
-
-  return jspExecuteJSFunction("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Bangle.btnWatches&&(Bangle.btnWatches.forEach(clearWatch),Bangle.btnWatches=void 0);"
-      "g.clear();g.flip();"
-      "if(a){a['']||(a['']={});g.setFont('6x8',2);g.setFontAlign(-1,-1,0);var d=g.getWidth()-18,e=g.getHeight();a[''].fontHeight=16;a[''].x=0;a[''].x2=d-2;a[''].y=40;a[''].y2=200;a[''].preflip=function(){"
-      "g.drawImage(c([16,56,124,254,16,16,16,16]),d,40);g.drawImage(c([16,16,16,16,254,124,56,16]),d,194);g.drawImage(c([0,8,12,14,255,14,12,8]),d,116)};"
-      "var b=require('graphical_menu').list(g,a);Bangle.btnWatches=[setWatch(function(){b.move(-1)},BTN1,{repeat:1}),setWatch(function(){b.move(1)},BTN3,{repeat:1}),"
-      "setWatch(function(){b.select()},BTN2,{repeat:1})];return b}})",0,1,&menu);
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showMessage",
+    "generate_js" : "libs/js/banglejs/E_showMessage.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["title","JsVar","(optional) a title for the message"]
+    ]
 }
 
+A utility function for displaying a full screen message on the screen
+
+```
+E.showMessage("These are\nLots of\nLines","My Title")
+```
+*/
 
 

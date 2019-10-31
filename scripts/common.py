@@ -64,6 +64,7 @@ if "check_output" not in dir( subprocess ):
 #         "class" : "Double", "name" : "doubleToIntBits",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
 #         "generate_full|generate|wrap" : "*(JsVarInt*)&x", // if generate=false, it'll only be used for docs
+#         "generate_js" : "full/file/path.js", // you can supply a JS file instead of 'generate' above. Should be of the form '(function(args) { ... })'
 #         "description" : " Convert the floating point value given into an integer representing the bits contained in it",
 #         "params" : [ [ "x" , "float|int|int32|bool|pin|JsVar|JsVarName|JsVarArray", "A floating point number"] ],
 #                               // float - parses into a JsVarFloat which is passed to the function
