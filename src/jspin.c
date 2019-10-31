@@ -27,6 +27,9 @@
 // Whether a pin's state has been set manually or not
 BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 
+/// Is a pin used by the firmware, and it should stay watched?
+BITFIELD_DECL(jshPinShouldStayWatched, JSH_PIN_COUNT);
+
 // ----------------------------------------------------------------------------
 
 
@@ -212,9 +215,18 @@ void jshSetPinStateIsManual(Pin pin, bool manual) {
   BITFIELD_SET(jshPinStateIsManual, pin, manual);
 }
 
+bool jshGetPinShouldStayWatched(Pin pin) {
+  return BITFIELD_GET(jshPinShouldStayWatched, pin);
+}
+
+void jshSetPinShouldStayWatched(Pin pin, bool manual) {
+  BITFIELD_SET(jshPinShouldStayWatched, pin, manual);
+}
+
 // Reset our list of which pins are set manually - called from jshResetDevices
 void jshResetPinStateIsManual() {
   BITFIELD_CLEAR(jshPinStateIsManual);
+  BITFIELD_CLEAR(jshPinShouldStayWatched);
 }
 
 

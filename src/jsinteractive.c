@@ -1767,6 +1767,8 @@ bool jsiShouldExecuteWatch(JsVar *watchPtr, bool pinIsHigh) {
 }
 
 bool jsiIsWatchingPin(Pin pin) {
+  if (jshGetPinShouldStayWatched(pin))
+    return true;
   bool isWatched = false;
   JsVar *watchArrayPtr = jsvLock(watchArray);
   JsvObjectIterator it;

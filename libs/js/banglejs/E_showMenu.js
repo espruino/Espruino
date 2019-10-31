@@ -3,7 +3,7 @@
     Bangle.btnWatches.forEach(clearWatch);
     Bangle.btnWatches = undefined;
   }
-  g.clear();g.flip(); // clear screen if no menu supplied
+  g.clear(1);g.flip(); // clear screen if no menu supplied
   if (!menudata) return;
   function im(b) {
     return {

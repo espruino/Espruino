@@ -290,13 +290,6 @@ void peripheralPollHandler() {
   if (!(jshPinGetValue(BTN1_PININDEX) && jshPinGetValue(BTN2_PININDEX)))
     jshKickWatchDog();
   // power on display if a button is pressed
-  if (lcdPowerTimeout &&
-      (jshPinGetValue(BTN1_PININDEX) || jshPinGetValue(BTN2_PININDEX) ||
-       jshPinGetValue(BTN3_PININDEX))) {
-    flipTimer = 0;
-    if (!lcdPowerOn)
-      bangleTasks |= JSBT_LCD_ON;
-  }
   if (flipTimer < TIMER_MAX)
     flipTimer += pollInterval;
   // If BTN1 is held down, trigger a reset
@@ -415,6 +408,44 @@ void peripheralPollHandler() {
   //jshPinOutput(LED1_PININDEX, 0);
 }
 
+void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
+  // wake up
+  if (lcdPowerTimeout) {
+    if (button<=3) {
+      // if a 'hard' button, turn LCD on
+      flipTimer = 0;
+      if (!lcdPowerOn) {
+        bangleTasks |= JSBT_LCD_ON;
+        return; // don't push button event if the LCD is off
+      }
+    } else {
+      // on touchscreen, keep LCD on if it was in previously
+      if (lcdPowerOn)
+        flipTimer = 0;
+    }
+  }
+  // Add to the event queue for normal processing for watches
+  jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
+}
+void btn1Handler(bool state, IOEventFlags flags) {
+  btnHandlerCommon(1,state,flags);
+}
+void btn2Handler(bool state, IOEventFlags flags) {
+  btnHandlerCommon(2,state,flags);
+}
+void btn3Handler(bool state, IOEventFlags flags) {
+  btnHandlerCommon(3,state,flags);
+}
+void btn4Handler(bool state, IOEventFlags flags) {
+  // TODO: handle left/right swipe
+  btnHandlerCommon(4,state,flags);
+}
+void btn5Handler(bool state, IOEventFlags flags) {
+  // TODO: handle left/right swipe
+  btnHandlerCommon(5,state,flags);
+}
+
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -422,7 +453,8 @@ void peripheralPollHandler() {
     "generate" : "jswrap_banglejs_setLCDPower",
     "params" : [
       ["isOn","bool","True if the LCD should be on, false if not"]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 This function can be used to turn Bangle.js's LCD off or on.
 
@@ -461,7 +493,8 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
     "generate" : "jswrap_banglejs_setLCDMode",
     "params" : [
       ["mode","JsVar","The LCD mode (See below)"]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 This function can be used to turn double-buffering on Bangle.js's LCD on or off (the default).
 
@@ -494,7 +527,8 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
     "generate" : "jswrap_banglejs_setLCDTimeout",
     "params" : [
       ["isOn","float","The timeout of the display in seconds, or `0`/`undefined` to turn power saving off. Default is 10 seconds."]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 This function can be used to turn Bangle.js's LCD power saving on or off.
 
@@ -515,7 +549,8 @@ void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
     "generate" : "jswrap_banglejs_setPollInterval",
     "params" : [
       ["interval","float","Polling interval in milliseconds"]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 Set how often the watch should poll for new acceleration/gyro data
 */
@@ -537,7 +572,8 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
     "generate" : "jswrap_banglejs_setGestureOptions",
     "params" : [
       ["options","JsVar",""]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 */
 void jswrap_banglejs_setGestureOptions(JsVar *options) {
@@ -555,7 +591,8 @@ void jswrap_banglejs_setGestureOptions(JsVar *options) {
     "class" : "Bangle",
     "name" : "isLCDOn",
     "generate" : "jswrap_banglejs_isLCDOn",
-    "return" : ["bool","Is the display on or not?"]
+    "return" : ["bool","Is the display on or not?"],
+    "ifdef" : "BANGLEJS"
 }
 */
 bool jswrap_banglejs_isLCDOn() {
@@ -567,7 +604,8 @@ bool jswrap_banglejs_isLCDOn() {
     "class" : "Bangle",
     "name" : "isCharging",
     "generate" : "jswrap_banglejs_isCharging",
-    "return" : ["bool","Is the battery charging or not?"]
+    "return" : ["bool","Is the battery charging or not?"],
+    "ifdef" : "BANGLEJS"
 }
 */
 bool jswrap_banglejs_isCharging() {
@@ -593,7 +631,8 @@ JsVarInt jswrap_banglejs_getBattery() {
     "params" : [
       ["cmd","int",""],
       ["data","JsVar",""]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 Writes a command directly to the ST7735 LCD controller
 */
@@ -609,7 +648,8 @@ void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
     "generate" : "jswrap_banglejs_setGPSPower",
     "params" : [
       ["isOn","bool","True if the GPS should be on, false if not"]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 Set the power to the GPS.
 
@@ -647,7 +687,8 @@ void jswrap_banglejs_setGPSPower(bool isOn) {
     "generate" : "jswrap_banglejs_setCompassPower",
     "params" : [
       ["isOn","bool","True if the Compass should be on, false if not"]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 Set the power to the Compass
 
@@ -830,6 +871,23 @@ void jswrap_banglejs_init() {
   pollInterval = DEFAULT_ACCEL_POLL_INTERVAL;
   JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
   jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+
+  IOEventFlags channel;
+  jshSetPinShouldStayWatched(BTN1_PININDEX,true);
+  jshSetPinShouldStayWatched(BTN2_PININDEX,true);
+  jshSetPinShouldStayWatched(BTN3_PININDEX,true);
+  jshSetPinShouldStayWatched(BTN4_PININDEX,true);
+  jshSetPinShouldStayWatched(BTN5_PININDEX,true);
+  channel = jshPinWatch(BTN1_PININDEX, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, btn1Handler);
+  channel = jshPinWatch(BTN2_PININDEX, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, btn2Handler);
+  channel = jshPinWatch(BTN3_PININDEX, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, btn3Handler);
+  channel = jshPinWatch(BTN4_PININDEX, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, btn4Handler);
+  channel = jshPinWatch(BTN5_PININDEX, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, btn5Handler);
 }
 
 /*JSON{
@@ -842,6 +900,16 @@ void jswrap_banglejs_kill() {
   promiseBeep = 0;
   jsvUnLock(promiseBuzz);
   promiseBuzz = 0;
+  jshSetPinShouldStayWatched(BTN1_PININDEX,false);
+  jshSetPinShouldStayWatched(BTN2_PININDEX,false);
+  jshSetPinShouldStayWatched(BTN3_PININDEX,false);
+  jshSetPinShouldStayWatched(BTN4_PININDEX,false);
+  jshSetPinShouldStayWatched(BTN5_PININDEX,false);
+  jshPinWatch(BTN1_PININDEX, false);
+  jshPinWatch(BTN2_PININDEX, false);
+  jshPinWatch(BTN3_PININDEX, false);
+  jshPinWatch(BTN4_PININDEX, false);
+  jshPinWatch(BTN5_PININDEX, false);
 }
 
 /*JSON{
@@ -1014,7 +1082,8 @@ bool jswrap_banglejs_gps_character(char ch) {
     "class" : "Bangle",
     "name" : "dbg",
     "generate" : "jswrap_banglejs_dbg",
-    "return" : ["JsVar",""]
+    "return" : ["JsVar",""],
+    "ifdef" : "BANGLEJS"
 }
 Reads debug info
 */
@@ -1035,7 +1104,8 @@ JsVar *jswrap_banglejs_dbg() {
     "params" : [
       ["reg","int",""],
       ["data","int",""]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 Writes a register on the KX023 Accelerometer
 */
@@ -1056,7 +1126,8 @@ void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
     "params" : [
       ["reg","int",""]
     ],
-    "return" : ["int",""]
+    "return" : ["int",""],
+    "ifdef" : "BANGLEJS"
 }
 Reads a register from the KX023 Accelerometer
 */
@@ -1078,7 +1149,8 @@ int jswrap_banglejs_accelRd(JsVarInt reg) {
     "params" : [
       ["reg","int",""],
       ["data","int",""]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 Writes a register on the Magnetometer/Compass
 */
@@ -1099,7 +1171,8 @@ void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
     "params" : [
       ["mask","int",""],
       ["isOn","int",""]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 Changes a pin state on the IO expander
 */
@@ -1121,7 +1194,8 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
     "params" : [
       ["latlong","JsVar","`{lat:..., lon:...}`"]
     ],
-    "return" : ["JsVar","{x:..., y:...}"]
+    "return" : ["JsVar","{x:..., y:...}"],
+    "ifdef" : "BANGLEJS"
 }
 Perform a Spherical [Web Mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection)
 of latitude and longitude into `x` and `y` coordinates, which are roughly
@@ -1157,7 +1231,8 @@ JsVar *jswrap_banglejs_project(JsVar *latlong) {
       ["time","int","Time in ms (default 200)"]
     ],
     "return" : ["JsVar","A promise, completed when beep is finished"],
-    "return_object":"Promise"
+    "return_object":"Promise",
+    "ifdef" : "BANGLEJS"
 }
 Perform a Spherical [Web Mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection)
 of latitude and longitude into `x` and `y` coordinates, which are roughly
@@ -1200,7 +1275,8 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
       ["strength","float","Power of vibration from 0 to 1 (Default 1)"]
     ],
     "return" : ["JsVar","A promise, completed when beep is finished"],
-    "return_object":"Promise"
+    "return_object":"Promise",
+    "ifdef" : "BANGLEJS"
 }
 Perform a Spherical [Web Mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection)
 of latitude and longitude into `x` and `y` coordinates, which are roughly
@@ -1238,7 +1314,8 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
     "type" : "staticmethod",
     "class" : "Bangle",
     "name" : "off",
-    "generate" : "jswrap_banglejs_off"
+    "generate" : "jswrap_banglejs_off",
+    "ifdef" : "BANGLEJS"
 }
 Turn Bangle.js off. It can only be woken by pressing BTN1.
 */
@@ -1264,7 +1341,8 @@ void jswrap_banglejs_off() {
     "params" : [
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
-    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
+    "ifdef" : "BANGLEJS"
 }
 Display a menu on the screen, and set up the buttons to navigate through it.
 
@@ -1279,7 +1357,8 @@ DEPRECATED: Use `E.showMenu`
     "params" : [
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
-    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
+    "ifdef" : "BANGLEJS"
 }
 Display a menu on the screen, and set up the buttons to navigate through it.
 
@@ -1329,14 +1408,92 @@ See http://www.espruino.com/graphical_menu for more detailed information.
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
       ["title","JsVar","(optional) a title for the message"]
-    ]
+    ],
+    "ifdef" : "BANGLEJS"
 }
 
-A utility function for displaying a full screen message on the screen
+A utility function for displaying a full screen message on the screen.
+
+Draws to the screen and returns immediately.
 
 ```
 E.showMessage("These are\nLots of\nLines","My Title")
 ```
 */
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showPrompt",
+    "generate_js" : "libs/js/banglejs/E_showPrompt.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["options","JsVar","(optional) an object of options (see below)"]
+    ],
+    "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
+    "ifdef" : "BANGLEJS"
+}
+
+Displays a full screen prompt on the screen, with the buttons
+requested (or `Yes` and `No` for defaults).
+
+When the button is pressed the promise is resolved with the
+requested values (for the `Yes` and `No` defaults, `true` and `false`
+are returned).
+
+```
+E.showPrompt("Do you like fish?").then(function(v) {
+  if (v) print("'Yes' chosen");
+  else print("'No' chosen");
+});
+// Or
+E.showPrompt("How many fish\ndo you like?",{
+  title:"Fish",
+  buttons : {"One":1,"Two":2,"Three":3}
+}).then(function(v) {
+  print("You like "+v+" fish");
+});
+```
+
+To remove the prompt, call `E.showPrompt()` with no arguments.
+
+The second `options` argument can contain:
+
+```
+{
+  title: "Hello",                      // optional Title
+  buttons : {"Ok":true,"Cancel":false} // list of button text & return value
+}
+```
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showAlert",
+    "generate_js" : "libs/js/banglejs/E_showAlert.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["options","JsVar","(optional) a title for the message"]
+    ],
+    "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
+    "ifdef" : "BANGLEJS"
+}
+
+Displays a full screen prompt on the screen, with a single 'Ok' button.
+
+When the button is pressed the promise is resolved.
+
+```
+E.showAlert("Hello").then(function() {
+  print("Ok pressed");
+});
+// or
+E.showAlert("These are\nLots of\nLines","My Title").then(function() {
+  print("Ok pressed");
+});
+```
+
+To remove the window, call `E.showAlert()` with no arguments.
+*/
 

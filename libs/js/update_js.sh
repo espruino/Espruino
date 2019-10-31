@@ -32,5 +32,7 @@ node ../../../EspruinoDocs/bin/minify.js nordic/Thingy.js nordic/Thingy.min.js
 node ../../../EspruinoDocs/bin/minify.js pixljs/E_showMenu.js pixljs/E_showMenu.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMenu.js banglejs/E_showMenu.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMessage.js banglejs/E_showMessage.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showPrompt.js banglejs/E_showPrompt.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showAlert.js banglejs/E_showAlert.min.js
 
 
