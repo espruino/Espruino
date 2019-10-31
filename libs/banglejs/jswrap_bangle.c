@@ -194,7 +194,7 @@ typedef struct {
 #define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 to match accelerometer
 #define DEFAULT_LCD_POWER_TIMEOUT 30000 // in msec - default for lcdPowerTimeout
 #define ACCEL_POLL_INTERVAL_MAX 5000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
-#define BTN1_LOAD_TIMEOUT 1500 // in msec
+#define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo internalI2C;
@@ -292,11 +292,11 @@ void peripheralPollHandler() {
   // power on display if a button is pressed
   if (flipTimer < TIMER_MAX)
     flipTimer += pollInterval;
-  // If BTN1 is held down, trigger a reset
-  if (jshPinGetValue(BTN1_PININDEX)) {
+  // If BTN3 is held down, trigger a soft reset so we go back to the clock
+  if (jshPinGetValue(BTN3_PININDEX)) {
     if (btn1Timer < TIMER_MAX) {
       btn1Timer += pollInterval;
-      if (btn1Timer >= BTN1_LOAD_TIMEOUT) {
+      if (btn1Timer >= BTN_LOAD_TIMEOUT) {
         bangleTasks |= JSBT_RESET;
         btn1Timer = TIMER_MAX;
         // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
