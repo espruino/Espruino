@@ -1555,6 +1555,7 @@ Draw an image at the specified position.
 
 * If the image is 1 bit, the graphics foreground/background colours will be used.
 * If `img.palette` is a Uint16Array or 2/4/16 elements, color data will be looked from the supplied palette
+* On Bangle.js, 2 bit images blend from background(0) to foreground(1) colours
 * On Bangle.js, 4 bit images use the Apple Mac 16 color palette
 * On Bangle.js, 8 bit images use the Web Safe 216 color palette
 * Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first
@@ -1581,7 +1582,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   int imageBufferOffset;
   const uint16_t *palettePtr = 0;
   uint32_t paletteMask = 0;
-  uint16_t simplePalette[2];
+  uint16_t simplePalette[4];
 
   if (jsvIsObject(image)) {
     imageWidth = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
@@ -1647,6 +1648,28 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       palettePtr = simplePalette;
       paletteMask = 1;
   #ifdef GRAPHICS_PALETTED_IMAGES
+    } else if (gfx.data.bpp==16 && imageBpp==2) { // Blend from bg to fg
+      int b = gfx.data.bgColor;
+      int br = (b>>8)&0xF8;
+      int bg = (b>>3)&0xFC;
+      int bb = (b<<3)&0xF8;
+      int f = gfx.data.fgColor;
+      int fr = (f>>8)&0xF8;
+      int fg = (f>>3)&0xFC;
+      int fb = (f<<3)&0xF8;
+      simplePalette[0] = gfx.data.bgColor;
+      int ri,gi,bi;
+      ri = (br*2 + fr)/3;
+      gi = (bg*2 + fg)/3;
+      bi = (bb*2 + fb)/3;
+      simplePalette[1] = (bi>>3) | (gi>>2)<<5 | (ri>>3)<<11;
+      ri = (br + fr*2)/3;
+      gi = (bg + fg*2)/3;
+      bi = (bb + fb*2)/3;
+      simplePalette[2] = (bi>>3) | (gi>>2)<<5 | (ri>>3)<<11;
+      simplePalette[3] = gfx.data.fgColor;
+      palettePtr = simplePalette;
+      paletteMask = 3;
     } else if (gfx.data.bpp==16 && imageBpp==4) { // palette is 16 bits, so don't use it for other things
       palettePtr = PALETTE_4BIT;
       paletteMask = 15;
