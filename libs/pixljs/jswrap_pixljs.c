@@ -417,26 +417,36 @@ void jswrap_pixljs_init() {
    * With bootloader this means apply power while holding button for >3 secs */
   static bool firstStart = true;
 
-  if (firstStart) {
-    // animate logo in
-    for (int i=128;i>24;i-=4) {
-      lcd_flip_gfx(&gfx);
-      graphicsClear(&gfx);
-      graphicsDrawImage1bpp(&gfx,i,15,81,34,PIXLJS_IMG);
+  JsVar *splashScreen = jsfReadFile(jsfNameFromString(".splash"));
+  if (jsvIsString(splashScreen)) {
+    if (jsvGetStringLength(splashScreen)) {
+      graphicsSetVar(&gfx);
+      jsvUnLock(jswrap_graphics_drawImage(graphics, splashScreen,0,0,0));
+      graphicsGetFromVar(&gfx, graphics);
     }
   } else {
-    // if a standard reset, just display logo
-    graphicsClear(&gfx);
-    graphicsDrawImage1bpp(&gfx,24,15,81,34,PIXLJS_IMG);
+    if (firstStart) {
+      // animate logo in
+      for (int i=128;i>24;i-=4) {
+        lcd_flip_gfx(&gfx);
+        graphicsClear(&gfx);
+        graphicsDrawImage1bpp(&gfx,i,15,81,34,PIXLJS_IMG);
+      }
+    } else {
+      // if a standard reset, just display logo
+      graphicsClear(&gfx);
+      graphicsDrawImage1bpp(&gfx,24,15,81,34,PIXLJS_IMG);
+    }
+    jswrap_graphics_drawCString(&gfx,28,39,JS_VERSION);
+    // Write MAC address in bottom right
+    JsVar *addr = jswrap_ble_getAddress();
+    char buf[20];
+    jsvGetString(addr, buf, sizeof(buf));
+    jsvUnLock(addr);
+    jswrap_graphics_drawCString(&gfx,127-strlen(buf)*4,59,buf);
   }
-  jswrap_graphics_drawCString(&gfx,28,39,JS_VERSION);
-  // Write MAC address in bottom right
-  JsVar *addr = jswrap_ble_getAddress();
-  char buf[20];
-  jsvGetString(addr, buf, sizeof(buf));
-  jsvUnLock(addr);
-  jswrap_graphics_drawCString(&gfx,127-strlen(buf)*4,59,buf);
   lcd_flip_gfx(&gfx);
+  jsvUnLock(splashScreen);
 
 
   if (firstStart && (jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE || jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE)) {
@@ -539,20 +549,3 @@ Pixl.menu(mainmenu);
 See http://www.espruino.com/graphical_menu for more detailed information.
 */
 
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "E",
-    "name" : "showMessage",
-    "generate_js" : "libs/banglejs/bangle_message.min.js",
-    "params" : [
-      ["message","JsVar","A message to display. Can include newlines"],
-      ["title","JsVar","(optional) a title for the message"]
-    ]
-}
-
-A utility function for displaying a full screen message on the screen
-
-```
-E.showMessage("These are\nLots of\nLines","My Title")
-```
-*/

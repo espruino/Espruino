@@ -35,6 +35,7 @@
             nRF5x: Ensure gatt.connect silently succeeds if we're already connected to the device
             Add E.showMenu, deprecate Pixl.menu - use a common function to ease porting between devices
             Added E.showPrompt, E.showAlert for Bangle.js
+            Pixl.js - check '.splash' file at startup and use it for splash screen if it's there
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
