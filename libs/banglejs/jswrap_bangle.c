@@ -26,6 +26,9 @@
 #include "jswrap_bluetooth.h"
 #include "jswrap_date.h"
 #include "jswrap_math.h"
+#include "jswrap_storage.h"
+#include "jswrap_array.h"
+#include "jsflash.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_soc.h"
@@ -37,6 +40,7 @@
 #include "jswrap_graphics.h"
 #include "lcd_st7789_8bit.h"
 #include "nmea.h"
+#include "jswrap_tensorflow.h"
 
 /*JSON{
   "type": "class",
@@ -172,6 +176,20 @@ If the watch is tapped, this event contains information on the way it was tapped
   "ifdef" : "BANGLEJS"
 }
 Called when a 'gesture' (fast movement) is detected
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "aiGesture",
+  "params" : [["gesture","JsVar","The name of the gesture (if '.tfnames' exists, or the index. 'undefined' if not matching"],
+              ["weights","JsVar","An array of floating point values output by the model"]],
+  "ifdef" : "BANGLEJS"
+}
+Called when a 'gesture' (fast movement) is detected, and a Tensorflow model is in
+storage in the `".tfmodel"` file.
+
+If a `".tfnames"` file is specified as a comma-separated list of names, it will be used
+to decode `gesture` from a number into a string.
 */
 
 #define GPS_UART EV_SERIAL1
@@ -1025,11 +1043,69 @@ bool jswrap_banglejs_idle() {
         for (int i=0;i<accGestureRecordedCount*3;i++) {
           jsvArrayBufferIteratorSetByteValue(&it, accHistory[idx++]);
           jsvArrayBufferIteratorNext(&it);
-          if (idx>=sizeof(accHistory)) idx-=sizeof(accHistory);
+          if (idx>=(int)sizeof(accHistory)) idx-=sizeof(accHistory);
         }
         jsvArrayBufferIteratorFree(&it);
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"gesture", &arr, 1);
         jsvUnLock(arr);
+      }
+    }
+    if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"aiGesture")) {
+      //JsVar *model = jsfReadFile(jsfNameFromString(".tfmodel"));
+      JsfFileHeader header;
+      uint32_t modelAddr = jsfFindFile(jsfNameFromString(".tfmodel"), &header);
+
+      if (!modelAddr) {
+        jsiConsolePrintf("TF error - no model\n");
+      } else {
+        // allocate the model on the stack rather than using ReadFile
+        // as that will save us a few JsVars
+        size_t modelSize = jsfGetFileSize(&header);
+        char *modelBuf = alloca(modelSize);
+        jshFlashRead(modelBuf, modelAddr, modelSize);
+        JsVar *model = jsvNewNativeString(modelBuf, modelSize);
+
+        // delete command history and run a GC pass to try and free up some space
+        while (jsiFreeMoreMemory());
+        jsvGarbageCollect();
+        JsVar *tf = jswrap_tensorflow_create(4000, model);
+        jsvUnLock(model);
+        if (!tf) {
+          //jsiConsolePrintf("TF error - no memory\n");
+          // we get an exception anyway
+        } else {
+          //jsiConsolePrintf("TF in\n");
+          JsVar *v = jswrap_tfmicrointerpreter_getInput(tf);
+          JsvArrayBufferIterator it;
+          jsvArrayBufferIteratorNew(&it, v, 0);
+          int idx = accHistoryIdx - (accGestureRecordedCount*3);
+          while (idx<0) idx+=sizeof(accHistory);
+          for (int i=0;i<accGestureRecordedCount*3;i++) {
+            jsvArrayBufferIteratorSetIntegerValue(&it, accHistory[idx++]);
+            jsvArrayBufferIteratorNext(&it);
+            if (idx>=(int)sizeof(accHistory)) idx-=sizeof(accHistory);
+          }
+          jsvArrayBufferIteratorFree(&it);
+          jsvUnLock(v);
+          //jsiConsolePrintf("TF invoke\n");
+          jswrap_tfmicrointerpreter_invoke(tf);
+          //jsiConsolePrintf("TF out\n");
+          v = jswrap_tfmicrointerpreter_getOutput(tf);
+          JsVar *arr = jswrap_array_slice(v,0,0); // clone, so it's not referencing all of Tensorflow!
+          jsvUnLock2(v,tf);
+          //jsiConsolePrintf("TF queue\n");
+          JsVar *gesture = jspExecuteJSFunction("(function(a) {"
+            "var m=0,g;"
+            "for (var i in a) if (a[i]>m) { m=a[i];g=i; }"
+            "if (g!==undefined) {"
+              "var n=require('Storage').read('.tfnames');"
+              "if (n) g=n.split(',')[g];"
+            "}"
+          "return g;})",NULL,1,&arr);
+          JsVar *args[2] = {gesture,arr};
+          jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"aiGesture", args, 2);
+          jsvUnLock2(gesture,arr);
+        }
       }
     }
   }
