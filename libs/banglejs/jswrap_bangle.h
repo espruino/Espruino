@@ -35,6 +35,7 @@ JsVar *jswrap_banglejs_project(JsVar *latlong);
 JsVar *jswrap_banglejs_beep(int time, int freq);
 JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt);
 void jswrap_banglejs_off();
+JsVar *jswrap_banglejs_getLogo();
 
 void jswrap_banglejs_init();
 void jswrap_banglejs_kill();
