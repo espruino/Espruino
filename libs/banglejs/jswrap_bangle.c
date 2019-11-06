@@ -80,6 +80,15 @@ Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
+  "name" : "step",
+  "params" : [["up","int","The number of steps since Bangle.js was last reset"]],
+  "ifdef" : "BANGLEJS"
+}
+Called whenever a step is detected by Bangle.js's pedometer.
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
   "name" : "faceUp",
   "params" : [["up","bool","`true` if face-up"]],
   "ifdef" : "BANGLEJS"
@@ -241,6 +250,8 @@ bool compassPowerOn;
 Vector3 mag, magmin, magmax;
 /// accelerometer data
 Vector3 acc;
+/// squared accelerometer magnitude
+int accMagSquared;
 /// accelerometer difference since last reading
 int accdiff;
 /// History of accelerometer readings
@@ -255,7 +266,6 @@ volatile uint8_t accGestureRecordedCount;
 volatile uint8_t accIdleCount;
 /// data on how watch was tapped
 unsigned char tapInfo;
-
 // Gesture settings
 /// how big a difference before we consider a gesture started?
 int accelGestureStartThresh = 800*800;
@@ -265,6 +275,16 @@ int accelGestureEndThresh = 2000*2000;
 int accelGestureInactiveCount = 4;
 /// how many samples must a gesture have before we notify about it?
 int accelGestureMinLength = 10;
+// Step data
+/// How low must acceleration magnitude squared get before we consider the next rise a step?
+int stepCounterThresholdLow = (8192-80)*(8192-80);
+/// How high must acceleration magnitude squared get before we consider it a step?
+int stepCounterThresholdHigh = (8192+80)*(8192+80);
+/// Current steps since reset
+uint32_t stepCounter;
+/// has acceleration counter passed stepCounterThresholdLow?
+bool stepWasLow;
+
 /// Promise when beep is finished
 JsVar *promiseBeep;
 /// Promise when buzz is finished
@@ -282,6 +302,7 @@ typedef enum {
   JSBT_RESET = 128, ///< reset the watch and reload code from flash
   JSBT_GESTURE_DATA = 256, ///< we have data from a gesture
   JSBT_CHARGE_EVENT = 512, ///< we need to fire a charging event
+  JSBT_STEP_EVENT = 1024, ///< we've detected a step via the pedometer
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -389,6 +410,7 @@ void peripheralPollHandler() {
     acc.x = newx;
     acc.y = newy;
     acc.z = newz;
+    accMagSquared = acc.x*acc.x + acc.y*acc.y + acc.z*acc.z;
     accdiff = dx*dx + dy*dy + dz*dz;
     // save history
     accHistoryIdx = (accHistoryIdx+3) % sizeof(accHistory);
@@ -397,6 +419,14 @@ void peripheralPollHandler() {
     accHistory[accHistoryIdx+2] = clipi8(newz>>7);
     // trigger accelerometer data task
     bangleTasks |= JSBT_ACCEL_DATA;
+    // check for step counter
+    if (accMagSquared < stepCounterThresholdLow)
+      stepWasLow = true;
+    else if ((accMagSquared > stepCounterThresholdHigh) && stepWasLow) {
+      stepWasLow = false;
+      stepCounter++;
+      bangleTasks |= JSBT_STEP_EVENT;
+    }
     // checking for gestures
     if (accGestureCount==0) { // no gesture yet
       // if movement is eniugh, start one
@@ -587,20 +617,30 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
-    "name" : "setGestureOptions",
-    "generate" : "jswrap_banglejs_setGestureOptions",
+    "name" : "setOptions",
+    "generate" : "jswrap_banglejs_setOptions",
     "params" : [
       ["options","JsVar",""]
     ],
     "ifdef" : "BANGLEJS"
 }
+Set internal options used for gestures, step counting, etc...
+
+* `gestureStartThresh`  how big a difference before we consider a gesture started? default = `sqr(800)`
+* `gestureEndThresh` how small a difference before we consider a gesture ended? default = `sqr(2000)`
+* `gestureInactiveCount` how many samples do we keep after a gesture has ended? default = `4`
+* `gestureMinLength` how many samples must a gesture have before we notify about it? default = `10`
+* `stepCounterThresholdLow` How low must acceleration magnitude squared get before we consider the next rise a step? default = `sqr(8192-80)`
+* `stepCounterThresholdHigh` How high must acceleration magnitude squared get before we consider it a step? default = `sqr(8192+80)`
 */
-void jswrap_banglejs_setGestureOptions(JsVar *options) {
+void jswrap_banglejs_setOptions(JsVar *options) {
   jsvConfigObject configs[] = {
-      {"startThresh", JSV_INTEGER, &accelGestureStartThresh},
-      {"endThresh", JSV_INTEGER, &accelGestureEndThresh},
-      {"inactiveCount", JSV_INTEGER, &accelGestureInactiveCount},
-      {"minLength", JSV_INTEGER, &accelGestureMinLength}
+      {"gestureStartThresh", JSV_INTEGER, &accelGestureStartThresh},
+      {"gestureEndThresh", JSV_INTEGER, &accelGestureEndThresh},
+      {"gestureInactiveCount", JSV_INTEGER, &accelGestureInactiveCount},
+      {"gestureMinLength", JSV_INTEGER, &accelGestureMinLength},
+      {"stepCounterThresholdLow", JSV_INTEGER, &stepCounterThresholdLow},
+      {"stepCounterThresholdHigh", JSV_INTEGER, &stepCounterThresholdHigh}
   };
   jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject));
 }
@@ -801,44 +841,32 @@ void jswrap_banglejs_init() {
   fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG);
   jsvObjectSetChildAndUnLock(graphics,"flip",fn);
 
-  // If the button is pressed during reset, perform a self test.
-  // With bootloader this means apply power while holding button for >3 secs
-  static bool firstStart = true;
+  bool showSplashScreen = true;
+  /* If we're doing a flash load, don't show
+  the logo because it'll just get overwritten
+  in a fraction of a second anyway */
+  if (jsiStatus & JSIS_TODO_FLASH_LOAD) {
+    showSplashScreen = false;
+  }
 
   graphicsClear(&gfx);
-  JsVar *img = jswrap_banglejs_getLogo();
-  graphicsSetVar(&gfx);
-  int y=(240-104)/2;
-  jsvUnLock(jswrap_graphics_drawImage(graphics,img,(240-222)/2,y,0));
-  jsvUnLock(img);
-  y += 104-28;
-  char buf[20];
-  JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
-  jsvGetString(addr, buf, sizeof(buf));
-  jsvUnLock(addr);
-  jswrap_graphics_drawCString(&gfx,8,y,JS_VERSION);
-  jswrap_graphics_drawCString(&gfx,8,y+10,buf);
-  jswrap_graphics_drawCString(&gfx,8,y+20,"Copyright 2019 G.Williams");
-
-
-
-
-
-/*
-  if (firstStart && (jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE || jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE)) {
-    // don't do it during a software reset - only first hardware reset
-    jsiConsolePrintf("SELF TEST\n");
-    if (pixl_selfTest()) jsiConsolePrintf("Test passed!\n");
-  }*/
-
-  // If the button is *still* pressed, remove all code from flash memory too!
-  /*if (firstStart && jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) {
-    jsfRemoveCodeFromFlash();
-    jsiConsolePrintf("Removed saved code from Flash\n");
-  }*/
+  if (showSplashScreen) {
+    JsVar *img = jswrap_banglejs_getLogo();
+    graphicsSetVar(&gfx);
+    int y=(240-104)/2;
+    jsvUnLock(jswrap_graphics_drawImage(graphics,img,(240-222)/2,y,0));
+    jsvUnLock(img);
+    y += 104-28;
+    char addrStr[20];
+    JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
+    jsvGetString(addr, addrStr, sizeof(addrStr));
+    jsvUnLock(addr);
+    jswrap_graphics_drawCString(&gfx,8,y,JS_VERSION);
+    jswrap_graphics_drawCString(&gfx,8,y+10,addrStr);
+    jswrap_graphics_drawCString(&gfx,8,y+20,"Copyright 2019 G.Williams");
+  }
   graphicsSetVar(&gfx);
 
-  firstStart = false;
   jsvUnLock(graphics);
 
   // accelerometer init
@@ -866,6 +894,9 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_accelWr(0x3e,0); // clear the buffer
   jswrap_banglejs_accelWr(0x18,0b01101100);  // CNTL1 Off, high power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
   jswrap_banglejs_accelWr(0x18,0b11101100);  // CNTL1 On, high power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
+  // Accelerometer variables init
+  stepCounter = 0;
+  stepWasLow = false;
   // compass init
   jswrap_banglejs_compassWr(0x32,1);
   jswrap_banglejs_compassWr(0x31,0);
@@ -873,16 +904,17 @@ void jswrap_banglejs_init() {
   i2cBusy = false;
   // Other IO
   jshPinSetState(BAT_PIN_CHARGING, JSHPINSTATE_GPIO_IN_PULLUP);
-  // Flash memory - on first boot we might need to erase it
 
-  assert(sizeof(buf)>=sizeof(JsfFileHeader));
-  jshFlashRead(buf, FLASH_SAVED_CODE_START, sizeof(JsfFileHeader));
-  bool allZero = true;
-  for (unsigned int i=0;i<sizeof(JsfFileHeader);i++)
-    if (buf[i]) allZero=false;
-  if (allZero) {
-    jsiConsolePrintf("Erasing Storage Area\n");
-    jsfEraseAll();
+  { // Flash memory - on first boot we might need to erase it
+    char buf[sizeof(JsfFileHeader)];
+    jshFlashRead(buf, FLASH_SAVED_CODE_START, sizeof(buf));
+    bool allZero = true;
+    for (unsigned int i=0;i<sizeof(buf);i++)
+      if (buf[i]) allZero=false;
+    if (allZero) {
+      jsiConsolePrintf("Erasing Storage Area\n");
+      jsfEraseAll();
+    }
   }
 
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
@@ -951,7 +983,7 @@ bool jswrap_banglejs_idle() {
         jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(acc.x/8192.0));
         jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(acc.y/8192.0));
         jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(acc.z/8192.0));
-        jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z)/8192.0));
+        jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(accMagSquared)/8192.0));
         jsvObjectSetChildAndUnLock(o, "diff", jsvNewFromFloat(sqrt(accdiff)/8192.0));
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"accel", &o, 1);
         jsvUnLock(o);
@@ -1028,7 +1060,7 @@ bool jswrap_banglejs_idle() {
         int c = cx*cx+cy*cy;
         double h = NAN;
         if (c>3000) { // only give a heading if we think we have valid data (eg enough magnetic field difference in min/max
-          h = jswrap_math_atan2(dx,dy)*(-180/PI);
+          h = jswrap_math_atan2(dx,dy)*180/PI;
           if (h<0) h+=360;
         }
         jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
@@ -1118,6 +1150,11 @@ bool jswrap_banglejs_idle() {
     JsVar *charging = jsvNewFromBool(wasCharging);
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"charging", &charging, 1);
     jsvUnLock(charging);
+  }
+  if (bangle && (bangleTasks & JSBT_STEP_EVENT)) {
+    JsVar *steps = jsvNewFromInteger(stepCounter);
+    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"step", &steps, 1);
+    jsvUnLock(steps);
   }
   if (bangleTasks & JSBT_RESET)
     jsiStatus |= JSIS_TODO_FLASH_LOAD;

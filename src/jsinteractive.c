@@ -2144,16 +2144,15 @@ void jsiIdle() {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     JsiStatus s = jsiStatus;
     if ((s&JSIS_TODO_RESET) == JSIS_TODO_RESET) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_RESET;
       // shut down everything and start up again
       jsiKill();
       jsvKill();
       jshReset();
       jsvInit(0);
       jsiSemiInit(false); // don't autoload
+      jsiStatus &= (JsiStatus)~JSIS_TODO_RESET;
     }
     if ((s&JSIS_TODO_FLASH_SAVE) == JSIS_TODO_FLASH_SAVE) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_SAVE;
       jsvGarbageCollect(); // nice to have everything all tidy!
       jsiSoftKill();
       jspSoftKill();
@@ -2163,9 +2162,9 @@ void jsiIdle() {
       jsvSoftInit();
       jspSoftInit();
       jsiSoftInit(false /* not been reset */);
+      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_SAVE;
     }
     if ((s&JSIS_TODO_FLASH_LOAD) == JSIS_TODO_FLASH_LOAD) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_LOAD;
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
@@ -2176,6 +2175,7 @@ void jsiIdle() {
       jsvSoftInit();
       jspSoftInit();
       jsiSoftInit(false /* not been reset */);
+      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_LOAD;
     }
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
