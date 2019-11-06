@@ -129,7 +129,7 @@ JsVar *nmea_to_jsVar(NMEAFixInfo *gpsFix) {
     jsvObjectSetChildAndUnLock(o, "course", jsvNewFromFloat(gpsFix->course));
     CalendarDate date;
     date.day = gpsFix->day;
-    date.month = gpsFix->month;
+    date.month = gpsFix->month-1; // 1 based to 0 based
     date.year = 2000+gpsFix->year;
     TimeInDay td;
     td.daysSinceEpoch = fromCalenderDate(&date);

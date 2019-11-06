@@ -18,7 +18,7 @@ typedef struct {
   double lat,lon,alt;
   double speed, course;
   int hour,min,sec,ms;
-  uint8_t day,month,year;
+  uint8_t day,month,year; // 1-base day, month and year (eg. as written)
   uint8_t quality; // from GGA packet, 0 = no fix
   uint8_t satellites; // how many satellites
 } NMEAFixInfo;
