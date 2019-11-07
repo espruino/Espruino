@@ -17,6 +17,8 @@
 # make flash         # Try and flash using the platform's normal flash tool
 # make serialflash   # flash over USB serial bootloader (STM32)
 # make lst           # Make listing files
+# make boardjson     # JSON file for a board
+# make docs          # Reference HTML for a board
 #
 # Also:
 #
@@ -709,6 +711,11 @@ ifdef USE_NET
 else
 	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 endif
+
+docs:
+	@echo Generating Board docs
+	$(Q)python scripts/build_docs.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
+	@echo functions.html created
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers

@@ -33,6 +33,7 @@ info = {
      'TENSORFLOW'     
    ],
    'makefile' : [
+     'DEFINES += -DUSE_TENSORFLOW',
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',

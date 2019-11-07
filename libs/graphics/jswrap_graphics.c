@@ -2002,7 +2002,7 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "scroll",
-  "ifndef" : "SAVE_ON_FLASH && !defined(ESPRUINOBOARD)",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_scroll",
   "params" : [
     ["x","int32","X direction. >0 = to right"],

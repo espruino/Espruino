@@ -3028,7 +3028,7 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattserver
     "type" : "property",
     "class" : "BluetoothDevice",
     "name" : "connected",
-    "#if" : "0", "generate" : "",
+    "generate" : false,
     "return" : ["bool", "Whether the device is connected or not" ]
 }
 *//*Documentation only*/

@@ -33,9 +33,20 @@
 #include "jsinteractive.h"
 #include "jsparse.h"
 
+"ifdef"    : "ESP32",
+
+/*JSON{
+  "type": "class",
+  "class" : "ESP32",
+  "ifdef" : "ESP32"
+}
+Class containing utility functions for the [ESP32](http://www.espruino.com/ESP32)
+*/
+
 /*JSON{
  "type"     : "staticmethod",
  "class"    : "ESP32",
+ "ifdef" : "ESP32",
  "name"     : "setAtten",
  "generate" : "jswrap_ESP32_setAtten",
  "params"   : [
@@ -51,6 +62,7 @@ void jswrap_ESP32_setAtten(Pin pin,int atten){
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP32",
+  "ifdef" : "ESP32",
   "name"     : "reboot",
   "generate" : "jswrap_ESP32_reboot"
 }
@@ -64,6 +76,7 @@ void jswrap_ESP32_reboot() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP32",
+  "ifdef" : "ESP32",
   "name"     : "deepSleep",
   "generate" : "jswrap_ESP32_deepSleep",
   "params"   : [ ["us", "int", "Sleeptime in us"] ]
@@ -79,6 +92,7 @@ void jswrap_ESP32_deepSleep(int us) {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP32",
+  "ifdef" : "ESP32",
   "name"     : "getState",
   "generate" : "jswrap_ESP32_getState",
   "return"   : ["JsVar", "The state of the ESP32"]
@@ -108,6 +122,7 @@ JsVar *jswrap_ESP32_getState() {
 /*JSON{
  "type"     : "staticmethod",
  "class"    : "ESP32",
+ "ifdef" : "ESP32",
  "name"     : "setBLE_Debug",
  "generate" : "jswrap_ESP32_setBLE_Debug",
  "params"   : [
@@ -123,6 +138,7 @@ void jswrap_ESP32_setBLE_Debug(int level){
 /*JSON{
  "type"	: "staticmethod",
  "class"	: "ESP32",
+ "ifdef" : "ESP32",
  "name"		: "enableBLE",
  "generate"	: "jswrap_ESP32_enableBLE",
  "params"	: [
@@ -142,6 +158,7 @@ void jswrap_ESP32_enableBLE(bool enable){ //may be later, we will support BLEena
 /*JSON{
  "type"	: "staticmethod",
  "class"	: "ESP32",
+ "ifdef" : "ESP32",
  "name"		: "enableWifi",
  "generate"	: "jswrap_ESP32_enableWifi",
  "params"	: [
