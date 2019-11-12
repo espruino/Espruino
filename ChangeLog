@@ -38,6 +38,8 @@
             Pixl.js - check '.splash' file at startup and use it for splash screen if it's there
             Improve free list ordering when Flat Strings are freed
             Added E.defrag to perform defragmentation - still beta!
+            nRF52: fix issue where restarting the softdevice would reset the RTC
+              - fixes Bangle.js watchdog reset
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

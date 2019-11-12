@@ -19,6 +19,7 @@
 #include "jsinteractive.h"
 #include "jsdevices.h"
 #include "jshardware.h"
+#include "jstimer.h"
 #include "nrf5x_utils.h"
 #include "bluetooth.h"
 #include "bluetooth_utils.h"
@@ -2463,10 +2464,14 @@ void jsble_restart_softdevice() {
     sd_ble_gap_scan_stop();
   }
 
+  jshUtilTimerDisable(); // don't want the util timer firing during this!
+  JsSysTime lastTime = jshGetSystemTime();
   jsble_kill();
   jsble_init();
   // reinitialise everything
   jswrap_ble_reconfigure_softdevice();
+  jshSetSystemTime(lastTime); // Softdevice resets the RTC - so we must reset our offsets
+  jstRestartUtilTimer(); // restart the util timer
 }
 
 uint32_t jsble_set_scanning(bool enabled, bool activeScan) {

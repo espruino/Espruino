@@ -204,6 +204,12 @@ static bool utilTimerIsFull() {
   return nextHead == utilTimerTasksTail;
 }
 
+/* Restart the utility timer with the right period. This should not normally
+need to be called by anything outside jstimer.c */
+void  jstRestartUtilTimer() {
+  jshUtilTimerStart(utilTimerTasks[utilTimerTasksTail].time - jshGetSystemTime());
+}
+
 // Queue a task up to be executed when a timer fires... return false on failure
 bool utilTimerInsertTask(UtilTimerTask *task) {
   // check if queue is full or not
@@ -235,7 +241,7 @@ bool utilTimerInsertTask(UtilTimerTask *task) {
   // now set up timer if not already set up...
   if (!utilTimerOn || haveChangedTimer) {
     utilTimerOn = true;
-    jshUtilTimerStart(utilTimerTasks[utilTimerTasksTail].time - jshGetSystemTime());
+    jstRestartUtilTimer();
   }
 
   if (!utilTimerInIRQ) jshInterruptOn();
