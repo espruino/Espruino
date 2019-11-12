@@ -578,12 +578,32 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
       // in which case we need to free all the blocks.
       size_t count = jsvGetFlatStringBlocks(var);
       JsVarRef i = (JsVarRef)(jsvGetRef(var)+count);
-      // do it in reverse, so the free list ends up in kind of the right order
+      // Because this is a whole bunch of blocks, try
+      // and insert it in the right place in the free list
+      // So, iterate along free list to figure out where we
+      // need to insert the free items
+      jshInterruptOff(); // to allow this to be used from an IRQ
+      JsVarRef insertBefore = jsVarFirstEmpty;
+      JsVarRef insertAfter = 0;
+      while (insertBefore && insertBefore<i) {
+        insertAfter = insertBefore;
+        insertBefore = jsvGetNextSibling(jsvGetAddressOf(insertBefore));
+      }
+      // free in reverse, so the free list ends up in kind of the right order
       while (count--) {
         JsVar *p = jsvGetAddressOf(i--);
         p->flags = JSV_UNUSED; // set locks to 0 so the assert in jsvFreePtrInternal doesn't get fed up
-        jsvFreePtrInternal(p);
+        // add this to our free list
+        jsvSetNextSibling(p, insertBefore);
+        insertBefore = jsvGetRef(p);
       }
+      // patch up jsVarFirstEmpty/rejoin the list
+      if (insertAfter)
+        jsvSetNextSibling(jsvGetAddressOf(insertAfter), insertBefore);
+      else
+        jsVarFirstEmpty = insertBefore;
+      touchedFreeList = true;
+      jshInterruptOn();
     } else if (jsvIsBasicString(var)) {
 #ifdef CLEAR_MEMORY_ON_FREE
       jsvSetFirstChild(var, 0); // firstchild could have had string data in
