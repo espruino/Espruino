@@ -1092,14 +1092,12 @@ void jswrap_espruino_dumpFreeList() {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "RELEASE",
   "class" : "E",
   "name" : "dumpFragmentation",
   "generate" : "jswrap_e_dumpFragmentation"
 }
 Show fragmentation
  */
-#ifndef RELEASE
 void jswrap_e_dumpFragmentation() {
   int l = 0;
   for (int i=0;i<jsvGetMemoryTotal();i++) {
@@ -1108,12 +1106,13 @@ void jswrap_e_dumpFragmentation() {
       jsiConsolePrint(" ");
       if (l++>80) { jsiConsolePrint("\n");l=0; }
     } else {
-      jsiConsolePrint("#");
+      jsiConsolePrint(jsvGetLocks(v)?"L":"#");
       if (l++>80) { jsiConsolePrint("\n");l=0; }
       if (jsvIsFlatString(v)) {
         int b = jsvGetFlatStringBlocks(v);
+        i += b; // skip forward
         while (b--) {
-          jsiConsolePrint("-");
+          jsiConsolePrint("=");
           if (l++>80) { jsiConsolePrint("\n");l=0; }
         }
       }
@@ -1121,7 +1120,16 @@ void jswrap_e_dumpFragmentation() {
   }
   jsiConsolePrint("\n");
 }
-#endif
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "defrag",
+  "generate" : "jsvDefragment"
+}
+BETA: defragment memory!
+ */
 
 /*JSON{
   "type" : "staticmethod",

@@ -710,12 +710,13 @@ void jsvTrace(JsVar *var, int indent);
 /** Run a garbage collection sweep - return nonzero if things have been freed */
 int jsvGarbageCollect();
 
-#ifndef RELEASE
+/** Defragement memory - this could take a while with interrupts turned off! */
+void jsvDefragment();
+
 // Dump any locked variables that aren't referenced from `global` - for debugging memory leaks
 void jsvDumpLockedVars();
 // Dump the free list - in order
 void jsvDumpFreeList();
-#endif
 
 /** Remove whitespace to the right of a string - on MULTIPLE LINES */
 JsVar *jsvStringTrimRight(JsVar *srcString);
