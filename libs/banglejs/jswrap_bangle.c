@@ -41,7 +41,9 @@
 #include "jswrap_graphics.h"
 #include "lcd_st7789_8bit.h"
 #include "nmea.h"
+#ifdef USE_TENSORFLOW
 #include "jswrap_tensorflow.h"
+#endif
 
 /*JSON{
   "type": "class",
@@ -158,7 +160,7 @@ If a value such as `lat` is not known because there is no fix, it'll be `NaN`.
 }
 Has the screen been turned on or off? Can be used to stop tasks that are no longer useful if nothing is displayed.
 */
-/*JSON{
+/* This doesn't work, so remove for now - FIXMEJSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "tap",
@@ -325,7 +327,7 @@ char clipi8(int x) {
 /* Scan peripherals for any data that's needed
  * Also, holding down both buttons will reboot */
 void peripheralPollHandler() {
-  //jshPinOutput(LED1_PININDEX, 1);
+  //jswrap_banglejs_ioWr(IOEXP_HRM,0);  // debug using HRM LED
   // Handle watchdog
   if (!(jshPinGetValue(BTN1_PININDEX) && jshPinGetValue(BTN2_PININDEX)))
     jshKickWatchDog();
@@ -454,7 +456,7 @@ void peripheralPollHandler() {
     }
   }
 
-  //jshPinOutput(LED1_PININDEX, 0);
+  //jswrap_banglejs_ioWr(IOEXP_HRM,1); // debug using HRM LED
 }
 
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
@@ -1087,6 +1089,7 @@ bool jswrap_banglejs_idle() {
         jsvUnLock(arr);
       }
     }
+#ifdef USE_TENSORFLOW
     if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"aiGesture")) {
       //JsVar *model = jsfReadFile(jsfNameFromString(".tfmodel"));
       JsfFileHeader header;
@@ -1145,6 +1148,7 @@ bool jswrap_banglejs_idle() {
         }
       }
     }
+#endif
   }
   if (bangle && (bangleTasks & JSBT_CHARGE_EVENT)) {
     JsVar *charging = jsvNewFromBool(wasCharging);
@@ -1345,8 +1349,8 @@ JsVar *jswrap_banglejs_project(JsVar *latlong) {
     "name" : "beep",
     "generate" : "jswrap_banglejs_beep",
     "params" : [
-      ["freq","int","Frequency in hz (default 4000)"],
-      ["time","int","Time in ms (default 200)"]
+      ["time","int","Time in ms (default 200)"],
+      ["freq","int","Frequency in hz (default 4000)"]
     ],
     "return" : ["JsVar","A promise, completed when beep is finished"],
     "return_object":"Promise",
