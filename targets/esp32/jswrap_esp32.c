@@ -33,8 +33,6 @@
 #include "jsinteractive.h"
 #include "jsparse.h"
 
-"ifdef"    : "ESP32",
-
 /*JSON{
   "type": "class",
   "class" : "ESP32",

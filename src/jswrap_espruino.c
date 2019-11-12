@@ -1106,7 +1106,8 @@ void jswrap_e_dumpFragmentation() {
       jsiConsolePrint(" ");
       if (l++>80) { jsiConsolePrint("\n");l=0; }
     } else {
-      jsiConsolePrint(jsvGetLocks(v)?"L":"#");
+      if (jsvGetLocks(v)) jsiConsolePrint("L");
+      else jsiConsolePrint("#");
       if (l++>80) { jsiConsolePrint("\n");l=0; }
       if (jsvIsFlatString(v)) {
         int b = jsvGetFlatStringBlocks(v);
