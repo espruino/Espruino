@@ -842,7 +842,9 @@ void jsiSemiInit(bool autoLoad) {
       jshPrintBanner();
 #endif
     }
+#ifdef USE_TERMINAL
     if (consoleDevice != EV_TERMINAL) // don't spam the terminal
+#endif
       jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
   }
