@@ -66,6 +66,7 @@ INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS?=
 DEFINES?=
 CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -g
+CFLAGS+=-Wno-packed-bitfield-compat # remove warnings from packed var usage
 CFLAGS+=-Wno-expansion-to-defined # remove warnings created by Nordic's libs
 CCFLAGS?= # specific flags when compiling cc files
 LDFLAGS?=-Winline -g

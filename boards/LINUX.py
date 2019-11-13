@@ -21,17 +21,20 @@ info = {
  'binary_name' : 'espruino',
  'build' : {
    'libraries' : [
-     'NET',
-     'TENSORFLOW',
-     'GRAPHICS',
-     'FILESYSTEM',
-     'CRYPTO','SHA256','SHA512',
-     'TLS',
-     'TELNET',
+#     'NET',
+#     'TENSORFLOW',
+      'GRAPHICS',
+#     'FILESYSTEM',
+#     'CRYPTO','SHA256','SHA512',
+#     'TLS',
+#     'TELNET',
    ],
    'makefile' : [
+     'DEFINES+=-DNO_HISTORY',
 #     'DEFINES+=-DFLASH_64BITS_ALIGNMENT=1', For testing 64 bit flash writes
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES',
+#     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES',
+     'CFLAGS+=-m32', 'LDFLAGS+=-m32', # For testing 32 bit builds (arg passing still broken on 32 bit x86)
+#     may need:  sudo apt-get install libsdl1.2-dev:i386
      'LINUX=1',
      'USE_LCD_SDL=1'
    ]
