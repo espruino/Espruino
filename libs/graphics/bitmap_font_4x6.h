@@ -8,10 +8,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * 3x5 LCD font
+ * 4x6 LCD font
  * ----------------------------------------------------------------------------
  */
 
 #include "graphics.h"
 
-void graphicsDrawChar4x6(JsGraphics *gfx, short x1, short y1, char ch);
+void graphicsDrawChar4x6(JsGraphics *gfx, short x1, short y1, char ch, unsigned short size, bool solidBackground);

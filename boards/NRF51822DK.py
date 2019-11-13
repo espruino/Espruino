@@ -33,6 +33,7 @@ info = {
    ],
    'makefile' : [
      'SAVE_ON_FLASH=1',
+     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DUSE_DEBUGGER -DUSE_TAB_COMPLETE',
      'DEFINES += -DBOARD_PCA10028'
    ]

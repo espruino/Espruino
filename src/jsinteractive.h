@@ -19,6 +19,7 @@
 
 #define JSI_WATCHES_NAME "watches"
 #define JSI_TIMERS_NAME "timers"
+#define JSI_DEBUG_HISTORY_NAME "dbghist"
 #define JSI_HISTORY_NAME "history"
 #define JSI_INIT_CODE_NAME "init"
 #define JSI_JSFLAGS_NAME "flags"
@@ -58,10 +59,14 @@ bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int ar
 /// Same as above, but with a JsVarArray (this calls jsiExecuteEventCallback, so use jsiExecuteEventCallback where possible)
 bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray);
 
+/// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
+JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds);
 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device);
 
+/// If Espruino could choose right now, what would be the best console device to use?
+IOEventFlags jsiGetPreferredConsoleDevice();
 /** Change the console to a new location - if force is set, this console
  * device will be 'sticky' - it will not change when the device changes
  * connection state */
@@ -146,7 +151,8 @@ typedef enum {
   JSIS_COMPLETELY_RESET   = 1<<11, ///< Has the board powered on, having not loaded anything from flash
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE,
-  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED // stuff that DOESN'T get reset on softinit
+  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED|JSIS_WATCHDOG_AUTO // stuff that DOESN'T get reset on softinit
+    // watchdog can't be reset without a reboot so if it's set to auto we must keep it as auto
 } PACKED_FLAGS JsiStatus;
 
 extern JsiStatus jsiStatus;
@@ -161,6 +167,7 @@ extern JsSysTime jsiLastIdleTime; ///< The last time we went around the idle loo
 void jsiDumpJSON(vcbprintf_callback user_callback, void *user_data, JsVar *data, JsVar *existing);
 void jsiDumpState(vcbprintf_callback user_callback, void *user_data);
 #define TIMER_MIN_INTERVAL 0.1 // in milliseconds
+#define TIMER_MAX_INTERVAL 31536000001000ULL // in milliseconds
 extern JsVarRef timerArray; // Linked List of timers to check and run
 extern JsVarRef watchArray; // Linked List of input watches to check and run
 

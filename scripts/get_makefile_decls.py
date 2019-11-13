@@ -58,7 +58,7 @@ if "optimizeflags" in board.info["build"]:
         print("OPTIMIZEFLAGS+="+board.info["build"]["optimizeflags"])
 
 for lib in board.info["build"]["libraries"]:
-    print("USE_"+lib+"=1")
+    print("USE_"+lib+"?=1")
 
 if "makefile" in board.info["build"]:
     for mfLine in board.info["build"]["makefile"]:

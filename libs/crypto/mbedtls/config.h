@@ -34,37 +34,28 @@
 
 // See aes.c. Do we want 10kB of data full of constants? no.
 #define MBEDTLS_AES_ROM_TABLES
+// Use non-unrolled SHA256
+#define MBEDTLS_SHA256_SMALLER
 
 
 #ifdef USE_TLS
 
 /* mbed TLS feature support */
-#define MBEDTLS_CIPHER_MODE_CBC
-#define MBEDTLS_CIPHER_MODE_CFB
-#define MBEDTLS_CIPHER_MODE_CTR
-
 #define MBEDTLS_PKCS1_V15
 #define MBEDTLS_KEY_EXCHANGE_RSA_ENABLED
 #define MBEDTLS_SSL_PROTO_TLS1_2
 
 /* mbed TLS modules */
-#define MBEDTLS_AES_C
-#define MBEDTLS_ASN1_PARSE_C
 #define MBEDTLS_BIGNUM_C
-#define MBEDTLS_CIPHER_C
 #define MBEDTLS_CTR_DRBG_C
 #define MBEDTLS_ECP_C
 #define MBEDTLS_ENTROPY_C
 #define MBEDTLS_MD_C
 #define MBEDTLS_MD5_C
-#define MBEDTLS_OID_C
-#define MBEDTLS_PKCS5_C
 #define MBEDTLS_PK_C
 #define MBEDTLS_PK_PARSE_C
 #define MBEDTLS_RSA_C
-#define MBEDTLS_SHA1_C
-#define MBEDTLS_SHA256_C
-#define MBEDTLS_SHA512_C
+
 #define MBEDTLS_SSL_CLI_C
 #define MBEDTLS_SSL_SRV_C
 #define MBEDTLS_SSL_TLS_C
@@ -88,25 +79,24 @@
 #define MBEDTLS_ECP_DP_BP512R1_ENABLED
 #define MBEDTLS_ECP_DP_CURVE25519_ENABLED
 
-#else // !USE_TLS
+#endif
 
-/* mbed TLS feature support */
+/* common mbed TLS feature support */
 #define MBEDTLS_CIPHER_MODE_CBC
 #define MBEDTLS_CIPHER_MODE_CFB
 #define MBEDTLS_CIPHER_MODE_CTR
-
-/* mbed TLS modules */
+/* common mbed TLS modules */
 #define MBEDTLS_AES_C
 #define MBEDTLS_ASN1_PARSE_C
 #define MBEDTLS_CIPHER_C
 #define MBEDTLS_MD_C
 #define MBEDTLS_OID_C
 #define MBEDTLS_PKCS5_C
+#ifndef USE_SHA1_JS
 #define MBEDTLS_SHA1_C
+#endif
 #define MBEDTLS_SHA256_C
 #define MBEDTLS_SHA512_C
-
-#endif
 
 #include "jsvar.h"
 

@@ -177,6 +177,7 @@ void ICACHE_FLASH_ATTR
 i2c_master_stop(void)
 {
     i2c_master_setDC(0, 1);
+    i2c_master_wait(1);
     while (!i2c_master_getDD()) {}; // PB
     i2c_master_setDC(1, 1);
     i2c_master_wait(1); // sda 1, scl 1
@@ -194,6 +195,7 @@ i2c_master_setAck(uint8 level)
     i2c_master_setDC(level, 0);
     i2c_master_wait(1); // sda level, scl 0
     i2c_master_setDC(level, 1);
+    i2c_master_wait(1);
     while (!i2c_master_getDD()) {}; // PB
     i2c_master_setDC(level, 0);
     i2c_master_wait(1); // sda level, scl 0
@@ -214,6 +216,7 @@ i2c_master_getAck(void)
     i2c_master_setDC(1, 0);
     i2c_master_wait(1);
     i2c_master_setDC(1, 1);
+    i2c_master_wait(1);
     while (!i2c_master_getDD()) {}; // PB
     retVal = i2c_master_getDC();
     i2c_master_setDC(1, 0);
@@ -275,6 +278,7 @@ i2c_master_readByte(void)
 
     for (i = 0; i < 8; i++) {
         i2c_master_setDC(1, 1);
+        i2c_master_wait(1);
         while (!i2c_master_getDD()) {}; // PB
         retVal = (retVal<<1) | (i2c_master_getDC()&1);
         i2c_master_setDC(1, 0);
@@ -299,9 +303,11 @@ i2c_master_writeByte(uint8 wrdata)
     for (i = 7; i >= 0; i--) {
         dat = wrdata >> i;
         i2c_master_setDC(dat, 0);
+        i2c_master_wait(1);
         i2c_master_setDC(dat, 1);
+        i2c_master_wait(1);
         while (!i2c_master_getDD()) {}; // PB
         i2c_master_setDC(dat, 0);
-        i2c_master_wait(1);
+        i2c_master_wait(2);
     }
 }

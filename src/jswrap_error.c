@@ -53,8 +53,8 @@ JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {
   if (!d) return 0;
 
   if (msg) {
-    msg = jsvAsString(msg, false);
-    jsvObjectSetChildAndUnLock(d, "msg", msg);
+    msg = jsvAsString(msg);
+    jsvObjectSetChildAndUnLock(d, "message", msg);
   }
   jsvObjectSetChildAndUnLock(d, "type", jsvNewFromString(type));
 
@@ -178,7 +178,7 @@ JsVar *jswrap_error_toString(JsVar *parent) {
   if (!str) str = jsvNewFromString("Error");
   if (!str) return 0;
 
-  JsVar *msg = jsvObjectGetChild(parent, "msg", 0);
+  JsVar *msg = jsvObjectGetChild(parent, "message", 0);
   if (msg) {
     JsVar *newStr = jsvVarPrintf("%v: %v", str, msg);
     jsvUnLock2(msg, str);

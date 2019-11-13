@@ -21,22 +21,27 @@
  */
 
 // Set WIFI_DBG to 0 to disable debug printf's, to 1 for important printf's, to 2 for verbose
+//#ifdef RELEASE
+//#define WIFI_DBG 0
+//#else
+//#define WIFI_DBG 1
+//#endif
 #ifdef RELEASE
-#define WIFI_DBG 0
+  #define DBG(format, ...) do { } while(0)
+  #define DBGV(format, ...) do { } while(0)
 #else
-#define WIFI_DBG 1
-#endif
-// Normal debug
-#if WIFI_DBG > 0
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
-#else
-#define DBG(format, ...) do { } while(0)
-#endif
-// Verbose debug
-#if WIFI_DBG > 1
-#define DBGV(format, ...) os_printf(format, ## __VA_ARGS__)
-#else
-#define DBGV(format, ...) do { } while(0)
+  // Normal debug
+  #if WIFI_DBG > 0
+    #define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+  #else
+    #define DBG(format, ...) do { } while(0)
+  #endif
+  // Verbose debug
+  #if WIFI_DBG > 1
+    #define DBGV(format, ...) os_printf(format, ## __VA_ARGS__)
+  #else
+    #define DBGV(format, ...) do { } while(0)
+  #endif
 #endif
 
 // Because the ESP8266 JS wrapper is assured to be running on an ESP8266 we
@@ -64,6 +69,7 @@ typedef long long int64_t;
 #include "network.h"
 #include "network_esp8266.h"
 #include "jswrap_net.h"
+#include "jswrap_storage.h"
 
 //#define jsvUnLock(v) do { os_printf("Unlock %s @%d\n", __STRING(v), __LINE__); jsvUnLock(v); } while(0)
 
@@ -124,6 +130,7 @@ typedef struct {
   char        dhcpHostname[64];
 } Esp8266_config;
 static Esp8266_config esp8266Config;
+static uint8  savedMode = 0;
 
 //===== Mapping from enums to strings
 
@@ -158,17 +165,21 @@ FLASH_STR(__wr23, "802_1x_auth_failed");       // 23 - REASON_802_1X_AUTH_FAILED
 FLASH_STR(__wr24, "cipher_suite_rejected");    // 24 - REASON_CIPHER_SUITE_REJECTED
 FLASH_STR(__wr200, "beacon_timeout");          // 200 - REASON_BEACON_TIMEOUT
 FLASH_STR(__wr201, "no_ap_found");             // 201 - REASON_NO_AP_FOUND
+FLASH_STR(__wr202, "auth_failed");             // 202 - REASON_AUTH_FAIL
+FLASH_STR(__wr203, "assoc_failed");            // 203 - REASON_ASSOC_FAIL
+FLASH_STR(__wr204, "handshake_timeout");       // 204 - REASON_HANDSHAKE_TIMEOUT
+
 static const char *wifiReasons[] = {
   __wr0, __wr1, __wr2, __wr3, __wr4, __wr5, __wr6, __wr7, __wr8, __wr9, __wr10,
   __wr11, __wr12, __wr13, __wr14, __wr15, __wr16, __wr17, __wr18, __wr19, __wr20,
-  __wr21, __wr22, __wr23, __wr24, __wr200, __wr201
+  __wr21, __wr22, __wr23, __wr24, __wr200, __wr201, __wr202, __wr203, __wr204
 };
 
 static char wifiReasonBuff[sizeof("group_key_update_timeout")+1]; // length of longest string
 static char *wifiGetReason(uint8 wifiReason) {
   const char *reason;
   if (wifiReason <= 24) reason = wifiReasons[wifiReason];
-  else if (wifiReason >= 200 && wifiReason <= 201) reason = wifiReasons[wifiReason-200+24];
+  else if (wifiReason >= 200 && wifiReason <= 204) reason = wifiReasons[wifiReason-200+24];
   else reason = wifiReasons[1];
   flash_strncpy(wifiReasonBuff, reason, sizeof(wifiReasonBuff));
   wifiReasonBuff[sizeof(wifiReasonBuff)-1] = 0; // force null termination
@@ -282,31 +293,26 @@ void jswrap_wifi_connect(
     JsVar *jsCallback
   ) {
 
-  // Notes:
-  // The callback function is saved in the file local variable called g_jsGotIpCallback.  The
-  // callback will be made when the WiFi callback found in the function called wifiEventHandler.
-
   DBGV("> Wifi.connect\n");
 
-  // Check that the ssid value isn't obviously in error.
+  struct station_config stationConfig;
+  memset(&stationConfig, 0, sizeof(stationConfig));
+
+  // Handle parameter ssid
+  char ssid[33];
   if (!jsvIsString(jsSsid)) {
     jsExceptionHere(JSET_ERROR, "No SSID provided");
     return;
-  }
-
-  // Create SSID string
-  char ssid[33];
-  int len = jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
-  ssid[len]='\0';
-
-  // Make sure jsOptions is NULL or an object
-  if (jsOptions != NULL && !jsvIsObject(jsOptions)) {
-    EXPECT_OPT_EXCEPTION(jsOptions);
-    return;
+  } else {
+    int len = jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
+    ssid[len]='\0';
+    os_strncpy((char *)stationConfig.ssid, ssid, 32);
   }
 
   // Check callback
-  if (g_jsGotIpCallback != NULL) jsvUnLock(g_jsGotIpCallback);
+  if (g_jsGotIpCallback != NULL) {
+    jsvUnLock(g_jsGotIpCallback);
+  }
   g_jsGotIpCallback = NULL;
   if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
     EXPECT_CB_EXCEPTION(jsCallback);
@@ -318,32 +324,111 @@ void jswrap_wifi_connect(
   g_jsDisconnectCallback = NULL;
   g_disconnecting = false; // we're gonna be connecting...
 
-  // Get the optional password
-  char password[65];
-  os_memset(password, 0, sizeof(password));
+  // Check for jsOptions
   if (jsOptions != NULL) {
-    JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
-    if (jsPassword != NULL && !jsvIsString(jsPassword)) {
-      jsExceptionHere(JSET_ERROR, "Expecting options.password to be a string but got %t", jsPassword);
-      jsvUnLock(jsPassword);
+    if (!jsvIsObject(jsOptions)) {
+      jsExceptionHere(JSET_ERROR, "Expecting an Object");
       return;
-    }
-    if (jsPassword != NULL) {
-      len = jsvGetString(jsPassword, password, sizeof(password)-1);
-      password[len]='\0';
     } else {
-      password[0] = '\0';
-    }
-    jsvUnLock(jsPassword);
-  }
 
-  // structure for SDK call, it's a shame we need to copy ssid and password but if we placed
-  // them straight into the stationConfig struct we wouldn't be able to printf them for debug
-  struct station_config stationConfig;
-  memset(&stationConfig, 0, sizeof(stationConfig));
-  os_strncpy((char *)stationConfig.ssid, ssid, 32);
-  os_strncpy((char *)stationConfig.password, password, 64);
-  DBGV(" - ssid:%s passwordLen:%d\n", ssid, strlen(password));
+      // Handle password
+      char password[65];
+      os_memset(password, 0, sizeof(password));
+
+      JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
+      if (jsPassword != NULL && !jsvIsString(jsPassword)) {
+        jsExceptionHere(JSET_ERROR, "Expecting options.password to be a string but got %t", jsPassword);
+        jsvUnLock(jsPassword);
+        return;
+      }
+      if (jsPassword != NULL) {
+        int len = jsvGetString(jsPassword, password, sizeof(password)-1);
+        password[len]='\0';
+      } else {
+        password[0] = '\0';
+      }
+      os_strncpy((char *)stationConfig.password, password, 64);
+      DBGV(" - ssid:%s passwordLen:%d\n", ssid, strlen(password));
+      jsvUnLock(jsPassword);
+
+      // Handle bssid
+      JsVar *jsBssid= jsvObjectGetChild(jsOptions, "bssid", 0);
+      if (jsBssid != NULL && jsvIsString(jsBssid)) {
+        char macAddrString[6 * 3 + 1 ];
+        int len = jsvGetString(jsBssid, macAddrString, sizeof(macAddrString)-1);
+        macAddrString[len] ='\0';
+        DBGV("bssid %s, len: %d\n",macAddrString,len);
+        bool isMAC = networkParseMACAddress((unsigned char*) stationConfig.bssid, (char *) macAddrString);
+        if ( isMAC ) {
+           stationConfig.bssid_set = 1;
+           DBGV("stationConfig.bssid_set = 1, %d %d %d %d %d %d\n", 
+             stationConfig.bssid[0], stationConfig.bssid[1], stationConfig.bssid[2],
+             stationConfig.bssid[3], stationConfig.bssid[4], stationConfig.bssid[5]
+            );
+        } else { 
+          jsExceptionHere(JSET_ERROR, "Expecting bssid as \"aa:bb:cc:dd:cc:ff\"");
+          jsvUnLock(jsBssid);
+          return;
+        }
+      } 
+      jsvUnLock(jsBssid);
+
+      //Handle channel
+      JsVar *jsChannel = jsvObjectGetChild(jsOptions, "channel", 0);
+      if(jsChannel != NULL && jsvIsInt(jsChannel)){
+        uint8 channel = jsvGetInteger(jsChannel);
+        if ( channel >= 0 && channel <= 14) {
+          DBGV("channel %d\n", channel);
+          wifi_set_channel(channel);
+        } else  {
+          jsExceptionHere(JSET_ERROR, "Expecting options.channel to be a integer between 0 and  14, but got %t", jsChannel);
+          jsvUnLock(jsChannel); 
+          return;   
+        }
+      }
+      jsvUnLock(jsChannel);
+
+      // Handle  dnsServers
+      JsVar *jsDNSServers = jsvObjectGetChild(jsOptions, "dnsServers", 0);
+      if (jsvIsArray(jsDNSServers) != false) {
+        int count = 0;
+        DBGV(" - We have DNS servers!!\n");
+        JsVarInt numDNSServers = jsvGetArrayLength(jsDNSServers);
+        ip_addr_t dnsAddresses[2];
+        if (numDNSServers == 0) {
+          DBGV("No servers!!");
+          count = 0;
+        }
+        if (numDNSServers > 0) {
+          // One server
+          count = 1;
+          JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 0);
+          char buffer[50];
+          size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
+          buffer[size] = '\0';
+          jsvUnLock(jsCurrentDNSServer);
+          dnsAddresses[0].addr = networkParseIPAddress(buffer);
+        }
+        if (numDNSServers > 1) {
+          // Two servers
+          count = 2;
+          JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 1);
+          char buffer[50];
+          size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
+          buffer[size] = '\0';
+          jsvUnLock(jsCurrentDNSServer);
+          dnsAddresses[1].addr = networkParseIPAddress(buffer);
+        }
+        if (numDNSServers > 2) {
+          DBG("Ignoring DNS servers after first 2.");
+        }
+        if (count > 0) {
+          espconn_dns_setserver((char)count, dnsAddresses);
+        }
+      }
+      jsvUnLock(jsDNSServers);
+    }
+  }
 
   int8 wifiConnectStatus = wifi_station_get_connect_status();
   if (wifiConnectStatus < 0) wifiConnectStatus = 0;
@@ -378,46 +463,6 @@ void jswrap_wifi_connect(
 
   // Set the station configuration
   int8 ok = wifi_station_set_config_current(&stationConfig);
-
-  // Do we have a child property called dnsServers?
-  JsVar *jsDNSServers = jsvObjectGetChild(jsOptions, "dnsServers", 0);
-  int count = 0;
-  if (jsvIsArray(jsDNSServers) != false) {
-    DBGV(" - We have DNS servers!!\n");
-    JsVarInt numDNSServers = jsvGetArrayLength(jsDNSServers);
-    ip_addr_t dnsAddresses[2];
-    if (numDNSServers == 0) {
-      DBGV("No servers!!");
-      count = 0;
-    }
-    if (numDNSServers > 0) {
-      // One server
-      count = 1;
-      JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 0);
-      char buffer[50];
-      size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
-      buffer[size] = '\0';
-      jsvUnLock(jsCurrentDNSServer);
-      dnsAddresses[0].addr = networkParseIPAddress(buffer);
-    }
-    if (numDNSServers > 1) {
-      // Two servers
-      count = 2;
-      JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 1);
-      char buffer[50];
-      size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
-      buffer[size] = '\0';
-      jsvUnLock(jsCurrentDNSServer);
-      dnsAddresses[1].addr = networkParseIPAddress(buffer);
-    }
-    if (numDNSServers > 2) {
-      DBG("Ignoring DNS servers after first 2.");
-    }
-    if (count > 0) {
-      espconn_dns_setserver((char)count, dnsAddresses);
-    }
-  }
-  jsvUnLock(jsDNSServers);
 
   // ensure we have a default DHCP hostname
   char *old_hostname = wifi_station_get_hostname();
@@ -459,7 +504,9 @@ void jswrap_wifi_scan(JsVar *jsCallback) {
   wifi_set_opmode_current(wifi_get_opmode() | STATION_MODE);
 
   // Request a scan of the network calling "scanCB" on completion
-  wifi_station_scan(NULL, scanCB);
+  struct scan_config config = {0};
+  config.show_hidden = true;
+  wifi_station_scan(&config, scanCB);
 
   DBG("Wifi.scan starting: mode=%s\n", wifiMode[wifi_get_opmode()]);
   DBGV("< Wifi.scan\n");
@@ -503,6 +550,14 @@ void jswrap_wifi_startAP(
 
   // Handle any options that may have been supplied.
   if (jsvIsObject(jsOptions)) {
+    // Handle hidden
+    JsVar *jsHidden = jsvObjectGetChild(jsOptions, "hidden", 0); 
+    if (jsvIsInt(jsHidden)) {
+      int hidden = jsvGetInteger(jsHidden);
+      if (hidden >= 0 && hidden <= 1) softApConfig.ssid_hidden = hidden;
+    }
+    jsvUnLock(jsHidden);
+
     // Handle channel
     JsVar *jsChan = jsvObjectGetChild(jsOptions, "channel", 0);
     if (jsvIsInt(jsChan)) {
@@ -621,7 +676,7 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "powersave",
     jsvNewFromString(sleep == NONE_SLEEP_T ? "none" : "ps-poll"));
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "savedMode",
-    jsvNewFromString("off"));
+    jsvNewFromString(wifiMode[savedMode]));
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
@@ -798,121 +853,136 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
 }
 
 void jswrap_wifi_save(JsVar *what) {
-  DBGV("> Wifi.save\n");
-  uint32_t flashBlock[256];
-  Esp8266_config *conf=(Esp8266_config *)flashBlock;
-  os_memset(flashBlock, 0, sizeof(flashBlock));
-  uint32_t map = system_get_flash_size_map();
-
-  conf->length = 1024;
-  conf->version = 24;
+  DBGV("> Wifi.save\n");  
+  JsVar *o = jsvNewObject();
+  if (!o) return;
 
   if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
-    conf->mode = 0; // disable
-    conf->phyMode = PHY_MODE_11N;
-    conf->sleepType = MODEM_SLEEP_T;
-    // ssids, passwords, and hostname are set to zero thanks to memset above
+    JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
+    jswrap_storage_erase(name);
+    jsvUnLock(name);
     DBG("Wifi.save(clear)\n");
-
-  } else {
-    conf->mode = wifi_get_opmode();
-    conf->phyMode = wifi_get_phy_mode();
-    conf->sleepType = wifi_get_sleep_type();
-    DBG("Wifi.save: len=%d phy=%d sleep=%d opmode=%d\n",
-        sizeof(*conf), conf->phyMode, conf->sleepType, conf->mode);
-
-    struct station_config sta_config;
-    wifi_station_get_config(&sta_config);
-    os_strncpy(conf->staSsid, (char *)sta_config.ssid, 32);
-    os_strncpy(conf->staPass, (char *)sta_config.password, 64);
-
-    struct softap_config ap_config;
-    wifi_softap_get_config(&ap_config);
-    conf->authMode = ap_config.authmode;
-    conf->hidden = ap_config.ssid_hidden;
-    conf->ssidLen = ap_config.ssid_len;
-    os_strncpy(conf->apSsid, (char *)ap_config.ssid, 32);
-    os_strncpy(conf->apPass, (char *)ap_config.password, 64);
-    DBG("Wifi.save: AP=%s STA=%s\n", ap_config.ssid, sta_config.ssid);
-
-    char *hostname = wifi_station_get_hostname();
-    if (hostname) os_strncpy(conf->dhcpHostname, hostname, 64);
+    return;
   }
 
-  conf->crc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
-  DBG("Wifi.save: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, (long unsigned int) conf->crc);
-  if (map == 6 ) {
-    jshFlashErasePage( 0x0FB000);
-    jshFlashWrite(conf,0x0FB000, sizeof(flashBlock));    
-  } else {  
-    jshFlashErasePage(0x7B000);
-    jshFlashWrite(conf, 0x7B000, sizeof(flashBlock));
-  }
+  // station stuff
+  struct station_config sta_config;
+  wifi_station_get_config(&sta_config);
+  jsvObjectSetChildAndUnLock(o, "ssid", jsvNewFromString((char *)sta_config.ssid));
+  jsvObjectSetChildAndUnLock(o, "password", jsvNewFromString((char *)sta_config.password));
+  jsvObjectSetChildAndUnLock(o, "mode", jsvNewFromInteger(wifi_get_opmode()));
+  jsvObjectSetChildAndUnLock(o, "phyMode", jsvNewFromInteger(wifi_get_phy_mode()));
+  jsvObjectSetChildAndUnLock(o, "sleepType", jsvNewFromInteger(wifi_get_sleep_type()));
+
+  char *hostname = wifi_station_get_hostname();
+  if (hostname) jsvObjectSetChildAndUnLock(o, "hostname", jsvNewFromString((char *) hostname));
+
+  // softap stuff
+  struct softap_config ap_config;
+  wifi_softap_get_config(&ap_config);
+  jsvObjectSetChildAndUnLock(o, "ssidAP", jsvNewFromString((char *)ap_config.ssid));
+  jsvObjectSetChildAndUnLock(o, "passwordAP", jsvNewFromString((char *) ap_config.password));
+  jsvObjectSetChildAndUnLock(o, "authmodeAP", jsvNewFromInteger(ap_config.authmode));
+  jsvObjectSetChildAndUnLock(o, "hiddenAP", jsvNewFromInteger(ap_config.ssid_hidden));
+  jsvObjectSetChildAndUnLock(o, "channelAP", jsvNewFromInteger(ap_config.channel));
+  
+  savedMode = wifi_get_opmode();
+
+  // save object
+  JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
+  //JsVar *arr = jsvNewArray(&o,1);
+  jswrap_storage_erase(name);
+  jswrap_storage_write(name,o,0,0); 
+  //jsvUnLock3(arr,name,o);
+  jsvUnLock2(name,o);
+
   DBGV("< Wifi.save: write completed\n");
 }
 
 void jswrap_wifi_restore(void) {
   DBG("Wifi.restore\n");
-  uint32_t flashBlock[256];
-  Esp8266_config *conf=(Esp8266_config *)flashBlock;
-  os_memset(flashBlock, 0, sizeof(flashBlock));
-  uint32_t map = system_get_flash_size_map();
-  if (map == 6 ) {
-    jshFlashRead(flashBlock, 0x0FB000, sizeof(flashBlock));
-  } else {
-    jshFlashRead(flashBlock, 0x7B000, sizeof(flashBlock));
-  }  
-  DBG("Wifi.restore: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, (long unsigned int) conf->crc);
-  uint32_t crcRd = conf->crc;
-  conf->crc = 0;
-  uint32_t crcCalc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
-
-  wifi_set_opmode(0);
-
-  // check that we have a good flash config
-  if (conf->length != 1024 || conf->version != 24 || crcRd != crcCalc ||
-      conf->phyMode > PHY_MODE_11N || conf->sleepType > MODEM_SLEEP_T ||
-      conf->mode > STATIONAP_MODE) {
-    DBG("Wifi.restore cannot restore: version read=%d exp=%d, crc read=0x%08lx cacl=0x%08lx\n",
-        conf->version, 24, (long unsigned int) crcRd, (long unsigned int) crcCalc);
-    wifi_set_phy_mode(PHY_MODE_11N);
-    wifi_set_opmode_current(SOFTAP_MODE);
-    return;
+  JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
+  JsVar *o = jswrap_storage_readJSON(name);
+  if (!o) { // no data 
+    jsvUnLock2(name,o);
+    return; 
   }
 
-  DBG("Wifi.restore: phy=%d sleep=%d opmode=%d\n", conf->phyMode, conf->sleepType, conf->mode);
+  JsVar *v;
+  v = jsvObjectGetChild(o,"mode",0);
+  savedMode = jsvGetInteger(v);
+  jsvUnLock(v);   
+  wifi_set_opmode_current(savedMode);
 
-  wifi_set_phy_mode(conf->phyMode);
-  wifi_set_sleep_type(conf->sleepType);
-  wifi_set_opmode_current(conf->mode);
+  v = jsvObjectGetChild(o,"phyMode",0);
+  wifi_set_phy_mode(jsvGetInteger(v));
+  jsvUnLock(v); 
 
-  if (conf->mode & SOFTAP_MODE) {
+  v = jsvObjectGetChild(o,"sleepType",0);
+  wifi_set_sleep_type(jsvGetInteger(v));
+  jsvUnLock(v);
+ 
+  if (savedMode & SOFTAP_MODE) {
+
     struct softap_config ap_config;
     os_memset(&ap_config, 0, sizeof(ap_config));
-    ap_config.authmode = conf->authMode;
-    ap_config.ssid_hidden = conf->hidden;
-    ap_config.ssid_len = conf->ssidLen;
-    os_strncpy((char *)ap_config.ssid, conf->apSsid, 32);
-    os_strncpy((char *)ap_config.password, conf->apPass, 64);
-    ap_config.channel = 1;
+
+    v = jsvObjectGetChild(o,"authmodeAP",0);
+    ap_config.authmode =jsvGetInteger(v);
+    jsvUnLock(v); 
+
+    v = jsvObjectGetChild(o,"hiddenAP",0);
+    ap_config.ssid_hidden = jsvGetInteger(v);
+    jsvUnLock(v);
+
+    v = jsvObjectGetChild(o,"ssidAP",0);
+    jsvGetString(v, (char *)ap_config.ssid, sizeof(ap_config.ssid));
+
+    ap_config.ssid_len = jsvGetStringLength(v);
+    jsvUnLock(v);
+
+    v = jsvObjectGetChild(o,"passwordAP",0);
+    jsvGetString(v, (char *)ap_config.password, sizeof(ap_config.password));
+    jsvUnLock(v); 
+
+    v = jsvObjectGetChild(o,"channelAP",0);
+    ap_config.channel = jsvGetInteger(v);
+    jsvUnLock(v);
+
     ap_config.max_connection = 4;
     ap_config.beacon_interval = 100;
     wifi_softap_set_config_current(&ap_config);
     DBG("Wifi.restore: AP=%s\n", ap_config.ssid);
   }
 
-  if (conf->mode & STATION_MODE) {
-    if (conf->dhcpHostname[0] != 0 && os_strlen(conf->dhcpHostname) < 64) {
-      DBG("Wifi.restore: hostname=%s\n", conf->dhcpHostname);
-      wifi_station_set_hostname(conf->dhcpHostname);
+  if (savedMode & STATION_MODE) {
+
+    v = jsvObjectGetChild(o,"hostname",0);
+    
+    if (v) {
+      char hostname[64];
+      jsvGetString(v, hostname, sizeof(hostname));
+      DBG("Wifi.restore: hostname=%s\n", hostname);
+      wifi_station_set_hostname(hostname);
     }
+    jsvUnLock(v); 
 
     struct station_config sta_config;
     os_memset(&sta_config, 0, sizeof(sta_config));
-    os_strncpy((char *)sta_config.ssid, conf->staSsid, 32);
-    os_strncpy((char *)sta_config.password, conf->staPass, 64);
+
+    v = jsvObjectGetChild(o,"ssid",0);
+    jsvGetString(v, (char *)sta_config.ssid, sizeof(sta_config.ssid)); 
+    jsvUnLock(v); 
+
+    v = jsvObjectGetChild(o,"password",0);
+    jsvGetString(v, (char *)sta_config.password, sizeof(sta_config.password));
+    jsvUnLock(v); 
+
     wifi_station_set_config_current(&sta_config);
     DBG("Wifi.restore: STA=%s\n", sta_config.ssid);
+
+    //jsWarn("Station SSID '%s', password '%s'\n",sta_config.ssid,sta_config.password);
+
     wifi_station_connect(); // we're not supposed to call this from user_init but it doesn't harm
                             // and we need it when invoked from JS
   }
@@ -954,9 +1024,11 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
-    JsVar *params[1];
-    params[0] = jsIpInfo;
-    jsiQueueEvents(NULL, jsCallback, params, 1);
+    JsVar *params[2];
+    params[0] = jsvNewWithFlags(JSV_NULL);
+    params[1] = jsIpInfo;
+    jsiQueueEvents(NULL, jsCallback, params, 2);
+    jsvUnLock(params[0]);
   }
 
   return jsIpInfo;
@@ -1046,7 +1118,8 @@ JsVar *jswrap_wifi_getHostname(JsVar *jsCallback) {
 }
 
 void jswrap_wifi_setHostname(
-    JsVar *jsHostname //!< The hostname to set for device.
+    JsVar *jsHostname, //!< The hostname to set for device.
+    JsVar *jsCallback
 ) {
   char hostname[256];
   jsvGetString(jsHostname, hostname, sizeof(hostname));
@@ -1060,6 +1133,9 @@ void jswrap_wifi_setHostname(
 
   // now update mDNS
   startMDNS(hostname);
+
+  if (jsvIsFunction(jsCallback))
+    jsiQueueEvents(0, jsCallback, 0, 0);
 }
 
 //===== mDNS
@@ -1165,8 +1241,6 @@ void jswrap_ESP8266_wifi_reset() {
 void   jswrap_ESP8266_wifi_init1() {
   DBGV("> Wifi.init1\n");
 
-  jswrap_wifi_restore();
-
   // register the state change handler so we get debug printout for sure
   wifi_set_event_handler_cb(wifiEventHandler);
 
@@ -1199,17 +1273,19 @@ void jswrap_ESP8266_wifi_soft_init() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "ping",
-  "generate" : "jswrap_ESP8266_ping",
+  "generate" : "jswrap_wifi_ping",
   "params"   : [
     ["ipAddr", "JsVar", "A string representation of an IP address."],
     ["pingCallback", "JsVar", "Optional callback function."]
   ]
 }
+**DEPRECATED** - please use `Wifi.ping` instead.
+
 Perform a network ping request. The parameter can be either a String or a numeric IP address.
-**Note:** This function should probably be removed, or should it be part of the wifi library?
 */
-void jswrap_ESP8266_ping(
+void jswrap_wifi_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
 ) {
@@ -1290,6 +1366,7 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
     JsVar *params[1];
     params[0] = jsPingResponse;
     jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
+    jsvUnLock(jsPingResponse);
   }
 }
 
@@ -1373,15 +1450,12 @@ static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
 
   DBG(">> rc: %s\n", rc ? "true" : "false");
 
-// Schedule callback
+  // Schedule callback
   if (jsvIsFunction(jsCallback)) {
-    JsVar *jsRC = jsvNewObject();
-    jsvObjectSetChildAndUnLock(jsRC, "success",jsvNewFromBool(rc));
     JsVar *params[1];
-    params[0] = jsRC;
+    params[0] = rc ? jsvNewWithFlags(JSV_NULL) : jsvNewFromString("Failure");
     jsiQueueEvents(NULL, jsCallback, params, 1); 
     jsvUnLock(params[0]);
-    jsvUnLock(jsRC);
   }
   else {
     jsExceptionHere(JSET_ERROR, "Callback is not a function.");
@@ -1438,7 +1512,7 @@ static void scanCB(void *arg, STATUS status) {
     if (bssInfo->rssi > 0) bssInfo->rssi = 0;
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));
-    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromInteger(bssInfo->authmode));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromString(wifiAuth[bssInfo->authmode]));
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "isHidden", jsvNewFromBool(bssInfo->is_hidden));
 
     // The SSID may **NOT** be NULL terminated ... so handle that.
@@ -1551,9 +1625,9 @@ static void wifiEventHandler(System_Event_t *evt) {
     reason = wifiGetReason(evt->event_info.disconnected.reason);
     int8 wifiConnectStatus = wifi_station_get_connect_status();
     if (wifiConnectStatus < 0) wifiConnectStatus = 0;
-    DBG("Wifi event: disconnected from ssid %s, reason %s (%d) status=%s\n",
+    DBG("Wifi event: disconnected from ssid %s, reason %s (%d) status=%s(%d)\n",
       evt->event_info.disconnected.ssid, reason, evt->event_info.disconnected.reason,
-      wifiConn[wifiConnectStatus]);
+      wifiConn[wifiConnectStatus], wifiConnectStatus );
 
     if (g_skipDisconnect) {
       DBGV("  Skipping disconnect\n");
@@ -1562,10 +1636,21 @@ static void wifiEventHandler(System_Event_t *evt) {
     }
 
     // if'were connecting and we get a fatal error, then make a callback
-    if (wifiConnectStatus == STATION_WRONG_PASSWORD && jsvIsFunction(g_jsGotIpCallback)) {
-      sendWifiCompletionCB(&g_jsGotIpCallback, "bad password");
+    // need two more cases
+    if ((wifiConnectStatus == STATION_WRONG_PASSWORD ||
+         wifiConnectStatus == STATION_NO_AP_FOUND ||
+         wifiConnectStatus == STATION_CONNECT_FAIL ) 
+         && jsvIsFunction(g_jsGotIpCallback)) {
+      sendWifiCompletionCB(&g_jsGotIpCallback, wifiConn[wifiConnectStatus]);
+    }
+    // plus REASON_AUTH_EXPIRE
+    if (wifiConnectStatus == STATION_CONNECTING  &&
+         evt->event_info.disconnected.reason == REASON_AUTH_EXPIRE  &&
+         jsvIsFunction(g_jsGotIpCallback)) {
+      sendWifiCompletionCB(&g_jsGotIpCallback, reason);
     }
 
+    
     // if we're in the process of disconnecting we want to turn STA mode off now
     // at that point we may need to make a callback too
     if (g_disconnecting) {

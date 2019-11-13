@@ -58,6 +58,20 @@
 #define IRQ_PRIOR_MED 7
 #define IRQ_PRIOR_LOW 15
 
+/* On STM32 there's no 7 bit UART mode, so
+ * we much just fake it by using an 8 bit UART
+ * and then masking off the top bit */
+unsigned char jsh7BitUART;
+bool jshIsSerial7Bit(IOEventFlags device) {
+  assert(USART_COUNT<=8);
+  return jsh7BitUART & (1<<(device-EV_SERIAL1));
+}
+void jshSetIsSerial7Bit(IOEventFlags device, bool is7Bit) {
+  assert(USART_COUNT<=8);
+  if (is7Bit) jsh7BitUART |= (1<<(device-EV_SERIAL1));
+  else  jsh7BitUART &= ~(1<<(device-EV_SERIAL1));
+}
+
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
@@ -309,16 +323,16 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SERIAL1 : return USART1;
    case EV_SERIAL2 : return USART2;
-#ifdef USART3
+#if USART_COUNT>=3
    case EV_SERIAL3 : return USART3;
 #endif
-#ifdef UART4
+#if USART_COUNT>=4
    case EV_SERIAL4 : return UART4;
 #endif
-#ifdef UART5
+#if USART_COUNT>=5
    case EV_SERIAL5 : return UART5;
 #endif
-#ifdef USART6
+#if USART_COUNT>=6
    case EV_SERIAL6 : return USART6;
 #endif
    default: return 0;
@@ -647,29 +661,13 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
   return ptr;
 }
 
-
-/**
-  * @brief  Function called in case of error detected in USART IT Handler
-  * @param  None
-  * @retval None
-  */
-void Error_Callback(void)
-{
-  /* Set LED to Blinking mode to indicate error occurs */
-  while(1)
-  {
-    LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_5);
-    LL_mDelay(150);
-  }
-}
-
-
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
 
   assert(DEVICE_IS_USART(device));
 
   jshSetDeviceInitialised(device, true);
+  if (!DEVICE_IS_USART(device)) return;
 
   jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
   jshSetErrorHandlingEnabled(device, inf->errorHandling);
@@ -708,6 +706,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
   // LL_USART_ReceiveData9(USART1) & 0x7F; for the 7-bit case and
   // LL_USART_ReceiveData9(USART1) & 0xFF; for the 8-bit case
   // the register is 9-bits long.
+  jshSetIsSerial7Bit(device, inf->bytesize == 7);
 
   if((inf->bytesize == 7 && inf->parity > 0) || (inf->bytesize == 8 && inf->parity == 0)) {
     USART_InitStructure.DataWidth = LL_USART_DATAWIDTH_8B;
@@ -1054,7 +1053,7 @@ void jshIdle(){
         jsiSetConsoleDevice(EV_USBSERIAL, false);
     } else {
       if (!jsiIsConsoleDeviceForced() && jsiGetConsoleDevice()==EV_USBSERIAL)
-        jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE, false);
+        jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), false);
       jshTransmitClearDevice(EV_USBSERIAL); // clear the transmit queue
     }
   }
@@ -1946,8 +1945,9 @@ void jshFlashErasePage(uint32_t addr){
   EraseInitStruct.Page        = page;
   EraseInitStruct.NbPages     = 1;
 
-  if( HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK){
-    Error_Callback();
+  HAL_StatusTypeDef res = HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError);
+  if( res != HAL_OK){
+    jsExceptionHere(JSET_INTERNALERROR, "Flash Erase Error %d", res);
   }
 
   HAL_FLASH_Lock();
@@ -1956,28 +1956,61 @@ void jshFlashErasePage(uint32_t addr){
 
 /** Read data from flash memory into the buffer, the flash address has no alignment restrictions
   * and the len may be (and often is) 1 byte */
-void jshFlashRead(void *buf, uint32_t addr, uint32_t len){
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   memcpy(buf, (void*)addr, len);
 }
+
+static void jshFlashWrite64(uint64_t data, uint32_t addr) {
+  assert(!(addr&7));
+  //jsiConsolePrintf("Write 0x%08x%08x to 0x%08x\n", (uint32_t)(data>>32),(uint32_t)data, addr);
+  HAL_StatusTypeDef res = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, data);
+  if(res != HAL_OK){
+    // see HAL_FLASH_GetError for info on error codes
+    jsExceptionHere(JSET_INTERNALERROR, "Flash Write Error %d,0x%x (0x%08x)", res, HAL_FLASH_GetError(), addr);
+  }
+}
+
 /** Write data to flash memory from the buffer, the buffer address and flash address are
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
-void jshFlashWrite(void *buf, uint32_t addr, uint32_t len){
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+  char *cbuf = (char*)buf;
+  assert(!(addr&3));
+  assert(!(len&3));
 
   HAL_FLASH_Unlock();
+  // bodge up single 32 bit writes
+  if (addr&4) {
+    addr -= 4;
+    char buf64[8];
+    jshFlashRead(&buf64[0],addr,4);
+    memcpy(&buf64[4], cbuf, 4);
+    jshFlashWrite64(*((uint64_t*)buf64), addr);
+    cbuf += 4;
+    addr += 8;
+    len -= 4;
+  }
 
-  unsigned int i;
+  // 64 bit writes
+  while (len>7 && !jspIsInterrupted()) {
+    jshFlashWrite64(*((uint64_t*)cbuf), addr);
+    cbuf += 8;
+    addr += 8;
+    len -= 8;
+  }
 
-  for (i=0;i<len/8;i++){
-    if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, ((uint64_t*)buf)[i]) != HAL_OK){
-      HAL_FLASH_Lock();
-      Error_Callback();
-    }
-    addr = addr + 8;
+  // final 32 bit write?
+  if (len>3 && !jspIsInterrupted()) {
+    char buf64[8];
+    memcpy(&buf64[0], cbuf, 4);
+    jshFlashRead(&buf64[4],addr+4,4);
+    jshFlashWrite64(*((uint64_t*)buf64), addr);
   }
 
   HAL_FLASH_Lock();
-
 }
+
+// Just pass data through, since we can access flash at the same address we wrote it
+size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
 
 
 /** Utility timer handling functions
@@ -2144,4 +2177,9 @@ unsigned int jshGetRandomNumber(){
  * speed in Hz though. */
 unsigned int jshSetSystemClock(JsVar *options){
         return 0;
+}
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  NVIC_SystemReset();
 }

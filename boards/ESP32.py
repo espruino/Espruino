@@ -19,7 +19,7 @@ info = {
  'espruino_page_link'       : 'ESP32',
  'default_console'          : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
- 'variables'                : 5000,
+ 'variables'                : 2500, # JSVAR_MALLOC is defined below - so this can vary depending on what is initialised
  'binary_name'              : 'espruino_%v_esp32.bin',
  'build' : {
    'optimizeflags' : '-Og',
@@ -27,15 +27,17 @@ info = {
      'ESP32',
      'NET',
      'GRAPHICS',
-     'CRYPTO',
+     'CRYPTO','SHA256','SHA512',
      'TLS',
      'TELNET',
      'NEOPIXEL',
      'FILESYSTEM',
-     'FLASHFS'	 
+     'FLASHFS',
+     'BLUETOOTH'	 
    ],
    'makefile' : [
-     'DEFINES+=-DESP_PLATFORM -DESP32=1'
+     'DEFINES+=-DESP_PLATFORM -DESP32=1',
+     'DEFINES+=-DJSVAR_MALLOC' # Allocate space for variables at jsvInit time
    ]
  }
 };
@@ -53,10 +55,10 @@ chip = {
   'adc'     : 2,
   'dac'     : 0,
   'saved_code' : {
-    'address' : 0x100000,
+    'address' : 0x2C0000,
     'page_size' : 4096,
-    'pages' : 16,
-    'flash_available' : 960, # firmware can be up to this size
+    'pages' : 64,
+    'flash_available' : 1344, # firmware can be up to this size - see paritions_espruino.csv
   },
 };
 devices = {

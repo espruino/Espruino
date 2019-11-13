@@ -1,0 +1,75 @@
+From fbd5b90b3e07db3eb10a7f963cd1bf8c1697848c Mon Sep 17 00:00:00 2001
+From: AntiCat <github@anticat.ch>
+Date: Fri, 26 May 2017 02:48:43 +0200
+Subject: [PATCH 3/7] NFC: Whitelist all commands
+
+---
+ .../components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c   | 39 +++++++++++-----------
+ 1 file changed, 19 insertions(+), 20 deletions(-)
+ mode change 100644 => 100755 targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+
+diff --git a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+old mode 100644
+new mode 100755
+index 350577e9..81883b0a
+--- a/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
++++ b/targetlibs/nrf5x_14/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
+@@ -118,8 +118,7 @@ NRF_LOG_MODULE_REGISTER();
+ #define NFCID1_DEFAULT_LENGHT       NFCID1_DOUBLE_SIZE                          /**< Length of NFCID1 if user does not provide one */
+ #define NFCID1_MAX_LENGHT           NFCID1_TRIPLE_SIZE                          /**< Maximum length of NFCID1 */
+ 
+-#define NFC_RX_BUFFER_SIZE          16u                                         /**< NFC Rx data buffer size */
+-#define T2T_READ_CMD                0x30u                                       /**< Type 2 Tag Read command identifier */
++#define NFC_RX_BUFFER_SIZE          64u                                         /**< NFC Rx data buffer size */
+ #define NFC_SLP_REQ_CMD             0x50u                                       /**< NFC SLP_REQ command identifier */
+ #define NFC_CRC_SIZE                2u                                          /**< CRC size in bytes */
+ 
+@@ -713,27 +712,27 @@ void NFCT_IRQHandler(void)
+                                  NFCT_RXD_AMOUNT_RXDATABYTES_Pos) - NFC_CRC_SIZE;
+         nrf_nfct_event_clear(&NRF_NFCT->EVENTS_RXFRAMEEND);
+ 
+-        /* Look for Tag 2 Type READ Command */
+-        if (m_nfc_rx_buffer[0] == T2T_READ_CMD)
++        /* Frame is garbage, wait for next frame reception */
++        if(rx_data_size == 0)
+         {
+-            if(m_nfc_lib_callback != NULL)
+-            {
+-                /* This callback should trigger transmission of READ Response */
+-                m_nfc_lib_callback(m_nfc_lib_context,
+-                                   HAL_NFC_EVENT_DATA_RECEIVED,
+-                                   (void*)m_nfc_rx_buffer,
+-                                   rx_data_size);
+-            }
+-        }
+-        else
++            NRF_NFCT->TASKS_ENABLERXDATA = 1;
++        } else
++        /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
++        if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
+         {
+-            /* Indicate that SLP_REQ was received - this will cause FRAMEDELAYTIMEOUT error */
+-            if(m_nfc_rx_buffer[0] == NFC_SLP_REQ_CMD)
+-            {
+-                m_slp_req_received = true;
+-            }
+-            /* Not a READ Command, so wait for next frame reception */
++            m_slp_req_received = true;
++
++            /* Wait for next frame reception */
+             NRF_NFCT->TASKS_ENABLERXDATA = 1;
++
++        } else
++        if(m_nfc_lib_callback != NULL)
++        {
++            /* This callback should trigger transmission of a Response */
++            m_nfc_lib_callback(m_nfc_lib_context,
++                               HAL_NFC_EVENT_DATA_RECEIVED,
++                               (void*)m_nfc_rx_buffer,
++                               rx_data_size);
+         }
+ 
+         NRF_LOG_DEBUG("Rx fend");
+-- 
+2.16.0
+

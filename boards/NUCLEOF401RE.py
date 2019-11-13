@@ -32,8 +32,9 @@ info = {
      'NEOPIXEL'
    ],
    'makefile' : [
-     'NUCLEO=1',
+     'WRAPPERSOURCES+=targets/nucleo/jswrap_nucleo.c',
      'DEFINES+=-DUSE_USB_OTG_FS=1',
+     'DEFINES+=-DPIN_NAMES_DIRECT=1', # Package skips out some pins, so we can't assume each port starts from 0
      'STLIB=STM32F401xE',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o'
    ]
@@ -59,7 +60,7 @@ chip = {
     'page_size' :  131072, # size of pages : on STM32F401, last 2 pages are 128 Kbytes
     # we use the last flash page only, furthermore it persists after a firmware flash of the board
     'pages' : 1, # count of pages we're using to save RAM to Flash,
-    'flash_available' : 512 # binary will have a hole in it, so we just want to test against full size
+    'flash_available' : 384 # we use the last 128k page
   },
   #'place_text_section' : 0x08010000, # note flash_available above # TODO USELESS
 };

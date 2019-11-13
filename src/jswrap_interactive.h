@@ -13,6 +13,8 @@
  */
 #include "jsvar.h"
 #include "jsinteractive.h"
+#include "jsflash.h"
+
 
 void jswrap_interface_setBusyIndicator(JsVar *pinVar);
 void jswrap_interface_setSleepIndicator(JsVar *pinVar);
@@ -27,6 +29,7 @@ JsVar *jswrap_interface_getSerial();
 
 JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout, JsVar *args);
 JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout, JsVar *args);
-void jswrap_interface_clearInterval(JsVar *idVar);
-void jswrap_interface_clearTimeout(JsVar *idVar);
+// also see jsiSetTimeout for native implementation
+void jswrap_interface_clearInterval(JsVar *idVarArr);
+void jswrap_interface_clearTimeout(JsVar *idVarArr);
 void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval);

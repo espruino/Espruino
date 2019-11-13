@@ -52,6 +52,9 @@ JsNetworkState networkState =
 JsNetwork *networkCurrentStruct = 0;
 
 uint32_t networkParseIPAddress(const char *ip) {
+  if (!strcmp(ip,"localhost"))
+    return 0x0100007F; // 127.0.0.1
+
   int n = 0;
   uint32_t addr = 0;
   while (*ip) {
@@ -192,6 +195,7 @@ void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->data.pinCS = PIN_UNDEFINED;
   net->data.pinIRQ = PIN_UNDEFINED;
   net->data.pinEN = PIN_UNDEFINED;
+  net->data.recvBufferSize = 0; // use net->chunkLen
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, NETWORK_VAR_NAME, net->networkVar);
   networkSet(net);
   networkGetFromVar(net);
@@ -249,6 +253,11 @@ bool networkGetFromVar(JsNetwork *net) {
     jsExceptionHere(JSET_INTERNALERROR, "Unknown network device %d", net->data.type);
     networkFree(net);
     return false;
+  }
+
+  // Adjust for SO_RCVBUF
+  if (net->data.recvBufferSize > net->chunkSize) {
+    net->chunkSize = net->data.recvBufferSize;
   }
 
   // Save the current network as a global.
@@ -322,7 +331,7 @@ int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
 int ssl_entropy(void *data, unsigned char *output, size_t len ) {
   NOT_USED(data);
   size_t i;
-  unsigned int r;
+  unsigned int r = 0;
   for (i=0;i<len;i++) {
     if (!(i&3)) r = jshGetRandomNumber();
     output[i] = (unsigned char)r;
@@ -505,7 +514,6 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
    * Also see https://tls.mbed.org/kb/how-to/reduce-mbedtls-memory-and-storage-footprint
    * */
 
-  assert(sckt>=0 && sckt<32);
   // Create a new socketData using the variable
   JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", JSV_OBJECT);
   if (!ssl) return false; // out of memory?
@@ -669,7 +677,6 @@ int netCreateSocket(JsNetwork *net, SocketType socketType, uint32_t host, unsign
   if (sckt<0) return sckt;
 
 #ifdef USE_TLS
-  assert(sckt>=0 && sckt<32);
   if (socketType & ST_TLS) {
     if (ssl_newSocketData(sckt, options)) {
     } else {

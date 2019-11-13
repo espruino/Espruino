@@ -22,7 +22,7 @@ static bool isNegativeZero(double x) {
 }
 
 double jswrap_math_sin(double x) {
-#ifdef SAVE_ON_FLASH
+#ifdef SAVE_ON_FLASH_MATH
   /* To save on flash, do our own sin function that's slower/nastier
    * but is smaller! If we pull in gcc's it adds:
    * __kernel_rem_pio2    2054 bytes
@@ -137,6 +137,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
 }
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "acos",
   "generate_full" : "jswrap_math_atan(jswrap_math_sqrt(1-x*x) / x)",
@@ -147,6 +148,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
 }*/
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "asin",
   "generate_full" : "jswrap_math_atan(x / jswrap_math_sqrt(1-x*x))",
@@ -166,7 +168,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
   "return" : ["float","The arc tangent of x, between -PI/2 and PI/2"]
 }*/
 double jswrap_math_atan(double x) {
-#ifdef SAVE_ON_FLASH
+#ifdef SAVE_ON_FLASH_MATH
   /* To save on flash, do our own atan function that's slower/nastier
    * but is smaller! */
   // exploit symmetry - we're only accurate when x is small
@@ -206,13 +208,28 @@ double jswrap_math_atan(double x) {
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Math",
   "name" : "atan2",
-  "generate" : "atan2",
+  "generate" : "jswrap_math_atan2",
   "params" : [
     ["y","float","The Y-part of the angle to get the arc tangent of"],
     ["x","float","The X-part of the angle to get the arc tangent of"]
   ],
   "return" : ["float","The arctangent of Y/X, between -PI and PI"]
 }*/
+double jswrap_math_atan2(double y, double x) {
+#ifdef SAVE_ON_FLASH_MATH
+  if (x>0) return jswrap_math_atan(y/x);
+  if (x<0) {
+    if (y>=0) return jswrap_math_atan(y/x)+PI;
+    else return jswrap_math_atan(y/x)-PI;
+  } else { // X==0
+    if (y>0) return PI/2;
+    else if (y<0) return -PI/2;
+    else return NAN;
+  }
+#else
+  return atan2(y, x);
+#endif
+}
 
 /* we use sin here, not cos, to try and save a bit of code space */
 /*JSON{
@@ -293,6 +310,7 @@ double jswrap_math_pow(double x, double y) {
 
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "pow",
   "generate" : "jswrap_math_pow",
@@ -322,10 +340,10 @@ double jswrap_math_pow(double x, double y) {
 JsVar *jswrap_math_round(double x) {
   if (!isfinite(x) || isNegativeZero(x)) return jsvNewFromFloat(x);
   x += (x<0) ? -0.4999999999 : 0.4999999999;
-  JsVarInt i = (JsVarInt)x;
+  long long i = (long long)x;
   if (i==0 && (x<0))
     return jsvNewFromFloat(-0.0); // pass -0 through
-  return jsvNewFromInteger(i);
+  return jsvNewFromLongInteger(i);
 }
 
 /*JSON{
@@ -352,6 +370,7 @@ JsVar *jswrap_math_round(double x) {
 /* we could use the real sqrt - but re-use pow to save on code space */
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "sqrt",
   "generate" : "jswrap_math_sqrt",
@@ -388,6 +407,7 @@ double jswrap_math_sqrt(double x) {
 
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "exp",
   "generate" : "exp",
@@ -398,6 +418,7 @@ double jswrap_math_sqrt(double x) {
 }*/
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
   "class" : "Math",
   "name" : "log",
   "generate" : "log",
@@ -440,6 +461,8 @@ JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
   ],
   "return" : ["float","The value of x, wrapped so as not to be below min or above max."]
 }
+DEPRECATED - This is not part of standard JavaScript libraries
+
 Wrap a number around if it is less than 0 or greater than or equal to max. For instance you might do: ```Math.wrap(angleInDegrees, 360)```
 */
 

@@ -11,3 +11,14 @@ endif
 
 # ==============================================================
 include make/common/ARM.make
+
+proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
+
+flash: $(PROJ_NAME).bin
+ifdef USE_DFU
+	sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
+else
+	@echo ST-LINK flash
+	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
+endif
+

@@ -55,6 +55,7 @@ typedef struct {
   // Info for accessing specific devices
   IOEventFlags device;
   Pin pinCS, pinIRQ, pinEN;
+  int recvBufferSize; ///< Amount of memory to allocate for recv (sockopt SO_RCVBUF), by default net->chunkSize
 } PACKED_FLAGS JsNetworkData;
 
 
@@ -84,6 +85,13 @@ typedef struct JsNetwork {
   /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
   int (*send)(struct JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len);
 } PACKED_FLAGS JsNetwork;
+
+/// Header applied to all UDP packets when they are received
+typedef struct {
+  uint8_t host[4];   //< host data sent from
+  uint16_t port;   //< port data sent from
+  uint16_t length; //< length in bytes of the data
+} PACKED_FLAGS JsNetUDPPacketHeader;
 
 // ---------------------------------- these are in network.c
 // Get the relevant info for JsNetwork (done from a var in root scope)

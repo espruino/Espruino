@@ -15,15 +15,42 @@
 #include "jsutils.h"
 #include "jsinteractive.h"
 #include "jsdevices.h"
+#include "jsvariterator.h"
 #include "compress_heatshrink.h"
 #include "heatshrink_encoder.h"
 #include "heatshrink_decoder.h"
 
 #define BUFFERSIZE 128
 
-/** gets data from array, writes to callback */
-void heatshrink_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned char ch, uint32_t *cbdata), uint32_t *cbdata) {
+void heatshrink_ptr_output_cb(unsigned char ch, uint32_t *cbdata) {
+  unsigned char **outPtr = (unsigned char**)cbdata;
+  *((*outPtr)++) = ch;
+}
+int heatshrink_ptr_input_cb(uint32_t *cbdata) {
+  HeatShrinkPtrInputCallbackInfo *info = (HeatShrinkPtrInputCallbackInfo *)cbdata;
+  if (!info->len) return -1;
+  info->len--;
+  return *(info->ptr++);
+}
+
+void heatshrink_var_output_cb(unsigned char ch, uint32_t *cbdata) {
+  JsvStringIterator *it = (JsvStringIterator *)cbdata;
+  jsvStringIteratorSetCharAndNext(it, (char)ch);
+}
+
+int heatshrink_var_input_cb(uint32_t *cbdata) {
+  JsvIterator *it = (JsvIterator *)cbdata;
+  int d = -1;
+  if (jsvIteratorHasElement(it))
+    d = jsvIteratorGetIntegerValue(it) & 0xFF;
+  jsvIteratorNext(it);
+  return d;
+}
+
+/** gets data from callback, writes to callback if nonzero. Returns total length. */
+uint32_t heatshrink_encode_cb(int (*in_callback)(uint32_t *cbdata), uint32_t *in_cbdata, void (*out_callback)(unsigned char ch, uint32_t *cbdata), uint32_t *out_cbdata) {
   heatshrink_encoder hse;
+  uint8_t inBuf[BUFFERSIZE];
   uint8_t outBuf[BUFFERSIZE];
   heatshrink_encoder_reset(&hse);
 
@@ -31,11 +58,26 @@ void heatshrink_encode(unsigned char *data, size_t dataLen, void (*callback)(uns
   size_t count = 0;
   size_t sunk = 0;
   size_t polled = 0;
-  while (sunk < dataLen) {
-    bool ok = heatshrink_encoder_sink(&hse, &data[sunk], dataLen - sunk, &count) >= 0;
-    assert(ok);
+  int lastByte = 0;
+  size_t inBufCount = 0;
+  size_t inBufOffset = 0;
+  while (lastByte >= 0 || inBufCount>0) {
+    // Read data from input
+    if (inBufCount==0) {
+      inBufOffset = 0;
+      while (inBufCount<BUFFERSIZE && lastByte>=0) {
+        lastByte = in_callback(in_cbdata);
+        if (lastByte >= 0)
+          inBuf[inBufCount++] = (uint8_t)lastByte;
+      }
+    }
+    // encode
+    bool ok = heatshrink_encoder_sink(&hse, &inBuf[inBufOffset], inBufCount, &count) >= 0;
+    assert(ok);NOT_USED(ok);
+    inBufCount -= count;
+    inBufOffset += count;
     sunk += count;
-    if (sunk == dataLen) {
+    if ((inBufCount==0) && (lastByte < 0)) {
       heatshrink_encoder_finish(&hse);
     }
 
@@ -43,54 +85,60 @@ void heatshrink_encode(unsigned char *data, size_t dataLen, void (*callback)(uns
     do {
       pres = heatshrink_encoder_poll(&hse, outBuf, sizeof(outBuf), &count);
       assert(pres >= 0);
-      for (i=0;i<count;i++)
-        callback(outBuf[i], cbdata);
+      if (out_callback)
+        for (i=0;i<count;i++)
+          out_callback(outBuf[i], out_cbdata);
       polled += count;
     } while (pres == HSER_POLL_MORE);
     assert(pres == HSER_POLL_EMPTY);
-    if (sunk == dataLen) {
+    if ((inBufCount==0) && (lastByte < 0)) {
       heatshrink_encoder_finish(&hse);
     }
   }
+  return (uint32_t)polled;
 }
 
-/** gets data from callback, writes it into array */
-void heatshrink_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsigned char *data) {
+/** gets data from callback, writes it into callback if nonzero. Returns total length */
+uint32_t heatshrink_decode_cb(int (*in_callback)(uint32_t *cbdata), uint32_t *in_cbdata, void (*out_callback)(unsigned char ch, uint32_t *cbdata), uint32_t *out_cbdata) {
   heatshrink_decoder hsd;
   uint8_t inBuf[BUFFERSIZE];
+  uint8_t outBuf[BUFFERSIZE];
   heatshrink_decoder_reset(&hsd);
 
+  size_t i;
   size_t count = 0;
   size_t sunk = 0;
   size_t polled = 0;
   int lastByte = 0;
   size_t inBufCount = 0;
+  size_t inBufOffset = 0;
   while (lastByte >= 0 || inBufCount>0) {
-    // Read data from flash
-    while (inBufCount<BUFFERSIZE && lastByte>=0) {
-      lastByte = callback(cbdata);
-      if (lastByte >= 0)
-        inBuf[inBufCount++] = (uint8_t)lastByte;
+    // Read data from input
+    if (inBufCount==0) {
+      inBufOffset = 0;
+      while (inBufCount<BUFFERSIZE && lastByte>=0) {
+        lastByte = in_callback(in_cbdata);
+        if (lastByte >= 0)
+          inBuf[inBufCount++] = (uint8_t)lastByte;
+      }
     }
     // decode
-    bool ok = heatshrink_decoder_sink(&hsd, inBuf, inBufCount, &count) >= 0;
-    // if not all the data was read, shift what's left to the start of our buffer
-    if (count < inBufCount) {
-      size_t i;
-      for (i=count;i<inBufCount;i++)
-        inBuf[i-count] = inBuf[i];
-    }
+    bool ok = heatshrink_decoder_sink(&hsd, &inBuf[inBufOffset], inBufCount, &count) >= 0;
+    assert(ok);NOT_USED(ok);
     inBufCount -= count;
-    assert(ok);
+    inBufOffset += count;
     sunk += count;
-    if (lastByte < 0) {
+    if ((inBufCount==0) && (lastByte < 0)) {
       heatshrink_decoder_finish(&hsd);
     }
 
     HSE_poll_res pres;
     do {
-      pres = heatshrink_decoder_poll(&hsd, &data[polled], 0xFFFFFF/*bad!*/, &count); // TODO: range check?
+      pres = heatshrink_decoder_poll(&hsd, outBuf, sizeof(outBuf), &count);
       assert(pres >= 0);
+      if (out_callback)
+        for (i=0;i<count;i++)
+          out_callback(outBuf[i], out_cbdata);
       polled += count;
     } while (pres == HSER_POLL_MORE);
     assert(pres == HSER_POLL_EMPTY);
@@ -98,4 +146,21 @@ void heatshrink_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsi
       heatshrink_decoder_finish(&hsd);
     }
   }
+  return (uint32_t)polled;
+}
+
+
+
+/** gets data from array, writes to callback if nonzero. Returns total length. */
+uint32_t heatshrink_encode(unsigned char *in_data, size_t in_len, void (*out_callback)(unsigned char ch, uint32_t *cbdata), uint32_t *out_cbdata) {
+  HeatShrinkPtrInputCallbackInfo cbi;
+  cbi.ptr = in_data;
+  cbi.len = in_len;
+  return heatshrink_encode_cb(heatshrink_ptr_input_cb, (uint32_t*)&cbi, out_callback, out_cbdata);
+}
+
+/** gets data from callback, writes it into array if nonzero. Returns total length */
+uint32_t heatshrink_decode(int (*in_callback)(uint32_t *cbdata), uint32_t *in_cbdata, unsigned char *out_data) {
+  unsigned char *dataptr = out_data;
+  return heatshrink_decode_cb(in_callback, in_cbdata, out_data?heatshrink_ptr_output_cb:NULL, out_data?(uint32_t*)&dataptr:NULL);
 }

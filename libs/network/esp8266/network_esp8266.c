@@ -35,18 +35,17 @@ typedef long long int64_t;
 
 // Set NET_DBG to 0 to disable debug printf's, to 1 for important printf's
 #ifdef RELEASE
-#define NET_DBG 0
+  #define DBG(format, ...) do { } while(0)
 #else
-#define NET_DBG 1
-#endif
-// Normal debug
-#if NET_DBG > 0
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
-// #include "jsinteractive.h"
-// #define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
-static char DBG_LIB[] = "net_esp8266"; // library name
-#else
-#define DBG(format, ...) do { } while(0)
+  // Normal debug
+  #if NET_DBG > 0
+    #define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+    // #include "jsinteractive.h"
+    // #define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
+    static char DBG_LIB[] = "net_esp8266"; // library name
+  #else
+    #define DBG(format, ...) do { } while(0)
+  #endif
 #endif
 
 static struct socketData *getSocketData(int s);
@@ -161,12 +160,15 @@ static bool g_socketsInitialized = false;
  * socket structures and dumps their state to the debug log.
  */
 void esp8266_dumpAllSocketData() {
+#ifndef RELEASE
   for (int i=0; i<MAX_SOCKETS; i++) {
     esp8266_dumpSocketData(&socketArray[i]);
   }
+#endif
 }
 
 
+#ifndef RELEASE
 /**
  * Write the details of a socket to the debug log.
  * The data associated with the socket is dumped to the debug log.
@@ -243,6 +245,7 @@ static void esp8266_dumpSocketData(
   }
   DBG("\n");
 }
+#endif
 
 
 /**
@@ -837,16 +840,16 @@ int net_ESP8266_BOARD_recv(
 
   size_t delta = 0;
   if (socketType & ST_UDP) {
-    delta = sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
-    uint32_t *host = (uint32_t*)buf;
-    unsigned short *port = (unsigned short*)&host[1];
-    uint16_t *size = (uint16_t*)&port[1];
+    JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+
+    delta = sizeof(JsNetUDPPacketHeader);
     buf += delta;
     len -= delta;
+
     // UDP remote host/port
-    *host = pSocketData->host;
-    *port = pSocketData->port;
-    *size = rxBuf->filled;
+    *(uint32_t*)&header->host = pSocketData->host;
+    header->port = pSocketData->port;
+    header->length = rxBuf->filled;
   }
 
   // If the receive buffer is able to completely fit in the buffer
@@ -922,18 +925,16 @@ int net_ESP8266_BOARD_send(
   //os_printf("\n");
   size_t delta = 0;
   if (socketType & ST_UDP) {
-    delta = sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
-    uint32_t *host = (uint32_t*)buf;
-    unsigned short *port = (unsigned short*)&host[1];
-    uint16_t *size = (uint16_t*)&port[1];
+    JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
 
     // UDP remote IP/port need to be set everytime we call espconn_send
-    *(uint32_t *)&pSocketData->pEspconn->proto.tcp->remote_ip = *host;
-    pSocketData->pEspconn->proto.tcp->remote_port = *port;
+    *(uint32_t *)&pSocketData->pEspconn->proto.tcp->remote_ip = *(uint32_t *)&header->host;
+    pSocketData->pEspconn->proto.tcp->remote_port = header->port;
 
+    delta = sizeof(JsNetUDPPacketHeader);
     buf += delta;
-    len = *size;
-    DBG("%s: Sendto %d to %x:%d\n", DBG_LIB, len, *host, *port);
+    len = header->length;
+    DBG("%s: Sendto %d to %x:%d\n", DBG_LIB, len, *(uint32_t *)&header->host, header->port);
   }
 
   // Copy the data to be sent into a transmit buffer we hand off to espconn

@@ -71,9 +71,77 @@ ls -l *puckjs*
 
 ## Under MacOS
 
-* It is possible to build Espruino under MacOS with some effort.
-  * PR for an easy Espruino build under MacOS are welcome.
-* If you don't have Linux it's much easier to install it in a Virtual Machine (see below).
+#### Create a self growing sparse image and mount 
+
+```
+mkdir ~/diskimages
+
+hdiutil create -size 10g -fs "Case-sensitive HFS+" -volname Espruino ~/diskimages/Espruino.sparsebundle
+
+hdiutil attach ~/diskimages/Espruino.sparsebundle
+
+sudo ln -s /Volumes/Espruino/ /Espruino
+
+cd /Espruino
+
+```
+
+#### Resize if needed
+
+```
+hdiutil detach /Volumes/Espruino
+hdiutil resize -size 15G ~/diskimages/Espruino.sparsebundle
+hdiutil attach ~/diskimages/Espruino.sparsebundle
+```
+
+#### Create some directories on /Espruino 
+
+```
+mkdir /Espruino/{gcc,sdk,repos,tmp}
+
+/Espruino -+- gcc     GNU Compiler Collection for different processors
+           +- sdk     Software Development Kits
+           +- repos   like Espruino EspruinoDocs ... 
+	   +- tmp     temporary files  
+```
+
+#### Install build and flash tools
+
+```
+brew upgrade gnu-sed gawk binutils gperftools gettext wget help2man libtool autoconf automake
+
+# version 1.4.0
+brew upgrade stlink
+
+# version 2.1
+pip install esptool
+```
+
+#### Get GNU Compiler Collection 
+
+```
+# Espruino, Pico, PuckJS, EspruinoWifi 
+# gcc arm https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
+curl -Ls https://goo.gl/42fcKX | tar -C gcc -xvzf - 
+
+# xtensa gcc - pre buid from  https://github.com/MaBecker/esp8266
+curl -Ls https://github.com/MaBecker/esp8266/xtensa-lx106-elf-4.8.5.tgz | tar -C gcc -xvzf -
+```
+
+#### Get SDK
+
+```
+# ESP8266/esp8285 starting with 01  
+# espressif ESP8266 2.0 <- actual one 
+wget -P tmp  https://github.com/espressif/ESP8266_NONOS_SDK/archive/v2.0.0.zip
+unzip -d sdk tmp/v2.0.0.zip
+rm tmp/v2.0.0.zip
+# add esptool.py
+mkdir /Espruino/sdk/ESP8266_NONOS_SDK-2.0.0/esptool
+ln -s /usr/local/bin/esptool.py /Espruino/sdk/ESP8266_NONOS_SDK-2.0.0/esptool/
+```
+
+The other stuff is similar to Linux
 
 ## Under Windows
 
@@ -146,16 +214,19 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 * USB
   * the board appears as a drive to drop a hex on
 
-#### for [Puck.js](http://www.espruino.com/Puck.js)
+#### for [Puck.js](http://www.espruino.com/Puck.js) and [Pixl.js](http://www.espruino.com/Pixl.js)
 
-The Puck.js is based on the nRF52
+The Puck.js and Pixl.js are based on the nRF52
 
 ```bash
+# Puck.js
 make clean && DFU_UPDATE_BUILD=1 BOARD=PUCKJS RELEASE=1 make
+# Pixl.js
+make clean && DFU_UPDATE_BUILD=1 BOARD=PIXLJS RELEASE=1 make
 ```
 
-The resulting file is a zip that has to be transferred to the puck.js via a Bluetooth low energy device.
-See <https://www.espruino.com/Puck.js+Quick+Start> for information concerning transferring the zip to the puck.js.
+The resulting file is a zip that has to be transferred via Bluetooth Low Energy.
+See the [Puck.js](http://www.espruino.com/Puck.js#firmware-updates) and [Pixl.js](http://www.espruino.com/Pixl.js#firmware-updates) pages for information concerning transferring the ZIP.
 
 #### for [NRF52-DK](https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy/nRF52-DK)
 
@@ -191,13 +262,13 @@ make clean && BOARD=NRF51822DK RELEASE=1 make
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
 
 * the esp-open-sdk from <https://github.com/pfalcon/esp-open-sdk>, use make STANDALONE=n
-* the Espressif SDK (version 1.5.0 with lwip patch as of this writing) from <http://bbs.espressif.com/viewforum.php?f=46> and <http://bbs.espressif.com/viewtopic.php?f=7&t=1528>
+* the Espressif NONOS SDK (version 2.2.1) from <https://github.com/espruino/EspruinoBuildTools/blob/master/esp8266/ESP8266_NONOS_SDK-2.2.1.tgz>
 
 To run make you need to pass a couple of environment variables to `make`.  These include:
 
 * `BOARD=ESP8266_BOARD`
 * `FLASH_4MB=1` if you have an esp-12
-* `ESP8266_SDK_ROOT=<Path to the 1.4 SDK>`
+* `ESP8266_SDK_ROOT=<Path to the 2.21 SDK>`
 * `PATH=<Path to esp-open-sdk/xtensa-lx106-elf/bin/>`
 * `COMPORT=</dev/ttyUSB0|COM1|...>`
 
@@ -208,8 +279,8 @@ The easiest is to place the following lines into a script, adapt it to your need
 #! /bin/bash
 export BOARD=ESP8266_BOARD
 export FLASH_4MB=1
-export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.5.0
-export PATH=$PATH:/esp8266/esp-open-sdk/xtensa-lx106-elf/bin/
+export ESP8266_SDK_ROOT=/esp8266/sdk/ESP8266_NONOS_SDK-2.2.1
+export PATH=$PATH:/esp8266/gcc/xtensa-lx106-elf/bin/
 export COMPORT=/dev/ttyUSB0
 make clean && make $*
 
@@ -218,7 +289,7 @@ make clean && make $*
 * If you do `make flash` it will try to flash your esp8266 module over serial
 * If you do `make wiflash` it will try to flash you esp8266 module over wifi, which assumes
   that it's already running Espruino
-* You will also get an `espruino_1v00_*_esp8266.tgz` archive, which contains everything you
+* You will also get an `espruino_2v0x_*_esp8266.tgz` archive, which contains everything you
   need to flash a module (except for esptool.py), including a README_flash.txt
   
 ### for esp32

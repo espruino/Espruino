@@ -80,86 +80,74 @@ void jspSetError(bool lineReported) {
 bool jspHasError() {
   return JSP_HAS_ERROR;
 }
-
-void jspReplaceWith(JsVar *dst, JsVar *src) {
-  // If this is an index in an array buffer, write directly into the array buffer
-  if (jsvIsArrayBufferName(dst)) {
-    size_t idx = (size_t)jsvGetInteger(dst);
-    JsVar *arrayBuffer = jsvLock(jsvGetFirstChild(dst));
-    jsvArrayBufferSet(arrayBuffer, idx, src);
-    jsvUnLock(arrayBuffer);
-    return;
-  }
-  // if destination isn't there, isn't a 'name', or is used, give an error
-  if (!jsvIsName(dst)) {
-    jsExceptionHere(JSET_ERROR, "Unable to assign value to non-reference %t", dst);
-    return;
-  }
-  jsvSetValueOfName(dst, src);
-  /* If dst is flagged as a new child, it means that
-   * it was previously undefined, and we need to add it to
-   * the given object when it is set.
-   */
-  if (jsvIsNewChild(dst)) {
-    // Get what it should have been a child of
-    JsVar *parent = jsvLock(jsvGetNextSibling(dst));
-    if (!jsvIsString(parent)) {
-      // if we can't find a char in a string we still return a NewChild,
-      // but we can't add character back in
-      assert(jsvHasChildren(parent));
-      // Remove the 'new child' flagging
-      jsvUnRef(parent);
-      jsvSetNextSibling(dst, 0);
-      jsvUnRef(parent);
-      jsvSetPrevSibling(dst, 0);
-      // Add to the parent
-      jsvAddName(parent, dst);
-    }
-    jsvUnLock(parent);
-  }
+void jspeiClearScopes() {
+  jsvUnLock(execInfo.scopesVar);
+  execInfo.scopesVar = 0;
 }
 
 bool jspeiAddScope(JsVar *scope) {
-  if (execInfo.scopeCount >= JSPARSE_MAX_SCOPES) {
-    jsExceptionHere(JSET_ERROR, "Maximum number of scopes exceeded");
-    jspSetError(false);
-    return false;
-  }
-  execInfo.scopes[execInfo.scopeCount++] = jsvLockAgain(scope);
+  if (!execInfo.scopesVar)
+    execInfo.scopesVar = jsvNewEmptyArray();
+  if (!execInfo.scopesVar) return false;
+  jsvArrayPush(execInfo.scopesVar, scope);
   return true;
 }
 
 void jspeiRemoveScope() {
-  if (execInfo.scopeCount <= 0) {
+  if (!execInfo.scopesVar || !jsvGetArrayLength(execInfo.scopesVar)) {
     jsExceptionHere(JSET_INTERNALERROR, "Too many scopes removed");
     jspSetError(false);
     return;
   }
-  jsvUnLock(execInfo.scopes[--execInfo.scopeCount]);
+  jsvUnLock(jsvArrayPop(execInfo.scopesVar));
+  if (!jsvGetFirstChild(execInfo.scopesVar)) {
+    jsvUnLock(execInfo.scopesVar);
+    execInfo.scopesVar = 0;
+  }
 }
 
 JsVar *jspeiFindInScopes(const char *name) {
-  int i;
-  for (i=execInfo.scopeCount-1;i>=0;i--) {
-    JsVar *ref = jsvFindChildFromString(execInfo.scopes[i], name, false);
-    if (ref) return ref;
+  if (execInfo.scopesVar) {
+    JsVar *it = jsvLockSafe(jsvGetLastChild(execInfo.scopesVar));
+    while (it) {
+      JsVar *scope = jsvSkipName(it);
+      JsVarRef next = jsvGetPrevSibling(it);
+      JsVar *ref = jsvFindChildFromString(scope, name, false);
+      jsvUnLock2(it, scope);
+      if (ref) return ref;
+      it = jsvLockSafe(next);
+    }
   }
   return jsvFindChildFromString(execInfo.root, name, false);
 }
-
-// TODO: get rid of these, use jspeiGetTopScope instead
+/// Return the topmost scope (and lock it)
+JsVar *jspeiGetTopScope() {
+  if (execInfo.scopesVar) {
+    JsVar *scope = jsvGetLastArrayItem(execInfo.scopesVar);
+    if (scope) return scope;
+  }
+  return jsvLockAgain(execInfo.root);
+}
 JsVar *jspeiFindOnTop(const char *name, bool createIfNotFound) {
-  if (execInfo.scopeCount>0)
-    return jsvFindChildFromString(execInfo.scopes[execInfo.scopeCount-1], name, createIfNotFound);
-  return jsvFindChildFromString(execInfo.root, name, createIfNotFound);
+  JsVar *scope = jspeiGetTopScope();
+  JsVar *result = jsvFindChildFromString(scope, name, createIfNotFound);
+  jsvUnLock(scope);
+  return result;
 }
 JsVar *jspeiFindNameOnTop(JsVar *childName, bool createIfNotFound) {
-  if (execInfo.scopeCount>0)
-    return jsvFindChildFromVar(execInfo.scopes[execInfo.scopeCount-1], childName, createIfNotFound);
-  return jsvFindChildFromVar(execInfo.root, childName, createIfNotFound);
+  JsVar *scope = jspeiGetTopScope();
+  JsVar *result = jsvFindChildFromVar(scope, childName, createIfNotFound);
+  jsvUnLock(scope);
+  return result;
 }
 
-
+JsVar *jspFindPrototypeFor(const char *className) {
+  JsVar *obj = jsvObjectGetChild(execInfo.root, className, 0);
+  if (!obj) return 0;
+  JsVar *proto = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
+  jsvUnLock(obj);
+  return proto;
+}
 
 /** Here we assume that we have already looked in the parent itself -
  * and are now going down looking at the stuff it inherited */
@@ -169,13 +157,8 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
     JsVar *inheritsFrom = jsvObjectGetChild(parent, JSPARSE_INHERITS_VAR, 0);
 
     // if there's no inheritsFrom, just default to 'Object.prototype'
-    if (!inheritsFrom) {
-      JsVar *obj = jsvObjectGetChild(execInfo.root, "Object", 0);
-      if (obj) {
-        inheritsFrom = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
-        jsvUnLock(obj);
-      }
-    }
+    if (!inheritsFrom)
+      inheritsFrom = jspFindPrototypeFor("Object");
 
     if (inheritsFrom && inheritsFrom!=parent) {
       // we have what it inherits from (this is ACTUALLY the prototype var)
@@ -218,40 +201,19 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
 }
 
 JsVar *jspeiGetScopesAsVar() {
-  if (execInfo.scopeCount==0)
-    return 0;
-  if (execInfo.scopeCount==1)
-    return jsvLockAgain(execInfo.scopes[0]);
-
-  JsVar *arr = jsvNewEmptyArray();
-  int i;
-  for (i=0;i<execInfo.scopeCount;i++) {
-    JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(i), execInfo.scopes[i]);
-    if (!idx) { // out of memory
-      jspSetError(false);
-      return arr;
-    }
-    jsvAddName(arr, idx);
-    jsvUnLock(idx);
-  }
-  return arr;
+  if (!execInfo.scopesVar) return 0; // no scopes!
+  // Copy this - because if we just returned it, the underlying array would get altered
+  return jsvCopy(execInfo.scopesVar, true);
 }
 
 void jspeiLoadScopesFromVar(JsVar *arr) {
-  execInfo.scopeCount = 0;
-
-  if (jsvIsArray(arr)) {
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, arr);
-    while (jsvObjectIteratorHasValue(&it)) {
-      execInfo.scopes[execInfo.scopeCount++] = jsvObjectIteratorGetValue(&it);
-      jsvObjectIteratorNext(&it);
-    }
-    jsvObjectIteratorFree(&it);
-  } else
-    execInfo.scopes[execInfo.scopeCount++] = jsvLockAgain(arr);
+  jsvUnLock(execInfo.scopesVar);
+  execInfo.scopesVar = 0;
+  if (arr) execInfo.scopesVar = jsvCopy(arr, true);
+  // TODO: copy on write? would make function calls faster
 }
 // -----------------------------------------------
+/// Check that we have enough stack to recurse. Return true if all ok, error if not.
 bool jspCheckStackPosition() {
   if (jsuGetFreeStack() < 512) { // giving us 512 bytes leeway
     jsExceptionHere(JSET_ERROR, "Too much recursion - the stack is about to overflow");
@@ -409,12 +371,8 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
     if (jsvIsNativeString(lex->sourceVar)) {
       /* If we're parsing from a Native String (eg. E.memoryArea, E.setBootCode) then
       use another Native String to load function code straight from flash */
-      funcCodeVar = jsvNewWithFlags(JSV_NATIVE_STRING);
-      if (funcCodeVar) {
-        int s = (int)jsvStringIteratorGetIndex(&funcBegin.it) - 1;
-        funcCodeVar->varData.nativeStr.ptr = lex->sourceVar->varData.nativeStr.ptr + s;
-        funcCodeVar->varData.nativeStr.len = (uint16_t)(lastTokenEnd - s);
-      }
+      int s = (int)jsvStringIteratorGetIndex(&funcBegin.it) - 1;
+      funcCodeVar = jsvNewNativeString(lex->sourceVar->varData.nativeStr.ptr + s, (unsigned int)(lastTokenEnd - s));
     } else {
       if (jsfGetFlag(JSF_PRETOKENISE)) {
         funcCodeVar = jslNewTokenisedStringFromLexer(&funcBegin, (size_t)lastTokenEnd);
@@ -470,7 +428,7 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
   // Parse the actual function block
   jspeFunctionDefinitionInternal(funcVar, false);
 
-  // if we had a function name, add it to the end
+  // if we had a function name, add it to the end (if we don't it gets confused with arguments)
   if (funcVar && functionInternalName)
     jsvObjectSetChildAndUnLock(funcVar, JSPARSE_FUNCTION_NAME_NAME, functionInternalName);
 
@@ -547,8 +505,14 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       while (jsvIsFunctionParameter(param)) {
         if ((unsigned)argCount>=argPtrSize) {
           // allocate more space on stack if needed
-          unsigned int newArgPtrSize = argPtrSize?argPtrSize*4:16;
-          JsVar **newArgPtr = (JsVar**)alloca(sizeof(JsVar*)*newArgPtrSize);
+          unsigned int newArgPtrSize = (argPtrSize?argPtrSize:(unsigned int)argCount)*4;
+          size_t newArgPtrByteSize = sizeof(JsVar*)*newArgPtrSize;
+          if (jsuGetFreeStack() < 256+newArgPtrByteSize) {
+            jsExceptionHere(JSET_ERROR, "Insufficient stack for this many arguments");
+            jsvUnLock(thisVar);
+            return 0;
+          }
+          JsVar **newArgPtr = (JsVar**)alloca(newArgPtrByteSize);
           memcpy(newArgPtr, argPtr, (unsigned)argCount*sizeof(JsVar*));
           argPtr = newArgPtr;
           argPtrSize = newArgPtrSize;
@@ -623,6 +587,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
       if (nativePtr && !JSP_HAS_ERROR) {
         returnVar = jsnCallFunction(nativePtr, function->varData.native.argTypes, thisVar, argPtr, argCount);
+        assert(!jsvIsName(returnVar));
       } else {
         returnVar = 0;
       }
@@ -663,14 +628,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       JsVar *param = jsvObjectIteratorGetKey(&it);
       JsVar *value = jsvObjectIteratorGetValue(&it);
       while (jsvIsFunctionParameter(param) && value) {
-        JsVar *paramName = jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH);
-        if (paramName) { // could be out of memory
-          jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-          jsvSetValueOfName(paramName, value);
-          jsvAddName(functionRoot, paramName);
-          jsvUnLock(paramName);
-        } else
-          jspSetError(false);
+        jsvAddFunctionParameter(functionRoot, jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH), value);
         jsvUnLock2(value, param);
         jsvObjectIteratorNext(&it);
         param = jsvObjectIteratorGetKey(&it);
@@ -692,14 +650,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
               value = jspeAssignmentExpression();
             // and if execute, copy it over
             value = jsvSkipNameAndUnLock(value);
-            JsVar *paramName = paramDefined ? jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH) : jsvNewFromEmptyString();
-            if (paramName) { // could be out of memory
-              jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-              jsvSetValueOfName(paramName, value);
-              jsvAddName(functionRoot, paramName);
-              jsvUnLock(paramName);
-            } else
-              jspSetError(false);
+            jsvAddFunctionParameter(functionRoot, paramDefined?jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH):0, value);
             jsvUnLock(value);
             if (lex->tk!=')') JSP_MATCH(',');
           }
@@ -712,14 +663,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         while (args<argCount) {
           JsVar *param = jsvObjectIteratorGetKey(&it);
           bool paramDefined = jsvIsFunctionParameter(param);
-          JsVar *paramName = paramDefined ? jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH) : jsvNewFromEmptyString();
-          if (paramName) {
-            jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-            jsvSetValueOfName(paramName, argPtr[args]);
-            jsvAddName(functionRoot, paramName);
-            jsvUnLock(paramName);
-          } else
-            jspSetError(false);
+          jsvAddFunctionParameter(functionRoot, paramDefined?jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH):0, argPtr[args]);
           args++;
           jsvUnLock(param);
           if (paramDefined) jsvObjectIteratorNext(&it);
@@ -737,15 +681,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             thisVar = jsvSkipName(param);
           } else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
           else if (jsvIsFunctionParameter(param)) {
-            JsVar *paramName = jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH);
-            // paramName is already a name (it's a function parameter)
-            if (paramName) {// could be out of memory - or maybe just not supplied!
-              jsvMakeFunctionParameter(paramName);
-              JsVar *defaultVal = jsvSkipName(param);
-              if (defaultVal) jsvUnLock(jsvSetValueOfName(paramName, defaultVal));
-              jsvAddName(functionRoot, paramName);
-              jsvUnLock(paramName);
-            }
+            JsVar *defaultVal = jsvSkipName(param);
+            jsvAddFunctionParameter(functionRoot, jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH), defaultVal);
+            jsvUnLock(defaultVal);
           }
         }
         jsvUnLock(param);
@@ -761,20 +699,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       }
 
       if (!JSP_HAS_ERROR) {
-        // save old scopes
-        JsVar *oldScopes[JSPARSE_MAX_SCOPES];
-        int oldScopeCount;
-        int i;
-        oldScopeCount = execInfo.scopeCount;
-        for (i=0;i<execInfo.scopeCount;i++)
-          oldScopes[i] = execInfo.scopes[i];
+        // save old scopes and reset scope list
+        JsVar *oldScopeVar = execInfo.scopesVar;
+        execInfo.scopesVar = 0;
         // if we have a scope var, load it up. We may not have one if there were no scopes apart from root
         if (functionScope) {
           jspeiLoadScopesFromVar(functionScope);
           jsvUnLock(functionScope);
-        } else {
-          // no scope var defined? We have no scopes at all!
-          execInfo.scopeCount = 0;
         }
         // add the function's execute space to the symbol table so we can recurse
         if (jspeiAddScope(functionRoot)) {
@@ -843,7 +774,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
               if (returnVarName) // could have failed with out of memory
                 jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
             }
-            JsExecFlags hasError = execInfo.execute&(EXEC_ERROR_MASK|EXEC_CTRL_C_MASK);
+            // Store a stack trace if we had an error
+            JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
 
 #ifdef USE_DEBUGGER
@@ -886,13 +818,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           jspeiRemoveScope();
         }
 
-        // Unref old scopes
-        for (i=0;i<execInfo.scopeCount;i++)
-          jsvUnLock(execInfo.scopes[i]);
-        // restore function scopes
-        for (i=0;i<oldScopeCount;i++)
-          execInfo.scopes[i] = oldScopes[i];
-        execInfo.scopeCount = oldScopeCount;
+        // Unlock scopes and restore old ones
+        jsvUnLock(execInfo.scopesVar);
+        execInfo.scopesVar = oldScopeVar;
       }
       jsvUnLock(functionCode);
       jsvUnLock(functionRoot);
@@ -954,11 +882,16 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
    *
    * Also we might have got a built-in, which wouldn't have a name on it
    * anyway - so in both cases, strip the name if it is there, and create
-   * a new name.
+   * a new name that references the object we actually requested the
+   * member from..
    */
   if (child && returnName) {
     // Get rid of existing name
-    child = jsvSkipNameAndUnLock(child);
+    if (jsvIsName(child)) {
+      JsVar *t = jsvGetValueOfName(child);
+      jsvUnLock(child);
+      child = t;
+    }
     // create a new name
     JsVar *nameVar = jsvNewFromString(name);
     JsVar *newChild = jsvCreateNewChild(object, nameVar, child);
@@ -1079,12 +1012,12 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
           // Note: name will go away when we parse something else!
           const char *name = jslGetTokenValueAsString(lex);
 
-          JsVar *aVar = jsvSkipName(a);
+          JsVar *aVar = jsvSkipNameWithParent(a,true,parent);
           JsVar *child = 0;
           if (aVar)
             child = jspGetNamedField(aVar, name, true);
           if (!child) {
-            if (jsvHasChildren(aVar)) {
+            if (!jsvIsUndefined(aVar)) {
               // if no child found, create a pointer to where it could be
               // as we don't want to allocate it until it's written
               JsVar *nameVar = jslGetTokenValueAsVar(lex);
@@ -1092,7 +1025,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               jsvUnLock(nameVar);
             } else {
               // could have been a string...
-              jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", name, aVar);
+              jsExceptionHere(JSET_ERROR, "Cannot read property '%s' of undefined", name);
             }
           }
           jsvUnLock(parent);
@@ -1114,7 +1047,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
       JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock2(parent, index);, a);
       if (JSP_SHOULD_EXECUTE) {
         index = jsvAsArrayIndexAndUnLock(index);
-        JsVar *aVar = jsvSkipName(a);
+        JsVar *aVar = jsvSkipNameWithParent(a,true,parent);
         JsVar *child = 0;
         if (aVar)
           child = jspGetVarNamedField(aVar, index, true);
@@ -1194,7 +1127,20 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
   }
 
   JsVar *parent = 0;
+#ifndef SAVE_ON_FLASH
+  bool wasSuper = lex->tk==LEX_R_SUPER;
+#endif
   JsVar *a = jspeFactorMember(jspeFactor(), &parent);
+#ifndef SAVE_ON_FLASH
+  if (wasSuper) {
+    /* if this was 'super.something' then we need
+     * to overwrite the parent, because it'll be
+     * set to the prototype otherwise.
+     */
+    jsvUnLock(parent);
+    parent = jsvLockAgainSafe(execInfo.thisVar);
+  }
+#endif
 
   while ((lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) && !jspIsInterrupted()) {
     JsVar *funcName = a;
@@ -1214,7 +1160,24 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
     parent=0;
     a = jspeFactorMember(a, &parent);
   }
-
+#ifndef SAVE_ON_FLASH
+  /* If we've got something that we care about the parent of (eg. a getter/setter)
+   * then we repackage it into a 'NewChild' name that references the parent before
+   * we leave. Note: You can't do this on everything because normally NewChild
+   * forces a new child to be blindly created. It works on Getters/Setters because
+   * we *always* run those rather than adding them.
+   */
+  if (parent && jsvIsBasicName(a) && !jsvIsNewChild(a)) {
+    JsVar *value = jsvLockSafe(jsvGetFirstChild(a));
+    if (jsvIsGetterOrSetter(value)) { // no need to do this for functions since we've just executed whatever we needed to
+      JsVar *nameVar = jsvCopyNameOnly(a,false,true);
+      JsVar *newChild = jsvCreateNewChild(parent, nameVar, value);
+      jsvUnLock2(nameVar, a);
+      a = newChild;
+    }
+    jsvUnLock(value);
+  }
+#endif
   jsvUnLock(parent);
   return a;
 }
@@ -1249,13 +1212,29 @@ NO_INLINE JsVar *jspeFactorObject() {
       } else {
         JSP_MATCH_WITH_RETURN(LEX_ID, contents);
       }
-      JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(varName), contents);
-      if (JSP_SHOULD_EXECUTE) {
-        varName = jsvAsArrayIndexAndUnLock(varName);
-        JsVar *contentsName = jsvFindChildFromVar(contents, varName, true);
-        if (contentsName) {
-          JsVar *value = jsvSkipNameAndUnLock(jspeAssignmentExpression()); // value can be 0 (could be undefined!)
-          jsvUnLock2(jsvSetValueOfName(contentsName, value), value);
+#ifndef SAVE_ON_FLASH
+      if (lex->tk==LEX_ID && jsvIsString(varName)) {
+        bool isGetter = jsvIsStringEqual(varName, "get");
+        bool isSetter = jsvIsStringEqual(varName, "set");
+        if (isGetter || isSetter) {
+          jsvUnLock(varName);
+          varName = jslGetTokenValueAsVar(lex);
+          JSP_ASSERT_MATCH(LEX_ID);
+          JsVar *method = jspeFunctionDefinition(false);
+          jsvAddGetterOrSetter(contents, varName, isGetter, method);
+          jsvUnLock(method);
+        }
+      } else
+#endif
+      {
+        JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(varName), contents);
+        if (JSP_SHOULD_EXECUTE) {
+          varName = jsvAsArrayIndexAndUnLock(varName);
+          JsVar *contentsName = jsvFindChildFromVar(contents, varName, true);
+          if (contentsName) {
+            JsVar *value = jsvSkipNameAndUnLock(jspeAssignmentExpression()); // value can be 0 (could be undefined!)
+            jsvUnLock2(jsvSetValueOfName(contentsName, value), value);
+          }
         }
       }
       jsvUnLock(varName);
@@ -1354,7 +1333,7 @@ NO_INLINE JsVar *jspeFactorDelete() {
       if (!parent && jsvIsChild(execInfo.root, a))
         parent = jsvLockAgain(execInfo.root);
 
-      if (parent && !jsvIsFunction(parent)) {
+      if (jsvHasChildren(parent)) {
         // else remove properly.
         if (jsvIsArray(parent)) {
           // For arrays, we must make sure we don't change the length
@@ -1410,7 +1389,7 @@ JsVar *jspeTemplateLiteral() {
             jsvStringIteratorFree(&eit);
             JsVar *result = jspEvaluateExpressionVar(expr);
             jsvUnLock(expr);
-            result = jsvAsString(result, true);
+            result = jsvAsStringAndUnLock(result);
             jsvStringIteratorAppendString(&dit, result, 0);
             jsvUnLock(result);
           } else {
@@ -1452,6 +1431,9 @@ NO_INLINE JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a) {
 
   bool expressionOnly = lex->tk!='{';
   jspeFunctionDefinitionInternal(funcVar, expressionOnly);
+  if (execInfo.thisVar) {
+    jsvObjectSetChild(funcVar, JSPARSE_FUNCTION_THIS_NAME, execInfo.thisVar);
+  }
   return funcVar;
 }
 
@@ -1481,6 +1463,97 @@ NO_INLINE JsVar *jspeExpressionOrArrowFunction() {
     return a;
   }
 }
+
+/// Parse an ES6 class, expects LEX_R_CLASS already parsed
+NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
+  JsVar *classFunction = 0;
+  JsVar *classPrototype = 0;
+  JsVar *classInternalName = 0;
+
+  bool actuallyCreateClass = JSP_SHOULD_EXECUTE;
+  if (actuallyCreateClass) {
+    classFunction = jsvNewWithFlags(JSV_FUNCTION);
+    JsVar *scopeVar = jspeiGetScopesAsVar();
+    if (scopeVar)
+      jsvUnLock2(jsvAddNamedChild(classFunction, scopeVar, JSPARSE_FUNCTION_SCOPE_NAME), scopeVar);
+  }
+
+  if (parseNamedClass && lex->tk==LEX_ID) {
+    if (classFunction)
+      classInternalName = jslGetTokenValueAsVar(lex);
+    JSP_ASSERT_MATCH(LEX_ID);
+  }
+  if (classFunction) {
+    JsVar *prototypeName = jsvFindChildFromString(classFunction, JSPARSE_PROTOTYPE_VAR, true);
+    jspEnsureIsPrototype(classFunction, prototypeName); // make sure it's an object
+    classPrototype = jsvSkipName(prototypeName);
+    jsvUnLock(prototypeName);
+  }
+  if (lex->tk==LEX_R_EXTENDS) {
+    JSP_ASSERT_MATCH(LEX_R_EXTENDS);
+    JsVar *extendsFrom = actuallyCreateClass ? jsvSkipNameAndUnLock(jspGetNamedVariable(jslGetTokenValueAsString(lex))) : 0;
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(extendsFrom,classFunction,classInternalName,classPrototype),0);
+    if (classPrototype) {
+      if (jsvIsFunction(extendsFrom)) {
+        JsVar *extendsFromProto = jsvObjectGetChild(extendsFrom, JSPARSE_PROTOTYPE_VAR, 0);
+        if (extendsFromProto) {
+          jsvObjectSetChild(classPrototype, JSPARSE_INHERITS_VAR, extendsFromProto);
+          // link in default constructor if ours isn't supplied
+          jsvObjectSetChildAndUnLock(classFunction, JSPARSE_FUNCTION_CODE_NAME, jsvNewFromString("if(this.__proto__.__proto__.constructor)this.__proto__.__proto__.constructor.apply(this,arguments)"));
+          jsvUnLock(extendsFromProto);
+        }
+      } else
+        jsExceptionHere(JSET_SYNTAXERROR, "'extends' argument should be a function, got %t", extendsFrom);
+    }
+    jsvUnLock(extendsFrom);
+  }
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock3(classFunction,classInternalName,classPrototype),0);
+
+  while ((lex->tk==LEX_ID || lex->tk==LEX_R_STATIC) && !jspIsInterrupted()) {
+    bool isStatic = lex->tk==LEX_R_STATIC;
+    if (isStatic) JSP_ASSERT_MATCH(LEX_R_STATIC);
+
+    JsVar *funcName = jslGetTokenValueAsVar(lex);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(funcName,classFunction,classInternalName,classPrototype),0);
+#ifndef SAVE_ON_FLASH
+    bool isGetter = false, isSetter = false;
+    if (lex->tk==LEX_ID) {
+      isGetter = jsvIsStringEqual(funcName, "get");
+      isSetter = jsvIsStringEqual(funcName, "set");
+      if (isGetter || isSetter) {
+        jsvUnLock(funcName);
+        funcName = jslGetTokenValueAsVar(lex);
+        JSP_ASSERT_MATCH(LEX_ID);
+      }
+    }
+#endif
+    JsVar *method = jspeFunctionDefinition(false);
+    if (classFunction && classPrototype) {
+      JsVar *obj = isStatic ? classFunction : classPrototype;
+      if (jsvIsStringEqual(funcName, "constructor")) {
+        jswrap_function_replaceWith(classFunction, method);
+#ifndef SAVE_ON_FLASH
+      } else if (isGetter || isSetter) {
+        jsvAddGetterOrSetter(obj, funcName, isGetter, method);
+#endif
+      } else {
+        funcName = jsvMakeIntoVariableName(funcName, 0);
+        jsvSetValueOfName(funcName, method);
+        jsvAddName(obj, funcName);
+      }
+
+    }
+    jsvUnLock2(method,funcName);
+  }
+  jsvUnLock(classPrototype);
+  // If we had a name, add it to the end (or it gets confused with the constructor arguments)
+  if (classInternalName)
+    jsvObjectSetChildAndUnLock(classFunction, JSPARSE_FUNCTION_NAME_NAME, classInternalName);
+
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN('}',jsvUnLock(classFunction),0);
+  return classFunction;
+}
+
 #endif
 
 NO_INLINE JsVar *jspeFactor() {
@@ -1577,16 +1650,68 @@ NO_INLINE JsVar *jspeFactor() {
     if (!jspCheckStackPosition()) return 0;
     return jspeFactorArray();
   } else if (lex->tk==LEX_R_FUNCTION) {
+    if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_FUNCTION);
     return jspeFunctionDefinition(true);
+#ifndef SAVE_ON_FLASH
+  } else if (lex->tk==LEX_R_CLASS) {
+    if (!jspCheckStackPosition()) return 0;
+    JSP_ASSERT_MATCH(LEX_R_CLASS);
+    return jspeClassDefinition(true);
+  } else if (lex->tk==LEX_R_SUPER) {
+    JSP_ASSERT_MATCH(LEX_R_SUPER);
+    /* This is kind of nasty, since super appears to do
+      three different things.
+
+      * In the constructor it references the extended class's constructor
+      * in a method it references the constructor's prototype.
+      * in a static method it references the extended class's constructor (but this is different)
+     */
+
+    if (jsvIsObject(execInfo.thisVar)) {
+      // 'this' is an object - must be calling a normal method
+      JsVar *proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_INHERITS_VAR, 0); // if we're in a method, get __proto__ first
+      JsVar *proto2 = jsvIsObject(proto1) ? jsvObjectGetChild(proto1, JSPARSE_INHERITS_VAR, 0) : 0; // still in method, get __proto__.__proto__
+      jsvUnLock(proto1);
+      if (!proto2) {
+        jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
+        return 0;
+      }
+      // If we're doing super() we want the constructor
+      if (lex->tk=='(') {
+        JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
+        jsvUnLock(proto2);
+        return constr;
+      }
+      // But if we're doing something else - eg 'super.' or 'super[' then it needs to reference the prototype
+      return proto2;
+    } else if (jsvIsFunction(execInfo.thisVar)) {
+      // 'this' is a function - must be calling a static method
+      JsVar *proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_PROTOTYPE_VAR, 0);
+      JsVar *proto2 = jsvIsObject(proto1) ? jsvObjectGetChild(proto1, JSPARSE_INHERITS_VAR, 0) : 0;
+      jsvUnLock(proto1);
+      if (!proto2) {
+        jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
+        return 0;
+      }
+      JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
+      jsvUnLock(proto2);
+      return constr;
+    }
+    jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
+    return 0;
+#endif
   } else if (lex->tk==LEX_R_THIS) {
     JSP_ASSERT_MATCH(LEX_R_THIS);
     return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.root );
   } else if (lex->tk==LEX_R_DELETE) {
+    if (!jspCheckStackPosition()) return 0;
     return jspeFactorDelete();
   } else if (lex->tk==LEX_R_TYPEOF) {
+    if (!jspCheckStackPosition()) return 0;
     return jspeFactorTypeOf();
   } else if (lex->tk==LEX_R_VOID) {
+    if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_VOID);
     jsvUnLock(jspeUnaryExpression());
     return 0;
@@ -1607,7 +1732,7 @@ NO_INLINE JsVar *__jspePostfixExpression(JsVar *a) {
       jsvUnLock(one);
 
       // in-place add/subtract
-      jspReplaceWith(a, res);
+      jsvReplaceWith(a, res);
       jsvUnLock(res);
       // but then use the old value
       jsvUnLock(a);
@@ -1629,7 +1754,7 @@ NO_INLINE JsVar *jspePostfixExpression() {
       JsVar *res = jsvMathsOpSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
       jsvUnLock(one);
       // in-place add/subtract
-      jspReplaceWith(a, res);
+      jsvReplaceWith(a, res);
       jsvUnLock(res);
     }
   } else
@@ -1729,16 +1854,25 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
         if (op==LEX_R_IN) {
           JsVar *av = jsvSkipName(a); // needle
           JsVar *bv = jsvSkipName(b); // haystack
-          if (jsvIsArray(bv) || jsvIsObject(bv)) { // search keys, NOT values
+          if (jsvHasChildren(bv)) { // search keys, NOT values
             av = jsvAsArrayIndexAndUnLock(av);
-            JsVar *varFound = jsvFindChildFromVar( bv, av, false);
-            jsvUnLock(a);
+            JsVar *varFound = jspGetVarNamedField( bv, av, true);
+            jsvUnLock2(a,varFound);
             a = jsvNewFromBool(varFound!=0);
-            jsvUnLock(varFound);
-          } else {// else it will be undefined
-            jsExceptionHere(JSET_ERROR, "Cannot use 'in' operator to search a %t", bv);
-            jsvUnLock(a);
-            a = 0;
+          } else { // else maybe it's a fake object...
+            const JswSymList *syms = jswGetSymbolListForObjectProto(bv);
+            if (syms) {
+              JsVar *varFound = 0;
+              char nameBuf[JSLEX_MAX_TOKEN_LENGTH];
+              if (jsvGetString(av, nameBuf, sizeof(nameBuf)) < sizeof(nameBuf))
+                varFound = jswBinarySearch(syms, bv, nameBuf);
+              jsvUnLock2(a, varFound);
+              a = jsvNewFromBool(varFound!=0);
+            } else { // not built-in, just assume we can't do it
+              jsExceptionHere(JSET_ERROR, "Cannot use 'in' operator to search a %t", bv);
+              jsvUnLock(a);
+              a = 0;
+            }
           }
           jsvUnLock2(av, bv);
         } else if (op==LEX_R_INSTANCEOF) {
@@ -1841,13 +1975,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
 
     if (JSP_SHOULD_EXECUTE && lhs) {
       if (op=='=') {
-        /* If we're assigning to this and we don't have a parent,
-         * add it to the symbol table root */
-        if (!jsvGetRefs(lhs) && jsvIsName(lhs)) {
-          if (!jsvIsArrayBufferName(lhs) && !jsvIsNewChild(lhs))
-            jsvAddName(execInfo.root, lhs);
-        }
-        jspReplaceWith(lhs, rhs);
+        jsvReplaceWithOrAddToRoot(lhs, rhs);
       } else {
         if (op==LEX_PLUSEQUAL) op='+';
         else if (op==LEX_MINUSEQUAL) op='-';
@@ -1866,7 +1994,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
             /* A special case for string += where this is the only use of the string
              * and we're not appending to ourselves. In this case we can do a
              * simple append (rather than clone + append)*/
-            JsVar *str = jsvAsString(rhs, false);
+            JsVar *str = jsvAsString(rhs);
             jsvAppendStringVarComplete(currentValue, str);
             jsvUnLock(str);
             op = 0;
@@ -1876,7 +2004,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
         if (op) {
           /* Fallback which does a proper add */
           JsVar *res = jsvMathsOpSkipNames(lhs,rhs,op);
-          jspReplaceWith(lhs, res);
+          jsvReplaceWith(lhs, res);
           jsvUnLock(res);
         }
       }
@@ -1897,17 +2025,34 @@ NO_INLINE JsVar *jspeExpression() {
     JsVar *a = jspeAssignmentExpression();
     if (lex->tk!=',') return a;
     // if we get a comma, we just forget this data and parse the next bit...
+    jsvCheckReferenceError(a);
     jsvUnLock(a);
     JSP_ASSERT_MATCH(',');
   }
   return 0;
 }
 
+/** Parse a block `{ ... }` */
+NO_INLINE void jspeSkipBlock() {
+  // fast skip of blocks
+  int brackets = 1;
+  while (lex->tk && brackets) {
+    if (lex->tk == '{') brackets++;
+    else if (lex->tk == '}') {
+      brackets--;
+      if (!brackets) return;
+    }
+    JSP_ASSERT_MATCH(lex->tk);
+  }
+}
+
 /** Parse a block `{ ... }` but assume brackets are already parsed */
 NO_INLINE void jspeBlockNoBrackets() {
   if (JSP_SHOULD_EXECUTE) {
     while (lex->tk && lex->tk!='}') {
-      jsvUnLock(jspeStatement());
+      JsVar *a = jspeStatement();
+      jsvCheckReferenceError(a);
+      jsvUnLock(a);
       if (JSP_HAS_ERROR) {
         if (lex && !(execInfo.execute&EXEC_ERROR_LINE_REPORTED)) {
           execInfo.execute = (JsExecFlags)(execInfo.execute | EXEC_ERROR_LINE_REPORTED);
@@ -1921,15 +2066,13 @@ NO_INLINE void jspeBlockNoBrackets() {
       }
       if (JSP_SHOULDNT_PARSE)
         return;
+      if (!JSP_SHOULD_EXECUTE) {
+        jspeSkipBlock();
+        return;
+      }
     }
   } else {
-    // fast skip of blocks
-    int brackets = 0;
-    while (lex->tk && (brackets || lex->tk != '}')) {
-      if (lex->tk == '{') brackets++;
-      if (lex->tk == '}') brackets--;
-      JSP_ASSERT_MATCH(lex->tk);
-    }
+    jspeSkipBlock();
   }
   return;
 }
@@ -1960,6 +2103,7 @@ NO_INLINE JsVar *jspParse() {
   while (!JSP_SHOULDNT_PARSE && lex->tk != LEX_EOF) {
     jsvUnLock(v);
     v = jspeBlockOrStatement();
+    jsvCheckReferenceError(v);
   }
   return v;
 }
@@ -1989,7 +2133,7 @@ NO_INLINE JsVar *jspeStatementVar() {
       JSP_MATCH_WITH_CLEANUP_AND_RETURN('=', jsvUnLock(a), lastDefined);
       var = jsvSkipNameAndUnLock(jspeAssignmentExpression());
       if (JSP_SHOULD_EXECUTE)
-        jspReplaceWith(a, var);
+        jsvReplaceWith(a, var);
       jsvUnLock(var);
     }
     jsvUnLock(lastDefined);
@@ -2064,8 +2208,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
       execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
     while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!=LEX_R_CASE && lex->tk!=LEX_R_DEFAULT && lex->tk!='}')
       jsvUnLock(jspeBlockOrStatement());
-    if (execInfo.execute & EXEC_RETURN)
-      oldExecute |= EXEC_RETURN;
+    oldExecute |= execInfo.execute & (EXEC_ERROR_MASK|EXEC_RETURN); // copy across any errors/exceptions/returns
   }
   jsvUnLock(switchOn);
   if (execute && (execInfo.execute&EXEC_RUN_MASK)==EXEC_BREAK) {
@@ -2081,12 +2224,15 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     JSP_SAVE_EXECUTE();
     if (!executeDefault) jspSetNoExecute();
     else execInfo.execute |= EXEC_IN_SWITCH;
-    while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!='}')
+    while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!='}' && lex->tk!=LEX_R_CASE)
       jsvUnLock(jspeBlockOrStatement());
-    if (execInfo.execute & EXEC_RETURN)
-      oldExecute |= EXEC_RETURN;
+    oldExecute |= execInfo.execute & (EXEC_ERROR_MASK|EXEC_RETURN); // copy across any errors/exceptions/returns
     execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_BREAK;
     JSP_RESTORE_EXECUTE();
+  }
+  if (lex->tk==LEX_R_CASE) {
+    jsExceptionHere(JSET_SYNTAXERROR, "Espruino doesn't support CASE after DEFAULT");
+    return 0;
   }
   JSP_MATCH('}');
   return 0;
@@ -2121,9 +2267,9 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
 
   if (execInfo.execute & EXEC_CONTINUE)
-    execInfo.execute = EXEC_YES;
+    execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
   else if (execInfo.execute & EXEC_BREAK) {
-    execInfo.execute = EXEC_YES;
+    execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
     hasHadBreak = true; // fail loop condition, so we exit
   }
   if (!loopCond) JSP_RESTORE_EXECUTE();
@@ -2157,9 +2303,9 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
       jsvUnLock(jspeBlockOrStatement());
       if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
       if (execInfo.execute & EXEC_CONTINUE)
-        execInfo.execute = EXEC_YES;
+        execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
       else if (execInfo.execute & EXEC_BREAK) {
-        execInfo.execute = EXEC_YES;
+        execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
         hasHadBreak = true;
       }
     }
@@ -2173,6 +2319,22 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
     jsExceptionHere(JSET_ERROR, "WHILE Loop exceeded the maximum number of iterations (" STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")");
   }
 #endif
+  return 0;
+}
+
+NO_INLINE JsVar *jspGetBuiltinPrototype(JsVar *obj) {
+  if (jsvIsArray(obj)) {
+    JsVar *v = jspFindPrototypeFor("Array");
+    if (v) return v;
+  }
+  if (jsvIsObject(obj) || jsvIsArray(obj)) {
+    JsVar *v = jspFindPrototypeFor("Object");
+    if (v==obj) { // don't return ourselves
+      jsvUnLock(v);
+      v = 0;
+    }
+    return v;
+  }
   return 0;
 }
 
@@ -2191,24 +2353,22 @@ NO_INLINE JsVar *jspeStatementFor() {
     return 0;
   }
   execInfo.execute &= (JsExecFlags)~EXEC_FOR_INIT;
-  if (lex->tk == LEX_R_IN) {
-    // for (i in array)
-    // where i = jsvUnLock(forStatement);
+  if (lex->tk == LEX_R_IN || lex->tk == LEX_R_OF) {
+    bool isForOf = lex->tk == LEX_R_OF;
+    // for (i in array)  or   for (i of array)
+    // where i = forStatement
     if (JSP_SHOULD_EXECUTE && !jsvIsName(forStatement)) {
       jsvUnLock(forStatement);
-      jsExceptionHere(JSET_ERROR, "FOR a IN b - 'a' must be a variable name, not %t", forStatement);
+      jsExceptionHere(JSET_ERROR, "for(a %s b) - 'a' must be a variable name, not %t", isForOf?"of":"in", forStatement);
       return 0;
     }
-    bool addedIteratorToScope = false;
-    if (JSP_SHOULD_EXECUTE && !jsvGetRefs(forStatement)) {
-      // if the variable did not exist, add it to the scope
-      addedIteratorToScope = true;
-      jsvAddName(execInfo.root, forStatement);
-    }
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_IN, jsvUnLock(forStatement), 0);
+
+    JSP_ASSERT_MATCH(lex->tk); // skip over in/of
     JsVar *array = jsvSkipNameAndUnLock(jspeExpression());
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(forStatement, array), 0);
     JslCharPos forBodyStart = jslCharPosClone(&lex->tokenStart);
+    // Simply scan over the loop the first time without executing to figure out where it ends
+    // OPT: we could skip the first parse and actually execute the first time
     JSP_SAVE_EXECUTE();
     jspSetNoExecute();
     execInfo.execute |= EXEC_IN_LOOP;
@@ -2216,14 +2376,18 @@ NO_INLINE JsVar *jspeStatementFor() {
     JslCharPos forBodyEnd = jslCharPosClone(&lex->tokenStart);
     if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
     JSP_RESTORE_EXECUTE();
-
+    // Now start executing properly
     if (JSP_SHOULD_EXECUTE) {
       if (jsvIsIterable(array)) {
         JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(array);
         JsVar *foundPrototype = 0;
+        if (!isForOf) // for..in
+          foundPrototype = jspGetBuiltinPrototype(array);
 
         JsvIterator it;
-        jsvIteratorNew(&it, array, JSIF_DEFINED_ARRAY_ElEMENTS);
+        jsvIteratorNew(&it, array, isForOf ?
+            /* for of */ JSIF_EVERY_ARRAY_ELEMENT :
+            /* for in */ JSIF_DEFINED_ARRAY_ElEMENTS);
         bool hasHadBreak = false;
         while (JSP_SHOULD_EXECUTE && jsvIteratorHasElement(&it) && !hasHadBreak) {
           JsVar *loopIndexVar = jsvIteratorGetKey(&it);
@@ -2235,15 +2399,19 @@ NO_INLINE JsVar *jspeStatementFor() {
               foundPrototype = jsvSkipName(loopIndexVar);
           }
           if (!ignore) {
-            JsVar *indexValue = jsvIsName(loopIndexVar) ?
-                jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/) :
-                loopIndexVar;
-            if (indexValue) { // could be out of memory
-              assert(!jsvIsName(indexValue) && jsvGetRefs(indexValue)==0);
-              jsvSetValueOfName(forStatement, indexValue);
-              if (indexValue!=loopIndexVar) jsvUnLock(indexValue);
-
-              jsvIteratorNext(&it);
+            JsVar *iteratorValue;
+            if (isForOf) { // for (... of ...)
+              iteratorValue = jsvIteratorGetValue(&it);
+            } else { // for (... in ...)
+              iteratorValue = jsvIsName(loopIndexVar) ?
+                  jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/) :
+                  loopIndexVar;
+              assert(jsvGetRefs(iteratorValue)==0);
+            }
+            if (isForOf || iteratorValue) { // could be out of memory
+              assert(!jsvIsName(iteratorValue));
+              jsvReplaceWithOrAddToRoot(forStatement, iteratorValue);
+              if (iteratorValue!=loopIndexVar) jsvUnLock(iteratorValue);
 
               jslSeekToP(&forBodyStart);
               execInfo.execute |= EXEC_IN_LOOP;
@@ -2258,15 +2426,17 @@ NO_INLINE JsVar *jspeStatementFor() {
                 hasHadBreak = true;
               }
             }
-          } else
-            jsvIteratorNext(&it);
+          }
+          jsvIteratorNext(&it);
           jsvUnLock(loopIndexVar);
-
-          if (!jsvIteratorHasElement(&it) && foundPrototype) {
+          // if using for..in we'll skip down the prototype chain when we reach the end of the current one
+          if (!jsvIteratorHasElement(&it) && !isForOf && foundPrototype) {
             jsvIteratorFree(&it);
-            jsvIteratorNew(&it, foundPrototype, JSIF_DEFINED_ARRAY_ElEMENTS);
-            jsvUnLock(foundPrototype);
-            foundPrototype = 0;
+            JsVar *iterable = foundPrototype;
+            jsvIteratorNew(&it, iterable, JSIF_DEFINED_ARRAY_ElEMENTS);
+            checkerFunction = jsvGetInternalFunctionCheckerFor(iterable);
+            foundPrototype = jspGetBuiltinPrototype(iterable);
+            jsvUnLock(iterable);
           }
         }
         assert(!foundPrototype);
@@ -2279,9 +2449,6 @@ NO_INLINE JsVar *jspeStatementFor() {
     jslCharPosFree(&forBodyStart);
     jslCharPosFree(&forBodyEnd);
 
-    if (addedIteratorToScope) {
-      jsvRemoveChild(execInfo.root, forStatement);
-    }
     jsvUnLock2(forStatement, array);
   } else { // ----------------------------------------------- NORMAL FOR LOOP
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
@@ -2388,11 +2555,15 @@ NO_INLINE JsVar *jspeStatementTry() {
     JSP_ASSERT_MATCH(LEX_R_CATCH);
     hadCatch = true;
     JSP_MATCH('(');
+    JsVar *scope = 0;
     JsVar *exceptionVar = 0;
-    if (hadException)
-      exceptionVar = jspeiFindOnTop(jslGetTokenValueAsString(lex), true);
-    JSP_MATCH(LEX_ID);
-    JSP_MATCH(')');
+    if (hadException) {
+      scope = jsvNewObject();
+      if (scope)
+        exceptionVar = jsvFindChildFromString(scope, jslGetTokenValueAsString(lex), true);
+    }
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock2(scope,exceptionVar),0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jsvUnLock2(scope,exceptionVar),0);
     if (exceptionVar) {
       // set the exception var up properly
       JsVar *exception = jspGetException();
@@ -2411,8 +2582,12 @@ NO_INLINE JsVar *jspeStatementTry() {
       jspeBlock();
       JSP_RESTORE_EXECUTE();
     } else {
-      jspeBlock();
+      if (!scope || jspeiAddScope(scope)) {
+        jspeBlock();
+        if (scope) jspeiRemoveScope();
+      }
     }
+    jsvUnLock(scope);
   }
   if (lex->tk == LEX_R_FINALLY || (!hadCatch && ((execInfo.execute&(EXEC_ERROR|EXEC_INTERRUPTED))==0))) {
     JSP_MATCH(LEX_R_FINALLY);
@@ -2433,9 +2608,9 @@ NO_INLINE JsVar *jspeStatementReturn() {
     result = jsvSkipNameAndUnLock(jspeExpression());
   }
   if (JSP_SHOULD_EXECUTE) {
-    JsVar *resultVar = jspeiFindOnTop(JSPARSE_RETURN_VAR, false);
+    JsVar *resultVar = jspeiFindInScopes(JSPARSE_RETURN_VAR);
     if (resultVar) {
-      jspReplaceWith(resultVar, result);
+      jsvReplaceWith(resultVar, result);
       jsvUnLock(resultVar);
       execInfo.execute |= EXEC_RETURN; // Stop anything else in this function executing
     } else {
@@ -2457,21 +2632,29 @@ NO_INLINE JsVar *jspeStatementThrow() {
   return 0;
 }
 
-NO_INLINE JsVar *jspeStatementFunctionDecl() {
+NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
   JsVar *funcName = 0;
   JsVar *funcVar;
+
+#ifndef SAVE_ON_FLASH
+  JSP_ASSERT_MATCH(isClass ? LEX_R_CLASS : LEX_R_FUNCTION);
+#else
   JSP_ASSERT_MATCH(LEX_R_FUNCTION);
+#endif
 
   bool actuallyCreateFunction = JSP_SHOULD_EXECUTE;
   if (actuallyCreateFunction) {
     funcName = jsvMakeIntoVariableName(jslGetTokenValueAsVar(lex), 0);
     if (!funcName) { // out of memory
-      jspSetError(false);
       return 0;
     }
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(funcName), 0);
+#ifndef SAVE_ON_FLASH
+  funcVar = isClass ? jspeClassDefinition(false) : jspeFunctionDefinition(false);
+#else
   funcVar = jspeFunctionDefinition(false);
+#endif
   if (actuallyCreateFunction) {
     // find a function with the same name (or make one)
     // OPT: can Find* use just a JsVar that is a 'name'?
@@ -2482,7 +2665,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
       funcVar = jsvSkipNameAndUnLock(funcVar);
       jswrap_function_replaceWith(existingFunc, funcVar);
     } else {
-      jspReplaceWith(existingName, funcVar);
+      jsvReplaceWith(existingName, funcVar);
     }
     jsvUnLock(funcName);
     funcName = existingName;
@@ -2517,6 +2700,7 @@ NO_INLINE JsVar *jspeStatement() {
       lex->tk==LEX_R_DELETE ||
       lex->tk==LEX_R_TYPEOF ||
       lex->tk==LEX_R_VOID ||
+      lex->tk==LEX_R_SUPER ||
       lex->tk==LEX_PLUSPLUS ||
       lex->tk==LEX_MINUSMINUS ||
       lex->tk=='!' ||
@@ -2529,6 +2713,7 @@ NO_INLINE JsVar *jspeStatement() {
     return jspeExpression();
   } else if (lex->tk=='{') {
     /* A block of code */
+    if (!jspCheckStackPosition()) return 0;
     jspeBlock();
     return 0;
   } else if (lex->tk==';') {
@@ -2554,7 +2739,11 @@ NO_INLINE JsVar *jspeStatement() {
   } else if (lex->tk==LEX_R_THROW) {
     return jspeStatementThrow();
   } else if (lex->tk==LEX_R_FUNCTION) {
-    return jspeStatementFunctionDecl();
+    return jspeStatementFunctionDecl(false/* function */);
+#ifndef SAVE_ON_FLASH
+  } else if (lex->tk==LEX_R_CLASS) {
+      return jspeStatementFunctionDecl(true/* class */);
+#endif
   } else if (lex->tk==LEX_R_CONTINUE) {
     JSP_ASSERT_MATCH(LEX_R_CONTINUE);
     if (JSP_SHOULD_EXECUTE) {
@@ -2665,19 +2854,27 @@ bool jspIsConstructor(JsVar *constructor, const char *constructorName) {
   return isConstructor;
 }
 
-/** Get the constructor of the given object, or return 0 if ot found, or not a function */
-JsVar *jspGetConstructor(JsVar *object) {
+/** Get the prototype of the given object, or return 0 if not found, or not an object */
+JsVar *jspGetPrototype(JsVar *object) {
   if (!jsvIsObject(object)) return 0;
   JsVar *proto = jsvObjectGetChild(object, JSPARSE_INHERITS_VAR, 0);
-  if (jsvIsObject(proto)) {
+  if (jsvIsObject(proto))
+    return proto;
+  jsvUnLock(proto);
+  return 0;
+}
+
+/** Get the constructor of the given object, or return 0 if not found, or not a function */
+JsVar *jspGetConstructor(JsVar *object) {
+  JsVar *proto = jspGetPrototype(object);
+  if (proto) {
     JsVar *constr = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
     if (jsvIsFunction(constr)) {
       jsvUnLock(proto);
       return constr;
     }
-    jsvUnLock(constr);
+    jsvUnLock2(constr, proto);
   }
-  jsvUnLock(proto);
   return 0;
 }
 
@@ -2691,6 +2888,8 @@ void jspSoftInit() {
 }
 
 void jspSoftKill() {
+  jsvUnLock(execInfo.scopesVar);
+  execInfo.scopesVar = 0;
   jsvUnLock(execInfo.hiddenRoot);
   execInfo.hiddenRoot = 0;
   jsvUnLock(execInfo.root);
@@ -2740,24 +2939,21 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
 
   JsExecInfo oldExecInfo = execInfo;
   execInfo.execute = EXEC_YES;
-  bool scopeAdded = false;
   if (scope) {
     // if we're adding a scope, make sure it's the *only* scope
-    execInfo.scopeCount = 0;
-    scopeAdded = jspeiAddScope(scope);
+    execInfo.scopesVar = 0;
+    jspeiAddScope(scope);
   }
 
   // actually do the parsing
   JsVar *v = jspParse();
   // clean up
-  if (scopeAdded)
-    jspeiRemoveScope();
+  if (scope) jspeiClearScopes();
   jslKill();
   jslSetLex(oldLex);
 
-  // restore state and execInfo
-  JsExecFlags mask = EXEC_FOR_INIT|EXEC_IN_LOOP|EXEC_IN_SWITCH;
-  oldExecInfo.execute = (oldExecInfo.execute & mask) | (execInfo.execute & ~mask); 
+  // restore state and execInfo (keep error flags & ctrl-c)
+  oldExecInfo.execute |= execInfo.execute & EXEC_PERSIST;
   execInfo = oldExecInfo;
 
   // It may have returned a reference, but we just want the value...
@@ -2773,7 +2969,7 @@ JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
    */
   JsVar *evCode;
   if (stringIsStatic)
-    evCode = jswrap_espruino_memoryArea((int)(size_t)str, (int)strlen(str));
+    evCode = jsvNewNativeString((char*)str, strlen(str));
   else
     evCode = jsvNewFromString(str);
   if (!evCode) return 0;
@@ -2786,17 +2982,24 @@ JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
   return v;
 }
 
+JsVar *jspExecuteJSFunction(const char *jsCode, JsVar *thisArg, int argCount, JsVar **argPtr) {
+  JsVar *fn = jspEvaluate(jsCode,true);
+  JsVar *result = jspExecuteFunction(fn,thisArg,argCount,argPtr);
+  jsvUnLock(fn);
+  return result;
+}
+
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr) {
   JsExecInfo oldExecInfo = execInfo;
-
-  execInfo.scopeCount = 0;
+  execInfo.scopesVar = 0;
   execInfo.execute = EXEC_YES;
   execInfo.thisVar = 0;
   JsVar *result = jspeFunctionCall(func, 0, thisArg, false, argCount, argPtr);
   // clean up
-  assert(execInfo.scopeCount==0);
-  // restore state
-  oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
+  jspeiClearScopes();
+  // restore state and execInfo (keep error flags & ctrl-c)
+  oldExecInfo.execute |= execInfo.execute&EXEC_PERSIST;
+  jspeiClearScopes();
   execInfo = oldExecInfo;
 
   return result;

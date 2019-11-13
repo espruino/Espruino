@@ -72,17 +72,21 @@ bool net_wiznet_checkError(JsNetwork *net) {
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
 int net_wiznet_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
   int sckt = -1;
-  if (host!=0) { // ------------------------------------------------- host (=client)
-
+  if (host!=0 || (socketType & ST_UDP)) { // ------------------------------------------------- host (=client)
     //mgg1010 - added random source port - seems to solve problem of repeated GET failing
-    
-    sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, (uint16_t)((rand() & 32767) + 2000), 0); // we set nonblocking later
-     
-    if (sckt<0) {
-      return sckt; // error
+    uint16_t srcPort = (uint16_t)((rand() & 32767) + 2000);
+
+    int res = 0;
+    if (socketType & ST_UDP) { // UDP
+      if (port) srcPort = port;
+      sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_UDP, srcPort, 0); // we set nonblocking later
+      if (sckt<0) return sckt; // error
+    } else { // TCP/IP
+      sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, srcPort, 0); // we set nonblocking later
+      if (sckt<0) return sckt; // error
+      res = connect((uint8_t)sckt,(uint8_t*)&host, port);
     }
 
-    int res = connect((uint8_t)sckt,(uint8_t*)&host, port);
     // now we set nonblocking - so that connect waited for the connection
     uint8_t ctl = SOCK_IO_NONBLOCK;
     ctlsocket((uint8_t)sckt, CS_SET_IOMODE, &ctl);
@@ -101,12 +105,16 @@ int net_wiznet_createsocket(JsNetwork *net, SocketType socketType, uint32_t host
 
 /// destroys the given socket
 void net_wiznet_closesocket(JsNetwork *net, int sckt) {
+  uint8_t status;
+#if _WIZCHIP_ == 5500
   // try and close gracefully
   disconnect((uint8_t)sckt);
   JsSysTime timeout = jshGetSystemTime()+jshGetTimeFromMilliseconds(1000);
-  uint8_t status;
   while ((status=getSn_SR((uint8_t)sckt)) != SOCK_CLOSED &&
          jshGetSystemTime()<timeout) ;
+#else // W5100 hangs for 30s on disconnect - https://github.com/espruino/Espruino/issues/1306
+  status=getSn_SR((uint8_t)sckt);
+#endif
   // if that didn't work, force it
   if (status != SOCK_CLOSED)
     closesocket((uint8_t)sckt);
@@ -152,7 +160,17 @@ int net_wiznet_accept(JsNetwork *net, int sckt) {
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_wiznet_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
   int num = 0;
-  if (getSn_SR((uint8_t)sckt) == SOCK_LISTEN) {
+
+  if (socketType & ST_UDP) {
+    uint16_t dataAvailable;
+    getsockopt(sckt, SO_RECVBUF, &dataAvailable);
+    if (!dataAvailable) return 0;
+
+    JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+    num = (int)recvfrom((uint8_t)sckt,buf+sizeof(JsNetUDPPacketHeader),len-sizeof(JsNetUDPPacketHeader),(uint8_t*)&header->host,(uint16_t*)&header->port);
+    header->length = num;
+    if (num) num += sizeof(JsNetUDPPacketHeader);
+  } else if (getSn_SR((uint8_t)sckt) == SOCK_LISTEN) {
     // socket is operating as a TCP server - something has gone wrong.
     // just return -1 to close this connection immediately
     return -1;
@@ -167,7 +185,13 @@ int net_wiznet_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, 
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_wiznet_send(JsNetwork *net, SocketType socketType, int sckt, const void *buf, size_t len) {
-  int r = (int)send((uint8_t)sckt, buf, (uint16_t)len, MSG_NOSIGNAL);
+  int r;
+  if (socketType & ST_UDP) {
+    JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+    r = (int)sendto((uint8_t)sckt, buf + sizeof(JsNetUDPPacketHeader), header->length, (uint8_t*)&header->host, header->port) + sizeof(JsNetUDPPacketHeader);
+  } else {
+    r = (int)send((uint8_t)sckt, buf, (uint16_t)len, MSG_NOSIGNAL);
+  }
   if (jspIsInterrupted()) return -1;
   return r;
 }

@@ -18,7 +18,7 @@
 #include "jsflags.h"
 
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSd" // the data in each file
-#define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSo" // the list of open files
+#define JS_FS_OPEN_FILES_NAME "FSopen" // the list of open files
 #if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO) && !defined(USE_FLASHFS)
 #define SD_CARD_ANYWHERE
 #endif
@@ -124,11 +124,23 @@ Setup the filesystem so that subsequent calls to `E.openFile` and `require('fs')
 It can even work using software SPI - for instance:
 
 ```
+// DI/CMD = C7
+// DO/DAT0 = C8
+// CK/CLK = C9
+// CD/CS/DAT3 = C6
 var spi = new SPI();
-spi.setup({mosi:C7,miso:C8,sck:C9});
-E.connectSDCard(spi,C6);
+spi.setup({mosi:C7, miso:C8, sck:C9});
+E.connectSDCard(spi, C6);
 console.log(require("fs").readdirSync());
 ```
+
+See [the page on File IO](http://www.espruino.com/File+IO) for more information.
+
+**Note:** We'd strongly suggest you add a pullup resistor from CD/CS pin to 3.3v. It is
+good practise to avoid accidental writes before Espruino is initialised, and some cards
+will not work reliably without one.
+
+**Note:** If you want to remove an SD card after you have started using it, you *must* call `E.unmountSD()` or you may cause damage to the card.
 */
 void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
 #ifdef SD_CARD_ANYWHERE
@@ -149,8 +161,6 @@ void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
 #endif
 }
 
-/* TODO: maybe this should be in the 'E' library. However we don't currently
- * have a way of doing that in build_jswrapper.py  */
 /*JSON{
   "type" : "class",
   "class" : "File"
@@ -170,7 +180,7 @@ static bool fileGetFromVar(JsFile *file, JsVar *parent) {
   bool ret = false;
   JsVar *fHandle = jsvObjectGetChild(parent, JS_FS_DATA_NAME, 0);
   if (fHandle && jsvIsFlatString(fHandle)) {
-    file->data = jsvGetFlatStringPointer(fHandle);
+    file->data = (JsFileData*)jsvGetFlatStringPointer(fHandle);
     file->fileVar = parent;
     if(file->data->state == FS_OPEN) {// return false if the file has been closed.
       ret = true;
@@ -229,10 +239,11 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
 
   JsVar *data = jsvNewFlatStringOfLength(sizeof(JsFileData));
   if (!data) { // out of memory for flat string
+    jsErrorFlags |= JSERR_LOW_MEMORY; // flag this up as an issue
     jsvUnLock(parent);
     return false;
   }
-  file->data = jsvGetFlatStringPointer(data);
+  file->data = (JsFileData*)jsvGetFlatStringPointer(data);
   jsvObjectSetChildAndUnLock(parent, JS_FS_DATA_NAME, data);
   file->fileVar = parent;
   assert(file->data);
@@ -593,9 +604,11 @@ Before first use the media needs to be formatted.
 
 ```
 fs=require("fs");
-if ( typeof(fs.readdirSync())==="undefined" ) {
-  console.log("Formatting FS");
-  E.flashFatFS({format:true});
+try {
+  fs.readdirSync();
+ } catch (e) { //'Uncaught Error: Unable to mount media : NO_FILESYSTEM'
+  console.log('Formatting FS - only need to do once');
+  E.flashFatFS({ format: true });
 }
 fs.writeFileSync("bang.txt", "This is the way the world ends\nnot with a bang but a whimper.\n");
 fs.readdirSync();

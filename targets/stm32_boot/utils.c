@@ -100,6 +100,11 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
   //if (rxHead == rxTail) weHaveOverFlowed();
 }
 
+void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
+  unsigned int i;
+  for (i=0;i<count;i++) jshPushIOCharEvent(channel, data[i]);
+}
+
 bool jshHasEventSpaceForChars(int n) {
   return true;
 }

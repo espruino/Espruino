@@ -37,11 +37,11 @@
 }
 This library handles interfacing with a FAT32 filesystem on an SD card. The API is designed to be similar to node.js's - However Espruino does not currently support asynchronous file IO, so the functions behave like node.js's xxxxSync functions. Versions of the functions with 'Sync' after them are also provided for compatibility.
 
-Currently this provides minimal file IO - it's great for logging and loading/saving settings, but not good for loading large amounts of data as you will soon fill your memory up.
-
-It is currently only available on boards that contain an SD card slot, such as the Olimexino and the HY. It can not currently be added to boards that did not ship with a card slot.
-
 To use this, you must type ```var fs = require('fs')``` to get access to the library
+
+See [the page on File IO](http://www.espruino.com/File+IO) for more information, and for examples on wiring up an SD card if your device doesn't come with one.
+
+**Note:** If you want to remove an SD card after you have started using it, you *must* call `E.unmountSD()` or you may cause damage to the card.
 */
 
 #ifndef LINUX
@@ -342,7 +342,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
 
       CalendarDate date;
       date.year = 1980+(int)((info.fdate>>9)&127);
-      date.month = (int)((info.fdate>>5)&15);
+      date.month = (int)(((info.fdate>>5)&15)-1);  // TomWS: Month is 0 based.
       date.day = (int)((info.fdate)&31);
       TimeInDay td;
       td.daysSinceEpoch = fromCalenderDate(&date);
@@ -350,7 +350,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
       td.min = (int)((info.ftime>>5)&63);
       td.sec = (int)((info.ftime)&63);
       td.ms = 0;
-      td.zone = 0;
+      td.zone = jsdGetTimeZone();  // TomWS: add adjustment for timezone offset introduced in date_from_milliseconds 
       jsvObjectSetChildAndUnLock(obj, "mtime", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
       return obj;
     }

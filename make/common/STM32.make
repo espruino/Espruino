@@ -32,3 +32,26 @@ endif # BOOTLOADER
 
 # ==============================================================
 include make/common/ARM.make
+
+proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
+
+flash: $(PROJ_NAME).bin
+ifdef USE_DFU
+	sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
+else ifeq ($(BOARD),OLIMEXINO_STM32_BOOTLOADER) 
+	@echo Olimexino Serial bootloader
+	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
+else ifdef NUCLEO
+	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
+	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
+else
+	@echo ST-LINK flash
+	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
+endif
+
+serialflash: all
+	@echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0
+	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ew $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
+#	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ewv $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
+
+

@@ -60,7 +60,6 @@ typedef struct {
   int          cliSock;          ///< active client socket, 0=none (actual socket numbers are 1 less than this, as 0 is a valid socket)
   char         txBuf[TX_CHUNK];  ///< transmit buffer
   uint16_t     txBufLen;         ///< number of chars in tx buffer
-  IOEventFlags oldConsole;       ///< device the console was stolen from
 } TelnetServer;
 
 static TelnetServer tnSrv;        ///< the telnet server, only one right now
@@ -83,7 +82,7 @@ port 23 on the ESP8266 and port 2323 on Linux.
   "name"     : "setOptions",
   "generate" : "jswrap_telnet_setOptions",
   "params": [
-    [ "options", "JsVar", "Options controlling the telnet console server" ]
+    [ "options", "JsVar", "Options controlling the telnet console server `{ mode : 'on|off'}`" ]
   ]
 }
 */
@@ -213,7 +212,6 @@ bool telnetAccept(JsNetwork *net) {
   // if the console is not already telnet, then change it
   IOEventFlags console = jsiGetConsoleDevice();
   if (console != EV_TELNET) {
-    tnSrv.oldConsole = console;
     if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(EV_TELNET, false);
   }
 
@@ -233,7 +231,7 @@ void telnetRelease(JsNetwork *net) {
   // console to be set to something else while connected via telnet and then not have it
   // switched again when disconnecting from telnet
   if (console == EV_TELNET && !jsiIsConsoleDeviceForced())
-    jsiSetConsoleDevice(tnSrv.oldConsole, false);
+    jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), false);
 }
 
 // Attempt to send buffer on an established client connection, returns true if it sent something
@@ -288,8 +286,9 @@ void telnetSendChar(char ch) {
 bool telnetRecv(JsNetwork *net) {
   if (tnSrv.sock == 0 || tnSrv.cliSock == 0) return false;
 
-  char buff[256];
-  int r = netRecv(net, ST_NORMAL, tnSrv.cliSock-1, buff, 256);
+  char buff[64];
+  if (!jshHasEventSpaceForChars(sizeof(buff))) return false;
+  int r = netRecv(net, ST_NORMAL, tnSrv.cliSock-1, buff, sizeof(buff));
   if (r > 0) {
     jshPushIOCharEvents(EV_TELNET, buff, (unsigned int)r);
   } else if (r < 0) {

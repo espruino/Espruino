@@ -139,6 +139,13 @@ void jswrap_wio_lte_setLEDPower(bool pwr) {
   "generate" : "jswrap_wio_lte_init"
 }*/
 void jswrap_wio_lte_init() {
-  // initialise the SD card
-  jsvUnLock(jspEvaluate("(function(){digitalWrite(A15,1);var spi=new SPI();spi.setup({mosi:D2,miso:C8,sck:C12});E.connectSDCard(spi,C11);})();",true));
+  /* initialise the SD card
+   C8   D0  MISO
+   C9   D1  unused
+   C10  D2  unused
+   C11  D3  CS
+   C12  CK  SCK
+   D2  CMD  MOSI
+   */
+  jsvUnLock(jspEvaluate("(function(){digitalWrite([C9,C10],0);var spi=new SPI();spi.setup({mosi:D2,miso:C8,sck:C12});pinMode(C8,\"input_pullup\");digitalWrite(A15,1);E.connectSDCard(spi,C11);})();",true));
 }

@@ -7,7 +7,9 @@ before_script:
  - python --version
 
 after_script:
-  - ls *.bin *.hex *.tgz *.zip | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
+  - "if [[ -n \"$UPLOADTOKEN\" ]]; then
+       ls *.bin *.hex *.tgz *.zip | xargs -I {} curl -v -F \"binary=@{}\" \"http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT&branch=$TRAVIS_BRANCH&token=$UPLOADTOKEN\";
+     fi"
   # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
   # in environment using travis' repository settings
   - "if [[ -n \"$S3_BUCKET\" && -n \"$AWS_ACCESS_KEY_ID\" ]]; then
@@ -27,32 +29,26 @@ env:
     - V=0
     - RELEASE=1
   matrix:
+    - BOARD=LINUX
     - BOARD=ESPRUINOBOARD PAD_FOR_BOOTLOADER=1
     - BOARD=PICO_R1_3 PAD_FOR_BOOTLOADER=1
     - BOARD=ESPRUINOWIFI PAD_FOR_BOOTLOADER=1
     - BOARD=PUCKJS DFU_UPDATE_BUILD=1
+    - BOARD=PIXLJS DFU_UPDATE_BUILD=1
+    - BOARD=HEXBADGE DFU_UPDATE_BUILD=1
+    - BOARD=MDBT42Q DFU_UPDATE_BUILD=1
+    - BOARD=BANGLEJS DFU_UPDATE_BUILD=1
     - BOARD=ESP32
     - BOARD=ESP8266_BOARD
     - BOARD=ESP8266_4MB
     - BOARD=MICROBIT
-    - BOARD=NRF52832DK
-    - BOARD=OLIMEXINO_STM32
-    - BOARD=MAPLERET6_STM32
-    - BOARD=HYSTM32_24
-    - BOARD=HYSTM32_28
-    - BOARD=HYSTM32_32
-    - BOARD=STM32VLDISCOVERY
-    - BOARD=STM32F3DISCOVERY
-    - BOARD=STM32F4DISCOVERY
-    - BOARD=NUCLEOF401RE
-    - BOARD=NUCLEOF411RE
-    - BOARD=LINUX
-    - BOARD=EFM32GGSTK
-    - BOARD=NUCLEOL476RG
     - BOARD=RUUVITAG DFU_UPDATE_BUILD=1
     - BOARD=WIO_LTE
-    - BOARD=HEXBADGE DFU_UPDATE_BUILD=1
-    - BOARD=MDBT42Q DFU_UPDATE_BUILD=1
+    - BOARD=SMARTIBOT DFU_UPDATE_BUILD=1
+    - BOARD=STM32L496GDISCOVERY
+    - BOARD=RAK8211
+    - BOARD=RAK8212
+    - BOARD=THINGY52 DFU_UPDATE_BUILD_WITH_HEX=1
 
 script: make
 

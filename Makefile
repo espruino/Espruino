@@ -13,6 +13,13 @@
 # Set the BOARD environment variable to one of the names of the .py file in
 # the `boards` directory. Eg. PICO, PUCKJS, ESPRUINOWIFI, etc
 #
+# make               # make whatever the default binary is
+# make flash         # Try and flash using the platform's normal flash tool
+# make serialflash   # flash over USB serial bootloader (STM32)
+# make lst           # Make listing files
+# make boardjson     # JSON file for a board
+# make docs          # Reference HTML for a board
+#
 # Also:
 #
 # DEBUG=1                 # add debug symbols (-g)
@@ -23,7 +30,8 @@
 # CFILE=test.c            # Compile in the supplied C file
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
-# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support
+# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet W5500 support
+#   W5100=1               # Compile for WIZnet W5100 (not W5500)
 # CC3000=1                # If compiling for a non-linux target that has internet support, use CC3000 support
 # USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
@@ -47,7 +55,7 @@
 include make/sanitycheck.make
 
 ifndef GENDIR
-GENDIR=$(shell pwd)/gen
+GENDIR=gen
 endif
 
 ifndef SINGLETHREAD
@@ -57,14 +65,13 @@ endif
 INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS?=
 DEFINES?=
-CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
-LDFLAGS?=-Winline
+CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -g
+CFLAGS+=-Wno-expansion-to-defined # remove warnings created by Nordic's libs
+CCFLAGS?= # specific flags when compiling cc files
+LDFLAGS?=-Winline -g
 OPTIMIZEFLAGS?=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
-DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
-
-# Espruino flags...
-USE_MATH=1
+DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%h")
 
 ifeq ($(shell uname),Darwin)
 MACOSX=1
@@ -125,7 +132,7 @@ BASEADDRESS=0x08000000
 
 ifeq ($(BOARD),)
  # Try and guess board names
- ifeq ($(shell uname -m),armv6l)
+ ifneq ($(shell grep Raspbian /etc/os-release),)
   BOARD=RASPBERRYPI # just a guess
  else ifeq ($(shell uname -n),beaglebone)
   BOARD=BEAGLEBONE
@@ -141,7 +148,7 @@ ifeq ($(BOARD),)
 endif
 
 ifeq ($(BOARD),RASPBERRYPI)
- ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
+ ifneq ("$(wildcard /usr/include/wiringPi.h)","")
  USE_WIRINGPI=1
  else
  DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
@@ -177,6 +184,9 @@ ifdef USE_NET
 ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
+ifdef W5100
+USE_WIZNET_W5100=1
+endif
 else ifeq ($(FAMILY),ESP8266)
 USE_ESP8266=1
 else ifeq ($(FAMILY),ESP32)
@@ -209,6 +219,9 @@ endif
 # These are files for platform-specific libraries
 TARGETSOURCES ?=
 
+# These are JS files to be included as pre-built Espruino modules
+JSMODULESOURCES ?=
+
 # Files that contains objects/functions/methods that will be
 # exported to JS. The order here actually determines the order
 # objects will be matched in. So for example Pins must come
@@ -235,6 +248,7 @@ src/jswrap_process.c \
 src/jswrap_promise.c \
 src/jswrap_regexp.c \
 src/jswrap_serial.c \
+src/jswrap_storage.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_stream.c \
 src/jswrap_string.c \
@@ -245,6 +259,7 @@ src/jswrap_waveform.c \
 SOURCES += \
 src/jslex.c \
 src/jsflags.c \
+src/jsflash.c \
 src/jsvar.c \
 src/jsvariterator.c \
 src/jsutils.c \
@@ -255,10 +270,12 @@ src/jsinteractive.c \
 src/jsdevices.c \
 src/jstimer.c \
 src/jsi2c.c \
+src/jsserial.c \
 src/jsspi.c \
 src/jshardware_common.c \
 $(WRAPPERFILE)
 CPPSOURCES =
+CCSOURCES =
 
 ifdef CFILE
 WRAPPERSOURCES += $(CFILE)
@@ -296,12 +313,13 @@ SOURCES += \
 libs/compression/heatshrink/heatshrink_encoder.c \
 libs/compression/heatshrink/heatshrink_decoder.c \
 libs/compression/compress_heatshrink.c
-
+WRAPPERSOURCES += \
+libs/compression/jswrap_heatshrink.c
 endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER
 
-ifdef USE_FILESYSTEM
+ifeq ($(USE_FILESYSTEM),1)
 DEFINES += -DUSE_FILESYSTEM
 INCLUDE += -I$(ROOT)/libs/filesystem
 WRAPPERSOURCES += \
@@ -314,7 +332,7 @@ libs/filesystem/fat_sd/fattime.c \
 libs/filesystem/fat_sd/ff.c \
 libs/filesystem/fat_sd/option/unicode.c # for LFN support (see _USE_LFN in ff.h)
 
-ifdef USE_FILESYSTEM_SDIO
+ifeq ($(USE_FILESYSTEM_SDIO),1)
 DEFINES += -DUSE_FILESYSTEM_SDIO
 SOURCES += \
 libs/filesystem/fat_sd/sdio_diskio.c \
@@ -332,7 +350,6 @@ endif #USE_FILESYSTEM_SDIO
 endif #!LINUX
 endif #USE_FILESYSTEM
 
-ifdef USE_MATH
 DEFINES += -DUSE_MATH
 INCLUDE += -I$(ROOT)/libs/math
 WRAPPERSOURCES += libs/math/jswrap_math.c
@@ -344,19 +361,19 @@ else
 # everything else uses normal maths lib
 LIBS += -lm
 endif
-endif
 
-ifdef USE_GRAPHICS
+ifeq ($(USE_GRAPHICS),1)
 DEFINES += -DUSE_GRAPHICS
 INCLUDE += -I$(ROOT)/libs/graphics
 WRAPPERSOURCES += libs/graphics/jswrap_graphics.c
 SOURCES += \
 libs/graphics/bitmap_font_4x6.c \
+libs/graphics/bitmap_font_6x8.c \
 libs/graphics/graphics.c \
 libs/graphics/lcd_arraybuffer.c \
 libs/graphics/lcd_js.c
 
-ifdef USE_LCD_SDL
+ifeq ($(USE_LCD_SDL),1)
   DEFINES += -DUSE_LCD_SDL
   SOURCES += libs/graphics/lcd_sdl.c
   LIBS += -lSDL
@@ -368,13 +385,29 @@ ifdef USE_LCD_FSMC
   SOURCES += libs/graphics/lcd_fsmc.c
 endif
 
+ifdef USE_LCD_SPI
+  DEFINES += -DUSE_LCD_SPI
+  SOURCES += libs/graphics/lcd_spilcd.c
 endif
 
-ifdef USE_USB_HID
+ifdef USE_LCD_ST7789_8BIT
+  DEFINES += -DUSE_LCD_ST7789_8BIT
+  SOURCES += libs/graphics/lcd_st7789_8bit.c
+endif
+
+
+ifeq ($(USE_TERMINAL),1)
+  DEFINES += -DUSE_TERMINAL
+  WRAPPERSOURCES += libs/graphics/jswrap_terminal.c
+endif
+
+endif
+
+ifeq ($(USE_USB_HID),1)
   DEFINES += -DUSE_USB_HID
 endif
 
-ifdef USE_NET
+ifeq ($(USE_NET),1)
  DEFINES += -DUSE_NET
  INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
  WRAPPERSOURCES += \
@@ -423,8 +456,14 @@ ifdef USE_NET
  libs/network/wiznet/DNS/dns.c \
  libs/network/wiznet/DHCP/dhcp.c \
  libs/network/wiznet/Ethernet/wizchip_conf.c \
- libs/network/wiznet/Ethernet/socket.c \
- libs/network/wiznet/W5500/w5500.c
+ libs/network/wiznet/Ethernet/socket.c
+  ifdef USE_WIZNET_W5100
+   DEFINES += -D_WIZCHIP_=5100
+   SOURCES += libs/network/wiznet/W5100/w5100.c
+  else
+   DEFINES += -D_WIZCHIP_=5500
+   SOURCES += libs/network/wiznet/W5500/w5500.c
+  endif
  endif
 
  ifdef USE_WICED
@@ -491,7 +530,7 @@ ifdef USE_NET
  endif
 endif # USE_NET
 
-ifdef USE_TV
+ifeq ($(USE_TV),1)
   DEFINES += -DUSE_TV
   WRAPPERSOURCES += libs/tv/jswrap_tv.c
   INCLUDE += -I$(ROOT)/libs/tv
@@ -499,7 +538,7 @@ ifdef USE_TV
   libs/tv/tv.c
 endif
 
-ifdef USE_TRIGGER
+ifeq ($(USE_TRIGGER),1)
   DEFINES += -DUSE_TRIGGER
   WRAPPERSOURCES += libs/trigger/jswrap_trigger.c
   INCLUDE += -I$(ROOT)/libs/trigger
@@ -507,113 +546,89 @@ ifdef USE_TRIGGER
   libs/trigger/trigger.c
 endif
 
-ifdef USE_HASHLIB
-  INCLUDE += -I$(ROOT)/libs/hashlib
-  WRAPPERSOURCES += \
-  libs/hashlib/jswrap_hashlib.c
-  SOURCES += \
-  libs/hashlib/sha2.c
-endif
-
-ifdef USE_WIRINGPI
+ifeq ($(USE_WIRINGPI),1)
   DEFINES += -DUSE_WIRINGPI
   LIBS += -lwiringPi
-  INCLUDE += -I/usr/local/include -L/usr/local/lib
 endif
 
-ifdef USE_BLUETOOTH
+ifeq ($(USE_BLUETOOTH),1)
   DEFINES += -DBLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
   SOURCES += libs/bluetooth/bluetooth_utils.c
 endif
 
-ifdef USE_CRYPTO
-  DEFINES += -DUSE_CRYPTO
-  INCLUDE += -I$(ROOT)/libs/crypto
-  INCLUDE += -I$(ROOT)/libs/crypto/mbedtls
-  INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
-  WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
-  SOURCES += \
-libs/crypto/mbedtls/library/sha1.c \
-libs/crypto/mbedtls/library/sha256.c \
-libs/crypto/mbedtls/library/sha512.c
-
-ifdef USE_TLS
-  USE_AES=1
-  DEFINES += -DUSE_TLS
-  SOURCES += \
-libs/crypto/mbedtls/library/bignum.c \
-libs/crypto/mbedtls/library/ctr_drbg.c \
-libs/crypto/mbedtls/library/debug.c \
-libs/crypto/mbedtls/library/ecp.c \
-libs/crypto/mbedtls/library/ecp_curves.c \
-libs/crypto/mbedtls/library/entropy.c \
-libs/crypto/mbedtls/library/entropy_poll.c \
-libs/crypto/mbedtls/library/md5.c \
-libs/crypto/mbedtls/library/pk.c \
-libs/crypto/mbedtls/library/pkparse.c \
-libs/crypto/mbedtls/library/pk_wrap.c \
-libs/crypto/mbedtls/library/rsa.c \
-libs/crypto/mbedtls/library/ssl_ciphersuites.c \
-libs/crypto/mbedtls/library/ssl_cli.c \
-libs/crypto/mbedtls/library/ssl_tls.c \
-libs/crypto/mbedtls/library/ssl_srv.c \
-libs/crypto/mbedtls/library/x509.c \
-libs/crypto/mbedtls/library/x509_crt.c
-endif
-ifdef USE_AES
-  DEFINES += -DUSE_AES
-  SOURCES += \
-libs/crypto/mbedtls/library/aes.c \
-libs/crypto/mbedtls/library/asn1parse.c \
-libs/crypto/mbedtls/library/cipher.c \
-libs/crypto/mbedtls/library/cipher_wrap.c \
-libs/crypto/mbedtls/library/md.c \
-libs/crypto/mbedtls/library/md_wrap.c \
-libs/crypto/mbedtls/library/oid.c \
-libs/crypto/mbedtls/library/pkcs5.c
-endif
+ifeq ($(USE_CRYPTO),1)
+  cryptofound:=$(shell if test -f make/crypto/$(FAMILY).make; then echo yes;fi)
+  ifeq ($(cryptofound),yes)
+    include make/crypto/$(FAMILY).make
+  else
+    include make/crypto/default.make
+  endif 
 endif
 
-ifdef USE_NEOPIXEL
+ifeq ($(USE_NEOPIXEL),1)
   DEFINES += -DUSE_NEOPIXEL
   INCLUDE += -I$(ROOT)/libs/neopixel
   WRAPPERSOURCES += libs/neopixel/jswrap_neopixel.c
 endif
 
-ifdef USE_NFC
+ifeq ($(USE_NFC),1)
   DEFINES += -DUSE_NFC -DNFC_HAL_ENABLED=1
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/t2t_lib
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/uri
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_pair_msg
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ac_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/le_oob_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_oob_advdata
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ep_oob_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/common
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/launchapp
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_msg.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_rec.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message/nfc_ndef_msg.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record/nfc_ndef_record.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_pair_msg/nfc_ble_pair_msg.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec/nfc_hs_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/le_oob_rec/nfc_le_oob_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ep_oob_rec/nfc_ep_oob_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ac_rec/nfc_ac_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec/nfc_hs_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_oob_advdata/nfc_ble_oob_advdata.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/common/nfc_ble_pair_common.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/launchapp/nfc_launchapp_msg.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/launchapp/nfc_launchapp_rec.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
-  PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/nfc_t2t_lib_gcc.a
 endif
 
-ifdef USE_NUCLEO
-  WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
-endif
-
-ifdef USE_WIO_LTE
+ifeq ($(USE_WIO_LTE),1)
   INCLUDE += -I$(ROOT)/libs/wio_lte
   WRAPPERSOURCES += libs/wio_lte/jswrap_wio_lte.c
   SOURCES += targets/stm32/stm32_ws2812b_driver.c
+endif
+
+ifeq ($(USE_TENSORFLOW),1) 
+include make/misc/tensorflow.make
 endif
 
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
 # =========================================================================
+
+.PHONY:  proj
+
+all: 	 proj
+
+# =========================================================================
 ifneq ($(FAMILY),)
 include make/family/$(FAMILY).make
 endif
 # =========================================================================
+
 
 ifdef USB
 DEFINES += -DUSB
@@ -623,8 +638,8 @@ PININFOFILE=$(GENDIR)/jspininfo
 SOURCES += $(PININFOFILE).c
 
 SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
-SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o)
-OBJS = $(SOURCEOBJS) $(PRECOMPILED_OBJS)
+SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o) $(CCSOURCES:.cc=.o)
+OBJS = $(PRECOMPILED_OBJS) $(SOURCEOBJS)
 
 
 # -ffreestanding -nodefaultlibs -nostdlib -fno-common
@@ -635,6 +650,7 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
+# --specs=nano.specs uses newlib-nano
 ifdef NRF5X
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
 else ifdef STM32
@@ -685,10 +701,6 @@ endif
 # =============================================================================
 # =============================================================================
 
-.PHONY:  proj
-
-all: 	 proj
-
 boardjson: scripts/build_board_json.py $(WRAPPERSOURCES)
 	@echo Generating Board JSON
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
@@ -700,11 +712,16 @@ else
 	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 endif
 
+docs:
+	@echo Generating Board docs
+	$(Q)python scripts/build_docs.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
+	@echo functions.html created
+
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
-	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
+	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(JSMODULESOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
 
 ifdef PININFOFILE
 $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
@@ -745,6 +762,10 @@ quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 	@echo $($(quiet_)compile)
 	@$(call compile)
 
+.cc.o: %.cc $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
+	@echo $($(quiet_)compile)
+	@$(CC) $(CCFLAGS) $(CFLAGS) $< -o $@
+
 .cpp.o: $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
 	@echo $($(quiet_)compile)
 	@$(call compile)
@@ -773,9 +794,12 @@ else # NO_COMPILE
 $(info WRAPPERSOURCES=$(WRAPPERSOURCES));
 endif
 
+lst: $(PROJ_NAME).lst
+
 clean:
 	@echo Cleaning targets
 	$(Q)find . -name \*.o | grep -v "./arm-bcm2708\|./gcc-arm-none-eabi" | xargs rm -f
+	$(Q)find . -name \*.d | grep -v "./arm-bcm2708\|./gcc-arm-none-eabi" | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
 	$(Q)rm -f $(ROOT)/scripts/*.pyc $(ROOT)/boards/*.pyc
 	$(Q)rm -f $(PROJ_NAME).elf

@@ -16,7 +16,7 @@
 import pinutils;
 info = {
  'name' : "Original Espruino Board rev 1.3/1.4",
- 'link' : [ "http://www.espruino.com/EspruinoBoard" ],
+ 'link' : [ "http://www.espruino.com/Original" ],
  'espruino_page_link' : "EspruinoBoard",
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "A9",
@@ -26,8 +26,8 @@ info = {
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_espruino_1r3.bin',
  'binaries' : [
-  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking"},
-  { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "TI CC3000 WiFi Networking"},
+  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking (no crypto lib, no vector font)"},
+  { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "AT Command Networking only"},
  ],
  'build' : {
    'optimizeflags' : '-Os',
@@ -35,12 +35,13 @@ info = {
      'NET',
      'GRAPHICS',
      'NEOPIXEL',
-     'HASHLIB',
+     'CRYPTO','SHA1_JS',
 #     'TV', # TV had to be removed because of flash usage
      'FILESYSTEM'
    ],
    'makefile' : [
      'DEFINES+=-DESPRUINO_1V3',
+     'DEFINES+=-DSAVE_ON_FLASH_MATH -DNO_VECTOR_FONT', 
      'STLIB=STM32F10X_XL',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o'
    ]
@@ -62,7 +63,7 @@ chip = {
     'address' : 0x08000000 + ((256-20)*1024),
     'page_size' : 2048, # size of pages
     'pages' : 10, # number of pages we're using
-    'flash_available' : 256-(20+10) # 20 used for code, 10 for bootloader
+    'flash_available' : 256-(20+10) # 20k used for code, 10k for bootloader
   }
 };
 devices = {

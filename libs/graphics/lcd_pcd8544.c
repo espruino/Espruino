@@ -26,14 +26,14 @@ typedef struct {
   unsigned char pixels[LCD_WIDTH*LCD_HEIGHT/8];  
 } LCDDataPCD8544 PACKED_FLAGS;
 
-unsigned int lcdGetPixel_PCD8544(JsGraphics *gfx, short x, short y) {
+unsigned int lcdGetPixel_PCD8544(JsGraphics *gfx, int x, int y) {
   int yp = y>>3;
   int addr = x + (yp*gfx->data.width);
   return (pixels[addr]>>(y&7)) & 1;
 }
 
 
-void lcdSetPixel_PCD8544(JsGraphics *gfx, short x, short y, unsigned int col) {
+void lcdSetPixel_PCD8544(JsGraphics *gfx, int x, int y, unsigned int col) {
   int yp = y>>3;
   int addr = x + (yp*gfx->data.width);
   if (col) pixels[addr] |= 1<<(y&7);

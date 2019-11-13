@@ -36,11 +36,31 @@ boardName = boardName[2:]
 wrapperFileName = sys.argv[len(sys.argv)-1]
 wrapperFileName = wrapperFileName[2:]
 
+# Load any JS modules specified on command-line
+jsmodules = {}
+for i in range(1,len(sys.argv)):
+  arg = sys.argv[i]
+  if arg[0]!="-" and arg[-3:]==".js":
+    if arg.find(":")>=0:
+      colon = arg.find(":")
+      modulename = arg[:colon]
+      arg = arg[colon+1:]
+    else:
+      modulename = arg.rsplit('/',1)[1][:-3]
+      if modulename[-4:]==".min": modulename=modulename[:-4]
+    print("Loading JS module: "+arg+" -> "+modulename)
+    jscode = open(arg, "r").read()
+    jsmodules[modulename] = jscode
+
 # ------------------------------------------------------------------------------------------------------
 
 def codeOut(s):
 #  print str(s)
   wrapperFile.write(s+"\n");
+
+def FATAL_ERROR(s):
+  sys.stderr.write("ERROR: "+s)
+  exit(1)
 
 # ------------------------------------------------------------------------------------------------------
 
@@ -67,6 +87,7 @@ def getTestFor(className, static):
     if className=="Number": return "jsvIsNumeric(parent)"
     if className=="Object": return "parent" # we assume all are objects
     if className=="Array": return "jsvIsArray(parent)"
+    if className=="ArrayBuffer": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type==ARRAYBUFFERVIEW_ARRAYBUFFER"
     if className=="ArrayBufferView": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type!=ARRAYBUFFERVIEW_ARRAYBUFFER"
     if className=="Function": return "jsvIsFunction(parent)"
     return getConstructorTestFor(className, "constructorPtr");
@@ -80,8 +101,7 @@ def toArgumentType(argName):
   if argName=="int32": return "JSWAT_INT32";
   if argName=="int": return "JSWAT_INT32";
   if argName=="float": return "JSWAT_JSVARFLOAT";
-  sys.stderr.write("ERROR: toArgumentType: Unknown argument name "+argName+"\n")
-  exit(1)
+  FATAL_ERROR("toArgumentType: Unknown argument name "+argName+"\n")
 
 def toCType(argName):
   if argName=="": return "void";
@@ -92,8 +112,7 @@ def toCType(argName):
   if argName=="int32": return "int";
   if argName=="int": return "JsVarInt";
   if argName=="float": return "JsVarFloat";
-  sys.stderr.write("ERROR: toCType: Unknown argument name "+argName+"\n")
-  exit(1)
+  FATAL_ERROR("toCType: Unknown argument name "+argName+"\n")
 
 def hasThis(func):
   return func["type"]=="property" or func["type"]=="method"
@@ -127,6 +146,10 @@ def getArgumentSpecifier(jsondata):
   for param in params:
     s.append("("+toArgumentType(param[1])+" << (JSWAT_BITS*"+str(n)+"))");
     n=n+1
+  if n>5:
+    sys.stderr.write(json.dumps(jsondata, sort_keys=True, indent=2)+"\n")
+    FATAL_ERROR("getArgumentSpecifier: Too many arguments to fit in type specifier, Use JsVarArray\n")
+
   return " | ".join(s);
 
 def getCDeclaration(jsondata, name):
@@ -179,7 +202,7 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 			if "name" in jsondata:
 				for black in blacklist:
 					if jsondata["class"] == black["class"]:
-						if jsondata["name"] == black["name"]:
+						if(jsondata["name"] == black["name"] or black["name"] == "*"):
 							toremove.append(idx)
 # extension by jumjum
 		else:
@@ -188,7 +211,18 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 					if black["class"] == "__":
 						if jsondata["name"] == black["name"]:
 							toremove.append(idx)
-#  end extensioin by jumjum
+		if "type" in jsondata:
+			if "class" in jsondata:
+				for black in blacklist:
+					if jsondata["class"] == black["class"]:
+						if black["name"] == "*":
+							toremove.append(idx)
+			if "instanceof" in jsondata:
+				for black in blacklist:
+					if jsondata["instanceof"] == black["class"]:
+						if black["name"] == "*":
+							toremove.append(idx)
+#  end extension by jumjum
 	return delete_by_indices( datas, toremove)
 # ------------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------------
@@ -222,7 +256,7 @@ for className in classes:
   if not className in constructors:
     jsondatas.append({
         "type":"constructor", "class": className,  "name": className,
-        "generate_full" : "jsvNewWithFlags(JSV_OBJECT)",
+        "generate_full" : "NULL", # return undefined means 'new X' uses the object that was returned, which is correct
         "filename" : "jswrapper.c",
         "return" : [ "JsVar", "" ]
     });
@@ -249,14 +283,14 @@ codeOut('// --------------------------------------------------------------------
 codeOut('');
 
 for jsondata in jsondatas:
+  # Include 'inline' C declarations
   if ("generate_full" in jsondata) or (jsondata["type"]=="object"):
-    gen_name = "gen_jswrap"
+    gen_name = "gen_jswrap"  
     if "class" in jsondata: gen_name = gen_name + "_" + jsondata["class"];
     gen_name = gen_name + "_" + jsondata["name"];
-
     jsondata["generate"] = gen_name
-    s = [ ]
 
+    s = [ ]
     if jsondata["type"]=="object":
       jsondata["generate_full"] = "jspNewObject(\""+jsondata["name"]+"\", \""+jsondata["instanceof"]+"\") /* needs JSWAT_EXECUTE_IMMEDIATELY */";
       params = []
@@ -273,6 +307,45 @@ for jsondata in jsondatas:
       codeOut("  return "+jsondata["generate_full"]+";");
     else:
       codeOut("  "+jsondata["generate_full"]+";");
+    codeOut("}");
+    codeOut('');
+  # Include JavaScript functions
+  if ("generate_js" in jsondata):
+    gen_name = "gen_jswrap"  
+    if "class" in jsondata: gen_name = gen_name + "_" + jsondata["class"];
+    gen_name = gen_name + "_" + jsondata["name"];
+    jsondata["generate"] = gen_name
+    
+    s = [ ]
+    params = getParams(jsondata)
+    result = getResult(jsondata)
+    if hasThis(jsondata): s.append("JsVar *parent")
+    for param in params:
+      if param[1]!="JsVar": FATAL_ERROR("All arguments to generate_js must be JsVars");
+      s.append(toCType(param[1])+" "+param[0]);   
+
+    js = "";
+    with open(basedir+jsondata["generate_js"], 'r') as file:
+      js = file.read().strip()
+    statement = "jspExecuteJSFunction("+json.dumps(js)
+    if hasThis(jsondata): statement = statement + ", parent"
+    else: statement = statement + ", NULL"
+
+    codeOut("static "+toCType(result[0])+" "+jsondata["generate"]+"("+", ".join(s)+") {")
+    if len(params):
+      codeOut("  JsVar *args[] = {");
+      for param in params:
+        codeOut("    "+param[0]+",")
+      codeOut("  };")
+      statement = statement + ","+str(len(params))+", args)"
+    else: # no args
+      statement = statement + ",0,NULL)"
+
+    if result[0]:
+      if result[0]!="JsVar": FATAL_ERROR("All arguments to generate_js must be JsVars");
+      codeOut("  return "+statement+";")
+    else:
+      codeOut("  jsvUnLock("+statement+");")
     codeOut("}");
     codeOut('');
 
@@ -381,6 +454,18 @@ codeOut('};');
 codeOut('');
 codeOut('');
 
+codeOut('const JswSymList *jswGetSymbolListForConstructorProto(JsVar *constructor) {')
+codeOut('  void *constructorPtr = constructor->varData.native.ptr;')
+for className in builtins:
+  builtin = builtins[className]
+  if builtin["isProto"] and "constructorPtr" in className:
+    codeOut("  if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut('  return 0;')
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
 
 codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name) {')
 codeOut('  JsVar *v;')
@@ -389,15 +474,11 @@ codeOut('  if (parent && !jsvIsRoot(parent)) {')
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 nativeCheck = "jsvIsNativeFunction(parent) && "
 codeOut('    if (jsvIsNativeFunction(parent)) {')
-first = True
-for className in builtins:
-  if className.startswith(nativeCheck):
-    codeOut('      '+("" if first else "} else ")+'if ('+className[len(nativeCheck):]+') {')
-    first = False
-    codeOutBuiltins("        v = ", builtins[className])
-    codeOut('        if (v) return v;');
-if not first:
-  codeOut("      }")
+codeOut('      const JswSymList *l = jswGetSymbolListForObject(parent);')
+codeOut('      if (l) {');
+codeOut('        v = jswBinarySearch(l, parent, name);')
+codeOut('        if (v) return v;');
+codeOut('      }')
 codeOut('    }')
 for className in builtins:
   if className!="parent" and  className!="!parent" and not "constructorPtr" in className and not className.startswith(nativeCheck):
@@ -410,20 +491,12 @@ codeOut('    JsVar *proto = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChil
 codeOut('    JsVar *constructor = jsvIsObject(proto)?jsvSkipNameAndUnLock(jsvFindChildFromString(proto, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
 codeOut('    jsvUnLock(proto);')
 codeOut('    if (constructor && jsvIsNativeFunction(constructor)) {')
-codeOut('      void *constructorPtr = constructor->varData.native.ptr;')
+codeOut('      const JswSymList *l = jswGetSymbolListForConstructorProto(constructor);')
 codeOut('      jsvUnLock(constructor);')
-first = True
-for className in builtins:
-  if "constructorPtr" in className:
-    if first:
-      codeOut('      if ('+className+') {')
-      first = False
-    else:
-      codeOut('      } else if ('+className+') {')
-    codeOutBuiltins("        v = ", builtins[className])
-    codeOut('        if (v) return v;')
-if not first:
-  codeOut("      }")
+codeOut('      if (l) {');
+codeOut('        v = jswBinarySearch(l, parent, name);')
+codeOut('        if (v) return v;');
+codeOut('      }')
 codeOut('    } else {')
 codeOut('      jsvUnLock(constructor);')
 codeOut('    }')
@@ -449,9 +522,16 @@ codeOut('')
 codeOut('')
 
 codeOut('const JswSymList *jswGetSymbolListForObject(JsVar *parent) {')
+nativeTestStr = "jsvIsNativeFunction(parent) && ";
+codeOut("  if (jsvIsNativeFunction(parent)) {");
 for className in builtins:
   builtin = builtins[className]
-  if not className in ["parent","!parent"] and not builtin["isProto"]:
+  if not className in ["parent","!parent"] and not builtin["isProto"] and className.startswith(nativeTestStr):
+    codeOut("    if ("+className[len(nativeTestStr):]+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut("  }");
+for className in builtins:
+  builtin = builtins[className]
+  if not className in ["parent","!parent"] and not builtin["isProto"] and not className.startswith(nativeTestStr):
     codeOut("  if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
 codeOut("  if (parent==execInfo.root) return &jswSymbolTables[jswSymbolIndex_global];");
 codeOut("  return 0;")
@@ -474,12 +554,9 @@ for className in builtins:
 codeOut('  }')
 codeOut('  JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
 codeOut('  if (constructor && jsvIsNativeFunction(constructor)) {')
-codeOut('    void *constructorPtr = constructor->varData.native.ptr;')
-codeOut('   jsvUnLock(constructor);')
-for className in builtins:
-  builtin = builtins[className]
-  if builtin["isProto"] and "constructorPtr" in className:
-    codeOut("    if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut('    const JswSymList *l = jswGetSymbolListForConstructorProto(constructor);')
+codeOut('    jsvUnLock(constructor);')
+codeOut('    if (l) return l;')
 codeOut('  }')
 nativeCheck = "jsvIsNativeFunction(parent) && "
 for className in builtins:
@@ -510,13 +587,12 @@ codeOut('')
 
 codeOut('void *jswGetBuiltInLibrary(const char *name) {')
 for lib in libraries:
-  codeOut('if (strcmp(name, "'+lib+'")==0) return (void*)gen_jswrap_'+lib+'_'+lib+';');
+  codeOut('  if (strcmp(name, "'+lib+'")==0) return (void*)gen_jswrap_'+lib+'_'+lib+';');
 codeOut('  return 0;')
 codeOut('}')
 
 codeOut('')
 codeOut('')
-
 
 objectChecks = {}
 for jsondata in jsondatas:
@@ -575,6 +651,33 @@ codeOut('void jswKill() {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="kill":
     codeOut("  "+jsondata["generate"]+"();")
+codeOut('}')
+
+codeOut("/** Tasks to run on Deinitialisation */")
+codeOut('bool jswOnCharEvent(IOEventFlags channel, char charData) {')
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"].startswith("EV_"):
+    codeOut("  if (channel=="+jsondata["type"]+") return "+jsondata["generate"]+"(charData);")
+codeOut('  return false;')
+codeOut('}')
+
+codeOut("/** If we have a built-in module with the given name, return the module's contents - or 0 */")
+codeOut('const char *jswGetBuiltInJSLibrary(const char *name) {')
+for modulename in jsmodules:
+  codeOut("  if (!strcmp(name,\""+modulename+"\")) return "+json.dumps(jsmodules[modulename])+";")
+codeOut('  return 0;')
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut('const char *jswGetBuiltInLibraryNames() {')
+librarynames = []
+for lib in libraries:
+  librarynames.append(lib);
+for lib in jsmodules:
+  librarynames.append(lib);
+codeOut('  return "'+','.join(librarynames)+'";')
 codeOut('}')
 
 codeOut('')

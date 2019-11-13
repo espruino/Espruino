@@ -134,11 +134,19 @@ board["_css"] = """
   top: 320px;
   left: 530px;
 }
+/* prevent pins overlay legends from overlapping when hovering */
+#boardcontainer:hover #left { opacity: 0.1; }
+#boardcontainer:hover #left2 { opacity: 0.1; }
+#boardcontainer:hover #right { opacity: 0.1; }
+#boardcontainer:hover #right2 { opacity: 0.1; }
+#boardcontainer:hover #left:hover { opacity: 1; z-index: 10; }
+#boardcontainer:hover #left2:hover { opacity: 1; z-index: 10; }
+#boardcontainer:hover #right2:hover { opacity: 1; z-index: 10; }
+#boardcontainer:hover #right:hover { opacity: 1; z-index: 10; }
 """;
 
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f303.csv', 3, 6, 7)
   pins = pinutils.scan_pin_af_file(pins, 'stm32f303_af.csv', 1, 2)
 #  print(json.dumps(pins, sort_keys=True, indent=2))
-#  return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])
-  return pinutils.fill_gaps_in_pin_list(pins)
+  return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])

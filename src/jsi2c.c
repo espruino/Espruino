@@ -33,7 +33,12 @@ bool jsi2cPopulateI2CInfo(
       {"bitrate", JSV_INTEGER, &inf->bitrate}
   };
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
-    return true;
+    bool ok = true;
+    if (inf->bitrate < 100) {
+      jsExceptionHere(JSET_ERROR, "Invalid I2C bitrate");
+      ok = false;
+    }
+    return ok;
   } else
     return false;
 }
@@ -45,8 +50,7 @@ bool jsi2cPopulateI2CInfo(
 const int I2C_TIMEOUT = 100000;
 
 static void dly(i2cInfo *inf) {
-  volatile int i;
-  for (i=inf->delay;i>0;i--);
+  if (inf->delay) jshDelayMicroseconds(inf->delay);
 }
 
 static void err(const char *s) {
@@ -90,25 +94,28 @@ static void i2c_stop(i2cInfo *inf) {
 static void i2c_wr_bit(i2cInfo *inf, bool b) {
   jshPinSetValue(inf->pinSDA, b);
   dly(inf);
-  jshPinSetValue(inf->pinSCL, 1);
+  jshPinSetValue(inf->pinSCL, 1); // stop forcing SCL
+  dly(inf);
   dly(inf);
   int timeout = I2C_TIMEOUT;
   while (!jshPinGetValue(inf->pinSCL) && --timeout); // clock stretch
   if (!timeout) err("Timeout (wr)");
   jshPinSetValue(inf->pinSCL, 0);
-  jshPinSetValue(inf->pinSDA, 1); // stop forcing SDA (needed?)
+  dly(inf);  
 }
 
 static bool i2c_rd_bit(i2cInfo *inf) {
   jshPinSetValue(inf->pinSDA, 1); // stop forcing SDA
   dly(inf);
-  jshPinSetValue(inf->pinSCL, 1); // stop forcing SDA
+  jshPinSetValue(inf->pinSCL, 1); // stop forcing SCL
+  dly(inf);
   int timeout = I2C_TIMEOUT;
   while (!jshPinGetValue(inf->pinSCL) && --timeout); // clock stretch
   if (!timeout) err("Timeout (rd)");
   dly(inf);
   bool b = jshPinGetValue(inf->pinSDA);
   jshPinSetValue(inf->pinSCL, 0);
+  dly(inf);
   return b;
 }
 
@@ -128,6 +135,7 @@ static int i2c_rd(i2cInfo *inf, bool nack) {
   for (i=0;i<8;i++)
     data = (data<<1) | (i2c_rd_bit(inf)?1:0);
   i2c_wr_bit(inf, nack);
+  jshPinSetValue(inf->pinSDA, 1); // stop forcing SDA
   return data;
 }
 
@@ -136,7 +144,8 @@ static void i2c_initstruct(i2cInfo *inf, JshI2CInfo *i) {
   inf->pinSDA = i->pinSDA;
   inf->pinSCL = i->pinSCL;
   inf->started = i->started;
-  inf->delay = 4000000/i->bitrate;
+  inf->delay = 250000/i->bitrate;
+  if (inf->delay<2) inf->delay=0;
 }
 
 // ----------------------------------------------------------------------------

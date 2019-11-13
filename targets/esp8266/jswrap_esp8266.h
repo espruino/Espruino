@@ -23,7 +23,6 @@
 JsVar *jswrap_ESP8266_getResetInfo();
 JsVar *jswrap_ESP8266_getState();
 void   jswrap_ESP8266_dumpSocketInfo(void);
-void   jswrap_ESP8266_ping(JsVar *jsIpAddr, JsVar *jsPingCallback);
 void   jswrap_ESP8266_reboot();
 void   jswrap_ESP8266_setCPUFreq(JsVar *jsFreq);
 JsVar *jswrap_ESP8266_crc32(JsVar *jsData);

@@ -14,13 +14,15 @@
 
 #include "compress_rle.h"
 
-// gets data from array, writes to callback
-void rle_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned char ch, uint32_t *cbdata), uint32_t *cbdata) {
+/** gets data from array, writes to callback if nonzero. Returns total length. */
+uint32_t rle_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned char ch, uint32_t *cbdata), uint32_t *cbdata) {
+  uint32_t outputLen = 0;
   int lastCh = -1; // not a valid char
   while (dataLen) {
     unsigned char ch = *(data++);
     dataLen--;
-    callback(ch, cbdata);
+    outputLen++;
+    if (callback) callback(ch, cbdata);
     if (ch==lastCh) {
       int cnt = 0;
       while (dataLen && lastCh==*data && cnt<255) {
@@ -28,25 +30,31 @@ void rle_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned c
         dataLen--;
         cnt++;
       }
-      callback((unsigned char)cnt, cbdata);
+      outputLen++;
+      if (callback) callback((unsigned char)cnt, cbdata);
     }
     lastCh = ch;
   }
+  return outputLen;
 }
 
-// gets data from callback, writes it into array
-void rle_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsigned char *data) {
+/** gets data from callback, writes it into array if nonzero. Returns total length */
+uint32_t rle_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsigned char *data) {
+  uint32_t outputLen = 0;
   int lastCh = -256; // not a valid char
   while (true) {
     int ch = callback(cbdata);
-    if (ch<0) return;
-    *(data++) = (unsigned char)ch;
+    if (ch<0) return outputLen;
+    if (data) data[outputLen] = (unsigned char)ch;
+    outputLen++;
     if (ch==lastCh) {
       int cnt = callback(cbdata);
       while (cnt-->0) {
-        *(data++) = (unsigned char)ch;
+        if (data) data[outputLen] = (unsigned char)ch;
+        outputLen++;
       }
     }
     lastCh = ch;
   }
+  return outputLen;
 }

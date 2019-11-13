@@ -45,7 +45,7 @@ Create a new String
 JsVar *jswrap_string_constructor(JsVar *args) {
   if (jsvGetArrayLength(args)==0)
     return jsvNewFromEmptyString(); // no argument - return an empty string
-  return jsvAsString(jsvGetArrayItem(args, 0), true);
+  return jsvAsStringAndUnLock(jsvGetArrayItem(args, 0));
 }
 
 /*JSON{
@@ -163,7 +163,7 @@ Return the last index of substring in this string, or -1 if not found
 int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, bool lastIndexOf) {
   if (!jsvIsString(parent)) return 0;
   // slow, but simple!
-  substring = jsvAsString(substring, false);
+  substring = jsvAsString(substring);
   if (!substring) return 0; // out of memory
   int parentLength = (int)jsvGetStringLength(parent);
   int subStringLength = (int)jsvGetStringLength(substring);
@@ -206,6 +206,72 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
 /*JSON{
   "type" : "method",
   "class" : "String",
+  "name" : "match",
+  "generate" : "jswrap_string_match",
+  "params" : [
+    ["subStr","JsVar","Substring or RegExp to match"]
+  ],
+  "return" : ["JsVar","This match array"]
+}
+Matches `subStr` occurrence in the string.
+ */
+JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
+  if (!jsvIsString(parent)) return 0;
+  if (jsvIsUndefined(subStr)) return 0;
+
+#ifndef SAVE_ON_FLASH
+  // Use RegExp if one is passed in
+  if (jsvIsInstanceOf(subStr, "RegExp")) {
+    jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
+    JsVar *match;
+    match = jswrap_regexp_exec(subStr, parent);
+    if (!jswrap_regexp_hasFlag(subStr,'g')) {
+      return match;
+    }
+
+    // global
+    JsVar *array = jsvNewEmptyArray();
+    if (!array) return 0; // out of memory
+    while (match && !jsvIsNull(match)) {
+      // get info about match
+      JsVar *matchStr = jsvGetArrayItem(match,0);
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
+      JsVarInt len = (JsVarInt)jsvGetStringLength(matchStr);
+      int last = idx+len;
+      jsvArrayPushAndUnLock(array, matchStr);
+      // search again
+      jsvUnLock(match);
+      jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(last));
+      match = jswrap_regexp_exec(subStr, parent);
+    }
+    jsvUnLock(match);
+    jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
+    return array;
+  }
+#endif
+
+  subStr = jsvAsString(subStr);
+
+  int idx = jswrap_string_indexOf(parent, subStr, 0, false);
+  if (idx>=0) {
+      JsVar *array = jsvNewEmptyArray();
+      if (!array) {
+        jsvUnLock(subStr);
+        return 0; // out of memory
+      }
+
+      jsvArrayPush(array, subStr);
+      jsvObjectSetChildAndUnLock(array, "index", jsvNewFromInteger(idx));
+      jsvObjectSetChildAndUnLock(array, "input", subStr);
+      return array;
+  }
+  jsvUnLock(subStr);
+  return NULL;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
   "name" : "replace",
   "generate" : "jswrap_string_replace",
   "params" : [
@@ -217,7 +283,7 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
 Search and replace ONE occurrance of `subStr` with `newSubStr` and return the result. This doesn't alter the original string. Regular expressions not supported.
  */
 JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
-  JsVar *str = jsvAsString(parent, false);
+  JsVar *str = jsvAsString(parent);
 #ifndef SAVE_ON_FLASH
   // Use RegExp if one is passed in
   if (jsvIsInstanceOf(subStr, "RegExp")) {
@@ -225,7 +291,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
     if (jsvIsFunction(newSubStr) || jsvIsString(newSubStr))
       replace = jsvLockAgain(newSubStr);
     else
-      replace = jsvAsString(newSubStr, false);
+      replace = jsvAsString(newSubStr);
     jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
     bool global = jswrap_regexp_hasFlag(subStr,'g');
     JsVar *match;
@@ -241,15 +307,15 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
       jsvStringIteratorNew(&dst, newStr, 0);
       jsvStringIteratorGotoEnd(&dst);
       if (jsvIsFunction(replace)) {
-        int argCount = 0;
+        unsigned int argCount = 0;
         JsVar *args[13];
         args[argCount++] = jsvLockAgain(matchStr);
         JsVar *v;
-        while ((v = jsvGetArrayItem(match,argCount)))
+        while ((v = jsvGetArrayItem(match, (JsVarInt)argCount)))
           args[argCount++] = v;
         args[argCount++] = jsvObjectGetChild(match,"index",0);
         args[argCount++] = jsvObjectGetChild(match,"input",0);
-        JsVar *result = jsvAsString(jspeFunctionCall(replace, 0, 0, false, argCount, args), true);
+        JsVar *result = jsvAsStringAndUnLock(jspeFunctionCall(replace, 0, 0, false, (JsVarInt)argCount, args));
         jsvUnLockMany(argCount, args);
         jsvStringIteratorAppendString(&dst, result, 0);
         jsvUnLock(result);
@@ -300,8 +366,8 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
   }
 #endif
 
-  newSubStr = jsvAsString(newSubStr, false);
-  subStr = jsvAsString(subStr, false);
+  newSubStr = jsvAsString(newSubStr);
+  subStr = jsvAsString(subStr);
 
 
   int idx = jswrap_string_indexOf(parent, subStr, 0, false);
@@ -400,11 +466,13 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   "name" : "split",
   "generate" : "jswrap_string_split",
   "params" : [
-    ["separator","JsVar","The start character index"]
+    ["separator","JsVar","The separator `String` or `RegExp` to use"]
   ],
   "return" : ["JsVar","Part of this string from start for len characters"]
 }
-Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==[1,2,3]```
+Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==['1', '2', '3']```
+
+Regular Expressions can also be used to split strings, eg. `'1a2b3 4'.split(/[^0-9]/)==['1', '2', '3', '4']`.
  */
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   if (!jsvIsString(parent)) return 0;
@@ -420,7 +488,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 #ifndef SAVE_ON_FLASH
   // Use RegExp if one is passed in
   if (jsvIsInstanceOf(split, "RegExp")) {
-    int last = 0;
+    unsigned int last = 0;
     JsVar *match;
     jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
     match = jswrap_regexp_exec(split, parent);
@@ -440,11 +508,14 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
     }
     jsvUnLock(match);
     jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
+    // add remaining string after last match
+    if (last<=jsvGetStringLength(parent))
+      jsvArrayPushAndUnLock(array, jsvNewFromStringVar(parent, (size_t)last, JSVAPPENDSTRINGVAR_MAXLENGTH));
     return array;
   }
 #endif
 
-  split = jsvAsString(split, false);
+  split = jsvAsString(split);
 
   int idx, last = 0;
   int splitlen = jsvIsUndefined(split) ? 0 : (int)jsvGetStringLength(split);
@@ -492,24 +563,22 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
   JsVar *res = jsvNewFromEmptyString();
   if (!res) return 0; // out of memory
+  JsVar *parentStr = jsvAsString(parent);
 
   JsvStringIterator itsrc, itdst;
-  jsvStringIteratorNew(&itsrc, parent, 0);
+  jsvStringIteratorNew(&itsrc, parentStr, 0);
   jsvStringIteratorNew(&itdst, res, 0);
 
   while (jsvStringIteratorHasChar(&itsrc)) {
     char ch = jsvStringIteratorGetChar(&itsrc);
-    if (upper) {
-      if (ch >= 97 && ch <= 122) ch = (char)(ch - 32);
-    } else {
-      if (ch >= 65 && ch <= 90) ch = (char)(ch + 32); // A-Z
-    }
+    ch = upper ? jsvStringCharToUpper(ch) : jsvStringCharToLower(ch);
     jsvStringIteratorAppend(&itdst, ch);
     jsvStringIteratorNext(&itsrc);
   }
 
   jsvStringIteratorFree(&itsrc);
   jsvStringIteratorFree(&itdst);
+  jsvUnLock(parentStr);
 
   return res;
 }
@@ -526,7 +595,7 @@ Return a new string with any whitespace (tabs, space, form feed, newline,
 carriage return, etc) removed from the beginning and end.
  */
 JsVar *jswrap_string_trim(JsVar *parent) {
-  JsVar *s = jsvAsString(parent, false);
+  JsVar *s = jsvAsString(parent);
   if (!s) return s;
   unsigned int start = 0;
   int end = -1;
@@ -549,4 +618,94 @@ JsVar *jswrap_string_trim(JsVar *parent) {
   JsVar *res = jsvNewFromStringVar(s, start, len);
   jsvUnLock(s);
   return res;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "startsWith",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_string_startsWith",
+  "params" : [
+    ["searchString","JsVar","The string to search for"],
+    ["position","int","The start character index (or 0 if not defined)"]
+  ],
+  "return" : ["bool","`true` if the given characters are found at the beginning of the string, otherwise, `false`."]
+}
+*/
+bool jswrap_string_startsWith(JsVar *parent, JsVar *search, int position) {
+  if (!jsvIsString(parent)) return false;
+  JsVar *searchStr = jsvAsString(search);
+  bool match = false;
+  if (position >= 0 &&
+      jsvGetStringLength(searchStr)+position <= jsvGetStringLength(parent))
+   match = jsvCompareString(parent, searchStr, position,0,true)==0;
+  jsvUnLock(searchStr);
+  return match;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "endsWith",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_string_endsWith",
+  "params" : [
+    ["searchString","JsVar","The string to search for"],
+    ["length","JsVar","The 'end' of the string - if left off the actual length of the string is used"]
+  ],
+  "return" : ["bool","`true` if the given characters are found at the end of the string, otherwise, `false`."]
+}
+*/
+bool jswrap_string_endsWith(JsVar *parent, JsVar *search, JsVar *length) {
+  if (!jsvIsString(parent)) return false;
+  int position = jsvIsNumeric(length) ? jsvGetInteger(length) : (int)jsvGetStringLength(parent);
+  JsVar *searchStr = jsvAsString(search);
+  position -= jsvGetStringLength(searchStr);
+  bool match = false;
+  if (position >= 0 &&
+      jsvGetStringLength(searchStr)+position <= jsvGetStringLength(parent))
+    match = jsvCompareString(parent, searchStr, position,0,true)==0;
+  jsvUnLock(searchStr);
+  return match;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "includes",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, false)>=0",
+  "params" : [
+    ["substring","JsVar","The string to search for"],
+    ["fromIndex","JsVar","The start character index (or 0 if not defined)"]
+  ],
+  "return" : ["bool","`true` if the given characters are in the string, otherwise, `false`."]
+}
+*/
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "repeat",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_string_repeat",
+  "params" : [
+    ["count","int","An integer with the amount of times to repeat this String"]
+  ],
+  "return" : ["JsVar","A string containing repetitions of this string"],
+  "return_object" : "String"
+}
+Repeat this string the given number of times.
+*/
+JsVar *jswrap_string_repeat(JsVar *parent, int count) {
+  if (count<0) {
+    jsExceptionHere(JSET_ERROR, "Invalid count value");
+    return 0;
+  }
+  JsVar *result = jsvNewFromEmptyString();
+  while (count-- && !jspIsInterrupted())
+    jsvAppendStringVarComplete(result, parent);
+  return result;
 }

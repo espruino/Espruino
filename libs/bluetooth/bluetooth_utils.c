@@ -24,7 +24,20 @@
 
 /// Return true if two UUIDs are equal
 bool bleUUIDEqual(ble_uuid_t a, ble_uuid_t b) {
-  return a.type==b.type && a.uuid==b.uuid;
+#ifdef NRF5X
+	return a.type==b.type && a.uuid==b.uuid;
+#else
+	switch(a.type){
+		case BLE_UUID_TYPE_UNKNOWN:
+			return a.type == b.type;
+		case BLE_UUID_TYPE_BLE:
+			return a.type == b.type && a.uuid == b.uuid;
+		case BLE_UUID_TYPE_128:
+			return a.type == b.type && a.uuid128 == b.uuid128;
+		default:
+			return false;
+	}
+#endif
 }
 
 JsVar *bleUUID128ToStr(const uint8_t *data) {
@@ -52,8 +65,7 @@ JsVar *bleUUIDToStr(ble_uuid_t uuid) {
   assert(dataLen==16); // it should always be 16 as we checked above
   return bleUUID128ToStr(&data[0]);
 #else
-  jsiConsolePrintf("FIXME\n");
-  return 0;
+  return bleUUID128ToStr(&uuid.uuid128);
 #endif
 }
 
@@ -73,10 +85,14 @@ bool bleVarToAddr(JsVar *mac, ble_gap_addr_t *addr) {
   for (i=0;i<6;i++)
     addr->addr[5-i] = (chtod(jsvGetCharInString(mac, i*3))<<4) | chtod(jsvGetCharInString(mac, (i*3)+1));
   if (jsvGetStringLength(mac)!=17) {
-    if (jsvIsStringEqualOrStartsWithOffset(mac, " public", false, 17))
+    if (jsvIsStringEqualOrStartsWithOffset(mac, " public", false, 17, false))
       addr->addr_type = BLE_GAP_ADDR_TYPE_PUBLIC; // default
-    else if (jsvIsStringEqualOrStartsWithOffset(mac, " random", false, 17))
+    else if (jsvIsStringEqualOrStartsWithOffset(mac, " random", false, 17, false))
       addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC;
+    else if (jsvIsStringEqualOrStartsWithOffset(mac, " private-resolvable", false, 17, false))
+      addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE;
+    else if (jsvIsStringEqualOrStartsWithOffset(mac, " private-nonresolvable", false, 17, false))
+      addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE;
     else return false;
   }
   return true;
@@ -89,6 +105,11 @@ JsVar *bleAddrToStr(ble_gap_addr_t addr) {
     typeStr = " public";
   else if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_STATIC)
     typeStr = " random";
+  else if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE)
+    typeStr = " private-resolvable";
+  else if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE)
+    typeStr = " private-nonresolvable";
+  else typeStr = "";
   return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x%s",
       addr.addr[5],
       addr.addr[4],
@@ -163,7 +184,10 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
   }
   return err_code ? "BLE device error adding UUID" : 0;
 #else
-  jsiConsolePrintf("FIXME\n");
+  uuid->uuid = ((data[13]<<8) | data[12]);
+  for(int i = 0; i < 16; i++){
+	uuid->uuid128[i] = data[i];
+  }
   return 0;
 #endif
 }

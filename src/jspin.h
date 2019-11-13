@@ -15,12 +15,12 @@
 #ifndef JSPIN_H
 #define JSPIN_H
 
+typedef unsigned char Pin; ///< for specifying pins for hardware
+#define PIN_UNDEFINED ((Pin)0xFF)
+
 #include "jsutils.h"
 #include "jsvar.h"
 #include "jsdevices.h"
-
-typedef unsigned char Pin; ///< for specifying pins for hardware
-#define PIN_UNDEFINED ((Pin)0xFF)
 
 typedef enum {
   JSH_PORT_NONE,
@@ -33,6 +33,7 @@ typedef enum {
   JSH_PORTG,
   JSH_PORTH,
   JSH_PORTI,
+  JSH_PORTV,
   JSH_PORT_MASK = 15,
   JSH_PIN_NEGATED = 16
 } PACKED_FLAGS JsvPinInfoPort;
@@ -217,6 +218,11 @@ Pin jshGetPinFromVarAndUnLock(JsVar *pinv);
 bool jshGetPinStateIsManual(Pin pin);
 /// Set whether the pin state is manual (has the user asked us explicitly to change it?)
 void jshSetPinStateIsManual(Pin pin, bool manual);
+/// Should a pin stay watched even after the user does clearWatch? Is it used by something internally?
+bool jshGetPinShouldStayWatched(Pin pin);
+/// Should a pin stay watched even after the user does clearWatch? Is it used by something internally?
+void jshSetPinShouldStayWatched(Pin pin, bool manual);
+
 // Reset our list of which pins are set manually - called from jshResetDevices
 void jshResetPinStateIsManual();
 

@@ -71,7 +71,6 @@ bool net_esp32_checkError(JsNetwork *net) {
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
 int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, unsigned short port, JsVar *options) {
-  NOT_USED(net);
   int ippProto = socketType & ST_UDP ? IPPROTO_UDP : IPPROTO_TCP;
   int scktType = socketType & ST_UDP ? SOCK_DGRAM : SOCK_STREAM;
   int sckt = -1;
@@ -95,28 +94,27 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
       int optval = 1;
       if (setsockopt(sckt,SOL_SOCKET,SO_BROADCAST,(const char *)&optval,sizeof(optval))<0)
         jsWarn("setsockopt(SO_BROADCAST) failed\n");
-      return sckt;
-    }
+    } else {
+      sockaddr_in       sin;
+      sin.sin_family = AF_INET;
+      sin.sin_addr.s_addr = (in_addr_t)host;
+      sin.sin_port = htons( port );
 
-    sockaddr_in       sin;
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = (in_addr_t)host;
-    sin.sin_port = htons( port );
+      int res = connect(sckt,(struct sockaddr *)&sin, sizeof(sockaddr_in) );
 
-    int res = connect(sckt,(struct sockaddr *)&sin, sizeof(sockaddr_in) );
-
-    if (res == SOCKET_ERROR) {
-    #ifdef WIN_OS
-     int err = WSAGetLastError();
-    #else
-     int err = errno;
-    #endif
-     if (err != EINPROGRESS &&
-         err != EWOULDBLOCK) {
-       jsError("Connect failed (err %d)", err);
-       closesocket(sckt);
-       return -1;
-     }
+      if (res == SOCKET_ERROR) {
+      #ifdef WIN_OS
+       int err = WSAGetLastError();
+      #else
+       int err = errno;
+      #endif
+       if (err != EINPROGRESS &&
+           err != EWOULDBLOCK) {
+         jsError("Connect failed (err %d)", err);
+         closesocket(sckt);
+         return -1;
+       }
+      }
     }
 
   } else { // ------------------------------------------------- no host (=server)
@@ -127,13 +125,15 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
       return 0;
     }
 
-    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "reuseAddr", 0))) {
+    if (scktType != SOCK_DGRAM ||
+        jsvGetBoolAndUnLock(jsvObjectGetChild(options, "reuseAddr", 0))) {
       int optval = 1;
       if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
         jsWarn("setsockopt(SO_REUSADDR) failed\n");
 #ifdef SO_REUSEPORT
-//    if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
-//      jsWarn("setsockopt(SO_REUSPORT) failed\n");
+    // not supported by esp-idf 3.1
+    //if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
+      //jsWarn("setsockopt(SO_REUSPORT) failed\n");
 #endif
     }
 
@@ -185,6 +185,13 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
     }
   }
 
+#ifdef SO_RCVBUF
+  int rcvBufSize = net->data.recvBufferSize;
+  if (rcvBufSize > 0) {
+    if (setsockopt(sckt,SOL_SOCKET,SO_RCVBUF,(const char *)&rcvBufSize,sizeof(rcvBufSize))<0)
+      jsWarn("setsockopt(SO_RCVBUF) failed\n");
+  }
+#endif
 #ifdef SO_NOSIGPIPE
   // disable SIGPIPE
   int optval = 1;
@@ -241,18 +248,16 @@ int net_esp32_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, s
   } else if (n>0) {
     // receive data
     if (socketType & ST_UDP) {
-      size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
-      uint32_t *host = (uint32_t*)buf;
-      unsigned short *port = (unsigned short*)&host[1];
-      uint16_t *size = (unsigned short*)&port[1];
-      num = (int)recvfrom(sckt,buf+delta,len-delta,0,&fromAddr,&fromAddrLen);
-      *host = fromAddr.sin_addr.s_addr;
-      *port = ntohs(fromAddr.sin_port);
-      *size = num;
+      num = (int)recvfrom(sckt,buf+sizeof(JsNetUDPPacketHeader),len-sizeof(JsNetUDPPacketHeader),0,&fromAddr,&fromAddrLen);
 
-      DBG("Recv %d %x:%d", num, *host, *port);
+      JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+      *(in_addr_t*)&header->host = fromAddr.sin_addr.s_addr;
+      header->port = ntohs(fromAddr.sin_port);
+      header->length = num;
+
+      DBG("Recv %d %x:%d", num, *(uint32_t*)&header->host, header->port);
       if (num==0) return -1; // select says data, but recv says 0 means connection is closed
-      num += delta;
+      num += sizeof(JsNetUDPPacketHeader);
     } else {
       num = (int)recvfrom(sckt,buf,len,0,&fromAddr,&fromAddrLen);
       if (num==0) return -1; // select says data, but recv says 0 means connection is closed
@@ -281,20 +286,17 @@ int net_esp32_send(JsNetwork *net, SocketType socketType, int sckt, const void *
     flags |= MSG_NOSIGNAL;
 #endif
     if (socketType & ST_UDP) {
-        sockaddr_in       sin;
-        size_t delta =  sizeof(uint32_t) + sizeof(unsigned short) + sizeof(uint16_t);
-        uint32_t *host = (uint32_t*)buf;
-        unsigned short *port = (unsigned short*)&host[1];
-        uint16_t *size = (uint16_t*)&port[1];
-        sin.sin_family = AF_INET;
-        sin.sin_addr.s_addr = *(in_addr_t*)host;
-        sin.sin_port = htons(*port);
+      JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
+      sockaddr_in sin;
+      sin.sin_family = AF_INET;
+      sin.sin_addr.s_addr = *(in_addr_t*)&header->host;
+      sin.sin_port = htons(header->port);
 
-        DBG("Send %d %x:%d", len - delta, *host, *port);
-        n = (int)sendto(sckt, buf + delta, *size, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in)) + delta;
-        DBG("Send bytes %d",  n);
+      DBG("Send %d %x:%d", len - sizeof(JsNetUDPPacketHeader), *(uint32_t*)&header->host, header->port);
+      n = (int)sendto(sckt, buf + sizeof(JsNetUDPPacketHeader), header->length, flags, (struct sockaddr *)&sin, sizeof(sockaddr_in)) + sizeof(JsNetUDPPacketHeader);
+      DBG("Send bytes %d",  n);
     } else {
-        n = (int)send(sckt, buf, len, flags);
+      n = (int)send(sckt, buf, len, flags);
     }
     return n;
   } else

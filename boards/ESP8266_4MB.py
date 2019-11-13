@@ -33,7 +33,7 @@ info = {
    ],
    'makefile' : [
      'FLASH_4MB=1',
-     'ESP_FLASH_MAX=962560',
+     'ESP_FLASH_MAX=831488',
      'FLASH_BAUD=460800'    
     ]
  }
@@ -51,11 +51,11 @@ chip = {
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {
-    # 0x000000 + 4096 * (256 - 16save - 1wifi -4reserved) 
-    'address' :  0x0EB000, # first page is used for wifi save 
+    # 0x000000 + 4096 * ( 256 -  48 save - 1 wifi  - 4 reserved ) 
+    'address' :  0x0CB000, 
     'page_size' : 4096,
-    'pages' : 16,
-    'flash_available' : 940, # firmware can be up to this size
+    'pages' : 48,
+    'flash_available' : 812, # firmware can be up to this size
   },
 };
 
@@ -111,10 +111,25 @@ board_esp01 = {
 boards = [ board_esp12 ];
 
 def get_pins():
-  pins = pinutils.generate_pins(0,16)
-  pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
-  pinutils.findpin(pins, "PD1", True)["functions"]["USART0_TX"]=0;
-  pinutils.findpin(pins, "PD2", True)["functions"]["USART1_TX"]=0;
-  pinutils.findpin(pins, "PD3", True)["functions"]["USART0_RX"]=0;
-  # just fake pins D0 .. D16
-  return pins
+  # add pins D0 .. D16,A0
+  pins = [
+   { "name":"PD0",  "sortingname":"D00", "port":"D", "num":"0", "functions":{"LED_1":0}, "csv":{} },
+   { "name":"PD1",  "sortingname":"D01", "port":"D", "num":"1", "functions":{"USART1_TX":0}, "csv":{} },
+   { "name":"PD2",  "sortingname":"D02", "port":"D", "num":"2", "functions":{"USART2_TX":0}, "csv":{} },
+   { "name":"PD3",  "sortingname":"D03", "port":"D", "num":"3", "functions":{"USART1_RX":0}, "csv":{} },
+   { "name":"PD4",  "sortingname":"D04", "port":"D", "num":"4", "functions":{}, "csv":{} },
+   { "name":"PD5",  "sortingname":"D05", "port":"D", "num":"5",  "functions":{}, "csv":{} }, 
+   { "name":"PD6",  "sortingname":"D06", "port":"D", "num":"6",  "functions":{}, "csv":{} }, 
+   { "name":"PD7",  "sortingname":"D07", "port":"D", "num":"7",  "functions":{}, "csv":{} }, 
+   { "name":"PD8",  "sortingname":"D08", "port":"D", "num":"8",  "functions":{}, "csv":{} },
+   { "name":"PD9",  "sortingname":"D09", "port":"D", "num":"9",  "functions":{}, "csv":{} }, 
+   { "name":"PD10", "sortingname":"D10", "port":"D", "num":"10", "functions":{}, "csv":{} },
+   { "name":"PD11", "sortingname":"D11", "port":"D", "num":"11", "functions":{}, "csv":{} },
+   { "name":"PD12", "sortingname":"D12", "port":"D", "num":"12", "functions":{}, "csv":{} },
+   { "name":"PD13", "sortingname":"D13", "port":"D", "num":"13", "functions":{}, "csv":{} },
+   { "name":"PD14", "sortingname":"D14", "port":"D", "num":"14", "functions":{}, "csv":{} },
+   { "name":"PD15", "sortingname":"D15", "port":"D", "num":"15", "functions":{}, "csv":{} },
+   { "name":"PD16", "sortingname":"D16", "port":"D", "num":"16", "functions":{}, "csv":{} },
+   { "name":"PA0", "sortingname":"A00",  "port":"A", "num":"17",   "functions":{ "ADC1_IN0":0 }, "csv":{} }
+  ]
+  return pins;

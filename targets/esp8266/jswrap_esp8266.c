@@ -35,20 +35,27 @@ typedef long long int64_t;
 #include <jswrap_neopixel.h>
 
 
+/*JSON{
+  "type": "class",
+  "class" : "ESP8266",
+  "ifdef" : "ESP8266"
+}
+Class containing utility functions for the [ESP8266](http://www.espruino.com/EspruinoESP8266)
+*/
+
 // ESP8266.reboot
 
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "reboot",
   "generate" : "jswrap_ESP8266_reboot"
 }
 Perform a hardware reset/reboot of the esp8266.
 */
 void jswrap_ESP8266_reboot() {
-  os_printf("Espruino resetting the esp8266\n");
-  os_delay_us(1000); // time for os_printf to drain
-  system_restart();
+  jshReboot();
 }
 
 //===== ESP8266.getResetInfo
@@ -60,6 +67,7 @@ void jswrap_ESP8266_reboot() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "getResetInfo",
   "generate" : "jswrap_ESP8266_getResetInfo",
   "return"   : ["JsVar","An object with the reset cause information"],
@@ -94,6 +102,7 @@ JsVar *jswrap_ESP8266_getResetInfo() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "logDebug",
   "generate" : "jswrap_ESP8266_logDebug",
   "params"   : [
@@ -110,6 +119,7 @@ void jswrap_ESP8266_logDebug(bool enable) {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "setLog",
   "generate" : "jswrap_ESP8266_setLog",
   "params"   : [
@@ -126,6 +136,7 @@ void jswrap_ESP8266_setLog(int mode) {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "printLog",
   "generate" : "jswrap_ESP8266_printLog"
 }
@@ -144,6 +155,7 @@ void jswrap_ESP8266_printLog() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "readLog",
   "generate" : "esp8266_logGetLine",
   "returns"  : "String with one line from the log, up to 128 characters long"
@@ -156,6 +168,7 @@ Returns one line from the log or up to 128 characters.
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "dumpSocketInfo",
   "generate" : "jswrap_ESP8266_dumpSocketInfo"
 }
@@ -170,6 +183,7 @@ void jswrap_ESP8266_dumpSocketInfo(void) {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "setCPUFreq",
   "generate" : "jswrap_ESP8266_setCPUFreq",
   "params"   : [
@@ -194,6 +208,7 @@ void jswrap_ESP8266_setCPUFreq(
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "getState",
   "generate" : "jswrap_ESP8266_getState",
   "return"   : ["JsVar", "The state of the ESP8266"]
@@ -238,11 +253,12 @@ JsVar *jswrap_ESP8266_getState() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "getFreeFlash",
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
 }
-**Note:** This is deprecated. Use `require("flash").getFree()`
+**Note:** This is deprecated. Use `require("Flash").getFree()`
 */
 JsVar *jswrap_ESP8266_getFreeFlash() {
   return jshFlashGetFree();
@@ -273,6 +289,7 @@ uint32_t crc32(uint8_t *buf, uint32_t len) {
 /*JSON{
  "type"     : "staticmethod",
  "class"    : "ESP8266",
+  "ifdef"   : "ESP8266",
  "name"     : "crc32",
  "generate" : "jswrap_ESP8266_crc32",
  "return"   : ["JsVar", "32-bit CRC"],
@@ -302,6 +319,7 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
 /*JSON{
  "type"     : "staticmethod",
  "class"    : "ESP8266",
+  "ifdef"   : "ESP8266",
  "name"     : "neopixelWrite",
  "generate" : "jswrap_ESP8266_neopixelWrite",
  "params"   : [
@@ -320,6 +338,7 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "deepSleep",
   "generate" : "jswrap_ESP8266_deepSleep",
   "params"   : [
@@ -355,7 +374,7 @@ void   jswrap_ESP8266_deepSleep(JsVar *jsMicros, JsVar *jsOption) {
   uint8_t option = jsvGetInteger(jsOption);
   system_deep_sleep_set_option(option);
 
-  int sleepTime = jsvGetInteger(jsMicros);
+  uint64_t sleepTime = jsvGetLongInteger(jsMicros);
   system_deep_sleep(sleepTime);
 }
 

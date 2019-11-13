@@ -19,7 +19,7 @@ import json;
 import sys;
 import os;
 
-ALLOWED_PORTS = "ABCDEFGHI";
+ALLOWED_PORTS = "ABCDEFGHIV";
 ALLOWED_FUNCTIONS = {}
 CLASSES = {}
 NAMES = {}
@@ -205,10 +205,10 @@ def scan_pin_file(pins, filename, nameoffset, functionoffset, altfunctionoffset)
   return pins
 
 # Create a simple list of pins
-def generate_pins(min_pin, max_pin):
+def generate_pins(min_pin, max_pin, port_name="D"):
   pins = []
   for n in range(min_pin, max_pin+1):
-    findpin(pins, "PD"+str(n), False)
+    findpin(pins, "P"+port_name+str(n), False)
   return pins
 
 # fill in gaps - eg. put A2 in A0,A1,A3,A4
@@ -239,9 +239,10 @@ def only_from_package(pins, package):
   newpins = []
   for pin in pins:
 #    print json.dumps(pin)
-    pinnumber =  pin["csv"][package]
-    if pinnumber!="" and pinnumber!="0":
-      newpins.append(pin)
+    if "csv" in pin:
+      pinnumber =  pin["csv"][package]
+      if pinnumber!="" and pinnumber!="0":
+        newpins.append(pin)
   return newpins
 
 def get_device_pins(board):

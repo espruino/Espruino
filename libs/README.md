@@ -5,6 +5,8 @@ Here you can author libraries for the Espruino with native code.
 
 For more information on the actual build process, see [the build process page](../README_BuildProcess.md)
 
+**For more detailed information, [check out these tutorials on the Espruino website](http://www.espruino.com/Extending+Espruino+1)**
+
 To get you started, here are some steps that can be made to enable `Hello.world()` in Espruino. 
 Of course you have guessed that it will print "Hello World!" to the console. Let's get on with it!
 

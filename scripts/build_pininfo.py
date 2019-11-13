@@ -123,7 +123,8 @@ for port in pinutils.ALLOWED_PORTS:
   o=-1
   for pin in pins:
     if pin["port"]==port:
-      if int(pin["num"])>=c: c = int(pin["num"])+1
+      usernum=int(pin["name"][2:])
+      if usernum>=c: c = usernum+1 # user-visible number
       if o<0: o=pins.index(pin)
   portinfo[port] = { 'count' : c, 'offset' : o };
 # Olimexino hack as things have been renamed
