@@ -2433,6 +2433,8 @@ void jsble_advertising_stop() {
    gap_params_init();
    services_init();
    conn_params_init();
+   // reset the status for things that aren't happening now we're rebooted
+   bleStatus &= ~BLE_RESET_ON_SOFTDEVICE_START;
 
    jswrap_ble_wake();
 }
