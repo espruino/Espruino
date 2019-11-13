@@ -1629,6 +1629,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     imageBpp = (unsigned char)jsvGetCharInString(imageBuffer,2);
     if (imageBpp & 128) {
       imageBpp = imageBpp&127;
+      imageIsTransparent = true;
       imageTransparentCol = (unsigned char)jsvGetCharInString(imageBuffer,3);
       imageBufferOffset = 4;
     } else {
