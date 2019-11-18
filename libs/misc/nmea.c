@@ -68,7 +68,7 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // speed
-    gpsFix->speed = nmea_decode_float(nmea, nextComma);
+    gpsFix->speed = nmea_decode_float(nmea, nextComma)*1.852; // knots to km/h
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // course
     gpsFix->course = nmea_decode_float(nmea, nextComma);
