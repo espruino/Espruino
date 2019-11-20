@@ -246,6 +246,8 @@ volatile uint16_t btn1Timer; // in ms
 int lcdPowerTimeout; // in ms
 /// Is the LCD on?
 bool lcdPowerOn;
+/// LCD Brightness - 255=full
+uint8_t lcdBrightness;
 /// Is the compass on?
 bool compassPowerOn;
 // compass data
@@ -459,6 +461,15 @@ void peripheralPollHandler() {
   //jswrap_banglejs_ioWr(IOEXP_HRM,1); // debug using HRM LED
 }
 
+void backlightOnHandler() {
+  if (i2cBusy) return;
+  jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight on
+}
+void backlightOffHandler() {
+  if (i2cBusy) return;
+  jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
+}
+
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   // wake up
   if (lcdPowerTimeout) {
@@ -496,7 +507,27 @@ void btn5Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(5,state,flags);
 }
 
-
+/// Turn just the backlight on or off (or adjust brightness)
+static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
+  jstStopExecuteFn(backlightOnHandler, 0);
+  jstStopExecuteFn(backlightOffHandler, 0);
+  if (isOn) { // wake
+    if (lcdBrightness>0) {
+      jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight on
+      if (lcdBrightness < 255) { //  only do PWM if brightness isn't full
+        JsSysTime now = jshGetSystemTime();
+        JsSysTime interval = jshGetTimeFromMilliseconds(10); // how often do we switch - 100Hz
+        JsSysTime ontime = interval*lcdBrightness/255; // how long to we stay on for?
+        jstExecuteFn(backlightOnHandler, NULL, now+interval, interval);
+        jstExecuteFn(backlightOffHandler, NULL, now+interval+ontime, interval);
+      }
+    } else { // lcdBrightness == 0
+      jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
+    }
+  } else { // sleep
+    jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
+  }
+}
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -509,21 +540,20 @@ void btn5Handler(bool state, IOEventFlags flags) {
 }
 This function can be used to turn Bangle.js's LCD off or on.
 
-*When on, the LCD draws roughly 40mA*
+**When on full, the LCD draws roughly 40mA.** You can adjust
+When brightness using `Bange.setLCDBrightness`.
 */
 void jswrap_banglejs_setLCDPower(bool isOn) {
-  // Note: LCD without backlight draws ~5mA
   if (isOn) { // wake
     lcdST7789_cmd(0x11, 0, NULL); // SLPOUT
     jshDelayMicroseconds(20);
     lcdST7789_cmd(0x29, 0, NULL);
-    jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight
   } else { // sleep
     lcdST7789_cmd(0x28, 0, NULL);
     jshDelayMicroseconds(20);
     lcdST7789_cmd(0x10, 0, NULL); // SLPIN
-    jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight
   }
+  jswrap_banglejs_setLCDPowerBacklight(isOn);
   if (lcdPowerOn != isOn) {
     JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
     if (bangle) {
@@ -535,6 +565,41 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
   }
   flipTimer = 0;
   lcdPowerOn = isOn;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setLCDBrightness",
+    "generate" : "jswrap_banglejs_setLCDBrightness",
+    "params" : [
+      ["brightness","float","The brightness of Bangle.js's display - from 0(off) to 1(on full)"]
+    ],
+    "ifdef" : "BANGLEJS"
+}
+This function can be used to adjust the brightness of Bangle.js's display, and
+hence prolong its battery life.
+
+Due to hardware design constraints, software PWM has to be used which
+means that the display may flicker slightly when Bluetooth is active
+and the display is not at full power.
+
+**Power consumption**
+
+* 0 = 7mA
+* 0.1 = 12mA
+* 0.2 = 18mA
+* 0.5 = 28mA
+* 0.9 = 40mA (switching overhead)
+* 1 = 40mA
+*/
+void jswrap_banglejs_setLCDBrightness(JsVarFloat v) {
+  int b = (int)(v*256 + 0.5);
+  if (b<0) b=0;
+  if (b>255) b=255;
+  lcdBrightness = b;
+  if (lcdPowerOn)  // need to re-run to adjust brightness
+    jswrap_banglejs_setLCDPowerBacklight(1);
 }
 
 /*JSON{
@@ -817,6 +882,7 @@ void jswrap_banglejs_init() {
   jshDelayMicroseconds(10000);
 
   lcdPowerOn = true;
+  lcdBrightness = 255;
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
   // Create backing graphics for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
@@ -952,6 +1018,8 @@ void jswrap_banglejs_init() {
   "generate" : "jswrap_banglejs_kill"
 }*/
 void jswrap_banglejs_kill() {
+  jstStopExecuteFn(backlightOnHandler, 0);
+  jstStopExecuteFn(backlightOffHandler, 0);
   jstStopExecuteFn(peripheralPollHandler, 0);
   jsvUnLock(promiseBeep);
   promiseBeep = 0;
