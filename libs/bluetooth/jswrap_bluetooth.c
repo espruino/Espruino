@@ -199,6 +199,8 @@ void jswrap_ble_reconfigure_softdevice() {
   JsVar *scanData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, 0);
   if (scanData) jswrap_ble_setScanResponse(scanData);
   jsvUnLock(scanData);
+  // Set up security related stuff
+  jsble_update_security();
 }
 
 /*JSON{
@@ -309,10 +311,14 @@ Called when a host device connects to Espruino. The first argument contains the 
   "class" : "NRF",
   "name" : "disconnect",
   "params" : [
-    ["reason","int","The reason code reported back by the BLE stack - see Nordic's `ble_hci.h` file for more information"]
+    ["reason","int","The reason code reported back by the BLE stack - see Nordic's [`ble_hci.h` file](https://github.com/espruino/Espruino/blob/master/targetlibs/nrf5x_12/components/softdevice/s132/headers/ble_hci.h#L71) for more information"]
   ]
 }
 Called when a host device disconnects from Espruino.
+
+The most common reason is:
+* 19 - `REMOTE_USER_TERMINATED_CONNECTION`
+* 22 - `LOCAL_HOST_TERMINATED_CONNECTION`
  */
 /*JSON{
   "type" : "event",
@@ -2760,12 +2766,33 @@ NRF.setSecurity({passkey:"123456", mitm:1, display:1});
 NRF.setServices({
   "9d020001-bf5f-1d1a-b52a-fe52091d5b12" : {
     "9d020002-bf5f-1d1a-b52a-fe52091d5b12" : {
+      // readable always
+      value : "Not Secret"
+    },
+    "9d020003-bf5f-1d1a-b52a-fe52091d5b12" : {
+      // readable only once bonded
       value : "Secret",
       readable : true,
       security: {
         read: {
           mitm: true,
-          lesc: true,
+          encrypted: true
+        }
+      }
+    },
+    "9d020004-bf5f-1d1a-b52a-fe52091d5b12" : {
+      // readable always
+      // writable only once bonded
+      value : "Readable",
+      readable : true,
+      writable : true,
+      onWrite : function(evt) {
+        console.log("Wrote ", evt.data);
+      },
+      security: {
+        write: {
+          mitm: true,
+          encrypted: true
         }
       }
     }

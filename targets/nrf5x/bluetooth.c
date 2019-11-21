@@ -621,6 +621,7 @@ uint8_t match_request : 1;               If 1 requires the application to report
         break;
       }
       case BLEP_TASK_AUTH_KEY_REQUEST: {
+        //jsiConsolePrintf("BLEP_TASK_AUTH_KEY_REQUEST\n");
         uint16_t conn_handle = data;
         if (conn_handle == m_central_conn_handle) {
           JsVar *gattServer = bleGetActiveBluetoothGattServer();
@@ -1931,7 +1932,7 @@ void jsble_update_security() {
     v = jsvObjectGetChild(options, "passkey", 0);
     if (jsvIsString(v)) jsvGetString(v, (char*)passkey, sizeof(passkey));
     jsvUnLock(v);
-
+    //jsiConsolePrintf("PASSKEY %d %d %d %d %d %d\n",passkey[0],passkey[1],passkey[2],passkey[3],passkey[4],passkey[5]);
     ble_opt_t pin_option;
     pin_option.gap_opt.passkey.p_passkey = passkey[0] ? passkey : NULL;
     uint32_t err_code =  sd_ble_opt_set(BLE_GAP_OPT_PASSKEY, &pin_option);
@@ -2465,6 +2466,7 @@ void jsble_restart_softdevice() {
   if (bleStatus & BLE_IS_SCANNING) {
     sd_ble_gap_scan_stop();
   }
+  //jsiConsolePrintf("Restart softdevice\n");
 
   jshUtilTimerDisable(); // don't want the util timer firing during this!
   JsSysTime lastTime = jshGetSystemTime();
