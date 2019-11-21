@@ -1163,7 +1163,7 @@ have modified them. To fix this, disable and re-enable Bluetooth on your
 iOS device, or use an Android device to run NRF Connect.
 
 **Note:** Not all combinations of security configuration values are valid, the valid combinations are: encrypted,
-encrypted + mitm, lesc, signed, signed + mitm.
+encrypted + mitm, lesc, signed, signed + mitm. See `NRF.setSecurity` for more information.
 */
 void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   if (!(jsvIsObject(data) || jsvIsUndefined(data))) {
