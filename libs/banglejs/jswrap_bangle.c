@@ -187,7 +187,7 @@ If the watch is tapped, this event contains information on the way it was tapped
   "params" : [["xyz","JsVar","An Int8Array of XYZXYZXYZ data"]],
   "ifdef" : "BANGLEJS"
 }
-Called when a 'gesture' (fast movement) is detected
+Emitted when a 'gesture' (fast movement) is detected
 */
 /*JSON{
   "type" : "event",
@@ -197,11 +197,30 @@ Called when a 'gesture' (fast movement) is detected
               ["weights","JsVar","An array of floating point values output by the model"]],
   "ifdef" : "BANGLEJS"
 }
-Called when a 'gesture' (fast movement) is detected, and a Tensorflow model is in
+Emitted when a 'gesture' (fast movement) is detected, and a Tensorflow model is in
 storage in the `".tfmodel"` file.
 
 If a `".tfnames"` file is specified as a comma-separated list of names, it will be used
 to decode `gesture` from a number into a string.
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "swipe",
+  "params" : [["direction","int","`-1` for left, `1` for right"]],
+  "ifdef" : "BANGLEJS"
+}
+Emitted when a swipe on the touchscreen is detected (a movement from left->right, or right->left)
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "touch",
+  "params" : [["button","int","`1` for left, `2` for right"]],
+  "ifdef" : "BANGLEJS"
+}
+Emitted when the touchscreen is pressed, either on the left
+or right hand side.
 */
 
 #define GPS_UART EV_SERIAL1
@@ -288,6 +307,9 @@ int stepCounterThresholdHigh = (8192+80)*(8192+80);
 uint32_t stepCounter;
 /// has acceleration counter passed stepCounterThresholdLow?
 bool stepWasLow;
+/// What state was the touchscreen last in
+uint8_t touchLastState;
+uint8_t touchLastState2;
 
 /// Promise when beep is finished
 JsVar *promiseBeep;
@@ -307,6 +329,12 @@ typedef enum {
   JSBT_GESTURE_DATA = 256, ///< we have data from a gesture
   JSBT_CHARGE_EVENT = 512, ///< we need to fire a charging event
   JSBT_STEP_EVENT = 1024, ///< we've detected a step via the pedometer
+  JSBT_SWIPE_LEFT = 2048,
+  JSBT_SWIPE_RIGHT = 4096,
+  JSBT_SWIPE_MASK = JSBT_SWIPE_LEFT | JSBT_SWIPE_RIGHT,
+  JSBT_TOUCH_LEFT = 8192,
+  JSBT_TOUCH_RIGHT = 16384,
+  JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -489,6 +517,27 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   // Add to the event queue for normal processing for watches
   jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
 }
+
+void btnTouchHandler() {
+  uint8_t state =
+      (jshPinGetValue(BTN4_PININDEX)?1:0) |
+      (jshPinGetValue(BTN5_PININDEX)?2:0);
+
+  if (!touchLastState2 &&
+      touchLastState &&
+      !state) {
+    if (touchLastState==1) bangleTasks |= JSBT_TOUCH_LEFT;
+    if (touchLastState==2) bangleTasks |= JSBT_TOUCH_RIGHT;
+  }
+  if ((touchLastState==3 && state==1) ||
+      (touchLastState==2 && state==1))
+    bangleTasks |= JSBT_SWIPE_LEFT;
+  if ((touchLastState==3 && state==2) ||
+      (touchLastState==1 && state==2))
+    bangleTasks |= JSBT_SWIPE_RIGHT;
+  touchLastState2 = touchLastState;
+  touchLastState = state;
+}
 void btn1Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(1,state,flags);
 }
@@ -499,11 +548,11 @@ void btn3Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(3,state,flags);
 }
 void btn4Handler(bool state, IOEventFlags flags) {
-  // TODO: handle left/right swipe
+  btnTouchHandler();
   btnHandlerCommon(4,state,flags);
 }
 void btn5Handler(bool state, IOEventFlags flags) {
-  // TODO: handle left/right swipe
+  btnTouchHandler();
   btnHandlerCommon(5,state,flags);
 }
 
@@ -972,6 +1021,9 @@ void jswrap_banglejs_init() {
   i2cBusy = false;
   // Other IO
   jshPinSetState(BAT_PIN_CHARGING, JSHPINSTATE_GPIO_IN_PULLUP);
+  // touch
+  touchLastState = 0;
+  touchLastState2 = 0;
 
   { // Flash memory - on first boot we might need to erase it
     char buf[sizeof(JsfFileHeader)];
@@ -1227,6 +1279,16 @@ bool jswrap_banglejs_idle() {
     JsVar *steps = jsvNewFromInteger(stepCounter);
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"step", &steps, 1);
     jsvUnLock(steps);
+  }
+  if (bangle && (bangleTasks & JSBT_SWIPE_MASK)) {
+    JsVar *o = jsvNewFromInteger((bangleTasks & JSBT_SWIPE_LEFT)?-1:1);
+    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"swipe", &o, 1);
+    jsvUnLock(o);
+  }
+  if (bangle && (bangleTasks & JSBT_TOUCH_MASK)) {
+    JsVar *o = jsvNewFromInteger((bangleTasks & JSBT_TOUCH_LEFT)?1:2);
+    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", &o, 1);
+    jsvUnLock(o);
   }
   if (bangleTasks & JSBT_RESET)
     jsiStatus |= JSIS_TODO_FLASH_LOAD;
