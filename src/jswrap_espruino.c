@@ -109,7 +109,7 @@ int nativeCallGetCType() {
   }
   if (lex->tk == LEX_ID) {
     int t = -1;
-    char *name = jslGetTokenValueAsString(lex);
+    char *name = jslGetTokenValueAsString();
     if (strcmp(name,"int")==0) t=JSWAT_INT32;
     if (strcmp(name,"double")==0) t=JSWAT_JSVARFLOAT;
     if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
