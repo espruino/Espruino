@@ -781,6 +781,8 @@ quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 
 ifdef LINUX # ---------------------------------------------------
 include make/targets/LINUX.make
+else ifdef EMSCRIPTEN
+include make/targets/EMSCRIPTEN.make
 else ifdef ESP32
 include make/targets/ESP32.make
 else ifdef ESP8266
