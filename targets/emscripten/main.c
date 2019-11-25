@@ -7,9 +7,11 @@
 #include "jsinteractive.h"
 #include "jshardware.h"
 #include "jswrapper.h"
+#include "lcd_emscripten.h"
 
 void *STACK_BASE; ///< used for jsuGetFreeStack on Linux
 extern int timeToSleep;
+
 
 void jsInit() {
   int i;
@@ -24,6 +26,15 @@ int jsIdle() {
    timeToSleep = -1;
    jsiLoop();
    return timeToSleep;
+}
+
+bool jsGfxChanged() {
+  bool b = EMSCRIPTEN_GFX_CHANGED;
+  EMSCRIPTEN_GFX_CHANGED = false;
+  return b;
+}
+char *jsGfxGetPtr() {
+  return EMSCRIPTEN_GFX_BUFFER;
 }
 
 /*

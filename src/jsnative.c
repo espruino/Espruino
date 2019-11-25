@@ -47,12 +47,17 @@
 #endif
 
 #ifdef EMSCRIPTEN
-#define USE_FLOAT_RETURN_FIX 
+// on Emscripten we cant easily hack around function calls with floats/etc so we must just do this brute-force by handling every call pattern we use
+#define USE_CALLFUNCTION_HACK
 #endif
 
 
 /** Call a function with the given argument specifiers */
 JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {
+#ifdef USE_CALLFUNCTION_HACK
+  // on Emscripten we cant easily hack around function calls with floats/etc so we must just do this brute-force by handling every call pattern we use
+  return jswCallFunctionHack(function, argumentSpecifier, thisParam, paramData, paramCount);
+#else
 #ifndef SAVE_ON_FLASH
   // Handle common call types quickly:
   // ------- void(void)
@@ -257,6 +262,7 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     assert(0);
     return 0;
   }
+#endif // USE_CALLFUNCTION_HACK
 }
 
 // -----------------------------------------------------------------------------------------

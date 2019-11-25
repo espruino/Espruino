@@ -52,6 +52,11 @@ for i in range(1,len(sys.argv)):
     jscode = open(arg, "r").read()
     jsmodules[modulename] = jscode
 
+# List of argument specifiers (JSWAT...) that have been used
+argSpecs = []
+# for each argument specifier, the code required
+argSpecCalls = []
+
 # ------------------------------------------------------------------------------------------------------
 
 def codeOut(s):
@@ -114,6 +119,25 @@ def toCType(argName):
   if argName=="float": return "JsVarFloat";
   FATAL_ERROR("toCType: Unknown argument name "+argName+"\n")
 
+def toCBox(argName):
+  if argName=="JsVar": return "";
+  if argName=="bool": return "jsvNewFromBool";
+  if argName=="pin": return "jsvNewFromPin";
+  if argName=="int32": return "jsvNewFromInteger";
+  if argName=="int": return "jsvNewFromInteger";
+  if argName=="float": return "jsvNewFromFloat";
+  FATAL_ERROR("toCBox: Unknown argument name "+argName+"\n")
+
+def toCUnbox(argName):
+  if argName=="JsVar": return "";
+  if argName=="bool": return "jsvGetBool";
+  if argName=="pin": return "jshGetPinFromVar";
+  if argName=="int32": return "jsvGetInteger";
+  if argName=="int": return "jsvGetInteger";
+  if argName=="float": return "jsvGetFloat";
+  FATAL_ERROR("toCUnbox: Unknown argument name "+argName+"\n")
+
+
 def hasThis(func):
   return func["type"]=="property" or func["type"]=="method"
 
@@ -150,7 +174,8 @@ def getArgumentSpecifier(jsondata):
     sys.stderr.write(json.dumps(jsondata, sort_keys=True, indent=2)+"\n")
     FATAL_ERROR("getArgumentSpecifier: Too many arguments to fit in type specifier, Use JsVarArray\n")
 
-  return " | ".join(s);
+  argSpec = " | ".join(s);
+  return argSpec
 
 def getCDeclaration(jsondata, name):
   # name could be '(*)' for a C function pointer
@@ -679,6 +704,59 @@ for lib in jsmodules:
   librarynames.append(lib);
 codeOut('  return "'+','.join(librarynames)+'";')
 codeOut('}')
+
+codeOut('#ifdef EMSCRIPTEN')
+codeOut('// on Emscripten we cant easily hack around function calls with floats/etc so we must just do this brute-force by handling every call pattern we use')
+codeOut('JsVar *jswCallFunctionHack(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {')
+codeOut('  switch(argumentSpecifier) {')
+#for argSpec in argSpecs:
+#  codeOut('  case '+argSpec+":")
+argSpecs = []
+for jsondata in jsondatas:
+  if "generate" in jsondata:
+    argSpec = getArgumentSpecifier(jsondata)
+    if not argSpec in argSpecs:
+      argSpecs.append(argSpec)
+      params = getParams(jsondata)
+      result = getResult(jsondata);
+      pTypes = []
+      pValues = []
+      if hasThis(jsondata): 
+        pTypes.append("JsVar*")
+        pValues.append("thisParam")
+      cmd = "";
+      cmdstart = "";
+      cmdend = "";
+      n = 0
+      for param in params:
+        pTypes.append(toCType(param[1]));
+        if param[1]=="JsVarArray": 
+          cmdstart =  "      JsVar *argArray = (paramCount>"+str(n)+")?jsvNewArray(&paramData["+str(n)+"],paramCount-"+str(n)+"):jsvNewEmptyArray();\n";
+          pValues.append("argArray");
+          cmdend = "      jsvUnLock(argArray);\n\n";
+        else:
+          pValues.append(toCUnbox(param[1])+"((paramCount>"+str(n)+")?paramData["+str(n)+"]:0)");
+        n = n+1
+
+      codeOut("    case "+argSpec+": {");
+      codeOut("      JsVar *result = 0;");
+      if cmdstart:  codeOut(cmdstart); 
+      cmd = "(("+toCType(result[0])+"(*)("+",".join(pTypes)+"))function)("+",".join(pValues)+")";
+      if result[0]: codeOut("      result = "+toCBox(result[0])+"("+cmd+");");
+      else: codeOut("      "+cmd+";");
+      if cmdend:  codeOut(cmdend); 
+      codeOut("      return result;");
+      codeOut("    }");
+
+
+      
+
+#((uint32_t (*)(size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3]);
+codeOut('  default: jsExceptionHere(JSET_ERROR,"Unknown argspec %d",argumentSpecifier);')
+codeOut('  }')
+codeOut('  return 0;')
+codeOut('}')
+codeOut('#endif')
 
 codeOut('')
 codeOut('')

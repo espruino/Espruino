@@ -128,4 +128,9 @@ const char *jswGetBuiltInJSLibrary(const char *name);
 /** Return a comma-separated list of built-in libraries */
 const char *jswGetBuiltInLibraryNames();
 
+#ifdef EMSCRIPTEN
+// on Emscripten we cant easily hack around function calls with floats/etc so we must just do this brute-force by handling every call pattern we use
+JsVar *jswCallFunctionHack(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount);
+#endif
+
 #endif // JSWRAPPER_H

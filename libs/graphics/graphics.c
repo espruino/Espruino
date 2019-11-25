@@ -37,6 +37,9 @@
 #ifdef USE_LCD_ST7789_8BIT
 #include "lcd_st7789_8bit.h"
 #endif
+#ifdef USE_LCD_EMSCRTIPTEN
+#include "lcd_emscripten.h"
+#endif
 
 // ----------------------------------------------------------------------------------------------
 
@@ -157,6 +160,10 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
 #ifdef USE_LCD_ST7789_8BIT
     } else if (gfx->data.type == JSGRAPHICSTYPE_ST7789_8BIT) {
       lcdST7789_setCallbacks(gfx);
+#endif
+#ifdef USE_LCD_EMSCRTIPTEN
+    } else if (gfx->data.type == JSGRAPHICSTYPE_EMSCRIPTEN) {
+      lcdEmscripten_setCallbacks(gfx);
 #endif
     } else {
       jsExceptionHere(JSET_INTERNALERROR, "Unknown graphics type\n");

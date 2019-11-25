@@ -18,7 +18,7 @@ info = {
  'name' : "Compile for JS",
  'default_console' : "EV_USBSERIAL",
  'variables' :  2500, # 0 = resizable variables, rather than fixed
- 'binary_name' : 'espruino.js',
+ 'binary_name' : 'emulator_espruino.js',
  'build' : {
    'libraries' : [
 #     'NET',
@@ -30,9 +30,15 @@ info = {
 #     'TELNET',
    ],
    'makefile' : [
-#     'DEFINES+=-DFLASH_64BITS_ALIGNMENT=1', For testing 64 bit flash writes
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES',
      'EMSCRIPTEN=1',
+#     'DEFINES += -DUSE_TENSORFLOW',
+#     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
+     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DUSE_LCD_EMSCRTIPTEN',
+     'INCLUDE += -I$(ROOT)/libs/emscripten',
+     'WRAPPERSOURCES += libs/emscripten/jswrap_emscripten.c',
+     'SOURCES += libs/graphics/lcd_emscripten.c',
+     'JSMODULESOURCES += libs/js/graphical_menu.min.js',
    ]
  }
 };

@@ -45,6 +45,7 @@
             Bangle.js: Add Bangle.setLCDBrightness
             nRF52: Fix passkey pairing if setSecurity is after setServices
             Bangle.js: EVents for 'swipe' and 'touch' on the touchscreen
+            Added ability to compile Espruino to JavaScript with Emscripten
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
