@@ -46,6 +46,11 @@
   #define USE_SEPARATE_DOUBLES
 #endif
 
+#ifdef EMSCRIPTEN
+#define USE_FLOAT_RETURN_FIX 
+#endif
+
+
 /** Call a function with the given argument specifiers */
 JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {
 #ifndef SAVE_ON_FLASH

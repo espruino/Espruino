@@ -302,7 +302,7 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
     if (funcVar) {
       char buf[JSLEX_MAX_TOKEN_LENGTH+1];
       buf[0] = '\xFF';
-      strcpy(&buf[1], jslGetTokenValueAsString(lex));
+      strcpy(&buf[1], jslGetTokenValueAsString());
       JsVar *param = jsvAddNamedChild(funcVar, 0, buf);
       if (!param) { // out of memory
         jspSetError(false);
@@ -327,7 +327,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
     JSP_MATCH('{');
 
   #ifndef SAVE_ON_FLASH
-    if (lex->tk==LEX_STR && !strcmp(jslGetTokenValueAsString(lex), "compiled")) {
+    if (lex->tk==LEX_STR && !strcmp(jslGetTokenValueAsString(), "compiled")) {
       jsWarn("Function marked with \"compiled\" uploaded in source form");
     }
   #endif
@@ -344,7 +344,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
   JsVarInt lineNumber = 0;
   if (funcVar && lex->lineNumberOffset) {
     // jslGetLineNumber is slow, so we only do it if we have debug info
-    lineNumber = (JsVarInt)jslGetLineNumber(lex) + (JsVarInt)lex->lineNumberOffset - 1;
+    lineNumber = (JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1;
   }
   // Get the code - parse it and figure out where it stops
   JslCharPos funcBegin = jslCharPosClone(&lex->tokenStart);
@@ -413,7 +413,7 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
   JsVar *functionInternalName = 0;
   if (parseNamedFunction && lex->tk==LEX_ID) {
     // you can do `var a = function foo() { foo(); };` - so cope with this
-    if (funcVar) functionInternalName = jslGetTokenValueAsVar(lex);
+    if (funcVar) functionInternalName = jslGetTokenValueAsVar();
     // note that we don't add it to the beginning, because it would mess up our function call code
     JSP_ASSERT_MATCH(LEX_ID);
   }
@@ -1007,10 +1007,10 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
   while (lex->tk=='.' || lex->tk=='[') {
     if (lex->tk == '.') { // ------------------------------------- Record Access
       JSP_ASSERT_MATCH('.');
-      if (jslIsIDOrReservedWord(lex)) {
+      if (jslIsIDOrReservedWord()) {
         if (JSP_SHOULD_EXECUTE) {
           // Note: name will go away when we parse something else!
-          const char *name = jslGetTokenValueAsString(lex);
+          const char *name = jslGetTokenValueAsString();
 
           JsVar *aVar = jsvSkipNameWithParent(a,true,parent);
           JsVar *child = 0;
@@ -1020,7 +1020,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
             if (!jsvIsUndefined(aVar)) {
               // if no child found, create a pointer to where it could be
               // as we don't want to allocate it until it's written
-              JsVar *nameVar = jslGetTokenValueAsVar(lex);
+              JsVar *nameVar = jslGetTokenValueAsVar();
               child = jsvCreateNewChild(aVar, nameVar, 0);
               jsvUnLock(nameVar);
             } else {
@@ -1034,7 +1034,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
           a = child;
         }
         // skip over current token (we checked above that it was an ID or reserved word)
-        jslGetNextToken(lex);
+        jslGetNextToken();
       } else {
         // incorrect token - force a match fail by asking for an ID
         JSP_MATCH_WITH_RETURN(LEX_ID, a);
@@ -1195,10 +1195,10 @@ NO_INLINE JsVar *jspeFactorObject() {
     while (!JSP_SHOULDNT_PARSE && lex->tk != '}') {
       JsVar *varName = 0;
       // we only allow strings or IDs on the left hand side of an initialisation
-      if (jslIsIDOrReservedWord(lex)) {
+      if (jslIsIDOrReservedWord()) {
         if (JSP_SHOULD_EXECUTE)
-          varName = jslGetTokenValueAsVar(lex);
-        jslGetNextToken(lex); // skip over current token
+          varName = jslGetTokenValueAsVar();
+        jslGetNextToken(); // skip over current token
       } else if (
           lex->tk==LEX_STR ||
           lex->tk==LEX_TEMPLATE_LITERAL ||
@@ -1218,7 +1218,7 @@ NO_INLINE JsVar *jspeFactorObject() {
         bool isSetter = jsvIsStringEqual(varName, "set");
         if (isGetter || isSetter) {
           jsvUnLock(varName);
-          varName = jslGetTokenValueAsVar(lex);
+          varName = jslGetTokenValueAsVar();
           JSP_ASSERT_MATCH(LEX_ID);
           JsVar *method = jspeFunctionDefinition(false);
           jsvAddGetterOrSetter(contents, varName, isGetter, method);
@@ -1357,7 +1357,7 @@ NO_INLINE JsVar *jspeFactorDelete() {
 JsVar *jspeTemplateLiteral() {
   JsVar *a = 0;
   if (JSP_SHOULD_EXECUTE) {
-    JsVar *template = jslGetTokenValueAsVar(lex);
+    JsVar *template = jslGetTokenValueAsVar();
     a = jsvNewFromEmptyString();
     if (a && template) {
       JsvStringIterator it, dit;
@@ -1480,7 +1480,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
 
   if (parseNamedClass && lex->tk==LEX_ID) {
     if (classFunction)
-      classInternalName = jslGetTokenValueAsVar(lex);
+      classInternalName = jslGetTokenValueAsVar();
     JSP_ASSERT_MATCH(LEX_ID);
   }
   if (classFunction) {
@@ -1491,7 +1491,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
   }
   if (lex->tk==LEX_R_EXTENDS) {
     JSP_ASSERT_MATCH(LEX_R_EXTENDS);
-    JsVar *extendsFrom = actuallyCreateClass ? jsvSkipNameAndUnLock(jspGetNamedVariable(jslGetTokenValueAsString(lex))) : 0;
+    JsVar *extendsFrom = actuallyCreateClass ? jsvSkipNameAndUnLock(jspGetNamedVariable(jslGetTokenValueAsString())) : 0;
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(extendsFrom,classFunction,classInternalName,classPrototype),0);
     if (classPrototype) {
       if (jsvIsFunction(extendsFrom)) {
@@ -1513,7 +1513,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
     bool isStatic = lex->tk==LEX_R_STATIC;
     if (isStatic) JSP_ASSERT_MATCH(LEX_R_STATIC);
 
-    JsVar *funcName = jslGetTokenValueAsVar(lex);
+    JsVar *funcName = jslGetTokenValueAsVar();
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(funcName,classFunction,classInternalName,classPrototype),0);
 #ifndef SAVE_ON_FLASH
     bool isGetter = false, isSetter = false;
@@ -1522,7 +1522,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
       isSetter = jsvIsStringEqual(funcName, "set");
       if (isGetter || isSetter) {
         jsvUnLock(funcName);
-        funcName = jslGetTokenValueAsVar(lex);
+        funcName = jslGetTokenValueAsVar();
         JSP_ASSERT_MATCH(LEX_ID);
       }
     }
@@ -1558,7 +1558,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
 
 NO_INLINE JsVar *jspeFactor() {
   if (lex->tk==LEX_ID) {
-    JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString(lex));
+    JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString());
     JSP_ASSERT_MATCH(LEX_ID);
 #ifndef SAVE_ON_FLASH
     if (lex->tk==LEX_TEMPLATE_LITERAL)
@@ -1573,14 +1573,14 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (lex->tk==LEX_INT) {
     JsVar *v = 0;
     if (JSP_SHOULD_EXECUTE) {
-      v = jsvNewFromLongInteger(stringToInt(jslGetTokenValueAsString(lex)));
+      v = jsvNewFromLongInteger(stringToInt(jslGetTokenValueAsString()));
     }
     JSP_ASSERT_MATCH(LEX_INT);
     return v;
   } else if (lex->tk==LEX_FLOAT) {
     JsVar *v = 0;
     if (JSP_SHOULD_EXECUTE) {
-      v = jsvNewFromFloat(stringToFloat(jslGetTokenValueAsString(lex)));
+      v = jsvNewFromFloat(stringToFloat(jslGetTokenValueAsString()));
     }
     JSP_ASSERT_MATCH(LEX_FLOAT);
     return v;
@@ -1611,7 +1611,7 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (lex->tk==LEX_STR) {
     JsVar *a = 0;
     if (JSP_SHOULD_EXECUTE)
-      a = jslGetTokenValueAsVar(lex);
+      a = jslGetTokenValueAsVar();
     JSP_ASSERT_MATCH(LEX_STR);
     return a;
 #ifndef SAVE_ON_FLASH
@@ -1623,7 +1623,7 @@ NO_INLINE JsVar *jspeFactor() {
 #ifdef SAVE_ON_FLASH
     jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in this version of Espruino\n");
 #else
-    JsVar *regex = jslGetTokenValueAsVar(lex);
+    JsVar *regex = jslGetTokenValueAsVar();
     size_t regexEnd = 0, regexLen = 0;
     JsvStringIterator it;
     jsvStringIteratorNew(&it, regex, 0);
@@ -2120,7 +2120,7 @@ NO_INLINE JsVar *jspeStatementVar() {
   while (hasComma && lex->tk == LEX_ID && !jspIsInterrupted()) {
     JsVar *a = 0;
     if (JSP_SHOULD_EXECUTE) {
-      a = jspeiFindOnTop(jslGetTokenValueAsString(lex), true);
+      a = jspeiFindOnTop(jslGetTokenValueAsString(), true);
       if (!a) { // out of memory
         jspSetError(false);
         return lastDefined;
@@ -2560,7 +2560,7 @@ NO_INLINE JsVar *jspeStatementTry() {
     if (hadException) {
       scope = jsvNewObject();
       if (scope)
-        exceptionVar = jsvFindChildFromString(scope, jslGetTokenValueAsString(lex), true);
+        exceptionVar = jsvFindChildFromString(scope, jslGetTokenValueAsString(), true);
     }
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock2(scope,exceptionVar),0);
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jsvUnLock2(scope,exceptionVar),0);
@@ -2644,7 +2644,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
 
   bool actuallyCreateFunction = JSP_SHOULD_EXECUTE;
   if (actuallyCreateFunction) {
-    funcName = jsvMakeIntoVariableName(jslGetTokenValueAsVar(lex), 0);
+    funcName = jsvMakeIntoVariableName(jslGetTokenValueAsVar(), 0);
     if (!funcName) { // out of memory
       return 0;
     }

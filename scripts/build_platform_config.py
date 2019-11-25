@@ -48,6 +48,7 @@ pins = board.get_pins()
 # -----------------------------------------------------------------------------------------
 
 LINUX = board.chip["family"]=="LINUX"
+EMSCRIPTEN = board.chip["family"]=="EMSCRIPTEN"
 
 if not "default_console" in board.info:
   board.info["default_console"] = "EV_SERIAL1"
@@ -177,6 +178,8 @@ exti_count = 16
 
 if board.chip["family"]=="LINUX":
   board.chip["class"]="LINUX"
+elif board.chip["family"]=="EMSCRIPTEN":
+  board.chip["class"]="EMSCRIPTEN"
 elif board.chip["family"]=="STM32F1":
   board.chip["class"]="STM32"
   codeOut('#include "stm32f10x.h"')
@@ -319,6 +322,10 @@ if "default_console_baudrate" in board.info:
 
 codeOut("");
 if LINUX:
+  bufferSizeIO = 256
+  bufferSizeTX = 256
+  bufferSizeTimer = 16
+elif EMSCRIPTEN:
   bufferSizeIO = 256
   bufferSizeTX = 256
   bufferSizeTimer = 16

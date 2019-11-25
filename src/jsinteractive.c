@@ -831,7 +831,7 @@ void jsiSemiInit(bool autoLoad) {
           " "JS_VERSION" (c) 2019 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
-#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS)
+#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS) && !defined(EMSCRIPTEN)
           "\n"
           "Espruino is Open Source. Our work is supported\n"
           "only by sales of official boards and donations:\n"
@@ -914,7 +914,7 @@ int jsiCountBracketsInInput() {
     if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
     if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
     if (brackets<0) break; // closing bracket before opening!
-    jslGetNextToken(&lex);
+    jslGetNextToken();
   }
   if (lex.tk==LEX_UNFINISHED_STR)
     brackets=0; // execute immediately so it can error
@@ -1317,7 +1317,7 @@ void jsiTabComplete() {
       data.partial = 0;
     } else if (lex.tk==LEX_ID) {
       jsvUnLock(data.partial);
-      data.partial = jslGetTokenValueAsVar(&lex);
+      data.partial = jslGetTokenValueAsVar();
       partialStart = jsvStringIteratorGetIndex(&lex.tokenStart.it);
     } else {
       jsvUnLock(object);
@@ -1325,7 +1325,7 @@ void jsiTabComplete() {
       jsvUnLock(data.partial);
       data.partial = 0;
     }
-    jslGetNextToken(&lex);
+    jslGetNextToken();
   }
   jslKill();
   jslSetLex(oldLex);
@@ -2399,7 +2399,7 @@ void jsiDebuggerLoop() {
     // Get a string fo the form '1234    ' for the line number
     // ... but only if the line number was set, otherwise use spaces
     if (lex->lineNumberOffset) {
-      itostr((JsVarInt)jslGetLineNumber(lex) + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
+      itostr((JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
     } else {
       lineStr[0]=0;
     }
@@ -2486,7 +2486,7 @@ void jsiDebuggerLine(JsVar *line) {
     // continue is a reserved word!
 
     handled = true;
-    char *id = jslGetTokenValueAsString(&lex);
+    char *id = jslGetTokenValueAsString();
 
     if (!strcmp(id,"help") || !strcmp(id,"h")) {
       jsiConsolePrint("Commands:\n"
@@ -2518,7 +2518,7 @@ void jsiDebuggerLine(JsVar *line) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
       execInfo.execute |= EXEC_DEBUGGER_FINISH_FUNCTION;
     } else if (!strcmp(id,"print") || !strcmp(id,"p")) {
-      jslGetNextToken(&lex);
+      jslGetNextToken();
       JsExecInfo oldExecInfo = execInfo;
       execInfo.execute = EXEC_YES;
       JsVar *v = jsvSkipNameAndUnLock(jspParse());
@@ -2528,8 +2528,8 @@ void jsiDebuggerLine(JsVar *line) {
       jsiConsolePrint("\n");
       jsvUnLock(v);
     } else if (!strcmp(id,"info") || !strcmp(id,"i")) {
-       jslGetNextToken(&lex);
-       id = jslGetTokenValueAsString(&lex);
+       jslGetNextToken();
+       id = jslGetTokenValueAsString();
        if (!strcmp(id,"locals") || !strcmp(id,"l")) {
          JsVar *scope = jspeiGetTopScope();
          if (scope == execInfo.root)
