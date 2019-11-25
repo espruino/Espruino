@@ -228,7 +228,9 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
-  timeToSleep = (int)jshGetMillisecondsFromTime(timeUntilWake);
+  JsVarFloat t = jshGetMillisecondsFromTime(timeUntilWake);
+  if (t>0x7FFFFFFF) t=0x7FFFFFFF;
+  timeToSleep = (int)t;
   return false;
 }
 
