@@ -35,11 +35,13 @@
 
 Pin eventFlagsToPin[16];
 int timeToSleep = -1;
+bool firstIdle = true;
 
 void jshInit() {
   for (int i=0;i<16;i++)
     eventFlagsToPin[i] = PIN_UNDEFINED;
   jshInitDevices();
+  firstIdle = true;
   //EM_ASM_({ console.log('jshInit');}, 0);
 }
 
@@ -50,10 +52,9 @@ void jshReset() {
 void jshKill() {
 }
 
-bool first = true;
 void jshIdle() {
-  if (first) jsiOneSecondAfterStartup();
-  first = false;
+  if (firstIdle) jsiOneSecondAfterStartup();
+  firstIdle = false;
   //EM_ASM_({ console.log('jshIdle');}, 0);
 }
 

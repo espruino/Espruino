@@ -6,5 +6,5 @@ targets/emscripten/main.c                    \
 targets/emscripten/jshardware.c
 LIBS += -lc
 #LIBS += -lstdc++
-LDFLAGS += -s EXPORTED_FUNCTIONS='["_jsInit","_jsIdle","_jshPushIOCharEvent","_jsSendPinWatchEvent","_jshGetDeviceToTransmit","_jshGetCharToTransmit","_jsGfxChanged","_jsGfxGetPtr"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall"]' -s WASM=0 -s ASSERTIONS=1 --memory-init-file 0 -Oz 
+LDFLAGS += -s EXPORTED_FUNCTIONS='["_jsInit","_jsIdle","_jsKill","_jshPushIOCharEvent","_jsSendPinWatchEvent","_jshGetDeviceToTransmit","_jshGetCharToTransmit","_jsGfxChanged","_jsGfxGetPtr"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall"]' -s WASM=0 -s ASSERTIONS=1 --memory-init-file 0 -Oz 
 

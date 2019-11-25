@@ -43,10 +43,8 @@ void jsSendPinWatchEvent(int pin) {
     jshPushIOWatchEvent(ev);
 }
 
-/*
+void jsKill() {
   jsiKill();
-  jsvGarbageCollect();
-  jsvShowAllocated();
   jsvKill();
   jshKill();
-*/
+}
