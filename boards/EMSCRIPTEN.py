@@ -57,10 +57,32 @@ chip = {
 };
 
 devices = {
-  'USB' : {} # to convince code that we have a USB port (it's used for the console ion Linux)
+  'USB' : {}, # to convince code that we have a USB port (it's used for the console ion Linux)
+  'BTN1' : { 'pin' : 'D24', 'pinstate' : 'IN_PULLDOWN' }, # top
+  'BTN2' : { 'pin' : 'D22', 'pinstate' : 'IN_PULLDOWN' }, # middle
+  'BTN3' : { 'pin' : 'D23', 'pinstate' : 'IN_PULLDOWN' }, # bottom
+  'BTN4' : { 'pin' : 'D11', 'pinstate' : 'IN_PULLDOWN' }, # touch left
+  'BTN5' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' }, # touch right
+  'VIBRATE' : { 'pin' : 'D13' },
+  'SPEAKER' : { 'pin' : 'D18' },
 };
 
 def get_pins():
-  pins = pinutils.generate_pins(0,32)
-  # just fake pins D0 .. D32
+  pins = pinutils.generate_pins(0,31) # 32 General Purpose I/O Pins.
+  pinutils.findpin(pins, "PD0", True)["functions"]["XL1"]=0;
+  pinutils.findpin(pins, "PD1", True)["functions"]["XL2"]=0;
+  pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN0"]=0;
+  pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN1"]=0;
+  pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN2"]=0;
+  pinutils.findpin(pins, "PD5", True)["functions"]["ADC1_IN3"]=0;
+  pinutils.findpin(pins, "PD28", True)["functions"]["ADC1_IN4"]=0;
+  pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN5"]=0;
+  pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
+  pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
+  # negate buttons
+  pinutils.findpin(pins, "PD11", True)["functions"]["NEGATED"]=0; # btn
+  pinutils.findpin(pins, "PD16", True)["functions"]["NEGATED"]=0; # btn
+  pinutils.findpin(pins, "PD22", True)["functions"]["NEGATED"]=0; # btn
+  pinutils.findpin(pins, "PD23", True)["functions"]["NEGATED"]=0; # btn
+  pinutils.findpin(pins, "PD24", True)["functions"]["NEGATED"]=0; # btn
   return pins

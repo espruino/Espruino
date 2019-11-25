@@ -33,9 +33,12 @@
 #define FAKE_FLASH_BLOCKSIZE 4096
 // ----------------------------------------------------------------------------
 
+Pin eventFlagsToPin[16];
 int timeToSleep = -1;
 
 void jshInit() {
+  for (int i=0;i<16;i++)
+    eventFlagsToPin[i] = PIN_UNDEFINED;
   jshInitDevices();
   //EM_ASM_({ console.log('jshInit');}, 0);
 }
@@ -95,10 +98,14 @@ JshPinState jshPinGetState(Pin pin) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
+  EM_ASM_({ hwSetPinValue($0,$1) }, pin, value);
 }
 
 bool jshPinGetValue(Pin pin) {
-  return false;
+  bool value = EM_ASM_INT({ return hwGetPinValue($0) }, pin);
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
+  return value;
 }
 
 bool jshIsDeviceInitialised(IOEventFlags device) { return true; }
@@ -143,19 +150,37 @@ void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
 }
 
 bool jshCanWatch(Pin pin) {
-  return false;
+  return true;
+}
+
+IOEventFlags jshGetEventFlagsForPin(Pin pin) {
+  for (int i=0;i<16;i++)
+    if (eventFlagsToPin[i]==pin)
+      return EV_EXTI0+i;
+  return EV_NONE;
 }
 
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+  if (shouldWatch)
+    for (int i=0;i<16;i++)
+      if (eventFlagsToPin[i]==PIN_UNDEFINED) {
+        eventFlagsToPin[i]=pin;
+        return EV_EXTI0+i;
+      }
+  else {
+    for (int i=0;i<16;i++)
+      if (eventFlagsToPin[i]==pin)
+        eventFlagsToPin[i]=PIN_UNDEFINED;
+  }
   return EV_NONE;
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {
-  return false;
+  return jshPinGetValue(eventFlagsToPin[device-EV_EXTI0]);
 }
 
 bool jshIsEventForPin(IOEvent *event, Pin pin) {
-  return false;
+  return IOEVENTFLAGS_GETTYPE(event->flags) == jshGetEventFlagsForPin(pin);
 }
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {

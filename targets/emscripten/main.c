@@ -36,6 +36,12 @@ bool jsGfxChanged() {
 char *jsGfxGetPtr() {
   return EMSCRIPTEN_GFX_BUFFER;
 }
+void jsSendPinWatchEvent(int pin) {
+  extern IOEventFlags jshGetEventFlagsForPin(Pin pin);
+  IOEventFlags ev = jshGetEventFlagsForPin(pin);
+  if (ev!=EV_NONE)
+    jshPushIOWatchEvent(ev);
+}
 
 /*
   jsiKill();
