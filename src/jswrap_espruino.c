@@ -1096,7 +1096,12 @@ void jswrap_espruino_dumpFreeList() {
   "name" : "dumpFragmentation",
   "generate" : "jswrap_e_dumpFragmentation"
 }
-Show fragmentation
+Show fragmentation.
+
+* ` ` is free space
+* `#` is a normal variable
+* `L` is a locked variable (address used, cannopt be moved)
+* `=` represents data in a Flat String (must be contiguous)
  */
 void jswrap_e_dumpFragmentation() {
   int l = 0;
@@ -1120,6 +1125,57 @@ void jswrap_e_dumpFragmentation() {
     }
   }
   jsiConsolePrint("\n");
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "dumpVariables",
+  "generate" : "jswrap_e_dumpVariables"
+}
+Dumps a comma-separated list of all allocated variables
+along with the variables they link to. Can be used
+to visualise where memory is used.
+ */
+void jswrap_e_dumpVariables() {
+  int l = 0;
+  jsiConsolePrintf("ref,size,name,links...\n");
+  for (int i=0;i<jsvGetMemoryTotal();i++) {
+    JsVarRef ref = i+1;
+    JsVar *v = _jsvGetAddressOf(ref);
+    if ((v->flags&JSV_VARTYPEMASK)==JSV_UNUSED) continue;
+    if (jsvIsStringExt(v)) continue;
+    int size = 1;
+    if (jsvIsFlatString(v)) {
+      int b = jsvGetFlatStringBlocks(v);
+      i += b; // skip forward
+      size += b;
+    } else if (jsvHasCharacterData(v)) {
+      JsVarRef childref = jsvGetLastChild(v);
+      while (childref) {
+        JsVar *child = jsvLock(childref);
+        size++;
+        childref = jsvGetLastChild(child);
+        jsvUnLock(child);
+      }
+    }
+    jsiConsolePrintf("%d,%d,",ref,size);
+    if (jsvIsName(v)) jsiConsolePrintf("%q,",v);
+    else jsiConsolePrintf(",",v);
+
+    if (jsvHasSingleChild(v) || jsvHasChildren(v)) {
+      JsVarRef childref = jsvGetFirstChild(v);
+      while (childref) {
+        JsVar *child = jsvLock(childref);
+        jsiConsolePrintf("%d,",childref);
+        if (jsvHasChildren(v)) childref = jsvGetNextSibling(child);
+        else childref = 0;
+        jsvUnLock(child);
+      }
+    }
+    jsiConsolePrint("\n");
+  }
 }
 
 /*JSON{
