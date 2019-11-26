@@ -1486,12 +1486,7 @@ JsVar *jswrap_banglejs_project(JsVar *latlong) {
     "return_object":"Promise",
     "ifdef" : "BANGLEJS"
 }
-Perform a Spherical [Web Mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection)
-of latitude and longitude into `x` and `y` coordinates, which are roughly
-equivalent to meters from `{lat:0,lon:0}`.
-
-This is the formula used for most online mapping and is a good way
-to compare GPS coordinates to work out the distance between them.
+Use the piezo speaker to Beep for a certain time period and frequency
 */
 void jswrap_banglejs_beep_callback() {
   jshPinSetState(SPEAKER_PIN, JSHPINSTATE_GPIO_IN);
@@ -1530,12 +1525,7 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
     "return_object":"Promise",
     "ifdef" : "BANGLEJS"
 }
-Perform a Spherical [Web Mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection)
-of latitude and longitude into `x` and `y` coordinates, which are roughly
-equivalent to meters from `{lat:0,lon:0}`.
-
-This is the formula used for most online mapping and is a good way
-to compare GPS coordinates to work out the distance between them.
+Use the vibration motor to buzz for a certain time period
 */
 void jswrap_banglejs_buzz_callback() {
   jshPinOutput(VIBRATE_PIN,0); // vibrate off

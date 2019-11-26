@@ -25,9 +25,16 @@
 #include "jspin.h"
 #include "jstimer.h"
 #include "jswrap_heatshrink.h"
-
+#include "jswrap_promise.h"
 #include "jswrap_graphics.h"
 #include "lcd_arraybuffer.h"
+
+/// Is the LCD on?
+bool lcdPowerOn;
+/// Promise when beep is finished
+JsVar *promiseBeep;
+/// Promise when buzz is finished
+JsVar *promiseBuzz;
 
 void badge_lcd_flip(JsVar *g) {
 
@@ -38,6 +45,7 @@ void badge_lcd_flip(JsVar *g) {
   "generate" : "jswrap_em_init"
 }*/
 void jswrap_em_init() {
+  lcdPowerOn = true;
   // Create backing graphics for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
@@ -82,7 +90,10 @@ void jswrap_em_init() {
   "generate" : "jswrap_em_kill"
 }*/
 void jswrap_em_kill() {
-
+  jsvUnLock(promiseBeep);
+  promiseBeep = 0;
+  jsvUnLock(promiseBuzz);
+  promiseBuzz = 0;
 }
 
 /*JSON{
@@ -111,8 +122,7 @@ bool jswrap_em_idle() {
     "params" : [
       ["menu","JsVar","Get the Bangle.js logo as an image that can be used with `g.drawImage`"]
     ],
-    "return" : ["JsVar", "An image to be used with `g.drawImage` - 222 x 104 x 2 bits" ],
-    "ifdef" : "BANGLEJS"
+    "return" : ["JsVar", "An image to be used with `g.drawImage` - 222 x 104 x 2 bits" ]
 }
 */
 JsVar *jswrap_banglejs_getLogo() {
@@ -214,3 +224,244 @@ JsVar *jswrap_banglejs_getLogo() {
   jsvUnLock(v);
   return img;
 }
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setLCDPower",
+    "generate" : "jswrap_banglejs_setLCDPower",
+    "params" : [
+      ["isOn","bool","True if the LCD should be on, false if not"]
+    ]
+}
+*/
+void jswrap_banglejs_setLCDPower(bool isOn) {
+  if (lcdPowerOn != isOn) {
+    JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
+    if (bangle) {
+      JsVar *v = jsvNewFromBool(isOn);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"lcdPower", &v, 1);
+      jsvUnLock(v);
+    }
+    jsvUnLock(bangle);
+  }
+  lcdPowerOn = isOn;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setLCDBrightness",
+    "generate" : "jswrap_banglejs_setLCDBrightness",
+    "params" : [
+      ["brightness","float","The brightness of Bangle.js's display - from 0(off) to 1(on full)"]
+    ]
+}
+*/
+void jswrap_banglejs_setLCDBrightness(JsVarFloat v) {
+
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setLCDMode",
+    "generate" : "jswrap_banglejs_setLCDMode",
+    "params" : [
+      ["mode","JsVar","The LCD mode (See below)"]
+    ]
+}
+*/
+void jswrap_banglejs_setLCDMode(JsVar *mode) {
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setLCDTimeout",
+    "generate" : "jswrap_banglejs_setLCDTimeout",
+    "params" : [
+      ["isOn","float","The timeout of the display in seconds, or `0`/`undefined` to turn power saving off. Default is 10 seconds."]
+    ]
+}
+*/
+void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setPollInterval",
+    "generate" : "jswrap_banglejs_setPollInterval",
+    "params" : [
+      ["interval","float","Polling interval in milliseconds"]
+    ]
+}
+*/
+void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setOptions",
+    "generate" : "jswrap_banglejs_setOptions",
+    "params" : [
+      ["options","JsVar",""]
+    ]
+}
+*/
+void jswrap_banglejs_setOptions(JsVar *options) {
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "isLCDOn",
+    "generate" : "jswrap_banglejs_isLCDOn",
+    "return" : ["bool","Is the display on or not?"]
+}
+*/
+int jswrap_banglejs_isLCDOn() {
+  return lcdPowerOn;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "isCharging",
+    "generate" : "jswrap_banglejs_isCharging",
+    "return" : ["bool","Is the battery charging or not?"]
+}
+*/
+int jswrap_banglejs_isCharging() {
+  return false;
+}
+
+/// get battery percentage
+JsVarInt jswrap_banglejs_getBattery() {
+  return 90;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "beep",
+    "generate" : "jswrap_banglejs_beep",
+    "params" : [
+      ["time","int","Time in ms (default 200)"],
+      ["freq","int","Frequency in hz (default 4000)"]
+    ],
+    "return" : ["JsVar","A promise, completed when beep is finished"],
+    "return_object":"Promise"
+}
+*/
+void jswrap_banglejs_beep_callback() {
+  jshPinSetState(SPEAKER_PIN, JSHPINSTATE_GPIO_IN);
+
+  jspromise_resolve(promiseBeep, 0);
+  jsvUnLock(promiseBeep);
+  promiseBeep = 0;
+}
+
+JsVar *jswrap_banglejs_beep(int time, int freq) {
+  if (freq<=0) freq=4000;
+  if (time<=0) time=200;
+  if (time>5000) time=5000;
+  if (promiseBeep) {
+    jsExceptionHere(JSET_ERROR, "Beep in progress");
+    return 0;
+  }
+  promiseBeep = jspromise_create();
+  if (!promiseBeep) return 0;
+
+  jshPinAnalogOutput(SPEAKER_PIN, 0.5, freq, JSAOF_NONE);
+  jsiSetTimeout(jswrap_banglejs_beep_callback, time);
+  return jsvLockAgain(promiseBeep);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "buzz",
+    "generate" : "jswrap_banglejs_buzz",
+    "params" : [
+      ["time","int","Time in ms (default 200)"],
+      ["strength","float","Power of vibration from 0 to 1 (Default 1)"]
+    ],
+    "return" : ["JsVar","A promise, completed when beep is finished"],
+    "return_object":"Promise"
+}
+*/
+void jswrap_banglejs_buzz_callback() {
+  jshPinOutput(VIBRATE_PIN,0); // vibrate off
+
+  jspromise_resolve(promiseBuzz, 0);
+  jsvUnLock(promiseBuzz);
+  promiseBuzz = 0;
+}
+
+JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
+  if (!isfinite(amt)|| amt>1) amt=1;
+  if (amt<0) amt=0;
+  if (time<=0) time=200;
+  if (time>5000) time=5000;
+  if (promiseBuzz) {
+    jsExceptionHere(JSET_ERROR, "Buzz in progress");
+    return 0;
+  }
+  promiseBuzz = jspromise_create();
+  if (!promiseBuzz) return 0;
+
+  jsiSetTimeout(jswrap_banglejs_buzz_callback, time);
+  return jsvLockAgain(promiseBuzz);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showMenu",
+    "generate_js" : "libs/js/banglejs/E_showMenu.min.js",
+    "params" : [
+      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
+    ],
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+}
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showMessage",
+    "generate_js" : "libs/js/banglejs/E_showMessage.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["title","JsVar","(optional) a title for the message"]
+    ]
+}
+*/
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showPrompt",
+    "generate_js" : "libs/js/banglejs/E_showPrompt.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["options","JsVar","(optional) an object of options (see below)"]
+    ],
+    "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"]
+}
+*/
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showAlert",
+    "generate_js" : "libs/js/banglejs/E_showAlert.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["options","JsVar","(optional) a title for the message"]
+    ],
+    "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"]
+}
+*/

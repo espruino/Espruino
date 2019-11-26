@@ -19,3 +19,14 @@ bool jswrap_em_idle();
 
 
 JsVar *jswrap_banglejs_getLogo();
+void jswrap_banglejs_setLCDPower(bool isOn);
+void jswrap_banglejs_setLCDBrightness(JsVarFloat v);
+void jswrap_banglejs_setLCDMode(JsVar *mode);
+void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout);
+void jswrap_banglejs_setPollInterval(JsVarFloat interval);
+void jswrap_banglejs_setOptions(JsVar *options);
+int jswrap_banglejs_isLCDOn();
+int jswrap_banglejs_isCharging();
+JsVarInt jswrap_banglejs_getBattery();
+JsVar *jswrap_banglejs_beep(int time, int freq);
+JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt);
