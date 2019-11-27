@@ -47,6 +47,7 @@
             Bangle.js: EVents for 'swipe' and 'touch' on the touchscreen
             Added ability to compile Espruino to JavaScript with Emscripten
             Allow g.setColor/setBgColor to take hex Strings of the form `'#00ff00'`
+            Bangle.js: Added heart rate autocorrelation, setHRMPower and 'HRM' event
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

@@ -24,6 +24,7 @@ bool jswrap_banglejs_isLCDOn();
 bool jswrap_banglejs_isCharging();
 JsVarInt jswrap_banglejs_getBattery();
 
+void jswrap_banglejs_setHRMPower(bool isOn);
 void jswrap_banglejs_setGPSPower(bool isOn);
 void jswrap_banglejs_setCompassPower(bool isOn);
 

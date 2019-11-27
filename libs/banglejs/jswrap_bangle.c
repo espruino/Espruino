@@ -28,11 +28,13 @@
 #include "jswrap_math.h"
 #include "jswrap_storage.h"
 #include "jswrap_array.h"
+#include "jswrap_arraybuffer.h"
 #include "jswrap_heatshrink.h"
 #include "jsflash.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_soc.h"
+#include "nrf_saadc.h"
 #include "nrf5x_utils.h"
 #include "jsflash.h" // for jsfRemoveCodeFromFlash
 #include "bluetooth.h" // for self-test
@@ -118,6 +120,9 @@ Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a 
 * `x/y/z` raw x,y,z magnetometer readings
 * `dx/dy/dz` readings based on calibration since magnetometer turned on
 * `heading` in degrees based on calibrated readings (will be NaN if magnetometer hasn't been rotated around 360 degrees)
+
+To get this event you must turn the compass on
+with `Bangle.setCompassPower(1)`.
  */
 /*JSON{
   "type" : "event",
@@ -127,12 +132,15 @@ Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a 
   "ifdef" : "BANGLEJS"
 }
 Raw NMEA GPS data lines received as a string
+
+To get this event you must turn the GPS on
+with `Bangle.setGPSPower(1)`.
  */
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "GPS",
-  "params" : [["fix","JsVar",""]],
+  "params" : [["fix","JsVar","An object with fix info (see below)"]],
   "ifdef" : "BANGLEJS"
 }
 GPS data, as an object. Contains:
@@ -150,6 +158,28 @@ GPS data, as an object. Contains:
 ```
 
 If a value such as `lat` is not known because there is no fix, it'll be `NaN`.
+
+To get this event you must turn the GPS on
+with `Bangle.setGPSPower(1)`.
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "HRM",
+  "params" : [["hrm","JsVar","An object with heart rate info (see below)"]],
+  "ifdef" : "BANGLEJS"
+}
+Heat rate data, as an object. Contains:
+
+```
+{ "bpm": number,             // Beats per minute
+  "confidence": number,      // 0-100 percentage confidence in the heart rate
+  "raw": Uint8Array,         // raw samples from heart rate monitor
+}
+```
+
+To get this event you must turn the heart rate monitor on
+with `Bangle.setHRMPower(1)`.
  */
 /*JSON{
   "type" : "event",
@@ -230,6 +260,7 @@ or right hand side.
 #define IOEXP_HRM 0x80
 
 #define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
+#define HRM_HISTORY_LEN 256
 
 uint8_t nmeaCount = 0; // how many characters of NMEA data do we have?
 char nmeaIn[NMEA_MAX_SIZE]; //  82 is the max for NMEA
@@ -242,6 +273,7 @@ typedef struct {
 
 #define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 to match accelerometer
 #define DEFAULT_LCD_POWER_TIMEOUT 30000 // in msec - default for lcdPowerTimeout
+#define HRM_POLL_INTERVAL 20 // in msec
 #define ACCEL_POLL_INTERVAL_MAX 5000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
 #define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
@@ -311,6 +343,9 @@ bool stepWasLow;
 uint8_t touchLastState;
 uint8_t touchLastState2;
 
+int8_t hrmHistory[HRM_HISTORY_LEN];
+volatile uint8_t hrmHistoryIdx;
+
 /// Promise when beep is finished
 JsVar *promiseBeep;
 /// Promise when buzz is finished
@@ -329,12 +364,13 @@ typedef enum {
   JSBT_GESTURE_DATA = 256, ///< we have data from a gesture
   JSBT_CHARGE_EVENT = 512, ///< we need to fire a charging event
   JSBT_STEP_EVENT = 1024, ///< we've detected a step via the pedometer
-  JSBT_SWIPE_LEFT = 2048,
-  JSBT_SWIPE_RIGHT = 4096,
+  JSBT_SWIPE_LEFT = 2048, ///< swiped left over touchscreen
+  JSBT_SWIPE_RIGHT = 4096, ///< swiped right over touchscreen
   JSBT_SWIPE_MASK = JSBT_SWIPE_LEFT | JSBT_SWIPE_RIGHT,
-  JSBT_TOUCH_LEFT = 8192,
-  JSBT_TOUCH_RIGHT = 16384,
+  JSBT_TOUCH_LEFT = 8192, ///< touch lhs of touchscreen
+  JSBT_TOUCH_RIGHT = 16384, ///< touch rhs of touchscreen
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
+  JSBT_HRM_DATA = 32768, ///< Heart rate data is ready for analysis
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -489,6 +525,36 @@ void peripheralPollHandler() {
   //jswrap_banglejs_ioWr(IOEXP_HRM,1); // debug using HRM LED
 }
 
+void hrmPollHandler() {
+  //jswrap_banglejs_ioWr(IOEXP_HRM,0); // on
+  nrf_saadc_input_t ain = 1 + (pinInfo[HEARTRATE_PIN_ANALOG].analog & JSH_MASK_ANALOG_CH);
+
+  nrf_saadc_channel_config_t config;
+  config.acq_time = NRF_SAADC_ACQTIME_10US;
+  config.gain = NRF_SAADC_GAIN1;
+  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
+  config.pin_p = ain;
+  config.pin_n = ain;
+  config.reference = NRF_SAADC_REFERENCE_INTERNAL;
+  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
+  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+
+  // make reading
+  nrf_saadc_enable();
+  nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_8BIT);
+  nrf_saadc_channel_init(0, &config);
+
+  extern nrf_saadc_value_t nrf_analog_read();
+  int v = nrf_analog_read();
+  if (v<-128) v=-128;
+  if (v>127) v=127;
+  hrmHistory[hrmHistoryIdx] = v;
+  hrmHistoryIdx = (hrmHistoryIdx+1) & (HRM_HISTORY_LEN-1);
+  if (hrmHistoryIdx==0)
+    bangleTasks |= JSBT_HRM_DATA;
+  //jswrap_banglejs_ioWr(IOEXP_HRM,1); // off
+}
+
 void backlightOnHandler() {
   if (i2cBusy) return;
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight on
@@ -497,6 +563,8 @@ void backlightOffHandler() {
   if (i2cBusy) return;
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
 }
+
+
 
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   // wake up
@@ -819,6 +887,41 @@ void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
+    "name" : "setHRMPower",
+    "generate" : "jswrap_banglejs_setHRMPower",
+    "params" : [
+      ["isOn","bool","True if the heart rate monitor should be on, false if not"]
+    ],
+    "ifdef" : "BANGLEJS"
+}
+Set the power to the Heart rate monitor
+
+When on, data is output via the `GPS` event on `Bangle`:
+
+```
+Bangle.setHRMPower(1);
+Bangle.on('HRM',print);
+```
+
+*When on, the Heart rate monitor draws roughly 5mA*
+*/
+void jswrap_banglejs_setHRMPower(bool isOn) {
+  jstStopExecuteFn(hrmPollHandler, 0);
+  if (isOn) {
+    jshPinAnalog(HEARTRATE_PIN_ANALOG);
+    jswrap_banglejs_ioWr(IOEXP_HRM, 0); // HRM on
+    memset(hrmHistory, 0, sizeof(hrmHistory));
+    hrmHistoryIdx = 0;
+    JsSysTime t = jshGetTimeFromMilliseconds(HRM_POLL_INTERVAL);
+    jstExecuteFn(hrmPollHandler, NULL, jshGetSystemTime()+t, t);
+  } else {
+    jswrap_banglejs_ioWr(IOEXP_HRM, 1); // HRM off
+  }
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
     "name" : "setGPSPower",
     "generate" : "jswrap_banglejs_setGPSPower",
     "params" : [
@@ -1073,6 +1176,7 @@ void jswrap_banglejs_kill() {
   jstStopExecuteFn(backlightOnHandler, 0);
   jstStopExecuteFn(backlightOffHandler, 0);
   jstStopExecuteFn(peripheralPollHandler, 0);
+  jstStopExecuteFn(hrmPollHandler, 0);
   jsvUnLock(promiseBeep);
   promiseBeep = 0;
   jsvUnLock(promiseBuzz);
@@ -1189,6 +1293,67 @@ bool jswrap_banglejs_idle() {
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"mag", &o, 1);
         jsvUnLock(o);
       }
+    }
+  }
+  if (bangle && (bangleTasks & JSBT_HRM_DATA)) {
+    JsVar *o = jsvNewObject();
+    if (o) {
+      const int BPM_MIN = 40;
+      const int BPM_MAX = 200;
+      const int SAMPLES_PER_SEC = 1000 / HRM_POLL_INTERVAL;
+      const int CMIN = 60000 / (BPM_MAX*HRM_POLL_INTERVAL);
+      const int CMAX = 60000 / (BPM_MIN*HRM_POLL_INTERVAL);
+      assert(CMAX<HRM_HISTORY_LEN);
+      uint8_t corr[CMAX];
+      int minCorr = 0x7FFFFFFF, maxCorr = 0;
+      int minIdx = 0;
+      for (int c=CMIN;c<CMAX;c++) {
+        int s = 0;
+        // correlate
+        for (int i=CMAX;i<HRM_HISTORY_LEN;i++) {
+          int d = hrmHistory[i] - hrmHistory[i-c];
+          s += d*d;
+        }
+        // store min and max
+        if (s<minCorr) {
+          minCorr = s;
+          minIdx = c;
+        }
+        if (s>maxCorr) {
+          maxCorr = s;
+        }
+        // store in 8 bit array
+        s = s>>10;
+        if (s>255) s=255;
+        corr[c] = s;
+      }
+      for (int c=0;c<CMIN;c++)
+        corr[c] = corr[CMIN]; // just fill in the lower data
+      // confidence depends on how good a fit correlation is (lower minCorr = better)
+      int confidence = 120 - (minCorr/600);
+      // but if maxCorr is low we don't have enough signal, so that's bad too
+      if (maxCorr<10000) confidence -= (10000-maxCorr)/50;
+
+      if (confidence<0) confidence=0;
+      if (confidence>100) confidence=100;
+
+      jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromInteger(60000 / (minIdx*HRM_POLL_INTERVAL)));
+      jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(confidence));
+      JsVar *s = jsvNewNativeString(hrmHistory, sizeof(hrmHistory));
+      JsVar *ab = jsvNewArrayBufferFromString(s,0);
+      jsvObjectSetChildAndUnLock(o,"raw",jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT8,ab,0,0));
+      jsvUnLock2(ab,s);
+      // for debugging
+      if (false) {
+        jsvObjectSetChildAndUnLock(o,"minDifference",jsvNewFromInteger(minCorr));
+        jsvObjectSetChildAndUnLock(o,"maxDifference",jsvNewFromInteger(maxCorr));
+        s = jsvNewArrayBufferWithData(sizeof(corr),corr);
+        jsvObjectSetChildAndUnLock(o,"correlation",jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8,s,0,0));
+        jsvUnLock(s);
+      }
+
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM", &o, 1);
+      jsvUnLock(o);
     }
   }
   if (bangle && (bangleTasks & JSBT_GESTURE_DATA)) {
