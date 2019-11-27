@@ -456,14 +456,15 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
         jsvStringIteratorAppend(&dst, ch);
       } else {
         jsvStringIteratorNext(&it);
-        int hi = chtod(jsvStringIteratorGetChar(&it));
+        int hi = jsvStringIteratorGetChar(&it);
         jsvStringIteratorNext(&it);
-        int lo = chtod(jsvStringIteratorGetChar(&it));
-        ch = (char)((hi<<4)|lo);
-        if (hi<0 || lo<0 || ch>>7) {
+        int lo = jsvStringIteratorGetChar(&it);
+        int v = (char)hexToByte(hi,lo);
+        if (v<0) {
           jsExceptionHere(JSET_ERROR, "Invalid URI\n");
           break;
         }
+        ch = (char)v;
         jsvStringIteratorAppend(&dst, ch);
       }
       jsvStringIteratorNext(&it);

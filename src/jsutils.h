@@ -377,6 +377,8 @@ const char *escapeCharacter(char ch);
 int getRadix(const char **s, int forceRadix, bool *hasError);
 /// Convert a character to the hexadecimal equivalent (or -1)
 int chtod(char ch);
+/// Convert 2 characters to the hexadecimal equivalent (or -1)
+int hexToByte(char hi, char lo);
 /* convert a number in the given radix to an int */
 long long stringToIntWithRadix(const char *s,
                int forceRadix, //!< if radix=0, autodetect

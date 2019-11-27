@@ -670,7 +670,7 @@ JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   "name" : "setColor",
   "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
   "params" : [
-    ["r","JsVar","Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order"],
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
     ["g","JsVar","Green (between 0 and 1)"],
     ["b","JsVar","Blue (between 0 and 1)"]
   ],
@@ -699,7 +699,7 @@ be a floating point value, and `g` and `b` are ignored.
   "name" : "setBgColor",
   "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false)",
   "params" : [
-    ["r","JsVar","Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order"],
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
     ["g","JsVar","Green (between 0 and 1)"],
     ["b","JsVar","Blue (between 0 and 1)"]
   ],
@@ -720,10 +720,23 @@ JsVar *jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bo
   if (false) {
 #else
   JsVarFloat rf, gf, bf;
-  rf = jsvGetFloat(r);
-  gf = jsvGetFloat(g);
-  bf = jsvGetFloat(b);
-  if (!jsvIsUndefined(g) && !jsvIsUndefined(b)) {
+  if (jsvIsString(r)) {
+    char buf[9];
+    memset(buf,0,sizeof(buf));
+    jsvGetString(r,buf,sizeof(buf));
+    rf = hexToByte(buf[1],buf[2])/256.0;
+    gf = hexToByte(buf[3],buf[4])/256.0;
+    bf = hexToByte(buf[5],buf[6])/256.0;
+    if (rf<0 || gf<0 || bf<0 || buf[7]!=0) {
+      jsExceptionHere(JSET_ERROR, "If Color is a String, it must be of the form '#rrggbb'");
+      return 0;
+    }
+  } else {
+    rf = jsvGetFloat(r);
+    gf = jsvGetFloat(g);
+    bf = jsvGetFloat(b);
+  }
+  if (isfinite(rf) && isfinite(gf) && isfinite(bf)) {
     int ri = (int)(rf*256);
     int gi = (int)(gf*256);
     int bi = (int)(bf*256);

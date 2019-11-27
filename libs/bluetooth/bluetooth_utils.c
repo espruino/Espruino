@@ -157,11 +157,12 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
     jsvStringIteratorNext(&it);
     int lo = chtod(jsvStringIteratorGetChar(&it));
     jsvStringIteratorNext(&it);
-    if (hi<0 || lo<0) {
+    int v = hexToByte(hi,lo);
+    if (v<0) {
       jsvStringIteratorFree(&it);
       return "UUID string should only contain hex characters and dashes";
     }
-    data[expectedLength - (dataLen+1)] = (unsigned)((hi<<4) | lo);
+    data[expectedLength - (dataLen+1)] = (unsigned)v;
     dataLen++;
   }
   if (jsvStringIteratorHasChar(&it)) dataLen++; // make sure we fail is string too long

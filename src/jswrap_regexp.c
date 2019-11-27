@@ -154,7 +154,7 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
     if (cH>='0' && cH<='9') { cH-='0'; goto haveCode; }
     if (cH=='x' && regexp[2] && regexp[3]) {
       *length = 4;
-      cH = (char)((chtod(regexp[2])<<4) | chtod(regexp[3]));
+      cH = (char)hexToByte(regexp[2],regexp[3]);
       goto haveCode;
     }
   }

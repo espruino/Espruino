@@ -152,6 +152,14 @@ int chtod(char ch) {
   else return -1;
 }
 
+/// Convert 2 characters to the hexadecimal equivalent (or -1)
+int hexToByte(char hi, char lo) {
+  int a = chtod(hi);
+  int b = chtod(lo);
+  if (a<0 || b<0) return -1;
+  return (a<<4)|b;
+}
+
 /* convert a number in the given radix to an int */
 long long stringToIntWithRadix(const char *s,
                int forceRadix, //!< if radix=0, autodetect
