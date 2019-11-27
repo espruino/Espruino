@@ -1198,6 +1198,10 @@ void jswrap_banglejs_kill() {
   "generate" : "jswrap_banglejs_idle"
 }*/
 bool jswrap_banglejs_idle() {
+  /* TODO: Check jsiObjectHasCallbacks/etc here and then don't
+   * fire the event in our peripheralPollHandler/hrmPoll/etc if there's
+   * nothing to see the event
+   */
   if (bangleTasks == JSBT_NONE) return false;
   JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
   if (bangleTasks & JSBT_LCD_OFF) jswrap_banglejs_setLCDPower(0);
