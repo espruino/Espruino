@@ -115,7 +115,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   }
   err=i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
   if ( err == ESP_OK ) {
-	jsWarn("jshI2CSetup: driver installed, sda: %d sdl: %d freq: %d, \n", sda, scl, info->bitrate);
+	jsWarn("jshI2CSetup: driver installed, sda: %d scl: %d freq: %d, \n", sda, scl, info->bitrate);
 	jshSetDeviceInitialised(device, true);
   } else {
     checkError("jshI2CSetup",err); 
