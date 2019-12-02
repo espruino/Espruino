@@ -381,7 +381,14 @@ void lcd_flip(JsVar *parent) {
     jswrap_banglejs_setLCDPower(1);
   }
   flipTimer = 0;
-  lcdST7789_flip();
+
+  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
+  if (!graphics) return;
+  JsGraphics gfx;
+  if (!graphicsGetFromVar(&gfx, graphics)) return;
+  lcdST7789_flip(&gfx);
+  graphicsSetVar(&gfx);
+  jsvUnLock(graphics);
 }
 
 char clipi8(int x) {
@@ -740,6 +747,10 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
     lcdMode = LCDST7789_MODE_UNBUFFERED;
   else if (jsvIsStringEqual(mode,"doublebuffered"))
     lcdMode = LCDST7789_MODE_DOUBLEBUFFERED;
+  else if (jsvIsStringEqual(mode,"120x120"))
+    lcdMode = LCDST7789_MODE_BUFFER_120x120;
+  else if (jsvIsStringEqual(mode,"80x80"))
+    lcdMode = LCDST7789_MODE_BUFFER_80x80;
   else
     jsExceptionHere(JSET_ERROR,"Unknown LCD Mode %j",mode);
 
@@ -747,7 +758,26 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   if (!graphics) return;
   JsGraphics gfx;
   if (!graphicsGetFromVar(&gfx, graphics)) return;
-  gfx.data.height = (lcdMode==LCDST7789_MODE_DOUBLEBUFFERED) ? 160 : LCD_HEIGHT;
+  // remove the buffer if it was defined
+  jsvObjectSetOrRemoveChild(gfx.graphicsVar, "buffer", 0);
+  switch (lcdMode) {
+    case LCDST7789_MODE_UNBUFFERED:
+      gfx.data.height = LCD_HEIGHT;
+      break;
+    case LCDST7789_MODE_DOUBLEBUFFERED:
+      gfx.data.height = 160;
+      break;
+    case LCDST7789_MODE_BUFFER_120x120:
+      gfx.data.width = 120;
+      gfx.data.height = 120;
+      jsvObjectSetChildAndUnLock(gfx.graphicsVar, "buffer", jswrap_arraybuffer_constructor(120*120));
+      break;
+    case LCDST7789_MODE_BUFFER_80x80:
+      gfx.data.width = 80;
+      gfx.data.height = 80;
+      jsvObjectSetChildAndUnLock(gfx.graphicsVar, "buffer", jswrap_arraybuffer_constructor(80*80));
+      break;
+  }
   graphicsSetVar(&gfx);
   jsvUnLock(graphics);
   lcdST7789_setMode( lcdMode );

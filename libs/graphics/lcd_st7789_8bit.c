@@ -14,9 +14,12 @@
 
 #include "platform_config.h"
 #include "jsutils.h"
-#include "jshardware.h"
 #include "lcd_st7789_8bit.h"
+#include "jswrap_graphics.h"
+#ifndef EMSCRIPTEN
+#include "jshardware.h"
 #include "nrf_gpio.h"
+#endif
 
 #define CMDINDEX_CMD   0
 #define CMDINDEX_DELAY 1
@@ -51,7 +54,14 @@ LCDST7789Mode lcdMode;
 int lcdNextX, lcdNextY;
 int lcdScrollY;
 
+#ifdef EMSCRIPTEN
+#define EMSCRIPTEN_GFX_STRIDE (240*2)
+char EMSCRIPTEN_GFX_BUFFER[240*240*2];
+char EMSCRIPTEN_GFX_BUFFER_OFFSCREEN[240*160*2];
+bool EMSCRIPTEN_GFX_CHANGED;
+#endif
 
+#ifndef EMSCRIPTEN
 /* We have to be careful about this since we can
 write faster than the LCD is happy about
 
@@ -68,6 +78,7 @@ write faster than the LCD is happy about
 #define LCD_DC_COMMAND() jshPinSetValue(LCD_PIN_DC,0);
 #define LCD_DC_DATA() jshPinSetValue(LCD_PIN_DC,1);
 */
+
 #define LCD_CS_CLR() NRF_P0->OUTCLR = 1<<LCD_PIN_CS
 #define LCD_CS_SET() NRF_P0->OUTSET = 1<<LCD_PIN_CS
 #define LCD_DC_COMMAND() NRF_P0->OUTCLR = 1<<LCD_PIN_DC
@@ -92,8 +103,10 @@ void lcd_send_data(uint8_t cmd) {
   LCD_WR8(cmd);
   LCD_CS_SET();
 }
+#endif // EMSCRIPTEN
 
 void lcdST7789_cmd(int cmd, int dataLen, const uint8_t *data) {
+#ifndef EMSCRIPTEN
   LCD_CS_CLR();
   LCD_DC_COMMAND(); // command
   LCD_WR8(cmd);
@@ -105,6 +118,7 @@ void lcdST7789_cmd(int cmd, int dataLen, const uint8_t *data) {
     }
   }
   LCD_CS_SET();
+#endif
 }
 
 void lcdST7789_setMode(LCDST7789Mode mode) {
@@ -113,6 +127,8 @@ void lcdST7789_setMode(LCDST7789Mode mode) {
     lcdMode = mode;
     switch (lcdMode) {
     case LCDST7789_MODE_UNBUFFERED:
+    case LCDST7789_MODE_BUFFER_120x120:
+    case LCDST7789_MODE_BUFFER_80x80:
       lcdST7789_cmd(0x13,0,NULL);
       buf[0] = 0;
       buf[1] = 0;
@@ -134,24 +150,124 @@ void lcdST7789_setMode(LCDST7789Mode mode) {
   }
 }
 
-void lcdST7789_flip() {
-  if (lcdMode!=LCDST7789_MODE_DOUBLEBUFFERED) return;
-  unsigned short offs;
-  if (lcdScrollY==0) {
-    lcdScrollY = 160;
-    offs = 280;
-  } else {
-    lcdScrollY = 0;
-    offs = 120;
-  }
+void lcdST7789_flip(JsGraphics *gfx) {
+#ifndef EMSCRIPTEN
   unsigned char buf[2];
-  buf[0] = offs>>8;
-  buf[1] = offs;
-  lcdST7789_cmd(0x37,2,buf);
+  switch (lcdMode) {
+    case LCDST7789_MODE_UNBUFFERED:
+      // unbuffered - flip has no effect
+    break;
+    case LCDST7789_MODE_DOUBLEBUFFERED: {
+      // buffered - flip using LCD itself
+      unsigned short offs;
+      if (lcdScrollY==0) {
+        lcdScrollY = 160;
+        offs = 280;
+      } else {
+        lcdScrollY = 0;
+        offs = 120;
+      }
+      buf[0] = offs>>8;
+      buf[1] = offs;
+      lcdST7789_cmd(0x37,2,buf);
+    } break;
+    case LCDST7789_MODE_BUFFER_120x120: {
+      // offscreen buffer - BLIT
+      JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
+      size_t len = 0;
+      unsigned char *dataPtr = (unsigned char*)jsvGetDataPointer(buffer, &len);
+      jsvUnLock(buffer);
+      if (dataPtr && len>=(120*120)) {
+        // reset scroll to 0
+        buf[0] = 0;
+        buf[1] = 0;
+        lcdST7789_cmd(0x37,2,buf);
+        // blit
+        lcdST7789_blitStart(0,0,239,239);
+        for (int y=0;y<240;y++) {
+          for (int x=0;x<120;x++) {
+            unsigned int c = PALETTE_8BIT[*(dataPtr++)];
+            lcdST7789_blitPixel(c);
+            lcdST7789_blitPixel(c);
+          }
+          // display the same row twice
+          if (!(y&1)) dataPtr -= 120;
+        }
+        lcdST7789_blitEnd();
+      }
+    } break;
+    case LCDST7789_MODE_BUFFER_80x80: {
+      // offscreen buffer - BLIT
+      JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
+      size_t len = 0;
+      unsigned char *dataPtr = (unsigned char*)jsvGetDataPointer(buffer, &len);
+      jsvUnLock(buffer);
+      if (dataPtr && len>=(80*80)) {
+        // reset scroll to 0
+        buf[0] = 0;
+        buf[1] = 0;
+        lcdST7789_cmd(0x37,2,buf);
+        // blit
+        lcdST7789_blitStart(0,0,239,239);
+        for (int y=0;y<80;y++) {
+          for (int n=0;n<3;n++) {
+            for (int x=0;x<80;x++) {
+              unsigned int c = PALETTE_8BIT[*(dataPtr++)];
+              lcdST7789_blitPixel(c);
+              lcdST7789_blitPixel(c);
+              lcdST7789_blitPixel(c);
+            }
+            if (n<2) dataPtr -= 80;
+          }
+        }
+        lcdST7789_blitEnd();
+      }
+    } break;
+  }
+#else
+  switch (lcdMode) {
+    case LCDST7789_MODE_UNBUFFERED:
+      // unbuffered - flip has no effect
+    break;
+    case LCDST7789_MODE_DOUBLEBUFFERED: {
+      memcpy(&EMSCRIPTEN_GFX_BUFFER[EMSCRIPTEN_GFX_BUFFER_STRIDE*40],
+             EMSCRIPTEN_GFX_BUFFER_OFFSCREEN,
+             sizeof(EMSCRIPTEN_GFX_BUFFER_OFFSCREEN));
+    } break;
+    case LCDST7789_MODE_BUFFER_120x120: {
+      uint16_t *o = (uint16_t*)EMSCRIPTEN_GFX_BUFFER;
+      for (int y=0;y<240;y++) {
+        for (int x=0;x<120;x++) {
+          unsigned int c = PALETTE_8BIT[*(dataPtr++)];
+          *(o++) = c;
+          *(o++) = c;
+        }
+        // display the same row twice
+        if (!(y&1)) dataPtr -= 120;
+      }
+    } break;
+    case LCDST7789_MODE_BUFFER_80x80: {
+      uint16_t *o = (uint16_t*)EMSCRIPTEN_GFX_BUFFER;
+      for (int y=0;y<80;y++) {
+        for (int n=0;n<3;n++) {
+          for (int x=0;x<80;x++) {
+            unsigned int c = PALETTE_8BIT[*(dataPtr++)];
+            *(o++) = c;
+            *(o++) = c;
+            *(o++) = c;
+          }
+          if (n<2) dataPtr -= 80;
+        }
+      }
+    } break;
+  }
+  EMSCRIPTEN_GFX_CHANGED = true;
+#endif
 }
 
 /// Starts a blit operation - call this, then blitPixel (a lot) then blitEnd. No bounds checking
 void lcdST7789_blitStart(int x, int y, int w, int h) {
+#ifndef EMSCRIPTEN
   lcdNextY=-1;
   lcdNextX=-1;
   int x1 = x;
@@ -179,8 +295,10 @@ void lcdST7789_blitStart(int x, int y, int w, int h) {
   LCD_DC_COMMAND(); // command
   LCD_WR8(0x2C);
   LCD_DC_DATA(); // data
+#endif
 }
-void lcdST7789_blitPixel(unsigned int col) {
+inline void lcdST7789_blitPixel(unsigned int col) {
+#ifndef EMSCRIPTEN
   /* FIXME: Handle case where scrolling means
    * we wrap around the memory area - see what
    * lcdST7789_fillRect does */
@@ -192,13 +310,17 @@ void lcdST7789_blitPixel(unsigned int col) {
   asm("nop");asm("nop");
   LCD_SCK_CLR_FAST();
   LCD_SCK_SET_FAST();
+#endif
 }
 void lcdST7789_blitEnd() {
+#ifndef EMSCRIPTEN
   LCD_CS_SET();
+#endif
 }
 
 
 void lcdST7789_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
+#ifndef EMSCRIPTEN
   LCD_CS_CLR();
   if ((y!=lcdNextY) || (x!=lcdNextX)) {
     lcdNextY=y;
@@ -233,8 +355,25 @@ void lcdST7789_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
   LCD_SCK_CLR_FAST();
   LCD_SCK_SET_FAST();
   LCD_CS_SET();
+#else // EMSCRIPTEN
+  switch (lcdMode) {
+    case LCDST7789_MODE_UNBUFFERED:
+      ((uint16_t*)EMSCRIPTEN_GFX_BUFFER)[x+y*240] = col;
+    break;
+    case LCDST7789_MODE_DOUBLEBUFFERED: {
+      ((uint16_t*)EMSCRIPTEN_GFX_BUFFER_OFFSCREEN)[x+y*240] = col;
+    } break;
+    case LCDST7789_MODE_BUFFER_120x120: {
+      EMSCRIPTEN_GFX_BUFFER_OFFSCREEN[x+y*120] = col;
+    } break;
+    case LCDST7789_MODE_BUFFER_80x80: {
+      EMSCRIPTEN_GFX_BUFFER_OFFSCREEN[x+y*80] = col;
+    } break;
+  }
+#endif
 }
 
+#ifndef EMSCRIPTEN
 void lcdST7789_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   y1 += lcdScrollY;
   if (y1>=LCD_BUFFER_HEIGHT) y1-=LCD_BUFFER_HEIGHT;
@@ -297,8 +436,10 @@ void lcdST7789_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigne
     nexty = -1;
   }
 }
+#endif
 
 void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
+#ifndef EMSCRIPTEN
   if (lcdMode != LCDST7789_MODE_UNBUFFERED) {
     // No way this is going to work double buffered!
     return;
@@ -314,12 +455,48 @@ void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
   buf[0] = lcdScrollY>>8;
   buf[1] = lcdScrollY;
   lcdST7789_cmd(0x37, 2, buf);
+#else // EMSCRIPTEN
+  if (ydir>0) {
+    memcpy(
+        &EMSCRIPTEN_GFX_BUFFER[ydir],
+        &EMSCRIPTEN_GFX_BUFFER[0],
+        EMSCRIPTEN_GFX_STRIDE*(240-ydir)
+  } else if (ydir<0) {
+    memcpy(
+        &EMSCRIPTEN_GFX_BUFFER[0],
+        &EMSCRIPTEN_GFX_BUFFER[-ydir],
+        EMSCRIPTEN_GFX_STRIDE*(240+ydir)
+  }
+  EMSCRIPTEN_GFX_CHENGED=true;
+#endif
 }
+
+
+// ====================================================================================
+void lcdST7789buf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
+  if (!gfx->backendData) return;
+  ((uint8_t*)gfx->backendData)[x + y*gfx->data.width] = col;
+}
+
+unsigned int lcdST7789buf_getPixel(struct JsGraphics *gfx, int x, int y) {
+  if (!gfx->backendData) return 0;
+  return ((uint8_t*)gfx->backendData)[x + y*gfx->data.width];
+}
+
+void lcdST7789buf_scroll(JsGraphics *gfx, int xdir, int ydir) {
+  if (!gfx->backendData) return;
+  int pixels = xdir + ydir*gfx->data.width;
+  int l = gfx->data.width*gfx->data.height;
+  if (pixels>0) memcpy(&((uint8_t*)gfx->backendData)[0],&((uint8_t*)gfx->backendData)[pixels],l-pixels);
+  else if (pixels<0) memcpy(&((uint8_t*)gfx->backendData)[-pixels],&((uint8_t*)gfx->backendData)[0],l+pixels);
+}
+// ====================================================================================
 
 void lcdST7789_init(JsGraphics *gfx) {
   assert(gfx->data.bpp == 16);
   // LCD pins need initialising and LCD needs reset beforehand - done in jswrap_bangle.c
 
+#ifndef EMSCRIPTEN
   // Send initialization commands to ST7789
   const uint8_t *cmd = ST7789_INIT_CODE;
   while(cmd[CMDINDEX_DATALEN]!=255) {
@@ -328,6 +505,7 @@ void lcdST7789_init(JsGraphics *gfx) {
       jshDelayMicroseconds(1000*cmd[CMDINDEX_DELAY]);
     cmd += 3 + cmd[CMDINDEX_DATALEN];
   }
+#endif
 
   lcdNextX = -1;
   lcdNextY = -1;
@@ -336,8 +514,26 @@ void lcdST7789_init(JsGraphics *gfx) {
 }
 
 void lcdST7789_setCallbacks(JsGraphics *gfx) {
-  gfx->setPixel = lcdST7789_setPixel;
-  gfx->fillRect = lcdST7789_fillRect;
-  gfx->scroll = lcdST7789_scroll;
+  if (lcdMode==LCDST7789_MODE_BUFFER_120x120 ||
+      lcdMode==LCDST7789_MODE_BUFFER_80x80) {
+    size_t expectedLen = (lcdMode==LCDST7789_MODE_BUFFER_120x120) ? (120*120) : (80*80);
+    JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
+    size_t len = 0;
+    char *dataPtr = jsvGetDataPointer(buf, &len);
+    jsvUnLock(buf);
+    if (dataPtr && len>=expectedLen) {
+      gfx->backendData = dataPtr;
+      gfx->setPixel = lcdST7789buf_setPixel;
+      gfx->getPixel = lcdST7789buf_getPixel;
+      // gfx->fillRect = lcdST7789buf_fillRect; // maybe later...
+      gfx->scroll = lcdST7789buf_scroll;
+    }
+  } else {
+    gfx->setPixel = lcdST7789_setPixel;
+#ifndef EMSCRIPTEN
+    gfx->fillRect = lcdST7789_fillRect;
+#endif
+    gfx->scroll = lcdST7789_scroll;
+  }
 }
 

@@ -19,6 +19,8 @@ void lcdST7789_setCallbacks(JsGraphics *gfx);
 typedef enum {
   LCDST7789_MODE_UNBUFFERED, // normal, 240x240
   LCDST7789_MODE_DOUBLEBUFFERED, // 240x160 widescreen, double-buffered
+  LCDST7789_MODE_BUFFER_120x120, // 120x120 8 bit buffer
+  LCDST7789_MODE_BUFFER_80x80, // 80x80 8 bit buffer
 } LCDST7789Mode;
 
 /// Send a command direct to the screen
@@ -26,7 +28,7 @@ void lcdST7789_cmd(int cmd, int dataLen, const uint8_t *data);
 /// Set double buffered or normal modes
 void lcdST7789_setMode(LCDST7789Mode mode);
 /// When in double-buffered mode, flip the screen
-void lcdST7789_flip();
+void lcdST7789_flip(JsGraphics *gfx);
 
 /// Starts a blit operation - call this, then blitPixel (a lot) then blitEnd. No bounds checking
 void lcdST7789_blitStart(int x, int y, int w, int h);

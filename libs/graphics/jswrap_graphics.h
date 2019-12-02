@@ -17,6 +17,13 @@
 #include "jsvar.h"
 #include "graphics.h"
 
+#ifdef GRAPHICS_PALETTED_IMAGES
+// 16 color MAC OS palette
+extern const uint16_t PALETTE_4BIT[16];
+// 256 color 16 bit Web-safe palette
+extern const uint16_t PALETTE_8BIT[256];
+#endif
+
 bool jswrap_graphics_idle();
 void jswrap_graphics_init();
 
