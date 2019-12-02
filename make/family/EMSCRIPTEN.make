@@ -1,4 +1,3 @@
-CFLAGS += -std=gnu99
 DEFINES += -DEMSCRIPTEN
 INCLUDE += -I$(ROOT)/targets/emscripten
 SOURCES +=                              \

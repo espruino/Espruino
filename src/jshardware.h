@@ -463,7 +463,7 @@ JshPinState jshVirtualPinGetState(Pin pin);
 #define WAIT_UNTIL(CONDITION, REASON) { \
     int timeout = WAIT_UNTIL_N_CYCLES;                                              \
     while (!(CONDITION) && !jspIsInterrupted() && (timeout--)>0);                  \
-    if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_INTERNALERROR, "Timeout on "REASON); }  \
+    if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_INTERNALERROR, "Timeout on " REASON); }  \
 }
 
 #endif /* JSHARDWARE_H_ */

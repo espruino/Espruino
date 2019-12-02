@@ -22,7 +22,7 @@ info = {
  'build' : {
    'libraries' : [
 #     'NET',
-#     'TENSORFLOW',
+     'TENSORFLOW',
      'GRAPHICS',
 #     'FILESYSTEM',
 #     'CRYPTO','SHA256','SHA512',
@@ -31,7 +31,7 @@ info = {
    ],
    'makefile' : [
      'EMSCRIPTEN=1',
-#     'DEFINES += -DUSE_TENSORFLOW',
+     'DEFINES += -DUSE_TENSORFLOW',
 #     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DUSE_LCD_EMSCRTIPTEN',
