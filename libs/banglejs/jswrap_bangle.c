@@ -739,12 +739,16 @@ void jswrap_banglejs_setLCDBrightness(JsVarFloat v) {
     ],
     "ifdef" : "BANGLEJS"
 }
-This function can be used to turn double-buffering on Bangle.js's LCD on or off (the default).
+This function can be used to change the way graphics is handled on Bangle.js.
 
-* `undefined`/`"direct"` (the default) - The drawable area is 240x240 16 bit, terminal and vertical scrolling will work. Draw calls take effect immediately so there may be flickering unless you're careful.
-* `"doublebuffered" - The drawable area is 240x160 16 bit, terminal and vertical scrolling will not work. Draw calls only take effect when `g.flip()` is called and there is no flicker.
-* `"120x120"` - The drawable area is 120x120 8 bit, `g.getPixel` and full scrolling work. Draw calls only take effect when `g.flip()` is called and there is no flicker.
-* `"80x80"`- The drawable area is 80x80 8 bit, `g.getPixel` and full scrolling work. Draw calls only take effect when `g.flip()` is called and there is no flicker.
+Available options for `Bangle.setLCDMode` are:
+
+* `Bangle.setLCDMode()` or `Bangle.setLCDMode("direct")` (the default) - The drawable area is 240x240 16 bit. Unbuffered, so draw calls take effect immediately. Terminal and vertical scrolling work (horizontal scrolling doesn't).
+* `Bangle.setLCDMode("doublebuffered")` - The drawable area is 240x160 16 bit, terminal and scrolling will not work.
+* `Bangle.setLCDMode("120x120")` - The drawable area is 120x120 8 bit, `g.getPixel`, terminal, and full scrolling work.
+* `Bangle.setLCDMode("80x80")` - The drawable area is 80x80 8 bit, `g.getPixel`, terminal, and full scrolling work.
+
+You can also call `Bangle.setLCDMode()` to return to normal, unbuffered `"direct"` mode.
 */
 void jswrap_banglejs_setLCDMode(JsVar *mode) {
   LCDST7789Mode lcdMode = LCDST7789_MODE_UNBUFFERED;

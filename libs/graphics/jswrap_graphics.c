@@ -645,7 +645,7 @@ int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
   "params" : [
     ["x","int32","The left"],
     ["y","int32","The top"],
-    ["col","JsVar","The color"]
+    ["col","JsVar","The color (if `undefined`, the foreground color is useD)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
