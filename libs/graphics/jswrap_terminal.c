@@ -112,7 +112,7 @@ void terminalSendChar(char chn) {
       JsGraphics gfx;
       if (terminalGetGFX(&gfx)) {
         short cx = (short)(TERMINAL_OFFSET_X + terminalX*TERMINAL_CHAR_W);
-        short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H);
+        short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H + gfx.data.height - LCD_HEIGHT);
         // draw char
         TERMINAL_CHAR_CMD(&gfx, cx, cy, chn, 1, true/*solid background - so no need to clear*/);
         terminalSetGFX(&gfx);
@@ -144,7 +144,7 @@ void terminalSendChar(char chn) {
               JsGraphics gfx;
               if (terminalGetGFX(&gfx)) {
                 short cx = (short)(TERMINAL_OFFSET_X + terminalX*TERMINAL_CHAR_W);
-                short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H);
+                short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H + gfx.data.height - LCD_HEIGHT);
                 short w = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
                 short h = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
                 // Clear to right and down

@@ -23,6 +23,11 @@ typedef enum {
   LCDST7789_MODE_BUFFER_80x80, // 80x80 8 bit buffer
 } LCDST7789Mode;
 
+#ifdef EMSCRIPTEN
+extern char EMSCRIPTEN_GFX_BUFFER[240*240*2];
+extern bool EMSCRIPTEN_GFX_CHANGED;
+#endif
+
 /// Send a command direct to the screen
 void lcdST7789_cmd(int cmd, int dataLen, const uint8_t *data);
 /// Set double buffered or normal modes

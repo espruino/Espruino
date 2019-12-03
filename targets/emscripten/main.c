@@ -7,7 +7,7 @@
 #include "jsinteractive.h"
 #include "jshardware.h"
 #include "jswrapper.h"
-#include "lcd_emscripten.h"
+#include "lcd_st7789_8bit.h"
 
 void *STACK_BASE; ///< used for jsuGetFreeStack on Linux
 extern int timeToSleep;

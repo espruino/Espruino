@@ -20,8 +20,8 @@ void jswrap_banglejs_setLCDMode(JsVar *mode);
 void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout);
 void jswrap_banglejs_setPollInterval(JsVarFloat interval);
 void jswrap_banglejs_setOptions(JsVar *options);
-bool jswrap_banglejs_isLCDOn();
-bool jswrap_banglejs_isCharging();
+int jswrap_banglejs_isLCDOn();
+int jswrap_banglejs_isCharging();
 JsVarInt jswrap_banglejs_getBattery();
 
 void jswrap_banglejs_setHRMPower(bool isOn);

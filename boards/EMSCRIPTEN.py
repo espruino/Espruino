@@ -23,7 +23,9 @@ info = {
    'libraries' : [
 #     'NET',
      'TENSORFLOW',
+     'TERMINAL',
      'GRAPHICS',
+     'LCD_ST7789_8BIT',
 #     'FILESYSTEM',
 #     'CRYPTO','SHA256','SHA512',
 #     'TLS',
@@ -32,12 +34,13 @@ info = {
    'makefile' : [
      'EMSCRIPTEN=1',
      'DEFINES += -DUSE_TENSORFLOW',
+     'DEFINES += -DBANGLEJS',
 #     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DUSE_LCD_EMSCRTIPTEN',
-     'INCLUDE += -I$(ROOT)/libs/emscripten',
-     'WRAPPERSOURCES += libs/emscripten/jswrap_emscripten.c',
-     'SOURCES += libs/graphics/lcd_emscripten.c',
+     'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
+     'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
+     'SOURCES += libs/misc/nmea.c',
      'JSMODULESOURCES += libs/js/graphical_menu.min.js',
    ]
  }
@@ -65,6 +68,14 @@ devices = {
   'BTN5' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' }, # touch right
   'VIBRATE' : { 'pin' : 'D13' },
   'SPEAKER' : { 'pin' : 'D18' },
+  'LCD' : {
+            'width' : 240, 'height' : 240, 'bpp' : 16,
+            'controller' : 'st7789_8bit' # 8 bit parallel mode
+          },
+  'BAT' : {
+            'pin_charging' : 'D12', # active low, input pullup
+            'pin_voltage' : 'D30'
+          },
 };
 
 def get_pins():

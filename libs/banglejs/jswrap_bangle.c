@@ -23,7 +23,6 @@
 #include "jspin.h"
 #include "jstimer.h"
 #include "jswrap_promise.h"
-#include "jswrap_bluetooth.h"
 #include "jswrap_date.h"
 #include "jswrap_math.h"
 #include "jswrap_storage.h"
@@ -31,14 +30,16 @@
 #include "jswrap_arraybuffer.h"
 #include "jswrap_heatshrink.h"
 #include "jsflash.h"
+#ifndef EMSCRIPTEN
+#include "jswrap_bluetooth.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_soc.h"
 #include "nrf_saadc.h"
 #include "nrf5x_utils.h"
-#include "jsflash.h" // for jsfRemoveCodeFromFlash
 #include "bluetooth.h" // for self-test
 #include "jsi2c.h" // accelerometer/etc
+#endif
 
 #include "jswrap_graphics.h"
 #include "lcd_st7789_8bit.h"
@@ -397,6 +398,7 @@ char clipi8(int x) {
   return x;
 }
 
+#ifndef EMSCRIPTEN
 /* Scan peripherals for any data that's needed
  * Also, holding down both buttons will reboot */
 void peripheralPollHandler() {
@@ -570,8 +572,7 @@ void backlightOffHandler() {
   if (i2cBusy) return;
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
 }
-
-
+#endif // !EMSCRIPTEN
 
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   // wake up
@@ -633,6 +634,7 @@ void btn5Handler(bool state, IOEventFlags flags) {
 
 /// Turn just the backlight on or off (or adjust brightness)
 static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
+#ifndef EMSCRIPTEN
   jstStopExecuteFn(backlightOnHandler, 0);
   jstStopExecuteFn(backlightOffHandler, 0);
   if (isOn) { // wake
@@ -651,6 +653,7 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
   } else { // sleep
     jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
   }
+#endif
 }
 /*JSON{
     "type" : "staticmethod",
@@ -738,8 +741,10 @@ void jswrap_banglejs_setLCDBrightness(JsVarFloat v) {
 }
 This function can be used to turn double-buffering on Bangle.js's LCD on or off (the default).
 
-* `undefined`/`"direct"` (the default) - The drawable area is 240x240, terminal and vertical scrolling will work. Draw calls take effect immediately so there may be flickering unless you're careful.
-* `"doublebuffered" - The drawable area is 240x160, terminal and vertical scrolling will not work. Draw calls only take effect when `g.flip()` is called and there is no flicker.
+* `undefined`/`"direct"` (the default) - The drawable area is 240x240 16 bit, terminal and vertical scrolling will work. Draw calls take effect immediately so there may be flickering unless you're careful.
+* `"doublebuffered" - The drawable area is 240x160 16 bit, terminal and vertical scrolling will not work. Draw calls only take effect when `g.flip()` is called and there is no flicker.
+* `"120x120"` - The drawable area is 120x120 8 bit, `g.getPixel` and full scrolling work. Draw calls only take effect when `g.flip()` is called and there is no flicker.
+* `"80x80"`- The drawable area is 80x80 8 bit, `g.getPixel` and full scrolling work. Draw calls only take effect when `g.flip()` is called and there is no flicker.
 */
 void jswrap_banglejs_setLCDMode(JsVar *mode) {
   LCDST7789Mode lcdMode = LCDST7789_MODE_UNBUFFERED;
@@ -762,19 +767,25 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   jsvObjectSetOrRemoveChild(gfx.graphicsVar, "buffer", 0);
   switch (lcdMode) {
     case LCDST7789_MODE_UNBUFFERED:
+      gfx.data.width = LCD_WIDTH;
       gfx.data.height = LCD_HEIGHT;
+      gfx.data.bpp = 16;
       break;
     case LCDST7789_MODE_DOUBLEBUFFERED:
+      gfx.data.width = LCD_WIDTH;
       gfx.data.height = 160;
+      gfx.data.bpp = 16;
       break;
     case LCDST7789_MODE_BUFFER_120x120:
       gfx.data.width = 120;
       gfx.data.height = 120;
+      gfx.data.bpp = 8;
       jsvObjectSetChildAndUnLock(gfx.graphicsVar, "buffer", jswrap_arraybuffer_constructor(120*120));
       break;
     case LCDST7789_MODE_BUFFER_80x80:
       gfx.data.width = 80;
       gfx.data.height = 80;
+      gfx.data.bpp = 8;
       jsvObjectSetChildAndUnLock(gfx.graphicsVar, "buffer", jswrap_arraybuffer_constructor(80*80));
       break;
   }
@@ -823,9 +834,11 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
     return;
   }
   pollInterval = (uint16_t)interval;
+#ifndef EMSCRIPTEN
   JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
   jstStopExecuteFn(peripheralPollHandler, 0);
   jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+#endif
 }
 
 /*JSON{
@@ -868,7 +881,8 @@ void jswrap_banglejs_setOptions(JsVar *options) {
     "ifdef" : "BANGLEJS"
 }
 */
-bool jswrap_banglejs_isLCDOn() {
+// emscripten bug means we can't use 'bool' as return value here!
+int jswrap_banglejs_isLCDOn() {
   return lcdPowerOn;
 }
 
@@ -881,7 +895,8 @@ bool jswrap_banglejs_isLCDOn() {
     "ifdef" : "BANGLEJS"
 }
 */
-bool jswrap_banglejs_isCharging() {
+// emscripten bug means we can't use 'bool' as return value here!
+int jswrap_banglejs_isCharging() {
   return !jshPinGetValue(BAT_PIN_CHARGING);
 }
 
@@ -936,6 +951,7 @@ Bangle.on('HRM',print);
 *When on, the Heart rate monitor draws roughly 5mA*
 */
 void jswrap_banglejs_setHRMPower(bool isOn) {
+#ifndef EMSCRIPTEN
   jstStopExecuteFn(hrmPollHandler, 0);
   if (isOn) {
     jshPinAnalog(HEARTRATE_PIN_ANALOG);
@@ -947,6 +963,7 @@ void jswrap_banglejs_setHRMPower(bool isOn) {
   } else {
     jswrap_banglejs_ioWr(IOEXP_HRM, 1); // HRM off
   }
+#endif
 }
 
 /*JSON{
@@ -971,6 +988,7 @@ Bangle.on('GPS',print);
 *When on, the GPS draws roughly 20mA*
 */
 void jswrap_banglejs_setGPSPower(bool isOn) {
+#ifndef EMSCRIPTEN
   if (isOn) {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
@@ -986,6 +1004,7 @@ void jswrap_banglejs_setGPSPower(bool isOn) {
     jshPinSetState(GPS_PIN_RX, JSHPINSTATE_GPIO_IN_PULLUP);
     jshPinSetState(GPS_PIN_TX, JSHPINSTATE_GPIO_IN_PULLUP);
   }
+#endif
 }
 
 /*JSON{
@@ -1029,6 +1048,7 @@ void jswrap_banglejs_setCompassPower(bool isOn) {
   "generate" : "jswrap_banglejs_init"
 }*/
 void jswrap_banglejs_init() {
+#ifndef EMSCRIPTEN
   jshPinOutput(18,0); // what's this?
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
 
@@ -1062,7 +1082,7 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT,0); // backlight on
   jshDelayMicroseconds(10000);
-
+#endif
   lcdPowerOn = true;
   lcdBrightness = 255;
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
@@ -1108,7 +1128,11 @@ void jswrap_banglejs_init() {
     jsvUnLock(img);
     y += 104-28;
     char addrStr[20];
+#ifndef EMSCRIPTEN
     JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
+#else
+    JsVar *addr = jsvNewFromString("");
+#endif
     jsvGetString(addr, addrStr, sizeof(addrStr));
     jsvUnLock(addr);
     jswrap_graphics_drawCString(&gfx,8,y,JS_VERSION);
@@ -1119,6 +1143,7 @@ void jswrap_banglejs_init() {
 
   jsvUnLock(graphics);
 
+#ifndef EMSCRIPTEN
   // accelerometer init
   jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off (top bit)
   jswrap_banglejs_accelWr(0x19,0x80); // CNTL2 Software reset
@@ -1144,12 +1169,15 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_accelWr(0x3e,0); // clear the buffer
   jswrap_banglejs_accelWr(0x18,0b01101100);  // CNTL1 Off, high power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
   jswrap_banglejs_accelWr(0x18,0b11101100);  // CNTL1 On, high power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
+#endif
   // Accelerometer variables init
   stepCounter = 0;
   stepWasLow = false;
+#ifndef EMSCRIPTEN
   // compass init
   jswrap_banglejs_compassWr(0x32,1);
   jswrap_banglejs_compassWr(0x31,0);
+#endif
   compassPowerOn = false;
   i2cBusy = false;
   // Other IO
@@ -1158,6 +1186,7 @@ void jswrap_banglejs_init() {
   touchLastState = 0;
   touchLastState2 = 0;
 
+#ifndef EMSCRIPTEN
   { // Flash memory - on first boot we might need to erase it
     char buf[sizeof(JsfFileHeader)];
     jshFlashRead(buf, FLASH_SAVED_CODE_START, sizeof(buf));
@@ -1169,7 +1198,9 @@ void jswrap_banglejs_init() {
       jsfEraseAll();
     }
   }
+#endif
 
+#ifndef EMSCRIPTEN
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens
   //  - the bootloader probably already set this up so the
@@ -1179,6 +1210,7 @@ void jswrap_banglejs_init() {
   pollInterval = DEFAULT_ACCEL_POLL_INTERVAL;
   JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
   jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+#endif
 
   IOEventFlags channel;
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
@@ -1203,10 +1235,12 @@ void jswrap_banglejs_init() {
   "generate" : "jswrap_banglejs_kill"
 }*/
 void jswrap_banglejs_kill() {
+#ifndef EMSCRIPTEN
   jstStopExecuteFn(backlightOnHandler, 0);
   jstStopExecuteFn(backlightOffHandler, 0);
   jstStopExecuteFn(peripheralPollHandler, 0);
   jstStopExecuteFn(hrmPollHandler, 0);
+#endif
   jsvUnLock(promiseBeep);
   promiseBeep = 0;
   jsvUnLock(promiseBuzz);
@@ -1561,12 +1595,14 @@ JsVar *jswrap_banglejs_dbg() {
 Writes a register on the KX023 Accelerometer
 */
 void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
+#ifndef EMSCRIPTEN
   unsigned char buf[2];
   buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
   i2cBusy = true;
   jsi2cWrite(&internalI2C, ACCEL_ADDR, 2, buf, true);
   i2cBusy = false;
+#endif
 }
 
 /*JSON{
@@ -1583,6 +1619,7 @@ void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
 Reads a register from the KX023 Accelerometer
 */
 int jswrap_banglejs_accelRd(JsVarInt reg) {
+#ifndef EMSCRIPTEN
   unsigned char buf[1];
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
@@ -1590,6 +1627,9 @@ int jswrap_banglejs_accelRd(JsVarInt reg) {
   jsi2cRead(&internalI2C, ACCEL_ADDR, 1, buf, true);
   i2cBusy = false;
   return buf[0];
+#else
+  return 0;
+#endif
 }
 
 /*JSON{
@@ -1606,12 +1646,14 @@ int jswrap_banglejs_accelRd(JsVarInt reg) {
 Writes a register on the Magnetometer/Compass
 */
 void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
+#ifndef EMSCRIPTEN
   unsigned char buf[2];
   buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
   i2cBusy = true;
   jsi2cWrite(&internalI2C, MAG_ADDR, 2, buf, true);
   i2cBusy = false;
+#endif
 }
 
 /*JSON{
@@ -1628,12 +1670,14 @@ void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
 Changes a pin state on the IO expander
 */
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
+#ifndef EMSCRIPTEN
   static unsigned char state;
   if (on) state |= mask;
   else state &= ~mask;
   i2cBusy = true;
   jsi2cWrite(&internalI2C, 0x20, 1, &state, true);
   i2cBusy = false;
+#endif
 }
 
 
@@ -1761,9 +1805,11 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
 Turn Bangle.js off. It can only be woken by pressing BTN1.
 */
 void jswrap_banglejs_off() {
+#ifndef EMSCRIPTEN
   jsiKill();
   jsvKill();
   jshKill();
+
   jswrap_banglejs_ioWr(IOEXP_GPS, 0); // GPS off
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   jswrap_banglejs_setLCDPower(0);
@@ -1772,6 +1818,9 @@ void jswrap_banglejs_off() {
   nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
   nrf_gpio_cfg_sense_set(BTN1_PININDEX, NRF_GPIO_PIN_SENSE_LOW);
   sd_power_system_off();
+#else
+  jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
+#endif
 }
 
 /*JSON{
