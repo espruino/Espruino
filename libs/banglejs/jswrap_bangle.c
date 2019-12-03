@@ -104,10 +104,10 @@ Has the watch been moved so that it is face-up, or not face up?
   "type" : "event",
   "class" : "Bangle",
   "name" : "charging",
-  "params" : [["up","bool","`true` if charging"]],
+  "params" : [["charging","bool","`true` if charging"]],
   "ifdef" : "BANGLEJS"
 }
-Has the watch been moved so that it is face-up, or not face up?
+Is the battery charging or not?
  */
 /*JSON{
   "type" : "event",
@@ -1764,7 +1764,7 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
       ["time","int","Time in ms (default 200)"],
       ["strength","float","Power of vibration from 0 to 1 (Default 1)"]
     ],
-    "return" : ["JsVar","A promise, completed when beep is finished"],
+    "return" : ["JsVar","A promise, completed when vibration is finished"],
     "return_object":"Promise",
     "ifdef" : "BANGLEJS"
 }
