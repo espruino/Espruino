@@ -804,7 +804,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
         /*LEX_R_EXTENDS :  */ "extends\0"
         /*LEX_R_SUPER :  */   "super\0"
         /*LEX_R_STATIC :   */ "static\0"
-        /*LEX_R_OF    :   */ "of\0"
+        /*LEX_R_OF    :   */  "of\0"
         ;
     unsigned int p = 0;
     int n = token-_LEX_OPERATOR_START;
